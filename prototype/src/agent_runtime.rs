@@ -21,7 +21,7 @@
 //         ← ValidatedCode
 //       ← NlResponse
 //     → Sandbox.check_access() → AuditLog.record()
-//   ← Generated, validated, audited MechGen source code
+//   ← Generated, validated, audited MAGE source code
 
 use crate::codegen_bridge::CodegenBridge;
 use crate::codegen_bridge;
@@ -97,8 +97,8 @@ impl Default for RuntimeConfig {
 
 /// The unified agent runtime — ties together all subsystems.
 ///
-/// As of the MechGen↔RMI Phase 3 unification, this runtime composes an
-/// [`crate::rmi_runtime_adapter::RmiAdapter`] alongside MechGen's native
+/// As of the MAGE↔RMI Phase 3 unification, this runtime composes an
+/// [`crate::rmi_runtime_adapter::RmiAdapter`] alongside MAGE's native
 /// swarm primitives. Each registered agent gets a UUID derived from its id
 /// so it can write to the shared workspace and receive delegated tasks.
 pub struct AgentRuntime {
@@ -109,7 +109,7 @@ pub struct AgentRuntime {
     // --- Core engines ---
     nl_engine: NlEngine,
     codegen: CodegenBridge,
-    // --- MechGen swarm infrastructure ---
+    // --- MAGE swarm infrastructure ---
     sandbox_mgr: SandboxManager,
     lease_mgr: LeaseManager,
     bus: MessageBus,

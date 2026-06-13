@@ -1,11 +1,11 @@
-/// MechGen Autograd Compilation — reverse-mode automatic differentiation.
+/// MAGE Autograd Compilation — reverse-mode automatic differentiation.
 ///
 /// Compiles `grad(loss, params)` expressions into backward-pass MLIR ops.
 /// The algorithm:
 ///   1. Build a computation graph (Wengert list) from the forward expression
 ///   2. Topologically sort the graph in reverse
 ///   3. Generate adjoint (gradient) operations for each node
-///   4. Emit MechGen.grad.* MLIR dialect operations
+///   4. Emit MAGE.grad.* MLIR dialect operations
 ///
 /// Supported differentiable operations:
 ///   - Arithmetic: add, sub, mul, div
@@ -168,7 +168,7 @@ pub fn backward(tape: &GradTape, loss_id: usize, param_names: &[String]) -> Grad
     // Seed: d(loss)/d(loss) = 1.0
     let seed = fresh(&mut ssa);
     ops.push(format!(
-        "{seed} = MechGen.grad.const 1.0 : f32  // d(loss)/d(loss)"
+        "{seed} = MAGE.grad.const 1.0 : f32  // d(loss)/d(loss)"
     ));
     adjoints[loss_id] = Some(seed);
 
@@ -194,7 +194,7 @@ pub fn backward(tape: &GradTape, loss_id: usize, param_names: &[String]) -> Grad
                 accumulate(&mut adjoints, &mut ops, &mut ssa, node.inputs[0], &adj);
                 let neg = fresh(&mut ssa);
                 ops.push(format!(
-                    "{neg} = MechGen.grad.neg {adj} : f32"
+                    "{neg} = MAGE.grad.neg {adj} : f32"
                 ));
                 accumulate(&mut adjoints, &mut ops, &mut ssa, node.inputs[1], &neg);
             }
@@ -204,12 +204,12 @@ pub fn backward(tape: &GradTape, loss_id: usize, param_names: &[String]) -> Grad
                 let fwd_b = format!("%fwd_{}", node.inputs[1]);
                 let da = fresh(&mut ssa);
                 ops.push(format!(
-                    "{da} = MechGen.grad.mul {adj}, {fwd_b} : f32  // d/da of mul"
+                    "{da} = MAGE.grad.mul {adj}, {fwd_b} : f32  // d/da of mul"
                 ));
                 accumulate(&mut adjoints, &mut ops, &mut ssa, node.inputs[0], &da);
                 let db = fresh(&mut ssa);
                 ops.push(format!(
-                    "{db} = MechGen.grad.mul {adj}, {fwd_a} : f32  // d/db of mul"
+                    "{db} = MAGE.grad.mul {adj}, {fwd_a} : f32  // d/db of mul"
                 ));
                 accumulate(&mut adjoints, &mut ops, &mut ssa, node.inputs[1], &db);
             }
@@ -219,12 +219,12 @@ pub fn backward(tape: &GradTape, loss_id: usize, param_names: &[String]) -> Grad
                 let fwd_b = format!("%fwd_{}", node.inputs[1]);
                 let da = fresh(&mut ssa);
                 ops.push(format!(
-                    "{da} = MechGen.grad.div {adj}, {fwd_b} : f32  // d/da of div"
+                    "{da} = MAGE.grad.div {adj}, {fwd_b} : f32  // d/da of div"
                 ));
                 accumulate(&mut adjoints, &mut ops, &mut ssa, node.inputs[0], &da);
                 let db = fresh(&mut ssa);
                 ops.push(format!(
-                    "{db} = MechGen.grad.div_rhs {adj}, {fwd_a}, {fwd_b} : f32  // d/db of div"
+                    "{db} = MAGE.grad.div_rhs {adj}, {fwd_a}, {fwd_b} : f32  // d/db of div"
                 ));
                 accumulate(&mut adjoints, &mut ops, &mut ssa, node.inputs[1], &db);
             }
@@ -234,19 +234,19 @@ pub fn backward(tape: &GradTape, loss_id: usize, param_names: &[String]) -> Grad
                 let fwd_b = format!("%fwd_{}", node.inputs[1]);
                 let da = fresh(&mut ssa);
                 ops.push(format!(
-                    "{da} = MechGen.grad.matmul_lhs {adj}, {fwd_b} : tensor<*xf32>"
+                    "{da} = MAGE.grad.matmul_lhs {adj}, {fwd_b} : tensor<*xf32>"
                 ));
                 accumulate(&mut adjoints, &mut ops, &mut ssa, node.inputs[0], &da);
                 let db = fresh(&mut ssa);
                 ops.push(format!(
-                    "{db} = MechGen.grad.matmul_rhs {fwd_a}, {adj} : tensor<*xf32>"
+                    "{db} = MAGE.grad.matmul_rhs {fwd_a}, {adj} : tensor<*xf32>"
                 ));
                 accumulate(&mut adjoints, &mut ops, &mut ssa, node.inputs[1], &db);
             }
             GradOp::Transpose => {
                 let da = fresh(&mut ssa);
                 ops.push(format!(
-                    "{da} = MechGen.grad.transpose {adj} : tensor<*xf32>"
+                    "{da} = MAGE.grad.transpose {adj} : tensor<*xf32>"
                 ));
                 accumulate(&mut adjoints, &mut ops, &mut ssa, node.inputs[0], &da);
             }
@@ -254,7 +254,7 @@ pub fn backward(tape: &GradTape, loss_id: usize, param_names: &[String]) -> Grad
                 let fwd = format!("%fwd_{}", node.inputs[0]);
                 let da = fresh(&mut ssa);
                 ops.push(format!(
-                    "{da} = MechGen.grad.relu {adj}, {fwd} : f32  // adj * (x > 0)"
+                    "{da} = MAGE.grad.relu {adj}, {fwd} : f32  // adj * (x > 0)"
                 ));
                 accumulate(&mut adjoints, &mut ops, &mut ssa, node.inputs[0], &da);
             }
@@ -262,7 +262,7 @@ pub fn backward(tape: &GradTape, loss_id: usize, param_names: &[String]) -> Grad
                 let fwd_out = format!("%fwd_{i}");
                 let da = fresh(&mut ssa);
                 ops.push(format!(
-                    "{da} = MechGen.grad.sigmoid {adj}, {fwd_out} : f32  // adj * σ * (1-σ)"
+                    "{da} = MAGE.grad.sigmoid {adj}, {fwd_out} : f32  // adj * σ * (1-σ)"
                 ));
                 accumulate(&mut adjoints, &mut ops, &mut ssa, node.inputs[0], &da);
             }
@@ -270,7 +270,7 @@ pub fn backward(tape: &GradTape, loss_id: usize, param_names: &[String]) -> Grad
                 let fwd_out = format!("%fwd_{i}");
                 let da = fresh(&mut ssa);
                 ops.push(format!(
-                    "{da} = MechGen.grad.tanh {adj}, {fwd_out} : f32  // adj * (1-tanh²)"
+                    "{da} = MAGE.grad.tanh {adj}, {fwd_out} : f32  // adj * (1-tanh²)"
                 ));
                 accumulate(&mut adjoints, &mut ops, &mut ssa, node.inputs[0], &da);
             }
@@ -278,7 +278,7 @@ pub fn backward(tape: &GradTape, loss_id: usize, param_names: &[String]) -> Grad
                 let fwd_out = format!("%fwd_{i}");
                 let da = fresh(&mut ssa);
                 ops.push(format!(
-                    "{da} = MechGen.grad.softmax {adj}, {fwd_out} : tensor<*xf32>"
+                    "{da} = MAGE.grad.softmax {adj}, {fwd_out} : tensor<*xf32>"
                 ));
                 accumulate(&mut adjoints, &mut ops, &mut ssa, node.inputs[0], &da);
             }
@@ -286,7 +286,7 @@ pub fn backward(tape: &GradTape, loss_id: usize, param_names: &[String]) -> Grad
                 let fwd = format!("%fwd_{}", node.inputs[0]);
                 let da = fresh(&mut ssa);
                 ops.push(format!(
-                    "{da} = MechGen.grad.div {adj}, {fwd} : f32  // d/dx of log = 1/x"
+                    "{da} = MAGE.grad.div {adj}, {fwd} : f32  // d/dx of log = 1/x"
                 ));
                 accumulate(&mut adjoints, &mut ops, &mut ssa, node.inputs[0], &da);
             }
@@ -294,14 +294,14 @@ pub fn backward(tape: &GradTape, loss_id: usize, param_names: &[String]) -> Grad
                 let fwd_out = format!("%fwd_{i}");
                 let da = fresh(&mut ssa);
                 ops.push(format!(
-                    "{da} = MechGen.grad.mul {adj}, {fwd_out} : f32  // d/dx of exp = exp"
+                    "{da} = MAGE.grad.mul {adj}, {fwd_out} : f32  // d/dx of exp = exp"
                 ));
                 accumulate(&mut adjoints, &mut ops, &mut ssa, node.inputs[0], &da);
             }
             GradOp::Neg => {
                 let da = fresh(&mut ssa);
                 ops.push(format!(
-                    "{da} = MechGen.grad.neg {adj} : f32"
+                    "{da} = MAGE.grad.neg {adj} : f32"
                 ));
                 accumulate(&mut adjoints, &mut ops, &mut ssa, node.inputs[0], &da);
             }
@@ -310,7 +310,7 @@ pub fn backward(tape: &GradTape, loss_id: usize, param_names: &[String]) -> Grad
                 let da = fresh(&mut ssa);
                 let kind = if node.op == GradOp::Mean { "mean" } else { "sum" };
                 ops.push(format!(
-                    "{da} = MechGen.grad.broadcast_{kind} {adj} : tensor<*xf32>"
+                    "{da} = MAGE.grad.broadcast_{kind} {adj} : tensor<*xf32>"
                 ));
                 accumulate(&mut adjoints, &mut ops, &mut ssa, node.inputs[0], &da);
             }
@@ -319,7 +319,7 @@ pub fn backward(tape: &GradTape, loss_id: usize, param_names: &[String]) -> Grad
                 let fwd_target = format!("%fwd_{}", node.inputs[1]);
                 let da = fresh(&mut ssa);
                 ops.push(format!(
-                    "{da} = MechGen.grad.cross_entropy {adj}, {fwd_pred}, {fwd_target} : tensor<*xf32>"
+                    "{da} = MAGE.grad.cross_entropy {adj}, {fwd_pred}, {fwd_target} : tensor<*xf32>"
                 ));
                 accumulate(&mut adjoints, &mut ops, &mut ssa, node.inputs[0], &da);
                 // No gradient for targets.
@@ -329,7 +329,7 @@ pub fn backward(tape: &GradTape, loss_id: usize, param_names: &[String]) -> Grad
                 let fwd_target = format!("%fwd_{}", node.inputs[1]);
                 let da = fresh(&mut ssa);
                 ops.push(format!(
-                    "{da} = MechGen.grad.mse {adj}, {fwd_pred}, {fwd_target} : tensor<*xf32>"
+                    "{da} = MAGE.grad.mse {adj}, {fwd_pred}, {fwd_target} : tensor<*xf32>"
                 ));
                 accumulate(&mut adjoints, &mut ops, &mut ssa, node.inputs[0], &da);
             }
@@ -338,7 +338,7 @@ pub fn backward(tape: &GradTape, loss_id: usize, param_names: &[String]) -> Grad
                 let fwd_exp = format!("%fwd_{}", node.inputs[1]);
                 let da = fresh(&mut ssa);
                 ops.push(format!(
-                    "{da} = MechGen.grad.pow_base {adj}, {fwd_base}, {fwd_exp} : f32"
+                    "{da} = MAGE.grad.pow_base {adj}, {fwd_base}, {fwd_exp} : f32"
                 ));
                 accumulate(&mut adjoints, &mut ops, &mut ssa, node.inputs[0], &da);
             }
@@ -394,7 +394,7 @@ fn accumulate(
             let sum = format!("%grad_{ssa}");
             *ssa += 1;
             ops.push(format!(
-                "{sum} = MechGen.grad.add {existing}, {incoming} : f32  // accumulate"
+                "{sum} = MAGE.grad.add {existing}, {incoming} : f32  // accumulate"
             ));
             adjoints[node_id] = Some(sum);
         }

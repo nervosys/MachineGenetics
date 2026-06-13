@@ -1,8 +1,8 @@
-# MechGen: SWE Agent Communication Protocol & System Ontology
+# MAGE: SWE Agent Communication Protocol & System Ontology
 
 Version 1.0 — 2026-03-26
 
-This document defines (1) a structured communication protocol for software engineering agents operating over the MechGen compiler, and (2) a complete formal ontology of every concept, type, relation, and invariant in the language and compiler system. Together they enable agents to reason about, navigate, modify, verify, and coordinate work on MechGen programs with full semantic precision.
+This document defines (1) a structured communication protocol for software engineering agents operating over the MAGE compiler, and (2) a complete formal ontology of every concept, type, relation, and invariant in the language and compiler system. Together they enable agents to reason about, navigate, modify, verify, and coordinate work on MAGE programs with full semantic precision.
 
 ---
 
@@ -10,7 +10,7 @@ This document defines (1) a structured communication protocol for software engin
 
 ### 1. Protocol Overview
 
-The MechGen SWE Agent Communication Protocol (SACP) is a structured message-passing protocol that enables autonomous software engineering agents to collaborate on MechGen programs. It operates over three transport layers:
+The MAGE SWE Agent Communication Protocol (SACP) is a structured message-passing protocol that enables autonomous software engineering agents to collaborate on MAGE programs. It operates over three transport layers:
 
 | Layer           | Transport             | Latency | Use Case                                           |
 | --------------- | --------------------- | ------- | -------------------------------------------------- |
@@ -20,12 +20,12 @@ The MechGen SWE Agent Communication Protocol (SACP) is a structured message-pass
 
 ### 2. Agent Roles
 
-Every agent in a MechGen swarm declares exactly one `Role`:
+Every agent in a MAGE swarm declares exactly one `Role`:
 
 | Role            | Identifier              | Responsibility                                                      |
 | --------------- | ----------------------- | ------------------------------------------------------------------- |
 | Analyst         | `Role::Analyst`         | Decompose requirements into tasks; query cost oracle; assess impact |
-| Implementer     | `Role::Implementer`     | Write MechGen code; invoke synthesis oracle; apply hot patches      |
+| Implementer     | `Role::Implementer`     | Write MAGE code; invoke synthesis oracle; apply hot patches      |
 | Reviewer        | `Role::Reviewer`        | Verify contracts; audit safety; check effect containment            |
 | Verifier        | `Role::Verifier`        | Issue verification certificates; run SKB checks; validate proofs    |
 | Orchestrator    | `Role::Orchestrator`    | Schedule tasks; balance load; manage consensus rounds               |
@@ -89,7 +89,7 @@ Envelope {
 6. **Release Lease**: Agent releases semantic region lock.
 7. **Report**: Agent sends `TaskResult` to `Orchestrator`.
 
-### 5. RAP (MechGen Agent Protocol) — Compiler Interface
+### 5. RAP (MAGE Agent Protocol) — Compiler Interface
 
 RAP exposes 24 JSON-RPC 2.0 endpoints. Each request is a JSON object with `method`, `params`, `id`:
 
@@ -299,11 +299,11 @@ For live function patching without full recompilation:
 
 ### 11. Ontology Structure
 
-The MechGen ontology is organized into 12 interconnected domains. Each domain defines concepts (types), relations (how concepts connect), and invariants (properties that always hold).
+The MAGE ontology is organized into 12 interconnected domains. Each domain defines concepts (types), relations (how concepts connect), and invariants (properties that always hold).
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                        MECHGEN ONTOLOGY                             │
+│                        MAGE ONTOLOGY                             │
 │                                                                     │
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐           │
 │  │ Lexical  │→│ Syntactic│→│ Semantic │→│ Type     │           │
@@ -411,7 +411,7 @@ Human mode uses Rust keywords; Agent mode uses compressed sigils. Both map to th
 
 ### 13. Domain 2: Syntactic
 
-The syntactic domain defines the abstract syntax tree (AST) — the structural representation of all MechGen programs.
+The syntactic domain defines the abstract syntax tree (AST) — the structural representation of all MAGE programs.
 
 #### 13.1 Concepts
 
@@ -439,8 +439,8 @@ Attribute { name: String, args: Vec<String>, bang: bool }
 | Stratum       | Variants                                                                                       | Source             |
 | ------------- | ---------------------------------------------------------------------------------------------- | ------------------ |
 | Core Language | `Function`, `Struct`, `Enum`, `Trait`, `Impl`, `Module`, `Use`, `TypeAlias`, `Const`, `Static` | Rust heritage      |
-| Effect System | `Effect`, `Spec`                                                                               | MechGen extensions |
-| AI Constructs | `Agent`, `Net`, `Kb`, `Evolve`, `Train`, `Swarm`                                               | MechGen AI layer   |
+| Effect System | `Effect`, `Spec`                                                                               | MAGE extensions |
+| AI Constructs | `Agent`, `Net`, `Kb`, `Evolve`, `Train`, `Swarm`                                               | MAGE AI layer   |
 
 **ExprKind** — 31 expression forms:
 
@@ -780,7 +780,7 @@ Four compiler-integrated AI subsystems, each operating as a pipeline phase.
 ```
 Forward:  Build tape (Wengert list) of operations
 Backward: Reverse topological sort → apply chain rule per op
-Output:   MLIR MechGen.grad.* operations
+Output:   MLIR MAGE.grad.* operations
 ```
 
 **Invariants**:
@@ -895,15 +895,15 @@ AuditEventKind: CapabilityGranted | CapabilityDenied | CapabilityAttenuated | Re
 
 #### 20.1 MLIR Emission
 
-**Concept**: The `emit()` function transforms a type-checked, effect-annotated AST into textual MLIR in the MechGen dialect.
+**Concept**: The `emit()` function transforms a type-checked, effect-annotated AST into textual MLIR in the MAGE dialect.
 
 **MLIR Operations**:
-- `MechGen.func` — Function definition with effect attributes.
-- `MechGen.call` — Function invocation.
-- `MechGen.tensor.*` — Tensor operations (matmul, broadcast, reshape).
-- `MechGen.grad.*` — Autograd backward pass operations.
-- `MechGen.effect.*` — Effect invocation/handling.
-- `MechGen.agent.*` — Agent dispatch.
+- `MAGE.func` — Function definition with effect attributes.
+- `MAGE.call` — Function invocation.
+- `MAGE.tensor.*` — Tensor operations (matmul, broadcast, reshape).
+- `MAGE.grad.*` — Autograd backward pass operations.
+- `MAGE.effect.*` — Effect invocation/handling.
+- `MAGE.agent.*` — Agent dispatch.
 
 #### 20.2 Safety Elision
 
@@ -934,7 +934,7 @@ Both are bijective: `format_X(parse(format_X(ast))) ≡ format_X(ast)`.
 - `Void`, `Int(bits)`, `UInt(bits)`, `Float(bits)`, `Bool`, `CString`
 - `Ptr(ForeignType)`, `Array(ForeignType, size)`, `Struct(name)`, `Opaque(name)`
 
-Each `ForeignType` maps to three representations: `.to_c_type()`, `.to_mechgen_type()`, `.to_python_type()`.
+Each `ForeignType` maps to three representations: `.to_c_type()`, `.to_mage_type()`, `.to_python_type()`.
 
 #### 20.5 Invariants
 
@@ -1147,7 +1147,7 @@ Source Text
     │    SKB-verified AST ───────────────────── 255 rules checked
     │
     ├──▶ [Codegen Domain: MLIR]
-    │    MLIR text ──────────────────────────── MechGen dialect
+    │    MLIR text ──────────────────────────── MAGE dialect
     │
     ├──▶ [Codegen Domain: Elision] (agent mode only)
     │    Elided AST ─────────────────────────── Safety annotations stripped
@@ -1460,7 +1460,7 @@ Query cost/compare → Choose cheapest approach
 Acquire SemanticRegion lease (ExclusiveWrite)
     │
     ▼
-Write code (MechGen source)
+Write code (MAGE source)
     │
     ▼
 Call RAP build/check → Get diagnostics

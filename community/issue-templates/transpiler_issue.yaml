@@ -15,8 +15,8 @@ body:
       label: Transpiler
       description: Which transpiler is affected?
       options:
-        - rust2mg (Rust → MechGen)
-        - mg2rs (MechGen → Rust)
+        - rust2mg (Rust → MAGE)
+        - mg2rs (MAGE → Rust)
     validations:
       required: true
 
@@ -51,7 +51,7 @@ body:
       label: Expected Output
       description: What the transpiler should produce
       value: |
-        ```MechGen
+        ```MAGE
         // paste expected output here
         ```
     validations:

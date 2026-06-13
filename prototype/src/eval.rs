@@ -1635,7 +1635,7 @@ mod tests {
 
     #[test]
     fn closures_work() {
-        // MechGen closure syntax is `fn(x) => expr`.
+        // MAGE closure syntax is `fn(x) => expr`.
         assert_eq!(run("f s() { map([1, 2, 3], fn(x) => x * 10) }", "s", &[]),
                    Value::List(vec![Value::Int(10), Value::Int(20), Value::Int(30)]));
     }
@@ -1664,7 +1664,7 @@ mod tests {
 
     #[test]
     fn struct_construction_and_field_access() {
-        // MechGen struct-literal syntax is `@Name { field: value }`.
+        // MAGE struct-literal syntax is `@Name { field: value }`.
         let src = "S P { x: i32, y: i32 }\nf d2(p) { p.x * p.x + p.y * p.y }\n\
                    f s() { d2(@P { x: 3, y: 4 }) }";
         assert_eq!(run(src, "s", &[]), Value::Int(25));

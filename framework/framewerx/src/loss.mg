@@ -1,6 +1,6 @@
 // framewerx::loss — loss functions
 //
-// Implemented as MechGen functions over Tensor; lowers to RMI Math
+// Implemented as MAGE functions over Tensor; lowers to RMI Math
 // opcodes (SUB, MUL, SUM, etc.) via the bridge.
 
 +f mse(pred: Tensor, target: Tensor) -> Tensor {

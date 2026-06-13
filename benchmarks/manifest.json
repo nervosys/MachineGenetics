@@ -1,8 +1,8 @@
 {
-  "name": "MechGen Agent Training Benchmark Corpus",
+  "name": "MAGE Agent Training Benchmark Corpus",
   "version": "0.1.0",
-  "format": "MechGen-training-v1",
-  "description": "100 programming tasks across 10 categories for evaluating AI agent performance on the MechGen language",
+  "format": "MAGE-training-v1",
+  "description": "100 programming tasks across 10 categories for evaluating AI agent performance on the MAGE language",
   "schema": "corpus-schema.json",
   "categories": [
     {

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "SKB Rule",
-  "description": "A single rule in the MechGen Safety Knowledge Base",
+  "description": "A single rule in the MAGE Safety Knowledge Base",
   "type": "object",
   "required": ["id", "database", "version", "severity", "category", "description", "scope"],
   "properties": {

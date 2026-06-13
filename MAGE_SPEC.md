@@ -1,11 +1,11 @@
-# MachineGenetics (MechGen) Language Specification
+# MAGE (Machine Genetics) Language Specification
 
 **Version**: 1.0.0 (Draft)
 **Status**: Pre-implementation specification
 
 ---
 
-> Just as DNA encodes biological life through a compact molecular language, MechGen encodes intelligent systems through a compact computational language. It is the genetic code for machines — a language in which AI writes, reasons, optimizes, and evolves itself.
+> Just as DNA encodes biological life through a compact molecular language, MAGE encodes intelligent systems through a compact computational language. It is the genetic code for machines — a language in which AI writes, reasons, optimizes, and evolves itself.
 
 ---
 
@@ -35,7 +35,7 @@
 
 ## 1. Introduction
 
-MachineGenetics (MechGen) is a systems programming language designed for the age of artificial intelligence. It combines the safety and performance model of Rust with modern language design, first-class primitives for neural computation, symbolic reasoning, evolutionary optimization, and multi-agent coordination — all within a dual-syntax system that serves both human programmers and AI agents.
+MAGE (Machine Genetics) is a systems programming language designed for the age of artificial intelligence. It combines the safety and performance model of Rust with modern language design, first-class primitives for neural computation, symbolic reasoning, evolutionary optimization, and multi-agent coordination — all within a dual-syntax system that serves both human programmers and AI agents.
 
 ### 1.1 Design Principles
 
@@ -76,7 +76,7 @@ UPPER_CASE        Non-terminal
 
 ## 2. Dual Syntax Modes
 
-MechGen supports two interchangeable surface syntaxes that parse to the same AST:
+MAGE supports two interchangeable surface syntaxes that parse to the same AST:
 
 | Mode      | Pragma              | Purpose                              | Density |
 | --------- | ------------------- | ------------------------------------ | ------- |
@@ -106,16 +106,16 @@ Human mode uses clear, modern keywords that improve on Rust's conventions. Core 
 
 **Async:** `async`, `.await`
 
-**MechGen-unique — AI constructs:**
+**MAGE-unique — AI constructs:**
 `net`, `layer`, `tensor`, `param`, `train`, `grad`, `agent`, `kb`, `fact`,
 `rule`, `query`, `evolve`, `genome`, `mutate`, `fitness`, `select`, `crossover`,
 `rl`, `policy`, `reward`, `effect`, `handle`, `spec`
 
 **Keyword mapping from Rust:**
 
-Human mode preserves Rust keywords 1:1. The only additions are MechGen's AI and effect-system constructs, which have no Rust equivalent:
+Human mode preserves Rust keywords 1:1. The only additions are MAGE's AI and effect-system constructs, which have no Rust equivalent:
 
-| Rust           | MechGen Human  | Notes     |
+| Rust           | MAGE Human  | Notes     |
 | -------------- | -------------- | --------- |
 | `fn`           | `fn`           | Identical |
 | `pub`          | `pub`          | Identical |
@@ -575,7 +575,7 @@ attribute = '#' '[' attr_path [ '(' attr_args ')' ] ']'
           | '@' attr_name [ '(' attr_args ')' ] ;
 
 /* Standard attributes: #[derive(...)], #[test], #[cfg(...)], #[inline] */
-/* MechGen-specific: @req, @ens, @inv, @perf, @fx, @spec */
+/* MAGE-specific: @req, @ens, @inv, @perf, @fx, @spec */
 /* Neural: @target(gpu), @precision(f16), @batch(32) */
 /* Evolution: @population(1000), @generations(500) */
 ```
@@ -584,7 +584,7 @@ attribute = '#' '[' attr_path [ '(' attr_args ')' ] ']'
 
 ## 5. Neural Computation
 
-MechGen treats neural networks as first-class language constructs. A `net` block declares a network architecture; `layer` statements define its topology; `train` blocks define optimization loops. The compiler verifies shape compatibility, selects hardware targets, and generates optimized kernels.
+MAGE treats neural networks as first-class language constructs. A `net` block declares a network architecture; `layer` statements define its topology; `train` blocks define optimization loops. The compiler verifies shape compatibility, selects hardware targets, and generates optimized kernels.
 
 ### 5.1 Network Definition
 
@@ -681,7 +681,7 @@ train_field = 'model' ':' expression ','
 
 ### 5.5 LLM Integration
 
-MechGen provides native types for language model invocation:
+MAGE provides native types for language model invocation:
 
 ```mg
 use std::llm::{LLM, Prompt, Response};
@@ -829,7 +829,7 @@ val r = Tensor::<f32, [64, 784]>::randn();
 
 ## 7. Symbolic Reasoning
 
-MechGen integrates symbolic AI as language-level constructs: knowledge bases with facts and rules, logical inference, and queryable rule engines.
+MAGE integrates symbolic AI as language-level constructs: knowledge bases with facts and rules, logical inference, and queryable rule engines.
 
 ### 7.1 Knowledge Base Definition
 
@@ -921,7 +921,7 @@ pub fn validate_borrow(code: &str) -> [Diagnostic]~ {
 
 ## 8. Evolutionary Computation
 
-MechGen has first-class support for genetic algorithms, neuroevolution, and evolutionary strategies. The `evolve` block declaratively specifies population, fitness, selection, crossover, and mutation — the compiler generates optimized parallel evolution loops.
+MAGE has first-class support for genetic algorithms, neuroevolution, and evolutionary strategies. The `evolve` block declaratively specifies population, fitness, selection, crossover, and mutation — the compiler generates optimized parallel evolution loops.
 
 ### 8.1 Evolve Block
 
@@ -1045,7 +1045,7 @@ pub fn train_agent(env: &mut impl Env) -> Policy<f32, f32> / gpu {
 The combination of evolutionary computation and neural networks enables **recursive self-improvement**: programs that optimize their own architectures, hyperparameters, and strategies:
 
 ```mg
-// A MechGen program that evolves its own compiler optimization passes.
+// A MAGE program that evolves its own compiler optimization passes.
 evolve CompilerOptimizer {
     genome: [OptimizationPass]~,
     population: 50,
@@ -1069,7 +1069,7 @@ evolve CompilerOptimizer {
 
 ## 9. Agents and Swarms
 
-Agents are autonomous computational entities that combine neural reasoning, symbolic knowledge, and evolutionary adaptation. MechGen's agent system is built on structured effects and capability-based security.
+Agents are autonomous computational entities that combine neural reasoning, symbolic knowledge, and evolutionary adaptation. MAGE's agent system is built on structured effects and capability-based security.
 
 ### 9.1 Agent Definition
 
@@ -1231,7 +1231,7 @@ pub fn sandboxed_analysis(code: &str) -> Analysis or Error / agent {
 
 ### 10.1 Overview
 
-MechGen's type system extends Rust's with:
+MAGE's type system extends Rust's with:
 
 1. **Tensor types** — compile-time shape verification, autograd tracking
 2. **Neural types** — `net`, `layer`, `Param` as typed constructs
@@ -1372,7 +1372,7 @@ Contracts are verified via:
 
 ## 13. Ownership and Borrowing
 
-MechGen preserves Rust's ownership and borrowing semantics with full inference:
+MAGE preserves Rust's ownership and borrowing semantics with full inference:
 
 1. Every value has exactly one owner.
 2. When the owner goes out of scope, the value is dropped.
@@ -1448,7 +1448,7 @@ std::
 
 ### 15.1 Compilation Targets
 
-MechGen compiles to native code via MLIR and LLVM, with specialized lowering passes:
+MAGE compiles to native code via MLIR and LLVM, with specialized lowering passes:
 
 | Target | Backend           | Use Case                          |
 | ------ | ----------------- | --------------------------------- |
@@ -1772,7 +1772,7 @@ From highest to lowest. Left-associative unless noted.
 
 ## Appendix D: Agent Mode Symbol Reference
 
-A complete lexicon of Agent mode symbols, organized by category. This is the "genetic alphabet" of MechGen — each symbol encodes a high-level concept in minimal space.
+A complete lexicon of Agent mode symbols, organized by category. This is the "genetic alphabet" of MAGE — each symbol encodes a high-level concept in minimal space.
 
 ### D.1 Greek Letters — AI Constructs
 
@@ -2137,4 +2137,4 @@ u std.kb.Κ
 
 ---
 
-*End of MachineGenetics (MechGen) Language Specification v1.0.0*
+*End of MAGE (Machine Genetics) Language Specification v1.0.0*

@@ -1,7 +1,7 @@
 # Chapter 8: Case Studies
 
 Three complete migration walkthroughs — a CLI tool, an HTTP service, and a
-data-processing pipeline — showing every step from assessment to running MechGen.
+data-processing pipeline — showing every step from assessment to running MAGE.
 
 ---
 
@@ -139,7 +139,7 @@ mod tests {
 
 ### 8.1.3 Migration Steps
 
-**Step 1: Create MechGen project alongside**
+**Step 1: Create MAGE project alongside**
 
 ```bash
 mg init --alongside   # adds Forge.toml, keeps Cargo.toml
@@ -154,11 +154,11 @@ mg migrate src/main.rs -o src/main.mg
 **Step 3: Review and refine**
 
 The automated output needs manual adjustments for effect annotations and
-MechGen idioms. Final result:
+MAGE idioms. Final result:
 
-### 8.1.4 MechGen Source (After)
+### 8.1.4 MAGE Source (After)
 
-```MechGen
+```MAGE
 // src/main.mg
 u clap.{Parser, Subcommand}
 u csv.Reader
@@ -271,7 +271,7 @@ M tests {
 
 ### 8.1.5 Key Observations
 
-| Aspect     | Rust → MechGen                                     |
+| Aspect     | Rust → MAGE                                     |
 | ---------- | ------------------------------------------------ |
 | Lines      | 95 → 82 (14% reduction)                          |
 | Keywords   | `fn`, `let`, `pub`, `match` → `f`, `v`, `+`, `?` |
@@ -361,9 +361,9 @@ pub async fn create_user(
 }
 ```
 
-### 8.2.3 MechGen Source (After)
+### 8.2.3 MAGE Source (After)
 
-```MechGen
+```MAGE
 // src/main.mg
 u web.{Router, routing.{get, post}, Json, Extension}
 u db.postgres.PgPoolOptions
@@ -393,7 +393,7 @@ u web.cors.CorsLayer
 }
 ```
 
-```MechGen
+```MAGE
 // src/handlers.mg
 u web.{Extension, Json}
 u db.PgPool
@@ -425,7 +425,7 @@ u db.PgPool
 
 ### 8.2.4 Testing With Effect Mocking
 
-```MechGen
+```MAGE
 @cfg(test)
 M tests {
     u super.*
@@ -558,9 +558,9 @@ This crate requires a phased approach:
 2. **Phase 2**: Migrate `transform.rs` (wrap SIMD in `/ unsafe` effect)
 3. **Phase 3**: Migrate tests, remove rayon
 
-### 8.3.4 MechGen Source (After)
+### 8.3.4 MAGE Source (After)
 
-```MechGen
+```MAGE
 // src/pipeline.mg
 u std.path.{Path, PathBuf}
 u std.agent.{Agent, Swarm}
@@ -622,7 +622,7 @@ I Agent ~ FileProcessor {
 }
 ```
 
-```MechGen
+```MAGE
 // src/transform.mg
 +f normalize_floats(data: &![f64]) / unsafe {
     v max = data.iter().cloned().fold(f64.MIN, f64.max)
@@ -678,7 +678,7 @@ allow-agent = ["src/pipeline.mg"]
 
 ## 8.4 Migration Metrics Summary
 
-| Crate        | Rust LOC | MechGen LOC | Reduction | Effort   | Hardest Part        |
+| Crate        | Rust LOC | MAGE LOC | Reduction | Effort   | Hardest Part        |
 | ------------ | -------- | --------- | --------- | -------- | ------------------- |
 | csvtool      | 620      | 530       | 15%       | 0.5 days | Effect annotation   |
 | user-api     | 1,450    | 1,210     | 17%       | 3 days   | Async runtime swap  |
@@ -702,9 +702,9 @@ allow-agent = ["src/pipeline.mg"]
 
 ## 8.5 Next Steps After Migration
 
-1. **Run `mg lint`** — catches Rust idioms that should be MechGen patterns
-2. **Run `mg test`** — verify all tests pass in the MechGen runtime
+1. **Run `mg lint`** — catches Rust idioms that should be MAGE patterns
+2. **Run `mg test`** — verify all tests pass in the MAGE runtime
 3. **Remove Cargo.toml** — when dual-build is no longer needed
 4. **Delete `.rs` files** — keep only `.mg` sources
-5. **Update CI** — switch from dual pipeline to MechGen-only
-6. **Update README** — note the project now uses MechGen
+5. **Update CI** — switch from dual pipeline to MAGE-only
+6. **Update README** — note the project now uses MAGE

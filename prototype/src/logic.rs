@@ -1,4 +1,4 @@
-/// MechGen Logic Inference Engine — Datalog-style reasoning for KB blocks.
+/// MAGE Logic Inference Engine — Datalog-style reasoning for KB blocks.
 ///
 /// Compiles `kb` definitions into an in-memory fact store with
 /// bottom-up (semi-naive) evaluation of rules.
@@ -267,13 +267,13 @@ impl KnowledgeBase {
         self.materialize();
 
         let mut ops = Vec::new();
-        ops.push(format!("MechGen.kb @{} {{", self.name));
+        ops.push(format!("MAGE.kb @{} {{", self.name));
 
         for (pred, fact_set) in &self.facts {
             for args in fact_set {
                 let formatted: Vec<String> = args.iter().map(|a| format!("\"{a}\"")).collect();
                 ops.push(format!(
-                    "  MechGen.kb.fact \"{pred}\"({}) : ()",
+                    "  MAGE.kb.fact \"{pred}\"({}) : ()",
                     formatted.join(", ")
                 ));
             }
@@ -283,7 +283,7 @@ impl KnowledgeBase {
             let head_str = format!("{}", rule.head);
             let body_strs: Vec<String> = rule.body.iter().map(|a| format!("{a}")).collect();
             ops.push(format!(
-                "  MechGen.kb.rule @rule_{i} \"{head_str}\" :- {}",
+                "  MAGE.kb.rule @rule_{i} \"{head_str}\" :- {}",
                 body_strs.join(", ")
             ));
         }
@@ -495,8 +495,8 @@ mod tests {
         let mut kb = KnowledgeBase::new("test_kb");
         kb.add_fact("parent", vec!["a".into(), "b".into()]);
         let ops = kb.emit_mlir();
-        assert!(ops[0].contains("MechGen.kb @test_kb"));
-        assert!(ops.iter().any(|op| op.contains("MechGen.kb.fact")));
+        assert!(ops[0].contains("MAGE.kb @test_kb"));
+        assert!(ops.iter().any(|op| op.contains("MAGE.kb.fact")));
     }
 
     #[test]

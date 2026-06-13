@@ -3,19 +3,6 @@
 version = 4
 
 [[package]]
-name = "MechGen-prototype"
-version = "0.2.0"
-dependencies = [
- "async-trait",
- "ironaccelerator-cuda",
- "proc-macro2",
- "rmi",
- "serde",
- "serde_json",
- "uuid",
-]
-
-[[package]]
 name = "android_system_properties"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -493,6 +480,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "373f5eceeeab7925e0c1098212f2fbc4d416adec9d35051a6ab251e824c1854a"
 dependencies = [
  "twox-hash",
+]
+
+[[package]]
+name = "mage-prototype"
+version = "0.2.0"
+dependencies = [
+ "async-trait",
+ "ironaccelerator-cuda",
+ "proc-macro2",
+ "rmi",
+ "serde",
+ "serde_json",
+ "uuid",
 ]
 
 [[package]]

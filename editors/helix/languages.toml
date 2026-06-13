@@ -1,15 +1,15 @@
-# Helix editor configuration for MechGen.
+# Helix editor configuration for MAGE.
 #
 # Installation:
 #   cp languages.toml ~/.config/helix/languages.toml
-#   cp -r queries/MechGen ~/.config/helix/runtime/queries/MechGen
+#   cp -r queries/MAGE ~/.config/helix/runtime/queries/MAGE
 
 # ── Language definition ──────────────────────────────────────────────
 
 [[language]]
-name = "MechGen"
-scope = "source.MechGen"
-injection-regex = "MechGen|mg"
+name = "MAGE"
+scope = "source.MAGE"
+injection-regex = "MAGE|mg"
 file-types = ["mg"]
 roots = ["Forge.toml"]
 comment-token = "//"

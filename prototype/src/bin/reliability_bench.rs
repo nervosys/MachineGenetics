@@ -1,7 +1,7 @@
 //! # `reliability-bench` — agent-write reliability harness
 //!
 //! Walks every task in `benchmarks/tasks/*.json`, asks a pluggable
-//! **candidate agent** for MechGen source, runs the candidate through
+//! **candidate agent** for MAGE source, runs the candidate through
 //! the prototype compiler, and records:
 //!
 //! 1. **Lex success** — no `TokenKind::Error` tokens emitted.
@@ -17,7 +17,7 @@
 //!
 //! Phase 27 measured **token efficiency** ([`benchmarks/FINDINGS.md`]).
 //! Phase 30 measures the other half of the mission — whether agent-
-//! emitted MechGen is **reliable**. The mechanics here are language-
+//! emitted MAGE is **reliable**. The mechanics here are language-
 //! and-compiler-only; an LLM is *not* required to demonstrate the
 //! pipeline. The default backend is a **file oracle** that simply
 //! reads `solution.rdx_source` from the corpus JSON — i.e. simulates
@@ -78,7 +78,7 @@ struct Task {
 
 // ─── Candidate agent interface ───────────────────────────────────────
 
-/// A candidate agent: given a task, produces a MechGen source string.
+/// A candidate agent: given a task, produces a MAGE source string.
 ///
 /// `refine` is the Stage-3 re-prompt hook: when the mechanical 3-stage
 /// recovery in `recover::recover` cannot save broken source, the bench
@@ -265,7 +265,7 @@ fn insert_after_first(src: &str, anchor: u8, insert: char) -> String {
 
 /// Agent that spawns an external command per task. The command:
 /// - receives the task description on **stdin**
-/// - must print the MechGen source on **stdout**
+/// - must print the MAGE source on **stdout**
 /// - non-zero exit code → recorded as `agent refused`
 ///
 /// This is the integration point for any real LLM. Wire a thin
@@ -694,7 +694,7 @@ fn render_markdown(
     structural_succeeded: usize,
 ) -> String {
     let mut out = String::new();
-    out.push_str("# MechGen Agent-Write Reliability Report\n\n");
+    out.push_str("# MAGE Agent-Write Reliability Report\n\n");
     out.push_str(&format!(
         "Backend: **{}**.  Generated from `benchmarks/tasks/*.json` ({} tasks).\n\n",
         backend, total

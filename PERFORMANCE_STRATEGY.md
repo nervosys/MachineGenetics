@@ -1,14 +1,14 @@
-# MechGen Performance Strategy: Faster Than C, C++, and Rust
+# MAGE Performance Strategy: Faster Than C, C++, and Rust
 
-This document defines the concrete strategy by which MechGen outperforms C, C++,
+This document defines the concrete strategy by which MAGE outperforms C, C++,
 and Rust across every measurable performance metric. The approach is not
 incremental — it exploits information asymmetry that only an agentic AI language
-can possess. Traditional compilers optimize blind; MechGen optimizes informed.
+can possess. Traditional compilers optimize blind; MAGE optimizes informed.
 
 ## Thesis
 
 C, C++, and Rust share a fundamental limitation: the compiler knows only what
-the source text says. MechGen breaks this ceiling by introducing four information
+the source text says. MAGE breaks this ceiling by introducing four information
 sources that no traditional compiler has:
 
 1. **Contract knowledge** — `@req`, `@ens`, `@inv` provide provable value
@@ -54,8 +54,8 @@ transparency, and agent reasoning.
 
 \* = faster (lower wall-clock time)
 
-Ratios are MechGen/Baseline where <1.0 means MechGen is smaller/faster/cheaper.
-Ratios >1.0 in the compile-time row mean MechGen compiles N× faster.
+Ratios are MAGE/Baseline where <1.0 means MAGE is smaller/faster/cheaper.
+Ratios >1.0 in the compile-time row mean MAGE compiles N× faster.
 
 ---
 
@@ -67,11 +67,11 @@ When a function carries `@req 0 < n && n <= 1024`, the optimizer *knows* the
 value range at every call site. This unlocks:
 
 - **Branch elimination** — `if n == 0` is dead code. LLVM would need runtime
-  profiling (PGO) to discover this; MechGen knows it statically.
+  profiling (PGO) to discover this; MAGE knows it statically.
 - **Exact loop unrolling** — bounded N means the unroll factor is computed, not
-  guessed. LLVM's `-funroll-loops` uses heuristic thresholds; MechGen uses proof.
+  guessed. LLVM's `-funroll-loops` uses heuristic thresholds; MAGE uses proof.
 - **Division strength reduction** — `x / n` where `n ∈ [1, 1024]` can use
-  multiply-shift. LLVM does this for constants; MechGen does it for ranges.
+  multiply-shift. LLVM does this for constants; MAGE does it for ranges.
 - **Array bounds elision** — `@req idx < arr.len()` proves the access is safe.
   The bounds check is eliminated *without* unsafe.
 - **Null check elimination** — `@req ptr.is_some()` proves non-null. The
@@ -105,7 +105,7 @@ Generated MLIR:
 
 **What C/C++/Rust cannot do**: LLVM's auto-vectorizer requires proving the loop
 count is divisible by the vector width. Without the `@req` range, it must emit a
-scalar tail. With the contract, MechGen proves len ≤ 256 and pads/masks the last
+scalar tail. With the contract, MAGE proves len ≤ 256 and pads/masks the last
 iteration — no scalar epilogue.
 
 ### Contract Propagation
@@ -133,7 +133,7 @@ fn quad(n: i32) -> i32 {
 ### The Insight
 
 Automatic parallelization has been a failed promise for 40 years because
-compilers cannot prove functions are free of side effects. MechGen's effect
+compilers cannot prove functions are free of side effects. MAGE's effect
 system solves this at the type level.
 
 ```
@@ -188,7 +188,7 @@ The decision of which tier (SIMD, OpenMP, GPU) is made by the cost oracle:
   `rayon::par_iter()` requires the closure to be `Send + Sync` — this catches
   some but not all side effects, and requires manual API changes.
 
-MechGen parallelizes *automatically* with zero source changes when the effect
+MAGE parallelizes *automatically* with zero source changes when the effect
 signature permits it.
 
 ---
@@ -203,7 +203,7 @@ with random access, a B-tree is 5× faster due to cache locality. No C/C++/Rust
 compiler makes this substitution because it lacks knowledge of N at the type
 level.
 
-MechGen's contracts provide N:
+MAGE's contracts provide N:
 
 ```
 @req items.len() <= 8
@@ -244,7 +244,7 @@ backing representation.
 ### The Insight
 
 LLVM's optimization passes run in a fixed order with fixed heuristics. They
-cannot benchmark alternative lowerings. MechGen's MLIR autotuner generates N
+cannot benchmark alternative lowerings. MAGE's MLIR autotuner generates N
 variants of every hot loop and benchmarks them on the actual target hardware.
 
 ### Autotuning Protocol
@@ -304,7 +304,7 @@ Variant 8 (pipelined):   canonicalize → cse → software-pipeline → lower-to
 
 LLVM runs one fixed pass pipeline. GCC has `-fprofile-use` but cannot generate
 alternative lowerings. ICC had auto-dispatch for different ISA levels, but not
-algorithm variants. Only MechGen generates structurally different code paths and
+algorithm variants. Only MAGE generates structurally different code paths and
 benchmarks them.
 
 ---
@@ -319,7 +319,7 @@ AoS loads 24 bytes per element but uses only 8 — wasting 67% of cache line
 bandwidth. Structure of Arrays (SoA) loads only the `x` array — 100%
 utilization.
 
-C/C++/Rust require the programmer to manually restructure data. MechGen does it
+C/C++/Rust require the programmer to manually restructure data. MAGE does it
 automatically.
 
 ### Effect + Contract = Layout Decision
@@ -369,7 +369,7 @@ pub struct Particle {
 
 Dynamic allocation (`malloc`/`free`) costs 30–100 cycles per call. In hot
 paths, this dominates runtime. Rust reduces allocations via ownership but still
-requires heap allocation for `Vec`, `String`, `Box`, `HashMap`. MechGen eliminates
+requires heap allocation for `Vec`, `String`, `Box`, `HashMap`. MAGE eliminates
 allocations using contract-inferred size bounds.
 
 ### Escape Analysis + Contract Bounds
@@ -411,7 +411,7 @@ The compiler knows:
 
 ### Stack Promotion Table
 
-| Pattern                            | C/C++/Rust | MechGen                | Savings    |
+| Pattern                            | C/C++/Rust | MAGE                | Savings    |
 | ---------------------------------- | ---------- | -------------------- | ---------- |
 | `Vec<T>` where N ≤ 8               | heap alloc | `[T; 8]` on stack    | 30 cycles  |
 | `String` where len ≤ 22            | heap alloc | SSO inline           | 30 cycles  |
@@ -427,7 +427,7 @@ The compiler knows:
 ### The Insight
 
 C++ has `constexpr` and `consteval`. Rust has `const fn`. Both are opt-in and
-limited. MechGen's `/ pure` effect annotation automatically identifies every
+limited. MAGE's `/ pure` effect annotation automatically identifies every
 function whose inputs are known at compile time — and evaluates it.
 
 ```
@@ -448,7 +448,7 @@ the constant `6765`. No function call at runtime. No branches. No stack frames.
 
 ### Automatic Const Propagation Scope
 
-| Condition                     | C++ `constexpr` | Rust `const fn` | MechGen `/ pure`      |
+| Condition                     | C++ `constexpr` | Rust `const fn` | MAGE `/ pure`      |
 | ----------------------------- | --------------- | --------------- | ------------------- |
 | Explicit opt-in required      | Yes             | Yes             | No (automatic)      |
 | Heap allocation allowed       | C++20 partial   | No              | Yes (via arena)     |
@@ -470,9 +470,9 @@ reductions, tensor operations). MLIR preserves semantic intent through
 progressive lowering:
 
 ```
-MechGen Source
+MAGE Source
     ↓ parse + type check
-MechGen MLIR Dialect (semantic operations: loops, reductions, contracts, effects)
+MAGE MLIR Dialect (semantic operations: loops, reductions, contracts, effects)
     ↓ dialect lowering
 Linalg / Affine / SCF (mathematical operations: tiling, fusion, vectorization)
     ↓ target-specific lowering
@@ -521,10 +521,10 @@ The decision is per-function, per-call-site, per-target:
 
 Rust's safety has runtime cost: bounds checks, overflow checks in debug mode,
 `Option::unwrap()` panics, `Arc` atomic reference counting. These are the price
-of safety without contracts. MechGen eliminates the runtime cost while preserving
+of safety without contracts. MAGE eliminates the runtime cost while preserving
 the safety guarantee by proving checks unnecessary.
 
-| Safety check             | Rust cost    | MechGen cost | Mechanism                   |
+| Safety check             | Rust cost    | MAGE cost | Mechanism                   |
 | ------------------------ | ------------ | ---------- | --------------------------- |
 | Array bounds check       | 1–3 cycles   | 0 cycles   | `@req idx < len` proof      |
 | Integer overflow check   | 1 cycle      | 0 cycles   | `@req` range proof          |
@@ -539,7 +539,7 @@ the safety guarantee by proving checks unnecessary.
 
 In a typical Rust program, safety checks account for 5–15% of runtime. In
 tight loops (JSON parsing, image processing, numerical computation), they
-account for 15–30%. MechGen eliminates them entirely through contract proofs:
+account for 15–30%. MAGE eliminates them entirely through contract proofs:
 
 ```
 // Rust: 3 bounds checks per iteration (a[i], b[i], out[i])
@@ -547,7 +547,7 @@ fn dot(a: &[f64], b: &[f64]) -> f64 {
     a.iter().zip(b.iter()).map(|(x, y)| x * y).sum()
 }
 
-// MechGen: 0 bounds checks — contracts prove safety
+// MAGE: 0 bounds checks — contracts prove safety
 @req a.len() == b.len()
 @ens result == a.iter().zip(b.iter()).map(|(x,y)| x*y).sum()
 fn dot(a: &Vec<f64>, b: &Vec<f64>) -> f64 / pure {
@@ -566,7 +566,7 @@ fn dot(a: &Vec<f64>, b: &Vec<f64>) -> f64 / pure {
 ### The Insight
 
 C/C++ optimize per translation unit. Rust optimizes per crate with optional LTO.
-Both lose information at module boundaries. MechGen's effect and contract
+Both lose information at module boundaries. MAGE's effect and contract
 annotations are part of the type system — they propagate across crate boundaries
 without LTO. This enables whole-program optimization at zero link-time cost.
 
@@ -592,7 +592,7 @@ pub fn simulate(dt: f64) / pure {
 ```
 
 With traditional LTO, the linker must re-analyze all code to discover these
-facts. With MechGen, the facts are *encoded in the function signature* and
+facts. With MAGE, the facts are *encoded in the function signature* and
 available at every call site — including dynamic dispatch through trait objects,
 where LTO cannot reach.
 
@@ -602,10 +602,10 @@ where LTO cannot reach.
 
 ### The Insight
 
-Compile time is a performance metric. MechGen targets 3–10× faster compilation
+Compile time is a performance metric. MAGE targets 3–10× faster compilation
 than Rust through architectural advantages:
 
-| Stage           | Rust                   | MechGen                   | Speedup |
+| Stage           | Rust                   | MAGE                   | Speedup |
 | --------------- | ---------------------- | ----------------------- | ------- |
 | Lexing          | Context-sensitive      | LL(1) deterministic     | 2–4×    |
 | Parsing         | Recursive descent + BT | Predictive LL(1)        | 2–4×    |
@@ -618,7 +618,7 @@ than Rust through architectural advantages:
 
 ### Token Reduction Impact
 
-MechGen source is ~50% fewer tokens than equivalent Rust. Fewer tokens means:
+MAGE source is ~50% fewer tokens than equivalent Rust. Fewer tokens means:
 - Fewer bytes to read from disk (I/O bound reduction)
 - Fewer tokens to lex (CPU bound reduction)
 - Fewer AST nodes to allocate (memory bound reduction)
@@ -627,7 +627,7 @@ MechGen source is ~50% fewer tokens than equivalent Rust. Fewer tokens means:
 ### SKB-Guided Elision
 
 Rust's borrow checker performs expensive dataflow analysis (NLL) on every
-function. MechGen's SKB contains 2,847 ownership rules and 1,203 borrow rules.
+function. MAGE's SKB contains 2,847 ownership rules and 1,203 borrow rules.
 For 80%+ of functions, the SKB can determine safety by rule lookup in O(1)
 time. Only the remaining ~20% of complex cases require full analysis.
 
@@ -635,7 +635,7 @@ time. Only the remaining ~20% of complex cases require full analysis.
 
 When a single function changes:
 - Rust: re-analyze → re-codegen → re-link the entire crate (~500ms–5s)
-- MechGen: re-lex 1 function → re-lower to MLIR → re-emit to object → hot-patch
+- MAGE: re-lex 1 function → re-lower to MLIR → re-emit to object → hot-patch
   into running process (~12ms)
 
 ---
@@ -718,18 +718,18 @@ Aggressive composite (parallel numerical kernel):
 
 | Priority | Strategy                      | Crates involved                                                      | Prerequisite        |
 | -------- | ----------------------------- | -------------------------------------------------------------------- | ------------------- |
-| P0       | Contract-driven optimization  | `MechGen_contracts`, `MechGen_mir_transform`                             | None                |
-| P0       | Effect-driven parallelization | `MechGen_effects`, `MechGen_mlir_parallel`                               | None                |
-| P0       | Zero-cost safety              | `MechGen_contracts`, `MechGen_skb`, `MechGen_borrowck`                     | Contracts           |
-| P1       | MLIR autotuning               | `MechGen_mlir_autotune`, `MechGen_cost_oracle`                           | MLIR pipeline       |
-| P1       | Data structure selection      | `MechGen_cost_oracle`, `MechGen_monomorphize`                            | Cost oracle         |
-| P1       | Compile-time speed            | `MechGen_lexer`, `MechGen_parser`, `MechGen_skb`, `MechGen_hot_reload`       | None                |
-| P2       | Memory layout optimization    | `MechGen_mlir`, `MechGen_perf_annotations`                               | MLIR + effects      |
-| P2       | Allocation elimination        | `MechGen_contracts`, `MechGen_mir_transform`                             | Contracts           |
-| P2       | Hardware-specific lowering    | `MechGen_mlir_targets`, `MechGen_mlir_pipeline`                          | MLIR pipeline       |
-| P3       | Compile-time computation      | `MechGen_effects`, `MechGen_const_eval`                                  | Effects             |
-| P3       | Whole-program optimization    | `MechGen_metadata`, `MechGen_contracts`, `MechGen_effects`                 | Contracts + effects |
-| P3       | Agent-guided rewriting        | `MechGen_synthesis_oracle`, `MechGen_agentic_bench`, `MechGen_cost_oracle` | All above           |
+| P0       | Contract-driven optimization  | `MAGE_contracts`, `MAGE_mir_transform`                             | None                |
+| P0       | Effect-driven parallelization | `MAGE_effects`, `MAGE_mlir_parallel`                               | None                |
+| P0       | Zero-cost safety              | `MAGE_contracts`, `MAGE_skb`, `MAGE_borrowck`                     | Contracts           |
+| P1       | MLIR autotuning               | `MAGE_mlir_autotune`, `MAGE_cost_oracle`                           | MLIR pipeline       |
+| P1       | Data structure selection      | `MAGE_cost_oracle`, `MAGE_monomorphize`                            | Cost oracle         |
+| P1       | Compile-time speed            | `MAGE_lexer`, `MAGE_parser`, `MAGE_skb`, `MAGE_hot_reload`       | None                |
+| P2       | Memory layout optimization    | `MAGE_mlir`, `MAGE_perf_annotations`                               | MLIR + effects      |
+| P2       | Allocation elimination        | `MAGE_contracts`, `MAGE_mir_transform`                             | Contracts           |
+| P2       | Hardware-specific lowering    | `MAGE_mlir_targets`, `MAGE_mlir_pipeline`                          | MLIR pipeline       |
+| P3       | Compile-time computation      | `MAGE_effects`, `MAGE_const_eval`                                  | Effects             |
+| P3       | Whole-program optimization    | `MAGE_metadata`, `MAGE_contracts`, `MAGE_effects`                 | Contracts + effects |
+| P3       | Agent-guided rewriting        | `MAGE_synthesis_oracle`, `MAGE_agentic_bench`, `MAGE_cost_oracle` | All above           |
 
 ---
 
@@ -759,7 +759,7 @@ every metric:
 | `compiler_self`   | Compile time               | rustc self-compile         |
 | `ray_tracer`      | Parallelism, vectorization | C++ (embree), Rust         |
 | `database_query`  | Memory layout, cache       | C (SQLite), Rust           |
-| `agent_swarm_100` | Swarm coordination         | (no baseline — MechGen-only) |
+| `agent_swarm_100` | Swarm coordination         | (no baseline — MAGE-only) |
 
 ### Metrics Collected
 
@@ -782,7 +782,7 @@ For every benchmark, every run:
 
 ## Summary
 
-MechGen's performance advantage is not one optimization — it is the compounding
+MAGE's performance advantage is not one optimization — it is the compounding
 effect of information that traditional compilers do not have. Contracts prove
 value ranges. Effects prove purity. The cost oracle quantifies alternatives. MLIR
 preserves semantic intent for target-specific lowering. Agents reason about

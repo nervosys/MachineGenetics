@@ -22,7 +22,7 @@ hello/
 
 Open `src/main.mg`:
 
-```MechGen
+```MAGE
 +f main() {
     p"Hello, World!"
 }
@@ -47,9 +47,9 @@ mg run
 
 Edit `src/main.mg`:
 
-```MechGen
+```MAGE
 +f main() {
-    v name = "MechGen"
+    v name = "MAGE"
     p"Hello, {name}!"
     p"2 + 3 = {2 + 3}"
 }
@@ -57,7 +57,7 @@ Edit `src/main.mg`:
 
 ```bash
 mg run
-# Hello, MechGen!
+# Hello, MAGE!
 # 2 + 3 = 5
 ```
 
@@ -68,7 +68,7 @@ mg run
 
 ## Add a Function
 
-```MechGen
+```MAGE
 f greet(name: &s) -> s {
     f"Hello, {name}!"
 }
@@ -78,7 +78,7 @@ f greet(name: &s) -> s {
     p"{message}"
 
     // Or directly:
-    p"{greet("MechGen")}"
+    p"{greet("MAGE")}"
 }
 ```
 

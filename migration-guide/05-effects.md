@@ -1,14 +1,14 @@
 # Chapter 5: Effects & Safety Migration
 
-The biggest conceptual shift from Rust to MechGen: adding effect annotations,
+The biggest conceptual shift from Rust to MAGE: adding effect annotations,
 removing `unsafe`, and adopting the capability system.
 
 ---
 
 ## 5.1 Identifying Effects in Existing Rust Code
 
-Before writing any MechGen, audit your Rust code for side effects. Each side
-effect maps to a MechGen effect annotation.
+Before writing any MAGE, audit your Rust code for side effects. Each side
+effect maps to a MAGE effect annotation.
 
 ### Effect Discovery Commands
 
@@ -37,7 +37,7 @@ grep -rn "\.await\|tokio::spawn\|async_std::task\|futures::" src/ --include="*.r
 
 ### Effect Mapping Table
 
-| Rust Pattern                                          | MechGen Effect |
+| Rust Pattern                                          | MAGE Effect |
 | ----------------------------------------------------- | ------------ |
 | `std::fs::*`, `File::*`, `println!`, `stdin`/`stdout` | `/ io`       |
 | `reqwest::*`, `hyper::*`, `TcpStream`, `UdpSocket`    | `/ net`      |
@@ -59,7 +59,7 @@ Work bottom-up: start with leaf functions and propagate effects to callers.
       fs::read_to_string(path)
   }
 
-  // MechGen — effect declared
+  // MAGE — effect declared
 + +f read_config(path: &s) -> R[s, io.Error] / io {
 +     fs.read_to_string(path)
 + }
@@ -75,7 +75,7 @@ Work bottom-up: start with leaf functions and propagate effects to callers.
       Ok(App::new(config))
   }
 
-  // MechGen — caller inherits / io from read_config
+  // MAGE — caller inherits / io from read_config
 + +f load_app(config_path: &s) -> R[App, Error] / io {
 +     v config_text = read_config(config_path)?
 +     v config: Config = json.parse[Config](&config_text)?
@@ -125,7 +125,7 @@ Apply the hierarchy rules to simplify effect lists:
 ## 5.4 Removing `unsafe` Blocks
 
 Every `unsafe` block in Rust must be replaced with a capability-gated
-operation in MechGen.
+operation in MAGE.
 
 ### Pattern 1: Raw Pointer Access
 
@@ -135,7 +135,7 @@ operation in MechGen.
 -     let value = *raw_ptr;
 - }
 
-  // MechGen
+  // MAGE
 + v value = cap.request("mem.deref", raw_ptr)?
 ```
 
@@ -148,7 +148,7 @@ operation in MechGen.
 - }
 - let result = unsafe { c_function(42) };
 
-  // MechGen
+  // MAGE
 + v result = cap.request("ffi.call", ("c_function", 42))?
 ```
 
@@ -159,7 +159,7 @@ operation in MechGen.
 - static mut COUNTER: u32 = 0;
 - unsafe { COUNTER += 1; }
 
-  // MechGen — use module-level state with env effect
+  // MAGE — use module-level state with env effect
 + M counter {
 +     m value: u32 = 0
 +
@@ -179,7 +179,7 @@ operation in MechGen.
   // Rust
 - let bytes: [u8; 4] = unsafe { std::mem::transmute(value) };
 
-  // MechGen — use safe conversion
+  // MAGE — use safe conversion
 + v bytes = value.to_le_bytes()
 ```
 
@@ -191,7 +191,7 @@ operation in MechGen.
 -     std::arch::asm!("nop");
 - }
 
-  // MechGen — platform capability
+  // MAGE — platform capability
 + cap.request("platform.asm", "nop")?
 ```
 
@@ -214,7 +214,7 @@ grants = [
 
 ### Using Capabilities in Code
 
-```MechGen
+```MAGE
 u std.agent.Capability
 
 +S App {
@@ -269,7 +269,7 @@ I ~ App {
       Ok(content.lines().map(|l| l.to_string()).collect())
   }
 
-  // MechGen
+  // MAGE
 + +f read_lines(path: &s) -> R[[s]~, io.Error] / io {
 +     v content = fs.read_to_string(path)?
 +     Ok(content.lines().map(|l| l.to_string()).collect())
@@ -286,7 +286,7 @@ I ~ App {
       Ok(data)
   }
 
-  // MechGen
+  // MAGE
 + +af fetch_json[T: DeserializeOwned](url: &s) -> R[T, Error] / net {
 +     v resp = http.get(url).await?
 +     v data = resp.json[T]().await?
@@ -303,7 +303,7 @@ I ~ App {
       rng.gen()
   }
 
-  // MechGen
+  // MAGE
 + +f random_id() -> u64 / rng {
 +     rng.gen()
 + }

@@ -1,12 +1,12 @@
-# MechGen Editor Support
+# MAGE Editor Support
 
-Configuration files for using MechGen with various editors.
+Configuration files for using MAGE with various editors.
 
 ## Editors
 
 | Editor                      | Directory         | Status                          |
 | --------------------------- | ----------------- | ------------------------------- |
-| [VS Code](../MechGen-vscode/) | `MechGen-vscode/`   | Full extension (TextMate + RAP) |
+| [VS Code](../MAGE-vscode/) | `MAGE-vscode/`   | Full extension (TextMate + RAP) |
 | [Neovim](neovim/)           | `editors/neovim/` | LSP + tree-sitter + ftdetect    |
 | [Helix](helix/)             | `editors/helix/`  | Language config + queries       |
 | [Zed](zed/)                 | `editors/zed/`    | Extension manifest + highlights |
@@ -19,7 +19,7 @@ Configuration files for using MechGen with various editors.
 -- Add to your init.lua or lazy.nvim config:
 require('lspconfig').rap.setup({
   cmd = { 'rap' },
-  filetypes = { 'MechGen' },
+  filetypes = { 'MAGE' },
   root_dir = function(fname)
     return require('lspconfig.util').root_pattern('Forge.toml')(fname)
   end,
@@ -31,17 +31,17 @@ require('lspconfig').rap.setup({
 ```bash
 # Copy language config into your Helix config directory:
 cp editors/helix/languages.toml ~/.config/helix/languages.toml
-cp -r editors/helix/queries ~/.config/helix/runtime/queries/MechGen
+cp -r editors/helix/queries ~/.config/helix/runtime/queries/MAGE
 ```
 
 ### Zed
 
 ```bash
 # Install from the Zed extension directory:
-cp -r editors/zed ~/.config/zed/extensions/MechGen
+cp -r editors/zed ~/.config/zed/extensions/MAGE
 ```
 
-## RAP (MechGen Agent Protocol)
+## RAP (MAGE Agent Protocol)
 
 All editors connect to the same RAP language server for:
 - Diagnostics (errors, warnings, SKB violations)

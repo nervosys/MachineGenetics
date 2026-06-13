@@ -1,22 +1,22 @@
 {
-  "id": "MechGen",
-  "name": "MechGen",
+  "id": "MAGE",
+  "name": "MAGE",
   "version": "0.1.0",
-  "description": "MechGen language support — syntax highlighting and RAP LSP integration.",
-  "repository": "https://github.com/nervosys/MechGen",
+  "description": "MAGE language support — syntax highlighting and RAP LSP integration.",
+  "repository": "https://github.com/nervosys/MAGE",
   "authors": ["nervosys"],
   "lib": {
     "kind": "grammar",
-    "grammar": "MechGen"
+    "grammar": "MAGE"
   },
   "grammars": {
-    "MechGen": {
-      "repository": "https://github.com/nervosys/tree-sitter-MechGen",
+    "MAGE": {
+      "repository": "https://github.com/nervosys/tree-sitter-MAGE",
       "rev": "main"
     }
   },
   "languages": {
-    "MechGen": {
+    "MAGE": {
       "config": {
         "tab_size": 4,
         "hard_tabs": false,

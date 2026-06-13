@@ -463,7 +463,7 @@ extend DevServer {
                 line: 1,
                 column: 1,
                 kind: ErrorKind::SyntaxError,
-                message: "Use MechGen `fn` keyword instead of Rust `fn`".to_string(),
+                message: "Use MAGE `fn` keyword instead of Rust `fn`".to_string(),
             });
         }
 
@@ -483,7 +483,7 @@ extend DevServer {
                 line: 3,
                 column: 5,
                 kind: ErrorKind::SyntaxError,
-                message: "Use MechGen `let` keyword instead of Rust `let`".to_string(),
+                message: "Use MAGE `let` keyword instead of Rust `let`".to_string(),
             });
         }
 
@@ -550,7 +550,7 @@ extend DevServer {
 
 pub fn main() / io {
     println!("╔═══════════════════════════════════════════════════════════╗");
-    println!("║  MechGen Live Compiler — Hot-Reload Dev Server             ║");
+    println!("║  MAGE Live Compiler — Hot-Reload Dev Server             ║");
     println!("╚═══════════════════════════════════════════════════════════╝");
     println!("");
 

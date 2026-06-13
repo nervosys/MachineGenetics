@@ -4,9 +4,9 @@
 name = "forge"
 version = "0.2.0"
 edition = "2021"
-description = "Forge — MechGen package registry server and client library"
+description = "Forge — MAGE package registry server and client library"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/nervosys/MechGen"
+repository = "https://github.com/nervosys/MAGE"
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }

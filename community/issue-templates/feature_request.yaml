@@ -1,5 +1,5 @@
 name: Feature Request
-description: Suggest a new feature or enhancement for MechGen
+description: Suggest a new feature or enhancement for MAGE
 title: "[Feature]: "
 labels: ["enhancement", "triage"]
 body:
@@ -42,10 +42,10 @@ body:
     id: solution
     attributes:
       label: Proposed Solution
-      description: How would this feature work? Show example MechGen code if applicable.
+      description: How would this feature work? Show example MAGE code if applicable.
       value: |
         **Example usage:**
-        ```MechGen
+        ```MAGE
         // show how the feature would be used
         ```
     validations:

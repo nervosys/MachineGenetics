@@ -1,9 +1,9 @@
-/// MechGen LL(1) Lexer — tokenizes MechGen canonical syntax.
+/// MAGE LL(1) Lexer — tokenizes MAGE canonical syntax.
 ///
 /// Design: single-pass, no backtracking, every token is unambiguous from
 /// its first character. Optimized for streaming (agent consumption).
 ///
-/// Covers all keyword/attribute/type mappings from MECHGEN_PROPOSAL.md §5.5.
+/// Covers all keyword/attribute/type mappings from MAGE_PROPOSAL.md §5.5.
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -1021,7 +1021,7 @@ impl<'a> Lexer<'a> {
     }
 }
 
-/// The canonical keyword table: every reserved spelling MechGen recognises,
+/// The canonical keyword table: every reserved spelling MAGE recognises,
 /// mapped to the token it produces. This is the **single source of truth** —
 /// the lexer looks words up here, and the self-describing ontology
 /// (`ontology::keywords_section`) enumerates this same table, so the ontology

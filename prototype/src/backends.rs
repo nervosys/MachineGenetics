@@ -3,11 +3,11 @@
 //! Originally a hardcoded match (P91); now a runtime registry that
 //! merges built-in entries with user-supplied JSON descriptors. An
 //! agent or operator can advertise a new accelerator without
-//! recompiling MechGen by either:
+//! recompiling MAGE by either:
 //!
 //! 1. Setting `RDX_BACKENDS_PATH=/path/to/backends.json`, OR
-//! 2. Dropping a file at `~/.mechgen/backends.json`, OR
-//! 3. Passing `--backends-file <path>` to `MechGen-parse`.
+//! 2. Dropping a file at `~/.mage/backends.json`, OR
+//! 3. Passing `--backends-file <path>` to `mage-parse`.
 //!
 //! Descriptor schema (one JSON object per backend, list of objects):
 //!
@@ -43,7 +43,7 @@ use std::sync::{Mutex, OnceLock};
 /// per-model HardwareNode entries, ~32 WorkloadClass entries, ~38
 /// StrategyClass entries, ~24 Optimization entries.
 ///
-/// MechGen's `hardware_accelerators` section deliberately stays at
+/// MAGE's `hardware_accelerators` section deliberately stays at
 /// the **backend-family** level (cpu / cuda / metal / ...) - that's
 /// what an agent needs to know to write `+f` / `net{}` source. For
 /// model-specific guidance ("does my MoE block fit on a Hopper SM90
@@ -52,7 +52,7 @@ use std::sync::{Mutex, OnceLock};
 pub const IRONACCELERATOR_REFERENCE: &str =
     "utilities/IronAccelerator/ - production HW-agnostic driver substrate \
      + agent-queryable ontology (per-model). Surfaced as a docs pointer, \
-     not inlined here, so MechGen's ontology stays at the actionable level.";
+     not inlined here, so MAGE's ontology stays at the actionable level.";
 
 /// How a registered backend executes Agentic Binary Language bytecode.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -65,7 +65,7 @@ pub enum DispatchKind {
     /// `RDX_INPUT_SHAPE`), stdout = JSON result `{ ok, output_shape,
     /// output_sum, dispatched }`. Mirrors the P47 refine wrapper
     /// protocol. Lets ANY accelerator with a CLI tool become a
-    /// dispatch target without recompiling MechGen.
+    /// dispatch target without recompiling MAGE.
     Subprocess { command: String },
 }
 
@@ -92,7 +92,7 @@ pub struct BackendDescriptor {
     #[serde(default)]
     pub tags: Vec<String>,
     /// Where this descriptor came from: "builtin" / "env:RDX_BACKENDS_PATH"
-    /// / "home:~/.mechgen/backends.json" / "cli:--backends-file".
+    /// / "home:~/.mage/backends.json" / "cli:--backends-file".
     #[serde(default)]
     pub source: String,
     /// How to execute on this backend. Defaults to `Builtin`; a
@@ -193,7 +193,7 @@ fn registry() -> &'static Mutex<Vec<BackendDescriptor>> {
             load_into(&mut all, &path, "env:RDX_BACKENDS_PATH");
         }
         if let Some(home_path) = home_backends_path() {
-            load_into(&mut all, &home_path.to_string_lossy(), "home:~/.mechgen/backends.json");
+            load_into(&mut all, &home_path.to_string_lossy(), "home:~/.mage/backends.json");
         }
         Mutex::new(all)
     })
@@ -203,7 +203,7 @@ fn home_backends_path() -> Option<std::path::PathBuf> {
     let home = std::env::var("HOME")
         .or_else(|_| std::env::var("USERPROFILE"))
         .ok()?;
-    let p = std::path::PathBuf::from(home).join(".mechgen").join("backends.json");
+    let p = std::path::PathBuf::from(home).join(".mage").join("backends.json");
     if p.exists() { Some(p) } else { None }
 }
 
@@ -536,7 +536,7 @@ mod tests {
     #[test]
     fn subprocess_descriptor_selects_to_subprocess_variant() {
         let tmp = std::env::temp_dir().join(format!(
-            "mechgen_subproc_test_{}.json",
+            "mage_subproc_test_{}.json",
             std::process::id()
         ));
         // Use a uniquely-named backend so we don't collide with builtins.
@@ -578,7 +578,7 @@ mod tests {
 
     #[test]
     fn register_from_file_adds_new_entry() {
-        let tmp = std::env::temp_dir().join(format!("mechgen_backends_test_{}.json",
+        let tmp = std::env::temp_dir().join(format!("mage_backends_test_{}.json",
             std::process::id()));
         let json = r#"[
             {

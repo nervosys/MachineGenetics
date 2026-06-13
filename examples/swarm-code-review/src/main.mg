@@ -490,7 +490,7 @@ extend ReviewHistory {
 
 pub fn main() / io {
     println!("╔═══════════════════════════════════════════════════════════╗");
-    println!("║  MechGen Swarm Code Review System                          ║");
+    println!("║  MAGE Swarm Code Review System                          ║");
     println!("╚═══════════════════════════════════════════════════════════╝");
     println!("");
 

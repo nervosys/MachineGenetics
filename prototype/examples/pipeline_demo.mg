@@ -1,13 +1,13 @@
 // ─────────────────────────────────────────────────────────────
-// MechGen End-to-End Pipeline Demo
+// MAGE End-to-End Pipeline Demo
 //
-// This file exercises every stage of the MechGen compiler pipeline:
+// This file exercises every stage of the MAGE compiler pipeline:
 //   1. Lexer    – tokens for keywords, sigils, literals, operators
 //   2. Parser   – data records, data sums, functions, extensions
 //   3. Resolver – name binding across nested scopes
 //   4. Types    – bidirectional type inference, unification
 //   5. Effects  – bottom-up effect inference and verification
-//   6. MLIR     – lowering to MechGen dialect operations
+//   6. MLIR     – lowering to MAGE dialect operations
 //
 // Demonstrates:
 //   - data keyword (record and sum forms)
@@ -100,7 +100,7 @@ pub fn guarded_work(input: ?String) -> String or Error {
 pub fn main() -> i32 {
     val sum: i32 = add(3, 4);
     val prod: i32 = multiply(sum, 2);
-    greet("MechGen Pipeline Demo");
+    greet("MAGE Pipeline Demo");
     val best: i32 = max_val(sum, prod);
     best
 }

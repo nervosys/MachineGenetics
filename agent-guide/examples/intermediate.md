@@ -10,7 +10,7 @@
 **Prompt:** Define a generic `Repository` trait with find, save, and delete methods, then implement it for an in-memory store.
 
 **Response:**
-```MechGen
+```MAGE
 use std::collections::HashMap;
 
 pub trait Repository<T> {
@@ -53,7 +53,7 @@ impl<T> Repository<T> for InMemoryStore<T> {
 **Prompt:** Create an `AppError` enum that wraps io::Error and serde_json::Error, with Display and From implementations.
 
 **Response:**
-```MechGen
+```MAGE
 use std::fmt;
 use std::io;
 
@@ -90,7 +90,7 @@ impl From<serde_json::Error> for AppError {
 **Prompt:** Given a list of `Transaction { amount: f64, category: String }`, compute the total spent per category.
 
 **Response:**
-```MechGen
+```MAGE
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
@@ -116,7 +116,7 @@ pub fn totals_by_category(txns: &Vec<Transaction>) -> HashMap<String, f64> {
 **Prompt:** Create a `Logger` trait with an `info` method, implement it for `ConsoleLogger` and `FileLogger`, and write a function that accepts any logger.
 
 **Response:**
-```MechGen
+```MAGE
 use std::fs;
 
 pub trait Logger {
@@ -155,7 +155,7 @@ pub fn log_event(logger: &dyn Logger, event: &str) / io {
 **Prompt:** Write a function that loads a JSON config file, validates required fields, and returns a typed config struct.
 
 **Response:**
-```MechGen
+```MAGE
 use std::fs;
 use std::json;
 
@@ -188,7 +188,7 @@ pub fn load_config(path: &str) -> Result<Config, AppError> / io {
 **Prompt:** Write an async function that fetches JSON from a URL, deserializes it into a struct, and handles errors.
 
 **Response:**
-```MechGen
+```MAGE
 use std::json;
 
 #[derive(Debug, Clone)]
@@ -215,7 +215,7 @@ pub async fn fetch_data(url: &str) -> Result<ApiResponse, Error> / net {
 **Prompt:** Write a function that reads a config file and a test that mocks the file I/O.
 
 **Response:**
-```MechGen
+```MAGE
 use std::fs;
 
 pub fn read_setting(path: &str, key: &str) -> Result<Option<String>, io::Error> / io {
@@ -263,7 +263,7 @@ mod tests {
 **Prompt:** Implement a simple state machine for an order: Created → Paid → Shipped → Delivered.
 
 **Response:**
-```MechGen
+```MAGE
 #[derive(Debug, Clone)]
 pub enum OrderState {
     Created,

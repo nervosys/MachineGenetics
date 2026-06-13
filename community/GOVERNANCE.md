@@ -1,6 +1,6 @@
-# MechGen Governance
+# MAGE Governance
 
-This document describes the governance structure for the MechGen programming
+This document describes the governance structure for the MAGE programming
 language project.
 
 ## Roles
@@ -10,7 +10,7 @@ language project.
 | **Core Team**        | Language design, compiler development | nervosys maintainers |
 | **SKB Curators**     | Safety Knowledge Base rule curation   | TBD                  |
 | **Forge Moderators** | Package registry quality control      | TBD                  |
-| **RFC Authors**      | Design proposals (MechGen RFC process)  | Open to all          |
+| **RFC Authors**      | Design proposals (MAGE RFC process)  | Open to all          |
 | **ACI Trainers**     | AI Coding Intelligence model training | TBD                  |
 
 ## Decision Making
@@ -23,7 +23,7 @@ language project.
 
 ### Language Design Decisions
 
-Significant changes to MechGen syntax, semantics, or the ecosystem require the
+Significant changes to MAGE syntax, semantics, or the ecosystem require the
 RFC process:
 
 1. **Proposal** — Author writes an RFC using `community/rfc-template.md`
@@ -45,7 +45,7 @@ Safety Knowledge Base rule changes follow a stricter process:
 
 ## Editions
 
-MechGen uses an edition system for backward-compatible evolution:
+MAGE uses an edition system for backward-compatible evolution:
 
 | Edition | Year  | Key Features                                                   |
 | ------- | :---: | -------------------------------------------------------------- |
@@ -58,7 +58,7 @@ Edition migration is automated via `mg migrate --edition <year>`.
 
 ## Code of Conduct
 
-All participants in the MechGen project must follow the
+All participants in the MAGE project must follow the
 [Code of Conduct](../CODE_OF_CONDUCT.md). The core team is responsible for
 enforcing the Code of Conduct and may take action against participants who
 violate it.

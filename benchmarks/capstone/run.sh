@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# MechGen architecture-DSL capstone — the whole thesis in one reproducible run.
+# MAGE architecture-DSL capstone — the whole thesis in one reproducible run.
 #
 # An agent assembles a 12-layer GPT from a SHARED registry block, and we follow
 # it all the way to a running binary, measuring at each step:
@@ -18,7 +18,7 @@ cd "$(dirname "$0")"
 HERE="$(pwd)"
 REPO="$(cd ../.. && pwd)"
 
-MG="${MG:-$REPO/prototype/target/release/MechGen-parse.exe}"
+MG="${MG:-$REPO/prototype/target/release/mage-parse.exe}"
 [ -x "$MG" ] || MG="${MG%.exe}"
 FORGE="${FORGE:-$REPO/forge/target/release/forge.exe}"
 [ -x "$FORGE" ] || FORGE="${FORGE%.exe}"
@@ -41,7 +41,7 @@ trap 'rm -rf "$WORK"' EXIT
 strip() { sed "s#[^ ]*\.work/#<work>/#g"; }
 line() { printf '%s\n' "---------------------------------------------------------------------------"; }
 
-echo "=== MechGen architecture-DSL capstone — publish → handle → check → build → run ==="
+echo "=== MAGE architecture-DSL capstone — publish → handle → check → build → run ==="
 line
 
 # ── Step 1: publish a reusable block to the shared, content-addressed registry ──

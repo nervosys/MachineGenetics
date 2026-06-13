@@ -28,7 +28,7 @@ mod measure {
     #[test]
     #[ignore]
     fn perf_report() {
-        println!("\n=== MechGen performance (in-process, wall-clock medians) ===");
+        println!("\n=== MAGE performance (in-process, wall-clock medians) ===");
 
         // 1. Parse throughput — lex + parse a realistic 50-layer net.
         let src = builder::to_mg_source(&net_spec(50));

@@ -2,7 +2,7 @@
 //
 // Generative model templates. Each declares the component networks
 // (encoder/decoder/generator/discriminator) as fields the trainer
-// orchestrates via the train block in MechGen.
+// orchestrates via the train block in MAGE.
 
 // Variational Autoencoder: encoder produces (mu, log_var), decoder
 // reconstructs from the reparameterised sample.

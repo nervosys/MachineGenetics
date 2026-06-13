@@ -6,7 +6,7 @@
     "severity": "error",
     "category": "use-after-move",
     "description": "Value used after ownership has been transferred (moved)",
-    "rationale": "Accessing moved-from memory is undefined behavior; MechGen enforces move semantics at compile time",
+    "rationale": "Accessing moved-from memory is undefined behavior; MAGE enforces move semantics at compile time",
     "scope": "function",
     "pattern": "Move(x); ... Use(x)",
     "context": "x: !Copy",

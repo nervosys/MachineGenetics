@@ -1,14 +1,14 @@
-//! # MechGen ↔ Agentic Binary Language Bridge
+//! # MAGE ↔ Agentic Binary Language Bridge
 //!
-//! Translates MechGen AST nodes that describe neural, symbolic, or agent
+//! Translates MAGE AST nodes that describe neural, symbolic, or agent
 //! constructs into Agentic Binary Language ([`rmi::lang`]) expression trees. The bridge is the
-//! seam where MechGen's surface language meets RMI's binary neurosymbolic IR.
+//! seam where MAGE's surface language meets RMI's binary neurosymbolic IR.
 //!
 //! ## Routing
 //!
-//! MechGen targets two IRs depending on what an item describes:
+//! MAGE targets two IRs depending on what an item describes:
 //!
-//! | MechGen item              | IR     | Backend                          |
+//! | MAGE item              | IR     | Backend                          |
 //! |---------------------------|--------|----------------------------------|
 //! | `fn` (systems code)       | MLIR   | LLVM, Cranelift, GCC             |
 //! | `net` / `train` / `kb`    | Agentic Binary Language   | RMI VM, CUDA, Metal, WebGPU, ANE |
@@ -19,7 +19,7 @@
 //! [`AgentTranslator`] produce the actual Agentic Binary Language [`rmi::lang::Expr`].
 //!
 //! The bridge intentionally does **no** typechecking; it consumes an AST that
-//! the MechGen frontend has already resolved + checked, and emits Agentic Binary Language whose
+//! the MAGE frontend has already resolved + checked, and emits Agentic Binary Language whose
 //! shape/type errors surface via [`rmi::lang::Vm`] or the RMI verifier.
 
 use std::collections::HashMap;
@@ -70,10 +70,10 @@ pub fn expr_op_families(expr: &Expr) -> Vec<OpFamily> {
 // Routing — which IR does this item lower to?
 // ═══════════════════════════════════════════════════════════════════
 
-/// Which IR a MechGen item targets.
+/// Which IR a MAGE item targets.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IrTarget {
-    /// Lower to MechGen MLIR dialect → LLVM/Cranelift/GCC.
+    /// Lower to MAGE MLIR dialect → LLVM/Cranelift/GCC.
     Mlir,
     /// Lower to Agentic Binary Language → RMI VM / compute backends / agent runtime.
     Machine,
@@ -81,7 +81,7 @@ pub enum IrTarget {
     Both,
 }
 
-/// Routes MechGen items to the appropriate IR backend by op family.
+/// Routes MAGE items to the appropriate IR backend by op family.
 pub struct OpFamilyRouter;
 
 impl OpFamilyRouter {
@@ -121,7 +121,7 @@ impl OpFamilyRouter {
 // Layer name → Agentic Binary Language Op lookup
 // ═══════════════════════════════════════════════════════════════════
 
-/// Map a MechGen layer type name to its Agentic Binary Language opcode.
+/// Map a MAGE layer type name to its Agentic Binary Language opcode.
 ///
 /// Returns `None` if the name does not correspond to a known neural primitive
 /// — callers may treat that as a user-defined layer and fall back to a
@@ -236,7 +236,7 @@ pub fn layer_name_to_op(name: &str) -> Option<Op> {
     }
 }
 
-/// Extract the trailing path segment from a MechGen [`ast::Type`].
+/// Extract the trailing path segment from a MAGE [`ast::Type`].
 fn type_tail_name(ty: &ast::Type) -> Option<&str> {
     match ty {
         ast::Type::Path { segments, .. } => segments.last().map(|s| s.as_str()),
@@ -245,7 +245,7 @@ fn type_tail_name(ty: &ast::Type) -> Option<&str> {
 }
 
 /// Inverse of [`layer_name_to_op`] — map an Agentic Binary Language opcode back to a canonical
-/// MechGen layer surface name. Returns `None` for non-neural opcodes.
+/// MAGE layer surface name. Returns `None` for non-neural opcodes.
 ///
 /// The chosen names are the first variant per family from
 /// [`layer_name_to_op`], ensuring `op_to_layer_name(layer_name_to_op(n)?) ==
@@ -312,7 +312,7 @@ pub fn op_to_layer_name(op: Op) -> Option<&'static str> {
 // Translators
 // ═══════════════════════════════════════════════════════════════════
 
-/// Translate a MechGen [`ast::NetDef`] into an Agentic Binary Language pipeline expression.
+/// Translate a MAGE [`ast::NetDef`] into an Agentic Binary Language pipeline expression.
 ///
 /// Each layer becomes a unary opcode; layers are composed with `>>` in
 /// declaration order. The resulting [`Expr`] is content-addressable and
@@ -607,7 +607,7 @@ fn count_app_nodes(expr: &Expr) -> usize {
     }
 }
 
-/// Translate a MechGen literal expression into an Agentic Binary Language literal expression.
+/// Translate a MAGE literal expression into an Agentic Binary Language literal expression.
 ///
 /// Returns `None` for non-literal expressions; the bridge silently drops
 /// non-literals from layer args because shape inference is the frontend's job
@@ -642,12 +642,12 @@ fn translate_literal(expr: &ast::Expr) -> Option<Expr> {
 // ForwardWalker — translate `forward { ... }` data flow
 // ═══════════════════════════════════════════════════════════════════
 
-/// Walks a MechGen `Block` representing a `forward { ... }` body and emits
+/// Walks a MAGE `Block` representing a `forward { ... }` body and emits
 /// an Agentic Binary Language [`Expr`] that respects the user-written data flow.
 ///
 /// Recognised shapes:
 ///
-/// | MechGen forward block       | Agentic Binary Language produced                                |
+/// | MAGE forward block       | Agentic Binary Language produced                                |
 /// |-----------------------------|----------------------------------------------|
 /// | `{ fc1 }` (single ident)    | declaration-order fallback (handled upstream)|
 /// | `{ x \|> l1 \|> l2 }`       | `App(l1) >> App(l2)`                         |
@@ -791,7 +791,7 @@ impl<'a> ForwardWalker<'a> {
     }
 }
 
-/// Translate a MechGen [`ast::KbDef`] into Agentic Binary Language symbolic operations.
+/// Translate a MAGE [`ast::KbDef`] into Agentic Binary Language symbolic operations.
 ///
 /// Each rule becomes a `UNIFY`-then-`INFER` pipeline; facts become `RESOLVE`
 /// applications. The resulting expression evaluates the KB closure via the
@@ -874,7 +874,7 @@ fn call_pred(e: &ast::Expr) -> Option<(String, Vec<String>)> {
     }
 }
 
-/// Translate a MechGen [`ast::AgentDef`] into an Agentic Binary Language `SPAWN` expression.
+/// Translate a MAGE [`ast::AgentDef`] into an Agentic Binary Language `SPAWN` expression.
 pub struct AgentTranslator;
 
 impl AgentTranslator {
@@ -904,7 +904,7 @@ impl AgentTranslator {
     }
 }
 
-/// Translate a MechGen [`ast::SwarmDef`] into a multi-agent Agentic Binary Language expression:
+/// Translate a MAGE [`ast::SwarmDef`] into a multi-agent Agentic Binary Language expression:
 /// `SPAWN(size) >> SEND/RECV on topology >> aggregate`.
 pub struct SwarmTranslator;
 
@@ -974,7 +974,7 @@ fn swarm_size(swarm: &ast::SwarmDef) -> i64 {
 // Module-level driver
 // ═══════════════════════════════════════════════════════════════════
 
-/// Result of translating a MechGen module to Agentic Binary Language.
+/// Result of translating a MAGE module to Agentic Binary Language.
 pub struct AblModule {
     /// Top-level Agentic Binary Language expressions, one per Agentic Binary Language-routed item, paired with the
     /// originating item's display name.
@@ -1057,14 +1057,14 @@ pub fn lower_module(module: &ast::Module) -> AblModule {
 fn _exports(_: &Sym, _: &Ty, _: &Val) {}
 
 // ═══════════════════════════════════════════════════════════════════
-// Decompiler — Agentic Binary Language Expr → MechGen NetDef
+// Decompiler — Agentic Binary Language Expr → MAGE NetDef
 // ═══════════════════════════════════════════════════════════════════
 
-/// Decompile an Agentic Binary Language [`Expr`] into a MechGen [`ast::NetDef`].
+/// Decompile an Agentic Binary Language [`Expr`] into a MAGE [`ast::NetDef`].
 ///
 /// Walks a `Seq` chain of neural `App` nodes and emits one [`ast::LayerDef`]
 /// per recognised opcode. Args carried in each `App` are converted back to
-/// MechGen integer / float literals.
+/// MAGE integer / float literals.
 ///
 /// Non-neural opcodes encountered during the walk are recorded in
 /// [`DecompileResult::skipped`] so callers can decide whether the result is
@@ -1109,7 +1109,7 @@ pub fn decompile(expr: &Expr, net_name: &str) -> DecompileResult {
 pub struct DecompileResult {
     /// Reconstructed `NetDef`.
     pub net: ast::NetDef,
-    /// Opcodes encountered that have no canonical MechGen layer name — these
+    /// Opcodes encountered that have no canonical MAGE layer name — these
     /// were skipped during reconstruction.
     pub skipped: Vec<Op>,
 }
@@ -1152,7 +1152,7 @@ fn decompile_walk(
     }
 }
 
-/// Translate an Agentic Binary Language literal arg back to a MechGen literal expression.
+/// Translate an Agentic Binary Language literal arg back to a MAGE literal expression.
 fn decompile_arg(arg: &Expr) -> Option<ast::Expr> {
     match arg {
         Expr::Lit(Val::I64(n)) => Some(ast::Expr::Literal {

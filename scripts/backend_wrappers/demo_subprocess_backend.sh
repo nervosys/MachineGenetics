@@ -3,7 +3,7 @@
 # backend protocol.
 #
 # An operator wires this (or anything implementing the same contract)
-# into MechGen by registering a backend descriptor like:
+# into MAGE by registering a backend descriptor like:
 #
 #   {
 #     "name": "my_accelerator",
@@ -15,7 +15,7 @@
 #     }
 #   }
 #
-# Then `MechGen-parse --backend=my_accelerator --run=abl-bytes model.abl`
+# Then `mage-parse --backend=my_accelerator --run=abl-bytes model.abl`
 # spawns this script with:
 #   - stdin   = the full Agentic Binary Language container (binary)
 #   - env     = RDX_BACKEND, RDX_ITEM_NAME (path of the .abl), RDX_INPUT_SHAPE

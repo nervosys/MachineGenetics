@@ -1,8 +1,8 @@
 blank_issues_enabled: true
 contact_links:
   - name: Question / Discussion
-    url: https://github.com/nervosys/MechGen/discussions
-    about: Ask questions, share ideas, or discuss MechGen design decisions.
+    url: https://github.com/nervosys/MAGE/discussions
+    about: Ask questions, share ideas, or discuss MAGE design decisions.
   - name: RFC Process
-    url: https://github.com/nervosys/MechGen/blob/master/community/rfc-template.md
+    url: https://github.com/nervosys/MAGE/blob/master/community/rfc-template.md
     about: Propose significant language or ecosystem changes via the RFC process.

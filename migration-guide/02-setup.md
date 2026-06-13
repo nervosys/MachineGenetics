@@ -1,18 +1,18 @@
 # Chapter 2: Project Setup & Tooling
 
-Set up a MechGen project structure, configure Forge.toml, and establish a
-dual-build workflow so Rust and MechGen can coexist during migration.
+Set up a MAGE project structure, configure Forge.toml, and establish a
+dual-build workflow so Rust and MAGE can coexist during migration.
 
 ---
 
-## 2.1 Creating the MechGen Project
+## 2.1 Creating the MAGE Project
 
 ```bash
 # Option A: New project alongside existing Rust project
 mg new my-project-mg
 cd my-project-mg
 
-# Option B: Initialize MechGen in an existing directory
+# Option B: Initialize MAGE in an existing directory
 cd my-existing-project
 mg init
 ```
@@ -24,13 +24,13 @@ my-project-mg/
 ├── Forge.toml          # Project manifest (like Cargo.toml)
 ├── src/
 │   └── main.mg        # Entry point
-└── .MechGen/
-    └── config.toml     # Local MechGen configuration
+└── .MAGE/
+    └── config.toml     # Local MAGE configuration
 ```
 
 ## 2.2 Forge.toml Configuration
 
-The Forge.toml is MechGen's equivalent of Cargo.toml:
+The Forge.toml is MAGE's equivalent of Cargo.toml:
 
 ```toml
 [package]
@@ -40,11 +40,11 @@ edition = "2025"
 description = "Migrated from Rust"
 
 [dependencies]
-# MechGen packages from the Forge registry
-# MechGen-http = "0.3"
+# MAGE packages from the Forge registry
+# MAGE-http = "0.3"
 
 [rust-dependencies]
-# Existing Rust crates — compiled by Cargo, linked into the MechGen build
+# Existing Rust crates — compiled by Cargo, linked into the MAGE build
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 reqwest = { version = "0.12", features = ["json"] }
@@ -90,10 +90,10 @@ During migration, maintain both build systems:
 ```
 my-project/
 ├── Cargo.toml          # Existing Rust build
-├── Forge.toml          # New MechGen build
+├── Forge.toml          # New MAGE build
 ├── src/
 │   ├── main.rs         # Rust entry point (keep working)
-│   └── main.mg        # MechGen entry point (migrate into)
+│   └── main.mg        # MAGE entry point (migrate into)
 ├── src/models/
 │   ├── user.rs         # Not yet migrated
 │   └── user.mg        # Migrated version
@@ -115,11 +115,11 @@ jobs:
       - run: cargo test
       - run: cargo clippy -- -D warnings
 
-  MechGen:
+  MAGE:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: MechGen-lang/setup-mg@v1
+      - uses: MAGE-lang/setup-mg@v1
       - run: mg check
       - run: mg test
       - run: mg lint
@@ -127,7 +127,7 @@ jobs:
 
 ## 2.4 Directory Structure Conventions
 
-MechGen follows similar conventions to Rust:
+MAGE follows similar conventions to Rust:
 
 ```
 src/
@@ -147,9 +147,9 @@ src/
     └── helpers.mg
 ```
 
-### Mapping Rust Files to MechGen
+### Mapping Rust Files to MAGE
 
-| Rust            | MechGen            | Notes                        |
+| Rust            | MAGE            | Notes                        |
 | --------------- | ---------------- | ---------------------------- |
 | `main.rs`       | `main.mg`       | Same role                    |
 | `lib.rs`        | `lib.mg`        | Same role                    |
@@ -165,10 +165,10 @@ src/
 
 ### VS Code
 
-Install the MechGen VS Code extension:
+Install the MAGE VS Code extension:
 
 ```bash
-code --install-extension nervosys.MechGen-lang
+code --install-extension nervosys.MAGE-lang
 ```
 
 The extension provides:
@@ -181,11 +181,11 @@ The extension provides:
 
 ```json
 {
-    "MechGen.rapPath": "mg",
-    "MechGen.checkOnSave": true,
-    "MechGen.effectHints": true,
+    "MAGE.rapPath": "mg",
+    "MAGE.checkOnSave": true,
+    "MAGE.effectHints": true,
     "files.associations": {
-        "*.mg": "MechGen"
+        "*.mg": "MAGE"
     }
 }
 ```

@@ -1,17 +1,17 @@
-# Forge — MechGen Toolchain & Package Registry
+# Forge — MAGE Toolchain & Package Registry
 
-Forge is the MechGen toolchain. It has two parts:
+Forge is the MAGE toolchain. It has two parts:
 
 1. **Project toolchain** (`forge` binary, [`src/project.rs`](src/project.rs)) —
    a manifest-driven build/run driver over `Forge.toml`.
 2. **Package registry** (`forge-server` binary + client library) — the central
-   repository for MechGen modules, with crates.io compatibility.
+   repository for MAGE modules, with crates.io compatibility.
 
 ## Project toolchain
 
 A Forge project is a directory with a `Forge.toml` manifest and a `.mg` entry
-point (default `src/main.mg`). The `forge` binary locates the real MechGen
-compiler/evaluator (`MechGen-parse`) and drives it:
+point (default `src/main.mg`). The `forge` binary locates the real MAGE
+compiler/evaluator (`mage-parse`) and drives it:
 
 ```bash
 cargo build --release --bin forge   # build the toolchain
@@ -27,7 +27,7 @@ forge info           # print the resolved manifest
 ### Agentic-first interface
 
 Forge self-describes, so an agent never needs these prose docs (the same
-progressive-disclosure pattern the MechGen-parse CLI and `rmi` ship):
+progressive-disclosure pattern the mage-parse CLI and `rmi` ship):
 
 ```bash
 forge manifest          # token-compact, effect-classed command index (read first)
@@ -63,7 +63,7 @@ entry = "src/main.mg"   # default
 main  = "main"          # entry function for `forge run`
 ```
 
-The compiler is auto-located at `prototype/target/release/MechGen-parse` (found
+The compiler is auto-located at `prototype/target/release/mage-parse` (found
 by walking up from the project), or taken from the `FORGE_MG` environment
 variable.
 
@@ -153,9 +153,9 @@ forge/
 
 ## Key Features
 
-- **Dual-format packages**: Native MechGen (`.mg`) + optional Rust (`.rs`)
+- **Dual-format packages**: Native MAGE (`.mg`) + optional Rust (`.rs`)
 - **MLIR artifact caching**: Pre-lowered artifacts for fast builds (>95% hit rate)
-- **SAT-based dependency resolution**: Handles MechGen + Rust deps together
+- **SAT-based dependency resolution**: Handles MAGE + Rust deps together
 - **Effect compatibility checking**: Rejects deps with incompatible effects
 - **SKB rule merging**: Combines package-level safety rules into project SKB
 - **Spec verification**: Verifies API contracts at resolution time

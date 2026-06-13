@@ -1,10 +1,10 @@
-# Few-Shot Prompt — Rust ↔ MechGen Translation
+# Few-Shot Prompt — Rust ↔ MAGE Translation
 
-Use the following examples to guide translation between Rust and MechGen.
+Use the following examples to guide translation between Rust and MAGE.
 
 ---
 
-## Example 1: Rust → MechGen (simple function)
+## Example 1: Rust → MAGE (simple function)
 
 **Rust:**
 ```rust
@@ -13,8 +13,8 @@ pub fn greet(name: &str) -> String {
 }
 ```
 
-**MechGen:**
-```MechGen
+**MAGE:**
+```MAGE
 +f greet(name: &s) -> s {
     f"Hello, {name}!"
 }
@@ -24,7 +24,7 @@ pub fn greet(name: &str) -> String {
 
 ---
 
-## Example 2: Rust → MechGen (struct with derive)
+## Example 2: Rust → MAGE (struct with derive)
 
 **Rust:**
 ```rust
@@ -48,8 +48,8 @@ impl Config {
 }
 ```
 
-**MechGen:**
-```MechGen
+**MAGE:**
+```MAGE
 u serde.{Serialize, Deserialize}
 
 @d(Debug, Clone, Serialize, Deserialize)
@@ -70,7 +70,7 @@ I ~ Config {
 
 ---
 
-## Example 3: Rust → MechGen (async with error handling)
+## Example 3: Rust → MAGE (async with error handling)
 
 **Rust:**
 ```rust
@@ -83,8 +83,8 @@ pub async fn read_config(path: &str) -> Result<String, io::Error> {
 }
 ```
 
-**MechGen:**
-```MechGen
+**MAGE:**
+```MAGE
 u std.fs
 u std.io
 
@@ -98,10 +98,10 @@ u std.io
 
 ---
 
-## Example 4: MechGen → Rust (generic with where clause)
+## Example 4: MAGE → Rust (generic with where clause)
 
-**MechGen:**
-```MechGen
+**MAGE:**
+```MAGE
 +f serialize_all[T](items: &[[T]~]) -> R[s, serde_json.Error]
     ~> T: serde.Serialize
 {
@@ -125,7 +125,7 @@ where
 
 ---
 
-## Example 5: Rust → MechGen (trait with default method)
+## Example 5: Rust → MAGE (trait with default method)
 
 **Rust:**
 ```rust
@@ -139,8 +139,8 @@ pub trait Summary {
 }
 ```
 
-**MechGen:**
-```MechGen
+**MAGE:**
+```MAGE
 +T Summary {
     f title(&self) -> &s;
     f author(&self) -> &s;

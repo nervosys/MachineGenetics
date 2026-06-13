@@ -1,10 +1,10 @@
-# MechGen Agent Training Benchmark Corpus
+# MAGE Agent Training Benchmark Corpus
 
-A structured corpus of **100 programming tasks** designed to train, evaluate, and benchmark AI agents on MechGen code generation. Every task includes a MechGen solution, an equivalent Rust solution, token counts, effect annotations, SKB rule references, and test cases.
+A structured corpus of **100 programming tasks** designed to train, evaluate, and benchmark AI agents on MAGE code generation. Every task includes a MAGE solution, an equivalent Rust solution, token counts, effect annotations, SKB rule references, and test cases.
 
 ## Format
 
-All tasks follow the `MechGen-training-v1` schema defined in [`corpus-schema.json`](corpus-schema.json). Each task object contains:
+All tasks follow the `MAGE-training-v1` schema defined in [`corpus-schema.json`](corpus-schema.json). Each task object contains:
 
 | Field                         | Description                                      |
 | ----------------------------- | ------------------------------------------------ |
@@ -12,8 +12,8 @@ All tasks follow the `MechGen-training-v1` schema defined in [`corpus-schema.jso
 | `category`                    | One of 10 categories (see below)                 |
 | `difficulty`                  | `simple`, `medium`, `hard`, or `very-hard`       |
 | `task`                        | Natural language problem description             |
-| `solution.rdx_source`         | Reference MechGen implementation                   |
-| `solution.token_count`        | Token count of the MechGen solution                |
+| `solution.rdx_source`         | Reference MAGE implementation                   |
+| `solution.token_count`        | Token count of the MAGE solution                |
 | `solution.effects`            | List of effects used (e.g. `["io", "fs"]`)       |
 | `solution.skb_rules_used`     | SKB rules exercised                              |
 | `rust_equivalent.rs_source`   | Equivalent Rust implementation                   |
@@ -39,15 +39,15 @@ All tasks follow the `MechGen-training-v1` schema defined in [`corpus-schema.jso
 
 ## Evaluation Metrics
 
-Agents are scored on seven metrics (targets from mechgen_ECOSYSTEM.md §4.4):
+Agents are scored on seven metrics (targets from mage_ECOSYSTEM.md §4.4):
 
 | Metric                  | Target  | Description                                |
 | ----------------------- | ------- | ------------------------------------------ |
 | First-pass success rate | > 95%   | Compiles and passes tests on first attempt |
 | Token efficiency ratio  | < 1.1   | `rdx_tokens / reference_tokens`            |
 | Effect correctness      | > 99%   | Correct effect annotations                 |
-| Spec compliance         | > 98%   | Conforms to MechGen language spec            |
-| Migration accuracy      | > 99%   | Rust↔MechGen round-trip fidelity             |
+| Spec compliance         | > 98%   | Conforms to MAGE language spec            |
+| Migration accuracy      | > 99%   | Rust↔MAGE round-trip fidelity             |
 | Iteration count         | < 1.5   | Average attempts to correct solution       |
 | Cost per task           | < $0.05 | LLM API cost per task                      |
 
@@ -58,7 +58,7 @@ Feed tasks as few-shot examples or fine-tuning data. Each task provides the natu
 
 ### Benchmark Evaluation
 1. Present the `task` description to the agent
-2. Collect the generated MechGen source
+2. Collect the generated MAGE source
 3. Compare against `solution.rdx_source` for correctness
 4. Measure token count against `solution.token_count`
 5. Verify effects match `solution.effects`

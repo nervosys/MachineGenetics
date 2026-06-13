@@ -1,6 +1,6 @@
-# MechGen Safety Knowledge Base (SKB)
+# MAGE Safety Knowledge Base (SKB)
 
-The SKB is a corpus of **9,157 safety rules** that the MechGen compiler queries
+The SKB is a corpus of **9,157 safety rules** that the MAGE compiler queries
 at compile time to verify code safety, suggest fixes, and provide agent-readable
 diagnostics.
 
@@ -60,7 +60,7 @@ SELECT * FROM borrow WHERE category = 'double-borrow' AND severity = 'error'
 ## Integration
 
 The SKB is part of the formal type judgment: **Γ; Σ; Δ ⊢ e : τ ⊣ ε**, where
-**Σ** is the SKB context. Rules are queried via the MLIR `MechGen.skb.query` and
-`MechGen.skb.validate` operations during compile-time evaluation.
+**Σ** is the SKB context. Rules are queried via the MLIR `MAGE.skb.query` and
+`MAGE.skb.validate` operations during compile-time evaluation.
 
 The RAP server exposes SKB queries via `skb/query` JSON-RPC method.

@@ -1,16 +1,16 @@
 // ── FFI Binding Generator ──────────────────────────────────────────
 //
-// Generates safe MechGen wrappers for foreign function interfaces.
+// Generates safe MAGE wrappers for foreign function interfaces.
 //
 // Supported targets:
-//   - C headers  → MechGen extern declarations + safe wrappers
+//   - C headers  → MAGE extern declarations + safe wrappers
 //   - Python     → .pyi stub files
 //   - WASM       → .wit component bindings
 //
 // Each target produces:
 //   1. Raw declarations (unsafe extern)
 //   2. Safe wrapper functions with contract annotations
-//   3. Type mappings from foreign types → MechGen types
+//   3. Type mappings from foreign types → MAGE types
 
 use std::collections::BTreeMap;
 
@@ -56,7 +56,7 @@ impl ForeignType {
         }
     }
 
-    pub fn to_mechgen_type(&self) -> String {
+    pub fn to_mage_type(&self) -> String {
         match self {
             ForeignType::Void => "()".into(),
             ForeignType::Int(8) => "i8".into(),
@@ -74,8 +74,8 @@ impl ForeignType {
             ForeignType::Float(w) => format!("f{w}"),
             ForeignType::Bool => "bool".into(),
             ForeignType::CString => "&str".into(),
-            ForeignType::Ptr(inner) => format!("^{}", inner.to_mechgen_type()),
-            ForeignType::Array(inner, n) => format!("[{}; {}]", inner.to_mechgen_type(), n),
+            ForeignType::Ptr(inner) => format!("^{}", inner.to_mage_type()),
+            ForeignType::Array(inner, n) => format!("[{}; {}]", inner.to_mage_type(), n),
             ForeignType::Struct(name) => name.clone(),
             ForeignType::Opaque(name) => name.clone(),
         }
@@ -128,7 +128,7 @@ pub enum BindingTarget {
 pub struct FfiGenerator {
     functions: Vec<ForeignFunction>,
     structs: Vec<ForeignStruct>,
-    type_overrides: BTreeMap<String, String>, // foreign name → MechGen name
+    type_overrides: BTreeMap<String, String>, // foreign name → MAGE name
 }
 
 impl FfiGenerator {
@@ -148,11 +148,11 @@ impl FfiGenerator {
         self.structs.push(s);
     }
 
-    pub fn add_type_override(&mut self, foreign: &str, MechGen: &str) {
-        self.type_overrides.insert(foreign.into(), MechGen.into());
+    pub fn add_type_override(&mut self, foreign: &str, mage: &str) {
+        self.type_overrides.insert(foreign.into(), mage.into());
     }
 
-    /// Generate raw extern declarations (MechGen syntax).
+    /// Generate raw extern declarations (MAGE syntax).
     pub fn generate_extern_decls(&self) -> String {
         let mut out = String::new();
         for f in &self.functions {
@@ -252,7 +252,7 @@ impl FfiGenerator {
     }
 
     fn map_type(&self, ty: &ForeignType) -> String {
-        let base = ty.to_mechgen_type();
+        let base = ty.to_mage_type();
         self.type_overrides.get(&base).cloned().unwrap_or(base)
     }
 
@@ -337,12 +337,12 @@ mod tests {
     }
 
     #[test]
-    fn mechgen_type_conversions() {
-        assert_eq!(ForeignType::Int(32).to_mechgen_type(), "i32");
-        assert_eq!(ForeignType::UInt(8).to_mechgen_type(), "u8");
-        assert_eq!(ForeignType::Float(32).to_mechgen_type(), "f32");
-        assert_eq!(ForeignType::CString.to_mechgen_type(), "&str");
-        assert_eq!(ForeignType::Bool.to_mechgen_type(), "bool");
+    fn mage_type_conversions() {
+        assert_eq!(ForeignType::Int(32).to_mage_type(), "i32");
+        assert_eq!(ForeignType::UInt(8).to_mage_type(), "u8");
+        assert_eq!(ForeignType::Float(32).to_mage_type(), "f32");
+        assert_eq!(ForeignType::CString.to_mage_type(), "&str");
+        assert_eq!(ForeignType::Bool.to_mage_type(), "bool");
     }
 
     #[test]
@@ -465,7 +465,7 @@ mod tests {
     fn array_type_conversions() {
         let arr = ForeignType::Array(Box::new(ForeignType::UInt(8)), 256);
         assert_eq!(arr.to_c_type(), "uint8_t[256]");
-        assert_eq!(arr.to_mechgen_type(), "[u8; 256]");
+        assert_eq!(arr.to_mage_type(), "[u8; 256]");
         assert_eq!(arr.to_python_type(), "list[int]");
     }
 
@@ -473,6 +473,6 @@ mod tests {
     fn opaque_type() {
         let o = ForeignType::Opaque("FILE".into());
         assert_eq!(o.to_c_type(), "FILE");
-        assert_eq!(o.to_mechgen_type(), "FILE");
+        assert_eq!(o.to_mage_type(), "FILE");
     }
 }

@@ -1,8 +1,8 @@
 # Agentic by Design: Language, IR, and Runtime Co-Optimization
 
-This document defines how MechGen is redesigned from the ground up so that **agentic intelligence is not a feature bolted onto a compiler — it is the compiler**. Every layer of the system — syntax, type system, intermediate representation, optimization passes, code generation, and runtime — is structured to maximize the productivity of AI agents writing, compiling, optimizing, and executing MechGen code.
+This document defines how MAGE is redesigned from the ground up so that **agentic intelligence is not a feature bolted onto a compiler — it is the compiler**. Every layer of the system — syntax, type system, intermediate representation, optimization passes, code generation, and runtime — is structured to maximize the productivity of AI agents writing, compiling, optimizing, and executing MAGE code.
 
-> **Note on Syntax**: MechGen v0.2.0 supports dual syntax modes. The **human mode** (default) uses C-family keywords (`fn`, `let`, `struct`, `match`, `for`). The **agent mode** (`#![syntax(agent)]`) uses sigil-based forms (`+f`, `v`, `+S`, `?`, `@`) that reduce token counts for agent-generated code. Code examples in this document use agent syntax to illustrate the token economics. See [MechGen_SPEC.md](MechGen_SPEC.md) for the full dual-syntax specification.
+> **Note on Syntax**: MAGE v0.2.0 supports dual syntax modes. The **human mode** (default) uses C-family keywords (`fn`, `let`, `struct`, `match`, `for`). The **agent mode** (`#![syntax(agent)]`) uses sigil-based forms (`+f`, `v`, `+S`, `?`, `@`) that reduce token counts for agent-generated code. Code examples in this document use agent syntax to illustrate the token economics. See [MAGE_SPEC.md](MAGE_SPEC.md) for the full dual-syntax specification.
 
 The three performance axes optimized simultaneously:
 
@@ -10,7 +10,7 @@ The three performance axes optimized simultaneously:
 2. **Compilation performance** — How fast source becomes machine code
 3. **Runtime performance** — How fast the generated code executes
 
-Traditional languages optimize (3) at the expense of (1) and (2). MechGen optimizes all three by making them reinforcing rather than competing.
+Traditional languages optimize (3) at the expense of (1) and (2). MAGE optimizes all three by making them reinforcing rather than competing.
 
 ---
 
@@ -22,9 +22,9 @@ Every AI agent pays per token — input and output. The language syntax must min
 
 #### 1.1 Sigil Compression
 
-MechGen sigils replace multi-token Rust keywords with single characters:
+MAGE sigils replace multi-token Rust keywords with single characters:
 
-| Rust                        | Tokens | MechGen                   | Tokens | Savings |
+| Rust                        | Tokens | MAGE                   | Tokens | Savings |
 | --------------------------- | ------ | ----------------------- | ------ | ------- |
 | `pub fn foo(x: i32) -> i32` | 10     | `+f foo(x: i32) -> i32` | 8      | 20%     |
 | `let mut x = 5;`            | 5      | `m x = 5;`              | 4      | 20%     |
@@ -45,7 +45,7 @@ MechGen sigils replace multi-token Rust keywords with single characters:
 | `String`                    | 1      | `s`                     | 1      | 0%      |
 | `::`                        | 1      | `.`                     | 1      | 0%      |
 
-**Aggregate savings**: Typical MechGen code is **30–40% fewer tokens** than equivalent Rust, which means:
+**Aggregate savings**: Typical MAGE code is **30–40% fewer tokens** than equivalent Rust, which means:
 - Agents generate code 30–40% faster (fewer output tokens)
 - Agents read code 30–40% faster (fewer input context tokens)
 - Context windows hold 40–60% more semantic content
@@ -53,7 +53,7 @@ MechGen sigils replace multi-token Rust keywords with single characters:
 
 #### 1.2 Inference Eliminates Annotation Tokens
 
-Rust requires explicit lifetime annotations, borrow markers, Send/Sync bounds, and allocation strategy markers. MechGen infers all of them:
+Rust requires explicit lifetime annotations, borrow markers, Send/Sync bounds, and allocation strategy markers. MAGE infers all of them:
 
 ```
 // Rust: 47 tokens
@@ -67,7 +67,7 @@ where
     // ...
 }
 
-// MechGen: 18 tokens
+// MAGE: 18 tokens
 +f process(data: &[&s], config: &Config) -> R[[s]~, ^Error] {
     // ...
 }
@@ -240,7 +240,7 @@ v sum: i64 = data.iter().sum(); // cost: 0 allocs, ~0.3ms (vectorized)
 
 ### 7. RIR Design: Agents as First-Class Compilation Participants
 
-The MechGen Intermediate Representation is not designed for a compiler to consume — it is designed for **agents and the compiler to co-consume**. Every node in the IR is simultaneously:
+The MAGE Intermediate Representation is not designed for a compiler to consume — it is designed for **agents and the compiler to co-consume**. Every node in the IR is simultaneously:
 
 1. A compilation artifact (for code generation)
 2. A query target (for agent reasoning)
@@ -340,7 +340,7 @@ pub enum OwnershipState {
 
 ### 9. Agent-Queryable IR (The RAP-IR Bridge)
 
-Agents interact with RIR through the **MechGen Agent Protocol (RAP)** — a typed
+Agents interact with RIR through the **MAGE Agent Protocol (RAP)** — a typed
 query API that lets agents reason about the IR without parsing raw data
 structures:
 
@@ -744,7 +744,7 @@ This makes agent development **economically optimized** — the language is lite
 
 ### 16. Zero-Overhead Agent Communication at Runtime
 
-When agents produce MechGen programs that themselves contain agentic behavior (e.g., multi-agent systems, swarm applications), the runtime must be as fast as the compilation pipeline:
+When agents produce MAGE programs that themselves contain agentic behavior (e.g., multi-agent systems, swarm applications), the runtime must be as fast as the compilation pipeline:
 
 ```rust
 /// Runtime agent message passing — compiled to hardware primitives.
@@ -882,7 +882,7 @@ Constraints (enforced by compiler):
 
 ### 20. Coding Performance
 
-| Metric                        | C++     | Rust    | MechGen    | Factor       |
+| Metric                        | C++     | Rust    | MAGE    | Factor       |
 | ----------------------------- | ------- | ------- | -------- | ------------ |
 | Tokens per equivalent program | 1.5×    | 1.0×    | 0.60×    | 40% fewer    |
 | Annotations required          | Manual  | Many    | Inferred | ~0 manual    |
@@ -893,7 +893,7 @@ Constraints (enforced by compiler):
 
 ### 21. Compilation Performance
 
-| Metric                        | GCC      | Clang/LLVM | MechGen RDC | Factor        |
+| Metric                        | GCC      | Clang/LLVM | MAGE RDC | Factor        |
 | ----------------------------- | -------- | ---------- | --------- | ------------- |
 | Parse speed (tokens/sec)      | ~100K    | ~150K      | ~500K     | 3–5×          |
 | Optimization passes           | ~300     | ~200       | ~15–20    | 10–15×        |
@@ -906,7 +906,7 @@ Constraints (enforced by compiler):
 
 ### 22. Runtime Performance
 
-| Metric                     | C -O3   | LLVM -O3  | MechGen RDC | Mechanism                |
+| Metric                     | C -O3   | LLVM -O3  | MAGE RDC | Mechanism                |
 | -------------------------- | ------- | --------- | --------- | ------------------------ |
 | Vectorization coverage     | ~40%    | ~50%      | ~90%      | Contract-exact bounds    |
 | Auto-parallelization       | Manual  | Heuristic | Automatic | Effect-proven purity     |
@@ -921,7 +921,7 @@ Constraints (enforced by compiler):
 
 ## Part VI: The Agentic Advantage Cascade
 
-The reason MechGen is fundamentally faster and safer is not any single feature — it is the **compounding interaction** between all features:
+The reason MAGE is fundamentally faster and safer is not any single feature — it is the **compounding interaction** between all features:
 
 ```
 Level 0: TOKEN COMPRESSION
@@ -992,7 +992,7 @@ THE CASCADE EFFECT:
   Go reaches Level 0 (simple syntax) but has no optimization depth.
   Python/JS have Level 0 (tokens) and Level 7 (ecosystem) but no performance.
 
-  MechGen reaches Level 8 — and each level compounds the prior.
+  MAGE reaches Level 8 — and each level compounds the prior.
 ```
 
 ---
@@ -1001,7 +1001,7 @@ THE CASCADE EFFECT:
 
 ```shell
 compiler/
-  MechGen_rir/                     # RIR data structures + construction
+  MAGE_rir/                     # RIR data structures + construction
     src/
       lib.rs                     # RirModule, RirFunction, RirOp
       construct.rs               # AST → RIR lowering
@@ -1012,7 +1012,7 @@ compiler/
       ownership.rs               # OwnershipState tracking
       display.rs                 # Human-readable RIR printing
 
-  MechGen_rir_opt/                 # Optimization passes
+  MAGE_rir_opt/                 # Optimization passes
     src/
       lib.rs                     # Pass scheduler + convergence loop
       contract_prop.rs           # Pass 1: Contract Constant Propagation
@@ -1025,7 +1025,7 @@ compiler/
       dead_effect.rs             # Pass 8: Dead Effect Elimination
       agent_proposals.rs         # Agent proposal queue + verification gate
 
-  MechGen_machine_encode/          # Direct binary emission
+  MAGE_machine_encode/          # Direct binary emission
     src/
       lib.rs                     # MachineEncoder trait
       x86_64.rs                  # x86-64 encoder (REX/VEX/EVEX)
@@ -1038,14 +1038,14 @@ compiler/
       dwarf.rs                   # DWARF5 debug info
       reloc.rs                   # Relocation tables
 
-  MechGen_gpu_encode/              # GPU kernel emission
+  MAGE_gpu_encode/              # GPU kernel emission
     src/
       lib.rs                     # GpuEncoder trait
       ptx.rs                     # NVIDIA PTX encoder
       gcn.rs                     # AMD GCN encoder
       spirv.rs                   # SPIR-V binary encoder
 
-  MechGen_agent_ir/                # Agent ↔ IR bridge (RAP-IR)
+  MAGE_agent_ir/                # Agent ↔ IR bridge (RAP-IR)
     src/
       lib.rs                     # RirQuery + RirMutate orchestration
       rap_bridge.rs              # RAP endpoint → RIR query translation
@@ -1053,7 +1053,7 @@ compiler/
       verification_gate.rs       # Contract + effect + SKB verification
       provenance.rs              # Provenance tracking
 
-  MechGen_runtime_bus/             # Runtime agent communication
+  MAGE_runtime_bus/             # Runtime agent communication
     src/
       lib.rs                     # RuntimeBus lock-free ring buffer
       x86_64.rs                  # MOVDIR64B / MOVNTDQA paths
@@ -1061,7 +1061,7 @@ compiler/
       gpu.rs                     # Shared memory + warp sync
       flow_control.rs            # Credit-based backpressure
 
-  MechGen_hot_reload/              # Sub-ms live patching
+  MAGE_hot_reload/              # Sub-ms live patching
     src/
       lib.rs                     # Hot-reload coordinator
       patcher.rs                 # Code page swap + deferred free
@@ -1075,7 +1075,7 @@ compiler/
 
 ### Language Design for Agents
 
-| Feature                 | C++     | Rust     | Go      | Python | MechGen     |
+| Feature                 | C++     | Rust     | Go      | Python | MAGE     |
 | ----------------------- | ------- | -------- | ------- | ------ | --------- |
 | Token efficiency        | Poor    | Fair     | Good    | Good   | **Best**  |
 | Type inference depth    | Partial | Good     | Partial | None*  | **Full**  |
@@ -1107,7 +1107,7 @@ compiler/
 
 ### Runtime for Agents
 
-| Feature                | C runtime | Rust runtime | Go runtime | MechGen runtime     |
+| Feature                | C runtime | Rust runtime | Go runtime | MAGE runtime     |
 | ---------------------- | --------- | ------------ | ---------- | ----------------- |
 | Agent bus latency      | N/A       | N/A          | N/A        | **<50ns**         |
 | Hot-reload latency     | N/A       | N/A          | N/A        | **<2ms**          |
@@ -1120,11 +1120,11 @@ compiler/
 
 ## Summary
 
-MechGen is not a programming language with agentic features. It is an **agentic system that happens to compile to machine code.**
+MAGE is not a programming language with agentic features. It is an **agentic system that happens to compile to machine code.**
 
 Every design decision optimizes for the symbiosis of human intent, agent intelligence, and hardware execution:
 
-| Layer        | Traditional Design            | MechGen Agentic Design                     |
+| Layer        | Traditional Design            | MAGE Agentic Design                     |
 | ------------ | ----------------------------- | ---------------------------------------- |
 | Syntax       | For human readability         | For agent token efficiency + readability |
 | Types        | For human annotation          | For compiler inference + agent query     |
@@ -1137,6 +1137,6 @@ Every design decision optimizes for the symbiosis of human intent, agent intelli
 | Memory       | Stateless compilation         | 4-tier persistent learning               |
 | Evolution    | Committee-designed syntax     | Usage-driven self-evolution              |
 
-The result: agents write MechGen code **faster** (40% fewer tokens, zero annotations, auto-repair), the compiler processes it **faster** (15–20× compilation speed, 1500× incremental), and the generated code runs **faster** (1.1–1.8× LLVM -O3 via contract + effect exploitation) and **safer** (zero runtime checks via compile-time proof).
+The result: agents write MAGE code **faster** (40% fewer tokens, zero annotations, auto-repair), the compiler processes it **faster** (15–20× compilation speed, 1500× incremental), and the generated code runs **faster** (1.1–1.8× LLVM -O3 via contract + effect exploitation) and **safer** (zero runtime checks via compile-time proof).
 
 **This is not a compiler. It is a collaborative intelligence engine that produces machine code as a side effect of agent reasoning.**

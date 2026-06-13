@@ -130,8 +130,8 @@ fn main() {
         }
         Some("--emit-ontology") => {
             // Dump the complete ontology to disk as static JSON.
-            // `--emit-ontology [path]` (default: MECHGEN_ONTOLOGY.json).
-            let out = filtered.get(1).copied().unwrap_or("MECHGEN_ONTOLOGY.json");
+            // `--emit-ontology [path]` (default: MAGE_ONTOLOGY.json).
+            let out = filtered.get(1).copied().unwrap_or("MAGE_ONTOLOGY.json");
             let value = ontology::build();
             let json = serde_json::to_string_pretty(&value).unwrap_or_else(|e| {
                 eprintln!("emit-ontology: serialize: {e}");
@@ -145,7 +145,7 @@ fn main() {
         }
         Some("--fmt-compact") => {
             let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: MechGen-parse --fmt-compact <file>");
+                eprintln!("Usage: mage-parse --fmt-compact <file>");
                 std::process::exit(1);
             });
             let source = std::fs::read_to_string(path).unwrap_or_else(|e| {
@@ -175,7 +175,7 @@ fn main() {
         }
         Some("--fmt-expand") => {
             let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: MechGen-parse --fmt-expand <file>");
+                eprintln!("Usage: mage-parse --fmt-expand <file>");
                 std::process::exit(1);
             });
             let source = std::fs::read_to_string(path).unwrap_or_else(|e| {
@@ -205,7 +205,7 @@ fn main() {
         }
         Some("--check") => {
             let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: MechGen-parse --check <file> [--no-elision] [--token-report]");
+                eprintln!("Usage: mage-parse --check <file> [--no-elision] [--token-report]");
                 std::process::exit(1);
             });
             let source = std::fs::read_to_string(path).unwrap_or_else(|e| {
@@ -220,7 +220,7 @@ fn main() {
         }
         Some("--target=abl-bytes") => {
             let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: MechGen-parse --target=abl-bytes <file.mg> [<out.abl>]");
+                eprintln!("Usage: mage-parse --target=abl-bytes <file.mg> [<out.abl>]");
                 std::process::exit(1);
             });
             let out_path = filtered.get(2).map(|s| s.to_string());
@@ -255,7 +255,7 @@ fn main() {
             // validate structurally (reject-by-construction) and lower to the
             // deterministic Agentic Binary Language artifact. See builder.rs.
             let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: MechGen-parse --build=abl <spec.json> [<out.abl>]");
+                eprintln!("Usage: mage-parse --build=abl <spec.json> [<out.abl>]");
                 std::process::exit(1);
             });
             let out_path = filtered.get(2).map(|s| s.to_string());
@@ -366,7 +366,7 @@ fn main() {
             // decode — it NEVER executes code — and yields a machine-readable
             // description the agent can verify against its spec.
             let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: MechGen-parse --describe=abl <file.abl>");
+                eprintln!("Usage: mage-parse --describe=abl <file.abl>");
                 std::process::exit(1);
             });
             let blob = std::fs::read(path).unwrap_or_else(|e| {
@@ -382,7 +382,7 @@ fn main() {
             // Optional `--input <json>` supplies {"ops":[..]} for agents and
             // {"proposals":[..]} for swarms. Neural items defer to --run=abl-bytes.
             let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: MechGen-parse --run=abl <file.abl> [--input <json>]");
+                eprintln!("Usage: mage-parse --run=abl <file.abl> [--input <json>]");
                 std::process::exit(1);
             });
             let blob = std::fs::read(path).unwrap_or_else(|e| {
@@ -400,9 +400,9 @@ fn main() {
         Some("--eval") => {
             // Run a pure function and print its value — executes the §8 standard
             // vocabulary (map/filter/fold/…) and the arithmetic/control flow
-            // around it. Usage: MechGen-parse --eval <file.mg> <fn> [int args...]
+            // around it. Usage: mage-parse --eval <file.mg> <fn> [int args...]
             let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: MechGen-parse --eval <file.mg> <fn> [int args...]");
+                eprintln!("Usage: mage-parse --eval <file.mg> <fn> [int args...]");
                 std::process::exit(1);
             });
             let func = filtered.get(2).map(|s| &**s).unwrap_or("main");
@@ -423,7 +423,7 @@ fn main() {
             // Digital rain: a Matrix-inspired dense-UTF-8 representation. One
             // glyph per token; writes <file>.rain (glyph stream) + <file>.legend.
             let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: MechGen-parse --rain <file.mg>");
+                eprintln!("Usage: mage-parse --rain <file.mg>");
                 std::process::exit(1);
             });
             let src = std::fs::read_to_string(path).unwrap_or_else(|e| {
@@ -434,7 +434,7 @@ fn main() {
             let src_chars = src.chars().count();
             let _ = std::fs::write(format!("{path}.rain"), &r.stream);
             let _ = std::fs::write(format!("{path}.legend"), r.legend_text());
-            println!("// MechGen digital rain — {path}");
+            println!("// MAGE digital rain — {path}");
             println!(
                 "// source: {src_chars} chars / {} bytes   rain: {} glyphs ({} distinct)   legend: {} entries",
                 src.len(), r.tokens(), r.distinct(), r.legend.len()
@@ -453,7 +453,7 @@ fn main() {
             // artifact. See SPINE_COLLABORATION.md + spine_bridge.rs.
             let mode = filtered[0];
             let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: MechGen-parse {mode} <spec.json | file.abl>");
+                eprintln!("Usage: mage-parse {mode} <spec.json | file.abl>");
                 std::process::exit(1);
             });
             let out = match mode {
@@ -492,7 +492,7 @@ fn main() {
         }
         Some("--from=abl-bytes") => {
             let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: MechGen-parse --from=abl-bytes <file.abl>");
+                eprintln!("Usage: mage-parse --from=abl-bytes <file.abl>");
                 std::process::exit(1);
             });
             let blob = std::fs::read(path).unwrap_or_else(|e| {
@@ -503,7 +503,7 @@ fn main() {
         }
         Some("--run=abl-bytes") => {
             let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: MechGen-parse --run=abl-bytes <file.abl>");
+                eprintln!("Usage: mage-parse --run=abl-bytes <file.abl>");
                 std::process::exit(1);
             });
             let blob = std::fs::read(path).unwrap_or_else(|e| {
@@ -514,7 +514,7 @@ fn main() {
         }
         Some("--target=abl-generate") => {
             let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: MechGen-parse --target=abl-generate <file>");
+                eprintln!("Usage: mage-parse --target=abl-generate <file>");
                 std::process::exit(1);
             });
             let source = std::fs::read_to_string(path).unwrap_or_else(|e| {
@@ -544,7 +544,7 @@ fn main() {
         }
         Some("--target=abl-infer") => {
             let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: MechGen-parse --target=abl-infer <file>");
+                eprintln!("Usage: mage-parse --target=abl-infer <file>");
                 std::process::exit(1);
             });
             let source = std::fs::read_to_string(path).unwrap_or_else(|e| {
@@ -574,7 +574,7 @@ fn main() {
         }
         Some("--target=abl-train") => {
             let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: MechGen-parse --target=abl-train <file>");
+                eprintln!("Usage: mage-parse --target=abl-train <file>");
                 std::process::exit(1);
             });
             let source = std::fs::read_to_string(path).unwrap_or_else(|e| {
@@ -604,7 +604,7 @@ fn main() {
         }
         Some("--target=abl-compute") => {
             let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: MechGen-parse --target=abl-compute <file>");
+                eprintln!("Usage: mage-parse --target=abl-compute <file>");
                 std::process::exit(1);
             });
             let source = std::fs::read_to_string(path).unwrap_or_else(|e| {
@@ -626,7 +626,7 @@ fn main() {
                     };
                     let lowered = abl_bridge::lower_module(&module);
                     let backend = rmi::compute::cpu::CpuBackend::new();
-                    println!("// MechGen → Agentic Binary Language → CpuBackend dispatch for {path}");
+                    println!("// MAGE → Agentic Binary Language → CpuBackend dispatch for {path}");
                     for (name, expr) in &lowered.items {
                         // Pre-flight: infer shapes and report mismatches.
                         let shape_report = abl_shape::infer_shape(expr, &[8]);
@@ -655,7 +655,7 @@ fn main() {
         }
         Some("--target=abl-run") => {
             let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: MechGen-parse --target=abl-run <file>");
+                eprintln!("Usage: mage-parse --target=abl-run <file>");
                 std::process::exit(1);
             });
             let source = std::fs::read_to_string(path).unwrap_or_else(|e| {
@@ -677,7 +677,7 @@ fn main() {
                     };
                     let lowered = abl_bridge::lower_module(&module);
                     let mut vm = rmi::lang::Vm::new();
-                    println!("// MechGen → Agentic Binary Language → VM execution for {path}");
+                    println!("// MAGE → Agentic Binary Language → VM execution for {path}");
                     for (name, expr) in &lowered.items {
                         let families = abl_bridge::expr_op_families(expr);
                         let stub_families: Vec<_> = families
@@ -717,7 +717,7 @@ fn main() {
         }
         Some("--target=abl") => {
             let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: MechGen-parse --target=abl <file>");
+                eprintln!("Usage: mage-parse --target=abl <file>");
                 std::process::exit(1);
             });
             let source = std::fs::read_to_string(path).unwrap_or_else(|e| {
@@ -739,7 +739,7 @@ fn main() {
                     };
                     let lowered = abl_bridge::lower_module(&module);
                     let (mlir_items, abl_items) = abl_bridge::OpFamilyRouter::partition(&module);
-                    println!("// MechGen → Agentic Binary Language lowering for {path}");
+                    println!("// MAGE → Agentic Binary Language lowering for {path}");
                     println!("// MLIR-routed items: {}", mlir_items.len());
                     println!("// Agentic Binary Language-routed items: {}", abl_items.len());
                     for diag in &lowered.diagnostics {
@@ -764,7 +764,7 @@ fn main() {
         }
         Some("--pipeline") => {
             let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: MechGen-parse --pipeline <file> [--no-elision] [--syntax=legacy] [--token-report]");
+                eprintln!("Usage: mage-parse --pipeline <file> [--no-elision] [--syntax=legacy] [--token-report]");
                 std::process::exit(1);
             });
             let source = std::fs::read_to_string(path).unwrap_or_else(|e| {
@@ -830,7 +830,7 @@ fn run_emit_abl_bytes(module: &ast::Module, src_path: &str, out_path: Option<&st
     let text_bytes = std::fs::metadata(src_path).map(|m| m.len()).unwrap_or(0);
     let total_ml = blob.len() as u64;
 
-    println!("// MechGen → Agentic Binary Language bytes for {src_path}");
+    println!("// MAGE → Agentic Binary Language bytes for {src_path}");
     println!(
         "// text source: {} bytes    Agentic Binary Language container: {} bytes    ratio: {:.3} ({:.1}% reduction)",
         text_bytes,
@@ -1115,7 +1115,7 @@ fn run_describe_abl_bytes(blob: &[u8]) {
 }
 
 /// Drive `--from=abl-bytes`: read a `.abl` container, decode every item
-/// via the RMI codec, decompile each to a MechGen `net`/`kb` declaration via
+/// via the RMI codec, decompile each to a MAGE `net`/`kb` declaration via
 /// the bridge's existing decompiler, and print the resulting `.mg` source.
 fn run_decode_abl_bytes(blob: &[u8], path: &str) {
     let mut pos = 0usize;
@@ -1149,7 +1149,7 @@ fn run_decode_abl_bytes(blob: &[u8], path: &str) {
         None => return,
     }) as usize;
 
-    println!("// Agentic Binary Language → MechGen decompiled view of {path}");
+    println!("// Agentic Binary Language → MAGE decompiled view of {path}");
     println!("// container: {} bytes, {} item(s)", blob.len(), count);
 
     for i in 0..count {
@@ -1406,7 +1406,7 @@ fn run_generate(module: &ast::Module, path: &str) {
     use rmi::compute::Backend;
     let backend = CpuBackend::new();
 
-    println!("// MechGen → Agentic Binary Language → autoregressive generation for {path}");
+    println!("// MAGE → Agentic Binary Language → autoregressive generation for {path}");
 
     let mut nets: std::collections::HashMap<&str, &ast::NetDef> = Default::default();
     for item in &module.items {
@@ -1669,7 +1669,7 @@ fn run_infer(module: &ast::Module, path: &str) {
     use rmi::compute::Backend;
     let backend = CpuBackend::new();
 
-    println!("// MechGen → Agentic Binary Language → CpuBackend inference for {path}");
+    println!("// MAGE → Agentic Binary Language → CpuBackend inference for {path}");
 
     let mut nets: std::collections::HashMap<&str, &ast::NetDef> = Default::default();
     for item in &module.items {
@@ -1770,7 +1770,7 @@ fn run_train(module: &ast::Module, path: &str) {
     use rmi::compute::cpu::CpuBackend;
     let backend = CpuBackend::new();
 
-    println!("// MechGen → Agentic Binary Language → SGD training for {path}");
+    println!("// MAGE → Agentic Binary Language → SGD training for {path}");
 
     // Index nets by name so train blocks can look them up.
     let mut nets: std::collections::HashMap<&str, &ast::NetDef> = Default::default();
@@ -2201,7 +2201,7 @@ fn extract_int_from_expr(expr: Option<&ast::Expr>) -> Option<i64> {
 /// Recognises `SGD(0.01)`, `Adam(0.001)`, etc. — pulls the first
 /// floating-point arg. Falls back to `None` if the optimizer carries no
 /// numeric arg.
-/// Extract an array-of-arrays float literal from a MechGen Expr.
+/// Extract an array-of-arrays float literal from a MAGE Expr.
 /// Recognises `[[1.0, 2.0], [3.0, 4.0]]`-style ArrayLit nesting.
 fn extract_nested_floats(expr: Option<&ast::Expr>) -> Option<Vec<Vec<f32>>> {
     let outer = match expr? {
@@ -2875,7 +2875,7 @@ fn run_check(source: &str, filename: &str, do_elision: bool, legacy: bool, token
 
 fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool, token_report: bool) {
     eprintln!("╔══════════════════════════════════════════════════════════════╗");
-    eprintln!("║  MechGen End-to-End Pipeline                                  ║");
+    eprintln!("║  MAGE End-to-End Pipeline                                  ║");
     eprintln!("╚══════════════════════════════════════════════════════════════╝");
     eprintln!();
 
@@ -2883,7 +2883,7 @@ fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool, to
 
     // ── Phase 0: Legacy syntax translation ───────────────────────────
     let source = if legacy {
-        eprintln!("▸ Phase 0: Legacy syntax translation (Rust → MechGen)");
+        eprintln!("▸ Phase 0: Legacy syntax translation (Rust → MAGE)");
         let translated = legacy::translate(source);
         eprintln!("  ✓ translated to canonical syntax");
         translated

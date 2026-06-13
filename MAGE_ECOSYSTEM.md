@@ -1,6 +1,6 @@
-# MechGen Ecosystem Design
+# MAGE Ecosystem Design
 
-_MechGen Language — Package Registry, Migration Tooling, IDE Integration, Agent Training, and Standard Library_
+_MAGE Language — Package Registry, Migration Tooling, IDE Integration, Agent Training, and Standard Library_
 
 ---
 
@@ -21,9 +21,9 @@ _MechGen Language — Package Registry, Migration Tooling, IDE Integration, Agen
 
 ### 1.1 Overview
 
-The MechGen package registry (**Forge**) serves as the central repository for MechGen
-packages (called **crates** for Rust compatibility, **modules** in MechGen terminology).
-Forge supports dual-format packages: native MechGen (`.mg`) and transpiled Rust (`.rs`).
+The MAGE package registry (**Forge**) serves as the central repository for MAGE
+packages (called **crates** for Rust compatibility, **modules** in MAGE terminology).
+Forge supports dual-format packages: native MAGE (`.mg`) and transpiled Rust (`.rs`).
 
 ### 1.2 Registry Data Model
 
@@ -42,7 +42,7 @@ Module
 │   ├── repository: ?Url
 │   ├── keywords: [String]
 │   ├── categories: [String]
-│   ├── edition: MechGenEdition        # e.g., "2025"
+│   ├── edition: MAGEEdition        # e.g., "2025"
 │   └── rust_compatibility: ?RustVersion  # If transpilable to Rust
 ├── dependencies: [{name, version_req, features}]
 ├── skb_rules: [SkbRule]             # Package-specific safety rules
@@ -74,8 +74,8 @@ Forge maintains a compatibility layer with crates.io:
 | ------------------------- | --------------------------------------------------------------------- |
 | **Import Rust crates**    | Auto-transpile on first use via `rust2mg`                            |
 | **Publish to both**       | `forge publish --also-crates-io` generates `.rs` wrapper              |
-| **Dependency resolution** | Unified resolver handles Rust + MechGen deps                            |
-| **Version mapping**       | MechGen `u http.Client` resolves to crates.io `reqwest` via alias table |
+| **Dependency resolution** | Unified resolver handles Rust + MAGE deps                            |
+| **Version mapping**       | MAGE `u http.Client` resolves to crates.io `reqwest` via alias table |
 | **FFI bridge**            | Rust crates used as-is through FFI binding generation (P45)           |
 
 ### 1.5 MLIR Artifact Caching
@@ -85,7 +85,7 @@ Forge stores pre-lowered MLIR artifacts to accelerate builds:
 ```
 Artifact Cache Structure:
   module-name/1.3.0/
-    ├── mechgen-dialect.mlir         # MechGen dialect (highest level)
+    ├── mage-dialect.mlir         # MAGE dialect (highest level)
     ├── linalg-dialect.mlir        # After Linalg lowering
     ├── affine-dialect.mlir        # After Affine lowering
     ├── llvm-dialect.mlir          # After LLVM lowering
@@ -102,9 +102,9 @@ SKB rule changes.
 
 ## 2. Migration Tooling
 
-### 2.1 `rust2mg` — Rust-to-MechGen Transpiler
+### 2.1 `rust2mg` — Rust-to-MAGE Transpiler
 
-Automated source-level translation from Rust to MechGen.
+Automated source-level translation from Rust to MAGE.
 
 #### 2.1.1 Translation Pipeline
 
@@ -114,14 +114,14 @@ Rust source (.rs)
     ├─ (1) Parse with rustc → HIR
     ├─ (2) Extract ownership/lifetime info from borrow checker
     ├─ (3) Generate SKB rules from explicit annotations
-    ├─ (4) Syntax transform: Rust → MechGen canonical syntax
-    ├─ (5) Verify: parse output with MechGen parser
+    ├─ (4) Syntax transform: Rust → MAGE canonical syntax
+    ├─ (5) Verify: parse output with MAGE parser
     └─ (6) Emit .mg files + module definition
 ```
 
 #### 2.1.2 Translation Rules
 
-| Rust Construct            | MechGen Output                   | Confidence |
+| Rust Construct            | MAGE Output                   | Confidence |
 | ------------------------- | :----------------------------- | :--------: |
 | `pub fn name(...)`        | `+f name(...)`                 |    100%    |
 | `fn name(...)`            | `f name(...)`                  |    100%    |
@@ -161,7 +161,7 @@ Arguments:
 
 Options:
   --output, -o       Output directory (default: ./mg/)
-  --verify           Parse output with MechGen parser (default: on)
+  --verify           Parse output with MAGE parser (default: on)
   --preserve-unsafe  Keep unsafe blocks as @unsafe annotations
   --generate-skb     Emit SKB rules from lifetime annotations
   --diff             Show side-by-side diff instead of writing files
@@ -170,11 +170,11 @@ Options:
   --stats            Print token count comparison
 ```
 
-### 2.2 `mg2rs` — MechGen-to-Rust Back-Transpiler
+### 2.2 `mg2rs` — MAGE-to-Rust Back-Transpiler
 
-For interoperability, MechGen code can be transpiled back to Rust:
+For interoperability, MAGE code can be transpiled back to Rust:
 
-| MechGen Construct        | Rust Output               | Notes                     |
+| MAGE Construct        | Rust Output               | Notes                     |
 | ---------------------- | :------------------------ | ------------------------- |
 | `+f name(...)`         | `pub fn name(...)`        | Direct                    |
 | `v x = ...`            | `let x = ...`             | Direct                    |
@@ -190,7 +190,7 @@ For interoperability, MechGen code can be transpiled back to Rust:
 ```
 Phase 1: Analyze
   $ rust2mg --stats my_crate/
-  → Report: 5,000 LOC Rust → ~2,350 LOC MechGen (53% reduction)
+  → Report: 5,000 LOC Rust → ~2,350 LOC MAGE (53% reduction)
   → 142 lifetime annotations → 0
   → 23 unsafe blocks → 0 (12 become capabilities, 11 become SKB rules)
 
@@ -201,13 +201,13 @@ Phase 2: Translate
   → 100% parse validation passed
 
 Phase 3: Verify
-  $ mechgen check my_crate_mg/
+  $ mage check my_crate_mg/
   → All specs satisfied
   → SKB coverage: 98.2%
   → 3 items need manual review (complex unsafe patterns)
 
 Phase 4: Test
-  $ mechgen test my_crate_mg/
+  $ mage test my_crate_mg/
   → 234/234 tests pass (transpiled from Rust test suite)
 ```
 
@@ -215,7 +215,7 @@ Phase 4: Test
 
 ## 3. IDE & Editor Integration
 
-### 3.1 RAP (MechGen Agent Protocol) — Language Server
+### 3.1 RAP (MAGE Agent Protocol) — Language Server
 
 The RAP server provides IDE features over JSON-RPC (see prototype/src/rap.rs):
 
@@ -240,10 +240,10 @@ The RAP server provides IDE features over JSON-RPC (see prototype/src/rap.rs):
 ### 3.2 VS Code Extension
 
 ```
-mechgen-vscode/
+mage-vscode/
 ├── package.json              # Extension manifest
 ├── syntaxes/
-│   └── mechgen.tmLanguage.json # TextMate grammar for syntax highlighting
+│   └── mage.tmLanguage.json # TextMate grammar for syntax highlighting
 ├── language-configuration.json
 ├── src/
 │   ├── extension.ts          # Extension entry point
@@ -253,7 +253,7 @@ mechgen-vscode/
 │   ├── skb-explorer.ts       # SKB rule browser
 │   └── swarm-panel.ts        # Swarm orchestration dashboard
 └── media/
-    └── icons/                # MechGen-themed icons
+    └── icons/                # MAGE-themed icons
 ```
 
 #### Key features:
@@ -262,7 +262,7 @@ mechgen-vscode/
 - **Effect gutter icons**: Color-coded indicators for function effect sets.
 - **SKB rule hover**: Hover over any construct to see which SKB rules apply.
 - **Swarm dashboard**: Live view of agent activity when running multi-agent builds.
-- **One-click migration**: Right-click `.rs` file → "Convert to MechGen".
+- **One-click migration**: Right-click `.rs` file → "Convert to MAGE".
 
 ### 3.3 Other Editor Support
 
@@ -277,25 +277,25 @@ mechgen-vscode/
 
 ### 3.4 Syntax Highlighting
 
-TextMate grammar scopes for MechGen:
+TextMate grammar scopes for MAGE:
 
 | Scope                        | Constructs                                        |
 | ---------------------------- | ------------------------------------------------- |
-| `keyword.declaration.mechgen`  | `f`, `m`, `v`, `c`, `S`, `E`, `T`, `I`, `M`, `u`  |
-| `keyword.control.mechgen`      | `loop`, `break`, `continue`, `ret`, `yield`       |
-| `keyword.operator.mechgen`     | `?` (if/match), `@` (for/attr/struct), `:` (else) |
-| `keyword.other.mechgen`        | `effect`, `handle`, `spec`, `type`, `static`      |
-| `entity.name.function.mechgen` | Function names after `f`/`+f`/`~f`                |
-| `entity.name.type.mechgen`     | Type names after `S`/`E`/`T`                      |
-| `storage.modifier.mechgen`     | `+` (pub), `~` (crate), `-` (private)             |
-| `string.quoted.double.mechgen` | `"..."`                                           |
-| `string.interpolated.mechgen`  | `f"...{expr}..."`                                 |
-| `string.print.mechgen`         | `p"...{expr}..."`                                 |
-| `comment.line.mechgen`         | `// ...`                                          |
-| `comment.block.mechgen`        | `/* ... */`                                       |
-| `variable.parameter.mechgen`   | Function parameter names                          |
-| `support.type.mechgen`         | `s`, `i32`, `f64`, `u8`, `bool`                   |
-| `punctuation.sigil.mechgen`    | `^`, `$`, `@`, `?`, `~`, `&!`                     |
+| `keyword.declaration.mage`  | `f`, `m`, `v`, `c`, `S`, `E`, `T`, `I`, `M`, `u`  |
+| `keyword.control.mage`      | `loop`, `break`, `continue`, `ret`, `yield`       |
+| `keyword.operator.mage`     | `?` (if/match), `@` (for/attr/struct), `:` (else) |
+| `keyword.other.mage`        | `effect`, `handle`, `spec`, `type`, `static`      |
+| `entity.name.function.mage` | Function names after `f`/`+f`/`~f`                |
+| `entity.name.type.mage`     | Type names after `S`/`E`/`T`                      |
+| `storage.modifier.mage`     | `+` (pub), `~` (crate), `-` (private)             |
+| `string.quoted.double.mage` | `"..."`                                           |
+| `string.interpolated.mage`  | `f"...{expr}..."`                                 |
+| `string.print.mage`         | `p"...{expr}..."`                                 |
+| `comment.line.mage`         | `// ...`                                          |
+| `comment.block.mage`        | `/* ... */`                                       |
+| `variable.parameter.mage`   | Function parameter names                          |
+| `support.type.mage`         | `s`, `i32`, `f64`, `u8`, `bool`                   |
+| `punctuation.sigil.mage`    | `^`, `$`, `@`, `?`, `~`, `&!`                     |
 
 ---
 
@@ -303,11 +303,11 @@ TextMate grammar scopes for MechGen:
 
 ### 4.1 Training Data Format
 
-MechGen defines a standard format for AI agent training data:
+MAGE defines a standard format for AI agent training data:
 
 ```json
 {
-  "format": "mechgen-training-v1",
+  "format": "mage-training-v1",
   "samples": [
     {
       "id": "sample-001",
@@ -337,11 +337,11 @@ MechGen defines a standard format for AI agent training data:
 
 ### 4.2 Agent Instruction Format
 
-Standard prompts for AI agents working with MechGen:
+Standard prompts for AI agents working with MAGE:
 
 ```yaml
-# .mechgen/agent-instructions.yaml
-language: mechgen
+# .mage/agent-instructions.yaml
+language: mage
 edition: "2025"
 
 syntax_rules:
@@ -377,7 +377,7 @@ style:
 
 ### 4.3 Benchmark Corpus
 
-A standardized set of 100 programming tasks for evaluating MechGen agent performance:
+A standardized set of 100 programming tasks for evaluating MAGE agent performance:
 
 | Category                |  Tasks  | Token Range | Complexity |
 | ----------------------- | :-----: | :---------: | :--------: |
@@ -395,7 +395,7 @@ A standardized set of 100 programming tasks for evaluating MechGen agent perform
 
 Each task includes:
 - Natural language description
-- Expected MechGen solution (reference)
+- Expected MAGE solution (reference)
 - Equivalent Rust solution (baseline)
 - Token count for both
 - Expected effects and SKB rules
@@ -409,7 +409,7 @@ Each task includes:
 | **Token Efficiency**        | Agent tokens / reference tokens         |  < 1.1  |
 | **Effect Correctness**      | % of correctly declared effects         |  > 99%  |
 | **Spec Compliance**         | % of generated code satisfying specs    |  > 98%  |
-| **Migration Accuracy**      | % of Rust→MechGen translations that parse |  > 99%  |
+| **Migration Accuracy**      | % of Rust→MAGE translations that parse |  > 99%  |
 | **Iteration Count**         | Average roundtrips to correct code      |  < 1.5  |
 | **Cost/Task**               | API tokens consumed per benchmark task  | < $0.05 |
 
@@ -479,7 +479,7 @@ std
 │   ├── Command
 │   ├── exit
 │   └── signal
-├── agent           # Agent primitives (MechGen-unique)
+├── agent           # Agent primitives (MAGE-unique)
 │   ├── Agent       # Agent trait
 │   ├── Swarm       # Swarm orchestration
 │   ├── Message     # Inter-agent message
@@ -519,7 +519,7 @@ std
 
 ### 5.3 Naming Conventions
 
-| Rust                        | MechGen          | Rationale                  |
+| Rust                        | MAGE          | Rationale                  |
 | --------------------------- | -------------- | -------------------------- |
 | `std::collections::HashMap` | `std.col.Map`  | Shorter path, simpler name |
 | `std::sync::Arc`            | `@T` (sigil)   | Built into type syntax     |
@@ -572,8 +572,8 @@ lease-timeout = "5m"              # Default lease timeout
 mg <COMMAND>
 
 Commands:
-  new <name>          Create a new MechGen project
-  init                Initialize MechGen in existing directory
+  new <name>          Create a new MAGE project
+  init                Initialize MAGE in existing directory
   build               Compile the project
   check               Type-check without codegen
   test                Run tests
@@ -607,7 +607,7 @@ Forge uses a SAT-based dependency resolver (like Cargo) with extensions:
 
 | Feature                    | Description                                       |
 | -------------------------- | ------------------------------------------------- |
-| **Dual-source resolution** | Resolve MechGen modules and Rust crates together    |
+| **Dual-source resolution** | Resolve MAGE modules and Rust crates together    |
 | **MLIR artifact matching** | Prefer cached MLIR artifacts over source builds   |
 | **Effect compatibility**   | Reject dependencies with incompatible effect sets |
 | **SKB rule merging**       | Merge package-level SKB rules into project SKB    |
@@ -623,11 +623,11 @@ Forge uses a SAT-based dependency resolver (like Cargo) with extensions:
 | ------------------- | ----------------------- | --------------------- | ---------------- |
 | **Quick Start**     | 10-min tutorial         | Interactive web       | New users        |
 | **Book**            | Comprehensive guide     | mdBook site           | All users        |
-| **Reference**       | Formal language spec    | MECHGEN_SPEC.md         | Language lawyers |
+| **Reference**       | Formal language spec    | MAGE_SPEC.md         | Language lawyers |
 | **API Docs**        | Standard library docs   | Generated from source | Developers       |
 | **Cookbook**        | Recipe-style examples   | Searchable web        | Practitioners    |
 | **Agent Guide**     | Agent-specific patterns | Structured prompts    | AI agents        |
-| **Migration Guide** | Rust → MechGen            | Step-by-step          | Rust developers  |
+| **Migration Guide** | Rust → MAGE            | Step-by-step          | Rust developers  |
 | **Internals**       | Compiler architecture   | Technical docs        | Contributors     |
 
 ### 7.2 Auto-Generated Documentation
@@ -676,7 +676,7 @@ Sorts a vector in place using an adaptive merge sort.
 | **Core Team**        | Language design, compiler development |
 | **SKB Curators**     | Safety Knowledge Base rule curation   |
 | **Forge Moderators** | Package registry quality control      |
-| **RFC Authors**      | Design proposals (MechGen RFC process)  |
+| **RFC Authors**      | Design proposals (MAGE RFC process)  |
 | **ACI Trainers**     | AI Coding Intelligence model training |
 
 ### 8.2 Contribution Workflow

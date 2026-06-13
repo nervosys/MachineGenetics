@@ -1,7 +1,7 @@
 # Architecture — Agentic Binary Language (ABL) & tool-mediated construction
 
 This document describes the **ABL paradigm** as built and verified in the
-MechGen prototype: an LLM agent constructs verified, deterministic, no-exec
+MAGE prototype: an LLM agent constructs verified, deterministic, no-exec
 binary AI artifacts by emitting **typed structured specs** instead of source
 text. It is the leverage the text-token floor denies the language track (see
 [IDEAL_AGENTIC_LANGUAGE.md](IDEAL_AGENTIC_LANGUAGE.md) for that analysis).
@@ -15,7 +15,7 @@ text. It is the leverage the text-token floor denies the language track (see
 
 ## 1. What ABL is
 
-**Agentic Binary Language (ABL)** is MechGen's binary IR target — the artifact an
+**Agentic Binary Language (ABL)** is MAGE's binary IR target — the artifact an
 agent emits, ships, loads, and introspects. It is **not** text source; it is a
 deterministic binary container that:
 
@@ -25,7 +25,7 @@ deterministic binary container that:
 
 Under the hood ABL is produced/consumed via the vendored
 **RecursiveMachineIntelligence (`rmi`)** crate's codec (`rmi::lang::codec`); RMI
-keeps its own identity as the framework, ABL is the IR's name at the MechGen layer.
+keeps its own identity as the framework, ABL is the IR's name at the MAGE layer.
 
 ### Container format (`prototype/src/abl.rs`)
 
@@ -44,7 +44,7 @@ id→name table; both are bounds-checked and never execute. Extension: **`.abl`*
 
 ## 2. The tool-mediated loop
 
-A closed, no-exec loop over the artifact. CLI: `MechGen-parse <mode>`.
+A closed, no-exec loop over the artifact. CLI: `mage-parse <mode>`.
 
 ```
 1. --build=schema                       typed, self-describing interface

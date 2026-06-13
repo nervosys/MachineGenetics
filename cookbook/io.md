@@ -32,7 +32,7 @@ u std.fs
 u std.fs
 
 +f main() / io {
-    fs.write("output.txt", "Hello, MechGen!")?
+    fs.write("output.txt", "Hello, MAGE!")?
 }
 ```
 

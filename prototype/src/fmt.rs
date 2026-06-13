@@ -1,8 +1,8 @@
-/// MechGen Formatter (mechgenfmt) — bidirectional pretty-printer.
+/// MAGE Formatter (magefmt) — bidirectional pretty-printer.
 ///
 /// Two modes:
-///   `agent`   — emit minimal-token MechGen canonical form (sigils: f, +f, S, v, m …)
-///   `human`   — emit human-readable MechGen form (def, exp def, rec, val, var …)
+///   `agent`   — emit minimal-token MAGE canonical form (sigils: f, +f, S, v, m …)
+///   `human`   — emit human-readable MAGE form (def, exp def, rec, val, var …)
 ///
 /// Both modes round-trip losslessly through the AST: the semantic content is
 /// identical; only the surface syntax differs.
@@ -10,7 +10,7 @@ use crate::ast::*;
 
 // ── Public API ───────────────────────────────────────────────────────
 
-/// Format a module in agent (minimal-token) MechGen syntax.
+/// Format a module in agent (minimal-token) MAGE syntax.
 pub fn format_agent(module: &Module) -> String {
     let mut buf = String::new();
     for (i, item) in module.items.iter().enumerate() {
@@ -22,7 +22,7 @@ pub fn format_agent(module: &Module) -> String {
     buf
 }
 
-/// Format a module in human (human-readable MechGen) syntax.
+/// Format a module in human (human-readable MAGE) syntax.
 pub fn format_human(module: &Module) -> String {
     let mut buf = String::new();
     for (i, item) in module.items.iter().enumerate() {
@@ -1678,7 +1678,7 @@ mod tests {
     fn compact_use() {
         let m = parse_source("u std.io;");
         let out = format_agent(&m);
-        // MechGen path separator is `.` (no `::` token) — output must round-trip.
+        // MAGE path separator is `.` (no `::` token) — output must round-trip.
         assert!(out.contains("u std.io;"), "got: {out}");
     }
 

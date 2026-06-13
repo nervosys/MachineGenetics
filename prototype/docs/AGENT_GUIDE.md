@@ -1,12 +1,12 @@
-# MechGen Agent Guide
+# MAGE Agent Guide
 
-> How to build, deploy, and manage agents in the MechGen ecosystem.
+> How to build, deploy, and manage agents in the MAGE ecosystem.
 
 ---
 
 ## 1. What is an Agentic Compiler?
 
-In MechGen, the compiler is designed to be operated by AI agents — not just human
+In MAGE, the compiler is designed to be operated by AI agents — not just human
 developers. Every language construct is:
 
 - **Queryable** — agents can inspect types, contracts, effects, and costs.
@@ -21,7 +21,7 @@ developers. Every language construct is:
 
 ### 2.1 Swarm Model
 
-MechGen supports multi-agent compilation through a swarm model:
+MAGE supports multi-agent compilation through a swarm model:
 
 ```
 ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
@@ -75,7 +75,7 @@ bus.subscribe("channel.name", |msg| {
 
 ### 3.2 Event Channels
 
-Standard channels in the MechGen compiler:
+Standard channels in the MAGE compiler:
 
 | Channel             | Purpose                            |
 | ------------------- | ---------------------------------- |
@@ -90,7 +90,7 @@ Standard channels in the MechGen compiler:
 ### 3.3 Consensus
 
 For decisions requiring agreement across agents (e.g., optimisation strategy),
-MechGen provides a consensus module:
+MAGE provides a consensus module:
 
 ```
 let consensus = ConsensusManager.new();

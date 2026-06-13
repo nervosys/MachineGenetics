@@ -1,4 +1,4 @@
-# MechGen Agent-Write Reliability Report
+# MAGE Agent-Write Reliability Report
 
 Backend: **file-oracle**.  Generated from `benchmarks/tasks/*.json` (100 tasks).
 

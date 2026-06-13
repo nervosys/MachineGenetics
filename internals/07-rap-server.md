@@ -1,6 +1,6 @@
 # Chapter 7: RAP Server
 
-RAP (MechGen Agent Protocol) is the language-server component that exposes
+RAP (MAGE Agent Protocol) is the language-server component that exposes
 compiler capabilities to AI agents, IDEs, and external tools over a
 JSON-RPC protocol.
 
@@ -230,7 +230,7 @@ impl RapMethod for TokensMethod {
 
 ## 7.6 VS Code Integration
 
-The `MechGen-vscode` extension connects to the RAP server as an LSP-like
+The `MAGE-vscode` extension connects to the RAP server as an LSP-like
 client:
 
 ```

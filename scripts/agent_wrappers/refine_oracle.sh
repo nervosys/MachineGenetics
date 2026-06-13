@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # refine_oracle.sh — refine-protocol smoke-test wrapper.
 #
-# In propose mode: returns a deliberately broken MechGen source so the
+# In propose mode: returns a deliberately broken MAGE source so the
 # mechanical recovery pipeline (pattern-heal + structural) cannot save
 # it — i.e. the bench is forced to invoke Stage-3 refine.
 #

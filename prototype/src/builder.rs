@@ -132,7 +132,7 @@ impl ItemSpec {
             ItemSpec::Swarm(s) => validate_swarm(s),
         }
     }
-    /// Render this item as canonical MechGen source.
+    /// Render this item as canonical MAGE source.
     pub fn source(&self) -> String {
         match self {
             ItemSpec::Net(n) => to_mg_source(n),
@@ -255,7 +255,7 @@ pub fn build_schema() -> serde_json::Value {
         })
         .collect();
     serde_json::json!({
-        "schema": "mechgen.abl.net-spec",
+        "schema": "mage.abl.net-spec",
         "version": 1,
         "spec_format": {
             "net": "string, non-empty — the net's name",
@@ -374,7 +374,7 @@ pub fn validate(spec: &NetSpec) -> Vec<BuildError> {
             errs.push(BuildError::new(
                 "B0003",
                 format!("layer `{name}` (#{i}): unknown op `{op}`"),
-                "use a known op (see `MechGen-parse --build=schema` for the catalog)",
+                "use a known op (see `mage-parse --build=schema` for the catalog)",
             ));
             continue;
         };
@@ -416,7 +416,7 @@ pub fn validate(spec: &NetSpec) -> Vec<BuildError> {
     errs
 }
 
-/// Render the validated spec as canonical MechGen `net` source. (Internal — the
+/// Render the validated spec as canonical MAGE `net` source. (Internal — the
 /// agent never writes or sees this; it's the bridge to the existing, tested
 /// lexer→parser→Agentic Binary Language pipeline. Deterministic: fixed field order.)
 pub fn to_mg_source(spec: &NetSpec) -> String {
@@ -540,7 +540,7 @@ pub fn validate_kb(spec: &KbSpec) -> Vec<BuildError> {
     errs
 }
 
-/// Render a validated kb spec as canonical MechGen `kb` source. Internal bridge
+/// Render a validated kb spec as canonical MAGE `kb` source. Internal bridge
 /// to the tested lexer→parser→Agentic Binary Language pipeline. Deterministic.
 ///
 /// The rule body does not affect the lowered artifact (only the param count is
@@ -629,7 +629,7 @@ pub fn validate_swarm(spec: &SwarmSpec) -> Vec<BuildError> {
     errs
 }
 
-/// Render an agent spec as canonical MechGen source.
+/// Render an agent spec as canonical MAGE source.
 pub fn to_mg_source_agent(spec: &AgentSpec) -> String {
     let mut s = format!("agent {} {{\n", spec.agent);
     if !spec.capabilities.is_empty() {
@@ -643,7 +643,7 @@ pub fn to_mg_source_agent(spec: &AgentSpec) -> String {
     s
 }
 
-/// Render a swarm spec as canonical MechGen source.
+/// Render a swarm spec as canonical MAGE source.
 pub fn to_mg_source_swarm(spec: &SwarmSpec) -> String {
     let mut s = format!("swarm {} {{\n    agent: {};\n", spec.swarm, spec.agent);
     if let Some(n) = spec.size {
@@ -821,7 +821,7 @@ pub fn repair_swarm(spec: &mut SwarmSpec) -> Vec<String> {
     fixes
 }
 
-/// Render a validated unified spec as one MechGen module (each item's canonical
+/// Render a validated unified spec as one MAGE module (each item's canonical
 /// source, concatenated). Assumes [`validate_unified`] passed; unclassifiable
 /// items are skipped.
 pub fn to_mg_source_unified(spec: &UnifiedSpec) -> String {

@@ -1,6 +1,6 @@
 // Phase-9 vision pipeline: real Conv2D + pooling + activation chain.
 //
-// Run: MechGen-parse --target=abl-compute prototype/examples/vision.mg
+// Run: mage-parse --target=abl-compute prototype/examples/vision.mg
 //
 // Input is shaped [1, 8, 8] (CpuBackend default) — though the example
 // expects a real CV input it still demonstrates the full op chain.

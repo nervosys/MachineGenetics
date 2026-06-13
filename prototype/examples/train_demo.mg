@@ -1,7 +1,7 @@
 // Phase-11 training demo — defines an MLP, supplies the dataset inline,
 // and trains for N epochs.
 //
-// Run: MechGen-parse --target=abl-train prototype/examples/train_demo.mg
+// Run: mage-parse --target=abl-train prototype/examples/train_demo.mg
 
 net Regressor {
     layer fc1: Linear(2, 4);

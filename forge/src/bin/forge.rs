@@ -1,4 +1,4 @@
-//! `forge` — the MechGen project toolchain CLI (build/run driver).
+//! `forge` — the MAGE project toolchain CLI (build/run driver).
 //!
 //! Agentic-first: `forge manifest` is a token-compact, effect-classed command
 //! index (read it first); `forge describe <cmd>` expands one entry; and every
@@ -13,7 +13,7 @@
 //!   forge run [fn] [--json]   execute the entry function
 //!   forge info [--json]       print the resolved manifest
 //!
-//! Set `FORGE_MG` to the `MechGen-parse` binary if it is not auto-located.
+//! Set `FORGE_MG` to the `mage-parse` binary if it is not auto-located.
 
 use forge::{manifest, project};
 use std::path::Path;
@@ -97,6 +97,6 @@ fn valid_commands() -> String {
 fn print_help() {
     print!("{}", manifest::manifest());
     println!("\nFlags: --json (machine-readable output on any command).");
-    println!("The compiler is `MechGen-parse`, auto-located under prototype/target/release");
+    println!("The compiler is `mage-parse`, auto-located under prototype/target/release");
     println!("or taken from the FORGE_MG environment variable.");
 }

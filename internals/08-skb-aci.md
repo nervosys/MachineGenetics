@@ -120,7 +120,7 @@ pub fn check_rules(hir: &HirModule, rules: &[Rule]) -> Vec<RuleMatch> {
 ## 8.2 How SKB Replaces Borrow-Checker Syntax
 
 In Rust, the programmer must annotate lifetimes, borrow modes, and
-ownership transfers explicitly. In MechGen, the SKB engine applies these
+ownership transfers explicitly. In MAGE, the SKB engine applies these
 same rules silently:
 
 | Rust Syntax                         | SKB Rule                                              |
@@ -164,7 +164,7 @@ template.
 
 ### Auto-Fix Workflow
 
-1. Agent writes MechGen code (no safety annotations)
+1. Agent writes MAGE code (no safety annotations)
 2. Compiler runs SKB matcher on the HIR
 3. SKB engine returns violations with `fix_template`
 4. Agent applies the fix template automatically

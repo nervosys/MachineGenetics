@@ -1,6 +1,6 @@
 //! Agent-facing self-description of the `forge` toolchain.
 //!
-//! Same progressive-disclosure pattern the MechGen-parse CLI, RecursiveMachine-
+//! Same progressive-disclosure pattern the mage-parse CLI, RecursiveMachine-
 //! Intelligence, and agentic-eval ship: a token-compact root index
 //! (`forge manifest`) plus on-demand expansion (`forge describe <command>`),
 //! and a fully machine-readable form (`forge manifest --json`). An agent driving
@@ -55,7 +55,7 @@ pub const COMMANDS: &[ForgeCommand] = &[
     ForgeCommand {
         name: "check",
         args: "[--json]",
-        summary: "parse + typecheck the entry point via MechGen-parse",
+        summary: "parse + typecheck the entry point via mage-parse",
         effect: "read_local",
         detail: "Discovers Forge.toml (walking up), runs the compiler front-end on the\n\
                  entry. Exit 0 = clean; the compiler diagnostic is surfaced on failure.\n\
@@ -74,7 +74,7 @@ pub const COMMANDS: &[ForgeCommand] = &[
         args: "[fn] [--json]",
         summary: "execute the entry function (default: the manifest's `main`)",
         effect: "read_local",
-        detail: "Evaluates `fn` via MechGen-parse --eval and prints the result. The\n\
+        detail: "Evaluates `fn` via mage-parse --eval and prints the result. The\n\
                  evaluator is a pure tree-walker (no I/O). With --json:\n\
                  {command, project, fn, ok, result?, error?}.",
     },
@@ -83,7 +83,7 @@ pub const COMMANDS: &[ForgeCommand] = &[
         args: "[--human] [--json]",
         summary: "format the entry to the agent (default) or human surface, in place",
         effect: "write_local",
-        detail: "Rewrites the entry file via MechGen-parse's deterministic formatter:\n\
+        detail: "Rewrites the entry file via mage-parse's deterministic formatter:\n\
                  the agent surface (+f, v/m, sigils) by default, or the human surface\n\
                  (pub fn, val/var) with --human. Byte-stable: fmt(fmt(x)) == fmt(x).\n\
                  With --json: {command, project, entry, surface, ok, error?}.",
@@ -124,7 +124,7 @@ pub fn manifest() -> String {
     let mut s = String::with_capacity(1024);
     s.push_str("forge v");
     s.push_str(env!("CARGO_PKG_VERSION"));
-    s.push_str(" — MechGen project toolchain, NERVOSYS. drives the MechGen-parse compiler. ");
+    s.push_str(" — MAGE project toolchain, NERVOSYS. drives the mage-parse compiler. ");
     s.push_str("commands (name [args] — summary {effect}):\n");
     for c in COMMANDS {
         s.push_str("  ");

@@ -1,10 +1,10 @@
-/// MechGen Type Checker — bidirectional type checking with HM-style unification.
+/// MAGE Type Checker — bidirectional type checking with HM-style unification.
 ///
 /// Implements the type judgment:  Γ; Σ; Δ ⊢ e : τ ⊣ ε
 ///
 /// - Γ = type environment (name → Ty)
 /// - Constraint generation: walk the AST, emit τ₁ ≡ τ₂ constraints
-/// - Unification: Robinson's algorithm extended for MechGen types
+/// - Unification: Robinson's algorithm extended for MAGE types
 /// - Substitution: apply solved constraints to resolve all type variables
 use crate::ast;
 use crate::hir;
@@ -503,7 +503,7 @@ impl TypeChecker {
                 let variants: Vec<String> = ed.variants.iter().map(|v| v.name.clone()).collect();
                 self.enum_defs.insert(ed.name.clone(), variants);
             }
-            // `data X = A | B` (sum type) is the idiomatic MechGen enum.
+            // `data X = A | B` (sum type) is the idiomatic MAGE enum.
             ast::ItemKind::Data(dd) => {
                 if let ast::DataKind::Sum(variants) = &dd.kind {
                     let names: Vec<String> = variants.iter().map(|v| v.name.clone()).collect();
@@ -861,7 +861,7 @@ impl TypeChecker {
     }
 
     /// Resolve unsuffixed integer-literal type vars that context never pinned
-    /// to a concrete width, binding them to i32 (the MechGen integer default).
+    /// to a concrete width, binding them to i32 (the MAGE integer default).
     /// Constrained ones are already bound by unification and are left alone.
     fn default_int_literals(&mut self) {
         let pending = std::mem::take(&mut self.int_lit_vars);

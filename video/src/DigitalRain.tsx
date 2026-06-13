@@ -1,7 +1,7 @@
 import React from "react";
 import { useCurrentFrame, useVideoConfig, random } from "remotion";
 
-// ── MechGen Agent-mode sigils only ──────────────────────────
+// ── MAGE Agent-mode sigils only ──────────────────────────
 // The compressed single/multi-char tokens that agents emit.
 const AGENT_TOKENS = [
   "f", "+", "v", "m", "c", "S", "E", "T", "I", "M", "u", "Y", "Z",
@@ -142,7 +142,7 @@ export const DigitalRain: React.FC = () => {
   const rows = Math.ceil(height / cellH) + 2;
 
   const columns = React.useMemo(
-    () => buildColumns(width, cellW, cellH, rows, "mechgen"),
+    () => buildColumns(width, cellW, cellH, rows, "mage"),
     [width, cellW, cellH, rows],
   );
 
@@ -212,7 +212,7 @@ export const DigitalRain: React.FC = () => {
           textTransform: "uppercase",
         }}
       >
-        MECHGEN · AGENTIC RAIN
+        MAGE · AGENTIC RAIN
       </div>
     </div>
   );

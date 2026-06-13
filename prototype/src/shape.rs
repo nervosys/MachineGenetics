@@ -1,4 +1,4 @@
-/// MechGen Shape Inference — tensor dimension algebra.
+/// MAGE Shape Inference — tensor dimension algebra.
 ///
 /// Implements shape checking and inference for tensor operations:
 ///   - Broadcasting: element-wise ops between tensors of compatible shape

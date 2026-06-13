@@ -1,31 +1,31 @@
-# Step 1: Install MechGen
+# Step 1: Install MAGE
 
 ## Option A: Pre-Built Binary (Recommended)
 
 ### Linux / macOS
 
 ```bash
-curl -sSf https://MechGen-lang.org/install.sh | sh
+curl -sSf https://MAGE-lang.org/install.sh | sh
 ```
 
 This installs:
-- `mg` — the MechGen CLI (compiler, runner, formatter, linter)
+- `mg` — the MAGE CLI (compiler, runner, formatter, linter)
 - `mg-rap` — the language server for editor integration
 
 ### Windows
 
 ```powershell
-irm https://MechGen-lang.org/install.ps1 | iex
+irm https://MAGE-lang.org/install.ps1 | iex
 ```
 
 Or download the `.msi` installer from the
-[releases page](https://github.com/nervosys/MechGen/releases).
+[releases page](https://github.com/nervosys/MAGE/releases).
 
 ## Option B: Build from Source
 
 ```bash
-git clone https://github.com/nervosys/MechGen.git
-cd MechGen
+git clone https://github.com/nervosys/MAGE.git
+cd MAGE
 cargo build --release -p mg
 ```
 
@@ -43,9 +43,9 @@ mg help
 # USAGE: mg <COMMAND>
 #
 # Commands:
-#   new       Create a new MechGen project
-#   build     Compile a MechGen project
-#   run       Build and run a MechGen program
+#   new       Create a new MAGE project
+#   build     Compile a MAGE project
+#   run       Build and run a MAGE program
 #   check     Type-check without building
 #   test      Run tests
 #   fmt       Format source code
@@ -55,7 +55,7 @@ mg help
 #   rap       Start the RAP language server
 #   skb       Manage Safety Knowledge Base rules
 #   repl      Interactive REPL
-#   eval      Evaluate a MechGen expression
+#   eval      Evaluate a MAGE expression
 ```
 
 ## Editor Setup (Optional)
@@ -64,8 +64,8 @@ mg help
 
 1. Open VS Code
 2. Go to Extensions (Ctrl+Shift+X)
-3. Search for "MechGen"
-4. Install the **MechGen Language** extension
+3. Search for "MAGE"
+4. Install the **MAGE Language** extension
 
 This gives you:
 - Syntax highlighting for `.mg` files
@@ -75,13 +75,13 @@ This gives you:
 ### Other Editors
 
 Any editor that supports TextMate grammars can use the grammar file in
-`MechGen-vscode/syntaxes/MechGen.tmLanguage.json`.
+`MAGE-vscode/syntaxes/MAGE.tmLanguage.json`.
 
 For Vim/Neovim, use the RAP server directly:
 
 ```vim
 " In your LSP config
-lua require('lspconfig').mechgen_rap.setup{}
+lua require('lspconfig').mage_rap.setup{}
 ```
 
 ---

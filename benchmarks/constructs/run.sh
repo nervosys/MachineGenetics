@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Are MechGen's HIGH-LEVEL constructs (the §8 vocabulary) significantly more
+# Are MAGE's HIGH-LEVEL constructs (the §8 vocabulary) significantly more
 # token-efficient than the explicit low-level equivalent that computes the SAME
 # result? Each pair is verified: both forms --check, and both --eval to the same
 # value (so the token comparison is fair). Token counts are real cl100k BPE,
@@ -7,7 +7,7 @@
 # the recorded measurement; reproduce with the command at the end).
 set -u
 cd "$(dirname "$0")"
-MG="${MG:-../../prototype/target/release/MechGen-parse.exe}"
+MG="${MG:-../../prototype/target/release/mage-parse.exe}"
 [ -x "$MG" ] || MG="${MG}.exe"
 
 # pair  driver-call(input)               expected   high-level construct
@@ -48,30 +48,30 @@ echo "concentrated where a vocabulary op subsumes control-flow boilerplate."
 echo
 echo
 echo "=== Neural-net architectures — declarative \`net\` DSL vs PyTorch nn.Module ==="
-echo "Expressing the SAME architecture (standard layer stack). MechGen declares the"
+echo "Expressing the SAME architecture (standard layer stack). MAGE declares the"
 echo "layers; PyTorch must also spell out the imperative forward (residuals, the"
 echo "attention call, norm(x+a)). Token counts real cl100k BPE; ABL bytes measured live."
-printf "%-13s %8s %8s  %6s   %s\n" "architecture" "MechGen" "PyTorch" "−tok" "MechGen text → ABL binary"
+printf "%-13s %8s %8s  %6s   %s\n" "architecture" "MAGE" "PyTorch" "−tok" "MAGE text → ABL binary"
 echo "---------------------------------------------------------------------------"
-# Recorded real cl100k BPE (tokens_of): mechgen pytorch
+# Recorded real cl100k BPE (tokens_of): mage pytorch
 declare -A NHL=( [mlp]=50 [transformer]=73 ); declare -A NLL=( [mlp]=78 [transformer]=142 )
 for n in mlp transformer; do
-  "$MG" "${n}_mechgen.mg" >/dev/null 2>&1 && chk="✓" || chk="check-FAIL"
-  "$MG" --target=abl-bytes "${n}_mechgen.mg" /tmp/_n.abl >/dev/null 2>&1
-  tb=$(wc -c <"${n}_mechgen.mg"); ab=$(wc -c </tmp/_n.abl 2>/dev/null)
+  "$MG" "${n}_mage.mg" >/dev/null 2>&1 && chk="✓" || chk="check-FAIL"
+  "$MG" --target=abl-bytes "${n}_mage.mg" /tmp/_n.abl >/dev/null 2>&1
+  tb=$(wc -c <"${n}_mage.mg"); ab=$(wc -c </tmp/_n.abl 2>/dev/null)
   h=${NHL[$n]}; l=${NLL[$n]}; red=$(( ((l-h)*100 + l/2)/l )); abr=$(( ((tb-ab)*100 + tb/2)/tb ))
   printf "%-13s %8s %8s  %5s%%   %4dB → %3dB (−%d%%)  %s\n" "$n" "$h" "$l" "$red" "$tb" "$ab" "$abr" "$chk"
 done
 echo "---------------------------------------------------------------------------"
 echo "The saving GROWS with architecture complexity (MLP 36% → Transformer 49%):"
-echo "the more forward-wiring the DSL subsumes, the bigger the win. MechGen then lowers"
+echo "the more forward-wiring the DSL subsumes, the bigger the win. MAGE then lowers"
 echo "the declaration to a byte-level binary IR — a further 34-42% under its own text."
 echo "(Honest: this measures tokens to EXPRESS the architecture; the DSL leaves the"
 echo " forward graph implicit, where PyTorch makes it explicit — that gap IS the saving.)"
 rm -f /tmp/_n.abl 2>/dev/null
 echo
 echo "Reproduce token counts (real cl100k BPE), from this directory:"
-echo "  cargo run -q -p agentic-eval --example tokens_of --features real-tokens -- *_hl.mg *_ll.mg *_mechgen.mg *_pytorch.py"
+echo "  cargo run -q -p agentic-eval --example tokens_of --features real-tokens -- *_hl.mg *_ll.mg *_mage.mg *_pytorch.py"
 echo "  (run in nervosys/cli/AetherShell, passing absolute paths to these files)"
 rm -f /tmp/_h.mg /tmp/_l.mg 2>/dev/null
 

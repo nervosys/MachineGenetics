@@ -1,6 +1,6 @@
-//! # MechGen Standard Library
+//! # MAGE Standard Library
 //!
-//! The `std` module is the root of the MechGen standard library.
+//! The `std` module is the root of the MAGE standard library.
 //! All standard types, traits, and functions are accessible through
 //! double-colon-separated paths: `std::io`, `std::col::Map`, `std::agent::Swarm`, etc.
 //!
@@ -66,7 +66,7 @@ pub mod spec;
 /// Testing framework: #[test], assert, benchmark
 pub mod test;
 
-// ---- MechGen AI Modules ----
+// ---- MAGE AI Modules ----
 
 /// Neural networks: net definitions, layers, activations, training
 pub mod neural;

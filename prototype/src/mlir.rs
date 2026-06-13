@@ -1,6 +1,6 @@
-/// MLIR dialect output for the MechGen compiler.
+/// MLIR dialect output for the MAGE compiler.
 ///
-/// Generates textual MLIR in the `MechGen` dialect from a type-checked,
+/// Generates textual MLIR in the `MAGE` dialect from a type-checked,
 /// effect-annotated AST.  This is the final stage of the prototype
 /// pipeline:  Lex → Parse → Resolve → TypeCheck → EffectInfer → MLIR.
 use crate::ast;
@@ -18,8 +18,8 @@ pub fn emit(module: &ast::Module, effects: &EffectInfer) -> String {
     };
 
     ctx.line("// ──────────────────────────────────────────────────────────────");
-    ctx.line("// Auto-generated MechGen MLIR  ·  dialect: MechGen");
-    ctx.line("// https://github.com/nervosys/MechGen");
+    ctx.line("// Auto-generated MAGE MLIR  ·  dialect: MAGE");
+    ctx.line("// https://github.com/nervosys/MAGE");
     ctx.line("// ──────────────────────────────────────────────────────────────");
     ctx.line("");
     ctx.line("module {");
@@ -74,7 +74,7 @@ impl<'a> EmitCtx<'a> {
             }
             ast::ItemKind::Const(c) => {
                 let ty = self.mlir_type(&c.ty);
-                self.line(&format!("MechGen.const @{} : {ty}", c.name));
+                self.line(&format!("MAGE.const @{} : {ty}", c.name));
             }
             ast::ItemKind::Module(m) => {
                 self.line(&format!("// module {}", m.name));
@@ -86,7 +86,7 @@ impl<'a> EmitCtx<'a> {
             ast::ItemKind::Spec(sp) => self.emit_spec(sp),
             ast::ItemKind::Static(sd) => {
                 let ty = self.mlir_type(&sd.ty);
-                self.line(&format!("MechGen.static @{} : {ty}", sd.name));
+                self.line(&format!("MAGE.static @{} : {ty}", sd.name));
             }
             ast::ItemKind::Agent(ad) => self.emit_agent(ad),
             ast::ItemKind::Net(n) => self.emit_net(n),
@@ -128,7 +128,7 @@ impl<'a> EmitCtx<'a> {
             .return_type
             .as_ref()
             .map(|t| self.mlir_type(t))
-            .unwrap_or_else(|| "!MechGen.unit".into());
+            .unwrap_or_else(|| "!MAGE.unit".into());
 
         // Effect set attribute.
         let fx = self.effects.get(name).cloned().unwrap_or_default();
@@ -140,7 +140,7 @@ impl<'a> EmitCtx<'a> {
         };
 
         self.line(&format!(
-            "MechGen.func {vis_prefix}@{name}({}) -> {ret_ty}{fx_attr} {{",
+            "MAGE.func {vis_prefix}@{name}({}) -> {ret_ty}{fx_attr} {{",
             params.join(", ")
         ));
 
@@ -157,7 +157,7 @@ impl<'a> EmitCtx<'a> {
                 ast::ContractClauseKind::Invariant => "invariant",
             };
             self.line(&format!(
-                "MechGen.contract.{kind} \"{}\"",
+                "MAGE.contract.{kind} \"{}\"",
                 contract.condition
             ));
         }
@@ -167,7 +167,7 @@ impl<'a> EmitCtx<'a> {
             for e in fx.iter() {
                 let label = e.to_string();
                 if label.starts_with("perf:") {
-                    self.line(&format!("MechGen.perf \"{}\"", &label[5..]));
+                    self.line(&format!("MAGE.perf \"{}\"", &label[5..]));
                 }
             }
         }
@@ -175,7 +175,7 @@ impl<'a> EmitCtx<'a> {
         self.emit_block(&f.body);
 
         let ret_val = self.fresh();
-        self.line(&format!("MechGen.return {ret_val} : {ret_ty}"));
+        self.line(&format!("MAGE.return {ret_val} : {ret_ty}"));
 
         self.indent -= 1;
         self.indent -= 1;
@@ -184,11 +184,11 @@ impl<'a> EmitCtx<'a> {
     }
 
     fn emit_struct(&mut self, s: &ast::StructDef) {
-        self.line(&format!("MechGen.struct @{} {{", s.name));
+        self.line(&format!("MAGE.struct @{} {{", s.name));
         self.indent += 1;
         for field in &s.fields {
             let ty = self.mlir_type(&field.ty);
-            self.line(&format!("MechGen.field \"{}\" : {ty}", field.name));
+            self.line(&format!("MAGE.field \"{}\" : {ty}", field.name));
         }
         for c in &s.contracts {
             let kind = match c.kind {
@@ -196,7 +196,7 @@ impl<'a> EmitCtx<'a> {
                 ast::ContractClauseKind::Requires => "requires",
                 ast::ContractClauseKind::Ensures => "ensures",
             };
-            self.line(&format!("MechGen.contract.{kind} \"{}\"", c.condition));
+            self.line(&format!("MAGE.contract.{kind} \"{}\"", c.condition));
         }
         self.indent -= 1;
         self.line("}");
@@ -204,17 +204,17 @@ impl<'a> EmitCtx<'a> {
     }
 
     fn emit_enum(&mut self, e: &ast::EnumDef) {
-        self.line(&format!("MechGen.enum @{} {{", e.name));
+        self.line(&format!("MAGE.enum @{} {{", e.name));
         self.indent += 1;
         for variant in &e.variants {
             match &variant.kind {
                 ast::VariantKind::Unit => {
-                    self.line(&format!("MechGen.variant \"{}\"", variant.name));
+                    self.line(&format!("MAGE.variant \"{}\"", variant.name));
                 }
                 ast::VariantKind::Tuple(types) => {
                     let tys: Vec<String> = types.iter().map(|t| self.mlir_type(t)).collect();
                     self.line(&format!(
-                        "MechGen.variant \"{}\"({})",
+                        "MAGE.variant \"{}\"({})",
                         variant.name,
                         tys.join(", ")
                     ));
@@ -228,7 +228,7 @@ impl<'a> EmitCtx<'a> {
                         })
                         .collect();
                     self.line(&format!(
-                        "MechGen.variant \"{}\" {{ {} }}",
+                        "MAGE.variant \"{}\" {{ {} }}",
                         variant.name,
                         fs.join(", ")
                     ));
@@ -246,7 +246,7 @@ impl<'a> EmitCtx<'a> {
         } else {
             format!(" : {}", t.super_traits.join(" + "))
         };
-        self.line(&format!("MechGen.trait @{}{supers} {{", t.name));
+        self.line(&format!("MAGE.trait @{}{supers} {{", t.name));
         self.indent += 1;
         for item in &t.items {
             if let ast::ItemKind::Function(f) = &item.kind {
@@ -254,10 +254,10 @@ impl<'a> EmitCtx<'a> {
                     .return_type
                     .as_ref()
                     .map(|t| self.mlir_type(t))
-                    .unwrap_or_else(|| "!MechGen.unit".into());
+                    .unwrap_or_else(|| "!MAGE.unit".into());
                 let params: Vec<String> = f.params.iter().map(|p| self.mlir_type(&p.ty)).collect();
                 self.line(&format!(
-                    "MechGen.method_decl \"{}\"({}) -> {ret}",
+                    "MAGE.method_decl \"{}\"({}) -> {ret}",
                     f.name,
                     params.join(", ")
                 ));
@@ -274,7 +274,7 @@ impl<'a> EmitCtx<'a> {
             Some(path) => format!(" : @{}", path.join(".")),
             None => " (inherent)".into(),
         };
-        self.line(&format!("MechGen.impl {target}{trait_part} {{"));
+        self.line(&format!("MAGE.impl {target}{trait_part} {{"));
         self.indent += 1;
         for item in &i.items {
             if let ast::ItemKind::Function(f) = &item.kind {
@@ -287,17 +287,17 @@ impl<'a> EmitCtx<'a> {
     }
 
     fn emit_effect_decl(&mut self, ef: &ast::EffectDef) {
-        self.line(&format!("MechGen.effect @{} {{", ef.name));
+        self.line(&format!("MAGE.effect @{} {{", ef.name));
         self.indent += 1;
         for op in &ef.operations {
             let ret = op
                 .return_type
                 .as_ref()
                 .map(|t| self.mlir_type(t))
-                .unwrap_or_else(|| "!MechGen.unit".into());
+                .unwrap_or_else(|| "!MAGE.unit".into());
             let params: Vec<String> = op.params.iter().map(|p| self.mlir_type(&p.ty)).collect();
             self.line(&format!(
-                "MechGen.op \"{}\"({}) -> {ret}",
+                "MAGE.op \"{}\"({}) -> {ret}",
                 op.name,
                 params.join(", ")
             ));
@@ -308,25 +308,25 @@ impl<'a> EmitCtx<'a> {
     }
 
     fn emit_spec(&mut self, sp: &ast::SpecDef) {
-        self.line(&format!("MechGen.spec @{} {{", sp.name));
+        self.line(&format!("MAGE.spec @{} {{", sp.name));
         self.indent += 1;
         for item in &sp.items {
             match item {
                 ast::SpecItem::Require(cond) => {
-                    self.line(&format!("MechGen.contract.requires \"{cond}\""));
+                    self.line(&format!("MAGE.contract.requires \"{cond}\""));
                 }
                 ast::SpecItem::Ensure(cond) => {
-                    self.line(&format!("MechGen.contract.ensures \"{cond}\""));
+                    self.line(&format!("MAGE.contract.ensures \"{cond}\""));
                 }
                 ast::SpecItem::Invariant(cond) => {
-                    self.line(&format!("MechGen.contract.invariant \"{cond}\""));
+                    self.line(&format!("MAGE.contract.invariant \"{cond}\""));
                 }
                 ast::SpecItem::Performance(metric, bound) => {
-                    self.line(&format!("MechGen.perf \"{metric}\" bound=\"{bound}\""));
+                    self.line(&format!("MAGE.perf \"{metric}\" bound=\"{bound}\""));
                 }
                 ast::SpecItem::Effect(effects) => {
                     let fx: Vec<String> = effects.iter().map(|e| format!("\"{e}\"")).collect();
-                    self.line(&format!("MechGen.effect.set [{}]", fx.join(", ")));
+                    self.line(&format!("MAGE.effect.set [{}]", fx.join(", ")));
                 }
             }
         }
@@ -336,13 +336,13 @@ impl<'a> EmitCtx<'a> {
     }
 
     fn emit_agent(&mut self, ad: &ast::AgentDef) {
-        self.line(&format!("MechGen.agent @{} {{", ad.name));
+        self.line(&format!("MAGE.agent @{} {{", ad.name));
         self.indent += 1;
         for cap in &ad.capabilities {
-            self.line(&format!("MechGen.capability \"{cap}\""));
+            self.line(&format!("MAGE.capability \"{cap}\""));
         }
         for approval in &ad.requires_approval {
-            self.line(&format!("MechGen.requires_approval \"{approval}\""));
+            self.line(&format!("MAGE.requires_approval \"{approval}\""));
         }
         self.indent -= 1;
         self.line("}");
@@ -350,13 +350,13 @@ impl<'a> EmitCtx<'a> {
     }
 
     fn emit_net(&mut self, n: &ast::NetDef) {
-        self.line(&format!("MechGen.neural.net @{} {{", n.name));
+        self.line(&format!("MAGE.neural.net @{} {{", n.name));
         self.indent += 1;
         for layer in &n.layers {
             let ty = self.mlir_type(&layer.layer_type);
-            self.line(&format!("MechGen.neural.layer @{} : {ty}", layer.name));
+            self.line(&format!("MAGE.neural.layer @{} : {ty}", layer.name));
         }
-        self.line("MechGen.neural.forward {");
+        self.line("MAGE.neural.forward {");
         self.indent += 1;
         self.emit_block(&n.forward);
         self.indent -= 1;
@@ -367,13 +367,13 @@ impl<'a> EmitCtx<'a> {
     }
 
     fn emit_kb(&mut self, k: &ast::KbDef) {
-        self.line(&format!("MechGen.kb @{} {{", k.name));
+        self.line(&format!("MAGE.kb @{} {{", k.name));
         self.indent += 1;
         for f in &k.facts {
-            self.line(&format!("MechGen.kb.fact @{}", f.name));
+            self.line(&format!("MAGE.kb.fact @{}", f.name));
         }
         for r in &k.rules {
-            self.line(&format!("MechGen.kb.rule @{}", r.name));
+            self.line(&format!("MAGE.kb.rule @{}", r.name));
         }
         self.indent -= 1;
         self.line("}");
@@ -382,9 +382,9 @@ impl<'a> EmitCtx<'a> {
 
     fn emit_evolve(&mut self, e: &ast::EvolveDef) {
         let gty = self.mlir_type(&e.genome_type);
-        self.line(&format!("MechGen.evolve @{} : {gty} {{", e.name));
+        self.line(&format!("MAGE.evolve @{} : {gty} {{", e.name));
         self.indent += 1;
-        self.line("MechGen.evolve.fitness {");
+        self.line("MAGE.evolve.fitness {");
         self.indent += 1;
         self.emit_block(&e.fitness);
         self.indent -= 1;
@@ -395,9 +395,9 @@ impl<'a> EmitCtx<'a> {
     }
 
     fn emit_train(&mut self, t: &ast::TrainDef) {
-        self.line(&format!("MechGen.train @{} {{", t.name));
+        self.line(&format!("MAGE.train @{} {{", t.name));
         self.indent += 1;
-        self.line(&format!("MechGen.train.net @{}", t.net));
+        self.line(&format!("MAGE.train.net @{}", t.net));
         self.emit_block(&t.body);
         self.indent -= 1;
         self.line("}");
@@ -405,33 +405,33 @@ impl<'a> EmitCtx<'a> {
     }
 
     fn emit_swarm(&mut self, s: &ast::SwarmDef) {
-        self.line(&format!("MechGen.swarm @{} {{", s.name));
+        self.line(&format!("MAGE.swarm @{} {{", s.name));
         self.indent += 1;
         if !s.agent_type.is_empty() {
-            self.line(&format!("MechGen.swarm.agent @{}", s.agent_type));
+            self.line(&format!("MAGE.swarm.agent @{}", s.agent_type));
         }
         if let Some(ref topo) = s.topology {
-            self.line(&format!("MechGen.swarm.topology \"{topo}\""));
+            self.line(&format!("MAGE.swarm.topology \"{topo}\""));
         }
         if let Some(ref cons) = s.consensus {
-            self.line(&format!("MechGen.swarm.consensus \"{cons}\""));
+            self.line(&format!("MAGE.swarm.consensus \"{cons}\""));
         }
         if let Some(ref dispatch) = s.on_dispatch {
-            self.line("MechGen.swarm.dispatch {");
+            self.line("MAGE.swarm.dispatch {");
             self.indent += 1;
             self.emit_block(dispatch);
             self.indent -= 1;
             self.line("}");
         }
         if let Some(ref aggregate) = s.on_aggregate {
-            self.line("MechGen.swarm.aggregate {");
+            self.line("MAGE.swarm.aggregate {");
             self.indent += 1;
             self.emit_block(aggregate);
             self.indent -= 1;
             self.line("}");
         }
         if let Some(ref on_failure) = s.on_failure {
-            self.line("MechGen.swarm.on_failure {");
+            self.line("MAGE.swarm.on_failure {");
             self.indent += 1;
             self.emit_block(on_failure);
             self.indent -= 1;
@@ -450,25 +450,25 @@ impl<'a> EmitCtx<'a> {
             ast::Expr::Unary { op, .. } if op == "*" => {
                 let v = self.fresh();
                 let out = self.fresh();
-                self.line(&format!("{out} = MechGen.ownership.deref {v}"));
+                self.line(&format!("{out} = MAGE.ownership.deref {v}"));
                 out
             }
             ast::Expr::Unary { op, .. } if op == "&" => {
                 let v = self.fresh();
                 let out = self.fresh();
-                self.line(&format!("{out} = MechGen.ownership.borrow {v}"));
+                self.line(&format!("{out} = MAGE.ownership.borrow {v}"));
                 out
             }
             ast::Expr::Unary { op, .. } if op == "&mut" => {
                 let v = self.fresh();
                 let out = self.fresh();
-                self.line(&format!("{out} = MechGen.ownership.borrow_mut {v}"));
+                self.line(&format!("{out} = MAGE.ownership.borrow_mut {v}"));
                 out
             }
             _ => {
                 // For non-ownership expressions, emit a move (default ownership transfer).
                 let v = self.fresh();
-                format!("MechGen.ownership.move {v}")
+                format!("MAGE.ownership.move {v}")
             }
         }
     }
@@ -498,12 +498,12 @@ impl<'a> EmitCtx<'a> {
                 let mlir_ty = ty
                     .as_ref()
                     .map(|t| self.mlir_type(t))
-                    .unwrap_or_else(|| "!MechGen.inferred".into());
+                    .unwrap_or_else(|| "!MAGE.inferred".into());
                 let pat_name = self.pattern_name(pattern);
                 let mut_key = if *mutable { "var" } else { "let" };
                 let val_str = self.expr_summary(&value);
                 self.line(&format!(
-                    "{ssa} = MechGen.{mut_key} \"{pat_name}\" : {mlir_ty} = {val_str}"
+                    "{ssa} = MAGE.{mut_key} \"{pat_name}\" : {mlir_ty} = {val_str}"
                 ));
             }
             ast::Stmt::Expr { expr } => {
@@ -517,12 +517,12 @@ impl<'a> EmitCtx<'a> {
             ast::Stmt::Guard { cond, .. } => {
                 let ssa = self.fresh();
                 let c = self.expr_summary(cond);
-                self.line(&format!("{ssa} = MechGen.guard {c} else {{ ... }}"));
+                self.line(&format!("{ssa} = MAGE.guard {c} else {{ ... }}"));
             }
             ast::Stmt::Defer { expr } => {
                 let ssa = self.fresh();
                 let v = self.expr_summary(expr);
-                self.line(&format!("{ssa} = MechGen.defer {v}"));
+                self.line(&format!("{ssa} = MAGE.defer {v}"));
             }
         }
     }
@@ -548,26 +548,26 @@ impl<'a> EmitCtx<'a> {
                     ast::LiteralKind::Int => "i64",
                     ast::LiteralKind::Float => "f64",
                     ast::LiteralKind::Bool => "i1",
-                    ast::LiteralKind::String => "!MechGen.str",
-                    ast::LiteralKind::FormatString => "!MechGen.fstr",
-                    ast::LiteralKind::Char => "!MechGen.char",
+                    ast::LiteralKind::String => "!MAGE.str",
+                    ast::LiteralKind::FormatString => "!MAGE.fstr",
+                    ast::LiteralKind::Char => "!MAGE.char",
                     ast::LiteralKind::Byte => "i8",
                 };
-                format!("MechGen.const \"{value}\" : {ty}")
+                format!("MAGE.const \"{value}\" : {ty}")
             }
-            ast::Expr::Ident { name } => format!("MechGen.ref @{name}"),
+            ast::Expr::Ident { name } => format!("MAGE.ref @{name}"),
             ast::Expr::Binary { op, .. } => {
                 let l = self.fresh();
                 let r = self.fresh();
-                format!("MechGen.binop \"{op}\" {l}, {r}")
+                format!("MAGE.binop \"{op}\" {l}, {r}")
             }
             ast::Expr::Unary { op, .. } => {
                 let v = self.fresh();
-                format!("MechGen.unaryop \"{op}\" {v}")
+                format!("MAGE.unaryop \"{op}\" {v}")
             }
             ast::Expr::Call { func, args } => {
                 let f = self.expr_summary(func);
-                format!("MechGen.call {f}({} args)", args.len())
+                format!("MAGE.call {f}({} args)", args.len())
             }
             ast::Expr::MethodCall {
                 receiver: _,
@@ -576,96 +576,96 @@ impl<'a> EmitCtx<'a> {
                 ..
             } => {
                 let obj = self.fresh();
-                format!("MechGen.method {obj}.{method}({} args)", args.len())
+                format!("MAGE.method {obj}.{method}({} args)", args.len())
             }
             ast::Expr::FieldAccess { object: _, field } => {
                 let obj = self.fresh();
-                format!("MechGen.field {obj}.{field}")
+                format!("MAGE.field {obj}.{field}")
             }
             ast::Expr::Index { .. } => {
                 let obj = self.fresh();
                 let idx = self.fresh();
-                format!("MechGen.index {obj}[{idx}]")
+                format!("MAGE.index {obj}[{idx}]")
             }
             ast::Expr::StructLit { path, fields } => {
                 let name = path.join(".");
-                format!("MechGen.struct_lit @{name}({} fields)", fields.len())
+                format!("MAGE.struct_lit @{name}({} fields)", fields.len())
             }
             ast::Expr::TupleLit { elements } => {
-                format!("MechGen.tuple({} elems)", elements.len())
+                format!("MAGE.tuple({} elems)", elements.len())
             }
             ast::Expr::ArrayLit { elements } => {
-                format!("MechGen.array({} elems)", elements.len())
+                format!("MAGE.array({} elems)", elements.len())
             }
             ast::Expr::MapLit { entries } => {
-                format!("MechGen.map({} entries)", entries.len())
+                format!("MAGE.map({} entries)", entries.len())
             }
             ast::Expr::ArrayRepeat { .. } => {
-                format!("MechGen.array_repeat")
+                format!("MAGE.array_repeat")
             }
             ast::Expr::Closure { params, .. } => {
-                format!("MechGen.closure({} params)", params.len())
+                format!("MAGE.closure({} params)", params.len())
             }
             ast::Expr::If { .. } => {
                 let cond = self.fresh();
-                format!("MechGen.if {cond} then(...) else(...)")
+                format!("MAGE.if {cond} then(...) else(...)")
             }
             ast::Expr::Match { arms, .. } => {
-                format!("MechGen.match({} arms)", arms.len())
+                format!("MAGE.match({} arms)", arms.len())
             }
-            ast::Expr::Loop { .. } => format!("MechGen.loop {{ ... }}"),
-            ast::Expr::While { .. } => format!("MechGen.while {{ ... }}"),
-            ast::Expr::For { .. } => format!("MechGen.for {{ ... }}"),
+            ast::Expr::Loop { .. } => format!("MAGE.loop {{ ... }}"),
+            ast::Expr::While { .. } => format!("MAGE.while {{ ... }}"),
+            ast::Expr::For { .. } => format!("MAGE.for {{ ... }}"),
             ast::Expr::Block { block } => {
-                format!("MechGen.block({} stmts)", block.stmts.len())
+                format!("MAGE.block({} stmts)", block.stmts.len())
             }
             ast::Expr::Return { value } => {
                 if value.is_some() {
                     let v = self.fresh();
-                    format!("MechGen.return {v}")
+                    format!("MAGE.return {v}")
                 } else {
-                    format!("MechGen.return void")
+                    format!("MAGE.return void")
                 }
             }
-            ast::Expr::Break { .. } => format!("MechGen.break"),
-            ast::Expr::Continue => format!("MechGen.continue"),
+            ast::Expr::Break { .. } => format!("MAGE.break"),
+            ast::Expr::Continue => format!("MAGE.continue"),
             ast::Expr::Try { .. } => {
                 let v = self.fresh();
-                format!("MechGen.try {v}")
+                format!("MAGE.try {v}")
             }
             ast::Expr::Await { .. } => {
                 let v = self.fresh();
-                format!("MechGen.await {v}")
+                format!("MAGE.await {v}")
             }
             ast::Expr::Cast { expr: _, ty } => {
                 let v = self.fresh();
                 let target = self.mlir_type(ty);
-                format!("MechGen.cast {v} -> {target}")
+                format!("MAGE.cast {v} -> {target}")
             }
             ast::Expr::Assign { .. } => {
                 let t = self.fresh();
                 let v = self.fresh();
-                format!("MechGen.assign {t} = {v}")
+                format!("MAGE.assign {t} = {v}")
             }
             ast::Expr::Range { inclusive, .. } => {
                 let lo = self.fresh();
                 let hi = self.fresh();
-                format!("MechGen.range {lo}..{hi} (inclusive={inclusive})")
+                format!("MAGE.range {lo}..{hi} (inclusive={inclusive})")
             }
-            ast::Expr::Todo => format!("MechGen.todo"),
-            ast::Expr::Unimplemented => format!("MechGen.unimplemented"),
+            ast::Expr::Todo => format!("MAGE.todo"),
+            ast::Expr::Unimplemented => format!("MAGE.unimplemented"),
             ast::Expr::UnsafeBlock { block } => {
-                format!("MechGen.unsafe({} stmts)", block.stmts.len())
+                format!("MAGE.unsafe({} stmts)", block.stmts.len())
             }
-            ast::Expr::Error { message } => format!("MechGen.error \"{message}\""),
+            ast::Expr::Error { message } => format!("MAGE.error \"{message}\""),
             ast::Expr::Pipeline { .. } => {
                 let l = self.fresh();
                 let r = self.fresh();
-                format!("MechGen.pipeline {l} |> {r}")
+                format!("MAGE.pipeline {l} |> {r}")
             }
             ast::Expr::Is { .. } => {
                 let v = self.fresh();
-                format!("MechGen.is {v} pattern")
+                format!("MAGE.is {v} pattern")
             }
         }
     }
@@ -685,74 +685,74 @@ impl<'a> EmitCtx<'a> {
                     "i32" => "i32".into(),
                     "i64" => "i64".into(),
                     "i128" => "i128".into(),
-                    "u8" => "!MechGen.u8".into(),
-                    "u16" => "!MechGen.u16".into(),
-                    "u32" => "!MechGen.u32".into(),
-                    "u64" => "!MechGen.u64".into(),
-                    "u128" => "!MechGen.u128".into(),
+                    "u8" => "!MAGE.u8".into(),
+                    "u16" => "!MAGE.u16".into(),
+                    "u32" => "!MAGE.u32".into(),
+                    "u64" => "!MAGE.u64".into(),
+                    "u128" => "!MAGE.u128".into(),
                     "f32" => "f32".into(),
                     "f64" => "f64".into(),
                     "bool" => "i1".into(),
-                    "s" | "str" => "!MechGen.str".into(),
-                    "char" => "!MechGen.char".into(),
-                    other => format!("!MechGen.named<\"{other}\">"),
+                    "s" | "str" => "!MAGE.str".into(),
+                    "char" => "!MAGE.char".into(),
+                    other => format!("!MAGE.named<\"{other}\">"),
                 };
                 if type_args.is_empty() {
                     base
                 } else {
                     let args: Vec<String> = type_args.iter().map(|t| self.mlir_type(t)).collect();
-                    format!("!MechGen.generic<\"{name}\", {}>", args.join(", "))
+                    format!("!MAGE.generic<\"{name}\", {}>", args.join(", "))
                 }
             }
             ast::Type::Reference { mutable, inner } => {
                 let inner_ty = self.mlir_type(inner);
                 if *mutable {
-                    format!("!MechGen.ref_mut<{inner_ty}>")
+                    format!("!MAGE.ref_mut<{inner_ty}>")
                 } else {
-                    format!("!MechGen.ref<{inner_ty}>")
+                    format!("!MAGE.ref<{inner_ty}>")
                 }
             }
             ast::Type::OwnedPtr { inner } => {
-                format!("!MechGen.owned<{}>", self.mlir_type(inner))
+                format!("!MAGE.owned<{}>", self.mlir_type(inner))
             }
             ast::Type::Rc { inner } => {
-                format!("!MechGen.rc<{}>", self.mlir_type(inner))
+                format!("!MAGE.rc<{}>", self.mlir_type(inner))
             }
             ast::Type::Arc { inner } => {
-                format!("!MechGen.arc<{}>", self.mlir_type(inner))
+                format!("!MAGE.arc<{}>", self.mlir_type(inner))
             }
             ast::Type::Slice { inner } => {
-                format!("!MechGen.slice<{}>", self.mlir_type(inner))
+                format!("!MAGE.slice<{}>", self.mlir_type(inner))
             }
             ast::Type::Array { inner, .. } => {
-                format!("!MechGen.array<{}>", self.mlir_type(inner))
+                format!("!MAGE.array<{}>", self.mlir_type(inner))
             }
             ast::Type::Vec { inner } => {
-                format!("!MechGen.vec<{}>", self.mlir_type(inner))
+                format!("!MAGE.vec<{}>", self.mlir_type(inner))
             }
             ast::Type::Tuple { elements } => {
                 let parts: Vec<String> = elements.iter().map(|t| self.mlir_type(t)).collect();
-                format!("!MechGen.tuple<{}>", parts.join(", "))
+                format!("!MAGE.tuple<{}>", parts.join(", "))
             }
             ast::Type::Option { inner } => {
-                format!("!MechGen.option<{}>", self.mlir_type(inner))
+                format!("!MAGE.option<{}>", self.mlir_type(inner))
             }
             ast::Type::Result { ok, err } => {
                 format!(
-                    "!MechGen.result<{}, {}>",
+                    "!MAGE.result<{}, {}>",
                     self.mlir_type(ok),
                     self.mlir_type(err)
                 )
             }
             ast::Type::Map { key, value } => {
                 format!(
-                    "!MechGen.map<{}, {}>",
+                    "!MAGE.map<{}, {}>",
                     self.mlir_type(key),
                     self.mlir_type(value)
                 )
             }
             ast::Type::Ptr { inner } => {
-                format!("!MechGen.raw_ptr<{}>", self.mlir_type(inner))
+                format!("!MAGE.raw_ptr<{}>", self.mlir_type(inner))
             }
             ast::Type::Simd { inner, width } => {
                 format!("vector<{width}x{}>", self.mlir_type(inner))
@@ -762,30 +762,30 @@ impl<'a> EmitCtx<'a> {
                 let r = ret
                     .as_ref()
                     .map(|t| self.mlir_type(t))
-                    .unwrap_or_else(|| "!MechGen.unit".into());
+                    .unwrap_or_else(|| "!MAGE.unit".into());
                 format!("({}) -> {r}", ps.join(", "))
             }
-            ast::Type::Never => "!MechGen.never".into(),
-            ast::Type::Inferred => "!MechGen.inferred".into(),
-            ast::Type::SelfType => "!MechGen.self".into(),
-            ast::Type::StringType => "!MechGen.str".into(),
+            ast::Type::Never => "!MAGE.never".into(),
+            ast::Type::Inferred => "!MAGE.inferred".into(),
+            ast::Type::SelfType => "!MAGE.self".into(),
+            ast::Type::StringType => "!MAGE.str".into(),
             ast::Type::Cow { inner } => {
-                format!("!MechGen.cow<{}>", self.mlir_type(inner))
+                format!("!MAGE.cow<{}>", self.mlir_type(inner))
             }
             ast::Type::Cell { inner } => {
-                format!("!MechGen.cell<{}>", self.mlir_type(inner))
+                format!("!MAGE.cell<{}>", self.mlir_type(inner))
             }
             ast::Type::RefCell { inner } => {
-                format!("!MechGen.refcell<{}>", self.mlir_type(inner))
+                format!("!MAGE.refcell<{}>", self.mlir_type(inner))
             }
             ast::Type::Mutex { inner } => {
-                format!("!MechGen.mutex<{}>", self.mlir_type(inner))
+                format!("!MAGE.mutex<{}>", self.mlir_type(inner))
             }
             ast::Type::RwLock { inner } => {
-                format!("!MechGen.rwlock<{}>", self.mlir_type(inner))
+                format!("!MAGE.rwlock<{}>", self.mlir_type(inner))
             }
             ast::Type::Set { inner } => {
-                format!("!MechGen.set<{}>", self.mlir_type(inner))
+                format!("!MAGE.set<{}>", self.mlir_type(inner))
             }
             ast::Type::Refined { base, .. } => {
                 // Refinement types lower to their base type in MLIR
@@ -800,7 +800,7 @@ impl<'a> EmitCtx<'a> {
                     })
                     .collect();
                 format!(
-                    "!MechGen.tensor<{}x{}>",
+                    "!MAGE.tensor<{}x{}>",
                     dims.join("x"),
                     self.mlir_type(inner)
                 )
@@ -814,23 +814,23 @@ impl<'a> EmitCtx<'a> {
                     })
                     .collect();
                 format!(
-                    "!MechGen.param<{}x{}>",
+                    "!MAGE.param<{}x{}>",
                     dims.join("x"),
                     self.mlir_type(inner)
                 )
             }
             ast::Type::Genome { inner } => {
-                format!("!MechGen.genome<{}>", self.mlir_type(inner))
+                format!("!MAGE.genome<{}>", self.mlir_type(inner))
             }
             ast::Type::Policy { state, action } => {
                 format!(
-                    "!MechGen.policy<{}, {}>",
+                    "!MAGE.policy<{}, {}>",
                     self.mlir_type(state),
                     self.mlir_type(action)
                 )
             }
-            ast::Type::KnowledgeBase => "!MechGen.kb".into(),
-            ast::Type::LlmType => "!MechGen.llm".into(),
+            ast::Type::KnowledgeBase => "!MAGE.kb".into(),
+            ast::Type::LlmType => "!MAGE.llm".into(),
         }
     }
 }
@@ -859,7 +859,7 @@ mod tests {
     #[test]
     fn pure_function() {
         let mlir = emit_source("+f add(a: i32, b: i32) -> i32 { a }");
-        assert!(mlir.contains("MechGen.func pub @add"));
+        assert!(mlir.contains("MAGE.func pub @add"));
         assert!(mlir.contains("i32"));
         // pure function should NOT have effects attribute
         assert!(!mlir.contains("effects = ["));
@@ -868,22 +868,22 @@ mod tests {
     #[test]
     fn struct_emit() {
         let mlir = emit_source("S Point { x: f64, y: f64 }");
-        assert!(mlir.contains("MechGen.struct @Point"));
-        assert!(mlir.contains("MechGen.field \"x\" : f64"));
-        assert!(mlir.contains("MechGen.field \"y\" : f64"));
+        assert!(mlir.contains("MAGE.struct @Point"));
+        assert!(mlir.contains("MAGE.field \"x\" : f64"));
+        assert!(mlir.contains("MAGE.field \"y\" : f64"));
     }
 
     #[test]
     fn enum_emit() {
         let mlir = emit_source("E Color { Red, Green, Blue }");
-        assert!(mlir.contains("MechGen.enum @Color"));
-        assert!(mlir.contains("MechGen.variant \"Red\""));
+        assert!(mlir.contains("MAGE.enum @Color"));
+        assert!(mlir.contains("MAGE.variant \"Red\""));
     }
 
     #[test]
     fn let_binding() {
         let mlir = emit_source("+f foo() { v x: i32 = 42; }");
-        assert!(mlir.contains("MechGen.let \"x\""));
+        assert!(mlir.contains("MAGE.let \"x\""));
         assert!(mlir.contains("i32"));
     }
 
@@ -892,56 +892,56 @@ mod tests {
     #[test]
     fn function_with_contract() {
         let mlir = emit_source("@req(a > 0) @ens(result > 0) +f add(a: i32, b: i32) -> i32 { a }");
-        assert!(mlir.contains("MechGen.contract.requires \"a > 0\""));
-        assert!(mlir.contains("MechGen.contract.ensures \"result > 0\""));
+        assert!(mlir.contains("MAGE.contract.requires \"a > 0\""));
+        assert!(mlir.contains("MAGE.contract.ensures \"result > 0\""));
     }
 
     #[test]
     fn struct_with_invariant() {
         let mlir = emit_source("@inv(_.x >= 0) S Pos { x: f64 }");
         // The struct should contain an invariant contract op
-        assert!(mlir.contains("MechGen.struct @Pos"));
-        assert!(mlir.contains("MechGen.contract.invariant"));
+        assert!(mlir.contains("MAGE.struct @Pos"));
+        assert!(mlir.contains("MAGE.contract.invariant"));
         assert!(mlir.contains("x >= 0"));
     }
 
     #[test]
     fn agent_as_mlir_op() {
         let mlir = emit_source("agent Bot { capabilities: [read_source, net] }");
-        assert!(mlir.contains("MechGen.agent @Bot"));
-        assert!(mlir.contains("MechGen.capability \"read_source\""));
-        assert!(mlir.contains("MechGen.capability \"net\""));
+        assert!(mlir.contains("MAGE.agent @Bot"));
+        assert!(mlir.contains("MAGE.capability \"read_source\""));
+        assert!(mlir.contains("MAGE.capability \"net\""));
     }
 
     #[test]
     fn agent_with_approval() {
         let mlir = emit_source("agent Admin { capabilities: [fs] requires_approval: [exec] }");
-        assert!(mlir.contains("MechGen.agent @Admin"));
-        assert!(mlir.contains("MechGen.capability \"fs\""));
-        assert!(mlir.contains("MechGen.requires_approval \"exec\""));
+        assert!(mlir.contains("MAGE.agent @Admin"));
+        assert!(mlir.contains("MAGE.capability \"fs\""));
+        assert!(mlir.contains("MAGE.requires_approval \"exec\""));
     }
 
     #[test]
     fn spec_as_mlir_op() {
         let mlir = emit_source("spec add_spec { @req(a > 0) @ens(result > a) }");
-        assert!(mlir.contains("MechGen.spec @add_spec"));
-        assert!(mlir.contains("MechGen.contract.requires \"a > 0\""));
-        assert!(mlir.contains("MechGen.contract.ensures \"result > a\""));
+        assert!(mlir.contains("MAGE.spec @add_spec"));
+        assert!(mlir.contains("MAGE.contract.requires \"a > 0\""));
+        assert!(mlir.contains("MAGE.contract.ensures \"result > a\""));
     }
 
     #[test]
     fn effect_decl_as_mlir_op() {
         let mlir = emit_source("effect IO { f read() -> s; f write(data: s); }");
-        assert!(mlir.contains("MechGen.effect @IO"));
-        assert!(mlir.contains("MechGen.op \"read\""));
-        assert!(mlir.contains("MechGen.op \"write\""));
+        assert!(mlir.contains("MAGE.effect @IO"));
+        assert!(mlir.contains("MAGE.op \"read\""));
+        assert!(mlir.contains("MAGE.op \"write\""));
     }
 
     #[test]
     fn ownership_types_in_mlir() {
         let mlir = emit_source("+f foo(a: ^i32, b: $i32, c: #i32) {}");
-        assert!(mlir.contains("!MechGen.owned<i32>"));
-        assert!(mlir.contains("!MechGen.rc<i32>"));
-        assert!(mlir.contains("!MechGen.mutex<i32>"));
+        assert!(mlir.contains("!MAGE.owned<i32>"));
+        assert!(mlir.contains("!MAGE.rc<i32>"));
+        assert!(mlir.contains("!MAGE.mutex<i32>"));
     }
 }

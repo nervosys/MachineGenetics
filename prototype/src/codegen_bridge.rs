@@ -10,7 +10,7 @@
 //   4. Validate each candidate through the full compiler pipeline
 //   5. If validation fails, apply self-healing fixes
 //   6. Rank candidates by (validity, cost score, heal confidence)
-//   7. Return the best validated candidate as MechGen source code
+//   7. Return the best validated candidate as MAGE source code
 //
 // This module is the "glue" that makes NL → code generation reliable:
 // every generated program is compiler-checked before being returned.
@@ -37,9 +37,9 @@ use crate::verify;
 /// A code generation result that has passed through the compiler pipeline.
 #[derive(Debug, Clone)]
 pub struct ValidatedCode {
-    /// The generated MechGen source (human-readable syntax).
+    /// The generated MAGE source (human-readable syntax).
     pub source_human: String,
-    /// The generated MechGen source (agent-compact syntax).
+    /// The generated MAGE source (agent-compact syntax).
     pub source_agent: String,
     /// The AST module.
     pub module: ast::Module,

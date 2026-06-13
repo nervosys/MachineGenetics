@@ -1,6 +1,6 @@
 # Chapter 7: Testing & Quality Migration
 
-Migrate your Rust test suite to MechGen: unit tests, integration tests, effect
+Migrate your Rust test suite to MAGE: unit tests, integration tests, effect
 mocking, benchmarks, and CI pipelines.
 
 ---
@@ -22,7 +22,7 @@ mocking, benchmarks, and CI pipelines.
 -     add(u32::MAX, 1);
 - }
 
-  // MechGen
+  // MAGE
 + @test
 + f test_addition() {
 +     assert_eq!(add(2, 3), 5)
@@ -50,7 +50,7 @@ mocking, benchmarks, and CI pipelines.
 -     }
 - }
 
-  // MechGen
+  // MAGE
 + @cfg(test)
 + M tests {
 +     u super.*
@@ -65,7 +65,7 @@ mocking, benchmarks, and CI pipelines.
 
 ### Assertion Macros
 
-| Rust                      | MechGen                     | Notes     |
+| Rust                      | MAGE                     | Notes     |
 | ------------------------- | ------------------------- | --------- |
 | `assert!(cond)`           | `assert!(cond)`           | Identical |
 | `assert_eq!(a, b)`        | `assert_eq!(a, b)`        | Identical |
@@ -74,7 +74,7 @@ mocking, benchmarks, and CI pipelines.
 | `debug_assert!(cond)`     | `debug_assert!(cond)`     | Identical |
 | `assert_matches!(v, Pat)` | `assert_matches!(v, Pat)` | Identical |
 
-Assertion macros are unchanged — they are part of the MechGen prelude.
+Assertion macros are unchanged — they are part of the MAGE prelude.
 
 ### Result-Returning Tests
 
@@ -87,7 +87,7 @@ Assertion macros are unchanged — they are part of the MechGen prelude.
 -     Ok(())
 - }
 
-  // MechGen
+  // MAGE
 + @test
 + f test_with_result() -> R[(), ^dyn Error] {
 +     v val = parse("42")?
@@ -106,7 +106,7 @@ Assertion macros are unchanged — they are part of the MechGen prelude.
 -     assert!(!result.is_empty());
 - }
 
-  // MechGen — built-in async test support
+  // MAGE — built-in async test support
 + @test
 + af test_fetch() / net {
 +     v result = fetch_data("https://example.com").await.unwrap()
@@ -119,7 +119,7 @@ built-in async runtime automatically.
 
 ## 7.3 Effect Mocking
 
-MechGen's effect system enables test isolation without mock libraries.
+MAGE's effect system enables test isolation without mock libraries.
 
 ### Basic Effect Mocking
 
@@ -144,7 +144,7 @@ MechGen's effect system enables test isolation without mock libraries.
 -     assert_eq!(result, "processed: value");
 - }
 
-  // MechGen — handle block intercepts effects
+  // MAGE — handle block intercepts effects
 + // Production function that uses io effect
 + f read_config(path: &s) -> R[Config, Error] / io {
 +     v text = fs.read_to_string(path)?
@@ -182,7 +182,7 @@ MechGen's effect system enables test isolation without mock libraries.
 -     assert!(result.ok);
 - }
 
-  // MechGen — handle block replaces the HTTP calls
+  // MAGE — handle block replaces the HTTP calls
 + @test
 + af test_api_call() {
 +     v result = handle / net {
@@ -211,7 +211,7 @@ MechGen's effect system enables test isolation without mock libraries.
 -     assert_eq!(result, "HELLO");
 - }
 
-  // MechGen — mock io effects directly
+  // MAGE — mock io effects directly
 + @test
 + f test_file_ops() {
 +     m files = {s: s}.new()
@@ -247,7 +247,7 @@ MechGen's effect system enables test isolation without mock libraries.
 -     assert_eq!(result, expected);
 - }
 
-  // MechGen — tests/ directory
+  // MAGE — tests/ directory
   // tests/integration_test.mg
 + u my_crate.process
 +
@@ -294,7 +294,7 @@ my-project/
 - criterion_group!(benches, bench_sort);
 - criterion_main!(benches);
 
-  // MechGen — built-in benchmarks
+  // MAGE — built-in benchmarks
 + @bench
 + f bench_sort(b: &!Bencher) {
 +     v data_template = generate_data(1000)
@@ -329,7 +329,7 @@ mg bench --compare base # compare to baseline
 -     }
 - }
 
-  // MechGen — built-in property testing
+  // MAGE — built-in property testing
 + u std.test.property
 +
 + @test
@@ -355,7 +355,7 @@ mg bench --compare base # compare to baseline
 - #[cfg(target_os = "linux")]
 - fn linux_only() { /* ... */ }
 
-  // MechGen
+  // MAGE
 + @test
 + @ignore
 + f expensive_test() { /* ... */ }
@@ -382,7 +382,7 @@ mg bench --compare base # compare to baseline
 -     }
 - }
 
-  // MechGen
+  // MAGE
 + @cfg(test)
 + M tests {
 +     f setup() -> TestContext {
@@ -415,8 +415,8 @@ mg bench --compare base # compare to baseline
 -       - run: cargo clippy -- -D warnings
 -       - run: cargo fmt -- --check
 
-  # MechGen CI
-+ name: MechGen CI
+  # MAGE CI
++ name: MAGE CI
 + on: [push, pull_request]
 + jobs:
 +   test:
@@ -443,7 +443,7 @@ jobs:
       - run: cargo test --workspace
       - run: cargo clippy -- -D warnings
 
-  MechGen:
+  MAGE:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -458,7 +458,7 @@ jobs:
 # Rust
 cargo tarpaulin --out Html
 
-# MechGen
+# MAGE
 mg test --coverage
 mg test --coverage --format html --output coverage/
 ```

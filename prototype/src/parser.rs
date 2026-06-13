@@ -1,6 +1,6 @@
-/// MechGen LL(1) Parser — recursive descent, zero backtracking.
+/// MAGE LL(1) Parser — recursive descent, zero backtracking.
 ///
-/// Parses the MechGen canonical syntax into an AST.
+/// Parses the MAGE canonical syntax into an AST.
 /// Every decision point uses a single token of lookahead.
 use crate::ast::*;
 use crate::lexer::{Token, TokenKind};
@@ -2183,7 +2183,7 @@ impl<'a> Parser<'a> {
     // ── Generic Params ──────────────────────────────────────
 
     fn parse_generic_params(&mut self) -> Result<Vec<GenericParam>, ParseError> {
-        // Accept either `[T, ...]` (MechGen native) or `<T, ...>`
+        // Accept either `[T, ...]` (MAGE native) or `<T, ...>`
         // (Rust-style). The corpus mixes both styles.
         let (open, close) = match self.peek() {
             TokenKind::LBrack => (TokenKind::LBrack, TokenKind::RBrack),
@@ -2634,7 +2634,7 @@ impl<'a> Parser<'a> {
                             }
                         }
 
-                        // Accept either `Path[T, ...]` (MechGen) or
+                        // Accept either `Path[T, ...]` (MAGE) or
                         // `Path<T, ...>` (Rust-style) type-arg lists.
                         let (open, close) = match self.peek() {
                             TokenKind::LBrack => (Some(TokenKind::LBrack), TokenKind::RBrack),
@@ -2814,7 +2814,7 @@ impl<'a> Parser<'a> {
         while self.peek() != TokenKind::Eof && !self.at_block_end(layout_col) {
             // Try to parse a statement
             match self.peek() {
-                // `let` was removed from MechGen — bindings use `val`
+                // `let` was removed from MAGE — bindings use `val`
                 // (immutable) or `var` (mutable). Reject with a clear,
                 // actionable diagnostic instead of a cryptic cascade.
                 TokenKind::KwLet => {
@@ -2822,7 +2822,7 @@ impl<'a> Parser<'a> {
                     return Err(ParseError {
                         line: tok.span.line,
                         col: tok.span.col,
-                        message: "`let` is not a MechGen keyword — use `val` for an immutable \
+                        message: "`let` is not a MAGE keyword — use `val` for an immutable \
                                   binding or `var` for a mutable one (e.g. `val x = 1;` / \
                                   `var x = 1;`)"
                             .to_string(),
@@ -4865,7 +4865,7 @@ mod tests {
 
     #[test]
     fn test_let_keyword_is_rejected() {
-        // `let` was removed from MechGen — bindings use `val`/`var`. A stray
+        // `let` was removed from MAGE — bindings use `val`/`var`. A stray
         // `let` must fail with an actionable diagnostic, not parse silently.
         let tokens = lexer::lex("f main() { let x = 0; }");
         let err = parse(&tokens).expect_err("`let` must be rejected");

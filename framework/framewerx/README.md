@@ -1,6 +1,6 @@
 # Framewerx-MG
 
-> **Agent-first neurosymbolic framework, implemented in MechGen, over RMI's binary IR.**
+> **Agent-first neurosymbolic framework, implemented in MAGE, over RMI's binary IR.**
 > Analogous to FLAX (over JAX) — but written for agents, not humans.
 
 ## Architecture
@@ -27,7 +27,7 @@
 
 | Layer | Analogue | Implementation | Purpose |
 |---|---|---|---|
-| **Framewerx-MG** | FLAX | MechGen | Composable modules an agent can declare and discover |
+| **Framewerx-MG** | FLAX | MAGE | Composable modules an agent can declare and discover |
 | **RMI** | JAX | Rust | Tensor primitives, opcodes, autograd, dispatch |
 
 ## Why agents, not humans
@@ -69,7 +69,7 @@ framework/framewerx/
 
 A multilayer perceptron in Framewerx-MG:
 
-```mechgen
+```mage
 u framewerx.{Module, Linear, ReLU, MLP}
 
 net Classifier {
@@ -83,7 +83,7 @@ net Classifier {
 ```
 
 This `net` block:
-1. Parses via MechGen's existing `net`/`layer`/`forward` syntax.
+1. Parses via MAGE's existing `net`/`layer`/`forward` syntax.
 2. Lowers to Agentic Binary Language via `abl_bridge::lower_module` — `Linear` and `ReLU` map to opcodes `0x0002` and `0x0010`.
 3. Encodes as Agentic Binary Language bytes (`abl/encode` RAP method).
 4. Executes on `CpuBackend` (`abl/run` RAP method).

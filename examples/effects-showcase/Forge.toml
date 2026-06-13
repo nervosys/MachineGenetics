@@ -2,6 +2,6 @@
 name = "effects-showcase"
 version = "0.1.0"
 edition = "2025"
-description = "Showcase of the MechGen algebraic effect system."
+description = "Showcase of the MAGE algebraic effect system."
 
 [dependencies]

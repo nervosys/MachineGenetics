@@ -1,8 +1,8 @@
-# .mechgen/agent-instructions.yaml
+# .mage/agent-instructions.yaml
 # Standard instruction file for AI agents working with this project.
-# Place in the project root under .mechgen/ to configure agent behavior.
+# Place in the project root under .mage/ to configure agent behavior.
 
-language: mechgen
+language: mage
 edition: "2025"
 
 # ─── Syntax Rules ────────────────────────────────────────────────────────────

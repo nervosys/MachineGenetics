@@ -1,4 +1,4 @@
-// Comprehensive MechGen example — exercises name resolution, type checking, and effect inference.
+// Comprehensive MAGE example — exercises name resolution, type checking, and effect inference.
 //
 // Demonstrates:
 //   - data records and sums

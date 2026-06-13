@@ -1,7 +1,7 @@
-# MechGen Internals Guide
+# MAGE Internals Guide
 
 Compiler architecture, pipeline design, and implementation details for
-contributors to the MechGen compiler and toolchain.
+contributors to the MAGE compiler and toolchain.
 
 ---
 
@@ -9,8 +9,8 @@ contributors to the MechGen compiler and toolchain.
 
 This guide is for developers who want to:
 
-- Contribute to the MechGen compiler
-- Understand how MechGen source becomes machine code
+- Contribute to the MAGE compiler
+- Understand how MAGE source becomes machine code
 - Extend the compiler with new passes or diagnostics
 - Work on the RAP language server
 - Add SKB rules or effect system features
@@ -18,7 +18,7 @@ This guide is for developers who want to:
 
 ## Prerequisites
 
-- Familiarity with MechGen syntax (see the [Book](../book/README.md))
+- Familiarity with MAGE syntax (see the [Book](../book/README.md))
 - Basic understanding of compiler concepts (parsing, type checking, IR)
 - Rust programming experience (the compiler is written in Rust)
 
@@ -31,7 +31,7 @@ This guide is for developers who want to:
 | 3   | [AST & HIR](03-ast-hir.md)                       | Abstract syntax tree, lowering to HIR, name resolution |
 | 4   | [Type System](04-type-system.md)                 | Inference, sugar desugaring, trait solving, generics   |
 | 5   | [Effects & Resolution](05-effects-resolution.md) | Effect inference, checking, capability validation      |
-| 6   | [MLIR Pipeline](06-mlir-pipeline.md)             | MechGen dialect, lowering passes, LLVM codegen         |
+| 6   | [MLIR Pipeline](06-mlir-pipeline.md)             | MAGE dialect, lowering passes, LLVM codegen         |
 | 7   | [RAP Server](07-rap-server.md)                   | Agent protocol, JSON-RPC, IDE integration, queries     |
 | 8   | [SKB & ACI](08-skb-aci.md)                       | Safety Knowledge Base, Agentic Compiler Intelligence   |
 
@@ -66,7 +66,7 @@ This guide is for developers who want to:
  └───┬────┘
      ▼
  ┌────────┐
- │  MLIR  │  Lower: HIR → MechGen MLIR → LLVM MLIR → LLVM IR
+ │  MLIR  │  Lower: HIR → MAGE MLIR → LLVM MLIR → LLVM IR
  └───┬────┘
      ▼
  ┌────────┐
@@ -98,8 +98,8 @@ The compiler is organized into the following crates, mirroring the pipeline:
 
 ## Quick Links
 
-- [MECHGEN_PROPOSAL.md](../MECHGEN_PROPOSAL.md) — Language design proposal
-- [MECHGEN_SPEC.md](../MECHGEN_SPEC.md) — Formal language specification
-- [MECHGEN_ECOSYSTEM.md](../MECHGEN_ECOSYSTEM.md) — Ecosystem architecture
+- [MAGE_PROPOSAL.md](../MAGE_PROPOSAL.md) — Language design proposal
+- [MAGE_SPEC.md](../MAGE_SPEC.md) — Formal language specification
+- [MAGE_ECOSYSTEM.md](../MAGE_ECOSYSTEM.md) — Ecosystem architecture
 - [Agent Guide](../agent-guide/README.md) — AI agent coding patterns
 - [prototype/src/](../prototype/src/) — Working prototype implementation

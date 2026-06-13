@@ -1,6 +1,6 @@
 # Chapter 3: Syntax Migration
 
-The mechanical translation of Rust syntax to MechGen syntax. Most of this can be
+The mechanical translation of Rust syntax to MAGE syntax. Most of this can be
 automated with `mg migrate`, but understanding each rule helps you fix edge
 cases and review the output.
 
@@ -335,12 +335,12 @@ replacement, and idiom adjustments.
 
 ## 3.10 Semicolons
 
-MechGen uses the same semicolon rules as Rust: statements end with semicolons
+MAGE uses the same semicolon rules as Rust: statements end with semicolons
 (often optional in practice), and the last expression in a block is the return
 value without a semicolon.
 
 ```diff
-  // These are equivalent in MechGen:
+  // These are equivalent in MAGE:
   v x = 42;
   v x = 42    // semicolon optional for bindings
 
@@ -354,7 +354,7 @@ value without a semicolon.
 
 For scripted migrations, these regexes cover the most common patterns:
 
-| Pattern      | Find (Rust)   | Replace (MechGen) |
+| Pattern      | Find (Rust)   | Replace (MAGE) |
 | ------------ | ------------- | --------------- |
 | `pub fn`     | `pub fn `     | `+f `           |
 | `fn`         | `fn `         | `f `            |

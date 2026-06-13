@@ -1,11 +1,11 @@
-//! # std::agent — Agent Primitives (MechGen-unique)
+//! # std::agent — Agent Primitives (MAGE-unique)
 //!
 //! Core building blocks for AI agent systems: agents, swarms, messages,
 //! capability leases, code regions, and the swarm bus.
-//! This module is unique to MechGen — there is no Rust equivalent.
+//! This module is unique to MAGE — there is no Rust equivalent.
 //! All agent operations declare the `agent` effect.
 //!
-//! MechGen agents combine neural reasoning (LLM, vision, RL) with
+//! MAGE agents combine neural reasoning (LLM, vision, RL) with
 //! symbolic knowledge (rules, facts, queries) for neurosymbolic AI.
 
 // ---------------------------------------------------------------------------

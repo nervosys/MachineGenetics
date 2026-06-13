@@ -1,5 +1,5 @@
 // Agent-built (dogfooding session): a small RPN (reverse-Polish) calculator.
-// Exercises the general MechGen surface — sum types, records, pattern match,
+// Exercises the general MAGE surface — sum types, records, pattern match,
 // effect annotations, generics-free control flow — independent of the
 // neural/Agentic Binary Language path.
 

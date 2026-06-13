@@ -1,4 +1,4 @@
-# Security Audit — MachineGenetics (MechGen) + RecursiveMachineIntelligence (rmi)
+# Security Audit — MAGE (Machine Genetics) + RecursiveMachineIntelligence (rmi)
 
 **Org:** NERVOSYS · **Date:** 2026-06-04 · **Scope:** `RecursiveMachineIntelligence/`
 (crate `rmi`), `prototype/` (compiler + RAP server), `agentic-eval` (separate

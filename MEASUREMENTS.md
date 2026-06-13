@@ -1,4 +1,4 @@
-# MechGen — measured functionality & performance
+# MAGE — measured functionality & performance
 
 Every number below was **measured** (not estimated): test suites run, benchmarks
 executed, perf harness timed. Reproduce with the commands shown. Absolute perf
@@ -13,10 +13,10 @@ Date: 2026-06-10. Build: `release` for perf, `cargo test` for functionality.
 ### Test suites (all green)
 | Suite | Tests | Cmd |
 |---|---|---|
-| MechGen prototype | **1146 pass** (+1 ignored perf harness) | `cargo test` |
+| MAGE prototype | **1146 pass** (+1 ignored perf harness) | `cargo test` |
 | agentic-eval (AetherShell) | **80 pass** | `cargo test -p agentic-eval` |
 | SPINE `spine-agentic` | **285 pass** | `cargo test -p spine-agentic` |
-| SPINE `spine-mechgen` (ABL bridge) | **5 pass** | `cargo test -p spine-mechgen` |
+| SPINE `spine-mage` (ABL bridge) | **5 pass** | `cargo test -p spine-mage` |
 
 ### ABL tool-mediated construction — full functional matrix
 Every item kind builds → describes (no-exec) correctly (`--build=abl` / `--describe=abl`):
@@ -104,7 +104,7 @@ server** (`--rap`) to amortize startup to ~0.
 
 ### Token efficiency (token-bench, 100-task corpus vs Rust)
 ```
-source bytes  1.055 (MechGen 5.5% MORE)   dense  0.933 (6.7% fewer)   native lexers  0.997 (~tie)
+source bytes  1.055 (MAGE 5.5% MORE)   dense  0.933 (6.7% fewer)   native lexers  0.997 (~tie)
 ```
 Confirms the measured thesis: **text token efficiency is a floor** (≈ Rust), not a
 win. The compaction lives in the binary IR at rest (≈26 B/layer), not in source.

@@ -1,7 +1,7 @@
-# MechGen Standard Library (`std`)
+# MAGE Standard Library (`std`)
 
-The MechGen standard library provides the foundational types, traits, and functions
-for all MechGen programs. Every module is designed with **algebraic effects**,
+The MAGE standard library provides the foundational types, traits, and functions
+for all MAGE programs. Every module is designed with **algebraic effects**,
 **first-class agent primitives**, and **safety-by-default** principles at its core.
 
 ## Module Hierarchy
@@ -21,7 +21,7 @@ for all MechGen programs. Every module is designed with **algebraic effects**,
 | `std.json`    | First-class JSON support          | `Value`, `parse`, `stringify`, `Serialize`, `Deserialize` |
 | `std.env`     | Environment and directories       | `args`, `var`, `current_dir`, `home_dir`                  |
 | `std.process` | Process management and signals    | `Command`, `Child`, `exit`, `Signal`                      |
-| `std.agent`   | Agent primitives (MechGen-unique)   | `Agent`, `Swarm`, `Message`, `Capability`, `Lease`        |
+| `std.agent`   | Agent primitives (MAGE-unique)   | `Agent`, `Swarm`, `Message`, `Capability`, `Lease`        |
 | `std.skb`     | Safety Knowledge Base queries     | `Rule`, `Query`, `validate`, `define_rule`                |
 | `std.effect`  | Algebraic effect system           | `Effect`, `perform`, `handle`, `discharge`                |
 | `std.spec`    | Design-by-contract verification   | `require`, `ensure`, `invariant`, `verify`                |
@@ -44,7 +44,7 @@ for all MechGen programs. Every module is designed with **algebraic effects**,
    (`require`/`ensure`/`invariant`) directly into the type system, enabling
    runtime and static verification of program correctness.
 
-5. **Concise syntax.** Standard library types use MechGen sugar where possible:
+5. **Concise syntax.** Standard library types use MAGE sugar where possible:
    `{K:V}` for `Map[K,V]`, `{K}` for `Set[K]`, `?T` for `Option[T]`,
    `R[T,E]` for `Result[T,E]`, `[T]~` for `Vec[T]`.
 
@@ -91,5 +91,5 @@ stdlib/
 
 ## Reference
 
-See [MechGen_ECOSYSTEM.md](../MechGen_ECOSYSTEM.md) §5 for the full design rationale
-and [MECHGEN_SPEC.md](../MECHGEN_SPEC.md) for the language specification.
+See [MAGE_ECOSYSTEM.md](../MAGE_ECOSYSTEM.md) §5 for the full design rationale
+and [MAGE_SPEC.md](../MAGE_SPEC.md) for the language specification.

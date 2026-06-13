@@ -41,7 +41,7 @@ mod fuzz_tests {
         }
     }
 
-    /// Alphabet biased toward MechGen's real surface so inputs reach deep code
+    /// Alphabet biased toward MAGE's real surface so inputs reach deep code
     /// paths, not just the lexer's error arm.
     const FRAGMENTS: &[&str] = &[
         "+f", "f ", "val ", "var ", "m ", "v ", "data ", "extend ", "net ", "train ",

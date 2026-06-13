@@ -1,6 +1,6 @@
-// ── MechGen Standard Library Extensions ──────────────────────────────
+// ── MAGE Standard Library Extensions ──────────────────────────────
 //
-// Extended stdlib types for the MechGen agentic runtime:
+// Extended stdlib types for the MAGE agentic runtime:
 //
 //   - BatchApi       — batch operation helpers (map, filter, reduce, partition)
 //   - StreamBuf      — streaming I/O buffer with chunked reads/writes

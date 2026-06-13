@@ -6,7 +6,7 @@
 // adapter to RMI Concept entries under namespace air.skb.FactBase.
 kb FactBase {
     fact entity(rust);
-    fact entity(MechGen);
+    fact entity(MAGE);
     fact entity(framewerx);
     rule known(x: i32) { entity(x) }
 }

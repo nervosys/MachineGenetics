@@ -1,17 +1,17 @@
 {
-  "name": "tree-sitter-MechGen",
+  "name": "tree-sitter-MAGE",
   "version": "0.1.0",
-  "description": "Tree-sitter grammar for the MechGen programming language.",
+  "description": "Tree-sitter grammar for the MAGE programming language.",
   "repository": {
     "type": "git",
-    "url": "https://github.com/nervosys/tree-sitter-MechGen"
+    "url": "https://github.com/nervosys/tree-sitter-MAGE"
   },
   "license": "MIT",
   "main": "bindings/node",
   "keywords": [
     "tree-sitter",
     "parser",
-    "MechGen",
+    "MAGE",
     "syntax"
   ],
   "dependencies": {
@@ -27,9 +27,9 @@
   },
   "tree-sitter": [
     {
-      "scope": "source.MechGen",
+      "scope": "source.MAGE",
       "file-types": ["mg"],
-      "injection-regex": "^MechGen$"
+      "injection-regex": "^MAGE$"
     }
   ]
 }

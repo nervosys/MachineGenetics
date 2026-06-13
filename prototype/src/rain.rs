@@ -1,6 +1,6 @@
-//! Digital rain — a Matrix-inspired, dense-UTF-8 representation of MechGen.
+//! Digital rain — a Matrix-inspired, dense-UTF-8 representation of MAGE.
 //!
-//! Each MechGen lexer token is mapped to a single dense codepoint, drawn first
+//! Each MAGE lexer token is mapped to a single dense codepoint, drawn first
 //! from **half-width katakana** (`ｦｧｨ…` — the iconic Matrix "digital rain"
 //! glyphs), then full-width katakana, then CJK unified ideographs. One glyph per
 //! token, so the **character** stream is maximally compressed (≈ one symbol per
@@ -28,7 +28,7 @@ fn glyph_alphabet() -> Vec<char> {
     v
 }
 
-/// A digital-rain encoding of some MechGen source.
+/// A digital-rain encoding of some MAGE source.
 pub struct Rain {
     /// The glyph stream — one codepoint per source token.
     pub stream: String,
@@ -51,7 +51,7 @@ impl Rain {
     }
 }
 
-/// Encode MechGen source into digital rain (one glyph per lexer token).
+/// Encode MAGE source into digital rain (one glyph per lexer token).
 pub fn encode(src: &str) -> Rain {
     let alphabet = glyph_alphabet();
     let mut map: HashMap<String, char> = HashMap::new();
@@ -74,7 +74,7 @@ pub fn encode(src: &str) -> Rain {
     Rain { stream, legend }
 }
 
-/// Decode digital rain back to a re-lexable MechGen source (token texts joined
+/// Decode digital rain back to a re-lexable MAGE source (token texts joined
 /// by spaces). Round-trips through the lexer to the same token stream as the
 /// original (whitespace/layout are not preserved — the *tokens* are).
 pub fn decode(rain: &Rain) -> String {

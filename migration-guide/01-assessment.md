@@ -1,6 +1,6 @@
 # Chapter 1: Pre-Migration Assessment
 
-Before writing a single line of MechGen, audit the Rust project to understand
+Before writing a single line of MAGE, audit the Rust project to understand
 scope, estimate effort, and plan a phased migration.
 
 ---
@@ -20,7 +20,7 @@ Classify each dependency:
 | Category          | Examples                       | Migration Impact                        |
 | ----------------- | ------------------------------ | --------------------------------------- |
 | **Pure logic**    | `serde`, `regex`, `itertools`  | Low — use via `[rust-dependencies]`     |
-| **Async runtime** | `tokio`, `async-std`           | High — replace with MechGen async + Swarm |
+| **Async runtime** | `tokio`, `async-std`           | High — replace with MAGE async + Swarm |
 | **FFI / unsafe**  | `libc`, `winapi`, `nix`        | High — wrap with Capability system      |
 | **Build tools**   | `cc`, `bindgen`, `proc-macro2` | Medium — configure in Forge.toml        |
 | **Framework**     | `actix-web`, `rocket`, `axum`  | High — port handler by handler          |
@@ -33,9 +33,9 @@ For each crate dependency, decide:
 ```
 Can it be used as-is via [rust-dependencies]?
   ├── YES → Keep as Rust dependency, no migration needed
-  └── NO  → Is there a MechGen equivalent in std?
+  └── NO  → Is there a MAGE equivalent in std?
               ├── YES → Replace with std module
-              └── NO  → Write a thin MechGen wrapper with effects
+              └── NO  → Write a thin MAGE wrapper with effects
 ```
 
 ## 1.2 Unsafe Audit
@@ -47,7 +47,7 @@ grep -rn "unsafe" src/ --include="*.rs" | wc -l
 grep -rn "unsafe" src/ --include="*.rs"
 ```
 
-| Unsafe Pattern          | MechGen Replacement                      |
+| Unsafe Pattern          | MAGE Replacement                      |
 | ----------------------- | -------------------------------------- |
 | Raw pointer dereference | `Capability.request("mem.deref", ...)` |
 | FFI function call       | `Capability.request("ffi.call", ...)`  |
@@ -57,7 +57,7 @@ grep -rn "unsafe" src/ --include="*.rs"
 | Inline assembly         | Platform-specific capability           |
 
 **Rule of thumb:** Each `unsafe` block becomes a `Capability.request()` call
-with the appropriate permission string. The MechGen runtime enforces these at
+with the appropriate permission string. The MAGE runtime enforces these at
 startup via capability grants.
 
 ## 1.3 Async Runtime Assessment
@@ -72,7 +72,7 @@ grep -rn "tokio::spawn\|task::spawn" src/ --include="*.rs" | wc -l
 
 Map each async pattern:
 
-| Rust Async Pattern        | MechGen Equivalent                      |
+| Rust Async Pattern        | MAGE Equivalent                      |
 | ------------------------- | ------------------------------------- |
 | `#[tokio::main]`          | `+af main() / async { }`              |
 | `tokio::spawn(future)`    | `Swarm.spawn(agent)`                  |
@@ -119,7 +119,7 @@ Total        ≈  ~80 hours (with automation), ~320 hours (manual)
 Recommended migration phases:
 
 ### Phase 1: Dual-Build (Week 1-2)
-- Set up MechGen project alongside existing Rust
+- Set up MAGE project alongside existing Rust
 - Wire `[rust-dependencies]` for all existing crates
 - Migrate one self-contained module as a proof of concept
 - Verify `mg build` + `cargo build` both work
@@ -151,7 +151,7 @@ Recommended migration phases:
 Before starting migration, confirm:
 
 - [ ] All direct dependencies are available or can be used via `[rust-dependencies]`
-- [ ] Team has read the [MechGen Book](../book/) chapters 1-4
+- [ ] Team has read the [MAGE Book](../book/) chapters 1-4
 - [ ] `mg` CLI is installed and `mg new test-project` works
 - [ ] CI infrastructure can run `mg build` and `mg test`
 - [ ] A single module has been migrated as proof-of-concept

@@ -3,7 +3,7 @@
 //! The token-bench (`bin/token_bench.rs`) counts the corpus's `rdx_source`
 //! *verbatim*. But the corpus was authored in a verbose, Rust-mirroring style
 //! (`Option<String>`, `Result<T, E>`, explicit binding types) even though
-//! MechGen's *canonical* surface is terser (`?String`, `T or E`, sigils). The
+//! MAGE's *canonical* surface is terser (`?String`, `T or E`, sigils). The
 //! formatter defines "idiomatic", so the honest measure of typical agent-written
 //! token cost is the **canonical-formatted** source, not the hand-authored one.
 //!
@@ -27,7 +27,7 @@ mod measure {
     }
 
     fn tasks_dir() -> PathBuf {
-        // CARGO_MANIFEST_DIR = .../MechGen/prototype ; corpus = ../benchmarks/tasks
+        // CARGO_MANIFEST_DIR = .../MAGE/prototype ; corpus = ../benchmarks/tasks
         let mut p = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         p.pop();
         p.push("benchmarks");
