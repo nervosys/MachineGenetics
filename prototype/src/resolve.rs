@@ -1,4 +1,4 @@
-/// MechGen Name Resolution — builds a symbol table and resolves identifiers.
+/// MAGE Name Resolution — builds a symbol table and resolves identifiers.
 ///
 /// Walks the AST to:
 /// 1. Collect all definitions (functions, structs, enums, traits, consts, effects, modules)
@@ -255,7 +255,7 @@ impl Resolver {
         for name in std_types {
             self.define_type(name, SymbolKind::TypeAlias);
         }
-        // Builtin functions / macros. MechGen surfaces println!/vec!/etc. as
+        // Builtin functions / macros. MAGE surfaces println!/vec!/etc. as
         // ordinary calls (`println(...)`); without these registered, the most
         // basic agent-written program fails name resolution. This is the floor
         // for general-purpose (non-net) code to type-check.
@@ -279,7 +279,7 @@ impl Resolver {
         for (name, _sig, _doc) in VOCABULARY {
             self.define_value(name, SymbolKind::Function);
         }
-        // Builtin capability namespaces. MechGen is effect-oriented: I/O is
+        // Builtin capability namespaces. MAGE is effect-oriented: I/O is
         // performed through capability handles (`io.println(..)`, `fs.open(..)`,
         // `net.connect(..)`, `llm.complete(..)`) whose use is tracked by the
         // effect system. These are the standard library surface (like Rust's

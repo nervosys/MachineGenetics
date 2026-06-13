@@ -1,7 +1,7 @@
-/// MechGen Token Budget Reporting
+/// MAGE Token Budget Reporting
 ///
 /// Implements `--token-report` (proposal §5.5 P29): per-function and
-/// per-module token counts in both agent (MechGen) and human (Rust-
+/// per-module token counts in both agent (MAGE) and human (Rust-
 /// equivalent) forms.  Agents use this to track and optimise their
 /// token expenditure.
 use crate::ast::*;
@@ -16,7 +16,7 @@ pub struct TokenMetrics {
     pub name: String,
     /// Kind of item.
     pub kind: ItemMetricKind,
-    /// Token count in agent MechGen syntax.
+    /// Token count in agent MAGE syntax.
     pub agent_tokens: u32,
     /// Estimated token count in human (Rust) syntax.
     pub human_tokens: u32,
@@ -183,7 +183,7 @@ fn count_item(item: &Item) -> TokenMetrics {
     }
 }
 
-// ── agent (MechGen) token counting ───────────────────────────────────
+// ── agent (MAGE) token counting ───────────────────────────────────
 
 fn count_function_agent(f: &FunctionDef, vis: Visibility) -> u32 {
     let mut n: u32 = 0;
@@ -616,7 +616,7 @@ fn count_expr_agent(expr: &Expr) -> u32 {
 // ── human (Rust-equivalent) token counting ─────────────────────────
 //
 // We estimate the Rust token count by applying the known expansion ratios:
-// - Compact keywords are 1 token each in MechGen but expand to 1-2 in Rust
+// - Compact keywords are 1 token each in MAGE but expand to 1-2 in Rust
 //   (`+f` → `pub fn` = 2, `v` → `let` = 1, `m` → `let mut` = 2, etc.)
 // - Type wrappers like `?T` → `Option<T>` are +2 tokens, `^T` → `Box<T>` +2, etc.
 

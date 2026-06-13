@@ -1,4 +1,4 @@
-// hello.mg — minimal MechGen example
+// hello.mg — minimal MAGE example
 //
 // Demonstrates:
 //   - Value binding (val)
@@ -7,7 +7,7 @@
 
 pub fn main() {
     // Immutable value binding.
-    val greeting: String = "Hello, MechGen!";
+    val greeting: String = "Hello, MAGE!";
     io.println(greeting);
 
     // Mutable variable.

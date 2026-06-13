@@ -90,8 +90,8 @@ fn mlir_cache_path_layout() {
     use std::path::Path;
 
     let cache = MlirCache::new(Path::new("/tmp/forge-cache"));
-    let path = cache.artifact_path("http-client", "1.3.0", &MlirDialect::MechGen);
+    let path = cache.artifact_path("http-client", "1.3.0", &MlirDialect::MAGE);
     assert!(path.to_string_lossy().contains("http-client"));
     assert!(path.to_string_lossy().contains("1.3.0"));
-    assert!(path.to_string_lossy().ends_with("MechGen-dialect.mlir"));
+    assert!(path.to_string_lossy().ends_with("MAGE-dialect.mlir"));
 }

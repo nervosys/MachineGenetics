@@ -6,7 +6,7 @@ process per task, with this protocol:
 | Stream | Direction | Content |
 |---|---|---|
 | **stdin** | bench → wrapper | Natural-language task description (UTF-8, no trailing newline guaranteed) |
-| **stdout** | wrapper → bench | Generated MechGen source (UTF-8) |
+| **stdout** | wrapper → bench | Generated MAGE source (UTF-8) |
 | **stderr** | wrapper → bench | Human-readable diagnostics; surfaced as `agent refused: <text>` on non-zero exit |
 | **exit code** | wrapper → bench | `0` = success; non-zero = "agent refused" |
 
@@ -40,14 +40,14 @@ Minimal refine-aware skeleton:
 if [ "$RDX_BENCH_MODE" = "refine" ]; then
     BROKEN=$(cat)
     # Re-prompt the model with broken source + error context.
-    PROMPT="Fix this MechGen source. Error was: $RDX_PARSE_ERROR
+    PROMPT="Fix this MAGE source. Error was: $RDX_PARSE_ERROR
 Task was: $RDX_TASK_DESCRIPTION
 Broken source:
 $BROKEN"
     your-llm-cli -p "$PROMPT"
 else
     TASK=$(cat)
-    your-llm-cli -p "Write MechGen for: $TASK"
+    your-llm-cli -p "Write MAGE for: $TASK"
 fi
 ```
 
@@ -55,7 +55,7 @@ fi
 
 | File | Purpose |
 |---|---|
-| `echo_oracle.sh` | Smoke-test wrapper. Prints a fixed minimal MechGen program regardless of input. Useful for verifying the bench plumbing works end-to-end. |
+| `echo_oracle.sh` | Smoke-test wrapper. Prints a fixed minimal MAGE program regardless of input. Useful for verifying the bench plumbing works end-to-end. |
 | *(add your own)* | See below |
 
 ## Run the bench against a wrapper
@@ -77,7 +77,7 @@ cargo run --bin reliability-bench --manifest-path prototype/Cargo.toml \
     -- --agent "subprocess:./scripts/agent_wrappers/claude_cli.sh"
 ```
 
-The smoke-test wrapper always returns the same valid MechGen program,
+The smoke-test wrapper always returns the same valid MAGE program,
 so it should produce **100 / 100 parse** — confirming the bench
 plumbing is intact. Per-task cost depends entirely on the wrapper —
 the harness adds no network code or credentials.
@@ -91,9 +91,9 @@ A minimal wrapper has three steps:
 # 1. Read the task description from stdin
 TASK=$(cat)
 
-# 2. Build a prompt that asks for MechGen source only
-PROMPT="Write a MechGen function for: ${TASK}
-Reply with MechGen source code only, no commentary."
+# 2. Build a prompt that asks for MAGE source only
+PROMPT="Write a MAGE function for: ${TASK}
+Reply with MAGE source code only, no commentary."
 
 # 3. Call the model and emit raw source on stdout
 your_llm_command "$PROMPT"  # exit code propagates

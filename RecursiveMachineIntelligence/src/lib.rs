@@ -1,6 +1,6 @@
 //! # RecursiveMachineIntelligence (RMI — Recursive Machine Intelligence)
 //!
-//! **The built-in agentic-first AI framework of MachineGenetics (MechGen), by NERVOSYS.**
+//! **The built-in agentic-first AI framework of MAGE (Machine Genetics), by NERVOSYS.**
 //!
 //! RecursiveMachineIntelligence treats AI agents as first-class citizens. Unlike traditional ML
 //! frameworks designed for human developers, it provides primitives, complete

@@ -1,12 +1,12 @@
 // Agent-built (dogfooding session): a tiny char-cycle language model, built
-// on MechGen's functional path (net → Agentic Binary Language → train → generate via RMI).
+// on MAGE's functional path (net → Agentic Binary Language → train → generate via RMI).
 //
 // Distinct from the bundled tiny_lm example: vocab=6, learns the 6-cycle
 // i -> (i+1) mod 6, then generates from a prompt. Embedding + Linear head,
 // CrossEntropy + Adam, checkpointed.
 //
-//   MechGen-parse --target=abl-train    examples/agent_tiny_lm.mg
-//   MechGen-parse --target=abl-generate examples/agent_tiny_lm.mg
+//   mage-parse --target=abl-train    examples/agent_tiny_lm.mg
+//   mage-parse --target=abl-generate examples/agent_tiny_lm.mg
 
 net CycleLM {
     layer tok: Embedding(6, 5);

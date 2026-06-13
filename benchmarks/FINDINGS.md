@@ -1,4 +1,4 @@
-# MechGen Mission Findings (Phases 27, 30, 31, 2026-05-22)
+# MAGE Mission Findings (Phases 27, 30, 31, 2026-05-22)
 
 Two measurement passes against the 100-task benchmark corpus, each
 exposing a real gap between the project's stated mission ("maximally
@@ -15,9 +15,9 @@ token-efficient and reliable for agents") and current delivery.
 
 ## TL;DR
 
-The MechGen surface as written in the **100-task benchmark corpus** does
+The MAGE surface as written in the **100-task benchmark corpus** does
 **not** deliver the ~30 % reduction the corpus claims, nor the ~50 %
-the `README.md` / `MECHGEN_SPEC.md` headline advertises. Across four
+the `README.md` / `MAGE_SPEC.md` headline advertises. Across four
 honest measurements, the actual delivered reduction ranges from
 **+6.7 % (best case) to −5.5 % (worst case)**.
 
@@ -27,11 +27,11 @@ text surface, as currently written and used by the corpus, is a wash.
 
 ## Measurement table (100 tasks, all categories)
 
-| Metric | MechGen | Rust | Ratio | Reduction |
+| Metric | MAGE | Rust | Ratio | Reduction |
 |---|---:|---:|---:|---:|
 | **Raw source bytes** *(what BPE actually sees)* | 55 075 | 52 223 | 1.055 | **−5.5 %** |
 | Whitespace-stripped bytes | 36 057 | 38 632 | 0.933 | +6.7 % |
-| Native syntactic tokens *(MechGen lexer + proc-macro2)* | 15 282 | 15 310 | 0.998 | +0.2 % |
+| Native syntactic tokens *(MAGE lexer + proc-macro2)* | 15 282 | 15 310 | 0.998 | +0.2 % |
 | Shared-rule tokens *(same naive tokeniser for both)* | 15 831 | 15 310 | 1.034 | −3.4 % |
 | **Corpus's claimed totals** | 11 210 | 16 095 | 0.696 | 30.4 % |
 
@@ -40,7 +40,7 @@ The four real numbers all sit within ±7 % of parity. The 30 % claim is
 
 ## Why the raw-bytes number actually goes the wrong way
 
-MechGen sources in the corpus have **more whitespace** per byte:
+MAGE sources in the corpus have **more whitespace** per byte:
 - MG: 55 075 raw, 36 057 dense → 34.5 % whitespace
 - RS: 52 223 raw, 38 632 dense → 26.0 % whitespace
 
@@ -64,7 +64,7 @@ disappears in the aggregate.
 
 ## Per-category split (native tokens)
 
-| Wins for MechGen | Losses |
+| Wins for MAGE | Losses |
 |---|---|
 | web-network −13.8 % | algorithms +15.3 % |
 | basic-io −6.2 % | concurrency +10.7 % |
@@ -75,7 +75,7 @@ disappears in the aggregate.
 
 The pattern: **declaration-heavy code wins**, **expression-heavy code
 loses**. Rust's `if` / `else` / `mut` / `let` are short enough that
-MechGen's `?` / `:` / `m` / `v` don't save much, while MG's longer
+MAGE's `?` / `:` / `m` / `v` don't save much, while MG's longer
 constructs (`R[T,E]`, `?T`) cost.
 
 ## Where the ~50 % claim *is* real: the Agentic Binary Language binary IR
@@ -86,7 +86,7 @@ Phase 1 of the unification demonstrated:
 - A KB definition fits in **68 bytes**.
 
 These are 1-2 orders of magnitude smaller than the equivalent text in
-either MechGen or Rust. **If the goal is "maximally token-efficient
+either MAGE or Rust. **If the goal is "maximally token-efficient
 for agents," the answer is: have agents emit Agentic Binary Language directly, not text.**
 
 The text surface is best understood as a human-readable view of Agentic Binary Language,
@@ -97,7 +97,7 @@ not as the agent's primary output medium.
 Three honest paths forward:
 
 ### Path A: Accept the result and re-frame
-Update `README.md` and `MECHGEN_SPEC.md` to describe MechGen's actual
+Update `README.md` and `MAGE_SPEC.md` to describe MAGE's actual
 delivered value:
 - A **zero-ambiguity LL(1) grammar** with rich agent-affordances
   (effects, contracts, SKB, cost oracle, self-healing).
@@ -143,7 +143,7 @@ cargo run --manifest-path prototype/Cargo.toml --bin token-bench
 For every task in `benchmarks/tasks/*.json`:
 1. Count raw source bytes for both languages.
 2. Count whitespace-stripped bytes.
-3. Tokenise MechGen via `prototype::lexer` (atomic sigils).
+3. Tokenise MAGE via `prototype::lexer` (atomic sigils).
 4. Tokenise Rust via `proc_macro2::TokenStream::from_str`
    (group delimiters count as 2).
 5. Tokenise both with a shared naive rule for cross-check.
@@ -166,7 +166,7 @@ Output is reproducible; the bench acts as a regression guard.
 ## TL;DR
 
 `reliability-bench` walks every task in `benchmarks/tasks/*.json`,
-asks a **candidate agent** for MechGen source, and runs it through
+asks a **candidate agent** for MAGE source, and runs it through
 the prototype lexer + LL(1) parser. The default backend is a **file
 oracle** that returns the corpus's own `solution.rdx_source` —
 i.e. simulates a perfectly capable agent.
@@ -180,7 +180,7 @@ any agent driving today's prototype:
 | **Parse (LL(1) accepts)** | **25** | **100** | **25.0 %** |
 
 **Three quarters of the corpus's own reference solutions don't
-parse through today's MechGen prototype parser.** No real LLM can
+parse through today's MAGE prototype parser.** No real LLM can
 exceed this ceiling — the corpus is the upper bound.
 
 ## Per-category breakdown
@@ -485,7 +485,7 @@ cargo run --bin reliability-bench --manifest-path prototype/Cargo.toml \
 ```
 
 The wrapper script reads the task description on stdin and prints
-MechGen source on stdout. Non-zero exit = "agent refused: <stderr>".
+MAGE source on stdout. Non-zero exit = "agent refused: <stderr>".
 No credentials or network code in the bench itself.
 
 ## All six findings, one table

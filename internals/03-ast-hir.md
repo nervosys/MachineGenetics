@@ -43,7 +43,7 @@ as JSON for agent consumption via `mg parse --emit ast`.
 
 ### Type Representation
 
-The AST `Type` enum represents source-level type syntax, including all MechGen
+The AST `Type` enum represents source-level type syntax, including all MAGE
 sugar:
 
 ```rust
@@ -68,7 +68,7 @@ pub enum Type {
 }
 ```
 
-Each variant directly maps to MechGen syntax — no desugaring at this stage.
+Each variant directly maps to MAGE syntax — no desugaring at this stage.
 For example, `?T` in source becomes `Type::Option { inner: T }` in the AST.
 
 ### Expression Nodes
@@ -116,7 +116,7 @@ pub enum Stmt {
 }
 ```
 
-The `tail_expr` represents MechGen's expression-oriented blocks: the last
+The `tail_expr` represents MAGE's expression-oriented blocks: the last
 expression without a semicolon is the block's value.
 
 ---
@@ -157,7 +157,7 @@ its parent module scope. Name lookup walks up the scope chain.
 
 ### Use Resolution
 
-```MechGen
+```MAGE
 u std.collections.{HashMap, HashSet}
 ```
 

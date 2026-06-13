@@ -1,4 +1,4 @@
-/// MechGen HIR — High-level Intermediate Representation.
+/// MAGE HIR — High-level Intermediate Representation.
 ///
 /// The HIR is a type-annotated, name-resolved representation of the AST.
 /// Each expression carries its inferred type and effect set.
@@ -20,7 +20,7 @@ impl fmt::Display for SymbolId {
 
 // ── Types ────────────────────────────────────────────────────────────
 
-/// A resolved, canonical type in the MechGen type system.
+/// A resolved, canonical type in the MAGE type system.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Ty {
     /// Primitive integer types.
@@ -228,7 +228,7 @@ impl fmt::Display for Ty {
 
 // ── Effects ──────────────────────────────────────────────────────────
 
-/// A known effect kind in the MechGen effect system.
+/// A known effect kind in the MAGE effect system.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum Effect {
     IO,

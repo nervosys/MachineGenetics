@@ -4,11 +4,11 @@
 # Acts as an "LLM in the loop" without an actual LLM. Tries the inverse
 # of every perturbation the bench applies (drop last `;`, drop last `}`,
 # duplicate `;`, swap let<->mut, etc.) and returns the first candidate
-# that parses cleanly via `MechGen-parse --check`.
+# that parses cleanly via `mage-parse --check`.
 #
 # Protocol (per scripts/agent_wrappers/README.md):
 #   propose mode (RDX_BENCH_MODE=propose) : stdin = task description.
-#     We can't synthesize MechGen from natural language - emit a stub
+#     We can't synthesize MAGE from natural language - emit a stub
 #     that the mechanical recovery pipeline rejects so the bench
 #     advances straight to refine.
 #   refine  mode (RDX_BENCH_MODE=refine)  : stdin = broken source,
@@ -19,10 +19,10 @@ set -uo pipefail
 
 MODE="${RDX_BENCH_MODE:-propose}"
 PARSE_ERR="${RDX_PARSE_ERROR:-}"
-# MechGen-parse binary location (release build).
-MGP="prototype/target/release/MechGen-parse.exe"
+# mage-parse binary location (release build).
+MGP="prototype/target/release/mage-parse.exe"
 if [ ! -x "$MGP" ]; then
-    MGP="prototype/target/release/MechGen-parse"
+    MGP="prototype/target/release/mage-parse"
 fi
 
 INPUT=$(cat)

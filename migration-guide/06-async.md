@@ -1,13 +1,13 @@
 # Chapter 6: Async & Concurrency Migration
 
-Migrate from tokio/async-std to MechGen's built-in async runtime, adopt the
+Migrate from tokio/async-std to MAGE's built-in async runtime, adopt the
 Swarm model for structured concurrency, and convert threaded code to agents.
 
 ---
 
 ## 6.1 Async Runtime Removal
 
-MechGen has a built-in async runtime. Remove external runtime dependencies.
+MAGE has a built-in async runtime. Remove external runtime dependencies.
 
 ### Entry Point
 
@@ -20,7 +20,7 @@ MechGen has a built-in async runtime. Remove external runtime dependencies.
 -     Ok(())
 - }
 
-  // MechGen — built-in async
+  // MAGE — built-in async
 + +af main() -> R[(), ^dyn Error] / net {
 +     v result = fetch_data().await?
 +     p"{result}"
@@ -35,7 +35,7 @@ MechGen has a built-in async runtime. Remove external runtime dependencies.
 - tokio = { version = "1", features = ["full"] }
 - async-std = "1"
 
-  # These are no longer needed — MechGen provides:
+  # These are no longer needed — MAGE provides:
   # - async/await natively
   # - Task spawning via Swarm
   # - Timer via std.time
@@ -55,7 +55,7 @@ The biggest paradigm shift: replace `tokio::spawn` with the Swarm model.
 - });
 - let result = handle.await?;
 
-  // MechGen — create an agent and use Swarm
+  // MAGE — create an agent and use Swarm
 + u std.agent.{Agent, Swarm}
 +
 + S Worker { input: s }
@@ -87,7 +87,7 @@ The biggest paradigm shift: replace `tokio::spawn` with the Swarm model.
 -     results.push(handle.await??);
 - }
 
-  // MechGen — fan-out with Swarm
+  // MAGE — fan-out with Swarm
 + S Fetcher { url: s }
 +
 + I Agent ~ Fetcher {
@@ -127,7 +127,7 @@ The biggest paradigm shift: replace `tokio::spawn` with the Swarm model.
 -     }
 - }
 
-  // MechGen — async.select
+  // MAGE — async.select
 + u std.async.select
 + u std.time.Duration
 +
@@ -156,7 +156,7 @@ The biggest paradigm shift: replace `tokio::spawn` with the Swarm model.
 -     println!("got: {}", msg);
 - }
 
-  // MechGen — std.sync.channel
+  // MAGE — std.sync.channel
 + u std.sync.{channel, Sender, Receiver}
 + u std.agent.{Agent, Swarm}
 +
@@ -195,7 +195,7 @@ The biggest paradigm shift: replace `tokio::spawn` with the Swarm model.
 -     *guard += 1;
 - });
 
-  // MechGen — same concepts, different syntax
+  // MAGE — same concepts, different syntax
 + u std.sync.Mutex
 +
 + v counter = @Mutex[u32].new(0)
@@ -230,7 +230,7 @@ The biggest paradigm shift: replace `tokio::spawn` with the Swarm model.
 -     Err(_) => println!("timed out"),
 - }
 
-  // MechGen
+  // MAGE
 + u std.time.{sleep, Duration, timeout}
 +
 + // Simple sleep
@@ -267,7 +267,7 @@ For code using `std::thread` instead of async:
 -     handle.join().unwrap();
 - }
 
-  // MechGen — agents with Swarm
+  // MAGE — agents with Swarm
 + u std.agent.{Agent, Swarm}
 +
 + S ComputeWorker {
@@ -289,7 +289,7 @@ For code using `std::thread` instead of async:
 
 ## 6.8 Migration Pattern Summary
 
-| Rust Pattern                     | MechGen Pattern                     |
+| Rust Pattern                     | MAGE Pattern                     |
 | -------------------------------- | --------------------------------- |
 | `#[tokio::main] async fn main()` | `+af main() / async`              |
 | `tokio::spawn(async { })`        | `Swarm.new(); swarm.spawn(agent)` |

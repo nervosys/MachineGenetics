@@ -1,6 +1,6 @@
-# The MechGen Book
+# The MAGE Book
 
-> A comprehensive guide to the MechGen programming language.
+> A comprehensive guide to the MAGE programming language.
 
 ---
 
@@ -8,7 +8,7 @@
 
 ### Chapter 1: Introduction
 
-MechGen is a systems programming language designed for agentic compilation. It
+MAGE is a systems programming language designed for agentic compilation. It
 inherits Rust's safety and performance model while adding:
 
 - **Contract-first design** — preconditions, postconditions, and invariants are
@@ -22,28 +22,28 @@ inherits Rust's safety and performance model while adding:
 
 ```bash
 # Clone the repository
-git clone https://github.com/nervosys/MechGen.git
-cd MechGen/prototype
+git clone https://github.com/nervosys/MAGE.git
+cd MAGE/prototype
 
 # Build
 cargo build
 
-# Run a MechGen file
+# Run a MAGE file
 cargo run -- input.mg
 
 # Run tests
 cargo test
 ```
 
-### Chapter 3: Hello, MechGen
+### Chapter 3: Hello, MAGE
 
 ```
 +f main() {
-    p"Hello, MechGen!"
+    p"Hello, MAGE!"
 }
 ```
 
-This defines a public function `main` that prints "Hello, MechGen!" to stdout.
+This defines a public function `main` that prints "Hello, MAGE!" to stdout.
 
 - `+f` — public function (`pub fn` in Rust)
 - `p"..."` — print macro (`println!` in Rust)
@@ -56,7 +56,7 @@ This defines a public function `main` that prints "Hello, MechGen!" to stdout.
 
 ```
 let x: i32 = 42;
-let mut name: s = "MechGen".to_string();
+let mut name: s = "MAGE".to_string();
 let pi: f64 = 3.14159;
 let active: bool = true;
 ```
@@ -184,7 +184,7 @@ f find_item(items: &[i32], target: i32) -> i32? {
 
 ### Chapter 10: Contracts
 
-Contracts are first-class in MechGen:
+Contracts are first-class in MAGE:
 
 ```
 f binary_search(arr: &[i32], target: i32) -> usize?
@@ -270,9 +270,9 @@ sandbox.grant(CapabilityToken.restricted("fs.read"));
 
 ## Part IV — Tooling
 
-### Chapter 15: The MechGen Compiler
+### Chapter 15: The MAGE Compiler
 
-The MechGen compiler pipeline:
+The MAGE compiler pipeline:
 
 1. **Lexer** — tokenises source into a stream of tokens
 2. **Parser** — builds an AST from the token stream
@@ -285,17 +285,17 @@ The MechGen compiler pipeline:
 ### Chapter 16: Legacy Compatibility
 
 ```bash
-# Convert Rust to MechGen
-MechGen transpile --from-rust src/main.rs -o src/main.mg
+# Convert Rust to MAGE
+MAGE transpile --from-rust src/main.rs -o src/main.mg
 
-# Convert MechGen to Rust
-MechGen transpile --to-rust src/main.mg -o src/main.rs
+# Convert MAGE to Rust
+MAGE transpile --to-rust src/main.mg -o src/main.rs
 ```
 
 ### Chapter 17: Project Configuration
 
 ```toml
-# MechGen.toml
+# MAGE.toml
 [package]
 name = "my-project"
 version = "0.1.0"
@@ -312,7 +312,7 @@ token_budget = 8192
 
 ## Appendix: Syntax Quick Reference
 
-| MechGen  | Rust       | Meaning           |
+| MAGE  | Rust       | Meaning           |
 | ------ | ---------- | ----------------- |
 | `f`    | `fn`       | Function          |
 | `+f`   | `pub fn`   | Public function   |

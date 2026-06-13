@@ -1,7 +1,7 @@
 # Chapter 5: Effects & Resolution
 
 The effect system tracks and validates what side effects a function may
-produce. Effects are MechGen's alternative to Rust's `unsafe` keyword — they
+produce. Effects are MAGE's alternative to Rust's `unsafe` keyword — they
 express capabilities explicitly and hierarchically.
 
 ---
@@ -39,7 +39,7 @@ pub type EffectSet = BTreeSet<Effect>;
 
 Functions annotate their effects after the return type:
 
-```MechGen
+```MAGE
 f read_file(path: &s) -> R[s, Error] / io { ... }
 af fetch_url(url: &s) -> R[s, Error] / net, async { ... }
 f compute(x: i32) -> i32 { ... }  // pure — no effects
@@ -119,7 +119,7 @@ impl<'a> EffectChecker<'a> {
 The `handle` block is the effect system's key feature — it intercepts
 effects and provides alternative implementations:
 
-```MechGen
+```MAGE
 v result = handle / io {
     read_file("config.toml")
 } with {
@@ -207,7 +207,7 @@ Some effects are always available:
 
 Functions can be generic over effects using effect bounds:
 
-```MechGen
+```MAGE
 f with_retry[F, R](op: F, retries: u32) -> R[R, Error]
 ~> F: Fn() -> R[R, Error] / * {
     // The `/ *` means "whatever effects F has"
@@ -229,7 +229,7 @@ effects the closure argument has."
 
 Users can define custom effects:
 
-```MechGen
+```MAGE
 effect Rng {
     f random_u32() -> u32
     f random_range(min: u32, max: u32) -> u32
@@ -239,7 +239,7 @@ effect Rng {
 This defines a new effect `Rng` with associated operations. Functions using
 randomness declare `/ Rng`:
 
-```MechGen
+```MAGE
 f shuffle[T](data: &![T]~) / Rng {
     @ i ~ (1..data.len()).rev() {
         v j = Rng.random_range(0, i as u32) as usize
@@ -250,7 +250,7 @@ f shuffle[T](data: &![T]~) / Rng {
 
 Tests can intercept the effect:
 
-```MechGen
+```MAGE
 @test
 f test_shuffle() {
     v result = handle / Rng {

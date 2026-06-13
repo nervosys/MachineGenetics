@@ -1,17 +1,17 @@
-# MechGen + RMI — Project Status
+# MAGE + RMI — Project Status
 
 **Generated:** 2026-05-28 (Phase 96: agent-UX surface + hardware accelerator extensibility)
 
 Single-page snapshot of where the unified system stands. For the
 narrative history see [`UNIFICATION.md`](../UNIFICATION.md); for the
-agent-discoverable schema see [`MECHGEN_ONTOLOGY.json`](../MECHGEN_ONTOLOGY.json)
+agent-discoverable schema see [`MAGE_ONTOLOGY.json`](../MAGE_ONTOLOGY.json)
 or call RAP `ontology/full`.
 
 ## Tests
 
 | Suite | Count |
 |---|---:|
-| `MechGen-parse` (main prototype) | **915** |
+| `mage-parse` (main prototype) | **915** |
 | `reliability-bench` bin | 122 |
 | `token-bench` bin | 30 |
 | RecursiveMachineIntelligence / RMI (unchanged) | 1,367 |
@@ -33,14 +33,14 @@ end-to-end without spending tokens on a real LLM.
 
 ## Token-efficiency bench (re-verified Phase 49)
 
-| Measurement | MechGen | Rust | Ratio | Note |
+| Measurement | MAGE | Rust | Ratio | Note |
 |---|---:|---:|---:|---|
 | Source bytes | 55,075 | 52,223 | **1.055** | 5.5 % longer text |
 | Dense bytes (whitespace stripped) | 36,057 | 38,632 | **0.933** | 6.7 % shorter |
 | Native lexer tokens | 15,282 | 15,310 | **0.998** | parity |
 | Shared rule | 15,831 | 15,310 | 1.034 | 3.4 % longer |
 
-Honest framing: MechGen text is **at parity with Rust** in syntactic
+Honest framing: MAGE text is **at parity with Rust** in syntactic
 tokens. The mission win lives in the **binary IR (Agentic Binary Language)** for AI-routed
 items and the **reliability pipeline**, not in raw text-byte reduction.
 
@@ -103,7 +103,7 @@ ontology/full
   ├─ machine                    — binary container format constants
   ├─ examples (10)           — parse-verified working snippets
   ├─ framewerx_modules (256) — RecursiveMachineIntelligence-MG framework (FLAX-equivalent)
-  ├─ cli_flags (17)          — every MechGen-parse flag
+  ├─ cli_flags (17)          — every mage-parse flag
   ├─ bench_backends (4)      — reliability-bench backends
   ├─ effects (15)            — @fx/@req/@ens + canonical effect names
   ├─ wrapper_protocol (9)    — subprocess agent contract
@@ -113,8 +113,8 @@ ontology/full
   └─ hardware_accelerators   — extensible runtime registry (8 builtins + JSON)
 ```
 
-Static dump at [`MECHGEN_ONTOLOGY.json`](../MECHGEN_ONTOLOGY.json)
-(**122 KB**). Refresh via `MechGen-parse --emit-ontology`.
+Static dump at [`MAGE_ONTOLOGY.json`](../MAGE_ONTOLOGY.json)
+(**122 KB**). Refresh via `mage-parse --emit-ontology`.
 
 ### Hardware accelerator extensibility (P91-95)
 
@@ -123,7 +123,7 @@ webgpu / qualcomm / blas (feature-gated). Operators add arbitrary new
 backends without recompiling:
 
 ```bash
-# Drop a descriptor in ~/.mechgen/backends.json or pass --backends-file
+# Drop a descriptor in ~/.mage/backends.json or pass --backends-file
 [
   {
     "name": "groq_lpu",
@@ -140,7 +140,7 @@ backends without recompiling:
 ]
 
 # Then dispatch through it:
-MechGen-parse --backends-file=~/.mechgen/backends.json \
+mage-parse --backends-file=~/.mage/backends.json \
               --backend=groq_lpu --run=abl-bytes model.abl
 ```
 
@@ -164,7 +164,7 @@ No agent UX layer is unguarded against regression.
 After 55 phases of measurement:
 
 1. **Token parity** with Rust on syntactic tokens (0.998). The agent
-   pays the same inference cost on MechGen text as on Rust text.
+   pays the same inference cost on MAGE text as on Rust text.
 2. **Binary IR (Agentic Binary Language)** for AI items (`net` / `kb` / `agent` / `swarm`).
    Agents ship and execute these without text round-trip - this is where
    the real size win lives.

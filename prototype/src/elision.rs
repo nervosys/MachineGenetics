@@ -1,11 +1,11 @@
-/// MechGen Safety Elision Pass
+/// MAGE Safety Elision Pass
 ///
 /// In agentic mode (the default), this pass strips safety annotations from the
-/// AST that are redundant in MechGen's design: lifetimes, `unsafe`, `&mut`,
+/// AST that are redundant in MAGE's design: lifetimes, `unsafe`, `&mut`,
 /// `move`, `ref`, `Pin`, `PhantomData`, `Send`/`Sync`/`Copy`/`Unpin`/`Sized`
 /// bounds, etc.  The compiler and SKB handle these concerns automatically;
 /// removing them from the surface syntax makes the AST dramatically simpler
-/// for both human and agent consumption (per §4 of the MechGen proposal).
+/// for both human and agent consumption (per §4 of the MAGE proposal).
 use crate::ast::*;
 
 /// Safety-related trait bounds that are eliminated in agentic mode.
@@ -629,10 +629,10 @@ fn elide_pattern(pat: &Pattern) -> Pattern {
 
 // ── Attribute Compression System (Step 35) ──────────────────────────
 //
-// Maps compressed MechGen attribute shorthands (`@d`, `@r`, …) to their
+// Maps compressed MAGE attribute shorthands (`@d`, `@r`, …) to their
 // full Rust equivalents (`derive`, `repr`, …).
 
-/// Expand a compressed MechGen attribute name to its full Rust equivalent.
+/// Expand a compressed MAGE attribute name to its full Rust equivalent.
 /// Returns `None` if the name is already full-form or unknown.
 pub fn expand_attribute_name(name: &str) -> Option<&'static str> {
     match name {

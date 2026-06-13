@@ -1,7 +1,7 @@
-# MechGen Direct Codegen: Bypassing MLIR and LLVM
+# MAGE Direct Codegen: Bypassing MLIR and LLVM
 
-This document defines the architecture for **MechGen Direct Codegen (RDC)** — a
-compilation pipeline that translates high-level MechGen source code directly to
+This document defines the architecture for **MAGE Direct Codegen (RDC)** — a
+compilation pipeline that translates high-level MAGE source code directly to
 machine code without passing through MLIR, LLVM IR, or any third-party
 intermediate representation. The result is faster compilation, smaller binaries,
 and faster runtime — because the compiler retains full semantic knowledge all
@@ -13,10 +13,10 @@ the way down to the instruction encoder.
 
 ### The Problem with Layered IRs
 
-The current MechGen pipeline passes through **7 representation layers**:
+The current MAGE pipeline passes through **7 representation layers**:
 
 ```
-MechGen Source → AST → HIR → MIR → MechGen MLIR Dialect → Standard MLIR → LLVM IR → Machine Code
+MAGE Source → AST → HIR → MIR → MAGE MLIR Dialect → Standard MLIR → LLVM IR → Machine Code
        1        2     3     4           5                    6            7          8
 ```
 
@@ -26,8 +26,8 @@ Each layer transition **destroys information**:
 | ---------------------- | ------------------------------------------------ |
 | AST → HIR              | Syntactic sugar, sigil semantics                 |
 | HIR → MIR              | Type-level contracts (become runtime assertions) |
-| MIR → MechGen MLIR       | Rust ownership model (becomes memref ops)        |
-| MechGen MLIR → Std MLIR  | Effect annotations, contract annotations         |
+| MIR → MAGE MLIR       | Rust ownership model (becomes memref ops)        |
+| MAGE MLIR → Std MLIR  | Effect annotations, contract annotations         |
 | Std MLIR → LLVM IR     | Polyhedral structure, dialect semantics          |
 | LLVM IR → Machine Code | SSA structure, high-level type information       |
 
@@ -51,7 +51,7 @@ progressive lowering model assumes the compiler gradually refines high-level
 abstractions into target code. This is elegant for a language with limited
 semantic information.
 
-**MechGen is not that language.** MechGen has:
+**MAGE is not that language.** MAGE has:
 
 - **Verified contracts** (`@req`, `@ens`, `@inv`) that prove value ranges,
   nullability, termination, and aliasing at compile time.
@@ -71,12 +71,12 @@ instructions, keeping all information alive until the final byte is emitted.**
 
 ---
 
-## Architecture: MechGen Direct Codegen (RDC)
+## Architecture: MAGE Direct Codegen (RDC)
 
 ### Pipeline Overview
 
 ```
-MechGen Source (.mg)
+MAGE Source (.mg)
   │
   ├─ Lexer + Parser (LL(1), zero-alloc hot path)
   └─ AST
@@ -89,7 +89,7 @@ MechGen Source (.mg)
   │
   v
 ┌──────────────────────────────────────────────────────────────┐
-│  RIR — MechGen Intermediate Representation                     │
+│  RIR — MAGE Intermediate Representation                     │
 │  (SSA + ownership + effects + contracts + cost annotations)  │
 │  THIS IS THE ONLY IR. No MIR. No MLIR. No LLVM IR.          │
 └──────────────────────────────────────────────────────────────┘
@@ -127,7 +127,7 @@ vs. **8 layers** in the current pipeline.
 
 ---
 
-## RIR: The MechGen Intermediate Representation
+## RIR: The MAGE Intermediate Representation
 
 ### Design Principles
 
@@ -138,7 +138,7 @@ vs. **8 layers** in the current pipeline.
    set, cost estimate, and ownership status. This information is never erased.
 
 3. **SSA with ownership** — Standard SSA form (phi nodes, dominance) plus
-   MechGen ownership semantics (move, borrow, drop). Not bolt-on metadata —
+   MAGE ownership semantics (move, borrow, drop). Not bolt-on metadata —
    first-class IR semantics.
 
 4. **Target-aware from the start** — RIR nodes know the target architecture.
@@ -152,7 +152,7 @@ vs. **8 layers** in the current pipeline.
 ### RIR Node Structure
 
 ```rust
-/// The single intermediate representation for MechGen Direct Codegen.
+/// The single intermediate representation for MAGE Direct Codegen.
 pub struct RirModule {
     pub name: Symbol,
     pub target: TargetSpec,
@@ -174,7 +174,7 @@ pub struct RirFunction {
 pub struct FnSignature {
     pub params: Vec<(Symbol, Type, Ownership)>,
     pub ret: Type,
-    pub abi: Abi,                     // cdecl, fastcall, MechGen, etc.
+    pub abi: Abi,                     // cdecl, fastcall, MAGE, etc.
 }
 
 pub struct Contract {
@@ -618,7 +618,7 @@ step because the type system and contracts guarantee correctness.
 
 The biggest win is **optimization passes**. LLVM runs ~200 passes (many
 quadratic or worse in complexity). Most exist to *re-discover* information that
-MechGen already has (alias analysis, loop bounds, induction variables, escape
+MAGE already has (alias analysis, loop bounds, induction variables, escape
 analysis). RDC runs ~15–20 passes that directly *use* the information from
 contracts and effects.
 
@@ -843,9 +843,9 @@ RDC emits GPU kernels directly from `/ pure` functions with `GpuLaunch` ops:
 ### Zero-Cost Safety (from PERFORMANCE_STRATEGY.md, strengthened)
 
 Traditional safety checks have runtime cost: bounds checks, null checks,
-overflow checks. MechGen eliminates them **at compile time** via contracts:
+overflow checks. MAGE eliminates them **at compile time** via contracts:
 
-| Safety Check     | C/C++ Cost | Rust Cost     | MechGen/RDC Cost      |
+| Safety Check     | C/C++ Cost | Rust Cost     | MAGE/RDC Cost      |
 | ---------------- | ---------- | ------------- | ------------------- |
 | Bounds check     | None (UB)  | 1–3 cycles    | 0 (contract proves) |
 | Null check       | None (UB)  | N/A (Option)  | 0 (contract proves) |
@@ -856,7 +856,7 @@ overflow checks. MechGen eliminates them **at compile time** via contracts:
 
 C/C++ achieves "zero cost" by ignoring safety (undefined behavior).
 Rust achieves safety by adding runtime checks.
-**MechGen achieves both** — safety is proven at compile time, then the checks
+**MAGE achieves both** — safety is proven at compile time, then the checks
 are provably dead code and eliminated. The generated machine code is
 *identical* to C's unsafe version, but with a proof of correctness.
 
@@ -931,7 +931,7 @@ RDC never does because the proof is attached to every operation.
 - [ ] AST → RIR lowering pass
 - [ ] RIR validator (well-formedness, SSA dominance, type correctness)
 
-**Crate**: `MechGen_rir`
+**Crate**: `MAGE_rir`
 
 ### Phase 2: Semantic Optimization Passes
 
@@ -946,7 +946,7 @@ RDC never does because the proof is attached to every operation.
 - [ ] Layout Optimization (AoS→SoA)
 - [ ] Allocation Elimination (stack promotion)
 
-**Crate**: `MechGen_rir_opt`
+**Crate**: `MAGE_rir_opt`
 
 ### Phase 3: Machine Code Encoders
 
@@ -960,7 +960,7 @@ RDC never does because the proof is attached to every operation.
 - [ ] DWARF debug info generation
 - [ ] Relocation support
 
-**Crate**: `MechGen_machine_encode`
+**Crate**: `MAGE_machine_encode`
 
 ### Phase 4: GPU Backend
 
@@ -971,11 +971,11 @@ RDC never does because the proof is attached to every operation.
 - [ ] SPIR-V encoder (Vulkan)
 - [ ] GPU kernel launch integration
 
-**Crate**: `MechGen_gpu_encode`
+**Crate**: `MAGE_gpu_encode`
 
 ### Phase 5: Integration and Benchmarking
 
-**Goal**: Wire RDC into the MechGen compiler as an alternative backend.
+**Goal**: Wire RDC into the MAGE compiler as an alternative backend.
 
 - [ ] `--codegen=rdc` flag to select the direct backend
 - [ ] A/B benchmark suite: RDC vs MLIR+LLVM on all micro/macro benchmarks
@@ -1001,7 +1001,7 @@ RDC is the **primary** backend for maximum performance. The MLIR+LLVM pipeline
 remains as a **fallback** for:
 
 1. **Targets RDC doesn't support yet** — If a target architecture isn't
-   implemented in RDC, fall back to `MechGen_codegen_llvm`.
+   implemented in RDC, fall back to `MAGE_codegen_llvm`.
 
 2. **Features RDC doesn't have yet** — During development, any construct
    not yet lowered by RDC falls back to MLIR+LLVM.
@@ -1064,7 +1064,7 @@ Smaller binaries because:
 ## Summary
 
 RDC is not just "another backend." It is a **fundamentally different approach**
-to compilation that exploits MechGen's unique semantic richness:
+to compilation that exploits MAGE's unique semantic richness:
 
 | Property               | Traditional (MLIR → LLVM)  | RDC                               |
 | ---------------------- | -------------------------- | --------------------------------- |
@@ -1082,5 +1082,5 @@ and broad target support. RDC is the endgame — it delivers the performance
 that only a language with contracts, effects, a cost oracle, and agent
 intelligence can achieve.
 
-**MechGen with RDC doesn't just compete with C, C++, and Rust. It renders their
+**MAGE with RDC doesn't just compete with C, C++, and Rust. It renders their
 compilation model obsolete.**

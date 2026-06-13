@@ -15,10 +15,10 @@
 
 set -uo pipefail
 
-MGP=prototype/target/release/MechGen-parse.exe
-[ -x "$MGP" ] || MGP=prototype/target/release/MechGen-parse
+MGP=prototype/target/release/mage-parse.exe
+[ -x "$MGP" ] || MGP=prototype/target/release/mage-parse
 if [ ! -x "$MGP" ]; then
-    cargo build --release --manifest-path prototype/Cargo.toml --bin MechGen-parse \
+    cargo build --release --manifest-path prototype/Cargo.toml --bin mage-parse \
         >/dev/null 2>&1
 fi
 

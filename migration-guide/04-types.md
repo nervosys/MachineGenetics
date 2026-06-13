@@ -1,13 +1,13 @@
 # Chapter 4: Type System Migration
 
-Migrate Rust's type system to MechGen: type sugar, generic syntax, lifetime
+Migrate Rust's type system to MAGE: type sugar, generic syntax, lifetime
 removal, trait bounds, and smart pointer conversions.
 
 ---
 
 ## 4.1 Type Sugar Conversions
 
-MechGen provides compact sugar for the most common standard library types:
+MAGE provides compact sugar for the most common standard library types:
 
 ### Standard Types
 
@@ -51,7 +51,7 @@ MechGen provides compact sugar for the most common standard library types:
 
 ### Complete Type Mapping Table
 
-| Rust            | MechGen     | Nesting Example                                   |
+| Rust            | MAGE     | Nesting Example                                   |
 | --------------- | --------- | ------------------------------------------------- |
 | `String`        | `s`       |                                                   |
 | `&str`          | `&s`      |                                                   |
@@ -82,7 +82,7 @@ MechGen provides compact sugar for the most common standard library types:
 
 ## 4.2 Removing Lifetime Annotations
 
-MechGen's SKB (Semantic Knowledge Base) infers and proves lifetimes automatically.
+MAGE's SKB (Semantic Knowledge Base) infers and proves lifetimes automatically.
 Remove all lifetime parameters during migration.
 
 ### Simple Cases

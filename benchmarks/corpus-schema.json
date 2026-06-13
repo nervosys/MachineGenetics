@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://mechgen-lang.org/schemas/benchmark-task-v1.json",
-  "title": "MechGen Agent Training Benchmark Task",
-  "description": "Schema for a single benchmark task in the MechGen agent training corpus",
+  "$id": "https://mage-lang.org/schemas/benchmark-task-v1.json",
+  "title": "MAGE Agent Training Benchmark Task",
+  "description": "Schema for a single benchmark task in the MAGE agent training corpus",
   "type": "object",
   "required": ["id", "category", "difficulty", "task", "solution", "rust_equivalent", "tests"],
   "properties": {
@@ -56,7 +56,7 @@
       "properties": {
         "rdx_source": {
           "type": "string",
-          "description": "Reference MechGen solution"
+          "description": "Reference MAGE solution"
         },
         "token_count": {
           "type": "integer",

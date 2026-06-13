@@ -1,6 +1,6 @@
 # Chapter 1: Architecture Overview
 
-The MechGen compiler transforms `.mg` source files into optimized machine code
+The MAGE compiler transforms `.mg` source files into optimized machine code
 through a pipeline of well-defined stages. Each stage is a separate crate with
 a clean query-based interface.
 
@@ -64,7 +64,7 @@ a clean query-based interface.
 │  ┌────────────────────────────────────────────────────┐  │
 │  │ Phase 3: Backend                                   │  │
 │  │                                                    │  │
-│  │  rdx_mlir ──→ MechGen MLIR Dialect                   │  │
+│  │  rdx_mlir ──→ MAGE MLIR Dialect                   │  │
 │  │      │                                             │  │
 │  │      ▼                                             │  │
 │  │  MLIR Passes ──→ LLVM MLIR Dialect                 │  │

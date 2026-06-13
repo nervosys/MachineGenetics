@@ -3,15 +3,15 @@
 /// Supports:
 /// - Auto-transpile Rust crates on first use via `rust2mg`
 /// - Publish to both registries via `forge publish --also-crates-io`
-/// - Unified dependency resolution across Rust + MechGen
+/// - Unified dependency resolution across Rust + MAGE
 /// - Version mapping (e.g. `u http.Client` → crates.io `reqwest`)
 /// - FFI bridge for using Rust crates directly
 
-/// A mapping from a MechGen module path to a crates.io crate.
+/// A mapping from a MAGE module path to a crates.io crate.
 #[derive(Debug, Clone)]
 pub struct CrateAlias {
-    /// MechGen-style import path, e.g. `http.Client`
-    pub mechgen_path: String,
+    /// MAGE-style import path, e.g. `http.Client`
+    pub mage_path: String,
     /// Corresponding crates.io crate name, e.g. `reqwest`
     pub crate_name: String,
     /// Version requirement for the crate, e.g. `^0.12`
@@ -21,9 +21,9 @@ pub struct CrateAlias {
 }
 
 impl CrateAlias {
-    pub fn new(mechgen_path: &str, crate_name: &str, version_req: &str) -> Self {
+    pub fn new(mage_path: &str, crate_name: &str, version_req: &str) -> Self {
         Self {
-            mechgen_path: mechgen_path.to_string(),
+            mage_path: mage_path.to_string(),
             crate_name: crate_name.to_string(),
             version_req: version_req.to_string(),
             features: Vec::new(),
@@ -36,7 +36,7 @@ impl CrateAlias {
     }
 }
 
-/// The alias table that maps MechGen imports to crates.io crates.
+/// The alias table that maps MAGE imports to crates.io crates.
 #[derive(Debug, Default)]
 pub struct AliasTable {
     aliases: Vec<CrateAlias>,
@@ -47,14 +47,14 @@ impl AliasTable {
         Self::default()
     }
 
-    /// Register a MechGen → crates.io alias.
+    /// Register a MAGE → crates.io alias.
     pub fn register(&mut self, alias: CrateAlias) {
         self.aliases.push(alias);
     }
 
-    /// Look up the crates.io crate for a MechGen import path.
-    pub fn resolve(&self, mechgen_path: &str) -> Option<&CrateAlias> {
-        self.aliases.iter().find(|a| a.mechgen_path == mechgen_path)
+    /// Look up the crates.io crate for a MAGE import path.
+    pub fn resolve(&self, mage_path: &str) -> Option<&CrateAlias> {
+        self.aliases.iter().find(|a| a.mage_path == mage_path)
     }
 
     /// Return all registered aliases.

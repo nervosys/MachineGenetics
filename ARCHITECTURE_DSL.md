@@ -2,7 +2,7 @@
 
 *The connective tissue for a maximally high-level, composable architecture DSL.
 Every claim here is anchored to a measurement (`benchmarks/constructs/`) or to an
-existing MechGen subsystem. Status markers: ✅ done · ◻ to build.*
+existing MAGE subsystem. Status markers: ✅ done · ◻ to build.*
 
 ## 1. The premise, corrected by measurement
 

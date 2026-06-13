@@ -1,9 +1,9 @@
-# MechGen Agent Instructions
-# Standard configuration for AI agents working with MechGen source code.
-# Place this file at .MechGen/agent-instructions.yaml in your project root,
+# MAGE Agent Instructions
+# Standard configuration for AI agents working with MAGE source code.
+# Place this file at .MAGE/agent-instructions.yaml in your project root,
 # or load it from the training/ directory as a reference.
 
-language: MechGen
+language: MAGE
 edition: "2025"
 version: "1.0"
 
@@ -133,7 +133,7 @@ patterns:
 
 # ─── Translation Reference ──────────────────────────────────────────
 
-# Quick reference table: MechGen → Rust
+# Quick reference table: MAGE → Rust
 translation_table:
   "f / +f":            "fn / pub fn"
   "af / +af":          "async fn / pub async fn"

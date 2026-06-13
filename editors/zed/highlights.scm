@@ -1,4 +1,4 @@
-; Zed tree-sitter highlight queries for MechGen.
+; Zed tree-sitter highlight queries for MAGE.
 
 ; ── Comments ─────────────────────────────────────────────────────────
 (line_comment) @comment

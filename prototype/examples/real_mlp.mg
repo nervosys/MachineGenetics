@@ -1,7 +1,7 @@
 // Phase-5 real MLP — runs end-to-end through CpuBackend with weighted
 // Linear ops and cached parameters.
 //
-// Run: MechGen-parse --target=abl-compute prototype/examples/real_mlp.mg
+// Run: mage-parse --target=abl-compute prototype/examples/real_mlp.mg
 
 net MLP {
     layer fc1: Linear(8, 16);

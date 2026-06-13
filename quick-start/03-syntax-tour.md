@@ -1,6 +1,6 @@
 # Step 3: Syntax in 5 Minutes
 
-MechGen uses token-minimal syntax — every construct is as short as
+MAGE uses token-minimal syntax — every construct is as short as
 possible so AI agents can read and write code faster. Here's the full
 tour.
 
@@ -8,7 +8,7 @@ tour.
 
 ## Variables
 
-```MechGen
+```MAGE
 v x = 42          // immutable binding (let)
 m y = 0           // mutable binding (let mut)
 y = 10            // reassign mutable
@@ -17,7 +17,7 @@ y = 10            // reassign mutable
 
 ## Functions
 
-```MechGen
+```MAGE
 f add(a: i32, b: i32) -> i32 {       // private function
     a + b
 }
@@ -35,7 +35,7 @@ c f max_size() -> usize { 1024 }     // const function
 
 ## Types at a Glance
 
-```MechGen
+```MAGE
 // Primitives
 v a: i32 = 42
 v b: f64 = 3.14
@@ -62,7 +62,7 @@ v result: R[i32, s] = 42              // Result<i32, String> = Ok(42)
 
 ### Type Cheat Sheet
 
-| MechGen       | Rust             | Description        |
+| MAGE       | Rust             | Description        |
 | ----------- | ---------------- | ------------------ |
 | `s`         | `String`         | Owned string       |
 | `&s`        | `&str`           | String slice       |
@@ -80,7 +80,7 @@ v result: R[i32, s] = 42              // Result<i32, String> = Ok(42)
 
 ## Structs, Enums, Traits
 
-```MechGen
+```MAGE
 // Struct
 +S Point {
     x: f64,
@@ -128,7 +128,7 @@ I ~ Point {
 
 ## Control Flow
 
-```MechGen
+```MAGE
 // If / else
 ? x > 0 {
     p"positive"
@@ -171,7 +171,7 @@ I ~ Point {
 
 ## Modules and Imports
 
-```MechGen
+```MAGE
 // Module declaration
 +M math {
     +f sqrt(x: f64) -> f64 { /* ... */ }
@@ -187,7 +187,7 @@ v result = math.sqrt(4.0)
 
 ## Error Handling
 
-```MechGen
+```MAGE
 // The ? operator works the same as Rust
 f read_file(path: &s) -> R[s, io.Error] / io {
     v content = fs.read_to_string(path)?
@@ -208,7 +208,7 @@ f find(xs: &[i32]~, target: i32) -> ?usize {
 
 Effects declare what side-effects a function performs:
 
-```MechGen
+```MAGE
 f pure_add(a: i32, b: i32) -> i32 { a + b }        // no effects
 
 f read_config() -> Config / io { /* ... */ }         // io effect
@@ -223,7 +223,7 @@ them unless you want to document intent.
 
 ## Generics
 
-```MechGen
+```MAGE
 // Generics use [] not <>
 f first[T](xs: &[T]~) -> ?&T {
     xs.first()
@@ -249,7 +249,7 @@ f print_all[T](xs: &[T]~) ~> T: Display {
 
 ## Attributes
 
-```MechGen
+```MAGE
 @d(Debug, Clone)           // #[derive(Debug, Clone)]
 +S Config {
     name: s,
@@ -270,7 +270,7 @@ f linux_only() { /* ... */ }
 
 ---
 
-**That's all the syntax you need to start writing MechGen.**
+**That's all the syntax you need to start writing MAGE.**
 
 The compiler handles safety rules (ownership, borrowing, lifetimes)
 through the SKB — you never write lifetime annotations or borrow

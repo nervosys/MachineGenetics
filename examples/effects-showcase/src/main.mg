@@ -1,4 +1,4 @@
-// effects-showcase — Algebraic effect system in MechGen.
+// effects-showcase — Algebraic effect system in MAGE.
 //
 // Demonstrates:
 //   - Effect declarations (effect keyword)
@@ -309,7 +309,7 @@ fn print_receipt(order: &Order) / io + db + log {
 // ─────────────────────────────────────────────────────────────────────
 
 pub fn main() / io {
-    println!("=== MechGen Effects Showcase ===");
+    println!("=== MAGE Effects Showcase ===");
     println!("");
 
     // §2 — Pure functions.
@@ -322,7 +322,7 @@ pub fn main() / io {
 
     // §3 — Single effect annotation.
     println!("-- Single effect (/ io) --");
-    greet("MechGen");
+    greet("MAGE");
     println!("");
 
     // §5 — Effect polymorphism.

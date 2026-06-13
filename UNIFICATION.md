@@ -1,4 +1,4 @@
-# MechGen + RMI Unification
+# MAGE + RMI Unification
 
 > **Status:** Phases 1-95 landed.  Tests: **915 / 915** in prototype,
 > ~2,400+ across all suites.
@@ -13,10 +13,10 @@
 > bench_backends (4), effects (15), wrapper_protocol (9),
 > project_layout (22), docs (7), ci_floors (6), **hardware_accelerators
 > (extensible runtime registry, 8 builtins)**. Single RAP call
-> `ontology/full` or static dump at `MECHGEN_ONTOLOGY.json` (~122 KB,
+> `ontology/full` or static dump at `MAGE_ONTOLOGY.json` (~122 KB,
 > **256 framewerx entries** + ~100 operational entries + open backend catalog).
 >
-> **RecursiveMachineIntelligence-MG**: agent-first FLAX-equivalent built in MechGen over
+> **RecursiveMachineIntelligence-MG**: agent-first FLAX-equivalent built in MAGE over
 > the RMI low-level layer. **57+ `.mg` files** in `framework/framewerx/`
 > spanning neural (attention variants, MoE, PEFT, quantization,
 > dynamical, energy/flow, memory, multimodal, world models, advanced
@@ -45,14 +45,14 @@
 > reduction lives. See [`AGENT_PROTOCOL.md`](AGENT_PROTOCOL.md).
 
 > **Phase 27 refocus:** Phases 6–26 built an ML training framework
-> *inside* MechGen as a unification proof-point. Phase 27 returns to
+> *inside* MAGE as a unification proof-point. Phase 27 returns to
 > the actual mission — making the language + IR maximally
 > token-efficient and reliable for agents — and starts measuring
 > the token-efficiency claim against the existing benchmark corpus.
 > Finding: see `benchmarks/FINDINGS.md`.
 
 This document describes the unification of the two agentic-first systems in
-this repository — **MechGen** (Rust-derived programming language with sigil
+this repository — **MAGE** (Rust-derived programming language with sigil
 syntax, effects, contracts, swarm primitives, and an MLIR backend) and
 **RMI / RecursiveMachineIntelligence** (a low-level Rust framework with the binary
 neurosymbolic IR **Agentic Binary Language**, neural / symbolic / distributed / federated
@@ -60,15 +60,15 @@ primitives, and seven compute backends).
 
 ## Goals
 
-1. **Token-efficient codegen.** A MechGen `net` definition should lower to
+1. **Token-efficient codegen.** A MAGE `net` definition should lower to
    Agentic Binary Language — a transformer block in ~50 bytes on the wire instead of hundreds of
    lines of generated MLIR.
-2. **First-class neurosymbolic ops in MechGen.** `net`, `kb`, `agent`, and
+2. **First-class neurosymbolic ops in MAGE.** `net`, `kb`, `agent`, and
    `swarm` items become real codegen targets, not just AST shapes.
-3. **Shared agent / ontology surface.** MechGen's swarm runtime gains access
+3. **Shared agent / ontology surface.** MAGE's swarm runtime gains access
    to RMI's `SharedWorkspace`, `TaskDelegator`, distributed transport, and
    federated trainer. RMI's ontology query graph becomes a populated view
-   over MechGen's Safety Knowledge Base.
+   over MAGE's Safety Knowledge Base.
 4. **No regression.** Both halves keep their existing test suites green and
    remain independently buildable.
 
@@ -79,7 +79,7 @@ primitives, and seven compute backends).
                                   │
                                   ▼
                   ┌───────────────────────────────┐
-                  │   MechGen frontend            │
+                  │   MAGE frontend            │
                   │  lex → parse → resolve →      │
                   │  typecheck → effects → elide  │
                   └───────────────┬───────────────┘
@@ -113,7 +113,7 @@ primitives, and seven compute backends).
 ### Workspace + dependency wiring
 
 - Root `Cargo.toml` reshaped: pre-existing duplicate-workspace conflicts
-  resolved by treating `prototype/`, `RecursiveMachineIntelligence/`, and `compiler/mechgen_grammar/`
+  resolved by treating `prototype/`, `RecursiveMachineIntelligence/`, and `compiler/mage_grammar/`
   as standalone workspaces (`exclude` list).
 - `prototype/Cargo.toml` adds a path dependency on `rmi`:
   ```toml
@@ -123,7 +123,7 @@ primitives, and seven compute backends).
 
 ### `prototype/src/abl_bridge.rs` — AST → Agentic Binary Language
 
-| MechGen surface                         | Agentic Binary Language lowering                                       |
+| MAGE surface                         | Agentic Binary Language lowering                                       |
 |-----------------------------------------|-----------------------------------------------------|
 | `net { layer ...; layer ...; }`         | `Op::* >> Op::* >> ...` pipeline                    |
 | `kb { fact ...; rule ...; }`            | `Op::RESOLVE` / `Op::UNIFY >> Op::INFER` stages     |
@@ -145,10 +145,10 @@ router dispatch, codec round-trip.
 ### `prototype/src/rmi_runtime_adapter.rs` — runtime façade
 
 Owns an `rmi::core::collaboration::AgentRuntime` and exposes its
-`SharedWorkspace` and `TaskDelegator` through a MechGen-shaped interface.
-This lets MechGen's `agent_runtime.rs` opt into RMI's blackboard, task
+`SharedWorkspace` and `TaskDelegator` through a MAGE-shaped interface.
+This lets MAGE's `agent_runtime.rs` opt into RMI's blackboard, task
 delegation, model registry, federated trainer, and distributed transport
-without losing MechGen's semantic leases / CRDT / consensus / VCS.
+without losing MAGE's semantic leases / CRDT / consensus / VCS.
 
 ### `prototype/src/rmi_ontology_adapter.rs` — SKB ↔ Ontology
 
@@ -162,13 +162,13 @@ for `air.neural` and `air.symbolic` concepts.
 ### CLI
 
 ```sh
-MechGen-parse --target=abl prototype/examples/unified.mg
+mage-parse --target=abl prototype/examples/unified.mg
 ```
 
 emits per-item Agentic Binary Language statistics:
 
 ```
-// MechGen → Agentic Binary Language lowering for prototype/examples/unified.mg
+// MAGE → Agentic Binary Language lowering for prototype/examples/unified.mg
 // MLIR-routed items: 2
 // Agentic Binary Language-routed items: 4
 // TransformerBlock: nodes=15 depth=8 hash=7def99cdb73a14e2 wire=47B
@@ -183,7 +183,7 @@ A transformer block in **47 bytes**. That is the unification payoff.
 
 | Suite                         | Pre-P1 | P1    | …     | P24   | P25   | P26   |
 |-------------------------------|--------|-------|-------|-------|-------|-------|
-| MechGen prototype             |   690  |  770  | …     |  830  |  831  |  831  |
+| MAGE prototype             |   690  |  770  | …     |  830  |  831  |  831  |
 | RMI / RecursiveMachineIntelligence (unchanged)   | 1,367  | 1,367 | 1,367 | 1,367 | 1,367 | 1,367 |
 | **Combined**                  | 2,057  | 2,137 | …     | 2,197 | 2,198 | 2,198 |
 
@@ -226,7 +226,7 @@ NetTranslator, train_one_step) into a CLI flag, exercised by the new
 |-----------------------------------|-----------------------------------------------------|
 | Unification depth                 | Shared IR + runtime adapters (1–2 weeks)            |
 | Surface / IR relationship         | Agentic Binary Language is a **peer** to MLIR; both reachable          |
-| Canonical runtime                 | Merge — MechGen keeps leases/CRDT/consensus/VCS; RMI keeps workspace/delegator/distributed/federated |
+| Canonical runtime                 | Merge — MAGE keeps leases/CRDT/consensus/VCS; RMI keeps workspace/delegator/distributed/federated |
 | Bridge location                   | Modules inside `prototype/` (not a separate crate)  |
 | Workspace integration             | `exclude` (RecursiveMachineIntelligence stays standalone-buildable)    |
 
@@ -262,13 +262,13 @@ are dropped (constant-folding is the frontend's job).
 
 A bridge test now constructs an Agentic Binary Language expression, runs it through
 `rmi::lang::Vm`, and asserts the math result — verifying the full
-MechGen-bridge ↔ RMI VM seam. Net opcodes still return `Nil` from the
+MAGE-bridge ↔ RMI VM seam. Net opcodes still return `Nil` from the
 VM as designed (they record intent for the JIT / compute backends).
 
 ### Unified SKB-QL search (`unified_search`)
 
 `crate::rmi_ontology_adapter::unified_search(query, &ontology)` returns
-`Vec<UnifiedHit>` spanning both halves: matches in MechGen safety rules
+`Vec<UnifiedHit>` spanning both halves: matches in MAGE safety rules
 (searched across all eight rule databases) and matches in RMI concepts
 (searched via `OntologyQuery`). Each hit carries `source: "skb"` or
 `"ontology"` so callers can route by origin.
@@ -283,7 +283,7 @@ A second CLI flag walks every Agentic Binary Language-routed item, executes thro
 `rmi::lang::Vm::eval`, and reports per-item status:
 
 ```
-// MechGen → Agentic Binary Language → VM execution for prototype/examples/unified.mg
+// MAGE → Agentic Binary Language → VM execution for prototype/examples/unified.mg
 // TransformerBlock: ok  (hash=7def99cdb73a14e2 result=Nil)
 // MLP:              stub (hash=bc5d35ff371e638c families=Neural — ...)
 // Workers:          stub (hash=c0e74dbb1151d588 families=Agent — ...)
@@ -297,12 +297,12 @@ new helpers `expr_op_families` and `is_stubbed_family` in
 
 ### Runtime fusion — `RmiAdapter` embedded in `AgentRuntime`
 
-MechGen's [`AgentRuntime`](prototype/src/agent_runtime.rs) now owns an
+MAGE's [`AgentRuntime`](prototype/src/agent_runtime.rs) now owns an
 `RmiAdapter` field alongside its native swarm primitives:
 
 ```rust
 pub struct AgentRuntime {
-    // … MechGen native: sandbox, lease, bus, consensus, task_dag …
+    // … MAGE native: sandbox, lease, bus, consensus, task_dag …
     rmi: RmiAdapter,  // ← Phase 3 fusion
 }
 ```
@@ -312,8 +312,8 @@ New methods:
 - `runtime.post_to_shared_workspace(agent_id, key, value)` — write to RMI's
   `SharedWorkspace` with a stable per-agent UUID (v5 of agent id)
 
-Each registered MechGen agent now has a deterministic identity in the
-RMI workspace and task delegator without touching its MechGen-side
+Each registered MAGE agent now has a deterministic identity in the
+RMI workspace and task delegator without touching its MAGE-side
 sandbox / lease / consensus state.
 
 ### Swarm transport attribute (`transport: rmi-quic`)
@@ -321,7 +321,7 @@ sandbox / lease / consensus state.
 The parser, AST, and bridge now understand a `transport` field on
 `swarm` blocks:
 
-```mechgen
+```mage
 swarm Workers {
     agent: Worker;
     topology: ring;
@@ -333,12 +333,12 @@ swarm Workers {
 When the transport begins with `rmi-`, `SwarmTranslator` emits
 `Op::SEND(transport_sym)` and `Op::RECV(transport_sym)` so a downstream
 codegen pass can dispatch to `rmi::distributed::transport`. The default
-(no `transport:` or `"local"`) keeps the swarm on MechGen's local
+(no `transport:` or `"local"`) keeps the swarm on MAGE's local
 `swarm_bus`.
 
 ## Phase 4 additions
 
-### Agentic Binary Language → MechGen decompiler (`decompile` in `abl_bridge.rs`)
+### Agentic Binary Language → MAGE decompiler (`decompile` in `abl_bridge.rs`)
 
 A new `decompile(expr, net_name) -> DecompileResult` walks an Agentic Binary Language `Expr`
 tree and reconstructs an `ast::NetDef`. Uses a reverse Op→layer-name table
@@ -358,8 +358,8 @@ A new module dispatches activation-only Agentic Binary Language pipelines to a r
 [`rmi::compute::Backend`] (CPU today, GPU once features are enabled):
 
 ```
-MechGen-parse --target=abl-compute prototype/examples/unified.mg
-// MechGen → Agentic Binary Language → CpuBackend dispatch
+mage-parse --target=abl-compute prototype/examples/unified.mg
+// MAGE → Agentic Binary Language → CpuBackend dispatch
 // TransformerBlock: dispatched=1 unsupported=[LayerNorm,Attn,Drop,Linear,...] output_sum=6.7295 shape=[8]
 // MLP:              dispatched=1 unsupported=[Linear,Linear]                  output_sum=8.0000 shape=[8]
 // ResNetStage:      dispatched=1 unsupported=[Conv2D,BatchNorm,...]           output_sum=8.0000 shape=[8]
@@ -391,7 +391,7 @@ matmuls on the CPU backend, with a content-hash-keyed `ParamStore`:
 
 A new example `prototype/examples/real_mlp.mg`:
 
-```mechgen
+```mage
 net MLP {
     layer fc1: Linear(8, 16);
     layer act1: ReLU;
@@ -467,13 +467,13 @@ wrong answers — verified by `jit_path_falls_back_for_neural_ops_without_error`
 - **Add a new neural primitive?** Add the opcode to
   `RecursiveMachineIntelligence/src/lang/op.rs`, then add the surface-name → opcode mapping
   to `layer_name_to_op` in `abl_bridge.rs`.
-- **Expose a new RMI subsystem to MechGen?** Add a thin wrapper to
-  `rmi_runtime_adapter.rs`; keep the wrapper's surface MechGen-shaped so
+- **Expose a new RMI subsystem to MAGE?** Add a thin wrapper to
+  `rmi_runtime_adapter.rs`; keep the wrapper's surface MAGE-shaped so
   swarm code does not directly import `rmi::*`.
 
 ## Phase 6-44 (condensed)
 
-Phases 6-26 built an ML training framework inside MechGen as a
+Phases 6-26 built an ML training framework inside MAGE as a
 unification proof-point (autograd, shape inference, evolve codegen,
 Agentic Binary Language compute dispatch). Phase 27 re-anchored on the actual mission and
 exposed that the text-token-efficiency claim was overstated (parity
@@ -546,7 +546,7 @@ any LLM. New CI step asserts refine > 0.
 ## Phase 48: `pipeline/recover-and-encode` one-shot
 
 Composes `recover::recover` + `abl::encode_module` so an agent gets
-recovered MechGen + Agentic Binary Language bytes in one call. On `ok:false` returns
+recovered MAGE + Agentic Binary Language bytes in one call. On `ok:false` returns
 `{ stage:"failed", error:"recovery exhausted; refine required" }` -
 explicit hand-off to Stage-3. Tests: +3 rap.
 
@@ -611,7 +611,7 @@ bootstrap.
 ## Phase 55: Project completion - static artifact + status snapshot
 
 New `--emit-ontology [path]` CLI flag dumps the complete ontology to
-disk as static JSON (default: `MECHGEN_ONTOLOGY.json`). Generated
+disk as static JSON (default: `MAGE_ONTOLOGY.json`). Generated
 artifact is 54 KB / 2,399 lines covering 38 sigils, 12 keywords, 30
 types, 18 ast_kinds, 107 IR ops, 7 op families, 31 layer mappings, 37
 RAP methods, ~10 heal patterns, 7 recovery stages, Agentic Binary Language layout, and
@@ -643,7 +643,7 @@ four ratios held within noise:
 The P27 honest correction (parity, not 50% reduction) stands. New CI
 step parses the `**Total**` row of `benchmarks/TOKEN_REPORT.md` and
 fails if the native-lexer ratio exceeds 1.100. Anything beyond means
-a sigil or formatter change is bloating MechGen relative to Rust.
+a sigil or formatter change is bloating MAGE relative to Rust.
 
 ## Where the win actually lives (current honest framing)
 
@@ -651,7 +651,7 @@ The mission statement is "maximally token-efficient and reliable for
 agents to use." The reality after 49 phases of honest measurement:
 
 1. **Token parity** with Rust on syntactic tokens (0.998 native-lexer
-   ratio). The agent's inference cost on MechGen text is the same as
+   ratio). The agent's inference cost on MAGE text is the same as
    on Rust text - no win, no penalty.
 2. **Binary IR (Agentic Binary Language)** for AI-routed items (`net`/`kb`/`agent`/
    `swarm`). Agents can ship and execute these without text
@@ -685,7 +685,7 @@ CI floor. Highlights:
 - **P61**: postfix `?` (try operator) must NOT apply to control-flow
   expressions; else-if shorthand `} : ? cond { }`. Two fixes, +2.
 - **P63**: Rust-style `<T, Bound>` generics in both decl and type
-  position (alongside MechGen's native `[T, Bound]`); 11 callsites.
+  position (alongside MAGE's native `[T, Bound]`); 11 callsites.
   +2 corpus tasks.
 - **P66**: KwV/M/Val/Var as identifier-expressions in match-arm
   bodies; turbofish `::<T>` postfix on `.method`. +3 effective.
@@ -718,7 +718,7 @@ from ~10 to ~13 patterns.
 
 ## Phase 72-74: RecursiveMachineIntelligence-MG (JAX:FLAX :: RMI:RecursiveMachineIntelligence-MG)
 
-User asked for a framework written IN MechGen, agent-first, with
+User asked for a framework written IN MAGE, agent-first, with
 reliability via the ontology + neurosymbolic AI.
 
 - **P72**: `framework/framewerx/` directory landed. 13 `.mg` files
@@ -738,7 +738,7 @@ reliability via the ontology + neurosymbolic AI.
 Architecture:
 
 ```
-RecursiveMachineIntelligence-MG (MechGen .mg)    <- FLAX-equivalent (agent-facing)
+RecursiveMachineIntelligence-MG (MAGE .mg)    <- FLAX-equivalent (agent-facing)
        |
        v  abl_bridge::lower_module
 RMI / RecursiveMachineIntelligence (Rust crate)  <- JAX-equivalent (107 opcodes, CpuBackend)
@@ -807,7 +807,7 @@ agent-facing surface concretely.
   project_layout (22 directory pointers), docs (6 entries with
   audience tagging), ci_floors (6 thresholds). Ontology 13 -> **20
   sections**. Static dump 106 -> 119 KB. +7 load-bearing tests.
-- **P83** Agent self-test: bootstrapped from `MECHGEN_ONTOLOGY.json`
+- **P83** Agent self-test: bootstrapped from `MAGE_ONTOLOGY.json`
   alone, used the discovered surface to write and execute a model.
   **Surfaced a real bug**: `abl_compute::run_pipeline` was called
   with hardcoded `&[8]` input shape at three callsites; models with
@@ -874,9 +874,9 @@ surface and wired the hardware-accelerator axis.
 - **P93** Made the backend catalog **extensible at runtime**: the
   P91 const table became a registry that merges built-ins with JSON
   descriptors loaded from `RDX_BACKENDS_PATH` env var,
-  `~/.mechgen/backends.json`, or `--backends-file=<path>`. Each
+  `~/.mage/backends.json`, or `--backends-file=<path>`. Each
   descriptor tracks its `source` for provenance. Catalog is now
-  genuinely open - any org ships MechGen with their own
+  genuinely open - any org ships MAGE with their own
   `backends.json` and agents see those entries via `ontology/section`.
 - **P94** Closed the **execution** side of the open catalog: new
   `DispatchKind::Subprocess { command }` variant on descriptors lets
@@ -894,7 +894,7 @@ surface and wired the hardware-accelerator axis.
 The P93-95 trio means an operator wanting to plug in a Groq LPU,
 Cerebras WSE, Google TPU, AWS Trainium, or any other accelerator
 needs to do ONE thing: write a wrapper script implementing the
-documented protocol. No MechGen recompile; no source patch; the
+documented protocol. No MAGE recompile; no source patch; the
 backend appears in the ontology and dispatches real Agentic Binary Language bytecode.
 
 ## Final state at P95
@@ -912,7 +912,7 @@ backend appears in the ontology and dispatches real Agentic Binary Language byte
 | `layer_name_to_op` resolutions | 80+ |
 | **Framework examples dispatching end-to-end** | **14 / 14** |
 | **CI-enforced agent-UX guards** | 3 layers: CLI sweep + RAP wire + subprocess backend |
-| Static `MECHGEN_ONTOLOGY.json` | 122 KB |
+| Static `MAGE_ONTOLOGY.json` | 122 KB |
 | Measured Agentic Binary Language compression | 68.8% on FlashAttnBlock |
 
 The original prompt was "create a low-level programming language and
@@ -922,6 +922,6 @@ adversarial noise), token efficiency where it actually matters
 (binary IR with measured 68.8% reduction), and a complete
 self-describing protocol surface (one ontology call returns 180+
 entries spanning the modern AI stack). RecursiveMachineIntelligence-MG, built in
-MechGen over RMI, gives agents both the breadth (every architecture
+MAGE over RMI, gives agents both the breadth (every architecture
 they'd actually use) and the depth (every name resolves to a real
 opcode, every example compiles to verified bytes).

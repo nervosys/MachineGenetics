@@ -2,7 +2,7 @@
 # demo_agent_workflow.sh - end-to-end walk of the agent flow.
 #
 # Steps the script demonstrates:
-#   1. Discover what's available    (read MECHGEN_ONTOLOGY.json)
+#   1. Discover what's available    (read MAGE_ONTOLOGY.json)
 #   2. Pick a template               (one of the framework's examples)
 #   3. Compile to binary IR          (--target=abl-bytes -> .abl)
 #   4. Decode for inspection         (--from=abl-bytes round-trip)
@@ -14,16 +14,16 @@
 
 set -uo pipefail
 
-MGP="prototype/target/release/MechGen-parse.exe"
-[ -x "$MGP" ] || MGP="prototype/target/release/MechGen-parse"
+MGP="prototype/target/release/mage-parse.exe"
+[ -x "$MGP" ] || MGP="prototype/target/release/mage-parse"
 
 if [ ! -x "$MGP" ]; then
-    echo "demo: building MechGen-parse..." >&2
-    cargo build --release --manifest-path prototype/Cargo.toml --bin MechGen-parse \
+    echo "demo: building mage-parse..." >&2
+    cargo build --release --manifest-path prototype/Cargo.toml --bin mage-parse \
         >/dev/null 2>&1
 fi
 
-ONTOLOGY="MECHGEN_ONTOLOGY.json"
+ONTOLOGY="MAGE_ONTOLOGY.json"
 DEMO_DIR=$(mktemp -d)
 trap "rm -rf '$DEMO_DIR'" EXIT
 
@@ -91,7 +91,7 @@ fi
 
 # ── Step 4: decode round-trip ────────────────────────────────────────
 separator
-echo "STEP 4  Decode the Agentic Binary Language back to a MechGen view"
+echo "STEP 4  Decode the Agentic Binary Language back to a MAGE view"
 echo "(equivalent to abl/decode over RAP)"
 separator
 

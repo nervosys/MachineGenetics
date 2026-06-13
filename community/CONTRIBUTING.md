@@ -1,16 +1,16 @@
-# Contributing to MechGen
+# Contributing to MAGE
 
-Thank you for your interest in contributing to MechGen! This guide covers how to
+Thank you for your interest in contributing to MAGE! This guide covers how to
 get involved, from reporting bugs to proposing new language features.
 
 ## Getting Started
 
 1. **Read the docs** — Start with the [Quick Start Guide](quick-start/README.md),
-   then the [MechGen Book](book/README.md) for a deep dive into the language.
+   then the [MAGE Book](book/README.md) for a deep dive into the language.
 2. **Set up your environment** — Follow [INSTALL.md](INSTALL.md) to build
    the compiler and tools from source.
 3. **Join the conversation** — Open a
-   [GitHub Discussion](https://github.com/nervosys/MechGen/discussions) to ask
+   [GitHub Discussion](https://github.com/nervosys/MAGE/discussions) to ask
    questions or share ideas.
 
 ## Ways to Contribute
@@ -44,8 +44,8 @@ get involved, from reporting bugs to proposing new language features.
 
 ```bash
 # Clone the repository
-git clone https://github.com/nervosys/MechGen.git
-cd MechGen
+git clone https://github.com/nervosys/MAGE.git
+cd MAGE
 
 # Build the transpiler
 cd tools/rust2mg && cargo build && cargo test && cd ../..
@@ -62,7 +62,7 @@ cargo test --workspace
 
 ## Code Style
 
-- **MechGen code** (`.mg` files): Follow the conventions in
+- **MAGE code** (`.mg` files): Follow the conventions in
   [training/agent-instructions.yaml](training/agent-instructions.yaml)
 - **Rust code** (`.rs` files): Use `rustfmt` with the project's
   [rustfmt.toml](rustfmt.toml)
@@ -104,10 +104,10 @@ Minor changes (typos, doc fixes, small bug fixes) do not need an RFC.
 
 ## Reporting Bugs
 
-Use the [Bug Report](https://github.com/nervosys/MechGen/issues/new?template=bug_report.yaml)
+Use the [Bug Report](https://github.com/nervosys/MAGE/issues/new?template=bug_report.yaml)
 issue template. Include:
 
-- MechGen version (`mg --version`)
+- MAGE version (`mg --version`)
 - Minimal reproduction code (`.mg` source)
 - Expected vs. actual behavior
 - Error messages or backtraces

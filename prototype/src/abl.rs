@@ -35,7 +35,7 @@ pub struct AblItem {
     pub expr_bytes_len: usize,
 }
 
-/// Lower a MechGen module and encode every Agentic Binary Language-routed item into a single
+/// Lower a MAGE module and encode every Agentic Binary Language-routed item into a single
 /// Agentic Binary Language blob. Returns the blob plus per-item `(name, expr_bytes_len, content_hash)`
 /// for summary printing; callers can ignore the summary tuple if not needed.
 pub fn encode_module(module: &ast::Module) -> (Vec<u8>, Vec<(String, usize, u64)>) {

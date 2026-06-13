@@ -1,6 +1,6 @@
-//! SPINE collaboration bridge — MechGen ABL agents → SPINE messages.
+//! SPINE collaboration bridge — MAGE ABL agents → SPINE messages.
 //!
-//! The MechGen side of the design in `SPINE_COLLABORATION.md`. It reuses the
+//! The MAGE side of the design in `SPINE_COLLABORATION.md`. It reuses the
 //! verified [`crate::abl_bridge`] decision logic (capability gating + swarm
 //! consensus) and emits **SPINE-protocol-shaped JSON** whose field names target
 //! the `spine_agentic` serde types (`AgentProfile`, `SwarmTask`,
@@ -12,7 +12,7 @@
 //! path-dependency from this crate. The type-level join therefore lives at the
 //! integration boundary (link `spine-agentic` from inside that workspace);
 //! everything in THIS module — the capability map, the gate, the consensus
-//! decision, and the content digest a `signed_frame` covers — is MechGen-side,
+//! decision, and the content digest a `signed_frame` covers — is MAGE-side,
 //! dependency-free, and unit-tested.
 
 use crate::abl_bridge::{eval_agent_policy, eval_swarm_consensus, OpDecision};
@@ -29,7 +29,7 @@ pub fn content_digest(bytes: &[u8]) -> u64 {
     h
 }
 
-/// Map a MechGen capability identifier to a SPINE `AgentCapability` JSON value
+/// Map a MAGE capability identifier to a SPINE `AgentCapability` JSON value
 /// (a unit-variant string, or `{"Custom": "<id>"}` for project-specific ones).
 pub fn map_capability(id: &str) -> serde_json::Value {
     match id {
@@ -75,7 +75,7 @@ pub fn swarm_task(spec: &SwarmSpec) -> serde_json::Value {
         "required_capabilities": [ map_capability(&spec.agent) ],
         "min_members": size,
         "max_members": size,
-        // MechGen coordination metadata that drives eval_swarm_consensus:
+        // MAGE coordination metadata that drives eval_swarm_consensus:
         "topology": spec.topology,
         "consensus": spec.consensus,
     })

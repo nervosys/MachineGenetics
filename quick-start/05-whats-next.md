@@ -1,6 +1,6 @@
 # Step 5: What's Next?
 
-You've installed MechGen, written your first program, learned the syntax,
+You've installed MAGE, written your first program, learned the syntax,
 and know how to build, run, and test. Here's where to go from here.
 
 ---
@@ -9,24 +9,24 @@ and know how to build, run, and test. Here's where to go from here.
 
 | Resource                   | Description                                                  | Link                               |
 | -------------------------- | ------------------------------------------------------------ | ---------------------------------- |
-| **The MechGen Book**         | Comprehensive language guide covering every feature in depth | [book/](../book/README.md)         |
+| **The MAGE Book**         | Comprehensive language guide covering every feature in depth | [book/](../book/README.md)         |
 | **Cookbook**               | 65+ copy-paste recipes for common tasks                      | [cookbook/](../cookbook/README.md) |
-| **Language Specification** | Formal syntax and semantics reference                        | [MECHGEN_SPEC.md](../MECHGEN_SPEC.md)  |
+| **Language Specification** | Formal syntax and semantics reference                        | [MAGE_SPEC.md](../MAGE_SPEC.md)  |
 | **Standard Library**       | Module reference for `std.*`                                 | [stdlib/](../stdlib/std/)          |
 
 ## For Specific Audiences
 
 | You are...                 | Read this                                                                   |
 | -------------------------- | --------------------------------------------------------------------------- |
-| An **AI agent** developer  | [Agent Guide](../agent-guide/README.md) — patterns for agents writing MechGen |
-| Coming from **Rust**       | [Migration Guide](../migration-guide/README.md) — Rust → MechGen translation  |
+| An **AI agent** developer  | [Agent Guide](../agent-guide/README.md) — patterns for agents writing MAGE |
+| Coming from **Rust**       | [Migration Guide](../migration-guide/README.md) — Rust → MAGE translation  |
 | A **compiler contributor** | [Internals Guide](../internals/README.md) — compiler architecture           |
 
 ## Try These Next
 
 ### 1. Build a Small Project
 
-```MechGen
+```MAGE
 // A simple CLI calculator
 
 u std.io
@@ -58,7 +58,7 @@ u std.io
 
 ### 2. Explore the Standard Library
 
-```MechGen
+```MAGE
 u std.fs
 u std.collections.{HashMap, BTreeMap}
 u std.io.{Read, Write, BufRead}
@@ -69,7 +69,7 @@ See [stdlib/std/](../stdlib/std/) for all available modules.
 
 ### 3. Write Tests for Your Code
 
-```MechGen
+```MAGE
 @test
 f test_calculator() {
     assert(calculate("2 + 3") == 5.0)
@@ -86,11 +86,11 @@ Install the VS Code extension for the best experience:
 
 ## Community
 
-- [GitHub Repository](https://github.com/nervosys/MechGen) — source code,
+- [GitHub Repository](https://github.com/nervosys/MAGE) — source code,
   issues, and discussions
-- [MechGen_PROPOSAL.md](../MechGen_PROPOSAL.md) — the original language
+- [MAGE_PROPOSAL.md](../MAGE_PROPOSAL.md) — the original language
   design proposal
 
 ---
 
-**Welcome to MechGen. Happy coding!**
+**Welcome to MAGE. Happy coding!**

@@ -1,6 +1,6 @@
 # Chapter 2: Lexer & Parser Internals
 
-The MechGen frontend converts source text into an AST through two stages:
+The MAGE frontend converts source text into an AST through two stages:
 tokenization (lexer) and parsing. Both are designed for LL(1) operation —
 no backtracking, no ambiguity, every decision resolved by looking at the
 current token.
@@ -63,7 +63,7 @@ features.
 
 ### Keyword vs Identifier Disambiguation
 
-MechGen keywords are mostly single characters (`f`, `v`, `m`, `S`, `E`, `T`,
+MAGE keywords are mostly single characters (`f`, `v`, `m`, `S`, `E`, `T`,
 `I`, `M`, `u`, `c`). The lexer distinguishes keywords from identifiers using
 a lookup table after scanning the full identifier token:
 
@@ -152,9 +152,9 @@ The parser is in `rdx_parser` (prototype: `prototype/src/parser.rs`).
 
 ### LL(1) Guarantee
 
-MechGen's grammar is deliberately LL(1) — every production can be determined
+MAGE's grammar is deliberately LL(1) — every production can be determined
 by looking at exactly one token of lookahead. This is the foundational
-design decision that makes MechGen agent-friendly.
+design decision that makes MAGE agent-friendly.
 
 **Why LL(1) matters for agents:**
 

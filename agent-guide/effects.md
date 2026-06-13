@@ -1,6 +1,6 @@
-# MechGen Effect Annotation Guide
+# MAGE Effect Annotation Guide
 
-> Complete reference for the MechGen effect system, optimized for AI agents.
+> Complete reference for the MAGE effect system, optimized for AI agents.
 > All examples use **human syntax** (default).
 
 ---
@@ -10,7 +10,7 @@
 Effects declare the **side effects** a function may produce. Pure functions have
 no annotation. Impure functions list their effects after `/`.
 
-```MechGen
+```MAGE
 // Pure — no annotation
 fn add(a: i32, b: i32) -> i32 { a + b }
 
@@ -41,7 +41,7 @@ agent  ⊃  async    →  / agent (already includes async)
 ```
 
 **Examples:**
-```MechGen
+```MAGE
 // WRONG — redundant io with net
 pub async fn fetch(url: &str) -> Result<String, Error> / io, net { ... }
 
@@ -60,7 +60,7 @@ pub async fn run(a: &mut Agent) -> Result<(), Error> / agent { ... }
 **Rule:** If function A calls function B which has effect E, then A must also
 declare effect E (or a superset of E).
 
-```MechGen
+```MAGE
 // B has / io
 fn read_data() -> Result<String, Error> / io {
     fs::read_to_string("data.txt")
@@ -75,7 +75,7 @@ fn process() -> Result<(), Error> / io {
 ```
 
 **Violation** — compiler error:
-```MechGen
+```MAGE
 // WRONG — missing / io, but calls read_data() which requires / io
 fn process() -> Result<(), Error> {
     let data = read_data()?;   // ERROR: effect `io` not declared
@@ -103,7 +103,7 @@ Does the function...
 
 Comma-separate multiple effects:
 
-```MechGen
+```MAGE
 pub async fn download_and_save(url: &str, path: &str) -> Result<(), Error> / net, io {
     let data = http::get(url).await?;
     fs::write(path, data.bytes())?;
@@ -113,7 +113,7 @@ pub async fn download_and_save(url: &str, path: &str) -> Result<(), Error> / net
 
 But apply the hierarchy rule — don't list implied effects:
 
-```MechGen
+```MAGE
 // net already implies io, so this is redundant:
 pub async fn fetch() -> Result<String, Error> / io, net { ... }
 
@@ -125,7 +125,7 @@ pub async fn fetch() -> Result<String, Error> / net { ... }
 
 Use `handle` blocks to intercept effects. Essential for testing:
 
-```MechGen
+```MAGE
 #[test]
 fn test_read_config() {
     handle io {
@@ -139,7 +139,7 @@ fn test_read_config() {
 
 Multiple handlers:
 
-```MechGen
+```MAGE
 #[test]
 fn test_fetch_and_parse() {
     handle net {
@@ -156,7 +156,7 @@ fn test_fetch_and_parse() {
 
 ## Effect Annotations on Trait Methods
 
-```MechGen
+```MAGE
 pub trait DataSource {
     fn fetch(&self, query: &str) -> Result<String, Error> / io;
     fn count(&self) -> usize;    // pure
@@ -177,7 +177,7 @@ impl DataSource for FileSource {
 
 ## Effect Annotations on Closures / Function Parameters
 
-```MechGen
+```MAGE
 // Accept a closure that performs io
 pub fn with_file<T>(path: &str, work: fn(&str) -> T / io) -> Result<T, Error> / io {
     let content = fs::read_to_string(path)?;

@@ -1,21 +1,21 @@
-# MechGen Migration Guide
+# MAGE Migration Guide
 
-A step-by-step guide for migrating Rust projects to MechGen. Written for Rust
+A step-by-step guide for migrating Rust projects to MAGE. Written for Rust
 developers who know Cargo, ownership, traits, and async — and want to move
-their codebase to MechGen's agent syntax, effect system, and agent primitives.
+their codebase to MAGE's agent syntax, effect system, and agent primitives.
 
 ## Who This Guide Is For
 
 - **Rust developers** porting existing crates or applications
-- **Team leads** evaluating MechGen adoption for a Rust codebase
-- **CI/CD engineers** wiring up MechGen builds alongside existing Rust pipelines
+- **Team leads** evaluating MAGE adoption for a Rust codebase
+- **CI/CD engineers** wiring up MAGE builds alongside existing Rust pipelines
 
 ## Chapters
 
 | #   | Chapter                                      | What You'll Learn                                            |
 | --- | -------------------------------------------- | ------------------------------------------------------------ |
 | 1   | [Pre-Migration Assessment](01-assessment.md) | Evaluate readiness, estimate effort, plan phases             |
-| 2   | [Project Setup & Tooling](02-setup.md)       | Initialize a MechGen project, configure Forge.toml, dual-build |
+| 2   | [Project Setup & Tooling](02-setup.md)       | Initialize a MAGE project, configure Forge.toml, dual-build |
 | 3   | [Syntax Migration](03-syntax.md)             | Keyword-by-keyword translation with worked diffs             |
 | 4   | [Type System Migration](04-types.md)         | Type sugar, generics, lifetimes, trait bounds                |
 | 5   | [Effects & Safety](05-effects.md)            | Annotate effects, remove unsafe, adopt capabilities          |
@@ -63,5 +63,5 @@ their codebase to MechGen's agent syntax, effect system, and agent primitives.
 
 - **Automated tool:** `mg migrate path/to/rust/project` — runs rust2mg on all `.rs` files
 - **Dry run:** `mg migrate --dry-run` — preview changes without writing
-- **Partial migration:** MechGen can depend on Rust crates via Forge.toml `[rust-dependencies]`
-- **Escape hatch:** Keep individual `.rs` files and compile them as Rust within the MechGen build
+- **Partial migration:** MAGE can depend on Rust crates via Forge.toml `[rust-dependencies]`
+- **Escape hatch:** Keep individual `.rs` files and compile them as Rust within the MAGE build

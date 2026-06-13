@@ -54,7 +54,7 @@ impl LamportClock {
 pub enum CrdtOp {
     InsertItem {
         name: String,
-        /// Textual source of the item (MechGen syntax).
+        /// Textual source of the item (MAGE syntax).
         source: String,
     },
     RemoveItem {

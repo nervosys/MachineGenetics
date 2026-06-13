@@ -48,7 +48,7 @@ const ENTRIES: &[Entry] = &[
                  conv2d(stride,padding,dilation), reshape/transpose/concat/split, synchronize.\n\
                  dtypes: F32 F64 F16 BF16 I32 I64 I8 I4(packed) U8 Bool.\n\
                  CpuBackend: always available; real INT8 (sym+asym) quantized_matmul; cast F32<->F16/BF16/F64.\n\
-                 CudaBackend (production, in MechGen prototype via IronAccelerator, feature `cuda`):\n\
+                 CudaBackend (production, in MAGE prototype via IronAccelerator, feature `cuda`):\n\
                  cuBLASLt F32 + tensor-core F16/BF16 + INT8 IMMA GEMM, NVRTC kernels, GPU-resident storage,\n\
                  quantization: per-tensor/per-channel, sym/asym zero-point, INT4 packed weights+acts,\n\
                  calibrated static scales (max/percentile/entropy), cached quantized weights.\n\
@@ -99,7 +99,7 @@ const ENTRIES: &[Entry] = &[
         detail: "namespace rmi.lang\n\
                  Expr (Seq/Par/App/Let/Call/Lit), ~80 Ops (LINEAR, CONV2D, ATTN, RELU, SOFTMAX, ...),\n\
                  binary codec (RMIB container), pattern_match (Pat/Tmpl rewriting), debugger.\n\
-                 Used by MechGen's rmil_compute pipeline: run_pipeline{,_with_precision,_quantized,_calibrated}.\n\
+                 Used by MAGE's rmil_compute pipeline: run_pipeline{,_with_precision,_quantized,_calibrated}.\n\
                  entry: rmi::lang::{Expr, Op, Val}",
     },
     Entry {
@@ -156,7 +156,7 @@ pub fn manifest() -> String {
     let mut s = String::with_capacity(1024);
     s.push_str("rmi v");
     s.push_str(VERSION);
-    s.push_str(" — RecursiveMachineIntelligence, the built-in agentic-first AI framework of MachineGenetics (MechGen), NERVOSYS. namespaces:\n");
+    s.push_str(" — RecursiveMachineIntelligence, the built-in agentic-first AI framework of MAGE (Machine Genetics), NERVOSYS. namespaces:\n");
     for e in ENTRIES {
         s.push_str("  ");
         s.push_str(e.name);

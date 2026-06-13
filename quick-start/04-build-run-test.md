@@ -2,7 +2,7 @@
 
 ## Project Structure
 
-A standard MechGen project looks like this:
+A standard MAGE project looks like this:
 
 ```
 my-project/
@@ -61,7 +61,7 @@ Use this during development for quick feedback.
 
 ### Writing Tests
 
-```MechGen
+```MAGE
 // src/math.mg
 
 +f add(a: i32, b: i32) -> i32 {
@@ -132,7 +132,7 @@ mg doc --open               # generate and open in browser
 
 ## Benchmarks
 
-```MechGen
+```MAGE
 // benches/perf.mg
 
 @bench

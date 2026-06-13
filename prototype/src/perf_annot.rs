@@ -1,6 +1,6 @@
 // ── Performance Annotations ───────────────────────────────────────
 //
-// Processing for MechGen performance annotations (§5 of the spec):
+// Processing for MAGE performance annotations (§5 of the spec):
 //
 //   @pi!           — force inline
 //   @pnb           — no blocking (async-safe)
@@ -310,43 +310,43 @@ impl PerfRegistry {
                 match ann {
                     PerfAnnotation::ForceInline => {
                         out.push_str(&format!(
-                            "  MechGen.perf.inline @{} {{ always = true }}\n",
+                            "  MAGE.perf.inline @{} {{ always = true }}\n",
                             function_name
                         ));
                     }
                     PerfAnnotation::NoBlock => {
                         out.push_str(&format!(
-                            "  MechGen.perf.noblock @{}\n",
+                            "  MAGE.perf.noblock @{}\n",
                             function_name
                         ));
                     }
                     PerfAnnotation::Vectorize(n) => {
                         out.push_str(&format!(
-                            "  MechGen.perf.vectorize @{} {{ width = {} }}\n",
+                            "  MAGE.perf.vectorize @{} {{ width = {} }}\n",
                             function_name, n
                         ));
                     }
                     PerfAnnotation::TargetHint(target) => {
                         out.push_str(&format!(
-                            "  MechGen.perf.target @{} {{ target = \"{}\" }}\n",
+                            "  MAGE.perf.target @{} {{ target = \"{}\" }}\n",
                             function_name, target
                         ));
                     }
                     PerfAnnotation::Alignment(n) => {
                         out.push_str(&format!(
-                            "  MechGen.perf.align @{} {{ bytes = {} }}\n",
+                            "  MAGE.perf.align @{} {{ bytes = {} }}\n",
                             function_name, n
                         ));
                     }
                     PerfAnnotation::Pure => {
                         out.push_str(&format!(
-                            "  MechGen.perf.pure @{}\n",
+                            "  MAGE.perf.pure @{}\n",
                             function_name
                         ));
                     }
                     PerfAnnotation::ReprTargetOptimal => {
                         out.push_str(&format!(
-                            "  MechGen.perf.repr @{} {{ layout = \"target_optimal\" }}\n",
+                            "  MAGE.perf.repr @{} {{ layout = \"target_optimal\" }}\n",
                             function_name
                         ));
                     }
@@ -517,7 +517,7 @@ mod tests {
         let mut reg = PerfRegistry::new();
         reg.annotate_function("add", PerfAnnotation::ForceInline);
         let hints = reg.emit_mlir_hints("add");
-        assert!(hints.contains("MechGen.perf.inline @add"));
+        assert!(hints.contains("MAGE.perf.inline @add"));
         assert!(hints.contains("always = true"));
     }
 
@@ -526,7 +526,7 @@ mod tests {
         let mut reg = PerfRegistry::new();
         reg.annotate_function("dot", PerfAnnotation::Vectorize(8));
         let hints = reg.emit_mlir_hints("dot");
-        assert!(hints.contains("MechGen.perf.vectorize @dot"));
+        assert!(hints.contains("MAGE.perf.vectorize @dot"));
         assert!(hints.contains("width = 8"));
     }
 
@@ -536,8 +536,8 @@ mod tests {
         reg.annotate_function("f", PerfAnnotation::Pure);
         reg.annotate_function("f", PerfAnnotation::NoBlock);
         let hints = reg.emit_mlir_hints("f");
-        assert!(hints.contains("MechGen.perf.pure @f"));
-        assert!(hints.contains("MechGen.perf.noblock @f"));
+        assert!(hints.contains("MAGE.perf.pure @f"));
+        assert!(hints.contains("MAGE.perf.noblock @f"));
     }
 
     // ── Stats ─────────────────────────────────────────────────────

@@ -1,7 +1,7 @@
 //! # std::effect — Effect System
 //!
 //! Core types for algebraic effects and handlers.
-//! Effects are MechGen's mechanism for controlled side effects.
+//! Effects are MAGE's mechanism for controlled side effects.
 
 // ---------------------------------------------------------------------------
 // Effect trait
@@ -109,7 +109,7 @@ pub enum AgentResult { Msg, Lease, Ok }
 pub enum RngOp     { NextU64, Range(i64, i64) }
 
 // ---------------------------------------------------------------------------
-// AI-specific effects (MechGen-unique)
+// AI-specific effects (MAGE-unique)
 // ---------------------------------------------------------------------------
 
 /// The GPU effect — tensor operations and neural network computation.

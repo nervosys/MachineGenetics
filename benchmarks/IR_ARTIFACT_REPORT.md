@@ -3,12 +3,12 @@
 **Date:** 2026-06-04 · **Premise:** for agentic ML use, the artifact an agent
 emits, ships, loads, and introspects is the **binary Agentic Binary Language IR**, not text source.
 This report measures that path with real bytes (no estimates). Reproduce with the
-commands shown; numbers are from `MechGen-parse` on the example nets.
+commands shown; numbers are from `mage-parse` on the example nets.
 
 ## Compactness (measured)
 
 ```
-MechGen-parse --target=abl-bytes examples/<net>.mg <out>.abl
+mage-parse --target=abl-bytes examples/<net>.mg <out>.abl
 ```
 
 | Model | full text | code-only text¹ | **Agentic Binary Language bytes** | vs full | vs code-only |
@@ -32,7 +32,7 @@ content-hash it for cache keys, and diffs are meaningful.
 ## Safety (verified)
 
 ```
-MechGen-parse --from=abl-bytes <file>.abl
+mage-parse --from=abl-bytes <file>.abl
 → // container: 144 bytes, 2 item(s)  (decodes structure)
 ```
 
@@ -43,7 +43,7 @@ structure *without* running anything.
 
 ## Why this is a distinct track
 
-The text-source token axis (see the language profile) is bounded — MechGen text
+The text-source token axis (see the language profile) is bounded — MAGE text
 is only ~10% terser than Rust because identifiers/types/literals dominate bytes.
 The IR track is different in kind: the agent never writes text, so the relevant
 cost is the **binary** (tens to ~150 bytes/model), the relevant determinism is
@@ -55,9 +55,9 @@ language profile.
 
 ```sh
 cd prototype
-cargo run --release --bin MechGen-parse -- --target=abl-bytes examples/agent_built_mlp.mg out.abl
+cargo run --release --bin mage-parse -- --target=abl-bytes examples/agent_built_mlp.mg out.abl
 wc -c out.abl                       # 144
-cargo run --release --bin MechGen-parse -- --target=abl-bytes examples/agent_built_mlp.mg b.abl
+cargo run --release --bin mage-parse -- --target=abl-bytes examples/agent_built_mlp.mg b.abl
 cmp out.abl b.abl                  # identical (deterministic)
-cargo run --release --bin MechGen-parse -- --from=abl-bytes out.abl   # data-only decode
+cargo run --release --bin mage-parse -- --from=abl-bytes out.abl   # data-only decode
 ```

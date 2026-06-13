@@ -1,13 +1,13 @@
 # Few-Shot Prompt — Error Repair
 
-Use the following examples to diagnose and fix MechGen syntax errors.
+Use the following examples to diagnose and fix MAGE syntax errors.
 
 ---
 
 ## Example 1: Wrong function keyword
 
-**Broken MechGen:**
-```MechGen
+**Broken MAGE:**
+```MAGE
 pub fn add(a: i32, b: i32) -> i32 {
     a + b
 }
@@ -15,8 +15,8 @@ pub fn add(a: i32, b: i32) -> i32 {
 
 **Error:** `unexpected token 'pub'`
 
-**Fixed MechGen:**
-```MechGen
+**Fixed MAGE:**
+```MAGE
 +f add(a: i32, b: i32) -> i32 {
     a + b
 }
@@ -28,8 +28,8 @@ pub fn add(a: i32, b: i32) -> i32 {
 
 ## Example 2: Wrong generic syntax
 
-**Broken MechGen:**
-```MechGen
+**Broken MAGE:**
+```MAGE
 +f first<T>(items: &[T]) -> &T {
     &items[0]
 }
@@ -37,8 +37,8 @@ pub fn add(a: i32, b: i32) -> i32 {
 
 **Error:** `unexpected '<' in generic parameter list`
 
-**Fixed MechGen:**
-```MechGen
+**Fixed MAGE:**
+```MAGE
 +f first[T](items: &[T]) -> &T {
     &items[0]
 }
@@ -50,8 +50,8 @@ pub fn add(a: i32, b: i32) -> i32 {
 
 ## Example 3: Wrong path separator
 
-**Broken MechGen:**
-```MechGen
+**Broken MAGE:**
+```MAGE
 u std::collections::HashMap
 
 +f count_words(text: &s) -> {s: usize} {
@@ -65,8 +65,8 @@ u std::collections::HashMap
 
 **Error:** `unexpected '::' — use '.' for path access`
 
-**Fixed MechGen:**
-```MechGen
+**Fixed MAGE:**
+```MAGE
 u std.collections.HashMap
 
 +f count_words(text: &s) -> {s: usize} {
@@ -84,8 +84,8 @@ u std.collections.HashMap
 
 ## Example 4: Wrong conditional and boolean syntax
 
-**Broken MechGen:**
-```MechGen
+**Broken MAGE:**
+```MAGE
 +f is_valid(name: &s, age: u32) -> bool {
     if name.is_empty() {
         return false;
@@ -100,8 +100,8 @@ u std.collections.HashMap
 
 **Errors:** `unexpected 'if'`, `unexpected 'true'`, `unexpected 'else'`
 
-**Fixed MechGen:**
-```MechGen
+**Fixed MAGE:**
+```MAGE
 +f is_valid(name: &s, age: u32) -> bool {
     ? name.is_empty() {
         ret 0b;
@@ -120,8 +120,8 @@ u std.collections.HashMap
 
 ## Example 5: Wrong binding and mut syntax
 
-**Broken MechGen:**
-```MechGen
+**Broken MAGE:**
+```MAGE
 +f process(data: &mut Vec<i32>) {
     let total: i32 = data.iter().sum();
     let mut avg = total / data.len() as i32;
@@ -132,8 +132,8 @@ u std.collections.HashMap
 
 **Errors:** `unexpected 'let'`, `unexpected '&mut'`, `unexpected 'Vec<'`
 
-**Fixed MechGen:**
-```MechGen
+**Fixed MAGE:**
+```MAGE
 +f process(data: &![i32]~) {
     v total: i32 = data.iter().sum();
     m avg = total / data.len() as i32;
@@ -148,8 +148,8 @@ u std.collections.HashMap
 
 ## Example 6: Missing effect annotation
 
-**Broken MechGen:**
-```MechGen
+**Broken MAGE:**
+```MAGE
 +f save(path: &s, content: &s) -> R[(), std.io.Error] {
     std.fs.write(path, content)?;
     R.Ok(())
@@ -158,8 +158,8 @@ u std.collections.HashMap
 
 **Error:** `function performs I/O but missing effect annotation`
 
-**Fixed MechGen:**
-```MechGen
+**Fixed MAGE:**
+```MAGE
 +f save(path: &s, content: &s) -> R[(), std.io.Error] / io {
     std.fs.write(path, content)?;
     R.Ok(())
@@ -170,14 +170,14 @@ u std.collections.HashMap
 
 ---
 
-Now fix the following MechGen code:
+Now fix the following MAGE code:
 
-**Broken MechGen:**
-```MechGen
+**Broken MAGE:**
+```MAGE
 {{broken_code}}
 ```
 
 **Error:** {{error_message}}
 
-**Fixed MechGen:**
-```MechGen
+**Fixed MAGE:**
+```MAGE

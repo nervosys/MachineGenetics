@@ -3,7 +3,7 @@
 #
 # Rename to claude_cli.sh, make executable, and adjust the prompt /
 # CLI flags for your environment. The harness only requires that
-# stdin = task description, stdout = MechGen source.
+# stdin = task description, stdout = MAGE source.
 #
 # Prerequisites:
 #   - `claude` (Claude Code CLI) installed and authenticated
@@ -17,9 +17,9 @@ set -euo pipefail
 
 TASK=$(cat)
 
-# A focused prompt that asks for raw MechGen source. Keep it short to
+# A focused prompt that asks for raw MAGE source. Keep it short to
 # control per-task token cost.
-PROMPT="You are writing MechGen code. MechGen uses sigil syntax: \`+f\` = \`pub fn\`,
+PROMPT="You are writing MAGE code. MAGE uses sigil syntax: \`+f\` = \`pub fn\`,
 \`v\` = \`let\`, \`m\` = \`let mut\`, \`?\` = \`match\`, \`?:\` = \`if\`, \`:\` = \`else\`,
 \`@\` = \`for in\`, \`@@\` = \`loop\`, \`->\` for return type. Types use sigil
 prefixes: \`&T\` ref, \`&!T\` mut-ref, \`@T\` Arc, \`?T\` Option, \`R[T,E]\` Result.
@@ -27,7 +27,7 @@ Strings are \`s\`, slices \`[T]\`, Vec \`[T]~\`.
 
 Task: ${TASK}
 
-Reply with raw MechGen source only. No commentary, no markdown fences."
+Reply with raw MAGE source only. No commentary, no markdown fences."
 
 # Single-shot prompt; rely on the CLI to stream the reply to stdout.
 # Strip any markdown code fences the model might wrap around output.

@@ -23,7 +23,7 @@
   },
   "ok": true,
   "organization": "NERVOSYS",
-  "project": "MachineGenetics",
+  "project": "Machine Genetics",
   "schema_version": 1,
   "sections": {
     "abl": {
@@ -125,7 +125,7 @@
       {
         "mode": "external",
         "name": "subprocess:<cmd>",
-        "purpose": "Spawn external process per task. stdin=task description, stdout=MechGen source. Plug in a real LLM here."
+        "purpose": "Spawn external process per task. stdin=task description, stdout=MAGE source. Plug in a real LLM here."
       },
       {
         "mode": "hybrid",
@@ -161,7 +161,7 @@
       },
       {
         "name": "native-lexer ratio",
-        "protects": "MechGen text size must stay within 10% of equivalent Rust",
+        "protects": "MAGE text size must stay within 10% of equivalent Rust",
         "threshold": "<= 1.100"
       }
     ],
@@ -203,7 +203,7 @@
       },
       {
         "flag": "--from=abl-bytes",
-        "purpose": "Decode a Agentic Binary Language container back to MechGen view",
+        "purpose": "Decode a Agentic Binary Language container back to MAGE view",
         "takes_path": true
       },
       {
@@ -248,7 +248,7 @@
       },
       {
         "flag": "--backends-file=<path>",
-        "purpose": "Register additional backend descriptors at runtime from a JSON file. Stacks with RDX_BACKENDS_PATH env var and ~/.mechgen/backends.json. Schema: [{ name, family, vendor, requires, summary, available_at_runtime, tags }].",
+        "purpose": "Register additional backend descriptors at runtime from a JSON file. Stacks with RDX_BACKENDS_PATH env var and ~/.mage/backends.json. Schema: [{ name, family, vendor, requires, summary, available_at_runtime, tags }].",
         "takes_path": true
       }
     ],
@@ -265,7 +265,7 @@
       },
       {
         "audience": "agent",
-        "path": "MECHGEN_ONTOLOGY.json",
+        "path": "MAGE_ONTOLOGY.json",
         "purpose": "This ontology as static JSON (agent bootstrap)"
       },
       {
@@ -280,13 +280,13 @@
       },
       {
         "audience": "human/agent",
-        "path": "MECHGEN_SPEC.md",
+        "path": "MAGE_SPEC.md",
         "purpose": "Language specification: sigils, keywords, grammar"
       },
       {
         "audience": "agent/reference",
         "path": "../../utilities/IronAccelerator/",
-        "purpose": "External reference: production HW-agnostic driver substrate + per-model accelerator ontology (NVIDIA / AMD / Apple / Qualcomm / Intel / Google / AWS / open APIs). Drill in for model-specific guidance; MechGen's hardware_accelerators section stays at the backend-family level."
+        "purpose": "External reference: production HW-agnostic driver substrate + per-model accelerator ontology (NVIDIA / AMD / Apple / Qualcomm / Intel / Google / AWS / open APIs). Drill in for model-specific guidance; MAGE's hardware_accelerators section stays at the backend-family level."
       }
     ],
     "effects": [
@@ -3983,7 +3983,7 @@
       },
       {
         "path": "framework/framewerx/",
-        "purpose": "RecursiveMachineIntelligence-MG (this framework: FLAX-equivalent in MechGen)"
+        "purpose": "RecursiveMachineIntelligence-MG (this framework: FLAX-equivalent in MAGE)"
       },
       {
         "path": "framework/framewerx/src/",
@@ -4034,7 +4034,7 @@
         "purpose": "Architecture doc with per-phase history"
       },
       {
-        "path": "MECHGEN_ONTOLOGY.json",
+        "path": "MAGE_ONTOLOGY.json",
         "purpose": "Static dump of this ontology (refresh via --emit-ontology)"
       },
       {
@@ -4410,7 +4410,7 @@
           "code_human",
           "code_agent"
         ],
-        "summary": "Generate MechGen from a natural-language prompt."
+        "summary": "Generate MAGE from a natural-language prompt."
       },
       {
         "method": "nl/explain",
@@ -5037,12 +5037,12 @@
       {
         "kind": "stream",
         "name": "stdin (refine)",
-        "purpose": "Broken MechGen source the mechanical pipeline could not save"
+        "purpose": "Broken MAGE source the mechanical pipeline could not save"
       },
       {
         "kind": "stream",
         "name": "stdout",
-        "purpose": "MechGen source to evaluate. Empty / unchanged input = no contribution."
+        "purpose": "MAGE source to evaluate. Empty / unchanged input = no contribution."
       },
       {
         "kind": "stream",
@@ -5056,6 +5056,6 @@
       }
     ]
   },
-  "short_name": "MechGen",
+  "short_name": "MAGE",
   "version": "1.0"
 }

@@ -3,7 +3,7 @@
 # --agent subprocess:<cmd> protocol.
 #
 # Reads a natural-language task description on stdin (ignored), writes
-# a fixed minimal MechGen program on stdout. Always exits 0. Used to
+# a fixed minimal MAGE program on stdout. Always exits 0. Used to
 # verify the bench plumbing works end-to-end without any LLM.
 #
 # Usage:
@@ -13,7 +13,7 @@
 # Drain stdin so the bench's writer doesn't get a SIGPIPE.
 cat > /dev/null
 
-# Emit a minimal MechGen function that parses cleanly today.
+# Emit a minimal MAGE function that parses cleanly today.
 # (basic-001 reference, the shortest hello-world-shaped MG program.)
 cat <<'MG'
 +f hello() -> s { "Hello, World!" }

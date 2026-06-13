@@ -146,9 +146,9 @@ f dedup(items: [i32]~) -> [i32]~
 // the verifier issues certificates, and the result is production-ready.
 //
 // Workflow:
-//   1. `mechgen synth src/specs.rx`         — synthesise implementations
-//   2. `mechgen verify src/specs.rx`        — verify against contracts
-//   3. `mechgen build src/specs.rx`         — compile to target
+//   1. `mage synth src/specs.rx`         — synthesise implementations
+//   2. `mage verify src/specs.rx`        — verify against contracts
+//   3. `mage build src/specs.rx`         — compile to target
 //
 // The synthesis oracle can also be invoked programmatically:
 //

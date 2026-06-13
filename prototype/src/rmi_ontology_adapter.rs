@@ -1,12 +1,12 @@
-//! # MechGen SKB ↔ RMI Ontology Adapter
+//! # MAGE SKB ↔ RMI Ontology Adapter
 //!
-//! Translates between MechGen's [`crate::skb`] (9,157+ safety rules organized
+//! Translates between MAGE's [`crate::skb`] (9,157+ safety rules organized
 //! by [`RuleDatabase`]) and RMI's [`rmi::core::ontology::Ontology`] (a
 //! concept-relation graph used by [`rmi::core::agent::Agent`] discovery).
 //!
 //! ## Semantic mapping
 //!
-//! | MechGen SKB          | RMI Ontology                                       |
+//! | MAGE SKB          | RMI Ontology                                       |
 //! |----------------------|----------------------------------------------------|
 //! | [`Rule`]             | [`Concept`] in namespace `air.skb.<database>`      |
 //! | [`Rule::category`]   | concept label                                      |
@@ -28,7 +28,7 @@ use rmi::core::ontology::{
     AttributeValue, Concept, ConceptId, ConceptType, Ontology,
 };
 
-/// Map a MechGen rule database to the corresponding RMI ontology namespace.
+/// Map a MAGE rule database to the corresponding RMI ontology namespace.
 pub fn database_namespace(db: RuleDatabase) -> &'static str {
     match db {
         RuleDatabase::Ownership => "air.skb.ownership",
@@ -52,7 +52,7 @@ pub fn severity_label(sev: RuleSeverity) -> &'static str {
     }
 }
 
-/// Convert a single MechGen [`Rule`] into an RMI [`Concept`].
+/// Convert a single MAGE [`Rule`] into an RMI [`Concept`].
 pub fn rule_to_concept(rule: &Rule) -> Concept {
     let id = ConceptId::new(database_namespace(rule.database), &rule.id);
     let tags = AttributeValue::List(
@@ -84,25 +84,25 @@ pub struct UnifiedHit {
     pub label: String,
     /// Short definition or rule description.
     pub definition: String,
-    /// Source: `"skb"` for MechGen rules, `"ontology"` for RMI concepts.
+    /// Source: `"skb"` for MAGE rules, `"ontology"` for RMI concepts.
     pub source: &'static str,
 }
 
-/// Query both the MechGen SKB and an RMI ontology with a single text
+/// Query both the MAGE SKB and an RMI ontology with a single text
 /// predicate, returning unified hits.
 ///
-/// The MechGen side searches rule descriptions, categories, and tags. The
+/// The MAGE side searches rule descriptions, categories, and tags. The
 /// RMI side filters concepts whose `formal_definition` or `label` contains
 /// the query (case-insensitive substring match).
 ///
-/// This is the seam that lets a MechGen agent ask "find anything about
+/// This is the seam that lets a MAGE agent ask "find anything about
 /// `attention`" and get back both safety rules touching attention and RMI
 /// ontology entries for the `ATTN` opcode in the same result set.
 pub fn unified_search(query: &str, ontology: &Ontology) -> Vec<UnifiedHit> {
     let needle = query.to_lowercase();
     let mut hits = Vec::new();
 
-    // ── MechGen SKB side: scan all rules across the eight databases ─
+    // ── MAGE SKB side: scan all rules across the eight databases ─
     let dbs = [
         RuleDatabase::Ownership,
         RuleDatabase::Borrow,
@@ -152,7 +152,7 @@ pub fn unified_search(query: &str, ontology: &Ontology) -> Vec<UnifiedHit> {
     hits
 }
 
-/// Populate an RMI [`Ontology`] from a slice of MechGen rules.
+/// Populate an RMI [`Ontology`] from a slice of MAGE rules.
 ///
 /// The ontology is created with namespace `air.skb` and each rule is added
 /// under its database-specific sub-namespace. Returns the populated ontology

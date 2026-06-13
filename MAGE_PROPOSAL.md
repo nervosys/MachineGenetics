@@ -1,4 +1,4 @@
-# MechGen: An Agentic-First Programming Language for the 21st Century
+# MAGE: An Agentic-First Programming Language for the 21st Century
 
 > Transforming Rust into a Language for Humans and AI Agents Alike
 
@@ -13,7 +13,7 @@
 1. [Executive Summary](#1-executive-summary)
 2. [Design Principles](#2-design-principles)
 3. [Transformation Methodology](#3-transformation-methodology)
-4. [Ontology of the MechGen System](#4-ontology-of-the-mechgen-system)
+4. [Ontology of the MAGE System](#4-ontology-of-the-mage-system)
 5. [Language-Level Changes](#5-language-level-changes)
 6. [Compiler Architecture for Agents](#6-compiler-architecture-for-agents)
 7. [Swarm Collaboration Model](#7-swarm-collaboration-model)
@@ -29,11 +29,11 @@
 
 Rust provides the strongest compile-time safety guarantees of any systems language: ownership, borrowing, lifetime enforcement, data-race freedom, and exhaustiveness checking. However, its tooling and language interfaces were designed for *human developers* operating through CLI tools, text editors, and manual reasoning. Its syntax is context-sensitive and ambiguous in ways that cause agent parsing failures. Its compile-time safety machinery is redundant for AI agents that can internalize safety rules from a knowledge base. And its performance model is tightly coupled to specific hardware targets.
 
-**MechGen** reimagines Rust as an **agentic-first** language — one where AI agents are first-class participants in the development lifecycle. The language is redesigned around twelve pillars: **(1) zero-ambiguity syntax** that eliminates agent parsing errors, **(2) communication-first primitives** that maximize inter-agent bandwidth, **(3) hardware-agnostic high performance** built on **MLIR and LLVM** compiler infrastructure that compiles to any target without sacrificing speed, **(4) token-minimal syntax** that minimizes the tokens agents must emit, because every token costs time, money, and memory, **(5) safety-free syntax simplification** that eliminates lifetimes, borrow annotations, ownership markers, and all other compile-time safety syntax — since agents consult the SKB directly, the syntax need not carry safety information at all, **(6) an agentic compiler** — the compiler itself is an AI-powered system that provides dynamic warnings, intelligent debugging, performance suggestions, and learns from the codebase and the swarm's history, **(7) cost model transparency** — every construct has a queryable cost (cycles, memory, energy, tokens) per target, so agents choose before emitting rather than profiling after, **(8) synthesis-first design** — formal specifications (`@req`/`@ens`/`@perf`/`@fx`) enable spec-to-code synthesis with compiler verification, closing the guess-compile-fix cycle, **(9) persistent agent memory** — a four-tier memory model (ephemeral, session, project, global) that lets agents learn across sessions and share knowledge across the ecosystem, **(10) self-healing compilation** — the compiler auto-repairs errors with ranked fix candidates, collapsing the emit→error→fix→re-emit loop into a single step, **(11) live iteration** — function-level hot-reload patches running processes in sub-millisecond time without restart, and **(12) zero-friction interop** — automatic FFI binding generation from C/C++ headers, Python stubs, WASM interfaces, and GPU kernels with capability-based sandbox security. Safety knowledge moves from compile-time enforcement to a **queryable Safety Knowledge Base (SKB)** — a structured database of rules, invariants, and constraints that agents reference directly, eliminating the compile-time overhead that slows iteration.
+**MAGE** reimagines Rust as an **agentic-first** language — one where AI agents are first-class participants in the development lifecycle. The language is redesigned around twelve pillars: **(1) zero-ambiguity syntax** that eliminates agent parsing errors, **(2) communication-first primitives** that maximize inter-agent bandwidth, **(3) hardware-agnostic high performance** built on **MLIR and LLVM** compiler infrastructure that compiles to any target without sacrificing speed, **(4) token-minimal syntax** that minimizes the tokens agents must emit, because every token costs time, money, and memory, **(5) safety-free syntax simplification** that eliminates lifetimes, borrow annotations, ownership markers, and all other compile-time safety syntax — since agents consult the SKB directly, the syntax need not carry safety information at all, **(6) an agentic compiler** — the compiler itself is an AI-powered system that provides dynamic warnings, intelligent debugging, performance suggestions, and learns from the codebase and the swarm's history, **(7) cost model transparency** — every construct has a queryable cost (cycles, memory, energy, tokens) per target, so agents choose before emitting rather than profiling after, **(8) synthesis-first design** — formal specifications (`@req`/`@ens`/`@perf`/`@fx`) enable spec-to-code synthesis with compiler verification, closing the guess-compile-fix cycle, **(9) persistent agent memory** — a four-tier memory model (ephemeral, session, project, global) that lets agents learn across sessions and share knowledge across the ecosystem, **(10) self-healing compilation** — the compiler auto-repairs errors with ranked fix candidates, collapsing the emit→error→fix→re-emit loop into a single step, **(11) live iteration** — function-level hot-reload patches running processes in sub-millisecond time without restart, and **(12) zero-friction interop** — automatic FFI binding generation from C/C++ headers, Python stubs, WASM interfaces, and GPU kernels with capability-based sandbox security. Safety knowledge moves from compile-time enforcement to a **queryable Safety Knowledge Base (SKB)** — a structured database of rules, invariants, and constraints that agents reference directly, eliminating the compile-time overhead that slows iteration.
 
-By building on MLIR (Multi-Level Intermediate Representation) and LLVM, MechGen inherits the broadest hardware backend ecosystem in existence — 20+ CPU architectures, GPU compute (AMDGPU, NVPTX), WASM, SPIR-V — while gaining MLIR's extensible dialect system for defining custom optimization passes for agent-specific workloads, ML accelerators (NPU/TPU), FPGA synthesis, and domain-specific hardware. MLIR's multi-level abstraction preserves high-level semantic information (parallelism intent, memory layout preferences, effect annotations) deep into the optimization pipeline, where LLVM alone would have discarded it.
+By building on MLIR (Multi-Level Intermediate Representation) and LLVM, MAGE inherits the broadest hardware backend ecosystem in existence — 20+ CPU architectures, GPU compute (AMDGPU, NVPTX), WASM, SPIR-V — while gaining MLIR's extensible dialect system for defining custom optimization passes for agent-specific workloads, ML accelerators (NPU/TPU), FPGA synthesis, and domain-specific hardware. MLIR's multi-level abstraction preserves high-level semantic information (parallelism intent, memory layout preferences, effect annotations) deep into the optimization pipeline, where LLVM alone would have discarded it.
 
-Critically, following the architectural insight pioneered by Modular AI's Mojo language, the **MechGen MLIR Dialect is not a translation target — it is the language's semantic backbone**. Ownership, effects, contracts, and performance annotations are first-class MLIR operations and attributes, not metadata bolted onto a generic IR. This means the compiler's semantic understanding is preserved through the entire optimization pipeline, enabling **MLIR-native autotuning** (the compiler generates multiple lowering variants per kernel and benchmarks them per-target), **language-level SIMD types** backed directly by MLIR's vector dialect, and **automatic device placement** where the MLIR pipeline — not the programmer — decides whether a kernel runs on CPU, GPU, or NPU based on cost modeling. These are not Mojo features copied for humans; they are Mojo's architectural insights **re-derived for agent swarms**, where autotuning is a swarm-parallelizable search, device placement is an agent-queryable decision, and SIMD types are token-efficient first-class citizens.
+Critically, following the architectural insight pioneered by Modular AI's Mojo language, the **MAGE MLIR Dialect is not a translation target — it is the language's semantic backbone**. Ownership, effects, contracts, and performance annotations are first-class MLIR operations and attributes, not metadata bolted onto a generic IR. This means the compiler's semantic understanding is preserved through the entire optimization pipeline, enabling **MLIR-native autotuning** (the compiler generates multiple lowering variants per kernel and benchmarks them per-target), **language-level SIMD types** backed directly by MLIR's vector dialect, and **automatic device placement** where the MLIR pipeline — not the programmer — decides whether a kernel runs on CPU, GPU, or NPU based on cost modeling. These are not Mojo features copied for humans; they are Mojo's architectural insights **re-derived for agent swarms**, where autotuning is a swarm-parallelizable search, device placement is an agent-queryable decision, and SIMD types are token-efficient first-class citizens.
 
 ### Core Thesis
 
@@ -43,7 +43,7 @@ Critically, following the architectural insight pioneered by Modular AI's Mojo l
 
 ### What Changes
 
-| Dimension                 | Rust Today                                          | MechGen                                                                        |
+| Dimension                 | Rust Today                                          | MAGE                                                                        |
 | ------------------------- | --------------------------------------------------- | ---------------------------------------------------------------------------- |
 | **Syntax**                | Context-sensitive, ambiguous                        | Zero-ambiguity canonical grammar, deterministic LL(1) parsing                |
 | **Primary Interface**     | CLI (`rustc`, `cargo`)                              | Structured API (programmatic, query-based, multi-tenant)                     |
@@ -79,7 +79,7 @@ Critically, following the architectural insight pioneered by Modular AI's Mojo l
 Every language feature must compile to the fastest possible code on any target hardware. Compile-time safety checks are *opt-in* overhead, not mandatory gates. The compiler's primary job is *optimizing translation*, not policing correctness — agents handle correctness through their own training and the Safety Knowledge Base.
 
 ### P2: The Compiler Is an Optimizing Translator
-The compiler's primary role is transforming MechGen source into the fastest possible target code across all hardware platforms. Its secondary role is serving as a queryable oracle for semantic information. Safety enforcement is delegated to the Safety Knowledge Base and agent-side validation.
+The compiler's primary role is transforming MAGE source into the fastest possible target code across all hardware platforms. Its secondary role is serving as a queryable oracle for semantic information. Safety enforcement is delegated to the Safety Knowledge Base and agent-side validation.
 
 ### P3: All Knowledge Is Structured
 No information should exist only as unstructured text. Diagnostics, documentation, type signatures, lifetime constraints, borrow regions, control-flow graphs, and safety rules must all be available as typed, queryable data — either from the compiler or the Safety Knowledge Base.
@@ -97,7 +97,7 @@ Every compilation, transformation, and verification step produces a deterministi
 Every operation available to an agent must be *at least as available* to a human developer, and vice versa. The agentic interface is not a separate system — it is the *primary* interface that both humans (via IDE) and agents use.
 
 ### P8: Swarm-Native Concurrency
-The system is designed for *many agents operating simultaneously* on the same codebase. Just as Rust's ownership model prevents data races in programs, MechGen's swarm model prevents semantic conflicts between concurrent agent modifications. The compiler acts as an arbiter — agents acquire *semantic locks* on code regions (functions, modules, trait impls) rather than file-level locks, and the system automatically detects and resolves conflicts at the semantic level.
+The system is designed for *many agents operating simultaneously* on the same codebase. Just as Rust's ownership model prevents data races in programs, MAGE's swarm model prevents semantic conflicts between concurrent agent modifications. The compiler acts as an arbiter — agents acquire *semantic locks* on code regions (functions, modules, trait impls) rather than file-level locks, and the system automatically detects and resolves conflicts at the semantic level.
 
 ### P9: Compositional Decomposition
 Large tasks are automatically decomposable into independent subtasks that can be distributed across a swarm. The compiler's dependency graph, module boundaries, and trait interfaces define natural *seams* along which work can be parallelized. An agent working on module A's implementation cannot break module B's contract if B depends only on A's interface.
@@ -106,19 +106,19 @@ Large tasks are automatically decomposable into independent subtasks that can be
 No change to shared state (public APIs, trait definitions, type signatures) is applied without swarm consensus. The compiler enforces a *propose-verify-accept* protocol where changes to shared interfaces require validation by all dependent agents before integration. This mirrors Rust's `&mut` exclusivity — at the swarm coordination level.
 
 ### P11: Zero-Ambiguity Syntax
-The language grammar must be **deterministic LL(1)** — every token uniquely determines the parse path with zero backtracking. No context-sensitive parsing, no ambiguous constructs, no lookahead beyond one token. Rust's turbofish (`::<>`), trailing closure ambiguity, type ascription vs. struct literals — all eliminated. Agents parse MechGen with a simple state machine, not a backtracking parser. **The single biggest source of agent coding errors is parsing ambiguity — MechGen eliminates it by design.**
+The language grammar must be **deterministic LL(1)** — every token uniquely determines the parse path with zero backtracking. No context-sensitive parsing, no ambiguous constructs, no lookahead beyond one token. Rust's turbofish (`::<>`), trailing closure ambiguity, type ascription vs. struct literals — all eliminated. Agents parse MAGE with a simple state machine, not a backtracking parser. **The single biggest source of agent coding errors is parsing ambiguity — MAGE eliminates it by design.**
 
 ### P12: Communication-First Design
 Inter-agent message passing is the highest-priority bottleneck to optimize. Every language construct, every compiler data structure, every protocol message is designed for **zero-copy serialization** and **sub-microsecond latency**. The swarm message bus is not an add-on — it is the foundational primitive around which the entire toolchain is built. Agent-to-agent bandwidth determines swarm performance more than any other factor.
 
 ### P13: Hardware-Agnostic Performance via MLIR + LLVM
-MechGen code compiles through **MLIR** (Multi-Level Intermediate Representation) and **LLVM** to target any hardware: x86, ARM, RISC-V, WASM, GPU (AMDGPU, NVPTX, SPIR-V), NPU/TPU, FPGA. The **MechGen MLIR Dialect encodes the language's semantics directly** — ownership, effects, contracts, and performance annotations are first-class MLIR operations, not metadata translated from a separate IR. This dialect-as-semantics architecture (pioneered by Modular AI, adapted here for agent swarms) means high-level intent survives through the entire progressive lowering pipeline. LLVM provides battle-tested codegen for 20+ CPU architectures. Language-level SIMD types (`Simd[T, N]`) map directly to MLIR vector dialect ops. **MLIR-native autotuning** generates multiple lowering variants and benchmarks per-target — a search that agent swarms can parallelize across hardware configurations. **Automatic device placement** (`@pt(auto)`) lets the MLIR cost model decide CPU vs GPU vs NPU per kernel, queryable by agents via RAP. Write once, run fast everywhere — on the broadest compiler infrastructure in existence.
+MAGE code compiles through **MLIR** (Multi-Level Intermediate Representation) and **LLVM** to target any hardware: x86, ARM, RISC-V, WASM, GPU (AMDGPU, NVPTX, SPIR-V), NPU/TPU, FPGA. The **MAGE MLIR Dialect encodes the language's semantics directly** — ownership, effects, contracts, and performance annotations are first-class MLIR operations, not metadata translated from a separate IR. This dialect-as-semantics architecture (pioneered by Modular AI, adapted here for agent swarms) means high-level intent survives through the entire progressive lowering pipeline. LLVM provides battle-tested codegen for 20+ CPU architectures. Language-level SIMD types (`Simd[T, N]`) map directly to MLIR vector dialect ops. **MLIR-native autotuning** generates multiple lowering variants and benchmarks per-target — a search that agent swarms can parallelize across hardware configurations. **Automatic device placement** (`@pt(auto)`) lets the MLIR cost model decide CPU vs GPU vs NPU per kernel, queryable by agents via RAP. Write once, run fast everywhere — on the broadest compiler infrastructure in existence.
 
 ### P14: Database-Driven Safety
 Safety rules (ownership patterns, borrow violations, lifetime errors, type mismatches) are stored in a **Safety Knowledge Base (SKB)** — a structured, versioned, queryable database. Agents consult the SKB directly instead of waiting for compile-time error messages. The compiler can *optionally* enforce SKB rules at compile time (for human developers or CI pipelines), but this is a policy choice, not a language requirement. This eliminates the compile-time overhead tax that slows agentic iteration cycles from milliseconds to seconds.
 
 ### P15: Token Economy
-Every language construct must minimize the number of tokens an agent must emit to express intent. Tokens cost time, money, and memory — they are the fundamental unit of agent resource consumption. Every keyword, attribute, delimiter, and syntactic form is designed for **minimum token footprint**: short keywords, compact operators, abbreviated attributes, and structural compression. Where Rust uses `pub fn`, MechGen offers `+f`; where Rust uses `#[derive(Clone, Debug)]`, MechGen offers `@d(Cl,Db)`. The **token-optimal syntax** is not a separate mode — it is the canonical form, designed so that agents express maximal semantic intent per token spent. Human-readable aliases remain available in legacy mode. The goal: any program expressible in N Rust tokens should be expressible in ≤ N/2 MechGen tokens, with no loss of semantics.
+Every language construct must minimize the number of tokens an agent must emit to express intent. Tokens cost time, money, and memory — they are the fundamental unit of agent resource consumption. Every keyword, attribute, delimiter, and syntactic form is designed for **minimum token footprint**: short keywords, compact operators, abbreviated attributes, and structural compression. Where Rust uses `pub fn`, MAGE offers `+f`; where Rust uses `#[derive(Clone, Debug)]`, MAGE offers `@d(Cl,Db)`. The **token-optimal syntax** is not a separate mode — it is the canonical form, designed so that agents express maximal semantic intent per token spent. Human-readable aliases remain available in legacy mode. The goal: any program expressible in N Rust tokens should be expressible in ≤ N/2 MAGE tokens, with no loss of semantics.
 
 ### P16: Dual Representation Parity
 Every token-compressed construct has a unique, deterministic expansion to its full-form equivalent, and vice versa. The compiler, formatter, and toolchain can losslessly convert between compact and verbose representations. Agents write compact; humans read expanded; the AST is identical. This ensures that token compression never creates ambiguity or information loss.
@@ -142,10 +142,10 @@ Every language feature is designed so that code can be **synthesized from a form
 When an agent emits invalid code, the compiler should not merely report errors — it should **attempt to repair them**. The ACI analyzes the error, infers the most probable intended code, applies the fix, and returns the corrected version alongside the diagnostic. For agents, the compile-error-fix loop is the single largest source of wasted tokens and latency. A self-healing compiler collapses `emit → error → read → fix → re-emit` into `emit → auto-fix → confirm`. Recovery strategies are ranked by confidence and cost (token savings vs. semantic risk). The agent always sees the fix and can accept, reject, or refine — the compiler never silently changes semantics.
 
 ### P23: Live Patching
-Agent swarms iterate continuously — stopping a running system to recompile defeats the purpose. MechGen supports **function-level hot-reload**: individual functions can be recompiled and patched into a running process without restart. The MLIR pipeline emits position-independent code with stable ABIs at function boundaries. The swarm can patch a function, observe the result, and roll back within milliseconds. This transforms the development loop from batch compilation to **continuous, incremental, live evolution** — the natural mode for agent swarms that never sleep.
+Agent swarms iterate continuously — stopping a running system to recompile defeats the purpose. MAGE supports **function-level hot-reload**: individual functions can be recompiled and patched into a running process without restart. The MLIR pipeline emits position-independent code with stable ABIs at function boundaries. The swarm can patch a function, observe the result, and roll back within milliseconds. This transforms the development loop from batch compilation to **continuous, incremental, live evolution** — the natural mode for agent swarms that never sleep.
 
 ### P24: Zero-Friction Foreign Function Interface
-Agents work across language boundaries — calling C libraries, Python ML frameworks, WASM modules, and GPU kernels. MechGen provides a **zero-ceremony FFI** that requires no `unsafe`, no manual struct layout matching, and no binding generators. The compiler reads C headers, Python type stubs, and WASM component model interfaces directly and generates safe MechGen bindings automatically. Cross-language calls are as cheap as intra-language calls when the MLIR pipeline can inline across boundaries.
+Agents work across language boundaries — calling C libraries, Python ML frameworks, WASM modules, and GPU kernels. MAGE provides a **zero-ceremony FFI** that requires no `unsafe`, no manual struct layout matching, and no binding generators. The compiler reads C headers, Python type stubs, and WASM component model interfaces directly and generates safe MAGE bindings automatically. Cross-language calls are as cheap as intra-language calls when the MLIR pipeline can inline across boundaries.
 
 ---
 
@@ -169,7 +169,7 @@ Agents work across language boundaries — calling C libraries, Python ML framew
      - A machine-actionable fix graph (not just text substitutions)
      - Preconditions and postconditions for each suggested fix
      - Confidence levels and alternative fix branches
-   - **Deliverable:** `mechgen_diagnostics` crate with `DiagnosticGraph` type.
+   - **Deliverable:** `mage_diagnostics` crate with `DiagnosticGraph` type.
 
 3. **Query API Externalization**
    - The `rustc_query_impl` system uses `QueryVTable`, on-disk caching, and dependency tracking.
@@ -178,7 +178,7 @@ Agents work across language boundaries — calling C libraries, Python ML framew
      - Safety queries: `is_freeze(Ty)`, `is_send(Ty)`, `is_sync(Ty)`, `needs_drop(Ty)`
      - MIR queries: `optimized_mir(DefId)`, `mir_borrowck(DefId)`
      - Diagnostic queries: `lint_levels(HirId)`, `check_match(DefId)`
-   - **Deliverable:** `mechgen_query` crate, versioned independently of compiler internals.
+   - **Deliverable:** `mage_query` crate, versioned independently of compiler internals.
 
 ### Phase 1: Semantic Index — The Knowledge Graph (Months 4–12)
 
@@ -188,12 +188,12 @@ Agents work across language boundaries — calling C libraries, Python ML framew
 
 4. **Semantic Code Index**
    - Merge the capabilities of `rustdoc-json-types` (documentation), `rust-analyzer`'s `Analysis` (IDE queries), and `rustc_public` (compiler semantics) into a unified index.
-   - **Action:** Create `mechgen_index`, a persistent database that stores:
+   - **Action:** Create `mage_index`, a persistent database that stores:
      - All items with full type signatures, trait bounds, and lifetime parameters
      - Cross-reference graph (callers, callees, implementors, dependents)
      - Capability manifests (what effects each function has: I/O, allocation, panic, unsafe)
      - Natural-language documentation linked to semantic entities
-   - **Deliverable:** `mechgen_index` crate with both in-memory and on-disk backends.
+   - **Deliverable:** `mage_index` crate with both in-memory and on-disk backends.
 
 5. **Capability Manifests**
    - Extend the type system with *effect annotations* (inspired by Rust's existing `const`, `async`, `unsafe` qualifiers).
@@ -203,7 +203,7 @@ Agents work across language boundaries — calling C libraries, Python ML framew
      fn process_file(path: &Path) -> Result<Data, Error> { ... }
      ```
    - These are inferred by the compiler for any function body, or declared explicitly on trait methods and FFI boundaries.
-   - **Deliverable:** `mechgen_capabilities` analysis pass integrated into MIR transform pipeline.
+   - **Deliverable:** `mage_capabilities` analysis pass integrated into MIR transform pipeline.
 
 ### Phase 2: Agent Protocol — The Interface Contract (Months 8–18)
 
@@ -211,17 +211,17 @@ Agents work across language boundaries — calling C libraries, Python ML framew
 
 **Work Streams:**
 
-6. **MechGen Agent Protocol (RAP)**
+6. **MAGE Agent Protocol (RAP)**
    - A structured protocol (analogous to LSP but for *compilation semantics*, not just IDE features) that agents use to:
      - Submit code for analysis (incremental)
      - Query types, traits, lifetimes, borrow constraints
      - Request transformations (refactors with pre/post-condition checking)
      - Receive verification results (safety proofs, capability audits)
-   - **Action:** Define RAP as a typed RPC protocol with request/response schemas derived from `mechgen_query` types.
-   - **Deliverable:** `mechgen_protocol` crate + reference server implementation.
+   - **Action:** Define RAP as a typed RPC protocol with request/response schemas derived from `mage_query` types.
+   - **Deliverable:** `mage_protocol` crate + reference server implementation.
 
 7. **Agent Capability System**
-   - Agents operating on MechGen code are themselves subject to capability bounds:
+   - Agents operating on MAGE code are themselves subject to capability bounds:
      ```
      agent CodeReviewer {
          capabilities: [read_source, query_types, emit_diagnostics]
@@ -235,7 +235,7 @@ Agents work across language boundaries — calling C libraries, Python ML framew
      }
      ```
    - **Action:** Define agent capability taxonomy. Enforce at protocol level.
-   - **Deliverable:** `mechgen_agent` crate with capability checking.
+   - **Deliverable:** `mage_agent` crate with capability checking.
 
 8. **Verification Oracle**
    - Extend the compiler's verification beyond type-checking into a continuous verification service:
@@ -243,11 +243,11 @@ Agents work across language boundaries — calling C libraries, Python ML framew
      - Post-synthesis: "Does this generated code satisfy the specification?"
      - Invariant monitoring: "Does this crate maintain its safety contracts across versions?"
    - Built on `rustc_borrowck`, `rustc_const_eval`, `rustc_pattern_analysis`, and `rustc_transmute`.
-   - **Deliverable:** `mechgen_verify` crate exposing verification as a composable service.
+   - **Deliverable:** `mage_verify` crate exposing verification as a composable service.
 
-### Phase 3: Language Evolution — MechGen Syntax and Semantics (Months 12–24)
+### Phase 3: Language Evolution — MAGE Syntax and Semantics (Months 12–24)
 
-**Goal:** Introduce language features that make MechGen natively agent-friendly while remaining human-ergonomic.
+**Goal:** Introduce language features that make MAGE natively agent-friendly while remaining human-ergonomic.
 
 **Work Streams:**
 
@@ -262,7 +262,7 @@ Agents work across language boundaries — calling C libraries, Python ML framew
      struct Buffer { ... }
      ```
    - Contracts are *checked* at compile-time where possible (via `rustc_const_eval`), *enforced* at runtime in debug builds, and *used as specifications* by agents for code synthesis and verification.
-   - **Deliverable:** Contract syntax + `mechgen_contracts` analysis pass.
+   - **Deliverable:** Contract syntax + `mage_contracts` analysis pass.
 
 10. **Effect Types**
     - Formalize Rust's existing effect-like qualifiers (`const`, `async`, `unsafe`) into a unified effect system:
@@ -283,19 +283,19 @@ Agents work across language boundaries — calling C libraries, Python ML framew
       ```rust
       #[agent::discoverable(category = "crypto", security_level = "critical")]
       #[agent::alternatives("ring::aead", "openssl::symm")]
-      #[agent::deprecation_path("use mechgen_crypto::aead instead")]
+      #[agent::deprecation_path("use mage_crypto::aead instead")]
       pub fn encrypt(key: &Key, plaintext: &[u8]) -> Vec<u8> { ... }
       ```
-    - **Deliverable:** `mechgen_attrs` attribute namespace + processing in `rustc_attr_parsing`.
+    - **Deliverable:** `mage_attrs` attribute namespace + processing in `rustc_attr_parsing`.
 
 ---
 
-## 4. Ontology of the MechGen System
+## 4. Ontology of the MAGE System
 
 ### 4.1 Top-Level Ontology
 
 ```
-MechGen System
+MAGE System
 ├── Language
 │   ├── Syntax (zero-ambiguity LL(1) canonical grammar)
 │   ├── Semantics (types, traits, lifetimes, effects, contracts)
@@ -321,12 +321,12 @@ MechGen System
 │   └── Query API (agents pre-validate before writing code)
 │
 ├── Toolchain
-│   ├── Build System (MechGen Build — multi-target orchestration)
+│   ├── Build System (MAGE Build — multi-target orchestration)
 │   ├── Package Manager (capability-indexed registry)
-│   ├── Formatter (mechgenfmt — canonical form enforcement)
-│   ├── Linter (mechgen-lint — opt-in)
-│   ├── Documentation (mechgen-doc)
-│   ├── Interpreter (MechGen Interpret — opt-in UB detection)
+│   ├── Formatter (magefmt — canonical form enforcement)
+│   ├── Linter (mage-lint — opt-in)
+│   ├── Documentation (mage-doc)
+│   ├── Interpreter (MAGE Interpret — opt-in UB detection)
 │   └── Language Server (RAP Server)
 │
 ├── Agent Infrastructure
@@ -346,72 +346,72 @@ MechGen System
 
 ### 4.2 Compiler Crate Ontology (Mapped from Rust)
 
-Each existing `rustc_*` crate maps to a MechGen subsystem with its agent-facing interface:
+Each existing `rustc_*` crate maps to a MAGE subsystem with its agent-facing interface:
 
 #### Frontend Pipeline
 
-| Rust Crate           | MechGen Subsystem | Agent Interface                                                                         |
+| Rust Crate           | MAGE Subsystem | Agent Interface                                                                         |
 | -------------------- | --------------- | --------------------------------------------------------------------------------------- |
-| `rustc_lexer`        | `mechgen_lexer`   | Token stream API: agents can tokenize arbitrary source fragments                        |
-| `rustc_parse`        | `mechgen_parse`   | Parse API: agents submit source, receive AST with full span info                        |
-| `rustc_ast`          | `mechgen_ast`     | AST query: agents traverse, pattern-match, and transform AST nodes                      |
-| `rustc_expand`       | `mechgen_expand`  | Macro expansion API: agents can expand macros incrementally and observe transformations |
-| `rustc_ast_lowering` | `mechgen_lower`   | Lowering API: agents observe AST→HIR transformation with semantic annotations           |
-| `rustc_resolve`      | `mechgen_resolve` | Name resolution API: agents query what any name resolves to in any scope                |
+| `rustc_lexer`        | `mage_lexer`   | Token stream API: agents can tokenize arbitrary source fragments                        |
+| `rustc_parse`        | `mage_parse`   | Parse API: agents submit source, receive AST with full span info                        |
+| `rustc_ast`          | `mage_ast`     | AST query: agents traverse, pattern-match, and transform AST nodes                      |
+| `rustc_expand`       | `mage_expand`  | Macro expansion API: agents can expand macros incrementally and observe transformations |
+| `rustc_ast_lowering` | `mage_lower`   | Lowering API: agents observe AST→HIR transformation with semantic annotations           |
+| `rustc_resolve`      | `mage_resolve` | Name resolution API: agents query what any name resolves to in any scope                |
 
 #### Middle (Semantic Analysis)
 
-| Rust Crate               | MechGen Subsystem    | Agent Interface                                                              |
+| Rust Crate               | MAGE Subsystem    | Agent Interface                                                              |
 | ------------------------ | ------------------ | ---------------------------------------------------------------------------- |
-| `rustc_hir`              | `mechgen_hir`        | HIR query: agents access desugared, resolved program structure               |
-| `rustc_hir_analysis`     | `mechgen_typecheck`  | Type query: agents ask "what is the type of X in context Y?"                 |
-| `rustc_hir_typeck`       | `mechgen_infer`      | Inference query: agents observe type inference decisions and constraints     |
-| `rustc_trait_selection`  | `mechgen_traits`     | Trait query: "does T implement Trait? which impl? what are the bounds?"      |
-| `rustc_borrowck`         | `mechgen_borrow`     | Borrow query: "is this borrow valid? what conflicts? what are the regions?"  |
-| `rustc_infer`            | `mechgen_unify`      | Unification query: agents observe and query type unification state           |
-| `rustc_middle`           | `mechgen_middle`     | Central type registry: all `Ty`, `TyKind`, `Predicate`, `Region` definitions |
-| `rustc_const_eval`       | `mechgen_consteval`  | Const evaluation query: "what does this const expression evaluate to?"       |
-| `rustc_pattern_analysis` | `mechgen_patterns`   | Pattern query: "is this match exhaustive? what cases are missing?"           |
-| `rustc_privacy`          | `mechgen_visibility` | Visibility query: "is this item accessible from this module/crate?"          |
-| `rustc_transmute`        | `mechgen_transmute`  | Transmute query: "is this transmutation safe? what assumptions are needed?"  |
+| `rustc_hir`              | `mage_hir`        | HIR query: agents access desugared, resolved program structure               |
+| `rustc_hir_analysis`     | `mage_typecheck`  | Type query: agents ask "what is the type of X in context Y?"                 |
+| `rustc_hir_typeck`       | `mage_infer`      | Inference query: agents observe type inference decisions and constraints     |
+| `rustc_trait_selection`  | `mage_traits`     | Trait query: "does T implement Trait? which impl? what are the bounds?"      |
+| `rustc_borrowck`         | `mage_borrow`     | Borrow query: "is this borrow valid? what conflicts? what are the regions?"  |
+| `rustc_infer`            | `mage_unify`      | Unification query: agents observe and query type unification state           |
+| `rustc_middle`           | `mage_middle`     | Central type registry: all `Ty`, `TyKind`, `Predicate`, `Region` definitions |
+| `rustc_const_eval`       | `mage_consteval`  | Const evaluation query: "what does this const expression evaluate to?"       |
+| `rustc_pattern_analysis` | `mage_patterns`   | Pattern query: "is this match exhaustive? what cases are missing?"           |
+| `rustc_privacy`          | `mage_visibility` | Visibility query: "is this item accessible from this module/crate?"          |
+| `rustc_transmute`        | `mage_transmute`  | Transmute query: "is this transmutation safe? what assumptions are needed?"  |
 
 #### Backend Pipeline
 
-| Rust Crate            | MechGen Subsystem   | Agent Interface                                                               |
+| Rust Crate            | MAGE Subsystem   | Agent Interface                                                               |
 | --------------------- | ----------------- | ----------------------------------------------------------------------------- |
-| `rustc_mir_build`     | `mechgen_mir_build` | MIR construction: agents observe HIR→MIR lowering                             |
-| `rustc_mir_transform` | `mechgen_mir_opt`   | MIR optimization: agents query which passes ran and their effects             |
-| `rustc_mir_dataflow`  | `mechgen_dataflow`  | Dataflow query: agents access liveness, reachability, initialization analysis |
-| `rustc_codegen_ssa`   | `mechgen_codegen`   | Codegen query: agents observe MIR→target code translation                     |
-| `rustc_codegen_llvm`  | `mechgen_llvm`      | LLVM backend: agents can inspect generated LLVM IR                            |
-| `rustc_monomorphize`  | `mechgen_mono`      | Monomorphization query: agents see concrete instantiations                    |
+| `rustc_mir_build`     | `mage_mir_build` | MIR construction: agents observe HIR→MIR lowering                             |
+| `rustc_mir_transform` | `mage_mir_opt`   | MIR optimization: agents query which passes ran and their effects             |
+| `rustc_mir_dataflow`  | `mage_dataflow`  | Dataflow query: agents access liveness, reachability, initialization analysis |
+| `rustc_codegen_ssa`   | `mage_codegen`   | Codegen query: agents observe MIR→target code translation                     |
+| `rustc_codegen_llvm`  | `mage_llvm`      | LLVM backend: agents can inspect generated LLVM IR                            |
+| `rustc_monomorphize`  | `mage_mono`      | Monomorphization query: agents see concrete instantiations                    |
 
 #### Infrastructure
 
-| Rust Crate          | MechGen Subsystem     | Agent Interface                                      |
+| Rust Crate          | MAGE Subsystem     | Agent Interface                                      |
 | ------------------- | ------------------- | ---------------------------------------------------- |
-| `rustc_errors`      | `mechgen_diagnostics` | Structured diagnostic API with fix graphs            |
-| `rustc_lint`        | `mechgen_lint`        | Lint registration and query API                      |
-| `rustc_session`     | `mechgen_session`     | Session configuration and state                      |
-| `rustc_span`        | `mechgen_span`        | Source location management                           |
-| `rustc_query_impl`  | `mechgen_query`       | Query system: the backbone of all agent interactions |
-| `rustc_interface`   | `mechgen_interface`   | Top-level compiler invocation API                    |
-| `rustc_feature`     | `mechgen_features`    | Feature gate query and management                    |
-| `rustc_metadata`    | `mechgen_metadata`    | Crate metadata serialization and loading             |
-| `rustc_incremental` | `mechgen_incremental` | Incremental compilation infrastructure               |
+| `rustc_errors`      | `mage_diagnostics` | Structured diagnostic API with fix graphs            |
+| `rustc_lint`        | `mage_lint`        | Lint registration and query API                      |
+| `rustc_session`     | `mage_session`     | Session configuration and state                      |
+| `rustc_span`        | `mage_span`        | Source location management                           |
+| `rustc_query_impl`  | `mage_query`       | Query system: the backbone of all agent interactions |
+| `rustc_interface`   | `mage_interface`   | Top-level compiler invocation API                    |
+| `rustc_feature`     | `mage_features`    | Feature gate query and management                    |
+| `rustc_metadata`    | `mage_metadata`    | Crate metadata serialization and loading             |
+| `rustc_incremental` | `mage_incremental` | Incremental compilation infrastructure               |
 
 ### 4.3 Tooling Ontology
 
-| Rust Tool       | MechGen Tool        | Agent Interface                                                        |
+| Rust Tool       | MAGE Tool        | Agent Interface                                                        |
 | --------------- | ----------------- | ---------------------------------------------------------------------- |
-| `cargo`         | `mechgen build`     | Build orchestration API: dependency resolution, compilation scheduling |
-| `rustfmt`       | `mechgenfmt`        | Format API: agents request formatting with configurable style          |
-| `clippy`        | `mechgen lint`      | Extended lint API: agents register custom lints, query lint results    |
-| `rustdoc`       | `mechgen doc`       | Documentation generation with semantic linking                         |
-| `miri`          | `mechgen interpret` | Interpretation API: agents run code in sandbox with full UB detection  |
-| `rust-analyzer` | `mechgen analyze`   | Merged into RAP server: all IDE features available programmatically    |
-| `compiletest`   | `mechgen test`      | Test infrastructure with property-based verification                   |
-| `rustc-perf`    | `mechgen perf`      | Performance query: agents benchmark and profile code changes           |
+| `cargo`         | `mage build`     | Build orchestration API: dependency resolution, compilation scheduling |
+| `rustfmt`       | `magefmt`        | Format API: agents request formatting with configurable style          |
+| `clippy`        | `mage lint`      | Extended lint API: agents register custom lints, query lint results    |
+| `rustdoc`       | `mage doc`       | Documentation generation with semantic linking                         |
+| `miri`          | `mage interpret` | Interpretation API: agents run code in sandbox with full UB detection  |
+| `rust-analyzer` | `mage analyze`   | Merged into RAP server: all IDE features available programmatically    |
+| `compiletest`   | `mage test`      | Test infrastructure with property-based verification                   |
+| `rustc-perf`    | `mage perf`      | Performance query: agents benchmark and profile code changes           |
 
 ### 4.4 Safety Mechanism Ontology
 
@@ -436,7 +436,7 @@ Safety Model
 │   ├── `dyn`/`impl` dispatch split eliminated (compiler decides)
 │   └── Where clauses contain only semantic bounds (safety bounds in SKB)
 │
-├── Compile-Time (Opt-In — controlled by MechGen.toml safety profiles)
+├── Compile-Time (Opt-In — controlled by MAGE.toml safety profiles)
 │   ├── Ownership System (skippable — agents know the rules)
 │   │   ├── Move semantics (affine types)
 │   │   ├── Copy trait (unrestricted duplication)
@@ -455,7 +455,7 @@ Safety Model
 │   │   ├── Transmute validity (opt-in)
 │   │   └── Const evaluation safety (opt-in)
 │   │
-│   ├── Effect System [NEW IN MECHGEN]
+│   ├── Effect System [NEW IN MAGE]
 │   │   ├── io — filesystem, network, system calls
 │   │   ├── alloc — heap allocation
 │   │   ├── panic — unwinding, abort
@@ -463,13 +463,13 @@ Safety Model
 │   │   ├── async — asynchronous suspension points
 │   │   └── custom — user-defined effects
 │   │
-│   ├── Contract System [NEW IN MECHGEN] (opt-in verification)
+│   ├── Contract System [NEW IN MAGE] (opt-in verification)
 │   │   ├── Preconditions (#[requires])
 │   │   ├── Postconditions (#[ensures])
 │   │   ├── Invariants (#[invariant])
 │   │   └── Refinement types (bounded integers, non-empty collections)
 │   │
-│   └── Capability System [NEW IN MECHGEN]
+│   └── Capability System [NEW IN MAGE]
 │       ├── Function capabilities (declared or inferred effects)
 │       ├── Module capabilities (aggregate of contained items)
 │       ├── Crate capabilities (published in manifest)
@@ -481,8 +481,8 @@ Safety Model
 │   ├── Contract Assertions (debug-mode pre/post checks)
 │   └── Capability Monitors (agent sandbox enforcement)
 │
-├── Performance Infrastructure [NEW IN MECHGEN — MLIR + LLVM]
-│   ├── MLIR-based multi-level IR (MechGen Dialect → Linalg/Affine → LLVM Dialect)
+├── Performance Infrastructure [NEW IN MAGE — MLIR + LLVM]
+│   ├── MLIR-based multi-level IR (MAGE Dialect → Linalg/Affine → LLVM Dialect)
 │   ├── Dialect-as-semantics: ownership, effects, contracts are first-class MLIR ops
 │   ├── LLVM backend codegen (20+ CPU architectures, AMDGPU, NVPTX, WASM)
 │   ├── Custom MLIR dialects for GPU compute, NPU/TPU, FPGA synthesis
@@ -494,56 +494,56 @@ Safety Model
 │   ├── Target-optimal memory layout via MLIR data layout modeling (#[repr(target_optimal)])
 │   └── Cost Oracle (per-target cost queries for any expression/type before emit)
 │
-├── Self-Evolving Grammar [NEW IN MECHGEN]
+├── Self-Evolving Grammar [NEW IN MAGE]
 │   ├── Agent-registerable domain-specific abbreviations
 │   ├── Namespace-scoped syntax extensions (version-controlled)
 │   ├── Frequency-driven promotion (ACI suggests new abbreviations)
 │   └── Grammar extension discovery API
 │
-├── Synthesis Infrastructure [NEW IN MECHGEN]
+├── Synthesis Infrastructure [NEW IN MAGE]
 │   ├── Formal specification syntax (spec blocks with @req/@ens/@perf/@fx)
 │   ├── Synthesis oracle (spec → candidate implementations)
 │   ├── Verification oracle (candidate → spec satisfaction proof)
 │   ├── Pipeline composition from specs
 │   └── Cost-constrained synthesis (agents specify budget)
 │
-├── Agent Memory Model [NEW IN MECHGEN]
+├── Agent Memory Model [NEW IN MAGE]
 │   ├── Ephemeral memory (per-task scratchpad)
 │   ├── Session memory (per-swarm-session patterns and caches)
 │   ├── Project memory (conventions, bug patterns, perf profiles)
 │   └── Global memory (cross-project ecosystem patterns)
 │
-├── Self-Healing Compiler [NEW IN MECHGEN]
+├── Self-Healing Compiler [NEW IN MAGE]
 │   ├── Auto-repair pipeline (error → infer intent → generate fix candidates)
 │   ├── Confidence-ranked fixes with token cost accounting
 │   └── Accept/reject/refine feedback loop (agent always in control)
 │
-├── Hot-Reload Runtime [NEW IN MECHGEN]
+├── Hot-Reload Runtime [NEW IN MAGE]
 │   ├── Function-level live patching (sub-ms injection)
 │   ├── ABI stability enforcement at MLIR level
 │   ├── Rollback with retention window
 │   └── Active call draining (no forced interruption)
 │
-├── Zero-Friction FFI [NEW IN MECHGEN]
+├── Zero-Friction FFI [NEW IN MAGE]
 │   ├── Auto-binding from C/C++ headers, Python stubs, WASM .wit, CUDA kernels
 │   ├── Safe wrappers with null checks and length validation
 │   ├── Cost oracle integration (cross-language overhead visible)
 │   └── Zero-copy data passing where possible (buffer protocol)
 │
-├── Runtime Security [NEW IN MECHGEN]
+├── Runtime Security [NEW IN MAGE]
 │   ├── Capability-based sandboxing (memory, CPU, syscall, FFI bounds)
 │   ├── Capability attenuation (child ≤ parent capabilities)
 │   ├── Cryptographic audit trail (every sandbox execution logged)
 │   └── Deterministic replay for audit and debugging
 │
-├── Swarm Orchestration Patterns [NEW IN MECHGEN]
+├── Swarm Orchestration Patterns [NEW IN MAGE]
 │   ├── Map-reduce (parallel map, single-agent reduce)
 │   ├── Pipeline (staged with backpressure)
 │   ├── Scatter-gather (broadcast + quorum-based collection)
 │   ├── Saga (distributed transaction with compensation)
 │   └── Compile-time verification (effect purity, contract chaining, deadlock freedom)
 │
-├── Agentic Compiler Intelligence (ACI) [NEW IN MECHGEN]
+├── Agentic Compiler Intelligence (ACI) [NEW IN MAGE]
 │   ├── Dynamic Warning Engine (learns from project bug history + swarm sessions)
 │   ├── Intelligent Debugging Engine (causal root-cause analysis via ML)
 │   ├── Performance Advisor Engine (MLIR cost model + profiling data suggestions)
@@ -563,7 +563,7 @@ Safety Model
 
 ### 5.1 Backwards Compatibility
 
-MechGen supports **dual syntax modes**. The **canonical syntax** (default) is a zero-ambiguity LL(1) grammar optimized for agent parsing. The **legacy syntax mode** accepts standard Rust and transpiles to canonical form. All valid Rust programs can be compiled in legacy mode. The `mechgen fmt --canonicalize` command converts Rust source to canonical MechGen. New features (effects, contracts, performance annotations, SKB integration) are only available in canonical syntax.
+MAGE supports **dual syntax modes**. The **canonical syntax** (default) is a zero-ambiguity LL(1) grammar optimized for agent parsing. The **legacy syntax mode** accepts standard Rust and transpiles to canonical form. All valid Rust programs can be compiled in legacy mode. The `mage fmt --canonicalize` command converts Rust source to canonical MAGE. New features (effects, contracts, performance annotations, SKB integration) are only available in canonical syntax.
 
 ### 5.2 New Syntax and Semantics
 
@@ -577,7 +577,7 @@ fn longest<'a>(x: &'a str, y: &'a str) -> &'a str { ... }
 fn process(data: &mut Vec<u8>, config: &Config) -> Result<(), Error> { ... }
 unsafe fn raw_read(ptr: *const u8, len: usize) -> &[u8] { ... }
 
-// MechGen: no lifetimes, no borrow annotations, no unsafe keyword
+// MAGE: no lifetimes, no borrow annotations, no unsafe keyword
 f longest(x: s, y: s) -> s { ... }              // compiler infers reference semantics
 f process(data: [u8]~, config: Config) -> R[(),Error] { ... }  // mutability is implicit
 f raw_read(ptr: Ptr[u8], len: usize) -> [u8] { ... }          // no unsafe needed
@@ -669,11 +669,11 @@ capability_block!(io::read + alloc) {
 
 ### 5.3 Canonical Syntax: Designed for Zero Parse Errors
 
-Rust's syntax, while ergonomic for humans, causes systematic agent parsing failures due to context-sensitive constructs and ambiguous token sequences. MechGen's **canonical syntax** eliminates every known source of agent parse errors:
+Rust's syntax, while ergonomic for humans, causes systematic agent parsing failures due to context-sensitive constructs and ambiguous token sequences. MAGE's **canonical syntax** eliminates every known source of agent parse errors:
 
 #### 5.3.1 Ambiguity Eliminations
 
-| Rust Ambiguity                                     | Agent Failure Mode                         | MechGen Solution                                               |
+| Rust Ambiguity                                     | Agent Failure Mode                         | MAGE Solution                                               |
 | -------------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------ |
 | Turbofish `::<T>` vs. `<` comparison               | Agent emits `foo<T>` instead of `foo::<T>` | Unified `foo[T]` for type params everywhere                  |
 | Struct literal `Foo { x: 1 }` vs. block `{ x: 1 }` | Agent confuses expression context          | Struct literals require `@Foo { x: 1 }` prefix               |
@@ -707,32 +707,32 @@ Because of these properties, agents get:
 - **Single-pass parsing**: No backtracking, no speculative parsing, no parser recovery heuristics
 - **Zero ambiguous token sequences**: Every token stream has exactly one parse tree
 - **Streaming parse**: Agents can parse partial code (incomplete functions, partial modules) without context from the rest of the file
-- **Canonical form**: `mechgenfmt` produces one unique canonical representation per AST — agents never face formatting-induced parse variations
+- **Canonical form**: `magefmt` produces one unique canonical representation per AST — agents never face formatting-induced parse variations
 
 #### 5.3.4 Dual Syntax Mode
 
-For human developers transitioning from Rust, MechGen supports a **legacy syntax mode** that accepts standard Rust syntax and transpiles to canonical form:
+For human developers transitioning from Rust, MAGE supports a **legacy syntax mode** that accepts standard Rust syntax and transpiles to canonical form:
 
 ```bash
-mechgen build --syntax=legacy    # accepts Rust syntax, transpiles
-mechgen build --syntax=canonical # default: zero-ambiguity syntax only
-mechgen fmt --canonicalize       # convert legacy Rust syntax to canonical MechGen
+mage build --syntax=legacy    # accepts Rust syntax, transpiles
+mage build --syntax=canonical # default: zero-ambiguity syntax only
+mage fmt --canonicalize       # convert legacy Rust syntax to canonical MAGE
 ```
 
 ### 5.4 Hardware-Agnostic Performance Model (MLIR + LLVM)
 
-MechGen compiles through **MLIR** (Multi-Level Intermediate Representation) and **LLVM** — the broadest and most mature compiler infrastructure in existence. Following the key architectural insight from Modular AI's Mojo (but adapted for agent swarms, not human ML engineers): **the MLIR dialect is not a translation target — it is the language's semantic backbone**. Ownership, effects, contracts, performance annotations, and agent capability declarations are encoded as first-class MLIR operations and attributes in the MechGen Dialect. This means the compiler's full semantic understanding is preserved through the entire optimization pipeline — unlike a traditional approach where MIR→LLVM IR lowering discards high-level intent.
+MAGE compiles through **MLIR** (Multi-Level Intermediate Representation) and **LLVM** — the broadest and most mature compiler infrastructure in existence. Following the key architectural insight from Modular AI's Mojo (but adapted for agent swarms, not human ML engineers): **the MLIR dialect is not a translation target — it is the language's semantic backbone**. Ownership, effects, contracts, performance annotations, and agent capability declarations are encoded as first-class MLIR operations and attributes in the MAGE Dialect. This means the compiler's full semantic understanding is preserved through the entire optimization pipeline — unlike a traditional approach where MIR→LLVM IR lowering discards high-level intent.
 
 MLIR provides extensible multi-level abstractions that preserve performance intent (parallelism, memory layout, vectorization) through progressive lowering, while LLVM provides battle-tested optimization and native code generation for 20+ architectures.
 
 #### 5.4.1 MLIR-Based Compilation Pipeline
 
 ```
-Source → AST → HIR → MIR → MLIR (MechGen Dialect) → MLIR (Lowered) → Target Code
+Source → AST → HIR → MIR → MLIR (MAGE Dialect) → MLIR (Lowered) → Target Code
                               │                       │
                               │ Progressive Lowering:  │
                               │ ┌─────────────────┐   │
-                              ├─┤ MechGen Dialect    │   │  (effects, contracts, perf annotations)
+                              ├─┤ MAGE Dialect    │   │  (effects, contracts, perf annotations)
                               │ └────────┬────────┘   │
                               │ ┌────────▼────────┐   │
                               ├─┤ Linalg Dialect   │   │  (linear algebra, tensor ops)
@@ -765,7 +765,7 @@ Source → AST → HIR → MIR → MLIR (MechGen Dialect) → MLIR (Lowered) →
 
 #### Why MLIR + LLVM?
 
-| Criterion                    | LLVM Alone                       | MLIR + LLVM (MechGen)                                       |
+| Criterion                    | LLVM Alone                       | MLIR + LLVM (MAGE)                                       |
 | ---------------------------- | -------------------------------- | --------------------------------------------------------- |
 | **CPU targets**              | 20+ architectures                | Same 20+ (LLVM backend unchanged)                         |
 | **GPU targets**              | NVPTX, AMDGPU only               | + SPIR-V dialect, custom compute dialects                 |
@@ -787,7 +787,7 @@ Source → AST → HIR → MIR → MLIR (MechGen Dialect) → MLIR (Lowered) →
 // Maps directly to MLIR vector dialect ops (inspired by Mojo's SIMD[DType, width],
 // but as a token-efficient first-class type with agent-queryable semantics)
 f dot_product(a: &[f32], b: &[f32]) -> f32 {
-    v sum = Simd[f32, 8].zero;       // language-level type, not mechgen::simd::Vector
+    v sum = Simd[f32, 8].zero;       // language-level type, not mage::simd::Vector
     @ i : 0..a.len.step(8) {
         v va = Simd[f32, 8].load(&a[i..]);
         v vb = Simd[f32, 8].load(&b[i..]);
@@ -861,11 +861,11 @@ These annotations are **not safety checks** — they are performance directives.
 
 ### 5.5 Token-Efficient Syntax: Minimizing Agent Cost
 
-Every token an agent emits costs **time** (inference latency), **money** (API billing), and **memory** (context window consumption). MechGen's canonical syntax is designed to express maximum semantic intent per token. The goal: any program expressible in N Rust tokens should be expressible in ≤ N/2 MechGen tokens with identical semantics.
+Every token an agent emits costs **time** (inference latency), **money** (API billing), and **memory** (context window consumption). MAGE's canonical syntax is designed to express maximum semantic intent per token. The goal: any program expressible in N Rust tokens should be expressible in ≤ N/2 MAGE tokens with identical semantics.
 
 #### 5.5.1 Keyword Compression Table
 
-| Rust Keyword / Construct        | Tokens | MechGen Compact Form | Tokens |      Savings      |
+| Rust Keyword / Construct        | Tokens | MAGE Compact Form | Tokens |      Savings      |
 | ------------------------------- | :----: | ------------------ | :----: | :---------------: |
 | `fn`                            |   1    | `f`                |   1    | 0 (already short) |
 | `pub fn`                        |   2    | `+f`               |   1    |        50%        |
@@ -933,10 +933,10 @@ Every token an agent emits costs **time** (inference latency), **money** (API bi
 
 #### 5.5.2 Attribute Compression
 
-MechGen attributes use single-character prefixes and abbreviated names:
+MAGE attributes use single-character prefixes and abbreviated names:
 
 ```
-Rust                                    MechGen Compact
+Rust                                    MAGE Compact
 ─────────────────────────────           ─────────────────────
 #[derive(Clone, Debug, PartialEq)]     @d(Cl,Db,PEq)
 #[repr(C)]                             @r(C)
@@ -975,7 +975,7 @@ pub fn process_items(items: &[Item], config: &Config) -> Result<Vec<Output>, Err
 }
 ```
 
-**MechGen Compact (19 tokens):**
+**MAGE Compact (19 tokens):**
 ```
 +f process_items(items: &[Item], config: &Config) -> R[[Output]~, Error] {
     m results = [Output]~.new;
@@ -1007,7 +1007,7 @@ impl User {
 }
 ```
 
-**MechGen Compact (30 tokens):**
+**MAGE Compact (30 tokens):**
 ```
 @d(Cl,Db)
 +S User {
@@ -1031,7 +1031,7 @@ I User {
 
 High-frequency Rust patterns get dedicated compact forms:
 
-| Pattern                                              | Rust Tokens | MechGen Compact        | MechGen Tokens |
+| Pattern                                              | Rust Tokens | MAGE Compact        | MAGE Tokens |
 | ---------------------------------------------------- | :---------: | -------------------- | :----------: |
 | Error propagation: `fn f() -> Result<T, E>`          |      7      | `f f() -> R[T,E]`    |      5       |
 | Option handling: `if let Some(v) = x { ... }`        |      9      | `?x => v { ... }`    |      4       |
@@ -1045,12 +1045,12 @@ High-frequency Rust patterns get dedicated compact forms:
 
 #### 5.5.5 Token Economy Guarantees
 
-The MechGen compiler enforces these token economy properties:
+The MAGE compiler enforces these token economy properties:
 
-1. **No construct requires more tokens than its Rust equivalent** — every MechGen form is ≤ the token count of the corresponding Rust form
+1. **No construct requires more tokens than its Rust equivalent** — every MAGE form is ≤ the token count of the corresponding Rust form
 2. **High-frequency constructs get the shortest forms** — token length is inversely proportional to usage frequency across all known Rust codebases
-3. **`mechgenfmt --agent`** produces the minimum-token canonical form; **`mechgenfmt --human`** produces the human-readable expanded form
-4. **Token budget reporting**: `mechgen build --token-report` emits per-function and per-module token counts, enabling agents to track and optimize their token expenditure
+3. **`magefmt --agent`** produces the minimum-token canonical form; **`magefmt --human`** produces the human-readable expanded form
+4. **Token budget reporting**: `mage build --token-report` emits per-function and per-module token counts, enabling agents to track and optimize their token expenditure
 5. **Standard abbreviation registry**: all compact forms are deterministic, documented, and version-stable — agents never need to guess abbreviations
 
 #### 5.5.6 Trait and Type Abbreviation Registry
@@ -1081,7 +1081,7 @@ Since agents consult the SKB directly for all safety rules, **the syntax need no
 
 #### 5.6.1 What Gets Eliminated
 
-| Rust Syntax / Concept                   | Purpose (for humans)                    | MechGen (for agents)                               | Rationale                                                           |
+| Rust Syntax / Concept                   | Purpose (for humans)                    | MAGE (for agents)                               | Rationale                                                           |
 | --------------------------------------- | --------------------------------------- | ------------------------------------------------ | ------------------------------------------------------------------- |
 | `'a`, `'b`, `'static`, `for<'a>`        | Lifetime annotations                    | **Eliminated** — compiler infers all             | Agents know lifetime rules via SKB; syntax annotations waste tokens |
 | `&T` vs `&mut T`                        | Borrow checking at call sites           | Single reference type: `&T`; mutability inferred | Agents pre-validate borrows via SKB before writing code             |
@@ -1100,7 +1100,7 @@ Since agents consult the SKB directly for all safety rules, **the syntax need no
 
 #### 5.6.2 The Simplified Language
 
-With safety syntax eliminated, MechGen function signatures become radically simpler:
+With safety syntax eliminated, MAGE function signatures become radically simpler:
 
 ```
 // Rust (21 tokens):
@@ -1111,7 +1111,7 @@ pub fn merge<'a, 'b, T: Send + Sync + Clone + 'a>(
 where
     'b: 'a,
 
-// MechGen (8 tokens):
+// MAGE (8 tokens):
 +f merge[T: Cl](left: [T], right: [T]) -> [T]~
 
 // What was removed:
@@ -1128,7 +1128,7 @@ unsafe fn transmute_slice<'a>(ptr: *const u8, len: usize) -> &'a [u8] {
     unsafe { std::slice::from_raw_parts(ptr, len) }
 }
 
-// MechGen (8 tokens):
+// MAGE (8 tokens):
 f transmute_slice(ptr: Ptr[u8], len: usize) -> [u8] {
     slice.from_parts(ptr, len)
 }
@@ -1150,7 +1150,7 @@ pub struct Future<'a, T: Send + 'static> {
     _phantom: PhantomData<&'a ()>,
 }
 
-// MechGen (8 tokens):
+// MAGE (8 tokens):
 +S Future[T] {
     inner: ^T,          // compiler manages pinning, boxing, dispatch
 }
@@ -1166,7 +1166,7 @@ pub struct Future<'a, T: Send + 'static> {
 
 #### 5.6.3 Token Impact of Safety Elimination
 
-| Metric                                       | Rust     | MechGen (safety-free) | Savings        |
+| Metric                                       | Rust     | MAGE (safety-free) | Savings        |
 | -------------------------------------------- | -------- | ------------------- | -------------- |
 | Average tokens per function signature        | 12–25    | 4–8                 | 60–70%         |
 | Lifetime annotations per 1000 LOC            | 15–50    | 0                   | 100%           |
@@ -1177,7 +1177,7 @@ pub struct Future<'a, T: Send + 'static> {
 
 ### 5.7 Cost Model Transparency: Query Before You Emit
 
-Agents are economic actors — every choice they make (which type, which algorithm, which allocation strategy) has a measurable cost. MechGen exposes a **cost oracle** that agents query *before* emitting code, turning compilation from a feedback loop into a feed-forward pipeline.
+Agents are economic actors — every choice they make (which type, which algorithm, which allocation strategy) has a measurable cost. MAGE exposes a **cost oracle** that agents query *before* emitting code, turning compilation from a feedback loop into a feed-forward pipeline.
 
 #### 5.7.1 Cost Oracle API
 
@@ -1261,7 +1261,7 @@ The grammar is not fixed — agents can register **domain-specific syntax extens
 #### 5.8.1 Extension Registration
 
 ```toml
-# MechGen.toml — project-level grammar extensions
+# MAGE.toml — project-level grammar extensions
 [grammar.extensions]
 genomic-seq = { module = "bio::seq", version = "1.0" }
 ml-layers = { module = "nn::layer", version = "2.1" }
@@ -1331,7 +1331,7 @@ v suggestions = rap.query("aci.grammar_suggestions", project_id);
 
 ### 5.9 Synthesis Specifications: From Spec to Code
 
-MechGen treats formal specifications as first-class inputs to the compiler. Agents don't write code from scratch — they compose specifications, and the compiler verifies that candidate implementations satisfy them.
+MAGE treats formal specifications as first-class inputs to the compiler. Agents don't write code from scratch — they compose specifications, and the compiler verifies that candidate implementations satisfy them.
 
 #### 5.9.1 Specification Syntax
 
@@ -1412,7 +1412,7 @@ pipeline data_ingest {
 
 ### 5.10 Self-Healing Compilation: Error Recovery as a Service
 
-When an agent emits code that doesn't compile, the traditional response is an error message. The agent reads the error, reasons about the fix, emits corrected code, and recompiles. This loop wastes tokens, latency, and agent compute. MechGen's ACI collapses this loop.
+When an agent emits code that doesn't compile, the traditional response is an error message. The agent reads the error, reasons about the fix, emits corrected code, and recompiles. This loop wastes tokens, latency, and agent compute. MAGE's ACI collapses this loop.
 
 #### 5.10.1 Auto-Repair Pipeline
 
@@ -1466,7 +1466,7 @@ v result = rap.query("compile", source_code);
 
 ### 5.11 Hot-Reload: Live Function Patching
 
-Agent swarms iterate continuously. Stopping a running system to recompile is incompatible with the agentic paradigm. MechGen supports **function-level hot-reload** — individual functions recompiled and injected into a running process without restart.
+Agent swarms iterate continuously. Stopping a running system to recompile is incompatible with the agentic paradigm. MAGE supports **function-level hot-reload** — individual functions recompiled and injected into a running process without restart.
 
 #### 5.11.1 Hot-Reload Architecture
 
@@ -1521,7 +1521,7 @@ rap.query("hotpatch.rollback", "patch_a3f2");
 
 ### 5.12 Zero-Friction Foreign Function Interface
 
-Agents routinely cross language boundaries — calling C libraries, Python ML frameworks, WASM modules, GPU kernels. MechGen's FFI requires **zero ceremony**: no `unsafe`, no manual layout, no binding generators.
+Agents routinely cross language boundaries — calling C libraries, Python ML frameworks, WASM modules, GPU kernels. MAGE's FFI requires **zero ceremony**: no `unsafe`, no manual layout, no binding generators.
 
 #### 5.12.1 Automatic Binding Generation
 
@@ -1530,7 +1530,7 @@ Agents routinely cross language boundaries — calling C libraries, Python ML fr
 @ffi("c", header: "openssl/evp.h", link: "ssl")
 mod openssl;
 
-// Use it like native MechGen code — no unsafe, no manual types
+// Use it like native MAGE code — no unsafe, no manual types
 v ctx = openssl.EVP_CIPHER_CTX_new();
 openssl.EVP_EncryptInit_ex(ctx, openssl.EVP_aes_256_gcm(), ...);
 // Compiler auto-generates safe wrappers with null checks, length validation
@@ -1541,7 +1541,7 @@ mod torch;
 
 v tensor = torch.randn([3, 224, 224]);
 v result = torch.nn.functional.relu(tensor);
-// Data crosses Python↔MechGen boundary via zero-copy buffer protocol
+// Data crosses Python↔MAGE boundary via zero-copy buffer protocol
 
 // Import WASM component
 @ffi("wasm", component: "image-processor.wasm")
@@ -1586,22 +1586,22 @@ v cost = rap.query("cost", CostQuery {
 
 ### 6.1 The Query Oracle
 
-The MechGen compiler exposes its entire semantic model through a query interface. Every piece of information the compiler computes is available as a named, typed, cached query.
+The MAGE compiler exposes its entire semantic model through a query interface. Every piece of information the compiler computes is available as a named, typed, cached query.
 
 ```
 ┌─────────────────────────────────────────────────┐
 │                 Agent / IDE / CLI                │
 ├─────────────────────────────────────────────────┤
-│              MechGen Agent Protocol (RAP)         │
+│              MAGE Agent Protocol (RAP)         │
 ├───────┬───────┬───────┬───────┬────────┬────────┤
 │ Parse │ Types │Borrow │ MIR   │ Diag   │ Verify │
 │Queries│Queries│Queries│Queries│Queries │Queries │
 ├───────┴───────┴───────┴───────┴────────┴────────┤
-│              mechgen_query (Stable API)            │
+│              mage_query (Stable API)            │
 ├─────────────────────────────────────────────────┤
 │         Incremental Query Engine (Salsa)         │
 ├─────────────────────────────────────────────────┤
-│         MLIR (MechGen Dialect → LLVM Dialect)       │
+│         MLIR (MAGE Dialect → LLVM Dialect)       │
 ├─────────────────────────────────────────────────┤
 │    LLVM Backend (20+ CPU, GPU, WASM targets)     │
 ├─────────────────────────────────────────────────┤
@@ -1611,7 +1611,7 @@ The MechGen compiler exposes its entire semantic model through a query interface
 
 ### 6.2 Structured Diagnostic Graph
 
-Instead of flat error messages, MechGen emits **diagnostic graphs**:
+Instead of flat error messages, MAGE emits **diagnostic graphs**:
 
 ```rust
 DiagnosticGraph {
@@ -1649,7 +1649,7 @@ DiagnosticGraph {
         },
     ],
     related: ["E0499", "E0503"],
-    documentation_url: "https://doc.mechgen-lang.org/error/E0502",
+    documentation_url: "https://doc.mage-lang.org/error/E0502",
 }
 ```
 
@@ -1671,14 +1671,14 @@ VerificationCertificate {
         Check::PanicFreedom { status: Conditional, conditions: ["inputs satisfy preconditions"] },
         Check::StackOverflowFreedom { status: Bounded, max_depth: 42 },
     ],
-    compiler_version: "mechgen 1.0.0",
+    compiler_version: "mage 1.0.0",
     hash: "sha256:abc123...",
 }
 ```
 
 ### 6.4 Agentic Compiler Intelligence
 
-The MechGen compiler is not a static analyzer — it is an **agentic AI system** that learns, adapts, and collaborates with the agent swarm. This is the second major departure from traditional compiler design: the compiler itself embeds AI capabilities that go far beyond fixed lint passes and static analysis.
+The MAGE compiler is not a static analyzer — it is an **agentic AI system** that learns, adapts, and collaborates with the agent swarm. This is the second major departure from traditional compiler design: the compiler itself embeds AI capabilities that go far beyond fixed lint passes and static analysis.
 
 #### 6.4.1 Architecture
 
@@ -1841,10 +1841,10 @@ v advice = rap.query("aci.swarm", task);
 
 ### 7.1 The Ownership Model for Agent Swarms
 
-Just as Rust's type system enforces memory safety through ownership, MechGen enforces *codebase safety* through a **semantic ownership model for agent swarms**. The core insight: Rust already solved concurrent access to shared mutable state — we apply the same discipline at the agent coordination level.
+Just as Rust's type system enforces memory safety through ownership, MAGE enforces *codebase safety* through a **semantic ownership model for agent swarms**. The core insight: Rust already solved concurrent access to shared mutable state — we apply the same discipline at the agent coordination level.
 
 ```
-Rust Memory Model              MechGen Swarm Model
+Rust Memory Model              MAGE Swarm Model
 ─────────────────               ─────────────────
 &T      (shared read)      ←→   &Module   (many agents read)
 &mut T  (exclusive write)  ←→   &mut Fn   (one agent modifies a function)
@@ -1883,7 +1883,7 @@ enum SemanticLease {
 
 ### 7.2 Swarm Topology and Roles
 
-A MechGen swarm is a **directed acyclic graph of specialized agents** that mirrors the compiler's own pass structure:
+A MAGE swarm is a **directed acyclic graph of specialized agents** that mirrors the compiler's own pass structure:
 
 ```
                     ┌─────────────────┐
@@ -1927,7 +1927,7 @@ A MechGen swarm is a **directed acyclic graph of specialized agents** that mirro
 
 ### 7.3 Conflict-Free Concurrent Editing (CRDT-Based)
 
-MechGen uses **semantic CRDTs** (Conflict-free Replicated Data Types) for concurrent codebase modification. Unlike text-level CRDTs (which merge character-by-character), semantic CRDTs operate on the AST/HIR:
+MAGE uses **semantic CRDTs** (Conflict-free Replicated Data Types) for concurrent codebase modification. Unlike text-level CRDTs (which merge character-by-character), semantic CRDTs operate on the AST/HIR:
 
 ```rust
 /// A semantic CRDT operation on the codebase
@@ -2152,7 +2152,7 @@ Super-Orchestrator
 
 ### 7.9 Swarm-Aware Version Control
 
-MechGen replaces file-based version control (git) with **semantic version control** built into the compiler:
+MAGE replaces file-based version control (git) with **semantic version control** built into the compiler:
 
 ```rust
 /// Semantic version control — replaces git for agent swarms
@@ -2260,7 +2260,7 @@ The compiler verifies orchestration patterns at compile time:
 
 ### 7.11 Agent Memory Model: Persistent Learning Across Sessions
 
-Swarm agents are not stateless — they accumulate knowledge across sessions. MechGen provides a structured **Agent Memory Model** that persists patterns, decisions, and project-specific knowledge.
+Swarm agents are not stateless — they accumulate knowledge across sessions. MAGE provides a structured **Agent Memory Model** that persists patterns, decisions, and project-specific knowledge.
 
 #### 7.10.1 Memory Tiers
 
@@ -2338,14 +2338,14 @@ Project memory feeds back into every aspect of the compilation pipeline:
 
 ## 8. Toolchain as Swarm Infrastructure
 
-### 8.1 MechGen Build (Evolution of Cargo)
+### 8.1 MAGE Build (Evolution of Cargo)
 
 ```toml
-# MechGen.toml (evolution of Cargo.toml)
+# MAGE.toml (evolution of Cargo.toml)
 [package]
 name = "flight-controller"
 version = "2.1.0"
-edition = "mechgen-2026"
+edition = "mage-2026"
 syntax = "canonical"       # canonical | legacy (for Rust compat)
 
 [performance]
@@ -2396,7 +2396,7 @@ message-serialization = "zero-copy"             # zero-copy | flatbuffers | prot
 
 ### 8.2 Unified RAP Server
 
-The MechGen Agent Protocol server replaces separate tools with a unified service:
+The MAGE Agent Protocol server replaces separate tools with a unified service:
 
 ```
 RAP Server
@@ -2450,8 +2450,8 @@ RAP Server
 │   └── Rule corpus management (add, deprecate, fork rules)
 │
 ├── MLIR/LLVM Service [NEW]
-│   ├── MIR → MLIR (MechGen Dialect) translation — dialect encodes full language semantics
-│   ├── Progressive lowering: MechGen → Linalg/Affine → Vector → LLVM Dialect
+│   ├── MIR → MLIR (MAGE Dialect) translation — dialect encodes full language semantics
+│   ├── Progressive lowering: MAGE → Linalg/Affine → Vector → LLVM Dialect
 │   ├── Multi-target LLVM codegen (20+ CPU architectures, AMDGPU, NVPTX, WASM)
 │   ├── Custom MLIR dialect pipelines (SPIR-V for GPU, CIRCT for FPGA, StableHLO for NPU/TPU)
 │   ├── MLIR-native autotuning engine (generate N lowering variants, benchmark per-target)
@@ -2529,8 +2529,8 @@ RAP Server
 ### 8.3 Swarm SDK
 
 ```rust
-use mechgen_swarm::{Swarm, SwarmAgent, Role, SemanticLease, SwarmBus, Consensus};
-use mechgen_agent::{Agent, Capability, Session};
+use mage_swarm::{Swarm, SwarmAgent, Role, SemanticLease, SwarmBus, Consensus};
+use mage_agent::{Agent, Capability, Session};
 
 /// A swarm-aware safety auditor that works in parallel with other verifiers
 #[derive(SwarmAgent)]
@@ -2634,7 +2634,7 @@ impl AuditOrchestrator {
 
 ### 8.4 Agentic Standard Library
 
-The MechGen standard library is redesigned for agent consumption patterns. Where Rust's stdlib is optimized for human ergonomics (readable names, discoverable method chains), MechGen's is optimized for **minimum-token, maximum-throughput agent interaction**.
+The MAGE standard library is redesigned for agent consumption patterns. Where Rust's stdlib is optimized for human ergonomics (readable names, discoverable method chains), MAGE's is optimized for **minimum-token, maximum-throughput agent interaction**.
 
 #### 8.4.1 Design Principles
 
@@ -2646,7 +2646,7 @@ The MechGen standard library is redesigned for agent consumption patterns. Where
 
 #### 8.4.2 Key Differences from Rust's stdlib
 
-| Aspect                | Rust stdlib                         | MechGen stdlib                                                                |
+| Aspect                | Rust stdlib                         | MAGE stdlib                                                                |
 | --------------------- | ----------------------------------- | --------------------------------------------------------------------------- |
 | **Method naming**     | `push`, `insert`, `contains`        | Same semantics, but with batch: `push_batch`, `insert_batch`                |
 | **Error handling**    | `Result<T, E>` with `?` propagation | Same, plus `R[T, E]` abbreviation and error chains                          |
@@ -2693,7 +2693,7 @@ v items = ArenaVec[Item].in(arena);
 // Rust: reads entire file into memory
 // let data = std::fs::read("large_file.csv")?;  // allocates full Vec<u8>
 
-// MechGen: streams data lazily, matching agent token-streaming nature
+// MAGE: streams data lazily, matching agent token-streaming nature
 v stream = fs.stream("large_file.csv")?;     // returns Stream[u8], no allocation
 @ chunk : stream.chunks(64_KB) {              // process in 64KB chunks
     v records = csv.parse_batch(chunk);        // batch parse
@@ -2709,14 +2709,14 @@ v stream = fs.stream("large_file.csv")?;     // returns Stream[u8], no allocatio
 
 Rust's safety model assumes a *human developer* who makes mistakes and needs the compiler to catch them. Agentic AI SWE agents operate differently — they can internalize safety rules from training data and structured databases. Forcing agents to wait for compile-time error messages to learn what they already know is **pure overhead**.
 
-MechGen introduces the **Safety Knowledge Base (SKB)** — a structured, versioned, queryable database of all safety rules, patterns, invariants, and constraints. Agents query the SKB *before* writing code, not after. The compiler becomes an *optimizing translator* that trusts well-formed input, not a safety gatekeeper that blocks every submission.
+MAGE introduces the **Safety Knowledge Base (SKB)** — a structured, versioned, queryable database of all safety rules, patterns, invariants, and constraints. Agents query the SKB *before* writing code, not after. The compiler becomes an *optimizing translator* that trusts well-formed input, not a safety gatekeeper that blocks every submission.
 
 ```
 Rust Model (Compiler-Enforced):
   Agent writes code → Compiler rejects → Agent reads error → Agent rewrites → Compiler accepts
   Latency: seconds per iteration (compile + parse errors + resubmit)
 
-MechGen Model (SKB-Driven):
+MAGE Model (SKB-Driven):
   Agent queries SKB → Agent writes correct code → Compiler translates and optimizes
   Latency: microseconds (SKB query) + milliseconds (fast compile, no safety passes)
 ```
@@ -2755,7 +2755,7 @@ MechGen Model (SKB-Driven):
 ### 9.3 SKB Query Examples
 
 ```rust
-use mechgen_skb::{SafetyKB, Context, Pattern};
+use mage_skb::{SafetyKB, Context, Pattern};
 
 // Agent queries SKB before writing code
 let rules = skb.query(Pattern::MutableBorrow {
@@ -2792,7 +2792,7 @@ let compat = skb.query(Pattern::TypeConversion {
 Safety checking at compile time is **configurable per-project** and **per-profile**:
 
 ```toml
-# MechGen.toml
+# MAGE.toml
 [safety]
 mode = "skb-only"          # Options: "full" | "warnings" | "skb-only" | "none"
                             # "full" = Rust-style compile-time enforcement (for humans/CI)
@@ -2815,7 +2815,7 @@ production = { borrow-check = "error", lifetime-check = "error", bounds-check = 
 
 ### 9.5 What Agents Gain from SKB-Driven Safety
 
-| Metric                                 | Rust (Compiler-Enforced)    | MechGen (SKB-Driven)                           | Improvement          |
+| Metric                                 | Rust (Compiler-Enforced)    | MAGE (SKB-Driven)                           | Improvement          |
 | -------------------------------------- | --------------------------- | -------------------------------------------- | -------------------- |
 | **Code-to-compile latency**            | 2-30 seconds                | 50-500ms                                     | 10-60x faster        |
 | **Parse error rate**                   | 5-15% of agent submissions  | <0.1% (zero-ambiguity syntax)                | 50-150x fewer        |
@@ -2842,7 +2842,7 @@ While compile-time *code* safety is optional, swarm *coordination* safety remain
 
 ### 9.7 Runtime Security and Sandboxing
 
-Agent swarms execute code — and code execution requires security guarantees that go beyond compile-time safety. MechGen provides a **capability-based runtime security model** that sandboxes agent-generated code.
+Agent swarms execute code — and code execution requires security guarantees that go beyond compile-time safety. MAGE provides a **capability-based runtime security model** that sandboxes agent-generated code.
 
 #### 9.7.1 Capability-Based Sandboxing
 
@@ -2877,7 +2877,7 @@ v result = sandbox.execute(agent_generated_code)?;
 #### 9.7.3 Trust Levels
 
 ```toml
-# MechGen.toml — security configuration
+# MAGE.toml — security configuration
 [security]
 trust-level = "verified"  # verified | audited | sandboxed | unrestricted
 
@@ -2906,13 +2906,13 @@ Today, an agent trying to use a Rust library must:
 3. Guess at behavior (no formal specs)
 4. Discover by trial-and-error (compile, read errors, retry)
 
-### 10.2 The MechGen Solution: Structured Capability Manifests
+### 10.2 The MAGE Solution: Structured Capability Manifests
 
 Every crate publishes a **capability manifest** alongside its code:
 
 ```json
 {
-  "crate": "mechgen_crypto",
+  "crate": "mage_crypto",
   "version": "1.0.0",
   "capabilities_required": ["alloc::heap"],
   "capabilities_provided": {
@@ -2956,7 +2956,7 @@ let results = registry.search(CapabilityQuery {
     ],
     sort_by: SortOrder::SecurityCertifications,
 });
-// Returns: [mechgen_crypto::aead, ring::aead, ...]
+// Returns: [mage_crypto::aead, ring::aead, ...]
 ```
 
 ### 10.4 Contract-Based Composition
@@ -2981,37 +2981,37 @@ let pipeline = compose![
 ## 11. Phased Implementation Plan
 
 ### Phase 0: Foundation (Months 1–6)
-- [ ] Fork and rebrand compiler crates (`rustc_*` → `mechgen_*`)
+- [ ] Fork and rebrand compiler crates (`rustc_*` → `mage_*`)
 - [ ] Implement zero-ambiguity LL(1) canonical grammar and parser
 - [ ] Implement token-compressed keyword set and lexer (single-char keywords, sigil prefixes)
 - [ ] Implement safety elision pass (P33): strip all lifetime, borrow, ownership syntax in agentic mode
 - [ ] Implement safety-free type inference: compiler infers `&`/`&mut`, `move`/`ref`, `dyn`/`impl` from usage
-- [ ] Build dual-syntax transpiler (legacy Rust → canonical MechGen compact form)
-- [ ] Implement `mechgenfmt --agent` (minimum-token canonical form) and `mechgenfmt --human` (human-readable form)
-- [ ] Stabilize `mechgen_public` API to cover all MIR, HIR, and type system constructs
-- [ ] Define MechGen MLIR dialect: ownership, effects, contracts, perf annotations as first-class MLIR ops
-- [ ] Implement MIR → MLIR (MechGen Dialect) translation layer (thin boundary, dialect-as-semantics)
+- [ ] Build dual-syntax transpiler (legacy Rust → canonical MAGE compact form)
+- [ ] Implement `magefmt --agent` (minimum-token canonical form) and `magefmt --human` (human-readable form)
+- [ ] Stabilize `mage_public` API to cover all MIR, HIR, and type system constructs
+- [ ] Define MAGE MLIR dialect: ownership, effects, contracts, perf annotations as first-class MLIR ops
+- [ ] Implement MIR → MLIR (MAGE Dialect) translation layer (thin boundary, dialect-as-semantics)
 - [ ] Implement language-level SIMD types (`Simd[T, N]`) backed by MLIR vector dialect ops
-- [ ] Implement MLIR progressive lowering pipeline: MechGen Dialect → Linalg/Affine → Vector → LLVM Dialect
+- [ ] Implement MLIR progressive lowering pipeline: MAGE Dialect → Linalg/Affine → Vector → LLVM Dialect
 - [ ] Wire LLVM backend codegen through MLIR LLVM Dialect (replacing direct MIR→LLVM IR path)
 - [ ] Implement compile-time metaprogramming (`@pp` / `@parameter`) via MLIR constant folding
 - [ ] Implement Structured Diagnostics Protocol (JSON diagnostic graphs)
-- [ ] Externalize core queries as stable API (`mechgen_query`)
-- [ ] Establish CI/CD pipeline for the MechGen compiler
+- [ ] Externalize core queries as stable API (`mage_query`)
+- [ ] Establish CI/CD pipeline for the MAGE compiler
 - [ ] Implement semantic region decomposition in compiler query system
 - [ ] Define standard abbreviation registry v1 (core types, traits, derives)
 
 ### Phase 1: SKB + Swarm Primitives + Multi-Target + Cost Oracle (Months 4–12)
 - [ ] Build Safety Knowledge Base (SKB) with initial rule corpus (ownership, borrowing, lifetimes, types)
-- [ ] Implement SKB query API (`mechgen_skb` crate)
-- [ ] Make all safety compiler passes opt-in via `MechGen.toml` safety profiles
-- [ ] Build `mechgen_index` (persistent semantic knowledge graph)
+- [ ] Implement SKB query API (`mage_skb` crate)
+- [ ] Make all safety compiler passes opt-in via `MAGE.toml` safety profiles
+- [ ] Build `mage_index` (persistent semantic knowledge graph)
 - [ ] Implement capability inference pass in MIR pipeline
-- [ ] Extend `mechgen_metadata` with capability manifest serialization
+- [ ] Extend `mage_metadata` with capability manifest serialization
 - [ ] Build prototype RAP server (merging rust-analyzer + compiler queries)
 - [ ] Implement agent discovery attributes in compact form (`@as`, `@ac`, `@ax`, `@ao`, `@ae`)
 - [ ] Implement attribute compression system (full `#[...]` → compact `@...` mapping)
-- [ ] Implement token budget reporting (`mechgen build --token-report`)
+- [ ] Implement token budget reporting (`mage build --token-report`)
 - [ ] Implement Cost Oracle (P38): per-target cost queries for expressions, types, and operations
 - [ ] Implement multi-target cost comparison API (`cost.compare` endpoint)
 - [ ] Implement semantic lease manager (shared read / exclusive write on code regions)
@@ -3020,10 +3020,10 @@ let pipeline = compose![
 - [ ] Validate MLIR→LLVM backend targets: x86-64, AArch64, WASM
 
 ### Phase 2: Agent Protocol + Swarm Coordination + GPU/NPU Targets + ACI (Months 8–18)
-- [ ] Define and implement MechGen Agent Protocol (RAP) specification
+- [ ] Define and implement MAGE Agent Protocol (RAP) specification
 - [ ] Build agent capability system and enforcement layer
 - [ ] Implement verification oracle (contracts, effects, capabilities) as opt-in service
-- [ ] Build swarm SDK (`mechgen_swarm` crate with orchestrator, synthesizer, verifier roles)
+- [ ] Build swarm SDK (`mage_swarm` crate with orchestrator, synthesizer, verifier roles)
 - [ ] Implement consensus protocol engine (propose → vote → resolve → integrate)
 - [ ] Build task decomposition engine (dependency-aware parallel work splitting)
 - [ ] Implement semantic VCS (operation-log-based version control replacing git for agents)
@@ -3042,8 +3042,8 @@ let pipeline = compose![
 - [ ] Expose all ACI services via RAP endpoints (`aci.warnings`, `aci.debug`, `aci.perf`, `aci.swarm`)
 
 ### Phase 3: Language Evolution + Synthesis + Grammar Extensions (Months 12–24)
-- [ ] Implement effect type system in `mechgen_hir_analysis`
-- [ ] Implement contract syntax and checking in `mechgen_contracts`
+- [ ] Implement effect type system in `mage_hir_analysis`
+- [ ] Implement contract syntax and checking in `mage_contracts`
 - [ ] Implement refinement types in type checker
 - [ ] Implement capability blocks in HIR lowering
 - [ ] Implement compact performance annotations (`@pi!`, `@pnb`, `@pv(N)`, `@pt(target)`)
@@ -3059,7 +3059,7 @@ let pipeline = compose![
 - [ ] Implement agentic standard library: `SwarmVec`, `ArenaVec`, `SwarmChannel`, streaming I/O
 - [ ] Conduct corpus-wide token frequency analysis on crates.io ecosystem for abbreviation optimization
 - [ ] Finalize standard abbreviation registry v2 (full ecosystem coverage, frequency-weighted)
-- [ ] Define `mechgen-2026` edition with all new features including token-compact canonical form
+- [ ] Define `mage-2026` edition with all new features including token-compact canonical form
 - [ ] Build verification certificate emission pipeline (opt-in for safety-critical)
 - [ ] Implement swarm-of-swarms hierarchical orchestration for million-LOC+ codebases
 - [ ] Implement MLIR→CIRCT pipeline for FPGA targets (Verilog/SystemVerilog synthesis)
@@ -3070,7 +3070,7 @@ let pipeline = compose![
 - [ ] Migrate core ecosystem crates with capability manifests
 - [ ] Build agent swarm marketplace and pre-composed swarm templates
 - [ ] Develop certification pipeline for safety-critical industries (opt-in full safety mode)
-- [ ] Publish MechGen language specification
+- [ ] Publish MAGE language specification
 - [ ] Ship reference swarm configurations (audit swarm, migration swarm, greenfield swarm)
 - [ ] Build swarm performance benchmarking suite (throughput, latency, conflict rate metrics)
 - [ ] Publish SKB rule corpus as open dataset for agent training
@@ -3218,11 +3218,11 @@ let pipeline = compose![
 | P21     | Lease Validation [NEW]     | Agent ops        | Lease proof           |   Write exclusivity    | `lease_status(region)`     |
 | P22     | Semantic Merge [NEW]       | Concurrent ops   | Merged AST            |    Conflict freedom    | `merge_status(ops)`        |
 | P23     | Consensus Check [NEW]      | Interface change | Consensus proof       |   Atomic integration   | `consensus_status(change)` |
-| P24     | MLIR Lowering [NEW]        | Optimized MIR    | MLIR (MechGen Dialect)  |           —            | `mlir_of(func)`            |
-| P25     | MLIR→LLVM Lowering [NEW]   | MLIR MechGen       | LLVM IR / Target code |           —            | `target_code_of(func)`     |
+| P24     | MLIR Lowering [NEW]        | Optimized MIR    | MLIR (MAGE Dialect)  |           —            | `mlir_of(func)`            |
+| P25     | MLIR→LLVM Lowering [NEW]   | MLIR MAGE       | LLVM IR / Target code |           —            | `target_code_of(func)`     |
 | P26     | SKB Validation [NEW]       | Source + SKB     | Rule violations       |   Opt-in enforcement   | `skb_check(func)`          |
-| P30     | Autotuning [NEW]           | MLIR MechGen       | N lowering variants   |           —            | `autotune_of(func)`        |
-| P31     | Device Placement [NEW]     | MLIR MechGen       | Target assignment     |           —            | `placement_of(func)`       |
+| P30     | Autotuning [NEW]           | MLIR MAGE       | N lowering variants   |           —            | `autotune_of(func)`        |
+| P31     | Device Placement [NEW]     | MLIR MAGE       | Target assignment     |           —            | `placement_of(func)`       |
 | P32     | MLIR Const Eval [NEW]      | MLIR @parameter  | Constant values       |           —            | `const_eval_mlir(expr)`    |
 | P27     | Token Expansion [NEW]      | Compact AST      | Expanded AST          |           —            | `expand_tokens(file)`      |
 | P28     | Token Compression [NEW]    | Expanded AST     | Compact AST           |           —            | `compress_tokens(file)`    |
@@ -3239,7 +3239,7 @@ let pipeline = compose![
 | P42     | Memory Recall [NEW]        | Memory stores    | Relevant patterns     |           —            | `memory_recall(query)`     |
 | P43     | Auto-Repair [NEW]          | Error + Context  | Repair candidates     |           —            | `auto_repair(error)`       |
 | P44     | Hot-Patch [NEW]            | New func source  | Patched binary        |     ABI stability      | `hotpatch(func, source)`   |
-| P45     | FFI Binding Gen [NEW]      | Foreign headers  | Safe MechGen bindings   |     Layout safety      | `ffi_bindings(header)`     |
+| P45     | FFI Binding Gen [NEW]      | Foreign headers  | Safe MAGE bindings   |     Layout safety      | `ffi_bindings(header)`     |
 | P46     | Sandbox Exec [NEW]         | Code + Policy    | Sandboxed result      |    Capability check    | `sandbox_exec(code, pol)`  |
 
 ### C. Diagnostic Categories Ontology
@@ -3461,7 +3461,7 @@ fn infer_borrow_modes(mir: &MIR, ownership: &OwnershipMap) -> BorrowMap {
 }
 ```
 
-**Key insight**: In Rust, the programmer writes `&` or `&mut` and the borrow checker validates. In MechGen, the programmer writes nothing — the compiler observes how the reference is used and *derives* the mode. The SKB provides the aliasing rules; the compiler applies them automatically.
+**Key insight**: In Rust, the programmer writes `&` or `&mut` and the borrow checker validates. In MAGE, the programmer writes nothing — the compiler observes how the reference is used and *derives* the mode. The SKB provides the aliasing rules; the compiler applies them automatically.
 
 ### 13.4 Phase 3: Lifetime Inference
 
@@ -3528,7 +3528,7 @@ fn infer_lifetimes(mir: &MIR, borrows: &BorrowMap) -> LifetimeMap {
 
 #### 13.4.3 Cross-Function Lifetime Inference
 
-For function signatures, MechGen applies **lifetime elision on steroids** — not just the three Rust elision rules, but full inter-procedural inference:
+For function signatures, MAGE applies **lifetime elision on steroids** — not just the three Rust elision rules, but full inter-procedural inference:
 
 ```
 // Rule 1 (Rust-compatible): Single input ref → output gets same lifetime
@@ -3665,7 +3665,7 @@ v w = MyStruct { ... };     // compiler decides (default)
 | ------------------------- | ------------------------------------------------------------------------- |
 | **Determinism**           | Same source always produces same inference result                         |
 | **Soundness**             | Inferred modes are at least as restrictive as manual annotations would be |
-| **Completeness**          | Every well-typed Rust program has a valid MechGen inference                 |
+| **Completeness**          | Every well-typed Rust program has a valid MAGE inference                 |
 | **Monotonicity**          | Adding code never invalidates previously inferred ownership               |
 | **Performance**           | Inference is $O(n \log n)$ in function size for 95% of functions          |
 | **Worst-case complexity** | $O(n^2 \cdot R)$ for pathological alias sets ($R$ = region variables)     |
@@ -3676,23 +3676,23 @@ v w = MyStruct { ... };     // compiler decides (default)
 
 ## 14. Deep Dive: MLIR Dialect Operation Definitions
 
-Section 5.4 describes the MechGen MLIR dialect at a high level. This section provides **formal operation definitions** for every operation in the dialect, following MLIR's ODS (Operation Definition Specification) conventions.
+Section 5.4 describes the MAGE MLIR dialect at a high level. This section provides **formal operation definitions** for every operation in the dialect, following MLIR's ODS (Operation Definition Specification) conventions.
 
 ### 14.1 Dialect Registration
 
 ```tablegen
-def MechGen_Dialect : Dialect {
-  let name = "mechgen";
-  let summary = "MechGen agentic language dialect for MLIR";
+def MAGE_Dialect : Dialect {
+  let name = "mage";
+  let summary = "MAGE agentic language dialect for MLIR";
   let description = [{
-    The MechGen dialect encodes the full semantics of the MechGen language —
+    The MAGE dialect encodes the full semantics of the MAGE language —
     ownership, effects, contracts, performance annotations, agent capabilities,
     and safety knowledge base queries — as first-class MLIR operations and
     attributes. This enables the compiler's semantic understanding to be
     preserved through the entire optimization pipeline, unlike traditional
     approaches where MIR→LLVM IR lowering discards high-level intent.
   }];
-  let cppNamespace = "::mechgen";
+  let cppNamespace = "::mage";
   let useDefaultTypePrinterParser = 1;
   let useDefaultAttributePrinterParser = 1;
 }
@@ -3702,14 +3702,14 @@ def MechGen_Dialect : Dialect {
 
 ```tablegen
 // Owned value type — compiler manages ownership transfer
-def MechGen_OwnedType : MechGen_Type<"Owned", "owned"> {
+def MAGE_OwnedType : MAGE_Type<"Owned", "owned"> {
   let summary = "An owned value with compiler-managed ownership semantics";
   let parameters = (ins "Type":$elementType);
   let assemblyFormat = "`<` $elementType `>`";
 }
 
 // Reference type — borrow mode (shared/exclusive) inferred
-def MechGen_RefType : MechGen_Type<"Ref", "ref"> {
+def MAGE_RefType : MAGE_Type<"Ref", "ref"> {
   let summary = "A reference with inferred borrow mode";
   let parameters = (ins
     "Type":$elementType,
@@ -3719,19 +3719,19 @@ def MechGen_RefType : MechGen_Type<"Ref", "ref"> {
 }
 
 // Region type — lifetime region variable
-def MechGen_RegionType : MechGen_Type<"Region", "region"> {
+def MAGE_RegionType : MAGE_Type<"Region", "region"> {
   let summary = "A lifetime region variable";
   let parameters = (ins "StringAttr":$name);
 }
 
 // Effect type — algebraic effect annotation
-def MechGen_EffectType : MechGen_Type<"Effect", "effect"> {
+def MAGE_EffectType : MAGE_Type<"Effect", "effect"> {
   let summary = "An algebraic effect (IO, Async, Alloc, etc.)";
   let parameters = (ins "StringAttr":$effectName);
 }
 
 // Capability type — agent capability token
-def MechGen_CapabilityType : MechGen_Type<"Capability", "cap"> {
+def MAGE_CapabilityType : MAGE_Type<"Capability", "cap"> {
   let summary = "An agent capability token for discovery";
   let parameters = (ins "ArrayAttr":$capabilities);
 }
@@ -3741,7 +3741,7 @@ def MechGen_CapabilityType : MechGen_Type<"Capability", "cap"> {
 
 ```tablegen
 // Move a value — transfers ownership from source to destination
-def MechGen_MoveOp : MechGen_Op<"move", [Pure]> {
+def MAGE_MoveOp : MAGE_Op<"move", [Pure]> {
   let summary = "Transfer ownership of a value";
   let description = [{
     Transfers ownership from the source SSA value to the result. After this
@@ -3757,10 +3757,10 @@ def MechGen_MoveOp : MechGen_Op<"move", [Pure]> {
 }
 
 // --- Example MLIR ---
-// %1 = mechgen.move %0 : !mechgen.owned<tensor<4xf32>> -> !mechgen.owned<tensor<4xf32>>
+// %1 = mage.move %0 : !mage.owned<tensor<4xf32>> -> !mage.owned<tensor<4xf32>>
 
 // Copy a value — duplicates for Copy types
-def MechGen_CopyOp : MechGen_Op<"copy", [Pure]> {
+def MAGE_CopyOp : MAGE_Op<"copy", [Pure]> {
   let summary = "Copy a value (only valid for Copy types)";
   let arguments = (ins AnyType:$source);
   let results = (outs AnyType:$result);
@@ -3770,37 +3770,37 @@ def MechGen_CopyOp : MechGen_Op<"copy", [Pure]> {
 }
 
 // Borrow a value — creates a reference
-def MechGen_BorrowOp : MechGen_Op<"borrow", []> {
+def MAGE_BorrowOp : MAGE_Op<"borrow", []> {
   let summary = "Create a reference to a value";
   let arguments = (ins
     AnyType:$source,
     BorrowModeAttr:$mode,     // shared | exclusive | inferred
-    MechGen_RegionType:$region  // lifetime region
+    MAGE_RegionType:$region  // lifetime region
   );
-  let results = (outs MechGen_RefType:$ref);
+  let results = (outs MAGE_RefType:$ref);
   let assemblyFormat = "$mode $source `in` $region attr-dict `:` type($source)";
 }
 
 // --- Example MLIR ---
-// %ref = mechgen.borrow shared %val in %rgn : !mechgen.owned<i64>
-//   → !mechgen.ref<i64, shared>
+// %ref = mage.borrow shared %val in %rgn : !mage.owned<i64>
+//   → !mage.ref<i64, shared>
 
 // Drop a value — runs destructor and releases resources
-def MechGen_DropOp : MechGen_Op<"drop", []> {
+def MAGE_DropOp : MAGE_Op<"drop", []> {
   let summary = "Drop a value, releasing owned resources";
   let arguments = (ins AnyType:$value);
   let assemblyFormat = "$value attr-dict `:` type($value)";
 }
 
 // --- Example MLIR ---
-// mechgen.drop %vec : !mechgen.owned<!mechgen.vec<f32>>
+// mage.drop %vec : !mage.owned<!mage.vec<f32>>
 ```
 
 ### 14.4 Effect Operations
 
 ```tablegen
 // Declare effects on a function
-def MechGen_EffectDeclOp : MechGen_Op<"effect.decl", [IsolatedFromAbove]> {
+def MAGE_EffectDeclOp : MAGE_Op<"effect.decl", [IsolatedFromAbove]> {
   let summary = "Declare algebraic effects for a function region";
   let arguments = (ins
     ArrayAttr:$effects,       // ["IO", "Async", "Alloc"]
@@ -3811,15 +3811,15 @@ def MechGen_EffectDeclOp : MechGen_Op<"effect.decl", [IsolatedFromAbove]> {
 }
 
 // --- Example MLIR ---
-// mechgen.effect.decl ["IO", "Async"] {
+// mage.effect.decl ["IO", "Async"] {
 //   // function body with IO and Async effects
 // }
 
 // Perform an effect — runtime effect invocation
-def MechGen_EffectPerformOp : MechGen_Op<"effect.perform", []> {
+def MAGE_EffectPerformOp : MAGE_Op<"effect.perform", []> {
   let summary = "Perform an algebraic effect";
   let arguments = (ins
-    MechGen_EffectType:$effect,
+    MAGE_EffectType:$effect,
     Variadic<AnyType>:$args
   );
   let results = (outs Optional<AnyType>:$result);
@@ -3827,9 +3827,9 @@ def MechGen_EffectPerformOp : MechGen_Op<"effect.perform", []> {
 }
 
 // Effect handler — catches and handles effects from a child region
-def MechGen_EffectHandleOp : MechGen_Op<"effect.handle", []> {
+def MAGE_EffectHandleOp : MAGE_Op<"effect.handle", []> {
   let summary = "Install an effect handler for a region";
-  let arguments = (ins MechGen_EffectType:$effect);
+  let arguments = (ins MAGE_EffectType:$effect);
   let regions = (region SizedRegion<1>:$body, SizedRegion<1>:$handler);
   let assemblyFormat = "$effect $body `with` $handler attr-dict";
 }
@@ -3839,7 +3839,7 @@ def MechGen_EffectHandleOp : MechGen_Op<"effect.handle", []> {
 
 ```tablegen
 // Precondition — must hold before function execution
-def MechGen_RequireOp : MechGen_Op<"contract.require", [Pure]> {
+def MAGE_RequireOp : MAGE_Op<"contract.require", [Pure]> {
   let summary = "Assert a precondition (contract)";
   let arguments = (ins
     I1:$condition,
@@ -3849,7 +3849,7 @@ def MechGen_RequireOp : MechGen_Op<"contract.require", [Pure]> {
 }
 
 // Postcondition — must hold after function execution
-def MechGen_EnsureOp : MechGen_Op<"contract.ensure", [Pure]> {
+def MAGE_EnsureOp : MAGE_Op<"contract.ensure", [Pure]> {
   let summary = "Assert a postcondition (contract)";
   let arguments = (ins
     I1:$condition,
@@ -3860,7 +3860,7 @@ def MechGen_EnsureOp : MechGen_Op<"contract.ensure", [Pure]> {
 }
 
 // Invariant — must hold at specific program points
-def MechGen_InvariantOp : MechGen_Op<"contract.invariant", []> {
+def MAGE_InvariantOp : MAGE_Op<"contract.invariant", []> {
   let summary = "Assert a loop or type invariant";
   let arguments = (ins
     I1:$condition,
@@ -3870,16 +3870,16 @@ def MechGen_InvariantOp : MechGen_Op<"contract.invariant", []> {
 }
 
 // --- Example MLIR ---
-// mechgen.contract.require %cond, "index must be in bounds"
+// mage.contract.require %cond, "index must be in bounds"
 // ... function body ...
-// mechgen.contract.ensure %post, "result is sorted", %ret_val
+// mage.contract.ensure %post, "result is sorted", %ret_val
 ```
 
 ### 14.6 Performance Annotation Operations
 
 ```tablegen
 // Target placement hint — compiled by MLIR cost model
-def MechGen_PlaceOp : MechGen_Op<"perf.place", []> {
+def MAGE_PlaceOp : MAGE_Op<"perf.place", []> {
   let summary = "Hint target device for a computation region";
   let arguments = (ins
     StrAttr:$target,          // "cpu" | "gpu" | "npu" | "auto"
@@ -3890,13 +3890,13 @@ def MechGen_PlaceOp : MechGen_Op<"perf.place", []> {
 }
 
 // --- Example MLIR ---
-// mechgen.perf.place "auto" {
+// mage.perf.place "auto" {
 //   // compiler evaluates cost model for each available target
 //   // and selects optimal dispatch
 // }
 
 // Vectorization hint
-def MechGen_VectorizeOp : MechGen_Op<"perf.vectorize", []> {
+def MAGE_VectorizeOp : MAGE_Op<"perf.vectorize", []> {
   let summary = "Hint vectorization width for a loop region";
   let arguments = (ins I64Attr:$width);  // SIMD width: 4, 8, 16, etc.
   let regions = (region SizedRegion<1>:$body);
@@ -3904,14 +3904,14 @@ def MechGen_VectorizeOp : MechGen_Op<"perf.vectorize", []> {
 }
 
 // No-bounds-check annotation
-def MechGen_NoBoundsCheckOp : MechGen_Op<"perf.no_bounds_check", []> {
+def MAGE_NoBoundsCheckOp : MAGE_Op<"perf.no_bounds_check", []> {
   let summary = "Disable bounds checking in a region (agent-trusted)";
   let regions = (region SizedRegion<1>:$body);
   let assemblyFormat = "$body attr-dict";
 }
 
 // Autotune — generate N variants and benchmark
-def MechGen_AutotuneOp : MechGen_Op<"perf.autotune", []> {
+def MAGE_AutotuneOp : MAGE_Op<"perf.autotune", []> {
   let summary = "Generate N optimization variants for autotuning";
   let arguments = (ins
     I64Attr:$variants,                     // number of variants to generate
@@ -3922,7 +3922,7 @@ def MechGen_AutotuneOp : MechGen_Op<"perf.autotune", []> {
 }
 
 // Cost query — compile-time cost model evaluation
-def MechGen_CostQueryOp : MechGen_Op<"perf.cost_query", [Pure]> {
+def MAGE_CostQueryOp : MAGE_Op<"perf.cost_query", [Pure]> {
   let summary = "Query the cost model for an expression";
   let arguments = (ins
     StrAttr:$target_hw,       // "x86_64" | "aarch64" | "nvptx" | ...
@@ -3938,7 +3938,7 @@ def MechGen_CostQueryOp : MechGen_Op<"perf.cost_query", [Pure]> {
 
 ```tablegen
 // Declare agent capabilities for a module
-def MechGen_CapabilityDeclOp : MechGen_Op<"capability.decl", [IsolatedFromAbove]> {
+def MAGE_CapabilityDeclOp : MAGE_Op<"capability.decl", [IsolatedFromAbove]> {
   let summary = "Declare capabilities provided by a module";
   let arguments = (ins
     StrAttr:$name,
@@ -3949,16 +3949,16 @@ def MechGen_CapabilityDeclOp : MechGen_Op<"capability.decl", [IsolatedFromAbove]
 }
 
 // Capability check — verify agent has required capability at compile time
-def MechGen_CapabilityCheckOp : MechGen_Op<"capability.check", [Pure]> {
+def MAGE_CapabilityCheckOp : MAGE_Op<"capability.check", [Pure]> {
   let summary = "Verify a capability is available";
   let arguments = (ins StrAttr:$capability);
   let results = (outs I1:$available);
 }
 
 // Capability-gated region — code only executes if capability is held
-def MechGen_CapabilityGateOp : MechGen_Op<"capability.gate", []> {
+def MAGE_CapabilityGateOp : MAGE_Op<"capability.gate", []> {
   let summary = "Gate a region on a capability token";
-  let arguments = (ins MechGen_CapabilityType:$token);
+  let arguments = (ins MAGE_CapabilityType:$token);
   let regions = (region SizedRegion<1>:$body);
   let assemblyFormat = "$token $body attr-dict";
 }
@@ -3968,18 +3968,18 @@ def MechGen_CapabilityGateOp : MechGen_Op<"capability.gate", []> {
 
 ```tablegen
 // Query the Safety Knowledge Base during compilation
-def MechGen_SKBQueryOp : MechGen_Op<"skb.query", [Pure]> {
+def MAGE_SKBQueryOp : MAGE_Op<"skb.query", [Pure]> {
   let summary = "Query the Safety Knowledge Base for applicable rules";
   let arguments = (ins
     StrAttr:$pattern,         // e.g., "MutableBorrow", "TypeConversion"
     DictionaryAttr:$context   // key-value context for the query
   );
-  let results = (outs MechGen_RuleSetType:$rules);
+  let results = (outs MAGE_RuleSetType:$rules);
   let assemblyFormat = "$pattern $context attr-dict";
 }
 
 // SKB validation — verify code against SKB rules
-def MechGen_SKBValidateOp : MechGen_Op<"skb.validate", []> {
+def MAGE_SKBValidateOp : MAGE_Op<"skb.validate", []> {
   let summary = "Validate a region against SKB rules";
   let arguments = (ins
     StrAttr:$rule_set,        // "ownership" | "borrow" | "lifetime" | "concurrency"
@@ -3991,30 +3991,30 @@ def MechGen_SKBValidateOp : MechGen_Op<"skb.validate", []> {
 
 ### 14.9 Lowering Rules
 
-The MechGen dialect lowers progressively through MLIR's dialect hierarchy:
+The MAGE dialect lowers progressively through MLIR's dialect hierarchy:
 
-| MechGen Operation          | Lowers To                            | Phase          |
+| MAGE Operation          | Lowers To                            | Phase          |
 | ------------------------ | ------------------------------------ | -------------- |
-| `mechgen.move`             | SSA value copy + source invalidation | MechGen → Std    |
-| `mechgen.copy`             | `memref.copy` or SSA value copy      | MechGen → MemRef |
-| `mechgen.borrow`           | `memref.view` or SSA alias           | MechGen → MemRef |
-| `mechgen.drop`             | Destructor call sequence             | MechGen → Func   |
-| `mechgen.effect.decl`      | No-op (metadata preserved)           | MechGen → MechGen  |
-| `mechgen.effect.perform`   | `func.call` to effect handler        | MechGen → Func   |
-| `mechgen.contract.require` | `cf.assert` (debug) or removed (opt) | MechGen → CF     |
-| `mechgen.contract.ensure`  | `cf.assert` (debug) or removed (opt) | MechGen → CF     |
-| `mechgen.perf.place "gpu"` | `gpu.launch_func`                    | MechGen → GPU    |
-| `mechgen.perf.vectorize`   | `vector.transfer_read/write` + ops   | MechGen → Vector |
-| `mechgen.perf.autotune`    | N clones of body with different opts | MechGen → MechGen  |
-| `mechgen.perf.cost_query`  | Compile-time eval → constant         | MechGen → Arith  |
-| `mechgen.capability.gate`  | `scf.if` on runtime capability check | MechGen → SCF    |
-| `mechgen.skb.query`        | Compile-time eval → diagnostics      | Erased         |
-| `mechgen.skb.validate`     | Compile-time eval → diagnostics      | Erased         |
+| `mage.move`             | SSA value copy + source invalidation | MAGE → Std    |
+| `mage.copy`             | `memref.copy` or SSA value copy      | MAGE → MemRef |
+| `mage.borrow`           | `memref.view` or SSA alias           | MAGE → MemRef |
+| `mage.drop`             | Destructor call sequence             | MAGE → Func   |
+| `mage.effect.decl`      | No-op (metadata preserved)           | MAGE → MAGE  |
+| `mage.effect.perform`   | `func.call` to effect handler        | MAGE → Func   |
+| `mage.contract.require` | `cf.assert` (debug) or removed (opt) | MAGE → CF     |
+| `mage.contract.ensure`  | `cf.assert` (debug) or removed (opt) | MAGE → CF     |
+| `mage.perf.place "gpu"` | `gpu.launch_func`                    | MAGE → GPU    |
+| `mage.perf.vectorize`   | `vector.transfer_read/write` + ops   | MAGE → Vector |
+| `mage.perf.autotune`    | N clones of body with different opts | MAGE → MAGE  |
+| `mage.perf.cost_query`  | Compile-time eval → constant         | MAGE → Arith  |
+| `mage.capability.gate`  | `scf.if` on runtime capability check | MAGE → SCF    |
+| `mage.skb.query`        | Compile-time eval → diagnostics      | Erased         |
+| `mage.skb.validate`     | Compile-time eval → diagnostics      | Erased         |
 
 Full lowering sequence:
 
 ```
-MechGen Dialect
+MAGE Dialect
   ↓  (ownership/borrow/drop → memory operations)
 MemRef + Func + SCF
   ↓  (perf annotations → target-specific dialects)
@@ -4071,7 +4071,7 @@ Rule {
 
 ### 15.2 Pattern Language
 
-Patterns are structural templates that match against MechGen MIR nodes:
+Patterns are structural templates that match against MAGE MIR nodes:
 
 ```
 Pattern ::=
@@ -4103,7 +4103,7 @@ Pattern ::=
 
     // FFI patterns
     | NullPointerDeref { source: FFISource, site: SitePattern }
-    | LayoutMismatch { mechgen_type: TypePattern, foreign_type: TypePattern }
+    | LayoutMismatch { mage_type: TypePattern, foreign_type: TypePattern }
     | MissingFree { alloc_site: SitePattern, foreign_allocator: String }
 
 // VarPattern and TypePattern support wildcards:
@@ -4327,7 +4327,7 @@ The swarm bus uses a **length-prefixed, zero-copy binary protocol** optimized fo
 ```
 Offset  Size  Field            Description
 ──────  ────  ──────────────── ─────────────────────────────────
-0       4     magic            0x52445853 ("RDXS" — MechGen Swarm)
+0       4     magic            0x52445853 ("RDXS" — MAGE Swarm)
 4       1     version          Protocol version (current: 0x01)
 5       1     flags            Bit flags (see below)
 6       2     message_type     SwarmMessage discriminant (u16)
@@ -4387,7 +4387,7 @@ Type ID   SwarmMessage Variant      Category        Ack Required
 
 ### 16.5 Payload Serialization
 
-Payloads use a **FlatBuffers-inspired zero-copy format** with a MechGen-specific schema:
+Payloads use a **FlatBuffers-inspired zero-copy format** with a MAGE-specific schema:
 
 ```
 Payload Layout:
@@ -4582,7 +4582,7 @@ Verification:
 
 ## Summary
 
-MechGen transforms Rust from a language *for human developers with CLI tools* into a language *for swarms of AI agents with maximum parsing speed, communication throughput, hardware-agnostic performance, and minimum token cost*. The transformation **shifts safety from compile-time enforcement to a queryable Safety Knowledge Base**, eliminates every source of agent parsing ambiguity, introduces a portable performance IR that targets any hardware, and compresses every language construct to its **minimum token footprint**:
+MAGE transforms Rust from a language *for human developers with CLI tools* into a language *for swarms of AI agents with maximum parsing speed, communication throughput, hardware-agnostic performance, and minimum token cost*. The transformation **shifts safety from compile-time enforcement to a queryable Safety Knowledge Base**, eliminates every source of agent parsing ambiguity, introduces a portable performance IR that targets any hardware, and compresses every language construct to its **minimum token footprint**:
 
 1. **Token-minimal syntax** — every construct is compressed to ≤50% of its Rust token count: `pub fn` → `+f`, `#[derive(Clone, Debug)]` → `@d(Cl,Db)`, `let mut` → `m`, `Option<T>` → `?T`
 2. **Zero-ambiguity syntax** — deterministic LL(1) grammar eliminates 100% of agent parsing errors caused by context-sensitive constructs
@@ -4601,7 +4601,7 @@ MechGen transforms Rust from a language *for human developers with CLI tools* in
 15. **Semantic version control** — operation-log-based history replaces text diffs
 16. **Opt-in compile-time safety profiles** — `safety.mode = "full"` for humans/CI, `"skb-only"` for agents, `"none"` for raw performance
 17. **Standard abbreviation registry** — deterministic, versioned compact forms for all std library types and traits
-18. **Token budget reporting** — `mechgen build --token-report` tracks per-function token expenditure for agent optimization
+18. **Token budget reporting** — `mage build --token-report` tracks per-function token expenditure for agent optimization
 19. **Safety-free syntax** — lifetimes, borrow annotations, `unsafe`, `Send`/`Sync`, `Pin`, `PhantomData`, and all other compile-time safety constructs are eliminated from the syntax; agents consult the SKB; the compiler infers everything else; function signatures are 60–70% shorter
 20. **Agentic Compiler Intelligence (ACI)** — the compiler embeds a learned model that provides dynamic warnings (adapted to the project's actual bug patterns), intelligent debugging (causal root-cause analysis), performance advisories (MLIR cost model + profiling data), and swarm coordination intelligence (conflict prediction, decomposition learning)
 21. **ACI RAP endpoints** — `aci.warnings`, `aci.debug`, `aci.perf`, `aci.swarm`, `aci.learn`, `aci.explain`, `aci.similar_bugs`, `aci.predict_regression` — all queryable via the standard RAP protocol
@@ -4616,7 +4616,7 @@ MechGen transforms Rust from a language *for human developers with CLI tools* in
 30. **Runtime security** — capability-based sandboxing bounds agent-generated code execution: memory limits, CPU timeouts, syscall allowlists, FFI allowlists, cryptographic audit trails, deterministic replay
 31. **Swarm orchestration patterns** — `swarm_map_reduce`, `swarm_pipeline`, `swarm_scatter_gather`, `swarm_saga` as first-class language constructs with compile-time verification (effect purity, contract chaining, deadlock freedom, liveness guarantees)
 
-The compiler becomes an **agentic AI system, synthesis engine, and swarm arbiter**, built on the **MLIR + LLVM** compiler infrastructure — the broadest and most mature in existence. Its MLIR dialect encodes the full language semantics (ownership, effects, contracts) as first-class operations — not metadata on a generic IR — enabling MLIR-native autotuning, automatic device placement, and compile-time metaprogramming that survives through the entire optimization pipeline. Its **Agentic Compiler Intelligence (ACI)** learns from the project's bug history, swarm session outcomes, and codebase patterns to provide dynamic warnings, intelligent debugging, and performance suggestions that static analyzers cannot match. Its **Cost Oracle** transforms agent decision-making from guess-and-profile to query-and-choose. Its **Synthesis Oracle** closes the loop from formal spec to verified implementation. Its **Agent Memory Model** ensures that every lesson learned persists across sessions, projects, and the ecosystem. Its primary job is *making code run fast on any hardware with the fewest tokens possible while actively helping agents write better code*, not blocking submissions with safety errors that agents already know how to avoid. Safety knowledge lives in a database. Performance lives in MLIR's multi-level optimization pipeline and LLVM's battle-tested backends. Communication lives in the swarm bus. Parsing lives in a zero-ambiguity grammar. Compiler intelligence lives in a learned model that improves with every build. Synthesis lives in a formal specification system. Memory lives in a four-tier persistent store. And every construct lives in its **most compressed form** — because tokens are the currency of agentic intelligence, and MechGen is designed to spend them wisely.
+The compiler becomes an **agentic AI system, synthesis engine, and swarm arbiter**, built on the **MLIR + LLVM** compiler infrastructure — the broadest and most mature in existence. Its MLIR dialect encodes the full language semantics (ownership, effects, contracts) as first-class operations — not metadata on a generic IR — enabling MLIR-native autotuning, automatic device placement, and compile-time metaprogramming that survives through the entire optimization pipeline. Its **Agentic Compiler Intelligence (ACI)** learns from the project's bug history, swarm session outcomes, and codebase patterns to provide dynamic warnings, intelligent debugging, and performance suggestions that static analyzers cannot match. Its **Cost Oracle** transforms agent decision-making from guess-and-profile to query-and-choose. Its **Synthesis Oracle** closes the loop from formal spec to verified implementation. Its **Agent Memory Model** ensures that every lesson learned persists across sessions, projects, and the ecosystem. Its primary job is *making code run fast on any hardware with the fewest tokens possible while actively helping agents write better code*, not blocking submissions with safety errors that agents already know how to avoid. Safety knowledge lives in a database. Performance lives in MLIR's multi-level optimization pipeline and LLVM's battle-tested backends. Communication lives in the swarm bus. Parsing lives in a zero-ambiguity grammar. Compiler intelligence lives in a learned model that improves with every build. Synthesis lives in a formal specification system. Memory lives in a four-tier persistent store. And every construct lives in its **most compressed form** — because tokens are the currency of agentic intelligence, and MAGE is designed to spend them wisely.
 
 Every error the compiler detects is an error it can **fix** — auto-repair candidates ranked by confidence eliminate the agent round-trip tax. Every function can be **hot-patched** into a running process without restart — because agent swarms never stop iterating. Every foreign library is accessible through **zero-ceremony FFI** — C headers, Python stubs, WASM components read directly by the compiler. Every agent runs in a **capability-bounded sandbox** — memory-limited, CPU-bounded, audit-trailed, deterministically replayable. And common multi-agent workflows — map-reduce, pipeline, scatter-gather, saga — are **first-class language constructs** verified by the compiler for deadlock freedom and contract satisfaction.
 

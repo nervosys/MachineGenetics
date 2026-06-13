@@ -1,6 +1,6 @@
-# MechGen Example Projects
+# MAGE Example Projects
 
-Complete, self-contained example projects demonstrating MechGen language features
+Complete, self-contained example projects demonstrating MAGE language features
 and ecosystem patterns. Each project has a `Forge.toml` manifest and can be
 built with `mg build`.
 
@@ -8,7 +8,7 @@ built with `mg build`.
 
 | Project                                       | Description                      | Key Features                                          |
 | --------------------------------------------- | -------------------------------- | ----------------------------------------------------- |
-| [hello-world](hello-world/)                   | Minimal MechGen program            | Entry point, printing, variables                      |
+| [hello-world](hello-world/)                   | Minimal MAGE program            | Entry point, printing, variables                      |
 | [data-structures](data-structures/)           | Structs, enums, generics, traits | Type definitions, impl blocks, pattern matching       |
 | [http-client](http-client/)                   | Async HTTP client                | Effects, async/await, error handling, JSON            |
 | [cli-tool](cli-tool/)                         | Command-line grep utility        | File I/O, iterators, argument parsing                 |
@@ -38,7 +38,7 @@ mg2rs src/main.mg --output rs/
 
 ## Project Structure
 
-Each example follows the standard MechGen project layout:
+Each example follows the standard MAGE project layout:
 
 ```
 example-name/

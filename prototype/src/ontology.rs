@@ -1,10 +1,10 @@
-//! Complete ontology over the MechGen language, the Agentic Binary Language IR, and the
+//! Complete ontology over the MAGE language, the Agentic Binary Language IR, and the
 //! RAP protocol surface. Built so an autonomous agent can discover
 //! "what exists" without prior training on this codebase.
 //!
 //! Sections:
 //!
-//! - **`sigils`**     — MechGen sigil → meaning table (handwritten, lives
+//! - **`sigils`**     — MAGE sigil → meaning table (handwritten, lives
 //!                      next to `lexer.rs` comments which are authoritative)
 //! - **`keywords`**   — Reserved words and what they introduce
 //! - **`ast_kinds`**  — Top-level AST node families an agent will encounter
@@ -252,7 +252,7 @@ const RAP_METHODS: &[(&str, &str, &[&str], &[&str])] = &[
         &[], &["ok", "extensions"]),
     ("manifest/generate", "Generate capability manifest for a module.",
         &["source", "crate_name", "version"], &["ok", "manifest"]),
-    ("nl/generate", "Generate MechGen from a natural-language prompt.",
+    ("nl/generate", "Generate MAGE from a natural-language prompt.",
         &["prompt"], &["ok", "code_human", "code_agent"]),
     ("nl/explain", "Explain source in natural language.",
         &["source"], &["ok", "explanation"]),
@@ -278,7 +278,7 @@ const RAP_METHODS: &[(&str, &str, &[&str], &[&str])] = &[
 fn hardware_accelerators_section() -> serde_json::Value {
     // Pulls from the extensible runtime registry (P93), not a
     // hardcoded table. Includes built-in entries + anything loaded
-    // from RDX_BACKENDS_PATH, ~/.mechgen/backends.json, or
+    // from RDX_BACKENDS_PATH, ~/.mage/backends.json, or
     // --backends-file. The `source` field tells agents where each
     // entry came from.
     let items: Vec<_> = crate::backends::all_descriptors()
@@ -299,7 +299,7 @@ fn hardware_accelerators_section() -> serde_json::Value {
     serde_json::json!(items)
 }
 
-/// Every CLI flag the `MechGen-parse` binary accepts, with what it
+/// Every CLI flag the `mage-parse` binary accepts, with what it
 /// does and where the entry-point is. Agents wanting to drive the
 /// system from a shell can discover the full flag set in one call.
 ///
@@ -312,7 +312,7 @@ const CLI_FLAGS: &[(&str, &str, bool)] = &[
     ("--fmt-expand", "Reformat source in human-readable keyword mode", true),
     ("--target=abl", "Print per-item Agentic Binary Language stats (nodes/depth/hash/bytes)", true),
     ("--target=abl-bytes", "Encode Agentic Binary Language-routed items to a binary Agentic Binary Language container", true),
-    ("--from=abl-bytes", "Decode a Agentic Binary Language container back to MechGen view", true),
+    ("--from=abl-bytes", "Decode a Agentic Binary Language container back to MAGE view", true),
     ("--run=abl-bytes", "Decode Agentic Binary Language and dispatch each item on CpuBackend", true),
     ("--target=abl-generate", "Autoregressive generation from a trained checkpoint", true),
     ("--target=abl-infer", "Inference over a `train` block's saved weights", true),
@@ -324,7 +324,7 @@ const CLI_FLAGS: &[(&str, &str, bool)] = &[
         "Select hardware accelerator for dispatch (default: cpu). See ontology.hardware_accelerators for the catalog.",
         false),
     ("--backends-file=<path>",
-        "Register additional backend descriptors at runtime from a JSON file. Stacks with RDX_BACKENDS_PATH env var and ~/.mechgen/backends.json. Schema: [{ name, family, vendor, requires, summary, available_at_runtime, tags }].",
+        "Register additional backend descriptors at runtime from a JSON file. Stacks with RDX_BACKENDS_PATH env var and ~/.mage/backends.json. Schema: [{ name, family, vendor, requires, summary, available_at_runtime, tags }].",
         true),
 ];
 
@@ -338,7 +338,7 @@ const BENCH_BACKENDS: &[(&str, &str, &str)] = &[
     ("perturbed", "deterministic_noise",
         "Reference + 1 of 8 mutations (drop-`;`, drop-`}`, drop-`)`, swap let/mut, stray `,`, truncate-75%, dup-`;`, swap-words). Simulates near-correct LLM output."),
     ("subprocess:<cmd>", "external",
-        "Spawn external process per task. stdin=task description, stdout=MechGen source. Plug in a real LLM here."),
+        "Spawn external process per task. stdin=task description, stdout=MAGE source. Plug in a real LLM here."),
     ("perturbed+refine:<cmd>", "hybrid",
         "perturbed for propose, subprocess for refine. Measures Stage-3 contribution layered on the perturbed baseline."),
 ];
@@ -382,9 +382,9 @@ const WRAPPER_PROTOCOL: &[(&str, &str, &str)] = &[
     ("stdin (propose)", "stream",
         "Natural-language task description"),
     ("stdin (refine)",  "stream",
-        "Broken MechGen source the mechanical pipeline could not save"),
+        "Broken MAGE source the mechanical pipeline could not save"),
     ("stdout", "stream",
-        "MechGen source to evaluate. Empty / unchanged input = no contribution."),
+        "MAGE source to evaluate. Empty / unchanged input = no contribution."),
     ("stderr", "stream",
         "Human-readable diagnostics; surfaces as `agent refused: <text>` on non-zero exit"),
     ("exit code", "stream",
@@ -402,7 +402,7 @@ const PROJECT_LAYOUT: &[(&str, &str)] = &[
     ("RecursiveMachineIntelligence/", "RMI Rust crate: binary IR, opcodes, codec, CpuBackend"),
     ("RecursiveMachineIntelligence/src/lang/", "Op enum, OpFamily, codec"),
     ("RecursiveMachineIntelligence/src/compute/", "CpuBackend + dispatch"),
-    ("framework/framewerx/", "RecursiveMachineIntelligence-MG (this framework: FLAX-equivalent in MechGen)"),
+    ("framework/framewerx/", "RecursiveMachineIntelligence-MG (this framework: FLAX-equivalent in MAGE)"),
     ("framework/framewerx/src/", "Module / layers / optim / loss / train / specs / neurosymbolic"),
     ("framework/framewerx/src/neural/", "Modern neural: attention variants, MoE, adapters, quantization, dynamical, energy, memory, multimodal, world models, advanced diffusion"),
     ("framework/framewerx/src/symbolic/", "Classical symbolic: logic, solvers, planning, probabilistic, knowledge"),
@@ -415,7 +415,7 @@ const PROJECT_LAYOUT: &[(&str, &str)] = &[
     ("scripts/demo_agent_workflow.sh", "One-command end-to-end demo of the agent flow"),
     ("examples/", "Standalone `.mg` examples (agent-swarm, http-client, cli-tool, etc.)"),
     ("UNIFICATION.md", "Architecture doc with per-phase history"),
-    ("MECHGEN_ONTOLOGY.json", "Static dump of this ontology (refresh via --emit-ontology)"),
+    ("MAGE_ONTOLOGY.json", "Static dump of this ontology (refresh via --emit-ontology)"),
     (".github/workflows/ci.yml", "CI with floors on parse / heal / refine / token-ratio"),
 ];
 
@@ -425,12 +425,12 @@ const PROJECT_LAYOUT: &[(&str, &str)] = &[
 const DOCS: &[(&str, &str, &str)] = &[
     ("UNIFICATION.md", "Per-phase architecture history and final-state grid", "human"),
     ("benchmarks/STATUS.md", "One-page current-state snapshot", "human/agent"),
-    ("MECHGEN_ONTOLOGY.json", "This ontology as static JSON (agent bootstrap)", "agent"),
+    ("MAGE_ONTOLOGY.json", "This ontology as static JSON (agent bootstrap)", "agent"),
     ("framework/framewerx/README.md", "RecursiveMachineIntelligence-MG architecture (JAX:FLAX :: RMI:RecursiveMachineIntelligence-MG)", "agent"),
     ("scripts/agent_wrappers/README.md", "Subprocess wrapper protocol specification", "agent"),
-    ("MECHGEN_SPEC.md", "Language specification: sigils, keywords, grammar", "human/agent"),
+    ("MAGE_SPEC.md", "Language specification: sigils, keywords, grammar", "human/agent"),
     ("../../utilities/IronAccelerator/",
-        "External reference: production HW-agnostic driver substrate + per-model accelerator ontology (NVIDIA / AMD / Apple / Qualcomm / Intel / Google / AWS / open APIs). Drill in for model-specific guidance; MechGen's hardware_accelerators section stays at the backend-family level.",
+        "External reference: production HW-agnostic driver substrate + per-model accelerator ontology (NVIDIA / AMD / Apple / Qualcomm / Intel / Google / AWS / open APIs). Drill in for model-specific guidance; MAGE's hardware_accelerators section stays at the backend-family level.",
         "agent/reference"),
 ];
 
@@ -451,7 +451,7 @@ const CI_FLOORS: &[(&str, &str, &str)] = &[
     ("subprocess echo smoke", "no-op",
         "Subprocess agent backend must be invocable"),
     ("native-lexer ratio", "<= 1.100",
-        "MechGen text size must stay within 10% of equivalent Rust"),
+        "MAGE text size must stay within 10% of equivalent Rust"),
 ];
 
 /// Curated golden examples. Each one is a minimal, parseable program
@@ -1145,8 +1145,8 @@ const RECOVERY_STAGES: &[(&str, &str)] = &[
 pub fn build() -> serde_json::Value {
     serde_json::json!({
         "ok": true,
-        "project": "MachineGenetics",
-        "short_name": "MechGen",
+        "project": "Machine Genetics",
+        "short_name": "MAGE",
         "organization": "NERVOSYS",
         "builtin_framework": "RecursiveMachineIntelligence (rmi crate) — the built-in agentic-first AI framework",
         "version": "1.0",
@@ -1659,7 +1659,7 @@ mod tests {
         let v = arr.as_array().unwrap();
         let paths: Vec<&str> = v.iter().filter_map(|e| e["path"].as_str()).collect();
         for required in ["UNIFICATION.md", "benchmarks/STATUS.md",
-                         "MECHGEN_ONTOLOGY.json"] {
+                         "MAGE_ONTOLOGY.json"] {
             assert!(paths.contains(&required), "missing doc entry: {required}");
         }
     }

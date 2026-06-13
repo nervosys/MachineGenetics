@@ -1,4 +1,4 @@
-/// RAP (MechGen Agent Protocol) — JSON-RPC over TCP server skeleton.
+/// RAP (MAGE Agent Protocol) — JSON-RPC over TCP server skeleton.
 ///
 /// Provides language services for AI agents:
 ///   language/parse    — parse source to AST (JSON)
@@ -62,21 +62,21 @@ fn is_non_loopback(addr: &str) -> bool {
 /// or transport encryption**. It is meant for loopback use by a local agent.
 /// Binding a non-loopback / wildcard address exposes an unauthenticated control
 /// plane to the network, so we refuse it unless the operator explicitly opts in
-/// via `MECHGEN_RAP_ALLOW_REMOTE=1` (and even then warn). See SECURITY_AUDIT.md.
+/// via `MAGE_RAP_ALLOW_REMOTE=1` (and even then warn). See SECURITY_AUDIT.md.
 pub fn serve(addr: &str) {
     if is_non_loopback(addr) {
-        let allow = std::env::var("MECHGEN_RAP_ALLOW_REMOTE").as_deref() == Ok("1");
+        let allow = std::env::var("MAGE_RAP_ALLOW_REMOTE").as_deref() == Ok("1");
         if !allow {
             eprintln!(
                 "rap: REFUSING to bind non-loopback address {addr}: the RAP control plane is \
                  unauthenticated and unencrypted. Bind 127.0.0.1, or front it with a reverse \
-                 proxy doing authN/Z + TLS and set MECHGEN_RAP_ALLOW_REMOTE=1 to override."
+                 proxy doing authN/Z + TLS and set MAGE_RAP_ALLOW_REMOTE=1 to override."
             );
             std::process::exit(2);
         }
         eprintln!(
             "rap: WARNING binding non-loopback {addr} with no auth/TLS \
-             (MECHGEN_RAP_ALLOW_REMOTE=1). Do not expose to untrusted networks."
+             (MAGE_RAP_ALLOW_REMOTE=1). Do not expose to untrusted networks."
         );
     }
     let listener = TcpListener::bind(addr).unwrap_or_else(|e| {
@@ -419,7 +419,7 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
         }
 
         "format/agent" => {
-            // Return the agent (MechGen canonical) form of source.
+            // Return the agent (MAGE canonical) form of source.
             let tokens = lexer::lex(source);
             match parser::parse(&tokens) {
                 Ok(module) => {
@@ -575,7 +575,7 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
         }
 
         "attribute/compress" => {
-            // Compress a Rust attribute to MechGen shorthand.
+            // Compress a Rust attribute to MAGE shorthand.
             let name = params.get("name").and_then(|v| v.as_str()).unwrap_or("");
             match elision::compress_attribute_name(name) {
                 Some(compressed) => serde_json::json!({
@@ -788,7 +788,7 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
         }
 
         // Return the complete machine-readable ontology over the
-        // MechGen language, the Agentic Binary Language IR, and the RAP protocol. Single
+        // MAGE language, the Agentic Binary Language IR, and the RAP protocol. Single
         // self-contained payload so an autonomous agent can discover
         // every construct, opcode, and method without prior training.
         "ontology/full" => crate::ontology::build(),
@@ -913,7 +913,7 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
             }
         }
 
-        // Agentic Binary Language bytes (hex) → decompiled MechGen view + per-item summary.
+        // Agentic Binary Language bytes (hex) → decompiled MAGE view + per-item summary.
         "abl/decode" => {
             let hex = params.get("abl_hex").and_then(|v| v.as_str()).unwrap_or("");
             let blob = match crate::abl::from_hex(hex) {

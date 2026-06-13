@@ -55,7 +55,7 @@
       "token_count": 20
     },
     "tests": [
-      { "input": "greet(\"MechGen\")", "expected": "\"Hello, MechGen!\"" },
+      { "input": "greet(\"MAGE\")", "expected": "\"Hello, MAGE!\"" },
       { "input": "greet(\"World\")", "expected": "\"Hello, World!\"" }
     ]
   },

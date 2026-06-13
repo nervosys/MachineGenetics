@@ -1,4 +1,4 @@
-# MechGen Syntax Quick Reference
+# MAGE Syntax Quick Reference
 
 > Optimized for AI agent context windows. Minimal prose, maximum density.
 > This shows **human syntax** (default). For agent mode, add `#![syntax(agent)]`.
@@ -83,7 +83,7 @@ eprintln!("error: {e}")           error print
 #[cfg(test)]                      conditional compilation
 ```
 
-## Effects (MechGen-unique)
+## Effects (MAGE-unique)
 
 ```
 fn pure_fn() -> i32                          // no effect = pure
@@ -100,7 +100,7 @@ net  ⊃  io        (net implies io)
 agent ⊃ async     (agent implies async)
 ```
 
-## Contract Annotations (MechGen-unique)
+## Contract Annotations (MAGE-unique)
 
 ```
 @req condition        precondition
@@ -136,14 +136,14 @@ std::test       Testing (assert, mock, bench)
 ## Canonical Examples
 
 ### Hello World
-```MechGen
+```MAGE
 pub fn main() / io {
     println!("Hello, world!");
 }
 ```
 
 ### Fibonacci
-```MechGen
+```MAGE
 fn fib(n: u64) -> u64 {
     if n <= 1 { return n; }
     fib(n - 1) + fib(n - 2)
@@ -151,7 +151,7 @@ fn fib(n: u64) -> u64 {
 ```
 
 ### Read File
-```MechGen
+```MAGE
 use std::fs;
 
 fn read_config(path: &str) -> Result<String, io::Error> / io {
@@ -160,7 +160,7 @@ fn read_config(path: &str) -> Result<String, io::Error> / io {
 ```
 
 ### Struct with Methods
-```MechGen
+```MAGE
 #[derive(Debug, Clone)]
 pub struct Point {
     x: f64,
@@ -181,7 +181,7 @@ impl Point {
 ```
 
 ### Error Handling
-```MechGen
+```MAGE
 use std::io;
 use std::json;
 
@@ -193,7 +193,7 @@ pub fn load_config(path: &str) -> Result<Config, Error> / io {
 ```
 
 ### Agent
-```MechGen
+```MAGE
 use std::agent::{Agent, Swarm};
 
 pub struct Analyzer {

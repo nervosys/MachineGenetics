@@ -90,7 +90,7 @@ S User { id: u64, login: s, name: ?s }
 +af fetch_user(username: &s) -> R[User, Error] / net {
     v url = f"https://api.github.com/users/{username}"
     v resp = Request.get(&url)
-        .header("User-Agent", "MechGen-app")
+        .header("User-Agent", "MAGE-app")
         .send().await?
     v body = resp.text().await?
     v user: User = from_str(&body)?

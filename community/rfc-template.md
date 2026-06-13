@@ -21,7 +21,7 @@ solve? What is the expected outcome?
 
 Show the proposed syntax with examples:
 
-```MechGen
+```MAGE
 // Example of the proposed feature
 ```
 
@@ -51,14 +51,14 @@ Does this proposal affect Safety Knowledge Base rules? If so, describe:
 
 ### Transpiler Impact
 
-How does this translate between Rust and MechGen?
+How does this translate between Rust and MAGE?
 
 ```rust
 // Rust equivalent
 ```
 
-```MechGen
-// MechGen version
+```MAGE
+// MAGE version
 ```
 
 - Changes needed in `rust2mg`
@@ -68,13 +68,13 @@ How does this translate between Rust and MechGen?
 
 ### Basic Usage
 
-```MechGen
+```MAGE
 // Simple example
 ```
 
 ### Advanced Usage
 
-```MechGen
+```MAGE
 // More complex example showing edge cases
 ```
 

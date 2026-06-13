@@ -1,4 +1,4 @@
-//! Agent-facing manifest of the `MechGen-parse` CLI itself.
+//! Agent-facing manifest of the `mage-parse` CLI itself.
 //!
 //! An agent driving this compiler should never need its prose docs: the same
 //! progressive-disclosure pattern RecursiveMachineIntelligence and agentic-eval ship — a
@@ -54,7 +54,7 @@ pub const MODES: &[CliMode] = &[
                  With --json: emit a deterministic, machine-readable diagnostic stream\n\
                  on stdout — {code, severity, line, col, category, message, fix} per\n\
                  diagnostic, sorted (byte-stable). Parse structurally; don't scrape prose.\n\
-                 The cheapest way for an agent to validate generated MechGen.",
+                 The cheapest way for an agent to validate generated MAGE.",
     },
     CliMode {
         flag: "--fmt-compact",
@@ -154,7 +154,7 @@ pub const MODES: &[CliMode] = &[
         args: "[path]",
         summary: "dump the complete system ontology as JSON",
         effect: "write_local",
-        detail: "Default path MECHGEN_ONTOLOGY.json. The deep machine-readable map of\n\
+        detail: "Default path MAGE_ONTOLOGY.json. The deep machine-readable map of\n\
                  the language + compiler + Agentic Binary Language; --manifest is the cheap index.",
     },
     CliMode {
@@ -164,7 +164,7 @@ pub const MODES: &[CliMode] = &[
         effect: "network",
         detail: "Long-running server exposing parse/check/compute/NL endpoints to agents.\n\
                  NETWORK effect: binds a socket. UNAUTHENTICATED + UNENCRYPTED — defaults to\n\
-                 loopback; refuses non-loopback binds unless MECHGEN_RAP_ALLOW_REMOTE=1.\n\
+                 loopback; refuses non-loopback binds unless MAGE_RAP_ALLOW_REMOTE=1.\n\
                  See SECURITY_AUDIT.md (MITRE ATT&CK T1190/T1071).",
     },
     CliMode {
@@ -180,9 +180,9 @@ pub const MODES: &[CliMode] = &[
 /// Token-compact root index of the CLI. Deterministic.
 pub fn manifest() -> String {
     let mut s = String::with_capacity(2048);
-    s.push_str("MechGen-parse v");
+    s.push_str("mage-parse v");
     s.push_str(env!("CARGO_PKG_VERSION"));
-    s.push_str(" — MachineGenetics (MechGen) agentic-first compiler CLI, NERVOSYS. ");
+    s.push_str(" — MAGE (Machine Genetics) agentic-first compiler CLI, NERVOSYS. ");
     s.push_str("built-in framework: RecursiveMachineIntelligence (rmi). modes (flag [args] — summary {effect}):\n");
     for m in MODES {
         s.push_str("  ");

@@ -7,9 +7,9 @@
 #   fact(12)=479001600  sumto(100)=5050  fib(25)=75025  distinct=5  collatz(27)=111
 set -u
 cd "$(dirname "$0")"
-# MechGen evaluator binary: env override, else the repo-relative release build
+# MAGE evaluator binary: env override, else the repo-relative release build
 # (this script lives in <repo>/benchmarks/cross_lang). Set MG to point elsewhere.
-MG="${MG:-../../prototype/target/release/MechGen-parse.exe}"
+MG="${MG:-../../prototype/target/release/mage-parse.exe}"
 [ -x "$MG" ] || MG="${MG}.exe"  # tolerate the .exe suffix on non-Windows checkouts
 EXPECT=(479001600 5050 75025 5 111)
 
@@ -25,7 +25,7 @@ compare() {
   printf "%-12s %s    %d/5\n" "$name" "$row" "$pass"
 }
 
-mechgen_all() {
+mage_all() {
   "$MG" --eval tasks.mg fact 12
   "$MG" --eval tasks.mg sumto 100
   "$MG" --eval tasks.mg fib 25
@@ -37,7 +37,7 @@ echo "=== Cross-language agentic-SWE executability (MEASURED: real compile+run) 
 echo "tasks: fact sumto fib distinct collatz   expected: ${EXPECT[*]}"
 printf "%-12s %s    %s\n" "language" " f1    f2    f3    f4    f5" "pass"
 echo "----------------------------------------------------------------"
-compare MechGen    "$(mechgen_all 2>/dev/null)"
+compare MAGE    "$(mage_all 2>/dev/null)"
 compare JavaScript "$(node tasks.js 2>/dev/null)"
 compare TypeScript "$(bun tasks.ts 2>/dev/null)"
 compare Go         "$(go run tasks.go 2>/dev/null)"

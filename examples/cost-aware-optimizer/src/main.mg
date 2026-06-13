@@ -476,7 +476,7 @@ extend Optimizer {
 
 pub fn main() / io {
     println!("╔═══════════════════════════════════════════════════════════╗");
-    println!("║  MechGen Cost-Aware Compilation Optimizer                   ║");
+    println!("║  MAGE Cost-Aware Compilation Optimizer                   ║");
     println!("╚═══════════════════════════════════════════════════════════╝");
     println!("");
 

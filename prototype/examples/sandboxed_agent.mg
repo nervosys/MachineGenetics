@@ -6,7 +6,7 @@
 // 3. Execute agent code within the sandbox
 // 4. Audit all actions the agent took
 
-use mechgen.sandbox.{SandboxManager, CapabilityToken, ResourceLimits};
+use mage.sandbox.{SandboxManager, CapabilityToken, ResourceLimits};
 
 // ── Configuration ──────────────────────────────────────────────────
 

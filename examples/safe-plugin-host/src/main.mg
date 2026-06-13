@@ -483,7 +483,7 @@ extend PluginHost {
 
 pub fn main() / io {
     println!("╔═══════════════════════════════════════════════════════════╗");
-    println!("║  MechGen Safe Plugin Host                                  ║");
+    println!("║  MAGE Safe Plugin Host                                  ║");
     println!("╚═══════════════════════════════════════════════════════════╝");
 
     var host = PluginHost.new();
@@ -491,7 +491,7 @@ pub fn main() / io {
     // Plugin 1: A well-behaved linter (should pass).
     host.load_and_run(
         PluginManifest {
-            name: "MechGen-lint".to_string(),
+            name: "MAGE-lint".to_string(),
             version: "2.1.0".to_string(),
             author: "lint-corp".to_string(),
             kind: PluginKind::Linter,
@@ -552,7 +552,7 @@ pub fn main() / io {
                 Capability::NetworkAccess,
                 Capability::EnvRead,
             ],
-            description: "Generate MechGen bindings from .proto files".to_string(),
+            description: "Generate MAGE bindings from .proto files".to_string(),
         },
         &"codegen".to_string(),
     );

@@ -1,4 +1,4 @@
-/// MechGen AST — Abstract Syntax Tree for the MechGen canonical syntax.
+/// MAGE AST — Abstract Syntax Tree for the MAGE canonical syntax.
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -733,7 +733,7 @@ pub struct SwarmDef {
     pub topology: Option<String>,
     /// Consensus strategy: "majority", "unanimous", "weighted", "quorum".
     pub consensus: Option<String>,
-    /// Transport: "local" (MechGen swarm_bus), "rmi-quic", "rmi-tcp" (rmi::distributed::transport).
+    /// Transport: "local" (MAGE swarm_bus), "rmi-quic", "rmi-tcp" (rmi::distributed::transport).
     pub transport: Option<String>,
     /// Dispatch / scatter logic.
     pub on_dispatch: Option<Block>,

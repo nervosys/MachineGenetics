@@ -1,4 +1,4 @@
-# MechGen, ab initio — maximally token-efficient, reliable, and safe
+# MAGE, ab initio — maximally token-efficient, reliable, and safe
 
 A first-principles design for a language an LLM writes, derived from this
 project's measurements (not intuition). It supersedes the conservative token
@@ -17,16 +17,16 @@ Three semantically-identical programs at three ceremony levels, counted with the
 | Form | cl100k tokens | vs heavy |
 |---|--:|--:|
 | **A — ceremony-heavy** (explicit types, braces, `;`, imports, `Option<T>`) | 145 | 100% |
-| **B — current-MechGen-ish** (sigils, `val/var`, partial inference) | 122 | 84% |
+| **B — current-MAGE-ish** (sigils, `val/var`, partial inference) | 122 | 84% |
 | **C — ab-initio** (full inference, layout, ambient builtins, terse sigils) | **69** | **48%** |
 
 **Ceremony is ~half the tokens, and it is designable away.** What remains at C —
 ~48% — is the **payload**: the identifiers, operators, and literals that *denote
 the agent's intent*. That residue is the true, irreducible floor (no language can
 remove the agent's chosen names and values). Earlier this project reported
-"token efficiency is floored ≈ Rust (0.60)" — true for **current** MechGen (form
+"token efficiency is floored ≈ Rust (0.60)" — true for **current** MAGE (form
 B), which still carries ceremony, but *not* the irreducible floor. The floor is
-the payload (form C); current MechGen leaves ~half its tokens on the table.
+the payload (form C); current MAGE leaves ~half its tokens on the table.
 
 > Honest caveat: a small part of A→C is shorter names (a payload choice available
 > in any language); the **dominant, designable** part is structural ceremony
@@ -124,7 +124,7 @@ vocabulary property, and a language can be co-designed with the tokenizer.
 ## 4. The honest revised ceiling
 
 With ceremony removed, the **token axis reaches the payload floor** — materially
-above current MechGen (0.60) and above ceremony-heavy languages; co-designing with
+above current MAGE (0.60) and above ceremony-heavy languages; co-designing with
 the tokenizer pushes it further. The three designable axes stay near their maxima.
 The composite ceiling therefore rises from the previously-stated ~0.90:
 
@@ -156,9 +156,9 @@ is where token leverage actually lives once the surface is at its floor.
 
 ---
 
-## 6. Migration (current MechGen → ab initio)
+## 6. Migration (current MAGE → ab initio)
 
-This is not a rewrite from zero — it is current MechGen minus ceremony:
+This is not a rewrite from zero — it is current MAGE minus ceremony:
 1. **Significant layout** (offside rule) replacing mandatory `{ }` / `;`.
 2. **Full local inference** — drop `val/var`/type/return annotations entirely.
 3. **Ambient builtins + capabilities** — zero-import working snippets.
@@ -176,7 +176,7 @@ analysis was.
 
 ## 7. Migration status (performed 2026-06-10)
 
-Empirical probes of the *current* surface (`MechGen-parse --check`) mapped exactly
+Empirical probes of the *current* surface (`mage-parse --check`) mapped exactly
 what is and isn't there, and two steps were landed safely:
 
 - **Step 4 — tokenizer-audited keywords: DONE (measured).**
@@ -303,7 +303,7 @@ second pass should be driven by what that taught — not a re-derivation. Two
 results reframe the problem:
 
 1. **The surface is now AT the payload floor.** With inference + `;`-removal
-   landed, MechGen is **#1 of six** on the real-BPE `swe_token_benchmark`
+   landed, MAGE is **#1 of six** on the real-BPE `swe_token_benchmark`
    (85 cl100k vs Python 89, Rust 113) — but only ~5% ahead of Python. There is
    **no more text-surface headroom**: you are spending tokens on the payload
    (names/ops/literals), which is the floor.
@@ -392,7 +392,7 @@ enforced *at the edge*.
   toolchain builds the artifact) — and even there the intent is written *in the
   vocabulary*, so the vocabulary is upstream of everything.
 
-**Actionable second-pass design for MechGen:** freeze the surface (it is at the
+**Actionable second-pass design for MAGE:** freeze the surface (it is at the
 floor; treat whitespace as cost); curate a **frequency-matched, single-token,
 total, capability-typed standard vocabulary** with a near-free pipeline operator;
 audit its names as single BPE tokens; publish it in the cached ontology; and apply

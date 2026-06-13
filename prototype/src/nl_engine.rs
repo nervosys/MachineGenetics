@@ -1,7 +1,7 @@
 // ── Natural Language Engine ─────────────────────────────────────────
 //
-// Provides an agentic AI interface to the MechGen language and compiler.
-// Accepts natural language requests and produces MechGen source code by
+// Provides an agentic AI interface to the MAGE language and compiler.
+// Accepts natural language requests and produces MAGE source code by
 // orchestrating the synthesis oracle, knowledge base, type checker,
 // effect inference, and self-healing compiler passes.
 //
@@ -11,7 +11,7 @@
 //   3. Build SynthesisSpec from constraints + KB knowledge
 //   4. Generate code via synthesis oracle
 //   5. Validate through compiler pipeline (parse → check → heal)
-//   6. Return validated MechGen source + explanation
+//   6. Return validated MAGE source + explanation
 //
 // The NL engine is NOT an LLM wrapper — it is a deterministic,
 // rule-based intent parser + template-driven code generator that
@@ -125,9 +125,9 @@ impl Intent {
 pub struct NlResponse {
     /// Whether the request was successfully handled.
     pub ok: bool,
-    /// Generated MechGen source code (human mode).
+    /// Generated MAGE source code (human mode).
     pub code_human: String,
-    /// Generated MechGen source code (agent mode).
+    /// Generated MAGE source code (agent mode).
     pub code_agent: String,
     /// Human-readable explanation of what was generated.
     pub explanation: String,

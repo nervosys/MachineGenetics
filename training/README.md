@@ -1,6 +1,6 @@
-# MechGen Agent Training Data
+# MAGE Agent Training Data
 
-This directory contains training data, instruction templates, and evaluation datasets for AI agents working with the MechGen programming language.
+This directory contains training data, instruction templates, and evaluation datasets for AI agents working with the MAGE programming language.
 
 ## Directory Structure
 
@@ -11,11 +11,11 @@ training/
 ├── samples/
 │   ├── code-generation.jsonl    # Code generation training samples
 │   ├── code-completion.jsonl    # Code completion / fill-in samples
-│   ├── translation.jsonl        # Rust ↔ MechGen translation pairs
+│   ├── translation.jsonl        # Rust ↔ MAGE translation pairs
 │   ├── error-repair.jsonl       # Error diagnosis and repair samples
 │   └── refactoring.jsonl        # Refactoring and optimization samples
 ├── prompts/
-│   ├── system-prompt.md         # Base system prompt for MechGen agents
+│   ├── system-prompt.md         # Base system prompt for MAGE agents
 │   ├── few-shot-generation.md   # Few-shot examples for code generation
 │   ├── few-shot-translation.md  # Few-shot examples for translation
 │   └── few-shot-repair.md       # Few-shot examples for error repair
@@ -45,11 +45,11 @@ Each line is a self-contained JSON object. All sample files share a common envel
 
 | Type              | Description                                        | File                    |
 | ----------------- | -------------------------------------------------- | ----------------------- |
-| `code-generation` | Generate MechGen code from a natural language prompt | `code-generation.jsonl` |
+| `code-generation` | Generate MAGE code from a natural language prompt | `code-generation.jsonl` |
 | `code-completion` | Fill in missing code given surrounding context     | `code-completion.jsonl` |
-| `translation`     | Translate between Rust and MechGen                   | `translation.jsonl`     |
-| `error-repair`    | Diagnose and fix errors in MechGen code              | `error-repair.jsonl`    |
-| `refactoring`     | Improve or optimize existing MechGen code            | `refactoring.jsonl`     |
+| `translation`     | Translate between Rust and MAGE                   | `translation.jsonl`     |
+| `error-repair`    | Diagnose and fix errors in MAGE code              | `error-repair.jsonl`    |
+| `refactoring`     | Improve or optimize existing MAGE code            | `refactoring.jsonl`     |
 
 ### Agent Instructions (YAML)
 
@@ -111,7 +111,7 @@ cat training/evaluation/held-out-tasks.jsonl | \
 
 The `benchmarks/` directory contains evaluation tasks with reference solutions. This `training/` directory contains:
 
-1. **Training data** — samples used to teach agents MechGen syntax and idioms
+1. **Training data** — samples used to teach agents MAGE syntax and idioms
 2. **Prompt templates** — reusable context for in-context learning
 3. **Evaluation data** — held-out tasks for measuring agent quality (distinct from benchmark tasks)
 

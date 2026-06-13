@@ -3,12 +3,12 @@
 //!
 //! A Forge project is a directory containing a `Forge.toml` manifest and a
 //! `.mg` entry point (default `src/main.mg`). The toolchain locates the real
-//! MechGen compiler/evaluator (`MechGen-parse`) and drives it:
+//! MAGE compiler/evaluator (`mage-parse`) and drives it:
 //!
 //! | command        | does                                              |
 //! |----------------|---------------------------------------------------|
 //! | `forge new N`  | scaffold `N/Forge.toml` + `N/src/main.mg`         |
-//! | `forge check`  | parse + typecheck the entry (`MechGen-parse`)     |
+//! | `forge check`  | parse + typecheck the entry (`mage-parse`)     |
 //! | `forge build`  | check, then report the binary-IR lowering summary |
 //! | `forge run [F]`| execute entry function `F` (default `main`)       |
 //! | `forge info`   | print the resolved manifest                       |
@@ -108,9 +108,9 @@ impl Project {
     }
 }
 
-/// Locate the `MechGen-parse` compiler/evaluator binary. Order: the `FORGE_MG`
-/// env var, then a repo-relative `prototype/target/release/MechGen-parse[.exe]`
-/// found by walking up from `start`, then bare `MechGen-parse` on `PATH`.
+/// Locate the `mage-parse` compiler/evaluator binary. Order: the `FORGE_MG`
+/// env var, then a repo-relative `prototype/target/release/mage-parse[.exe]`
+/// found by walking up from `start`, then bare `mage-parse` on `PATH`.
 pub fn locate_compiler(start: &Path) -> Result<PathBuf, String> {
     if let Ok(p) = std::env::var("FORGE_MG") {
         let pb = PathBuf::from(&p);
@@ -119,7 +119,7 @@ pub fn locate_compiler(start: &Path) -> Result<PathBuf, String> {
         }
         return Err(format!("FORGE_MG points at `{p}`, which is not a file"));
     }
-    let exe = if cfg!(windows) { "MechGen-parse.exe" } else { "MechGen-parse" };
+    let exe = if cfg!(windows) { "mage-parse.exe" } else { "mage-parse" };
     let mut dir = start.to_path_buf();
     loop {
         let cand = dir.join("prototype/target/release").join(exe);
@@ -131,10 +131,10 @@ pub fn locate_compiler(start: &Path) -> Result<PathBuf, String> {
         }
     }
     // Fall back to PATH resolution by the OS.
-    Ok(PathBuf::from("MechGen-parse"))
+    Ok(PathBuf::from("mage-parse"))
 }
 
-/// Run `MechGen-parse` with `args` in `cwd`, **capturing** stdout+stderr: on
+/// Run `mage-parse` with `args` in `cwd`, **capturing** stdout+stderr: on
 /// success the output is returned (callers use or discard it); on failure it is
 /// surfaced in the error so the compiler diagnostic is shown without the noise
 /// of a clean run.
@@ -158,7 +158,7 @@ fn run_compiler_quiet(mg: &Path, args: &[&str], cwd: &Path) -> Result<String, St
 
 fn launch_err(mg: &Path, e: std::io::Error) -> String {
     format!(
-        "could not launch `{}`: {e}\n  set FORGE_MG to the MechGen-parse binary",
+        "could not launch `{}`: {e}\n  set FORGE_MG to the mage-parse binary",
         mg.display()
     )
 }
@@ -564,7 +564,7 @@ pub fn new_project(name: &str) -> Outcome {
     }
     let manifest = format!(
         "[module]\nname = \"{name}\"\nversion = \"0.1.0\"\nedition = \"2025\"\n\
-         description = \"A MechGen project.\"\nlicense = \"Apache-2.0\"\n\n\
+         description = \"A MAGE project.\"\nlicense = \"Apache-2.0\"\n\n\
          [build]\nentry = \"src/main.mg\"\nmain = \"main\"\n"
     );
     if let Err(e) = std::fs::write(root.join("Forge.toml"), manifest) {

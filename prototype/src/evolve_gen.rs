@@ -1,4 +1,4 @@
-/// MechGen Evolve Codegen — compiles `evolve` blocks into population-loop MLIR.
+/// MAGE Evolve Codegen — compiles `evolve` blocks into population-loop MLIR.
 ///
 /// Translates EvolveDef AST nodes into a generational evolutionary algorithm:
 ///
@@ -10,7 +10,7 @@
 ///      d. Mutate             (`mutate_fn` or default bit-flip)
 ///   3. Return the fittest individual.
 ///
-/// Generates `MechGen.evolve.*` MLIR dialect ops.
+/// Generates `MAGE.evolve.*` MLIR dialect ops.
 use crate::ast;
 use crate::hir::{Diagnostic, DiagnosticCategory, Severity};
 
@@ -82,42 +82,42 @@ impl EvolvePlan {
         let mut ops = Vec::new();
 
         ops.push(format!(
-            "MechGen.evolve @{} : {} {{",
+            "MAGE.evolve @{} : {} {{",
             self.name, self.genome_type
         ));
 
         // Population init.
         ops.push(format!(
-            "  %pop = MechGen.evolve.init_population({}) : !MechGen.population<{}>",
+            "  %pop = MAGE.evolve.init_population({}) : !MAGE.population<{}>",
             self.population_size, self.genome_type
         ));
 
         // Generation loop.
         ops.push(format!(
-            "  MechGen.evolve.generation_loop {} {{",
+            "  MAGE.evolve.generation_loop {} {{",
             self.generations
         ));
 
         // Fitness evaluation.
         if self.has_custom_fitness {
-            ops.push("    %fitness = MechGen.evolve.eval_fitness_custom(%pop) : !MechGen.fitness_vec".into());
+            ops.push("    %fitness = MAGE.evolve.eval_fitness_custom(%pop) : !MAGE.fitness_vec".into());
         } else {
-            ops.push("    %fitness = MechGen.evolve.eval_fitness(%pop) : !MechGen.fitness_vec".into());
+            ops.push("    %fitness = MAGE.evolve.eval_fitness(%pop) : !MAGE.fitness_vec".into());
         }
 
         // Selection.
         let select_op = match &self.selection {
             SelectionStrategy::Tournament { size } => {
-                format!("    %parents = MechGen.evolve.select_tournament(%pop, %fitness, {size}) : !MechGen.population<{}>", self.genome_type)
+                format!("    %parents = MAGE.evolve.select_tournament(%pop, %fitness, {size}) : !MAGE.population<{}>", self.genome_type)
             }
             SelectionStrategy::RouletteWheel => {
-                format!("    %parents = MechGen.evolve.select_roulette(%pop, %fitness) : !MechGen.population<{}>", self.genome_type)
+                format!("    %parents = MAGE.evolve.select_roulette(%pop, %fitness) : !MAGE.population<{}>", self.genome_type)
             }
             SelectionStrategy::Rank => {
-                format!("    %parents = MechGen.evolve.select_rank(%pop, %fitness) : !MechGen.population<{}>", self.genome_type)
+                format!("    %parents = MAGE.evolve.select_rank(%pop, %fitness) : !MAGE.population<{}>", self.genome_type)
             }
             SelectionStrategy::Elitist { keep } => {
-                format!("    %parents = MechGen.evolve.select_elitist(%pop, %fitness, {keep}) : !MechGen.population<{}>", self.genome_type)
+                format!("    %parents = MAGE.evolve.select_elitist(%pop, %fitness, {keep}) : !MAGE.population<{}>", self.genome_type)
             }
         };
         ops.push(select_op);
@@ -125,13 +125,13 @@ impl EvolvePlan {
         // Crossover.
         let crossover_op = match &self.crossover {
             CrossoverStrategy::SinglePoint => {
-                format!("    %children = MechGen.evolve.crossover_single_point(%parents) : !MechGen.population<{}>", self.genome_type)
+                format!("    %children = MAGE.evolve.crossover_single_point(%parents) : !MAGE.population<{}>", self.genome_type)
             }
             CrossoverStrategy::TwoPoint => {
-                format!("    %children = MechGen.evolve.crossover_two_point(%parents) : !MechGen.population<{}>", self.genome_type)
+                format!("    %children = MAGE.evolve.crossover_two_point(%parents) : !MAGE.population<{}>", self.genome_type)
             }
             CrossoverStrategy::Uniform { probability } => {
-                format!("    %children = MechGen.evolve.crossover_uniform(%parents, {probability}) : !MechGen.population<{}>", self.genome_type)
+                format!("    %children = MAGE.evolve.crossover_uniform(%parents, {probability}) : !MAGE.population<{}>", self.genome_type)
             }
         };
         ops.push(crossover_op);
@@ -139,13 +139,13 @@ impl EvolvePlan {
         // Mutation.
         let mutate_op = match &self.mutation {
             MutationStrategy::BitFlip { rate } => {
-                format!("    %pop_next = MechGen.evolve.mutate_bitflip(%children, {rate}) : !MechGen.population<{}>", self.genome_type)
+                format!("    %pop_next = MAGE.evolve.mutate_bitflip(%children, {rate}) : !MAGE.population<{}>", self.genome_type)
             }
             MutationStrategy::Gaussian { stddev } => {
-                format!("    %pop_next = MechGen.evolve.mutate_gaussian(%children, {stddev}) : !MechGen.population<{}>", self.genome_type)
+                format!("    %pop_next = MAGE.evolve.mutate_gaussian(%children, {stddev}) : !MAGE.population<{}>", self.genome_type)
             }
             MutationStrategy::Swap => {
-                format!("    %pop_next = MechGen.evolve.mutate_swap(%children) : !MechGen.population<{}>", self.genome_type)
+                format!("    %pop_next = MAGE.evolve.mutate_swap(%children) : !MAGE.population<{}>", self.genome_type)
             }
         };
         ops.push(mutate_op);
@@ -154,7 +154,7 @@ impl EvolvePlan {
 
         // Extract best individual.
         ops.push(format!(
-            "  %best = MechGen.evolve.best(%pop) : {}",
+            "  %best = MAGE.evolve.best(%pop) : {}",
             self.genome_type
         ));
 
@@ -292,13 +292,13 @@ mod tests {
         };
 
         let mlir = plan.emit_mlir();
-        assert!(mlir[0].contains("MechGen.evolve @test_opt"));
+        assert!(mlir[0].contains("MAGE.evolve @test_opt"));
         assert!(mlir.iter().any(|op| op.contains("init_population(50)")));
         assert!(mlir.iter().any(|op| op.contains("generation_loop 20")));
         assert!(mlir.iter().any(|op| op.contains("select_tournament")));
         assert!(mlir.iter().any(|op| op.contains("crossover_single_point")));
         assert!(mlir.iter().any(|op| op.contains("mutate_bitflip")));
-        assert!(mlir.iter().any(|op| op.contains("MechGen.evolve.best")));
+        assert!(mlir.iter().any(|op| op.contains("MAGE.evolve.best")));
     }
 
     #[test]
@@ -426,7 +426,7 @@ mod tests {
 
         let mlir = plan.emit_mlir();
         // First line opens the block, last closes it.
-        assert!(mlir.first().unwrap().starts_with("MechGen.evolve"));
+        assert!(mlir.first().unwrap().starts_with("MAGE.evolve"));
         assert_eq!(mlir.last().unwrap(), "}");
         // Has init, loop, fitness, select, crossover, mutate, best.
         let joined = mlir.join("\n");

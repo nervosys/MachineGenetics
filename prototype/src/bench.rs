@@ -1,6 +1,6 @@
 // ── Agentic Benchmarking Suite ─────────────────────────────────────
 //
-// Metrics collection and benchmarking framework for the MechGen agentic
+// Metrics collection and benchmarking framework for the MAGE agentic
 // compiler pipeline:
 //
 //   1. Token throughput — tokens processed per unit time

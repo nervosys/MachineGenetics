@@ -2,5 +2,5 @@
 name = "hello-world"
 version = "0.1.0"
 edition = "2025"
-description = "Minimal MechGen example — hello world"
+description = "Minimal MAGE example — hello world"
 license = "MIT"

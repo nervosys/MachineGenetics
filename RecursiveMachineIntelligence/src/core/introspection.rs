@@ -925,7 +925,7 @@ impl FrameworkOntology {
             "backend",
         );
 
-        // NOTE: the production CUDA path lives in the MechGen prototype's
+        // NOTE: the production CUDA path lives in the MAGE prototype's
         // CudaBackend (IronAccelerator / CUDA 13.2), NOT the legacy
         // cudarc-0.10 module in this crate. The ontology describes the
         // production surface so agents discover the real capabilities.

@@ -1,10 +1,10 @@
 <div align="center">
 
-# MachineGenetics (MechGen)
+# MAGE (Machine Genetics)
 
 **Agentic-first Programming Language and Compiler Infra for Recursive Self-Improvement**
 
-[Specification](MECHGEN_SPEC.md) · [Architecture](ARCHITECTURE.md) · [Benchmarks](#benchmarks-measured) · [Agent Protocol](AGENT_PROTOCOL.md) · [Roadmap](ROADMAP.md) · [Examples](examples/)
+[Specification](MAGE_SPEC.md) · [Architecture](ARCHITECTURE.md) · [Benchmarks](#benchmarks-measured) · [Agent Protocol](AGENT_PROTOCOL.md) · [Roadmap](ROADMAP.md) · [Examples](examples/)
 
 </div>
 
@@ -12,15 +12,15 @@
 
 <div align="center">
 
-### Agentic-SWE scorecard — MechGen vs traditional languages
+### Agentic-SWE scorecard — MAGE vs traditional languages
 
 *`agentic-eval`'s four agentic axes (0–1) + composite, across the profiled
-languages. MechGen ranks **#1 of implemented languages** — only the unreachable
+languages. MAGE ranks **#1 of implemented languages** — only the unreachable
 `ideal` design-target ceiling scores higher.*
 
 | Language | token | determ | reliab | safety | **fitness** | SWE-wt¹ |
 |---|:--:|:--:|:--:|:--:|:--:|:--:|
-| **MechGen** | 0.80 | **0.97** | 0.94 | **0.95** | **0.915** | **0.930** |
+| **MAGE** | 0.80 | **0.97** | 0.94 | **0.95** | **0.915** | **0.930** |
 | Rust | 0.55 | 0.90 | **0.95** | 0.80 | 0.800 | 0.845 |
 | Go | 0.60 | 0.85 | 0.70 | 0.55 | 0.675 | 0.700 |
 | Java | 0.40 | 0.75 | 0.70 | 0.60 | 0.612 | 0.650 |
@@ -30,14 +30,14 @@ languages. MechGen ranks **#1 of implemented languages** — only the unreachabl
 
 <sub>¹ SWE-weighted = reliability·.35 + determinism·.30 + safety·.20 + token·.15. The four axes are `agentic-eval`'s **curated, bias-audited** judgments (`--example swe_languages`).</sub>
 
-**Measured anchor** (compile+run, real BPE — *not* curated): MechGen **executes
+**Measured anchor** (compile+run, real BPE — *not* curated): MAGE **executes
 5/5** of the cross-language task suite and is the **tersest** runnable language
 (**173** cl100k tokens vs Rust 275, Java 297); `eval_bench` computes **73/73**
 programs to exact results. Full measured tables in [Benchmarks](#benchmarks-measured).
 
 </div>
 
-MechGen is an **agentic-first** language: the *same* logic spans human-readable
+MAGE is an **agentic-first** language: the *same* logic spans human-readable
 prose, agent-dense sigils, a declarative neural-net DSL, and the byte-level
 binary IR they lower to — each a view of the one artifact, each measured. The
 prototype lexes, type-checks, and
@@ -148,7 +148,7 @@ expected value (measured 2026-06-11):
 
 | Language | Executes (5 tasks) | Real cl100k tokens | Source bytes |
 |---|:--:|:--:|:--:|
-| **MechGen** | **5 / 5** | **173** | **401** |
+| **MAGE** | **5 / 5** | **173** | **401** |
 | JavaScript | 5 / 5 | 199 | 513 |
 | TypeScript | 5 / 5 | 220 | 593 |
 | Go | 5 / 5 | 271 | 727 |
@@ -158,13 +158,13 @@ expected value (measured 2026-06-11):
 
 - **Executability** is a **gate** the agentic edit→build→test→debug loop depends
   on (`test` must run the program and check output). Every runnable language
-  clears it — including MechGen, via its tree-walking evaluator (`MechGen-parse
+  clears it — including MAGE, via its tree-walking evaluator (`mage-parse
   --eval`). This records a threshold *crossed*, not a lead on a graded axis.
-- On this identical task set MechGen is the **tersest** by real tokens (173,
+- On this identical task set MAGE is the **tersest** by real tokens (173,
   1.00×) and by bytes (401). A second real-BPE set (`swe_token_benchmark`, 6
-  languages × 3 different tasks) agrees: MechGen 85 cl100k vs Python 89, Go 93,
+  languages × 3 different tasks) agrees: MAGE 85 cl100k vs Python 89, Go 93,
   Java 98, TS 102, Rust 113.
-- **MechGen surface coverage:** its `eval_bench` correctness harness asserts
+- **MAGE surface coverage:** its `eval_bench` correctness harness asserts
   **73 / 73** general-purpose programs each compute an *exact* result, exercising
   every reachable expression/statement form, all pattern kinds
   (tuple/slice/struct/option), and the standard vocabulary over lists/strings/maps.
@@ -189,12 +189,12 @@ parseable**. The one measured cost is +3 tokens (12%) per structured result —
 reported, not hidden.
 
 **Neural architecture DSL vs. PyTorch.** The same architecture declared in
-MechGen's `net` DSL vs. an equivalent PyTorch `nn.Module` (MechGen declares the
+MAGE's `net` DSL vs. an equivalent PyTorch `nn.Module` (MAGE declares the
 layers; PyTorch must also spell out the imperative `forward`). Token counts real
 cl100k BPE; binary sizes measured live (reproduce:
 [`benchmarks/constructs/run.sh`](benchmarks/constructs/run.sh)):
 
-| Architecture | MechGen | PyTorch | fewer tokens | MechGen text → binary IR |
+| Architecture | MAGE | PyTorch | fewer tokens | MAGE text → binary IR |
 |---|:--:|:--:|:--:|:--:|
 | MLP | 50 | 78 | **36 %** | 139 B → 92 B (−34 %) |
 | Transformer | 73 | 142 | **49 %** | 235 B → 137 B (−42 %) |
@@ -208,7 +208,7 @@ tokens, binary 1.09× for 12 blocks vs. 1, `dispatched=97 unsupported=[]`).
 
 The **full agentic-SWE scorecard** (`agentic-eval`'s four 0–1 axes + composite
 across all profiled languages) is the table at the [top of this
-README](#machinegenetics-mechgen); falsifiable guards hold there: token (0.80) ≤
+README](#machinegenetics-mage); falsifiable guards hold there: token (0.80) ≤
 Python (0.85), reliability (0.94) ≤ Rust (0.95), no axis ≥ 0.98 (it is a
 prototype). Reproduce with `agentic-eval --example swe_languages`.
 
@@ -221,9 +221,9 @@ prototype). Reproduce with `agentic-eval --example swe_languages`.
 > young tree-walker (no JIT; `await` is run-to-completion) on curated tasks, not
 > an application corpus.
 
-## Why MechGen?
+## Why MAGE?
 
-> **Honest framing:** MechGen's value for agents lives in two places:
+> **Honest framing:** MAGE's value for agents lives in two places:
 > (1) a structurally reliable, executable text surface — LL(1) grammar, tracked
 > effects, machine-readable diagnostics, a self-describing ontology, and an
 > evaluator that runs it — and (2) the **Agentic Binary Language binary IR**,
@@ -241,7 +241,7 @@ prototype). Reproduce with `agentic-eval --example swe_languages`.
 > **🎯 design goal** (specified/partially built, not yet in the prototype). See
 > [ROADMAP.md](ROADMAP.md) for status.
 
-- ✅ **Executes End to End** — A tree-walking evaluator (`MechGen-parse --eval`) runs general-purpose programs across the full surface — every expression/statement form, all pattern kinds, and the standard vocabulary over lists/strings/maps. The `eval_bench` suite computes **73 / 73** programs to exact results.
+- ✅ **Executes End to End** — A tree-walking evaluator (`mage-parse --eval`) runs general-purpose programs across the full surface — every expression/statement form, all pattern kinds, and the standard vocabulary over lists/strings/maps. The `eval_bench` suite computes **73 / 73** programs to exact results.
 
 - ✅ **Zero-Ambiguity Syntax** — Deterministic LL(1) grammar eliminates parsing failures for both humans and AI agents. No backtracking, no ambiguity.
 
@@ -269,12 +269,12 @@ prototype). Reproduce with `agentic-eval --example swe_languages`.
 
 - ✅ **Built-in AI Framework (RecursiveMachineIntelligence)** — The [`RecursiveMachineIntelligence/`](RecursiveMachineIntelligence/) `rmi` crate ships inside the project: Agentic Binary Language binary neurosymbolic IR, compute backends (CPU + CUDA via IronAccelerator — tensor-core F16/BF16, calibrated INT8/INT4 quantization), a self-describing ontology with a token-compact `manifest()`/`describe()` front door, machine-parseable error diagnostics, and effect-mapped safety. The compiler's `--target=abl-*` modes lower straight onto it.
 
-- ✅ **Complete Ontologies, End to End** — Every layer self-describes for agents: the language/compiler (`MechGen-parse --emit-ontology`, `--manifest`), the framework (`rmi::core::manifest`, `FrameworkOntology`), and the CLI (effect-classed mode index). Deterministic output everywhere — agents can cache, diff, and gate without prose docs.
+- ✅ **Complete Ontologies, End to End** — Every layer self-describes for agents: the language/compiler (`mage-parse --emit-ontology`, `--manifest`), the framework (`rmi::core::manifest`, `FrameworkOntology`), and the CLI (effect-classed mode index). Deterministic output everywhere — agents can cache, diff, and gate without prose docs.
 
 ## Quick Start
 
-MechGen is a **prototype**. The working entry point today is the
-`MechGen-parse` binary; build it from `prototype/` and run a program:
+MAGE is a **prototype**. The working entry point today is the
+`mage-parse` binary; build it from `prototype/` and run a program:
 
 ```bash
 # Build the prototype compiler/evaluator
@@ -282,10 +282,10 @@ cargo build --release --manifest-path prototype/Cargo.toml
 
 # Write and run a program
 echo 'f main(){ sum(map(range(5), fn(x) => x * x)) }' > squares.mg
-./prototype/target/release/MechGen-parse --eval squares.mg main   # → 30
+./prototype/target/release/mage-parse --eval squares.mg main   # → 30
 
 # Parse + typecheck + report on any .mg file
-./prototype/target/release/MechGen-parse squares.mg
+./prototype/target/release/mage-parse squares.mg
 ```
 
 Or use the **Forge** project toolchain (`forge/`) for a manifest-driven project:
@@ -303,7 +303,7 @@ forge block                 # list referenceable blocks (local + registry)
 forge manifest              # token-compact, effect-classed command index (--json)
 ```
 
-`forge` drives the same `MechGen-parse` compiler (auto-located, or set
+`forge` drives the same `mage-parse` compiler (auto-located, or set
 `FORGE_MG`). It is agentic-first — `forge manifest`/`forge describe <cmd>`
 self-describe the toolchain and every command takes `--json`. The lower-level
 targets below are the compiler's own interface.
@@ -311,24 +311,24 @@ targets below are the compiler's own interface.
 > **Still planned.** A `mg` short alias for `forge` and the Rust transpilers are
 > on the [roadmap](ROADMAP.md) and not yet built.
 
-### Working prototype CLI (`MechGen-parse`)
+### Working prototype CLI (`mage-parse`)
 
 The prototype compiler in `prototype/` ships a single binary with the
-following targets. Most of them came from the MechGen ↔ RMI unification
+following targets. Most of them came from the MAGE ↔ RMI unification
 work; see [`UNIFICATION.md`](UNIFICATION.md) for the full phase log.
 
 ```sh
-MechGen-parse <file.mg>                  # parse + check + report
-MechGen-parse --target=abl <file>       # lowering summary (sizes, hashes)
-MechGen-parse --target=abl-bytes <file> [out.abl]
+mage-parse <file.mg>                  # parse + check + report
+mage-parse --target=abl <file>       # lowering summary (sizes, hashes)
+mage-parse --target=abl-bytes <file> [out.abl]
                                          # emit binary Agentic Binary Language container
-MechGen-parse --from=abl-bytes <file.abl>
+mage-parse --from=abl-bytes <file.abl>
                                          # decode bytes → human-readable .mg
-MechGen-parse --target=abl-compute <file>   # dispatch nets to CpuBackend
-MechGen-parse --target=abl-train    <file>   # SGD/Adam training loop
-MechGen-parse --target=abl-infer    <file>   # load checkpoint, predict
-MechGen-parse --target=abl-generate <file>   # autoregressive decode
-MechGen-parse --eval <file.mg> <fn> [int args]
+mage-parse --target=abl-compute <file>   # dispatch nets to CpuBackend
+mage-parse --target=abl-train    <file>   # SGD/Adam training loop
+mage-parse --target=abl-infer    <file>   # load checkpoint, predict
+mage-parse --target=abl-generate <file>   # autoregressive decode
+mage-parse --eval <file.mg> <fn> [int args]
                                          # execute a function in the tree-walking
                                          # evaluator and print its result
 ```
@@ -341,7 +341,7 @@ lists, strings, and maps — see [Benchmarks](#benchmarks-measured).
 
 ```sh
 # e.g. given `f fib(n){ if n < 2 { n } else { fib(n-1) + fib(n-2) } }` in fib.mg
-MechGen-parse --eval fib.mg fib 25       # → 75025
+mage-parse --eval fib.mg fib 25       # → 75025
 ```
 
 ```sh
@@ -352,7 +352,7 @@ cargo run --bin token-bench --manifest-path prototype/Cargo.toml
 
 ## Syntax at a Glance
 
-| MechGen | Rust equivalent        | MechGen  | Rust equivalent       |
+| MAGE | Rust equivalent        | MAGE  | Rust equivalent       |
 | ------- | ---------------------- | -------- | --------------------- |
 | `f`     | `fn`                   | `v`/`val` | `let` (immutable)    |
 | `+f`    | `pub fn`               | `m`/`var` | `let mut` (mutable)  |
@@ -375,7 +375,7 @@ cargo run --bin token-bench --manifest-path prototype/Cargo.toml
 ## Project Structure
 
 ```
-prototype/          The working compiler + evaluator (this is MechGen today):
+prototype/          The working compiler + evaluator (this is MAGE today):
                     lexer, LL(1) parser, type inference, tree-walking evaluator,
                     Agentic Binary Language lowering, and the RAP agent server
                     — 1,184 tests
@@ -395,7 +395,7 @@ agent-guide/        AI-agent integration guide (prompts, RAP methods)
 cookbook/           Practical recipes (I/O, HTTP, agents, CLI)
 quick-start/        Install → hello-world → syntax → build/run/test tutorials
 internals/          Compiler-internals documentation
-migration-guide/    Rust → MechGen migration guide
+migration-guide/    Rust → MAGE migration guide
 community/          Contributing, governance, issue templates
 training/           Training data (100 samples, JSONL)
 ```
@@ -439,19 +439,19 @@ Twelve self-contained projects in [`examples/`](examples/), each with a
 
 | Document                                                   | Description                                        |
 | ---------------------------------------------------------- | -------------------------------------------------- |
-| [MECHGEN_SPEC.md](MECHGEN_SPEC.md)                         | Formal language specification                      |
+| [MAGE_SPEC.md](MAGE_SPEC.md)                         | Formal language specification                      |
 | [ARCHITECTURE.md](ARCHITECTURE.md)                         | Compiler and system architecture                   |
 | [AB_INITIO_DESIGN.md](AB_INITIO_DESIGN.md)                 | Ab-initio language design (standard vocabulary §8) |
 | [AGENT_PROTOCOL.md](AGENT_PROTOCOL.md)                     | How agents target the binary IR directly           |
 | [MEASUREMENTS.md](MEASUREMENTS.md)                         | Measured results and methodology                   |
 | [ROADMAP.md](ROADMAP.md)                                   | Roadmap and status                                 |
-| [MECHGEN_ECOSYSTEM.md](MECHGEN_ECOSYSTEM.md)               | Ecosystem architecture (Forge, RAP, migration)     |
-| [MECHGEN_PROPOSAL.md](MECHGEN_PROPOSAL.md)                 | Design philosophy and design principles            |
+| [MAGE_ECOSYSTEM.md](MAGE_ECOSYSTEM.md)               | Ecosystem architecture (Forge, RAP, migration)     |
+| [MAGE_PROPOSAL.md](MAGE_PROPOSAL.md)                 | Design philosophy and design principles            |
 | [prototype/docs/BOOK.md](prototype/docs/BOOK.md)           | User guide (12 chapters)                           |
 | [prototype/docs/INTERNALS.md](prototype/docs/INTERNALS.md) | Compiler architecture (36 modules)                 |
 | [agent-guide/](agent-guide/)                               | AI agent SDK (prompts, patterns, RAP methods)      |
 | [cookbook/](cookbook/)                                     | Practical recipes (I/O, HTTP, agents, concurrency) |
-| [migration-guide/](migration-guide/)                       | Rust → MechGen migration                           |
+| [migration-guide/](migration-guide/)                       | Rust → MAGE migration                           |
 | [skb/](skb/)                                               | Safety Knowledge Base (9,157 rules, 6 categories)  |
 | [training/](training/)                                     | Training data and evaluation (100 samples)         |
 | [benchmarks/](benchmarks/)                                 | 100-task evaluation corpus with metrics            |
@@ -484,5 +484,5 @@ for how agents consume the language, see [AGENT_PROTOCOL.md](AGENT_PROTOCOL.md).
 
 ## License
 
-MechGen is licensed under the **Apache License, Version 2.0**. See
+MAGE is licensed under the **Apache License, Version 2.0**. See
 [LICENSE](LICENSE) for the full text.

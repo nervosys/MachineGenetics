@@ -1,6 +1,6 @@
 # Few-Shot Prompt — Code Generation
 
-Use the following examples to guide MechGen code generation.
+Use the following examples to guide MAGE code generation.
 
 ---
 
@@ -8,8 +8,8 @@ Use the following examples to guide MechGen code generation.
 
 **Task:** Write a function that sums all even numbers in a slice.
 
-**MechGen:**
-```MechGen
+**MAGE:**
+```MAGE
 +f sum_evens(nums: &[i32]) -> i32 {
     nums.iter().filter(|n| *n % 2 == 0).sum()
 }
@@ -21,8 +21,8 @@ Use the following examples to guide MechGen code generation.
 
 **Task:** Write a Counter struct with increment, decrement, and value methods.
 
-**MechGen:**
-```MechGen
+**MAGE:**
+```MAGE
 +S Counter {
     count: i32,
 }
@@ -52,8 +52,8 @@ I ~ Counter {
 
 **Task:** Write a Shape enum with Circle and Rectangle variants and an area method.
 
-**MechGen:**
-```MechGen
+**MAGE:**
+```MAGE
 +E Shape {
     Circle(f64),
     Rectangle(f64, f64),
@@ -75,8 +75,8 @@ I ~ Shape {
 
 **Task:** Write a function that finds the maximum element in a non-empty slice.
 
-**MechGen:**
-```MechGen
+**MAGE:**
+```MAGE
 +f find_max[T: Ord](items: &[T]) -> &T {
     m max = &items[0];
     @ item ~ &items[1..] {
@@ -94,8 +94,8 @@ I ~ Shape {
 
 **Task:** Write an async function that fetches JSON from a URL and parses it.
 
-**MechGen:**
-```MechGen
+**MAGE:**
+```MAGE
 u serde.de.DeserializeOwned
 
 +af fetch_json[T: DeserializeOwned](url: &s) -> R[T, reqwest.Error] / io + net {
@@ -111,8 +111,8 @@ u serde.de.DeserializeOwned
 
 **Task:** Write an AppError enum that wraps io::Error and serde_json::Error.
 
-**MechGen:**
-```MechGen
+**MAGE:**
+```MAGE
 u std.io
 
 @d(Debug)
@@ -145,9 +145,9 @@ I std.convert.From[serde_json.Error] ~ AppError {
 
 ---
 
-Now generate MechGen code for the following task:
+Now generate MAGE code for the following task:
 
 **Task:** {{task}}
 
-**MechGen:**
-```MechGen
+**MAGE:**
+```MAGE

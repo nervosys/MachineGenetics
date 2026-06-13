@@ -1,12 +1,12 @@
-# MechGen Quick Start
+# MAGE Quick Start
 
-Get from zero to running MechGen code in 10 minutes.
+Get from zero to running MAGE code in 10 minutes.
 
 ---
 
-## What is MechGen?
+## What is MAGE?
 
-MechGen is the **agentic-first programming language** — designed for AI
+MAGE is the **agentic-first programming language** — designed for AI
 agents to read, write, and reason about code with minimal token cost.
 It compiles to native code via MLIR/LLVM with the safety of Rust and
 the conciseness of a purpose-built syntax.
@@ -15,7 +15,7 @@ the conciseness of a purpose-built syntax.
 
 | Step | Page                                     | Time  |
 | ---- | ---------------------------------------- | ----- |
-| 1    | [Install MechGen](01-install.md)           | 2 min |
+| 1    | [Install MAGE](01-install.md)           | 2 min |
 | 2    | [Hello, World!](02-hello-world.md)       | 2 min |
 | 3    | [Syntax in 5 Minutes](03-syntax-tour.md) | 5 min |
 | 4    | [Build, Run, Test](04-build-run-test.md) | 2 min |
@@ -25,23 +25,23 @@ the conciseness of a purpose-built syntax.
 
 - A terminal (any OS)
 - A text editor (VS Code recommended — install the
-  [MechGen extension](https://marketplace.visualstudio.com/items?itemName=nervosys.MechGen-vscode)
+  [MAGE extension](https://marketplace.visualstudio.com/items?itemName=nervosys.MAGE-vscode)
   for syntax highlighting)
 
 ## Quick Overview
 
-```MechGen
-// hello.mg — your first MechGen program
+```MAGE
+// hello.mg — your first MAGE program
 +f main() {
-    p"Hello, MechGen!"
+    p"Hello, MAGE!"
 }
 ```
 
 ```bash
 mg run hello.mg
-# Hello, MechGen!
+# Hello, MAGE!
 ```
 
 That's it. No boilerplate, no imports, no ceremony. Let's get started.
 
-**[Start: Install MechGen →](01-install.md)**
+**[Start: Install MAGE →](01-install.md)**

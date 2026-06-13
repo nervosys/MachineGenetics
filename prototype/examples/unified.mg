@@ -1,10 +1,10 @@
-// Unified MechGen + RMI example.
+// Unified MAGE + RMI example.
 //
 // Demonstrates the dual-IR pipeline:
 //   - `fn` items lower to MLIR  (systems code)
 //   - `net`, `kb`, `agent`, `swarm` items lower to Agentic Binary Language (neurosymbolic IR)
 //
-// Run: MechGen-parse --target=abl prototype/examples/unified.mg
+// Run: mage-parse --target=abl prototype/examples/unified.mg
 //
 // Expected output: per-item Agentic Binary Language stats (nodes, depth, content hash,
 // binary wire size). A full transformer block fits in ~50 bytes.

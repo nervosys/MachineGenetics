@@ -1,8 +1,8 @@
 {
-  "name": "mechgen-digital-rain",
+  "name": "mage-digital-rain",
   "version": "1.0.0",
   "private": true,
-  "description": "MechGen Agentic Digital Rain — Remotion video",
+  "description": "MAGE Agentic Digital Rain — Remotion video",
   "scripts": {
     "start": "remotion studio",
     "build": "remotion render src/index.ts AgenticRain out/agentic-rain.mp4",

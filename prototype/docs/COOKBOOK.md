@@ -1,6 +1,6 @@
-# MechGen Cookbook
+# MAGE Cookbook
 
-> Practical recipes for common tasks in MechGen.
+> Practical recipes for common tasks in MAGE.
 
 ---
 
@@ -147,7 +147,7 @@ f parallel_map(data: &[i32], transform: f(i32) -> i32) -> [i32]~
 ## Recipe 8: Agent Communication via Swarm Bus
 
 ```
-use MechGen.swarm.{SwarmBus, Message};
+use MAGE.swarm.{SwarmBus, Message};
 
 +af agent_pipeline()
     @fx io, async
@@ -188,7 +188,7 @@ f insertion_sort(arr: &mut [i32])
 ## Recipe 10: Capability-Sandboxed Agent
 
 ```
-use MechGen.sandbox.{SandboxManager, CapabilityToken, ResourceLimits};
+use MAGE.sandbox.{SandboxManager, CapabilityToken, ResourceLimits};
 
 f run_sandboxed_agent(agent_id: &s, code: &s) -> s!SandboxError
     @fx io, mem
@@ -215,7 +215,7 @@ f run_sandboxed_agent(agent_id: &s, code: &s) -> s!SandboxError
 ## Recipe 11: Cost-Aware Code Selection
 
 ```
-use MechGen.cost.{query_cost, OptLevel};
+use MAGE.cost.{query_cost, OptLevel};
 
 f choose_implementation(target: &s) -> s {
     let vec_cost = cost.query("Vec::push", target, Release);
@@ -232,7 +232,7 @@ f choose_implementation(target: &s) -> s {
 ## Recipe 12: FFI Binding
 
 ```
-use MechGen.ffi.{FfiGenerator, ForeignFunction, ForeignType};
+use MAGE.ffi.{FfiGenerator, ForeignFunction, ForeignType};
 
 f generate_bindings() -> s {
     let mut fg = FfiGenerator.new();

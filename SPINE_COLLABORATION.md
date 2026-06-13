@@ -1,11 +1,11 @@
-# MechGen agent collaboration over SPINE
+# MAGE agent collaboration over SPINE
 
-**Goal.** Let MechGen ABL agents *collaborate* — discover each other, exchange
+**Goal.** Let MAGE ABL agents *collaborate* — discover each other, exchange
 artifacts, run each other's models, and reach swarm consensus — over **SPINE**
 (`nervosys/SPINE`, the agentic-first wire protocol that tops agentic-eval's
 web-stack benchmark at 0.90).
 
-**Why SPINE and not RAP.** MechGen's own RAP control plane scores low for
+**Why SPINE and not RAP.** MAGE's own RAP control plane scores low for
 collaboration (loopback-only, unauthenticated, and it ships ABL artifacts as
 **hex inside JSON-RPC**, so the binary compaction evaporates on the wire). SPINE
 fixes exactly those gaps:
@@ -25,7 +25,7 @@ SPINE is the *transport + coordination plane*. They compose cleanly.
 
 ## 1. Identity: an ABL agent → a SPINE `AgentProfile`
 
-The bridge maps an ABL `agent` spec (built by `MechGen-parse --build=abl`) to a
+The bridge maps an ABL `agent` spec (built by `mage-parse --build=abl`) to a
 `spine_agentic::AgentProfile`:
 
 ```rust
@@ -40,7 +40,7 @@ fn abl_agent_to_profile(spec: &AblAgentSpec, pubkey: Vec<u8>) -> AgentProfile {
         ;
 }
 
-// MechGen capability identifiers → SPINE AgentCapability
+// MAGE capability identifiers → SPINE AgentCapability
 fn map_caps(ids: &[String]) -> Vec<AgentCapability> {
     let mut v = vec![AgentCapability::AgentCommunication, AgentCapability::SwarmParticipation];
     for id in ids {
@@ -71,7 +71,7 @@ An ABL container (`magic ABL1`, byte-stable, content-hashable) travels as a
 
 ```rust
 // produce the artifact with the tested pipeline, then hand the raw bytes to SPINE
-let bytes: Vec<u8> = build_abl(&spec)?;            // MechGen-parse --build=abl (in-proc)
+let bytes: Vec<u8> = build_abl(&spec)?;            // mage-parse --build=abl (in-proc)
 let bin = SpineBinary::from_bytes(bytes);          // rides as a CBOR byte string
 client.execute_binary(bin).await?;                 // spine-agent AgentClient
 ```
@@ -85,7 +85,7 @@ consensus). The content hash doubles as the cache key and the signed-frame diges
 
 ## 3. Messages: the collaboration verbs
 
-MechGen collaboration maps onto `spine_agentic::MessageContent` 1:1 — no new
+MAGE collaboration maps onto `spine_agentic::MessageContent` 1:1 — no new
 protocol needed:
 
 | Collaboration intent | `MessageContent` | Payload |
@@ -175,15 +175,15 @@ Collaboration crosses a trust boundary, so three independent guarantees stack:
    admitted (content hash recorded). No artifact ever executed code to get reviewed.
 
 The whole exchange is binary on the wire, signed per message, capability-gated at
-each receiver, and decided by the same consensus evaluator MechGen already ships.
+each receiver, and decided by the same consensus evaluator MAGE already ships.
 
 ---
 
-## 8. Where the code lives (the MechGen side is BUILT)
+## 8. Where the code lives (the MAGE side is BUILT)
 
-- **MechGen side — implemented** in `prototype/src/spine_bridge.rs` + CLI:
+- **MAGE side — implemented** in `prototype/src/spine_bridge.rs` + CLI:
   - `agent_profile(&AgentSpec)` → SPINE `AgentProfile`-shaped JSON
-    (`MechGen-parse --spine=profile agent.json`)
+    (`mage-parse --spine=profile agent.json`)
   - `swarm_task(&SwarmSpec)` / `swarm_decide(..)` → `SwarmTask` JSON + the
     coordinator decision (`--spine=swarm swarm.json`), reusing `eval_swarm_consensus`
   - `artifact_frame(&[u8])` → the binary collaboration frame: byte length,
@@ -196,8 +196,8 @@ each receiver, and decided by the same consensus evaluator MechGen already ships
   Unit-tested (5 tests): capability map, profile shape + baseline caps, gate
   decisions, swarm task/decision, deterministic no-exec frame digest.
 
-- **Type-link boundary — now BUILT** as the `spine-mechgen` crate *inside* the
-  SPINE workspace (`nervosys/SPINE`, `src/spine-mechgen`). It deserializes the
+- **Type-link boundary — now BUILT** as the `spine-mage` crate *inside* the
+  SPINE workspace (`nervosys/SPINE`, `src/spine-mage`). It deserializes the
   JSON above into the real `spine_agentic` types, so the join is **compile-checked**:
   - `AblAgentEnvelope::into_profile()` → `AgentProfile` (capabilities
     deserialize straight into `Vec<AgentCapability>` — the proof the vocabularies
@@ -205,7 +205,7 @@ each receiver, and decided by the same consensus evaluator MechGen already ships
   - `AblSwarmEnvelope::into_task()` → `SwarmTask`
   - `AblArtifactFrame::into_artifact()` → `swe::SweArtifact`, after **FNV-digest
     cross-validation** of the decoded bytes
-  5 tests parse MechGen's exact `--spine=*` output.
+  5 tests parse MAGE's exact `--spine=*` output.
 
 - **SPINE side** — consumed as-is: `spine-agentic` (`AgentProfile`, `AgentMessage`,
   `Swarm`, `SwarmCoordinator`, `AgenticWebRuntime`), `spine-agent` (`AgentClient`,
@@ -259,7 +259,7 @@ needs **no new wire types** — it rides the existing extensible `MessageContent
    would strengthen large multi-agent SWE decomposition, but no missing primitive
    blocks it today.
 
-4. **The ABL↔SPINE type-safe join — MechGen/glue side, not SPINE.** The
+4. **The ABL↔SPINE type-safe join — MAGE/glue side, not SPINE.** The
    ~dozen-line crate inside the Hyperlight workspace (see §8) that
    `serde_json::from_value`s the bridge envelopes into the real `spine_agentic`
    types. Glue, already scoped.
@@ -267,7 +267,7 @@ needs **no new wire types** — it rides the existing extensible `MessageContent
 ### Bottom line
 
 Collaborative agentic SWE is **achievable on SPINE today** with the existing
-substrate plus the MechGen bridge (§1–8). The only must-do SPINE change is one
+substrate plus the MAGE bridge (§1–8). The only must-do SPINE change is one
 wiring fix (#1); #2–#3 are additive ergonomics, not blockers. SPINE was built as
 a general agent-native collaboration plane, and SWE is just one workload over it.
 
@@ -280,12 +280,12 @@ a general agent-native collaboration plane, and SWE is just one workload over it
    `supersedes` lineage, producer, Ed25519 signature) + `SweArtifactStore`.
 3. ✅ **Work DAG** — `spine-agentic::swe::WorkGraph` (deps, capabilities,
    Ready/Claimed/Done, claim/complete unblocking, topological-order/cycle check).
-4. ✅ **Type-safe join** — the `spine-mechgen` crate (§8).
+4. ✅ **Type-safe join** — the `spine-mage` crate (§8).
 
-spine-agentic 285 tests, spine-mechgen 5 tests, dependents build clean.
+spine-agentic 285 tests, spine-mage 5 tests, dependents build clean.
 
 The bridge is intentionally small because the two systems already meet in the
 middle: ABL supplies a self-describing, no-exec, content-hashed **artifact**, and
 SPINE supplies the agent-native **transport, discovery, messaging, swarm, and
-signing**. MechGen's `eval_agent_policy` / `eval_swarm_consensus` are the shared
+signing**. MAGE's `eval_agent_policy` / `eval_swarm_consensus` are the shared
 decision logic used identically for local `--run=abl` and networked collaboration.

@@ -1,6 +1,6 @@
 # Agent Protocol: Agentic Binary Language Bytes as the Canonical Target
 
-> Phase 27 measurement showed that MechGen's **text surface** is
+> Phase 27 measurement showed that MAGE's **text surface** is
 > essentially tied with idiomatic Rust on byte/token count
 > (see [`benchmarks/FINDINGS.md`](benchmarks/FINDINGS.md)).
 >
@@ -14,11 +14,11 @@
 | Format | What an agent emits | Bytes per transformer block |
 |---|---|---:|
 | Rust source | `pub struct Block { … }` + traits + impl | ~700-1200 |
-| MechGen text | `net Block { layer ln1: LayerNorm; … }` | ~250-400 |
+| MAGE text | `net Block { layer ln1: LayerNorm; … }` | ~250-400 |
 | **Agentic Binary Language bytes** | binary `Expr` codec | **47** |
 
 For an agent token-budgeted at, say, 4096 tokens of output, the
-difference between emitting MechGen text and emitting Agentic Binary Language bytes is
+difference between emitting MAGE text and emitting Agentic Binary Language bytes is
 ~3 orders of magnitude in how many models / programs the agent can
 encode per response.
 
@@ -33,12 +33,12 @@ encode per response.
               ▼
    ┌────────────────────┐
    │ Agent (LLM)        │   emits binary Agentic Binary Language bytes
-   │                    │   ─ NOT MechGen text
+   │                    │   ─ NOT MAGE text
    └──────────┬─────────┘
               │
               ▼ .abl container (Agentic Binary Language v1)
    ┌────────────────────┐
-   │ MechGen-parse      │   --from=abl-bytes
+   │ mage-parse      │   --from=abl-bytes
    │   • verify codec   │
    │   • decompile      │   → human-readable .mg
    │   • dispatch       │   → CpuBackend / GPU / etc.
@@ -64,24 +64,24 @@ ResNet stage, swarm, KB) lands in **300 bytes**. Header overhead is
 
 ## CLI
 
-The `MechGen-parse` binary has two new flags:
+The `mage-parse` binary has two new flags:
 
 ```sh
-# Emit Agentic Binary Language bytes from a MechGen source. Optional output path; without
+# Emit Agentic Binary Language bytes from a MAGE source. Optional output path; without
 # it, only the size summary is printed.
-MechGen-parse --target=abl-bytes <file.mg> [out.abl]
+mage-parse --target=abl-bytes <file.mg> [out.abl]
 
-# Decode a .abl container back to human-readable MechGen via the
+# Decode a .abl container back to human-readable MAGE via the
 # Phase-4 decompiler. Lossy for opcodes that lack canonical layer
 # names (symbolic / agent ops) — see "Limitations" below.
-MechGen-parse --from=abl-bytes <file.abl>
+mage-parse --from=abl-bytes <file.abl>
 ```
 
 End-to-end demo on `prototype/examples/unified.mg`:
 
 ```
-$ MechGen-parse --target=abl-bytes unified.mg unified.abl
-// MechGen → Agentic Binary Language bytes for unified.mg
+$ mage-parse --target=abl-bytes unified.mg unified.abl
+// MAGE → Agentic Binary Language bytes for unified.mg
 // text source: 1778 bytes    Agentic Binary Language container: 300 bytes    ratio: 0.169 (83.1% reduction)
 //   TransformerBlock: 47B  hash=7def99cdb73a14e2
 //   MLP: 17B  hash=bc5d35ff371e638c
@@ -91,8 +91,8 @@ $ MechGen-parse --target=abl-bytes unified.mg unified.abl
 ```
 
 ```
-$ MechGen-parse --from=abl-bytes unified.abl
-// Agentic Binary Language → MechGen decompiled view
+$ mage-parse --from=abl-bytes unified.abl
+// Agentic Binary Language → MAGE decompiled view
 // container: 300 bytes, 5 item(s)
 
 // item 0: TransformerBlock (47 bytes expr)
@@ -128,7 +128,7 @@ net TransformerBlock {
   protocol where the agent emits a structured JSON of ops + args and
   the server does the encode/decode, keeping the binary canonical
   while exposing a textual API for LLMs.
-- Lossy round-trip for opcodes without a canonical MechGen layer
+- Lossy round-trip for opcodes without a canonical MAGE layer
   name (most symbolic / agent ops). Bytes → Expr is exact; bytes →
   `.mg` text via the decompiler is a best-effort view.
 - No source-line debugging in Agentic Binary Language byte mode. Agent-facing
@@ -136,8 +136,8 @@ net TransformerBlock {
 
 ## How this fits with the rest of the unification
 
-- **Phase 1** built the bridge — MechGen AST → Agentic Binary Language Expr.
-- **Phase 4** added the decompiler — Agentic Binary Language Expr → MechGen AST.
+- **Phase 1** built the bridge — MAGE AST → Agentic Binary Language Expr.
+- **Phase 4** added the decompiler — Agentic Binary Language Expr → MAGE AST.
 - **Phase 27** ties them with a CLI + container format and an honest
   measurement of where the size win lives.
 
@@ -148,7 +148,7 @@ canonical path.
 ## Status update (Phase 29, 2026-05-22)
 
 - ✅ **Direct dispatch from bytes**:
-  `MechGen-parse --run=abl-bytes <file.abl>` now decodes a Agentic Binary Language
+  `mage-parse --run=abl-bytes <file.abl>` now decodes a Agentic Binary Language
   container and dispatches each item to `CpuBackend` via
   `abl_compute::run_pipeline`. **No text round-trip on the run
   side** — bytes-in, results-out.
@@ -157,7 +157,7 @@ canonical path.
 
 ## Still open
 
-1. **RAP protocol Agentic Binary Language profile**: extend the MechGen Agent Protocol
+1. **RAP protocol Agentic Binary Language profile**: extend the MAGE Agent Protocol
    to carry `application/machine` payloads end-to-end. Agents emit
    structured JSON; the RAP server encodes to Agentic Binary Language; responses decode
    the same way. Keeps BPE-friendly text on the wire while binary

@@ -9,9 +9,9 @@
 // for a *linear* target and learns it cleanly (≈100% loss reduction).
 //
 // Run:
-//   MechGen-parse --check               examples/agent_built_mlp.mg
-//   MechGen-parse --target=abl-train   examples/agent_built_mlp.mg
-//   MechGen-parse --target=abl-infer   examples/agent_built_mlp.mg
+//   mage-parse --check               examples/agent_built_mlp.mg
+//   mage-parse --target=abl-train   examples/agent_built_mlp.mg
+//   mage-parse --target=abl-infer   examples/agent_built_mlp.mg
 
 net AffineRegressor {
     layer fc1: Linear(3, 8);

@@ -583,7 +583,7 @@ fn borrow_rules() -> Vec<Rule> {
             "double-mutable-borrow",
             Error,
             "Two mutable borrows of same value active simultaneously",
-            "Rust/MechGen allows only one &mut at a time",
+            "Rust/MAGE allows only one &mut at a time",
             Some("Restructure to avoid overlapping mutable borrows"),
             0.85,
             &["borrow", "mutable", "aliasing"],
@@ -1869,7 +1869,7 @@ fn concurrency_rules() -> Vec<Rule> {
             "data-race",
             Error,
             "Potential data race: shared mutable state across threads",
-            "Undefined behavior in Rust/MechGen",
+            "Undefined behavior in Rust/MAGE",
             Some("Wrap in Mutex, RwLock, or use Atomic types"),
             0.80,
             &["concurrency", "data-race", "thread"],
@@ -2271,7 +2271,7 @@ fn ffi_rules() -> Vec<Rule> {
             DB,
             "layout-mismatch",
             Error,
-            "Struct layout mismatch between MechGen and foreign type",
+            "Struct layout mismatch between MAGE and foreign type",
             "ABI incompatibility; use #[repr(C)]",
             Some("Add #[repr(C)] to struct definition"),
             0.85,
@@ -3318,7 +3318,7 @@ pub fn query_by_tag(tag: &str) -> QueryResult {
     QueryResult { matches, query_text: format!("tag = {tag}") }
 }
 
-/// Query by Rust alias: find the MechGen equivalent of a Rust symbol.
+/// Query by Rust alias: find the MAGE equivalent of a Rust symbol.
 pub fn query_by_rust_alias(alias: &str) -> QueryResult {
     let matches: Vec<_> = builtin_skb()
         .into_iter()

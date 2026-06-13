@@ -1,10 +1,10 @@
 // Phase-15 train + infer demo.
 //
 // Step 1 (train and save):
-//   MechGen-parse --target=abl-train prototype/examples/train_infer.mg
+//   mage-parse --target=abl-train prototype/examples/train_infer.mg
 //
 // Step 2 (load and predict on the same `inputs:`):
-//   MechGen-parse --target=abl-infer prototype/examples/train_infer.mg
+//   mage-parse --target=abl-infer prototype/examples/train_infer.mg
 
 net Affine {
     layer fc: Linear(1, 1, 1);

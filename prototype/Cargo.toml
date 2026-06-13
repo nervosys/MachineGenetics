@@ -1,10 +1,10 @@
 [workspace]
 
 [package]
-name = "MechGen-prototype"
+name = "mage-prototype"
 version = "0.2.0"
 edition = "2024"
-description = "MachineGenetics (MechGen) prototype compiler — lexer, parser, Agentic Binary Language pipeline, and RAP server for the agentic-first language; RecursiveMachineIntelligence (rmi) is the built-in AI framework"
+description = "MAGE (Machine Genetics) prototype compiler — lexer, parser, Agentic Binary Language pipeline, and RAP server for the agentic-first language; RecursiveMachineIntelligence (rmi) is the built-in AI framework"
 license = "Apache-2.0"
 repository = "https://github.com/nervosys/MachineGenetics"
 authors = ["NERVOSYS <opensource@nervosys.ai>"]
@@ -37,7 +37,7 @@ ironaccelerator-cuda = { path = "../../../utilities/IronAccelerator/crates/irona
 async-trait = { version = "0.1", optional = true }
 
 [[bin]]
-name = "MechGen-parse"
+name = "mage-parse"
 path = "src/main.rs"
 
 [[bin]]

@@ -44,7 +44,7 @@
     "severity": "warning",
     "category": "unnecessary-lifetime",
     "description": "Lifetime annotation can be elided per elision rules",
-    "rationale": "MechGen applies lifetime elision automatically; explicit annotations add noise without benefit",
+    "rationale": "MAGE applies lifetime elision automatically; explicit annotations add noise without benefit",
     "scope": "function",
     "pattern": "fn f<lt_a>(&lt_a T) -> &lt_a T",
     "context": "single input reference, single output reference",

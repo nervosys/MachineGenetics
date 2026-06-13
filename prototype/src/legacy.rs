@@ -1,12 +1,12 @@
-/// MechGen Legacy Syntax Support — Rust → MechGen canonical syntax translator.
+/// MAGE Legacy Syntax Support — Rust → MAGE canonical syntax translator.
 ///
 /// When `--syntax=legacy` is active, this module translates standard Rust
-/// source into MechGen canonical syntax before lexing/parsing.
+/// source into MAGE canonical syntax before lexing/parsing.
 ///
 /// This is the same algorithm as `tools/rust2mg` but embedded in the
 /// prototype compiler so that `--syntax=legacy` works in a single binary.
 ///
-/// Implements the translation rules from MECHGEN_PROPOSAL §5.3.4:
+/// Implements the translation rules from MAGE_PROPOSAL §5.3.4:
 ///   - `pub fn` → `+f`, `fn` → `f`, `async fn` → `af`, `unsafe fn` → `uf`
 ///   - `struct`/`enum`/`trait`/`impl`/`mod` → `S`/`E`/`T`/`I`/`M`
 ///   - `let`/`let mut` → `v`/`m`, `const` → `C`, `type` → `Y`
@@ -15,7 +15,7 @@
 ///   - Lifetime removal, match → `?=`, if/else → `?`/`:`
 ///   - `return` → `ret`
 
-/// Translate a complete Rust source file to MechGen canonical syntax.
+/// Translate a complete Rust source file to MAGE canonical syntax.
 pub fn translate(source: &str) -> String {
     let mut output = String::with_capacity(source.len());
 

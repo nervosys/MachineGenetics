@@ -34,7 +34,7 @@ of cleverness exceeds it, because the token cost of naming a computation
 
 - **Byte breakdown** of real code: identifiers 55.8%, punctuation/structure
   22.3%, keywords/sigils 16.1%, literals 5.8%. ~62% incompressible.
-- **C / Go** (grammatically simple): ~22% fewer tokens than Rust/MechGen — but
+- **C / Go** (grammatically simple): ~22% fewer tokens than Rust/MAGE — but
   only via *type inference* + *dropping safety ceremony* (sentinel `-1` instead
   of `Option`). Terseness there is a **safety trade**, not free.
 - **LLVM IR** (lower-level): ~2.5× *more* tokens than C/Go. Abstraction level
@@ -91,9 +91,9 @@ The ideal recovers the ceremony tokens that put a safe language behind C/Go,
 - The full **declared-vs-inferred effect surface** is machine-readable, so a
   runtime can sandbox/refuse generated code *before* running it.
 
-This is, deliberately, **MechGen's design taken to maturity with maximal
+This is, deliberately, **MAGE's design taken to maturity with maximal
 inference** — the session validated these properties one axis at a time. The one
-change from today's MechGen is dropping binding-type/mutability ceremony to
+change from today's MAGE is dropping binding-type/mutability ceremony to
 reclaim the token axis (0.60 → ~0.72) without surrendering safety.
 
 ---
@@ -102,7 +102,7 @@ reclaim the token axis (0.60 → ~0.72) without surrendering safety.
 
 The proposed way past the floor was tool-mediated construction: the agent emits a
 schema-validated structured spec instead of source, and the toolchain builds the
-artifact. This is now **built** (`MechGen-parse --build=abl <spec.json>`,
+artifact. This is now **built** (`mage-parse --build=abl <spec.json>`,
 `prototype/src/builder.rs`): a compact JSON net spec is validated structurally
 (unknown op / bad dims / **shape mismatch** rejected *by construction*, with
 machine-readable errors and no artifact emitted) and lowered to the byte-stable,
@@ -139,14 +139,14 @@ belongs on the framework track for exactly this reason.
 The paradigm is now a closed, three-step, no-exec loop over the binary artifact:
 
 ```
-1. MechGen-parse --build=schema            # typed self-describing interface
+1. mage-parse --build=schema            # typed self-describing interface
      → deterministic JSON: op catalog (arities, shape-rule), spec format,
        full error-code catalog with fixes. Fetched ONCE, prompt-cached —
        the standing context the agent grounds in (amortized tokens).
-2. MechGen-parse --build=abl spec.json out.abl
+2. mage-parse --build=abl spec.json out.abl
      → validate the spec (reject-by-construction: B0001–B0006, machine-readable,
        NO artifact on failure) → lower to a byte-stable Agentic Binary Language artifact.
-3. MechGen-parse --describe=abl out.abl   # no-exec structured introspection
+3. mage-parse --describe=abl out.abl   # no-exec structured introspection
      → decode the artifact as PURE DATA (exec:false) into JSON: container size,
        per-item content hash, recovered op/dim structure. The agent verifies
        what it built without ever running it.
@@ -230,7 +230,7 @@ tokens (cache the schema once, fewer retries).
 ## Honest bottom line
 
 - The ideal **text** agentic language scores **~0.90** — three axes near their
-  designable maxima, token at its irreducible floor. (Today's MechGen: 0.865,
+  designable maxima, token at its irreducible floor. (Today's MAGE: 0.865,
   short mainly on token ceremony.)
 - You **cannot** honestly exceed ~0.90 for a text language; the token axis is a
   floor, not a knob.
@@ -255,7 +255,7 @@ the floor is not a knob, even when the terser surface exists and is free to use.
 
 **Dense-symbol confirmation (2026-06-10).** Tested the "use the full UTF-8 symbol
 library / Matrix digital-rain to pack more per token" idea directly. A reversible
-codec (`prototype/src/rain.rs`, `--rain`) maps each MechGen token to one dense
+codec (`prototype/src/rain.rs`, `--rain`) maps each MAGE token to one dense
 glyph (half-width katakana → CJK). Measured with the **real cl100k + o200k BPE**
 (`agentic-eval --example rain_tokens --features real-tokens`): it compresses
 **characters ~3×** (the Matrix look) but the glyph stream costs **~1.8–2× MORE

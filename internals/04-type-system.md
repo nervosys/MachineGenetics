@@ -1,6 +1,6 @@
 # Chapter 4: Type System Internals
 
-The MechGen type system performs inference, checking, and desugaring. It
+The MAGE type system performs inference, checking, and desugaring. It
 operates on the HIR and populates every expression with its resolved type.
 
 ---
@@ -25,7 +25,7 @@ The type system lives in `rdx_types` (prototype: `prototype/src/types.rs`).
   mode (expected type known) and inference mode (expected type unknown).
 - **Constraint-based**: inference generates constraints (`?0 = i32`,
   `?1: Display`) which are solved by unification.
-- **No lifetime inference**: MechGen has no lifetime annotations. The borrow
+- **No lifetime inference**: MAGE has no lifetime annotations. The borrow
   checker (in `rdx_skb`) validates borrowing via SKB rules, not type-level
   lifetimes.
 
@@ -142,7 +142,7 @@ fn occurs_check(&self, var: u32, ty: &Ty) -> Result<(), TypeError> {
 
 ## 4.3 Type Sugar Desugaring
 
-The type checker resolves MechGen sugar to canonical HIR types:
+The type checker resolves MAGE sugar to canonical HIR types:
 
 | Source Sugar | AST `Type`                 | HIR `Ty`              | Rust Equivalent |
 | ------------ | -------------------------- | --------------------- | --------------- |
@@ -203,7 +203,7 @@ fn check_obligation(&self, ob: &TraitObligation) -> Result<(), TypeError> {
 
 Where clauses (`~>`) add extra obligations:
 
-```MechGen
+```MAGE
 f process[T](data: [T]~) -> s ~> T: Display + Hash {
     // ...
 }

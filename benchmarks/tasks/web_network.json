@@ -15,7 +15,7 @@
       "token_count": 108
     },
     "tests": [
-      { "input": "handle_greet(Request.with_query(\"name=MechGen\"))", "expected": "Response(200, {\"message\":\"Hello, MechGen!\"})" }
+      { "input": "handle_greet(Request.with_query(\"name=MAGE\"))", "expected": "Response(200, {\"message\":\"Hello, MAGE!\"})" }
     ]
   },
   {

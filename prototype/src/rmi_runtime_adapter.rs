@@ -1,10 +1,10 @@
-//! # MechGen ↔ RMI Runtime Adapter
+//! # MAGE ↔ RMI Runtime Adapter
 //!
-//! Bridges MechGen's [`crate::agent_runtime::AgentRuntime`] with RMI's
+//! Bridges MAGE's [`crate::agent_runtime::AgentRuntime`] with RMI's
 //! [`rmi::core::collaboration::AgentRuntime`]. The two runtimes have
 //! overlapping but distinct strengths:
 //!
-//! | Capability                  | MechGen | RMI |
+//! | Capability                  | MAGE | RMI |
 //! |-----------------------------|:-------:|:---:|
 //! | Semantic leases             |    ✓    |     |
 //! | CRDT merge                  |    ✓    |     |
@@ -17,15 +17,15 @@
 //! | Distributed Raft/BFT        |         |  ✓  |
 //! | Model registry              |         |  ✓  |
 //!
-//! The adapter exposes RMI's capabilities through a MechGen-shaped façade so
-//! that swarm code targeting MechGen's surface can opt into RMI's distributed
-//! and ML-ops machinery without leaving the MechGen module graph.
+//! The adapter exposes RMI's capabilities through a MAGE-shaped façade so
+//! that swarm code targeting MAGE's surface can opt into RMI's distributed
+//! and ML-ops machinery without leaving the MAGE module graph.
 //!
 //! ## Topology
 //!
 //! ```text
 //!    ┌───────────────────────────────────────────────┐
-//!    │            MechGen agent_runtime              │
+//!    │            MAGE agent_runtime              │
 //!    │  (leases, CRDT, consensus, VCS, NL-codegen)   │
 //!    └───────────────┬───────────────────────────────┘
 //!                    │ delegates via RmiAdapter
@@ -39,7 +39,7 @@
 //! ```
 //!
 //! Both runtimes share the [`rmi::core::agent::Agent`] identity type, so an
-//! agent registered in MechGen is addressable in RMI's workspace under the
+//! agent registered in MAGE is addressable in RMI's workspace under the
 //! same id.
 
 use std::sync::Arc;
@@ -50,7 +50,7 @@ use rmi::core::collaboration::{
 };
 use uuid::Uuid;
 
-/// Adapter that owns an RMI runtime and exposes a MechGen-shaped interface.
+/// Adapter that owns an RMI runtime and exposes a MAGE-shaped interface.
 pub struct RmiAdapter {
     runtime: RmiRuntime,
 }
@@ -104,7 +104,7 @@ mod tests {
     fn adapter_constructs_and_exposes_workspace() {
         let adapter = RmiAdapter::new();
         let author = Uuid::new_v4();
-        let v = adapter.post_note("hello", "from MechGen", author);
+        let v = adapter.post_note("hello", "from MAGE", author);
         assert!(v >= 1);
         // Smoke-test: workspace + delegator handles are live.
         let _ = adapter.workspace();

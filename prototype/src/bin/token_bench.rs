@@ -1,7 +1,7 @@
 //! # `token-bench` — token-efficiency verification for the agent benchmark corpus
 //!
 //! Loads every task in `benchmarks/tasks/*.json`, re-tokenises both the
-//! `solution.rdx_source` (MechGen) and the `rust_equivalent.rs_source`
+//! `solution.rdx_source` (MAGE) and the `rust_equivalent.rs_source`
 //! (Rust) using a **shared lexer rule**, and produces:
 //!
 //! 1. A markdown report (`benchmarks/TOKEN_REPORT.md`) with per-category
@@ -19,7 +19,7 @@
 //! - string literal (`"..."` with `\"` escapes)
 //! - char literal (`'.'` with `'\\.'`)
 //! - **each non-alphanumeric sigil character** as its own token
-//!   (matches MechGen's lexer convention for `+f`, `?:`, `&mut`, etc.)
+//!   (matches MAGE's lexer convention for `+f`, `?:`, `&mut`, etc.)
 //!
 //! This is intentionally simple — relative comparison only needs
 //! consistency, not language-perfect tokenisation. Whitespace and `//`
@@ -31,7 +31,7 @@ use std::path::Path;
 use std::process::ExitCode;
 use std::str::FromStr;
 
-// Reuse the actual MechGen lexer (which recognises atomic sigils like `+f`,
+// Reuse the actual MAGE lexer (which recognises atomic sigils like `+f`,
 // `?:`, `&mut`) so the MG side of the comparison matches the corpus's
 // claimed counting convention.
 #[path = "../lexer.rs"]
@@ -119,7 +119,7 @@ fn main() -> ExitCode {
         let mg_shared = tokenize(&t.mg_source).len() as u32;
         let rs_shared = tokenize(&t.rs_source).len() as u32;
 
-        check_regression(&t.id, "mechgen", t.mg_claimed, mg_native, &mut regressions);
+        check_regression(&t.id, "mage", t.mg_claimed, mg_native, &mut regressions);
         check_regression(&t.id, "rust", t.rs_claimed, rs_native, &mut regressions);
 
         let mg_bytes = t.mg_source.len() as u64;
@@ -365,10 +365,10 @@ fn render_markdown(
     total_tasks: usize,
 ) -> String {
     let mut out = String::new();
-    out.push_str("# MechGen Token-Efficiency Report\n\n");
+    out.push_str("# MAGE Token-Efficiency Report\n\n");
     out.push_str(&format!(
         "Generated from `benchmarks/tasks/*.json` ({} tasks).  \
-         Both MechGen and Rust sources are re-tokenised with the same lexer rule \
+         Both MAGE and Rust sources are re-tokenised with the same lexer rule \
          (identifiers, literals, single-character sigils) before counting.\n\n",
         total_tasks
     ));
@@ -395,7 +395,7 @@ fn render_markdown(
          bytes (≈ 3–4 bytes / token for code), so this is what determines an \
          agent's context-window and inference cost.\n\n",
     );
-    out.push_str("| Category | Tasks | MechGen bytes | Rust bytes | Ratio | Reduction | Dense MG | Dense RS | Dense ratio |\n");
+    out.push_str("| Category | Tasks | MAGE bytes | Rust bytes | Ratio | Reduction | Dense MG | Dense RS | Dense ratio |\n");
     out.push_str("|---|---:|---:|---:|---:|---:|---:|---:|---:|\n");
     for (cat, a) in per_cat {
         let r = ratio(a.mg_bytes, a.rs_bytes);
@@ -416,10 +416,10 @@ fn render_markdown(
 
     out.push_str("## Per-category aggregates (native lexers)\n\n");
     out.push_str(
-        "MechGen counted by `prototype::lexer` (atomic sigils like `+f` = 1 token). \
+        "MAGE counted by `prototype::lexer` (atomic sigils like `+f` = 1 token). \
          Rust counted by `proc-macro2` (group delimiters count as 2).\n\n",
     );
-    out.push_str("| Category | Tasks | MechGen | Rust | Ratio | Reduction |\n");
+    out.push_str("| Category | Tasks | MAGE | Rust | Ratio | Reduction |\n");
     out.push_str("|---|---:|---:|---:|---:|---:|\n");
     for (cat, a) in per_cat {
         let r = ratio(a.mg_native, a.rs_native);
@@ -441,7 +441,7 @@ fn render_markdown(
          the savings that come from sigil grouping vs from raw character \
          density.\n\n",
     );
-    out.push_str("| Category | MechGen | Rust | Ratio |\n|---|---:|---:|---:|\n");
+    out.push_str("| Category | MAGE | Rust | Ratio |\n|---|---:|---:|---:|\n");
     for (cat, a) in per_cat {
         out.push_str(&format!(
             "| {} | {} | {} | {:.3} |\n",
@@ -454,7 +454,7 @@ fn render_markdown(
     ));
 
     out.push_str("\n## Claimed vs measured (corpus integrity)\n\n");
-    out.push_str("| Category | MechGen claimed | Rust claimed | Claimed ratio |\n|---|---:|---:|---:|\n");
+    out.push_str("| Category | MAGE claimed | Rust claimed | Claimed ratio |\n|---|---:|---:|---:|\n");
     for (cat, a) in per_cat {
         out.push_str(&format!(
             "| {} | {} | {} | {:.3} |\n",
@@ -467,8 +467,8 @@ fn render_markdown(
     ));
 
     out.push_str(&format!(
-        "\n## Top 10 token savings (MechGen vs Rust)\n\n\
-         | Task | Saving | MechGen tokens | Rust tokens |\n\
+        "\n## Top 10 token savings (MAGE vs Rust)\n\n\
+         | Task | Saving | MAGE tokens | Rust tokens |\n\
          |---|---:|---:|---:|\n"
     ));
     for (id, saving, mg, rs) in top_savings.iter().take(10) {

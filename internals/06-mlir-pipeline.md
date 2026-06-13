@@ -8,77 +8,77 @@ dialects to LLVM IR and finally machine code.
 
 ## 6.1 Why MLIR?
 
-Traditional compilers go directly from IR to LLVM IR. MechGen interposes MLIR
+Traditional compilers go directly from IR to LLVM IR. MAGE interposes MLIR
 because:
 
 1. **Multi-target**: MLIR has dialects for CPU (LLVM), GPU (GPU/SPIR-V),
    WASM, and custom accelerators. One HIR → many backends.
-2. **Effect representation**: The MechGen MLIR dialect encodes effects as
+2. **Effect representation**: The MAGE MLIR dialect encodes effects as
    first-class attributes, enabling effect-aware optimizations.
 3. **Cost oracle**: MLIR's analysis framework enables the cost oracle to
    estimate performance characteristics before codegen.
 4. **Autotuning**: MLIR passes can generate variant code for performance
    autotuning (`@pa` annotation).
 
-## 6.2 The MechGen MLIR Dialect
+## 6.2 The MAGE MLIR Dialect
 
-The MechGen dialect defines operations that map directly to MechGen language
+The MAGE dialect defines operations that map directly to MAGE language
 constructs:
 
 ### Operations
 
 | Op                  | Description         | Operands                           |
 | ------------------- | ------------------- | ---------------------------------- |
-| `MechGen.func`        | Function definition | name, params, return type, effects |
-| `MechGen.call`        | Function call       | callee, args                       |
-| `MechGen.struct_def`  | Struct definition   | name, fields                       |
-| `MechGen.enum_def`    | Enum definition     | name, variants                     |
-| `MechGen.trait_def`   | Trait definition    | name, methods                      |
-| `MechGen.impl`        | Impl block          | type, trait, methods               |
-| `MechGen.const`       | Constant definition | name, type, value                  |
-| `MechGen.let`         | Variable binding    | name, type, value                  |
-| `MechGen.match`       | Pattern match       | scrutinee, arms                    |
-| `MechGen.for`         | For loop            | pattern, iterator, body            |
-| `MechGen.effect`      | Effect marker       | effect set                         |
-| `MechGen.handle`      | Handle block        | effects, body, handlers            |
-| `MechGen.agent_spawn` | Agent spawn         | agent value                        |
-| `MechGen.swarm_join`  | Swarm join          | swarm value                        |
+| `MAGE.func`        | Function definition | name, params, return type, effects |
+| `MAGE.call`        | Function call       | callee, args                       |
+| `MAGE.struct_def`  | Struct definition   | name, fields                       |
+| `MAGE.enum_def`    | Enum definition     | name, variants                     |
+| `MAGE.trait_def`   | Trait definition    | name, methods                      |
+| `MAGE.impl`        | Impl block          | type, trait, methods               |
+| `MAGE.const`       | Constant definition | name, type, value                  |
+| `MAGE.let`         | Variable binding    | name, type, value                  |
+| `MAGE.match`       | Pattern match       | scrutinee, arms                    |
+| `MAGE.for`         | For loop            | pattern, iterator, body            |
+| `MAGE.effect`      | Effect marker       | effect set                         |
+| `MAGE.handle`      | Handle block        | effects, body, handlers            |
+| `MAGE.agent_spawn` | Agent spawn         | agent value                        |
+| `MAGE.swarm_join`  | Swarm join          | swarm value                        |
 
 ### Type System
 
 ```mlir
 // Primitive types
-!MechGen.int<32>         // i32
-!MechGen.uint<64>        // u64
-!MechGen.float<64>       // f64
-!MechGen.bool
-!MechGen.str             // String
-!MechGen.unit            // ()
+!MAGE.int<32>         // i32
+!MAGE.uint<64>        // u64
+!MAGE.float<64>       // f64
+!MAGE.bool
+!MAGE.str             // String
+!MAGE.unit            // ()
 
 // Compound types
-!MechGen.vec<!MechGen.int<32>>            // [i32]~
-!MechGen.option<!MechGen.str>             // ?s
-!MechGen.result<!MechGen.str, !MechGen.err> // R[s, Error]
-!MechGen.map<!MechGen.str, !MechGen.int<32>> // {s: i32}
-!MechGen.box<!MechGen.str>                // ^s
-!MechGen.rc<!MechGen.str>                 // $s
-!MechGen.arc<!MechGen.str>                // @s
-!MechGen.ref<mutable=false, !MechGen.str> // &s
-!MechGen.ref<mutable=true, !MechGen.str>  // &!s
+!MAGE.vec<!MAGE.int<32>>            // [i32]~
+!MAGE.option<!MAGE.str>             // ?s
+!MAGE.result<!MAGE.str, !MAGE.err> // R[s, Error]
+!MAGE.map<!MAGE.str, !MAGE.int<32>> // {s: i32}
+!MAGE.box<!MAGE.str>                // ^s
+!MAGE.rc<!MAGE.str>                 // $s
+!MAGE.arc<!MAGE.str>                // @s
+!MAGE.ref<mutable=false, !MAGE.str> // &s
+!MAGE.ref<mutable=true, !MAGE.str>  // &!s
 ```
 
 ### Effect Attributes
 
 ```mlir
-MechGen.func @read_file(%path: !MechGen.ref<mutable=false, !MechGen.str>)
-    -> !MechGen.result<!MechGen.str, !MechGen.err>
+MAGE.func @read_file(%path: !MAGE.ref<mutable=false, !MAGE.str>)
+    -> !MAGE.result<!MAGE.str, !MAGE.err>
     attributes { effects = ["io"] }
 {
     // ...
 }
 ```
 
-## 6.3 Emitter: HIR → MechGen MLIR
+## 6.3 Emitter: HIR → MAGE MLIR
 
 The emitter is in `rdx_mlir` (prototype: `prototype/src/mlir.rs`).
 
@@ -132,7 +132,7 @@ fn emit_function(&mut self, f: &FunctionDef, vis: &Visibility) {
         .unwrap_or_default();
 
     self.line(&format!(
-        "MechGen.func {} @{}({}){} attributes {{ sym_visibility = \"{}\"{} }} {{",
+        "MAGE.func {} @{}({}){} attributes {{ sym_visibility = \"{}\"{} }} {{",
         vis_attr, f.name, params.join(", "), ret, vis_attr, effects
     ));
 
@@ -151,39 +151,39 @@ fn mlir_type(&self, ty: &Type) -> String {
         Type::Path { segments, type_args } => {
             let name = segments.join(".");
             match name.as_str() {
-                "i8"    => "!MechGen.int<8>",
-                "i16"   => "!MechGen.int<16>",
-                "i32"   => "!MechGen.int<32>",
-                "i64"   => "!MechGen.int<64>",
-                "u8"    => "!MechGen.uint<8>",
-                "u32"   => "!MechGen.uint<32>",
-                "u64"   => "!MechGen.uint<64>",
-                "f32"   => "!MechGen.float<32>",
-                "f64"   => "!MechGen.float<64>",
-                "bool"  => "!MechGen.bool",
-                "usize" => "!MechGen.uint<64>",
+                "i8"    => "!MAGE.int<8>",
+                "i16"   => "!MAGE.int<16>",
+                "i32"   => "!MAGE.int<32>",
+                "i64"   => "!MAGE.int<64>",
+                "u8"    => "!MAGE.uint<8>",
+                "u32"   => "!MAGE.uint<32>",
+                "u64"   => "!MAGE.uint<64>",
+                "f32"   => "!MAGE.float<32>",
+                "f64"   => "!MAGE.float<64>",
+                "bool"  => "!MAGE.bool",
+                "usize" => "!MAGE.uint<64>",
                 _ => {
                     if type_args.is_empty() {
-                        format!("!MechGen.named<\"{}\">", name)
+                        format!("!MAGE.named<\"{}\">", name)
                     } else {
                         let args: Vec<String> = type_args.iter()
                             .map(|a| self.mlir_type(a)).collect();
-                        format!("!MechGen.named<\"{}\", {}>", name, args.join(", "))
+                        format!("!MAGE.named<\"{}\", {}>", name, args.join(", "))
                     }
                 }
             }
         }
-        Type::StringType => "!MechGen.str",
-        Type::Vec { inner } => format!("!MechGen.vec<{}>", self.mlir_type(inner)),
-        Type::Option { inner } => format!("!MechGen.option<{}>", self.mlir_type(inner)),
+        Type::StringType => "!MAGE.str",
+        Type::Vec { inner } => format!("!MAGE.vec<{}>", self.mlir_type(inner)),
+        Type::Option { inner } => format!("!MAGE.option<{}>", self.mlir_type(inner)),
         Type::Result { ok, err } => format!(
-            "!MechGen.result<{}, {}>", self.mlir_type(ok), self.mlir_type(err)
+            "!MAGE.result<{}, {}>", self.mlir_type(ok), self.mlir_type(err)
         ),
-        Type::OwnedPtr { inner } => format!("!MechGen.box<{}>", self.mlir_type(inner)),
-        Type::Arc { inner } => format!("!MechGen.arc<{}>", self.mlir_type(inner)),
-        Type::Rc { inner } => format!("!MechGen.rc<{}>", self.mlir_type(inner)),
+        Type::OwnedPtr { inner } => format!("!MAGE.box<{}>", self.mlir_type(inner)),
+        Type::Arc { inner } => format!("!MAGE.arc<{}>", self.mlir_type(inner)),
+        Type::Rc { inner } => format!("!MAGE.rc<{}>", self.mlir_type(inner)),
         Type::Reference { mutable, inner } => format!(
-            "!MechGen.ref<mutable={}, {}>", mutable, self.mlir_type(inner)
+            "!MAGE.ref<mutable={}, {}>", mutable, self.mlir_type(inner)
         ),
         // ... other types
     }
@@ -192,11 +192,11 @@ fn mlir_type(&self, ty: &Type) -> String {
 
 ## 6.4 Lowering Passes
 
-After emitting the MechGen dialect, a series of MLIR passes lower it toward
+After emitting the MAGE dialect, a series of MLIR passes lower it toward
 LLVM:
 
 ```
-MechGen MLIR
+MAGE MLIR
     │
     ▼
 ┌──────────────────────────┐
@@ -236,9 +236,9 @@ Converts effect markers into runtime validation:
 
 ### Sugar Lowering Pass
 
-Converts MechGen type sugar to underlying representations:
+Converts MAGE type sugar to underlying representations:
 
-| MechGen Type        | MLIR Lowering                      |
+| MAGE Type        | MLIR Lowering                      |
 | ----------------- | ---------------------------------- |
 | `[T]~` (Vec)      | Pointer + length + capacity struct |
 | `?T` (Option)     | Discriminant + union               |
@@ -252,7 +252,7 @@ Converts MechGen type sugar to underlying representations:
 
 Converts agent primitives to runtime calls:
 
-| MechGen Construct      | Lowered To                              |
+| MAGE Construct      | Lowered To                              |
 | -------------------- | --------------------------------------- |
 | `Swarm.new()`        | Thread pool allocation                  |
 | `swarm.spawn(agent)` | Task submission to pool + channel setup |
@@ -285,16 +285,16 @@ MLIR enables targeting multiple backends from the same HIR:
 
 | Target       | MLIR Path                           | Output         |
 | ------------ | ----------------------------------- | -------------- |
-| x86-64       | MechGen → LLVM dialect → LLVM x86     | Native binary  |
-| AArch64      | MechGen → LLVM dialect → LLVM AArch64 | Native binary  |
-| WASM         | MechGen → LLVM dialect → LLVM WASM    | `.wasm` module |
-| GPU (NVIDIA) | MechGen → GPU dialect → NVVM          | PTX kernel     |
-| GPU (AMD)    | MechGen → GPU dialect → ROCDL         | AMDGPU ISA     |
-| SPIR-V       | MechGen → SPIR-V dialect              | Vulkan compute |
+| x86-64       | MAGE → LLVM dialect → LLVM x86     | Native binary  |
+| AArch64      | MAGE → LLVM dialect → LLVM AArch64 | Native binary  |
+| WASM         | MAGE → LLVM dialect → LLVM WASM    | `.wasm` module |
+| GPU (NVIDIA) | MAGE → GPU dialect → NVVM          | PTX kernel     |
+| GPU (AMD)    | MAGE → GPU dialect → ROCDL         | AMDGPU ISA     |
+| SPIR-V       | MAGE → SPIR-V dialect              | Vulkan compute |
 
 The `@pt(target)` annotation controls target selection:
 
-```MechGen
+```MAGE
 @pt(auto)  // let the compiler choose (default)
 @pt(cpu)   // force CPU
 @pt(gpu)   // force GPU
@@ -314,8 +314,8 @@ fn test_emit_function() {
     let effects = EffectInfer::new();
     let mlir = emit(&ast, &effects);
 
-    assert!(mlir.contains("MechGen.func public @add"));
-    assert!(mlir.contains("!MechGen.int<32>"));
+    assert!(mlir.contains("MAGE.func public @add"));
+    assert!(mlir.contains("!MAGE.int<32>"));
 }
 ```
 
@@ -337,8 +337,8 @@ MLIR provides FileCheck for pattern-matching test output:
 
 ```
 // RUN: mg build --emit=mlir %s | FileCheck %s
-// CHECK: MechGen.func public @main
-// CHECK-SAME: -> !MechGen.result<!MechGen.unit, !MechGen.box<!MechGen.named<"Error">>>
+// CHECK: MAGE.func public @main
+// CHECK-SAME: -> !MAGE.result<!MAGE.unit, !MAGE.box<!MAGE.named<"Error">>>
 // CHECK-SAME: effects = ["io"]
 +f main() -> R[(), ^dyn Error] / io {
     p"hello"
