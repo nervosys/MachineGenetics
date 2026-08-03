@@ -280,6 +280,23 @@
 | 129 | Fitness signal | ✅ | Four normalized axes + a composite where **correctness is a gate, not a weight** — a weighted sum lets a broken-but-cached build outrank a working one |
 | 130 | Network distribution + evolutionary loop | ◻ | **Not built.** Transport, shared cache service, worker registration, sandboxed subprocesses, signed provenance; then population/selection/mutation and self-overwrite. Substrates exist (`rmi` QUIC/TCP/gRPC, `sandbox.rs`, `certs.rs`, `evolve_gen.rs`, `semantic_vcs.rs`) |
 
+## Phase Q: Germline — model succession and fallback (Steps 131–137)
+
+> `forge/src/germline/`, design in [GERMLINE.md](GERMLINE.md). The operating mode
+> where a model proposes a higher-fitness successor by directed evolution, hands
+> RSI work to it, and falls back on malfunction or decline. This is the **control
+> plane** — it decides whether a successor takes over, not how it is produced.
+
+| Step | Title | Status | Description |
+| ---- | ----- | ------ | ----------- |
+| 131 | Lineage + append-only succession log | ✅ | Generations, champion pointer, promotions/demotions/rollbacks as events. History is never edited — a self-modifying system that can rewrite its own record cannot be debugged after an incident |
+| 132 | Promotion gate | ✅ | Five `AND`-ed checks: evaluator independence, held-out evidence, comparable axes, primary improvement above the noise floor, guard ratchet. `AND` because a gate where capability can buy a guard regression prices safety |
+| 133 | The Weismann barrier | ✅ | Gate and suite pinned by digest before an episode opens; changing either **voids** it. Removes the cheapest path to a higher score — editing the judge — rather than hoping it is not taken |
+| 134 | Drift ratchet | ✅ | Guard axes compared to the lineage **high-water mark**, not the incumbent. Uniform sub-tolerance steps pass a per-step check forever; the ratchet stops them |
+| 135 | Directed search + calibration | ✅ | Predict → rank → spend budget on the top-k. Trust is **earned by measurement**, 0 for an untested predictor; miscalibration widens the search back toward undirected, because the answer to a broken world-model is to explore more |
+| 136 | Supervisor + fallback | ✅ | Four failure modes (malfunction, fitness decline, metric divergence, stall); fallback verified materialized *before* authority moves; quarantined generations skipped. Deliberately **not a model**, so the loop cannot route around it |
+| 137 | Workload + unattended runner | ◻ | **Not built.** Model training/inference, the mutation operators (`evolve_gen.rs` has them), the episode runner, durable persistence, and signed verdicts (`certs.rs` is the substrate) |
+
 ---
 
 ## Open / not done
@@ -294,5 +311,6 @@
 | 3 | Steps 2c & 3 of the ab-initio migration | ⬚ | Declined as negative-sum (step 99). Revisit only with new measurement. |
 | 4 | Single-workspace build | ⬚ | The three crates are separate workspaces by design (rmi is vendored and must stay independently buildable). `scripts/test-all.{ps1,sh}` is the supported way to build/test everything at once — see the note in `ARCHITECTURE.md`. |
 | 5 | `video/out/agentic-rain.mp4` in git | 🔧 | A 38 MB binary is tracked, and the `.git` directory is ~158 MB largely because of it plus the 12 MB of banner PNGs. Fine for now; if the repo is ever cloned often, move it to a release asset or LFS. |
+| 8 | The RSI loop is not closed | 🔧 | Germline decides succession and Ribosome measures builds, but nothing yet *produces* candidate models or runs an episode unattended. That is deliberate for now — the loop should run with a human watching before it runs without one — but it means "RSI" describes the control plane, not a running system. Step 137. |
 | 7 | Ribosome is not yet distributed | 🔧 | The `Executor` seam, capability routing, and hermetic input passing are built and tested, but every executor today is in-process. Until a network transport and shared cache service exist, "distributed" describes the design, not the deployment — step 130. |
 | 6 | Reference surface has no call sites | 🔧 | ~85 items exist for the ontology / `--build=schema` / RAP surface but are unused in-tree, so `dead_code` is silenced crate-wide in `prototype` (documented at the top of `main.rs`). The real fix is splitting the reference surface into a library crate where `pub` carries the meaning. |

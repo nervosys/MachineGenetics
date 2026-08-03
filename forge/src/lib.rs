@@ -4,5 +4,6 @@ pub mod compat;
 pub mod models;
 pub mod project;
 pub mod manifest;
+pub mod germline;
 pub mod registry;
 pub mod ribosome;
