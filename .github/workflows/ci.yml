@@ -1,8 +1,17 @@
 name: CI
 
-# Builds and tests the two live crates — the prototype compiler/evaluator and
-# the Forge toolchain. The old forked-rustc compiler CI was removed with that
-# compiler; this is the accurate, working pipeline for what ships today.
+# Builds and tests the three live crates — the embedded `rmi` framework, the
+# prototype compiler/evaluator, and the Forge toolchain. The old forked-rustc
+# compiler CI was removed with that compiler; this is the accurate, working
+# pipeline for what ships today.
+#
+# The three are separate Cargo workspaces on purpose (see ARCHITECTURE.md
+# §"Repository layout"), so each gets its own --manifest-path job rather than a
+# single root `cargo test`. `scripts/test-all.{sh,ps1}` runs the same set
+# locally.
+#
+# `prototype` path-depends on RecursiveMachineIntelligence, so an rmi change can
+# break the prototype build — hence rmi appears in every paths filter.
 
 on:
   push:
@@ -10,14 +19,27 @@ on:
     paths:
       - "prototype/**"
       - "forge/**"
+      - "RecursiveMachineIntelligence/**"
       - ".github/workflows/ci.yml"
   pull_request:
     paths:
       - "prototype/**"
       - "forge/**"
+      - "RecursiveMachineIntelligence/**"
       - ".github/workflows/ci.yml"
 
 jobs:
+  rmi:
+    name: rmi — build + test (cpu)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build
+        run: cargo build --release --manifest-path RecursiveMachineIntelligence/Cargo.toml --no-default-features --features cpu
+      - name: Test
+        run: cargo test --manifest-path RecursiveMachineIntelligence/Cargo.toml --no-default-features --features cpu
+
   prototype:
     name: prototype — build + test
     runs-on: ubuntu-latest
@@ -28,7 +50,7 @@ jobs:
         run: cargo build --release --manifest-path prototype/Cargo.toml
       - name: Test
         run: cargo test --release --manifest-path prototype/Cargo.toml
-      - name: Evaluator correctness bench (72/72 exact)
+      - name: Evaluator correctness bench (73/73 exact)
         run: cargo test --release --manifest-path prototype/Cargo.toml eval_bench -- --ignored --nocapture
 
   forge:
@@ -41,3 +63,17 @@ jobs:
         run: cargo build --release --manifest-path forge/Cargo.toml
       - name: Test
         run: cargo test --manifest-path forge/Cargo.toml
+
+  cuda:
+    name: prototype — cuda feature (compile check)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      # IronAccelerator dispatches through libloading at runtime, so the CUDA
+      # backend compiles with no CUDA toolkit and no GPU present — a runner
+      # without a driver can still prove the code builds. It cannot prove the
+      # kernels are *correct*: that needs `cargo test --features cuda` on a
+      # CUDA box (dual 3090 Ti locally, 1,269 tests green).
+      - name: Compile-check the CUDA backend
+        run: cargo check --manifest-path prototype/Cargo.toml --features cuda --all-targets

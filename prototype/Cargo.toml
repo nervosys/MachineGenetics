@@ -30,7 +30,16 @@ proc-macro2 = "1"
 # explicitly targeting CUDA Toolkit 13.2. Activated only when prototype
 # is built `--features cuda`. Avoids RecursiveMachineIntelligence's stale cudarc-0.10
 # cuda_full.rs path entirely (P99).
-ironaccelerator-cuda = { path = "../../../utilities/IronAccelerator/crates/ironaccelerator-cuda", optional = true }
+#
+# Pinned to a published tag rather than a local path. A path dependency
+# resolved to whatever happened to be in a sibling checkout, so the lockfile
+# silently re-resolved whenever that checkout moved (it drifted 1.2.0 -> 2.2.0
+# this way) and `--features cuda` could not be built from a clean clone or in
+# CI at all. The tag makes the CUDA build reproducible and CI-verifiable.
+#
+# To develop against a local IronAccelerator checkout, uncomment the [patch]
+# section at the bottom of this file — no other change is needed.
+ironaccelerator-cuda = { git = "https://github.com/nervosys/IronAccelerator.git", tag = "v2.2.0", optional = true }
 # async-trait: needed for `impl Backend for CudaBackend` (RecursiveMachineIntelligence's
 # Backend trait is `#[async_trait]`). Gated to the cuda feature since
 # only the CUDA backend impl uses it.
@@ -54,3 +63,13 @@ path = "src/bin/reliability_bench.rs"
 [[bin]]
 name = "cuda-bench"
 path = "src/bin/cuda_bench.rs"
+
+# Local IronAccelerator development. Uncomment to build `--features cuda`
+# against a sibling checkout instead of the pinned tag; `cargo` will redirect
+# every ironaccelerator-* crate at once. Re-comment (and `cargo update -p
+# ironaccelerator-cuda`) before committing, so the lockfile stays reproducible.
+#
+# [patch."https://github.com/nervosys/IronAccelerator.git"]
+# ironaccelerator-core     = { path = "../../../utilities/IronAccelerator/crates/ironaccelerator-core" }
+# ironaccelerator-cuda     = { path = "../../../utilities/IronAccelerator/crates/ironaccelerator-cuda" }
+# ironaccelerator-cuda-sys = { path = "../../../utilities/IronAccelerator/crates/ironaccelerator-cuda-sys" }
