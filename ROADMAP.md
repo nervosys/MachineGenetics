@@ -261,6 +261,25 @@
 | 121 | Dead-subsystem removal | ✅ | Forked-rustc compiler, REDOX-named tools and CI removed |
 | 122 | v0.2.0 tag + announcement | ✅ | prototype + forge at 0.2.0, tagged, blog post + X thread |
 
+## Phase P: Ribosome — the distributed build engine (Steps 123–130)
+
+> `forge/src/ribosome/`, design in [RIBOSOME.md](RIBOSOME.md). The evaluation
+> harness for the autonomous-SWE / RSI track: reproducible builds, comparable
+> measurement, clean revert. Composes existing subsystems rather than duplicating
+> them — the DAG mirrors `decompose.rs`, the accelerator catalogue is
+> `backends.rs`, coordination is meant to be driven by `lease.rs`/`consensus.rs`.
+
+| Step | Title | Status | Description |
+| ---- | ----- | ------ | ----------- |
+| 123 | Action graph with derived edges | ✅ | Dependencies computed from declared inputs, not hand-written; duplicate outputs and cycles rejected. Waves + critical path |
+| 124 | Deterministic action keys | ✅ | SHA-256 over a canonical **length-prefixed** encoding — no field-boundary collisions; inputs sorted, args not; accelerator partitions the cache only when declared |
+| 125 | CAS + action cache | ✅ | Separate immutable blob store and invalidatable claim store; `get` rehashes on every read so rot is caught at the source |
+| 126 | Executor seam | ✅ | `Executor` trait (`Send + Sync`, inputs passed not found); `LocalExecutor` (in-process tools), `PoolExecutor` (capability-routed fleet) |
+| 127 | Self-healing | ✅ | Failure classified into transient / corruption / missing-capability / deterministic, each with its own remedy; platform fallback is opt-in and **re-keys** |
+| 128 | Scheduler + no-exec plan | ✅ | Cache → dispatch → heal → record; failures contained with a named cause; `plan()` predicts a build without running it |
+| 129 | Fitness signal | ✅ | Four normalized axes + a composite where **correctness is a gate, not a weight** — a weighted sum lets a broken-but-cached build outrank a working one |
+| 130 | Network distribution + evolutionary loop | ◻ | **Not built.** Transport, shared cache service, worker registration, sandboxed subprocesses, signed provenance; then population/selection/mutation and self-overwrite. Substrates exist (`rmi` QUIC/TCP/gRPC, `sandbox.rs`, `certs.rs`, `evolve_gen.rs`, `semantic_vcs.rs`) |
+
 ---
 
 ## Open / not done
@@ -275,4 +294,5 @@
 | 3 | Steps 2c & 3 of the ab-initio migration | ⬚ | Declined as negative-sum (step 99). Revisit only with new measurement. |
 | 4 | Single-workspace build | ⬚ | The three crates are separate workspaces by design (rmi is vendored and must stay independently buildable). `scripts/test-all.{ps1,sh}` is the supported way to build/test everything at once — see the note in `ARCHITECTURE.md`. |
 | 5 | `video/out/agentic-rain.mp4` in git | 🔧 | A 38 MB binary is tracked, and the `.git` directory is ~158 MB largely because of it plus the 12 MB of banner PNGs. Fine for now; if the repo is ever cloned often, move it to a release asset or LFS. |
+| 7 | Ribosome is not yet distributed | 🔧 | The `Executor` seam, capability routing, and hermetic input passing are built and tested, but every executor today is in-process. Until a network transport and shared cache service exist, "distributed" describes the design, not the deployment — step 130. |
 | 6 | Reference surface has no call sites | 🔧 | ~85 items exist for the ontology / `--build=schema` / RAP surface but are unused in-tree, so `dead_code` is silenced crate-wide in `prototype` (documented at the top of `main.rs`). The real fix is splitting the reference surface into a library crate where `pub` carries the meaning. |

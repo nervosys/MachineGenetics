@@ -22,6 +22,7 @@ Read these to understand the system as it exists.
 | [MEASUREMENTS.md](MEASUREMENTS.md) | Every measured functionality and performance figure, with reproduction commands |
 | [ROADMAP.md](ROADMAP.md) | All 122 implementation steps + the open-items list |
 | [ARCHITECTURE_DSL.md](ARCHITECTURE_DSL.md) | The composition algebra (`stack`/`residual`/`branch`/`wrap`) and its measured basis |
+| [RIBOSOME.md](RIBOSOME.md) | The distributed, agent-operated build engine. **Mixed status, marked inline**: the core (graph, keys, CAS, executor seam, healing, scheduler, fitness) is implemented and tested ✅; network distribution and the evolutionary loop are designed ◻ |
 | [AGENT_PROTOCOL.md](AGENT_PROTOCOL.md) | How an agent should target ABL bytes rather than text |
 | [UNIFICATION.md](UNIFICATION.md) | MAGE ↔ RMI unification: the bridge, adapters, and the 21-section ontology |
 | [SECURITY_AUDIT.md](SECURITY_AUDIT.md) | CVE/RustSec, NIST FIPS 140-3, MITRE ATT&CK, CMMC 2.0 audit |
