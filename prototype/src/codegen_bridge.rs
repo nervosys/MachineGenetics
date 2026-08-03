@@ -586,7 +586,7 @@ mod tests {
         let specs = vec![
             SynthesisSpec::new("inc").with_param("n", "i64").with_return("i64"),
         ];
-        let (source, reports) = generate_module("math_utils", &specs);
+        let (_source, reports) = generate_module("math_utils", &specs);
         assert!(reports[0].candidates_generated > 0);
         assert_eq!(reports.len(), 1);
     }

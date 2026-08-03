@@ -41,6 +41,11 @@
 //! generation) is the part that costs effort; the agent backend is a
 //! small adapter.
 
+// This harness re-includes the compiler modules by path, so it sees the same
+// reference surface the main binary does but exercises only the lex/parse/heal
+// slice of it. Same rationale as the crate-level allow in `main.rs`.
+#![allow(dead_code)]
+
 use std::collections::BTreeMap;
 use std::fs;
 use std::process::ExitCode;

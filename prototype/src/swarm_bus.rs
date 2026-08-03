@@ -296,7 +296,7 @@ impl MessageBus {
 
     // ── Internal ──────────────────────────────────────────────────
 
-    fn deliver(&mut self, agent_id: AgentId, mut envelope: Envelope) {
+    fn deliver(&mut self, agent_id: AgentId, envelope: Envelope) {
         if let Some(mb) = self.mailboxes.get_mut(&agent_id) {
             if self.max_mailbox_depth > 0 && mb.queue.len() >= self.max_mailbox_depth {
                 self.stats.total_dropped += 1;

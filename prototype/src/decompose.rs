@@ -461,9 +461,9 @@ mod tests {
     #[test]
     fn parallel_waves_independent() {
         let mut d = dag();
-        let a = d.add_task("a", 1, &[]);
-        let b = d.add_task("b", 1, &[]);
-        let c = d.add_task("c", 1, &[]);
+        let _a = d.add_task("a", 1, &[]);
+        let _b = d.add_task("b", 1, &[]);
+        let _c = d.add_task("c", 1, &[]);
         let waves = d.parallel_waves().unwrap();
         assert_eq!(waves.len(), 1);
         assert_eq!(waves[0].len(), 3);

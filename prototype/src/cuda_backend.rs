@@ -3860,7 +3860,9 @@ __global__ void k_bf16_to_f32(const unsigned short* in, float* out, int n) {
     /// axis = shape[ax], inner = ∏shape[ax+1..]. Output drops `ax`.
     /// One thread per `outer*inner` output lane.
     fn sum_axis_any_f32_gpu(&self, a: &TensorHandle, ax: usize) -> Result<TensorHandle> {
-        let ndim = a.shape.len();
+        // Both callers (`sum_axis`, `mean_axis`) bounce to the CPU when
+        // `ax >= shape.len()`, so the index below cannot be out of range.
+        debug_assert!(ax < a.shape.len(), "axis {ax} out of range for shape {:?}", a.shape);
         let axis_len = a.shape[ax];
         let outer: usize = a.shape[..ax].iter().product();
         let inner: usize = a.shape[ax + 1..].iter().product();
@@ -4121,10 +4123,10 @@ mod gpu_tests {
             let (b1, b2, m, k, n) = (2usize, 3usize, 6usize, 4usize, 5usize);
             let batch = b1 * b2;
             let a: Vec<f32> = (0..batch * m * k)
-                .map(|i| (i as f32 * 0.017 - 0.5))
+                .map(|i| i as f32 * 0.017 - 0.5)
                 .collect();
             let b: Vec<f32> = (0..batch * k * n)
-                .map(|i| (i as f32 * 0.009 - 0.2))
+                .map(|i| i as f32 * 0.009 - 0.2)
                 .collect();
             let ag = cuda.from_slice_f32(&a, &[b1, b2, m, k]).unwrap();
             let bg = cuda.from_slice_f32(&b, &[b1, b2, k, n]).unwrap();
@@ -4344,7 +4346,7 @@ mod gpu_tests {
         // 2D last-axis: [4, 7] reduced on axis=1 → shape [4].
         {
             let shape = vec![4usize, 7];
-            let v: Vec<f32> = (0..28).map(|i| ((i as f32) * 0.11 - 1.0)).collect();
+            let v: Vec<f32> = (0..28).map(|i| (i as f32) * 0.11 - 1.0).collect();
             let g = cuda.from_slice_f32(&v, &shape).unwrap();
             let c = cpu.from_slice_f32(&v, &shape).unwrap();
 
@@ -4704,7 +4706,7 @@ mod gpu_tests {
                 return;
             }
         };
-        let v: Vec<f32> = (0..64).map(|i| (i as f32 * 0.05 - 1.6)).collect();
+        let v: Vec<f32> = (0..64).map(|i| i as f32 * 0.05 - 1.6).collect();
         let src = cuda.from_slice_f32(&v, &[8, 8]).unwrap();
 
         // F16: ~10-bit mantissa → rel err ≲ 1e-3 for O(1) values.

@@ -1,3 +1,17 @@
+// The prototype is a single binary that also carries the *reference surface* of
+// the language: full AST/HIR variants, the ontology's operation catalogue, and
+// subsystem APIs (leases, CRDTs, certs, sandbox, hot-reload) that exist so the
+// ontology and `--build=schema` can describe them and so agents can call them
+// over RAP. Many of those items therefore have no in-tree call site, which
+// `dead_code` reports as unused — ~85 such warnings, none of them defects.
+//
+// Deleting them would shrink the described language; leaving the lint on buries
+// real warnings in noise. So it is silenced crate-wide *here*, deliberately,
+// while every other lint stays on: a warning in this crate now means something.
+// If the reference surface is ever split into a library crate with `pub` items,
+// drop this and let visibility do the job instead.
+#![allow(dead_code)]
+
 mod aci;
 mod agent_runtime;
 mod ast;

@@ -4586,13 +4586,12 @@ mod tests {
         // since it only attends to itself. With deterministic weight init,
         // re-running the same model with the same input should produce the
         // same output, and changing token 1 or 2 should NOT change token 0.
-        let mut params2 = ParamStore::new();
         let alt_input = vec![1.0f32, 0.0, 999.0, 999.0, -999.0, -999.0];
         let alt_handle = backend.from_slice_f32(&alt_input, &[3, 2]).unwrap();
         let mut running2 = alt_handle;
         // Copy params from first run so the weights match.
         let blob = params.save(&backend).unwrap();
-        params2 = ParamStore::load(&blob, &backend).unwrap();
+        let mut params2 = ParamStore::load(&blob, &backend).unwrap();
         walk(&backend, &lowered.expr, &mut running2, &mut dispatched, &mut unsupported, &mut params2).unwrap();
         let out1 = bytes_to_f32(&backend.copy_to_host(&running).unwrap());
         let out2 = bytes_to_f32(&backend.copy_to_host(&running2).unwrap());
@@ -4640,7 +4639,7 @@ mod tests {
 
     #[test]
     fn sgd_step_is_noop_on_forward() {
-        let net = ast::NetDef {
+        let _net = ast::NetDef {
             name: "OptStub".into(),
             generics: Vec::new(),
             layers: vec![

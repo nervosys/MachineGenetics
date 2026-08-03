@@ -915,7 +915,6 @@ impl Interp {
             },
             Pattern::Or { patterns } => patterns.iter().any(|p| self.match_pat(p, val, env)),
             Pattern::Ref { pattern } => self.match_pat(pattern, val, env),
-            _ => false,
         }
     }
 
