@@ -6,6 +6,15 @@ numbers are machine-dependent; the shapes (throughput, scaling) are not.
 
 Date: 2026-06-10. Build: `release` for perf, `cargo test` for functionality.
 
+> **Re-verified 2026-08-03** — all three crates rebuilt from a clean cache and
+> tested: prototype **1,209** (1038 + 141 + 30), rmi **1,380**, forge **52** =
+> **2,641 passing, 0 failing, 0 warnings**. The suites have grown since this
+> document was written (prototype 1146 → 1209); no figure below has regressed.
+> The CUDA path was re-verified on hardware the same day: **1,269 passing**
+> (`cargo test --features cuda`, dual 3090 Ti), now built against the pinned
+> IronAccelerator tag `v2.2.0`. Reproduce everything with `scripts/test-all.ps1
+> -Bench -Cuda` (or `test-all.sh --bench --cuda`).
+
 ---
 
 ## 1. Functionality
@@ -13,7 +22,9 @@ Date: 2026-06-10. Build: `release` for perf, `cargo test` for functionality.
 ### Test suites (all green)
 | Suite | Tests | Cmd |
 |---|---|---|
-| MAGE prototype | **1146 pass** (+1 ignored perf harness) | `cargo test` |
+| MAGE prototype | **1146 pass** (+1 ignored perf harness) — *1209 as of 2026-08-03* | `cargo test` |
+| rmi (`cpu`) | **1380 pass** | `cargo test --no-default-features --features cpu` |
+| forge | **52 pass** | `cargo test` |
 | agentic-eval (AetherShell) | **80 pass** | `cargo test -p agentic-eval` |
 | SPINE `spine-agentic` | **285 pass** | `cargo test -p spine-agentic` |
 | SPINE `spine-mage` (ABL bridge) | **5 pass** | `cargo test -p spine-mage` |

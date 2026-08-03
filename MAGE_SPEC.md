@@ -1,7 +1,12 @@
 # MAGE (Machine Genetics) Language Specification
 
 **Version**: 1.0.0 (Draft)
-**Status**: Pre-implementation specification
+**Status**: Draft — partially implemented, and **not** reconciled with the
+ab-initio changes (optional `;`, layout blocks, no `let`, return/parameter type
+inference — roadmap Phase K). Where this document and the prototype disagree,
+**the prototype is authoritative**; `mage-parse --build=schema` and
+`MAGE_ONTOLOGY.json` are generated from the implementation and cannot drift. See
+[DOCS.md](DOCS.md).
 
 ---
 

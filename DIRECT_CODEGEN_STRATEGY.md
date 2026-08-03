@@ -1,5 +1,18 @@
 # MAGE Direct Codegen: Bypassing MLIR and LLVM
 
+> **Status: aspirational — never built.** ⚠️
+>
+> No part of this pipeline exists. There is no instruction encoder, object
+> writer, or native backend in the tree; the forked-rustc compiler that would
+> have hosted it was removed on 2026-06-11 (`b1b910f`). MLIR appears in the
+> prototype only as a dialect definition and lowering surface
+> (`prototype/src/mlir.rs`), not as a code-generating backend.
+>
+> MAGE executes two ways today, both real and both measured: the tree-walking
+> evaluator (`prototype/src/eval.rs`, `--eval`, 73/73 programs exact) and the ABL
+> compute backend (CPU, plus CUDA behind `--features cuda`). See
+> [ARCHITECTURE.md](ARCHITECTURE.md) and [DOCS.md](DOCS.md).
+
 This document defines the architecture for **MAGE Direct Codegen (RDC)** — a
 compilation pipeline that translates high-level MAGE source code directly to
 machine code without passing through MLIR, LLVM IR, or any third-party

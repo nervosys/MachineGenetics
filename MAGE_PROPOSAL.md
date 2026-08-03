@@ -4,7 +4,12 @@
 
 **Version:** 0.1.0-draft  
 **Date:** 2026-03-15  
-**Status:** Proposal  
+**Status:** Historical — the origin document.  
+
+> This is where the project started. It predates every measurement and the entire
+> ABL pivot, so parts of it are no longer the plan. Read
+> [README.md](README.md) and [ARCHITECTURE.md](ARCHITECTURE.md) for what MAGE is
+> now; [DOCS.md](DOCS.md) indexes the rest.
 
 ---
 

@@ -1,5 +1,13 @@
 # The Ideal Agentic-First Language — a measurement-grounded design
 
+> **Status: superseded by [AB_INITIO_DESIGN.md](AB_INITIO_DESIGN.md).**
+>
+> The analysis here was sound but its token "floor" turned out to be the floor of
+> the *then-current* design, not the irreducible one: a real-BPE measurement later
+> showed ceremony is ~half a program's tokens and is designable away. Kept for
+> provenance — the conclusions were revised, not the evidence. See
+> [DOCS.md](DOCS.md).
+
 **Goal:** maximize agentic-eval composite = `mean(token, determinism, reliability, safety)`.
 
 **Method:** design from what this session *measured*, not from intuition. Every

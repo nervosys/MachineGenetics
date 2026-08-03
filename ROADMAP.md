@@ -2,6 +2,14 @@
 
 > Tracking progress from prototype toward production. Steps 1–22 completed prior.
 > Each step is a concrete, testable increment.
+>
+> **Last verified: 2026-08-03** — all three crates built and tested from a clean
+> cache: prototype **1,209** (1038 + 141 + 30), rmi **1,380**, forge **52** —
+> **2,641 tests, 0 failures, 0 warnings**. Steps 1–78 below are the *language and
+> compiler* phases (through 2026-03). Phases I–N are the 2026-06 work — the ABL
+> binary track, the ab-initio redesign, the evaluator, Forge, and the
+> architecture DSL — which is what the README and MEASUREMENTS.md describe.
+> [Open items](#open--not-done) at the end are the honest remainder.
 
 ## Legend
 
@@ -140,3 +148,131 @@
 | 76   | Name resolution: AI items       | ✅      | `SymbolKind::Net`, `::Kb`, `::Evolve`, `::Train`; scoped resolution for layers in nets, rules in KBs                                                                                                                                                       |
 | 77   | MLIR lowering: AI ops           | ✅      | `MAGE.tensor.*`, `MAGE.neural.*`, `MAGE.evolve.*`, `MAGE.kb.*` dialect operations                                                                                                                                                              |
 | 78   | Agent-mode AI operators        | ✅      | Tensor op symbols `⊗`→matmul, `⊙`→hadamard, `⊤`→transpose, `⊥`→flatten, `▸`→pipeline; Pratt parser binding powers; type inference rules                                                                                                                    |
+
+---
+
+# Part II — the 2026-06 work
+
+> Phases A–H built *a language*. Phases I–N are the consequence of a measured
+> result that changed the plan: **source-token efficiency is a floor, not a win**
+> (MAGE source is ≈ Rust, `MEASUREMENTS.md` §2). The leverage is elsewhere — in a
+> binary artifact an agent constructs through a tool, in constructs that subsume
+> boilerplate, and in reject-by-construction. Every phase below is anchored to
+> commits and to a measurement.
+
+## Phase I: ABL — the tool-mediated construction track (Steps 79–88)
+
+> *The pivot.* An agent stops emitting source and instead calls a tool that
+> **constructs** the artifact, so invalid states are unrepresentable rather than
+> diagnosed. Named "Machine Language" on 06-09, renamed **Agentic Binary
+> Language (ABL)** the same day.
+
+| Step | Title | Status | Description |
+| ---- | ----- | ------ | ----------- |
+| 79 | Tool-mediated construction paradigm | ✅ | `--build=abl spec.json out.abl` — agent emits a *spec*, the compiler constructs the artifact; ARCHITECTURE.md documents the paradigm |
+| 80 | Self-describing schema | ✅ | `--build=schema` emits the full JSON contract: `ops` catalogue, `spec_format` per kind, and the complete error taxonomy with `fix` strings — an agent needs no docs |
+| 81 | Reject-by-construction errors | ✅ | Machine-readable `{code, message, fix}`: **B0000–B0006** (net), **K0001–K0007** (kb), **A0001–A0003** (agent), **S0001–S0006** (swarm), **U0001–U0003** (unified) |
+| 82 | kb construction + execution | ✅ | Horn-clause knowledge bases build to ABL and **execute** as forward-chaining Datalog; auto-fix repair (`--build=abl --fix`) |
+| 83 | Container v2 — serialized symbol table | ✅ | kb artifacts fully self-describing; predicate/term/param names round-trip |
+| 84 | Unified multi-item containers | ✅ | One ABL container holds net + kb (+ agent + swarm) — a whole neurosymbolic application in a single artifact |
+| 85 | agent + swarm construction | ✅ | Capability/approval policy and swarm topology/consensus/transport build, describe, and execute |
+| 86 | Round-trip fidelity | ✅ | Every item kind decompiles back to exact source; content hashes match across build→describe |
+| 87 | No-exec introspection | ✅ | `--describe=abl` reports structure as pure bounds-checked data — **12.6 µs** for an 858 B artifact, `exec:false` |
+| 88 | SPINE collaboration bridge | ✅ | ABL agents communicate over SPINE (Hyperlight); gap analysis + `spine-mage` bridge, 5 tests |
+
+## Phase J: Measurement infrastructure (Steps 89–92)
+
+> *"Ensure that all measurements are quantitative rather than qualitative, with
+> zero assumptions."* This phase exists because several earlier claims did not
+> survive measurement.
+
+| Step | Title | Status | Description |
+| ---- | ----- | ------ | ----------- |
+| 89 | `MEASUREMENTS.md` + perf harness | ✅ | `perf_measure.rs`; every figure reproducible via `cargo test --release perf_report -- --ignored` |
+| 90 | Cross-language executability harness | ✅ | `benchmarks/cross_lang` — compile+run 5 tasks across languages with a **real BPE** tokenizer, repo-relative paths (no local-path leakage) |
+| 91 | Datalog evaluator optimization | ✅ | Naive → **indexed semi-naive** (interning + `(pred,arg0)` index + delta): O(N²)→O(N) join, O(N³)→O(output) fixpoint, up to **~1430×** |
+| 92 | Token + reliability benches | ✅ | `token-bench` (100-task corpus vs Rust), `reliability-bench` (lex 100/100, parse 99/100, effective 100/100 with recovery) |
+
+## Phase K: Ab-initio language redesign (Steps 93–99)
+
+> `AB_INITIO_DESIGN.md` — measured with real cl100k/o200k tokenizers, ceremony is
+> ~half the tokens of a program and is designable away. Each step below was
+> migrated by TDD; **two were evaluated and declined as negative-sum**, which is
+> recorded rather than hidden.
+
+| Step | Title | Status | Description |
+| ---- | ----- | ------ | ----------- |
+| 93 | Optional `;` | ✅ | Newline-terminated statements |
+| 94 | Brace-optional layout blocks | ✅ | Offside rule |
+| 95 | Return-type inference | ✅ | Drop `-> T` from value-returning functions |
+| 96 | Parameter-type inference | ✅ | Drop param annotations |
+| 97 | Eliminate `let` | ✅ | `let` statements removed from the language as superfluous |
+| 98 | Effect inference at trust boundaries | ✅ | Sound inference (§3e) |
+| 99 | Migration steps 2c & 3 | ⬚ | **Declined — measured negative-sum.** Evaluated, found to cost more than they save, and deliberately not implemented |
+
+## Phase L: The vocabulary frontier + evaluator (Steps 100–106)
+
+> A standard vocabulary where each name is a single BPE token, plus the runtime
+> that makes MAGE genuinely *executable* rather than only checkable. Step 103 is
+> ~30 commits of evaluator completion on 06-11.
+
+| Step | Title | Status | Description |
+| ---- | ----- | ------ | ----------- |
+| 100 | Register the standard vocabulary | ✅ | `map`/`filter`/`fold`/`sum`/`freq`/`scan` + string/text ops — measured 60–65 % reduction vs explicit loops |
+| 101 | Precise total typing for the vocabulary | ✅ | Every vocabulary entry totally typed |
+| 102 | Publish vocabulary in the self-ontology | ✅ | Drift-proof — the ontology is generated from the implementation |
+| 103 | Complete the evaluator (`eval.rs`, `--eval`) | ✅ | Full expression/statement coverage: match, structs (`@Name{…}`), tuple/slice/struct patterns, f-strings, `?`/Option, compound assignment, bitwise/shift, slice indexing, guard/defer, nested + mutually-recursive functions, `.await` |
+| 104 | `eval_bench` correctness suite | ✅ | **73/73** programs compute exact expected results |
+| 105 | Digital rain representation | ✅ | Matrix-inspired dense-UTF-8 form (`rain.rs`) + the Remotion render in `video/` |
+| 106 | Cross-language executability result | ✅ | MAGE executes **5/5** tasks and is the tersest runnable language (173 cl100k tokens vs Rust 275, Java 297) |
+
+## Phase M: Forge — the agentic-first toolchain (Steps 107–111)
+
+| Step | Title | Status | Description |
+| ---- | ----- | ------ | ----------- |
+| 107 | Project toolchain | ✅ | `forge new/check/build/run/info` |
+| 108 | Agentic-first surface | ✅ | `manifest`/`describe` + `--json` on every command — machine-readable by default |
+| 109 | `forge fmt` | ✅ | Completes the toolchain lifecycle |
+| 110 | Content-addressed block registry | ✅ | `forge publish` + cross-project resolve; block bodies live **off-context**, referenced by name |
+| 111 | Examples run via forge | ✅ | `hello-world`, `data-structures` check + run through the toolchain |
+
+## Phase N: The architecture DSL — a composition algebra (Steps 112–118)
+
+> `ARCHITECTURE_DSL.md`. The measured premise: "higher level → fewer tokens" holds
+> **only where the construct subsumes boilerplate**. So build operators that
+> subsume *depth*, and let a shared block library carry the rest off-context.
+
+| Step | Title | Status | Description |
+| ---- | ----- | ------ | ----------- |
+| 112 | `stack N { … }` repeat combinator | ✅ | O(1) surface cost in depth |
+| 113 | Named `block` macros | ✅ | The leaf-library tier, registry-ready |
+| 114 | `residual` / `branch` / `wrap` | ✅ | Dataflow composition operators; blocks can hold combinators |
+| 115 | REPEAT-folded binary | ✅ | Stacked nets are O(1) in depth **in bytes too** |
+| 116 | CPU execution of RES_ADD / PAR | ✅ | The operators lower to RMIL primitives and actually run |
+| 117 | Typed-composition gate | ✅ | `--check` rejects shape-mismatched net compositions |
+| 118 | Capstone benchmark | ✅ | A real residual GPT (Embedding → batched 3-D attention → …) runs end to end |
+
+## Phase O: Release (Steps 119–122)
+
+| Step | Title | Status | Description |
+| ---- | ----- | ------ | ----------- |
+| 119 | Rebrand + vendor rmi | ✅ | REDOX → MechGen → **MAGE (Machine Genetics)**; `RecursiveMachineIntelligence` vendored into the monorepo |
+| 120 | Security audit | ✅ | CVE/RustSec, NIST FIPS 140-3, MITRE ATT&CK, CMMC 2.0 — one High CVE fixed (`lz4_flex` ≥ 0.11.6), rest triaged in `SECURITY_AUDIT.md` |
+| 121 | Dead-subsystem removal | ✅ | Forked-rustc compiler, REDOX-named tools and CI removed |
+| 122 | v0.2.0 tag + announcement | ✅ | prototype + forge at 0.2.0, tagged, blog post + X thread |
+
+---
+
+## Open / not done
+
+> The honest remainder as of **2026-08-03**. Nothing here is a regression; these
+> are known gaps, not surprises.
+
+| # | Item | Status | Notes |
+| - | ---- | ------ | ----- |
+| 1 | CUDA **runtime** correctness not CI-verified | 🔧 | *Compile* coverage landed 2026-08-03: the `cuda` job in CI runs `cargo check --features cuda --all-targets`, which works on a driverless runner because IronAccelerator dispatches via `libloading`. What CI still cannot do is *run* the kernels — GPU correctness (the P101–P139 precision/quantization stack) is verified only on the dev machine: **1,269 tests green** on dual 3090 Ti via `cargo test --features cuda`. Closing this needs a GPU runner. |
+| 2 | IronAccelerator version drift | ✅ | **Fixed 2026-08-03.** Was a path dep on a sibling checkout, so the lock silently re-resolved whenever that checkout moved (it drifted 1.2.0 → 2.2.0 exactly this way) and `--features cuda` could not build from a clean clone. Now pinned to the published tag `v2.2.0` (rev `46ceb09d`); `prototype/Cargo.toml` carries a commented `[patch]` block for local IronAccelerator development. |
+| 3 | Steps 2c & 3 of the ab-initio migration | ⬚ | Declined as negative-sum (step 99). Revisit only with new measurement. |
+| 4 | Single-workspace build | ⬚ | The three crates are separate workspaces by design (rmi is vendored and must stay independently buildable). `scripts/test-all.{ps1,sh}` is the supported way to build/test everything at once — see the note in `ARCHITECTURE.md`. |
+| 5 | `video/out/agentic-rain.mp4` in git | 🔧 | A 38 MB binary is tracked, and the `.git` directory is ~158 MB largely because of it plus the 12 MB of banner PNGs. Fine for now; if the repo is ever cloned often, move it to a release asset or LFS. |
+| 6 | Reference surface has no call sites | 🔧 | ~85 items exist for the ontology / `--build=schema` / RAP surface but are unused in-tree, so `dead_code` is silenced crate-wide in `prototype` (documented at the top of `main.rs`). The real fix is splitting the reference surface into a library crate where `pub` carries the meaning. |

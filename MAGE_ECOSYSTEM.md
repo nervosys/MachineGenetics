@@ -2,6 +2,11 @@
 
 _MAGE Language — Package Registry, Migration Tooling, IDE Integration, Agent Training, and Standard Library_
 
+> **Status: design, partly realized.** The registry and toolchain sections are
+> built — see [`forge/`](forge/) (`forge new/check/build/run/info/fmt/publish`,
+> content-addressed block registry). The IDE-integration and agent-training
+> sections remain largely aspirational. See [DOCS.md](DOCS.md).
+
 ---
 
 ## Table of Contents

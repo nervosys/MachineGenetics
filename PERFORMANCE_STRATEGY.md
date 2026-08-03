@@ -1,5 +1,18 @@
 # MAGE Performance Strategy: Faster Than C, C++, and Rust
 
+> **Status: aspirational — not built, not measured.** ⚠️
+>
+> This document describes a native-code compiler that does not exist. There is no
+> machine-code emitter in this repository, and no benchmark supports the title's
+> claim. The forked-rustc compiler that would have hosted this pipeline was
+> removed on 2026-06-11 (`b1b910f`).
+>
+> For what MAGE's performance actually is — measured, with reproduction commands
+> — see [MEASUREMENTS.md](MEASUREMENTS.md). The real result is a fast *front end*
+> (~41 MB/s lex+parse, ~13 M tokens/s) and a µs-scale ABL build/decode path, not
+> generated-code speed. See [DOCS.md](DOCS.md) for how this file relates to the
+> rest of the documentation.
+
 This document defines the concrete strategy by which MAGE outperforms C, C++,
 and Rust across every measurable performance metric. The approach is not
 incremental — it exploits information asymmetry that only an agentic AI language
