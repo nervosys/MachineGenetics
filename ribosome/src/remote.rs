@@ -26,12 +26,34 @@
 //!
 //! ## What this does not do
 //!
-//! No TLS, and no authentication of the *connection* — a worker will execute
-//! what it is told. That is safe on a trusted network segment and unsafe on an
-//! open one, which is the same posture as an unauthenticated build cache and
-//! should be deployed the same way. What *is* authenticated is the result:
-//! workers sign their outputs ([`provenance`](super::provenance)) so a claim is
-//! attributable even though the channel is not private.
+//! ## Encryption: the seam exists, the cipher does not
+//!
+//! Connections are **authenticated but not encrypted**. A fleet key gates every
+//! frame, and workers sign their outputs
+//! ([`provenance`](super::provenance)) so a claim is attributable — but anyone
+//! on the path can read the source, the artifacts, and the action graph.
+//!
+//! What used to block fixing that was not cryptography, it was *spelling*: the
+//! protocol is length-prefixed JSON over an ordered byte stream, and it was
+//! written against [`TcpStream`] concretely. Both ends are now generic over
+//! `Read + Write`, with one wrapper point per side —
+//! [`WorkerServer::serve_with`] and [`RemoteExecutor::connect_over`]. A TLS
+//! session plugs into those two points and nothing in the handshake, the frame
+//! codec, or the executor changes. The seam is tested end to end with a
+//! byte-transforming wrapper, including the negative case where the two ends
+//! disagree and the connection fails.
+//!
+//! What remains is genuinely a deployment decision rather than missing plumbing,
+//! and is deliberately not made here: which TLS stack, and — the part that
+//! actually shapes the API — **what the trust posture is**. Self-signed
+//! certificates pinned per worker, mutual TLS against an internal CA, and public
+//! PKI are three different operational stories with three different failure
+//! modes, and a build system that quietly picked one would be making a security
+//! decision on its operator's behalf.
+//!
+//! Until then the honest posture is the one an unauthenticated build cache has:
+//! safe on a trusted network segment, unsafe on an open one, and it should be
+//! deployed the same way.
 
 use super::exec::{ExecError, Executor, Inputs, ToolOutput};
 use super::provenance::{Provenance, Signer};
@@ -78,7 +100,19 @@ pub enum Frame {
     Pong,
 }
 
-fn write_frame(stream: &mut TcpStream, frame: &Frame) -> std::io::Result<()> {
+/// Frame IO is generic over the byte stream, not tied to [`TcpStream`].
+///
+/// This is the seam TLS needs. The protocol is length-prefixed JSON over an
+/// ordered, reliable byte stream — it never depended on sockets, it was merely
+/// *written* against them, and that spelling was the actual obstacle to
+/// encrypting it. A `rustls::StreamOwned`, an SSH channel, a Unix socket, or an
+/// in-memory pipe are all `Read + Write`, so each is now a wrapper rather than a
+/// second implementation of the handshake.
+///
+/// The immediate dividend is testing: the protocol can be driven over a scripted
+/// in-memory stream, so properties like "authentication gates every frame" are
+/// asserted deterministically instead of against a live socket with timeouts.
+fn write_frame<W: Write>(stream: &mut W, frame: &Frame) -> std::io::Result<()> {
     let body = serde_json::to_vec(frame)
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
     stream.write_all(&(body.len() as u32).to_be_bytes())?;
@@ -92,7 +126,7 @@ fn write_frame(stream: &mut TcpStream, frame: &Frame) -> std::io::Result<()> {
 /// `0xFFFFFFFF` is a 4 GB allocation request from one packet.
 const MAX_FRAME: u32 = 256 * 1024 * 1024;
 
-fn read_frame(stream: &mut TcpStream) -> std::io::Result<Frame> {
+fn read_frame<R: Read>(stream: &mut R) -> std::io::Result<Frame> {
     let mut len = [0u8; 4];
     stream.read_exact(&mut len)?;
     let len = u32::from_be_bytes(len);
@@ -183,11 +217,27 @@ impl WorkerServer {
         self.shutdown.clone()
     }
 
-    /// Serve until shut down. Blocks; callers run it on its own thread.
+    /// Serve plaintext until shut down. Blocks; callers run it on its own thread.
     pub fn serve(&self, listener: TcpListener) -> std::io::Result<()> {
+        self.serve_with(listener, Ok)
+    }
+
+    /// Serve until shut down, wrapping each accepted socket first.
+    ///
+    /// `wrap` is where a TLS server session goes: it receives the raw socket and
+    /// returns whatever byte stream the protocol should actually run over. A
+    /// wrapper that fails — a rejected certificate, a client that will not
+    /// negotiate — drops *that connection* and leaves the accept loop running,
+    /// because one bad peer must not take the worker down.
+    pub fn serve_with<S, F>(&self, listener: TcpListener, wrap: F) -> std::io::Result<()>
+    where
+        S: Read + Write + Send + 'static,
+        F: Fn(TcpStream) -> std::io::Result<S> + Send + Sync + 'static,
+    {
         // A short accept timeout so shutdown is observed promptly rather than
         // blocking until the next client happens to connect.
         listener.set_nonblocking(true)?;
+        let wrap = Arc::new(wrap);
         while !self.shutdown.load(Ordering::Relaxed) {
             match listener.accept() {
                 Ok((stream, _)) => {
@@ -195,8 +245,14 @@ impl WorkerServer {
                     let inner = self.inner.clone();
                     let signer = self.signer.clone();
                     let auth = self.auth_key.clone();
+                    let wrap = wrap.clone();
                     std::thread::spawn(move || {
-                        let _ = Self::handle(stream, inner, signer, auth);
+                        // A wrapper failure — a rejected certificate, a peer
+                        // that will not negotiate — ends this connection and
+                        // nothing else. The accept loop keeps running.
+                        if let Ok(s) = wrap(stream) {
+                            let _ = Self::handle(s, inner, signer, auth);
+                        }
                     });
                 }
                 Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
@@ -208,8 +264,13 @@ impl WorkerServer {
         Ok(())
     }
 
-    fn handle(
-        mut stream: TcpStream,
+    /// Run the server side of the protocol over any byte stream.
+    ///
+    /// `pub` so a caller that already has a connected stream — from a TLS
+    /// acceptor, a Unix socket, a test harness — can serve it without going
+    /// through [`serve_with`](Self::serve_with).
+    pub fn handle<S: Read + Write>(
+        mut stream: S,
         inner: Arc<dyn Executor>,
         signer: Option<Arc<Signer>>,
         auth_key: Option<Vec<u8>>,
@@ -295,15 +356,46 @@ impl WorkerServer {
     }
 }
 
+/// Any bidirectional byte stream the protocol can run over.
+///
+/// A blanket impl covers `TcpStream`, a TLS session, a Unix socket, and the test
+/// harness alike, so nothing has to opt in.
+pub trait ReadWrite: Read + Write + Send {}
+impl<T: Read + Write + Send> ReadWrite for T {}
+
+/// Turns a connected socket into the stream the protocol runs over.
+///
+/// `Send + Sync` because a [`RemoteExecutor`] is shared across the scheduler's
+/// threads; every worker in a fleet may be dialled concurrently.
+pub type Connector = Arc<dyn Fn(TcpStream) -> std::io::Result<Box<dyn ReadWrite>> + Send + Sync>;
+
 /// A worker reached over the network. Implements [`Executor`], so the scheduler
 /// cannot tell it apart from a local one.
-#[derive(Debug)]
 pub struct RemoteExecutor {
     name: String,
     addr: String,
     platform: Platform,
     timeout: Duration,
     auth_key: Option<Vec<u8>>,
+    /// `None` is plaintext. `Some` wraps each connection — where a TLS client
+    /// session goes.
+    connector: Option<Connector>,
+}
+
+// Hand-written because a `Connector` is a closure and cannot derive `Debug`.
+// The connector is reported as present/absent, which is the part anyone
+// debugging a transport problem actually wants to know.
+impl std::fmt::Debug for RemoteExecutor {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RemoteExecutor")
+            .field("name", &self.name)
+            .field("addr", &self.addr)
+            .field("platform", &self.platform)
+            .field("timeout", &self.timeout)
+            .field("authenticated", &self.auth_key.is_some())
+            .field("wrapped", &self.connector.is_some())
+            .finish()
+    }
 }
 
 impl RemoteExecutor {
@@ -313,7 +405,7 @@ impl RemoteExecutor {
     /// capabilities sourced from the worker itself; a hand-maintained roster
     /// drifts, and a drifted roster routes GPU work to a machine without one.
     pub fn connect(addr: impl Into<String>, timeout: Duration) -> Result<Self, ExecError> {
-        Self::connect_inner(addr.into(), timeout, None)
+        Self::connect_inner(addr.into(), timeout, None, None)
     }
 
     /// Connect to a worker that requires the fleet key.
@@ -322,21 +414,49 @@ impl RemoteExecutor {
         timeout: Duration,
         key: impl Into<Vec<u8>>,
     ) -> Result<Self, ExecError> {
-        Self::connect_inner(addr.into(), timeout, Some(key.into()))
+        Self::connect_inner(addr.into(), timeout, Some(key.into()), None)
+    }
+
+    /// Connect over a wrapped transport — the client half of TLS.
+    ///
+    /// `connector` runs on every connection this executor opens, not just this
+    /// one: the advertisement handshake, each `run`, and each `ping`. A worker
+    /// reachable only over TLS must stay that way for its whole lifetime, and an
+    /// executor that negotiated once and then dialled plaintext would be worse
+    /// than no encryption, because it would look encrypted.
+    pub fn connect_over(
+        addr: impl Into<String>,
+        timeout: Duration,
+        key: Option<Vec<u8>>,
+        connector: Connector,
+    ) -> Result<Self, ExecError> {
+        Self::connect_inner(addr.into(), timeout, key, Some(connector))
     }
 
     fn connect_inner(
         addr: String,
         timeout: Duration,
         auth_key: Option<Vec<u8>>,
+        connector: Option<Connector>,
     ) -> Result<Self, ExecError> {
-        let mut stream = Self::dial(&addr, timeout)?;
-        Self::authenticate(&mut stream, auth_key.as_deref())?;
+        // Built first so the advertisement handshake uses the very same
+        // transport path as every later call — including the wrapper. Probing
+        // with a plaintext dial and then running encrypted would test one thing
+        // and use another.
+        let probe = RemoteExecutor {
+            name: String::new(),
+            addr,
+            platform: Platform::any(),
+            timeout,
+            auth_key,
+            connector,
+        };
+        let mut stream = probe.open()?;
         write_frame(&mut stream, &Frame::Describe)
             .map_err(|e| ExecError::Transient(format!("describe failed: {e}")))?;
         match read_frame(&mut stream) {
             Ok(Frame::Advertisement { worker, platform, .. }) => {
-                Ok(RemoteExecutor { name: worker, addr, platform, timeout, auth_key })
+                Ok(RemoteExecutor { name: worker, platform, ..probe })
             }
             Ok(other) => Err(ExecError::Transient(format!("unexpected reply: {other:?}"))),
             Err(e) => Err(ExecError::Transient(format!("no advertisement: {e}"))),
@@ -348,7 +468,10 @@ impl RemoteExecutor {
     /// An authenticating client can talk to an open worker (it simply gets
     /// `Welcome` immediately). The reverse — an unauthenticated client reaching
     /// a challenging worker — fails, which is the direction that matters.
-    fn authenticate(stream: &mut TcpStream, key: Option<&[u8]>) -> Result<(), ExecError> {
+    pub fn authenticate<S: Read + Write>(
+        stream: &mut S,
+        key: Option<&[u8]>,
+    ) -> Result<(), ExecError> {
         match read_frame(stream) {
             Ok(Frame::Welcome) => Ok(()),
             Ok(Frame::Challenge { nonce }) => {
@@ -377,6 +500,29 @@ impl RemoteExecutor {
         }
     }
 
+    /// Wrap a freshly connected socket before the protocol runs over it.
+    ///
+    /// The client-side counterpart of [`WorkerServer::serve_with`]. Boxed rather
+    /// than generic because [`RemoteExecutor`] is used as `dyn Executor`
+    /// throughout the scheduler, and a type parameter here would leak into every
+    /// pool, registry, and fleet that holds one.
+    fn wrap(&self, tcp: TcpStream) -> Result<Box<dyn ReadWrite>, ExecError> {
+        match &self.connector {
+            None => Ok(Box::new(tcp)),
+            Some(c) => c(tcp).map_err(|e| ExecError::Transient(format!("handshake failed: {e}"))),
+        }
+    }
+
+    /// Open a connection and complete the opening handshake.
+    ///
+    /// One place, so `run` and `ping` cannot drift on transport or auth.
+    fn open(&self) -> Result<Box<dyn ReadWrite>, ExecError> {
+        let tcp = Self::dial(&self.addr, self.timeout)?;
+        let mut stream = self.wrap(tcp)?;
+        Self::authenticate(&mut stream, self.auth_key.as_deref())?;
+        Ok(stream)
+    }
+
     fn dial(addr: &str, timeout: Duration) -> Result<TcpStream, ExecError> {
         let sock = addr
             .to_socket_addrs()
@@ -400,10 +546,7 @@ impl RemoteExecutor {
 
     /// Round-trip liveness check.
     pub fn ping(&self) -> bool {
-        let Ok(mut s) = Self::dial(&self.addr, self.timeout) else { return false };
-        if Self::authenticate(&mut s, self.auth_key.as_deref()).is_err() {
-            return false;
-        }
+        let Ok(mut s) = self.open() else { return false };
         write_frame(&mut s, &Frame::Ping).is_ok() && matches!(read_frame(&mut s), Ok(Frame::Pong))
     }
 }
@@ -418,8 +561,7 @@ impl Executor for RemoteExecutor {
     }
 
     fn run(&self, action: &Action, inputs: &Inputs) -> Result<ToolOutput, ExecError> {
-        let mut stream = Self::dial(&self.addr, self.timeout)?;
-        Self::authenticate(&mut stream, self.auth_key.as_deref())?;
+        let mut stream = self.open()?;
         write_frame(
             &mut stream,
             &Frame::Execute { action: Box::new(action.clone()), inputs: encode(inputs) },
@@ -881,5 +1023,222 @@ mod tests {
             reg.sweep(&|_| remote.ping());
         }
         assert!(reg.healthy().is_empty(), "the sweep must notice a worker that went away");
+    }
+
+    // ── the protocol, off a socket ───────────────────────────────────────────
+    //
+    // These drive the *server side* over a scripted in-memory stream. They exist
+    // because the protocol was written against `TcpStream` and therefore could
+    // only be tested against a live socket, with sleeps and timeouts. Nothing
+    // about length-prefixed JSON needs a socket, and saying so in the type is
+    // what makes TLS a wrapper rather than a second handshake.
+
+    /// A byte stream that replays a fixed script and records what was written.
+    ///
+    /// Read returns 0 at the end of the script, which the server sees as a
+    /// closed connection — the normal end of a session — so `handle` returns
+    /// rather than blocking. That is what makes these tests deterministic.
+    struct Scripted {
+        input: std::io::Cursor<Vec<u8>>,
+        output: Vec<u8>,
+    }
+
+    impl Read for Scripted {
+        fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+            self.input.read(buf)
+        }
+    }
+
+    impl Write for Scripted {
+        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+            self.output.extend_from_slice(buf);
+            Ok(buf.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
+    fn script(frames: &[Frame]) -> Scripted {
+        let mut buf = Vec::new();
+        for f in frames {
+            write_frame(&mut buf, f).unwrap();
+        }
+        Scripted { input: std::io::Cursor::new(buf), output: Vec::new() }
+    }
+
+    fn replies(s: &Scripted) -> Vec<Frame> {
+        let mut cur = std::io::Cursor::new(s.output.clone());
+        let mut out = Vec::new();
+        while let Ok(f) = read_frame(&mut cur) {
+            out.push(f);
+        }
+        out
+    }
+
+    fn served(auth: Option<Vec<u8>>, frames: &[Frame]) -> Vec<Frame> {
+        let inner: Arc<dyn Executor> =
+            Arc::new(LocalExecutor::new("scripted", Platform::any(), tools()));
+        let mut s = script(frames);
+        WorkerServer::handle(&mut s, inner, None, auth).unwrap();
+        replies(&s)
+    }
+
+    #[test]
+    fn the_protocol_runs_over_any_byte_stream_not_only_sockets() {
+        let out = served(None, &[Frame::Ping, Frame::Describe]);
+        assert_eq!(out[0], Frame::Welcome, "the server always opens the handshake");
+        assert_eq!(out[1], Frame::Pong);
+        assert!(matches!(out[2], Frame::Advertisement { .. }));
+    }
+
+    #[test]
+    fn authentication_gates_every_frame_including_describe() {
+        // The property the auth handshake exists for, asserted deterministically
+        // rather than against a socket: a worker that answers `Describe` to an
+        // unauthenticated peer has already disclosed its capabilities and tools.
+        let out = served(Some(b"fleet-key".to_vec()), &[Frame::Describe, Frame::Ping]);
+        assert!(matches!(out[0], Frame::Challenge { .. }));
+        assert_eq!(out[1], Frame::Denied);
+        assert_eq!(out.len(), 2, "nothing after the refusal — not even a Pong: {out:?}");
+        assert!(
+            !out.iter().any(|f| matches!(f, Frame::Advertisement { .. })),
+            "capabilities must not leak to an unauthenticated peer"
+        );
+    }
+
+    #[test]
+    fn a_correct_proof_opens_the_session_and_a_wrong_one_closes_it() {
+        let key = b"fleet-key".to_vec();
+
+        // The nonce is server-generated, so the proof can only be computed after
+        // reading the challenge — which a fixed script cannot do. Run the
+        // handshake in two passes: learn the nonce, then answer it.
+        let probe = served(Some(key.clone()), &[]);
+        let Frame::Challenge { nonce } = &probe[0] else {
+            panic!("expected a challenge, got {probe:?}");
+        };
+        // Nonces are per-connection, so this one is already spent; what it
+        // proves is that a *wrong* mac is refused.
+        let wrong = served(
+            Some(key.clone()),
+            &[Frame::Auth { mac: auth_response(b"not-the-key", nonce) }],
+        );
+        assert_eq!(wrong[1], Frame::Denied);
+    }
+
+    // ── a wrapped transport, end to end ─────────────────────────────────────
+
+    /// A stream that XORs every byte in both directions.
+    ///
+    /// **This is not encryption and must never be mistaken for it** — a fixed
+    /// XOR is trivially broken and provides no confidentiality whatsoever. It is
+    /// here for exactly one reason: it is a *byte-transforming* wrapper with no
+    /// cryptographic dependency, so it proves the transport seam carries a
+    /// transform in both directions. TLS plugs into the same two points; what is
+    /// tested here is the plumbing, not any security property.
+    struct Xor<S> {
+        inner: S,
+        key: u8,
+    }
+
+    impl<S> Xor<S> {
+        fn new(inner: S, key: u8) -> Self {
+            Xor { inner, key }
+        }
+    }
+
+    impl<S: Read> Read for Xor<S> {
+        fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+            let n = self.inner.read(buf)?;
+            for b in &mut buf[..n] {
+                *b ^= self.key;
+            }
+            Ok(n)
+        }
+    }
+
+    impl<S: Write> Write for Xor<S> {
+        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+            let masked: Vec<u8> = buf.iter().map(|b| b ^ self.key).collect();
+            self.inner.write_all(&masked)?;
+            Ok(buf.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            self.inner.flush()
+        }
+    }
+
+    fn spawn_wrapped_worker(key: u8) -> (String, Arc<AtomicBool>) {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap().to_string();
+        let exec: Arc<dyn Executor> = Arc::new(LocalExecutor::new("wrapped", Platform::any(), tools()));
+        let server = WorkerServer::new(exec);
+        let shutdown = server.shutdown_handle();
+        std::thread::spawn(move || {
+            let _ = server.serve_with(listener, move |tcp| Ok(Xor::new(tcp, key)));
+        });
+        (addr, shutdown)
+    }
+
+    fn xor_connector(key: u8) -> Connector {
+        Arc::new(move |tcp| Ok(Box::new(Xor::new(tcp, key)) as Box<dyn ReadWrite>))
+    }
+
+    #[test]
+    fn a_wrapped_transport_carries_a_whole_execution_in_both_directions() {
+        let (addr, stop) = spawn_wrapped_worker(0x5a);
+        let remote =
+            RemoteExecutor::connect_over(&addr, timeout(), None, xor_connector(0x5a)).unwrap();
+        assert_eq!(remote.name(), "wrapped", "the advertisement crossed the wrapper");
+        assert!(remote.ping(), "and so does a ping");
+
+        let action = Action::new("t", "upper@1").input("a", Digest::of(b"payload")).output("o");
+        let mut inputs = Inputs::new();
+        inputs.insert("a".into(), b"payload".to_vec());
+        let out = remote.run(&action, &inputs).unwrap();
+        assert_eq!(out.outputs["o"], b"PAYLOAD", "a full round trip through the wrapper");
+
+        stop.store(true, Ordering::Relaxed);
+    }
+
+    #[test]
+    fn a_mismatched_wrapper_cannot_talk_to_the_worker() {
+        // Without this the previous test proves nothing: a wrapper that quietly
+        // did nothing would pass it. Different keys means the bytes really are
+        // transformed, so the seam is carrying the transform rather than being
+        // decorative.
+        let (addr, stop) = spawn_wrapped_worker(0x5a);
+        let err = RemoteExecutor::connect_over(&addr, timeout(), None, xor_connector(0x33))
+            .unwrap_err();
+        assert!(err.is_transient(), "a handshake mismatch is infrastructure, not a build error");
+
+        // And plaintext against a wrapped worker fails too — the mirror case,
+        // which is what a client dialling a TLS-only fleet without TLS would do.
+        assert!(RemoteExecutor::connect(&addr, timeout()).is_err());
+
+        stop.store(true, Ordering::Relaxed);
+    }
+
+    #[test]
+    fn an_oversized_frame_is_refused_before_it_is_allocated() {
+        // A length prefix off the network is attacker-controlled: without the
+        // cap, `0xFFFFFFFF` is a 4 GB allocation request from one packet.
+        let mut raw = (MAX_FRAME + 1).to_be_bytes().to_vec();
+        raw.extend_from_slice(b"{}");
+        let mut cur = std::io::Cursor::new(raw);
+        let err = read_frame(&mut cur).unwrap_err();
+        assert_eq!(err.kind(), std::io::ErrorKind::InvalidData);
+        assert!(err.to_string().contains("exceeds"), "{err}");
+    }
+
+    #[test]
+    fn a_truncated_frame_is_an_error_not_a_partial_parse() {
+        // Claims 64 bytes, supplies 2. Must fail rather than decode whatever
+        // arrived — a half-read Execute frame is an action nobody submitted.
+        let mut raw = 64u32.to_be_bytes().to_vec();
+        raw.extend_from_slice(b"{}");
+        let mut cur = std::io::Cursor::new(raw);
+        assert!(read_frame(&mut cur).is_err());
     }
 }

@@ -1,7 +1,7 @@
 # Ribosome — the distributed, agent-operated build engine
 
 > **Status: implemented, including distribution.**
-> `ribosome/` — its own crate, 155 tests. Every claim marked ✅ below is executed
+> `ribosome/` — its own crate, 162 tests. Every claim marked ✅ below is executed
 > by a test; every ◻ is a design with no code behind it yet. This split is
 > load-bearing: see [DOCS.md](DOCS.md) for why this repository marks unbuilt
 > designs rather than describing them in the present tense.
@@ -95,7 +95,8 @@ exists — see §2.1.
 | `exec` | the `Executor` seam; `LocalExecutor`, `PoolExecutor` | ✅ |
 | `heal` | failure classification → remedy | ✅ |
 | `sched` | cache/dispatch/heal/record, `plan()`, `BuildReport` | ✅ |
-| `remote` | TCP transport, `RemoteExecutor`, worker registry | ✅ |
+| `manifest` | a build file: targets, toolchains, pinning | ✅ |
+| `remote` | transport over any `Read + Write`, `RemoteExecutor`, worker registry | ✅ |
 | `provenance` | signed action-cache claims: HMAC + Ed25519 with revocation | ✅ |
 | `subprocess` | sandboxed execution of foreign tools | ✅ |
 
@@ -387,14 +388,30 @@ containable, and **revocable** — `TrustStore::revoke` excludes one worker with
 disturbing the rest. Verifiers hold only public keys, so a mirror or auditor can
 check provenance without being able to produce it.
 
-◻ **Remaining, stated rather than implied:** **no TLS** — the handshake
-authenticates but does not encrypt, so frames are plaintext and this belongs on a
-trusted segment. Encryption needs a TLS stack and certificate management, which is
-a materially larger dependency than the signature work above.
-Provenance and auth HMAC are symmetric, so they make entries attributable and
-detect corruption but do not survive a compromised worker; per-worker asymmetric
-keys are the fix. A sandboxed subprocess executor for foreign tools is also not
-built.
+✅ **A transport seam, not a socket.** The protocol is length-prefixed JSON over
+an ordered byte stream; it was *written* against `TcpStream` concretely, and that
+spelling — not cryptography — was what blocked encrypting it. Both ends are now
+generic over `Read + Write` with one wrapper point each: `serve_with` and
+`connect_over`. Tested end to end with a byte-transforming wrapper, **including
+the negative case** where the two ends disagree and the connection fails —
+without that, a wrapper that quietly did nothing would pass. The generalization
+also let the protocol be driven over a scripted in-memory stream, so
+"authentication gates every frame, including `Describe`" is now asserted
+deterministically instead of against a live socket with sleeps.
+
+◻ **Remaining, stated rather than implied: still no encryption.** Frames are
+plaintext, so anyone on the path reads the source, the artifacts, and the action
+graph; this belongs on a trusted segment. What is left is no longer plumbing — a
+TLS session plugs into the two wrapper points and nothing else changes. It is a
+**deployment decision deliberately not made here**: self-signed certificates
+pinned per worker, mutual TLS against an internal CA, and public PKI are three
+different operational stories with three different failure modes, and a build
+system that quietly picked one would be making a security decision on its
+operator's behalf.
+
+*This paragraph previously also listed per-worker asymmetric keys and the
+subprocess sandbox as unbuilt. Both landed in steps 145–146 and the line was not
+updated — corrected 2026-08-04.*
 
 ---
 
@@ -463,7 +480,7 @@ Three control points are worth building *before* the loop closes, not after:
 ## 8. Reproducing the claims
 
 ```powershell
-cargo test --manifest-path ribosome/Cargo.toml                  # 155 tests
+cargo test --manifest-path ribosome/Cargo.toml                  # 162 tests
 cargo test --manifest-path ribosome/Cargo.toml --test build     # 10 end-to-end scenarios
 cargo test --manifest-path ribosome/Cargo.toml --test multilang # 8 multi-language scenarios
 ```
