@@ -738,7 +738,11 @@ fn nearest<'a>(target: &str, candidates: &[&'a str], max: usize) -> Option<&'a s
 }
 
 /// Sanitize a string into a valid identifier (for suggestions).
-fn to_ident(s: &str) -> String {
+///
+/// Part of the agent-facing surface: the `fix` strings for B0001/K0003 tell an
+/// agent to use `[A-Za-z_][A-Za-z0-9_]*`, and this is how it turns a rejected
+/// name into an acceptable one without guessing at the rule.
+pub fn to_ident(s: &str) -> String {
     let mut out = String::new();
     for (i, c) in s.chars().enumerate() {
         if c == '_' || c.is_ascii_alphabetic() || (i > 0 && c.is_ascii_digit()) {

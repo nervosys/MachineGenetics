@@ -1,81 +1,10 @@
-// The prototype is a single binary that also carries the *reference surface* of
-// the language: full AST/HIR variants, the ontology's operation catalogue, and
-// subsystem APIs (leases, CRDTs, certs, sandbox, hot-reload) that exist so the
-// ontology and `--build=schema` can describe them and so agents can call them
-// over RAP. Many of those items therefore have no in-tree call site, which
-// `dead_code` reports as unused — ~85 such warnings, none of them defects.
-//
-// Deleting them would shrink the described language; leaving the lint on buries
-// real warnings in noise. So it is silenced crate-wide *here*, deliberately,
-// while every other lint stays on: a warning in this crate now means something.
-// If the reference surface is ever split into a library crate with `pub` items,
-// drop this and let visibility do the job instead.
-#![allow(dead_code)]
+//! `mage-parse` — the CLI over the `mage_prototype` library.
+//!
+//! Everything substantive lives in the library (`src/lib.rs`); this binary is
+//! argument parsing and dispatch. Keeping the split means the reference surface
+//! is `pub` API rather than apparently-dead code — see the library's docs.
 
-mod aci;
-mod agent_runtime;
-mod ast;
-mod autograd;
-mod backends;
-mod bench;
-mod builder;
-#[cfg(feature = "cuda")]
-mod cuda_backend;
-mod certs;
-mod cli_manifest;
-mod codegen_bridge;
-mod consensus;
-mod cost;
-mod cost_calibration;
-mod crdt;
-mod decompose;
-mod effects;
-mod eval;
-mod elision;
-mod evolve_gen;
-mod ffi_gen;
-mod fmt;
-#[cfg(test)]
-mod fuzz;
-mod forge;
-mod grammar;
-mod heal;
-mod hir;
-mod hot_reload;
-mod lease;
-mod legacy;
-mod lexer;
-mod logic;
-mod manifest;
-mod mlir;
-mod nl_engine;
-mod ontology;
-mod parser;
-mod perf_annot;
-mod perf_measure;
-mod rain;
-mod rap;
-mod recover;
-mod resolve;
-mod rmi_ontology_adapter;
-mod rmi_runtime_adapter;
-mod abl;
-mod abl_bridge;
-mod abl_compute;
-mod abl_shape;
-mod sandbox;
-mod semantic_vcs;
-mod shape;
-mod spine_bridge;
-mod skb;
-mod stdlib_ext;
-mod swarm_bus;
-mod swarm_sdk;
-mod synthesis;
-mod token_budget;
-mod token_canonical;
-mod types;
-mod verify;
+use mage_prototype::*;
 
 use std::io::Read;
 
@@ -1243,7 +1172,7 @@ fn run_dispatch_abl_bytes(blob: &[u8], path: &str, backend_name: &str) {
     // Falls back to CpuBackend on error so the dispatch still happens;
     // we surface the message so an agent knows why their request was
     // downgraded.
-    let selected = match crate::backends::select_backend(backend_name) {
+    let selected = match mage_prototype::backends::select_backend(backend_name) {
         Ok(b) => {
             if b.name() != "cpu" {
                 eprintln!("// backend: {}", b.name());
@@ -1261,7 +1190,7 @@ fn run_dispatch_abl_bytes(blob: &[u8], path: &str, backend_name: &str) {
     // in cuda_backend.rs); replacing each with IA cuBLASLt / NVRTC
     // dispatch is the per-op ratchet.
     #[cfg(feature = "cuda")]
-    if let Some(crate::backends::SelectedBackend::Cuda(b)) = &selected {
+    if let Some(mage_prototype::backends::SelectedBackend::Cuda(b)) = &selected {
         eprintln!(
             "// CUDA device acquired (id={}); ops dispatch via Cuda Backend impl",
             b.device_id(),
@@ -1271,9 +1200,9 @@ fn run_dispatch_abl_bytes(blob: &[u8], path: &str, backend_name: &str) {
     // off the full Agentic Binary Language blob + path metadata to the wrapper and
     // print whatever it returns. No per-item CPU dispatch below;
     // the wrapper owns the loop.
-    if let Some(crate::backends::SelectedBackend::Subprocess { name, command }) = &selected {
+    if let Some(mage_prototype::backends::SelectedBackend::Subprocess { name, command }) = &selected {
         eprintln!("// dispatching via subprocess backend '{name}': {command}");
-        match crate::backends::dispatch_via_subprocess(
+        match mage_prototype::backends::dispatch_via_subprocess(
             name, command, path, &[], blob,
         ) {
             Ok(r) => {
@@ -1330,7 +1259,7 @@ fn run_dispatch_abl_bytes(blob: &[u8], path: &str, backend_name: &str) {
     let cpu_backend = CpuBackend::new();
     #[cfg(feature = "cuda")]
     let backend: &dyn rmi::compute::Backend = match &selected {
-        Some(crate::backends::SelectedBackend::Cuda(c)) => c,
+        Some(mage_prototype::backends::SelectedBackend::Cuda(c)) => c,
         _ => &cpu_backend,
     };
     #[cfg(not(feature = "cuda"))]
@@ -1395,7 +1324,7 @@ fn run_dispatch_abl_bytes(blob: &[u8], path: &str, backend_name: &str) {
     // caller can tell whether the cuBLASLt path was actually exercised
     // vs the CPU fallback. Only prints if there's something to report.
     #[cfg(feature = "cuda")]
-    if let Some(crate::backends::SelectedBackend::Cuda(c)) = &selected {
+    if let Some(mage_prototype::backends::SelectedBackend::Cuda(c)) = &selected {
         let mm = c.matmul_gpu_count();
         let ew = c.elementwise_gpu_count();
         if mm > 0 || ew > 0 {
@@ -3205,3 +3134,4 @@ fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool, to
         println!("{mlir_output}");
     }
 }
+

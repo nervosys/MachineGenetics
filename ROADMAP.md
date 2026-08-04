@@ -4,8 +4,15 @@
 > Each step is a concrete, testable increment.
 >
 > **Last verified: 2026-08-03** — all three crates built and tested from a clean
-> cache: prototype **1,209** (1038 + 141 + 30), rmi **1,380**, forge **52** —
-> **2,641 tests, 0 failures, 0 warnings**. Steps 1–78 below are the *language and
+> cache: prototype **1,038**, rmi **1,380**, forge **235** — **2,653 tests,
+> 0 failures, 0 warnings**.
+>
+> *Correction:* earlier runs reported prototype at 1,209. The library split
+> (step 142) showed 171 of those were the **same test functions compiled into
+> three binaries** and executed three times — `lexer`, `parser`, `ast`, `hir`,
+> `heal`, and `recover` were re-included by `#[path]` into `reliability-bench`
+> and `token-bench`, which had no tests of their own. 1,038 is the number of
+> distinct tests, and always was. Steps 1–78 below are the *language and
 > compiler* phases (through 2026-03). Phases I–N are the 2026-06 work — the ABL
 > binary track, the ab-initio redesign, the evaluator, Forge, and the
 > architecture DSL — which is what the README and MEASUREMENTS.md describe.
@@ -299,7 +306,9 @@
 | 138 | Attestation | ✅ | HMAC-SHA256 over a canonical `(verdict, evaluator)` encoding — RFC 4231 vectors, constant-time compare, evaluator name inside the signed material. Symmetric, so adequate in one trust domain and not across a fleet; stated as such |
 | 139 | Durable hash-chained journal | ✅ | Append-only JSONL where each record carries its predecessor's digest. A targeted edit or deletion breaks the chain at a reported index; `head()` anchors the whole history in 32 bytes. Tamper-**evident**, not tamper-proof, and documented as such |
 | 140 | Cycle state machine + Ribosome seam | ✅ | Proposed → Evaluated → Shadowing → Adjudicated → Promoted/Refused, phases enforced so no path to authority skips the gate. Promotion needs an attested verdict **and** an `Authority`; `fitness_from_build` bridges build measurement into succession fitness |
-| 141 | Model workload + daemon | ◻ | **Not built.** Training/inference themselves, and any scheduler that runs cycles without a person. `Authority::Unattended` is the seam it would attach to — deliberately not the default |
+| 141 | Bounded unattended runner | ✅ | `Runner` drives cycles under a **pinned policy**, bounded by an explicit budget — no daemon mode and no way to request unlimited cycles. Halts on demotion (a gate that approved something production rejected needs revising, not another candidate), on a stalled search, and on workload failure. A `Workload` trait is the seam to real training |
+| 142 | Library split | ✅ | The reference surface is now `pub` API of a `mage_prototype` library with thin binaries over it, so visibility carries the meaning. The crate-wide `allow(dead_code)` is gone: ~85 warnings became **3 real findings**, and the split revealed 171 duplicated test executions |
+| 143 | Model workload | ◻ | **Not built.** What a genome *means* (architecture, hyperparameters, data mixture) and the training run that turns it into an artifact. `runner::Workload` is the trait to implement |
 
 ---
 
@@ -310,11 +319,11 @@
 
 | # | Item | Status | Notes |
 | - | ---- | ------ | ----- |
-| 1 | CUDA **runtime** correctness not CI-verified | 🔧 | *Compile* coverage landed 2026-08-03: the `cuda` job in CI runs `cargo check --features cuda --all-targets`, which works on a driverless runner because IronAccelerator dispatches via `libloading`. What CI still cannot do is *run* the kernels — GPU correctness (the P101–P139 precision/quantization stack) is verified only on the dev machine: **1,269 tests green** on dual 3090 Ti via `cargo test --features cuda`. Closing this needs a GPU runner. |
+| 1 | CUDA runtime correctness needs a GPU runner | 🔧 | Compile coverage runs in CI. A `cuda-gpu` job now exists for kernel correctness on real hardware, gated on `vars.HAS_GPU_RUNNER == 'true'` so it stays dormant rather than queueing forever where no such runner exists. **The remaining work is infrastructure, not code:** register a self-hosted runner labelled `[self-hosted, linux, gpu, cuda]` and set the variable. |
 | 2 | IronAccelerator version drift | ✅ | **Fixed 2026-08-03.** Was a path dep on a sibling checkout, so the lock silently re-resolved whenever that checkout moved (it drifted 1.2.0 → 2.2.0 exactly this way) and `--features cuda` could not build from a clean clone. Now pinned to the published tag `v2.2.0` (rev `46ceb09d`); `prototype/Cargo.toml` carries a commented `[patch]` block for local IronAccelerator development. |
 | 3 | Steps 2c & 3 of the ab-initio migration | ⬚ | Declined as negative-sum (step 99). Revisit only with new measurement. |
 | 4 | Single-workspace build | ⬚ | The three crates are separate workspaces by design (rmi is vendored and must stay independently buildable). `scripts/test-all.{ps1,sh}` is the supported way to build/test everything at once — see the note in `ARCHITECTURE.md`. |
 | 5 | `video/out/agentic-rain.mp4` in git | 🔧 | A 38 MB binary is tracked, and the `.git` directory is ~158 MB largely because of it plus the 12 MB of banner PNGs. Fine for now; if the repo is ever cloned often, move it to a release asset or LFS. |
-| 8 | The RSI loop runs, but not by itself | 🔧 | The full cycle is wired and tested end to end (`forge/tests/rsi_loop.rs`): variation → directed search → Ribosome build → gate → attestation → journal → supervision → fallback. What is missing is the *workload* (training/inference behind a genome) and any daemon that drives cycles without a person. `Authority::Unattended` is the seam; it is deliberately not the default. Step 141. |
-| 7 | Ribosome is not yet distributed | 🔧 | The `Executor` seam, capability routing, and hermetic input passing are built and tested, but every executor today is in-process. Until a network transport and shared cache service exist, "distributed" describes the design, not the deployment — step 130. |
-| 6 | Reference surface has no call sites | 🔧 | ~85 items exist for the ontology / `--build=schema` / RAP surface but are unused in-tree, so `dead_code` is silenced crate-wide in `prototype` (documented at the top of `main.rs`). The real fix is splitting the reference surface into a library crate where `pub` carries the meaning. |
+| 8 | The RSI loop | ✅ | **Closed 2026-08-03.** `Runner` drives bounded, policy-pinned cycles (step 141). What remains is the *workload* — training/inference behind a genome — which is step 143, not a gap in the loop. |
+| 7 | Ribosome distribution | ✅ | **Built 2026-08-03.** Real TCP transport (`remote.rs`), `RemoteExecutor` behind the `Executor` seam, worker advertisement, registry with heartbeat/eviction/recovery, and signed provenance (`provenance.rs`). Tested against live loopback workers. Remaining and stated in `RIBOSOME.md`: TLS, connection auth, and a sandboxed subprocess executor. |
+| 6 | Reference surface has no call sites | ✅ | **Fixed 2026-08-03** by the library split (step 142). `pub` now carries the meaning and the crate-wide suppression is gone. |

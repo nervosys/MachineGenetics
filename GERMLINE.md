@@ -1,7 +1,7 @@
 # Germline — model succession, handoff, and fallback
 
-> **Status: control plane complete, workload not.**
-> `forge/src/germline/` — 95 tests. Variation, directed search, the gate,
+> **Status: control plane complete and runnable; workload not.**
+> `forge/src/germline/` — 141 tests. Variation, directed search, the gate,
 > attestation, lineage, the durable journal, the cycle state machine, and
 > supervision are built and tested ✅. Model training and inference are **not**
 > here and are not claimed ◻ — this decides *whether* a successor takes over, not
@@ -238,10 +238,30 @@ rate.
 a genome *means* — architecture, hyperparameters, data mixture — and the training
 run that turns it into an artifact are outside this crate.
 
-◻ **A daemon.** The loop is drivable and fully tested end to end
-(`tests/rsi_loop.rs`), but a caller drives it. `Authority::Unattended` is the
-seam where a scheduler would attach. Deliberate: the loop should run with a person
-watching before it runs without one.
+✅ **The runner** (`runner.rs`). Drives cycles under a policy pinned by digest and
+bounded by an explicit budget — there is no daemon mode and no way to request
+unlimited cycles. A process that runs forever has no natural moment at which
+anyone looks at it, and *"it has been improving itself for three weeks"* should be
+hard to arrive at by accident. A bounded run ends, reports, and requires a
+decision to continue.
+
+Its stopping conditions are the interesting part, because a search loop's failure
+mode is not crashing — it is continuing:
+
+| Halt | Why continuing would be wrong |
+|---|---|
+| `BudgetExhausted` | the normal end; someone should look |
+| `Demoted` | see below |
+| `SearchStalled` | N consecutive refusals — more cycles are a slower way to learn the search is stuck |
+| `WorkloadFailed` | candidates cannot be produced at all; cycling would fill the journal with nothing |
+| `NoFallbackAvailable` | the most serious: the system is running something it has decided it should not be |
+
+**Halting on demotion** is the one that matters. The tempting behaviour — fall
+back, then keep searching — treats a failed promotion as a bad draw. But a
+successor that passed the gate and *then* failed in production is evidence that
+**the gate did not measure something it needed to**, and running the same gate
+again is running a test that has just been shown to be incomplete. Halting forces
+the criteria back to someone who can revise them.
 
 ◻ **Asymmetric attestation** and cross-domain trust, as above.
 
@@ -274,7 +294,7 @@ nobody chose, one individually-defensible promotion at a time.
 ```powershell
 cargo test --manifest-path forge/Cargo.toml --test rsi_loop   # 4 closed-loop scenarios
 cargo test --manifest-path forge/Cargo.toml --test germline   # 13 succession scenarios
-cargo test --manifest-path forge/Cargo.toml germline          # + 78 unit tests
+cargo test --manifest-path forge/Cargo.toml germline          # + 124 unit tests
 ```
 
 The closed-loop tests are the architectural ones — they drive variation →

@@ -45,6 +45,13 @@ ironaccelerator-cuda = { git = "https://github.com/nervosys/IronAccelerator.git"
 # only the CUDA backend impl uses it.
 async-trait = { version = "0.1", optional = true }
 
+# The reference surface is a library so `pub` carries its meaning; the binaries
+# are thin CLIs over it. Before this split the surface lived inside main.rs and
+# ~85 public-by-intent items read as dead code.
+[lib]
+name = "mage_prototype"
+path = "src/lib.rs"
+
 [[bin]]
 name = "mage-parse"
 path = "src/main.rs"

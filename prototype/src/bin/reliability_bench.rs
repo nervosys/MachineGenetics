@@ -41,31 +41,17 @@
 //! generation) is the part that costs effort; the agent backend is a
 //! small adapter.
 
-// This harness re-includes the compiler modules by path, so it sees the same
-// reference surface the main binary does but exercises only the lex/parse/heal
-// slice of it. Same rationale as the crate-level allow in `main.rs`.
-#![allow(dead_code)]
 
 use std::collections::BTreeMap;
 use std::fs;
 use std::process::ExitCode;
 use std::time::Instant;
 
-// Include the prototype's lexer/ast/parser/heal at the bin-crate root so
-// the `crate::ast::*` / `crate::lexer::*` / `crate::hir::*` paths inside
-// each module resolve.
-#[path = "../lexer.rs"]
-mod lexer;
-#[path = "../ast.rs"]
-mod ast;
-#[path = "../parser.rs"]
-mod parser;
-#[path = "../hir.rs"]
-mod hir;
-#[path = "../heal.rs"]
-mod heal;
-#[path = "../recover.rs"]
-mod recover;
+// The compiler pipeline comes from the library rather than being re-included
+// by path. Before the library split these modules were compiled a second time
+// into this binary, which also ran their unit tests a second time — 171
+// duplicate executions that inflated the reported test count.
+use mage_prototype::{heal, hir, lexer, parser, recover};
 
 use lexer as mg_lexer;
 use parser as mg_parser;

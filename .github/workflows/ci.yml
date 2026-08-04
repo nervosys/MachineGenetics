@@ -77,3 +77,23 @@ jobs:
       # CUDA box (dual 3090 Ti locally, 1,269 tests green).
       - name: Compile-check the CUDA backend
         run: cargo check --manifest-path prototype/Cargo.toml --features cuda --all-targets
+
+  cuda-gpu:
+    name: prototype — cuda kernels (self-hosted GPU)
+    # Only runs where a GPU runner actually exists. Without this guard the job
+    # would sit queued forever on a fork or a fresh clone and read as "CI is
+    # broken" rather than "this repo has no GPU runner", which is the honest
+    # state for anyone but the maintainer.
+    if: ${{ vars.HAS_GPU_RUNNER == 'true' }}
+    runs-on: [self-hosted, linux, gpu, cuda]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Report the device the results belong to
+        # Kernel results are only meaningful attached to the hardware that
+        # produced them; a green tick with no device recorded is not evidence.
+        run: nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv
+      - name: Run the CUDA test suite on real hardware
+        run: cargo test --release --manifest-path prototype/Cargo.toml --features cuda
+      - name: CPU-vs-GPU harness
+        run: cargo run --release --manifest-path prototype/Cargo.toml --features cuda --bin cuda-bench

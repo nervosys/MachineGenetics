@@ -1,7 +1,7 @@
 # Ribosome — the distributed, agent-operated build engine
 
-> **Status: core implemented, distribution and evolution designed.**
-> `forge/src/ribosome/` — 56 tests, part of forge's 108. Every claim marked
+> **Status: implemented, including distribution.**
+> `forge/src/ribosome/` — 86 tests, part of forge's 235. Every claim marked
 > ✅ below is executed by a test; every ◻ is a design with no code behind it yet.
 > This split is load-bearing: see [DOCS.md](DOCS.md) for why this repository
 > marks unbuilt designs rather than describing them in the present tense.
@@ -69,7 +69,7 @@ agents  │  plan() · to_json() · BuildReport · fitness() │   data in, data
      └──────┬─────┘  └─────────────┘  └──────────┘
             │
      ┌──────▼──────────────────────────────────────────┐
-     │  exec :: Executor  — local · pool · remote(◻)    │
+     │  exec :: Executor  — local · pool · remote (TCP)    │
      └─────────────────────────────────────────────────┘
 ```
 
@@ -81,6 +81,8 @@ agents  │  plan() · to_json() · BuildReport · fitness() │   data in, data
 | `exec` | the `Executor` seam; `LocalExecutor`, `PoolExecutor` | ✅ |
 | `heal` | failure classification → remedy | ✅ |
 | `sched` | cache/dispatch/heal/record, `plan()`, `BuildReport` | ✅ |
+| `remote` | TCP transport, `RemoteExecutor`, worker registry | ✅ |
+| `provenance` | signed, attributable action-cache claims | ✅ |
 
 ### Derived edges
 
@@ -195,7 +197,7 @@ manager (`prototype/src/lease.rs`), the 5-phase consensus engine
 
 ---
 
-## 6. Distribution — what exists and what does not
+## 6. Distribution
 
 ✅ **The seam.** `Executor` is `Send + Sync`, takes materialized input bytes, and
 returns output bytes. An executor never opens a file it was not handed — which is
@@ -203,16 +205,44 @@ both the enforcement half of hermeticity and exactly the interface a remote work
 needs, since inputs must be shipped anyway.
 
 ✅ **`PoolExecutor`.** Capability-first routing with round-robin among capable
-workers. A fleet of local workers, remote ones, or a mix is the same type to the
-scheduler.
+workers.
 
-◻ **Not built:** the network transport, a shared cache service, worker
-registration/heartbeat, sandboxed subprocess isolation, signed provenance. RMI
-already ships QUIC/TCP/gRPC transports (`rmi_quic`, `rmi_tcp`, `rmi_grpc` are
-encodable swarm transports today) and the compiler has a capability sandbox with
-resource limits and audit logging (`sandbox.rs`) plus verification certificates
-(`certs.rs`) that are the natural provenance record. The pieces exist; connecting
-them is the next phase, not a claim about the present.
+✅ **Real network transport** (`remote.rs`). `WorkerServer` serves actions over
+TCP; `RemoteExecutor` implements `Executor`, so the scheduler cannot tell a remote
+worker from a local one. Tested against live loopback workers, not mocks.
+
+Design notes worth stating:
+
+- **Thread-per-connection, no async runtime.** Build actions are coarse —
+  milliseconds to minutes — so a fleet is hundreds of concurrent connections, not
+  hundreds of thousands. `std::net` is entirely adequate at that scale and keeps
+  this crate free of an async dependency tree. If the fleet outgrows it, the file
+  to replace is `remote.rs`; nothing above `Executor` changes.
+- **Capabilities are queried, not configured.** A worker advertises its own
+  platform. A hand-maintained roster drifts, and a drifted roster routes GPU work
+  to a machine without one.
+- **Failure classification survives the wire.** A remote `Deterministic` stays
+  deterministic and a `Transient` stays transient. Losing that distinction would
+  make the healer retry compile errors and give up on network blips.
+- **Frame size is capped.** A length prefix read from a socket is
+  attacker-controlled; without a cap, `0xFFFFFFFF` is a 4 GB allocation from one
+  packet.
+
+✅ **Worker registry** with heartbeat, eviction after repeated failures (not one —
+a single missed beat is a hiccup and evicting on it makes the fleet flap),
+recovery, and restart-as-recovery rather than duplication.
+
+✅ **Signed provenance** (`provenance.rs`). Action-cache entries are *claims*, and
+a shared cache without authenticated claims is a channel by which any participant
+hands every other an arbitrary build result. Now every result carries an HMAC over
+`(action key, output digests, worker)`.
+
+◻ **Remaining, and stated rather than implied:** no TLS and no authentication of
+the *connection* — a worker executes what it is told, which is safe on a trusted
+segment and unsafe on an open one, the same posture as an unauthenticated build
+cache. Provenance HMAC is symmetric, so it makes entries attributable and detects
+corruption but does not survive a compromised worker; per-worker asymmetric keys
+are the fix. A sandboxed subprocess executor for foreign tools is also not built.
 
 ---
 
@@ -281,7 +311,7 @@ Three control points are worth building *before* the loop closes, not after:
 ## 8. Reproducing the claims
 
 ```powershell
-cargo test --manifest-path forge/Cargo.toml            # 108 tests, 56 of them ribosome
+cargo test --manifest-path forge/Cargo.toml            # 235 tests, 86 of them ribosome
 cargo test --manifest-path forge/Cargo.toml --test ribosome   # the 10 end-to-end scenarios
 ```
 

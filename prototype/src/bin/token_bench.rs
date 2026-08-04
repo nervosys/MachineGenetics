@@ -34,8 +34,7 @@ use std::str::FromStr;
 // Reuse the actual MAGE lexer (which recognises atomic sigils like `+f`,
 // `?:`, `&mut`) so the MG side of the comparison matches the corpus's
 // claimed counting convention.
-#[path = "../lexer.rs"]
-mod mg_lexer;
+use mage_prototype::lexer as mg_lexer;
 
 /// Regression threshold: claimed token_count must be within ±10 % of
 /// measured token count or the bench exits non-zero.

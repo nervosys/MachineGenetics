@@ -197,6 +197,15 @@ impl OpLog {
         self.branches.keys().map(|s| s.as_str()).collect()
     }
 
+    /// The branch commits land on when none is named.
+    ///
+    /// The field existed but nothing could read it, which meant callers had to
+    /// assume the default rather than ask — the kind of gap that only shows up
+    /// once someone assumes wrong.
+    pub fn default_branch(&self) -> &str {
+        &self.default_branch
+    }
+
     /// Get a commit by id.
     pub fn get_commit(&self, id: CommitId) -> Option<&Commit> {
         self.commits.get(&id)

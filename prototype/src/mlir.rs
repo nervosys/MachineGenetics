@@ -445,6 +445,17 @@ impl<'a> EmitCtx<'a> {
     // ── Ownership operations ─────────────────────────────────────────
 
     /// Emit ownership-related MLIR ops for ownership transfer expressions.
+    ///
+    /// **No lowering path reaches this yet.** `MAGE.ownership.*` is a declared
+    /// part of the dialect (roadmap step 41) and this emits it correctly, but
+    /// nothing in `emit_expr` dispatches to it — so the dialect op exists and is
+    /// unreachable. Kept and marked rather than deleted: the gap is a missing
+    /// call site, not a wrong implementation, and deleting it would quietly
+    /// shrink the dialect the ontology advertises.
+    ///
+    /// Narrowly allowed here, on this one item, with the reason attached — the
+    /// opposite of the crate-wide suppression this refactor removed.
+    #[allow(dead_code)]
     fn emit_ownership_op(&mut self, expr: &ast::Expr) -> String {
         match expr {
             ast::Expr::Unary { op, .. } if op == "*" => {

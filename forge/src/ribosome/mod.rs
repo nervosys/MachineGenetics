@@ -75,6 +75,8 @@ pub mod exec;
 pub mod graph;
 pub mod heal;
 pub mod key;
+pub mod provenance;
+pub mod remote;
 pub mod sched;
 
 use serde::{Deserialize, Serialize};

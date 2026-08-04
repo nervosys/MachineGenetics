@@ -28,52 +28,10 @@
 //! first ships unsigned.
 
 use super::gate::Verdict;
+use crate::mac::{absorb, ct_eq, hex_decode, hex_encode, hmac_sha256};
 use crate::ribosome::Digest;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest as _, Sha256};
-
-const BLOCK: usize = 64;
-
-/// HMAC-SHA256, implemented directly to avoid pulling in a dependency for
-/// forty lines of well-specified construction.
-fn hmac_sha256(key: &[u8], msg: &[u8]) -> [u8; 32] {
-    let mut k = [0u8; BLOCK];
-    if key.len() > BLOCK {
-        let d = Sha256::digest(key);
-        k[..32].copy_from_slice(&d);
-    } else {
-        k[..key.len()].copy_from_slice(key);
-    }
-
-    let mut ipad = [0x36u8; BLOCK];
-    let mut opad = [0x5cu8; BLOCK];
-    for i in 0..BLOCK {
-        ipad[i] ^= k[i];
-        opad[i] ^= k[i];
-    }
-
-    let mut inner = Sha256::new();
-    inner.update(ipad);
-    inner.update(msg);
-    let inner = inner.finalize();
-
-    let mut outer = Sha256::new();
-    outer.update(opad);
-    outer.update(inner);
-    outer.finalize().into()
-}
-
-/// Constant-time comparison.
-///
-/// A byte-by-byte early-return comparison leaks, through timing, how many
-/// leading bytes of a guess were right, which turns forging a MAC from a
-/// 2^256 problem into a 32×256 one. It costs nothing to not do that.
-fn ct_eq(a: &[u8], b: &[u8]) -> bool {
-    if a.len() != b.len() {
-        return false;
-    }
-    a.iter().zip(b).fold(0u8, |acc, (x, y)| acc | (x ^ y)) == 0
-}
 
 /// A verdict plus proof of its origin.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -110,10 +68,8 @@ pub fn canonical_digest(verdict: &Verdict, evaluator: &str) -> Digest {
     let body = serde_json::to_string(verdict).unwrap_or_default();
     let mut h = Sha256::new();
     h.update(b"germline-attestation-v1");
-    h.update((evaluator.len() as u64).to_le_bytes());
-    h.update(evaluator.as_bytes());
-    h.update((body.len() as u64).to_le_bytes());
-    h.update(body.as_bytes());
+    absorb(&mut h, evaluator.as_bytes());
+    absorb(&mut h, body.as_bytes());
     Digest(format!("{:x}", h.finalize()))
 }
 
@@ -144,20 +100,6 @@ impl Attestor {
     pub fn verify(&self, att: &Attestation, verdict: &Verdict) -> bool {
         att.verify_with(&self.key, verdict)
     }
-}
-
-fn hex_encode(bytes: &[u8]) -> String {
-    bytes.iter().map(|b| format!("{b:02x}")).collect()
-}
-
-fn hex_decode(s: &str) -> Result<Vec<u8>, ()> {
-    if s.len() % 2 != 0 {
-        return Err(());
-    }
-    (0..s.len())
-        .step_by(2)
-        .map(|i| u8::from_str_radix(&s[i..i + 2], 16).map_err(|_| ()))
-        .collect()
 }
 
 #[cfg(test)]
@@ -233,23 +175,4 @@ mod tests {
         assert!(!a.verify(&att, &verdict()));
     }
 
-    #[test]
-    fn hmac_matches_the_rfc_4231_test_vector() {
-        // RFC 4231 §4.2: key = 20×0x0b, data = "Hi There".
-        let mac = hmac_sha256(&[0x0b; 20], b"Hi There");
-        assert_eq!(
-            hex_encode(&mac),
-            "b0344c61d8db38535ca8afceaf0bf12b881dc200c9833da726e9376c2e32cff7",
-            "a hand-rolled HMAC must be checked against the standard's vectors"
-        );
-    }
-
-    #[test]
-    fn comparison_is_constant_time_shaped() {
-        // Behavioural check only — that ct_eq is total and correct. The timing
-        // property comes from folding over the whole buffer with no early exit.
-        assert!(ct_eq(b"abc", b"abc"));
-        assert!(!ct_eq(b"abc", b"abd"));
-        assert!(!ct_eq(b"abc", b"ab"));
-    }
 }

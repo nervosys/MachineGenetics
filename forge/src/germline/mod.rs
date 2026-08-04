@@ -59,15 +59,15 @@
 //! | [`journal`] | durable, hash-chained record of everything that happened |
 //! | [`cycle`] | the state machine joining propose → evaluate → adjudicate → hand off |
 //! | [`supervisor`] | post-handoff health, failure modes, automatic demotion |
+//! | [`runner`] | bounded, policy-pinned cycles and their halt conditions |
 //!
 //! ## Status
 //!
-//! Implemented and tested: the full control plane — variation, directed search,
-//! the gate, attestation, lineage, durable journal, the cycle state machine, and
-//! supervision. **Not** implemented: model training and inference themselves,
-//! and any daemon that would run cycles without a person. The architecture
-//! supports the latter ([`cycle::Authority::Unattended`]); it is not the default.
-//! See `GERMLINE.md`.
+//! Implemented and tested: the full control plane, including [`runner`], which
+//! drives bounded, policy-pinned cycles. **Not** implemented: model training and
+//! inference themselves — [`runner::Workload`] is the trait to implement. The
+//! runner is bounded by construction: there is no daemon mode and no way to ask
+//! for unlimited cycles. See `GERMLINE.md`.
 
 pub mod attest;
 pub mod cycle;
@@ -75,6 +75,7 @@ pub mod directed;
 pub mod gate;
 pub mod journal;
 pub mod lineage;
+pub mod runner;
 pub mod supervisor;
 pub mod variation;
 

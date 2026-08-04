@@ -26,17 +26,11 @@
 //! `CudaBackend::new()` errors and the harness reports CPU-only numbers
 //! (so CI on a driverless box still exits 0).
 
-// This harness re-includes `cuda_backend` by path, so it sees the backend's
-// whole surface while timing only one op chain. Same rationale as the
-// crate-level allow in `main.rs`.
-#![allow(dead_code)]
-
 // The CUDA backend module is itself `#![cfg(feature = "cuda")]`, so its
 // `CudaBackend` symbol only exists under the feature. Gate the whole
 // real harness accordingly and provide a no-feature stub `main`.
 #[cfg(feature = "cuda")]
-#[path = "../cuda_backend.rs"]
-mod cuda_backend;
+use mage_prototype::cuda_backend;
 
 #[cfg(not(feature = "cuda"))]
 fn main() {
