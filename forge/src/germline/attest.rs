@@ -28,8 +28,8 @@
 //! first ships unsigned.
 
 use super::gate::Verdict;
-use crate::mac::{absorb, ct_eq, hex_decode, hex_encode, hmac_sha256};
-use crate::ribosome::Digest;
+use ribosome::mac::{absorb, ct_eq, hex_decode, hex_encode, hmac_sha256};
+use ribosome::Digest;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest as _, Sha256};
 

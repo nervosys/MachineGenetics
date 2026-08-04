@@ -7,7 +7,7 @@
 //! hand-rolled copy is a second chance to get the padding wrong.
 //!
 //! [`germline::attest`]: crate::germline::attest
-//! [`ribosome::provenance`]: crate::ribosome::provenance
+//! [`ribosome::provenance`]: crate::provenance
 //!
 //! **Symmetric, deliberately scoped.** HMAC proves a record came from someone
 //! holding the key, which means any verifier can also forge. That is adequate

@@ -28,7 +28,7 @@
 use super::gate::Verdict;
 use super::lineage::SuccessionEvent;
 use super::{Generation, GenerationId};
-use crate::ribosome::Digest;
+use ribosome::Digest;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 

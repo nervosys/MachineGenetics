@@ -33,7 +33,7 @@
 
 use super::lineage::Lineage;
 use super::{FitnessVector, Generation, GenerationId, SuiteKind};
-use crate::ribosome::Digest;
+use ribosome::Digest;
 use serde::{Deserialize, Serialize};
 
 /// Pre-registered promotion criteria.

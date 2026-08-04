@@ -6,9 +6,19 @@ numbers are machine-dependent; the shapes (throughput, scaling) are not.
 
 Date: 2026-06-10. Build: `release` for perf, `cargo test` for functionality.
 
-> **Re-verified 2026-08-03** — all three crates rebuilt from a clean cache and
-> tested: prototype **1,038**, rmi **1,380**, forge **235** = **2,653 passing,
-> 0 failing, 0 warnings**. No figure below has regressed.
+> **Re-verified 2026-08-04** — all four crates tested: prototype **1,038**, rmi
+> **1,380**, ribosome **139**, forge **164** = **2,721 passing, 0 failing,
+> 0 warnings**. No figure below has regressed.
+>
+> *On the crate count, and a stale figure.* The 2026-08-03 line said "three
+> crates, forge 235". Two things changed since. The build engine was extracted
+> from `forge` into its own `ribosome` crate (roadmap step 148), so what was one
+> column is now two — no code moved in or out of the test suite. And **235 was
+> already stale when it was written**: counting `#[test]` per commit shows 235
+> immediately before step 144, 253 after it, 271 after steps 145–146, and 303
+> after step 147. So the rise from 2,653 to 2,721 is 36 tests that steps 144–146
+> added and the summary line did not pick up, plus the 32 added by step 147.
+> Verified with `git grep -c '#\[test\]'` at each commit rather than inferred.
 >
 > *Correction to the prototype count.* This document said 1146, and an earlier
 > re-verification said 1209. Both over-counted: `lexer`, `parser`, `ast`, `hir`,

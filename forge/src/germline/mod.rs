@@ -81,7 +81,7 @@ pub mod supervisor;
 pub mod variation;
 pub mod workload;
 
-use crate::ribosome::Digest;
+use ribosome::Digest;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 

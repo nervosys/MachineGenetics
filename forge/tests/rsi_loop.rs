@@ -27,12 +27,12 @@ use forge::germline::variation::{propose, VariationPlan};
 use forge::germline::{
     EvalSuite, FitnessVector, Generation, Measurement, Status, SuiteKind,
 };
-use forge::ribosome::cas::Store;
-use forge::ribosome::exec::{LocalExecutor, ToolOutput, ToolRegistry};
-use forge::ribosome::graph::ActionGraph;
-use forge::ribosome::heal::DefaultHealer;
-use forge::ribosome::sched::Scheduler;
-use forge::ribosome::{Action, Digest, Platform};
+use ribosome::cas::Store;
+use ribosome::exec::{LocalExecutor, ToolOutput, ToolRegistry};
+use ribosome::graph::ActionGraph;
+use ribosome::heal::DefaultHealer;
+use ribosome::sched::Scheduler;
+use ribosome::{Action, Digest, Platform};
 use std::path::PathBuf;
 
 const SUITE: &[u8] = b"heldout-suite-v1";
@@ -78,7 +78,7 @@ fn measurement(cap: f64, safety: f64) -> Measurement {
 
 /// Runs a candidate's work through the build engine and returns its build
 /// fitness — the Ribosome→Germline seam.
-fn build_and_measure(store: &Store, source: &[u8]) -> forge::ribosome::sched::BuildReport {
+fn build_and_measure(store: &Store, source: &[u8]) -> ribosome::sched::BuildReport {
     let mut tools = ToolRegistry::new();
     tools.register("compile@1", |action, inputs| {
         let src = inputs.values().next().cloned().unwrap_or_default();

@@ -40,8 +40,8 @@ use super::journal::{Entry, Journal};
 use super::lineage::Lineage;
 use super::supervisor::HealthSample;
 use super::{FitnessVector, Generation, GenerationId, Measurement};
-use crate::ribosome::sched::BuildReport;
-use crate::ribosome::Digest;
+use ribosome::sched::BuildReport;
+use ribosome::Digest;
 use serde::{Deserialize, Serialize};
 
 /// Who authorized acting on an approving verdict.
@@ -299,7 +299,7 @@ impl Cycle {
 
 /// Derive a succession fitness vector from a build.
 ///
-/// The bridge between the two halves of the system: [`Ribosome`](crate::ribosome)
+/// The bridge between the two halves of the system: [`Ribosome`](ribosome)
 /// measures whether a candidate's work *builds*, and that measurement becomes an
 /// axis the gate can ratchet on. Correctness is carried across unchanged because
 /// it is a gate on both sides, and a candidate whose builds fail should not be

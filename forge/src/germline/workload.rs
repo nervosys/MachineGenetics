@@ -4,8 +4,8 @@
 //! [`super::runner`] defines the seam; this implements it end to end, so the RSI
 //! loop runs against the real build engine rather than a fake. A genome encodes a
 //! network architecture, `materialize` builds it through
-//! [`ribosome`](crate::ribosome), and fitness comes from the resulting
-//! [`BuildReport`](crate::ribosome::sched::BuildReport) plus properties of the
+//! [`ribosome`](ribosome), and fitness comes from the resulting
+//! [`BuildReport`](ribosome::sched::BuildReport) plus properties of the
 //! artifact that came out.
 //!
 //! ## What this is and is not
@@ -35,12 +35,12 @@ use super::directed::CandidateSpec;
 use super::runner::Workload;
 use super::{EvalSuite, FitnessVector};
 use super::supervisor::HealthSample;
-use crate::ribosome::cas::Store;
-use crate::ribosome::exec::{Executor, LocalExecutor, ToolOutput, ToolRegistry};
-use crate::ribosome::graph::ActionGraph;
-use crate::ribosome::heal::DefaultHealer;
-use crate::ribosome::sched::Scheduler;
-use crate::ribosome::{Action, Digest, Platform};
+use ribosome::cas::Store;
+use ribosome::exec::{Executor, LocalExecutor, ToolOutput, ToolRegistry};
+use ribosome::graph::ActionGraph;
+use ribosome::heal::DefaultHealer;
+use ribosome::sched::Scheduler;
+use ribosome::{Action, Digest, Platform};
 
 /// Decoded architecture: what a genome means.
 #[derive(Debug, Clone, PartialEq)]
@@ -128,7 +128,7 @@ impl BuildWorkload {
     }
 
     /// Build one architecture, returning its report and artifact digest.
-    fn build(&self, arch: &Architecture) -> Result<(crate::ribosome::sched::BuildReport, Digest), String> {
+    fn build(&self, arch: &Architecture) -> Result<(ribosome::sched::BuildReport, Digest), String> {
         let source = arch.to_source();
         let src_digest = self.store.cas.put(source.as_bytes()).map_err(|e| e.to_string())?;
 
@@ -161,7 +161,7 @@ impl BuildWorkload {
     }
 
     /// Fitness axes for an architecture, given its build.
-    fn score(&self, arch: &Architecture, report: &crate::ribosome::sched::BuildReport) -> FitnessVector {
+    fn score(&self, arch: &Architecture, report: &ribosome::sched::BuildReport) -> FitnessVector {
         let build = report.fitness();
         // Deeper is more capable, saturating rather than unbounded.
         let capability = (arch.depth as f64 / MAX_DEPTH as f64).clamp(0.0, 1.0);
@@ -304,7 +304,7 @@ mod tests {
         let (w, root) = workload("tension");
         let safe = Architecture { depth: 8, width: 128, residual: false };
         let risky = Architecture { depth: 8, width: 512, residual: false };
-        let report = crate::ribosome::sched::BuildReport::default();
+        let report = ribosome::sched::BuildReport::default();
         assert!(
             w.score(&safe, &report).get("safety").unwrap()
                 > w.score(&risky, &report).get("safety").unwrap(),

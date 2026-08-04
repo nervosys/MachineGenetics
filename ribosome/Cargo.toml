@@ -1,0 +1,18 @@
+[workspace]
+
+[package]
+name = "ribosome"
+version = "0.1.0"
+edition = "2021"
+description = "Ribosome — a distributed, agent-operated, hardware-agnostic build engine"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/nervosys/MAGE"
+
+# Deliberately minimal, and deliberately not MAGE-aware. A build engine that
+# depends on the compiler it builds cannot be used to build anything else, and
+# the whole claim of `lang` is that no language is privileged below the planner.
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+ed25519-dalek = "3.0.0"

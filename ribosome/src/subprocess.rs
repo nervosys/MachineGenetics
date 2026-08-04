@@ -255,7 +255,7 @@ impl Executor for SubprocessExecutor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ribosome::Digest;
+    use crate::Digest;
 
     fn tmp(name: &str) -> PathBuf {
         let p = std::env::temp_dir().join(format!(

@@ -88,7 +88,7 @@ pub fn action_key(a: &Action) -> Digest {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ribosome::Platform;
+    use crate::Platform;
 
     fn base() -> Action {
         Action::new("lower", "mage-parse@0.2.0")

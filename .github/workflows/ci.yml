@@ -1,17 +1,18 @@
 name: CI
 
-# Builds and tests the three live crates — the embedded `rmi` framework, the
-# prototype compiler/evaluator, and the Forge toolchain. The old forked-rustc
-# compiler CI was removed with that compiler; this is the accurate, working
-# pipeline for what ships today.
+# Builds and tests the four live crates — the embedded `rmi` framework, the
+# prototype compiler/evaluator, the Ribosome build engine, and the Forge
+# toolchain. The old forked-rustc compiler CI was removed with that compiler;
+# this is the accurate, working pipeline for what ships today.
 #
-# The three are separate Cargo workspaces on purpose (see ARCHITECTURE.md
+# They are separate Cargo workspaces on purpose (see ARCHITECTURE.md
 # §"Repository layout"), so each gets its own --manifest-path job rather than a
 # single root `cargo test`. `scripts/test-all.{sh,ps1}` runs the same set
 # locally.
 #
-# `prototype` path-depends on RecursiveMachineIntelligence, so an rmi change can
-# break the prototype build — hence rmi appears in every paths filter.
+# Two in-repo path dependencies decide the paths filters: `prototype` depends on
+# RecursiveMachineIntelligence, and `forge` depends on `ribosome`. A change to
+# either dependency can break its dependent, so both appear in every filter.
 
 on:
   push:
@@ -19,12 +20,14 @@ on:
     paths:
       - "prototype/**"
       - "forge/**"
+      - "ribosome/**"
       - "RecursiveMachineIntelligence/**"
       - ".github/workflows/ci.yml"
   pull_request:
     paths:
       - "prototype/**"
       - "forge/**"
+      - "ribosome/**"
       - "RecursiveMachineIntelligence/**"
       - ".github/workflows/ci.yml"
 
@@ -52,6 +55,28 @@ jobs:
         run: cargo test --release --manifest-path prototype/Cargo.toml
       - name: Evaluator correctness bench (73/73 exact)
         run: cargo test --release --manifest-path prototype/Cargo.toml eval_bench -- --ignored --nocapture
+
+  ribosome:
+    name: ribosome — build + test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build
+        run: cargo build --release --manifest-path ribosome/Cargo.toml
+      - name: Test
+        run: cargo test --manifest-path ribosome/Cargo.toml
+      # The engine must not acquire a dependency on the language it builds.
+      # `lang`'s claim that no language is privileged below the planner is only
+      # credible while this holds, and it is the kind of thing that erodes by
+      # one convenient `use` — so it is checked rather than asserted in a doc.
+      - name: Verify the engine depends on no MAGE crate
+        run: |
+          if cargo tree --manifest-path ribosome/Cargo.toml --prefix none --no-dedupe \
+               | grep -Eiv '^ribosome ' | grep -Eiq '^(mage|forge|rmi)'; then
+            echo "::error::ribosome must not depend on a MAGE crate"
+            exit 1
+          fi
 
   forge:
     name: forge — build + test

@@ -23,7 +23,7 @@
 //! reasonable in isolation, which is exactly how the capability disappears.
 
 use super::{Generation, GenerationId, Status};
-use crate::ribosome::Digest;
+use ribosome::Digest;
 use serde::{Deserialize, Serialize};
 
 /// A transfer of authority, or a refused one.

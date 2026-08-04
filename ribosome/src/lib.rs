@@ -1,9 +1,26 @@
 //! # Ribosome — the distributed, agent-operated build engine
 //!
 //! A ribosome reads a genetic sequence and synthesizes the protein it encodes.
-//! This one reads MAGE source and synthesizes artifacts, and like its namesake it
-//! is *many, identical, and concurrent*: any number of them work the same tape
-//! and produce the same product.
+//! This one reads source and synthesizes artifacts, and like its namesake it is
+//! *many, identical, and concurrent*: any number of them work the same tape and
+//! produce the same product.
+//!
+//! ## A standalone crate, on purpose
+//!
+//! This began inside `forge`, the MAGE package registry, which was a convenient
+//! place to put it and the wrong place to leave it. A build system that ships
+//! inside a package registry can only ever be that registry's build system, and
+//! the central claim of [`lang`] — that no language is privileged below the
+//! planner — is not credible from a crate that depends on one language's
+//! compiler.
+//!
+//! So the dependency list is the specification: `serde`, `serde_json`, `sha2`,
+//! `ed25519-dalek`. Nothing MAGE, nothing registry, no compiler. The engine can
+//! be vendored into an unrelated project and will build C, Rust, or a language
+//! nobody here has heard of without acquiring MAGE along the way. `forge`
+//! depends on *this*, not the reverse, and `germline` drives it through the same
+//! public API any other caller would use — which means that API is exercised by
+//! a real consumer rather than only by its own tests.
 //!
 //! ## Why this is not another Bazel
 //!
@@ -68,9 +85,10 @@
 //!
 //! Actions declare a [`Platform`] *requirement*; executors advertise what they
 //! *satisfy*. The scheduler matches the two and never assumes a CPU. An
-//! accelerator is a string drawn from the same open registry the compiler uses
-//! (`prototype/src/backends.rs`, 8 builtins plus a runtime-extensible catalogue),
-//! so adding a new device to the build fleet is a registration, not a code change.
+//! accelerator is an open string — the same vocabulary MAGE's own backend
+//! registry uses (`prototype/src/backends.rs`), by convention rather than by
+//! dependency — so adding a new device class to the fleet is a registration, not
+//! a code change.
 //!
 //! Crucially the *accelerator is part of the action key* only when the action
 //! declares it. A pure source-to-ABL lowering is device-independent and its cache
@@ -99,6 +117,7 @@ pub mod graph;
 pub mod heal;
 pub mod key;
 pub mod lang;
+pub mod mac;
 pub mod provenance;
 pub mod remote;
 pub mod sched;

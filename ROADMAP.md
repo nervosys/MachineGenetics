@@ -3,9 +3,13 @@
 > Tracking progress from prototype toward production. Steps 1–22 completed prior.
 > Each step is a concrete, testable increment.
 >
-> **Last verified: 2026-08-03** — all three crates built and tested from a clean
-> cache: prototype **1,038**, rmi **1,380**, forge **235** — **2,653 tests,
-> 0 failures, 0 warnings**.
+> **Last verified: 2026-08-04** — all four crates built and tested: prototype
+> **1,038**, rmi **1,380**, ribosome **139**, forge **164** — **2,721 tests,
+> 0 failures, 0 warnings**. The crate count went from three to four when the
+> build engine was extracted (step 148). Forge's old "235" was stale as well as
+> merged: it was accurate immediately before step 144 and never updated through
+> steps 144–146, which added 36 tests. See `MEASUREMENTS.md` for the per-commit
+> counts.
 >
 > *Correction:* earlier runs reported prototype at 1,209. The library split
 > (step 142) showed 171 of those were the **same test functions compiled into
@@ -270,7 +274,8 @@
 
 ## Phase P: Ribosome — the distributed build engine (Steps 123–130)
 
-> `forge/src/ribosome/`, design in [RIBOSOME.md](RIBOSOME.md). The evaluation
+> `ribosome/` (its own crate since step 148; built inside `forge` up to step
+> 147), design in [RIBOSOME.md](RIBOSOME.md). The evaluation
 > harness for the autonomous-SWE / RSI track: reproducible builds, comparable
 > measurement, clean revert. Composes existing subsystems rather than duplicating
 > them — the DAG mirrors `decompose.rs`, the accelerator catalogue is
@@ -311,6 +316,7 @@
 | 143 | A real workload | ✅ | `germline::workload::BuildWorkload` — architecture search evaluated by **actual Ribosome builds**, not a stub. A genome decodes to a network architecture, `materialize` builds it, fitness comes from the real `BuildReport` plus artifact properties. Axes deliberately pull against each other so the search cannot win by growing without limit. Neural-net training is a different implementation of the same trait; nothing in the control plane changes for it |
 | 145 | Subprocess sandbox | ✅ | Fresh workdir, cleared environment, executable allowlist, traversal rejection, wall-clock timeout. Containment rather than isolation, and documented as such — it removes accidental non-hermeticity, not a hostile tool |
 | 146 | Asymmetric provenance | ✅ | Per-worker Ed25519 with a `TrustStore`: a compromise becomes attributable, containable and **revocable**, which a shared secret cannot be. Verifiers hold only public keys |
+| 148 | Ribosome as its own crate | ✅ | Extracted from `forge` to `ribosome/`, a fourth workspace. `forge` is a package registry; a build system living inside one can only ever be that registry's build system, and step 147's claim that no language is privileged is not credible from a crate that depends on one language's compiler. Dependencies are now `serde`, `serde_json`, `sha2`, `ed25519-dalek` — CI enforces the absence of any MAGE crate with `cargo tree` rather than trusting the doc. `mac` moved with it; `forge` re-exports the crate and `germline` drives it through the public API, so that API now has a real consumer rather than only its own tests |
 | 147 | Arbitrary languages | ✅ | `ribosome::lang` — a language is data: extensions, a toolchain, a declared granularity (`PerSource` + link for C, `WholeTarget` for Rust/Go, because pretending otherwise produces a graph that lies about both parallelism and rebuilds), and argument templates. The real content is the honesty layer: `Hermeticity::{Structural, Pinned, Declared}`, the toolchain digest inside the action key, and a shared store that **refuses to publish** unverified claims while still building and caching them locally. Cross-language edges are derived, not declared. Not a package manager |
 | 144 | Transport authentication | ✅ | HMAC challenge-response before any frame is served — a worker that answers `Describe` to an unauthenticated peer has already disclosed its capabilities. Server-generated per-connection nonce, so a captured proof cannot be replayed. **Authenticates but does not encrypt**; TLS remains ◻ |
 
@@ -326,7 +332,7 @@
 | 1 | CUDA runtime correctness needs a GPU runner | 🔧 | Compile coverage runs in CI. A `cuda-gpu` job now exists for kernel correctness on real hardware, gated on `vars.HAS_GPU_RUNNER == 'true'` so it stays dormant rather than queueing forever where no such runner exists. **The remaining work is infrastructure, not code:** register a self-hosted runner labelled `[self-hosted, linux, gpu, cuda]` and set the variable. |
 | 2 | IronAccelerator version drift | ✅ | **Fixed 2026-08-03.** Was a path dep on a sibling checkout, so the lock silently re-resolved whenever that checkout moved (it drifted 1.2.0 → 2.2.0 exactly this way) and `--features cuda` could not build from a clean clone. Now pinned to the published tag `v2.2.0` (rev `46ceb09d`); `prototype/Cargo.toml` carries a commented `[patch]` block for local IronAccelerator development. |
 | 3 | Steps 2c & 3 of the ab-initio migration | ⬚ | Declined as negative-sum (step 99). Revisit only with new measurement. |
-| 4 | Single-workspace build | ⬚ | The three crates are separate workspaces by design (rmi is vendored and must stay independently buildable). `scripts/test-all.{ps1,sh}` is the supported way to build/test everything at once — see the note in `ARCHITECTURE.md`. |
+| 4 | Single-workspace build | ⬚ | The four crates are separate workspaces by design: rmi is vendored and must stay independently buildable, and `ribosome` must be able to leave without taking MAGE with it. `scripts/test-all.{ps1,sh}` is the supported way to build/test everything at once — see the note in `ARCHITECTURE.md`. |
 | 5 | `video/out/agentic-rain.mp4` in git | 🔧 | **Purged from local history 2026-08-03** with `git-filter-repo`: clean on `master`, on the working branch, and on the `v0.2.0` tag; 327 commits intact; mirror backup at `../MachineGenetics.backup-*.git`. Evidence gathered before rewriting: **0 forks, 0 stars, 0 watchers**, 4 clone uniques/14d (CI checkouts). `.git` fell 160 → 119 MB, then returned to 168 MB because `git fetch` re-imported the old history via `origin/master` — **the blob is gone locally but still on the remote.** Completing it needs `git push --force origin master && git push --force --tags`, then `git remote prune origin && git gc --prune=now`. That push is the step that reaches other people, so it is deliberately left to a human. |
 | 8 | The RSI loop | ✅ | **Closed 2026-08-03.** `Runner` drives bounded, policy-pinned cycles (step 141). What remains is the *workload* — training/inference behind a genome — which is step 143, not a gap in the loop. |
 | 7 | Ribosome distribution | ✅ | **Built 2026-08-03.** Real TCP transport (`remote.rs`), `RemoteExecutor` behind the `Executor` seam, worker advertisement, registry with heartbeat/eviction/recovery, and signed provenance (`provenance.rs`). Tested against live loopback workers. Remaining and stated in `RIBOSOME.md`: TLS, connection auth, and a sandboxed subprocess executor. |

@@ -556,8 +556,8 @@ pub fn wait_until(timeout: Duration, mut f: impl FnMut() -> bool) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ribosome::exec::{LocalExecutor, ToolRegistry};
-    use crate::ribosome::Digest;
+    use crate::exec::{LocalExecutor, ToolRegistry};
+    use crate::Digest;
 
     fn tools() -> ToolRegistry {
         let mut r = ToolRegistry::new();

@@ -22,7 +22,7 @@ Read these to understand the system as it exists.
 | [MEASUREMENTS.md](MEASUREMENTS.md) | Every measured functionality and performance figure, with reproduction commands |
 | [ROADMAP.md](ROADMAP.md) | All 122 implementation steps + the open-items list |
 | [ARCHITECTURE_DSL.md](ARCHITECTURE_DSL.md) | The composition algebra (`stack`/`residual`/`branch`/`wrap`) and its measured basis |
-| [RIBOSOME.md](RIBOSOME.md) | The distributed, agent-operated build engine. **Mixed status, marked inline**: the core (graph, keys, CAS, executor seam, healing, scheduler, fitness) is implemented and tested ✅; network distribution and the evolutionary loop are designed ◻ |
+| [RIBOSOME.md](RIBOSOME.md) | The distributed, agent-operated build engine — its own crate, `ribosome/`. **Mixed status, marked inline**: the core (graph, keys, CAS, executor seam, healing, scheduler, fitness), network distribution with authentication and signed provenance, sandboxed subprocess execution, and multi-language support are implemented and tested ✅; TLS and the evolutionary loop above the build are designed ◻. *This row said distribution was unbuilt through step 7 and was not updated when it landed — corrected 2026-08-04.* |
 | [GERMLINE.md](GERMLINE.md) | Model succession, handoff, and fallback — the RSI control plane. **Mixed status, marked inline**: the control plane is complete and tested end to end ✅ (variation, directed search, gate, attestation, lineage, hash-chained journal, cycle, supervision); model training/inference and any unattended daemon are not ◻ |
 | [AGENT_PROTOCOL.md](AGENT_PROTOCOL.md) | How an agent should target ABL bytes rather than text |
 | [UNIFICATION.md](UNIFICATION.md) | MAGE ↔ RMI unification: the bridge, adapters, and the 21-section ontology |

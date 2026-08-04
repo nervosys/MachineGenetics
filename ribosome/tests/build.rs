@@ -5,12 +5,12 @@
 //! stop the right work and no more — rather than the units, which are covered
 //! beside their modules.
 
-use forge::ribosome::cas::Store;
-use forge::ribosome::exec::{ExecError, LocalExecutor, PoolExecutor, ToolOutput, ToolRegistry};
-use forge::ribosome::graph::ActionGraph;
-use forge::ribosome::heal::{DefaultHealer, FALLBACK_KEY};
-use forge::ribosome::sched::{Outcome, Scheduler};
-use forge::ribosome::{Action, Digest, Platform};
+use ribosome::cas::Store;
+use ribosome::exec::{ExecError, LocalExecutor, PoolExecutor, ToolOutput, ToolRegistry};
+use ribosome::graph::ActionGraph;
+use ribosome::heal::{DefaultHealer, FALLBACK_KEY};
+use ribosome::sched::{Outcome, Scheduler};
+use ribosome::{Action, Digest, Platform};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;

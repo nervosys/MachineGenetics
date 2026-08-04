@@ -248,7 +248,7 @@ impl ActionGraph {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ribosome::Digest;
+    use crate::Digest;
 
     fn src(name: &str, out: &str) -> Action {
         Action::new(name, "tool@1").input(format!("{name}.mg"), Digest::of(name.as_bytes())).output(out)

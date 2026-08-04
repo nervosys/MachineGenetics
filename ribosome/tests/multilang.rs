@@ -5,14 +5,14 @@
 //! real scheduler, the real content-addressed store — and that the hermeticity
 //! tier is a rule the store enforces rather than a label the plan carries.
 
-use forge::ribosome::cas::Store;
-use forge::ribosome::exec::{LocalExecutor, ToolOutput, ToolRegistry};
-use forge::ribosome::heal::DefaultHealer;
-use forge::ribosome::lang::{
+use ribosome::cas::Store;
+use ribosome::exec::{LocalExecutor, ToolOutput, ToolRegistry};
+use ribosome::heal::DefaultHealer;
+use ribosome::lang::{
     builtin, Granularity, Language, Plan, Registry, Rule, Target, Toolchain,
 };
-use forge::ribosome::sched::{Outcome, Scheduler};
-use forge::ribosome::{Digest, Platform};
+use ribosome::sched::{Outcome, Scheduler};
+use ribosome::{Digest, Platform};
 use std::collections::BTreeSet;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -71,7 +71,7 @@ fn target(store: &Store, name: &str, language: &str, sources: &[(&str, &[u8])]) 
     t
 }
 
-fn build(store: &Store, plan: &Plan, counter: Arc<RunCounter>) -> forge::ribosome::sched::BuildReport {
+fn build(store: &Store, plan: &Plan, counter: Arc<RunCounter>) -> ribosome::sched::BuildReport {
     let exec = LocalExecutor::new("w", Platform::any(), tools_for(plan, counter));
     let healer = DefaultHealer::default();
     Scheduler::new(store, &exec, &healer).build(&plan.graph().unwrap()).unwrap()

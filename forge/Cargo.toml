@@ -16,6 +16,9 @@ toml = "0.8"
 thiserror = "2"
 sha2 = "0.10"
 ed25519-dalek = "3.0.0"
+# The build engine. A path dependency inside this repository, not a sibling
+# checkout — the distinction that made IronAccelerator drift (ROADMAP item 2).
+ribosome = { path = "../ribosome" }
 
 [dev-dependencies]
 

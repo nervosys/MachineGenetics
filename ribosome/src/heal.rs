@@ -216,7 +216,7 @@ pub fn relax_platform(action: &Action) -> Action {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ribosome::{Digest, Platform};
+    use crate::{Digest, Platform};
 
     fn act() -> Action {
         Action::new("compile", "mage-parse@0.2.0")

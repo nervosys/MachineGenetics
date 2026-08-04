@@ -161,19 +161,20 @@ These are deliberate, documented scope lines — *not* gaps papered over:
 
 ---
 
-## Repository layout — three workspaces, on purpose
+## Repository layout — four workspaces, on purpose
 
 `cargo test` at the repository root does nothing, and that is deliberate. There
-are **three independent Cargo workspaces**:
+are **four independent Cargo workspaces**:
 
 | Path | Crate | Tests | Notes |
 |---|---|--:|---|
 | `RecursiveMachineIntelligence/` | `rmi` | 1,380 | The low-level neurosymbolic framework. Feature-gated (`cpu` / `gpu` / `cuda`); build with `--no-default-features --features cpu` for the portable set |
-| `prototype/` | `mage-prototype` | 1,209 | Compiler, evaluator, ABL, RAP server. Path-depends on `rmi` |
-| `forge/` | `forge` | 52 | The toolchain and block registry |
+| `prototype/` | `mage-prototype` | 1,038 | Compiler, evaluator, ABL, RAP server. Path-depends on `rmi` |
+| `ribosome/` | `ribosome` | 139 | The distributed build engine. Depends on nothing in this repository — see below |
+| `forge/` | `forge` | 164 | Package registry, plus `germline`, the RSI control plane. Path-depends on `ribosome` |
 
 A root workspace *did* exist, but it listed only `compiler/*` — the forked-rustc
-compiler — and was removed with it on 2026-06-11 (`b1b910f`). The three surviving
+compiler — and was removed with it on 2026-06-11 (`b1b910f`). The surviving
 crates were always built standalone via `--manifest-path`.
 
 Keeping them separate is a trade, not an oversight:
@@ -181,14 +182,22 @@ Keeping them separate is a trade, not an oversight:
 - **`rmi` is vendored, not a submodule** (`UNIFICATION.md`). It must stay
   independently buildable and testable so it can be synced against its own
   upstream without inheriting this repo's lockfile. Merging it into a shared
-  workspace would collapse the three `Cargo.lock` files into one — including the
+  workspace would collapse the `Cargo.lock` files into one — including the
   pinned `lz4_flex >= 0.11.6` CVE fix recorded in `SECURITY_AUDIT.md` §1.
+- **`ribosome` must not depend on MAGE.** It began inside `forge` and was
+  extracted on 2026-08-04. Its central claim — that no language is privileged
+  below the planner (`RIBOSOME.md` §2.1) — is not credible from a crate that
+  depends on one language's compiler, so its dependency list is `serde`,
+  `serde_json`, `sha2`, `ed25519-dalek` and nothing else. CI enforces this with
+  a `cargo tree` check rather than trusting the doc, because it is exactly the
+  kind of property that erodes by one convenient `use`. The arrow points
+  `forge → ribosome`, never back.
 - The cost is that no single `cargo` invocation covers everything.
 
 So the supported entry points are:
 
 ```sh
-scripts/test-all.sh              # all three crates, debug
+scripts/test-all.sh              # all four crates, debug
 scripts/test-all.sh --release    # optimized
 scripts/test-all.sh --bench      # + eval_bench (73/73) and perf_report
 scripts/test-all.sh --cuda       # + prototype --features cuda (1,269 tests)

@@ -275,7 +275,7 @@ impl Executor for PoolExecutor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ribosome::Digest;
+    use crate::Digest;
 
     /// A tool that concatenates its inputs — enough to prove data actually flows.
     fn concat_tool() -> ToolRegistry {

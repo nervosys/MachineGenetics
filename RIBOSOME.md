@@ -1,15 +1,25 @@
 # Ribosome — the distributed, agent-operated build engine
 
 > **Status: implemented, including distribution.**
-> `forge/src/ribosome/` — 86 tests, part of forge's 235. Every claim marked
-> ✅ below is executed by a test; every ◻ is a design with no code behind it yet.
-> This split is load-bearing: see [DOCS.md](DOCS.md) for why this repository
-> marks unbuilt designs rather than describing them in the present tense.
+> `ribosome/` — its own crate, 139 tests. Every claim marked ✅ below is executed
+> by a test; every ◻ is a design with no code behind it yet. This split is
+> load-bearing: see [DOCS.md](DOCS.md) for why this repository marks unbuilt
+> designs rather than describing them in the present tense.
 
 A ribosome reads a genetic sequence and synthesizes the protein it encodes. This
-one reads MAGE and synthesizes artifacts — and like its namesake it is *many,
+one reads source and synthesizes artifacts — and like its namesake it is *many,
 identical, and concurrent*: any number of them work the same tape and produce the
 same product.
+
+It lives in its own workspace and **depends on nothing else in this repository**.
+It started inside `forge`, the package registry, which was a convenient place to
+put it and the wrong place to leave it: a build system that ships inside a
+package registry can only ever be that registry's build system, and §2.1's claim
+that no language is privileged below the planner is not credible from a crate
+that depends on one language's compiler. Its whole dependency list is `serde`,
+`serde_json`, `sha2`, `ed25519-dalek`. CI checks that with `cargo tree` rather
+than trusting this paragraph. `forge` depends on *it*, and `germline` drives it
+through the same public API any other caller would use.
 
 ---
 
@@ -396,9 +406,9 @@ Three control points are worth building *before* the loop closes, not after:
 ## 8. Reproducing the claims
 
 ```powershell
-cargo test --manifest-path forge/Cargo.toml                     # the whole crate
-cargo test --manifest-path forge/Cargo.toml --test ribosome     # 10 end-to-end scenarios
-cargo test --manifest-path forge/Cargo.toml --test multilang    # 8 multi-language scenarios
+cargo test --manifest-path ribosome/Cargo.toml                  # 139 tests
+cargo test --manifest-path ribosome/Cargo.toml --test build     # 10 end-to-end scenarios
+cargo test --manifest-path ribosome/Cargo.toml --test multilang # 8 multi-language scenarios
 ```
 
 The end-to-end tests are the interesting ones, because each asserts a property a

@@ -13,7 +13,7 @@ use forge::germline::supervisor::{FailureMode, HealthSample, SupervisionPolicy, 
 use forge::germline::{
     EvalSuite, FitnessVector, Generation, GenerationId, Measurement, Status, SuiteKind,
 };
-use forge::ribosome::Digest;
+use ribosome::Digest;
 use std::collections::HashSet;
 
 const SUITE_BYTES: &[u8] = b"heldout-suite-v1";

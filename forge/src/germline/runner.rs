@@ -51,8 +51,8 @@ use super::lineage::Lineage;
 use super::supervisor::{FailureMode, HealthSample, SupervisionPolicy, Supervisor};
 use super::variation::{propose, VariationPlan};
 use super::{EvalSuite, FitnessVector, Generation, GenerationId, Measurement};
-use crate::mac::absorb;
-use crate::ribosome::Digest;
+use ribosome::mac::absorb;
+use ribosome::Digest;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest as _, Sha256};
 
