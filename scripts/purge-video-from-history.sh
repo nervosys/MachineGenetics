@@ -40,11 +40,12 @@ echo "Target:     $TARGET"
 echo "Current .git size: $(du -sh .git 2>/dev/null | cut -f1)"
 echo
 
-# Note: `git rev-list … | grep -q` would be wrong under `set -o pipefail` —
-# grep exits on the first match, git takes SIGPIPE, and the pipeline reports
-# failure, which reads as "not found" for the file that is definitely there.
-# Ask git directly instead.
-FOUND="$(git log --all --oneline -- "$TARGET" | head -n 1)"
+# Ask git directly, with NO pipe. Under `set -o pipefail`, piping a long git
+# listing into anything that exits early (`grep -q`, `head -n1`) makes git take
+# SIGPIPE and the pipeline report failure — which reads as "file not found" for
+# a file that is plainly there, and kills the script under `set -e`. Both
+# spellings of that bug were written here before this comment existed.
+FOUND="$(git log --all --oneline -1 -- "$TARGET")"
 if [ -z "$FOUND" ]; then
     echo "✓ $TARGET is not present in history — nothing to purge."
     exit 0
@@ -84,10 +85,15 @@ if ! command -v git-filter-repo >/dev/null 2>&1; then
 fi
 
 STAMP="$(git log -1 --format=%cd --date=format:%Y%m%d-%H%M%S)"
-BACKUP="../MachineGenetics.backup-$STAMP"
-echo "Backing up to $BACKUP …"
-cp -a . "$BACKUP"
-echo "✓ backup complete"
+BACKUP="../MachineGenetics.backup-$STAMP.git"
+# Mirror only the repository, not the working tree: node_modules and target/
+# add ~7.6 GB of regenerable bytes and none of it is what needs preserving.
+# A mirror clone holds every ref and object, which is exactly what a history
+# rewrite puts at risk.
+echo "Mirroring repository to $BACKUP …"
+git clone --mirror . "$BACKUP" >/dev/null 2>&1
+echo "✓ backup complete ($(du -sh "$BACKUP" 2>/dev/null | cut -f1))"
+echo "  restore with: rm -rf .git && git clone --mirror $BACKUP .git-restored"
 
 echo "Rewriting history …"
 git filter-repo --invert-paths --path "$TARGET" --force
