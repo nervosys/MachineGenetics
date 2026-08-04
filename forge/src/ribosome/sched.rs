@@ -401,7 +401,13 @@ impl<'a> Scheduler<'a> {
                             }
                         }
                     }
-                    let _ = self.store.actions.put(&key, &result);
+                    // A shared store refuses claims from unverified toolchains.
+                    // The action still ran and its outputs are still in the CAS
+                    // for downstream actions; what is withheld is the claim that
+                    // *another machine* may reuse this result.
+                    if self.store.may_publish(&current) {
+                        let _ = self.store.actions.put(&key, &result);
+                    }
                     report.work_done += current.cost;
 
                     return if attempt == 0 {

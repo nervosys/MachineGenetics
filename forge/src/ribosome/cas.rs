@@ -23,7 +23,7 @@
 //! and converts that into an immediate, local, obviously-correct error — which
 //! [`super::heal`] then repairs by evicting and rebuilding.
 
-use super::Digest;
+use super::{Action, Digest};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -204,12 +204,47 @@ pub struct Store {
     pub cas: Cas,
     pub actions: ActionCache,
     root: PathBuf,
+    shared: bool,
 }
 
 impl Store {
+    /// A store private to one machine.
+    ///
+    /// The default, and the permissive one: "same host, same binaries" is a
+    /// reasonable assumption to make about yourself, so results from unverified
+    /// toolchains may be cached here.
     pub fn open(root: impl Into<PathBuf>) -> Self {
         let root: PathBuf = root.into();
-        Store { cas: Cas::new(&root), actions: ActionCache::new(&root), root }
+        Store { cas: Cas::new(&root), actions: ActionCache::new(&root), root, shared: false }
+    }
+
+    /// A store other machines read from.
+    ///
+    /// This turns [`lang::Hermeticity`](super::lang::Hermeticity) from a label
+    /// into an enforced rule: an action whose tool is unpinned is *executed*
+    /// normally but its claim is never published here, because publishing it
+    /// would offer another machine an artifact built by a compiler nobody
+    /// verified was the same compiler. The cost is a repeated build; the
+    /// alternative cost is a silently wrong binary.
+    pub fn open_shared(root: impl Into<PathBuf>) -> Self {
+        let mut s = Store::open(root);
+        s.shared = true;
+        s
+    }
+
+    pub fn is_shared(&self) -> bool {
+        self.shared
+    }
+
+    /// May this action's result be written to the action cache?
+    ///
+    /// Keyed off the `+unpinned` marker that [`Toolchain::tool_id`] puts in the
+    /// tool string — so the decision is made from the same bytes that went into
+    /// the key, not from metadata that could disagree with it.
+    ///
+    /// [`Toolchain::tool_id`]: super::lang::Toolchain::tool_id
+    pub fn may_publish(&self, action: &Action) -> bool {
+        !self.shared || !action.tool.ends_with("+unpinned")
     }
 
     pub fn root(&self) -> &Path {

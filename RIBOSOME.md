@@ -73,8 +73,12 @@ agents  │  plan() · to_json() · BuildReport · fitness() │   data in, data
      └─────────────────────────────────────────────────┘
 ```
 
+Above `graph` sits `lang`, which is the only module that knows any language
+exists — see §2.1.
+
 | Module | Role | Status |
 |---|---|:--:|
+| `lang` | languages, toolchains, hermeticity tiers | ✅ |
 | `graph` | action DAG; edges **derived** from inputs, not declared | ✅ |
 | `key` | SHA-256 over a canonical, length-prefixed encoding | ✅ |
 | `cas` | content-addressed store + action cache, self-verifying | ✅ |
@@ -118,6 +122,59 @@ untrusted mirror and be verified on arrival, while action-cache entries are the
 thing to sign, audit, or refuse. `Cas::get` rehashes on every read — disks rot,
 and a corrupted artifact flowing into a build puts the symptom arbitrarily far
 from the cause. ✅
+
+### 2.1 Arbitrary languages, without pretending
+
+§1's answer — reuse is safe because ABL is byte-stable and construction is
+tool-mediated — is a claim about *MAGE's* pipeline. It does not survive contact
+with `gcc`, and a build engine that only builds its own language is a toy.
+
+The problem is specific. `Action::tool` is a string, and `"gcc@13.2.0"` on two
+workers is not evidence that the same compiler ran: one machine's is
+distribution-patched, another's embeds `__DATE__`, a third resolves different
+libc headers. The keys agree, the outputs do not, and a shared cache serves one
+machine's artifact to another — the worst failure a build system can have,
+because it is silent and gets *more* likely as your hit rate improves.
+
+So the strength of the claim is an explicit, per-toolchain, **keyed** value:
+
+| `Hermeticity` | Means | Remote cache |
+|---|---|:--:|
+| `Structural` | output byte-stable by construction — *measured* (MAGE/ABL) | yes |
+| `Pinned` | the toolchain binary is identified by content digest | yes |
+| `Declared` | the toolchain is named, not verified | **no** |
+
+Two consequences, both enforced rather than documented and hoped for:
+
+- A pinned toolchain's digest goes **into the tool id and therefore into the
+  key** (`clang@18.1.0+sha256-1f3a9c2b7d40`), so two different `gcc-13.2.0`
+  binaries cannot collide. ✅ (tested)
+- A declared toolchain is marked `+unpinned`, and `Store::open_shared` **refuses
+  to publish its claims**. The action still runs and still caches locally, where
+  "same host, same binary" is reasonable; it is never offered to a fleet, where
+  it is not. Enforcement is per action, so one unpinned C file does not cost the
+  MAGE artifact beside it its shareability. ✅ (tested)
+
+Upgrading is one call: `Registry::pin("c", digest)` measures the compiler and the
+same build becomes remote-cacheable. Every key changes, which is correct — the
+old keys were claims about a tool nobody had checked. ✅
+
+**Granularity is declared, not assumed.** C compiles per translation unit and
+links; `rustc` and `go` consume a whole crate or package at once. Modelling both
+as one-action-per-file would produce a graph that misrepresents both their
+parallelism and their rebuilds, so `Granularity::{PerSource, WholeTarget}` is a
+language property and the planner emits the shape the toolchain really has. ✅
+
+Builtins ship for MAGE, C, C++, Rust, Go, Python, and TypeScript — all `Declared`
+except MAGE, because shipping a digest that depends on the operator's machine
+would be a lie. Adding a language is data, not code: a name, extensions, a
+toolchain, a granularity, and argument templates. ✅ (tested end to end with a
+language the engine had never heard of)
+
+What this is **not**: a package manager. A dependency here is an artifact
+produced by another target in the same graph. Fetching third-party code is a
+separate trust problem, and conflating the two is how build systems become
+unauditable. ◻
 
 ---
 
@@ -339,8 +396,9 @@ Three control points are worth building *before* the loop closes, not after:
 ## 8. Reproducing the claims
 
 ```powershell
-cargo test --manifest-path forge/Cargo.toml            # 235 tests, 86 of them ribosome
-cargo test --manifest-path forge/Cargo.toml --test ribosome   # the 10 end-to-end scenarios
+cargo test --manifest-path forge/Cargo.toml                     # the whole crate
+cargo test --manifest-path forge/Cargo.toml --test ribosome     # 10 end-to-end scenarios
+cargo test --manifest-path forge/Cargo.toml --test multilang    # 8 multi-language scenarios
 ```
 
 The end-to-end tests are the interesting ones, because each asserts a property a
@@ -348,6 +406,11 @@ build system is actually judged on:
 
 | Test | Property |
 |---|---|
+| `a_mixed_language_program_builds_in_dependency_order` | C, Rust, and MAGE in one graph |
+| `a_shared_store_refuses_to_publish_results_from_an_unverified_toolchain` | hermeticity is enforced, not labelled |
+| `pinning_the_toolchain_earns_the_shared_cache` | and the upgrade path works |
+| `one_unpinned_language_does_not_block_the_pinned_ones_beside_it` | enforcement is per action |
+| `a_language_nobody_anticipated_builds_with_no_change_to_the_engine` | a language is data |
 | `a_cold_build_runs_everything_and_produces_the_right_bytes` | it builds, and the bytes are right |
 | `rebuilding_unchanged_sources_does_no_work_at_all` | a no-op rebuild runs **zero** tools |
 | `editing_one_source_rebuilds_exactly_it_and_its_dependents` | minimal correct incrementality |

@@ -30,6 +30,27 @@
 //! discipline. That is the whole design: everything else in this module follows
 //! from taking it seriously.
 //!
+//! ## Arbitrary languages, without pretending
+//!
+//! Both properties above are about *MAGE's* pipeline, and neither survives
+//! contact with `gcc`. A build engine that only builds its own language is a toy,
+//! so [`lang`] admits foreign toolchains — and admits, in the key itself, that
+//! they are weaker.
+//!
+//! The mechanism is [`lang::Hermeticity`]: `Structural` (byte-stable by
+//! construction — measured, not assumed), `Pinned` (the compiler binary is
+//! identified by content digest), `Declared` (named but unverified). A pinned
+//! toolchain's digest goes into `Action::tool` and therefore into the key, so two
+//! machines' differently-patched `gcc-13.2.0` cannot collide. A declared one is
+//! marked `+unpinned`, and [`cas::Store::open_shared`] refuses to publish its
+//! claims — the result is still built and still cached locally, but never offered
+//! to another machine.
+//!
+//! This is the honest version of what Bazel calls hermeticity. Not a promise the
+//! build makes and cannot keep, but a property the key can express, degrade to,
+//! and be audited for. Nothing below [`lang`] mentions any language, MAGE
+//! included.
+//!
 //! ## Shape
 //!
 //! | Module | Role |
@@ -37,7 +58,9 @@
 //! | [`graph`] | the action DAG — dependencies, waves, critical path |
 //! | [`key`] | deterministic action keys (SHA-256 over a canonical encoding) |
 //! | [`cas`] | content-addressed store + action cache |
+//! | [`lang`] | languages, toolchains, and hermeticity tiers |
 //! | [`exec`] | the [`exec::Executor`] seam: local, pooled, remote |
+//! | [`subprocess`] | sandboxed process execution for foreign tools |
 //! | [`heal`] | failure classification and repair — the self-healing layer |
 //! | [`sched`] | the scheduler that ties them together |
 //!
@@ -75,6 +98,7 @@ pub mod exec;
 pub mod graph;
 pub mod heal;
 pub mod key;
+pub mod lang;
 pub mod provenance;
 pub mod remote;
 pub mod sched;
