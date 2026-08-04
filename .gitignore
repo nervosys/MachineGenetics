@@ -59,6 +59,12 @@ __pycache__/
 
 ## Node
 node_modules
+
+## Rendered video
+# The Remotion output is ~37 MB. Re-render with 
+pm run render in video/, or
+# fetch it from the GitHub release — it is a release asset, not source.
+video/out/
 /src/doc/rustc-dev-guide/mermaid.min.js
 
 ## Rustdoc GUI tests

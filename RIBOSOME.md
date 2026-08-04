@@ -237,12 +237,21 @@ a shared cache without authenticated claims is a channel by which any participan
 hands every other an arbitrary build result. Now every result carries an HMAC over
 `(action key, output digests, worker)`.
 
-◻ **Remaining, and stated rather than implied:** no TLS and no authentication of
-the *connection* — a worker executes what it is told, which is safe on a trusted
-segment and unsafe on an open one, the same posture as an unauthenticated build
-cache. Provenance HMAC is symmetric, so it makes entries attributable and detects
-corruption but does not survive a compromised worker; per-worker asymmetric keys
-are the fix. A sandboxed subprocess executor for foreign tools is also not built.
+✅ **Connection authentication.** HMAC challenge-response, gating *every* frame
+rather than just `Execute` — a worker that answers `Describe` to an
+unauthenticated peer has already disclosed its capabilities and tool set. The
+nonce is server-generated per connection, so a captured proof cannot be replayed
+against a later one. Opt-in, because a single-host fleet on loopback has nobody
+to authenticate against and mandatory ceremony that everyone disables is worse
+than an honest opt-in.
+
+◻ **Remaining, stated rather than implied:** authentication is **not
+encryption** — frames are plaintext, so this is safe on a trusted segment and
+inappropriate on an open one. TLS needs a crypto dependency and is not built.
+Provenance and auth HMAC are symmetric, so they make entries attributable and
+detect corruption but do not survive a compromised worker; per-worker asymmetric
+keys are the fix. A sandboxed subprocess executor for foreign tools is also not
+built.
 
 ---
 

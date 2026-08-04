@@ -49,6 +49,16 @@ use std::time::{Duration, Instant};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "frame", rename_all = "snake_case")]
 pub enum Frame {
+    /// Server's opening move when it requires authentication: a per-connection
+    /// nonce the client must prove it can MAC.
+    Challenge { nonce: String },
+    /// Client's proof: `HMAC(fleet key, nonce)`.
+    Auth { mac: String },
+    /// Server accepted the proof.
+    Welcome,
+    /// Server refused it. Deliberately says nothing about *why* — an attacker
+    /// learns only "no", not whether the identity existed or the key was close.
+    Denied,
     /// Client asks what the worker is.
     Describe,
     /// Worker's advertisement.
@@ -112,16 +122,54 @@ fn decode(map: &BTreeMap<String, String>) -> Result<Inputs, ExecError> {
         .collect()
 }
 
+/// Per-connection nonce.
+///
+/// Server-generated, so a captured `Auth` frame cannot be replayed against a
+/// later connection — the nonce it proves knowledge of will not come round
+/// again. Derived from the clock plus a counter rather than a CSPRNG: the
+/// requirement is uniqueness per connection, not unpredictability, because the
+/// secret is the key and the nonce is only there to make each proof single-use.
+fn next_nonce() -> String {
+    use std::sync::atomic::AtomicU64;
+    static COUNTER: AtomicU64 = AtomicU64::new(0);
+    let n = COUNTER.fetch_add(1, Ordering::Relaxed);
+    let t = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos() as u64)
+        .unwrap_or(0);
+    hex_encode(&crate::mac::hmac_sha256(b"ribosome-nonce", &[t.to_le_bytes(), n.to_le_bytes()].concat()))
+}
+
+fn auth_response(key: &[u8], nonce: &str) -> String {
+    hex_encode(&crate::mac::hmac_sha256(key, nonce.as_bytes()))
+}
+
 /// A worker process: serves actions to whoever connects.
 pub struct WorkerServer {
     inner: Arc<dyn Executor>,
     signer: Option<Arc<Signer>>,
+    /// When set, a client must prove knowledge of this key before it can ask
+    /// for anything. Optional because a single-host fleet on loopback has no
+    /// one to authenticate against, and mandatory ceremony that everyone
+    /// disables is worse than an honest opt-in.
+    auth_key: Option<Vec<u8>>,
     shutdown: Arc<AtomicBool>,
 }
 
 impl WorkerServer {
     pub fn new(inner: Arc<dyn Executor>) -> Self {
-        WorkerServer { inner, signer: None, shutdown: Arc::new(AtomicBool::new(false)) }
+        WorkerServer {
+            inner,
+            signer: None,
+            auth_key: None,
+            shutdown: Arc::new(AtomicBool::new(false)),
+        }
+    }
+
+    /// Require clients to authenticate with the fleet key.
+    pub fn with_auth(mut self, key: impl Into<Vec<u8>>) -> Self {
+        self.auth_key = Some(key.into());
+        self
     }
 
     /// Sign results, so cache entries this worker produces are attributable.
@@ -146,8 +194,9 @@ impl WorkerServer {
                     stream.set_nonblocking(false)?;
                     let inner = self.inner.clone();
                     let signer = self.signer.clone();
+                    let auth = self.auth_key.clone();
                     std::thread::spawn(move || {
-                        let _ = Self::handle(stream, inner, signer);
+                        let _ = Self::handle(stream, inner, signer, auth);
                     });
                 }
                 Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
@@ -163,7 +212,40 @@ impl WorkerServer {
         mut stream: TcpStream,
         inner: Arc<dyn Executor>,
         signer: Option<Arc<Signer>>,
+        auth_key: Option<Vec<u8>>,
     ) -> std::io::Result<()> {
+        // The server always opens, with `Challenge` or `Welcome`. Being
+        // explicit about "no auth required" rather than staying silent keeps the
+        // handshake unambiguous — a silent open worker and a hung one look
+        // identical to a client, and it would have to wait out its timeout to
+        // tell them apart.
+        //
+        // Authentication gates *every* frame, not just `Execute`: a worker that
+        // answers `Describe` to an unauthenticated peer has already disclosed
+        // its capabilities and tool set.
+        match &auth_key {
+            None => write_frame(&mut stream, &Frame::Welcome)?,
+            Some(key) => {
+                let nonce = next_nonce();
+                write_frame(&mut stream, &Frame::Challenge { nonce: nonce.clone() })?;
+                let ok = match read_frame(&mut stream) {
+                    Ok(Frame::Auth { mac }) => {
+                        let expect = auth_response(key, &nonce);
+                        match (hex_decode(&mac), hex_decode(&expect)) {
+                            (Ok(a), Ok(b)) => crate::mac::ct_eq(&a, &b),
+                            _ => false,
+                        }
+                    }
+                    _ => false,
+                };
+                if !ok {
+                    let _ = write_frame(&mut stream, &Frame::Denied);
+                    return Ok(());
+                }
+                write_frame(&mut stream, &Frame::Welcome)?;
+            }
+        }
+
         loop {
             let frame = match read_frame(&mut stream) {
                 Ok(f) => f,
@@ -221,6 +303,7 @@ pub struct RemoteExecutor {
     addr: String,
     platform: Platform,
     timeout: Duration,
+    auth_key: Option<Vec<u8>>,
 }
 
 impl RemoteExecutor {
@@ -230,16 +313,67 @@ impl RemoteExecutor {
     /// capabilities sourced from the worker itself; a hand-maintained roster
     /// drifts, and a drifted roster routes GPU work to a machine without one.
     pub fn connect(addr: impl Into<String>, timeout: Duration) -> Result<Self, ExecError> {
-        let addr = addr.into();
+        Self::connect_inner(addr.into(), timeout, None)
+    }
+
+    /// Connect to a worker that requires the fleet key.
+    pub fn connect_authenticated(
+        addr: impl Into<String>,
+        timeout: Duration,
+        key: impl Into<Vec<u8>>,
+    ) -> Result<Self, ExecError> {
+        Self::connect_inner(addr.into(), timeout, Some(key.into()))
+    }
+
+    fn connect_inner(
+        addr: String,
+        timeout: Duration,
+        auth_key: Option<Vec<u8>>,
+    ) -> Result<Self, ExecError> {
         let mut stream = Self::dial(&addr, timeout)?;
+        Self::authenticate(&mut stream, auth_key.as_deref())?;
         write_frame(&mut stream, &Frame::Describe)
             .map_err(|e| ExecError::Transient(format!("describe failed: {e}")))?;
         match read_frame(&mut stream) {
             Ok(Frame::Advertisement { worker, platform, .. }) => {
-                Ok(RemoteExecutor { name: worker, addr, platform, timeout })
+                Ok(RemoteExecutor { name: worker, addr, platform, timeout, auth_key })
             }
             Ok(other) => Err(ExecError::Transient(format!("unexpected reply: {other:?}"))),
             Err(e) => Err(ExecError::Transient(format!("no advertisement: {e}"))),
+        }
+    }
+
+    /// Complete the opening handshake.
+    ///
+    /// An authenticating client can talk to an open worker (it simply gets
+    /// `Welcome` immediately). The reverse — an unauthenticated client reaching
+    /// a challenging worker — fails, which is the direction that matters.
+    fn authenticate(stream: &mut TcpStream, key: Option<&[u8]>) -> Result<(), ExecError> {
+        match read_frame(stream) {
+            Ok(Frame::Welcome) => Ok(()),
+            Ok(Frame::Challenge { nonce }) => {
+                let Some(key) = key else {
+                    return Err(ExecError::Transient(
+                        "worker requires authentication and no fleet key was supplied".into(),
+                    ));
+                };
+                write_frame(stream, &Frame::Auth { mac: auth_response(key, &nonce) })
+                    .map_err(|e| ExecError::Transient(format!("auth send: {e}")))?;
+                match read_frame(stream) {
+                    Ok(Frame::Welcome) => Ok(()),
+                    Ok(Frame::Denied) => {
+                        Err(ExecError::Transient("worker rejected the fleet key".into()))
+                    }
+                    Ok(other) => {
+                        Err(ExecError::Transient(format!("unexpected handshake reply: {other:?}")))
+                    }
+                    Err(e) => Err(ExecError::Transient(format!("handshake reply: {e}"))),
+                }
+            }
+            Ok(other) => {
+                Err(ExecError::Transient(format!("expected a handshake, got {other:?}")))
+            }
+            Err(e) => Err(ExecError::Transient(format!("handshake read: {e}"))),
         }
     }
 
@@ -267,6 +401,9 @@ impl RemoteExecutor {
     /// Round-trip liveness check.
     pub fn ping(&self) -> bool {
         let Ok(mut s) = Self::dial(&self.addr, self.timeout) else { return false };
+        if Self::authenticate(&mut s, self.auth_key.as_deref()).is_err() {
+            return false;
+        }
         write_frame(&mut s, &Frame::Ping).is_ok() && matches!(read_frame(&mut s), Ok(Frame::Pong))
     }
 }
@@ -282,6 +419,7 @@ impl Executor for RemoteExecutor {
 
     fn run(&self, action: &Action, inputs: &Inputs) -> Result<ToolOutput, ExecError> {
         let mut stream = Self::dial(&self.addr, self.timeout)?;
+        Self::authenticate(&mut stream, self.auth_key.as_deref())?;
         write_frame(
             &mut stream,
             &Frame::Execute { action: Box::new(action.clone()), inputs: encode(inputs) },
@@ -527,6 +665,7 @@ mod tests {
     fn results_from_a_remote_worker_carry_provenance() {
         let (addr, stop) = spawn_worker(Platform::any(), "signer-node");
         let mut stream = RemoteExecutor::dial(&addr, timeout()).unwrap();
+        RemoteExecutor::authenticate(&mut stream, None).unwrap();
         let action = Action::new("t", "upper@1").input("a", Digest::of(b"x")).output("o");
         let mut inputs = Inputs::new();
         inputs.insert("a".into(), b"data".to_vec());
@@ -569,6 +708,98 @@ mod tests {
         let mut client = TcpStream::connect(&addr).unwrap();
         client.set_read_timeout(Some(timeout())).unwrap();
         assert!(read_frame(&mut client).is_err(), "a hostile length prefix must not be honoured");
+    }
+
+    // ---- authentication
+
+    /// Start a worker that demands the fleet key.
+    fn spawn_authed_worker(key: &[u8]) -> (String, Arc<AtomicBool>) {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap().to_string();
+        let exec: Arc<dyn Executor> =
+            Arc::new(LocalExecutor::new("secure", Platform::any(), tools()));
+        let server = WorkerServer::new(exec).with_auth(key.to_vec());
+        let shutdown = server.shutdown_handle();
+        std::thread::spawn(move || {
+            let _ = server.serve(listener);
+        });
+        (addr, shutdown)
+    }
+
+    #[test]
+    fn a_client_with_the_fleet_key_is_admitted() {
+        let (addr, stop) = spawn_authed_worker(b"fleet secret");
+        let remote =
+            RemoteExecutor::connect_authenticated(&addr, timeout(), b"fleet secret".to_vec())
+                .unwrap();
+        assert_eq!(remote.name(), "secure");
+
+        let action = Action::new("t", "upper@1").input("a", Digest::of(b"x")).output("o");
+        let mut inputs = Inputs::new();
+        inputs.insert("a".into(), b"secret work".to_vec());
+        assert_eq!(remote.run(&action, &inputs).unwrap().outputs["o"], b"SECRET WORK");
+        stop.store(true, Ordering::Relaxed);
+    }
+
+    #[test]
+    fn a_client_without_the_key_learns_nothing_not_even_capabilities() {
+        let (addr, stop) = spawn_authed_worker(b"fleet secret");
+        let err = RemoteExecutor::connect(&addr, timeout()).unwrap_err();
+        assert!(
+            err.to_string().contains("requires authentication"),
+            "an unauthenticated peer must not even get an advertisement: {err}"
+        );
+        stop.store(true, Ordering::Relaxed);
+    }
+
+    #[test]
+    fn a_wrong_key_is_refused() {
+        let (addr, stop) = spawn_authed_worker(b"fleet secret");
+        let err =
+            RemoteExecutor::connect_authenticated(&addr, timeout(), b"guessed".to_vec())
+                .unwrap_err();
+        assert!(err.to_string().contains("rejected"), "{err}");
+        stop.store(true, Ordering::Relaxed);
+    }
+
+    #[test]
+    fn a_captured_proof_cannot_be_replayed_on_a_new_connection() {
+        let key = b"fleet secret".to_vec();
+        let (addr, stop) = spawn_authed_worker(&key);
+
+        // Capture a valid response to one connection's challenge.
+        let mut first = RemoteExecutor::dial(&addr, timeout()).unwrap();
+        let captured = match read_frame(&mut first).unwrap() {
+            Frame::Challenge { nonce } => auth_response(&key, &nonce),
+            other => panic!("expected a challenge, got {other:?}"),
+        };
+
+        // Replay it against a fresh connection, which has a different nonce.
+        let mut second = RemoteExecutor::dial(&addr, timeout()).unwrap();
+        let _ = read_frame(&mut second).unwrap(); // its own challenge
+        write_frame(&mut second, &Frame::Auth { mac: captured }).unwrap();
+        assert!(
+            matches!(read_frame(&mut second), Ok(Frame::Denied)),
+            "a per-connection nonce must make each proof single-use"
+        );
+        stop.store(true, Ordering::Relaxed);
+    }
+
+    #[test]
+    fn nonces_do_not_repeat() {
+        let a = next_nonce();
+        let b = next_nonce();
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn an_authenticating_client_can_still_use_an_open_worker() {
+        let (addr, stop) = spawn_worker(Platform::any(), "open");
+        let remote =
+            RemoteExecutor::connect_authenticated(&addr, timeout(), b"unused key".to_vec())
+                .unwrap();
+        assert_eq!(remote.name(), "open");
+        stop.store(true, Ordering::Relaxed);
     }
 
     // ---- registry

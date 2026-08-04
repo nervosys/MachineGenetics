@@ -27,15 +27,31 @@ npm run render    # -> out/agentic-rain.mp4
 | --- | --- |
 | `src/DigitalRain.tsx` | The composition — per-column state is derived deterministically from a seed, so a re-render is byte-reproducible |
 | `src/Root.tsx`, `src/index.ts` | Remotion entry points |
-| `out/agentic-rain.mp4` | The rendered output, **committed** (38 MB) |
+| `out/agentic-rain.mp4` | The rendered output. **No longer tracked** — see below |
+
+## Getting the rendered video
+
+It is a build output, not source, so it is git-ignored. Two ways to get it:
+
+```sh
+npm install && npm run render          # re-render it (deterministic — same bytes)
+gh release download v0.2.0 -p '*.mp4'  # or fetch the release asset
+```
 
 ## Two size notes
 
-- **`node_modules/` is ~490 MB and ~8,500 files.** It is git-ignored (`node_modules`
-  in the root `.gitignore`) and regenerable with `npm install`. If you are
-  measuring this repository's size on disk, it dominates — and it is not in git.
-- **`out/agentic-rain.mp4` is 38 MB and *is* committed**, which is the single
-  largest contributor to the ~158 MB `.git` directory. That is a deliberate
-  convenience so the artifact is available without a render toolchain. If clone
-  time ever matters, move it to a GitHub release asset or Git LFS — tracked as
-  open item 5 in [`ROADMAP.md`](../ROADMAP.md).
+- **`node_modules/` is ~490 MB and ~8,500 files.** Git-ignored and regenerable
+  with `npm install`. If you are measuring this repository's size on disk it
+  dominates — and it is not in git.
+- **The 37 MB mp4 was tracked until 2026-08-03** and is the single largest
+  contributor to the ~159 MB `.git` directory. It is now untracked and ignored,
+  so the repository stops *growing* — each re-render would otherwise have added
+  another 37 MB blob forever.
+
+  Untracking does **not** shrink `.git`: the blob remains in history, so a fresh
+  clone still transfers it. Reclaiming that requires rewriting history, which
+  moves every subsequent commit SHA, moves the `v0.2.0` tag, and forces every
+  existing clone and fork to re-clone. That is a judgement call about who else
+  has cloned the repo, so it is prepared rather than done:
+  [`scripts/purge-video-from-history.sh`](../scripts/purge-video-from-history.sh)
+  (dry-run by default). Attach the video to the release *before* running it.

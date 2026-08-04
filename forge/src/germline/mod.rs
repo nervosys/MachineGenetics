@@ -60,6 +60,7 @@
 //! | [`cycle`] | the state machine joining propose → evaluate → adjudicate → hand off |
 //! | [`supervisor`] | post-handoff health, failure modes, automatic demotion |
 //! | [`runner`] | bounded, policy-pinned cycles and their halt conditions |
+//! | [`workload`] | a real workload: architecture search evaluated by real builds |
 //!
 //! ## Status
 //!
@@ -78,6 +79,7 @@ pub mod lineage;
 pub mod runner;
 pub mod supervisor;
 pub mod variation;
+pub mod workload;
 
 use crate::ribosome::Digest;
 use serde::{Deserialize, Serialize};

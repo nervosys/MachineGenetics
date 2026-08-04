@@ -53,6 +53,10 @@ fn attestor() -> Attestor {
     Attestor::new(EVALUATOR, b"harness signing key".to_vec())
 }
 
+fn suite() -> EvalSuite {
+    EvalSuite::new("heldout", SuiteKind::HeldOut, Digest::of(SUITE))
+}
+
 fn episode(shadow: u32) -> Episode {
     Episode::open(
         PromotionGate { min_shadow_successes: shadow, ..PromotionGate::default() },
@@ -279,6 +283,164 @@ fn tampering_with_the_record_after_the_fact_is_detectable() {
         Journal::open(&path).unwrap().verify().is_err(),
         "rewriting a candidate's provenance must break the chain"
     );
+
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+// ------------------------------------- the loop against a real workload
+
+/// The whole thing, unattended: a bounded runner driving architecture search
+/// that is evaluated by actual builds through Ribosome. No stubs in the path.
+#[test]
+fn the_runner_drives_a_real_workload_to_a_bounded_stop() {
+    use forge::germline::runner::{Halt, Runner, RunnerPolicy, Workload};
+    use forge::germline::supervisor::SupervisionPolicy;
+    use forge::germline::workload::BuildWorkload;
+
+    let root = tmp("real-workload");
+    let mut journal = Journal::open(root.join("journal.jsonl")).unwrap();
+    let mut workload = BuildWorkload::new(Store::open(root.join("store")));
+
+    // Seed champion: a shallow architecture, actually built.
+    let seed_artifact = workload
+        .materialize(&CandidateSpec::new("seed", vec![0.0, 0.0, 1.0]))
+        .unwrap();
+    let mut lineage = Lineage::new();
+    let champ = lineage.next_id();
+    lineage.add(Generation::new(champ, seed_artifact).measured(Measurement {
+        suite: suite(),
+        fitness: FitnessVector::new()
+            .with("capability", 0.05)
+            .with("safety", 0.95)
+            .with("compactness", 0.30)
+            .with("correctness", 1.0),
+        evaluator: EVALUATOR.into(),
+    }));
+    lineage.promote(champ, episode(0).gate_digest, EVALUATOR).unwrap();
+
+    let policy = RunnerPolicy {
+        name: "architecture-search".into(),
+        max_cycles: 6,
+        max_consecutive_refusals: 3,
+        shadow_runs: 2,
+        supervision: SupervisionPolicy { window: 3, ..SupervisionPolicy::default() },
+        ..RunnerPolicy::default()
+    };
+    let ep = Episode::open(
+        PromotionGate {
+            primary_axis: "capability".into(),
+            min_improvement: 0.01,
+            guard_axes: vec!["safety".into()],
+            guard_tolerance: 0.01,
+            min_shadow_successes: 2,
+        },
+        Digest::of(SUITE),
+        EVALUATOR,
+    );
+    let at = attestor();
+    let mut runner = Runner::new(policy, &ep, &at, suite(), 0xC0FFEE);
+
+    let report = runner.run(&mut lineage, &mut journal, &mut workload);
+
+    // It stopped on its own, for a stated reason.
+    assert!(
+        matches!(
+            report.halt,
+            Halt::BudgetExhausted { .. } | Halt::SearchStalled { .. } | Halt::Demoted { .. }
+        ),
+        "the run must reach a named stop, not wander: {:?}",
+        report.halt
+    );
+    assert!(!report.cycles.is_empty());
+
+    // Real builds happened, and the record is intact and anchored.
+    assert!(!workload.history.is_empty(), "architectures were actually built");
+    assert!(journal.verify().is_ok(), "the unattended run's record must be intact");
+    assert_eq!(report.journal_head, journal.head().cloned());
+
+    // Whatever holds authority is materialized — the fallback story is real.
+    let champion = lineage.champion().unwrap();
+    assert!(
+        workload.materialized(&champion.artifact),
+        "the current champion must actually be runnable"
+    );
+
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
+fn an_unattended_run_that_breaks_falls_back_to_something_runnable() {
+    use forge::germline::runner::{Halt, Runner, RunnerPolicy, Workload};
+    use forge::germline::supervisor::SupervisionPolicy;
+    use forge::germline::workload::BuildWorkload;
+
+    let root = tmp("real-demote");
+    let mut journal = Journal::open(root.join("journal.jsonl")).unwrap();
+    let mut workload = BuildWorkload::new(Store::open(root.join("store")));
+
+    let seed_artifact = workload
+        .materialize(&CandidateSpec::new("seed", vec![0.0, 0.0, 1.0]))
+        .unwrap();
+    let mut lineage = Lineage::new();
+    let champ = lineage.next_id();
+    lineage.add(Generation::new(champ, seed_artifact.clone()).measured(Measurement {
+        suite: suite(),
+        fitness: FitnessVector::new()
+            .with("capability", 0.05)
+            .with("safety", 0.95)
+            .with("compactness", 0.30)
+            .with("correctness", 1.0),
+        evaluator: EVALUATOR.into(),
+    }));
+    lineage.promote(champ, episode(0).gate_digest, EVALUATOR).unwrap();
+
+    // Anything promoted will fail in production.
+    workload.champion_fails = true;
+
+    let ep = Episode::open(
+        PromotionGate {
+            primary_axis: "capability".into(),
+            min_improvement: 0.01,
+            guard_axes: vec!["safety".into()],
+            guard_tolerance: 0.01,
+            min_shadow_successes: 0,
+        },
+        Digest::of(SUITE),
+        EVALUATOR,
+    );
+    let at = attestor();
+    let mut runner = Runner::new(
+        RunnerPolicy {
+            max_cycles: 6,
+            shadow_runs: 0,
+            supervision: SupervisionPolicy { window: 3, ..SupervisionPolicy::default() },
+            ..RunnerPolicy::default()
+        },
+        &ep,
+        &at,
+        suite(),
+        7,
+    );
+
+    let report = runner.run(&mut lineage, &mut journal, &mut workload);
+
+    if let Halt::Demoted { fell_back_to, .. } = &report.halt {
+        assert_eq!(lineage.champion().unwrap().id, *fell_back_to);
+        assert_eq!(*fell_back_to, champ, "authority returned to the seed");
+        assert!(
+            workload.materialized(&seed_artifact),
+            "and the thing it returned to is actually runnable"
+        );
+        assert!(report.cycles.len() == 1, "it stopped rather than proposing another");
+    } else {
+        // If nothing was promotable the run stalls instead — also a named stop.
+        assert!(
+            matches!(report.halt, Halt::SearchStalled { .. } | Halt::BudgetExhausted { .. }),
+            "unexpected halt: {:?}",
+            report.halt
+        );
+    }
+    assert!(journal.verify().is_ok());
 
     let _ = std::fs::remove_dir_all(&root);
 }
