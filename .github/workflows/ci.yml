@@ -1,9 +1,10 @@
 name: CI
 
-# Builds and tests the four live crates — the embedded `rmi` framework, the
-# prototype compiler/evaluator, the Ribosome build engine, and the Forge
-# toolchain. The old forked-rustc compiler CI was removed with that compiler;
-# this is the accurate, working pipeline for what ships today.
+# Builds and tests the five live crates — the embedded `rmi` framework, the
+# prototype compiler/evaluator, the Ribosome build engine, the Germline RSI
+# control plane, and the Forge registry. The old forked-rustc compiler CI was
+# removed with that compiler; this is the accurate, working pipeline for what
+# ships today.
 #
 # They are separate Cargo workspaces on purpose (see ARCHITECTURE.md
 # §"Repository layout"), so each gets its own --manifest-path job rather than a
@@ -11,7 +12,7 @@ name: CI
 # locally.
 #
 # Two in-repo path dependencies decide the paths filters: `prototype` depends on
-# RecursiveMachineIntelligence, and `forge` depends on `ribosome`. A change to
+# RecursiveMachineIntelligence, and `germline` depends on `ribosome`. A change to
 # either dependency can break its dependent, so both appear in every filter.
 
 on:
@@ -21,6 +22,7 @@ on:
       - "prototype/**"
       - "forge/**"
       - "ribosome/**"
+      - "germline/**"
       - "RecursiveMachineIntelligence/**"
       - ".github/workflows/ci.yml"
   pull_request:
@@ -28,6 +30,7 @@ on:
       - "prototype/**"
       - "forge/**"
       - "ribosome/**"
+      - "germline/**"
       - "RecursiveMachineIntelligence/**"
       - ".github/workflows/ci.yml"
 
@@ -66,17 +69,36 @@ jobs:
         run: cargo build --release --manifest-path ribosome/Cargo.toml
       - name: Test
         run: cargo test --manifest-path ribosome/Cargo.toml
-      # The engine must not acquire a dependency on the language it builds.
+      # Two properties, one check.
+      #
+      # The engine must not acquire a dependency on the language it builds:
       # `lang`'s claim that no language is privileged below the planner is only
-      # credible while this holds, and it is the kind of thing that erodes by
-      # one convenient `use` — so it is checked rather than asserted in a doc.
-      - name: Verify the engine depends on no MAGE crate
+      # credible while this holds.
+      #
+      # And it must not reach `germline`. That barrier is deliberately one-way —
+      # a build engine able to call into the succession layer is a somatic path
+      # into the germline, which is the failure GERMLINE.md exists to prevent.
+      #
+      # Both erode by one convenient `use`, so both are checked rather than
+      # asserted in a doc.
+      - name: Verify the engine depends on no MAGE crate and not on germline
         run: |
           if cargo tree --manifest-path ribosome/Cargo.toml --prefix none --no-dedupe \
-               | grep -Eiv '^ribosome ' | grep -Eiq '^(mage|forge|rmi)'; then
-            echo "::error::ribosome must not depend on a MAGE crate"
+               | grep -Eiv '^ribosome ' | grep -Eiq '^(mage|forge|rmi|germline)'; then
+            echo "::error::ribosome must depend on neither a MAGE crate nor germline"
             exit 1
           fi
+
+  germline:
+    name: germline — build + test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build
+        run: cargo build --release --manifest-path germline/Cargo.toml
+      - name: Test
+        run: cargo test --manifest-path germline/Cargo.toml
 
   forge:
     name: forge — build + test

@@ -1,16 +1,17 @@
 <#
 .SYNOPSIS
-    Build and test all four MAGE crates.
+    Build and test all five MAGE crates.
 
 .DESCRIPTION
-    The repository is four separate Cargo workspaces on purpose (see
+    The repository is five separate Cargo workspaces on purpose (see
     ARCHITECTURE.md §"Repository layout"), so a root `cargo test` does nothing.
     This is the single entry point that covers everything CI covers:
 
         rmi (cpu)   1,380 tests
         prototype   1,038 tests
         ribosome      139 tests
-        forge         164 tests
+        germline      112 tests
+        forge          52 tests
         -------------------------
         total       2,721 tests, 0 warnings
 
@@ -51,6 +52,7 @@ $crates = @(
     @{ Name = 'rmi';       Manifest = 'RecursiveMachineIntelligence/Cargo.toml'; Features = @('--no-default-features', '--features', 'cpu') }
     @{ Name = 'prototype'; Manifest = 'prototype/Cargo.toml';                    Features = @() }
     @{ Name = 'ribosome';  Manifest = 'ribosome/Cargo.toml';                     Features = @() }
+    @{ Name = 'germline';  Manifest = 'germline/Cargo.toml';                     Features = @() }
     @{ Name = 'forge';     Manifest = 'forge/Cargo.toml';                        Features = @() }
 )
 

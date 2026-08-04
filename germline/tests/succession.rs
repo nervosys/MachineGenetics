@@ -4,13 +4,13 @@
 //! hand off, supervise, and — where it goes wrong — fall back. The unit tests
 //! beside each module cover the pieces; these cover the loop closing.
 
-use forge::germline::directed::{
+use germline::directed::{
     CandidateSpec, DirectedSearch, FitnessPredictor, Prediction,
 };
-use forge::germline::gate::{Episode, PromotionGate, RejectReason, Verdict};
-use forge::germline::lineage::Lineage;
-use forge::germline::supervisor::{FailureMode, HealthSample, SupervisionPolicy, Supervisor};
-use forge::germline::{
+use germline::gate::{Episode, PromotionGate, RejectReason, Verdict};
+use germline::lineage::Lineage;
+use germline::supervisor::{FailureMode, HealthSample, SupervisionPolicy, Supervisor};
+use germline::{
     EvalSuite, FitnessVector, Generation, GenerationId, Measurement, Status, SuiteKind,
 };
 use ribosome::Digest;

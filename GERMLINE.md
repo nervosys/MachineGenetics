@@ -1,11 +1,23 @@
 # Germline — model succession, handoff, and fallback
 
 > **Status: control plane complete and runnable; workload not.**
-> `forge/src/germline/` — 141 tests. Variation, directed search, the gate,
+> `germline/` — its own crate, 112 tests. Variation, directed search, the gate,
 > attestation, lineage, the durable journal, the cycle state machine, and
 > supervision are built and tested ✅. Model training and inference are **not**
 > here and are not claimed ◻ — this decides *whether* a successor takes over, not
 > how it is produced. Marked per the rules in [DOCS.md](DOCS.md).
+>
+> *This said 141 tests. That figure does not survive checking: counting
+> `#[test]` in germline's own files gives 112 today and 100 at the commit where
+> 141 was written, so it never matched these files and I could not reconstruct
+> what it did count. What is verified: the crate reports **112 passing**, and
+> the extraction removed nothing — 112 both before and after, across four
+> commits.*
+
+It depends on `ribosome` and nothing else in this repository, and the direction
+is load-bearing rather than incidental: the barrier described below is one-way,
+so the build engine must not be able to reach back into succession. CI checks
+that with `cargo tree` instead of trusting this paragraph.
 
 The operating mode: a model proposes a higher-fitness successor by directed
 evolution, hands subsequent RSI work to it, and falls back to its predecessor on
@@ -292,9 +304,9 @@ nobody chose, one individually-defensible promotion at a time.
 ## 10. Reproducing
 
 ```powershell
-cargo test --manifest-path forge/Cargo.toml --test rsi_loop   # 4 closed-loop scenarios
-cargo test --manifest-path forge/Cargo.toml --test germline   # 13 succession scenarios
-cargo test --manifest-path forge/Cargo.toml germline          # + 124 unit tests
+cargo test --manifest-path germline/Cargo.toml                  # 112 tests
+cargo test --manifest-path germline/Cargo.toml --test rsi_loop  # 6 closed-loop scenarios
+cargo test --manifest-path germline/Cargo.toml --test succession # 13 succession scenarios
 ```
 
 The closed-loop tests are the architectural ones — they drive variation →

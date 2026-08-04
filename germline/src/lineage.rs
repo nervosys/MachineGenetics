@@ -294,7 +294,7 @@ impl Lineage {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::germline::{EvalSuite, FitnessVector, Measurement, SuiteKind};
+    use crate::{EvalSuite, FitnessVector, Measurement, SuiteKind};
 
     fn always_materialized() -> impl Fn(&Digest) -> bool {
         |_: &Digest| true

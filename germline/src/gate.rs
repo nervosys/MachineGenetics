@@ -343,7 +343,7 @@ impl Episode {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::germline::{EvalSuite, Measurement, Status};
+    use crate::{EvalSuite, Measurement, Status};
 
     const SUITE: &[u8] = b"heldout-suite-v1";
 

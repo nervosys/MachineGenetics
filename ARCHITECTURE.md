@@ -161,17 +161,28 @@ These are deliberate, documented scope lines — *not* gaps papered over:
 
 ---
 
-## Repository layout — four workspaces, on purpose
+## Repository layout — five workspaces, on purpose
 
 `cargo test` at the repository root does nothing, and that is deliberate. There
-are **four independent Cargo workspaces**:
+are **five independent Cargo workspaces**:
 
 | Path | Crate | Tests | Notes |
 |---|---|--:|---|
 | `RecursiveMachineIntelligence/` | `rmi` | 1,380 | The low-level neurosymbolic framework. Feature-gated (`cpu` / `gpu` / `cuda`); build with `--no-default-features --features cpu` for the portable set |
 | `prototype/` | `mage-prototype` | 1,038 | Compiler, evaluator, ABL, RAP server. Path-depends on `rmi` |
 | `ribosome/` | `ribosome` | 139 | The distributed build engine. Depends on nothing in this repository — see below |
-| `forge/` | `forge` | 164 | Package registry, plus `germline`, the RSI control plane. Path-depends on `ribosome` |
+| `germline/` | `germline` | 112 | Model succession, handoff, fallback — the RSI control plane. Path-depends on `ribosome` |
+| `forge/` | `forge` | 52 | The package registry, and only that |
+
+The dependency graph is a forest, not a web:
+
+```
+rmi ←── prototype          ribosome ←── germline          forge
+```
+
+`forge`'s 52 is not a regression. `ribosome` and `germline` were developed
+inside it and moved out on 2026-08-04; 52 is what the registry alone was before
+they arrived, and this table said exactly that until they did.
 
 A root workspace *did* exist, but it listed only `compiler/*` — the forked-rustc
 compiler — and was removed with it on 2026-06-11 (`b1b910f`). The surviving
@@ -184,20 +195,27 @@ Keeping them separate is a trade, not an oversight:
   upstream without inheriting this repo's lockfile. Merging it into a shared
   workspace would collapse the `Cargo.lock` files into one — including the
   pinned `lz4_flex >= 0.11.6` CVE fix recorded in `SECURITY_AUDIT.md` §1.
-- **`ribosome` must not depend on MAGE.** It began inside `forge` and was
-  extracted on 2026-08-04. Its central claim — that no language is privileged
-  below the planner (`RIBOSOME.md` §2.1) — is not credible from a crate that
-  depends on one language's compiler, so its dependency list is `serde`,
-  `serde_json`, `sha2`, `ed25519-dalek` and nothing else. CI enforces this with
-  a `cargo tree` check rather than trusting the doc, because it is exactly the
-  kind of property that erodes by one convenient `use`. The arrow points
-  `forge → ribosome`, never back.
+- **`ribosome` must not depend on MAGE.** Its central claim — that no language
+  is privileged below the planner (`RIBOSOME.md` §2.1) — is not credible from a
+  crate that depends on one language's compiler, so its dependency list is
+  `serde`, `serde_json`, `sha2`, `ed25519-dalek` and nothing else.
+- **`ribosome` must not depend on `germline`.** The Weismann barrier is
+  one-way by design (`GERMLINE.md`): a build engine able to call into the
+  succession layer is a somatic path into the germline, which is the failure
+  that document exists to prevent. The crate boundary makes the one-wayness
+  structural instead of a convention.
+
+  Both of these are checked in CI with `cargo tree` rather than trusted to this
+  document, because a dependency boundary is exactly the kind of property that
+  erodes by one convenient `use`. The check was verified in both directions —
+  it passes on `ribosome` and trips when pointed at a crate that does have an
+  in-repo dependency.
 - The cost is that no single `cargo` invocation covers everything.
 
 So the supported entry points are:
 
 ```sh
-scripts/test-all.sh              # all four crates, debug
+scripts/test-all.sh              # all five crates, debug
 scripts/test-all.sh --release    # optimized
 scripts/test-all.sh --bench      # + eval_bench (73/73) and perf_report
 scripts/test-all.sh --cuda       # + prototype --features cuda (1,269 tests)

@@ -6,9 +6,9 @@ numbers are machine-dependent; the shapes (throughput, scaling) are not.
 
 Date: 2026-06-10. Build: `release` for perf, `cargo test` for functionality.
 
-> **Re-verified 2026-08-04** — all four crates tested: prototype **1,038**, rmi
-> **1,380**, ribosome **139**, forge **164** = **2,721 passing, 0 failing,
-> 0 warnings**. No figure below has regressed.
+> **Re-verified 2026-08-04** — all five crates tested: prototype **1,038**, rmi
+> **1,380**, ribosome **139**, germline **112**, forge **52** = **2,721 passing,
+> 0 failing, 0 warnings**. No figure below has regressed.
 >
 > *On the crate count, and a stale figure.* The 2026-08-03 line said "three
 > crates, forge 235". Two things changed since. The build engine was extracted
@@ -19,6 +19,13 @@ Date: 2026-06-10. Build: `release` for perf, `cargo test` for functionality.
 > after step 147. So the rise from 2,653 to 2,721 is 36 tests that steps 144–146
 > added and the summary line did not pick up, plus the 32 added by step 147.
 > Verified with `git grep -c '#\[test\]'` at each commit rather than inferred.
+>
+> *A second stale figure, unresolved.* `GERMLINE.md` claimed 141 tests. Counting
+> `#[test]` in germline's own files gives **112** today and **100** at the commit
+> where 141 was written, so 141 never matched those files and I could not
+> reconstruct what it counted. It is corrected to the measured 112 rather than
+> explained away. The extraction itself removed nothing: 112 both before and
+> after, checked across four commits.
 >
 > *Correction to the prototype count.* This document said 1146, and an earlier
 > re-verification said 1209. Both over-counted: `lexer`, `parser`, `ast`, `hir`,

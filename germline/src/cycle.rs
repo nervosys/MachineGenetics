@@ -315,8 +315,8 @@ pub fn fitness_from_build(report: &BuildReport) -> FitnessVector {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::germline::gate::PromotionGate;
-    use crate::germline::{EvalSuite, SuiteKind};
+    use crate::gate::PromotionGate;
+    use crate::{EvalSuite, SuiteKind};
     use std::path::PathBuf;
 
     const SUITE: &[u8] = b"suite-v1";
@@ -501,7 +501,7 @@ mod tests {
 
         assert!(l.events().iter().any(|e| matches!(
             e,
-            crate::germline::lineage::SuccessionEvent::Refused { .. }
+            crate::lineage::SuccessionEvent::Refused { .. }
         )));
         assert!(j.replay().unwrap().iter().any(|r| matches!(
             &r.entry,

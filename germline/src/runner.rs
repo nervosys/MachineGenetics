@@ -425,9 +425,9 @@ impl<'a> Runner<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::germline::attest::Attestor;
-    use crate::germline::gate::PromotionGate;
-    use crate::germline::{SuiteKind};
+    use crate::attest::Attestor;
+    use crate::gate::PromotionGate;
+    use crate::{SuiteKind};
     use std::collections::HashSet;
     use std::path::PathBuf;
 

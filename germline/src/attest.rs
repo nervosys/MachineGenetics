@@ -105,7 +105,7 @@ impl Attestor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::germline::GenerationId;
+    use crate::GenerationId;
 
     fn verdict() -> Verdict {
         Verdict::Promote {

@@ -4,13 +4,10 @@ pub mod compat;
 pub mod models;
 pub mod project;
 pub mod manifest;
-pub mod germline;
 pub mod registry;
 
-/// The build engine, re-exported.
-///
-/// It lives in its own crate (`../ribosome`) because a build system that ships
-/// inside a package registry can only ever be that registry's build system.
-/// [`germline`] drives it, so it is re-exported here rather than made a second
-/// thing callers have to know about.
-pub use ribosome;
+// The build engine (`../ribosome`) and the RSI control plane (`../germline`)
+// were both developed here and both moved out on 2026-08-04. Neither belonged
+// in a package registry, and forge does not use either: the dependency was
+// upward, from them to nothing, and removing the declarations removed the
+// dependency entirely. See ARCHITECTURE.md §"Repository layout".

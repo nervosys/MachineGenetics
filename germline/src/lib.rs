@@ -62,6 +62,20 @@
 //! | [`runner`] | bounded, policy-pinned cycles and their halt conditions |
 //! | [`workload`] | a real workload: architecture search evaluated by real builds |
 //!
+//! ## A standalone crate, on purpose
+//!
+//! This lived inside `forge`, the MAGE package registry, for the same
+//! accident-of-history reason [`ribosome`] did. It is a control plane for model
+//! succession; a registry server is not where anyone would look for it, and
+//! nobody could adopt it without also adopting a package registry.
+//!
+//! It depends on [`ribosome`] and nothing else in this repository. That
+//! direction matters and is not incidental: the barrier this module exists to
+//! enforce is *one-way*, and a build engine that could reach back into the
+//! succession layer would be a somatic path into the germline — exactly the
+//! thing §"The problem succession actually poses" is about. The crate boundary
+//! makes the one-wayness structural rather than a convention, and CI checks it.
+//!
 //! ## Status
 //!
 //! Implemented and tested: the full control plane, including [`runner`], which

@@ -16,15 +16,15 @@
 //! Everything a person would have to do by hand is done here explicitly, which
 //! is the point: the loop is *drivable*, and nothing runs on its own.
 
-use forge::germline::attest::Attestor;
-use forge::germline::cycle::{fitness_from_build, Authority, Cycle, Phase};
-use forge::germline::directed::{CandidateSpec, DirectedSearch, FitnessPredictor, Prediction};
-use forge::germline::gate::{Episode, PromotionGate};
-use forge::germline::journal::{Entry, Journal};
-use forge::germline::lineage::Lineage;
-use forge::germline::supervisor::{HealthSample, SupervisionPolicy, Supervisor};
-use forge::germline::variation::{propose, VariationPlan};
-use forge::germline::{
+use germline::attest::Attestor;
+use germline::cycle::{fitness_from_build, Authority, Cycle, Phase};
+use germline::directed::{CandidateSpec, DirectedSearch, FitnessPredictor, Prediction};
+use germline::gate::{Episode, PromotionGate};
+use germline::journal::{Entry, Journal};
+use germline::lineage::Lineage;
+use germline::supervisor::{HealthSample, SupervisionPolicy, Supervisor};
+use germline::variation::{propose, VariationPlan};
+use germline::{
     EvalSuite, FitnessVector, Generation, Measurement, Status, SuiteKind,
 };
 use ribosome::cas::Store;
@@ -293,9 +293,9 @@ fn tampering_with_the_record_after_the_fact_is_detectable() {
 /// that is evaluated by actual builds through Ribosome. No stubs in the path.
 #[test]
 fn the_runner_drives_a_real_workload_to_a_bounded_stop() {
-    use forge::germline::runner::{Halt, Runner, RunnerPolicy, Workload};
-    use forge::germline::supervisor::SupervisionPolicy;
-    use forge::germline::workload::BuildWorkload;
+    use germline::runner::{Halt, Runner, RunnerPolicy, Workload};
+    use germline::supervisor::SupervisionPolicy;
+    use germline::workload::BuildWorkload;
 
     let root = tmp("real-workload");
     let mut journal = Journal::open(root.join("journal.jsonl")).unwrap();
@@ -370,9 +370,9 @@ fn the_runner_drives_a_real_workload_to_a_bounded_stop() {
 
 #[test]
 fn an_unattended_run_that_breaks_falls_back_to_something_runnable() {
-    use forge::germline::runner::{Halt, Runner, RunnerPolicy, Workload};
-    use forge::germline::supervisor::SupervisionPolicy;
-    use forge::germline::workload::BuildWorkload;
+    use germline::runner::{Halt, Runner, RunnerPolicy, Workload};
+    use germline::supervisor::SupervisionPolicy;
+    use germline::workload::BuildWorkload;
 
     let root = tmp("real-demote");
     let mut journal = Journal::open(root.join("journal.jsonl")).unwrap();

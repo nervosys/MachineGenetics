@@ -3,13 +3,15 @@
 > Tracking progress from prototype toward production. Steps 1–22 completed prior.
 > Each step is a concrete, testable increment.
 >
-> **Last verified: 2026-08-04** — all four crates built and tested: prototype
-> **1,038**, rmi **1,380**, ribosome **139**, forge **164** — **2,721 tests,
-> 0 failures, 0 warnings**. The crate count went from three to four when the
-> build engine was extracted (step 148). Forge's old "235" was stale as well as
-> merged: it was accurate immediately before step 144 and never updated through
-> steps 144–146, which added 36 tests. See `MEASUREMENTS.md` for the per-commit
-> counts.
+> **Last verified: 2026-08-04** — all five crates built and tested: prototype
+> **1,038**, rmi **1,380**, ribosome **139**, germline **112**, forge **52** —
+> **2,721 tests, 0 failures, 0 warnings**. The crate count went from three to
+> five when the build engine (step 148) and the RSI control plane (step 149)
+> were extracted from `forge`; the total is unchanged by those moves, and
+> `forge`'s 52 is what the registry alone measured before they were parked in
+> it. Forge's old "235" was stale as well as merged: accurate immediately before
+> step 144, never updated through steps 144–146, which added 36 tests. See
+> `MEASUREMENTS.md` for the per-commit counts.
 >
 > *Correction:* earlier runs reported prototype at 1,209. The library split
 > (step 142) showed 171 of those were the **same test functions compiled into
@@ -294,7 +296,8 @@
 
 ## Phase Q: Germline — model succession and fallback (Steps 131–137)
 
-> `forge/src/germline/`, design in [GERMLINE.md](GERMLINE.md). The operating mode
+> `germline/` (its own crate since step 149; built inside `forge` up to step
+> 148), design in [GERMLINE.md](GERMLINE.md). The operating mode
 > where a model proposes a higher-fitness successor by directed evolution, hands
 > RSI work to it, and falls back on malfunction or decline. This is the **control
 > plane** — it decides whether a successor takes over, not how it is produced.
@@ -316,6 +319,7 @@
 | 143 | A real workload | ✅ | `germline::workload::BuildWorkload` — architecture search evaluated by **actual Ribosome builds**, not a stub. A genome decodes to a network architecture, `materialize` builds it, fitness comes from the real `BuildReport` plus artifact properties. Axes deliberately pull against each other so the search cannot win by growing without limit. Neural-net training is a different implementation of the same trait; nothing in the control plane changes for it |
 | 145 | Subprocess sandbox | ✅ | Fresh workdir, cleared environment, executable allowlist, traversal rejection, wall-clock timeout. Containment rather than isolation, and documented as such — it removes accidental non-hermeticity, not a hostile tool |
 | 146 | Asymmetric provenance | ✅ | Per-worker Ed25519 with a `TrustStore`: a compromise becomes attributable, containable and **revocable**, which a shared secret cannot be. Verifiers hold only public keys |
+| 149 | Germline as its own crate | ✅ | Extracted from `forge` to `germline/`, a fifth workspace, for the same reason as step 148: a succession control plane is not something anyone would look for inside a package registry, and nobody could adopt it without adopting one. Depends on `ribosome` and nothing else in the repository, and that direction is enforced — the Weismann barrier is one-way, so a build engine able to call into succession would be a somatic path into the germline. The CI `cargo tree` guard now covers that edge too. `forge` drops both subsystems and returns to 52 tests, exactly what the registry measured before they were parked in it |
 | 148 | Ribosome as its own crate | ✅ | Extracted from `forge` to `ribosome/`, a fourth workspace. `forge` is a package registry; a build system living inside one can only ever be that registry's build system, and step 147's claim that no language is privileged is not credible from a crate that depends on one language's compiler. Dependencies are now `serde`, `serde_json`, `sha2`, `ed25519-dalek` — CI enforces the absence of any MAGE crate with `cargo tree` rather than trusting the doc. `mac` moved with it; `forge` re-exports the crate and `germline` drives it through the public API, so that API now has a real consumer rather than only its own tests |
 | 147 | Arbitrary languages | ✅ | `ribosome::lang` — a language is data: extensions, a toolchain, a declared granularity (`PerSource` + link for C, `WholeTarget` for Rust/Go, because pretending otherwise produces a graph that lies about both parallelism and rebuilds), and argument templates. The real content is the honesty layer: `Hermeticity::{Structural, Pinned, Declared}`, the toolchain digest inside the action key, and a shared store that **refuses to publish** unverified claims while still building and caching them locally. Cross-language edges are derived, not declared. Not a package manager |
 | 144 | Transport authentication | ✅ | HMAC challenge-response before any frame is served — a worker that answers `Describe` to an unauthenticated peer has already disclosed its capabilities. Server-generated per-connection nonce, so a captured proof cannot be replayed. **Authenticates but does not encrypt**; TLS remains ◻ |
