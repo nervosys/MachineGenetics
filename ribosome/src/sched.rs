@@ -77,13 +77,29 @@ pub struct BuildReport {
     pub healed: usize,
     pub failed: usize,
     pub skipped: usize,
-    /// Accumulated `cost` of actions that actually ran. Cache hits contribute
-    /// nothing, which is the point.
+    /// Accumulated `cost` of actions that ran *and succeeded*. Cache hits
+    /// contribute nothing, which is the point.
     pub work_done: u64,
+    /// Accumulated `cost` of actions served from cache.
+    ///
+    /// Tracked directly rather than inferred as `work_total - work_done`,
+    /// because those two differ by more than the cache: a failed or skipped
+    /// action is neither done nor cached. Inferring it reported a build that
+    /// failed everything as 100% cache reuse — see [`BuildReport::cache_hit_ratio`].
+    pub work_cached: u64,
     /// Accumulated `cost` of every action in the graph, run or not.
     pub work_total: u64,
     /// Lower bound on wall time with unlimited workers.
     pub critical_path_cost: u64,
+    /// Every logical output the build produced, and the CAS digest holding it.
+    ///
+    /// A build report that says a build succeeded but not where the artifacts
+    /// are is incomplete: the caller would have to recompute action keys with
+    /// resolved input digests just to find its own output. Cache hits populate
+    /// this too, so a fully-cached build reports the same artifacts as a cold
+    /// one — otherwise "nothing to do" and "nothing produced" would be
+    /// indistinguishable.
+    pub outputs: BTreeMap<String, Digest>,
 }
 
 impl BuildReport {
@@ -92,11 +108,24 @@ impl BuildReport {
     }
 
     /// Fraction of requested work served from cache, by cost.
+    ///
+    /// This was `1 - work_done/work_total`, which is only the same thing when
+    /// every action either runs or hits the cache. It silently was not: a
+    /// failed action contributes to neither term, so a build that failed
+    /// *everything* reported a cache hit ratio of **1.0** — perfect reuse, on a
+    /// build that reused nothing. Found by running a real compiler through the
+    /// CLI and reading the report, not by a test; the tests all used graphs that
+    /// succeeded.
+    ///
+    /// It matters beyond cosmetics because [`Fitness::reuse`] is a selection
+    /// signal for the RSI loop, and the old form paid a candidate its highest
+    /// possible reuse score for breaking the build. The correctness gate in
+    /// [`Fitness::composite`] contained the damage; it should not have had to.
     pub fn cache_hit_ratio(&self) -> f64 {
         if self.work_total == 0 {
             return 1.0;
         }
-        1.0 - (self.work_done as f64 / self.work_total as f64)
+        self.work_cached as f64 / self.work_total as f64
     }
 
     /// Four normalized axes in `[0,1]`, higher is better. See the module note.
@@ -287,6 +316,7 @@ impl<'a> Scheduler<'a> {
             });
         }
 
+        report.outputs = produced;
         Ok(report)
     }
 
@@ -319,6 +349,7 @@ impl<'a> Scheduler<'a> {
                 match self.verify_and_adopt(&cached, &current, produced) {
                     Ok(()) => {
                         report.cache_hits += 1;
+                        report.work_cached += current.cost;
                         return Outcome::CacheHit { key: key.0 };
                     }
                     Err(cas_err) => {

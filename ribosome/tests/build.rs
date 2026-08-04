@@ -405,3 +405,35 @@ fn fitness_is_ordered_by_correctness_first() {
 
     let _ = std::fs::remove_dir_all(&root);
 }
+
+#[test]
+fn a_build_that_fails_everything_reports_no_cache_reuse() {
+    // Regression. `cache_hit_ratio` was `1 - work_done/work_total`, and a failed
+    // action increments neither term — so a build that failed every action
+    // reported a *perfect* 1.0 cache hit ratio, and `Fitness::reuse` paid it the
+    // maximum score for breaking the build. Found by running a real compiler
+    // through the CLI and reading the report; every test here used graphs that
+    // succeeded, so none of them could see it.
+    let root = tmp("failed-reuse");
+    let store = Store::open(&root);
+
+    let mut r = ToolRegistry::new();
+    r.register("boom@1", |_, _| {
+        Err(ExecError::Deterministic { exit_code: 1, stderr: "no".into() })
+    });
+    let exec = LocalExecutor::new("w1", Platform::any(), r);
+    let healer = DefaultHealer::default();
+
+    let d = store.cas.put(b"src").unwrap();
+    let mut g = ActionGraph::new();
+    g.add(Action::new("a", "boom@1").input("s", d).output("o").cost(10)).unwrap();
+
+    let report = Scheduler::new(&store, &exec, &healer).build(&g).unwrap();
+    assert!(!report.success());
+    assert_eq!(report.cache_hits, 0);
+    assert_eq!(report.work_cached, 0);
+    assert_eq!(report.cache_hit_ratio(), 0.0, "nothing was reused; the ratio must say so");
+    assert_eq!(report.fitness().reuse, 0.0);
+
+    let _ = std::fs::remove_dir_all(&root);
+}

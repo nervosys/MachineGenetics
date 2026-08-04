@@ -1,7 +1,7 @@
 # Ribosome — the distributed, agent-operated build engine
 
 > **Status: implemented, including distribution.**
-> `ribosome/` — its own crate, 139 tests. Every claim marked ✅ below is executed
+> `ribosome/` — its own crate, 155 tests. Every claim marked ✅ below is executed
 > by a test; every ◻ is a design with no code behind it yet. This split is
 > load-bearing: see [DOCS.md](DOCS.md) for why this repository marks unbuilt
 > designs rather than describing them in the present tense.
@@ -185,6 +185,63 @@ What this is **not**: a package manager. A dependency here is an artifact
 produced by another target in the same graph. Fetching third-party code is a
 separate trust problem, and conflating the two is how build systems become
 unauditable. ◻
+
+### 2.2 A command line, and what running it found
+
+The engine was a library with no entry point — drivable from Rust and from its
+own tests, and not from a terminal. `ribosome/src/main.rs` fixes that:
+
+```sh
+ribosome plan  build.json          # what would be built, without building
+ribosome build build.json --out .  # build it
+ribosome languages                 # the registry, as JSON
+```
+
+Everything answers in JSON, because the premise is that agents drive it and an
+answer a program must scrape is one it will eventually scrape wrong. Arguments
+are parsed by hand; a build engine that pulls in an argument parser to print JSON
+has started down the road that put a registry server in the same crate as a build
+system. ✅
+
+A manifest is **data** — no conditionals, functions, includes, or globs. Every
+build system that grew a configuration language regrets it, and here it would be
+worse than regrettable: a manifest that could compute is a second door for
+ambient state, which is what the action key exists to shut. Globs specifically
+are refused because they make the source list depend on the filesystem at build
+time, so two workers with slightly different checkouts agree on a key and
+disagree on the answer — §2.1's failure, reintroduced one convenience above it.
+Generate the JSON with whatever you like; then the generation is visible and the
+build is still reproducible from it. ✅
+
+A manifest cannot *state* a toolchain digest, because a digest is a property of
+this machine's binary and a checked-in one would be a claim about someone else's.
+It says `"pin": true` and resolution hashes the executable where it is. ✅
+
+**Running it against a real compiler immediately found three defects that the
+test suite could not.** Recorded because they are the argument for building the
+entry point, not an embarrassment to be tidied away:
+
+| Found | Was | Why no test caught it |
+|---|---|---|
+| `rust` builtin | passed **every** source to `rustc`, which errors on more than one input filename — a two-file crate could not build | tests asserted what the planner *emits*, and the emitted args were never handed to a compiler |
+| `python` builtin | declared output `{stem}.pyc`, which `-m py_compile` never writes (PEP 3147 puts it in `__pycache__/` under a version-stamped name) | same |
+| `cache_hit_ratio` | `1 - work_done/work_total`; a failed action increments neither, so a build that failed **everything** reported **1.0 — perfect reuse** | every test used graphs that succeeded |
+
+The third is the serious one. `Fitness::reuse` is a selection signal for the RSI
+loop, and the old form paid a candidate its maximum reuse score for breaking the
+build. The correctness gate in `composite()` contained the damage; it should not
+have had to. Now tracked as `work_cached` directly, with a regression test. ✅
+
+Verified end to end with real `rustc` 1.97.1: cold build → artifact; rebuild →
+cache hit; edit a **non-root** source → rebuilds (proving siblings are keyed even
+though they are not arguments); unchanged → cache hit again. And the §2.1 policy
+under a real toolchain: unpinned + `--shared` rebuilds every time, unpinned +
+local caches on the second run. ✅
+
+The builtins' argument templates are otherwise **unverified against real
+toolchains** — `c`, `cpp`, `go`, `typescript`, and the corrected `python` have not
+met their tools here. They are marked as such in the source. The engine is what
+is tested; a builtin that has not met its compiler is a hypothesis. ◻
 
 ---
 
@@ -406,7 +463,7 @@ Three control points are worth building *before* the loop closes, not after:
 ## 8. Reproducing the claims
 
 ```powershell
-cargo test --manifest-path ribosome/Cargo.toml                  # 139 tests
+cargo test --manifest-path ribosome/Cargo.toml                  # 155 tests
 cargo test --manifest-path ribosome/Cargo.toml --test build     # 10 end-to-end scenarios
 cargo test --manifest-path ribosome/Cargo.toml --test multilang # 8 multi-language scenarios
 ```

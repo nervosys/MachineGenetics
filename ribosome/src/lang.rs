@@ -213,12 +213,20 @@ pub enum Granularity {
 ///
 /// | | |
 /// |---|---|
-/// | `{src}` | the source path (per-source rules only) |
+/// | `{src}` | for [`Granularity::PerSource`], the file being compiled; for [`Granularity::WholeTarget`], the **first** source — the crate/package root |
 /// | `{stem}` | the source path with its extension removed |
 /// | `{name}` | the target name |
 /// | `{out}` | this rule's output path |
 /// | `{objs}` | expands to every intermediate object |
 /// | `{srcs}` | expands to every source path |
+///
+/// The distinction between `{src}` and `{srcs}` for a whole-target language is
+/// not cosmetic, and getting it wrong is how the `rust` builtin shipped broken:
+/// `rustc` takes exactly one input filename and **errors** on more
+/// (`multiple input filenames provided`), so a rule that expands `{srcs}` cannot
+/// build a crate with two files. Every source is still a declared input and
+/// still keyed — the compiler reads the siblings through the module system, and
+/// editing one must still rebuild — but only the root is an *argument*.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Rule {
     pub args: Vec<String>,
@@ -668,9 +676,15 @@ impl Registry {
 
         match lang.granularity {
             Granularity::WholeTarget => {
+                // `{src}` is the crate/package root: the first declared source.
+                // Sources are ordered as the manifest wrote them, so "first" is
+                // the caller's choice rather than a filesystem accident.
+                let root = srcs.first().map(String::as_str).unwrap_or("");
+                let root_stem = stem_of(root).to_string();
+
                 let out = Subst {
-                    src: "",
-                    stem: "",
+                    src: root,
+                    stem: &root_stem,
                     name: &t.name,
                     out: "",
                     objs: &[],
@@ -679,8 +693,8 @@ impl Registry {
                 .scalar(&lang.compile.output);
 
                 let s = Subst {
-                    src: "",
-                    stem: "",
+                    src: root,
+                    stem: &root_stem,
                     name: &t.name,
                     out: &out,
                     objs: &[],
@@ -817,6 +831,29 @@ impl Registry {
 ///
 /// Arguments are the real flags each toolchain takes, so a `Program` registered
 /// in [`super::subprocess`] pointing at the actual binary runs these unmodified.
+///
+/// ## How far these have actually been verified
+///
+/// The unit tests here check what the *planner emits*. That is not the same as
+/// checking that a real compiler accepts it, and the difference was not
+/// theoretical: `rust` shipped passing every source to `rustc`, which rejects
+/// more than one input filename outright, and `python` shipped declaring an
+/// output that `-m py_compile` never writes. Both were found by running the CLI
+/// against a real toolchain, and both are fixed above.
+///
+/// So, precisely:
+///
+/// | Language | Status |
+/// |---|---|
+/// | `rust` | single-source path run against real `rustc` 1.97.1 |
+/// | `c`, `cpp` | flags are the POSIX `c99` spelling; not yet run against a compiler here |
+/// | `python`, `typescript`, `go` | **not run against a real toolchain** — corrected by reading each tool's documented interface |
+/// | `mage` | exercised throughout the test suite |
+///
+/// Treat an unrun row as a starting point to override with
+/// [`Registry::register`], not as a tested guarantee. The engine is what is
+/// tested; these are configuration, and configuration that has not met its tool
+/// is a hypothesis.
 pub mod builtin {
     use super::*;
 
@@ -856,15 +893,20 @@ pub mod builtin {
 
     /// Rust — whole-crate, because `rustc` reasons across the whole crate and a
     /// per-file graph would misrepresent both its parallelism and its rebuilds.
-    /// `{srcs}` passes every source so the crate root's siblings are inputs and
-    /// therefore keyed, even though `rustc` reads only the root directly.
+    ///
+    /// Passes `{src}` — the **first** source, the crate root — not `{srcs}`.
+    /// `rustc` accepts exactly one input filename and errors with
+    /// `multiple input filenames provided` on more; this shipped with `{srcs}`
+    /// and could not build a two-file crate. The siblings are still declared
+    /// inputs and still in the key, which is what makes editing one rebuild the
+    /// crate; they are simply not arguments.
     pub fn rust() -> Language {
         Language::new(
             "rust",
             &["rs"],
             Toolchain::declared("rustc", "unknown"),
             Granularity::WholeTarget,
-            Rule::new("{name}").args(["--crate-name", "{name}", "{srcs}", "-o", "{out}"]),
+            Rule::new("{name}").args(["--crate-name", "{name}", "{src}", "-o", "{out}"]),
         )
     }
 
@@ -881,13 +923,25 @@ pub mod builtin {
     /// Python — byte-compilation only. There is no artifact to link, so the
     /// `.pyc` per source *is* the output. Honest about what a build system can
     /// do for an interpreted language: catch syntax errors and cache the result.
+    ///
+    /// Calls `py_compile.compile` with an explicit destination rather than
+    /// `-m py_compile`, which follows PEP 3147 and writes
+    /// `__pycache__/<name>.cpython-3XX.pyc` — a path this rule cannot name,
+    /// since it embeds the interpreter version. The declared output would never
+    /// appear and every action would fail `MissingOutput`. `doraise` makes a
+    /// syntax error a non-zero exit instead of a silent skip.
     pub fn python() -> Language {
         Language::new(
             "python",
             &["py"],
             Toolchain::declared("python", "unknown"),
             Granularity::PerSource,
-            Rule::new("{stem}.pyc").args(["-m", "py_compile", "{src}"]),
+            Rule::new("{stem}.pyc").args([
+                "-c",
+                "import py_compile,sys; py_compile.compile(sys.argv[1], sys.argv[2], doraise=True)",
+                "{src}",
+                "{out}",
+            ]),
         )
     }
 
@@ -1023,8 +1077,39 @@ mod tests {
 
         assert_eq!(plan.actions.len(), 1, "rustc reasons across the whole crate");
         let a = &plan.actions[0];
-        assert_eq!(a.args, vec!["--crate-name", "tool", "src/main.rs", "src/lib.rs", "-o", "tool"]);
-        assert_eq!(a.inputs.len(), 2, "every source is keyed even though rustc reads one");
+        // Only the crate root is an argument: `rustc` errors on a second input
+        // filename. This asserted the opposite until a real rustc said so.
+        assert_eq!(a.args, vec!["--crate-name", "tool", "src/main.rs", "-o", "tool"]);
+        assert_eq!(a.inputs.len(), 2, "but every source is keyed, so editing lib.rs rebuilds");
+    }
+
+    #[test]
+    fn editing_a_non_root_source_still_rebuilds_a_whole_target_crate() {
+        // The property that makes it safe for siblings to be inputs but not
+        // arguments. If this failed, whole-target languages would silently
+        // serve stale artifacts after an edit to any file but the root.
+        let reg = Registry::with_builtins();
+        let before = reg
+            .plan(
+                &Target::new("t", "rust")
+                    .source("main.rs", d("fn main(){}"))
+                    .source("helper.rs", d("pub fn h(){}")),
+            )
+            .unwrap();
+        let after = reg
+            .plan(
+                &Target::new("t", "rust")
+                    .source("main.rs", d("fn main(){}"))
+                    .source("helper.rs", d("pub fn h(){ println!(); }")),
+            )
+            .unwrap();
+
+        assert_eq!(before.actions[0].args, after.actions[0].args, "the command is unchanged");
+        assert_ne!(
+            before.actions[0].key(),
+            after.actions[0].key(),
+            "yet the key must change, or an edit to a non-root source is invisible"
+        );
     }
 
     #[test]

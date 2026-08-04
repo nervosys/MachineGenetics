@@ -118,6 +118,7 @@ pub mod heal;
 pub mod key;
 pub mod lang;
 pub mod mac;
+pub mod manifest;
 pub mod provenance;
 pub mod remote;
 pub mod sched;

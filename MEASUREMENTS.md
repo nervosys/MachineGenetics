@@ -7,8 +7,18 @@ numbers are machine-dependent; the shapes (throughput, scaling) are not.
 Date: 2026-06-10. Build: `release` for perf, `cargo test` for functionality.
 
 > **Re-verified 2026-08-04** — all five crates tested: prototype **1,038**, rmi
-> **1,380**, ribosome **139**, germline **112**, forge **52** = **2,721 passing,
+> **1,380**, ribosome **155**, germline **112**, forge **52** = **2,737 passing,
 > 0 failing, 0 warnings**. No figure below has regressed.
+>
+> *A measurement that was wrong.* `BuildReport::cache_hit_ratio` was
+> `1 - work_done/work_total`. A failed action increments neither term, so a build
+> that failed **every** action reported a cache hit ratio of **1.0** — and
+> `Fitness::reuse`, a selection signal for the RSI loop, paid it the maximum
+> score for breaking the build. Found by running the new CLI against a real
+> compiler and reading the report; no test caught it because every test used
+> graphs that succeeded. Now tracked as `work_cached` directly, with a regression
+> test. Any cache-reuse figure recorded here for a *successful* build is
+> unaffected — the two formulas agree exactly when nothing fails.
 >
 > *On the crate count, and a stale figure.* The 2026-08-03 line said "three
 > crates, forge 235". Two things changed since. The build engine was extracted
