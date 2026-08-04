@@ -82,7 +82,8 @@ agents  │  plan() · to_json() · BuildReport · fitness() │   data in, data
 | `heal` | failure classification → remedy | ✅ |
 | `sched` | cache/dispatch/heal/record, `plan()`, `BuildReport` | ✅ |
 | `remote` | TCP transport, `RemoteExecutor`, worker registry | ✅ |
-| `provenance` | signed, attributable action-cache claims | ✅ |
+| `provenance` | signed action-cache claims: HMAC + Ed25519 with revocation | ✅ |
+| `subprocess` | sandboxed execution of foreign tools | ✅ |
 
 ### Derived edges
 
@@ -245,9 +246,27 @@ against a later one. Opt-in, because a single-host fleet on loopback has nobody
 to authenticate against and mandatory ceremony that everyone disables is worse
 than an honest opt-in.
 
-◻ **Remaining, stated rather than implied:** authentication is **not
-encryption** — frames are plaintext, so this is safe on a trusted segment and
-inappropriate on an open one. TLS needs a crypto dependency and is not built.
+✅ **Sandboxed subprocess execution** (`subprocess.rs`) for foreign tools: a fresh
+working directory per action, a **cleared environment** (only declared vars plus a
+minimal survival set), an executable allowlist so a build graph cannot name an
+arbitrary binary, path-traversal rejection, and a wall-clock timeout that becomes
+a retryable `Transient` rather than a hang. This is *containment*, not isolation —
+no namespaces, cgroups or job objects — and it removes the accidental
+non-hermeticity that makes caches wrong, which is the failure that actually
+happens.
+
+✅ **Per-worker asymmetric provenance** (Ed25519). The symmetric path remains for
+intra-domain use; across a trust boundary a shared secret makes every holder able
+to *mint* claims, so one compromised worker forges for the whole fleet with no way
+to tell which or to exclude it. Per-worker keys make a compromise attributable,
+containable, and **revocable** — `TrustStore::revoke` excludes one worker without
+disturbing the rest. Verifiers hold only public keys, so a mirror or auditor can
+check provenance without being able to produce it.
+
+◻ **Remaining, stated rather than implied:** **no TLS** — the handshake
+authenticates but does not encrypt, so frames are plaintext and this belongs on a
+trusted segment. Encryption needs a TLS stack and certificate management, which is
+a materially larger dependency than the signature work above.
 Provenance and auth HMAC are symmetric, so they make entries attributable and
 detect corruption but do not survive a compromised worker; per-worker asymmetric
 keys are the fix. A sandboxed subprocess executor for foreign tools is also not

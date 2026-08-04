@@ -78,6 +78,7 @@ pub mod key;
 pub mod provenance;
 pub mod remote;
 pub mod sched;
+pub mod subprocess;
 
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
