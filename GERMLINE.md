@@ -1,8 +1,9 @@
 # Germline — model succession, handoff, and fallback
 
-> **Status: control plane implemented, workload not.**
-> `forge/src/germline/` — 57 tests. The lineage, promotion gate, directed search,
-> and supervisor are built and tested ✅. Model training and inference are **not**
+> **Status: control plane complete, workload not.**
+> `forge/src/germline/` — 95 tests. Variation, directed search, the gate,
+> attestation, lineage, the durable journal, the cycle state machine, and
+> supervision are built and tested ✅. Model training and inference are **not**
 > here and are not claimed ◻ — this decides *whether* a successor takes over, not
 > how it is produced. Marked per the rules in [DOCS.md](DOCS.md).
 
@@ -157,25 +158,97 @@ happens **before** authority moves: discovering an unusable fallback mid-inciden
 is the worst possible moment, so `authority_does_not_move_to_a_fallback_that_
 cannot_run` asserts authority stays put rather than vanishing. ✅
 
-## 7. What is not built
+## 7. The scaffolding: four pieces that make it one architecture
 
-◻ Model training, inference, and the actual mutation operators. The compiler
-already has genetic operators (`prototype/src/evolve_gen.rs`: tournament/roulette/
-rank/elitist selection, single-point/two-point/uniform crossover, bit-flip/
-Gaussian/swap mutation) behind the `evolve` keyword; wiring them to this control
-plane is the next step.
+### Variation — candidate production ✅
 
-◻ The unattended episode runner — today a caller drives propose → evaluate →
-adjudicate → promote → supervise explicitly. That is deliberate for now: the loop
-should be run with a human watching before it is run without one.
+Deterministic operators (`variation.rs`) mirroring the compiler's `evolve`
+vocabulary. Every operator takes an explicitly seeded PRNG; nothing reads a global
+generator or the clock, and a candidate's id encodes its seed.
 
-◻ Persistence. The lineage serializes to JSON but is not yet stored durably, and a
-succession record that does not survive a restart is not an audit trail.
+In an ordinary GA that would be a debugging convenience. In a lineage that
+modifies itself it is the difference between an audit trail and a story:
+*"generation 47 came from 46 by these operators under seed 0x…"* is a checkable
+claim an investigator can re-derive. Without it, the record of how a model came to
+exist is unfalsifiable — a poor property for the artifact you would most want to
+verify after something goes wrong.
 
-◻ Cryptographic signing of verdicts. The lineage records *which* evaluator issued
-a verdict; nothing yet proves it. `prototype/src/certs.rs` is the substrate.
+### Attestation — proof of who judged ✅
 
-## 8. An honest note on the goal
+The lineage records *which* evaluator issued a verdict. That was a claim; HMAC-
+SHA256 over a canonical `(verdict, evaluator)` encoding makes it checkable
+(`attest.rs`, verified against the RFC 4231 vectors, constant-time comparison).
+The evaluator name is *inside* the signed material, so an attestation cannot be
+lifted from one verdict and relabelled with another's name.
+
+**What it does not give you:** HMAC is symmetric, so anyone who can verify can
+also forge. That is adequate within one trust domain and inadequate the moment
+attestations cross a fleet boundary. Asymmetric signatures are the production
+answer and are one dependency away; the interface does not change when they
+replace HMAC. It is built rather than left as a TODO because `TODO: sign this` and
+a working-but-limited mechanism have very different failure modes — the first
+ships unsigned.
+
+### Journal — a record the system cannot quietly revise ✅
+
+The lineage is append-only *in memory*, which stops the code from editing history
+and nothing else. `journal.rs` is a durable hash-chained JSONL log: each record
+carries the digest of its predecessor, so editing or deleting record *n* breaks
+the link at *n+1* and `verify()` reports the exact index.
+
+A hash chain makes tampering **evident, not impossible** — anyone who can write
+the file can rewrite it wholesale and recompute every link. What they cannot do is
+change one entry and leave the rest intact, which is the realistic failure:
+a truncated write, a partial restore, a targeted edit. Making it impossible needs
+the head published where the writer does not control it, and the chain is what
+makes that cheap — 32 bytes anchor the entire history. `head()` exists for exactly
+that, and the truncation test documents the limit honestly rather than papering
+over it.
+
+### Cycle — the state machine ✅
+
+`cycle.rs` joins the phases: **Proposed → Evaluated → Shadowing → Adjudicated →
+Promoted | Refused**. Every transition writes to the journal, so the record is
+produced *by* the succession rather than assembled from memory afterwards.
+
+Phases are enforced, not suggested. Calling out of order is an error, because
+allowing a caller to skip from *proposed* to *promoted* would make every invariant
+in §3 optional in practice — enforcement on a path that can be avoided is not
+enforcement.
+
+**Two keys turn the lock.** Promotion needs an attested approving verdict *and* an
+`Authority`. They are different claims: the verdict says the criteria were met,
+the authority says someone accountable decided to act on it. `Authority::Operator`
+is the default path. `Authority::Unattended` exists — the architecture supports a
+closed loop — but must be constructed deliberately and must name the policy that
+permits it, because an unattended loop authorized by an unidentifiable rule is not
+auditable.
+
+### The seam to Ribosome ✅
+
+`fitness_from_build` turns a `BuildReport` into a succession `FitnessVector`, so
+"does this candidate's work actually build" becomes an axis the gate can ratchet
+on. Correctness carries across unchanged, because it is a gate on both sides: a
+candidate whose builds fail must not be able to compensate with a better cache-hit
+rate.
+
+## 8. What is still not built
+
+◻ **Model training and inference.** The variation operators produce genomes; what
+a genome *means* — architecture, hyperparameters, data mixture — and the training
+run that turns it into an artifact are outside this crate.
+
+◻ **A daemon.** The loop is drivable and fully tested end to end
+(`tests/rsi_loop.rs`), but a caller drives it. `Authority::Unattended` is the
+seam where a scheduler would attach. Deliberate: the loop should run with a person
+watching before it runs without one.
+
+◻ **Asymmetric attestation** and cross-domain trust, as above.
+
+◻ **Distributed evaluation.** Ribosome's executor seam is built; the network
+transport under it is not (`RIBOSOME.md` §6).
+
+## 9. An honest note on the goal
 
 This is the control plane for recursive self-improvement, and it is worth being
 plain about what a control plane can and cannot establish.
@@ -196,12 +269,24 @@ never produces real improvement is merely useless; the same mechanism attached t
 a search that genuinely works is how a lineage optimizes itself into something
 nobody chose, one individually-defensible promotion at a time.
 
-## 9. Reproducing
+## 10. Reproducing
 
 ```powershell
+cargo test --manifest-path forge/Cargo.toml --test rsi_loop   # 4 closed-loop scenarios
 cargo test --manifest-path forge/Cargo.toml --test germline   # 13 succession scenarios
-cargo test --manifest-path forge/Cargo.toml germline          # + 44 unit tests
+cargo test --manifest-path forge/Cargo.toml germline          # + 78 unit tests
 ```
+
+The closed-loop tests are the architectural ones — they drive variation →
+directed search → Ribosome build → cycle → gate → attestation → journal →
+supervision → fallback and assert the seams line up:
+
+| Scenario | Property |
+|---|---|
+| `the_whole_loop_runs_from_proposal_to_authority` | the seams join; the record survives a restart |
+| `a_promoted_successor_that_fails_is_demoted_and_the_whole_story_is_on_record` | failure → fallback, fully journalled |
+| `tampering_with_the_record_after_the_fact_is_detectable` | rewriting a candidate's provenance breaks the chain |
+| `the_gate_cannot_be_bypassed_by_driving_the_cycle_out_of_order` | no path to authority skips adjudication |
 
 | Scenario | Property |
 |---|---|

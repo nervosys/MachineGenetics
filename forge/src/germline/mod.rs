@@ -51,22 +51,32 @@
 //!
 //! | Module | Role |
 //! |---|---|
-//! | [`lineage`] | append-only generation log, champion pointer, rollback |
-//! | [`gate`] | pre-registered promotion criteria and the verdict they produce |
+//! | [`variation`] | candidate production — deterministic, seeded, re-derivable |
 //! | [`directed`] | predict-then-evaluate search, and the calibration that keeps it honest |
+//! | [`gate`] | pre-registered promotion criteria and the verdict they produce |
+//! | [`attest`] | proof that a verdict came from the evaluator it names |
+//! | [`lineage`] | append-only generation log, champion pointer, rollback |
+//! | [`journal`] | durable, hash-chained record of everything that happened |
+//! | [`cycle`] | the state machine joining propose → evaluate → adjudicate → hand off |
 //! | [`supervisor`] | post-handoff health, failure modes, automatic demotion |
 //!
 //! ## Status
 //!
-//! Implemented and tested: the lineage, the gate, directed search with
-//! calibration, and the supervisor's demotion logic. **Not** implemented: actual
-//! model training or inference, and the scheduler that would run an episode
-//! unattended — this is the control plane, not the workload. See `GERMLINE.md`.
+//! Implemented and tested: the full control plane — variation, directed search,
+//! the gate, attestation, lineage, durable journal, the cycle state machine, and
+//! supervision. **Not** implemented: model training and inference themselves,
+//! and any daemon that would run cycles without a person. The architecture
+//! supports the latter ([`cycle::Authority::Unattended`]); it is not the default.
+//! See `GERMLINE.md`.
 
+pub mod attest;
+pub mod cycle;
 pub mod directed;
 pub mod gate;
+pub mod journal;
 pub mod lineage;
 pub mod supervisor;
+pub mod variation;
 
 use crate::ribosome::Digest;
 use serde::{Deserialize, Serialize};

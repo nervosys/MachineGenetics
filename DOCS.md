@@ -23,7 +23,7 @@ Read these to understand the system as it exists.
 | [ROADMAP.md](ROADMAP.md) | All 122 implementation steps + the open-items list |
 | [ARCHITECTURE_DSL.md](ARCHITECTURE_DSL.md) | The composition algebra (`stack`/`residual`/`branch`/`wrap`) and its measured basis |
 | [RIBOSOME.md](RIBOSOME.md) | The distributed, agent-operated build engine. **Mixed status, marked inline**: the core (graph, keys, CAS, executor seam, healing, scheduler, fitness) is implemented and tested ✅; network distribution and the evolutionary loop are designed ◻ |
-| [GERMLINE.md](GERMLINE.md) | Model succession, handoff, and fallback — the RSI control plane. **Mixed status, marked inline**: lineage, promotion gate, directed search, and supervisor are implemented and tested ✅; model training/inference and the unattended episode runner are not ◻ |
+| [GERMLINE.md](GERMLINE.md) | Model succession, handoff, and fallback — the RSI control plane. **Mixed status, marked inline**: the control plane is complete and tested end to end ✅ (variation, directed search, gate, attestation, lineage, hash-chained journal, cycle, supervision); model training/inference and any unattended daemon are not ◻ |
 | [AGENT_PROTOCOL.md](AGENT_PROTOCOL.md) | How an agent should target ABL bytes rather than text |
 | [UNIFICATION.md](UNIFICATION.md) | MAGE ↔ RMI unification: the bridge, adapters, and the 21-section ontology |
 | [SECURITY_AUDIT.md](SECURITY_AUDIT.md) | CVE/RustSec, NIST FIPS 140-3, MITRE ATT&CK, CMMC 2.0 audit |
