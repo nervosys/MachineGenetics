@@ -10,7 +10,11 @@
 # not tests. Ten shared one parse error (`use std::env;` — Rust's `::` where
 # MAGE canonical wants `.`) and one failed type-checking.
 #
-# They are *not* fixed here. A mechanical `::` → `.` conversion was tried and
+# `hello-world` was fixed on the same day: its failure was a compiler bug, not an
+# example bug — `len(s)` rejected a `str` while `upper(s)` accepted one. Ten
+# remain.
+#
+# The rest are *not* fixed here. A mechanical `::` → `.` conversion was tried and
 # does not work: every example then fails deeper in the file on some other
 # construct. Repairing them means deciding what each was meant to demonstrate
 # and rewriting it, across eleven files — real work with real judgement in it,
@@ -56,7 +60,6 @@ declare -A KNOWN_BROKEN=(
     [cli-tool]="parse: expected item, found Colon (use std::env)"
     [cost-aware-optimizer]="parse: expected item, found Colon"
     [effects-showcase]="parse: expected item, found Colon"
-    [hello-world]="type: expected a collection, found str"
     [http-client]="parse: expected item, found Colon (use std::io)"
     [live-compiler]="parse: expected item, found Colon"
     [multilang-bindings]="parse: expected item, found Colon"

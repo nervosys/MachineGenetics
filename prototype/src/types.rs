@@ -646,6 +646,26 @@ impl TypeChecker {
         }
     }
 
+    /// Argument to a *length* query: any collection, or a string.
+    ///
+    /// Separate from [`Self::collection_elem`] on purpose. `len(s)` and
+    /// `count(s)` on a `str` are ordinary — and the string vocabulary
+    /// (`upper`, `lower`, `split`, `chars`) already accepted one, so a `str` was
+    /// a string for some builtins and not a collection for others, which is what
+    /// broke `examples/hello-world` and its comment about "the standard
+    /// vocabulary (len) over a string".
+    ///
+    /// Widening `collection_elem` itself was the first attempt and was wrong:
+    /// it also made `sum("hi")` typecheck, which an existing test correctly
+    /// forbids. Length-like and element-like uses want different rules, so they
+    /// get different helpers.
+    fn sized_arg(&mut self, ty: &Ty) {
+        if matches!(self.subst.apply(ty), Ty::Str) {
+            return;
+        }
+        self.collection_elem(ty);
+    }
+
     fn vocab_arity(&mut self, name: &str, got: usize, want: usize) {
         if got != want {
             self.emit_error(format!("`{name}` expects {want} argument(s), found {got}"));
@@ -675,7 +695,7 @@ impl TypeChecker {
             "len" | "count" => {
                 self.vocab_arity(name, n, 1);
                 if n >= 1 {
-                    self.collection_elem(&a[0]);
+                    self.sized_arg(&a[0]);
                 }
                 usize_ty
             }
@@ -2119,5 +2139,37 @@ mod struct_literal_tests {
         assert!(
             !errors("S P { x: i32 } S Q { x: i32 } +f f() -> Q { @P { x: 1 } }").is_empty()
         );
+    }
+}
+
+#[cfg(test)]
+mod string_length_tests {
+    use crate::{lexer, parser, types};
+
+    fn errors(src: &str) -> Vec<String> {
+        let toks = lexer::lex(src);
+        let module = parser::parse(&toks).expect("parses");
+        let mut tc = types::TypeChecker::new();
+        tc.check_module(&module);
+        tc.diagnostics.iter().map(|d| d.message.clone()).collect()
+    }
+
+    #[test]
+    fn len_and_count_accept_a_string() {
+        // A `str` was a string for `upper`/`lower`/`split` and "not a
+        // collection" for `len`/`count`. This is what broke
+        // examples/hello-world, whose comment advertises exactly this.
+        assert!(errors("+f f(s: str) -> usize { len(s) }").is_empty());
+        assert!(errors("+f f(s: str) -> usize { count(s) }").is_empty());
+    }
+
+    #[test]
+    fn collections_still_work_and_nonsense_still_fails() {
+        // The first attempt widened `collection_elem` itself, which also made
+        // `sum("hi")` typecheck. Length-like and element-like uses need
+        // different rules, and the existing test for `sum` was right.
+        assert!(errors("+f f(v: [i32]) -> usize { len(v) }").is_empty());
+        assert!(!errors(r#"+f f() -> i32 { sum("hi") }"#).is_empty());
+        assert!(!errors("+f f() -> i32 { sum(5) }").is_empty());
     }
 }
