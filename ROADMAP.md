@@ -4,8 +4,8 @@
 > Each step is a concrete, testable increment.
 >
 > **Last verified: 2026-08-05** — all five crates built and tested: prototype
-> **1,040**, rmi **1,380**, ribosome **164**, germline **112**, forge **52** —
-> **2,748 tests, 0 failures, 0 warnings**. The crate count went from three to
+> **1,044**, rmi **1,380**, ribosome **164**, germline **112**, forge **52** —
+> **2,752 tests, 0 failures, 0 warnings**. The crate count went from three to
 > five when the build engine (step 148) and the RSI control plane (step 149)
 > were extracted from `forge`; the total is unchanged by those moves, and
 > `forge`'s 52 is what the registry alone measured before they were parked in
@@ -59,7 +59,7 @@
 
 | Step | Title                      | Status | Description                                                                                                                                                                               |
 | ---- | -------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 36   | Expand RAP server          | ✅      | From 9 to 25+ methods: format/compact, format/expand, lint/check, doc/query, token/report, grammar/extensions, grammar/expand, aci/*, sandbox/*, ffi/*, hotpatch/*, memory/*, synthesis/* |
+| 36   | Expand RAP server          | ✅      | From 9 to **38** methods, verified against the running server (`rap/methods`), not against this list. **Corrected 2026-08-05:** this row named 13 methods/namespaces and only 4 existed — `lint/check`, `doc/query`, `token/report`, `sandbox/*`. `format/compact` and `format/expand` are really `format/agent` and `format/human`; `grammar/extensions` is `grammar/list`; `grammar/expand` was never built; and `aci/*`, `ffi/*`, `hotpatch/*`, `memory/*` and `synthesis/*` dispatch **nothing at all**. The count was right the whole time, which is why nobody noticed the names were not |
 | 37   | magefmt service           | ✅      | `--agent` (min tokens) and `--human` (human-readable), bidirectional lossless AST conversion                                                                                           |
 | 38   | Agent discovery attributes | ✅      | `@as("...")`, `@ac("...")`, `@ax("...")`, `@ao("...")`, `@ae("...")` in lexer/parser/AST                                                                                                  |
 | 39   | Grammar extension system   | ✅      | `grammar_extension!` macro, MAGE.toml registration, namespace-scoped discovery, frequency promotion                                                                                    |

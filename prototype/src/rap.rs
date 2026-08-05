@@ -1037,11 +1037,75 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
             })
         }
 
+        // Method discovery. The rest of this toolchain is self-describing —
+        // `--build=schema` exists so an agent need not read documentation — and
+        // the RAP server was the one surface where the only way to learn the
+        // method list was to read `rap.rs` or a document. That is how four
+        // method names in ROADMAP step 36 (`format/compact`, `format/expand`,
+        // `grammar/extensions`, `grammar/expand`) stayed listed as delivered
+        // while dispatching nothing: no client could have noticed.
+        //
+        // Derived from `METHODS` below, which is asserted against the real
+        // dispatch arms by a test, so this cannot drift from what the server
+        // actually answers.
+        "rap/methods" => serde_json::json!({
+            "ok": true,
+            "count": METHODS.len(),
+            "methods": METHODS,
+        }),
+
         _ => serde_json::json!({
-            "error": format!("unknown method: {method}")
+            "error": format!("unknown method: {method}"),
+            "hint": "call `rap/methods` for the list this server actually dispatches",
         }),
     }
 }
+
+/// Every method [`dispatch`] answers.
+///
+/// Kept beside the dispatcher and checked against it by
+/// `methods_list_matches_the_dispatcher`, so the advertised surface and the
+/// implemented one cannot disagree.
+pub const METHODS: &[&str] = &[
+    "abl/decode",
+    "abl/encode",
+    "abl/run",
+    "attribute/compress",
+    "attribute/expand",
+    "build/check",
+    "build/heal",
+    "build/recover",
+    "capability/check",
+    "cost/compare",
+    "cost/query",
+    "doc/query",
+    "effects/check",
+    "effects/infer",
+    "elision/apply",
+    "format/agent",
+    "format/human",
+    "grammar/list",
+    "heal/graph",
+    "language/parse",
+    "language/tokens",
+    "lint/check",
+    "manifest/generate",
+    "nl/explain",
+    "nl/generate",
+    "nl/query",
+    "nl/refactor",
+    "ontology/full",
+    "ontology/section",
+    "pipeline/recover-and-encode",
+    "rap/methods",
+    "sandbox/policy",
+    "skb/query",
+    "skb/rules",
+    "skb/spec",
+    "token/report",
+    "verify/contracts",
+    "verify/module",
+];
 
 // ── Tests ────────────────────────────────────────────────────────────
 
@@ -1499,5 +1563,80 @@ mod tests {
         let r = call("abl/run", src_params("@@@ garbage"));
         assert_eq!(r["ok"], false);
         assert_eq!(r["stage"], "parse");
+    }
+}
+
+#[cfg(test)]
+mod method_surface_tests {
+    use super::*;
+
+    /// `METHODS` must list exactly what `dispatch` answers.
+    ///
+    /// The list is what `rap/methods` advertises, so a drift here would make the
+    /// server lie about itself — which is the failure this endpoint was added to
+    /// prevent, and it would be perverse for the fix to reintroduce it one level
+    /// up. Detected by asking the dispatcher: an advertised method must not
+    /// answer "unknown method".
+    #[test]
+    fn methods_list_matches_the_dispatcher() {
+        for m in METHODS {
+            let got = dispatch(m, &serde_json::Value::Null);
+            let unknown = got
+                .get("error")
+                .and_then(|e| e.as_str())
+                .map(|e| e.starts_with("unknown method"))
+                .unwrap_or(false);
+            assert!(!unknown, "`{m}` is advertised by rap/methods but not dispatched");
+        }
+    }
+
+    /// The reverse direction: every method the dispatcher answers must be
+    /// advertised.
+    ///
+    /// The first version of this test only checked advertised → dispatched, and
+    /// passed while `METHODS` was missing `pipeline/recover-and-encode` — the
+    /// list was built with a regex that did not allow hyphens. A one-directional
+    /// check on a two-directional invariant is the same mistake as a checker
+    /// that only ever passes, made one level up.
+    ///
+    /// Reads this file's own source because match arms cannot be enumerated at
+    /// runtime. Brittle if the dispatcher is restructured, and that is
+    /// acceptable: it fails loudly and points at the list to update.
+    #[test]
+    fn every_dispatched_method_is_advertised() {
+        let src = include_str!("rap.rs");
+        let mut missing = Vec::new();
+        for line in src.lines() {
+            let t = line.trim();
+            // Match arms look like `"ns/name" => {` or `"a/b" | "c/d" => {`.
+            if !t.starts_with('"') || !t.contains("=>") {
+                continue;
+            }
+            for tok in t.split("=>").next().unwrap_or("").split('|') {
+                let name = tok.trim().trim_matches('"').trim();
+                if name.contains('/') && !name.contains(' ') && !METHODS.contains(&name) {
+                    missing.push(name.to_string());
+                }
+            }
+        }
+        assert!(missing.is_empty(), "dispatched but not in METHODS: {missing:?}");
+    }
+
+    #[test]
+    fn methods_are_sorted_and_unique() {
+        let mut sorted = METHODS.to_vec();
+        sorted.sort_unstable();
+        sorted.dedup();
+        assert_eq!(sorted.as_slice(), METHODS, "keep METHODS sorted and duplicate-free");
+    }
+
+    #[test]
+    fn an_unknown_method_says_how_to_discover_the_real_ones() {
+        let got = dispatch("no/such_method", &serde_json::Value::Null);
+        assert!(got.get("error").is_some());
+        assert!(
+            got.get("hint").and_then(|h| h.as_str()).unwrap_or("").contains("rap/methods"),
+            "a wrong method name is the moment to point at discovery"
+        );
     }
 }
