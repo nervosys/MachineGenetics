@@ -76,5 +76,23 @@ Two things worth knowing before touching this again:
 
 Verified after the bump: `tsc --noEmit` clean, and `npx remotion compositions
 src/index.ts` still resolves `AgenticRain` at 1920x1080, 30 fps, 600 frames. The
-video itself was **not** re-rendered — the 37 MB output is a release asset,
-git-ignored, and deliberately absent from history (ROADMAP open item 5).
+video itself was **not** re-rendered.
+
+## Where the render lives
+
+Attached to the [v0.3.0 release][rel] (38,582,256 bytes), **not** in git. It was
+removed from history on 2026-08-04 because a 37 MB blob made every clone pay for
+a promotional video; between that purge and 2026-08-05 it existed nowhere
+public, which was an unintended gap rather than the plan.
+
+Attaching it to a release restores availability at no cost, and it is worth
+being explicit about why the two are not in tension: **release assets are not
+part of a clone.** A fresh clone was 121 MB before the upload and 121 MB after,
+measured both times. The purge was about clone weight; the upload is about the
+artifact continuing to exist.
+
+Re-rendering it is not the way to get it back — `npm run render` produces a file
+that is not byte-identical, so a rebuild replaces the artifact the launch
+announcement points at rather than recovering it. Download it from the release.
+
+[rel]: https://github.com/nervosys/MachineGenetics/releases/tag/v0.3.0
