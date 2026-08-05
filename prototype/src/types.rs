@@ -307,6 +307,14 @@ pub struct TypeChecker {
     /// Enum definitions: enum name → its variant names. Used for match
     /// exhaustiveness checking.
     enum_defs: HashMap<String, Vec<String>>,
+    /// Declared return type of each enclosing function, innermost last.
+    ///
+    /// A stack rather than a field because function bodies nest. Exists so
+    /// `Expr::Return` can check its value: before this, `ret` inferred its
+    /// operand and threw the type away, so `f() -> i32 { ret "s" }` was accepted.
+    /// That hole was masked while `ret x;` failed for an unrelated reason
+    /// (block typed `()`), and fixing that reason exposed it.
+    ret_stack: Vec<Ty>,
     pub diagnostics: Vec<Diagnostic>,
     /// Type-var ids minted for unsuffixed integer literals. They unify with
     /// any concrete int width from context; whatever stays unbound at end of a
@@ -330,6 +338,7 @@ impl TypeChecker {
             struct_defs: HashMap::new(),
             fn_sigs: HashMap::new(),
             enum_defs: HashMap::new(),
+            ret_stack: Vec::new(),
             diagnostics: Vec::new(),
             int_lit_vars: Vec::new(),
         }
@@ -566,20 +575,23 @@ impl TypeChecker {
             self.env.insert(param.name.clone(), ty);
         }
 
+        // Resolve the return type *before* the body, so `return` statements
+        // inside it can be checked against it. When unannotated, reuse the fresh
+        // var registered in the signature so the body *infers* the return type
+        // (and recursive calls resolve to the same one).
+        let ret_ty = match &fd.return_type {
+            Some(t) => self.lower_type(t),
+            None => self.fn_sigs.get(&fd.name).map(|s| s.1.clone()).unwrap_or(Ty::Unit),
+        };
+
         // Infer body type.
+        self.ret_stack.push(ret_ty.clone());
         let body_ty = if let Some(be) = &fd.body_expr {
             self.infer_expr(be)
         } else {
             self.infer_block(&fd.body)
         };
-
-        // Unify body type with the return type. When unannotated, reuse the
-        // fresh var registered in the signature so the body *infers* the return
-        // type (and recursive calls resolve to the same one).
-        let ret_ty = match &fd.return_type {
-            Some(t) => self.lower_type(t),
-            None => self.fn_sigs.get(&fd.name).map(|s| s.1.clone()).unwrap_or(Ty::Unit),
-        };
+        self.ret_stack.pop();
 
         if let Err(e) = unify(&mut self.subst, &ret_ty, &body_ty) {
             self.emit_error(format!("function `{}`: return type mismatch: {e}", fd.name));
@@ -895,7 +907,35 @@ impl TypeChecker {
             self.check_stmt(stmt);
         }
 
-        let ty = if let Some(tail) = &block.tail_expr { self.infer_expr(tail) } else { Ty::Unit };
+        // A block with no tail expression is `()` — *unless* it ends by
+        // diverging, in which case it produces no value at all and must not be
+        // unified with the declared return type.
+        //
+        // Without this, `f() -> i32 { ret 9; }` failed with "return type
+        // mismatch: I32 vs ()", because `ret 9;` is a statement, so the block
+        // had no tail and was typed `()`. Dropping the semicolon worked, which
+        // is a strange thing for a compiler to insist on — and it made
+        // `--syntax=legacy` unusable end to end, since the Rust transpiler
+        // faithfully renders `return a + b;` as `ret a + b;`, the failing form.
+        //
+        // `Expr::Return` already infers to `Ty::Never`; this only propagates
+        // that through the statement position. Deliberately limited to `return`:
+        // `Ty::Never` unifies with anything, so widening this can only turn
+        // errors into silence, and `break`/`continue` in a function-body tail
+        // have no case demanding it yet.
+        let diverges = block.tail_expr.is_none()
+            && matches!(
+                block.stmts.last(),
+                Some(ast::Stmt::Expr { expr }) if matches!(expr, ast::Expr::Return { .. })
+            );
+
+        let ty = if let Some(tail) = &block.tail_expr {
+            self.infer_expr(tail)
+        } else if diverges {
+            Ty::Never
+        } else {
+            Ty::Unit
+        };
 
         self.env.pop();
         ty
@@ -1348,8 +1388,17 @@ impl TypeChecker {
             ast::Expr::Block { block } => self.infer_block(block),
 
             ast::Expr::Return { value } => {
-                if let Some(v) = value {
-                    self.infer_expr(v);
+                // Check the returned value against the enclosing function's
+                // declared return type. `ret` used to infer its operand and
+                // discard the result, so a wrong type was silently accepted.
+                let got = match value {
+                    Some(v) => self.infer_expr(v),
+                    None => Ty::Unit,
+                };
+                if let Some(want) = self.ret_stack.last().cloned() {
+                    if let Err(e) = unify(&mut self.subst, &want, &got) {
+                        self.emit_error(format!("return type mismatch: {e}"));
+                    }
                 }
                 Ty::Never
             }
@@ -1687,5 +1736,56 @@ mod tests {
         "#;
         let tc = check_source(src);
         assert!(tc.diagnostics.is_empty(), "errors: {:?}", tc.diagnostics);
+    }
+}
+
+#[cfg(test)]
+mod return_stmt_tests {
+    use crate::{lexer, parser, types};
+
+    fn errors(src: &str) -> Vec<String> {
+        let toks = lexer::lex(src);
+        let module = parser::parse(&toks).expect("parses");
+        let mut tc = types::TypeChecker::new();
+        tc.check_module(&module);
+        tc.diagnostics.iter().map(|d| d.message.clone()).collect()
+    }
+
+    #[test]
+    fn a_semicolon_terminated_return_is_not_a_unit_block() {
+        // `ret 9;` is a statement, so the block had no tail expression and was
+        // typed `()`, which then failed to unify with `-> i32`. Dropping the
+        // semicolon worked — a strange thing for a compiler to require, and it
+        // made `--syntax=legacy` unusable, since the Rust transpiler renders
+        // `return a + b;` as exactly the failing form.
+        assert!(errors("+f nine() -> i32 { ret 9; }").is_empty());
+        assert!(errors("+f add(a: i32, b: i32) -> i32 { ret a + b; }").is_empty());
+        assert!(errors("+f early(a: i32) -> i32 { ? a > 0 { ret 1; } ret 0; }").is_empty());
+    }
+
+    #[test]
+    fn a_bare_return_still_suits_a_unit_function() {
+        assert!(errors("+f nothing() { ret; }").is_empty());
+    }
+
+    #[test]
+    fn the_returned_value_is_checked_against_the_declared_type() {
+        // The hole the fix above exposed: `ret` inferred its operand and threw
+        // the result away, so this was accepted. It only looked checked because
+        // the block-typing bug rejected the function for an unrelated reason.
+        let e = errors(r#"+f wrong() -> i32 { ret "s"; }"#);
+        assert!(!e.is_empty(), "returning a string from an i32 function must fail");
+        assert!(
+            e.iter().any(|m| m.contains("return type mismatch")),
+            "expected a return type mismatch, got {e:?}"
+        );
+    }
+
+    #[test]
+    fn a_wrong_tail_expression_is_still_caught() {
+        // Guard against the fix silencing the original check: `Ty::Never`
+        // unifies with anything, so a too-eager divergence rule would make
+        // every mismatch disappear.
+        assert!(!errors(r#"+f wrong() -> i32 { "s" }"#).is_empty());
     }
 }
