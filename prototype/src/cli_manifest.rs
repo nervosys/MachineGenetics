@@ -44,6 +44,60 @@ pub const MODES: &[CliMode] = &[
         detail: "Prints the full detail for one mode: argument shape, behavior, defaults,\n\
                  output format, effect class. Unknown names list the valid ones.",
     },
+    // The tool-mediated construction loop (ARCHITECTURE.md §2). These four are
+    // the headline capability of the project and were **absent from this index
+    // until 2026-08-05**, while it described itself as "read this first" and the
+    // module doc above promised an agent would never need the prose docs. An
+    // agent doing exactly what it was told would never have found them.
+    CliMode {
+        flag: "--build=schema",
+        args: "",
+        summary: "typed, self-describing spec interface + full error catalog (loop step 1)",
+        effect: "pure",
+        detail: "Deterministic JSON: per-kind spec format, the op catalog (arities, shape\n\
+                 rule), and every reject-by-construction error code with its fix hint.\n\
+                 Fetch once and prompt-cache it: this is the standing context an agent\n\
+                 grounds in before emitting a spec.",
+    },
+    CliMode {
+        flag: "--build=abl",
+        args: "<spec.json> <out.abl> [--fix]",
+        summary: "construct a byte-stable artifact from a spec, rejecting invalid ones (loop step 2)",
+        effect: "write_local",
+        detail: "Validates the spec first. On failure emits machine-readable\n\
+                 {code, message, fix} and writes NO artifact — reject-by-construction.\n\
+                 On success lowers to a byte-stable .abl: the same spec always produces\n\
+                 byte-identical bytes, so a content hash is exact identity.\n\
+                 --fix attempts deterministic auto-repair first and may appear in any\n\
+                 argument position.",
+    },
+    CliMode {
+        flag: "--describe=abl",
+        args: "<file.abl>",
+        summary: "no-exec structured introspection of an artifact (loop step 3)",
+        effect: "read_local",
+        detail: "Decodes as pure data — reports \"exec\": false — and returns per-item kind,\n\
+                 recovered structure, and content hash. Verify what you built without\n\
+                 running it.",
+    },
+    CliMode {
+        flag: "--run=abl",
+        args: "<file.abl> [--input <json>]",
+        summary: "execute an artifact where semantics exist (loop step 4)",
+        effect: "pure",
+        detail: "Pure-data interpreters, no arbitrary code: kb forward-chains to its least\n\
+                 fixpoint, agent evaluates capability policy, swarm evaluates consensus.\n\
+                 For net, use --run=abl-bytes (real forward pass on a backend).",
+    },
+    CliMode {
+        flag: "--version",
+        args: "",
+        summary: "print the compiler version (also -V)",
+        effect: "pure",
+        detail: "Prints `mage-parse <version>` from CARGO_PKG_VERSION. This is the version\n\
+                 Ribosome writes into every action key as `mage-parse@<version>`, so it is\n\
+                 how you confirm which compiler a cached artifact was built by.",
+    },
     CliMode {
         flag: "--check",
         args: "<file.mg> [--json]",
@@ -248,5 +302,64 @@ mod tests {
         assert!(describe("nonsense-mode").is_none());
         let rap = describe("rap").unwrap();
         assert!(rap.contains("{network}"), "rap is effect-classified: {rap}");
+    }
+}
+
+#[cfg(test)]
+mod discovery_coverage_tests {
+    use super::MODES;
+
+    /// Modes that dispatch but are deliberately absent from the index.
+    ///
+    /// An allowlist rather than silence: a mode missing from the agent-facing
+    /// index should be a decision someone wrote down, not an oversight. The
+    /// tool-mediated construction loop was missing for months precisely because
+    /// nothing distinguished "not listed on purpose" from "forgotten".
+    const DELIBERATELY_UNLISTED: &[&str] = &[
+        "--rain",           // demo renderer for the promo video, not a compiler mode
+        "--spine=frame",    // SPINE integration, experimental and separately documented
+        "--spine=profile",
+        "--spine=swarm",
+        "--eval",           // superseded by --run=abl; kept for the eval_bench harness
+        "--emit-ontology",  // maintenance command, listed in its own right below
+        "-V",               // alias of --version
+    ];
+
+    #[test]
+    fn every_dispatched_mode_is_listed_or_deliberately_unlisted() {
+        let main_src = include_str!("main.rs");
+        let mut unaccounted = Vec::new();
+        for line in main_src.lines() {
+            let t = line.trim();
+            let Some(rest) = t.strip_prefix("Some(\"") else { continue };
+            let Some(flag) = rest.split('"').next() else { continue };
+            if !flag.starts_with("--") && flag != "-V" {
+                continue;
+            }
+            let listed = MODES.iter().any(|m| m.flag == flag);
+            if !listed && !DELIBERATELY_UNLISTED.contains(&flag) {
+                unaccounted.push(flag.to_string());
+            }
+        }
+        unaccounted.sort();
+        unaccounted.dedup();
+        assert!(
+            unaccounted.is_empty(),
+            "these modes dispatch but are neither in the manifest nor in \
+             DELIBERATELY_UNLISTED: {unaccounted:?} — add them to one or the other"
+        );
+    }
+
+    #[test]
+    fn the_documented_core_loop_is_discoverable() {
+        // ARCHITECTURE.md §2 calls these *the* loop. If an agent cannot find
+        // them from --manifest, the module's promise that it "should never need
+        // the prose docs" is false.
+        for f in ["--build=schema", "--build=abl", "--describe=abl", "--run=abl"] {
+            assert!(
+                MODES.iter().any(|m| m.flag == f),
+                "`{f}` is a documented core-loop step and must be in the manifest"
+            );
+        }
     }
 }
