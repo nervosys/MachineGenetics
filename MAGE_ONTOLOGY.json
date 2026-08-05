@@ -35,7 +35,7 @@
       ],
       "magic": "ABL1",
       "media_type": "application/abl",
-      "version": 2
+      "version": 3
     },
     "ast_kinds": [
       {

@@ -277,3 +277,27 @@ mod tests {
         assert!(err.contains("EOF"), "got: {err}");
     }
 }
+
+#[cfg(test)]
+mod documented_version_tests {
+    use super::ABL_VERSION;
+
+    /// `ARCHITECTURE.md` documents the container's wire version, and `decode`
+    /// rejects a mismatch — so a stale number there is not cosmetic, it tells a
+    /// reader to build artifacts this toolchain will refuse.
+    ///
+    /// It said "(currently 2)" from the 2026-06-12 bump to 3 until 2026-08-05,
+    /// alongside a committed `MAGE_ONTOLOGY.json` advertising the same stale 2.
+    /// Both were found by regenerating rather than reading. This asserts the
+    /// prose against the constant so the next bump cannot leave it behind.
+    #[test]
+    fn architecture_md_documents_the_real_container_version() {
+        let doc = include_str!("../../ARCHITECTURE.md");
+        let want = format!("(currently {ABL_VERSION})");
+        assert!(
+            doc.contains(&want),
+            "ARCHITECTURE.md must say `{want}` for the ABL container version; \
+             bump the doc and regenerate MAGE_ONTOLOGY.json"
+        );
+    }
+}

@@ -77,6 +77,21 @@ jobs:
       # version that never ran. They live in different crates with no compiler
       # relationship between them — exactly the kind of pairing that drifts —
       # so the agreement is checked rather than assumed.
+      # MAGE_ONTOLOGY.json is generated from the implementation and DOCS.md tells
+      # readers to *prefer* it over the prose. It was committed on 2026-06-12
+      # and never regenerated, so it advertised ABL container version 2 while
+      # the encoder had moved to 3 — and `decode` rejects a version mismatch, so
+      # anyone building to the published ontology produced artifacts this
+      # toolchain refuses. A generated file that is committed but not checked is
+      # just a stale file with extra authority.
+      - name: Committed ontology matches a fresh generation
+        run: |
+          cargo run --quiet --release --manifest-path prototype/Cargo.toml \
+            --bin mage-parse -- --emit-ontology /tmp/onto-fresh.json
+          diff MAGE_ONTOLOGY.json /tmp/onto-fresh.json || {
+            echo "::error::MAGE_ONTOLOGY.json is stale — regenerate with --emit-ontology"
+            exit 1
+          }
       - name: Compiler version matches Ribosome's registry entry
         run: |
           binv=$(cargo run --quiet --release --manifest-path prototype/Cargo.toml \
