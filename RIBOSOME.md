@@ -239,21 +239,34 @@ though they are not arguments); unchanged → cache hit again. And the §2.1 pol
 under a real toolchain: unpinned + `--shared` rebuilds every time, unpinned +
 local caches on the second run. ✅
 
-✅ **`go` and `typescript` since verified against real toolchains** — and I had
-wrongly recorded them as unverifiable. The earlier searches only ever looked for
-C compilers; `go` and `node` were installed the whole time. `go` 1.26.5 builds a
-multi-file program end to end, the artifact runs, and a non-root edit rebuilds
-it. `tsc` 5.9.3 exposed a **third broken builtin**: `--outFile` is rejected for
-any source containing an import (`TS6131`), so it could not compile a module.
+✅ **Every builtin is now built end to end against a real toolchain**, and
+**three of the seven were broken** until that happened:
 
-That makes **three of the five builtins that have met a compiler wrong on first
-contact** — `rust`, `python`, `typescript`. The pattern is not carelessness about
-flags; it is that a plausible-looking command line is not evidence, and only
-running it is.
+| Language | Verified against | Was it right? |
+|---|---|---|
+| `mage` | the test suite throughout | yes |
+| `rust` | `rustc` 1.97.1 | **no** — passed every source to a compiler that takes one |
+| `python` | CPython 3.12.11 | **no** — declared an output `-m py_compile` never writes |
+| `typescript` | `tsc` 5.9.3 | **no** — `--outFile` is rejected for any source with an import |
+| `c` | `clang` 22.1.8 | yes — compile-then-link, artifact executed |
+| `cpp` | `clang++` 22.1.8 | yes |
+| `go` | `go` 1.26.5 | yes — multi-file, artifact executed |
 
-◻ `c`, `cpp` (no C compiler on this machine) and `python` (Windows Store stub
-only) remain genuinely unrun, and are marked as such in the source. The engine is
-what is tested; a builtin that has not met its compiler is a hypothesis.
+Three out of seven is the argument for the table. Every one of those templates
+looked right and was assembled from the tool's documented interface. A plausible
+command line is not evidence.
+
+I recorded `c`, `cpp`, `go`, `typescript` and `python` as unverifiable three
+separate times — "needs tooling this machine lacks." That was wrong every time.
+The searches had only ever looked for `gcc`/`cc` on `PATH`; LLVM was installed at
+`C:\Program Files\LLVM`, Go and Node were installed, and a real CPython was in
+`~/.local/bin`. Nothing was missing except a thorough search.
+
+The C build also demonstrated the hermeticity design working, by failing first:
+the sandbox strips the environment clang uses to locate the Windows SDK, so the
+build failed loudly with `'stdio.h' file not found`, and declaring those
+variables in the manifest fixed it — which puts them in the action key, where a
+toolchain-discovery input belongs. ✅
 
 ---
 
