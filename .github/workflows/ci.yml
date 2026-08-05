@@ -25,6 +25,13 @@ on:
       - "germline/**"
       - "RecursiveMachineIntelligence/**"
       - ".github/workflows/ci.yml"
+      # The docs job asserts these files agree with the suites.
+      - "scripts/**"
+      - "ROADMAP.md"
+      - "MEASUREMENTS.md"
+      - "ARCHITECTURE.md"
+      - "RIBOSOME.md"
+      - "GERMLINE.md"
   pull_request:
     paths:
       - "prototype/**"
@@ -33,6 +40,13 @@ on:
       - "germline/**"
       - "RecursiveMachineIntelligence/**"
       - ".github/workflows/ci.yml"
+      # The docs job asserts these files agree with the suites.
+      - "scripts/**"
+      - "ROADMAP.md"
+      - "MEASUREMENTS.md"
+      - "ARCHITECTURE.md"
+      - "RIBOSOME.md"
+      - "GERMLINE.md"
 
 jobs:
   rmi:
@@ -110,6 +124,24 @@ jobs:
         run: cargo build --release --manifest-path forge/Cargo.toml
       - name: Test
         run: cargo test --manifest-path forge/Cargo.toml
+
+  docs:
+    name: documented test counts match reality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      # Runs every suite again rather than reusing the per-crate jobs, because
+      # the check must compare against numbers from one coherent run. Splitting
+      # the measurement across jobs would let a doc match a total nothing
+      # actually produced.
+      #
+      # This exists because four documented figures were found stale on
+      # 2026-08-04, each by accident. A summary line is written once while its
+      # subject is fresh and nothing ever forces a second look — so the second
+      # look is now a job.
+      - name: Test everything and verify the documented counts
+        run: bash scripts/test-all.sh --check-docs
 
   cuda:
     name: prototype — cuda feature (compile check)

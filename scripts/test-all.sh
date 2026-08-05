@@ -27,24 +27,35 @@ REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PROFILE=()
 BENCH=0
 CUDA=0
+CHECKDOCS=0
 
 for arg in "$@"; do
     case "$arg" in
         --release) PROFILE=(--release) ;;
         --bench)   BENCH=1; PROFILE=(--release) ;;
         --cuda)    CUDA=1 ;;
+        --check-docs) CHECKDOCS=1 ;;
         *) echo "unknown option: $arg" >&2; exit 2 ;;
     esac
 done
 
 failed=()
+declare -A COUNTS
 
 run_crate() {
     local name="$1" manifest="$2"; shift 2
     printf '\n=== %s ===\n' "$name"
-    if ! cargo test --manifest-path "$REPO/$manifest" "${PROFILE[@]}" "$@"; then
+    # Tee rather than re-measure: the counts `--check-docs` verifies must come
+    # from the run just displayed. A second measurement could disagree with the
+    # one the operator watched, which would make the check itself untrustworthy.
+    local log
+    log="$(mktemp)"
+    if ! cargo test --manifest-path "$REPO/$manifest" "${PROFILE[@]}" "$@" 2>&1 | tee "$log"; then
         failed+=("$name")
     fi
+    COUNTS["$name"]="$(grep -oE '^test result: ok\. [0-9]+ passed' "$log" \
+        | grep -oE '[0-9]+' | awk '{s+=$1} END {print s+0}')"
+    rm -f "$log"
 }
 
 # rmi is feature-gated: the default feature set pulls in GPU backends that need
@@ -74,3 +85,13 @@ if [ "${#failed[@]}" -gt 0 ]; then
     exit 1
 fi
 echo 'All crates green.'
+
+if [ "$CHECKDOCS" -eq 1 ]; then
+    total=0
+    for n in "${COUNTS[@]}"; do total=$((total + n)); done
+    echo
+    {
+        for k in "${!COUNTS[@]}"; do echo "$k=${COUNTS[$k]}"; done
+        echo "total=$total"
+    } | "$REPO/scripts/check-doc-counts.sh" || exit 1
+fi

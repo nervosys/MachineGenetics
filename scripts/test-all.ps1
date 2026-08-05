@@ -23,6 +23,13 @@
     and perf_report. Implies -Release, since the numbers are only meaningful
     against an optimized build.
 
+.PARAMETER CheckDocs
+    After a green run, verify that every documented test count matches what the
+    suites just reported. Four documented figures were found stale on
+    2026-08-04, each by accident; this makes that a failure instead of a
+    discovery. Delegates to scripts/check-doc-counts.sh so there is one
+    implementation of the check — needs the `bash` that ships with Git.
+
 .PARAMETER Cuda
     Additionally test the prototype with --features cuda (1,269 tests). Needs an
     NVIDIA driver to exercise the kernels; without one the CUDA backend falls
@@ -37,7 +44,8 @@
 param(
     [switch]$Release,
     [switch]$Bench,
-    [switch]$Cuda
+    [switch]$Cuda,
+    [switch]$CheckDocs
 )
 
 $ErrorActionPreference = 'Stop'
@@ -57,11 +65,23 @@ $crates = @(
 )
 
 $failed = @()
+$counts = @{}
 foreach ($c in $crates) {
     Write-Host "`n=== $($c.Name) ===" -ForegroundColor Cyan
     $manifest = Join-Path $repo $c.Manifest
-    & cargo test --manifest-path $manifest @profileArgs @($c.Features)
+    # Tee to a file so -CheckDocs verifies against the run just displayed rather
+    # than a second measurement that could disagree with it. Tee-Object rather
+    # than Write-Host in a ForEach: Write-Host writes straight to the host, so it
+    # bypasses the caller's own pipeline and floods any filtering they applied.
+    $log = [System.IO.Path]::GetTempFileName()
+    & cargo test --manifest-path $manifest @profileArgs @($c.Features) 2>&1 |
+        Tee-Object -FilePath $log
     if ($LASTEXITCODE -ne 0) { $failed += $c.Name }
+    $sum = (Select-String -Path $log -Pattern '^test result: ok\. (\d+) passed' |
+        ForEach-Object { [int]$_.Matches[0].Groups[1].Value } |
+        Measure-Object -Sum).Sum
+    $counts[$c.Name] = if ($null -eq $sum) { 0 } else { $sum }
+    Remove-Item $log -ErrorAction SilentlyContinue
 }
 
 if ($Cuda) {
@@ -76,6 +96,38 @@ if ($Bench) {
     foreach ($harness in @('eval_bench', 'perf_report')) {
         & cargo test --manifest-path $proto --release $harness -- --ignored --nocapture
         if ($LASTEXITCODE -ne 0) { $failed += "prototype::$harness" }
+    }
+}
+
+if ($CheckDocs -and $failed.Count -eq 0) {
+    Write-Host ''
+    $total = ($counts.Values | Measure-Object -Sum).Sum
+    $lines = @($counts.GetEnumerator() | ForEach-Object { "$($_.Key)=$($_.Value)" }) + "total=$total"
+    # One implementation of the check, in bash, rather than two that can drift.
+    #
+    # Two Windows traps here, both hit while writing this. `bash` on PATH is
+    # WSL's, which cannot open a `C:/...` path at all; and passing a Windows
+    # path with backslashes makes bash read them as escapes, yielding
+    # `C:UsersadammdevMechGen...` and a bare 127. Prefer the bash that ships
+    # with Git — the one these .sh scripts are written for — and invoke it with
+    # a path relative to the repo, which both bashes resolve correctly.
+    $bash = @(
+        "$env:ProgramFiles\Git\bin\bash.exe",
+        "${env:ProgramFiles(x86)}\Git\bin\bash.exe"
+    ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+    if (-not $bash) { $bash = (Get-Command bash -ErrorAction SilentlyContinue).Source }
+
+    if (-not $bash) {
+        # Not a skip. A check that quietly does nothing when its interpreter is
+        # missing is how the stale-doc problem got here in the first place.
+        Write-Host 'CheckDocs needs bash (ships with Git for Windows).' -ForegroundColor Red
+        $failed += 'documented counts (no bash available)'
+    } else {
+        Push-Location $repo
+        try {
+            $lines -join "`n" | & $bash 'scripts/check-doc-counts.sh'
+            if ($LASTEXITCODE -ne 0) { $failed += 'documented counts' }
+        } finally { Pop-Location }
     }
 }
 

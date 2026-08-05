@@ -9,6 +9,21 @@ nothing here has to be read to find out whether it is still true.
 wins. [`MEASUREMENTS.md`](MEASUREMENTS.md) and [`benchmarks/`](benchmarks/) are
 the ground truth for every performance or efficiency claim.
 
+**The rule is now enforced, for test counts.** Stating a rule turned out not to
+be enough: on 2026-08-04 four separate documented figures were found stale, each
+by accident while doing something else — forge's "235", GERMLINE.md's "141",
+ARCHITECTURE.md's "prototype 1,209", and a MEASUREMENTS.md table two crate
+splits out of date. None was carelessness about a particular number. A summary
+line gets written once, while its subject is fresh, and nothing ever forces it
+to be looked at again.
+
+So `scripts/test-all.{sh,ps1} --check-docs` re-derives every documented test
+count from the run it just performed and fails if any disagrees, and CI runs it.
+A claim whose wording changes enough that the check can no longer find it is
+also a failure, not a skip — a claim nobody is checking is how this started. If
+you reword one of these lines, expect to update `scripts/check-doc-counts.sh`
+alongside it; that friction is the point.
+
 ---
 
 ## Normative — what actually ships
