@@ -6,8 +6,8 @@ numbers are machine-dependent; the shapes (throughput, scaling) are not.
 
 Date: 2026-06-10. Build: `release` for perf, `cargo test` for functionality.
 
-> **Re-verified 2026-08-05** — all five crates tested: prototype **1,054**, rmi
-> **1,380**, ribosome **164**, germline **112**, forge **52** = **2,762 passing,
+> **Re-verified 2026-08-05** — all five crates tested: prototype **1,056**, rmi
+> **1,380**, ribosome **164**, germline **112**, forge **52** = **2,764 passing,
 > 0 failing, 0 warnings**. No figure below has regressed.
 >
 > *A measurement that was wrong.* `BuildReport::cache_hit_ratio` was
@@ -65,7 +65,7 @@ Date: 2026-06-10. Build: `release` for perf, `cargo test` for functionality.
 ### Test suites (all green)
 | Suite | Tests | Cmd |
 |---|---|---|
-| MAGE prototype | **1054 pass** (+2 ignored perf harnesses) | `cargo test` |
+| MAGE prototype | **1056 pass** (+2 ignored perf harnesses) | `cargo test` |
 | rmi (`cpu`) | **1380 pass** | `cargo test --no-default-features --features cpu` |
 | ribosome (build engine) | **164 pass** | `cargo test --manifest-path ribosome/Cargo.toml` |
 | germline (RSI control plane) | **112 pass** | `cargo test --manifest-path germline/Cargo.toml` |

@@ -887,13 +887,36 @@ impl TypeChecker {
     /// Resolve unsuffixed integer-literal type vars that context never pinned
     /// to a concrete width, binding them to i32 (the MAGE integer default).
     /// Constrained ones are already bound by unification and are left alone.
+    /// Settle every unsuffixed integer literal: default the unconstrained ones
+    /// to `i32`, and reject any that context forced to a non-numeric type.
+    ///
+    /// The literal's type variable is minted completely free, so it unifies with
+    /// *anything* — the comment at the mint site says "any int width the
+    /// surroundings demand", but nothing enforced that, and
+    /// `f() -> bool { 1 }` typechecked. Properly this wants an integer-kind
+    /// constraint carried through `unify`; that is a larger change to the
+    /// inference core. Checking after the fact catches the same programs
+    /// without touching unification, at the cost of a diagnostic that names the
+    /// function rather than the literal's span.
+    ///
+    /// Floats are permitted deliberately: `1` in a float context is an ordinary
+    /// numeric literal here, and rejecting it would be a language change rather
+    /// than a bug fix.
     fn default_int_literals(&mut self) {
         let pending = std::mem::take(&mut self.int_lit_vars);
         for v in pending {
             let tv = Ty::Var(crate::hir::TyVar(v));
-            if matches!(self.subst.apply(&tv), Ty::Var(_)) {
-                // Still unbound → default to i32.
-                let _ = unify(&mut self.subst, &tv, &Ty::Int(IntTy::I32));
+            let resolved = self.subst.apply(&tv);
+            match resolved {
+                Ty::Var(_) => {
+                    // Still unbound → default to i32.
+                    let _ = unify(&mut self.subst, &tv, &Ty::Int(IntTy::I32));
+                }
+                Ty::Int(_) | Ty::Uint(_) | Ty::Float(_) | Ty::Never => {}
+                other => self.emit_error(format!(
+                    "integer literal used where `{}` is required",
+                    other
+                )),
             }
         }
     }
@@ -1845,5 +1868,42 @@ mod if_without_else_tests {
     #[test]
     fn a_unit_if_is_still_fine() {
         assert!(errors("+f u(c: bool) { ? c { } }").is_empty());
+    }
+}
+
+#[cfg(test)]
+mod int_literal_tests {
+    use crate::{lexer, parser, types};
+
+    fn errors(src: &str) -> Vec<String> {
+        let toks = lexer::lex(src);
+        let module = parser::parse(&toks).expect("parses");
+        let mut tc = types::TypeChecker::new();
+        tc.check_module(&module);
+        tc.diagnostics.iter().map(|d| d.message.clone()).collect()
+    }
+
+    #[test]
+    fn an_integer_literal_is_not_a_bool_or_a_string() {
+        // The literal's type var was minted completely free, so it unified with
+        // anything at all — the comment at the mint site claimed "any int width
+        // the surroundings demand" and nothing enforced the "int" part.
+        assert!(!errors("+f f() -> bool { 1 }").is_empty());
+        assert!(!errors("+f f() -> str { 1 }").is_empty());
+    }
+
+    #[test]
+    fn every_numeric_context_still_accepts_one() {
+        // The constraint must not become a false positive: an unsuffixed literal
+        // is polymorphic across int widths, unsigned, and float on purpose.
+        for src in [
+            "+f f() -> i32 { 1 }",
+            "+f f() -> i64 { 1 }",
+            "+f f() -> u8 { 1 }",
+            "+f f() -> f64 { 1 }",
+            "+f f() -> i64 { val x = 1; ret x; }",
+        ] {
+            assert!(errors(src).is_empty(), "{src} should typecheck, got {:?}", errors(src));
+        }
     }
 }
