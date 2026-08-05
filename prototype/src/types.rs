@@ -307,6 +307,12 @@ pub struct TypeChecker {
     /// Enum definitions: enum name → its variant names. Used for match
     /// exhaustiveness checking.
     enum_defs: HashMap<String, Vec<String>>,
+    /// Interned names of user-defined types: name → id, and id → name.
+    ///
+    /// Gives `Ty::Named` real identity. Two vectors rather than one bimap
+    /// because the id is just the index.
+    named_ids: HashMap<String, u32>,
+    named_names: Vec<String>,
     /// Declared return type of each enclosing function, innermost last.
     ///
     /// A stack rather than a field because function bodies nest. Exists so
@@ -338,6 +344,8 @@ impl TypeChecker {
             struct_defs: HashMap::new(),
             fn_sigs: HashMap::new(),
             enum_defs: HashMap::new(),
+            named_ids: HashMap::new(),
+            named_names: Vec::new(),
             ret_stack: Vec::new(),
             diagnostics: Vec::new(),
             int_lit_vars: Vec::new(),
@@ -479,9 +487,19 @@ impl TypeChecker {
             "str" => Ty::Str,
             "String" => Ty::Str,
             _ => {
-                // Could be a user-defined struct/enum/type alias.
-                // Return a named type that we'll verify later.
-                Ty::Named(crate::hir::SymbolId(u32::MAX), args)
+                // A user-defined struct/enum/type alias. Interned to a stable
+                // id so distinct names are distinct types.
+                //
+                // Every such type used to lower to `SymbolId(u32::MAX)` — the
+                // *same* sentinel for all of them — and `unify` compares those
+                // ids, so every user-defined type was interchangeable with every
+                // other: `S A{} S B{}` let an `A` satisfy `B` and be passed to a
+                // function expecting one. It also left `lookup_struct_field`
+                // unable to tell which struct it was looking at, which is why it
+                // searched all of them and invented a fresh type for a field
+                // that existed nowhere.
+                let id = self.intern_named(name);
+                Ty::Named(crate::hir::SymbolId(id), args)
             }
         }
     }
@@ -1255,6 +1273,14 @@ impl TypeChecker {
                 // This is simplified — in a real compiler we'd resolve through Named types.
                 if let Some(field_ty) = self.lookup_struct_field(&obj_ty, field) {
                     field_ty
+                } else if self.is_known_struct(&obj_ty) {
+                    // The object's struct is known and has no such field. This
+                    // used to hand back a fresh type variable, which unifies
+                    // with anything — so `p.nope` typechecked against any
+                    // expected type.
+                    let name = self.named_name(&obj_ty).unwrap_or("?").to_string();
+                    self.emit_error(format!("no field `{field}` on `{name}`"));
+                    self.fresh()
                 } else {
                     self.fresh()
                 }
@@ -1572,9 +1598,41 @@ impl TypeChecker {
         }
     }
 
-    fn lookup_struct_field(&self, _ty: &Ty, field: &str) -> Option<Ty> {
-        // For Named types with struct defs, look up the field.
-        // Simplified for prototype — check all structs.
+    /// Intern a user-defined type name, returning its stable id.
+    fn intern_named(&mut self, name: &str) -> u32 {
+        if let Some(id) = self.named_ids.get(name) {
+            return *id;
+        }
+        let id = self.named_names.len() as u32;
+        self.named_ids.insert(name.to_string(), id);
+        self.named_names.push(name.to_string());
+        id
+    }
+
+    /// The struct name behind a `Ty::Named`, if it is one we interned.
+    fn named_name(&self, ty: &Ty) -> Option<&str> {
+        match ty {
+            Ty::Named(sym, _) => self.named_names.get(sym.0 as usize).map(|s| s.as_str()),
+            _ => None,
+        }
+    }
+
+    /// The type of `field` on `ty`.
+    ///
+    /// Resolves through the *object's own* struct definition when the type is a
+    /// known named struct. It used to ignore `ty` entirely and return the first
+    /// field of that name found in any struct, so `a.x` could hand back an
+    /// unrelated struct's `x` — possible only because `Ty::Named` carried no
+    /// identity. Now that it does, this can be exact.
+    fn lookup_struct_field(&self, ty: &Ty, field: &str) -> Option<Ty> {
+        if let Some(name) = self.named_name(ty) {
+            if let Some((_, fields)) = self.struct_defs.get(name) {
+                return fields.iter().find(|(f, _)| f == field).map(|(_, t)| t.clone());
+            }
+        }
+        // Unknown or not-yet-resolved object type: fall back to the old
+        // name-only search rather than inventing a type. Still permissive, but
+        // only where the object's type genuinely is not known yet.
         for (_, fields) in self.struct_defs.values() {
             for (fname, fty) in fields {
                 if fname == field {
@@ -1583,6 +1641,13 @@ impl TypeChecker {
             }
         }
         None
+    }
+
+    /// Whether `ty` is a struct we know the full field list of — i.e. whether a
+    /// failed field lookup is real evidence of a mistake rather than of
+    /// incomplete inference.
+    fn is_known_struct(&self, ty: &Ty) -> bool {
+        self.named_name(ty).is_some_and(|n| self.struct_defs.contains_key(n))
     }
 }
 
@@ -1905,5 +1970,55 @@ mod int_literal_tests {
         ] {
             assert!(errors(src).is_empty(), "{src} should typecheck, got {:?}", errors(src));
         }
+    }
+}
+
+#[cfg(test)]
+mod nominal_typing_tests {
+    use crate::{lexer, parser, types};
+
+    fn errors(src: &str) -> Vec<String> {
+        let toks = lexer::lex(src);
+        let module = parser::parse(&toks).expect("parses");
+        let mut tc = types::TypeChecker::new();
+        tc.check_module(&module);
+        tc.diagnostics.iter().map(|d| d.message.clone()).collect()
+    }
+
+    #[test]
+    fn distinct_structs_are_distinct_types() {
+        // Every user-defined type lowered to `SymbolId(u32::MAX)` — the same
+        // sentinel for all of them — and `unify` compares those ids, so any
+        // user type satisfied any other.
+        assert!(!errors("S A { x: i32 } S B { y: i32 } +f f(a: A) -> B { a }").is_empty());
+        assert!(
+            !errors(
+                "S A { x: i32 } S B { y: i32 } \
+                 +f g(b: B) -> i32 { b.y } +f f(a: A) -> i32 { g(a) }"
+            )
+            .is_empty(),
+            "passing an A where B is expected must fail"
+        );
+    }
+
+    #[test]
+    fn a_struct_is_still_itself() {
+        assert!(errors("S A { x: i32 } +f f(a: A) -> A { a }").is_empty());
+        assert!(errors("S P { x: i32 } +f f(p: P) -> i32 { p.x }").is_empty());
+    }
+
+    #[test]
+    fn a_field_that_does_not_exist_is_an_error() {
+        // Returned a fresh type variable, which unifies with anything, so
+        // `p.nope` satisfied any expected type.
+        let e = errors("S P { x: i32 } +f f(p: P) -> i32 { p.nope }");
+        assert!(e.iter().any(|m| m.contains("no field `nope`")), "got {e:?}");
+    }
+
+    #[test]
+    fn a_field_is_resolved_on_the_right_struct() {
+        // Field lookup ignored the object type and returned the first match in
+        // *any* struct, so this handed back B's `y: str` for an A.
+        assert!(!errors("S A { x: i32 } S B { y: str } +f f(a: A) -> str { a.y }").is_empty());
     }
 }
