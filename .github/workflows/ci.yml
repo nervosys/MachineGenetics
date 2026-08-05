@@ -72,6 +72,22 @@ jobs:
         run: cargo test --release --manifest-path prototype/Cargo.toml
       - name: Evaluator correctness bench (73/73 exact)
         run: cargo test --release --manifest-path prototype/Cargo.toml eval_bench -- --ignored --nocapture
+      # `mage-parse@<version>` is the tool id Ribosome writes into every action
+      # key, so if the binary and the registry disagree the cache is keyed on a
+      # version that never ran. They live in different crates with no compiler
+      # relationship between them — exactly the kind of pairing that drifts —
+      # so the agreement is checked rather than assumed.
+      - name: Compiler version matches Ribosome's registry entry
+        run: |
+          binv=$(cargo run --quiet --release --manifest-path prototype/Cargo.toml \
+                   --bin mage-parse -- --version | awk '{print $2}')
+          regv=$(grep -oE 'structural\("mage-parse", "[0-9.]+"\)' ribosome/src/lang.rs \
+                   | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+          echo "binary=$binv registry=$regv"
+          [ "$binv" = "$regv" ] || {
+            echo "::error::mage-parse reports $binv but ribosome keys $regv"
+            exit 1
+          }
 
   ribosome:
     name: ribosome — build + test

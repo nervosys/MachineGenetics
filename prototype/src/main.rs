@@ -53,6 +53,18 @@ fn main() {
         .collect();
 
     match filtered.first().copied() {
+        // `mage-parse@<version>` is the tool id Ribosome puts in every action
+        // key (`ribosome/src/lang.rs`, the `mage` builtin), and the whole point
+        // of a keyed tool version is that a different compiler cannot serve an
+        // older compiler's cached results. That claim was unverifiable until
+        // now: there was no `--version`, and passing one made the binary try to
+        // *open a file called `--version`* and fail with "The system cannot find
+        // the file specified" — a confusing answer to the most standard flag
+        // there is. Sourced from CARGO_PKG_VERSION so it cannot drift from
+        // Cargo.toml.
+        Some("--version") | Some("-V") => {
+            println!("mage-parse {}", env!("CARGO_PKG_VERSION"));
+        }
         Some("--manifest") => {
             // Agent-facing capability index (cheap discovery root).
             print!("{}", cli_manifest::manifest());
