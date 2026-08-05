@@ -167,6 +167,40 @@ jobs:
       - name: Test everything and verify the documented counts
         run: bash scripts/test-all.sh --check-docs
 
+  audit:
+    name: RustSec advisories across all five lockfiles
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo install cargo-audit --locked
+      # Dependabot reported zero Rust alerts while `cargo audit` found
+      # RUSTSEC-2026-0204 in two lockfiles, so "Dependabot is quiet" was not
+      # evidence that the Rust side was clean. Each workspace has its own
+      # Cargo.lock and is scanned separately — a vulnerability in one says
+      # nothing about the others.
+      #
+      # `-D warnings` is deliberately NOT set: the remaining findings are
+      # `unmaintained` and `unsound` advisories in transitive deps with no
+      # patched version to move to. Failing on those would make this job
+      # permanently red and therefore ignored, which is worse than not having
+      # it. Vulnerabilities fail; warnings are printed and read.
+      # `rmi` git-ignores its Cargo.lock so the vendored crate does not inherit
+      # this repo's pins, so there is nothing to audit until one is generated.
+      # Generating it is also the more useful check for that crate: it audits
+      # what a fresh consumer would actually resolve, rather than one
+      # developer's working copy — the distinction that made a `crossbeam-epoch`
+      # hit there a false alarm while the identical hit in `prototype` was real.
+      - name: cargo audit
+        run: |
+          for c in RecursiveMachineIntelligence prototype ribosome germline forge; do
+            echo "::group::$c"
+            ( cd "$c" \
+              && { [ -f Cargo.lock ] || cargo generate-lockfile; } \
+              && cargo audit ) || exit 1
+            echo "::endgroup::"
+          done
+
   cuda:
     name: prototype — cuda feature (compile check)
     runs-on: ubuntu-latest

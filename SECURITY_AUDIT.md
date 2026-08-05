@@ -16,7 +16,29 @@ AetherShell repo). Frameworks applied: **CVE/RustSec**, **NIST FIPS 140-3**,
 
 ## 1. CVE / RustSec (`cargo audit`)
 
-Run on all three Cargo.lock surfaces against RustSec advisory-db (1116 advisories).
+Run on all **five** Cargo.lock surfaces against the RustSec advisory-db —
+three when this was written, plus `ribosome/` and `germline/` since they were
+extracted from `forge` (steps 148–149). Both are clean, as is `forge`.
+
+> **Re-run 2026-08-05, and one surface was not clean.** `cargo audit` found
+> **RUSTSEC-2026-0204** (`crossbeam-epoch 0.9.18`, invalid pointer dereference in
+> the `fmt::Pointer` impl) in `prototype`'s committed `Cargo.lock`. Fixed by
+> `cargo update -p crossbeam-epoch` → 0.9.20. All five surfaces now report zero
+> vulnerabilities.
+>
+> **`rmi` was never affected, and the first draft of this note said it was.**
+> Its `Cargo.lock` is git-ignored on purpose (`RecursiveMachineIntelligence/.gitignore`)
+> so the vendored crate does not inherit this repo's pins — which means there is
+> no committed pin to *be* stale, and a fresh resolve picks 0.9.20 unaided
+> (verified by deleting the lockfile and regenerating: 0.9.20, zero
+> vulnerabilities). The 0.9.18 that `cargo audit` saw was a stale artifact in one
+> developer's working copy. A local finding is not a repository finding, and the
+> difference is the whole value of checking where a lockfile comes from.
+>
+> Worth recording *how* the real one was missed: **GitHub Dependabot reported
+> zero Rust alerts** the same day, while reporting 16 npm ones. "Dependabot is
+> quiet" was taken as evidence the Rust side was clean; it was not evidence at
+> all. That is why §4's recommendation is now implemented rather than repeated.
 
 | ID | Crate | Sev | Status |
 |---|---|---|---|
@@ -27,7 +49,17 @@ Run on all three Cargo.lock surfaces against RustSec advisory-db (1116 advisorie
 
 **Result:** 0 open vulnerabilities after the lz4_flex fix; 2 informational warnings accepted with rationale. agentic-eval's own dependency surface is 2 optional crates (`tiktoken-rs`, `serde`) — no findings.
 
-**Recommendation (CMMC SI / supply chain):** add `cargo audit` and `cargo deny` to CI as a release gate (a `deny.toml` allowlisting the two accepted advisories). Not yet wired — see §4.
+**Recommendation (CMMC SI / supply chain): ✅ implemented 2026-08-05.** CI now
+has an `audit` job running `cargo audit` over each of the five lockfiles
+separately — separately because each workspace resolves its own dependency graph
+and a clean result in one says nothing about the others.
+
+It deliberately does **not** pass `-D warnings`. The remaining findings are
+`unmaintained` and `unsound` advisories in transitive dependencies with no
+patched version to move to; failing on those would make the job permanently red
+and therefore ignored, which is worse than not having it. Vulnerabilities fail
+the build; warnings are printed and read. `cargo deny` with a `deny.toml`
+allowlist remains the stricter option if a release gate is ever wanted.
 
 ---
 
