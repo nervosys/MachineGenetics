@@ -37,7 +37,15 @@ fn main() {
             Err(e) => eprintln!("// --backends-file: {e}"),
         }
     }
-    // Collect positional-ish args (skip flag-style args)
+    // Collect positional-ish args (skip flag-style args).
+    //
+    // `--fix` belongs here even though it is read separately via
+    // `args.iter().any(...)` further down: anything left in this list is treated
+    // as a *path*, so omitting it meant `--build=abl --fix spec.json out.abl`
+    // consumed the flag as the input filename and failed with "Error reading
+    // --fix: The system cannot find the file specified". The flag only worked
+    // when written after both paths, which is not the order `ARCHITECTURE.md` §5
+    // implies and not the order anyone would try first.
     let filtered: Vec<&str> = args
         .iter()
         .skip(1)
@@ -45,7 +53,7 @@ fn main() {
             !matches!(
                 a.as_str(),
                 "--no-elision" | "--syntax=legacy" | "--syntax=canonical" | "--token-report"
-                    | "--json"
+                    | "--json" | "--fix"
             ) && !a.starts_with("--backend=")
               && !a.starts_with("--backends-file=")
         })
@@ -3153,3 +3161,61 @@ fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool, to
     }
 }
 
+
+#[cfg(test)]
+mod cli_arg_tests {
+    /// The positional-argument filter, extracted so it can be tested without
+    /// running the binary. Must stay in sync with `main`'s copy.
+    fn positional(args: &[&str]) -> Vec<String> {
+        args.iter()
+            .filter(|a| {
+                !matches!(
+                    **a,
+                    "--no-elision"
+                        | "--syntax=legacy"
+                        | "--syntax=canonical"
+                        | "--token-report"
+                        | "--json"
+                        | "--fix"
+                ) && !a.starts_with("--backend=")
+                    && !a.starts_with("--backends-file=")
+            })
+            .map(|s| s.to_string())
+            .collect()
+    }
+
+    #[test]
+    fn flags_are_never_mistaken_for_paths() {
+        // Regression. `--fix` was read via `args.iter().any(..)` but left in the
+        // positional list, so `--build=abl --fix spec.json out.abl` consumed the
+        // flag as the input filename and died with "Error reading --fix: The
+        // system cannot find the file specified". It only worked written after
+        // both paths — not the order ARCHITECTURE.md §5 implies.
+        let before = positional(&["--build=abl", "--fix", "spec.json", "out.abl"]);
+        let after = positional(&["--build=abl", "spec.json", "out.abl", "--fix"]);
+        assert_eq!(before, vec!["--build=abl", "spec.json", "out.abl"]);
+        assert_eq!(before, after, "flag position must not change the paths");
+    }
+
+    #[test]
+    fn every_documented_flag_is_filtered() {
+        // Any flag missing from the filter becomes a path, which fails as a
+        // confusing "cannot find the file" rather than as a bad flag.
+        for f in [
+            "--no-elision",
+            "--syntax=legacy",
+            "--syntax=canonical",
+            "--token-report",
+            "--json",
+            "--fix",
+            "--backend=cpu",
+            "--backends-file=b.json",
+        ] {
+            assert_eq!(
+                positional(&["--build=abl", f, "in.json", "out.abl"]),
+                vec!["--build=abl", "in.json", "out.abl"],
+                "`{f}` leaked into the positional args and would be read as a path"
+            );
+        }
+    }
+}
