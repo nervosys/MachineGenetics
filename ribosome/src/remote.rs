@@ -26,34 +26,37 @@
 //!
 //! ## What this does not do
 //!
-//! ## Encryption: the seam exists, the cipher does not
+//! ## Encryption
 //!
-//! Connections are **authenticated but not encrypted**. A fleet key gates every
-//! frame, and workers sign their outputs
-//! ([`provenance`](super::provenance)) so a claim is attributable — but anyone
-//! on the path can read the source, the artifacts, and the action graph.
+//! Plaintext by default; encrypted via [`tls`](super::tls) behind the `tls`
+//! feature.
 //!
-//! What used to block fixing that was not cryptography, it was *spelling*: the
-//! protocol is length-prefixed JSON over an ordered byte stream, and it was
-//! written against [`TcpStream`] concretely. Both ends are now generic over
+//! What used to block that was not cryptography, it was *spelling*: the protocol
+//! is length-prefixed JSON over an ordered byte stream, and it was written
+//! against [`TcpStream`] concretely. Both ends are now generic over
 //! `Read + Write`, with one wrapper point per side —
-//! [`WorkerServer::serve_with`] and [`RemoteExecutor::connect_over`]. A TLS
-//! session plugs into those two points and nothing in the handshake, the frame
-//! codec, or the executor changes. The seam is tested end to end with a
-//! byte-transforming wrapper, including the negative case where the two ends
-//! disagree and the connection fails.
+//! [`WorkerServer::serve_with`] and [`RemoteExecutor::connect_over`]. The seam
+//! is tested with a byte-transforming wrapper *and* its negative case, then
+//! `tls` plugs a real `rustls` session into the same two points without changing
+//! the handshake, the frame codec, or the executor.
 //!
-//! What remains is genuinely a deployment decision rather than missing plumbing,
-//! and is deliberately not made here: which TLS stack, and — the part that
-//! actually shapes the API — **what the trust posture is**. Self-signed
-//! certificates pinned per worker, mutual TLS against an internal CA, and public
-//! PKI are three different operational stories with three different failure
-//! modes, and a build system that quietly picked one would be making a security
-//! decision on its operator's behalf.
+//! The trust posture is still **not** decided here, and that is the point of the
+//! design rather than an omission: [`tls::acceptor`](super::tls::acceptor) and
+//! [`tls::connector`](super::tls::connector) take the caller's
+//! `rustls::ServerConfig` / `ClientConfig`, which is already the encoding of
+//! "who do I trust and how do I prove who I am". Pinned self-signed, mutual TLS
+//! against an internal CA, and public PKI are all expressible; none is picked
+//! for the operator.
 //!
-//! Until then the honest posture is the one an unauthenticated build cache has:
-//! safe on a trusted network segment, unsafe on an open one, and it should be
-//! deployed the same way.
+//! TLS **wraps** the fleet-key handshake rather than replacing it. The two
+//! authenticate different things: TLS says *this is the machine whose
+//! certificate I trust* and encrypts the channel; the fleet key says *this peer
+//! knows the shared secret* and gates every frame. There is a test asserting a
+//! valid certificate alone still gets you refused.
+//!
+//! Without the feature the posture is the one an unauthenticated build cache
+//! has: fine on a trusted network segment, unsafe on an open one, and it should
+//! be deployed the same way.
 
 use super::exec::{ExecError, Executor, Inputs, ToolOutput};
 use super::provenance::{Provenance, Signer};

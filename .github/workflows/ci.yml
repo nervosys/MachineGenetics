@@ -102,6 +102,30 @@ jobs:
             echo "::error::ribosome must depend on neither a MAGE crate nor germline"
             exit 1
           fi
+      # `tls` is optional so that encryption is not bought at the cost of making
+      # every consumer carry a TLS stack. That is only true while it stays out of
+      # the default build — `-e normal` because dev-dependencies are not
+      # propagated to consumers and would make this read as a violation when it
+      # is not.
+      - name: Verify the default build carries no TLS stack
+        run: |
+          if cargo tree --manifest-path ribosome/Cargo.toml -e normal --prefix none \
+               | grep -Eiq '^(rustls|ring) '; then
+            echo "::error::the tls feature has leaked into the default build"
+            exit 1
+          fi
+
+  ribosome-tls:
+    name: ribosome — tls feature
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      # An optional feature nobody builds is an optional feature that stops
+      # compiling. The TLS tests stand up a real rustls session over loopback
+      # with a certificate generated in-test, including the negative cases.
+      - name: Test with the tls feature
+        run: cargo test --manifest-path ribosome/Cargo.toml --features tls
 
   germline:
     name: germline — build + test

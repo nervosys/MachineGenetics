@@ -123,6 +123,8 @@ pub mod provenance;
 pub mod remote;
 pub mod sched;
 pub mod subprocess;
+#[cfg(feature = "tls")]
+pub mod tls;
 
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;

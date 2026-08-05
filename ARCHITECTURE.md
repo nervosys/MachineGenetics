@@ -197,8 +197,11 @@ Keeping them separate is a trade, not an oversight:
   pinned `lz4_flex >= 0.11.6` CVE fix recorded in `SECURITY_AUDIT.md` §1.
 - **`ribosome` must not depend on MAGE.** Its central claim — that no language
   is privileged below the planner (`RIBOSOME.md` §2.1) — is not credible from a
-  crate that depends on one language's compiler, so its dependency list is
-  `serde`, `serde_json`, `sha2`, `ed25519-dalek` and nothing else.
+  crate that depends on one language's compiler, so its default dependency list
+  is `serde`, `serde_json`, `sha2`, `ed25519-dalek` and nothing else: 39 crates
+  transitively. Encryption (`rustls`) is behind the optional `tls` feature and
+  CI checks it has not leaked into the default build, because "optional" is a
+  property that decays the moment something in the default path uses it.
 - **`ribosome` must not depend on `germline`.** The Weismann barrier is
   one-way by design (`GERMLINE.md`): a build engine able to call into the
   succession layer is a somatic path into the germline, which is the failure

@@ -16,10 +16,12 @@ It started inside `forge`, the package registry, which was a convenient place to
 put it and the wrong place to leave it: a build system that ships inside a
 package registry can only ever be that registry's build system, and §2.1's claim
 that no language is privileged below the planner is not credible from a crate
-that depends on one language's compiler. Its whole dependency list is `serde`,
-`serde_json`, `sha2`, `ed25519-dalek`. CI checks that with `cargo tree` rather
-than trusting this paragraph. `forge` depends on *it*, and `germline` drives it
-through the same public API any other caller would use.
+that depends on one language's compiler. Its default dependency list is `serde`,
+`serde_json`, `sha2`, `ed25519-dalek` — 39 crates transitively, no TLS stack and
+nothing MAGE. `rustls` is behind the optional `tls` feature and stays out of that
+tree. CI checks both with `cargo tree` rather than trusting this paragraph.
+`forge` depends on *it*, and `germline` drives it through the same public API any
+other caller would use.
 
 ---
 
@@ -423,15 +425,31 @@ also let the protocol be driven over a scripted in-memory stream, so
 "authentication gates every frame, including `Describe`" is now asserted
 deterministically instead of against a live socket with sleeps.
 
-◻ **Remaining, stated rather than implied: still no encryption.** Frames are
-plaintext, so anyone on the path reads the source, the artifacts, and the action
-graph; this belongs on a trusted segment. What is left is no longer plumbing — a
-TLS session plugs into the two wrapper points and nothing else changes. It is a
-**deployment decision deliberately not made here**: self-signed certificates
-pinned per worker, mutual TLS against an internal CA, and public PKI are three
-different operational stories with three different failure modes, and a build
-system that quietly picked one would be making a security decision on its
-operator's behalf.
+✅ **Encryption** (`ribosome/src/tls.rs`, behind `--features tls`). A real
+`rustls` session plugs into the two wrapper points; the handshake, frame codec,
+executor, registry and scheduler are untouched. Four tests over loopback with a
+certificate generated in-test, including the three negative cases that make the
+positive one mean something: an untrusted certificate is refused, a plaintext
+client cannot talk to a TLS worker, and **a valid certificate alone still does
+not get you in** — the fleet key gates every frame inside the session, because
+TLS and the fleet key authenticate different things.
+
+The **trust posture is still not decided here**, and that is the design rather
+than an omission. `acceptor`/`connector` take the caller's `rustls::ServerConfig`
+/ `ClientConfig`, which is already the encoding of "who do I trust, and how do I
+prove who I am". Pinned self-signed, mutual TLS against an internal CA, and
+public PKI are all expressible; none is chosen for the operator, and there is
+deliberately no `with_self_signed()` convenience — it would be one line, it would
+get used, and it would be exactly the decision being avoided.
+
+Optional on purpose: encryption must not be bought at the cost of making every
+consumer carry a TLS stack. A default build has **39 normal dependencies and no
+TLS**; `--features tls` has 48. CI checks that the feature has not leaked into
+the default build, using `-e normal` since dev-dependencies are not propagated
+to consumers.
+
+◻ Without the feature, frames are plaintext and this belongs on a trusted
+segment — the same posture an unauthenticated build cache has.
 
 *This paragraph previously also listed per-worker asymmetric keys and the
 subprocess sandbox as unbuilt. Both landed in steps 145–146 and the line was not

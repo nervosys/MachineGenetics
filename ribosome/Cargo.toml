@@ -16,3 +16,22 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.10"
 ed25519-dalek = "3.0.0"
+# Optional, and off by default. The default dependency tree is a documented,
+# CI-enforced property of this crate (ARCHITECTURE.md), so encryption may not be
+# bought at the cost of making every consumer carry a TLS stack.
+#
+# `ring` rather than the default `aws-lc-rs` backend: aws-lc-rs needs a C
+# toolchain and CMake to build, which would make `--features tls` fail on
+# machines where the rest of the crate builds fine.
+rustls = { version = "0.23.43", default-features = false, features = ["ring", "std"], optional = true }
+
+[features]
+default = []
+# Encrypted worker transport. See `src/tls.rs` — the trust posture is the
+# caller's `rustls` config, not a policy this crate invents.
+tls = ["dep:rustls"]
+
+[dev-dependencies]
+# Generates a throwaway self-signed certificate for the TLS tests. A test that
+# needs a checked-in certificate would be a test with an expiry date.
+rcgen = "0.14.8"
