@@ -130,5 +130,10 @@ if [ "$CHECKDOCS" -eq 1 ]; then
     {
         for k in "${!COUNTS[@]}"; do echo "$k=${COUNTS[$k]}"; done
         echo "total=$total"
-    } | "$REPO/scripts/check-doc-counts.sh" || exit 1
+    # Invoked through `bash` rather than executed directly. The mode bit is now
+    # set in git, but it is the kind of thing a Windows checkout drops silently
+    # — this failed in CI with a bare "Permission denied" after passing on the
+    # machine it was written on. Belt and braces: the mode is correct *and* not
+    # relied upon.
+    } | bash "$REPO/scripts/check-doc-counts.sh" || exit 1
 fi
