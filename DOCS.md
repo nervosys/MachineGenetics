@@ -24,6 +24,17 @@ also a failure, not a skip — a claim nobody is checking is how this started. I
 you reword one of these lines, expect to update `scripts/check-doc-counts.sh`
 alongside it; that friction is the point.
 
+Adding `--cuda` also verifies the CUDA figure (needs a GPU) and `--bench` the
+`eval_bench` result: **48 claims** checked with all three, 37 by default. Both
+report *"not checked"* rather than passing quietly when the run that would
+supply the number did not happen.
+
+**The checker's own coverage is the part that rots.** A fifth stale figure —
+`ARCHITECTURE.md`'s "976 lib + 132 + 30 tests green", 1,138 against 1,038 — sat
+four lines above a table the checker *was* reading, and was found by hand like
+the first four. A checker covers what someone remembered to list. When you add a
+measured claim to a document, add it to `CHECKS` in the same commit.
+
 ---
 
 ## Normative — what actually ships

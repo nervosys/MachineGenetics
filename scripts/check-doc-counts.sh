@@ -78,6 +78,7 @@ scripts/test-all.ps1	ribosome +[0-9,]+ tests	ribosome
 scripts/test-all.ps1	germline +[0-9,]+ tests	germline
 scripts/test-all.ps1	forge +[0-9,]+ tests	forge
 scripts/test-all.ps1	total +[0-9,]+ tests	total
+ARCHITECTURE.md	\(\*\*[0-9,]+ tests\*\* green\)	prototype
 ARCHITECTURE.md	`rmi` \| [0-9,]+ 	rmi
 ARCHITECTURE.md	`mage-prototype` \| [0-9,]+ 	prototype
 ARCHITECTURE.md	`ribosome` \| [0-9,]+ 	ribosome
@@ -111,6 +112,19 @@ ARCHITECTURE.md	cuda \([0-9,]+ tests\)	cuda
 ARCHITECTURE.md	hardware — [0-9,]+ tests on dual	cuda
 MEASUREMENTS.md	hardware: \*\*[0-9,]+ passing	cuda
 .github/workflows/ci.yml	locally, [0-9,]+ tests green	cuda
+EOF
+)
+
+# Checked only when a --bench run supplied the number. `eval_bench` prints
+# "correctness: N/N programs exact"; the claim appears in four documents and had
+# never been verified against a run until 2026-08-05, when it turned out to be
+# right — which is not a reason to leave it unchecked, since "73/73" being
+# correct today says nothing about the next time the corpus changes.
+BENCH_CHECKS=$(cat <<'EOF'
+ARCHITECTURE.md	eval_bench \([0-9]+/	eval_exact
+README.md	computes \*\*[0-9]+/	eval_exact
+DOCS.md	eval\.rs`, [0-9]+/	eval_exact
+DIRECT_CODEGEN_STRATEGY.md	`--eval`, [0-9]+/	eval_exact
 EOF
 )
 
@@ -180,6 +194,26 @@ if [ -n "${ACTUAL[cuda]:-}" ]; then
     done <<< "$CUDA_CHECKS"
 else
     echo "  -  CUDA counts not checked (no --cuda run supplied one)"
+fi
+
+if [ -n "${ACTUAL[eval_exact]:-}" ]; then
+    while IFS=$'\t' read -r file pattern key; do
+        [ -n "${file:-}" ] || continue
+        if [ ! -f "$file" ]; then
+            echo "  !  missing file: $file" >&2
+            fail=1
+            continue
+        fi
+        hit="$(grep -oE -- "$pattern" "$file" | head -1)"
+        if [ -z "$hit" ]; then
+            echo "  !  $file: eval_bench claim no longer matches - reworded?" >&2
+            fail=1
+            continue
+        fi
+        compare "$file (eval_bench)" "$key" "$(digits "$hit")"
+    done <<< "$BENCH_CHECKS"
+else
+    echo "  -  eval_bench not checked (no --bench run supplied a result)"
 fi
 
 for file in $PROSE_FILES; do

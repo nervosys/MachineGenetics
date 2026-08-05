@@ -6,10 +6,16 @@ binary AI artifacts by emitting **typed structured specs** instead of source
 text. It is the leverage the text-token floor denies the language track (see
 [IDEAL_AGENTIC_LANGUAGE.md](IDEAL_AGENTIC_LANGUAGE.md) for that analysis).
 
-> **Scope.** Everything below is implemented and test-covered in
-> `prototype/` (976 lib + 132 + 30 tests green) and scored in the sibling
-> `agentic-eval` crate (80 tests). The one deliberate non-feature is
-> agent/swarm *execution* — see [Honest boundaries](#honest-boundaries).
+> **Scope.** Everything below is implemented and test-covered in `prototype/`
+> (**1,038 tests** green) and scored in the sibling `agentic-eval` crate (80
+> tests, in the AetherShell repository and not verifiable from here). The one
+> deliberate non-feature is agent/swarm *execution* — see
+> [Honest boundaries](#honest-boundaries).
+>
+> *This read "976 lib + 132 + 30 tests green" — 1,138, against 1,038 measured.
+> It is the fifth stale count found this session, and the first one
+> `scripts/check-doc-counts.sh` did not catch: the checker read the
+> repository-layout table below and never this banner. Now covered.*
 
 ---
 

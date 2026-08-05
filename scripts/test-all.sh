@@ -77,9 +77,19 @@ fi
 if [ "$BENCH" -eq 1 ]; then
     printf '\n=== measurement harnesses ===\n'
     for harness in eval_bench perf_report; do
-        if ! cargo test --manifest-path "$REPO/prototype/Cargo.toml" --release "$harness" -- --ignored --nocapture; then
+        blog="$(mktemp)"
+        if ! cargo test --manifest-path "$REPO/prototype/Cargo.toml" --release "$harness" \
+                -- --ignored --nocapture 2>&1 | tee "$blog"; then
             failed+=("prototype::$harness")
         fi
+        # `[eval-bench] correctness: 73/73 programs exact` — feed the numerator
+        # to --check-docs so the "73/73" claimed in four documents is verified
+        # against the run that just produced it.
+        if [ "$harness" = "eval_bench" ]; then
+            n="$(grep -oE 'correctness: [0-9]+/' "$blog" | grep -oE '[0-9]+' | head -1)"
+            [ -n "$n" ] && COUNTS[eval_exact]="$n"
+        fi
+        rm -f "$blog"
     done
 fi
 
