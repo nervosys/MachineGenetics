@@ -94,6 +94,26 @@ GERMLINE.md	germline/Cargo.toml +# [0-9,]+ tests	germline
 EOF
 )
 
+# Checked only when a CUDA run supplied the number, since it takes a GPU to
+# measure. Kept in the same mechanism rather than a second one: the documented
+# CUDA figure went stale for exactly the same reason as the others — it was
+# written once, before the library split, and never looked at again.
+#
+# Each pattern must contain **exactly one** number. `digits()` strips every
+# non-digit from the whole match, so a pattern spanning a second number silently
+# concatenates them: `dual 3090 Ti locally, 1,071 tests` became "30901071", and
+# `1,071 passing, 0 failed` became "10710". Both looked like wildly wrong counts
+# rather than a broken pattern, which is the confusing way for this to fail.
+CUDA_CHECKS=$(cat <<'EOF'
+scripts/test-all.sh	\([0-9,]+ tests; needs	cuda
+scripts/test-all.ps1	\([0-9,]+ tests\)\. Needs	cuda
+ARCHITECTURE.md	cuda \([0-9,]+ tests\)	cuda
+ARCHITECTURE.md	hardware — [0-9,]+ tests on dual	cuda
+MEASUREMENTS.md	hardware: \*\*[0-9,]+ passing	cuda
+.github/workflows/ci.yml	locally, [0-9,]+ tests green	cuda
+EOF
+)
+
 # Prose summaries name every crate in one sentence — "prototype **1,038**, rmi
 # **1,380**, …" — and markdown wraps them across lines with `> ` prefixes, so
 # these are matched against a flattened copy of the file rather than line by
@@ -133,7 +153,7 @@ while IFS=$'\t' read -r file pattern key; do
         fail=1
         continue
     fi
-    hit="$(grep -oE "$pattern" "$file" | head -1)"
+    hit="$(grep -oE -- "$pattern" "$file" | head -1)"
     if [ -z "$hit" ]; then
         echo "  !  $file: pattern for '$key' no longer matches - the claim moved or was reworded" >&2
         fail=1
@@ -141,6 +161,26 @@ while IFS=$'\t' read -r file pattern key; do
     fi
     compare "$file" "$key" "$(digits "$hit")"
 done <<< "$CHECKS"
+
+if [ -n "${ACTUAL[cuda]:-}" ]; then
+    while IFS=$'\t' read -r file pattern key; do
+        [ -n "${file:-}" ] || continue
+        if [ ! -f "$file" ]; then
+            echo "  !  missing file: $file" >&2
+            fail=1
+            continue
+        fi
+        hit="$(grep -oE -- "$pattern" "$file" | head -1)"
+        if [ -z "$hit" ]; then
+            echo "  !  $file: CUDA count claim no longer matches - reworded?" >&2
+            fail=1
+            continue
+        fi
+        compare "$file (cuda)" "$key" "$(digits "$hit")"
+    done <<< "$CUDA_CHECKS"
+else
+    echo "  -  CUDA counts not checked (no --cuda run supplied one)"
+fi
 
 for file in $PROSE_FILES; do
     if [ ! -f "$file" ]; then

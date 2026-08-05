@@ -17,7 +17,7 @@
 #   scripts/test-all.sh            # debug
 #   scripts/test-all.sh --release  # optimized
 #   scripts/test-all.sh --bench    # + eval_bench (73/73) and perf_report; implies --release
-#   scripts/test-all.sh --cuda     # + prototype --features cuda (1,269 tests; needs an
+#   scripts/test-all.sh --cuda     # + prototype --features cuda (1,071 tests; needs an
 #                                  #   NVIDIA driver to exercise kernels, CPU-falls-back
 #                                  #   without one). CI only compile-checks this path.
 
@@ -68,6 +68,10 @@ run_crate forge     forge/Cargo.toml
 
 if [ "$CUDA" -eq 1 ]; then
     run_crate 'prototype (cuda)' prototype/Cargo.toml --features cuda
+    # Feeds --check-docs so the documented CUDA figure is verified against the
+    # hardware run that just happened, not left to drift as 1,269 did.
+    COUNTS[cuda]=${COUNTS["prototype (cuda)"]:-0}
+    unset 'COUNTS[prototype (cuda)]'
 fi
 
 if [ "$BENCH" -eq 1 ]; then
@@ -87,8 +91,13 @@ fi
 echo 'All crates green.'
 
 if [ "$CHECKDOCS" -eq 1 ]; then
+    # Sum the five crates by name, not every key in COUNTS: a --cuda run adds a
+    # `cuda` entry that re-tests prototype, and folding it into the total would
+    # count that crate twice and make the documented total unreachable.
     total=0
-    for n in "${COUNTS[@]}"; do total=$((total + n)); done
+    for k in rmi prototype ribosome germline forge; do
+        total=$((total + ${COUNTS[$k]:-0}))
+    done
     echo
     {
         for k in "${!COUNTS[@]}"; do echo "$k=${COUNTS[$k]}"; done

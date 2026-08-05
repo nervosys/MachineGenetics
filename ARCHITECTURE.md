@@ -218,7 +218,7 @@ So the supported entry points are:
 scripts/test-all.sh              # all five crates, debug
 scripts/test-all.sh --release    # optimized
 scripts/test-all.sh --bench      # + eval_bench (73/73) and perf_report
-scripts/test-all.sh --cuda       # + prototype --features cuda (1,269 tests)
+scripts/test-all.sh --cuda       # + prototype --features cuda (1,071 tests)
 ```
 
 ```powershell
@@ -240,7 +240,7 @@ developing against a local IronAccelerator.
 Because IronAccelerator dispatches through `libloading`, the backend **compiles
 with no CUDA toolkit and no GPU**, so CI can compile-check it (`cargo check
 --features cuda --all-targets`). CI cannot *run* the kernels; GPU correctness is
-verified on hardware — 1,269 tests on dual 3090 Ti.
+verified on hardware — 1,071 tests on dual 3090 Ti.
 
 ---
 

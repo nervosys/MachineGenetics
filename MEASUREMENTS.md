@@ -44,10 +44,19 @@ Date: 2026-06-10. Build: `release` for perf, `cargo test` for functionality.
 > and executed three times. The library split (roadmap step 142) collapsed the
 > duplication. **1,038 is the number of distinct tests and always was** — nothing
 > was removed, and the same assertions still run.
-> The CUDA path was re-verified on hardware the same day: **1,269 passing**
-> (`cargo test --features cuda`, dual 3090 Ti), now built against the pinned
-> IronAccelerator tag `v2.2.0`. Reproduce everything with `scripts/test-all.ps1
+> The CUDA path is re-verified on hardware: **1,071 passing, 0 failed**
+> (`cargo test --features cuda`, dual RTX 3090 Ti, driver 610.88), built against
+> the pinned IronAccelerator tag `v2.2.0`. Reproduce with `scripts/test-all.ps1
 > -Bench -Cuda` (or `test-all.sh --bench --cuda`).
+>
+> *This said 1,269, and that figure is retired.* It was written **before** the
+> library split (roadmap step 142), which collapsed 171 duplicate test
+> executions — so it counted the same over-count corrected elsewhere in this
+> document. `1,269 − 171 = 1,098` against 1,071 measured, leaving **27
+> unexplained**, and I could not reconstruct where those went; the figure is
+> replaced by the measurement rather than reverse-engineered into agreement.
+> What is now solid: the CUDA feature adds **33** tests over the 1,038 CPU suite,
+> and all of them pass on real hardware.
 
 ---
 
