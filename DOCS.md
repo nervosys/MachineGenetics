@@ -1,6 +1,6 @@
 # Documentation index
 
-There are 21 Markdown documents at the repository root, written across five
+There are 22 Markdown documents at the repository root, written across five
 months. They are **not** all current, and several describe
 designs that were deliberately *not* built. This index says which is which, so
 nothing here has to be read to find out whether it is still true.
@@ -25,7 +25,7 @@ you reword one of these lines, expect to update `scripts/check-doc-counts.sh`
 alongside it; that friction is the point.
 
 Adding `--cuda` also verifies the CUDA figure (needs a GPU) and `--bench` the
-`eval_bench` result: **51 claims** checked with all three, 38 by default. Both
+`eval_bench` result: **58 claims** checked with all three, 44 by default. Both
 report *"not checked"* rather than passing quietly when the run that would
 supply the number did not happen.
 
@@ -43,6 +43,7 @@ Read these to understand the system as it exists.
 
 | Document | What it covers |
 | --- | --- |
+| [HANDOFF.md](HANDOFF.md) | Session handoff: current verified state, the checks now in place, open items, and the traps worth not repeating. Start here if you are picking this up cold |
 | [README.md](README.md) | Entry point: the four forms, the composition algebra, measured benchmarks |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | ABL and tool-mediated construction — the current architecture, including a §6 "Honest boundaries" |
 | [MEASUREMENTS.md](MEASUREMENTS.md) | Every measured functionality and performance figure, with reproduction commands |

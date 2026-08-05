@@ -92,6 +92,12 @@ RIBOSOME.md	its own crate, [0-9,]+ tests	ribosome
 RIBOSOME.md	ribosome/Cargo.toml +# [0-9,]+ tests	ribosome
 GERMLINE.md	its own crate, [0-9,]+ tests	germline
 GERMLINE.md	germline/Cargo.toml +# [0-9,]+ tests	germline
+HANDOFF.md	\*\*[0-9,]+\*\* — rmi	total
+HANDOFF.md	rmi [0-9,]+ ·	rmi
+HANDOFF.md	prototype [0-9,]+ ·	prototype
+HANDOFF.md	ribosome [0-9,]+ ·	ribosome
+HANDOFF.md	germline [0-9,]+ ·	germline
+HANDOFF.md	forge [0-9,]+ \|	forge
 EOF
 )
 
@@ -112,6 +118,7 @@ ARCHITECTURE.md	cuda \([0-9,]+ tests\)	cuda
 ARCHITECTURE.md	hardware — [0-9,]+ tests on dual	cuda
 MEASUREMENTS.md	hardware: \*\*[0-9,]+ passing	cuda
 .github/workflows/ci.yml	locally, [0-9,]+ tests green	cuda
+HANDOFF.md	\*\*[0-9,]+ passing\*\* on dual	cuda
 EOF
 )
 
