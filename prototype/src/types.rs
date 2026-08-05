@@ -1336,8 +1336,23 @@ impl TypeChecker {
                     }
                     self.subst.apply(&then_ty)
                 } else {
-                    // No else → must be unit.
-                    then_ty
+                    // No else → the whole `if` is `()`, and the then-branch must
+                    // be `()` too: there is no other branch to supply a value on
+                    // the false path.
+                    //
+                    // This returned `then_ty`, contradicting the comment that
+                    // was already here. The effect was a soundness hole:
+                    // `f(c: bool) -> i32 { ? c { 1 } }` typechecked, so a
+                    // function could fall off its end while claiming to return
+                    // a value. A diverging then-branch (`ret`/`loop`) is still
+                    // fine — `Ty::Never` unifies with `()` — which is what keeps
+                    // `? c { ret 1; }` legal as a guard.
+                    if let Err(e) = unify(&mut self.subst, &then_ty, &Ty::Unit) {
+                        self.emit_error(format!(
+                            "`if` without `else` must produce (): {e}"
+                        ));
+                    }
+                    Ty::Unit
                 }
             }
 
@@ -1787,5 +1802,48 @@ mod return_stmt_tests {
         // unifies with anything, so a too-eager divergence rule would make
         // every mismatch disappear.
         assert!(!errors(r#"+f wrong() -> i32 { "s" }"#).is_empty());
+    }
+}
+
+#[cfg(test)]
+mod if_without_else_tests {
+    use crate::{lexer, parser, types};
+
+    fn errors(src: &str) -> Vec<String> {
+        let toks = lexer::lex(src);
+        let module = parser::parse(&toks).expect("parses");
+        let mut tc = types::TypeChecker::new();
+        tc.check_module(&module);
+        tc.diagnostics.iter().map(|d| d.message.clone()).collect()
+    }
+
+    #[test]
+    fn a_function_cannot_fall_off_its_end() {
+        // `if` without `else` returned its then-branch type, so a function
+        // could claim `-> i32` and produce nothing on the false path. The
+        // comment in the code already said "No else → must be unit"; the code
+        // did the opposite.
+        assert!(
+            !errors("+f a(c: bool) -> i32 { ? c { 1 } }").is_empty(),
+            "a then-branch value with no else cannot satisfy -> i32"
+        );
+        assert!(
+            !errors("+f h(c: bool) -> i32 { ? c { ret 1; } }").is_empty(),
+            "returning only on the true path still falls through on the false one"
+        );
+    }
+
+    #[test]
+    fn diverging_guards_remain_legal() {
+        // The point of allowing `Ty::Never` to unify: an early-return guard is
+        // the single most common shape in real code, and a fix that outlawed it
+        // would be worse than the bug.
+        assert!(errors("+f g(c: bool) -> i32 { ? c { ret 1; } ret 0; }").is_empty());
+        assert!(errors("+f f(c: bool) -> i32 { ? c { ret 1; } : { ret 2; } }").is_empty());
+    }
+
+    #[test]
+    fn a_unit_if_is_still_fine() {
+        assert!(errors("+f u(c: bool) { ? c { } }").is_empty());
     }
 }
