@@ -92,6 +92,13 @@ jobs:
             echo "::error::MAGE_ONTOLOGY.json is stale — regenerate with --emit-ontology"
             exit 1
           }
+      # 11 of the 12 shipped examples do not typecheck, and nothing had ever
+      # checked them — CI runs `cargo test`, and examples are data, not tests.
+      # This pins the set so it cannot rot further, and fails in *both*
+      # directions: a passing example that breaks, and a listed-broken one that
+      # starts passing without the list being pruned.
+      - name: Example programs match their recorded state
+        run: bash scripts/check-examples.sh
       - name: Compiler version matches Ribosome's registry entry
         run: |
           binv=$(cargo run --quiet --release --manifest-path prototype/Cargo.toml \
