@@ -1,7 +1,7 @@
 # Ribosome — the distributed, agent-operated build engine
 
 > **Status: implemented, including distribution.**
-> `ribosome/` — its own crate, 162 tests. Every claim marked ✅ below is executed
+> `ribosome/` — its own crate, 164 tests. Every claim marked ✅ below is executed
 > by a test; every ◻ is a design with no code behind it yet. This split is
 > load-bearing: see [DOCS.md](DOCS.md) for why this repository marks unbuilt
 > designs rather than describing them in the present tense.
@@ -480,7 +480,7 @@ Three control points are worth building *before* the loop closes, not after:
 ## 8. Reproducing the claims
 
 ```powershell
-cargo test --manifest-path ribosome/Cargo.toml                  # 162 tests
+cargo test --manifest-path ribosome/Cargo.toml                  # 164 tests
 cargo test --manifest-path ribosome/Cargo.toml --test build     # 10 end-to-end scenarios
 cargo test --manifest-path ribosome/Cargo.toml --test multilang # 8 multi-language scenarios
 ```

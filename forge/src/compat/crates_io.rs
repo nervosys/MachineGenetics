@@ -1,11 +1,12 @@
-/// Compatibility layer between Forge and crates.io.
-///
-/// Supports:
-/// - Auto-transpile Rust crates on first use via `rust2mg`
-/// - Publish to both registries via `forge publish --also-crates-io`
-/// - Unified dependency resolution across Rust + MAGE
-/// - Version mapping (e.g. `u http.Client` → crates.io `reqwest`)
-/// - FFI bridge for using Rust crates directly
+//! Compatibility layer between Forge and crates.io.
+//!
+//! Supports:
+//!
+//! - Auto-transpile Rust crates on first use via `rust2mg`
+//! - Publish to both registries via `forge publish --also-crates-io`
+//! - Unified dependency resolution across Rust + MAGE
+//! - Version mapping (e.g. `u http.Client` → crates.io `reqwest`)
+//! - FFI bridge for using Rust crates directly
 
 /// A mapping from a MAGE module path to a crates.io crate.
 #[derive(Debug, Clone)]

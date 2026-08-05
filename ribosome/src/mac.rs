@@ -64,13 +64,46 @@ pub fn hex_encode(bytes: &[u8]) -> String {
     bytes.iter().map(|b| format!("{b:02x}")).collect()
 }
 
-pub fn hex_decode(s: &str) -> Result<Vec<u8>, ()> {
-    if s.len() % 2 != 0 {
-        return Err(());
+/// Why a hex string could not be decoded.
+///
+/// Was `Result<Vec<u8>, ()>`, which told a caller only that *something* was
+/// wrong. These strings are MACs, signatures, and action payloads arriving off
+/// the network, so "the 41st character isn't hex" and "this is an odd number of
+/// characters" are different diagnoses of a peer's behaviour, and collapsing
+/// them into `()` throws away the only detail worth having.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HexError {
+    /// Hex encodes whole bytes; an odd length cannot be one.
+    OddLength(usize),
+    /// Byte offset of the first character that is not a hex digit.
+    InvalidByte { position: usize },
+}
+
+impl std::fmt::Display for HexError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            HexError::OddLength(n) => write!(f, "hex string has odd length {n}"),
+            HexError::InvalidByte { position } => {
+                write!(f, "non-hex character at byte {position}")
+            }
+        }
+    }
+}
+
+impl std::error::Error for HexError {}
+
+pub fn hex_decode(s: &str) -> Result<Vec<u8>, HexError> {
+    if !s.len().is_multiple_of(2) {
+        return Err(HexError::OddLength(s.len()));
     }
     (0..s.len())
         .step_by(2)
-        .map(|i| u8::from_str_radix(&s[i..i + 2], 16).map_err(|_| ()))
+        .map(|i| {
+            // Slicing is byte-indexed, so a multi-byte character would panic
+            // rather than error. Reject non-ASCII before touching the range.
+            let pair = s.get(i..i + 2).ok_or(HexError::InvalidByte { position: i })?;
+            u8::from_str_radix(pair, 16).map_err(|_| HexError::InvalidByte { position: i })
+        })
         .collect()
 }
 
@@ -144,5 +177,28 @@ mod tests {
         absorb(&mut b, b"a");
         absorb(&mut b, b"bc");
         assert_ne!(a.finalize(), b.finalize());
+    }
+
+    #[test]
+    fn hex_decode_reports_why_rather_than_merely_failing() {
+        assert_eq!(hex_decode("abc"), Err(HexError::OddLength(3)));
+        match hex_decode("00zz") {
+            Err(HexError::InvalidByte { position }) => assert_eq!(position, 2),
+            other => panic!("expected a positioned error, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn a_multibyte_character_is_an_error_not_a_panic() {
+        // This decodes MACs, signatures, and payloads straight off the network.
+        // The previous implementation sliced with `&s[i..i + 2]`, which panics
+        // rather than errors when the range lands inside a multi-byte UTF-8
+        // character — so a peer could take down a worker thread with a
+        // four-character frame. "€a" is 4 bytes, passing the length check, and
+        // the first slice cuts € in half.
+        assert!(matches!(hex_decode("€a"), Err(HexError::InvalidByte { .. })));
+        assert!(hex_decode("aa€aaa").is_err());
+        // And a lone continuation byte cannot sneak through either.
+        assert!(hex_decode("日本").is_err());
     }
 }

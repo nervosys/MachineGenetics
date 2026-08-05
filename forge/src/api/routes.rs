@@ -1,6 +1,6 @@
-/// API route definitions for the Forge registry.
-///
-/// All routes are under `/api/v1/`.
+//! API route definitions for the Forge registry.
+//!
+//! All routes are under `/api/v1/`.
 
 /// Route constants for the Forge API.
 pub mod paths {

@@ -1,12 +1,13 @@
-/// CLI commands for the Forge package registry.
-///
-/// Usage:
-///   forge publish              Publish the current module
-///   forge publish --also-crates-io  Publish to both Forge and crates.io
-///   forge search <query>       Search for modules
-///   forge install <name>       Add a dependency to Forge.toml
-///   forge update               Update dependencies
-///   forge info <name>          Show module metadata
+//! CLI commands for the Forge package registry.
+//!
+//! ```text
+//! forge publish                     Publish the current module
+//! forge publish --also-crates-io    Publish to both Forge and crates.io
+//! forge search <query>              Search for modules
+//! forge install <name>              Add a dependency to Forge.toml
+//! forge update                      Update dependencies
+//! forge info <name>                 Show module metadata
+//! ```
 
 /// Parsed CLI command.
 #[derive(Debug)]
