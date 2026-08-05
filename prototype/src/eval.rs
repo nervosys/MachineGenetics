@@ -189,7 +189,7 @@ impl Interp {
 
     fn call_user(&self, fd: &FunctionDef, args: Vec<Value>) -> R {
         let mut env = Env::new();
-        for (p, v) in fd.params.iter().zip(args.into_iter()) {
+        for (p, v) in fd.params.iter().zip(args) {
             env.define(p.name.clone(), v);
         }
         if let Some(be) = &fd.body_expr {
@@ -612,11 +612,10 @@ impl Interp {
     /// A slice bound: the `_` sentinel (an open `..` end) becomes `default`;
     /// any other expression is evaluated to an integer.
     fn slice_bound(&self, e: &Expr, env: &mut Env, default: i64) -> Result<i64, Control> {
-        if let Expr::Ident { name } = e {
-            if name == "_" {
+        if let Expr::Ident { name } = e
+            && name == "_" {
                 return Ok(default);
             }
-        }
         as_int(&self.eval(e, env)?)
     }
 
@@ -826,7 +825,7 @@ impl Interp {
                     }
                 }
                 env.push();
-                for (p, v) in c.params.iter().zip(args.into_iter()) {
+                for (p, v) in c.params.iter().zip(args) {
                     env.define(p.clone(), v);
                 }
                 // Catch `return` so it stays within the callee (named nested
@@ -894,11 +893,10 @@ impl Interp {
                 Value::Struct(name, vfields) => {
                     // The struct tag must match (`@Circle{..}` won't match a Square),
                     // then every named field pattern must match its value.
-                    if let Some(want) = path.last() {
-                        if want != name {
+                    if let Some(want) = path.last()
+                        && want != name {
                             return false;
                         }
-                    }
                     fields.iter().all(|fp| match vfields.iter().find(|(k, _)| k == &fp.name) {
                         Some((_, fv)) => match &fp.pattern {
                             Some(p) => self.match_pat(p, fv, env),

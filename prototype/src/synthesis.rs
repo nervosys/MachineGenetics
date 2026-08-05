@@ -184,6 +184,12 @@ pub struct SynthesisOracle {
     templates: BTreeMap<String, (String, CostEstimate)>,
 }
 
+impl Default for SynthesisOracle {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SynthesisOracle {
     pub fn new() -> Self {
         Self {
@@ -214,7 +220,7 @@ impl SynthesisOracle {
         let mut candidates = Vec::new();
         for strategy in &self.strategies.clone() {
             let (body, cost) = self.generate_one(spec, strategy);
-            let verification = self.verify(&spec, &body, &cost);
+            let verification = self.verify(spec, &body, &cost);
             let id = self.next_id;
             self.next_id += 1;
             candidates.push(Candidate { id, strategy: strategy.clone(), body, cost, verification });
@@ -344,34 +350,30 @@ impl SynthesisOracle {
 
         // Check perf bounds.
         for (metric, bound) in &spec.perf_bounds {
-            if metric == "complexity" {
-                if let Ok(max) = bound.parse::<usize>() {
-                    if cost.cyclomatic_complexity > max {
+            if metric == "complexity"
+                && let Ok(max) = bound.parse::<usize>()
+                    && cost.cyclomatic_complexity > max {
                         result.perf_bounds_met = false;
                         result.violations.push(format!(
                             "complexity {} exceeds bound {}",
                             cost.cyclomatic_complexity, max
                         ));
                     }
-                }
-            }
-            if metric == "tokens" {
-                if let Ok(max) = bound.parse::<usize>() {
-                    if cost.token_count > max {
+            if metric == "tokens"
+                && let Ok(max) = bound.parse::<usize>()
+                    && cost.token_count > max {
                         result.perf_bounds_met = false;
                         result
                             .violations
                             .push(format!("tokens {} exceeds bound {}", cost.token_count, max));
                     }
-                }
-            }
         }
 
         result
     }
 
     /// Rank candidates: valid first, then by cost score ascending.
-    pub fn rank(&self, candidates: &mut Vec<Candidate>) {
+    pub fn rank(&self, candidates: &mut [Candidate]) {
         candidates.sort_by(|a, b| {
             let a_valid = a.verification.is_valid();
             let b_valid = b.verification.is_valid();

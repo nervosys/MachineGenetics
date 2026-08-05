@@ -841,19 +841,22 @@ impl Registry {
 /// output that `-m py_compile` never writes. Both were found by running the CLI
 /// against a real toolchain, and both are fixed above.
 ///
-/// So, precisely:
+/// Three of the five that have now met their compilers were wrong. That ratio is
+/// the argument for the table below being specific rather than reassuring:
 ///
 /// | Language | Status |
 /// |---|---|
-/// | `rust` | single-source path run against real `rustc` 1.97.1 |
-/// | `c`, `cpp` | flags are the POSIX `c99` spelling; not yet run against a compiler here |
-/// | `python`, `typescript`, `go` | **not run against a real toolchain** — corrected by reading each tool's documented interface |
 /// | `mage` | exercised throughout the test suite |
+/// | `rust` | built end to end against real `rustc` 1.97.1 — **was broken**, passed every source to a compiler that accepts one |
+/// | `go` | built end to end against real `go` 1.26.5, multi-file, artifact executed |
+/// | `typescript` | built end to end against real `tsc` 5.9.3 — **was broken**, `--outFile` rejects any file with an import |
+/// | `c`, `cpp` | flags are the POSIX `c99` spelling; **no C compiler on this machine**, so unrun |
+/// | `python` | corrected by reading the documented API; **no real interpreter here** (only the Windows Store stub), so unrun |
 ///
 /// Treat an unrun row as a starting point to override with
 /// [`Registry::register`], not as a tested guarantee. The engine is what is
 /// tested; these are configuration, and configuration that has not met its tool
-/// is a hypothesis.
+/// is a hypothesis — one that was wrong three times out of five.
 pub mod builtin {
     use super::*;
 
@@ -945,13 +948,23 @@ pub mod builtin {
         )
     }
 
+    /// TypeScript — transpile per source, no bundling.
+    ///
+    /// Uses `--outDir . --rootDir .` rather than `--outFile {out}`. `--outFile`
+    /// fails outright on any source with an import or export
+    /// (`TS6131: Cannot compile modules using option 'outFile' unless the
+    /// '--module' flag is 'amd' or 'system'`), which is nearly every real
+    /// TypeScript file — this shipped with `--outFile` and could not compile a
+    /// module. `--rootDir .` is what keeps `src/a.ts` emitting `src/a.js`
+    /// instead of `a.js`: without it `tsc` infers the root from the single input
+    /// and flattens the path, so the declared output would never appear.
     pub fn typescript() -> Language {
         Language::new(
             "typescript",
             &["ts", "tsx"],
             Toolchain::declared("tsc", "unknown"),
             Granularity::PerSource,
-            Rule::new("{stem}.js").args(["--outFile", "{out}", "{src}"]),
+            Rule::new("{stem}.js").args(["--outDir", ".", "--rootDir", ".", "{src}"]),
         )
     }
 

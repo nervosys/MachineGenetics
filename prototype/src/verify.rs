@@ -121,11 +121,10 @@ pub fn verify_contracts(
     let effect_checks = verify_effects(effects);
 
     // If effects are inconsistent, downgrade status
-    if effect_checks.iter().any(|e| e.result == EffectCheckResult::Undeclared) {
-        if status == VerifyStatus::Verified || status == VerifyStatus::Trivial {
+    if effect_checks.iter().any(|e| e.result == EffectCheckResult::Undeclared)
+        && (status == VerifyStatus::Verified || status == VerifyStatus::Trivial) {
             status = VerifyStatus::Partial;
         }
-    }
 
     VerificationResult { fqn: fqn.into(), status, checks, effect_checks }
 }

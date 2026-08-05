@@ -703,7 +703,7 @@ fn emit_train(buf: &mut String, t: &TrainDef, mode: Mode, depth: usize) {
     indent(buf, depth + 1);
     buf.push_str("net: ");
     buf.push_str(&t.net);
-    buf.push_str("\n");
+    buf.push('\n');
     indent(buf, depth);
     buf.push_str("}\n");
 }

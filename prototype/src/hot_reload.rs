@@ -126,6 +126,12 @@ pub struct PatchRegistry {
     next_id: u64,
 }
 
+impl Default for PatchRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PatchRegistry {
     pub fn new() -> Self {
         Self {
@@ -197,6 +203,12 @@ pub struct HotReloadEngine {
     signatures: BTreeMap<String, String>,
     /// Known effect sets per function
     effects: BTreeMap<String, Vec<String>>,
+}
+
+impl Default for HotReloadEngine {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl HotReloadEngine {

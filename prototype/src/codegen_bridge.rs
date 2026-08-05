@@ -88,6 +88,12 @@ pub struct CodegenBridge {
     safety_rules: Vec<String>,
 }
 
+impl Default for CodegenBridge {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CodegenBridge {
     pub fn new() -> Self {
         Self {
@@ -314,13 +320,11 @@ impl CodegenBridge {
     /// If the body is not a complete function definition, returns it unchanged.
     fn strip_function_wrapper(body: &str) -> &str {
         let trimmed = body.trim();
-        if trimmed.starts_with("fn ") {
-            if let (Some(open), Some(close)) = (trimmed.find('{'), trimmed.rfind('}')) {
-                if close > open + 1 {
+        if trimmed.starts_with("fn ")
+            && let (Some(open), Some(close)) = (trimmed.find('{'), trimmed.rfind('}'))
+                && close > open + 1 {
                     return trimmed[open + 1..close].trim();
                 }
-            }
-        }
         body
     }
 
@@ -448,15 +452,14 @@ impl CodegenBridge {
         // If the best fix provides a replacement, use it.
         // In a full implementation, we'd apply the TextEdits to the source.
         // For now, return None to indicate we couldn't auto-fix.
-        if let Some(fix) = best {
-            if fix.confidence >= 0.7 && !fix.edits.is_empty() {
+        if let Some(fix) = best
+            && fix.confidence >= 0.7 && !fix.edits.is_empty() {
                 // The fix provides concrete edits — extract the new body.
                 let new_text = &fix.edits[0].new_text;
                 if !new_text.is_empty() {
                     return Some(new_text.clone());
                 }
             }
-        }
 
         None
     }

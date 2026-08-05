@@ -388,7 +388,7 @@ fn main() -> ExitCode {
         .position(|a| a == "--dir")
         .and_then(|i| args.get(i + 1))
         .cloned()
-        .unwrap_or_else(|| find_benchmarks_dir());
+        .unwrap_or_else(find_benchmarks_dir);
     let out_path = args
         .iter()
         .position(|a| a == "--out")
@@ -421,7 +421,7 @@ fn main() -> ExitCode {
     let mut agent: Box<dyn CandidateAgent> = if backend_arg == "file-oracle" {
         Box::new(FileOracleAgent)
     } else if backend_arg == "perturbed" {
-        Box::new(PerturbedOracleAgent::new(0xC0FFEE_5EED))
+        Box::new(PerturbedOracleAgent::new(0x00C0_FFEE_5EED))
     } else if let Some(cmd) = backend_arg.strip_prefix("subprocess:") {
         Box::new(SubprocessAgent::new(cmd.to_string()))
     } else if let Some(cmd) = backend_arg.strip_prefix("perturbed+refine:") {
@@ -429,7 +429,7 @@ fn main() -> ExitCode {
         // refine. Measures Stage-3 contribution on top of perturbed
         // baseline. The subprocess only needs to handle refine mode.
         Box::new(PerturbedWithRefine {
-            inner: PerturbedOracleAgent::new(0xC0FFEE_5EED),
+            inner: PerturbedOracleAgent::new(0x00C0_FFEE_5EED),
             sub: SubprocessAgent::new(cmd.to_string()),
         })
     } else {
@@ -619,8 +619,8 @@ fn run_one_task(agent: &mut dyn CandidateAgent, task: &Task) -> TaskResult {
             // recover here.
             if !r.heal_succeeded && !r.structural_heal_succeeded {
                 let parse_err_msg = r.parse_error_msg.clone().unwrap_or_default();
-                if let Ok(refined) = agent.refine(task, &source, &parse_err_msg) {
-                    if refined != source {
+                if let Ok(refined) = agent.refine(task, &source, &parse_err_msg)
+                    && refined != source {
                         let tks = mg_lexer::lex(&refined);
                         if tks.iter().all(|t| t.kind != mg_lexer::TokenKind::Error)
                             && mg_parser::parse(&tks).is_ok()
@@ -628,7 +628,6 @@ fn run_one_task(agent: &mut dyn CandidateAgent, task: &Task) -> TaskResult {
                             r.refine_succeeded = true;
                         }
                     }
-                }
             }
         }
     }
@@ -673,6 +672,8 @@ fn parse_task(v: &serde_json::Value) -> Option<Task> {
 
 // ─── Report rendering ────────────────────────────────────────────────
 
+// A report renderer takes the results plus each summary table it renders.
+#[allow(clippy::too_many_arguments)]
 fn render_markdown(
     results: &[TaskResult],
     per_cat: &BTreeMap<String, (usize, usize, usize)>,

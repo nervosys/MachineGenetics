@@ -162,6 +162,12 @@ pub struct ConsensusEngine {
     rounds: BTreeMap<ProposalId, ConsensusRound>,
 }
 
+impl Default for ConsensusEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ConsensusEngine {
     pub fn new() -> Self {
         Self {

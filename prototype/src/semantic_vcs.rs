@@ -131,6 +131,12 @@ pub struct OpLog {
     default_branch: String,
 }
 
+impl Default for OpLog {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl OpLog {
     pub fn new() -> Self {
         let mut log = Self {
@@ -381,6 +387,12 @@ pub struct HistoryQuery {
     pub message_contains: Option<String>,
 }
 
+impl Default for HistoryQuery {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl HistoryQuery {
     pub fn new() -> Self {
         Self { author: None, target_name: None, op_kind: None, message_contains: None }
@@ -402,15 +414,12 @@ impl HistoryQuery {
     }
 
     fn matches(&self, commit: &Commit) -> bool {
-        if let Some(ref a) = self.author {
-            if &commit.author != a { return false; }
-        }
-        if let Some(ref t) = self.target_name {
-            if !commit.ops.iter().any(|op| op.target_name() == t) { return false; }
-        }
-        if let Some(ref m) = self.message_contains {
-            if !commit.message.contains(m.as_str()) { return false; }
-        }
+        if let Some(ref a) = self.author
+            && &commit.author != a { return false; }
+        if let Some(ref t) = self.target_name
+            && !commit.ops.iter().any(|op| op.target_name() == t) { return false; }
+        if let Some(ref m) = self.message_contains
+            && !commit.message.contains(m.as_str()) { return false; }
         true
     }
 }

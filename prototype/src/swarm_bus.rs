@@ -150,6 +150,12 @@ pub struct MessageBus {
     pub stats: BusStats,
 }
 
+impl Default for MessageBus {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MessageBus {
     pub fn new() -> Self {
         Self {
@@ -168,11 +174,10 @@ impl MessageBus {
 
     /// Subscribe an agent to a topic.
     pub fn subscribe(&mut self, agent: &str, topic: Topic) {
-        if let Some(mb) = self.mailboxes.get_mut(agent) {
-            if !mb.subscriptions.contains(&topic) {
+        if let Some(mb) = self.mailboxes.get_mut(agent)
+            && !mb.subscriptions.contains(&topic) {
                 mb.subscriptions.push(topic);
             }
-        }
     }
 
     /// Unsubscribe an agent from a topic.

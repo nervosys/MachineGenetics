@@ -75,6 +75,10 @@ pub struct Rule {
 
 // ── Rule construction helper ─────────────────────────────────────────
 
+// A rule is nine independent facts. Bundling them into a parameter struct would
+// add a type whose only purpose is to be constructed and immediately
+// destructured, at every one of the 200+ call sites in this file.
+#[allow(clippy::too_many_arguments)]
 fn rule(
     id: &str,
     db: RuleDatabase,
@@ -3365,7 +3369,7 @@ mod tests {
     #[test]
     fn query_network_capability() {
         let result = query_by_capability("network");
-        assert!(result.matches.len() >= 1);
+        assert!(!result.matches.is_empty());
     }
 
     #[test]
@@ -3447,7 +3451,7 @@ mod tests {
     #[test]
     fn query_rules_by_category_data_race() {
         let result = query_rules_by_category("data-race");
-        assert!(result.matches.len() >= 1);
+        assert!(!result.matches.is_empty());
         assert!(result.matches.iter().all(|r| r.category == "data-race"));
     }
 

@@ -54,6 +54,12 @@ pub struct DynamicWarningEngine {
     occurrence_count: BTreeMap<String, usize>,
 }
 
+impl Default for DynamicWarningEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DynamicWarningEngine {
     pub fn new() -> Self {
         Self {
@@ -86,11 +92,10 @@ impl DynamicWarningEngine {
         }
 
         // Frequency-based escalation: if seen ≥5 times, bump to Warning minimum.
-        if let Some(&count) = self.occurrence_count.get(&warning.code) {
-            if count >= 5 && warning.severity < Severity::Warning {
+        if let Some(&count) = self.occurrence_count.get(&warning.code)
+            && count >= 5 && warning.severity < Severity::Warning {
                 warning.severity = Severity::Warning;
             }
-        }
 
         self.warnings.push(warning);
     }
@@ -127,6 +132,12 @@ pub struct IntelligentDebugEngine {
     /// Pattern database: error code → (root cause, fix suggestion, confidence).
     patterns: BTreeMap<String, (String, String, f64)>,
     history: Vec<DebugDiagnosis>,
+}
+
+impl Default for IntelligentDebugEngine {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl IntelligentDebugEngine {
@@ -191,6 +202,12 @@ pub struct PerformanceAdvisor {
     suggestions: BTreeMap<String, String>, // metric → generic suggestion
 }
 
+impl Default for PerformanceAdvisor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PerformanceAdvisor {
     pub fn new() -> Self {
         let mut thresholds = BTreeMap::new();
@@ -217,8 +234,8 @@ impl PerformanceAdvisor {
     pub fn analyze(&mut self, location: &str, metrics: &BTreeMap<String, f64>) -> Vec<PerfHotspot> {
         let mut new_hotspots = Vec::new();
         for (metric, &value) in metrics {
-            if let Some(&threshold) = self.thresholds.get(metric) {
-                if value > threshold {
+            if let Some(&threshold) = self.thresholds.get(metric)
+                && value > threshold {
                     let suggestion = self.suggestions.get(metric)
                         .cloned()
                         .unwrap_or_else(|| format!("reduce {metric}"));
@@ -232,7 +249,6 @@ impl PerformanceAdvisor {
                     new_hotspots.push(hotspot.clone());
                     self.hotspots.push(hotspot);
                 }
-            }
         }
         new_hotspots
     }
@@ -269,6 +285,12 @@ impl AgentLoad {
 
 pub struct SwarmCoordIntelligence {
     agents: Vec<AgentLoad>,
+}
+
+impl Default for SwarmCoordIntelligence {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl SwarmCoordIntelligence {

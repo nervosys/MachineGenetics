@@ -150,6 +150,12 @@ pub struct TokenThroughput {
     series: MetricSeries,
 }
 
+impl Default for TokenThroughput {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TokenThroughput {
     pub fn new() -> Self {
         Self { series: MetricSeries::new("token_throughput", "tokens/ms") }
@@ -173,6 +179,12 @@ pub struct ParseErrorRate {
     total_units: u64,
     error_units: u64,
     errors_per_unit: MetricSeries,
+}
+
+impl Default for ParseErrorRate {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ParseErrorRate {
@@ -213,6 +225,12 @@ pub struct SynthesisRate {
     latency: MetricSeries,
 }
 
+impl Default for SynthesisRate {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SynthesisRate {
     pub fn new() -> Self {
         Self { attempts: 0, successes: 0, latency: MetricSeries::new("synthesis_latency", "ms") }
@@ -245,6 +263,12 @@ pub struct SwarmLatency {
     dispatch_latency: MetricSeries,
     completion_latency: MetricSeries,
     queue_depth: MetricSeries,
+}
+
+impl Default for SwarmLatency {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl SwarmLatency {
@@ -283,6 +307,12 @@ impl SwarmLatency {
 pub struct BenchmarkRunner {
     suites: BTreeMap<String, Box<dyn Fn() -> BenchmarkResult>>,
     results: Vec<BenchmarkResult>,
+}
+
+impl Default for BenchmarkRunner {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl BenchmarkRunner {

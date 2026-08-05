@@ -4,18 +4,18 @@
 //!
 //! Sections:
 //!
-//! - **`sigils`**     — MAGE sigil → meaning table (handwritten, lives
-//!                      next to `lexer.rs` comments which are authoritative)
+//! - **`sigils`** — MAGE sigil → meaning table (handwritten, lives
+//!   next to `lexer.rs` comments which are authoritative)
 //! - **`keywords`**   — Reserved words and what they introduce
 //! - **`ast_kinds`**  — Top-level AST node families an agent will encounter
 //! - **`ir_ops`**     — Every `rmi::lang::Op` (programmatically from
-//!                      `Op::ALL` + `OpMeta`)
+//!   `Op::ALL` + `OpMeta`)
 //! - **`op_families`** — The 7 `OpFamily` buckets and their semantics
 //! - **`layer_map`**  — Surface layer name → opcode (from
-//!                      `abl_bridge::layer_name_to_op`)
+//!   `abl_bridge::layer_name_to_op`)
 //! - **`rap_methods`** — Protocol method catalog with input / output keys
 //! - **`heal_patterns`** — Mechanical heal patterns (from
-//!                          `heal::pattern_names`)
+//!   `heal::pattern_names`)
 //! - **`recovery_stages`** — The 4-stage recovery pipeline + agent.refine
 //! - **`abl`**       — Binary IR container format constants
 //!
@@ -1795,8 +1795,8 @@ mod tests {
             assert!(names.contains(&required), "missing example: {required}");
         }
         for entry in v {
-            assert!(entry["source"].as_str().unwrap().len() > 0);
-            assert!(entry["exercises"].as_array().unwrap().len() > 0);
+            assert!(!entry["source"].as_str().unwrap().is_empty());
+            assert!(!entry["exercises"].as_array().unwrap().is_empty());
         }
     }
 

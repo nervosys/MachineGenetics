@@ -131,6 +131,12 @@ pub struct FfiGenerator {
     type_overrides: BTreeMap<String, String>, // foreign name → MAGE name
 }
 
+impl Default for FfiGenerator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl FfiGenerator {
     pub fn new() -> Self {
         Self {

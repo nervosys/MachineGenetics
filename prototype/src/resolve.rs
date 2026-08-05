@@ -94,6 +94,12 @@ pub struct SymbolTable {
     next_id: u32,
 }
 
+impl Default for SymbolTable {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SymbolTable {
     pub fn new() -> Self {
         SymbolTable { symbols: Vec::new(), next_id: 0 }
@@ -116,6 +122,10 @@ impl SymbolTable {
 
     pub fn len(&self) -> usize {
         self.symbols.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.symbols.is_empty()
     }
 }
 
@@ -144,6 +154,12 @@ pub struct Resolver {
     /// (In a real compiler this would be per-node; here we track by name for simplicity.)
     pub resolved: HashMap<String, SymbolId>,
     scopes: Vec<Scope>,
+}
+
+impl Default for Resolver {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Resolver {
@@ -667,8 +683,8 @@ impl Resolver {
                 }
             }
             ast::Pattern::Struct { path, fields } => {
-                if let Some(name) = path.first() {
-                    if self.lookup_type(name).is_none() {
+                if let Some(name) = path.first()
+                    && self.lookup_type(name).is_none() {
                         self.diagnostics.push(Diagnostic::categorized(
                             Severity::Error,
                             format!("unresolved type in pattern: `{}`", path.join(".")),
@@ -676,7 +692,6 @@ impl Resolver {
                             None,
                         ));
                     }
-                }
                 for fp in fields {
                     if let Some(pat) = &fp.pattern {
                         self.resolve_pattern(pat, mutable);
@@ -687,8 +702,8 @@ impl Resolver {
                 }
             }
             ast::Pattern::Enum { path, elements } => {
-                if let Some(name) = path.first() {
-                    if self.lookup_value(name).is_none() && self.lookup_type(name).is_none() {
+                if let Some(name) = path.first()
+                    && self.lookup_value(name).is_none() && self.lookup_type(name).is_none() {
                         self.diagnostics.push(Diagnostic::categorized(
                             Severity::Error,
                             format!("unresolved variant in pattern: `{}`", path.join(".")),
@@ -696,7 +711,6 @@ impl Resolver {
                             None,
                         ));
                     }
-                }
                 for el in elements {
                     self.resolve_pattern(el, mutable);
                 }
@@ -764,8 +778,8 @@ impl Resolver {
                 self.resolve_expr(index);
             }
             ast::Expr::StructLit { path, fields } => {
-                if let Some(name) = path.first() {
-                    if self.lookup_type(name).is_none() {
+                if let Some(name) = path.first()
+                    && self.lookup_type(name).is_none() {
                         self.diagnostics.push(Diagnostic::categorized(
                             Severity::Error,
                             format!("unresolved struct: `{}`", path.join(".")),
@@ -773,7 +787,6 @@ impl Resolver {
                             None,
                         ));
                     }
-                }
                 for fi in fields {
                     if let Some(val) = &fi.value {
                         self.resolve_expr(val);

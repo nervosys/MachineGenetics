@@ -120,6 +120,9 @@ fn compose_has_dataflow(items: &[Compose]) -> bool {
     items.iter().any(|c| !matches!(c, Compose::Layer(_)))
 }
 
+/// What a referenced block expands to: its layers, and its composition items.
+type ExpandedBlock = (Vec<LayerDef>, Vec<Compose>);
+
 struct Parser<'a> {
     tokens: &'a [Token],
     pos: usize,
@@ -330,9 +333,7 @@ impl<'a> Parser<'a> {
     /// return the block's (layers, body) with params substituted into the layer
     /// args. Names are returned unsuffixed; callers (e.g. `stack`) rename them
     /// for each instance. Returns `None` if the cursor is not a block reference.
-    fn expand_block_ref(
-        &mut self,
-    ) -> Result<Option<(Vec<LayerDef>, Vec<Compose>)>, ParseError> {
+    fn expand_block_ref(&mut self) -> Result<Option<ExpandedBlock>, ParseError> {
         if self.peek() != TokenKind::Ident {
             return Ok(None);
         }
@@ -426,7 +427,7 @@ impl<'a> Parser<'a> {
             TokenKind::KwNet => self.parse_net_def().map(ItemKind::Net),
             TokenKind::KwKb => self.parse_kb_def().map(ItemKind::Kb),
             TokenKind::KwEvolve => self.parse_evolve_def().map(ItemKind::Evolve),
-            TokenKind::KwTrain => self.parse_train_def().map(ItemKind::Train),
+            TokenKind::KwTrain => self.parse_train_def().map(|t| ItemKind::Train(Box::new(t))),
             TokenKind::KwData => self.parse_data_def().map(ItemKind::Data),
             TokenKind::KwExtend => self.parse_extend_block().map(ItemKind::Extend),
             _ => Err(self.error(&format!("expected item, found {:?}", self.peek()))),
@@ -2665,11 +2666,10 @@ impl<'a> Parser<'a> {
                         // single bare segment with the exact arity — a
                         // user-defined `mymod.Option<T>` (dotted) or wrong arity
                         // stays a plain path.
-                        if segments.len() == 1 {
-                            if let Some(folded) = canonical_wrapper(&segments[0], &type_args) {
+                        if segments.len() == 1
+                            && let Some(folded) = canonical_wrapper(&segments[0], &type_args) {
                                 return Ok(folded);
                             }
-                        }
                         Ok(Type::Path {
                             segments,
                             type_args,

@@ -515,6 +515,20 @@ fn main() {
                 }
             }
         }
+        // Find each `train` block, locate its named `net`, lower the net to
+        // Agentic Binary Language, run N epochs of SGD on a synthetic dataset,
+        // and report per-step loss.
+        //
+        // Defaults when the `.mg` source omits them:
+        //   epochs        50
+        //   learning rate 0.05
+        //   dataset       four samples of the form `y = sum(x)`, matching the
+        //                 net's first Linear input dim and final output dim
+        //
+        // (This description was a `///` block stranded on `ABL_MAGIC` below,
+        // documenting a training command as if it were a magic-bytes constant —
+        // there is no `run_abl_train` function for it to have attached to,
+        // because the command is handled inline right here.)
         Some("--target=abl-train") => {
             let path = filtered.get(1).unwrap_or_else(|| {
                 eprintln!("Usage: mage-parse --target=abl-train <file>");
@@ -731,17 +745,8 @@ fn main() {
     }
 }
 
-/// Drive `--target=abl-train`: find each `train` block, locate its named
-/// `net`, lower the net to Agentic Binary Language, run N epochs of SGD on a synthetic
-/// dataset, and report per-step loss.
-///
-/// Defaults when the `.mg` source omits them:
-/// - **epochs:** 50
-/// - **learning rate:** 0.05
-/// - **dataset:** four samples of the form `y = sum(x)` matching the
-///   net's first Linear input dim and final output dim.
-/// Magic bytes for the per-module Agentic Binary Language-bytes container format. Distinct
-/// from the per-expression `MGPS` checkpoint magic.
+/// Magic bytes for the per-module Agentic Binary Language-bytes container
+/// format. Distinct from the per-expression `MGPS` checkpoint magic.
 const ABL_MAGIC: &[u8; 4] = b"ABL1";
 // Single source of truth — these private decoders share the container version
 // with the `abl` codec, so a bump (e.g. v3's REPEAT folding) can't drift.
@@ -1409,7 +1414,7 @@ fn run_generate(module: &ast::Module, path: &str) {
         let top_p = extract_f32_from_expr(train.top_p.as_ref()).unwrap_or(0.0).clamp(0.0, 1.0);
         let mut rng_state: u64 = extract_int_from_expr(train.seed.as_ref())
             .map(|n| n as u64)
-            .unwrap_or(0xC0FFEE_5EEDu64);
+            .unwrap_or(0x00C0_FFEE_5EEDu64);
 
         // Determine vocab size from the last Linear in the net (output head).
         let vocab = last_linear_out(net).unwrap_or_else(|| {
@@ -1822,7 +1827,7 @@ fn run_train(module: &ast::Module, path: &str) {
         let val_y = &y[n_train * out_dim..];
 
         let bs = batch_size.unwrap_or(n_train).min(n_train).max(1);
-        let batches_per_epoch = (n_train + bs - 1) / bs;
+        let batches_per_epoch = n_train.div_ceil(bs);
         let clip = extract_f32_from_expr(train.clip_grad.as_ref()).filter(|v| *v > 0.0);
         let wd = extract_f32_from_expr(train.weight_decay.as_ref()).filter(|v| *v > 0.0);
         let tied = matches!(
@@ -1996,11 +2001,10 @@ fn run_train(module: &ast::Module, path: &str) {
                 epoch_loss_sum += r.loss;
                 // Tied embeddings: after each batch, copy embedding table
                 // (V, E) into the final Linear's weight (E, V) transposed.
-                if let Some((emb_key, head_key)) = &tied_keys {
-                    if let Err(e) = sync_tied_embedding(&backend, &mut params, emb_key, head_key) {
+                if let Some((emb_key, head_key)) = &tied_keys
+                    && let Err(e) = sync_tied_embedding(&backend, &mut params, emb_key, head_key) {
                         eprintln!("train `{}`: tie-weights: {e}", train.name);
                     }
-                }
             }
             let epoch_loss = epoch_loss_sum / batches_per_epoch as f32;
             if first_loss.is_none() {
@@ -2042,8 +2046,8 @@ fn run_train(module: &ast::Module, path: &str) {
                 }
             }
             // Early stopping: only when val is available + patience set.
-            if let (Some(p), true) = (patience, n_val > 0) {
-                if p > 0 {
+            if let (Some(p), true) = (patience, n_val > 0)
+                && p > 0 {
                     if val_loss < best_val - 1e-6 {
                         best_val = val_loss;
                         epochs_since_improvement = 0;
@@ -2056,7 +2060,6 @@ fn run_train(module: &ast::Module, path: &str) {
                         }
                     }
                 }
-            }
         }
         let first_loss = first_loss.unwrap_or(f32::NAN);
         let delta = first_loss - last_loss;
@@ -2402,6 +2405,9 @@ fn optim_label(opt: abl_compute::Optimizer) -> &'static str {
 }
 
 /// Compute MSE loss on a held-out validation set without updating weights.
+// Backend, graph, parameters, and the validation set are the inputs to the
+// computation; grouping them would name a bag rather than a concept.
+#[allow(clippy::too_many_arguments)]
 fn compute_val_loss(
     backend: &rmi::compute::cpu::CpuBackend,
     expr: &rmi::lang::Expr,

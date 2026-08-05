@@ -237,6 +237,12 @@ pub struct PerfRegistry {
     structs: BTreeMap<String, PerfAnnotationSet>,
 }
 
+impl Default for PerfRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PerfRegistry {
     pub fn new() -> Self {
         Self {

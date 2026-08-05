@@ -162,7 +162,7 @@ pub fn to_hex(bytes: &[u8]) -> String {
 /// position on failure so RAP errors are easy to debug.
 pub fn from_hex(s: &str) -> Result<Vec<u8>, String> {
     let s = s.trim();
-    if s.len() % 2 != 0 {
+    if !s.len().is_multiple_of(2) {
         return Err(format!("hex length {} is not even", s.len()));
     }
     let bytes = s.as_bytes();

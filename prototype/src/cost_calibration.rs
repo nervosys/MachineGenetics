@@ -182,6 +182,12 @@ pub struct CalibrationSuite {
     targets: BTreeMap<String, CalibrationTarget>,
 }
 
+impl Default for CalibrationSuite {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CalibrationSuite {
     pub fn new() -> Self {
         Self {
@@ -346,6 +352,9 @@ fn worse_grade(a: AccuracyGrade, b: AccuracyGrade) -> AccuracyGrade {
 mod tests {
     use super::*;
 
+    // A calibration sample is six measured numbers plus its two identifiers;
+    // this is the record constructor for a test fixture.
+    #[allow(clippy::too_many_arguments)]
     fn sample(construct: &str, target: &str, mc: u64, mm: u64, ml: u64, ec: u64, em: u64, el: u64) -> CostCalibrationSample {
         CostCalibrationSample {
             construct: construct.into(),

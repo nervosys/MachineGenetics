@@ -96,6 +96,12 @@ pub struct TaskDag {
     next_id: TaskId,
 }
 
+impl Default for TaskDag {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TaskDag {
     pub fn new() -> Self {
         Self { tasks: BTreeMap::new(), deps: BTreeMap::new(), rdeps: BTreeMap::new(), next_id: 1 }
@@ -307,6 +313,11 @@ impl TaskDag {
     /// Number of tasks.
     pub fn len(&self) -> usize {
         self.tasks.len()
+    }
+
+    /// Whether the DAG holds no tasks.
+    pub fn is_empty(&self) -> bool {
+        self.tasks.is_empty()
     }
 
     /// JSON snapshot.

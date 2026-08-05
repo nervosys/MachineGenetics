@@ -218,13 +218,12 @@ fn reshape_shape(
     });
 
     // If both are fully known, check they match.
-    if let (Some(fs), Some(ts)) = (from_size, to_known) {
-        if fs != ts {
+    if let (Some(fs), Some(ts)) = (from_size, to_known)
+        && fs != ts {
             return Err(format!(
                 "reshape size mismatch: {fs} elements vs {ts} elements"
             ));
         }
-    }
 
     Ok(to.to_vec())
 }
@@ -236,6 +235,12 @@ pub struct ShapeInfer {
     supply: ShapeVarSupply,
     subst: ShapeSubst,
     pub diagnostics: Vec<Diagnostic>,
+}
+
+impl Default for ShapeInfer {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ShapeInfer {
@@ -324,7 +329,7 @@ impl ShapeInfer {
         match layer_name.as_str() {
             "Linear" | "Dense" => {
                 // Linear(in_features, out_features): [..., in] -> [..., out]
-                if let Some(out_dim) = layer.args.first().and_then(|e| expr_to_dim(e)) {
+                if let Some(out_dim) = layer.args.first().and_then(expr_to_dim) {
                     let mut shape = input_shape[..input_shape.len().saturating_sub(1)].to_vec();
                     shape.push(out_dim);
                     shape
@@ -339,7 +344,7 @@ impl ShapeInfer {
                 let mut shape = vec![
                     input_shape.first().cloned().unwrap_or_else(|| self.fresh_dim()),
                 ];
-                if let Some(out_ch) = layer.args.first().and_then(|e| expr_to_dim(e)) {
+                if let Some(out_ch) = layer.args.first().and_then(expr_to_dim) {
                     shape.push(out_ch);
                 } else {
                     shape.push(self.fresh_dim());
@@ -365,7 +370,7 @@ impl ShapeInfer {
             "Embedding" => {
                 // Embedding(vocab, dim): [batch, seq] -> [batch, seq, dim]
                 let mut shape = input_shape.to_vec();
-                if let Some(dim) = layer.args.get(1).and_then(|e| expr_to_dim(e)) {
+                if let Some(dim) = layer.args.get(1).and_then(expr_to_dim) {
                     shape.push(dim);
                 } else {
                     shape.push(self.fresh_dim());

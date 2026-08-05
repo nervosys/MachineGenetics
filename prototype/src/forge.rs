@@ -87,6 +87,12 @@ pub struct ForgeRegistry {
     effect_index: BTreeMap<String, BTreeSet<String>>,
 }
 
+impl Default for ForgeRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ForgeRegistry {
     pub fn new() -> Self {
         Self {

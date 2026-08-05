@@ -28,6 +28,12 @@ pub struct EffectInfer {
     pub diagnostics: Vec<Diagnostic>,
 }
 
+impl Default for EffectInfer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl EffectInfer {
     pub fn new() -> Self {
         EffectInfer {
@@ -187,14 +193,13 @@ impl EffectInfer {
                     self.check_builtin_effect(name, local_effects);
                 }
                 // Also check for effect.perform pattern.
-                if let ast::Expr::FieldAccess { object, field } = func.as_ref() {
-                    if field == "perform" {
+                if let ast::Expr::FieldAccess { object, field } = func.as_ref()
+                    && field == "perform" {
                         // The object should be an effect name.
                         if let ast::Expr::Ident { name } = object.as_ref() {
                             local_effects.insert(Effect::from_name(name));
                         }
                     }
-                }
                 self.collect_calls_in_expr(func, callees, local_effects);
                 for arg in args {
                     self.collect_calls_in_expr(arg, callees, local_effects);

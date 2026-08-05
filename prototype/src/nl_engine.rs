@@ -170,6 +170,12 @@ pub struct NlEngine {
     kb: logic::KnowledgeBase,
 }
 
+impl Default for NlEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl NlEngine {
     pub fn new() -> Self {
         let mut oracle = SynthesisOracle::new();
@@ -1265,8 +1271,8 @@ impl NlEngine {
         let desc_lower = description.to_lowercase();
 
         // Pattern-match common operations from NL description.
-        if desc_lower.contains("add") || desc_lower.contains("sum") {
-            if params.len() >= 2 {
+        if (desc_lower.contains("add") || desc_lower.contains("sum"))
+            && params.len() >= 2 {
                 return Block {
                     stmts: Vec::new(),
                     tail_expr: Some(Box::new(Expr::Binary {
@@ -1280,10 +1286,9 @@ impl NlEngine {
                     })),
                 };
             }
-        }
 
-        if desc_lower.contains("subtract") || desc_lower.contains("difference") {
-            if params.len() >= 2 {
+        if (desc_lower.contains("subtract") || desc_lower.contains("difference"))
+            && params.len() >= 2 {
                 return Block {
                     stmts: Vec::new(),
                     tail_expr: Some(Box::new(Expr::Binary {
@@ -1297,10 +1302,9 @@ impl NlEngine {
                     })),
                 };
             }
-        }
 
-        if desc_lower.contains("multiply") || desc_lower.contains("product") {
-            if params.len() >= 2 {
+        if (desc_lower.contains("multiply") || desc_lower.contains("product"))
+            && params.len() >= 2 {
                 return Block {
                     stmts: Vec::new(),
                     tail_expr: Some(Box::new(Expr::Binary {
@@ -1314,10 +1318,9 @@ impl NlEngine {
                     })),
                 };
             }
-        }
 
-        if desc_lower.contains("divide") || desc_lower.contains("quotient") {
-            if params.len() >= 2 {
+        if (desc_lower.contains("divide") || desc_lower.contains("quotient"))
+            && params.len() >= 2 {
                 return Block {
                     stmts: Vec::new(),
                     tail_expr: Some(Box::new(Expr::Binary {
@@ -1331,13 +1334,11 @@ impl NlEngine {
                     })),
                 };
             }
-        }
 
-        if desc_lower.contains("max")
+        if (desc_lower.contains("max")
             || desc_lower.contains("maximum")
-            || desc_lower.contains("larger")
-        {
-            if params.len() >= 2 {
+            || desc_lower.contains("larger"))
+            && params.len() >= 2 {
                 return Block {
                     stmts: Vec::new(),
                     tail_expr: Some(Box::new(Expr::If {
@@ -1365,13 +1366,11 @@ impl NlEngine {
                     })),
                 };
             }
-        }
 
-        if desc_lower.contains("min")
+        if (desc_lower.contains("min")
             || desc_lower.contains("minimum")
-            || desc_lower.contains("smaller")
-        {
-            if params.len() >= 2 {
+            || desc_lower.contains("smaller"))
+            && params.len() >= 2 {
                 return Block {
                     stmts: Vec::new(),
                     tail_expr: Some(Box::new(Expr::If {
@@ -1399,10 +1398,9 @@ impl NlEngine {
                     })),
                 };
             }
-        }
 
-        if desc_lower.contains("negate") || desc_lower.contains("negative") {
-            if !params.is_empty() {
+        if (desc_lower.contains("negate") || desc_lower.contains("negative"))
+            && !params.is_empty() {
                 return Block {
                     stmts: Vec::new(),
                     tail_expr: Some(Box::new(Expr::Unary {
@@ -1413,13 +1411,11 @@ impl NlEngine {
                     })),
                 };
             }
-        }
 
-        if desc_lower.contains("identity")
+        if (desc_lower.contains("identity")
             || desc_lower.contains("pass through")
-            || desc_lower.contains("echo")
-        {
-            if !params.is_empty() {
+            || desc_lower.contains("echo"))
+            && !params.is_empty() {
                 return Block {
                     stmts: Vec::new(),
                     tail_expr: Some(Box::new(Expr::Ident {
@@ -1427,13 +1423,11 @@ impl NlEngine {
                     })),
                 };
             }
-        }
 
-        if desc_lower.contains("print")
+        if (desc_lower.contains("print")
             || desc_lower.contains("display")
-            || desc_lower.contains("log")
-        {
-            if !params.is_empty() {
+            || desc_lower.contains("log"))
+            && !params.is_empty() {
                 return Block {
                     stmts: vec![Stmt::Expr {
                         expr: Expr::Call {
@@ -1454,10 +1448,9 @@ impl NlEngine {
                     tail_expr: None,
                 };
             }
-        }
 
-        if desc_lower.contains("factorial") {
-            if !params.is_empty() {
+        if desc_lower.contains("factorial")
+            && !params.is_empty() {
                 let p = &params[0].0;
                 return Block {
                     stmts: Vec::new(),
@@ -1498,10 +1491,9 @@ impl NlEngine {
                     })),
                 };
             }
-        }
 
-        if desc_lower.contains("fibonacci") || desc_lower.contains("fib") {
-            if !params.is_empty() {
+        if (desc_lower.contains("fibonacci") || desc_lower.contains("fib"))
+            && !params.is_empty() {
                 let p = &params[0].0;
                 return Block {
                     stmts: Vec::new(),
@@ -1549,7 +1541,6 @@ impl NlEngine {
                     })),
                 };
             }
-        }
 
         // Default: use synthesis oracle with KB hints.
         let mut spec = SynthesisSpec::new(name);
@@ -1567,13 +1558,11 @@ impl NlEngine {
             // Parse the synthesized body back into an AST.
             let lex_ok = safe_lex(&candidate.body);
             let tokens = match lex_ok { Ok(t) => t, Err(_) => return Block { stmts: Vec::new(), tail_expr: Some(Box::new(Expr::Todo)) } };
-            if let Ok(module) = parser::parse(&tokens) {
-                if let Some(item) = module.items.first() {
-                    if let ItemKind::Function(f) = &item.kind {
+            if let Ok(module) = parser::parse(&tokens)
+                && let Some(item) = module.items.first()
+                    && let ItemKind::Function(f) = &item.kind {
                         return f.body.clone();
                     }
-                }
-            }
         }
 
         // Fallback: produce a todo placeholder.
@@ -1891,14 +1880,13 @@ fn has_any(haystack: &str, needles: &[&str]) -> bool {
 fn extract_quoted_or_named(input: &str) -> Option<String> {
 
     // Try backtick-quoted: `name`.
-    if let Some(start) = input.find('`') {
-        if let Some(end) = input[start + 1..].find('`') {
+    if let Some(start) = input.find('`')
+        && let Some(end) = input[start + 1..].find('`') {
             let name = &input[start + 1..start + 1 + end];
             if !name.is_empty() {
                 return Some(name.to_string());
             }
         }
-    }
     // Try "called X" or "named X".
     for prefix in &[
         "called ",
@@ -2006,7 +1994,7 @@ fn extract_params_from_nl(input: &str) -> Vec<(String, String)> {
         if let Some(pos) = lower.find(marker) {
             let rest = &input[pos + marker.len()..];
             // Parse comma or "and" separated param:type pairs.
-            for segment in rest.split(|c: char| c == ',' || c == ';').map(str::trim) {
+            for segment in rest.split([',', ';']).map(str::trim) {
                 for part in segment.split(" and ").map(str::trim) {
                     if let Some((name, ty)) = parse_param_pair(part) {
                         params.push((name, ty));
@@ -2059,8 +2047,8 @@ fn extract_params_from_nl(input: &str) -> Vec<(String, String)> {
 fn parse_param_pair(s: &str) -> Option<(String, String)> {
     // Try "name: Type"
     if let Some(colon) = s.find(':') {
-        let name = s[..colon].trim().split_whitespace().last()?;
-        let ty = s[colon + 1..].trim().split_whitespace().next()?;
+        let name = s[..colon].split_whitespace().last()?;
+        let ty = s[colon + 1..].split_whitespace().next()?;
         if !name.is_empty() && !ty.is_empty() {
             return Some((to_snake_case(name), ty.to_string()));
         }
@@ -2098,7 +2086,7 @@ fn extract_return_from_nl(input: &str) -> Option<String> {
         if let Some(pos) = lower.find(marker) {
             let rest = &input[pos + marker.len()..];
             let ty = rest
-                .split(|c: char| c == ' ' || c == ',' || c == '.')
+                .split([' ', ',', '.'])
                 .next()
                 .unwrap_or("");
             if !ty.is_empty() {
@@ -2228,9 +2216,9 @@ fn extract_effects_from_nl(input: &str) -> Vec<String> {
     for marker in &["with effects ", "effects: ", "/ "] {
         if let Some(pos) = lower.find(marker) {
             let rest = &input[pos + marker.len()..];
-            for part in rest.split(|c: char| c == ',' || c == ' ') {
+            for part in rest.split([',', ' ']) {
                 let eff = part.trim();
-                if !eff.is_empty() && eff.chars().next().map_or(false, |c| c.is_uppercase()) {
+                if !eff.is_empty() && eff.chars().next().is_some_and(|c| c.is_uppercase()) {
                     effects.push(eff.to_string());
                 }
             }
@@ -2299,11 +2287,10 @@ fn extract_kb_facts(input: &str) -> Vec<(String, Vec<String>)> {
     let mut facts = Vec::new();
     for line in input.lines() {
         let trimmed = line.trim();
-        if let Some(rest) = trimmed.strip_prefix("fact ") {
-            if let Some((pred, args)) = parse_predicate_call(rest) {
+        if let Some(rest) = trimmed.strip_prefix("fact ")
+            && let Some((pred, args)) = parse_predicate_call(rest) {
                 facts.push((pred, args));
             }
-        }
     }
     facts
 }
@@ -2312,11 +2299,10 @@ fn extract_kb_queries(input: &str) -> Vec<(String, Vec<String>)> {
     let mut queries = Vec::new();
     for line in input.lines() {
         let trimmed = line.trim();
-        if let Some(rest) = trimmed.strip_prefix("query ") {
-            if let Some((pred, args)) = parse_predicate_call(rest) {
+        if let Some(rest) = trimmed.strip_prefix("query ")
+            && let Some((pred, args)) = parse_predicate_call(rest) {
                 queries.push((pred, args));
             }
-        }
     }
     queries
 }
@@ -2341,29 +2327,26 @@ fn extract_extras(input: &str, extras: &mut BTreeMap<String, String>) {
 
     if let Some(pos) = lower.find("population ") {
         let rest = &input[pos + 11..];
-        if let Some(num) = rest.split_whitespace().next() {
-            if num.chars().all(|c| c.is_ascii_digit()) {
+        if let Some(num) = rest.split_whitespace().next()
+            && num.chars().all(|c| c.is_ascii_digit()) {
                 extras.insert("population".into(), num.into());
             }
-        }
     }
 
     if let Some(pos) = lower.find("generations ") {
         let rest = &input[pos + 12..];
-        if let Some(num) = rest.split_whitespace().next() {
-            if num.chars().all(|c| c.is_ascii_digit()) {
+        if let Some(num) = rest.split_whitespace().next()
+            && num.chars().all(|c| c.is_ascii_digit()) {
                 extras.insert("generations".into(), num.into());
             }
-        }
     }
 
     if let Some(pos) = lower.find("size ") {
         let rest = &input[pos + 5..];
-        if let Some(num) = rest.split_whitespace().next() {
-            if num.chars().all(|c| c.is_ascii_digit()) {
+        if let Some(num) = rest.split_whitespace().next()
+            && num.chars().all(|c| c.is_ascii_digit()) {
                 extras.insert("size".into(), num.into());
             }
-        }
     }
 
     for marker in &["topology ", "mesh", "ring", "star", "broadcast"] {
@@ -2474,7 +2457,7 @@ fn extract_type_name(description: &str) -> String {
     // Try to find a meaningful capitalized word.
     for word in description.split_whitespace() {
         if word.len() > 1
-            && word.chars().next().map_or(false, |c| c.is_uppercase())
+            && word.chars().next().is_some_and(|c| c.is_uppercase())
             && !is_stop_word(word)
         {
             return word.to_string();
@@ -2529,7 +2512,7 @@ fn infer_struct_fields(description: &str) -> Vec<(String, String)> {
     // Pattern: "fields: name: Type, name: Type"
     if let Some(pos) = lower.find("fields") {
         let rest = &description[pos + 6..];
-        let rest = rest.trim_start_matches(|c: char| c == ':' || c == ' ');
+        let rest = rest.trim_start_matches([':', ' ']);
         for segment in rest.split(',') {
             if let Some((name, ty)) = parse_param_pair(segment.trim()) {
                 fields.push((name, ty));
@@ -2596,9 +2579,9 @@ fn infer_enum_variants(description: &str) -> Vec<String> {
     // Pattern: explicit variants: "variants: A, B, C"
     if let Some(pos) = lower.find("variants") {
         let rest = &description[pos + 8..];
-        let rest = rest.trim_start_matches(|c: char| c == ':' || c == ' ');
+        let rest = rest.trim_start_matches([':', ' ']);
         let variants: Vec<String> = rest
-            .split(|c: char| c == ',' || c == ';')
+            .split([',', ';'])
             .map(|v| capitalize_first(v.trim()))
             .filter(|v| !v.is_empty())
             .collect();
@@ -2611,8 +2594,11 @@ fn infer_enum_variants(description: &str) -> Vec<String> {
     vec!["A".into(), "B".into(), "C".into()]
 }
 
-fn infer_trait_methods(_description: &str) -> Vec<(String, Vec<(String, String)>, Option<String>)> {
-    // Return (method_name, params, return_type).
+/// One inferred trait method: its name, its `(param, type)` pairs, and an
+/// optional return type.
+type InferredMethod = (String, Vec<(String, String)>, Option<String>);
+
+fn infer_trait_methods(_description: &str) -> Vec<InferredMethod> {
     vec![(
         "process".into(),
         vec![("input".into(), "String".into())],

@@ -119,6 +119,12 @@ pub struct AgentRuntime {
     rmi: crate::rmi_runtime_adapter::RmiAdapter,
 }
 
+impl Default for AgentRuntime {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AgentRuntime {
     pub fn new() -> Self {
         Self::with_config(RuntimeConfig::default())
@@ -621,7 +627,7 @@ mod tests {
         );
 
         let msgs = rt.receive_messages(&a2);
-        assert!(msgs.len() >= 1 || true); // Bus routing depends on subscriptions
+        assert!(!msgs.is_empty() || true); // Bus routing depends on subscriptions
     }
 
     #[test]

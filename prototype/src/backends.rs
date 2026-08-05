@@ -57,8 +57,10 @@ pub const IRONACCELERATOR_REFERENCE: &str =
 /// How a registered backend executes Agentic Binary Language bytecode.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
+#[derive(Default)]
 pub enum DispatchKind {
     /// Built-in compiled backend. Today: only CPU.
+    #[default]
     Builtin,
     /// Spawn an external process per dispatch. stdin = Agentic Binary Language blob,
     /// env carries metadata (`RDX_BACKEND`, `RDX_ITEM_NAME`,
@@ -69,11 +71,6 @@ pub enum DispatchKind {
     Subprocess { command: String },
 }
 
-impl Default for DispatchKind {
-    fn default() -> Self {
-        Self::Builtin
-    }
-}
 
 /// One backend descriptor. Field shape is the public schema for the
 /// JSON registry file - changing it is a breaking change.
@@ -540,17 +537,17 @@ mod tests {
             std::process::id()
         ));
         // Use a uniquely-named backend so we don't collide with builtins.
-        let json = format!(r#"[
-            {{
+        let json = r#"[
+            {
                 "name": "p94_subproc_demo",
                 "family": "asic",
                 "vendor": "TestVendor",
                 "requires": "wrapper script",
                 "summary": "Subprocess backend demo",
                 "available_at_runtime": false,
-                "dispatch": {{ "kind": "subprocess", "command": "echo demo" }}
-            }}
-        ]"#);
+                "dispatch": { "kind": "subprocess", "command": "echo demo" }
+            }
+        ]"#.to_string();
         std::fs::write(&tmp, json).unwrap();
         register_descriptors_from_file(tmp.to_str().unwrap()).expect("register");
         let selected = select_backend("p94_subproc_demo").expect("subprocess select");

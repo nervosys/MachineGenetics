@@ -154,11 +154,10 @@ fn apply_op(
         // instead of tripping the typed-composition gate.
         Op::EMBED => {
             let dims = extract_int_args(args);
-            if let Some(&edim) = dims.get(1) {
-                if edim > 0 {
+            if let Some(&edim) = dims.get(1)
+                && edim > 0 {
                     current.push(edim as usize);
                 }
-            }
         }
 
         // ── Weighted ops with explicit dims ─────────────────────────
@@ -210,13 +209,12 @@ fn apply_op(
                 [k, s] if *k > 0 && *s > 0 => (*k as usize, *s as usize),
                 _ => return,
             };
-            if let Some(&last) = current.last() {
-                if kernel <= last {
+            if let Some(&last) = current.last()
+                && kernel <= last {
                     let out_len = (last - kernel) / stride + 1;
                     let len = current.len();
                     current[len - 1] = out_len;
                 }
-            }
         }
 
         Op::MATMUL => {
@@ -253,7 +251,7 @@ fn apply_matmul_like(
     n: usize,
     mismatches: &mut Vec<ShapeMismatch>,
 ) {
-    if current.len() == 1 && current[0] % k == 0 {
+    if current.len() == 1 && current[0].is_multiple_of(k) {
         let m = current[0] / k;
         *current = vec![m, n];
         return;

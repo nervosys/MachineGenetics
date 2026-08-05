@@ -76,7 +76,7 @@ fn main() -> ExitCode {
         .position(|a| a == "--dir")
         .and_then(|i| args.get(i + 1))
         .cloned()
-        .unwrap_or_else(|| find_benchmarks_dir());
+        .unwrap_or_else(find_benchmarks_dir);
     let out_path = args
         .iter()
         .position(|a| a == "--out")
@@ -465,11 +465,9 @@ fn render_markdown(
         total.mg_claimed, total.rs_claimed, ratio(total.mg_claimed, total.rs_claimed),
     ));
 
-    out.push_str(&format!(
-        "\n## Top 10 token savings (MAGE vs Rust)\n\n\
+    out.push_str("\n## Top 10 token savings (MAGE vs Rust)\n\n\
          | Task | Saving | MAGE tokens | Rust tokens |\n\
-         |---|---:|---:|---:|\n"
-    ));
+         |---|---:|---:|---:|\n");
     for (id, saving, mg, rs) in top_savings.iter().take(10) {
         out.push_str(&format!(
             "| {} | {:.1}% | {} | {} |\n",

@@ -290,14 +290,20 @@ impl TypeEnv {
 
 // ── Type checker ─────────────────────────────────────────────────────
 
+/// A struct's generic parameter names, and its fields as `(name, type)`.
+pub type StructDefEntry = (Vec<String>, Vec<(String, Ty)>);
+
+/// A function's parameter types, return type, and declared effects.
+pub type FnSigEntry = (Vec<Ty>, Ty, Vec<String>);
+
 pub struct TypeChecker {
     supply: TyVarSupply,
     subst: Subst,
     env: TypeEnv,
-    /// Struct definitions: name → (generic_params, fields: Vec<(name, Ty)>).
-    struct_defs: HashMap<String, (Vec<String>, Vec<(String, Ty)>)>,
-    /// Function signatures: name → (params: Vec<Ty>, return: Ty, effects).
-    fn_sigs: HashMap<String, (Vec<Ty>, Ty, Vec<String>)>,
+    /// Struct definitions: name → its generic params and fields.
+    struct_defs: HashMap<String, StructDefEntry>,
+    /// Function signatures: name → params, return type, declared effects.
+    fn_sigs: HashMap<String, FnSigEntry>,
     /// Enum definitions: enum name → its variant names. Used for match
     /// exhaustiveness checking.
     enum_defs: HashMap<String, Vec<String>>,
@@ -307,6 +313,12 @@ pub struct TypeChecker {
     /// function defaults to i32 (Rust-style integer literal polymorphism). This
     /// is what lets `let x: i64 = 3` and `[i64]~ = [1,2,3]` check clean.
     int_lit_vars: Vec<u32>,
+}
+
+impl Default for TypeChecker {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl TypeChecker {
@@ -1098,8 +1110,8 @@ impl TypeChecker {
 
             ast::Expr::Call { func, args } => {
                 // Built-in `grad` typing: grad(f) where f: Tensor → same Tensor type.
-                if let ast::Expr::Ident { name } = func.as_ref() {
-                    if name == "grad" && args.len() == 1 {
+                if let ast::Expr::Ident { name } = func.as_ref()
+                    && name == "grad" && args.len() == 1 {
                         let arg_ty = self.infer_expr(&args[0]);
                         let resolved = self.subst.apply(&arg_ty);
                         match &resolved {
@@ -1112,7 +1124,6 @@ impl TypeChecker {
                             }
                         }
                     }
-                }
 
                 // Direct call to a function known by name: use its signature
                 // directly. This (a) fixes zero-arg calls — a bare function
@@ -1120,8 +1131,8 @@ impl TypeChecker {
                 // generic `Fn` unification below would see `() vs f()->?T` for a
                 // unit-returning function; and (b) yields precise arity and
                 // per-argument diagnostics instead of one opaque `call:` error.
-                if let ast::Expr::Ident { name } = func.as_ref() {
-                    if let Some((params, ret, _)) = self.fn_sigs.get(name).cloned() {
+                if let ast::Expr::Ident { name } = func.as_ref()
+                    && let Some((params, ret, _)) = self.fn_sigs.get(name).cloned() {
                         let arg_tys: Vec<Ty> = args.iter().map(|a| self.infer_expr(a)).collect();
                         if params.len() != arg_tys.len() {
                             self.emit_error(format!(
@@ -1141,16 +1152,14 @@ impl TypeChecker {
                         }
                         return self.subst.apply(&ret);
                     }
-                }
 
                 // §8 standard vocabulary: precise, fresh-per-call types so misuse
                 // is caught (the reliability win). User functions (handled above)
                 // shadow these; unhandled names fall through to generic inference.
-                if let ast::Expr::Ident { name } = func.as_ref() {
-                    if let Some(t) = self.infer_vocab_call(name, args) {
+                if let ast::Expr::Ident { name } = func.as_ref()
+                    && let Some(t) = self.infer_vocab_call(name, args) {
                         return t;
                     }
-                }
 
                 let func_ty = self.infer_expr(func);
                 let arg_tys: Vec<Ty> = args.iter().map(|a| self.infer_expr(a)).collect();
@@ -1479,7 +1488,7 @@ impl TypeChecker {
     fn lookup_struct_field(&self, _ty: &Ty, field: &str) -> Option<Ty> {
         // For Named types with struct defs, look up the field.
         // Simplified for prototype — check all structs.
-        for (_, (_, fields)) in &self.struct_defs {
+        for (_, fields) in self.struct_defs.values() {
             for (fname, fty) in fields {
                 if fname == field {
                     return Some(fty.clone());

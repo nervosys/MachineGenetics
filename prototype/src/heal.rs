@@ -873,17 +873,15 @@ fn builtin_patterns() -> Vec<ErrorPattern> {
 /// Extract the first single-quoted or backtick-quoted token from a message.
 fn extract_quoted(msg: &str) -> Option<String> {
     // Try backtick quotes first: `name`
-    if let Some(start) = msg.find('`') {
-        if let Some(end) = msg[start + 1..].find('`') {
+    if let Some(start) = msg.find('`')
+        && let Some(end) = msg[start + 1..].find('`') {
             return Some(msg[start + 1..start + 1 + end].to_string());
         }
-    }
     // Try single quotes: 'name'
-    if let Some(start) = msg.find('\'') {
-        if let Some(end) = msg[start + 1..].find('\'') {
+    if let Some(start) = msg.find('\'')
+        && let Some(end) = msg[start + 1..].find('\'') {
             return Some(msg[start + 1..start + 1 + end].to_string());
         }
-    }
     None
 }
 
@@ -941,19 +939,20 @@ fn infer_category(msg: &str) -> DiagnosticCategory {
     } else if msg.contains("precondition")
         || msg.contains("postcondition")
         || msg.contains("invariant")
+        || msg.contains("spec")
     {
         DiagnosticCategory::SpecViolation
-    } else if msg.contains("spec") {
-        DiagnosticCategory::SpecViolation
-    } else if msg.contains("capability") {
-        DiagnosticCategory::Other
-    } else if msg.contains("performance") || msg.contains("@perf") {
-        DiagnosticCategory::Other
-    } else if msg.contains("unused") {
-        DiagnosticCategory::Other
     } else if msg.contains("expected") || msg.contains("unexpected") {
         DiagnosticCategory::SyntaxError
     } else {
+        // `capability`, `performance`/`@perf`, and `unused` each had their own
+        // branch here, and each returned `Other` — identical to this fallback.
+        // `DiagnosticCategory` (hir.rs) has no variant for any of them, so the
+        // branches asserted a distinction the type cannot express and only
+        // looked like handling. Removed rather than kept as decoration: if
+        // those categories are ever wanted, the enum has to gain them first,
+        // and a reader should find that out here rather than after tracing
+        // three branches to the same value.
         DiagnosticCategory::Other
     }
 }

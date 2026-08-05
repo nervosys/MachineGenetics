@@ -45,7 +45,11 @@ pub enum ItemKind {
     Net(NetDef),
     Kb(KbDef),
     Evolve(EvolveDef),
-    Train(TrainDef),
+    /// Boxed: `TrainDef` is ~2.3 KB while every other variant is under 400 B,
+    /// so an unboxed `Train` made *every* `ItemKind` — and therefore every
+    /// element of every `Vec<Item>` — pay 2.3 KB. Boxing costs one indirection
+    /// on the rarest variant and shrinks the common case ~6x.
+    Train(Box<TrainDef>),
     Swarm(SwarmDef),
     Data(DataDef),
     Extend(ExtendBlock),

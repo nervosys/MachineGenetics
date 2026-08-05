@@ -33,17 +33,14 @@ impl Default for SelectionStrategy {
 
 /// Crossover strategy.
 #[derive(Debug, Clone, PartialEq)]
+#[derive(Default)]
 pub enum CrossoverStrategy {
+    #[default]
     SinglePoint,
     TwoPoint,
     Uniform { probability: f64 },
 }
 
-impl Default for CrossoverStrategy {
-    fn default() -> Self {
-        CrossoverStrategy::SinglePoint
-    }
-}
 
 /// Mutation strategy.
 #[derive(Debug, Clone, PartialEq)]
@@ -173,7 +170,7 @@ pub fn build_evolve_plan(def: &ast::EvolveDef) -> Result<EvolvePlan, Vec<Diagnos
     let genome_type = type_to_string(&def.genome_type);
 
     let population_size = def.population_size.as_ref()
-        .and_then(|e| extract_usize(e))
+        .and_then(extract_usize)
         .unwrap_or_else(|| {
             diagnostics.push(Diagnostic::categorized(
                 Severity::Warning,
@@ -185,7 +182,7 @@ pub fn build_evolve_plan(def: &ast::EvolveDef) -> Result<EvolvePlan, Vec<Diagnos
         });
 
     let generations = def.generations.as_ref()
-        .and_then(|e| extract_usize(e))
+        .and_then(extract_usize)
         .unwrap_or_else(|| {
             diagnostics.push(Diagnostic::categorized(
                 Severity::Warning,
@@ -241,7 +238,7 @@ fn type_to_string(ty: &ast::Type) -> String {
             if type_args.is_empty() {
                 base
             } else {
-                let arg_strs: Vec<String> = type_args.iter().map(|a| type_to_string(a)).collect();
+                let arg_strs: Vec<String> = type_args.iter().map(type_to_string).collect();
                 format!("{}<{}>", base, arg_strs.join(", "))
             }
         }
@@ -250,7 +247,7 @@ fn type_to_string(ty: &ast::Type) -> String {
             format!("Tensor<{}, {}>", type_to_string(inner), dim_strs.join(", "))
         }
         ast::Type::Fn { params, ret } => {
-            let p_strs: Vec<String> = params.iter().map(|p| type_to_string(p)).collect();
+            let p_strs: Vec<String> = params.iter().map(type_to_string).collect();
             match ret {
                 Some(r) => format!("({}) -> {}", p_strs.join(", "), type_to_string(r)),
                 None => format!("({})", p_strs.join(", ")),

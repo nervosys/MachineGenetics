@@ -166,8 +166,14 @@ impl<'a> EmitCtx<'a> {
         if let Some(fx) = self.effects.get(name) {
             for e in fx.iter() {
                 let label = e.to_string();
-                if label.starts_with("perf:") {
-                    self.line(&format!("MAGE.perf \"{}\"", &label[5..]));
+                // `strip_prefix` rather than `&label[5..]`: the hardcoded index
+                // has to stay in sync with the literal above it by hand, and
+                // byte-indexing a `&str` is the same shape of latent panic that
+                // was found in `ribosome`'s hex decoder. Here the prefix is
+                // ASCII so it happened to be safe; being safe by construction
+                // costs nothing.
+                if let Some(rest) = label.strip_prefix("perf:") {
+                    self.line(&format!("MAGE.perf \"{rest}\""));
                 }
             }
         }
@@ -512,7 +518,7 @@ impl<'a> EmitCtx<'a> {
                     .unwrap_or_else(|| "!MAGE.inferred".into());
                 let pat_name = self.pattern_name(pattern);
                 let mut_key = if *mutable { "var" } else { "let" };
-                let val_str = self.expr_summary(&value);
+                let val_str = self.expr_summary(value);
                 self.line(&format!(
                     "{ssa} = MAGE.{mut_key} \"{pat_name}\" : {mlir_ty} = {val_str}"
                 ));
@@ -612,7 +618,7 @@ impl<'a> EmitCtx<'a> {
                 format!("MAGE.map({} entries)", entries.len())
             }
             ast::Expr::ArrayRepeat { .. } => {
-                format!("MAGE.array_repeat")
+                "MAGE.array_repeat".to_string()
             }
             ast::Expr::Closure { params, .. } => {
                 format!("MAGE.closure({} params)", params.len())
@@ -624,9 +630,9 @@ impl<'a> EmitCtx<'a> {
             ast::Expr::Match { arms, .. } => {
                 format!("MAGE.match({} arms)", arms.len())
             }
-            ast::Expr::Loop { .. } => format!("MAGE.loop {{ ... }}"),
-            ast::Expr::While { .. } => format!("MAGE.while {{ ... }}"),
-            ast::Expr::For { .. } => format!("MAGE.for {{ ... }}"),
+            ast::Expr::Loop { .. } => "MAGE.loop { ... }".to_string(),
+            ast::Expr::While { .. } => "MAGE.while { ... }".to_string(),
+            ast::Expr::For { .. } => "MAGE.for { ... }".to_string(),
             ast::Expr::Block { block } => {
                 format!("MAGE.block({} stmts)", block.stmts.len())
             }
@@ -635,11 +641,11 @@ impl<'a> EmitCtx<'a> {
                     let v = self.fresh();
                     format!("MAGE.return {v}")
                 } else {
-                    format!("MAGE.return void")
+                    "MAGE.return void".to_string()
                 }
             }
-            ast::Expr::Break { .. } => format!("MAGE.break"),
-            ast::Expr::Continue => format!("MAGE.continue"),
+            ast::Expr::Break { .. } => "MAGE.break".to_string(),
+            ast::Expr::Continue => "MAGE.continue".to_string(),
             ast::Expr::Try { .. } => {
                 let v = self.fresh();
                 format!("MAGE.try {v}")
@@ -663,8 +669,8 @@ impl<'a> EmitCtx<'a> {
                 let hi = self.fresh();
                 format!("MAGE.range {lo}..{hi} (inclusive={inclusive})")
             }
-            ast::Expr::Todo => format!("MAGE.todo"),
-            ast::Expr::Unimplemented => format!("MAGE.unimplemented"),
+            ast::Expr::Todo => "MAGE.todo".to_string(),
+            ast::Expr::Unimplemented => "MAGE.unimplemented".to_string(),
             ast::Expr::UnsafeBlock { block } => {
                 format!("MAGE.unsafe({} stmts)", block.stmts.len())
             }

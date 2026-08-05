@@ -150,6 +150,12 @@ pub struct MergeLogEntry {
     pub outcome: MergeOutcome,
 }
 
+impl Default for MergeLog {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MergeLog {
     pub fn new() -> Self {
         Self { entries: Vec::new() }
@@ -174,6 +180,12 @@ pub struct CrdtState {
     history: Vec<StampedOp>,
     /// Merge log.
     pub log: MergeLog,
+}
+
+impl Default for CrdtState {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl CrdtState {

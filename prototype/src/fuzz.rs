@@ -158,10 +158,10 @@ mod fuzz_tests {
             let diag = ei.diagnostics.iter().map(|d| d.message.clone()).collect::<Vec<_>>().join(" | ");
 
             // performed effects = display names of called builtins
-            for i in 0..4 {
+            for (i, entry) in table.iter().enumerate().take(4) {
                 let performed = call_mask & (1 << i) != 0;
                 let declared = decl_mask & (1 << i) != 0;
-                let display = table[i].2;
+                let display = entry.2;
                 if performed && !declared {
                     // SOUNDNESS: undeclared performed effect MUST be flagged.
                     assert!(
@@ -225,7 +225,7 @@ mod fuzz_tests {
             if !f_declares {
                 // h performs `display` transitively via g but didn't declare it.
                 assert!(
-                    diag.contains(&format!("function `h`")) && diag.contains(display),
+                    diag.contains(&"function `h`".to_string()) && diag.contains(display),
                     "UNSOUND (transitive): `{src}` — h's undeclared {display} not flagged. diag=[{diag}]"
                 );
             } else {
@@ -240,7 +240,7 @@ mod fuzz_tests {
     #[test]
     fn agent_formatter_is_idempotent_and_reparses() {
         use crate::fmt;
-        let mut rng = Rng(0x0BADC0DE_1357_2468);
+        let mut rng = Rng(0x0BAD_C0DE_1357_2468);
         let mut tested = 0usize;
         for _ in 0..6000 {
             let src = if rng.upto(4) == 0 {

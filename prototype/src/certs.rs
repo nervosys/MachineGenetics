@@ -109,6 +109,12 @@ pub struct CertificateStore {
     index: BTreeMap<(String, CertKind), Vec<CertId>>,
 }
 
+impl Default for CertificateStore {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CertificateStore {
     pub fn new() -> Self {
         Self {
@@ -173,7 +179,7 @@ impl CertificateStore {
         ];
         kinds.iter().all(|k| {
             self.index.get(&(target.into(), *k))
-                .map(|ids| ids.iter().any(|id| self.certs.get(id).map_or(false, |c| c.valid)))
+                .map(|ids| ids.iter().any(|id| self.certs.get(id).is_some_and(|c| c.valid)))
                 .unwrap_or(false)
         })
     }

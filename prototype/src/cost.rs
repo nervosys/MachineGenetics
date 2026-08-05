@@ -96,6 +96,10 @@ fn builtin_costs() -> Vec<CostEstimate> {
     ]
 }
 
+// A cost estimate is nine measured quantities. They are already a struct —
+// `CostEstimate` — and this is its constructor; a builder would be ceremony
+// around a flat record of measurements.
+#[allow(clippy::too_many_arguments)]
 fn cost(target: &str, opt: OptLevel, construct: &str, cycles: u64, mem: u64, allocs: u32, lat: u64, tokens: u32, conf: f64) -> CostEstimate {
     CostEstimate {
         construct: construct.into(),

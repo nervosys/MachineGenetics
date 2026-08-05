@@ -123,6 +123,12 @@ pub struct SwarmVec<T> {
     elements: Vec<(String, T)>, // (agent_id, value)
 }
 
+impl<T> Default for SwarmVec<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T> SwarmVec<T> {
     pub fn new() -> Self {
         Self { elements: Vec::new() }
@@ -287,6 +293,12 @@ impl<T> SwarmChannel<T> {
 pub struct AgentArena {
     /// agent_id → (allocated_bytes, peak_bytes, allocation_count)
     agents: BTreeMap<String, (u64, u64, u64)>,
+}
+
+impl Default for AgentArena {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl AgentArena {

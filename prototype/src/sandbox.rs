@@ -179,6 +179,12 @@ pub struct AuditLog {
     next_ts: u64,
 }
 
+impl Default for AuditLog {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AuditLog {
     pub fn new() -> Self {
         Self { events: Vec::new(), next_ts: 1 }
@@ -224,6 +230,10 @@ impl AuditLog {
 
     pub fn len(&self) -> usize {
         self.events.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.events.is_empty()
     }
 }
 
@@ -319,6 +329,12 @@ pub struct SandboxManager {
     sandboxes: BTreeMap<String, Sandbox>,
     pub audit: AuditLog,
     next_id: u64,
+}
+
+impl Default for SandboxManager {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl SandboxManager {

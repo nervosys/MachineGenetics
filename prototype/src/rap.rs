@@ -659,8 +659,8 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
                         "error": format!("agent `{agent_name}` not found")
                     });
                     for item in &module.items {
-                        if let crate::ast::ItemKind::Agent(ref ad) = item.kind {
-                            if ad.name == agent_name {
+                        if let crate::ast::ItemKind::Agent(ref ad) = item.kind
+                            && ad.name == agent_name {
                                 policy = serde_json::json!({
                                     "ok": true,
                                     "agent": ad.name,
@@ -669,7 +669,6 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
                                 });
                                 break;
                             }
-                        }
                     }
                     policy
                 }
@@ -1075,7 +1074,7 @@ mod tests {
     #[test]
     fn test_language_tokens() {
         let r = call("language/tokens", src_params("f main() {}"));
-        assert!(r.get("tokens").unwrap().as_array().unwrap().len() > 0);
+        assert!(!r.get("tokens").unwrap().as_array().unwrap().is_empty());
     }
 
     #[test]

@@ -684,11 +684,10 @@ impl<'a> ForwardWalker<'a> {
             }
         }
 
-        if let Some(tail) = &block.tail_expr {
-            if let Some(s) = self.walk_expr(tail) {
+        if let Some(tail) = &block.tail_expr
+            && let Some(s) = self.walk_expr(tail) {
                 stages.push(s);
             }
-        }
 
         match stages.len() {
             0 => None,
@@ -1251,11 +1250,10 @@ pub fn decompile_symbolic(expr: &Expr) -> SymbolicView {
                 }
             }
             Op::MATCH => {
-                if let Some((_, _, body)) = cur.as_mut() {
-                    if let Some((&pred, cargs)) = syms.split_first() {
+                if let Some((_, _, body)) = cur.as_mut()
+                    && let Some((&pred, cargs)) = syms.split_first() {
                         body.push((pred, cargs.to_vec()));
                     }
-                }
             }
             Op::INFER => finish(&mut cur, &mut v),
             _ => {}
@@ -1329,7 +1327,9 @@ pub fn evaluate_kb(facts: &[GroundFact], rules: &[KbRule]) -> Vec<GroundFact> {
     };
     // Encode rules and facts.
     type EncFact = (u32, Vec<u32>);
-    let enc_rules: Vec<(u32, Vec<u32>, Vec<(u32, Vec<u32>)>)> = rules
+    /// An encoded rule: head predicate, head args, and body literals.
+    type EncRule = (u32, Vec<u32>, Vec<EncFact>);
+    let enc_rules: Vec<EncRule> = rules
         .iter()
         .map(|r| {
             (

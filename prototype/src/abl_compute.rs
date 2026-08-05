@@ -286,12 +286,11 @@ impl ParamStore {
                 self.matmul_call_idx += 1;
                 if self.asymmetric {
                     // P136: zero-point quantization via recorded range.
-                    if let Some(&(lo, hi)) = self.act_ranges.get(idx) {
-                        if hi > lo {
+                    if let Some(&(lo, hi)) = self.act_ranges.get(idx)
+                        && hi > lo {
                             return backend
                                 .quantized_matmul_asym_calibrated(input, lo, hi, weights);
                         }
-                    }
                 }
                 match self.act_scales.get(idx).copied() {
                     Some(sa) if self.weight_bits == 4 => {
@@ -399,9 +398,9 @@ fn entropy_threshold_abs(values: &[f32], nbins: usize, quant_bins: usize) -> f32
             // Sum of P over this quant bin, spread over its NON-EMPTY ref bins.
             let mut sum = 0.0f64;
             let mut nonempty = 0usize;
-            for k in lo..hi {
-                sum += p[k];
-                if p[k] > 0.0 {
+            for &v in &p[lo..hi] {
+                sum += v;
+                if v > 0.0 {
                     nonempty += 1;
                 }
             }
@@ -975,7 +974,7 @@ fn dispatch_layer_norm(
 /// windows). For multi-dim inputs, pools each row of the last axis.
 /// Global pool: average over all spatial dimensions, reducing a rank-
 /// >=3 tensor [B, C, *spatial] to [B, C]. Rank-1 and rank-2 inputs
-/// pass through unchanged.
+/// > pass through unchanged.
 fn dispatch_global_pool(
     backend: &dyn Backend,
     handle: &TensorHandle,
@@ -1133,7 +1132,7 @@ fn dispatch_attention(
     let (q, k_proj, v, model_dim) = if qkv_mode {
         let in_d = dims[0] as usize;
         let model_d = dims[1] as usize;
-        if model_d % num_heads != 0 {
+        if !model_d.is_multiple_of(num_heads) {
             return Err(rmi::error::RmiError::compute_simple(format!(
                 "ATTN: model_dim {} not divisible by num_heads {}",
                 model_d, num_heads
@@ -1347,8 +1346,7 @@ fn dispatch_conv2d(
         let spatial = out_h * out_w;
         let mut full = vec![0.0f32; n * out_ch * spatial];
         for ni in 0..n {
-            for oc in 0..out_ch {
-                let b = bias_vec[oc];
+            for (oc, &b) in bias_vec.iter().enumerate().take(out_ch) {
                 let base = (ni * out_ch + oc) * spatial;
                 full[base..base + spatial].fill(b);
             }
@@ -1543,6 +1541,10 @@ pub struct TrainStep {
 /// `input` has shape `[N, in_dim_first]`; `target` has shape `[N, out_dim_last]`.
 /// On return, the relevant `Linear` weights in `params` have been updated
 /// in-place by `weight -= lr * grad`.
+// A training step needs the backend, the graph, its parameters, the batch, the
+// targets, and the hyperparameters. These are the inputs to the mathematics;
+// grouping them would name a bag, not a concept.
+#[allow(clippy::too_many_arguments)]
 pub fn train_one_step(
     backend: &dyn Backend,
     expr: &Expr,
@@ -1572,6 +1574,7 @@ pub fn train_one_step(
 /// [`OptimState`] (for Adam-style per-parameter moments). The SGD-only
 /// [`train_one_step`] wrapper delegates to this with `Optimizer::Sgd` and
 /// a throwaway state.
+#[allow(clippy::too_many_arguments)] // see `train_one_step`
 pub fn train_one_step_with_optim(
     backend: &dyn Backend,
     expr: &Expr,
@@ -1591,6 +1594,7 @@ pub fn train_one_step_with_optim(
 
 /// Train-step with explicit loss function. Generalises
 /// [`train_one_step_with_optim`] (which defaults to MSE).
+#[allow(clippy::too_many_arguments)] // see `train_one_step`
 pub fn train_one_step_with_optim_loss(
     backend: &dyn Backend,
     expr: &Expr,
@@ -1633,7 +1637,7 @@ pub fn train_one_step_with_optim_loss(
                     [_, _, h] if *h > 0 => *h as usize,
                     _ => 1,
                 };
-                if model_d % num_heads != 0 {
+                if !model_d.is_multiple_of(num_heads) {
                     return Err(rmi::error::RmiError::compute_simple(format!(
                         "train ATTN: model_dim {} not divisible by num_heads {}",
                         model_d, num_heads
@@ -2526,7 +2530,7 @@ fn flatten_stages(expr: &Expr, out: &mut Vec<(Op, Vec<i64>)>) {
 
 fn as_matrix(data: &[f32], shape: &[usize], in_dim: usize) -> Result<(usize, Vec<f32>), rmi::error::RmiError> {
     match shape.len() {
-        1 if shape[0] % in_dim == 0 => Ok((shape[0] / in_dim, data.to_vec())),
+        1 if shape[0].is_multiple_of(in_dim) => Ok((shape[0] / in_dim, data.to_vec())),
         2 if shape[1] == in_dim => Ok((shape[0], data.to_vec())),
         _ => Err(rmi::error::RmiError::compute_simple(format!(
             "train: cannot shape {:?} as matrix with in_dim={}",
@@ -2788,13 +2792,12 @@ fn apply_optim_step(
         }
     }
     // Decoupled weight decay (AdamW-style): applies regardless of optimizer.
-    if let Some(wd) = state.weight_decay {
-        if wd > 0.0 {
+    if let Some(wd) = state.weight_decay
+        && wd > 0.0 {
             for v in w.iter_mut() {
                 *v -= lr * wd * *v;
             }
         }
-    }
 }
 
 /// Sentinel slot for Linear bias tensors in [`ParamStore`]. Picked far away
@@ -2849,8 +2852,8 @@ fn ensure_2d(
     // "Linear-over-batch" semantics: [b, s, dim] -> [b*s, dim] so the
     // matmul against the [dim, out] weight works, with caller-side
     // reshape back to [b, s, out] if needed.
-    if let Some(&last) = handle.shape.last() {
-        if last == last_dim {
+    if let Some(&last) = handle.shape.last()
+        && last == last_dim {
             let n: usize = handle.shape.iter().take(handle.shape.len() - 1).product();
             let data = read_as_f32(backend, handle)?;
             let r = backend.from_slice_f32(&data, &[n, last_dim])?;
@@ -2860,10 +2863,9 @@ fn ensure_2d(
                 Ok(r)
             };
         }
-    }
     // Rank-1 tensor whose length is a multiple of last_dim - same
     // reshape semantics as before.
-    if handle.shape.len() == 1 && handle.shape[0] % last_dim == 0 {
+    if handle.shape.len() == 1 && handle.shape[0].is_multiple_of(last_dim) {
         let n = handle.shape[0] / last_dim;
         let data = read_as_f32(backend, handle)?;
         let r = backend.from_slice_f32(&data, &[n, last_dim])?;
@@ -4820,7 +4822,7 @@ mod tests {
     fn global_pool_reduces_4d_to_2d() {
         let backend = CpuBackend::new();
         // [1, 4, 2, 3] with all 1.0 -> [1, 4] with all 1.0 (mean preserved)
-        let data: Vec<f32> = vec![1.0; 1 * 4 * 2 * 3];
+        let data: Vec<f32> = vec![1.0; 4 * 2 * 3];
         let input = backend.from_slice_f32(&data, &[1, 4, 2, 3]).expect("input");
         let out = dispatch_global_pool(&backend, &input).expect("pool");
         assert_eq!(out.shape, vec![1, 4]);

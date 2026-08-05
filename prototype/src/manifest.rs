@@ -176,7 +176,7 @@ pub fn search_by_effect<'a>(
 }
 
 /// Search manifests for exported agents.
-pub fn search_agents<'a>(manifests: &'a [CrateManifest]) -> Vec<(&'a str, &'a AgentEntry)> {
+pub fn search_agents(manifests: &[CrateManifest]) -> Vec<(&str, &AgentEntry)> {
     manifests.iter().flat_map(|m| m.agents.iter().map(move |a| (m.name.as_str(), a))).collect()
 }
 

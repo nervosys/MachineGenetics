@@ -92,8 +92,8 @@ pub fn recover(source: &str) -> RecoveryResult {
     }
 
     // Stage 2a: brace-balance at EOF.
-    if let Some(balanced) = structural_heal(source) {
-        if parses(&balanced) {
+    if let Some(balanced) = structural_heal(source)
+        && parses(&balanced) {
             return RecoveryResult {
                 stage: RecoveryStage::StructuralBalance,
                 source: balanced,
@@ -101,11 +101,10 @@ pub fn recover(source: &str) -> RecoveryResult {
                 parsed_ok: true,
             };
         }
-    }
 
     // Stage 2b: partial-statement completion + brace-balance.
-    if let Some(completed) = structural_completion(source) {
-        if parses(&completed) {
+    if let Some(completed) = structural_completion(source)
+        && parses(&completed) {
             return RecoveryResult {
                 stage: RecoveryStage::StructuralCompletion,
                 source: completed,
@@ -113,14 +112,13 @@ pub fn recover(source: &str) -> RecoveryResult {
                 parsed_ok: true,
             };
         }
-    }
 
     // Stage 2c: trim-bad-token. When the parser pointed at a specific
     // (line, col), try deleting the token there and a few neighbors;
     // re-parse on each variant. Targets word-swap / extra-token shapes
     // that brace-balance and completion can't fix.
-    if let Some(trimmed) = trim_bad_token(source) {
-        if parses(&trimmed) {
+    if let Some(trimmed) = trim_bad_token(source)
+        && parses(&trimmed) {
             return RecoveryResult {
                 stage: RecoveryStage::TrimBadToken,
                 source: trimmed,
@@ -128,7 +126,6 @@ pub fn recover(source: &str) -> RecoveryResult {
                 parsed_ok: true,
             };
         }
-    }
 
     RecoveryResult {
         stage: RecoveryStage::Failed,
@@ -175,11 +172,10 @@ fn try_pattern_heal(source: &str) -> (Option<String>, usize) {
     });
     let tried = candidates.len();
     for cand in &candidates {
-        if let Some(applied) = apply_text_edits(source, &cand.edits) {
-            if parses(&applied) {
+        if let Some(applied) = apply_text_edits(source, &cand.edits)
+            && parses(&applied) {
                 return (Some(applied), tried);
             }
-        }
     }
     (None, tried)
 }
@@ -241,11 +237,10 @@ pub fn structural_heal(source: &str) -> Option<String> {
                     stack.pop();
                 }
             }
-            b'}' => {
-                if stack.last() == Some(&b'{') {
+            b'}'
+                if stack.last() == Some(&b'{') => {
                     stack.pop();
                 }
-            }
             _ => {}
         }
         i += 1;
@@ -387,7 +382,9 @@ pub fn apply_text_edits(source: &str, edits: &[heal::TextEdit]) -> Option<String
         }
         ranges.push((start, end, e.new_text.clone()));
     }
-    ranges.sort_by(|a, b| b.0.cmp(&a.0));
+    // Descending by start offset, so each `replace_range` below cannot shift
+    // the offsets of the edits still to be applied.
+    ranges.sort_by_key(|r| std::cmp::Reverse(r.0));
     let mut result = source.to_string();
     for (start, end, new_text) in ranges {
         result.replace_range(start..end, &new_text);
@@ -423,20 +420,17 @@ pub fn trim_bad_token(source: &str) -> Option<String> {
     }
 
     // Variant 2: delete the word *before* the error position.
-    if w_start > 0 {
-        if let Some(prev_end) = bytes[..w_start]
+    if w_start > 0
+        && let Some(prev_end) = bytes[..w_start]
             .iter()
             .rposition(|b| !b.is_ascii_whitespace())
             .map(|i| i + 1)
-        {
-            if let Some((p_start, _)) = word_bounds(bytes, prev_end.saturating_sub(1)) {
+            && let Some((p_start, _)) = word_bounds(bytes, prev_end.saturating_sub(1)) {
                 let variant2 = elide_range(source, p_start, prev_end);
                 if !variant2.is_empty() && parses(&variant2) {
                     return Some(variant2);
                 }
             }
-        }
-    }
 
     None
 }

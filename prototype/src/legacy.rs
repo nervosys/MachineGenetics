@@ -1,19 +1,20 @@
-/// MAGE Legacy Syntax Support — Rust → MAGE canonical syntax translator.
-///
-/// When `--syntax=legacy` is active, this module translates standard Rust
-/// source into MAGE canonical syntax before lexing/parsing.
-///
-/// This is the same algorithm as `tools/rust2mg` but embedded in the
-/// prototype compiler so that `--syntax=legacy` works in a single binary.
-///
-/// Implements the translation rules from MAGE_PROPOSAL §5.3.4:
-///   - `pub fn` → `+f`, `fn` → `f`, `async fn` → `af`, `unsafe fn` → `uf`
-///   - `struct`/`enum`/`trait`/`impl`/`mod` → `S`/`E`/`T`/`I`/`M`
-///   - `let`/`let mut` → `v`/`m`, `const` → `C`, `type` → `Y`
-///   - `Vec<T>` → `[T]~`, `Option<T>` → `?T`, `Box<T>` → `^T`, etc.
-///   - `<T>` → `[T]`, `::` → `.`
-///   - Lifetime removal, match → `?=`, if/else → `?`/`:`
-///   - `return` → `ret`
+//! MAGE Legacy Syntax Support — Rust → MAGE canonical syntax translator.
+//!
+//! When `--syntax=legacy` is active, this module translates standard Rust
+//! source into MAGE canonical syntax before lexing/parsing.
+//!
+//! This is the same algorithm as `tools/rust2mg` but embedded in the
+//! prototype compiler so that `--syntax=legacy` works in a single binary.
+//!
+//! Implements the translation rules from MAGE_PROPOSAL §5.3.4:
+//!
+//! - `pub fn` → `+f`, `fn` → `f`, `async fn` → `af`, `unsafe fn` → `uf`
+//! - `struct`/`enum`/`trait`/`impl`/`mod` → `S`/`E`/`T`/`I`/`M`
+//! - `let`/`let mut` → `v`/`m`, `const` → `C`, `type` → `Y`
+//! - `Vec<T>` → `[T]~`, `Option<T>` → `?T`, `Box<T>` → `^T`, etc.
+//! - `<T>` → `[T]`, `::` → `.`
+//! - Lifetime removal, match → `?=`, if/else → `?`/`:`
+//! - `return` → `ret`
 
 /// Translate a complete Rust source file to MAGE canonical syntax.
 pub fn translate(source: &str) -> String {
@@ -247,8 +248,8 @@ fn find_matching_angle(s: &str, pos: usize) -> Option<usize> {
         return None;
     }
     let mut depth = 0u32;
-    for i in pos..bytes.len() {
-        match bytes[i] {
+    for (i, b) in bytes.iter().enumerate().skip(pos) {
+        match *b {
             b'<' => depth += 1,
             b'>' => {
                 depth -= 1;
@@ -332,8 +333,8 @@ fn find_matching_paren(s: &str, pos: usize) -> Option<usize> {
         return None;
     }
     let mut depth = 0u32;
-    for i in pos..bytes.len() {
-        match bytes[i] {
+    for (i, b) in bytes.iter().enumerate().skip(pos) {
+        match *b {
             b'(' => depth += 1,
             b')' => {
                 depth -= 1;
@@ -354,14 +355,13 @@ fn translate_generics(s: &str) -> String {
     let mut changed = true;
     while changed {
         changed = false;
-        if let Some(pos) = find_generic_bracket(&r) {
-            if let Some(end) = find_matching_angle(&r, pos) {
+        if let Some(pos) = find_generic_bracket(&r)
+            && let Some(end) = find_matching_angle(&r, pos) {
                 let inner = &r[pos + 1..end];
                 let new = format!("[{inner}]");
                 r = format!("{}{new}{}", &r[..pos], &r[end + 1..]);
                 changed = true;
             }
-        }
     }
     r
 }
@@ -397,18 +397,15 @@ fn remove_lifetimes(s: &str) -> String {
             }
             if !name.is_empty() && name != "\"" {
                 // Skip lifetime. Also eat trailing space/comma.
-                if let Some(&next) = chars.peek() {
-                    if next == ' ' || next == ',' {
+                if let Some(&next) = chars.peek()
+                    && (next == ' ' || next == ',') {
                         let eaten = chars.next().unwrap();
-                        if eaten == ',' {
-                            if let Some(&sp) = chars.peek() {
-                                if sp == ' ' {
+                        if eaten == ','
+                            && let Some(&sp) = chars.peek()
+                                && sp == ' ' {
                                     chars.next();
                                 }
-                            }
-                        }
                     }
-                }
             } else {
                 out.push('\'');
                 out.push_str(&name);
@@ -429,11 +426,10 @@ fn leading_whitespace(s: &str) -> &str {
 }
 
 fn boundary_replace(s: &str, from: &str, to: &str) -> String {
-    if let Some(pos) = s.find(from) {
-        if pos == 0 || !s.as_bytes()[pos - 1].is_ascii_alphanumeric() {
+    if let Some(pos) = s.find(from)
+        && (pos == 0 || !s.as_bytes()[pos - 1].is_ascii_alphanumeric()) {
             return format!("{}{to}{}", &s[..pos], &s[pos + from.len()..]);
         }
-    }
     s.to_string()
 }
 

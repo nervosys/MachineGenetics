@@ -87,6 +87,12 @@ pub struct GradTape {
     name_to_id: HashMap<String, usize>,
 }
 
+impl Default for GradTape {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl GradTape {
     pub fn new() -> Self {
         GradTape {
@@ -417,12 +423,11 @@ pub fn build_tape_from_train(train: &ast::TrainDef) -> GradTape {
 
 fn build_tape_from_block(tape: &mut GradTape, block: &ast::Block) {
     for stmt in &block.stmts {
-        if let ast::Stmt::Let { pattern, value, .. } = stmt {
-            if let ast::Pattern::Ident { name } = pattern {
+        if let ast::Stmt::Let { pattern, value, .. } = stmt
+            && let ast::Pattern::Ident { name } = pattern {
                 let id = build_tape_expr(tape, value);
                 tape.name_to_id.insert(name.clone(), id);
             }
-        }
     }
     if let Some(tail) = &block.tail_expr {
         build_tape_expr(tape, tail);

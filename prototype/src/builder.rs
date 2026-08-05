@@ -397,8 +397,8 @@ pub fn validate(spec: &NetSpec) -> Vec<BuildError> {
         // Shape-chain check: a Linear's input dim must match the running dim.
         if op == "Linear" {
             let in_dim = dims[0];
-            if let Some(prev) = running {
-                if prev != in_dim {
+            if let Some(prev) = running
+                && prev != in_dim {
                     errs.push(BuildError::new(
                         "B0006",
                         format!(
@@ -407,7 +407,6 @@ pub fn validate(spec: &NetSpec) -> Vec<BuildError> {
                         "make this layer's input dim equal the previous layer's output dim",
                     ));
                 }
-            }
         }
         if transforms {
             running = Some(*dims.last().unwrap());
@@ -604,21 +603,18 @@ pub fn validate_swarm(spec: &SwarmSpec) -> Vec<BuildError> {
     if !is_ident(&spec.agent) {
         errs.push(BuildError::new("S0002", format!("agent type `{}` is not a valid identifier", spec.agent), "use [A-Za-z_][A-Za-z0-9_]*"));
     }
-    if let Some(n) = spec.size {
-        if n <= 0 {
+    if let Some(n) = spec.size
+        && n <= 0 {
             errs.push(BuildError::new("S0003", format!("size must be positive, got {n}"), "use a positive integer size"));
         }
-    }
-    if let Some(t) = &spec.topology {
-        if !TOPOLOGIES.contains(&t.as_str()) {
+    if let Some(t) = &spec.topology
+        && !TOPOLOGIES.contains(&t.as_str()) {
             errs.push(BuildError::new("S0004", format!("unknown topology `{t}`"), "use one of: star, ring, mesh, broadcast, tree"));
         }
-    }
-    if let Some(c) = &spec.consensus {
-        if !CONSENSUS.contains(&c.as_str()) {
+    if let Some(c) = &spec.consensus
+        && !CONSENSUS.contains(&c.as_str()) {
             errs.push(BuildError::new("S0005", format!("unknown consensus `{c}`"), "use one of: majority, unanimous, weighted, quorum"));
         }
-    }
     if let Some(t) = &spec.transport {
         // Only `rmi_*` transports are encoded into the artifact; reject anything
         // else (and non-identifiers) so the spec can't claim a silent no-op.
@@ -767,31 +763,27 @@ pub fn repair_net(spec: &mut NetSpec) -> Vec<String> {
     let op_names: Vec<&str> = OPS.iter().map(|o| o.name).collect();
     let mut running: Option<i64> = None;
     for LayerSpec(name, op, dims) in spec.layers.iter_mut() {
-        if op_info(op).is_none() {
-            if let Some(best) = nearest(op, &op_names, 3) {
+        if op_info(op).is_none()
+            && let Some(best) = nearest(op, &op_names, 3) {
                 fixes.push(format!("layer `{name}`: op `{op}` → `{best}`"));
                 *op = best.to_string();
             }
-        }
         for d in dims.iter_mut() {
             if *d <= 0 {
                 fixes.push(format!("layer `{name}`: dim {d} → 1"));
                 *d = 1;
             }
         }
-        if op == "Linear" && dims.len() == 2 {
-            if let Some(prev) = running {
-                if dims[0] != prev {
+        if op == "Linear" && dims.len() == 2
+            && let Some(prev) = running
+                && dims[0] != prev {
                     fixes.push(format!("layer `{name}`: input dim {} → {prev} (shape chain)", dims[0]));
                     dims[0] = prev;
                 }
-            }
-        }
-        if let Some((_, true)) = op_arity(op) {
-            if let Some(last) = dims.last() {
+        if let Some((_, true)) = op_arity(op)
+            && let Some(last) = dims.last() {
                 running = Some(*last);
             }
-        }
     }
     fixes
 }
@@ -800,28 +792,23 @@ pub fn repair_net(spec: &mut NetSpec) -> Vec<String> {
 /// valid value; replace an unencodable transport with `rmi_quic`.
 pub fn repair_swarm(spec: &mut SwarmSpec) -> Vec<String> {
     let mut fixes = Vec::new();
-    if let Some(t) = &spec.topology {
-        if !TOPOLOGIES.contains(&t.as_str()) {
-            if let Some(best) = nearest(t, TOPOLOGIES, 4) {
+    if let Some(t) = &spec.topology
+        && !TOPOLOGIES.contains(&t.as_str())
+            && let Some(best) = nearest(t, TOPOLOGIES, 4) {
                 fixes.push(format!("topology `{t}` → `{best}`"));
                 spec.topology = Some(best.to_string());
             }
-        }
-    }
-    if let Some(c) = &spec.consensus {
-        if !CONSENSUS.contains(&c.as_str()) {
-            if let Some(best) = nearest(c, CONSENSUS, 4) {
+    if let Some(c) = &spec.consensus
+        && !CONSENSUS.contains(&c.as_str())
+            && let Some(best) = nearest(c, CONSENSUS, 4) {
                 fixes.push(format!("consensus `{c}` → `{best}`"));
                 spec.consensus = Some(best.to_string());
             }
-        }
-    }
-    if let Some(t) = &spec.transport {
-        if !is_ident(t) || !t.starts_with("rmi_") {
+    if let Some(t) = &spec.transport
+        && (!is_ident(t) || !t.starts_with("rmi_")) {
             fixes.push(format!("transport `{t}` → `rmi_quic`"));
             spec.transport = Some("rmi_quic".to_string());
         }
-    }
     fixes
 }
 

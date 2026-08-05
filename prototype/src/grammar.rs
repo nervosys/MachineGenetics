@@ -33,6 +33,12 @@ pub struct ExtensionRegistry {
     pub extensions: Vec<GrammarExtension>,
 }
 
+impl Default for ExtensionRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ExtensionRegistry {
     pub fn new() -> Self {
         let mut reg = Self { extensions: Vec::new() };

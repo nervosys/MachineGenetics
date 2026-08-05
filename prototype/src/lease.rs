@@ -131,6 +131,12 @@ pub struct LeaseManager {
     wait_for: HashMap<AgentId, HashSet<AgentId>>,
 }
 
+impl Default for LeaseManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl LeaseManager {
     pub fn new() -> Self {
         Self {
@@ -273,13 +279,12 @@ impl LeaseManager {
             if current == agent {
                 return true;
             }
-            if visited.insert(current.clone()) {
-                if let Some(waiting_on) = self.wait_for.get(current) {
+            if visited.insert(current.clone())
+                && let Some(waiting_on) = self.wait_for.get(current) {
                     for next in waiting_on {
                         queue.push_back(next);
                     }
                 }
-            }
         }
         false
     }
@@ -300,16 +305,12 @@ impl LeaseManager {
                 // Reconstruct path.
                 let mut path = vec![agent.clone()];
                 let mut node = agent.clone();
-                loop {
-                    if let Some(parent) = visited.get(&node) {
-                        path.push(parent.clone());
-                        if parent == agent {
-                            break;
-                        }
-                        node = parent.clone();
-                    } else {
+                while let Some(parent) = visited.get(&node) {
+                    path.push(parent.clone());
+                    if parent == agent {
                         break;
                     }
+                    node = parent.clone();
                 }
                 path.reverse();
                 return path;

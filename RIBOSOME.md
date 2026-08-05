@@ -239,10 +239,21 @@ though they are not arguments); unchanged → cache hit again. And the §2.1 pol
 under a real toolchain: unpinned + `--shared` rebuilds every time, unpinned +
 local caches on the second run. ✅
 
-The builtins' argument templates are otherwise **unverified against real
-toolchains** — `c`, `cpp`, `go`, `typescript`, and the corrected `python` have not
-met their tools here. They are marked as such in the source. The engine is what
-is tested; a builtin that has not met its compiler is a hypothesis. ◻
+✅ **`go` and `typescript` since verified against real toolchains** — and I had
+wrongly recorded them as unverifiable. The earlier searches only ever looked for
+C compilers; `go` and `node` were installed the whole time. `go` 1.26.5 builds a
+multi-file program end to end, the artifact runs, and a non-root edit rebuilds
+it. `tsc` 5.9.3 exposed a **third broken builtin**: `--outFile` is rejected for
+any source containing an import (`TS6131`), so it could not compile a module.
+
+That makes **three of the five builtins that have met a compiler wrong on first
+contact** — `rust`, `python`, `typescript`. The pattern is not carelessness about
+flags; it is that a plausible-looking command line is not evidence, and only
+running it is.
+
+◻ `c`, `cpp` (no C compiler on this machine) and `python` (Windows Store stub
+only) remain genuinely unrun, and are marked as such in the source. The engine is
+what is tested; a builtin that has not met its compiler is a hypothesis.
 
 ---
 
