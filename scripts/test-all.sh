@@ -91,6 +91,24 @@ if [ "$BENCH" -eq 1 ]; then
         fi
         rm -f "$blog"
     done
+
+    # reliability-bench is a binary rather than a test, and it **exits 1 on its
+    # documented-correct result**: one of the 100 tasks does not parse cleanly
+    # and recovers via structural-heal, which it reports as a failure exit. So
+    # its status is deliberately not treated as pass/fail here — the numbers it
+    # prints are the measurement, and --check-docs compares those. Worth knowing
+    # before wiring this into CI, where a nonzero exit would read as broken.
+    printf '\n=== reliability-bench ===\n'
+    rlog="$(mktemp)"
+    cargo run --release --quiet --manifest-path "$REPO/prototype/Cargo.toml" \
+        --bin reliability-bench 2>&1 | tee "$rlog" || true
+    lex="$(grep -oE 'lex [0-9]+/' "$rlog" | grep -oE '[0-9]+' | head -1)"
+    parse="$(grep -oE 'parse [0-9]+/' "$rlog" | grep -oE '[0-9]+' | head -1)"
+    eff="$(grep -oE 'effective pass: +[0-9]+/' "$rlog" | grep -oE '[0-9]+' | head -1)"
+    [ -n "$lex" ] && COUNTS[rb_lex]="$lex"
+    [ -n "$parse" ] && COUNTS[rb_parse]="$parse"
+    [ -n "$eff" ] && COUNTS[rb_effective]="$eff"
+    rm -f "$rlog"
 fi
 
 echo

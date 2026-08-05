@@ -125,6 +125,9 @@ ARCHITECTURE.md	eval_bench \([0-9]+/	eval_exact
 README.md	computes \*\*[0-9]+/	eval_exact
 DOCS.md	eval\.rs`, [0-9]+/	eval_exact
 DIRECT_CODEGEN_STRATEGY.md	`--eval`, [0-9]+/	eval_exact
+MEASUREMENTS.md	`lex [0-9]+/	rb_lex
+MEASUREMENTS.md	· parse [0-9]+/	rb_parse
+MEASUREMENTS.md	· effective [0-9]+/	rb_effective
 EOF
 )
 
@@ -196,7 +199,7 @@ else
     echo "  -  CUDA counts not checked (no --cuda run supplied one)"
 fi
 
-if [ -n "${ACTUAL[eval_exact]:-}" ]; then
+if [ -n "${ACTUAL[eval_exact]:-}" ] || [ -n "${ACTUAL[rb_lex]:-}" ]; then
     while IFS=$'\t' read -r file pattern key; do
         [ -n "${file:-}" ] || continue
         if [ ! -f "$file" ]; then
@@ -206,14 +209,14 @@ if [ -n "${ACTUAL[eval_exact]:-}" ]; then
         fi
         hit="$(grep -oE -- "$pattern" "$file" | head -1)"
         if [ -z "$hit" ]; then
-            echo "  !  $file: eval_bench claim no longer matches - reworded?" >&2
+            echo "  !  $file: bench-harness claim no longer matches - reworded?" >&2
             fail=1
             continue
         fi
-        compare "$file (eval_bench)" "$key" "$(digits "$hit")"
+        compare "$file (bench)" "$key" "$(digits "$hit")"
     done <<< "$BENCH_CHECKS"
 else
-    echo "  -  eval_bench not checked (no --bench run supplied a result)"
+    echo "  -  bench harnesses not checked (no --bench run supplied results)"
 fi
 
 for file in $PROSE_FILES; do

@@ -1,7 +1,7 @@
 # Documentation index
 
-There are eighteen Markdown documents at the repository root, ~700 KB in total,
-written across five months. They are **not** all current, and several describe
+There are 21 Markdown documents at the repository root, written across five
+months. They are **not** all current, and several describe
 designs that were deliberately *not* built. This index says which is which, so
 nothing here has to be read to find out whether it is still true.
 
@@ -25,7 +25,7 @@ you reword one of these lines, expect to update `scripts/check-doc-counts.sh`
 alongside it; that friction is the point.
 
 Adding `--cuda` also verifies the CUDA figure (needs a GPU) and `--bench` the
-`eval_bench` result: **48 claims** checked with all three, 37 by default. Both
+`eval_bench` result: **51 claims** checked with all three, 38 by default. Both
 report *"not checked"* rather than passing quietly when the run that would
 supply the number did not happen.
 
@@ -46,9 +46,9 @@ Read these to understand the system as it exists.
 | [README.md](README.md) | Entry point: the four forms, the composition algebra, measured benchmarks |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | ABL and tool-mediated construction — the current architecture, including a §6 "Honest boundaries" |
 | [MEASUREMENTS.md](MEASUREMENTS.md) | Every measured functionality and performance figure, with reproduction commands |
-| [ROADMAP.md](ROADMAP.md) | All 122 implementation steps + the open-items list |
+| [ROADMAP.md](ROADMAP.md) | All 158 implementation steps + the open-items list |
 | [ARCHITECTURE_DSL.md](ARCHITECTURE_DSL.md) | The composition algebra (`stack`/`residual`/`branch`/`wrap`) and its measured basis |
-| [RIBOSOME.md](RIBOSOME.md) | The distributed, agent-operated build engine — its own crate, `ribosome/`. **Mixed status, marked inline**: the core (graph, keys, CAS, executor seam, healing, scheduler, fitness), network distribution with authentication and signed provenance, sandboxed subprocess execution, and multi-language support are implemented and tested ✅; TLS and the evolutionary loop above the build are designed ◻. *This row said distribution was unbuilt through step 7 and was not updated when it landed — corrected 2026-08-04.* |
+| [RIBOSOME.md](RIBOSOME.md) | The distributed, agent-operated build engine — its own crate, `ribosome/`. **Mixed status, marked inline**: the core (graph, keys, CAS, executor seam, healing, scheduler, fitness), network distribution with authentication and signed provenance, sandboxed subprocess execution, multi-language support, and TLS (optional `tls` feature) are implemented and tested ✅; the evolutionary loop above the build is designed ◻. *This row said distribution was unbuilt through step 7 and was not updated when it landed — corrected 2026-08-04.* |
 | [GERMLINE.md](GERMLINE.md) | Model succession, handoff, and fallback — the RSI control plane, its own crate `germline/`. **Mixed status, marked inline**: the control plane is complete and tested end to end ✅ (variation, directed search, gate, attestation, lineage, hash-chained journal, cycle, supervision); model training/inference and any unattended daemon are not ◻ |
 | [AGENT_PROTOCOL.md](AGENT_PROTOCOL.md) | How an agent should target ABL bytes rather than text |
 | [UNIFICATION.md](UNIFICATION.md) | MAGE ↔ RMI unification: the bridge, adapters, and the 21-section ontology |

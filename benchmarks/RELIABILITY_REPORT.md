@@ -39,9 +39,9 @@ Backend: **file-oracle**.  Generated from `benchmarks/tasks/*.json` (100 tasks).
 
 | Percentile | µs |
 |---|---:|
-| p50 | 16 |
-| p95 | 126 |
-| p99 | 404 |
+| p50 | 14 |
+| p95 | 68 |
+| p99 | 389 |
 
 ---
 _Backend interface: `CandidateAgent::propose(&Task) -> Result<String, String>`. Wire a real LLM by implementing this trait and replacing `FileOracleAgent` in `prototype/src/bin/reliability_bench.rs`._
