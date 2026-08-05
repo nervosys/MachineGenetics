@@ -1297,14 +1297,67 @@ impl TypeChecker {
                 }
             }
 
-            ast::Expr::StructLit { fields, .. } => {
+            ast::Expr::StructLit { path, fields } => {
+                // Checked against the struct's declaration: field names must
+                // exist, their values must match the declared types, no declared
+                // field may be omitted, and the literal's type is the struct —
+                // not a fresh variable.
+                //
+                // This inferred each value, discarded the result, and returned
+                // `self.fresh()`. A fresh variable unifies with anything, so
+                // `@P { y: 1 }` (no such field), `@P { x: 1 }` on a two-field
+                // struct, and `-> Q { @P { .. } }` all typechecked. It could not
+                // have been written before user-defined types carried identity;
+                // there was nothing to look the declaration up by.
+                let name = path.join(".");
+                let decl = self
+                    .struct_defs
+                    .get(&name)
+                    .map(|(_, f)| f.clone());
+
+                let Some(decl_fields) = decl else {
+                    // Unknown struct (alias, generic, or not yet declared):
+                    // infer the values and stay permissive.
+                    for fi in fields {
+                        if let Some(val) = &fi.value {
+                            self.infer_expr(val);
+                        }
+                    }
+                    return self.fresh();
+                };
+
                 for fi in fields {
-                    if let Some(val) = &fi.value {
-                        self.infer_expr(val);
+                    let got = match &fi.value {
+                        Some(val) => self.infer_expr(val),
+                        // Shorthand `@P { x }`: the value is the local `x`.
+                        None => match self.env.lookup(&fi.name) {
+                            Some(t) => t.clone(),
+                            None => self.fresh(),
+                        },
+                    };
+                    match decl_fields.iter().find(|(f, _)| *f == fi.name) {
+                        Some((_, want)) => {
+                            if let Err(e) = unify(&mut self.subst, want, &got) {
+                                self.emit_error(format!(
+                                    "field `{}` of `{name}`: {e}",
+                                    fi.name
+                                ));
+                            }
+                        }
+                        None => self
+                            .emit_error(format!("no field `{}` on `{name}`", fi.name)),
                     }
                 }
-                // Return the struct type — simplified for prototype.
-                self.fresh()
+
+                for (want_name, _) in &decl_fields {
+                    if !fields.iter().any(|fi| fi.name == *want_name) {
+                        self.emit_error(format!(
+                            "missing field `{want_name}` in `{name}` literal"
+                        ));
+                    }
+                }
+
+                Ty::Named(crate::hir::SymbolId(self.intern_named(&name)), Vec::new())
             }
 
             ast::Expr::TupleLit { elements } => {
@@ -2020,5 +2073,51 @@ mod nominal_typing_tests {
         // Field lookup ignored the object type and returned the first match in
         // *any* struct, so this handed back B's `y: str` for an A.
         assert!(!errors("S A { x: i32 } S B { y: str } +f f(a: A) -> str { a.y }").is_empty());
+    }
+}
+
+#[cfg(test)]
+mod struct_literal_tests {
+    use crate::{lexer, parser, types};
+
+    fn errors(src: &str) -> Vec<String> {
+        let toks = lexer::lex(src);
+        let module = parser::parse(&toks).expect("parses");
+        let mut tc = types::TypeChecker::new();
+        tc.check_module(&module);
+        tc.diagnostics.iter().map(|d| d.message.clone()).collect()
+    }
+
+    #[test]
+    fn a_valid_literal_typechecks_and_has_the_struct_type() {
+        assert!(errors("S P { x: i32 } +f f() -> P { @P { x: 1 } }").is_empty());
+    }
+
+    #[test]
+    fn unknown_and_missing_fields_are_caught() {
+        // The literal inferred its values, discarded them, and returned a fresh
+        // type variable — which unifies with anything.
+        assert!(!errors("S P { x: i32 } +f f() -> P { @P { y: 1 } }").is_empty());
+        assert!(
+            !errors("S P { x: i32, z: i32 } +f f() -> P { @P { x: 1 } }").is_empty(),
+            "omitting a declared field must fail"
+        );
+    }
+
+    #[test]
+    fn a_field_value_must_match_its_declared_type() {
+        // `1b` / `0b` are MAGE's boolean literals — there is no `true`/`false`
+        // keyword, as `MAGE_ONTOLOGY.json` states. Worth knowing before writing
+        // a test in Rust's syntax and misreading the resolver's "unresolved
+        // name: `true`" as a type-checking failure.
+        assert!(!errors("S P { x: i32 } +f f() -> P { @P { x: 1b } }").is_empty());
+    }
+
+    #[test]
+    fn the_literal_has_its_own_struct_type_not_a_free_variable() {
+        // Two structs with identical shapes are still different types.
+        assert!(
+            !errors("S P { x: i32 } S Q { x: i32 } +f f() -> Q { @P { x: 1 } }").is_empty()
+        );
     }
 }
