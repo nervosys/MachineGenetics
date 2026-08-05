@@ -170,7 +170,7 @@ impl Toolchain {
     /// weaker than it appears to:
     ///
     /// ```text
-    /// mage-parse@0.2.0                     structural
+    /// mage-parse@0.3.0                     structural
     /// clang@18.1.0+sha256-1f3a9c2b7d40      pinned
     /// gcc@13.2.0+unpinned                   declared
     /// ```
@@ -871,7 +871,7 @@ pub mod builtin {
         Language::new(
             "mage",
             &["mg", "mage"],
-            Toolchain::structural("mage-parse", "0.2.0"),
+            Toolchain::structural("mage-parse", "0.3.0"),
             Granularity::WholeTarget,
             Rule::new("{name}.abl").args(["--build=abl", "{srcs}", "-o", "{out}"]),
         )
@@ -1045,7 +1045,7 @@ mod tests {
         let plan = reg.plan(&Target::new("m", "mage").source("m.mg", d("net M {}"))).unwrap();
         assert_eq!(plan.hermeticity, Hermeticity::Structural);
         assert!(plan.remote_cacheable());
-        assert_eq!(plan.actions[0].tool, "mage-parse@0.2.0");
+        assert_eq!(plan.actions[0].tool, "mage-parse@0.3.0");
         assert!(plan.unpinned_tools().is_empty());
     }
 
