@@ -55,3 +55,26 @@ gh release download v0.2.0 -p '*.mp4'  # or fetch the release asset
   has cloned the repo, so it is prepared rather than done:
   [`scripts/purge-video-from-history.sh`](../scripts/purge-video-from-history.sh)
   (dry-run by default). Attach the video to the release *before* running it.
+
+## Dependency security
+
+Remotion is pinned exactly (`--save-exact`) rather than floated with `^`. On
+2026-08-05 this project accounted for **all 16** of the repository's open
+Dependabot alerts — 4 critical, 8 high — and none of the Rust crates had any.
+Bumping `remotion` and `@remotion/cli` 4.0.293 → 4.0.506, both patch releases
+within 4.0.x, cleared every one: `npm audit` reports 0.
+
+Two things worth knowing before touching this again:
+
+- **It is genuinely isolated.** Nothing in the build depends on `video/`, it has
+  no CI job, and no Rust crate references it. That is why a lockfile this large
+  can be updated without coordinating anything else.
+- **Isolated is not the same as ignorable.** A `critical` advisory in a project
+  nobody builds is still a repository-level alert, and the noise makes a real
+  alert in shipped code easier to miss. The pin is exact so the next drift is a
+  deliberate act rather than an `npm install` side effect.
+
+Verified after the bump: `tsc --noEmit` clean, and `npx remotion compositions
+src/index.ts` still resolves `AgenticRain` at 1920x1080, 30 fps, 600 frames. The
+video itself was **not** re-rendered — the 37 MB output is a release asset,
+git-ignored, and deliberately absent from history (ROADMAP open item 5).
