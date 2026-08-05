@@ -149,6 +149,59 @@ join an O(matches) lookup); the fixpoint went from ~O(N³) → ~O(output) (semi-
 derives each fact ~once). Correctness unchanged (984 tests green, terminates at
 the least fixpoint). This was the one perf gap the prior report flagged — now fixed.
 
+### CUDA backend — CPU vs GPU (measured 2026-08-05)
+
+This document is the ground truth for performance claims and had **no GPU
+numbers at all**, despite the CUDA backend being a headline feature with a
+working harness (`cuda-bench`) that had never been run outside a CI job gated
+off for want of a runner. These are that harness's output.
+
+Hardware: **RTX 3090 Ti**, driver 610.88, IronAccelerator `v2.2.0`.
+Reproduce: `cargo run --release --features cuda --bin cuda-bench`.
+
+**P-storage chain** (`matmul → add → relu → scale`), the case that matters most:
+
+| dim | iters | cpu ms | gpu ms | speedup |
+|--:|--:|--:|--:|--:|
+| 64 | 500 | 109.8 | 143.2 | 0.77× |
+| 128 | 400 | 435.0 | 130.7 | 3.3× |
+| 256 | 300 | 2226.8 | 92.6 | 24× |
+| 512 | 200 | 11385.8 | 310.6 | 37× |
+| 1024 | 100 | 48151.6 | 312.1 | **154×** |
+
+`bounce=0` across the whole sweep — the chain stayed GPU-resident, with no
+round-trip to host memory between ops. That counter is the point of the table:
+a fast kernel that bounces to the host between every operation gives most of the
+win back, and 0 says this one does not. At dim 64 the GPU is *slower* (0.77×),
+which is the honest shape — launch overhead dominates until the work is big
+enough, and a table that started at 128 would hide the crossover.
+
+**INT8 GEMM** (cuBLASLt IMMA tensor cores) vs F32, GEMM only:
+
+| dim | f32 ms | imma ms | speedup | calibrated e2e |
+|--:|--:|--:|--:|--:|
+| 512 | 5.84 | 6.34 | 0.92× | 0.64× |
+| 1024 | 25.24 | 12.44 | 2.03× | 1.88× |
+| 2048 | 70.50 | 19.45 | **3.62×** | 3.14× |
+
+IMMA confirmed by `quant_imma_count=1006`, so the path is real rather than
+silently falling back. Calibrated end-to-end is reported alongside GEMM-only
+because quantization is not free and quoting only the kernel would flatter it.
+
+**conv2d** — CPU naive vs GPU im2col+GEMM (NCHW, stride 1, pad 1):
+
+| N | Cin | Cout | HW | cpu ms | gpu ms | speedup |
+|--:|--:|--:|--:|--:|--:|--:|
+| 1 | 3 | 16 | 32 | 59.7 | 1.8 | 33× |
+| 1 | 16 | 32 | 32 | 651.7 | 7.0 | 93× |
+| 8 | 16 | 32 | 28 | 4514.5 | 168.8 | 27× |
+| 1 | 64 | 64 | 56 | 5352.3 | 16.8 | **319×** |
+
+The CPU side is a naive reference implementation, not a tuned one, so these
+ratios measure "GPU vs the obvious CPU code" rather than "GPU vs BLAS". Every
+row carried its ✓ correctness marker: GPU output matched CPU within tolerance,
+which is what makes the speedups meaningful rather than merely fast.
+
 ### CLI per-invocation latency (what an agent experiences)
 25-run mean, release binary:
 ```
