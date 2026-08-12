@@ -1340,7 +1340,70 @@ $$
 
 ### 11.4 Effect Inference
 
-Effects are inferred bottom-up. Explicit annotations are optional documentation.
+Effects are inferred bottom-up: leaf functions first, callers accumulating the
+union of everything they reach.
+
+Annotations are **not** optional documentation. The rule the compiler enforces
+is *under*-declaration, at the module boundary:
+
+- a **private** function may omit its annotation and infer silently;
+- a **`pub` function, or `main`,** must declare every effect it performs;
+- any function that *does* annotate is held to it — inferred ⊆ declared —
+  whether it is public or not.
+
+Over-declaration is always accepted, so an annotation is an upper bound rather
+than an exact description. This is sound because effects propagate
+transitively: whatever a private function performs surfaces in the inferred set
+of every public caller that reaches it. The capability gate holds at the module
+surface while internal code pays no annotation tokens.
+
+An effect name must resolve — a built-in kind from §11.2, or an `effect` block.
+An annotation naming neither is an error, so a misspelling cannot silently
+become a new effect that is enforced and matches nothing.
+
+### 11.5 Performing and Handling
+
+An `effect` block declares an effect and its operations:
+
+```mg
+effect Audit {
+    f record(entry: String) -> usize;
+}
+```
+
+Calling an operation performs the effect — this is the introduction rule, and
+what puts `audit` in the function's inferred set:
+
+```mg
+f transcribe(entry: String) -> usize / audit {
+    Audit.record(entry)
+}
+```
+
+`handle … with` is the elimination rule of [E-Handle]. It removes the effect
+from the block it wraps, so the handling function can be pure:
+
+```mg
+f summarize(entry: String) -> String {
+    val n = handle { transcribe(entry) } with Audit {
+        record(e) => len(chars(e))
+    }
+    f"recorded {n} chars"
+}
+```
+
+The subtraction is per handled *block*, not per function: an unhandled call
+beside a handled one still reports. The arm's own effects are attributed to the
+handling function, so handling `audit` by writing a file yields `/ fs` — a
+handler exchanges one effect for the effects of handling it.
+
+Handlers are found **dynamically** (the innermost handler for an operation
+wins) and evaluated **lexically** (an arm sees the scope the handler was
+written in, not the frame that performed the operation).
+
+**Handlers do not resume.** An operation call dispatches to its arm and returns
+like an ordinary call. `resume`, and with it generators and backtracking from
+the same mechanism, is not implemented.
 
 ---
 
