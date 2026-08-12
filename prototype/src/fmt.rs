@@ -1264,6 +1264,27 @@ fn emit_expr(buf: &mut String, expr: &Expr, mode: Mode) {
                 buf.push('}');
             }
         }
+        Expr::Handle { body, effect, arms } => {
+            match mode {
+                Mode::Agent => buf.push_str("hx "),
+                Mode::Human => buf.push_str("handle "),
+            }
+            buf.push_str("{\n");
+            emit_block_body(buf, body, mode, 1);
+            buf.push_str("} with ");
+            buf.push_str(effect);
+            buf.push_str(" {\n");
+            for arm in arms {
+                buf.push_str("    ");
+                buf.push_str(&arm.op);
+                buf.push('(');
+                buf.push_str(&arm.params.join(", "));
+                buf.push_str(") => ");
+                emit_expr(buf, &arm.body, mode);
+                buf.push_str(",\n");
+            }
+            buf.push('}');
+        }
         Expr::Match { scrutinee, arms } => {
             match mode {
                 Mode::Agent => buf.push_str("?= "),

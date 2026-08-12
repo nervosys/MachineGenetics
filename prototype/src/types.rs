@@ -307,6 +307,16 @@ pub struct TypeChecker {
     /// Enum definitions: enum name → its variant names. Used for match
     /// exhaustiveness checking.
     enum_defs: HashMap<String, Vec<String>>,
+    /// Operations of each declared `effect` block: `(effect, op)` → parameter
+    /// types and return type.
+    ///
+    /// Before this the operations in an `effect` block were parsed, stored, and
+    /// read by nothing — an `effect` declaration was decoration. They are the
+    /// signature an operation call is checked against and the types a handler
+    /// arm's parameters are bound at, so they exist in exactly one place.
+    effect_ops: HashMap<(String, String), (Vec<Ty>, Ty)>,
+    /// Names of declared `effect` blocks, in declaration order.
+    effect_defs: Vec<String>,
     /// Interned names of user-defined types: name → id, and id → name.
     ///
     /// Gives `Ty::Named` real identity. Two vectors rather than one bimap
@@ -344,6 +354,8 @@ impl TypeChecker {
             struct_defs: HashMap::new(),
             fn_sigs: HashMap::new(),
             enum_defs: HashMap::new(),
+            effect_ops: HashMap::new(),
+            effect_defs: Vec::new(),
             named_ids: HashMap::new(),
             named_names: Vec::new(),
             ret_stack: Vec::new(),
@@ -520,6 +532,20 @@ impl TypeChecker {
 
     fn collect_item_sig(&mut self, item: &ast::Item) {
         match &item.kind {
+            ast::ItemKind::Effect(ed) => {
+                self.effect_defs.push(ed.name.clone());
+                for op in &ed.operations {
+                    let params: Vec<Ty> =
+                        op.params.iter().map(|p| self.lower_type(&p.ty)).collect();
+                    // An operation with no `->` returns unit, like a function.
+                    let ret = match &op.return_type {
+                        Some(t) => self.lower_type(t),
+                        None => Ty::Unit,
+                    };
+                    self.effect_ops
+                        .insert((ed.name.clone(), op.name.clone()), (params, ret));
+                }
+            }
             ast::ItemKind::Function(fd) => {
                 let params: Vec<Ty> = fd.params.iter().map(|p| self.lower_type(&p.ty)).collect();
                 // No return annotation → a fresh inference var, resolved from the
@@ -1324,7 +1350,56 @@ impl TypeChecker {
                 self.subst.apply(&ret)
             }
 
-            ast::Expr::MethodCall { receiver, args, .. } => {
+            ast::Expr::MethodCall { receiver, method, args, .. } => {
+                // `Audit.record(x)` — an effect operation, not a method. The
+                // receiver is the effect's name, so it is checked before the
+                // receiver is inferred as a value; there is no value there to
+                // infer, and treating it as one is what made an operation call
+                // return a fresh variable and accept any arguments at all.
+                if let ast::Expr::Ident { name } = receiver.as_ref()
+                    && let Some((params, ret)) =
+                        self.effect_ops.get(&(name.clone(), method.clone())).cloned()
+                {
+                    if params.len() != args.len() {
+                        self.emit_error(format!(
+                            "effect operation `{name}.{method}` takes {} argument(s), \
+                             given {}",
+                            params.len(),
+                            args.len()
+                        ));
+                    }
+                    for (arg, want) in args.iter().zip(params.iter()) {
+                        let got = self.infer_expr(arg);
+                        if let Err(e) = unify(&mut self.subst, &got, want) {
+                            self.emit_error(format!(
+                                "effect operation `{name}.{method}`: {e}"
+                            ));
+                        }
+                    }
+                    return ret;
+                }
+                // The receiver names a declared effect, but the operation is
+                // not one of its declarations. That is a misspelling, and it
+                // has to be an error here: the effect analysis attributes the
+                // effect on the *receiver* alone, so `Audit.recrod(x)` was
+                // accepted, counted as performing `audit`, and then died at run
+                // time with `unknown function`. Exactly the shape of bug this
+                // whole feature exists to stop being possible.
+                if let ast::Expr::Ident { name } = receiver.as_ref()
+                    && self.effect_defs.contains(name)
+                {
+                    let mut ops: Vec<&str> = self
+                        .effect_ops
+                        .keys()
+                        .filter(|(e, _)| e == name)
+                        .map(|(_, op)| op.as_str())
+                        .collect();
+                    ops.sort_unstable();
+                    self.emit_error(format!(
+                        "effect `{name}` declares no operation `{method}` (it declares: {})",
+                        if ops.is_empty() { "none".to_string() } else { ops.join(", ") }
+                    ));
+                }
                 self.infer_expr(receiver);
                 for arg in args {
                     self.infer_expr(arg);
@@ -1560,6 +1635,54 @@ impl TypeChecker {
                 result
             }
 
+            // `handle { body } with E { op(p) => … }`. The value is the body's,
+            // exactly as if the handler were not there — a handler discharges
+            // an effect, it does not change what the computation produces.
+            ast::Expr::Handle { body, effect, arms } => {
+                if !self.effect_defs.contains(effect) {
+                    self.emit_error(format!(
+                        "unknown effect `{effect}`: `handle … with` needs an \
+                         `effect {effect} {{ … }}` declaration"
+                    ));
+                }
+                for arm in arms {
+                    let Some((params, ret)) =
+                        self.effect_ops.get(&(effect.clone(), arm.op.clone())).cloned()
+                    else {
+                        self.emit_error(format!(
+                            "effect `{effect}` declares no operation `{}`",
+                            arm.op
+                        ));
+                        continue;
+                    };
+                    if params.len() != arm.params.len() {
+                        self.emit_error(format!(
+                            "handler for `{effect}.{}` binds {} parameter(s), the \
+                             operation declares {}",
+                            arm.op,
+                            arm.params.len(),
+                            params.len()
+                        ));
+                    }
+                    // The arm's parameters take their types from the effect
+                    // declaration rather than from annotations on the arm, so
+                    // there is only one place for them to be written.
+                    self.env.push();
+                    for (name, ty) in arm.params.iter().zip(params.iter()) {
+                        self.env.insert(name.clone(), ty.clone());
+                    }
+                    let body_ty = self.infer_expr(&arm.body);
+                    self.env.pop();
+                    if let Err(e) = unify(&mut self.subst, &body_ty, &ret) {
+                        self.emit_error(format!(
+                            "handler for `{effect}.{}` must produce what the \
+                             operation returns: {e}",
+                            arm.op
+                        ));
+                    }
+                }
+                self.infer_block(body)
+            }
             ast::Expr::Loop { body } => {
                 self.infer_block(body);
                 // Loop type is determined by break expressions.

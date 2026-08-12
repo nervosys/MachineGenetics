@@ -848,6 +848,21 @@ impl Resolver {
                     self.pop_scope();
                 }
             }
+            // The handled body resolves in the enclosing scope; each arm gets
+            // its own, with the operation's parameters bound as plain names.
+            // Their types come from the `effect` declaration, so the resolver
+            // only has to make them visible.
+            ast::Expr::Handle { body, arms, .. } => {
+                self.resolve_block(body);
+                for arm in arms {
+                    self.push_scope();
+                    for p in &arm.params {
+                        self.define_value(p, SymbolKind::Variable { mutable: false });
+                    }
+                    self.resolve_expr(&arm.body);
+                    self.pop_scope();
+                }
+            }
             ast::Expr::Loop { body } => {
                 self.resolve_block(body);
             }

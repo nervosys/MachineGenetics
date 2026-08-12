@@ -78,7 +78,7 @@ declare -A EXPECTED=(
     [cli-tool]='"-i alpha -> alpha beta | ALPHA delta; -c beta -> 2; no pattern -> usage error"'
     [cost-aware-optimizer]='"3 benchmark samples; x86-64: size | aarch64: balanced | riscv64: balanced | wasm32: balanced; x86-64: size | aarch64: size | riscv64: no candidate within budget | wasm32: balanced"'
     [data-structures]='"points=3, total_distance=15, closest=3"'
-    [effects-showcase]='"statuses=3 missing=0; 3 configured, live ok; up.example@1700000017; audited 21 chars; ok/warn/error; 3 samples, worst 503"'
+    [effects-showcase]='"statuses=3 missing=0; 3 configured, live ok; up.example@1700000017; audited 21 chars; recorded 21 chars; ok/warn/error; 3 samples, worst 503"'
     [hello-world]='"Hello, MAGE! (your name has 4 letters)"'
     [http-client]='"1: user 1 Ada (active=true); 2: rate limited, retry in 30s; 3: not found; 4: decode: expected 3 fields, got 1"'
     [live-compiler]='"live r2 passing 4; rollbacks 1; after explicit rollback r1 passing 3; type: handler:9 unresolved placeholder; revert placeholder@70; no repair proposed"'

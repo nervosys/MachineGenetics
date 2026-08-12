@@ -129,6 +129,7 @@ fn err<T>(m: impl Into<String>) -> Result<T, Control> {
 }
 
 /// Lexical environment: a stack of scopes.
+#[derive(Clone)]
 struct Env {
     scopes: Vec<HashMap<String, Value>>,
 }
@@ -187,6 +188,26 @@ pub struct Interp {
     /// same (`Left { X }` and `Right { X }`), and keying by variant alone let the
     /// second registration evict the first, so one of the two stopped resolving.
     enum_variants: HashMap<(String, String), usize>,
+    /// Effect handlers currently installed, innermost last.
+    ///
+    /// A dynamic stack, because that is what an effect handler is: the call
+    /// that performs the operation may be many frames below the `handle` that
+    /// discharges it, and it does not know which handler it will reach. The
+    /// *arm bodies*, though, close over the environment where the handler was
+    /// written, so a handler is dynamically found and lexically evaluated.
+    ///
+    /// `RefCell` because `eval` takes `&self`; the alternative is threading a
+    /// handler stack through every expression form.
+    handlers: RefCell<Vec<HandlerFrame>>,
+}
+
+/// One installed `handle … with E { … }`.
+struct HandlerFrame {
+    effect: String,
+    /// op name → (parameter names, body).
+    arms: HashMap<String, (Vec<String>, Expr)>,
+    /// The environment the handler was written in, captured at installation.
+    env: Env,
 }
 
 impl Interp {
@@ -219,7 +240,24 @@ impl Interp {
                 _ => {}
             }
         }
-        Interp { funcs, methods, enum_variants }
+        Interp { funcs, methods, enum_variants, handlers: RefCell::new(Vec::new()) }
+    }
+
+    /// The innermost installed handler for `effect.op`, if any.
+    ///
+    /// Innermost-first, so a nested `handle` shadows an outer one for the same
+    /// effect — the ordinary scoping rule, and the reason the stack is searched
+    /// backwards rather than forwards.
+    fn handler_for(&self, effect: &str, op: &str) -> Option<(Vec<String>, Expr, Env)> {
+        self.handlers
+            .borrow()
+            .iter()
+            .rev()
+            .find(|f| f.effect == effect && f.arms.contains_key(op))
+            .map(|f| {
+                let (params, body) = &f.arms[op];
+                (params.clone(), body.clone(), f.env.clone())
+            })
     }
 
     /// The type name a value dispatches on, for values that can carry methods.
@@ -434,6 +472,26 @@ impl Interp {
                 }
             }
             Expr::Block { block } => self.eval_block(block, env),
+            Expr::Handle { body, effect, arms } => {
+                self.handlers.borrow_mut().push(HandlerFrame {
+                    effect: effect.clone(),
+                    arms: arms
+                        .iter()
+                        .map(|a| (a.op.clone(), (a.params.clone(), a.body.clone())))
+                        .collect(),
+                    // The environment the handler was *written* in. An arm
+                    // must not see the locals of whatever frame happened to
+                    // perform the operation.
+                    env: env.clone(),
+                });
+                // Bound rather than `?`-propagated: the frame has to come off
+                // the stack even when the body returns or errors, or a `return`
+                // out of a handled block would leave the handler installed for
+                // everything that ran afterwards.
+                let out = self.eval_block(body, env);
+                self.handlers.borrow_mut().pop();
+                out
+            }
             Expr::Match { scrutinee, arms } => {
                 let v = match scrutinee {
                     Some(e) => self.eval(e, env)?,
@@ -597,6 +655,33 @@ impl Interp {
                 // shape, and is a constructor rather than a call: check it
                 // first, since there is no receiver value to evaluate.
                 if let Expr::Ident { name } = receiver.as_ref() {
+                    // An effect operation: `Audit.record(x)`. Dispatched to the
+                    // innermost installed handler. Before this, an operation
+                    // declared in an `effect` block typechecked and then died
+                    // with `unknown function`, because nothing ever read the
+                    // block's operations.
+                    if let Some((params, body, captured)) = self.handler_for(name, method) {
+                        let mut av = Vec::with_capacity(args.len());
+                        for a in args {
+                            av.push(self.eval(a, env)?);
+                        }
+                        if params.len() != av.len() {
+                            return err(format!(
+                                "effect operation `{name}.{method}` takes {} argument(s), \
+                                 given {}",
+                                params.len(),
+                                av.len()
+                            ));
+                        }
+                        // Evaluated in the handler's own environment, with the
+                        // operation's arguments bound on top.
+                        let mut henv = captured;
+                        henv.push();
+                        for (p, v) in params.iter().zip(av) {
+                            henv.define(p.clone(), v);
+                        }
+                        return self.eval(&body, &mut henv);
+                    }
                     if let Some((enum_name, arity)) = self.as_enum_variant(name, method) {
                         if arity != args.len() {
                             return err(format!(
@@ -2021,5 +2106,71 @@ mod tests {
         let src = "S P { x: i32, y: i32 }\nf d2(p) { p.x * p.x + p.y * p.y }\n\
                    f s() { d2(@P { x: 3, y: 4 }) }";
         assert_eq!(run(src, "s", &[]), Value::Int(25));
+    }
+}
+
+#[cfg(test)]
+mod handler_eval_tests {
+    use super::*;
+
+    fn run(src: &str, f: &str) -> Value {
+        run_source(src, f, &[]).expect("run failed")
+    }
+
+    const DECL: &str = "effect Audit { f record(e: i32) -> i32; }\n";
+
+    /// An operation declared in an `effect` block used to typecheck and then
+    /// die with `unknown function \`record\``, because nothing read the block's
+    /// operations at run time.
+    #[test]
+    fn an_operation_dispatches_to_its_handler() {
+        let src = format!(
+            "{DECL}f w() {{ Audit.record(7) }}\n\
+             f s() {{ handle {{ w() }} with Audit {{ record(e) => e * 3 }} }}"
+        );
+        assert_eq!(run(&src, "s"), Value::Int(21));
+    }
+
+    /// A handler is found dynamically — `w` does not mention the handler and
+    /// sits a call frame below it.
+    #[test]
+    fn the_innermost_handler_wins() {
+        let src = format!(
+            "{DECL}f w() {{ Audit.record(1) }}\n\
+             f s() {{ handle {{ handle {{ w() }} with Audit {{ record(e) => 20 }} }} \
+             with Audit {{ record(e) => 10 }} }}"
+        );
+        assert_eq!(run(&src, "s"), Value::Int(20));
+    }
+
+    /// …but evaluated lexically: the arm sees the environment the *handler* was
+    /// written in, not the frame that performed the operation.
+    #[test]
+    fn an_arm_body_sees_the_handlers_own_scope() {
+        let src = format!(
+            "{DECL}f w() {{ v hidden = 999\n Audit.record(1) }}\n\
+             f s() {{ v scale = 5\n handle {{ w() }} with Audit {{ record(e) => e * scale }} }}"
+        );
+        assert_eq!(run(&src, "s"), Value::Int(5));
+    }
+
+    /// The frame comes off the stack when the block ends, or everything after a
+    /// handled call would keep dispatching to a handler that is out of scope.
+    #[test]
+    fn a_handler_does_not_outlive_its_block() {
+        let src = format!(
+            "{DECL}f w() {{ Audit.record(1) }}\n\
+             f s() {{ v a = handle {{ w() }} with Audit {{ record(e) => 4 }}\n a + w() }}"
+        );
+        let out = run_source(&src, "s", &[]);
+        assert!(out.is_err(), "the second, unhandled call must fail: {out:?}");
+    }
+
+    #[test]
+    fn the_handled_block_still_produces_its_own_value() {
+        let src = format!(
+            "{DECL}f s() {{ handle {{ 6 * 7 }} with Audit {{ record(e) => 0 }} }}"
+        );
+        assert_eq!(run(&src, "s"), Value::Int(42));
     }
 }

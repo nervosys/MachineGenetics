@@ -630,6 +630,9 @@ impl<'a> EmitCtx<'a> {
             ast::Expr::Match { arms, .. } => {
                 format!("MAGE.match({} arms)", arms.len())
             }
+            ast::Expr::Handle { effect, arms, .. } => {
+                format!("MAGE.handle({effect}, {} ops)", arms.len())
+            }
             ast::Expr::Loop { .. } => "MAGE.loop { ... }".to_string(),
             ast::Expr::While { .. } => "MAGE.while { ... }".to_string(),
             ast::Expr::For { .. } => "MAGE.for { ... }".to_string(),

@@ -284,6 +284,25 @@ pub enum Expr {
         scrutinee: Option<Box<Expr>>,
         arms: Vec<MatchArm>,
     },
+    /// `handle { body } with Audit { record(e) => … }` — the effect system's
+    /// elimination rule.
+    ///
+    /// Effects could be declared, annotated, inferred, and enforced, but never
+    /// *discharged*: there was no way to satisfy `/ audit` other than to keep
+    /// propagating it outward forever. This is what removes it. The handled
+    /// effect leaves the body's effect set; whatever the arms themselves do
+    /// takes its place, so handling `audit` by writing to a file is honestly
+    /// reported as `/ fs`.
+    ///
+    /// Handlers do not resume. An operation call dispatches to the matching arm
+    /// and returns its value like an ordinary call, which is what a
+    /// tree-walking evaluator can implement without capturing continuations.
+    Handle {
+        body: Block,
+        /// The declared `effect` block being discharged.
+        effect: String,
+        arms: Vec<HandlerArm>,
+    },
     Loop {
         body: Block,
     },
@@ -363,6 +382,18 @@ pub struct FieldInit {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MatchArm {
     pub pattern: Pattern,
+    pub body: Expr,
+}
+
+/// One operation of a handled effect: `record(entry) => persist(entry)`.
+///
+/// The parameters are bare names rather than patterns. Their types come from
+/// the `effect` block's declaration of the operation, so writing them again
+/// here would be a second place for them to disagree.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HandlerArm {
+    pub op: String,
+    pub params: Vec<String>,
     pub body: Expr,
 }
 

@@ -8,8 +8,8 @@
 //   - where that is *enforced*: private functions infer their effects, public
 //     ones must declare them. The check is at the module boundary.
 //   - composition, both `/ io, net` and `/ io + net` (the parser takes either)
-//   - a custom effect: any name that is not built in becomes one
-//   - `effect` declarations
+//   - a custom effect, declared by an `effect` block
+//   - performing an operation, and `handle … with` to *discharge* the effect
 //   - `guard` for early exit, and `defer`
 //
 // The rule the checker enforces is *under*-declaration: a published function
@@ -18,9 +18,10 @@
 // description. Every claim in this file was checked by running
 // `mage-parse --check` on an edited copy, not by reading the compiler.
 //
-// Not shown, because it does not exist yet: effect *handlers*. There is no
-// `handle` form — `mage-parse --check` reports `unresolved name: handle`. An
-// effect can be declared, annotated, inferred, and enforced, but not discharged.
+// The elimination rule is `handle { … } with E { … }`: it removes an effect
+// from the block it wraps, so a function can be *pure* despite calling
+// something effectful. Handlers do not resume — an operation call dispatches to
+// its arm and returns like an ordinary call.
 //
 // Run:  forge run        (or:  mage-parse --eval src/main.mg main)
 
@@ -28,9 +29,23 @@
 
 // An `effect` block names an effect and the operations that belong to it. The
 // trailing semicolon on each signature is required.
+//
+// A declaration is not optional: an effect annotation naming nothing is an
+// error. It used to be accepted, which meant `/ nte` was not a misspelling of
+// `/ net` but a silently different effect that matched nothing.
+//
+// The declaration is `Audit`, the annotation is `/ audit`. The two spellings
+// are matched case-insensitively.
 effect Audit {
-    fn record(entry: String);
+    fn record(entry: String) -> usize;
 }
+
+// `db` is a custom effect too — it is not one of the built-in kinds (`io`,
+// `net`, `fs`, `async`, `alloc`, `panic`, `ffi`, `env`, `time`, `gpu`, `npu`,
+// `llm`, `evolve`, `learn`, `rng` — see `Effect::from_name` in `hir.rs`). It
+// carries no operations, which is allowed: a bare `effect` block is how you
+// name an effect you only want to track, not perform through.
+effect Db {}
 
 // ── Pure core ────────────────────────────────────────────────────────
 
@@ -77,10 +92,8 @@ fn jitter() -> i32 / rng {
     17
 }
 
-// `db` is not one of the built-in effect kinds (`io`, `net`, `fs`, `async`,
-// `alloc`, `panic`, `ffi`, `env`, `time`, `gpu`, `npu`, `llm`, `evolve`,
-// `learn`, `rng` — see `Effect::from_name` in `hir.rs`). Any other name becomes
-// a custom effect and is tracked the same way, so the system is open, not fixed.
+// Custom effects propagate and are enforced exactly like built-in ones, so the
+// system is open rather than fixed.
 fn persist(record: String) -> usize / db {
     len(chars(record))
 }
@@ -128,6 +141,33 @@ fn audit(entry: String) -> String / db {
     f"audited {len(chars(entry))} chars"
 }
 
+// ── Performing an effect, and discharging it ─────────────────────────
+
+// `Audit.record(...)` *performs* the operation. That is what puts `audit` in
+// this function's effect set — the annotation is checked against it, not the
+// source of it.
+fn transcribe(entry: String) -> usize / audit {
+    Audit.record(entry)
+}
+
+// And here it is discharged. `handle { … } with Audit { … }` removes `audit`
+// from the block, so this function is **pure** even though `transcribe` is not:
+// `--check` reports `f summarize_audit: pure`.
+//
+// The subtraction is per-block, not per-function. A second, unhandled call to
+// `transcribe` outside this `handle` would still be reported — handling one
+// call does not launder the rest.
+//
+// Whatever the arm itself does is honestly attributed: make `record` call
+// `persist` and this function becomes `/ db`, because that is what it now
+// performs. A handler exchanges one effect for the effects of handling it.
+fn summarize_audit(entry: String) -> String {
+    val n = handle { transcribe(entry) } with Audit {
+        record(e) => len(chars(e))
+    }
+    f"recorded {n} chars"
+}
+
 // ── Entry point ──────────────────────────────────────────────────────
 
 // The union of everything reachable: `fs` and `net` from `check_host`, `time`
@@ -140,6 +180,7 @@ pub fn main() -> String / fs, net, time, rng, db {
     val health = check_host("up.example", "app.toml")
     val stamped = stamp("up.example")
     val logged = audit(health)
+    val transcribed = summarize_audit(health)
 
     val codes = [200, 404, 503]
     val report = map(codes, fn(code) => severity(code))
@@ -150,6 +191,7 @@ pub fn main() -> String / fs, net, time, rng, db {
             health,
             stamped,
             logged,
+            transcribed,
             join(report, "/"),
             summarize(codes),
         ],

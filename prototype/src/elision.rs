@@ -445,6 +445,18 @@ fn elide_expr(expr: &Expr) -> Expr {
         | Expr::Continue
         | Expr::Error { .. } => expr.clone(),
 
+        Expr::Handle { body, effect, arms } => Expr::Handle {
+            body: elide_block(body),
+            effect: effect.clone(),
+            arms: arms
+                .iter()
+                .map(|a| crate::ast::HandlerArm {
+                    op: a.op.clone(),
+                    params: a.params.clone(),
+                    body: elide_expr(&a.body),
+                })
+                .collect(),
+        },
         Expr::Binary { op, left, right } => Expr::Binary {
             op: op.clone(),
             left: Box::new(elide_expr(left)),
