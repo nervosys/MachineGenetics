@@ -474,6 +474,14 @@ fn count_stmt_agent(stmt: &Stmt) -> u32 {
 
 fn count_expr_agent(expr: &Expr) -> u32 {
     match expr {
+        // `hx { … } with E { op(p) => … }`
+        Expr::Handle { body, arms, .. } => {
+            let mut n = 2 + count_block_agent(body); // `hx` + effect name
+            for arm in arms {
+                n += 3 + arm.params.len() as u32 + count_expr_agent(&arm.body);
+            }
+            n
+        }
         Expr::Literal { .. } => 1,
         Expr::Ident { .. } => 1,
         Expr::Binary { left, right, .. } => {
@@ -920,6 +928,13 @@ fn count_stmt_human(stmt: &Stmt) -> u32 {
 
 fn count_expr_human(expr: &Expr) -> u32 {
     match expr {
+        Expr::Handle { body, arms, .. } => {
+            let mut n = 3 + count_block_human(body); // `handle` + `with` + name
+            for arm in arms {
+                n += 3 + arm.params.len() as u32 + count_expr_human(&arm.body);
+            }
+            n
+        }
         Expr::Literal { .. } => 1,
         Expr::Ident { .. } => 1,
         Expr::Binary { left, right, .. } => 1 + count_expr_human(left) + count_expr_human(right),

@@ -1088,6 +1088,49 @@ impl<'a> Parser<'a> {
 
     // ── Effect ──────────────────────────────────────────────
 
+    /// `handle { body } with Audit { record(e) => …, flush() => … }`
+    ///
+    /// The effect name is required rather than inferred from the arms: an
+    /// operation name alone does not say which effect it belongs to, and two
+    /// effects are allowed to declare an operation with the same name.
+    fn parse_handle_expr(&mut self) -> Result<Expr, ParseError> {
+        self.advance(); // `handle` / `hx`
+        let body = self.parse_block()?;
+
+        // `with` is not a keyword — the lexer leaves it a plain identifier —
+        // so it is matched on text, the same way `as` is for casts.
+        if self.peek() != TokenKind::Ident || self.current().text != "with" {
+            return Err(self.error("expected `with <Effect>` after `handle { … }`"));
+        }
+        self.advance();
+
+        let effect = self.expect_ident()?;
+        self.expect(TokenKind::LBrace)?;
+
+        let mut arms = Vec::new();
+        while self.peek() != TokenKind::RBrace && self.peek() != TokenKind::Eof {
+            let op = self.expect_ident()?;
+            self.expect(TokenKind::LParen)?;
+            let mut params = Vec::new();
+            while self.peek() != TokenKind::RParen && self.peek() != TokenKind::Eof {
+                params.push(self.expect_ident()?);
+                if self.peek() == TokenKind::Comma {
+                    self.advance();
+                }
+            }
+            self.expect(TokenKind::RParen)?;
+            self.expect(TokenKind::FatArrow)?;
+            let arm_body = self.parse_expr()?;
+            arms.push(HandlerArm { op, params, body: arm_body });
+            if self.peek() == TokenKind::Comma {
+                self.advance();
+            }
+        }
+        self.expect(TokenKind::RBrace)?;
+
+        Ok(Expr::Handle { body, effect, arms })
+    }
+
     fn parse_effect_def(&mut self) -> Result<EffectDef, ParseError> {
         self.expect(TokenKind::KwEffect)?;
         let name = self.expect_ident()?;
@@ -3721,6 +3764,16 @@ impl<'a> Parser<'a> {
             // Same shape as the sum-type-constructor arm below: parse
             // as a plain Ident, with an optional call-args suffix so
             // `guard(x)` works too.
+            // `handle {` is the effect elimination form; anything else
+            // beginning with `handle` is the corpus using it as a plain name
+            // (`handle.spawn(...)`), which the arm below still allows. The
+            // brace is what separates them, and no identifier use can be
+            // followed by one — a `{` after a bare name would be a block, not
+            // a continuation of the expression.
+            TokenKind::KwHandle if self.peek_n(1) == TokenKind::LBrace => {
+                self.parse_handle_expr()
+            }
+
             TokenKind::KwGuard
             | TokenKind::KwHandle
             | TokenKind::KwNet

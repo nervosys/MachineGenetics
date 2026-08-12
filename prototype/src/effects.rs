@@ -25,7 +25,37 @@ pub struct EffectInfer {
     call_graph: HashMap<String, Vec<String>>,
     /// Currently being inferred (for cycle detection).
     in_progress: Vec<String>,
+    /// Per function, the `handle` regions found in its body.
+    handled: HashMap<String, Vec<HandledRegion>>,
+    /// Regions collected while walking the function currently being collected.
+    /// Drained by `collect_function`; never meaningful between functions.
+    pending_regions: Vec<HandledRegion>,
+    /// Declared `effect` block names, lowercased.
+    ///
+    /// Lowercased because the two spellings of an effect are the declaration
+    /// (`effect Audit`) and the annotation (`/ audit`), and they have to name
+    /// the same thing. Keeping the fold here rather than at each use means the
+    /// convention is stated once.
+    effect_names: std::collections::HashSet<String>,
     pub diagnostics: Vec<Diagnostic>,
+}
+
+/// One `handle { … } with E { … }` occurrence.
+///
+/// The calls inside the handled block are kept *out* of the function's ordinary
+/// callee list and recorded here instead, because their effects have to be
+/// resolved and then have `effect` removed before they join the enclosing
+/// function's set. Discharging by simply deleting the effect from the whole
+/// function would be unsound — an unhandled call to the same operation
+/// elsewhere in the body would be silenced along with it.
+#[derive(Debug, Clone)]
+struct HandledRegion {
+    /// The effect this region discharges.
+    effect: Effect,
+    /// Functions called inside the handled block.
+    callees: Vec<String>,
+    /// Effects performed directly inside the handled block.
+    local: EffectSet,
 }
 
 impl Default for EffectInfer {
@@ -41,6 +71,9 @@ impl EffectInfer {
             inferred: HashMap::new(),
             call_graph: HashMap::new(),
             in_progress: Vec::new(),
+            handled: HashMap::new(),
+            pending_regions: Vec::new(),
+            effect_names: std::collections::HashSet::new(),
             diagnostics: Vec::new(),
         }
     }
@@ -52,6 +85,16 @@ impl EffectInfer {
         // declarations are required here; private functions infer silently —
         // their effects still propagate to any public caller (see Pass 3).
         let mut boundary: std::collections::HashSet<String> = std::collections::HashSet::new();
+
+        // Pass 0: the declared effects. Needed before anything else, because an
+        // operation call introduces its effect and an annotation naming no
+        // declared effect is an error — both need the full set up front.
+        for item in &module.items {
+            if let ast::ItemKind::Effect(ed) = &item.kind {
+                self.effect_names.insert(ed.name.to_lowercase());
+            }
+        }
+
         // Pass 1: collect function declarations and their call graphs.
         for item in &module.items {
             if let ast::ItemKind::Function(fd) = &item.kind {
@@ -59,6 +102,34 @@ impl EffectInfer {
                 if item.visibility == ast::Visibility::Public || fd.name == "main" {
                     boundary.insert(fd.name.clone());
                 }
+            }
+        }
+
+        // Pass 1.5: every effect named in an annotation must exist — a built-in
+        // kind, or an `effect` block in this module.
+        //
+        // Anything else used to become `Effect::Custom` silently, so `/ nte`
+        // was not a misspelling of `/ net` but a *different effect*, enforced
+        // perfectly consistently and matching nothing. A typo invented an
+        // effect rather than failing, which is the most expensive way for a
+        // capability system to be wrong.
+        let mut named: Vec<(&String, &EffectSet)> = self.declared.iter().collect();
+        named.sort_by_key(|(n, _)| n.as_str());
+        for (func, effects) in named {
+            for effect in effects {
+                let Effect::Custom(name) = effect else { continue };
+                if self.effect_names.contains(&name.to_lowercase()) {
+                    continue;
+                }
+                self.diagnostics.push(Diagnostic::categorized(
+                    crate::hir::Severity::Error,
+                    format!(
+                        "function `{func}` declares unknown effect `{name}` — it is not \
+                         a built-in kind, and no `effect {name} {{ … }}` declares it"
+                    ),
+                    DiagnosticCategory::UndeclaredEffect,
+                    None,
+                ));
             }
         }
 
@@ -123,7 +194,12 @@ impl EffectInfer {
         // Build call graph for this function by walking its body.
         let mut callees = Vec::new();
         let mut local_effects = EffectSet::new();
+        self.pending_regions.clear();
         self.collect_calls_in_block(&fd.body, &mut callees, &mut local_effects);
+        let regions = std::mem::take(&mut self.pending_regions);
+        if !regions.is_empty() {
+            self.handled.insert(fd.name.clone(), regions);
+        }
 
         self.call_graph.insert(fd.name.clone(), callees);
 
@@ -134,7 +210,7 @@ impl EffectInfer {
     }
 
     fn collect_calls_in_block(
-        &self,
+        &mut self,
         block: &ast::Block,
         callees: &mut Vec<String>,
         local_effects: &mut EffectSet,
@@ -148,7 +224,7 @@ impl EffectInfer {
     }
 
     fn collect_calls_in_stmt(
-        &self,
+        &mut self,
         stmt: &ast::Stmt,
         callees: &mut Vec<String>,
         local_effects: &mut EffectSet,
@@ -178,7 +254,7 @@ impl EffectInfer {
     }
 
     fn collect_calls_in_expr(
-        &self,
+        &mut self,
         expr: &ast::Expr,
         callees: &mut Vec<String>,
         local_effects: &mut EffectSet,
@@ -205,7 +281,18 @@ impl EffectInfer {
                     self.collect_calls_in_expr(arg, callees, local_effects);
                 }
             }
-            ast::Expr::MethodCall { receiver, args, .. } => {
+            ast::Expr::MethodCall { receiver, method, args, .. } => {
+                // `Audit.record(x)` performs `audit`. This is the introduction
+                // rule: without it an `effect` block declared operations that
+                // no analysis attributed to anyone, so a function calling one
+                // inferred `pure` while claiming `/ audit`.
+                if let ast::Expr::Ident { name } = receiver.as_ref() {
+                    let lowered = name.to_lowercase();
+                    if self.effect_names.contains(&lowered) {
+                        let _ = method;
+                        local_effects.insert(Effect::from_name(&lowered));
+                    }
+                }
                 self.collect_calls_in_expr(receiver, callees, local_effects);
                 for arg in args {
                     self.collect_calls_in_expr(arg, callees, local_effects);
@@ -226,6 +313,24 @@ impl EffectInfer {
                 }
             }
             ast::Expr::Match { arms, .. } => {
+                for arm in arms {
+                    self.collect_calls_in_expr(&arm.body, callees, local_effects);
+                }
+            }
+            // The handled block's calls go into a *separate* bucket, so the
+            // effect can be removed from them alone. The arms are different:
+            // they really do run in the enclosing function, so whatever they
+            // perform belongs to it — handling `audit` by writing a file is
+            // honestly reported as `/ fs`.
+            ast::Expr::Handle { body, effect, arms } => {
+                let mut inner_callees = Vec::new();
+                let mut inner_local = EffectSet::new();
+                self.collect_calls_in_block(body, &mut inner_callees, &mut inner_local);
+                self.pending_regions.push(HandledRegion {
+                    effect: Effect::from_name(&effect.to_lowercase()),
+                    callees: inner_callees,
+                    local: inner_local,
+                });
                 for arm in arms {
                     self.collect_calls_in_expr(&arm.body, callees, local_effects);
                 }
@@ -397,6 +502,23 @@ impl EffectInfer {
                 callee_effects.extend(declared.iter().cloned());
             }
             effects.extend(callee_effects);
+        }
+
+        // Handled regions, resolved the same way and then discharged. The
+        // subtraction happens per region rather than over the whole function,
+        // so a second, unhandled call to the same effect elsewhere in the body
+        // still surfaces.
+        for region in self.handled.get(name).cloned().unwrap_or_default() {
+            let mut region_effects = region.local.clone();
+            for callee in &region.callees {
+                let mut callee_effects = self.infer_function(callee);
+                if let Some(declared) = self.declared.get(callee) {
+                    callee_effects.extend(declared.iter().cloned());
+                }
+                region_effects.extend(callee_effects);
+            }
+            region_effects.remove(&region.effect);
+            effects.extend(region_effects);
         }
 
         self.in_progress.retain(|n| n != name);
@@ -672,5 +794,108 @@ mod tests {
         let ei = infer_source(src);
         // This function is pure (no perform call).
         assert!(ei.effects_of("with_io").is_empty());
+    }
+}
+
+#[cfg(test)]
+mod handler_tests {
+    use super::*;
+    use crate::lexer;
+    use crate::parser;
+
+    fn infer_source(src: &str) -> EffectInfer {
+        let tokens = lexer::lex(src);
+        let module = parser::parse(&tokens).expect("parse failed");
+        infer_effects(&module)
+    }
+
+    fn errors(src: &str) -> Vec<String> {
+        infer_source(src)
+            .diagnostics
+            .iter()
+            .map(|d| d.message.clone())
+            .collect()
+    }
+
+    const DECL: &str = "effect Audit { f record(e: str) -> usize; }\n";
+
+    /// The introduction rule. An `effect` block used to declare operations that
+    /// no analysis attributed to anyone, so a function calling one inferred
+    /// `pure` while claiming `/ audit`.
+    #[test]
+    fn performing_an_operation_introduces_its_effect() {
+        let src = format!("{DECL}+f w(e: str) -> usize {{ Audit.record(e) }}");
+        let msgs = errors(&src);
+        assert!(
+            msgs.iter().any(|m| m.contains("undeclared effects") && m.contains("audit")),
+            "expected `audit` to be attributed to `w`, got {msgs:?}"
+        );
+    }
+
+    /// The elimination rule: the whole point. `main` is pure despite calling
+    /// something that performs `audit`.
+    #[test]
+    fn handle_discharges_the_effect_it_names() {
+        let src = format!(
+            "{DECL}f w(e: str) -> usize / audit {{ Audit.record(e) }}\n\
+             +f main() -> usize {{ handle {{ w(\"x\") }} with Audit {{ record(e) => len(chars(e)) }} }}"
+        );
+        assert!(errors(&src).is_empty(), "errors: {:?}", errors(&src));
+    }
+
+    /// The soundness property. Discharging by deleting the effect from the
+    /// whole function would silence this second, *unhandled* call — so the
+    /// subtraction is per handled block instead.
+    #[test]
+    fn an_unhandled_call_beside_a_handled_one_still_reports() {
+        let src = format!(
+            "{DECL}f w(e: str) -> usize / audit {{ Audit.record(e) }}\n\
+             +f main() -> usize {{ v a = handle {{ w(\"x\") }} with Audit {{ record(e) => 1 }}\n\
+             v b = w(\"y\")\n a + b }}"
+        );
+        let msgs = errors(&src);
+        assert!(
+            msgs.iter().any(|m| m.contains("audit")),
+            "the unhandled call must still surface, got {msgs:?}"
+        );
+    }
+
+    /// A handler is not free: handling `audit` by touching the filesystem makes
+    /// the handling function perform `fs`.
+    #[test]
+    fn a_handlers_own_effects_are_attributed_to_the_handling_function() {
+        let src = format!(
+            "{DECL}f w(e: str) -> usize / audit {{ Audit.record(e) }}\n\
+             f to_disk(e: str) -> usize / fs {{ 1 }}\n\
+             +f main() -> usize {{ handle {{ w(\"x\") }} with Audit {{ record(e) => to_disk(e) }} }}"
+        );
+        let msgs = errors(&src);
+        assert!(
+            msgs.iter().any(|m| m.contains("FS")),
+            "expected the handler's `fs` to surface, got {msgs:?}"
+        );
+    }
+
+    /// An effect annotation naming nothing used to be accepted, so `/ nte` was
+    /// a different effect rather than a misspelling of `/ net`.
+    #[test]
+    fn an_effect_annotation_naming_nothing_is_an_error() {
+        let msgs = errors("+f a() -> i32 / nte { 1 }");
+        assert!(
+            msgs.iter().any(|m| m.contains("unknown effect")),
+            "expected an unknown-effect diagnostic, got {msgs:?}"
+        );
+    }
+
+    #[test]
+    fn a_declared_custom_effect_is_accepted() {
+        assert!(errors("effect Db {}\n+f a() -> i32 / db { 1 }").is_empty());
+    }
+
+    /// Built-in kinds need no declaration — the rule is about names that mean
+    /// nothing, not about forcing boilerplate for `fs`.
+    #[test]
+    fn builtin_effect_kinds_need_no_declaration() {
+        assert!(errors("+f a() -> i32 / fs, net, rng { 1 }").is_empty());
     }
 }

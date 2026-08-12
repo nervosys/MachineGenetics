@@ -15,7 +15,7 @@ run, and are pinned to their output. See "The example rewrite" below.
 
 | | |
 |---|---|
-| Tests | **2,802** — rmi 1,380 · prototype 1,094 · ribosome 164 · germline 112 · forge 52 |
+| Tests | **2,814** — rmi 1,380 · prototype 1,106 · ribosome 164 · germline 112 · forge 52 |
 | CUDA | **1,071 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm |
@@ -109,7 +109,7 @@ Six of the eleven — #5, #6, #7, #8, #9, #11 — are the same class: a bug that
 **typechecks and then does not evaluate**. `--check` cannot find these. Only
 `--eval` can, which is why the pin now runs it.
 
-Prototype tests **1,066 → 1,094**, all green.
+Prototype tests **1,066 → 1,106**, all green.
 
 ### And a twelfth, from this list itself
 
@@ -124,6 +124,35 @@ A non-diverging else is now a check-time error, as Rust's `let`-else requires.
 Surveyed first rather than assumed: every `guard` in the repository — two
 examples, four `prototype/examples/*.mg`, two parser tests — already returns
 explicitly, so nothing had come to depend on the fall-through.
+
+### And the effect system got its elimination rule
+
+`handle { … } with E { … }`. The gap this closes was the one left in the
+"found and left alone" list: effects could be declared, annotated, inferred,
+and enforced, but never *discharged*, so `/ audit` propagated outward forever.
+
+Three things landed together, because none of them is useful alone:
+
+- **Introduction.** `Audit.record(x)` performs the operation and puts `audit`
+  in the calling function's effect set. Before this an `effect` block declared
+  operations that no analysis attributed to anyone and that the evaluator
+  rejected with `unknown function` — a thirteenth bug of the familiar
+  typechecks-then-does-not-evaluate kind.
+- **Elimination.** `handle` removes the effect from the block it wraps, so a
+  function can be pure despite calling something effectful. The subtraction is
+  **per block, not per function**: an unhandled call sitting beside a handled
+  one still reports. Whatever the arm itself does is attributed honestly, so
+  handling `audit` by writing a file makes the handling function `/ fs`.
+- **Declaration.** An effect annotation naming nothing is now an error.
+  `/ nte` used to be accepted as a *different effect* from `/ net`, enforced
+  consistently and matching nothing — a typo invented an effect instead of
+  failing.
+
+Handlers do not resume. An operation call dispatches to its arm and returns
+like an ordinary call, which is what a tree-walking evaluator can do without
+capturing continuations. Handlers are found **dynamically** (innermost wins)
+and evaluated **lexically** (the arm sees the scope the handler was written
+in), and both are tested.
 
 ### The examples are now pinned to their output, not to their exit status
 
@@ -142,9 +171,6 @@ the answer. `--print` regenerates the block after an intentional change.
 
 ### Found and left alone
 
-- **There is no `handle` form.** `--check` reports `unresolved name: handle`.
-  Effects can be declared, annotated, inferred, and enforced, but never
-  *discharged* — the effect system has no elimination rule.
 - **`agent` and `unsafe` cannot be written as effect names**, because both lex
   as keywords: `/ agent` is a parse error. `rand` is not built in either — the
   built-in kind is `rng`, and anything else silently becomes `Effect::Custom`.
