@@ -15,7 +15,7 @@ run, and are pinned to their output. See "The example rewrite" below.
 
 | | |
 |---|---|
-| Tests | **2,799** — rmi 1,380 · prototype 1,091 · ribosome 164 · germline 112 · forge 52 |
+| Tests | **2,802** — rmi 1,380 · prototype 1,094 · ribosome 164 · germline 112 · forge 52 |
 | CUDA | **1,071 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm |
@@ -109,7 +109,21 @@ Six of the eleven — #5, #6, #7, #8, #9, #11 — are the same class: a bug that
 **typechecks and then does not evaluate**. `--check` cannot find these. Only
 `--eval` can, which is why the pin now runs it.
 
-Prototype tests **1,066 → 1,091**, all green.
+Prototype tests **1,066 → 1,094**, all green.
+
+### And a twelfth, from this list itself
+
+`guard cond else { … }` **fell through** unless the else block explicitly
+returned. `guard n > 0 else { 0 }` did not produce `0` — it ran the body anyway
+with the precondition false, and `a(-5)` answered `-10`. The evaluator's own
+comment admitted it ("A non-diverging else falls through"), which is the third
+time in two sessions that a comment stated the rule while the code beside it did
+something weaker.
+
+A non-diverging else is now a check-time error, as Rust's `let`-else requires.
+Surveyed first rather than assumed: every `guard` in the repository — two
+examples, four `prototype/examples/*.mg`, two parser tests — already returns
+explicitly, so nothing had come to depend on the fall-through.
 
 ### The examples are now pinned to their output, not to their exit status
 
@@ -128,11 +142,6 @@ the answer. `--print` regenerates the block after an intentional change.
 
 ### Found and left alone
 
-- **`guard cond else { … }` falls through** unless the else block explicitly
-  `return`s. `guard n > 0 else { 0 }` does not return `0` — it continues, and
-  the function produces a wrong answer silently. The evaluator's own comment
-  admits it ("A non-diverging else falls through"). Rust's `let`-else requires
-  divergence; making a non-diverging else a check-time error is the fix.
 - **There is no `handle` form.** `--check` reports `unresolved name: handle`.
   Effects can be declared, annotated, inferred, and enforced, but never
   *discharged* — the effect system has no elimination rule.
