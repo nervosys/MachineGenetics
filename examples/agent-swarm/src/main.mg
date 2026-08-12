@@ -1,341 +1,188 @@
-// agent-swarm — Multi-agent task coordination.
+// agent-swarm — declaring agents, assigning work, reaching consensus.
 //
-// Demonstrates:
-//   - Agent primitives (AgentId, SwarmConfig, Task)
-//   - Semantic leases and region ownership
-//   - Swarm orchestration patterns (map-reduce, pipeline)
-//   - Consensus protocols
-//   - Async coordination (pub async fn)
-//   - Effect annotations (/ io, / net)
-//   - Enums for agent roles and task states
-//   - Trait-based agent dispatch
+// `forge run` evaluates `main` and prints its result. Demonstrates:
+//   - `agent` declarations with capabilities and approval gates, and the
+//     capability verification `mage-parse --check` runs over them
+//   - a `swarm` block: which agent, how many, what topology, what consensus
+//   - `trait` + `impl Trait for T` dispatch — each role scores a task its own way
+//   - assignment as `group`, then `map`/`filter`/`fold` over the groups
+//   - majority consensus computed rather than asserted
+//   - the `/ llm` effect, which is what makes a call to a model a tracked
+//     capability instead of an ordinary function call
+//
+// Capabilities are checked. `--check` reports each agent as Verified or
+// Partial: every name below is in the known set (`verify.rs`), so all three
+// verify. Change one to something unrecognised and it downgrades to Partial —
+// which is a report, not an error, so it will not fail a build.
+//
+// Run:  forge run        (or:  mage-parse --eval src/main.mg main)
 
-use std::agent;
-use std::sync;
-use std::col;
-use std::fmt;
-use std::io;
+// ── Agents ───────────────────────────────────────────────────────────
 
-// ── Agent roles ──────────────────────────────────────────────────────
-
-#[derive(Debug, Clone)]
-pub enum Role {
-    Orchestrator,
-    Architect,
-    Synthesizer,
-    Reviewer,
-    Integrator,
-    Verifier,
+// Capabilities are bare identifiers, not strings. `requires_approval` names the
+// operations this agent may request but not perform unilaterally.
+agent Reader {
+    capabilities: [read_source, query_types]
 }
 
-extend  {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Role::Orchestrator => write!(f, "Orchestrator"),
-            Role::Architect => write!(f, "Architect"),
-            Role::Synthesizer => write!(f, "Synthesizer"),
-            Role::Reviewer => write!(f, "Reviewer"),
-            Role::Integrator => write!(f, "Integrator"),
-            Role::Verifier => write!(f, "Verifier"),
-        }
-    }
+agent Critic {
+    capabilities: [read_source, emit_diagnostics]
+    requires_approval: [write_source]
 }
 
-// ── Semantic regions ─────────────────────────────────────────────────
-
-#[derive(Debug, Clone, Hash, Eq, PartialEq)]
-pub enum SemanticRegion {
-    Function(String),
-    Module(String),
-    TraitDef(String),
-    ImplBlock(String),
-    TypeDef(String),
+agent Fixer {
+    capabilities: [read_source, write_source]
+    requires_approval: [exec]
 }
 
-extend  {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            SemanticRegion::Function(name) => write!(f, "fn {name}"),
-            SemanticRegion::Module(name) => write!(f, "mod {name}"),
-            SemanticRegion::TraitDef(name) => write!(f, "trait {name}"),
-            SemanticRegion::ImplBlock(name) => write!(f, "impl {name}"),
-            SemanticRegion::TypeDef(name) => write!(f, "type {name}"),
-        }
-    }
+// A swarm names its member agent, its size, and how members are wired and how
+// their answers are combined. `topology` and `consensus` are identifiers too.
+swarm ReviewTeam {
+    agent: Critic
+    size: 3
+    topology: mesh
+    consensus: majority
 }
 
-// ── Semantic leases ──────────────────────────────────────────────────
+// ── Work ─────────────────────────────────────────────────────────────
 
-#[derive(Debug, Clone)]
-pub enum LeaseKind {
-    SharedRead,
-    ExclusiveWrite,
-    Restructuring,
+enum Role {
+    Read,
+    Critique,
+    Fix,
 }
 
-#[derive(Debug, Clone)]
-pub struct Lease {
-    region: SemanticRegion,
-    kind: LeaseKind,
-    holder: u64,
-    version: u64,
-}
-
-extend  {
-    pub fn new(region: SemanticRegion, kind: LeaseKind, holder: u64) -> Lease {
-        Lease { region: region, kind: kind, holder: holder, version: 0 }
-    }
-
-    pub fn is_write(&self) -> bool {
-        match self.kind {
-            LeaseKind::ExclusiveWrite | LeaseKind::Restructuring => true,
-            _ => false,
-        }
-    }
-}
-
-// ── Task definitions ─────────────────────────────────────────────────
-
-#[derive(Debug, Clone)]
-pub enum TaskStatus {
-    Pending,
-    InProgress,
-    Review,
-    Complete,
-    Failed(String),
-}
-
-#[derive(Debug, Clone)]
-pub struct Task {
-    id: u64,
-    description: String,
-    region: SemanticRegion,
-    assigned_to: ?u64,
-    status: TaskStatus,
-    dependencies: [u64]~,
-}
-
-extend  {
-    pub fn new(id: u64, description: String, region: SemanticRegion) -> Task {
-        Task {
-            id: id,
-            description: description,
-            region: region,
-            assigned_to: None,
-            status: TaskStatus::Pending,
-            dependencies: []~.new(),
-        }
-    }
-
-    pub fn with_deps(id: u64, description: String, region: SemanticRegion, deps: [u64]~) -> Task {
-        Task {
-            id: id,
-            description: description,
-            region: region,
-            assigned_to: None,
-            status: TaskStatus::Pending,
-            dependencies: deps,
-        }
-    }
-
-    pub fn is_ready(&self, completed: &{u64}) -> bool {
-        self.dependencies.iter().all(|d| completed.contains(d))
-    }
-}
-
-// ── Agent definition ─────────────────────────────────────────────────
-
-#[derive(Debug)]
-pub struct Agent {
-    id: u64,
+struct Task {
+    id: String,
+    title: String,
     role: Role,
-    active_lease: ?Lease,
-    tasks_completed: u64,
+    lines: i32,
 }
 
-extend  {
-    pub fn new(id: u64, role: Role) -> Agent {
-        Agent { id: id, role: role, active_lease: None, tasks_completed: 0 }
-    }
-
-    pub fn acquire_lease(&mut self, region: SemanticRegion, kind: LeaseKind) -> Lease {
-        val lease = Lease.new(region, kind, self.id);
-        self.active_lease = Some(lease.clone());
-        println!("  Agent {self.id} ({self.role}) acquired {lease.kind:?} on {lease.region}");
-        lease
-    }
-
-    pub fn release_lease(&mut self) {
-        match &self.active_lease {
-            Some(lease) => println!("  Agent {self.id} ({self.role}) released lease on {lease.region}"),
-            None => {},
-        }
-        self.active_lease = None;
-    }
-
-    pub async fn execute_task(&mut self, task: &mut Task) -> () or String {
-        println!("  Agent {self.id} ({self.role}) working on: {task.description}");
-        task.assigned_to = Some(self.id);
-        task.status = TaskStatus::InProgress;
-
-        // Simulate work.
-        async_rt::sleep(100).await;
-
-        task.status = TaskStatus::Complete;
-        self.tasks_completed = self.tasks_completed + 1;
-        println!("  Agent {self.id} ({self.role}) completed: {task.description}");
-        Ok(())
+fn role_name(role: Role) -> String {
+    ?= role {
+        Role.Read => "reader",
+        Role.Critique => "critic",
+        Role.Fix => "fixer",
     }
 }
 
-// ── Swarm ────────────────────────────────────────────────────────────
+// ── Role-specific scoring, via a trait ───────────────────────────────
 
-#[derive(Debug)]
-pub struct Swarm {
-    agents: [Agent]~,
-    tasks: [Task]~,
-    completed_ids: {u64},
+// One trait, three implementations. `q.score(task)` picks the implementation
+// from the receiver's type, so adding a role means adding an impl and nothing
+// else — no dispatch table to keep in sync.
+trait Scorer {
+    fn score(&self, task: Task) -> i32;
 }
 
-extend  {
-    pub fn new() -> Swarm {
-        Swarm {
-            agents: []~.new(),
-            tasks: []~.new(),
-            completed_ids: {u64}.new(),
-        }
+struct ReadScorer {
+    weight: i32,
+}
+
+struct CritiqueScorer {
+    weight: i32,
+    strictness: i32,
+}
+
+struct FixScorer {
+    weight: i32,
+}
+
+// Reading is cheap and scales with size.
+impl Scorer for ReadScorer {
+    fn score(&self, task: Task) -> i32 {
+        self.weight * task.lines
     }
+}
 
-    pub fn add_agent(&mut self, agent: Agent) {
-        println!("Swarm: added agent {agent.id} ({agent.role})");
-        self.agents.push(agent);
+// Critique costs more per line, and a stricter critic costs more still.
+impl Scorer for CritiqueScorer {
+    fn score(&self, task: Task) -> i32 {
+        self.weight * task.lines * self.strictness
     }
+}
 
-    pub fn add_task(&mut self, task: Task) {
-        println!("Swarm: queued task {task.id} — {task.description}");
-        self.tasks.push(task);
+// Fixing has a fixed setup cost on top of the per-line cost.
+impl Scorer for FixScorer {
+    fn score(&self, task: Task) -> i32 {
+        self.weight * task.lines + 100
     }
+}
 
-    /// Run all tasks respecting dependency ordering.
-    pub async fn run(&mut self) -> () or String {
-        println!("");
-        println!("=== Swarm Execution ===");
-        println!("  Agents: {self.agents.len()}");
-        println!("  Tasks:  {self.tasks.len()}");
-        println!("");
+// ── The effectful boundary ───────────────────────────────────────────
 
-        var remaining: usize = self.tasks.len();
+// `/ llm` is a built-in effect kind. Every caller inherits it, so the path from
+// `main` to a model call is visible in the signatures rather than buried.
+fn ask_model(prompt: String) -> bool / llm {
+    // Stands in for inference: a verdict that depends on the prompt, so the
+    // consensus below has something real to disagree about.
+    len(words(prompt)) % 2 == 0
+}
 
-        for _ in 0..self.tasks.len() * 2 {
-            if remaining == 0 {
-                return Ok(());
-            }
+// Three members of the swarm, each asked a slightly different question. This is
+// where `size: 3` and `consensus: majority` become code.
+fn swarm_verdict(task: Task) -> bool / llm {
+    val prompts = [
+        f"is {task.title} correct",
+        f"is {task.title} clear enough to merge",
+        f"does {task.title} need another pass before merge",
+    ]
+    val votes = map(prompts, fn(prompt) => ask_model(prompt))
+    val yes = len(filter(votes, fn(vote) => vote))
+    // Majority of three. Computed from the votes, not assumed from the swarm
+    // declaration — the declaration says what to do, this does it.
+    yes * 2 > len(votes)
+}
 
-            // Find ready tasks.
-            var ready_indices: [usize]~ = []~.new();
-            for (i, task) in self.tasks.iter().enumerate() {
-                if task.is_ready(&self.completed_ids) {
-                    match task.status {
-                        TaskStatus::Pending => ready_indices.push(i),
-                        _ => {},
-                    }
-                }
-            }
+// ── Assignment ───────────────────────────────────────────────────────
 
-            // Assign ready tasks to available agents.
-            var agent_idx: usize = 0;
-            for task_idx in &ready_indices {
-                if agent_idx >= self.agents.len() {
-                    return Ok(());  // No more agents available this round.
-                }
+// `group` turns a flat task list into `{role: [Task]}`, which is exactly the
+// assignment: each key is an agent role, each value is that agent's queue.
+fn assign(tasks: [Task]~) -> {String: [Task]~} {
+    group(tasks, fn(task) => role_name(task.role))
+}
 
-                val agent = &mut self.agents[agent_idx];
-                val task = &mut self.tasks[*task_idx];
+// Cost of a queue, dispatching through the trait for each task's role.
+fn queue_cost(tasks: [Task]~) -> i32 {
+    fold(tasks, 0, fn(total, task) => total + cost_of(task))
+}
 
-                // Acquire lease.
-                agent.acquire_lease(task.region.clone(), LeaseKind::ExclusiveWrite);
-
-                // Execute.
-                agent.execute_task(task).await?;
-
-                // Release lease.
-                agent.release_lease();
-
-                self.completed_ids.insert(task.id);
-                remaining = remaining - 1;
-                agent_idx = agent_idx + 1;
-            }
-        }
-
-        if remaining > 0 {
-            Err(format!("deadlock: {remaining} tasks could not be scheduled"))
-        } else {
-            Ok(())
-        }
+fn cost_of(task: Task) -> i32 {
+    ?= task.role {
+        Role.Read => @ReadScorer { weight: 1 }.score(task),
+        Role.Critique => @CritiqueScorer { weight: 2, strictness: 3 }.score(task),
+        Role.Fix => @FixScorer { weight: 4 }.score(task),
     }
+}
 
-    pub fn summary(&self) {
-        println!("");
-        println!("=== Swarm Summary ===");
-        for agent in &self.agents {
-            println!("  Agent {agent.id} ({agent.role}): {agent.tasks_completed} tasks completed");
-        }
-        println!("  Total tasks: {self.completed_ids.len()}");
-    }
+// ── Reporting ────────────────────────────────────────────────────────
+
+fn describe_queue(role: String, tasks: [Task]~) -> String {
+    f"{role}: {len(tasks)} task(s), cost {queue_cost(tasks)}"
 }
 
 // ── Entry point ──────────────────────────────────────────────────────
 
-pub async fn main() -> () or String {
-    // Create a swarm with specialized agents.
-    var swarm = Swarm.new();
+pub fn main() -> String / llm {
+    val tasks = [
+        @Task { id: "T1", title: "parse header", role: Role.Read, lines: 40 },
+        @Task { id: "T2", title: "review parser diff", role: Role.Critique, lines: 25 },
+        @Task { id: "T3", title: "repair failing test", role: Role.Fix, lines: 12 },
+        @Task { id: "T4", title: "read lexer", role: Role.Read, lines: 90 },
+    ]
 
-    swarm.add_agent(Agent.new(1, Role::Architect));
-    swarm.add_agent(Agent.new(2, Role::Synthesizer));
-    swarm.add_agent(Agent.new(3, Role::Synthesizer));
-    swarm.add_agent(Agent.new(4, Role::Verifier));
+    val queues = assign(tasks)
+    val ordered = sort(keys(queues))
+    val lines = map(ordered, fn(role) => describe_queue(role, queues[role]))
 
-    // Define tasks with dependencies.
-    // Task 1: Design the API (no deps — Architect does this).
-    swarm.add_task(Task.new(
-        1,
-        "Design user module API".to_string(),
-        SemanticRegion::Module("user".to_string()),
-    ));
+    val approved = filter(tasks, fn(task) => swarm_verdict(task))
+    val names = map(approved, fn(task) => task.id)
 
-    // Tasks 2-3: Implement functions (depend on task 1).
-    swarm.add_task(Task.with_deps(
-        2,
-        "Implement create_user".to_string(),
-        SemanticRegion::Function("create_user".to_string()),
-        vec![1],
-    ));
-    swarm.add_task(Task.with_deps(
-        3,
-        "Implement validate_email".to_string(),
-        SemanticRegion::Function("validate_email".to_string()),
-        vec![1],
-    ));
+    val total = fold(tasks, 0, fn(acc, task) => acc + cost_of(task))
 
-    // Task 4: Verify all implementations (depends on 2 and 3).
-    swarm.add_task(Task.with_deps(
-        4,
-        "Verify user module contracts".to_string(),
-        SemanticRegion::Module("user".to_string()),
-        vec![2, 3],
-    ));
-
-    // Task 5: Integration test (depends on 4).
-    swarm.add_task(Task.with_deps(
-        5,
-        "Run integration tests".to_string(),
-        SemanticRegion::Module("user".to_string()),
-        vec![4],
-    ));
-
-    // Execute the swarm.
-    swarm.run().await?;
-    swarm.summary();
-
-    Ok(())
+    join(
+        [join(lines, " | "), f"approved: {join(names, ",")}", f"total cost {total}"],
+        "; ",
+    )
 }

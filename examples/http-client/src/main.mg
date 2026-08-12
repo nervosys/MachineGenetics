@@ -1,165 +1,133 @@
-// http-client — Async HTTP client with JSON parsing.
+// http-client — fetching over an effectful boundary.
 //
-// Demonstrates:
-//   - Async functions (pub async fn, async fn)
-//   - Effect annotations (/ io, / net)
-//   - Error handling with T or E (error union)
-//   - JSON deserialization
-//   - data keyword + extend blocks
-//   - val / var bindings
-//   - guard for early exit
-//   - defer for cleanup
-//   - Pipeline operator |>
+// `forge run` evaluates `main` and prints its result. Demonstrates:
+//   - `/ net` effect annotations and how they propagate: every caller of an
+//     effectful function must declare the effect too, all the way up to `main`
+//     (delete it and `mage-parse --check` says so)
+//   - `pub async` for the request itself
+//   - `Result<T, E>` with an error enum, and `match` that handles every case
+//   - a struct decoded out of a response body
+//
+// The evaluator has no sockets, so `transport` answers from a fixed routing
+// table instead of a real one. That is the only stub: the effect annotations,
+// the error type, and the response handling are what they would be over a real
+// socket, and the type checker enforces them either way.
+//
+// Run:  forge run        (or:  mage-parse --eval src/main.mg main)
 
-use std::io;
-use std::net;
-use std::json;
-use std::fmt;
+// ── Wire types ───────────────────────────────────────────────────────
 
-// ── Data types ───────────────────────────────────────────────────────
+// A response is a status, a body, and the one header this client acts on.
+// That is what the effectful boundary returns; decoding happens above it, in
+// pure code.
+struct Response {
+    status: i32,
+    body: String,
+    retry_after: i32,
+}
 
-#[derive(Debug, Clone)]
-pub struct User {
-    id: u64,
+// `id` is a String because the standard vocabulary has no string-to-integer
+// parse — see `resolve::VOCABULARY`. Storing the raw field is honest; making
+// up a number from its length would not be.
+struct User {
+    id: String,
     name: String,
-    email: String,
     active: bool,
 }
 
-#[derive(Debug, Clone)]
-pub struct Post {
-    id: u64,
-    user_id: u64,
-    title: String,
-    body: String,
-}
-
-#[derive(Debug)]
-pub enum ApiError {
-    NetworkError(String),
-    ParseError(String),
+// Every way a request can fail, as data. `RateLimited` carries the retry delay
+// the server asked for, so the caller can act on it rather than just report it.
+enum ApiError {
     NotFound,
-    RateLimited { retry_after: u64 },
+    RateLimited(i32),
+    Transport(String),
+    Decode(String),
 }
 
-extend ApiError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            ApiError::NetworkError(msg) => write!(f, "network error: {msg}"),
-            ApiError::ParseError(msg) => write!(f, "parse error: {msg}"),
-            ApiError::NotFound => write!(f, "resource not found"),
-            ApiError::RateLimited(retry_after) =>
-                write!(f, "rate limited, retry after {retry_after}s"),
+fn describe(error: ApiError) -> String {
+    ?= error {
+        ApiError.NotFound => "not found",
+        ApiError.RateLimited(secs) => f"rate limited, retry in {secs}s",
+        ApiError.Transport(why) => f"transport: {why}",
+        ApiError.Decode(why) => f"decode: {why}",
+    }
+}
+
+// ── The effectful boundary ───────────────────────────────────────────
+
+// The one function that would touch a socket. Everything below is pure and
+// testable without a network; everything above inherits `/ net`.
+pub async transport(path: String) -> Response / net {
+    ?= path {
+        "/users/1" => @Response { status: 200, body: "1,Ada,yes", retry_after: 0 },
+        "/users/2" => @Response { status: 429, body: "", retry_after: 30 },
+        "/users/3" => @Response { status: 404, body: "", retry_after: 0 },
+        "/users/4" => @Response { status: 200, body: "not-a-user", retry_after: 0 },
+        _ => @Response { status: 500, body: "unrouted", retry_after: 0 },
+    }
+}
+
+// ── Decoding ─────────────────────────────────────────────────────────
+
+// A body is `id,name,active`. Anything else is a decode error rather than a
+// partially-filled struct, so a malformed response cannot masquerade as a user.
+fn decode_user(body: String) -> Result<User, ApiError> {
+    val parts = split(body, ",")
+    ? len(parts) == 3 {
+        Ok(@User { id: parts[0], name: parts[1], active: parts[2] == "yes" })
+    } : {
+        Err(ApiError.Decode(f"expected 3 fields, got {len(parts)}"))
+    }
+}
+
+// Status handling is the whole point of the type: each code becomes a distinct
+// error value, not a string the caller has to re-parse.
+fn interpret(response: Response) -> Result<User, ApiError> {
+    ? response.status == 200 {
+        decode_user(response.body)
+    } : {
+        ? response.status == 404 {
+            Err(ApiError.NotFound)
+        } : {
+            ? response.status == 429 {
+                Err(ApiError.RateLimited(response.retry_after))
+            } : {
+                Err(ApiError.Transport(f"HTTP {response.status}"))
+            }
         }
     }
 }
 
-// ── HTTP client wrapper ──────────────────────────────────────────────
+// ── Client ───────────────────────────────────────────────────────────
 
-data ApiClient(base_url: String, timeout_ms: u64 = 5000)
+// `/ net` is inherited from `transport`, not declared for decoration.
+pub async fetch_user(id: i32) -> Result<User, ApiError> / net {
+    interpret(transport(f"/users/{id}"))
+}
 
-extend ApiClient {
-    pub fn new(base_url: String) -> ApiClient =
-        ApiClient { base_url: base_url, timeout_ms: 5000 }
-
-    pub fn with_timeout(base_url: String, timeout_ms: u64) -> ApiClient =
-        ApiClient { base_url: base_url, timeout_ms: timeout_ms }
-
-    /// Fetch a single resource by path.
-    pub async fn get[T: json::Deserialize](&self, path: &str) -> T or ApiError / net, io {
-        val url = format!("{self.base_url}{path}");
-        val response = net::get(&url)
-            .timeout(self.timeout_ms)
-            .send()
-            .await
-            .map_err(|e| ApiError::NetworkError(format!("{e}")))?;
-
-        guard response.status() == 200 else {
-            if response.status() == 404 {
-                return Err(ApiError::NotFound);
-            }
-            if response.status() == 429 {
-                val retry = response.header("Retry-After")
-                    .and_then(|v| v.parse().ok())
-                    .unwrap_or(60);
-                return Err(ApiError::RateLimited(retry));
-            }
-            return Err(ApiError::NetworkError(format!("HTTP {response.status()}")));
-        }
-
-        val body = response.text().await
-            .map_err(|e| ApiError::NetworkError(format!("{e}")))?;
-
-        json::from_str(&body)
-            .map_err(|e| ApiError::ParseError(format!("{e}")))
-    }
-
-    /// Fetch a list of resources.
-    pub async fn list[T: json::Deserialize](&self, path: &str) -> [T]~ or ApiError / net, io {
-        self.get(path).await
+// A rate-limited request is the one failure worth retrying, and only once —
+// the retry is in the client so callers cannot forget it.
+pub async fetch_user_retrying(id: i32) -> Result<User, ApiError> / net {
+    ?= fetch_user(id) {
+        Err(ApiError.RateLimited(secs)) => fetch_user(id),
+        other => other,
     }
 }
 
-// ── Application logic ────────────────────────────────────────────────
-
-async fn fetch_user_posts(client: &ApiClient, user_id: u64)
-    -> [Post]~ or ApiError / net, io
-{
-    val path = format!("/users/{user_id}/posts");
-    client.list[Post](&path).await
-}
-
-async fn display_user_summary(client: &ApiClient, user_id: u64)
-    -> () or ApiError / net, io
-{
-    // Fetch user and posts concurrently.
-    val user_future = client.get[User](&format!("/users/{user_id}"));
-    val posts_future = fetch_user_posts(client, user_id);
-
-    val user = user_future.await?;
-    val posts = posts_future.await?;
-
-    println!("");
-    println!("=== User: {user.name} ===");
-    println!("  Email:  {user.email}");
-    println!("  Active: {user.active}");
-    println!("  Posts:  {posts.len()}");
-    println!("");
-
-    for post in &posts {
-        println!("  [{post.id}] {post.title}");
+fn render(id: i32, result: Result<User, ApiError>) -> String {
+    ?= result {
+        Ok(user) => f"{id}: user {user.id} {user.name} (active={user.active})",
+        Err(error) => f"{id}: {describe(error)}",
     }
-
-    Ok(())
 }
 
 // ── Entry point ──────────────────────────────────────────────────────
 
-pub async fn main() -> () or ApiError / net, io {
-    val client = ApiClient.new("https://api.example.com".to_string());
-
-    println!("Fetching users...");
-
-    // Fetch and display multiple users.
-    val user_ids: [u64]~ = [1, 2, 3];
-
-    for id in &user_ids {
-        match display_user_summary(&client, *id).await {
-            Ok(()) => {},
-            Err(ApiError::NotFound) => eprintln!("User {id} not found, skipping."),
-            Err(ApiError::RateLimited(retry_after)) => {
-                eprintln!("Rate limited. Waiting {retry_after}s...");
-                async_rt::sleep(retry_after * 1000).await;
-                // Retry once.
-                match display_user_summary(&client, *id).await {
-                    Ok(()) => {},
-                    Err(e) => eprintln!("Retry failed for user {id}: {e}"),
-                }
-            },
-            Err(e) => eprintln!("Error fetching user {id}: {e}"),
-        }
-    }
-
-    println!("Done.");
-    Ok(())
+// `/ net` is what everything below performs. Removing it is an error; adding
+// `/ io` on top is not — the checker rejects *under*-declaration, so an
+// annotation is an upper bound on effects, not an exact description of them.
+pub fn main() -> String / net {
+    val ids = [1, 2, 3, 4]
+    val report = map(ids, fn(id) => render(id, fetch_user_retrying(id)))
+    join(report, "; ")
 }
