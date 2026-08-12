@@ -321,6 +321,17 @@ impl EffectInfer {
 
     /// Check if a function name is a known effectful builtin.
     fn check_builtin_effect(&self, name: &str, effects: &mut EffectSet) {
+        // The standard vocabulary is capability-pure by declaration
+        // (`resolve::VOCABULARY`, "SINGLE SOURCE OF TRUTH"), and this table
+        // matches on a bare name — so any collision silently outranked it.
+        // `join` collided: the vocabulary's `([str], str) -> str` string join
+        // was read as a thread join and attributed `Async`, which made every
+        // caller of a *pure* documented function fail the effect check unless
+        // it declared `/ async`. Deferring to the vocabulary fixes that case
+        // and the next collision anyone adds to either list.
+        if crate::resolve::VOCABULARY.iter().any(|(v, _, _)| *v == name) {
+            return;
+        }
         match name {
             "print" | "println" | "eprint" | "eprintln" | "write" | "writeln" => {
                 effects.insert(Effect::IO);
@@ -457,6 +468,33 @@ mod tests {
         let ei = infer_source("f add(a: i32, b: i32) -> i32 { a + b }");
         assert!(ei.diagnostics.is_empty(), "errors: {:?}", ei.diagnostics);
         assert!(ei.effects_of("add").is_empty(), "expected pure, got {:?}", ei.effects_of("add"));
+    }
+
+    #[test]
+    fn standard_vocabulary_is_pure() {
+        // `join` sat in both `VOCABULARY` (`([str], str) -> str`, pure) and the
+        // Async builtin list (thread join). The bare-name match meant the
+        // string join inherited `Async`, so any caller of a documented-pure
+        // function failed the effect check. Assert over the whole vocabulary,
+        // not just `join`: the bug was a collision, and the next one added to
+        // either list should fail here rather than in someone's example.
+        for (name, sig, _) in crate::resolve::VOCABULARY {
+            let ei = infer_source(&format!("f t() {{ {name} }}"));
+            assert!(
+                ei.effects_of("t").is_empty(),
+                "vocabulary function `{name}` ({sig}) is documented pure but \
+                 inferred {:?} — a name collision in check_builtin_effect",
+                ei.effects_of("t")
+            );
+        }
+    }
+
+    #[test]
+    fn effectful_builtins_are_still_effectful() {
+        // The vocabulary deference must not blanket-silence the builtin table:
+        // names outside the vocabulary keep their effects.
+        assert!(infer_source("f t() { spawn(1) }").effects_of("t").contains(&Effect::Async));
+        assert!(infer_source("f t() { println(1) }").effects_of("t").contains(&Effect::IO));
     }
 
     #[test]

@@ -1,235 +1,111 @@
-// cli-tool — A simple grep-like utility.
+// cli-tool — a grep-like filter, as a MAGE program.
 //
-// Demonstrates:
-//   - Command-line argument parsing
-//   - File I/O with effects (/ io)
-//   - Iterators and for loops (for line in lines)
-//   - Error handling with Result<T, E>
-//   - String manipulation
-//   - Process exit codes
-//   - Constants (pub const)
-//   - If/else
-//   - val / var bindings (replaces val / val mut)\r\n//   - guard for early exit\r\n//   - data keyword for simple types\r\n//   - extend blocks
+// `forge run` evaluates `main` and prints its result. Demonstrates:
+//   - a struct holding parsed options, built with `@Config { … }`
+//   - an enum of output modes and `match` over it (`Mode.Count`)
+//   - argument parsing as a fold over the argument list
+//   - the standard vocabulary (filter/map/len/lines/contains/join) instead of
+//     hand-rolled loops
+//   - `Result`-shaped failure via `?T`, so the empty-pattern case is handled
+//     rather than assumed
+//
+// The evaluator has no process arguments or file I/O yet, so the argument
+// vector and the searched text are values in `main`. Everything below the
+// entry point is the part that would be unchanged by real argv and real files.
+//
+// Run:  forge run        (or:  mage-parse --eval src/main.mg main)
 
-use std::env;
-use std::fs;
-use std::io;
-use std::process;
+// ── Options ──────────────────────────────────────────────────────────
 
-// ── Configuration ────────────────────────────────────────────────────
+enum Mode {
+    Lines,
+    Count,
+}
 
-pub const VERSION: &str = "0.1.0";
-
-#[derive(Debug)]
 struct Config {
     pattern: String,
-    files: Vec<String>,
     ignore_case: bool,
-    line_numbers: bool,
-    count_only: bool,
     invert: bool,
+    mode: Mode,
 }
 
-#[derive(Debug)]
-struct Match {
-    file: String,
-    line_num: usize,
-    line: String,
-}
-
-// ── Argument parsing ─────────────────────────────────────────────────
-
-fn parse_args(args: [String]~) -> Config or String / io {
-    var pattern: ?String = None;
-    var files: [String]~ = [String]~.new();
-    var ignore_case = false;
-    var line_numbers = false;
-    var count_only = false;
-    var invert = false;
-
-    var i: usize = 1; // skip program name
-    for _ in 0..args.len() {
-        if i >= args.len() {
-            // Done.
-            return Ok(());
-        }
-
-        val arg = &args[i];
-        match arg.as_str() {
-            "--help" | "-h" => {
-                print_usage();
-                process::exit(0);
-            },
-            "--version" | "-V" => {
-                println!("mg-grep {VERSION}");
-                process::exit(0);
-            },
-            "-i" | "--ignore-case" => ignore_case = true,
-            "-n" | "--line-numbers" => line_numbers = true,
-            "-c" | "--count" => count_only = true,
-            "-v" | "--invert" => invert = true,
-            other => {
-                if other.starts_with('-') {
-                    return Err(format!("unknown option: {other}"));
-                }
-                if pattern.is_none() {
-                    pattern = Some(other.clone());
-                } else {
-                    files.push(other.clone());
-                }
-            },
-        }
-        i = i + 1;
-    }
-
-    val pat = pattern.ok_or("no search pattern specified".to_string())?;
-    if files.is_empty() {
-        return Err("no files specified".to_string());
-    }
-
-    Ok(Config {
-        pattern: pat,
-        files: files,
-        ignore_case: ignore_case,
-        line_numbers: line_numbers,
-        count_only: count_only,
-        invert: invert,
-    })
-}
-
-fn print_usage() / io {
-    eprintln!("mg-grep — search for patterns in files");
-    eprintln!("");
-    eprintln!("Usage: mg-grep [OPTIONS] <PATTERN> <FILE...>");
-    eprintln!("");
-    eprintln!("Options:");
-    eprintln!("  -i, --ignore-case    Case-insensitive matching");
-    eprintln!("  -n, --line-numbers   Show line numbers");
-    eprintln!("  -c, --count          Only print match count");
-    eprintln!("  -v, --invert         Invert match (show non-matching lines)");
-    eprintln!("  -h, --help           Show this help");
-    eprintln!("  -V, --version        Show version");
-}
-
-// ── Search logic ─────────────────────────────────────────────────────
-
-fn search_file(path: &str, config: &Config) -> [Match]~ or String / io {
-    val content = fs::read_to_string(path)
-        .map_err(|e| format!("cannot read {path}: {e}"))?;
-
-    var matches: [Match]~ = [Match]~.new();
-
-    val search_pattern = if config.ignore_case {
-        config.pattern.to_lowercase()
-    } else {
-        config.pattern.clone()
-    };
-
-    for (line_num, line) in content.lines().enumerate() {
-        val hay = if config.ignore_case {
-            line.to_lowercase()
-        } else {
-            line.to_string()
-        };
-
-        val found = hay.contains(&search_pattern);
-        val include = if config.invert { !found } else { found };
-
-        if include {
-            matches.push(Match {
-                file: path.to_string(),
-                line_num: line_num + 1,
-                line: line.to_string(),
-            });
+// A flag is recognised by name; anything else is the search pattern. Parsing
+// is a fold so the option state is threaded explicitly rather than mutated.
+fn apply_flag(cfg: Config, arg: String) -> Config {
+    ? arg == "-i" {
+        @Config { pattern: cfg.pattern, ignore_case: 1b, invert: cfg.invert, mode: cfg.mode }
+    } : {
+        ? arg == "-v" {
+            @Config { pattern: cfg.pattern, ignore_case: cfg.ignore_case, invert: 1b, mode: cfg.mode }
+        } : {
+            ? arg == "-c" {
+                @Config { pattern: cfg.pattern, ignore_case: cfg.ignore_case, invert: cfg.invert, mode: Mode.Count }
+            } : {
+                @Config { pattern: arg, ignore_case: cfg.ignore_case, invert: cfg.invert, mode: cfg.mode }
+            }
         }
     }
+}
 
-    Ok(matches)
+fn parse_args(args: [String]~) -> Config {
+    val empty = @Config { pattern: "", ignore_case: 0b, invert: 0b, mode: Mode.Lines }
+    fold(args, empty, apply_flag)
+}
+
+// ── Search ───────────────────────────────────────────────────────────
+
+// Case folding is applied to both sides so `-i` needs no second code path.
+fn normalize(text: String, ignore_case: bool) -> String {
+    ? ignore_case { lower(text) } : { text }
+}
+
+// The standard vocabulary has no substring search — `contains` is membership,
+// `([A], A) -> bool` — so a pattern matches a whole *word*, not any substring.
+// That is a real difference from grep, and it is stated rather than papered
+// over with a hand-rolled character scan.
+fn line_matches(cfg: Config, line: String) -> bool {
+    val hay = normalize(line, cfg.ignore_case)
+    val needle = normalize(cfg.pattern, cfg.ignore_case)
+    val hit = contains(words(hay), needle)
+    ? cfg.invert { !hit } : { hit }
+}
+
+fn search(cfg: Config, text: String) -> [String]~ {
+    filter(lines(text), fn(line) => line_matches(cfg, line))
 }
 
 // ── Output ───────────────────────────────────────────────────────────
 
-fn print_matches(matches: &[Match]~, config: &Config, multi_file: bool) / io {
-    if config.count_only {
-        if multi_file {
-            // Group by file.
-            var current_file: String = "".to_string();
-            var count: usize = 0;
-            for m in matches {
-                if m.file != current_file {
-                    if !current_file.is_empty() {
-                        println!("{current_file}:{count}");
-                    }
-                    current_file = m.file.clone();
-                    count = 0;
-                }
-                count = count + 1;
-            }
-            if !current_file.is_empty() {
-                println!("{current_file}:{count}");
-            }
-        } else {
-            println!("{matches.len()}");
-        }
-        return;
+fn render(cfg: Config, hits: [String]~) -> String {
+    ?= cfg.mode {
+        Mode.Count => f"{len(hits)}",
+        Mode.Lines => join(hits, "\n"),
     }
+}
 
-    for m in matches {
-        val prefix = if multi_file {
-            if config.line_numbers {
-                format!("{m.file}:{m.line_num}:")
-            } else {
-                format!("{m.file}:")
-            }
-        } else {
-            if config.line_numbers {
-                format!("{m.line_num}:")
-            } else {
-                "".to_string()
-            }
-        };
-        println!("{prefix}{m.line}");
+// An empty pattern would match every line, which is a usage error rather than
+// a result. `?String` forces the caller to say what happens then.
+fn run(args: [String]~, text: String) -> ?String {
+    val cfg = parse_args(args)
+    ? len(chars(cfg.pattern)) == 0 {
+        None
+    } : {
+        Some(render(cfg, search(cfg, text)))
     }
 }
 
 // ── Entry point ──────────────────────────────────────────────────────
 
-pub fn main() / io {
-    val args: Vec<String> = env::args().collect();
+pub fn main() -> String {
+    val text = join(["alpha beta", "gamma", "ALPHA delta", "beta gamma"], "\n")
 
-    val config = match parse_args(args) {
-        Ok(c) => c,
-        Err(e) => {
-            eprintln!("error: {e}");
-            print_usage();
-            process::exit(1);
-        },
-    };
+    val found = run(["-i", "alpha"], text)
+    val counted = run(["-c", "beta"], text)
+    val missing = run([], text)
 
-    val multi_file = config.files.len() > 1;
-    var all_matches: [Match]~ = Vec::new();
-    var had_error = false;
+    val a = ?= found { Some(hit) => join(lines(hit), " | "), None => "usage error" }
+    val b = ?= counted { Some(hit) => hit, None => "usage error" }
+    val c = ?= missing { Some(hit) => hit, None => "usage error" }
 
-    for file in &config.files {
-        match search_file(file, &config) {
-            Ok(matches) => {
-                for m in matches {
-                    all_matches.push(m);
-                }
-            },
-            Err(e) => {
-                eprintln!("{e}");
-                had_error = true;
-            },
-        }
-    }
-
-    print_matches(&all_matches, &config, multi_file);
-
-    if had_error {
-        process::exit(2);
-    }
-    if all_matches.is_empty() {
-        process::exit(1);
-    }
+    f"-i alpha -> {a}; -c beta -> {b}; no pattern -> {c}"
 }

@@ -3,7 +3,9 @@
 //! results — the combinators' runtime. Pure subset (data, functions, the
 //! vocabulary); IO/structs/traits are out of scope and report an honest error.
 
-use crate::ast::{Block, Expr, FunctionDef, ItemKind, LiteralKind, Module, Pattern, Stmt, Type};
+use crate::ast::{
+    Block, Expr, FunctionDef, ItemKind, LiteralKind, Module, Pattern, Stmt, Type, VariantKind,
+};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::{Rc, Weak};
@@ -28,6 +30,10 @@ pub enum Value {
     Opt(Option<Box<Value>>),
     /// A struct value: type name + named fields.
     Struct(String, Vec<(String, Value)>),
+    /// An enum value: enum name, variant name, and the tuple payload (empty
+    /// for a unit variant). Carrying the enum name keeps `A.X` and `B.X`
+    /// distinct, so two enums sharing a variant name cannot compare equal.
+    Enum(String, String, Vec<Value>),
     /// A named function (user-defined or a builtin) usable as a value.
     Func(String),
     /// A closure: parameter names, body, and captured environment.
@@ -75,6 +81,11 @@ impl std::fmt::Display for Value {
                 let parts: Vec<String> = fields.iter().map(|(k, v)| format!("{k}: {v}")).collect();
                 write!(f, "{name} {{ {} }}", parts.join(", "))
             }
+            Value::Enum(_, variant, payload) if payload.is_empty() => write!(f, "{variant}"),
+            Value::Enum(_, variant, payload) => {
+                let parts: Vec<String> = payload.iter().map(|v| v.to_string()).collect();
+                write!(f, "{variant}({})", parts.join(", "))
+            }
             Value::Func(n) => write!(f, "<fn {n}>"),
             Value::Closure(_) => write!(f, "<closure>"),
             Value::Unit => write!(f, "()"),
@@ -95,6 +106,7 @@ impl PartialEq for Value {
             (Tuple(a), Tuple(b)) => a == b,
             (Opt(a), Opt(b)) => a == b,
             (Struct(n1, f1), Struct(n2, f2)) => n1 == n2 && f1 == f2,
+            (Enum(e1, v1, p1), Enum(e2, v2, p2)) => e1 == e2 && v1 == v2 && p1 == p2,
             (Func(a), Func(b)) => a == b,
             (Unit, Unit) => true,
             // Closures (and mismatched variants) are not comparable.
@@ -164,17 +176,76 @@ impl Env {
 
 pub struct Interp {
     funcs: HashMap<String, FunctionDef>,
+    /// `(type name, method name) -> definition`, for every method in every
+    /// `impl`, `impl Trait for`, and `extend` block. Only free functions were
+    /// ever collected, so a method typechecked and then failed at runtime with
+    /// `unknown function`; keying by the receiver's type is what makes two types
+    /// able to define the same method name, which trait dispatch requires.
+    methods: HashMap<(String, String), FunctionDef>,
+    /// `(enum name, variant name) -> payload arity`, for every variant of every
+    /// enum in the module. Keyed by the *pair*: two enums may name a variant the
+    /// same (`Left { X }` and `Right { X }`), and keying by variant alone let the
+    /// second registration evict the first, so one of the two stopped resolving.
+    enum_variants: HashMap<(String, String), usize>,
 }
 
 impl Interp {
     pub fn new(module: &Module) -> Self {
         let mut funcs = HashMap::new();
+        let mut methods = HashMap::new();
+        let mut enum_variants = HashMap::new();
         for item in &module.items {
-            if let ItemKind::Function(fd) = &item.kind {
-                funcs.insert(fd.name.clone(), fd.clone());
+            match &item.kind {
+                ItemKind::Function(fd) => {
+                    funcs.insert(fd.name.clone(), fd.clone());
+                }
+                ItemKind::Impl(ib) => {
+                    collect_methods(&mut methods, &ib.self_type, &ib.items);
+                }
+                ItemKind::Extend(eb) => {
+                    collect_methods(&mut methods, &eb.target_type, &eb.items);
+                }
+                ItemKind::Enum(ed) => {
+                    for variant in &ed.variants {
+                        let arity = match &variant.kind {
+                            VariantKind::Unit => 0,
+                            VariantKind::Tuple(tys) => tys.len(),
+                            VariantKind::Struct(fields) => fields.len(),
+                        };
+                        enum_variants
+                            .insert((ed.name.clone(), variant.name.clone()), arity);
+                    }
+                }
+                _ => {}
             }
         }
-        Interp { funcs }
+        Interp { funcs, methods, enum_variants }
+    }
+
+    /// The type name a value dispatches on, for values that can carry methods.
+    fn type_name_of(v: &Value) -> Option<&str> {
+        match v {
+            Value::Struct(name, _) => Some(name),
+            Value::Enum(name, _, _) => Some(name),
+            _ => None,
+        }
+    }
+
+    /// Look up `Type.method`, whether `Type` came from a receiver value or was
+    /// written literally (an associated function such as `Point.new(1)`).
+    fn method_on(&self, type_name: &str, method: &str) -> Option<&FunctionDef> {
+        self.methods.get(&(type_name.to_string(), method.to_string()))
+    }
+
+    /// Resolve `Path.Variant` to the variant it names, if it is one.
+    ///
+    /// Checks the enum name too, so a field access that merely happens to share
+    /// a variant's name (`config.Count` on a struct) is not mistaken for one.
+    fn as_enum_variant(&self, path: &str, field: &str) -> Option<(String, usize)> {
+        let arity = *self
+            .enum_variants
+            .get(&(path.to_string(), field.to_string()))?;
+        Some((path.to_string(), arity))
     }
 
     /// Run `name(args)` and return its value, or a human-readable error.
@@ -522,11 +593,50 @@ impl Interp {
             Expr::MethodCall { receiver, method, args, .. } => {
                 // `recv.method(a, b)` desugars to `method(recv, a, b)` — so the
                 // vocabulary works in method position (`xs.filter(e).map(d)`).
+                // A payload variant (`Shape.Circle(3)`) arrives in the same
+                // shape, and is a constructor rather than a call: check it
+                // first, since there is no receiver value to evaluate.
+                if let Expr::Ident { name } = receiver.as_ref() {
+                    if let Some((enum_name, arity)) = self.as_enum_variant(name, method) {
+                        if arity != args.len() {
+                            return err(format!(
+                                "enum variant `{name}.{method}` takes {arity} argument(s), \
+                                 given {}",
+                                args.len()
+                            ));
+                        }
+                        let mut payload = Vec::with_capacity(args.len());
+                        for a in args {
+                            payload.push(self.eval(a, env)?);
+                        }
+                        return Ok(Value::Enum(enum_name, method.clone(), payload));
+                    }
+                    // An associated function written on the type itself
+                    // (`Point.new(1)`). Like a unit variant, there is no
+                    // receiver value to evaluate, so it is resolved from the
+                    // name before `receiver` is touched.
+                    if env.get(name).is_none()
+                        && let Some(fd) = self.method_on(name, method) {
+                            let mut av = Vec::with_capacity(args.len());
+                            for a in args {
+                                av.push(self.eval(a, env)?);
+                            }
+                            return self.call_user(&fd.clone(), av);
+                        }
+                }
                 let mut av = vec![self.eval(receiver, env)?];
                 for a in args {
                     av.push(self.eval(a, env)?);
                 }
-                if let Some(fd) = self.funcs.get(method) {
+                // A method declared for the receiver's own type wins over a
+                // same-named free function or builtin: `xs.len()` is still the
+                // vocabulary's `len`, but a `Report.len` would be the method.
+                let own = Self::type_name_of(&av[0])
+                    .and_then(|ty| self.method_on(ty, method))
+                    .cloned();
+                if let Some(fd) = own {
+                    self.call_user(&fd, av)
+                } else if let Some(fd) = self.funcs.get(method) {
                     self.call_user(fd, av)
                 } else {
                     self.call_builtin(method, av)
@@ -545,6 +655,18 @@ impl Interp {
                 Ok(Value::Struct(name, fvals))
             }
             Expr::FieldAccess { object, field } => {
+                // `Mode.Count` parses as a field access on the *type* name, so
+                // a unit variant is recognised here, before `object` is
+                // evaluated — there is no value called `Mode` to evaluate.
+                if let Expr::Ident { name } = object.as_ref()
+                    && let Some((enum_name, arity)) = self.as_enum_variant(name, field) {
+                        if arity > 0 {
+                            return err(format!(
+                                "enum variant `{name}.{field}` takes {arity} argument(s)"
+                            ));
+                        }
+                        return Ok(Value::Enum(enum_name, field.clone(), Vec::new()));
+                    }
                 let o = self.eval(object, env)?;
                 match o {
                     Value::Struct(_, fields) => fields
@@ -861,6 +983,19 @@ impl Interp {
                         elements.first().map(|p| self.match_pat(p, inner, env)).unwrap_or(true)
                     }
                     ("None", Value::Opt(None)) => true,
+                    // A user enum variant. Only `Some`/`None` were handled, so
+                    // every other variant pattern fell through to `false` — a
+                    // match on a user enum silently took the wildcard arm (or
+                    // none) instead of erroring, which is the worse failure:
+                    // the program ran and gave a wrong answer.
+                    (variant, Value::Enum(_, actual, payload)) => {
+                        variant == actual
+                            && elements.len() == payload.len()
+                            && elements
+                                .iter()
+                                .zip(payload)
+                                .all(|(p, v)| self.match_pat(p, v, env))
+                    }
                     _ => false,
                 }
             }
@@ -1148,6 +1283,14 @@ impl Interp {
             // reduce return `?A`; now you can build and thread options too).
             "Some" => Ok(Value::Opt(Some(Box::new(arg(0))))),
             "None" => Ok(Value::Opt(None)),
+            // `Result` construction. `Result<T, E>` and its `or` spelling both
+            // typecheck, so a program could be accepted in full and then die at
+            // runtime on `unknown function \`Ok\``. Represented as an enum named
+            // `Result` rather than a new `Value` variant, which gets Display,
+            // equality, and `Ok(v)`/`Err(e)` pattern matching from the machinery
+            // user enums already use.
+            "Ok" => Ok(Value::Enum("Result".into(), "Ok".into(), vec![arg(0)])),
+            "Err" => Ok(Value::Enum("Result".into(), "Err".into(), vec![arg(0)])),
             other => err(format!("unknown function `{other}`")),
         }
     }
@@ -1409,6 +1552,41 @@ fn variant(e: &Expr) -> &'static str {
     }
 }
 
+/// Register every function in an `impl`/`extend` body under its target type.
+///
+/// The target is reduced to a bare name — the receiver at runtime is a
+/// `Value::Struct`/`Value::Enum` carrying only that, so `impl &Point` and
+/// `impl Point` have to land in the same place or one of them never dispatches.
+fn collect_methods(
+    methods: &mut HashMap<(String, String), FunctionDef>,
+    target: &Type,
+    items: &[crate::ast::Item],
+) {
+    let Some(type_name) = type_head_name(target) else {
+        return;
+    };
+    for item in items {
+        if let ItemKind::Function(fd) = &item.kind {
+            methods.insert((type_name.clone(), fd.name.clone()), fd.clone());
+        }
+    }
+}
+
+/// The bare head name of a type, peeling references and smart-pointer wrappers.
+fn type_head_name(t: &Type) -> Option<String> {
+    match t {
+        Type::Path { segments, .. } => segments.last().cloned(),
+        Type::Reference { inner, .. }
+        | Type::OwnedPtr { inner }
+        | Type::Rc { inner }
+        | Type::Arc { inner }
+        | Type::Cow { inner }
+        | Type::Cell { inner }
+        | Type::RefCell { inner } => type_head_name(inner),
+        _ => None,
+    }
+}
+
 /// Convenience for the CLI / tests: parse, then run `name` with integer args.
 pub fn run_source(src: &str, name: &str, args: &[i64]) -> Result<Value, String> {
     let toks = crate::lexer::lex(src);
@@ -1423,6 +1601,184 @@ mod tests {
 
     fn run(src: &str, f: &str, args: &[i64]) -> Value {
         run_source(src, f, args).expect("run failed")
+    }
+
+    // ── prefix operators bind looser than the postfix chain ──────────────
+    //
+    // `!f(x)` parsed as `(!f)(x)`: the prefix operator took a bare primary as
+    // its operand, so the call attached to the *negation* rather than to `f`.
+    // Nothing constrained what `!` applied to, so this checked clean and then
+    // failed at run time with `value is not callable`.
+
+    #[test]
+    fn not_applies_to_the_call_result_not_to_the_function() {
+        let src = "f yes() { 1b }\nf s() { ? !yes() { 10 } : { 20 } }";
+        assert_eq!(run(src, "s", &[]), Value::Int(20));
+    }
+
+    #[test]
+    fn prefix_operators_see_through_field_and_index_chains() {
+        let src = "S P { flags: [bool]~ }\n\
+                   f s() { v p = @P { flags: [0b, 1b] }\n\
+                   ? !p.flags[1] { 10 } : { 20 } }";
+        assert_eq!(run(src, "s", &[]), Value::Int(20));
+    }
+
+    /// The operand stops at the first *infix* operator, so precedence against
+    /// binary operators is unchanged: this is `(!a) == b`, not `!(a == b)`.
+    #[test]
+    fn a_prefix_operand_does_not_swallow_an_infix_operator() {
+        let src = "f s() { ? !1b == 0b { 10 } : { 20 } }";
+        assert_eq!(run(src, "s", &[]), Value::Int(10));
+    }
+
+    // ── enum values ──────────────────────────────────────────────────────
+    //
+    // Enums typechecked long before they evaluated: `Mode.A` was read as a
+    // field access on a non-struct and errored, and — worse — a variant
+    // pattern matched nothing, so a `match` quietly took the wildcard arm.
+    // A wrong answer beats an error at hiding, so these cover matching as
+    // carefully as construction.
+
+    #[test]
+    fn enum_unit_variants_construct_and_match() {
+        let src = "E Mode { A, B }\nf pick(x) { ?= x { Mode.A => 1, Mode.B => 2 } }\n\
+                   f s() { pick(Mode.B) }";
+        assert_eq!(run(src, "s", &[]), Value::Int(2));
+    }
+
+    #[test]
+    fn enum_payload_variants_bind_their_arguments() {
+        let src = "E Shape { Circle(i32), Sq(i32) }\n\
+                   f area(x) { ?= x { Shape.Circle(r) => r * 3, Shape.Sq(a) => a * a } }\n\
+                   f s() { area(Shape.Sq(4)) }";
+        assert_eq!(run(src, "s", &[]), Value::Int(16));
+    }
+
+    #[test]
+    fn enum_match_selects_the_named_arm_not_the_wildcard() {
+        // The silent-failure regression: with variant patterns never matching,
+        // this returned 99 while looking entirely correct.
+        let src = "E Mode { A, B, C }\nf pick(x) { ?= x { Mode.B => 7, _ => 99 } }\n\
+                   f s() { pick(Mode.B) }";
+        assert_eq!(run(src, "s", &[]), Value::Int(7));
+    }
+
+    #[test]
+    fn enum_variants_are_scoped_to_their_own_enum() {
+        // Two enums sharing a variant name must not compare equal, or a match
+        // would accept a value of the wrong type.
+        let src = "E Left { X }\nE Right { X }\nf s() { Left.X == Right.X }";
+        assert_eq!(run(src, "s", &[]), Value::Bool(false));
+
+        let src = "E Left { X }\nE Right { X }\nf s() { Left.X == Left.X }";
+        assert_eq!(run(src, "s", &[]), Value::Bool(true));
+    }
+
+    #[test]
+    fn enum_variant_arity_is_checked() {
+        assert!(run_source("E Shape { Circle(i32) }\nf s() { Shape.Circle }", "s", &[]).is_err());
+        assert!(
+            run_source("E Shape { Circle(i32) }\nf s() { Shape.Circle(1, 2) }", "s", &[]).is_err()
+        );
+    }
+
+    #[test]
+    fn struct_field_access_still_works_beside_variant_access() {
+        // Variant resolution runs before the receiver is evaluated, so it must
+        // not shadow an ordinary field that happens to share a variant's name.
+        let src = "E Mode { Count }\nS Cfg { Count: i32 }\n\
+                   f s() { v c = @Cfg { Count: 5 }; c.Count }";
+        assert_eq!(run(src, "s", &[]), Value::Int(5));
+    }
+
+    // ── methods ──────────────────────────────────────────────────────────
+    //
+    // `recv.m()` desugars to `m(recv)` and only free functions were ever
+    // collected, so every method in an `impl`, `extend`, or trait impl
+    // typechecked and then died at run time on `unknown function`.
+
+    #[test]
+    fn impl_extend_and_trait_methods_all_dispatch() {
+        // Three separate bodies register methods; a fix that covered one and
+        // not the others would look like it worked.
+        let impl_src = "S P { x: i32 }\nI P { +f dbl(&self) -> i32 { self.x * 2 } }\n\
+                        f s() { v p = @P { x: 4 }; p.dbl() }";
+        assert_eq!(run(impl_src, "s", &[]), Value::Int(8));
+
+        let extend_src = "S P { x: i32 }\nextend P { f dbl(&self) -> i32 { self.x * 2 } }\n\
+                          f s() { v p = @P { x: 4 }; p.dbl() }";
+        assert_eq!(run(extend_src, "s", &[]), Value::Int(8));
+
+        let trait_src = "T Shape { f area(&self) -> i32; }\nS Sq { side: i32 }\n\
+                         I Shape for Sq { f area(&self) -> i32 { self.side * self.side } }\n\
+                         f s() { v q = @Sq { side: 3 }; q.area() }";
+        assert_eq!(run(trait_src, "s", &[]), Value::Int(9));
+    }
+
+    #[test]
+    fn trait_impls_dispatch_on_the_implementing_type_not_the_trait() {
+        // `impl Trait for Type` parsed the implementing type and discarded it,
+        // leaving the block filed under the *trait* name. One impl still worked
+        // by accident; two types implementing the same trait is what exposes it,
+        // because both would collide under the single trait name.
+        let src = "T Shape { f area(&self) -> i32; }\n\
+                   S Sq { side: i32 }\nS Rect { w: i32, h: i32 }\n\
+                   I Shape for Sq { f area(&self) -> i32 { self.side * self.side } }\n\
+                   I Shape for Rect { f area(&self) -> i32 { self.w * self.h } }\n\
+                   f s() { v q = @Sq { side: 3 }; v r = @Rect { w: 2, h: 5 }; q.area() * 100 + r.area() }";
+        assert_eq!(run(src, "s", &[]), Value::Int(910));
+    }
+
+    #[test]
+    fn associated_functions_are_callable_on_the_type() {
+        // `P.new(4)` has no receiver value to evaluate, so it resolves from the
+        // type name — the same path a unit enum variant takes.
+        let src = "S P { x: i32 }\nI P { +f new(x: i32) -> Self { @P { x: x } } }\n\
+                   f s() { v p = P.new(4); p.x }";
+        assert_eq!(run(src, "s", &[]), Value::Int(4));
+    }
+
+    #[test]
+    fn vocabulary_methods_still_win_where_no_method_is_defined() {
+        // Method lookup is tried before the vocabulary, so it must not shadow
+        // it: `xs.len()` is still the builtin `len`.
+        let src = "S P { x: i32 }\nI P { +f dbl(&self) -> i32 { self.x * 2 } }\n\
+                   f s() { [1, 2, 3].len() }";
+        assert_eq!(run(src, "s", &[]), Value::Int(3));
+    }
+
+    // ── Result values ────────────────────────────────────────────────────
+    //
+    // `Result<T, E>` and its `or` spelling typecheck, so a program using them
+    // was accepted in full and then died at runtime on `unknown function `Ok``.
+
+    #[test]
+    fn result_constructors_evaluate_and_match() {
+        let src = "f g(x) -> Result<i32, String> { ? x > 0 { Ok(x) } : { Err(\"neg\") } }\n\
+                   f s(x) { ?= g(x) { Ok(v) => v, Err(e) => 0 - len(chars(e)) } }";
+        assert_eq!(run(src, "s", &[7]), Value::Int(7));
+        assert_eq!(run(src, "s", &[-1]), Value::Int(-3));
+    }
+
+    #[test]
+    fn ok_and_err_are_distinct_and_carry_their_payload() {
+        // `Ok` and `Err` share the synthetic enum name `Result`, so they must be
+        // told apart by variant — an `Ok(1)` that matched `Err(e)` would turn a
+        // success into a handled failure without any error.
+        let src = "f s() { ?= Ok(1) { Err(e) => 0b, Ok(v) => v == 1 } }";
+        assert_eq!(run(src, "s", &[]), Value::Bool(true));
+
+        let src = "f s() { Ok(1) == Err(1) }";
+        assert_eq!(run(src, "s", &[]), Value::Bool(false));
+    }
+
+    #[test]
+    fn result_does_not_collide_with_a_user_enum_variant() {
+        // A user enum may legitimately declare its own `Ok`; matching must not
+        // route it to the built-in `Result`.
+        let src = "E Status { Ok, Down }\nf s() { ?= Status.Down { Status.Ok => 1, Status.Down => 2 } }";
+        assert_eq!(run(src, "s", &[]), Value::Int(2));
     }
 
     #[test]

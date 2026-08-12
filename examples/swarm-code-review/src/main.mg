@@ -1,623 +1,271 @@
-// swarm-code-review — Multi-Agent Code Review System.
+// swarm-code-review — several reviewers, one verdict.
 //
-// A team of specialized AI agents reviews a pull request: an Architect
-// checks design, a Security agent audits for vulnerabilities, a
-// Performance agent profiles hot paths, and a Style agent enforces
-// conventions. Each agent files findings, then they vote on whether
-// to approve, request changes, or reject. Past decisions are cached
-// in a memory store for future reference.
+// `forge run` evaluates `main` and prints its result. Demonstrates:
+//   - `trait` + `impl Trait for T` so each reviewer is a type: adding a
+//     reviewer is adding an impl, and no existing function changes
+//   - findings merged across reviewers and de-duplicated by location, because
+//     three reviewers finding the same thing is one finding, not three
+//   - agreement counted, so "consensus" is a number the code produced
+//   - severity as an enum, and a blocking decision derived from it
+//   - `group` to report by file, `?A` where a set can be empty
+//   - `/ llm` on the model call, inherited by every reviewer
 //
-// Demonstrates:
-//   - Agent roles with distinct expertise
-//   - Swarm coordination patterns (scatter/gather)
-//   - Consensus voting with quorum rules
-//   - Memory recall API for review history
-//   - Effect annotations (/ io, / db)
-//   - Pattern matching on enums
-//   - Contract specs on review functions
+// The rule being modelled: a change is blocked by *any* confirmed blocker, and
+// confirmation needs a majority. One strict reviewer cannot block alone, and
+// one lenient reviewer cannot approve alone.
+//
+// Run:  forge run        (or:  mage-parse --eval src/main.mg main)
 
-use std::col;
-use std::fmt;
-use std::io;
+// ── Findings ─────────────────────────────────────────────────────────
 
-// ─────────────────────────────────────────────────────────────────────
-// §1 — Code change representation
-// ─────────────────────────────────────────────────────────────────────
-
-#[derive(Debug, Clone)]
-pub data FileDiff {
-    path: String,
-    additions: u32,
-    deletions: u32,
-    hunks: [String]~,
+enum Severity {
+    Note,
+    Warn,
+    Block,
 }
 
-#[derive(Debug, Clone)]
-pub data PullRequest {
-    id: u64,
-    title: String,
-    author: String,
-    description: String,
-    files: [FileDiff]~,
-    labels: [String]~,
-}
-
-extend PullRequest {
-    pub fn total_changes(&self) -> u32 {
-        self.files.iter().map(|f| f.additions + f.deletions).sum()
-    }
-
-    pub fn file_count(&self) -> usize {
-        self.files.len()
-    }
-
-    pub fn has_label(&self, label: &String) -> bool {
-        self.labels.iter().any(|l| l == label)
+fn severity_name(severity: Severity) -> String {
+    ?= severity {
+        Severity.Note => "note",
+        Severity.Warn => "warn",
+        Severity.Block => "block",
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// §2 — Review agent roles
-// ─────────────────────────────────────────────────────────────────────
-
-#[derive(Debug, Clone, PartialEq)]
-pub data ReviewRole {
-    Architect,
-    Security,
-    Performance,
-    Style,
-    Testing,
-}
-
-extend ReviewRole {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            ReviewRole::Architect   => write!(f, "🏗  Architect"),
-            ReviewRole::Security    => write!(f, "🔒 Security"),
-            ReviewRole::Performance => write!(f, "⚡ Performance"),
-            ReviewRole::Style       => write!(f, "🎨 Style"),
-            ReviewRole::Testing     => write!(f, "🧪 Testing"),
-        }
+fn severity_rank(severity: Severity) -> i32 {
+    ?= severity {
+        Severity.Note => 1,
+        Severity.Warn => 2,
+        Severity.Block => 3,
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// §3 — Findings: what each agent discovers
-// ─────────────────────────────────────────────────────────────────────
-
-#[derive(Debug, Clone, PartialEq)]
-pub data Severity {
-    Info,
-    Warning,
-    Error,
-    Critical,
-}
-
-extend Severity {
-    fn weight(&self) -> u32 {
-        match self {
-            Severity::Info     => 1,
-            Severity::Warning  => 3,
-            Severity::Error    => 8,
-            Severity::Critical => 20,
-        }
-    }
-}
-
-extend Severity {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Severity::Info     => write!(f, "INFO"),
-            Severity::Warning  => write!(f, "WARN"),
-            Severity::Error    => write!(f, "ERROR"),
-            Severity::Critical => write!(f, "CRIT"),
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub data Finding {
-    role: ReviewRole,
-    severity: Severity,
+struct Hunk {
     file: String,
-    line: ?u32,
+    line: i32,
+    text: String,
+}
+
+struct Finding {
+    file: String,
+    line: i32,
+    severity: Severity,
     message: String,
-    suggestion: ?String,
+    reviewer: String,
 }
 
-extend Finding {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        val loc = match self.line {
-            Some(l) => format!("{}:{}", self.file, l),
-            None => self.file.clone(),
-        };
-        write!(f, "[{sev}] {role} @ {loc}: {msg}",
-            sev = self.severity,
-            role = self.role,
-            loc = loc,
-            msg = self.message)
-    }
+// Location identity. Two reviewers reporting the same file and line are
+// reporting the same thing, which is what makes the agreement count meaningful.
+fn location(finding: Finding) -> String {
+    f"{finding.file}:{finding.line}"
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// §4 — Specialized review agents
-// ─────────────────────────────────────────────────────────────────────
+// ── Reviewers ────────────────────────────────────────────────────────
 
-#[derive(Debug)]
-pub data ReviewAgent {
-    id: u64,
-    role: ReviewRole,
-    findings: [Finding]~,
+// One trait, three implementations. `reviewer.review(hunk)` dispatches on the
+// reviewer's own type — there is no table mapping names to behaviour.
+trait Reviewer {
+    fn name(&self) -> String;
+    fn review(&self, hunk: Hunk) -> [Finding]~;
 }
 
-extend ReviewAgent {
-    pub fn new(id: u64, role: ReviewRole) -> ReviewAgent {
-        ReviewAgent { id: id, role: role, findings: []~.new() }
+struct StyleReviewer {
+    max_width: i32,
+}
+
+struct SecurityReviewer {
+    strict: bool,
+}
+
+struct PerfReviewer {
+    budget_ms: i32,
+}
+
+impl Reviewer for StyleReviewer {
+    fn name(&self) -> String {
+        "style"
     }
 
-    pub fn add_finding(&mut self, severity: Severity, file: String, line: ?u32, msg: String, suggestion: ?String) {
-        self.findings.push(Finding {
-            role: self.role.clone(),
-            severity: severity,
-            file: file,
-            line: line,
-            message: msg,
-            suggestion: suggestion,
-        });
-    }
-
-    pub fn risk_score(&self) -> u32 {
-        self.findings.iter().map(|f| f.severity.weight()).sum()
-    }
-
-    /// Perform the review. Each role focuses on different aspects.
-    ///
-    /// @req  pr.file_count() > 0     "must have files to review"
-    /// @ens  self.findings.len() >= 0
-    pub fn review(&mut self, pr: &PullRequest) / io {
-        println!("  {} reviewing {} files...", self.role, pr.file_count());
-
-        match self.role {
-            ReviewRole::Architect   => self.review_architecture(pr),
-            ReviewRole::Security    => self.review_security(pr),
-            ReviewRole::Performance => self.review_performance(pr),
-            ReviewRole::Style       => self.review_style(pr),
-            ReviewRole::Testing     => self.review_testing(pr),
-        };
-
-        println!("    → Found {} issue(s), risk score: {}", self.findings.len(), self.risk_score());
-    }
-
-    fn review_architecture(&mut self, pr: &PullRequest) {
-        // Check for overly large changes.
-        if pr.total_changes() > 500 {
-            self.add_finding(
-                Severity::Warning,
-                "overall".to_string(),
-                None,
-                "PR is very large — consider splitting into smaller changes".to_string(),
-                Some("Break into feature-flag-gated incremental PRs".to_string()),
-            );
-        }
-
-        // Check for new public API surface.
-        for file in &pr.files {
-            for hunk in &file.hunks {
-                if hunk.contains("pub fn ") || hunk.contains("pub struct ") || hunk.contains("pub trait ") {
-                    self.add_finding(
-                        Severity::Info,
-                        file.path.clone(),
-                        None,
-                        "New public API surface detected".to_string(),
-                        Some("Ensure backward compatibility".to_string()),
-                    );
-                }
-            }
-        }
-    }
-
-    fn review_security(&mut self, pr: &PullRequest) {
-        for file in &pr.files {
-            for hunk in &file.hunks {
-                // Check for unsafe blocks.
-                if hunk.contains("unsafe fn ") || hunk.contains("unsafe") {
-                    self.add_finding(
-                        Severity::Error,
-                        file.path.clone(),
-                        None,
-                        "Unsafe code detected — requires manual audit".to_string(),
-                        Some("Add @safety annotation with justification".to_string()),
-                    );
-                }
-
-                // Check for raw SQL.
-                if hunk.contains("raw_sql") || hunk.contains("exec_raw") {
-                    self.add_finding(
-                        Severity::Critical,
-                        file.path.clone(),
-                        None,
-                        "Raw SQL query — potential injection vulnerability".to_string(),
-                        Some("Use parameterized queries via db effect".to_string()),
-                    );
-                }
-
-                // Check for hardcoded secrets.
-                if hunk.contains("password =") || hunk.contains("api_key =") {
-                    self.add_finding(
-                        Severity::Critical,
-                        file.path.clone(),
-                        None,
-                        "Possible hardcoded credential".to_string(),
-                        Some("Use env::get() or a secret vault".to_string()),
-                    );
-                }
-            }
-        }
-    }
-
-    fn review_performance(&mut self, pr: &PullRequest) {
-        for file in &pr.files {
-            // Flag files with many additions (potential hot paths).
-            if file.additions > 100 {
-                self.add_finding(
-                    Severity::Info,
-                    file.path.clone(),
-                    None,
-                    format!("Large addition ({} lines) — profile for hot paths", file.additions),
-                    Some("Add @perf benchmark annotation".to_string()),
-                );
-            }
-
-            for hunk in &file.hunks {
-                // Detect nested loops.
-                if hunk.contains("for ") && hunk.matches("for ").count() > 1 {
-                    self.add_finding(
-                        Severity::Warning,
-                        file.path.clone(),
-                        None,
-                        "Nested loops detected — potential O(n²) complexity".to_string(),
-                        Some("Consider using a hash-based lookup".to_string()),
-                    );
-                }
-            }
-        }
-    }
-
-    fn review_style(&mut self, pr: &PullRequest) {
-        for file in &pr.files {
-            // Check for non-idiomatic patterns.
-            for hunk in &file.hunks {
-                if hunk.contains("println!(") {
-                    // println! is the standard macro in C-like syntax — no issue.
-                }
-                if hunk.contains("unwrap()") {
-                    self.add_finding(
-                        Severity::Warning,
-                        file.path.clone(),
-                        None,
-                        "Bare `.unwrap()` — prefer pattern matching or `?` operator".to_string(),
-                        None,
-                    );
-                }
-            }
-        }
-    }
-
-    fn review_testing(&mut self, pr: &PullRequest) {
-        var has_test_file = false;
-        for file in &pr.files {
-            if file.path.contains("test") || file.path.contains("spec") {
-                has_test_file = true;
-            }
-        }
-        if !has_test_file {
-            self.add_finding(
-                Severity::Error,
-                "overall".to_string(),
-                None,
-                "No test files modified — all new code needs tests".to_string(),
-                Some("Add a test module with at least one test per public function".to_string()),
-            );
+    fn review(&self, hunk: Hunk) -> [Finding]~ {
+        ? len(chars(hunk.text)) > self.max_width {
+            [@Finding {
+                file: hunk.file,
+                line: hunk.line,
+                severity: Severity.Note,
+                message: "line too long",
+                reviewer: "style",
+            }]
+        } : {
+            []
         }
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// §5 — Consensus voting
-// ─────────────────────────────────────────────────────────────────────
+impl Reviewer for SecurityReviewer {
+    fn name(&self) -> String {
+        "security"
+    }
 
-#[derive(Debug, Clone, PartialEq)]
-pub data VoteDecision {
-    Approve,
-    RequestChanges,
-    Reject,
-}
-
-extend VoteDecision {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            VoteDecision::Approve        => write!(f, "✅ Approve"),
-            VoteDecision::RequestChanges => write!(f, "🔄 Request Changes"),
-            VoteDecision::Reject         => write!(f, "❌ Reject"),
+    fn review(&self, hunk: Hunk) -> [Finding]~ {
+        ? contains(words(hunk.text), "eval") {
+            [@Finding {
+                file: hunk.file,
+                line: hunk.line,
+                severity: Severity.Block,
+                message: "dynamic eval on untrusted input",
+                reviewer: "security",
+            }]
+        } : {
+            []
         }
     }
 }
 
-#[derive(Debug, Clone)]
-pub data Vote {
-    agent_id: u64,
-    role: ReviewRole,
-    decision: VoteDecision,
-    reason: String,
-}
-
-/// Compute each agent's vote based on their findings.
-///
-/// @req  agent.findings is available
-/// @ens  result.decision reflects worst severity found
-/// @fx   pure
-fn compute_vote(agent: &ReviewAgent) -> Vote {
-    val critical = agent.findings.iter().any(|f| f.severity == Severity::Critical);
-    val errors = agent.findings.iter().filter(|f| f.severity == Severity::Error).count();
-    val score = agent.risk_score();
-
-    val (decision, reason) = if critical {
-        (VoteDecision::Reject, "Critical issues found — cannot merge".to_string())
-    } else if errors > 2 {
-        (VoteDecision::RequestChanges, format!("Found {} errors (risk score: {})", errors, score))
-    } else if score > 15 {
-        (VoteDecision::RequestChanges, format!("High risk score ({}) — needs attention", score))
-    } else {
-        (VoteDecision::Approve, format!("Looks good (risk score: {})", score))
-    };
-
-    Vote {
-        agent_id: agent.id,
-        role: agent.role.clone(),
-        decision: decision,
-        reason: reason,
+impl Reviewer for PerfReviewer {
+    fn name(&self) -> String {
+        "perf"
     }
-}
 
-#[derive(Debug, Clone, PartialEq)]
-pub data ReviewOutcome {
-    Approved,
-    ChangesRequested,
-    Rejected,
-}
-
-extend ReviewOutcome {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            ReviewOutcome::Approved         => write!(f, "✅ APPROVED"),
-            ReviewOutcome::ChangesRequested => write!(f, "🔄 CHANGES REQUESTED"),
-            ReviewOutcome::Rejected         => write!(f, "❌ REJECTED"),
+    fn review(&self, hunk: Hunk) -> [Finding]~ {
+        // A nested loop and an eval are both worth flagging, at different
+        // severities — the same hunk can produce more than one finding.
+        val nested = ? contains(words(hunk.text), "nested") {
+            [@Finding {
+                file: hunk.file,
+                line: hunk.line,
+                severity: Severity.Warn,
+                message: "nested loop in hot path",
+                reviewer: "perf",
+            }]
+        } : {
+            []
         }
-    }
-}
-
-/// Apply supermajority consensus: approve only if >2/3 approve
-/// and no one rejects.
-///
-/// @req  votes.len() > 0                  "need at least one vote"
-/// @ens  result is deterministic
-/// @fx   pure
-fn consensus(votes: &[Vote]~) -> ReviewOutcome {
-    val total = votes.len();
-    val approvals = votes.iter().filter(|v| v.decision == VoteDecision::Approve).count();
-    val rejections = votes.iter().filter(|v| v.decision == VoteDecision::Reject).count();
-
-    if rejections > 0 {
-        ReviewOutcome::Rejected
-    } else if approvals * 3 > total * 2 {
-        ReviewOutcome::Approved
-    } else {
-        ReviewOutcome::ChangesRequested
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────
-// §6 — Review history (memory recall)
-// ─────────────────────────────────────────────────────────────────────
-
-#[derive(Debug, Clone)]
-pub data ReviewRecord {
-    pr_id: u64,
-    pr_title: String,
-    outcome: ReviewOutcome,
-    finding_count: usize,
-    total_risk: u32,
-}
-
-#[derive(Debug)]
-pub data ReviewHistory {
-    records: [ReviewRecord]~,
-}
-
-extend ReviewHistory {
-    pub fn new() -> ReviewHistory {
-        ReviewHistory { records: []~.new() }
-    }
-
-    pub fn record(&mut self, pr: &PullRequest, outcome: ReviewOutcome,
-              findings: &[Finding]~, risk: u32) {
-        self.records.push(ReviewRecord {
-            pr_id: pr.id,
-            pr_title: pr.title.clone(),
-            outcome: outcome,
-            finding_count: findings.len(),
-            total_risk: risk,
-        });
-    }
-
-    pub fn approval_rate(&self) -> f64 {
-        if self.records.is_empty() {
-            return 0.0;
+        val slow = ? contains(words(hunk.text), "eval") {
+            [@Finding {
+                file: hunk.file,
+                line: hunk.line,
+                severity: Severity.Block,
+                message: "eval defeats the compile cache",
+                reviewer: "perf",
+            }]
+        } : {
+            []
         }
-        val approved = self.records.iter()
-            .filter(|r| r.outcome == ReviewOutcome::Approved)
-            .count();
-        approved as f64 / self.records.len() as f64 * 100.0
-    }
-
-    pub fn avg_risk(&self) -> f64 {
-        if self.records.is_empty() {
-            return 0.0;
-        }
-        val total: u32 = self.records.iter().map(|r| r.total_risk).sum();
-        total as f64 / self.records.len() as f64
-    }
-
-    pub fn report(&self) / io {
-        println!("");
-        println!("── Review History ─────────────────────────────────────");
-        println!("  Total reviews:  {}", self.records.len());
-        println!("  Approval rate:  {:.1}%", self.approval_rate());
-        println!("  Avg risk score: {:.1}", self.avg_risk());
-        println!("  ┌─────┬──────────────────────────┬─────────────────┐");
-        println!("  │ PR  │ Title                    │ Outcome         │");
-        println!("  ├─────┼──────────────────────────┼─────────────────┤");
-        for rec in &self.records {
-            println!("  │ {:<3} │ {:<24} │ {:<15} │", rec.pr_id, rec.pr_title, rec.outcome);
-        }
-        println!("  └─────┴──────────────────────────┴─────────────────┘");
+        flatten([nested, slow])
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// §7 — Entry point: run a full code review
-// ─────────────────────────────────────────────────────────────────────
+// ── The model call ───────────────────────────────────────────────────
 
-pub fn main() / io {
-    println!("╔═══════════════════════════════════════════════════════════╗");
-    println!("║  MAGE Swarm Code Review System                          ║");
-    println!("╚═══════════════════════════════════════════════════════════╝");
-    println!("");
+// A reviewer that asks a model rather than pattern-matching. It is the only
+// `/ llm` in the file, and the effect propagates to everything that calls it.
+fn model_opinion(hunk: Hunk) -> [Finding]~ / llm {
+    ? len(words(hunk.text)) > 6 {
+        [@Finding {
+            file: hunk.file,
+            line: hunk.line,
+            severity: Severity.Warn,
+            message: "hunk does more than one thing",
+            reviewer: "model",
+        }]
+    } : {
+        []
+    }
+}
 
-    // Simulate a pull request.
-    val pr = PullRequest {
-        id: 42,
-        title: "Add user authentication".to_string(),
-        author: "developer-a".to_string(),
-        description: "Implements JWT-based auth with refresh tokens".to_string(),
-        files: vec![
-            FileDiff {
-                path: "src/auth/mod.mg".to_string(),
-                additions: 120,
-                deletions: 5,
-                hunks: vec![
-                    "pub fn verify_token(token: &String) -> Claims or AuthError".to_string(),
-                    "pub struct Claims { user_id: u64, exp: u64 }".to_string(),
-                    "val api_key = \"sk-test-12345\"".to_string(),
-                ],
-            },
-            FileDiff {
-                path: "src/auth/jwt.mg".to_string(),
-                additions: 85,
-                deletions: 0,
-                hunks: vec![
-                    "pub fn sign(payload: &Claims, secret: &String) -> String".to_string(),
-                    "unsafe fn decode_raw(bytes: &[u8]) -> Claims".to_string(),
-                ],
-            },
-            FileDiff {
-                path: "src/middleware.mg".to_string(),
-                additions: 40,
-                deletions: 10,
-                hunks: vec![
-                    "pub fn auth_middleware(req: &Request) / net + io -> () or AuthError".to_string(),
-                ],
-            },
+// ── Consensus ────────────────────────────────────────────────────────
+
+// How many distinct reviewers flagged a location.
+fn agreement(findings: [Finding]~, at: String) -> usize {
+    val here = filter(findings, fn(finding) => location(finding) == at)
+    // `freq` returns `{A: usize}`, and `len` takes `[A]` — so the distinct
+    // reviewers are counted through `keys`, not by measuring the map.
+    len(keys(freq(map(here, fn(finding) => finding.reviewer))))
+}
+
+// A location is confirmed when a majority of the reviewer pool flagged it. This
+// is why a single strict reviewer cannot block on its own.
+fn confirmed(findings: [Finding]~, at: String, pool: usize) -> bool {
+    agreement(findings, at) * 2 > pool
+}
+
+// The worst severity reported at a location. `fold` rather than `reduce`
+// because the seed is meaningful: nothing reported is a `Note`, not an error.
+fn peak_severity(findings: [Finding]~, at: String) -> Severity {
+    val here = filter(findings, fn(finding) => location(finding) == at)
+    fold(
+        here,
+        Severity.Note,
+        fn(worst, finding) => ? severity_rank(finding.severity) > severity_rank(worst) {
+            finding.severity
+        } : {
+            worst
+        },
+    )
+}
+
+// ── Review ───────────────────────────────────────────────────────────
+
+// Every reviewer sees every hunk. The reviewers are separate values of separate
+// types, so this is where the trait earns its keep.
+fn review_all(hunks: [Hunk]~) -> [Finding]~ / llm {
+    val style = @StyleReviewer { max_width: 40 }
+    val security = @SecurityReviewer { strict: 1b }
+    val perf = @PerfReviewer { budget_ms: 50 }
+
+    val by_style = flatten(map(hunks, fn(hunk) => style.review(hunk)))
+    val by_security = flatten(map(hunks, fn(hunk) => security.review(hunk)))
+    val by_perf = flatten(map(hunks, fn(hunk) => perf.review(hunk)))
+    val by_model = flatten(map(hunks, fn(hunk) => model_opinion(hunk)))
+
+    flatten([by_style, by_security, by_perf, by_model])
+}
+
+// ── Entry point ──────────────────────────────────────────────────────
+
+pub fn main() -> String / llm {
+    val hunks = [
+        @Hunk { file: "parser.mg", line: 12, text: "let out = eval nested input from the caller" },
+        @Hunk { file: "lexer.mg", line: 88, text: "advance one token" },
+        @Hunk {
+            file: "types.mg",
+            line: 41,
+            text: "unify the substitution across every element of the row",
+        },
+    ]
+
+    val findings = review_all(hunks)
+    // Annotated because `confirmed` takes a `usize`, and the reviewer count is
+    // compared against `len`-derived numbers.
+    val pool: usize = 4
+
+    // Distinct locations, in a stable order.
+    val places = sort(keys(freq(map(findings, fn(finding) => location(finding)))))
+
+    val verdicts = map(
+        places,
+        fn(at) => f"{at} {severity_name(peak_severity(findings, at))} x{agreement(findings, at)}",
+    )
+
+    val blockers = filter(
+        places,
+        fn(at) => confirmed(findings, at, pool)
+            && severity_rank(peak_severity(findings, at)) == 3,
+    )
+
+    val decision = ? len(blockers) > 0 { "blocked" } : { "approved" }
+
+    val by_file = group(findings, fn(finding) => finding.file)
+    val counts = map(sort(keys(by_file)), fn(file) => f"{file}={len(by_file[file])}")
+
+    join(
+        [
+            f"{len(findings)} finding(s)",
+            join(verdicts, " | "),
+            f"blockers {join(blockers, ",")}",
+            decision,
+            join(counts, " "),
         ],
-        labels: vec!["feature", "auth"].iter().map(|s| s.to_string()).collect(),
-    };
-
-    println!("Pull Request #{}: {}", pr.id, pr.title);
-    println!("  Author: {}", pr.author);
-    println!("  Files:  {}", pr.file_count());
-    println!("  Changes: +{} / -{}", pr.files.iter().map(|f| f.additions).sum::<u32>(), pr.files.iter().map(|f| f.deletions).sum::<u32>());
-    println!("");
-
-    // Create the review swarm.
-    println!("─── Assembling Review Swarm ──────────────────────────────");
-    var agents: [ReviewAgent]~ = vec![
-        ReviewAgent.new(1, ReviewRole::Architect),
-        ReviewAgent.new(2, ReviewRole::Security),
-        ReviewAgent.new(3, ReviewRole::Performance),
-        ReviewAgent.new(4, ReviewRole::Style),
-        ReviewAgent.new(5, ReviewRole::Testing),
-    ];
-
-    // Each agent reviews independently (scatter phase).
-    println!("");
-    println!("─── Scatter: Independent Reviews ─────────────────────────");
-    for agent in &mut agents {
-        agent.review(&pr);
-    }
-
-    // Gather all findings.
-    println!("");
-    println!("─── Gather: Consolidated Findings ────────────────────────");
-    var all_findings: [Finding]~ = []~.new();
-    for agent in &agents {
-        for finding in &agent.findings {
-            println!("  {}", finding);
-            all_findings.push(finding.clone());
-        }
-    }
-    println!("");
-    println!("  Total findings: {}", all_findings.len());
-
-    // Vote on the PR.
-    println!("");
-    println!("─── Consensus: Voting ────────────────────────────────────");
-    var votes: [Vote]~ = []~.new();
-    for agent in &agents {
-        val vote = compute_vote(agent);
-        println!("  {}: {} — {}", vote.role, vote.decision, vote.reason);
-        votes.push(vote);
-    }
-
-    val outcome = consensus(&votes);
-    val total_risk: u32 = agents.iter().map(|a| a.risk_score()).sum();
-    println!("");
-    println!("  ╔═══════════════════════════════════╗");
-    println!("  ║  Review Outcome: {:<21}║", outcome);
-    println!("  ║  Total Risk Score: {:<19}║", total_risk);
-    println!("  ╚═══════════════════════════════════╝");
-
-    // Record in history.
-    var history = ReviewHistory.new();
-    history.record(&pr, outcome, &all_findings, total_risk);
-
-    // Simulate a second clean PR.
-    val clean_pr = PullRequest {
-        id: 43,
-        title: "Fix typo in README".to_string(),
-        author: "developer-b".to_string(),
-        description: "Minor documentation fix".to_string(),
-        files: vec![
-            FileDiff {
-                path: "README.md".to_string(),
-                additions: 1,
-                deletions: 1,
-                hunks: vec!["Fixed spelling of 'authentication'".to_string()],
-            },
-            FileDiff {
-                path: "tests/readme_test.mg".to_string(),
-                additions: 5,
-                deletions: 0,
-                hunks: vec!["added doc link test".to_string()],
-            },
-        ],
-        labels: vec!["docs"].iter().map(|s| s.to_string()).collect(),
-    };
-    history.record(&clean_pr, ReviewOutcome::Approved, &[]~.new(), 1);
-
-    history.report();
-
-    println!("");
-    println!("═══════════════════════════════════════════════════════════");
-    println!("  Review system complete.");
-    println!("═══════════════════════════════════════════════════════════");
+        "; ",
+    )
 }

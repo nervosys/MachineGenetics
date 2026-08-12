@@ -65,6 +65,15 @@ fi
 #
 # Each regex must match the number *and* enough context to prove it is a claim
 # about that crate. A bare number would pass on any coincidence in the file.
+#
+# No comment lines inside the block: the reader below splits every line on tabs
+# and would take a `#` line as a filename.
+#
+# The last HANDOFF entry is the right-hand end of the "1,066 → 1,091" range in
+# the example-rewrite section. The left end is history and stays put, so the
+# pattern deliberately starts *after* the arrow — `digits()` strips non-digits
+# from the whole match, and a pattern spanning both numbers would compare
+# against "1,0661,091".
 CHECKS=$(cat <<'EOF'
 scripts/test-all.sh	#     rmi \(cpu\) +[0-9,]+ tests	rmi
 scripts/test-all.sh	#     prototype +[0-9,]+ tests	prototype
@@ -98,6 +107,7 @@ HANDOFF.md	prototype [0-9,]+ ·	prototype
 HANDOFF.md	ribosome [0-9,]+ ·	ribosome
 HANDOFF.md	germline [0-9,]+ ·	germline
 HANDOFF.md	forge [0-9,]+ \|	forge
+HANDOFF.md	→ [0-9,]+\*\*, all green	prototype
 EOF
 )
 

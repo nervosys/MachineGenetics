@@ -3,9 +3,9 @@
 > Tracking progress from prototype toward production. Steps 1–22 completed prior.
 > Each step is a concrete, testable increment.
 >
-> **Last verified: 2026-08-05** — all five crates built and tested: prototype
-> **1,066**, rmi **1,380**, ribosome **164**, germline **112**, forge **52** —
-> **2,774 tests, 0 failures, 0 warnings**. The crate count went from three to
+> **Last verified: 2026-08-11** — all five crates built and tested: prototype
+> **1,091**, rmi **1,380**, ribosome **164**, germline **112**, forge **52** —
+> **2,799 tests, 0 failures, 0 warnings**. The crate count went from three to
 > five when the build engine (step 148) and the RSI control plane (step 149)
 > were extracted from `forge`; the total is unchanged by those moves, and
 > `forge`'s 52 is what the registry alone measured before they were parked in
@@ -352,5 +352,5 @@
 | 7 | Ribosome distribution | ✅ | **Built 2026-08-03.** Real TCP transport (`remote.rs`), `RemoteExecutor` behind the `Executor` seam, worker advertisement, registry with heartbeat/eviction/recovery, and signed provenance (`provenance.rs`). Tested against live loopback workers. Remaining and stated in `RIBOSOME.md`: TLS, connection auth, and a sandboxed subprocess executor. |
 | 6 | Reference surface has no call sites | ✅ | **Fixed 2026-08-03** by the library split (step 142). `pub` now carries the meaning and the crate-wide suppression is gone. |
 | 9 | Ribosome builds only MAGE | ✅ | **Built 2026-08-04** (step 147). `ribosome::lang`: languages, toolchains, and declared granularity, with builtins for MAGE, C, C++, Rust, Go, Python, and TypeScript. The substance is not the planner but the `Hermeticity` tier — `Structural` / `Pinned` / `Declared`. A pinned toolchain's executable digest enters the action key, so two machines' differently-patched `gcc-13.2.0` cannot collide; an unpinned one is marked `+unpinned` and `Store::open_shared` refuses to publish its claims, per action. 32 tests. |
-| 11 | Shipped examples do not typecheck | 🔧 | **10 of 12 examples under `examples/` fail `--check`** (11 when found on 2026-08-05; `hello-world` was a compiler bug and is fixed). Ten share one parse error — `use std::env;`, Rust’s `::` where MAGE canonical wants `.` — and `hello-world` fails type-checking. Nothing had ever checked them: CI runs `cargo test`, and examples are data. **Not mechanical to fix:** a bulk `::` → `.` conversion was tried and every example then fails deeper on some other construct, so repairing them means deciding what each was meant to demonstrate and rewriting it across eleven files. `scripts/check-examples.sh` now pins the set in CI and fails in both directions, so the debt is explicit and cannot grow silently. |
+| 11 | Shipped examples do not typecheck | ✅ | **Closed 2026-08-11.** All 12 typecheck, evaluate, and are pinned to their printed output by `scripts/check-examples.sh` in CI. Found 2026-08-05 with 11 of 12 failing `--check` and nothing anywhere checking them — CI runs `cargo test`, and examples are data. The shared `use std::x;` parse error was only the first error in each file; a bulk `::` → `.` conversion was tried and every example then failed deeper on constructs that had never existed. They were aspirational Rust, and were rewritten rather than converted. Doing so exercised surfaces nothing else did and produced **eleven compiler and evaluator fixes**, six of them in the "typechecks but does not evaluate" class that `--check` cannot see. Two examples then ran and printed the *wrong answer*, so the pin records the output rather than the exit status. Detail in `HANDOFF.md`. |
 | 10 | External dependency resolution | ⬚ | `lang` deliberately stops at targets in one graph. Fetching third-party code is a distinct trust problem — provenance, pinning, and revocation for code nobody in this repo wrote — and folding it into the planner is how build systems become unauditable. Not started, and not an oversight. |

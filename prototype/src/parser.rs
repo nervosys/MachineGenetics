@@ -841,20 +841,27 @@ impl<'a> Parser<'a> {
             Vec::new()
         };
 
-        let self_type = self.parse_type()?;
+        let mut self_type = self.parse_type()?;
 
         // The lexer aliases `for` → TokenKind::At (used for the @-for
         // loop sigil too). In impl-block position, At unambiguously
         // means the `impl Trait for Type` keyword. Accept both.
+        //
+        // In `impl Trait for Type` the type just parsed is the *trait*, and the
+        // one after `for` is the implementing type. Both have to be kept: the
+        // implementing type used to be parsed and dropped on the floor, which
+        // left `self_type` naming the trait, so nothing downstream could tell
+        // which type an impl belonged to — trait methods were unreachable at
+        // run time because no receiver's type ever matched.
         let trait_path = if matches!(self.peek(), TokenKind::KwFor | TokenKind::At) {
             self.advance();
-            let _actual_type = self.parse_type()?;
-            // The "self_type" was actually the trait path
-            if let Type::Path { segments, .. } = &self_type {
-                Some(segments.clone())
-            } else {
-                None
-            }
+            let implementing_type = self.parse_type()?;
+            let trait_segments = match &self_type {
+                Type::Path { segments, .. } => Some(segments.clone()),
+                _ => None,
+            };
+            self_type = implementing_type;
+            trait_segments
         } else {
             None
         };
@@ -3330,13 +3337,31 @@ impl<'a> Parser<'a> {
         Ok(lhs)
     }
 
+    /// The operand of a prefix operator: a primary *with its postfix chain*,
+    /// but no infix operator.
+    ///
+    /// This used to recurse straight back into `parse_prefix_expr`, which skips
+    /// the postfix loop entirely — so `!ready(x)` parsed as `(!ready)(x)`,
+    /// negating the *function* and then calling the result. It typechecked
+    /// (nothing constrains what `!` is applied to) and died at run time with
+    /// `value is not callable`. The same shape broke `-f()`, `*p.field`, and
+    /// `&x[i]`.
+    ///
+    /// `MAX_INFIX_BP` is above every infix binding power in the loop below, so
+    /// the operand stops at the first infix operator: `-x * y` stays
+    /// `(-x) * y`, as it should.
+    fn parse_unary_operand(&mut self) -> Result<Expr, ParseError> {
+        const MAX_INFIX_BP: u8 = 25;
+        self.parse_expr_bp(MAX_INFIX_BP)
+    }
+
     fn parse_prefix_expr(&mut self) -> Result<Expr, ParseError> {
         match self.peek() {
             // Unary operators
             TokenKind::Minus | TokenKind::Bang | TokenKind::Star => {
                 let tok = self.advance();
                 let op = tok.text.clone();
-                let operand = self.parse_prefix_expr()?;
+                let operand = self.parse_unary_operand()?;
                 Ok(Expr::Unary {
                     op,
                     operand: Box::new(operand),
@@ -3345,7 +3370,7 @@ impl<'a> Parser<'a> {
             TokenKind::BitAnd => {
                 let tok = self.advance();
                 let op = tok.text.clone();
-                let operand = self.parse_prefix_expr()?;
+                let operand = self.parse_unary_operand()?;
                 Ok(Expr::Unary {
                     op,
                     operand: Box::new(operand),
@@ -3359,7 +3384,7 @@ impl<'a> Parser<'a> {
             // distinguish from the shared-ref `&` form.
             TokenKind::AndNot => {
                 self.advance();
-                let operand = self.parse_prefix_expr()?;
+                let operand = self.parse_unary_operand()?;
                 Ok(Expr::Unary {
                     op: "&!".to_string(),
                     operand: Box::new(operand),

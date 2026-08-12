@@ -1,4 +1,4 @@
-# Handoff — 2026-08-04/05
+# Handoff — 2026-08-04/05, updated 2026-08-11
 
 What changed, what state it is in, and what to look at next. Written for someone
 picking this up cold.
@@ -10,9 +10,12 @@ picking this up cold.
 `master` is green and released. Everything below is verified, not asserted —
 each claim has a command beside it.
 
+The 2026-08-11 session closed open item #1: all twelve examples now typecheck,
+run, and are pinned to their output. See "The example rewrite" below.
+
 | | |
 |---|---|
-| Tests | **2,774** — rmi 1,380 · prototype 1,066 · ribosome 164 · germline 112 · forge 52 |
+| Tests | **2,799** — rmi 1,380 · prototype 1,091 · ribosome 164 · germline 112 · forge 52 |
 | CUDA | **1,071 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm |
@@ -48,8 +51,8 @@ that breaks *and* a known-bad entry that starts passing without being pruned.
 
 | Command | Checks |
 |---|---|
-| `scripts/test-all.sh --check-docs` | 38 documented test counts against the run that just produced them (51 with `--cuda --bench`) |
-| `scripts/check-examples.sh` | which shipped examples typecheck, against a recorded list |
+| `scripts/test-all.sh --check-docs` | every documented test count against the run that just produced them; it prints how many it checked, and `--cuda --bench` adds the GPU and benchmark figures |
+| `scripts/check-examples.sh` | that all 12 examples typecheck, evaluate, **and print the recorded answer** |
 | CI `audit` job | `cargo audit` over all five lockfiles separately |
 | CI ontology step | `MAGE_ONTOLOGY.json` matches a fresh `--emit-ontology` |
 | CI version step | `mage-parse --version` matches the tool id Ribosome keys on |
@@ -65,12 +68,96 @@ stale after the checker existed was one nobody had listed.
 
 | # | Item | State |
 |---|---|---|
-| 1 | **10 of 12 examples do not typecheck** | All share `use std::x;` — Rust's `::` where MAGE wants `.`. A bulk conversion was tried and fails deeper in every file, so this needs per-file judgement about what each demonstrates. Pinned by `check-examples.sh`, so it cannot rot further. **Best next task.** |
+| ~~1~~ | ~~**10 of 12 examples do not typecheck**~~ | **Closed 2026-08-11.** All twelve typecheck, run, and are pinned to their printed output by `check-examples.sh`. See "The example rewrite" below — it cost eleven compiler and evaluator fixes. |
 | 2 | GPU CI runner | Correctness is verified on the hardware here and recorded. What is missing is a self-hosted runner so `cuda-gpu` runs unattended — an account action, declined once already. |
 | 3 | TLS trust posture | The transport seam and a `rustls` implementation exist behind `--features tls`. The posture (pinned self-signed / mutual TLS / public PKI) is deliberately the operator's; `acceptor`/`connector` take your config. |
 | 4 | `rmi`'s 2 clippy warnings | Left alone on purpose: vendored, must stay syncable against its own upstream. |
 | 5 | RAP error shape | An unknown method returns `{"result":{"error":…}}` — an HTTP-200-shaped success containing an error, not a JSON-RPC `error` member. Fixing it is a client-visible wire change, so it is a decision, not a cleanup. |
 | 6 | `int` literal constraint | The fix is a post-hoc check in `default_int_literals`, not a real integer-kind constraint threaded through `unify`. Correct for the programs it rejects; the principled version is larger. |
+
+---
+
+## The example rewrite
+
+Rewriting the examples was supposed to be a documentation task. It was not: the
+examples exercised surfaces nothing else did, and **eleven compiler and evaluator
+bugs** fell out. Every one was found by running `--check` or `--eval` on a small
+probe, never by reading the compiler.
+
+| # | Bug | What it cost |
+|---|---|---|
+| 1 | `effects.rs` matched builtin names *ahead of* `resolve::VOCABULARY` | the vocabulary's pure `join` was read as a thread join and typed `Async`; every caller of a documented pure function failed unless it declared `/ async` |
+| 2 | `types.rs` unified array *lengths* in list literals | `[[1, 2], [3]]` rejected as ill-typed; `flatten` could flatten nothing but a rectangle |
+| 3 | `Self` never bound in `impl`/`trait` bodies | no method with a receiver and no `-> Self` constructor could be written at all |
+| 4 | `Self` still unbound in `extend` bodies | fix #3 covered two of the three body forms |
+| 5 | enums had no runtime representation | `Mode.A` errored; **and a variant pattern matched nothing, so a `match` quietly took the wildcard arm** — a wrong answer, not an error |
+| 6 | enum variants keyed by variant name alone | `Left { X }` and `Right { X }` evicted each other from the table |
+| 7 | `Ok`/`Err` typechecked but did not evaluate | a program using `Result` was accepted in full, then died on `unknown function \`Ok\`` |
+| 8 | the evaluator collected only free functions | every `impl`/`extend`/trait method typechecked and then failed with `unknown function` |
+| 9 | **`impl Trait for Type` parsed the implementing type and discarded it** (`let _actual_type = …`) | `self_type` named the *trait*, so impls were filed under the trait name and no receiver could dispatch to them. Two types implementing one trait collided. |
+| 10 | array lengths unified in `if`/`match` **branches** too | `? found { [x] } : { [] }` rejected as `array size mismatch: 1 vs 0` — return-a-result-or-nothing, the most ordinary shape in the language, was unwritable. Fix #2 had solved this for list literals only |
+| 11 | **prefix operators bound tighter than the call postfix** | `!f(x)` parsed as `(!f)(x)`: it negated the *function* and called the result. Checked clean, died at run time with `value is not callable`. Same for `-f()`, `*p.field`, `&x[i]` |
+
+Bugs 9 and 11 are the ones to learn from. Both survived because the broken
+parse still produced *something*, and neither had a test that could tell the
+difference: nothing had ever asserted which type an impl belonged to, and
+nothing had ever applied a prefix operator to a call. In both cases **no test
+noticed when the bug was fixed**. The regression tests now use two types
+implementing one trait, and a `!` on a call — the shapes that expose them.
+
+Six of the eleven — #5, #6, #7, #8, #9, #11 — are the same class: a bug that
+**typechecks and then does not evaluate**. `--check` cannot find these. Only
+`--eval` can, which is why the pin now runs it.
+
+Prototype tests **1,066 → 1,091**, all green.
+
+### The examples are now pinned to their output, not to their exit status
+
+`check-examples.sh` used to record which examples typechecked. That bar was too
+low twice over. Two examples typechecked, ran, and printed the **wrong answer**:
+
+- `cli-tool` searched with `contains`, which is element membership and not
+  substring search, so its grep matched nothing and reported `0`;
+- `autonomous-pipeline` filtered its worklist on readiness rather than on what
+  had been placed, and called three of five tasks unplaceable on an acyclic
+  graph.
+
+Neither is visible from an exit status; both are obvious the moment the output
+is read against what the example claims to demonstrate. So the script now pins
+the answer. `--print` regenerates the block after an intentional change.
+
+### Found and left alone
+
+- **`guard cond else { … }` falls through** unless the else block explicitly
+  `return`s. `guard n > 0 else { 0 }` does not return `0` — it continues, and
+  the function produces a wrong answer silently. The evaluator's own comment
+  admits it ("A non-diverging else falls through"). Rust's `let`-else requires
+  divergence; making a non-diverging else a check-time error is the fix.
+- **There is no `handle` form.** `--check` reports `unresolved name: handle`.
+  Effects can be declared, annotated, inferred, and enforced, but never
+  *discharged* — the effect system has no elimination rule.
+- **`agent` and `unsafe` cannot be written as effect names**, because both lex
+  as keywords: `/ agent` is a parse error. `rand` is not built in either — the
+  built-in kind is `rng`, and anything else silently becomes `Effect::Custom`.
+- **Effect annotations are required only on `pub` functions.** Private ones
+  infer. Over-declaration is always accepted, so an annotation is an upper
+  bound, not a description.
+- **Sigil letters cannot be identifiers**: `f v m C S E T I M u Y Z` are
+  keywords, as is `ret`. Naming a variable `f` yields `unresolved name: val`,
+  which points at the wrong token entirely.
+- **A `(` after a block is parsed as calling that block.** A `while … { … }`
+  followed on the next line by `(a, b)` becomes `while(…)(a, b)`, reported as
+  `call: type mismatch: () vs f(…)`. Any statement in between separates them.
+- **`scan` emits its seed** as the first element, so its result is one longer
+  than its input. The two conventions differ by exactly one line, which is
+  invisible until you count.
+
+An earlier draft of this list claimed that **a nested `"` inside an f-string
+ends it early**, and three examples were written around that. It is false —
+`f"{join(xs, ", ")}"`, method receivers, and two-deep nesting all work. The
+claim was written from a parse error whose real cause was never isolated, which
+is the same mistake this document keeps describing, committed while describing
+it. The workarounds have been removed.
 
 ---
 
@@ -91,6 +178,16 @@ stale after the checker existed was one nobody had listed.
   (which parses as a *map*). Booleans are `1b`/`0b` — there is no `true`. I lost
   time to both. `MAGE_ONTOLOGY.json` and `--build=schema` answer these
   authoritatively; read them before guessing.
+- **`remove_dir_all` then `create_dir_all` on the same fixed path is unsound on
+  Windows.** Deletion returns while the directory is still open somewhere (an
+  indexer, a scanner, an Explorer window), leaving it *delete-pending*: it
+  exists, cannot be opened, and cannot be recreated. The next `create_dir_all`
+  fails with `os error 183` — "cannot create a file when that file already
+  exists" — and keeps failing forever, because nothing ever closes the handle.
+  Three `forge` registry tests had been red on this machine since 2026-08-05
+  and the error pointed at the creation rather than the deletion that caused
+  it. Fixed by giving each store a name no other run uses; the "all green"
+  claim was true in CI and false here the whole time.
 - **A tool's output means nothing until you know what you pointed it at.**
   `cargo audit` flagged `crossbeam-epoch` in `rmi`, which turned out to be a
   stale artifact in one working copy — `rmi` git-ignores its lockfile, so there
