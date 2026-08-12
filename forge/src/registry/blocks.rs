@@ -234,9 +234,29 @@ mod tests {
 
     const SRC: &str = "block TransformerBlock(d, h, ff) {\n    layer attn: MultiHeadAttention(d, h);\n    layer norm1: LayerNorm;\n}\n";
 
+    /// A directory no other run has used, rather than a fixed name wiped on
+    /// entry.
+    ///
+    /// The wipe-and-reuse version was unsound on Windows and had been failing
+    /// on a developer machine since 2026-08-05. `remove_dir_all` returns while
+    /// the directory is still open somewhere — an indexer, a virus scanner, an
+    /// Explorer window — which puts it in a *delete-pending* state: it still
+    /// exists, it cannot be opened, and it cannot be recreated. The very next
+    /// `create_dir_all` then fails with `os error 183` (already exists), and,
+    /// because nothing ever closes that handle, it fails on every run
+    /// afterwards. Three tests were permanently red and the error message
+    /// ("Cannot create a file when that file already exists") pointed at the
+    /// creation rather than at the deletion that caused it.
+    ///
+    /// A unique name removes the race instead of narrowing it, and lets two
+    /// runs of the suite proceed at once.
     fn temp_store(tag: &str) -> BlockStore {
-        let dir = std::env::temp_dir().join(format!("forge-blockstore-{tag}"));
-        let _ = std::fs::remove_dir_all(&dir);
+        static NEXT: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+        let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let dir = std::env::temp_dir().join(format!(
+            "forge-blockstore-{tag}-{}-{n}",
+            std::process::id()
+        ));
         BlockStore::new(dir)
     }
 
