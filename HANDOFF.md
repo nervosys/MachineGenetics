@@ -12,7 +12,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **2,815** — rmi 1,380 · prototype 1,107 · ribosome 164 · germline 112 · forge 52 |
+| Tests | **2,821** — rmi 1,380 · prototype 1,113 · ribosome 164 · germline 112 · forge 52 |
 | CUDA | **1,071 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm |
@@ -99,11 +99,6 @@ actually unblock them, because "open" has meant three different things.
 
 Each is a contained fix, and each is a real trap someone will hit.
 
-- **`/ agent` is a parse error**, because `agent` lexes as a keyword — and
-  `agent` is a *documented effect* in `MAGE_SPEC.md` §11.2. `unsafe` is the
-  same. This is the best next task on this list: it is the same spec-versus-
-  implementation gap as §11.4 below, it is small, and the spec is currently
-  advertising an effect nobody can write.
 - **A `(` after a block parses as calling the block.** `while … { … }` followed
   on the next line by `(a, b)` becomes `while(…)(a, b)`, reported as
   `call: type mismatch: () vs f(…)`. Any statement in between separates them.
@@ -158,7 +153,10 @@ Seven of the fourteen — #5, #6, #7, #8, #9, #11, #13 — are one class: a bug 
 **typechecks and then does not evaluate**. `--check` cannot find these. Only
 `--eval` can, which is why the pin now runs it.
 
-Prototype tests **1,066 → 1,107**, all green.
+That rewrite took the prototype suite from 1,066 tests to 1,107. Counting every
+session since, prototype tests **1,066 → 1,113**, all green — this figure is
+checked against the live run, so it tracks forward rather than freezing at the
+session that wrote it.
 
 ### The examples are pinned to their output, not to their exit status
 
@@ -232,9 +230,59 @@ checked by running it; the §11.5 example is a real file that reports
 `f transcribe: { audit }`, `f summarize: pure`, and evaluates to
 `"recorded 11 chars"`.
 
-**Read §11.2 with suspicion.** It is a table of effects and their operations,
-and at least one row — `agent` — names an effect the parser rejects. Nobody has
-run the others.
+**§11.2 was read with suspicion, and every row was run.** See the next section.
+
+---
+
+## Four documents disagreed with the compiler about effects
+
+The task was one line of the list above: `/ agent` is a parse error, and `agent`
+is a documented effect. Fixing it took two changes — `agent` lexes as the
+keyword introducing an `agent` item, so the annotation never parsed, *and* it
+was not a built-in kind either, so it would have failed the unknown-effect check
+if it had. Two independent failures on one row of one table.
+
+Then the rest of §11.2 was run, which is what the previous handoff had asked
+for. The other sixteen names all worked. But the table's middle column,
+labelled **Operations**, turned out to name 41 operations of which **22 perform
+nothing** — `dispatch`, `generate`, `lifecycle`, `random`, `forward` and the
+rest have no `effect` block behind them and are attributed by nothing, so a
+function calling them is pure. §11.2 now says *domain*, and carries a second
+table of the names really attributed on call. Both tables are pinned by tests.
+
+Running out from there found the same disagreement in three more places:
+
+| Document | Claimed | Actually |
+|---|---|---|
+| `MAGE_ONTOLOGY.json` | ten `effect_name`s, incl. `db`, `log`, `tools`, `rand` | four of ten rejected as unknown effects; ten built-in kinds absent |
+| `internals/03-ast-hir.md` | an `Effect` enum with `Io`, `Unsafe`, `Db`, `Log` | none of those variants exist; eleven real ones missing |
+| `internals/05-effects-resolution.md` | §5.3 hierarchy, §5.4 `Forge.toml` grants, §5.5 `/ *` | none implemented; `/ *` is a parse error |
+
+The ontology one is the worst of the three, and it is not a documentation bug.
+That file is what an agent grounds on — the handoff above says to read it
+*before guessing* — and CI already pinned it against a fresh `--emit-ontology`.
+So the check was working perfectly and guaranteeing that a wrong answer stayed
+byte-identical. `db`, `log` and `tools` are capability **namespaces**
+(`db.query(…)`, from `resolve.rs`), a different list that had been folded into
+this one; `rand` was `rng` under a name nothing has ever accepted. The published
+list is now the sixteen built-in kinds, and a test asserts each one both parses
+and checks — which is the property the old test, asserting only that the *name
+appeared in the file*, could never have caught.
+
+The internals sections are marked rather than rewritten: `is_sub_effect`,
+`[capabilities] allow-io` and effect polymorphism are somebody's design, and
+choosing whether to build them is not a cleanup. What is stated now is which
+parts are unbuilt and what the compiler does instead. §5.6, which describes a
+feature that *does* exist, had the wrong syntax throughout (`handle / Rng { … }
+with { Rng.op(…) => … }`); it is rewritten to the real form and every snippet in
+it was run — the example evaluates to `5`.
+
+The lesson is the previous handoff's, one level up. It says a claim checked in
+only one direction goes stale; the ontology shows a claim can be checked in both
+directions, byte for byte, against a generator that is itself wrong. **A pin
+guarantees agreement, not truth.** What was missing was the check that crosses
+the boundary: not "does the file match the generator" but "does every name the
+file publishes actually work". Six new tests, all green.
 
 ---
 

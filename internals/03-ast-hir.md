@@ -233,17 +233,28 @@ pub enum Ty {
 pub type EffectSet = BTreeSet<Effect>;
 
 pub enum Effect {
-    Io,        // file system, stdio
+    IO,        // file and stream I/O
     Net,       // network access
+    FS,        // filesystem operations
     Async,     // async operations
-    Unsafe,    // unsafe code
-    Db,        // database access
-    Agent,     // agent spawning
-    Log,       // logging / tracing
+    Alloc,     // heap allocation
+    Panic,     // unwinding / structured panics
+    FFI,       // foreign function invocation
     Env,       // environment variables
+    Time,      // clock and timer access
+    Gpu,       // GPU computation
+    Npu,       // neural processing unit
+    Llm,       // language model invocation
+    Evolve,    // evolutionary computation
+    Learn,     // training / gradient descent
+    Rng,       // random number generation
+    Agent,     // agent coordination
     Custom(String),  // user-defined effects
 }
 ```
+
+The sixteen built-in kinds are `MAGE_SPEC.md` §11.2; see
+[Effects & Resolution](05-effects-resolution.md).
 
 ### HIR Expression
 
