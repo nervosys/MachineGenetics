@@ -788,7 +788,15 @@ mod tests {
     #[test]
     fn a_dead_worker_reports_a_transient_error_not_a_build_failure() {
         let (addr, stop) = spawn_worker(Platform::any(), "w");
-        let remote = RemoteExecutor::connect(&addr, Duration::from_millis(300)).unwrap();
+        // `timeout()`, not 300ms. `spawn_worker` returns as soon as the thread
+        // is spawned, so the listener may not be accepting yet, and this
+        // connect is *setup* — the test is about what happens once the worker
+        // dies. Under the load of a full `test-all.sh` run the 300ms budget
+        // lapsed and the whole suite went red on a Windows `os error 10060`,
+        // which reads as a product failure rather than as a tight timeout.
+        // The short-timeout behaviour it looked like it was covering is really
+        // covered by `connecting_to_nothing_fails_transiently_rather_than_hanging`.
+        let remote = RemoteExecutor::connect(&addr, timeout()).unwrap();
         stop.store(true, Ordering::Relaxed);
         assert!(wait_until(timeout(), || !remote.ping()), "worker should stop accepting");
 
