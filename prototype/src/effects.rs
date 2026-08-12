@@ -1,8 +1,8 @@
 /// MAGE Effect Inference — bottom-up effect set computation.
 ///
-/// Implements the effect inference algorithm from MAGE_SPEC.md §5:
+/// Implements the effect inference algorithm from MAGE_SPEC.md §11:
 ///   InferEffects(fn):
-///     1. Collect all effect.perform calls in fn body
+///     1. Collect all effect operations performed in fn body
 ///     2. For each called function g, recursively InferEffects(g)
 ///     3. fn.effects = union of all performed + callee effects
 ///     4. If explicit annotation exists, verify inferred ⊆ declared
@@ -203,7 +203,7 @@ impl EffectInfer {
 
         self.call_graph.insert(fd.name.clone(), callees);
 
-        // If the function has local effects (from effect.perform), record them.
+        // If the function performs effects directly, record them.
         if !local_effects.is_empty() {
             self.inferred.insert(fd.name.clone(), local_effects);
         }
@@ -268,14 +268,6 @@ impl EffectInfer {
                     // Check for known effectful standard library functions.
                     self.check_builtin_effect(name, local_effects);
                 }
-                // Also check for effect.perform pattern.
-                if let ast::Expr::FieldAccess { object, field } = func.as_ref()
-                    && field == "perform" {
-                        // The object should be an effect name.
-                        if let ast::Expr::Ident { name } = object.as_ref() {
-                            local_effects.insert(Effect::from_name(name));
-                        }
-                    }
                 self.collect_calls_in_expr(func, callees, local_effects);
                 for arg in args {
                     self.collect_calls_in_expr(arg, callees, local_effects);
