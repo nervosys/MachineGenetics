@@ -405,6 +405,7 @@ impl Resolver {
             ast::ItemKind::Extend(eb) => {
                 self.push_scope();
                 self.resolve_ast_type(&eb.target_type);
+                self.define_self_type();
                 for item in &eb.items {
                     self.resolve_item(item);
                 }
@@ -481,6 +482,7 @@ impl Resolver {
         for gp in &td.generics {
             self.define_type(&gp.name, SymbolKind::GenericParam);
         }
+        self.define_self_type();
         for item in &td.items {
             self.resolve_item(item);
         }
@@ -493,10 +495,24 @@ impl Resolver {
             self.define_type(&gp.name, SymbolKind::GenericParam);
         }
         self.resolve_ast_type(&ib.self_type);
+        self.define_self_type();
         for item in &ib.items {
             self.resolve_item(item);
         }
         self.pop_scope();
+    }
+
+    /// Bind `Self` inside an `impl`, `trait`, or `extend` body.
+    ///
+    /// The parser desugars *every* `self` receiver into a parameter of type
+    /// `Self` (see `parser.rs`), and `Self` was never put in scope — so it
+    /// resolved to nothing and each method reported `unresolved type: Self`.
+    /// The effect was total rather than partial: no method with a receiver, and
+    /// no `-> Self` constructor, could be written in either a trait or an impl,
+    /// which is why every example that used one failed. Scoped per body, so it
+    /// disappears again outside.
+    fn define_self_type(&mut self) {
+        self.define_type("Self", SymbolKind::TypeAlias);
     }
 
     fn resolve_module_def(&mut self, md: &ast::ModuleDef) {
@@ -954,6 +970,43 @@ mod tests {
     fn test_unresolved_type() {
         let r = resolve_source("f foo(x: UnknownType) -> i32 { 0 }");
         assert!(r.diagnostics.iter().any(|d| d.message.contains("unresolved type")));
+    }
+
+    #[test]
+    fn self_resolves_inside_impl_trait_and_extend_bodies() {
+        // The parser desugars every `self` receiver to a parameter of type
+        // `Self`, so leaving `Self` unbound made *any* method unwritable —
+        // receiver methods and `-> Self` constructors alike, in impls, traits,
+        // and `extend` blocks. Cover each of those shapes: they failed for one
+        // reason and would regress for one reason. `extend` is listed because
+        // binding it only in impls and traits left that third body still broken.
+        for src in [
+            "S P { x: i32 }\nI P { +f get(&self) -> i32 { self.x } }",
+            "S P { x: i32 }\nI P { +f into(self) -> i32 { self.x } }",
+            "S P { x: i32 }\nI P { +f new(x: i32) -> Self { @P { x: x } } }",
+            "T Shape { f area(&self) -> i32; }",
+            "S P { x: i32 }\nextend P { f get(&self) -> i32 { self.x } }",
+        ] {
+            let r = resolve_source(src);
+            assert!(
+                !r.diagnostics.iter().any(|d| d.message.contains("unresolved type: `Self`")),
+                "`Self` should be in scope for:\n{src}\ngot: {:?}",
+                r.diagnostics
+            );
+        }
+    }
+
+    #[test]
+    fn self_does_not_leak_outside_impl_and_trait_bodies() {
+        // `Self` is bound per body, not globally — a free function naming it is
+        // still an error. Without this the fix above could be "define Self
+        // everywhere", which would accept nonsense.
+        let r = resolve_source("S P { x: i32 }\nf loose(p: Self) -> i32 { 0 }");
+        assert!(
+            r.diagnostics.iter().any(|d| d.message.contains("unresolved type: `Self`")),
+            "`Self` must not resolve outside an impl/trait: {:?}",
+            r.diagnostics
+        );
     }
 
     #[test]
