@@ -1095,6 +1095,36 @@ impl TypeChecker {
 
     // ── Expression inference (synth mode) ────────────────────────────
 
+    /// Join two types that have to agree because they are alternatives for the
+    /// same value — the arms of a `match`, the branches of an `if`, the
+    /// elements of a list literal. Ordinary unification, except that two arrays
+    /// disagreeing *only* in length widen to a `Vec`.
+    ///
+    /// A fixed length belongs to an array literal, not to the value a branch
+    /// produces. `? found { [finding] } : { [] }` has no statically known
+    /// length, and `[T]~` is precisely that type; reporting `array size
+    /// mismatch: 1 vs 0` made the most ordinary shape in the language — return
+    /// a result or nothing — unwritable. The widening already existed for list
+    /// literals, where it was needed for ragged nesting; it was never applied
+    /// to branches, so three of the twelve examples could not be typechecked.
+    ///
+    /// A declared fixed-size array is unaffected: this only fires when two
+    /// arrays reach each other as alternatives, and the result is then a `Vec`,
+    /// which `unify` will not accept where a `[T; n]` was asked for.
+    fn join_branches(&mut self, a: &Ty, b: &Ty) -> Result<Ty, String> {
+        let Err(e) = unify(&mut self.subst, a, b) else {
+            return Ok(self.subst.apply(a));
+        };
+        if let (Ty::Array(e1, n1), Ty::Array(e2, n2)) =
+            (self.subst.apply(a), self.subst.apply(b))
+            && n1 != n2
+            && unify(&mut self.subst, &e1, &e2).is_ok()
+        {
+            return Ok(Ty::Vec(Box::new(self.subst.apply(&e1))));
+        }
+        Err(e)
+    }
+
     fn infer_expr(&mut self, expr: &ast::Expr) -> Ty {
         match expr {
             ast::Expr::Literal { kind, value } => self.infer_literal(kind, value),
@@ -1389,11 +1419,20 @@ impl TypeChecker {
                 if elements.is_empty() {
                     return Ty::Array(Box::new(self.fresh()), 0);
                 }
-                let first = self.infer_expr(&elements[0]);
+                // The elements of a list literal are independent list *values*,
+                // so a nested literal whose rows differ in length
+                // (`[[1, 2], [3]]`) is ragged, not ill-typed — only their
+                // element types have to agree. `join_branches` is what widens
+                // the row type to a Vec; without it `flatten: [[A]] -> [A]`
+                // could flatten nothing but a rectangle.
+                let mut first = self.infer_expr(&elements[0]);
                 for el in &elements[1..] {
                     let t = self.infer_expr(el);
-                    if let Err(e) = unify(&mut self.subst, &first, &t) {
-                        self.emit_error(format!("array element type mismatch: {e}"));
+                    match self.join_branches(&first, &t) {
+                        Ok(joined) => first = joined,
+                        Err(e) => {
+                            self.emit_error(format!("array element type mismatch: {e}"));
+                        }
                     }
                 }
                 Ty::Array(Box::new(self.subst.apply(&first)), elements.len() as u64)
@@ -1453,10 +1492,13 @@ impl TypeChecker {
 
                 if let Some(else_blk) = else_block {
                     let else_ty = self.infer_block(else_blk);
-                    if let Err(e) = unify(&mut self.subst, &then_ty, &else_ty) {
-                        self.emit_error(format!("if/else branch type mismatch: {e}"));
+                    match self.join_branches(&then_ty, &else_ty) {
+                        Ok(joined) => joined,
+                        Err(e) => {
+                            self.emit_error(format!("if/else branch type mismatch: {e}"));
+                            self.subst.apply(&then_ty)
+                        }
                     }
-                    self.subst.apply(&then_ty)
                 } else {
                     // No else → the whole `if` is `()`, and the then-branch must
                     // be `()` too: there is no other branch to supply a value on
@@ -1486,14 +1528,18 @@ impl TypeChecker {
                     return Ty::Never;
                 }
                 self.check_match_exhaustive(arms);
-                let first_ty = self.infer_expr(&arms[0].body);
+                // The running type, not the first arm's: a widening from one
+                // arm has to be visible to the next, or `[a] | [] | [b, c]`
+                // reports the same length disagreement all over again.
+                let mut result = self.infer_expr(&arms[0].body);
                 for arm in &arms[1..] {
                     let arm_ty = self.infer_expr(&arm.body);
-                    if let Err(e) = unify(&mut self.subst, &first_ty, &arm_ty) {
-                        self.emit_error(format!("match arm type mismatch: {e}"));
+                    match self.join_branches(&result, &arm_ty) {
+                        Ok(joined) => result = joined,
+                        Err(e) => self.emit_error(format!("match arm type mismatch: {e}")),
                     }
                 }
-                self.subst.apply(&first_ty)
+                result
             }
 
             ast::Expr::Loop { body } => {
@@ -1532,11 +1578,10 @@ impl TypeChecker {
                     Some(v) => self.infer_expr(v),
                     None => Ty::Unit,
                 };
-                if let Some(want) = self.ret_stack.last().cloned() {
-                    if let Err(e) = unify(&mut self.subst, &want, &got) {
+                if let Some(want) = self.ret_stack.last().cloned()
+                    && let Err(e) = unify(&mut self.subst, &want, &got) {
                         self.emit_error(format!("return type mismatch: {e}"));
                     }
-                }
                 Ty::Never
             }
 
@@ -1698,11 +1743,10 @@ impl TypeChecker {
     /// unrelated struct's `x` — possible only because `Ty::Named` carried no
     /// identity. Now that it does, this can be exact.
     fn lookup_struct_field(&self, ty: &Ty, field: &str) -> Option<Ty> {
-        if let Some(name) = self.named_name(ty) {
-            if let Some((_, fields)) = self.struct_defs.get(name) {
+        if let Some(name) = self.named_name(ty)
+            && let Some((_, fields)) = self.struct_defs.get(name) {
                 return fields.iter().find(|(f, _)| f == field).map(|(_, t)| t.clone());
             }
-        }
         // Unknown or not-yet-resolved object type: fall back to the old
         // name-only search rather than inventing a type. Still permissive, but
         // only where the object's type genuinely is not known yet.
@@ -1775,6 +1819,29 @@ mod tests {
         assert!(!check_source("f t() { sum(\"hi\") }").diagnostics.is_empty());
         assert!(!check_source("f t() { sum(5) }").diagnostics.is_empty());
         assert!(!check_source("f t() { len(42) }").diagnostics.is_empty());
+    }
+
+    #[test]
+    fn ragged_nested_list_literals_are_not_length_errors() {
+        // A list literal's elements are independent list values, so rows of
+        // differing length are ragged, not ill-typed. Unifying the fixed
+        // lengths rejected these, which made `flatten: [[A]] -> [A]` able to
+        // flatten only a rectangle — a function that cannot do the one thing
+        // its published signature describes.
+        let tc = check_source("f t() { val a = [[1, 2], [3]]\n len(a) }");
+        assert!(tc.diagnostics.is_empty(), "errors: {:?}", tc.diagnostics);
+
+        let tc = check_source("f t() -> i32 { sum(flatten([[1, 2], [3]])) }");
+        assert!(tc.diagnostics.is_empty(), "errors: {:?}", tc.diagnostics);
+    }
+
+    #[test]
+    fn ragged_widening_still_rejects_real_element_mismatches() {
+        // The widening above must key on the *length* disagreeing, not swallow
+        // every nested-list error: rows whose element types genuinely differ
+        // are still wrong, at equal and unequal lengths alike.
+        assert!(!check_source("f t() { [[1, 2], [\"a\"]] }").diagnostics.is_empty());
+        assert!(!check_source("f t() { [[1, 2], [\"a\", \"b\"]] }").diagnostics.is_empty());
     }
 
     #[test]
@@ -1878,6 +1945,53 @@ mod tests {
         "#;
         let tc = check_source(src);
         assert!(!tc.diagnostics.is_empty(), "expected branch type mismatch");
+    }
+
+    /// One branch returns a result, the other returns nothing. This is the
+    /// single most common shape in the language and it was rejected outright
+    /// as `array size mismatch: 1 vs 0`, because branch types were unified
+    /// including the literal lengths.
+    #[test]
+    fn branches_returning_lists_of_different_lengths_widen_to_a_vec() {
+        let src = r#"
+            f flag(bad: bool) -> [i32]~ {
+                ? bad { [1] } : { [] }
+            }
+        "#;
+        let tc = check_source(src);
+        assert!(tc.diagnostics.is_empty(), "errors: {:?}", tc.diagnostics);
+    }
+
+    /// Three arms, three lengths. The widening has to carry forward: comparing
+    /// every arm against the *first* one reports the mismatch again on arm 3.
+    #[test]
+    fn match_arms_returning_lists_of_different_lengths_widen_to_a_vec() {
+        let src = r#"
+            E Level { Lo, Mid, Hi }
+            f items(level: Level) -> [i32]~ {
+                ?= level {
+                    Level.Lo => [],
+                    Level.Mid => [1],
+                    Level.Hi => [1, 2],
+                }
+            }
+        "#;
+        let tc = check_source(src);
+        assert!(tc.diagnostics.is_empty(), "errors: {:?}", tc.diagnostics);
+    }
+
+    /// The widening is only about *length*. Branches whose element types
+    /// genuinely disagree are still an error, or the rule would swallow real
+    /// mismatches under the guise of being helpful.
+    #[test]
+    fn branches_whose_element_types_differ_are_still_rejected() {
+        let src = r#"
+            f pick(flag: bool) -> [i32]~ {
+                ? flag { [1] } : { [1b, 0b] }
+            }
+        "#;
+        let tc = check_source(src);
+        assert!(!tc.diagnostics.is_empty(), "expected an element type mismatch");
     }
 
     #[test]
