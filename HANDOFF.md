@@ -15,7 +15,7 @@ run, and are pinned to their output. See "The example rewrite" below.
 
 | | |
 |---|---|
-| Tests | **2,814** — rmi 1,380 · prototype 1,106 · ribosome 164 · germline 112 · forge 52 |
+| Tests | **2,815** — rmi 1,380 · prototype 1,107 · ribosome 164 · germline 112 · forge 52 |
 | CUDA | **1,071 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm |
@@ -109,7 +109,7 @@ Six of the eleven — #5, #6, #7, #8, #9, #11 — are the same class: a bug that
 **typechecks and then does not evaluate**. `--check` cannot find these. Only
 `--eval` can, which is why the pin now runs it.
 
-Prototype tests **1,066 → 1,106**, all green.
+Prototype tests **1,066 → 1,107**, all green.
 
 ### And a twelfth, from this list itself
 
@@ -143,10 +143,15 @@ Three things landed together, because none of them is useful alone:
   **per block, not per function**: an unhandled call sitting beside a handled
   one still reports. Whatever the arm itself does is attributed honestly, so
   handling `audit` by writing a file makes the handling function `/ fs`.
-- **Declaration.** An effect annotation naming nothing is now an error.
+- **Declaration.** An operation the effect does not declare is an error, and
+  so is an effect annotation naming nothing.
   `/ nte` used to be accepted as a *different effect* from `/ net`, enforced
   consistently and matching nothing — a typo invented an effect instead of
-  failing.
+  failing. The operation check was added after the first version of this
+  feature shipped it broken: the analysis attributes the effect from the
+  *receiver* alone, so `Audit.recrod(x)` counted as performing `audit`,
+  checked clean, and died at run time. Building the fix for a bug class is no
+  protection against writing another instance of it one level down.
 
 Handlers do not resume. An operation call dispatches to its arm and returns
 like an ordinary call, which is what a tree-walking evaluator can do without

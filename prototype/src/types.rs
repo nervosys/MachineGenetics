@@ -1378,6 +1378,28 @@ impl TypeChecker {
                     }
                     return ret;
                 }
+                // The receiver names a declared effect, but the operation is
+                // not one of its declarations. That is a misspelling, and it
+                // has to be an error here: the effect analysis attributes the
+                // effect on the *receiver* alone, so `Audit.recrod(x)` was
+                // accepted, counted as performing `audit`, and then died at run
+                // time with `unknown function`. Exactly the shape of bug this
+                // whole feature exists to stop being possible.
+                if let ast::Expr::Ident { name } = receiver.as_ref()
+                    && self.effect_defs.contains(name)
+                {
+                    let mut ops: Vec<&str> = self
+                        .effect_ops
+                        .keys()
+                        .filter(|(e, _)| e == name)
+                        .map(|(_, op)| op.as_str())
+                        .collect();
+                    ops.sort_unstable();
+                    self.emit_error(format!(
+                        "effect `{name}` declares no operation `{method}` (it declares: {})",
+                        if ops.is_empty() { "none".to_string() } else { ops.join(", ") }
+                    ));
+                }
                 self.infer_expr(receiver);
                 for arg in args {
                     self.infer_expr(arg);

@@ -887,6 +887,22 @@ mod handler_tests {
         );
     }
 
+    /// A misspelled operation. The effect analysis attributes the effect from
+    /// the *receiver* alone, so this was counted as performing `audit`, checked
+    /// clean, and then died at run time with `unknown function` — the same bug
+    /// one level down from the one this feature exists to fix.
+    #[test]
+    fn a_misspelled_operation_on_a_declared_effect_is_rejected() {
+        let tokens = crate::lexer::lex(&format!("{DECL}+f a() -> i32 / audit {{ Audit.recrod(1) }}"));
+        let module = crate::parser::parse(&tokens).expect("parse failed");
+        let tc = crate::types::check(&module);
+        assert!(
+            tc.diagnostics.iter().any(|d| d.message.contains("declares no operation")),
+            "expected a misspelled-operation diagnostic, got {:?}",
+            tc.diagnostics
+        );
+    }
+
     #[test]
     fn a_declared_custom_effect_is_accepted() {
         assert!(errors("effect Db {}\n+f a() -> i32 / db { 1 }").is_empty());
