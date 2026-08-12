@@ -3256,6 +3256,12 @@ impl<'a> Parser<'a> {
                     continue;
                 }
                 TokenKind::LBrack => {
+                    // A `[` opening a new line is the next statement's array
+                    // literal, not an index on `lhs`. See the `LParen` arm
+                    // below for why postfix must not cross a newline.
+                    if self.newline_before_current() {
+                        break;
+                    }
                     self.advance();
                     // Range slicing inside index brackets — supports
                     //   arr[a..b]   arr[a..=b]   arr[a..]   arr[..b]   arr[..]
@@ -3299,6 +3305,26 @@ impl<'a> Parser<'a> {
                     continue;
                 }
                 TokenKind::LParen => {
+                    // A `(` opening a new line begins the next statement — a
+                    // parenthesised expression or a tuple — not a call on
+                    // `lhs`. Statements here are newline-terminated, so without
+                    // this the terminator is invisible to the postfix loop and
+                    //
+                    //     while i < 3 { i = i + 1 }
+                    //     (i + 5)
+                    //
+                    // parses as `while(…)(i + 5)`, reported as
+                    // `call: type mismatch: () vs f(…)` — a diagnostic pointing
+                    // at a call the author never wrote. It is not only blocks:
+                    // `v x = 1` followed by `(i + 5)` called the literal `1`.
+                    //
+                    // A multi-line argument list is unaffected, because its `(`
+                    // hugs the callee on the callee's own line. This is the
+                    // rule the `Question` arm above already applies, and the
+                    // one `expect_stmt_end` applies to statements.
+                    if self.newline_before_current() {
+                        break;
+                    }
                     self.advance();
                     let mut args = Vec::new();
                     while self.peek() != TokenKind::RParen && self.peek() != TokenKind::Eof {
@@ -4984,6 +5010,68 @@ mod tests {
         // The `agent` item form must still parse — the keyword was not removed.
         let m = parse_source("agent Worker { }");
         assert!(matches!(m.items[0].kind, ItemKind::Agent(_)), "agent item lost");
+    }
+
+    #[test]
+    fn test_paren_on_a_new_line_is_not_a_call() {
+        // `while … { … }` followed by `(i + 5)` parsed as `while(…)(i + 5)`,
+        // reported as `call: type mismatch: () vs f(…)` — a diagnostic naming
+        // a call the author never wrote. Statements here are newline-
+        // terminated, and the postfix loop could not see the terminator.
+        let tail = |src: &str| -> Expr {
+            let m = parse_source(src);
+            let ItemKind::Function(ref f) = m.items[0].kind else {
+                panic!("expected function");
+            };
+            *f.body.tail_expr.clone().expect("expected a tail expression")
+        };
+
+        // The `while` is a statement; `(i + 5)` is the tail, and is not a call.
+        assert!(
+            !matches!(
+                tail("f x() -> i32 {\n  m i = 0\n  while i < 3 {\n    i = i + 1\n  }\n  (i + 5)\n}"),
+                Expr::Call { .. }
+            ),
+            "`(…)` after a block was parsed as calling the block"
+        );
+
+        // Not only blocks: any expression followed by a parenthesised line was
+        // called. `v a = 1` then `(2 + 3)` called the literal `1`.
+        assert!(
+            !matches!(tail("f x() -> i32 {\n  v a = 1\n  (2 + 3)\n}"), Expr::Call { .. }),
+            "`(…)` after a binding was parsed as calling the bound value"
+        );
+
+        // A multi-line argument list must still be one call: its `(` hugs the
+        // callee on the callee's own line, so the guard never fires.
+        assert!(
+            matches!(tail("f x() -> i32 {\n  add(\n    1,\n    2\n  )\n}"), Expr::Call { .. }),
+            "a multi-line argument list stopped being a call"
+        );
+    }
+
+    #[test]
+    fn test_bracket_on_a_new_line_is_not_an_index() {
+        // Same class as the `(` case: an array literal opening a line was an
+        // index on the previous statement.
+        let tail = |src: &str| -> Expr {
+            let m = parse_source(src);
+            let ItemKind::Function(ref f) = m.items[0].kind else {
+                panic!("expected function");
+            };
+            *f.body.tail_expr.clone().expect("expected a tail expression")
+        };
+
+        assert!(
+            !matches!(tail("f x() -> i32 {\n  v a = 1\n  [1, 2]\n}"), Expr::Index { .. }),
+            "`[…]` opening a line was parsed as an index on the previous statement"
+        );
+
+        // A real index hugs its operand, so it is untouched.
+        assert!(
+            matches!(tail("f x() -> i32 {\n  v xs = [10, 20]\n  xs[1]\n}"), Expr::Index { .. }),
+            "a same-line index stopped being an index"
+        );
     }
 
     #[test]

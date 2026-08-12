@@ -12,7 +12,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **2,821** — rmi 1,380 · prototype 1,113 · ribosome 164 · germline 112 · forge 52 |
+| Tests | **2,823** — rmi 1,380 · prototype 1,115 · ribosome 164 · germline 112 · forge 52 |
 | CUDA | **1,071 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm |
@@ -99,10 +99,6 @@ actually unblock them, because "open" has meant three different things.
 
 Each is a contained fix, and each is a real trap someone will hit.
 
-- **A `(` after a block parses as calling the block.** `while … { … }` followed
-  on the next line by `(a, b)` becomes `while(…)(a, b)`, reported as
-  `call: type mismatch: () vs f(…)`. Any statement in between separates them.
-  Same class as the `!f(x)` precedence bug already fixed.
 - **Sigil letters cannot be identifiers**: `f v m C S E T I M u Y Z` are
   keywords, as is `ret`. Naming a variable `f` yields `unresolved name: val`,
   which points at the wrong token entirely. The *diagnostic* is the bug, and it
@@ -154,7 +150,7 @@ Seven of the fourteen — #5, #6, #7, #8, #9, #11, #13 — are one class: a bug 
 `--eval` can, which is why the pin now runs it.
 
 That rewrite took the prototype suite from 1,066 tests to 1,107. Counting every
-session since, prototype tests **1,066 → 1,113**, all green — this figure is
+session since, prototype tests **1,066 → 1,115**, all green — this figure is
 checked against the live run, so it tracks forward rather than freezing at the
 session that wrote it.
 
@@ -283,6 +279,49 @@ directions, byte for byte, against a generator that is itself wrong. **A pin
 guarantees agreement, not truth.** What was missing was the check that crosses
 the boundary: not "does the file match the generator" but "does every name the
 file publishes actually work". Six new tests, all green.
+
+---
+
+## A newline did not end a statement before `(`
+
+The next item on the small-and-sharp list said a `(` after a block parses as
+calling the block, and that *any statement in between separates them*. The first
+half was right. The second half was wrong, and it was hiding the real bug:
+
+```mg
+v a = 1
+(2 + 3)
+```
+
+This called the literal `1`. Nothing about blocks is involved. Statements here
+are newline-terminated, and the postfix loop could not see the terminator — so
+**any** expression followed by a line starting with `(` was a call. The block
+case was just the one anybody had noticed, because a block is the shape you most
+often want to follow with a parenthesised line.
+
+`[` had it too: an array literal opening a line was an index on the previous
+statement.
+
+The fix is the rule the parser already applied two arms up. The postfix `?`
+breaks on `newline_before_current()` — with a comment explaining that `7\n ? c
+{}` would otherwise parse as `(7?)…` — and `expect_stmt_end` treats a newline as
+a terminator. `(` and `[` now break on the same condition. A multi-line argument
+list is untouched, because its `(` hugs the callee on the callee's own line.
+
+Two things worth carrying:
+
+**The bug report was a partial observation stated as a rule.** "Any statement in
+between separates them" is what you would conclude after trying it once with a
+binding in between and seeing the error move — which it does, to a *different*
+wrong parse. Reproducing the reported symptom is not the same as reproducing the
+bug, and the first probe here disagreed with the note.
+
+**The tests were checked by breaking the fix.** Both new tests were run against
+a build with the two guards deleted, and both fail there. This is the check the
+handoff says was missing for bugs 9 and 11 — where nothing noticed the fix — and
+it is worth doing every time, because the first version of these tests passed
+with the guards removed. They asserted statement counts, and the tail expression
+is not a statement.
 
 ---
 
