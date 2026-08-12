@@ -1029,7 +1029,25 @@ impl TypeChecker {
                 if let Err(e) = unify(&mut self.subst, &cond_ty, &Ty::Bool) {
                     self.emit_error(format!("guard condition must be bool: {e}"));
                 }
-                self.infer_block(else_block);
+                // The else block has to *leave*. A guard whose else block
+                // merely evaluates to a value falls through and the function
+                // carries on with the precondition it just found to be false —
+                // so `guard n > 0 else { 0 }` does not return `0`, it runs the
+                // body anyway, and `a(-5)` answered `-10`. That checked clean
+                // and produced a wrong number, which is the worst pair of
+                // properties a construct can have.
+                //
+                // Rust's `let`-else requires divergence for exactly this
+                // reason. Enforcing it here turns the silent wrong answer into
+                // a diagnostic at the point of the mistake.
+                let else_ty = self.infer_block(else_block);
+                if !matches!(self.subst.apply(&else_ty), Ty::Never) {
+                    self.emit_error(
+                        "`guard` else block must leave the function: it needs a \
+                         `return`, or the guard falls through and the body runs \
+                         with the condition false",
+                    );
+                }
             }
             ast::Stmt::Defer { expr } => {
                 self.infer_expr(expr);
@@ -2120,6 +2138,39 @@ mod if_without_else_tests {
     #[test]
     fn a_unit_if_is_still_fine() {
         assert!(errors("+f u(c: bool) { ? c { } }").is_empty());
+    }
+
+    /// The shape that produced a wrong answer rather than an error: the else
+    /// block evaluates to a value, nothing leaves, and the body runs anyway
+    /// with the precondition false. `a(-5)` returned `-10`, not `0`.
+    #[test]
+    fn a_guard_whose_else_does_not_leave_is_rejected() {
+        assert!(
+            !errors("+f a(n: i32) -> i32 { guard n > 0 else { 0 }\n n * 2 }").is_empty(),
+            "an else block that merely produces a value does not stop anything"
+        );
+    }
+
+    /// An empty else stops nothing at all, and is the easiest version of the
+    /// mistake to write.
+    #[test]
+    fn a_guard_with_an_empty_else_is_rejected() {
+        assert!(!errors("+f a(n: i32) -> i32 { guard n > 0 else { }\n n * 2 }").is_empty());
+    }
+
+    /// Every spelling that really does leave stays legal, including a block
+    /// that does work first — the rule is about the block diverging, not about
+    /// `return` being its only statement.
+    #[test]
+    fn guards_that_actually_return_stay_legal() {
+        for src in [
+            "+f a(n: i32) -> i32 { guard n > 0 else { return 0 }\n n * 2 }",
+            "+f a(n: i32) -> i32 { guard n > 0 else { return 0; }\n n * 2 }",
+            "+f a(n: i32) -> i32 { guard n > 0 else { ret 0 }\n n * 2 }",
+            "+f a(n: i32) -> i32 { guard n > 0 else { v x = 1\n return x }\n n * 2 }",
+        ] {
+            assert!(errors(src).is_empty(), "should check clean: {src}");
+        }
     }
 }
 
