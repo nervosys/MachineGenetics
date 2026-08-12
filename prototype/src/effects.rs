@@ -906,4 +906,96 @@ mod handler_tests {
     fn builtin_effect_kinds_need_no_declaration() {
         assert!(errors("+f a() -> i32 / fs, net, rng { 1 }").is_empty());
     }
+
+    /// Every effect `MAGE_SPEC.md` §11.2 documents, written the way the spec
+    /// says to write it.
+    ///
+    /// `agent` was in that table and was a **parse error**: `agent` lexes as
+    /// the keyword introducing an `agent` item, so `/ agent` never reached the
+    /// checker, and it was not a built-in kind either — two independent
+    /// failures on the one row. The spec had advertised an effect nobody could
+    /// write. Nothing had ever run the other sixteen to find out.
+    ///
+    /// This is the pin: a row added to §11.2 that the compiler does not accept
+    /// fails here, and so does a name quietly dropped from `Effect::from_name`.
+    #[test]
+    fn every_effect_documented_in_the_spec_parses_and_checks() {
+        const SPEC_11_2: [&str; 16] = [
+            "io", "net", "fs", "async", "alloc", "panic", "ffi", "env", "time", "gpu", "npu",
+            "llm", "evolve", "learn", "rng", "agent",
+        ];
+        for effect in SPEC_11_2 {
+            let msgs = errors(&format!("+f a() -> i32 / {effect} {{ 1 }}"));
+            assert!(
+                msgs.is_empty(),
+                "`/ {effect}` is documented in MAGE_SPEC.md §11.2 but rejected: {msgs:?}"
+            );
+        }
+    }
+
+    /// The builtin names `MAGE_SPEC.md` §11.2 says are attributed on call, and
+    /// the documented names it says are *not*.
+    ///
+    /// §11.2 used to present its middle column as "Operations", which read as a
+    /// table of callable operations. Running all 41 of them found 22 that
+    /// perform nothing: `dispatch`, `generate`, `lifecycle` and the rest have
+    /// no `effect` block behind them and are attributed by nothing, so a
+    /// function calling them is pure. The spec now says domain, and lists the
+    /// names that really are attributed — this is what holds it to that.
+    #[test]
+    fn the_builtin_names_attributed_on_call_are_the_documented_ones() {
+        let attributed: &[(&str, &str)] = &[
+            ("println", "IO"), ("read_to_string", "IO"), ("write", "IO"),
+            ("mkdir", "FS"), ("stat", "FS"), ("rename", "FS"),
+            ("connect", "Net"), ("recv", "Net"), ("bind", "Net"),
+            ("spawn", "Async"), ("select", "Async"),
+            ("realloc", "Alloc"), ("panic", "Panic"),
+            ("set_env", "Env"), ("timeout", "Time"),
+        ];
+        for (name, effect) in attributed {
+            let inferred = infer_source(&format!("f a() -> i32 {{ {name}(); 0 }}"))
+                .inferred
+                .get("a")
+                .cloned()
+                .unwrap_or_else(pure);
+            assert!(
+                inferred.iter().any(|e| e.to_string() == *effect),
+                "`{name}()` should perform {effect} per §11.2, inferred {inferred:?}"
+            );
+        }
+
+        // Documented in §11.2's domain column, attributed by nothing. If one of
+        // these starts inferring an effect, §11.2's second table is now wrong.
+        // `join` is here for a different reason: the vocabulary's pure string
+        // join outranks the thread join, and §11.2 says so.
+        let pure_names = [
+            "join", "seek", "close", "catch_panic", "call_foreign", "get_var", "set_var",
+            "dispatch", "synchronize", "generate", "embed", "analyze", "evaluate", "mutate",
+            "forward", "backward", "step", "random", "seed", "sample", "lifecycle", "message",
+            "lease",
+        ];
+        for name in pure_names {
+            let inferred = infer_source(&format!("f a() -> i32 {{ {name}(); 0 }}"))
+                .inferred
+                .get("a")
+                .cloned()
+                .unwrap_or_else(pure);
+            assert!(
+                inferred.is_empty(),
+                "`{name}()` is documented as attributing nothing, but inferred {inferred:?}"
+            );
+        }
+    }
+
+    /// A keyword is accepted as an effect *name*, not as an effect *kind*: the
+    /// annotation position stopped being the gate, so the unknown-effect check
+    /// is what must still reject a name that means nothing.
+    #[test]
+    fn a_keyword_that_is_not_a_builtin_effect_is_still_rejected() {
+        let msgs = errors("+f a() -> i32 / trait { 1 }");
+        assert!(
+            msgs.iter().any(|m| m.contains("unknown effect")),
+            "expected an unknown-effect diagnostic, got {msgs:?}"
+        );
+    }
 }

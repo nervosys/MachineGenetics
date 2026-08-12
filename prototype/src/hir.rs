@@ -252,6 +252,8 @@ pub enum Effect {
     Learn,
     /// Random number generation effect.
     Rng,
+    /// Agent coordination effect — lifecycle, message, lease.
+    Agent,
     /// User-defined effect.
     Custom(String),
 }
@@ -274,6 +276,7 @@ impl fmt::Display for Effect {
             Effect::Evolve => write!(f, "Evolve"),
             Effect::Learn => write!(f, "Learn"),
             Effect::Rng => write!(f, "Rng"),
+            Effect::Agent => write!(f, "Agent"),
             Effect::Custom(name) => write!(f, "{name}"),
         }
     }
@@ -301,6 +304,7 @@ impl Effect {
             "evolve" => Effect::Evolve,
             "learn" => Effect::Learn,
             "rng" => Effect::Rng,
+            "agent" => Effect::Agent,
             _ => Effect::Custom(name.to_string()),
         }
     }

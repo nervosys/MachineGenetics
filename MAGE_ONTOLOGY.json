@@ -6,7 +6,7 @@
     "ci_floors": 6,
     "cli_flags": 17,
     "docs": 7,
-    "effects": 15,
+    "effects": 21,
     "examples": 10,
     "framewerx_modules": 256,
     "hardware_accelerators": 8,
@@ -317,52 +317,82 @@
       },
       {
         "name": "io",
-        "purpose": "Standard input/output",
-        "slot": "effect_name"
-      },
-      {
-        "name": "fs",
-        "purpose": "Filesystem access",
+        "purpose": "File and stream I/O",
         "slot": "effect_name"
       },
       {
         "name": "net",
-        "purpose": "Network access",
+        "purpose": "Network I/O",
         "slot": "effect_name"
       },
       {
-        "name": "db",
-        "purpose": "Database access",
-        "slot": "effect_name"
-      },
-      {
-        "name": "log",
-        "purpose": "Logging",
+        "name": "fs",
+        "purpose": "Filesystem operations",
         "slot": "effect_name"
       },
       {
         "name": "async",
-        "purpose": "Asynchronous execution",
+        "purpose": "Asynchronous task management",
         "slot": "effect_name"
       },
       {
-        "name": "llm",
-        "purpose": "LLM invocation",
+        "name": "alloc",
+        "purpose": "Heap memory allocation",
         "slot": "effect_name"
       },
       {
-        "name": "tools",
-        "purpose": "External tool use",
+        "name": "panic",
+        "purpose": "Unwinding / structured panics",
         "slot": "effect_name"
       },
       {
-        "name": "rand",
-        "purpose": "Nondeterministic randomness",
+        "name": "ffi",
+        "purpose": "Foreign function invocation",
+        "slot": "effect_name"
+      },
+      {
+        "name": "env",
+        "purpose": "Environment variable access",
         "slot": "effect_name"
       },
       {
         "name": "time",
-        "purpose": "Wall-clock access",
+        "purpose": "Clock and timer access",
+        "slot": "effect_name"
+      },
+      {
+        "name": "gpu",
+        "purpose": "GPU computation",
+        "slot": "effect_name"
+      },
+      {
+        "name": "npu",
+        "purpose": "Neural processing unit",
+        "slot": "effect_name"
+      },
+      {
+        "name": "llm",
+        "purpose": "Language model invocation",
+        "slot": "effect_name"
+      },
+      {
+        "name": "evolve",
+        "purpose": "Evolutionary computation",
+        "slot": "effect_name"
+      },
+      {
+        "name": "learn",
+        "purpose": "Training / gradient descent",
+        "slot": "effect_name"
+      },
+      {
+        "name": "rng",
+        "purpose": "Random number generation",
+        "slot": "effect_name"
+      },
+      {
+        "name": "agent",
+        "purpose": "Agent coordination",
         "slot": "effect_name"
       }
     ],

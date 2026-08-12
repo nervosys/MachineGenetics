@@ -1305,7 +1305,11 @@ Every function has an effect signature. Effects are algebraic — declared, comp
 
 ### 11.2 Standard Effects
 
-| Effect       | Operations                   | Description                     |
+These sixteen names are the built-in effect kinds. Each may be written in a `/ …`
+annotation with no declaration; any other name must be declared by an `effect`
+block (§11.5), or it is an error (§11.4).
+
+| Effect       | Domain                       | Description                     |
 | ------------ | ---------------------------- | ------------------------------- |
 | `io`         | read, write, seek, close     | File and stream I/O             |
 | `net`        | connect, listen, send        | Network I/O                     |
@@ -1323,6 +1327,37 @@ Every function has an effect signature. Effects are algebraic — declared, comp
 | **`learn`**  | **forward, backward, step**  | **Training / gradient descent** |
 | **`rng`**    | **random, seed, sample**     | **Random number generation**    |
 | `agent`      | lifecycle, message, lease    | Agent coordination              |
+
+The middle column names each effect's **domain**. It is not a table of callable
+operations: a built-in effect has no `effect` block, so nothing declares
+`dispatch` or `lifecycle` and calling them performs nothing. A function acquires
+a built-in effect two ways, and only two:
+
+1. **By annotation.** `/ gpu` puts `gpu` in the function's set, and it
+   propagates to every caller. This works for all sixteen.
+2. **By calling a recognized builtin.** A fixed set of names is attributed by
+   name alone:
+
+   | Effect  | Names attributed on call |
+   | ------- | ------------------------ |
+   | `io`    | `print` `println` `eprint` `eprintln` `write` `writeln` `read` `read_line` `read_to_string` |
+   | `fs`    | `open` `create` `remove` `rename` `mkdir` `stat` |
+   | `net`   | `connect` `listen` `bind` `send` `recv` |
+   | `async` | `spawn` `select` |
+   | `alloc` | `alloc` `dealloc` `realloc` |
+   | `panic` | `panic` |
+   | `env`   | `env` `get_env` `set_env` |
+   | `time`  | `now` `sleep` `timeout` |
+
+   The standard vocabulary wins every collision: `join` is the vocabulary's
+   pure `([str], str) -> str`, so calling it is pure and does **not** mean a
+   thread join. `ffi`, `gpu`, `npu`, `llm`, `evolve`, `learn`, `rng` and `agent`
+   attribute no names at all — reach them by annotation, or declare an `effect`
+   block whose operations you can actually call and handle.
+
+This table is deliberately short. Attribution here is by bare name, so every
+entry claims a word out of the whole program's namespace, and a user function
+that happens to share one inherits an effect it does not perform.
 
 ### 11.3 Effect Typing Rules
 

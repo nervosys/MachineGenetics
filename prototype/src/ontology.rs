@@ -353,17 +353,36 @@ const EFFECTS: &[(&str, &str, &str)] = &[
     ("@ens",  "spec/fn", "Postcondition: predicate over result; checked at exit"),
     ("@inv",  "spec/struct", "Invariant: predicate that must hold across all methods"),
     ("@perf", "spec/fn", "Performance contract: latency / throughput target"),
-    // Canonical effect names used in the corpus and stdlib
-    ("io",    "effect_name", "Standard input/output"),
-    ("fs",    "effect_name", "Filesystem access"),
-    ("net",   "effect_name", "Network access"),
-    ("db",    "effect_name", "Database access"),
-    ("log",   "effect_name", "Logging"),
-    ("async", "effect_name", "Asynchronous execution"),
-    ("llm",   "effect_name", "LLM invocation"),
-    ("tools", "effect_name", "External tool use"),
-    ("rand",  "effect_name", "Nondeterministic randomness"),
-    ("time",  "effect_name", "Wall-clock access"),
+    // The built-in effect kinds — every name writable in a `/ …` annotation
+    // with no declaration. This is the set `hir::Effect::from_name` folds and
+    // `MAGE_SPEC.md` §11.2 documents; `builtin_effect_names_are_the_writable_ones`
+    // holds the three in agreement.
+    //
+    // This list used to be "canonical effect names used in the corpus and
+    // stdlib", which is a different question from the one an agent reading
+    // `effect_name` is asking. Four of its ten — `db`, `log`, `tools`, `rand` —
+    // were rejected by the compiler as unknown effects. Three of those are
+    // capability *namespaces* (`resolve.rs`, `db.query(…)`), which is a
+    // separate list that had been folded into this one; `rand` was `rng`
+    // under a name nothing has ever accepted. `rng`, `gpu`,
+    // `npu`, `evolve`, `learn`, `alloc`, `panic`, `ffi`, `env` and `agent` were
+    // missing. Anything not here needs an `effect Name { … }` block (§11.5).
+    ("io",     "effect_name", "File and stream I/O"),
+    ("net",    "effect_name", "Network I/O"),
+    ("fs",     "effect_name", "Filesystem operations"),
+    ("async",  "effect_name", "Asynchronous task management"),
+    ("alloc",  "effect_name", "Heap memory allocation"),
+    ("panic",  "effect_name", "Unwinding / structured panics"),
+    ("ffi",    "effect_name", "Foreign function invocation"),
+    ("env",    "effect_name", "Environment variable access"),
+    ("time",   "effect_name", "Clock and timer access"),
+    ("gpu",    "effect_name", "GPU computation"),
+    ("npu",    "effect_name", "Neural processing unit"),
+    ("llm",    "effect_name", "Language model invocation"),
+    ("evolve", "effect_name", "Evolutionary computation"),
+    ("learn",  "effect_name", "Training / gradient descent"),
+    ("rng",    "effect_name", "Random number generation"),
+    ("agent",  "effect_name", "Agent coordination"),
 ];
 
 /// Subprocess agent protocol contract. Environment variables and
@@ -1624,8 +1643,12 @@ mod tests {
         let arr = effects_section();
         let v = arr.as_array().unwrap();
         let names: Vec<&str> = v.iter().filter_map(|e| e["name"].as_str()).collect();
+        // `db` used to be in this list. It is not a built-in effect kind, so
+        // `/ db` was an unknown-effect error — the test asserted the ontology
+        // published the name and never asked whether the name worked. Which
+        // names belong here is now `builtin_effect_names_are_the_writable_ones`.
         for required in ["@fx", "@req", "@ens", "@inv",
-                         "io", "fs", "net", "db", "async", "llm"] {
+                         "io", "fs", "net", "async", "llm", "rng", "agent"] {
             assert!(names.contains(&required), "missing effect entry: {required}");
         }
     }
@@ -2135,6 +2158,50 @@ mod tests {
             failures.len(),
             failures.join("\n  ")
         );
+    }
+
+    /// Every name the ontology publishes under `effect_name` must be writable
+    /// as `/ name` with no declaration, and every built-in kind must be
+    /// published.
+    ///
+    /// The ontology is what an agent grounds on, so a name here that the
+    /// compiler rejects is worse than a missing one — it is an instruction to
+    /// emit code that does not check. Four of the ten names formerly listed
+    /// (`db`, `log`, `tools`, `rand`) were rejected as unknown effects, and ten
+    /// built-in kinds were absent, including `rng` — for which `rand` was
+    /// standing in under a name the compiler has never known.
+    #[test]
+    fn builtin_effect_names_are_the_writable_ones() {
+        let published: Vec<&str> = EFFECTS
+            .iter()
+            .filter(|(_, slot, _)| *slot == "effect_name")
+            .map(|(name, _, _)| *name)
+            .collect();
+
+        for name in &published {
+            let src = format!("+f a() -> i32 / {name} {{ 1 }}");
+            let tokens = crate::lexer::lex(&src);
+            let module = crate::parser::parse(&tokens)
+                .unwrap_or_else(|e| panic!("ontology publishes `/ {name}`, which fails to parse: {e:?}"));
+            let diags = crate::effects::infer_effects(&module).diagnostics;
+            assert!(
+                diags.is_empty(),
+                "ontology publishes `/ {name}`, which the checker rejects: {:?}",
+                diags.iter().map(|d| &d.message).collect::<Vec<_>>()
+            );
+        }
+
+        // The other direction: a built-in kind the ontology does not publish is
+        // a capability an agent cannot discover.
+        for name in [
+            "io", "net", "fs", "async", "alloc", "panic", "ffi", "env", "time", "gpu", "npu",
+            "llm", "evolve", "learn", "rng", "agent",
+        ] {
+            assert!(
+                published.contains(&name),
+                "`{name}` is a built-in effect kind but the ontology does not publish it"
+            );
+        }
     }
 
     #[test]

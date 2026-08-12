@@ -275,6 +275,34 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Parse an effect name in a `/ …` annotation.
+    ///
+    /// Effect-annotation position is unambiguous — every name after `/`, `+` or
+    /// `,` in a signature is an effect — so a name that also happens to be a
+    /// keyword elsewhere is accepted here. `agent` is the case that forced
+    /// this: it is a documented effect in `MAGE_SPEC.md` §11.2 *and* the
+    /// keyword introducing an `agent` item, so `/ agent` was a parse error and
+    /// the spec advertised an effect nobody could write.
+    ///
+    /// Restricted to identifier-shaped text so `/ +` or `/ 3` still fail at the
+    /// annotation rather than being swallowed as an effect named `+`.
+    fn expect_effect_name(&mut self) -> Result<String, ParseError> {
+        let tok = self.current();
+        let ident_shaped = {
+            let mut chars = tok.text.chars();
+            matches!(chars.next(), Some(c) if c.is_ascii_alphabetic() || c == '_')
+                && chars.all(|c| c.is_ascii_alphanumeric() || c == '_')
+        };
+        if tok.kind == TokenKind::Ident || ident_shaped {
+            return Ok(self.advance().text.clone());
+        }
+        Err(ParseError {
+            line: tok.span.line,
+            col: tok.span.col,
+            message: format!("expected effect name, found '{}'", tok.text),
+        })
+    }
+
     fn error(&self, message: &str) -> ParseError {
         let tok = self.current();
         ParseError {
@@ -575,7 +603,7 @@ impl<'a> Parser<'a> {
         // `/ llm, tools, io` (corpus uses both `+` and `,` as separator).
         let effects = if self.peek() == TokenKind::Slash {
             self.advance();
-            let mut effs = vec![self.expect_ident()?];
+            let mut effs = vec![self.expect_effect_name()?];
             // Effects may carry generic-type arguments: `channel[i32]`.
             // We don't currently model them in the AST - parse-and-drop
             // so the rest of the signature stays well-formed.
@@ -596,7 +624,7 @@ impl<'a> Parser<'a> {
             }
             while self.peek() == TokenKind::Plus || self.peek() == TokenKind::Comma {
                 self.advance();
-                effs.push(self.expect_ident()?);
+                effs.push(self.expect_effect_name()?);
                 if matches!(self.peek(), TokenKind::LBrack | TokenKind::Lt) {
                     let close = if self.peek() == TokenKind::LBrack {
                         TokenKind::RBrack
@@ -4939,6 +4967,36 @@ mod tests {
         } else {
             panic!("expected function");
         }
+    }
+
+    #[test]
+    fn test_keyword_named_effect_in_annotation() {
+        // `agent` is a documented effect (MAGE_SPEC.md §11.2) *and* the keyword
+        // introducing an `agent` item, so `/ agent` was `expected identifier,
+        // found KwAgent`. Effect-annotation position is unambiguous; a name
+        // there is an effect name whatever it lexes as elsewhere.
+        let m = parse_source("f x() -> i32 / agent + io { 1 }");
+        if let ItemKind::Function(ref f) = m.items[0].kind {
+            assert_eq!(f.effects, vec!["agent".to_string(), "io".to_string()]);
+        } else {
+            panic!("expected function");
+        }
+        // The `agent` item form must still parse — the keyword was not removed.
+        let m = parse_source("agent Worker { }");
+        assert!(matches!(m.items[0].kind, ItemKind::Agent(_)), "agent item lost");
+    }
+
+    #[test]
+    fn test_non_identifier_effect_name_is_rejected() {
+        // Loosening the annotation position must not make it accept anything:
+        // an effect name is still identifier-shaped.
+        let tokens = lexer::lex("f x() -> i32 / 3 { 1 }");
+        let err = parse(&tokens).expect_err("`/ 3` must be rejected");
+        assert!(
+            err.message.contains("expected effect name"),
+            "unexpected diagnostic: {}",
+            err.message
+        );
     }
 
     #[test]
