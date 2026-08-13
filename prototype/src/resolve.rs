@@ -301,11 +301,15 @@ impl Resolver {
         // effect system. These are the standard library surface (like Rust's
         // std::io/std::fs) — registering them lets effect-qualified calls
         // resolve, which is how most real agent code performs side effects.
-        let capabilities = [
-            "io", "fs", "net", "os", "sys", "env", "process", "time", "mem", "rng",
-            "llm", "tools", "agent", "swarm", "kb", "gpu", "db", "http", "json", "log",
-        ];
-        for name in capabilities {
+        //
+        // The names come from `hir::CAPABILITY_NAMESPACES`, which also carries
+        // the effect each one performs. They were two lists until the sentence
+        // above turned out to be false — the names were registered here and
+        // attributed nowhere, so `net.connect(…)` in a `pub` function declared
+        // pure checked clean while a bare `println(…)` was caught. One list
+        // means a namespace cannot be registered without an attribution
+        // decision beside it.
+        for (name, _) in crate::hir::CAPABILITY_NAMESPACES {
             self.define_value(name, SymbolKind::Const);
         }
     }

@@ -249,11 +249,12 @@ pub enum Effect {
     Learn,     // training / gradient descent
     Rng,       // random number generation
     Agent,     // agent coordination
+    Proc,      // process / system access
     Custom(String),  // user-defined effects
 }
 ```
 
-The sixteen built-in kinds are `MAGE_SPEC.md` §11.2; see
+The seventeen built-in kinds are `MAGE_SPEC.md` §11.2; see
 [Effects & Resolution](05-effects-resolution.md).
 
 ### HIR Expression

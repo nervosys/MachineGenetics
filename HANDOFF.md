@@ -12,7 +12,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **2,825** — rmi 1,380 · prototype 1,117 · ribosome 164 · germline 112 · forge 52 |
+| Tests | **2,829** — rmi 1,380 · prototype 1,121 · ribosome 164 · germline 112 · forge 52 |
 | CUDA | **1,071 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm |
@@ -153,7 +153,7 @@ Seven of the fourteen — #5, #6, #7, #8, #9, #11, #13 — are one class: a bug 
 `--eval` can, which is why the pin now runs it.
 
 That rewrite took the prototype suite from 1,066 tests to 1,107. Counting every
-session since, prototype tests **1,066 → 1,117**, all green — this figure is
+session since, prototype tests **1,066 → 1,121**, all green — this figure is
 checked against the live run, so it tracks forward rather than freezing at the
 session that wrote it.
 
@@ -372,6 +372,75 @@ a build with the new check deleted. Also worth recording is a failure that is
 *not* mine — `v guard = 2` followed by `guard + 1` was already broken before
 this change, confirmed by stashing the file and rebuilding rather than by
 reasoning about it. It is now its own item above.
+
+---
+
+## The capability gate was open at its own documented entrance
+
+This is the most serious thing found so far, and it was found by checking an
+assumption rather than a claim. The effect system is what lets you hand an
+autonomous agent a program and bound what it can reach — so the question worth
+asking is not "does the checker work" but "does it work on the code people
+actually write".
+
+`resolve.rs` registered twenty capability namespaces, with this comment:
+
+> MAGE is effect-oriented: I/O is performed through capability handles
+> (`io.println(..)`, `fs.open(..)`, `net.connect(..)`, `llm.complete(..)`)
+> whose use is tracked by the effect system.
+
+Nothing tracked them. With a control to show the checker was live:
+
+| `pub` function declared **pure** | Before |
+|---|---|
+| `println(s)` | caught — `performs undeclared effects: [IO]` |
+| `io.println(s)` | **clean** |
+| `fs.open(p)` · `net.connect(h)` | **clean** |
+| `llm.generate(p)` · `gpu.dispatch(k)` | **clean** |
+
+Same shape, same visibility. The bare name was caught; the namespaced form —
+the one the design calls primary — passed. A generated program could open
+sockets, call out to an LLM, or dispatch to the GPU while advertising itself as
+pure. **The gate was open at exactly the seam the language documents as the way
+through it**, which is the worst possible place: the safe-looking code was the
+unchecked code.
+
+The fix attributes the effect from the receiver, which is the rule
+`Audit.record(x)` already used for declared effects — the capability is named by
+the receiver, so the receiver is what gets attributed. `hir::CAPABILITY_NAMESPACES`
+is now the single source of both the registered names and the attribution, so a
+namespace cannot be added without deciding what it performs.
+
+Three things fell out of doing it:
+
+**A seventeenth built-in effect, `proc`.** `os`, `sys`, `process` and `tools`
+had no kind that named them. Attributing them to `io` would understate them
+badly — `process.spawn(…)` is arbitrary code execution, and for a program a
+human did not write that is *the* question. `tools` is grouped with it because
+invoking an external tool is the agentic spelling of the same capability.
+
+**`agent.spawn(…)` did not parse**, and the new test is what found it. `agent`
+lexes as the keyword introducing an `agent` item, so it failed in expression
+position exactly as it had failed in annotation position earlier this session —
+the same root cause, one seam over, and the earlier fix had not generalised.
+`swarm` and `kb` were the same; `net` had been fixed long ago in isolation.
+
+**`json`, `kb` and `db` attribute nothing, deliberately.** `json` computes over
+values in hand. `kb`/`db` reach a store no built-in kind names, and inventing a
+`Custom` here would be worse than nothing: the checker would infer an effect
+that §11.4 then refuses in an annotation, leaving no way to declare what you
+perform. `effect Db { … }` is the path that works, and `effects-showcase` uses
+it.
+
+Nothing shipped and verified broke — the only in-repo callers are in `stdlib/`,
+which does not parse today and which no script or CI checks. That is its own
+finding, and it is the examples' story again one directory over.
+
+**What this says about the goal.** A capability system is only as good as its
+worst-covered call shape, and coverage is not something a test suite reports —
+every test here passed before and after. The gap was visible only by asking
+"what does a program written the documented way actually check as", which is a
+different question from any the suite was asking.
 
 ---
 

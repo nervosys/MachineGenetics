@@ -28,11 +28,12 @@ pub enum Effect {
     Learn,    // training / gradient descent
     Rng,      // random number generation
     Agent,    // agent coordination — lifecycle, message, lease
+    Proc,     // process/system access, external tool invocation
     Custom(String),  // user-defined effects, from an `effect` block
 }
 ```
 
-This is `hir::Effect`, and the sixteen non-`Custom` variants are exactly the
+This is `hir::Effect`, and the seventeen non-`Custom` variants are exactly the
 built-in kinds of `MAGE_SPEC.md` §11.2. Anything else — `db`, `log`, `unsafe` —
 is `Custom`, and must be declared by an `effect` block or it is an error.
 
@@ -78,7 +79,11 @@ For each function f:
         - connect(...) → add Effect::Net
         - mkdir(...) → add Effect::FS
      c. For each `E.op(...)` on a declared effect block → add Effect::Custom(e)
-     d. For each `handle { … } with E { … }` region:
+     d. For each `ns.op(...)` on a capability namespace → add its effect
+        (io.println → IO, llm.generate → Llm, process.spawn → Proc;
+         hir::CAPABILITY_NAMESPACES is the table, and a declared
+         `effect E { … }` outranks a namespace of the same name)
+     e. For each `handle { … } with E { … }` region:
         resolve the region's effects, subtract E, union the rest
   3. Compare inferred effect_set with f's declared effects
   4. If declared effects are a superset of inferred → OK

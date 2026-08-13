@@ -283,6 +283,27 @@ impl EffectInfer {
                     if self.effect_names.contains(&lowered) {
                         let _ = method;
                         local_effects.insert(Effect::from_name(&lowered));
+                    } else if let Some((_, Some(effect))) = crate::hir::CAPABILITY_NAMESPACES
+                        .iter()
+                        .find(|(ns, _)| *ns == name)
+                    {
+                        // `io.println(x)` performs `io`, by the same rule one
+                        // line up: the receiver names the capability, so the
+                        // capability is what gets attributed.
+                        //
+                        // This is the seam the effect system was missing. The
+                        // capability handles are documented as *the* way to
+                        // perform a side effect, and they were the one call
+                        // shape that attributed nothing — a `pub` function
+                        // could `net.connect(…)` or `llm.generate(…)` and
+                        // still typecheck as pure, while the bare `println(…)`
+                        // beside it was caught. A gate open at the documented
+                        // entrance is not a gate.
+                        //
+                        // A *declared* effect wins the name: `effect Io { … }`
+                        // in the module is that module's `io`, checked against
+                        // its own operation list.
+                        local_effects.insert(effect.clone());
                     }
                 }
                 self.collect_calls_in_expr(receiver, callees, local_effects);
@@ -920,9 +941,9 @@ mod handler_tests {
     /// fails here, and so does a name quietly dropped from `Effect::from_name`.
     #[test]
     fn every_effect_documented_in_the_spec_parses_and_checks() {
-        const SPEC_11_2: [&str; 16] = [
+        const SPEC_11_2: [&str; 17] = [
             "io", "net", "fs", "async", "alloc", "panic", "ffi", "env", "time", "gpu", "npu",
-            "llm", "evolve", "learn", "rng", "agent",
+            "llm", "evolve", "learn", "rng", "agent", "proc",
         ];
         for effect in SPEC_11_2 {
             let msgs = errors(&format!("+f a() -> i32 / {effect} {{ 1 }}"));
@@ -983,6 +1004,73 @@ mod handler_tests {
             assert!(
                 inferred.is_empty(),
                 "`{name}()` is documented as attributing nothing, but inferred {inferred:?}"
+            );
+        }
+    }
+
+    /// A capability handle performs its capability's effect.
+    ///
+    /// This is the hole this table exists to close. `resolve.rs` registered the
+    /// capability namespaces and its comment said their "use is tracked by the
+    /// effect system"; nothing tracked them. A `pub` function declared pure
+    /// could call `net.connect(…)`, `llm.generate(…)` or `process.spawn(…)` and
+    /// check clean — while the bare `println(…)` beside it was caught. The gate
+    /// was open at precisely the seam the language documents as the way
+    /// through it, which is the worst place for a capability system to be
+    /// wrong: the safe-looking code is the code that isn't checked.
+    #[test]
+    fn a_capability_handle_performs_its_effect() {
+        for (namespace, effect) in crate::hir::CAPABILITY_NAMESPACES {
+            let src = format!("+f a(x: str) -> i32 {{ {namespace}.op(x); 0 }}");
+            let msgs = errors(&src);
+            match effect {
+                Some(e) => assert!(
+                    msgs.iter().any(|m| m.contains(&e.to_string())),
+                    "`{namespace}.op(…)` must perform {e}, got {msgs:?}"
+                ),
+                // Deliberately unattributed — see the table's own comment.
+                None => assert!(
+                    msgs.is_empty(),
+                    "`{namespace}` is recorded as performing nothing, but got {msgs:?}"
+                ),
+            }
+        }
+    }
+
+    /// Declaring the effect satisfies the check — the gate is a gate, not a ban.
+    #[test]
+    fn a_declared_capability_handle_checks_clean() {
+        assert!(errors("+f a(s: str) -> i32 / io { io.println(s); 0 }").is_empty());
+        assert!(errors("+f a(p: str) -> i32 / llm { llm.generate(p); 0 }").is_empty());
+        assert!(errors("+f a(c: str) -> i32 / proc { process.spawn(c); 0 }").is_empty());
+    }
+
+    /// A module's own `effect Io { … }` outranks the built-in capability, the
+    /// same way it already outranks a builtin function name.
+    #[test]
+    fn a_declared_effect_block_wins_the_namespace() {
+        let msgs = errors(
+            "effect Io { f emit(s: str) -> i32; }\n+f a(s: str) -> i32 / io { Io.emit(s) }",
+        );
+        assert!(msgs.is_empty(), "declared `effect Io` should win, got {msgs:?}");
+    }
+
+    /// Every capability namespace `resolve.rs` registers must be in the table
+    /// that decides its effect — they are one list precisely so a namespace
+    /// cannot be added without that decision being made.
+    #[test]
+    fn every_capability_namespace_resolves_as_a_name() {
+        for (namespace, _) in crate::hir::CAPABILITY_NAMESPACES {
+            let src = format!("+f a(x: str) -> i32 / proc, io, net, llm, agent, alloc, \
+                               env, time, rng, gpu, fs {{ {namespace}.op(x); 0 }}");
+            let tokens = crate::lexer::lex(&src);
+            let module = crate::parser::parse(&tokens)
+                .unwrap_or_else(|e| panic!("`{namespace}.op(…)` failed to parse: {e:?}"));
+            let diags = crate::resolve::resolve(&module).diagnostics;
+            assert!(
+                !diags.iter().any(|d| d.message.contains(namespace)),
+                "`{namespace}` is registered but does not resolve: {:?}",
+                diags.iter().map(|d| &d.message).collect::<Vec<_>>()
             );
         }
     }

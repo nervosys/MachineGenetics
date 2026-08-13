@@ -3903,6 +3903,17 @@ impl<'a> Parser<'a> {
             TokenKind::KwGuard
             | TokenKind::KwHandle
             | TokenKind::KwNet
+            // Capability namespaces that also introduce an item: `agent.op(x)`
+            // is a handle call, `agent Worker { … }` is a declaration. Items
+            // are dispatched in `parse_item` before expression parsing is
+            // reached, so the two never compete. `net` was already here; these
+            // three were not, which made `agent.spawn(…)` a parse error while
+            // `net.connect(…)` worked — and `agent` is a registered capability
+            // namespace *and* a documented effect, so it was unusable twice
+            // over.
+            | TokenKind::KwAgent
+            | TokenKind::KwSwarm
+            | TokenKind::KwKb
             | TokenKind::KwDefer
             | TokenKind::KwQuery
             | TokenKind::KwRule

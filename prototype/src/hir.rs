@@ -254,9 +254,67 @@ pub enum Effect {
     Rng,
     /// Agent coordination effect — lifecycle, message, lease.
     Agent,
+    /// Process and system access — spawning, exec, external tool invocation.
+    ///
+    /// Added because it is the capability that matters most for a program a
+    /// human did not write: `process.spawn(…)` is arbitrary code execution, and
+    /// it was reaching the checker as nothing at all. There was no built-in
+    /// kind that named it, and leaving it silent is the hole this exists to
+    /// close.
+    Proc,
     /// User-defined effect.
     Custom(String),
 }
+
+/// The built-in capability namespaces, and the effect each one performs.
+///
+/// MAGE is effect-oriented: side effects are performed through capability
+/// handles — `io.println(…)`, `fs.open(…)`, `llm.generate(…)`. `resolve.rs`
+/// registers these names, and its comment said their "use is tracked by the
+/// effect system". It was not. A `pub` function declared pure could call
+/// `net.connect(…)` or `llm.generate(…)` and check clean, while the bare
+/// `println(…)` one line over was caught — so the capability gate was open at
+/// exactly the seam the language documents as the way through it.
+///
+/// `None` means the namespace performs no built-in effect and is a deliberate
+/// decision, not an omission — see the note on each. The list is the single
+/// source of both the registered names and the attribution, so a namespace
+/// cannot be added without choosing one.
+pub const CAPABILITY_NAMESPACES: &[(&str, Option<Effect>)] = &[
+    // Direct: the namespace and the effect name the same resource.
+    ("io", Some(Effect::IO)),
+    ("fs", Some(Effect::FS)),
+    ("net", Some(Effect::Net)),
+    ("env", Some(Effect::Env)),
+    ("time", Some(Effect::Time)),
+    ("rng", Some(Effect::Rng)),
+    ("llm", Some(Effect::Llm)),
+    ("gpu", Some(Effect::Gpu)),
+    ("agent", Some(Effect::Agent)),
+    // Named differently, same resource.
+    ("http", Some(Effect::Net)),
+    ("mem", Some(Effect::Alloc)),
+    ("log", Some(Effect::IO)),
+    ("swarm", Some(Effect::Agent)),
+    // Execution. `tools` is here because invoking an external tool is the
+    // agentic spelling of spawning a process, and it is the primary way an
+    // agent reaches outside itself.
+    ("os", Some(Effect::Proc)),
+    ("sys", Some(Effect::Proc)),
+    ("process", Some(Effect::Proc)),
+    ("tools", Some(Effect::Proc)),
+    // Deliberately unattributed.
+    //
+    // `json` is pure computation over values already in hand. `kb` and `db`
+    // reach a store, but no built-in kind names one, and inventing `Custom`
+    // here would be worse than nothing: an effect the checker infers but that
+    // §11.4 then refuses in an annotation, leaving no way to declare what you
+    // perform. Declare `effect Db { … }` and call it — that path works, and
+    // `examples/effects-showcase` uses it.
+    ("json", None),
+    ("kb", None),
+    ("db", None),
+];
 
 impl fmt::Display for Effect {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -277,6 +335,7 @@ impl fmt::Display for Effect {
             Effect::Learn => write!(f, "Learn"),
             Effect::Rng => write!(f, "Rng"),
             Effect::Agent => write!(f, "Agent"),
+            Effect::Proc => write!(f, "Proc"),
             Effect::Custom(name) => write!(f, "{name}"),
         }
     }
@@ -305,6 +364,7 @@ impl Effect {
             "learn" => Effect::Learn,
             "rng" => Effect::Rng,
             "agent" => Effect::Agent,
+            "proc" => Effect::Proc,
             _ => Effect::Custom(name.to_string()),
         }
     }

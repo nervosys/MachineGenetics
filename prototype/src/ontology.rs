@@ -383,6 +383,7 @@ const EFFECTS: &[(&str, &str, &str)] = &[
     ("learn",  "effect_name", "Training / gradient descent"),
     ("rng",    "effect_name", "Random number generation"),
     ("agent",  "effect_name", "Agent coordination"),
+    ("proc",   "effect_name", "Process and system access"),
 ];
 
 /// Subprocess agent protocol contract. Environment variables and
@@ -2195,7 +2196,7 @@ mod tests {
         // a capability an agent cannot discover.
         for name in [
             "io", "net", "fs", "async", "alloc", "panic", "ffi", "env", "time", "gpu", "npu",
-            "llm", "evolve", "learn", "rng", "agent",
+            "llm", "evolve", "learn", "rng", "agent", "proc",
         ] {
             assert!(
                 published.contains(&name),

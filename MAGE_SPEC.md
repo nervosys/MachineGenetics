@@ -1305,7 +1305,7 @@ Every function has an effect signature. Effects are algebraic — declared, comp
 
 ### 11.2 Standard Effects
 
-These sixteen names are the built-in effect kinds. Each may be written in a `/ …`
+These seventeen names are the built-in effect kinds. Each may be written in a `/ …`
 annotation with no declaration; any other name must be declared by an `effect`
 block (§11.5), or it is an error (§11.4).
 
@@ -1327,15 +1327,34 @@ block (§11.5), or it is an error (§11.4).
 | **`learn`**  | **forward, backward, step**  | **Training / gradient descent** |
 | **`rng`**    | **random, seed, sample**     | **Random number generation**    |
 | `agent`      | lifecycle, message, lease    | Agent coordination              |
+| `proc`       | spawn, exec, tool invocation | Process and system access       |
 
 The middle column names each effect's **domain**. It is not a table of callable
 operations: a built-in effect has no `effect` block, so nothing declares
 `dispatch` or `lifecycle` and calling them performs nothing. A function acquires
-a built-in effect two ways, and only two:
+a built-in effect three ways, and only three:
 
 1. **By annotation.** `/ gpu` puts `gpu` in the function's set, and it
-   propagates to every caller. This works for all sixteen.
-2. **By calling a recognized builtin.** A fixed set of names is attributed by
+   propagates to every caller. This works for all seventeen.
+2. **Through a capability handle.** `io.println(…)`, `net.connect(…)`,
+   `llm.generate(…)` — the receiver names the capability, and the capability is
+   what gets attributed. This is the same rule as `Audit.record(…)` performing
+   `audit` (§11.5): the effect comes from the receiver, not the operation.
+
+   | Namespace | Effect | | Namespace | Effect |
+   | --- | --- | --- | --- | --- |
+   | `io` `log` | `io` | | `gpu` | `gpu` |
+   | `fs` | `fs` | | `llm` | `llm` |
+   | `net` `http` | `net` | | `rng` | `rng` |
+   | `env` | `env` | | `agent` `swarm` | `agent` |
+   | `time` | `time` | | `os` `sys` `process` `tools` | `proc` |
+   | `mem` | `alloc` | | `json` `kb` `db` | — |
+
+   `json` computes over values already in hand. `kb` and `db` reach a store that
+   no built-in kind names; declare `effect Db { … }` and call it, which is what
+   `examples/effects-showcase` does.
+
+3. **By calling a recognized builtin.** A fixed set of names is attributed by
    name alone:
 
    | Effect  | Names attributed on call |
@@ -1351,13 +1370,19 @@ a built-in effect two ways, and only two:
 
    The standard vocabulary wins every collision: `join` is the vocabulary's
    pure `([str], str) -> str`, so calling it is pure and does **not** mean a
-   thread join. `ffi`, `gpu`, `npu`, `llm`, `evolve`, `learn`, `rng` and `agent`
-   attribute no names at all — reach them by annotation, or declare an `effect`
-   block whose operations you can actually call and handle.
+   thread join. `ffi`, `npu`, `evolve` and `learn` attribute no names at all —
+   reach them by annotation, or declare an `effect` block whose operations you
+   can actually call and handle.
 
-This table is deliberately short. Attribution here is by bare name, so every
-entry claims a word out of the whole program's namespace, and a user function
-that happens to share one inherits an effect it does not perform.
+This last table is deliberately short, and route 2 is preferred over it.
+Attribution by bare name claims a word out of the whole program's namespace, so
+a user function that happens to share one inherits an effect it does not
+perform. A capability handle cannot collide that way: the receiver has to be the
+namespace.
+
+A **declared effect wins the name.** An `effect Io { … }` block in the module
+makes `Io.…` that module's own effect, checked against its own operation list,
+rather than the built-in capability.
 
 ### 11.3 Effect Typing Rules
 

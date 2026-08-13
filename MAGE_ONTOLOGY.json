@@ -6,7 +6,7 @@
     "ci_floors": 6,
     "cli_flags": 17,
     "docs": 7,
-    "effects": 21,
+    "effects": 22,
     "examples": 10,
     "framewerx_modules": 256,
     "hardware_accelerators": 8,
@@ -393,6 +393,11 @@
       {
         "name": "agent",
         "purpose": "Agent coordination",
+        "slot": "effect_name"
+      },
+      {
+        "name": "proc",
+        "purpose": "Process and system access",
         "slot": "effect_name"
       }
     ],
