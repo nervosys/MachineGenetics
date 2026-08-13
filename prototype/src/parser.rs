@@ -3524,8 +3524,47 @@ impl<'a> Parser<'a> {
         self.parse_expr_bp(MAX_INFIX_BP)
     }
 
+    /// True when a `!` in prefix position is `break` rather than logical not.
+    ///
+    /// The test is whether an operand follows. Logical not requires one and
+    /// break cannot take one, so the two never compete: `!c` is not, `!` at
+    /// the end of a block is break. A newline counts as "no operand" for the
+    /// same reason it ends a statement everywhere else here.
+    fn bang_is_break(&self) -> bool {
+        matches!(
+            self.peek_n(1),
+            TokenKind::Semi
+                | TokenKind::RBrace
+                | TokenKind::Comma
+                | TokenKind::RParen
+                | TokenKind::RBrack
+                | TokenKind::Eof
+        ) || self
+            .tokens
+            .get(self.pos + 1)
+            .zip(self.tokens.get(self.pos))
+            .is_some_and(|(next, bang)| next.span.line > bang.span.line)
+    }
+
     fn parse_prefix_expr(&mut self) -> Result<Expr, ParseError> {
         match self.peek() {
+            // `!` with no operand is `break` — the spelling the lexer calls
+            // canonical (`KwBreak, // break (legacy — canonical is !)`) and
+            // the one the ontology publishes as the Break sigil. It parsed
+            // nowhere: prefix `!` always demanded an operand, so `@@ { ? done
+            // { ! } : { } }` failed with `expected expression, found RBrace`,
+            // and only the "legacy" `break` worked. A comment two arms down
+            // said `!`-as-break was "handled via context in statement
+            // parsing"; the only other `Bang` arm is the `!` *type* (Never).
+            //
+            // Unambiguous because logical-not needs an operand and break
+            // cannot take one: if what follows cannot start an expression,
+            // there is no `not` to parse.
+            TokenKind::Bang if self.bang_is_break() => {
+                self.advance();
+                Ok(Expr::Break { value: None })
+            }
+
             // Unary operators
             TokenKind::Minus | TokenKind::Bang | TokenKind::Star => {
                 let tok = self.advance();
@@ -3535,6 +3574,35 @@ impl<'a> Parser<'a> {
                     op,
                     operand: Box::new(operand),
                 })
+            }
+
+            // `^ x` is `return x` — the Return sigil the ontology publishes,
+            // and the one-character form an agent optimising for tokens
+            // reaches for first. It did not parse: `^` lexes as `BitXor`, and
+            // nothing accepted it in prefix position, so only `ret` / `return`
+            // worked.
+            //
+            // Prefix position is unambiguous: binary `^` needs a left operand
+            // and never starts an expression, and the `^T` Box type is parsed
+            // by `parse_type` on a different path entirely.
+            TokenKind::BitXor => {
+                self.advance();
+                if matches!(
+                    self.peek(),
+                    TokenKind::Semi
+                        | TokenKind::RBrace
+                        | TokenKind::Comma
+                        | TokenKind::RParen
+                        | TokenKind::RBrack
+                        | TokenKind::Eof
+                ) {
+                    Ok(Expr::Return { value: None })
+                } else {
+                    let val = self.parse_expr()?;
+                    Ok(Expr::Return {
+                        value: Some(Box::new(val)),
+                    })
+                }
             }
             TokenKind::BitAnd => {
                 let tok = self.advance();

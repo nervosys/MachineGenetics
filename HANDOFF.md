@@ -12,7 +12,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **2,829** — rmi 1,380 · prototype 1,121 · ribosome 164 · germline 112 · forge 52 |
+| Tests | **2,833** — rmi 1,380 · prototype 1,125 · ribosome 164 · germline 112 · forge 52 |
 | CUDA | **1,071 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm |
@@ -153,7 +153,7 @@ Seven of the fourteen — #5, #6, #7, #8, #9, #11, #13 — are one class: a bug 
 `--eval` can, which is why the pin now runs it.
 
 That rewrite took the prototype suite from 1,066 tests to 1,107. Counting every
-session since, prototype tests **1,066 → 1,121**, all green — this figure is
+session since, prototype tests **1,066 → 1,125**, all green — this figure is
 checked against the live run, so it tracks forward rather than freezing at the
 session that wrote it.
 
@@ -441,6 +441,81 @@ worst-covered call shape, and coverage is not something a test suite reports —
 every test here passed before and after. The gap was visible only by asking
 "what does a program written the documented way actually check as", which is a
 different question from any the suite was asking.
+
+---
+
+## The ontology audit: every section, executed
+
+The effects section had been 40% wrong, so the obvious question was what the
+other twenty-one sections would say if anyone ran them. Result:
+
+| Section | Verdict |
+|---|---|
+| `project_layout`, `docs` (29 paths) | clean — every path exists |
+| `vocabulary` (31) | clean — every name resolves |
+| `rap_methods` (37) | clean — every method is in the dispatch table |
+| `keywords` (102) | **19 wrong**, and wrong in a way that made the field unusable |
+| `types` (30) | **3 unusable** |
+| `sigils` (38) | **2 unimplemented** |
+
+**`keywords.introduces` was two fields wearing one name.** For the 83 keywords
+with no curated entry it was the real token kind (`KwC`). For the 19 with one it
+was a hand-written name: `agent` claimed `AgentDef`, `match` claimed `Match`
+(it is `QuestionEq`), and `val`/`var` claimed `Let` — a token this language
+*removed* and now rejects on sight with a dedicated diagnostic. Nothing marked
+which kind of answer you were reading, so the field could not be joined against
+anything. It is now always the token the spelling produces, and a test joins it
+back against `lexer::KEYWORDS`. The curated prose survives in `summary`, where
+it was always the useful part.
+
+**Three documented types could not be written.** `S` was published as a sigil
+shorthand for `String` — but `S` is the `struct` keyword and can never be a
+type. `Map[K,V]` and `Set[T]` are spelled `{K: V}` and `{T}`. An agent that
+believed the ontology emitted a program that did not compile, which is the
+precise failure this file exists to prevent.
+
+**Two published sigils did not parse — and they failed for opposite reasons.**
+`!` is published as Break and `^` as Return; neither worked, and `break` / `ret`
+did.
+
+`!` was a genuine gap. The spec names `!` as Break in both of its sigil tables,
+and the lexer's own comment reads
+`KwBreak, // break (legacy — canonical is !)` — so the spelling it calls
+canonical parsed nowhere and the one it calls legacy was the only one that
+worked. Prefix `!` always demanded an operand. It is now `break` when no operand
+follows, which is unambiguous: logical-not requires one and break cannot take
+one. A parser comment had claimed this was "handled via context in statement
+parsing"; the only other `Bang` arm is the `!` *type* (Never). Fifth comment
+this session stating a rule the code beside it did not implement.
+
+**`^` was the ontology being wrong, and I got this backwards first.** I
+implemented `^` as return to make the published claim true — then had to add a
+newline guard when `m x = 7` followed by `^ x` parsed as `7 ^ x`, because `^` is
+already an infix operator. That guard was the warning sign, and I only checked
+the spec afterwards. `MAGE_SPEC.md` names `ret` in both sigil tables and
+mentions `^` exactly once, as bitwise XOR — and `^` is *also* the `^T` Box type
+prefix, so it was double-booked before anyone proposed a third meaning. Nothing
+but that one ontology line ever claimed `^` returns. Both changes are reverted;
+the ontology entry now reads `ret`.
+
+The lesson is sharper than the fix: **the ontology describes the language, it
+does not define it.** When a generated artifact and the spec disagree, the
+artifact is the likelier suspect, and "make the compiler match the document" is
+the wrong instinct — it is the same instinct that would have kept `Map[K,V]` and
+invented a `Map` type. Reaching for a special-case parser guard to support a
+one-character spelling is a signal that the spelling is wrong, not that the
+parser is.
+
+**Why the sigil section matters more than its count suggests.** These are the
+*token efficiency* claims. The short forms are exactly what an agent minimising
+tokens reaches for, so the sigils nobody had run were the ones most likely to be
+used. Same for `S` over `String`. Optimising for token count while never
+executing the short spellings is how a language ends up with its cheapest forms
+broken.
+
+Four sections now have executable pins: every keyword introduces the token it
+claims, every documented type can be written in a signature, every published
+control sigil parses, every published path exists.
 
 ---
 

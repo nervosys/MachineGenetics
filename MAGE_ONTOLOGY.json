@@ -3397,7 +3397,7 @@
         "summary": "reserved word → KwAf token"
       },
       {
-        "introduces": "AgentDef",
+        "introduces": "KwAgent",
         "keyword": "agent",
         "summary": "agent role; lowers to Agentic Binary Language agent ops"
       },
@@ -3427,12 +3427,12 @@
         "summary": "reserved word → KwCrossover token"
       },
       {
-        "introduces": "Data",
+        "introduces": "KwData",
         "keyword": "data",
         "summary": "record or sum type (also `D`)"
       },
       {
-        "introduces": "Defer",
+        "introduces": "KwDefer",
         "keyword": "defer",
         "summary": "run expression on scope exit (also `df`)"
       },
@@ -3442,7 +3442,7 @@
         "summary": "reserved word → KwDefer token"
       },
       {
-        "introduces": "Effect",
+        "introduces": "KwEffect",
         "keyword": "effect",
         "summary": "effect declaration"
       },
@@ -3457,17 +3457,17 @@
         "summary": "reserved word → KwE token"
       },
       {
-        "introduces": "EvolveDef",
+        "introduces": "KwEvolve",
         "keyword": "evolve",
         "summary": "evolutionary search; lowers to Agentic Binary Language meta"
       },
       {
-        "introduces": "Extend",
+        "introduces": "KwExtend",
         "keyword": "extend",
         "summary": "inherent/trait methods on a type (also `xd`)"
       },
       {
-        "introduces": "Extern",
+        "introduces": "KwExtern",
         "keyword": "extern",
         "summary": "FFI block"
       },
@@ -3497,7 +3497,7 @@
         "summary": "reserved word → At token"
       },
       {
-        "introduces": "Forward",
+        "introduces": "KwForward",
         "keyword": "forward",
         "summary": "forward pass inside a net block"
       },
@@ -3532,12 +3532,12 @@
         "summary": "reserved word → KwGrammarExt token"
       },
       {
-        "introduces": "Guard",
+        "introduces": "KwGuard",
         "keyword": "guard",
         "summary": "early-exit guard (also `gd`)"
       },
       {
-        "introduces": "Handle",
+        "introduces": "KwHandle",
         "keyword": "handle",
         "summary": "effect handler"
       },
@@ -3567,12 +3567,12 @@
         "summary": "reserved word → KwIs token"
       },
       {
-        "introduces": "KbDef",
+        "introduces": "KwKb",
         "keyword": "kb",
         "summary": "symbolic knowledge base; lowers to Agentic Binary Language"
       },
       {
-        "introduces": "Layer",
+        "introduces": "KwLayer",
         "keyword": "layer",
         "summary": "neural-net layer inside a net block"
       },
@@ -3592,7 +3592,7 @@
         "summary": "reserved word → KwM token"
       },
       {
-        "introduces": "Match",
+        "introduces": "QuestionEq",
         "keyword": "match",
         "summary": "pattern match (sigil `?`)"
       },
@@ -3612,7 +3612,7 @@
         "summary": "reserved word → KwMutate token"
       },
       {
-        "introduces": "NetDef",
+        "introduces": "KwNet",
         "keyword": "net",
         "summary": "neural network definition; lowers to Agentic Binary Language"
       },
@@ -3687,7 +3687,7 @@
         "summary": "reserved word → KwSpec token"
       },
       {
-        "introduces": "Spec",
+        "introduces": "KwSpec",
         "keyword": "spec",
         "summary": "spec/contract block"
       },
@@ -3707,7 +3707,7 @@
         "summary": "reserved word → KwSwarm token"
       },
       {
-        "introduces": "SwarmDef",
+        "introduces": "KwSwarm",
         "keyword": "swarm",
         "summary": "agent swarm topology; lowers to Agentic Binary Language"
       },
@@ -3742,7 +3742,7 @@
         "summary": "reserved word → KwTensor token"
       },
       {
-        "introduces": "TrainDef",
+        "introduces": "KwTrain",
         "keyword": "train",
         "summary": "training pipeline; lowers to Agentic Binary Language compute"
       },
@@ -3782,12 +3782,12 @@
         "summary": "reserved word → KwV token"
       },
       {
-        "introduces": "Let",
+        "introduces": "KwVal",
         "keyword": "val",
         "summary": "immutable binding (also `v`)"
       },
       {
-        "introduces": "Let",
+        "introduces": "KwVar",
         "keyword": "var",
         "summary": "mutable binding (also `m`)"
       },
@@ -4812,8 +4812,8 @@
       },
       {
         "category": "string",
-        "name": "S",
-        "summary": "owned string (Rust `String`); sigil shorthand"
+        "name": "String",
+        "summary": "owned string (Rust `String`). `S` is *not* a spelling of it — `S` is the `struct` keyword."
       },
       {
         "category": "unit",
@@ -4867,13 +4867,13 @@
       },
       {
         "category": "map",
-        "name": "Map[K,V]",
-        "summary": "HashMap<K, V>; standard map type"
+        "name": "{K: V}",
+        "summary": "HashMap<K, V>; standard map type. Written with braces, not `Map[K,V]`."
       },
       {
         "category": "set",
-        "name": "Set[T]",
-        "summary": "HashSet<T>; standard set type"
+        "name": "{T}",
+        "summary": "HashSet<T>; standard set type. Written with braces, not `Set[T]`."
       },
       {
         "category": "smart",

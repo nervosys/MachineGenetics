@@ -61,7 +61,12 @@ const SIGILS: &[(&str, &str, &str)] = &[
     ("0b", "Bool", "false"),
     ("_", "SelfVal", "self value"),
     ("_T", "SelfType", "Self type"),
-    ("^", "Return", "return expression"),
+    // `ret`, not `^`. This entry said `^` and it was wrong: `MAGE_SPEC.md`
+    // names `ret` as the Return sigil in both of its sigil tables, and
+    // mentions `^` exactly once — as bitwise XOR. `^` is also the `^T` Box
+    // type prefix, so it was double-booked before anyone proposed a third
+    // meaning. Nothing but this line ever claimed `^` returns.
+    ("ret", "Return", "return expression"),
     ("!", "Break/Not", "break, or logical not, or assert"),
     (">>", "Continue", "continue"),
     ("??", "Todo", "todo!()"),
@@ -73,6 +78,16 @@ const SIGILS: &[(&str, &str, &str)] = &[
 /// lexer uses), which `keywords_section` enumerates in full so the ontology is
 /// complete and can never drift. This map only adds prose where it helps; any
 /// keyword without an entry still appears, with a generated summary.
+///
+/// The middle column is **not** published. It used to overwrite the emitted
+/// `introduces` field, which made that field mean two different things: the
+/// real token kind for the 83 keywords with no entry here, and a hand-written
+/// name for the 19 with one — `agent` claimed `AgentDef`, `match` claimed
+/// `Match` (it is `QuestionEq`), and `val`/`var` claimed `Let`, a token this
+/// language removed and now rejects on sight. An agent could not tell which
+/// kind of answer it was reading, and could not join the field against
+/// anything. `introduces` is now always the token the spelling produces, and
+/// `keywords_introduce_the_token_they_claim` holds it to that.
 const KEYWORD_DOCS: &[(&str, &str, &str)] = &[
     ("net", "NetDef", "neural network definition; lowers to Agentic Binary Language"),
     ("kb", "KbDef", "symbolic knowledge base; lowers to Agentic Binary Language"),
@@ -120,7 +135,7 @@ const TYPES: &[(&str, &str, &str)] = &[
     ("char", "scalar", "Unicode scalar value"),
     // ── string / unit ──────────────────────────────────────────────
     ("s",    "string", "string slice (Rust `&str`); sigil shorthand"),
-    ("S",    "string", "owned string (Rust `String`); sigil shorthand"),
+    ("String","string", "owned string (Rust `String`). `S` is *not* a spelling of it — `S` is the `struct` keyword."),
     ("()",   "unit",   "unit type; sole value `()`; implicit fn return"),
     // ── reference / pointer sigils ─────────────────────────────────
     ("&T",   "ref",    "shared reference (Rust `&T`)"),
@@ -133,8 +148,8 @@ const TYPES: &[(&str, &str, &str)] = &[
     ("[T; N]",  "array",  "fixed-size array (length N at compile time)"),
     ("[T]~",    "vec",    "Vec<T>; owned dynamic array; sigil shorthand"),
     ("(T1,T2,...)", "tuple", "tuple type; positional fields"),
-    ("Map[K,V]","map",    "HashMap<K, V>; standard map type"),
-    ("Set[T]",  "set",    "HashSet<T>; standard set type"),
+    ("{K: V}",  "map",    "HashMap<K, V>; standard map type. Written with braces, not `Map[K,V]`."),
+    ("{T}",     "set",    "HashSet<T>; standard set type. Written with braces, not `Set[T]`."),
     ("Box[T]",  "smart",  "Box<T>; heap-owned single value"),
     // ── function type ──────────────────────────────────────────────
     ("f(T)->R", "fn",     "function pointer type; (T) -> R signature"),
@@ -1265,13 +1280,12 @@ fn keywords_section() -> serde_json::Value {
     let mut rows: Vec<(&str, String, String)> = crate::lexer::KEYWORDS
         .iter()
         .map(|(spelling, kind)| {
-            if let Some((_, introduces, summary)) =
-                KEYWORD_DOCS.iter().find(|(w, _, _)| w == spelling)
-            {
-                (*spelling, introduces.to_string(), summary.to_string())
-            } else {
-                (*spelling, format!("{kind:?}"), format!("reserved word → {kind:?} token"))
-            }
+            let summary = KEYWORD_DOCS
+                .iter()
+                .find(|(w, _, _)| w == spelling)
+                .map(|(_, _, summary)| summary.to_string())
+                .unwrap_or_else(|| format!("reserved word → {kind:?} token"));
+            (*spelling, format!("{kind:?}"), summary)
         })
         .collect();
     rows.sort_by(|a, b| a.0.cmp(b.0));
@@ -2202,6 +2216,131 @@ mod tests {
                 published.contains(&name),
                 "`{name}` is a built-in effect kind but the ontology does not publish it"
             );
+        }
+    }
+
+    /// Every keyword introduces the token the ontology says it does.
+    ///
+    /// `introduces` was two fields wearing one name — see `KEYWORD_DOCS`.
+    /// This joins it back against `lexer::KEYWORDS`, which is the only thing
+    /// that makes the field usable to a reader who is not this compiler.
+    #[test]
+    fn keywords_introduce_the_token_they_claim() {
+        let published = keywords_section();
+        for entry in published.as_array().unwrap() {
+            let spelling = entry["keyword"].as_str().unwrap();
+            let claimed = entry["introduces"].as_str().unwrap();
+            let (_, actual) = crate::lexer::KEYWORDS
+                .iter()
+                .find(|(w, _)| *w == spelling)
+                .unwrap_or_else(|| panic!("ontology publishes `{spelling}`, not a keyword"));
+            assert_eq!(
+                claimed,
+                format!("{actual:?}"),
+                "`{spelling}` is published as introducing {claimed}"
+            );
+        }
+    }
+
+    /// Every documented type can be written in a signature.
+    ///
+    /// Three could not: `S` (published as a shorthand for `String`, but `S` is
+    /// the `struct` keyword and can never be a type), and `Map[K,V]` / `Set[T]`
+    /// — the real spellings are `{K: V}` and `{T}`. An agent that believed the
+    /// ontology emitted a program that did not compile, which is the failure
+    /// mode this whole file exists to prevent.
+    ///
+    /// Metavariables are substituted because the entries are schemas: `&T`
+    /// documents a shape, and only `&i32` can be compiled.
+    #[test]
+    fn every_documented_type_can_be_written() {
+        for (name, _, _) in TYPES {
+            let concrete = name
+                .replace("(T1,T2,...)", "(i32, i64)")
+                .replace("[T; N]", "[i32; 4]")
+                .replace("K: V", "i32: i32")
+                .replace("T1", "i32")
+                .replace("T2", "i32");
+            // `R` is overloaded in the ontology's own notation: the `Result`
+            // constructor in `R[T,E]`, and the return-type metavariable in
+            // `f(T)->R`. Only the second is substituted.
+            let concrete: String = concrete
+                .replace("->R", "->i32")
+                .replace(['T', 'E', 'K', 'V'], "i32");
+            let src = format!("f probe(x: {concrete}) -> i32 {{ 0 }}");
+            let tokens = crate::lexer::lex(&src);
+            let module = crate::parser::parse(&tokens).unwrap_or_else(|e| {
+                panic!("documented type `{name}` (as `{concrete}`) does not parse: {e:?}")
+            });
+            let diags = crate::resolve::resolve(&module).diagnostics;
+            let unresolved: Vec<_> = diags
+                .iter()
+                .filter(|d| d.message.contains("unresolved type"))
+                .map(|d| &d.message)
+                .collect();
+            assert!(
+                unresolved.is_empty(),
+                "documented type `{name}` (as `{concrete}`) does not resolve: {unresolved:?}"
+            );
+        }
+    }
+
+    /// Every control-flow sigil the ontology publishes actually parses.
+    ///
+    /// Two did not. `!` is published as Break and the spec agrees — and it
+    /// parsed nowhere, because prefix `!` always demanded an operand, so only
+    /// the spelling the lexer calls *legacy* (`break`) worked. That is now
+    /// implemented.
+    ///
+    /// `^` was published as Return and was never a thing: the spec names `ret`
+    /// in both sigil tables and mentions `^` once, as bitwise XOR. The entry
+    /// was the error, not the compiler — worth remembering, because the first
+    /// attempt at this fix implemented `^` to make the ontology true, which is
+    /// backwards. The ontology describes the language; it does not define it.
+    #[test]
+    fn every_published_control_sigil_parses() {
+        let cases: &[(&str, &str)] = &[
+            ("!", "f a() -> i32 {\n m i = 0\n @@ {\n i = i + 1\n ? i > 2 { ! } : { }\n }\n i\n}"),
+            ("ret", "f a() -> i32 { ret 5 }"),
+            (">>", "f a() -> i32 {\n m i = 0\n @w i < 3 {\n i = i + 1\n ? i > 9 { >> } : { }\n }\n i\n}"),
+            ("@@", "f a() -> i32 {\n m i = 0\n @@ {\n i = i + 1\n ? i > 2 { break } : { }\n }\n i\n}"),
+            ("@w", "f a() -> i32 {\n m i = 0\n @w i < 2 { i = i + 1 }\n i\n}"),
+            ("?", "f a(c: bool) -> i32 { ? c { 1 } : { 2 } }"),
+            ("?=", "f a(x: i32) -> i32 { ?= x { _ => 1 } }"),
+            ("??", "f a() -> i32 { ?? }"),
+            ("???", "f a() -> i32 { ??? }"),
+            ("1b", "f a() -> bool { 1b }"),
+            ("0b", "f a() -> bool { 0b }"),
+        ];
+        for (sigil, src) in cases {
+            let published = SIGILS.iter().any(|(s, _, _)| s == sigil);
+            assert!(published, "`{sigil}` is exercised here but no longer published");
+            assert!(
+                crate::parser::parse(&crate::lexer::lex(src)).is_ok(),
+                "published sigil `{sigil}` does not parse: {src}"
+            );
+        }
+        // The one that was wrong, held in both directions.
+        assert!(
+            !SIGILS.iter().any(|(s, _, _)| *s == "^"),
+            "`^` is bitwise XOR and the `^T` Box prefix — it does not return"
+        );
+    }
+
+    /// Every path the ontology publishes exists.
+    ///
+    /// Cheap, and the kind of claim that rots silently: a file moves and the
+    /// map an agent navigates by keeps pointing at where it used to be.
+    #[test]
+    fn every_documented_path_exists() {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .expect("repo root");
+        for (path, _) in PROJECT_LAYOUT.iter().map(|(p, d)| (*p, *d)) {
+            assert!(root.join(path).exists(), "project_layout path is gone: {path}");
+        }
+        for (path, _, _) in DOCS {
+            assert!(root.join(path).exists(), "docs path is gone: {path}");
         }
     }
 
