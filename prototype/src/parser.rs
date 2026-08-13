@@ -3035,41 +3035,104 @@ impl<'a> Parser<'a> {
         if matches!(next, TokenKind::LParen | TokenKind::LBrack) {
             return matches!(first, TokenKind::KwVal | TokenKind::KwVar);
         }
+        if Self::is_binding_name(next) {
+            return true;
+        }
+        // A keyword in binding-name position, with a `=` or `:` after it, is
+        // unambiguously a binding whose name is a keyword — `v f = 3`,
+        // `var v = 3`. Claim it as a let statement anyway so `parse_let_stmt`
+        // can say so; see `keyword_as_binding_name_error` for why the errors
+        // these produced otherwise were worse than useless.
         matches!(
-            next,
-            TokenKind::Ident
-                    | TokenKind::Underscore
-                    // Keywords that double as identifiers in
-                    // binding-name position. The lexer tokenises
-                    // common variable names (`val`, `guard`, `data`,
-                    // `query`, etc.) as their keyword variants - any
-                    // of these can legally appear as a binding name,
-                    // so peek-ahead must treat them as ident-like.
-                    | TokenKind::KwVal
-                    | TokenKind::KwVar
-                    | TokenKind::KwData
-                    | TokenKind::KwGuard
-                    | TokenKind::KwDefer
-                    | TokenKind::KwQuery
-                    | TokenKind::KwRule
-                    | TokenKind::KwFact
-                    | TokenKind::KwSelect
-                    | TokenKind::KwYield
-                    | TokenKind::KwOk
-                    | TokenKind::KwErr
-                    | TokenKind::KwSome
-                    | TokenKind::KwNone
-                    | TokenKind::KwIs
-                    | TokenKind::KwLayer
-                    | TokenKind::KwTensor
-                    | TokenKind::KwParam
-                    | TokenKind::KwForward
-                    | TokenKind::KwReward
-                    | TokenKind::KwPolicy
-                    | TokenKind::KwFitness
-                    | TokenKind::KwGenome
-                    | TokenKind::KwMutate
+            self.tokens.get(self.pos + 2).map(|t| t.kind),
+            Some(TokenKind::Assign) | Some(TokenKind::Colon)
         )
+    }
+
+    /// Tokens that may serve as a binding name.
+    ///
+    /// The lexer tokenises common variable names (`val`, `guard`, `data`,
+    /// `query`, …) as their keyword variants, so any of these can legally
+    /// appear where an identifier is expected and peek-ahead must treat them
+    /// as ident-like.
+    fn is_binding_name(kind: TokenKind) -> bool {
+        matches!(
+            kind,
+            TokenKind::Ident
+                | TokenKind::Underscore
+                | TokenKind::KwVal
+                | TokenKind::KwVar
+                | TokenKind::KwData
+                | TokenKind::KwGuard
+                | TokenKind::KwDefer
+                | TokenKind::KwQuery
+                | TokenKind::KwRule
+                | TokenKind::KwFact
+                | TokenKind::KwSelect
+                | TokenKind::KwYield
+                | TokenKind::KwOk
+                | TokenKind::KwErr
+                | TokenKind::KwSome
+                | TokenKind::KwNone
+                | TokenKind::KwIs
+                | TokenKind::KwLayer
+                | TokenKind::KwTensor
+                | TokenKind::KwParam
+                | TokenKind::KwForward
+                | TokenKind::KwReward
+                | TokenKind::KwPolicy
+                | TokenKind::KwFitness
+                | TokenKind::KwGenome
+                | TokenKind::KwMutate
+        )
+    }
+
+    /// The diagnostic for a keyword used as a binding name.
+    ///
+    /// This is the whole point of the fix. `v f = 3` used to report
+    /// `expected expression, found KwF 'f'` — the right token under a message
+    /// about the wrong thing, since nothing here wants an expression. Worse,
+    /// `var v = 3` reported `unresolved name: \`var\``, pointing at the
+    /// *binding keyword* and naming it as an undefined variable: the statement
+    /// was not recognised as a binding at all, so `var` fell through to
+    /// expression position and the error landed on a token the author had
+    /// written correctly.
+    ///
+    /// The alternate spellings come from `lexer::KEYWORDS`, so the hint cannot
+    /// drift from the table that caused the problem. Most of these letters are
+    /// the agent-mode spelling of a word-shaped keyword — `f` is `fn`, `S` is
+    /// `struct` — which is the fact that makes the error make sense.
+    fn keyword_as_binding_name_error(&self) -> ParseError {
+        let tok = self.current();
+        let mut alts: Vec<&str> = crate::lexer::KEYWORDS
+            .iter()
+            .filter(|(spelling, kind)| *kind == tok.kind && *spelling != tok.text)
+            .map(|(spelling, _)| *spelling)
+            .collect();
+        alts.sort_unstable();
+        alts.dedup();
+
+        let also = match alts.len() {
+            0 => String::new(),
+            1 => format!(" (the same keyword as `{}`)", alts[0]),
+            _ => format!(
+                " (the same keyword as {})",
+                alts.iter()
+                    .map(|a| format!("`{a}`"))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+        };
+
+        ParseError {
+            line: tok.span.line,
+            col: tok.span.col,
+            message: format!(
+                "`{}` is a keyword{also} and cannot be used as a binding name — \
+                 rename the binding",
+                tok.text
+            ),
+        }
     }
 
     fn parse_let_stmt(&mut self) -> Result<Stmt, ParseError> {
@@ -3079,6 +3142,15 @@ impl<'a> Parser<'a> {
         // here.
         let mutable = matches!(self.peek(), TokenKind::KwM | TokenKind::KwVar);
         self.advance(); // consume the binding keyword
+
+        // A keyword where the name belongs. Destructuring binders start with
+        // `(` / `[` and are a different shape, so they are excluded here and
+        // left to `parse_pattern`.
+        if !Self::is_binding_name(self.peek())
+            && !matches!(self.peek(), TokenKind::LParen | TokenKind::LBrack)
+        {
+            return Err(self.keyword_as_binding_name_error());
+        }
 
         let pattern = self.parse_pattern()?;
 
@@ -5048,6 +5120,60 @@ mod tests {
             matches!(tail("f x() -> i32 {\n  add(\n    1,\n    2\n  )\n}"), Expr::Call { .. }),
             "a multi-line argument list stopped being a call"
         );
+    }
+
+    #[test]
+    fn test_keyword_as_binding_name_points_at_the_name() {
+        // `v f = 3` reported `expected expression, found KwF 'f'` — the right
+        // token under a message about the wrong thing. Worse, `var v = 3`
+        // reported `unresolved name: `var``: the statement was never
+        // recognised as a binding, so the binding keyword fell through to
+        // expression position and the error landed on the one token the
+        // author had written correctly.
+        let err = |src: &str| parse(&lexer::lex(src)).expect_err("must be rejected");
+
+        let e = err("f x() -> i32 {\n  v f = 3\n  0\n}");
+        assert!(
+            e.message.contains("`f` is a keyword") && e.message.contains("binding name"),
+            "unexpected diagnostic: {}",
+            e.message
+        );
+        assert_eq!((e.line, e.col), (2, 5), "diagnostic must point at the name");
+        // The hint comes from `lexer::KEYWORDS`, so it cannot drift from the
+        // table that causes the collision.
+        assert!(e.message.contains("`fn`"), "expected the `fn` hint: {}", e.message);
+
+        // The reported case: the error used to name the binding keyword.
+        let e = err("f x() -> i32 {\n  var v = 3\n  0\n}");
+        assert!(
+            e.message.contains("`v` is a keyword"),
+            "diagnostic still blames the wrong token: {}",
+            e.message
+        );
+        assert_eq!((e.line, e.col), (2, 7), "diagnostic must point at the name");
+
+        // Every sigil letter, and `ret`, reaches the same diagnostic.
+        for name in ["f", "v", "m", "C", "S", "E", "T", "I", "M", "u", "Y", "Z", "ret"] {
+            let e = err(&format!("f x() -> i32 {{\n  v {name} = 3\n  0\n}}"));
+            assert!(
+                e.message.contains(&format!("`{name}` is a keyword")),
+                "`v {name} = 3` gave: {}",
+                e.message
+            );
+        }
+    }
+
+    #[test]
+    fn test_keyword_that_is_a_legal_binding_name_still_binds() {
+        // The fix must not make the error path greedy: the lexer tokenises
+        // plenty of ordinary variable names as keywords, and those bind.
+        for src in [
+            "f x() -> i32 {\n  v val = 41\n  0\n}",
+            "f x() -> i32 {\n  val (a, b) = (1, 2)\n  0\n}",
+            "f x() -> i32 {\n  v y: i32 = 42\n  0\n}",
+        ] {
+            assert!(parse(&lexer::lex(src)).is_ok(), "wrongly rejected: {src}");
+        }
     }
 
     #[test]

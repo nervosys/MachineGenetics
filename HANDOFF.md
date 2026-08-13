@@ -12,7 +12,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **2,823** — rmi 1,380 · prototype 1,115 · ribosome 164 · germline 112 · forge 52 |
+| Tests | **2,825** — rmi 1,380 · prototype 1,117 · ribosome 164 · germline 112 · forge 52 |
 | CUDA | **1,071 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm |
@@ -99,10 +99,13 @@ actually unblock them, because "open" has meant three different things.
 
 Each is a contained fix, and each is a real trap someone will hit.
 
-- **Sigil letters cannot be identifiers**: `f v m C S E T I M u Y Z` are
-  keywords, as is `ret`. Naming a variable `f` yields `unresolved name: val`,
-  which points at the wrong token entirely. The *diagnostic* is the bug, and it
-  is fixable on its own.
+- **`guard` cannot be *referenced*, only bound.** `v guard = 2` binds fine, but
+  `guard + 1` on its own line starts a guard statement and dies with
+  `expected expression, found Plus '+'`. Found while fixing the sigil-letter
+  diagnostic; it is the same shape one level over — a keyword-as-identifier that
+  works in one position and not another — and the same class as `f` and `v`,
+  which are still not usable as names anywhere. Making these letters real
+  identifiers is the larger change the diagnostic fix deliberately did not make.
 - **`scan` emits its seed** as the first element, so its result is one longer
   than its input. The two conventions differ by exactly one line, which is
   invisible until you count. Worth a doc comment at the definition.
@@ -150,7 +153,7 @@ Seven of the fourteen — #5, #6, #7, #8, #9, #11, #13 — are one class: a bug 
 `--eval` can, which is why the pin now runs it.
 
 That rewrite took the prototype suite from 1,066 tests to 1,107. Counting every
-session since, prototype tests **1,066 → 1,115**, all green — this figure is
+session since, prototype tests **1,066 → 1,117**, all green — this figure is
 checked against the live run, so it tracks forward rather than freezing at the
 session that wrote it.
 
@@ -322,6 +325,53 @@ handoff says was missing for bugs 9 and 11 — where nothing noticed the fix —
 it is worth doing every time, because the first version of these tests passed
 with the guards removed. They asserted statement counts, and the tail expression
 is not a statement.
+
+---
+
+## The sigil-letter diagnostic blamed the binding keyword
+
+The item said naming a variable `f` yields `unresolved name: val`. Running it
+gave two *different* wrong errors, depending on the letter:
+
+| Written | Reported | Wrong how |
+|---|---|---|
+| `v f = 3` | `expected expression, found KwF 'f'` | right token, wrong story — nothing there wants an expression |
+| `var v = 3` | ``unresolved name: `var` `` | wrong token entirely, and it names a keyword the author wrote correctly |
+
+The mechanism explains both. `is_let_statement` decides whether `v`/`val` starts
+a binding by peeking at the next token against a list of keywords that may serve
+as names — `val`, `guard`, `data`, `query` and a couple of dozen more, because
+the lexer eagerly tokenises ordinary variable names as keywords. The sigil
+letters are not on that list. So the statement is not recognised as a binding at
+all, the binding keyword falls through to expression position, and whatever
+error comes out is about the wrong token by construction. `unresolved name:
+var` is not a bad message; it is a correct message about a parse that should
+never have happened.
+
+The fix keeps the list (extracted, so it has one home instead of being inlined
+in the peek) and claims the failing shape anyway: a binding keyword, a keyword,
+then `=` or `:` is unambiguously a binding whose name is a keyword, so it routes
+into `parse_let_stmt`, which says exactly that and points at the name. The hint
+naming the other spelling — `f` is `fn`, `S` is `struct`, `ret` is `return` — is
+computed from `lexer::KEYWORDS`, so it cannot drift from the table that causes
+the collision in the first place.
+
+All thirteen names now report at the name's own line and column. What has *not*
+changed is that they cannot be used as identifiers; that is the larger change,
+and the handoff was right that the diagnostic is separable from it.
+
+Two notes:
+
+**The bug report was again a partial observation.** `unresolved name: val` is
+what one of the two failure modes looks like, generalised into a rule covering
+both. This is the second small-and-sharp item in a row where the first probe
+disagreed with the note — worth expecting for the rest of the list.
+
+**Verified by breaking the fix**, as with the `(` guard: the test fails against
+a build with the new check deleted. Also worth recording is a failure that is
+*not* mine — `v guard = 2` followed by `guard + 1` was already broken before
+this change, confirmed by stashing the file and rebuilding rather than by
+reasoning about it. It is now its own item above.
 
 ---
 
