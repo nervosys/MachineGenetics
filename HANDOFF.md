@@ -12,7 +12,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **2,861** — rmi 1,380 · prototype 1,153 · ribosome 164 · germline 112 · forge 52 |
+| Tests | **2,864** — rmi 1,380 · prototype 1,156 · ribosome 164 · germline 112 · forge 52 |
 | CUDA | **1,071 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm |
@@ -122,7 +122,7 @@ different things.
 
 | # | Item | Size |
 |---|---|---|
-| 10 | **`resume` for effect handlers** | Largest. Handlers dispatch and return like ordinary calls; nothing captures a continuation, so there are no generators, no backtracking, and no async from the same mechanism. Needs the tree-walking evaluator reworked into a form that can capture continuations, which touches every expression form. |
+| 10 | **Multi-shot resumption for effect handlers** | Largest, and *smaller than it was recorded as*. Single-shot resumption already works — an arm's value becomes the operation's value and the body continues — and `ret` in an arm aborts the handled block cleanly. What is missing is reifying the continuation so it can be stored or invoked twice, which is what generators and backtracking need. State, reader, logging and mocking handlers all work today. Still means reworking the tree-walking evaluator into a form that can capture continuations. |
 | 12 | `int` literal constraint | Medium. The current fix is a post-hoc check in `default_int_literals`, not a real integer-kind constraint threaded through `unify`. Correct for the programs it rejects; the principled version is larger. |
 | 13 | `stdlib/` and four `framewerx` files | The remaining 30 sketches. `prototype/examples/` is done: all six rewritten, **thirteen** compiler bugs out of them, and the rate never dropped. `stdlib/` is blocked on item 1. |
 
@@ -258,6 +258,15 @@ The mirror image, and easy to get backwards.
 - **`types`**: `S` published as shorthand for `String` (it is the `struct`
   keyword and can never be a type); `Map[K,V]` and `Set[T]` are `{K: V}`, `{T}`.
 
+- **And once, understating.** The spec said "**Handlers do not resume.** An
+  operation call dispatches to its arm and returns like an ordinary call." The
+  second sentence is mechanically exact — and *returning like an ordinary call
+  is* single-shot tail resumption; the body carries on. The first sentence
+  reads as "the body stops", which is not what happens. Abort via `ret` in an
+  arm worked too, scoped correctly to the handled block. None of it was tested.
+  A reader would have concluded handlers were unusable and either avoided them
+  or started a large refactor.
+
 **The rule:** the ontology *describes* the language; it does not define it. When
 a generated artifact and the spec disagree, the artifact is the likelier
 suspect. Reaching for a special-case parser guard to support a one-character
@@ -300,8 +309,12 @@ recognised builtin by bare name. A `pub` function must declare what it performs;
 a private one infers silently and its effects reach its public callers.
 Annotation is an **upper bound** — over-declaring is deliberately allowed and
 never warned about. `handle … with` discharges an effect **per block, not per
-function**, and a handler's own effects are attributed honestly. **Handlers do
-not resume** (item 10).
+function**, and a handler's own effects are attributed honestly.
+
+**Handlers resume, single-shot and implicitly** — the arm's value becomes the
+operation's value and the body continues — and an arm may `ret` instead, which
+aborts the handled block only and leaves the enclosing function running. Only
+*multi-shot* resumption is missing (item 10).
 
 What it does *not* have: no effect hierarchy (`/ io` grants nothing else), no
 per-file or per-module capability grants, no effect polymorphism.
@@ -394,7 +407,7 @@ it is invisible unless you break the thing on purpose and watch.
 
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,153**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,156**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it.
 - Every typechecker fix has landed without breaking an existing test **except
   one**, where widening `collection_elem` made `sum("hi")` legal and

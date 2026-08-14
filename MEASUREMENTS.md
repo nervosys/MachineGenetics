@@ -6,8 +6,8 @@ numbers are machine-dependent; the shapes (throughput, scaling) are not.
 
 Date: 2026-06-10. Build: `release` for perf, `cargo test` for functionality.
 
-> **Re-verified 2026-08-11** — all five crates tested: prototype **1,153**, rmi
-> **1,380**, ribosome **164**, germline **112**, forge **52** = **2,861 passing,
+> **Re-verified 2026-08-11** — all five crates tested: prototype **1,156**, rmi
+> **1,380**, ribosome **164**, germline **112**, forge **52** = **2,864 passing,
 > 0 failing, 0 warnings**. No figure below has regressed.
 >
 > *A measurement that was wrong.* `BuildReport::cache_hit_ratio` was
@@ -37,7 +37,7 @@ Date: 2026-06-10. Build: `release` for perf, `cargo test` for functionality.
 > explained away. The extraction itself removed nothing: 112 both before and
 > after, checked across four commits.
 >
-> *Correction to the prototype count.* This document said 1153, and an earlier
+> *Correction to the prototype count.* This document said 1156, and an earlier
 > re-verification said 1209. Both over-counted: `lexer`, `parser`, `ast`, `hir`,
 > `heal`, and `recover` were re-included by `#[path]` into two auxiliary binaries
 > that had no tests of their own, so 171 test functions were compiled three times
@@ -65,7 +65,7 @@ Date: 2026-06-10. Build: `release` for perf, `cargo test` for functionality.
 ### Test suites (all green)
 | Suite | Tests | Cmd |
 |---|---|---|
-| MAGE prototype | **1153 pass** (+2 ignored perf harnesses) | `cargo test` |
+| MAGE prototype | **1156 pass** (+2 ignored perf harnesses) | `cargo test` |
 | rmi (`cpu`) | **1380 pass** | `cargo test --no-default-features --features cpu` |
 | ribosome (build engine) | **164 pass** | `cargo test --manifest-path ribosome/Cargo.toml` |
 | germline (RSI control plane) | **112 pass** | `cargo test --manifest-path germline/Cargo.toml` |

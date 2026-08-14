@@ -1998,6 +1998,68 @@ f s() { Rect(3.0) }", "s", &[])
         assert!(err.contains("unknown function `nope`"), "unexpected: {err}");
     }
 
+    /// An operation call resumes: the arm's value becomes the operation's
+    /// value and the body continues.
+    ///
+    /// The spec said "**Handlers do not resume.** An operation call dispatches
+    /// to its arm and returns like an ordinary call." The second sentence is
+    /// mechanically exact, and *returning like an ordinary call is* single-shot
+    /// tail resumption — the body carries on with the value. The first
+    /// sentence reads as "the body stops", which is not what happens, and
+    /// nothing tested either way.
+    ///
+    /// What is genuinely missing is *multi-shot* resumption: the continuation
+    /// is never reified, so it cannot be stored or invoked twice. That is what
+    /// generators and backtracking need. State, reader, logging and mocking —
+    /// the common handler uses — all work today.
+    #[test]
+    fn an_operation_resumes_and_the_body_continues() {
+        let src = "effect A { f ask() -> i32; }
+                   f work() -> i32 / a { v got = A.ask()
+ got + 100 }
+                   f s() { handle { work() } with A { ask() => 7 } }";
+        assert_eq!(run(src, "s", &[]), Value::Int(107));
+
+        // Two operations in sequence both resume, and the arm is re-evaluated
+        // for each — it is not a value computed once.
+        let src = "effect A { f ask() -> i32; }
+                   f work() -> i32 / a { A.ask() + A.ask() }
+                   f s() { handle { work() } with A { ask() => 5 } }";
+        assert_eq!(run(src, "s", &[]), Value::Int(10));
+    }
+
+    /// `ret` in an arm aborts the handled block — and only that block.
+    ///
+    /// This is proper abort semantics for an effect handler: the rest of the
+    /// body is skipped, the `handle` expression takes the arm's value, and the
+    /// enclosing function keeps running. Untested until now, so it could have
+    /// regressed to "returns from the whole function" without anything
+    /// noticing — and the two are indistinguishable in any program that has
+    /// nothing after the `handle`.
+    #[test]
+    fn ret_in_an_arm_aborts_only_the_handled_block() {
+        let src = "effect A { f fail() -> i32; }
+                   f work() -> i32 / a { v x = A.fail()
+ x + 100 }
+                   f s() { v r = handle { work() } with A { fail() => ret 7 }
+ r + 1000 }";
+        // 1007, not 7: the enclosing function continues after the handle.
+        assert_eq!(run(src, "s", &[]), Value::Int(1007));
+    }
+
+    /// Aborting skips the remainder of the handled body, including operations
+    /// it would otherwise have performed.
+    #[test]
+    fn aborting_skips_the_rest_of_the_body() {
+        let src = "effect A { f fail() -> i32; }
+                   effect L { f note(n: i32) -> i32; }
+                   f work() -> i32 / a, l { v x = A.fail()
+ L.note(1)
+ x + 100 }
+                   f s() { handle { work() } with A { fail() => ret 7 } }";
+        assert_eq!(run(src, "s", &[]), Value::Int(7));
+    }
+
     /// A bare unit variant is a *test* in a pattern, not a binding.
     ///
     /// `?= s { Circle => 0, Square => 4, Triangle => 3 }` bound `s` to a fresh

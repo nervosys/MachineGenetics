@@ -1477,9 +1477,39 @@ Handlers are found **dynamically** (the innermost handler for an operation
 wins) and evaluated **lexically** (an arm sees the scope the handler was
 written in, not the frame that performed the operation).
 
-**Handlers do not resume.** An operation call dispatches to its arm and returns
-like an ordinary call. `resume`, and with it generators and backtracking from
-the same mechanism, is not implemented.
+**Resumption is single-shot and implicit.** An operation call dispatches to its
+arm, and the arm's value becomes the value of the call — so the body carries on
+from where it left off. Two operations in sequence each resume, and the arm is
+re-evaluated per call rather than computed once:
+
+```mg
+effect A { f ask() -> i32; }
+
+f work() -> i32 / a {
+    v got = A.ask()
+    got + 100
+}
+
+handle { work() } with A { ask() => 7 }   // 107
+```
+
+**An arm may abort instead, with `ret`.** That discards the rest of the handled
+body and makes `ret`'s value the value of the whole `handle` expression. It does
+*not* return from the enclosing function:
+
+```mg
+f caller() -> i32 {
+    v r = handle { work() } with A { fail() => ret 7 }
+    r + 1000                                          // 1007
+}
+```
+
+**What is missing is *multi-shot* resumption.** The continuation is never
+reified, so it cannot be stored in a variable, returned, or invoked twice.
+Generators and backtracking need that; state, reader, logging, tracing and
+test-mocking handlers do not, and all work today. There is no `resume` keyword,
+because with single-shot tail resumption there is nothing for it to do that
+falling off the end of the arm does not already do.
 
 ---
 
