@@ -63,11 +63,6 @@ SKETCHES=(
     # needs someone who knows the intended architecture — it is not a
     # syntax-drift problem like the rest of this list.
     "framework/framewerx/examples/resnet_classifier.mg"
-
-    # Untyped parameters (`f sumto(n){ … }`), which make `t += i` report
-    # `unknown operator: +=` — the operator is fine, the operand type is
-    # unknown. That diagnostic is its own bug; see HANDOFF.md.
-    "benchmarks/cross_lang/tasks.mg"
 )
 
 is_sketch() {

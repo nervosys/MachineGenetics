@@ -5000,7 +5000,7 @@
       {
         "name": "scan",
         "signature": "([A], B, (B,A)->B) -> [B]",
-        "summary": "running fold (each intermediate)"
+        "summary": "running fold, seed first (len+1 results)"
       },
       {
         "name": "contains",

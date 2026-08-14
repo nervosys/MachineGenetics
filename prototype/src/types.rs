@@ -1330,6 +1330,27 @@ impl TypeChecker {
                         }
                         self.subst.apply(&lt)
                     }
+                    // Compound assignment: `x += 1` is `x = x + 1`, so the two
+                    // sides must agree and the result is unit.
+                    //
+                    // These reported `unknown operator: \`+=\`` — a claim that
+                    // is simply false; the parser produces them and the
+                    // evaluator runs them. Every program using `+=` evaluated
+                    // correctly and failed `--check`, which is the third shape
+                    // of that kind found this session, after the pipeline
+                    // operator and generic calls.
+                    //
+                    // Recorded in the handoff as "the operand type is unknown,
+                    // which happens with untyped parameters". That was wrong:
+                    // `+=` failed with fully annotated types too. The
+                    // untyped-parameter program it was found in simply had two
+                    // problems at once.
+                    "+=" | "-=" | "*=" | "/=" | "%=" => {
+                        if let Err(e) = unify(&mut self.subst, &lt, &rt) {
+                            self.emit_error(format!("compound assignment `{op}`: {e}"));
+                        }
+                        Ty::Unit
+                    }
                     // Tensor operators: operands must be tensor types.
                     "\u{2297}" | "\u{2299}" => {
                         // ⊗ (matmul), ⊙ (hadamard) — both operands tensor, result tensor.
@@ -2091,6 +2112,38 @@ mod tests {
     fn test_simple_function_types() {
         let tc = check_source("f add(a: i32, b: i32) -> i32 { a + b }");
         assert!(tc.diagnostics.is_empty(), "errors: {:?}", tc.diagnostics);
+    }
+
+    /// Compound assignment typechecks.
+    ///
+    /// `x += 1` reported `unknown operator: \`+=\`` — a claim that is simply
+    /// false, since the parser produces it and the evaluator runs it. Every
+    /// program using one evaluated correctly and failed `--check`.
+    ///
+    /// The handoff had recorded this as "the operand type is unknown, which
+    /// happens with untyped parameters". Wrong: it failed with fully annotated
+    /// types too. The program it was found in had two problems at once, and
+    /// the diagnosis stopped at the first.
+    #[test]
+    fn compound_assignment_typechecks() {
+        let errs = |src: &str| {
+            check_source(src)
+                .diagnostics
+                .iter()
+                .filter(|d| matches!(d.severity, crate::hir::Severity::Error))
+                .map(|d| d.message.clone())
+                .collect::<Vec<_>>()
+        };
+        for op in ["+=", "-=", "*=", "/=", "%="] {
+            let src = format!("f s() -> i32 {{ m x = 8
+ x {op} 2
+ x }}");
+            assert!(errs(&src).is_empty(), "`{op}` should typecheck: {:?}", errs(&src));
+        }
+        // A mismatch across a compound assignment is still an error.
+        assert!(!errs("f s() -> i32 { m x = 8
+ x += \"s\"
+ x }").is_empty());
     }
 
     /// A generic function can actually be called.

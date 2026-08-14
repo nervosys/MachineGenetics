@@ -12,13 +12,13 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **2,859** — rmi 1,380 · prototype 1,151 · ribosome 164 · germline 112 · forge 52 |
+| Tests | **2,861** — rmi 1,380 · prototype 1,153 · ribosome 164 · germline 112 · forge 52 |
 | CUDA | **1,071 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm |
 | CI | 10 jobs, green on `master` |
 | Examples | 12 of 12 typecheck, run, and print their recorded answer |
-| `.mg` sources | 95 checked, 31 listed sketches |
+| `.mg` sources | 96 checked, 30 listed sketches |
 | Release | `v0.3.0`, with the promo video attached as a release asset |
 
 Reproduce all of it:
@@ -124,23 +124,21 @@ different things.
 |---|---|---|
 | 10 | **`resume` for effect handlers** | Largest. Handlers dispatch and return like ordinary calls; nothing captures a continuation, so there are no generators, no backtracking, and no async from the same mechanism. Needs the tree-walking evaluator reworked into a form that can capture continuations, which touches every expression form. |
 | 12 | `int` literal constraint | Medium. The current fix is a post-hoc check in `default_int_literals`, not a real integer-kind constraint threaded through `unify`. Correct for the programs it rejects; the principled version is larger. |
-| 13 | `stdlib/` and four `framewerx` files | The remaining 31 sketches. `prototype/examples/` is done: all six rewritten, **thirteen** compiler bugs out of them, and the rate never dropped. `stdlib/` is blocked on item 1. |
+| 13 | `stdlib/` and four `framewerx` files | The remaining 30 sketches. `prototype/examples/` is done: all six rewritten, **thirteen** compiler bugs out of them, and the rate never dropped. `stdlib/` is blocked on item 1. |
 
 ### Small, sharp, cheap
 
-- **`guard` cannot be *referenced*, only bound.** `v guard = 2` binds fine, but
-  `guard + 1` on its own line starts a guard statement and dies with
-  `expected expression, found Plus '+'`. Same family as the keyword-collision
-  class below.
-- **`unknown operator: `+=`` is a lie.** The operator is fine; the *operand
-  type* is unknown, which happens with untyped parameters (`f sumto(n){ … }`).
-  The diagnostic names the wrong thing, exactly as the sigil-letter one used to.
-  See `benchmarks/cross_lang/tasks.mg`.
-- **`scan` emits its seed** as the first element, so its result is one longer
-  than its input. The two conventions differ by exactly one line, which is
-  invisible until you count. Worth a doc comment at the definition.
 - **`pub` on a `data` field is a parse error** (`data Point(pub x: f64)`).
   Undocumented either way; decide whether fields have visibility at all.
+- **An array literal does not unify with a slice parameter.** `f g(xs: [i32])`
+  called with `[1, 2, 3]` reports `[I32] vs [?T; 3]`; `[i32]~` works. Whether
+  literals should coerce is a design question, not obviously a bug — but every
+  example rewritten this session hit it.
+
+The three items that were here — `guard` as a reference, the `+=` diagnostic,
+and `scan`'s seed — are done. Two were worse than recorded: `+=` failed
+`--check` *always*, not only with untyped parameters, and it was one of four
+"evaluates but does not typecheck" bugs found this session.
 
 ---
 
@@ -320,8 +318,8 @@ a hand-written `stdlib/` unreachable by construction.
 all of it Rust — read by nothing, checked by nothing, and resolvable-around
 because imports are nominal. It now carries a `README.md` saying what it is and
 the ordered prerequisites for making it real. `check-mg-sources.sh` is the
-consumer it never had; its sketch list only shrinks, and is down from 36 to 31 —
-`prototype/examples/` is now empty of sketches.
+consumer it never had; its sketch list only shrinks, and is down from 36 to 30.
+Only `stdlib/` and four `framewerx` files remain.
 
 ---
 
@@ -396,7 +394,7 @@ it is invisible unless you break the thing on purpose and watch.
 
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,151**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,153**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it.
 - Every typechecker fix has landed without breaking an existing test **except
   one**, where widening `collection_elem` made `sum("hi")` legal and

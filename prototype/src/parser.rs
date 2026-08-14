@@ -2948,7 +2948,17 @@ impl<'a> Parser<'a> {
                 {
                     stmts.push(self.parse_let_stmt()?);
                 }
-                TokenKind::KwGuard => {
+                // `guard` starts a guard statement only when a condition
+                // follows. `guard` is also a legal *name* — `v guard = 2`
+                // binds one — and referencing it at the start of a line
+                // (`guard + 1`) took this arm and died with
+                // `expected expression, found Plus '+'`. Using it anywhere
+                // else on the line (`2 + guard`) always worked, which is the
+                // giveaway: the position was the whole problem.
+                //
+                // A binary operator cannot begin the condition, so if one
+                // follows, this is a reference and not a guard.
+                TokenKind::KwGuard if self.guard_starts_a_statement() => {
                     stmts.push(self.parse_guard_stmt()?);
                 }
                 TokenKind::KwDefer => {
@@ -3559,6 +3569,43 @@ impl<'a> Parser<'a> {
     fn parse_unary_operand(&mut self) -> Result<Expr, ParseError> {
         const MAX_INFIX_BP: u8 = 25;
         self.parse_expr_bp(MAX_INFIX_BP)
+    }
+
+    /// True when a `guard` token begins a guard *statement* rather than being
+    /// a reference to a variable called `guard`.
+    ///
+    /// The test is whether a condition can follow. A binary operator, a `)`,
+    /// a `,`, a `;` or a line break cannot begin one, so `guard` followed by
+    /// any of those is an ordinary name.
+    fn guard_starts_a_statement(&self) -> bool {
+        !matches!(
+            self.peek_n(1),
+            TokenKind::Plus
+                | TokenKind::Minus
+                | TokenKind::Star
+                | TokenKind::Slash
+                | TokenKind::Percent
+                | TokenKind::Eq
+                | TokenKind::Neq
+                | TokenKind::Lt
+                | TokenKind::Gt
+                | TokenKind::Le
+                | TokenKind::Ge
+                | TokenKind::And
+                | TokenKind::Or
+                | TokenKind::Dot
+                | TokenKind::Assign
+                | TokenKind::Semi
+                | TokenKind::Comma
+                | TokenKind::RParen
+                | TokenKind::RBrace
+                | TokenKind::RBrack
+                | TokenKind::Eof
+        ) && !self
+            .tokens
+            .get(self.pos + 1)
+            .zip(self.tokens.get(self.pos))
+            .is_some_and(|(next, kw)| next.span.line > kw.span.line)
     }
 
     /// True when a `!` in prefix position is `break` rather than logical not.
@@ -5354,6 +5401,43 @@ mod tests {
             matches!(tail("f x() -> i32 {\n  v xs = [10, 20]\n  xs[1]\n}"), Expr::Index { .. }),
             "a same-line index stopped being an index"
         );
+    }
+
+    #[test]
+    fn test_guard_is_a_name_when_no_condition_follows() {
+        // `guard` is a legal name — `v guard = 2` binds one — but referencing
+        // it at the start of a line took the guard-statement arm and died with
+        // `expected expression, found Plus '+'`. Using it anywhere else on the
+        // line always worked, which is the giveaway: position was the problem.
+        for src in [
+            "f x() -> i32 {
+ v guard = 2
+ guard + 1
+}",
+            "f x() -> i32 {
+ v guard = 2
+ guard
+}",
+            "f x() -> i32 {
+ v guard = 2
+ 2 + guard
+}",
+        ] {
+            assert!(parse(&lexer::lex(src)).is_ok(), "`guard` should be a name here: {src}");
+        }
+        // And the statement form still parses.
+        for src in [
+            "f x() -> i32 {
+ guard 1 > 0 else { ret 0 }
+ 7
+}",
+            "f x(o: ?i32) -> i32 {
+ guard o is Some(_) else { ret 0 }
+ 1
+}",
+        ] {
+            assert!(parse(&lexer::lex(src)).is_ok(), "guard statement broke: {src}");
+        }
     }
 
     #[test]

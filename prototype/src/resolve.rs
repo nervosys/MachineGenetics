@@ -39,7 +39,11 @@ pub const VOCABULARY: &[(&str, &str, &str)] = &[
     ("values", "{K: V} -> [V]", "the map's values"),
     ("flatten", "[[A]] -> [A]", "flatten one level of nesting"),
     ("group", "([A], A->K) -> {K: [A]}", "group elements by key"),
-    ("scan", "([A], B, (B,A)->B) -> [B]", "running fold (each intermediate)"),
+    // Emits the seed first, so the result is one longer than the input:
+    // `scan([1,2,3], 0, +)` is `[0, 1, 3, 6]`, not `[1, 3, 6]`. The two
+    // conventions differ by exactly one element, which is invisible until you
+    // count — and both are common enough that neither is obviously wrong.
+    ("scan", "([A], B, (B,A)->B) -> [B]", "running fold, seed first (len+1 results)"),
     ("contains", "([A], A) -> bool", "membership test"),
     // String / text vocabulary (SWE is text-heavy).
     ("split", "(str, str) -> [str]", "split a string on a separator"),
