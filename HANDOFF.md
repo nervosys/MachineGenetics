@@ -123,6 +123,7 @@ different things.
 | # | Item | Size |
 |---|---|---|
 | 10 | **Multi-shot resumption for effect handlers** | Largest, and *smaller than it was recorded as*. Single-shot resumption already works — an arm's value becomes the operation's value and the body continues — and `ret` in an arm aborts the handled block cleanly. What is missing is reifying the continuation so it can be stored or invoked twice, which is what generators and backtracking need. State, reader, logging and mocking handlers all work today. Still means reworking the tree-walking evaluator into a form that can capture continuations. |
+| 14 | `--backend` reaches one dispatch path | `--run=abl-bytes` honours it; the five `--target=abl-*` paths construct a `CpuBackend` directly. They now *report* that the flag is inert rather than ignoring it silently, but honouring it means threading `SelectedBackend` through each dispatch loop — and verifying the GPU path needs a CUDA build. |
 | 12 | `int` literal constraint | Medium. The current fix is a post-hoc check in `default_int_literals`, not a real integer-kind constraint threaded through `unify`. Correct for the programs it rejects; the principled version is larger. |
 | 13 | `stdlib/` and four `framewerx` files | The remaining 30 sketches. `prototype/examples/` is done: all six rewritten, **thirteen** compiler bugs out of them, and the rate never dropped. `stdlib/` is blocked on item 1. |
 
@@ -219,6 +220,14 @@ elsewhere, pointing at the wrong line.
 - **Default arguments were parsed and discarded.** `Param::default` was in the
   AST, with a parser test asserting it was *stored*, and read by nothing. Now
   honoured.
+- **`--backend=<name>` selected nothing.** Documented as "Select hardware
+  accelerator for dispatch", it reaches exactly one of six dispatch paths
+  (`--run=abl-bytes`); every `--target=abl-*` builds a `CpuBackend` directly.
+  So `--target=abl-compute --backend=cuda` printed "CpuBackend dispatch" and
+  ran on the CPU without a word. For a repository whose headline numbers
+  include GPU results, the failure mode is someone believing they measured a
+  GPU. It now says when it is inert; wiring the other paths means threading
+  `SelectedBackend` through their dispatch loops, which is item 14.
 - **Capability handles performed no effect.** `resolve.rs` registered twenty
   namespaces and said their "use is tracked by the effect system". It was not: a
   `pub` function declared pure could call `net.connect(…)` or `llm.generate(…)`

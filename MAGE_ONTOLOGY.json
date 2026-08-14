@@ -243,7 +243,7 @@
       },
       {
         "flag": "--backend=<name>",
-        "purpose": "Select hardware accelerator for dispatch (default: cpu). See ontology.hardware_accelerators for the catalog.",
+        "purpose": "Select hardware accelerator for --run=abl-bytes dispatch (default: cpu). Other --target=abl-* paths run on the CPU regardless and now say so. See ontology.hardware_accelerators for the catalog.",
         "takes_path": false
       },
       {

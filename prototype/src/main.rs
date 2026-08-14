@@ -25,6 +25,23 @@ fn main() {
         .iter()
         .find_map(|a| a.strip_prefix("--backend=").map(str::to_string))
         .unwrap_or_else(|| "cpu".to_string());
+    // `--backend` reaches exactly one dispatch path: `--run=abl-bytes`. Every
+    // other `--target=abl-*` constructs a `CpuBackend` directly, so the flag
+    // was accepted and ignored — `--target=abl-compute --backend=cuda` printed
+    // "CpuBackend dispatch" and ran on the CPU without a word.
+    //
+    // The ontology documents the flag as "Select hardware accelerator for
+    // dispatch" with no hint that it applies to one command out of six, so the
+    // failure mode is someone believing they measured a GPU. Wiring the other
+    // paths means threading `SelectedBackend` through their dispatch loops,
+    // which is real work and untestable here without a CUDA build. Saying so is
+    // not.
+    if backend_name != "cpu" && !args.iter().any(|a| a == "--run=abl-bytes") {
+        eprintln!(
+            "// --backend={backend_name} is ignored here: only --run=abl-bytes \
+             dispatches through the selected backend. This run uses the CPU."
+        );
+    }
     // Optional --backends-file <path> registers extra backend
     // descriptors at runtime. Stacks with env/home loading so
     // operators can layer per-deployment overrides.
