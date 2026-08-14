@@ -1816,9 +1816,41 @@ impl TypeChecker {
                 self.fresh()
             }
 
+            // `x |> f(a, b)` *is* `f(x, a, b)` — so typecheck the call it
+            // desugars to, exactly as the evaluator does.
+            //
+            // This inferred the two sides independently, which meant checking
+            // `f(a, b)` as a standalone call with the piped argument missing:
+            // `10 |> add(5)` reported `call \`add\`: expected 2 argument(s),
+            // found 1` while *evaluating* to 15. The documented operator
+            // (§540, and three other places in the spec) produced a program
+            // that ran correctly and failed `--check`.
+            //
+            // That is the inverse of the usual shape here. The familiar bug is
+            // "typechecks and does not evaluate"; this one evaluated and did
+            // not typecheck, so the checker was rejecting working programs.
             ast::Expr::Pipeline { left, right } => {
-                self.infer_expr(left);
-                self.infer_expr(right)
+                if let ast::Expr::Call { func, args } = right.as_ref() {
+                    let mut all = Vec::with_capacity(args.len() + 1);
+                    all.push((**left).clone());
+                    all.extend(args.iter().cloned());
+                    let desugared = ast::Expr::Call {
+                        func: func.clone(),
+                        args: all,
+                    };
+                    self.infer_expr(&desugared)
+                } else {
+                    // `x |> f` — a bare function reference. Apply it to one
+                    // argument.
+                    let arg = self.infer_expr(left);
+                    let f = self.infer_expr(right);
+                    let ret = self.fresh();
+                    let expected = Ty::Fn(vec![arg], Box::new(ret.clone()), Default::default());
+                    if let Err(e) = unify(&mut self.subst, &f, &expected) {
+                        self.emit_error(format!("pipeline `|>`: {e}"));
+                    }
+                    self.subst.apply(&ret)
+                }
             }
 
             ast::Expr::Is { expr, .. } => {
@@ -1963,6 +1995,54 @@ mod tests {
     fn test_simple_function_types() {
         let tc = check_source("f add(a: i32, b: i32) -> i32 { a + b }");
         assert!(tc.diagnostics.is_empty(), "errors: {:?}", tc.diagnostics);
+    }
+
+    /// `x |> f(a)` typechecks as `f(x, a)`.
+    ///
+    /// The checker used to infer the two sides independently, so the right
+    /// side was checked as a standalone call with the piped argument missing:
+    /// `10 |> add(5)` reported `expected 2 argument(s), found 1` while
+    /// *evaluating* to 15. The operator is in the spec four times — prose, a
+    /// token definition, a grammar rule and a worked example — and every
+    /// program using it failed `--check`.
+    ///
+    /// Inverse of the usual shape: the familiar bug here is "typechecks and
+    /// does not evaluate". This one evaluated and did not typecheck.
+    #[test]
+    fn a_pipeline_typechecks_as_the_call_it_desugars_to() {
+        let errs = |src: &str| {
+            check_source(src)
+                .diagnostics
+                .iter()
+                .filter(|d| matches!(d.severity, crate::hir::Severity::Error))
+                .map(|d| d.message.clone())
+                .collect::<Vec<_>>()
+        };
+        let add = "f add(a: i32, b: i32) -> i32 { a + b }
+";
+
+        assert!(errs(&format!("{add}f s() -> i32 {{ 10 |> add(5) }}")).is_empty());
+        assert!(
+            errs(&format!("{add}f mul(a: i32, b: i32) -> i32 {{ a * b }}
+f s() -> i32 {{ 10 |> add(5) |> mul(2) }}"))
+                .is_empty()
+        );
+        assert!(
+            errs("f dbl(x: i32) -> i32 { x * 2 }
+f s() -> i32 { 10 |> dbl }").is_empty(),
+            "a bare function reference should pipe"
+        );
+
+        // Real mistakes through the pipe are still caught — the fix must not
+        // silence the arity and type checks it routes around.
+        assert!(
+            !errs(&format!("{add}f s() -> i32 {{ 10 |> add(5, 6) }}")).is_empty(),
+            "too many arguments through a pipe must still fail"
+        );
+        assert!(
+            !errs(&format!("{add}f s() -> i32 {{ \"s\" |> add(5) }}")).is_empty(),
+            "a type mismatch through a pipe must still fail"
+        );
     }
 
     /// A call may omit trailing parameters that declare a default.

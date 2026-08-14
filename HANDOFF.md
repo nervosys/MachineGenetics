@@ -12,13 +12,13 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **2,853** — rmi 1,380 · prototype 1,145 · ribosome 164 · germline 112 · forge 52 |
+| Tests | **2,854** — rmi 1,380 · prototype 1,146 · ribosome 164 · germline 112 · forge 52 |
 | CUDA | **1,071 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm |
 | CI | 10 jobs, green on `master` |
 | Examples | 12 of 12 typecheck, run, and print their recorded answer |
-| `.mg` sources | 93 checked, 33 listed sketches |
+| `.mg` sources | 94 checked, 32 listed sketches |
 | Release | `v0.3.0`, with the promo video attached as a release asset |
 
 Reproduce all of it:
@@ -125,7 +125,7 @@ different things.
 | 10 | **`resume` for effect handlers** | Largest. Handlers dispatch and return like ordinary calls; nothing captures a continuation, so there are no generators, no backtracking, and no async from the same mechanism. Needs the tree-walking evaluator reworked into a form that can capture continuations, which touches every expression form. |
 | 11 | **Generic calls do not typecheck** | `f identity[T](v: T) -> T` declares fine and `identity(1)` *evaluates* to `1`, but the checker reports `type mismatch: I32 vs sym1`: the type variable is never instantiated at the call site. `prototype/examples/analysis.mg` keeps a declared-but-uncalled generic with a comment pointing here. |
 | 12 | `int` literal constraint | Medium. The current fix is a post-hoc check in `default_int_literals`, not a real integer-kind constraint threaded through `unify`. Correct for the programs it rejects; the principled version is larger. |
-| 13 | Two sketch example files | `prototype/examples/pipeline_demo.mg` and `spec_synthesis.mg`. Four of six have been rewritten and produced **ten** compiler bugs between them; the rate has not dropped. |
+| 13 | One sketch example file | `prototype/examples/spec_synthesis.mg`. Five of six have been rewritten and produced **eleven** compiler bugs between them; the rate has not dropped. |
 
 ### Small, sharp, cheap
 
@@ -184,6 +184,24 @@ That is why `check-examples.sh` pins printed output.
   the pin records each example's returned value, and all twelve return theirs
   rather than printing. **A pin covers only what it exercises.**
 - `Ok`/`Err`, effect operations, and `impl`/`extend`/trait methods
+
+### 2b. Evaluates, then does not typecheck
+
+The inverse, and rarer — the checker rejects a working program.
+
+- **`x |> f(a)` did not typecheck.** The pipeline operator is in the spec four
+  times: prose, a token definition (`PIPE = '|>'`), a grammar rule
+  (`pipe_expr = expression '|>' expression`), and a worked example. The lexer
+  emits the token, the parser builds an `Expr::Pipeline`, and the *evaluator*
+  desugars it correctly to `f(x, a)` — but the checker inferred the two sides
+  independently, so `10 |> add(5)` was checked as the standalone call `add(5)`
+  and reported `expected 2 argument(s), found 1` while evaluating to `15`.
+  Every program using the documented operator ran correctly and failed
+  `--check`.
+
+The lesson is the same as its mirror image, from the other side: **`--check`
+and `--eval` are two different oracles, and agreeing with one says nothing
+about the other.** Run both.
 
 ### 3. Accepted and silently discarded
 
@@ -288,7 +306,7 @@ a hand-written `stdlib/` unreachable by construction.
 all of it Rust — read by nothing, checked by nothing, and resolvable-around
 because imports are nominal. It now carries a `README.md` saying what it is and
 the ordered prerequisites for making it real. `check-mg-sources.sh` is the
-consumer it never had; its sketch list only shrinks, and is down from 36 to 33.
+consumer it never had; its sketch list only shrinks, and is down from 36 to 32.
 
 ---
 
@@ -363,7 +381,7 @@ it is invisible unless you break the thing on purpose and watch.
 
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,145**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,146**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it.
 - Every typechecker fix has landed without breaking an existing test **except
   one**, where widening `collection_elem` made `sum("hi")` legal and
