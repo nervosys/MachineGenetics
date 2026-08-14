@@ -138,11 +138,24 @@ struct Scope {
     names: HashMap<String, SymbolId>,
     /// name → SymbolId for type-namespace names (structs, enums, type aliases, traits).
     types: HashMap<String, SymbolId>,
+    /// Names in this scope that came from the prelude rather than from source.
+    ///
+    /// A user definition may **shadow** one of these; only a collision between
+    /// two *source* definitions is a duplicate. Without the distinction, the
+    /// twenty capability namespaces (`io`, `net`, `fs`, `agent`, …) reserved
+    /// those words globally, so `M net { … }` — the natural name for a module
+    /// in a standard library — reported `duplicate definition: net` against a
+    /// builtin the author never wrote and could not see.
+    builtins: std::collections::HashSet<String>,
 }
 
 impl Scope {
     fn new() -> Self {
-        Scope { names: HashMap::new(), types: HashMap::new() }
+        Scope {
+            names: HashMap::new(),
+            types: HashMap::new(),
+            builtins: std::collections::HashSet::new(),
+        }
     }
 }
 
@@ -185,7 +198,10 @@ impl Resolver {
     fn define_value(&mut self, name: &str, kind: SymbolKind) -> SymbolId {
         let id = self.symbols.alloc(name.to_string(), kind);
         if let Some(scope) = self.scopes.last_mut() {
-            if scope.names.contains_key(name) {
+            // Shadowing a prelude name is allowed; colliding with another
+            // source definition is not. `builtins` is what tells them apart.
+            let shadows_builtin = scope.builtins.remove(name);
+            if scope.names.contains_key(name) && !shadows_builtin {
                 self.diagnostics.push(Diagnostic::categorized(
                     Severity::Error,
                     format!("duplicate definition: `{name}`"),
@@ -194,6 +210,16 @@ impl Resolver {
                 ));
             }
             scope.names.insert(name.to_string(), id);
+        }
+        id
+    }
+
+    /// Define a prelude name — one the compiler provides rather than one the
+    /// author wrote. Source definitions shadow these silently.
+    fn define_builtin(&mut self, name: &str, kind: SymbolKind) -> SymbolId {
+        let id = self.define_value(name, kind);
+        if let Some(scope) = self.scopes.last_mut() {
+            scope.builtins.insert(name.to_string());
         }
         id
     }
@@ -287,13 +313,13 @@ impl Resolver {
             "Some", "None", "Ok", "Err",
         ];
         for name in std_fns {
-            self.define_value(name, SymbolKind::Function);
+            self.define_builtin(name, SymbolKind::Function);
         }
         // Standard SWE vocabulary (AB_INITIO_DESIGN §8) — registered from the
         // single-source VOCABULARY table (also typed in `types` and published in
         // the ontology). An agent names an intent instead of hand-rolling it.
         for (name, _sig, _doc) in VOCABULARY {
-            self.define_value(name, SymbolKind::Function);
+            self.define_builtin(name, SymbolKind::Function);
         }
         // Builtin capability namespaces. MAGE is effect-oriented: I/O is
         // performed through capability handles (`io.println(..)`, `fs.open(..)`,
@@ -310,7 +336,7 @@ impl Resolver {
         // means a namespace cannot be registered without an attribution
         // decision beside it.
         for (name, _) in crate::hir::CAPABILITY_NAMESPACES {
-            self.define_value(name, SymbolKind::Const);
+            self.define_builtin(name, SymbolKind::Const);
         }
     }
 
@@ -1074,5 +1100,51 @@ mod tests {
         "#;
         let r = resolve_source(src);
         assert!(r.diagnostics.is_empty(), "unexpected errors: {:?}", r.diagnostics);
+    }
+
+    /// A source definition may shadow a prelude name.
+    ///
+    /// The prelude registers ~80 names — the capability namespaces, the
+    /// vocabulary, the builtin functions — into the same root scope as the
+    /// program's own items. Every one of those words was therefore reserved
+    /// globally, so `M net { … }` reported `duplicate definition: net` against
+    /// a definition the author never wrote and could not see. That makes the
+    /// obvious module names for a standard library — `io`, `net`, `fs`,
+    /// `agent` — unusable, which is the shape `stdlib/` wants.
+    #[test]
+    fn a_source_definition_shadows_a_prelude_name() {
+        for name in ["io", "net", "fs", "agent", "swarm", "kb", "llm", "gpu", "time", "env"] {
+            let r = resolve_source(&format!("M {name} {{ }}\nf main() -> i32 {{ 0 }}"));
+            assert!(
+                r.diagnostics.is_empty(),
+                "`M {name}` should shadow the prelude name, got {:?}",
+                r.diagnostics.iter().map(|d| &d.message).collect::<Vec<_>>()
+            );
+        }
+        // Vocabulary and builtin functions shadow the same way.
+        for src in ["f map() -> i32 { 1 }", "f println() -> i32 { 1 }"] {
+            let r = resolve_source(src);
+            assert!(r.diagnostics.is_empty(), "`{src}` should shadow: {:?}", r.diagnostics);
+        }
+    }
+
+    /// Shadowing a builtin is allowed exactly once — a second source
+    /// definition of the same name is still a duplicate. Without this the
+    /// shadowing rule would silently disable duplicate detection for every
+    /// prelude name, which is a worse bug than the one it fixes.
+    #[test]
+    fn shadowing_a_prelude_name_does_not_disable_duplicate_detection() {
+        let dup = |src: &str| {
+            resolve_source(src)
+                .diagnostics
+                .iter()
+                .any(|d| d.message.contains("duplicate definition"))
+        };
+        assert!(dup("f g() -> i32 { 1 }\nf g() -> i32 { 2 }"), "plain duplicate missed");
+        assert!(dup("M h { }\nM h { }"), "duplicate module missed");
+        // Two definitions of a *prelude* name: the first shadows, the second
+        // collides with the first.
+        assert!(dup("M net { }\nM net { }"), "duplicate after shadowing missed");
+        assert!(dup("f map() -> i32 { 1 }\nf map() -> i32 { 2 }"), "duplicate vocab missed");
     }
 }

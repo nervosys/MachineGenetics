@@ -4710,7 +4710,7 @@
       },
       {
         "ast_kind": "Return",
-        "sigil": "^",
+        "sigil": "ret",
         "summary": "return expression"
       },
       {

@@ -12,7 +12,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **2,833** — rmi 1,380 · prototype 1,125 · ribosome 164 · germline 112 · forge 52 |
+| Tests | **2,836** — rmi 1,380 · prototype 1,128 · ribosome 164 · germline 112 · forge 52 |
 | CUDA | **1,071 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm |
@@ -59,6 +59,7 @@ breaks, *and* a recorded state that silently starts passing.
 | CI ontology step | `MAGE_ONTOLOGY.json` matches a fresh `--emit-ontology` |
 | CI version step | `mage-parse --version` matches the tool id Ribosome keys on |
 | CI dependency guard | `ribosome` depends on no MAGE crate, no `germline`, and no TLS stack by default |
+| `scripts/check-mg-sources.sh` | every `.mg` file in the repo typechecks, or is a listed sketch with a stated reason |
 
 **If you add a measured claim to a document, add it to `CHECKS` in
 `scripts/check-doc-counts.sh` in the same commit.** The one figure that stayed
@@ -153,7 +154,7 @@ Seven of the fourteen — #5, #6, #7, #8, #9, #11, #13 — are one class: a bug 
 `--eval` can, which is why the pin now runs it.
 
 That rewrite took the prototype suite from 1,066 tests to 1,107. Counting every
-session since, prototype tests **1,066 → 1,125**, all green — this figure is
+session since, prototype tests **1,066 → 1,128**, all green — this figure is
 checked against the live run, so it tracks forward rather than freezing at the
 session that wrote it.
 
@@ -516,6 +517,63 @@ broken.
 Four sections now have executable pins: every keyword introduces the token it
 claims, every documented type can be written in a signature, every published
 control sigil parses, every published path exists.
+
+---
+
+## 36 of 126 `.mg` files in this repo are not MAGE
+
+`check-examples.sh` pins the twelve in `examples/`. Nothing looked at the other
+eighty-nine. Of those, **36 do not typecheck** — and the largest block is the
+standard library.
+
+`stdlib/` is 25 files, 4,402 lines, and all of it is Rust: `pub trait Read`,
+`&mut self`, `let total = 0usize;`, `pub mod agent;`. Nothing read it. The
+compiler never opens `stdlib/`, no script checked it, and `u std.io` resolves
+*without* it because imports are nominal. So 25 files sat there claiming to be
+the standard library of a language they were not written in, and an agent
+reading `stdlib/std/io.mg` to learn MAGE idiom learned Rust.
+
+`scripts/check-mg-sources.sh` is now that consumer, and runs in CI. Every `.mg`
+file typechecks or is listed with a reason; the list can only shrink. Running it
+the first time found eleven more beyond `stdlib/` — a second, older example set
+in `prototype/examples/` that had drifted exactly as the shipped twelve did, and
+four `framewerx` modules referencing `Tensor`, `Module` and `ParamStore`, type
+names nothing defines and neither the ontology nor the spec publishes.
+
+Two real compiler bugs came out of reading the failures:
+
+**Keyword-as-identifier, fourth and fifth positions.** `M agent { }` and
+`u std.agent` were parse errors. This is the same collision fixed twice earlier
+today — in effect annotations, then in expression position — each time patched
+only where it had been noticed. `agent` and `swarm` are now in `expect_ident`,
+which covers every identifier position at once. That is the fix that should have
+been made the first time; patching per-position had a 100% record of leaving
+another position broken.
+
+**The prelude reserved eighty words globally.** `M net { }` reported
+`duplicate definition: net` — against a definition the author never wrote and
+could not see, because the resolver registers the capability namespaces, the
+vocabulary and the builtin functions into the same root scope as the program's
+own items. That makes the obvious module names for a standard library — `io`,
+`net`, `fs`, `agent` — unusable, which is precisely the shape `stdlib/` needs.
+Source definitions now shadow prelude names; two source definitions of the same
+name are still a duplicate, and there is a test for that specifically, because
+a shadowing rule that quietly disabled duplicate detection would be worse than
+the bug it fixed.
+
+### A correction
+
+Last section I wrote that nothing shipped and verified broke when the capability
+gate closed. That came from a grep over `examples stdlib framework` — which
+misses `prototype/examples/`. One file there, `hello.mg`, did regress: it calls
+`io.println` and declared no effects, so the new gate caught it. That is the
+gate working as intended, and the file now declares `/ io`; but the claim was
+made from an incomplete search and stated without qualification. The two other
+capability users in that directory already declared their effects.
+
+The instrument above exists partly because of this. A repo-wide check is not a
+substitute for looking, but it is a substitute for *remembering every directory*
+— and that is the part I got wrong.
 
 ---
 

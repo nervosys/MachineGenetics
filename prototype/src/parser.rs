@@ -263,7 +263,22 @@ impl<'a> Parser<'a> {
             // Additional keywords the corpus uses as plain identifiers
             // (effect-handler methods, struct field names, etc.). KwNet / KwVal /
             // KwVar / KwRule / KwQuery / KwSelect are already covered above.
-            | TokenKind::KwYield => Ok(self.advance().text.clone()),
+            | TokenKind::KwYield
+            // `agent` and `swarm` introduce items *and* name things: they are
+            // registered capability namespaces (`agent.spawn(…)`), `agent` is
+            // a documented effect, and a module or use-path may be called
+            // either (`M agent { … }`, `u std.agent`). `kb` was already
+            // covered above, which is why it failed on the *duplicate
+            // definition* rule rather than on parsing.
+            //
+            // This is the generalising fix. The same collision was patched
+            // three separate times before it: in effect-annotation position,
+            // in expression-prefix position, and here — each time only where
+            // it had been noticed, each time leaving the others broken. Item
+            // dispatch happens on `peek` in `parse_item` before any of these
+            // paths are reached, so `agent Worker { … }` is unaffected.
+            | TokenKind::KwAgent
+            | TokenKind::KwSwarm => Ok(self.advance().text.clone()),
             _ => {
                 let tok = self.current();
                 Err(ParseError {
@@ -5277,6 +5292,33 @@ mod tests {
             matches!(tail("f x() -> i32 {\n  v xs = [10, 20]\n  xs[1]\n}"), Expr::Index { .. }),
             "a same-line index stopped being an index"
         );
+    }
+
+    #[test]
+    fn test_item_keywords_are_identifiers_everywhere() {
+        // `agent`, `swarm` and `kb` introduce items *and* name things. The
+        // collision was patched three separate times — effect annotations,
+        // expression prefix, and finally `expect_ident` — each time only where
+        // someone had hit it. These are the positions that were still broken
+        // when the fourth report came in, from a module declaration and a use
+        // path in `stdlib/`.
+        for name in ["agent", "swarm", "kb"] {
+            for src in [
+                format!("M {name} {{ }}"),
+                format!("u std.{name}"),
+                format!("S P {{ {name}: i32 }}"),
+                format!("f x() -> i32 {{ {name}.op(1) }}"),
+                format!("f x() -> i32 / {name} {{ 1 }}"),
+            ] {
+                assert!(
+                    parse(&lexer::lex(&src)).is_ok(),
+                    "`{name}` should be usable here: {src}"
+                );
+            }
+        }
+        // The item forms are untouched — dispatch happens on `peek` first.
+        assert!(parse(&lexer::lex("agent Worker { }")).is_ok());
+        assert!(parse(&lexer::lex("swarm Fleet { }")).is_ok());
     }
 
     #[test]

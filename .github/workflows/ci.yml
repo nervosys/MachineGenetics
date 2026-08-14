@@ -100,6 +100,13 @@ jobs:
       # recorded answer at all.
       - name: Example programs match their recorded state
         run: bash scripts/check-examples.sh
+      # The examples check covers the twelve in `examples/`. Nothing covered
+      # the other 89 `.mg` files in the repo, and 36 of them do not typecheck —
+      # `stdlib/` is 4,402 lines of Rust behind a MAGE extension, read by
+      # nothing and checked by nothing. A file with no consumer has no error
+      # message; this is the consumer. The sketch list can only shrink.
+      - name: Every .mg source typechecks or is a listed sketch
+        run: bash scripts/check-mg-sources.sh
       - name: Compiler version matches Ribosome's registry entry
         run: |
           binv=$(cargo run --quiet --release --manifest-path prototype/Cargo.toml \
