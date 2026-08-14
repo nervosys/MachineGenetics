@@ -12,7 +12,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **2,837** — rmi 1,380 · prototype 1,129 · ribosome 164 · germline 112 · forge 52 |
+| Tests | **2,840** — rmi 1,380 · prototype 1,132 · ribosome 164 · germline 112 · forge 52 |
 | CUDA | **1,071 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm |
@@ -155,7 +155,7 @@ Seven of the fourteen — #5, #6, #7, #8, #9, #11, #13 — are one class: a bug 
 `--eval` can, which is why the pin now runs it.
 
 That rewrite took the prototype suite from 1,066 tests to 1,107. Counting every
-session since, prototype tests **1,066 → 1,129**, all green — this figure is
+session since, prototype tests **1,066 → 1,132**, all green — this figure is
 checked against the live run, so it tracks forward rather than freezing at the
 session that wrote it.
 
@@ -614,7 +614,57 @@ and step 1 is a decision, not work.
 
 ---
 
-## Traps this session hit, so you do not
+## The ontology audit is complete, and the last section hid the worst bug
+
+Every one of the 22 sections has now been executed:
+
+| Section | Result |
+|---|---|
+| `project_layout` · `docs` (29 paths) | clean |
+| `vocabulary` (31) | clean |
+| `rap_methods` (37) | clean |
+| `framewerx_modules` (256, 56 paths) | clean |
+| `ir_ops` (107) | clean — generated from `Op::ALL`, cannot drift |
+| `keywords` (102) | 19 wrong → fixed |
+| `types` (30) | 3 unusable → fixed |
+| `sigils` (38) | 2 broken → 1 implemented, 1 was the ontology's own error |
+| `layer_map` (21) | all 21 usable — **and finding it out found this:** |
+
+**An unrecognised layer type lowered to `Op::IDENTITY`.** `layer b: Lienar(128,
+64)` — a typo of `Linear` — checked clean, lowered, and ran, with that layer
+silently doing nothing. So did `NotALayer`. This is the worst category in the
+handoff's taxonomy: not a crash, a *wrong answer*.
+
+The translator had recorded these in `unknown_layers` all along. The only
+readers were the ABL-lowering path and a `train` warning, so `--check` never
+mentioned it and neither did anything on the ordinary path. Detected, recorded,
+and never surfaced — which is indistinguishable from not detecting it. It is now
+a check-time error, reported from `check_module_shapes` before the shape pass,
+so a net whose input shape cannot be inferred still gets told.
+
+Documented aliases still work: `ReLU` and `Relu` are both real, `Dense` is
+`Linear`. Only names that resolve to nothing are rejected.
+
+### The test I wrote for this was wrong twice, in two different ways
+
+Worth recording, because both are easy and both look fine:
+
+1. **It passed with a deliberately bogus layer name injected.** The test called
+   `types::check`, and the validation lives in `abl_shape::check_module_shapes`
+   — a *different pass*. Verifying against the wrong entry point is a way for a
+   test to be green about nothing, and it is invisible unless you break the
+   thing on purpose and watch.
+2. **Once pointed at the right pass, it was circular.** `layer_map` is
+   *filtered* by `layer_name_to_op`, and the new check rejects exactly when that
+   function returns `None` — so the published list can never contain a name the
+   check rejects. The test cannot fail by construction. Its doc comment now says
+   so, and the real check is
+   `abl_shape::tests::an_unknown_layer_type_is_rejected`, which uses names that
+   are not in any list.
+
+A pin over a generated list tends toward tautology, because both sides come from
+the same source. The escape is to test with inputs the generator has never seen
+— which is what catching `Lienar` requires.
 
 - **`cmd | grep -q` under `set -o pipefail`.** `grep -q` exits at the first
   match, the writer takes SIGPIPE, and the pipeline reports failure — so every

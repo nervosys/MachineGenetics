@@ -2327,6 +2327,93 @@ mod tests {
         );
     }
 
+    /// Every layer surface name in `layer_map` can actually be written in a
+    /// `net` block.
+    ///
+    /// `layer_map_resolves_to_real_ops` already checks that each entry points
+    /// at a real opcode — but that is the ontology agreeing with the IR, not
+    /// with the *parser*. These 21 names are what an agent types when it writes
+    /// a network, so the claim that matters is whether `layer x: GELU;`
+    /// compiles.
+    ///
+    /// Scope, stated honestly: `layer_map` is *filtered* by
+    /// `layer_name_to_op`, and the unknown-layer check added to
+    /// `abl_shape::check_module_shapes` rejects exactly when that function
+    /// returns `None` — so the unknown-layer half of this test cannot fail by
+    /// construction. What it does still catch is a published name that
+    /// resolves to an op but does not survive the *parser* in layer position
+    /// (a name that becomes a keyword, say) or the typechecker. The
+    /// non-circular half of the story is
+    /// `abl_shape::tests::an_unknown_layer_type_is_rejected`.
+    #[test]
+    fn every_layer_surface_name_is_usable_in_a_net() {
+        // Iterate what is *published*, not `LAYER_SURFACE_NAMES`. That list
+        // holds 31 names, of which 10 — `Unify`, `Resolve`, `Infer`, `Plan`,
+        // `Send`, `Recv`, `Spawn`, `Delegate`, `Hash`, `Typeof` — are symbolic
+        // and agent ops rather than neural layers, and `layer_map_section`
+        // filters them out because `layer_name_to_op` returns `None`. They are
+        // correctly not layers; asserting they compile as one would be
+        // asserting the wrong thing.
+        let published = layer_map_section();
+        let rows = published.as_array().unwrap();
+        // A loop over an empty list passes silently, which is the failure mode
+        // this whole file is about.
+        assert!(rows.len() >= 21, "layer_map shrank to {} — was 21", rows.len());
+        for surface in rows.iter().map(|r| r["surface_name"].as_str().unwrap()) {
+            // Activations and norms take no constructor arguments; shaped
+            // layers do. Try the forms a writer would try.
+            let accepted = ["", "(128)", "(128, 64)", "(2)"].iter().any(|args| {
+                let src = format!(
+                    "net N {{\n    layer a: Linear(8, 128);\n    layer b: {surface}{args};\n    forward {{ b(a) }}\n}}"
+                );
+                let Ok(module) = crate::parser::parse(&crate::lexer::lex(&src)) else {
+                    return false;
+                };
+                let typed = crate::types::check(&module)
+                    .diagnostics
+                    .iter()
+                    .all(|d| !matches!(d.severity, crate::hir::Severity::Error));
+                // `types::check` does not run the net passes — an unknown
+                // layer type is caught by `abl_shape::check_module_shapes`,
+                // which is what `--check` also runs. Omitting it made an
+                // earlier version of this test pass with a deliberately bogus
+                // layer name injected into the list it is supposed to police.
+                //
+                // Only the *unknown layer* diagnostic disqualifies a name. A
+                // shape mismatch means the name resolved and the probe's
+                // arbitrary dimensions did not line up, which is a different
+                // claim and not this test's business.
+                let known = !crate::abl_shape::check_module_shapes(&module)
+                    .iter()
+                    .any(|d| d.message.contains("unknown layer type"));
+                typed && known
+            });
+            assert!(
+                accepted,
+                "`layer x: {surface}` is published in layer_map but does not compile in a net"
+            );
+        }
+    }
+
+    /// Every `framewerx_modules` path exists.
+    ///
+    /// 256 entries over 56 files, and the section is the map an agent uses to
+    /// find the framework. Paths rot quietly when files move.
+    #[test]
+    fn every_framewerx_module_path_exists() {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .expect("repo root");
+        let published = framewerx_modules_section();
+        for entry in published.as_array().unwrap() {
+            let path = entry["path"].as_str().unwrap();
+            assert!(
+                root.join(path).exists(),
+                "framewerx_modules path is gone: {path}"
+            );
+        }
+    }
+
     /// Every path the ontology publishes exists.
     ///
     /// Cheap, and the kind of claim that rots silently: a file moves and the

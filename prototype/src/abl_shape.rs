@@ -297,7 +297,34 @@ pub fn check_module_shapes(module: &crate::ast::Module) -> Vec<NetShapeDiag> {
         let crate::ast::ItemKind::Net(net) = &item.kind else {
             continue;
         };
-        let expr = crate::abl_bridge::NetTranslator::translate(net).expr;
+        let translation = crate::abl_bridge::NetTranslator::translate(net);
+
+        // An unrecognised layer type lowers to `Op::IDENTITY` — a pass-through.
+        // That is a *wrong answer*, not a failure: `layer b: Lienar(128, 64)`
+        // used to check clean, lower, and run, with that layer quietly doing
+        // nothing. The translator has always recorded these in
+        // `unknown_layers`, but the only readers were the ABL-lowering path and
+        // a `train` warning, so `--check` never mentioned it and nothing on the
+        // ordinary path did either. Same class as a misspelled effect
+        // operation, one surface over.
+        //
+        // Reported before the shape pass, because a net whose input shape
+        // cannot be inferred returns early below and would otherwise say
+        // nothing at all.
+        for unknown in &translation.unknown_layers {
+            out.push(NetShapeDiag {
+                net: net.name.clone(),
+                message: format!(
+                    "net `{}`: unknown layer type `{unknown}` — it lowers to IDENTITY \
+                     (a pass-through), so the layer silently does nothing. Check the \
+                     spelling against the layer names in `MAGE_ONTOLOGY.json` \
+                     (`layer_map`); they are case-sensitive.",
+                    net.name
+                ),
+            });
+        }
+
+        let expr = translation.expr;
         let Some(input) = crate::abl_compute::infer_input_shape(&expr) else {
             continue;
         };
@@ -492,5 +519,45 @@ mod tests {
         let report = infer_shape(&expr, &[4]);
         assert_eq!(report.output_shape, vec![4]);
         assert!(report.unknown.contains(&Op::SPAWN));
+    }
+
+    /// An unrecognised layer type is a check-time error.
+    ///
+    /// It used to lower to `Op::IDENTITY` — a pass-through — so
+    /// `layer b: Lienar(128, 64)` checked clean, lowered, and ran with that
+    /// layer silently doing nothing. A wrong answer, not a failure. The
+    /// translator recorded it in `unknown_layers` all along, but the only
+    /// readers were the ABL-lowering path and a `train` warning, so `--check`
+    /// never said a word.
+    #[test]
+    fn an_unknown_layer_type_is_rejected() {
+        let net = |layer: &str| {
+            format!("net N {{
+ layer a: Linear(8, 128);
+ layer b: {layer};
+ forward {{ b(a) }}
+}}")
+        };
+        let unknown_reported = |src: &str| {
+            let module = crate::parser::parse(&crate::lexer::lex(src)).expect("parse");
+            check_module_shapes(&module)
+                .iter()
+                .any(|d| d.message.contains("unknown layer type"))
+        };
+
+        // A typo, a hallucinated name, and a real op that is not a layer.
+        for bad in ["Lienar(128, 64)", "NotALayer", "Transformer"] {
+            assert!(
+                unknown_reported(&net(bad)),
+                "`layer b: {bad}` should be rejected as an unknown layer type"
+            );
+        }
+        // Canonical names and documented aliases still pass.
+        for good in ["ReLU", "Relu", "GELU", "Linear(128, 64)", "Dense(128, 64)"] {
+            assert!(
+                !unknown_reported(&net(good)),
+                "`layer b: {good}` is a real layer and must not be rejected"
+            );
+        }
     }
 }
