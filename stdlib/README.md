@@ -1,95 +1,63 @@
-# MAGE Standard Library (`std`)
+# `stdlib/` — a design sketch, not a standard library
 
-The MAGE standard library provides the foundational types, traits, and functions
-for all MAGE programs. Every module is designed with **algebraic effects**,
-**first-class agent primitives**, and **safety-by-default** principles at its core.
+**These 25 `.mg` files are Rust.** `pub trait Read`, `&mut self`,
+`let total = 0usize;`, `pub mod agent;`, `use std::io::{Read, Write};`. None of
+them parse as MAGE, and none ever have.
 
-## Module Hierarchy
+They are kept because the design intent is worth keeping. They are labelled
+because, unlabelled, they were worse than nothing: an agent reading
+`stdlib/std/io.mg` to learn MAGE idiom learns Rust instead.
 
-| Module        | Description                       | Key Types / Functions                                     |
-| ------------- | --------------------------------- | --------------------------------------------------------- |
-| `std.io`      | Buffered I/O with effect tracking | `Read`, `Write`, `File`, `BufReader`, `BufWriter`         |
-| `std.net`     | Networking with first-class HTTP  | `TcpStream`, `UdpSocket`, `Request`, `Response`           |
-| `std.fs`      | File system operations            | `read`, `write`, `create_dir`, `walk`, `Metadata`         |
-| `std.col`     | Collections beyond Vec/Map        | `Map`, `Set`, `BTree`, `VecDeque`, `LinkedList`           |
-| `std.sync`    | Synchronization primitives        | `Mutex`, `RwLock`, `Channel`, `Barrier`, `Semaphore`      |
-| `std.async`   | Async runtime and streams         | `spawn`, `join`, `select`, `Future`, `Stream`             |
-| `std.fmt`     | Formatting and display            | `Display`, `Debug`, `Formatter`, `print`, `println`       |
-| `std.str`     | String utilities and regex        | `split`, `join`, `Regex`, `encode`, `decode`              |
-| `std.math`    | Mathematics, RNG, and SIMD        | `sin`, `cos`, `sqrt`, `Rng`, `f32x4`, `f64x4`             |
-| `std.time`    | Time measurement and formatting   | `Duration`, `Instant`, `SystemTime`, `format`             |
-| `std.json`    | First-class JSON support          | `Value`, `parse`, `stringify`, `Serialize`, `Deserialize` |
-| `std.env`     | Environment and directories       | `args`, `var`, `current_dir`, `home_dir`                  |
-| `std.process` | Process management and signals    | `Command`, `Child`, `exit`, `Signal`                      |
-| `std.agent`   | Agent primitives (MAGE-unique)   | `Agent`, `Swarm`, `Message`, `Capability`, `Lease`        |
-| `std.skb`     | Safety Knowledge Base queries     | `Rule`, `Query`, `validate`, `define_rule`                |
-| `std.effect`  | Algebraic effect system           | `Effect`, `perform`, `handle`, `discharge`                |
-| `std.spec`    | Design-by-contract verification   | `require`, `ensure`, `invariant`, `verify`                |
-| `std.test`    | Testing and property checking     | `assert_eq`, `Bencher`, `prop`, `Arbitrary`               |
+## How this happened
 
-## Design Principles
+Nothing consumed them. The compiler never opens this directory; no script
+checked it; and `u std.io` resolves *without* it, because `use` brings nothing
+into scope. A file with no consumer has no error message, so 4,402 lines could
+sit here for months claiming to be the standard library of a language they were
+not written in.
 
-1. **Effects are explicit.** Any function that performs I/O, networking, RNG, or
-   agent communication declares its effect signature (e.g. `/ io`, `/ net`).
-   Pure functions carry no effect annotation.
+`scripts/check-mg-sources.sh` is now that consumer, and runs in CI. Every `.mg`
+file in the repository typechecks or is listed there with a reason. This
+directory is listed.
 
-2. **Batteries included.** HTTP client, JSON, regex, and async are in the
-   standard library — no external crates needed for common tasks.
+## Why it is not simply rewritten
 
-3. **Agent-native.** The `std.agent` module has no Rust equivalent. It provides
-   `Swarm`, `Capability`, `Lease`, and `Region` for building multi-agent systems
-   as a first-class concern of the language.
+Because there is nothing to rewrite it *into*, and nothing that would keep it
+honest afterwards.
 
-4. **Safety contracts.** The `std.spec` module integrates design-by-contract
-   (`require`/`ensure`/`invariant`) directly into the type system, enabling
-   runtime and static verification of program correctness.
+MAGE has no module system. `resolve_use` parses a path and discards it, so a
+library cannot be imported. The library surface is instead **global**: the
+standard vocabulary (`map`, `filter`, `fold`, `join`, … — 31 combinators in
+`resolve::VOCABULARY`) and the capability namespaces (`io`, `fs`, `net`, `llm`,
+`gpu`, `agent`, … — 20, in `hir::CAPABILITY_NAMESPACES`) are in scope
+everywhere, with no import and no tokens spent on one.
 
-5. **Concise syntax.** Standard library types use MAGE sugar where possible:
-   `{K:V}` for `Map[K,V]`, `{K}` for `Set[K]`, `?T` for `Option[T]`,
-   `R[T,E]` for `Result[T,E]`, `[T]~` for `Vec[T]`.
+For a language optimising for token efficiency that is arguably the right
+design, not a missing feature. It also means a hand-written `std.io` module has
+no way to be reached, and translating 4,402 lines into MAGE would produce code
+that still nothing imports — which is exactly how this directory got into its
+current state. Rewriting without a consumer reproduces the bug.
 
-## Usage
+## What would make this real
 
-Modules are imported with the `u` keyword:
+In order, each a prerequisite for the next:
 
-```mg
-u std.io.{Read, Write, File}
-u std.net.{Request, Response}
-u std.json.{parse, stringify}
-u std.agent.{Agent, Swarm, Message}
-```
+1. **A module system** — `resolve_use` that walks a module tree, or a decision
+   that MAGE deliberately has no imports and this directory should be deleted.
+   That decision is the actual blocker; everything below is downstream of it.
+2. **A consumer** — examples or tests that import from here, so a break in the
+   library is a break in CI. `check-examples.sh` is the model: it pins the
+   printed answer, not just the exit status.
+3. **Then** port modules one at a time, removing each from the sketch list in
+   `scripts/check-mg-sources.sh` as it starts typechecking. The list is designed
+   to only shrink.
 
-The prelude automatically imports the most common types:
-`Option`, `Result`, `Vec`, `String`, `Box`, `Arc`, `Display`, `Debug`.
+Until step 1 is decided, adding MAGE files here would be adding to the problem.
 
-## File Layout
+## What the files are useful for today
 
-```
-stdlib/
-├── README.md          ← this file
-└── std/
-    ├── mod.mg        ← root module (re-exports all submodules)
-    ├── io.mg         ← I/O traits, File, buffered readers/writers
-    ├── net.mg        ← TCP, UDP, HTTP, DNS
-    ├── fs.mg         ← file system convenience functions
-    ├── col.mg        ← Map, Set, BTree, VecDeque, LinkedList
-    ├── sync.mg       ← Mutex, RwLock, Channel, atomics
-    ├── async.mg      ← spawn, join, select, Future, Stream
-    ├── fmt.mg        ← Display, Debug, Formatter, print
-    ├── str.mg        ← string methods, Regex, encoding
-    ├── math.mg       ← trig, exp, random, SIMD
-    ├── time.mg       ← Duration, Instant, SystemTime
-    ├── json.mg       ← Serialize/Deserialize, Value, parse
-    ├── env.mg        ← args, env vars, directories
-    ├── process.mg    ← Command, Child, exit, signals
-    ├── agent.mg      ← Agent, Swarm, Message, Capability
-    ├── skb.mg        ← Rule, Query, validate
-    ├── effect.mg     ← Effect trait, perform, handle
-    ├── spec.mg       ← require, ensure, invariant, verify
-    └── test.mg       ← assertions, bench, property tests
-```
-
-## Reference
-
-See [MAGE_ECOSYSTEM.md](../MAGE_ECOSYSTEM.md) §5 for the full design rationale
-and [MAGE_SPEC.md](../MAGE_SPEC.md) for the language specification.
+Reading, with the understanding that they are Rust. They record an intended
+shape for `io`, `fs`, `net`, `col`, `json`, `math`, `time`, `agent`, `llm`,
+`kb`, `evolve`, `neural`, `rl`, `tensor` and the rest — which surfaces someone
+thought a MAGE standard library should have, and roughly what each should
+expose. That is a real design artifact. It is just not source code.

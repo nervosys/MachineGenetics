@@ -12,7 +12,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **2,836** — rmi 1,380 · prototype 1,128 · ribosome 164 · germline 112 · forge 52 |
+| Tests | **2,837** — rmi 1,380 · prototype 1,129 · ribosome 164 · germline 112 · forge 52 |
 | CUDA | **1,071 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm |
@@ -93,6 +93,7 @@ actually unblock them, because "open" has meant three different things.
 
 | # | Item | Size |
 |---|---|---|
+| 10 | **Module system, or a decision that there is none** | This is the blocker under `stdlib/`. `resolve_use` parses a path and discards it, so nothing can be imported and the library surface is global instead. That may well be *right* for a token-efficient agentic language — an import costs tokens and buys nothing when the library is small and fixed — in which case the honest move is to say so in the spec and delete `stdlib/`. Either way it is a decision, and everything about a standard library is downstream of it. See `stdlib/README.md`. |
 | 8 | **`resume` for effect handlers** | Largest. Handlers dispatch and return like ordinary calls; nothing captures a continuation, so there are no generators, no backtracking, and no async from the same mechanism. Needs the tree-walking evaluator reworked into a form that can capture continuations, which touches every expression form. |
 | 9 | `int` literal constraint | Medium. The current fix is a post-hoc check in `default_int_literals`, not a real integer-kind constraint threaded through `unify`. Correct for the programs it rejects; the principled version is larger. |
 
@@ -154,7 +155,7 @@ Seven of the fourteen — #5, #6, #7, #8, #9, #11, #13 — are one class: a bug 
 `--eval` can, which is why the pin now runs it.
 
 That rewrite took the prototype suite from 1,066 tests to 1,107. Counting every
-session since, prototype tests **1,066 → 1,128**, all green — this figure is
+session since, prototype tests **1,066 → 1,129**, all green — this figure is
 checked against the live run, so it tracks forward rather than freezing at the
 session that wrote it.
 
@@ -574,6 +575,42 @@ capability users in that directory already declared their effects.
 The instrument above exists partly because of this. A repo-wide check is not a
 substitute for looking, but it is a substitute for *remembering every directory*
 — and that is the part I got wrong.
+
+### `use` is a no-op that always succeeded
+
+Chasing why `stdlib/` could rot undetected reached the actual cause. `use`
+brings nothing into scope, and until now said nothing about it:
+
+```
+u totally.made.up.path        accepted, silently
+u std.io.read_to_string
+read_to_string("x")           error: unresolved name: `read_to_string`
+```
+
+The import is accepted and the failure surfaces at the **call site** — pointing
+at the one line the author wrote correctly. An import naming nothing was
+indistinguishable from one naming something real. `resolve_use` was an empty
+function under a comment describing what it would do, and `internals/03` §3.2
+documented four resolution steps and six import styles, none of which happen.
+
+`use` now warns. Not an error — rejecting the syntax would break the corpus for
+no gain — but the silence is gone, and §3.2 states what is real.
+
+**The finding underneath is a design fact worth stating plainly: MAGE has no
+module system, and the library surface is global.** The 31 vocabulary
+combinators, the 20 capability namespaces and the builtin functions are in scope
+everywhere, with no import and no tokens spent on one. For a language optimising
+for token efficiency that is plausibly the right answer rather than a gap — but
+it was nowhere written down, and it is the thing that makes a hand-written
+`stdlib/` unreachable by construction.
+
+So `stdlib/` was not rewritten. Translating 4,402 lines into MAGE would produce
+a library nothing can import, which is precisely how the directory reached its
+current state; rewriting without a consumer reproduces the bug. It now carries a
+`README.md` saying what it is, why it is not source, and the ordered
+prerequisites for making it real — module system first, consumer second, port
+third. That ordering is the point: steps 2 and 3 are worthless without step 1,
+and step 1 is a decision, not work.
 
 ---
 

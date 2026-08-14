@@ -558,9 +558,35 @@ impl Resolver {
         }
     }
 
-    fn resolve_use(&mut self, _ud: &ast::UseDef) {
-        // Use declarations bring external names into scope.
-        // For the prototype, we just note that they exist.
+    /// `use` is accepted and brings nothing into scope — say so.
+    ///
+    /// MAGE has no module system. This function was empty, under a comment
+    /// describing what it would do, and `internals/03` §3.2 documented four
+    /// resolution steps and six import styles none of which happen. The
+    /// consequence for a generated program is the worst shape an error can
+    /// take: the `use` is accepted silently, and the failure surfaces later at
+    /// the *call site* as `unresolved name`, pointing at the one line the
+    /// author wrote correctly. `u totally.made.up.path` is accepted too.
+    ///
+    /// The library surface is global and needs no import — the standard
+    /// vocabulary (`map`, `filter`, `join`, …) and the capability namespaces
+    /// (`io`, `fs`, `net`, …) are in scope everywhere, which is the right
+    /// default for a language optimising for tokens: an import costs tokens
+    /// and buys nothing here. So a `use` is harmless but pointless, and a
+    /// warning is the honest report — not an error, because rejecting the
+    /// syntax outright would break the corpus for no gain.
+    fn resolve_use(&mut self, ud: &ast::UseDef) {
+        let path = ud.path.join(".");
+        self.diagnostics.push(Diagnostic::categorized(
+            Severity::Warning,
+            format!(
+                "`use {path}` brings nothing into scope — MAGE has no module system. \
+                 The standard vocabulary and the capability namespaces (`io`, `fs`, \
+                 `net`, …) are already in scope everywhere; delete the import"
+            ),
+            DiagnosticCategory::UnresolvedName,
+            None,
+        ));
     }
 
     fn resolve_type_alias(&mut self, ta: &ast::TypeAlias) {
@@ -1100,6 +1126,33 @@ mod tests {
         "#;
         let r = resolve_source(src);
         assert!(r.diagnostics.is_empty(), "unexpected errors: {:?}", r.diagnostics);
+    }
+
+    /// `use` reports that it does nothing.
+    ///
+    /// It used to be accepted in silence, which made the failure surface at
+    /// the call site instead: `u std.io.read_to_string` then
+    /// `read_to_string("x")` gave `unresolved name`, pointing at the one line
+    /// the author wrote correctly. And `u totally.made.up.path` was accepted,
+    /// so an import naming nothing was indistinguishable from one naming
+    /// something.
+    #[test]
+    fn use_warns_that_it_brings_nothing_into_scope() {
+        for src in ["u std.io", "u totally.made.up.path", "u std.col.{Map, Set}"] {
+            let r = resolve_source(&format!("{src}\nf main() -> i32 {{ 0 }}"));
+            let warned = r
+                .diagnostics
+                .iter()
+                .any(|d| d.message.contains("brings nothing into scope"));
+            assert!(warned, "`{src}` should warn, got {:?}", r.diagnostics);
+            // A warning, not an error — rejecting the syntax outright would
+            // break the corpus for no gain.
+            assert!(
+                !r.diagnostics.iter().any(|d| matches!(d.severity, Severity::Error)),
+                "`{src}` must not be an error: {:?}",
+                r.diagnostics
+            );
+        }
     }
 
     /// A source definition may shadow a prelude name.
