@@ -753,7 +753,13 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
 
         "nl/explain" => {
             let source = params.get("source").and_then(|v| v.as_str()).unwrap_or("");
-            let prompt = format!("explain this code\n{}", source);
+            // Fenced, because `nl_engine::extract_code_block` reads source
+            // *only* from a ``` block. Interpolated bare, the source was
+            // invisible to the extractor and `intent.source` was always
+            // `None`, so this method could never succeed — it answered
+            // "No source code provided" for every input, including the
+            // well-formed ones. Nothing tested it.
+            let prompt = format!("explain this code\n```mg\n{source}\n```");
             let mut engine = crate::nl_engine::NlEngine::new();
             let response = engine.process(&prompt);
             serde_json::json!({
@@ -764,7 +770,13 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
 
         "nl/refactor" => {
             let source = params.get("source").and_then(|v| v.as_str()).unwrap_or("");
-            let prompt = format!("refactor this code\n{}", source);
+            // Fenced, because `nl_engine::extract_code_block` reads source
+            // *only* from a ``` block. Interpolated bare, the source was
+            // invisible to the extractor and `intent.source` was always
+            // `None`, so this method could never succeed — it answered
+            // "No source code provided" for every input, including the
+            // well-formed ones. Nothing tested it.
+            let prompt = format!("refactor this code\n```mg\n{source}\n```");
             let mut engine = crate::nl_engine::NlEngine::new();
             let response = engine.process(&prompt);
             serde_json::json!({
@@ -1385,6 +1397,55 @@ mod tests {
         assert_eq!(r["ok"], true);
         let m = &r["manifest"];
         assert!(m["agents"].as_array().unwrap().is_empty());
+    }
+
+    /// Every method the ontology publishes actually dispatches.
+    ///
+    /// The published list was checked by grepping `rap.rs` for the method
+    /// name — which proves the string is in the file, not that the server
+    /// answers to it. Same shape as the ontology being pinned byte-for-byte
+    /// against its own generator: agreement, not truth.
+    ///
+    /// Params are omitted deliberately. A method that needs them may fail on
+    /// the missing argument; what must not happen is the *unknown method*
+    /// response, which is the one an agent reading the ontology would get for
+    /// a name that does not exist.
+    #[test]
+    fn every_published_rap_method_dispatches() {
+        let published = crate::ontology::section("rap_methods").expect("rap_methods section");
+        let rows = published.as_array().expect("array");
+        assert!(rows.len() >= 37, "rap_methods shrank to {}", rows.len());
+
+        for row in rows {
+            let method = row["method"].as_str().expect("method name");
+            let r = call(method, serde_json::json!({}));
+            let unknown = r["error"]
+                .as_str()
+                .map(|e| e.contains("unknown method"))
+                .unwrap_or(false);
+            assert!(!unknown, "ontology publishes `{method}`, which does not dispatch: {r}");
+        }
+    }
+
+    /// The four `nl/*` methods had no test at all.
+    ///
+    /// They are the natural-language surface — the methods an agent reaches
+    /// for first — and the only ones of the 37 that nothing exercised.
+    #[test]
+    fn nl_methods_answer() {
+        let r = call("nl/generate", serde_json::json!({ "prompt": "add two numbers" }));
+        assert_eq!(r["ok"], true, "nl/generate: {r}");
+        assert!(r["code_agent"].is_string(), "nl/generate must return code_agent: {r}");
+
+        let r = call("nl/explain", serde_json::json!({ "source": "+f a() -> i32 { 1 }" }));
+        assert_eq!(r["ok"], true, "nl/explain: {r}");
+        assert!(r["explanation"].is_string(), "nl/explain must explain: {r}");
+
+        let r = call("nl/refactor", serde_json::json!({ "source": "+f a() -> i32 { 1 }" }));
+        assert_eq!(r["ok"], true, "nl/refactor: {r}");
+
+        let r = call("nl/query", serde_json::json!({ "prompt": "what effects exist" }));
+        assert_eq!(r["ok"], true, "nl/query: {r}");
     }
 
     #[test]

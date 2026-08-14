@@ -12,7 +12,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **2,864** — rmi 1,380 · prototype 1,156 · ribosome 164 · germline 112 · forge 52 |
+| Tests | **2,866** — rmi 1,380 · prototype 1,158 · ribosome 164 · germline 112 · forge 52 |
 | CUDA | **1,071 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm |
@@ -228,6 +228,13 @@ elsewhere, pointing at the wrong line.
   include GPU results, the failure mode is someone believing they measured a
   GPU. It now says when it is inert; wiring the other paths means threading
   `SelectedBackend` through their dispatch loops, which is item 14.
+- **`nl/explain` and `nl/refactor` could never succeed.** Both take a `source`
+  parameter, interpolate it bare into a prompt, and hand it to an engine whose
+  `extract_code_block` reads source *only* from a ``` fence. So `intent.source`
+  was always `None` and both answered "No source code provided" for every
+  input, including well-formed ones. They are the natural-language surface —
+  the methods an agent reaches for first — and the only 4 of 37 RAP methods
+  with no test.
 - **Capability handles performed no effect.** `resolve.rs` registered twenty
   namespaces and said their "use is tracked by the effect system". It was not: a
   `pub` function declared pure could call `net.connect(…)` or `llm.generate(…)`
@@ -416,7 +423,7 @@ it is invisible unless you break the thing on purpose and watch.
 
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,156**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,158**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it.
 - Every typechecker fix has landed without breaking an existing test **except
   one**, where widening `collection_elem` made `sum("hi")` legal and
