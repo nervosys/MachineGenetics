@@ -46,10 +46,9 @@ SKETCHES=(
     # that `check-examples.sh` pins. Nothing checked these, and they drifted
     # the same way the shipped twelve had: `pub fn` with `?`-conditionals,
     # `U` used as a name, `fn` in expression position. Same rewrite job,
-    # smaller. `hello.mg` and `structs.mg` are repaired and NOT listed —
-    # rewriting `structs.mg` is what surfaced the `data`-sum bugs.
+    # smaller. `hello.mg`, `structs.mg` and `effects.mg` are repaired and NOT
+    # listed — rewriting them is what surfaced the `data`-sum and closure bugs.
     "prototype/examples/analysis.mg"
-    "prototype/examples/effects.mg"
     "prototype/examples/pipeline_demo.mg"
     "prototype/examples/spec_synthesis.mg"
 

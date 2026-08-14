@@ -12,7 +12,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **2,845** — rmi 1,380 · prototype 1,137 · ribosome 164 · germline 112 · forge 52 |
+| Tests | **2,847** — rmi 1,380 · prototype 1,139 · ribosome 164 · germline 112 · forge 52 |
 | CUDA | **1,071 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm |
@@ -155,7 +155,7 @@ Seven of the fourteen — #5, #6, #7, #8, #9, #11, #13 — are one class: a bug 
 `--eval` can, which is why the pin now runs it.
 
 That rewrite took the prototype suite from 1,066 tests to 1,107. Counting every
-session since, prototype tests **1,066 → 1,137**, all green — this figure is
+session since, prototype tests **1,066 → 1,139**, all green — this figure is
 checked against the live run, so it tracks forward rather than freezing at the
 session that wrote it.
 
@@ -705,6 +705,36 @@ the history here argues for:
   anyone can act on — or test. Verified by running it three times.
 
 `structs.mg` now checks, evaluates to `37`, and is off the sketch list: 36 → 35.
+
+### And then `effects.mg`: closures did not parse
+
+The next file up, 45 lines, claimed five features. Rewriting it found the
+biggest single gap yet.
+
+**`|x| expr` — the closure form — was a parse error.** `MAGE_SPEC.md` defines it
+in the formal grammar (`closure_expr = '|' [ param_list ] '|' ( expression |
+block )`) and lists it again under supported features ("Closures (`|x| expr`)").
+Only `f(x) => expr` parsed, which the spec never mentions anywhere. The standard
+vocabulary is built on higher-order functions — `map`, `filter`, `fold`, `any`,
+`all`, `find`, `group`, `scan` — so **the documented way to pass a function to
+any of them was the one that failed**, and it is the form every model emits by
+default. Now implemented; the `f(x) => expr` spelling still works.
+
+It is unambiguous for the same reason prefix `!` is: `|` is a binary operator
+and needs a left operand, so it never begins an expression. `||` lexes as `Or`
+and is the zero-parameter closure. Binary `|` and `||` are untouched, including
+inside a closure body (`|x| x | 1`), and there is a test for each.
+
+This is deliberately *not* the `^`-as-return mistake repeated. There, a single
+ontology line claimed a meaning the spec contradicted, so the entry was wrong.
+Here the spec is the claimant, in two places, and the spec defines the language
+— so the compiler was what had fallen behind. The check is the same either way:
+find out which artifact is authoritative before changing anything.
+
+`effects.mg` now checks and evaluates to `24`. Sketch list: 35 → 34.
+
+Rewriting three small example files has now produced six compiler bugs. The
+rate has not dropped, and three files remain.
 
 ---
 

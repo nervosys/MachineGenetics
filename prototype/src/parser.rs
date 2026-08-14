@@ -2437,6 +2437,28 @@ impl<'a> Parser<'a> {
 
     /// Parse a closure parameter list — like `parse_param_list` but each
     /// param's type annotation is optional (`fn(x) => …`, `fn(x: i32) => …`).
+    /// Closure parameters between the two `|`s: `|x|`, `|x, y|`, `|x: i32|`.
+    ///
+    /// Separate from [`Self::parse_closure_param_list`] only because that one
+    /// terminates on `)` and this one on `|`.
+    fn parse_closure_params_until_pipe(&mut self) -> Result<Vec<Param>, ParseError> {
+        let mut params = Vec::new();
+        while self.peek() != TokenKind::BitOr && self.peek() != TokenKind::Eof {
+            let name = self.expect_ident()?;
+            let ty = if self.peek() == TokenKind::Colon {
+                self.advance();
+                self.parse_type()?
+            } else {
+                Type::Inferred
+            };
+            params.push(Param { name, ty, default: None });
+            if self.peek() == TokenKind::Comma {
+                self.advance();
+            }
+        }
+        Ok(params)
+    }
+
     fn parse_closure_param_list(&mut self) -> Result<Vec<Param>, ParseError> {
         let mut params = Vec::new();
         while self.peek() != TokenKind::RParen && self.peek() != TokenKind::Eof {
@@ -4052,6 +4074,46 @@ impl<'a> Parser<'a> {
                 }
             }
 
+            // Closure: `|x| expr`, `|x, y| expr`, `|x| { … }`, `|| expr`.
+            //
+            // This is the form `MAGE_SPEC.md` defines — in the formal grammar
+            // (`closure_expr = '|' [ param_list ] '|' ( expression | block )`)
+            // and again in the feature list ("Closures (`|x| expr`)") — and it
+            // did not parse. Only `f(x) => expr` did, which the spec does not
+            // mention. Both now work.
+            //
+            // Unambiguous: `|` is `BitOr`, a binary operator that needs a left
+            // operand, so it never begins an expression. `||` lexes as `Or` and
+            // is the zero-parameter closure, for the same reason.
+            //
+            // Worth spelling out why this is not the `^`-as-return mistake
+            // repeated: there, one ontology line claimed a meaning the spec
+            // contradicted, so the entry was wrong. Here the *spec* is the
+            // claimant, twice, and the spec defines the language.
+            TokenKind::BitOr | TokenKind::Or => {
+                let zero_params = self.peek() == TokenKind::Or;
+                self.advance(); // `|` or `||`
+                let params = if zero_params {
+                    Vec::new()
+                } else {
+                    let params = self.parse_closure_params_until_pipe()?;
+                    self.expect(TokenKind::BitOr)?;
+                    params
+                };
+                let body = if self.peek() == TokenKind::LBrace {
+                    let block = self.parse_block()?;
+                    Expr::Block { block }
+                } else {
+                    // `,` and `)` are not infix operators, so the body stops
+                    // at the end of the argument on its own.
+                    self.parse_expr()?
+                };
+                Ok(Expr::Closure {
+                    params,
+                    body: Box::new(body),
+                })
+            }
+
             // Closure: fn(params) => expr   (params may be untyped)
             TokenKind::KwF
                 if matches!(
@@ -5292,6 +5354,45 @@ mod tests {
             matches!(tail("f x() -> i32 {\n  v xs = [10, 20]\n  xs[1]\n}"), Expr::Index { .. }),
             "a same-line index stopped being an index"
         );
+    }
+
+    #[test]
+    fn test_pipe_closures_parse() {
+        // `MAGE_SPEC.md` defines `closure_expr = '|' [ param_list ] '|'
+        // ( expression | block )` in its formal grammar, and lists
+        // "Closures (`|x| expr`)" as a feature. It did not parse — only
+        // `f(x) => expr`, which the spec never mentions. The vocabulary is
+        // built on higher-order functions (`map`, `filter`, `fold`), so the
+        // documented way to pass one was the one that failed.
+        for src in [
+            "f a() -> i32 { map(xs, |x| x * 2) }",
+            "f a() -> i32 { fold(xs, 0, |acc, x| acc + x) }",
+            "f a() -> i32 { map(xs, |x| { x * 3 }) }",
+            "f a() -> i32 { map(xs, |x: i32| x + 1) }",
+            "f a() -> i32 { run(|| 7) }",
+        ] {
+            assert!(parse(&lexer::lex(src)).is_ok(), "should parse: {src}");
+        }
+        // The form that already worked keeps working.
+        assert!(parse(&lexer::lex("f a() -> i32 { map(xs, f(x) => x * 2) }")).is_ok());
+    }
+
+    #[test]
+    fn test_pipe_closures_do_not_break_bitwise_or() {
+        // `|` is `BitOr` and `||` is `Or`. Prefix position is the only place a
+        // closure can start, because a binary operator needs a left operand —
+        // so the two never compete. This is the check that says so.
+        let m = parse_source("f a() -> i32 { 6 | 1 }");
+        let ItemKind::Function(ref f) = m.items[0].kind else {
+            panic!("expected function");
+        };
+        assert!(
+            matches!(f.body.tail_expr.as_deref(), Some(Expr::Binary { op, .. }) if op == "|"),
+            "`6 | 1` must stay a bitwise or"
+        );
+        assert!(parse(&lexer::lex("f a() -> bool { x || y }")).is_ok());
+        // A `|` inside a closure body is still binary.
+        assert!(parse(&lexer::lex("f a() -> i32 { map(xs, |x| x | 1) }")).is_ok());
     }
 
     #[test]
