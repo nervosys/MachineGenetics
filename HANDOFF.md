@@ -12,13 +12,13 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **2,854** — rmi 1,380 · prototype 1,146 · ribosome 164 · germline 112 · forge 52 |
+| Tests | **2,856** — rmi 1,380 · prototype 1,148 · ribosome 164 · germline 112 · forge 52 |
 | CUDA | **1,071 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm |
 | CI | 10 jobs, green on `master` |
 | Examples | 12 of 12 typecheck, run, and print their recorded answer |
-| `.mg` sources | 94 checked, 32 listed sketches |
+| `.mg` sources | 95 checked, 31 listed sketches |
 | Release | `v0.3.0`, with the promo video attached as a release asset |
 
 Reproduce all of it:
@@ -125,7 +125,7 @@ different things.
 | 10 | **`resume` for effect handlers** | Largest. Handlers dispatch and return like ordinary calls; nothing captures a continuation, so there are no generators, no backtracking, and no async from the same mechanism. Needs the tree-walking evaluator reworked into a form that can capture continuations, which touches every expression form. |
 | 11 | **Generic calls do not typecheck** | `f identity[T](v: T) -> T` declares fine and `identity(1)` *evaluates* to `1`, but the checker reports `type mismatch: I32 vs sym1`: the type variable is never instantiated at the call site. `prototype/examples/analysis.mg` keeps a declared-but-uncalled generic with a comment pointing here. |
 | 12 | `int` literal constraint | Medium. The current fix is a post-hoc check in `default_int_literals`, not a real integer-kind constraint threaded through `unify`. Correct for the programs it rejects; the principled version is larger. |
-| 13 | One sketch example file | `prototype/examples/spec_synthesis.mg`. Five of six have been rewritten and produced **eleven** compiler bugs between them; the rate has not dropped. |
+| 13 | `stdlib/` and four `framewerx` files | The remaining 31 sketches. `prototype/examples/` is done: all six rewritten, **thirteen** compiler bugs out of them, and the rate never dropped. `stdlib/` is blocked on item 1. |
 
 ### Small, sharp, cheap
 
@@ -267,6 +267,13 @@ spelling means the spelling is wrong, not the parser.
   effect annotations, expression position, `expect_ident`, module declarations
   and use paths. **Patched per-position three times before generalising** — each
   patch fixed only where someone had hit it and left the rest broken.
+- **A type name blocked a function of the same name.** `define_type` mirrors
+  into the value namespace so enum constructors resolve, and duplicate
+  detection could not tell that copy from a definition — so `S Point { … }`
+  beside `f Point(…) -> Point`, the ordinary constructor pattern, reported
+  `duplicate definition: Point`. Worst for `sp`, where a spec block *names the
+  function it constrains*: the contract feature could not be used as designed
+  at all.
 - **The prelude reserved eighty words globally.** `M net { }` reported
   `duplicate definition: net` against a definition the author never wrote and
   could not see. Source definitions now shadow prelude names.
@@ -306,7 +313,8 @@ a hand-written `stdlib/` unreachable by construction.
 all of it Rust — read by nothing, checked by nothing, and resolvable-around
 because imports are nominal. It now carries a `README.md` saying what it is and
 the ordered prerequisites for making it real. `check-mg-sources.sh` is the
-consumer it never had; its sketch list only shrinks, and is down from 36 to 32.
+consumer it never had; its sketch list only shrinks, and is down from 36 to 31 —
+`prototype/examples/` is now empty of sketches.
 
 ---
 
@@ -381,7 +389,7 @@ it is invisible unless you break the thing on purpose and watch.
 
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,146**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,148**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it.
 - Every typechecker fix has landed without breaking an existing test **except
   one**, where widening `collection_elem` made `sum("hi")` legal and

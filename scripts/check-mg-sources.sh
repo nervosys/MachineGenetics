@@ -42,13 +42,11 @@ SKETCHES=(
     # otherwise they rot exactly as they did.
     "stdlib/"
 
-    # A second, older example set, separate from the twelve in `examples/`
-    # that `check-examples.sh` pins. Nothing checked these, and they drifted
-    # the same way the shipped twelve had: `pub fn` with `?`-conditionals,
-    # `U` used as a name, `fn` in expression position. Same rewrite job,
-    # smaller. `hello.mg`, `structs.mg` and `effects.mg` are repaired and NOT
-    # listed — rewriting them is what surfaced the `data`-sum and closure bugs.
-    "prototype/examples/spec_synthesis.mg"
+    # `prototype/examples/` is fully rewritten and no longer listed. All six
+    # drifted the way the shipped twelve had, and rewriting them surfaced
+    # thirteen compiler bugs — `data` sums, bare variant constructors, unit
+    # variant patterns, closures, default arguments, `println`, the pipeline
+    # typecheck, and the spec/function name collision.
 
     # These reference `Tensor`, `Module` and `ParamStore` as bare type names.
     # Nothing defines them: they are in no module here, the ontology publishes

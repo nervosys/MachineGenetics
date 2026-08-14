@@ -147,6 +147,17 @@ struct Scope {
     /// in a standard library — reported `duplicate definition: net` against a
     /// builtin the author never wrote and could not see.
     builtins: std::collections::HashSet<String>,
+    /// Names present in `names` only as a *mirror* of a type-namespace entry.
+    ///
+    /// `define_type` copies its name into the value namespace so enum
+    /// constructors resolve. That copy is a convenience, not a definition — but
+    /// duplicate detection could not tell the difference, so every `S`, `T`,
+    /// `Y`, `effect` and `sp` declaration reserved its name against functions.
+    /// `S Point { … }` beside `f Point(…) -> Point` — the ordinary constructor
+    /// pattern — reported `duplicate definition: Point`, and a `sp search { … }`
+    /// block could not name the function it constrains, which is the entire
+    /// mechanism by which a spec attaches to one.
+    mirrored: std::collections::HashSet<String>,
 }
 
 impl Scope {
@@ -155,6 +166,7 @@ impl Scope {
             names: HashMap::new(),
             types: HashMap::new(),
             builtins: std::collections::HashSet::new(),
+            mirrored: std::collections::HashSet::new(),
         }
     }
 }
@@ -201,7 +213,8 @@ impl Resolver {
             // Shadowing a prelude name is allowed; colliding with another
             // source definition is not. `builtins` is what tells them apart.
             let shadows_builtin = scope.builtins.remove(name);
-            if scope.names.contains_key(name) && !shadows_builtin {
+            let shadows_mirror = scope.mirrored.remove(name);
+            if scope.names.contains_key(name) && !shadows_builtin && !shadows_mirror {
                 self.diagnostics.push(Diagnostic::categorized(
                     Severity::Error,
                     format!("duplicate definition: `{name}`"),
@@ -236,7 +249,12 @@ impl Resolver {
                 ));
             }
             scope.types.insert(name.to_string(), id);
-            // Also make it available in value namespace (for enum constructors, etc.)
+            // Also make it available in value namespace (for enum constructors,
+            // etc.) — but record it as a mirror, so a real value definition of
+            // the same name is not reported as a duplicate against it.
+            if !scope.names.contains_key(name) {
+                scope.mirrored.insert(name.to_string());
+            }
             scope.names.insert(name.to_string(), id);
         }
         id
@@ -1171,6 +1189,61 @@ mod tests {
                 r.diagnostics
             );
         }
+    }
+
+    /// A type-namespace name does not block a function of the same name.
+    ///
+    /// `define_type` mirrors its name into the value namespace so enum
+    /// constructors resolve, and duplicate detection could not tell that copy
+    /// from a definition. So every `S`, `T`, `Y`, `effect` and `sp`
+    /// declaration reserved its name against functions: `S Point { … }` beside
+    /// `f Point(…) -> Point` — the ordinary constructor pattern — reported
+    /// `duplicate definition: Point`.
+    ///
+    /// Worst for `sp`, where a spec block *names the function it constrains*.
+    /// That is the entire mechanism by which a spec attaches to one, so the
+    /// contract feature could not be used as designed at all.
+    #[test]
+    fn a_type_name_does_not_block_a_function_of_the_same_name() {
+        let dup = |src: &str| {
+            resolve_source(src)
+                .diagnostics
+                .iter()
+                .any(|d| d.message.contains("duplicate"))
+        };
+        assert!(!dup("sp search { @req(1b) }
+f search(x: i32) -> i32 { x }"));
+        assert!(!dup("S Point { x: i32 }
+f Point(x: i32) -> i32 { x }"));
+        assert!(!dup("effect Audit { f record(e: str) -> i32; }
+f Audit(x: i32) -> i32 { x }"));
+        assert!(!dup("T Shape { f area(self) -> i32; }
+f Shape(x: i32) -> i32 { x }"));
+    }
+
+    /// The mirror is forgiven exactly once. Two real definitions in either
+    /// namespace are still duplicates — a rule that quietly disabled duplicate
+    /// detection for every type name would be worse than the bug it fixes.
+    #[test]
+    fn the_type_mirror_does_not_disable_duplicate_detection() {
+        let dup = |src: &str| {
+            resolve_source(src)
+                .diagnostics
+                .iter()
+                .any(|d| d.message.contains("duplicate"))
+        };
+        assert!(dup("f g() -> i32 { 1 }
+f g() -> i32 { 2 }"), "plain duplicate missed");
+        assert!(dup("S P { x: i32 }
+S P { y: i32 }"), "duplicate type missed");
+        assert!(dup("sp s { @fx() }
+sp s { @fx() }"), "duplicate spec missed");
+        assert!(
+            dup("S P { x: i32 }
+f P(x: i32) -> i32 { x }
+f P(x: i32) -> i32 { x }"),
+            "the second function after a struct must still collide"
+        );
     }
 
     /// A source definition may shadow a prelude name.
