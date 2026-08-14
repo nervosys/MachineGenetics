@@ -46,12 +46,12 @@ SKETCHES=(
     # that `check-examples.sh` pins. Nothing checked these, and they drifted
     # the same way the shipped twelve had: `pub fn` with `?`-conditionals,
     # `U` used as a name, `fn` in expression position. Same rewrite job,
-    # smaller. `hello.mg` and two others were repaired and are NOT listed.
+    # smaller. `hello.mg` and `structs.mg` are repaired and NOT listed —
+    # rewriting `structs.mg` is what surfaced the `data`-sum bugs.
     "prototype/examples/analysis.mg"
     "prototype/examples/effects.mg"
     "prototype/examples/pipeline_demo.mg"
     "prototype/examples/spec_synthesis.mg"
-    "prototype/examples/structs.mg"
 
     # These reference `Tensor`, `Module` and `ParamStore` as bare type names.
     # Nothing defines them: they are in no module here, the ontology publishes

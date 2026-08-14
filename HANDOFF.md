@@ -12,7 +12,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **2,840** — rmi 1,380 · prototype 1,132 · ribosome 164 · germline 112 · forge 52 |
+| Tests | **2,845** — rmi 1,380 · prototype 1,137 · ribosome 164 · germline 112 · forge 52 |
 | CUDA | **1,071 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm |
@@ -155,7 +155,7 @@ Seven of the fourteen — #5, #6, #7, #8, #9, #11, #13 — are one class: a bug 
 `--eval` can, which is why the pin now runs it.
 
 That rewrite took the prototype suite from 1,066 tests to 1,107. Counting every
-session since, prototype tests **1,066 → 1,132**, all green — this figure is
+session since, prototype tests **1,066 → 1,137**, all green — this figure is
 checked against the live run, so it tracks forward rather than freezing at the
 session that wrote it.
 
@@ -665,6 +665,50 @@ Worth recording, because both are easy and both look fine:
 A pin over a generated list tends toward tautology, because both sides come from
 the same source. The escape is to test with inputs the generator has never seen
 — which is what catching `Lienar` requires.
+
+---
+
+## `data` sum types were half-implemented, and rewriting one example found it
+
+The sketch list is designed to shrink, so the next move was to start clearing
+it. `prototype/examples/structs.mg` — 33 lines, the smallest — claimed four
+features in its header. Two do not exist (`-> T = expr` expression bodies and
+the `|>` pipeline operator, neither documented anywhere), and the file had never
+compiled. Rewriting it to demonstrate only what is real found three bugs, which
+is the example-rewrite pattern reproducing exactly.
+
+**`data` is published as "record or sum type". The sum half registered no
+variants.** `data Point(x: f64, y: f64)` worked, so `data` looked implemented;
+`data Shape = Circle(f64) | Rect(f64, f64)` parsed and then gave
+`unresolved variant in pattern: Circle` and `unresolved name: Rect`. `resolve.rs`
+registered the type name and nothing else, while the `E` enum arm three cases up
+registered every variant. Fixed by doing what `Enum` does.
+
+**Then it typechecked and did not evaluate.** Fixing resolution alone gave
+`Errors: 0` and `eval error: unknown function \`Rect\``. The evaluator collects
+variants for `ItemKind::Enum` and had no arm for `ItemKind::Data`. This is the
+bug-7 class from the example rewrite, and the reason the pin runs `--eval`
+rather than trusting an exit status.
+
+**A third bug sat underneath, affecting `E` enums too.** A *bare* constructor —
+`Rect(3.0, 4.0)` rather than `Shape.Rect(3.0, 4.0)` — typechecked and died at
+run time. Only `Ok`/`Err`/`Some`/`None` had been special-cased into working. The
+bare form is exactly what the concise `data Shape = …` syntax invites, since
+that syntax never names the type. Bare constructors now resolve, with two guards
+the history here argues for:
+
+- **Ambiguity is an error naming both enums**, not a silent pick. Choosing one
+  would resurrect bug 6, where variants keyed by name alone let `Left { X }` and
+  `Right { X }` evict each other.
+- **The message is sorted.** `enum_variants` is a `HashMap`, and an ambiguity
+  report naming the two enums in a different order on each run is not something
+  anyone can act on — or test. Verified by running it three times.
+
+`structs.mg` now checks, evaluates to `37`, and is off the sketch list: 36 → 35.
+
+---
+
+## Traps this session hit, so you do not
 
 - **`cmd | grep -q` under `set -o pipefail`.** `grep -q` exits at the first
   match, the writer takes SIGPIPE, and the pipeline reports failure — so every

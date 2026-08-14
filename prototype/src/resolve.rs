@@ -394,9 +394,27 @@ impl Resolver {
             ast::ItemKind::Train(t) => {
                 self.define_value(&t.name, SymbolKind::Train);
             }
-            ast::ItemKind::Data(dd) => {
-                self.define_type(&dd.name, SymbolKind::Struct);
-            }
+            ast::ItemKind::Data(dd) => match &dd.kind {
+                ast::DataKind::Record(_) => {
+                    self.define_type(&dd.name, SymbolKind::Struct);
+                }
+                // `data Shape = Circle(f64) | Rect(f64, f64)` is a sum, and its
+                // variants are values — exactly as `E Shape { … }` variants
+                // are, three arms up. Only the type name was registered here,
+                // so every variant was invisible: `Rect(3.0, 4.0)` gave
+                // `unresolved name: Rect` and `?= s { Circle(r) => … }` gave
+                // `unresolved variant in pattern`. The record half worked, so
+                // `data` looked implemented.
+                //
+                // The ontology publishes `data` as "record or sum type". Half
+                // of that was true.
+                ast::DataKind::Sum(variants) => {
+                    let parent = self.define_type(&dd.name, SymbolKind::Enum);
+                    for variant in variants {
+                        self.define_value(&variant.name, SymbolKind::EnumVariant { parent });
+                    }
+                }
+            },
             ast::ItemKind::Extend(_) => {
                 // Extend blocks don't introduce a new name
             }

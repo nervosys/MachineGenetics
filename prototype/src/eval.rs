@@ -4,7 +4,8 @@
 //! vocabulary); IO/structs/traits are out of scope and report an honest error.
 
 use crate::ast::{
-    Block, Expr, FunctionDef, ItemKind, LiteralKind, Module, Pattern, Stmt, Type, VariantKind,
+    Block, DataKind, Expr, FunctionDef, ItemKind, LiteralKind, Module, Pattern, Stmt, Type,
+    VariantKind,
 };
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -235,6 +236,22 @@ impl Interp {
                         };
                         enum_variants
                             .insert((ed.name.clone(), variant.name.clone()), arity);
+                    }
+                }
+                // `data Shape = Circle(f64) | Rect(f64, f64)` is the concise
+                // spelling of the arm above and needs the same runtime
+                // representation. Registering the variants in `resolve` alone
+                // made the program *typecheck* and then die on
+                // `unknown function \`Rect\`` — the class `--check` cannot see
+                // and only `--eval` can, which is why the example pin runs it.
+                ItemKind::Data(dd) => {
+                    if let DataKind::Sum(variants) = &dd.kind {
+                        for variant in variants {
+                            enum_variants.insert(
+                                (dd.name.clone(), variant.name.clone()),
+                                variant.fields.len(),
+                            );
+                        }
                     }
                 }
                 _ => {}
@@ -1376,7 +1393,47 @@ impl Interp {
             // user enums already use.
             "Ok" => Ok(Value::Enum("Result".into(), "Ok".into(), vec![arg(0)])),
             "Err" => Ok(Value::Enum("Result".into(), "Err".into(), vec![arg(0)])),
-            other => err(format!("unknown function `{other}`")),
+            other => {
+                // A bare variant constructor: `Rect(3.0, 4.0)` rather than
+                // `Shape.Rect(3.0, 4.0)`. Both spellings typecheck, and only
+                // the qualified one evaluated — so the natural spelling was
+                // accepted in full and died here with `unknown function`. Same
+                // class as `Ok`/`Err` two arms up, which is why those are
+                // special-cased at all.
+                // Sorted, because `enum_variants` is a HashMap and an
+                // ambiguity message that names the two enums in a different
+                // order on each run is not a message anyone can act on — or
+                // test.
+                let mut matching: Vec<_> = self
+                    .enum_variants
+                    .iter()
+                    .filter(|((_, variant), _)| variant == other)
+                    .collect();
+                matching.sort_by(|((a, _), _), ((b, _), _)| a.cmp(b));
+                let mut matching = matching.into_iter();
+                match (matching.next(), matching.next()) {
+                    (Some(((enum_name, variant), arity)), None) => {
+                        if a.len() != *arity {
+                            return err(format!(
+                                "variant `{enum_name}.{variant}` takes {arity} field(s), \
+                                 given {}",
+                                a.len()
+                            ));
+                        }
+                        Ok(Value::Enum(enum_name.clone(), variant.clone(), a))
+                    }
+                    // Two enums declaring the same variant name. Picking one
+                    // would resurrect the bug that keying variants by name
+                    // alone caused — `Left { X }` and `Right { X }` evicting
+                    // each other — so say which enums and make the author
+                    // qualify it.
+                    (Some(((a, _), _)), Some(((b, _), _))) => err(format!(
+                        "`{other}` is ambiguous: both `{a}` and `{b}` declare it — \
+                         qualify it as `{a}.{other}` or `{b}.{other}`"
+                    )),
+                    _ => err(format!("unknown function `{other}`")),
+                }
+            }
         }
     }
 }
@@ -1758,6 +1815,75 @@ mod tests {
 
         let src = "E Left { X }\nE Right { X }\nf s() { Left.X == Left.X }";
         assert_eq!(run(src, "s", &[]), Value::Bool(true));
+    }
+
+    /// `data Shape = Circle(f64) | Rect(f64, f64)` gets a runtime
+    /// representation, like `E Shape { … }` already had.
+    ///
+    /// The ontology publishes `data` as "record or sum type". The record half
+    /// worked, so `data` looked implemented; the sum half registered no
+    /// variants at all, giving `unresolved name: Rect` at check time. Fixing
+    /// resolution alone made it *typecheck* and then die on
+    /// `unknown function \`Rect\`` — the class only `--eval` can see.
+    #[test]
+    fn data_sum_variants_construct_and_match() {
+        let src = "data Shape = Circle(f64) | Rect(f64, f64)
+                   f s() { ?= Shape.Rect(3.0, 4.0) { Shape.Rect(w, h) => w * h, _ => 0.0 } }";
+        assert_eq!(run(src, "s", &[]), Value::Float(12.0));
+    }
+
+    /// A bare variant constructor evaluates, not just a qualified one.
+    ///
+    /// `Rect(3.0, 4.0)` typechecked and died at run time while
+    /// `Shape.Rect(3.0, 4.0)` worked — and the bare form is the one the
+    /// concise `data Shape = …` syntax invites, since it never names the type.
+    /// Affected `E` enums equally; only `Ok`/`Err`/`Some`/`None` were
+    /// special-cased into working.
+    #[test]
+    fn a_bare_variant_constructor_evaluates() {
+        for decl in [
+            "data Shape = Circle(f64) | Rect(f64, f64)",
+            "E Shape { Circle(f64), Rect(f64, f64) }",
+        ] {
+            let src = format!("{decl}
+f s() {{ ?= Rect(3.0, 4.0) {{ Rect(w, h) => w * h, _ => 0.0 }} }}");
+            assert_eq!(run(&src, "s", &[]), Value::Float(12.0), "for `{decl}`");
+        }
+    }
+
+    /// A bare name two enums both declare is an error naming both, not a
+    /// silent pick.
+    ///
+    /// Choosing one would resurrect the bug where variants keyed by name alone
+    /// let `Left { X }` and `Right { X }` evict each other. The message is
+    /// sorted because `enum_variants` is a HashMap and an ambiguity report
+    /// that names the enums in a different order each run cannot be acted on.
+    #[test]
+    fn an_ambiguous_bare_variant_names_both_enums() {
+        let err = run_source("E A { X(i32) }
+E B { X(i32) }
+f s() { X(1) }", "s", &[])
+            .expect_err("ambiguous variant must fail");
+        assert!(err.contains("ambiguous"), "unexpected: {err}");
+        assert!(err.contains("`A`") && err.contains("`B`"), "must name both: {err}");
+        assert!(err.find("`A`") < err.find("`B`"), "must be deterministic: {err}");
+    }
+
+    /// Arity is checked for the bare form too.
+    #[test]
+    fn a_bare_variant_constructor_checks_arity() {
+        let err = run_source("data S = Rect(f64, f64)
+f s() { Rect(3.0) }", "s", &[])
+            .expect_err("wrong arity must fail");
+        assert!(err.contains("takes 2 field"), "unexpected: {err}");
+    }
+
+    /// An unknown name is still unknown — the variant lookup must not swallow
+    /// the ordinary diagnostic.
+    #[test]
+    fn an_unknown_function_is_still_unknown() {
+        let err = run_source("f s() { nope(1) }", "s", &[]).expect_err("must fail");
+        assert!(err.contains("unknown function `nope`"), "unexpected: {err}");
     }
 
     #[test]
