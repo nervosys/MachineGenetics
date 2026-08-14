@@ -130,6 +130,11 @@ if [ "$CHECKDOCS" -eq 1 ]; then
     {
         for k in "${!COUNTS[@]}"; do echo "$k=${COUNTS[$k]}"; done
         echo "total=$total"
+        # The CI job count is a claim in HANDOFF.md that nothing checked, so a
+        # rewrite could — and did — change "10 jobs" to "11" by counting the
+        # `push`/`pull_request` trigger keys along with the jobs. Measured here
+        # from the workflow itself: keys indented two spaces *after* `jobs:`.
+        echo "ci_jobs=$(awk '/^jobs:/{i=1;next} i&&/^  [a-z0-9_-]+:$/{n++} END{print n+0}' "$REPO/.github/workflows/ci.yml")"
     # Invoked through `bash` rather than executed directly. The mode bit is now
     # set in git, but it is the kind of thing a Windows checkout drops silently
     # — this failed in CI with a bare "Permission denied" after passing on the
