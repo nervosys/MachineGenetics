@@ -304,6 +304,20 @@ pub struct TypeChecker {
     struct_defs: HashMap<String, StructDefEntry>,
     /// Function signatures: name → params, return type, declared effects.
     fn_sigs: HashMap<String, FnSigEntry>,
+    /// Generic parameters of each function, as the type variables its signature
+    /// was lowered with.
+    ///
+    /// These are *universally quantified*: each call site gets its own fresh
+    /// copy. Without that, `f id[T](v: T) -> T` lowered `T` to a nominal
+    /// `Ty::Named` — a distinct type that unifies with nothing — so every call
+    /// reported `type mismatch: I32 vs sym1` while evaluating correctly. Even
+    /// after lowering `T` to a variable, sharing one variable across call sites
+    /// would make `id(1)` and `id("ab")` in the same program conflict.
+    fn_generics: HashMap<String, Vec<TyVar>>,
+    /// Generic parameter names currently in scope while lowering a signature or
+    /// a body, so `T` lowers to its type variable rather than being interned as
+    /// a nominal type.
+    generic_binding: HashMap<String, Ty>,
     /// How many leading parameters a function *requires* — its parameter count
     /// minus the trailing ones that declare a default.
     ///
@@ -359,6 +373,8 @@ impl TypeChecker {
             env: TypeEnv::new(),
             struct_defs: HashMap::new(),
             fn_sigs: HashMap::new(),
+            fn_generics: HashMap::new(),
+            generic_binding: HashMap::new(),
             fn_required_arity: HashMap::new(),
             enum_defs: HashMap::new(),
             effect_ops: HashMap::new(),
@@ -485,6 +501,62 @@ impl TypeChecker {
     }
 
     /// Map a named type path to a canonical Ty.
+    /// Replace each quantified type variable with a fresh one.
+    ///
+    /// This is what makes a generic function usable more than once: `id(1)` and
+    /// `id("ab")` in the same program each get their own `T`, instead of
+    /// unifying it to `I32` for the first call and then failing the second.
+    fn instantiate(&mut self, ty: &Ty, map: &HashMap<TyVar, Ty>) -> Ty {
+        let go = |me: &mut Self, t: &Ty| me.instantiate(t, map);
+        match ty {
+            Ty::Var(v) => map.get(v).cloned().unwrap_or_else(|| ty.clone()),
+            Ty::Named(id, args) => {
+                let args = args.iter().map(|a| self.instantiate(a, map)).collect();
+                Ty::Named(*id, args)
+            }
+            Ty::Ref(m, inner) => Ty::Ref(*m, Box::new(go(self, inner))),
+            Ty::OwnedPtr(t) => Ty::OwnedPtr(Box::new(go(self, t))),
+            Ty::Rc(t) => Ty::Rc(Box::new(go(self, t))),
+            Ty::Arc(t) => Ty::Arc(Box::new(go(self, t))),
+            Ty::Slice(t) => Ty::Slice(Box::new(go(self, t))),
+            Ty::Array(t, n) => Ty::Array(Box::new(go(self, t)), *n),
+            Ty::Vec(t) => Ty::Vec(Box::new(go(self, t))),
+            Ty::Option(t) => Ty::Option(Box::new(go(self, t))),
+            Ty::Ptr(t) => Ty::Ptr(Box::new(go(self, t))),
+            Ty::Genome(t) => Ty::Genome(Box::new(go(self, t))),
+            Ty::Simd(t, n) => Ty::Simd(Box::new(go(self, t)), *n),
+            Ty::Tensor(t, d) => Ty::Tensor(Box::new(go(self, t)), d.clone()),
+            Ty::Param(t, d) => Ty::Param(Box::new(go(self, t)), d.clone()),
+            Ty::Result(a, b) => {
+                Ty::Result(Box::new(go(self, a)), Box::new(go(self, b)))
+            }
+            Ty::Map(k, v) => Ty::Map(Box::new(go(self, k)), Box::new(go(self, v))),
+            Ty::Policy(a, b) => {
+                Ty::Policy(Box::new(go(self, a)), Box::new(go(self, b)))
+            }
+            Ty::Tuple(ts) => Ty::Tuple(ts.iter().map(|t| self.instantiate(t, map)).collect()),
+            Ty::Fn(ps, r, fx) => {
+                let ps = ps.iter().map(|t| self.instantiate(t, map)).collect();
+                let r = Box::new(go(self, r));
+                Ty::Fn(ps, r, fx.clone())
+            }
+            other => other.clone(),
+        }
+    }
+
+    /// A fresh instantiation of `name`'s signature, if it is generic.
+    fn instantiated_sig(&mut self, name: &str, params: &[Ty], ret: &Ty) -> (Vec<Ty>, Ty) {
+        let quantified = self.fn_generics.get(name).cloned().unwrap_or_default();
+        if quantified.is_empty() {
+            return (params.to_vec(), ret.clone());
+        }
+        let map: HashMap<TyVar, Ty> =
+            quantified.into_iter().map(|v| (v, self.fresh())).collect();
+        let params = params.iter().map(|p| self.instantiate(p, &map)).collect();
+        let ret = self.instantiate(ret, &map);
+        (params, ret)
+    }
+
     fn resolve_named_type(&mut self, name: &str, args: Vec<Ty>) -> Ty {
         match name {
             "i8" => Ty::Int(IntTy::I8),
@@ -505,6 +577,12 @@ impl TypeChecker {
             "char" => Ty::Char,
             "str" => Ty::Str,
             "String" => Ty::Str,
+            // A generic parameter in scope lowers to its type variable. This
+            // must come before the interning below, which would otherwise make
+            // `T` a nominal type that unifies with nothing.
+            _ if self.generic_binding.contains_key(name) => {
+                self.generic_binding[name].clone()
+            }
             _ => {
                 // A user-defined struct/enum/type alias. Interned to a stable
                 // id so distinct names are distinct types.
@@ -554,6 +632,19 @@ impl TypeChecker {
                 }
             }
             ast::ItemKind::Function(fd) => {
+                // Bind this function's generic parameters to fresh type
+                // variables for the duration of lowering its signature, and
+                // remember them so each call site can instantiate its own copy.
+                let mut quantified = Vec::new();
+                let saved = std::mem::take(&mut self.generic_binding);
+                for gp in &fd.generics {
+                    let tv = match self.fresh() {
+                        Ty::Var(v) => v,
+                        _ => unreachable!("fresh() yields a variable"),
+                    };
+                    quantified.push(tv);
+                    self.generic_binding.insert(gp.name.clone(), Ty::Var(tv));
+                }
                 let params: Vec<Ty> = fd.params.iter().map(|p| self.lower_type(&p.ty)).collect();
                 // No return annotation → a fresh inference var, resolved from the
                 // body in pass 2. Sharing it here means recursive calls and
@@ -575,6 +666,8 @@ impl TypeChecker {
                     .map_or(0, |i| i + 1);
                 self.fn_required_arity.insert(fd.name.clone(), required);
                 self.fn_sigs.insert(fd.name.clone(), (params, ret, fd.effects.clone()));
+                self.fn_generics.insert(fd.name.clone(), quantified);
+                self.generic_binding = saved;
             }
             ast::ItemKind::Struct(sd) => {
                 let generics: Vec<String> = sd.generics.iter().map(|g| g.name.clone()).collect();
@@ -1326,6 +1419,9 @@ impl TypeChecker {
                 // per-argument diagnostics instead of one opaque `call:` error.
                 if let ast::Expr::Ident { name } = func.as_ref()
                     && let Some((params, ret, _)) = self.fn_sigs.get(name).cloned() {
+                        // A generic function gets a fresh copy of its type
+                        // variables per call, so two calls cannot conflict.
+                        let (params, ret) = self.instantiated_sig(name, &params, &ret);
                         let arg_tys: Vec<Ty> = args.iter().map(|a| self.infer_expr(a)).collect();
                         let required = self
                             .fn_required_arity
@@ -1995,6 +2091,73 @@ mod tests {
     fn test_simple_function_types() {
         let tc = check_source("f add(a: i32, b: i32) -> i32 { a + b }");
         assert!(tc.diagnostics.is_empty(), "errors: {:?}", tc.diagnostics);
+    }
+
+    /// A generic function can actually be called.
+    ///
+    /// `f id[T](v: T) -> T` lowered `T` to a nominal `Ty::Named` — a distinct
+    /// type unifying with nothing — because signature collection ran
+    /// `lower_type` with no generic binding. `check_function` bound the
+    /// generics as fresh variables, but only for the *body*. So every call
+    /// reported `type mismatch: I32 vs sym1` while evaluating correctly:
+    /// generic functions were declarable and uncallable.
+    #[test]
+    fn a_generic_function_can_be_called() {
+        let errs = |src: &str| {
+            check_source(src)
+                .diagnostics
+                .iter()
+                .filter(|d| matches!(d.severity, crate::hir::Severity::Error))
+                .map(|d| d.message.clone())
+                .collect::<Vec<_>>()
+        };
+        let id = "f id[T](v: T) -> T { v }
+";
+
+        assert!(errs(&format!("{id}f s() -> i32 {{ id(1) }}")).is_empty());
+        assert!(errs(&format!("{id}f s() -> i32 {{ id(1) + 1 }}")).is_empty());
+        assert!(
+            errs("f fst[A, B](a: A, b: B) -> A { a }
+f s() -> i32 { fst(1, \"x\") }").is_empty(),
+            "two distinct parameters should each instantiate"
+        );
+    }
+
+    /// Each call site gets its *own* copy of the quantified variables.
+    ///
+    /// Lowering `T` to a single shared variable would fix one call and break
+    /// the next: `id(1)` would bind `T := I32`, and `id("ab")` in the same
+    /// program would then fail. This is the test that separates a real
+    /// instantiation from a variable that merely happens to unify once.
+    #[test]
+    fn each_call_site_instantiates_its_own_type_variables() {
+        let errs = check_source(
+            "f id[T](v: T) -> T { v }
+             f s() -> i32 { id(1) + (len(id(\"ab\")) as i32) }",
+        )
+        .diagnostics
+        .iter()
+        .filter(|d| matches!(d.severity, crate::hir::Severity::Error))
+        .map(|d| d.message.clone())
+        .collect::<Vec<_>>();
+        assert!(errs.is_empty(), "two instantiations should not conflict: {errs:?}");
+    }
+
+    /// Instantiation must not become a hole. Real mistakes through a generic
+    /// call are still errors.
+    #[test]
+    fn a_generic_call_still_checks_types_and_arity() {
+        let errs = |src: &str| {
+            check_source(src)
+                .diagnostics
+                .iter()
+                .filter(|d| matches!(d.severity, crate::hir::Severity::Error))
+                .count()
+        };
+        assert!(errs("f id[T](v: T) -> T { v }
+f s() -> str { id(1) }") > 0);
+        assert!(errs("f fst[A, B](a: A, b: B) -> A { a }
+f s() -> i32 { fst(1) }") > 0);
     }
 
     /// `x |> f(a)` typechecks as `f(x, a)`.

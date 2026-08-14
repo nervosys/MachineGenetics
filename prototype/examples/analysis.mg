@@ -52,11 +52,8 @@ f sides(s: Shape) -> i32 {
 
 // ── Generics ─────────────────────────────────────────────────────────
 //
-// Declaring a generic function works. *Calling* one does not typecheck: the
-// type variable is not instantiated at the call site, so `identity(1) + 1`
-// reports `arithmetic \`+\`: type mismatch: I32 vs sym1` while evaluating to
-// the right answer. It is left declared-but-uncalled here deliberately; see
-// HANDOFF.md.
+// Each call site instantiates its own copy of `T`, so one generic serves
+// several types in one program.
 
 f identity[T](v: T) -> T { v }
 
@@ -127,11 +124,12 @@ f with_cleanup() -> i32 / io {
     v p = @Point { x: 3.0, y: 4.0 }
     v shape_sides = sides(Square) + sides(Triangle)
 
-    // 25 + 7 + 12 + 2 + 15 + 41 = 102
+    // 25 + 7 + 12 + 2 + 15 + 41 + 1 = 103
     (p.distance_sq() as i32)
         + shape_sides
         + transformed([1, 2, 3, 4, 5, 6])
         + apply_twice()
         + scaled(5)
         + with_cleanup()
+        + identity(1)
 }

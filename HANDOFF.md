@@ -12,7 +12,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **2,856** — rmi 1,380 · prototype 1,148 · ribosome 164 · germline 112 · forge 52 |
+| Tests | **2,859** — rmi 1,380 · prototype 1,151 · ribosome 164 · germline 112 · forge 52 |
 | CUDA | **1,071 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm |
@@ -123,7 +123,6 @@ different things.
 | # | Item | Size |
 |---|---|---|
 | 10 | **`resume` for effect handlers** | Largest. Handlers dispatch and return like ordinary calls; nothing captures a continuation, so there are no generators, no backtracking, and no async from the same mechanism. Needs the tree-walking evaluator reworked into a form that can capture continuations, which touches every expression form. |
-| 11 | **Generic calls do not typecheck** | `f identity[T](v: T) -> T` declares fine and `identity(1)` *evaluates* to `1`, but the checker reports `type mismatch: I32 vs sym1`: the type variable is never instantiated at the call site. `prototype/examples/analysis.mg` keeps a declared-but-uncalled generic with a comment pointing here. |
 | 12 | `int` literal constraint | Medium. The current fix is a post-hoc check in `default_int_literals`, not a real integer-kind constraint threaded through `unify`. Correct for the programs it rejects; the principled version is larger. |
 | 13 | `stdlib/` and four `framewerx` files | The remaining 31 sketches. `prototype/examples/` is done: all six rewritten, **thirteen** compiler bugs out of them, and the rate never dropped. `stdlib/` is blocked on item 1. |
 
@@ -198,6 +197,14 @@ The inverse, and rarer — the checker rejects a working program.
   and reported `expected 2 argument(s), found 1` while evaluating to `15`.
   Every program using the documented operator ran correctly and failed
   `--check`.
+
+- **Generic functions were declarable and uncallable.** `f id[T](v: T) -> T`
+  lowered `T` to a nominal `Ty::Named` — a distinct type unifying with nothing —
+  because signature collection ran `lower_type` with no generic binding.
+  `check_function` bound the generics as fresh variables, but only for the
+  *body*. So `id(1)` evaluated to `1` and reported `type mismatch: I32 vs
+  sym1`. Each call site now instantiates its own copy of the quantified
+  variables, which is what lets `id(1)` and `id("ab")` coexist.
 
 The lesson is the same as its mirror image, from the other side: **`--check`
 and `--eval` are two different oracles, and agreeing with one says nothing
@@ -389,7 +396,7 @@ it is invisible unless you break the thing on purpose and watch.
 
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,148**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,151**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it.
 - Every typechecker fix has landed without breaking an existing test **except
   one**, where widening `collection_elem` made `sum("hi")` legal and
