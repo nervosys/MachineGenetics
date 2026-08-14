@@ -63,6 +63,7 @@ breaks, *and* a recorded state that silently starts passing.
 | `scripts/test-all.sh --check-docs` | every documented test count against the run that just produced them; `--cuda --bench` adds the GPU and benchmark figures |
 | `scripts/check-examples.sh` | that all 12 examples typecheck, evaluate, **and print the recorded answer** |
 | `scripts/check-mg-sources.sh` | every `.mg` file in the repo typechecks, or is a listed sketch with a stated reason |
+| `scripts/check-doc-blocks.sh` | the number of unparseable MAGE blocks in the markdown, as a ratchet — it may only go down |
 | CI `audit` job | `cargo audit` over all five lockfiles separately |
 | CI ontology step | `MAGE_ONTOLOGY.json` matches a fresh `--emit-ontology` |
 | CI version step | `mage-parse --version` matches the tool id Ribosome keys on |
@@ -119,6 +120,23 @@ different things.
 | 9 | `json`, `kb`, `db` attribute no effect | No built-in kind names a store, and inventing a `Custom` would infer an effect that §11.4 then refuses in an annotation — leaving no way to declare what you perform. Declare `effect Db { … }`; `examples/effects-showcase` does. |
 
 ### Real work, unstarted
+
+**168 of 258 MAGE code blocks in the documentation do not parse.** Nine more are
+deliberate fragments. The rest are Rust wearing a MAGE fence — `use
+std::llm::{…}` (41 blocks), Rust signatures (10), brace imports (18) — and they
+are in the documents an agent reads to *learn the language*:
+`agent-guide/` (86 blocks), `cookbook/` (61), `quick-start/` (19), and
+`MAGE_SPEC.md` itself (24 failing). Worst is `training/prompts/`, whose
+few-shot blocks teach a model what MAGE looks like: a model shown
+`I ~ Counter { … }` and `Counter @{ count: 0 }` learns two constructs that do
+not parse.
+
+This is the shipped examples' story a third time — after `examples/`, after
+`prototype/examples/` — and by volume it is the largest instance. Every one of
+those two rewrites produced compiler bugs at a steady rate, so the expected
+yield here is high. `scripts/check-doc-blocks.sh` ratchets the count in the
+meantime.
+
 
 | # | Item | Size |
 |---|---|---|
