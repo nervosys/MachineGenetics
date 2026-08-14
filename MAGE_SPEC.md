@@ -440,7 +440,7 @@ function_def = 'fn' IDENT [ generic_params ] '(' [ param_list ] ')'
 async_function_def = 'async' function_def ;
 
 param_list   = param { ',' param }* [ ',' ] ;
-param        = IDENT ':' type ;
+param        = IDENT ':' type [ '=' expression ] ;
 self_param   = '&' 'self' | '&' 'mut' 'self' | 'self' ;
 
 generic_params    = '<' generic_param { ',' generic_param }* '>' ;
@@ -451,6 +451,22 @@ where_clause      = 'where' where_predicate { ',' where_predicate }* ;
 where_predicate   = type ':' type_bound_list ;
 
 effect_annotation = '/' effect_name { ',' effect_name }* ;
+```
+
+**Default arguments.** A parameter may declare a default, and a caller may omit
+it. Only *trailing* defaults may be omitted: in `f g(a: i32, b: i32 = 2, c: i32)`
+all three arguments are still required, because a default in the middle would
+make a positional call ambiguous. The required arity is therefore the position
+after the last parameter without a default.
+
+Defaults are evaluated in the callee's environment, left to right, at each call
+that omits them — so a later default may refer to an earlier parameter:
+
+```mg
+f scaled(a: i32, b: i32 = a * 2) -> i32 { a + b }
+
+scaled(5)      // 15
+scaled(5, 1)   // 6
 ```
 
 ### 4.3 Data Types

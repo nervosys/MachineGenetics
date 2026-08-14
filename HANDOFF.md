@@ -12,7 +12,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **2,847** — rmi 1,380 · prototype 1,139 · ribosome 164 · germline 112 · forge 52 |
+| Tests | **2,853** — rmi 1,380 · prototype 1,145 · ribosome 164 · germline 112 · forge 52 |
 | CUDA | **1,071 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm |
@@ -155,7 +155,7 @@ Seven of the fourteen — #5, #6, #7, #8, #9, #11, #13 — are one class: a bug 
 `--eval` can, which is why the pin now runs it.
 
 That rewrite took the prototype suite from 1,066 tests to 1,107. Counting every
-session since, prototype tests **1,066 → 1,139**, all green — this figure is
+session since, prototype tests **1,066 → 1,145**, all green — this figure is
 checked against the live run, so it tracks forward rather than freezing at the
 session that wrote it.
 
@@ -733,8 +733,51 @@ find out which artifact is authoritative before changing anything.
 
 `effects.mg` now checks and evaluates to `24`. Sketch list: 35 → 34.
 
-Rewriting three small example files has now produced six compiler bugs. The
-rate has not dropped, and three files remain.
+### And then `analysis.mg`: four more, one of them a wrong answer
+
+104 lines, the broadest of the set. Four bugs, in ascending order of how badly
+they fail.
+
+**Default arguments were parsed and discarded.** `Param::default` has always
+been in the AST, with a parser test asserting it was *stored* — and read by
+nothing. `f g(a: i32, b: i32 = 2)` parsed, and `g(1)` failed with `expected 2
+argument(s), found 1`: the error pointed at the call rather than at the default
+that had been ignored. Now honoured in both the checker and the evaluator. Only
+*trailing* defaults may be omitted, since a default in the middle would make a
+positional call ambiguous; the spec's `param` rule said `IDENT ':' type` and now
+says what the language does.
+
+**Generic calls do not typecheck.** `f identity[T](v: T) -> T` declares fine and
+`identity(1)` evaluates to `1`, but the checker reports `type mismatch: I32 vs
+sym1` — the type variable is never instantiated at the call site. Left as a
+declared-but-uncalled example with a comment; this is real type-system work, not
+a cleanup, and it belongs with open item 9.
+
+**`println` did not evaluate.** Registered as a builtin, typed, attributed `IO`
+by the effect system — and the evaluator had no arm for it, so `println("hi")`
+checked clean and died with `unknown function \`println\``. The most common
+function in the language, and the first line of anyone's first program. It
+survived because **no shipped example calls it**: `check-examples.sh` pins each
+example's *returned value*, and all twelve return theirs rather than printing. A
+pin covers only what it exercises. `print`, `eprint` and `eprintln` were the
+same.
+
+**A bare unit variant pattern bound instead of testing — and that is a wrong
+answer.** `?= s { Circle => 0, Square => 4, Triangle => 3 }` bound `s` to a
+fresh variable named `Circle` and took the first arm. Every time, for every
+input. `sides(Square)` returned `0`. It checked clean, it ran, and it was
+silently wrong — bug 5 from the example rewrite, in a different spelling, in a
+file nothing had ever executed.
+
+Fixed so that a name which *is* a zero-field variant tests rather than binds.
+Ordinary binding patterns are untouched, and a name two enums both declare still
+binds rather than being silently resolved to one of them — the same ambiguity
+rule as the bare constructor.
+
+`analysis.mg` now checks and evaluates to `102`. Sketch list: 34 → 33.
+
+Rewriting four small example files has now produced **ten** compiler bugs. The
+rate has not dropped, and two files remain.
 
 ---
 

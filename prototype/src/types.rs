@@ -304,6 +304,12 @@ pub struct TypeChecker {
     struct_defs: HashMap<String, StructDefEntry>,
     /// Function signatures: name → params, return type, declared effects.
     fn_sigs: HashMap<String, FnSigEntry>,
+    /// How many leading parameters a function *requires* — its parameter count
+    /// minus the trailing ones that declare a default.
+    ///
+    /// Kept beside `fn_sigs` rather than inside it because the signature tuple
+    /// is destructured in a dozen places and only the arity check needs this.
+    fn_required_arity: HashMap<String, usize>,
     /// Enum definitions: enum name → its variant names. Used for match
     /// exhaustiveness checking.
     enum_defs: HashMap<String, Vec<String>>,
@@ -353,6 +359,7 @@ impl TypeChecker {
             env: TypeEnv::new(),
             struct_defs: HashMap::new(),
             fn_sigs: HashMap::new(),
+            fn_required_arity: HashMap::new(),
             enum_defs: HashMap::new(),
             effect_ops: HashMap::new(),
             effect_defs: Vec::new(),
@@ -556,6 +563,17 @@ impl TypeChecker {
                     Some(t) => self.lower_type(t),
                     None => self.fresh(),
                 };
+                // Trailing parameters with a default may be omitted at the
+                // call site. Anything before the first default stays required,
+                // so `f g(a, b = 2, c)` still needs three arguments — a default
+                // in the middle grants nothing, which keeps positional calls
+                // unambiguous.
+                let required = fd
+                    .params
+                    .iter()
+                    .rposition(|p| p.default.is_none())
+                    .map_or(0, |i| i + 1);
+                self.fn_required_arity.insert(fd.name.clone(), required);
                 self.fn_sigs.insert(fd.name.clone(), (params, ret, fd.effects.clone()));
             }
             ast::ItemKind::Struct(sd) => {
@@ -1309,10 +1327,19 @@ impl TypeChecker {
                 if let ast::Expr::Ident { name } = func.as_ref()
                     && let Some((params, ret, _)) = self.fn_sigs.get(name).cloned() {
                         let arg_tys: Vec<Ty> = args.iter().map(|a| self.infer_expr(a)).collect();
-                        if params.len() != arg_tys.len() {
+                        let required = self
+                            .fn_required_arity
+                            .get(name)
+                            .copied()
+                            .unwrap_or(params.len());
+                        if arg_tys.len() < required || arg_tys.len() > params.len() {
+                            let expected = if required == params.len() {
+                                format!("{}", params.len())
+                            } else {
+                                format!("{required} to {}", params.len())
+                            };
                             self.emit_error(format!(
-                                "call `{name}`: expected {} argument(s), found {}",
-                                params.len(),
+                                "call `{name}`: expected {expected} argument(s), found {}",
                                 arg_tys.len()
                             ));
                         } else {
@@ -1936,6 +1963,53 @@ mod tests {
     fn test_simple_function_types() {
         let tc = check_source("f add(a: i32, b: i32) -> i32 { a + b }");
         assert!(tc.diagnostics.is_empty(), "errors: {:?}", tc.diagnostics);
+    }
+
+    /// A call may omit trailing parameters that declare a default.
+    ///
+    /// Only trailing ones: `f g(a, b = 2, c)` still needs three arguments,
+    /// because a default in the middle would make a positional call
+    /// ambiguous. The arity message says the range when there is one.
+    #[test]
+    fn a_call_may_omit_trailing_defaults() {
+        let errs = |src: &str| {
+            check_source(src)
+                .diagnostics
+                .iter()
+                .filter(|d| matches!(d.severity, crate::hir::Severity::Error))
+                .map(|d| d.message.clone())
+                .collect::<Vec<_>>()
+        };
+
+        assert!(errs("f g(a: i32, b: i32 = 2) -> i32 { a + b }
+f s() -> i32 { g(1) }").is_empty());
+        assert!(
+            errs("f g(a: i32, b: i32 = 2) -> i32 { a + b }
+f s() -> i32 { g(1, 5) }").is_empty()
+        );
+
+        // Too few, too many, and a middle default all still report errors.
+        let too_few = errs("f g(a: i32, b: i32 = 2) -> i32 { a + b }
+f s() -> i32 { g() }");
+        assert!(
+            too_few.iter().any(|m| m.contains("expected 1 to 2 argument")),
+            "expected a range in the message, got {too_few:?}"
+        );
+
+        let middle = errs("f g(a: i32, b: i32 = 2, c: i32) -> i32 { a }
+f s() -> i32 { g(1, 2) }");
+        assert!(
+            middle.iter().any(|m| m.contains("expected 3 argument")),
+            "a middle default grants nothing, got {middle:?}"
+        );
+
+        // A function with no defaults keeps the exact message it had.
+        let plain = errs("f g(a: i32, b: i32) -> i32 { a + b }
+f s() -> i32 { g(1) }");
+        assert!(
+            plain.iter().any(|m| m.contains("expected 2 argument(s), found 1")),
+            "unexpected: {plain:?}"
+        );
     }
 
     #[test]

@@ -48,7 +48,6 @@ SKETCHES=(
     # `U` used as a name, `fn` in expression position. Same rewrite job,
     # smaller. `hello.mg`, `structs.mg` and `effects.mg` are repaired and NOT
     # listed — rewriting them is what surfaced the `data`-sum and closure bugs.
-    "prototype/examples/analysis.mg"
     "prototype/examples/pipeline_demo.mg"
     "prototype/examples/spec_synthesis.mg"
 

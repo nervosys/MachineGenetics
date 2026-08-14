@@ -292,6 +292,27 @@ impl Interp {
         self.methods.get(&(type_name.to_string(), method.to_string()))
     }
 
+    /// Resolve a bare name to a zero-field enum variant, if exactly one
+    /// declares it.
+    ///
+    /// Exactly one: two enums sharing a unit-variant name is the same
+    /// ambiguity the bare *constructor* path guards against, and picking one
+    /// would let `Left { X }` and `Right { X }` be confused again. Here the
+    /// fallback is `Value::Func`, which fails later — a worse message than it
+    /// could be, but not a wrong answer. Qualify to disambiguate.
+    fn unit_variant(&self, name: &str) -> Option<Value> {
+        let mut matching = self
+            .enum_variants
+            .iter()
+            .filter(|((_, variant), arity)| variant == name && **arity == 0);
+        match (matching.next(), matching.next()) {
+            (Some(((enum_name, variant), _)), None) => {
+                Some(Value::Enum(enum_name.clone(), variant.clone(), Vec::new()))
+            }
+            _ => None,
+        }
+    }
+
     /// Resolve `Path.Variant` to the variant it names, if it is one.
     ///
     /// Checks the enum name too, so a field access that merely happens to share
@@ -315,7 +336,24 @@ impl Interp {
 
     fn call_user(&self, fd: &FunctionDef, args: Vec<Value>) -> R {
         let mut env = Env::new();
+        let supplied = args.len();
         for (p, v) in fd.params.iter().zip(args) {
+            env.define(p.name.clone(), v);
+        }
+        // Trailing parameters the caller omitted take their declared default.
+        //
+        // The parser has always stored these (`Param::default`), and a test
+        // asserted it stored them — but nothing downstream ever read the
+        // field, so `f g(a: i32, b: i32 = 2)` parsed and `g(1)` failed with
+        // `expected 2 argument(s), found 1`. The default was accepted and
+        // discarded, and the error pointed at the call rather than at the
+        // default that was ignored.
+        //
+        // Evaluated in the callee's own environment, left to right, so a later
+        // default can refer to an earlier parameter.
+        for p in fd.params.iter().skip(supplied) {
+            let Some(default) = &p.default else { continue };
+            let v = self.eval(default, &mut env)?;
             env.define(p.name.clone(), v);
         }
         if let Some(be) = &fd.body_expr {
@@ -421,7 +459,20 @@ impl Interp {
                 // literals are `1b`/`0b`); map the words so both forms work.
                 None if name == "true" => Ok(Value::Bool(true)),
                 None if name == "false" => Ok(Value::Bool(false)),
-                None => Ok(Value::Func(name.clone())),
+                // A bare *unit* variant: `Square`, not `Square()` and not
+                // `Shape.Square`. It has no arguments, so it arrives here as an
+                // identifier rather than a call, and fell through to
+                // `Value::Func` below — which matches no variant pattern, so
+                // `?= s { Circle => 0, Square => 4 }` silently took the first
+                // arm and returned the wrong answer. No error, just 0.
+                //
+                // That is bug 5 from the example rewrite happening again in a
+                // different spelling: a variant pattern matching nothing and a
+                // `match` quietly picking another arm.
+                None => match self.unit_variant(name) {
+                    Some(v) => Ok(v),
+                    None => Ok(Value::Func(name.clone())),
+                },
             },
             Expr::Await { expr } => {
                 // `e.await` — this evaluator is synchronous (no event loop), so
@@ -1073,6 +1124,22 @@ impl Interp {
                 // `None` written as a bare ident still matches the empty option.
                 if name == "None" {
                     matches!(val, Value::Opt(None))
+                } else if let Some(Value::Enum(_, variant, _)) = self.unit_variant(name) {
+                    // A bare *unit variant* pattern tests; it does not bind.
+                    //
+                    // `?= s { Circle => 0, Square => 4, Triangle => 3 }` used to
+                    // bind `s` to a fresh variable called `Circle` and take the
+                    // first arm — every time, for every input. It checked clean
+                    // and returned the wrong answer, which is bug 5 from the
+                    // example rewrite in a different spelling.
+                    //
+                    // Only names that *are* a zero-field variant test this way,
+                    // so an ordinary binding pattern is unaffected. A name two
+                    // enums both declare is not resolved here (see
+                    // `unit_variant`) and keeps binding, because silently
+                    // choosing one is the failure this guards against.
+                    matches!(val, Value::Enum(_, v, fields)
+                        if *v == variant && fields.is_empty())
                 } else {
                     env.define(name.clone(), val.clone());
                     true
@@ -1379,6 +1446,37 @@ impl Interp {
                     .collect();
                 Ok(Value::Str(parts.join(&as_str(&arg(1))?)))
             }
+            // Output. These were registered as builtins in `resolve`, typed,
+            // and attributed `IO` by the effect system — and the evaluator had
+            // no arm for any of them, so `println("hi")` checked clean and died
+            // with `unknown function \`println\``.
+            //
+            // This is the most common function in the language and the first
+            // line of anyone's first program. It survived because no shipped
+            // example calls it: `check-examples.sh` pins each example's
+            // *returned value*, and twelve examples return theirs rather than
+            // printing. A pin only covers what it exercises.
+            //
+            // Arguments are joined with a space, like Rust's `println!` with
+            // multiple `{}` — and unlike it, no format string is required.
+            "println" | "print" | "eprintln" | "eprint" => {
+                let rendered: Vec<String> = a.iter().map(render_for_print).collect();
+                let line = rendered.join(" ");
+                let to_stderr = name.starts_with('e');
+                let newline = name.ends_with("ln");
+                if to_stderr {
+                    if newline {
+                        eprintln!("{line}");
+                    } else {
+                        eprint!("{line}");
+                    }
+                } else if newline {
+                    println!("{line}");
+                } else {
+                    print!("{line}");
+                }
+                Ok(Value::Unit)
+            }
             "upper" => Ok(Value::Str(as_str(&arg(0))?.to_uppercase())),
             "lower" => Ok(Value::Str(as_str(&arg(0))?.to_lowercase())),
             // Option construction — pairs with the §8 totality story (first/find/
@@ -1515,6 +1613,20 @@ fn as_map(v: &Value) -> Result<Vec<(Value, Value)>, Control> {
     match v {
         Value::Map(m) => Ok(m.clone()),
         _ => err("expected a map"),
+    }
+}
+
+/// Render a value the way `println` should show it.
+///
+/// `Display for Value` quotes strings (`{s:?}`), which is right for echoing a
+/// result back — `--eval` prints `"hi"` so you can tell a string from a bare
+/// word — and wrong for output, where `println("hi")` must emit `hi`. Only the
+/// top level is unquoted: a string *inside* a list still shows its quotes, so
+/// `[a, b]` and `["a", "b"]` stay distinguishable.
+fn render_for_print(v: &Value) -> String {
+    match v {
+        Value::Str(s) => s.clone(),
+        other => other.to_string(),
     }
 }
 
@@ -1884,6 +1996,98 @@ f s() { Rect(3.0) }", "s", &[])
     fn an_unknown_function_is_still_unknown() {
         let err = run_source("f s() { nope(1) }", "s", &[]).expect_err("must fail");
         assert!(err.contains("unknown function `nope`"), "unexpected: {err}");
+    }
+
+    /// A bare unit variant is a *test* in a pattern, not a binding.
+    ///
+    /// `?= s { Circle => 0, Square => 4, Triangle => 3 }` bound `s` to a fresh
+    /// variable named `Circle` and took the first arm — every time, for every
+    /// input. It checked clean and returned the wrong answer, which is bug 5
+    /// from the example rewrite in a different spelling: a variant pattern
+    /// matching nothing while the `match` quietly picks another arm.
+    #[test]
+    fn a_bare_unit_variant_pattern_tests_rather_than_binds() {
+        for decl in ["data Shape = Circle | Square | Triangle", "E Shape { Circle, Square, Triangle }"] {
+            let src = format!(
+                "{decl}
+                 f sides(s: Shape) -> i32 {{ ?= s {{ Circle => 0, Square => 4, Triangle => 3 }} }}
+                 f s() {{ sides(Square) }}"
+            );
+            assert_eq!(run(&src, "s", &[]), Value::Int(4), "for `{decl}`");
+
+            let src = format!(
+                "{decl}
+                 f sides(s: Shape) -> i32 {{ ?= s {{ Circle => 0, Square => 4, Triangle => 3 }} }}
+                 f s() {{ sides(Triangle) }}"
+            );
+            assert_eq!(run(&src, "s", &[]), Value::Int(3), "for `{decl}`");
+        }
+    }
+
+    /// An ordinary binding pattern still binds. Only names that *are* a
+    /// zero-field variant test, so the fix must not turn every lowercase
+    /// pattern into a comparison.
+    #[test]
+    fn an_ordinary_binding_pattern_still_binds() {
+        assert_eq!(run("f s() { ?= 7 { n => n } }", "s", &[]), Value::Int(7));
+        assert_eq!(
+            run("f s() { ?= Some(5) { Some(x) => x, None => 0 } }", "s", &[]),
+            Value::Int(5)
+        );
+        assert_eq!(
+            run("f s() { ?= None { None => 7, Some(_) => 0 } }", "s", &[]),
+            Value::Int(7)
+        );
+    }
+
+    /// `println` and friends evaluate.
+    ///
+    /// They were registered as builtins, typed, and attributed `IO` — and the
+    /// evaluator had no arm for any of them, so `println("hi")` checked clean
+    /// and died with `unknown function`. It survived because no shipped
+    /// example calls it: the example pin records each example's *returned
+    /// value*, and all twelve return theirs rather than printing. A pin covers
+    /// only what it exercises.
+    #[test]
+    fn output_builtins_evaluate() {
+        for name in ["println", "print", "eprintln", "eprint"] {
+            let src = format!("f s() {{ {name}(\"hi\"); 0 }}");
+            assert_eq!(run(&src, "s", &[]), Value::Int(0), "`{name}` should evaluate");
+        }
+        // Multiple arguments are joined, and a string prints unquoted.
+        assert_eq!(run("f s() { println(\"a\", 1); 0 }", "s", &[]), Value::Int(0));
+    }
+
+    /// A trailing parameter's default is used when the caller omits it.
+    ///
+    /// `Param::default` was parsed and stored — with a parser test asserting it
+    /// was stored — and read by nothing. `f g(a: i32, b: i32 = 2)` parsed, and
+    /// `g(1)` failed with `expected 2 argument(s), found 1`: the default was
+    /// accepted, discarded, and the error pointed at the call rather than at
+    /// the default that had been ignored.
+    #[test]
+    fn a_trailing_default_is_used_when_omitted() {
+        let src = "f g(a: i32, b: i32 = 2) -> i32 { a + b }
+f s() { g(1) }";
+        assert_eq!(run(src, "s", &[]), Value::Int(3));
+
+        let src = "f g(a: i32, b: i32 = 2) -> i32 { a + b }
+f s() { g(1, 10) }";
+        assert_eq!(run(src, "s", &[]), Value::Int(11));
+
+        let src = "f g(a: i32, b: i32 = 2, c: i32 = 3) -> i32 { a + b + c }
+f s() { g(1) }";
+        assert_eq!(run(src, "s", &[]), Value::Int(6));
+    }
+
+    /// Defaults evaluate in the callee's environment, left to right, so a
+    /// later one may refer to an earlier parameter. This is the example the
+    /// spec gives.
+    #[test]
+    fn a_default_may_refer_to_an_earlier_parameter() {
+        let src = "f scaled(a: i32, b: i32 = a * 2) -> i32 { a + b }
+f s() { scaled(5) }";
+        assert_eq!(run(src, "s", &[]), Value::Int(15));
     }
 
     #[test]
