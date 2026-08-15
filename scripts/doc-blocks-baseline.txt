@@ -9,7 +9,6 @@ agent-guide/migration.md 7
 agent-guide/patterns.md 10
 agent-guide/rap-agentic.md 2
 agent-guide/syntax-quick-ref.md 4
-agent-guide/system-prompt.md 3
 cookbook/agents.md 7
 cookbook/cli.md 3
 cookbook/concurrency.md 6

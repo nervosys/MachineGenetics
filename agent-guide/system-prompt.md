@@ -100,72 +100,85 @@ Functions declare their side effects after parameters:
 
 ```MAGE
 // Pure — no annotation
-fn add(a: i32, b: i32) -> i32 {
++f add(a: i32, b: i32) -> i32 {
     a + b
 }
 
-// Single effect
-fn read_file(path: &str) -> Result<String, io::Error> / io {
-    // ...
+// A single effect
++f show(path: str) -> i32 / io {
+    println(path)
+    0
 }
 
-// Multiple effects
-pub async fn fetch(url: &str) -> Result<String, Error> / io, net {
-    // ...
+// Several effects, comma-separated
++f fetch(url: str) -> str / io, net {
+    net.connect(url)
+    url
 }
 ```
 
 **Rules:**
 1. Pure functions have **no** effect annotation
 2. Effects propagate: if you call `/ io`, you must declare `/ io`
-3. Built-in effects: `io`, `net`, `rng`, `async`, `agent`, `time`, `env`, `process`
-4. Effect hierarchy: `net` implies `io`
+3. Built-in effects (17): `io` `net` `fs` `async` `alloc` `panic` `ffi` `env`
+   `time` `gpu` `npu` `llm` `evolve` `learn` `rng` `agent` `proc`. Note
+   `proc`, not `process` — `process` is a capability namespace, and
+   `/ process` is an unknown-effect error.
+4. **There is no effect hierarchy.** `/ net` does not imply `/ io`; a
+   function performing both declares both. `/ io` grants nothing else.
 5. Use `handle` blocks to intercept effects for testing/mocking
 
 ### Contract Annotations
 
 ```MAGE
-@req items.len() > 0
-@ens result >= 0
-pub fn sum(items: &Vec<i32>) -> i32 / pure {
-    items.iter().sum()
+// Contracts live in a `sp` block that shares the function's name.
+sp sum_items {
+    @req(1b)
+    @ens(1b)
+    @fx()
+}
+
++f sum_items(items: [i32]~) -> i32 {
+    fold(items, 0, |acc, x| acc + x)
 }
 ```
 
 ### Agent Primitives
 
 ```MAGE
-use std::agent::{Agent, Capability, Swarm};
-
-pub struct WebScraper {
-    url: String,
+// An `agent` block declares a role and the capabilities it may use.
+agent Scraper {
+    capabilities: [net, io]
+    requires_approval: [publish]
 }
 
-impl Agent for WebScraper {
-    pub async fn execute(&mut self) -> Result<String, Error> / io, net, agent {
-        let response = http::get(&self.url).await?;
-        return response.text().await;
-    }
+// A `swarm` groups agents of one type.
+swarm Fleet {
+    agent: Scraper
 }
 
-// Swarm: parallel agent orchestration
-pub async fn scrape_all(urls: Vec<String>) -> Result<Vec<String>, Error> / io, net, agent {
-    let swarm = Swarm::new();
-    for url in urls {
-        swarm.spawn(WebScraper { url });
-    }
-    swarm.join_all().await
+// The work itself is an ordinary function, and declares what it performs.
++f scrape(url: str) -> str / net, agent {
+    agent.spawn(url)
+    net.connect(url)
+    url
 }
 ```
 
 ### Capability System (replaces unsafe)
 
 ```MAGE
-use std::agent::Capability;
+// A capability handle performs its effect just by being called, so the
+// function must declare it. `fs.open(…)` is what puts `fs` in the set.
++f read_secret(path: str) -> str / fs {
+    fs.open(path)
+    path
+}
 
-pub async fn read_secret(cap: &Capability) -> Result<String, Error> / io, agent {
-    cap.request("fs.read", "/etc/secret")?;
-    // Capability must be granted at runtime
+// An agent block bounds what a role may reach.
+agent SecretReader {
+    capabilities: [fs]
+    requires_approval: [publish]
 }
 ```
 

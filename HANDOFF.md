@@ -121,14 +121,22 @@ different things.
 
 ### Real work, unstarted
 
-**145 of 258 MAGE code blocks in the documentation do not parse.** Nine more
+**142 of 258 MAGE code blocks in the documentation do not parse.** Nine more
 are deliberate fragments, and the deliberately-broken inputs in
 `few-shot-repair.md` are excluded — a repair example is *supposed* to show
 invalid code. The rest are Rust wearing a MAGE fence — `use
 std::llm::{…}` (41 blocks), Rust signatures (10), brace imports (18) — and they
 are in the documents an agent reads to *learn the language*:
 `agent-guide/` (86 blocks), `cookbook/` (61), `quick-start/` (19), and
-`MAGE_SPEC.md` itself (24 failing). The worst was `training/prompts/`, now fixed: its system prompt taught
+`MAGE_SPEC.md` itself (24 failing). Both system prompts — `training/prompts/system-prompt.md` and
+`agent-guide/system-prompt.md` — also stated rules that are false. The
+agent-guide one claimed an **effect hierarchy** (`net` implies `io`; it does
+not — a function performing both declares both) and listed `process` as a
+built-in effect (the kind is `proc`; `/ process` is an unknown-effect error).
+Prose in a system prompt is as load-bearing as the code blocks beside it, and
+nothing checks prose.
+
+The worst was `training/prompts/`, now fixed: its system prompt taught
 `handle Db { f query(…) }` (the real form is `handle … with Db { query(…) => … }`),
 `Point @{ x: 10 }` (it is `@Point { x: 10 }`), and a `for`-loop separator that
 does not parse. Two of its *repair* examples showed fixes that were themselves
