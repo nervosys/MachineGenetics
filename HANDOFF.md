@@ -121,32 +121,41 @@ different things.
 
 ### Real work, unstarted
 
-**128 of 258 MAGE code blocks in the documentation do not parse.** Nine more
-are deliberate fragments, and the deliberately-broken inputs in
-`few-shot-repair.md` are excluded — a repair example is *supposed* to show
-invalid code. The rest are Rust wearing a MAGE fence — `use
-std::llm::{…}` (41 blocks), Rust signatures (10), brace imports (18) — and they
-are in the documents an agent reads to *learn the language*:
-`agent-guide/` (86 blocks), `cookbook/` (61), `quick-start/` (19), and
-`MAGE_SPEC.md` itself (24 failing). Both system prompts — `training/prompts/system-prompt.md` and
-`agent-guide/system-prompt.md` — also stated rules that are false. The
-agent-guide one claimed an **effect hierarchy** (`net` implies `io`; it does
-not — a function performing both declares both) and listed `process` as a
-built-in effect (the kind is `proc`; `/ process` is an unknown-effect error).
-Prose in a system prompt is as load-bearing as the code blocks beside it, and
-nothing checks prose.
+**120 of 258 MAGE code blocks in the documentation do not parse.** Nine more
+are deliberate fragments, and `few-shot-repair.md`'s broken inputs are excluded
+— a repair example is *supposed* to show invalid code. The rest are Rust
+wearing a MAGE fence: `use std::llm::{…}` paths, Rust signatures, brace
+imports. They sit in the documents an agent reads to *learn the language* —
+`agent-guide/`, `cookbook/`, `quick-start/`, and `MAGE_SPEC.md` itself.
 
-The worst was `training/prompts/`, now fixed: its system prompt taught
-`handle Db { f query(…) }` (the real form is `handle … with Db { query(…) => … }`),
-`Point @{ x: 10 }` (it is `@Point { x: 10 }`), and a `for`-loop separator that
-does not parse. Two of its *repair* examples showed fixes that were themselves
-broken.
+**Done so far, 168 → 120:** all of `training/prompts/`, and `agent-guide/`'s
+`system-prompt.md`, `syntax-quick-ref.md`, `anti-patterns.md` and `effects.md`.
 
-This is the shipped examples' story a third time — after `examples/`, after
-`prototype/examples/` — and by volume it is the largest instance. Every one of
-those two rewrites produced compiler bugs at a steady rate, so the expected
-yield here is high. `scripts/check-doc-blocks.sh` ratchets the count in the
-meantime.
+Three of those are worth knowing about, because the defect was not just syntax:
+
+- **`effects.md` taught agents to under-declare.** Four places asserted an
+  effect hierarchy — "CORRECT — net implies io", "CORRECT — agent implies
+  async", "apply the hierarchy rule — don't list implied effects" — and marked
+  the *under-declared* version correct. There is no hierarchy: `/ net` does not
+  cover an inferred `io`, verified by making one function call another and
+  watching the checker object. For a capability system, advice to omit an
+  annotation is the worst direction to be wrong in.
+- **Every "CORRECT:" block in `anti-patterns.md` was also wrong.** The file
+  pairs a WRONG block with a CORRECT one, ten times; the WRONG halves are
+  supposed to fail, and all ten corrections failed too. Its Anti-Pattern 10,
+  "Mixing Rust Crate Paths with MAGE Stdlib", offered `use std::fs;` as the fix
+  for `use tokio::fs;` — both Rust, and moot besides, since `use` brings
+  nothing into scope.
+- **Both system prompts stated false rules in prose.** The agent-guide one
+  claimed the same effect hierarchy and listed `process` as a built-in effect
+  (the kind is `proc`). **Nothing checks prose**, and in a system prompt a
+  false rule outranks a broken example — a model follows the rule when
+  generating code the examples do not cover.
+
+This is the shipped examples' story a third time, after `examples/` and
+`prototype/examples/`, and by volume the largest instance. Both of those
+rewrites produced compiler bugs at a steady rate.
+`scripts/check-doc-blocks.sh` ratchets the remainder.
 
 
 | # | Item | Size |
