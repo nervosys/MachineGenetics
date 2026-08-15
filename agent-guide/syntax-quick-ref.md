@@ -152,58 +152,45 @@ fn fib(n: u64) -> u64 {
 
 ### Read File
 ```MAGE
-use std::fs;
-
-fn read_config(path: &str) -> Result<String, io::Error> / io {
-    fs::read_to_string(path)
++f read_config(path: str) -> R[str, str] / fs {
+    guard len(path) > 0 else { ret Err("empty path") }
+    Ok(fs.read_to_string(path))
 }
 ```
 
 ### Struct with Methods
 ```MAGE
-#[derive(Debug, Clone)]
-pub struct Point {
-    x: f64,
-    y: f64,
-}
++S Point { x: f64, y: f64 }
 
-impl Point {
-    pub fn new(x: f64, y: f64) -> Self {
-        Self { x, y }
-    }
+I Point {
+    +f new(x: f64, y: f64) -> Point { @Point { x: x, y: y } }
 
-    pub fn distance(&self, other: &Point) -> f64 {
-        let dx = self.x - other.x;
-        let dy = self.y - other.y;
-        (dx * dx + dy * dy).sqrt()
+    +f dist_sq(self, other: Point) -> f64 {
+        v dx = self.x - other.x
+        v dy = self.y - other.y
+        dx * dx + dy * dy
     }
 }
 ```
 
 ### Error Handling
 ```MAGE
-use std::io;
-use std::json;
++S Config { port: i32 }
 
-pub fn load_config(path: &str) -> Result<Config, Error> / io {
-    let text = fs::read_to_string(path)?;
-    let config = json::parse::<Config>(&text)?;
-    return config;
++f load_config(raw: i32) -> R[Config, str] / fs {
+    guard raw > 0 else { ret Err("port must be positive") }
+    Ok(@Config { port: raw })
 }
 ```
 
 ### Agent
 ```MAGE
-use std::agent::{Agent, Swarm};
-
-pub struct Analyzer {
-    data: Vec<f64>,
+agent Analyzer {
+    capabilities: [agent]
 }
 
-impl Agent for Analyzer {
-    pub async fn execute(&mut self) -> Result<f64, Error> / agent {
-        let sum: f64 = self.data.iter().sum();
-        return sum / self.data.len() as f64;
-    }
++f analyze(data: [f64]~) -> f64 / agent {
+    agent.spawn("analyze")
+    fold(data, 0.0, |acc, x| acc + x)
 }
 ```

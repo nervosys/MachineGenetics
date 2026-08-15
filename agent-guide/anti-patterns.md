@@ -15,7 +15,9 @@ fn longest<'a>(a: &'a str, b: &'a str) -> &'a str {
 
 **CORRECT:**
 ```MAGE
-fn longest(a: &str, b: &str) -> &str {
++f longest(a: str, b: str) -> str {
+    ? len(a) > len(b) { a } : { b }
+}
 ```
 
 **Rule:** The SKB infers and proves lifetimes. Never write lifetime parameters.
@@ -33,8 +35,9 @@ pub fn save(data: &str) -> Result<(), Error> {
 
 **CORRECT:**
 ```MAGE
-pub fn save(data: &str) -> Result<(), Error> / io {
-    fs::write("out.txt", data)?
++f save(data: str) -> R[i32, str] / fs {
+    fs.write("out.txt", data)
+    Ok(1)
 }
 ```
 
@@ -54,8 +57,12 @@ unsafe {
 
 **CORRECT:**
 ```MAGE
-let cap = Capability::request("mem.alloc", layout)?;
-// Use capability-gated safe abstractions
+// No `unsafe`. Reach the resource through its capability handle, and
+// declare the effect that handle performs.
++f alloc_buffer(n: i32) -> i32 / alloc {
+    mem.alloc(n)
+    n
+}
 ```
 
 **Rule:** MAGE has no `unsafe`. Use the `Capability` system for privileged operations.
@@ -77,19 +84,13 @@ let result = handle.join()?;
 
 **CORRECT:**
 ```MAGE
-use std::agent::{Agent, Swarm};
+agent Worker { capabilities: [agent] }
+swarm Pool { agent: Worker }
 
-pub struct Worker { input: String }
-
-impl Agent for Worker {
-    pub async fn execute(&mut self) -> Result<String, Error> / agent {
-        expensive_work(&self.input)
-    }
++f run_all(inputs: [str]~) -> i32 / agent {
+    agent.spawn("pool")
+    len(inputs) as i32
 }
-
-let swarm = Swarm::new();
-swarm.spawn(Worker { input: String::from("data") });
-let results = swarm.join_all().await?;
 ```
 
 **Rule:** Prefer `Swarm` for parallel work. It provides structured concurrency with capability checks.
@@ -112,13 +113,10 @@ fn new_config() -> Config {
 
 **CORRECT:**
 ```MAGE
-pub struct Config {
-    pub host: String,
-    pub port: u16,
-}
++S Config { host: str, port: i32 }
 
-pub fn new_config() -> Config {
-    Config { host: String::from("localhost"), port: 8080 }
++f new_config() -> Config {
+    @Config { host: "localhost", port: 8080 }
 }
 ```
 
@@ -139,10 +137,14 @@ fn process(url: &str) -> Result<String, Error> / net {
 
 **CORRECT:**
 ```MAGE
-fn process(url: &str) -> Result<String, Error> / io, net {
-    let data = fetch(url)?;        // fetch is / net
-    let parsed = parse(&data);     // parse is pure — OK
-    save_to_disk(&parsed)?         // save_to_disk is / io
+f inner(path: str) -> i32 / fs {
+    fs.open(path)
+    0
+}
+
+// The caller inherits what it reaches, and must say so.
++f outer(path: str) -> i32 / fs {
+    inner(path)
 }
 ```
 
@@ -161,14 +163,11 @@ pub async fn do_work(input: String) -> Result<String, Error> / agent {
 
 **CORRECT** — structured agent:
 ```MAGE
-pub struct Worker {
-    input: String,
-}
+agent Worker { capabilities: [agent] }
 
-impl Agent for Worker {
-    pub async fn execute(&mut self) -> Result<String, Error> / agent {
-        // logic here
-    }
++f run(input: str) -> str / agent {
+    agent.spawn(input)
+    input
 }
 ```
 
@@ -187,10 +186,15 @@ pub fn divide(a: f64, b: f64) -> f64 {
 
 **CORRECT:**
 ```MAGE
-@req b != 0.0
-@ens result == a / b
-pub fn divide(a: f64, b: f64) -> f64 {
-    a / b
+sp transfer {
+    @req(1b)
+    @ens(1b)
+    @fx()
+}
+
++f transfer(amount: i32) -> R[i32, str] {
+    guard amount > 0 else { ret Err("amount must be positive") }
+    Ok(amount)
 }
 ```
 
@@ -209,9 +213,9 @@ pub fn read_secret(path: &str) -> Result<String, Error> / io {
 
 **CORRECT:**
 ```MAGE
-pub fn read_secret(path: &str, cap: &Capability) -> Result<String, Error> / io {
-    cap.check("fs.read", path)?;
-    fs::read_to_string(path)
++f read_secret(path: str) -> R[str, str] / fs {
+    guard len(path) > 0 else { ret Err("no path") }
+    Ok(fs.read_to_string(path))
 }
 ```
 
@@ -229,8 +233,13 @@ use serde_json::Value;
 
 **CORRECT:**
 ```MAGE
-use std::fs;
-use std::json::Value;
+// There is nothing to import. The standard vocabulary (`join`, `split`,
+// `len`, …) and the capability namespaces (`io`, `fs`, `net`, …) are in
+// scope everywhere — `use` parses but brings nothing in.
++f main() -> i32 / io {
+    println(join(["a", "b"], ","))
+    0
+}
 ```
 
 **Rule:** Use MAGE's `std::` modules. External Rust crates may not be compatible with the effect system.

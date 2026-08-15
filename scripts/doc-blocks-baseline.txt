@@ -1,6 +1,5 @@
 DIRECT_CODEGEN_STRATEGY.md 3
 MAGE_SPEC.md 24
-agent-guide/anti-patterns.md 10
 agent-guide/effects.md 8
 agent-guide/examples/advanced.md 7
 agent-guide/examples/basic.md 4
@@ -8,7 +7,6 @@ agent-guide/examples/intermediate.md 8
 agent-guide/migration.md 7
 agent-guide/patterns.md 10
 agent-guide/rap-agentic.md 2
-agent-guide/syntax-quick-ref.md 4
 cookbook/agents.md 7
 cookbook/cli.md 3
 cookbook/concurrency.md 6

@@ -121,7 +121,7 @@ different things.
 
 ### Real work, unstarted
 
-**142 of 258 MAGE code blocks in the documentation do not parse.** Nine more
+**128 of 258 MAGE code blocks in the documentation do not parse.** Nine more
 are deliberate fragments, and the deliberately-broken inputs in
 `few-shot-repair.md` are excluded — a repair example is *supposed* to show
 invalid code. The rest are Rust wearing a MAGE fence — `use
