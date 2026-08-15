@@ -1,6 +1,5 @@
 DIRECT_CODEGEN_STRATEGY.md 3
 MAGE_SPEC.md 24
-agent-guide/effects.md 8
 agent-guide/examples/advanced.md 7
 agent-guide/examples/basic.md 4
 agent-guide/examples/intermediate.md 8
