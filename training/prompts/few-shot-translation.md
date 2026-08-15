@@ -50,18 +50,11 @@ impl Config {
 
 **MAGE:**
 ```MAGE
-u serde.{Serialize, Deserialize}
++S Config { host: str, port: i32, workers: i32 }
 
-@d(Debug, Clone, Serialize, Deserialize)
-+S Config {
-    +host: s,
-    +port: u16,
-    +workers: usize,
-}
-
-I ~ Config {
-    +f default_config() -> Self {
-        Config @{ host: "localhost".to_string(), port: 8080, workers: 4 }
+I Config {
+    +f default_config() -> Config {
+        @Config { host: "localhost", port: 8080, workers: 4 }
     }
 }
 ```
@@ -102,11 +95,9 @@ u std.io
 
 **MAGE:**
 ```MAGE
-+f serialize_all[T](items: &[[T]~]) -> R[s, serde_json.Error]
-    ~> T: serde.Serialize
-{
-    v json = serde_json.to_string(items)?;
-    R.Ok(json)
++f join_all(items: [str]~) -> R[str, str] {
+    guard len(items) > 0 else { ret Err("nothing to join") }
+    Ok(join(items, ","))
 }
 ```
 
@@ -142,11 +133,11 @@ pub trait Summary {
 **MAGE:**
 ```MAGE
 +T Summary {
-    f title(&self) -> &s;
-    f author(&self) -> &s;
+    f title(self) -> str;
+    f author(self) -> str;
 
-    f summarize(&self) -> s {
-        f"{} by {}", self.title(), self.author()
+    f summarize(self) -> str {
+        join([self.title(), self.author()], " by ")
     }
 }
 ```

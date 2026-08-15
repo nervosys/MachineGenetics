@@ -121,15 +121,18 @@ different things.
 
 ### Real work, unstarted
 
-**168 of 258 MAGE code blocks in the documentation do not parse.** Nine more are
-deliberate fragments. The rest are Rust wearing a MAGE fence — `use
+**145 of 258 MAGE code blocks in the documentation do not parse.** Nine more
+are deliberate fragments, and the deliberately-broken inputs in
+`few-shot-repair.md` are excluded — a repair example is *supposed* to show
+invalid code. The rest are Rust wearing a MAGE fence — `use
 std::llm::{…}` (41 blocks), Rust signatures (10), brace imports (18) — and they
 are in the documents an agent reads to *learn the language*:
 `agent-guide/` (86 blocks), `cookbook/` (61), `quick-start/` (19), and
-`MAGE_SPEC.md` itself (24 failing). Worst is `training/prompts/`, whose
-few-shot blocks teach a model what MAGE looks like: a model shown
-`I ~ Counter { … }` and `Counter @{ count: 0 }` learns two constructs that do
-not parse.
+`MAGE_SPEC.md` itself (24 failing). The worst was `training/prompts/`, now fixed: its system prompt taught
+`handle Db { f query(…) }` (the real form is `handle … with Db { query(…) => … }`),
+`Point @{ x: 10 }` (it is `@Point { x: 10 }`), and a `for`-loop separator that
+does not parse. Two of its *repair* examples showed fixes that were themselves
+broken.
 
 This is the shipped examples' story a third time — after `examples/`, after
 `prototype/examples/` — and by volume it is the largest instance. Every one of

@@ -42,6 +42,10 @@ import io, os, subprocess, collections
 BIN = os.path.join('prototype', 'target', 'release', 'mage-parse')
 TAGS = ('mg', 'mage')
 ELLIPSIS = ('...', '…')
+# A block introduced as broken is *supposed* not to parse — `few-shot-repair.md`
+# pairs a broken input with its fix, and counting the input as a failure would
+# put intentional errors in the baseline and muddy the ratchet.
+BROKEN_MARKERS = ('broken', 'invalid', 'wrong', 'incorrect', 'do not', 'bad ')
 probe = os.path.join('prototype', 'target', '.docblock.mg')
 
 counts = collections.Counter()
@@ -62,7 +66,16 @@ for dirpath, dirnames, filenames in os.walk('.'):
                     j += 1
                 body = '\n'.join(lines[start:j])
                 i = j + 1
+                # The nearest non-blank line above the fence labels the block.
+                label = ''
+                k = start - 2
+                while k >= 0 and not lines[k].strip():
+                    k -= 1
+                if k >= 0:
+                    label = lines[k].strip().lower()
                 if not body.strip() or any(e in body for e in ELLIPSIS):
+                    continue
+                if any(m in label for m in BROKEN_MARKERS):
                     continue
                 io.open(probe, 'w', encoding='utf-8').write(body + '\n')
                 r = subprocess.run([BIN, '--check', probe], capture_output=True, text=True)

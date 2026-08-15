@@ -1,6 +1,6 @@
 DIRECT_CODEGEN_STRATEGY.md 3
 MAGE_SPEC.md 24
-agent-guide/anti-patterns.md 17
+agent-guide/anti-patterns.md 10
 agent-guide/effects.md 8
 agent-guide/examples/advanced.md 7
 agent-guide/examples/basic.md 4
@@ -23,7 +23,3 @@ internals/06-mlir-pipeline.md 1
 migration-guide/05-effects.md 1
 migration-guide/08-case-studies.md 6
 quick-start/03-syntax-tour.md 6
-training/prompts/few-shot-generation.md 5
-training/prompts/few-shot-repair.md 6
-training/prompts/few-shot-translation.md 3
-training/prompts/system-prompt.md 2
