@@ -655,6 +655,10 @@ Only `stdlib/` and four `framewerx` files remain.
 
 ## Traps, so you do not repeat them
 
+- **`grep -c` exits 1 when the count is zero.** `cargo clippy … | grep -c
+  '^warning' && git commit …` printed `0` and then did not commit: a clean
+  result is a *failure* exit for `grep`, so the `&&` chain stopped. Same
+  family as the `grep -q` pipefail trap below, opposite direction.
 - **Editing a shell script while it runs.** `bash` reads a script
   incrementally, so an edit that changes byte offsets can make the running
   copy execute a *fragment* of a line. The symptom is a nonsense error naming
