@@ -246,11 +246,14 @@ Seven of those are worth knowing about, because the defect was not just syntax:
   arity check, `len` committing an open type, and the method effect hole — all
   four by running the examples and checking the answers.
 
-This is the shipped examples' story a third time, after `examples/` and
-`prototype/examples/`, and by volume the largest instance. Both of those
-rewrites produced compiler bugs at a steady rate.
-`scripts/check-doc-blocks.sh` ratchets the remainder.
+This was the shipped examples' story a third time, after `examples/` and
+`prototype/examples/`, and by volume the largest instance — and the rate of
+compiler bugs per document never dropped, across all three.
+`scripts/check-doc-blocks.sh` and `check-doc-evals.sh` now hold the result.
 
+### Real work, unstarted
+
+Two items, and both are large.
 
 | # | Item | Size |
 |---|---|---|
