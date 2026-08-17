@@ -51,7 +51,7 @@ BASELINE=scripts/doc-blocks-baseline.txt
 # when grep exits early and the writer takes SIGPIPE, so every match reads as
 # no-match. This has cost two bugs in this repo already.
 measured="$(python - <<'PY'
-import io, os, subprocess, collections
+import io, os, subprocess, collections, sys
 
 BIN = os.path.join('prototype', 'target', 'release', 'mage-parse')
 TAGS = ('mg', 'mage')
@@ -63,6 +63,7 @@ BROKEN_MARKERS = ('broken', 'invalid', 'wrong', 'incorrect', 'do not', 'bad ')
 probe = os.path.join('prototype', 'target', '.docblock.mg')
 
 counts = collections.Counter()
+considered = 0
 for dirpath, dirnames, filenames in os.walk('.'):
     dirnames[:] = [d for d in dirnames if d not in ('.git', 'target', 'node_modules')]
     for fn in sorted(filenames):
@@ -91,6 +92,7 @@ for dirpath, dirnames, filenames in os.walk('.'):
                     continue
                 if any(m in label for m in BROKEN_MARKERS):
                     continue
+                considered += 1
                 io.open(probe, 'w', encoding='utf-8').write(body + '\n')
                 r = subprocess.run([BIN, '--check', probe], capture_output=True, text=True)
                 out = (r.stdout or '') + (r.stderr or '')
@@ -106,6 +108,9 @@ for dirpath, dirnames, filenames in os.walk('.'):
                 i += 1
 for rel in sorted(counts):
     print('%s %d' % (rel, counts[rel]))
+# On stderr, so it does not join the per-file baseline on stdout. The total is
+# a claim in HANDOFF.md, so it is measured here rather than counted by hand.
+print('doc_blocks=%d' % considered, file=sys.stderr)
 PY
 )"
 

@@ -107,13 +107,19 @@ jobs:
       # message; this is the consumer. The sketch list can only shrink.
       - name: Every .mg source typechecks or is a listed sketch
         run: bash scripts/check-mg-sources.sh
-      # 258 MAGE-tagged code blocks live in the markdown and 168 do not parse —
-      # Rust `::` paths, Rust signatures, brace imports — in the guides an agent
-      # reads to learn the language, and in `training/prompts/`, whose few-shot
-      # blocks teach a model what MAGE looks like. Fixing them is its own job;
-      # this makes the count a ratchet so it can only go down.
-      - name: No new unparseable documentation blocks
+      # 258 MAGE-tagged code blocks live in the markdown, and 177 of them did
+      # not parse when anyone first checked — Rust `::` paths, Rust signatures,
+      # brace imports — in the guides an agent reads to learn the language, and
+      # in `training/prompts/`, whose few-shot blocks teach a model what MAGE
+      # looks like. They are all fixed; the baseline is empty, so this now
+      # fails on any new one.
+      - name: Every documentation block typechecks
         run: bash scripts/check-doc-blocks.sh
+      # And `--check` is only one of the two oracles. Running the blocks that
+      # define an entry point found that thirteen of the seventeen registered
+      # builtins — `assert` among them — had no arm in the evaluator at all.
+      - name: Every documentation entry point runs
+        run: bash scripts/check-doc-evals.sh
       - name: Compiler version matches Ribosome's registry entry
         run: |
           binv=$(cargo run --quiet --release --manifest-path prototype/Cargo.toml \

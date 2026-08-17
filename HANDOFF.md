@@ -12,13 +12,14 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **2,879** — rmi 1,380 · prototype 1,171 · ribosome 164 · germline 112 · forge 52 |
+| Tests | **2,880** — rmi 1,380 · prototype 1,172 · ribosome 164 · germline 112 · forge 52 |
 | CUDA | **1,071 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm |
 | CI | 10 jobs, green on `master` |
 | Examples | 12 of 12 typecheck, run, and print their recorded answer |
 | `.mg` sources | 101 checked, 25 listed sketches (all of them `stdlib/`) |
+| Documentation | 206 MAGE blocks typecheck; 57 documentation entry points run |
 | Release | `v0.3.0`, with the promo video attached as a release asset |
 
 Reproduce all of it:
@@ -30,7 +31,7 @@ scripts/check-mg-sources.sh               # every .mg file in the repo
 scripts/test-all.sh --cuda --bench --check-docs   # + GPU and the benchmark harnesses
 ```
 
-**There are 27 unpushed commits on `handoff`.** Nothing is pushed and no PR is
+**There are 31 unpushed commits on `handoff`.** Nothing is pushed and no PR is
 open. That is a decision waiting, not an oversight — open item 0.
 
 ---
@@ -64,6 +65,7 @@ breaks, *and* a recorded state that silently starts passing.
 | `scripts/check-examples.sh` | that all 12 examples typecheck, evaluate, **and print the recorded answer** |
 | `scripts/check-mg-sources.sh` | every `.mg` file in the repo typechecks, or is a listed sketch with a stated reason |
 | `scripts/check-doc-blocks.sh` | that **every** MAGE block in every markdown file passes `--check` — the baseline is empty, so any new failing block fails the check |
+| `scripts/check-doc-evals.sh` | that every documentation block defining `main` or a `@test` **runs** — 57 entry points, the second oracle |
 | CI `audit` job | `cargo audit` over all five lockfiles separately |
 | CI ontology step | `MAGE_ONTOLOGY.json` matches a fresh `--emit-ontology` |
 | CI version step | `mage-parse --version` matches the tool id Ribosome keys on |
@@ -112,7 +114,7 @@ different things.
 
 | # | Item | The decision |
 |---|---|---|
-| 0 | **27 unpushed commits on `handoff`** | Push the branch, or open a PR against `master`. Note `gh pr merge --auto` merges *immediately* here — the repo has no required status checks — which is how PR #4 landed with CI still pending. |
+| 0 | **31 unpushed commits on `handoff`** | Push the branch, or open a PR against `master`. Note `gh pr merge --auto` merges *immediately* here — the repo has no required status checks — which is how PR #4 landed with CI still pending. |
 | 1 | **Module system, or a decision that there is none** | The blocker under `stdlib/`. `resolve_use` parses a path and discards it, so nothing can be imported; the library surface is global instead. That may well be *right* for a token-efficient agentic language — an import costs tokens and buys nothing when the library is small and fixed — in which case say so in the spec and delete `stdlib/`. Everything about a standard library is downstream of this. See `stdlib/README.md`. |
 | 2 | GPU CI runner | Correctness **is** verified on the hardware here and recorded. What is missing is a self-hosted runner so `cuda-gpu` runs unattended — an account action, declined once already. |
 | 3 | TLS trust posture | The transport seam and a `rustls` implementation exist behind `--features tls`. Pinned self-signed / mutual TLS / public PKI is deliberately the operator's; `acceptor`/`connector` take your config. |
@@ -463,6 +465,14 @@ elsewhere, pointing at the wrong line.
   reservation costs the name twice: the call is a parse error, *and* no user
   function can fill the gap. They now say so when written. Implementing them,
   or un-reserving them, is a design decision.
+- **Thirteen of the seventeen registered builtins had no arm in the
+  evaluator.** `resolve` registers `assert`, `assert_eq`, `panic`, `todo`,
+  `dbg`, `vec`, `format` and the rest so ordinary code resolves; only `min`,
+  `max`, `abs` and the print family were implemented. **`assert` is the only
+  assertion the language has** — every `@test` in the documentation reaches
+  for it, and it could only ever fail with `unknown function`. Found by
+  running the documentation instead of checking it, which is now
+  `scripts/check-doc-evals.sh`.
 - **`GlobalAvgPool` had no shape rule.** It fell into the unknown-op arm and
   was treated as shape-preserving, so a `Linear` after it was checked against
   the *width* instead of the channel count.
@@ -653,7 +663,7 @@ it is invisible unless you break the thing on purpose and watch.
 
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,171**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,172**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it.
 - Every typechecker fix has landed without breaking an existing test **except
   one**, where widening `collection_elem` made `sum("hi")` legal and

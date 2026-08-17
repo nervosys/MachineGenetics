@@ -1365,6 +1365,71 @@ impl Interp {
                 Value::Map(m) => Ok(Value::Bool(m.iter().any(|(k, _)| *k == arg(1)))),
                 other => Ok(Value::Bool(as_list(&other)?.iter().any(|x| *x == arg(1)))),
             },
+            // ── Diagnostics and construction ──────────────────────────
+            //
+            // `resolve` registers seventeen builtin names so that ordinary
+            // agent-written code resolves; thirteen of them had no arm here,
+            // so they typechecked and died with `unknown function`. `assert`
+            // is the one that matters most — it is the *only* assertion the
+            // language has, every `@test` in the documentation reaches for it,
+            // and it did nothing but fail at run time. This is the `println`
+            // bug again, one drawer over.
+            "assert" => {
+                if !matches!(arg(0), Value::Bool(true)) {
+                    let msg = a.get(1).map(interp_str).unwrap_or_default();
+                    return err(if msg.is_empty() {
+                        "assertion failed".to_string()
+                    } else {
+                        format!("assertion failed: {msg}")
+                    });
+                }
+                Ok(Value::Unit)
+            }
+            "assert_eq" | "assert_ne" => {
+                let (l, r) = (arg(0), arg(1));
+                let same = l == r;
+                let want_same = name == "assert_eq";
+                if same != want_same {
+                    let op = if want_same { "==" } else { "!=" };
+                    return err(format!(
+                        "assertion failed: {} {op} {}",
+                        interp_str(&l),
+                        interp_str(&r)
+                    ));
+                }
+                Ok(Value::Unit)
+            }
+            "panic" => err(format!("panic: {}", interp_str(&arg(0)))),
+            "todo" | "unimplemented" | "unreachable" => {
+                err(format!("`{name}()` reached at run time"))
+            }
+            // Prints and passes the value through, as Rust's `dbg!` does.
+            "dbg" => {
+                let v = arg(0);
+                println!("{}", render_for_print(&v));
+                Ok(v)
+            }
+            "drop" => Ok(Value::Unit),
+            "vec" => Ok(Value::List(a.clone())),
+            // Registered, but nothing sensible to do: say which, and what to
+            // use instead, rather than `unknown function`.
+            "format" => err(
+                "`format(…)` builds nothing here — use an f-string: `f\"hi {x}\"`"
+                    .to_string(),
+            ),
+            "matches" => err(
+                "`matches(…)` needs a pattern, and MAGE has no macro form — \
+                 use `?= value { pattern => 1b, _ => 0b }`"
+                    .to_string(),
+            ),
+            "swap" | "replace" => err(format!(
+                "`{name}(…)` mutates through a reference, which this evaluator \
+                 does not model — rebind instead"
+            )),
+            "default" => err(
+                "`default()` has no type to default to here — write the value"
+                    .to_string(),
+            ),
             "min" | "max" => {
                 // Either min(a, b) or min(list).
                 let items = if a.len() == 1 { as_list(&arg(0))? } else { a.clone() };
@@ -1992,6 +2057,52 @@ mod tests {
     // its operand, so the call attached to the *negation* rather than to `f`.
     // Nothing constrained what `!` applied to, so this checked clean and then
     // failed at run time with `value is not callable`.
+
+    /// Every builtin `resolve` registers must reach an arm here.
+    ///
+    /// Thirteen of the seventeen did not: they typechecked and died with
+    /// `unknown function`. `assert` is the worst of them — the only assertion
+    /// the language has, reached for by every `@test` in the documentation,
+    /// and it could only ever fail. The four that worked were `min`, `max`,
+    /// `abs` and the print family.
+    ///
+    /// "Reaching an arm" is the bar, not "succeeding": `format` and `matches`
+    /// deliberately report what to use instead. What must not happen is
+    /// `unknown function`, which says the name was never implemented at all.
+    #[test]
+    fn every_registered_builtin_reaches_an_arm() {
+        let calls = [
+            ("assert", "assert(1b)"),
+            ("assert_eq", "assert_eq(1, 1)"),
+            ("assert_ne", "assert_ne(1, 2)"),
+            ("panic", "panic(\"x\")"),
+            ("todo", "todo()"),
+            ("unimplemented", "unimplemented()"),
+            ("unreachable", "unreachable()"),
+            ("dbg", "dbg(5)"),
+            ("drop", "drop(5)"),
+            ("vec", "vec(1, 2)"),
+            ("format", "format(\"x\")"),
+            ("matches", "matches(1, 1)"),
+            ("swap", "swap(1, 2)"),
+            ("replace", "replace(1, 2)"),
+            ("default", "default()"),
+            ("min", "min(1, 2)"),
+            ("max", "max(1, 2)"),
+            ("abs", "abs(0 - 1)"),
+            ("println", "println(\"x\")"),
+        ];
+        for (name, call) in calls {
+            let src = format!("f s() {{ {call} }}");
+            if let Err(e) = run_source(&src, "s", &[]) {
+                assert!(
+                    !e.contains("unknown function"),
+                    "`{name}` is registered in resolve and has no arm in the \
+                     evaluator: {e}"
+                );
+            }
+        }
+    }
 
     /// A capability call has to *evaluate*, not just typecheck.
     ///

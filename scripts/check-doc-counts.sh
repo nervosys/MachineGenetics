@@ -111,6 +111,8 @@ HANDOFF.md	→ [0-9,]+\*\*, all green	prototype
 HANDOFF.md	\| CI \| [0-9,]+ jobs	ci_jobs
 HANDOFF.md	\| [0-9,]+ checked	mg_checked
 HANDOFF.md	[0-9,]+ listed sketches	mg_sketches
+HANDOFF.md	[0-9,]+ MAGE blocks typecheck	doc_blocks
+HANDOFF.md	[0-9,]+ documentation entry points	doc_evals
 EOF
 )
 

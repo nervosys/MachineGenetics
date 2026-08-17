@@ -6,12 +6,12 @@
 # This is the single entry point that covers everything CI covers:
 #
 #     rmi (cpu)   1,380 tests
-#     prototype   1,171 tests
+#     prototype   1,172 tests
 #     ribosome      164 tests
 #     germline      112 tests
 #     forge          52 tests
 #     -------------------------
-#     total       2,879 tests, 0 warnings
+#     total       2,880 tests, 0 warnings
 #
 # Usage:
 #   scripts/test-all.sh            # debug
@@ -144,6 +144,12 @@ if [ "$CHECKDOCS" -eq 1 ]; then
         # Field 5, not 4: the line reads "Checked 101 .mg files; 25 skipped",
         # so `$4` is "files;". The pin caught it on its first run.
         echo "mg_sketches=$(printf '%s' "$mg_line" | awk '{print $5}')"
+        # Documentation entry points actually executed. `--check` and `--eval`
+        # are independent oracles and the blocks had only ever been checked;
+        # running them found thirteen registered builtins with no arm in the
+        # evaluator.
+        echo "$(bash "$REPO/scripts/check-doc-evals.sh" 2>/dev/null | grep -E '^doc_evals=')"
+        echo "$(bash "$REPO/scripts/check-doc-blocks.sh" 2>&1 >/dev/null | grep -E '^doc_blocks=')"
     # Invoked through `bash` rather than executed directly. The mode bit is now
     # set in git, but it is the kind of thing a Windows checkout drops silently
     # — this failed in CI with a bare "Permission denied" after passing on the
