@@ -152,10 +152,19 @@ The `handle` block is the effect system's key feature — it intercepts
 effects and provides alternative implementations:
 
 ```MAGE
-v result = handle {
-    load(path)
-} with Config {
-    read(p) => "mock data"
+effect Config {
+    f read(path: str) -> str;
+}
+
+f load(path: str) -> str / config { Config.read(path) }
+
+f mocked(path: str) -> str {
+    v result = handle {
+        load(path)
+    } with Config {
+        read(p) => "mock data"
+    }
+    result
 }
 ```
 

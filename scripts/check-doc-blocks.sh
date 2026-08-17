@@ -23,8 +23,16 @@
 # `--eval` remains a separate oracle; agreeing with the checker says nothing
 # about it.
 #
-# The rest is a ratchet: the count can go down, never up. A new failing block,
-# or a new file with failing blocks, fails the check.
+# **The baseline is now empty: every MAGE block in every markdown file in this
+# repository parses and typechecks.** The ratchet still works the same way — a
+# count may go down, never up — but from zero it is simply a gate. A new
+# failing block fails the check.
+#
+# Two kinds of block are deliberately skipped, and both are visible in the
+# source: one containing `...` (a fragment), and one whose nearest heading or
+# label says it is broken/invalid/wrong. `MAGE_SPEC.md` uses the second to
+# record designs that do not compile yet — `grad(…)`, `rl` blocks, SIMD types,
+# the module system — each labelled **Invalid MAGE today**.
 set -o errexit
 set -o nounset
 set -o pipefail

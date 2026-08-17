@@ -63,7 +63,7 @@ breaks, *and* a recorded state that silently starts passing.
 | `scripts/test-all.sh --check-docs` | every documented test count against the run that just produced them; `--cuda --bench` adds the GPU and benchmark figures |
 | `scripts/check-examples.sh` | that all 12 examples typecheck, evaluate, **and print the recorded answer** |
 | `scripts/check-mg-sources.sh` | every `.mg` file in the repo typechecks, or is a listed sketch with a stated reason |
-| `scripts/check-doc-blocks.sh` | the number of MAGE blocks in the markdown that fail `--check`, as a ratchet — it may only go down |
+| `scripts/check-doc-blocks.sh` | that **every** MAGE block in every markdown file passes `--check` — the baseline is empty, so any new failing block fails the check |
 | CI `audit` job | `cargo audit` over all five lockfiles separately |
 | CI ontology step | `MAGE_ONTOLOGY.json` matches a fresh `--emit-ontology` |
 | CI version step | `mage-parse --version` matches the tool id Ribosome keys on |
@@ -125,28 +125,47 @@ different things.
 | 8 | External dependency resolution | Fetching third-party code is a distinct trust problem — provenance, pinning, revocation. Folding it into the planner is how build systems become unauditable. |
 | 9 | `json`, `kb`, `db` attribute no effect | No built-in kind names a store, and inventing a `Custom` would infer an effect that §11.4 then refuses in an annotation — leaving no way to declare what you perform. Declare `effect Db { … }`; `examples/effects-showcase` does. |
 
-### Real work, unstarted
+### The documentation, finished
 
-**34 of 211 MAGE code blocks in the documentation do not typecheck**: 33 in
-`MAGE_SPEC.md`, and one labelled design sketch in `internals/05` (`/ *`, which
-is stated in the prose to be a parse error). Every other document — every one
-an agent reads to learn the language, and the migration guide besides — parses
-*and* typechecks.
+**Every MAGE code block in every markdown file in this repository now parses
+and typechecks.** `scripts/check-doc-blocks.sh` reads `0 (baseline 0)`, and
+its baseline file is empty. It started at 177 of 258 failing.
 
-**The number went up because the criterion did.** `check-doc-blocks.sh`
-counted *parse* errors only, and 43 blocks parsed and then failed the checker
-— unresolved names, undeclared effects, type mismatches — several of them in
-files the script had already certified. It now requires `Errors: 0`, which is
-why 82 became 114 — 104 after `quick-start/03` and the `internals/` blocks. **An
-instrument that measures the weaker property reports success early**, and this
-one had been reporting it for four files.
+Two kinds of block are skipped, both visible in the source: fragments
+(containing `...`), and blocks whose label says they are broken or invalid.
+`MAGE_SPEC.md` uses the second deliberately, to record five designs that do
+not compile — `grad(…)`, `rl` blocks, the compile-time SKB query API, SIMD
+types and the module system — each labelled as invalid where it appears. That is the honest state: the spec still
+describes more language than exists, but it now says which parts.
 
-**Done: `training/prompts/`, `agent-guide/`, `quick-start/`, `cookbook/`,
-`migration-guide/` and `DIRECT_CODEGEN_STRATEGY.md`** — 177 blocks, every one
-of which parses and typechecks. **`MAGE_SPEC.md` is what is left**, and it is
-the one that matters most: the spec is where a disagreement between document
-and compiler has to be resolved rather than papered over, because either side
-may be the one that is wrong.
+**Midway, the count went *up* because the criterion did.**
+`check-doc-blocks.sh` counted *parse* errors only, and 43 blocks parsed and
+then failed the checker — unresolved names, undeclared effects, type
+mismatches — several of them in files the script had already been used to
+certify as fixed. It now requires `Errors: 0`, which turned 82 remaining into
+114. **An instrument that measures the weaker property reports success early.**
+
+**The spec was the hardest, and the most valuable.** A disagreement between
+`MAGE_SPEC.md` and the compiler has to be *resolved* rather than patched,
+because either side may be the one that is wrong, and the answer differs per
+construct. What the pass found, in the sections nobody had run:
+
+| §  | The spec said | The compiler says |
+|---|---|---|
+| 5.1 | `layer dense(784, 256, relu)` | `layer name: Linear(784, 256)` — every layer is named, the kind comes from the layer map, and activations are layers |
+| 5.4 | `model:`, `data:`, `fn on_epoch(…)` callbacks | `net:`, `dataset:`, 25 fields, no callbacks |
+| 6.1 | `Tensor<f32, [3, 224, 224]>` | `tensor[f32, 3, 224, 224]` — lowercase, one bracket |
+| 7.1 | `rule integer(T) :- numeric(T), !floating(T);` | `rule integer(t: str) { numeric(t) }` — no Prolog, no `query` item |
+| 8.1 | `select tournament(k: 8), target fitness > 0.98` | `select { 8 }` — strategies are blocks, no `target`, no callbacks |
+| 9.1 | `agent` with `brain:`, `memory:` and methods | two fields, both lists of identifiers, and no code at all |
+| 9.2 | `dispatch` / `aggregate` / `on_failure` blocks | four fields; fan-out is `map`, fan-in is `fold` |
+| 12.1 | `@req(…)` above the signature | a `spec` block sharing the function's name |
+
+And five constructs the spec documented that do not exist at all: `grad(…)`,
+`rl` blocks, `Capability`/`Region`, SIMD types, and the module system. Each is
+now labelled **Invalid MAGE today** with the parse error it produces, rather
+than deleted — the design intent is worth keeping, the false impression is
+not.
 
 Seven of those are worth knowing about, because the defect was not just syntax:
 
@@ -440,6 +459,17 @@ elsewhere, pointing at the wrong line.
   reservation costs the name twice: the call is a parse error, *and* no user
   function can fill the gap. They now say so when written. Implementing them,
   or un-reserving them, is a design decision.
+- **The Greek agent-mode surface for AI constructs.** `MAGE_SPEC.md`
+  Appendix D publishes 33 symbol rows — `Ψ` for `net`, `λ` for `layer`, `Ω`
+  for `evolve`, `κ` for `kb`, `Σ` for `swarm`, `⊗` for matrix multiply — and
+  **the parser consumes none of them.** Fifteen are real tokens in the lexer
+  (`KwPsi`, `KwSigma`, …) and no arm matches any; `Ψ Classifier { … }` is
+  `expected item, found KwPsi`. The agent mode that works is the ASCII half:
+  `+f`, `v`, `m`, `S`, `E`, `I`, `T`, the control compressions, and the short
+  aliases (`sw`, `topo`, `cons`, `fx`, `hx`, `gd`, `df`, `xd`) — all verified.
+  The AI blocks use the same keyword in both modes. The tables are now headed
+  with that status rather than deleted: the compression argument is why the
+  language has two surfaces, and it is worth keeping as design.
 - **`internals/05`** — `is_sub_effect`, `Forge.toml` capability grants, effect
   polymorphism (`/ *`), `E0401`/`W0410` diagnostics: none exist. Marked rather
   than rewritten, because whether to build them is a design decision.
@@ -610,7 +640,7 @@ it is invisible unless you break the thing on purpose and watch.
 
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,168**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,170**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it.
 - Every typechecker fix has landed without breaking an existing test **except
   one**, where widening `collection_elem` made `sum("hi")` legal and

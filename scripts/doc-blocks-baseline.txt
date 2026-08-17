@@ -1,2 +1,1 @@
-MAGE_SPEC.md 33
-internals/05-effects-resolution.md 1
+
