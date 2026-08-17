@@ -2489,9 +2489,23 @@ mod tests {
         let published = framewerx_modules_section();
         for entry in published.as_array().unwrap() {
             let path = entry["path"].as_str().unwrap();
+            let full = root.join(path);
+            assert!(full.exists(), "framewerx_modules path is gone: {path}");
+
+            // And the published *name* has to be in that file. The path
+            // existing says only that some file is there; 243 of these
+            // entries name a symbol, and a rename would leave the map
+            // pointing at the right file for the wrong reason.
+            let name = entry["name"].as_str().unwrap();
+            let category = entry["category"].as_str().unwrap_or("");
+            if category == "example" {
+                // An example entry is named for its file, not for a symbol.
+                continue;
+            }
+            let src = std::fs::read_to_string(&full).unwrap_or_default();
             assert!(
-                root.join(path).exists(),
-                "framewerx_modules path is gone: {path}"
+                src.contains(name),
+                "framewerx_modules publishes `{name}` in {path}, which does                  not mention it"
             );
         }
     }
@@ -2510,6 +2524,41 @@ mod tests {
         }
         for (path, _, _) in DOCS {
             assert!(root.join(path).exists(), "docs path is gone: {path}");
+        }
+    }
+
+    /// The published examples must **typecheck**, not merely parse.
+    ///
+    /// Parsing was the whole bar here, and this repository has now found
+    /// forty-odd bugs behind exactly that gap — a block that parses and then
+    /// fails the checker is still a program an agent cannot run. These ten
+    /// snippets are what an agent grounds in when it asks the ontology what
+    /// MAGE looks like.
+    #[test]
+    fn examples_all_typecheck() {
+        for (name, _, src, _) in EXAMPLES {
+            let tokens = crate::lexer::lex(src);
+            let module = crate::parser::parse(&tokens)
+                .unwrap_or_else(|e| panic!("example {name:?} failed to parse: {e:?}"));
+            let mut r = crate::resolve::Resolver::new();
+            r.resolve_module(&module);
+            let resolve_errors: Vec<_> = r
+                .diagnostics
+                .iter()
+                .filter(|d| d.severity == crate::hir::Severity::Error)
+                .collect();
+            assert!(
+                resolve_errors.is_empty(),
+                "example {name:?} does not resolve: {resolve_errors:?}
+source: {src}"
+            );
+            let tc = crate::types::check(&module);
+            assert!(
+                tc.diagnostics.is_empty(),
+                "example {name:?} does not typecheck: {:?}
+source: {src}",
+                tc.diagnostics
+            );
         }
     }
 

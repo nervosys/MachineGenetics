@@ -12,7 +12,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **2,885** — rmi 1,380 · prototype 1,177 · ribosome 164 · germline 112 · forge 52 |
+| Tests | **2,886** — rmi 1,380 · prototype 1,178 · ribosome 164 · germline 112 · forge 52 |
 | CUDA | **1,071 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm |
@@ -483,6 +483,13 @@ elsewhere, pointing at the wrong line.
   accepts must be in the cli_flags ontology section". It now scrapes the flag
   literals out of `main.rs` and compares the two sets in both directions —
   verified by removing `--eval` and watching it fail. 36 flags are published.
+- **The ten examples the ontology publishes were only *parsed*.** They are
+  what an agent grounds in when it asks what MAGE looks like, and the test
+  bar was "parses" — the same weaker criterion that let 43 documentation
+  blocks through earlier this session. They all typecheck (verified by
+  breaking one and watching the test fail), and the test now requires it.
+  Likewise `framewerx_modules` checked that its 256 paths exist but not that
+  the 243 symbol names it publishes appear in the files it points at.
 - **Five ontology counts quoted in the docs were stale**, in the two places
   that quote them: `cli_flags (17)` for 36, `heal_patterns (~13)` for 34,
   `keywords (12)` for 102, `layer_map (31)` for 21, `effects (15)` for 22,
@@ -723,7 +730,7 @@ it is invisible unless you break the thing on purpose and watch.
 
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,177**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,178**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it.
 - Every typechecker fix has landed without breaking an existing test **except
   one**, where widening `collection_elem` made `sum("hi")` legal and
