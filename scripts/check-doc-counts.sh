@@ -113,6 +113,30 @@ HANDOFF.md	\| [0-9,]+ checked	mg_checked
 HANDOFF.md	[0-9,]+ listed sketches	mg_sketches
 HANDOFF.md	[0-9,]+ MAGE blocks typecheck	doc_blocks
 HANDOFF.md	[0-9,]+ documentation entry points	doc_evals
+benchmarks/STATUS.md	├─ sigils \([0-9]+\)	onto_sigils
+benchmarks/STATUS.md	├─ keywords \([0-9]+\)	onto_keywords
+benchmarks/STATUS.md	├─ types \([0-9]+\)	onto_types
+benchmarks/STATUS.md	├─ ast_kinds \([0-9]+\)	onto_ast_kinds
+benchmarks/STATUS.md	├─ ir_ops \([0-9]+\)	onto_ir_ops
+benchmarks/STATUS.md	├─ op_families \([0-9]+\)	onto_op_families
+benchmarks/STATUS.md	├─ layer_map \([0-9]+\)	onto_layer_map
+benchmarks/STATUS.md	├─ rap_methods \([0-9]+\)	onto_rap_methods
+benchmarks/STATUS.md	├─ heal_patterns \([0-9]+\)	onto_heal_patterns
+benchmarks/STATUS.md	├─ recovery_stages \([0-9]+\)	onto_recovery_stages
+benchmarks/STATUS.md	├─ examples \([0-9]+\)	onto_examples
+benchmarks/STATUS.md	├─ framewerx_modules \([0-9]+\)	onto_framewerx_modules
+benchmarks/STATUS.md	├─ cli_flags \([0-9]+\)	onto_cli_flags
+benchmarks/STATUS.md	├─ bench_backends \([0-9]+\)	onto_bench_backends
+benchmarks/STATUS.md	├─ effects \([0-9]+\)	onto_effects
+benchmarks/STATUS.md	├─ wrapper_protocol \([0-9]+\)	onto_wrapper_protocol
+benchmarks/STATUS.md	├─ project_layout \([0-9]+\)	onto_project_layout
+benchmarks/STATUS.md	├─ ci_floors \([0-9]+\)	onto_ci_floors
+benchmarks/STATUS.md	Ontology \([0-9]+ sections	onto_sections
+UNIFICATION.md	in \*\*[0-9]+ sections\*\*	onto_sections
+UNIFICATION.md	cli_flags \([0-9]+\)	onto_cli_flags
+UNIFICATION.md	effects \([0-9]+\)	onto_effects
+UNIFICATION.md	wrapper_protocol \([0-9]+\)	onto_wrapper_protocol
+UNIFICATION.md	ci_floors \([0-9]+\)	onto_ci_floors
 EOF
 )
 

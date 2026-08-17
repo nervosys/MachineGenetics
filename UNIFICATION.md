@@ -9,11 +9,11 @@
 > structural-balance, structural-completion, trim-bad-token, refine).
 >
 > **Complete ontology over language + IR + protocol + operations + hardware**
-> in **21 sections**. Beyond the language/IR/framework: cli_flags (17),
-> bench_backends (4), effects (15), wrapper_protocol (9),
+> in **22 sections**. Beyond the language/IR/framework: cli_flags (36),
+> bench_backends (4), effects (22), wrapper_protocol (9),
 > project_layout (22), docs (7), ci_floors (6), **hardware_accelerators
 > (extensible runtime registry, 8 builtins)**. Single RAP call
-> `ontology/full` or static dump at `MAGE_ONTOLOGY.json` (~122 KB,
+> `ontology/full` or static dump at `MAGE_ONTOLOGY.json` (~140 KB,
 > **256 framewerx entries** + ~100 operational entries + open backend catalog).
 >
 > **RecursiveMachineIntelligence-MG**: agent-first FLAX-equivalent built in MAGE over
@@ -912,7 +912,7 @@ backend appears in the ontology and dispatches real Agentic Binary Language byte
 | `layer_name_to_op` resolutions | 80+ |
 | **Framework examples dispatching end-to-end** | **14 / 14** |
 | **CI-enforced agent-UX guards** | 3 layers: CLI sweep + RAP wire + subprocess backend |
-| Static `MAGE_ONTOLOGY.json` | 122 KB |
+| Static `MAGE_ONTOLOGY.json` | 140 KB |
 | Measured Agentic Binary Language compression | 68.8% on FlashAttnBlock |
 
 The original prompt was "create a low-level programming language and

@@ -154,6 +154,18 @@ if [ "$CHECKDOCS" -eq 1 ]; then
         # evaluator.
         echo "$(bash "$REPO/scripts/check-doc-evals.sh" 2>/dev/null | grep -E '^doc_evals=')"
         echo "$(bash "$REPO/scripts/check-doc-blocks.sh" 2>&1 >/dev/null | grep -E '^doc_blocks=')"
+        # Ontology section sizes, straight from the committed dump (CI proves
+        # it matches a fresh generation). Two documents quote these counts and
+        # five of them were stale — `cli_flags (17)` when the binary accepts
+        # 36, `heal_patterns (~13)` when there are 34, `keywords (12)` when
+        # there are 102.
+        python - "$REPO/MAGE_ONTOLOGY.json" <<'ONTO'
+import json, sys
+d = json.load(open(sys.argv[1], encoding='utf-8'))
+for k, v in d['sections'].items():
+    print('onto_%s=%d' % (k, len(v)))
+print('onto_sections=%d' % len(d['sections']))
+ONTO
     # Invoked through `bash` rather than executed directly. The mode bit is now
     # set in git, but it is the kind of thing a Windows checkout drops silently
     # — this failed in CI with a bare "Permission denied" after passing on the

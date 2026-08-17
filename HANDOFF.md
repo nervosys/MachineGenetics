@@ -471,6 +471,24 @@ elsewhere, pointing at the wrong line.
   reservation costs the name twice: the call is a parse error, *and* no user
   function can fill the gap. They now say so when written. Implementing them,
   or un-reserving them, is a design decision.
+- **The ontology published 17 of the binary's 29 flags.** The twelve missing
+  included **`--eval`** — the only way to run a program, and half of the
+  two-oracle discipline this repository depends on — plus `--version`,
+  `--json`, `--fix`, `--manifest`, `--token-report` and the whole `--build=`
+  / `--describe=` / `--spine=` family. An agent grounding in
+  `MAGE_ONTOLOGY.json` could not learn that MAGE programs can be executed.
+
+  The test that should have caught it asserted **eight named flags were
+  present**, under a doc comment reading "every CLI flag the binary actually
+  accepts must be in the cli_flags ontology section". It now scrapes the flag
+  literals out of `main.rs` and compares the two sets in both directions —
+  verified by removing `--eval` and watching it fail. 36 flags are published.
+- **Five ontology counts quoted in the docs were stale**, in the two places
+  that quote them: `cli_flags (17)` for 36, `heal_patterns (~13)` for 34,
+  `keywords (12)` for 102, `layer_map (31)` for 21, `effects (15)` for 22,
+  and "21 sections" for 22. All 22 section sizes are now emitted from the
+  committed ontology and pinned, so a claim about the ontology cannot drift
+  from the ontology.
 - **An integer literal adopted a width without having to fit it.**
   `f g(n: u8)` called as `g(300)` typechecked clean, as did `i8` ← 200 and
   `i32` ← 3000000000. The literal's value is now carried alongside its type

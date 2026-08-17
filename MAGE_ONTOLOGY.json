@@ -4,7 +4,7 @@
     "ast_kinds": 18,
     "bench_backends": 4,
     "ci_floors": 6,
-    "cli_flags": 17,
+    "cli_flags": 36,
     "docs": 7,
     "effects": 22,
     "examples": 10,
@@ -250,6 +250,101 @@
         "flag": "--backends-file=<path>",
         "purpose": "Register additional backend descriptors at runtime from a JSON file. Stacks with RDX_BACKENDS_PATH env var and ~/.mage/backends.json. Schema: [{ name, family, vendor, requires, summary, available_at_runtime, tags }].",
         "takes_path": true
+      },
+      {
+        "flag": "--eval",
+        "purpose": "Evaluate the module and print the value of `main` (or of the named function). The second oracle: a program can typecheck and fail to run, and the reverse.",
+        "takes_path": true
+      },
+      {
+        "flag": "--version",
+        "purpose": "Print the compiler version. Ribosome keys its registry on this string.",
+        "takes_path": false
+      },
+      {
+        "flag": "--manifest",
+        "purpose": "Print the tool manifest: version, capabilities, and the flag surface.",
+        "takes_path": false
+      },
+      {
+        "flag": "--rain",
+        "purpose": "Render the source as MAGE digital rain (a display, not an analysis).",
+        "takes_path": true
+      },
+      {
+        "flag": "--build=schema",
+        "purpose": "Print the JSON schema a build spec must satisfy.",
+        "takes_path": false
+      },
+      {
+        "flag": "--build=abl",
+        "purpose": "Build a `net` / `swarm` spec from JSON into MAGE source; `--fix` attempts deterministic repair first.",
+        "takes_path": true
+      },
+      {
+        "flag": "--describe",
+        "purpose": "Describe a module in JSON. Takes a mode; run it with none to see the list.",
+        "takes_path": true
+      },
+      {
+        "flag": "--describe=abl",
+        "purpose": "Describe an Agentic Binary Language container in JSON.",
+        "takes_path": true
+      },
+      {
+        "flag": "--run=abl",
+        "purpose": "Run an Agentic Binary Language container and print a JSON result.",
+        "takes_path": true
+      },
+      {
+        "flag": "--spine=frame",
+        "purpose": "Emit a spine frame (JSON) for the given module.",
+        "takes_path": true
+      },
+      {
+        "flag": "--spine=profile",
+        "purpose": "Emit an agent profile from a JSON agent spec.",
+        "takes_path": true
+      },
+      {
+        "flag": "--spine=swarm",
+        "purpose": "Emit a swarm profile from a JSON swarm spec.",
+        "takes_path": true
+      },
+      {
+        "flag": "--json",
+        "purpose": "Report diagnostics as structured JSON (code/span/category/fix) rather than text.",
+        "takes_path": false
+      },
+      {
+        "flag": "--fix",
+        "purpose": "With `--build=abl`: attempt deterministic auto-repair before rejecting a spec.",
+        "takes_path": false
+      },
+      {
+        "flag": "--input",
+        "purpose": "With `--run=abl`: the JSON input value for the run, as the next argument.",
+        "takes_path": false
+      },
+      {
+        "flag": "--no-elision",
+        "purpose": "Skip the elision pass, so the AST is checked exactly as written.",
+        "takes_path": false
+      },
+      {
+        "flag": "--syntax=legacy",
+        "purpose": "Translate legacy syntax before lexing.",
+        "takes_path": false
+      },
+      {
+        "flag": "--syntax=canonical",
+        "purpose": "Read the source as canonical syntax (the default).",
+        "takes_path": false
+      },
+      {
+        "flag": "--token-report",
+        "purpose": "Print a token-count report alongside the check.",
+        "takes_path": false
       }
     ],
     "docs": [

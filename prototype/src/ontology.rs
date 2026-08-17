@@ -319,6 +319,18 @@ fn hardware_accelerators_section() -> serde_json::Value {
 /// system from a shell can discover the full flag set in one call.
 ///
 /// Columns: `(flag, purpose, takes_path)`.
+/// Every flag the binary accepts, as published to agents.
+///
+/// It listed 17 of 29. The twelve missing ones included **`--eval`** — the
+/// second of the two oracles, and the only way to *run* a program — plus
+/// `--version`, `--json`, `--fix`, `--manifest`, `--token-report` and the
+/// whole `--build=` / `--describe=` / `--spine=` family. An agent grounding
+/// in the ontology could not learn that MAGE programs can be executed.
+///
+/// The test below now compares this table against the flag literals in
+/// `main.rs` in both directions. It used to assert that eight named flags
+/// were present, under a doc comment claiming it checked every flag the
+/// binary accepts — a fixed list wearing a cross-boundary claim.
 const CLI_FLAGS: &[(&str, &str, bool)] = &[
     ("--rap", "Start the RAP JSON-RPC server on the given addr (default 127.0.0.1:9876)", false),
     ("--emit-ontology", "Dump the complete ontology to disk as static JSON", true),
@@ -341,6 +353,28 @@ const CLI_FLAGS: &[(&str, &str, bool)] = &[
     ("--backends-file=<path>",
         "Register additional backend descriptors at runtime from a JSON file. Stacks with RDX_BACKENDS_PATH env var and ~/.mage/backends.json. Schema: [{ name, family, vendor, requires, summary, available_at_runtime, tags }].",
         true),
+    // ── Running and inspecting ────────────────────────────────────────
+    ("--eval", "Evaluate the module and print the value of `main` (or of the named function). The second oracle: a program can typecheck and fail to run, and the reverse.", true),
+    ("--version", "Print the compiler version. Ribosome keys its registry on this string.", false),
+    ("--manifest", "Print the tool manifest: version, capabilities, and the flag surface.", false),
+    ("--rain", "Render the source as MAGE digital rain (a display, not an analysis).", true),
+    // ── Building from a JSON spec ─────────────────────────────────────
+    ("--build=schema", "Print the JSON schema a build spec must satisfy.", false),
+    ("--build=abl", "Build a `net` / `swarm` spec from JSON into MAGE source; `--fix` attempts deterministic repair first.", true),
+    ("--describe", "Describe a module in JSON. Takes a mode; run it with none to see the list.", true),
+    ("--describe=abl", "Describe an Agentic Binary Language container in JSON.", true),
+    ("--run=abl", "Run an Agentic Binary Language container and print a JSON result.", true),
+    ("--spine=frame", "Emit a spine frame (JSON) for the given module.", true),
+    ("--spine=profile", "Emit an agent profile from a JSON agent spec.", true),
+    ("--spine=swarm", "Emit a swarm profile from a JSON swarm spec.", true),
+    // ── Modifiers, which stack with the commands above ────────────────
+    ("--json", "Report diagnostics as structured JSON (code/span/category/fix) rather than text.", false),
+    ("--fix", "With `--build=abl`: attempt deterministic auto-repair before rejecting a spec.", false),
+    ("--input", "With `--run=abl`: the JSON input value for the run, as the next argument.", false),
+    ("--no-elision", "Skip the elision pass, so the AST is checked exactly as written.", false),
+    ("--syntax=legacy", "Translate legacy syntax before lexing.", false),
+    ("--syntax=canonical", "Read the source as canonical syntax (the default).", false),
+    ("--token-report", "Print a token-count report alongside the check.", false),
 ];
 
 /// `reliability-bench` backends. Each backend implements
@@ -1627,18 +1661,66 @@ mod tests {
         }
     }
 
-    /// P82 invariant: every CLI flag the binary actually accepts must
-    /// be in the cli_flags ontology section. Catches drift where a
-    /// new --flag is added to main.rs but not advertised to agents.
+    /// Every flag `main.rs` recognises is published, and every published flag
+    /// exists in `main.rs`.
+    ///
+    /// The previous version asserted that eight named flags were present,
+    /// under a doc comment claiming it checked "every CLI flag the binary
+    /// actually accepts". Twelve flags were missing from the ontology,
+    /// including `--eval` — the only way to run a program, and half of the
+    /// two-oracle discipline this repository depends on.
+    ///
+    /// Source-scraping is the point: the two sides are a `match` in a binary
+    /// and a table in a library, and nothing else connects them.
     #[test]
-    fn cli_flags_section_matches_binary_dispatch() {
-        let arr = cli_flags_section();
-        let v = arr.as_array().unwrap();
-        let names: Vec<&str> = v.iter().filter_map(|e| e["flag"].as_str()).collect();
-        for required in ["--rap", "--check", "--emit-ontology",
-                         "--target=abl-bytes", "--from=abl-bytes",
-                         "--run=abl-bytes", "--fmt-compact", "--fmt-expand"] {
-            assert!(names.contains(&required), "missing flag: {required}");
+    fn every_flag_in_main_is_published_and_vice_versa() {
+        let main_rs = include_str!("main.rs");
+
+        // Flag literals in `main.rs`: `"--name"`, possibly with `=value`.
+        let mut in_main: Vec<String> = Vec::new();
+        let bytes = main_rs.as_bytes();
+        let mut i = 0;
+        while let Some(off) = main_rs[i..].find("\"--") {
+            let start = i + off + 1;
+            let end = match main_rs[start..].find('"') {
+                Some(e) => start + e,
+                None => break,
+            };
+            let lit = &main_rs[start..end];
+            i = end + 1;
+            let _ = bytes;
+            if lit.len() > 2
+                && lit[2..].chars().all(|c| c.is_ascii_lowercase() || "=-0123456789".contains(c))
+            {
+                in_main.push(lit.to_string());
+            }
+        }
+
+        // `--backend=cpu` is a value comparison, not a flag; the flag itself
+        // is published as `--backend=<name>`. Same for the two prefixes that
+        // are matched with `strip_prefix`.
+        let published: Vec<&str> = CLI_FLAGS.iter().map(|(f, _, _)| *f).collect();
+        let normalise = |f: &str| -> String {
+            match f {
+                "--backend=cpu" | "--backend=" => "--backend=<name>".to_string(),
+                "--backends-file=" => "--backends-file=<path>".to_string(),
+                other => other.to_string(),
+            }
+        };
+
+        for lit in &in_main {
+            let want = normalise(lit);
+            assert!(
+                published.contains(&want.as_str()),
+                "`{lit}` is accepted by main.rs and not published in CLI_FLAGS"
+            );
+        }
+        for flag in &published {
+            let stem = flag.split('=').next().unwrap();
+            assert!(
+                main_rs.contains(&format!("\"{stem}")),
+                "`{flag}` is published and does not appear in main.rs"
+            );
         }
     }
 
