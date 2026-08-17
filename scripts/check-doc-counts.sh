@@ -109,6 +109,8 @@ HANDOFF.md	germline [0-9,]+ ·	germline
 HANDOFF.md	forge [0-9,]+ \|	forge
 HANDOFF.md	→ [0-9,]+\*\*, all green	prototype
 HANDOFF.md	\| CI \| [0-9,]+ jobs	ci_jobs
+HANDOFF.md	\| [0-9,]+ checked	mg_checked
+HANDOFF.md	[0-9,]+ listed sketches	mg_sketches
 EOF
 )
 

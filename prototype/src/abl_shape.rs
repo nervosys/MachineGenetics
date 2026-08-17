@@ -217,6 +217,25 @@ fn apply_op(
                 }
         }
 
+        // ── Global pooling: collapses every spatial axis. ──────────
+        //
+        // This fell into the `_` arm below and was treated as
+        // shape-preserving, so a `GlobalAvgPool` left [N, C, H, W] intact and
+        // the `Linear` after it was checked against **W** instead of C.
+        // `framework/framewerx/examples/resnet_classifier.mg` — a textbook
+        // ResNet head — reported "expects last dim 256, but the preceding
+        // layer produced [1, 256, 20, 2]" and was written off as a sketch
+        // whose architecture nobody could adjudicate. The example was right;
+        // the rule was missing.
+        Op::GLOBAL_POOL => {
+            *current = match current.as_slice() {
+                [n, c, _h, _w] => vec![*n, *c],
+                [c, _h, _w] => vec![*c],
+                [c, _l] => vec![*c],
+                other => other.to_vec(),
+            };
+        }
+
         Op::MATMUL => {
             let dims = extract_int_args(args);
             let (k, n) = match dims.as_slice() {
@@ -376,6 +395,23 @@ mod tests {
         let report = infer_shape(&expr, &[8]);
         assert!(report.mismatches.is_empty(), "{:?}", report.mismatches);
         assert_eq!(report.output_shape, vec![1, 4]);
+    }
+
+    /// Global pooling collapses the spatial axes, so a `Linear` after it sees
+    /// the channel count.
+    ///
+    /// It used to be shape-preserving (it fell into the unknown-op arm), so
+    /// `Conv2D >> GlobalAvgPool >> Linear(256, 1000)` — the standard ResNet
+    /// head — reported a mismatch against the *width*. The example was blamed
+    /// and skipped as an unadjudicable sketch for two sessions.
+    #[test]
+    fn global_pool_collapses_the_spatial_axes() {
+        let expr = Expr::op(Op::CONV2D, vec![Expr::int(3), Expr::int(256), Expr::int(3)])
+            >> Expr::op1(Op::GLOBAL_POOL)
+            >> Expr::op(Op::LINEAR, vec![Expr::int(256), Expr::int(1000)]);
+        let report = infer_shape(&expr, &[3, 32, 32]);
+        assert!(report.mismatches.is_empty(), "{:?}", report.mismatches);
+        assert_eq!(report.output_shape, vec![1, 1000]);
     }
 
     #[test]

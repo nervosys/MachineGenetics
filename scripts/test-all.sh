@@ -6,12 +6,12 @@
 # This is the single entry point that covers everything CI covers:
 #
 #     rmi (cpu)   1,380 tests
-#     prototype   1,170 tests
+#     prototype   1,171 tests
 #     ribosome      164 tests
 #     germline      112 tests
 #     forge          52 tests
 #     -------------------------
-#     total       2,878 tests, 0 warnings
+#     total       2,879 tests, 0 warnings
 #
 # Usage:
 #   scripts/test-all.sh            # debug
@@ -135,6 +135,15 @@ if [ "$CHECKDOCS" -eq 1 ]; then
         # `push`/`pull_request` trigger keys along with the jobs. Measured here
         # from the workflow itself: keys indented two spaces *after* `jobs:`.
         echo "ci_jobs=$(awk '/^jobs:/{i=1;next} i&&/^  [a-z0-9_-]+:$/{n++} END{print n+0}' "$REPO/.github/workflows/ci.yml")"
+        # `.mg` sources checked vs skipped as sketches. HANDOFF.md states both,
+        # and both moved this session (96/30 -> 101/25) when `framewerx` was
+        # rewritten. Measured by running the checker, so the claim cannot drift
+        # from the list that produces it.
+        mg_line="$(bash "$REPO/scripts/check-mg-sources.sh" 2>/dev/null | grep -E '^Checked [0-9]+ \.mg')"
+        echo "mg_checked=$(printf '%s' "$mg_line" | awk '{print $2}')"
+        # Field 5, not 4: the line reads "Checked 101 .mg files; 25 skipped",
+        # so `$4` is "files;". The pin caught it on its first run.
+        echo "mg_sketches=$(printf '%s' "$mg_line" | awk '{print $5}')"
     # Invoked through `bash` rather than executed directly. The mode bit is now
     # set in git, but it is the kind of thing a Windows checkout drops silently
     # — this failed in CI with a bare "Permission denied" after passing on the

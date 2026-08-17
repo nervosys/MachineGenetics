@@ -7,7 +7,7 @@
 // definitions into reusable shapes.
 
 T Module {
-    f forward(&self, x: Tensor) -> Tensor;
+    f forward(&self, x: tensor[f32]) -> tensor[f32];
 }
 
 // Sequential composition: apply a list of modules left-to-right.

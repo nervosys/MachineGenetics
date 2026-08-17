@@ -12,13 +12,13 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **2,878** — rmi 1,380 · prototype 1,170 · ribosome 164 · germline 112 · forge 52 |
+| Tests | **2,879** — rmi 1,380 · prototype 1,171 · ribosome 164 · germline 112 · forge 52 |
 | CUDA | **1,071 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm |
 | CI | 10 jobs, green on `master` |
 | Examples | 12 of 12 typecheck, run, and print their recorded answer |
-| `.mg` sources | 96 checked, 30 listed sketches |
+| `.mg` sources | 101 checked, 25 listed sketches (all of them `stdlib/`) |
 | Release | `v0.3.0`, with the promo video attached as a release asset |
 
 Reproduce all of it:
@@ -75,8 +75,11 @@ parses, every published path exists, every capability namespace performs its
 effect, every layer surface name compiles.
 
 **If you add a measured claim to a document, add it to `CHECKS` in
-`scripts/check-doc-counts.sh` in the same commit.** The one figure that stayed
-stale after the checker existed was one nobody had listed.
+`scripts/check-doc-counts.sh` in the same commit.** The `.mg` source counts
+(`101 checked, 25 listed sketches`) were wired in this way, and the pin caught
+its own extraction bug on the first run — the measured value came out as
+`files;` because the awk field index was off by one. The one figure that
+stayed stale after the checker existed was one nobody had listed.
 
 ### Two things the instruments taught, the hard way
 
@@ -135,8 +138,9 @@ Two kinds of block are skipped, both visible in the source: fragments
 (containing `...`), and blocks whose label says they are broken or invalid.
 `MAGE_SPEC.md` uses the second deliberately, to record five designs that do
 not compile — `grad(…)`, `rl` blocks, the compile-time SKB query API, SIMD
-types and the module system — each labelled as invalid where it appears. That is the honest state: the spec still
-describes more language than exists, but it now says which parts.
+types and the module system — each labelled as invalid where it appears.
+That is the honest state: the spec still describes more language than exists,
+but it now says which parts.
 
 **Midway, the count went *up* because the criterion did.**
 `check-doc-blocks.sh` counted *parse* errors only, and 43 blocks parsed and
@@ -251,7 +255,7 @@ rewrites produced compiler bugs at a steady rate.
 | 10 | **Multi-shot resumption for effect handlers** | Largest, and *smaller than it was recorded as*. Single-shot resumption already works — an arm's value becomes the operation's value and the body continues — and `ret` in an arm aborts the handled block cleanly. What is missing is reifying the continuation so it can be stored or invoked twice, which is what generators and backtracking need. State, reader, logging and mocking handlers all work today. Still means reworking the tree-walking evaluator into a form that can capture continuations. |
 | 14 | `--backend` reaches one dispatch path | `--run=abl-bytes` honours it; the five `--target=abl-*` paths construct a `CpuBackend` directly. They now *report* that the flag is inert rather than ignoring it silently, but honouring it means threading `SelectedBackend` through each dispatch loop — and verifying the GPU path needs a CUDA build. |
 | 12 | `int` literal constraint | Medium. The current fix is a post-hoc check in `default_int_literals`, not a real integer-kind constraint threaded through `unify`. Correct for the programs it rejects; the principled version is larger. |
-| 13 | `stdlib/` and four `framewerx` files | The remaining 30 sketches. `prototype/examples/` is done: all six rewritten, **thirteen** compiler bugs out of them, and the rate never dropped. `stdlib/` is blocked on item 1. |
+| 13 | `stdlib/` | The remaining 25 sketches, and **the only aspirational `.mg` left in the repository** — 4,402 lines of Rust. Blocked on item 1: what a standard library *is* here depends on whether there are modules. `prototype/examples/` and `framework/framewerx/` are both done. |
 
 ### Small, sharp, cheap
 
@@ -459,6 +463,15 @@ elsewhere, pointing at the wrong line.
   reservation costs the name twice: the call is a parse error, *and* no user
   function can fill the gap. They now say so when written. Implementing them,
   or un-reserving them, is a design decision.
+- **`GlobalAvgPool` had no shape rule.** It fell into the unknown-op arm and
+  was treated as shape-preserving, so a `Linear` after it was checked against
+  the *width* instead of the channel count.
+  `framework/framewerx/examples/resnet_classifier.mg` — a textbook ResNet head
+  — reported "expects last dim 256, but the preceding layer produced
+  [1, 256, 20, 2]", and **two sessions wrote the example off as an
+  unadjudicable sketch**: "either the example or the shape rule is wrong, and
+  telling which needs someone who knows the intended architecture". The rule
+  was wrong. Adjudicating it needed one look at the arm list, not an expert.
 - **The Greek agent-mode surface for AI constructs.** `MAGE_SPEC.md`
   Appendix D publishes 33 symbol rows — `Ψ` for `net`, `λ` for `layer`, `Ω`
   for `evolve`, `κ` for `kb`, `Σ` for `swarm`, `⊗` for matrix multiply — and
@@ -640,7 +653,7 @@ it is invisible unless you break the thing on purpose and watch.
 
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,170**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,171**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it.
 - Every typechecker fix has landed without breaking an existing test **except
   one**, where widening `collection_elem` made `sum("hi")` legal and

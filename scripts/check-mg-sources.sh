@@ -48,21 +48,20 @@ SKETCHES=(
     # variant patterns, closures, default arguments, `println`, the pipeline
     # typecheck, and the spec/function name collision.
 
-    # These reference `Tensor`, `Module` and `ParamStore` as bare type names.
-    # Nothing defines them: they are in no module here, the ontology publishes
-    # no such type, and the spec documents none. The files describe a tensor
-    # framework the type system does not yet have.
-    "framework/framewerx/src/loss.mg"
-    "framework/framewerx/src/module.mg"
-    "framework/framewerx/src/neurosymbolic.mg"
-    "framework/framewerx/src/train.mg"
-
-    # Parses and typechecks; fails the *shape* checker with a real-looking
-    # complaint (a linear layer fed [1, 256, 20, 2] where it wants last dim
-    # 256). Either the example or the shape rule is wrong, and telling which
-    # needs someone who knows the intended architecture — it is not a
-    # syntax-drift problem like the rest of this list.
-    "framework/framewerx/examples/resnet_classifier.mg"
+    # `framework/framewerx/` is no longer listed. The four `src/` files
+    # referenced `Tensor`, `Module`, `ParamStore` and `KnowledgeBase` as bare
+    # names; the real spelling is `tensor[f32]`, and the two store types were
+    # defined nowhere, so they are now declared where they are used.
+    # `neurosymbolic.mg` needed a rewrite rather than a rename: it stored a
+    # `net` and a `kb` in struct fields, and those are declarations, not
+    # values. It is now a declared effect over a `kb`, which is both checkable
+    # and mockable.
+    #
+    # `examples/resnet_classifier.mg` was skipped with "either the example or
+    # the shape rule is wrong". **The rule was wrong**: `GlobalAvgPool` had no
+    # arm in the shape checker, so it was treated as shape-preserving and the
+    # `Linear` after it was checked against the width instead of the channel
+    # count. The example was a textbook ResNet head all along.
 )
 
 is_sketch() {
