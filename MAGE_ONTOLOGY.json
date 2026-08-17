@@ -1,7 +1,7 @@
 {
   "builtin_framework": "RecursiveMachineIntelligence (rmi crate) — the built-in agentic-first AI framework",
   "counts": {
-    "ast_kinds": 18,
+    "ast_kinds": 20,
     "bench_backends": 4,
     "ci_floors": 6,
     "cli_flags": 36,
@@ -44,11 +44,15 @@
       },
       {
         "kind": "Struct",
-        "summary": "Struct definition"
+        "summary": "Struct definition (`struct` / `S`)"
       },
       {
         "kind": "Enum",
-        "summary": "Enum definition"
+        "summary": "Enum definition (`enum` / `E`)"
+      },
+      {
+        "kind": "Data",
+        "summary": "Record or sum: `data Point(x: f64)` / `data Shape = A | B`"
       },
       {
         "kind": "Trait",
@@ -56,15 +60,19 @@
       },
       {
         "kind": "Impl",
-        "summary": "impl block"
+        "summary": "impl block: `impl Trait for Type` or `impl Type`"
       },
       {
-        "kind": "Mod",
-        "summary": "Module declaration"
+        "kind": "Extend",
+        "summary": "Methods on a type: `extend Type { … }` (`xd`)"
+      },
+      {
+        "kind": "Module",
+        "summary": "Module declaration. Parses; resolves nothing — there is no module system"
       },
       {
         "kind": "Use",
-        "summary": "use import"
+        "summary": "use import. Parses; brings nothing into scope — the checker warns"
       },
       {
         "kind": "Const",
@@ -79,36 +87,36 @@
         "summary": "type alias"
       },
       {
-        "kind": "NetDef",
+        "kind": "Net",
         "summary": "AI: neural network (Agentic Binary Language-routed)"
       },
       {
-        "kind": "KbDef",
+        "kind": "Kb",
         "summary": "AI: symbolic knowledge base (Agentic Binary Language-routed)"
       },
       {
-        "kind": "AgentDef",
+        "kind": "Agent",
         "summary": "AI: agent role (Agentic Binary Language-routed)"
       },
       {
-        "kind": "SwarmDef",
+        "kind": "Swarm",
         "summary": "AI: swarm topology (Agentic Binary Language-routed)"
       },
       {
-        "kind": "TrainDef",
+        "kind": "Train",
         "summary": "AI: training pipeline (Agentic Binary Language-routed)"
       },
       {
-        "kind": "EvolveDef",
+        "kind": "Evolve",
         "summary": "AI: evolutionary search (Agentic Binary Language-routed)"
       },
       {
-        "kind": "EffectDef",
-        "summary": "Effect declaration"
+        "kind": "Effect",
+        "summary": "Effect declaration: `effect Name { … }` (`fx`)"
       },
       {
-        "kind": "SpecBlock",
-        "summary": "Spec / contract block"
+        "kind": "Spec",
+        "summary": "Spec / contract block: `spec name { @req … }` (`sp`)"
       }
     ],
     "bench_backends": [

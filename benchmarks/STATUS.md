@@ -93,7 +93,7 @@ ontology/full
   ├─ sigils (38)             — surface tokens + meaning
   ├─ keywords (102)           — AI constructs (net/kb/agent/swarm/...)
   ├─ types (30)              — built-in scalars + composites
-  ├─ ast_kinds (18)          — top-level item families
+  ├─ ast_kinds (20)          — top-level item families
   ├─ ir_ops (107)            — every Agentic Binary Language opcode w/ metadata
   ├─ op_families (7)         — Neural/Symbolic/Control/Memory/Agent/Meta/Math
   ├─ layer_map (21)          — surface name → opcode

@@ -12,7 +12,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **2,886** — rmi 1,380 · prototype 1,178 · ribosome 164 · germline 112 · forge 52 |
+| Tests | **2,887** — rmi 1,380 · prototype 1,179 · ribosome 164 · germline 112 · forge 52 |
 | CUDA | **1,071 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm |
@@ -483,6 +483,14 @@ elsewhere, pointing at the wrong line.
   accepts must be in the cli_flags ontology section". It now scrapes the flag
   literals out of `main.rs` and compares the two sets in both directions —
   verified by removing `--eval` and watching it fail. 36 flags are published.
+- **`data` and `extend` were missing from the published AST kinds.** The
+  ontology enumerated 18 item families; `ItemKind` has 20. The two absent
+  were records/sums (`data Point(…)`) and methods (`extend Type { … }`) —
+  three of the constructs the human-mode guides lead with. Nothing compared
+  the two lists, and the published names were a parallel vocabulary (`Mod`,
+  `EffectDef`, `SpecBlock`) that made comparing them awkward enough that
+  nobody had. The names now match the variants exactly and a test scrapes
+  `ast.rs` to compare both ways.
 - **The ten examples the ontology publishes were only *parsed*.** They are
   what an agent grounds in when it asks what MAGE looks like, and the test
   bar was "parses" — the same weaker criterion that let 43 documentation
@@ -734,7 +742,7 @@ it is invisible unless you break the thing on purpose and watch.
 
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,178**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,179**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it.
 - Every typechecker fix has landed without breaking an existing test **except
   one**, where widening `collection_elem` made `sum("hi")` legal and

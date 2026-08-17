@@ -156,25 +156,39 @@ const TYPES: &[(&str, &str, &str)] = &[
 ];
 
 /// AST top-level item kinds an agent should know it can find in a module.
+/// Top-level item families, named exactly as `ast::ItemKind` names them.
+///
+/// The published names used to be a parallel vocabulary — `Mod` for `Module`,
+/// `EffectDef` for `Effect`, `SpecBlock` for `Spec` — which made the list
+/// impossible to check against the AST without a mapping that could itself
+/// rot. Worse, **`Data` and `Extend` were missing entirely**: an agent
+/// enumerating item kinds from the ontology would not learn that `data
+/// Point(…)` (records and sums) or `extend Type { … }` (methods) are item
+/// kinds at all, and those are the two the human-mode guides lead with.
+///
+/// The test below compares this table against `ItemKind`'s variants by
+/// scraping `ast.rs`, in both directions.
 const AST_KINDS: &[(&str, &str)] = &[
     ("Function", "Function definition (incl. async / unsafe variants)"),
-    ("Struct", "Struct definition"),
-    ("Enum", "Enum definition"),
+    ("Struct", "Struct definition (`struct` / `S`)"),
+    ("Enum", "Enum definition (`enum` / `E`)"),
+    ("Data", "Record or sum: `data Point(x: f64)` / `data Shape = A | B`"),
     ("Trait", "Trait definition"),
-    ("Impl", "impl block"),
-    ("Mod", "Module declaration"),
-    ("Use", "use import"),
+    ("Impl", "impl block: `impl Trait for Type` or `impl Type`"),
+    ("Extend", "Methods on a type: `extend Type { … }` (`xd`)"),
+    ("Module", "Module declaration. Parses; resolves nothing — there is no module system"),
+    ("Use", "use import. Parses; brings nothing into scope — the checker warns"),
     ("Const", "const declaration"),
     ("Static", "static declaration"),
     ("TypeAlias", "type alias"),
-    ("NetDef", "AI: neural network (Agentic Binary Language-routed)"),
-    ("KbDef", "AI: symbolic knowledge base (Agentic Binary Language-routed)"),
-    ("AgentDef", "AI: agent role (Agentic Binary Language-routed)"),
-    ("SwarmDef", "AI: swarm topology (Agentic Binary Language-routed)"),
-    ("TrainDef", "AI: training pipeline (Agentic Binary Language-routed)"),
-    ("EvolveDef", "AI: evolutionary search (Agentic Binary Language-routed)"),
-    ("EffectDef", "Effect declaration"),
-    ("SpecBlock", "Spec / contract block"),
+    ("Net", "AI: neural network (Agentic Binary Language-routed)"),
+    ("Kb", "AI: symbolic knowledge base (Agentic Binary Language-routed)"),
+    ("Agent", "AI: agent role (Agentic Binary Language-routed)"),
+    ("Swarm", "AI: swarm topology (Agentic Binary Language-routed)"),
+    ("Train", "AI: training pipeline (Agentic Binary Language-routed)"),
+    ("Evolve", "AI: evolutionary search (Agentic Binary Language-routed)"),
+    ("Effect", "Effect declaration: `effect Name { … }` (`fx`)"),
+    ("Spec", "Spec / contract block: `spec name { @req … }` (`sp`)"),
 ];
 
 /// The 7 op-family buckets. Aligned with `rmi::lang::OpFamily`.
@@ -1658,6 +1672,49 @@ mod tests {
                     .unwrap_or_else(|| panic!("section {required} not an array"));
                 assert!(!arr.is_empty(), "section {required} is empty");
             }
+        }
+    }
+
+    /// Every `ItemKind` variant is published, and every published kind is a
+    /// variant.
+    ///
+    /// `Data` and `Extend` were missing — records, sums and methods, three of
+    /// the constructs the human-mode documentation leads with. Nothing
+    /// compared the two lists, and the published names were a parallel
+    /// vocabulary (`Mod`, `EffectDef`, `SpecBlock`) that made comparing them
+    /// awkward enough that nobody had.
+    #[test]
+    fn every_item_kind_is_published_and_vice_versa() {
+        let ast_rs = include_str!("ast.rs");
+        let start = ast_rs.find("pub enum ItemKind {").expect("ItemKind");
+        let body = &ast_rs[start..];
+        let end = body.find("\n}").expect("end of enum");
+        let variants: Vec<&str> = body[..end]
+            .lines()
+            .skip(1)
+            .filter_map(|l| {
+                let t = l.trim();
+                if t.is_empty() || t.starts_with("//") || t.starts_with("/*") {
+                    return None;
+                }
+                let name = t.split(['(', ',', ' ']).next()?;
+                name.chars().next().filter(|c| c.is_ascii_uppercase()).map(|_| name)
+            })
+            .collect();
+        assert!(variants.len() >= 18, "scrape looks wrong: {variants:?}");
+
+        let published: Vec<&str> = AST_KINDS.iter().map(|(k, _)| *k).collect();
+        for v in &variants {
+            assert!(
+                published.contains(v),
+                "`ItemKind::{v}` is not published in ast_kinds"
+            );
+        }
+        for k in &published {
+            assert!(
+                variants.contains(k),
+                "ast_kinds publishes `{k}`, which is not an ItemKind variant"
+            );
         }
     }
 
