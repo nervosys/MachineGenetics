@@ -31,7 +31,7 @@ scripts/check-mg-sources.sh               # every .mg file in the repo
 scripts/test-all.sh --cuda --bench --check-docs   # + GPU and the benchmark harnesses
 ```
 
-**There are 34 unpushed commits on `handoff`.** Nothing is pushed and no PR is
+**There are 36 unpushed commits on `handoff`.** Nothing is pushed and no PR is
 open. That is a decision waiting, not an oversight — open item 0.
 
 ---
@@ -114,7 +114,7 @@ different things.
 
 | # | Item | The decision |
 |---|---|---|
-| 0 | **34 unpushed commits on `handoff`** | Push the branch, or open a PR against `master`. Note `gh pr merge --auto` merges *immediately* here — the repo has no required status checks — which is how PR #4 landed with CI still pending. |
+| 0 | **36 unpushed commits on `handoff`** | Push the branch, or open a PR against `master`. Note `gh pr merge --auto` merges *immediately* here — the repo has no required status checks — which is how PR #4 landed with CI still pending. |
 | 1 | **Module system, or a decision that there is none** | The blocker under `stdlib/`. `resolve_use` parses a path and discards it, so nothing can be imported; the library surface is global instead. That may well be *right* for a token-efficient agentic language — an import costs tokens and buys nothing when the library is small and fixed — in which case say so in the spec and delete `stdlib/`. Everything about a standard library is downstream of this. See `stdlib/README.md`. |
 | 2 | GPU CI runner | Correctness **is** verified on the hardware here and recorded. What is missing is a self-hosted runner so `cuda-gpu` runs unattended — an account action, declined once already. |
 | 3 | TLS trust posture | The transport seam and a `rustls` implementation exist behind `--features tls`. Pinned self-signed / mutual TLS / public PKI is deliberately the operator's; `acceptor`/`connector` take your config. |
