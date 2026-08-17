@@ -6,12 +6,12 @@
 # This is the single entry point that covers everything CI covers:
 #
 #     rmi (cpu)   1,380 tests
-#     prototype   1,175 tests
+#     prototype   1,176 tests
 #     ribosome      164 tests
 #     germline      112 tests
 #     forge          52 tests
 #     -------------------------
-#     total       2,883 tests, 0 warnings
+#     total       2,884 tests, 0 warnings
 #
 # Usage:
 #   scripts/test-all.sh            # debug
@@ -144,6 +144,10 @@ if [ "$CHECKDOCS" -eq 1 ]; then
         # Field 5, not 4: the line reads "Checked 101 .mg files; 25 skipped",
         # so `$4` is "files;". The pin caught it on its first run.
         echo "mg_sketches=$(printf '%s' "$mg_line" | awk '{print $5}')"
+        # The three lines below each run a checker to *measure* what the docs
+        # claim, which makes `--check-docs` a few minutes slower. CI runs the
+        # same checkers as their own steps; this is the price of the claims
+        # being measured rather than typed in.
         # Documentation entry points actually executed. `--check` and `--eval`
         # are independent oracles and the blocks had only ever been checked;
         # running them found thirteen registered builtins with no arm in the

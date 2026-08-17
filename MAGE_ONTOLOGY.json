@@ -243,7 +243,7 @@
       },
       {
         "flag": "--backend=<name>",
-        "purpose": "Select hardware accelerator for --run=abl-bytes dispatch (default: cpu). Other --target=abl-* paths run on the CPU regardless and now say so. See ontology.hardware_accelerators for the catalog.",
+        "purpose": "Select the hardware accelerator for dispatch (default: cpu). Honoured by --run=abl-bytes and by every --target=abl-* path; a subprocess backend has no in-process Backend, so those paths report the fallback rather than using it silently. See ontology.hardware_accelerators for the catalog.",
         "takes_path": false
       },
       {

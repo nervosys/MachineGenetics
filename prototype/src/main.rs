@@ -25,23 +25,27 @@ fn main() {
         .iter()
         .find_map(|a| a.strip_prefix("--backend=").map(str::to_string))
         .unwrap_or_else(|| "cpu".to_string());
-    // `--backend` reaches exactly one dispatch path: `--run=abl-bytes`. Every
-    // other `--target=abl-*` constructs a `CpuBackend` directly, so the flag
-    // was accepted and ignored — `--target=abl-compute --backend=cuda` printed
-    // "CpuBackend dispatch" and ran on the CPU without a word.
+    // `--backend` used to reach exactly one dispatch path (`--run=abl-bytes`);
+    // every other `--target=abl-*` constructed a `CpuBackend` directly, so
+    // `--target=abl-compute --backend=cuda` printed "CpuBackend dispatch" and
+    // ran on the CPU without a word. For a repository whose headline numbers
+    // include GPU results, the failure mode is someone believing they measured
+    // a GPU.
     //
-    // The ontology documents the flag as "Select hardware accelerator for
-    // dispatch" with no hint that it applies to one command out of six, so the
-    // failure mode is someone believing they measured a GPU. Wiring the other
-    // paths means threading `SelectedBackend` through their dispatch loops,
-    // which is real work and untestable here without a CUDA build. Saying so is
-    // not.
-    if backend_name != "cpu" && !args.iter().any(|a| a == "--run=abl-bytes") {
-        eprintln!(
-            "// --backend={backend_name} is ignored here: only --run=abl-bytes \
-             dispatches through the selected backend. This run uses the CPU."
-        );
-    }
+    // Resolved once here and threaded through all five paths. A subprocess
+    // backend has no in-process `Backend`, so those paths report what they
+    // fell back to rather than doing it silently.
+    let selected_backend = if backend_name == "cpu" {
+        None
+    } else {
+        match mage_prototype::backends::select_backend(&backend_name) {
+            Ok(b) => Some(b),
+            Err(e) => {
+                eprintln!("// --backend={backend_name}: {e} — using cpu");
+                None
+            }
+        }
+    };
     // Optional --backends-file <path> registers extra backend
     // descriptors at runtime. Stacks with env/home loading so
     // operators can layer per-deployment overrides.
@@ -490,7 +494,7 @@ fn main() {
                 eprintln!("Error reading {path}: {e}");
                 std::process::exit(1);
             });
-            run_dispatch_abl_bytes(&blob, path, &backend_name);
+            run_dispatch_abl_bytes(&blob, path, &selected_backend);
         }
         Some("--target=abl-generate") => {
             let path = filtered.get(1).unwrap_or_else(|| {
@@ -514,7 +518,7 @@ fn main() {
                     } else {
                         module
                     };
-                    run_generate(&module, path);
+                    run_generate(&module, path, &selected_backend);
                 }
                 Err(e) => {
                     eprintln!("{path}:{}:{}: parse error: {}", e.line, e.col, e.message);
@@ -544,7 +548,7 @@ fn main() {
                     } else {
                         module
                     };
-                    run_infer(&module, path);
+                    run_infer(&module, path, &selected_backend);
                 }
                 Err(e) => {
                     eprintln!("{path}:{}:{}: parse error: {}", e.line, e.col, e.message);
@@ -588,7 +592,7 @@ fn main() {
                     } else {
                         module
                     };
-                    run_train(&module, path);
+                    run_train(&module, path, &selected_backend);
                 }
                 Err(e) => {
                     eprintln!("{path}:{}:{}: parse error: {}", e.line, e.col, e.message);
@@ -619,8 +623,16 @@ fn main() {
                         module
                     };
                     let lowered = abl_bridge::lower_module(&module);
-                    let backend = rmi::compute::cpu::CpuBackend::new();
-                    println!("// MAGE → Agentic Binary Language → CpuBackend dispatch for {path}");
+                    let cpu = rmi::compute::cpu::CpuBackend::new();
+                    let backend: &dyn rmi::compute::Backend = match &selected_backend {
+                        Some(b) => b.as_dyn(&cpu),
+                        None => &cpu,
+                    };
+                    report_backend(&selected_backend, "--target=abl-compute");
+                    println!(
+                        "// MAGE → Agentic Binary Language → {:?} dispatch for {path}",
+                        rmi::compute::Backend::backend_type(backend)
+                    );
                     for (name, expr) in &lowered.items {
                         // Pre-flight: infer shapes and report mismatches.
                         let shape_report = abl_shape::infer_shape(expr, &[8]);
@@ -632,7 +644,7 @@ fn main() {
                         }
                         let inferred = abl_compute::infer_input_shape(expr);
                         let shape: Vec<usize> = inferred.unwrap_or_else(|| vec![8]);
-                        match abl_compute::run_pipeline(&backend, expr, &shape, 1.0) {
+                        match abl_compute::run_pipeline(backend, expr, &shape, 1.0) {
                             Ok(r) => println!(
                                 "// {name}: dispatched={} unsupported={:?} output_sum={:.4} shape={:?} (input={:?})",
                                 r.dispatched, r.unsupported, r.output_sum, r.output.shape, shape
@@ -1195,6 +1207,28 @@ fn run_decode_abl_bytes(blob: &[u8], path: &str) {
     }
 }
 
+/// Say which backend a dispatch path is using, and — when the request could
+/// not be honoured in process — what it fell back to.
+///
+/// Silence was the bug: `--target=abl-compute --backend=cuda` printed
+/// "CpuBackend dispatch" and ran on the CPU, and the flag's own documentation
+/// ("Select hardware accelerator for dispatch") gave no hint that it applied
+/// to one command out of six.
+fn report_backend(
+    selected: &Option<mage_prototype::backends::SelectedBackend>,
+    where_: &str,
+) {
+    let Some(b) = selected else { return };
+    if b.dispatches_in_process() {
+        eprintln!("// backend: {} ({where_})", b.name());
+    } else {
+        eprintln!(
+            "// --backend={} is a subprocess backend; {where_} dispatches in process, so this run uses the cpu. `--run=abl-bytes` does honour it.",
+            b.name()
+        );
+    }
+}
+
 /// Drive `--run=abl-bytes`: decode every item in a Agentic Binary Language container and
 /// dispatch it to the CPU backend via `abl_compute::run_pipeline`,
 /// completely **skipping the text round-trip**. This is the
@@ -1208,24 +1242,17 @@ fn run_decode_abl_bytes(blob: &[u8], path: &str) {
 /// run are executed (activation chains, Linear with cached params, etc.);
 /// items that lower entirely to stub opcodes are reported as `stub`
 /// rather than failing.
-fn run_dispatch_abl_bytes(blob: &[u8], path: &str, backend_name: &str) {
+fn run_dispatch_abl_bytes(
+    blob: &[u8],
+    path: &str,
+    selected: &Option<mage_prototype::backends::SelectedBackend>,
+) {
     use rmi::compute::cpu::CpuBackend;
-    // Resolve agent's --backend=<name> choice into a SelectedBackend.
-    // Falls back to CpuBackend on error so the dispatch still happens;
-    // we surface the message so an agent knows why their request was
-    // downgraded.
-    let selected = match mage_prototype::backends::select_backend(backend_name) {
-        Ok(b) => {
-            if b.name() != "cpu" {
-                eprintln!("// backend: {}", b.name());
-            }
-            Some(b)
-        }
-        Err(e) => {
-            eprintln!("// backend selection: {e} - using cpu");
-            None
-        }
-    };
+    // The selection is resolved once in `main` and shared by all five
+    // dispatch paths. It used to be resolved a second time here, which meant
+    // a bad `--backend` name printed its error twice.
+    report_backend(selected, "--run=abl-bytes");
+    let selected = selected.as_ref();
     // CUDA dispatch (P98-P101): `--features cuda` + `--backend=cuda`
     // routes ops through CudaBackend's Backend impl. Per-op routes
     // currently bounce through CpuBackend internally (TODO markers
@@ -1386,10 +1413,18 @@ fn run_dispatch_abl_bytes(blob: &[u8], path: &str, backend_name: &str) {
 /// output is `[seq, vocab]` logits at each position. Generation takes the
 /// last-position logits, argmaxes for the next token, and appends to the
 /// running sequence.
-fn run_generate(module: &ast::Module, path: &str) {
+fn run_generate(
+    module: &ast::Module,
+    path: &str,
+    selected: &Option<mage_prototype::backends::SelectedBackend>,
+) {
     use rmi::compute::cpu::CpuBackend;
-    use rmi::compute::Backend;
-    let backend = CpuBackend::new();
+    let cpu = CpuBackend::new();
+    let backend: &dyn rmi::compute::Backend = match selected {
+        Some(b) => b.as_dyn(&cpu),
+        None => &cpu,
+    };
+    report_backend(selected, "--target=abl-generate");
 
     println!("// MAGE → Agentic Binary Language → autoregressive generation for {path}");
 
@@ -1417,7 +1452,7 @@ fn run_generate(module: &ast::Module, path: &str) {
         // Load weights if a checkpoint exists; otherwise warn and use fresh.
         let ckpt_path = extract_string_literal(train.checkpoint.as_ref());
         let mut params = match ckpt_path.as_ref().and_then(|p| std::fs::read(p).ok()) {
-            Some(blob) => match abl_compute::ParamStore::load(&blob, &backend) {
+            Some(blob) => match abl_compute::ParamStore::load(&blob, &cpu) {
                 Ok(p) => p,
                 Err(e) => {
                     eprintln!("generate `{}`: load checkpoint: {e}", train.name);
@@ -1487,7 +1522,7 @@ fn run_generate(module: &ast::Module, path: &str) {
                     break;
                 }
             };
-            let out_handle = match abl_compute::forward_pass(&backend, &lowered.expr, handle, &mut params) {
+            let out_handle = match abl_compute::forward_pass(backend, &lowered.expr, handle, &mut params) {
                 Ok(h) => h,
                 Err(e) => {
                     eprintln!("  step {step}: forward: {e}");
@@ -1649,10 +1684,18 @@ fn embedding_vocab(net: &ast::NetDef) -> Option<usize> {
 /// Drive `--target=abl-infer`: for each `train` block, load its checkpoint,
 /// run forward on its `inputs:` data, and print per-sample predictions.
 /// Requires both `checkpoint:` and `inputs:` to be set.
-fn run_infer(module: &ast::Module, path: &str) {
+fn run_infer(
+    module: &ast::Module,
+    path: &str,
+    selected: &Option<mage_prototype::backends::SelectedBackend>,
+) {
     use rmi::compute::cpu::CpuBackend;
-    use rmi::compute::Backend;
-    let backend = CpuBackend::new();
+    let cpu = CpuBackend::new();
+    let backend: &dyn rmi::compute::Backend = match selected {
+        Some(b) => b.as_dyn(&cpu),
+        None => &cpu,
+    };
+    report_backend(selected, "--target=abl-infer");
 
     println!("// MAGE → Agentic Binary Language → CpuBackend inference for {path}");
 
@@ -1691,7 +1734,7 @@ fn run_infer(module: &ast::Module, path: &str) {
                 continue;
             }
         };
-        let mut params = match abl_compute::ParamStore::load(&blob, &backend) {
+        let mut params = match abl_compute::ParamStore::load(&blob, &cpu) {
             Ok(p) => p,
             Err(e) => {
                 eprintln!("infer `{}`: load checkpoint: {e}", train.name);
@@ -1730,7 +1773,7 @@ fn run_infer(module: &ast::Module, path: &str) {
                     continue;
                 }
             };
-            match abl_compute::forward_pass(&backend, &lowered.expr, h, &mut params) {
+            match abl_compute::forward_pass(backend, &lowered.expr, h, &mut params) {
                 Ok(out) => {
                     let bytes = backend.copy_to_host(&out).unwrap_or_default();
                     let preds: Vec<f32> = bytes
@@ -1751,9 +1794,18 @@ fn run_infer(module: &ast::Module, path: &str) {
     }
 }
 
-fn run_train(module: &ast::Module, path: &str) {
+fn run_train(
+    module: &ast::Module,
+    path: &str,
+    selected: &Option<mage_prototype::backends::SelectedBackend>,
+) {
     use rmi::compute::cpu::CpuBackend;
-    let backend = CpuBackend::new();
+    let cpu = CpuBackend::new();
+    let backend: &dyn rmi::compute::Backend = match selected {
+        Some(b) => b.as_dyn(&cpu),
+        None => &cpu,
+    };
+    report_backend(selected, "--target=abl-train");
 
     println!("// MAGE → Agentic Binary Language → SGD training for {path}");
 
@@ -1952,7 +2004,7 @@ fn run_train(module: &ast::Module, path: &str) {
         };
 
         let mut params = match ckpt_path.as_ref().and_then(|p| std::fs::read(p).ok()) {
-            Some(blob) => match abl_compute::ParamStore::load(&blob, &backend) {
+            Some(blob) => match abl_compute::ParamStore::load(&blob, &cpu) {
                 Ok(p) => {
                     println!("// train `{}`: loaded {} weight tensors from {}", train.name, p.len(), ckpt_path.as_deref().unwrap());
                     p
@@ -2017,7 +2069,7 @@ fn run_train(module: &ast::Module, path: &str) {
                 };
                 let cur_lr = step_lr(state.step, base);
                 let r = match abl_compute::train_one_step_with_optim_loss(
-                    &backend,
+                    backend,
                     &lowered.expr,
                     &batch_x[..cur_bs * in_dim],
                     &[cur_bs, in_dim],
@@ -2039,7 +2091,7 @@ fn run_train(module: &ast::Module, path: &str) {
                 // Tied embeddings: after each batch, copy embedding table
                 // (V, E) into the final Linear's weight (E, V) transposed.
                 if let Some((emb_key, head_key)) = &tied_keys
-                    && let Err(e) = sync_tied_embedding(&backend, &mut params, emb_key, head_key) {
+                    && let Err(e) = sync_tied_embedding(&cpu, &mut params, emb_key, head_key) {
                         eprintln!("train `{}`: tie-weights: {e}", train.name);
                     }
             }
@@ -2049,7 +2101,7 @@ fn run_train(module: &ast::Module, path: &str) {
             }
             last_loss = epoch_loss;
             let val_loss = if n_val > 0 {
-                compute_val_loss(&backend, &lowered.expr, val_x, in_dim, val_y, out_dim, n_val, &mut params)
+                compute_val_loss(&cpu, &lowered.expr, val_x, in_dim, val_y, out_dim, n_val, &mut params)
                     .unwrap_or(f32::NAN)
             } else {
                 f32::NAN
@@ -2119,7 +2171,7 @@ fn run_train(module: &ast::Module, path: &str) {
 
         // Persist trained weights if requested.
         if let Some(path) = &ckpt_path {
-            match params.save(&backend) {
+            match params.save(&cpu) {
                 Ok(blob) => match std::fs::write(path, &blob) {
                     Ok(()) => println!("// train `{}`: saved {} weight tensors to {} ({} bytes)", train.name, params.len(), path, blob.len()),
                     Err(e) => eprintln!("train `{}`: write checkpoint {path}: {e}", train.name),

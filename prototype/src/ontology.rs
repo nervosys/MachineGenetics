@@ -336,7 +336,7 @@ const CLI_FLAGS: &[(&str, &str, bool)] = &[
     ("--target=abl-run", "End-to-end run of Agentic Binary Language-routed items", true),
     ("--pipeline", "Run the full lex+parse+resolve+effects+verify pipeline", true),
     ("--backend=<name>",
-        "Select hardware accelerator for --run=abl-bytes dispatch (default: cpu). Other --target=abl-* paths run on the CPU regardless and now say so. See ontology.hardware_accelerators for the catalog.",
+        "Select the hardware accelerator for dispatch (default: cpu). Honoured by --run=abl-bytes and by every --target=abl-* path; a subprocess backend has no in-process Backend, so those paths report the fallback rather than using it silently. See ontology.hardware_accelerators for the catalog.",
         false),
     ("--backends-file=<path>",
         "Register additional backend descriptors at runtime from a JSON file. Stacks with RDX_BACKENDS_PATH env var and ~/.mage/backends.json. Schema: [{ name, family, vendor, requires, summary, available_at_runtime, tags }].",

@@ -12,7 +12,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **2,883** — rmi 1,380 · prototype 1,175 · ribosome 164 · germline 112 · forge 52 |
+| Tests | **2,884** — rmi 1,380 · prototype 1,176 · ribosome 164 · germline 112 · forge 52 |
 | CUDA | **1,071 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm |
@@ -255,7 +255,6 @@ rewrites produced compiler bugs at a steady rate.
 | # | Item | Size |
 |---|---|---|
 | 10 | **Multi-shot resumption for effect handlers** | Largest, and *smaller than it was recorded as*. Single-shot resumption already works — an arm's value becomes the operation's value and the body continues — and `ret` in an arm aborts the handled block cleanly. What is missing is reifying the continuation so it can be stored or invoked twice, which is what generators and backtracking need. State, reader, logging and mocking handlers all work today. Still means reworking the tree-walking evaluator into a form that can capture continuations. |
-| 14 | `--backend` reaches one dispatch path | `--run=abl-bytes` honours it; the five `--target=abl-*` paths construct a `CpuBackend` directly. They now *report* that the flag is inert rather than ignoring it silently, but honouring it means threading `SelectedBackend` through each dispatch loop — and verifying the GPU path needs a CUDA build. |
 | 12 | `int` literal constraint | Medium. The current fix is a post-hoc check in `default_int_literals`, not a real integer-kind constraint threaded through `unify`. Correct for the programs it rejects; the principled version is larger. |
 | 13 | `stdlib/` | The remaining 25 sketches, and **the only aspirational `.mg` left in the repository** — 4,402 lines of Rust. Blocked on item 1: what a standard library *is* here depends on whether there are modules. `prototype/examples/` and `framework/framewerx/` are both done. |
 
@@ -469,6 +468,16 @@ elsewhere, pointing at the wrong line.
   reservation costs the name twice: the call is a parse error, *and* no user
   function can fill the gap. They now say so when written. Implementing them,
   or un-reserving them, is a design decision.
+- **`--backend` reached one dispatch path out of six.** `--run=abl-bytes`
+  honoured it; every `--target=abl-*` path built a `CpuBackend` directly, so
+  `--target=abl-compute --backend=cuda` printed "CpuBackend dispatch" and ran
+  on the CPU. The selection is now resolved once in `main` and threaded
+  through all five via `SelectedBackend::as_dyn`, each path reports the
+  backend it is using, and a subprocess backend — which has no in-process
+  `Backend` — says what it fell back to instead of quietly using the CPU. The
+  duplicate resolution inside `run_dispatch_abl_bytes` is gone too; a bad
+  `--backend` name used to print its error twice. **The GPU path itself is
+  still unverified here** — that needs `--features cuda` and hardware.
 - **Every fixed-size array parameter was uncallable with a literal.**
   `lower_type` dropped the declared length and used 0 while an array literal
   types with its real length, so `f take(xs: [i32; 3])` called as
@@ -607,6 +616,12 @@ Only `stdlib/` and four `framewerx` files remain.
 
 ## Traps, so you do not repeat them
 
+- **Editing a shell script while it runs.** `bash` reads a script
+  incrementally, so an edit that changes byte offsets can make the running
+  copy execute a *fragment* of a line. The symptom is a nonsense error naming
+  a line that is a comment — `test-all.sh: line 160: a: command not found`.
+  Nothing was wrong with the script; the run was reading a file that moved
+  under it. Wait for the run, or copy the script first.
 - **`cmd | grep -q` under `set -o pipefail`.** `grep -q` exits at the first
   match, the writer takes SIGPIPE, and the pipeline reports failure — so every
   match reads as no-match. Cost two separate bugs, the second *despite a comment
@@ -676,7 +691,7 @@ it is invisible unless you break the thing on purpose and watch.
 
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,175**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,176**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it.
 - Every typechecker fix has landed without breaking an existing test **except
   one**, where widening `collection_elem` made `sum("hi")` legal and
