@@ -12,7 +12,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **2,876** — rmi 1,380 · prototype 1,168 · ribosome 164 · germline 112 · forge 52 |
+| Tests | **2,878** — rmi 1,380 · prototype 1,170 · ribosome 164 · germline 112 · forge 52 |
 | CUDA | **1,071 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm |
@@ -127,12 +127,11 @@ different things.
 
 ### Real work, unstarted
 
-**104 of 216 MAGE code blocks in the documentation do not typecheck.** They
-sit in the documents an agent reads to *learn the language* — `cookbook/`,
-`MAGE_SPEC.md` and `migration-guide/`. Most are Rust wearing a
-MAGE fence, or agent-mode sigils over a standard library that does not exist:
-`u std.io.{File, BufReader}`, `s.new()`, `I Display ~ AppError`,
-`items.iter().map(…).collect()`.
+**34 of 211 MAGE code blocks in the documentation do not typecheck**: 33 in
+`MAGE_SPEC.md`, and one labelled design sketch in `internals/05` (`/ *`, which
+is stated in the prose to be a parse error). Every other document — every one
+an agent reads to learn the language, and the migration guide besides — parses
+*and* typechecks.
 
 **The number went up because the criterion did.** `check-doc-blocks.sh`
 counted *parse* errors only, and 43 blocks parsed and then failed the checker
@@ -142,12 +141,14 @@ why 82 became 114 — 104 after `quick-start/03` and the `internals/` blocks. **
 instrument that measures the weaker property reports success early**, and this
 one had been reporting it for four files.
 
-**Done so far: all of `training/prompts/`, all of `agent-guide/`, and all of
-`quick-start/`** — every block in them parses *and* typechecks. What remains:
-`cookbook/` (60), `MAGE_SPEC.md` (33), `migration-guide/` (7), `internals/05`
-(1, the `/ *` design sketch) and `DIRECT_CODEGEN_STRATEGY.md` (3).
+**Done: `training/prompts/`, `agent-guide/`, `quick-start/`, `cookbook/`,
+`migration-guide/` and `DIRECT_CODEGEN_STRATEGY.md`** — 177 blocks, every one
+of which parses and typechecks. **`MAGE_SPEC.md` is what is left**, and it is
+the one that matters most: the spec is where a disagreement between document
+and compiler has to be resolved rather than papered over, because either side
+may be the one that is wrong.
 
-Six of those are worth knowing about, because the defect was not just syntax:
+Seven of those are worth knowing about, because the defect was not just syntax:
 
 - **`effects.md` taught agents to under-declare.** Four places asserted an
   effect hierarchy — "CORRECT — net implies io", "CORRECT — agent implies
@@ -168,6 +169,25 @@ Six of those are worth knowing about, because the defect was not just syntax:
   false rule outranks a broken example — a model follows the rule when
   generating code the examples do not cover.
 
+- **`migration-guide/` documented a capability system that does not exist.**
+  `[capabilities] grants = […]` in `Forge.toml`, a `Capability` type,
+  `cap.require("fs.read")?`, `Capability.request(…, Lease.new(Duration…))` and
+  a table of 14 capability strings (`net.http.get`, `mem.deref`, `ffi.call`).
+  None of it exists — and it is not missing, because the real design puts the
+  grant somewhere stronger: reaching the namespace *is* the request, the
+  annotation is the grant, and the check happens before the program starts.
+  A document describing a weaker runtime mechanism teaches an agent to look
+  for a permission call that is not there, and to assume the annotation is
+  documentation.
+- **The whole `cookbook/` was written against a standard library that does
+  not exist.** Eight files, 60 blocks: `u std.io.{File, BufReader, Read}`,
+  `s.new()`, `[T]~.new()`, `TempFile`, `fs.watch`, `Command.new("git")`,
+  `Mutex`, `channel`, `join_all`, `I Agent ~ Greeter`, `AgentRuntime`, `Bus`,
+  `Capability.request(…, Lease.new(…))`. It is the most detailed
+  documentation in the repository and none of it ran. Rewriting it against
+  the capability namespaces found the `contains` divergence, the `async`
+  namespace that never existed, and the fact that **no capability call could
+  be evaluated at all**.
 - **`quick-start/03-syntax-tour.md` taught the opposite of the central rule.**
   "The compiler tracks effects automatically — you don't need to annotate them
   unless you want to document intent." It requires them, at every public
@@ -253,6 +273,14 @@ Compiles, runs, returns the wrong number. No error anywhere.
   wildcard arm.
 - **`guard cond else { … }` fell through**, running the body with the
   precondition false: `a(-5)` answered `-10`.
+- **No capability call could be evaluated.** `fs.read_to_string(p)`,
+  `env.get_env(k)`, `time.now()` and every other namespace call typechecked
+  and then died with `unknown function` — the receiver is not a value, so the
+  call fell through to the ordinary builtin table. **Every documented way for
+  an agent to reach a resource was checkable and unrunnable**, which is why
+  no cookbook recipe had ever been run. `io`, `fs`, `env` and `time` are now
+  implemented; the rest report that the checker tracks the capability and the
+  interpreter cannot perform it, rather than answering with a unit value.
 - **`p"…"` printed nothing and interpolated nothing.** The print-string and
   eprint-string forms — the ones `cookbook/` uses throughout, and the shortest
   print in the language — were folded into a plain string literal by the
@@ -281,6 +309,17 @@ Compiles, runs, returns the wrong number. No error anywhere.
   with no arity check, and the evaluator read argument 0 and discarded the
   rest. A FizzBuzz over `range(1, 101)` printed one line and exited 0. Both
   oracles now reject it and point at `a..b`.
+- **`contains` on a string failed the checker.** The evaluator has always
+  done three things — substring for a string, key membership for a map,
+  element membership for a list — and the checker knew only the third. So
+  `contains(email, "@")` evaluated correctly and reported `expected a
+  collection, found str`.
+- **The vocabulary enforced nothing.** All 15 argument unifications in
+  `infer_vocab_call` were `let _ = unify(…)`, discarding the failure, so
+  `join(xs, 7)` and `upper(5)` checked clean. The one thing a fixed, closed
+  set of 31 combinators is *for* is catching misuse. They now report, and the
+  stricter pass immediately caught three blocks written earlier in this
+  session.
 - **`len` decided an open type.** `len` accepts a string or a collection, and
   on an unresolved type variable it committed to a collection — so
   `v body = net.connect(url)` / `len(body)` / `body: str` was a type error,

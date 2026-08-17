@@ -1,13 +1,2 @@
-DIRECT_CODEGEN_STRATEGY.md 3
 MAGE_SPEC.md 33
-cookbook/agents.md 7
-cookbook/cli.md 6
-cookbook/concurrency.md 7
-cookbook/data.md 8
-cookbook/errors.md 7
-cookbook/http.md 9
-cookbook/io.md 8
-cookbook/testing.md 8
 internals/05-effects-resolution.md 1
-migration-guide/05-effects.md 1
-migration-guide/08-case-studies.md 6

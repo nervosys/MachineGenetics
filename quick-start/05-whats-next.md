@@ -68,8 +68,10 @@ map filter fold reduce sum len count sort reverse zip freq first last any all
 find take range keys values flatten group scan contains split join chars words
 lines upper lower
 
-io fs net env time rng process alloc panic ffi async agent llm gpu npu json kb
-db mem thread
+io  fs  net  env  time  rng  llm  gpu  agent      ← same name as the effect
+http  mem  log  swarm                          ← net, alloc, io, agent
+os  sys  process  tools                        ← all four perform `proc`
+json  kb  db                                   ← perform nothing (deliberate)
 ```
 
 `use` parses for source compatibility and imports nothing — the checker warns

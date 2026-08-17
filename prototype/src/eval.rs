@@ -764,6 +764,20 @@ impl Interp {
                         }
                         return Ok(Value::Enum(enum_name, method.clone(), payload));
                     }
+                    // A capability namespace: `fs.read_to_string(p)`. Like the
+                    // arms above, the receiver is not a value, so this has to
+                    // be resolved from the name — falling through evaluated
+                    // `fs` as an expression and then looked `read_to_string`
+                    // up in the builtin table, where it is not.
+                    if env.get(name).is_none()
+                        && crate::hir::CAPABILITY_NAMESPACES.iter().any(|(ns, _)| ns == name)
+                    {
+                        let mut av = Vec::with_capacity(args.len());
+                        for a in args {
+                            av.push(self.eval(a, env)?);
+                        }
+                        return self.call_capability(name, method, av);
+                    }
                     // An associated function written on the type itself
                     // (`Point.new(1)`). Like a unit variant, there is no
                     // receiver value to evaluate, so it is resolved from the
@@ -1217,6 +1231,97 @@ impl Interp {
             },
             Pattern::Or { patterns } => patterns.iter().any(|p| self.match_pat(p, val, env)),
             Pattern::Ref { pattern } => self.match_pat(pattern, val, env),
+        }
+    }
+
+    /// `fs.read_to_string(p)`, `io.println(x)`, `env.get_env(k)`, `time.now()`
+    /// — a call through a capability namespace.
+    ///
+    /// These typechecked and then died with `unknown function
+    /// \`read_to_string\``: the receiver is not a value, so the call fell
+    /// through to the ordinary builtin table, which knows nothing about
+    /// namespaces. Every capability the documentation shows an agent reaching
+    /// for was in that state, so no example using one could be *run* — the
+    /// class of divergence this repository keeps finding, in the one place the
+    /// language points at hardest.
+    ///
+    /// Four namespaces are implementable in a tree-walking interpreter: `io`,
+    /// `fs`, `env` and `time` (and `log`, which is `io`). The rest name
+    /// resources this process cannot provide, and say so rather than
+    /// answering with a unit value that would make a wrong program look
+    /// finished.
+    fn call_capability(&self, ns: &str, op: &str, a: Vec<Value>) -> R {
+        let arg = |i: usize| a.get(i).cloned().unwrap_or(Value::Unit);
+        let text = |i: usize| as_str(&arg(i));
+        match (ns, op) {
+            // ── io ────────────────────────────────────────────────────
+            ("io" | "log", "println" | "print" | "eprintln" | "eprint" | "write" | "writeln") => {
+                self.call_builtin(if op.starts_with('e') { "eprintln" } else { "println" }, a)
+            }
+            ("io", "read_line") => {
+                let mut line = String::new();
+                std::io::stdin()
+                    .read_line(&mut line)
+                    .map_err(|e| Control::Err(format!("io.read_line: {e}")))?;
+                Ok(Value::Str(line.trim_end_matches(['\n', '\r']).to_string()))
+            }
+            ("io", "read" | "read_to_string") => {
+                use std::io::Read;
+                let mut buf = String::new();
+                std::io::stdin()
+                    .read_to_string(&mut buf)
+                    .map_err(|e| Control::Err(format!("io.{op}: {e}")))?;
+                Ok(Value::Str(buf))
+            }
+
+            // ── fs ────────────────────────────────────────────────────
+            ("fs", "read" | "read_to_string") => std::fs::read_to_string(text(0)?)
+                .map(Value::Str)
+                .map_err(|e| Control::Err(format!("fs.{op}: {e}"))),
+            ("fs", "write" | "create") => std::fs::write(text(0)?, text(1).unwrap_or_default())
+                .map(|()| Value::Unit)
+                .map_err(|e| Control::Err(format!("fs.{op}: {e}"))),
+            ("fs", "remove") => std::fs::remove_file(text(0)?)
+                .map(|()| Value::Unit)
+                .map_err(|e| Control::Err(format!("fs.remove: {e}"))),
+            ("fs", "mkdir") => std::fs::create_dir_all(text(0)?)
+                .map(|()| Value::Unit)
+                .map_err(|e| Control::Err(format!("fs.mkdir: {e}"))),
+            ("fs", "rename") => std::fs::rename(text(0)?, text(1)?)
+                .map(|()| Value::Unit)
+                .map_err(|e| Control::Err(format!("fs.rename: {e}"))),
+            ("fs", "stat") => std::fs::metadata(text(0)?)
+                .map(|m| Value::Int(m.len() as i64))
+                .map_err(|e| Control::Err(format!("fs.stat: {e}"))),
+            ("fs", "exists") => Ok(Value::Bool(std::path::Path::new(&text(0)?).exists())),
+
+            // ── env ───────────────────────────────────────────────────
+            ("env", "get_env" | "var" | "env") => {
+                Ok(Value::Str(std::env::var(text(0)?).unwrap_or_default()))
+            }
+            ("env", "args") => Ok(Value::List(
+                std::env::args().map(Value::Str).collect(),
+            )),
+
+            // ── time ──────────────────────────────────────────────────
+            ("time", "now") => {
+                let ms = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| d.as_millis() as i64)
+                    .unwrap_or(0);
+                Ok(Value::Int(ms))
+            }
+            ("time", "sleep") => {
+                let ms = as_int(&arg(0)).unwrap_or(0).max(0) as u64;
+                std::thread::sleep(std::time::Duration::from_millis(ms));
+                Ok(Value::Unit)
+            }
+
+            _ => err(format!(
+                "`{ns}.{op}` has no interpreter implementation — the checker \
+                 tracks the capability, but `--eval` cannot perform it. \
+                 Implemented: io, fs, env, time"
+            )),
         }
     }
 
@@ -1887,6 +1992,32 @@ mod tests {
     // its operand, so the call attached to the *negation* rather than to `f`.
     // Nothing constrained what `!` applied to, so this checked clean and then
     // failed at run time with `value is not callable`.
+
+    /// A capability call has to *evaluate*, not just typecheck.
+    ///
+    /// `fs.read_to_string(p)` and every other namespace call died with
+    /// `unknown function` — the receiver is not a value, so the call fell
+    /// through to the ordinary builtin table. Every documented way for an
+    /// agent to reach a resource was checkable and unrunnable.
+    #[test]
+    fn a_capability_call_evaluates() {
+        // `time.now` is the cheapest one with an observable answer.
+        assert!(matches!(
+            run("+f s() -> i64 / time { time.now() }", "s", &[]),
+            Value::Int(ms) if ms > 0
+        ));
+        // `env` reads the real environment; PATH is set on every platform CI
+        // runs on, and the empty-string fallback keeps the test honest if not.
+        assert!(matches!(
+            run("+f s() -> str / env { env.get_env(\"PATH\") }", "s", &[]),
+            Value::Str(_)
+        ));
+        // A namespace the interpreter cannot serve says so, naming both parts
+        // — it must not answer with a unit value.
+        let e = run_source("+f s() -> i32 / net { net.connect(\"x\") }", "s", &[])
+            .expect_err("net has no implementation");
+        assert!(e.contains("net.connect") && e.contains("no interpreter implementation"), "{e}");
+    }
 
     /// `p"…"` prints and interpolates.
     ///

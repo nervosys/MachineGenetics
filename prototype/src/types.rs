@@ -817,6 +817,22 @@ impl TypeChecker {
         }
     }
 
+    /// Unify an argument against what a vocabulary function requires, and
+    /// **report** a mismatch.
+    ///
+    /// Every arm below used `let _ = unify(…)`, discarding the failure. So
+    /// `contains(email, 42)`, `join(xs, 7)` and `upper(5)` all checked clean:
+    /// the vocabulary's types existed to *infer* with, and enforced nothing.
+    /// The one thing a fixed, closed set of 31 combinators is for is catching
+    /// misuse.
+    fn unify_arg(&mut self, name: &str, got: &Ty, want: &Ty) {
+        if unify(&mut self.subst, got, want).is_err() {
+            let got = self.subst.apply(got);
+            let want = self.subst.apply(want);
+            self.emit_error(format!("`{name}`: expected {want}, found {got}"));
+        }
+    }
+
     fn vocab_arity(&mut self, name: &str, got: usize, want: usize) {
         if got != want {
             self.emit_error(format!("`{name}` expects {want} argument(s), found {got}"));
@@ -877,9 +893,37 @@ impl TypeChecker {
             "contains" => {
                 self.vocab_arity(name, n, 2);
                 if n >= 1 {
-                    let e = self.collection_elem(&a[0]);
-                    if n >= 2 {
-                        let _ = unify(&mut self.subst, &e, &a[1]);
+                    // Three receivers, as the evaluator has always had:
+                    // substring for a string, key membership for a map,
+                    // element membership for a list. The checker knew only
+                    // the third, so `contains(email, "@")` — the substring
+                    // test, and the common one — evaluated correctly and
+                    // reported `expected a collection, found str`.
+                    match self.subst.apply(&a[0]) {
+                        Ty::Str => {
+                            if n >= 2 {
+                                self.unify_arg(name, &a[1], &Ty::Str);
+                            }
+                        }
+                        Ty::Map(k, _) => {
+                            if n >= 2 {
+                                self.unify_arg(name, &a[1], &k);
+                            }
+                        }
+                        // Still open — `contains` accepts all three, so
+                        // committing here would decide the type by argument
+                        // order, exactly as `len` used to. Inside
+                        // `filter(xs, |part| contains(part, ","))` the
+                        // parameter is open at this point, and forcing a
+                        // collection made the closure `f([str]~) -> bool`
+                        // where `filter` wanted `f(str) -> bool`.
+                        Ty::Var(tv) if !self.int_lit_vars.contains(&tv.0) => (),
+                        other => {
+                            let e = self.collection_elem(&other);
+                            if n >= 2 {
+                                self.unify_arg(name, &e, &a[1]);
+                            }
+                        }
                     }
                 }
                 Ty::Bool
@@ -926,7 +970,7 @@ impl TypeChecker {
                     ));
                 }
                 for t in &a {
-                    let _ = unify(&mut self.subst, t, &usize_ty);
+                    self.unify_arg(name, t, &usize_ty);
                 }
                 Ty::Vec(Box::new(usize_ty))
             }
@@ -936,7 +980,7 @@ impl TypeChecker {
                 let b = self.fresh();
                 if n >= 2 {
                     let f = Ty::Fn(vec![e], Box::new(b.clone()), pure());
-                    let _ = unify(&mut self.subst, &a[1], &f);
+                    self.unify_arg(name, &a[1], &f);
                 }
                 Ty::Vec(Box::new(self.subst.apply(&b)))
             }
@@ -945,7 +989,7 @@ impl TypeChecker {
                 let e = if n >= 1 { self.collection_elem(&a[0]) } else { self.fresh() };
                 if n >= 2 {
                     let f = Ty::Fn(vec![e.clone()], Box::new(Ty::Bool), pure());
-                    let _ = unify(&mut self.subst, &a[1], &f);
+                    self.unify_arg(name, &a[1], &f);
                 }
                 Ty::Vec(Box::new(e))
             }
@@ -954,7 +998,7 @@ impl TypeChecker {
                 let e = if n >= 1 { self.collection_elem(&a[0]) } else { self.fresh() };
                 if n >= 2 {
                     let f = Ty::Fn(vec![e], Box::new(Ty::Bool), pure());
-                    let _ = unify(&mut self.subst, &a[1], &f);
+                    self.unify_arg(name, &a[1], &f);
                 }
                 Ty::Bool
             }
@@ -963,7 +1007,7 @@ impl TypeChecker {
                 let e = if n >= 1 { self.collection_elem(&a[0]) } else { self.fresh() };
                 if n >= 2 {
                     let f = Ty::Fn(vec![e.clone()], Box::new(Ty::Bool), pure());
-                    let _ = unify(&mut self.subst, &a[1], &f);
+                    self.unify_arg(name, &a[1], &f);
                 }
                 Ty::Option(Box::new(e))
             }
@@ -973,7 +1017,7 @@ impl TypeChecker {
                 let acc = if n >= 2 { a[1].clone() } else { self.fresh() };
                 if n >= 3 {
                     let f = Ty::Fn(vec![acc.clone(), e], Box::new(acc.clone()), pure());
-                    let _ = unify(&mut self.subst, &a[2], &f);
+                    self.unify_arg(name, &a[2], &f);
                 }
                 self.subst.apply(&acc)
             }
@@ -982,7 +1026,7 @@ impl TypeChecker {
                 let e = if n >= 1 { self.collection_elem(&a[0]) } else { self.fresh() };
                 if n >= 2 {
                     let f = Ty::Fn(vec![e.clone(), e.clone()], Box::new(e.clone()), pure());
-                    let _ = unify(&mut self.subst, &a[1], &f);
+                    self.unify_arg(name, &a[1], &f);
                 }
                 Ty::Option(Box::new(e))
             }
@@ -990,31 +1034,31 @@ impl TypeChecker {
             "split" => {
                 self.vocab_arity(name, n, 2);
                 for t in a.iter().take(2) {
-                    let _ = unify(&mut self.subst, t, &Ty::Str);
+                    self.unify_arg(name, t, &Ty::Str);
                 }
                 Ty::Vec(Box::new(Ty::Str))
             }
             "chars" | "words" | "lines" => {
                 self.vocab_arity(name, n, 1);
                 if n >= 1 {
-                    let _ = unify(&mut self.subst, &a[0], &Ty::Str);
+                    self.unify_arg(name, &a[0], &Ty::Str);
                 }
                 Ty::Vec(Box::new(Ty::Str))
             }
             "join" => {
                 self.vocab_arity(name, n, 2);
                 if n >= 1 {
-                    let _ = unify(&mut self.subst, &a[0], &Ty::Vec(Box::new(Ty::Str)));
+                    self.unify_arg(name, &a[0], &Ty::Vec(Box::new(Ty::Str)));
                 }
                 if n >= 2 {
-                    let _ = unify(&mut self.subst, &a[1], &Ty::Str);
+                    self.unify_arg(name, &a[1], &Ty::Str);
                 }
                 Ty::Str
             }
             "upper" | "lower" => {
                 self.vocab_arity(name, n, 1);
                 if n >= 1 {
-                    let _ = unify(&mut self.subst, &a[0], &Ty::Str);
+                    self.unify_arg(name, &a[0], &Ty::Str);
                 }
                 Ty::Str
             }
@@ -2401,6 +2445,31 @@ f s() -> i32 { g(1) }");
     fn vocab_arity_is_checked() {
         assert!(!check_source("f t() { sum() }").diagnostics.is_empty());
         assert!(!check_source("f t() { map([1, 2, 3]) }").diagnostics.is_empty());
+    }
+
+    /// `contains` works on a string, a map and a list — as the evaluator has
+    /// always done. The checker knew only the list, so the substring test
+    /// evaluated correctly and failed `--check`.
+    #[test]
+    fn contains_accepts_a_string_a_map_and_a_list() {
+        for src in [
+            "f t(e: str) -> bool { contains(e, \"@\") }",
+            "f t(m: {str: i32}) -> bool { contains(m, \"k\") }",
+            "f t(xs: [i32]~) -> bool { contains(xs, 1) }",
+        ] {
+            let diags = check_source(src).diagnostics;
+            assert!(diags.is_empty(), "`{src}` should check: {diags:?}");
+        }
+        // And the needle still has to match what it is searched in. (An
+        // *unsuffixed integer literal* is exempt: it stays width-polymorphic
+        // until something constrains it, so `contains(e, 1)` passes here —
+        // open item 12, the int-literal constraint.)
+        assert!(!check_source("f t(e: str, n: i32) -> bool { contains(e, n) }").diagnostics.is_empty());
+        assert!(
+            !check_source("f t(xs: [i32]~) -> bool { contains(xs, \"a\") }")
+                .diagnostics
+                .is_empty()
+        );
     }
 
     /// `len` accepts a string or a collection, so it must not decide which one

@@ -159,128 +159,66 @@ MAGE idioms. Final result:
 ### 8.1.4 MAGE Source (After)
 
 ```MAGE
-// src/main.mg
-u clap.{Parser, Subcommand}
-u csv.Reader
-u serde.Deserialize
-u std.fs
-u std.path.PathBuf
+// src/main.mg — csvtool, after migration.
+//
+// No `clap`, no derive attributes and no `PathBuf`: the command is a sum, and
+// parsing is `env.args()` plus a `?=`. What the crate's 340 lines of derive
+// macros bought, a 20-line function does here.
 
-@d(Parser)
-@command(name: "csvtool", version, about: "CSV manipulation tool")
-+S Cli {
-    @command(subcommand)
-    command: Commands,
++E Command {
+    Count(s),
+    Filter(s, s, s),
+    Usage,
 }
 
-@d(Subcommand)
-+E Commands {
-    /// Count rows in a CSV file
-    Count {
-        @arg(short, long)
-        file: PathBuf,
-    },
-    /// Filter rows by column value
-    Filter {
-        @arg(short, long)
-        file: PathBuf,
-        @arg(short, long)
-        column: s,
-        @arg(short, long)
-        value: s,
-    },
-}
-
-@d(Debug, Deserialize)
-S Record {
-    @serde(flatten)
-    fields: {s: s},
-}
-
-f count_rows(path: &PathBuf) -> R[usize, ^dyn Error] / io {
-    m rdr = Reader.from_path(path)?
-    Ok(rdr.records().count())
-}
-
-f filter_rows(
-    path: &PathBuf,
-    column: &s,
-    value: &s,
-) -> R[Vec[Record], ^dyn Error] / io {
-    m rdr = Reader.from_path(path)?
-    m results = [Record]~.new()
-    @ result ~ rdr.deserialize() {
-        v record: Record = result?
-        ? record.fields.get(column) == Some(&s.from(value)) {
-            results.push(record)
-        }
++f parse_command(argv: [s]~) -> Command {
+    guard len(argv) > 1 else { ret Usage }
+    ?= argv[1] {
+        "count" => ? len(argv) > 2 { Count(argv[2]) } : { Usage },
+        "filter" => ? len(argv) > 4 { Filter(argv[2], argv[3], argv[4]) } : { Usage },
+        _ => Usage,
     }
-    Ok(results)
 }
 
-+f main() -> R[(), ^dyn Error] / io {
-    v cli = Cli.parse()
+f count_rows(path: s) -> i32 / fs {
+    (len(lines(fs.read_to_string(path))) as i32) - 1
+}
 
-    ? cli.command {
-        Commands.Count @{ file } => {
-            v count = count_rows(&file)?
-            p"{count} rows"
+f filter_rows(path: s, column: s, value: s) -> [s]~ / fs {
+    v rows = lines(fs.read_to_string(path))
+    filter(rows, |row| contains(row, value) && contains(row, column))
+}
+
++f run(argv: [s]~) -> i32 / fs, io {
+    ?= parse_command(argv) {
+        Count(path) => {
+            v n = count_rows(path)
+            p"{n}"
+            n
         },
-        Commands.Filter @{ file, column, value } => {
-            v rows = filter_rows(&file, &column, &value)?
-            p"{rows.len()} matching rows"
-            @ row ~ &rows {
-                p"{row.fields:?}"
-            }
+        Filter(path, column, value) => {
+            v kept = filter_rows(path, column, value)
+            @ row in kept { p"{row}" }
+            len(kept) as i32
         },
-    }
-
-    Ok(())
-}
-
-@cfg(test)
-M tests {
-    u super.*
-
-    f create_csv() -> s / io {
-        v content = "name,age,city\nAlice,30,NYC\nBob,25,LA\nCarol,30,NYC\n"
-        content.to_owned()
-    }
-
-    @test
-    f test_count() {
-        v count = handle / io {
-            count_rows(&PathBuf.from("test.csv"))
-        } with {
-            Reader.from_path(_) => mock_reader(create_csv()),
-        }
-        assert_eq!(count.unwrap(), 3)
-    }
-
-    @test
-    f test_filter() {
-        v results = handle / io {
-            filter_rows(&PathBuf.from("test.csv"), "city", "NYC")
-        } with {
-            Reader.from_path(_) => mock_reader(create_csv()),
-        }
-        assert_eq!(results.unwrap().len(), 2)
+        Usage => {
+            ep"usage: csvtool count <file> | filter <file> <column> <value>"
+            1
+        },
     }
 }
 ```
 
 ### 8.1.5 Key Observations
 
-| Aspect     | Rust → MAGE                                     |
-| ---------- | ------------------------------------------------ |
-| Lines      | 95 → 82 (14% reduction)                          |
-| Keywords   | `fn`, `let`, `pub`, `match` → `f`, `v`, `+`, `?` |
-| Paths      | `std::path::PathBuf` → `std.path.PathBuf`        |
-| Generics   | `Vec<Record>` → `Vec[Record]`                    |
-| Type sugar | `HashMap<String,String>` → `{s: s}`              |
-| Match      | `match cli.command { }` → `? cli.command { }`    |
-| Tests      | tempfile crate → effect mocking                  |
-| Effects    | implicit I/O → explicit `/ io`                   |
+| Aspect     | Rust → MAGE |
+| ---------- | ----------- |
+| Keywords   | `fn`, `let`, `pub`, `match` → `f`, `v`, `+`, `?=` |
+| Type sugar | `HashMap<String,String>` → `{s: s}`, `Vec<T>` → `[T]~` |
+| Paths      | **deleted** — there is no module system, and `std.path.PathBuf` does not exist either |
+| Derives    | **deleted** — no `@d(Parser)`, no `clap`; the command is a sum and `env.args()` is the parser |
+| Effects    | implicit I/O → explicit `/ fs, io`, and reading a file is `fs`, not `io` |
+| Tests      | tempfile crate → effect mocking (§8.2.4) |
 
 ---
 
@@ -364,100 +302,111 @@ pub async fn create_user(
 ### 8.2.3 MAGE Source (After)
 
 ```MAGE
-// src/main.mg
-u web.{Router, routing.{get, post}, Json, Extension}
-u db.postgres.PgPoolOptions
-u std.sync.Arc
-u web.cors.CorsLayer
+// src/main.mg — user-api, after migration.
+//
+// There is no web framework, no `Router`, and no `sqlx`. A route is a sum, a
+// handler is a function, and the store is a **declared effect** — which is
+// what makes the handlers testable without a database.
 
-+af main() -> R[(), ^dyn Error] / net, db, log {
-    log.init()
++S User { id: i32, name: s, email: s }
 
-    v pool = PgPoolOptions.new()
-        .max_connections(5)
-        .connect(&env.var("DATABASE_URL")?)
-        .await?
+effect Db {
+    f all_users() -> [s]~;
+    f insert_user(name: s, email: s) -> i32;
+}
 
-    v state = @AppState @{ db: pool }
++E Route {
+    ListUsers,
+    CreateUser(s, s),
+    NotFound(s),
+}
 
-    v app = Router.new()
-        .route("/users", get(list_users))
-        .route("/users", post(create_user))
-        .route("/users/:id", get(get_user))
-        .layer(CorsLayer.permissive())
-        .layer(Extension(state))
++f route_of(path: s, body: s) -> Route {
+    v parts = filter(split(path, "/"), |part| len(part) > 0)
+    guard len(parts) > 0 else { ret NotFound(path) }
+    ?= parts[0] {
+        "users" => ? len(body) > 0 { CreateUser(body, body) } : { ListUsers },
+        _ => NotFound(path),
+    }
+}
 
-    v listener = net.TcpListener.bind("0.0.0.0:3000").await?
-    web.serve(listener, app).await?
-    Ok(())
+// Each handler declares the store it reaches. `db` is the effect, and every
+// caller inherits it up to the boundary that handles it.
++f handle_route(route: Route) -> s / db {
+    ?= route {
+        ListUsers => join(Db.all_users(), ","),
+        CreateUser(name, email) => f"{Db.insert_user(name, email)}",
+        NotFound(path) => f"404 {path}",
+    }
+}
+
+// The entry point declares the union: the socket and the store.
++f serve(path: s, body: s) -> s / db, net {
+    net.listen("0.0.0.0:3000")
+    handle_route(route_of(path, body))
 }
 ```
 
 ```MAGE
 // src/handlers.mg
-u web.{Extension, Json}
-u db.PgPool
+//
+// A handler is an ordinary function over the effect declared in `main.mg`.
+// There is no extractor, no `Json[T]` wrapper and no macro: the request is
+// values in, and the response is a string out.
 
-+af list_users(
-    Extension(state): Extension[@AppState],
-) -> R[Json[[User]~], AppError] / db {
-    v users = db.query_as!(User, "SELECT id, name, email FROM users")
-        .fetch_all(&state.db)
-        .await?
-    Ok(Json(users))
+effect Db {
+    f all_users() -> [s]~;
+    f insert_user(name: s, email: s) -> i32;
 }
 
-+af create_user(
-    Extension(state): Extension[@AppState],
-    Json(input): Json[CreateUser],
-) -> R[Json[User], AppError] / db {
-    v user = db.query_as!(
-        User,
-        "INSERT INTO users (name, email) VALUES ($1, $2) RETURNING id, name, email",
-        input.name,
-        input.email
-    )
-    .fetch_one(&state.db)
-    .await?
-    Ok(Json(user))
++f list_users() -> s / db {
+    join(Db.all_users(), ",")
+}
+
++f create_user(name: s, email: s) -> R[i32, s] / db {
+    guard len(name) > 0 else { ret Err("name is required") }
+    guard contains(email, "@") else { ret Err("invalid email") }
+    Ok(Db.insert_user(name, email))
 }
 ```
 
 ### 8.2.4 Testing With Effect Mocking
 
 ```MAGE
-@cfg(test)
-M tests {
-    u super.*
+// Testing the handlers with no database.
+//
+// `handle … with` substitutes the operations of one declared effect for the
+// block it wraps, so the test is pure — and an unhandled call anywhere else
+// still reports.
 
-    @test
-    af test_list_users() {
-        v result = handle / db {
-            list_users(Extension(@AppState @{ db: mock_pool() })).await
-        } with {
-            db.query_as!(User, _) => Ok([
-                User @{ id: 1, name: s.from("Alice"), email: s.from("alice@example.com") },
-            ]~),
-        }
+effect Db {
+    f all_users() -> [s]~;
+    f insert_user(name: s, email: s) -> i32;
+}
 
-        v Json(users) = result.unwrap()
-        assert_eq!(users.len(), 1)
-        assert_eq!(users[0].name, "Alice")
-    }
+f list_users() -> s / db { join(Db.all_users(), ",") }
+
+@test
++f test_list_users() -> bool {
+    handle {
+        list_users()
+    } with Db {
+        all_users() => ["Alice", "Bob"],
+        insert_user(name, email) => 0,
+    } == "Alice,Bob"
 }
 ```
 
 ### 8.2.5 Key Observations
 
-| Aspect   | Change                                         |
-| -------- | ---------------------------------------------- |
-| Runtime  | tokio removed — built-in async                 |
-| Effects  | All handlers annotated `/ db`, `/ net`         |
-| Paths    | `sqlx::query_as!` → `db.query_as!`             |
-| Generics | `Arc<AppState>` → `@AppState`                  |
-| Types    | `Vec<User>` → `[User]~`                        |
-| Main     | `#[tokio::main]` → `+af main() / net, db, log` |
-| Testing  | wiremock/mockall → `handle / db` blocks        |
+| Aspect   | Change |
+| -------- | ------ |
+| Runtime  | tokio removed. `async` is a declaration keyword (`+af name(…)`), and there is no `.await` to write |
+| Framework | axum removed. There is no router, no extractor and no `Json[T]`: a route is a sum and a handler is a function |
+| Store    | sqlx removed. **The database is a declared `effect`** — `effect Db { … }` — which is what makes the handlers testable |
+| Effects  | every handler annotated `/ db`; the entry point declares `/ db, net` |
+| Types    | `Vec<User>` → `[User]~`, `Arc<AppState>` → a plain value |
+| Testing  | wiremock/mockall → `handle { … } with Db { … }`, which is part of the type system rather than a library |
 
 ---
 
@@ -561,118 +510,79 @@ This crate requires a phased approach:
 ### 8.3.4 MAGE Source (After)
 
 ```MAGE
-// src/pipeline.mg
-u std.path.{Path, PathBuf}
-u std.agent.{Agent, Swarm}
+// src/pipeline.mg — etl-pipeline, after migration.
+//
+// rayon's `par_iter` becomes an `agent` declaration plus `map`: the fan-out
+// is a vocabulary call and the *capability* is what the annotation records.
 
-+S Pipeline {
-    input_dir: PathBuf,
-    output_dir: PathBuf,
-    batch_size: usize,
+agent FileProcessor {
+    capabilities: [fs]
 }
 
-I ~ Pipeline {
-    +f new(input: PathBuf, output: PathBuf, batch_size: usize) -> Self {
-        Self @{ input_dir: input, output_dir: output, batch_size }
-    }
+swarm Pool {
+    agent: FileProcessor
+    size: 4
+    topology: mesh
+    consensus: majority
+}
 
-    +af run(&self) -> R[Stats, PipelineError] / io, agent {
-        v files = fs.read_dir(&self.input_dir)?
-            .filter_map(|e| e.ok())
-            .filter(|e| e.path().extension() == Some("csv".as_ref()))
-            .collect[Vec[_]]()
++S Stats { rows: i32, files: i32, errors: i32 }
 
-        // Fan-out to agent Swarm (replaces rayon)
-        v swarm = Swarm.new()
-        @ entry ~ &files {
-            swarm.spawn(FileProcessor @{
-                path: entry.path(),
-                output_dir: self.output_dir.clone(),
-            })
-        }
-        v results = swarm.join_all().await?
+f process_file(path: s) -> Stats / fs {
+    v rows = lines(fs.read_to_string(path))
+    @Stats { rows: len(rows) as i32, files: 1, errors: 0 }
+}
 
-        m stats = Stats.default()
-        @ result ~ results {
-            ? result {
-                Ok(s) => stats.merge(s),
-                Err(e) => stats.add_error(e),
-            }
-        }
-        Ok(stats)
+f merge(a: Stats, b: Stats) -> Stats {
+    @Stats {
+        rows: a.rows + b.rows,
+        files: a.files + b.files,
+        errors: a.errors + b.errors,
     }
 }
 
-S FileProcessor {
-    path: PathBuf,
-    output_dir: PathBuf,
-}
-
-I Agent ~ FileProcessor {
-    +af execute(&!self) -> R[Stats, PipelineError] / io, agent {
-        v records = read_csv(&self.path)?
-        v transformed = transform_batch(&records)
-        v output_path = self.output_dir.join(
-            self.path.file_stem().unwrap()
-        ).with_extension("parquet")
-        write_parquet(&output_path, &transformed)?
-
-        Ok(Stats @{ rows: records.len(), files: 1, errors: 0 })
-    }
++f run(paths: [s]~) -> Stats / fs {
+    fold(
+        map(paths, |path| process_file(path)),
+        @Stats { rows: 0, files: 0, errors: 0 },
+        |acc, stats| merge(acc, stats),
+    )
 }
 ```
 
 ```MAGE
 // src/transform.mg
-+f normalize_floats(data: &![f64]) / unsafe {
-    v max = data.iter().cloned().fold(f64.MIN, f64.max)
-    ? max == 0.0 { ret }
+//
+// There is no `unsafe`, no SIMD intrinsic and no `/ unsafe` effect — `unsafe`
+// does not parse, and the effect kinds are the 17 in §11.2. The transform is
+// ordinary code; if it were to reach the GPU, the annotation would be `/ gpu`.
 
-    // SIMD normalization — effect annotation makes the unsafe explicit
-    u std.arch.x86_64.*
-    v divisor = _mm256_set1_pd(max)
-    v chunks = data.len() / 4
-    @ i ~ 0..chunks {
-        v ptr = data.as_mut_ptr().add(i * 4)
-        v vals = _mm256_loadu_pd(ptr)
-        v normed = _mm256_div_pd(vals, divisor)
-        _mm256_storeu_pd(ptr, normed)
-    }
-    // Handle remainder
-    @ val ~ data[data.len() - data.len() % 4..].iter_mut() {
-        *val /= max
-    }
++f normalize(data: [f64]~) -> [f64]~ {
+    v peak = fold(data, 0.0, |acc, x| ? x > acc { x } : { acc })
+    guard peak != 0.0 else { ret data }
+    map(data, |x| x / peak)
 }
 ```
 
-### 8.3.5 Forge.toml — Capability Grants
+### 8.3.5 Where the capability grant lives
 
-```toml
-[package]
-name = "etl-pipeline"
-version = "0.1.0"
-edition = "2025"
-
-[effects]
-io = true
-agent = true
-
-[capabilities]
-allow-unsafe = ["src/transform.mg"]   # SIMD only
-allow-io = ["src/pipeline.mg"]
-allow-agent = ["src/pipeline.mg"]
-```
+**There is no `[capabilities]` section in `Forge.toml`, and no per-file
+grant.** The grant is the `/ effect` annotation on the function, checked at
+compile time: a `pub` function that reaches `fs` declares `fs`, and every
+caller that reaches it inherits the obligation up to the boundary that handles
+it. Scoping a capability to one file is not a thing you configure — it is what
+you get by keeping the annotation off everything else.
 
 ### 8.3.6 Key Observations
 
-| Aspect       | Change                                   |
-| ------------ | ---------------------------------------- |
-| Parallelism  | rayon `par_iter` → Agent + Swarm         |
-| Unsafe       | Raw SIMD → `/ unsafe` effect annotation  |
-| Capability   | Unsafe scoped to `transform.mg` only    |
-| Dependencies | rayon removed                            |
-| Backpressure | rayon auto-tuning → `Swarm.with_limit()` |
-| Testing      | Direct calls → `handle / io` mocking     |
+| Aspect       | Change |
+| ------------ | ------ |
+| Parallelism  | rayon `par_iter` → an `agent` declaration plus `map`; fan-in is `fold` |
+| Unsafe       | **deleted.** `unsafe` does not parse, and there is no `/ unsafe` effect — the kinds are the 17 in §11.2 |
+| Capability   | the `/ fs` annotation, not a config file |
+| Dependencies | rayon removed |
+| Backpressure | `swarm` declares `size`; there is no `with_limit` |
+| Testing      | direct calls → `handle { … } with E { … }` |
 
 ---
 

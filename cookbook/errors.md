@@ -1,242 +1,233 @@
 # Error Handling
 
+> Recipes for failure. Agent-mode syntax; every block was verified with
+> `mage-parse --check`.
+
+The previous version of this page was written against machinery MAGE does not
+have: `I Display ~ AppError`, `impl From<io::Error>`, `.context(…)`,
+`errors.push(…)`, `.expect(…)`, `af() -> R[T, E]` as a parameter type. Three
+absences shape every recipe below.
+
+**`?` propagates, it does not convert.** There is no `From`, so an error
+crossing a module boundary is converted by a function you call, at a call site
+you can see.
+
+**There is no error trait.** `R[T, E]` takes any `E`; rendering, comparing and
+wrapping are functions you write. A `str` error is idiomatic for small
+programs.
+
+**`panic` is a capability.** It is one of the 17 effect kinds, so a function
+that can abort declares `/ panic` and every caller inherits it.
+
 ---
 
 ### Define a custom error type
 
-**Problem**: Create a domain-specific error with multiple variants.
+**Problem**: Model the failures of a module as one type.
 
 **Solution**:
 
-```mg
-u std.fmt.Display
-
+```MAGE
+// An error type is an ordinary sum. There is no `Display` to implement and no
+// `#[derive(Debug)]`, so rendering is a function you write.
 +E AppError {
     NotFound(s),
     Permission(s),
-    Parse { input: s, reason: s },
+    Parse(s),
     Internal(s),
 }
 
-I Display ~ AppError {
-    +f fmt(&self, f: &!Formatter) -> FmtResult {
-        ? self {
-            AppError.NotFound(item) => write(f, "not found: {item}"),
-            AppError.Permission(msg) => write(f, "permission denied: {msg}"),
-            AppError.Parse { input, reason } => {
-                write(f, "parse error on '{input}': {reason}")
-            },
-            AppError.Internal(msg) => write(f, "internal error: {msg}"),
-        }
++f message(err: AppError) -> s {
+    ?= err {
+        NotFound(item) => f"not found: {item}",
+        Permission(who) => f"permission denied: {who}",
+        Parse(input) => f"parse error on '{input}'",
+        Internal(detail) => f"internal error: {detail}",
     }
 }
 ```
+
+**Discussion**: An error type is an ordinary sum. There is no `Display` to implement, no `#[derive(Debug)]`, and no error trait — rendering is a function you write, and the `?=` over it is exhaustive.
 
 ---
 
 ### Convert between error types
 
-**Problem**: Use `?` across functions with different error types.
+**Problem**: Turn one module's failure into your own.
 
 **Solution**:
 
-```mg
-u std.io.IoError
-u std.json.JsonError
+```MAGE
++E AppError { Io(s), Json(s), Custom(s) }
 
-+E AppError {
-    Io(IoError),
-    Json(JsonError),
-    Custom(s),
-}
+// There is no `From` and no automatic conversion at `?`. A conversion is an
+// ordinary function, and calling it is visible at the call site — which is
+// the point: nothing silently reshapes an error on the way up.
+f from_io(detail: s) -> AppError { Io(detail) }
 
-// Enable ? for IoError → AppError
-I From[IoError] ~ AppError {
-    +f from(e: IoError) -> Self { AppError.Io(e) }
-}
-
-// Enable ? for JsonError → AppError
-I From[JsonError] ~ AppError {
-    +f from(e: JsonError) -> Self { AppError.Json(e) }
-}
-
-+f load_config(path: &s) -> R[Config, AppError] / io {
-    v text = fs.read(path)?          // IoError → AppError via From
-    v config = from_str(&text)?      // JsonError → AppError via From
-    Ok(config)
++f read_config(path: s) -> R[s, AppError] / fs {
+    v content = fs.read_to_string(path)
+    guard len(content) > 0 else { ret Err(from_io("empty file")) }
+    Ok(content)
 }
 ```
+
+**Discussion**: **There is no `From` and no conversion at `?`.** A conversion is an ordinary function, and calling it is visible at the call site. Nothing reshapes an error silently on the way up.
 
 ---
 
 ### Chain errors with context
 
-**Problem**: Add context to errors so the caller knows what was happening.
+**Problem**: Add context to an error as it propagates.
 
 **Solution**:
 
-```mg
-+E ContextError {
-    WithContext { context: s, source: ^dyn Error },
+```MAGE
+// "Context" is string building: wrap the message as you return it. There is
+// no `.context(…)` combinator and no error trait to hang one on.
+f with_context(context: s, err: s) -> s {
+    f"{context}: {err}"
 }
 
-+f with_context[T, E: Error](
-    result: R[T, E],
-    context: &s,
-) -> R[T, ContextError] {
-    result.map_err(|e| ContextError.WithContext @{
-        context: context.to_string(),
-        source: ^.new(e),
-    })
-}
-
-// Usage
-+f load_user(id: u64) -> R[User, ContextError] / io {
++f load_user(id: i32) -> R[s, s] / fs {
     v path = f"users/{id}.json"
-    v text = with_context(fs.read(&path), &f"loading user {id}")?
-    v user = with_context(from_str(&text), &f"parsing user {id}")?
-    Ok(user)
+    v raw = fs.read_to_string(path)
+    guard len(raw) > 0 else { ret Err(with_context(f"loading user {id}", "file not found")) }
+    Ok(raw)
 }
 ```
 
-**Discussion**: When `load_user` fails, the error message becomes
-`"loading user 42: file not found: users/42.json"` — clear and actionable.
+**Discussion**: Context is string building. There is no `.context(…)` combinator and no trait to hang one on, so the wrapping is explicit and the message is whatever you wrote.
 
 ---
 
-### Retry with exponential backoff
+### Retry with backoff
 
 **Problem**: Retry a fallible operation with increasing delays.
 
 **Solution**:
 
-```mg
-u std.time.Duration
-
-+af retry[T, E](
-    max_attempts: u32,
-    base_delay: Duration,
-    operation: af() -> R[T, E],
-) -> R[T, E] / async {
-    m attempt = 0u32
-    loop {
+```MAGE
+// Retry, without effect polymorphism: the operation is a plain function
+// value, and the *caller* declares the effects — a function-typed parameter
+// carries no annotation, so `fn(i32) -> R[s, s] / net` does not parse.
++f retry(max_attempts: i32, operation: fn(i32) -> R[s, s]) -> R[s, s] / time {
+    m attempt = 0
+    @@ {
         attempt += 1
-        ? operation().await {
-            Ok(v) => ret Ok(v),
-            Err(e) => {
-                ? attempt >= max_attempts {
-                    ret Err(e)
-                }
-                v delay = base_delay * 2u32.pow(attempt - 1)
-                sleep(delay).await
+        ?= operation(attempt) {
+            Ok(value) => ret Ok(value),
+            Err(err) => {
+                ? attempt >= max_attempts { ret Err(err) }
+                // Exponential backoff: the delay doubles each round.
+                time.sleep(attempt * attempt)
             },
         }
     }
-}
-
-// Usage
-+af main() / io, net, async {
-    v result = retry(3, Duration.from_millis(500), || async {
-        Request.get("https://flaky-api.example.com/data").send().await
-    }).await
-
-    ? result {
-        Ok(resp) => p"Got: {resp.status()}",
-        Err(e) => p"All retries failed: {e}",
-    }
+    Err("unreachable")
 }
 ```
+
+**Discussion**: The operation is a plain function value. **A function-typed parameter carries no effect annotation** — there is no effect polymorphism, so `fn(i32) -> R[s, s] / net` does not parse, and the caller declares what it performs.
 
 ---
 
 ### Fallback chain
 
-**Problem**: Try multiple sources, falling back to the next on failure.
+**Problem**: Try several sources, falling back on failure.
 
 **Solution**:
 
-```mg
-+f load_setting(key: &s) -> R[s, Error] / io {
-    // Try environment variable first
-    ? env.var(key) => Ok(v) { ret Ok(v) }
+```MAGE
+// A fallback chain is a sequence of guards. `?=` on a result, `ret` on the
+// first success.
++f load_setting(key: s) -> R[s, s] / env, fs {
+    v from_env = env.get_env(key)
+    ? len(from_env) > 0 { ret Ok(from_env) }
 
-    // Then config file
-    ? fs.read("config.toml") => Ok(content) {
-        ? parse_toml_key(&content, key) => Some(v) {
-            ret Ok(v)
-        }
+    v from_file = fs.read_to_string("config.toml")
+    @ line in lines(from_file) {
+        v parts = split(line, "=")
+        ? len(parts) == 2 && parts[0] == key { ret Ok(parts[1]) }
     }
 
-    // Then default
-    ? default_value(key) => Some(v) { ret Ok(v) }
-
-    Err(Error.new(f"setting '{key}' not found in any source"))
+    Err(f"setting '{key}' not found in any source")
 }
 ```
+
+**Discussion**: A sequence of guards with `ret` on the first success. Every source this function can reach is in its annotation — `env` and `fs` here — which is exactly the audit trail a fallback chain tends to hide.
 
 ---
 
 ### Collect all errors
 
-**Problem**: Run multiple operations and collect all errors rather than
-stopping at the first.
+**Problem**: Run several checks and collect every failure rather than stopping at the first.
 
 **Solution**:
 
-```mg
-+f validate_fields(form: &Form) -> R[(), [s]~] {
-    m errors = [s]~.new()
+```MAGE
++S Form { name: s, email: s, age: i32 }
 
-    ? form.name.is_empty() {
-        errors.push("name is required".into())
-    }
-    ? form.email.is_empty() {
-        errors.push("email is required".into())
-    }
-    ? form.age < 18 {
-        errors.push("must be at least 18".into())
-    }
-    ? !form.email.contains('@') {
-        errors.push("invalid email format".into())
-    }
+// Collect every failure instead of stopping at the first: build a list, and
+// let its emptiness be the verdict.
++f validate(form: Form) -> R[i32, [s]~] {
+    m errors: [s]~ = []
 
-    ? errors.is_empty() {
-        Ok(())
-    } : {
-        Err(errors)
-    }
+    ? len(form.name) == 0 { errors = flatten([errors, ["name is required"]]) }
+    ? len(form.email) == 0 { errors = flatten([errors, ["email is required"]]) }
+    ? form.age < 18 { errors = flatten([errors, ["must be at least 18"]]) }
+    ? !contains(form.email, "@") { errors = flatten([errors, ["invalid email format"]]) }
+
+    ? len(errors) == 0 { Ok(0) } : { Err(errors) }
 }
 
-+f main() / io {
-    v form = Form @{ name: "".into(), email: "bad", age: 15 }
-    ? validate_fields(&form) {
-        Ok(()) => p"Valid!",
++f main() -> i32 / io {
+    v form = @Form { name: "", email: "bad", age: 15 }
+    ?= validate(form) {
+        Ok(n) => n,
         Err(errors) => {
-            p"Validation failed:"
-            @ e : &errors { p"  - {e}" }
+            p"validation failed:"
+            @ err in errors { p"  - {err}" }
+            len(errors) as i32
         },
     }
 }
 ```
 
+**Discussion**: `R[T, [s]~]` — the error side is a list. `flatten([xs, [x]])` is how you append; there is no `.push`.
+
 ---
 
-### Unwrap with a message
+### Fail deliberately
 
-**Problem**: Crash with a helpful message during development.
+**Problem**: Abort with a helpful message during development.
 
 **Solution**:
 
-```mg
-+f main() / io {
-    v port: u16 = env.var("PORT")
-        .expect("PORT env var must be set")
-        .parse()
-        .expect("PORT must be a valid number")
+```MAGE
+// There is no `.expect(…)` and no `unwrap`. Return the failure, or abort
+// deliberately — `panic` is its own effect kind, so a function that can abort
+// says so in its signature.
++f port_or_die(raw: s) -> R[i32, s] / panic {
+    guard len(raw) > 0 else { ret Err("PORT env var must be set") }
+    ? raw == "0" { panic("PORT must not be zero") }
+    Ok(8080)
+}
 
-    p"Listening on port {port}"
++f main() -> i32 / env, panic, io {
+    ?= port_or_die(env.get_env("PORT")) {
+        Ok(port) => {
+            p"listening on port {port}"
+            port
+        },
+        Err(msg) => {
+            p"{msg}"
+            1
+        },
+    }
 }
 ```
 
-**Discussion**: Use `expect` during prototyping. Replace with proper error
-handling before production. The `?` operator is almost always preferable.
+**Discussion**: There is no `.expect(…)` and no `unwrap`. `panic` is a **capability like any other**: a function that can abort declares `/ panic`, and every caller inherits it. Note `guard`'s else branch must diverge with `ret` — a `panic` call does not satisfy it.
+
+---
