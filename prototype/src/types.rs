@@ -796,11 +796,25 @@ impl TypeChecker {
     /// it also made `sum("hi")` typecheck, which an existing test correctly
     /// forbids. Length-like and element-like uses want different rules, so they
     /// get different helpers.
+    /// The argument to `len` / `count`: a string, or a collection.
     fn sized_arg(&mut self, ty: &Ty) {
-        if matches!(self.subst.apply(ty), Ty::Str) {
-            return;
+        let t = self.subst.apply(ty);
+        match &t {
+            Ty::Str => (),
+            // Still unconstrained. `len` accepts either, so committing to a
+            // collection here decides the program by statement order:
+            //
+            //     val body = net.connect(url)   // type still open
+            //     len(body)                     // ← committed it to [?T]~
+            //     @Response { body: body }      // str vs [?T]~
+            //
+            // The same three lines in the other order checked clean. Leave it
+            // open and let a use that actually knows the type decide.
+            Ty::Var(tv) if !self.int_lit_vars.contains(&tv.0) => (),
+            _ => {
+                self.collection_elem(&t);
+            }
         }
-        self.collection_elem(ty);
     }
 
     fn vocab_arity(&mut self, name: &str, got: usize, want: usize) {
@@ -900,6 +914,17 @@ impl TypeChecker {
                 Ty::Vec(Box::new(if name == "keys" { k } else { v }))
             }
             "range" => {
+                // `range(n)` is `0..n` — the one vocabulary arm with no arity
+                // check. `range(1, 101)`, the spelling every other language
+                // teaches, typechecked, and the evaluator read argument 0 and
+                // discarded the rest: the loop ran `0..1`, so a FizzBuzz over
+                // `range(1, 101)` printed one line and returned cleanly.
+                if n != 1 {
+                    self.emit_error(format!(
+                        "`range` expects 1 argument(s), found {n} — `range(n)` is \
+                         `0..n`; for a start and an end write `a..b`"
+                    ));
+                }
                 for t in &a {
                     let _ = unify(&mut self.subst, t, &usize_ty);
                 }
@@ -2376,6 +2401,46 @@ f s() -> i32 { g(1) }");
     fn vocab_arity_is_checked() {
         assert!(!check_source("f t() { sum() }").diagnostics.is_empty());
         assert!(!check_source("f t() { map([1, 2, 3]) }").diagnostics.is_empty());
+    }
+
+    /// `len` accepts a string or a collection, so it must not decide which one
+    /// an open type is. It did: the same three statements checked or failed
+    /// depending on their order.
+    #[test]
+    fn len_does_not_commit_an_open_type_to_a_collection() {
+        let tc = check_source(
+            "+S Resp { body: str }\n\
+             +f f(url: str) -> Resp / net {\n\
+             v body = net.connect(url)\n\
+             v n = len(body)\n\
+             @Resp { body: body }\n\
+             }",
+        );
+        assert!(tc.diagnostics.is_empty(), "len fixed the type: {:?}", tc.diagnostics);
+        // Still an error on something that is neither.
+        assert!(!check_source("f t() { len(1b) }").diagnostics.is_empty());
+        assert!(!check_source("f t() { len(5) }").diagnostics.is_empty());
+    }
+
+    /// Every typed vocabulary arm must check its arity. `range` did not, so
+    /// `range(1, 101)` typechecked and then ran as `0..1`.
+    #[test]
+    fn every_typed_vocabulary_name_checks_its_arity() {
+        // One call per name with a deliberately absurd argument count. A name
+        // that accepts it is silently discarding arguments.
+        for name in [
+            "len", "count", "sum", "first", "last", "sort", "reverse", "take",
+            "flatten", "contains", "zip", "freq", "keys", "values", "range", "map",
+            "filter", "any", "all", "find", "fold", "reduce", "split", "join",
+            "chars", "words", "lines", "upper", "lower",
+        ] {
+            let src = format!("f t() {{ {name}(1, 2, 3, 4, 5) }}");
+            let diags = check_source(&src).diagnostics;
+            assert!(
+                diags.iter().any(|d| d.message.contains("argument(s), found 5")),
+                "`{name}` accepted five arguments without an arity error: {diags:?}"
+            );
+        }
     }
 
     #[test]

@@ -3630,7 +3630,72 @@ impl<'a> Parser<'a> {
             .is_some_and(|(next, bang)| next.span.line > bang.span.line)
     }
 
+    /// `println!(…)`, `format!(…)`, `vec![…]` — a Rust macro call.
+    ///
+    /// MAGE has no macros, and this was the worst way to not have them: the
+    /// `!` parsed as logical *not* applied to the call, so `format!("hi {x}")`
+    /// evaluated to `true` and `println!("hi")` printed nothing and returned a
+    /// bool. No error at any stage. `println!` is the single most likely thing
+    /// for a model carrying Rust habits to type, and it silently did nothing.
+    ///
+    /// Adjacency is the test — `name!(` with no space — so a genuine
+    /// `f(x) ! (y)` is untouched.
+    fn macro_call_ahead(&self) -> Option<String> {
+        let name = self.tokens.get(self.pos)?;
+        if name.kind != TokenKind::Ident {
+            return None;
+        }
+        let bang = self.tokens.get(self.pos + 1)?;
+        if bang.kind != TokenKind::Bang
+            || bang.span.line != name.span.line
+            || bang.span.col != name.span.col + name.text.chars().count()
+        {
+            return None;
+        }
+        let open = self.tokens.get(self.pos + 2)?;
+        matches!(
+            open.kind,
+            TokenKind::LParen | TokenKind::LBrack | TokenKind::LBrace
+        )
+        .then(|| name.text.clone())
+    }
+
     fn parse_prefix_expr(&mut self) -> Result<Expr, ParseError> {
+        // The five swarm orchestration patterns and `grammar_extension` are
+        // reserved by the lexer and consumed by *nothing* — no parser arm, no
+        // evaluator, and no mention in MAGE_SPEC.md. Reserving them costs the
+        // name twice over: `swarm_map_reduce(…)` is a parse error, and a user
+        // cannot define a function to fill the gap either. Say so, rather than
+        // reporting `expected expression, found KwSwarmMapReduce`.
+        if matches!(
+            self.peek(),
+            TokenKind::KwSwarmMapReduce
+                | TokenKind::KwSwarmPipeline
+                | TokenKind::KwSwarmSaga
+                | TokenKind::KwSwarmFanOut
+                | TokenKind::KwSwarmRace
+                | TokenKind::KwGrammarExt
+        ) {
+            let name = self.tokens[self.pos].text.clone();
+            return Err(self.error(&format!(
+                "`{name}` is a reserved word with no implementation — nothing \
+                 in the compiler consumes it. Fan out with `map` and fan in \
+                 with `fold` over the values an agent function returns"
+            )));
+        }
+        if let Some(name) = self.macro_call_ahead() {
+            let hint = match name.as_str() {
+                "println" | "print" | "eprintln" | "eprint" => {
+                    format!("call `{name}(…)` — it is an ordinary function here")
+                }
+                "format" => "use an f-string: `f\"hi {x}\"`".to_string(),
+                "vec" => "write a list literal: `[1, 2, 3]`".to_string(),
+                _ => format!("there is no `{name}!` — MAGE has no macros"),
+            };
+            return Err(self.error(&format!(
+                "`{name}!(…)` is a Rust macro call and MAGE has no macros — {hint}"
+            )));
+        }
         match self.peek() {
             // `!` with no operand is `break` — the spelling the lexer calls
             // canonical (`KwBreak, // break (legacy — canonical is !)`) and
@@ -4267,10 +4332,30 @@ impl<'a> Parser<'a> {
                     kind,
                 })
             }
-            TokenKind::StringLiteral
-            | TokenKind::FormatString
-            | TokenKind::PrintString
-            | TokenKind::EprintString => {
+            // `p"…"` prints, `e"…"` prints to stderr, and both interpolate.
+            //
+            // They did neither: this arm folded them into a plain
+            // `LiteralKind::String`, so `p"value {x}"` was a no-op statement
+            // whose value was the literal text — braces and all. The print was
+            // dropped *and* the interpolation was, with no diagnostic. They
+            // are the print form the cookbook uses throughout, and the one an
+            // agent optimising for tokens reaches for.
+            TokenKind::PrintString | TokenKind::EprintString => {
+                let tok = self.advance();
+                let name = if tok.kind == TokenKind::PrintString {
+                    "println"
+                } else {
+                    "eprintln"
+                };
+                Ok(Expr::Call {
+                    func: Box::new(Expr::Ident { name: name.to_string() }),
+                    args: vec![Expr::Literal {
+                        value: tok.text.clone(),
+                        kind: LiteralKind::FormatString,
+                    }],
+                })
+            }
+            TokenKind::StringLiteral | TokenKind::FormatString => {
                 let tok = self.advance();
                 let kind = match tok.kind {
                     TokenKind::FormatString => LiteralKind::FormatString,
@@ -4603,6 +4688,76 @@ mod tests {
         } else {
             panic!("expected function");
         }
+    }
+
+    /// `p"…"` / `e"…"` desugar to a print call over an interpolated string.
+    /// They used to parse as a plain string literal — no print, no
+    /// interpolation, no diagnostic.
+    #[test]
+    fn a_print_string_desugars_to_a_print_call() {
+        for (src, want) in [("f a() { p\"x\" }", "println"), ("f a() { ep\"x\" }", "eprintln")] {
+            let module = parse_source(src);
+            let ItemKind::Function(ref f) = module.items[0].kind else {
+                panic!("expected function");
+            };
+            let tail = f.body.tail_expr.as_deref().expect("a tail expression");
+            let Expr::Call { func, args } = tail else {
+                panic!("`{src}` should desugar to a call, got {tail:?}");
+            };
+            assert!(matches!(func.as_ref(), Expr::Ident { name } if name == want));
+            assert!(matches!(
+                args.as_slice(),
+                [Expr::Literal { kind: LiteralKind::FormatString, .. }]
+            ));
+        }
+    }
+
+    /// A reserved word nothing implements must say so.
+    #[test]
+    fn the_unimplemented_swarm_patterns_name_themselves() {
+        for name in [
+            "swarm_map_reduce",
+            "swarm_pipeline",
+            "swarm_saga",
+            "swarm_fan_out",
+            "swarm_race",
+            "grammar_extension",
+        ] {
+            let err = try_parse(&format!("f a() {{ {name}(1) }}"))
+                .expect_err(&format!("`{name}` is reserved and unimplemented"));
+            assert!(
+                err.message.contains(name) && err.message.contains("no implementation"),
+                "want a reserved-word diagnostic for `{name}`, got {:?}",
+                err.message
+            );
+        }
+    }
+
+    /// A Rust macro call must be rejected, by name.
+    ///
+    /// It used to parse: `!` became logical not applied to the call, so
+    /// `format!("hi")` evaluated to `true` and `println!("hi")` printed
+    /// nothing and returned a bool — the most likely line for a model with
+    /// Rust habits to write, silently doing nothing.
+    #[test]
+    fn a_rust_macro_call_is_rejected_by_name() {
+        for (src, want) in [
+            ("f a() { println!(\"hi\") }", "println"),
+            ("f a() { format!(\"hi\") }", "format"),
+            ("f a() { vec![1, 2] }", "vec"),
+            ("f a() { assert_eq!(1, 1) }", "assert_eq"),
+        ] {
+            let err = try_parse(src).expect_err(&format!("`{src}` must not parse"));
+            assert!(
+                err.message.contains(want) && err.message.contains("macro"),
+                "want a macro diagnostic naming `{want}`, got {:?}",
+                err.message
+            );
+        }
+        // Ordinary calls and a genuine logical-not are untouched.
+        assert!(try_parse("f a() { println(\"hi\") }").is_ok());
+        assert!(try_parse("f a(b: bool) { !b }").is_ok());
+        assert!(try_parse("f a(b: bool) { ? !yes() { 1 } : { 2 } }").is_ok());
     }
 
     #[test]

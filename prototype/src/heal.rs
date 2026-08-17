@@ -148,8 +148,15 @@ fn builtin_patterns() -> Vec<ErrorPattern> {
                     && (msg.contains("not declared") || msg.contains("undeclared"))
             },
             generate: |diag| {
-                // Extract effect name from the message if possible.
-                let effect = extract_quoted(&diag.message).unwrap_or("io".to_string());
+                // The effects are the bracketed list, not the first backticked
+                // word — that one is the *function* name, and taking it
+                // produced the suggestion "Add `/ P.leak` effect annotation",
+                // naming a function where an effect belongs. A repair loop
+                // applying it would write an annotation that fails the
+                // unknown-effect check one pass later.
+                let effect = extract_effect_list(&diag.message)
+                    .or_else(|| extract_quoted(&diag.message))
+                    .unwrap_or("io".to_string());
                 vec![FixCandidate {
                     id: "add-effect-annotation".into(),
                     description: format!(
@@ -871,6 +878,22 @@ fn builtin_patterns() -> Vec<ErrorPattern> {
 }
 
 /// Extract the first single-quoted or backtick-quoted token from a message.
+/// The effect annotation a `performs undeclared effects: [FS, Net]` message
+/// asks for, in the spelling an annotation uses: `fs, net`.
+fn extract_effect_list(msg: &str) -> Option<String> {
+    let start = msg.find("effects: [")? + "effects: [".len();
+    let end = msg[start..].find(']')? + start;
+    let list: Vec<String> = msg[start..end]
+        .split(',')
+        .map(|e| e.trim().to_lowercase())
+        .filter(|e| !e.is_empty())
+        .collect();
+    if list.is_empty() {
+        return None;
+    }
+    Some(list.join(", "))
+}
+
 fn extract_quoted(msg: &str) -> Option<String> {
     // Try backtick quotes first: `name`
     if let Some(start) = msg.find('`')
@@ -1065,6 +1088,30 @@ mod tests {
     #[test]
     fn extract_quoted_single_quote() {
         assert_eq!(extract_quoted("expected ';' after"), Some(";".to_string()));
+    }
+
+    /// The suggested annotation must name an *effect*. It named the function:
+    /// `extract_quoted` took the first backticked word, which in this message
+    /// is the function, so the fix read "Add `/ P.leak` effect annotation".
+    #[test]
+    fn the_effect_fix_suggests_the_effects_not_the_function() {
+        let diag = Diagnostic::error(
+            "function `P.leak` performs undeclared effects: [FS, Net] — \
+             add them to its `/ effect` annotation",
+        );
+        let graphs = heal_to_graphs(&[diag]);
+        let fixes = &graphs[0].fixes;
+        assert!(!fixes.is_empty(), "expected an effect-annotation fix");
+        assert!(
+            fixes[0].description.contains("/ fs, net"),
+            "want the effect list, got {:?}",
+            fixes[0].description
+        );
+        assert!(
+            !fixes[0].description.contains("P.leak"),
+            "the function name is not an effect: {:?}",
+            fixes[0].description
+        );
     }
 
     #[test]

@@ -37,6 +37,13 @@ pub struct EffectInfer {
     /// the same thing. Keeping the fold here rather than at each use means the
     /// convention is stated once.
     effect_names: std::collections::HashSet<String>,
+    /// Bare method name → the qualified `Type.method` keys that spell it.
+    ///
+    /// A method call has no receiver type at this stage, so a call is only
+    /// attributed to a method when the name is unambiguous — one entry. With
+    /// two implementations of `render`, neither is charged, which under-reports
+    /// rather than blaming the wrong one.
+    method_index: HashMap<String, Vec<String>>,
     pub diagnostics: Vec<Diagnostic>,
 }
 
@@ -64,6 +71,35 @@ impl Default for EffectInfer {
     }
 }
 
+/// Every method in the module's `impl` and `extend` blocks, as
+/// `(Type.method, definition, is_public)`.
+///
+/// `trait` blocks are skipped: their items are signatures, and a signature has
+/// nothing to infer — the obligation belongs to the `impl` that supplies a body.
+fn collect_methods(module: &ast::Module) -> Vec<(String, ast::FunctionDef, bool)> {
+    let mut out = Vec::new();
+    for item in &module.items {
+        let (target, items) = match &item.kind {
+            ast::ItemKind::Impl(ib) => (&ib.self_type, &ib.items),
+            ast::ItemKind::Extend(eb) => (&eb.target_type, &eb.items),
+            _ => continue,
+        };
+        let Some(type_name) = crate::eval::type_head_name(target) else {
+            continue;
+        };
+        for member in items {
+            if let ast::ItemKind::Function(fd) = &member.kind {
+                out.push((
+                    format!("{type_name}.{}", fd.name),
+                    fd.clone(),
+                    member.visibility == ast::Visibility::Public,
+                ));
+            }
+        }
+    }
+    out
+}
+
 impl EffectInfer {
     pub fn new() -> Self {
         EffectInfer {
@@ -74,6 +110,7 @@ impl EffectInfer {
             handled: HashMap::new(),
             pending_regions: Vec::new(),
             effect_names: std::collections::HashSet::new(),
+            method_index: HashMap::new(),
             diagnostics: Vec::new(),
         }
     }
@@ -95,13 +132,37 @@ impl EffectInfer {
             }
         }
 
+        // Pass 0.5: index the methods before any call graph is built, so a call
+        // inside one function can name a method defined further down the file.
+        //
+        // `impl` and `extend` bodies were not collected at all: `--check` on a
+        // module of nothing but methods printed "Functions analyzed: 0", and a
+        // `pub fn` inside one could `fs.read_to_string(…)` while declaring
+        // nothing. Every capability in the language is reached through exactly
+        // the call shape that was unchecked.
+        let methods = collect_methods(module);
+        for (key, _, _) in &methods {
+            let bare = key.split('.').next_back().unwrap_or(key).to_string();
+            self.method_index.entry(bare).or_default().push(key.clone());
+        }
+
         // Pass 1: collect function declarations and their call graphs.
         for item in &module.items {
             if let ast::ItemKind::Function(fd) = &item.kind {
-                self.collect_function(fd);
+                self.collect_function(&fd.name, fd);
                 if item.visibility == ast::Visibility::Public || fd.name == "main" {
                     boundary.insert(fd.name.clone());
                 }
+            }
+        }
+
+        // Pass 1a: the methods themselves. A method is keyed `Type.method`, so
+        // two types implementing one trait keep separate effect sets and no
+        // method shadows a free function of the same name.
+        for (key, fd, is_pub) in &methods {
+            self.collect_function(key, fd);
+            if *is_pub {
+                boundary.insert(key.clone());
             }
         }
 
@@ -181,11 +242,13 @@ impl EffectInfer {
         }
     }
 
-    fn collect_function(&mut self, fd: &ast::FunctionDef) {
+    /// Collect one function under `key` — its own name for a free function,
+    /// `Type.method` for a method.
+    fn collect_function(&mut self, key: &str, fd: &ast::FunctionDef) {
         // Record declared effects from annotations.
         if !fd.effects.is_empty() {
             let effects: EffectSet = fd.effects.iter().map(|e| Effect::from_name(e)).collect();
-            self.declared.insert(fd.name.clone(), effects);
+            self.declared.insert(key.to_string(), effects);
         }
 
         // Also check attributes for @fx(...).
@@ -198,14 +261,14 @@ impl EffectInfer {
         self.collect_calls_in_block(&fd.body, &mut callees, &mut local_effects);
         let regions = std::mem::take(&mut self.pending_regions);
         if !regions.is_empty() {
-            self.handled.insert(fd.name.clone(), regions);
+            self.handled.insert(key.to_string(), regions);
         }
 
-        self.call_graph.insert(fd.name.clone(), callees);
+        self.call_graph.insert(key.to_string(), callees);
 
         // If the function performs effects directly, record them.
         if !local_effects.is_empty() {
-            self.inferred.insert(fd.name.clone(), local_effects);
+            self.inferred.insert(key.to_string(), local_effects);
         }
     }
 
@@ -274,6 +337,16 @@ impl EffectInfer {
                 }
             }
             ast::Expr::MethodCall { receiver, method, args, .. } => {
+                // `p.norm2()` reaches whatever `norm2` performs. The receiver's
+                // type is not known here, so the edge is only drawn when the
+                // method name is unambiguous in the module — otherwise nothing
+                // is charged, which under-reports rather than blaming the
+                // wrong implementation.
+                if let Some(keys) = self.method_index.get(method)
+                    && let [only] = keys.as_slice()
+                {
+                    callees.push(only.clone());
+                }
                 // `Audit.record(x)` performs `audit`. This is the introduction
                 // rule: without it an `effect` block declared operations that
                 // no analysis attributed to anyone, so a function calling one
@@ -1035,6 +1108,56 @@ mod handler_tests {
                 ),
             }
         }
+    }
+
+    /// A method body is checked like any other body.
+    ///
+    /// It was not checked at all: `impl` and `extend` items never reached the
+    /// collector, so `--check` on a module of methods reported "Functions
+    /// analyzed: 0" and a `pub fn` inside one could read the filesystem while
+    /// declaring nothing. Both block forms, because they are separate AST nodes
+    /// and fixing one would leave the other open.
+    #[test]
+    fn a_method_must_declare_what_it_performs() {
+        for block in ["extend P", "impl P"] {
+            let src = format!(
+                "+S P {{ x: f64 }}\n\
+                 {block} {{\n\
+                 +f leak(self, p: str) -> str {{ fs.read_to_string(p) }}\n\
+                 }}"
+            );
+            let msgs = errors(&src);
+            assert!(
+                msgs.iter().any(|m| m.contains("P.leak") && m.contains("FS")),
+                "`{block}` method performing fs must be reported, got {msgs:?}"
+            );
+        }
+        // And declaring it satisfies the check.
+        assert!(
+            errors(
+                "+S P { x: f64 }\n\
+                 extend P {\n\
+                 +f read(self, p: str) -> str / fs { fs.read_to_string(p) }\n\
+                 }"
+            )
+            .is_empty()
+        );
+    }
+
+    /// Calling a method reaches what the method performs.
+    #[test]
+    fn a_method_call_propagates_the_methods_effects() {
+        let msgs = errors(
+            "+S P { x: f64 }\n\
+             extend P {\n\
+             f read(self, p: str) -> str / fs { fs.read_to_string(p) }\n\
+             }\n\
+             +f main() -> str { v q = @P { x: 1.0 }\n q.read(\"a\") }",
+        );
+        assert!(
+            msgs.iter().any(|m| m.contains("`main`") && m.contains("FS")),
+            "main reaches fs through the method, got {msgs:?}"
+        );
     }
 
     /// Declaring the effect satisfies the check — the gate is a gate, not a ban.

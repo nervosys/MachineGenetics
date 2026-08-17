@@ -71,14 +71,19 @@ f read_data(path: str) -> str / fs {
 }
 ```
 
-**Violation** — compiler error:
+**Violation** — this is wrong, and the compiler says so:
 ```MAGE
-// WRONG — calls read_data, which performs `fs`, but declares nothing.
+f read_data(path: str) -> str / fs {
+    fs.read_to_string(path)
+}
+
+// Calls `read_data`, which performs `fs`, and declares nothing.
 +f process(path: str) -> i32 {
     v data = read_data(path)
     0
 }
-// error: function `process` performs undeclared effects: [FS]
+// error: function `process` performs undeclared effects: [FS] —
+//        add them to its `/ effect` annotation
 ```
 
 ## Decision Tree: Which Effects to Annotate
@@ -86,16 +91,19 @@ f read_data(path: str) -> str / fs {
 ```
 Does the function...
 
-├── Read/write files or console?           → / io
+├── Print, or read the console?            → / io
+├── Read or write a file?                  → / fs
 ├── Make network requests?                 → / net
 ├── Generate random numbers?               → / rng
 ├── Use .await or spawn tasks?             → / async
 ├── Create/run agents or swarms?           → / agent
-├── Read clock or sleep?                   → / time
+├── Read the clock or sleep?                → / time
 ├── Access env vars or CLI args?           → / env
-├── Spawn/manage OS processes?             → / process
-├── Call another function with effects?    → Propagate its effects
-└── None of the above?                     → Pure (no annotation)
+├── Spawn/manage OS processes?             → / proc
+├── Allocate?                              → / alloc
+├── Call a model?                          → / llm
+├── Call another function with effects?    → declare every one it performs
+└── None of the above?                     → pure (no annotation)
 ```
 
 ## Multiple Effects

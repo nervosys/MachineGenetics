@@ -78,16 +78,18 @@ pub async fn read_config(path: &str) -> Result<String, io::Error> {
 
 **MAGE:**
 ```MAGE
-u std.fs
-u std.io
-
-+af read_config(path: &s) -> R[s, io.Error] / io {
-    v content = tokio.fs.read_to_string(path).await?;
-    R.Ok(content)
++af read_config(path: s) -> R[s, s] / fs {
+    v content = fs.read_to_string(path)
+    guard len(content) > 0 else { ret Err("empty config") }
+    Ok(content)
 }
 ```
 
-**Key changes:** `pub async fn` → `+af`, `Result<String, _>` → `R[s, _]`, `::` → `.`, added `/ io` effect
+**Key changes:** `pub async fn` → `+af` (the sigil carries the `async`);
+`Result<String, io::Error>` → `R[s, s]`, since there is no `io::Error` and no
+`From` to convert into one; both `use` lines deleted, because nothing is
+imported and `fs` is a capability namespace already in scope; and the effect is
+**`fs`, not `io`** — the annotation names the capability reached.
 
 ---
 

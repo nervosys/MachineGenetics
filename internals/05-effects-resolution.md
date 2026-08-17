@@ -266,7 +266,7 @@ error.
 > function that takes a closure gets the closure's effects only if the checker
 > can see through to the call, which for a generic parameter it cannot.
 
-Functions can be generic over effects using effect bounds:
+The design, written as it would look. This block is **invalid MAGE** today:
 
 ```MAGE
 f with_retry[F, R](op: F, retries: u32) -> R[R, Error]
@@ -302,6 +302,10 @@ what puts `dice` in the function's inferred set. The annotation is the effect
 *name*, lowercased, not the block name:
 
 ```MAGE
+effect Dice {
+    f roll(max: i32) -> i32;
+}
+
 f shuffled(n: i32) -> i32 / dice {
     Dice.roll(n)
 }
@@ -311,6 +315,14 @@ f shuffled(n: i32) -> i32 / dice {
 not after `handle`, and the arms name operations bare:
 
 ```MAGE
+effect Dice {
+    f roll(max: i32) -> i32;
+}
+
+f shuffled(n: i32) -> i32 / dice {
+    Dice.roll(n)
+}
+
 +f main() -> i32 {
     handle {
         shuffled(6)

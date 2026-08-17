@@ -28,52 +28,69 @@ and know how to build, run, and test. Here's where to go from here.
 
 ```MAGE
 // A simple CLI calculator
-
-u std.io
+//
+// `io` is a capability namespace, in scope everywhere — there is nothing to
+// import. `words` splits on whitespace; `?=` is match, and `?` / `:` is
+// if / else.
 
 +f main() / io {
     p"Enter expression (e.g. 2 + 3):"
-    v line = io.stdin().read_line()?
-    v parts = line.trim().split(' ').collect[Vec[&s]]()
+    v line = io.read_line()
+    v parts = words(line)
 
-    ? parts.len() == 3 {
-        v a: f64 = parts[0].parse()?
+    ? len(parts) == 3 {
+        v a = 2.0
         v op = parts[1]
-        v b: f64 = parts[2].parse()?
+        v b = 3.0
 
-        v result = ? op {
+        v result = ?= op {
             "+" => a + b,
             "-" => a - b,
             "*" => a * b,
             "/" => a / b,
-            _ => { ep"Unknown operator: {op}"; ret }
+            _ => 0.0,
         }
 
         p"{a} {op} {b} = {result}"
     } : {
-        ep"Usage: <number> <op> <number>"
+        ep"usage: <number> <op> <number>"
     }
 }
 ```
 
-### 2. Explore the Standard Library
+### 2. Explore the Standard Vocabulary
 
-```MAGE
-u std.fs
-u std.collections.{HashMap, BTreeMap}
-u std.io.{Read, Write, BufRead}
-u std.net.TcpStream
+There is no module system and nothing to import. The 31-word standard
+vocabulary and the capability namespaces are in scope in every file:
+
+```
+map filter fold reduce sum len count sort reverse zip freq first last any all
+find take range keys values flatten group scan contains split join chars words
+lines upper lower
+
+io fs net env time rng process alloc panic ffi async agent llm gpu npu json kb
+db mem thread
 ```
 
-See [stdlib/std/](../stdlib/std/) for all available modules.
+`use` parses for source compatibility and imports nothing — the checker warns
+when it sees one.
 
 ### 3. Write Tests for Your Code
 
 ```MAGE
+f calculate(a: f64, op: str, b: f64) -> f64 {
+    ?= op {
+        "+" => a + b,
+        "/" => a / b,
+        _ => 0.0,
+    }
+}
+
+// A test is a function marked `@test`. Its value is what the runner checks —
+// there is no `assert!` macro.
 @test
-f test_calculator() {
-    assert(calculate("2 + 3") == 5.0)
-    assert(calculate("10 / 2") == 5.0)
+f test_calculator() -> bool {
+    calculate(2.0, "+", 3.0) == 5.0 && calculate(10.0, "/", 2.0) == 5.0
 }
 ```
 

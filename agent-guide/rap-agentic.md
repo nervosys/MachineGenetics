@@ -118,7 +118,9 @@ Returns `status` (Verified/Partial/Failed/Trivial), individual `checks`, and
 
 ## Agent Memory (stdlib)
 
-The `std::agent::Memory` type provides 4-tier persistent memory:
+RAP's memory service exposes four tiers. There is no `std::agent::Memory`
+type — there is no module system, and the tiers are reached over the
+protocol, not through a language type:
 
 | Tier      | Lifetime                | Use Case                            |
 | --------- | ----------------------- | ----------------------------------- |
@@ -127,11 +129,17 @@ The `std::agent::Memory` type provides 4-tier persistent memory:
 | Project   | Per-project, persistent | Learned patterns, project rules     |
 | Global    | Cross-project, shared   | Ecosystem knowledge, shared models  |
 
-```mg
-let mem = Memory::new(ephemeral_store, session_store, project_store, global_store);
-mem.set(MemoryTier::Project, "convention", "use_camelCase", &["style"]);
-let entry = mem.get("convention");  // searches all tiers
-mem.promote("convention", MemoryTier::Session, MemoryTier::Project);
+```json
+// Write a project-tier entry
+{"jsonrpc":"2.0","id":1,"method":"memory/set",
+ "params":{"tier":"project","key":"convention","value":"use_camelCase","tags":["style"]}}
+
+// Read — searches every tier, nearest first
+{"jsonrpc":"2.0","id":2,"method":"memory/get","params":{"key":"convention"}}
+
+// Promote an entry to a longer-lived tier
+{"jsonrpc":"2.0","id":3,"method":"memory/promote",
+ "params":{"key":"convention","from":"session","to":"project"}}
 ```
 
 ## Swarm Orchestration Patterns
@@ -144,13 +152,36 @@ mem.promote("convention", MemoryTier::Session, MemoryTier::Project);
 | Fan-Out    | Same task to N agents, collect all     | `swarm_fan_out`    |
 | Race       | First successful result wins           | `swarm_race`       |
 
-```mg
-// Map-reduce: distribute items across swarm agents, then merge
-let result = swarm_map_reduce(&swarm, &items, map_fn, reduce_fn);
+**None of these five are implemented.** `swarm_map_reduce`, `swarm_pipeline`,
+`swarm_saga`, `swarm_fan_out` and `swarm_race` are reserved words in the lexer
+that no parser arm and no evaluator consumes, and MAGE_SPEC.md does not mention
+them. Writing one is a parse error that says so — and because they are
+reserved, you cannot define a function of that name to fill the gap either.
 
-// Saga: multi-step with rollback on failure
-let result = swarm_saga(&swarm, &steps, initial_input);
+Write the patterns out instead. Fan-out is `map`, fan-in is `fold`:
 
-// Race: fastest agent wins
-let result = swarm_race(&swarm, &task, timeout);
+```MAGE
+agent Worker { capabilities: [agent] }
+
+swarm Pool {
+    agent: Worker
+    size: 4
+    topology: mesh
+    consensus: majority
+}
+
+fn handle_item(item: str) -> i32 / agent {
+    agent.spawn(item)
+    len(item) as i32
+}
+
+// Map-reduce: distribute, then merge.
+pub fn map_reduce(items: [str]~) -> i32 / agent {
+    fold(map(items, |item| handle_item(item)), 0, |acc, n| acc + n)
+}
+
+// Pipeline: chain the stages by composing the calls.
+pub fn run_pipeline(item: str) -> i32 / agent {
+    handle_item(upper(item))
+}
 ```

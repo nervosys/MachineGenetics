@@ -12,7 +12,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **2,866** — rmi 1,380 · prototype 1,158 · ribosome 164 · germline 112 · forge 52 |
+| Tests | **2,876** — rmi 1,380 · prototype 1,168 · ribosome 164 · germline 112 · forge 52 |
 | CUDA | **1,071 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm |
@@ -30,7 +30,7 @@ scripts/check-mg-sources.sh               # every .mg file in the repo
 scripts/test-all.sh --cuda --bench --check-docs   # + GPU and the benchmark harnesses
 ```
 
-**There are 14 unpushed commits on `handoff`.** Nothing is pushed and no PR is
+**There are 27 unpushed commits on `handoff`.** Nothing is pushed and no PR is
 open. That is a decision waiting, not an oversight — open item 0.
 
 ---
@@ -63,7 +63,7 @@ breaks, *and* a recorded state that silently starts passing.
 | `scripts/test-all.sh --check-docs` | every documented test count against the run that just produced them; `--cuda --bench` adds the GPU and benchmark figures |
 | `scripts/check-examples.sh` | that all 12 examples typecheck, evaluate, **and print the recorded answer** |
 | `scripts/check-mg-sources.sh` | every `.mg` file in the repo typechecks, or is a listed sketch with a stated reason |
-| `scripts/check-doc-blocks.sh` | the number of unparseable MAGE blocks in the markdown, as a ratchet — it may only go down |
+| `scripts/check-doc-blocks.sh` | the number of MAGE blocks in the markdown that fail `--check`, as a ratchet — it may only go down |
 | CI `audit` job | `cargo audit` over all five lockfiles separately |
 | CI ontology step | `MAGE_ONTOLOGY.json` matches a fresh `--emit-ontology` |
 | CI version step | `mage-parse --version` matches the tool id Ribosome keys on |
@@ -87,6 +87,12 @@ rejected by the compiler. The check was working perfectly and proving nothing.
 What was missing crosses the boundary: not "does the file match its generator"
 but "does every name the file publishes actually work".
 
+**A weaker criterion reports success early.** `check-doc-blocks.sh` counted
+parse errors, because that was the failure that prompted it. Blocks that
+parsed and then failed the *checker* scored as passes — 43 of them, including
+some in files the script had been used to certify as fixed. The criterion a
+ratchet enforces is the definition of done it hands to whoever comes next.
+
 **A pin over a generated list tends toward tautology.** The follow-up test for
 layer names iterated `layer_map`, which is *filtered* by the same function the
 validation uses — so it could not fail by construction. The escape is inputs the
@@ -103,7 +109,7 @@ different things.
 
 | # | Item | The decision |
 |---|---|---|
-| 0 | **14 unpushed commits on `handoff`** | Push the branch, or open a PR against `master`. Note `gh pr merge --auto` merges *immediately* here — the repo has no required status checks — which is how PR #4 landed with CI still pending. |
+| 0 | **27 unpushed commits on `handoff`** | Push the branch, or open a PR against `master`. Note `gh pr merge --auto` merges *immediately* here — the repo has no required status checks — which is how PR #4 landed with CI still pending. |
 | 1 | **Module system, or a decision that there is none** | The blocker under `stdlib/`. `resolve_use` parses a path and discards it, so nothing can be imported; the library surface is global instead. That may well be *right* for a token-efficient agentic language — an import costs tokens and buys nothing when the library is small and fixed — in which case say so in the spec and delete `stdlib/`. Everything about a standard library is downstream of this. See `stdlib/README.md`. |
 | 2 | GPU CI runner | Correctness **is** verified on the hardware here and recorded. What is missing is a self-hosted runner so `cuda-gpu` runs unattended — an account action, declined once already. |
 | 3 | TLS trust posture | The transport seam and a `rustls` implementation exist behind `--features tls`. Pinned self-signed / mutual TLS / public PKI is deliberately the operator's; `acceptor`/`connector` take your config. |
@@ -121,17 +127,27 @@ different things.
 
 ### Real work, unstarted
 
-**120 of 258 MAGE code blocks in the documentation do not parse.** Nine more
-are deliberate fragments, and `few-shot-repair.md`'s broken inputs are excluded
-— a repair example is *supposed* to show invalid code. The rest are Rust
-wearing a MAGE fence: `use std::llm::{…}` paths, Rust signatures, brace
-imports. They sit in the documents an agent reads to *learn the language* —
-`agent-guide/`, `cookbook/`, `quick-start/`, and `MAGE_SPEC.md` itself.
+**104 of 216 MAGE code blocks in the documentation do not typecheck.** They
+sit in the documents an agent reads to *learn the language* — `cookbook/`,
+`MAGE_SPEC.md` and `migration-guide/`. Most are Rust wearing a
+MAGE fence, or agent-mode sigils over a standard library that does not exist:
+`u std.io.{File, BufReader}`, `s.new()`, `I Display ~ AppError`,
+`items.iter().map(…).collect()`.
 
-**Done so far, 168 → 120:** all of `training/prompts/`, and `agent-guide/`'s
-`system-prompt.md`, `syntax-quick-ref.md`, `anti-patterns.md` and `effects.md`.
+**The number went up because the criterion did.** `check-doc-blocks.sh`
+counted *parse* errors only, and 43 blocks parsed and then failed the checker
+— unresolved names, undeclared effects, type mismatches — several of them in
+files the script had already certified. It now requires `Errors: 0`, which is
+why 82 became 114 — 104 after `quick-start/03` and the `internals/` blocks. **An
+instrument that measures the weaker property reports success early**, and this
+one had been reporting it for four files.
 
-Three of those are worth knowing about, because the defect was not just syntax:
+**Done so far: all of `training/prompts/`, all of `agent-guide/`, and all of
+`quick-start/`** — every block in them parses *and* typechecks. What remains:
+`cookbook/` (60), `MAGE_SPEC.md` (33), `migration-guide/` (7), `internals/05`
+(1, the `/ *` design sketch) and `DIRECT_CODEGEN_STRATEGY.md` (3).
+
+Six of those are worth knowing about, because the defect was not just syntax:
 
 - **`effects.md` taught agents to under-declare.** Four places asserted an
   effect hierarchy — "CORRECT — net implies io", "CORRECT — agent implies
@@ -151,6 +167,39 @@ Three of those are worth knowing about, because the defect was not just syntax:
   (the kind is `proc`). **Nothing checks prose**, and in a system prompt a
   false rule outranks a broken example — a model follows the rule when
   generating code the examples do not cover.
+
+- **`quick-start/03-syntax-tour.md` taught the opposite of the central rule.**
+  "The compiler tracks effects automatically — you don't need to annotate them
+  unless you want to document intent." It requires them, at every public
+  boundary, and that requirement *is* the capability gate. The same page taught
+  `I Area ~ Shape`, `Point @{ x, y }`, `@ item ~ items`, `[1, 2, 3]~`,
+  `{1, 2, 3}`, `+v PI` and `c f` — none of which parse. It is page three of the
+  quick start.
+- **`patterns.md` was twelve Rust patterns.** Ten did not parse; the two that
+  did were still Rust. Two patterns had no MAGE referent at all —
+  "Effect-Bounded Generics" (there is no effect polymorphism; `fn(str) -> T / io`
+  does not parse) and "Module Organization" (there is no module system). They
+  are now default arguments and one flat namespace. Rewriting it found the
+  capability hole below.
+
+- **`syntax-quick-ref.md` and `migration.md` were Rust cheat sheets.** These
+  two are the densest documents an agent reads, and almost every row was
+  false: `let`, `async fn`, `mod`, `use path::to::Item`, `foo::<i32>()`,
+  `#[derive(Debug)]`, `println!`, `true`/`false`, `Foo { x: 1 }` as a struct
+  literal, four `std::` module tables, and the effect hierarchy again.
+  `migration.md` answered six of its eight worked migrations with "no changes
+  needed — identical Rust and MAGE". **Both are now measured**: every row was
+  run through `--check` before it was written down, and the ones that fail are
+  listed as things that do not carry over.
+- **`agent-guide/examples/` answered 26 prompts in Rust.** These are
+  prompt → response pairs — training data, where the response *is* the answer a
+  model learns to give. Only 19 of the 26 failed to parse; the rest were Rust
+  the lenient parser happened to accept, which is the worse half. The advanced
+  file taught an entire fictional agent API: `impl Agent for X`,
+  `self.cap.request("net.http.get", …)`, `Swarm::new()`. Rewriting the three
+  files found four compiler defects — the escaped-quote bug, `range`'s missing
+  arity check, `len` committing an open type, and the method effect hole — all
+  four by running the examples and checking the answers.
 
 This is the shipped examples' story a third time, after `examples/` and
 `prototype/examples/`, and by volume the largest instance. Both of those
@@ -204,6 +253,47 @@ Compiles, runs, returns the wrong number. No error anywhere.
   wildcard arm.
 - **`guard cond else { … }` fell through**, running the body with the
   precondition false: `a(-5)` answered `-10`.
+- **`p"…"` printed nothing and interpolated nothing.** The print-string and
+  eprint-string forms — the ones `cookbook/` uses throughout, and the shortest
+  print in the language — were folded into a plain string literal by the
+  parser. The statement was a no-op whose value was the raw text, braces
+  included. They now desugar to `println` / `eprintln` over a format string.
+- **A format-string hole is invisible to `--check`.** `p"value {nope}"` and
+  `f"value {nope}"` typecheck clean and print `value <fn nope>` — the holes
+  are parsed and evaluated only at run time, so an unresolved name inside one
+  is neither a resolve error nor a type error, and renders as a function
+  value. Not fixed: making holes visible to the checker means desugaring the
+  interpolation at parse time rather than in the evaluator.
+- **`println!("hi")` printed nothing and returned a bool.** MAGE has no
+  macros, and this was the worst way not to have them: `!` parsed as logical
+  *not* applied to the call, so `format!("hi {x}")` evaluated to `true` and
+  `println!(…)` did nothing at all. No error at any stage. It is the single
+  most likely line for a model carrying Rust habits to write. A `name!(` with
+  no space between is now a parse error that names the macro and the
+  replacement.
+- **A string ending in an escaped quote lost it.** Literal decoding used
+  `trim_matches('"')`, which strips *every* delimiter at each end, so `"x\""`
+  came out as `x\` — the escaped quote became a backslash. Nothing errored:
+  `contains(html, "\"")` was simply false and `split(html, "href=\"")` never
+  split, so a link extractor returned `[]` and read as a logic bug in the
+  program. Found by running a documentation example and checking its answer.
+- **`range(1, 101)` ran as `0..1`.** `range` was the one typed vocabulary arm
+  with no arity check, and the evaluator read argument 0 and discarded the
+  rest. A FizzBuzz over `range(1, 101)` printed one line and exited 0. Both
+  oracles now reject it and point at `a..b`.
+- **`len` decided an open type.** `len` accepts a string or a collection, and
+  on an unresolved type variable it committed to a collection — so
+  `v body = net.connect(url)` / `len(body)` / `body: str` was a type error,
+  while the same three statements in the other order checked clean. **Statement
+  order decided whether the program compiled.**
+- **The suggested fix for an undeclared effect named the function.**
+  `heal.rs` built the annotation from the first backticked word in the
+  diagnostic, which in that message is the function — so the repair for
+  `P.leak` reads "Add `/ P.leak` effect annotation". Applied, it writes an
+  annotation that fails the unknown-effect check on the next pass. The
+  diagnostic states the effects in a bracketed list; the fix now reads that.
+  **A repair loop is an agent-facing answer too** — wrong advice there is the
+  same defect class as a wrong number.
 
 *How to find more:* run programs and check the **answer**, not the exit status.
 That is why `check-examples.sh` pins printed output.
@@ -279,6 +369,18 @@ elsewhere, pointing at the wrong line.
   and check clean, while the bare `println(…)` beside it was caught. **The gate
   was open at exactly the seam the language documents as the way through it** —
   the safe-looking code was the unchecked code.
+- **Method bodies were never effect-checked.** `infer_module` walked
+  `ItemKind::Function` only, so nothing inside an `impl` or `extend` block was
+  collected: `--check` on a module of methods printed **"Functions analyzed:
+  0"** and returned OK, and a `pub fn` inside one could `fs.read_to_string(…)`
+  while declaring nothing. Calling a method propagated nothing either, so a
+  pure-looking `main` could reach any capability through one `.`. This is the
+  same shape as the row above it, one call form over: **the two ways to reach a
+  capability were `namespace.op(…)` and `receiver.method(…)`, and neither was
+  checked.** Methods are now keyed `Type.method` and checked like any other
+  body; a call is charged to a method when the name is unambiguous in the
+  module. The count in the summary line is the tell — it was the one number
+  that said the checker had done nothing.
 
 ### 4. Documented but unimplemented
 
@@ -291,6 +393,14 @@ elsewhere, pointing at the wrong line.
 - **`/ agent`** — a documented effect that was a parse error *and* not a
   built-in kind: two independent failures on one row of one table.
 - **§11.2's operations column** — of 41 operations named, 22 perform nothing.
+- **The five swarm orchestration patterns.** `swarm_map_reduce`,
+  `swarm_pipeline`, `swarm_saga`, `swarm_fan_out`, `swarm_race` and
+  `grammar_extension` are reserved in the lexer and consumed by **nothing** —
+  no parser arm, no evaluator, no mention in MAGE_SPEC.md — while
+  `agent-guide/rap-agentic.md` documented three of them with worked calls. A
+  reservation costs the name twice: the call is a parse error, *and* no user
+  function can fill the gap. They now say so when written. Implementing them,
+  or un-reserving them, is a design decision.
 - **`internals/05`** — `is_sub_effect`, `Forge.toml` capability grants, effect
   polymorphism (`/ *`), `E0401`/`W0410` diagnostics: none exist. Marked rather
   than rewritten, because whether to build them is a design decision.
@@ -461,7 +571,7 @@ it is invisible unless you break the thing on purpose and watch.
 
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,158**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,168**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it.
 - Every typechecker fix has landed without breaking an existing test **except
   one**, where widening `collection_elem` made `sum("hi")` legal and

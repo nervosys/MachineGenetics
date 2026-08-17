@@ -1282,6 +1282,13 @@ impl Interp {
                 _ => err("abs expects a number"),
             },
             "range" => {
+                // The checker rejects any other arity; refuse it here too, so
+                // `--eval` on its own does not quietly answer for `0..arg(0)`.
+                // The two oracles have to agree about what the program means.
+                if a.len() != 1 {
+                    return err("range expects 1 argument — `range(n)` is `0..n`; \
+                                for a start and an end write `a..b`");
+                }
                 let n = as_int(&arg(0))?;
                 Ok(Value::List((0..n).map(Value::Int).collect()))
             }
@@ -1698,6 +1705,18 @@ fn binop(op: &str, l: Value, r: Value) -> R {
     }
 }
 
+/// Remove the *one* delimiter at each end of a literal's raw text.
+///
+/// `trim_matches` removed every one, so a string ending in an escaped quote
+/// lost both trailing quote characters and the unescaper read what was left as
+/// a lone backslash: `"x\""` evaluated to `x\`. `contains(html, "\"")` was then
+/// false and `split(html, "href=\"")` never split — every string-scanning
+/// program looking for a quote silently found nothing, with no error anywhere.
+fn strip_delims(value: &str, delim: char) -> &str {
+    let v = value.strip_prefix(delim).unwrap_or(value);
+    v.strip_suffix(delim).unwrap_or(v)
+}
+
 fn parse_literal(value: &str, kind: &LiteralKind) -> R {
     match kind {
         LiteralKind::Int | LiteralKind::Byte => parse_int_literal(value).map(Value::Int),
@@ -1706,9 +1725,9 @@ fn parse_literal(value: &str, kind: &LiteralKind) -> R {
         // Rust-style words `true`/`false`. Anything else (incl. `0b`) is false.
         LiteralKind::Bool => Ok(Value::Bool(value == "true" || value == "1b")),
         LiteralKind::String | LiteralKind::FormatString => {
-            Ok(Value::Str(unescape(value.trim_matches('"'))))
+            Ok(Value::Str(unescape(strip_delims(value, '"'))))
         }
-        LiteralKind::Char => Ok(Value::Str(unescape(value.trim_matches('\'')))),
+        LiteralKind::Char => Ok(Value::Str(unescape(strip_delims(value, '\'')))),
     }
 }
 
@@ -1792,7 +1811,7 @@ fn lit_matches(lit: &str, val: &Value) -> bool {
     match val {
         Value::Int(n) => parse_int_literal(lit).map(|x| x == *n).unwrap_or(false),
         Value::Bool(b) => lit == if *b { "true" } else { "false" },
-        Value::Str(s) => &unescape(lit.trim_matches('"')) == s,
+        Value::Str(s) => &unescape(strip_delims(lit, '"')) == s,
         _ => false,
     }
 }
@@ -1827,7 +1846,12 @@ fn collect_methods(
 }
 
 /// The bare head name of a type, peeling references and smart-pointer wrappers.
-fn type_head_name(t: &Type) -> Option<String> {
+///
+/// `pub(crate)` because `effects` needs the same answer: a method is keyed by
+/// the type it is attached to in both the interpreter's method table and the
+/// effect checker's call graph, and two spellings of that key would let a
+/// method be effect-checked under one name and dispatched under another.
+pub(crate) fn type_head_name(t: &Type) -> Option<String> {
     match t {
         Type::Path { segments, .. } => segments.last().cloned(),
         Type::Reference { inner, .. }
@@ -1863,6 +1887,50 @@ mod tests {
     // its operand, so the call attached to the *negation* rather than to `f`.
     // Nothing constrained what `!` applied to, so this checked clean and then
     // failed at run time with `value is not callable`.
+
+    /// `p"…"` prints and interpolates.
+    ///
+    /// It did neither: the parser folded it into a plain string literal, so
+    /// the statement was a no-op whose value was the raw text with the braces
+    /// still in it. The cookbook uses `p"…"` as its print form throughout.
+    #[test]
+    fn a_print_string_prints_and_interpolates() {
+        // `println` writes and returns unit; the desugaring itself is pinned
+        // in the parser test. What matters here is that the interpolation runs
+        // — a hole naming an unbound variable must fail, which it cannot do if
+        // the text is still an inert string literal.
+        assert_eq!(run("f s() { v x = 7\n p\"value {x}\" }", "s", &[]), Value::Unit);
+        assert_eq!(run("f s() { v x = 7\n ep\"err {x}\" }", "s", &[]), Value::Unit);
+        // And the hole is evaluated, not carried through as text: the same
+        // string as an f-string interpolates, which is what the print form
+        // now shares a code path with.
+        assert_eq!(
+            run("f s() { v x = 7\n f\"value {x}\" }", "s", &[]),
+            Value::Str("value 7".into())
+        );
+    }
+
+    /// A literal ending in an escaped delimiter keeps it.
+    ///
+    /// `trim_matches` stripped *every* trailing quote, so `"x\""` became `x\`
+    /// — the escaped quote turned into a backslash. Nothing errored: string
+    /// scanning for a `"` just never matched, so an HTML link extractor
+    /// returned an empty list and looked like a logic bug in the program.
+    #[test]
+    fn a_literal_ending_in_an_escaped_delimiter_keeps_it() {
+        // `"\""` is one character, and it is a quote.
+        assert_eq!(run("f s() { \"\\\"\" }", "s", &[]), Value::Str("\"".into()));
+        assert_eq!(run("f s() { \"x\\\"\" }", "s", &[]), Value::Str("x\"".into()));
+        // Which is what makes the string vocabulary work on it.
+        assert_eq!(
+            run("f s() { contains(\"a\\\"b\", \"\\\"\") }", "s", &[]),
+            Value::Bool(true)
+        );
+        assert_eq!(
+            run("f s() { len(split(\"a\\\"b\", \"\\\"\")) }", "s", &[]),
+            Value::Int(2)
+        );
+    }
 
     #[test]
     fn not_applies_to_the_call_result_not_to_the_function() {

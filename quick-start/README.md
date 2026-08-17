@@ -32,7 +32,7 @@ the conciseness of a purpose-built syntax.
 
 ```MAGE
 // hello.mg — your first MAGE program
-+f main() {
++f main() / io {
     p"Hello, MAGE!"
 }
 ```

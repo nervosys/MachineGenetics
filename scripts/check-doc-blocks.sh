@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Every ```mg / ```MAGE code block in the documentation must parse — or be
-# counted in the baseline below, which may only shrink.
+# Every ```mg / ```MAGE code block in the documentation must **typecheck** — or
+# be counted in the baseline below, which may only shrink.
 #
 # Why this exists: 258 MAGE-tagged blocks live in the markdown, and 177 of them
 # did not parse when anyone first checked. Nine are deliberate fragments
-# (they contain `...`). The other 168 are Rust wearing a MAGE fence:
+# (they contain `...`). The other 168 were Rust wearing a MAGE fence:
 #
 #     use std::llm::{LLM, Prompt, Response};      41 blocks, `::` paths
 #     pub fn save(data: &str) -> Result<(), E>    10 blocks, Rust signatures
@@ -16,9 +16,15 @@
 # what MAGE looks like. A model shown `I ~ Counter { … }` and
 # `Counter @{ count: 0 }` learns two constructs that do not parse.
 #
-# Fixing 168 blocks is its own piece of work. This script makes the number a
-# ratchet in the meantime: it can go down, never up. A new failing block, or a
-# new file with failing blocks, fails the check.
+# **The criterion was too weak, and said so late.** It counted parse errors
+# only, so 43 blocks that parsed and then failed the checker — unresolved
+# names, undeclared effects, type mismatches — were scored as passes, in files
+# this script had already been used to certify. It now requires `Errors: 0`.
+# `--eval` remains a separate oracle; agreeing with the checker says nothing
+# about it.
+#
+# The rest is a ratchet: the count can go down, never up. A new failing block,
+# or a new file with failing blocks, fails the check.
 set -o errexit
 set -o nounset
 set -o pipefail
@@ -79,7 +85,14 @@ for dirpath, dirnames, filenames in os.walk('.'):
                     continue
                 io.open(probe, 'w', encoding='utf-8').write(body + '\n')
                 r = subprocess.run([BIN, '--check', probe], capture_output=True, text=True)
-                if 'parse error' in (r.stdout or '') + (r.stderr or ''):
+                out = (r.stdout or '') + (r.stderr or '')
+                # Parse failure *or* check failure. Counting only parse errors
+                # declared victory early: 43 blocks parsed and then failed the
+                # checker on unresolved names, undeclared effects and type
+                # mismatches — several of them in files this script had already
+                # certified. A block that parses and does not check is still a
+                # program an agent cannot run.
+                if 'parse error' in out or 'Errors: 0' not in out:
                     counts[rel] += 1
             else:
                 i += 1
@@ -130,7 +143,7 @@ while read -r file now; do
     fi
 done <<< "$measured"
 
-echo "Doc blocks failing to parse: $total_now (baseline $total_was)."
+echo "Doc blocks failing to check: $total_now (baseline $total_was)."
 
 if [ "$fail" -ne 0 ]; then
     echo
@@ -139,4 +152,4 @@ if [ "$fail" -ne 0 ]; then
     exit 1
 fi
 
-echo "OK — no new unparseable documentation blocks."
+echo "OK — no new documentation blocks that fail to check."

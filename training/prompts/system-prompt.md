@@ -73,18 +73,26 @@ Declare effects with the `effect` keyword:
 
 ```MAGE
 effect Db {
-    f query(sql: &s) -> R[Rows, DbError];
-    f execute(sql: &s) -> R[u64, DbError];
+    f query(sql: s) -> [s]~;
+    f execute(sql: s) -> u64;
 }
 ```
 
 Annotate functions with their effects using `/`:
 
 ```MAGE
-+f save_record(data: &Record) -> R[(), AppError] / io + Db {
-    v json = serde_json.to_string(data)?;
-    Db.execute(&f"INSERT INTO records VALUES ('{json}')")?;
-    R.Ok(())
+effect Db {
+    f execute(sql: s) -> u64;
+}
+
++S Record { id: u64, body: s }
+
+// Two effects, comma-separated. `db` is the annotation spelling of the
+// `effect Db` block above — the declaration and the annotation name the same
+// thing, and every effect performed must appear. None implies another.
++f save_record(data: Record) -> u64 / io, db {
+    p"saving {data.id}"
+    Db.execute(f"INSERT INTO records VALUES ('{data.body}')")
 }
 ```
 
