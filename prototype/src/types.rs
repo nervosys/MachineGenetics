@@ -160,10 +160,23 @@ fn unify(subst: &mut Subst, a: &Ty, b: &Ty) -> Result<(), String> {
         (Ty::Vec(t1), Ty::Array(t2, _)) | (Ty::Array(t2, _), Ty::Vec(t1)) => {
             unify(subst, t1, t2)
         }
+        // The same coercion for a *slice* parameter. `[T]~` accepted a literal
+        // and `[T]` did not — `f g(xs: [i32])` called as `g([1, 2, 3])`
+        // reported `[I32] vs [?T; 3]` — which is a distinction with no
+        // meaning at this level, and every example rewritten this session hit
+        // it. A slice is the borrowed view; a literal is a legitimate value
+        // for one.
+        (Ty::Slice(t1), Ty::Array(t2, _)) | (Ty::Array(t2, _), Ty::Slice(t1)) => {
+            unify(subst, t1, t2)
+        }
+        (Ty::Slice(t1), Ty::Vec(t2)) | (Ty::Vec(t2), Ty::Slice(t1)) => unify(subst, t1, t2),
         (Ty::Option(t1), Ty::Option(t2)) => unify(subst, t1, t2),
         (Ty::Ptr(t1), Ty::Ptr(t2)) => unify(subst, t1, t2),
         (Ty::Array(t1, n1), Ty::Array(t2, n2)) => {
-            if n1 != n2 {
+            // 0 means "size not known at this level" — a `[T; N]` whose length
+            // is a const generic or an expression rather than a literal. It
+            // unifies with any length rather than blocking the call.
+            if *n1 != 0 && *n2 != 0 && n1 != n2 {
                 return Err(format!("array size mismatch: {n1} vs {n2}"));
             }
             unify(subst, t1, t2)
@@ -416,9 +429,24 @@ impl TypeChecker {
             ast::Type::Rc { inner } => Ty::Rc(Box::new(self.lower_type(inner))),
             ast::Type::Arc { inner } => Ty::Arc(Box::new(self.lower_type(inner))),
             ast::Type::Slice { inner } => Ty::Slice(Box::new(self.lower_type(inner))),
-            ast::Type::Array { inner, .. } => {
-                // For prototype: array size as constant (simplified).
-                Ty::Array(Box::new(self.lower_type(inner)), 0)
+            ast::Type::Array { inner, size } => {
+                // Lower the *declared* size when it is a literal. It used to be
+                // dropped and replaced with 0, while an array literal types as
+                // `[T; n]` with its real length — so `f take(xs: [i32; 3])`
+                // called as `take([1, 2, 3])` failed with "array size mismatch:
+                // 3 vs 0". Every fixed-size array parameter in the language was
+                // uncallable with a literal.
+                //
+                // A non-literal size (a const generic, an expression) still
+                // lowers to 0, which unifies with anything by the arm above —
+                // permissive rather than wrong.
+                let n = match size.as_ref() {
+                    ast::Expr::Literal { value, kind: ast::LiteralKind::Int } => {
+                        value.trim().parse::<u64>().unwrap_or(0)
+                    }
+                    _ => 0,
+                };
+                Ty::Array(Box::new(self.lower_type(inner)), n)
             }
             ast::Type::Vec { inner } => Ty::Vec(Box::new(self.lower_type(inner))),
             ast::Type::Tuple { elements } => {
@@ -2445,6 +2473,51 @@ f s() -> i32 { g(1) }");
     fn vocab_arity_is_checked() {
         assert!(!check_source("f t() { sum() }").diagnostics.is_empty());
         assert!(!check_source("f t() { map([1, 2, 3]) }").diagnostics.is_empty());
+    }
+
+    /// A slice parameter accepts a list literal and a vec, as `[T]~` already
+    /// did. `f g(xs: [i32])` called as `g([1, 2, 3])` reported
+    /// `[I32] vs [?T; 3]`.
+    #[test]
+    fn a_slice_parameter_accepts_a_literal_and_a_vec() {
+        for src in [
+            "f g(xs: [i32]) -> usize { len(xs) }\nf t() -> usize { g([1, 2, 3]) }",
+            "f g(xs: [i32]) -> usize { len(xs) }\nf t(v: [i32]~) -> usize { g(v) }",
+            "f g(xs: [i32]~) -> usize { len(xs) }\nf t(v: [i32]) -> usize { g(v) }",
+        ] {
+            let tc = check_source(src);
+            assert!(tc.diagnostics.is_empty(), "`{src}`: {:?}", tc.diagnostics);
+        }
+        // The element type still has to agree.
+        assert!(
+            !check_source("f g(xs: [i32]) -> usize { len(xs) }\nf t() -> usize { g([\"a\"]) }")
+                .diagnostics
+                .is_empty()
+        );
+    }
+
+    /// A fixed-size array parameter accepts a literal of that size.
+    ///
+    /// `lower_type` dropped the declared length and used 0, while an array
+    /// literal types with its real length — so `f take(xs: [i32; 3])` called
+    /// as `take([1, 2, 3])` failed with "array size mismatch: 3 vs 0". Every
+    /// fixed-size array parameter in the language was uncallable with a
+    /// literal.
+    #[test]
+    fn a_fixed_size_array_parameter_accepts_a_literal_of_that_size() {
+        let ok = check_source(
+            "f take3(xs: [i32; 3]) -> usize { len(xs) }\nf t() -> usize { take3([1, 2, 3]) }",
+        );
+        assert!(ok.diagnostics.is_empty(), "{:?}", ok.diagnostics);
+        // And the length is still checked.
+        let bad = check_source(
+            "f take3(xs: [i32; 3]) -> usize { len(xs) }\nf t() -> usize { take3([1, 2]) }",
+        );
+        assert!(
+            bad.diagnostics.iter().any(|d| d.message.contains("array size mismatch")),
+            "a two-element literal must not satisfy `[i32; 3]`: {:?}",
+            bad.diagnostics
+        );
     }
 
     /// `contains` works on a string, a map and a list — as the evaluator has

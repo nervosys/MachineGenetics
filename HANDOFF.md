@@ -12,7 +12,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **2,880** — rmi 1,380 · prototype 1,172 · ribosome 164 · germline 112 · forge 52 |
+| Tests | **2,883** — rmi 1,380 · prototype 1,175 · ribosome 164 · germline 112 · forge 52 |
 | CUDA | **1,071 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm |
@@ -261,17 +261,21 @@ rewrites produced compiler bugs at a steady rate.
 
 ### Small, sharp, cheap
 
-- **`pub` on a `data` field is a parse error** (`data Point(pub x: f64)`).
-  Undocumented either way; decide whether fields have visibility at all.
-- **An array literal does not unify with a slice parameter.** `f g(xs: [i32])`
-  called with `[1, 2, 3]` reports `[I32] vs [?T; 3]`; `[i32]~` works. Whether
-  literals should coerce is a design question, not obviously a bug — but every
-  example rewritten this session hit it.
+This section is empty. The five items that were here — `guard` as a
+reference, the `+=` diagnostic, `scan`'s seed, `pub` on a `data` field, and
+the array-literal/slice mismatch — are all done.
 
-The three items that were here — `guard` as a reference, the `+=` diagnostic,
-and `scan`'s seed — are done. Two were worse than recorded: `+=` failed
-`--check` *always*, not only with untyped parameters, and it was one of four
-"evaluates but does not typecheck" bugs found this session.
+Three were worse than recorded. `+=` failed `--check` *always*, not only with
+untyped parameters. The array-literal item was filed as "a design question,
+not obviously a bug", and turned out to be `lower_type` discarding the
+declared length — which made **every** fixed-size array parameter uncallable
+with a literal. And `pub` on a `data` field was already in the spec's grammar
+(§4.3, `visibility? IDENT ':' type`), so it was a straight parser omission
+rather than a decision anyone needed to make.
+
+**A "design question" filed against a defect stops anyone from running the
+check that would settle it.** Both of the last two sat here for a session
+because the note framed them as needing judgment.
 
 ---
 
@@ -465,6 +469,15 @@ elsewhere, pointing at the wrong line.
   reservation costs the name twice: the call is a parse error, *and* no user
   function can fill the gap. They now say so when written. Implementing them,
   or un-reserving them, is a design decision.
+- **Every fixed-size array parameter was uncallable with a literal.**
+  `lower_type` dropped the declared length and used 0 while an array literal
+  types with its real length, so `f take(xs: [i32; 3])` called as
+  `take([1, 2, 3])` failed with "array size mismatch: 3 vs 0". Now lowered; a
+  non-literal length still lowers to 0 and unifies with anything, and a
+  two-element literal is still rejected.
+- **`pub` on a `data` record field was a parse error**, while the same field
+  in a `struct` accepted it — and MAGE_SPEC.md §4.3 spells the grammar
+  `visibility? IDENT ':' type`.
 - **Thirteen of the seventeen registered builtins had no arm in the
   evaluator.** `resolve` registers `assert`, `assert_eq`, `panic`, `todo`,
   `dbg`, `vec`, `format` and the rest so ordinary code resolves; only `min`,
@@ -663,7 +676,7 @@ it is invisible unless you break the thing on purpose and watch.
 
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,172**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,175**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it.
 - Every typechecker fix has landed without breaking an existing test **except
   one**, where widening `collection_elem` made `sum("hi")` legal and

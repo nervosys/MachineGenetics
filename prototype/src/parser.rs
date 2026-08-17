@@ -2149,6 +2149,16 @@ impl<'a> Parser<'a> {
             self.advance();
             let mut fields = Vec::new();
             while self.peek() != TokenKind::RParen && self.peek() != TokenKind::Eof {
+                // `pub` (which lexes as `+`) on a record field. MAGE_SPEC.md
+                // §4.3 has `struct_field = visibility? IDENT ':' type`, and a
+                // `struct` field accepts it — a `data` record field did not,
+                // so `data Point(pub x: f64, pub y: f64)` was a parse error
+                // pointing at `pub`. Fields are public with their type either
+                // way here; what matters is that the documented spelling
+                // parses.
+                if self.peek() == TokenKind::Plus {
+                    self.advance();
+                }
                 let fname = self.expect_ident()?;
                 self.expect(TokenKind::Colon)?;
                 let ty = self.parse_type()?;
@@ -4710,6 +4720,26 @@ mod tests {
                 [Expr::Literal { kind: LiteralKind::FormatString, .. }]
             ));
         }
+    }
+
+    /// `pub` on a `data` record field parses.
+    ///
+    /// MAGE_SPEC.md §4.3 has `struct_field = visibility? IDENT ':' type`, and
+    /// a `struct` field accepted it — a `data` record field did not, so the
+    /// documented spelling `data Point(pub x: f64, pub y: f64)` was a parse
+    /// error pointing at `pub`.
+    #[test]
+    fn a_data_record_field_may_be_public() {
+        let module = parse_source("data Point(pub x: f64, y: f64)");
+        let ItemKind::Data(ref d) = module.items[0].kind else {
+            panic!("expected a data item");
+        };
+        let DataKind::Record(ref fields) = d.kind else {
+            panic!("expected a record");
+        };
+        assert_eq!(fields.len(), 2);
+        assert_eq!(fields[0].name, "x");
+        assert_eq!(fields[1].name, "y");
     }
 
     /// A reserved word nothing implements must say so.
