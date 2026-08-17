@@ -104,6 +104,58 @@ fn occurs_in(var: TyVar, ty: &Ty) -> bool {
     }
 }
 
+/// The value of an unsuffixed integer literal, for range checking. Handles the
+/// radix prefixes and digit separators the lexer accepts. Anything unparseable
+/// yields 0, which passes every range — the checker's job here is to catch a
+/// literal that plainly does not fit, not to re-lex.
+fn parse_int_literal_value(text: &str) -> i128 {
+    let t: String = text.trim().chars().filter(|c| *c != '_').collect();
+    let t = t.trim_start_matches('+');
+    let (neg, t) = match t.strip_prefix('-') {
+        Some(rest) => (true, rest),
+        None => (false, t),
+    };
+    let parsed = if let Some(h) = t.strip_prefix("0x").or_else(|| t.strip_prefix("0X")) {
+        i128::from_str_radix(h, 16)
+    } else if let Some(o) = t.strip_prefix("0o").or_else(|| t.strip_prefix("0O")) {
+        i128::from_str_radix(o, 8)
+    } else if let Some(b) = t.strip_prefix("0b").or_else(|| t.strip_prefix("0B")) {
+        i128::from_str_radix(b, 2)
+    } else {
+        t.parse::<i128>()
+    };
+    let n = parsed.unwrap_or(0);
+    if neg { -n } else { n }
+}
+
+/// Inclusive range of a signed integer kind. `None` for the kinds whose width
+/// is target-dependent or wider than `i128` can bound.
+fn signed_range(k: IntTy) -> Option<(i128, i128)> {
+    Some(match k {
+        IntTy::I8 => (i8::MIN as i128, i8::MAX as i128),
+        IntTy::I16 => (i16::MIN as i128, i16::MAX as i128),
+        IntTy::I32 => (i32::MIN as i128, i32::MAX as i128),
+        IntTy::I64 => (i64::MIN as i128, i64::MAX as i128),
+        // `isize` is target-dependent; 64-bit is the floor this toolchain
+        // targets, and being permissive here beats rejecting a valid program.
+        IntTy::Isize => (i64::MIN as i128, i64::MAX as i128),
+        IntTy::I128 => return None,
+    })
+}
+
+/// Inclusive maximum of an unsigned integer kind, or `None` when unbounded
+/// within `i128`.
+fn unsigned_max(k: UintTy) -> Option<i128> {
+    Some(match k {
+        UintTy::U8 => u8::MAX as i128,
+        UintTy::U16 => u16::MAX as i128,
+        UintTy::U32 => u32::MAX as i128,
+        UintTy::U64 => u64::MAX as i128,
+        UintTy::Usize => u64::MAX as i128,
+        UintTy::U128 => return None,
+    })
+}
+
 fn unify(subst: &mut Subst, a: &Ty, b: &Ty) -> Result<(), String> {
     let a = subst.apply(a);
     let b = subst.apply(b);
@@ -369,7 +421,12 @@ pub struct TypeChecker {
     /// any concrete int width from context; whatever stays unbound at end of a
     /// function defaults to i32 (Rust-style integer literal polymorphism). This
     /// is what lets `let x: i64 = 3` and `[i64]~ = [1,2,3]` check clean.
-    int_lit_vars: Vec<u32>,
+    /// Unsuffixed integer literals: `(type var, value, source text)`.
+    ///
+    /// The value is carried so the literal can be **range-checked** against
+    /// whatever integer kind it ends up unified with. Without it, `g(300)`
+    /// where `g` takes a `u8` typechecked clean.
+    int_lit_vars: Vec<(u32, i128, String)>,
 }
 
 impl Default for TypeChecker {
@@ -794,7 +851,7 @@ impl TypeChecker {
         match &t {
             Ty::Array(e, _) | Ty::Slice(e) | Ty::Vec(e) => self.subst.apply(e),
             // An unconstrained integer literal (e.g. `sum(5)`) is NOT a collection.
-            Ty::Var(tv) if self.int_lit_vars.contains(&tv.0) => {
+            Ty::Var(tv) if self.int_lit_vars.iter().any(|(v, _, _)| *v == tv.0) => {
                 self.emit_error("expected a collection, found an integer".to_string());
                 self.fresh()
             }
@@ -838,7 +895,7 @@ impl TypeChecker {
             //
             // The same three lines in the other order checked clean. Leave it
             // open and let a use that actually knows the type decide.
-            Ty::Var(tv) if !self.int_lit_vars.contains(&tv.0) => (),
+            Ty::Var(tv) if !self.int_lit_vars.iter().any(|(v, _, _)| *v == tv.0) => (),
             _ => {
                 self.collection_elem(&t);
             }
@@ -945,7 +1002,7 @@ impl TypeChecker {
                         // parameter is open at this point, and forcing a
                         // collection made the closure `f([str]~) -> bool`
                         // where `filter` wanted `f(str) -> bool`.
-                        Ty::Var(tv) if !self.int_lit_vars.contains(&tv.0) => (),
+                        Ty::Var(tv) if !self.int_lit_vars.iter().any(|(v, _, _)| *v == tv.0) => (),
                         other => {
                             let e = self.collection_elem(&other);
                             if n >= 2 {
@@ -1176,7 +1233,7 @@ impl TypeChecker {
     /// than a bug fix.
     fn default_int_literals(&mut self) {
         let pending = std::mem::take(&mut self.int_lit_vars);
-        for v in pending {
+        for (v, value, text) in pending {
             let tv = Ty::Var(crate::hir::TyVar(v));
             let resolved = self.subst.apply(&tv);
             match resolved {
@@ -1184,7 +1241,31 @@ impl TypeChecker {
                     // Still unbound → default to i32.
                     let _ = unify(&mut self.subst, &tv, &Ty::Int(IntTy::I32));
                 }
-                Ty::Int(_) | Ty::Uint(_) | Ty::Float(_) | Ty::Never => {}
+                // The literal adopts the width the context demands — and now
+                // has to *fit* it. `g(300)` where `g` takes a `u8` checked
+                // clean before this: the kind was adopted and the magnitude
+                // never looked at.
+                Ty::Int(k) => {
+                    if let Some((lo, hi)) = signed_range(k)
+                        && (value < lo || value > hi)
+                    {
+                        self.emit_error(format!(
+                            "integer literal `{text}` does not fit in `{}`                              (range {lo}..={hi})",
+                            Ty::Int(k)
+                        ));
+                    }
+                }
+                Ty::Uint(k) => {
+                    if let Some(hi) = unsigned_max(k)
+                        && (value < 0 || value > hi)
+                    {
+                        self.emit_error(format!(
+                            "integer literal `{text}` does not fit in `{}`                              (range 0..={hi})",
+                            Ty::Uint(k)
+                        ));
+                    }
+                }
+                Ty::Float(_) | Ty::Never => {}
                 other => self.emit_error(format!(
                     "integer literal used where `{}` is required",
                     other
@@ -2111,7 +2192,8 @@ impl TypeChecker {
                     // (see `default_int_literals`).
                     let ty = self.fresh();
                     if let Ty::Var(v) = &ty {
-                        self.int_lit_vars.push(v.0);
+                        let n = parse_int_literal_value(value);
+                        self.int_lit_vars.push((v.0, n, value.to_string()));
                     }
                     ty
                 }
@@ -2473,6 +2555,41 @@ f s() -> i32 { g(1) }");
     fn vocab_arity_is_checked() {
         assert!(!check_source("f t() { sum() }").diagnostics.is_empty());
         assert!(!check_source("f t() { map([1, 2, 3]) }").diagnostics.is_empty());
+    }
+
+    /// An unsuffixed integer literal adopts the width the context demands —
+    /// and has to fit it.
+    ///
+    /// It adopted the width and the magnitude was never looked at, so
+    /// `f g(n: u8)` called as `g(300)` typechecked clean. The literal's value
+    /// is now carried alongside its type variable for exactly this check.
+    #[test]
+    fn an_integer_literal_must_fit_the_width_it_adopts() {
+        let too_big = [
+            ("f g(n: u8) -> u8 { n }\nf t() -> u8 { g(300) }", "300"),
+            ("f g(n: i8) -> i8 { n }\nf t() -> i8 { g(200) }", "200"),
+            ("f g(n: i32) -> i32 { n }\nf t() -> i32 { g(3000000000) }", "3000000000"),
+            ("f g(n: u32) -> u32 { n }\nf t() -> u32 { g(0x100000000) }", "0x100000000"),
+        ];
+        for (src, lit) in too_big {
+            let diags = check_source(src).diagnostics;
+            assert!(
+                diags.iter().any(|d| d.message.contains("does not fit") && d.message.contains(lit)),
+                "`{lit}` must not fit: {diags:?}"
+            );
+        }
+
+        // The boundaries themselves are fine, and so is a float context.
+        for src in [
+            "f g(n: u8) -> u8 { n }\nf t() -> u8 { g(255) }",
+            "f g(n: i8) -> i8 { n }\nf t() -> i8 { g(127) }",
+            "f g(n: u32) -> u32 { n }\nf t() -> u32 { g(0xFFFFFFFF) }",
+            "f g(n: i64) -> i64 { n }\nf t() -> i64 { g(3000000000) }",
+            "f g(x: f64) -> f64 { x }\nf t() -> f64 { g(5) }",
+        ] {
+            let diags = check_source(src).diagnostics;
+            assert!(diags.is_empty(), "`{src}` should check: {diags:?}");
+        }
     }
 
     /// A slice parameter accepts a list literal and a vec, as `[T]~` already

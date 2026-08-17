@@ -12,7 +12,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **2,884** — rmi 1,380 · prototype 1,176 · ribosome 164 · germline 112 · forge 52 |
+| Tests | **2,885** — rmi 1,380 · prototype 1,177 · ribosome 164 · germline 112 · forge 52 |
 | CUDA | **1,071 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm |
@@ -255,7 +255,6 @@ rewrites produced compiler bugs at a steady rate.
 | # | Item | Size |
 |---|---|---|
 | 10 | **Multi-shot resumption for effect handlers** | Largest, and *smaller than it was recorded as*. Single-shot resumption already works — an arm's value becomes the operation's value and the body continues — and `ret` in an arm aborts the handled block cleanly. What is missing is reifying the continuation so it can be stored or invoked twice, which is what generators and backtracking need. State, reader, logging and mocking handlers all work today. Still means reworking the tree-walking evaluator into a form that can capture continuations. |
-| 12 | `int` literal constraint | Medium. The current fix is a post-hoc check in `default_int_literals`, not a real integer-kind constraint threaded through `unify`. Correct for the programs it rejects; the principled version is larger. |
 | 13 | `stdlib/` | The remaining 25 sketches, and **the only aspirational `.mg` left in the repository** — 4,402 lines of Rust. Blocked on item 1: what a standard library *is* here depends on whether there are modules. `prototype/examples/` and `framework/framewerx/` are both done. |
 
 ### Small, sharp, cheap
@@ -468,6 +467,17 @@ elsewhere, pointing at the wrong line.
   reservation costs the name twice: the call is a parse error, *and* no user
   function can fill the gap. They now say so when written. Implementing them,
   or un-reserving them, is a design decision.
+- **An integer literal adopted a width without having to fit it.**
+  `f g(n: u8)` called as `g(300)` typechecked clean, as did `i8` ← 200 and
+  `i32` ← 3000000000. The literal's value is now carried alongside its type
+  variable and range-checked against whatever kind it ends up unified with —
+  boundaries (255, 127, `0xFFFFFFFF`) still pass, and a float context still
+  accepts an integer literal.
+
+  What this does *not* do is constant-fold: `g(0 - 1)` into a `u32` is an
+  expression, not a literal, and still passes. That is the remaining half of
+  old item 12, and it needs a different analysis rather than a bigger range
+  table.
 - **`--backend` reached one dispatch path out of six.** `--run=abl-bytes`
   honoured it; every `--target=abl-*` path built a `CpuBackend` directly, so
   `--target=abl-compute --backend=cuda` printed "CpuBackend dispatch" and ran
@@ -691,7 +701,7 @@ it is invisible unless you break the thing on purpose and watch.
 
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,176**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,177**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it.
 - Every typechecker fix has landed without breaking an existing test **except
   one**, where widening `collection_elem` made `sum("hi")` legal and
