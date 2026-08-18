@@ -143,6 +143,11 @@ if [ "$CHECKDOCS" -eq 1 ]; then
         # Unique crate *names* on normal edges; six crates resolve at two
         # versions, so a name-version count is 34, and the documents now say
         # which they mean.
+        # Markdown documents at the repository root. `DOCS.md` opens by
+        # counting them and then indexes them one by one, so the number and the
+        # table can disagree — and a document added without an index entry is
+        # exactly what that opening sentence exists to prevent.
+        echo "root_docs=$(ls "$REPO"/*.md | grep -c .)"
         echo "ribosome_deps=$(cargo tree --manifest-path "$REPO/ribosome/Cargo.toml"             -e normal --prefix none 2>/dev/null             | sed 's/ (\*)$//' | awk 'NF{print $1}' | sort -u | grep -c .)"
         # `.mg` sources checked vs skipped as sketches. HANDOFF.md states both,
         # and both moved this session (96/30 -> 101/25) when `framewerx` was

@@ -1066,6 +1066,40 @@ The mirror image, and easy to get backwards.
   crate's contents, so the file now says which it is. **A prose document is not
   covered by a check that reads code blocks**, and the passing result said
   nothing about it either way.
+- **`ARCHITECTURE_DSL.md` is the one document whose measured claims all held.**
+  Every byte figure re-derived exactly from the checked-in construct: source
+  271 B, container 141 B, expr 110 B, single-block 126 B / 95 B, decompiles to
+  72 layers, `dispatched=72 unsupported=[]`. Worth recording *because* it is the
+  exception — and the reason is visible in the prose, which reads as pasted from
+  a run rather than written around one. That is the same split
+  `AGENT_PROTOCOL.md` showed from the other side: its decode block survived and
+  the hand-written encode figures did not.
+
+  One real gap, now stated in the file: **its token ratios cannot be reproduced
+  from this repository.** The cl100k tokenizer is in `agentic-eval`, a separate
+  repo, and the "839 manual tokens" baseline is a hand-expanded source that is
+  not checked in — a reconstruction lands at 2,749 B against the 2,320 B
+  stated, which proves nothing but that the naming differed. Committing that
+  file beside the other constructs would make the headline claim checkable; it
+  is a one-file fix nobody has done.
+- **`DOCS.md` — the document that sets the anti-drift rule — had drifted.** It
+  states the rule ("when a design document and a measurement disagree, the
+  measurement wins"), explains that stating a rule was not enough, describes the
+  checker built to enforce it, and then gives the checker's coverage as "58
+  claims with all three modes, 44 by default". ROADMAP step 158 says "51 and
+  38". The measurement is **78**. Three numbers for one figure, in the paragraph
+  explaining why that happens.
+
+  My first correction restated it as 78 — and was wrong **within the same
+  commit**, because that commit added two more pins and the run reported 80.
+  So the number is now gone entirely, replaced by "run the command". A count
+  that changes whenever someone does the right thing should not be written
+  down: the checker cannot verify its own total without circularity, so any
+  figure there is one nobody measures. Two other counts
+  there were pinnable and are — the root document count and the ontology's
+  section count, which said 21 against a measured 22. The index itself is sound:
+  every one of the 23 links resolves, and every root `.md` is indexed except
+  `DOCS.md` itself.
 - **`RIBOSOME.md` and `GERMLINE.md` under-report their own evidence.** Both
   carry tables of "the tests that assert a property this system is judged on",
   and both list a subset: Ribosome names 15 of 19 and calls 11 scenarios 10;

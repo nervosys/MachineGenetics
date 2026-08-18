@@ -25,9 +25,24 @@ you reword one of these lines, expect to update `scripts/check-doc-counts.sh`
 alongside it; that friction is the point.
 
 Adding `--cuda` also verifies the CUDA figure (needs a GPU) and `--bench` the
-`eval_bench` result: **58 claims** checked with all three, 44 by default. Both
-report *"not checked"* rather than passing quietly when the run that would
-supply the number did not happen.
+`eval_bench` result. Both report *"not checked"* rather than passing quietly
+when the run that would supply the number did not happen.
+
+**How many claims are checked is not stated here on purpose.**
+`scripts/test-all.sh --check-docs` prints the number in its last line; `--cuda`
+and `--bench` each add rows.
+
+That figure had been three different numbers in three places: this line said
+"58 with all three modes, 44 by default", ROADMAP step 158 says "51 and 38",
+and a measurement on 2026-08-18 gave 78. **The document about counts drifting
+had a drifting count, in the paragraph explaining why that happens.**
+
+The first correction here restated it as 78 — and was wrong within the same
+commit, because that commit added two more pins. That is the argument for
+having no number: the checker cannot verify its own total without circularity,
+so any figure written here is one nobody measures, which is precisely the
+condition the rest of this section exists to prevent. **A count that changes
+whenever someone does the right thing should not be written down.**
 
 **The checker's own coverage is the part that rots.** A fifth stale figure —
 `ARCHITECTURE.md`'s "976 lib + 132 + 30 tests green", 1,138 against 1,038 — sat
@@ -47,12 +62,12 @@ Read these to understand the system as it exists.
 | [README.md](README.md) | Entry point: the four forms, the composition algebra, measured benchmarks |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | ABL and tool-mediated construction — the current architecture, including a §6 "Honest boundaries" |
 | [MEASUREMENTS.md](MEASUREMENTS.md) | Every measured functionality and performance figure, with reproduction commands |
-| [ROADMAP.md](ROADMAP.md) | All 158 implementation steps + the open-items list |
+| [ROADMAP.md](ROADMAP.md) | The implementation steps — numbered to 159, listed selectively rather than exhaustively — plus the open-items list. *This said "all 158 steps"; the numbering runs to 159 and has 67 gaps, so "all" was wrong in both directions* |
 | [ARCHITECTURE_DSL.md](ARCHITECTURE_DSL.md) | The composition algebra (`stack`/`residual`/`branch`/`wrap`) and its measured basis |
 | [RIBOSOME.md](RIBOSOME.md) | The distributed, agent-operated build engine — its own crate, `ribosome/`. **Mixed status, marked inline**: the core (graph, keys, CAS, executor seam, healing, scheduler, fitness), network distribution with authentication and signed provenance, sandboxed subprocess execution, multi-language support, and TLS (optional `tls` feature) are implemented and tested ✅; the evolutionary loop above the build is designed ◻. *This row said distribution was unbuilt through step 7 and was not updated when it landed — corrected 2026-08-04.* |
 | [GERMLINE.md](GERMLINE.md) | Model succession, handoff, and fallback — the RSI control plane, its own crate `germline/`. **Mixed status, marked inline**: the control plane is complete and tested end to end ✅ (variation, directed search, gate, attestation, lineage, hash-chained journal, cycle, supervision); model training/inference and any unattended daemon are not ◻ |
 | [AGENT_PROTOCOL.md](AGENT_PROTOCOL.md) | How an agent should target ABL bytes rather than text |
-| [UNIFICATION.md](UNIFICATION.md) | MAGE ↔ RMI unification: the bridge, adapters, and the 21-section ontology |
+| [UNIFICATION.md](UNIFICATION.md) | MAGE ↔ RMI unification: the bridge, adapters, and the 22-section ontology |
 | [SECURITY_AUDIT.md](SECURITY_AUDIT.md) | CVE/RustSec, NIST FIPS 140-3, MITRE ATT&CK, CMMC 2.0 audit |
 | [SPINE_COLLABORATION.md](SPINE_COLLABORATION.md) | Multi-agent collaboration over SPINE |
 | [MAGE_ONTOLOGY.md](MAGE_ONTOLOGY.md) | The ontology in prose. The machine-readable form is [`MAGE_ONTOLOGY.json`](MAGE_ONTOLOGY.json), generated from the implementation — prefer it |
