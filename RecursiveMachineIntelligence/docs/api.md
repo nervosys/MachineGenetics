@@ -724,7 +724,7 @@ pub struct KnowledgeBase {
 
 impl KnowledgeBase {
     pub fn new() -> Self;
-    pub fn add_fact(&mut self, clause: Clause);
+    pub fn add_fact(&mut self, name: impl Into<String>, args: Vec<Term>);
     pub fn add_rule(&mut self, clause: Clause);
     pub fn facts(&self) -> &[Clause];
     pub fn rules(&self) -> &[Clause];
@@ -861,7 +861,7 @@ impl SymbolEmbedding {
     pub fn new(config: EmbeddingConfig) -> Self;
     pub fn embed(&mut self, symbol: &str) -> Vec<f64>;
     pub fn embed_predicate(&mut self, pred: &Predicate) -> Vec<f64>;
-    pub fn similarity(&self, a: &str, b: &str) -> f64;
+    pub fn similarity(emb1: &[f32], emb2: &[f32]) -> f32;   // associated fn, not a method
 }
 ```
 
@@ -1036,15 +1036,37 @@ Binary communication protocol.
 
 ```rust
 pub struct Protocol {
-    pub config: ProtocolConfig,
+    pub compression: String,
+    pub encryption: Option<String>,
+    pub schema_format: String,
+    pub max_message_size: usize,
+    pub stream_chunk_size: usize,
+    /* private: schemas */
 }
 
 impl Protocol {
-    pub fn new(config: ProtocolConfig) -> Self;
-    pub fn encode<T: Serialize>(&self, msg: &Message<T>) -> Result<Vec<u8>>;
-    pub fn decode<T: DeserializeOwned>(&self, data: &[u8]) -> Result<Message<T>>;
+    pub fn new() -> Self;
+    pub fn binary() -> Self;
+    pub fn secure(encryption: &str) -> Self;
+    pub fn register_schema(&mut self, schema: MessageSchema);
+    pub fn get_schema(&self, name: &str) -> Option<&MessageSchema>;
+    pub fn create_message(
+        &self,
+        sender_id: Uuid,
+        recipient_id: Uuid,
+        message_type: MessageType,
+        payload: HashMap<String, serde_json::Value>,
+    ) -> Result<Message>;
 }
 ```
+
+> **Corrected 2026-08-18.** `Protocol` has no `config` field and no
+> `encode`/`decode`. Those two belong to `Frame` in
+> `rmi::distributed::transport` and have different shapes —
+> `Frame::encode(&self) -> Vec<u8>` and
+> `Frame::decode(data: &[u8]) -> Result<(Self, usize)>`, an associated function
+> rather than a method. `Protocol` is a schema registry with compression and
+> encryption settings.
 
 #### `Message`
 
@@ -1147,8 +1169,23 @@ pub struct CheckpointMeta {
 impl CheckpointManager {
     pub fn new(base_path: impl AsRef<Path>) -> Result<Self>;
     pub fn with_max_checkpoints(self, max: usize) -> Self;   // builder
-    pub fn save<T: Serialize>(/* … */) -> Result<CheckpointMeta>;
-    pub fn save_with_tensors(/* … */) -> Result<CheckpointMeta>;
+    pub fn save<T: Serialize>(
+        &self,
+        checkpoint_type: CheckpointType,
+        step: u64,
+        description: &str,
+        data: &T,
+        metrics: HashMap<String, f64>,
+    ) -> Result<CheckpointMeta>;
+    pub fn save_with_tensors(
+        &self,
+        checkpoint_type: CheckpointType,
+        step: u64,
+        description: &str,
+        state: &HashMap<String, Vec<u8>>,
+        tensors: &HashMap<String, (Vec<usize>, Vec<f32>)>,
+        metrics: HashMap<String, f64>,
+    ) -> Result<CheckpointMeta>;
     pub fn load<T: DeserializeOwned>(&self, id: Uuid) -> Result<Option<(CheckpointMeta, T)>>;
     pub fn load_tensors(&self, id: Uuid) -> Result<Option<TensorStorage>>;
     pub fn list(&self) -> Result<Vec<CheckpointMeta>>;
@@ -1326,7 +1363,7 @@ impl Ontology {
     pub fn add_relation(&mut self, from: &str, to: &str, relation: Relation);
     pub fn get_concept(&self, name: &str) -> Option<&Concept>;
     pub fn related_concepts(&self, name: &str, relation: Relation) -> Vec<&Concept>;
-    pub fn similarity(&self, a: &str, b: &str) -> f64;
+    pub fn similarity(emb1: &[f32], emb2: &[f32]) -> f32;   // associated fn, not a method
 }
 ```
 

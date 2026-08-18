@@ -1037,6 +1037,22 @@ The mirror image, and easy to get backwards.
   an unresolvable module path. The check is deliberately name-level: it cannot
   see a wrong signature on a function that exists, which is most of what was
   wrong here, so `cargo doc` stays the authority and the file says so.
+
+  Following that admission with a measurement: of 162 documented functions,
+  **66 are defined exactly once** in `src/` and so can be compared by arity
+  without ambiguity. Four disagreed — `add_fact` (2 params documented, 3 real),
+  `similarity` (documented as a method, actually an associated function on
+  `&[f32]`), and `Protocol::encode`/`decode`, which **belong to `Frame` in a
+  different module** and have different shapes. All four fixed; the set is now
+  clean. The other 96 share a name with another definition (`new`, `len`,
+  `save`), so a name-keyed comparison cannot tell which one it is looking at.
+
+  **No arity checker was added, deliberately.** It would cover 41% of the
+  functions and carries a false-positive class — my own `/* … */` placeholders
+  tripped it twice while writing the fixes above. A check that is right 41% of
+  the time and cries wolf is the kind this session has spent its length
+  cleaning up after. The measurement is worth repeating by hand after a
+  refactor; it is not worth a ratchet.
 - **`AGENT_PROTOCOL.md`, nine figures at once.** The document that tells an
   agent how to emit bytes rather than text opened with "the genuine ~50×
   efficiency win", and its own worked example three sections down measures
