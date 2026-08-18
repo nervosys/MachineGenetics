@@ -1,4 +1,4 @@
-# Handoff — through 2026-08-14
+# Handoff — through 2026-08-18
 
 What this repository is, what state it is in, and what to do next. Written for
 someone picking it up cold.
@@ -20,7 +20,7 @@ each claim has a command beside it.
 | Reliability floors | file-oracle parse 99/100, perturbed pattern-heal 42, native-lexer ratio 0.997 |
 | Examples | 12 of 12 typecheck, run, and print their recorded answer |
 | `.mg` sources | 101 checked, 25 listed sketches (all of them `stdlib/`) |
-| Documentation | 206 MAGE blocks typecheck; 57 documentation entry points run |
+| Documentation | 206 MAGE blocks typecheck; 57 documentation entry points run; 275 `rmi/docs` API items all exist |
 | Release | `v0.3.0`, with the promo video attached as a release asset |
 
 Reproduce all of it:
@@ -40,14 +40,32 @@ not an oversight — open item 0.
 
 ## The one thing to understand
 
-Four sessions have now found roughly forty bugs in this repository, and **not
-one was found by reading code**. Every one came from running something and
-comparing the result against what a document, a comment, or a test claimed.
+Five sessions have now found well over a hundred defects in this repository,
+and **almost none was found by reading code**. Nearly every one came from
+running something and comparing the result against what a document, a comment,
+or a test claimed.
 
 The code has consistently been in better shape than the claims about it. The
 claims are what keep turning out to be wrong — and because this is a language
 built to be *generated and consumed by agents*, a wrong claim is not a
 documentation defect. It is a supply of confidently incorrect programs.
+
+The one exception is worth its own note, because it inverts the rule.
+Taxonomy §7 collects four **memory-safety defects** in `rmi`'s allocator, two
+of them undefined behaviour on an ordinary code path. Those were found by
+reading code — but only because a security document claimed that code had been
+reviewed, and claimed it specifically enough to check. **The claim was the
+thread; the reading was pulling it.**
+
+There is a second pattern under the first, visible only in aggregate. A single
+mechanical edit — a global rename of `Rmi` to `RecursiveMachineIntelligence` —
+produced *four* separate defects found in four different places over two days:
+the `ABL1` magic bytes in the container's published format, the decoder's own
+error message, twelve `framewerx::` module paths, and the `RmiError` type name
+in an API reference. Each looked like an isolated typo. **A rename that touches
+literals is one defect wearing many costumes, and finding one is a reason to go
+looking for the rest.** The same held for name-versus-id confusion in the
+`rmi` docs, which turned up in six places across three files.
 
 [Failure taxonomy](#failure-taxonomy) is the useful part of this document. It
 groups what has gone wrong by *shape*, because the shapes repeat, and knowing
@@ -61,6 +79,11 @@ These exist because the same failure kept recurring: a claim written once, never
 revisited, and quietly wrong. Each fails in **both** directions — a claim that
 breaks, *and* a recorded state that silently starts passing.
 
+Two of them carry a **baseline** that can only shrink (`check-doc-blocks.sh`,
+`check-rmi-api-doc.sh`), which is the right shape when the backlog is real and
+the fix is incremental. Both are currently at zero, so either now fails on a
+single new violation.
+
 | Command | Checks |
 |---|---|
 | `scripts/test-all.sh --check-docs` | every documented test count against the run that just produced them; `--cuda --bench` adds the GPU and benchmark figures |
@@ -71,7 +94,7 @@ breaks, *and* a recorded state that silently starts passing.
 | `scripts/check-vocabulary.sh` | that all 31 words of §8 check, run, and return what the ontology publishes — and that its own case list *is* the published vocabulary |
 | `scripts/check-ci-floors.sh` | the three measurable published floors, measured fresh; also fails if the committed `TOKEN_REPORT.md` differs from a new run |
 | `scripts/check-rmi-api-doc.sh` | every item `rmi/docs/*.md` documents exists in the crate, and every `**Module:**` path resolves — baseline **0**, so any invented name fails |
-| CI `audit` job | `cargo audit` over all five lockfiles separately |
+| CI `audit` job | `cargo audit` over all five lockfiles separately, plus `npm audit` on `video/` — which nothing covered until a high-severity advisory was sitting in it |
 | CI ontology step | `MAGE_ONTOLOGY.json` matches a fresh `--emit-ontology` |
 | CI version step | `mage-parse --version` matches the tool id Ribosome keys on |
 | CI dependency guard | `ribosome` depends on no MAGE crate, no `germline`, and no TLS stack by default |
@@ -96,24 +119,44 @@ its own extraction bug on the first run — the measured value came out as
 `files;` because the awk field index was off by one. The one figure that
 stayed stale after the checker existed was one nobody had listed.
 
-### Four things the instruments taught, the hard way
+### What the instruments taught, the hard way
 
-**A pin guarantees agreement, not truth.** CI checked `MAGE_ONTOLOGY.json`
-byte-for-byte against a fresh `--emit-ontology` — and thereby guaranteed that a
-*wrong* answer stayed identical. Four of the ten effect names it published were
-rejected by the compiler. The check was working perfectly and proving nothing.
-What was missing crosses the boundary: not "does the file match its generator"
-but "does every name the file publishes actually work".
+Ten rules, each one paid for. The heading here said "four" for a while, which
+was true when it was written and wrong for a long time after — the same defect
+this section is about, in the section about it. The first three are one family:
+a check can agree with its subject, agree with its own generator, or agree with
+a weaker property than the one that matters, and all three read as green.
 
-**A weaker criterion reports success early.** `check-doc-blocks.sh` counted
-parse errors, because that was the failure that prompted it. Blocks that
-parsed and then failed the *checker* scored as passes — 43 of them, including
-some in files the script had been used to certify as fixed. The criterion a
-ratchet enforces is the definition of done it hands to whoever comes next.
+#### 1. A pin guarantees agreement, not truth
 
-**A fixed list under a universal doc comment is the commonest failure of
-all.** Six separate tests in this repository claimed a cross-boundary property
-and asserted a hardcoded subset:
+CI checked `MAGE_ONTOLOGY.json` byte-for-byte against a fresh
+`--emit-ontology` — and thereby guaranteed that a *wrong* answer stayed
+identical. Four of the ten effect names it published were rejected by the
+compiler. The check was working perfectly and proving nothing. What was missing
+crosses the boundary: not "does the file match its generator" but "does every
+name the file publishes actually work".
+
+#### 2. A pin over a generated list tends toward tautology
+
+The same failure one level down. The follow-up test for layer names iterated
+`layer_map`, which is *filtered* by the same function the validation uses — so
+it could not fail by construction. **The escape is inputs the generator has
+never seen**: catching `Lienar` requires a name no list contains. Rule 1 is
+about a file agreeing with its generator; this is about a *test* drawing its
+subjects from the thing under test.
+
+#### 3. A weaker criterion reports success early
+
+`check-doc-blocks.sh` counted parse errors, because that was the failure that
+prompted it. Blocks that parsed and then failed the *checker* scored as passes
+— 43 of them, including some in files the script had been used to certify as
+fixed. **The criterion a ratchet enforces is the definition of done it hands to
+whoever comes next.**
+
+#### 4. A fixed list under a universal doc comment
+
+The commonest failure of all. Six separate tests claimed a cross-boundary
+property and asserted a hardcoded subset:
 
 | The test said | What it checked |
 |---|---|
@@ -124,259 +167,145 @@ and asserted a hardcoded subset:
 | `ci_floors` (published as "read from ci.yml") | nothing at all: the workflow had none of them |
 | `heal_patterns_section_nonempty` | that a list of 34 is not empty |
 
-Each of them passed for years. The pattern is easy to spot once named: **if
-the doc comment says "every" and the body has a literal list, the test is
-weaker than its own claim.** Every replacement here compares both directions
-and was verified by breaking it on purpose.
+Each passed for years. **If the doc comment says "every" and the body has a
+literal list, the test is weaker than its own claim.** Every replacement
+compares both directions and was verified by breaking it.
 
-**And then I wrote a seventh.** The replacement for row two —
+Then I wrote a seventh. The replacement for row two —
 `every_published_rap_key_is_real`, whose whole point was that the old test
-checked the wrong thing — is a hand-written list of working calls under a doc
+checked the wrong thing — was a hand-written list of working calls under a doc
 comment saying "every published parameter is read". It exercised **31 of 37**
-methods, and asserted nothing about the other six. Knowing the pattern by name
-is not enough: a list-driven test needs an explicit assertion that the list
-covers its subject, in the same function, or the next person to add a method
-gets no signal. It now iterates the published methods and fails on any without
-a call. That immediately paid for itself — `abl/decode`, `skb/spec`,
-`verify/contracts`, `sandbox/policy` and `nl/refactor` had never had their
-contracts checked, and `sandbox/policy` turned out to publish only `agent`
-while reading the program out of an unpublished `source`, so *every* call an
-agent could construct from the ontology returned `agent X not found` for every agent that existed.
-`manifest/generate` had the same hole. The params check is now bidirectional
-too: the calls are minimal, so anything a working call sends and the ontology
-omits is a parameter no caller could know to pass.
+methods and asserted nothing about the other six. **Knowing the pattern by name
+is not enough: the coverage assertion has to live in the same function**, or
+the next person to add a method gets no signal. Fixing that immediately found
+five methods whose contracts had never been checked, and two — `sandbox/policy`
+and `manifest/generate` — that read a `source` parameter the ontology did not
+publish, so *every* call an agent could construct returned "agent `X` not
+found" for agents that were right there in the program it never received.
 
-**Two more, found by sweeping for the shape.** Grepping for `#[test]` whose doc
-comment says "every"/"all" over a body containing a literal list turned up 13
-candidates and two real holes. `every_typed_vocabulary_name_checks_its_arity`
-listed 29 of the 31 published words, and the two it omitted — `scan` and
-`group` — were the only two with **no typed arm at all**, so `scan(1, 2, 3, 4,
-5)` typechecked clean. It now iterates `VOCABULARY`. And
-`every_effect_documented_in_the_spec_parses_and_checks` held its own copy of
-§11.2's seventeen rows, which is the one boundary the test exists to guard: it
-now reads the table out of `MAGE_SPEC.md`, and a row added there that the
-compiler rejects fails it. Verified by adding a `quantum` row and watching it
-go red. A test that names its own subjects cannot report the subject it never
-names — which is the same lesson as the table above, arriving through a
-different door: not "the list is short" but "the list exists".
+A sweep for the shape (grep `#[test]` whose doc comment says "every"/"all" over
+a body with a literal list) turned up 13 candidates and three more holes:
 
-A third, in the same file:
-`the_builtin_names_attributed_on_call_are_the_documented_ones` kept two
-hand-written buckets — names that attribute an effect, names that attribute
-nothing — under a comment saying they were §11.2's domain column. Between them
-they covered 36 of its 47 names, and the eleven left out included `read`,
-`listen`, `send`, `open`, `remove`, `alloc`, `dealloc`, `now` and `sleep`, all
-of which do attribute an effect and none of which was checked. It now reads the
-domain column and asserts every identifier in it lands in one bucket or the
-other, so a name added to a domain fails until someone decides which it is.
-Only `exec` turned out to be genuinely inert — `proc`'s domain is "spawn, exec,
-tool invocation" and `exec()` performs nothing, which is consistent with
-§11.2's own sentence that the domain column is not a table of callable
-operations, and is now stated where a reader of that table would look.
+- `every_typed_vocabulary_name_checks_its_arity` listed 29 of 31 published
+  words, and the two omitted — `scan`, `group` — were the only two with **no
+  typed arm at all**, so `scan(1, 2, 3, 4, 5)` typechecked clean.
+- `every_effect_documented_in_the_spec_parses_and_checks` kept its own copy of
+  §11.2's rows, which is the one boundary it exists to guard. It now reads the
+  table out of `MAGE_SPEC.md`.
+- `the_builtin_names_attributed_on_call_are_the_documented_ones` covered 36 of
+  §11.2's 47 domain names; the eleven omitted included `read`, `listen`,
+  `send`, `open`, `alloc` and `sleep`, all of which attribute an effect.
 
-**And a new instrument, `check-vocabulary.sh`.** The 31 words of §8 are the
-entire standard library — there are no modules and no `stdlib/`, so an agent
-writing MAGE has these and nothing else. Three lists must agree for one to
-work: the resolver's, the checker's `infer_vocab_call`, and the evaluator's.
-The unit tests compare each against its neighbour; nothing ran a word end to
-end. This runs the binary, both oracles, one call per word, and compares the
-answer to the published signature — and asserts its own case list is exactly
-the published vocabulary, so the coverage question is answered in the script
-rather than by whoever reads it. All 31 pass today. Wired into CI beside the
-doc instruments.
+**A test that names its own subjects cannot report the subject it never names.**
 
-**The unimplemented-capability message named the wrong kind of thing.** All 20
-capability namespaces report honestly under `--eval` — none silently returns a
-wrong value, which is the failure that would matter most here. But the message
-read "Implemented: io, fs, env, time", a list of *namespaces*, while `io.op`
-was refused: within those four only specific operations have arms. An agent
-recovering from that error was told to retry in a namespace that would refuse
-it again. It now names the operations of the namespace the caller just tried,
-or says plainly that nothing in it is implemented. Since the message is now a
-claim that can be wrong, `every_advertised_capability_operation_has_an_arm`
-runs every operation it advertises — verified by advertising a `time.deadline`
-that does not exist.
+#### 5. A both-directions test can still be vacuous
 
-**`forge`'s manifest and its dispatcher were never compared.** All four tests
-over `COMMANDS` check how the table is *rendered*, so a published command the
-binary does not dispatch, or a command the binary accepts and the manifest
-never mentions, passes every one of them. `forge manifest` is what an agent
-reads instead of `--help`. They agree today; a test now says so in both
-directions, verified by adding a hidden `secret` command. `describe` was also
-checked against three names by hand and is now checked against all ten, with
-and without dashes.
+The guide↔ontology check was written first as "every token
+`syntax-quick-ref.md` teaches appears in *some* ontology section". It passed
+with `xd` deleted from the sigil table — because `xd` is also a lexer keyword,
+and the union of every section made the check nearly unfalsifiable. It now
+tests the guide's Declarations fence against `sigils` specifically, which is
+the narrow claim that can fail, and keeps the union for the broad one.
+**Comparing both directions is not enough if one side is wide enough to swallow
+anything.**
 
-**The guide and the ontology disagreed about what the language contains.**
-`agent-guide/syntax-quick-ref.md` is what an agent reads to *learn* the
-compressed surface; `MAGE_ONTOLOGY.json` is what it reads to *discover* the
-language mechanically. Nothing compared them. Thirteen sigils that parse were
-taught by the guide and published by neither: `D`, `xd`, `fx`, `sp`, `sw`,
-`af`, `gd`, `df`, `yl`, and the `pub` forms `+S`, `+E`, `+T`, `+D`. Only `+f`
-was there, so an agent reading the JSON could discover public *functions* and
-not public types — and four of the nine are whole features (records, inherent
-methods, effect declarations, contracts). The section went 37 → 50. Checking the guide's other column while there turned
-up one more: it listed `static` under "Not in the language", which is true of
-the human spelling and false of the agent-mode `Z NAME: T = expr;`, the only
-declaration in the table with no human form. Its human column is otherwise
-sound — every row parses once the meta-syntax placeholders (`fields`,
-`methods`, `ops`) are replaced with real ones.
+#### 6. When a tool both measures and writes, comparing its output to its own artifact proves nothing
 
-The test that now holds them together taught its own lesson. Written first as
-"every token the guide teaches appears in some ontology section", it passed
-with `xd` deleted from `sigils` — because `xd` is *also* a lexer keyword, and
-the union of every section made the check nearly unfalsifiable. **A both-
-directions test can still be vacuous if the right-hand side is broad enough.**
-It now checks the guide's Declarations fence against `sigils` specifically,
-which is the narrow claim that can fail, and keeps the union check for the
-broader one. Verified by deleting `xd` again.
-
-**The weakest test in the catalogue was the one still standing.** The table
-above lists `heal_patterns_section_nonempty` — "that a list of 34 is not
-empty" — and unlike the other five it had never been replaced. Replacing it
-meant deciding what the published list *claims*: that each of the 34 names a
-mechanical repair an agent can ask for. `ErrorPattern` now carries an
-`example` message beside its matcher, the compiler requires one, and a test
-runs every pattern against its own example through the same `heal` path an
-agent calls. It found `type-mismatch` generating nothing for the checker's
-commonest message. The design point is that the example lives *next to the
-matcher*: a test file listing 34 messages would drift from the matchers within
-a session, which is how the list-driven tests in the table above got their
-start.
-
-**And a sixth section pinned across its boundary.** `recovery_stages`
-publishes seven names; `RecoveryStage::as_str` reports six, the difference
-being `agent.refine`, which belongs to the reliability bench rather than to
-`recover.rs`. Nothing compared the two, so a stage added to the enum would
-have gone unpublished silently. The test now checks both directions and names
-`agent.refine` as the one deliberate exception — which is what keeps it
-deliberate rather than merely present.
-
-**A floor read from a generated file is only as fresh as the file.**
 `check-ci-floors.sh` enforced the published token-ratio ceiling by reading the
-`**Total**` row of the *committed* `benchmarks/TOKEN_REPORT.md`. That file is
-generated by `token-bench`, **nothing ran `token-bench`** — not CI, not
-`test-all.sh`, not any check script — and it had gone stale in two categories.
-The ceiling was being enforced against a number nobody had measured recently.
-It now runs the bench and compares.
+`**Total**` row of the *committed* `TOKEN_REPORT.md`. That file is generated by
+`token-bench`, **nothing ran `token-bench`**, and it had gone stale. My first
+fix ran the bench and compared the file to the bench's stdout — but the bench
+*writes* that file, so the two agreed by construction and it passed on a
+deliberately stale report. The working version saves the committed copy, runs
+the bench, compares the files, and puts the original back, because a check that
+rewrites a tracked file is not a check either.
 
-Writing that check taught the lesson again, immediately. The bench *writes*
-`TOKEN_REPORT.md` as a side effect, so my first version — run the bench, then
-compare the file against the bench's stdout — compared two things produced by
-the same run and agreed by construction. It passed when handed a deliberately
-stale report. The working version saves the committed copy, runs the bench,
-compares the two files, and puts the original back, because a check that
-rewrites a tracked file is not a check either. **When a tool both measures and
-writes, comparing its output to its own artifact proves nothing.**
+#### 7. A harness can change meaning under a table it produced
 
-The bench also exits non-zero on a clean tree: 150 of the corpus's claimed
-`token_count` fields disagree with measurement by >10 %, which is precisely
-what `benchmarks/FINDINGS.md` §1 concludes. Its exit status therefore cannot
-gate anything until those claims are corrected or dropped — a decision, not a
-defect, now written where someone will find it.
+`MEASUREMENTS.md` gave ABL artifact scaling as 78 / 234 / 858 / 3354 bytes at
+2 / 8 / 32 / 128 layers. Re-running `perf_report` prints **67 bytes four
+times**. Neither is wrong: the harness builds *identical* layers, v3's REPEAT
+fold collapses them, and the table was measured before the fold existed — it is
+still exact for layers that do not repeat. **The natural response to that
+disagreement is to "correct" a true table into a misleading one**, because the
+document looks stale and the tool looks authoritative. The harness now measures
+both cases and labels them.
 
-One generated artifact deliberately has *no* freshness check:
-`benchmarks/RELIABILITY_REPORT.md` embeds p50/p95/p99 latencies, so it differs
-after every run on every machine. Checking it for staleness would be
-permanently red, which is the failure mode a ratchet is supposed to avoid.
-`TOKEN_REPORT.md` is byte-stable and therefore checkable; the distinction is
-whether the artifact records a measurement or a timing.
+#### 8. A file the instrument cannot see reads exactly like a file with nothing wrong
 
-**A harness can change meaning under a table it produced.** `MEASUREMENTS.md`
-gave ABL artifact scaling as 78 / 234 / 858 / 3354 bytes at 2 / 8 / 32 / 128
-layers — "linear, ~26 B/layer". Re-running `perf_report` today prints **67
-bytes four times**. Neither number is wrong. The harness builds `n` *identical*
-`Linear(16,16)` layers, and v3's REPEAT fold collapses them to a constant; the
-documented table was measured before that fold existed, and is still exactly
-right for layers that do not repeat. **The natural response to that
-disagreement is to "correct" a true table into a misleading one** — the
-document looks stale and the tool looks authoritative, and here the tool had
-silently started measuring a different question. The harness now measures both
-cases and says which is which.
+`check-rmi-api-doc.sh` reported "0 documented items" for `rmi/docs/ontology.md`
+and passed. The file has no `pub` items — it is prose, tables and ASCII
+taxonomies. Checked by hand, all three of its enumerations were wrong: six of
+eleven documented relations do not exist, the domain set is ten variants rather
+than the five headings it uses, and its property table named `name` as the
+unique identifier when it is `id: Uuid`. **A passing result on a subject
+outside the assertion's reach says nothing either way**, and looks identical to
+success.
 
-This one is also the session's first *under*-claim: a 128-layer stack of
-identical layers ships in 67 bytes and decompiles back to 128 layers, which
-`MEASUREMENTS.md` did not mention at all. A test pins both halves, because a
-fold that lost layers would also produce a small artifact and "compact at
-rest" would be measuring data loss.
+#### 9. Agreement between two documents is not corroboration when one is a copy
 
-**Two documents wrong together, because one was copied from the other.**
-`ARCHITECTURE.md` and `RIBOSOME.md` both give `ribosome`'s transitive dependency
-count as evidence for the claim that the build engine privileges no language.
-Both said **39**. Measured: **28** unique crate names on normal edges, or 34
-counting the six that resolve at two versions — and neither document said which
-it meant. Agreement between two documents is not corroboration when one is a
-copy; it is the same claim counted once. Now pinned, so `--check-docs` fails if
-either drifts, and the *measurement* is emitted by `test-all.sh` rather than
-transcribed.
+`ARCHITECTURE.md` and `RIBOSOME.md` both cite `ribosome`'s transitive
+dependency count as evidence that the build engine privileges no language. Both
+said **39**; it is **28** unique crate names on normal edges (34 counting six
+that resolve at two versions), and neither said which it meant. Both rows now
+pin to one measured key that `test-all.sh` emits via `cargo tree`.
 
-**An accepted-risk register decays like any other measured claim, and worse.**
-`SECURITY_AUDIT.md` §1 named two accepted `cargo audit` warnings. Re-running the
-five surfaces: one of them (`rand`, RUSTSEC-2026-0097) had **stopped firing** —
-the lockfile now carries `rand 0.8.6`, which the advisory itself lists as
-patched — and a different one had **started**: RUSTSEC-2026-0190, `anyhow`
-unsound, dated 2026-06-25 and absent from the table. It had a patched version
-available, so accepting it was never the right call; `cargo update -p anyhow`
-closed it and the four committed lockfiles now report zero findings of any kind.
+#### 10. A weak instrument is worse than a documented gap
 
-The register had drifted in *both* directions at once, and neither is visible
-to a reader: someone checking whether the accepted set was complete would have
-found it neither complete nor current. CI's `audit` job deliberately does not
-fail on warnings — correctly, since a permanently red job gets ignored — which
-means **nothing compares the accepted-risk table against the warnings actually
-reported**. That comparison is still manual; the command to run is now in the
-document.
+The name-level API check cannot see a wrong signature on a function that
+exists, so I measured that gap: of 162 documented functions, the 66 defined
+exactly once are arity-checkable, and four disagreed. I fixed those and
+**deliberately did not build an arity checker** — it would cover 41% and has a
+false-positive class that tripped twice on my own placeholders while I was
+writing the fixes. A check that is right 41% of the time and cries wolf
+**converts "unknown" into "passing"**, which is the state every rule above
+describes. The measurement is recorded instead, to be repeated by hand.
 
-**"0 npm" was a claim about a surface nothing checked.** `video/` has a tracked
-`package-lock.json`, and `npm audit` reported one **high-severity** advisory
-(`nanoid < 3.3.18`, transitive via `postcss`). Fixed. CI's `audit` job runs
-`cargo audit` over five Cargo lockfiles and does not touch this one, so the
-figure in the table above had no mechanism behind it — it was true when
-someone last looked, which for a vulnerability count is a different thing from
-being true.
+The same judgement applies in reverse: `benchmarks/RELIABILITY_REPORT.md`
+deliberately has *no* freshness check, because it embeds p50/p95/p99 latencies
+and would be permanently red. `TOKEN_REPORT.md` is byte-stable and therefore
+checkable. **The distinction is whether the artifact records a measurement or a
+timing.**
 
-**A security document's *under*-claims are defects too.** `SECURITY_AUDIT.md`
-§3 said the non-loopback `--rap` refusal was "proposed, not yet enforced". It
-has been enforced for some time: `rap::is_non_loopback` exits 2 with an
-explanation unless `MAGE_RAP_ALLOW_REMOTE=1`, and warns even then. A reader
-planning a deployment would have built a guard that already exists, or avoided
-the tool over a gap it does not have.
+---
 
-The same row's memory-safety claim was wrong in the other direction, and this
+### Documents decay in both directions
+
+Under-claims are defects too, and they are harder to notice because nobody is
+disappointed by them.
+
+`SECURITY_AUDIT.md` §3 said the non-loopback `--rap` refusal was "proposed, not
+yet enforced". It has been enforced for some time — `rap::is_non_loopback`
+exits 2 unless `MAGE_RAP_ALLOW_REMOTE=1`. A reader planning a deployment would
+have built a guard that already exists, or avoided the tool over a gap it does
+not have.
+
+The same row's memory-safety claim was wrong in the other direction, and that
 one mattered: "rmi has 1 audited `unsafe` in lib.rs, 3 in the CUDA FFI shim —
-all reviewed, FFI-boundary only". `lib.rs` has none, and the real surface is
-**9 `unsafe` blocks in `runtime/memory_pool.rs`** — an arena allocator doing
-`alloc_zeroed` and raw pointer arithmetic, compiled unconditionally. Not an FFI
-boundary; the highest-risk category of `unsafe` there is, asserted not to exist.
-(`compute/cuda_full.rs` holds 16 more but no `mod` declaration references it, so
-it never compiles — counting those would overstate the surface as badly as the
-old row understated it.)
+all reviewed, FFI-boundary only". `lib.rs` has none; the real surface is **9
+`unsafe` blocks in `runtime/memory_pool.rs`**, an arena allocator compiled
+unconditionally — not an FFI boundary, and the highest-risk category of
+`unsafe` there is, asserted not to exist. Reviewing those nine found **four
+defects**, two of them needing no unusual configuration (see taxonomy §7).
+**The claim "reviewed" is not free**: this document made it on the code's
+behalf, and the review it stood in for found undefined behaviour on a default
+path.
 
-Reviewing those 9 found **four** defects. Two in `Slab::new`, both reachable in
-one call because `PoolConfig`'s fields are public and `with_config` guards
-nothing: a zero `initial_capacity` called `alloc_zeroed` on a **zero-sized
-layout** (documented UB, at construction), and `size * capacity` was unchecked.
-Two more in `TensorBuffer`, and these are the serious ones because they need no
-unusual configuration at all:
+An accepted-risk register decays the same way and worse. `SECURITY_AUDIT.md`
+§1 named two accepted `cargo audit` warnings; re-running the five surfaces,
+one had **stopped firing** and a different one had **started** — with a patched
+version available, so accepting it was never right. CI's `audit` job correctly
+does not fail on warnings, which means **nothing compares the accepted-risk
+table against the warnings actually reported.** And "0 npm" was a claim about a
+surface nothing checked at all: `video/` had one high-severity advisory.
 
-- **`Drop` freed a layout the allocator never handed out.** `from_vec` forgot
-  the `Vec`'s capacity; `Drop` rebuilt it as `from_raw_parts(ptr, len, len)`.
-  Capacity differs from length in the *ordinary* case, so this was undefined
-  behaviour on the normal path — and the SAFETY comment claimed "the pointer,
-  len, and capacity match what was passed to `mem::forget`".
-- **`slice(offset, len)` added the two unchecked.** `slice(usize::MAX, 1)`
-  wraps to 0, passes the bound, and offsets the pointer by `usize::MAX`. Two
-  plain integers through a safe public method.
-
-All four fixed, all four with tests verified by removing the guard. **The claim
-"reviewed" is not free** — this document made it on the code's behalf, and the
-review it stood in for found undefined behaviour on a default path. When a
-security document says "audited", the useful question is who did it and what
-they wrote down.
-
-**A pin over a generated list tends toward tautology.** The follow-up test for
-layer names iterated `layer_map`, which is *filtered* by the same function the
-validation uses — so it could not fail by construction. The escape is inputs the
-generator has never seen. Catching `Lienar` requires a name no list contains.
+The measurement documents had drifted furthest. `benchmarks/FINDINGS.md` §2
+still says in the present tense that "three quarters of the corpus's own
+reference solutions don't parse", with seven of ten categories at 0.0%;
+measured today it is **parse 99/100, effective 100/100**. `AGENT_PROTOCOL.md`
+carried nine stale figures including "~50×" in a document whose own worked
+example three sections down measures 4.4×. In both cases **the outputs pasted
+from a real run survived and the prose written by hand around them did not.**
 
 ---
 
@@ -526,6 +455,50 @@ This was the shipped examples' story a third time, after `examples/` and
 compiler bugs per document never dropped, across all three.
 `scripts/check-doc-blocks.sh` and `check-doc-evals.sh` now hold the result.
 
+### The vendored crate's documentation, and what it cost to find
+
+`RecursiveMachineIntelligence/docs/` is four files and 3,246 lines. Nothing had
+ever compiled a signature or resolved a path in any of them. All four are now
+checked at name level by `scripts/check-rmi-api-doc.sh`, baseline **0**.
+
+It began as one follow-up question — *does the vendored crate repeat
+`SECURITY_AUDIT.md`'s "all reviewed" claim?* It does not, but answering it
+opened `api.md`, and `api.md` was 12% fiction: **27 of 228 documented items
+existed nowhere in the crate.**
+
+| File | What was wrong |
+|---|---|
+| `api.md` (1,709 ln) | 27 invented items; an FFI section documenting `FfiValue`/`FfiFuncPtr` and an `unsafe call_unchecked` — none of which exist, and the real registry passes RMIL values to *safe* Rust closures; all twelve `**Module:**` paths named `framewerx::` for a crate called `rmi` |
+| `protocol.md` (399 ln) | A wire format the code does not speak: magic `FRWX` where it is **`FWRX`**, `flags`/`message_type` at the wrong widths and in the wrong order, `MsgId`/`Timestamp` fields that are not in the header, and a CRC32 trailer where the real checksum is **XXH64 inside the header** over different bytes in a different order |
+| `ontology.md` (477 ln) | Six of eleven relations invented, six real ones missing; ten domain variants presented as five; `name` called the unique identifier when it is `id: Uuid`. Its taxonomies hold **166 nodes against 28 shipped concepts, 12 in common** — a survey of the field, now labelled as one |
+| `architecture.md` (661 ln) | One stale type name, caught by the checker on its first multi-file run |
+
+Three things are worth carrying out of that:
+
+**The same mistake, six times, in three files.** Every knowledge-facing type
+was documented with **name-keyed lookups where the real API takes a `Uuid`** —
+`Ontology`, `AIConceptsOntology`, `AIHistoryKB`, `CheckpointManager`, the hash
+ring. That shape survives review because the call *reads* correctly:
+`get_concept("attention")` is exactly what one would expect to write, and only
+the type checker objects.
+
+**Two entries would have produced working, wrong code** rather than a compile
+error — `KeyValueStore` documented `with_compression` when the real builder is
+`without_compression` (compression is on by default, so the reader enables what
+is already enabled), and `ConsistentHashRing::new` documented a virtual-node
+count where the parameter is a replication factor. Those are the ones a type
+checker cannot catch.
+
+**A wrong wire-format diagram is worse than a missing one.** Every error in
+`protocol.md` is a silent interop failure at a byte offset, not a compile
+error, and an implementer has no way to tell which of five discrepancies is
+responsible for the checksum mismatch they are looking at.
+
+Left undone, deliberately: the concept taxonomies are labelled aspirational
+rather than regenerated from `populate_core_concepts`, and signatures are
+checked only where a function is defined exactly once (66 of 162 — all now in
+exact arity agreement). See rule 10 above for why no arity checker was built.
+
 ### Real work, unstarted
 
 Two items, and both are large.
@@ -537,9 +510,18 @@ Two items, and both are large.
 
 ### Small, sharp, cheap
 
-This section is empty. The five items that were here — `guard` as a
-reference, the `+=` diagnostic, `scan`'s seed, `pub` on a `data` field, and
-the array-literal/slice mismatch — are all done.
+Three, all left by this session and all recorded where they were found rather
+than acted on:
+
+| # | Item | Why it is here and not done |
+|---|---|---|
+| 14 | **`token-bench`'s exit status cannot gate anything** | It returns non-zero whenever a task's *claimed* `token_count` disagrees with measurement by >10 %, and 150 of the corpus's claims do — which is exactly what `benchmarks/FINDINGS.md` §1 concludes. Correcting or dropping those claims is a decision about what the field means, not a fix. `check-ci-floors.sh` ignores the status and reads the ratio instead. |
+| 15 | **`compute/cuda_full.rs` is 16 `unsafe` blocks that never compile** | No `mod` declaration references it; `compute/mod.rs` calls it "unused" in a comment. Dead code that reads as reviewed, and one line silently activates it. Delete or gate it — the vendored crate's owner's call. |
+| 16 | **`rmi`'s `Send`/`Sync` on refcounted buffers read the counter `Relaxed`** | The four `unsafe impl` are defensible under the refcount discipline, but a counter that gates *mutation* is a synchronisation decision. Not demonstrated unsound; wants a second opinion from someone who owns that code. |
+
+The five items previously here — `guard` as a reference, the `+=` diagnostic,
+`scan`'s seed, `pub` on a `data` field, and the array-literal/slice mismatch —
+are all done.
 
 Three were worse than recorded. `+=` failed `--check` *always*, not only with
 untyped parameters. The array-literal item was filed as "a design question,
@@ -557,8 +539,9 @@ because the note framed them as needing judgment.
 
 ## Failure taxonomy
 
-Every bug found so far falls into one of six shapes, ordered worst first. The
-worst are the ones that produce a clean `--check`.
+Every bug found so far falls into one of seven shapes, ordered worst first. The
+worst are the ones that produce a clean `--check` — except §7, which produces a
+clean everything, because no test or checker in the repository can reach it.
 
 ### 1. Silently wrong answer
 
@@ -1173,6 +1156,57 @@ spelling means the spelling is wrong, not the parser.
   the keyword fell through to expression position and the error landed on the
   one token written correctly.
 
+### 7. Unsound, under a comment saying otherwise
+
+A shape the other six cannot produce, because it lives in `unsafe` code that no
+test exercises and no checker reads. All four are in
+`RecursiveMachineIntelligence/src/runtime/memory_pool.rs` — 9 `unsafe` blocks
+and 4 `unsafe impl`, compiled unconditionally, which `SECURITY_AUDIT.md`
+described as "1 audited `unsafe` in lib.rs, 3 in the CUDA FFI shim — all
+reviewed, FFI-boundary only".
+
+- **`TensorBuffer::Drop` freed a layout the allocator never handed out.**
+  `from_vec` forgot the `Vec`'s capacity; `Drop` rebuilt it as
+  `from_raw_parts(ptr, len, len)`. Capacity differs from length in the
+  *ordinary* case — `Vec::with_capacity(64)` with three pushes, or any growth
+  pattern — so this was undefined behaviour **on the normal path**, under a
+  SAFETY comment asserting "the pointer, len, and capacity match what was
+  passed to `mem::forget`".
+- **`TensorBuffer::slice` added `offset + len` unchecked.**
+  `slice(usize::MAX, 1)` wraps to 0, passes the `> self.len` bound, and offsets
+  the pointer by `usize::MAX`. Two plain integers through a safe public method.
+- **`Slab::new` with zero capacity** called `alloc_zeroed` on a **zero-sized
+  layout** — documented UB, at *construction*, before any allocation was
+  requested. Reachable in one call: `PoolConfig`'s fields are public and
+  `with_config` passes `initial_capacity` straight through. `growth_factor:
+  0.0` reaches the same place via `alloc()`, since a float-to-int cast
+  saturates to 0.
+- **`Slab::new`'s `size * capacity` was unchecked.** Measured rather than
+  assumed: the process **aborts** (`memory allocation of 2305843009213693960
+  bytes failed`, exit `0xc0000409`), because `free_list` wants one index per
+  claimed block and fails first. A crash from a library constructor, not an
+  out-of-bounds access — I wrote "out-of-bounds" first and corrected it after
+  running it, and the two deserve different words.
+
+All four have regression tests, each verified by removing its guard. The
+overflow test needed sharpening for the same reason the rest of this document
+exists: its first version used `usize::MAX / 32`, whose wrapped product
+`Layout::from_size_align` rejects anyway, so it passed with the guard removed
+and pinned nothing. It now uses `2^58 + 1`, where the product wraps to exactly
+64 — a layout the allocator accepts.
+
+Two things left for whoever owns that crate. The four `unsafe impl Send`/`Sync`
+are defensible under the refcount discipline, but the counter is read `Relaxed`
+while gating mutation, which is a synchronisation decision rather than a
+counter. And `compute/cuda_full.rs` holds 16 more `unsafe` blocks in a file no
+`mod` declaration references, so it never compiles — dead code that reads as
+reviewed and that one line silently activates.
+
+**What made this findable was not reading the code.** It was that a document
+claimed the code had been reviewed, and the claim was specific enough to check.
+
+---
+
 ---
 
 ## What the compiler actually is
@@ -1270,10 +1304,23 @@ Only `stdlib/` and four `framewerx` files remain.
 
 ## The pattern worth carrying forward
 
-Every bug was found by **running** something. Not one came from reading the
-compiler. To find the next one, pick a surface nobody has run, and run it.
+Almost every bug was found by **running** something. To find the next one, pick
+a surface nobody has run, and run it.
 
-Four counter-lessons, each of which cost real time:
+Two refinements, both from this session. First, **follow up on what you just
+fixed.** Three of the largest finds began as a single question about a change
+already made — *does the vendored crate repeat this claim? is the FFI section
+alone? is `api.md` alone?* — and each answered yes-and-worse. A defect is
+evidence about its neighbourhood, not just about itself.
+
+Second, **a claim specific enough to check is a thread worth pulling even
+through code.** The one class of bug not found by running things — four
+memory-safety defects in `rmi`'s allocator — was found because a security
+document said that code had been reviewed and named what the review concluded.
+Vague claims are unfalsifiable and therefore safe to ignore; precise wrong ones
+lead somewhere.
+
+Five counter-lessons, each of which cost real time:
 
 **A comment agreeing with your expectation is not evidence.** It is usually what
 the author *meant*. Six times now a comment stated the correct rule while the
@@ -1294,19 +1341,30 @@ misspelled-operation bug was written into the first version of the feature built
 specifically to eliminate that class, and shipped past twelve new tests, a green
 CI run, and the output pin.
 
-**Verify a test by breaking the fix.** Two tests this session passed against a
-build with the fix deleted. One asserted statement counts when the thing that
-changes is the *tail expression*; the other called `types::check` when the
-validation lives in `abl_shape::check_module_shapes` — a different pass.
-Verifying against the wrong entry point is a way to be green about nothing, and
-it is invisible unless you break the thing on purpose and watch.
+**Verify a test by breaking the fix.** Four tests across these sessions passed
+against a build with the fix deleted. One asserted statement counts when the
+thing that changes is the *tail expression*; one called `types::check` when the
+validation lives in a different pass; one compared a generated file against
+output from the same run; and one used an overflow input that `Layout` rejects
+for an unrelated reason. Verifying against the wrong entry point is a way to be
+green about nothing, and it is invisible unless you break the thing on purpose
+and watch. **Every guard added this session was verified this way**, and it is
+the single cheapest habit in this document.
+
+**Say what you did not check.** Several instruments here are deliberately
+partial — name-level rather than signature-level, four docs rather than every
+markdown file, one artifact checked for freshness and another deliberately not.
+Each says so where a reader will find it. An instrument that overstates its
+reach is the same defect as a document that overstates a measurement, and it is
+harder to notice because it arrives wearing a green tick.
 
 ---
 
 ## Notes on the shape of the work
 
 - Prototype tests **1,066 → 1,195**, all green — checked against the live run, so
-  it tracks forward rather than freezing at the session that wrote it.
+  it tracks forward rather than freezing at the session that wrote it. Total
+  across five crates **2,908**; documented-count pins **78**, up from 46.
 - Every typechecker fix has landed without breaking an existing test **except
   one**, where widening `collection_elem` made `sum("hi")` legal and
   `vocab_rejects_non_collection` caught it. That is the datapoint showing the
