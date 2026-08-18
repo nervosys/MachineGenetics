@@ -471,14 +471,11 @@ Hybrid neural-symbolic integration.
 Maps discrete symbols to continuous vectors:
 
 ```rust
-pub struct SymbolEmbedding {
-    pub embeddings: HashMap<String, Vec<f64>>,
-    pub dim: usize,
-}
+pub struct SymbolEmbedder { /* private */ }
 
-impl SymbolEmbedding {
-    pub fn embed(&mut self, symbol: &str) -> Vec<f64>;
-    pub fn similarity(&self, a: &str, b: &str) -> f64;
+impl SymbolEmbedder {
+    pub fn get_embedding(&mut self, symbol: &str) -> Vec<f32>;
+    pub fn similarity(emb1: &[f32], emb2: &[f32]) -> f32;   // associated fn
 }
 ```
 

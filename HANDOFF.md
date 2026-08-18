@@ -70,7 +70,7 @@ breaks, *and* a recorded state that silently starts passing.
 | `scripts/check-doc-evals.sh` | that every documentation block defining `main` or a `@test` **runs** — 57 entry points, the second oracle |
 | `scripts/check-vocabulary.sh` | that all 31 words of §8 check, run, and return what the ontology publishes — and that its own case list *is* the published vocabulary |
 | `scripts/check-ci-floors.sh` | the three measurable published floors, measured fresh; also fails if the committed `TOKEN_REPORT.md` differs from a new run |
-| `scripts/check-rmi-api-doc.sh` | every item `rmi/docs/api.md` documents exists in the crate, and every `**Module:**` path resolves — baseline **0**, so any invented name fails |
+| `scripts/check-rmi-api-doc.sh` | every item `rmi/docs/*.md` documents exists in the crate, and every `**Module:**` path resolves — baseline **0**, so any invented name fails |
 | CI `audit` job | `cargo audit` over all five lockfiles separately |
 | CI ontology step | `MAGE_ONTOLOGY.json` matches a fresh `--emit-ontology` |
 | CI version step | `mage-parse --version` matches the tool id Ribosome keys on |
@@ -1066,6 +1066,21 @@ The mirror image, and easy to get backwards.
   the time and cries wolf is the kind this session has spent its length
   cleaning up after. The measurement is worth repeating by hand after a
   refactor; it is not worth a ratchet.
+- **`rmi/docs/protocol.md` describes a wire format the implementation does not
+  speak.** Checked after `api.md`, on the same suspicion that one bad doc is
+  rarely alone. The header diagram is wrong in every field: the magic is
+  **`FWRX`, documented `FRWX`** — the W and R transposed, with the hex spelling
+  out the same wrong order so the two agreed with each other and not the code;
+  `flags` and `message_type` are the wrong widths and the wrong way round;
+  `MsgId` and `Timestamp` are not in the header at all (those 16 bytes are
+  `payload_length` and `checksum`); there is no sender-ID section and no
+  attachment count. The checksum is **XXH64 stored inside the header**, not a
+  CRC32 trailer — wrong algorithm, wrong width, wrong position, and computed
+  over different bytes in a different order. A client written from that page
+  fails at byte 4, and every one of these is a silent interop failure rather
+  than a compile error, which is what makes a wrong wire-format diagram worse
+  than a missing one. The other two docs were nearly clean: one stale
+  `SymbolEmbedding`, and two `pub fn`s that are deliberately illustrative.
 - **`AGENT_PROTOCOL.md`, nine figures at once.** The document that tells an
   agent how to emit bytes rather than text opened with "the genuine ~50×
   efficiency win", and its own worked example three sections down measures

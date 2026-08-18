@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Every item `RecursiveMachineIntelligence/docs/api.md` documents must exist in
+# Every item `RecursiveMachineIntelligence/docs/*.md` documents must exist in
 # the crate.
 #
 # ─────────────────────────────────────────────────────────────────────────────
@@ -47,14 +47,33 @@ import re
 import sys
 
 baseline_file = sys.argv[1]
-doc_path = 'RecursiveMachineIntelligence/docs/api.md'
-doc = io.open(doc_path, encoding='utf-8', errors='replace').read().replace('\r\n', '\n')
+# All four docs, not just `api.md`. `protocol.md` turned out to describe a wire
+# format that matched the implementation in almost no respect — transposed
+# magic bytes, wrong field order and widths, a checksum algorithm and position
+# that were both wrong — and it was only looked at because `api.md` had been.
+doc_dir = os.path.join('RecursiveMachineIntelligence', 'docs')
+docs = sorted(f for f in os.listdir(doc_dir) if f.endswith('.md'))
+doc = '\n'.join(
+    io.open(os.path.join(doc_dir, f), encoding='utf-8', errors='replace').read()
+    for f in docs
+).replace('\r\n', '\n')
 
-# Item names introduced in the documented signatures.
+# Names a documented signature introduces, minus the ones a doc deliberately
+# writes as *illustration* rather than as API. `protocol.md`'s "Implementation
+# Notes" shows how to encode a payload with `rmp_serde` and `lz4_flex`; those
+# two `pub fn`s are sample code for an implementer, not exports to look up.
+# Anything added here needs a reason on the same line — the point of the list
+# is that an exemption is visible, not that it is easy to add.
+EXEMPT = {
+    'encode_payload': 'protocol.md Implementation Notes — sample encoder, not an export',
+    'decode_payload': 'protocol.md Implementation Notes — sample decoder, not an export',
+}
+
 names = set()
 for block in re.findall(r'```rust\n(.*?)```', doc, re.S):
     for kind in ('fn', 'struct', 'enum', 'trait', 'type'):
         names |= set(re.findall(r'\bpub ' + kind + r' (\w+)', block))
+names -= set(EXEMPT)
 
 src = []
 for root, _dirs, files in os.walk(os.path.join('RecursiveMachineIntelligence', 'src')):
