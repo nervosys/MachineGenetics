@@ -639,12 +639,28 @@ Builder pattern for architectures.
 
 ```rust
 impl ArchitectureBuilder {
-    pub fn new(name: &str) -> Self;
-    pub fn add_layer(self, layer: LayerSpec) -> Self;
-    pub fn add_skip_connection(self, from: usize, to: usize) -> Self;
+    pub fn new(name: impl Into<String>) -> Self;
+    pub fn input(self, name: impl Into<String>, shape: ShapeSpec) -> Self;
+    pub fn linear(self, name: impl Into<String>, out_features: i64) -> Self;
+    pub fn layer_norm(self, name: impl Into<String>) -> Self;
+    pub fn relu(self, name: impl Into<String>) -> Self;
+    pub fn gelu(self, name: impl Into<String>) -> Self;
+    pub fn attention(self, name: impl Into<String>, heads: i64, head_dim: i64) -> Self;
+    pub fn dropout(self, name: impl Into<String>, p: f64) -> Self;
+    pub fn residual_add(self, name: impl Into<String>, skip_from: Uuid) -> Self;
+    pub fn output(self) -> Self;
+    pub fn current(&self) -> Option<Uuid>;
+    pub fn fork(&self) -> Self;
     pub fn build(self) -> NetworkArchitecture;
 }
 ```
+
+> **Corrected 2026-08-18.** There is no `add_layer(LayerSpec)` — the builder
+> has one method per layer kind, each naming the layer, and it threads a
+> `Uuid` cursor (`current`) rather than indices. Skip connections are
+> `residual_add(name, skip_from: Uuid)`, not
+> `add_skip_connection(from: usize, to: usize)`: **a caller following the old
+> signature would be passing positions where the API wants node ids.**
 
 ### Functions
 
@@ -1140,52 +1156,66 @@ pub enum MessageType {
 High-performance key-value store with LRU caching and disk persistence.
 
 ```rust
-pub struct KeyValueStore {
-    cache: LruCache<String, Vec<u8>>,
-    base_path: PathBuf,
-    compression_enabled: bool,
-}
+pub struct KeyValueStore { /* private: base_path, cache, lru_order, … */ }
 
 impl KeyValueStore {
-    pub fn new(base_path: PathBuf, cache_capacity: usize) -> Self;
-    pub fn with_compression(base_path: PathBuf, cache_capacity: usize) -> Self;
-    pub fn set<T: Serialize>(&mut self, key: &str, value: &T) -> Result<()>;
-    pub fn get<T: DeserializeOwned>(&mut self, key: &str) -> Result<Option<T>>;
-    pub fn delete(&mut self, key: &str) -> Result<bool>;
-    pub fn contains(&self, key: &str) -> bool;
-    pub fn list_keys(&self, prefix: Option<&str>) -> Result<Vec<String>>;
-    pub fn clear_cache(&mut self);
+    pub fn new(base_path: impl AsRef<Path>) -> Result<Self>;
+    pub fn in_memory() -> Self;
+    pub fn with_cache_size(self, bytes: usize) -> Self;      // builder
+    pub fn without_compression(self) -> Self;                // builder
+    pub fn put<T: Serialize>(&self, key: &str, value: &T) -> Result<StorageMetadata>;
+    pub fn put_raw(/* … */) -> Result<StorageMetadata>;
+    pub fn get<T: DeserializeOwned>(&self, key: &str) -> Result<Option<T>>;
+    pub fn get_raw(&self, key: &str) -> Result<Option<(Vec<u8>, StorageMetadata)>>;
+    pub fn exists(&self, key: &str) -> bool;
+    pub fn delete(&self, key: &str) -> Result<bool>;
+    pub fn list_keys(&self, prefix: &str) -> Result<Vec<String>>;
+    pub fn metadata(&self, key: &str) -> Result<Option<StorageMetadata>>;
 }
 ```
+
+> **Corrected 2026-08-18.** Four differences worth calling out. Compression is
+> **opt-out**, not opt-in: the real builder is `without_compression`, and a
+> reader following the old `with_compression` would have enabled something that
+> was already on. `set` is `put` and returns `StorageMetadata` rather than
+> `()`; `contains` is `exists`; and every method takes `&self`, not `&mut self`
+> — the cache is behind an `RwLock`, so a shared handle is the intended usage
+> and the documented signatures would have forced needless `mut`.
 
 #### `TensorStorage`
 
 Efficient binary tensor storage format (similar to safetensors).
 
 ```rust
-pub struct TensorStorage {
-    index: HashMap<String, TensorIndexEntry>,
-    data_file: File,
-}
+pub struct TensorStorage { /* private: path, index, mmap_data */ }
 
 pub struct TensorIndexEntry {
     pub name: String,
     pub shape: Vec<usize>,
-    pub dtype: StorageDataType,
+    pub dtype: String,
     pub offset: u64,
-    pub length: u64,
+    pub size: u64,
     pub checksum: u64,
 }
 
 impl TensorStorage {
-    pub fn create(path: &Path) -> Result<Self>;
-    pub fn open(path: &Path) -> Result<Self>;
-    pub fn write_tensor(&mut self, name: &str, data: &[u8], shape: &[usize], dtype: StorageDataType) -> Result<()>;
-    pub fn read_tensor(&self, name: &str) -> Result<(Vec<u8>, Vec<usize>, StorageDataType)>;
-    pub fn list_tensors(&self) -> Vec<&TensorIndexEntry>;
-    pub fn contains(&self, name: &str) -> bool;
+    pub fn create(path: impl AsRef<Path>) -> Result<Self>;
+    pub fn open(path: impl AsRef<Path>) -> Result<Self>;
+    pub fn add_f32(&mut self, name: &str, shape: &[usize], data: &[f32]) -> Result<()>;
+    pub fn add_f64(&mut self, name: &str, shape: &[usize], data: &[f64]) -> Result<()>;
+    pub fn add_raw(&mut self, name: &str, shape: &[usize], dtype: &str, data: &[u8]) -> Result<()>;
+    pub fn save(&self, tensors_data: &HashMap<String, Vec<u8>>) -> Result<()>;
+    pub fn get_f32(&self, name: &str) -> Result<Option<(Vec<usize>, Vec<f32>)>>;
+    pub fn tensor_names(&self) -> Vec<&str>;
+    pub fn tensor_info(&self, name: &str) -> Option<&TensorIndexEntry>;
 }
 ```
+
+> **Corrected 2026-08-18.** None of `write_tensor`, `read_tensor` or
+> `list_tensors` exists; the real API is typed (`add_f32`/`add_f64`/`add_raw`,
+> `get_f32`) and names are listed by `tensor_names`. `dtype` is a `String`, not
+> a `StorageDataType` enum — that type does not exist either — and the index
+> field is `size`, not `length`.
 
 #### `CheckpointManager`
 
@@ -1399,15 +1429,32 @@ pub struct Ontology {
 }
 
 impl Ontology {
-    pub fn new() -> Self;
-    pub fn load(path: &str) -> Result<Self>;
-    pub fn add_concept(&mut self, concept: Concept);
-    pub fn add_relation(&mut self, from: &str, to: &str, relation: Relation);
-    pub fn get_concept(&self, name: &str) -> Option<&Concept>;
-    pub fn related_concepts(&self, name: &str, relation: Relation) -> Vec<&Concept>;
-    pub fn similarity(emb1: &[f32], emb2: &[f32]) -> f32;   // associated fn, not a method
+    pub fn new(namespace: &str) -> Self;
+    pub fn load(uri: &str) -> Result<Self>;
+    pub fn save(&self, path: &str) -> Result<()>;
+    pub fn add_concept(&self, concept: Concept);
+    pub fn add_concepts(&self, concepts: Vec<Concept>);
+    pub fn add_relation(&self, relation: Relation);
+    pub fn get(&self, id: &ConceptId) -> Option<Concept>;
+    pub fn get_many(&self, ids: &[ConceptId]) -> Vec<Option<Concept>>;
+    pub fn lookup(&self, name: &str) -> Option<Concept>;
+    pub fn get_related(&self, id: &ConceptId, rel_type: RelationType) -> Vec<Concept>;
+    pub fn get_subgraph(/* … */);
+    pub fn query(&self, q: &OntologyQuery) -> Vec<Concept>;
+    pub fn find_similar(/* … */);
+    pub fn merge(&self, other: &Ontology, strategy: MergeStrategy);
+    pub fn to_binary(&self) -> Vec<u8>;
+    pub fn from_binary(data: &[u8]) -> Result<Self>;
 }
 ```
+
+> **Corrected 2026-08-18.** `get_concept` and `related_concepts` do not exist:
+> lookups are `get(&ConceptId)` or `lookup(&str)` — **ids and names are
+> different keys** — and relations are `get_related(&ConceptId, RelationType)`.
+> `new` takes a namespace. `add_concept`/`add_relation` take `&self`, not
+> `&mut self`, and `add_relation` takes a whole `Relation` rather than
+> `(from, to, relation)`. `similarity` is not a method here at all; it belongs
+> to `rmi::neurosymbolic::embedding` and is listed under that module.
 
 ### Optimization
 
