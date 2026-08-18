@@ -2,9 +2,12 @@
 
 This document provides a comprehensive reference for the RecursiveMachineIntelligence public API.
 
-> **Status: not checked against the code, and known to have drifted.** Nothing
-> compiles the signatures below or resolves the paths, so treat it as a map
-> rather than a contract; `cargo doc` is the authority.
+> **Status: every documented name now exists in the crate, checked by
+> `scripts/check-rmi-api-doc.sh`; signatures are not checked.** The script
+> matches each documented item name as an identifier against `src/` and fails
+> if one is missing — the baseline is **0**, so any new invented name breaks
+> the build. It cannot see a *wrong signature on a function that exists*, and
+> that was the commoner defect here, so `cargo doc` is still the authority.
 >
 > Two problems were found and fixed on 2026-08-18 while looking for something
 > else, which is the only reason they were found at all:
@@ -18,8 +21,19 @@ This document provides a comprehensive reference for the RecursiveMachineIntelli
 >   not. See that section for the detail; it is the one part of this file that
 >   has now been read line-by-line against the source.
 >
-> The other sections have **not** been verified. If you rely on one, check it
-> against `src/` and fix it here — the drift above suggests more.
+> The drift ran deeper than those two. **27 of 228 documented items existed
+> nowhere in the crate**; all 27 are now corrected against the source, along
+> with every signature they sat beside. What the sweep kept finding, in section
+> after section, was one mistake: **documented lookups keyed by *name* where
+> the real API takes a `Uuid`** — `Ontology`, `AIConceptsOntology`,
+> `AIHistoryKB`, `CheckpointManager` all had it. That is the kind of error that
+> survives review, because the call reads correctly and only fails at the type
+> checker.
+>
+> Signatures were spot-checked too: of 162 documented functions, the 66 defined
+> exactly once in `src/` are now in exact arity agreement. The remaining 96
+> share a name with another definition, so nothing automatic can tell which one
+> a block refers to.
 
 ---
 
@@ -889,32 +903,45 @@ pub fn plan(
 
 ### Symbol Embedding
 
-#### `SymbolEmbedding`
+#### `SymbolEmbedder`
 
 Maps symbols to vectors.
 
 ```rust
-pub struct SymbolEmbedding {
-    // Internal
-}
+pub struct SymbolEmbedder { /* private */ }
 
-impl SymbolEmbedding {
+impl SymbolEmbedder {
     pub fn new(config: EmbeddingConfig) -> Self;
-    pub fn embed(&mut self, symbol: &str) -> Vec<f64>;
-    pub fn embed_predicate(&mut self, pred: &Predicate) -> Vec<f64>;
+    pub fn default_embedder() -> Self;
+    pub fn get_embedding(&mut self, symbol: &str) -> Vec<f32>;
+    pub fn embed_term(&mut self, term: &Term) -> Vec<f32>;
+    pub fn embed_predicate(&mut self, pred: &Predicate) -> Vec<f32>;
+    pub fn embed_formula(&mut self, formula: &Formula) -> Vec<f32>;
+    pub fn embed_clause(&mut self, clause: &Clause) -> Vec<f32>;
     pub fn similarity(emb1: &[f32], emb2: &[f32]) -> f32;   // associated fn, not a method
+    pub fn vocab_size(&self) -> usize;
 }
 ```
+
+> **Corrected 2026-08-18.** The type is `SymbolEmbedder`, and every vector is
+> `Vec<f32>`, not `Vec<f64>` — a caller writing to the documented type would
+> have had the wrong element width throughout. `embed` is `get_embedding`, and
+> four further `embed_*` methods went unlisted.
 
 #### `EmbeddingConfig`
 
 ```rust
 pub struct EmbeddingConfig {
     pub embedding_dim: usize,
-    pub use_position_encoding: bool,
-    pub normalize: bool,
+    pub max_vocab: usize,
+    pub use_positional: bool,
+    pub aggregation: AggregationMethod,
 }
 ```
+
+> **Corrected 2026-08-18.** `use_position_encoding` is `use_positional`, there
+> is no `normalize`, and `max_vocab`/`aggregation` were missing — so a struct
+> literal built from the old block would not compile in either direction.
 
 ### Differentiable Constraints
 
@@ -999,14 +1026,14 @@ pub struct HybridReasoner {
 
 impl HybridReasoner {
     pub fn new(config: HybridConfig) -> Self;
-    pub fn query(&self, kb: &KnowledgeBase, query: &Predicate) -> HybridResult;
-    pub fn query_with_embeddings(
-        &self,
-        kb: &KnowledgeBase,
-        query: &Predicate,
-        embedder: &mut SymbolEmbedding,
-    ) -> HybridResult;
+    pub fn query(&mut self, query: &Predicate, kb: &KnowledgeBase) -> HybridResult;
 }
+
+// Corrected 2026-08-18: `query_with_embeddings` does not exist — the reasoner
+// owns its embedder. `query` takes `&mut self` and its two arguments are the
+// other way round: `(query, kb)`, not `(kb, query)`. Both are `&`-references
+// of different types, so a swapped call is a type error rather than a silent
+// mistake — but the documented order was still wrong.
 ```
 
 #### `HybridConfig`
@@ -1294,12 +1321,17 @@ pub struct ShardInfo {
 }
 
 impl ConsistentHashRing {
-    pub fn new(virtual_nodes: usize) -> Self;
-    pub fn add_node(&mut self, info: ShardInfo);
-    pub fn remove_node(&mut self, node_id: &str);
-    pub fn get_node(&self, key: &str) -> Option<&ShardInfo>;
-    pub fn get_nodes_for_replication(&self, key: &str, count: usize) -> Vec<&ShardInfo>;
+    pub fn new(replication_factor: u32) -> Self;
+    pub fn add_agent(&mut self, agent_id: Uuid);
+    pub fn remove_agent(&mut self, agent_id: Uuid);
+    pub fn get_agents(&self, key: &str, count: u32) -> Vec<Uuid>;
 }
+
+// Corrected 2026-08-18: the ring holds agent `Uuid`s, not `ShardInfo`. Its
+// constructor takes a replication factor, not a virtual-node count — two
+// different numbers with different meanings, and a caller passing one for the
+// other gets a ring that works and replicates wrongly. `get_node` /
+// `get_nodes_for_replication` are the single `get_agents(key, count)`.
 ```
 
 ### Message Bus
@@ -1314,10 +1346,14 @@ pub struct Topic {
 }
 
 impl Topic {
-    pub fn new(path: &str) -> Self;           // "agent.task.compute"
-    pub fn matches(&self, pattern: &Topic) -> bool;
-    pub fn as_string(&self) -> String;
+    pub fn new(name: &str) -> Self;
+    pub fn with_namespace(name: &str, namespace: &str) -> Self;
+    pub fn full_path(&self) -> String;
+    pub fn matches(&self, pattern: &str) -> bool;
 }
+
+// Corrected 2026-08-18: `as_string` is `full_path`, and `matches` takes a
+// `&str` pattern rather than another `Topic`.
 
 // Wildcard patterns:
 // - "*" matches exactly one segment: "agent.*.compute"
@@ -1521,15 +1557,25 @@ pub struct AIHistoryKB {
 
 impl AIHistoryKB {
     pub fn new() -> Self;
-    pub fn all_contributions(&self) -> &[AIContribution];
-    pub fn by_year(&self, year: u32) -> Vec<&AIContribution>;
+    pub fn with_history() -> Self;
+    pub fn add(&mut self, contrib: AIContribution) -> Uuid;
+    pub fn get(&self, id: &Uuid) -> Option<&AIContribution>;
+    pub fn by_year(&self, year: i32) -> Vec<&AIContribution>;
     pub fn by_era(&self, era: AIEra) -> Vec<&AIContribution>;
-    pub fn by_category(&self, category: ContributionCategory) -> Vec<&AIContribution>;
-    pub fn by_concept(&self, concept: &str) -> Vec<&AIContribution>;
-    pub fn by_author(&self, author: &str) -> Vec<&AIContribution>;
-    pub fn lineage(&self, title: &str) -> Vec<&AIContribution>;
+    pub fn by_category(&self, cat: ContributionCategory) -> Vec<&AIContribution>;
+    pub fn search_concept(&self, concept: &str) -> Vec<&AIContribution>;
+    pub fn search_author(&self, author: &str) -> Vec<&AIContribution>;
+    pub fn chronological(&self) -> Vec<&AIContribution>;
+    pub fn lineage(&self, id: &Uuid) -> Vec<&AIContribution>;
 }
 ```
+
+> **Corrected 2026-08-18.** `all_contributions` does not exist —
+> `chronological()` is the closest thing. `by_concept`/`by_author` are
+> `search_concept`/`search_author`. `by_year` takes `i32`, not `u32`, which
+> matters for BC-era dates. And `lineage` takes a **`Uuid`, not a title** —
+> the same name-versus-id substitution this file makes in every knowledge
+> section.
 
 #### `AIContribution`
 
@@ -1581,13 +1627,28 @@ pub struct AIConceptsOntology {
 
 impl AIConceptsOntology {
     pub fn new() -> Self;
-    pub fn get_concept(&self, name: &str) -> Option<&AIConcept>;
+    pub fn with_core_concepts() -> Self;
+    pub fn add_concept(&mut self, concept: AIConcept) -> Uuid;
+    pub fn add_relation(&mut self, from: Uuid, to: Uuid, relation: ConceptRelation);
+    pub fn get(&self, id: &Uuid) -> Option<&AIConcept>;
+    pub fn get_by_name(&self, name: &str) -> Option<&AIConcept>;
+    pub fn get_id_by_name(&self, name: &str) -> Option<Uuid>;
     pub fn by_domain(&self, domain: ConceptDomain) -> Vec<&AIConcept>;
-    pub fn related(&self, name: &str, relation: ConceptRelation) -> Vec<&AIConcept>;
-    pub fn ancestors(&self, name: &str) -> Vec<&AIConcept>;
-    pub fn descendants(&self, name: &str) -> Vec<&AIConcept>;
+    pub fn related(&self, id: &Uuid, relation: ConceptRelation) -> Vec<&AIConcept>;
+    pub fn parents(&self, id: &Uuid, relation: ConceptRelation) -> Vec<&AIConcept>;
+    pub fn all_subtypes(&self, id: &Uuid) -> Vec<&AIConcept>;
+    pub fn for_task(&self, task: &str) -> Vec<&AIConcept>;
+    pub fn by_tag(&self, tag: &str) -> Vec<&AIConcept>;
 }
 ```
+
+> **Corrected 2026-08-18.** The same name-versus-id confusion as `Ontology`
+> above, and it is the one mistake this file makes repeatedly: **every lookup
+> here is keyed by `Uuid`**, not by name, and `get_id_by_name` is the bridge
+> between the two. `get_concept` is `get`/`get_by_name`; `ancestors` and
+> `descendants` are `parents(id, relation)` and `all_subtypes(id)`, which are
+> relation-aware rather than a bare hierarchy walk. Five methods were
+> unlisted.
 
 #### `AIConcept`
 
