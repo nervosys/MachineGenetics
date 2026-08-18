@@ -1066,6 +1066,23 @@ The mirror image, and easy to get backwards.
   the time and cries wolf is the kind this session has spent its length
   cleaning up after. The measurement is worth repeating by hand after a
   refactor; it is not worth a ratchet.
+- **`ontology.md` was invisible to the checker, and wrong in all three of its
+  enumerations.** It contains no `pub` items, so the name check reported zero
+  documented items and passed — a file the instrument cannot see reads exactly
+  like a file with nothing wrong. Checked by hand: **six of eleven documented
+  relations do not exist** (`related_to`, `extends`, `used_for`, `builds_on`,
+  `introduced_by`, `superseded_by`) and six real ones were missing; the domain
+  set is ten variants, not the five headings ML/DL/SYM/NS/MAS, of which only
+  two have any counterpart; and the concept-property table named `name` as the
+  unique identifier when it is `id: Uuid` — the same name-versus-id error the
+  API docs made in five places.
+
+  The taxonomies were *measured* rather than rewritten: **166 documented nodes,
+  28 shipped concepts, 12 in common.** They are a survey of the field, which is
+  a fine thing for the document to hold and a misleading thing to present as a
+  crate's contents, so the file now says which it is. **A prose document is not
+  covered by a check that reads code blocks**, and the passing result said
+  nothing about it either way.
 - **`rmi/docs/protocol.md` describes a wire format the implementation does not
   speak.** Checked after `api.md`, on the same suspicion that one bad doc is
   rarely alone. The header diagram is wrong in every field: the magic is
