@@ -3401,7 +3401,11 @@ mod tests {
     // ── Rule database tests ──────────────────────────────────────────
 
     #[test]
-    fn rule_total_count_210() {
+    fn rule_total_count_255() {
+        // The name said 210 while the assertion said 255, and the assertion was
+        // the correct one. A test name is documentation that grep finds first:
+        // anyone looking up how many safety rules exist hits the name, not the
+        // body. `MAGE_ONTOLOGY.md` says 255 across 8 databases and is right.
         assert_eq!(rule_count(), 255);
     }
 

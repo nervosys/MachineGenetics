@@ -1066,6 +1066,24 @@ The mirror image, and easy to get backwards.
   crate's contents, so the file now says which it is. **A prose document is not
   covered by a check that reads code blocks**, and the passing result said
   nothing about it either way.
+- **`MAGE_ONTOLOGY.md` — the prose ontology — had 13 of 23 RAP method
+  signatures wrong.** Every method it names exists; the drift is in the
+  parameters, checked against the JSON's `rap_methods` (itself verified by
+  `every_published_rap_key_is_real`). The sharpest are `skb/query`
+  (`{database, category}` for `{by, value}`) and `attribute/expand` /
+  `attribute/compress` (`{source}` for `{name}`), where **a caller following
+  the page gets an empty result rather than an error** — the arm reads names
+  that were not sent and falls back to the empty string. The `mode` parameter
+  on the two language services was never real: both modes lex and parse
+  through the same entry point, which is the point of the dual surface. All 13
+  corrected; `DOCS.md` already says to prefer the JSON, and the page now says
+  why.
+
+  Its "255 safety rules across 8 databases" is **correct** — and checking it
+  found the inverse defect in the code: the test pinning that number is called
+  `rule_total_count_210` and asserts `255`. A test name is documentation that
+  grep reaches first; anyone looking up the rule count found 210 in the name
+  and never read the body. Renamed.
 - **`ARCHITECTURE_DSL.md` is the one document whose measured claims all held.**
   Every byte figure re-derived exactly from the checked-in construct: source
   271 B, container 141 B, expr 110 B, single-block 126 B / 95 B, decompiles to
