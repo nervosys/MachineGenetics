@@ -1012,13 +1012,45 @@ mod handler_tests {
     ///
     /// This is the pin: a row added to §11.2 that the compiler does not accept
     /// fails here, and so does a name quietly dropped from `Effect::from_name`.
+    ///
+    /// The rows are **read out of `MAGE_SPEC.md`**, not copied into a literal
+    /// here. A copy would have made the doc comment's claim — "every effect the
+    /// spec documents" — true only of the seventeen someone remembered, and the
+    /// whole point of this test is that the spec once advertised an effect
+    /// (`agent`) that nobody could write. The one boundary that matters is the
+    /// one between the file and the compiler, so the file is what it reads.
     #[test]
     fn every_effect_documented_in_the_spec_parses_and_checks() {
-        const SPEC_11_2: [&str; 17] = [
-            "io", "net", "fs", "async", "alloc", "panic", "ffi", "env", "time", "gpu", "npu",
-            "llm", "evolve", "learn", "rng", "agent", "proc",
-        ];
-        for effect in SPEC_11_2 {
+        let spec = std::fs::read_to_string(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../MAGE_SPEC.md"),
+        )
+        .expect("MAGE_SPEC.md is beside the prototype");
+        // The file is CRLF in a Windows checkout, so a section terminator
+        // written with bare LF matched nothing and the "table" ran to the end
+        // of the document — 75 names instead of 17. The count assertion below
+        // is what caught that, which is the argument for having it.
+        let spec = spec.replace("\r\n", "\n");
+        let table = spec
+            .split("### 11.2 Standard Effects")
+            .nth(1)
+            .expect("§11.2 exists")
+            .split("\n### ")
+            .next()
+            .unwrap();
+        // `| `io` |` and `| **`gpu`** |` — the emphasis is decoration on some
+        // rows and not others, so the name is taken from the backticks.
+        let names: Vec<&str> = table
+            .lines()
+            .filter(|l| l.starts_with("| "))
+            .filter_map(|l| l.split('`').nth(1))
+            .filter(|n| !n.is_empty() && n.chars().all(|c| c.is_ascii_lowercase()))
+            .collect();
+        assert_eq!(
+            names.len(),
+            17,
+            "§11.2 no longer has 17 effect rows ({names:?}) — if the table grew or              shrank, the sentence above it and `ontology::EFFECT_NAMES` both need              the same change"
+        );
+        for effect in names {
             let msgs = errors(&format!("+f a() -> i32 / {effect} {{ 1 }}"));
             assert!(
                 msgs.is_empty(),

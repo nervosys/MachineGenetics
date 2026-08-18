@@ -135,6 +135,20 @@ agent could construct from the ontology returned `agent X not found` for every a
 too: the calls are minimal, so anything a working call sends and the ontology
 omits is a parameter no caller could know to pass.
 
+**Two more, found by sweeping for the shape.** Grepping for `#[test]` whose doc
+comment says "every"/"all" over a body containing a literal list turned up 13
+candidates and two real holes. `every_typed_vocabulary_name_checks_its_arity`
+listed 29 of the 31 published words, and the two it omitted — `scan` and
+`group` — were the only two with **no typed arm at all**, so `scan(1, 2, 3, 4,
+5)` typechecked clean. It now iterates `VOCABULARY`. And
+`every_effect_documented_in_the_spec_parses_and_checks` held its own copy of
+§11.2's seventeen rows, which is the one boundary the test exists to guard: it
+now reads the table out of `MAGE_SPEC.md`, and a row added there that the
+compiler rejects fails it. Verified by adding a `quantum` row and watching it
+go red. A test that names its own subjects cannot report the subject it never
+names — which is the same lesson as the table above, arriving through a
+different door: not "the list is short" but "the list exists".
+
 **A pin over a generated list tends toward tautology.** The follow-up test for
 layer names iterated `layer_map`, which is *filtered* by the same function the
 validation uses — so it could not fail by construction. The escape is inputs the

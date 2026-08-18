@@ -927,7 +927,7 @@ impl TypeChecker {
     /// Precise, fresh-per-call types for the §8 standard vocabulary, so misuse is
     /// caught (the reliability win) rather than inferred loosely. Returns `Some`
     /// for a typed combinator; `None` lets the call fall through to generic
-    /// inference (min/max/abs, group/scan, or a user function that shadows it —
+    /// inference (min/max/abs, or a user function that shadows it —
     /// user functions are handled before this is reached). No args are inferred
     /// for names it does not type, so there is no double inference.
     fn infer_vocab_call(&mut self, name: &str, args: &[ast::Expr]) -> Option<Ty> {
@@ -935,8 +935,15 @@ impl TypeChecker {
             "len", "count", "sum", "first", "last", "sort", "reverse", "take",
             "flatten", "contains", "zip", "freq", "keys", "values", "range", "map",
             "filter", "any", "all", "find", "fold", "reduce", "split", "join",
-            "chars", "words", "lines", "upper", "lower",
+            "chars", "words", "lines", "upper", "lower", "scan", "group",
         ];
+        // This gate exists so arguments are not inferred twice for names with
+        // no arm (the caller infers them again after a `None`). It is a second
+        // copy of the arm list and drifts from it silently — `scan` and `group`
+        // were published vocabulary, absent here, and therefore accepted any
+        // number of arguments. `every_typed_vocabulary_name_checks_its_arity`
+        // is what holds the two together: it iterates `VOCABULARY`, and a name
+        // missing from this list produces no arity error and fails there.
         if !TYPED.contains(&name) {
             return None;
         }
@@ -1105,6 +1112,34 @@ impl TypeChecker {
                     self.unify_arg(name, &a[2], &f);
                 }
                 self.subst.apply(&acc)
+            }
+            // `scan` and `group` are published vocabulary (§8) and had no arm
+            // here at all, so they fell through to `_ => return None` — no
+            // type, and no arity check either: `scan(1, 2, 3, 4, 5)` checked
+            // clean. Their signatures are the published ones.
+            "scan" => {
+                self.vocab_arity(name, n, 3);
+                let e = if n >= 1 { self.collection_elem(&a[0]) } else { self.fresh() };
+                let acc = if n >= 2 { a[1].clone() } else { self.fresh() };
+                if n >= 3 {
+                    let f = Ty::Fn(vec![acc.clone(), e], Box::new(acc.clone()), pure());
+                    self.unify_arg(name, &a[2], &f);
+                }
+                // Unlike `fold`, the result is the sequence of accumulators.
+                Ty::Vec(Box::new(self.subst.apply(&acc)))
+            }
+            "group" => {
+                self.vocab_arity(name, n, 2);
+                let e = if n >= 1 { self.collection_elem(&a[0]) } else { self.fresh() };
+                let k = self.fresh();
+                if n >= 2 {
+                    let f = Ty::Fn(vec![e.clone()], Box::new(k.clone()), pure());
+                    self.unify_arg(name, &a[1], &f);
+                }
+                Ty::Map(
+                    Box::new(self.subst.apply(&k)),
+                    Box::new(Ty::Vec(Box::new(self.subst.apply(&e)))),
+                )
             }
             "reduce" => {
                 self.vocab_arity(name, n, 2);
@@ -2687,12 +2722,13 @@ f s() -> i32 { g(1) }");
     fn every_typed_vocabulary_name_checks_its_arity() {
         // One call per name with a deliberately absurd argument count. A name
         // that accepts it is silently discarding arguments.
-        for name in [
-            "len", "count", "sum", "first", "last", "sort", "reverse", "take",
-            "flatten", "contains", "zip", "freq", "keys", "values", "range", "map",
-            "filter", "any", "all", "find", "fold", "reduce", "split", "join",
-            "chars", "words", "lines", "upper", "lower",
-        ] {
+        //
+        // Iterated from `VOCABULARY`, not from a list written here: the list
+        // that used to be here held 29 of the 31 published words, and the two
+        // it omitted — `scan` and `group` — were the two with no typed arm at
+        // all, so `scan(1, 2, 3, 4, 5)` typechecked clean. A test naming its
+        // own subjects cannot report the subject it never names.
+        for (name, _sig, _doc) in crate::resolve::VOCABULARY {
             let src = format!("f t() {{ {name}(1, 2, 3, 4, 5) }}");
             let diags = check_source(&src).diagnostics;
             assert!(
