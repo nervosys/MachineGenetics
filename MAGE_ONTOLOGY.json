@@ -16,7 +16,7 @@
     "project_layout": 22,
     "rap_methods": 37,
     "recovery_stages": 7,
-    "sigils": 38,
+    "sigils": 37,
     "types": 30,
     "vocabulary": 31,
     "wrapper_protocol": 9
@@ -4751,11 +4751,6 @@
         "ast_kind": "Match",
         "sigil": "?=",
         "summary": "match expression"
-      },
-      {
-        "ast_kind": "If",
-        "sigil": "?:",
-        "summary": "human-mode if (sugar for ?)"
       },
       {
         "ast_kind": "For/Attr/Arc",

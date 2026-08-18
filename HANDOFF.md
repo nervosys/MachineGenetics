@@ -484,6 +484,19 @@ elsewhere, pointing at the wrong line.
   accepts must be in the cli_flags ontology section". It now scrapes the flag
   literals out of `main.rs` and compares the two sets in both directions —
   verified by removing `--eval` and watching it fail. 36 flags are published.
+- **`MAGE_SPEC.md` Appendix B — the dual-syntax mapping table — had seven
+  wrong rows**, under the heading "Every Human-mode construct has an
+  Agent-mode equivalent. Both parse to the same AST." `const` → `c`
+  (lowercase is an identifier; the sigil is `C`), `else if` → `:?` (the space
+  matters: `: ?`), `for x in y` → `@ x ~ y` (the separator is `in`), `while` →
+  `loop ?` (it is `@w`), `Foo { x }` → `Foo @{ x }` (the `@` goes before the
+  name), plus `const fn` → `c f`, `pub(crate)` → `~` and `crate::` → `~.`,
+  none of which parse in either mode. B.8's "shared syntax" listed `f16`,
+  `bf16` and `tensor!` literals, none of which exist.
+- **`?:` was published as a sigil by two documents that disagreed about what
+  it meant** — the ontology called it "human-mode if (sugar for ?)",
+  MAGE_SPEC.md B.2 called it the KB-query sigil — and the lexer has no such
+  token at all. Removed, with its absence pinned the way `^`'s is.
 - **`nl/explain` answered with Rust `Debug` output.** Asked to explain
   `+f add(a: i32, b: i32) -> i32`, it said
   `(a: Path { segments: ["i32"], type_args: [] }, …)` — the AST node

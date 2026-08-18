@@ -1792,7 +1792,10 @@ val dot = (a * b).sum();
 
 ## Appendix B: Dual Syntax Mapping Table
 
-Every Human-mode construct has a Agent-mode equivalent. Both parse to the same AST.
+Every Human-mode construct has an Agent-mode equivalent, and both parse to the
+same AST — where both exist. **Every row below was checked against the
+compiler**; the ones that do not parse are marked, because this table is the
+first thing an agent reads to learn the compressed surface.
 
 ### B.1 Declaration Keywords
 
@@ -1801,7 +1804,7 @@ Every Human-mode construct has a Agent-mode equivalent. Both parse to the same A
 | `fn`           | `f`   | Function          |
 | `val`          | `v`   | Immutable binding |
 | `var`          | `m`   | Mutable binding   |
-| `const`        | `c`   | Constant          |
+| `const`        | `C`   | Constant (uppercase; lowercase `c` is an identifier) |
 | `data`         | `D`   | Data declaration  |
 | `data (sum)`   | `D`   | Sum type          |
 | `trait`        | `T`   | Trait             |
@@ -1810,10 +1813,19 @@ Every Human-mode construct has a Agent-mode equivalent. Both parse to the same A
 | `use`          | `u`   | Import            |
 | `pub`          | `+`   | Public prefix     |
 | `async fn`     | `af`  | Async function    |
-| `const fn`     | `c f` | Const function    |
-| `pub(crate)`   | `~`   | Crate-visible     |
+| ~~`const fn`~~ | ~~`c f`~~ | **Neither parses.** There are no const functions |
+| ~~`pub(crate)`~~ | ~~`~`~~ | **Neither parses.** Visibility is `pub`/`+` or private |
 
 ### B.2 AI Constructs
+
+> **Status: lexed, not parsed.** Fifteen of these Greek symbols are real
+> tokens (`Ψ` produces `KwPsi`, `Σ` produces `KwSigma`), and **no parser arm
+> consumes any of them** — `Ψ Classifier { … }` is `expected item, found
+> KwPsi`. `?:` is not even a token. The AI blocks use the **same keyword in
+> both modes**: `net`, `layer`, `train`, `kb`, `fact`, `rule`, `agent`,
+> `swarm`, `evolve`, `genome`, `fitness`, `select`, `crossover`, `mutate`,
+> `population`, `generations`. The table is the design, and Appendix D says
+> the same thing at more length.
 
 | Human           | Agent    | Meaning             |
 | --------------- | -------- | ------------------- |
@@ -1849,15 +1861,14 @@ Every Human-mode construct has a Agent-mode equivalent. Both parse to the same A
 | -------------- | ---------- | ------------- |
 | `if`           | `?`        | Conditional   |
 | `else`         | `:`        | Else branch   |
-| `else if`      | `:?`       | Else-if       |
-| `match`        | `? expr {` | Pattern match |
-| `for x in y`   | `@ x ~ y`  | For loop      |
-| `loop`         | `loop`     | Infinite loop |
-| `while`        | `loop ?`   | While loop    |
+| `else if`      | `: ?`      | Else-if. The space matters: `:?` is not a token |
+| `match`        | `?= expr {` | Pattern match. `? expr {` also parses |
+| `for x in y`   | `@ x in y` | For loop. The separator is `in`; `~` does not parse |
+| `loop`         | `@@` or `loop` | Infinite loop |
+| `while`        | `@w cond`  | While loop. `loop ?` does not parse |
 | `return`       | `ret`      | Return        |
 | `break`        | `!`        | Break         |
 | `continue`     | `>>`       | Continue      |
-| `break`        | `!`        | Break         |
 | `continue`     | `>>`       | Continue      |
 | `true`/`false` | `1b`/`0b`  | Booleans      |
 
@@ -1895,13 +1906,11 @@ Every Human-mode construct has a Agent-mode equivalent. Both parse to the same A
 
 ### B.6 Path and Scope
 
-| Human       | Agent        | Meaning        |
+| Rust        | MAGE         | Meaning        |
 | ----------- | ------------ | -------------- |
-| `::`        | `.`          | Path separator |
-| `crate::`   | `~.`         | Crate root     |
-| `super::`   | `super.`     | Parent module  |
-| `self::`    | `self.`      | Current module |
-| `Foo { x }` | `Foo @{ x }` | Struct literal |
+| `::`        | `.`          | Path separator. `::` does not parse in either MAGE mode |
+| `Foo { x }` | `@Foo { x: 1 }` | Struct literal. The `@` goes **before** the name, every field is named, and bare `Foo { … }` is a *map* |
+| ~~`crate::`~~ | ~~`~.`~~   | **Does not parse.** There is no module system, so there is no crate root, `super` or `self` path |
 
 ### B.7 Attributes
 
@@ -1918,7 +1927,9 @@ Every Human-mode construct has a Agent-mode equivalent. Both parse to the same A
 
 ### B.8 Shared Syntax (Identical in Both Modes)
 
-- All numeric types (`i32`, `u64`, `f64`, `f16`, `bf16`, etc.)
+- The numeric types that exist (`i8`–`i128`, `u8`–`u128`, `isize`, `usize`,
+  `f32`, `f64`). **`f16` and `bf16` are not type names** — the checker reports
+  `unresolved type` — though `@precision(f16)` is accepted as an attribute
 - Arithmetic, comparison, logical, bitwise operators
 - Semicolons, braces, parentheses
 - Comments (`//`, `/* */`, `///`, `//!`)
@@ -1926,8 +1937,8 @@ Every Human-mode construct has a Agent-mode equivalent. Both parse to the same A
 - Contract attributes (`@req`, `@ens`, `@inv`, `@perf`, `@fx`, `@spec`)
 - Range operators (`..`, `..=`)
 - Try operator (`?` postfix)
-- Closures (`|x| expr`)
-- `tensor!` literals
+- Closures (`|x| expr`, and `fn(x) => expr`)
+- ~~`tensor!` literals~~ — **there are no macros**; write a list literal
 
 ### B.9 Agent Mode Safety Philosophy
 

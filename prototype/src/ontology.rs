@@ -45,7 +45,6 @@ const SIGILS: &[(&str, &str, &str)] = &[
     ("Y", "TypeAlias", "type alias"),
     ("?", "If/Option/Try", "if expression, or Option type prefix, or try operator"),
     ("?=", "Match", "match expression"),
-    ("?:", "If", "human-mode if (sugar for ?)"),
     ("@", "For/Attr/Arc", "for loop, attribute, struct literal, or Arc type"),
     ("@@", "Loop", "infinite loop"),
     ("@w", "While", "while loop"),
@@ -2470,10 +2469,14 @@ mod tests {
                 "published sigil `{sigil}` does not parse: {src}"
             );
         }
-        // The one that was wrong, held in both directions.
+        // The two that were wrong, held in both directions.
         assert!(
             !SIGILS.iter().any(|(s, _, _)| *s == "^"),
             "`^` is bitwise XOR and the `^T` Box prefix — it does not return"
+        );
+        assert!(
+            !SIGILS.iter().any(|(s, _, _)| *s == "?:"),
+            "`?:` is not a token: the lexer has no such sigil, `else if` is              `: ?` with a space, and MAGE_SPEC.md B.2 published `?:` for a KB              query — two documents disagreeing with each other and with the              compiler"
         );
     }
 
