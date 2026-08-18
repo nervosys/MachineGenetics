@@ -120,6 +120,12 @@ jobs:
       # builtins — `assert` among them — had no arm in the evaluator at all.
       - name: Every documentation entry point runs
         run: bash scripts/check-doc-evals.sh
+      # The 31 words of §8 are the whole standard library. Three lists have to
+      # agree for one to work — the resolver's, the checker's and the
+      # evaluator's — and `scan` and `group` were missing from the middle one,
+      # so `scan(1, 2, 3, 4, 5)` typechecked clean for as long as they existed.
+      - name: Every vocabulary word checks, runs, and returns what §8 publishes
+        run: bash scripts/check-vocabulary.sh
       # The ontology published six "CI floors" and this workflow enforced none
       # of them — the section's own doc comment said they were read from this
       # file. Three are measurable and now are.

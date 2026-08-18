@@ -163,6 +163,17 @@ tool invocation" and `exec()` performs nothing, which is consistent with
 §11.2's own sentence that the domain column is not a table of callable
 operations, and is now stated where a reader of that table would look.
 
+**And a new instrument, `check-vocabulary.sh`.** The 31 words of §8 are the
+entire standard library — there are no modules and no `stdlib/`, so an agent
+writing MAGE has these and nothing else. Three lists must agree for one to
+work: the resolver's, the checker's `infer_vocab_call`, and the evaluator's.
+The unit tests compare each against its neighbour; nothing ran a word end to
+end. This runs the binary, both oracles, one call per word, and compares the
+answer to the published signature — and asserts its own case list is exactly
+the published vocabulary, so the coverage question is answered in the script
+rather than by whoever reads it. All 31 pass today. Wired into CI beside the
+doc instruments.
+
 **A pin over a generated list tends toward tautology.** The follow-up test for
 layer names iterated `layer_map`, which is *filtered* by the same function the
 validation uses — so it could not fail by construction. The escape is inputs the
