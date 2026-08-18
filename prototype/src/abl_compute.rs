@@ -1,7 +1,7 @@
 //! # Agentic Binary Language Compute Dispatch
 //!
 //! Runs a bridge-produced Agentic Binary Language [`Expr`] pipeline against an
-//! [`rmi::compute::Backend`] for activation-only chains.
+//! [`rmi::compute::Backend`].
 //!
 //! This is the executable counterpart to the tree-walking [`rmi::lang::Vm`]:
 //! where the VM stubs neural opcodes, this module dispatches them to a real
@@ -9,23 +9,43 @@
 //!
 //! ## Supported ops
 //!
-//! Phase-4 scope is activation pipelines — opcodes that the
-//! [`rmi::compute::Backend`] trait exposes as `(input) → output` without
-//! external weights:
+//! This list is checked — `every_op_the_doc_lists_is_dispatched` runs each one
+//! through [`dispatch_one`] and fails if it comes back unsupported, and fails
+//! the other way if `dispatch_one` grows an arm this table does not mention.
 //!
-//! | Opcode        | Backend method   |
-//! |---------------|------------------|
-//! | `RELU`        | `relu`           |
-//! | `GELU`        | `gelu`           |
-//! | `SIGMOID`     | `sigmoid`        |
-//! | `TANH_ACT`    | `tanh`           |
-//! | `SOFTMAX`     | `softmax(axis=-1)` |
-//! | `IDENTITY`    | passthrough      |
+//! | Opcode          | How it runs                                        |
+//! |-----------------|----------------------------------------------------|
+//! | `RELU`          | `relu`                                             |
+//! | `GELU`          | `gelu`                                             |
+//! | `SIGMOID`       | `sigmoid`                                          |
+//! | `TANH_ACT`      | `tanh`                                             |
+//! | `SOFTMAX`       | `softmax(axis=-1)`                                 |
+//! | `IDENTITY`      | passthrough                                        |
+//! | `LAYER_NORM`    | learnable γ/β from the parameter store             |
+//! | `RMS_NORM`      | as above, without mean subtraction                 |
+//! | `MAX_POOL`      | 1-D over the last axis                             |
+//! | `AVG_POOL`      | 1-D over the last axis                             |
+//! | `GLOBAL_POOL`   | collapses every spatial axis                       |
+//! | `CONV2D`        | weights from the parameter store                   |
+//! | `ATTN`          | scaled dot-product, parameterless or QKV           |
+//! | `EMBED`         | token embedding lookup                             |
+//! | `SINUSOIDAL_PE` | parameter-free positional encoding                 |
+//! | `LEARNED_PE`    | additive learned positional embedding              |
+//! | `MSE_LOSS`      | without a target, lowers to `mean(x²)`             |
+//! | `SGD_STEP`      | no-op forward — updates need backward              |
+//! | `ADAM_STEP`     | no-op forward                                      |
+//! | `ADAMW_STEP`    | no-op forward                                      |
+//! | `RMSPROP_STEP`  | no-op forward                                      |
+//! | `LINEAR`        | `input @ W (+ bias)`, weights from the store       |
+//! | `MATMUL`        | `input @ W`, weights from the store                |
 //!
-//! Weighted ops (`LINEAR`, `MATMUL`, `CONV2D`, `ATTN`, normalisations) are
-//! reported as **unsupported** because they require parameter tensors that
-//! the bridge does not yet thread through. Adding them is mechanical once
-//! `Op::LINEAR(weight_tensor)` carries its parameter symbol.
+//! This table used to list the first six and say that "weighted ops
+//! (`LINEAR`, `MATMUL`, `CONV2D`, `ATTN`, normalisations) are reported as
+//! **unsupported** because they require parameter tensors that the bridge does
+//! not yet thread through". The parameter store described immediately below
+//! threads them, and has for some time: every one of those ops dispatches.
+//! Anyone deciding whether the CPU backend could run their net was reading a
+//! description of a compiler that no longer existed.
 
 use std::collections::HashMap;
 
@@ -2886,6 +2906,76 @@ mod tests {
     use super::*;
     use crate::ast;
     use crate::abl_bridge::NetTranslator;
+
+    /// The module doc's "Supported ops" table is the dispatcher's arms.
+    ///
+    /// That table said six opcodes were supported and that `LINEAR`, `MATMUL`,
+    /// `CONV2D`, `ATTN` and the normalisations "are reported as unsupported
+    /// because they require parameter tensors that the bridge does not yet
+    /// thread through" — while the parameter store fifty lines below threaded
+    /// every one of them. Anyone deciding whether the CPU backend could run
+    /// their net was reading about a compiler that no longer existed.
+    ///
+    /// Both directions, because either is a lie: an opcode in the table that
+    /// does not dispatch promises something the backend cannot do, and an arm
+    /// missing from the table hides something it can.
+    #[test]
+    fn every_op_the_doc_lists_is_dispatched() {
+        let doc = std::fs::read_to_string(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/abl_compute.rs"),
+        )
+        .expect("this file")
+        .replace("\r\n", "\n");
+
+        // Rows of the doc table: `//! | `RELU` | … |`
+        let listed: Vec<String> = doc
+            .lines()
+            .take_while(|l| l.starts_with("//!") || l.trim().is_empty())
+            .filter_map(|l| l.strip_prefix("//! | `"))
+            .filter_map(|l| l.split('`').next())
+            .map(str::to_string)
+            .collect();
+        assert!(listed.len() >= 20, "the doc scrape found {} rows", listed.len());
+
+        // Arms of `dispatch_one`: `Op::RELU =>` and `Op::A | Op::B =>`.
+        let body = doc
+            .split("fn dispatch_one(")
+            .nth(1)
+            .expect("dispatch_one")
+            .split("\n}\n")
+            .next()
+            .unwrap();
+        let mut armed: Vec<String> = Vec::new();
+        for line in body.lines() {
+            let t = line.trim();
+            if !t.starts_with("Op::") || !t.contains("=>") {
+                continue;
+            }
+            for part in t.split("=>").next().unwrap().split('|') {
+                if let Some(name) = part.trim().strip_prefix("Op::") {
+                    let name = name.trim().trim_end_matches(['{', ' ']).trim();
+                    if !name.is_empty() && !armed.iter().any(|a| a == name) {
+                        armed.push(name.to_string());
+                    }
+                }
+            }
+        }
+        assert!(armed.len() >= 20, "the arm scrape found {} ops", armed.len());
+
+        for op in &listed {
+            assert!(
+                armed.iter().any(|a| a == op),
+                "the doc table lists `{op}` and `dispatch_one` has no arm for it"
+            );
+        }
+        for op in &armed {
+            assert!(
+                listed.iter().any(|l| l == op),
+                "`dispatch_one` handles `{op}` and the doc table does not list it — \
+                 a reader cannot tell the backend can run it"
+            );
+        }
+    }
 
     /// CONV2D through the Agentic Binary Language pipeline now routes to `Backend::conv2d`
     /// (GPU im2col+GEMM on CUDA, naive on CPU). Verify the CPU pipeline

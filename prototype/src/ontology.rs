@@ -1468,10 +1468,11 @@ fn rap_methods_section() -> serde_json::Value {
 }
 
 fn heal_patterns_section() -> serde_json::Value {
-    let names = crate::heal::pattern_names();
-    let items: Vec<_> = names
+    // With the example, not just the name: `parse-stray-comma-in-name-position`
+    // tells an agent that a pattern exists and nothing about when it fires.
+    let items: Vec<_> = crate::heal::patterns_with_examples()
         .iter()
-        .map(|n| serde_json::json!({ "name": n }))
+        .map(|(name, example)| serde_json::json!({ "name": name, "example": example }))
         .collect();
     serde_json::json!(items)
 }
@@ -2074,10 +2075,30 @@ mod tests {
         assert!(section("nonexistent").is_none());
     }
 
+    /// The published pattern list is exactly the registry's.
+    ///
+    /// This asserted `len() >= 10` over a list of 34 — true of any ten
+    /// strings, and silent about every question worth asking. Whether each
+    /// pattern *works* is `heal::every_pattern_matches_its_example_and_
+    /// produces_a_fix`, which is where the matchers are; what belongs here is
+    /// the boundary this file owns: that what the ontology publishes is what
+    /// the registry contains, in both directions and in order.
     #[test]
-    fn heal_patterns_section_nonempty() {
+    fn published_heal_patterns_are_the_registry() {
         let arr = heal_patterns_section();
-        assert!(arr.as_array().unwrap().len() >= 10);
+        let published: Vec<&str> =
+            arr.as_array().unwrap().iter().map(|e| e["name"].as_str().unwrap()).collect();
+        let registry = crate::heal::pattern_names();
+        assert_eq!(
+            published, registry,
+            "the ontology's heal_patterns and heal.rs's registry disagree"
+        );
+        assert!(
+            published.len() >= 30,
+            "the registry shrank to {} patterns — if that is deliberate, the \
+             count in benchmarks/STATUS.md moves with it",
+            published.len()
+        );
     }
 
     #[test]
@@ -2087,6 +2108,37 @@ mod tests {
         assert_eq!(v[0]["stage"], "already-valid");
         assert_eq!(v[1]["stage"], "pattern-heal");
         assert_eq!(v.last().unwrap()["stage"], "failed");
+
+        // Every name `RecoveryStage` can report must be published, and every
+        // published name must be one it can report — except `agent.refine`,
+        // which belongs to the reliability bench rather than to `recover.rs`
+        // and is the one deliberate difference between the two lists. Naming
+        // it here is what keeps it deliberate: without this, a stage added to
+        // the enum would simply be missing from the ontology, and nothing
+        // would say so.
+        use crate::recover::RecoveryStage as R;
+        let from_enum = [
+            R::AlreadyValid,
+            R::PatternHeal,
+            R::StructuralBalance,
+            R::StructuralCompletion,
+            R::TrimBadToken,
+            R::Failed,
+        ];
+        let published: Vec<&str> = v.iter().map(|e| e["stage"].as_str().unwrap()).collect();
+        for st in from_enum {
+            assert!(
+                published.contains(&st.as_str()),
+                "`recover.rs` can report `{}` and the ontology does not publish it",
+                st.as_str()
+            );
+        }
+        for name in &published {
+            assert!(
+                *name == "agent.refine" || from_enum.iter().any(|s| s.as_str() == *name),
+                "the ontology publishes recovery stage `{name}`, which `recover.rs`                  never reports and which is not the known bench-only stage"
+            );
+        }
     }
 
     #[test]
@@ -2103,6 +2155,47 @@ mod tests {
                 entry["category"].as_str().filter(|c| !c.is_empty()).is_some(),
                 "category missing on {:?}",
                 entry["name"]
+            );
+        }
+
+        // And every published type must be one the checker resolves. The
+        // seven names above are a spot-check; this is the claim. `S` was once
+        // published as shorthand for `String` — it is the `struct` keyword and
+        // can never be a type — and nothing here would have caught it, because
+        // `S` was not one of the seven.
+        //
+        // The constructors are published with metavariables, so each is
+        // instantiated with a concrete element type. A published name with no
+        // instantiation here is a failure, not a skip.
+        let concrete = |n: &str| -> String {
+            match n {
+                "&T" => "&i32".into(),
+                "&!T" => "&!i32".into(),
+                "@T" => "@i32".into(),
+                "?T" => "?i32".into(),
+                "R[T,E]" => "R[i32, str]".into(),
+                "[T]" => "[i32]".into(),
+                "[T; N]" => "[i32; 4]".into(),
+                "[T]~" => "[i32]~".into(),
+                "(T1,T2,...)" => "(i32, str)".into(),
+                "{K: V}" => "{str: i32}".into(),
+                "{T}" => "{i32}".into(),
+                "Box[T]" => "Box[i32]".into(),
+                "f(T)->R" => "f(i32)->i32".into(),
+                other => other.into(),
+            }
+        };
+        for name in &names {
+            let src = format!("f m(x: {}) -> i32 {{ 1 }}", concrete(name));
+            let module = crate::parser::parse(&crate::lexer::lex(&src))
+                .unwrap_or_else(|e| panic!("`{name}` does not even parse: {e:?}"));
+            let diags = crate::types::check(&module).diagnostics;
+            assert!(
+                diags.is_empty(),
+                "the ontology publishes type `{name}`, which the checker rejects \
+                 as `{}`: {:?}",
+                concrete(name),
+                diags.iter().map(|d| &d.message).collect::<Vec<_>>()
             );
         }
     }

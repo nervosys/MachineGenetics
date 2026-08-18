@@ -12,7 +12,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **2,898** — rmi 1,380 · prototype 1,189 · ribosome 164 · germline 112 · forge 53 |
+| Tests | **2,901** — rmi 1,380 · prototype 1,192 · ribosome 164 · germline 112 · forge 53 |
 | CUDA | **1,071 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm |
@@ -218,6 +218,27 @@ directions test can still be vacuous if the right-hand side is broad enough.**
 It now checks the guide's Declarations fence against `sigils` specifically,
 which is the narrow claim that can fail, and keeps the union check for the
 broader one. Verified by deleting `xd` again.
+
+**The weakest test in the catalogue was the one still standing.** The table
+above lists `heal_patterns_section_nonempty` — "that a list of 34 is not
+empty" — and unlike the other five it had never been replaced. Replacing it
+meant deciding what the published list *claims*: that each of the 34 names a
+mechanical repair an agent can ask for. `ErrorPattern` now carries an
+`example` message beside its matcher, the compiler requires one, and a test
+runs every pattern against its own example through the same `heal` path an
+agent calls. It found `type-mismatch` generating nothing for the checker's
+commonest message. The design point is that the example lives *next to the
+matcher*: a test file listing 34 messages would drift from the matchers within
+a session, which is how the list-driven tests in the table above got their
+start.
+
+**And a sixth section pinned across its boundary.** `recovery_stages`
+publishes seven names; `RecoveryStage::as_str` reports six, the difference
+being `agent.refine`, which belongs to the reliability bench rather than to
+`recover.rs`. Nothing compared the two, so a stage added to the enum would
+have gone unpublished silently. The test now checks both directions and names
+`agent.refine` as the one deliberate exception — which is what keeps it
+deliberate rather than merely present.
 
 **A pin over a generated list tends toward tautology.** The follow-up test for
 layer names iterated `layer_map`, which is *filtered* by the same function the
@@ -601,6 +622,26 @@ elsewhere, pointing at the wrong line.
   reservation costs the name twice: the call is a parse error, *and* no user
   function can fill the gap. They now say so when written. Implementing them,
   or un-reserving them, is a design decision.
+- **`abl_compute`'s "Supported ops" table listed 6 of the 23 it dispatches.**
+  It said `LINEAR`, `MATMUL`, `CONV2D`, `ATTN` and the normalisations "are
+  reported as **unsupported** because they require parameter tensors that the
+  bridge does not yet thread through" — while the parameter store described
+  fifty lines below threads every one of them, and the capstone benchmark had
+  been dispatching 97 ops with an empty unsupported list. Anyone deciding
+  whether the CPU backend could run their net was reading a description of a
+  compiler that no longer existed. The table is now the dispatcher's arms, in
+  both directions, checked by scraping this file — an opcode listed but not
+  dispatched promises what the backend cannot do, and an arm missing from the
+  table hides what it can.
+- **`type-mismatch` healed nothing for the mismatch the language reports.**
+  The pattern is published as the mechanical repair for type errors, and its
+  generator only fired when the message named `Option` or `Result`. The
+  checker's own commonest mismatch names neither — `type mismatch: I32 vs
+  Usize`, which is what `f m() -> i32 { len(xs) }` produces, the first error
+  most programs hit. So the repair an agent asked for came back empty, on the
+  error it was most likely to be asking about. It now offers a real cast edit
+  between two numeric types and names both sides otherwise. Found by giving
+  every pattern an `example` message and running it.
 - **The ontology published 17 of the binary's 29 flags.** The twelve missing
   included **`--eval`** — the only way to run a program, and half of the
   two-oracle discipline this repository depends on — plus `--version`,
@@ -996,7 +1037,7 @@ it is invisible unless you break the thing on purpose and watch.
 
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,189**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,192**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it.
 - Every typechecker fix has landed without breaking an existing test **except
   one**, where widening `collection_elem` made `sum("hi")` legal and

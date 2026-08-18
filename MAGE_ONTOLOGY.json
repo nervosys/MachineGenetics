@@ -2239,105 +2239,139 @@
     ],
     "heal_patterns": [
       {
+        "example": "expected return type",
         "name": "missing-return-type"
       },
       {
+        "example": "unexpected token `;`",
         "name": "unexpected-token"
       },
       {
+        "example": "function `f` performs undeclared effect [io]",
         "name": "undeclared-effect"
       },
       {
+        "example": "type mismatch: I32 vs Str",
         "name": "type-mismatch"
       },
       {
+        "example": "cannot find `foo` in this scope",
         "name": "unknown-identifier"
       },
       {
+        "example": "spec `positive` violated",
         "name": "spec-violation"
       },
       {
+        "example": "expected `)` to close `(`",
         "name": "missing-closing-paren"
       },
       {
+        "example": "expected `]` to close `[`",
         "name": "missing-closing-bracket"
       },
       {
+        "example": "cannot borrow `x` as mutable",
         "name": "borrow-conflict"
       },
       {
+        "example": "use of moved value `x`",
         "name": "move-after-use"
       },
       {
+        "example": "unused variable `x`",
         "name": "unused-variable"
       },
       {
+        "example": "missing field `y` in initializer",
         "name": "missing-field"
       },
       {
+        "example": "precondition `n > 0` does not hold",
         "name": "contract-precondition-fail"
       },
       {
+        "example": "postcondition `ret > 0` does not hold",
         "name": "contract-postcondition-fail"
       },
       {
+        "example": "invariant `len <= cap` does not hold",
         "name": "invariant-violation"
       },
       {
+        "example": "capability `net` denied",
         "name": "capability-denied"
       },
       {
+        "example": "performance budget exceeded",
         "name": "performance-budget-exceeded"
       },
       {
+        "example": "expected Semi, found RBrace '}'",
         "name": "parse-missing-semi"
       },
       {
+        "example": "expected RBrace, found Eof ''",
         "name": "parse-missing-rbrace"
       },
       {
+        "example": "expected RParen, found Semi ';'",
         "name": "parse-missing-rparen"
       },
       {
+        "example": "expected RBrack, found Semi ';'",
         "name": "parse-missing-rbrack"
       },
       {
+        "example": "expected Colon, found RParen ')'",
         "name": "parse-missing-type-colon"
       },
       {
+        "example": "expected LBrace, found Semi ';'",
         "name": "parse-empty-block"
       },
       {
+        "example": "expected identifier, found Comma ','",
         "name": "parse-stray-comma-in-name-position"
       },
       {
+        "example": "expected KwF, found Semi ';'",
         "name": "parse-stray-semi-in-item-position"
       },
       {
+        "example": "expected Semi, found Ident 'x'",
         "name": "parse-insert-missing-semi"
       },
       {
+        "example": "expected expression, found Eof ''",
         "name": "parse-truncated-expr-at-eof"
       },
       {
+        "example": "expected identifier, found Eof ''",
         "name": "parse-truncated-ident-at-eof"
       },
       {
+        "example": "expected expression, found Semi ';'",
         "name": "parse-stray-semi"
       },
       {
+        "example": "expected expression, found RBrace '}'",
         "name": "parse-empty-where-expr-expected"
       },
       {
+        "example": "expected expression, found Comma ','",
         "name": "parse-stray-comma"
       },
       {
+        "example": "expected Colon, found Comma ','",
         "name": "parse-missing-colon-before-comma"
       },
       {
+        "example": "expected Assign, found Semi ';'",
         "name": "parse-missing-init"
       },
       {
+        "example": "expected identifier, found Arrow '->'",
         "name": "parse-stray-arrow"
       }
     ],
