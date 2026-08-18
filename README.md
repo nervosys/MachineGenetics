@@ -82,11 +82,14 @@ net MLP {
 ```
 
 **4 · Binary IR** — what an agent actually *ships*: the net above lowered to the
-Agentic Binary Language container. **92 bytes — 71.9 % smaller than its text — and it round-trips back to source** *(measured):*
+Agentic Binary Language container. **92 bytes — a third smaller than its text — and it round-trips back to source** *(measured on `benchmarks/constructs/mlp_mage.mg`):*
 
 ```
-ABL1 02 00 01 00 …  4d 4c 50 3f …      ← "ABL1" magic + the MLP module
-327 B  .mg text   →   92 B  binary   →   decompiles to the exact net above
+41 42 4c 31  03 00  01 00 00 00  …  4d 4c 50     ← "ABL1", version 3, 1 item, "MLP"
+139 B  .mg text   →   92 B  binary  (33.8 % smaller)   →   decompiles to an
+equivalent net: same layers, same order, same shapes — layer *names* are
+regenerated (`fc1` comes back as `l_linear_1`), because the container stores
+the ops, not the identifiers.
 ```
 
 > An agent writes intent in form 2 (fewest tokens), the compiler verifies it

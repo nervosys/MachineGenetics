@@ -42,6 +42,14 @@ REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO"
 
 declare -A ACTUAL
+# Counted explicitly rather than with `${#ACTUAL[@]}`: under `set -u` an
+# associative array that has never been assigned is *unbound*, so the length
+# expansion below aborted the line instead of yielding 0. The guard it was
+# supposed to arm therefore never fired — running this script with no stdin
+# printed "documentation disagrees with measurement" for all 74 claims when
+# what actually happened was that nothing had been measured. A counter is
+# assigned before the loop and so is always bound.
+supplied=0
 while IFS='=' read -r k v; do
     # Strip CR: this is invoked from PowerShell as well as bash, and a piped
     # string from PowerShell arrives CRLF-terminated. Without this the last
@@ -49,10 +57,13 @@ while IFS='=' read -r k v; do
     # "documented as 2744, measured 2744" — a mismatch of invisible bytes.
     k="${k//$'\r'/}"
     v="${v//$'\r'/}"
-    [ -n "${k:-}" ] && ACTUAL["$k"]="$v"
+    if [ -n "${k:-}" ]; then
+        ACTUAL["$k"]="$v"
+        supplied=$((supplied + 1))
+    fi
 done
 
-if [ "${#ACTUAL[@]}" -eq 0 ]; then
+if [ "$supplied" -eq 0 ]; then
     echo "check-doc-counts: no counts on stdin; run via scripts/test-all.sh --check-docs" >&2
     exit 2
 fi
@@ -187,6 +198,11 @@ PROSE_FILES="ROADMAP.md MEASUREMENTS.md"
 
 fail=0
 checked=0
+# A claim whose crate was never measured is a different failure from a claim
+# that disagrees with its measurement, and the verdict has to say which —
+# telling someone their docs are wrong when the run simply skipped a crate
+# sends them to edit numbers that were correct.
+missing=0
 
 digits() { printf '%s' "$1" | tr -cd '0-9'; }
 
@@ -197,7 +213,7 @@ compare() {
     local want="${ACTUAL[$key]:-}"
     if [ -z "$want" ]; then
         echo "  ?  $where: no measured value for '$key'" >&2
-        fail=1
+        missing=$((missing + 1))
         return
     fi
     checked=$((checked + 1))
@@ -296,6 +312,13 @@ echo
 if [ "$fail" -ne 0 ]; then
     echo "FAILED - documentation disagrees with measurement." >&2
     echo "The measurement wins; update the docs (see DOCS.md)." >&2
+    exit 1
+fi
+if [ "$missing" -ne 0 ]; then
+    # Still a failure — an unchecked claim is an unguarded claim — but not the
+    # same one, and the remedy is to run the suite, not to edit the docs.
+    echo "INCOMPLETE - $missing documented count(s) had nothing to compare against;" >&2
+    echo "$checked matched. Run scripts/test-all.sh --check-docs so every crate is measured." >&2
     exit 1
 fi
 echo "OK - $checked documented counts match the measured run."

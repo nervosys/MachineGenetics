@@ -3530,6 +3530,40 @@ impl<'a> Parser<'a> {
                 break;
             }
 
+            // `+` at the start of a line, followed by a declaration keyword, is
+            // the `pub` sigil of the *next item* — not addition.
+            //
+            // An expression-body function (`+f a(x) = x + 1`) swallowed
+            // everything after it: the next line's `+f b(x) = …` continued the
+            // expression as `x + 1 + f…`, and the file failed with "expected
+            // expression, found KwF". A module could hold at most one such
+            // function, and only as its last item. README.md's second headline
+            // example is written this way.
+            if matches!(self.peek(), TokenKind::Plus)
+                && self.newline_before_current()
+                && matches!(
+                    self.peek_n(1),
+                    TokenKind::KwF
+                        | TokenKind::KwAf
+                        | TokenKind::KwUf
+                        | TokenKind::KwS
+                        | TokenKind::KwE
+                        | TokenKind::KwT
+                        | TokenKind::KwI
+                        | TokenKind::KwData
+                        | TokenKind::KwMod
+                        | TokenKind::KwC
+                        | TokenKind::KwZ
+                        | TokenKind::KwY
+                        | TokenKind::KwUse
+                        | TokenKind::KwEffect
+                        | TokenKind::KwSpec
+                        | TokenKind::KwExtend
+                )
+            {
+                break;
+            }
+
             self.advance();
 
             // Handle pipeline
@@ -4722,6 +4756,38 @@ mod tests {
         }
     }
 
+    /// An expression-body function does not swallow the next item.
+    ///
+    /// `+f a(x) = x + 1` followed by `+f b(x) = x + 2` failed with "expected
+    /// expression, found KwF": the `+` starting the next line was read as
+    /// addition, so a module could hold at most one expression-body function
+    /// and only as its last item. README.md's second headline example — the
+    /// agentic-first form of `sum_even_squares` — is written that way.
+    #[test]
+    fn an_expression_body_ends_at_the_next_item() {
+        let module = parse_source("+f a(x) = x + 1
+
++f b(x) = x + 2
+");
+        assert_eq!(module.items.len(), 2, "both functions must parse");
+
+        // And the same across every declaration sigil that can follow.
+        for next in ["+f g() = 1", "+S P { x: i32 }", "+E K { A }", "D R(x: i32)"] {
+            let src = format!("+f a(x) = x + 1
+{next}
+");
+            let m = parse_source(&src);
+            assert_eq!(m.items.len(), 2, "`{next}` must be its own item: {src}");
+        }
+
+        // Arithmetic that really does continue on the next line still works:
+        // a `+` followed by a value, not a declaration keyword.
+        let m = parse_source("f a(x: i32) -> i32 { x
+ + 1 }");
+        assert_eq!(m.items.len(), 1);
+    }
+
+    /// `pub` on a `data` record field parses.
     /// `pub` on a `data` record field parses.
     ///
     /// MAGE_SPEC.md §4.3 has `struct_field = visibility? IDENT ':' type`, and

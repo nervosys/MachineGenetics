@@ -12,7 +12,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **2,891** — rmi 1,380 · prototype 1,183 · ribosome 164 · germline 112 · forge 52 |
+| Tests | **2,892** — rmi 1,380 · prototype 1,184 · ribosome 164 · germline 112 · forge 52 |
 | CUDA | **1,071 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm |
@@ -690,6 +690,19 @@ The mirror image, and easy to get backwards.
   A reader would have concluded handlers were unusable and either avoided them
   or started a large refactor.
 
+- **The README, four figures at once.** The front page's binary-IR block was
+  labelled *(measured)* and three of its numbers were not: it printed the
+  container header as `ABL1 02 00` (version is **3**), sized the source at
+  `327 B` (the file it names is **139 B**), and derived "**71.9 % smaller**"
+  from that wrong size (the real reduction is **33.8 %**). The one measured
+  number, 92 bytes, was right — which is how the rest survived. It also said
+  the container "decompiles to the exact net above"; it decompiles to an
+  equivalent net whose **layer names are regenerated** (`fc1` → `l_linear_1`),
+  because the container stores ops, not identifiers. Everything else on that
+  page does hold: form 1, form 3, the composition operators, the Quick Start
+  snippet (→ `30`), the whole `forge` workflow (→ `120`), and all eight
+  `mage-parse` targets it lists.
+
 **The rule:** the ontology *describes* the language; it does not define it. When
 a generated artifact and the spec disagree, the artifact is the likelier
 suspect. Reaching for a special-case parser guard to support a one-character
@@ -714,6 +727,14 @@ spelling means the spelling is wrong, not the parser.
 - **The prelude reserved eighty words globally.** `M net { }` reported
   `duplicate definition: net` against a definition the author never wrote and
   could not see. Source definitions now shadow prelude names.
+- **A module held at most one expression-body function.** `+f a(x) = x + 1`
+  followed by another `+f` failed with `expected expression, found KwF 'f'`: an
+  expression body runs to the end of the expression, and the `+` opening the
+  *next item* was consumed as an addition operator whose right side was the
+  keyword. So the form worked only for the last item in a file — which is why
+  every example that used it happened to have one. `parse_expr_bp` now stops at
+  a `+` that begins a line and is followed by a declaration keyword. Found by
+  running `README.md`'s own second example, which had never been executed.
 - **The sigil-letter diagnostic blamed the binding keyword.** `var v = 3` gave
   `unresolved name: `var`` — the statement was never recognised as a binding, so
   the keyword fell through to expression position and the error landed on the
@@ -761,6 +782,17 @@ Only `stdlib/` and four `framewerx` files remain.
 
 ## Traps, so you do not repeat them
 
+- **`${#arr[@]}` on a never-assigned associative array is *unbound*.** Under
+  `set -u`, `declare -A ACTUAL` followed by a `read` loop that assigns nothing
+  makes `[ "${#ACTUAL[@]}" -eq 0 ]` abort the line — so the empty-input guard
+  in `check-doc-counts.sh` never ran, and the script went on to report
+  "documentation disagrees with measurement" for all 74 claims when what had
+  actually happened was that nothing was measured. Count with a plain integer
+  assigned before the loop, so it is always bound. Corollary, and the reason
+  this mattered more than the syntax: **a checker must distinguish "wrong" from
+  "not checked"**, because the two have opposite remedies — edit the doc versus
+  run the suite — and reporting the wrong one sends someone to change numbers
+  that were correct.
 - **`grep -c` exits 1 when the count is zero.** `cargo clippy … | grep -c
   '^warning' && git commit …` printed `0` and then did not commit: a clean
   result is a *failure* exit for `grep`, so the `&&` chain stopped. Same
@@ -840,7 +872,7 @@ it is invisible unless you break the thing on purpose and watch.
 
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,183**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,184**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it.
 - Every typechecker fix has landed without breaking an existing test **except
   one**, where widening `collection_elem` made `sum("hi")` legal and
