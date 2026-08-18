@@ -149,6 +149,20 @@ go red. A test that names its own subjects cannot report the subject it never
 names — which is the same lesson as the table above, arriving through a
 different door: not "the list is short" but "the list exists".
 
+A third, in the same file:
+`the_builtin_names_attributed_on_call_are_the_documented_ones` kept two
+hand-written buckets — names that attribute an effect, names that attribute
+nothing — under a comment saying they were §11.2's domain column. Between them
+they covered 36 of its 47 names, and the eleven left out included `read`,
+`listen`, `send`, `open`, `remove`, `alloc`, `dealloc`, `now` and `sleep`, all
+of which do attribute an effect and none of which was checked. It now reads the
+domain column and asserts every identifier in it lands in one bucket or the
+other, so a name added to a domain fails until someone decides which it is.
+Only `exec` turned out to be genuinely inert — `proc`'s domain is "spawn, exec,
+tool invocation" and `exec()` performs nothing, which is consistent with
+§11.2's own sentence that the domain column is not a table of callable
+operations, and is now stated where a reader of that table would look.
+
 **A pin over a generated list tends toward tautology.** The follow-up test for
 layer names iterated `layer_map`, which is *filtered* by the same function the
 validation uses — so it could not fail by construction. The escape is inputs the

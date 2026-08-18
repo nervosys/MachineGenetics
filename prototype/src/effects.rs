@@ -1077,6 +1077,13 @@ mod handler_tests {
             ("spawn", "Async"), ("select", "Async"),
             ("realloc", "Alloc"), ("panic", "Panic"),
             ("set_env", "Env"), ("timeout", "Time"),
+            // Added when the coverage assertion below went in: every one of
+            // these is in §11.2's domain column, attributes an effect, and had
+            // never been checked.
+            ("read", "IO"), ("listen", "Net"), ("send", "Net"),
+            ("open", "FS"), ("remove", "FS"),
+            ("alloc", "Alloc"), ("dealloc", "Alloc"),
+            ("now", "Time"), ("sleep", "Time"),
         ];
         for (name, effect) in attributed {
             let inferred = infer_source(&format!("f a() -> i32 {{ {name}(); 0 }}"))
@@ -1093,12 +1100,17 @@ mod handler_tests {
         // Documented in §11.2's domain column, attributed by nothing. If one of
         // these starts inferring an effect, §11.2's second table is now wrong.
         // `join` is here for a different reason: the vocabulary's pure string
-        // join outranks the thread join, and §11.2 says so.
+        // join outranks the thread join, and §11.2 says so. `exec` is the one
+        // surprise: `proc` is a built-in effect whose domain is "spawn, exec,
+        // tool invocation", and `exec()` performs nothing — consistent with
+        // §11.2's own sentence that the domain column is not a table of
+        // callable operations, but worth stating out loud where someone
+        // reading the table will look for it.
         let pure_names = [
             "join", "seek", "close", "catch_panic", "call_foreign", "get_var", "set_var",
             "dispatch", "synchronize", "generate", "embed", "analyze", "evaluate", "mutate",
             "forward", "backward", "step", "random", "seed", "sample", "lifecycle", "message",
-            "lease",
+            "lease", "exec",
         ];
         for name in pure_names {
             let inferred = infer_source(&format!("f a() -> i32 {{ {name}(); 0 }}"))
@@ -1110,6 +1122,41 @@ mod handler_tests {
                 inferred.is_empty(),
                 "`{name}()` is documented as attributing nothing, but inferred {inferred:?}"
             );
+        }
+
+        // Both lists are written by hand, and between them they left eleven of
+        // §11.2's domain names in neither — `read`, `listen`, `send`, `open`,
+        // `remove`, `alloc`, `dealloc`, `now`, `sleep` all attribute an effect
+        // and none of them was checked. So the domain column is read back out
+        // of the spec, and every name in it has to appear in one bucket or the
+        // other. A name added to a domain is then a failure here until someone
+        // decides which it is.
+        let spec = std::fs::read_to_string(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../MAGE_SPEC.md"),
+        )
+        .expect("MAGE_SPEC.md is beside the prototype")
+        .replace("\r\n", "\n");
+        let table = spec
+            .split("### 11.2 Standard Effects")
+            .nth(1)
+            .expect("§11.2 exists")
+            .split("\n### ")
+            .next()
+            .unwrap();
+        for line in table.lines().filter(|l| l.starts_with("| `") || l.starts_with("| **`")) {
+            let domain = line.split('|').nth(2).expect("domain column");
+            for op in domain.split(',') {
+                let op = op.trim().trim_matches('*').trim();
+                // "tool invocation" is prose, not an identifier.
+                if op.is_empty() || op.contains(' ') {
+                    continue;
+                }
+                assert!(
+                    attributed.iter().any(|(n, _)| *n == op) || pure_names.contains(&op),
+                    "`{op}` is in §11.2's domain column and in neither list here — \
+                     nothing checks whether calling it performs an effect"
+                );
+            }
         }
     }
 
