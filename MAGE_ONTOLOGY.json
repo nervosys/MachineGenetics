@@ -16,7 +16,7 @@
     "project_layout": 22,
     "rap_methods": 37,
     "recovery_stages": 7,
-    "sigils": 37,
+    "sigils": 50,
     "types": 30,
     "vocabulary": 31,
     "wrapper_protocol": 9
@@ -4728,6 +4728,71 @@
         "ast_kind": "Impl",
         "sigil": "I",
         "summary": "impl block"
+      },
+      {
+        "ast_kind": "Struct",
+        "sigil": "+S",
+        "summary": "pub struct declaration"
+      },
+      {
+        "ast_kind": "Enum",
+        "sigil": "+E",
+        "summary": "pub enum declaration"
+      },
+      {
+        "ast_kind": "Trait",
+        "sigil": "+T",
+        "summary": "pub trait declaration"
+      },
+      {
+        "ast_kind": "Data",
+        "sigil": "+D",
+        "summary": "pub data record or sum type"
+      },
+      {
+        "ast_kind": "Data",
+        "sigil": "D",
+        "summary": "data record or sum type"
+      },
+      {
+        "ast_kind": "Extend",
+        "sigil": "xd",
+        "summary": "extend Type — inherent methods"
+      },
+      {
+        "ast_kind": "Effect",
+        "sigil": "fx",
+        "summary": "effect declaration"
+      },
+      {
+        "ast_kind": "Spec",
+        "sigil": "sp",
+        "summary": "spec block — contracts on a function"
+      },
+      {
+        "ast_kind": "Swarm",
+        "sigil": "sw",
+        "summary": "swarm declaration"
+      },
+      {
+        "ast_kind": "Function",
+        "sigil": "af",
+        "summary": "async fn — note `async fn` is not the spelling"
+      },
+      {
+        "ast_kind": "Guard",
+        "sigil": "gd",
+        "summary": "guard cond else { … } — the else must diverge"
+      },
+      {
+        "ast_kind": "Defer",
+        "sigil": "df",
+        "summary": "defer expr — run at scope exit"
+      },
+      {
+        "ast_kind": "Yield",
+        "sigil": "yl",
+        "summary": "yield expression"
       },
       {
         "ast_kind": "Mod",

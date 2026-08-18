@@ -1382,9 +1382,20 @@ impl<'a> Parser<'a> {
                     self.advance();
                 }
                 _ => {
+                    // Reached when the wrong word is a *keyword* — `handle`,
+                    // `agent`, `swarm`. The `Ident` arm above names the field
+                    // it did not recognise, so `agent A { brain: x }` said
+                    // "unknown agent field `brain`" while `handle: x` said
+                    // "found KwHandle": the same mistake, reported two ways,
+                    // and §14 promises the first.
+                    let found = self.tokens.get(self.pos).map_or(String::new(), |t| t.text.clone());
+                    let what = if found.is_empty() {
+                        format!("{:?}", self.peek())
+                    } else {
+                        format!("`{found}`")
+                    };
                     return Err(self.error(&format!(
-                        "expected agent field or `}}`, found {:?}",
-                        self.peek()
+                        "{what} is not an agent field. The two are `capabilities`                          and `requires_approval` (MAGE_SPEC.md §14)"
                     )));
                 }
             }
@@ -1399,7 +1410,11 @@ impl<'a> Parser<'a> {
 
     // ── Swarm ───────────────────────────────────────────────
 
-    /// Parse: `swarm Name { agent: Type; size: N; topology: topo; consensus: strat; dispatch { ... } aggregate { ... } on_failure { ... } }`
+    /// Parse: `swarm Name { agent: Type; size: N; topology: topo; consensus: strat;
+    /// transport: t }` — five labels, four of them settings and one the agent type.
+    ///
+    /// This comment used to end `… dispatch { ... } aggregate { ... } on_failure { ... }`,
+    /// and so did the parser. Those three are rejected now: see the arm below.
     fn parse_swarm_def(&mut self) -> Result<SwarmDef, ParseError> {
         self.expect(TokenKind::KwSwarm)?;
         let name = self.expect_ident()?;
@@ -1409,9 +1424,12 @@ impl<'a> Parser<'a> {
         let mut size = None;
         let mut topology = None;
         let mut consensus = None;
-        let mut on_dispatch = None;
-        let mut on_aggregate = None;
-        let mut on_failure = None;
+        // Not `mut`: the surface no longer has a way to set these — see the
+        // rejecting arm below. They stay on `SwarmDef` because the bridge
+        // builds one directly.
+        let on_dispatch = None;
+        let on_aggregate = None;
+        let on_failure = None;
         let mut transport = None;
 
         while self.peek() != TokenKind::RBrace && self.peek() != TokenKind::Eof {
@@ -1450,14 +1468,28 @@ impl<'a> Parser<'a> {
                                 self.advance();
                             }
                         }
-                        "dispatch" => {
-                            on_dispatch = Some(self.parse_block()?);
-                        }
-                        "aggregate" => {
-                            on_aggregate = Some(self.parse_block()?);
-                        }
-                        "on_failure" => {
-                            on_failure = Some(self.parse_block()?);
+                        // Parsed, stored, and then nothing: no resolve pass
+                        // walks these blocks, no typechecker enters them, the
+                        // evaluator has never seen them, and `--fmt` prints
+                        // them back as the literal text `dispatch { ... }`, so
+                        // a format round-trip *deleted the body*. They reached
+                        // exactly one consumer, the MLIR text dump. A block an
+                        // agent can write, that `--check` calls OK, and that
+                        // never runs is the worst failure this compiler has —
+                        // and §14/§15 already say these three do not exist.
+                        //
+                        // The parse arms in `mlir.rs`, `fmt.rs` and `ast.rs`
+                        // stay: they are reachable from the bridge, and this
+                        // is a decision about the *surface*, which is where
+                        // the damage was.
+                        "dispatch" | "aggregate" | "on_failure" => {
+                            return Err(self.error(&format!(
+                                "`{label_text}` is not a swarm field. A swarm block declares \
+                                 the group — `agent`, `size`, `topology`, `consensus`, \
+                                 `transport` — and the work is ordinary functions with `map` \
+                                 and `fold` (MAGE_SPEC.md §9.2, §15). Nothing runs a \
+                                 `{label_text}` block."
+                            )));
                         }
                         "transport" => {
                             self.expect(TokenKind::Colon)?;
@@ -1475,9 +1507,17 @@ impl<'a> Parser<'a> {
                     self.advance();
                 }
                 _ => {
+                    // The keyword case, same as `agent`/`evolve`/`kb`: the
+                    // `Ident` arm above names the field, this one named the
+                    // token kind, and they are the same mistake.
+                    let found = self.tokens.get(self.pos).map_or(String::new(), |t| t.text.clone());
+                    let what = if found.is_empty() {
+                        format!("{:?}", self.peek())
+                    } else {
+                        format!("`{found}`")
+                    };
                     return Err(self.error(&format!(
-                        "expected swarm field or `}}`, found {:?}",
-                        self.peek()
+                        "{what} is not a swarm field. The five labels are `agent`,                          `size`, `topology`, `consensus` and `transport`                          (MAGE_SPEC.md §15)"
                     )));
                 }
             }
@@ -1769,9 +1809,16 @@ impl<'a> Parser<'a> {
                     self.advance();
                 }
                 _ => {
+                    // Named the alternatives and not the word, so the writer
+                    // had to find their own typo. Every other block names it.
+                    let found = self.tokens.get(self.pos).map_or(String::new(), |t| t.text.clone());
+                    let what = if found.is_empty() {
+                        format!("{:?}", self.peek())
+                    } else {
+                        format!("`{found}`")
+                    };
                     return Err(self.error(&format!(
-                        "expected `fact`, `rule`, or `}}` in kb, found {:?}",
-                        self.peek()
+                        "{what} is not a kb entry. A `kb` block holds `fact` and                          `rule` declarations (MAGE_SPEC.md §13)"
                     )));
                 }
             }
@@ -1843,9 +1890,25 @@ impl<'a> Parser<'a> {
                     self.advance();
                 }
                 _ => {
+                    // §12 promises "a field the parser does not recognise is
+                    // an error naming it", and this named the *token kind*:
+                    // `evolve E { zzz: 1 }` reported "expected evolve field or
+                    // `}`, found Ident", which does not tell the writer which
+                    // word was wrong or what the alternatives are. The swarm
+                    // and agent blocks both name theirs; this one is the
+                    // outlier because its fields are keywords rather than
+                    // identifiers, so the mistake falls through to a generic
+                    // arm instead of a `match` on the text.
+                    let found = self.tokens.get(self.pos).map_or(String::new(), |t| t.text.clone());
+                    let what = if found.is_empty() {
+                        format!("{:?}", self.peek())
+                    } else {
+                        format!("`{found}`")
+                    };
                     return Err(self.error(&format!(
-                        "expected evolve field or `}}`, found {:?}",
-                        self.peek()
+                        "{what} is not an evolve field. The seven are `genome`, \
+                         `population`, `generations`, `fitness`, `mutate`, `crossover` \
+                         and `select` (MAGE_SPEC.md §12)"
                     )));
                 }
             }
@@ -4634,6 +4697,110 @@ mod tests {
     // unchanged (the `{` path runs first); only newline-introduced bodies use
     // the column-tracked layout path.
 
+    /// Every AI block names the word it did not recognise.
+    ///
+    /// The spec promises this for each of them, and three of the four broke
+    /// the promise in the same way: the recognised fields are *keywords*, so a
+    /// wrong word falls past every arm to a generic one that reports the token
+    /// kind. `agent A { brain: x }` said "unknown agent field `brain`" and
+    /// `agent A { handle: x }` said "found KwHandle" — the same mistake, two
+    /// reports, and only one of them usable. `evolve` named nothing at all and
+    /// `kb` named the alternatives but not the word.
+    ///
+    /// The wrong word here is deliberately one that *is* a keyword in each
+    /// block, because that is the case the generic arm catches.
+    #[test]
+    fn every_ai_block_names_the_field_it_rejects() {
+        for (src, word) in [
+            ("agent A { handle: x }", "handle"),
+            ("agent A { brain: x }", "brain"),
+            ("swarm S { handle: x }", "handle"),
+            ("swarm S { zzz: 1 }", "zzz"),
+            ("evolve E { handle: x }", "handle"),
+            ("evolve E { zzz: 1 }", "zzz"),
+            ("kb K { handle: x }", "handle"),
+            ("kb K { zzz: 1 }", "zzz"),
+        ] {
+            let e = try_parse(src).expect_err("must be rejected");
+            assert!(
+                e.message.contains(&format!("`{word}`")),
+                "`{src}` must name `{word}`, said: {}",
+                e.message
+            );
+            // And it must not fall back to naming the token kind, which is
+            // what the generic arms did.
+            assert!(
+                !e.message.contains("Kw") && !e.message.contains("found Ident"),
+                "`{src}` reports a token kind rather than the word: {}",
+                e.message
+            );
+        }
+    }
+    /// The fields §14/§15 say a `swarm` block has, and the three it says it
+    /// does not.
+    ///
+    /// `dispatch { … }`, `aggregate { … }` and `on_failure { … }` **parsed**.
+    /// They were stored on `SwarmDef`, reached exactly one consumer — the MLIR
+    /// text dump — and were touched by no resolve pass, no typechecker and no
+    /// evaluator. `--check` said OK. Worse, `--fmt` printed them back as the
+    /// literal string `dispatch { ... }`, so a format round-trip deleted the
+    /// body. An agent could write coordination logic in a swarm, be told it
+    /// was fine, and have it never run.
+    ///
+    /// The spec says in two places that these do not exist; the parser now
+    /// agrees, and says what to write instead.
+    #[test]
+    fn a_swarm_has_four_fields_and_no_behaviour_blocks() {
+        let ok = "swarm S { agent: Worker, size: 4, topology: mesh, \
+                  consensus: quorum, transport: local }";
+        assert!(try_parse(ok).is_ok(), "the documented swarm fields must parse: {ok}");
+        // Short spellings, also documented.
+        assert!(try_parse("swarm S { size: 2, topo: ring, cons: raft }").is_ok());
+
+        for field in ["dispatch", "aggregate", "on_failure"] {
+            let src = format!("swarm S {{ size: 2, {field} {{ 1 }} }}");
+            let e = try_parse(&src).expect_err("a behaviour block must be rejected");
+            assert!(
+                e.message.contains(field) && e.message.contains("not a swarm field"),
+                "rejecting `{field}` must name it: {}",
+                e.message
+            );
+        }
+
+        let e = try_parse("swarm S { zzz: 1 }").expect_err("unknown field");
+        assert!(e.message.contains("zzz"), "{}", e.message);
+    }
+
+    /// An unrecognised `evolve` field is an error **naming it**.
+    ///
+    /// §12 says so, and this was the one block where it was not true: the
+    /// seven fields are keywords rather than identifiers, so a wrong word fell
+    /// through to a generic arm and reported "expected evolve field or `}`,
+    /// found Ident" — the token kind, not the word. `swarm` and `agent` both
+    /// name theirs.
+    #[test]
+    fn an_unknown_evolve_field_is_named() {
+        let e = try_parse("evolve E { zzz: 1 }").expect_err("unknown field");
+        assert!(
+            e.message.contains("`zzz`") && e.message.contains("not an evolve field"),
+            "the diagnostic must name the field: {}",
+            e.message
+        );
+        // And it must list the alternatives, which is the part that makes it
+        // recoverable without opening the spec.
+        for field in ["genome", "population", "generations", "fitness", "mutate",
+                      "crossover", "select"] {
+            assert!(e.message.contains(field), "`{field}` missing from: {}", e.message);
+            // Each of the seven must also actually parse, or the list is a
+            // second claim that could be wrong.
+            let src = match field {
+                "genome" => "evolve E { genome: i32 }".to_string(),
+                "population" | "generations" => format!("evolve E {{ {field}: 10 }}"),
+                _ => format!("evolve E {{ {field} {{ 1 }} }}"),
+            };
+            assert!(try_parse(&src).is_ok(), "`{field}` is advertised and does not parse");
+        }
+    }
     #[test]
     fn layout_braced_block_unchanged() {
         // Regression sentinel — explicit braces still parse.

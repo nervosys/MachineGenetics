@@ -4,11 +4,11 @@
 > Each step is a concrete, testable increment.
 >
 > **Last verified: 2026-08-11** — all five crates built and tested: prototype
-> **1,184**, rmi **1,380**, ribosome **164**, germline **112**, forge **52** —
-> **2,892 tests, 0 failures, 0 warnings**. The crate count went from three to
+> **1,189**, rmi **1,380**, ribosome **164**, germline **112**, forge **53** —
+> **2,898 tests, 0 failures, 0 warnings**. The crate count went from three to
 > five when the build engine (step 148) and the RSI control plane (step 149)
 > were extracted from `forge`; the total is unchanged by those moves, and
-> `forge`'s 52 is what the registry alone measured before they were parked in
+> `forge`'s 53 is what the registry alone measured before they were parked in
 > it. Forge's old "235" was stale as well as merged: accurate immediately before
 > step 144, never updated through steps 144–146, which added 36 tests. See
 > `MEASUREMENTS.md` for the per-commit counts.

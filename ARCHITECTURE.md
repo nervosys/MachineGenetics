@@ -7,7 +7,7 @@ text. It is the leverage the text-token floor denies the language track (see
 [IDEAL_AGENTIC_LANGUAGE.md](IDEAL_AGENTIC_LANGUAGE.md) for that analysis).
 
 > **Scope.** Everything below is implemented and test-covered in `prototype/`
-> (**1,184 tests** green) and scored in the sibling `agentic-eval` crate (80
+> (**1,189 tests** green) and scored in the sibling `agentic-eval` crate (80
 > tests, in the AetherShell repository and not verifiable from here). The one
 > deliberate non-feature is agent/swarm *execution* — see
 > [Honest boundaries](#honest-boundaries).
@@ -175,10 +175,10 @@ are **five independent Cargo workspaces**:
 | Path | Crate | Tests | Notes |
 |---|---|--:|---|
 | `RecursiveMachineIntelligence/` | `rmi` | 1,380 | The low-level neurosymbolic framework. Feature-gated (`cpu` / `gpu` / `cuda`); build with `--no-default-features --features cpu` for the portable set |
-| `prototype/` | `mage-prototype` | 1,184 | Compiler, evaluator, ABL, RAP server. Path-depends on `rmi` |
+| `prototype/` | `mage-prototype` | 1,189 | Compiler, evaluator, ABL, RAP server. Path-depends on `rmi` |
 | `ribosome/` | `ribosome` | 164 | The distributed build engine. Depends on nothing in this repository — see below |
 | `germline/` | `germline` | 112 | Model succession, handoff, fallback — the RSI control plane. Path-depends on `ribosome` |
-| `forge/` | `forge` | 52 | The package registry, and only that |
+| `forge/` | `forge` | 53 | The package registry, and only that |
 
 The dependency graph is a forest, not a web:
 
@@ -186,7 +186,7 @@ The dependency graph is a forest, not a web:
 rmi ←── prototype          ribosome ←── germline          forge
 ```
 
-`forge`'s 52 is not a regression. `ribosome` and `germline` were developed
+`forge`'s 53 is not a regression. `ribosome` and `germline` were developed
 inside it and moved out on 2026-08-04; 52 is what the registry alone was before
 they arrived, and this table said exactly that until they did.
 

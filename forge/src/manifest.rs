@@ -203,12 +203,6 @@ mod tests {
         }
     }
 
-    #[test]
-    fn describe_resolves_with_and_without_dashes() {
-        assert!(describe("check").is_some());
-        assert!(describe("--check").is_some());
-        assert!(describe("nope").is_none());
-    }
 
     #[test]
     fn json_manifest_is_deterministic_and_complete() {
@@ -218,6 +212,76 @@ mod tests {
         assert!(a.starts_with("{\n  \"tool\": \"forge\""));
         for c in COMMANDS {
             assert!(a.contains(&format!("\"name\": \"{}\"", c.name)));
+        }
+    }
+    /// `describe` must answer for **every** command, not the three named here
+    /// before.
+    ///
+    /// `forge manifest` tells an agent the command exists and `forge describe
+    /// <cmd>` is how it learns to call it; a command the manifest lists and
+    /// `describe` cannot expand is a dead end at exactly the point the
+    /// toolchain advertises as the way in.
+    #[test]
+    fn describe_answers_for_every_published_command() {
+        for c in COMMANDS {
+            assert!(
+                describe(c.name).is_some(),
+                "`{}` is in the manifest and `describe` does not know it",
+                c.name
+            );
+            assert!(
+                describe(&format!("--{}", c.name)).is_some(),
+                "`describe --{}` fails while `describe {}` works",
+                c.name,
+                c.name
+            );
+        }
+        assert!(describe("nope").is_none());
+    }
+
+    /// The manifest and the dispatcher must name the same commands.
+    ///
+    /// Every other test in this file iterates `COMMANDS` and checks how it is
+    /// *rendered* — so a command in this table that `bin/forge.rs` never
+    /// dispatches passes all of them, and so does a command the binary accepts
+    /// and the manifest never mentions. The manifest is what an agent reads
+    /// instead of `--help`; the two lists disagreeing is the manifest lying
+    /// about the tool it describes.
+    ///
+    /// The dispatcher is read out of the source because that is the boundary
+    /// being checked. A copy of its arms here would be a third list.
+    #[test]
+    fn the_manifest_and_the_dispatcher_agree() {
+        let src = std::fs::read_to_string(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/bin/forge.rs"),
+        )
+        .expect("bin/forge.rs is in this crate");
+
+        // `Some("check") =>` — the match arms on the first positional. `help`
+        // and the flag spellings share an arm with `None` and are the CLI's
+        // own affordance rather than commands, so they are excluded by name.
+        let dispatched: Vec<String> = src
+            .lines()
+            .filter_map(|l| l.trim().strip_prefix("Some(\""))
+            .filter_map(|l| l.split('"').next())
+            .filter(|n| !n.is_empty() && !n.starts_with('-') && *n != "help")
+            .map(str::to_string)
+            .collect();
+        assert!(!dispatched.is_empty(), "no dispatch arms found — the scrape is broken");
+
+        for c in COMMANDS {
+            assert!(
+                dispatched.iter().any(|d| d == c.name),
+                "the manifest publishes `{}` and `bin/forge.rs` does not dispatch it",
+                c.name
+            );
+        }
+        for d in &dispatched {
+            assert!(
+                COMMANDS.iter().any(|c| c.name == d),
+                "`bin/forge.rs` dispatches `{d}` and the manifest does not publish it — \
+                 an agent reading the manifest cannot discover it"
+            );
         }
     }
 }

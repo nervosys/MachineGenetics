@@ -1317,11 +1317,36 @@ impl Interp {
                 Ok(Value::Unit)
             }
 
-            _ => err(format!(
-                "`{ns}.{op}` has no interpreter implementation — the checker \
-                 tracks the capability, but `--eval` cannot perform it. \
-                 Implemented: io, fs, env, time"
-            )),
+            _ => {
+                // The recovery path an agent needs is "which operations *can*
+                // I call", and this used to answer "Implemented: io, fs, env,
+                // time" — a list of *namespaces*, which reads as a promise that
+                // `io.op` works. It does not: within those four only the
+                // operations below have arms. Naming the namespace an agent
+                // just tried, when that namespace has any, is the answer to the
+                // question it actually asked.
+                let implemented: &[(&str, &str)] = &[
+                    ("io", "println, print, eprintln, eprint, write, writeln, \
+                            read_line, read, read_to_string"),
+                    ("log", "println, print, eprintln, eprint, write, writeln"),
+                    ("fs", "read, read_to_string, write, create, remove, mkdir, \
+                            rename, stat, exists"),
+                    ("env", "get_env, var, env, args"),
+                    ("time", "now, sleep"),
+                ];
+                let detail = match implemented.iter().find(|(n, _)| *n == ns) {
+                    Some((_, ops)) => format!("`{ns}` implements: {ops}"),
+                    None => format!(
+                        "no operation of `{ns}` is implemented; the namespaces \
+                         with any are {}",
+                        implemented.iter().map(|(n, _)| *n).collect::<Vec<_>>().join(", ")
+                    ),
+                };
+                err(format!(
+                    "`{ns}.{op}` has no interpreter implementation — the checker \
+                     tracks the capability, but `--eval` cannot perform it. {detail}"
+                ))
+            }
         }
     }
 
@@ -2058,6 +2083,90 @@ mod tests {
     // Nothing constrained what `!` applied to, so this checked clean and then
     // failed at run time with `value is not callable`.
 
+    /// Every operation the "no implementation" diagnostic advertises must
+    /// actually have an arm.
+    ///
+    /// That message is the whole recovery path for an agent that reached a
+    /// capability `--eval` cannot perform, and it used to read "Implemented:
+    /// io, fs, env, time" — a list of *namespaces*, which promises that
+    /// `io.op` works. It does not; only the operations named below have arms.
+    /// Having replaced the namespace list with an operation list, the list is
+    /// now a claim that can be wrong, so this checks it.
+    ///
+    /// `io.read_line`, `io.read` and `io.read_to_string` are excluded and read
+    /// stdin — under a test harness that is a block, not a result. They are
+    /// the only three excluded, and the reason is the harness rather than the
+    /// implementation.
+    #[test]
+    fn every_advertised_capability_operation_has_an_arm() {
+        let dir = std::env::temp_dir().join("mage_cap_arms");
+        let _ = std::fs::create_dir_all(&dir);
+        let f = dir.join("a.txt");
+        let g = dir.join("b.txt");
+        let fp = f.to_string_lossy().replace('\\', "/");
+        let gp = g.to_string_lossy().replace('\\', "/");
+        let _ = std::fs::write(&f, "x");
+
+        // Arguments chosen so each call succeeds without needing anything the
+        // machine does not already have.
+        let calls: Vec<String> = vec![
+            "io.println(\"\")".into(),
+            "io.print(\"\")".into(),
+            "io.eprintln(\"\")".into(),
+            "io.eprint(\"\")".into(),
+            "io.write(\"\")".into(),
+            "io.writeln(\"\")".into(),
+            "log.println(\"\")".into(),
+            "log.print(\"\")".into(),
+            "log.eprintln(\"\")".into(),
+            "log.eprint(\"\")".into(),
+            "log.write(\"\")".into(),
+            "log.writeln(\"\")".into(),
+            format!("fs.read(\"{fp}\")"),
+            format!("fs.read_to_string(\"{fp}\")"),
+            format!("fs.write(\"{gp}\", \"y\")"),
+            format!("fs.create(\"{gp}\", \"y\")"),
+            format!("fs.stat(\"{fp}\")"),
+            format!("fs.exists(\"{fp}\")"),
+            format!("fs.mkdir(\"{}\")", dir.join("sub").to_string_lossy().replace('\\', "/")),
+            format!("fs.rename(\"{gp}\", \"{gp}\")"),
+            format!("fs.remove(\"{gp}\")"),
+            "env.get_env(\"PATH\")".into(),
+            "env.var(\"PATH\")".into(),
+            "env.env(\"PATH\")".into(),
+            "env.args()".into(),
+            "time.now()".into(),
+            "time.sleep(0)".into(),
+        ];
+
+        for call in &calls {
+            let src = format!("f a() {{ {call} }}");
+            let out = run_source(&src, "a", &[]);
+            let msg = match out {
+                Ok(_) => continue,
+                Err(e) => e,
+            };
+            assert!(
+                !msg.contains("no interpreter implementation"),
+                "the diagnostic advertises `{call}` and there is no arm for it: {msg}"
+            );
+        }
+
+        // And the inverse, so the message cannot quietly become a promise
+        // about a namespace with nothing behind it: a namespace it does *not*
+        // name must say so.
+        for ns in ["net", "llm", "gpu", "agent", "http", "mem", "swarm", "os", "sys",
+                   "process", "tools", "json", "kb", "db", "rng"] {
+            let src = format!("f a() {{ {ns}.op(\"x\") }}");
+            let msg = run_source(&src, "a", &[]).expect_err("unimplemented");
+            assert!(
+                msg.contains("no operation of") && msg.contains("is implemented"),
+                "`{ns}.op` should report that nothing in `{ns}` is implemented: {msg}"
+            );
+        }
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
     /// Every builtin `resolve` registers must reach an arm here.
     ///
     /// Thirteen of the seventeen did not: they typechecked and died with

@@ -32,12 +32,15 @@ net Name { layer …; forward }   neural net
 val x = expr                    immutable binding             v
 var x = expr                    mutable binding               m
 pub const NAME: T = expr;       constant (`;` required)       C
+Z NAME: T = expr;               static — agent mode only      Z
 type Id = i32;                  type alias
 ```
 
 **Not in the language:** `let` (the parser rejects it by name), `mut x`,
-`pub(crate)`, `const fn`, `static`, `extern`, `unsafe`, `mod`/`use` as anything
-that imports — see *One namespace* below.
+`pub(crate)`, `const fn`, `extern`, `unsafe`, `mod`/`use` as anything that
+imports — see *One namespace* below. The human spelling `static N: T = v;`
+does not parse either, but the agent-mode `Z` above does — the only
+declaration in this table with no human form.
 
 ## Control Flow
 

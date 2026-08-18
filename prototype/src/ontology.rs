@@ -40,6 +40,29 @@ const SIGILS: &[(&str, &str, &str)] = &[
     ("E", "Enum", "enum declaration"),
     ("T", "Trait", "trait declaration"),
     ("I", "Impl", "impl block"),
+    // Nine sigils below this line parse and were published nowhere. An agent
+    // discovers the language from this file, and `D`, `xd`, `fx` and `sp` are
+    // whole features — records, inherent methods, effect declarations and
+    // contracts — that it had no way to find. `agent-guide/syntax-quick-ref.md`
+    // taught all nine; nothing compared the guide with the ontology, so the
+    // two disagreed about what the language contains.
+    // `+` is the `pub` prefix and composes with every item sigil. Only `+f`
+    // was published, so an agent could discover public *functions* and not
+    // public types, and `+S` looked like a syntax error to anything reading
+    // the JSON. The guide taught all of these.
+    ("+S", "Struct", "pub struct declaration"),
+    ("+E", "Enum", "pub enum declaration"),
+    ("+T", "Trait", "pub trait declaration"),
+    ("+D", "Data", "pub data record or sum type"),
+    ("D", "Data", "data record or sum type"),
+    ("xd", "Extend", "extend Type — inherent methods"),
+    ("fx", "Effect", "effect declaration"),
+    ("sp", "Spec", "spec block — contracts on a function"),
+    ("sw", "Swarm", "swarm declaration"),
+    ("af", "Function", "async fn — note `async fn` is not the spelling"),
+    ("gd", "Guard", "guard cond else { … } — the else must diverge"),
+    ("df", "Defer", "defer expr — run at scope exit"),
+    ("yl", "Yield", "yield expression"),
     ("M", "Mod", "module declaration"),
     ("u", "Use", "use import"),
     ("Y", "TypeAlias", "type alias"),
@@ -1685,6 +1708,110 @@ mod tests {
         }
     }
 
+    /// The quick reference and the ontology must name the same sigils.
+    ///
+    /// `agent-guide/syntax-quick-ref.md` is what an agent reads to *learn* the
+    /// compressed surface; `MAGE_ONTOLOGY.json` is what it reads to *discover*
+    /// the language mechanically. They are two renderings of one fact and
+    /// nothing compared them, so they disagreed about what MAGE contains:
+    /// `D`, `xd`, `fx`, `sp`, `sw`, `af`, `gd`, `df` and `yl` all parse, the
+    /// guide taught all nine, and the ontology published none of them. Four of
+    /// those are whole features — records, inherent methods, effect
+    /// declarations and contracts — invisible to anything reading the JSON.
+    ///
+    /// The guide is a fixed-width text table inside code fences, so the sigil
+    /// is the last whitespace-separated column. Rows whose last column is
+    /// prose (a parenthesised note, an arrow) are skipped by requiring the
+    /// token to be short and free of spaces.
+    #[test]
+    fn the_quick_reference_and_the_ontology_name_the_same_sigils() {
+        let guide = std::fs::read_to_string(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../agent-guide/syntax-quick-ref.md"),
+        )
+        .expect("the quick reference is beside the prototype")
+        .replace("\r\n", "\n");
+
+        let mut in_fence = false;
+        let mut fence_no = 0usize;
+        let mut taught: Vec<String> = Vec::new();
+        // The first fence is the "Declarations" table, where every right-hand
+        // entry is a declaration sigil and nothing else. Collected separately
+        // because the union check below is weak for these: `xd`, `af` and `D`
+        // are also lexer keywords, so removing one from `SIGILS` still passes
+        // the general test. The strict list is what makes that a failure.
+        let mut declarations: Vec<String> = Vec::new();
+        for line in guide.lines() {
+            if line.starts_with("```") {
+                in_fence = !in_fence;
+                if in_fence {
+                    fence_no += 1;
+                }
+                continue;
+            }
+            if !in_fence || line.trim().is_empty() {
+                continue;
+            }
+            // Three or more columns separated by runs of spaces; the sigil is
+            // the last. A two-column row is a form with no agent spelling.
+            let cols: Vec<&str> = line.trim().split("  ").filter(|c| !c.trim().is_empty()).collect();
+            if cols.len() < 3 {
+                continue;
+            }
+            let last = cols[cols.len() - 1].trim();
+            // `S / +S` teaches two; `?= e { }` is a form, not a sigil.
+            for tok in last.split('/') {
+                let tok = tok.trim();
+                if tok.is_empty() || tok.len() > 6 || tok.contains(' ') || tok.starts_with('(') {
+                    continue;
+                }
+                if !taught.iter().any(|t| t == tok) {
+                    taught.push(tok.to_string());
+                }
+                if fence_no == 1 && !declarations.iter().any(|t| t == tok) {
+                    declarations.push(tok.to_string());
+                }
+            }
+        }
+        assert!(taught.len() > 20, "the scrape found only {} sigils — it is broken", taught.len());
+
+        // The guide's right-hand column is not always a sigil: its effect
+        // table puts effect *names* there and its type table puts type names.
+        // Those are published in other sections, and an agent that finds `ffi`
+        // under `effects` has discovered it. So the claim is the general one —
+        // nothing the guide teaches is invisible to a reader of the JSON —
+        // checked against every section that names a spelling.
+        let mut published: Vec<String> =
+            SIGILS.iter().map(|(s, _, _)| (*s).to_string()).collect();
+        published.extend(EFFECTS.iter().map(|(n, _, _)| (*n).to_string()));
+        published.extend(KEYWORD_DOCS.iter().map(|(n, _, _)| (*n).to_string()));
+        published.extend(TYPES.iter().map(|(n, _, _)| (*n).to_string()));
+        published.extend(crate::lexer::KEYWORDS.iter().map(|(n, _)| (*n).to_string()));
+        published.extend(crate::resolve::VOCABULARY.iter().map(|(n, _, _)| (*n).to_string()));
+        published.extend(
+            crate::hir::CAPABILITY_NAMESPACES.iter().map(|(n, _)| (*n).to_string()),
+        );
+
+        for t in &taught {
+            assert!(
+                published.iter().any(|p| p == t),
+                "`{t}` is taught in syntax-quick-ref.md and appears in no ontology                  section — an agent reading the JSON cannot discover it"
+            );
+        }
+
+        let sigils: Vec<&str> = SIGILS.iter().map(|(s, _, _)| *s).collect();
+        assert!(
+            declarations.len() >= 10,
+            "the Declarations fence yielded {} sigils — the scrape is broken",
+            declarations.len()
+        );
+        for d in &declarations {
+            assert!(
+                sigils.contains(&d.as_str()),
+                "`{d}` is a declaration sigil in syntax-quick-ref.md and is not in                  the ontology's `sigils` section"
+            );
+        }
+    }
     /// Every `ItemKind` variant is published, and every published kind is a
     /// variant.
     ///

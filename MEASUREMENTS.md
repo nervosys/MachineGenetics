@@ -6,8 +6,8 @@ numbers are machine-dependent; the shapes (throughput, scaling) are not.
 
 Date: 2026-06-10. Build: `release` for perf, `cargo test` for functionality.
 
-> **Re-verified 2026-08-11** — all five crates tested: prototype **1,184**, rmi
-> **1,380**, ribosome **164**, germline **112**, forge **52** = **2,892 passing,
+> **Re-verified 2026-08-11** — all five crates tested: prototype **1,189**, rmi
+> **1,380**, ribosome **164**, germline **112**, forge **53** = **2,898 passing,
 > 0 failing, 0 warnings**. No figure below has regressed.
 >
 > *A measurement that was wrong.* `BuildReport::cache_hit_ratio` was
@@ -65,11 +65,11 @@ Date: 2026-06-10. Build: `release` for perf, `cargo test` for functionality.
 ### Test suites (all green)
 | Suite | Tests | Cmd |
 |---|---|---|
-| MAGE prototype | **1184 pass** (+2 ignored perf harnesses) | `cargo test` |
+| MAGE prototype | **1189 pass** (+2 ignored perf harnesses) | `cargo test` |
 | rmi (`cpu`) | **1380 pass** | `cargo test --no-default-features --features cpu` |
 | ribosome (build engine) | **164 pass** | `cargo test --manifest-path ribosome/Cargo.toml` |
 | germline (RSI control plane) | **112 pass** | `cargo test --manifest-path germline/Cargo.toml` |
-| forge (registry) | **52 pass** | `cargo test --manifest-path forge/Cargo.toml` |
+| forge (registry) | **53 pass** | `cargo test --manifest-path forge/Cargo.toml` |
 | agentic-eval (AetherShell) | **80 pass** | `cargo test -p agentic-eval` |
 | SPINE `spine-agentic` | **285 pass** | `cargo test -p spine-agentic` |
 | SPINE `spine-mage` (ABL bridge) | **5 pass** | `cargo test -p spine-mage` |

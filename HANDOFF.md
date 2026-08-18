@@ -12,7 +12,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **2,892** — rmi 1,380 · prototype 1,184 · ribosome 164 · germline 112 · forge 52 |
+| Tests | **2,898** — rmi 1,380 · prototype 1,189 · ribosome 164 · germline 112 · forge 53 |
 | CUDA | **1,071 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm |
@@ -173,6 +173,51 @@ answer to the published signature — and asserts its own case list is exactly
 the published vocabulary, so the coverage question is answered in the script
 rather than by whoever reads it. All 31 pass today. Wired into CI beside the
 doc instruments.
+
+**The unimplemented-capability message named the wrong kind of thing.** All 20
+capability namespaces report honestly under `--eval` — none silently returns a
+wrong value, which is the failure that would matter most here. But the message
+read "Implemented: io, fs, env, time", a list of *namespaces*, while `io.op`
+was refused: within those four only specific operations have arms. An agent
+recovering from that error was told to retry in a namespace that would refuse
+it again. It now names the operations of the namespace the caller just tried,
+or says plainly that nothing in it is implemented. Since the message is now a
+claim that can be wrong, `every_advertised_capability_operation_has_an_arm`
+runs every operation it advertises — verified by advertising a `time.deadline`
+that does not exist.
+
+**`forge`'s manifest and its dispatcher were never compared.** All four tests
+over `COMMANDS` check how the table is *rendered*, so a published command the
+binary does not dispatch, or a command the binary accepts and the manifest
+never mentions, passes every one of them. `forge manifest` is what an agent
+reads instead of `--help`. They agree today; a test now says so in both
+directions, verified by adding a hidden `secret` command. `describe` was also
+checked against three names by hand and is now checked against all ten, with
+and without dashes.
+
+**The guide and the ontology disagreed about what the language contains.**
+`agent-guide/syntax-quick-ref.md` is what an agent reads to *learn* the
+compressed surface; `MAGE_ONTOLOGY.json` is what it reads to *discover* the
+language mechanically. Nothing compared them. Thirteen sigils that parse were
+taught by the guide and published by neither: `D`, `xd`, `fx`, `sp`, `sw`,
+`af`, `gd`, `df`, `yl`, and the `pub` forms `+S`, `+E`, `+T`, `+D`. Only `+f`
+was there, so an agent reading the JSON could discover public *functions* and
+not public types — and four of the nine are whole features (records, inherent
+methods, effect declarations, contracts). The section went 37 → 50. Checking the guide's other column while there turned
+up one more: it listed `static` under "Not in the language", which is true of
+the human spelling and false of the agent-mode `Z NAME: T = expr;`, the only
+declaration in the table with no human form. Its human column is otherwise
+sound — every row parses once the meta-syntax placeholders (`fields`,
+`methods`, `ops`) are replaced with real ones.
+
+The test that now holds them together taught its own lesson. Written first as
+"every token the guide teaches appears in some ontology section", it passed
+with `xd` deleted from `sigils` — because `xd` is *also* a lexer keyword, and
+the union of every section made the check nearly unfalsifiable. **A both-
+directions test can still be vacuous if the right-hand side is broad enough.**
+It now checks the guide's Declarations fence against `sigils` specifically,
+which is the narrow claim that can fail, and keeps the union check for the
+broader one. Verified by deleting `xd` again.
 
 **A pin over a generated list tends toward tautology.** The follow-up test for
 layer names iterated `layer_map`, which is *filtered* by the same function the
@@ -487,6 +532,16 @@ about the other.** Run both.
 The parser takes it; nothing downstream honours it. The failure surfaces
 elsewhere, pointing at the wrong line.
 
+- **A swarm's `dispatch`, `aggregate` and `on_failure` blocks.** They parsed,
+  were stored on `SwarmDef`, and reached exactly one consumer: the MLIR text
+  dump. No resolve pass walked them, no typechecker entered them, the evaluator
+  had never seen them — and `--fmt` printed them back as the literal string
+  `dispatch { ... }`, so a format round-trip **deleted the body**. An agent
+  could write a swarm's coordination logic, get `Status: OK`, format the file,
+  and be left with nothing. §14 and §15 both say these three do not exist, so
+  the parser now agrees and the diagnostic says what to write instead
+  (`map`/`fold` over ordinary functions, §9.2). The `ast`/`mlir`/`fmt` paths
+  stay — they are reachable from the bridge, and the damage was on the surface.
 - **`use` brings nothing into scope.** `u totally.made.up.path` was accepted;
   `u std.io.read_to_string` then `read_to_string("x")` gave `unresolved name` at
   the *call site* — the one line the author wrote correctly. Now warns.
@@ -791,6 +846,19 @@ spelling means the spelling is wrong, not the parser.
   every example that used it happened to have one. `parse_expr_bp` now stops at
   a `+` that begins a line and is followed by a declaration keyword. Found by
   running `README.md`'s own second example, which had never been executed.
+- **All four AI blocks reported the token kind instead of the word, in the
+  same place.** Each spec section promises "a field the parser does not
+  recognise is an error naming it", and each block has *two* rejection paths:
+  an `Ident` arm that names the field, and a generic arm for everything else.
+  The recognised fields are keywords, so any wrong word that happens to be a
+  keyword lands in the generic arm — `agent A { brain: x }` said "unknown agent
+  field `brain`" and `agent A { handle: x }` said "found KwHandle", the same
+  mistake reported two ways with only one of them usable. `evolve` named
+  nothing at all and `kb` named the alternatives but not the word. All four now
+  name it and list the valid fields. Found by checking one block; the test that
+  pins it caught the fourth, `swarm`, which I had not looked at. The `evolve`
+  test also parses each of the seven fields it advertises, so the list cannot
+  become a second wrong claim.
 - **The sigil-letter diagnostic blamed the binding keyword.** `var v = 3` gave
   `unresolved name: `var`` — the statement was never recognised as a binding, so
   the keyword fell through to expression position and the error landed on the
@@ -928,7 +996,7 @@ it is invisible unless you break the thing on purpose and watch.
 
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,184**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,189**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it.
 - Every typechecker fix has landed without breaking an existing test **except
   one**, where widening `collection_elem` made `sum("hi")` legal and
