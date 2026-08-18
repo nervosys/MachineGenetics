@@ -1066,6 +1066,22 @@ The mirror image, and easy to get backwards.
   crate's contents, so the file now says which it is. **A prose document is not
   covered by a check that reads code blocks**, and the passing result said
   nothing about it either way.
+- **`RIBOSOME.md` and `GERMLINE.md` under-report their own evidence.** Both
+  carry tables of "the tests that assert a property this system is judged on",
+  and both list a subset: Ribosome names 15 of 19 and calls 11 scenarios 10;
+  Germline names 4 of its 6 closed-loop scenarios. **Every name they do list
+  exists** — this is omission, not invention, and it is the first documentation
+  drift this session that costs the project credit rather than misleading a
+  reader. The omitted tests are not filler. Ribosome's includes the regression
+  test for `cache_hit_ratio`, which reported a *perfect* reuse ratio for a build
+  that failed every action while `Fitness::reuse` paid it the maximum score.
+  Germline's two are `the_runner_drives_a_real_workload_to_a_bounded_stop` and
+  its failure twin — the ones that answer the obvious sceptical question about
+  an RSI loop, which is whether anything in the path is a stub. Also two
+  modules (`mac`, `tls`) missing from Ribosome's architecture table, and `tls`
+  matters: two documents turn on `rustls` staying out of the default build, and
+  a module table that never mentions it invites the reader to assume there is
+  nothing to keep out.
 - **`rmi/docs/protocol.md` describes a wire format the implementation does not
   speak.** Checked after `api.md`, on the same suspicion that one bad doc is
   rarely alone. The header diagram is wrong in every field: the magic is
