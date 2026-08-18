@@ -877,12 +877,21 @@ impl NlEngine {
                         let pts: Vec<String> = f
                             .params
                             .iter()
-                            .map(|p| format!("{}: {:?}", p.name, p.ty))
+                            .map(|p| {
+                                format!(
+                                    "{}: {}",
+                                    p.name,
+                                    fmt::type_to_string(&p.ty, fmt::Mode::Human)
+                                )
+                            })
                             .collect();
                         explanation.push_str(&format!(" ({})", pts.join(", ")));
                     }
                     if let Some(ref ret) = f.return_type {
-                        explanation.push_str(&format!(" -> {:?}", ret));
+                        explanation.push_str(&format!(
+                            " -> {}",
+                            fmt::type_to_string(ret, fmt::Mode::Human)
+                        ));
                     }
                     if !f.effects.is_empty() {
                         explanation.push_str(&format!(" / {}", f.effects.join(", ")));
@@ -2794,6 +2803,33 @@ mod tests {
     use super::*;
 
     // ── Intent parsing ─────────────────────────────────────────────
+
+    /// An explanation renders types, rather than dumping the AST node.
+    ///
+    /// `nl/explain` on `+f add(a: i32, b: i32) -> i32` answered
+    /// "(a: Path { segments: [\"i32\"], type_args: [] }, …)" — Rust `Debug`
+    /// output in a natural-language answer, from the method an agent reaches
+    /// for to *understand* code.
+    #[test]
+    fn an_explanation_renders_types_not_debug_output() {
+        let mut engine = NlEngine::new();
+        let r = engine.process(
+            "explain this code
+```mg
++f add(a: i32, b: i32) -> i32 { a + b }
+```",
+        );
+        assert!(
+            r.explanation.contains("(a: i32, b: i32) -> i32"),
+            "types must be rendered: {}",
+            r.explanation
+        );
+        assert!(
+            !r.explanation.contains("segments:"),
+            "AST debug output leaked into the explanation: {}",
+            r.explanation
+        );
+    }
 
     /// "refactor" contains "fact", and the knowledge-base branch lists `fact`
     /// as a keyword — so every refactor request classified as "generate a

@@ -111,9 +111,9 @@ Backend: **perturbed-oracle**.  Generated from `benchmarks/tasks/*.json` (100 ta
 
 | Percentile | µs |
 |---|---:|
-| p50 | 30 |
-| p95 | 277 |
-| p99 | 342 |
+| p50 | 32 |
+| p95 | 289 |
+| p99 | 363 |
 
 ---
 _Backend interface: `CandidateAgent::propose(&Task) -> Result<String, String>`. Wire a real LLM by implementing this trait and replacing `FileOracleAgent` in `prototype/src/bin/reliability_bench.rs`._
