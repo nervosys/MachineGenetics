@@ -110,6 +110,25 @@ pub const MODES: &[CliMode] = &[
                  diagnostic, sorted (byte-stable). Parse structurally; don't scrape prose.\n\
                  The cheapest way for an agent to validate generated MAGE.",
     },
+    // `--eval` was on the DELIBERATELY_UNLISTED allowlist, annotated
+    // "superseded by --run=abl". It is not: `--run=abl` reads an Agentic
+    // Binary Language *container* and answers `bad magic` on a `.mg` file.
+    // So the manifest that calls itself "read this first" omitted the only
+    // way to run a MAGE program — and `--check` and `--eval` are two
+    // independent oracles, which is the single most load-bearing fact about
+    // validating generated code here.
+    CliMode {
+        flag: "--eval",
+        args: "<file.mg> [<function>]",
+        summary: "run the module and print a value — the second oracle",
+        effect: "read_local",
+        detail: "Evaluates `main` by default, or the named function. Prints the value.
+                 A program can typecheck and fail to run, and the reverse: this
+                 repository has found five bugs of each shape. `--check` alone is
+                 half a verdict. Effects that reach the host (io, fs, env, time)
+                 really happen; the rest report that the checker tracks the
+                 capability and the interpreter cannot perform it.",
+    },
     CliMode {
         flag: "--fmt-compact",
         args: "<file.mg> [out]",
@@ -320,7 +339,6 @@ mod discovery_coverage_tests {
         "--spine=frame",    // SPINE integration, experimental and separately documented
         "--spine=profile",
         "--spine=swarm",
-        "--eval",           // superseded by --run=abl; kept for the eval_bench harness
         "--emit-ontology",  // maintenance command, listed in its own right below
         "-V",               // alias of --version
     ];

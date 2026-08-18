@@ -8,6 +8,26 @@ use mage_prototype::*;
 
 use std::io::Read;
 
+/// Is this argument a *modifier* rather than a mode or a path?
+///
+/// Modifiers stack with any mode (`--json`, `--fix`, `--backend=…`), so they
+/// have to be removed before the positional arguments are read — a modifier
+/// left in the list becomes a **path**, and the failure is "cannot find the
+/// file `--fix`" rather than a bad-flag message.
+///
+/// One function, because the test used to keep its own copy of this list:
+/// deleting `--token-report` from the real filter left the test passing, since
+/// it was exercising its duplicate. A test that mirrors the implementation
+/// cannot catch the implementation drifting.
+fn is_modifier_flag(a: &str) -> bool {
+    matches!(
+        a,
+        "--no-elision" | "--syntax=legacy" | "--syntax=canonical" | "--token-report"
+            | "--json" | "--fix"
+    ) || a.starts_with("--backend=")
+        || a.starts_with("--backends-file=")
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     let no_elision = args.iter().any(|a| a == "--no-elision");
@@ -70,14 +90,7 @@ fn main() {
     let filtered: Vec<&str> = args
         .iter()
         .skip(1)
-        .filter(|a| {
-            !matches!(
-                a.as_str(),
-                "--no-elision" | "--syntax=legacy" | "--syntax=canonical" | "--token-report"
-                    | "--json" | "--fix"
-            ) && !a.starts_with("--backend=")
-              && !a.starts_with("--backends-file=")
-        })
+        .filter(|a| !is_modifier_flag(a))
         .map(|s| s.as_str())
         .collect();
 
@@ -3235,20 +3248,10 @@ fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool, to
 mod cli_arg_tests {
     /// The positional-argument filter, extracted so it can be tested without
     /// running the binary. Must stay in sync with `main`'s copy.
+    /// The *production* filter, not a copy of it.
     fn positional(args: &[&str]) -> Vec<String> {
         args.iter()
-            .filter(|a| {
-                !matches!(
-                    **a,
-                    "--no-elision"
-                        | "--syntax=legacy"
-                        | "--syntax=canonical"
-                        | "--token-report"
-                        | "--json"
-                        | "--fix"
-                ) && !a.starts_with("--backend=")
-                    && !a.starts_with("--backends-file=")
-            })
+            .filter(|a| !super::is_modifier_flag(a))
             .map(|s| s.to_string())
             .collect()
     }
@@ -3266,25 +3269,50 @@ mod cli_arg_tests {
         assert_eq!(before, after, "flag position must not change the paths");
     }
 
+    /// Every *modifier* flag the ontology publishes is filtered out of the
+    /// positional arguments.
+    ///
+    /// This iterated a hardcoded list of eight under the name "every
+    /// documented flag" — the pattern that hid twelve unpublished flags one
+    /// module over. It now reads the published catalog, so a new modifier
+    /// cannot be added to the ontology and forgotten here.
+    ///
+    /// A flag missing from the filter becomes a *path*, and the failure is a
+    /// confusing "cannot find the file" rather than a bad-flag message.
     #[test]
     fn every_documented_flag_is_filtered() {
-        // Any flag missing from the filter becomes a path, which fails as a
-        // confusing "cannot find the file" rather than as a bad flag.
-        for f in [
-            "--no-elision",
-            "--syntax=legacy",
-            "--syntax=canonical",
-            "--token-report",
-            "--json",
-            "--fix",
-            "--backend=cpu",
-            "--backends-file=b.json",
-        ] {
+        // Mode-selecting flags (`--check`, `--target=abl-*`) are the first
+        // positional themselves; the modifiers are the ones that must vanish.
+        let published = mage_prototype::ontology::section("cli_flags")
+            .expect("cli_flags section");
+        let mut checked = 0;
+        for row in published.as_array().unwrap() {
+            let flag = row["flag"].as_str().unwrap();
+            // A value-taking flag is exercised with a plausible value.
+            let arg = match flag {
+                "--backend=<name>" => "--backend=cpu".to_string(),
+                "--backends-file=<path>" => "--backends-file=b.json".to_string(),
+                f if f.starts_with("--target=")
+                    || f.starts_with("--run=")
+                    || f.starts_with("--from=")
+                    || f.starts_with("--build=")
+                    || f.starts_with("--describe")
+                    || f.starts_with("--spine=")
+                    || matches!(f, "--check" | "--eval" | "--pipeline" | "--rap"
+                                | "--fmt-compact" | "--fmt-expand" | "--emit-ontology"
+                                | "--manifest" | "--rain" | "--version" | "--input") =>
+                {
+                    continue
+                }
+                other => other.to_string(),
+            };
+            checked += 1;
             assert_eq!(
-                positional(&["--build=abl", f, "in.json", "out.abl"]),
+                positional(&["--build=abl", &arg, "in.json", "out.abl"]),
                 vec!["--build=abl", "in.json", "out.abl"],
-                "`{f}` leaked into the positional args and would be read as a path"
+                "`{arg}` leaked into the positional args and would be read as a path"
             );
         }
+        assert!(checked >= 8, "expected the modifier flags, checked {checked}");
     }
 }

@@ -502,6 +502,18 @@ elsewhere, pointing at the wrong line.
   accepts must be in the cli_flags ontology section". It now scrapes the flag
   literals out of `main.rs` and compares the two sets in both directions —
   verified by removing `--eval` and watching it fail. 36 flags are published.
+- **The tool manifest omitted `--eval`, calling it "superseded by
+  `--run=abl`".** It is not superseded: `--run=abl` reads an Agentic Binary
+  Language *container* and answers `bad magic` on a `.mg` file. So
+  `--manifest` — which describes itself as "read this first" and promises an
+  agent will never need the prose docs — listed no way to run a MAGE program.
+  Now listed, with the two-oracle point in its detail text.
+- **A test kept its own copy of the thing it tested.** `positional()` in
+  `main.rs`'s test module duplicated the production modifier-flag filter, so
+  deleting `--token-report` from the real filter left the test green. One
+  function now, called by both — verified by deleting the flag again and
+  watching it fail. **A test that mirrors the implementation cannot catch the
+  implementation drifting.**
 - **`MAGE_SPEC.md` Appendix B — the dual-syntax mapping table — had seven
   wrong rows**, under the heading "Every Human-mode construct has an
   Agent-mode equivalent. Both parse to the same AST." `const` → `c`

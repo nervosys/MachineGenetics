@@ -1776,6 +1776,15 @@ mod tests {
         };
 
         for lit in &in_main {
+            // A literal ending in `=` is a `starts_with` prefix, not a flag —
+            // `--target=` and friends appear that way in argument handling and
+            // in tests. The two that *are* flags normalise to their published
+            // `<value>` spelling below.
+            if lit.ends_with('=')
+                && !matches!(*lit, ref l if l == "--backend=" || l == "--backends-file=")
+            {
+                continue;
+            }
             let want = normalise(lit);
             assert!(
                 published.contains(&want.as_str()),
