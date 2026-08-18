@@ -12,7 +12,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **2,904** — rmi 1,380 · prototype 1,195 · ribosome 164 · germline 112 · forge 53 |
+| Tests | **2,908** — rmi 1,384 · prototype 1,195 · ribosome 164 · germline 112 · forge 53 |
 | CUDA | **1,071 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm — and the four *committed* lockfiles now report 0 warnings too |
@@ -332,6 +332,45 @@ document.
 figure in the table above had no mechanism behind it — it was true when
 someone last looked, which for a vulnerability count is a different thing from
 being true.
+
+**A security document's *under*-claims are defects too.** `SECURITY_AUDIT.md`
+§3 said the non-loopback `--rap` refusal was "proposed, not yet enforced". It
+has been enforced for some time: `rap::is_non_loopback` exits 2 with an
+explanation unless `MAGE_RAP_ALLOW_REMOTE=1`, and warns even then. A reader
+planning a deployment would have built a guard that already exists, or avoided
+the tool over a gap it does not have.
+
+The same row's memory-safety claim was wrong in the other direction, and this
+one mattered: "rmi has 1 audited `unsafe` in lib.rs, 3 in the CUDA FFI shim —
+all reviewed, FFI-boundary only". `lib.rs` has none, and the real surface is
+**9 `unsafe` blocks in `runtime/memory_pool.rs`** — an arena allocator doing
+`alloc_zeroed` and raw pointer arithmetic, compiled unconditionally. Not an FFI
+boundary; the highest-risk category of `unsafe` there is, asserted not to exist.
+(`compute/cuda_full.rs` holds 16 more but no `mod` declaration references it, so
+it never compiles — counting those would overstate the surface as badly as the
+old row understated it.)
+
+Reviewing those 9 found **four** defects. Two in `Slab::new`, both reachable in
+one call because `PoolConfig`'s fields are public and `with_config` guards
+nothing: a zero `initial_capacity` called `alloc_zeroed` on a **zero-sized
+layout** (documented UB, at construction), and `size * capacity` was unchecked.
+Two more in `TensorBuffer`, and these are the serious ones because they need no
+unusual configuration at all:
+
+- **`Drop` freed a layout the allocator never handed out.** `from_vec` forgot
+  the `Vec`'s capacity; `Drop` rebuilt it as `from_raw_parts(ptr, len, len)`.
+  Capacity differs from length in the *ordinary* case, so this was undefined
+  behaviour on the normal path — and the SAFETY comment claimed "the pointer,
+  len, and capacity match what was passed to `mem::forget`".
+- **`slice(offset, len)` added the two unchecked.** `slice(usize::MAX, 1)`
+  wraps to 0, passes the bound, and offsets the pointer by `usize::MAX`. Two
+  plain integers through a safe public method.
+
+All four fixed, all four with tests verified by removing the guard. **The claim
+"reviewed" is not free** — this document made it on the code's behalf, and the
+review it stood in for found undefined behaviour on a default path. When a
+security document says "audited", the useful question is who did it and what
+they wrote down.
 
 **A pin over a generated list tends toward tautology.** The follow-up test for
 layer names iterated `layer_map`, which is *filtered* by the same function the

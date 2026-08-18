@@ -62,12 +62,49 @@ struct Slab {
 impl Slab {
     /// Create a new slab with the given capacity.
     fn new(size_class: SizeClass, capacity: usize) -> Result<Self> {
-        let total_bytes = size_class.size * capacity;
+        // `capacity == 0` reached `alloc_zeroed` with a zero-sized layout,
+        // which the standard library documents as undefined behaviour — and it
+        // was reachable in one call from public API:
+        //
+        //     MemoryPool::with_config(PoolConfig { initial_capacity: 0, ..default() })
+        //
+        // `with_config` passes `initial_capacity` straight through with no
+        // guard. `PoolConfig` has public fields, so any consumer of this crate
+        // could do it, and `growth_factor: 0.0` reaches the same place through
+        // `alloc()` because a float-to-int cast saturates to 0.
+        if capacity == 0 {
+            return Err(RmiError::Compute(
+                "Slab capacity must be non-zero (a zero-capacity slab can serve no                  allocation, and a zero-sized layout is undefined behaviour)"
+                    .to_string(),
+            ));
+        }
+        // `size_class.size * capacity` was unchecked. `MemoryPool::alloc` guards
+        // its own path in u64 against `max_total_bytes`, but `with_config`
+        // passes `initial_capacity` through with no guard at all, so a config
+        // could reach here with a product that wraps.
+        //
+        // Measured consequence, rather than assumed: the process **aborts**.
+        // Wrapping needs `capacity >= 2^58` for the 64-byte class, and
+        // `free_list` below is a `Vec` of one index per block — 2.3 EB — so the
+        // allocation for *it* fails and Rust aborts (exit 0xc0000409). It is a
+        // crash, not an out-of-bounds access: no capacity both wraps the
+        // product and leaves an affordable free list. Worth refusing cleanly
+        // anyway — an abort from a library constructor is a denial of service
+        // in whatever embeds it.
+        let total_bytes = size_class.size.checked_mul(capacity).ok_or_else(|| {
+            RmiError::Compute(format!(
+                "Slab size overflow: {} bytes x {} blocks exceeds the address space",
+                size_class.size, capacity
+            ))
+        })?;
         let layout = Layout::from_size_align(total_bytes, size_class.align)
             .map_err(|e| RmiError::Compute(format!("Invalid layout: {}", e)))?;
 
-        // SAFETY: `layout` was validated by `Layout::from_size_align` above;
-        // the returned pointer is checked for null immediately after.
+        // SAFETY: `layout` was validated by `Layout::from_size_align` above and
+        // has non-zero size (`capacity != 0` is checked above and
+        // `size_class.size` is `>= 64` by construction in
+        // `SizeClass::power_of_two`); the returned pointer is checked for null
+        // immediately after.
         let ptr = unsafe { alloc::alloc_zeroed(layout) };
         let base = NonNull::new(ptr)
             .ok_or_else(|| RmiError::ResourceExhausted("Failed to allocate slab".to_string()))?;
@@ -96,9 +133,22 @@ impl Slab {
     }
 
     /// Free a block back to this slab.
+    ///
+    /// **Caller must have established that `ptr` belongs to this slab** — via
+    /// [`Slab::contains`], which is pure integer comparison and therefore safe
+    /// to call on a foreign pointer. `MemoryPool::dealloc` does exactly that.
     fn free(&mut self, ptr: NonNull<u8>) -> bool {
-        // SAFETY: `ptr` is checked against slab bounds below; `offset_from` is
-        // valid because both pointers come from the same allocation.
+        // SAFETY: both pointers are in the same allocation, which is the
+        // caller's precondition above.
+        //
+        // The comment here used to read "`ptr` is checked against slab bounds
+        // below" — but `offset_from`'s precondition *is* same-allocation, and
+        // it runs before any of those checks, so on a foreign pointer the UB
+        // would already have happened. The checks below sort a valid pointer
+        // into a block index; they cannot rescue an invalid one. `free` is
+        // private and every caller goes through `contains` first, so the code
+        // is sound as used — the comment was describing a guarantee the wrong
+        // way round.
         let offset = unsafe { ptr.as_ptr().offset_from(self.base.as_ptr()) };
         if offset < 0 {
             return false;
@@ -360,6 +410,16 @@ pub struct TensorBuffer {
     data: NonNull<u8>,
     /// Length in bytes
     len: usize,
+    /// Capacity of the originating `Vec`, for owned buffers.
+    ///
+    /// `Drop` used to rebuild the `Vec` as `from_raw_parts(ptr, len, len)`,
+    /// with the SAFETY comment claiming "the pointer, len, and capacity match
+    /// what was passed to `mem::forget`". They do not: `from_vec` forgets the
+    /// capacity, and `Vec` capacity differs from length in the ordinary case —
+    /// `Vec::with_capacity(64)` with 3 elements pushed, or any growth pattern.
+    /// Freeing with the wrong capacity asks the global allocator to deallocate
+    /// a layout it never allocated, which is undefined behaviour.
+    capacity: usize,
     /// Reference count
     refcount: Arc<AtomicUsize>,
     /// Whether we own the memory (vs. borrowed view)
@@ -370,12 +430,14 @@ impl TensorBuffer {
     /// Create a new owned buffer from a Vec.
     pub fn from_vec(mut data: Vec<u8>) -> Self {
         let len = data.len();
+        let capacity = data.capacity();
         let ptr = NonNull::new(data.as_mut_ptr()).expect("Vec should not be null");
         std::mem::forget(data); // Transfer ownership
 
         Self {
             data: ptr,
             len,
+            capacity,
             refcount: Arc::new(AtomicUsize::new(1)),
             owned: true,
         }
@@ -383,12 +445,24 @@ impl TensorBuffer {
 
     /// Create a read-only view (zero-copy slice).
     pub fn slice(&self, offset: usize, len: usize) -> Result<TensorBuffer> {
-        if offset + len > self.len {
+        // `offset + len` was unchecked. `slice(usize::MAX, 1)` wraps to 0,
+        // passes the bound below, and then offsets the pointer by `usize::MAX`
+        // — a buffer at a wild address that `as_bytes()` will happily read.
+        // Two plain integers from safe public API, so `checked_add` is the
+        // whole fix.
+        let end = match offset.checked_add(len) {
+            Some(end) => end,
+            None => {
+                return Err(RmiError::Compute(format!(
+                    "Slice [{offset}, {offset}+{len}) overflows usize for a buffer of                      length {}",
+                    self.len
+                )));
+            }
+        };
+        if end > self.len {
             return Err(RmiError::Compute(format!(
                 "Slice [{}, {}) out of bounds for buffer of length {}",
-                offset,
-                offset + len,
-                self.len
+                offset, end, self.len
             )));
         }
 
@@ -401,6 +475,9 @@ impl TensorBuffer {
         Ok(TensorBuffer {
             data,
             len,
+            // A view owns nothing, so it never deallocates and the capacity is
+            // irrelevant; carry the view's own length for consistency.
+            capacity: len,
             refcount: Arc::clone(&self.refcount),
             owned: false,
         })
@@ -459,11 +536,14 @@ impl Drop for TensorBuffer {
         if prev == 1 && self.owned {
             // Last reference and we own the data
             std::sync::atomic::fence(Ordering::Acquire);
-            // SAFETY: this is the last reference (prev == 1) and we own the data,
-            // so reconstructing the Vec for deallocation is safe. The pointer, len,
-            // and capacity match what was passed to `mem::forget` in `from_vec`.
+            // SAFETY: this is the last reference (prev == 1) and we own the
+            // data, so reconstructing the Vec for deallocation is safe. The
+            // pointer, len and capacity are the ones `from_vec` recorded before
+            // `mem::forget` — `self.capacity`, not `self.len`, which is what
+            // this used to pass and is only correct when the two happen to be
+            // equal.
             unsafe {
-                let _ = Vec::from_raw_parts(self.data.as_ptr(), self.len, self.len);
+                let _ = Vec::from_raw_parts(self.data.as_ptr(), self.len, self.capacity);
             }
         }
     }
@@ -475,6 +555,7 @@ impl Clone for TensorBuffer {
         Self {
             data: self.data,
             len: self.len,
+            capacity: self.capacity,
             refcount: Arc::clone(&self.refcount),
             owned: false, // Clones are not owners
         }
@@ -492,6 +573,129 @@ unsafe impl Sync for TensorBuffer {}
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A zero `initial_capacity` must be rejected, not passed to the allocator.
+    ///
+    /// `PoolConfig`'s fields are public, so this was reachable in one call from
+    /// any consumer of the crate — and `with_config` handed `initial_capacity`
+    /// straight to `Slab::new`, which computed a zero-sized `Layout` and called
+    /// `alloc::alloc_zeroed` on it. That is documented undefined behaviour, and
+    /// it happened at *construction*, before any allocation was requested.
+    #[test]
+    fn zero_capacity_is_rejected_rather_than_allocated() {
+        let cfg = PoolConfig { initial_capacity: 0, ..PoolConfig::default() };
+        let msg = match MemoryPool::with_config(cfg) {
+            Ok(_) => panic!("zero capacity must not build a pool"),
+            Err(e) => format!("{e}"),
+        };
+        assert!(msg.contains("non-zero"), "unexpected error: {msg}");
+
+        // The same place is reachable through `alloc()` when auto-growth is on:
+        // `(initial_capacity as f64 * growth_factor) as usize` saturates to 0
+        // for a zero or negative factor, so the growth path must refuse too
+        // rather than allocate a zero-sized slab.
+        let cfg = PoolConfig { growth_factor: 0.0, initial_capacity: 1, ..PoolConfig::default() };
+        let pool = MemoryPool::with_config(cfg).expect("capacity 1 builds");
+        // Exhaust the one block in the 64-byte class, then force a grow.
+        let _first = pool.alloc(64).expect("first block");
+        let err = pool.alloc(64).expect_err("growing by a factor of 0 must fail, not allocate");
+        assert!(format!("{err}").contains("non-zero"), "unexpected error: {err}");
+    }
+
+    /// A slab whose byte count overflows `usize` must be refused.
+    ///
+    /// `size_class.size * capacity` was unchecked. Wrapping produces a
+    /// *smaller* allocation while `capacity` keeps the large value, and
+    /// `Slab::alloc` then returns `base + idx * size` past the end of it —
+    /// out-of-bounds pointers handed out by a successful call.
+    #[test]
+    fn a_slab_that_would_overflow_the_address_space_is_refused() {
+        // `2^58 + 1` blocks of 64 bytes is the input that matters: 64 is 2^6,
+        // so the product wraps to exactly **64** — a layout the allocator
+        // accepts. Without `checked_mul` this run ends in
+        // `memory allocation of 2305843009213693960 bytes failed` and an abort
+        // (exit 0xc0000409): the wrapped product makes the *slab* tiny, but
+        // `free_list` still wants one index per claimed block. So the bug is a
+        // hard crash from a library constructor, not an out-of-bounds access —
+        // checked before writing it down, because the two deserve different
+        // words.
+        //
+        // A first draft of this test used `usize::MAX / 32`, whose wrapped
+        // product `Layout::from_size_align` happens to reject on its own — so
+        // it passed with the guard removed and pinned nothing. The assertion
+        // below names the overflow error specifically for the same reason.
+        let cfg = PoolConfig {
+            initial_capacity: (1usize << 58) + 1,
+            max_total_bytes: u64::MAX,
+            size_classes: vec![64],
+            ..PoolConfig::default()
+        };
+        let msg = match MemoryPool::with_config(cfg) {
+            Ok(_) => panic!("an overflowing slab must not build a pool"),
+            Err(e) => format!("{e}"),
+        };
+        assert!(msg.contains("Slab size overflow"), "unexpected error: {msg}");
+    }
+
+    /// An owned buffer must free the layout it allocated, not one shaped by
+    /// its length.
+    ///
+    /// `from_vec` forgot the `Vec`'s capacity and `Drop` rebuilt it as
+    /// `from_raw_parts(ptr, len, len)`. Capacity differs from length in the
+    /// ordinary case, so the global allocator was asked to deallocate a layout
+    /// it never allocated — undefined behaviour, on the normal path.
+    ///
+    /// This test cannot *observe* UB; what it pins is that the capacity is
+    /// carried, which is the property the fix establishes. Run it under Miri to
+    /// see the original fail.
+    #[test]
+    fn an_owned_buffer_remembers_the_capacity_it_was_built_from() {
+        let mut v: Vec<u8> = Vec::with_capacity(64);
+        v.extend_from_slice(&[1, 2, 3]);
+        let cap = v.capacity();
+        assert_ne!(cap, v.len(), "the test needs capacity != len to be meaningful");
+
+        let buf = TensorBuffer::from_vec(v);
+        assert_eq!(buf.len(), 3);
+        assert_eq!(buf.capacity, cap, "the originating capacity must be carried into Drop");
+        assert_eq!(buf.as_bytes(), &[1, 2, 3]);
+        // Dropping here is the operation that was unsound.
+        drop(buf);
+
+        // The len == capacity case, which is the only one the old code got
+        // right, must keep working.
+        let exact = TensorBuffer::from_vec(vec![9u8; 16]);
+        assert_eq!(exact.capacity, 16);
+        drop(exact);
+    }
+
+    /// `slice` must reject an offset+len that overflows, not wrap into bounds.
+    ///
+    /// `offset + len` was unchecked: `slice(usize::MAX, 1)` wraps to 0, passes
+    /// the `> self.len` bound, and offsets the pointer by `usize::MAX`. The
+    /// result is a buffer at a wild address that `as_bytes()` reads — an
+    /// out-of-bounds view from two plain integers through safe public API.
+    #[test]
+    fn slice_rejects_an_overflowing_range() {
+        let buf = TensorBuffer::from_vec(vec![0u8; 32]);
+
+        let msg = match buf.slice(usize::MAX, 1) {
+            Ok(_) => panic!("slice(usize::MAX, 1) must not succeed"),
+            Err(e) => format!("{e}"),
+        };
+        assert!(msg.contains("overflows usize"), "unexpected error: {msg}");
+
+        // And the ordinary out-of-bounds case still reports as before.
+        let msg = match buf.slice(16, 32) {
+            Ok(_) => panic!("slice(16, 32) is out of bounds for a 32-byte buffer"),
+            Err(e) => format!("{e}"),
+        };
+        assert!(msg.contains("out of bounds"), "unexpected error: {msg}");
+
+        // A valid slice is unaffected.
+        let view = buf.slice(8, 16).expect("valid slice");
+        assert_eq!(view.len(), 16);
+    }
 
     #[test]
     fn test_size_class() {

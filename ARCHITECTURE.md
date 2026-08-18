@@ -174,7 +174,7 @@ are **five independent Cargo workspaces**:
 
 | Path | Crate | Tests | Notes |
 |---|---|--:|---|
-| `RecursiveMachineIntelligence/` | `rmi` | 1,380 | The low-level neurosymbolic framework. Feature-gated (`cpu` / `gpu` / `cuda`); build with `--no-default-features --features cpu` for the portable set |
+| `RecursiveMachineIntelligence/` | `rmi` | 1,384 | The low-level neurosymbolic framework. Feature-gated (`cpu` / `gpu` / `cuda`); build with `--no-default-features --features cpu` for the portable set |
 | `prototype/` | `mage-prototype` | 1,195 | Compiler, evaluator, ABL, RAP server. Path-depends on `rmi` |
 | `ribosome/` | `ribosome` | 164 | The distributed build engine. Depends on nothing in this repository — see below |
 | `germline/` | `germline` | 112 | Model succession, handoff, fallback — the RSI control plane. Path-depends on `ribosome` |
