@@ -640,10 +640,12 @@ four ratios held within noise:
 | Native-lexer ratio | ~1.00 | **0.998** |
 | Shared-rule ratio | ~1.03 | 1.034 |
 
-The P27 honest correction (parity, not 50% reduction) stands. New CI
-step parses the `**Total**` row of `benchmarks/TOKEN_REPORT.md` and
-fails if the native-lexer ratio exceeds 1.100. Anything beyond means
-a sigil or formatter change is bloating MAGE relative to Rust.
+The P27 honest correction (parity, not 50% reduction) stands. The gate
+described here as a "new CI step" did not exist for some time; it is now
+`scripts/check-ci-floors.sh`, which reads the `**Total**` row of the
+native-lexer table in `benchmarks/TOKEN_REPORT.md` and fails above 1.100.
+Anything beyond means a sigil or formatter change is bloating MAGE relative
+to Rust.
 
 ## Where the win actually lives (current honest framing)
 

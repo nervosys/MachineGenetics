@@ -159,6 +159,10 @@ if [ "$CHECKDOCS" -eq 1 ]; then
         # five of them were stale — `cli_flags (17)` when the binary accepts
         # 36, `heal_patterns (~13)` when there are 34, `keywords (12)` when
         # there are 102.
+        # The reliability floors, measured by running the bench. HANDOFF.md
+        # states them in its status table; the ontology publishes the
+        # thresholds. Nothing enforced either until check-ci-floors.sh.
+        bash "$REPO/scripts/check-ci-floors.sh" 2>&1 >/dev/null | grep -E '^floor_' || true
         python - "$REPO/MAGE_ONTOLOGY.json" <<'ONTO'
 import json, sys
 d = json.load(open(sys.argv[1], encoding='utf-8'))

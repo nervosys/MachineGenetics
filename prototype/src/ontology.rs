@@ -517,24 +517,35 @@ const DOCS: &[(&str, &str, &str)] = &[
         "agent/reference"),
 ];
 
-/// Current CI floors. An agent proposing a change can check whether
-/// its measured numbers stay above each. Read from
-/// `.github/workflows/ci.yml`.
+/// The reliability floors, and where each is enforced.
 ///
-/// Columns: `(name, threshold, what_it_protects)`.
+/// This section used to say "Read from `.github/workflows/ci.yml`". **That
+/// file contained none of them** — no reliability-bench job, no heal
+/// threshold, no token-ratio gate — so an agent reading the ontology believed
+/// six regressions were gated and none were. `UNIFICATION.md` described a CI
+/// step parsing `benchmarks/TOKEN_REPORT.md`; there was no such step either.
+///
+/// Two of the six were not true on a default run: the file-oracle
+/// structural-heal contribution is **1**, not `>= 2`, and the stage-3 refine
+/// smoke is 0 unless a wrapper command is supplied. Those two are now stated
+/// as observations rather than floors.
+///
+/// The three that are real live in `scripts/check-ci-floors.sh`, which
+/// measures and enforces them; CI runs it. Columns:
+/// `(name, threshold, what_it_protects)`.
 const CI_FLOORS: &[(&str, &str, &str)] = &[
     ("MIN_PARSE", ">= 98",
-        "File-oracle parse rate (100-task corpus) must not regress"),
-    ("file-oracle structural-heal", ">= 2",
-        "Trim-bad-token mechanism (P51) must keep contributing"),
+        "File-oracle parse rate (100-task corpus) must not regress. Enforced by scripts/check-ci-floors.sh"),
     ("MIN_HEAL", ">= 40",
-        "Perturbed-8 pattern-heal recovery count must not regress"),
-    ("refine smoke", "> 0",
-        "Stage-3 refine wrapper protocol must fire end-to-end"),
-    ("subprocess echo smoke", "no-op",
-        "Subprocess agent backend must be invocable"),
+        "Perturbed-oracle pattern-heal recovery count must not regress. Enforced by scripts/check-ci-floors.sh"),
     ("native-lexer ratio", "<= 1.100",
-        "MAGE text size must stay within 10% of equivalent Rust"),
+        "MAGE text size must stay within 10% of equivalent Rust, read from the native-lexer Total row of benchmarks/TOKEN_REPORT.md. Enforced by scripts/check-ci-floors.sh"),
+    ("file-oracle structural-heal", "= 1 (observed)",
+        "Trim-bad-token recovers the single corpus task that does not parse cleanly. An observation, not a floor: the count is 1, and the >= 2 this section used to publish was never met"),
+    ("refine smoke", "0 without a wrapper (observed)",
+        "Stage-3 refine contributes only when `--agent perturbed+refine:<cmd>` supplies a wrapper; a default run reports 0"),
+    ("subprocess echo smoke", "no-op",
+        "Subprocess agent backend must be invocable; exercised by the wrapper protocol tests"),
 ];
 
 /// Curated golden examples. Each one is a minimal, parseable program

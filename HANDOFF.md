@@ -17,6 +17,7 @@ each claim has a command beside it.
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm |
 | CI | 10 jobs, green on `master` |
+| Reliability floors | file-oracle parse 99/100, perturbed pattern-heal 42, native-lexer ratio 0.997 |
 | Examples | 12 of 12 typecheck, run, and print their recorded answer |
 | `.mg` sources | 101 checked, 25 listed sketches (all of them `stdlib/`) |
 | Documentation | 206 MAGE blocks typecheck; 57 documentation entry points run |
@@ -483,6 +484,24 @@ elsewhere, pointing at the wrong line.
   accepts must be in the cli_flags ontology section". It now scrapes the flag
   literals out of `main.rs` and compares the two sets in both directions —
   verified by removing `--eval` and watching it fail. 36 flags are published.
+- **Six published "CI floors", enforced by nothing.** The ontology's
+  `ci_floors` section named `MIN_PARSE >= 98`, `MIN_HEAL >= 40`, a
+  `native-lexer ratio <= 1.100` and three more, under a doc comment saying
+  they were "read from `.github/workflows/ci.yml`". **That file contained
+  none of them** — no reliability-bench job, no heal threshold, no ratio gate.
+  `UNIFICATION.md` went further and described a "new CI step" parsing
+  `benchmarks/TOKEN_REPORT.md`; there was no such step. An agent reading
+  either believed six regressions were gated.
+
+  Two of the six were not even true: the file-oracle structural-heal
+  contribution is **1**, not `>= 2`, and the stage-3 refine smoke is 0 without
+  a wrapper. Those are now stated as observations. The three real ones are
+  measured and enforced by `scripts/check-ci-floors.sh`, which CI runs —
+  verified by raising `MIN_PARSE` to 100 and watching it fail. Reading the
+  ratio also has a trap worth knowing: `TOKEN_REPORT.md` has four `**Total**`
+  rows and the first one is *source bytes* (1.055), so the check anchors on
+  the section heading rather than the row shape. It passed for the wrong
+  reason on its first run.
 - **`data` and `extend` were missing from the published AST kinds.** The
   ontology enumerated 18 item families; `ItemKind` has 20. The two absent
   were records/sums (`data Point(…)`) and methods (`extend Type { … }`) —

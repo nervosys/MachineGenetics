@@ -120,6 +120,11 @@ jobs:
       # builtins — `assert` among them — had no arm in the evaluator at all.
       - name: Every documentation entry point runs
         run: bash scripts/check-doc-evals.sh
+      # The ontology published six "CI floors" and this workflow enforced none
+      # of them — the section's own doc comment said they were read from this
+      # file. Three are measurable and now are.
+      - name: Published reliability floors hold
+        run: bash scripts/check-ci-floors.sh
       - name: Compiler version matches Ribosome's registry entry
         run: |
           binv=$(cargo run --quiet --release --manifest-path prototype/Cargo.toml \

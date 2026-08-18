@@ -144,33 +144,33 @@
     "ci_floors": [
       {
         "name": "MIN_PARSE",
-        "protects": "File-oracle parse rate (100-task corpus) must not regress",
+        "protects": "File-oracle parse rate (100-task corpus) must not regress. Enforced by scripts/check-ci-floors.sh",
         "threshold": ">= 98"
       },
       {
-        "name": "file-oracle structural-heal",
-        "protects": "Trim-bad-token mechanism (P51) must keep contributing",
-        "threshold": ">= 2"
-      },
-      {
         "name": "MIN_HEAL",
-        "protects": "Perturbed-8 pattern-heal recovery count must not regress",
+        "protects": "Perturbed-oracle pattern-heal recovery count must not regress. Enforced by scripts/check-ci-floors.sh",
         "threshold": ">= 40"
       },
       {
+        "name": "native-lexer ratio",
+        "protects": "MAGE text size must stay within 10% of equivalent Rust, read from the native-lexer Total row of benchmarks/TOKEN_REPORT.md. Enforced by scripts/check-ci-floors.sh",
+        "threshold": "<= 1.100"
+      },
+      {
+        "name": "file-oracle structural-heal",
+        "protects": "Trim-bad-token recovers the single corpus task that does not parse cleanly. An observation, not a floor: the count is 1, and the >= 2 this section used to publish was never met",
+        "threshold": "= 1 (observed)"
+      },
+      {
         "name": "refine smoke",
-        "protects": "Stage-3 refine wrapper protocol must fire end-to-end",
-        "threshold": "> 0"
+        "protects": "Stage-3 refine contributes only when `--agent perturbed+refine:<cmd>` supplies a wrapper; a default run reports 0",
+        "threshold": "0 without a wrapper (observed)"
       },
       {
         "name": "subprocess echo smoke",
-        "protects": "Subprocess agent backend must be invocable",
+        "protects": "Subprocess agent backend must be invocable; exercised by the wrapper protocol tests",
         "threshold": "no-op"
-      },
-      {
-        "name": "native-lexer ratio",
-        "protects": "MAGE text size must stay within 10% of equivalent Rust",
-        "threshold": "<= 1.100"
       }
     ],
     "cli_flags": [

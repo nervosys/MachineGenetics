@@ -113,6 +113,8 @@ HANDOFF.md	\| [0-9,]+ checked	mg_checked
 HANDOFF.md	[0-9,]+ listed sketches	mg_sketches
 HANDOFF.md	[0-9,]+ MAGE blocks typecheck	doc_blocks
 HANDOFF.md	[0-9,]+ documentation entry points	doc_evals
+HANDOFF.md	file-oracle parse [0-9]+/	floor_parse
+HANDOFF.md	pattern-heal [0-9]+,	floor_heal
 benchmarks/STATUS.md	├─ sigils \([0-9]+\)	onto_sigils
 benchmarks/STATUS.md	├─ keywords \([0-9]+\)	onto_keywords
 benchmarks/STATUS.md	├─ types \([0-9]+\)	onto_types
