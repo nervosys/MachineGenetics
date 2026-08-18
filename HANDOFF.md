@@ -12,7 +12,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **2,887** — rmi 1,380 · prototype 1,179 · ribosome 164 · germline 112 · forge 52 |
+| Tests | **2,888** — rmi 1,380 · prototype 1,180 · ribosome 164 · germline 112 · forge 52 |
 | CUDA | **1,071 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm |
@@ -484,6 +484,26 @@ elsewhere, pointing at the wrong line.
   accepts must be in the cli_flags ontology section". It now scrapes the flag
   literals out of `main.rs` and compares the two sets in both directions —
   verified by removing `--eval` and watching it fail. 36 flags are published.
+- **The published RAP contract was wrong for a third of its methods.** RAP is
+  the protocol an agent drives the compiler through, and `rap_methods`
+  publishes each method's parameters and return keys. **Eight methods read
+  parameters the ontology did not name, and seventeen returned keys it did
+  not name.** `skb/query` publishes `{query}` and reads `by`/`value` —
+  calling it as documented returns `matches: []`, because the missing keys
+  default to the empty string. `sandbox/policy` publishes `name` and reads
+  `agent`. `verify/contracts` publishes `source` and reads five other keys.
+  `build/check` publishes `diagnostics` and returns `errors`.
+
+  The test that should have caught it called each method with `{}` and
+  asserted only that the method was not "unknown" — which a method that
+  always errors still passes. The new one calls each with inputs that
+  *succeed* and checks the answer's shape, and it caught a mistake in its own
+  first draft.
+
+  **`format/agent` and `format/human` did not format.** Both returned the
+  AST — `format/human` said "same as parse for now" — while publishing
+  `{formatted, ok}`. `fmt::format_agent` is what `--fmt-compact` has always
+  used. Both now return formatted source, verified over the wire.
 - **Six published "CI floors", enforced by nothing.** The ontology's
   `ci_floors` section named `MIN_PARSE >= 98`, `MIN_HEAL >= 40`, a
   `native-lexer ratio <= 1.100` and three more, under a doc comment saying
@@ -761,7 +781,7 @@ it is invisible unless you break the thing on purpose and watch.
 
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,179**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,180**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it.
 - Every typechecker fix has landed without breaking an existing test **except
   one**, where widening `collection_elem` made `sum("hi")` legal and

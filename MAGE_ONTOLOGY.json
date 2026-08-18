@@ -4210,7 +4210,7 @@
         ],
         "returns": [
           "ok",
-          "diagnostics"
+          "errors"
         ],
         "summary": "Lex + parse + report diagnostics."
       },
@@ -4300,10 +4300,9 @@
           "opt"
         ],
         "returns": [
-          "construct",
-          "target",
-          "opt",
-          "estimate"
+          "ok",
+          "estimate",
+          "error"
         ],
         "summary": "Per-construct cost estimate."
       },
@@ -4312,23 +4311,25 @@
         "params": [
           "a",
           "b",
-          "target",
-          "opt"
+          "target"
         ],
         "returns": [
-          "a",
-          "b",
-          "winner"
+          "ok",
+          "comparison",
+          "error"
         ],
         "summary": "Compare costs of two constructs."
       },
       {
         "method": "skb/query",
         "params": [
-          "query"
+          "by",
+          "value"
         ],
         "returns": [
-          "results"
+          "ok",
+          "query",
+          "matches"
         ],
         "summary": "Query structured knowledge base."
       },
@@ -4338,27 +4339,35 @@
           "fqn"
         ],
         "returns": [
-          "found",
-          "spec"
+          "ok",
+          "spec",
+          "error"
         ],
         "summary": "Lookup spec block for a symbol."
       },
       {
         "method": "skb/rules",
-        "params": [],
+        "params": [
+          "domain"
+        ],
         "returns": [
-          "rules"
+          "ok",
+          "matches"
         ],
         "summary": "List SKB rules."
       },
       {
         "method": "verify/contracts",
         "params": [
-          "source"
+          "fqn",
+          "requires",
+          "ensures",
+          "declared_effects",
+          "used_effects"
         ],
         "returns": [
           "ok",
-          "results"
+          "result"
         ],
         "summary": "Verify function contracts (req/ens/inv)."
       },
@@ -4380,7 +4389,9 @@
         ],
         "returns": [
           "ok",
-          "formatted"
+          "formatted",
+          "ast",
+          "error"
         ],
         "summary": "Format source in agent-canonical sigil mode."
       },
@@ -4391,7 +4402,9 @@
         ],
         "returns": [
           "ok",
-          "formatted"
+          "formatted",
+          "ast",
+          "error"
         ],
         "summary": "Format source in human-readable keyword mode."
       },
@@ -4402,7 +4415,9 @@
         ],
         "returns": [
           "ok",
-          "lints"
+          "verify",
+          "effect_diagnostics",
+          "error"
         ],
         "summary": "Run lints on source."
       },
@@ -4435,7 +4450,8 @@
         ],
         "returns": [
           "ok",
-          "results"
+          "diagnostics",
+          "error"
         ],
         "summary": "Check declared effects against inferred."
       },
@@ -4446,29 +4462,32 @@
         ],
         "returns": [
           "ok",
-          "elided"
+          "ast",
+          "error"
         ],
         "summary": "Apply elision rules to compact source."
       },
       {
         "method": "attribute/expand",
         "params": [
-          "source"
+          "name"
         ],
         "returns": [
           "ok",
-          "expanded"
+          "expanded",
+          "error"
         ],
         "summary": "Expand attribute shorthand."
       },
       {
         "method": "attribute/compress",
         "params": [
-          "source"
+          "name"
         ],
         "returns": [
           "ok",
-          "compressed"
+          "compressed",
+          "error"
         ],
         "summary": "Compress attributes back to shorthand."
       },
@@ -4479,7 +4498,7 @@
         ],
         "returns": [
           "ok",
-          "capabilities"
+          "results"
         ],
         "summary": "List capabilities required by source."
       },
@@ -4490,18 +4509,21 @@
         ],
         "returns": [
           "ok",
-          "graph"
+          "graphs"
         ],
         "summary": "Heal-pipeline diagnostic graph."
       },
       {
         "method": "sandbox/policy",
         "params": [
-          "name"
+          "agent"
         ],
         "returns": [
           "ok",
-          "policy"
+          "agent",
+          "capabilities",
+          "requires_approval",
+          "error"
         ],
         "summary": "Lookup sandbox policy by name."
       },
@@ -4511,8 +4533,8 @@
           "fqn"
         ],
         "returns": [
-          "found",
-          "doc"
+          "ok",
+          "matches"
         ],
         "summary": "Lookup documentation by FQN."
       },
@@ -4528,7 +4550,6 @@
       {
         "method": "manifest/generate",
         "params": [
-          "source",
           "crate_name",
           "version"
         ],

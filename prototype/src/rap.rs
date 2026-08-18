@@ -420,12 +420,19 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
 
         "format/agent" => {
             // Return the agent (MAGE canonical) form of source.
+            //
+            // It returned the *AST* — `format/human` even said "same as parse
+            // for now" — under a published contract of `{formatted, ok}`. Both
+            // are named `format/*`, and an agent calling either to reformat
+            // source got a syntax tree. `fmt::format_agent` is what
+            // `--fmt-compact` uses and has been there all along.
             let tokens = lexer::lex(source);
             match parser::parse(&tokens) {
                 Ok(module) => {
                     let elided = elision::elide(&module);
                     serde_json::json!({
                         "ok": true,
+                        "formatted": crate::fmt::format_agent(&elided),
                         "ast": serde_json::to_value(&elided).unwrap_or_default()
                     })
                 }
@@ -437,11 +444,13 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
         }
 
         "format/human" => {
-            // Return the human (Rust-like) form of source — same as parse for now.
+            // Return the human (Rust-like) form of source. See `format/agent`
+            // above: this said "same as parse for now" and returned the AST.
             let tokens = lexer::lex(source);
             match parser::parse(&tokens) {
                 Ok(module) => serde_json::json!({
                     "ok": true,
+                    "formatted": crate::fmt::format_human(&module),
                     "ast": serde_json::to_value(&module).unwrap_or_default()
                 }),
                 Err(e) => serde_json::json!({
@@ -1424,6 +1433,100 @@ mod tests {
                 .map(|e| e.contains("unknown method"))
                 .unwrap_or(false);
             assert!(!unknown, "ontology publishes `{method}`, which does not dispatch: {r}");
+        }
+    }
+
+    /// Every published parameter is read, and every published return key comes
+    /// back from a successful call.
+    ///
+    /// `every_published_rap_method_dispatches` calls each method with `{}` and
+    /// asserts only that it is not "unknown" — which a method that always
+    /// errors still passes, and which said nothing about the *contract*. Eight
+    /// methods read parameters the ontology did not publish and seventeen
+    /// returned keys it did not name: an agent calling `skb/query {"query":…}`
+    /// as published got `matches: []`, because the code reads `by`/`value` and
+    /// defaults to the empty string. `build/check` publishes `diagnostics` and
+    /// returns `errors`.
+    ///
+    /// This one calls each method with inputs that succeed and checks the
+    /// answer's shape.
+    #[test]
+    fn every_published_rap_key_is_real() {
+        const SRC: &str = "+f add(a: i32, b: i32) -> i32 { a + b }";
+        // Inputs chosen so each method takes its success path. A method that
+        // cannot succeed with any input is a finding, not a reason to skip it.
+        let calls: Vec<(&str, serde_json::Value)> = vec![
+            ("language/parse", serde_json::json!({ "source": SRC })),
+            ("language/tokens", serde_json::json!({ "source": SRC })),
+            ("build/check", serde_json::json!({ "source": SRC })),
+            ("build/heal", serde_json::json!({ "source": SRC })),
+            ("build/recover", serde_json::json!({ "source": SRC })),
+            ("abl/encode", serde_json::json!({ "source": SRC })),
+            ("abl/run", serde_json::json!({ "source": SRC })),
+            ("pipeline/recover-and-encode", serde_json::json!({ "source": SRC })),
+            ("cost/query",
+                serde_json::json!({ "construct": "Vec::push", "target": "x86_64", "opt": "release" })),
+            ("cost/compare",
+                serde_json::json!({ "a": "Vec::push", "b": "stack array", "target": "x86_64" })),
+            ("skb/query", serde_json::json!({ "by": "fqn", "value": "std" })),
+            ("skb/rules", serde_json::json!({ "domain": "" })),
+            ("verify/module", serde_json::json!({ "source": SRC })),
+            ("format/agent", serde_json::json!({ "source": SRC })),
+            ("format/human", serde_json::json!({ "source": SRC })),
+            ("lint/check", serde_json::json!({ "source": SRC })),
+            ("token/report", serde_json::json!({ "source": SRC })),
+            ("effects/infer", serde_json::json!({ "source": SRC })),
+            ("effects/check", serde_json::json!({ "source": SRC })),
+            ("elision/apply", serde_json::json!({ "source": SRC })),
+            ("attribute/expand", serde_json::json!({ "name": "d" })),
+            ("attribute/compress", serde_json::json!({ "name": "derive" })),
+            ("capability/check",
+                serde_json::json!({ "source": "agent A { capabilities: [io] }" })),
+            ("heal/graph", serde_json::json!({ "source": "+f broken( { }" })),
+            ("doc/query", serde_json::json!({ "fqn": "map" })),
+            ("grammar/list", serde_json::json!({})),
+            ("manifest/generate",
+                serde_json::json!({ "source": SRC, "crate_name": "demo", "version": "0.1.0" })),
+            ("nl/generate", serde_json::json!({ "prompt": "add two numbers" })),
+            ("nl/explain", serde_json::json!({ "source": SRC })),
+            ("nl/query", serde_json::json!({ "prompt": "add two numbers" })),
+            ("ontology/section", serde_json::json!({ "section": "vocabulary" })),
+        ];
+
+        let published = crate::ontology::section("rap_methods").expect("rap_methods");
+        let rows = published.as_array().expect("array");
+        for (method, params) in &calls {
+            let row = rows
+                .iter()
+                .find(|r| r["method"].as_str() == Some(method))
+                .unwrap_or_else(|| panic!("`{method}` is called here and not published"));
+
+            // Every published parameter must be one the arm reads: the params
+            // we pass are the ones the code looks for, so the published list
+            // has to agree with them.
+            let sent: Vec<&str> = params.as_object().unwrap().keys().map(|k| k.as_str()).collect();
+            for p in row["params"].as_array().unwrap() {
+                let p = p.as_str().unwrap();
+                assert!(
+                    sent.contains(&p),
+                    "`{method}` publishes parameter `{p}`, which the working \
+                     call does not use — the published name is wrong"
+                );
+            }
+
+            let r = call(method, params.clone());
+            for key in row["returns"].as_array().unwrap() {
+                let key = key.as_str().unwrap();
+                // `error` only appears on the failure path.
+                if key == "error" {
+                    continue;
+                }
+                assert!(
+                    r.get(key).is_some(),
+                    "`{method}` publishes return key `{key}`, which is not in \
+                     the response: {r}"
+                );
+            }
         }
     }
 
