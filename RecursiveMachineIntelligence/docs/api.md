@@ -339,38 +339,63 @@ impl FfiRegistry {
 Language Server Protocol implementation for RMIL source files.
 
 ```rust
-pub struct RmilLanguageServer { /* ... */ }
-impl RmilLanguageServer {
+pub struct LanguageServer { /* private: documents */ }
+impl LanguageServer {
     pub fn new() -> Self;
-    pub fn completion(&self, source: &str, pos: Position) -> Vec<CompletionItem>;
-    pub fn hover(&self, source: &str, pos: Position) -> Option<HoverInfo>;
-    pub fn diagnostics(&self, source: &str) -> Vec<Diagnostic>;
-    pub fn definition(&self, source: &str, pos: Position) -> Option<Location>;
-    pub fn references(&self, source: &str, pos: Position) -> Vec<Location>;
-    pub fn document_symbols(&self, source: &str) -> Vec<DocumentSymbol>;
+    pub fn open(&mut self, uri: &str, source: &str);
+    pub fn update(&mut self, uri: &str, source: &str);
+    pub fn close(&mut self, uri: &str);
+    pub fn diagnostics(&self, uri: &str) -> Vec<Diagnostic>;
+    pub fn hover(&self, uri: &str, pos: Position) -> Option<HoverInfo>;
+    pub fn completions(&self, uri: &str, pos: Position) -> Vec<CompletionItem>;
+    pub fn document_symbols(&self, uri: &str) -> Vec<DocumentSymbol>;
 }
 ```
 
-### Op Registry
+> **Corrected 2026-08-18.** The type is `LanguageServer`, not
+> `RmilLanguageServer`. It is document-oriented — `open`/`update`/`close` keep
+> the source, and every query takes a `uri` rather than a `&str` of source, so
+> the documented calling convention was wrong for all of them. `completion` is
+> `completions`, and `definition`/`references` do not exist.
+
+### Package Registry
 
 **Module:** `rmi::lang::registry`
 
-Runtime-extensible operation registry allowing user-defined ops.
+Versioned registry of RMIL packages, with semver resolution and dependency
+resolution.
 
 ```rust
-pub struct OpRegistry { /* ... */ }
-impl OpRegistry {
-    pub fn new() -> Self;
-    pub fn with_builtins() -> Self;
-    pub fn register(&mut self, meta: OpMeta) -> Result<RegisteredOp, RegistryError>;
-    pub fn get(&self, name: &str) -> Option<&RegisteredOp>;
-    pub fn lookup_by_tag(&self, tag: &str) -> Vec<&RegisteredOp>;
-    pub fn all_ops(&self) -> Vec<&RegisteredOp>;
-    pub fn len(&self) -> usize;
+pub struct PackageMeta {
+    pub name: String,
+    pub version: SemVer,
+    pub description: Option<String>,
+    pub author: Option<String>,
+    pub tags: Vec<String>,
+    /* … */
 }
 
-pub struct RegisteredOp { pub op: Op, pub meta: OpMeta, pub version: u32 }
+pub struct Registry { /* private: packages, counter */ }
+impl Registry {
+    pub fn new() -> Self;
+    pub fn publish(&mut self, meta: PackageMeta, expr: Expr) -> Result<(), RegistryError>;
+    pub fn resolve(&self, name: &str, req: &VersionReq) -> Option<&Package>;
+    pub fn versions(&self, name: &str) -> &[Package];
+    pub fn get(&self, name: &str, version: &SemVer) -> Option<&Package>;
+    pub fn search_by_tag(&self, tag: &str) -> Vec<&Package>;
+    pub fn search_by_name(&self, query: &str) -> Vec<&Package>;
+    pub fn list(&self) -> Vec<&str>;
+    pub fn total_packages(&self) -> usize;
+}
 ```
+
+> **Corrected 2026-08-18.** This section described an *operation* registry —
+> `OpRegistry`, `RegisteredOp`, `with_builtins`, `lookup_by_tag`, `all_ops` —
+> none of which exists in any source file. The module of that name registers
+> **packages**: versioned RMIL expressions with semver resolution. Five
+> fictional items in one block, under a heading that named the wrong subject,
+> which is why they survived: the module path resolved and the section read
+> plausibly.
 
 ---
 
@@ -994,39 +1019,56 @@ Autonomous AI agent.
 
 ```rust
 pub struct Agent {
-    pub id: AgentId,
-    pub config: AgentConfig,
-    pub state: AgentState,
+    pub identity: AgentIdentity,
+    /* private: state, context, current_goal, goal_stack,
+       execution_trace, message_tx, message_rx */
 }
 
 impl Agent {
-    pub fn new(config: AgentConfig) -> Self;
-    pub async fn execute(&self, goal: Goal) -> Result<ExecutionResult>;
-    pub async fn send_message(&self, to: &AgentId, msg: Message) -> Result<()>;
-    pub async fn receive_message(&self) -> Option<Message>;
+    pub fn builder() -> AgentBuilder;
+    pub fn state(&self) -> AgentState;
+    pub fn has_capability(&self, capability: AgentCapability) -> bool;
+    pub fn add_capability(&mut self, capability: AgentCapability);
+    pub fn set_goal(&self, goal: Goal);
+    pub fn push_subgoal(&self, subgoal: Goal);
+    pub fn pop_goal(&self) -> Option<Goal>;
+    pub async fn execute(&self, goal: Goal) -> Result<GoalResult>;
 }
 ```
+
+> **Corrected 2026-08-18.** `Agent` has no `id`, `config` or public `state`
+> field, and no `new(config)` — it is built through `Agent::builder()`, and
+> `state` is a method over an atomic. `execute` returns `GoalResult`, not
+> `ExecutionResult`.
 
 #### `Goal`
 
-Agent objective.
+Agent objective. **An enum**, not a struct with a `goal_type` tag:
 
 ```rust
-pub struct Goal {
-    pub id: String,
-    pub goal_type: GoalType,
-    pub target: String,
-    pub constraints: HashMap<String, f64>,
-    pub priority: f64,
-}
-
-pub enum GoalType {
-    Minimize,
-    Maximize,
-    Satisfy,
-    Achieve,
+pub enum Goal {
+    MinimizeLoss    { metric_name: String, target_value: Option<f64>,
+                      constraints: HashMap<String, f64> },
+    MaximizeMetric  { metric_name: String, target_value: Option<f64>,
+                      constraints: HashMap<String, f64> },
+    ArchitectureSearch { task_type: String,
+                         input_schema: HashMap<String, String>,
+                         output_schema: HashMap<String, String>,
+                         resource_constraints: HashMap<String, f64> },
+    Inference { model_id: String, input_data: Vec<u8> },
+    Train     { model_id: String, data_source: String, epochs: u32, batch_size: u32 },
+    Reason    { query: String, context_concepts: Vec<ConceptId> },
+    Custom    { goal_type: String, spec: Vec<u8> },
 }
 ```
+
+> **Corrected 2026-08-18.** The previous block described a struct with
+> `id`/`goal_type`/`target`/`constraints`/`priority` and a companion
+> `GoalType { Minimize, Maximize, Satisfy, Achieve }` enum. Neither exists —
+> `GoalType` is in no source file, and the tag it stood for is the enum variant
+> itself. A `Goal` *does* exist in `rmi::symbolic::planner` as well, holding
+> positive and negative predicate lists, so the name resolves twice and neither
+> matches what was written here.
 
 ### Protocol
 
@@ -1519,18 +1561,30 @@ pub struct AIConcept {
 
 ## Error Handling
 
-All fallible operations return `Result<T, RecursiveMachineIntelligenceError>`.
+All fallible operations return `Result<T, RmiError>`.
 
 ```rust
-pub enum RecursiveMachineIntelligenceError {
-    Compute(String),
-    Protocol(String),
+pub enum RmiError {
+    Primitive(String),
     Ontology(String),
-    Inference(String),
     Agent(String),
-    Io(std::io::Error),
+    Protocol(String),
+    Compute(String),
+    Serialization(String),
+    Io(#[from] std::io::Error),
+    ShapeMismatch { /* … */ },
+    ResourceExhausted(String),
+    InvalidConfig(String),
+    Neural(String),
+    Symbolic(String),
 }
 ```
+
+> **Corrected 2026-08-18.** The type is `RmiError`. The old name was a
+> rename artifact — a global `Rmi` → `RecursiveMachineIntelligence` pass
+> rewrote the *type* along with the prose, and no such type ever existed.
+> `Inference` is not a variant; six others were missing, including
+> `ResourceExhausted`, which the memory pool returns.
 
 ---
 
