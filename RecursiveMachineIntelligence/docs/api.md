@@ -1145,14 +1145,25 @@ pub struct CheckpointMeta {
 }
 
 impl CheckpointManager {
-    pub fn new(checkpoint_dir: PathBuf, max_checkpoints: usize) -> Result<Self>;
-    pub fn save_checkpoint<T: Serialize>(&mut self, checkpoint_type: CheckpointType, data: &T, metrics: HashMap<String, f64>) -> Result<String>;
-    pub fn load_checkpoint<T: DeserializeOwned>(&self, id: &str) -> Result<T>;
-    pub fn list_checkpoints(&self) -> &[CheckpointMeta];
-    pub fn get_latest(&self, checkpoint_type: Option<CheckpointType>) -> Option<&CheckpointMeta>;
-    pub fn delete_checkpoint(&mut self, id: &str) -> Result<bool>;
+    pub fn new(base_path: impl AsRef<Path>) -> Result<Self>;
+    pub fn with_max_checkpoints(self, max: usize) -> Self;   // builder
+    pub fn save<T: Serialize>(/* … */) -> Result<CheckpointMeta>;
+    pub fn save_with_tensors(/* … */) -> Result<CheckpointMeta>;
+    pub fn load<T: DeserializeOwned>(&self, id: Uuid) -> Result<Option<(CheckpointMeta, T)>>;
+    pub fn load_tensors(&self, id: Uuid) -> Result<Option<TensorStorage>>;
+    pub fn list(&self) -> Result<Vec<CheckpointMeta>>;
+    pub fn latest(&self) -> Result<Option<CheckpointMeta>>;
+    pub fn delete(&self, id: Uuid) -> Result<()>;
 }
 ```
+
+> **Corrected 2026-08-18.** Every method in this block was wrong: the names
+> carried a `_checkpoint` suffix the code does not use (`save_checkpoint` →
+> `save`), `new` took `(dir, max)` where the real one takes a path and a
+> `with_max_checkpoints` builder, ids are `Uuid` rather than `&str`, and the
+> return types differ throughout. `CheckpointManager` itself exists — which is
+> what made this hard to notice: the type resolves, so only calling a method
+> reveals the drift.
 
 #### `ConsistentHashRing`
 

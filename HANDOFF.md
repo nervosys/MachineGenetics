@@ -70,6 +70,7 @@ breaks, *and* a recorded state that silently starts passing.
 | `scripts/check-doc-evals.sh` | that every documentation block defining `main` or a `@test` **runs** — 57 entry points, the second oracle |
 | `scripts/check-vocabulary.sh` | that all 31 words of §8 check, run, and return what the ontology publishes — and that its own case list *is* the published vocabulary |
 | `scripts/check-ci-floors.sh` | the three measurable published floors, measured fresh; also fails if the committed `TOKEN_REPORT.md` differs from a new run |
+| `scripts/check-rmi-api-doc.sh` | every item `rmi/docs/api.md` documents exists in the crate, and every `**Module:**` path resolves — baseline **23** missing, ratcheting down |
 | CI `audit` job | `cargo audit` over all five lockfiles separately |
 | CI ontology step | `MAGE_ONTOLOGY.json` matches a fresh `--emit-ontology` |
 | CI version step | `mage-parse --version` matches the tool id Ribosome keys on |
@@ -1026,9 +1027,16 @@ The mirror image, and easy to get backwards.
   `framewerx::…` when the crate is `rmi` — all twelve wrong, all twelve modules
   present, so a reader following them concludes the modules are missing. Found
   while checking whether the vendored crate repeated the "all reviewed" claim,
-  which is the only reason it was found. The file is 1,463 lines and **one
-  section is now verified**; it carries a status note saying so rather than
-  implying the rest.
+  which is the only reason it was found. Measured across the whole file:
+  **27 of 228 documented items — 12% — exist nowhere in `src/`.** Correcting
+  `CheckpointManager` took that to 23; every method in *its* block was wrong
+  too (`save_checkpoint` for `save`, `&str` ids for `Uuid`, a constructor that
+  never took those arguments), and the *type* resolves, which is exactly what
+  made it hard to notice — nothing fails until you call a method.
+  `scripts/check-rmi-api-doc.sh` now ratchets the 23 down and fails outright on
+  an unresolvable module path. The check is deliberately name-level: it cannot
+  see a wrong signature on a function that exists, which is most of what was
+  wrong here, so `cargo doc` stays the authority and the file says so.
 - **`AGENT_PROTOCOL.md`, nine figures at once.** The document that tells an
   agent how to emit bytes rather than text opened with "the genuine ~50×
   efficiency win", and its own worked example three sections down measures

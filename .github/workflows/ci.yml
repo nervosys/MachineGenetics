@@ -67,6 +67,13 @@ jobs:
         run: cargo build --release --manifest-path RecursiveMachineIntelligence/Cargo.toml --no-default-features --features cpu
       - name: Test
         run: cargo test --manifest-path RecursiveMachineIntelligence/Cargo.toml --no-default-features --features cpu
+      # `docs/api.md` is 1,463 lines of signatures and nothing resolved any of
+      # them: it documented an FFI API whose types exist in no source file, and
+      # every "Module:" line named a crate this one has not been called for some
+      # time. Name-level only — it cannot see a wrong signature on a function
+      # that exists — with a baseline that can only shrink.
+      - name: Documented API items exist
+        run: bash scripts/check-rmi-api-doc.sh
 
   prototype:
     name: prototype — build + test
