@@ -1,6 +1,6 @@
 # Security Audit — MAGE (Machine Genetics) + RecursiveMachineIntelligence (rmi)
 
-**Org:** NERVOSYS · **Date:** 2026-06-04 · **Scope:** `RecursiveMachineIntelligence/`
+**Org:** NERVOSYS · **Date:** 2026-06-04, §1 re-run 2026-08-18 · **Scope:** `RecursiveMachineIntelligence/`
 (crate `rmi`), `prototype/` (compiler + RAP server), `agentic-eval` (separate
 AetherShell repo). Frameworks applied: **CVE/RustSec**, **NIST FIPS 140-3**,
 **MITRE ATT&CK**, **CMMC 2.0**.
@@ -44,10 +44,34 @@ extracted from `forge` (steps 148–149). Both are clean, as is `forge`.
 |---|---|---|---|
 | **RUSTSEC-2026-0041** | `lz4_flex 0.11.5` | **8.2 High** — decompress of invalid data can leak uninitialized/reused buffer memory | **FIXED** — pinned `>=0.11.6` via `cargo update -p lz4_flex --precise 0.11.6`. rmi uses lz4 for protocol compression, so this was in-path. |
 | RUSTSEC-2024-0436 | `paste 1.0.15` | unmaintained (warning) | **Accepted** — transitive via `wgpu→metal`, only under the non-default `gpu` feature; no code path in default builds. Tracked for when wgpu updates. |
-| RUSTSEC-2026-0097 | `rand 0.8/0.9` | unsound (warning) | **Not applicable** — the unsoundness requires a custom global logger calling `rand::rng()` reentrantly; rmi uses `rand` only for weight init / sampling, never from a logger. No remediation needed; documented. |
+| ~~RUSTSEC-2026-0097~~ | ~~`rand 0.8/0.9`~~ | unsound (warning) | **No longer applies.** The rationale here was "not applicable — the unsoundness needs a reentrant logger". That was true, and it is now moot: `prototype`'s lockfile carries `rand 0.8.6`, which the advisory lists as *patched* (`< 0.9.0, >= 0.8.6`). `cargo audit` has stopped reporting it. Kept struck through rather than deleted, because an accepted-risk row that silently vanishes is indistinguishable from one nobody re-checked. |
+| **RUSTSEC-2026-0190** | `anyhow 1.0.102` | unsound (warning) — borrow-rule violation in `Error::downcast_mut()` after `Error::context` | **FIXED 2026-08-18** — `cargo update -p anyhow` → 1.0.104 (patched at ≥ 1.0.103). Transitive via the `wit-bindgen`/`wit-component` chain; nothing in this repository calls `downcast_mut`, so it was not in-path, but a patched version existed and accepting a fixable finding is not triage. **This advisory is dated 2026-06-25 and was not in this table** — the register had drifted in both directions at once: listing a warning that had stopped firing, and missing one that had started. |
 | (yanked) | `lz4_flex 0.11.5` | yanked | resolved by the 0.11.6 pin above. |
 
-**Result:** 0 open vulnerabilities after the lz4_flex fix; 2 informational warnings accepted with rationale. agentic-eval's own dependency surface is 2 optional crates (`tiktoken-rs`, `serde`) — no findings.
+**Result (re-run 2026-08-18):** 0 open vulnerabilities. The four *committed*
+lockfiles — `prototype`, `forge`, `ribosome`, `germline` — report **zero
+findings of any kind**, warnings included. The single remaining warning is
+`paste` (unmaintained) on `RecursiveMachineIntelligence/Cargo.lock`, which is
+git-ignored, so it is a property of a local resolve rather than of this
+repository. agentic-eval's own dependency surface is 2 optional crates
+(`tiktoken-rs`, `serde`) — no findings.
+
+> **An accepted-risk register decays like any other measured claim, and worse.**
+> Both drifts above are invisible to a reader: the document names two accepted
+> warnings, and someone checking whether the accepted set is complete would have
+> found it neither complete nor current. `cargo audit` in CI catches new
+> *vulnerabilities*; nothing compares this table against the warnings actually
+> reported. Re-run the five surfaces when touching this file:
+> `for d in prototype forge ribosome germline; do cargo audit --file $d/Cargo.lock; done`
+>
+> **And the npm surface, which nothing here had ever named.** `HANDOFF.md`
+> claimed "0 npm"; `video/` had **one high-severity** advisory
+> (GHSA-2v37-7h3g-55p8, `nanoid < 3.3.18`, transitive via `postcss`), fixed
+> 2026-08-18 with `npm audit fix --package-lock-only` → 3.3.18, and now 0 of
+> 294 packages. Both `video/package.json` and `video/package-lock.json` are
+> tracked, so this was a repository finding rather than a local one. Check it
+> with `cd video && npm audit`; CI's `audit` job covers the five Cargo
+> lockfiles and not this one.
 
 **Recommendation (CMMC SI / supply chain): ✅ implemented 2026-08-05.** CI now
 has an `audit` job running `cargo audit` over each of the five lockfiles
@@ -118,12 +142,17 @@ Assessed against CMMC L1/L2 practices relevant to a source release (not a CUI-ha
 ---
 
 ## Actions taken in this audit
-1. **Fixed RUSTSEC-2026-0041** (lz4_flex high-severity) — pinned 0.11.6, re-audited clean, 1226 tests still pass.
+1. **Fixed RUSTSEC-2026-0041** (lz4_flex high-severity) — pinned 0.11.6, re-audited clean, 1226 tests passing at the time (2,904 across five crates now).
+1b. **Fixed RUSTSEC-2026-0190** (anyhow unsound, 2026-08-18) — `cargo update -p anyhow` → 1.0.104; the four committed lockfiles now report zero findings of any kind.
 2. Inventoried crypto (FIPS gap documented), deserialization (bounds-checked, no pickle-class RCE), and network/exec surfaces (loopback default, effect-mapped).
 3. Confirmed **zero secret/credential material** in the codebase (leak scan).
 
 ## Open recommendations (non-blocking for OSS release)
-- Wire `cargo audit` + `cargo deny` into CI with a `deny.toml` (accept the 2 informational advisories explicitly).
+- `cargo audit` is wired into CI (done 2026-08-05, five lockfiles separately).
+  `cargo deny` with a `deny.toml` remains open; the allowlist would now hold
+  **one** entry (`paste`, unmaintained, rmi's uncommitted lockfile only) rather
+  than the two this line used to name — see §1's re-run note for why that count
+  moved in both directions.
 - Add a loud warning/refusal when `--rap` binds a non-loopback address.
 - Add a `fips` feature flag routing SHA-256 through a validated module, for regulated downstreams.
 - If RAP is ever productionized: rustls (FIPS backend) + token auth.

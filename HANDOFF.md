@@ -15,7 +15,7 @@ each claim has a command beside it.
 | Tests | **2,904** — rmi 1,380 · prototype 1,195 · ribosome 164 · germline 112 · forge 53 |
 | CUDA | **1,071 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
-| Vulnerabilities | 0 Rust across five lockfiles, 0 npm |
+| Vulnerabilities | 0 Rust across five lockfiles, 0 npm — and the four *committed* lockfiles now report 0 warnings too |
 | CI | 10 jobs, green on `master` |
 | Reliability floors | file-oracle parse 99/100, perturbed pattern-heal 42, native-lexer ratio 0.997 |
 | Examples | 12 of 12 typecheck, run, and print their recorded answer |
@@ -307,6 +307,31 @@ it meant. Agreement between two documents is not corroboration when one is a
 copy; it is the same claim counted once. Now pinned, so `--check-docs` fails if
 either drifts, and the *measurement* is emitted by `test-all.sh` rather than
 transcribed.
+
+**An accepted-risk register decays like any other measured claim, and worse.**
+`SECURITY_AUDIT.md` §1 named two accepted `cargo audit` warnings. Re-running the
+five surfaces: one of them (`rand`, RUSTSEC-2026-0097) had **stopped firing** —
+the lockfile now carries `rand 0.8.6`, which the advisory itself lists as
+patched — and a different one had **started**: RUSTSEC-2026-0190, `anyhow`
+unsound, dated 2026-06-25 and absent from the table. It had a patched version
+available, so accepting it was never the right call; `cargo update -p anyhow`
+closed it and the four committed lockfiles now report zero findings of any kind.
+
+The register had drifted in *both* directions at once, and neither is visible
+to a reader: someone checking whether the accepted set was complete would have
+found it neither complete nor current. CI's `audit` job deliberately does not
+fail on warnings — correctly, since a permanently red job gets ignored — which
+means **nothing compares the accepted-risk table against the warnings actually
+reported**. That comparison is still manual; the command to run is now in the
+document.
+
+**"0 npm" was a claim about a surface nothing checked.** `video/` has a tracked
+`package-lock.json`, and `npm audit` reported one **high-severity** advisory
+(`nanoid < 3.3.18`, transitive via `postcss`). Fixed. CI's `audit` job runs
+`cargo audit` over five Cargo lockfiles and does not touch this one, so the
+figure in the table above had no mechanism behind it — it was true when
+someone last looked, which for a vulnerability count is a different thing from
+being true.
 
 **A pin over a generated list tends toward tautology.** The follow-up test for
 layer names iterated `layer_map`, which is *filtered* by the same function the
