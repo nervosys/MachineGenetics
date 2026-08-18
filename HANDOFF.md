@@ -1014,6 +1014,21 @@ The mirror image, and easy to get backwards.
   snapshots; what made them misleading is that nothing said so, and its own
   summary table carried the old numbers as current. Each superseded section now
   carries the re-measured figure beside it, and the header table is dated.
+- **`rmi/docs/api.md` documents an FFI API that exists nowhere in the crate.**
+  `FfiValue` and `FfiFuncPtr` are in no source file; `register` takes an
+  `FfiBinding`, not `(name, sig, ptr)`; `call` deals in `Val`; and
+  `call_unchecked` is documented **`unsafe`** and is not. The real thing passes
+  RMIL values to safe Rust closures (`Box<dyn Fn(&[Val]) -> Result<Val,
+  String>>`), so the block painted a *more* alarming surface than exists —
+  raw `*mut u8` pointers and an unsafe entry point where there are neither.
+  `unsafe` in a signature is a contract, and documenting one that is not there
+  is as much a defect as omitting one that is. Also every **Module:** line said
+  `framewerx::…` when the crate is `rmi` — all twelve wrong, all twelve modules
+  present, so a reader following them concludes the modules are missing. Found
+  while checking whether the vendored crate repeated the "all reviewed" claim,
+  which is the only reason it was found. The file is 1,463 lines and **one
+  section is now verified**; it carries a status note saying so rather than
+  implying the rest.
 - **`AGENT_PROTOCOL.md`, nine figures at once.** The document that tells an
   agent how to emit bytes rather than text opened with "the genuine ~50×
   efficiency win", and its own worked example three sections down measures

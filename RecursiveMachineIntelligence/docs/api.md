@@ -2,6 +2,25 @@
 
 This document provides a comprehensive reference for the RecursiveMachineIntelligence public API.
 
+> **Status: not checked against the code, and known to have drifted.** Nothing
+> compiles the signatures below or resolves the paths, so treat it as a map
+> rather than a contract; `cargo doc` is the authority.
+>
+> Two problems were found and fixed on 2026-08-18 while looking for something
+> else, which is the only reason they were found at all:
+>
+> - Every **Module:** line named `framewerx::…`. The crate is `rmi`; the name
+>   changed and this file did not. All twelve paths were wrong, and all twelve
+>   modules do exist — so the fix was mechanical, and an agent following the old
+>   paths would have concluded the modules were missing.
+> - The **FFI Bridge** section described types that exist nowhere in the crate
+>   (`FfiValue`, `FfiFuncPtr`) and marked `call_unchecked` `unsafe` when it is
+>   not. See that section for the detail; it is the one part of this file that
+>   has now been read line-by-line against the source.
+>
+> The other sections have **not** been verified. If you rely on one, check it
+> against `src/` and fix it here — the drift above suggests more.
+
 ---
 
 ## Table of Contents
@@ -30,7 +49,7 @@ This document provides a comprehensive reference for the RecursiveMachineIntelli
 
 ## Compute Module
 
-**Module:** `framewerx::compute`
+**Module:** `rmi::compute`
 
 ### Types
 
@@ -181,7 +200,7 @@ impl CudaBackend {
 
 ### BLAS Operations
 
-**Module:** `framewerx::compute::blas`
+**Module:** `rmi::compute::blas`
 
 Pure-Rust BLAS (Basic Linear Algebra Subprograms) operating on f64 with tiled algorithms.
 
@@ -208,7 +227,7 @@ The CPU backend (`CpuBackend`) automatically routes matrices ≥32×32 through B
 
 ### Kernel Fusion
 
-**Module:** `framewerx::compute::fusion`
+**Module:** `rmi::compute::fusion`
 
 Detects and rewrites fusible RMIL op sequences into fused kernels.
 
@@ -248,7 +267,7 @@ Also available via the optimization pipeline as `RmilOptimizer` (see [Optimizati
 
 ### JIT Compiler
 
-**Module:** `framewerx::lang::jit`
+**Module:** `rmi::lang::jit`
 
 Compiles RMIL `Expr` trees into native `f64 → f64` functions at runtime.
 
@@ -277,28 +296,45 @@ The VM exposes `eval_jit()` which tries JIT first, then falls back to tree-walki
 
 ### FFI Bridge
 
-**Module:** `framewerx::lang::ffi`
+**Module:** `rmi::lang::ffi`
 
-Safe and unsafe foreign function interface for calling external C-ABI functions from RMIL.
+Interface for calling **host closures** from RMIL. Despite the name, no raw
+C-ABI pointers are involved and nothing here is `unsafe`.
 
 ```rust
+pub type FfiFn = Box<dyn Fn(&[Val]) -> Result<Val, String> + Send + Sync>;
+
 pub struct FfiRegistry { /* ... */ }
 impl FfiRegistry {
     pub fn new() -> Self;
-    pub fn register(&mut self, name: &str, sig: FfiSignature, ptr: FfiFuncPtr) -> Result<(), FfiError>;
-    pub fn call(&self, name: &str, args: &[FfiValue]) -> Result<FfiValue, FfiError>;
-    pub unsafe fn call_unchecked(&self, name: &str, args: &[FfiValue]) -> FfiValue;
-    pub fn list_functions(&self) -> Vec<(&str, &FfiSignature)>;
+    pub fn register(&mut self, binding: FfiBinding);
+    pub fn register_fn(
+        &mut self,
+        name: impl Into<String>,
+        signature: FfiSignature,
+        func: impl Fn(&[Val]) -> Result<Val, String> + Send + Sync + 'static,
+    );
+    pub fn call(&self, name: &str, args: &[Val]) -> Result<Val, FfiError>;
+    // Skips the arity and type checks `call` performs. Safe: the callee is a
+    // Rust closure, not a foreign pointer.
+    pub fn call_unchecked(&self, name: &str, args: &[Val]) -> Result<Val, FfiError>;
 }
-
-pub enum FfiValue { F64(f64), I64(i64), Bool(bool), Ptr(*mut u8), Void }
-pub enum FfiType { F64, I64, Bool, Ptr, Void }
-pub struct FfiSignature { pub args: Vec<FfiType>, pub ret: FfiType }
 ```
+
+> **Corrected 2026-08-18.** This block previously described an API that does
+> not exist: `FfiValue` and `FfiFuncPtr` appear **nowhere in the crate**,
+> `register` takes an `FfiBinding` rather than `(name, sig, ptr)`, `call`
+> deals in `Val`, and `call_unchecked` is **not `unsafe`** and returns
+> `Result<Val, FfiError>`. Code written against the old block would not
+> compile — and it painted a more alarming picture than the truth, implying a
+> raw-pointer FFI surface (`Ptr(*mut u8)`) and an unsafe entry point where the
+> real thing passes RMIL values to safe Rust closures. `unsafe` in a signature
+> is a contract; documenting one that isn't there is as much a defect as
+> omitting one that is.
 
 ### LSP Server
 
-**Module:** `framewerx::lang::lsp`
+**Module:** `rmi::lang::lsp`
 
 Language Server Protocol implementation for RMIL source files.
 
@@ -317,7 +353,7 @@ impl RmilLanguageServer {
 
 ### Op Registry
 
-**Module:** `framewerx::lang::registry`
+**Module:** `rmi::lang::registry`
 
 Runtime-extensible operation registry allowing user-defined ops.
 
@@ -340,7 +376,7 @@ pub struct RegisteredOp { pub op: Op, pub meta: OpMeta, pub version: u32 }
 
 ## Neural Module
 
-**Module:** `framewerx::neural`
+**Module:** `rmi::neural`
 
 ### Core Types
 
@@ -599,7 +635,7 @@ pub fn grad(tape: &GradientTape, output: &Variable, var: &Variable) -> Variable;
 
 ## Symbolic Module
 
-**Module:** `framewerx::symbolic`
+**Module:** `rmi::symbolic`
 
 ### Logic Types
 
@@ -808,7 +844,7 @@ pub fn plan(
 
 ## Neurosymbolic Module
 
-**Module:** `framewerx::neurosymbolic`
+**Module:** `rmi::neurosymbolic`
 
 ### Symbol Embedding
 
@@ -948,7 +984,7 @@ pub struct HybridConfig {
 
 ## Core Module
 
-**Module:** `framewerx::core`
+**Module:** `rmi::core`
 
 ### Agent
 
@@ -1333,7 +1369,7 @@ pub struct RmilOptStats {
 
 ## Knowledge Module
 
-**Module:** `framewerx::knowledge`
+**Module:** `rmi::knowledge`
 
 ### AI History
 
