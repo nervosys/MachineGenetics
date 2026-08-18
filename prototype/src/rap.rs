@@ -1453,6 +1453,13 @@ mod tests {
     #[test]
     fn every_published_rap_key_is_real() {
         const SRC: &str = "+f add(a: i32, b: i32) -> i32 { a + b }";
+        // `abl/decode` is the only method whose input is another method's
+        // output, so it is produced rather than written down — a hand-copied
+        // hex string would go stale the next time the container format moves.
+        let abl_hex = call("abl/encode", serde_json::json!({ "source": SRC }))["abl_hex"]
+            .as_str()
+            .expect("abl/encode returns abl_hex")
+            .to_string();
         // Inputs chosen so each method takes its success path. A method that
         // cannot succeed with any input is a finding, not a reason to skip it.
         let calls: Vec<(&str, serde_json::Value)> = vec![
@@ -1491,10 +1498,43 @@ mod tests {
             ("nl/explain", serde_json::json!({ "source": SRC })),
             ("nl/query", serde_json::json!({ "prompt": "add two numbers" })),
             ("ontology/section", serde_json::json!({ "section": "vocabulary" })),
+            ("ontology/full", serde_json::json!({})),
+            ("abl/decode", serde_json::json!({ "abl_hex": abl_hex })),
+            // An fqn that carries a spec block. Most SKB entries do not, and
+            // for those the arm returns `ok: false` — a working call has to
+            // name one that does.
+            ("skb/spec", serde_json::json!({ "fqn": "std.io.read_file" })),
+            ("verify/contracts", serde_json::json!({
+                "fqn": "add",
+                "requires": [],
+                "ensures": [],
+                "declared_effects": [],
+                "used_effects": [],
+            })),
+            ("sandbox/policy", serde_json::json!({
+                "source": "agent Planner { capabilities: [io] }",
+                "agent": "Planner",
+            })),
+            ("nl/refactor", serde_json::json!({ "source": SRC })),
         ];
 
         let published = crate::ontology::section("rap_methods").expect("rap_methods");
         let rows = published.as_array().expect("array");
+
+        // Both directions. The list above is written by hand, so without this
+        // the test's own doc comment ("every published parameter…") would be a
+        // claim about whatever someone remembered to add: the first version of
+        // this test exercised 31 of 37 methods and said nothing about the other
+        // six. A new method must be given a working call here, or fail.
+        for row in rows {
+            let method = row["method"].as_str().expect("method");
+            assert!(
+                calls.iter().any(|(m, _)| *m == method),
+                "`{method}` is published and has no working call in this test — \
+                 its published contract is unchecked"
+            );
+        }
+
         for (method, params) in &calls {
             let row = rows
                 .iter()
@@ -1505,12 +1545,26 @@ mod tests {
             // we pass are the ones the code looks for, so the published list
             // has to agree with them.
             let sent: Vec<&str> = params.as_object().unwrap().keys().map(|k| k.as_str()).collect();
-            for p in row["params"].as_array().unwrap() {
-                let p = p.as_str().unwrap();
+            let pubbed: Vec<&str> =
+                row["params"].as_array().unwrap().iter().map(|p| p.as_str().unwrap()).collect();
+            for p in &pubbed {
                 assert!(
-                    sent.contains(&p),
+                    sent.contains(p),
                     "`{method}` publishes parameter `{p}`, which the working \
                      call does not use — the published name is wrong"
+                );
+            }
+            // And the other direction, which is the one that hides real gaps:
+            // the calls above are minimal, so anything they pass is something
+            // the method needs. `sandbox/policy` published only `agent` while
+            // reading the module out of `source` — an agent following the
+            // published list got `agent `X` not found` for every agent that
+            // existed, because it never sent the program to look in.
+            for p in &sent {
+                assert!(
+                    pubbed.contains(p),
+                    "`{method}` needs parameter `{p}` and does not publish it — \
+                     a caller following the ontology cannot make this call work"
                 );
             }
 

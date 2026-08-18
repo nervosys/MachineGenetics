@@ -118,6 +118,23 @@ the doc comment says "every" and the body has a literal list, the test is
 weaker than its own claim.** Every replacement here compares both directions
 and was verified by breaking it on purpose.
 
+**And then I wrote a seventh.** The replacement for row two —
+`every_published_rap_key_is_real`, whose whole point was that the old test
+checked the wrong thing — is a hand-written list of working calls under a doc
+comment saying "every published parameter is read". It exercised **31 of 37**
+methods, and asserted nothing about the other six. Knowing the pattern by name
+is not enough: a list-driven test needs an explicit assertion that the list
+covers its subject, in the same function, or the next person to add a method
+gets no signal. It now iterates the published methods and fails on any without
+a call. That immediately paid for itself — `abl/decode`, `skb/spec`,
+`verify/contracts`, `sandbox/policy` and `nl/refactor` had never had their
+contracts checked, and `sandbox/policy` turned out to publish only `agent`
+while reading the program out of an unpublished `source`, so *every* call an
+agent could construct from the ontology returned `agent X not found` for every agent that existed.
+`manifest/generate` had the same hole. The params check is now bidirectional
+too: the calls are minimal, so anything a working call sends and the ontology
+omits is a parameter no caller could know to pass.
+
 **A pin over a generated list tends toward tautology.** The follow-up test for
 layer names iterated `layer_map`, which is *filtered* by the same function the
 validation uses — so it could not fail by construction. The escape is inputs the

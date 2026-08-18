@@ -4516,6 +4516,7 @@
       {
         "method": "sandbox/policy",
         "params": [
+          "source",
           "agent"
         ],
         "returns": [
@@ -4550,6 +4551,7 @@
       {
         "method": "manifest/generate",
         "params": [
+          "source",
           "crate_name",
           "version"
         ],
