@@ -1873,8 +1873,34 @@ pub fn parse_intent(input: &str) -> Intent {
 // NL Extraction Helpers
 // ═══════════════════════════════════════════════════════════════════
 
+/// Does the prompt contain any of these keywords?
+///
+/// **Word boundaries matter here.** This was a bare `contains`, and the
+/// knowledge-base branch of the intent classifier lists the keyword `"fact"` —
+/// which is a substring of **"re-fact-or"**. So every `nl/refactor` call
+/// classified as "generate a knowledge base" and answered with an empty `kb`
+/// block: the method could never refactor anything, defeated by its own name.
+///
+/// A single-word keyword now has to match a whole word. Multi-word phrases
+/// ("create a kb", "what does") still match as substrings, because splitting
+/// them would change what they mean.
 fn has_any(haystack: &str, needles: &[&str]) -> bool {
-    needles.iter().any(|n| haystack.contains(n))
+    needles.iter().any(|n| {
+        if n.contains(' ') || n.contains('-') {
+            return haystack.contains(n);
+        }
+        let mut rest = haystack;
+        while let Some(i) = rest.find(n) {
+            let before = rest[..i].chars().next_back();
+            let after = rest[i + n.len()..].chars().next();
+            let bounded = |c: Option<char>| c.is_none_or(|c| !c.is_alphanumeric() && c != '_');
+            if bounded(before) && bounded(after) {
+                return true;
+            }
+            rest = &rest[i + n.len()..];
+        }
+        false
+    })
 }
 
 fn extract_quoted_or_named(input: &str) -> Option<String> {
@@ -2768,6 +2794,37 @@ mod tests {
     use super::*;
 
     // ── Intent parsing ─────────────────────────────────────────────
+
+    /// "refactor" contains "fact", and the knowledge-base branch lists `fact`
+    /// as a keyword — so every refactor request classified as "generate a
+    /// knowledge base" and answered with an empty `kb` block. The published
+    /// `nl/refactor` method could not refactor anything, defeated by its own
+    /// name.
+    #[test]
+    fn refactor_is_not_a_knowledge_base_request() {
+        let intent = parse_intent("refactor this code
+```mg
++f add() -> i32 { 1 }
+```");
+        assert_eq!(intent.kind, IntentKind::Refactor, "`refactor` must not match `fact`");
+
+        // The keyword still works when it is a word.
+        let kb = parse_intent("create a kb with one fact about rust");
+        assert_eq!(kb.kind, IntentKind::GenerateKb);
+    }
+
+    /// Keyword matching is word-bounded, so a keyword that happens to be a
+    /// substring of an unrelated word does not fire.
+    #[test]
+    fn keywords_match_whole_words() {
+        assert!(has_any("please refactor it", &["refactor"]));
+        assert!(!has_any("refactor", &["fact"]));
+        assert!(!has_any("addressable", &["add"]));
+        assert!(!has_any("runtime", &["run"]));
+        assert!(has_any("add two numbers", &["add"]));
+        // Multi-word phrases still match as written.
+        assert!(has_any("please create a kb now", &["create a kb"]));
+    }
 
     #[test]
     fn parse_function_intent() {

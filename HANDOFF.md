@@ -484,6 +484,16 @@ elsewhere, pointing at the wrong line.
   accepts must be in the cli_flags ontology section". It now scrapes the flag
   literals out of `main.rs` and compares the two sets in both directions —
   verified by removing `--eval` and watching it fail. 36 flags are published.
+- **`nl/refactor` could not refactor, defeated by its own name.** The intent
+  classifier matched keywords as bare substrings, and the knowledge-base
+  branch lists `fact` — which is inside "re**fact**or". Every refactor request
+  classified as "generate a knowledge base" and answered `kb Generated { }`,
+  with `ok: true`. The previous session had "fixed" this method by fencing its
+  source, which only got it far enough to answer confidently and wrongly.
+
+  Keyword matching is word-bounded now (`add` no longer matches
+  "addressable", `run` no longer matches "runtime"), multi-word phrases still
+  match as phrases, and `nl/refactor` returns refactored source.
 - **The published RAP contract was wrong for a third of its methods.** RAP is
   the protocol an agent drives the compiler through, and `rap_methods`
   publishes each method's parameters and return keys. **Eight methods read
