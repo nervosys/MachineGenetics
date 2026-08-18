@@ -1,13 +1,17 @@
-# MAGE Mission Findings (Phases 27, 30, 31, 2026-05-22)
+# MAGE Mission Findings (Phases 27-38, 2026-05-22 to 2026-05-26)
 
-Two measurement passes against the 100-task benchmark corpus, each
+Six measurement passes against the 100-task benchmark corpus, each
 exposing a real gap between the project's stated mission ("maximally
-token-efficient and reliable for agents") and current delivery.
+token-efficient and reliable for agents") and delivery at the time.
 
-| Mission axis | Tool | Result |
+**This file is a chronological log, and the sections below are dated
+snapshots.** Read them as history; the table here is the current
+measurement, re-run 2026-08-18.
+
+| Mission axis | Tool | Where it stands now |
 |---|---|---|
-| Token-efficient | `cargo run --bin token-bench` | Text surface ~tied with Rust; binary IR ~83 % smaller. See below. |
-| Reliable for agents | `cargo run --bin reliability-bench` | **69 / 100** after Phases 31–35 parser fixes (up from 25 / 100, **+176 %, nearly tripled**). See §2 + §3. |
+| Token-efficient | `cargo run --bin token-bench` | Text surface tied with Rust (native-lexer ratio **0.997**); binary IR **2-6×** smaller per declaration, 0.225 for a whole container. See §1. |
+| Reliable for agents | `cargo run --bin reliability-bench` | file-oracle parse **99 / 100**, effective **100 / 100**. Perturbed input parses 27 / 100 and heals to **70 / 100**. See §2 and §6 for how it got there — both record much lower numbers, because both are snapshots of when they were written. |
 
 ---
 
@@ -29,9 +33,9 @@ text surface, as currently written and used by the corpus, is a wash.
 
 | Metric | MAGE | Rust | Ratio | Reduction |
 |---|---:|---:|---:|---:|
-| **Raw source bytes** *(what BPE actually sees)* | 55 075 | 52 223 | 1.055 | **−5.5 %** |
-| Whitespace-stripped bytes | 36 057 | 38 632 | 0.933 | +6.7 % |
-| Native syntactic tokens *(MAGE lexer + proc-macro2)* | 15 282 | 15 310 | 0.998 | +0.2 % |
+| **Raw source bytes** *(what BPE actually sees)* | 55 066 | 52 220 | 1.055 | **−5.5 %** |
+| Whitespace-stripped bytes | 36 048 | 38 629 | 0.933 | +6.7 % |
+| Native syntactic tokens *(MAGE lexer + proc-macro2)* | 15 268 | 15 310 | 0.997 | +0.3 % |
 | Shared-rule tokens *(same naive tokeniser for both)* | 15 831 | 15 310 | 1.034 | −3.4 % |
 | **Corpus's claimed totals** | 11 210 | 16 095 | 0.696 | 30.4 % |
 
@@ -41,8 +45,8 @@ The four real numbers all sit within ±7 % of parity. The 30 % claim is
 ## Why the raw-bytes number actually goes the wrong way
 
 MAGE sources in the corpus have **more whitespace** per byte:
-- MG: 55 075 raw, 36 057 dense → 34.5 % whitespace
-- RS: 52 223 raw, 38 632 dense → 26.0 % whitespace
+- MG: 55 066 raw, 36 048 dense → 34.5 % whitespace
+- RS: 52 220 raw, 38 629 dense → 26.0 % whitespace
 
 The sigil compression in MG's *non-whitespace* content (6.7 % win) is
 swamped by 8.5 pp of extra whitespace formatting. An LLM consuming
@@ -78,16 +82,28 @@ loses**. Rust's `if` / `else` / `mut` / `let` are short enough that
 MAGE's `?` / `:` / `m` / `v` don't save much, while MG's longer
 constructs (`R[T,E]`, `?T`) cost.
 
-## Where the ~50 % claim *is* real: the Agentic Binary Language binary IR
+## Where a real reduction *does* live: the Agentic Binary Language binary IR
 
-Phase 1 of the unification demonstrated:
-- A full transformer block lowers to **47 bytes** of Agentic Binary Language.
-- An MLP fits in **17 bytes**.
-- A KB definition fits in **68 bytes**.
+Measured on `prototype/examples/unified.mg`, comparing each declaration's
+MAGE text against its encoded expr:
 
-These are 1-2 orders of magnitude smaller than the equivalent text in
-either MAGE or Rust. **If the goal is "maximally token-efficient
-for agents," the answer is: have agents emit Agentic Binary Language directly, not text.**
+| Item | MAGE text | Agentic Binary Language | Ratio |
+|---|---:|---:|---:|
+| TransformerBlock | 243 B | **47 B** | 0.19 |
+| MLP | 98 B | **17 B** | 0.17 |
+| FamilyKb | 116 B | **68 B** | 0.59 |
+
+So **roughly 2-6× on the declaration itself**, and 0.225 for the whole
+container once names, length fields and the symbol table are counted. This
+section was headed "where the ~50 % claim *is* real" and said the encodings
+were "1-2 orders of magnitude smaller than the equivalent text in either MAGE
+or Rust"; against MAGE text they are not, and the heading promised a figure
+§1 had just finished disproving. Against *Rust* the gap is larger, but no
+measurement of that pairing exists here, so it is not claimed.
+
+**If the goal is "maximally token-efficient for agents," the answer is still:
+have agents emit Agentic Binary Language directly, not text** — the reduction
+is simply 2-6× rather than 50×.
 
 The text surface is best understood as a human-readable view of Agentic Binary Language,
 not as the agent's primary output medium.
@@ -156,7 +172,18 @@ For every task in `benchmarks/tasks/*.json`:
 7. Emit [`benchmarks/TOKEN_REPORT.md`](TOKEN_REPORT.md) +
    exit non-zero if any claim is off by > 10 %.
 
-Output is reproducible; the bench acts as a regression guard.
+Output is reproducible. Two things to know before treating it as a gate:
+
+- **It exits non-zero on a clean tree.** Step 6 compares each task's *claimed*
+  `token_count` against the measurement, and 150 claims across the 100 tasks
+  are off by more than 10 % — which is the subject of §1 above. The corpus's
+  claims being wrong is the finding, not a regression, so the exit status
+  cannot be used as-is.
+- **Nothing ran it.** It was not in CI, `scripts/test-all.sh`, or any check
+  script, and `benchmarks/TOKEN_REPORT.md` had gone stale in two categories
+  while `scripts/check-ci-floors.sh` enforced the published token-ratio
+  ceiling by *reading that stale file*. The floor check now runs the bench and
+  fails if the committed report differs from a fresh one.
 
 ## Files added by Phase 27
 
@@ -187,6 +214,12 @@ any agent driving today's prototype:
 **Three quarters of the corpus's own reference solutions don't
 parse through today's MAGE prototype parser.** No real LLM can
 exceed this ceiling — the corpus is the upper bound.
+
+> **Superseded.** That was Phase 30. §3 and the phases after it closed the
+> gap: the same command now reports **lex 100/100, parse 99/100, effective
+> 100/100**. The per-category table below, with seven categories at 0.0 %,
+> is history — every one of them parses today. `scripts/check-ci-floors.sh`
+> enforces a floor of 98 on that number so it cannot silently regress.
 
 ## Per-category breakdown
 
@@ -470,6 +503,14 @@ file-oracle:  parse 69/100  heal 1/31 (3.2%)   effective 70%
 perturbed:    parse 26/100  heal 13/74 (17.6%) effective 39%
 ```
 
+> **Superseded.** Phase-38 numbers. Re-run 2026-08-18:
+> `file-oracle: parse 99/100, effective 100/100` and
+> `perturbed: parse 27/100, pattern-heal 42/73 (57.5%), effective 70/100`.
+> The heal-reach on perturbed input went 13 → 42, and the gap between
+> perfect and perturbed input closed from 31 points to 30 — the *parse*
+> side improved, not the tolerance side. Perturbed input is still where
+> the remaining reliability work is.
+
 **13× more heal-recoveries on perturbed input (1 → 13).** The
 patterns that looked like they didn't do anything on corpus
 input are doing real work when the input matches their target —
@@ -495,11 +536,20 @@ No credentials or network code in the bench itself.
 
 ## All six findings, one table
 
-| Finding | Tool | Number | Status |
+Two columns: what the phase measured, and what the same command reports
+today (2026-08-18). Where they differ, the later number is the one that
+holds — the earlier one is what the finding was written about.
+
+| Finding | Tool | At the time | Now |
 |---|---|---|---|
-| Text token reduction vs Rust | `token-bench` | ~tied (claim was 50 %) | Re-framed README; bytes deliver 83 % |
-| Agentic Binary Language binary IR efficiency | `token-bench` + manual | 83 % smaller than text | Real; `--target=abl-bytes` ships |
-| Corpus parse-rate | `reliability-bench` | 25 → 69 / 100 | +176 % via 18 parser patches |
-| Self-heal coverage on corpus | `reliability-bench` (P36) | 0 % healed | Exposed limitation |
-| Self-heal coverage on perturbed | `reliability-bench` (P38) | **17.6 % healed** | First real heal-reach number |
-| Effective pass under near-correct input | `reliability-bench` (P38) | **39 / 100** | The honest agent-reliability headline |
+| Text token reduction vs Rust | `token-bench` | ~tied (claim was 50 %) | ~tied — native-lexer ratio **0.997** |
+| Binary IR efficiency | `token-bench` + manual | "83 % smaller than text" | **2-6×** per declaration (243→47, 98→17, 116→68 B); 0.225 for a whole container |
+| Corpus parse-rate | `reliability-bench` | 25 → 69 / 100 | **99 / 100**, floor-gated at 98 |
+| Self-heal coverage on corpus | `reliability-bench` (P36) | 0 % healed | 0/1 — only one task fails, and structural-heal takes it |
+| Self-heal coverage on perturbed | `reliability-bench` (P38) | **17.6 % healed** | **57.5 %** (42 of 73) |
+| Effective pass under near-correct input | `reliability-bench` (P38) | **39 / 100** | **70 / 100** — still the honest agent-reliability headline, and still the gap worth closing |
+
+The "83 %" in row two was never measured against anything: the container
+ratio on `prototype/examples/unified.mg` is 0.225, and per-declaration the
+range is 0.17-0.59. It had propagated to `AGENT_PROTOCOL.md` (as "~50×"),
+the README and the blog post before anyone ran the numbers.

@@ -233,8 +233,9 @@ prototype). Reproduce with `agentic-eval --example swe_languages`.
 > (1) a structurally reliable, executable text surface — LL(1) grammar, tracked
 > effects, machine-readable diagnostics, a self-describing ontology, and an
 > evaluator that runs it — and (2) the **Agentic Binary Language binary IR**,
-> where a full neural-network module fits in **~300 bytes**
-> (~83 % smaller than the equivalent text).
+> where a five-item neural module fits in **420 bytes** — 0.225 of its
+> 1866 bytes of text, and 47 bytes for the transformer block inside it,
+> down from 243 (`benchmarks/FINDINGS.md` §1).
 >
 > The text surface itself is roughly **byte-tied** with idiomatic Rust
 > on the 100-task benchmark corpus — not the "~50 % reduction" earlier

@@ -129,6 +129,11 @@ jobs:
       # The ontology published six "CI floors" and this workflow enforced none
       # of them — the section's own doc comment said they were read from this
       # file. Three are measurable and now are.
+      #
+      # This step also runs `token-bench`, which nothing ran: the published
+      # token-ratio ceiling was being enforced by reading a *committed*
+      # TOKEN_REPORT.md that had gone stale in two categories. The script now
+      # measures fresh and fails if the committed report differs.
       - name: Published reliability floors hold
         run: bash scripts/check-ci-floors.sh
       - name: Compiler version matches Ribosome's registry entry

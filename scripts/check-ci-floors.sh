@@ -69,27 +69,54 @@ fi
 
 # ── 3. native-lexer token ratio ───────────────────────────────────────
 #
-# The `**Total**` row of the native-lexer table in TOKEN_REPORT.md. Column 5 is
-# the ratio; `awk` compares as a float, which `[` cannot.
+# Measured fresh, and the committed report checked for staleness.
 #
-# The file has four `**Total**` rows; the one that matters is under
-# "Per-category aggregates (native lexers)". Anchoring on the heading rather
-# than the row shape matters — the *first* Total row is source bytes, ratio
-# 1.055, and reading that one made this check pass for the wrong reason on its
-# first run.
-ratio="$(awk -F'|' '
-    /^## Per-category aggregates \(native lexers\)/ { in_table = 1; next }
-    /^## / { in_table = 0 }
-    in_table && /^\| \*\*Total\*\*/ { gsub(/[* ]/, "", $6); print $6; exit }
-' benchmarks/TOKEN_REPORT.md)"
+# This used to read the ratio out of the *checked-in* `TOKEN_REPORT.md` and
+# nothing else. That file is generated, nothing regenerated it, and it was
+# stale — two categories had drifted by a few bytes. A floor read from a stale
+# artifact is not a floor; it is a record of a floor that once held.
+#
+# The bench *writes* `TOKEN_REPORT.md` as a side effect, which makes the
+# obvious fix wrong: run the bench, then compare the file against the bench's
+# own stdout, and the two agree by construction. That was this script's first
+# version of the check, and it passed when handed a deliberately stale
+# report — the same vacuous-comparison shape catalogued in HANDOFF.md. What
+# has to be compared is the file *as committed* against the file the bench
+# produces, so the committed copy is saved first and put back afterwards: a
+# check that rewrites a tracked file is not a check either.
+#
+# The bench's exit status is deliberately ignored. It returns non-zero
+# whenever a task's *claimed* `token_count` disagrees with the measurement by
+# more than 10 %, and 150 claims across the 100 tasks do — which is the subject
+# of `benchmarks/FINDINGS.md` §1, a finding rather than a regression.
+REPORT=benchmarks/TOKEN_REPORT.md
+saved="$(mktemp)"
+cp "$REPORT" "$saved"
+bench_out="$(cargo run --quiet --release --manifest-path prototype/Cargo.toml \
+                 --bin token-bench 2>&1 || true)"
+ratio="$(printf '%s\n' "$bench_out" | awk '/native lexers:/ { for (i = 1; i <= NF; i++) if ($i ~ /^ratio=/) { sub(/^ratio=/, "", $i); print $i; exit } }')"
+if cmp -s "$REPORT" "$saved"; then
+    stale=""
+else
+    stale="yes"
+fi
+cp "$saved" "$REPORT"
+rm -f "$saved"
+
 if [ -z "${ratio:-}" ]; then
-    echo "  x  could not read the native-lexer ratio from benchmarks/TOKEN_REPORT.md" >&2
+    echo "  x  could not read the native-lexer ratio from the bench" >&2
     fail=1
 elif awk -v r="$ratio" -v m="$MAX_LEX_RATIO" 'BEGIN { exit !(r > m) }'; then
     echo "  x  native-lexer ratio $ratio, ceiling <= $MAX_LEX_RATIO" >&2
     fail=1
+elif [ -n "$stale" ]; then
+    # Not a floor breach — a stale artifact, which is how the floor came to be
+    # enforced against old data in the first place.
+    echo "  x  benchmarks/TOKEN_REPORT.md differs from a fresh run; regenerate it:" >&2
+    echo "     cargo run --release --manifest-path prototype/Cargo.toml --bin token-bench" >&2
+    fail=1
 else
-    echo "  ok native-lexer ratio $ratio (ceiling <= $MAX_LEX_RATIO)"
+    echo "  ok native-lexer ratio $ratio (ceiling <= $MAX_LEX_RATIO, report current)"
 fi
 
 echo
