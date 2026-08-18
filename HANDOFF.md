@@ -85,7 +85,7 @@ its own extraction bug on the first run — the measured value came out as
 `files;` because the awk field index was off by one. The one figure that
 stayed stale after the checker existed was one nobody had listed.
 
-### Two things the instruments taught, the hard way
+### Four things the instruments taught, the hard way
 
 **A pin guarantees agreement, not truth.** CI checked `MAGE_ONTOLOGY.json`
 byte-for-byte against a fresh `--emit-ontology` — and thereby guaranteed that a
@@ -99,6 +99,24 @@ parse errors, because that was the failure that prompted it. Blocks that
 parsed and then failed the *checker* scored as passes — 43 of them, including
 some in files the script had been used to certify as fixed. The criterion a
 ratchet enforces is the definition of done it hands to whoever comes next.
+
+**A fixed list under a universal doc comment is the commonest failure of
+all.** Six separate tests in this repository claimed a cross-boundary property
+and asserted a hardcoded subset:
+
+| The test said | What it checked |
+|---|---|
+| "every CLI flag the binary accepts must be in the ontology" | eight named flags were present — 12 were missing, including `--eval` |
+| "every published RAP method dispatches" | each method called with `{}` and not "unknown" — the *contract* was wrong for a third of them |
+| `examples_all_parse` | that the published examples parse, not that they check |
+| `every_framewerx_module_path_exists` | 256 paths exist, not that the 243 names they publish are in them |
+| `ci_floors` (published as "read from ci.yml") | nothing at all: the workflow had none of them |
+| `heal_patterns_section_nonempty` | that a list of 34 is not empty |
+
+Each of them passed for years. The pattern is easy to spot once named: **if
+the doc comment says "every" and the body has a literal list, the test is
+weaker than its own claim.** Every replacement here compares both directions
+and was verified by breaking it on purpose.
 
 **A pin over a generated list tends toward tautology.** The follow-up test for
 layer names iterated `layer_map`, which is *filtered* by the same function the
