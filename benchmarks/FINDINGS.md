@@ -102,8 +102,13 @@ delivered value:
 - A **zero-ambiguity LL(1) grammar** with rich agent-affordances
   (effects, contracts, SKB, cost oracle, self-healing).
 - A **modestly more compact surface** for declaration-heavy code.
-- A **binary IR (Agentic Binary Language) that *is* genuinely ~50× smaller** than text,
-  intended as the primary agent output target.
+- A **binary IR (Agentic Binary Language) that is genuinely smaller** than
+  text — measured at **0.225** on `prototype/examples/unified.mg` (1866 B →
+  420 B) and 47 bytes for a transformer block — intended as the primary agent
+  output target. This line read "~50× smaller"; no module in the repository
+  gets near that, and the same figure had propagated into `AGENT_PROTOCOL.md`,
+  the README and the blog post. Reproduce with `mage-parse --target=abl-bytes`,
+  which prints the ratio.
 
 The "~50 % text reduction" claim is dropped or qualified.
 

@@ -251,7 +251,7 @@ prototype). Reproduce with `agentic-eval --example swe_languages`.
 
 - ✅ **Zero-Ambiguity Syntax** — Deterministic LL(1) grammar eliminates parsing failures for both humans and AI agents. No backtracking, no ambiguity.
 
-- ✅ **Binary IR for Agents (Agentic Binary Language)** — A transformer block encodes to **47 bytes** of Agentic Binary Language, a 5-item module to ~300 bytes (vs ~1.8 KB of text). Agents target the IR directly via `--target=abl-bytes`; the text surface is a human-readable view via the round-trip decompiler.
+- ✅ **Binary IR for Agents (Agentic Binary Language)** — A transformer block encodes to **47 bytes** of Agentic Binary Language, the 5-item `prototype/examples/unified.mg` to 420 bytes (vs 1866 of text). Agents target the IR directly via `--target=abl-bytes`; the text surface is a human-readable view via the round-trip decompiler.
 
 - ✅ **Neural architecture DSL + composition algebra** — declarative `net`s composed from a few orthogonal operators (`stack`/`residual`/`branch`/`wrap`) over reusable `block`s, shared across projects via a content-addressed registry (`forge publish` + name handles). Shape-mismatched compositions are rejected at `--check`; repeated depth folds to an `O(1)` binary (`REPEAT`); and the operators **execute** on the CPU backend. See [Composing architectures](#composing-architectures--a-small-algebra-over-a-shared-block-library).
 

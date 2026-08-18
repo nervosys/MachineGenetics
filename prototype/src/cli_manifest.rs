@@ -149,7 +149,7 @@ pub const MODES: &[CliMode] = &[
         args: "<file.mg> [out.abl]",
         summary: "lower Agentic Binary Language-routed items to a framed binary Agentic Binary Language container",
         effect: "write_local",
-        detail: "Container: magic \"Agentic Binary Language\" + u16 version + u32 count + per-item\n\
+        detail: "Container: magic \"ABL1\" + u16 version (3) + u32 count + per-item\n\
                  (name_len, name, expr_len, expr). Without [out]: stdout summary only\n\
                  (read_local). Byte-stable for caching/diffing.",
     },

@@ -3,7 +3,7 @@
 //!
 //! Container layout (little-endian):
 //! ```text
-//!   magic    "Agentic Binary Language" (4 bytes)
+//!   magic    "ABL1" (4 bytes — the literal, not the language's name)
 //!   version  u16 = 3   (v3: per-item exprs are REPEAT-folded)
 //!   count    u32           — number of items
 //!   for each item:
@@ -11,7 +11,16 @@
 //!     name     UTF-8 bytes
 //!     expr_len u32
 //!     expr     codec::Encoder::encode_expr_only output
+//!   symbols  u32           — interned-name count (v2+)
+//!   for each symbol:
+//!     name_len u32
+//!     name     UTF-8 bytes
 //! ```
+//!
+//! The symbol table is what makes a `kb` artifact self-describing: without it
+//! a decoder recovers predicate arities and not their names. It was added in
+//! v2 and left out of every published description of the format until it was
+//! measured — 100 of `unified.mg`'s 420 container bytes.
 //!
 //! Used by both the CLI (`--target=abl-bytes`, `--from=abl-bytes`,
 //! `--run=abl-bytes`) and the RAP server (`abl/encode`, `abl/decode`,
@@ -91,7 +100,14 @@ fn decode_items(blob: &[u8]) -> Result<(Vec<AblItem>, usize), String> {
     let mut pos = 0usize;
     let magic = take(blob, &mut pos, 4, "magic")?;
     if magic != ABL_MAGIC {
-        return Err(format!("bad magic {magic:?} (expected Agentic Binary Language)"));
+        // Said "expected Agentic Binary Language" — the language's name where
+        // the four magic bytes belong, so the one message a caller gets when a
+        // file is not a container told them to look for the wrong thing.
+        // Formatted from the constant now, so it cannot drift again.
+        return Err(format!(
+            "bad magic {magic:?} (expected {:?})",
+            std::str::from_utf8(ABL_MAGIC).unwrap_or("ABL1")
+        ));
     }
     let ver = u16::from_le_bytes(
         take(blob, &mut pos, 2, "version")?
@@ -196,6 +212,75 @@ mod tests {
             forward { fc }
         }
     "#;
+
+    /// A decoder written from the *published* format consumes the whole file.
+    ///
+    /// The container has carried a symbol table since v2 — the section that
+    /// makes a `kb` artifact self-describing, since without it a decoder
+    /// recovers predicate arities and not their names. It was in none of the
+    /// four places the format is described: `MAGE_ONTOLOGY.json`'s `abl.format`,
+    /// `AGENT_PROTOCOL.md`, and the module docs here and in `main.rs`. An agent
+    /// implementing a decoder from any of them parsed the items and stopped,
+    /// leaving 100 of `unified.mg`'s 420 bytes unread and every interned name
+    /// unrecovered.
+    ///
+    /// So this walks the bytes using only the published field list, and
+    /// asserts it lands exactly on the end. A section added to the format and
+    /// not to the description fails here, which is the only way to notice —
+    /// `decode_container` would keep working, because it reads the real
+    /// format rather than the documented one.
+    #[test]
+    fn the_published_format_accounts_for_every_byte() {
+        let src = std::fs::read_to_string(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/unified.mg"),
+        )
+        .expect("unified.mg");
+        let module = parser::parse(&lexer::lex(&src)).expect("unified.mg parses");
+        let (blob, _) = encode_module(&module);
+
+        let published = crate::ontology::section("abl").expect("abl section");
+        let format = published["format"]
+            .as_array()
+            .expect("format")
+            .iter()
+            .map(|l| l.as_str().unwrap())
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert!(
+            format.contains("symbols"),
+            "the published format does not mention the symbol section: {format}"
+        );
+
+        // Walk exactly what the description says is there.
+        let mut pos = 0usize;
+        assert_eq!(&blob[..4], ABL_MAGIC.as_slice(), "magic");
+        pos += 4;
+        let ver = u16::from_le_bytes(blob[pos..pos + 2].try_into().unwrap());
+        pos += 2;
+        assert_eq!(ver, ABL_VERSION);
+        let count = u32::from_le_bytes(blob[pos..pos + 4].try_into().unwrap()) as usize;
+        pos += 4;
+        for _ in 0..count {
+            let nl = u32::from_le_bytes(blob[pos..pos + 4].try_into().unwrap()) as usize;
+            pos += 4 + nl;
+            let el = u32::from_le_bytes(blob[pos..pos + 4].try_into().unwrap()) as usize;
+            pos += 4 + el;
+        }
+        let syms = u32::from_le_bytes(blob[pos..pos + 4].try_into().unwrap()) as usize;
+        pos += 4;
+        for _ in 0..syms {
+            let nl = u32::from_le_bytes(blob[pos..pos + 4].try_into().unwrap()) as usize;
+            pos += 4 + nl;
+        }
+        assert_eq!(
+            pos,
+            blob.len(),
+            "a decoder following the published format stops {} bytes early — the \
+             container has a section the description does not name",
+            blob.len() - pos
+        );
+        assert!(syms > 0, "unified.mg interns names; the symbol table should not be empty");
+    }
 
     #[test]
     fn round_trip_encode_decode() {

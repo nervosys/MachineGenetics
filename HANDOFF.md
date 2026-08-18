@@ -12,7 +12,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **2,901** — rmi 1,380 · prototype 1,192 · ribosome 164 · germline 112 · forge 53 |
+| Tests | **2,903** — rmi 1,380 · prototype 1,194 · ribosome 164 · germline 112 · forge 53 |
 | CUDA | **1,071 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm |
@@ -622,6 +622,25 @@ elsewhere, pointing at the wrong line.
   reservation costs the name twice: the call is a parse error, *and* no user
   function can fill the gap. They now say so when written. Implementing them,
   or un-reserving them, is a design decision.
+- **The published container format omitted its symbol table.** The `.abl`
+  container has carried one since v2 — the section that makes a `kb` artifact
+  self-describing, because without it a decoder recovers predicate arities and
+  not their names. It appeared in **none** of the four places the format is
+  described: `MAGE_ONTOLOGY.json`'s `abl.format`, `AGENT_PROTOCOL.md`, and the
+  module docs in `abl.rs` and `main.rs`. An agent implementing a decoder from
+  any of them parsed the items and stopped, leaving **100 of `unified.mg`'s 420
+  bytes** unread. `decode_container` was fine throughout, which is why nothing
+  noticed: the code reads the real format, and only the description was wrong.
+  A test now walks a real container using *only* the published field list and
+  asserts it lands exactly on the last byte.
+- **A global rename put the language's name where four magic bytes belong.**
+  `ABL` → "Agentic Binary Language" rewrote every literal spelling of the
+  container magic: the ontology's format line and its fallback, the
+  `--manifest` entry for `--target=abl-bytes`, two module docs, and — worst —
+  the decoder's own error message, so the one thing a caller sees when a file
+  fails to open said it expected a 23-character string instead of `ABL1`. The
+  `"magic"` *field* was right the whole time, because it is read from the
+  constant, which is exactly why the section looked healthy.
 - **`abl_compute`'s "Supported ops" table listed 6 of the 23 it dispatches.**
   It said `LINEAR`, `MATMUL`, `CONV2D`, `ATTN` and the normalisations "are
   reported as **unsupported** because they require parameter tensors that the
@@ -842,6 +861,18 @@ The mirror image, and easy to get backwards.
   A reader would have concluded handlers were unusable and either avoided them
   or started a large refactor.
 
+- **`AGENT_PROTOCOL.md`, nine figures at once.** The document that tells an
+  agent how to emit bytes rather than text opened with "the genuine ~50×
+  efficiency win", and its own worked example three sections down measures
+  **0.225** — 1866 B of text to 420 B of container, which is 4.4×. It also
+  gave the container as v1 (it is v3) with 300 bytes (420), "header overhead
+  ~50 bytes" (framing is 195, nearly half the file at this size), three of the
+  five item hashes stale, "12 opcode families, 95 ops" (7 and 107), "31 neural
+  opcodes by name" (21), and "~3 orders of magnitude" more programs per
+  response (nearer 5-8× per transformer block). Every one of them is
+  reproducible with a command printed in the same file. The decode block
+  underneath was accurate, which is the tell: the outputs that were *pasted
+  from a run* survived, and the ones written by hand around them did not.
 - **The README, four figures at once.** The front page's binary-IR block was
   labelled *(measured)* and three of its numbers were not: it printed the
   container header as `ABL1 02 00` (version is **3**), sized the source at
@@ -1037,7 +1068,7 @@ it is invisible unless you break the thing on purpose and watch.
 
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,192**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,194**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it.
 - Every typechecker fix has landed without breaking an existing test **except
   one**, where widening `collection_elem` made `sum("hi")` legal and

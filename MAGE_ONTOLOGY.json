@@ -28,10 +28,11 @@
   "sections": {
     "abl": {
       "format": [
-        "magic    : 4 bytes (\"Agentic Binary Language\")",
+        "magic    : 4 bytes (\"ABL1\")",
         "version  : u16 LE",
         "count    : u32 LE",
-        "per item : { name_len:u32, name:utf8, expr_len:u32, expr:bytes }"
+        "per item : { name_len:u32, name:utf8, expr_len:u32, expr:bytes }",
+        "symbols  : u32 LE count, then { name_len:u32, name:utf8 } in id order"
       ],
       "magic": "ABL1",
       "media_type": "application/abl",

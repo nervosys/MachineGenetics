@@ -820,7 +820,7 @@ const ABL_VERSION: u16 = abl::ABL_VERSION;
 ///
 /// Container layout:
 /// ```text
-///   magic    "Agentic Binary Language" (4 bytes)
+///   magic    "ABL1" (4 bytes — the literal, not the language's name)
 ///   version  u16 = 3   (v3: per-item exprs are REPEAT-folded)
 ///   count    u32  — number of items
 ///   for each item:
@@ -828,6 +828,10 @@ const ABL_VERSION: u16 = abl::ABL_VERSION;
 ///     name     UTF-8 bytes
 ///     expr_len u32
 ///     expr     codec::Encoder::encode_expr_only output
+///   symbols  u32           — interned-name count (v2+)
+///   for each symbol:
+///     name_len u32
+///     name     UTF-8 bytes
 /// ```
 fn run_emit_abl_bytes(module: &ast::Module, src_path: &str, out_path: Option<&str>) {
     let lowered_diags = abl_bridge::lower_module(module).diagnostics;

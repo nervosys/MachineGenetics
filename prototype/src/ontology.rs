@@ -1618,13 +1618,26 @@ fn examples_section() -> serde_json::Value {
 
 fn abl_section() -> serde_json::Value {
     serde_json::json!({
-        "magic": std::str::from_utf8(crate::abl::ABL_MAGIC).unwrap_or("Agentic Binary Language"),
+        // A global rename of `ABL` to the language's full name caught every
+        // literal spelling of the four magic bytes: this fallback, the format
+        // line below, the decoder's error message, the `--manifest` entry and
+        // two module docs. `"magic"` itself was right because it is read from
+        // the constant — which is why the section looked fine and its own
+        // description of the section did not.
+        "magic": std::str::from_utf8(crate::abl::ABL_MAGIC).unwrap_or("ABL1"),
         "version": crate::abl::ABL_VERSION,
         "format": [
-            "magic    : 4 bytes (\"Agentic Binary Language\")",
+            "magic    : 4 bytes (\"ABL1\")",
             "version  : u16 LE",
             "count    : u32 LE",
             "per item : { name_len:u32, name:utf8, expr_len:u32, expr:bytes }",
+            // The symbol table was added in v2 and never published. A decoder
+            // written from this list parsed the items and stopped — on
+            // `prototype/examples/unified.mg` that leaves 100 of 420 bytes
+            // unread, and loses every interned name, which is the whole reason
+            // a `kb` artifact is self-describing rather than a pile of
+            // arities.
+            "symbols  : u32 LE count, then { name_len:u32, name:utf8 } in id order",
         ],
         "media_type": "application/abl",
     })
@@ -2098,6 +2111,52 @@ mod tests {
             "the registry shrank to {} patterns — if that is deliberate, the \
              count in benchmarks/STATUS.md moves with it",
             published.len()
+        );
+    }
+
+    /// The container description names the bytes a decoder must look for.
+    ///
+    /// `"magic"` is read from `abl::ABL_MAGIC` and was right. Everything
+    /// around it was prose, and a global rename of `ABL` to the language's
+    /// full name rewrote all of it: the format line told an agent the four
+    /// magic bytes were the 23-character string "Agentic Binary Language",
+    /// `--manifest` said the same, and the decoder's own error message told a
+    /// caller whose file failed to open that it had expected that string. The
+    /// section passed every existing check because the one field derived from
+    /// the constant was untouched.
+    ///
+    /// So the description is checked against the constant, not eyeballed: the
+    /// format text must contain the real magic, and must not contain the
+    /// language's name where a literal belongs.
+    #[test]
+    fn the_abl_description_names_the_real_magic_and_version() {
+        let s = abl_section();
+        let magic = std::str::from_utf8(crate::abl::ABL_MAGIC).expect("magic is utf-8");
+        assert_eq!(s["magic"].as_str(), Some(magic));
+        assert_eq!(s["version"].as_u64(), Some(u64::from(crate::abl::ABL_VERSION)));
+
+        let format = s["format"].as_array().expect("format").iter().map(|l| l.as_str().unwrap()).collect::<Vec<_>>().join("\n");
+        assert!(
+            format.contains(magic),
+            "the format description never names the magic bytes `{magic}`: {format}"
+        );
+        assert!(
+            !format.contains("Agentic Binary Language"),
+            "the format description puts the language's name where the four \
+             magic bytes belong: {format}"
+        );
+
+        // And the same rename hit `--manifest`, which is the other place an
+        // agent reads the container layout.
+        let entry = crate::cli_manifest::MODES
+            .iter()
+            .find(|m| m.flag == "--target=abl-bytes")
+            .expect("--target=abl-bytes is a mode");
+        assert!(
+            entry.detail.contains(magic) && !entry.detail.contains("magic \"Agentic"),
+            "`--target=abl-bytes` describes the magic as something other than \
+             `{magic}`: {}",
+            entry.detail
         );
     }
 
