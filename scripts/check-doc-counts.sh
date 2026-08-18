@@ -150,6 +150,8 @@ UNIFICATION.md	cli_flags \([0-9]+\)	onto_cli_flags
 UNIFICATION.md	effects \([0-9]+\)	onto_effects
 UNIFICATION.md	wrapper_protocol \([0-9]+\)	onto_wrapper_protocol
 UNIFICATION.md	ci_floors \([0-9]+\)	onto_ci_floors
+ARCHITECTURE.md	\*\*[0-9]+ crates transitively\*\*	ribosome_deps
+RIBOSOME.md	— [0-9]+ crates transitively	ribosome_deps
 EOF
 )
 

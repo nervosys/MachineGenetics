@@ -7,7 +7,7 @@ text. It is the leverage the text-token floor denies the language track (see
 [IDEAL_AGENTIC_LANGUAGE.md](IDEAL_AGENTIC_LANGUAGE.md) for that analysis).
 
 > **Scope.** Everything below is implemented and test-covered in `prototype/`
-> (**1,194 tests** green) and scored in the sibling `agentic-eval` crate (80
+> (**1,195 tests** green) and scored in the sibling `agentic-eval` crate (80
 > tests, in the AetherShell repository and not verifiable from here). The one
 > deliberate non-feature is agent/swarm *execution* — see
 > [Honest boundaries](#honest-boundaries).
@@ -175,7 +175,7 @@ are **five independent Cargo workspaces**:
 | Path | Crate | Tests | Notes |
 |---|---|--:|---|
 | `RecursiveMachineIntelligence/` | `rmi` | 1,380 | The low-level neurosymbolic framework. Feature-gated (`cpu` / `gpu` / `cuda`); build with `--no-default-features --features cpu` for the portable set |
-| `prototype/` | `mage-prototype` | 1,194 | Compiler, evaluator, ABL, RAP server. Path-depends on `rmi` |
+| `prototype/` | `mage-prototype` | 1,195 | Compiler, evaluator, ABL, RAP server. Path-depends on `rmi` |
 | `ribosome/` | `ribosome` | 164 | The distributed build engine. Depends on nothing in this repository — see below |
 | `germline/` | `germline` | 112 | Model succession, handoff, fallback — the RSI control plane. Path-depends on `ribosome` |
 | `forge/` | `forge` | 53 | The package registry, and only that |
@@ -204,8 +204,13 @@ Keeping them separate is a trade, not an oversight:
 - **`ribosome` must not depend on MAGE.** Its central claim — that no language
   is privileged below the planner (`RIBOSOME.md` §2.1) — is not credible from a
   crate that depends on one language's compiler, so its default dependency list
-  is `serde`, `serde_json`, `sha2`, `ed25519-dalek` and nothing else: 39 crates
-  transitively. Encryption (`rustls`) is behind the optional `tls` feature and
+  is `serde`, `serde_json`, `sha2`, `ed25519-dalek` and nothing else:
+  **28 crates transitively** — 34 counting the six that resolve at two versions
+  (`sha2`, `digest`, `block-buffer`, `crypto-common`, `cpufeatures`, `syn`).
+  This said 39, and so did `RIBOSOME.md`, because one was copied from the other
+  and neither was measured. Now pinned: `scripts/test-all.sh --check-docs`
+  measures it with `cargo tree -e normal` and fails if either document drifts.
+  Say which of the two counts you mean — they differ by a fifth. Encryption (`rustls`) is behind the optional `tls` feature and
   CI checks it has not leaked into the default build, because "optional" is a
   property that decays the moment something in the default path uses it.
 - **`ribosome` must not depend on `germline`.** The Weismann barrier is

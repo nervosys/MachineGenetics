@@ -12,7 +12,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **2,903** — rmi 1,380 · prototype 1,194 · ribosome 164 · germline 112 · forge 53 |
+| Tests | **2,904** — rmi 1,380 · prototype 1,195 · ribosome 164 · germline 112 · forge 53 |
 | CUDA | **1,071 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm |
@@ -86,7 +86,10 @@ following the published container format consumes every byte of a real
 container.
 
 **If you add a measured claim to a document, add it to `CHECKS` in
-`scripts/check-doc-counts.sh` in the same commit.** The `.mg` source counts
+`scripts/check-doc-counts.sh` in the same commit.** And if two documents state
+the same measured figure, pin **both** rows to the one measured key — that is
+what caught `ribosome`'s dependency count, where `ARCHITECTURE.md` and
+`RIBOSOME.md` had agreed on 39 for as long as either had existed. The `.mg` source counts
 (`101 checked, 25 listed sketches`) were wired in this way, and the pin caught
 its own extraction bug on the first run — the measured value came out as
 `files;` because the awk field index was off by one. The one figure that
@@ -276,6 +279,34 @@ after every run on every machine. Checking it for staleness would be
 permanently red, which is the failure mode a ratchet is supposed to avoid.
 `TOKEN_REPORT.md` is byte-stable and therefore checkable; the distinction is
 whether the artifact records a measurement or a timing.
+
+**A harness can change meaning under a table it produced.** `MEASUREMENTS.md`
+gave ABL artifact scaling as 78 / 234 / 858 / 3354 bytes at 2 / 8 / 32 / 128
+layers — "linear, ~26 B/layer". Re-running `perf_report` today prints **67
+bytes four times**. Neither number is wrong. The harness builds `n` *identical*
+`Linear(16,16)` layers, and v3's REPEAT fold collapses them to a constant; the
+documented table was measured before that fold existed, and is still exactly
+right for layers that do not repeat. **The natural response to that
+disagreement is to "correct" a true table into a misleading one** — the
+document looks stale and the tool looks authoritative, and here the tool had
+silently started measuring a different question. The harness now measures both
+cases and says which is which.
+
+This one is also the session's first *under*-claim: a 128-layer stack of
+identical layers ships in 67 bytes and decompiles back to 128 layers, which
+`MEASUREMENTS.md` did not mention at all. A test pins both halves, because a
+fold that lost layers would also produce a small artifact and "compact at
+rest" would be measuring data loss.
+
+**Two documents wrong together, because one was copied from the other.**
+`ARCHITECTURE.md` and `RIBOSOME.md` both give `ribosome`'s transitive dependency
+count as evidence for the claim that the build engine privileges no language.
+Both said **39**. Measured: **28** unique crate names on normal edges, or 34
+counting the six that resolve at two versions — and neither document said which
+it meant. Agreement between two documents is not corroboration when one is a
+copy; it is the same claim counted once. Now pinned, so `--check-docs` fails if
+either drifts, and the *measurement* is emitted by `test-all.sh` rather than
+transcribed.
 
 **A pin over a generated list tends toward tautology.** The follow-up test for
 layer names iterated `layer_map`, which is *filtered* by the same function the
@@ -1126,7 +1157,7 @@ it is invisible unless you break the thing on purpose and watch.
 
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,194**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,195**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it.
 - Every typechecker fix has landed without breaking an existing test **except
   one**, where widening `collection_elem` made `sum("hi")` legal and

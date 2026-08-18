@@ -6,12 +6,12 @@
 # This is the single entry point that covers everything CI covers:
 #
 #     rmi (cpu)   1,380 tests
-#     prototype   1,194 tests
+#     prototype   1,195 tests
 #     ribosome      164 tests
 #     germline      112 tests
 #     forge          53 tests
 #     -------------------------
-#     total       2,903 tests, 0 warnings
+#     total       2,904 tests, 0 warnings
 #
 # Usage:
 #   scripts/test-all.sh            # debug
@@ -135,6 +135,15 @@ if [ "$CHECKDOCS" -eq 1 ]; then
         # `push`/`pull_request` trigger keys along with the jobs. Measured here
         # from the workflow itself: keys indented two spaces *after* `jobs:`.
         echo "ci_jobs=$(awk '/^jobs:/{i=1;next} i&&/^  [a-z0-9_-]+:$/{n++} END{print n+0}' "$REPO/.github/workflows/ci.yml")"
+        # `ribosome`'s transitive dependency count. ARCHITECTURE.md and
+        # RIBOSOME.md both state it as evidence for the claim that the build
+        # engine privileges no language, and both said **39** while the measured
+        # figure was 28 — the number had never been checked, and the two
+        # documents were wrong together because one was copied from the other.
+        # Unique crate *names* on normal edges; six crates resolve at two
+        # versions, so a name-version count is 34, and the documents now say
+        # which they mean.
+        echo "ribosome_deps=$(cargo tree --manifest-path "$REPO/ribosome/Cargo.toml"             -e normal --prefix none 2>/dev/null             | sed 's/ (\*)$//' | awk 'NF{print $1}' | sort -u | grep -c .)"
         # `.mg` sources checked vs skipped as sketches. HANDOFF.md states both,
         # and both moved this session (96/30 -> 101/25) when `framewerx` was
         # rewritten. Measured by running the checker, so the claim cannot drift

@@ -4,8 +4,8 @@
 > Each step is a concrete, testable increment.
 >
 > **Last verified: 2026-08-11** — all five crates built and tested: prototype
-> **1,194**, rmi **1,380**, ribosome **164**, germline **112**, forge **53** —
-> **2,903 tests, 0 failures, 0 warnings**. The crate count went from three to
+> **1,195**, rmi **1,380**, ribosome **164**, germline **112**, forge **53** —
+> **2,904 tests, 0 failures, 0 warnings**. The crate count went from three to
 > five when the build engine (step 148) and the RSI control plane (step 149)
 > were extracted from `forge`; the total is unchanged by those moves, and
 > `forge`'s 53 is what the registry alone measured before they were parked in
@@ -190,7 +190,7 @@
 | 84 | Unified multi-item containers | ✅ | One ABL container holds net + kb (+ agent + swarm) — a whole neurosymbolic application in a single artifact |
 | 85 | agent + swarm construction | ✅ | Capability/approval policy and swarm topology/consensus/transport build, describe, and execute |
 | 86 | Round-trip fidelity | ✅ | Every item kind decompiles back to exact source; content hashes match across build→describe |
-| 87 | No-exec introspection | ✅ | `--describe=abl` reports structure as pure bounds-checked data — **12.6 µs** for an 858 B artifact, `exec:false` |
+| 87 | No-exec introspection | ✅ | `--describe=abl` reports structure as pure bounds-checked data — **7.4 µs** for a 67 B folded artifact (12.6 µs for the 858 B unfolded one it was measured on), `exec:false` |
 | 88 | SPINE collaboration bridge | ✅ | ABL agents communicate over SPINE (Hyperlight); gap analysis + `spine-mage` bridge, 5 tests |
 
 ## Phase J: Measurement infrastructure (Steps 89–92)

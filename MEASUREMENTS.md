@@ -6,9 +6,20 @@ numbers are machine-dependent; the shapes (throughput, scaling) are not.
 
 Date: 2026-06-10. Build: `release` for perf, `cargo test` for functionality.
 
-> **Re-verified 2026-08-11** — all five crates tested: prototype **1,194**, rmi
-> **1,380**, ribosome **164**, germline **112**, forge **53** = **2,903 passing,
-> 0 failing, 0 warnings**. No figure below has regressed.
+> **Re-verified 2026-08-18** — all five crates tested: prototype **1,195**, rmi
+> **1,380**, ribosome **164**, germline **112**, forge **53** = **2,904 passing,
+> 0 failing, 0 warnings**.
+>
+> *One figure below had not regressed — it had been superseded.* The ABL
+> artifact-scaling table (78 / 234 / 858 / 3354 B) was measured before v3's
+> REPEAT fold existed, and `perf_measure.rs` builds *identical* layers, which
+> the fold now collapses to a constant 67 B at every depth. Re-running the
+> harness produced four identical numbers, and the tempting reading — that the
+> table had rotted — was the wrong one: the table is exact for layers that do
+> not repeat, and the harness had silently changed which question it asked.
+> Both cases are now measured and labelled. Also re-checked today and holding:
+> reliability 99/100 and 100/100 effective, the kb Datalog speedups, and CLI
+> per-invocation latency.
 >
 > *A measurement that was wrong.* `BuildReport::cache_hit_ratio` was
 > `1 - work_done/work_total`. A failed action increments neither term, so a build
@@ -65,7 +76,7 @@ Date: 2026-06-10. Build: `release` for perf, `cargo test` for functionality.
 ### Test suites (all green)
 | Suite | Tests | Cmd |
 |---|---|---|
-| MAGE prototype | **1194 pass** (+2 ignored perf harnesses) | `cargo test` |
+| MAGE prototype | **1195 pass** (+2 ignored perf harnesses) | `cargo test` |
 | rmi (`cpu`) | **1380 pass** | `cargo test --no-default-features --features cpu` |
 | ribosome (build engine) | **164 pass** | `cargo test --manifest-path ribosome/Cargo.toml` |
 | germline (RSI control plane) | **112 pass** | `cargo test --manifest-path germline/Cargo.toml` |
@@ -108,20 +119,52 @@ A realistic 50-layer net (1620 B / 509 tokens):
 ```
 39.3 µs/parse  →  41.2 MB/s,  12.95 M tokens/s
 ```
+Machine-dependent, and the harness says so where it prints them
+(`cargo test --release --lib perf_report -- --ignored --nocapture`). A slower
+box measured 54.1 µs / 29.9 MB/s for the same input on 2026-08-18; the shape
+is what this row is for, not the constant. Byte counts elsewhere in this
+document are machine-independent and should match exactly.
 
-### ABL build (spec → source → byte-stable IR) — linear, compact
-| Net layers | Build latency | Artifact bytes | B/layer |
-|--:|--:|--:|--:|
-| 2 | 4.3 µs | 78 | 39.0 |
-| 8 | 11.8 µs | 234 | 29.2 |
-| 32 | 41.5 µs | 858 | 26.8 |
-| 128 | 180.0 µs | 3354 | 26.2 |
+### ABL build (spec → source → byte-stable IR)
 
-≈ **1.4 µs/layer**, **~26 B/layer** — linear in size, very compact at rest.
+Two cases, because v3's REPEAT fold makes them different questions. Latencies
+are machine-dependent; the byte columns are not.
+
+**Layers that repeat — folded, O(1) in depth:**
+
+| Net layers | Artifact bytes | B/layer |
+|--:|--:|--:|
+| 2 | 67 | 33.5 |
+| 8 | 67 | 8.4 |
+| 32 | 67 | 2.1 |
+| 128 | 67 | 0.5 |
+
+A 128-layer stack of identical `Linear(16,16)` ships in **67 bytes** and
+decompiles back to 128 layers — verified, not inferred. The fold is
+run-length over the sequence, so it catches any repeating period, not just
+adjacent duplicates: a 128-layer net cycling through 8 distinct kinds is
+155 bytes, the same as the 32-layer version of it.
+
+**Layers that do not repeat — linear, ~26 B/layer:**
+
+| Net layers | Artifact bytes | B/layer |
+|--:|--:|--:|
+| 2 | 78 | 39.0 |
+| 8 | 234 | 29.2 |
+| 32 | 858 | 26.8 |
+| 128 | 3354 | 26.2 |
+
+This second table is what this section used to hold, with no note that it
+described the non-folding case. It is still exactly right, and the harness
+that produced it had meanwhile started measuring *identical* layers — so
+re-running it gave 67 B four times, and the natural conclusion would have
+been that the document was wrong rather than that the input had become
+foldable. `perf_measure.rs` now measures both.
 
 ### No-exec decode + describe (the introspection path)
-An 858 B (32-layer) artifact: decode_container + decode_symbols + decompile →
-**12.6 µs/op**. Loading is pure bounds-checked data — no code executes.
+A 67 B (32-layer, folded) artifact: decode_container + decode_symbols +
+decompile → **7.4 µs/op**. Loading is pure bounds-checked data — no code
+executes.
 
 ### kb Datalog evaluation — now **indexed semi-naive** (was naive; optimized)
 The evaluator was rewritten with term/predicate **interning** (u32, no string
@@ -146,8 +189,9 @@ Recursive transitive closure / fixpoint (now ≈ output-size, was cubic):
 
 **Complexity:** join went from ~O(N²) → ~O(N) (the `arg0` index makes a chain
 join an O(matches) lookup); the fixpoint went from ~O(N³) → ~O(output) (semi-naive
-derives each fact ~once). Correctness unchanged (984 tests green, terminates at
-the least fixpoint). This was the one perf gap the prior report flagged — now fixed.
+derives each fact ~once). Correctness unchanged (the suite was 984 tests green when this
+was measured, and 1,195 today; the evaluator still terminates at the least
+fixpoint). This was the one perf gap the prior report flagged — now fixed.
 
 ### CUDA backend — CPU vs GPU (measured 2026-08-05)
 
@@ -234,7 +278,7 @@ run-to-run identical. → content-hashable cache keys, meaningful diffs.
 - **The kb Datalog evaluator was the one perf gap — now FIXED:** rewritten as
   indexed semi-naive (interning + `(pred,arg0)` index + delta evaluation), giving
   up to **~1430×** on transitive closure and ~O(N)/~O(N²) instead of ~O(N²)/~O(N³),
-  with identical results (984 tests green).
+  with identical results (984 tests green at the time; 1,195 now).
 - **Per-invocation latency is startup-bound (~30 ms)**, not compute-bound — use
   the RAP server for high-frequency agent loops.
 - **Tokens are at the irreducible text floor**; the leverage is the binary IR +

@@ -282,6 +282,47 @@ mod tests {
         assert!(syms > 0, "unified.mg interns names; the symbol table should not be empty");
     }
 
+    /// A repeated stack is O(1) in depth, and comes back whole.
+    ///
+    /// `MEASUREMENTS.md` now claims a 128-layer net of identical `Linear(16,
+    /// 16)` ships in 67 bytes and decompiles to 128 layers. Both halves matter
+    /// and only together: a fold that loses layers would also produce a small
+    /// artifact, and "compact at rest" would be measuring data loss.
+    ///
+    /// The size claim is a constant rather than a bound because it is
+    /// machine-independent — if the encoding changes, this should be updated
+    /// deliberately, and the document with it.
+    #[test]
+    fn identical_layers_fold_to_a_constant_and_survive_the_round_trip() {
+        let net = |n: usize| {
+            let layers: String =
+                (0..n).map(|i| format!("  layer fc{i}: Linear(16, 16);\n")).collect();
+            format!("net N {{\n{layers}  forward {{ fc0 }}\n}}\n")
+        };
+        let mut sizes = Vec::new();
+        for n in [2usize, 8, 32, 128] {
+            let module = parser::parse(&lexer::lex(&net(n))).expect("net parses");
+            let (blob, _) = encode_module(&module);
+            sizes.push(blob.len());
+
+            let items = decode_container(&blob).expect("decode");
+            assert_eq!(items.len(), 1);
+            // The expr expands back to one op per layer; `Seq` length is the
+            // structural count the decompiler renders.
+            let layer_count =
+                crate::abl_bridge::decompile(&items[0].expr, &items[0].name).net.layers.len();
+            assert_eq!(
+                layer_count, n,
+                "a {n}-layer net came back with {layer_count} layers — the fold is lossy"
+            );
+        }
+        assert!(
+            sizes.iter().all(|&s| s == sizes[0]),
+            "identical layers should fold to a constant size, got {sizes:?}"
+        );
+        assert_eq!(sizes[0], 67, "the documented constant is 67 bytes");
+    }
+
     #[test]
     fn round_trip_encode_decode() {
         let tokens = lexer::lex(SAMPLE);

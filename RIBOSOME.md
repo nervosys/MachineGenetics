@@ -17,7 +17,7 @@ put it and the wrong place to leave it: a build system that ships inside a
 package registry can only ever be that registry's build system, and §2.1's claim
 that no language is privileged below the planner is not credible from a crate
 that depends on one language's compiler. Its default dependency list is `serde`,
-`serde_json`, `sha2`, `ed25519-dalek` — 39 crates transitively, no TLS stack and
+`serde_json`, `sha2`, `ed25519-dalek` — 28 crates transitively (34 name-version pairs), no TLS stack and
 nothing MAGE. `rustls` is behind the optional `tls` feature and stays out of that
 tree. CI checks both with `cargo tree` rather than trusting this paragraph.
 `forge` depends on *it*, and `germline` drives it through the same public API any
