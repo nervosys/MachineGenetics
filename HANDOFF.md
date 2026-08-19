@@ -1099,6 +1099,24 @@ The mirror image, and easy to get backwards.
   crate's contents, so the file now says which it is. **A prose document is not
   covered by a check that reads code blocks**, and the passing result said
   nothing about it either way.
+- **Feature coverage, swept.** Five feature flags exist across the crates.
+  `prototype/cuda` and `ribosome/tls` are built by CI and both hold — TLS runs
+  168 tests against 164 without it, all green, verified locally because CI
+  cannot see this branch. The other three are **never built by CI or any
+  script**:
+
+  - `rmi/gpu` — compiles fine and its **6 `wgpu_backend` tests pass**. Nothing
+    had run them; nothing had rotted either. A clean negative result.
+  - `rmi/wasm` — pulls five dependencies (`wasm-bindgen`, `js-sys`, `web-sys`,
+    `getrandom`, `uuid/js`) and **no source file references
+    `feature = "wasm"`**. That is defensible as dependency configuration for a
+    wasm32 target rather than dead code, but nothing builds it, so whether it
+    still resolves is unknown.
+  - `rmi/full = ["cuda", "gpu"]` — **unbuildable**, because `cuda` is (item 15).
+
+  The pattern holds one level up from the tests: a feature nobody builds is a
+  compilation unit nobody checks, and two of the three were fine. Worth knowing
+  *which* two.
 - **The rename broke a shell script, and that is its fifth victim.**
   `scripts/demo_agent_workflow.sh` had `ABL="$DEMO_DIR/flash_attention_block.abl"`
   rewritten to `Agentic Binary Language="…"` — which bash reads as the command
