@@ -43,6 +43,13 @@ items   : count × { name_len:u32, name, expr_len:u32, expr_bytes }
 symbols : sym_count:u32, then per id (in order) { name_len:u32, name }
 ```
 
+> **This block was right when four others were wrong.** On 2026-08-18 the
+> symbol-table line was found missing from `MAGE_ONTOLOGY.json`'s `abl.format`,
+> from `AGENT_PROTOCOL.md`, and from the module docs in both `abl.rs` and
+> `main.rs` — so a decoder written from any of those stopped 100 bytes early on
+> a 420-byte container. It was here, correct, the whole time. Nobody had
+> compared the five descriptions of one format against each other.
+
 `decode_container` returns the items (pure data); `decode_symbols` returns the
 id→name table; both are bounds-checked and never execute. Extension: **`.abl`**.
 
@@ -186,9 +193,12 @@ The dependency graph is a forest, not a web:
 rmi ←── prototype          ribosome ←── germline          forge
 ```
 
-`forge`'s 53 is not a regression. `ribosome` and `germline` were developed
-inside it and moved out on 2026-08-04; 52 is what the registry alone was before
-they arrived, and this table said exactly that until they did.
+`forge`'s count is not a regression. `ribosome` and `germline` were developed
+inside it and moved out on 2026-08-04; **52** is what the registry alone was
+before they arrived, and this table said exactly that until they did. It reads
+53 now for an unrelated reason: 2026-08-18 added a test comparing `forge
+manifest` against the binary's dispatcher, which nothing had ever done, and
+removed one that checked three command names by hand.
 
 A root workspace *did* exist, but it listed only `compiler/*` — the forked-rustc
 compiler — and was removed with it on 2026-06-11 (`b1b910f`). The surviving

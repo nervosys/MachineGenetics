@@ -1066,6 +1066,19 @@ The mirror image, and easy to get backwards.
   crate's contents, so the file now says which it is. **A prose document is not
   covered by a check that reads code blocks**, and the passing result said
   nothing about it either way.
+- **The correct description of the container format was in the repository the
+  whole time.** `ARCHITECTURE.md` §1 lists the symbol table, in the right place
+  and the right shape — while `MAGE_ONTOLOGY.json`'s `abl.format`,
+  `AGENT_PROTOCOL.md`, and the module docs in `abl.rs` and `main.rs` all omitted
+  it, so a decoder written from any of those stopped 100 bytes early. **Five
+  descriptions of one format, one of them right, and nobody had compared them.**
+  That reframes the finding: it was never that the format was undocumented, but
+  that the documentation was unreconciled. The rest of `ARCHITECTURE.md` audits
+  clean — every source-map file exists, the five-workspace claim holds (`rmi` is
+  an implicit workspace root, and `cargo metadata` confirms it), there is no
+  root `Cargo.toml`, and the layout counts match their pins. Its one stale
+  sentence explained `forge`'s test count by the ribosome/germline split, a
+  number that has since moved again for an unrelated reason.
 - **`SPINE_COLLABORATION.md` §8 is accurate, and every command in it fails on
   the first attempt anyway.** All six claimed bridge functions exist, the "5
   tests" is exactly 5, and `--spine=profile|swarm|frame` all work and return
