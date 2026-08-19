@@ -1,0 +1,231 @@
+{
+  "ironstack": "1",
+  "id": "mage",
+  "product": "MAGE",
+  "layer": "languages",
+  "role": "Agentic-first programming language and compiler infrastructure for recursive self-improvement.",
+  "ontology": {
+    "command": "mage-parse --emit-ontology",
+    "document": "prototype/src/cli_manifest.rs",
+    "schema": 1
+  },
+  "capabilities": [
+    {
+      "name": "manifest",
+      "description": "print this token-compact capability index (read this first). Effect class: pure.",
+      "requires_grant": false,
+      "budgeted": false,
+      "surfaces": [
+        "cli"
+      ]
+    },
+    {
+      "name": "describe",
+      "description": "expand one manifest entry (e.g. --describe check). Effect class: pure.",
+      "requires_grant": false,
+      "budgeted": false,
+      "surfaces": [
+        "cli"
+      ]
+    },
+    {
+      "name": "build=schema",
+      "description": "typed, self-describing spec interface + full error catalog (loop step 1). Effect class: pure.",
+      "requires_grant": false,
+      "budgeted": false,
+      "surfaces": [
+        "cli"
+      ]
+    },
+    {
+      "name": "build=abl",
+      "description": "construct a byte-stable artifact from a spec, rejecting invalid ones (loop step 2). Effect class: write_local.",
+      "requires_grant": true,
+      "budgeted": false,
+      "surfaces": [
+        "cli"
+      ]
+    },
+    {
+      "name": "describe=abl",
+      "description": "no-exec structured introspection of an artifact (loop step 3). Effect class: read_local.",
+      "requires_grant": false,
+      "budgeted": false,
+      "surfaces": [
+        "cli"
+      ]
+    },
+    {
+      "name": "run=abl",
+      "description": "execute an artifact where semantics exist (loop step 4). Effect class: pure.",
+      "requires_grant": false,
+      "budgeted": false,
+      "surfaces": [
+        "cli"
+      ]
+    },
+    {
+      "name": "version",
+      "description": "print the compiler version (also -V). Effect class: pure.",
+      "requires_grant": false,
+      "budgeted": false,
+      "surfaces": [
+        "cli"
+      ]
+    },
+    {
+      "name": "check",
+      "description": "parse + typecheck + effect-check; structured diagnostics; no output files. Effect class: read_local.",
+      "requires_grant": false,
+      "budgeted": false,
+      "surfaces": [
+        "cli"
+      ]
+    },
+    {
+      "name": "eval",
+      "description": "run the module and print a value -- the second oracle. Effect class: read_local.",
+      "requires_grant": false,
+      "budgeted": false,
+      "surfaces": [
+        "cli"
+      ]
+    },
+    {
+      "name": "fmt-compact",
+      "description": "reformat to Agent mode (token-compact symbols). Effect class: write_local.",
+      "requires_grant": true,
+      "budgeted": false,
+      "surfaces": [
+        "cli"
+      ]
+    },
+    {
+      "name": "fmt-expand",
+      "description": "reformat to Human mode (Rust-style keywords). Effect class: write_local.",
+      "requires_grant": true,
+      "budgeted": false,
+      "surfaces": [
+        "cli"
+      ]
+    },
+    {
+      "name": "target=abl-bytes",
+      "description": "lower Agentic Binary Language-routed items to a framed binary Agentic Binary Language container. Effect class: write_local.",
+      "requires_grant": true,
+      "budgeted": false,
+      "surfaces": [
+        "cli"
+      ]
+    },
+    {
+      "name": "from=abl-bytes",
+      "description": "decode an Agentic Binary Language container back to a summary. Effect class: read_local.",
+      "requires_grant": false,
+      "budgeted": false,
+      "surfaces": [
+        "cli"
+      ]
+    },
+    {
+      "name": "run=abl-bytes",
+      "description": "dispatch a compiled Agentic Binary Language container through a compute backend. Effect class: read_local.",
+      "requires_grant": false,
+      "budgeted": false,
+      "surfaces": [
+        "cli"
+      ]
+    },
+    {
+      "name": "target=abl-compute",
+      "description": "lower nets and run a forward pass on the compute backend. Effect class: read_local.",
+      "requires_grant": false,
+      "budgeted": true,
+      "surfaces": [
+        "cli"
+      ]
+    },
+    {
+      "name": "target=abl-train",
+      "description": "find train blocks and run SGD epochs (synthetic data defaults). Effect class: write_local.",
+      "requires_grant": true,
+      "budgeted": true,
+      "surfaces": [
+        "cli"
+      ]
+    },
+    {
+      "name": "target=abl-infer",
+      "description": "load a checkpoint and run inference. Effect class: read_local.",
+      "requires_grant": false,
+      "budgeted": true,
+      "surfaces": [
+        "cli"
+      ]
+    },
+    {
+      "name": "target=abl-generate",
+      "description": "autoregressive generation from a trained LM checkpoint. Effect class: read_local.",
+      "requires_grant": false,
+      "budgeted": true,
+      "surfaces": [
+        "cli"
+      ]
+    },
+    {
+      "name": "target=abl-run",
+      "description": "full pipeline: lower, train if needed, infer. Effect class: write_local.",
+      "requires_grant": true,
+      "budgeted": true,
+      "surfaces": [
+        "cli"
+      ]
+    },
+    {
+      "name": "target=abl",
+      "description": "print the Agentic Binary Language lowering of each routed item (text form). Effect class: read_local.",
+      "requires_grant": false,
+      "budgeted": false,
+      "surfaces": [
+        "cli"
+      ]
+    },
+    {
+      "name": "pipeline",
+      "description": "run the full self-healing compile pipeline with recovery report. Effect class: read_local.",
+      "requires_grant": false,
+      "budgeted": false,
+      "surfaces": [
+        "cli"
+      ]
+    },
+    {
+      "name": "emit-ontology",
+      "description": "dump the complete system ontology as JSON. Effect class: write_local.",
+      "requires_grant": true,
+      "budgeted": false,
+      "surfaces": [
+        "cli"
+      ]
+    },
+    {
+      "name": "rap",
+      "description": "serve the JSON-RPC agent protocol over TCP (default 127.0.0.1:9876). Effect class: network.",
+      "requires_grant": true,
+      "budgeted": true,
+      "surfaces": [
+        "cli"
+      ]
+    },
+    {
+      "name": "(default)",
+      "description": "parse and report (token stats with --token-report). Effect class: read_local.",
+      "requires_grant": false,
+      "budgeted": false,
+      "surfaces": [
+        "cli"
+      ]
+    }
+  ],
+  "note": "requires_grant is derived from the effect class MAGE already declares per mode under its agentic-eval taxonomy: pure and read_local need no grant, write_local and network do. That is its classification, not one applied from outside. emit-ontology is write_local and therefore shows as requiring a grant, which reads oddly for a discovery command but is correct -- it dumps the ontology to a file. budgeted is not declared and is judged here. It marks the modes whose cost is model compute scaling with the workload rather than with the input file -- abl-train, abl-run, abl-infer, abl-generate, abl-compute -- plus rap, which serves the agent protocol over TCP for an unbounded time. Note the four modes that are budgeted but ungranted: abl-infer, abl-generate, abl-compute and, before it writes, the compute path generally. They are read_local, so they need no authority, but they can run a model for as long as the caller asks. Those are the entries where the two fields disagree on purpose -- authority and cost are different questions here, and a caller enforcing only grants would meter none of them."
+}
