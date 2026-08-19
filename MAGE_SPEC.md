@@ -225,6 +225,42 @@ See [Appendix D](#appendix-d-Agent-mode-symbol-reference) for the complete symbo
 
 ---
 
+### 2.3 One flat namespace
+
+**MAGE has no module system, and this is the design rather than a gap.** Every
+name — the standard vocabulary of §8, the capability namespaces of §11, and
+every item a program declares — lives in one namespace and is in scope
+everywhere. There is no import, no path qualification, and no visibility
+boundary between files.
+
+The reason is the language's premise. An import is pure overhead in tokens: it
+names something the compiler already knows, costs a line at the top of every
+file, and buys separation that matters when a library is large and unstable. The
+standard library here is **31 words** (§8) plus **20 capability namespaces**
+(§11.3), both fixed and both published in `MAGE_ONTOLOGY.json`. An agent
+generating a program should not spend tokens re-deriving what it can already
+reach.
+
+What follows from that:
+
+- `pub` (`+`) controls whether an item is part of a module's published surface
+  for effect purposes — a `pub` function must declare its effects (§11.4) — not
+  whether another file can see it. Everything can see everything.
+- **`use` is an error.** It parses, so a Rust-shaped import gets a diagnostic
+  naming this section rather than a syntax error, but it cannot bring anything
+  into scope and no longer typechecks. It was a warning until 2026-08-19, while
+  this decision was still open.
+- `mod` (`M`) likewise declares a name and introduces no scope.
+- There is no `stdlib/`. A directory of that name held 25 sketches in Rust
+  syntax, read by nothing; it was deleted when this decision was made.
+
+**If this is ever revisited**, the cost is not the parser — `use` and `mod`
+already parse. It is that every name in every published table becomes
+path-qualified, and every agent-facing document that teaches a bare name has to
+teach a path instead.
+
+---
+
 ## 3. Lexical Grammar
 
 ### 3.1 Source Encoding

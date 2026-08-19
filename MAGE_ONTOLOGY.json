@@ -73,7 +73,7 @@
       },
       {
         "kind": "Use",
-        "summary": "use import. Parses; brings nothing into scope — the checker warns"
+        "summary": "use import. Parses and is an ERROR — MAGE has one flat namespace (spec §2.3)"
       },
       {
         "kind": "Const",

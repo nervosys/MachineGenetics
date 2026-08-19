@@ -157,14 +157,16 @@ its parent module scope. Name lookup walks up the scope chain.
 
 ### Use Resolution
 
-> **There is none.** `resolve_use` parses the path and discards it. All four
-> steps below were listed here while the function body was a comment saying it
-> would one day do them, and the six import styles describe resolution that has
-> never happened. `u totally.made.up.path` is accepted.
-
-```MAGE
-u std.collections.{HashMap, HashSet}
-```
+> **There is none, and as of 2026-08-19 that is the documented design** —
+> `MAGE_SPEC.md` §2.3, "One flat namespace". All four steps below were listed
+> here while `resolve_use`'s body was a comment saying it would one day do
+> them, and the six import styles describe resolution that has never happened.
+>
+> `resolve_use` now emits an **error**: a `use` cannot bring anything into
+> scope, so it no longer typechecks. It was a warning while the decision was
+> open. The example that stood here — `u std.collections.{HashMap, HashSet}` —
+> is therefore no longer a valid MAGE block and is quoted inline rather than
+> shown as code.
 
 What a module system here *would* do, and does not:
 1. Parse the use path (`std` → `collections` → `{HashMap, HashSet}`) — this

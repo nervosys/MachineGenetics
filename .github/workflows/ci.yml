@@ -117,9 +117,13 @@ jobs:
         run: bash scripts/check-examples.sh
       # The examples check covers the twelve in `examples/`. Nothing covered
       # the other 89 `.mg` files in the repo, and 36 of them do not typecheck —
-      # `stdlib/` is 4,402 lines of Rust behind a MAGE extension, read by
+      # `stdlib/` was 4,402 lines of Rust behind a MAGE extension, read by
       # nothing and checked by nothing. A file with no consumer has no error
-      # message; this is the consumer. The sketch list can only shrink.
+      # message; this was the consumer. The sketch list could only shrink, and
+      # on 2026-08-19 it reached zero: item 1 was decided as *no module
+      # system*, so an import-based standard library had nothing to be, and
+      # `stdlib/` was deleted. Every `.mg` file in the repository now
+      # typechecks.
       - name: Every .mg source typechecks or is a listed sketch
         run: bash scripts/check-mg-sources.sh
       # 258 MAGE-tagged code blocks live in the markdown, and 177 of them did

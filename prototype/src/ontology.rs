@@ -199,7 +199,7 @@ const AST_KINDS: &[(&str, &str)] = &[
     ("Impl", "impl block: `impl Trait for Type` or `impl Type`"),
     ("Extend", "Methods on a type: `extend Type { … }` (`xd`)"),
     ("Module", "Module declaration. Parses; resolves nothing — there is no module system"),
-    ("Use", "use import. Parses; brings nothing into scope — the checker warns"),
+    ("Use", "use import. Parses and is an ERROR — MAGE has one flat namespace (spec §2.3)"),
     ("Const", "const declaration"),
     ("Static", "static declaration"),
     ("TypeAlias", "type alias"),

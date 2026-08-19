@@ -120,8 +120,8 @@ HANDOFF.md	germline [0-9,]+ ·	germline
 HANDOFF.md	forge [0-9,]+ \|	forge
 HANDOFF.md	→ [0-9,]+\*\*, all green	prototype
 HANDOFF.md	\| CI \| [0-9,]+ jobs	ci_jobs
-HANDOFF.md	\| [0-9,]+ checked	mg_checked
-HANDOFF.md	[0-9,]+ listed sketches	mg_sketches
+HANDOFF.md	\*\*[0-9,]+ checked	mg_checked
+HANDOFF.md	checked, [0-9,]+ sketches	mg_sketches
 HANDOFF.md	[0-9,]+ MAGE blocks typecheck	doc_blocks
 HANDOFF.md	[0-9,]+ documentation entry points	doc_evals
 HANDOFF.md	file-oracle parse [0-9]+/	floor_parse

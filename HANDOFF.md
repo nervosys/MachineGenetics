@@ -19,8 +19,8 @@ each claim has a command beside it.
 | CI | 10 jobs, green on `master` |
 | Reliability floors | file-oracle parse 99/100, perturbed pattern-heal 42, native-lexer ratio 0.997 |
 | Examples | 12 of 12 typecheck, run, and print their recorded answer |
-| `.mg` sources | 101 checked, 25 listed sketches (all of them `stdlib/`) |
-| Documentation | 206 MAGE blocks typecheck; 57 documentation entry points run; 275 `rmi/docs` API items all exist |
+| `.mg` sources | **101 checked, 0 sketches** — every `.mg` file in the repository typechecks |
+| Documentation | 205 MAGE blocks typecheck; 57 documentation entry points run; 275 `rmi/docs` API items all exist |
 | Release | `v0.3.0`, with the promo video attached as a release asset |
 
 Reproduce all of it:
@@ -118,7 +118,7 @@ version and the symbol section.
 the same measured figure, pin **both** rows to the one measured key — that is
 what caught `ribosome`'s dependency count, where `ARCHITECTURE.md` and
 `RIBOSOME.md` had agreed on 39 for as long as either had existed. The `.mg` source counts
-(`101 checked, 25 listed sketches`) were wired in this way, and the pin caught
+(`101 checked, 25 listed sketches` at the time) were wired in this way, and the pin caught
 its own extraction bug on the first run — the measured value came out as
 `files;` because the awk field index was off by one. The one figure that
 stayed stale after the checker existed was one nobody had listed.
@@ -512,7 +512,7 @@ so.
 | # | Item | Size |
 |---|---|---|
 | 10 | **Multi-shot resumption for effect handlers** | **Scoped 2026-08-18, and it is not unblocked — there is a language decision inside it.** See below. |
-| 13 | `stdlib/` | The remaining 25 sketches, and **the only aspirational `.mg` left in the repository** — 4,402 lines of Rust. Blocked on item 1: what a standard library *is* here depends on whether there are modules. `prototype/examples/` and `framework/framewerx/` are both done. |
+| 13 | ~~`stdlib/`~~ | **Closed 2026-08-19, by deletion.** Item 1 resolved as *no module system*, and a standard library reached by imports has no meaning without one. The 25 sketches — 4,402 lines of Rust behind a `.mg` extension, read by nothing — are gone. `scripts/check-mg-sources.sh` now reports **101 checked, 0 skipped**: every `.mg` file in the repository typechecks, and the sketch list it was built to shrink is empty. |
 
 **Item 10, scoped.** Single-shot resumption is verified working, exactly as
 §11.6 documents it — `handle { work() } with A { ask() => 7 }` gives 107, the

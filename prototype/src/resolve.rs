@@ -612,17 +612,24 @@ impl Resolver {
     /// vocabulary (`map`, `filter`, `join`, …) and the capability namespaces
     /// (`io`, `fs`, `net`, …) are in scope everywhere, which is the right
     /// default for a language optimising for tokens: an import costs tokens
-    /// and buys nothing here. So a `use` is harmless but pointless, and a
-    /// warning is the honest report — not an error, because rejecting the
-    /// syntax outright would break the corpus for no gain.
+    /// and buys nothing here.
+    ///
+    /// **This was a warning until 2026-08-19, and is now an error.** The reason
+    /// it was a warning — "rejecting the syntax outright would break the corpus
+    /// for no gain" — held while the one-flat-namespace design was still
+    /// undecided and `stdlib/` described an import-based library. Both changed:
+    /// `MAGE_SPEC.md` §2.3 now states the design normatively, `stdlib/` is
+    /// gone, and the corpus cost turned out to be a single line in one example.
+    /// A construct that can never mean anything should not typecheck.
     fn resolve_use(&mut self, ud: &ast::UseDef) {
         let path = ud.path.join(".");
         self.diagnostics.push(Diagnostic::categorized(
-            Severity::Warning,
+            Severity::Error,
             format!(
-                "`use {path}` brings nothing into scope — MAGE has no module system. \
-                 The standard vocabulary and the capability namespaces (`io`, `fs`, \
-                 `net`, …) are already in scope everywhere; delete the import"
+                "`use {path}` cannot bring anything into scope — MAGE has one flat \
+                 namespace and no module system (MAGE_SPEC.md §2.3). The standard \
+                 vocabulary and the capability namespaces (`io`, `fs`, `net`, …) are \
+                 already in scope everywhere; delete the import"
             ),
             DiagnosticCategory::UnresolvedName,
             None,
@@ -1177,19 +1184,33 @@ mod tests {
     /// so an import naming nothing was indistinguishable from one naming
     /// something.
     #[test]
-    fn use_warns_that_it_brings_nothing_into_scope() {
+    fn use_is_an_error_because_it_can_never_mean_anything() {
         for src in ["u std.io", "u totally.made.up.path", "u std.col.{Map, Set}"] {
-            let r = resolve_source(&format!("{src}\nf main() -> i32 {{ 0 }}"));
-            let warned = r
+            let r = resolve_source(&format!("{src}
+f main() -> i32 {{ 0 }}"));
+            let named = r
                 .diagnostics
                 .iter()
-                .any(|d| d.message.contains("brings nothing into scope"));
-            assert!(warned, "`{src}` should warn, got {:?}", r.diagnostics);
-            // A warning, not an error — rejecting the syntax outright would
-            // break the corpus for no gain.
+                .any(|d| d.message.contains("cannot bring anything into scope"));
+            assert!(named, "`{src}` should be rejected, got {:?}", r.diagnostics);
+            // An **error** since 2026-08-19. This asserted the opposite until
+            // then — "a warning, not an error, because rejecting the syntax
+            // outright would break the corpus for no gain" — which was true
+            // while item 1 was open and `stdlib/` still described an
+            // import-based library. Item 1 resolved as *no module system*
+            // (spec §2.3), `stdlib/` is gone, and the corpus cost was one line
+            // in one example. A construct that can never mean anything should
+            // not typecheck.
             assert!(
-                !r.diagnostics.iter().any(|d| matches!(d.severity, Severity::Error)),
-                "`{src}` must not be an error: {:?}",
+                r.diagnostics.iter().any(|d| matches!(d.severity, Severity::Error)),
+                "`{src}` must be an error: {:?}",
+                r.diagnostics
+            );
+            // The diagnostic has to name the section that decided it, or the
+            // reader has no way to tell a removed feature from a broken one.
+            assert!(
+                r.diagnostics.iter().any(|d| d.message.contains("§2.3")),
+                "the diagnostic must cite MAGE_SPEC.md §2.3: {:?}",
                 r.diagnostics
             );
         }

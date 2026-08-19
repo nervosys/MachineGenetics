@@ -27,7 +27,7 @@ Fixes #(issue number)
 - [ ] rust2mg Transpiler
 - [ ] mg2rs Back-Transpiler
 - [ ] mg CLI / Build System
-- [ ] Standard Library (`stdlib/`)
+- [ ] Standard vocabulary (`MAGE_SPEC.md` §8 — there is no `stdlib/`; see §2.3)
 - [ ] VS Code Extension
 - [ ] Editor Configs (Neovim / Helix / Zed)
 - [ ] Documentation (Book / Cookbook / Guides)

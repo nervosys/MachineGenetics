@@ -70,8 +70,9 @@ framework/framewerx/
 A multilayer perceptron in Framewerx-MG:
 
 ```mage
-u framewerx.{Module, Linear, ReLU, MLP}
-
+// No import: MAGE has one flat namespace (MAGE_SPEC.md §2.3). This block
+// opened with `u framewerx.{Module, Linear, ReLU, MLP}`, which parsed, brought
+// nothing in, and is an error as of 2026-08-19.
 net Classifier {
     layer fc1: Linear(784, 128);
     layer act1: ReLU;
