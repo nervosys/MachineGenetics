@@ -546,7 +546,7 @@ than acted on:
 | # | Item | Why it is here and not done |
 |---|---|---|
 | 14 | **`token-bench`'s exit status cannot gate anything** | It returns non-zero whenever a task's *claimed* `token_count` disagrees with measurement by >10 %, and 150 of the corpus's claims do — which is exactly what `benchmarks/FINDINGS.md` §1 concludes. Correcting or dropping those claims is a decision about what the field means, not a fix. `check-ci-floors.sh` ignores the status and reads the ratio instead. |
-| 15 | **`compute/cuda_full.rs` is 16 `unsafe` blocks that never compile** | No `mod` declaration references it; `compute/mod.rs` calls it "unused" in a comment. Dead code that reads as reviewed, and one line silently activates it. Delete or gate it — the vendored crate's owner's call. |
+| 15 | **`rmi`'s `cuda` feature cannot build, and gates a stub if it could** | Scoped 2026-08-19 with a GPU present. `cargo test --features cuda` on `rmi` **fails to build**: it pulls `cudarc 0.10`, whose build script needs `include/cuda.h` from a CUDA toolkit — which the *working* CUDA path deliberately does not require (IronAccelerator via `libloading`, in `prototype/src/cuda_backend.rs`). Every `cudarc` reference in a *compiled* file is a comment; the only real user is `cuda_full.rs`, which **no `mod` declaration references**, so it never compiles — taking its 16 `unsafe` blocks and all **6 of its `#[ignore]`d tests** with it. Those tests cannot run on any hardware. `cuda.rs`, the file that *does* compile under the feature, is an explicit placeholder stub with no tests. So the feature costs a heavyweight build-time dependency, is unbuildable without a toolkit, and compiles a stub when it is. Dropping `dep:cudarc` and deleting or explicitly gating `cuda_full.rs` would cost nothing that runs — but `rmi` is vendored and must stay syncable against its own upstream, so it is its owner's call. The **1,229 CUDA tests** verified today are all `prototype --features cuda`, which is the real path and unaffected. |
 | 16 | **`rmi`'s `Send`/`Sync` on refcounted buffers read the counter `Relaxed`** | The four `unsafe impl` are defensible under the refcount discipline, but a counter that gates *mutation* is a synchronisation decision. Not demonstrated unsound; wants a second opinion from someone who owns that code. |
 
 The five items previously here — `guard` as a reference, the `+=` diagnostic,
@@ -1096,6 +1096,17 @@ The mirror image, and easy to get backwards.
   crate's contents, so the file now says which it is. **A prose document is not
   covered by a check that reads code blocks**, and the passing result said
   nothing about it either way.
+- **Swept for the rest, and the shape has a third instance.** After the CUDA
+  pin and `eval_bench`, I looked for every check whose preconditions might not
+  be met: **8 `#[ignore]`d tests across five crates.** Two are the benches, now
+  both run. The other **six are `rmi`'s CUDA tests, and they cannot run on any
+  hardware** — they live in `compute/cuda_full.rs`, which no `mod` declaration
+  references, so they never compile. Not "never run": *not code*. Trying to run
+  them with a GPU present turned up more: `rmi`'s `cuda` feature fails to
+  **build**, because it pulls `cudarc 0.10` for that same dead file, and
+  `cudarc` needs a build-time toolkit the real CUDA path deliberately avoids.
+  See item 15. **A test that cannot compile is quieter than a test that fails**,
+  and `#[ignore]` looks the same either way.
 - **`eval_bench` had been failing for 76 commits, on this branch, unnoticed —
   including through everything this session reported as green.** It computes
   71/73, not the 73/73 that `README.md`, `ARCHITECTURE.md`, `DOCS.md` and
