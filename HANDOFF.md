@@ -12,7 +12,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **2,908** — rmi 1,384 · prototype 1,195 · ribosome 164 · germline 112 · forge 53 |
+| Tests | **2,909** — rmi 1,384 · prototype 1,196 · ribosome 164 · germline 112 · forge 53 |
 | CUDA | **1,071 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm — and the four *committed* lockfiles now report 0 warnings too |
@@ -107,7 +107,8 @@ working call, every heal pattern matches an example and returns a fix, every
 opcode the compute dispatcher handles is in its doc table, every sigil the
 quick reference teaches is discoverable from the ontology, and a decoder
 following the published container format consumes every byte of a real
-container.
+container, and all five descriptions of that format agree on the magic, the
+version and the symbol section.
 
 **If you add a measured claim to a document, add it to `CHECKS` in
 `scripts/check-doc-counts.sh` in the same commit.** And if two documents state
@@ -1073,7 +1074,14 @@ The mirror image, and easy to get backwards.
   it, so a decoder written from any of those stopped 100 bytes early. **Five
   descriptions of one format, one of them right, and nobody had compared them.**
   That reframes the finding: it was never that the format was undocumented, but
-  that the documentation was unreconciled. The rest of `ARCHITECTURE.md` audits
+  that the documentation was unreconciled. `every_description_of_the_container_format_agrees`
+  now compares all five, on the three facts that were wrong — the magic bytes,
+  the version, the symbol section — and fails if a section lands in one file and
+  misses four. Verified by stripping the symbol lines out of
+  `AGENT_PROTOCOL.md` and watching it name the file. It is deliberately shallow:
+  the decoder-conformance check already exists next to it, and this one guards
+  *agreement*, which is the thing that actually broke. The rest of
+  `ARCHITECTURE.md` audits
   clean — every source-map file exists, the five-workspace claim holds (`rmi` is
   an implicit workspace root, and `cargo metadata` confirms it), there is no
   root `Cargo.toml`, and the layout counts match their pins. Its one stale
@@ -1460,9 +1468,9 @@ harder to notice because it arrives wearing a green tick.
 
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,195**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,196**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
-  across five crates **2,908**; documented-count pins **78**, up from 46.
+  across five crates **2,909**; documented-count pins **78**, up from 46.
 - Every typechecker fix has landed without breaking an existing test **except
   one**, where widening `collection_elem` made `sum("hi")` legal and
   `vocab_rejects_non_collection` caught it. That is the datapoint showing the

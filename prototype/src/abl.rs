@@ -213,6 +213,69 @@ mod tests {
         }
     "#;
 
+    /// All five descriptions of the container format agree.
+    ///
+    /// The format is written down in five places: this module's doc comment,
+    /// `main.rs`'s, `ARCHITECTURE.md` §1, `AGENT_PROTOCOL.md`, and the
+    /// `abl.format` list in `MAGE_ONTOLOGY.json`. On 2026-08-18 **four of the
+    /// five omitted the symbol table**, which has been in the container since
+    /// v2 — so a decoder written from any of those four stopped 100 bytes early
+    /// on a 420-byte container and recovered no interned names.
+    /// `ARCHITECTURE.md` had it right, and had done all along.
+    ///
+    /// That is the lesson worth pinning: the format was never undocumented,
+    /// the documentation was **unreconciled**, and nothing compared the copies
+    /// against each other. This does.
+    ///
+    /// Deliberately shallow — it checks the three facts that were wrong
+    /// (magic, version, the symbol section), not the full grammar. A decoder
+    /// conformance check already exists in
+    /// `the_published_format_accounts_for_every_byte`; this one exists so that
+    /// *adding* a section cannot land in one file and miss four.
+    #[test]
+    fn every_description_of_the_container_format_agrees() {
+        let repo = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
+        let magic = std::str::from_utf8(ABL_MAGIC).expect("utf-8");
+        let version = ABL_VERSION.to_string();
+
+        // (path, what it is) — every place a reader might learn the layout.
+        let sources: [(&str, &str); 5] = [
+            ("prototype/src/abl.rs", "this module's doc comment"),
+            ("prototype/src/main.rs", "the CLI's container-layout comment"),
+            ("ARCHITECTURE.md", "§1 Container format"),
+            ("AGENT_PROTOCOL.md", "the container format section"),
+            ("MAGE_ONTOLOGY.json", "the `abl.format` list"),
+        ];
+
+        for (rel, what) in sources {
+            let text = std::fs::read_to_string(repo.join(rel))
+                .unwrap_or_else(|e| panic!("{rel}: {e}"));
+            assert!(
+                text.contains(magic),
+                "{rel} ({what}) never names the magic bytes `{magic}` — a global \
+                 rename once replaced them with the language's full name in four \
+                 files at once"
+            );
+            assert!(
+                text.contains("symbols") || text.contains("symbol table"),
+                "{rel} ({what}) does not mention the symbol section. It has been \
+                 in the container since v2; a decoder written without it stops \
+                 short and loses every interned name"
+            );
+        }
+
+        // The version is a number, so it is only checkable where the format is
+        // stated as a field list rather than prose.
+        for rel in ["prototype/src/abl.rs", "ARCHITECTURE.md", "MAGE_ONTOLOGY.json"] {
+            let text = std::fs::read_to_string(repo.join(rel)).expect(rel);
+            assert!(
+                text.contains(&version),
+                "{rel} does not mention container version {version}; \
+                 `MAGE_ONTOLOGY.json` once published 2 while the encoder wrote 3, \
+                 and `decode` rejects a version mismatch"
+            );
+        }
+    }
     /// A decoder written from the *published* format consumes the whole file.
     ///
     /// The container has carried a symbol table since v2 — the section that
