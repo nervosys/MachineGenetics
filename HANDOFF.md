@@ -502,12 +502,41 @@ exact arity agreement). See rule 10 above for why no arity checker was built.
 
 ### Real work, unstarted
 
-Two items, and both are large.
+Two items, and **neither is actually unblocked** — which is the finding, not the
+framing this section had. Both are downstream of a decision, and only one said
+so.
 
 | # | Item | Size |
 |---|---|---|
-| 10 | **Multi-shot resumption for effect handlers** | Largest, and *smaller than it was recorded as*. Single-shot resumption already works — an arm's value becomes the operation's value and the body continues — and `ret` in an arm aborts the handled block cleanly. What is missing is reifying the continuation so it can be stored or invoked twice, which is what generators and backtracking need. State, reader, logging and mocking handlers all work today. Still means reworking the tree-walking evaluator into a form that can capture continuations. |
+| 10 | **Multi-shot resumption for effect handlers** | **Scoped 2026-08-18, and it is not unblocked — there is a language decision inside it.** See below. |
 | 13 | `stdlib/` | The remaining 25 sketches, and **the only aspirational `.mg` left in the repository** — 4,402 lines of Rust. Blocked on item 1: what a standard library *is* here depends on whether there are modules. `prototype/examples/` and `framework/framewerx/` are both done. |
+
+**Item 10, scoped.** Single-shot resumption is verified working, exactly as
+§11.6 documents it — `handle { work() } with A { ask() => 7 }` gives 107, the
+`ret` form gives 1007, and two operations in sequence each resume (5 + 5 = 10).
+Measured, not assumed.
+
+What is left has two parts, and the first is a **surface decision, not an
+implementation task**:
+
+- **Multi-shot needs the continuation reified as a value**, which means a
+  `resume` keyword — and MAGE is dual-surface, so that is a keyword *and* a
+  sigil, plus spec sections, ontology entries, and a rule for what effects a
+  resumed continuation performs. The spec currently says "There is no `resume`
+  keyword, because with single-shot tail resumption there is nothing for it to
+  do", which is the correct reason today and stops being one the moment
+  multi-shot lands. Someone has to design that.
+- **Then the evaluator rework.** `eval.rs` is 2,987 lines, 39 expression forms
+  and 53 recursive `self.eval(` sites, all of which keep the continuation in the
+  Rust call stack — where it cannot be captured. Multi-shot needs CPS or an
+  explicit CEK-style machine, which touches every form, with 1,196 tests riding
+  on current behaviour.
+
+**This item was filed under "real work, unstarted" with no blocker marked**,
+beside `stdlib/` which is explicitly blocked on item 1. It has the same shape as
+item 1 and should be read the same way: the implementation is downstream of a
+decision nobody has made. Worth knowing before someone picks it up expecting a
+week of evaluator work.
 
 ### Small, sharp, cheap
 
