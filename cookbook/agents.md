@@ -1,297 +1,252 @@
 # Agents & Swarms
 
+> Recipes for agents and swarms — the part of MAGE that exists because it is a
+> language for multi-agent systems. Agent-mode syntax; every block was
+> verified with `mage-parse --check`.
+
+The previous version of this page documented an entire fictional runtime:
+`u std.agent.{Agent, Message, AgentRuntime, Bus, Swarm, Capability, Lease}`,
+`I Agent ~ Greeter`, `rt.register(…)`, `bus.subscribe(…)`,
+`Capability.request("fs.read", Lease.new(…))`. None of it exists, and the real
+design is the opposite shape:
+
+- **`agent Name { capabilities: […] requires_approval: […] }`** declares a
+  *role*. It carries no code.
+- **`swarm Name { agent: A size: 3 topology: mesh consensus: majority }`**
+  declares a group. It carries no code either.
+- **The work is an ordinary function**, and its `/ effect` annotation is what
+  ties it to the role. Reaching `agent`, `net` or `fs` *is* the capability
+  request; the annotation is the grant; the checker enforces it before
+  anything runs. There is no runtime permission call to forget.
+- **Fan-out is `map`, fan-in is `fold`.** The five `swarm_*` orchestration
+  names in the lexer are reserved and unimplemented.
+
 ---
 
 ### Define a simple agent
 
-**Problem**: Create an agent that responds to messages.
+**Problem**: Declare an agent and the work it does.
 
 **Solution**:
 
-```mg
-u std.agent.{Agent, Message, AgentRuntime}
-
-S Greeter { name: s }
-
-I Agent ~ Greeter {
-    +f handle(&!self, msg: Message) -> R[?Message, Error] / io {
-        v text = msg.payload.as_str()?
-        v reply = f"Hello {text}, I'm {self.name}!"
-        Ok(Some(Message.reply(&msg, reply)))
-    }
-
-    +f id(&self) -> &s { &self.name }
+```MAGE
+// An `agent` block declares a *role*: what it may use, and what it must ask
+// before doing. It carries no code — there is no `Agent` trait to implement,
+// no `handle` method and no runtime to register with.
+agent Greeter {
+    capabilities: [agent, io]
 }
 
-+f main() / io, agent {
-    v greeter = Greeter @{ name: "Bot".into() }
-    v rt = AgentRuntime.new()
-    rt.register(greeter)
-    rt.send("Bot", Message.new("Alice"))?
-    rt.run()?
+// The behaviour is an ordinary function. `agent.spawn` performs `agent`;
+// printing performs `io`; both are declared.
++f greet(name: s) -> s / agent, io {
+    agent.spawn("greeter")
+    v reply = f"Hello {name}, I'm the greeter!"
+    p"{reply}"
+    reply
 }
 ```
+
+**Discussion**: **An `agent` block declares a role, not a class.** Capabilities and approval gates — no methods, no `Agent` trait, no `handle`, no runtime to register with. The behaviour is an ordinary function, and its annotation is what ties the two together.
 
 ---
 
 ### Agent with state
 
-**Problem**: Build an agent that tracks state across messages.
+**Problem**: Track state across steps.
 
 **Solution**:
 
-```mg
-u std.agent.{Agent, Message}
+```MAGE
+// State is a value, not a mutable field on an agent object. A transition
+// returns the next state, so the invalid intermediate never exists.
+agent Counter { capabilities: [agent] }
 
-S Counter {
-    id: s,
-    count: u64,
++S CounterState { id: s, count: i32 }
+
++E Command { Increment, Get, Reset }
+
++f step(state: CounterState, command: Command) -> CounterState {
+    ?= command {
+        Increment => @CounterState { id: state.id, count: state.count + 1 },
+        Get => state,
+        Reset => @CounterState { id: state.id, count: 0 },
+    }
 }
 
-I Agent ~ Counter {
-    +f handle(&!self, msg: Message) -> R[?Message, Error] / io {
-        v cmd = msg.payload.as_str()?
-        ? cmd {
-            "increment" => {
-                self.count += 1
-                Ok(Some(Message.reply(&msg, f"count={self.count}")))
-            },
-            "get" => {
-                Ok(Some(Message.reply(&msg, f"{self.count}")))
-            },
-            "reset" => {
-                self.count = 0
-                Ok(Some(Message.reply(&msg, "reset")))
-            },
-            _ => Ok(None),
-        }
-    }
-
-    +f id(&self) -> &s { &self.id }
++f main() -> i32 {
+    v start = @CounterState { id: "c1", count: 0 }
+    step(step(start, Increment), Increment).count
 }
 ```
+
+**Discussion**: State is a value and a transition returns the next one, so the invalid intermediate state never exists. There is no `&!self` and no mutable field on an agent object.
 
 ---
 
 ### Swarm with consensus
 
-**Problem**: Ask multiple agents and take a majority vote.
+**Problem**: Ask several agents and take a majority.
 
 **Solution**:
 
-```mg
-u std.agent.{Agent, Message, Swarm, Consensus}
+```MAGE
+// A `swarm` block declares members, topology and consensus. The declaration
+// says what to do; the code below does it — the majority is *computed*, not
+// assumed from the block.
+agent Voter { capabilities: [agent] }
 
-S Voter { id: s, bias: f64 }
-
-I Agent ~ Voter {
-    +f handle(&!self, msg: Message) -> R[?Message, Error] {
-        v question = msg.payload.as_str()?
-        // Simple threshold-based vote
-        v vote = ? self.bias > 0.5 { "yes" } : { "no" }
-        Ok(Some(Message.reply(&msg, vote)))
-    }
-
-    +f id(&self) -> &s { &self.id }
+swarm Panel {
+    agent: Voter
+    size: 3
+    topology: mesh
+    consensus: majority
 }
 
-+f main() / io, agent {
-    m swarm = Swarm.new()
-    swarm.add(Voter @{ id: "v1".into(), bias: 0.8 })
-    swarm.add(Voter @{ id: "v2".into(), bias: 0.3 })
-    swarm.add(Voter @{ id: "v3".into(), bias: 0.9 })
+f vote(bias: f64) -> bool { bias > 0.5 }
 
-    v result = swarm.broadcast_consensus(
-        Message.new("Should we deploy?"),
-        Consensus.Majority,
-    )?
++f decision(biases: [f64]~) -> s / agent {
+    agent.spawn("panel")
+    v votes = map(biases, |bias| vote(bias))
+    v yes = len(filter(votes, |v2| v2))
+    ? yes * 2 > len(votes) { "yes" } : { "no" }
+}
 
-    p"Decision: {result.payload}"
++f main() -> s / agent {
+    decision([0.8, 0.3, 0.9])
 }
 ```
+
+**Discussion**: A `swarm` block declares members, topology and consensus. The declaration says *what to do*; the code does it — **the majority is computed, not assumed from the block**, and `--check` reports each agent as Verified or Partial against the known capability set.
 
 ---
 
 ### Pipeline of agents
 
-**Problem**: Chain agents so each processes the output of the previous one.
+**Problem**: Chain stages so each processes the previous one's output.
 
 **Solution**:
 
-```mg
-u std.agent.{Agent, Message, Swarm}
+```MAGE
+// A pipeline is function composition. Each stage declares what it reaches,
+// and the stage that runs them declares the union — which is the whole
+// audit trail for the pipeline, in one signature.
+agent Fetcher { capabilities: [net] }
+agent Cleaner { capabilities: [] }
+agent Writer { capabilities: [fs] }
 
-S Parser { id: s }
-S Validator { id: s }
-S Formatter { id: s }
+f fetch(url: s) -> s / net { net.connect(url) }
 
-I Agent ~ Parser {
-    +f handle(&!self, msg: Message) -> R[?Message, Error] / io {
-        v raw = msg.payload.as_str()?
-        v parsed = parse_input(raw)?
-        Ok(Some(Message.reply(&msg, parsed)))
-    }
-    +f id(&self) -> &s { &self.id }
+f clean(raw: s) -> [s]~ { filter(lines(raw), |line| len(line) > 0) }
+
+f store(path: s, rows: [s]~) -> i32 / fs {
+    fs.write(path, join(rows, "\n"))
+    len(rows) as i32
 }
 
-I Agent ~ Validator {
-    +f handle(&!self, msg: Message) -> R[?Message, Error] {
-        v data = msg.payload.as_str()?
-        validate(data)?
-        Ok(Some(Message.reply(&msg, data.to_string())))
-    }
-    +f id(&self) -> &s { &self.id }
-}
-
-I Agent ~ Formatter {
-    +f handle(&!self, msg: Message) -> R[?Message, Error] {
-        v data = msg.payload.as_str()?
-        v formatted = f"=== Output ===\n{data}\n=============="
-        Ok(Some(Message.reply(&msg, formatted)))
-    }
-    +f id(&self) -> &s { &self.id }
-}
-
-+f main() / io, agent {
-    m swarm = Swarm.new()
-    swarm.add(Parser @{ id: "parser".into() })
-    swarm.add(Validator @{ id: "validator".into() })
-    swarm.add(Formatter @{ id: "formatter".into() })
-
-    // Pipeline: parser → validator → formatter
-    v input = Message.new("raw input data")
-    v result = swarm.pipeline(
-        input,
-        &["parser", "validator", "formatter"],
-    )?
-
-    p"{result.payload}"
++f run(url: s, out: s) -> i32 / net, fs {
+    store(out, clean(fetch(url)))
 }
 ```
+
+**Discussion**: Function composition. Each stage declares what it reaches and the runner declares the union — one signature that is the entire audit trail for the pipeline.
 
 ---
 
-### Pub-sub with the bus
+### Publish to several subscribers
 
-**Problem**: Multiple agents subscribe to topics and react to events.
+**Problem**: Fan an event out to more than one handler.
 
 **Solution**:
 
-```mg
-u std.agent.{Agent, Message, Bus}
+```MAGE
+// There is no bus and no subscription. A topic is a value, subscribers are
+// functions, and dispatch is a `?=` — which keeps the fan-out checkable.
+agent Logger { capabilities: [io] }
+agent Monitor { capabilities: [io] }
 
-S Logger { id: s }
-S Monitor { id: s }
-
-I Agent ~ Logger {
-    +f handle(&!self, msg: Message) -> R[?Message, Error] / io {
-        p"[LOG] {msg.payload}"
-        Ok(None)
-    }
-    +f id(&self) -> &s { &self.id }
+f log_event(text: s) -> i32 / io {
+    p"[LOG] {text}"
+    0
 }
 
-I Agent ~ Monitor {
-    +f handle(&!self, msg: Message) -> R[?Message, Error] / io {
-        v text = msg.payload.as_str()?
-        ? text.contains("error") {
-            p"[ALERT] Error detected: {text}"
-        }
-        Ok(None)
+f monitor_event(text: s) -> i32 / io {
+    ? contains(text, "error") {
+        p"[ALERT] error detected: {text}"
     }
-    +f id(&self) -> &s { &self.id }
+    0
 }
 
-+f main() / io, agent {
-    v bus = Bus.new()
-    bus.subscribe("events", Logger @{ id: "logger".into() })
-    bus.subscribe("events", Monitor @{ id: "monitor".into() })
++f publish(events: [s]~) -> i32 / io {
+    fold(events, 0, |acc, text| acc + log_event(text) + monitor_event(text))
+}
 
-    bus.publish("events", Message.new("user logged in"))?
-    bus.publish("events", Message.new("error: disk full"))?
++f main() -> i32 / io {
+    publish(["user logged in", "error: disk full"])
 }
 ```
+
+**Discussion**: There is no bus and no subscription registry. A topic is a value, subscribers are functions, and `fold` collects the results — which keeps the fan-out checkable rather than dynamic.
 
 ---
 
 ### Agent with capabilities
 
-**Problem**: Create an agent that requests specific permissions at runtime.
+**Problem**: Grant an agent a permission it must not exceed.
 
 **Solution**:
 
-```mg
-u std.agent.{Agent, Message, Capability, Lease}
-u std.time.Duration
+```MAGE
+// `requires_approval` names operations the agent may request but not perform
+// unilaterally. There is no runtime `Capability.request(…)` and no `Lease`:
+// **reaching the capability is the request, and the annotation is the
+// grant**, checked before anything runs.
+agent FileAgent {
+    capabilities: [fs]
+    requires_approval: [write_source]
+}
 
-S FileAgent { id: s }
-
-I Agent ~ FileAgent {
-    +f handle(&!self, msg: Message) -> R[?Message, Error] / io {
-        v path = msg.payload.as_str()?
-
-        // Request a time-limited file-read capability
-        v lease = Capability.request(
-            "fs.read",
-            Lease.new(Duration.from_secs(30)),
-        )?
-
-        v content = lease.execute(|| {
-            fs.read(path)
-        })?
-
-        Ok(Some(Message.reply(&msg, content)))
-    }
-
-    +f id(&self) -> &s { &self.id }
-
-    +f capabilities(&self) -> [s]~ {
-        ["fs.read"]~
-    }
++f read_for(path: s) -> R[s, s] / fs {
+    guard len(path) > 0 else { ret Err("no path") }
+    Ok(fs.read_to_string(path))
 }
 ```
 
-**Discussion**: The capability system replaces `unsafe`. The `Lease` adds
-a time bound — after 30 seconds the permission is revoked. This protects
-against long-running uncontrolled access.
+**Discussion**: `requires_approval` names operations the agent may *request* but not perform unilaterally. There is no runtime `Capability.request` and no `Lease`: **reaching the capability is the request, the annotation is the grant, and the checker enforces it before anything runs**.
 
 ---
 
 ### Supervisor pattern
 
-**Problem**: Restart agents automatically when they fail.
+**Problem**: Restart failing work, up to a limit.
 
 **Solution**:
 
-```mg
-u std.agent.{Agent, Message, Swarm}
-u std.time.Duration
+```MAGE
+// A supervisor without a runtime: retry a fallible step, bounded, with a
+// pause between attempts. `time` is declared because the pause is real.
+agent Supervisor { capabilities: [agent] }
 
-S Supervisor { id: s, max_restarts: u32 }
-
-I ~ Supervisor {
-    +f run(
-        &self,
-        swarm: &!Swarm,
-        worker_id: &s,
-        factory: f() -> ^dyn Agent,
-    ) / io, agent {
-        m restarts = 0u32
-        loop {
-            v result = swarm.run_agent(worker_id)
-
-            ? result.is_err() && restarts < self.max_restarts {
++f supervise(work: fn(i32) -> R[s, s], max_restarts: i32) -> R[s, s] / time, io {
+    m restarts = 0
+    @@ {
+        ?= work(restarts) {
+            Ok(value) => ret Ok(value),
+            Err(err) => {
+                ? restarts >= max_restarts {
+                    p"[supervisor] exceeded max restarts"
+                    ret Err(err)
+                }
                 restarts += 1
-                p"[Supervisor] Restarting {worker_id} (attempt {restarts})"
-                swarm.replace(worker_id, factory())
-                sleep(Duration.from_millis(100 * restarts as u64))
-            } : result.is_err() {
-                p"[Supervisor] {worker_id} exceeded max restarts"
-                break
-            } : {
-                break  // clean exit
-            }
+                p"[supervisor] restarting (attempt {restarts})"
+                time.sleep(100 * restarts)
+            },
         }
     }
+    Err("unreachable")
 }
 ```
+
+**Discussion**: A bounded retry loop. The pause is real, so `time` is declared; the work is a function value, so it carries no annotation of its own and the caller declares what it performs.
+
+---

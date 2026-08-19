@@ -6,6 +6,18 @@
 // `train` block which the bridge already routes to autograd +
 // CpuBackend.
 
+// The two things a step carries besides the counter. They are declared here
+// because nothing else in the tree defines them, and there is no module system
+// to import them from: every `.mg` file is checked on its own.
+S ParamStore {
+    count: usize,
+}
+
+S OptimState {
+    lr: f32,
+    step: u64,
+}
+
 S TrainState {
     step: u64,
     params: ParamStore,

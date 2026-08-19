@@ -1,252 +1,265 @@
 # Data Processing
 
+> Recipes for collections, maps and text. Agent-mode syntax; every block was
+> verified with `mage-parse --check`, and the ones with a `main` were run —
+> the answers in the discussions are what they printed.
+
+The previous version of this page was Rust with sigils: `.iter().filter(…)
+.map(…).collect()`, `staff.sort_by(…)`, `groups.entry(k).or_default().push(…)`,
+`{s: usize}.new()`, `[T]~.new()`, `K: Eq + Hash` bounds. **None of it exists,
+and none of it is needed** — the 31-word standard vocabulary is the collection
+library:
+
+```
+map filter fold reduce sum len count sort reverse zip freq first last any all
+find take range keys values flatten group scan contains split join chars words
+lines upper lower
+```
+
+They are global functions, not methods, and they nest innermost-first.
+
 ---
 
 ### Parse and query JSON
 
-**Problem**: Load a JSON file and extract specific fields.
+**Problem**: Load a JSON file and extract fields.
 
 **Solution**:
 
-```mg
-u std.fs
-u std.json.{parse, Value}
+```MAGE
+// `json` is a capability namespace, and it deliberately attributes no effect
+// — no built-in kind names a document store. Parsing is pure; the *reading*
+// is what needs `fs`.
++S User { name: s, age: i32 }
 
-+f main() / io {
-    v text = fs.read("users.json")?
-    v data = parse(&text)?
-
-    // data is a Value.Array
-    v users = data.as_array()?
-    @ user : users {
-        v name = user.get("name").as_str()?
-        v age = user.get("age").as_int()?
-        ? age > 30 {
-            p"{name} (age {age})"
-        }
-    }
++f users_over(path: s, min_age: i32) -> [s]~ / fs {
+    v text = fs.read_to_string(path)
+    v rows: [s]~ = json.parse(text)
+    filter(rows, |row| contains(row, "age"))
 }
 ```
+
+**Discussion**: `json` is a capability namespace that **deliberately attributes no effect** — no built-in kind names a document store, and inventing one would infer an effect no annotation could then declare. Reading the file is what needs `fs`. A capability call returns a type the checker does not know, so annotate the binding.
 
 ---
 
 ### Sort a collection
 
-**Problem**: Sort items by a specific field.
+**Problem**: Order items by a field.
 
 **Solution**:
 
-```mg
-@d(Debug, Clone)
-S Employee { name: s, salary: f64 }
+```MAGE
++S Employee { name: s, salary: f64 }
 
-+f main() {
-    m staff = [
-        Employee @{ name: "Alice".into(), salary: 95_000.0 },
-        Employee @{ name: "Bob".into(), salary: 87_000.0 },
-        Employee @{ name: "Charlie".into(), salary: 102_000.0 },
-    ]~
+// `sort` takes one argument and orders by natural order. To sort *by a
+// field*, sort the keys and look the values back up — there is no `sort_by`.
++f names_by_salary(staff: [Employee]~) -> [s]~ {
+    v salaries = sort(map(staff, |e| e.salary))
+    map(salaries, |wanted| name_at(staff, wanted))
+}
 
-    // Sort by salary descending
-    staff.sort_by(|a, b| b.salary.partial_cmp(&a.salary).unwrap())
-
-    @ e : &staff {
-        p"{e.name}: ${e.salary}"
+f name_at(staff: [Employee]~, wanted: f64) -> s {
+    ?= first(filter(staff, |e| e.salary == wanted)) {
+        Some(found) => found.name,
+        None => "",
     }
 }
+
++f main() -> [s]~ {
+    names_by_salary([
+        @Employee { name: "Alice", salary: 95000.0 },
+        @Employee { name: "Bob", salary: 87000.0 },
+        @Employee { name: "Charlie", salary: 102000.0 },
+    ])
+}
 ```
+
+**Discussion**: `sort` takes one argument and uses natural order. There is no `sort_by` and no comparator, so sorting by a field means sorting the keys and looking the values back up.
 
 ---
 
 ### Group items by key
 
-**Problem**: Group a list of items into buckets by a shared key.
+**Problem**: Group a list into buckets by a shared key.
 
 **Solution**:
 
-```mg
-+f group_by[T, K: Eq + Hash](items: &[T]~, key_fn: f(&T) -> K) -> {K: [&T]~} {
-    m groups: {K: [&T]~} = {K: [&T]~}.new()
-    @ item : items {
-        v k = key_fn(item)
-        groups.entry(k).or_default().push(item)
-    }
-    groups
+```MAGE
+// `group` is in the standard vocabulary: it takes a list and a key function
+// and returns `{K: [T]~}`. There is no `entry(…).or_default()`.
++f by_first_letter(words: [s]~) -> {s: [s]~} {
+    group(words, |word| chars(word)[0])
 }
 
-// Usage
-+f main() / io {
-    v words = ["apple", "banana", "avocado", "blueberry", "cherry"]~
-    v by_first = group_by(&words, |w| w.chars().next().unwrap())
-
-    @ (letter, group) : &by_first {
-        p"{letter}: {group.len()} words"
++f main() -> i32 / io {
+    v groups = by_first_letter(["apple", "banana", "avocado", "blueberry"])
+    @ letter in sort(keys(groups)) {
+        p"{letter}: {len(groups[letter])} words"
     }
+    len(keys(groups)) as i32
 }
 ```
+
+**Discussion**: `group(items, key_fn)` returns `{K: [T]~}` — it is one of the 31 vocabulary words, and it replaces the `entry(…).or_default().push` dance entirely.
 
 ---
 
 ### Filter and transform
 
-**Problem**: Apply a pipeline of filter and map operations.
+**Problem**: Apply a pipeline of filters and maps.
 
 **Solution**:
 
-```mg
-+f main() / io {
-    v numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]~
+```MAGE
+// A pipeline is nested vocabulary calls, innermost first. There is no method
+// chain, no `.iter()` and no `.collect()`.
++f main() -> [i32]~ / io {
+    v numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
-    v result: [i32]~ = numbers.iter()
-        .filter(|n| *n % 2 == 0)    // keep evens
-        .map(|n| n * n)             // square them
-        .filter(|n| *n > 10)        // keep > 10
-        .collect()
+    v result = filter(
+        map(
+            filter(numbers, |n| n % 2 == 0),   // keep evens
+            |n| n * n,                         // square them
+        ),
+        |n| n > 10,                            // keep > 10
+    )
 
-    p"Result: {result}"  // [16, 36, 64, 100]
+    p"result: {result}"
+    result
 }
 ```
+
+**Discussion**: A pipeline is nested calls, innermost first. There is no method chain, no `.iter()`, no `.collect()`. Evaluates to `[16, 36, 64, 100]`.
 
 ---
 
 ### Count word frequencies
 
-**Problem**: Count how many times each word appears in text.
+**Problem**: Count how many times each word appears in a text.
 
 **Solution**:
 
-```mg
-+f word_freq(text: &s) -> {s: usize} {
-    m counts: {s: usize} = {s: usize}.new()
-    @ word : text.split_whitespace() {
-        v w = word.to_lowercase()
-        *counts.entry(w).or_insert(0) += 1
-    }
-    counts
+```MAGE
+// `freq` counts occurrences directly — `words` splits the text, `freq`
+// returns `{s: usize}`.
++f word_freq(text: s) -> {s: usize} {
+    freq(words(lower(text)))
 }
 
-+f main() / io {
-    v text = "the quick brown fox jumps over the lazy dog the fox"
-    v freq = word_freq(text)
-
-    // Sort by frequency descending
-    m pairs: [(&s, &usize)]~ = freq.iter().collect()
-    pairs.sort_by(|a, b| b.1.cmp(a.1))
-
-    @ (word, count) : &pairs {
-        p"{word}: {count}"
++f top_word(text: s) -> s {
+    v counts = word_freq(text)
+    v ordered = sort(keys(counts))
+    ?= first(ordered) {
+        Some(word) => word,
+        None => "",
     }
 }
 ```
+
+**Discussion**: `freq` returns `{T: usize}` directly, over anything `words`, `lines` or `chars` produced.
 
 ---
 
 ### Deduplicate a list
 
-**Problem**: Remove duplicate items while preserving order.
+**Problem**: Remove duplicates while preserving order.
 
 **Solution**:
 
-```mg
-+f dedup[T: Eq + Hash + Clone](items: &[T]~) -> [T]~ {
-    m seen: {&T} = {&T}.new()
-    m result = [T]~.new()
-    @ item : items {
-        ? seen.insert(item) {
-            result.push(item.clone())
+```MAGE
+// Deduplicate by folding: keep an item only when it has not been seen. There
+// is no set literal and no `.insert` returning a bool, so the map's keys are
+// the set.
++f dedup(items: [i32]~) -> [i32]~ {
+    m seen = {0: 0b}
+    m result: [i32]~ = []
+    @ item in items {
+        ? !contains(keys(seen), item) {
+            seen[item] = 1b
+            result = flatten([result, [item]])
         }
     }
     result
 }
 
-+f main() / io {
-    v data = [3, 1, 4, 1, 5, 9, 2, 6, 5, 3]~
-    v unique = dedup(&data)
-    p"Unique: {unique}"  // [3, 1, 4, 5, 9, 2, 6]
++f main() -> [i32]~ {
+    dedup([3, 1, 4, 1, 5, 9, 2, 6, 5, 3])
 }
 ```
+
+**Discussion**: There is no set literal and no `.insert` that reports novelty, so a map's keys are the set. Evaluates to `[3, 1, 4, 5, 9, 2, 6]`.
 
 ---
 
-### Flatten nested structures
+### Flatten a nested structure
 
-**Problem**: Convert a nested tree into a flat list.
+**Problem**: Convert a tree into a flat list.
 
 **Solution**:
 
-```mg
-E Tree[T] {
-    Leaf(T),
-    Node([Tree[T]]~),
+```MAGE
+// `flatten` in the vocabulary removes one level of nesting. For a recursive
+// structure, recurse — but note a generic recursive sum is more than the
+// checker can follow today, so this is the concrete case.
++E Tree {
+    Leaf(i32),
+    Node([Tree]~),
 }
 
-+f flatten[T: Clone](tree: &Tree[T]) -> [T]~ {
-    ? tree {
-        Tree.Leaf(v) => [v.clone()]~,
-        Tree.Node(children) => {
-            m result = [T]~.new()
-            @ child : children {
-                result.extend(flatten(child))
-            }
-            result
-        },
++f flat(tree: Tree) -> [i32]~ {
+    ?= tree {
+        Leaf(value) => [value],
+        Node(children) => flatten(map(children, |child| flat(child))),
     }
 }
 
-+f main() / io {
-    v tree = Tree.Node([
-        Tree.Leaf(1),
-        Tree.Node([Tree.Leaf(2), Tree.Leaf(3)]~),
-        Tree.Leaf(4),
-    ]~)
-
-    v flat = flatten(&tree)
-    p"Flat: {flat}"  // [1, 2, 3, 4]
++f main() -> [i32]~ {
+    flat(Node([Leaf(1), Node([Leaf(2), Leaf(3)]), Leaf(4)]))
 }
 ```
+
+**Discussion**: The vocabulary's `flatten` removes one level; a recursive structure recurses. A *generic* recursive sum is more than the checker follows today, so this is the concrete case.
 
 ---
 
 ### Running statistics
 
-**Problem**: Compute mean and standard deviation over a stream of values.
+**Problem**: Compute mean and variance over a series of values.
 
 **Solution**:
 
-```mg
-S Stats {
-    count: u64,
-    sum: f64,
-    sum_sq: f64,
-}
+```MAGE
++S Stats { count: f64, total: f64, total_sq: f64 }
 
-I ~ Stats {
-    +f new() -> Self {
-        Stats @{ count: 0, sum: 0.0, sum_sq: 0.0 }
+// No `&!self`: a method returns the updated value, so the accumulator is
+// threaded rather than mutated.
+extend Stats {
+    +f push(self, value: f64) -> Stats {
+        @Stats {
+            count: self.count + 1.0,
+            total: self.total + value,
+            total_sq: self.total_sq + value * value,
+        }
     }
 
-    +f push(&!self, value: f64) {
-        self.count += 1
-        self.sum += value
-        self.sum_sq += value * value
-    }
+    +f mean(self) -> f64 { self.total / self.count }
 
-    +f mean(&self) -> f64 {
-        self.sum / self.count as f64
-    }
-
-    +f std_dev(&self) -> f64 {
-        v n = self.count as f64
-        v variance = (self.sum_sq / n) - (self.mean() * self.mean())
-        variance.sqrt()
+    +f variance(self) -> f64 {
+        (self.total_sq / self.count) - (self.mean() * self.mean())
     }
 }
 
-+f main() / io {
-    m stats = Stats.new()
-    v data = [2.0, 4.0, 4.0, 4.0, 5.0, 5.0, 7.0, 9.0]~
-    @ v : &data { stats.push(*v) }
-    p"Mean: {stats.mean():.2}"       // 5.00
-    p"Std dev: {stats.std_dev():.2}" // 2.00
++f main() -> f64 {
+    v stats = fold(
+        [2.0, 4.0, 4.0, 4.0, 5.0, 5.0, 7.0, 9.0],
+        @Stats { count: 0.0, total: 0.0, total_sq: 0.0 },
+        |acc, x| acc.push(x),
+    )
+    stats.variance()
 }
 ```
+
+**Discussion**: No `&!self`: a method returns the updated value, so the accumulator is threaded through `fold` rather than mutated in place. The invalid intermediate state never exists.
+
+---

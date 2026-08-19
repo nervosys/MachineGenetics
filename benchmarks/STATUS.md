@@ -86,26 +86,26 @@ ratchet upward.
 6. **`agent.refine`** — re-prompt the agent backend (Stage-3, requires wrapper)
 7. **`failed`** — all stages exhausted
 
-### Ontology (21 sections, one call)
+### Ontology (22 sections, one call)
 
 ```
 ontology/full
-  ├─ sigils (38)             — surface tokens + meaning
-  ├─ keywords (12)           — AI constructs (net/kb/agent/swarm/...)
+  ├─ sigils (50)             — surface tokens + meaning
+  ├─ keywords (102)           — AI constructs (net/kb/agent/swarm/...)
   ├─ types (30)              — built-in scalars + composites
-  ├─ ast_kinds (18)          — top-level item families
+  ├─ ast_kinds (20)          — top-level item families
   ├─ ir_ops (107)            — every Agentic Binary Language opcode w/ metadata
   ├─ op_families (7)         — Neural/Symbolic/Control/Memory/Agent/Meta/Math
-  ├─ layer_map (31)          — surface name → opcode
+  ├─ layer_map (21)          — surface name → opcode
   ├─ rap_methods (37)        — every callable method w/ inputs/outputs
-  ├─ heal_patterns (~13)     — mechanical fix patterns
+  ├─ heal_patterns (34)      — mechanical fix patterns, each w/ a matching message
   ├─ recovery_stages (7)     — the 5-stage pipeline
   ├─ machine                    — binary container format constants
   ├─ examples (10)           — parse-verified working snippets
   ├─ framewerx_modules (256) — RecursiveMachineIntelligence-MG framework (FLAX-equivalent)
-  ├─ cli_flags (17)          — every mage-parse flag
+  ├─ cli_flags (36)          — every mage-parse flag
   ├─ bench_backends (4)      — reliability-bench backends
-  ├─ effects (15)            — @fx/@req/@ens + canonical effect names
+  ├─ effects (22)            — @fx/@req/@ens + canonical effect names
   ├─ wrapper_protocol (9)    — subprocess agent contract
   ├─ project_layout (22)     — top-level directory map
   ├─ docs (7)                — canonical doc pointers + IronAccelerator

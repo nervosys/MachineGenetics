@@ -1,300 +1,248 @@
 # Testing
 
+> Recipes for tests, mocks and benchmarks. Agent-mode syntax; every block was
+> verified with `mage-parse --check`, and the tests below were run.
+
+The previous version of this page tested against a harness that does not
+exist: `u std.test.*`, `assert_eq(a, b, msg)`, `TestFixture.setup()`,
+`handle(|| greet("Alice"), |effect| effect.resume(8))`, `#[should_panic]`,
+property generators. What MAGE actually gives you is smaller and stronger:
+
+- **`@test`** marks a function; its **return value** is the result.
+- **`assert(cond)`** / `assert(cond, "message")` is the only assertion.
+- **`handle { … } with E { … }`** is the mocking mechanism, and it is part of
+  the type system rather than a library — a handler can only substitute
+  operations of a *declared* effect, and it discharges that effect for exactly
+  the block it wraps.
+
 ---
 
 ### Table-driven tests
 
-**Problem**: Test a function against many input/output pairs without
-duplicating test code.
+**Problem**: Test a function against many input/output pairs.
 
 **Solution**:
 
-```mg
-u std.test.*
-
+```MAGE
 f add(a: i32, b: i32) -> i32 { a + b }
 
-@test
-f test_add() {
-    v cases = [
-        (0, 0, 0),
-        (1, 2, 3),
-        (-1, 1, 0),
-        (i32.MAX, 0, i32.MAX),
-        (100, -100, 0),
-    ]~
+// A table is a list of records. Tuple destructuring in a binding does not
+// parse (`v (a, b) = pair`), so name the columns.
++S Case { a: i32, b: i32, want: i32 }
 
-    @ (a, b, expected) : &cases {
-        assert_eq(add(*a, *b), *expected,
-            f"add({a}, {b}) should be {expected}")
-    }
+@test
+f test_add() -> bool {
+    v cases = [
+        @Case { a: 0, b: 0, want: 0 },
+        @Case { a: 1, b: 2, want: 3 },
+        @Case { a: -1, b: 1, want: 0 },
+        @Case { a: 100, b: -100, want: 0 },
+    ]
+    all(cases, |c| add(c.a, c.b) == c.want)
 }
 ```
+
+**Discussion**: A test is a function marked `@test` whose **value** the runner checks — there is no `assert_eq`, and `assert(cond, "msg")` is the only assertion. Tuple destructuring in a binding does not parse (`v (a, b) = pair`), so a table is a list of records.
 
 ---
 
-### Test with setup and teardown
+### Setup and teardown
 
-**Problem**: Create shared state before tests and clean up afterward.
+**Problem**: Create shared state before a test and clean it up after.
 
 **Solution**:
 
-```mg
-u std.test.*
-u std.fs
-
-S TestFixture {
-    dir: s,
-}
-
-I ~ TestFixture {
-    +f setup() -> Self / io {
-        v dir = f"test_tmp_{env.pid()}"
-        fs.create_dir(&dir).unwrap()
-        fs.write(f"{dir}/data.txt", "test data").unwrap()
-        TestFixture @{ dir }
-    }
-
-    +f teardown(&self) / io {
-        fs.remove_dir_all(&self.dir).unwrap()
-    }
+```MAGE
+// There is no fixture protocol and no automatic teardown. `defer` runs at
+// scope exit, which is the whole mechanism.
+f setup(dir: s) -> s / fs {
+    fs.mkdir(dir)
+    fs.write(f"{dir}/data.txt", "test data")
+    dir
 }
 
 @test
-f test_read_data() / io {
-    v fixture = TestFixture.setup()
-
-    v content = fs.read(f"{fixture.dir}/data.txt")?
-    assert_eq(content, "test data")
-
-    fixture.teardown()
++f test_read_data() -> bool / fs {
+    v dir = setup("build/test_tmp")
+    defer fs.remove(dir)
+    fs.read_to_string(f"{dir}/data.txt") == "test data"
 }
 ```
+
+**Discussion**: There is no fixture protocol, no `Drop`, and no automatic teardown. `defer` runs its expression at scope exit, and that is the entire mechanism.
 
 ---
 
 ### Mock an effect
 
-**Problem**: Test a function that performs I/O without actual I/O.
+**Problem**: Test a function that performs I/O, without performing any.
 
 **Solution**:
 
-```mg
-u std.test.*
-u std.effect.handle
+```MAGE
+// Declaring an effect is what makes a function mockable: a handler can only
+// substitute operations that belong to a declared effect.
+effect Clock {
+    f hour() -> i32;
+}
 
-// Function under test
-+f greet(name: &s) -> s / io {
-    v time = get_time_of_day()
-    ? time < 12 { f"Good morning, {name}!" }
-    : { f"Good afternoon, {name}!" }
++f greet(name: s) -> s / clock {
+    v hour = Clock.hour()
+    ? hour < 12 { f"Good morning, {name}!" } : { f"Good afternoon, {name}!" }
+}
+
+// `handle … with` removes the effect for the block it wraps, so the test is
+// pure — no clock, no I/O, and no unhandled call elsewhere silenced with it.
+@test
+f test_morning() -> bool {
+    handle {
+        greet("Alice")
+    } with Clock {
+        hour() => 8,
+    } == "Good morning, Alice!"
 }
 
 @test
-f test_morning_greeting() {
-    // Mock the io effect to return a fixed time
-    v result = handle(|| greet("Alice"), |effect| {
-        ? effect.is("get_time_of_day") {
-            effect.resume(8)  // 8 AM
-        }
-    })
-
-    assert_eq(result, "Good morning, Alice!")
-}
-
-@test
-f test_afternoon_greeting() {
-    v result = handle(|| greet("Bob"), |effect| {
-        ? effect.is("get_time_of_day") {
-            effect.resume(14)  // 2 PM
-        }
-    })
-
-    assert_eq(result, "Good afternoon, Bob!")
+f test_afternoon() -> bool {
+    handle {
+        greet("Bob")
+    } with Clock {
+        hour() => 14,
+    } == "Good afternoon, Bob!"
 }
 ```
+
+**Discussion**: **This is what the effect system is for.** Put the operation behind a declared `effect`, and `handle … with` substitutes it for one block — the test is pure, and an unhandled call elsewhere in the program still reports. A handler arm names the operation bare and binds its parameters by name; `_` is not a parameter name.
 
 ---
 
 ### Property-based testing
 
-**Problem**: Verify a property holds for any input, not just hand-picked
-examples.
+**Problem**: Check a property over many generated inputs.
 
 **Solution**:
 
-```mg
-u std.test.{prop, assert_true}
+```MAGE
+f reverse_str(text: s) -> s { join(reverse(chars(text)), "") }
 
-f reverse[T: Clone](items: &[T]~) -> [T]~ {
-    m r = items.clone()
-    r.reverse()
-    r
-}
-
+// There is no property-testing harness and no generator. Generate the inputs
+// yourself — `rng` is a capability, so a test that uses it declares it, and a
+// deterministic table is usually the better answer.
 @test
-f test_reverse_is_involution() {
-    // Reversing twice gives back the original
-    prop(|items: [i32]~| {
-        assert_eq(reverse(&reverse(&items)), items)
-    })
-}
-
-@test
-f test_reverse_preserves_length() {
-    prop(|items: [i32]~| {
-        assert_eq(reverse(&items).len(), items.len())
-    })
-}
-
-@test
-f test_sort_is_idempotent() {
-    prop(|items: [i32]~| {
-        m a = items.clone()
-        a.sort()
-        m b = a.clone()
-        b.sort()
-        assert_eq(a, b)
-    })
++f test_reverse_twice_is_identity() -> bool / rng {
+    v inputs = map(range(20), |n| f"case {n}")
+    all(inputs, |text| reverse_str(reverse_str(text)) == text)
 }
 ```
+
+**Discussion**: There is no property-testing harness and no shrinking. Generate the inputs yourself and use `all`. `rng` is a capability, so a test that reaches for randomness declares it — which is usually the signal that a fixed table would be the better test.
 
 ---
 
 ### Benchmark a function
 
-**Problem**: Measure the performance of a function.
+**Problem**: Measure how long a function takes.
 
 **Solution**:
 
-```mg
-u std.test.{Bencher, black_box}
-
-f fibonacci(n: u64) -> u64 {
-    ? n <= 1 { ret n }
-    m a: u64 = 0
-    m b: u64 = 1
-    @ _ : 2..=n {
-        v tmp = a + b
-        a = b
-        b = tmp
-    }
-    b
+```MAGE
+f factorial(n: i32) -> i32 {
+    ? n <= 1 { 1 } : { n * factorial(n - 1) }
 }
 
+// `@bench` marks a benchmark. There is no `Bencher` and no `b.iter(…)` —
+// the harness times the call.
 @bench
-f bench_fib_20(b: &!Bencher) {
-    b.iter(|| black_box(fibonacci(black_box(20))))
-}
-
-@bench
-f bench_fib_40(b: &!Bencher) {
-    b.iter(|| black_box(fibonacci(black_box(40))))
+f bench_factorial() -> i32 {
+    factorial(20)
 }
 ```
 
-Run with `mg bench`.
+**Discussion**: `@bench` marks a benchmark. There is no `Bencher` type and no `b.iter(…)` closure; the harness times the call.
 
 ---
 
 ### Test expected errors
 
-**Problem**: Verify a function returns the correct error variant.
+**Problem**: Assert that a function fails the way it should.
 
 **Solution**:
 
-```mg
-u std.test.*
-
-+f divide(a: f64, b: f64) -> R[f64, s] {
-    ? b == 0.0 {
-        Err("division by zero".into())
-    } : {
-        Ok(a / b)
-    }
+```MAGE
++f divide(a: i32, b: i32) -> R[i32, s] {
+    guard b != 0 else { ret Err("divide by zero") }
+    Ok(a / b)
 }
 
+// Test the error case by matching it. There is no `#[should_panic]`, and a
+// panicking test would abort the run rather than pass.
 @test
-f test_divide_by_zero() {
-    v result = divide(1.0, 0.0)
-    assert_err(&result)
-
-    ? result => Err(msg) {
-        assert_eq(msg, "division by zero")
+f test_divide_by_zero() -> bool {
+    ?= divide(1, 0) {
+        Ok(_) => 0b,
+        Err(msg) => msg == "divide by zero",
     }
-}
-
-@test
-f test_divide_ok() {
-    v result = divide(10.0, 2.0)
-    assert_ok(&result)
-    assert_eq(result.unwrap(), 5.0)
 }
 ```
+
+**Discussion**: Match the error. There is no `#[should_panic]`, and a panicking test aborts the run rather than passing — which is the right default for a language where `panic` is a declared capability.
 
 ---
 
 ### Snapshot testing
 
-**Problem**: Compare output against a saved "golden" file.
+**Problem**: Compare output against a recorded snapshot.
 
 **Solution**:
 
-```mg
-u std.test.*
-u std.fs
-
-f assert_snapshot(name: &s, actual: &s) / io {
-    v path = f"tests/snapshots/{name}.snap"
-
-    ? fs.exists(&path) {
-        v expected = fs.read(&path)?
-        assert_eq(actual, &expected,
-            f"Snapshot mismatch for '{name}'. Run with UPDATE_SNAPSHOTS=1 to update.")
-    } : {
-        // First run — create the snapshot
-        fs.create_dir_all("tests/snapshots")?
-        fs.write(&path, actual)?
-        p"Created snapshot: {path}"
-    }
+```MAGE
+f render(name: s, rows: i32) -> s {
+    join([f"report for {name}", f"{rows} rows"], "\n")
 }
 
+// A snapshot is a string comparison against a file you keep in the repo.
+// There is no snapshot library and no `--update` flag; the effect is `fs`,
+// declared like any other.
 @test
-f test_report_output() / io {
-    v report = generate_report(&sample_data())
-    assert_snapshot("report_output", &report)
++f test_render_matches_snapshot() -> bool / fs {
+    render("alpha", 3) == fs.read_to_string("tests/snapshots/report.txt")
 }
 ```
 
-**Discussion**: To update snapshots, delete the `.snap` file and re-run
-the test, or add a `UPDATE_SNAPSHOTS` environment check.
+**Discussion**: A snapshot is a file you keep in the repo and a string comparison. Reading it performs `fs`, declared like anything else. There is no snapshot library and no `--update` flag: the recorded answer changes when you change it.
 
 ---
 
 ### Test async code
 
-**Problem**: Test an async function.
+**Problem**: Test a function that would otherwise make a network call.
 
 **Solution**:
 
-```mg
-u std.test.*
-
-+af fetch_name(id: u64) -> R[s, Error] / net {
-    v resp = Request.get(f"https://api.example.com/users/{id}").send().await?
-    v user: User = from_str(&resp.text().await?)?
-    Ok(user.name)
+```MAGE
++af fetch(url: s) -> s / net {
+    net.connect(url)
 }
+
+// An async function is tested like any other — there is no runtime to start
+// and no `.await` to write at the call site. Mock the capability by putting
+// the work behind a declared effect instead.
+effect Http {
+    f get(url: s) -> s;
+}
+
+f fetch_via(url: s) -> s / http { Http.get(url) }
 
 @test
-af test_fetch_name() / net {
-    // With a mock handler for the net effect
-    v name = handle(|| fetch_name(1).await, |effect| {
-        ? effect.is("http_get") {
-            effect.resume(r#"{"name": "Alice", "id": 1}"#)
-        }
-    }).await
-
-    assert_eq(name.unwrap(), "Alice")
+f test_fetch() -> bool {
+    handle {
+        fetch_via("https://example.com")
+    } with Http {
+        get(url) => "hello",
+    } == "hello"
 }
 ```
+
+**Discussion**: An async function needs no runtime and no `.await` at the call site. The mockable seam is the same one as everywhere else: put the call behind a declared effect and handle it.
+
+---

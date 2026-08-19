@@ -295,9 +295,14 @@ MLIR enables targeting multiple backends from the same HIR:
 The `@pt(target)` annotation controls target selection:
 
 ```MAGE
-@pt(auto)  // let the compiler choose (default)
-@pt(cpu)   // force CPU
-@pt(gpu)   // force GPU
+@pt(auto)   // let the compiler choose (the default)
+f plan_auto(x: i32) -> i32 { x }
+
+@pt(cpu)    // force CPU
+f plan_cpu(x: i32) -> i32 { x }
+
+@pt(gpu)    // force GPU
+f plan_gpu(x: i32) -> i32 { x }
 ```
 
 ## 6.7 Testing the Backend

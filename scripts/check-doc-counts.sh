@@ -42,6 +42,14 @@ REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO"
 
 declare -A ACTUAL
+# Counted explicitly rather than with `${#ACTUAL[@]}`: under `set -u` an
+# associative array that has never been assigned is *unbound*, so the length
+# expansion below aborted the line instead of yielding 0. The guard it was
+# supposed to arm therefore never fired — running this script with no stdin
+# printed "documentation disagrees with measurement" for all 74 claims when
+# what actually happened was that nothing had been measured. A counter is
+# assigned before the loop and so is always bound.
+supplied=0
 while IFS='=' read -r k v; do
     # Strip CR: this is invoked from PowerShell as well as bash, and a piped
     # string from PowerShell arrives CRLF-terminated. Without this the last
@@ -49,10 +57,13 @@ while IFS='=' read -r k v; do
     # "documented as 2744, measured 2744" — a mismatch of invisible bytes.
     k="${k//$'\r'/}"
     v="${v//$'\r'/}"
-    [ -n "${k:-}" ] && ACTUAL["$k"]="$v"
+    if [ -n "${k:-}" ]; then
+        ACTUAL["$k"]="$v"
+        supplied=$((supplied + 1))
+    fi
 done
 
-if [ "${#ACTUAL[@]}" -eq 0 ]; then
+if [ "$supplied" -eq 0 ]; then
     echo "check-doc-counts: no counts on stdin; run via scripts/test-all.sh --check-docs" >&2
     exit 2
 fi
@@ -108,6 +119,41 @@ HANDOFF.md	ribosome [0-9,]+ ·	ribosome
 HANDOFF.md	germline [0-9,]+ ·	germline
 HANDOFF.md	forge [0-9,]+ \|	forge
 HANDOFF.md	→ [0-9,]+\*\*, all green	prototype
+HANDOFF.md	\| CI \| [0-9,]+ jobs	ci_jobs
+HANDOFF.md	\*\*[0-9,]+ checked	mg_checked
+HANDOFF.md	checked, [0-9,]+ sketches	mg_sketches
+HANDOFF.md	[0-9,]+ MAGE blocks typecheck	doc_blocks
+HANDOFF.md	[0-9,]+ documentation entry points	doc_evals
+HANDOFF.md	file-oracle parse [0-9]+/	floor_parse
+HANDOFF.md	pattern-heal [0-9]+,	floor_heal
+benchmarks/STATUS.md	├─ sigils \([0-9]+\)	onto_sigils
+benchmarks/STATUS.md	├─ keywords \([0-9]+\)	onto_keywords
+benchmarks/STATUS.md	├─ types \([0-9]+\)	onto_types
+benchmarks/STATUS.md	├─ ast_kinds \([0-9]+\)	onto_ast_kinds
+benchmarks/STATUS.md	├─ ir_ops \([0-9]+\)	onto_ir_ops
+benchmarks/STATUS.md	├─ op_families \([0-9]+\)	onto_op_families
+benchmarks/STATUS.md	├─ layer_map \([0-9]+\)	onto_layer_map
+benchmarks/STATUS.md	├─ rap_methods \([0-9]+\)	onto_rap_methods
+benchmarks/STATUS.md	├─ heal_patterns \([0-9]+\)	onto_heal_patterns
+benchmarks/STATUS.md	├─ recovery_stages \([0-9]+\)	onto_recovery_stages
+benchmarks/STATUS.md	├─ examples \([0-9]+\)	onto_examples
+benchmarks/STATUS.md	├─ framewerx_modules \([0-9]+\)	onto_framewerx_modules
+benchmarks/STATUS.md	├─ cli_flags \([0-9]+\)	onto_cli_flags
+benchmarks/STATUS.md	├─ bench_backends \([0-9]+\)	onto_bench_backends
+benchmarks/STATUS.md	├─ effects \([0-9]+\)	onto_effects
+benchmarks/STATUS.md	├─ wrapper_protocol \([0-9]+\)	onto_wrapper_protocol
+benchmarks/STATUS.md	├─ project_layout \([0-9]+\)	onto_project_layout
+benchmarks/STATUS.md	├─ ci_floors \([0-9]+\)	onto_ci_floors
+benchmarks/STATUS.md	Ontology \([0-9]+ sections	onto_sections
+UNIFICATION.md	in \*\*[0-9]+ sections\*\*	onto_sections
+DOCS.md	the [0-9]+-section ontology	onto_sections
+DOCS.md	There are [0-9]+ Markdown documents	root_docs
+UNIFICATION.md	cli_flags \([0-9]+\)	onto_cli_flags
+UNIFICATION.md	effects \([0-9]+\)	onto_effects
+UNIFICATION.md	wrapper_protocol \([0-9]+\)	onto_wrapper_protocol
+UNIFICATION.md	ci_floors \([0-9]+\)	onto_ci_floors
+ARCHITECTURE.md	\*\*[0-9]+ crates transitively\*\*	ribosome_deps
+RIBOSOME.md	— [0-9]+ crates transitively	ribosome_deps
 EOF
 )
 
@@ -156,6 +202,11 @@ PROSE_FILES="ROADMAP.md MEASUREMENTS.md"
 
 fail=0
 checked=0
+# A claim whose crate was never measured is a different failure from a claim
+# that disagrees with its measurement, and the verdict has to say which —
+# telling someone their docs are wrong when the run simply skipped a crate
+# sends them to edit numbers that were correct.
+missing=0
 
 digits() { printf '%s' "$1" | tr -cd '0-9'; }
 
@@ -166,7 +217,7 @@ compare() {
     local want="${ACTUAL[$key]:-}"
     if [ -z "$want" ]; then
         echo "  ?  $where: no measured value for '$key'" >&2
-        fail=1
+        missing=$((missing + 1))
         return
     fi
     checked=$((checked + 1))
@@ -267,4 +318,38 @@ if [ "$fail" -ne 0 ]; then
     echo "The measurement wins; update the docs (see DOCS.md)." >&2
     exit 1
 fi
+if [ "$missing" -ne 0 ]; then
+    # Still a failure — an unchecked claim is an unguarded claim — but not the
+    # same one, and the remedy is to run the suite, not to edit the docs.
+    echo "INCOMPLETE - $missing documented count(s) had nothing to compare against;" >&2
+    echo "$checked matched. Run scripts/test-all.sh --check-docs so every crate is measured." >&2
+    exit 1
+fi
+# The number of pins is itself a documented figure, and it was wrong: HANDOFF
+# said 78 on a run that checked 80, because two pins were added in a commit
+# that did not revisit the sentence describing how many there are. That is the
+# same decay every pin above exists to catch, one level up — so it is pinned
+# too, by the only thing that can know the answer.
+#
+# Only on a default run. `--cuda` and `--bench` add pins conditionally, so the
+# total is a different number on those runs and comparing it would report a
+# failure for having measured *more*.
+if [ "$fail" -eq 0 ] && [ -z "${ACTUAL[cuda]:-}" ]    && [ -z "${ACTUAL[eval_exact]:-}" ] && [ -z "${ACTUAL[rb_lex]:-}" ]; then
+    pin_claim="$(grep -oE 'documented-count pins \*\*[0-9,]+\*\*' HANDOFF.md | head -1)"
+    if [ -z "$pin_claim" ]; then
+        echo "  !  HANDOFF.md: the 'documented-count pins **N**' claim no longer matches" >&2
+        fail=1
+    elif [ "$(digits "$pin_claim")" != "$checked" ]; then
+        echo "  x  HANDOFF.md: 'documented-count pins' says '$(digits "$pin_claim")', this run checked '$checked'" >&2
+        fail=1
+    fi
+fi
+
+if [ "$fail" -ne 0 ]; then
+    echo >&2
+    echo "FAILED - documentation disagrees with measurement." >&2
+    echo "The measurement wins; update the docs (see DOCS.md)." >&2
+    exit 1
+fi
+
 echo "OK - $checked documented counts match the measured run."

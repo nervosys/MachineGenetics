@@ -1,106 +1,123 @@
 // ─────────────────────────────────────────────────────────────
-// MAGE End-to-End Pipeline Demo
+// MAGE end-to-end pipeline demo
 //
-// This file exercises every stage of the MAGE compiler pipeline:
-//   1. Lexer    – tokens for keywords, sigils, literals, operators
-//   2. Parser   – data records, data sums, functions, extensions
-//   3. Resolver – name binding across nested scopes
-//   4. Types    – bidirectional type inference, unification
-//   5. Effects  – bottom-up effect inference and verification
-//   6. MLIR     – lowering to MAGE dialect operations
+// Exercises every stage: lexer, parser, resolver, types, effects.
+// Every construct here was verified with `--check` and `--eval`.
+//
+// The previous version had never compiled. It used `pub fn`, `let`, `String`
+// method calls, `format!`, an `Error` type that does not exist, and
+// expression-body functions (`-> T = expr`), which do not either. It also used
+// `|>`, which does — see below.
 //
 // Demonstrates:
-//   - data keyword (record and sum forms)
-//   - extend keyword (replaces impl)
-//   - val / var (replaces val / val mut)
-//   - guard ... else { } (early exit)
-//   - defer expr (cleanup on scope exit)
-//   - Pipeline operator |> (data transformation chains)
-//   - is pattern (pattern test expression)
-//   - T or E (error union type)
-//   - Expression-body functions (-> T = expr)
-//   - Default parameter values
-//
-// Run:  cargo run -- --pipeline examples/pipeline_demo.mg
+//   - `data` records and sums
+//   - `extend` methods
+//   - `v` / `m` bindings
+//   - `guard … else` early exit
+//   - `defer` cleanup
+//   - `|>` pipelines
+//   - `is` pattern tests
+//   - `T or E` error unions
+//   - default arguments
 // ─────────────────────────────────────────────────────────────
 
-// ── Record definitions ───────────────────────────────────────
+// ── Records ──────────────────────────────────────────────────
 
 data Point(x: f64, y: f64)
 
-data Rect(origin: Point, width: f64, height: f64)
+extend Point {
+    +f dist_sq(self, o: Point) -> f64 {
+        v dx = o.x - self.x
+        v dy = o.y - self.y
+        dx * dx + dy * dy
+    }
+}
 
-// ── Sum type definitions ─────────────────────────────────────
+// ── Sums ─────────────────────────────────────────────────────
 
 data Shape = Circle | Square | Triangle
 
+f sides(s: Shape) -> i32 {
+    ?= s {
+        Circle => 0,
+        Square => 4,
+        Triangle => 3,
+    }
+}
+
 // ── Pure functions ───────────────────────────────────────────
 
-// Expression-body functions: no block needed for single-expression returns.
-pub fn add(a: i32, b: i32) -> i32 = a + b
+f add(a: i32, b: i32) -> i32 { a + b }
 
-pub fn multiply(x: i32, y: i32) -> i32 = x * y
+f multiply(x: i32, y: i32) -> i32 { x * y }
 
-pub fn distance(p1: Point, p2: Point) -> f64 {
-    val dx: f64 = p2.x - p1.x;
-    val dy: f64 = p2.y - p1.y;
-    dx * dx + dy * dy
+// ── Pipelines ────────────────────────────────────────────────
+//
+// `x |> f(a)` is `f(x, a)`: the left operand becomes the first argument. It
+// chains left to right, and a bare function reference works too (`x |> f`).
+//
+// This is the operator the file is named for, and until now every program
+// using it *ran correctly and failed `--check`* — the checker inferred the two
+// sides independently, so `10 |> add(5)` was checked as the standalone call
+// `add(5)` and reported a missing argument.
+
+f piped() -> i32 {
+    10 |> add(5) |> multiply(2)
 }
 
-// ── Functions with error unions ──────────────────────────────
+// ── Error unions ─────────────────────────────────────────────
 
-// T or E replaces Result<T, E>.
-pub fn parse_config(path: String) -> String or Error {
-    guard path.len() > 0 else { return Err(Error.new("empty path")); }
-    path
+f parse_port(raw: i32) -> i32 or str {
+    guard raw > 0 else { ret Err("port must be positive") }
+    Ok(raw)
 }
 
-// ── Default parameter values ─────────────────────────────────
+// ── Default arguments ────────────────────────────────────────
+//
+// Only *trailing* defaults may be omitted.
 
-pub fn greet(name: String, prefix: String = "Hello") -> String {
-    format!("{prefix}, {name}!")
-}
-
-// ── Nested scopes & shadowing ────────────────────────────────
-
-pub fn scopes() -> i32 {
-    val x: i32 = 10;
-    val y: i32 = 20;
-    val result: i32 = x + y;
-    result
+f greet(name: str, prefix: str = "Hello") -> str {
+    join([prefix, name], ", ")
 }
 
 // ── Control flow ─────────────────────────────────────────────
 
-pub fn max_val(a: i32, b: i32) -> i32 {
-    if a > b { a } else { b }
+f max_val(a: i32, b: i32) -> i32 {
+    ? a > b { a } : { b }
 }
 
-// ── Pipeline & pattern test ──────────────────────────────────
+// ── `guard`, `is`, `defer` ───────────────────────────────────
 
-pub fn pipeline_demo() -> i32 {
-    val result = 10 |> add(5) |> multiply(2);
-    result
+f guarded(input: ?i32) -> i32 or str {
+    guard input is Some(_) else { ret Err("no input") }
+    Ok(1)
 }
 
-// ── Guard & defer ────────────────────────────────────────────
-
-pub fn guarded_work(input: ?String) -> String or Error {
-    // guard for early exit when precondition fails.
-    guard input is Some(_) else { return Err(Error.new("no input")); }
-
-    // defer runs cleanup when scope exits.
-    defer io.println("work complete");
-
-    "done"
+f with_cleanup() -> i32 / io {
+    defer println("work complete")
+    2
 }
 
 // ── Entry point ──────────────────────────────────────────────
 
-pub fn main() -> i32 {
-    val sum: i32 = add(3, 4);
-    val prod: i32 = multiply(sum, 2);
-    greet("MAGE Pipeline Demo");
-    val best: i32 = max_val(sum, prod);
-    best
++f main() -> i32 / io {
+    v sum = add(3, 4)
+    v prod = multiply(sum, 2)
+
+    v a = @Point { x: 0.0, y: 0.0 }
+    v b = @Point { x: 3.0, y: 4.0 }
+
+    println(greet("MAGE"))
+
+    v ok = ?= parse_port(8080) { Ok(n) => n, Err(_) => 0 }
+    v got = ?= guarded(Some(1)) { Ok(n) => n, Err(_) => 0 }
+
+    // 14 + 25 + 7 + 30 + 8080 + 1 + 2 = 8159
+    max_val(sum, prod)
+        + (a.dist_sq(b) as i32)
+        + (sides(Square) + sides(Triangle))
+        + piped()
+        + ok
+        + got
+        + with_cleanup()
 }

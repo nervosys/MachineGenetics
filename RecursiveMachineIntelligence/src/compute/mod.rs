@@ -25,6 +25,16 @@ pub mod wgpu_backend;
 #[cfg(feature = "cuda")]
 pub mod cuda;
 
+// WASM backend. This declaration was missing until 2026-08-19, so `wasm.rs`
+// was never compiled by any build: `--features wasm` succeeded, pulled
+// `wasm-bindgen` into the dependency graph, and enabled nothing, while
+// `core/discoverability.rs` advertised a "WASM Backend" to callers. Found by
+// `scripts/check-orphan-sources.sh`, which asks whether each file is reachable
+// by a `mod` at all. It compiles clean once wired in — the file was never
+// broken, merely unreferenced, which is why nothing ever reported it.
+#[cfg(feature = "wasm")]
+pub mod wasm;
+
 use std::sync::Arc;
 
 use async_trait::async_trait;

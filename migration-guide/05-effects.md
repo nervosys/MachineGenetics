@@ -197,66 +197,59 @@ operation in MAGE.
 
 ## 5.5 Capability System Setup
 
-### Declaring Capabilities in Forge.toml
+### Where the grant actually lives
 
-```toml
-[capabilities]
-grants = [
-    "fs.read",
-    "fs.write",
-    "net.http.get",
-    "net.http.post",
-    "net.tcp.connect",
-    "env.read",
-    "process.spawn",
-]
-```
+**There is no `[capabilities]` section in `Forge.toml`, no `Capability` type,
+and no runtime `cap.request(…)`.** Nothing of that shape exists, and it is not
+missing — the design puts the grant somewhere better:
 
-### Using Capabilities in Code
+- **Reaching a capability namespace is the request.** `fs.read_to_string(p)`
+  puts `fs` in the function's inferred set. There is no separate call to
+  forget, and no way to reach the resource without the checker seeing it.
+- **The `/ effect` annotation is the grant**, and a `pub` function must carry
+  one for everything it performs. The rule is `inferred ⊆ declared`.
+- **The check happens before anything runs**, not at the moment of use. A
+  program that would exceed its grant does not start.
 
 ```MAGE
-u std.agent.Capability
-
-+S App {
-    cap: Capability,
-}
-
-I ~ App {
-    +f new() -> R[Self, Error] / agent {
-        // Request capabilities at initialization
-        v cap = Capability.new("app")
-        cap.require("fs.read")?
-        cap.require("net.http.get")?
-        Ok(Self @{ cap })
-    }
-
-    +af fetch_config(&self) -> R[Config, Error] / net, agent {
-        self.cap.request("net.http.get", "https://config.example.com/v1")?
-        v resp = http.get("https://config.example.com/v1").await?
-        v config = json.parse[Config](&resp.text().await?)?
-        Ok(config)
-    }
+// The whole capability story, in one function.
++f fetch_config(url: s, cache: s) -> s / net, fs {
+    v body = net.connect(url)
+    fs.write(cache, body)
+    body
 }
 ```
 
-### Standard Capability Strings
+An agent declaration adds the *approval* half — operations the role may
+request but not perform unilaterally:
 
-| Capability        | Permits                       |
-| ----------------- | ----------------------------- |
-| `fs.read`         | Reading files                 |
-| `fs.write`        | Writing/creating files        |
-| `fs.delete`       | Deleting files                |
-| `net.http.get`    | HTTP GET requests             |
-| `net.http.post`   | HTTP POST/PUT/PATCH requests  |
-| `net.tcp.connect` | Raw TCP connections           |
-| `net.tcp.listen`  | Listening TCP sockets         |
-| `net.udp`         | UDP operations                |
-| `env.read`        | Reading environment variables |
-| `env.write`       | Setting environment variables |
-| `process.spawn`   | Spawning child processes      |
-| `process.signal`  | Sending signals to processes  |
-| `mem.deref`       | Dereferencing raw pointers    |
-| `ffi.call`        | Calling foreign functions     |
+```MAGE
+agent Configurator {
+    capabilities: [net, fs]
+    requires_approval: [publish]
+}
+```
+
+### The capability namespaces
+
+Twenty names, in scope everywhere, each attributing the effect beside it:
+
+| Namespace | Effect | | Namespace | Effect |
+|---|---|---|---|---|
+| `io` | `io` | | `http` | `net` |
+| `fs` | `fs` | | `mem` | `alloc` |
+| `net` | `net` | | `log` | `io` |
+| `env` | `env` | | `swarm` | `agent` |
+| `time` | `time` | | `os` `sys` `process` `tools` | `proc` |
+| `rng` | `rng` | | `json` `kb` `db` | *none, deliberately* |
+| `llm` | `llm` | | | |
+| `gpu` | `gpu` | | | |
+| `agent` | `agent` | | | |
+
+`json`, `kb` and `db` attribute nothing because no built-in kind names a
+store, and inventing one would infer an effect that §11.4 then refuses in an
+annotation — leaving no way to declare what you perform. For a store you want
+gated, declare `effect Db { … }` and call its operations.
 
 ## 5.6 Common Migration Patterns
 

@@ -1,262 +1,200 @@
 # Concurrency
 
+> Recipes for doing several things at once. Agent-mode syntax; every block was
+> verified with `mage-parse --check`.
+
+The previous version of this page was written against a runtime that does not
+exist: `u std.async.{spawn, join_all}`, `u std.sync.{Mutex, channel}`,
+`handles.push(spawn(move || async { … }))`, `Mutex[Instant]`, `.await`.
+
+**MAGE's concurrency story is the effect system, not a runtime.** There are no
+threads, channels, mutexes or futures in the language. What it gives you is
+that the *reach* of concurrent work is visible: a function that spawns
+declares `/ async`, one that coordinates agents declares `/ agent`, one that
+waits declares `/ time`, and every caller inherits all three. Fan-out is
+`map`; fan-in is `fold`.
+
 ---
 
 ### Spawn parallel tasks
 
-**Problem**: Run several independent tasks concurrently and collect results.
+**Problem**: Run independent work and collect the results.
 
 **Solution**:
 
-```mg
-u std.async.{spawn, join_all}
-
-+af compute_all(inputs: &[i32]~) -> [i64]~ / async {
-    m handles = [_]~.new()
-    @ &n : inputs {
-        handles.push(spawn(move || async {
-            heavy_compute(n)
-        }))
-    }
-    v results = join_all(handles).await
-    results.into_iter().map(|r| r.unwrap()).collect()
-}
-
-f heavy_compute(n: i32) -> i64 {
-    // Simulate expensive work
-    m acc: i64 = 1
-    @ i : 1..=(n as i64) { acc *= i }
+```MAGE
+f heavy_compute(n: i32) -> i32 {
+    m acc = 1
+    @ i in range(n as usize) { acc *= (i as i32) + 1 }
     acc
 }
-```
 
----
+// `async` is a *keyword*, not a capability namespace, so there is no
+// `async.spawn(…)`. The `async` effect is attributed by name: calling
+// `spawn(…)` or `select(…)` performs it.
+f spawn(label: s) -> i32 { len(label) as i32 }
 
-### Producer-consumer with channels
-
-**Problem**: One thread produces work, another consumes it.
-
-**Solution**:
-
-```mg
-u std.sync.{channel, Sender, Receiver}
-u std.async.spawn
-
-+f main() / io, async {
-    v (tx, rx) = channel[s]()
-
-    // Producer
-    v producer = spawn(move || / io {
-        @ i : 0..10 {
-            tx.send(f"task-{i}")?
-        }
-        drop(tx) // signal completion
-    })
-
-    // Consumer
-    v consumer = spawn(move || / io {
-        @ msg : rx {
-            p"Processing: {msg}"
-        }
-    })
-
-    producer.join()?
-    consumer.join()?
++af compute_all(inputs: [i32]~) -> [i32]~ / async {
+    spawn("compute")
+    map(inputs, |n| heavy_compute(n))
 }
 ```
 
+**Discussion**: **`async` is a keyword, not a capability namespace** — there is no `async.spawn(…)`. The `async` effect is attributed *by name*: calling `spawn` or `select` performs it (MAGE_SPEC.md §11.2). There is no handle type, no `join_all`, and no `.await` at a call site.
+
 ---
 
-### Shared counter with Mutex
+### Producer and consumer
 
-**Problem**: Increment a counter from multiple threads safely.
+**Problem**: One side produces work, the other consumes it.
 
 **Solution**:
 
-```mg
-u std.sync.Mutex
+```MAGE
+// There is no channel type. A producer returns its items and a consumer folds
+// over them — the data flow is ordinary values, which is what makes it
+// checkable.
+f produce(count: i32) -> [s]~ {
+    map(range(count as usize), |n| f"item {n}")
+}
 
-+f main() / async {
-    v counter = @.new(Mutex.new(0u64))
-    m handles = [_]~.new()
-
-    @ _ : 0..100 {
-        v c = counter.clone()
-        handles.push(spawn(move || {
-            m guard = c.lock().unwrap()
-            *guard += 1
-        }))
++f consume(items: [s]~) -> i32 / io {
+    @ item in items {
+        p"consumed {item}"
     }
+    len(items) as i32
+}
 
-    @ h : handles { h.join().unwrap() }
-    p"Final count: {*counter.lock().unwrap()}"  // 100
++f main() -> i32 / io {
+    consume(produce(3))
 }
 ```
+
+**Discussion**: There is no channel type. The producer returns its items and the consumer folds over them — the data flow is ordinary values, which is what makes it checkable.
+
+---
+
+### Shared counter
+
+**Problem**: Accumulate across many items.
+
+**Solution**:
+
+```MAGE
+// There is no `Mutex`, no lock and no shared mutable state to protect. A
+// counter is a value threaded through `fold`.
++f count_matching(items: [s]~, needle: s) -> i32 {
+    fold(items, 0, |acc, item| ? contains(item, needle) { acc + 1 } : { acc })
+}
+
++f main() -> i32 {
+    count_matching(["alpha", "beta", "gamma"], "a")
+}
+```
+
+**Discussion**: There is no `Mutex`, no lock, and no shared mutable state to protect: `fold` threads the accumulator. The absence is the feature.
 
 ---
 
 ### Rate limiter
 
-**Problem**: Limit operations to at most N per second.
+**Problem**: Pace work over time.
 
 **Solution**:
 
-```mg
-u std.sync.Mutex
-u std.time.{Instant, Duration}
-
-S RateLimiter {
-    max_per_sec: u32,
-    window_start: Mutex[Instant],
-    count: Mutex[u32],
-}
-
-I ~ RateLimiter {
-    +f new(max_per_sec: u32) -> Self {
-        RateLimiter @{
-            max_per_sec,
-            window_start: Mutex.new(Instant.now()),
-            count: Mutex.new(0),
-        }
+```MAGE
+// A rate limiter needs the clock, and the clock is a capability: `time.now`
+// and `time.sleep` both perform `time`, so every caller inherits it.
++f throttled(items: [s]~, per_item_ms: i32) -> i32 / time, io {
+    m done = 0
+    @ item in items {
+        v started = time.now()
+        p"{item}"
+        time.sleep(per_item_ms)
+        done += 1
     }
-
-    +f acquire(&self) / async {
-        loop {
-            {
-                m start = self.window_start.lock().unwrap()
-                m count = self.count.lock().unwrap()
-
-                ? start.elapsed() >= Duration.from_secs(1) {
-                    *start = Instant.now()
-                    *count = 0
-                }
-
-                ? *count < self.max_per_sec {
-                    *count += 1
-                    ret
-                }
-            }
-            sleep(Duration.from_millis(10)).await
-        }
-    }
+    done
 }
 ```
 
-**Discussion**: This is a simple sliding-window rate limiter. For production
-use, consider a token-bucket algorithm.
+**Discussion**: `time.now` and `time.sleep` both perform `time`, so pacing is visible in the signature and inherited by every caller.
 
 ---
 
 ### Fan-out / fan-in
 
-**Problem**: Distribute work across multiple workers and merge results.
+**Problem**: Distribute work across a swarm and merge the results.
 
 **Solution**:
 
-```mg
-u std.sync.channel
-u std.async.spawn
+```MAGE
+agent Worker { capabilities: [agent] }
 
-+f fan_out[T: Send, R: Send](
-    items: [T]~,
-    workers: usize,
-    work_fn: f(T) -> R,
-) -> [R]~ / async {
-    v (tx, rx) = channel[R]()
-    v (work_tx, work_rx) = channel[T]()
+swarm Pool {
+    agent: Worker
+    size: 4
+    topology: mesh
+    consensus: majority
+}
 
-    // Spawn workers
-    @ _ : 0..workers {
-        v work_rx = work_rx.clone()
-        v tx = tx.clone()
-        spawn(move || {
-            @ item : work_rx {
-                v result = work_fn(item)
-                tx.send(result).unwrap()
-            }
-        })
-    }
-    drop(tx)
+f handle_item(item: s) -> i32 / agent {
+    agent.spawn(item)
+    len(item) as i32
+}
 
-    // Feed work
-    @ item : items {
-        work_tx.send(item).unwrap()
-    }
-    drop(work_tx)
-
-    // Collect results
-    rx.into_iter().collect()
+// Fan out with `map`, fan in with `fold`. This is the whole pattern — the
+// five `swarm_*` names in the lexer are reserved and unimplemented, and
+// writing one is a parse error that says so.
++f map_reduce(items: [s]~) -> i32 / agent {
+    fold(map(items, |item| handle_item(item)), 0, |acc, n| acc + n)
 }
 ```
+
+**Discussion**: `map` fans out, `fold` fans in. The five `swarm_*` orchestration names in the lexer are **reserved and unimplemented** — writing one is a parse error that says so.
 
 ---
 
 ### Timeout wrapper
 
-**Problem**: Run an operation with a deadline — abort if it takes too long.
+**Problem**: Give a piece of work a time budget.
 
 **Solution**:
 
-```mg
-u std.async.{spawn, select}
-u std.time.Duration
-
-+af with_timeout[T](
-    duration: Duration,
-    work: af() -> T,
-) -> R[T, Error] / async {
-    v work_handle = spawn(work)
-    v timer_handle = spawn(|| async { sleep(duration).await })
-
-    ? select(work_handle, timer_handle).await {
-        First(result) => Ok(result?),
-        Second(_) => Err(Error.new("operation timed out")),
-    }
-}
-
-// Usage
-+af main() / async, io {
-    v result = with_timeout(Duration.from_secs(5), || async {
-        long_running_operation().await
-    }).await
-
-    ? result {
-        Ok(v) => p"Success: {v}",
-        Err(e) => p"Timed out: {e}",
-    }
+```MAGE
+// A timeout wrapper, without a future to race: run the work, then check the
+// clock. `time` is declared because the function reads it.
++f with_deadline(work: fn(s) -> s, input: s, budget_ms: i32) -> ?s / time {
+    v started = time.now()
+    v result = work(input)
+    ? time.now() - started > budget_ms { None } : { Some(result) }
 }
 ```
+
+**Discussion**: A function-typed parameter carries no effect annotation, so the wrapper declares its own `time` and the caller declares whatever the work performs.
 
 ---
 
 ### Parallel map
 
-**Problem**: Apply a function to every element in a collection, in parallel.
+**Problem**: Apply a function across a collection.
 
 **Solution**:
 
-```mg
-u std.async.{spawn, join_all}
+```MAGE
+// Parallel map is `map`. Whether the runtime distributes it is the runtime's
+// business; what the *language* guarantees is that the effects of the mapped
+// function are visible in the caller's annotation.
+f transform(item: s) -> s { upper(item) }
 
-+af par_map[T: Send + Clone, R: Send](
-    items: &[T]~,
-    map_fn: f(T) -> R,
-) -> [R]~ / async {
-    v handles: [_]~ = items.iter()
-        .map(|item| {
-            v item = item.clone()
-            spawn(move || map_fn(item))
-        })
-        .collect()
-
-    v results = join_all(handles).await
-    results.into_iter().map(|r| r.unwrap()).collect()
++f parallel_map(items: [s]~) -> [s]~ {
+    map(items, |item| transform(item))
 }
 
-// Usage
-+af main() / async, io {
-    v urls = ["https://a.com", "https://b.com", "https://c.com"]~
-    v pages = par_map(&urls, |url| fetch(&url)).await
-    p"Fetched {pages.len()} pages"
++f main() -> [s]~ {
+    parallel_map(["a", "b", "c"])
 }
 ```
+
+**Discussion**: It is `map`. Whether the runtime distributes it is the runtime's business; what the *language* guarantees is that the mapped function's effects appear in the caller's annotation.
+
+---

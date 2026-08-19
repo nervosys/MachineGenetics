@@ -1,67 +1,55 @@
-# Rust → MAGE Migration Patterns
+# Rust to MAGE Migration Patterns
 
-> Side-by-side translation rules for AI agents converting Rust code to MAGE.
-> All examples use **human syntax** (default). Most Rust syntax carries over directly.
+> Side-by-side translation for agents converting Rust to MAGE. Human syntax
+> throughout. Every MAGE block below was verified with `mage-parse --check`.
 
----
+**Read this first: most Rust syntax does *not* carry over.** The previous
+version of this document opened with "Migration is primarily about adding
+effect annotations", printed a 25-row table asserting that `let`, `mod`,
+`use path::to::Item`, `#[derive(Debug)]`, `println!`, `Foo { x: 1 }`,
+`async fn` and `where` clauses were identical in both languages, and answered
+six of its eight worked migrations with "no changes needed — identical Rust
+and MAGE". Every row was re-checked against the compiler for this rewrite.
 
-## What Changes?
+## What does not carry over
 
-MAGE human syntax is intentionally close to Rust. Migration is primarily about:
+| Rust | MAGE | Why |
+|---|---|---|
+| `let x` / `let mut x` | `val x` / `var x` | The parser rejects `let` **by name**, with that advice. |
+| `true` / `false` | `1b` / `0b` | The words are not in scope — `true` is an unresolved name. |
+| `Foo { x: 1 }` | `@Foo { x: 1 }` | Bare braces are a **map literal**. The Rust spelling silently means something else. |
+| `#[derive(…)]`, `#[test]`, `#[cfg(…)]` | `@test` | `#[…]` does not parse. There are no derive macros. |
+| `println!`, `format!`, `vec!`, `assert_eq!` | `println(…)`, `f"…"`, `[…]` | **MAGE has no macros.** These are parse errors that name themselves. |
+| `std::io::File`, `foo::<i32>()` | — | `::` does not parse, in paths or in a turbofish. |
+| `mod name`, `use std::io` | — | There is no module system. `use` parses and imports nothing; the checker warns. |
+| `async fn f()` | `async f()` | `async` *is* the declaration keyword. |
+| `unsafe`, `static`, `extern`, `const fn`, `pub(crate)` | — | None of these parse. |
+| `String`, `&str` | `str` | One string type. `&mut T` does not parse either. |
+| `fn f<T>()` | `fn f[T]()` | `<T>` also parses; `[T]` is canonical. |
+| `impl Type { }` | `extend Type { }` | `impl Trait for Type` stays, for trait implementations. |
+| `&self` / `&mut self` | `self` | Methods take the value and return the updated one. |
 
-1. **Adding effect annotations** (`/ io`, `/ net`, etc.) to impure functions
-2. **Removing lifetime annotations** (SKB infers them)
-3. **Removing `unsafe`** (use `Capability` system instead)
-4. **Adding contracts** (`@req`, `@ens`) to public APIs
-5. **Using MAGE stdlib modules** (`std::agent`, `std::skb`, `std::effect`)
+## What genuinely stays the same
 
-## What Stays the Same?
+`fn` / `pub fn`, `struct`, `enum`, `trait`, `impl Trait for Type`, `if` /
+`else` / `match` / `for` / `while` / `loop` / `return` / `break` / `continue`,
+`|x| x + 1` closures, tuples, indexing, arithmetic, and the shape of a
+signature: `fn name(param: Type) -> Type`.
 
-| Feature           | Rust                   | MAGE Human         |
-| ----------------- | ---------------------- | ---------------------- |
-| Functions         | `fn name()`            | `fn name()`            |
-| Public functions  | `pub fn name()`        | `pub fn name()`        |
-| Variables         | `let x = expr`         | `let x = expr`         |
-| Mutable variables | `let mut x = expr`     | `let mut x = expr`     |
-| Structs           | `struct Foo { }`       | `struct Foo { }`       |
-| Enums             | `enum Bar { }`         | `enum Bar { }`         |
-| Traits            | `trait Tr { }`         | `trait Tr { }`         |
-| Impl blocks       | `impl Trait for Type`  | `impl Trait for Type`  |
-| Modules           | `mod name`             | `mod name`             |
-| Imports           | `use std::io::File`    | `use std::io::File`    |
-| If/else           | `if cond { } else { }` | `if cond { } else { }` |
-| Match             | `match expr { }`       | `match expr { }`       |
-| For loops         | `for x in iter { }`    | `for x in iter { }`    |
-| Return            | `return expr`          | `return expr`          |
-| Generics          | `fn foo<T>(x: T)`      | `fn foo<T>(x: T)`      |
-| Where clauses     | `where T: Clone`       | `where T: Clone`       |
-| Paths             | `std::io::File`        | `std::io::File`        |
-| Derive            | `#[derive(Debug)]`     | `#[derive(Debug)]`     |
-| Print macros      | `println!("hi {x}")`   | `println!("hi {x}")`   |
-| Format macros     | `format!("hi {x}")`    | `format!("hi {x}")`    |
-| Struct literals   | `Foo { x: 1 }`         | `Foo { x: 1 }`         |
-| Bool literals     | `true` / `false`       | `true` / `false`       |
-| String types      | `String` / `&str`      | `String` / `&str`      |
-| Collections       | `Vec<T>`, `HashMap`    | `Vec<T>`, `HashMap`    |
-| Option/Result     | `Option<T>`, `Result`  | `Option<T>`, `Result`  |
-| Closures          | `\|x\| x + 1`          | `\|x\| x + 1`          |
-| Async/await       | `async fn` / `.await`  | `async fn` / `.await`  |
+## What is new
 
-## What's New in MAGE?
-
-| Feature             | Syntax                                          |
-| ------------------- | ----------------------------------------------- |
-| Effect annotations  | `fn read() -> Result<String, Error> / io`       |
-| Effect handling     | `handle io { read(_) => "mock" } { ... }`       |
-| Preconditions       | `@req x > 0`                                    |
-| Postconditions      | `@ens result > 0`                               |
-| Invariants          | `@inv self.len() <= self.capacity()`            |
-| Performance budgets | `@perf latency < 10ms`                          |
-| Capability system   | `Capability::request("fs.read", path)?`         |
-| Agent trait         | `impl Agent for MyAgent { async fn execute() }` |
-| Swarm               | `Swarm::new()`, `swarm.spawn(agent)`            |
-| Knowledge base      | `std::skb::{Rule, Query, Proof}`                |
-| agent mode pragma | `#![syntax(agent)]` (opt-in sigil syntax)     |
+| Feature | Syntax |
+|---|---|
+| Effect annotation | `pub fn read(p: str) -> str / fs` |
+| Effect declaration | `effect Vault { fn read(key: str) -> str; }` |
+| Effect handling | `handle { … } with Vault { read(k) => "x" }` |
+| Contracts | `sp name { @req(c) @ens(c) @fx() }` |
+| Capability namespaces | `fs.read_to_string(p)`, `net.connect(u)`, `mem.alloc(n)` |
+| Agents | `agent Name { capabilities: [net] requires_approval: [publish] }` |
+| Swarms | `swarm Name { agent: A size: 3 topology: mesh consensus: majority }` |
+| Knowledge base | `kb Name { fact f(x); rule r(x: i32) { f(x) } }` |
+| Neural nets | `net Name { layer h: Linear(64, 4); forward { h } }` |
+| Agent mode | the sigil syntax: `+f`, `v`, `m`, `S`, `E`, `I`, `T` |
 
 ---
 
@@ -79,16 +67,19 @@ pub fn fibonacci(n: u64) -> u64 {
 
 ### MAGE
 ```MAGE
-pub fn fibonacci(n: u64) -> u64 {
+pub fn fibonacci(n: i32) -> i32 {
     if n <= 1 {
-        return n;
+        return n
     }
     fibonacci(n - 1) + fibonacci(n - 2)
 }
 ```
 
-**Steps applied:**
-1. Pure function — no changes needed! Rust syntax is valid MAGE human syntax.
+**What changed:**
+
+1. `u64` to `i32` (or `i64`): the integer types are a smaller set.
+2. Drop the semicolon after `return n` — statements end at the newline.
+3. Nothing else. A pure function over scalars is the one case that really does carry over.
 
 ---
 
@@ -109,10 +100,10 @@ impl Point {
         Point { x, y }
     }
 
-    pub fn distance(&self, other: &Point) -> f64 {
+    pub fn distance_sq(&self, other: &Point) -> f64 {
         let dx = self.x - other.x;
         let dy = self.y - other.y;
-        (dx * dx + dy * dy).sqrt()
+        dx * dx + dy * dy
     }
 }
 
@@ -125,35 +116,34 @@ impl fmt::Display for Point {
 
 ### MAGE
 ```MAGE
-use std::fmt;
+pub struct Point { x: f64, y: f64 }
 
-#[derive(Debug, Clone)]
-pub struct Point {
-    pub x: f64,
-    pub y: f64,
-}
-
-impl Point {
-    pub fn new(x: f64, y: f64) -> Self {
-        Point { x, y }
+extend Point {
+    pub fn new(x: f64, y: f64) -> Point {
+        @Point { x: x, y: y }
     }
 
-    pub fn distance(&self, other: &Point) -> f64 {
-        let dx = self.x - other.x;
-        let dy = self.y - other.y;
-        (dx * dx + dy * dy).sqrt()
+    pub fn distance_sq(self, other: Point) -> f64 {
+        val dx = self.x - other.x
+        val dy = self.y - other.y
+        dx * dx + dy * dy
     }
-}
 
-impl fmt::Display for Point {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "({}, {})", self.x, self.y)
+    // `Display` does not exist. Rendering is an ordinary method, and an
+    // f-string replaces `write!`/`format!`.
+    pub fn show(self) -> str {
+        f"({self.x}, {self.y})"
     }
 }
 ```
 
-**Steps applied:**
-1. Pure struct with no I/O — no changes needed. Identical Rust and MAGE.
+**What changed:**
+
+1. `impl Point` becomes `extend Point`, and `&self` becomes `self`.
+2. `Self` becomes the type name, and `Point { x, y }` becomes `@Point { x: x, y: y }` — there is no field shorthand, and **bare `Point { … }` is a map literal**, not a struct.
+3. `#[derive(Debug, Clone)]` is deleted: there are no derive macros, and no attributes of that form.
+4. `impl fmt::Display` becomes an ordinary method. `write!` and `format!` are macros, which do not exist — an f-string replaces them.
+5. `let` becomes `val`. The parser rejects `let` by name.
 
 ---
 
@@ -175,38 +165,36 @@ pub fn read_config(path: &str) -> Result<String, io::Error> {
 
 ### MAGE
 ```MAGE
-use std::fs;
-use std::io;
-
-pub fn read_config(path: &str) -> Result<String, io::Error> / io {
-    let content = fs::read_to_string(path)?;
-    if content.is_empty() {
-        return Err(io::Error::new(io::ErrorKind::InvalidData, "empty config"));
-    }
+// `fs.read_to_string` is a capability call, so the effect is `fs` — not `io`,
+// which is the console. The error type is whatever you choose; there is no
+// `io::Error`, and `?` does not convert error types.
+pub fn read_config(path: str) -> R[str, str] / fs {
+    val content = fs.read_to_string(path)
+    guard len(content) > 0 else { return Err("empty config") }
     Ok(content)
 }
 ```
 
-**Steps applied:**
-1. **Added `/ io`** — this function does file I/O. This is the only change.
+**What changed:**
+
+1. The effect is **`fs`, not `io`** — the annotation names the capability reached, and `io` is the console.
+2. `?` does not convert error types, and there is no `From`. Pick the error type you want and return it.
+3. `io::Error` does not exist, and neither does the `::` path that names it.
+4. `if content.is_empty() { return Err(…) }` becomes `guard … else`, whose else branch must diverge.
 
 ---
 
-## Worked Migration: Async with Generics
+## Worked Migration: Async and Collections
 
 ### Rust
 ```rust
 use std::collections::HashMap;
 
-pub async fn fetch_all<T>(urls: Vec<String>) -> Result<HashMap<String, T>, Error>
-where
-    T: serde::de::DeserializeOwned,
-{
+pub async fn fetch_all(urls: Vec<String>) -> Result<HashMap<String, String>, Error> {
     let mut results = HashMap::new();
     for url in urls {
         let resp = reqwest::get(&url).await?;
-        let data: T = resp.json().await?;
-        results.insert(url, data);
+        results.insert(url, resp.text().await?);
     }
     Ok(results)
 }
@@ -214,25 +202,24 @@ where
 
 ### MAGE
 ```MAGE
-use std::collections::HashMap;
-
-pub async fn fetch_all<T>(urls: Vec<String>) -> Result<HashMap<String, T>, Error> / net
-where
-    T: serde::de::DeserializeOwned,
-{
-    let mut results = HashMap::new();
+// `async` is the declaration keyword — `async fn` is a parse error. Generic
+// parameters go in `[…]`, there is no trait-bound machinery to carry over, and
+// `net` does not imply `io`: declare each effect you perform.
+pub async fetch_all(urls: [str]~) -> {str: str} / net {
+    var results = {"": ""}
     for url in urls {
-        let resp = http::get(&url).await?;
-        let data: T = resp.json().await?;
-        results.insert(url, data);
+        results[url] = net.connect(url)
     }
-    Ok(results)
+    results
 }
 ```
 
-**Steps applied:**
-1. **Added `/ net`** — network requests (net implies io)
-2. `reqwest::get` → `http::get` — use MAGE stdlib
+**What changed:**
+
+1. `async fn` is a **parse error**: `async` is itself the declaration keyword, so it is `pub async fetch_all(…)`.
+2. `/ net` does not cover an inferred `io`. There is no effect hierarchy — declare each effect performed.
+3. `HashMap<String, String>` becomes `{str: str}`. The Rust spelling also parses and lowers to the same type.
+4. `reqwest::get(&url).await?` becomes `net.connect(url)` — a capability namespace, in scope everywhere, with nothing to import.
 
 ---
 
@@ -243,22 +230,36 @@ where
 pub trait Repository<T> {
     fn find(&self, id: u64) -> Option<T>;
     fn save(&mut self, item: T) -> Result<(), Error>;
-    fn delete(&mut self, id: u64) -> Result<(), Error>;
 }
 ```
 
 ### MAGE
 ```MAGE
-pub trait Repository<T> {
-    fn find(&self, id: u64) -> Option<T>;
-    fn save(&mut self, item: T) -> Result<(), Error> / io;
-    fn delete(&mut self, id: u64) -> Result<(), Error> / io;
+// A trait method carries its own effect annotation, and each implementation is
+// checked against what it actually performs — which is the whole point of
+// putting `/ fs` on the declaration.
+pub trait Repository {
+    fn find(self, id: i32) -> ?str;
+    fn save(self, id: i32, item: str) -> R[i32, str] / fs;
+}
+
+pub struct FileRepo { root: str }
+
+impl Repository for FileRepo {
+    pub fn find(self, id: i32) -> ?str { None }
+
+    pub fn save(self, id: i32, item: str) -> R[i32, str] / fs {
+        fs.write(self.root, item)
+        Ok(id)
+    }
 }
 ```
 
-**Steps applied:**
-1. **Added `/ io`** — save/delete are persistence operations
-2. Everything else is identical
+**What changed:**
+
+1. The effect annotation goes on the **trait method declaration**, and each implementation is checked against what its body performs.
+2. Generic parameters go in `[…]`. With no `dyn` and no monomorphisation to gain, the concrete type is often the better spelling.
+3. `&mut self` becomes `self`: a method returns the updated value rather than mutating in place.
 
 ---
 
@@ -273,20 +274,29 @@ pub fn divide(a: f64, b: f64) -> f64 {
 
 ### MAGE
 ```MAGE
-@req b != 0.0
-@ens result == a / b
-pub fn divide(a: f64, b: f64) -> f64 {
-    a / b
+// Contracts live in a `sp` block that shares the function's name — they are
+// not attributes above the signature, and `result` is not in scope.
+sp divide {
+    @req(1b)
+    @ens(1b)
+    @fx()
+}
+
+pub fn divide(a: f64, b: f64) -> R[f64, str] {
+    guard b != 0.0 else { return Err("divide by zero") }
+    Ok(a / b)
 }
 ```
 
-**Steps applied:**
-1. Added `@req` precondition (b must not be zero)
-2. Added `@ens` postcondition (result correctness)
+**What changed:**
+
+1. Contracts live in a **`sp` block that shares the function name** — not as attributes above the signature.
+2. `result` is not in scope inside `@ens`. Express the postcondition over the arguments, or check it in the body.
+3. A partial function is better expressed with `R[T, E]` and a `guard`: the contract records the intent, the guard enforces it.
 
 ---
 
-## Worked Migration: Replacing unsafe with Capabilities
+## Worked Migration: Replacing `unsafe` with Capabilities
 
 ### Rust
 ```rust
@@ -299,26 +309,31 @@ pub fn read_raw_memory(ptr: *const u8, len: usize) -> Vec<u8> {
 
 ### MAGE
 ```MAGE
-pub fn read_raw_memory(ptr: *const u8, len: usize, cap: &Capability) -> Result<Vec<u8>, Error> {
-    cap.check("mem.read", (ptr, len))?;
-    std::mem::safe_read(ptr, len)
+// There is no `unsafe`, no raw pointer, and no runtime `cap.check(…)`.
+// Reaching a capability namespace *is* the request; the annotation is the
+// grant, and the checker enforces it before anything runs.
+pub fn read_buffer(size: i32) -> R[i32, str] / alloc {
+    guard size > 0 else { return Err("size must be positive") }
+    mem.alloc(size)
+    Ok(size)
 }
 ```
 
-**Steps applied:**
-1. Removed `unsafe` block
-2. Added `Capability` parameter and check
-3. Used safe stdlib abstraction
+**What changed:**
+
+1. There is no `unsafe`, no raw pointer type, and no runtime `cap.check(…)`.
+2. **Reaching the capability is the request**, the `/ alloc` annotation is the grant, and the checker enforces it before anything runs.
+3. The capability namespace for memory is `mem`; `alloc` is the effect kind it performs.
 
 ---
 
-## Worked Migration: Threading → Agent/Swarm
+## Worked Migration: Threading to Agent / Swarm
 
 ### Rust
 ```rust
 use std::thread;
 
-pub fn parallel_process(items: Vec<String>) -> Vec<Result<String, Error>> {
+pub fn parallel_process(items: Vec<String>) -> Vec<String> {
     let handles: Vec<_> = items.into_iter().map(|item| {
         thread::spawn(move || process_item(item))
     }).collect();
@@ -329,43 +344,56 @@ pub fn parallel_process(items: Vec<String>) -> Vec<Result<String, Error>> {
 
 ### MAGE
 ```MAGE
-use std::agent::{Agent, Swarm};
-
-pub struct ItemProcessor {
-    item: String,
+// `thread::spawn` becomes an `agent` declaration plus an ordinary function.
+// The agent block says what the role may do; the annotation says what this
+// code does; `map` is the fan-out and `fold` the fan-in.
+agent ItemProcessor {
+    capabilities: [agent]
 }
 
-impl Agent for ItemProcessor {
-    pub async fn execute(&mut self) -> Result<String, Error> / agent {
-        process_item(&self.item)
-    }
+swarm Pool {
+    agent: ItemProcessor
+    size: 4
+    topology: mesh
+    consensus: majority
 }
 
-pub async fn parallel_process(items: Vec<String>) -> Vec<Result<String, Error>> / agent {
-    let mut swarm = Swarm::new();
-    for item in items {
-        swarm.spawn(ItemProcessor { item });
-    }
-    swarm.join_all().await
+fn process_item(item: str) -> str / agent {
+    agent.spawn(item)
+    upper(item)
+}
+
+pub fn parallel_process(items: [str]~) -> [str]~ / agent {
+    map(items, |item| process_item(item))
 }
 ```
 
-**Steps applied:**
-1. Replaced `thread::spawn` with `Agent` trait + `Swarm`
-2. Added `/ agent` effect annotation
-3. Structured concurrency with lifecycle management
+**What changed:**
+
+1. `thread::spawn` becomes an `agent` declaration (what the role may do) plus an ordinary function (what it does).
+2. A `swarm` block declares members, topology and consensus. Fan-out is `map`; fan-in is `fold`.
+3. `/ agent` is required on everything that reaches `agent.spawn`, including the caller.
+4. There is no handle to join: the effect system, not a handle type, is what makes the concurrency visible.
 
 ---
 
 ## Migration Checklist
 
-For each Rust file being migrated:
-
-1. [ ] Change file extension from `.rs` to `.mg`
-2. [ ] Add effect annotations (`/ io`, `/ net`, etc.) to all impure functions
-3. [ ] Remove lifetime annotations (SKB infers them)
-4. [ ] Remove `unsafe` blocks → use `Capability` system
-5. [ ] Add `@req` / `@ens` contracts to public APIs
-6. [ ] Replace raw threading with `Agent` / `Swarm` where appropriate
-7. [ ] Use MAGE stdlib modules (`std::agent`, `std::skb`, `std::effect`)
-8. [ ] Optionally add `#![syntax(agent)]` for token-optimized files
+1. [ ] Rename `.rs` to `.mg`.
+2. [ ] `let` to `val` / `var`; `true`/`false` to `1b`/`0b`.
+3. [ ] Struct literals to `@Name { … }`, every field named.
+4. [ ] Delete every `#[…]` attribute; `#[test]` becomes `@test`.
+5. [ ] Replace every macro call: `println!` with `println`, `format!` with an
+   f-string, `vec!` with a list literal.
+6. [ ] Delete every `use` and every `::` path. The standard vocabulary and the
+   capability namespaces are already in scope.
+7. [ ] `impl Type` to `extend Type`; `&self`/`&mut self` to `self`, returning
+   the updated value.
+8. [ ] Add an effect annotation to every `pub` function that reaches a
+   capability — **every** effect it performs, since none implies another.
+9. [ ] Replace `unsafe` with the capability that does the job, and declare its
+   effect.
+10. [ ] Replace threading with `agent` / `swarm` declarations plus ordinary
+    functions.
+11. [ ] Run `mage-parse --check` **and** `--eval`. They are independent
+    oracles; agreeing with one says nothing about the other.

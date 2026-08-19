@@ -39,7 +39,11 @@ pub const VOCABULARY: &[(&str, &str, &str)] = &[
     ("values", "{K: V} -> [V]", "the map's values"),
     ("flatten", "[[A]] -> [A]", "flatten one level of nesting"),
     ("group", "([A], A->K) -> {K: [A]}", "group elements by key"),
-    ("scan", "([A], B, (B,A)->B) -> [B]", "running fold (each intermediate)"),
+    // Emits the seed first, so the result is one longer than the input:
+    // `scan([1,2,3], 0, +)` is `[0, 1, 3, 6]`, not `[1, 3, 6]`. The two
+    // conventions differ by exactly one element, which is invisible until you
+    // count — and both are common enough that neither is obviously wrong.
+    ("scan", "([A], B, (B,A)->B) -> [B]", "running fold, seed first (len+1 results)"),
     ("contains", "([A], A) -> bool", "membership test"),
     // String / text vocabulary (SWE is text-heavy).
     ("split", "(str, str) -> [str]", "split a string on a separator"),
@@ -138,11 +142,36 @@ struct Scope {
     names: HashMap<String, SymbolId>,
     /// name → SymbolId for type-namespace names (structs, enums, type aliases, traits).
     types: HashMap<String, SymbolId>,
+    /// Names in this scope that came from the prelude rather than from source.
+    ///
+    /// A user definition may **shadow** one of these; only a collision between
+    /// two *source* definitions is a duplicate. Without the distinction, the
+    /// twenty capability namespaces (`io`, `net`, `fs`, `agent`, …) reserved
+    /// those words globally, so `M net { … }` — the natural name for a module
+    /// in a standard library — reported `duplicate definition: net` against a
+    /// builtin the author never wrote and could not see.
+    builtins: std::collections::HashSet<String>,
+    /// Names present in `names` only as a *mirror* of a type-namespace entry.
+    ///
+    /// `define_type` copies its name into the value namespace so enum
+    /// constructors resolve. That copy is a convenience, not a definition — but
+    /// duplicate detection could not tell the difference, so every `S`, `T`,
+    /// `Y`, `effect` and `sp` declaration reserved its name against functions.
+    /// `S Point { … }` beside `f Point(…) -> Point` — the ordinary constructor
+    /// pattern — reported `duplicate definition: Point`, and a `sp search { … }`
+    /// block could not name the function it constrains, which is the entire
+    /// mechanism by which a spec attaches to one.
+    mirrored: std::collections::HashSet<String>,
 }
 
 impl Scope {
     fn new() -> Self {
-        Scope { names: HashMap::new(), types: HashMap::new() }
+        Scope {
+            names: HashMap::new(),
+            types: HashMap::new(),
+            builtins: std::collections::HashSet::new(),
+            mirrored: std::collections::HashSet::new(),
+        }
     }
 }
 
@@ -185,7 +214,11 @@ impl Resolver {
     fn define_value(&mut self, name: &str, kind: SymbolKind) -> SymbolId {
         let id = self.symbols.alloc(name.to_string(), kind);
         if let Some(scope) = self.scopes.last_mut() {
-            if scope.names.contains_key(name) {
+            // Shadowing a prelude name is allowed; colliding with another
+            // source definition is not. `builtins` is what tells them apart.
+            let shadows_builtin = scope.builtins.remove(name);
+            let shadows_mirror = scope.mirrored.remove(name);
+            if scope.names.contains_key(name) && !shadows_builtin && !shadows_mirror {
                 self.diagnostics.push(Diagnostic::categorized(
                     Severity::Error,
                     format!("duplicate definition: `{name}`"),
@@ -194,6 +227,16 @@ impl Resolver {
                 ));
             }
             scope.names.insert(name.to_string(), id);
+        }
+        id
+    }
+
+    /// Define a prelude name — one the compiler provides rather than one the
+    /// author wrote. Source definitions shadow these silently.
+    fn define_builtin(&mut self, name: &str, kind: SymbolKind) -> SymbolId {
+        let id = self.define_value(name, kind);
+        if let Some(scope) = self.scopes.last_mut() {
+            scope.builtins.insert(name.to_string());
         }
         id
     }
@@ -210,7 +253,12 @@ impl Resolver {
                 ));
             }
             scope.types.insert(name.to_string(), id);
-            // Also make it available in value namespace (for enum constructors, etc.)
+            // Also make it available in value namespace (for enum constructors,
+            // etc.) — but record it as a mirror, so a real value definition of
+            // the same name is not reported as a duplicate against it.
+            if !scope.names.contains_key(name) {
+                scope.mirrored.insert(name.to_string());
+            }
             scope.names.insert(name.to_string(), id);
         }
         id
@@ -287,13 +335,13 @@ impl Resolver {
             "Some", "None", "Ok", "Err",
         ];
         for name in std_fns {
-            self.define_value(name, SymbolKind::Function);
+            self.define_builtin(name, SymbolKind::Function);
         }
         // Standard SWE vocabulary (AB_INITIO_DESIGN §8) — registered from the
         // single-source VOCABULARY table (also typed in `types` and published in
         // the ontology). An agent names an intent instead of hand-rolling it.
         for (name, _sig, _doc) in VOCABULARY {
-            self.define_value(name, SymbolKind::Function);
+            self.define_builtin(name, SymbolKind::Function);
         }
         // Builtin capability namespaces. MAGE is effect-oriented: I/O is
         // performed through capability handles (`io.println(..)`, `fs.open(..)`,
@@ -301,12 +349,16 @@ impl Resolver {
         // effect system. These are the standard library surface (like Rust's
         // std::io/std::fs) — registering them lets effect-qualified calls
         // resolve, which is how most real agent code performs side effects.
-        let capabilities = [
-            "io", "fs", "net", "os", "sys", "env", "process", "time", "mem", "rng",
-            "llm", "tools", "agent", "swarm", "kb", "gpu", "db", "http", "json", "log",
-        ];
-        for name in capabilities {
-            self.define_value(name, SymbolKind::Const);
+        //
+        // The names come from `hir::CAPABILITY_NAMESPACES`, which also carries
+        // the effect each one performs. They were two lists until the sentence
+        // above turned out to be false — the names were registered here and
+        // attributed nowhere, so `net.connect(…)` in a `pub` function declared
+        // pure checked clean while a bare `println(…)` was caught. One list
+        // means a namespace cannot be registered without an attribution
+        // decision beside it.
+        for (name, _) in crate::hir::CAPABILITY_NAMESPACES {
+            self.define_builtin(name, SymbolKind::Const);
         }
     }
 
@@ -364,9 +416,27 @@ impl Resolver {
             ast::ItemKind::Train(t) => {
                 self.define_value(&t.name, SymbolKind::Train);
             }
-            ast::ItemKind::Data(dd) => {
-                self.define_type(&dd.name, SymbolKind::Struct);
-            }
+            ast::ItemKind::Data(dd) => match &dd.kind {
+                ast::DataKind::Record(_) => {
+                    self.define_type(&dd.name, SymbolKind::Struct);
+                }
+                // `data Shape = Circle(f64) | Rect(f64, f64)` is a sum, and its
+                // variants are values — exactly as `E Shape { … }` variants
+                // are, three arms up. Only the type name was registered here,
+                // so every variant was invisible: `Rect(3.0, 4.0)` gave
+                // `unresolved name: Rect` and `?= s { Circle(r) => … }` gave
+                // `unresolved variant in pattern`. The record half worked, so
+                // `data` looked implemented.
+                //
+                // The ontology publishes `data` as "record or sum type". Half
+                // of that was true.
+                ast::DataKind::Sum(variants) => {
+                    let parent = self.define_type(&dd.name, SymbolKind::Enum);
+                    for variant in variants {
+                        self.define_value(&variant.name, SymbolKind::EnumVariant { parent });
+                    }
+                }
+            },
             ast::ItemKind::Extend(_) => {
                 // Extend blocks don't introduce a new name
             }
@@ -528,9 +598,42 @@ impl Resolver {
         }
     }
 
-    fn resolve_use(&mut self, _ud: &ast::UseDef) {
-        // Use declarations bring external names into scope.
-        // For the prototype, we just note that they exist.
+    /// `use` is accepted and brings nothing into scope — say so.
+    ///
+    /// MAGE has no module system. This function was empty, under a comment
+    /// describing what it would do, and `internals/03` §3.2 documented four
+    /// resolution steps and six import styles none of which happen. The
+    /// consequence for a generated program is the worst shape an error can
+    /// take: the `use` is accepted silently, and the failure surfaces later at
+    /// the *call site* as `unresolved name`, pointing at the one line the
+    /// author wrote correctly. `u totally.made.up.path` is accepted too.
+    ///
+    /// The library surface is global and needs no import — the standard
+    /// vocabulary (`map`, `filter`, `join`, …) and the capability namespaces
+    /// (`io`, `fs`, `net`, …) are in scope everywhere, which is the right
+    /// default for a language optimising for tokens: an import costs tokens
+    /// and buys nothing here.
+    ///
+    /// **This was a warning until 2026-08-19, and is now an error.** The reason
+    /// it was a warning — "rejecting the syntax outright would break the corpus
+    /// for no gain" — held while the one-flat-namespace design was still
+    /// undecided and `stdlib/` described an import-based library. Both changed:
+    /// `MAGE_SPEC.md` §2.3 now states the design normatively, `stdlib/` is
+    /// gone, and the corpus cost turned out to be a single line in one example.
+    /// A construct that can never mean anything should not typecheck.
+    fn resolve_use(&mut self, ud: &ast::UseDef) {
+        let path = ud.path.join(".");
+        self.diagnostics.push(Diagnostic::categorized(
+            Severity::Error,
+            format!(
+                "`use {path}` cannot bring anything into scope — MAGE has one flat \
+                 namespace and no module system (MAGE_SPEC.md §2.3). The standard \
+                 vocabulary and the capability namespaces (`io`, `fs`, `net`, …) are \
+                 already in scope everywhere; delete the import"
+            ),
+            DiagnosticCategory::UnresolvedName,
+            None,
+        ));
     }
 
     fn resolve_type_alias(&mut self, ta: &ast::TypeAlias) {
@@ -1070,5 +1173,147 @@ mod tests {
         "#;
         let r = resolve_source(src);
         assert!(r.diagnostics.is_empty(), "unexpected errors: {:?}", r.diagnostics);
+    }
+
+    /// `use` reports that it does nothing.
+    ///
+    /// It used to be accepted in silence, which made the failure surface at
+    /// the call site instead: `u std.io.read_to_string` then
+    /// `read_to_string("x")` gave `unresolved name`, pointing at the one line
+    /// the author wrote correctly. And `u totally.made.up.path` was accepted,
+    /// so an import naming nothing was indistinguishable from one naming
+    /// something.
+    #[test]
+    fn use_is_an_error_because_it_can_never_mean_anything() {
+        for src in ["u std.io", "u totally.made.up.path", "u std.col.{Map, Set}"] {
+            let r = resolve_source(&format!("{src}
+f main() -> i32 {{ 0 }}"));
+            let named = r
+                .diagnostics
+                .iter()
+                .any(|d| d.message.contains("cannot bring anything into scope"));
+            assert!(named, "`{src}` should be rejected, got {:?}", r.diagnostics);
+            // An **error** since 2026-08-19. This asserted the opposite until
+            // then — "a warning, not an error, because rejecting the syntax
+            // outright would break the corpus for no gain" — which was true
+            // while item 1 was open and `stdlib/` still described an
+            // import-based library. Item 1 resolved as *no module system*
+            // (spec §2.3), `stdlib/` is gone, and the corpus cost was one line
+            // in one example. A construct that can never mean anything should
+            // not typecheck.
+            assert!(
+                r.diagnostics.iter().any(|d| matches!(d.severity, Severity::Error)),
+                "`{src}` must be an error: {:?}",
+                r.diagnostics
+            );
+            // The diagnostic has to name the section that decided it, or the
+            // reader has no way to tell a removed feature from a broken one.
+            assert!(
+                r.diagnostics.iter().any(|d| d.message.contains("§2.3")),
+                "the diagnostic must cite MAGE_SPEC.md §2.3: {:?}",
+                r.diagnostics
+            );
+        }
+    }
+
+    /// A type-namespace name does not block a function of the same name.
+    ///
+    /// `define_type` mirrors its name into the value namespace so enum
+    /// constructors resolve, and duplicate detection could not tell that copy
+    /// from a definition. So every `S`, `T`, `Y`, `effect` and `sp`
+    /// declaration reserved its name against functions: `S Point { … }` beside
+    /// `f Point(…) -> Point` — the ordinary constructor pattern — reported
+    /// `duplicate definition: Point`.
+    ///
+    /// Worst for `sp`, where a spec block *names the function it constrains*.
+    /// That is the entire mechanism by which a spec attaches to one, so the
+    /// contract feature could not be used as designed at all.
+    #[test]
+    fn a_type_name_does_not_block_a_function_of_the_same_name() {
+        let dup = |src: &str| {
+            resolve_source(src)
+                .diagnostics
+                .iter()
+                .any(|d| d.message.contains("duplicate"))
+        };
+        assert!(!dup("sp search { @req(1b) }
+f search(x: i32) -> i32 { x }"));
+        assert!(!dup("S Point { x: i32 }
+f Point(x: i32) -> i32 { x }"));
+        assert!(!dup("effect Audit { f record(e: str) -> i32; }
+f Audit(x: i32) -> i32 { x }"));
+        assert!(!dup("T Shape { f area(self) -> i32; }
+f Shape(x: i32) -> i32 { x }"));
+    }
+
+    /// The mirror is forgiven exactly once. Two real definitions in either
+    /// namespace are still duplicates — a rule that quietly disabled duplicate
+    /// detection for every type name would be worse than the bug it fixes.
+    #[test]
+    fn the_type_mirror_does_not_disable_duplicate_detection() {
+        let dup = |src: &str| {
+            resolve_source(src)
+                .diagnostics
+                .iter()
+                .any(|d| d.message.contains("duplicate"))
+        };
+        assert!(dup("f g() -> i32 { 1 }
+f g() -> i32 { 2 }"), "plain duplicate missed");
+        assert!(dup("S P { x: i32 }
+S P { y: i32 }"), "duplicate type missed");
+        assert!(dup("sp s { @fx() }
+sp s { @fx() }"), "duplicate spec missed");
+        assert!(
+            dup("S P { x: i32 }
+f P(x: i32) -> i32 { x }
+f P(x: i32) -> i32 { x }"),
+            "the second function after a struct must still collide"
+        );
+    }
+
+    /// A source definition may shadow a prelude name.
+    ///
+    /// The prelude registers ~80 names — the capability namespaces, the
+    /// vocabulary, the builtin functions — into the same root scope as the
+    /// program's own items. Every one of those words was therefore reserved
+    /// globally, so `M net { … }` reported `duplicate definition: net` against
+    /// a definition the author never wrote and could not see. That makes the
+    /// obvious module names for a standard library — `io`, `net`, `fs`,
+    /// `agent` — unusable, which is the shape `stdlib/` wants.
+    #[test]
+    fn a_source_definition_shadows_a_prelude_name() {
+        for name in ["io", "net", "fs", "agent", "swarm", "kb", "llm", "gpu", "time", "env"] {
+            let r = resolve_source(&format!("M {name} {{ }}\nf main() -> i32 {{ 0 }}"));
+            assert!(
+                r.diagnostics.is_empty(),
+                "`M {name}` should shadow the prelude name, got {:?}",
+                r.diagnostics.iter().map(|d| &d.message).collect::<Vec<_>>()
+            );
+        }
+        // Vocabulary and builtin functions shadow the same way.
+        for src in ["f map() -> i32 { 1 }", "f println() -> i32 { 1 }"] {
+            let r = resolve_source(src);
+            assert!(r.diagnostics.is_empty(), "`{src}` should shadow: {:?}", r.diagnostics);
+        }
+    }
+
+    /// Shadowing a builtin is allowed exactly once — a second source
+    /// definition of the same name is still a duplicate. Without this the
+    /// shadowing rule would silently disable duplicate detection for every
+    /// prelude name, which is a worse bug than the one it fixes.
+    #[test]
+    fn shadowing_a_prelude_name_does_not_disable_duplicate_detection() {
+        let dup = |src: &str| {
+            resolve_source(src)
+                .diagnostics
+                .iter()
+                .any(|d| d.message.contains("duplicate definition"))
+        };
+        assert!(dup("f g() -> i32 { 1 }\nf g() -> i32 { 2 }"), "plain duplicate missed");
+        assert!(dup("M h { }\nM h { }"), "duplicate module missed");
+        // Two definitions of a *prelude* name: the first shadows, the second
+        // collides with the first.
+        assert!(dup("M net { }\nM net { }"), "duplicate after shadowing missed");
+        assert!(dup("f map() -> i32 { 1 }\nf map() -> i32 { 2 }"), "duplicate vocab missed");
     }
 }

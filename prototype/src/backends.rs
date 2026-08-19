@@ -314,6 +314,37 @@ impl SelectedBackend {
             _ => None,
         }
     }
+    /// The in-process `Backend` this selection dispatches through, or the
+    /// CPU fallback.
+    ///
+    /// Every `--target=abl-*` path built a `CpuBackend` directly and ignored
+    /// `--backend` — `--target=abl-compute --backend=cuda` printed
+    /// "CpuBackend dispatch" and ran on the CPU without a word. Only
+    /// `--run=abl-bytes` honoured the flag, and it did so with this exact
+    /// match written inline. Factored here so a dispatch path cannot forget
+    /// it.
+    ///
+    /// A subprocess backend has no in-process `Backend`, so it falls back to
+    /// the CPU: `dispatched_in_process` reports which happened, and the
+    /// caller says so rather than pretending.
+    pub fn as_dyn<'a>(
+        &'a self,
+        fallback: &'a CpuBackend,
+    ) -> &'a dyn rmi::compute::Backend {
+        match self {
+            Self::Cpu(b) => b,
+            #[cfg(feature = "cuda")]
+            Self::Cuda(b) => b,
+            Self::Subprocess { .. } => fallback,
+        }
+    }
+
+    /// Whether [`as_dyn`](Self::as_dyn) returns this backend rather than the
+    /// fallback.
+    pub fn dispatches_in_process(&self) -> bool {
+        !matches!(self, Self::Subprocess { .. })
+    }
+
     /// Returns the subprocess command if this backend dispatches via
     /// an external process, else None.
     pub fn subprocess_command(&self) -> Option<&str> {
@@ -467,6 +498,38 @@ mod tests {
     fn select_cpu_works() {
         let b = select_backend("cpu").expect("cpu always available");
         assert_eq!(b.name(), "cpu");
+    }
+
+    /// Every dispatch path resolves its backend through `as_dyn`, so it has to
+    /// answer for each variant.
+    ///
+    /// Before this existed, each `--target=abl-*` path built a `CpuBackend`
+    /// directly and `--backend` reached exactly one command out of six:
+    /// `--target=abl-compute --backend=cuda` printed "CpuBackend dispatch" and
+    /// ran on the CPU without a word.
+    #[test]
+    fn as_dyn_answers_for_every_variant() {
+        let fallback = CpuBackend::new();
+
+        let cpu = select_backend("cpu").expect("cpu always available");
+        assert!(cpu.dispatches_in_process());
+        assert_eq!(
+            rmi::compute::Backend::backend_type(cpu.as_dyn(&fallback)),
+            rmi::compute::Backend::backend_type(&fallback)
+        );
+
+        // A subprocess backend has no in-process `Backend`; the caller is told
+        // so rather than being handed a CPU that looks like what it asked for.
+        let sub = SelectedBackend::Subprocess {
+            name: "wrapper".to_string(),
+            command: "true".to_string(),
+        };
+        assert!(!sub.dispatches_in_process());
+        assert_eq!(sub.name(), "wrapper");
+        assert_eq!(
+            rmi::compute::Backend::backend_type(sub.as_dyn(&fallback)),
+            rmi::compute::Backend::backend_type(&fallback)
+        );
     }
 
     #[test]

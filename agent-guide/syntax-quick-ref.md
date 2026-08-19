@@ -1,209 +1,228 @@
 # MAGE Syntax Quick Reference
 
 > Optimized for AI agent context windows. Minimal prose, maximum density.
-> This shows **human syntax** (default). For agent mode, add `#![syntax(agent)]`.
+> Human syntax on the left, agent-mode sigil on the right where one exists.
+
+**Every row below was checked against the compiler.** The previous version of
+this file was a Rust cheat sheet: it listed `let`, `async fn`, `mod name`,
+`use path::to::Item`, `foo::<i32>()`, `std::io::File`, `Foo { x: 1 }` as a
+struct literal, `println!`, `#[derive(Debug)]`, four `std::` module tables and
+an effect hierarchy. None of those parse or exist. A quick reference is the
+densest thing an agent reads, so a false row here costs more than anywhere
+else in the documentation.
 
 ## Declarations
 
 ```
-fn name()                       function (private)
-pub fn name()                   public function
-pub(crate) fn name()            crate-visible function
-async fn name()                 async function (private)
-pub async fn name()             public async function
-const fn name()                 const function
-let x = expr                    immutable binding
-let mut x = expr                mutable binding
-pub const NAME: T = expr        public constant
-struct Name { fields }          struct (private)
-pub struct Name { fields }      public struct
-enum Name { variants }          enum (private)
-pub enum Name { variants }      public enum
-trait Name { methods }          trait (private)
-pub trait Name { methods }      public trait
-impl Trait for Type { }         trait implementation
-impl Type { }                   inherent implementation
-mod name                        module (private)
-pub mod name                    public module
-use path::to::Item              import
-pub use path::to::Item          re-export
+fn name()                       function (private)            f
+pub fn name()                   public function               +f
+async name()                    async function — NOT `async fn`   af
+struct Name { fields }          struct                        S / +S
+enum Name { variants }          enum                          E / +E
+trait Name { methods }          trait                         T / +T
+impl Trait for Type { }         trait implementation          I
+extend Type { }                 methods on a type             xd
+data Name(field: T)             record                        D
+data Name = A(T) | B            sum                           D
+effect Name { ops }             effect declaration            fx
+agent Name { capabilities: [] } agent role
+swarm Name { agent: A }         swarm
+kb Name { fact …; rule … }      knowledge base
+net Name { layer …; forward }   neural net
+val x = expr                    immutable binding             v
+var x = expr                    mutable binding               m
+pub const NAME: T = expr;       constant (`;` required)       C
+Z NAME: T = expr;               static — agent mode only      Z
+type Id = i32;                  type alias
 ```
+
+**Not in the language:** `let` (the parser rejects it by name), `mut x`,
+`pub(crate)`, `const fn`, `extern`, `unsafe`, `mod`/`use` as anything that
+imports — see *One namespace* below. The human spelling `static N: T = v;`
+does not parse either, but the agent-mode `Z` above does — the only
+declaration in this table with no human form.
 
 ## Control Flow
 
 ```
-if cond { body }                         conditional
-if cond { body } else { body }           if-else
-if cond { } else if cond2 { } else { }  chain
-match expr { pat => body, }              pattern match
-for item in iter { body }                iteration
-loop { body }                            infinite loop
-return expr                              early return
-break                                    break loop
-continue                                 skip iteration
+if cond { } else { }            conditional                   ? c { } : { }
+match expr { pat => body, }     pattern match                 ?= e { }
+for item in iter { }            iteration                     @ x in xs { }
+while cond { }                  conditional loop              @w
+loop { }                        infinite loop                 @@
+return expr                     early return                  ret
+break                           break loop                    !
+continue                        skip iteration
+guard cond else { return … }    early exit, else must diverge  gd
+defer expr                      run at scope exit             df
+??                              todo / unimplemented
 ```
 
-## Types (same as Rust)
+## Types
 
 ```
-String          owned string
-&str            string slice
-Vec<T>          dynamic array
-Option<T>       optional value
-Result<T, E>    error handling
-Box<T>          heap allocation
-Rc<T>           reference counted
-Arc<T>          atomic ref counted
-HashMap<K, V>   hash map
-HashSet<K>      hash set
-&mut T          mutable reference
+str             string                (NOT `String`/`&str`)
+i32 i64 u32 usize f64 bool
+[T]~            slice                 (`Vec<T>` also parses)
+{K: V}          map                   (`HashMap<K, V>` also parses)
+?T              optional              (`Option<T>` also parses)
+R[T, E]         result                (`Result<T, E>` also parses)
+T or E          result, as a union
+^T              box                   (`Box<T>` also parses)
+(A, B)          tuple
+&T              reference             (`&mut T` does NOT parse)
+fn(A) -> B      function type — no effect annotation is allowed here
 ```
 
-## Generics & Paths
+## Generics
 
 ```
-fn foo<T>(x: T)                    generic function
-fn foo<T>(x: T) where T: Clone    bounded generic
-foo::<i32>()                       turbofish
-std::io::File                      module path
-crate::module::Item                crate-relative path
-Foo { x: 1, y: 2 }                struct literal
+fn name[T](x: T) -> T           generic function   (`<T>` also parses)
+fn name[T](x: T) -> T where …   bound
 ```
 
-## Macros & Attributes
+No turbofish: `id::<i32>(1)` is a parse error. Each call site instantiates its
+own copy of the type variables, so `id(1)` and `id("ab")` coexist without one.
+
+## Literals
 
 ```
-println!("hello {name}")          print line
-format!("hello {name}")           format string
-eprintln!("error: {e}")           error print
-#[derive(Debug, Clone)]           derive macro
-#[inline]                         inline hint
-#[test]                           test function
-#[bench]                          benchmark
-#[cfg(test)]                      conditional compilation
+1b / 0b                         true / false — `true` and `false` are NOT names
+"text"                          string
+f"hi {x}"                       interpolated string
+@Name { field: value }          struct literal
+{"k": v}                        map literal      — bare `Name { … }` is a MAP
+[1, 2, 3]                       list literal     — `vec![…]` is a parse error
+Some(x) None Ok(v) Err(e)       sum constructors
 ```
 
-## Effects (MAGE-unique)
+## Attributes and contracts
 
 ```
-fn pure_fn() -> i32                          // no effect = pure
-fn read() -> Result<String, Error> / io      // single effect
-pub async fn fetch() -> Result<String, Error> / io, net  // multiple
+@test                           test function      (`#[test]` does NOT parse)
+sp name { @req(c) @ens(c) @fx() }   contracts, in a block sharing the name
 ```
 
-Built-in effects: `io` `net` `rng` `async` `agent` `time` `env` `process`
+There are no derive macros, no `#[cfg(test)]`, and **no macros at all**:
+`println!(…)`, `format!(…)`, `vec![…]` and `assert_eq!(…)` are parse errors
+that name themselves.
 
-## Effect Hierarchy
-
-```
-net  ⊃  io        (net implies io)
-agent ⊃ async     (agent implies async)
-```
-
-## Contract Annotations (MAGE-unique)
+## Effects
 
 ```
-@req condition        precondition
-@ens condition        postcondition
-@inv condition        invariant
-@perf metric < bound  performance budget
-@fx / effect          effect declaration
+fn pure_fn() -> i32                    no annotation = pure
+fn read(p: str) -> str / fs            single effect
+pub fn fetch(u: str) -> str / io, net  multiple, comma-separated
+handle { … } with E { op(x) => v }     discharge an effect for one block
 ```
 
-## Standard Library Modules
+The 17 built-in kinds:
 
 ```
-std::io         I/O operations (File, BufReader, stdin/stdout)
-std::net        Networking (TcpStream, UdpSocket, http)
-std::fs         Filesystem (read, write, create_dir)
-std::col        Collections (vec, map, set, deque)
-std::sync       Synchronization (Mutex, RwLock, channel)
-std::async      Async runtime (spawn, select, timeout)
-std::fmt        Formatting (Display, Debug, Formatter)
-std::str        String utilities (split, trim, parse)
-std::math       Math (sin, cos, sqrt, PI)
-std::time       Time (Instant, Duration, SystemTime)
-std::json       JSON (parse, stringify, Value)
-std::env        Environment (var, args, current_dir)
-std::process    Process (Command, exit, spawn)
-std::agent      Agent primitives (Agent, Capability, Swarm)
-std::skb        Knowledge base (Rule, Query, Proof)
-std::effect     Effect types (Effect, Handler, handle)
-std::spec       Specifications (pre, post, invariant)
-std::test       Testing (assert, mock, bench)
+io  fs  net  env  time  rng  proc  alloc  panic  ffi
+async  agent  llm  gpu  npu  evolve  learn
 ```
+
+**There is no effect hierarchy.** `/ net` does not cover an inferred `io`, and
+`/ agent` does not cover `async`. Declare every effect the function performs.
+The rule the checker enforces is `inferred ⊆ declared`: a declared set is an
+upper bound, so over-declaring passes and under-declaring fails.
+
+A `pub` function must declare what it performs; a private one infers silently
+and its effects still surface in every public caller that reaches it.
+
+## One namespace
+
+There is no module system. Every function, type, effect and agent in the
+compilation unit shares one flat namespace, and two things are in scope
+everywhere:
+
+```
+map filter fold reduce sum len count sort reverse zip freq first last any all
+find take range keys values flatten group scan contains split join chars words
+lines upper lower
+```
+
+The 20 capability namespaces:
+
+```
+io  fs  net  env  time  rng  llm  gpu  agent   ← same name as the effect
+http  mem  log  swarm                          ← net, alloc, io, agent
+os  sys  process  tools                        ← all four perform `proc`
+json  kb  db                                   ← perform nothing (deliberate)
+```
+
+`use` parses, for source compatibility, and brings nothing into scope — the
+checker warns. `::` paths are a parse error. There is no `std::io`, no
+`std::agent`, no `std::skb`.
+
+## Names that are keywords
+
+Single letters are the agent-mode declaration keywords, so they cannot be
+identifiers: `f v m u C S E T I M U D Y Z`. `|u| …` and `f(x)` as a *variable*
+are parse errors — spell closure parameters and function-typed parameters out.
+`pipeline`, `select`, `query`, `net`, `layer`, `param`, `train`, `grad`,
+`policy` and `reward` are keywords too.
 
 ## Canonical Examples
 
 ### Hello World
 ```MAGE
-pub fn main() / io {
-    println!("Hello, world!");
+pub fn main() -> i32 / io {
+    println("Hello, world!")
+    0
 }
 ```
 
 ### Fibonacci
 ```MAGE
-fn fib(n: u64) -> u64 {
-    if n <= 1 { return n; }
+fn fib(n: i32) -> i32 {
+    if n <= 1 { return n }
     fib(n - 1) + fib(n - 2)
 }
 ```
 
 ### Read File
 ```MAGE
-use std::fs;
-
-fn read_config(path: &str) -> Result<String, io::Error> / io {
-    fs::read_to_string(path)
++f read_config(path: str) -> R[str, str] / fs {
+    guard len(path) > 0 else { ret Err("empty path") }
+    Ok(fs.read_to_string(path))
 }
 ```
 
 ### Struct with Methods
 ```MAGE
-#[derive(Debug, Clone)]
-pub struct Point {
-    x: f64,
-    y: f64,
-}
++S Point { x: f64, y: f64 }
 
-impl Point {
-    pub fn new(x: f64, y: f64) -> Self {
-        Self { x, y }
-    }
+I Point {
+    +f new(x: f64, y: f64) -> Point { @Point { x: x, y: y } }
 
-    pub fn distance(&self, other: &Point) -> f64 {
-        let dx = self.x - other.x;
-        let dy = self.y - other.y;
-        (dx * dx + dy * dy).sqrt()
+    +f dist_sq(self, other: Point) -> f64 {
+        v dx = self.x - other.x
+        v dy = self.y - other.y
+        dx * dx + dy * dy
     }
 }
 ```
 
 ### Error Handling
 ```MAGE
-use std::io;
-use std::json;
++S Config { port: i32 }
 
-pub fn load_config(path: &str) -> Result<Config, Error> / io {
-    let text = fs::read_to_string(path)?;
-    let config = json::parse::<Config>(&text)?;
-    return config;
++f load_config(raw: i32) -> R[Config, str] / fs {
+    guard raw > 0 else { ret Err("port must be positive") }
+    Ok(@Config { port: raw })
 }
 ```
 
 ### Agent
 ```MAGE
-use std::agent::{Agent, Swarm};
-
-pub struct Analyzer {
-    data: Vec<f64>,
+agent Analyzer {
+    capabilities: [agent]
 }
 
-impl Agent for Analyzer {
-    pub async fn execute(&mut self) -> Result<f64, Error> / agent {
-        let sum: f64 = self.data.iter().sum();
-        return sum / self.data.len() as f64;
-    }
++f analyze(data: [f64]~) -> f64 / agent {
+    agent.spawn("analyze")
+    fold(data, 0.0, |acc, x| acc + x)
 }
 ```

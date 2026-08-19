@@ -3,7 +3,7 @@
 //!
 //! Container layout (little-endian):
 //! ```text
-//!   magic    "Agentic Binary Language" (4 bytes)
+//!   magic    "ABL1" (4 bytes — the literal, not the language's name)
 //!   version  u16 = 3   (v3: per-item exprs are REPEAT-folded)
 //!   count    u32           — number of items
 //!   for each item:
@@ -11,7 +11,16 @@
 //!     name     UTF-8 bytes
 //!     expr_len u32
 //!     expr     codec::Encoder::encode_expr_only output
+//!   symbols  u32           — interned-name count (v2+)
+//!   for each symbol:
+//!     name_len u32
+//!     name     UTF-8 bytes
 //! ```
+//!
+//! The symbol table is what makes a `kb` artifact self-describing: without it
+//! a decoder recovers predicate arities and not their names. It was added in
+//! v2 and left out of every published description of the format until it was
+//! measured — 100 of `unified.mg`'s 420 container bytes.
 //!
 //! Used by both the CLI (`--target=abl-bytes`, `--from=abl-bytes`,
 //! `--run=abl-bytes`) and the RAP server (`abl/encode`, `abl/decode`,
@@ -91,7 +100,14 @@ fn decode_items(blob: &[u8]) -> Result<(Vec<AblItem>, usize), String> {
     let mut pos = 0usize;
     let magic = take(blob, &mut pos, 4, "magic")?;
     if magic != ABL_MAGIC {
-        return Err(format!("bad magic {magic:?} (expected Agentic Binary Language)"));
+        // Said "expected Agentic Binary Language" — the language's name where
+        // the four magic bytes belong, so the one message a caller gets when a
+        // file is not a container told them to look for the wrong thing.
+        // Formatted from the constant now, so it cannot drift again.
+        return Err(format!(
+            "bad magic {magic:?} (expected {:?})",
+            std::str::from_utf8(ABL_MAGIC).unwrap_or("ABL1")
+        ));
     }
     let ver = u16::from_le_bytes(
         take(blob, &mut pos, 2, "version")?
@@ -196,6 +212,179 @@ mod tests {
             forward { fc }
         }
     "#;
+
+    /// All five descriptions of the container format agree.
+    ///
+    /// The format is written down in five places: this module's doc comment,
+    /// `main.rs`'s, `ARCHITECTURE.md` §1, `AGENT_PROTOCOL.md`, and the
+    /// `abl.format` list in `MAGE_ONTOLOGY.json`. On 2026-08-18 **four of the
+    /// five omitted the symbol table**, which has been in the container since
+    /// v2 — so a decoder written from any of those four stopped 100 bytes early
+    /// on a 420-byte container and recovered no interned names.
+    /// `ARCHITECTURE.md` had it right, and had done all along.
+    ///
+    /// That is the lesson worth pinning: the format was never undocumented,
+    /// the documentation was **unreconciled**, and nothing compared the copies
+    /// against each other. This does.
+    ///
+    /// Deliberately shallow — it checks the three facts that were wrong
+    /// (magic, version, the symbol section), not the full grammar. A decoder
+    /// conformance check already exists in
+    /// `the_published_format_accounts_for_every_byte`; this one exists so that
+    /// *adding* a section cannot land in one file and miss four.
+    #[test]
+    fn every_description_of_the_container_format_agrees() {
+        let repo = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
+        let magic = std::str::from_utf8(ABL_MAGIC).expect("utf-8");
+        let version = ABL_VERSION.to_string();
+
+        // (path, what it is) — every place a reader might learn the layout.
+        let sources: [(&str, &str); 5] = [
+            ("prototype/src/abl.rs", "this module's doc comment"),
+            ("prototype/src/main.rs", "the CLI's container-layout comment"),
+            ("ARCHITECTURE.md", "§1 Container format"),
+            ("AGENT_PROTOCOL.md", "the container format section"),
+            ("MAGE_ONTOLOGY.json", "the `abl.format` list"),
+        ];
+
+        for (rel, what) in sources {
+            let text = std::fs::read_to_string(repo.join(rel))
+                .unwrap_or_else(|e| panic!("{rel}: {e}"));
+            assert!(
+                text.contains(magic),
+                "{rel} ({what}) never names the magic bytes `{magic}` — a global \
+                 rename once replaced them with the language's full name in four \
+                 files at once"
+            );
+            assert!(
+                text.contains("symbols") || text.contains("symbol table"),
+                "{rel} ({what}) does not mention the symbol section. It has been \
+                 in the container since v2; a decoder written without it stops \
+                 short and loses every interned name"
+            );
+        }
+
+        // The version is a number, so it is only checkable where the format is
+        // stated as a field list rather than prose.
+        for rel in ["prototype/src/abl.rs", "ARCHITECTURE.md", "MAGE_ONTOLOGY.json"] {
+            let text = std::fs::read_to_string(repo.join(rel)).expect(rel);
+            assert!(
+                text.contains(&version),
+                "{rel} does not mention container version {version}; \
+                 `MAGE_ONTOLOGY.json` once published 2 while the encoder wrote 3, \
+                 and `decode` rejects a version mismatch"
+            );
+        }
+    }
+    /// A decoder written from the *published* format consumes the whole file.
+    ///
+    /// The container has carried a symbol table since v2 — the section that
+    /// makes a `kb` artifact self-describing, since without it a decoder
+    /// recovers predicate arities and not their names. It was in none of the
+    /// four places the format is described: `MAGE_ONTOLOGY.json`'s `abl.format`,
+    /// `AGENT_PROTOCOL.md`, and the module docs here and in `main.rs`. An agent
+    /// implementing a decoder from any of them parsed the items and stopped,
+    /// leaving 100 of `unified.mg`'s 420 bytes unread and every interned name
+    /// unrecovered.
+    ///
+    /// So this walks the bytes using only the published field list, and
+    /// asserts it lands exactly on the end. A section added to the format and
+    /// not to the description fails here, which is the only way to notice —
+    /// `decode_container` would keep working, because it reads the real
+    /// format rather than the documented one.
+    #[test]
+    fn the_published_format_accounts_for_every_byte() {
+        let src = std::fs::read_to_string(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/unified.mg"),
+        )
+        .expect("unified.mg");
+        let module = parser::parse(&lexer::lex(&src)).expect("unified.mg parses");
+        let (blob, _) = encode_module(&module);
+
+        let published = crate::ontology::section("abl").expect("abl section");
+        let format = published["format"]
+            .as_array()
+            .expect("format")
+            .iter()
+            .map(|l| l.as_str().unwrap())
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert!(
+            format.contains("symbols"),
+            "the published format does not mention the symbol section: {format}"
+        );
+
+        // Walk exactly what the description says is there.
+        let mut pos = 0usize;
+        assert_eq!(&blob[..4], ABL_MAGIC.as_slice(), "magic");
+        pos += 4;
+        let ver = u16::from_le_bytes(blob[pos..pos + 2].try_into().unwrap());
+        pos += 2;
+        assert_eq!(ver, ABL_VERSION);
+        let count = u32::from_le_bytes(blob[pos..pos + 4].try_into().unwrap()) as usize;
+        pos += 4;
+        for _ in 0..count {
+            let nl = u32::from_le_bytes(blob[pos..pos + 4].try_into().unwrap()) as usize;
+            pos += 4 + nl;
+            let el = u32::from_le_bytes(blob[pos..pos + 4].try_into().unwrap()) as usize;
+            pos += 4 + el;
+        }
+        let syms = u32::from_le_bytes(blob[pos..pos + 4].try_into().unwrap()) as usize;
+        pos += 4;
+        for _ in 0..syms {
+            let nl = u32::from_le_bytes(blob[pos..pos + 4].try_into().unwrap()) as usize;
+            pos += 4 + nl;
+        }
+        assert_eq!(
+            pos,
+            blob.len(),
+            "a decoder following the published format stops {} bytes early — the \
+             container has a section the description does not name",
+            blob.len() - pos
+        );
+        assert!(syms > 0, "unified.mg interns names; the symbol table should not be empty");
+    }
+
+    /// A repeated stack is O(1) in depth, and comes back whole.
+    ///
+    /// `MEASUREMENTS.md` now claims a 128-layer net of identical `Linear(16,
+    /// 16)` ships in 67 bytes and decompiles to 128 layers. Both halves matter
+    /// and only together: a fold that loses layers would also produce a small
+    /// artifact, and "compact at rest" would be measuring data loss.
+    ///
+    /// The size claim is a constant rather than a bound because it is
+    /// machine-independent — if the encoding changes, this should be updated
+    /// deliberately, and the document with it.
+    #[test]
+    fn identical_layers_fold_to_a_constant_and_survive_the_round_trip() {
+        let net = |n: usize| {
+            let layers: String =
+                (0..n).map(|i| format!("  layer fc{i}: Linear(16, 16);\n")).collect();
+            format!("net N {{\n{layers}  forward {{ fc0 }}\n}}\n")
+        };
+        let mut sizes = Vec::new();
+        for n in [2usize, 8, 32, 128] {
+            let module = parser::parse(&lexer::lex(&net(n))).expect("net parses");
+            let (blob, _) = encode_module(&module);
+            sizes.push(blob.len());
+
+            let items = decode_container(&blob).expect("decode");
+            assert_eq!(items.len(), 1);
+            // The expr expands back to one op per layer; `Seq` length is the
+            // structural count the decompiler renders.
+            let layer_count =
+                crate::abl_bridge::decompile(&items[0].expr, &items[0].name).net.layers.len();
+            assert_eq!(
+                layer_count, n,
+                "a {n}-layer net came back with {layer_count} layers — the fold is lossy"
+            );
+        }
+        assert!(
+            sizes.iter().all(|&s| s == sizes[0]),
+            "identical layers should fold to a constant size, got {sizes:?}"
+        );
+        assert_eq!(sizes[0], 67, "the documented constant is 67 bytes");
+    }
 
     #[test]
     fn round_trip_encode_decode() {

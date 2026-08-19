@@ -7,13 +7,13 @@
     ARCHITECTURE.md §"Repository layout"), so a root `cargo test` does nothing.
     This is the single entry point that covers everything CI covers:
 
-        rmi (cpu)   1,380 tests
-        prototype   1,107 tests
+        rmi (cpu)   1,384 tests
+        prototype   1,200 tests
         ribosome      164 tests
         germline      112 tests
-        forge          52 tests
+        forge          53 tests
         -------------------------
-        total       2,815 tests, 0 warnings
+        total       2,913 tests, 0 warnings
 
 .PARAMETER Release
     Build and test in release mode (slower to build, much faster to run).
@@ -31,7 +31,7 @@
     implementation of the check — needs the `bash` that ships with Git.
 
 .PARAMETER Cuda
-    Additionally test the prototype with --features cuda (1,071 tests). Needs an
+    Additionally test the prototype with --features cuda (1,229 tests). Needs an
     NVIDIA driver to exercise the kernels; without one the CUDA backend falls
     back to CPU and the suite still passes. CI only compile-checks this path.
 

@@ -37,7 +37,7 @@ pub fn format_human(module: &Module) -> String {
 // ── Mode ─────────────────────────────────────────────────────────────
 
 #[derive(Clone, Copy, PartialEq)]
-enum Mode {
+pub enum Mode {
     Agent,
     Human,
 }
@@ -923,6 +923,19 @@ fn emit_where_clause(buf: &mut String, wc: &[WherePredicate], mode: Mode) {
 }
 
 // ── Types ────────────────────────────────────────────────────────────
+
+/// Render a type the way the formatter writes it.
+///
+/// `nl_engine`'s explanations used `{:?}` on the AST node, so asking
+/// `nl/explain` about `+f add(a: i32, b: i32)` answered
+/// "(a: Path { segments: [\"i32\"], type_args: [] }, …)" — Rust `Debug` output
+/// in a natural-language answer, from the method an agent reaches for to
+/// *understand* code.
+pub fn type_to_string(ty: &Type, mode: Mode) -> String {
+    let mut buf = String::new();
+    emit_type(&mut buf, ty, mode);
+    buf
+}
 
 fn emit_type(buf: &mut String, ty: &Type, mode: Mode) {
     match ty {

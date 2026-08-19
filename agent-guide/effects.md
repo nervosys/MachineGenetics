@@ -12,10 +12,10 @@ no annotation. Impure functions list their effects after `/`.
 
 ```MAGE
 // Pure — no annotation
-fn add(a: i32, b: i32) -> i32 { a + b }
++f add(a: i32, b: i32) -> i32 { a + b }
 
-// Impure — annotated
-fn read() -> Result<String, Error> / io { fs::read_to_string("data.txt") }
+// Performs an effect — annotated
++f read(path: str) -> str / fs { fs.read_to_string(path) }
 ```
 
 ## Built-In Effects
@@ -42,17 +42,14 @@ agent  ⊃  async    →  / agent (already includes async)
 
 **Examples:**
 ```MAGE
-// WRONG — redundant io with net
-pub async fn fetch(url: &str) -> Result<String, Error> / io, net { ... }
-
-// CORRECT — net implies io
-pub async fn fetch(url: &str) -> Result<String, Error> / net { ... }
-
-// WRONG — redundant async with agent
-pub async fn run(a: &mut Agent) -> Result<(), Error> / async, agent { ... }
-
-// CORRECT — agent implies async
-pub async fn run(a: &mut Agent) -> Result<(), Error> / agent { ... }
+// There is no effect hierarchy. A function performing both `io` and `net`
+// declares both — `/ net` does not cover an inferred `io`, and `/ agent`
+// does not cover an inferred `async`.
++f fetch(url: str) -> str / io, net {
+    net.connect(url)
+    println(url)
+    url
+}
 ```
 
 ## Effect Propagation
@@ -61,25 +58,32 @@ pub async fn run(a: &mut Agent) -> Result<(), Error> / agent { ... }
 declare effect E (or a superset of E).
 
 ```MAGE
-// B has / io
-fn read_data() -> Result<String, Error> / io {
-    fs::read_to_string("data.txt")
+f read_data(path: str) -> str / fs {
+    fs.read_to_string(path)
 }
 
-// A calls B, so A must also have / io
-fn process() -> Result<(), Error> / io {
-    let data = read_data()?;
-    println!("Got: {data}");
-    return ();
+// `process` reaches `fs` through `read_data`, so it declares `fs` too —
+// and `io` for the `println`.
++f process(path: str) -> i32 / fs, io {
+    v data = read_data(path)
+    println(data)
+    0
 }
 ```
 
-**Violation** — compiler error:
+**Violation** — this is wrong, and the compiler says so:
 ```MAGE
-// WRONG — missing / io, but calls read_data() which requires / io
-fn process() -> Result<(), Error> {
-    let data = read_data()?;   // ERROR: effect `io` not declared
+f read_data(path: str) -> str / fs {
+    fs.read_to_string(path)
 }
+
+// Calls `read_data`, which performs `fs`, and declares nothing.
++f process(path: str) -> i32 {
+    v data = read_data(path)
+    0
+}
+// error: function `process` performs undeclared effects: [FS] —
+//        add them to its `/ effect` annotation
 ```
 
 ## Decision Tree: Which Effects to Annotate
@@ -87,16 +91,19 @@ fn process() -> Result<(), Error> {
 ```
 Does the function...
 
-├── Read/write files or console?           → / io
+├── Print, or read the console?            → / io
+├── Read or write a file?                  → / fs
 ├── Make network requests?                 → / net
 ├── Generate random numbers?               → / rng
 ├── Use .await or spawn tasks?             → / async
 ├── Create/run agents or swarms?           → / agent
-├── Read clock or sleep?                   → / time
+├── Read the clock or sleep?                → / time
 ├── Access env vars or CLI args?           → / env
-├── Spawn/manage OS processes?             → / process
-├── Call another function with effects?    → Propagate its effects
-└── None of the above?                     → Pure (no annotation)
+├── Spawn/manage OS processes?             → / proc
+├── Allocate?                              → / alloc
+├── Call a model?                          → / llm
+├── Call another function with effects?    → declare every one it performs
+└── None of the above?                     → pure (no annotation)
 ```
 
 ## Multiple Effects
@@ -104,21 +111,22 @@ Does the function...
 Comma-separate multiple effects:
 
 ```MAGE
-pub async fn download_and_save(url: &str, path: &str) -> Result<(), Error> / net, io {
-    let data = http::get(url).await?;
-    fs::write(path, data.bytes())?;
-    return ();
++f download_and_save(url: str, path: str) -> i32 / net, fs {
+    v data = net.connect(url)
+    fs.write(path, url)
+    0
 }
 ```
 
-But apply the hierarchy rule — don't list implied effects:
+There is no hierarchy rule. List every effect the function performs:
 
 ```MAGE
-// net already implies io, so this is redundant:
-pub async fn fetch() -> Result<String, Error> / io, net { ... }
-
-// Just use:
-pub async fn fetch() -> Result<String, Error> / net { ... }
+// Declare exactly what is performed. Neither is implied by the other.
++f fetch(url: str) -> str / io, net {
+    net.connect(url)
+    println(url)
+    url
+}
 ```
 
 ## Effect Handling (Mocking)
@@ -126,13 +134,22 @@ pub async fn fetch() -> Result<String, Error> / net { ... }
 Use `handle` blocks to intercept effects. Essential for testing:
 
 ```MAGE
-#[test]
-fn test_read_config() {
-    handle io {
-        read_to_string(_) => "key = value",
-    } {
-        let config = read_config("config.toml");
-        assert_eq!(config.unwrap().key, "value");
+effect Cfg {
+    f read(path: str) -> str;
+}
+
+f read_config(path: str) -> str / cfg {
+    Cfg.read(path)
+}
+
+// A handler substitutes the operation's value, so the test never touches a
+// real file. The effect being handled is named after `with`.
+@test
+f test_read_config() -> str {
+    handle {
+        read_config("config.toml")
+    } with Cfg {
+        read(path) => "key = value"
     }
 }
 ```
@@ -140,16 +157,25 @@ fn test_read_config() {
 Multiple handlers:
 
 ```MAGE
-#[test]
-fn test_fetch_and_parse() {
-    handle net {
-        get(_) => Response::mock(200, "{}"),
-    }
-    handle io {
-        write(_, _) => (),
-    } {
-        let result = fetch_and_save("http://example.com", "out.json");
-        assert!(result.is_ok());
+effect Net { f get(url: str) -> str; }
+effect Store { f put(path: str, data: str) -> i32; }
+
+f fetch_and_save(url: str, path: str) -> i32 / net, store {
+    v body = Net.get(url)
+    Store.put(path, body)
+}
+
+// One `handle` discharges one effect, so nest them.
+@test
+f test_fetch_and_save() -> i32 {
+    handle {
+        handle {
+            fetch_and_save("http://example.com", "out.json")
+        } with Net {
+            get(url) => "{}"
+        }
+    } with Store {
+        put(path, data) => 1
     }
 }
 ```
@@ -157,19 +183,19 @@ fn test_fetch_and_parse() {
 ## Effect Annotations on Trait Methods
 
 ```MAGE
-pub trait DataSource {
-    fn fetch(&self, query: &str) -> Result<String, Error> / io;
-    fn count(&self) -> usize;    // pure
++T DataSource {
+    f fetch(self, query: str) -> str / fs;
+    f count(self) -> i32;
 }
 
-impl DataSource for FileSource {
-    fn fetch(&self, query: &str) -> Result<String, Error> / io {
-        fs::read_to_string(&format!("data/{query}.txt"))
++S FileSource { root: str }
+
+I FileSource {
+    +f fetch(self, query: str) -> str / fs {
+        fs.read_to_string(query)
     }
 
-    fn count(&self) -> usize {
-        self.entries.len()
-    }
+    +f count(self) -> i32 { 0 }
 }
 ```
 
@@ -178,14 +204,16 @@ impl DataSource for FileSource {
 ## Effect Annotations on Closures / Function Parameters
 
 ```MAGE
-// Accept a closure that performs io
-pub fn with_file<T>(path: &str, work: fn(&str) -> T / io) -> Result<T, Error> / io {
-    let content = fs::read_to_string(path)?;
-    return work(&content);
+// A closure parameter carries no effect annotation — there is no effect
+// polymorphism, so `f(str) -> T / io` does not parse. The *caller* declares
+// what it performs, which here is the `fs` read.
++f with_file(path: str, work: f(str) -> i32) -> i32 / fs {
+    v content = fs.read_to_string(path)
+    work(content)
 }
 
-// Accept a pure closure
-pub fn transform<T>(data: T, func: fn(T) -> T) -> T {
+// A pure higher-order function needs no annotation at all.
++f transform(data: i32, func: f(i32) -> i32) -> i32 {
     func(data)
 }
 ```

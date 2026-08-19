@@ -17,7 +17,7 @@ put it and the wrong place to leave it: a build system that ships inside a
 package registry can only ever be that registry's build system, and §2.1's claim
 that no language is privileged below the planner is not credible from a crate
 that depends on one language's compiler. Its default dependency list is `serde`,
-`serde_json`, `sha2`, `ed25519-dalek` — 39 crates transitively, no TLS stack and
+`serde_json`, `sha2`, `ed25519-dalek` — 28 crates transitively (34 name-version pairs), no TLS stack and
 nothing MAGE. `rustls` is behind the optional `tls` feature and stays out of that
 tree. CI checks both with `cargo tree` rather than trusting this paragraph.
 `forge` depends on *it*, and `germline` drives it through the same public API any
@@ -101,6 +101,14 @@ exists — see §2.1.
 | `remote` | transport over any `Read + Write`, `RemoteExecutor`, worker registry | ✅ |
 | `provenance` | signed action-cache claims: HMAC + Ed25519 with revocation | ✅ |
 | `subprocess` | sandboxed execution of foreign tools | ✅ |
+| `mac` | shared message-authentication primitives, used by `provenance` here and `attest` in germline | ✅ |
+| `tls` | encrypted worker transport, behind the `tls` feature | ✅ |
+
+> **Corrected 2026-08-18.** `mac` and `tls` are modules in `src/` and were not
+> in this table. `tls` matters to a reader in particular: §6 and
+> `ARCHITECTURE.md` both turn on `rustls` staying out of the default build, and
+> a module table that does not mention it invites the reader to assume there is
+> nothing to keep out.
 
 ### Derived edges
 
@@ -523,7 +531,7 @@ Three control points are worth building *before* the loop closes, not after:
 
 ```powershell
 cargo test --manifest-path ribosome/Cargo.toml                  # 164 tests
-cargo test --manifest-path ribosome/Cargo.toml --test build     # 10 end-to-end scenarios
+cargo test --manifest-path ribosome/Cargo.toml --test build     # 11 end-to-end scenarios
 cargo test --manifest-path ribosome/Cargo.toml --test multilang # 8 multi-language scenarios
 ```
 
@@ -547,3 +555,16 @@ build system is actually judged on:
 | `a_missing_accelerator_falls_back_only_when_opted_in` | no silent wrong-device results |
 | `plan_predicts_the_build_without_running_it` | no-exec introspection |
 | `fitness_is_ordered_by_correctness_first` | the selection signal has no loophole |
+| `a_build_that_fails_everything_reports_no_cache_reuse` | the reuse figure cannot be earned by failing |
+| `rebuilding_an_unchanged_multi_language_program_does_no_work` | no-op incrementality holds across languages, not just within one |
+| `editing_one_translation_unit_rebuilds_it_and_the_link_only` | minimal rebuild through a C compile/link split |
+| `a_structural_toolchain_publishes_to_a_shared_store_without_pinning` | byte-stability substitutes for a pin, because it is measured rather than asserted |
+
+> **Corrected 2026-08-18.** The header said 10 end-to-end scenarios; there are
+> **11**, and this table listed 15 of the 19 tests across both files. Every
+> name it did list exists — the gap was omission, not invention. The four added
+> above are not filler: the first is the regression test for
+> `cache_hit_ratio`, which reported a **perfect** reuse ratio for a build that
+> failed every action, and `Fitness::reuse` paid that the maximum score. A
+> table headed "each asserts a property a build system is actually judged on"
+> should not omit the one guarding a selection signal in the RSI loop.

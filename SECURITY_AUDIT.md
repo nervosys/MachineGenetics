@@ -1,6 +1,6 @@
 # Security Audit — MAGE (Machine Genetics) + RecursiveMachineIntelligence (rmi)
 
-**Org:** NERVOSYS · **Date:** 2026-06-04 · **Scope:** `RecursiveMachineIntelligence/`
+**Org:** NERVOSYS · **Date:** 2026-06-04, §1 re-run 2026-08-18 · **Scope:** `RecursiveMachineIntelligence/`
 (crate `rmi`), `prototype/` (compiler + RAP server), `agentic-eval` (separate
 AetherShell repo). Frameworks applied: **CVE/RustSec**, **NIST FIPS 140-3**,
 **MITRE ATT&CK**, **CMMC 2.0**.
@@ -44,10 +44,34 @@ extracted from `forge` (steps 148–149). Both are clean, as is `forge`.
 |---|---|---|---|
 | **RUSTSEC-2026-0041** | `lz4_flex 0.11.5` | **8.2 High** — decompress of invalid data can leak uninitialized/reused buffer memory | **FIXED** — pinned `>=0.11.6` via `cargo update -p lz4_flex --precise 0.11.6`. rmi uses lz4 for protocol compression, so this was in-path. |
 | RUSTSEC-2024-0436 | `paste 1.0.15` | unmaintained (warning) | **Accepted** — transitive via `wgpu→metal`, only under the non-default `gpu` feature; no code path in default builds. Tracked for when wgpu updates. |
-| RUSTSEC-2026-0097 | `rand 0.8/0.9` | unsound (warning) | **Not applicable** — the unsoundness requires a custom global logger calling `rand::rng()` reentrantly; rmi uses `rand` only for weight init / sampling, never from a logger. No remediation needed; documented. |
+| ~~RUSTSEC-2026-0097~~ | ~~`rand 0.8/0.9`~~ | unsound (warning) | **No longer applies.** The rationale here was "not applicable — the unsoundness needs a reentrant logger". That was true, and it is now moot: `prototype`'s lockfile carries `rand 0.8.6`, which the advisory lists as *patched* (`< 0.9.0, >= 0.8.6`). `cargo audit` has stopped reporting it. Kept struck through rather than deleted, because an accepted-risk row that silently vanishes is indistinguishable from one nobody re-checked. |
+| **RUSTSEC-2026-0190** | `anyhow 1.0.102` | unsound (warning) — borrow-rule violation in `Error::downcast_mut()` after `Error::context` | **FIXED 2026-08-18** — `cargo update -p anyhow` → 1.0.104 (patched at ≥ 1.0.103). Transitive via the `wit-bindgen`/`wit-component` chain; nothing in this repository calls `downcast_mut`, so it was not in-path, but a patched version existed and accepting a fixable finding is not triage. **This advisory is dated 2026-06-25 and was not in this table** — the register had drifted in both directions at once: listing a warning that had stopped firing, and missing one that had started. |
 | (yanked) | `lz4_flex 0.11.5` | yanked | resolved by the 0.11.6 pin above. |
 
-**Result:** 0 open vulnerabilities after the lz4_flex fix; 2 informational warnings accepted with rationale. agentic-eval's own dependency surface is 2 optional crates (`tiktoken-rs`, `serde`) — no findings.
+**Result (re-run 2026-08-18):** 0 open vulnerabilities. The four *committed*
+lockfiles — `prototype`, `forge`, `ribosome`, `germline` — report **zero
+findings of any kind**, warnings included. The single remaining warning is
+`paste` (unmaintained) on `RecursiveMachineIntelligence/Cargo.lock`, which is
+git-ignored, so it is a property of a local resolve rather than of this
+repository. agentic-eval's own dependency surface is 2 optional crates
+(`tiktoken-rs`, `serde`) — no findings.
+
+> **An accepted-risk register decays like any other measured claim, and worse.**
+> Both drifts above are invisible to a reader: the document names two accepted
+> warnings, and someone checking whether the accepted set is complete would have
+> found it neither complete nor current. `cargo audit` in CI catches new
+> *vulnerabilities*; nothing compares this table against the warnings actually
+> reported. Re-run the five surfaces when touching this file:
+> `for d in prototype forge ribosome germline; do cargo audit --file $d/Cargo.lock; done`
+>
+> **And the npm surface, which nothing here had ever named.** `HANDOFF.md`
+> claimed "0 npm"; `video/` had **one high-severity** advisory
+> (GHSA-2v37-7h3g-55p8, `nanoid < 3.3.18`, transitive via `postcss`), fixed
+> 2026-08-18 with `npm audit fix --package-lock-only` → 3.3.18, and now 0 of
+> 294 packages. Both `video/package.json` and `video/package-lock.json` are
+> tracked, so this was a repository finding rather than a local one. Check it
+> with `cd video && npm audit`; CI's `audit` job covers the five Cargo
+> lockfiles and not this one.
 
 **Recommendation (CMMC SI / supply chain): ✅ implemented 2026-08-05.** CI now
 has an `audit` job running `cargo audit` over each of the five lockfiles
@@ -88,10 +112,11 @@ compiler/server, and agent-generated code executed locally.
 
 | Surface | Technique | Assessment / Mitigation |
 |---|---|---|
-| **RAP server** `--rap` (TcpListener) | T1071 (App-layer C2), T1190 (exploit public-facing) | **Binds `127.0.0.1:9876` by default** (loopback) — not network-exposed unless the operator passes a routable addr. No auth/authz on the socket. **Mitigation:** documented as `network` effect in the CLI manifest; **must not** be bound to `0.0.0.0` without a reverse proxy doing authN/Z + TLS. Recommend an explicit refusal or loud warning on non-loopback bind (proposed, not yet enforced). |
+| **RAP server** `--rap` (TcpListener) | T1071 (App-layer C2), T1190 (exploit public-facing) | **Binds `127.0.0.1:9876` by default** (loopback). No auth/authz on the socket, so it **must not** be bound to `0.0.0.0` without a reverse proxy doing authN/Z + TLS. **The refusal is implemented** (`rap::is_non_loopback`): a non-loopback or wildcard bind exits 2 with an explanatory message unless the operator sets `MAGE_RAP_ALLOW_REMOTE=1`, and warns even then. Verified by running it: `--rap 0.0.0.0:9911` → `rap: REFUSING to bind non-loopback address`, rc=2. This row said "proposed, not yet enforced" — **an under-claim in a security document is still a defect**: a reader planning a deployment would build a guard that already exists, or avoid the tool for a gap it does not have. |
 | **Subprocess backends** (`--backends-file`, `Command::new(prog).spawn()`) | T1059 (command/scripting), T1106 (native API) | Runs an operator-supplied wrapper program. **Already classified `exec`** in the CLI manifest and RMI safety effect-map. Only reachable via an explicit local flag — operator-controlled, not attacker-reachable. Fail-safe: no shell interpolation (args passed as argv, not `sh -c`). |
 | **Deserialization** (Agentic Binary Language containers, MessagePack protocol, checkpoints) | T1565 (data manipulation) | Agentic Binary Language decode is **length-checked, bounds-validated** (`take()` guards every field) — verified in `run_dispatch_abl_bytes`. **No `pickle`-class arbitrary-code-execution path** — formats are data-only (contrast PyTorch `torch.load`, flagged in agentic-eval). Malformed input yields a typed `RmiError`, not memory unsafety. |
-| **Agent-generated code execution** | T1059, T1027 | The whole point of the compiler is to process untrusted (LLM-written) source. Front-end is **memory-safe Rust** (`#![forbid(unsafe)]` in agentic-eval; rmi has 1 audited `unsafe` in lib.rs, 3 in the CUDA FFI shim — all reviewed, FFI-boundary only). Parse/check/lower cannot escape the process. *Running* compiled output is the operator's risk surface → see CMMC sandboxing note. |
+| **Agent-generated code execution** | T1059, T1027 | The whole point of the compiler is to process untrusted (LLM-written) source. Front-end is **memory-safe Rust** — `prototype/src` contains **no `unsafe` outside `cuda_backend.rs`** (3 blocks, IronAccelerator FFI, behind the non-default `cuda` feature); the remaining hits in `lexer.rs`/`elision.rs`/`token_budget.rs` are the *MAGE keyword* `unsafe`, not Rust code. Parse/check/lower cannot escape the process.
+    **Corrected 2026-08-18.** This row said "rmi has 1 audited `unsafe` in lib.rs, 3 in the CUDA FFI shim — all reviewed, FFI-boundary only". All three parts were wrong. `lib.rs` has none. The real surface is **9 `unsafe` blocks in `RecursiveMachineIntelligence/src/runtime/memory_pool.rs`** — an arena allocator doing `alloc_zeroed`, pointer `add` and `offset_from` — which is **not an FFI boundary** and is **compiled unconditionally** (`pub mod runtime` has no feature gate). A memory allocator is the highest-risk category of `unsafe` in an assessment like this, and the document asserted no such code existed. Separately, `compute/cuda_full.rs` holds 16 more, but **no `mod` declaration references it**, so it is never compiled — the file is a dead cudarc-0.10 port that `compute/mod.rs` describes in a comment as "unused". Counting it would overstate the surface as badly as the old row understated it. *Running* compiled output is the operator's risk surface → see CMMC sandboxing note. |
 | **Self-modification** (`evolution::self_modification`) | T1565.001, T1027 | Applies code patches through `SandboxLimits` + `ResourceUsage` checks. Effect-mapped **exec-equivalent**; documented in the manifest as "gate behind approval in agent deployments." |
 | **Supply chain** | T1195.001 (compromised dep) | Covered by §1; the lz4_flex fix closes the one in-path high-sev item. |
 
@@ -118,12 +143,71 @@ Assessed against CMMC L1/L2 practices relevant to a source release (not a CUI-ha
 ---
 
 ## Actions taken in this audit
-1. **Fixed RUSTSEC-2026-0041** (lz4_flex high-severity) — pinned 0.11.6, re-audited clean, 1226 tests still pass.
+1. **Fixed RUSTSEC-2026-0041** (lz4_flex high-severity) — pinned 0.11.6, re-audited clean, 1226 tests passing at the time (2,904 across five crates now).
+1b. **Fixed RUSTSEC-2026-0190** (anyhow unsound, 2026-08-18) — `cargo update -p anyhow` → 1.0.104; the four committed lockfiles now report zero findings of any kind.
 2. Inventoried crypto (FIPS gap documented), deserialization (bounds-checked, no pickle-class RCE), and network/exec surfaces (loopback default, effect-mapped).
 3. Confirmed **zero secret/credential material** in the codebase (leak scan).
 
 ## Open recommendations (non-blocking for OSS release)
-- Wire `cargo audit` + `cargo deny` into CI with a `deny.toml` (accept the 2 informational advisories explicitly).
-- Add a loud warning/refusal when `--rap` binds a non-loopback address.
+- `cargo audit` is wired into CI (done 2026-08-05, five lockfiles separately).
+  `cargo deny` with a `deny.toml` remains open; the allowlist would now hold
+  **one** entry (`paste`, unmaintained, rmi's uncommitted lockfile only) rather
+  than the two this line used to name — see §1's re-run note for why that count
+  moved in both directions.
+- ~~Add a loud warning/refusal when `--rap` binds a non-loopback address.~~
+  **Implemented** — refusal with an `MAGE_RAP_ALLOW_REMOTE=1` override, plus a
+  warning on the override path. §3's row said "proposed, not yet enforced"
+  until 2026-08-18; it was enforced well before that and nobody had re-read the
+  code.
+- ~~**Audit the `unsafe` in `rmi`'s memory pool.**~~ **Done 2026-08-18**, and it
+  found two defects in `Slab::new`, both reachable in one call from public API
+  because `PoolConfig`'s fields are public and `MemoryPool::with_config` passes
+  `initial_capacity` straight through with no guard:
+  - **Zero capacity → undefined behaviour.** `PoolConfig { initial_capacity: 0,
+    .. }` computed a zero-sized `Layout` and called `alloc::alloc_zeroed` on it,
+    which the standard library documents as UB — at *construction*, before any
+    allocation was requested. `growth_factor: 0.0` reaches the same place
+    through `alloc()`, since a float-to-int cast saturates to 0. Now refused.
+  - **Unchecked `size * capacity`.** Wrapping made the slab tiny while
+    `capacity` kept the large value. Measured consequence: the process
+    **aborts** (`memory allocation of 2305843009213693960 bytes failed`, exit
+    `0xc0000409`) — the `free_list` `Vec` wants one index per claimed block, so
+    it fails first. A crash from a library constructor, not an out-of-bounds
+    access; the two deserve different words and this was checked rather than
+    assumed. Now refused with a named error.
+
+  And two more in `TensorBuffer`, the zero-copy view type in the same file,
+  both reachable from safe public API with ordinary values:
+  - **`Drop` freed a layout the allocator never handed out.** `from_vec`
+    forgot the `Vec`'s capacity and `Drop` rebuilt it as
+    `from_raw_parts(ptr, len, len)`. Capacity differs from length in the
+    ordinary case — `Vec::with_capacity(64)` with three elements pushed, or any
+    growth pattern — so the global allocator was asked to deallocate a layout
+    it never allocated. Undefined behaviour **on the normal path**, not an edge
+    case, and the SAFETY comment asserted "the pointer, len, and capacity match
+    what was passed to `mem::forget`", which was false whenever the two
+    differed. The capacity is now carried.
+  - **`slice(offset, len)` added the two without checking.**
+    `slice(usize::MAX, 1)` wraps to 0, passes the `> self.len` bound, and
+    offsets the pointer by `usize::MAX` — a buffer at a wild address that
+    `as_bytes()` will read. Two plain integers through a safe public method.
+    Now `checked_add`.
+
+  All four have regression tests, each verified by removing its guard. The
+  remaining blocks are sound as used: `Slab::free`'s `offset_from` needs a
+  same-allocation pointer and every caller goes through `contains` first, which
+  is integer comparison and safe on a foreign pointer — though the SAFETY
+  comment stated that guarantee backwards and has been corrected. The four
+  `unsafe impl Send`/`Sync` are defensible under the refcount discipline
+  (`as_bytes_mut` takes `&mut self` and refuses at refcount != 1, and every
+  view bumps the count), but the counter is read `Relaxed` while gating
+  mutation, which is a synchronisation decision rather than a counter — worth a
+  second opinion from someone who owns this code.
+
+- **Dead `unsafe` in `compute/cuda_full.rs`.** 16 blocks in a file no `mod`
+  declaration references, so it never compiles. It reads as reviewed code and
+  is not covered by anything; anyone adding a `mod cuda_full;` activates it
+  silently. Delete it or gate it explicitly — left alone here because the crate
+  is vendored and that is its owner's call.
 - Add a `fips` feature flag routing SHA-256 through a validated module, for regulated downstreams.
 - If RAP is ever productionized: rustls (FIPS backend) + token auth.

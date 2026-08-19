@@ -64,6 +64,17 @@ pub struct HealedDiagnostic {
 struct ErrorPattern {
     /// Pattern name (for logging/debugging).
     name: &'static str,
+    /// A diagnostic message this pattern is meant to match.
+    ///
+    /// Beside the matcher on purpose. `pattern_names()` publishes all 34 of
+    /// these names in the ontology, and the only test over that list asserted
+    /// it was longer than ten — so a pattern whose matcher stopped matching,
+    /// or whose generator stopped producing fixes, stayed published as a
+    /// mechanical repair an agent could ask for and never receive.
+    /// `every_pattern_matches_its_example_and_produces_a_fix` runs each one.
+    /// A new pattern cannot be added without an example, which is the point:
+    /// the example is the claim, and the compiler requires it.
+    example: &'static str,
     /// Returns true if this pattern matches the diagnostic message.
     matches: fn(&str) -> bool,
     /// Given the diagnostic, produce fix candidates.
@@ -77,11 +88,23 @@ pub fn pattern_names() -> Vec<&'static str> {
     builtin_patterns().into_iter().map(|p| p.name).collect()
 }
 
+/// Each pattern's name paired with a diagnostic message it matches.
+///
+/// The ontology published bare names, which tell an agent that
+/// `parse-stray-comma-in-name-position` exists and nothing about when it
+/// fires. The example is the cheapest possible answer to "what does this one
+/// catch", it is the same string the test runs, and publishing it means the
+/// field cannot rot into decoration — it is on the wire.
+pub fn patterns_with_examples() -> Vec<(&'static str, &'static str)> {
+    builtin_patterns().into_iter().map(|p| (p.name, p.example)).collect()
+}
+
 /// The built-in pattern registry.
 fn builtin_patterns() -> Vec<ErrorPattern> {
     vec![
         ErrorPattern {
             name: "missing-return-type",
+            example: "expected return type",
             matches: |msg| msg.contains("expected return type") || msg.contains("missing return"),
             generate: |diag| {
                 vec![FixCandidate {
@@ -102,6 +125,7 @@ fn builtin_patterns() -> Vec<ErrorPattern> {
         },
         ErrorPattern {
             name: "unexpected-token",
+            example: "unexpected token `;`",
             matches: |msg| msg.contains("unexpected token") || msg.contains("expected"),
             generate: |diag| {
                 let mut fixes = Vec::new();
@@ -143,13 +167,21 @@ fn builtin_patterns() -> Vec<ErrorPattern> {
         },
         ErrorPattern {
             name: "undeclared-effect",
+            example: "function `f` performs undeclared effect [io]",
             matches: |msg| {
                 msg.contains("effect")
                     && (msg.contains("not declared") || msg.contains("undeclared"))
             },
             generate: |diag| {
-                // Extract effect name from the message if possible.
-                let effect = extract_quoted(&diag.message).unwrap_or("io".to_string());
+                // The effects are the bracketed list, not the first backticked
+                // word — that one is the *function* name, and taking it
+                // produced the suggestion "Add `/ P.leak` effect annotation",
+                // naming a function where an effect belongs. A repair loop
+                // applying it would write an annotation that fails the
+                // unknown-effect check one pass later.
+                let effect = extract_effect_list(&diag.message)
+                    .or_else(|| extract_quoted(&diag.message))
+                    .unwrap_or("io".to_string());
                 vec![FixCandidate {
                     id: "add-effect-annotation".into(),
                     description: format!(
@@ -170,6 +202,7 @@ fn builtin_patterns() -> Vec<ErrorPattern> {
         },
         ErrorPattern {
             name: "type-mismatch",
+            example: "type mismatch: I32 vs Str",
             matches: |msg| msg.contains("type mismatch") || msg.contains("mismatched types"),
             generate: |diag| {
                 let mut fixes = Vec::new();
@@ -195,11 +228,53 @@ fn builtin_patterns() -> Vec<ErrorPattern> {
                         token_cost: 3,
                     });
                 }
+                // The two branches above fire only when the message names
+                // `Option`/`Result`, and the checker's own commonest mismatch
+                // does not: `type mismatch: I32 vs Usize` mentions neither. So
+                // the pattern published to repair type mismatches produced
+                // *nothing* for the mismatch the language actually reports —
+                // the ordinary `len(xs)` against an `i32` return, which is the
+                // first error most programs hit. Between two numeric types the
+                // conversion is mechanical and gets a real edit; otherwise the
+                // candidate names both sides so the agent knows which way to
+                // move.
+                if let Some((expected, found)) = numeric_mismatch(&diag.message) {
+                    let (line, col) = diag.span.map(|s| (s.line, s.col)).unwrap_or((1, 1));
+                    fixes.push(FixCandidate {
+                        id: "insert-numeric-cast".into(),
+                        description: format!("Convert the `{found}` to `{expected}` with `as {expected}`"),
+                        edits: vec![TextEdit {
+                            start_line: line,
+                            start_col: col,
+                            end_line: line,
+                            end_col: col,
+                            new_text: format!(" as {expected}"),
+                        }],
+                        confidence: 0.6,
+                        // A narrowing cast can change the value.
+                        semantics_preserving: false,
+                        token_cost: 3,
+                    });
+                } else if fixes.is_empty() {
+                    fixes.push(FixCandidate {
+                        id: "reconcile-types".into(),
+                        description: format!(
+                            "The two sides disagree: {}. Change one side, or convert \
+                             explicitly.",
+                            diag.message.trim()
+                        ),
+                        edits: vec![],
+                        confidence: 0.3,
+                        semantics_preserving: false,
+                        token_cost: 0,
+                    });
+                }
                 fixes
             },
         },
         ErrorPattern {
             name: "unknown-identifier",
+            example: "cannot find `foo` in this scope",
             matches: |msg| {
                 msg.contains("cannot find")
                     || msg.contains("not found")
@@ -229,6 +304,7 @@ fn builtin_patterns() -> Vec<ErrorPattern> {
         },
         ErrorPattern {
             name: "spec-violation",
+            example: "spec `positive` violated",
             matches: |msg| {
                 msg.contains("spec") && (msg.contains("violated") || msg.contains("unsatisfied"))
             },
@@ -246,6 +322,7 @@ fn builtin_patterns() -> Vec<ErrorPattern> {
         // ── New patterns (Step 34) ──────────────────────────────
         ErrorPattern {
             name: "missing-closing-paren",
+            example: "expected `)` to close `(`",
             matches: |msg| msg.contains("expected `)`") || msg.contains("unclosed `(`"),
             generate: |diag| {
                 vec![FixCandidate {
@@ -266,6 +343,7 @@ fn builtin_patterns() -> Vec<ErrorPattern> {
         },
         ErrorPattern {
             name: "missing-closing-bracket",
+            example: "expected `]` to close `[`",
             matches: |msg| msg.contains("expected `]`") || msg.contains("unclosed `[`"),
             generate: |diag| {
                 vec![FixCandidate {
@@ -286,6 +364,7 @@ fn builtin_patterns() -> Vec<ErrorPattern> {
         },
         ErrorPattern {
             name: "borrow-conflict",
+            example: "cannot borrow `x` as mutable",
             matches: |msg| msg.contains("cannot borrow") || msg.contains("already borrowed"),
             generate: |diag| {
                 let mut fixes = Vec::new();
@@ -312,6 +391,7 @@ fn builtin_patterns() -> Vec<ErrorPattern> {
         },
         ErrorPattern {
             name: "move-after-use",
+            example: "use of moved value `x`",
             matches: |msg| {
                 msg.contains("use of moved value") || msg.contains("value used after move")
             },
@@ -338,6 +418,7 @@ fn builtin_patterns() -> Vec<ErrorPattern> {
         },
         ErrorPattern {
             name: "unused-variable",
+            example: "unused variable `x`",
             matches: |msg| msg.contains("unused variable"),
             generate: |diag| {
                 let name = extract_quoted(&diag.message).unwrap_or_default();
@@ -360,6 +441,7 @@ fn builtin_patterns() -> Vec<ErrorPattern> {
         },
         ErrorPattern {
             name: "missing-field",
+            example: "missing field `y` in initializer",
             matches: |msg| msg.contains("missing field") || msg.contains("field not found"),
             generate: |diag| {
                 let field = extract_quoted(&diag.message).unwrap_or_default();
@@ -375,6 +457,7 @@ fn builtin_patterns() -> Vec<ErrorPattern> {
         },
         ErrorPattern {
             name: "contract-precondition-fail",
+            example: "precondition `n > 0` does not hold",
             matches: |msg| {
                 msg.contains("precondition") || (msg.contains("@req") && msg.contains("violated"))
             },
@@ -392,6 +475,7 @@ fn builtin_patterns() -> Vec<ErrorPattern> {
         },
         ErrorPattern {
             name: "contract-postcondition-fail",
+            example: "postcondition `ret > 0` does not hold",
             matches: |msg| {
                 msg.contains("postcondition") || (msg.contains("@ens") && msg.contains("violated"))
             },
@@ -408,6 +492,7 @@ fn builtin_patterns() -> Vec<ErrorPattern> {
         },
         ErrorPattern {
             name: "invariant-violation",
+            example: "invariant `len <= cap` does not hold",
             matches: |msg| {
                 msg.contains("invariant") || (msg.contains("@inv") && msg.contains("violated"))
             },
@@ -425,6 +510,7 @@ fn builtin_patterns() -> Vec<ErrorPattern> {
         },
         ErrorPattern {
             name: "capability-denied",
+            example: "capability `net` denied",
             matches: |msg| {
                 msg.contains("capability")
                     && (msg.contains("denied") || msg.contains("not granted"))
@@ -443,6 +529,7 @@ fn builtin_patterns() -> Vec<ErrorPattern> {
         },
         ErrorPattern {
             name: "performance-budget-exceeded",
+            example: "performance budget exceeded",
             matches: |msg| {
                 msg.contains("performance") && msg.contains("exceeded")
                     || msg.contains("@perf") && msg.contains("violated")
@@ -470,6 +557,7 @@ fn builtin_patterns() -> Vec<ErrorPattern> {
         // expected Semi, found ... → insert `;` before the offending token
         ErrorPattern {
             name: "parse-missing-semi",
+            example: "expected Semi, found RBrace '}'",
             matches: |msg| msg.starts_with("expected Semi, found ")
                 || msg.contains("expected Semi"),
             generate: |diag| {
@@ -493,6 +581,7 @@ fn builtin_patterns() -> Vec<ErrorPattern> {
         // expected RBrace, found ... → insert `}` to close an unbalanced block
         ErrorPattern {
             name: "parse-missing-rbrace",
+            example: "expected RBrace, found Eof ''",
             matches: |msg| msg.starts_with("expected RBrace, found ")
                 || msg.contains("expected RBrace"),
             generate: |diag| {
@@ -516,6 +605,7 @@ fn builtin_patterns() -> Vec<ErrorPattern> {
         // expected RParen, found ... → insert `)`
         ErrorPattern {
             name: "parse-missing-rparen",
+            example: "expected RParen, found Semi ';'",
             matches: |msg| msg.starts_with("expected RParen, found ")
                 || msg.contains("expected RParen"),
             generate: |diag| {
@@ -539,6 +629,7 @@ fn builtin_patterns() -> Vec<ErrorPattern> {
         // expected RBrack, found ... → insert `]`
         ErrorPattern {
             name: "parse-missing-rbrack",
+            example: "expected RBrack, found Semi ';'",
             matches: |msg| msg.starts_with("expected RBrack, found ")
                 || msg.contains("expected RBrack"),
             generate: |diag| {
@@ -563,6 +654,7 @@ fn builtin_patterns() -> Vec<ErrorPattern> {
         // bare type-needed slot. Insert `: _` for type inference.
         ErrorPattern {
             name: "parse-missing-type-colon",
+            example: "expected Colon, found RParen ')'",
             matches: |msg| msg.starts_with("expected Colon, found RParen"),
             generate: |diag| {
                 vec![FixCandidate {
@@ -585,6 +677,7 @@ fn builtin_patterns() -> Vec<ErrorPattern> {
         // expected LBrace, found Semi → empty block instead of bare ;
         ErrorPattern {
             name: "parse-empty-block",
+            example: "expected LBrace, found Semi ';'",
             matches: |msg| msg.starts_with("expected LBrace, found Semi"),
             generate: |diag| {
                 vec![FixCandidate {
@@ -609,6 +702,7 @@ fn builtin_patterns() -> Vec<ErrorPattern> {
         // use-group, struct field, etc.). Delete the offending `,`.
         ErrorPattern {
             name: "parse-stray-comma-in-name-position",
+            example: "expected identifier, found Comma ','",
             matches: |msg| msg.starts_with("expected identifier, found Comma"),
             generate: |diag| {
                 vec![FixCandidate {
@@ -633,6 +727,7 @@ fn builtin_patterns() -> Vec<ErrorPattern> {
         // start. Delete the `;` and continue.
         ErrorPattern {
             name: "parse-stray-semi-in-item-position",
+            example: "expected KwF, found Semi ';'",
             matches: |msg| msg.starts_with("expected KwF, found Semi"),
             generate: |diag| {
                 vec![FixCandidate {
@@ -657,6 +752,7 @@ fn builtin_patterns() -> Vec<ErrorPattern> {
         // before the offending identifier.
         ErrorPattern {
             name: "parse-insert-missing-semi",
+            example: "expected Semi, found Ident 'x'",
             matches: |msg| msg.starts_with("expected Semi, found Ident"),
             generate: |diag| {
                 vec![FixCandidate {
@@ -682,6 +778,7 @@ fn builtin_patterns() -> Vec<ErrorPattern> {
         // structural-balance pass close any open braces afterward.
         ErrorPattern {
             name: "parse-truncated-expr-at-eof",
+            example: "expected expression, found Eof ''",
             matches: |msg| msg.starts_with("expected expression, found Eof"),
             generate: |diag| {
                 vec![FixCandidate {
@@ -705,6 +802,7 @@ fn builtin_patterns() -> Vec<ErrorPattern> {
         // (cut just before an identifier). Splice `_` placeholder.
         ErrorPattern {
             name: "parse-truncated-ident-at-eof",
+            example: "expected identifier, found Eof ''",
             matches: |msg| msg.starts_with("expected identifier, found Eof"),
             generate: |diag| {
                 vec![FixCandidate {
@@ -730,6 +828,7 @@ fn builtin_patterns() -> Vec<ErrorPattern> {
         // Delete the offending `;`.
         ErrorPattern {
             name: "parse-stray-semi",
+            example: "expected expression, found Semi ';'",
             matches: |msg| msg.starts_with("expected expression, found Semi"),
             generate: |diag| {
                 vec![FixCandidate {
@@ -755,6 +854,7 @@ fn builtin_patterns() -> Vec<ErrorPattern> {
         // type-error but the parse succeeds.
         ErrorPattern {
             name: "parse-empty-where-expr-expected",
+            example: "expected expression, found RBrace '}'",
             matches: |msg| msg.starts_with("expected expression, found RBrace"),
             generate: |diag| {
                 vec![FixCandidate {
@@ -779,6 +879,7 @@ fn builtin_patterns() -> Vec<ErrorPattern> {
         // dropped first element / stray token mutations.
         ErrorPattern {
             name: "parse-stray-comma",
+            example: "expected expression, found Comma ','",
             matches: |msg| msg.starts_with("expected expression, found Comma"),
             generate: |diag| {
                 vec![FixCandidate {
@@ -803,6 +904,7 @@ fn builtin_patterns() -> Vec<ErrorPattern> {
         // before the comma so `name, NextName` becomes `name: _, NextName`.
         ErrorPattern {
             name: "parse-missing-colon-before-comma",
+            example: "expected Colon, found Comma ','",
             matches: |msg| msg.starts_with("expected Colon, found Comma"),
             generate: |diag| {
                 vec![FixCandidate {
@@ -826,6 +928,7 @@ fn builtin_patterns() -> Vec<ErrorPattern> {
         // (`let x;`). Insert ` = ()` (unit value) before the semicolon.
         ErrorPattern {
             name: "parse-missing-init",
+            example: "expected Assign, found Semi ';'",
             matches: |msg| msg.starts_with("expected Assign, found Semi"),
             generate: |diag| {
                 vec![FixCandidate {
@@ -849,6 +952,7 @@ fn builtin_patterns() -> Vec<ErrorPattern> {
         // got pushed in. Drop the `->` so the function header completes.
         ErrorPattern {
             name: "parse-stray-arrow",
+            example: "expected identifier, found Arrow '->'",
             matches: |msg| msg.starts_with("expected identifier, found Arrow"),
             generate: |diag| {
                 vec![FixCandidate {
@@ -871,6 +975,65 @@ fn builtin_patterns() -> Vec<ErrorPattern> {
 }
 
 /// Extract the first single-quoted or backtick-quoted token from a message.
+/// The effect annotation a `performs undeclared effects: [FS, Net]` message
+/// asks for, in the spelling an annotation uses: `fs, net`.
+fn extract_effect_list(msg: &str) -> Option<String> {
+    let start = msg.find("effects: [")? + "effects: [".len();
+    let end = msg[start..].find(']')? + start;
+    let list: Vec<String> = msg[start..end]
+        .split(',')
+        .map(|e| e.trim().to_lowercase())
+        .filter(|e| !e.is_empty())
+        .collect();
+    if list.is_empty() {
+        return None;
+    }
+    Some(list.join(", "))
+}
+
+/// `type mismatch: I32 vs Usize` → `("i32", "usize")` — **(expected, found)**,
+/// when both sides name a numeric type.
+///
+/// The order is not cosmetic: it decides which way the suggested cast points,
+/// and getting it backwards produces advice that is confidently wrong. The
+/// message comes from `unify(subst, a, b)` in `types.rs`, and the two call
+/// sites that reach a user pass the *declared* type first — `unify(&ret_ty,
+/// &body_ty)` — so the left name is what the code must produce and the right
+/// is what it has.
+///
+/// The checker renders types with the `Ty` variant names (`I32`, `Usize`,
+/// `F64`), which are not spellings any program can contain — the source form
+/// is the lowercase one, so the suggested cast has to be lowered before it is
+/// offered. Returns `None` for anything but a numeric-to-numeric pair, where a
+/// cast would be wrong rather than merely lossy.
+fn numeric_mismatch(msg: &str) -> Option<(String, String)> {
+    let tail = msg.rsplit("type mismatch:").next()?.trim();
+    let (a, b) = tail.split_once(" vs ")?;
+    let numeric = |s: &str| -> Option<String> {
+        let s = s.trim().trim_end_matches(['.', ',', ')']).trim();
+        let lower = s.to_ascii_lowercase();
+        let ok = matches!(
+            lower.as_str(),
+            "i8" | "i16"
+                | "i32"
+                | "i64"
+                | "i128"
+                | "isize"
+                | "u8"
+                | "u16"
+                | "u32"
+                | "u64"
+                | "u128"
+                | "usize"
+                | "f32"
+                | "f64"
+        );
+        ok.then_some(lower)
+    };
+    let (a, b) = (numeric(a)?, numeric(b)?);
+    (a != b).then_some((a, b))
+}
+
 fn extract_quoted(msg: &str) -> Option<String> {
     // Try backtick quotes first: `name`
     if let Some(start) = msg.find('`')
@@ -1013,6 +1176,107 @@ mod tests {
         d
     }
 
+    /// Every published pattern matches its own example and produces a fix.
+    ///
+    /// `pattern_names()` publishes all 34 in `MAGE_ONTOLOGY.json`, where an
+    /// agent reads them as the mechanical repairs it can ask for. The only
+    /// test over that list asserted it had at least ten entries — true of any
+    /// list of ten strings, and silent about whether a single one of them
+    /// works. A matcher narrowed by one word, or a generator that returns an
+    /// empty vector, would leave the name published and the repair
+    /// unavailable, with nothing to notice.
+    ///
+    /// The example lives beside the matcher, so the two move together, and
+    /// `ErrorPattern` requires it — a pattern added without one does not
+    /// compile.
+    #[test]
+    fn every_pattern_matches_its_example_and_produces_a_fix() {
+        let patterns = builtin_patterns();
+        assert_eq!(
+            patterns.len(),
+            pattern_names().len(),
+            "the published list and the registry are different lengths"
+        );
+
+        for p in &patterns {
+            assert!(
+                (p.matches)(p.example),
+                "`{}` does not match its own example message {:?}",
+                p.name,
+                p.example
+            );
+            let diag = error_with_span(p.example, 1, 1);
+            let fixes = (p.generate)(&diag);
+            assert!(
+                !fixes.is_empty(),
+                "`{}` matches {:?} and generates no fix — it is published as a \
+                 repair an agent can ask for and never receive",
+                p.name,
+                p.example
+            );
+            // A candidate with no edits is advice, not a repair — legitimate
+            // for the contract and capability patterns, where the fix is a
+            // decision rather than a text change. What it must not be is
+            // *empty of both*: a candidate with no edits and no description
+            // gives the caller nothing at all.
+            for f in &fixes {
+                assert!(
+                    !f.edits.is_empty() || !f.description.trim().is_empty(),
+                    "`{}` produced fix `{}` with neither edits nor a description",
+                    p.name,
+                    f.id
+                );
+                assert!(
+                    (0.0..=1.0).contains(&f.confidence),
+                    "`{}` fix `{}` has confidence {} outside 0..=1",
+                    p.name,
+                    f.id,
+                    f.confidence
+                );
+            }
+        }
+
+        // And the whole path an agent actually uses: `heal` must return at
+        // least one fix for each example, not merely the pattern in isolation.
+        for p in &patterns {
+            let healed = heal_one(&error_with_span(p.example, 1, 1));
+            assert!(
+                !healed.fixes.is_empty(),
+                "`heal` returns nothing for `{}`'s example {:?}",
+                p.name,
+                p.example
+            );
+        }
+    }
+
+    /// The numeric cast points the way the checker means.
+    ///
+    /// `type mismatch: I32 vs Usize` is the message for a function declared
+    /// `-> i32` whose body produces a `usize` — the declared type comes first.
+    /// Reading it the other way suggests `as usize`, which is confidently
+    /// backwards, and a wrong mechanical fix is worse than none: an agent
+    /// applies it and gets a second error somewhere else.
+    #[test]
+    fn a_numeric_cast_converts_toward_the_declared_type() {
+        let diag = error_with_span("function `m`: return type mismatch: type mismatch: I32 vs Usize", 1, 30);
+        let healed = heal_one(&diag);
+        let cast = healed
+            .fixes
+            .iter()
+            .find(|f| f.id == "insert-numeric-cast")
+            .expect("a numeric mismatch offers a cast");
+        assert_eq!(cast.edits[0].new_text, " as i32", "{}", cast.description);
+        assert!(cast.description.contains("`usize`"), "{}", cast.description);
+
+        // Same type on both sides is not a mismatch to cast away, and a
+        // non-numeric pair has no mechanical conversion.
+        assert!(numeric_mismatch("type mismatch: I32 vs I32").is_none());
+        assert!(numeric_mismatch("type mismatch: I32 vs Str").is_none());
+        // But it still produces *something* — that was the bug.
+        let healed = heal_one(&error_with_span("type mismatch: I32 vs Str", 1, 1));
+        assert!(!healed.fixes.is_empty(), "a non-numeric mismatch must still be answered");
+    }
+
     #[test]
     fn heals_missing_semicolon() {
         let diag = error_with_span("expected `;` after expression", 5, 10);
@@ -1065,6 +1329,30 @@ mod tests {
     #[test]
     fn extract_quoted_single_quote() {
         assert_eq!(extract_quoted("expected ';' after"), Some(";".to_string()));
+    }
+
+    /// The suggested annotation must name an *effect*. It named the function:
+    /// `extract_quoted` took the first backticked word, which in this message
+    /// is the function, so the fix read "Add `/ P.leak` effect annotation".
+    #[test]
+    fn the_effect_fix_suggests_the_effects_not_the_function() {
+        let diag = Diagnostic::error(
+            "function `P.leak` performs undeclared effects: [FS, Net] — \
+             add them to its `/ effect` annotation",
+        );
+        let graphs = heal_to_graphs(&[diag]);
+        let fixes = &graphs[0].fixes;
+        assert!(!fixes.is_empty(), "expected an effect-annotation fix");
+        assert!(
+            fixes[0].description.contains("/ fs, net"),
+            "want the effect list, got {:?}",
+            fixes[0].description
+        );
+        assert!(
+            !fixes[0].description.contains("P.leak"),
+            "the function name is not an effect: {:?}",
+            fixes[0].description
+        );
     }
 
     #[test]

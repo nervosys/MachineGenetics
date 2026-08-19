@@ -10,7 +10,8 @@ mod measure {
     use crate::{abl, abl_bridge, builder, lexer, parser};
     use std::time::Instant;
 
-    /// Shape-consistent net spec JSON with `n` Linear(16,16) layers.
+    /// Shape-consistent net spec JSON with `n` **identical** Linear(16,16)
+    /// layers — the folding case.
     fn net_spec_json(n: usize) -> String {
         let layers: Vec<String> = (0..n)
             .map(|i| format!(r#"["fc{i}","Linear",[16,16]]"#))
@@ -18,8 +19,29 @@ mod measure {
         format!(r#"{{"net":"N","layers":[{}]}}"#, layers.join(","))
     }
 
+    /// `n` layers with **distinct** shapes — the non-folding case.
+    ///
+    /// Both exist because the artifact scales completely differently, and
+    /// measuring only one is how this harness came to disagree with the table
+    /// it produced. `net_spec_json` builds identical layers, which v3's REPEAT
+    /// fold collapses to a constant 67 bytes at every depth. The table in
+    /// `MEASUREMENTS.md` (78 / 234 / 858 / 3354 B, ~26 B/layer) was measured
+    /// before that fold existed and is still exactly right — for layers that
+    /// do not repeat. Anyone re-running the old harness today would find four
+    /// identical numbers and conclude the document was wrong.
+    fn distinct_spec_json(n: usize) -> String {
+        let layers: Vec<String> = (0..n)
+            .map(|i| format!(r#"["d{i}","Linear",[{},{}]]"#, 16 + i, 17 + i))
+            .collect();
+        format!(r#"{{"net":"D","layers":[{}]}}"#, layers.join(","))
+    }
+
     fn net_spec(n: usize) -> builder::NetSpec {
         serde_json::from_str(&net_spec_json(n)).unwrap()
+    }
+
+    fn distinct_spec(n: usize) -> builder::NetSpec {
+        serde_json::from_str(&distinct_spec_json(n)).unwrap()
     }
 
     // `#[ignore]` so the normal `cargo test` stays fast (the recursive-closure
@@ -49,20 +71,25 @@ mod measure {
         );
 
         // 2. ABL build latency + artifact-size scaling (spec → source → IR bytes).
-        println!("[build]  net layers → build latency / artifact bytes:");
-        for &n in &[2usize, 8, 32, 128] {
-            let spec = net_spec(n);
-            let iters = 1500;
-            let mut blen = 0usize;
-            let t = Instant::now();
-            for _ in 0..iters {
-                let s = builder::to_mg_source(&spec);
-                let m = parser::parse(&lexer::lex(&s)).unwrap();
-                let (blob, _) = abl::encode_module(&m);
-                blen = blob.len();
+        //
+        // Both cases, because the fold makes them different questions.
+        for (label, distinct) in [("identical layers (REPEAT-folded)", false),
+                                  ("distinct layers (no fold)", true)] {
+            println!("[build]  {label} → build latency / artifact bytes:");
+            for &n in &[2usize, 8, 32, 128] {
+                let spec = if distinct { distinct_spec(n) } else { net_spec(n) };
+                let iters = 1500;
+                let mut blen = 0usize;
+                let t = Instant::now();
+                for _ in 0..iters {
+                    let s = builder::to_mg_source(&spec);
+                    let m = parser::parse(&lexer::lex(&s)).unwrap();
+                    let (blob, _) = abl::encode_module(&m);
+                    blen = blob.len();
+                }
+                let per_us = t.elapsed().as_secs_f64() / iters as f64 * 1e6;
+                println!("           {n:>4} layers: {per_us:>7.1}µs   {blen:>5}B  ({:.1} B/layer)", blen as f64 / n.max(1) as f64);
             }
-            let per_us = t.elapsed().as_secs_f64() / iters as f64 * 1e6;
-            println!("           {n:>4} layers: {per_us:>7.1}µs   {blen:>5}B  ({:.1} B/layer)", blen as f64 / n.max(1) as f64);
         }
 
         // 3. kb Datalog evaluation.

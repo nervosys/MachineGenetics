@@ -157,26 +157,57 @@ its parent module scope. Name lookup walks up the scope chain.
 
 ### Use Resolution
 
-```MAGE
-u std.collections.{HashMap, HashSet}
-```
+> **There is none, and as of 2026-08-19 that is the documented design** —
+> `MAGE_SPEC.md` §2.3, "One flat namespace". All four steps below were listed
+> here while `resolve_use`'s body was a comment saying it would one day do
+> them, and the six import styles describe resolution that has never happened.
+>
+> `resolve_use` now emits an **error**: a `use` cannot bring anything into
+> scope, so it no longer typechecks. It was a warning while the decision was
+> open. The example that stood here — `u std.collections.{HashMap, HashSet}` —
+> is therefore no longer a valid MAGE block and is quoted inline rather than
+> shown as code.
 
-The resolver:
-1. Parses the use path (`std` → `collections` → `{HashMap, HashSet}`)
-2. Walks the module tree to find each target
-3. Inserts the imported names into the current scope
-4. Records the `SymbolId` mapping
+What a module system here *would* do, and does not:
+1. Parse the use path (`std` → `collections` → `{HashMap, HashSet}`) — this
+   part is real
+2. Walk the module tree to find each target
+3. Insert the imported names into the current scope
+4. Record the `SymbolId` mapping
 
-### Import Styles
+Steps 2–4 do not exist, so an import grants nothing: `u std.io.read_to_string`
+followed by `read_to_string("x")` fails with `unresolved name`. The error lands
+on the call, never on the import that was supposed to supply it.
 
-| Syntax                                 | Resolution                     |
-| -------------------------------------- | ------------------------------ |
-| `u std.fs`                             | Import module `fs`             |
-| `u std.fs.read_to_string`              | Import single function         |
-| `u std.collections.{HashMap, HashSet}` | Import multiple items          |
-| `u std.collections.*`                  | Glob import (all public items) |
-| `u crate.utils.helper`                 | Crate-relative import          |
-| `u super.sibling`                      | Parent-relative import         |
+`use` now emits a **warning** saying so, rather than being accepted in silence.
+
+### The library surface is global
+
+MAGE has no module system, and for an agentic language that is close to the
+right answer rather than a gap to fill: an import costs tokens and buys nothing
+when the library is small and fixed. Everything available is in scope
+everywhere, with no import:
+
+| Surface | What | Where it comes from |
+| --- | --- | --- |
+| Standard vocabulary | `map` `filter` `fold` `join` `split` … (31) | `resolve::VOCABULARY` |
+| Capability namespaces | `io` `fs` `net` `llm` `gpu` `agent` … (20) | `hir::CAPABILITY_NAMESPACES` |
+| Builtin functions | `println` `vec` `panic` `assert` `min` `max` … | `register_builtins` |
+
+A source definition **shadows** any of these — `M net { … }` and
+`f map() -> i32 { … }` are legal, and only a second *source* definition of the
+same name is a duplicate.
+
+The import syntax below parses, and every row of it is currently a no-op:
+
+| Syntax                                 | Parses | Resolves |
+| -------------------------------------- | ------ | -------- |
+| `u std.fs`                             | yes    | no       |
+| `u std.fs.read_to_string`              | yes    | no       |
+| `u std.collections.{HashMap, HashSet}` | yes    | no       |
+| `u std.collections.*`                  | yes    | no       |
+| `u crate.utils.helper`                 | yes    | no       |
+| `u super.sibling`                      | yes    | no       |
 
 ---
 
@@ -233,17 +264,29 @@ pub enum Ty {
 pub type EffectSet = BTreeSet<Effect>;
 
 pub enum Effect {
-    Io,        // file system, stdio
+    IO,        // file and stream I/O
     Net,       // network access
+    FS,        // filesystem operations
     Async,     // async operations
-    Unsafe,    // unsafe code
-    Db,        // database access
-    Agent,     // agent spawning
-    Log,       // logging / tracing
+    Alloc,     // heap allocation
+    Panic,     // unwinding / structured panics
+    FFI,       // foreign function invocation
     Env,       // environment variables
+    Time,      // clock and timer access
+    Gpu,       // GPU computation
+    Npu,       // neural processing unit
+    Llm,       // language model invocation
+    Evolve,    // evolutionary computation
+    Learn,     // training / gradient descent
+    Rng,       // random number generation
+    Agent,     // agent coordination
+    Proc,      // process / system access
     Custom(String),  // user-defined effects
 }
 ```
+
+The seventeen built-in kinds are `MAGE_SPEC.md` §11.2; see
+[Effects & Resolution](05-effects-resolution.md).
 
 ### HIR Expression
 

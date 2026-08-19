@@ -32,6 +32,10 @@ on:
       - "ARCHITECTURE.md"
       - "RIBOSOME.md"
       - "GERMLINE.md"
+      # The audit job checks video/'s npm lockfile, so a change there should
+      # trigger it. Nothing did before, and "0 npm" in HANDOFF.md was a figure
+      # with no mechanism behind it.
+      - "video/package-lock.json"
   pull_request:
     paths:
       - "prototype/**"
@@ -47,6 +51,10 @@ on:
       - "ARCHITECTURE.md"
       - "RIBOSOME.md"
       - "GERMLINE.md"
+      # The audit job checks video/'s npm lockfile, so a change there should
+      # trigger it. Nothing did before, and "0 npm" in HANDOFF.md was a figure
+      # with no mechanism behind it.
+      - "video/package-lock.json"
 
 jobs:
   rmi:
@@ -59,6 +67,25 @@ jobs:
         run: cargo build --release --manifest-path RecursiveMachineIntelligence/Cargo.toml --no-default-features --features cpu
       - name: Test
         run: cargo test --manifest-path RecursiveMachineIntelligence/Cargo.toml --no-default-features --features cpu
+      # `docs/api.md` is 1,463 lines of signatures and nothing resolved any of
+      # them: it documented an FFI API whose types exist in no source file, and
+      # every "Module:" line named a crate this one has not been called for some
+      # time. Name-level only — it cannot see a wrong signature on a function
+      # that exists — with a baseline that can only shrink.
+      - name: Documented API items exist
+        run: bash scripts/check-rmi-api-doc.sh
+      # Every check above asks a question about code that compiles. Nothing
+      # asked whether it compiles at all — and `compute/cuda_full.rs` is 1,812
+      # lines with 16 `unsafe` blocks and 6 tests that no `mod` declaration
+      # reaches, so it never has. Its tests cannot run on any hardware and its
+      # `unsafe` was covered by SECURITY_AUDIT.md's "all reviewed". The first
+      # run also found `compute/wasm.rs`, whose backend `discoverability.rs`
+      # advertises to callers — that one compiled clean once a `mod` was added
+      # and is fixed. `cuda_full.rs` stays baselined: wiring it up needs a CUDA
+      # toolkit, so it is the vendored crate's owner's call. The point is that
+      # a new one fails.
+      - name: No source file is unreachable by `mod`
+        run: bash scripts/check-orphan-sources.sh
 
   prototype:
     name: prototype — build + test
@@ -100,6 +127,46 @@ jobs:
       # recorded answer at all.
       - name: Example programs match their recorded state
         run: bash scripts/check-examples.sh
+      # The examples check covers the twelve in `examples/`. Nothing covered
+      # the other 89 `.mg` files in the repo, and 36 of them do not typecheck —
+      # `stdlib/` was 4,402 lines of Rust behind a MAGE extension, read by
+      # nothing and checked by nothing. A file with no consumer has no error
+      # message; this was the consumer. The sketch list could only shrink, and
+      # on 2026-08-19 it reached zero: item 1 was decided as *no module
+      # system*, so an import-based standard library had nothing to be, and
+      # `stdlib/` was deleted. Every `.mg` file in the repository now
+      # typechecks.
+      - name: Every .mg source typechecks or is a listed sketch
+        run: bash scripts/check-mg-sources.sh
+      # 258 MAGE-tagged code blocks live in the markdown, and 177 of them did
+      # not parse when anyone first checked — Rust `::` paths, Rust signatures,
+      # brace imports — in the guides an agent reads to learn the language, and
+      # in `training/prompts/`, whose few-shot blocks teach a model what MAGE
+      # looks like. They are all fixed; the baseline is empty, so this now
+      # fails on any new one.
+      - name: Every documentation block typechecks
+        run: bash scripts/check-doc-blocks.sh
+      # And `--check` is only one of the two oracles. Running the blocks that
+      # define an entry point found that thirteen of the seventeen registered
+      # builtins — `assert` among them — had no arm in the evaluator at all.
+      - name: Every documentation entry point runs
+        run: bash scripts/check-doc-evals.sh
+      # The 31 words of §8 are the whole standard library. Three lists have to
+      # agree for one to work — the resolver's, the checker's and the
+      # evaluator's — and `scan` and `group` were missing from the middle one,
+      # so `scan(1, 2, 3, 4, 5)` typechecked clean for as long as they existed.
+      - name: Every vocabulary word checks, runs, and returns what §8 publishes
+        run: bash scripts/check-vocabulary.sh
+      # The ontology published six "CI floors" and this workflow enforced none
+      # of them — the section's own doc comment said they were read from this
+      # file. Three are measurable and now are.
+      #
+      # This step also runs `token-bench`, which nothing ran: the published
+      # token-ratio ceiling was being enforced by reading a *committed*
+      # TOKEN_REPORT.md that had gone stale in two categories. The script now
+      # measures fresh and fails if the committed report differs.
+      - name: Published reliability floors hold
+        run: bash scripts/check-ci-floors.sh
       - name: Compiler version matches Ribosome's registry entry
         run: |
           binv=$(cargo run --quiet --release --manifest-path prototype/Cargo.toml \
@@ -239,6 +306,16 @@ jobs:
               && cargo audit ) || exit 1
             echo "::endgroup::"
           done
+      # `video/` has a tracked package-lock.json and nothing audited it.
+      # `HANDOFF.md` said "0 npm" while `npm audit` reported one high-severity
+      # advisory (nanoid < 3.3.18, transitive via postcss) — a figure with no
+      # mechanism behind it, true only until the next advisory landed.
+      #
+      # `--audit-level=high` for the same reason `-D warnings` is off above:
+      # low/moderate findings in a dev-only video pipeline should be read, not
+      # gate the build.
+      - name: npm audit (video pipeline)
+        run: cd video && npm audit --audit-level=high
 
   cuda:
     name: prototype — cuda feature (compile check)
@@ -250,7 +327,7 @@ jobs:
       # backend compiles with no CUDA toolkit and no GPU present — a runner
       # without a driver can still prove the code builds. It cannot prove the
       # kernels are *correct*: that needs `cargo test --features cuda` on a
-      # CUDA box (dual 3090 Ti locally, 1,071 tests green).
+      # CUDA box (dual 3090 Ti locally, 1,229 tests green).
       - name: Compile-check the CUDA backend
         run: cargo check --manifest-path prototype/Cargo.toml --features cuda --all-targets
 

@@ -1,82 +1,88 @@
 # Step 3: Syntax in 5 Minutes
 
-MAGE uses token-minimal syntax — every construct is as short as
-possible so AI agents can read and write code faster. Here's the full
-tour.
+MAGE uses token-minimal syntax — every construct is as short as possible, so an
+agent can read and write more code per token. This is the agent-mode tour; the
+human-mode spellings (`fn`, `val`, `struct`, `match`) are in
+[the syntax quick reference](../agent-guide/syntax-quick-ref.md).
+
+**Every block below was verified with `mage-parse --check`.** The previous
+version of this page was not: it taught `I Area ~ Shape`, `Point @{ x, y }`,
+`@ item ~ items`, `[1, 2, 3]~`, `{1, 2, 3}`, `+v PI`, `c f`, `+M math` with
+imports, and — worst — "the compiler tracks effects automatically, you don't
+need to annotate them". The opposite is true, and it is the one rule the
+language is built around.
 
 ---
 
 ## Variables
 
 ```MAGE
-v x = 42          // immutable binding (let)
-m y = 0           // mutable binding (let mut)
-y = 10            // reassign mutable
-+v PI = 3.14159   // public constant (pub const)
++f main() -> i32 / io {
+    v x = 42          // immutable binding (`val` in human mode)
+    m y = 0           // mutable binding (`var`)
+    y = 10            // reassign
+    p"{x} {y}"
+    x + y
+}
 ```
 
 ## Functions
 
 ```MAGE
-f add(a: i32, b: i32) -> i32 {       // private function
+f add(a: i32, b: i32) -> i32 {          // private function
     a + b
 }
 
-+f multiply(a: f64, b: f64) -> f64 { // public function
++f multiply(a: f64, b: f64) -> f64 {    // public function
     a * b
 }
 
-af fetch(url: &s) -> R[s, Error] / io {  // async function with effect
-    // ...
+// `af` is an async function. `/ net` is the effect it performs — a public
+// function must declare every one.
++af fetch(url: s) -> R[s, s] / net {
+    Ok(net.connect(url))
 }
-
-c f max_size() -> usize { 1024 }     // const function
 ```
 
 ## Types at a Glance
 
 ```MAGE
-// Primitives
-v a: i32 = 42
-v b: f64 = 3.14
-v c: bool = 1b        // true
-v d: char = 'x'
-v e: s = "hello"      // String
-v f: &s = "world"     // &str
++f main() -> i32 {
+    // Primitives
+    v a: i32 = 42
+    v b: f64 = 3.14
+    v c: bool = 1b        // `true` is not a name; `1b` / `0b` are the literals
+    v d: s = "hello"      // the string type — there is one
 
-// Collections
-v nums: [i32]~ = [1, 2, 3]~           // Vec<i32>
-v pair: (i32, s) = (42, "hello")       // tuple
-v map: {s: i32} = {"a": 1, "b": 2}    // HashMap
-v set: {i32} = {1, 2, 3}              // HashSet
+    // Collections
+    v nums: [i32]~ = [1, 2, 3]
+    v pair: (i32, s) = (42, "hello")
+    v lookup: {s: i32} = {"a": 1, "b": 2}
 
-// Smart pointers
-v boxed: ^i32 = ^42                    // Box<i32>
-v shared: $i32 = $42                   // Rc<i32>
-v atomic: @i32 = @42                   // Arc<i32>
+    // Optional and result
+    v maybe: ?i32 = Some(42)
+    v result: R[i32, s] = Ok(42)
 
-// Optional & Result
-v maybe: ?i32 = 42                     // Option<i32> = Some(42)
-v result: R[i32, s] = 42              // Result<i32, String> = Ok(42)
+    a + (len(nums) as i32)
+}
 ```
 
 ### Type Cheat Sheet
 
-| MAGE       | Rust             | Description        |
-| ----------- | ---------------- | ------------------ |
-| `s`         | `String`         | Owned string       |
-| `&s`        | `&str`           | String slice       |
-| `[T]~`      | `Vec<T>`         | Growable array     |
-| `?T`        | `Option<T>`      | Optional value     |
-| `R[T,E]`    | `Result<T,E>`    | Result type        |
-| `^T`        | `Box<T>`         | Heap pointer       |
-| `$T`        | `Rc<T>`          | Reference counted  |
-| `@T`        | `Arc<T>`         | Atomic ref counted |
-| `{K:V}`     | `HashMap<K,V>`   | Hash map           |
-| `{K}`       | `HashSet<K>`     | Hash set           |
-| `&T`        | `&T`             | Shared reference   |
-| `&!T`       | `&mut T`         | Mutable reference  |
-| `1b` / `0b` | `true` / `false` | Booleans           |
+| MAGE | Rust | Notes |
+|---|---|---|
+| `s` | `String` / `&str` | One string type. `&s` is a *reference to* it, and a `s` parameter will not take one. |
+| `[T]~` | `Vec<T>` | The literal is `[1, 2, 3]` — no trailing `~`. |
+| `?T` | `Option<T>` | Built with `Some(x)` / `None`. |
+| `R[T,E]` | `Result<T,E>` | Built with `Ok(v)` / `Err(e)`; `T or E` is the same type. |
+| `^T` | `Box<T>` | |
+| `$T` | `Rc<T>` | |
+| `@T` | `Arc<T>` | |
+| `{K:V}` | `HashMap<K,V>` | Literal: `{"a": 1}`. |
+| `{K}` | `HashSet<K>` | Type only — **there is no set literal**; `{1, 2, 3}` is a parse error. |
+| `&T` | `&T` | |
+| `&!T` | `&mut T` | |
+| `1b` / `0b` | `true` / `false` | The words `true` and `false` are **not** in scope. |
 
 ## Structs, Enums, Traits
 
@@ -95,138 +101,174 @@ v result: R[i32, s] = 42              // Result<i32, String> = Ok(42)
 
 // Trait
 +T Area {
-    f area(&self) -> f64
+    f area(self) -> f64;
 }
 
-// Implement trait for type
-I Area ~ Shape {
-    f area(&self) -> f64 {
-        ? self {
-            Shape.Circle(r) => 3.14159 * r * r,
-            Shape.Rect(w, h) => w * h,
+// Implement a trait for a type — `for`, not `~`.
+I Area for Shape {
+    +f area(self) -> f64 {
+        ?= self {
+            Circle(r) => 3.14159 * r * r,
+            Rect(w, h) => w * h,
         }
     }
 }
 
-// Inherent impl
-I ~ Point {
-    +f new(x: f64, y: f64) -> Self {
-        Point @{ x, y }
-    }
+// Inherent methods — `I Type`, or `xd Type` (`extend`).
+I Point {
+    +f norm2(self) -> f64 { self.x * self.x + self.y * self.y }
+}
+
++f main() -> f64 {
+    v p = @Point { x: 3.0, y: 4.0 }   // struct literal: `@Name { … }`
+    p.norm2() + Rect(2.0, 3.0).area()
 }
 ```
 
-| Token            | Rust Equivalent                |
-| ---------------- | ------------------------------ |
-| `+S`             | `pub struct`                   |
-| `+E`             | `pub enum`                     |
-| `+T`             | `pub trait`                    |
-| `I Trait ~ Type` | `impl Trait for Type`          |
-| `I ~ Type`       | `impl Type`                    |
-| `Foo @{ ... }`   | `Foo { ... }` (struct literal) |
-| `? self { ... }` | `match self { ... }`           |
+| Token | Rust Equivalent | |
+|---|---|---|
+| `+S` `+E` `+T` | `pub struct` / `pub enum` / `pub trait` | |
+| `I Trait for Type` | `impl Trait for Type` | `I Trait ~ Type` does **not** parse. |
+| `I Type` | `impl Type` | `I ~ Type` does **not** parse. |
+| `@Name { … }` | `Name { … }` | Struct literal. `Name @{ … }` does **not** parse, and bare `Name { … }` is a *map*. |
+| `?= x { … }` | `match x { … }` | |
 
 ## Control Flow
 
 ```MAGE
-// If / else
-? x > 0 {
-    p"positive"
-} : ? x == 0 {
-    p"zero"
-} : {
-    p"negative"
-}
++f describe(x: i32, colour: s) -> s / io {
+    // If / else
+    ? x > 0 {
+        p"positive"
+    } : ? x == 0 {
+        p"zero"
+    } : {
+        p"negative"
+    }
 
-// Match
-? color {
-    "red" => p"hot",
-    "blue" => p"cool",
-    _ => p"other",
-}
+    // Match
+    v mood = ?= colour {
+        "red" => "hot",
+        "blue" => "cool",
+        _ => "other",
+    }
 
-// For loop
-@ item ~ items {
-    p"{item}"
-}
+    // For loop — `in`, not `~` or `:`
+    @ item in [1, 2, 3] {
+        p"{item}"
+    }
 
-// While loop
-@ m i = 0; i < 10; i += 1 {
-    p"{i}"
-}
+    // While
+    m i = 0
+    @w i < 3 {
+        i += 1
+    }
 
-// Loop (infinite)
-@ {
-    ? done { break }
+    // Infinite loop, and `!` is break
+    @@ {
+        ? i > 0 { ! }
+    }
+
+    mood
 }
 ```
 
-| Token           | Rust Equivalent          |
-| --------------- | ------------------------ |
-| `?`             | `if` or `match`          |
-| `:`             | `else`                   |
-| `? x { arms }`  | `match x { arms }`       |
-| `@ item ~ iter` | `for item in iter`       |
-| `@`             | `loop` / `while` / `for` |
+| Token | Rust Equivalent | |
+|---|---|---|
+| `?` … `:` | `if` … `else` | |
+| `?= x { arms }` | `match x { arms }` | |
+| `@ item in iter` | `for item in iter` | The separator is `in`. `~` and `:` do not parse. |
+| `@w cond` | `while cond` | |
+| `@@` | `loop` | |
+| `!` | `break` | |
 
 ## Modules and Imports
 
 ```MAGE
-// Module declaration
-+M math {
-    +f sqrt(x: f64) -> f64 { /* ... */ }
+// There is no module system and nothing to import: every declaration in the
+// file shares one namespace, and the standard vocabulary and capability
+// namespaces are in scope everywhere.
+//
+// `u std.io` parses and brings in nothing. The checker warns; do not write it.
+
+f sqrt_approx(x: f64) -> f64 { x / 2.0 }
+
++f main() -> f64 {
+    sqrt_approx(4.0)
 }
-
-// Import
-u std.io.{Read, Write}     // use std::io::{Read, Write}
-+u std.fmt.Display          // pub use std::fmt::Display
-
-// Path separator is . not ::
-v result = math.sqrt(4.0)
 ```
+
+There is no module system. `+M name { … }` parses as an item and resolves
+nothing: a function declared inside is not reachable by any path, so the block
+buys nothing. `u std.io.{Read, Write}` parses and imports nothing — the checker
+warns. `::` is a parse error everywhere.
 
 ## Error Handling
 
 ```MAGE
-// The ? operator works the same as Rust
-f read_file(path: &s) -> R[s, io.Error] / io {
-    v content = fs.read_to_string(path)?
-    content
+// `?` propagates an error, as in Rust.
+f read_file(path: s) -> R[s, s] / fs {
+    v content = fs.read_to_string(path)
+    guard len(content) > 0 else { ret Err("empty") }
+    Ok(content)
 }
 
-// No return keyword needed — last expression is the return value
-// Use `ret` for early return:
-f find(xs: &[i32]~, target: i32) -> ?usize {
-    @ i, x ~ xs.iter().enumerate() {
-        ? *x == target { ret i }
+// The last expression is the value; `ret` is an early return.
+f find_at(xs: [i32]~, target: i32) -> ?i32 {
+    @ x in xs {
+        ? x == target { ret Some(x) }
     }
-    ()  // None
+    None
 }
 ```
 
 ## Effects
 
-Effects declare what side-effects a function performs:
+**The compiler infers what a function performs and requires a public function
+to declare it.** That is the capability gate, and it is checked before anything
+runs — `inferred ⊆ declared`, so over-declaring passes and under-declaring
+fails. There is no hierarchy: `/ net` does not cover an inferred `io`, and
+`/ agent` does not cover `async`.
 
 ```MAGE
-f pure_add(a: i32, b: i32) -> i32 { a + b }        // no effects
++S Config { name: s, port: i32 }
 
-f read_config() -> Config / io { /* ... */ }         // io effect
+// No annotation = pure.
+f pure_add(a: i32, b: i32) -> i32 { a + b }
 
-af fetch(url: &s) -> R[s, Error] / io, net {         // multiple effects
-    // ...
+// Reading a file is `fs`; printing is `io`. Neither implies the other, and a
+// public function must declare **every** effect it performs — the checker
+// infers what the body reaches and requires the annotation to cover it.
++f load(path: s) -> Config / fs, io {
+    v raw = fs.read_to_string(path)
+    p"loaded {len(raw)} bytes"
+    @Config { name: path, port: 8080 }
+}
+
++af fetch(url: s) -> R[s, s] / net {
+    Ok(net.connect(url))
 }
 ```
 
-The compiler tracks effects automatically — you don't need to annotate
-them unless you want to document intent.
+The 17 built-in kinds:
+
+```
+io  fs  net  env  time  rng  proc  alloc  panic  ffi
+async  agent  llm  gpu  npu  evolve  learn
+```
+
+Declare your own with `fx Name { … }` (`effect` in human mode), and discharge
+one for a block with `handle { … } with Name { op(x) => value }`.
 
 ## Generics
 
 ```MAGE
-// Generics use [] not <>
-f first[T](xs: &[T]~) -> ?&T {
-    xs.first()
+// Generic parameters go in `[]`, not `<>`.
+f first_or[T](xs: [T]~, fallback: T) -> T {
+    ?= first(xs) {
+        Some(x) => x,
+        None => fallback,
+    }
 }
 
 +S Pair[A, B] {
@@ -234,46 +276,45 @@ f first[T](xs: &[T]~) -> ?&T {
     second: B,
 }
 
-// Where clauses
-f print_all[T](xs: &[T]~) ~> T: Display {
-    @ x ~ xs {
-        p"{x}"
-    }
+// `~>` is `where`.
+f count_all[T](xs: [T]~) -> i32 ~> T: Display {
+    len(xs) as i32
 }
 ```
 
-| Token | Rust Equivalent       |
-| ----- | --------------------- |
-| `[T]` | `<T>` (generic param) |
-| `~>`  | `where`               |
+| Token | Rust Equivalent |
+|---|---|
+| `[T]` | `<T>` (generic parameter) |
+| `~>` | `where` |
 
 ## Attributes
 
 ```MAGE
-@d(Debug, Clone)           // #[derive(Debug, Clone)]
+@d(Debug, Clone)            // #[derive(Debug, Clone)]
 +S Config {
     name: s,
-    port: u16,
+    port: i32,
 }
 
-@test                       // #[test]
-f test_add() {
-    assert(add(2, 3) == 5)
+f add(a: i32, b: i32) -> i32 { a + b }
+
+// A test is a function whose value the runner checks. There is no `assert!`.
+@test
+f test_add() -> bool {
+    add(2, 3) == 5
 }
 
-@i                          // #[inline]
+@i                          // inline hint
 f fast_op(x: i32) -> i32 { x * 2 }
-
-@cfg(target_os = "linux")   // #[cfg(...)]
-f linux_only() { /* ... */ }
 ```
+
+`@d(…)`, `@test`, `@i` and `@cfg(…)` are the attribute forms. Rust's `#[…]`
+does not parse, and there are no macros: `assert!`, `println!` and `vec!` are
+parse errors that name themselves.
 
 ---
 
-**That's all the syntax you need to start writing MAGE.**
-
-The compiler handles safety rules (ownership, borrowing, lifetimes)
-through the SKB — you never write lifetime annotations or borrow
-markers.
+**That is the syntax.** Two things it does not have that a Rust reader will
+reach for: macros, and imports.
 
 **[Next: Build, Run, Test →](04-build-run-test.md)**

@@ -50,18 +50,11 @@ impl Config {
 
 **MAGE:**
 ```MAGE
-u serde.{Serialize, Deserialize}
++S Config { host: str, port: i32, workers: i32 }
 
-@d(Debug, Clone, Serialize, Deserialize)
-+S Config {
-    +host: s,
-    +port: u16,
-    +workers: usize,
-}
-
-I ~ Config {
-    +f default_config() -> Self {
-        Config @{ host: "localhost".to_string(), port: 8080, workers: 4 }
+I Config {
+    +f default_config() -> Config {
+        @Config { host: "localhost", port: 8080, workers: 4 }
     }
 }
 ```
@@ -85,16 +78,18 @@ pub async fn read_config(path: &str) -> Result<String, io::Error> {
 
 **MAGE:**
 ```MAGE
-u std.fs
-u std.io
-
-+af read_config(path: &s) -> R[s, io.Error] / io {
-    v content = tokio.fs.read_to_string(path).await?;
-    R.Ok(content)
++af read_config(path: s) -> R[s, s] / fs {
+    v content = fs.read_to_string(path)
+    guard len(content) > 0 else { ret Err("empty config") }
+    Ok(content)
 }
 ```
 
-**Key changes:** `pub async fn` → `+af`, `Result<String, _>` → `R[s, _]`, `::` → `.`, added `/ io` effect
+**Key changes:** `pub async fn` → `+af` (the sigil carries the `async`);
+`Result<String, io::Error>` → `R[s, s]`, since there is no `io::Error` and no
+`From` to convert into one; both `use` lines deleted, because nothing is
+imported and `fs` is a capability namespace already in scope; and the effect is
+**`fs`, not `io`** — the annotation names the capability reached.
 
 ---
 
@@ -102,11 +97,9 @@ u std.io
 
 **MAGE:**
 ```MAGE
-+f serialize_all[T](items: &[[T]~]) -> R[s, serde_json.Error]
-    ~> T: serde.Serialize
-{
-    v json = serde_json.to_string(items)?;
-    R.Ok(json)
++f join_all(items: [str]~) -> R[str, str] {
+    guard len(items) > 0 else { ret Err("nothing to join") }
+    Ok(join(items, ","))
 }
 ```
 
@@ -142,11 +135,11 @@ pub trait Summary {
 **MAGE:**
 ```MAGE
 +T Summary {
-    f title(&self) -> &s;
-    f author(&self) -> &s;
+    f title(self) -> str;
+    f author(self) -> str;
 
-    f summarize(&self) -> s {
-        f"{} by {}", self.title(), self.author()
+    f summarize(self) -> str {
+        join([self.title(), self.author()], " by ")
     }
 }
 ```

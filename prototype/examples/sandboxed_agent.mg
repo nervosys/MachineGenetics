@@ -6,7 +6,9 @@
 // 3. Execute agent code within the sandbox
 // 4. Audit all actions the agent took
 
-use mage.sandbox.{SandboxManager, CapabilityToken, ResourceLimits};
+// No import: MAGE has one flat namespace (MAGE_SPEC.md §2.3). The standard
+// vocabulary and the capability namespaces are in scope everywhere. This file
+// carried `use mage.sandbox.{…}`, which parsed and brought nothing in.
 
 // ── Configuration ──────────────────────────────────────────────────
 

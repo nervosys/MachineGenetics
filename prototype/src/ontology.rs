@@ -40,12 +40,34 @@ const SIGILS: &[(&str, &str, &str)] = &[
     ("E", "Enum", "enum declaration"),
     ("T", "Trait", "trait declaration"),
     ("I", "Impl", "impl block"),
+    // Nine sigils below this line parse and were published nowhere. An agent
+    // discovers the language from this file, and `D`, `xd`, `fx` and `sp` are
+    // whole features — records, inherent methods, effect declarations and
+    // contracts — that it had no way to find. `agent-guide/syntax-quick-ref.md`
+    // taught all nine; nothing compared the guide with the ontology, so the
+    // two disagreed about what the language contains.
+    // `+` is the `pub` prefix and composes with every item sigil. Only `+f`
+    // was published, so an agent could discover public *functions* and not
+    // public types, and `+S` looked like a syntax error to anything reading
+    // the JSON. The guide taught all of these.
+    ("+S", "Struct", "pub struct declaration"),
+    ("+E", "Enum", "pub enum declaration"),
+    ("+T", "Trait", "pub trait declaration"),
+    ("+D", "Data", "pub data record or sum type"),
+    ("D", "Data", "data record or sum type"),
+    ("xd", "Extend", "extend Type — inherent methods"),
+    ("fx", "Effect", "effect declaration"),
+    ("sp", "Spec", "spec block — contracts on a function"),
+    ("sw", "Swarm", "swarm declaration"),
+    ("af", "Function", "async fn — note `async fn` is not the spelling"),
+    ("gd", "Guard", "guard cond else { … } — the else must diverge"),
+    ("df", "Defer", "defer expr — run at scope exit"),
+    ("yl", "Yield", "yield expression"),
     ("M", "Mod", "module declaration"),
     ("u", "Use", "use import"),
     ("Y", "TypeAlias", "type alias"),
     ("?", "If/Option/Try", "if expression, or Option type prefix, or try operator"),
     ("?=", "Match", "match expression"),
-    ("?:", "If", "human-mode if (sugar for ?)"),
     ("@", "For/Attr/Arc", "for loop, attribute, struct literal, or Arc type"),
     ("@@", "Loop", "infinite loop"),
     ("@w", "While", "while loop"),
@@ -61,7 +83,12 @@ const SIGILS: &[(&str, &str, &str)] = &[
     ("0b", "Bool", "false"),
     ("_", "SelfVal", "self value"),
     ("_T", "SelfType", "Self type"),
-    ("^", "Return", "return expression"),
+    // `ret`, not `^`. This entry said `^` and it was wrong: `MAGE_SPEC.md`
+    // names `ret` as the Return sigil in both of its sigil tables, and
+    // mentions `^` exactly once — as bitwise XOR. `^` is also the `^T` Box
+    // type prefix, so it was double-booked before anyone proposed a third
+    // meaning. Nothing but this line ever claimed `^` returns.
+    ("ret", "Return", "return expression"),
     ("!", "Break/Not", "break, or logical not, or assert"),
     (">>", "Continue", "continue"),
     ("??", "Todo", "todo!()"),
@@ -73,6 +100,16 @@ const SIGILS: &[(&str, &str, &str)] = &[
 /// lexer uses), which `keywords_section` enumerates in full so the ontology is
 /// complete and can never drift. This map only adds prose where it helps; any
 /// keyword without an entry still appears, with a generated summary.
+///
+/// The middle column is **not** published. It used to overwrite the emitted
+/// `introduces` field, which made that field mean two different things: the
+/// real token kind for the 83 keywords with no entry here, and a hand-written
+/// name for the 19 with one — `agent` claimed `AgentDef`, `match` claimed
+/// `Match` (it is `QuestionEq`), and `val`/`var` claimed `Let`, a token this
+/// language removed and now rejects on sight. An agent could not tell which
+/// kind of answer it was reading, and could not join the field against
+/// anything. `introduces` is now always the token the spelling produces, and
+/// `keywords_introduce_the_token_they_claim` holds it to that.
 const KEYWORD_DOCS: &[(&str, &str, &str)] = &[
     ("net", "NetDef", "neural network definition; lowers to Agentic Binary Language"),
     ("kb", "KbDef", "symbolic knowledge base; lowers to Agentic Binary Language"),
@@ -120,7 +157,7 @@ const TYPES: &[(&str, &str, &str)] = &[
     ("char", "scalar", "Unicode scalar value"),
     // ── string / unit ──────────────────────────────────────────────
     ("s",    "string", "string slice (Rust `&str`); sigil shorthand"),
-    ("S",    "string", "owned string (Rust `String`); sigil shorthand"),
+    ("String","string", "owned string (Rust `String`). `S` is *not* a spelling of it — `S` is the `struct` keyword."),
     ("()",   "unit",   "unit type; sole value `()`; implicit fn return"),
     // ── reference / pointer sigils ─────────────────────────────────
     ("&T",   "ref",    "shared reference (Rust `&T`)"),
@@ -133,33 +170,47 @@ const TYPES: &[(&str, &str, &str)] = &[
     ("[T; N]",  "array",  "fixed-size array (length N at compile time)"),
     ("[T]~",    "vec",    "Vec<T>; owned dynamic array; sigil shorthand"),
     ("(T1,T2,...)", "tuple", "tuple type; positional fields"),
-    ("Map[K,V]","map",    "HashMap<K, V>; standard map type"),
-    ("Set[T]",  "set",    "HashSet<T>; standard set type"),
+    ("{K: V}",  "map",    "HashMap<K, V>; standard map type. Written with braces, not `Map[K,V]`."),
+    ("{T}",     "set",    "HashSet<T>; standard set type. Written with braces, not `Set[T]`."),
     ("Box[T]",  "smart",  "Box<T>; heap-owned single value"),
     // ── function type ──────────────────────────────────────────────
     ("f(T)->R", "fn",     "function pointer type; (T) -> R signature"),
 ];
 
 /// AST top-level item kinds an agent should know it can find in a module.
+/// Top-level item families, named exactly as `ast::ItemKind` names them.
+///
+/// The published names used to be a parallel vocabulary — `Mod` for `Module`,
+/// `EffectDef` for `Effect`, `SpecBlock` for `Spec` — which made the list
+/// impossible to check against the AST without a mapping that could itself
+/// rot. Worse, **`Data` and `Extend` were missing entirely**: an agent
+/// enumerating item kinds from the ontology would not learn that `data
+/// Point(…)` (records and sums) or `extend Type { … }` (methods) are item
+/// kinds at all, and those are the two the human-mode guides lead with.
+///
+/// The test below compares this table against `ItemKind`'s variants by
+/// scraping `ast.rs`, in both directions.
 const AST_KINDS: &[(&str, &str)] = &[
     ("Function", "Function definition (incl. async / unsafe variants)"),
-    ("Struct", "Struct definition"),
-    ("Enum", "Enum definition"),
+    ("Struct", "Struct definition (`struct` / `S`)"),
+    ("Enum", "Enum definition (`enum` / `E`)"),
+    ("Data", "Record or sum: `data Point(x: f64)` / `data Shape = A | B`"),
     ("Trait", "Trait definition"),
-    ("Impl", "impl block"),
-    ("Mod", "Module declaration"),
-    ("Use", "use import"),
+    ("Impl", "impl block: `impl Trait for Type` or `impl Type`"),
+    ("Extend", "Methods on a type: `extend Type { … }` (`xd`)"),
+    ("Module", "Module declaration. Parses; resolves nothing — there is no module system"),
+    ("Use", "use import. Parses and is an ERROR — MAGE has one flat namespace (spec §2.3)"),
     ("Const", "const declaration"),
     ("Static", "static declaration"),
     ("TypeAlias", "type alias"),
-    ("NetDef", "AI: neural network (Agentic Binary Language-routed)"),
-    ("KbDef", "AI: symbolic knowledge base (Agentic Binary Language-routed)"),
-    ("AgentDef", "AI: agent role (Agentic Binary Language-routed)"),
-    ("SwarmDef", "AI: swarm topology (Agentic Binary Language-routed)"),
-    ("TrainDef", "AI: training pipeline (Agentic Binary Language-routed)"),
-    ("EvolveDef", "AI: evolutionary search (Agentic Binary Language-routed)"),
-    ("EffectDef", "Effect declaration"),
-    ("SpecBlock", "Spec / contract block"),
+    ("Net", "AI: neural network (Agentic Binary Language-routed)"),
+    ("Kb", "AI: symbolic knowledge base (Agentic Binary Language-routed)"),
+    ("Agent", "AI: agent role (Agentic Binary Language-routed)"),
+    ("Swarm", "AI: swarm topology (Agentic Binary Language-routed)"),
+    ("Train", "AI: training pipeline (Agentic Binary Language-routed)"),
+    ("Evolve", "AI: evolutionary search (Agentic Binary Language-routed)"),
+    ("Effect", "Effect declaration: `effect Name { … }` (`fx`)"),
+    ("Spec", "Spec / contract block: `spec name { @req … }` (`sp`)"),
 ];
 
 /// The 7 op-family buckets. Aligned with `rmi::lang::OpFamily`.
@@ -195,7 +246,7 @@ const RAP_METHODS: &[(&str, &str, &[&str], &[&str])] = &[
     ("language/tokens", "Tokenize source.",
         &["source"], &["tokens"]),
     ("build/check", "Lex + parse + report diagnostics.",
-        &["source"], &["ok", "diagnostics"]),
+        &["source"], &["ok", "errors"]),
     ("build/heal", "Generate fix candidates for diagnostics.",
         &["source"], &["ok", "diagnostics"]),
     ("build/recover", "Run the 5-stage recovery pipeline; return final source.",
@@ -209,45 +260,45 @@ const RAP_METHODS: &[(&str, &str, &[&str], &[&str])] = &[
     ("pipeline/recover-and-encode", "Recover then encode Agentic Binary Language in one call.",
         &["source"], &["ok", "recover_stage", "recovered_source", "abl_hex", "items"]),
     ("cost/query", "Per-construct cost estimate.",
-        &["construct", "target", "opt"], &["construct", "target", "opt", "estimate"]),
+        &["construct", "target", "opt"], &["ok", "estimate", "error"]),
     ("cost/compare", "Compare costs of two constructs.",
-        &["a", "b", "target", "opt"], &["a", "b", "winner"]),
+        &["a", "b", "target"], &["ok", "comparison", "error"]),
     ("skb/query", "Query structured knowledge base.",
-        &["query"], &["results"]),
+        &["by", "value"], &["ok", "query", "matches"]),
     ("skb/spec", "Lookup spec block for a symbol.",
-        &["fqn"], &["found", "spec"]),
+        &["fqn"], &["ok", "spec", "error"]),
     ("skb/rules", "List SKB rules.",
-        &[], &["rules"]),
+        &["domain"], &["ok", "matches"]),
     ("verify/contracts", "Verify function contracts (req/ens/inv).",
-        &["source"], &["ok", "results"]),
+        &["fqn", "requires", "ensures", "declared_effects", "used_effects"], &["ok", "result"]),
     ("verify/module", "Verify entire module.",
         &["source"], &["ok", "results"]),
     ("format/agent", "Format source in agent-canonical sigil mode.",
-        &["source"], &["ok", "formatted"]),
+        &["source"], &["ok", "formatted", "ast", "error"]),
     ("format/human", "Format source in human-readable keyword mode.",
-        &["source"], &["ok", "formatted"]),
+        &["source"], &["ok", "formatted", "ast", "error"]),
     ("lint/check", "Run lints on source.",
-        &["source"], &["ok", "lints"]),
+        &["source"], &["ok", "verify", "effect_diagnostics", "error"]),
     ("token/report", "Per-construct token cost report for source.",
         &["source"], &["ok", "report"]),
     ("effects/infer", "Infer effects of each function.",
         &["source"], &["ok", "effects"]),
     ("effects/check", "Check declared effects against inferred.",
-        &["source"], &["ok", "results"]),
+        &["source"], &["ok", "diagnostics", "error"]),
     ("elision/apply", "Apply elision rules to compact source.",
-        &["source"], &["ok", "elided"]),
+        &["source"], &["ok", "ast", "error"]),
     ("attribute/expand", "Expand attribute shorthand.",
-        &["source"], &["ok", "expanded"]),
+        &["name"], &["ok", "expanded", "error"]),
     ("attribute/compress", "Compress attributes back to shorthand.",
-        &["source"], &["ok", "compressed"]),
+        &["name"], &["ok", "compressed", "error"]),
     ("capability/check", "List capabilities required by source.",
-        &["source"], &["ok", "capabilities"]),
+        &["source"], &["ok", "results"]),
     ("heal/graph", "Heal-pipeline diagnostic graph.",
-        &["source"], &["ok", "graph"]),
+        &["source"], &["ok", "graphs"]),
     ("sandbox/policy", "Lookup sandbox policy by name.",
-        &["name"], &["ok", "policy"]),
+        &["source", "agent"], &["ok", "agent", "capabilities", "requires_approval", "error"]),
     ("doc/query", "Lookup documentation by FQN.",
-        &["fqn"], &["found", "doc"]),
+        &["fqn"], &["ok", "matches"]),
     ("grammar/list", "List grammar extensions.",
         &[], &["ok", "extensions"]),
     ("manifest/generate", "Generate capability manifest for a module.",
@@ -304,6 +355,18 @@ fn hardware_accelerators_section() -> serde_json::Value {
 /// system from a shell can discover the full flag set in one call.
 ///
 /// Columns: `(flag, purpose, takes_path)`.
+/// Every flag the binary accepts, as published to agents.
+///
+/// It listed 17 of 29. The twelve missing ones included **`--eval`** — the
+/// second of the two oracles, and the only way to *run* a program — plus
+/// `--version`, `--json`, `--fix`, `--manifest`, `--token-report` and the
+/// whole `--build=` / `--describe=` / `--spine=` family. An agent grounding
+/// in the ontology could not learn that MAGE programs can be executed.
+///
+/// The test below now compares this table against the flag literals in
+/// `main.rs` in both directions. It used to assert that eight named flags
+/// were present, under a doc comment claiming it checked every flag the
+/// binary accepts — a fixed list wearing a cross-boundary claim.
 const CLI_FLAGS: &[(&str, &str, bool)] = &[
     ("--rap", "Start the RAP JSON-RPC server on the given addr (default 127.0.0.1:9876)", false),
     ("--emit-ontology", "Dump the complete ontology to disk as static JSON", true),
@@ -321,11 +384,33 @@ const CLI_FLAGS: &[(&str, &str, bool)] = &[
     ("--target=abl-run", "End-to-end run of Agentic Binary Language-routed items", true),
     ("--pipeline", "Run the full lex+parse+resolve+effects+verify pipeline", true),
     ("--backend=<name>",
-        "Select hardware accelerator for dispatch (default: cpu). See ontology.hardware_accelerators for the catalog.",
+        "Select the hardware accelerator for dispatch (default: cpu). Honoured by --run=abl-bytes and by every --target=abl-* path; a subprocess backend has no in-process Backend, so those paths report the fallback rather than using it silently. See ontology.hardware_accelerators for the catalog.",
         false),
     ("--backends-file=<path>",
         "Register additional backend descriptors at runtime from a JSON file. Stacks with RDX_BACKENDS_PATH env var and ~/.mage/backends.json. Schema: [{ name, family, vendor, requires, summary, available_at_runtime, tags }].",
         true),
+    // ── Running and inspecting ────────────────────────────────────────
+    ("--eval", "Evaluate the module and print the value of `main` (or of the named function). The second oracle: a program can typecheck and fail to run, and the reverse.", true),
+    ("--version", "Print the compiler version. Ribosome keys its registry on this string.", false),
+    ("--manifest", "Print the tool manifest: version, capabilities, and the flag surface.", false),
+    ("--rain", "Render the source as MAGE digital rain (a display, not an analysis).", true),
+    // ── Building from a JSON spec ─────────────────────────────────────
+    ("--build=schema", "Print the JSON schema a build spec must satisfy.", false),
+    ("--build=abl", "Build a `net` / `swarm` spec from JSON into MAGE source; `--fix` attempts deterministic repair first.", true),
+    ("--describe", "Describe a module in JSON. Takes a mode; run it with none to see the list.", true),
+    ("--describe=abl", "Describe an Agentic Binary Language container in JSON.", true),
+    ("--run=abl", "Run an Agentic Binary Language container and print a JSON result.", true),
+    ("--spine=frame", "Emit a spine frame (JSON) for the given module.", true),
+    ("--spine=profile", "Emit an agent profile from a JSON agent spec.", true),
+    ("--spine=swarm", "Emit a swarm profile from a JSON swarm spec.", true),
+    // ── Modifiers, which stack with the commands above ────────────────
+    ("--json", "Report diagnostics as structured JSON (code/span/category/fix) rather than text.", false),
+    ("--fix", "With `--build=abl`: attempt deterministic auto-repair before rejecting a spec.", false),
+    ("--input", "With `--run=abl`: the JSON input value for the run, as the next argument.", false),
+    ("--no-elision", "Skip the elision pass, so the AST is checked exactly as written.", false),
+    ("--syntax=legacy", "Translate legacy syntax before lexing.", false),
+    ("--syntax=canonical", "Read the source as canonical syntax (the default).", false),
+    ("--token-report", "Print a token-count report alongside the check.", false),
 ];
 
 /// `reliability-bench` backends. Each backend implements
@@ -353,17 +438,37 @@ const EFFECTS: &[(&str, &str, &str)] = &[
     ("@ens",  "spec/fn", "Postcondition: predicate over result; checked at exit"),
     ("@inv",  "spec/struct", "Invariant: predicate that must hold across all methods"),
     ("@perf", "spec/fn", "Performance contract: latency / throughput target"),
-    // Canonical effect names used in the corpus and stdlib
-    ("io",    "effect_name", "Standard input/output"),
-    ("fs",    "effect_name", "Filesystem access"),
-    ("net",   "effect_name", "Network access"),
-    ("db",    "effect_name", "Database access"),
-    ("log",   "effect_name", "Logging"),
-    ("async", "effect_name", "Asynchronous execution"),
-    ("llm",   "effect_name", "LLM invocation"),
-    ("tools", "effect_name", "External tool use"),
-    ("rand",  "effect_name", "Nondeterministic randomness"),
-    ("time",  "effect_name", "Wall-clock access"),
+    // The built-in effect kinds — every name writable in a `/ …` annotation
+    // with no declaration. This is the set `hir::Effect::from_name` folds and
+    // `MAGE_SPEC.md` §11.2 documents; `builtin_effect_names_are_the_writable_ones`
+    // holds the three in agreement.
+    //
+    // This list used to be "canonical effect names used in the corpus and
+    // stdlib", which is a different question from the one an agent reading
+    // `effect_name` is asking. Four of its ten — `db`, `log`, `tools`, `rand` —
+    // were rejected by the compiler as unknown effects. Three of those are
+    // capability *namespaces* (`resolve.rs`, `db.query(…)`), which is a
+    // separate list that had been folded into this one; `rand` was `rng`
+    // under a name nothing has ever accepted. `rng`, `gpu`,
+    // `npu`, `evolve`, `learn`, `alloc`, `panic`, `ffi`, `env` and `agent` were
+    // missing. Anything not here needs an `effect Name { … }` block (§11.5).
+    ("io",     "effect_name", "File and stream I/O"),
+    ("net",    "effect_name", "Network I/O"),
+    ("fs",     "effect_name", "Filesystem operations"),
+    ("async",  "effect_name", "Asynchronous task management"),
+    ("alloc",  "effect_name", "Heap memory allocation"),
+    ("panic",  "effect_name", "Unwinding / structured panics"),
+    ("ffi",    "effect_name", "Foreign function invocation"),
+    ("env",    "effect_name", "Environment variable access"),
+    ("time",   "effect_name", "Clock and timer access"),
+    ("gpu",    "effect_name", "GPU computation"),
+    ("npu",    "effect_name", "Neural processing unit"),
+    ("llm",    "effect_name", "Language model invocation"),
+    ("evolve", "effect_name", "Evolutionary computation"),
+    ("learn",  "effect_name", "Training / gradient descent"),
+    ("rng",    "effect_name", "Random number generation"),
+    ("agent",  "effect_name", "Agent coordination"),
+    ("proc",   "effect_name", "Process and system access"),
 ];
 
 /// Subprocess agent protocol contract. Environment variables and
@@ -434,24 +539,35 @@ const DOCS: &[(&str, &str, &str)] = &[
         "agent/reference"),
 ];
 
-/// Current CI floors. An agent proposing a change can check whether
-/// its measured numbers stay above each. Read from
-/// `.github/workflows/ci.yml`.
+/// The reliability floors, and where each is enforced.
 ///
-/// Columns: `(name, threshold, what_it_protects)`.
+/// This section used to say "Read from `.github/workflows/ci.yml`". **That
+/// file contained none of them** — no reliability-bench job, no heal
+/// threshold, no token-ratio gate — so an agent reading the ontology believed
+/// six regressions were gated and none were. `UNIFICATION.md` described a CI
+/// step parsing `benchmarks/TOKEN_REPORT.md`; there was no such step either.
+///
+/// Two of the six were not true on a default run: the file-oracle
+/// structural-heal contribution is **1**, not `>= 2`, and the stage-3 refine
+/// smoke is 0 unless a wrapper command is supplied. Those two are now stated
+/// as observations rather than floors.
+///
+/// The three that are real live in `scripts/check-ci-floors.sh`, which
+/// measures and enforces them; CI runs it. Columns:
+/// `(name, threshold, what_it_protects)`.
 const CI_FLOORS: &[(&str, &str, &str)] = &[
     ("MIN_PARSE", ">= 98",
-        "File-oracle parse rate (100-task corpus) must not regress"),
-    ("file-oracle structural-heal", ">= 2",
-        "Trim-bad-token mechanism (P51) must keep contributing"),
+        "File-oracle parse rate (100-task corpus) must not regress. Enforced by scripts/check-ci-floors.sh"),
     ("MIN_HEAL", ">= 40",
-        "Perturbed-8 pattern-heal recovery count must not regress"),
-    ("refine smoke", "> 0",
-        "Stage-3 refine wrapper protocol must fire end-to-end"),
-    ("subprocess echo smoke", "no-op",
-        "Subprocess agent backend must be invocable"),
+        "Perturbed-oracle pattern-heal recovery count must not regress. Enforced by scripts/check-ci-floors.sh"),
     ("native-lexer ratio", "<= 1.100",
-        "MAGE text size must stay within 10% of equivalent Rust"),
+        "MAGE text size must stay within 10% of equivalent Rust, read from the native-lexer Total row of benchmarks/TOKEN_REPORT.md. Enforced by scripts/check-ci-floors.sh"),
+    ("file-oracle structural-heal", "= 1 (observed)",
+        "Trim-bad-token recovers the single corpus task that does not parse cleanly. An observation, not a floor: the count is 1, and the >= 2 this section used to publish was never met"),
+    ("refine smoke", "0 without a wrapper (observed)",
+        "Stage-3 refine contributes only when `--agent perturbed+refine:<cmd>` supplies a wrapper; a default run reports 0"),
+    ("subprocess echo smoke", "no-op",
+        "Subprocess agent backend must be invocable; exercised by the wrapper protocol tests"),
 ];
 
 /// Curated golden examples. Each one is a minimal, parseable program
@@ -1245,13 +1361,12 @@ fn keywords_section() -> serde_json::Value {
     let mut rows: Vec<(&str, String, String)> = crate::lexer::KEYWORDS
         .iter()
         .map(|(spelling, kind)| {
-            if let Some((_, introduces, summary)) =
-                KEYWORD_DOCS.iter().find(|(w, _, _)| w == spelling)
-            {
-                (*spelling, introduces.to_string(), summary.to_string())
-            } else {
-                (*spelling, format!("{kind:?}"), format!("reserved word → {kind:?} token"))
-            }
+            let summary = KEYWORD_DOCS
+                .iter()
+                .find(|(w, _, _)| w == spelling)
+                .map(|(_, _, summary)| summary.to_string())
+                .unwrap_or_else(|| format!("reserved word → {kind:?} token"));
+            (*spelling, format!("{kind:?}"), summary)
         })
         .collect();
     rows.sort_by(|a, b| a.0.cmp(b.0));
@@ -1353,10 +1468,11 @@ fn rap_methods_section() -> serde_json::Value {
 }
 
 fn heal_patterns_section() -> serde_json::Value {
-    let names = crate::heal::pattern_names();
-    let items: Vec<_> = names
+    // With the example, not just the name: `parse-stray-comma-in-name-position`
+    // tells an agent that a pattern exists and nothing about when it fires.
+    let items: Vec<_> = crate::heal::patterns_with_examples()
         .iter()
-        .map(|n| serde_json::json!({ "name": n }))
+        .map(|(name, example)| serde_json::json!({ "name": name, "example": example }))
         .collect();
     serde_json::json!(items)
 }
@@ -1502,13 +1618,26 @@ fn examples_section() -> serde_json::Value {
 
 fn abl_section() -> serde_json::Value {
     serde_json::json!({
-        "magic": std::str::from_utf8(crate::abl::ABL_MAGIC).unwrap_or("Agentic Binary Language"),
+        // A global rename of `ABL` to the language's full name caught every
+        // literal spelling of the four magic bytes: this fallback, the format
+        // line below, the decoder's error message, the `--manifest` entry and
+        // two module docs. `"magic"` itself was right because it is read from
+        // the constant — which is why the section looked fine and its own
+        // description of the section did not.
+        "magic": std::str::from_utf8(crate::abl::ABL_MAGIC).unwrap_or("ABL1"),
         "version": crate::abl::ABL_VERSION,
         "format": [
-            "magic    : 4 bytes (\"Agentic Binary Language\")",
+            "magic    : 4 bytes (\"ABL1\")",
             "version  : u16 LE",
             "count    : u32 LE",
             "per item : { name_len:u32, name:utf8, expr_len:u32, expr:bytes }",
+            // The symbol table was added in v2 and never published. A decoder
+            // written from this list parsed the items and stopped — on
+            // `prototype/examples/unified.mg` that leaves 100 of 420 bytes
+            // unread, and loses every interned name, which is the whole reason
+            // a `kb` artifact is self-describing rather than a pile of
+            // arities.
+            "symbols  : u32 LE count, then { name_len:u32, name:utf8 } in id order",
         ],
         "media_type": "application/abl",
     })
@@ -1593,18 +1722,222 @@ mod tests {
         }
     }
 
-    /// P82 invariant: every CLI flag the binary actually accepts must
-    /// be in the cli_flags ontology section. Catches drift where a
-    /// new --flag is added to main.rs but not advertised to agents.
+    /// The quick reference and the ontology must name the same sigils.
+    ///
+    /// `agent-guide/syntax-quick-ref.md` is what an agent reads to *learn* the
+    /// compressed surface; `MAGE_ONTOLOGY.json` is what it reads to *discover*
+    /// the language mechanically. They are two renderings of one fact and
+    /// nothing compared them, so they disagreed about what MAGE contains:
+    /// `D`, `xd`, `fx`, `sp`, `sw`, `af`, `gd`, `df` and `yl` all parse, the
+    /// guide taught all nine, and the ontology published none of them. Four of
+    /// those are whole features — records, inherent methods, effect
+    /// declarations and contracts — invisible to anything reading the JSON.
+    ///
+    /// The guide is a fixed-width text table inside code fences, so the sigil
+    /// is the last whitespace-separated column. Rows whose last column is
+    /// prose (a parenthesised note, an arrow) are skipped by requiring the
+    /// token to be short and free of spaces.
     #[test]
-    fn cli_flags_section_matches_binary_dispatch() {
-        let arr = cli_flags_section();
-        let v = arr.as_array().unwrap();
-        let names: Vec<&str> = v.iter().filter_map(|e| e["flag"].as_str()).collect();
-        for required in ["--rap", "--check", "--emit-ontology",
-                         "--target=abl-bytes", "--from=abl-bytes",
-                         "--run=abl-bytes", "--fmt-compact", "--fmt-expand"] {
-            assert!(names.contains(&required), "missing flag: {required}");
+    fn the_quick_reference_and_the_ontology_name_the_same_sigils() {
+        let guide = std::fs::read_to_string(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../agent-guide/syntax-quick-ref.md"),
+        )
+        .expect("the quick reference is beside the prototype")
+        .replace("\r\n", "\n");
+
+        let mut in_fence = false;
+        let mut fence_no = 0usize;
+        let mut taught: Vec<String> = Vec::new();
+        // The first fence is the "Declarations" table, where every right-hand
+        // entry is a declaration sigil and nothing else. Collected separately
+        // because the union check below is weak for these: `xd`, `af` and `D`
+        // are also lexer keywords, so removing one from `SIGILS` still passes
+        // the general test. The strict list is what makes that a failure.
+        let mut declarations: Vec<String> = Vec::new();
+        for line in guide.lines() {
+            if line.starts_with("```") {
+                in_fence = !in_fence;
+                if in_fence {
+                    fence_no += 1;
+                }
+                continue;
+            }
+            if !in_fence || line.trim().is_empty() {
+                continue;
+            }
+            // Three or more columns separated by runs of spaces; the sigil is
+            // the last. A two-column row is a form with no agent spelling.
+            let cols: Vec<&str> = line.trim().split("  ").filter(|c| !c.trim().is_empty()).collect();
+            if cols.len() < 3 {
+                continue;
+            }
+            let last = cols[cols.len() - 1].trim();
+            // `S / +S` teaches two; `?= e { }` is a form, not a sigil.
+            for tok in last.split('/') {
+                let tok = tok.trim();
+                if tok.is_empty() || tok.len() > 6 || tok.contains(' ') || tok.starts_with('(') {
+                    continue;
+                }
+                if !taught.iter().any(|t| t == tok) {
+                    taught.push(tok.to_string());
+                }
+                if fence_no == 1 && !declarations.iter().any(|t| t == tok) {
+                    declarations.push(tok.to_string());
+                }
+            }
+        }
+        assert!(taught.len() > 20, "the scrape found only {} sigils — it is broken", taught.len());
+
+        // The guide's right-hand column is not always a sigil: its effect
+        // table puts effect *names* there and its type table puts type names.
+        // Those are published in other sections, and an agent that finds `ffi`
+        // under `effects` has discovered it. So the claim is the general one —
+        // nothing the guide teaches is invisible to a reader of the JSON —
+        // checked against every section that names a spelling.
+        let mut published: Vec<String> =
+            SIGILS.iter().map(|(s, _, _)| (*s).to_string()).collect();
+        published.extend(EFFECTS.iter().map(|(n, _, _)| (*n).to_string()));
+        published.extend(KEYWORD_DOCS.iter().map(|(n, _, _)| (*n).to_string()));
+        published.extend(TYPES.iter().map(|(n, _, _)| (*n).to_string()));
+        published.extend(crate::lexer::KEYWORDS.iter().map(|(n, _)| (*n).to_string()));
+        published.extend(crate::resolve::VOCABULARY.iter().map(|(n, _, _)| (*n).to_string()));
+        published.extend(
+            crate::hir::CAPABILITY_NAMESPACES.iter().map(|(n, _)| (*n).to_string()),
+        );
+
+        for t in &taught {
+            assert!(
+                published.iter().any(|p| p == t),
+                "`{t}` is taught in syntax-quick-ref.md and appears in no ontology                  section — an agent reading the JSON cannot discover it"
+            );
+        }
+
+        let sigils: Vec<&str> = SIGILS.iter().map(|(s, _, _)| *s).collect();
+        assert!(
+            declarations.len() >= 10,
+            "the Declarations fence yielded {} sigils — the scrape is broken",
+            declarations.len()
+        );
+        for d in &declarations {
+            assert!(
+                sigils.contains(&d.as_str()),
+                "`{d}` is a declaration sigil in syntax-quick-ref.md and is not in                  the ontology's `sigils` section"
+            );
+        }
+    }
+    /// Every `ItemKind` variant is published, and every published kind is a
+    /// variant.
+    ///
+    /// `Data` and `Extend` were missing — records, sums and methods, three of
+    /// the constructs the human-mode documentation leads with. Nothing
+    /// compared the two lists, and the published names were a parallel
+    /// vocabulary (`Mod`, `EffectDef`, `SpecBlock`) that made comparing them
+    /// awkward enough that nobody had.
+    #[test]
+    fn every_item_kind_is_published_and_vice_versa() {
+        let ast_rs = include_str!("ast.rs");
+        let start = ast_rs.find("pub enum ItemKind {").expect("ItemKind");
+        let body = &ast_rs[start..];
+        let end = body.find("\n}").expect("end of enum");
+        let variants: Vec<&str> = body[..end]
+            .lines()
+            .skip(1)
+            .filter_map(|l| {
+                let t = l.trim();
+                if t.is_empty() || t.starts_with("//") || t.starts_with("/*") {
+                    return None;
+                }
+                let name = t.split(['(', ',', ' ']).next()?;
+                name.chars().next().filter(|c| c.is_ascii_uppercase()).map(|_| name)
+            })
+            .collect();
+        assert!(variants.len() >= 18, "scrape looks wrong: {variants:?}");
+
+        let published: Vec<&str> = AST_KINDS.iter().map(|(k, _)| *k).collect();
+        for v in &variants {
+            assert!(
+                published.contains(v),
+                "`ItemKind::{v}` is not published in ast_kinds"
+            );
+        }
+        for k in &published {
+            assert!(
+                variants.contains(k),
+                "ast_kinds publishes `{k}`, which is not an ItemKind variant"
+            );
+        }
+    }
+
+    /// Every flag `main.rs` recognises is published, and every published flag
+    /// exists in `main.rs`.
+    ///
+    /// The previous version asserted that eight named flags were present,
+    /// under a doc comment claiming it checked "every CLI flag the binary
+    /// actually accepts". Twelve flags were missing from the ontology,
+    /// including `--eval` — the only way to run a program, and half of the
+    /// two-oracle discipline this repository depends on.
+    ///
+    /// Source-scraping is the point: the two sides are a `match` in a binary
+    /// and a table in a library, and nothing else connects them.
+    #[test]
+    fn every_flag_in_main_is_published_and_vice_versa() {
+        let main_rs = include_str!("main.rs");
+
+        // Flag literals in `main.rs`: `"--name"`, possibly with `=value`.
+        let mut in_main: Vec<String> = Vec::new();
+        let bytes = main_rs.as_bytes();
+        let mut i = 0;
+        while let Some(off) = main_rs[i..].find("\"--") {
+            let start = i + off + 1;
+            let end = match main_rs[start..].find('"') {
+                Some(e) => start + e,
+                None => break,
+            };
+            let lit = &main_rs[start..end];
+            i = end + 1;
+            let _ = bytes;
+            if lit.len() > 2
+                && lit[2..].chars().all(|c| c.is_ascii_lowercase() || "=-0123456789".contains(c))
+            {
+                in_main.push(lit.to_string());
+            }
+        }
+
+        // `--backend=cpu` is a value comparison, not a flag; the flag itself
+        // is published as `--backend=<name>`. Same for the two prefixes that
+        // are matched with `strip_prefix`.
+        let published: Vec<&str> = CLI_FLAGS.iter().map(|(f, _, _)| *f).collect();
+        let normalise = |f: &str| -> String {
+            match f {
+                "--backend=cpu" | "--backend=" => "--backend=<name>".to_string(),
+                "--backends-file=" => "--backends-file=<path>".to_string(),
+                other => other.to_string(),
+            }
+        };
+
+        for lit in &in_main {
+            // A literal ending in `=` is a `starts_with` prefix, not a flag —
+            // `--target=` and friends appear that way in argument handling and
+            // in tests. The two that *are* flags normalise to their published
+            // `<value>` spelling below.
+            if lit.ends_with('=')
+                && !matches!(*lit, ref l if l == "--backend=" || l == "--backends-file=")
+            {
+                continue;
+            }
+            let want = normalise(lit);
+            assert!(
+                published.contains(&want.as_str()),
+                "`{lit}` is accepted by main.rs and not published in CLI_FLAGS"
+            );
+        }
+        for flag in &published {
+            let stem = flag.split('=').next().unwrap();
+            assert!(
+                main_rs.contains(&format!("\"{stem}")),
+                "`{flag}` is published and does not appear in main.rs"
+            );
         }
     }
 
@@ -1624,8 +1957,12 @@ mod tests {
         let arr = effects_section();
         let v = arr.as_array().unwrap();
         let names: Vec<&str> = v.iter().filter_map(|e| e["name"].as_str()).collect();
+        // `db` used to be in this list. It is not a built-in effect kind, so
+        // `/ db` was an unknown-effect error — the test asserted the ontology
+        // published the name and never asked whether the name worked. Which
+        // names belong here is now `builtin_effect_names_are_the_writable_ones`.
         for required in ["@fx", "@req", "@ens", "@inv",
-                         "io", "fs", "net", "db", "async", "llm"] {
+                         "io", "fs", "net", "async", "llm", "rng", "agent"] {
             assert!(names.contains(&required), "missing effect entry: {required}");
         }
     }
@@ -1751,10 +2088,76 @@ mod tests {
         assert!(section("nonexistent").is_none());
     }
 
+    /// The published pattern list is exactly the registry's.
+    ///
+    /// This asserted `len() >= 10` over a list of 34 — true of any ten
+    /// strings, and silent about every question worth asking. Whether each
+    /// pattern *works* is `heal::every_pattern_matches_its_example_and_
+    /// produces_a_fix`, which is where the matchers are; what belongs here is
+    /// the boundary this file owns: that what the ontology publishes is what
+    /// the registry contains, in both directions and in order.
     #[test]
-    fn heal_patterns_section_nonempty() {
+    fn published_heal_patterns_are_the_registry() {
         let arr = heal_patterns_section();
-        assert!(arr.as_array().unwrap().len() >= 10);
+        let published: Vec<&str> =
+            arr.as_array().unwrap().iter().map(|e| e["name"].as_str().unwrap()).collect();
+        let registry = crate::heal::pattern_names();
+        assert_eq!(
+            published, registry,
+            "the ontology's heal_patterns and heal.rs's registry disagree"
+        );
+        assert!(
+            published.len() >= 30,
+            "the registry shrank to {} patterns — if that is deliberate, the \
+             count in benchmarks/STATUS.md moves with it",
+            published.len()
+        );
+    }
+
+    /// The container description names the bytes a decoder must look for.
+    ///
+    /// `"magic"` is read from `abl::ABL_MAGIC` and was right. Everything
+    /// around it was prose, and a global rename of `ABL` to the language's
+    /// full name rewrote all of it: the format line told an agent the four
+    /// magic bytes were the 23-character string "Agentic Binary Language",
+    /// `--manifest` said the same, and the decoder's own error message told a
+    /// caller whose file failed to open that it had expected that string. The
+    /// section passed every existing check because the one field derived from
+    /// the constant was untouched.
+    ///
+    /// So the description is checked against the constant, not eyeballed: the
+    /// format text must contain the real magic, and must not contain the
+    /// language's name where a literal belongs.
+    #[test]
+    fn the_abl_description_names_the_real_magic_and_version() {
+        let s = abl_section();
+        let magic = std::str::from_utf8(crate::abl::ABL_MAGIC).expect("magic is utf-8");
+        assert_eq!(s["magic"].as_str(), Some(magic));
+        assert_eq!(s["version"].as_u64(), Some(u64::from(crate::abl::ABL_VERSION)));
+
+        let format = s["format"].as_array().expect("format").iter().map(|l| l.as_str().unwrap()).collect::<Vec<_>>().join("\n");
+        assert!(
+            format.contains(magic),
+            "the format description never names the magic bytes `{magic}`: {format}"
+        );
+        assert!(
+            !format.contains("Agentic Binary Language"),
+            "the format description puts the language's name where the four \
+             magic bytes belong: {format}"
+        );
+
+        // And the same rename hit `--manifest`, which is the other place an
+        // agent reads the container layout.
+        let entry = crate::cli_manifest::MODES
+            .iter()
+            .find(|m| m.flag == "--target=abl-bytes")
+            .expect("--target=abl-bytes is a mode");
+        assert!(
+            entry.detail.contains(magic) && !entry.detail.contains("magic \"Agentic"),
+            "`--target=abl-bytes` describes the magic as something other than \
+             `{magic}`: {}",
+            entry.detail
+        );
     }
 
     #[test]
@@ -1764,6 +2167,37 @@ mod tests {
         assert_eq!(v[0]["stage"], "already-valid");
         assert_eq!(v[1]["stage"], "pattern-heal");
         assert_eq!(v.last().unwrap()["stage"], "failed");
+
+        // Every name `RecoveryStage` can report must be published, and every
+        // published name must be one it can report — except `agent.refine`,
+        // which belongs to the reliability bench rather than to `recover.rs`
+        // and is the one deliberate difference between the two lists. Naming
+        // it here is what keeps it deliberate: without this, a stage added to
+        // the enum would simply be missing from the ontology, and nothing
+        // would say so.
+        use crate::recover::RecoveryStage as R;
+        let from_enum = [
+            R::AlreadyValid,
+            R::PatternHeal,
+            R::StructuralBalance,
+            R::StructuralCompletion,
+            R::TrimBadToken,
+            R::Failed,
+        ];
+        let published: Vec<&str> = v.iter().map(|e| e["stage"].as_str().unwrap()).collect();
+        for st in from_enum {
+            assert!(
+                published.contains(&st.as_str()),
+                "`recover.rs` can report `{}` and the ontology does not publish it",
+                st.as_str()
+            );
+        }
+        for name in &published {
+            assert!(
+                *name == "agent.refine" || from_enum.iter().any(|s| s.as_str() == *name),
+                "the ontology publishes recovery stage `{name}`, which `recover.rs`                  never reports and which is not the known bench-only stage"
+            );
+        }
     }
 
     #[test]
@@ -1780,6 +2214,47 @@ mod tests {
                 entry["category"].as_str().filter(|c| !c.is_empty()).is_some(),
                 "category missing on {:?}",
                 entry["name"]
+            );
+        }
+
+        // And every published type must be one the checker resolves. The
+        // seven names above are a spot-check; this is the claim. `S` was once
+        // published as shorthand for `String` — it is the `struct` keyword and
+        // can never be a type — and nothing here would have caught it, because
+        // `S` was not one of the seven.
+        //
+        // The constructors are published with metavariables, so each is
+        // instantiated with a concrete element type. A published name with no
+        // instantiation here is a failure, not a skip.
+        let concrete = |n: &str| -> String {
+            match n {
+                "&T" => "&i32".into(),
+                "&!T" => "&!i32".into(),
+                "@T" => "@i32".into(),
+                "?T" => "?i32".into(),
+                "R[T,E]" => "R[i32, str]".into(),
+                "[T]" => "[i32]".into(),
+                "[T; N]" => "[i32; 4]".into(),
+                "[T]~" => "[i32]~".into(),
+                "(T1,T2,...)" => "(i32, str)".into(),
+                "{K: V}" => "{str: i32}".into(),
+                "{T}" => "{i32}".into(),
+                "Box[T]" => "Box[i32]".into(),
+                "f(T)->R" => "f(i32)->i32".into(),
+                other => other.into(),
+            }
+        };
+        for name in &names {
+            let src = format!("f m(x: {}) -> i32 {{ 1 }}", concrete(name));
+            let module = crate::parser::parse(&crate::lexer::lex(&src))
+                .unwrap_or_else(|e| panic!("`{name}` does not even parse: {e:?}"));
+            let diags = crate::types::check(&module).diagnostics;
+            assert!(
+                diags.is_empty(),
+                "the ontology publishes type `{name}`, which the checker rejects \
+                 as `{}`: {:?}",
+                concrete(name),
+                diags.iter().map(|d| &d.message).collect::<Vec<_>>()
             );
         }
     }
@@ -2135,6 +2610,359 @@ mod tests {
             failures.len(),
             failures.join("\n  ")
         );
+    }
+
+    /// Every name the ontology publishes under `effect_name` must be writable
+    /// as `/ name` with no declaration, and every built-in kind must be
+    /// published.
+    ///
+    /// The ontology is what an agent grounds on, so a name here that the
+    /// compiler rejects is worse than a missing one — it is an instruction to
+    /// emit code that does not check. Four of the ten names formerly listed
+    /// (`db`, `log`, `tools`, `rand`) were rejected as unknown effects, and ten
+    /// built-in kinds were absent, including `rng` — for which `rand` was
+    /// standing in under a name the compiler has never known.
+    #[test]
+    fn builtin_effect_names_are_the_writable_ones() {
+        let published: Vec<&str> = EFFECTS
+            .iter()
+            .filter(|(_, slot, _)| *slot == "effect_name")
+            .map(|(name, _, _)| *name)
+            .collect();
+
+        for name in &published {
+            let src = format!("+f a() -> i32 / {name} {{ 1 }}");
+            let tokens = crate::lexer::lex(&src);
+            let module = crate::parser::parse(&tokens)
+                .unwrap_or_else(|e| panic!("ontology publishes `/ {name}`, which fails to parse: {e:?}"));
+            let diags = crate::effects::infer_effects(&module).diagnostics;
+            assert!(
+                diags.is_empty(),
+                "ontology publishes `/ {name}`, which the checker rejects: {:?}",
+                diags.iter().map(|d| &d.message).collect::<Vec<_>>()
+            );
+        }
+
+        // The other direction: a built-in kind the ontology does not publish is
+        // a capability an agent cannot discover.
+        for name in [
+            "io", "net", "fs", "async", "alloc", "panic", "ffi", "env", "time", "gpu", "npu",
+            "llm", "evolve", "learn", "rng", "agent", "proc",
+        ] {
+            assert!(
+                published.contains(&name),
+                "`{name}` is a built-in effect kind but the ontology does not publish it"
+            );
+        }
+    }
+
+    /// Every keyword introduces the token the ontology says it does.
+    ///
+    /// `introduces` was two fields wearing one name — see `KEYWORD_DOCS`.
+    /// This joins it back against `lexer::KEYWORDS`, which is the only thing
+    /// that makes the field usable to a reader who is not this compiler.
+    #[test]
+    fn keywords_introduce_the_token_they_claim() {
+        let published = keywords_section();
+        for entry in published.as_array().unwrap() {
+            let spelling = entry["keyword"].as_str().unwrap();
+            let claimed = entry["introduces"].as_str().unwrap();
+            let (_, actual) = crate::lexer::KEYWORDS
+                .iter()
+                .find(|(w, _)| *w == spelling)
+                .unwrap_or_else(|| panic!("ontology publishes `{spelling}`, not a keyword"));
+            assert_eq!(
+                claimed,
+                format!("{actual:?}"),
+                "`{spelling}` is published as introducing {claimed}"
+            );
+        }
+    }
+
+    /// Every documented type can be written in a signature.
+    ///
+    /// Three could not: `S` (published as a shorthand for `String`, but `S` is
+    /// the `struct` keyword and can never be a type), and `Map[K,V]` / `Set[T]`
+    /// — the real spellings are `{K: V}` and `{T}`. An agent that believed the
+    /// ontology emitted a program that did not compile, which is the failure
+    /// mode this whole file exists to prevent.
+    ///
+    /// Metavariables are substituted because the entries are schemas: `&T`
+    /// documents a shape, and only `&i32` can be compiled.
+    #[test]
+    fn every_documented_type_can_be_written() {
+        for (name, _, _) in TYPES {
+            let concrete = name
+                .replace("(T1,T2,...)", "(i32, i64)")
+                .replace("[T; N]", "[i32; 4]")
+                .replace("K: V", "i32: i32")
+                .replace("T1", "i32")
+                .replace("T2", "i32");
+            // `R` is overloaded in the ontology's own notation: the `Result`
+            // constructor in `R[T,E]`, and the return-type metavariable in
+            // `f(T)->R`. Only the second is substituted.
+            let concrete: String = concrete
+                .replace("->R", "->i32")
+                .replace(['T', 'E', 'K', 'V'], "i32");
+            let src = format!("f probe(x: {concrete}) -> i32 {{ 0 }}");
+            let tokens = crate::lexer::lex(&src);
+            let module = crate::parser::parse(&tokens).unwrap_or_else(|e| {
+                panic!("documented type `{name}` (as `{concrete}`) does not parse: {e:?}")
+            });
+            let diags = crate::resolve::resolve(&module).diagnostics;
+            let unresolved: Vec<_> = diags
+                .iter()
+                .filter(|d| d.message.contains("unresolved type"))
+                .map(|d| &d.message)
+                .collect();
+            assert!(
+                unresolved.is_empty(),
+                "documented type `{name}` (as `{concrete}`) does not resolve: {unresolved:?}"
+            );
+        }
+    }
+
+    /// Every control-flow sigil the ontology publishes actually parses.
+    ///
+    /// Two did not. `!` is published as Break and the spec agrees — and it
+    /// parsed nowhere, because prefix `!` always demanded an operand, so only
+    /// the spelling the lexer calls *legacy* (`break`) worked. That is now
+    /// implemented.
+    ///
+    /// `^` was published as Return and was never a thing: the spec names `ret`
+    /// in both sigil tables and mentions `^` once, as bitwise XOR. The entry
+    /// was the error, not the compiler — worth remembering, because the first
+    /// attempt at this fix implemented `^` to make the ontology true, which is
+    /// backwards. The ontology describes the language; it does not define it.
+    #[test]
+    fn every_published_control_sigil_parses() {
+        let cases: &[(&str, &str)] = &[
+            ("!", "f a() -> i32 {\n m i = 0\n @@ {\n i = i + 1\n ? i > 2 { ! } : { }\n }\n i\n}"),
+            ("ret", "f a() -> i32 { ret 5 }"),
+            (">>", "f a() -> i32 {\n m i = 0\n @w i < 3 {\n i = i + 1\n ? i > 9 { >> } : { }\n }\n i\n}"),
+            ("@@", "f a() -> i32 {\n m i = 0\n @@ {\n i = i + 1\n ? i > 2 { break } : { }\n }\n i\n}"),
+            ("@w", "f a() -> i32 {\n m i = 0\n @w i < 2 { i = i + 1 }\n i\n}"),
+            ("?", "f a(c: bool) -> i32 { ? c { 1 } : { 2 } }"),
+            ("?=", "f a(x: i32) -> i32 { ?= x { _ => 1 } }"),
+            ("??", "f a() -> i32 { ?? }"),
+            ("???", "f a() -> i32 { ??? }"),
+            ("1b", "f a() -> bool { 1b }"),
+            ("0b", "f a() -> bool { 0b }"),
+        ];
+        for (sigil, src) in cases {
+            let published = SIGILS.iter().any(|(s, _, _)| s == sigil);
+            assert!(published, "`{sigil}` is exercised here but no longer published");
+            assert!(
+                crate::parser::parse(&crate::lexer::lex(src)).is_ok(),
+                "published sigil `{sigil}` does not parse: {src}"
+            );
+        }
+        // The two that were wrong, held in both directions.
+        assert!(
+            !SIGILS.iter().any(|(s, _, _)| *s == "^"),
+            "`^` is bitwise XOR and the `^T` Box prefix — it does not return"
+        );
+        assert!(
+            !SIGILS.iter().any(|(s, _, _)| *s == "?:"),
+            "`?:` is not a token: the lexer has no such sigil, `else if` is              `: ?` with a space, and MAGE_SPEC.md B.2 published `?:` for a KB              query — two documents disagreeing with each other and with the              compiler"
+        );
+    }
+
+    /// Every layer surface name in `layer_map` can actually be written in a
+    /// `net` block.
+    ///
+    /// `layer_map_resolves_to_real_ops` already checks that each entry points
+    /// at a real opcode — but that is the ontology agreeing with the IR, not
+    /// with the *parser*. These 21 names are what an agent types when it writes
+    /// a network, so the claim that matters is whether `layer x: GELU;`
+    /// compiles.
+    ///
+    /// Scope, stated honestly: `layer_map` is *filtered* by
+    /// `layer_name_to_op`, and the unknown-layer check added to
+    /// `abl_shape::check_module_shapes` rejects exactly when that function
+    /// returns `None` — so the unknown-layer half of this test cannot fail by
+    /// construction. What it does still catch is a published name that
+    /// resolves to an op but does not survive the *parser* in layer position
+    /// (a name that becomes a keyword, say) or the typechecker. The
+    /// non-circular half of the story is
+    /// `abl_shape::tests::an_unknown_layer_type_is_rejected`.
+    #[test]
+    fn every_layer_surface_name_is_usable_in_a_net() {
+        // Iterate what is *published*, not `LAYER_SURFACE_NAMES`. That list
+        // holds 31 names, of which 10 — `Unify`, `Resolve`, `Infer`, `Plan`,
+        // `Send`, `Recv`, `Spawn`, `Delegate`, `Hash`, `Typeof` — are symbolic
+        // and agent ops rather than neural layers, and `layer_map_section`
+        // filters them out because `layer_name_to_op` returns `None`. They are
+        // correctly not layers; asserting they compile as one would be
+        // asserting the wrong thing.
+        let published = layer_map_section();
+        let rows = published.as_array().unwrap();
+        // A loop over an empty list passes silently, which is the failure mode
+        // this whole file is about.
+        assert!(rows.len() >= 21, "layer_map shrank to {} — was 21", rows.len());
+        for surface in rows.iter().map(|r| r["surface_name"].as_str().unwrap()) {
+            // Activations and norms take no constructor arguments; shaped
+            // layers do. Try the forms a writer would try.
+            let accepted = ["", "(128)", "(128, 64)", "(2)"].iter().any(|args| {
+                let src = format!(
+                    "net N {{\n    layer a: Linear(8, 128);\n    layer b: {surface}{args};\n    forward {{ b(a) }}\n}}"
+                );
+                let Ok(module) = crate::parser::parse(&crate::lexer::lex(&src)) else {
+                    return false;
+                };
+                let typed = crate::types::check(&module)
+                    .diagnostics
+                    .iter()
+                    .all(|d| !matches!(d.severity, crate::hir::Severity::Error));
+                // `types::check` does not run the net passes — an unknown
+                // layer type is caught by `abl_shape::check_module_shapes`,
+                // which is what `--check` also runs. Omitting it made an
+                // earlier version of this test pass with a deliberately bogus
+                // layer name injected into the list it is supposed to police.
+                //
+                // Only the *unknown layer* diagnostic disqualifies a name. A
+                // shape mismatch means the name resolved and the probe's
+                // arbitrary dimensions did not line up, which is a different
+                // claim and not this test's business.
+                let known = !crate::abl_shape::check_module_shapes(&module)
+                    .iter()
+                    .any(|d| d.message.contains("unknown layer type"));
+                typed && known
+            });
+            assert!(
+                accepted,
+                "`layer x: {surface}` is published in layer_map but does not compile in a net"
+            );
+        }
+    }
+
+    /// Every `framewerx_modules` path exists.
+    ///
+    /// 256 entries over 56 files, and the section is the map an agent uses to
+    /// find the framework. Paths rot quietly when files move.
+    #[test]
+    fn every_framewerx_module_path_exists() {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .expect("repo root");
+        let published = framewerx_modules_section();
+        for entry in published.as_array().unwrap() {
+            let path = entry["path"].as_str().unwrap();
+            let full = root.join(path);
+            assert!(full.exists(), "framewerx_modules path is gone: {path}");
+
+            // And the published *name* has to be in that file. The path
+            // existing says only that some file is there; 243 of these
+            // entries name a symbol, and a rename would leave the map
+            // pointing at the right file for the wrong reason.
+            let name = entry["name"].as_str().unwrap();
+            let category = entry["category"].as_str().unwrap_or("");
+            if category == "example" {
+                // An example entry is named for its file, not for a symbol.
+                continue;
+            }
+            let src = std::fs::read_to_string(&full).unwrap_or_default();
+            assert!(
+                src.contains(name),
+                "framewerx_modules publishes `{name}` in {path}, which does \
+                 not mention it"
+            );
+        }
+    }
+
+    /// Every path the ontology publishes exists — or is declared to be
+    /// somewhere this repository cannot see.
+    ///
+    /// Cheap, and the kind of claim that rots silently: a file moves and the
+    /// map an agent navigates by keeps pointing at where it used to be.
+    ///
+    /// It also rotted in the other direction, and that is the interesting
+    /// half. `DOCS` carries one entry that deliberately points *outside* the
+    /// repository — `../../utilities/IronAccelerator/`, an external reference —
+    /// and this test asserted it existed like any other. It passed for months
+    /// on a machine where that sibling checkout happens to sit next to this
+    /// one, and failed the first time it ran in CI, which is the only place
+    /// that had ever told the truth about it. **A test green because of a
+    /// directory outside the repository is not testing the repository.**
+    ///
+    /// So an escaping path is skipped, and the skip is itself asserted: it must
+    /// be labelled a reference in its audience column. Otherwise `../` is
+    /// indistinguishable from a typo in an in-repo path, and this test would
+    /// grant an exemption to exactly the case it exists to catch.
+    #[test]
+    fn every_documented_path_exists() {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .expect("repo root");
+        for (path, _) in PROJECT_LAYOUT.iter().map(|(p, d)| (*p, *d)) {
+            assert!(
+                !path.starts_with("../"),
+                "project_layout describes this repository's own layout; \
+                 `{path}` escapes it and cannot be one of its directories"
+            );
+            assert!(root.join(path).exists(), "project_layout path is gone: {path}");
+        }
+
+        let mut external = 0;
+        for (path, _, audience) in DOCS {
+            if path.starts_with("../") {
+                assert!(
+                    audience.contains("reference"),
+                    "`{path}` escapes the repository but is not labelled a \
+                     reference in its audience column (`{audience}`). An \
+                     in-repo path that begins with `../` is a typo, and \
+                     skipping it silently is how this test came to pass on \
+                     one machine only"
+                );
+                external += 1;
+                continue;
+            }
+            assert!(root.join(path).exists(), "docs path is gone: {path}");
+        }
+
+        // Pin the count, so that adding a second out-of-tree reference is a
+        // decision someone makes rather than one that rides along.
+        assert_eq!(
+            external, 1,
+            "exactly one DOCS entry is an out-of-tree reference; found \
+             {external}. Adding another means agents are being pointed at \
+             more things a fresh checkout does not contain"
+        );
+    }
+
+    /// The published examples must **typecheck**, not merely parse.
+    ///
+    /// Parsing was the whole bar here, and this repository has now found
+    /// forty-odd bugs behind exactly that gap — a block that parses and then
+    /// fails the checker is still a program an agent cannot run. These ten
+    /// snippets are what an agent grounds in when it asks the ontology what
+    /// MAGE looks like.
+    #[test]
+    fn examples_all_typecheck() {
+        for (name, _, src, _) in EXAMPLES {
+            let tokens = crate::lexer::lex(src);
+            let module = crate::parser::parse(&tokens)
+                .unwrap_or_else(|e| panic!("example {name:?} failed to parse: {e:?}"));
+            let mut r = crate::resolve::Resolver::new();
+            r.resolve_module(&module);
+            let resolve_errors: Vec<_> = r
+                .diagnostics
+                .iter()
+                .filter(|d| d.severity == crate::hir::Severity::Error)
+                .collect();
+            assert!(
+                resolve_errors.is_empty(),
+                "example {name:?} does not resolve: {resolve_errors:?}
+source: {src}"
+            );
+            let tc = crate::types::check(&module);
+            assert!(
+                tc.diagnostics.is_empty(),
+                "example {name:?} does not typecheck: {:?}
+source: {src}",
+                tc.diagnostics
+            );
+        }
     }
 
     #[test]

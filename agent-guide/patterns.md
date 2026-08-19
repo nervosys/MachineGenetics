@@ -1,238 +1,244 @@
 # MAGE Idiomatic Patterns
 
 > Common patterns for generating correct, idiomatic MAGE code.
-> All examples use **human syntax** (default).
+> All examples use **human syntax** (`pub fn`, `struct`, `match`, `if`), which
+> is the readable half of MAGE's dual surface. Every block below was verified
+> with `mage-parse --check`; the previous version of this file was Rust in a
+> MAGE fence, and ten of its twelve patterns did not parse.
+
+**Three things human syntax does *not* inherit from Rust**, each of which cost
+a pattern below:
+
+- **`let` does not exist.** `val` binds immutably, `var` mutably. The parser
+  rejects `let` by name, with that advice.
+- **Single-letter keywords are not identifiers.** `f`, `v`, `m`, `u`, `S`, `E`,
+  `T`, `I`, `C`, `D`, `M`, `U`, `Y`, `Z` are the agent-mode spellings of
+  declarations, so `|u| …` and `f(x)` as a *variable* are parse errors. Name
+  closure parameters and function-typed parameters in full.
+- **There is no `::`, no `impl Trait`, no `where`, no `mod`.** Paths are flat
+  (Pattern 11), generics go in `[…]` (Pattern 8), and effects are annotated
+  with `/ effect` rather than bounded (Pattern 8 again).
 
 ---
 
-## Pattern 1: Builder Pattern
+## Pattern 1: Configuration with Default Arguments
+
+MAGE has default arguments, so the builder chain has nothing to build.
 
 ```MAGE
 pub struct ServerConfig {
-    host: String,
-    port: u16,
-    max_connections: usize,
+    host: str,
+    port: i32,
+    max_connections: i32,
 }
 
-impl ServerConfig {
-    pub fn new() -> Self {
-        Self {
-            host: String::from("localhost"),
-            port: 8080,
-            max_connections: 100,
-        }
-    }
-
-    pub fn host(mut self, host: String) -> Self {
-        self.host = host;
-        self
-    }
-
-    pub fn port(mut self, port: u16) -> Self {
-        self.port = port;
-        self
-    }
-
-    pub fn max_connections(mut self, n: usize) -> Self {
-        self.max_connections = n;
-        self
-    }
+// A default argument replaces the builder: the caller names only what it
+// changes, and the signature documents the defaults.
+pub fn server_config(
+    host: str = "localhost",
+    port: i32 = 8080,
+    max_connections: i32 = 100,
+) -> ServerConfig {
+    @ServerConfig { host: host, port: port, max_connections: max_connections }
 }
 
-// Usage
-let config = ServerConfig::new()
-    .host(String::from("0.0.0.0"))
-    .port(3000)
-    .max_connections(500);
+pub fn main() -> i32 {
+    val defaults = server_config()
+    val tuned = server_config("0.0.0.0", 3000, 500)
+    defaults.port + tuned.port
+}
 ```
 
-## Pattern 2: Error Handling with Custom Error Types
+## Pattern 2: Errors as a Sum Type
 
 ```MAGE
-use std::fmt;
-
-#[derive(Debug)]
+// An error type is an ordinary sum. There is no `Error` type in scope, and no
+// `From`/`Display` traits to implement.
 pub enum AppError {
-    Io(io::Error),
-    Parse(String),
-    NotFound(String),
+    NotFound(str),
+    Parse(str),
+    Denied(str),
 }
 
-impl fmt::Display for AppError {
-    pub fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            AppError::Io(e) => f.write_str(&format!("IO error: {e}")),
-            AppError::Parse(msg) => f.write_str(&format!("Parse error: {msg}")),
-            AppError::NotFound(key) => f.write_str(&format!("Not found: {key}")),
-        }
+pub fn describe(err: AppError) -> str {
+    match err {
+        NotFound(key) => join(["not found:", key], " "),
+        Parse(msg) => join(["parse error:", msg], " "),
+        Denied(who) => join(["denied:", who], " "),
     }
 }
 
-impl From<io::Error> for AppError {
-    pub fn from(e: io::Error) -> Self {
-        AppError::Io(e)
+// `R[T, E]` is the result type; `T or E` is the same thing spelled as a union.
+pub fn load(path: str) -> R[str, AppError] / fs {
+    guard len(path) > 0 else { return Err(Parse("empty path")) }
+    Ok(fs.read_to_string(path))
+}
+
+pub fn load_or_default(path: str) -> str / fs {
+    match load(path) {
+        Ok(text) => text,
+        Err(err) => describe(err),
     }
 }
 ```
 
-## Pattern 3: Iterator Chains
+## Pattern 3: Vocabulary Pipelines
 
 ```MAGE
-// Collect filtered, transformed items
-fn active_names(users: &Vec<User>) -> Vec<String> {
-    users.iter()
-        .filter(|u| u.active)
-        .map(|u| u.name.clone())
-        .collect()
+// `map`, `filter` and `fold` are part of the standard vocabulary — global
+// functions, not methods. There is no `.iter()`, no `.collect()`.
+pub fn active_names(names: [str]~) -> [str]~ {
+    map(filter(names, |name| len(name) > 0), |name| upper(name))
 }
 
-// Sum with fold
-fn total_cost(items: &Vec<Item>) -> f64 {
-    items.iter()
-        .fold(0.0, |acc, item| acc + item.price * item.qty as f64)
+pub fn total_cost(prices: [f64]~) -> f64 {
+    fold(prices, 0.0, |acc, price| acc + price)
 }
 
-// Find first match
-fn find_admin(users: &Vec<User>) -> Option<&User> {
-    users.iter().find(|u| u.role == Role::Admin)
+pub fn first_admin(names: [str]~) -> ?str {
+    first(filter(names, |name| name == "admin"))
 }
 ```
 
-## Pattern 4: Option Chaining
+## Pattern 4: Optional Values
 
 ```MAGE
-// Prefer map/and_then over manual matching
-fn get_username(db: &Database, id: u64) -> Option<String> / io {
-    db.find_user(id)?
-        .profile
-        .as_ref()
-        .map(|p| p.username.clone())
+// `?T` is the optional type. `guard … else` must diverge — `return`, `break`,
+// or a panic — which makes the early exit visible at the top of the body.
+pub fn head(xs: [i32]~) -> ?i32 {
+    guard len(xs) > 0 else { return None }
+    Some(xs[0])
 }
 
-// unwrap_or_default for safe fallbacks
-fn display_name(user: &User) -> String {
-    user.nickname
-        .clone()
-        .unwrap_or_default()
+pub fn head_or(xs: [i32]~, fallback: i32 = 0) -> i32 {
+    match head(xs) {
+        Some(x) => x,
+        None => fallback,
+    }
 }
 ```
 
-## Pattern 5: Trait Object Dispatch
+## Pattern 5: Traits and Implementations
 
 ```MAGE
 pub trait Renderer {
-    fn render(&self, data: &str) -> Result<String, Error> / io;
+    fn render(self, data: str) -> str;
 }
 
-pub struct HtmlRenderer {}
-pub struct JsonRenderer {}
+pub struct Html { prefix: str }
+pub struct Json { indent: i32 }
 
-impl Renderer for HtmlRenderer {
-    fn render(&self, data: &str) -> Result<String, Error> / io {
-        return format!("<html><body>{data}</body></html>");
+impl Renderer for Html {
+    pub fn render(self, data: str) -> str {
+        join([self.prefix, data], "")
     }
 }
 
-impl Renderer for JsonRenderer {
-    fn render(&self, data: &str) -> Result<String, Error> / io {
-        return format!("{{\"content\": \"{data}\"}}");
+impl Renderer for Json {
+    pub fn render(self, data: str) -> str {
+        join(["{\"content\": \"", data, "\"}"], "")
     }
 }
 
-// Dynamic dispatch
-pub fn render_output(renderer: &dyn Renderer, data: &str) -> Result<String, Error> / io {
-    renderer.render(data)
+pub fn main() -> str {
+    val page = @Html { prefix: "<p>" }
+    page.render("hello")
 }
 ```
 
-## Pattern 6: Newtype Pattern
+## Pattern 6: Wrapping a Primitive
 
 ```MAGE
-// Wrap primitive types for type safety
-pub struct UserId(u64);
-pub struct Email(String);
-pub struct Temperature(f64);
+// There are no tuple structs. Wrap a primitive in a one-field record and
+// attach the conversions with `extend` — no `impl` block, no `Self`.
+pub struct Temperature { celsius: f64 }
 
-impl Temperature {
-    pub fn celsius(val: f64) -> Self {
-        Temperature(val)
+extend Temperature {
+    pub fn to_fahrenheit(self) -> f64 {
+        self.celsius * 9.0 / 5.0 + 32.0
     }
+}
 
-    pub fn to_fahrenheit(&self) -> f64 {
-        self.0 * 9.0 / 5.0 + 32.0
-    }
+pub fn main() -> f64 {
+    val boiling = @Temperature { celsius: 100.0 }
+    boiling.to_fahrenheit()
 }
 ```
 
-## Pattern 7: Agent with State Machine
+## Pattern 7: Agent with a State Machine
 
 ```MAGE
-use std::agent::{Agent, Capability};
-
-pub enum PipelineState {
+// The state is a sum; the transition is a function returning the next state.
+// `agent` declares the role and the capabilities it may use — it carries no
+// code, so there is no `impl Agent for …` and no `execute` to override.
+pub enum Stage {
     Idle,
-    Fetching,
-    Processing,
-    Done(Vec<u8>),
-    Failed(String),
+    Fetching(str),
+    Done(str),
+    Failed(str),
 }
 
-pub struct DataPipeline {
-    state: PipelineState,
-    source: String,
+agent DataPipeline {
+    capabilities: [net]
 }
 
-impl Agent for DataPipeline {
-    pub async fn execute(&mut self) -> Result<(), Error> / io, net, agent {
-        self.state = PipelineState::Fetching;
-        let raw = http::get(&self.source).await?;
-
-        self.state = PipelineState::Processing;
-        let processed = transform(raw.bytes())?;
-
-        self.state = PipelineState::Done(processed);
-        return ();
+// Declare exactly what the body performs — `net` here, and nothing more.
+// A declared set is an upper bound, so over-declaring passes the check while
+// handing the function a capability it never uses.
+pub fn step(stage: Stage) -> Stage / net {
+    match stage {
+        Idle => Fetching("https://example.com"),
+        Fetching(url) => Done(net.connect(url)),
+        Done(body) => Done(body),
+        Failed(msg) => Failed(msg),
     }
 }
 ```
 
-## Pattern 8: Effect-Bounded Generics
+## Pattern 8: Higher-Order Functions and Generics
 
 ```MAGE
-// Accept any function with a known effect signature
-pub fn run_with_io<F, R>(work: F) -> R / io
-where
-    F: FnOnce() -> R / io,
-{
-    work()
+// Generic parameters go in square brackets. A function-typed parameter carries
+// no effect annotation: there is no effect polymorphism, so `fn(str) -> T / io`
+// does not parse. The *caller* declares what it performs.
+pub fn apply_twice[T](x: T, func: fn(T) -> T) -> T {
+    func(func(x))
 }
 
-// Pure higher-order function (no effects)
-pub fn apply_twice<T>(x: T, transform: fn(T) -> T) -> T {
-    transform(transform(x))
+pub fn with_file(path: str, work: fn(str) -> i32) -> i32 / fs {
+    val content = fs.read_to_string(path)
+    work(content)
+}
+
+pub fn main() -> i32 {
+    apply_twice(3, |n| n * 2)
 }
 ```
 
 ## Pattern 9: Capability-Gated Operations
 
 ```MAGE
-use std::agent::Capability;
-
-pub struct SecureStore {
-    cap: Capability,
+// A capability namespace *is* the gate: reaching `fs` puts `fs` in the
+// inferred set, and a `pub` function must declare it. The declaration is the
+// permission, checked at compile time — there is no runtime `cap.request`.
+pub fn read_key(root: str, key: str) -> R[str, str] / fs {
+    guard len(key) > 0 else { return Err("empty key") }
+    Ok(fs.read_to_string(join([root, key], "/")))
 }
 
-impl SecureStore {
-    pub async fn read(&self, key: &str) -> Result<String, Error> / io, agent {
-        self.cap.request("kv.read", key)?;
-        let data = fs::read_to_string(&format!("/store/{key}"))?;
-        return data;
-    }
+// Nothing forces a caller to keep the capability: `handle … with` removes the
+// effect for the block it wraps, so this function is pure.
+effect Store {
+    fn read(key: str) -> str;
+}
 
-    pub async fn write(&self, key: &str, value: &str) -> Result<(), Error> / io, agent {
-        self.cap.request("kv.write", key)?;
-        fs::write(&format!("/store/{key}"), value)?;
-        return ();
+fn cached(key: str) -> str / store { Store.read(key) }
+
+pub fn read_cached(key: str) -> str {
+    handle {
+        cached(key)
+    } with Store {
+        read(k) => k,
     }
 }
 ```
@@ -240,76 +246,71 @@ impl SecureStore {
 ## Pattern 10: Swarm Fan-Out / Fan-In
 
 ```MAGE
-use std::agent::{Agent, Swarm};
-
-pub struct UrlChecker {
-    url: String,
+agent UrlChecker {
+    capabilities: [net, agent]
 }
 
-impl Agent for UrlChecker {
-    pub async fn execute(&mut self) -> Result<u16, Error> / io, net, agent {
-        let resp = http::get(&self.url).await?;
-        return resp.status_code();
-    }
+swarm Fleet {
+    agent: UrlChecker
 }
 
-pub async fn check_health(urls: Vec<String>) -> Result<HashMap<String, u16>, Error> / io, net, agent {
-    let swarm = Swarm::new();
-    for url in &urls {
-        swarm.spawn(UrlChecker { url: url.clone() });
+// Fan out with `agent.spawn`, fan in by folding the results. `agent` is a
+// capability namespace, so the effect must be declared like any other.
+pub fn check_all(urls: [str]~) -> i32 / net, agent {
+    var checked = 0
+    for url in urls {
+        agent.spawn(url)
+        net.connect(url)
+        checked += 1
     }
-
-    let results = swarm.join_all().await?;
-    let mut map = HashMap::new();
-    for (url, status) in urls.iter().zip(results.iter()) {
-        map.insert(url.clone(), *status);
-    }
-    return map;
+    checked
 }
 ```
 
-## Pattern 11: Module Organization
+## Pattern 11: One Flat Namespace
 
 ```MAGE
-// lib.mg — root module
-pub mod models;     // models/mod.mg or models.mg
-pub mod handlers;   // handlers/mod.mg or handlers.mg
-pub mod utils;      // utils/mod.mg or utils.mg
+// There is no module system. Every function, type, effect and agent in the
+// compilation unit shares one flat namespace, and the standard vocabulary
+// (`map`, `join`, `len`, …) plus the capability namespaces (`io`, `fs`, `net`,
+// …) are in scope everywhere.
+//
+// `use` parses, for source compatibility, but brings nothing into scope — the
+// checker warns and the name stays unresolved. Do not write it.
+pub struct User { name: str }
 
-// Re-export key types
-pub use crate::models::User;
-pub use crate::models::Config;
-pub use crate::handlers::handle_request;
+pub fn handle_request(user: User) -> str / io {
+    println(user.name)
+    user.name
+}
 ```
 
-## Pattern 12: Test Organization
+## Pattern 12: Tests and Effect Mocking
 
 ```MAGE
-#[cfg(test)]
-mod tests {
-    use super::*;
+// `@test` marks a test function. There is no `mod tests`, no `#[cfg(test)]`,
+// and no `assert_eq!` — a test is a function whose value the runner compares.
+@test
+pub fn test_addition() -> i32 {
+    2 + 3
+}
 
-    #[test]
-    fn test_addition() {
-        let result = add(2, 3);
-        assert_eq!(result, 5);
-    }
+effect Cfg {
+    fn read(path: str) -> str;
+}
 
-    #[test]
-    fn test_error_case() {
-        let result = parse_config("");
-        assert!(result.is_err());
-    }
+fn read_config(path: str) -> str / cfg {
+    Cfg.read(path)
+}
 
-    // Effect-mocked test
-    #[test]
-    fn test_with_mock_io() {
-        handle io {
-            read_file(_) => "mock data",
-        } {
-            let content = read_config("test.toml");
-            assert_eq!(content.unwrap(), "mock data");
-        }
+// A handler substitutes the operation's value, so the test never touches a
+// real file. The effect being handled is named after `with`.
+@test
+pub fn test_with_mocked_io() -> str {
+    handle {
+        read_config("test.toml")
+    } with Cfg {
+        read(path) => "mock data",
     }
 }
 ```

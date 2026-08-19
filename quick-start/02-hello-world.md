@@ -23,18 +23,19 @@ hello/
 Open `src/main.mg`:
 
 ```MAGE
-+f main() {
++f main() / io {
     p"Hello, World!"
 }
 ```
 
 That's the entire program. Let's break it down:
 
-| Token              | Meaning                               |
-| ------------------ | ------------------------------------- |
-| `+f`               | Public function (`pub fn` in Rust)    |
-| `main()`           | Function name and parameters          |
-| `p"Hello, World!"` | Print macro (like `println!` in Rust) |
+| Token              | Meaning                                              |
+| ------------------ | ---------------------------------------------------- |
+| `+f`               | Public function (`pub fn` in Rust)                   |
+| `main()`           | Function name and parameters                         |
+| `/ io`             | The effect it performs. Printing is `io`, and a public function must declare what it performs — this is the capability gate, and it starts at "hello world". |
+| `p"Hello, World!"` | Print, with interpolation. Not a macro: MAGE has none. |
 
 ## Run It
 
@@ -48,7 +49,7 @@ mg run
 Edit `src/main.mg`:
 
 ```MAGE
-+f main() {
++f main() / io {
     v name = "MAGE"
     p"Hello, {name}!"
     p"2 + 3 = {2 + 3}"
@@ -69,11 +70,11 @@ mg run
 ## Add a Function
 
 ```MAGE
-f greet(name: &s) -> s {
+f greet(name: s) -> s {
     f"Hello, {name}!"
 }
 
-+f main() {
++f main() / io {
     v message = greet("World")
     p"{message}"
 
@@ -82,12 +83,11 @@ f greet(name: &s) -> s {
 }
 ```
 
-| Token    | Meaning                                 |
-| -------- | --------------------------------------- |
-| `f`      | Private function (`fn` in Rust)         |
-| `&s`     | String slice reference (`&str` in Rust) |
-| `s`      | Owned string (`String` in Rust)         |
-| `f"..."` | Format string (like `format!` in Rust)  |
+| Token    | Meaning                                                       |
+| -------- | ------------------------------------------------------------- |
+| `f`      | Private function (`fn` in Rust)                               |
+| `s`      | The string type. There is one — no `String`/`&str` split, and `&s` is a *reference to* it, which a `s` parameter will not accept. |
+| `f"..."` | An interpolated string. `format!` does not exist.             |
 
 ## Try the REPL
 

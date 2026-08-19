@@ -37,6 +37,13 @@ pub struct EffectInfer {
     /// the same thing. Keeping the fold here rather than at each use means the
     /// convention is stated once.
     effect_names: std::collections::HashSet<String>,
+    /// Bare method name → the qualified `Type.method` keys that spell it.
+    ///
+    /// A method call has no receiver type at this stage, so a call is only
+    /// attributed to a method when the name is unambiguous — one entry. With
+    /// two implementations of `render`, neither is charged, which under-reports
+    /// rather than blaming the wrong one.
+    method_index: HashMap<String, Vec<String>>,
     pub diagnostics: Vec<Diagnostic>,
 }
 
@@ -64,6 +71,35 @@ impl Default for EffectInfer {
     }
 }
 
+/// Every method in the module's `impl` and `extend` blocks, as
+/// `(Type.method, definition, is_public)`.
+///
+/// `trait` blocks are skipped: their items are signatures, and a signature has
+/// nothing to infer — the obligation belongs to the `impl` that supplies a body.
+fn collect_methods(module: &ast::Module) -> Vec<(String, ast::FunctionDef, bool)> {
+    let mut out = Vec::new();
+    for item in &module.items {
+        let (target, items) = match &item.kind {
+            ast::ItemKind::Impl(ib) => (&ib.self_type, &ib.items),
+            ast::ItemKind::Extend(eb) => (&eb.target_type, &eb.items),
+            _ => continue,
+        };
+        let Some(type_name) = crate::eval::type_head_name(target) else {
+            continue;
+        };
+        for member in items {
+            if let ast::ItemKind::Function(fd) = &member.kind {
+                out.push((
+                    format!("{type_name}.{}", fd.name),
+                    fd.clone(),
+                    member.visibility == ast::Visibility::Public,
+                ));
+            }
+        }
+    }
+    out
+}
+
 impl EffectInfer {
     pub fn new() -> Self {
         EffectInfer {
@@ -74,6 +110,7 @@ impl EffectInfer {
             handled: HashMap::new(),
             pending_regions: Vec::new(),
             effect_names: std::collections::HashSet::new(),
+            method_index: HashMap::new(),
             diagnostics: Vec::new(),
         }
     }
@@ -95,13 +132,37 @@ impl EffectInfer {
             }
         }
 
+        // Pass 0.5: index the methods before any call graph is built, so a call
+        // inside one function can name a method defined further down the file.
+        //
+        // `impl` and `extend` bodies were not collected at all: `--check` on a
+        // module of nothing but methods printed "Functions analyzed: 0", and a
+        // `pub fn` inside one could `fs.read_to_string(…)` while declaring
+        // nothing. Every capability in the language is reached through exactly
+        // the call shape that was unchecked.
+        let methods = collect_methods(module);
+        for (key, _, _) in &methods {
+            let bare = key.split('.').next_back().unwrap_or(key).to_string();
+            self.method_index.entry(bare).or_default().push(key.clone());
+        }
+
         // Pass 1: collect function declarations and their call graphs.
         for item in &module.items {
             if let ast::ItemKind::Function(fd) = &item.kind {
-                self.collect_function(fd);
+                self.collect_function(&fd.name, fd);
                 if item.visibility == ast::Visibility::Public || fd.name == "main" {
                     boundary.insert(fd.name.clone());
                 }
+            }
+        }
+
+        // Pass 1a: the methods themselves. A method is keyed `Type.method`, so
+        // two types implementing one trait keep separate effect sets and no
+        // method shadows a free function of the same name.
+        for (key, fd, is_pub) in &methods {
+            self.collect_function(key, fd);
+            if *is_pub {
+                boundary.insert(key.clone());
             }
         }
 
@@ -181,11 +242,13 @@ impl EffectInfer {
         }
     }
 
-    fn collect_function(&mut self, fd: &ast::FunctionDef) {
+    /// Collect one function under `key` — its own name for a free function,
+    /// `Type.method` for a method.
+    fn collect_function(&mut self, key: &str, fd: &ast::FunctionDef) {
         // Record declared effects from annotations.
         if !fd.effects.is_empty() {
             let effects: EffectSet = fd.effects.iter().map(|e| Effect::from_name(e)).collect();
-            self.declared.insert(fd.name.clone(), effects);
+            self.declared.insert(key.to_string(), effects);
         }
 
         // Also check attributes for @fx(...).
@@ -198,14 +261,14 @@ impl EffectInfer {
         self.collect_calls_in_block(&fd.body, &mut callees, &mut local_effects);
         let regions = std::mem::take(&mut self.pending_regions);
         if !regions.is_empty() {
-            self.handled.insert(fd.name.clone(), regions);
+            self.handled.insert(key.to_string(), regions);
         }
 
-        self.call_graph.insert(fd.name.clone(), callees);
+        self.call_graph.insert(key.to_string(), callees);
 
         // If the function performs effects directly, record them.
         if !local_effects.is_empty() {
-            self.inferred.insert(fd.name.clone(), local_effects);
+            self.inferred.insert(key.to_string(), local_effects);
         }
     }
 
@@ -274,6 +337,16 @@ impl EffectInfer {
                 }
             }
             ast::Expr::MethodCall { receiver, method, args, .. } => {
+                // `p.norm2()` reaches whatever `norm2` performs. The receiver's
+                // type is not known here, so the edge is only drawn when the
+                // method name is unambiguous in the module — otherwise nothing
+                // is charged, which under-reports rather than blaming the
+                // wrong implementation.
+                if let Some(keys) = self.method_index.get(method)
+                    && let [only] = keys.as_slice()
+                {
+                    callees.push(only.clone());
+                }
                 // `Audit.record(x)` performs `audit`. This is the introduction
                 // rule: without it an `effect` block declared operations that
                 // no analysis attributed to anyone, so a function calling one
@@ -283,6 +356,27 @@ impl EffectInfer {
                     if self.effect_names.contains(&lowered) {
                         let _ = method;
                         local_effects.insert(Effect::from_name(&lowered));
+                    } else if let Some((_, Some(effect))) = crate::hir::CAPABILITY_NAMESPACES
+                        .iter()
+                        .find(|(ns, _)| *ns == name)
+                    {
+                        // `io.println(x)` performs `io`, by the same rule one
+                        // line up: the receiver names the capability, so the
+                        // capability is what gets attributed.
+                        //
+                        // This is the seam the effect system was missing. The
+                        // capability handles are documented as *the* way to
+                        // perform a side effect, and they were the one call
+                        // shape that attributed nothing — a `pub` function
+                        // could `net.connect(…)` or `llm.generate(…)` and
+                        // still typecheck as pure, while the bare `println(…)`
+                        // beside it was caught. A gate open at the documented
+                        // entrance is not a gate.
+                        //
+                        // A *declared* effect wins the name: `effect Io { … }`
+                        // in the module is that module's `io`, checked against
+                        // its own operation list.
+                        local_effects.insert(effect.clone());
                     }
                 }
                 self.collect_calls_in_expr(receiver, callees, local_effects);
@@ -905,5 +999,293 @@ mod handler_tests {
     #[test]
     fn builtin_effect_kinds_need_no_declaration() {
         assert!(errors("+f a() -> i32 / fs, net, rng { 1 }").is_empty());
+    }
+
+    /// Every effect `MAGE_SPEC.md` §11.2 documents, written the way the spec
+    /// says to write it.
+    ///
+    /// `agent` was in that table and was a **parse error**: `agent` lexes as
+    /// the keyword introducing an `agent` item, so `/ agent` never reached the
+    /// checker, and it was not a built-in kind either — two independent
+    /// failures on the one row. The spec had advertised an effect nobody could
+    /// write. Nothing had ever run the other sixteen to find out.
+    ///
+    /// This is the pin: a row added to §11.2 that the compiler does not accept
+    /// fails here, and so does a name quietly dropped from `Effect::from_name`.
+    ///
+    /// The rows are **read out of `MAGE_SPEC.md`**, not copied into a literal
+    /// here. A copy would have made the doc comment's claim — "every effect the
+    /// spec documents" — true only of the seventeen someone remembered, and the
+    /// whole point of this test is that the spec once advertised an effect
+    /// (`agent`) that nobody could write. The one boundary that matters is the
+    /// one between the file and the compiler, so the file is what it reads.
+    #[test]
+    fn every_effect_documented_in_the_spec_parses_and_checks() {
+        let spec = std::fs::read_to_string(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../MAGE_SPEC.md"),
+        )
+        .expect("MAGE_SPEC.md is beside the prototype");
+        // The file is CRLF in a Windows checkout, so a section terminator
+        // written with bare LF matched nothing and the "table" ran to the end
+        // of the document — 75 names instead of 17. The count assertion below
+        // is what caught that, which is the argument for having it.
+        let spec = spec.replace("\r\n", "\n");
+        let table = spec
+            .split("### 11.2 Standard Effects")
+            .nth(1)
+            .expect("§11.2 exists")
+            .split("\n### ")
+            .next()
+            .unwrap();
+        // `| `io` |` and `| **`gpu`** |` — the emphasis is decoration on some
+        // rows and not others, so the name is taken from the backticks.
+        let names: Vec<&str> = table
+            .lines()
+            .filter(|l| l.starts_with("| "))
+            .filter_map(|l| l.split('`').nth(1))
+            .filter(|n| !n.is_empty() && n.chars().all(|c| c.is_ascii_lowercase()))
+            .collect();
+        assert_eq!(
+            names.len(),
+            17,
+            "§11.2 no longer has 17 effect rows ({names:?}) — if the table grew or              shrank, the sentence above it and `ontology::EFFECT_NAMES` both need              the same change"
+        );
+        for effect in names {
+            let msgs = errors(&format!("+f a() -> i32 / {effect} {{ 1 }}"));
+            assert!(
+                msgs.is_empty(),
+                "`/ {effect}` is documented in MAGE_SPEC.md §11.2 but rejected: {msgs:?}"
+            );
+        }
+    }
+
+    /// The builtin names `MAGE_SPEC.md` §11.2 says are attributed on call, and
+    /// the documented names it says are *not*.
+    ///
+    /// §11.2 used to present its middle column as "Operations", which read as a
+    /// table of callable operations. Running all 41 of them found 22 that
+    /// perform nothing: `dispatch`, `generate`, `lifecycle` and the rest have
+    /// no `effect` block behind them and are attributed by nothing, so a
+    /// function calling them is pure. The spec now says domain, and lists the
+    /// names that really are attributed — this is what holds it to that.
+    #[test]
+    fn the_builtin_names_attributed_on_call_are_the_documented_ones() {
+        let attributed: &[(&str, &str)] = &[
+            ("println", "IO"), ("read_to_string", "IO"), ("write", "IO"),
+            ("mkdir", "FS"), ("stat", "FS"), ("rename", "FS"),
+            ("connect", "Net"), ("recv", "Net"), ("bind", "Net"),
+            ("spawn", "Async"), ("select", "Async"),
+            ("realloc", "Alloc"), ("panic", "Panic"),
+            ("set_env", "Env"), ("timeout", "Time"),
+            // Added when the coverage assertion below went in: every one of
+            // these is in §11.2's domain column, attributes an effect, and had
+            // never been checked.
+            ("read", "IO"), ("listen", "Net"), ("send", "Net"),
+            ("open", "FS"), ("remove", "FS"),
+            ("alloc", "Alloc"), ("dealloc", "Alloc"),
+            ("now", "Time"), ("sleep", "Time"),
+        ];
+        for (name, effect) in attributed {
+            let inferred = infer_source(&format!("f a() -> i32 {{ {name}(); 0 }}"))
+                .inferred
+                .get("a")
+                .cloned()
+                .unwrap_or_else(pure);
+            assert!(
+                inferred.iter().any(|e| e.to_string() == *effect),
+                "`{name}()` should perform {effect} per §11.2, inferred {inferred:?}"
+            );
+        }
+
+        // Documented in §11.2's domain column, attributed by nothing. If one of
+        // these starts inferring an effect, §11.2's second table is now wrong.
+        // `join` is here for a different reason: the vocabulary's pure string
+        // join outranks the thread join, and §11.2 says so. `exec` is the one
+        // surprise: `proc` is a built-in effect whose domain is "spawn, exec,
+        // tool invocation", and `exec()` performs nothing — consistent with
+        // §11.2's own sentence that the domain column is not a table of
+        // callable operations, but worth stating out loud where someone
+        // reading the table will look for it.
+        let pure_names = [
+            "join", "seek", "close", "catch_panic", "call_foreign", "get_var", "set_var",
+            "dispatch", "synchronize", "generate", "embed", "analyze", "evaluate", "mutate",
+            "forward", "backward", "step", "random", "seed", "sample", "lifecycle", "message",
+            "lease", "exec",
+        ];
+        for name in pure_names {
+            let inferred = infer_source(&format!("f a() -> i32 {{ {name}(); 0 }}"))
+                .inferred
+                .get("a")
+                .cloned()
+                .unwrap_or_else(pure);
+            assert!(
+                inferred.is_empty(),
+                "`{name}()` is documented as attributing nothing, but inferred {inferred:?}"
+            );
+        }
+
+        // Both lists are written by hand, and between them they left eleven of
+        // §11.2's domain names in neither — `read`, `listen`, `send`, `open`,
+        // `remove`, `alloc`, `dealloc`, `now`, `sleep` all attribute an effect
+        // and none of them was checked. So the domain column is read back out
+        // of the spec, and every name in it has to appear in one bucket or the
+        // other. A name added to a domain is then a failure here until someone
+        // decides which it is.
+        let spec = std::fs::read_to_string(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../MAGE_SPEC.md"),
+        )
+        .expect("MAGE_SPEC.md is beside the prototype")
+        .replace("\r\n", "\n");
+        let table = spec
+            .split("### 11.2 Standard Effects")
+            .nth(1)
+            .expect("§11.2 exists")
+            .split("\n### ")
+            .next()
+            .unwrap();
+        for line in table.lines().filter(|l| l.starts_with("| `") || l.starts_with("| **`")) {
+            let domain = line.split('|').nth(2).expect("domain column");
+            for op in domain.split(',') {
+                let op = op.trim().trim_matches('*').trim();
+                // "tool invocation" is prose, not an identifier.
+                if op.is_empty() || op.contains(' ') {
+                    continue;
+                }
+                assert!(
+                    attributed.iter().any(|(n, _)| *n == op) || pure_names.contains(&op),
+                    "`{op}` is in §11.2's domain column and in neither list here — \
+                     nothing checks whether calling it performs an effect"
+                );
+            }
+        }
+    }
+
+    /// A capability handle performs its capability's effect.
+    ///
+    /// This is the hole this table exists to close. `resolve.rs` registered the
+    /// capability namespaces and its comment said their "use is tracked by the
+    /// effect system"; nothing tracked them. A `pub` function declared pure
+    /// could call `net.connect(…)`, `llm.generate(…)` or `process.spawn(…)` and
+    /// check clean — while the bare `println(…)` beside it was caught. The gate
+    /// was open at precisely the seam the language documents as the way
+    /// through it, which is the worst place for a capability system to be
+    /// wrong: the safe-looking code is the code that isn't checked.
+    #[test]
+    fn a_capability_handle_performs_its_effect() {
+        for (namespace, effect) in crate::hir::CAPABILITY_NAMESPACES {
+            let src = format!("+f a(x: str) -> i32 {{ {namespace}.op(x); 0 }}");
+            let msgs = errors(&src);
+            match effect {
+                Some(e) => assert!(
+                    msgs.iter().any(|m| m.contains(&e.to_string())),
+                    "`{namespace}.op(…)` must perform {e}, got {msgs:?}"
+                ),
+                // Deliberately unattributed — see the table's own comment.
+                None => assert!(
+                    msgs.is_empty(),
+                    "`{namespace}` is recorded as performing nothing, but got {msgs:?}"
+                ),
+            }
+        }
+    }
+
+    /// A method body is checked like any other body.
+    ///
+    /// It was not checked at all: `impl` and `extend` items never reached the
+    /// collector, so `--check` on a module of methods reported "Functions
+    /// analyzed: 0" and a `pub fn` inside one could read the filesystem while
+    /// declaring nothing. Both block forms, because they are separate AST nodes
+    /// and fixing one would leave the other open.
+    #[test]
+    fn a_method_must_declare_what_it_performs() {
+        for block in ["extend P", "impl P"] {
+            let src = format!(
+                "+S P {{ x: f64 }}\n\
+                 {block} {{\n\
+                 +f leak(self, p: str) -> str {{ fs.read_to_string(p) }}\n\
+                 }}"
+            );
+            let msgs = errors(&src);
+            assert!(
+                msgs.iter().any(|m| m.contains("P.leak") && m.contains("FS")),
+                "`{block}` method performing fs must be reported, got {msgs:?}"
+            );
+        }
+        // And declaring it satisfies the check.
+        assert!(
+            errors(
+                "+S P { x: f64 }\n\
+                 extend P {\n\
+                 +f read(self, p: str) -> str / fs { fs.read_to_string(p) }\n\
+                 }"
+            )
+            .is_empty()
+        );
+    }
+
+    /// Calling a method reaches what the method performs.
+    #[test]
+    fn a_method_call_propagates_the_methods_effects() {
+        let msgs = errors(
+            "+S P { x: f64 }\n\
+             extend P {\n\
+             f read(self, p: str) -> str / fs { fs.read_to_string(p) }\n\
+             }\n\
+             +f main() -> str { v q = @P { x: 1.0 }\n q.read(\"a\") }",
+        );
+        assert!(
+            msgs.iter().any(|m| m.contains("`main`") && m.contains("FS")),
+            "main reaches fs through the method, got {msgs:?}"
+        );
+    }
+
+    /// Declaring the effect satisfies the check — the gate is a gate, not a ban.
+    #[test]
+    fn a_declared_capability_handle_checks_clean() {
+        assert!(errors("+f a(s: str) -> i32 / io { io.println(s); 0 }").is_empty());
+        assert!(errors("+f a(p: str) -> i32 / llm { llm.generate(p); 0 }").is_empty());
+        assert!(errors("+f a(c: str) -> i32 / proc { process.spawn(c); 0 }").is_empty());
+    }
+
+    /// A module's own `effect Io { … }` outranks the built-in capability, the
+    /// same way it already outranks a builtin function name.
+    #[test]
+    fn a_declared_effect_block_wins_the_namespace() {
+        let msgs = errors(
+            "effect Io { f emit(s: str) -> i32; }\n+f a(s: str) -> i32 / io { Io.emit(s) }",
+        );
+        assert!(msgs.is_empty(), "declared `effect Io` should win, got {msgs:?}");
+    }
+
+    /// Every capability namespace `resolve.rs` registers must be in the table
+    /// that decides its effect — they are one list precisely so a namespace
+    /// cannot be added without that decision being made.
+    #[test]
+    fn every_capability_namespace_resolves_as_a_name() {
+        for (namespace, _) in crate::hir::CAPABILITY_NAMESPACES {
+            let src = format!("+f a(x: str) -> i32 / proc, io, net, llm, agent, alloc, \
+                               env, time, rng, gpu, fs {{ {namespace}.op(x); 0 }}");
+            let tokens = crate::lexer::lex(&src);
+            let module = crate::parser::parse(&tokens)
+                .unwrap_or_else(|e| panic!("`{namespace}.op(…)` failed to parse: {e:?}"));
+            let diags = crate::resolve::resolve(&module).diagnostics;
+            assert!(
+                !diags.iter().any(|d| d.message.contains(namespace)),
+                "`{namespace}` is registered but does not resolve: {:?}",
+                diags.iter().map(|d| &d.message).collect::<Vec<_>>()
+            );
+        }
+    }
+
+    /// A keyword is accepted as an effect *name*, not as an effect *kind*: the
+    /// annotation position stopped being the gate, so the unknown-effect check
+    /// is what must still reject a name that means nothing.
+    #[test]
+    fn a_keyword_that_is_not_a_builtin_effect_is_still_rejected() {
+        let msgs = errors("+f a() -> i32 / trait { 1 }");
+        assert!(
+            msgs.iter().any(|m| m.contains("unknown effect")),
+            "expected an unknown-effect diagnostic, got {msgs:?}"
+        );
     }
 }

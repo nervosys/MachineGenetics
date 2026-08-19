@@ -82,11 +82,14 @@ net MLP {
 ```
 
 **4 · Binary IR** — what an agent actually *ships*: the net above lowered to the
-Agentic Binary Language container. **92 bytes — 71.9 % smaller than its text — and it round-trips back to source** *(measured):*
+Agentic Binary Language container. **92 bytes — a third smaller than its text — and it round-trips back to source** *(measured on `benchmarks/constructs/mlp_mage.mg`):*
 
 ```
-ABL1 02 00 01 00 …  4d 4c 50 3f …      ← "ABL1" magic + the MLP module
-327 B  .mg text   →   92 B  binary   →   decompiles to the exact net above
+41 42 4c 31  03 00  01 00 00 00  …  4d 4c 50     ← "ABL1", version 3, 1 item, "MLP"
+139 B  .mg text   →   92 B  binary  (33.8 % smaller)   →   decompiles to an
+equivalent net: same layers, same order, same shapes — layer *names* are
+regenerated (`fc1` comes back as `l_linear_1`), because the container stores
+the ops, not the identifiers.
 ```
 
 > An agent writes intent in form 2 (fewest tokens), the compiler verifies it
@@ -230,8 +233,9 @@ prototype). Reproduce with `agentic-eval --example swe_languages`.
 > (1) a structurally reliable, executable text surface — LL(1) grammar, tracked
 > effects, machine-readable diagnostics, a self-describing ontology, and an
 > evaluator that runs it — and (2) the **Agentic Binary Language binary IR**,
-> where a full neural-network module fits in **~300 bytes**
-> (~83 % smaller than the equivalent text).
+> where a five-item neural module fits in **420 bytes** — 0.225 of its
+> 1866 bytes of text, and 47 bytes for the transformer block inside it,
+> down from 243 (`benchmarks/FINDINGS.md` §1).
 >
 > The text surface itself is roughly **byte-tied** with idiomatic Rust
 > on the 100-task benchmark corpus — not the "~50 % reduction" earlier
@@ -248,7 +252,7 @@ prototype). Reproduce with `agentic-eval --example swe_languages`.
 
 - ✅ **Zero-Ambiguity Syntax** — Deterministic LL(1) grammar eliminates parsing failures for both humans and AI agents. No backtracking, no ambiguity.
 
-- ✅ **Binary IR for Agents (Agentic Binary Language)** — A transformer block encodes to **47 bytes** of Agentic Binary Language, a 5-item module to ~300 bytes (vs ~1.8 KB of text). Agents target the IR directly via `--target=abl-bytes`; the text surface is a human-readable view via the round-trip decompiler.
+- ✅ **Binary IR for Agents (Agentic Binary Language)** — A transformer block encodes to **47 bytes** of Agentic Binary Language, the 5-item `prototype/examples/unified.mg` to 420 bytes (vs 1866 of text). Agents target the IR directly via `--target=abl-bytes`; the text surface is a human-readable view via the round-trip decompiler.
 
 - ✅ **Neural architecture DSL + composition algebra** — declarative `net`s composed from a few orthogonal operators (`stack`/`residual`/`branch`/`wrap`) over reusable `block`s, shared across projects via a content-addressed registry (`forge publish` + name handles). Shape-mismatched compositions are rejected at `--check`; repeated depth folds to an `O(1)` binary (`REPEAT`); and the operators **execute** on the CPU backend. See [Composing architectures](#composing-architectures--a-small-algebra-over-a-shared-block-library).
 

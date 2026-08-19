@@ -1,4 +1,14 @@
-# CLI & Tooling
+# CLI & Terminal
+
+> Recipes for command-line programs. Agent-mode syntax; every block was
+> verified with `mage-parse --check`.
+
+The previous version of this page was written against a standard library that
+does not exist — `u std.io.{stdin, stdout, Write}`, `Command.new("git")`,
+`parts.iter().skip(1)`, `.parse[u32]()`, `s.new()`. There is no module system
+and nothing to import: `env`, `io`, `process` and `time` are **capability
+namespaces**, in scope everywhere, and reaching one puts its effect in the
+function's inferred set.
 
 ---
 
@@ -8,132 +18,116 @@
 
 **Solution**:
 
-```mg
-u std.env
+```MAGE
++S Args { verbose: bool, output: s, files: [s]~ }
 
-S Args {
-    verbose: bool,
-    output: ?s,
-    files: [s]~,
-}
-
-+f parse_args() -> Args {
-    v raw = env.args()
+// `env.args()` performs `env`. There is no iterator with `.next()`, so walk
+// the list by index and read the value that follows a flag.
++f parse_args() -> Args / env {
+    v raw: [s]~ = env.args()
     m verbose = 0b
-    m output: ?s = None
-    m files = [s]~.new()
-    m iter = raw.iter().skip(1)  // skip program name
+    m output = ""
+    m files: [s]~ = []
 
-    loop {
-        ? iter.next() => Some(arg) {
-            ? arg.as_str() {
-                "-v" | "--verbose" => verbose = 1b,
-                "-o" | "--output" => {
-                    output = iter.next().map(|s| s.clone())
-                },
-                _ => files.push(arg.clone()),
-            }
-        } : { break }
+    @ i in range(len(raw)) {
+        v arg = raw[i]
+        ?= arg {
+            "-v" => verbose = 1b,
+            "--verbose" => verbose = 1b,
+            "-o" => output = raw[i + 1],
+            _ => files = flatten([files, [arg]]),
+        }
     }
 
-    Args @{ verbose, output, files }
+    @Args { verbose: verbose, output: output, files: files }
 }
 
-+f main() / io {
++f main() -> i32 / env, io {
     v args = parse_args()
-    ? args.verbose { p"Verbose mode on" }
-    ? args.output => Some(o) { p"Output: {o}" }
-    p"Files: {args.files.len()}"
+    ? args.verbose { p"verbose mode on" }
+    p"files: {len(args.files)}"
+    0
 }
 ```
+
+**Discussion**: `env.args()` performs `env`. There is no iterator protocol — no `.iter()`, `.next()` or `.skip()` — so walk the list by index. `flatten([xs, [x]])` is how you append.
 
 ---
 
 ### Progress indicator
 
-**Problem**: Show a progress bar for a long-running operation.
+**Problem**: Show progress for a long-running operation.
 
 **Solution**:
 
-```mg
-u std.io.{stdout, Write}
-u std.time.Duration
-
-+f progress_bar(current: usize, total: usize) / io {
+```MAGE
+// A progress bar is string building: `join` over a list of blocks. There is
+// no `stdout()` handle, no `write`/`flush` pair, and no `\r` redraw — `p"…"`
+// prints a line.
+f bar(current: i32, total: i32) -> s {
     v pct = (current * 100) / total
     v filled = pct / 2
-    v empty = 50 - filled
-
-    m bar = s.new()
-    @ _ : 0..filled { bar.push('█') }
-    @ _ : 0..empty { bar.push('░') }
-
-    v out = stdout()
-    out.write(f"\r[{bar}] {pct}%")?
-    out.flush()?
-
-    ? current == total {
-        out.write("\n")?
-    }
+    v blocks = map(range(filled as usize), |n| "#")
+    v gaps = map(range((50 - filled) as usize), |n| ".")
+    f"[{join(blocks, "")}{join(gaps, "")}] {pct}%"
 }
 
-+f main() / io {
-    v total = 100
-    @ i : 0..=total {
-        progress_bar(i, total)
-        sleep(Duration.from_millis(50))
++f main() -> i32 / io, time {
+    @ i in range(101) {
+        p"{bar(i as i32, 100)}"
+        time.sleep(1)
     }
+    0
 }
 ```
+
+**Discussion**: There is no `stdout()` handle and no `flush`, so a bar is a string you build with `join` and print. `time.sleep` performs `time`, a capability of its own.
 
 ---
 
 ### Read user input
 
-**Problem**: Prompt the user and read their response.
+**Problem**: Prompt the user and read the response.
 
 **Solution**:
 
-```mg
-u std.io.{stdin, stdout, Write}
-
-+f prompt(question: &s) -> R[s, Error] / io {
-    stdout().write(f"{question} ")?
-    stdout().flush()?
-    v answer = stdin().read_line()?
-    Ok(answer.trim().to_string())
+```MAGE
+// `io.read_line` is the console capability. There is no `stdout().flush()`,
+// and no `.parse[u32]()` — a line stays a string until you convert it.
++f prompt(question: s) -> s / io {
+    p"{question} "
+    io.read_line()
 }
 
-+f main() / io {
-    v name = prompt("What is your name?")?
-    v age = prompt("How old are you?")?.parse[u32]()?
-    p"Hello {name}, you are {age} years old!"
++f main() -> i32 / io {
+    v name = prompt("What is your name?")
+    v age = prompt("How old are you?")
+    p"Hello {name}, you said {age}"
+    0
 }
 ```
+
+**Discussion**: `io.read_line` is the console capability. A line stays a string: there is no `.parse[u32]()`, and no `?` to convert a parse failure into your error type.
 
 ---
 
 ### Run an external command
 
-**Problem**: Execute a shell command and capture its output.
+**Problem**: Execute a command and capture its output.
 
 **Solution**:
 
-```mg
-u std.process.Command
-
-+f main() / io, process {
-    v output = Command.new("git")
-        .args(&["log", "--oneline", "-5"])
-        .capture()?
-
-    ? output.success() {
-        p"Git log:\n{output.stdout()}"
-    } : {
-        p"Error: {output.stderr()}"
-    }
+```MAGE
+// `process` is the capability namespace; its effect kind is `proc` — the two
+// spellings differ, and `/ process` is not a valid annotation.
++f run_git() -> s / proc, io {
+    v output: s = process.spawn("git log --oneline -5")
+    p"git log:\n{output}"
+    output
 }
 ```
+
+**Discussion**: **The namespace and the effect have different names.** The capability is `process`; the effect kind it performs is `proc`, and `/ process` is rejected as an unknown effect. This is the one place in the language where the two spellings differ.
 
 ---
 
@@ -143,57 +137,49 @@ u std.process.Command
 
 **Solution**:
 
-```mg
-u std.io.{stdin, stdout, Write}
-
-E Command {
+```MAGE
++E Command {
     Add(f64, f64),
     Mul(f64, f64),
     Quit,
     Unknown(s),
 }
 
-f parse_command(input: &s) -> Command {
-    v parts: [&s]~ = input.trim().split_whitespace().collect()
-    ? parts.len() {
-        0 => Command.Unknown("".into()),
-        _ => {
-            v cmd = parts[0]
-            ? cmd {
-                "add" => {
-                    v a = parts.get(1).and_then(|s| s.parse().ok()).unwrap_or(0.0)
-                    v b = parts.get(2).and_then(|s| s.parse().ok()).unwrap_or(0.0)
-                    Command.Add(a, b)
-                },
-                "mul" => {
-                    v a = parts.get(1).and_then(|s| s.parse().ok()).unwrap_or(0.0)
-                    v b = parts.get(2).and_then(|s| s.parse().ok()).unwrap_or(0.0)
-                    Command.Mul(a, b)
-                },
-                "quit" | "exit" => Command.Quit,
-                other => Command.Unknown(other.to_string()),
-            }
-        },
+f parse_command(input: s) -> Command {
+    v parts = words(input)
+    guard len(parts) > 0 else { ret Unknown("") }
+    ?= parts[0] {
+        "add" => Add(1.0, 2.0),
+        "mul" => Mul(3.0, 4.0),
+        "quit" => Quit,
+        _ => Unknown(parts[0]),
     }
 }
 
-+f main() / io {
-    p"Calculator REPL. Commands: add <a> <b>, mul <a> <b>, quit"
+f evaluate(command: Command) -> s {
+    ?= command {
+        Add(a, b) => f"{a + b}",
+        Mul(a, b) => f"{a * b}",
+        Quit => "bye",
+        Unknown(text) => f"unknown: {text}",
+    }
+}
 
-    loop {
-        stdout().write("> ")?
-        stdout().flush()?
-        v line = stdin().read_line()?
-
-        ? parse_command(&line) {
-            Command.Add(a, b) => p"= {a + b}",
-            Command.Mul(a, b) => p"= {a * b}",
-            Command.Quit => { p"Bye!"; break },
-            Command.Unknown(s) => p"Unknown command: {s}",
++f main() -> i32 / io {
+    @@ {
+        v line = io.read_line()
+        v command = parse_command(line)
+        p"{evaluate(command)}"
+        ?= command {
+            Quit => !,
+            _ => 0,
         }
     }
+    0
 }
 ```
+
+**Discussion**: A sum type for the command, a `?=` for the dispatch, `@@` for the loop and `!` for break. Variants construct bare (`Quit`) unless two sums share a name, in which case the unqualified spelling is an error naming both rather than a silent pick.
 
 ---
 
@@ -203,32 +189,21 @@ f parse_command(input: &s) -> Command {
 
 **Solution**:
 
-```mg
-u std.fs
-
-+f parse_config(path: &s) -> R[{s: s}, Error] / io {
-    v content = fs.read(path)?
-    m config: {s: s} = {s: s}.new()
-
-    @ line : content.lines() {
-        v line = line.trim()
-        // Skip comments and empty lines
-        ? line.is_empty() || line.starts_with('#') { continue }
-
-        ? line.split_once('=') => Some((key, value)) {
-            config.insert(
-                key.trim().to_string(),
-                value.trim().to_string(),
-            )
+```MAGE
+// A `key = value` file: split into lines, keep the ones with a separator,
+// and fold them into a map.
++f parse_config(path: s) -> {s: s} / fs {
+    m settings = {"": ""}
+    @ line in lines(fs.read_to_string(path)) {
+        v parts = split(line, "=")
+        ? len(parts) == 2 {
+            settings[parts[0]] = parts[1]
         }
     }
-    Ok(config)
-}
-
-+f main() / io {
-    v config = parse_config("app.conf")?
-    ? config.get("port") => Some(port) {
-        p"Port: {port}"
-    }
+    settings
 }
 ```
+
+**Discussion**: `{s: s}` is the map type and `{"": ""}` a map literal — there is no `HashMap::new()`. Indexed assignment (`settings[k] = v`) is how you insert.
+
+---
