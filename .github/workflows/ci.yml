@@ -74,6 +74,16 @@ jobs:
       # that exists — with a baseline that can only shrink.
       - name: Documented API items exist
         run: bash scripts/check-rmi-api-doc.sh
+      # Every check above asks a question about code that compiles. Nothing
+      # asked whether it compiles at all — and `compute/cuda_full.rs` is 1,812
+      # lines with 16 `unsafe` blocks and 6 tests that no `mod` declaration
+      # reaches, so it never has. Its tests cannot run on any hardware and its
+      # `unsafe` was covered by SECURITY_AUDIT.md's "all reviewed". The first
+      # run also found `compute/wasm.rs`, whose backend `discoverability.rs`
+      # advertises to callers. Both are baselined because the crate is vendored
+      # and gating them is its owner's call; the point is that a third fails.
+      - name: No source file is unreachable by `mod`
+        run: bash scripts/check-orphan-sources.sh
 
   prototype:
     name: prototype — build + test

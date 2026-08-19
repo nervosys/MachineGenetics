@@ -1,0 +1,8 @@
+# Source files no `mod` declaration reaches, and which therefore never
+# compile. One path per line, sorted. May only shrink.
+#
+# Both entries are in the vendored `rmi` crate, which must stay syncable
+# against its own upstream — deleting or gating them is its owner's call
+# (HANDOFF item 15). They are recorded so that a *third* one fails.
+RecursiveMachineIntelligence/src/compute/cuda_full.rs
+RecursiveMachineIntelligence/src/compute/wasm.rs

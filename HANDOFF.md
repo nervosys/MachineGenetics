@@ -12,7 +12,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **2,909** — rmi 1,384 · prototype 1,196 · ribosome 164 · germline 112 · forge 53 |
+| Tests | **2,912** — rmi 1,384 · prototype 1,199 · ribosome 164 · germline 112 · forge 53 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm — and the four *committed* lockfiles now report 0 warnings too |
@@ -97,6 +97,7 @@ single new violation.
 | `scripts/check-vocabulary.sh` | that all 31 words of §8 check, run, and return what the ontology publishes — and that its own case list *is* the published vocabulary |
 | `scripts/check-ci-floors.sh` | the three measurable published floors, measured fresh; also fails if the committed `TOKEN_REPORT.md` differs from a new run |
 | `scripts/check-rmi-api-doc.sh` | every item `rmi/docs/*.md` documents exists in the crate, and every `**Module:**` path resolves — baseline **0**, so any invented name fails |
+| `scripts/check-orphan-sources.sh` | that every `.rs` file is reachable by some `mod` declaration — i.e. that it compiles at all. Every other row asks a question *about* compiled code; this one asks whether there is any. Two baselined orphans, both vendored: `cuda_full.rs` (1,812 lines, 16 `unsafe`, 6 tests that have never run) and `wasm.rs` (whose backend `discoverability.rs` advertises). |
 | CI `audit` job | `cargo audit` over all five lockfiles separately, plus `npm audit` on `video/` — which nothing covered until a high-severity advisory was sitting in it |
 | CI ontology step | `MAGE_ONTOLOGY.json` matches a fresh `--emit-ontology` |
 | CI version step | `mage-parse --version` matches the tool id Ribosome keys on |
@@ -246,6 +247,19 @@ unique identifier when it is `id: Uuid`. **A passing result on a subject
 outside the assertion's reach says nothing either way**, and looks identical to
 success.
 
+The extreme case of that is a file no compiler reads, and on 2026-08-19 it got
+an instrument: `check-orphan-sources.sh` asks whether each `.rs` file is
+reachable by any `mod` declaration. Every other check in `scripts/` asks a
+question *about* code that compiles; none asked whether it compiles. It reports
+`cuda_full.rs` — 1,812 lines, 16 `unsafe` blocks, 6 tests that have never run
+anywhere — and, on its first run, a second file nobody had mentioned:
+`compute/wasm.rs`, whose backend `core/discoverability.rs` **advertises to
+callers**. The instrument is trustworthy here for a measured reason rather than
+an assumed one: across six crates it reports exactly those two and no false
+positives, and the `#[path = "..."]` attribute that would defeat it appears
+nowhere in the repository. Both conditions are written into the script, because
+the day either stops holding is the day it starts lying.
+
 #### 9. Agreement between two documents is not corroboration when one is a copy
 
 `ARCHITECTURE.md` and `RIBOSOME.md` both cite `ribosome`'s transitive
@@ -318,15 +332,29 @@ from a real run survived and the prose written by hand around them did not.**
 Grouped by what would actually unblock them, because "open" has meant three
 different things.
 
+### Decided on 2026-08-19
+
+Three of the five rows below this heading were decisions rather than work, and
+they are made. Recorded here rather than deleted, because "why is there no
+module system" is a question that will be asked again.
+
+| # | Was | Decision | What it cost |
+|---|---|---|---|
+| 0 | Unpushed commits on `handoff` | **Pushed**, not auto-merged. `gh pr merge --auto` merges *immediately* here — the repo has no required status checks — so the branch is up and CI runs against a PR that a human closes. | — |
+| 1 | Module system | **There is none, and now the spec says so** (`MAGE_SPEC.md` §2.3). An import costs tokens and buys nothing when the library is small, fixed and global. `use` is an **error**, not a warning: a construct that can never mean anything should not typecheck. | `stdlib/` deleted — 26 files, 4,402 lines, of which 36 files never typechecked and nothing ever read. The corpus cost of the error, which was the stated reason to keep it a warning, was **one line in one example**. Every `.mg` file in the repository now typechecks. |
+| 4 | RAP error shape | **Protocol failures moved to the JSON-RPC `error` member**; program failures stayed in `result`. Unknown method is -32601, a non-JSON frame -32700, a frame with no `method` -32600. | The wire change is real but small: the only consumer in the repo was the example client in `internals/07`, which reached straight for `["result"]`. A malformed frame is now *answered* rather than closing the connection, which it used to do silently. |
+
+The distinction in that last row is the one worth keeping: **a MAGE program
+that fails to check is a successful call.** `language/parse` returning
+`{"ok": false, "error": {...}}` is the server answering the question it was
+asked. Only "there was no call" belongs in `error`.
+
 ### Waiting on a decision, not on work
 
 | # | Item | The decision |
 |---|---|---|
-| 0 | **Unpushed commits on `handoff`** | Push the branch, or open a PR against `master`. Note `gh pr merge --auto` merges *immediately* here — the repo has no required status checks — which is how PR #4 landed with CI still pending. |
-| 1 | **Module system, or a decision that there is none** | The blocker under `stdlib/`. `resolve_use` parses a path and discards it, so nothing can be imported; the library surface is global instead. That may well be *right* for a token-efficient agentic language — an import costs tokens and buys nothing when the library is small and fixed — in which case say so in the spec and delete `stdlib/`. Everything about a standard library is downstream of this. See `stdlib/README.md`. |
 | 2 | GPU CI runner | Correctness **is** verified on the hardware here and recorded. What is missing is a self-hosted runner so `cuda-gpu` runs unattended — an account action, declined once already. |
 | 3 | TLS trust posture | The transport seam and a `rustls` implementation exist behind `--features tls`. Pinned self-signed / mutual TLS / public PKI is deliberately the operator's; `acceptor`/`connector` take your config. |
-| 4 | RAP error shape | An unknown method returns `{"result":{"error":…}}` — an HTTP-200-shaped success containing an error, not a JSON-RPC `error` member. Fixing it is a client-visible wire change. |
 
 ### Deliberate, and not defects
 
@@ -532,7 +560,7 @@ implementation task**:
 - **Then the evaluator rework.** `eval.rs` is 2,987 lines, 39 expression forms
   and 53 recursive `self.eval(` sites, all of which keep the continuation in the
   Rust call stack — where it cannot be captured. Multi-shot needs CPS or an
-  explicit CEK-style machine, which touches every form, with 1,196 tests riding
+  explicit CEK-style machine, which touches every form, with 1,199 tests riding
   on current behaviour.
 
 **This item was filed under "real work, unstarted" with no blocker marked**,
@@ -548,9 +576,9 @@ than acted on:
 
 | # | Item | Why it is here and not done |
 |---|---|---|
-| 14 | **`token-bench`'s exit status cannot gate anything** | It returns non-zero whenever a task's *claimed* `token_count` disagrees with measurement by >10 %, and 150 of the corpus's claims do — which is exactly what `benchmarks/FINDINGS.md` §1 concludes. Correcting or dropping those claims is a decision about what the field means, not a fix. `check-ci-floors.sh` ignores the status and reads the ratio instead. |
+| 14 | ~~**`token-bench`'s exit status cannot gate anything**~~ | **Closed 2026-08-19.** The row said correcting the 150 disagreeing claims "is a decision about what the field means, not a fix" — still true, and still undecided. But the exit status did not need that decision; it needed to stop reporting the *size* of a known set and start reporting *movement* against it. The known set is now `benchmarks/token-claims-baseline.txt`, shrink-only, the same pattern as `scripts/doc-blocks-baseline.txt`. A 151st disagreement fails; so does a baseline entry that has stopped disagreeing and should have been deleted. `check-ci-floors.sh` honours the status again — and dropping its `|| true` turned out to matter twice, because `set -o errexit` means a bare command substitution that fails kills the script *at the assignment*: my first version gated correctly and printed no reason, which is a worse instrument than the one it replaced. Exit 2 (the bench could not run at all) was being swallowed by the same `|| true` and now fails. |
 | 15 | **`rmi`'s `cuda` feature cannot build, and gates a stub if it could** | Scoped 2026-08-19 with a GPU present. `cargo test --features cuda` on `rmi` **fails to build**: it pulls `cudarc 0.10`, whose build script needs `include/cuda.h` from a CUDA toolkit — which the *working* CUDA path deliberately does not require (IronAccelerator via `libloading`, in `prototype/src/cuda_backend.rs`). Every `cudarc` reference in a *compiled* file is a comment; the only real user is `cuda_full.rs`, which **no `mod` declaration references**, so it never compiles — taking its 16 `unsafe` blocks and all **6 of its `#[ignore]`d tests** with it. Those tests cannot run on any hardware. `cuda.rs`, the file that *does* compile under the feature, is an explicit placeholder stub with no tests. So the feature costs a heavyweight build-time dependency, is unbuildable without a toolkit, and compiles a stub when it is. Dropping `dep:cudarc` and deleting or explicitly gating `cuda_full.rs` would cost nothing that runs — but `rmi` is vendored and must stay syncable against its own upstream, so it is its owner's call. The **1,229 CUDA tests** verified today are all `prototype --features cuda`, which is the real path and unaffected. |
-| 16 | **`rmi`'s `Send`/`Sync` on refcounted buffers read the counter `Relaxed`** | The four `unsafe impl` are defensible under the refcount discipline, but a counter that gates *mutation* is a synchronisation decision. Not demonstrated unsound; wants a second opinion from someone who owns that code. |
+| 16 | ~~**`rmi`'s `Send`/`Sync` on refcounted buffers read the counter `Relaxed`**~~ | **Closed 2026-08-19, and it was unsound after all** — the row previously said "not demonstrated unsound", which was true only because nobody had written the interleaving down. `as_bytes_mut` is `Arc::get_mut` by hand, and it loaded the count `Relaxed`. Thread A reads through `as_bytes`, then drops its handle (`fetch_sub`, `Release`). Thread B's `Relaxed` load observes `1` **without** synchronizing-with that `Release`, so B's writes through the returned `&mut [u8]` are unordered against A's reads of the same bytes: a data race on the ordinary sharing path. Now `Acquire`, which is the ordering `Arc::get_mut` uses and for exactly this reason. The four `unsafe impl` are sound under that ordering. `refcount()` stays `Relaxed` and is now documented as advisory, since a statistic confers nothing. **No test here verifies this**, and none can: the fix is invisible to a single-threaded suite, and on x86 — where loads are acquire in hardware — the broken version would never have manifested either. `loom` would verify it and is not a dependency this vendored crate should gain on my say-so. Recorded rather than instrumented, per rule 9. |
 
 The five items previously here — `guard` as a reference, the `+=` diagnostic,
 `scan`'s seed, `pub` on a `data` field, and the array-literal/slice mismatch —
@@ -1579,9 +1607,9 @@ harder to notice because it arrives wearing a green tick.
 
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,196**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,199**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
-  across five crates **2,909**; documented-count pins **78**, up from 46.
+  across five crates **2,912**; documented-count pins **80**, up from 46.
 - Every typechecker fix has landed without breaking an existing test **except
   one**, where widening `collection_elem` made `sum("hi")` legal and
   `vocab_rejects_non_collection` caught it. That is the datapoint showing the

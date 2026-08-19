@@ -6,9 +6,16 @@
 //!
 //! 1. A markdown report (`benchmarks/TOKEN_REPORT.md`) with per-category
 //!    aggregates, overall ratio, and the largest outliers.
-//! 2. A regression guard that exits non-zero when the corpus's claimed
-//!    `token_count` differs from the measured count by more than
-//!    `±REGRESSION_PCT %`.
+//! 2. A ratchet on the set of tasks whose claimed `token_count` differs from
+//!    the measured count by more than `±REGRESSION_PCT %`. The known set lives
+//!    in `benchmarks/token-claims-baseline.txt` and **may only shrink**; the
+//!    exit status reports movement against it, not its size.
+//!
+//!    It was a plain guard — non-zero whenever *any* claim disagreed — which
+//!    meant non-zero on every run ever made, because 150 of them do. That is
+//!    the subject of `benchmarks/FINDINGS.md` §1 and is a finding about the
+//!    corpus rather than a regression. A status that cannot be green cannot
+//!    report a 151st, and `check-ci-floors.sh` had given up reading it.
 //!
 //! ## Lexer rule
 //!
@@ -25,7 +32,7 @@
 //! consistency, not language-perfect tokenisation. Whitespace and `//`
 //! line comments are skipped.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::Path;
 use std::process::ExitCode;
@@ -39,6 +46,21 @@ use mage_prototype::lexer as mg_lexer;
 /// Regression threshold: claimed token_count must be within ±10 % of
 /// measured token count or the bench exits non-zero.
 const REGRESSION_PCT: f64 = 10.0;
+
+/// The known-disagreeing set. May only shrink; see the ratchet in `main`.
+const BASELINE_PATH: &str = "benchmarks/token-claims-baseline.txt";
+
+const BASELINE_HEADER: &str = "# Corpus token_count claims that disagree with measurement by more than
+# REGRESSION_PCT. One `task_id<TAB>lang` per line, sorted.
+#
+# This file exists so that `token-bench`'s exit status can mean something. The
+# disagreements below are the subject of benchmarks/FINDINGS.md 1 - they are a
+# finding about the corpus, not regressions - but with 150 of them permanently
+# red, the status could not report a 151st. It can now.
+#
+# It may only shrink. Correcting a claim means deleting its line in the same
+# commit; the bench fails if an entry here has stopped disagreeing.
+";
 
 #[derive(Debug)]
 struct Task {
@@ -156,13 +178,88 @@ fn main() -> ExitCode {
 
     println!("\nFull report: {out_path}");
 
-    if !regressions.is_empty() {
+    // ── The ratchet ──────────────────────────────────────────────────────
+    //
+    // `!regressions.is_empty() -> exit 1` was correct and useless. 150 of the
+    // corpus's claimed `token_count` values disagree with measurement — which
+    // is the *finding* of `benchmarks/FINDINGS.md` §1, not a regression — so
+    // the guard fired on every run that had ever been made, and a signal that
+    // is always red gates nothing. `check-ci-floors.sh` worked around it by
+    // ignoring the exit status entirely, which is how a bench ends up unable
+    // to fail.
+    //
+    // Deciding what those 150 claims *mean* is a question about the corpus and
+    // is still open. Deciding that no more should appear is not, and that is
+    // all this does: the known set is recorded, and the status reports only
+    // movement against it. Same shape as `scripts/doc-blocks-baseline.txt`,
+    // and it may only shrink.
+    let now: BTreeSet<String> = regressions
+        .iter()
+        .map(|(id, lang, _, _)| format!("{id}\t{lang}"))
+        .collect();
+
+    let was: BTreeSet<String> = match fs::read_to_string(BASELINE_PATH) {
+        Ok(text) => text
+            .lines()
+            .map(str::trim)
+            .filter(|l| !l.is_empty() && !l.starts_with('#'))
+            .map(str::to_string)
+            .collect(),
+        Err(_) => {
+            // No baseline yet: write what was measured and fail anyway. A first
+            // run must not silently bless whatever it happens to find.
+            let mut out = String::from(BASELINE_HEADER);
+            for k in &now {
+                out.push_str(k);
+                out.push('\n');
+            }
+            if let Err(e) = fs::write(BASELINE_PATH, out) {
+                eprintln!("token-bench: write {BASELINE_PATH}: {e}");
+                return ExitCode::from(2);
+            }
+            eprintln!(
+                "\ntoken-bench: no baseline; wrote {} entries to {BASELINE_PATH}.\n\
+                 Review it before committing - this run blessed whatever it measured.",
+                now.len()
+            );
+            return ExitCode::from(1);
+        }
+    };
+
+    let fresh: Vec<&String> = now.difference(&was).collect();
+    let fixed: Vec<&String> = was.difference(&now).collect();
+
+    if !fresh.is_empty() {
         eprintln!(
-            "\ntoken-bench: {} regression(s) (claimed vs measured >{}%)",
-            regressions.len(),
+            "\ntoken-bench: {} NEW claim(s) disagree with measurement by >{}%:",
+            fresh.len(),
             REGRESSION_PCT as i32
         );
+        for k in &fresh {
+            eprintln!("  x  {k}");
+        }
+        eprintln!("Fix the claim, or record why it moved. Do not widen the baseline.");
         return ExitCode::from(1);
+    }
+
+    if !fixed.is_empty() {
+        // A ratchet whose baseline is allowed to go stale stops being one.
+        eprintln!(
+            "\ntoken-bench: {} baseline entr(ies) no longer disagree:",
+            fixed.len()
+        );
+        for k in &fixed {
+            eprintln!("  +  {k}");
+        }
+        eprintln!("Remove them from {BASELINE_PATH} in this commit.");
+        return ExitCode::from(1);
+    }
+
+    if !now.is_empty() {
+        println!(
+            "\ntoken-bench: {} known claim disagreement(s), none new (baseline {BASELINE_PATH}).",
+            now.len()
+        );
     }
     ExitCode::SUCCESS
 }

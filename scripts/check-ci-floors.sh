@@ -85,15 +85,29 @@ fi
 # produces, so the committed copy is saved first and put back afterwards: a
 # check that rewrites a tracked file is not a check either.
 #
-# The bench's exit status is deliberately ignored. It returns non-zero
-# whenever a task's *claimed* `token_count` disagrees with the measurement by
-# more than 10 %, and 150 claims across the 100 tasks do — which is the subject
-# of `benchmarks/FINDINGS.md` §1, a finding rather than a regression.
+# The bench's exit status used to be ignored here, and this note explained why:
+# it returned non-zero whenever a task's *claimed* `token_count` disagreed with
+# measurement by more than 10 %, and 150 claims across the 100 tasks do — the
+# subject of `benchmarks/FINDINGS.md` §1, a finding rather than a regression.
+# A status that is red on every run carries no information, so this script read
+# the ratio out of stdout and dropped the status on the floor.
+#
+# Since 2026-08-19 the bench ratchets that set against
+# `benchmarks/token-claims-baseline.txt` and reports only *movement*, so the
+# status now distinguishes "the corpus is as known" from "something changed",
+# and is honoured below. Exit 2 is a tool failure (unreadable corpus,
+# unwritable report); `|| true` was swallowing that too, which meant a bench
+# that could not run at all still let this check pass.
+# `set -o errexit` is on (line 20). A bare `bench_out="$(... )"` whose command
+# fails kills the script *at the assignment*, so the verdict below never
+# prints and CI reports a bare exit 1 with no reason — which is why the
+# original wrote `|| true`. The fix is to keep the status, not to discard it.
+bench_status=0
 REPORT=benchmarks/TOKEN_REPORT.md
 saved="$(mktemp)"
 cp "$REPORT" "$saved"
 bench_out="$(cargo run --quiet --release --manifest-path prototype/Cargo.toml \
-                 --bin token-bench 2>&1 || true)"
+                 --bin token-bench 2>&1)" || bench_status=$?
 ratio="$(printf '%s\n' "$bench_out" | awk '/native lexers:/ { for (i = 1; i <= NF; i++) if ($i ~ /^ratio=/) { sub(/^ratio=/, "", $i); print $i; exit } }')"
 if cmp -s "$REPORT" "$saved"; then
     stale=""
@@ -103,7 +117,18 @@ fi
 cp "$saved" "$REPORT"
 rm -f "$saved"
 
-if [ -z "${ratio:-}" ]; then
+if [ "$bench_status" -eq 2 ]; then
+    echo "  x  token-bench could not run (exit 2); the ratio below is meaningless" >&2
+    printf '%s\n' "$bench_out" | tail -3 >&2
+    fail=1
+elif [ "$bench_status" -ne 0 ]; then
+    # Exit 1 now means the claim set moved against the baseline, in either
+    # direction: a new disagreement, or a baseline entry that has stopped
+    # disagreeing and should be deleted. Both are edits someone must make.
+    echo "  x  token-bench: the corpus claim set moved against its baseline" >&2
+    printf '%s\n' "$bench_out" | grep -E '^(  x|  \+|token-bench:)' | head -8 >&2
+    fail=1
+elif [ -z "${ratio:-}" ]; then
     echo "  x  could not read the native-lexer ratio from the bench" >&2
     fail=1
 elif awk -v r="$ratio" -v m="$MAX_LEX_RATIO" 'BEGIN { exit !(r > m) }'; then

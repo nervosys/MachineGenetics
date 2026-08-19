@@ -325,4 +325,31 @@ if [ "$missing" -ne 0 ]; then
     echo "$checked matched. Run scripts/test-all.sh --check-docs so every crate is measured." >&2
     exit 1
 fi
+# The number of pins is itself a documented figure, and it was wrong: HANDOFF
+# said 78 on a run that checked 80, because two pins were added in a commit
+# that did not revisit the sentence describing how many there are. That is the
+# same decay every pin above exists to catch, one level up — so it is pinned
+# too, by the only thing that can know the answer.
+#
+# Only on a default run. `--cuda` and `--bench` add pins conditionally, so the
+# total is a different number on those runs and comparing it would report a
+# failure for having measured *more*.
+if [ "$fail" -eq 0 ] && [ -z "${ACTUAL[cuda]:-}" ]    && [ -z "${ACTUAL[eval_exact]:-}" ] && [ -z "${ACTUAL[rb_lex]:-}" ]; then
+    pin_claim="$(grep -oE 'documented-count pins \*\*[0-9,]+\*\*' HANDOFF.md | head -1)"
+    if [ -z "$pin_claim" ]; then
+        echo "  !  HANDOFF.md: the 'documented-count pins **N**' claim no longer matches" >&2
+        fail=1
+    elif [ "$(digits "$pin_claim")" != "$checked" ]; then
+        echo "  x  HANDOFF.md: 'documented-count pins' says '$(digits "$pin_claim")', this run checked '$checked'" >&2
+        fail=1
+    fi
+fi
+
+if [ "$fail" -ne 0 ]; then
+    echo >&2
+    echo "FAILED - documentation disagrees with measurement." >&2
+    echo "The measurement wins; update the docs (see DOCS.md)." >&2
+    exit 1
+fi
+
 echo "OK - $checked documented counts match the measured run."

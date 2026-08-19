@@ -111,24 +111,36 @@ fn handle_connection(stream: std::net::TcpStream) -> Result<(), Box<dyn std::err
             continue;
         }
 
-        let request: serde_json::Value = serde_json::from_str(&line)?;
-        let id = request
-            .get("id")
-            .cloned()
-            .unwrap_or(serde_json::Value::Null);
-        let method = request.get("method").and_then(|v| v.as_str()).unwrap_or("");
-        let params = request
-            .get("params")
-            .cloned()
-            .unwrap_or(serde_json::Value::Null);
-
-        let result = dispatch(method, &params);
-
-        let response = serde_json::json!({
-            "jsonrpc": "2.0",
-            "id": id,
-            "result": result
-        });
+        // A malformed frame is answered, not fatal. `from_str(&line)?`
+        // propagated out of `handle_connection`, which dropped the whole
+        // connection: one bad line and every later request on that socket got
+        // no response and no explanation. JSON-RPC 2.0 §4.2 says reply -32700.
+        let response = match serde_json::from_str::<serde_json::Value>(&line) {
+            Err(e) => {
+                error_response(serde_json::Value::Null, RpcError::parse_error(&e.to_string()))
+            }
+            Ok(request) => {
+                let id = request.get("id").cloned().unwrap_or(serde_json::Value::Null);
+                let params = request
+                    .get("params")
+                    .cloned()
+                    .unwrap_or(serde_json::Value::Null);
+                match request.get("method").and_then(|v| v.as_str()) {
+                    // `unwrap_or("")` turned a request with no `method` into a
+                    // request for the method named "", which then reported
+                    // `unknown method: ` — a confusing way to say "malformed".
+                    None => error_response(id, RpcError::invalid_request()),
+                    Some(method) => match dispatch_checked(method, &params) {
+                        Ok(result) => serde_json::json!({
+                            "jsonrpc": "2.0",
+                            "id": id,
+                            "result": result
+                        }),
+                        Err(e) => error_response(id, e),
+                    },
+                }
+            }
+        };
 
         let mut out = serde_json::to_string(&response)?;
         out.push('\n');
@@ -137,6 +149,89 @@ fn handle_connection(stream: std::net::TcpStream) -> Result<(), Box<dyn std::err
     }
 
     Ok(())
+}
+
+/// A JSON-RPC 2.0 error object (§5.1).
+///
+/// Every failure the *protocol* can have, as distinct from every failure a
+/// MAGE program can have. The distinction is the whole point of this type:
+/// `language/parse` answering `{"ok": false, "error": {...}}` is a **successful
+/// call** whose answer is "your program does not parse", and it belongs in
+/// `result`. A request naming a method this server does not implement is not a
+/// call at all, and belongs in `error`.
+///
+/// Until 2026-08-19 both came back as `result`, so a conforming client — one
+/// that checks for the `error` member, which is the only thing JSON-RPC
+/// guarantees — saw a typo'd method name as a success.
+#[derive(Debug, Clone)]
+struct RpcError {
+    code: i64,
+    message: String,
+    data: Option<serde_json::Value>,
+}
+
+impl RpcError {
+    /// -32700: the frame was not JSON.
+    fn parse_error(detail: &str) -> Self {
+        Self {
+            code: -32700,
+            message: "Parse error".to_string(),
+            data: Some(serde_json::json!({ "detail": detail })),
+        }
+    }
+
+    /// -32600: the frame was JSON, but not a request.
+    fn invalid_request() -> Self {
+        Self {
+            code: -32600,
+            message: "Invalid Request".to_string(),
+            data: Some(serde_json::json!({
+                "detail": "a request must carry a string `method`",
+            })),
+        }
+    }
+
+    /// -32601: no such method.
+    ///
+    /// Carries the discovery hint in `data` rather than dropping it: the
+    /// previous shape put a `hint` beside the error, and that was the one
+    /// genuinely useful thing about it.
+    fn method_not_found(method: &str) -> Self {
+        Self {
+            code: -32601,
+            message: format!("Method not found: {method}"),
+            data: Some(serde_json::json!({
+                "method": method,
+                "hint": "call `rap/methods` for the list this server actually dispatches",
+            })),
+        }
+    }
+}
+
+fn error_response(id: serde_json::Value, e: RpcError) -> serde_json::Value {
+    let mut err = serde_json::json!({ "code": e.code, "message": e.message });
+    if let Some(data) = e.data {
+        err["data"] = data;
+    }
+    serde_json::json!({ "jsonrpc": "2.0", "id": id, "error": err })
+}
+
+/// [`dispatch`], with the unknown-method case lifted out of `result`.
+///
+/// The gate reads [`METHODS`], not the match arms — which is only sound
+/// because `methods_list_matches_the_dispatcher` and
+/// `every_dispatched_method_is_advertised` pin the two together in both
+/// directions. Those tests existed already; this makes them load-bearing for
+/// the wire format, which is noted here so that deleting one is understood to
+/// change what clients see.
+fn dispatch_checked(
+    method: &str,
+    params: &serde_json::Value,
+) -> Result<serde_json::Value, RpcError> {
+    if !METHODS.contains(&method) {
+        return Err(RpcError::method_not_found(method));
+    }
+    Ok(dispatch(method, params))
 }
 
 fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
@@ -1075,6 +1170,13 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
             "methods": METHODS,
         }),
 
+        // Not reachable from the wire: `dispatch_checked` rejects anything
+        // outside `METHODS` before calling in here, so a client gets a
+        // JSON-RPC -32601 instead. This arm survives as the invariant guard
+        // for the other direction — a name in `METHODS` with no arm above —
+        // which is exactly what `methods_list_matches_the_dispatcher` probes,
+        // and it must stay a value rather than a panic for that test to read
+        // it.
         _ => serde_json::json!({
             "error": format!("unknown method: {method}"),
             "hint": "call `rap/methods` for the list this server actually dispatches",
@@ -1848,13 +1950,83 @@ mod method_surface_tests {
         assert_eq!(sorted.as_slice(), METHODS, "keep METHODS sorted and duplicate-free");
     }
 
+    /// An unknown method is a JSON-RPC `error`, not a `result` that contains
+    /// the word "error".
+    ///
+    /// The old shape was `{"result": {"error": "unknown method: ..."}}` — a
+    /// success envelope carrying a failure. A client written against the spec
+    /// checks for the `error` member and nothing else, so a typo'd method name
+    /// read as a successful call returning an object, and the mistake surfaced
+    /// wherever that object was later indexed. This asserts the full envelope,
+    /// not just the code, because the defect was in the envelope.
     #[test]
-    fn an_unknown_method_says_how_to_discover_the_real_ones() {
-        let got = dispatch("no/such_method", &serde_json::Value::Null);
-        assert!(got.get("error").is_some());
+    fn an_unknown_method_is_a_jsonrpc_error_not_a_result() {
+        let e = dispatch_checked("no/such_method", &serde_json::Value::Null)
+            .expect_err("an unimplemented method must not succeed");
+        assert_eq!(e.code, -32601, "JSON-RPC 2.0 §5.1: Method not found");
+
+        let envelope = error_response(serde_json::json!(7), e);
         assert!(
-            got.get("hint").and_then(|h| h.as_str()).unwrap_or("").contains("rap/methods"),
-            "a wrong method name is the moment to point at discovery"
+            envelope.get("result").is_none(),
+            "a failed call must not carry a `result` member: {envelope}"
         );
+        assert_eq!(envelope["id"], serde_json::json!(7), "the id must come back");
+        assert_eq!(envelope["jsonrpc"], "2.0");
+        assert_eq!(envelope["error"]["code"], -32601);
+        assert!(
+            envelope["error"]["data"]["hint"]
+                .as_str()
+                .unwrap_or("")
+                .contains("rap/methods"),
+            "a wrong method name is the moment to point at discovery: {envelope}"
+        );
+    }
+
+    /// A malformed frame is answered rather than dropping the connection.
+    ///
+    /// `serde_json::from_str(&line)?` propagated out of `handle_connection`,
+    /// which closed the socket. The client saw a hang and then EOF, with
+    /// nothing to say which of its frames was bad.
+    #[test]
+    fn a_malformed_frame_gets_an_answer_with_a_null_id() {
+        let e = serde_json::from_str::<serde_json::Value>("{not json")
+            .expect_err("that is not JSON");
+        let envelope = error_response(serde_json::Value::Null, RpcError::parse_error(&e.to_string()));
+        assert_eq!(envelope["error"]["code"], -32700);
+        assert!(envelope["result"].is_null() && envelope.get("result").is_none());
+        assert_eq!(envelope["id"], serde_json::Value::Null, "no id is recoverable from a bad frame");
+    }
+
+    /// A frame with no `method` is Invalid Request, not method `""`.
+    #[test]
+    fn a_request_without_a_method_is_invalid_not_unknown() {
+        let envelope = error_response(serde_json::json!(1), RpcError::invalid_request());
+        assert_eq!(envelope["error"]["code"], -32600);
+        assert!(
+            !envelope["error"]["message"].as_str().unwrap_or("").contains("unknown"),
+            "the old path reported `unknown method: ` for a missing method"
+        );
+    }
+
+    /// Every advertised method survives the gate, and the gate is the only
+    /// thing standing between a client and `dispatch`.
+    ///
+    /// Pins the coupling that `dispatch_checked`'s doc comment relies on: if
+    /// `METHODS` and the match arms ever diverge, the wire format diverges
+    /// with them.
+    #[test]
+    fn the_gate_admits_exactly_the_advertised_methods() {
+        for m in METHODS {
+            assert!(
+                dispatch_checked(m, &serde_json::Value::Null).is_ok(),
+                "`{m}` is advertised but the gate rejects it"
+            );
+        }
+        for m in ["", "no/such_method", "language/Tokens", "rap/methods "] {
+            assert!(
+                dispatch_checked(m, &serde_json::Value::Null).is_err(),
+                "`{m}` is not advertised and must not reach the dispatcher"
+            );
+        }
     }
 }

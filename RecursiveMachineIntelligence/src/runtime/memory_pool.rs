@@ -491,14 +491,37 @@ impl TensorBuffer {
     }
 
     /// Get a mutable byte slice (only if uniquely owned).
+    ///
+    /// This is `Arc::get_mut` written by hand, and it must use the ordering
+    /// `Arc::get_mut` uses. The load was `Relaxed` until 2026-08-19, which is
+    /// the right ordering for *observing* a count and the wrong one for
+    /// *gating a mutation* on it:
+    ///
+    /// - Thread A holds a clone, reads through [`as_bytes`], then drops its
+    ///   handle. `Drop` decrements with `Release`, so A's reads are ordered
+    ///   before that decrement.
+    /// - Thread B calls this method. A `Relaxed` load may observe the new
+    ///   value `1` **without** synchronizing-with A's `Release`, so B's
+    ///   subsequent writes through the returned `&mut [u8]` are unordered with
+    ///   respect to A's reads of the same bytes — a data race, and undefined
+    ///   behaviour, on the ordinary sharing path.
+    ///
+    /// `Acquire` pairs with the `Release` in [`Drop`], which is what makes
+    /// "refcount is 1" mean "every other handle is gone *and* its accesses
+    /// happen-before mine" rather than merely "the counter currently reads 1".
+    ///
+    /// There is no TOCTOU window after the check: the method takes `&mut self`
+    /// and a count of 1 means no other handle exists to clone from.
     pub fn as_bytes_mut(&mut self) -> Result<&mut [u8]> {
-        if self.refcount.load(Ordering::Relaxed) != 1 {
+        if self.refcount.load(Ordering::Acquire) != 1 {
             return Err(RmiError::Compute(
                 "Cannot mutate shared tensor buffer".to_string(),
             ));
         }
-        // SAFETY: refcount == 1 was verified above, guaranteeing exclusive access.
-        // `self.data` points to `self.len` initialized bytes.
+        // SAFETY: refcount == 1 was observed with `Acquire`, which both proves
+        // this is the only live handle and orders every prior handle's accesses
+        // before the writes made through this slice. `self.data` points to
+        // `self.len` initialized bytes.
         Ok(unsafe { std::slice::from_raw_parts_mut(self.data.as_ptr(), self.len) })
     }
 
@@ -523,7 +546,13 @@ impl TensorBuffer {
         self.len == 0
     }
 
-    /// Reference count.
+    /// Reference count, **advisory only**.
+    ///
+    /// `Relaxed` is correct here precisely because this value confers nothing:
+    /// it is a statistic, and by the time a caller reads it another thread may
+    /// have cloned or dropped a handle. Do not gate a mutation on it — that is
+    /// [`as_bytes_mut`]'s job, and it uses `Acquire` for the reason documented
+    /// there. Kept for tests and diagnostics.
     #[inline]
     pub fn refcount(&self) -> usize {
         self.refcount.load(Ordering::Relaxed)

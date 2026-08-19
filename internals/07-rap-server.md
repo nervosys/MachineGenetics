@@ -189,9 +189,17 @@ The protocol is designed to grow as the compiler matures:
 
 ## 7.5 Dispatch Architecture
 
-The dispatcher is a simple pattern-match on the method string:
+The dispatcher is a pattern-match on the method string, behind a gate that
+separates *protocol* failure from *program* failure:
 
 ```rust
+fn dispatch_checked(method: &str, params: &Value) -> Result<Value, RpcError> {
+    if !METHODS.contains(&method) {
+        return Err(RpcError::method_not_found(method));  // -32601
+    }
+    Ok(dispatch(method, params))
+}
+
 fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
     let source = params.get("source").and_then(|v| v.as_str()).unwrap_or("");
 
@@ -199,10 +207,33 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
         "language/tokens" => { /* lex source, return tokens */ }
         "language/parse"  => { /* parse source, return AST */ }
         "build/check"     => { /* lex + parse, return errors */ }
-        _ => serde_json::json!({ "error": format!("unknown method: {method}") }),
+        _ => /* unreachable from the wire; guards METHODS-vs-arms drift */
     }
 }
 ```
+
+That split is the one thing to carry away from this section. **A MAGE program
+that fails to check is a successful call.** `language/parse` answering
+`{"ok": false, "error": {"line": 3, ...}}` inside `result` is correct: the
+server was asked a question and answered it. What belongs in JSON-RPC's `error`
+member is only the case where no call happened at all:
+
+| Condition | Code | Member |
+|---|---:|---|
+| Frame is not JSON | -32700 | `error` |
+| No string `method` | -32600 | `error` |
+| Method not in `METHODS` | -32601 | `error` |
+| Method ran; program was bad | — | `result`, with `ok: false` |
+
+Until 2026-08-19 the first three also came back as `result`, so a client doing
+the one thing JSON-RPC guarantees — checking for the `error` member — read a
+typo'd method name as success and only noticed when it indexed the object it
+got back. `rap/methods` remains the discovery call, and the -32601 response
+carries a `data.hint` pointing at it.
+
+A malformed frame is now **answered** rather than closing the connection. The
+parse error used to propagate out of `handle_connection`, so a client that sent
+one bad line lost every later request on that socket with no explanation.
 
 The production dispatcher will use a trait-based registration system:
 
@@ -266,8 +297,14 @@ def rap_call(method, source):
     req = json.dumps({"jsonrpc": "2.0", "id": 1,
                        "method": method, "params": {"source": source}})
     s.sendall((req + "\n").encode())
-    resp = s.makefile().readline()
-    return json.loads(resp)["result"]
+    resp = json.loads(s.makefile().readline())
+    # A protocol failure has no `result` member at all. Reaching straight
+    # for ["result"] raises KeyError with nothing to say why; the server
+    # put the reason, and a discovery hint, in `error`.
+    if "error" in resp:
+        e = resp["error"]
+        raise RuntimeError(f'{e["code"]}: {e["message"]} {e.get("data", "")}')
+    return resp["result"]
 
 ast = rap_call("language/parse", '+f main() { p"hello" }')
 ```
