@@ -64,7 +64,10 @@ the `ABL1` magic bytes in the container's published format, the decoder's own
 error message, twelve `framewerx::` module paths, and the `RmiError` type name
 in an API reference. Each looked like an isolated typo. **A rename that touches
 literals is one defect wearing many costumes, and finding one is a reason to go
-looking for the rest.** The same held for name-versus-id confusion in the
+looking for the rest.** By the end of the sweep it had produced **five**: the
+magic bytes, the decoder's error message, twelve module paths, a type name, and
+a shell variable that turned into a command. Four were documentation; the fifth
+was a script that had been broken and exiting 0 since the edit. The same held for name-versus-id confusion in the
 `rmi` docs, which turned up in six places across three files.
 
 [Failure taxonomy](#failure-taxonomy) is the useful part of this document. It
@@ -1096,6 +1099,20 @@ The mirror image, and easy to get backwards.
   crate's contents, so the file now says which it is. **A prose document is not
   covered by a check that reads code blocks**, and the passing result said
   nothing about it either way.
+- **The rename broke a shell script, and that is its fifth victim.**
+  `scripts/demo_agent_workflow.sh` had `ABL="$DEMO_DIR/flash_attention_block.abl"`
+  rewritten to `Agentic Binary Language="…"` — which bash reads as the command
+  `Agentic`, and every `"$ABL"` became `$Agentic` (unset) followed by two
+  literal words. Nine occurrences. The demo died at step 3 of 5 and **still
+  exited 0**, so even running it did not obviously fail. Nothing referenced the
+  script, so nothing ran it.
+
+  That is now five defects from one mechanical edit: the container's magic
+  bytes, the decoder's error message, twelve `framewerx::` module paths, the
+  `RmiError` type name, and a shell identifier. **A rename that touches
+  identifiers is not a documentation risk, it is a code risk**, and the only
+  reason this one was cheap is that the script had no callers — which is also
+  why it stayed broken.
 - **Swept for the rest, and the shape has a third instance.** After the CUDA
   pin and `eval_bench`, I looked for every check whose preconditions might not
   be met: **8 `#[ignore]`d tests across five crates.** Two are the benches, now
