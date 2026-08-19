@@ -2842,8 +2842,14 @@ f s() { scaled(5) }";
             ("f s(){ len(filter(\"hello world\", fn(c) => c != \" \")) }", "s", &[], Value::Int(10)),
             // Compound assignment to a map element (`m[k] += …`) — the classic
             // histogram build. `m`/`v` are KwM/KwV but must read as variables.
-            ("f s(){ var m = {\"a\": 10}\n m[\"a\"] += 5\n m[\"b\"] = 1\n m[\"a\"] + m[\"b\"] }", "s", &[], Value::Int(16)),
-            ("f s(){ var v = [1, 2, 3]\n v[0] *= 100\n v[0] + v[1] }", "s", &[], Value::Int(102)),
+            // `m` and `v` were the binding names here until 2026-08-19. They are
+            // the agent-mode sigils for `let mut` and `let`, and the parser
+            // rejects them as binding names by design — with a diagnostic that
+            // names the collision. These two fixtures predated that rule and
+            // had been failing ever since; nothing ran them, because this whole
+            // bench is `#[ignore]`d.
+            ("f s(){ var mp = {\"a\": 10}\n mp[\"a\"] += 5\n mp[\"b\"] = 1\n mp[\"a\"] + mp[\"b\"] }", "s", &[], Value::Int(16)),
+            ("f s(){ var xs = [1, 2, 3]\n xs[0] *= 100\n xs[0] + xs[1] }", "s", &[], Value::Int(102)),
             // Slice indexing: list sub-range, open-ended, and substring.
             ("f s(){ sum([10, 20, 30, 40, 50][1..3]) }", "s", &[], Value::Int(50)),
             ("f s(){ sum([1, 2, 3, 4, 5][2..]) + len([1,2,3,4,5][..2]) }", "s", &[], Value::Int(14)),

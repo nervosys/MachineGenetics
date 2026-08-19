@@ -1096,6 +1096,26 @@ The mirror image, and easy to get backwards.
   crate's contents, so the file now says which it is. **A prose document is not
   covered by a check that reads code blocks**, and the passing result said
   nothing about it either way.
+- **`eval_bench` had been failing for 76 commits, on this branch, unnoticed —
+  including through everything this session reported as green.** It computes
+  71/73, not the 73/73 that `README.md`, `ARCHITECTURE.md`, `DOCS.md` and
+  `DIRECT_CODEGEN_STRATEGY.md` all claim. Two fixtures bind `m` and `v` — the
+  agent-mode sigils for `let mut` and `let` — which the parser has rejected
+  since 2026-08-12 by design, with a diagnostic that names the collision.
+  `master` has no such rejection; the rule and the breakage are both on
+  `handoff`, in the 81 unpushed commits.
+
+  **It went unseen because the bench is `#[ignore]`d.** Plain `cargo test`
+  skips it, `scripts/test-all.sh` skips it without `--bench`, and CI's step
+  that *does* run it has never fired, because the branch has never been pushed.
+  Every "all crates green" in this session was true of the default suite and
+  said nothing about this. The fixtures were stale, not the rule — renamed to
+  `mp` and `xs`, and it is 73/73 again.
+
+  Three conditions had to hold at once for a red test to look green for 76
+  commits: **ignored by default, gated behind a flag, and on a branch CI cannot
+  see.** Any one of them alone would have been survivable. This is open item 0
+  — the unpushed branch — with a cost attached rather than a preference.
 - **The last unchecked pin in the repository was wrong.** Seven documents claim
   the CUDA test count, all pinned to one measured key — and every
   `--check-docs` run in this session reported *"CUDA counts not checked (no
