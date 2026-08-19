@@ -13,7 +13,7 @@ each claim has a command beside it.
 | | |
 |---|---|
 | Tests | **2,909** — rmi 1,384 · prototype 1,196 · ribosome 164 · germline 112 · forge 53 |
-| CUDA | **1,071 passing** on dual RTX 3090 Ti, driver 610.88 |
+| CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm — and the four *committed* lockfiles now report 0 warnings too |
 | CI | 10 jobs, green on `master` |
@@ -1096,6 +1096,22 @@ The mirror image, and easy to get backwards.
   crate's contents, so the file now says which it is. **A prose document is not
   covered by a check that reads code blocks**, and the passing result said
   nothing about it either way.
+- **The last unchecked pin in the repository was wrong.** Seven documents claim
+  the CUDA test count, all pinned to one measured key — and every
+  `--check-docs` run in this session reported *"CUDA counts not checked (no
+  --cuda run supplied one)"*, which is the honest fallback doing its job and
+  also the reason nobody noticed. Running it on the hardware the documents name
+  (dual RTX 3090 Ti, driver 610.88, exactly as claimed): **1,229 tests, not
+  1,071.** All seven stale, in `HANDOFF.md`, `MEASUREMENTS.md`,
+  `ARCHITECTURE.md`, `ROADMAP.md`, both `test-all` scripts and `ci.yml`.
+
+  The figure dates from 2026-08-05 and the suite has grown since. Nothing was
+  broken — every CUDA test passes — but **a pin that cannot run is a pin that
+  reports "not checked" forever**, and seven places inherited a number from the
+  last time someone had a GPU in front of them. That is open item 2 (the GPU
+  runner) stated as a consequence rather than a wish: without unattended CUDA
+  CI, this figure goes stale again the moment the suite grows, and the only
+  thing that catches it is a human with the hardware choosing to look.
 - **The correct description of the container format was in the repository the
   whole time.** `ARCHITECTURE.md` §1 lists the symbol table, in the right place
   and the right shape — while `MAGE_ONTOLOGY.json`'s `abl.format`,

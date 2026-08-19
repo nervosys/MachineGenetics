@@ -17,7 +17,7 @@
 #   scripts/test-all.sh            # debug
 #   scripts/test-all.sh --release  # optimized
 #   scripts/test-all.sh --bench    # + eval_bench (73/73) and perf_report; implies --release
-#   scripts/test-all.sh --cuda     # + prototype --features cuda (1,071 tests; needs an
+#   scripts/test-all.sh --cuda     # + prototype --features cuda (1,229 tests; needs an
 #                                  #   NVIDIA driver to exercise kernels, CPU-falls-back
 #                                  #   without one). CI only compile-checks this path.
 

@@ -311,7 +311,7 @@ jobs:
       # backend compiles with no CUDA toolkit and no GPU present — a runner
       # without a driver can still prove the code builds. It cannot prove the
       # kernels are *correct*: that needs `cargo test --features cuda` on a
-      # CUDA box (dual 3090 Ti locally, 1,071 tests green).
+      # CUDA box (dual 3090 Ti locally, 1,229 tests green).
       - name: Compile-check the CUDA backend
         run: cargo check --manifest-path prototype/Cargo.toml --features cuda --all-targets
 

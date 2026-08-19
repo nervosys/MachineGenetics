@@ -31,7 +31,7 @@
     implementation of the check — needs the `bash` that ships with Git.
 
 .PARAMETER Cuda
-    Additionally test the prototype with --features cuda (1,071 tests). Needs an
+    Additionally test the prototype with --features cuda (1,229 tests). Needs an
     NVIDIA driver to exercise the kernels; without one the CUDA backend falls
     back to CPU and the suite still passes. CI only compile-checks this path.
 
