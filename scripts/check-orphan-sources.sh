@@ -19,8 +19,10 @@
 #
 # Running it the first time found a second one nobody had mentioned:
 # `compute/wasm.rs`, 208 lines — and `core/discoverability.rs` advertises a
-# "WASM Backend" to callers, so the crate publishes a capability whose only
-# implementation is a file no compiler reads.
+# "WASM Backend" to callers, so the crate published a capability whose only
+# implementation was a file no compiler read. That one is now fixed: it
+# compiled clean the moment a `mod` declaration was added, which is the usual
+# shape of these. The file was never broken, only unreferenced.
 #
 # ─────────────────────────────────────────────────────────────────────────────
 # HOW IT DECIDES
@@ -30,10 +32,11 @@
 # That is a heuristic, not name resolution: it does not follow the module tree,
 # so a `mod` in the wrong parent still counts as reachable.
 #
-# The reason it is trustworthy *here* is measured rather than assumed. Across
-# the six crates it walks it reports exactly two files, both genuinely
-# unreachable, and **zero** false positives — verified by reading every `mod`
-# declaration in `compute/mod.rs` and confirming neither name appears. It also
+# The reason it is trustworthy *here* is measured rather than assumed. On its
+# first run, across the six crates it walks, it reported exactly two files —
+# both genuinely unreachable, **zero** false positives, verified by reading
+# every `mod` declaration in `compute/mod.rs` and confirming neither name
+# appeared. One of the two was fixed the same day, so it now reports one. It also
 # does not have to handle `#[path = "..."]`, which would defeat it: there is not
 # one in the repository (`git grep '#\[path'` is empty). If that stops being
 # true this check must be revisited, and this paragraph is the reason why.
@@ -87,9 +90,10 @@ if [ ! -f "$BASELINE" ]; then
         echo "# Source files no \`mod\` declaration reaches, and which therefore never"
         echo "# compile. One path per line, sorted. May only shrink."
         echo "#"
-        echo "# Both entries are in the vendored \`rmi\` crate, which must stay syncable"
-        echo "# against its own upstream — deleting or gating them is its owner's call"
-        echo "# (HANDOFF item 15). They are recorded so that a *third* one fails."
+        echo "# Anything listed here never compiles. Wire it up with a \`mod\` declaration"
+        echo "# or delete it; baseline it only when neither is yours to do — as with the"
+        echo "# vendored \`rmi\` crate, which must stay syncable against its own upstream"
+        echo "# (HANDOFF item 15). Entries are recorded so that a *new* one fails."
         printf '%s\n' "$found"
     } > "$BASELINE"
     echo "check-orphan-sources: no baseline; wrote $(printf '%s\n' "$found" | grep -c . ) entr(ies) to $BASELINE." >&2

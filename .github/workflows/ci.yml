@@ -80,8 +80,10 @@ jobs:
       # reaches, so it never has. Its tests cannot run on any hardware and its
       # `unsafe` was covered by SECURITY_AUDIT.md's "all reviewed". The first
       # run also found `compute/wasm.rs`, whose backend `discoverability.rs`
-      # advertises to callers. Both are baselined because the crate is vendored
-      # and gating them is its owner's call; the point is that a third fails.
+      # advertises to callers — that one compiled clean once a `mod` was added
+      # and is fixed. `cuda_full.rs` stays baselined: wiring it up needs a CUDA
+      # toolkit, so it is the vendored crate's owner's call. The point is that
+      # a new one fails.
       - name: No source file is unreachable by `mod`
         run: bash scripts/check-orphan-sources.sh
 

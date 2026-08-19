@@ -24,7 +24,22 @@ exclude = ["wgpu_clippy.log", "paper/", ".github/", "tests/*.proptest-regression
 [features]
 default = ["cpu"]
 cpu = []
-cuda = ["dep:cudarc"]  # legacy; new CUDA path is in prototype/src/cuda_backend.rs via IronAccelerator (P99)
+# Legacy. The working CUDA path is prototype/src/cuda_backend.rs via
+# IronAccelerator (P99), which needs no build-time toolkit.
+#
+# This was `cuda = ["dep:cudarc"]` until 2026-08-19, and in that form the
+# feature **could not build at all**: cudarc 0.10's build script requires
+# `include/cuda.h` from an installed CUDA toolkit, so `cargo build --features
+# cuda` failed before compiling a line of this crate. The only file that used
+# cudarc is `compute/cuda_full.rs`, which no `mod` declaration references and
+# which therefore never compiled either — so the dependency was mandatory for
+# a feature that gated nothing that could run.
+#
+# Dropping it costs nothing compiled: `compute/cuda.rs`, the file this feature
+# actually enables, does not mention cudarc. The dependency stays declared and
+# optional, so `--features cudarc` still pulls it for anyone wiring
+# `cuda_full.rs` up. See HANDOFF item 15.
+cuda = []
 gpu = ["dep:wgpu", "dep:pollster"]
 wasm = [
     "dep:wasm-bindgen",
@@ -97,8 +112,13 @@ petgraph = { version = "0.6", features = ["serde-1"] }
 # cuda-13020 ABI feature for real CUDA 13.2 support) requires
 # refactoring cuda_full.rs: CudaDevice -> CudaContext, kernel-launch
 # builder rewrite, CublasError Display via `{:?}`, raw-pointer cast
-# cleanup. Tracked as the P99+ follow-on; current pin keeps the
-# existing kernels building on CUDA 11/12 hosts.
+# cleanup. Tracked as the P99+ follow-on.
+#
+# This block used to end "current pin keeps the existing kernels building on
+# CUDA 11/12 hosts". It kept nothing building: `cuda_full.rs` is unreachable
+# from any `mod` declaration, so those kernels have never been compiled on any
+# host. No feature enables this dependency now; it remains optional so that
+# `--features cudarc` reaches it if someone wires that file up.
 cudarc = { version = "0.10", optional = true }
 # `cust` was an unused legacy dep; removed (P98).
 
