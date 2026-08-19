@@ -1538,12 +1538,38 @@ f caller() -> i32 {
 }
 ```
 
-**What is missing is *multi-shot* resumption.** The continuation is never
-reified, so it cannot be stored in a variable, returned, or invoked twice.
-Generators and backtracking need that; state, reader, logging, tracing and
-test-mocking handlers do not, and all work today. There is no `resume` keyword,
-because with single-shot tail resumption there is nothing for it to do that
-falling off the end of the arm does not already do.
+#### Single-shot is the whole of it, and that is final
+
+**Resumption is single-shot. There is no `resume` keyword, no reified
+continuation, and neither is planned.** This is a decision, not a gap awaiting
+work — it was recorded as "missing" for some time, which invited the reading
+that multi-shot was coming.
+
+The continuation cannot be stored in a variable, returned, or invoked twice.
+Handlers that need none of that — state, reader, logging, tracing, retry
+policies, capability interception and test mocking — are the handlers MAGE
+exists to serve, and all of them work today. What is genuinely excluded is
+generators, backtracking search, and any scheduler that re-enters a suspended
+computation more than once.
+
+The reason to stop here is cost, and it is concrete. Multi-shot needs the
+continuation as a first-class value, which in a dual-surface language means a
+keyword *and* a sigil on every handler arm that uses it, plus a rule in the
+effect system for what a resumed continuation performs and whether those
+effects are re-attributed. It also needs the evaluator to hold the continuation
+somewhere it can be copied, which the tree-walking evaluator cannot: the
+continuation lives in the Rust call stack. That is a CPS or CEK rewrite across
+every expression form. For a language whose premise is that tokens are scarce
+and behaviour must be predictable to an agent, paying a permanent per-arm token
+cost and an evaluator rewrite to enable backtracking is the wrong trade.
+
+If a program needs multi-shot control, express it as data rather than control
+flow: return the choices and let the caller iterate. That is more tokens at the
+call site and fewer everywhere else.
+
+Nothing here is irreversible. Should a real MAGE program need multi-shot, this
+section is the thing to change first, and it should be changed with a program
+that needs it in hand — not on the strength of the feature existing elsewhere.
 
 ---
 

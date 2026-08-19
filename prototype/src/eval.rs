@@ -2427,10 +2427,12 @@ f s() { Rect(3.0) }", "s", &[])
     /// sentence reads as "the body stops", which is not what happens, and
     /// nothing tested either way.
     ///
-    /// What is genuinely missing is *multi-shot* resumption: the continuation
-    /// is never reified, so it cannot be stored or invoked twice. That is what
-    /// generators and backtracking need. State, reader, logging and mocking —
-    /// the common handler uses — all work today.
+    /// *Multi-shot* resumption is deliberately absent, not pending: the
+    /// continuation is never reified, so it cannot be stored or invoked twice.
+    /// That is what generators and backtracking need. State, reader, logging
+    /// and mocking — the common handler uses — all work today. See
+    /// `single_shot_resumption_is_a_decision_not_a_gap` below, and
+    /// `MAGE_SPEC.md` §11.6, which was made normative on 2026-08-19.
     #[test]
     fn an_operation_resumes_and_the_body_continues() {
         let src = "effect A { f ask() -> i32; }
@@ -2445,6 +2447,53 @@ f s() { Rect(3.0) }", "s", &[])
                    f work() -> i32 / a { A.ask() + A.ask() }
                    f s() { handle { work() } with A { ask() => 5 } }";
         assert_eq!(run(src, "s", &[]), Value::Int(10));
+    }
+
+    /// Single-shot resumption is the language's answer, not a stage it is
+    /// passing through.
+    ///
+    /// `MAGE_SPEC.md` §11.6 said multi-shot was "what is missing" for long
+    /// enough that HANDOFF filed it as unstarted work, which invited the
+    /// reading that an evaluator rewrite was owed. On 2026-08-19 it was
+    /// decided the other way and the section made normative. This pins both
+    /// halves of that, because a decision recorded only in prose decays into a
+    /// gap again the moment someone reads the evaluator and sees the absence.
+    ///
+    /// The falsifiable half is the keyword. "There is no `resume` keyword"
+    /// means `resume` must still be an ordinary identifier — if someone starts
+    /// implementing multi-shot by reserving the word, this fails first, before
+    /// the 39 expression forms get touched.
+    #[test]
+    fn single_shot_resumption_is_a_decision_not_a_gap() {
+        // `resume` is a plain identifier: definable, callable, bindable.
+        let src = "f resume(x: i32) -> i32 { x + 1 }
+                   f s() -> i32 { v resume_val = resume(41)
+ resume_val }";
+        assert_eq!(
+            run(src, "s", &[]),
+            Value::Int(42),
+            "`resume` must remain an ordinary identifier; reserving it is the \
+             first edit multi-shot would require, and it is a breaking change \
+             to every program that uses the name"
+        );
+
+        // And the spec must still say so. This is the same doc-to-code pin
+        // used for `use` and §2.3: the code cannot state a language decision,
+        // only implement one, so the normative sentence is the subject.
+        let spec = std::fs::read_to_string(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .parent()
+                .expect("repo root")
+                .join("MAGE_SPEC.md"),
+        )
+        .expect("MAGE_SPEC.md");
+        assert!(
+            spec.contains("Resumption is single-shot. There is no `resume` keyword"),
+            "MAGE_SPEC.md §11.6 no longer states the single-shot decision \
+             normatively. If multi-shot is being added, that sentence is the \
+             thing to change first — and this test is the reminder that the \
+             decision was explicit"
+        );
     }
 
     /// `ret` in an arm aborts the handled block — and only that block.

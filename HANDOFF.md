@@ -12,7 +12,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **2,912** — rmi 1,384 · prototype 1,199 · ribosome 164 · germline 112 · forge 53 |
+| Tests | **2,913** — rmi 1,384 · prototype 1,200 · ribosome 164 · germline 112 · forge 53 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm — and the four *committed* lockfiles now report 0 warnings too |
@@ -539,7 +539,7 @@ so.
 
 | # | Item | Size |
 |---|---|---|
-| 10 | **Multi-shot resumption for effect handlers** | **Scoped 2026-08-18, and it is not unblocked — there is a language decision inside it.** See below. |
+| 10 | ~~**Multi-shot resumption for effect handlers**~~ | **Closed 2026-08-19 by deciding against it**, the same way item 1 closed. The row below said the implementation was downstream of a decision nobody had made; the decision is made. Single-shot is the language's answer, and `MAGE_SPEC.md` §11.6 now says so normatively instead of listing multi-shot under "what is missing". No evaluator rework, no `resume` keyword, no sigil. |
 | 13 | ~~`stdlib/`~~ | **Closed 2026-08-19, by deletion.** Item 1 resolved as *no module system*, and a standard library reached by imports has no meaning without one. The 25 sketches — 4,402 lines of Rust behind a `.mg` extension, read by nothing — are gone. `scripts/check-mg-sources.sh` now reports **101 checked, 0 skipped**: every `.mg` file in the repository typechecks, and the sketch list it was built to shrink is empty. |
 
 **Item 10, scoped.** Single-shot resumption is verified working, exactly as
@@ -560,14 +560,33 @@ implementation task**:
 - **Then the evaluator rework.** `eval.rs` is 2,987 lines, 39 expression forms
   and 53 recursive `self.eval(` sites, all of which keep the continuation in the
   Rust call stack — where it cannot be captured. Multi-shot needs CPS or an
-  explicit CEK-style machine, which touches every form, with 1,199 tests riding
+  explicit CEK-style machine, which touches every form, with 1,200 tests riding
   on current behaviour.
 
 **This item was filed under "real work, unstarted" with no blocker marked**,
-beside `stdlib/` which is explicitly blocked on item 1. It has the same shape as
-item 1 and should be read the same way: the implementation is downstream of a
-decision nobody has made. Worth knowing before someone picks it up expecting a
-week of evaluator work.
+beside `stdlib/` which is explicitly blocked on item 1. It had the same shape as
+item 1, and it closed the same way.
+
+**Decided 2026-08-19: single-shot is final.** Not deferred — declined. The two
+costs above are the reason: a permanent per-arm token cost in a language whose
+premise is that tokens are scarce, and a CPS/CEK rewrite of every expression
+form to move a continuation out of the Rust call stack, in exchange for
+generators and backtracking that no MAGE program has asked for. Handlers that
+do the work MAGE exists for — state, reader, logging, tracing, retry,
+capability interception, test mocking — need none of it and all work today.
+
+Re-measured before deciding rather than trusting the 2026-08-18 numbers: the
+three published results still hold exactly (`107`, `1007`, `5 + 5 = 10`), and
+`resume` still evaluates as an ordinary identifier, which is what "there is no
+`resume` keyword" has to mean to be falsifiable.
+
+`MAGE_SPEC.md` §11.6 is now normative, and
+`eval::tests::single_shot_resumption_is_a_decision_not_a_gap` pins both halves —
+that `resume` remains a usable identifier, and that the spec still states the
+decision. Reserving the word is the first edit multi-shot would require, so it
+fails before anyone touches the 39 expression forms. If a real program ever
+needs multi-shot, that section is the thing to change first, with the program in
+hand.
 
 ### Small, sharp, cheap
 
@@ -1470,8 +1489,8 @@ function**, and a handler's own effects are attributed honestly.
 
 **Handlers resume, single-shot and implicitly** — the arm's value becomes the
 operation's value and the body continues — and an arm may `ret` instead, which
-aborts the handled block only and leaves the enclosing function running. Only
-*multi-shot* resumption is missing (item 10).
+aborts the handled block only and leaves the enclosing function running. *Multi-shot* resumption is
+deliberately absent — decided 2026-08-19, `MAGE_SPEC.md` §11.6 (item 10).
 
 What it does *not* have: no effect hierarchy (`/ io` grants nothing else), no
 per-file or per-module capability grants, no effect polymorphism.
@@ -1608,9 +1627,9 @@ harder to notice because it arrives wearing a green tick.
 
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,199**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,200**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
-  across five crates **2,912**; documented-count pins **80**, up from 46.
+  across five crates **2,913**; documented-count pins **80**, up from 46.
 - Every typechecker fix has landed without breaking an existing test **except
   one**, where widening `collection_elem` made `sum("hi")` legal and
   `vocab_rejects_non_collection` caught it. That is the datapoint showing the
