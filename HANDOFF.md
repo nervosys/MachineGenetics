@@ -1066,6 +1066,18 @@ The mirror image, and easy to get backwards.
   crate's contents, so the file now says which it is. **A prose document is not
   covered by a check that reads code blocks**, and the passing result said
   nothing about it either way.
+- **`SPINE_COLLABORATION.md` §8 is accurate, and every command in it fails on
+  the first attempt anyway.** All six claimed bridge functions exist, the "5
+  tests" is exactly 5, and `--spine=profile|swarm|frame` all work and return
+  what the section describes — the frame's `byte_len`, FNV `content_digest` and
+  `exec: false` verified against a real 141-byte container. What is missing is
+  the **input schema**: nothing in the document says what `agent.json` contains,
+  and the profile's input key is `agent` while its *output* key is `name`. The
+  natural first guess is `{"name": …}`, mirroring the output, and it fails with
+  `missing field \`agent\``. A §7b now gives the minimum fields for all three,
+  measured from a run. **A correct document can still be unusable**, and that
+  gap does not show up in any check this repository has, because every claim in
+  it is true.
 - **`MAGE_ONTOLOGY.md` — the prose ontology — had 13 of 23 RAP method
   signatures wrong.** Every method it names exists; the drift is in the
   parameters, checked against the JSON's `rap_methods` (itself verified by
@@ -1084,6 +1096,11 @@ The mirror image, and easy to get backwards.
   `rule_total_count_210` and asserts `255`. A test name is documentation that
   grep reaches first; anyone looking up the rule count found 210 in the name
   and never read the body. Renamed.
+
+  Swept for others — test names of the form `*_count_N`, `*_total_N`,
+  `exactly_N`, `all_N` across all five crates. **There is exactly one**, and it
+  was that one. A negative result worth recording so the next reader does not
+  repeat the search: the shape is real but it was not systemic here.
 - **`ARCHITECTURE_DSL.md` is the one document whose measured claims all held.**
   Every byte figure re-derived exactly from the checked-in construct: source
   271 B, container 141 B, expr 110 B, single-block 126 B / 95 B, decompiles to

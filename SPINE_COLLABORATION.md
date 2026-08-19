@@ -179,6 +179,40 @@ each receiver, and decided by the same consensus evaluator MAGE already ships.
 
 ---
 
+## 7b. The inputs those commands take
+
+Added 2026-08-18, after running every command in §8 and finding that all three
+fail on the first attempt for want of a schema nobody wrote down. Each is a
+`serde` struct in `prototype/src/builder.rs`; these are the minimum fields.
+
+```json
+// --spine=profile   (AgentSpec)
+{"agent": "Reviewer", "capabilities": ["io", "net"], "requires_approval": []}
+
+// --spine=swarm     (SwarmSpec)  — `agent` names the member type and is required
+{"swarm": "Build", "agent": "Worker", "size": 3,
+ "topology": "mesh", "consensus": "quorum"}
+
+// --spine=frame     takes a .abl container, not JSON
+```
+
+**The profile's input key is `agent` and its output key is `name`.** That
+asymmetry is the trap: the natural first guess is `{"name": …}`, matching what
+comes back, and it fails with `missing field \`agent\``. Verified output for
+the profile above:
+
+```json
+{"capabilities": ["AgentCommunication", "SwarmParticipation",
+                  {"Custom": "io"}, {"Custom": "net"}],
+ "miras_variant": "Titans", "name": "Reviewer", "requires_approval": []}
+```
+
+`--spine=frame` on a 141-byte container returns `byte_len: 141`, a 64-bit FNV
+`content_digest`, `exec: false`, `signed: false` and the payload as hex —
+matching §8's description exactly.
+
+---
+
 ## 8. Where the code lives (the MAGE side is BUILT)
 
 - **MAGE side — implemented** in `prototype/src/spine_bridge.rs` + CLI:
