@@ -2864,26 +2864,70 @@ mod tests {
             let src = std::fs::read_to_string(&full).unwrap_or_default();
             assert!(
                 src.contains(name),
-                "framewerx_modules publishes `{name}` in {path}, which does                  not mention it"
+                "framewerx_modules publishes `{name}` in {path}, which does \
+                 not mention it"
             );
         }
     }
 
-    /// Every path the ontology publishes exists.
+    /// Every path the ontology publishes exists — or is declared to be
+    /// somewhere this repository cannot see.
     ///
     /// Cheap, and the kind of claim that rots silently: a file moves and the
     /// map an agent navigates by keeps pointing at where it used to be.
+    ///
+    /// It also rotted in the other direction, and that is the interesting
+    /// half. `DOCS` carries one entry that deliberately points *outside* the
+    /// repository — `../../utilities/IronAccelerator/`, an external reference —
+    /// and this test asserted it existed like any other. It passed for months
+    /// on a machine where that sibling checkout happens to sit next to this
+    /// one, and failed the first time it ran in CI, which is the only place
+    /// that had ever told the truth about it. **A test green because of a
+    /// directory outside the repository is not testing the repository.**
+    ///
+    /// So an escaping path is skipped, and the skip is itself asserted: it must
+    /// be labelled a reference in its audience column. Otherwise `../` is
+    /// indistinguishable from a typo in an in-repo path, and this test would
+    /// grant an exemption to exactly the case it exists to catch.
     #[test]
     fn every_documented_path_exists() {
         let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .parent()
             .expect("repo root");
         for (path, _) in PROJECT_LAYOUT.iter().map(|(p, d)| (*p, *d)) {
+            assert!(
+                !path.starts_with("../"),
+                "project_layout describes this repository's own layout; \
+                 `{path}` escapes it and cannot be one of its directories"
+            );
             assert!(root.join(path).exists(), "project_layout path is gone: {path}");
         }
-        for (path, _, _) in DOCS {
+
+        let mut external = 0;
+        for (path, _, audience) in DOCS {
+            if path.starts_with("../") {
+                assert!(
+                    audience.contains("reference"),
+                    "`{path}` escapes the repository but is not labelled a \
+                     reference in its audience column (`{audience}`). An \
+                     in-repo path that begins with `../` is a typo, and \
+                     skipping it silently is how this test came to pass on \
+                     one machine only"
+                );
+                external += 1;
+                continue;
+            }
             assert!(root.join(path).exists(), "docs path is gone: {path}");
         }
+
+        // Pin the count, so that adding a second out-of-tree reference is a
+        // decision someone makes rather than one that rides along.
+        assert_eq!(
+            external, 1,
+            "exactly one DOCS entry is an out-of-tree reference; found \
+             {external}. Adding another means agents are being pointed at \
+             more things a fresh checkout does not contain"
+        );
     }
 
     /// The published examples must **typecheck**, not merely parse.
