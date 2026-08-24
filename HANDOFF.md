@@ -98,6 +98,7 @@ single new violation.
 | `scripts/check-ci-floors.sh` | the three measurable published floors, measured fresh; also fails if the committed `TOKEN_REPORT.md` differs from a new run |
 | `scripts/check-rmi-api-doc.sh` | every item `rmi/docs/*.md` documents exists in the crate, and every `**Module:**` path resolves — baseline **0**, so any invented name fails |
 | `scripts/check-orphan-sources.sh` | that every `.rs` file is reachable by some `mod` declaration — i.e. that it compiles at all. Every other row asks a question *about* compiled code; this one asks whether there is any. Found two on its first run. `wasm.rs` turned out to compile clean once a `mod` declaration was added, so it is fixed and the baseline shrank to one: `cuda_full.rs` (1,812 lines, 16 `unsafe`, 6 tests that have never run), which cannot be wired up without a CUDA toolkit. |
+| `scripts/check-ignored-tests.sh` | that every `#[ignore]`d test is named by some CI job — i.e. that something, somewhere, runs it. The sibling of the row above: that one finds files nothing compiles, this one finds tests nothing schedules. `eval_bench` was red for 76 commits behind three hiding places at once (`#[ignore]`, a `--bench` flag nobody passed, an unpushed branch) while the figure it certifies appeared in three documents. Its first run found `perf_report`, which produces the ABL scaling numbers and had never been executed by CI. No baseline: the live set is 2 and both are covered, so green is the honest state. |
 | CI `audit` job | `cargo audit` over all five lockfiles separately, plus `npm audit` on `video/` — which nothing covered until a high-severity advisory was sitting in it |
 | CI ontology step | `MAGE_ONTOLOGY.json` matches a fresh `--emit-ontology` |
 | CI version step | `mage-parse --version` matches the tool id Ribosome keys on |
@@ -257,10 +258,19 @@ anywhere — and, on its first run, a second file nobody had mentioned:
 callers**. That one compiled clean the moment a `mod` declaration was added:
 the file was never broken, only unreferenced, which is exactly why nothing had
 ever reported it. It is fixed, and the baseline is down to one. The instrument is trustworthy here for a measured reason rather than
-an assumed one: across six crates it reports exactly those two and no false
-positives, and the `#[path = "..."]` attribute that would defeat it appears
-nowhere in the repository. Both conditions are written into the script, because
-the day either stops holding is the day it starts lying.
+an assumed one: across six crates its first run reported exactly those two and
+no false positives, and the `#[path = "..."]` attribute that would defeat it
+appears nowhere in the repository. Both conditions are written into the script,
+because the day either stops holding is the day it starts lying. (It reports one
+now — `wasm.rs` was fixed the same day, and the baseline shrank with it.)
+
+Its sibling is `check-ignored-tests.sh`, added 2026-08-24, and the pair covers
+the two ways code can sit in the tree without ever running: a file no `mod`
+reaches, and a test no schedule names. The second found `perf_report`
+immediately — the harness behind the ABL scaling figures in `MEASUREMENTS.md`,
+compiled by every `cargo test` and executed by nothing. `cargo test` prints such
+a test as "ignored", which reads like a decision somebody is making on each run.
+Nobody is deciding anything.
 
 #### 9. Agreement between two documents is not corroboration when one is a copy
 

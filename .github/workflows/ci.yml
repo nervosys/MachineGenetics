@@ -86,6 +86,18 @@ jobs:
       # a new one fails.
       - name: No source file is unreachable by `mod`
         run: bash scripts/check-orphan-sources.sh
+      # The sibling failure: a file that compiles, holding a test that never
+      # runs. `eval_bench` was red for 76 commits behind three separate
+      # hiding places — `#[ignore]`, a `--bench` flag nobody passed, and an
+      # unpushed branch — while the number it certifies was published in three
+      # documents. `cargo test` prints such a test as "ignored", which reads
+      # like a decision being made each run, and is not.
+      #
+      # This asks only whether some job names it. Its first run found
+      # `perf_report`, which produces the ABL scaling figures and had never
+      # been executed by CI.
+      - name: Every #[ignore]d test has a runner
+        run: bash scripts/check-ignored-tests.sh
 
   prototype:
     name: prototype — build + test
@@ -99,6 +111,18 @@ jobs:
         run: cargo test --release --manifest-path prototype/Cargo.toml
       - name: Evaluator correctness bench (73/73 exact)
         run: cargo test --release --manifest-path prototype/Cargo.toml eval_bench -- --ignored --nocapture
+      # `perf_report` is the harness that produced the ABL artifact-scaling
+      # figures in MEASUREMENTS.md and ARCHITECTURE_DSL.md. `cargo test`
+      # compiles it, so it cannot rot into a build error unnoticed — but until
+      # 2026-08-24 nothing ever *ran* it: the step above names `eval_bench`
+      # specifically, and no job passes `--bench`. A runtime panic in it would
+      # have surfaced only when someone next tried to regenerate the published
+      # numbers, which is precisely when a broken harness is most expensive.
+      #
+      # Same shape as HANDOFF rule 6, which this harness is the subject of: it
+      # silently changed meaning under a table it had produced. 3 seconds.
+      - name: Performance harness runs (publishes MEASUREMENTS figures)
+        run: cargo test --release --manifest-path prototype/Cargo.toml perf_report -- --ignored --nocapture
       # `mage-parse@<version>` is the tool id Ribosome writes into every action
       # key, so if the binary and the registry disagree the cache is keyed on a
       # version that never ran. They live in different crates with no compiler
