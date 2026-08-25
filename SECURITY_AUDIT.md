@@ -52,9 +52,21 @@ extracted from `forge` (steps 148–149). Both are clean, as is `forge`.
 vulnerabilities. The four *committed* lockfiles — `prototype`, `forge`,
 `ribosome`, `germline` — report **zero findings of any kind**, warnings
 included. The single remaining warning is `paste` (unmaintained) on
-`RecursiveMachineIntelligence/Cargo.lock`, which is git-ignored, so it is a
-property of a local resolve rather than of this repository. agentic-eval's own
-dependency surface is 2 optional crates (`tiktoken-rs`, `serde`) — no findings.
+`RecursiveMachineIntelligence/Cargo.lock`, which is git-ignored.
+
+**And that warning is not merely local, which this row used to imply.** It said
+the `paste` finding was "a property of a local resolve rather than of this
+repository" — the phrasing that was exactly right for `crossbeam-epoch 0.9.18`,
+a stale artifact in one working copy that a fresh resolve did not reproduce.
+`paste` is not that. CI generates `rmi`'s lockfile from scratch and
+`check-security-register.sh` reports the identical single advisory there
+(2026-08-25, run 32902128162), so a fresh consumer resolve gets it too: it is a
+property of `rmi`'s dependency graph via `wgpu→metal`, and it is git-ignored
+rather than local. The two cases look the same in a report and are not the
+same, and only running the fresh resolve tells them apart.
+
+agentic-eval's own dependency surface is 2 optional crates (`tiktoken-rs`,
+`serde`) — no findings.
 
 **Four or five?** Both numbers are right and they count different things. There
 are **five** lockfile surfaces and CI audits all five; only **four** are

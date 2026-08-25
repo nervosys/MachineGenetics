@@ -146,6 +146,27 @@ the table says, so no break test reaches it; its parser was tested separately
 against synthetic reports, including the shape-changed case, which must yield
 "cannot parse" rather than 0.
 
+**The first version told a correct document it was wrong.** Testing the path
+CI actually depends on — the git-ignored lockfile absent, because CI generates
+it in a prior step — the check reported the missing surface *and then* reported
+`paste`'s Accepted row as an acceptance that had stopped applying, advising
+that it be struck through. Both messages were produced by one cause, and the
+second sends someone to edit a row that was right. That is the trap already
+recorded under Traps — **a checker must distinguish "wrong" from "not
+checked", because the two have opposite remedies.** The "accepted but reported
+nowhere" direction now runs only when every surface was audited, and says so
+when it does not. The other direction — "recorded as fixed and reported again"
+— still runs on a partial set, because a finding that is there is there.
+
+**And running it in CI corrected §1.** The row saying the `paste` warning is "a
+property of a local resolve rather than of this repository" was the right
+phrasing for `crossbeam-epoch 0.9.18`, a stale artifact in one working copy.
+`paste` is not that: CI resolves `rmi`'s lockfile from scratch and reports the
+identical single advisory, so a fresh consumer gets it too. It is git-ignored,
+not local. The two look the same in a report, and only the fresh resolve tells
+them apart — which is the argument for the CI job auditing five surfaces while
+§1 counts four.
+
 **A trap, paid for in this session.** The break-test harness restored the
 document between cases with `git checkout -- SECURITY_AUDIT.md`, which also
 reverted the *uncommitted documentation edits* made earlier in the same

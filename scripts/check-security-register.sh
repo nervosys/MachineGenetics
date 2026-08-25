@@ -182,8 +182,11 @@ registered_ids="$(printf '%s\n' "$register" | awk '{print $1}' | sort -u)"
 
 reported=""          # "<id> <surface>" per line
 surfaces_checked=0
+surfaces_expected=0
+surfaces_unaudited=0
 
 for surface in $SURFACES; do
+    surfaces_expected=$((surfaces_expected + 1))
     lock="$surface/Cargo.lock"
     if [ ! -f "$lock" ]; then
         if [ "$surface" = "$GIT_IGNORED_SURFACE" ]; then
@@ -193,6 +196,7 @@ for surface in $SURFACES; do
             echo "  x  $lock is missing, and it is a committed lockfile" >&2
         fi
         fail=1
+        surfaces_unaudited=$((surfaces_unaudited + 1))
         continue
     fi
 
@@ -203,6 +207,7 @@ for surface in $SURFACES; do
         echo "       Re-run it directly to see why; a surface that cannot be" >&2
         echo "       audited is not a surface with nothing wrong." >&2
         fail=1
+        surfaces_unaudited=$((surfaces_unaudited + 1))
         continue
     fi
 
@@ -244,6 +249,23 @@ while read -r id; do
 done <<< "$reported_ids"
 
 # ── Direction 2: in the register, but disagreeing with what is reported ──────
+#
+# The "accepted but reported nowhere" half needs the reported set to be
+# *complete*, and it is not complete if a surface could not be audited. Running
+# it anyway would tell someone their correct document is wrong — the checker
+# must distinguish "wrong" from "not checked", because the two have opposite
+# remedies (edit the register versus generate a lockfile) and reporting the
+# wrong one sends people to change rows that were right. The other half —
+# "recorded as fixed and reported again" — is sound on a partial set, because a
+# finding that is there is there.
+
+if [ "$surfaces_unaudited" -ne 0 ]; then
+    echo "  --  $surfaces_unaudited of $surfaces_expected surface(s) could not be audited," >&2
+    echo "       so \"accepted risk that nothing reports any more\" was NOT" >&2
+    echo "       evaluated: an advisory can be missing from the report because" >&2
+    echo "       it stopped firing, or because nothing looked. Fix the surfaces" >&2
+    echo "       above and re-run before editing $DOC." >&2
+fi
 
 while read -r id expectation; do
     [ -n "$id" ] || continue
@@ -255,7 +277,7 @@ while read -r id expectation; do
         is_reported=0
     fi
 
-    if [ "$expectation" = "present" ] && [ "$is_reported" -eq 0 ]; then
+    if [ "$expectation" = "present" ] && [ "$is_reported" -eq 0 ] && [ "$surfaces_unaudited" -eq 0 ]; then
         echo "  x  \`$id\` is listed in $DOC §1 as an **accepted** risk, and no" >&2
         echo "       surface reports it any more." >&2
         echo "       An acceptance that has stopped applying is indistinguishable" >&2
