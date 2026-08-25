@@ -162,7 +162,7 @@ compiler/server, and agent-generated code executed locally.
 | **Subprocess backends** (`--backends-file`, `Command::new(prog).spawn()`) | T1059 (command/scripting), T1106 (native API) | Runs an operator-supplied wrapper program. **Already classified `exec`** in the CLI manifest and RMI safety effect-map. Only reachable via an explicit local flag — operator-controlled, not attacker-reachable. Fail-safe: no shell interpolation (args passed as argv, not `sh -c`). |
 | **Deserialization** (Agentic Binary Language containers, MessagePack protocol, checkpoints) | T1565 (data manipulation) | Agentic Binary Language decode is **length-checked, bounds-validated** (`take()` guards every field) — verified in `run_dispatch_abl_bytes`. **No `pickle`-class arbitrary-code-execution path** — formats are data-only (contrast PyTorch `torch.load`, flagged in agentic-eval). Malformed input yields a typed `RmiError`, not memory unsafety. |
 | **Agent-generated code execution** | T1059, T1027 | The whole point of the compiler is to process untrusted (LLM-written) source. Front-end is **memory-safe Rust** — `prototype/src` contains **no `unsafe` outside `cuda_backend.rs`** (3 blocks, IronAccelerator FFI, behind the non-default `cuda` feature); the remaining hits in `lexer.rs`/`elision.rs`/`token_budget.rs` are the *MAGE keyword* `unsafe`, not Rust code. Parse/check/lower cannot escape the process.
-    **Corrected 2026-08-18.** This row said "rmi has 1 audited `unsafe` in lib.rs, 3 in the CUDA FFI shim — all reviewed, FFI-boundary only". All three parts were wrong. `lib.rs` has none. The real surface is **9 `unsafe` blocks in `RecursiveMachineIntelligence/src/runtime/memory_pool.rs`** — an arena allocator doing `alloc_zeroed`, pointer `add` and `offset_from` — which is **not an FFI boundary** and is **compiled unconditionally** (`pub mod runtime` has no feature gate). A memory allocator is the highest-risk category of `unsafe` in an assessment like this, and the document asserted no such code existed. Separately, `compute/cuda_full.rs` holds 16 more, but **no `mod` declaration references it**, so it is never compiled — the file is a dead cudarc-0.10 port that `compute/mod.rs` describes in a comment as "unused". Counting it would overstate the surface as badly as the old row understated it. *Running* compiled output is the operator's risk surface → see CMMC sandboxing note. |
+    **Corrected 2026-08-18.** This row said "rmi has 1 audited `unsafe` in lib.rs, 3 in the CUDA FFI shim — all reviewed, FFI-boundary only". All three parts were wrong. `lib.rs` has none. The real surface is **13 `unsafe` items in `RecursiveMachineIntelligence/src/runtime/memory_pool.rs`** — 9 blocks in an arena allocator doing `alloc_zeroed`, pointer `add` and `offset_from`, plus **4 `unsafe impl Send`/`Sync`** on `Slab` and `TensorBuffer` — which is **not an FFI boundary** and is **compiled unconditionally** (`pub mod runtime` has no feature gate). This row said "9 blocks" for a while, counting only the blocks; the four impls are the higher-risk half, because a block's soundness is local while an `unsafe impl` is an unchecked global assertion — and they are where the fifth defect actually was (§5). Re-derive both with `grep -nE '\bunsafe\s*(\{|fn |impl )'`, which reports 13 here, 16 in the never-compiled `compute/cuda_full.rs`, and nothing anywhere else in `rmi`, `forge`, `ribosome` or `germline`. A memory allocator is the highest-risk category of `unsafe` in an assessment like this, and the document asserted no such code existed. Separately, `compute/cuda_full.rs` holds 16 more, but **no `mod` declaration references it**, so it is never compiled — the file is a dead cudarc-0.10 port that `compute/mod.rs` describes in a comment as "unused". Counting it would overstate the surface as badly as the old row understated it. *Running* compiled output is the operator's risk surface → see CMMC sandboxing note. |
 | **Self-modification** (`evolution::self_modification`) | T1565.001, T1027 | Applies code patches through `SandboxLimits` + `ResourceUsage` checks. Effect-mapped **exec-equivalent**; documented in the manifest as "gate behind approval in agent deployments." |
 | **Supply chain** | T1195.001 (compromised dep) | Covered by §1; the lz4_flex fix closes the one in-path high-sev item. |
 
@@ -243,12 +243,29 @@ Assessed against CMMC L1/L2 practices relevant to a source release (not a CUI-ha
   remaining blocks are sound as used: `Slab::free`'s `offset_from` needs a
   same-allocation pointer and every caller goes through `contains` first, which
   is integer comparison and safe on a foreign pointer — though the SAFETY
-  comment stated that guarantee backwards and has been corrected. The four
-  `unsafe impl Send`/`Sync` are defensible under the refcount discipline
-  (`as_bytes_mut` takes `&mut self` and refuses at refcount != 1, and every
-  view bumps the count), but the counter is read `Relaxed` while gating
-  mutation, which is a synchronisation decision rather than a counter — worth a
-  second opinion from someone who owns this code.
+  comment stated that guarantee backwards and has been corrected.
+
+  **The four `unsafe impl Send`/`Sync` were the fifth defect, and this passage
+  used to understate it.** It said they were "defensible under the refcount
+  discipline" but that reading the counter `Relaxed` while gating mutation was
+  "a synchronisation decision rather than a counter — worth a second opinion
+  from someone who owns this code." That was the wrong verdict, and hedging is
+  how it survived: written down, the interleaving is a data race on the
+  ordinary sharing path. `as_bytes_mut` is `Arc::get_mut` by hand. Thread A
+  reads through `as_bytes`, then drops its handle (`fetch_sub`, `Release`);
+  thread B's `Relaxed` load observes `1` **without** synchronizing-with that
+  `Release`, so B's writes through the returned `&mut [u8]` are unordered
+  against A's reads of the same bytes. **Fixed 2026-08-19**: the load is now
+  `Acquire` (`memory_pool.rs:516`), which is the ordering `Arc::get_mut` uses
+  and for exactly this reason, and the four `unsafe impl` are sound under it.
+  `refcount()` stays `Relaxed` and is documented as advisory, since a statistic
+  confers nothing.
+
+  No test here verifies that and none can: the fix is invisible to a
+  single-threaded suite, and on x86 — where loads are acquire in hardware — the
+  broken version would not have manifested either. `loom` would verify it and
+  is not a dependency this vendored crate should gain unilaterally. Recorded
+  rather than instrumented.
 
 - **Dead `unsafe` in `compute/cuda_full.rs`.** 16 blocks in a file no `mod`
   declaration references, so it never compiles. It reads as reviewed code and

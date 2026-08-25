@@ -173,8 +173,63 @@ reverted the *uncommitted documentation edits* made earlier in the same
 session. `git checkout --` does not distinguish your experiment from your work.
 Commit before running a harness that reverts, or point it at a copy.
 
-**What it deliberately does not check** is the *rationale* in the Status
-column. "Only under the non-default `gpu` feature" is a claim about a
+### Then §2–§4, which nothing had ever checked
+
+§1 now has an instrument. The rest of `SECURITY_AUDIT.md` does not, and its
+claims are specific enough to check — which the taxonomy says is the one thread
+worth pulling through code. Four results, three of them defects:
+
+**§3's `unsafe` count was still wrong, after being corrected once.** It said
+"the real surface is **9** `unsafe` blocks in `memory_pool.rs`". There are
+**13**: 9 blocks plus **4 `unsafe impl Send`/`Sync`** on `Slab` and
+`TensorBuffer`. The omitted four are the higher-risk half — a block's soundness
+is local, an `unsafe impl` is an unchecked global assertion — and they are
+exactly where the fifth defect was. This is the same row that previously
+asserted the allocator did not exist at all. **Corrected twice now, understated
+both times, and both times the omitted part was where a real bug lived.**
+
+**§5 described a fixed data race as an open question.** It called the four
+`unsafe impl` "defensible under the refcount discipline", said reading the
+counter `Relaxed` while gating mutation was "a synchronisation decision rather
+than a counter — worth a second opinion from someone who owns this code", and
+left it there. That hedge is how it survived: item 16 wrote the interleaving
+down and it *is* a data race on the ordinary sharing path, fixed 2026-08-19 by
+making the load `Acquire` (`memory_pool.rs:516`, verified). A security document
+saying "possibly fine, someone should look" about a defect that was found and
+fixed six days earlier is decay in the direction that reads as caution.
+
+**§2's "no TLS" claim is true, and worth recording as checked.** `--rap` really
+is plaintext JSON-RPC over TCP; the `rustls` implementation behind
+`--features tls` is `ribosome`'s *worker transport* (`ribosome/src/tls.rs`),
+not RAP, so it does not contradict §2 — which it looks like it might, given
+open item 3. A negative result, recorded so nobody re-derives it.
+
+**The inventory is now pinned.** `test-all.sh` emits `unsafe_memory_pool`,
+`unsafe_cuda_full` and `unsafe_cuda_backend` from the same expression §3 tells
+a reader to run, and four `CHECKS` rows compare them against the two documents
+that state them — pinning both of `cuda_full.rs`'s mentions to one key, as the
+rule above requires. Verified in both directions: a measured value that
+disagrees is reported as a mismatch, and a reworded claim is reported as a
+pattern that no longer matches. Documented-count pins are now **84**.
+
+Confirmed by the same sweep, so it is measured rather than assumed: **the only
+Rust `unsafe` anywhere in the owned crates** is 3 blocks in
+`prototype/src/cuda_backend.rs`, 13 in `memory_pool.rs` and 16 in the
+never-compiled `cuda_full.rs`. `forge`, `ribosome` and `germline` have none,
+and neither do rmi's benches or examples. Everything else matching `unsafe` in
+`prototype/src` — 74 hits across 16 files — is the *MAGE keyword*, not Rust.
+§3 named three files as keyword-only hits; there are sixteen.
+
+**A trap, and a near miss.** Inserting the `CHECKS` rows with
+`awk -v new="$ROWS"` silently stripped every backslash, turning
+`\*\*[0-9,]+` into `**[0-9,]+` — a different and invalid regex, in a
+tab-separated table where a wrong field also fails silently. **`awk -v`
+processes escape sequences in the value.** Reverted and done in Python, which
+also had to take the row terminator from the anchor line rather than assume
+`\n`, because the working copy is CRLF.
+
+**What the register check deliberately does not check** is the *rationale* in
+the Status column. "Only under the non-default `gpu` feature" is a claim about a
 dependency graph, and re-deriving it per row is a `cargo tree` reachability
 argument with a false-positive class — rule 10 says a weak instrument is worse
 than a documented gap, so the gap is documented in the script's header and in
@@ -1796,7 +1851,9 @@ harder to notice because it arrives wearing a green tick.
 
 - Prototype tests **1,066 → 1,200**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
-  across five crates **2,913**; documented-count pins **80**, up from 46.
+  across five crates **2,913**; documented-count pins **84**, up from 46 — the
+  four newest hold `SECURITY_AUDIT.md`'s `unsafe` inventory, a claim that had
+  been wrong twice.
 - Every typechecker fix has landed without breaking an existing test **except
   one**, where widening `collection_elem` made `sum("hi")` legal and
   `vocab_rejects_non_collection` caught it. That is the datapoint showing the

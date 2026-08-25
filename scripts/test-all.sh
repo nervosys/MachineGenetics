@@ -148,6 +148,24 @@ if [ "$CHECKDOCS" -eq 1 ]; then
         # table can disagree — and a document added without an index entry is
         # exactly what that opening sentence exists to prevent.
         echo "root_docs=$(ls "$REPO"/*.md | grep -c .)"
+        # The `unsafe` inventory that SECURITY_AUDIT.md §3 publishes. That row
+        # has been wrong twice, and both times the omitted part was where a
+        # real defect lived: first it asserted the arena allocator did not
+        # exist ("1 audited unsafe in lib.rs, 3 in the CUDA FFI shim"), and
+        # reviewing what was actually there found four memory-safety defects;
+        # then it counted 9 items where there are 13, omitting the four
+        # `unsafe impl Send`/`Sync` — which is where the fifth was. A count in
+        # a security document asserting how much unsafe code exists is the
+        # last claim that should be typed in by hand.
+        #
+        # `grep -c` counts matching *lines*, which is the same unit the
+        # document quotes, and this is the same expression §3 tells a reader
+        # to run. Inside `echo` rather than bare, because `grep -c` exits 1 on
+        # a zero count and `set -e` would kill the script at a bare assignment.
+        unsafe_re='\bunsafe\s*(\{|fn |impl )'
+        echo "unsafe_memory_pool=$(grep -cE "$unsafe_re" "$REPO/RecursiveMachineIntelligence/src/runtime/memory_pool.rs")"
+        echo "unsafe_cuda_full=$(grep -cE "$unsafe_re" "$REPO/RecursiveMachineIntelligence/src/compute/cuda_full.rs")"
+        echo "unsafe_cuda_backend=$(grep -cE "$unsafe_re" "$REPO/prototype/src/cuda_backend.rs")"
         echo "ribosome_deps=$(cargo tree --manifest-path "$REPO/ribosome/Cargo.toml"             -e normal --prefix none 2>/dev/null             | sed 's/ (\*)$//' | awk 'NF{print $1}' | sort -u | grep -c .)"
         # `.mg` sources checked vs skipped as sketches. HANDOFF.md states both,
         # and both moved this session (96/30 -> 101/25) when `framewerx` was

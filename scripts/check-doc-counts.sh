@@ -154,6 +154,10 @@ UNIFICATION.md	wrapper_protocol \([0-9]+\)	onto_wrapper_protocol
 UNIFICATION.md	ci_floors \([0-9]+\)	onto_ci_floors
 ARCHITECTURE.md	\*\*[0-9]+ crates transitively\*\*	ribosome_deps
 RIBOSOME.md	— [0-9]+ crates transitively	ribosome_deps
+SECURITY_AUDIT.md	\*\*[0-9,]+ `unsafe` items in	unsafe_memory_pool
+SECURITY_AUDIT.md	[0-9,]+ in the never-compiled	unsafe_cuda_full
+SECURITY_AUDIT.md	\*\* [0-9,]+ blocks in a file no	unsafe_cuda_full
+SECURITY_AUDIT.md	cuda_backend\.rs`\*\* \([0-9]+ blocks	unsafe_cuda_backend
 EOF
 )
 
