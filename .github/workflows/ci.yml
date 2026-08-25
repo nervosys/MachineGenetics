@@ -340,6 +340,16 @@ jobs:
       # gate the build.
       - name: npm audit (video pipeline)
         run: cd video && npm audit --audit-level=high
+      # The two steps above find advisories; neither reads what was *decided*
+      # about the ones that stay. `-D warnings` is off by design, so the entire
+      # warning surface is printed and nothing compares it against
+      # SECURITY_AUDIT.md §1 — which is exactly how that register came to list
+      # RUSTSEC-2026-0097 after it stopped firing while missing
+      # RUSTSEC-2026-0190 for two months. This step closes the loop in both
+      # directions. It runs last because it depends on the rmi lockfile the
+      # `cargo audit` step generates.
+      - name: Accepted-risk register agrees with what cargo audit reports
+        run: bash scripts/check-security-register.sh
 
   cuda:
     name: prototype — cuda feature (compile check)

@@ -1,6 +1,6 @@
 # Security Audit — MAGE (Machine Genetics) + RecursiveMachineIntelligence (rmi)
 
-**Org:** NERVOSYS · **Date:** 2026-06-04, §1 re-run 2026-08-18 · **Scope:** `RecursiveMachineIntelligence/`
+**Org:** NERVOSYS · **Date:** 2026-06-04, §1 re-run 2026-08-25 · **Scope:** `RecursiveMachineIntelligence/`
 (crate `rmi`), `prototype/` (compiler + RAP server), `agentic-eval` (separate
 AetherShell repo). Frameworks applied: **CVE/RustSec**, **NIST FIPS 140-3**,
 **MITRE ATT&CK**, **CMMC 2.0**.
@@ -48,30 +48,64 @@ extracted from `forge` (steps 148–149). Both are clean, as is `forge`.
 | **RUSTSEC-2026-0190** | `anyhow 1.0.102` | unsound (warning) — borrow-rule violation in `Error::downcast_mut()` after `Error::context` | **FIXED 2026-08-18** — `cargo update -p anyhow` → 1.0.104 (patched at ≥ 1.0.103). Transitive via the `wit-bindgen`/`wit-component` chain; nothing in this repository calls `downcast_mut`, so it was not in-path, but a patched version existed and accepting a fixable finding is not triage. **This advisory is dated 2026-06-25 and was not in this table** — the register had drifted in both directions at once: listing a warning that had stopped firing, and missing one that had started. |
 | (yanked) | `lz4_flex 0.11.5` | yanked | resolved by the 0.11.6 pin above. |
 
-**Result (re-run 2026-08-18):** 0 open vulnerabilities. The four *committed*
-lockfiles — `prototype`, `forge`, `ribosome`, `germline` — report **zero
-findings of any kind**, warnings included. The single remaining warning is
-`paste` (unmaintained) on `RecursiveMachineIntelligence/Cargo.lock`, which is
-git-ignored, so it is a property of a local resolve rather than of this
-repository. agentic-eval's own dependency surface is 2 optional crates
-(`tiktoken-rs`, `serde`) — no findings.
+**Result (re-run 2026-08-25, unchanged from 2026-08-18):** 0 open
+vulnerabilities. The four *committed* lockfiles — `prototype`, `forge`,
+`ribosome`, `germline` — report **zero findings of any kind**, warnings
+included. The single remaining warning is `paste` (unmaintained) on
+`RecursiveMachineIntelligence/Cargo.lock`, which is git-ignored, so it is a
+property of a local resolve rather than of this repository. agentic-eval's own
+dependency surface is 2 optional crates (`tiktoken-rs`, `serde`) — no findings.
+
+**Four or five?** Both numbers are right and they count different things. There
+are **five** lockfile surfaces and CI audits all five; only **four** are
+*committed*, and the fifth — `RecursiveMachineIntelligence/Cargo.lock` — is
+git-ignored so that the vendored crate does not inherit this repo's pins. CI
+generates it fresh, which audits what a consumer would actually resolve rather
+than one developer's working copy; that distinction is what made a
+`crossbeam-epoch` hit there a false alarm while the identical hit in
+`prototype` was real. So a finding on the four is a property of this
+repository, and a finding on the fifth may not be.
+`check-security-register.sh` audits all five and labels the fifth
+`(git-ignored)` wherever it reports one.
 
 > **An accepted-risk register decays like any other measured claim, and worse.**
 > Both drifts above are invisible to a reader: the document names two accepted
 > warnings, and someone checking whether the accepted set is complete would have
 > found it neither complete nor current. `cargo audit` in CI catches new
-> *vulnerabilities*; nothing compares this table against the warnings actually
-> reported. Re-run the five surfaces when touching this file:
+> *vulnerabilities*; for a long time nothing compared this table against the
+> warnings actually reported.
+>
+> **Something does now, as of 2026-08-25: `scripts/check-security-register.sh`**,
+> run by CI's `audit` job. It reads the rows *out of this table* rather than
+> keeping its own copy, and fails in both directions — an advisory reported by
+> any of the five surfaces that has no row here, **and** a row marked
+> **Accepted** that no surface reports any more. A row whose Status column it
+> cannot classify as FIXED, Accepted or "No longer applies" is also a failure,
+> because a row this check cannot read must not read as a row that passed.
+> Verified by breaking each case and watching it fail. Run it by hand with
+> `bash scripts/check-security-register.sh`, or the surfaces directly with
 > `for d in prototype forge ribosome germline; do cargo audit --file $d/Cargo.lock; done`
+>
+> What it does **not** check is the *rationale*: it compares advisory
+> identities, not the reasoning in the Status column. "Only under the
+> non-default `gpu` feature" is a claim about a dependency graph, and nothing
+> re-derives it. Re-read those by hand when touching this file.
 >
 > **And the npm surface, which nothing here had ever named.** `HANDOFF.md`
 > claimed "0 npm"; `video/` had **one high-severity** advisory
 > (GHSA-2v37-7h3g-55p8, `nanoid < 3.3.18`, transitive via `postcss`), fixed
-> 2026-08-18 with `npm audit fix --package-lock-only` → 3.3.18, and now 0 of
-> 294 packages. Both `video/package.json` and `video/package-lock.json` are
-> tracked, so this was a repository finding rather than a local one. Check it
-> with `cd video && npm audit`; CI's `audit` job covers the five Cargo
-> lockfiles and not this one.
+> 2026-08-18 with `npm audit fix --package-lock-only` → 3.3.18, and now 0
+> vulnerabilities (of 294 packages then, 293 on 2026-08-25 — the package count
+> is not a security figure and is recorded only so the two runs can be told
+> apart). Both `video/package.json` and `video/package-lock.json` are tracked,
+> so this was a repository finding rather than a local one. Check it with
+> `cd video && npm audit`. CI's `audit` job now covers it twice: an
+> `npm audit --audit-level=high` step that gates, and
+> `check-security-register.sh`, which reads the *total* across every severity —
+> because the claim this document makes about that surface is **zero**, and a
+> moderate finding is still a finding nobody wrote down. That sentence used to
+> end "CI's `audit` job covers the five Cargo lockfiles and not this one",
+> which had been false since the npm step was added the same day.
 
 **Recommendation (CMMC SI / supply chain): ✅ implemented 2026-08-05.** CI now
 has an `audit` job running `cargo audit` over each of the five lockfiles

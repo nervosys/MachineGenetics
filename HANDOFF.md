@@ -1,4 +1,4 @@
-# Handoff — through 2026-08-18
+# Handoff — through 2026-08-25
 
 What this repository is, what state it is in, and what to do next. Written for
 someone picking it up cold.
@@ -15,8 +15,8 @@ each claim has a command beside it.
 | Tests | **2,913** — rmi 1,384 · prototype 1,200 · ribosome 164 · germline 112 · forge 53 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
-| Vulnerabilities | 0 Rust across five lockfiles, 0 npm — and the four *committed* lockfiles now report 0 warnings too |
-| CI | 10 jobs, green on `master` |
+| Vulnerabilities | 0 Rust across five lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — the fix exists only on `handoff` |
+| CI | 10 jobs defined, **9 of which ever run** — green on `master` and on `handoff`. The tenth, `prototype — cuda kernels (self-hosted GPU)`, has no runner and has never executed (open item 2) |
 | Reliability floors | file-oracle parse 99/100, perturbed pattern-heal 42, native-lexer ratio 0.997 |
 | Examples | 12 of 12 typecheck, run, and print their recorded answer |
 | `.mg` sources | **101 checked, 0 sketches** — every `.mg` file in the repository typechecks |
@@ -29,12 +29,135 @@ Reproduce all of it:
 scripts/test-all.sh --check-docs          # everything + documentation check
 scripts/check-examples.sh                 # the 12 shipped examples, end to end
 scripts/check-mg-sources.sh               # every .mg file in the repo
+scripts/check-security-register.sh        # §1's accepted risks vs. what cargo audit reports
 scripts/test-all.sh --cuda --bench --check-docs   # + GPU and the benchmark harnesses
 ```
 
-**Nothing on `handoff` is pushed, and no PR is open** — count them with
-`git rev-list --count origin/handoff..handoff`. That is a decision waiting,
-not an oversight — open item 0.
+**`handoff` is pushed and PR #6 is open against `master`, with CI green on
+every commit.** It was not pushed when this document was first written; that was
+open item 0, and it is closed.
+
+It has **not** been merged, deliberately — `gh pr merge --auto` merges
+*immediately* in this repository, because there are no required status checks,
+which is how PR #4 once landed with CI still pending. So the merge is a human
+action, and until someone takes it `master` keeps the `nanoid` advisory that
+`handoff` fixes. That is the only item here with an outside clock on it.
+
+---
+
+## What changed on 2026-08-19 → 24, and what it cost
+
+Eight commits. Every open item that could be closed from inside this repository
+is closed; what remains is listed under [Open items](#open-items) with a reason
+attached to each.
+
+| Item | Outcome |
+|---|---|
+| 0 — unpushed branch | Pushed. PR #6 open, CI green, **not merged** (see above) |
+| 1 — module system | **Declined.** One flat namespace, `MAGE_SPEC.md` §2.3 normative. `use` is now an error; `stdlib/` deleted, 26 files and 4,402 lines |
+| 4 — RAP error shape | **Fixed.** Protocol failures use the JSON-RPC `error` member; program failures stay in `result` |
+| 10 — multi-shot resumption | **Declined.** §11.6 normative. No `resume` keyword, no CPS rewrite |
+| 14 — `token-bench` gating | **Fixed.** Shrink-only baseline; the status reports movement, not the size of a known set |
+| 15 — `rmi` `cuda` feature | **Feature builds now.** `cuda = []`; cudarc was mandatory for a feature gating nothing that could run |
+| 16 — `Relaxed` refcount | **Fixed, and it was unsound** — not "not demonstrated unsound", as recorded |
+| 17 — `rmi` `wasm` feature | **Fixed** the day it was filed. Two lines |
+| 18 — fabricated `DeviceInfo` | **New, and open.** The ontology half is fixed; the behaviour half is upstream's |
+
+**Two decisions, not two implementations.** Items 1 and 10 were both filed as
+real work, unstarted. Neither was: each was a design question nobody had
+answered, and an undecided design is indistinguishable from an unimplemented one
+from outside. Both closed by writing the answer down normatively and pinning it
+with a test that fails when someone starts building the thing that was declined.
+For item 10 that pin is `resume` remaining a usable identifier — reserving the
+word is the first edit multi-shot needs, so it trips before the 39 expression
+forms get touched.
+
+**Two more were mis-framed the other way.** Items 15 and 17 were filed as
+"vendored — owner's call", and that framing was repeated three times in this
+session before anyone checked it. The real blockers were two lines and one
+deleted dependency. Only `cuda_full.rs` genuinely belongs upstream. **Five of
+the eight closures came from re-reading how an item was filed, not from writing
+much code** — which is worth knowing before trusting any remaining row's
+triage, including the ones below.
+
+**Two new instruments**, both of which found something on their first run:
+
+- `check-orphan-sources.sh` found `compute/wasm.rs` — 208 lines nothing
+  compiled, whose backend the crate advertised to callers.
+- `check-ignored-tests.sh` found `perf_report` — the harness behind the ABL
+  scaling figures in `MEASUREMENTS.md`, compiled by every `cargo test` and
+  executed by nothing.
+
+Together they cover the two ways code sits in the tree without ever running: a
+file no `mod` reaches, and a test no schedule names.
+
+**Left undone, and known** — *done 2026-08-25, see below.* `SECURITY_AUDIT.md`
+§1's accepted-risk register was still not compared against what `cargo audit`
+actually reports, the gap that document names itself. It now is:
+`scripts/check-security-register.sh`. And §1 said "four committed lockfiles"
+while the CI job is named "all five" — the fifth is git-ignored and resolved
+fresh, so the two describe different surfaces and neither said so. §1 now says
+so.
+
+---
+
+## What changed on 2026-08-25
+
+One commit, closing the item the section above left open.
+
+`scripts/check-security-register.sh` compares `SECURITY_AUDIT.md` §1's
+accepted-risk register against what `cargo audit` reports across all five
+lockfile surfaces, plus `npm audit` on `video/`. It fails in both directions —
+an advisory reported by some surface with no row in the table, **and** a row
+marked **Accepted** that no surface reports any more — which is the shape the
+register's own history demands, because it had drifted both ways at once.
+
+**The register agrees today, and that is the finding.** All five surfaces were
+re-run: four committed lockfiles report zero findings of any kind, and `paste`
+(RUSTSEC-2024-0436, unmaintained) is reported only by `rmi`'s git-ignored
+lockfile, exactly as §1 records. `npm audit` on `video/` is 0. Nothing had
+changed since 2026-08-18 — but nothing had *established* that either, which is
+the difference the script makes. The `Vulnerabilities` row above says to treat
+that line as a claim with a date on it; it now has a mechanism instead.
+
+Three things are worth carrying out of building it:
+
+- **The "Accepted" direction only works over the union of all five surfaces.**
+  `paste` is reported by exactly one — the git-ignored one — so a check that
+  audited only the four committed lockfiles would have declared a correct row
+  stale. The narrower scope is the more defensible-sounding one, and it would
+  have been wrong.
+- **A row the check cannot classify is a failure, not a pass.** If a Status
+  column says none of FIXED / Accepted / "No longer applies", the script says
+  so and exits 1. That is rule 8 applied at row granularity: a row outside the
+  assertion's reach must not look like a row that passed.
+- **The npm total is summed from the severity buckets, not read from
+  `"total"`.** `npm audit --json` has two keys named `total` —
+  `vulnerabilities.total` and `dependencies.total`, which is 293 here — and
+  telling them apart by document order is a parse that reads the package count
+  as a vulnerability count on the day that order changes. Verified against
+  synthetic reports with the blocks in both orders.
+
+Verified by breaking it, five ways, each failing for its own reason: a reported
+advisory deleted from the table, an Accepted row flipped to FIXED, an invented
+Accepted row nothing reports, an unclassifiable Status column, and the `## 1.`
+heading renamed. The npm arm reads 0 against the live surface no matter what
+the table says, so no break test reaches it; its parser was tested separately
+against synthetic reports, including the shape-changed case, which must yield
+"cannot parse" rather than 0.
+
+**A trap, paid for in this session.** The break-test harness restored the
+document between cases with `git checkout -- SECURITY_AUDIT.md`, which also
+reverted the *uncommitted documentation edits* made earlier in the same
+session. `git checkout --` does not distinguish your experiment from your work.
+Commit before running a harness that reverts, or point it at a copy.
+
+**What it deliberately does not check** is the *rationale* in the Status
+column. "Only under the non-default `gpu` feature" is a claim about a
+dependency graph, and re-deriving it per row is a `cargo tree` reachability
+argument with a false-positive class — rule 10 says a weak instrument is worse
+than a documented gap, so the gap is documented in the script's header and in
+§1.
 
 ---
 
@@ -82,10 +205,19 @@ These exist because the same failure kept recurring: a claim written once, never
 revisited, and quietly wrong. Each fails in **both** directions — a claim that
 breaks, *and* a recorded state that silently starts passing.
 
-Two of them carry a **baseline** that can only shrink (`check-doc-blocks.sh`,
-`check-rmi-api-doc.sh`), which is the right shape when the backlog is real and
-the fix is incremental. Both are currently at zero, so either now fails on a
-single new violation.
+Four of them carry a **baseline** that can only shrink, which is the right shape
+when the backlog is real and the fix is incremental:
+
+| Baseline | Holds | State |
+|---|---|---|
+| `scripts/doc-blocks-baseline.txt` | MAGE blocks that fail `--check` | **0** — fails on one new violation |
+| `scripts/rmi-api-doc-baseline.txt` | documented API items that do not exist | **0** — same |
+| `scripts/orphan-sources-baseline.txt` | `.rs` files no `mod` reaches | **1** — `cuda_full.rs`, needs a CUDA toolkit to wire up |
+| `benchmarks/token-claims-baseline.txt` | corpus `token_count` claims that disagree with measurement | **150** — the subject of `benchmarks/FINDINGS.md` §1, a finding rather than a regression |
+
+Every one of them fails in both directions: a new entry fails, and so does an
+entry that has silently stopped applying and should have been deleted. A
+baseline nobody is required to shrink is just a list.
 
 | Command | Checks |
 |---|---|
@@ -99,6 +231,7 @@ single new violation.
 | `scripts/check-rmi-api-doc.sh` | every item `rmi/docs/*.md` documents exists in the crate, and every `**Module:**` path resolves — baseline **0**, so any invented name fails |
 | `scripts/check-orphan-sources.sh` | that every `.rs` file is reachable by some `mod` declaration — i.e. that it compiles at all. Every other row asks a question *about* compiled code; this one asks whether there is any. Found two on its first run. `wasm.rs` turned out to compile clean once a `mod` declaration was added, so it is fixed and the baseline shrank to one: `cuda_full.rs` (1,812 lines, 16 `unsafe`, 6 tests that have never run), which cannot be wired up without a CUDA toolkit. |
 | `scripts/check-ignored-tests.sh` | that every `#[ignore]`d test is named by some CI job — i.e. that something, somewhere, runs it. The sibling of the row above: that one finds files nothing compiles, this one finds tests nothing schedules. `eval_bench` was red for 76 commits behind three hiding places at once (`#[ignore]`, a `--bench` flag nobody passed, an unpushed branch) while the figure it certifies appeared in three documents. Its first run found `perf_report`, which produces the ABL scaling numbers and had never been executed by CI. No baseline: the live set is 2 and both are covered, so green is the honest state. |
+| `scripts/check-security-register.sh` | that `SECURITY_AUDIT.md` §1's accepted-risk register agrees with what `cargo audit` reports across all five surfaces, and that `video/` is at zero. Both directions: a reported advisory with no row, and an **Accepted** row nothing reports any more. The rows are read *out of* §1 rather than copied into the script, so adding a row is what tells the check the row exists. The `audit` job below finds advisories; this reads what was *decided* about the ones that stay — which nothing did, which is how §1 came to list `RUSTSEC-2026-0097` after it stopped firing while missing `RUSTSEC-2026-0190` for two months. No baseline: every row currently agrees, so green is the honest state. |
 | CI `audit` job | `cargo audit` over all five lockfiles separately, plus `npm audit` on `video/` — which nothing covered until a high-severity advisory was sitting in it |
 | CI ontology step | `MAGE_ONTOLOGY.json` matches a fresh `--emit-ontology` |
 | CI version step | `mage-parse --version` matches the tool id Ribosome keys on |
