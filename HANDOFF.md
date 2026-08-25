@@ -12,7 +12,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **2,913** — rmi 1,384 · prototype 1,200 · ribosome 164 · germline 112 · forge 53 |
+| Tests | **2,915** — rmi 1,384 · prototype 1,202 · ribosome 164 · germline 112 · forge 53 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — the fix exists only on `handoff` |
@@ -220,6 +220,97 @@ and neither do rmi's benches or examples. Everything else matching `unsafe` in
 `prototype/src` — 74 hits across 16 files — is the *MAGE keyword*, not Rust.
 §3 named three files as keyword-only hits; there are sixteen.
 
+### And §2–§4, where the guards worked and nobody could tell
+
+Five more results, one of them a fix.
+
+**Both ABL container decoders exited 0 on every corrupt container.**
+`--from=abl-bytes` and `--run=abl-bytes` hand-roll the same `take()`-guarded
+decoder, and §3 cites it as evidence that decode is bounds-validated. It is:
+eight malformed containers — truncated header, bad magic, bad version, a
+four-billion item count, and `name_len`/`expr_len` at the `u32` ceiling — each
+produce a clean diagnostic and **no panic, abort or hang**, through both entry
+points. That claim is now measured rather than read.
+
+But every one of those eight **exited 0**, while the same `match` arm exits 1
+when the file merely cannot be read. A caller driving the tool by exit status —
+which is how an agent drives it — could not distinguish a decoded container
+from a rejected one. **This is "detected, recorded, and never surfaced"**, the
+same shape as the unknown net layer lowered to `Op::IDENTITY`: the guard fires,
+prints, and returns success. Fixed, and pinned by
+`prototype/tests/abl_container_exit_status.rs`, the repository's first
+integration test that spawns the binary — because the failure *is* a process
+exit status and `std::process::exit` cannot be observed from inside the
+binary's own harness. Verified by reverting the fix and watching the corrupt
+case fail. The test asserts both directions: a valid container must still exit
+0, which is what catches an over-eager fix that makes the decoder always fail.
+
+**A near-finding, recorded as a non-finding.** `take`'s bound is
+`*pos + n > buf.len()`, an unchecked add, and the identical shape had already
+been a real defect in rmi (`TensorBuffer::slice`, fixed with `checked_add`).
+Here it is not reachable: `n` comes from a `u32` field and `pos` from the
+buffer, so it cannot overflow a 64-bit `usize`, and on a 32-bit target it would
+wrap to a panicking slice range rather than an out-of-bounds read. **Written
+down as a parenthetical rather than reported as a defect** — the taxonomy's
+"reproduce before believing" applies to one's own pattern-matching too.
+
+**§4's RA row still recommended what had been done twenty days earlier** —
+"Recommend wiring `cargo audit`/`cargo deny` into CI as a gate (the one
+concrete CI action item)", wired 2026-08-05 — and the "Open recommendations"
+section on the same page already said so. Two parts of one document
+disagreeing, neither noticed.
+
+**§4's CM row claimed `Cargo.lock` committed → reproducible builds ✅**, where
+`git ls-files '*Cargo.lock'` returns **four**. The fifth is git-ignored by
+design. Same four-versus-five distinction as §1, unqualified in both places
+until now.
+
+**"Confirmed zero secret/credential material (leak scan)" named no tool, no
+corpus and no date.** Re-run over 559 tracked files against high-signal issuer
+patterns — still zero — and the line now says what it does *not* cover: no
+entropy analysis, no history scan, and no `gitleaks`/`trufflehog` installed
+here. A vague claim is unfalsifiable and therefore safe to ignore, which is the
+worst thing a security assertion can be.
+
+**Two §3 claims verified true and left alone**: the RAP non-loopback refusal
+(rc=2, and the `MAGE_RAP_ALLOW_REMOTE=1` override warns then binds — both
+halves run, where the row had only ever exercised one), and the subprocess
+backend passing argv rather than a shell string (`Command::new(prog).args(…)`,
+the only two `Command::new` sites in `prototype/src`). Negative results are
+worth recording so the next person does not re-derive them.
+
+### The lesson had been learned, written down, and half-applied
+
+Found by accident, which is how most of these are found: after the full suite
+ran, `git status` showed `benchmarks/RELIABILITY_REPORT.md` **modified**, and
+nothing had edited it.
+
+`check-ci-floors.sh` runs `reliability-bench` twice to measure the parse and
+heal floors, and that binary **writes `RELIABILITY_REPORT.md` every time**. The
+same script already save-and-restores `TOKEN_REPORT.md` around the token bench,
+under a comment explaining exactly why — *a check that rewrites a tracked file
+is not a check either*, rule 6 above. **The rule was applied to one artifact of
+that script and not to the other.**
+
+The consequence is worse for this one, because the file embeds p50/p95/p99
+**latencies**. Running the suite on a machine already busy with other runs
+rewrote them 30/247/348 → **51/551/1089 µs**, and a `git add -A` would have
+committed load-dependent timing noise into the repository as though it were a
+measurement. Which is very nearly what happened here.
+
+Now restored on every exit path via a `trap`, including a floor breach — a
+check that fails must not leave the tree rewritten either. **Restored, not
+compared**: `TOKEN_REPORT.md` earns a staleness check because it is
+byte-stable, and this one deliberately does not, because a latency table would
+be permanently red. That is the same distinction rule 10 draws — whether the
+artifact records a measurement or a timing — and it is why the two artifacts
+need *different* treatment rather than the same treatment.
+
+Worth stating plainly, because it generalises: **an instrument with a side
+effect on tracked state is a defect even when its verdict is correct**, and the
+side effect is invisible in the instrument's own output. The only thing that
+surfaced it was `git status` on an unrelated commit.
+
 **A trap, and a near miss.** Inserting the `CHECKS` rows with
 `awk -v new="$ROWS"` silently stripped every backslash, turning
 `\*\*[0-9,]+` into `**[0-9,]+` — a different and invalid regex, in a
@@ -322,7 +413,10 @@ opcode the compute dispatcher handles is in its doc table, every sigil the
 quick reference teaches is discoverable from the ontology, and a decoder
 following the published container format consumes every byte of a real
 container, and all five descriptions of that format agree on the magic, the
-version and the symbol section.
+version and the symbol section, and a **corrupt** container exits non-zero
+through both container entry points while a valid one still exits zero
+(`prototype/tests/abl_container_exit_status.rs` — a process-level test, because
+the thing that was wrong was a process exit status).
 
 **If you add a measured claim to a document, add it to `CHECKS` in
 `scripts/check-doc-counts.sh` in the same commit.** And if two documents state
@@ -781,7 +875,7 @@ implementation task**:
 - **Then the evaluator rework.** `eval.rs` is 2,987 lines, 39 expression forms
   and 53 recursive `self.eval(` sites, all of which keep the continuation in the
   Rust call stack — where it cannot be captured. Multi-shot needs CPS or an
-  explicit CEK-style machine, which touches every form, with 1,200 tests riding
+  explicit CEK-style machine, which touches every form, with 1,202 tests riding
   on current behaviour.
 
 **This item was filed under "real work, unstarted" with no blocker marked**,
@@ -1849,9 +1943,9 @@ harder to notice because it arrives wearing a green tick.
 
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,200**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,202**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
-  across five crates **2,913**; documented-count pins **84**, up from 46 — the
+  across five crates **2,915**; documented-count pins **84**, up from 46 — the
   four newest hold `SECURITY_AUDIT.md`'s `unsafe` inventory, a claim that had
   been wrong twice.
 - Every typechecker fix has landed without breaking an existing test **except

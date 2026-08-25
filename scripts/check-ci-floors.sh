@@ -30,6 +30,39 @@ MAX_LEX_RATIO=1.100 # native-lexer total ratio, MAGE vs Rust
 
 fail=0
 
+# `reliability-bench` **writes `benchmarks/RELIABILITY_REPORT.md`** every time
+# it runs, and that file is tracked. So this check used to modify the working
+# tree as a side effect of checking — the exact thing §3 below saves and
+# restores `TOKEN_REPORT.md` to avoid, applied to one artifact of this script
+# and not the other. The consequence is worse here than there: the report
+# embeds p50/p95/p99 **latencies**, so the rewrite is load-dependent. Running
+# the suite on a busy machine rewrote them 30/247/348 → 51/551/1089 µs, and a
+# subsequent `git add -A` would have committed timing noise as though it were a
+# measurement.
+#
+# Restored, not compared. `TOKEN_REPORT.md` gets a staleness check because it
+# is byte-stable; this one deliberately does not, because a latency table would
+# be permanently red — the distinction is whether the artifact records a
+# measurement or a timing.
+RELIABILITY_REPORT=benchmarks/RELIABILITY_REPORT.md
+reliability_saved=""
+if [ -f "$RELIABILITY_REPORT" ]; then
+    reliability_saved="$(mktemp)"
+    cp "$RELIABILITY_REPORT" "$reliability_saved"
+fi
+
+restore_reliability_report() {
+    if [ -n "$reliability_saved" ] && [ -f "$reliability_saved" ]; then
+        cp "$reliability_saved" "$RELIABILITY_REPORT"
+        rm -f "$reliability_saved"
+        reliability_saved=""
+    fi
+}
+
+# On every exit path, including a floor breach: the script must not leave a
+# tracked file rewritten just because it failed.
+trap restore_reliability_report EXIT
+
 run_bench() {
     cargo run --release --quiet --manifest-path prototype/Cargo.toml \
         --bin reliability-bench -- "$@" 2>&1 || true

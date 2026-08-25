@@ -1144,23 +1144,23 @@ fn run_decode_abl_bytes(blob: &[u8], path: &str) {
     }
     let magic = match take(blob, &mut pos, 4, "magic") {
         Some(m) => m,
-        None => return,
+        None => std::process::exit(1),
     };
     if magic != ABL_MAGIC {
         eprintln!("{path}: bad magic {:?} (expected Agentic Binary Language)", magic);
-        return;
+        std::process::exit(1);
     }
     let ver = u16::from_le_bytes(match take(blob, &mut pos, 2, "version") {
         Some(b) => b.try_into().unwrap(),
-        None => return,
+        None => std::process::exit(1),
     });
     if ver != ABL_VERSION {
         eprintln!("{path}: unsupported version {}", ver);
-        return;
+        std::process::exit(1);
     }
     let count = u32::from_le_bytes(match take(blob, &mut pos, 4, "count") {
         Some(b) => b.try_into().unwrap(),
-        None => return,
+        None => std::process::exit(1),
     }) as usize;
 
     println!("// Agentic Binary Language → MAGE decompiled view of {path}");
@@ -1169,19 +1169,19 @@ fn run_decode_abl_bytes(blob: &[u8], path: &str) {
     for i in 0..count {
         let nl = u32::from_le_bytes(match take(blob, &mut pos, 4, "name_len") {
             Some(b) => b.try_into().unwrap(),
-            None => return,
+            None => std::process::exit(1),
         }) as usize;
         let name = match take(blob, &mut pos, nl, "name") {
             Some(b) => std::str::from_utf8(b).unwrap_or("<bad-utf8>").to_string(),
-            None => return,
+            None => std::process::exit(1),
         };
         let el = u32::from_le_bytes(match take(blob, &mut pos, 4, "expr_len") {
             Some(b) => b.try_into().unwrap(),
-            None => return,
+            None => std::process::exit(1),
         }) as usize;
         let expr_bytes = match take(blob, &mut pos, el, "expr") {
             Some(b) => b,
-            None => return,
+            None => std::process::exit(1),
         };
         match rmi::lang::codec::Decoder::decode_expr_only(expr_bytes) {
             Ok(expr) => {
@@ -1316,23 +1316,23 @@ fn run_dispatch_abl_bytes(
     }
     let magic = match take(blob, &mut pos, 4, "magic") {
         Some(m) => m,
-        None => return,
+        None => std::process::exit(1),
     };
     if magic != ABL_MAGIC {
         eprintln!("{path}: bad magic {:?} (expected Agentic Binary Language)", magic);
-        return;
+        std::process::exit(1);
     }
     let ver = u16::from_le_bytes(match take(blob, &mut pos, 2, "version") {
         Some(b) => b.try_into().unwrap(),
-        None => return,
+        None => std::process::exit(1),
     });
     if ver != ABL_VERSION {
         eprintln!("{path}: unsupported version {}", ver);
-        return;
+        std::process::exit(1);
     }
     let count = u32::from_le_bytes(match take(blob, &mut pos, 4, "count") {
         Some(b) => b.try_into().unwrap(),
-        None => return,
+        None => std::process::exit(1),
     }) as usize;
 
     // P101: dispatch through whichever Backend the agent selected.
@@ -1357,19 +1357,19 @@ fn run_dispatch_abl_bytes(
     for i in 0..count {
         let nl = u32::from_le_bytes(match take(blob, &mut pos, 4, "name_len") {
             Some(b) => b.try_into().unwrap(),
-            None => return,
+            None => std::process::exit(1),
         }) as usize;
         let name = match take(blob, &mut pos, nl, "name") {
             Some(b) => std::str::from_utf8(b).unwrap_or("<bad-utf8>").to_string(),
-            None => return,
+            None => std::process::exit(1),
         };
         let el = u32::from_le_bytes(match take(blob, &mut pos, 4, "expr_len") {
             Some(b) => b.try_into().unwrap(),
-            None => return,
+            None => std::process::exit(1),
         }) as usize;
         let expr_bytes = match take(blob, &mut pos, el, "expr") {
             Some(b) => b,
-            None => return,
+            None => std::process::exit(1),
         };
         let expr = match rmi::lang::codec::Decoder::decode_expr_only(expr_bytes) {
             Ok(e) => abl_bridge::expand_repeats(&e), // unfold REPEAT before dispatch
