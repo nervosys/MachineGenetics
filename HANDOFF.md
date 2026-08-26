@@ -2225,6 +2225,17 @@ Only `stdlib/` and four `framewerx` files remain.
   "not checked"**, because the two have opposite remedies — edit the doc versus
   run the suite — and reporting the wrong one sends someone to change numbers
   that were correct.
+- **Adding a MAGE block to documentation moves two pinned counts.** A fenced
+  `mage` block raises `doc_blocks`, and if it defines `main` it also raises
+  `doc_evals` — both stated in HANDOFF.md and both pinned. Running
+  `check-doc-blocks.sh` proves the block *typechecks* and says nothing about
+  the count, so it is easy to verify the thing you changed and not the thing
+  that measures it. That is how 2026-08-25's Chapter 4 commit went red.
+  Before committing a doc change that adds a block:
+  `printf 'doc_blocks=N
+doc_evals=M
+' | bash scripts/check-doc-counts.sh`,
+  with N and M from the two checkers' own stdout.
 - **`grep -c` exits 1 when the count is zero.** `cargo clippy … | grep -c
   '^warning' && git commit …` printed `0` and then did not commit: a clean
   result is a *failure* exit for `grep`, so the `&&` chain stopped. Same
