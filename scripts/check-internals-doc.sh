@@ -97,6 +97,12 @@ if not os.path.isdir(DOC_DIR):
 #
 # The label is the nearest non-blank line above the fence, lowercased — the
 # same rule `check-doc-blocks.sh` uses, so there is one convention to learn.
+#
+# **The marker must be on that last line.** A label wrapped across two lines
+# puts its marker on the line above the one that is read, and does not
+# register — which happened while rewriting Chapter 1. It fails *loud*, as a
+# missing item, rather than silently passing, so the safe direction is the
+# one it takes; but keep design labels to a single line.
 DESIGN_MARKERS = ('not implemented', 'not built', 'designed and not',
                   'aspirational', 'does not exist', 'proposed', 'planned')
 
