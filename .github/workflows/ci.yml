@@ -350,6 +350,14 @@ jobs:
       # `cargo audit` step generates.
       - name: Accepted-risk register agrees with what cargo audit reports
         run: bash scripts/check-security-register.sh
+      # §2's inventory concluded "no secret keying, no signatures, no KDF" while
+      # the repository held HMAC-SHA256 under a fleet key, Ed25519 provenance
+      # signatures, and a TLS worker transport — all of which arrived with
+      # `ribosome` and `germline` after §2's scope was written, and none of
+      # which anything compared against the manifests. An absence claim stays
+      # green by doing nothing, so it needs a check that does something.
+      - name: Crypto inventory names every crypto dependency
+        run: bash scripts/check-crypto-inventory.sh
 
   cuda:
     name: prototype — cuda feature (compile check)

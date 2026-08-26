@@ -1,9 +1,21 @@
 # Security Audit — MAGE (Machine Genetics) + RecursiveMachineIntelligence (rmi)
 
-**Org:** NERVOSYS · **Date:** 2026-06-04, §1 re-run 2026-08-25 · **Scope:** `RecursiveMachineIntelligence/`
-(crate `rmi`), `prototype/` (compiler + RAP server), `agentic-eval` (separate
+**Org:** NERVOSYS · **Date:** 2026-06-04, §1 and §2 re-run 2026-08-25 ·
+**Scope:** `RecursiveMachineIntelligence/` (crate `rmi`), `prototype/`
+(compiler + RAP server), `ribosome/` (build engine — **the crate that holds
+every cryptographic mechanism in this repository**), `germline/` (RSI control
+plane), `forge/` (registry), `video/` (npm), and `agentic-eval` (separate
 AetherShell repo). Frameworks applied: **CVE/RustSec**, **NIST FIPS 140-3**,
 **MITRE ATT&CK**, **CMMC 2.0**.
+
+> **This line named three surfaces until 2026-08-25**, and that is not
+> cosmetic: `ribosome` and `germline` were extracted from `forge` after this
+> document was written, §1 was widened to audit five lockfiles, and §2 was not.
+> Everything those two crates brought with them — HMAC, Ed25519, TLS — sat
+> outside the stated scope of the section that inventories cryptography, so
+> §2's central finding ("no secret keying, no signatures") was true of the
+> old scope and false of the repository. **When the scope moves, every
+> "there is no X" claim in the document silently expires.**
 
 > Posture summary: this is **pre-release research software** (a compiler + an
 > embedded AI framework), not a deployed networked service. The realistic threat
@@ -137,17 +149,43 @@ allowlist remains the stricter option if a release gate is ever wanted.
 
 **Cryptography inventory:**
 
+> **Corrected 2026-08-25, and this section was the most wrong in the
+> document.** The inventory below listed three primitives, none of them keyed,
+> and concluded from that "no secret keying, no signatures, no KDF". The
+> repository contains **HMAC-SHA256 with fleet secret keys, Ed25519 signatures
+> with per-worker private seeds and a revocation store, constant-time
+> comparison, and a challenge-response worker authentication handshake** —
+> every one of them in `ribosome`/`germline`, and none of them listed.
+>
+> *How it happened is the same mechanism as everywhere else in this document.*
+> The **Scope** line at the top names three surfaces — `rmi`, `prototype`,
+> `agentic-eval`. `ribosome` and `germline` were extracted from `forge` later
+> (§1, steps 148–149). §1 was updated to audit **five** lockfiles; §2's scope
+> was never widened, so the crypto that arrived with those crates was never
+> inventoried. **A scope that grows silently makes every "there is no X"
+> finding in the document expire without notice**, and an absence claim is
+> exactly the kind that cannot fail loudly.
+>
+> **The code is not the problem.** The hand-rolled HMAC is validated against
+> RFC 4231 cases 1–3 including the long-key case, comparison is constant-time,
+> and the trust model is written down at the call site rather than assumed. The
+> defect is entirely in the section whose job was to record that it exists.
+
 | Primitive | Crate | Use | FIPS-approved algorithm? |
 |---|---|---|---|
 | SHA-256 | `sha2 0.10` | content-addressing (ontology/protocol/storage IDs, ParamStore weight keys) | **Yes** (FIPS 180-4) — but RustCrypto `sha2` is **not a FIPS 140-3 *validated module*** |
+| **HMAC-SHA256** | **hand-rolled**, `ribosome/src/mac.rs` (RFC 2104, over `sha2`) | **Authentication with a shared secret key**, in three places: `ribosome::provenance` (build-cache claims), `germline::attest` (verdicts), and `ribosome::remote` (worker challenge-response). Symmetric, so any verifier can also mint — stated at the call sites | **Yes** (FIPS 198-1) — implemented directly rather than via a crate, and **tested against RFC 4231 cases 1–3**, long-key case included. Not a validated module |
+| **Ed25519** | **`ed25519-dalek 3.0`**, `ribosome/src/provenance.rs` | **Digital signatures over build provenance**, with per-worker 32-byte private seeds, a `TrustStore` of public keys, and revocation. This is the asymmetric scheme the HMAC path's own doc comment says it is waiting for | **Yes** (FIPS 186-5, since 2023). Not a validated module |
+| Constant-time compare | hand-rolled `ct_eq`, `ribosome/src/mac.rs` | MAC and signature comparison without a timing oracle | N/A — a side-channel control, not an algorithm, and its presence is what makes the two rows above defensible |
+| **TLS 1.3** | **`rustls 0.23` + `ring`**, optional (`ribosome`'s `tls` feature) | Encrypted worker transport, `ribosome/src/tls.rs`. **Not** used by RAP | `ring` is not a FIPS-validated module; `rustls` can be built on one (`aws-lc-rs` FIPS), which is the concrete migration if a regulated deployment ever needs it |
 | xxHash (xxh3/xxh64) | `xxhash-rust` | non-cryptographic hashing (caches, dedup) | N/A — non-security use, correctly chosen |
 | LCG (internal) | rmi | deterministic weight init / fix-seed | N/A — explicitly not cryptographic |
 
 **Findings:**
 - **No FIPS-validated cryptographic module is in use.** SHA-256 via RustCrypto is the correct *algorithm* but the crate carries no CMVP certificate. For any deployment with a FIPS 140-3 requirement (federal/CMMC L2+), the SHA-256 calls must route through a validated module (e.g. AWS-LC-FIPS / OpenSSL 3 FIPS provider).
-- **All SHA-256 usage is integrity/addressing, not confidentiality or authentication.** No secret keying, no signatures, no KDF. So the FIPS gap is *non-cryptographic-assurance* — it affects compliance posture, not present-day confidentiality.
-- **No transport encryption.** The RAP server (`--rap`) is **plaintext JSON-RPC over TCP**. There is no TLS, so no cipher-suite FIPS question arises — but see ATT&CK §3.
-- **Action (documented, not yet implemented):** (a) gate SHA-256 behind a `fips` feature that swaps to a validated provider for regulated deployments; (b) if RAP is ever exposed beyond loopback, require rustls with a FIPS-validated backend.
+- **~~All SHA-256 usage is integrity/addressing, not confidentiality or authentication. No secret keying, no signatures, no KDF.~~** **False, and the conclusion drawn from it does not hold.** SHA-256 is *also* keyed, as HMAC, to authenticate build-cache claims, germline verdicts and worker handshakes; Ed25519 signs provenance with per-worker private keys. **There is secret key material in this system** — a fleet HMAC key and per-worker Ed25519 seeds — and its handling is a real security property, not a compliance abstraction. Still no KDF: keys are supplied, not derived, which is worth stating because it means **key provisioning is entirely the operator's problem and nothing here helps with it**. The FIPS gap is therefore *not* purely non-cryptographic-assurance: for a regulated deployment, the HMAC and Ed25519 paths are in scope for validated-module requirements, where the old finding said nothing was.
+- **No transport encryption on RAP**, and this row used to say "no transport encryption" flat. The RAP server (`--rap`) is **plaintext JSON-RPC over TCP** — verified 2026-08-25 — so no cipher-suite FIPS question arises *there*; see ATT&CK §3. But `ribosome` ships a **TLS 1.3 worker transport** behind `--features tls` (`rustls` + `ring`), so the repository does have transport encryption and does raise a cipher-suite question, just not on the surface this row was looking at. Open item 3 records the trust posture as deliberately the operator's.
+- **Action (documented, not yet implemented):** (a) gate SHA-256 **and the HMAC and Ed25519 paths** behind a `fips` feature that swaps to a validated provider for regulated deployments — the original said SHA-256 only, because it did not know the other two existed; (b) if RAP is ever exposed beyond loopback, require rustls with a FIPS-validated backend, and build `ribosome`'s existing `tls` feature on `aws-lc-rs` FIPS rather than `ring` for the same reason; (c) document key provisioning and rotation for the fleet HMAC key and the per-worker Ed25519 seeds, which nothing currently does.
 
 ---
 

@@ -279,6 +279,78 @@ backend passing argv rather than a shell string (`Command::new(prog).args(…)`,
 the only two `Command::new` sites in `prototype/src`). Negative results are
 worth recording so the next person does not re-derive them.
 
+### §2 said there were no signatures. There are two signature schemes.
+
+The largest single find of the session, and the one that best explains why the
+rest of this document exists.
+
+`SECURITY_AUDIT.md` §2 — the FIPS/cryptographic-posture section — inventoried
+three primitives (SHA-256 for content-addressing, xxHash, an LCG) and concluded
+**"No secret keying, no signatures, no KDF"**, and from that, that the FIPS gap
+"affects compliance posture, not present-day confidentiality."
+
+What the repository actually contains:
+
+| | Where |
+|---|---|
+| **HMAC-SHA256 under a fleet secret key**, hand-rolled (RFC 2104) | `ribosome/src/mac.rs`, used by **three** call sites |
+| **Ed25519 signatures** over build provenance, per-worker private seeds, `TrustStore` with revocation | `ribosome/src/provenance.rs` |
+| **Constant-time comparison** | `ribosome/src/mac.rs` |
+| **Challenge-response worker authentication** | `ribosome/src/remote.rs` |
+| **TLS 1.3** (`rustls` + `ring`) behind `--features tls` | `ribosome/src/tls.rs` |
+
+There is secret key material in this system, and the section whose job is to
+inventory cryptography listed none of it.
+
+**The code is not the problem, and saying so matters.** The hand-rolled HMAC is
+verified against **RFC 4231 cases 1–3**, long-key case included — a claim its
+own module comment makes, which I checked because it is specific enough to
+check. Comparison is constant-time. `provenance.rs` states its trust model at
+the top, including the limitation that HMAC is symmetric so any verifier can
+also mint, and names asymmetric keys as the fix — then implements them. This is
+careful work. **The defect is entirely in the document.**
+
+**Why it happened is the mechanism, not the oversight.** The **Scope** line at
+the top of `SECURITY_AUDIT.md` named three surfaces: `rmi`, `prototype`,
+`agentic-eval`. `ribosome` and `germline` were extracted from `forge` later
+(§1's own note, steps 148–149). §1 was widened to audit five lockfiles. §2's
+scope never moved. Every cryptographic mechanism in the repository arrived
+inside crates that the crypto section did not consider itself to cover.
+
+**An absence claim cannot fail loudly.** "There is no X" stays green by doing
+nothing, and a scope change expires it silently — with no diff, no failing
+test, and no reader able to tell. That is the worst property a security finding
+can have, and it is the reason this one survived while numeric claims in the
+same document were caught by pins.
+
+`scripts/check-crypto-inventory.sh` now fails when a crypto dependency in any
+`Cargo.toml` is not named in §2, when §2's inventory **table** names a crate no
+lockfile contains, and when a **hand-rolled** primitive exists that §2 never
+mentions — the last because `mac.rs`'s HMAC has no manifest entry and is
+invisible to every dependency scan, which is exactly how it went unlisted.
+Verified by breaking all five cases, plus a sixth to isolate the second
+direction, which the obvious break did not reach.
+
+**Its first draft cried wolf four times on a correct document**, and fixing
+that is the more useful lesson. Comparing every crypto name appearing anywhere
+in §2 against the *direct* dependencies reported `ring` (real, reached through
+`rustls`'s feature rather than declared), `ed25519` (real, pulled in by
+`ed25519-dalek`), `signature` (a real crate *and* an ordinary English word in a
+section about signatures), and `aws-lc-rs` (the FIPS migration target §2
+recommends — a dependency the repository deliberately does **not** have). Four
+failures, all wrong. Per rule 10 that is worse than no check: an instrument
+that cries wolf converts "unknown" into "passing" as soon as people learn to
+skip it. The fix was to narrow what the check treats as a *claim* — the table's
+Crate column is where the document asserts a dependency; prose is where it
+discusses one — and to compare against the **lockfiles** rather than the
+manifests, so a transitive or feature-gated crate is not called missing.
+
+Two smaller things fell out of the same reading: §2's "no transport encryption"
+was true of RAP and false of the repository, and `mac.rs`'s own doc comment said
+"two subsystems" where there are three — the third being the worker handshake,
+a different *use* of the key, which is precisely what an auditor tracing key
+material needs the list for.
+
 ### The lesson had been learned, written down, and half-applied
 
 Found by accident, which is how most of these are found: after the full suite
@@ -398,6 +470,7 @@ baseline nobody is required to shrink is just a list.
 | `scripts/check-rmi-api-doc.sh` | every item `rmi/docs/*.md` documents exists in the crate, and every `**Module:**` path resolves — baseline **0**, so any invented name fails |
 | `scripts/check-orphan-sources.sh` | that every `.rs` file is reachable by some `mod` declaration — i.e. that it compiles at all. Every other row asks a question *about* compiled code; this one asks whether there is any. Found two on its first run. `wasm.rs` turned out to compile clean once a `mod` declaration was added, so it is fixed and the baseline shrank to one: `cuda_full.rs` (1,812 lines, 16 `unsafe`, 6 tests that have never run), which cannot be wired up without a CUDA toolkit. |
 | `scripts/check-ignored-tests.sh` | that every `#[ignore]`d test is named by some CI job — i.e. that something, somewhere, runs it. The sibling of the row above: that one finds files nothing compiles, this one finds tests nothing schedules. `eval_bench` was red for 76 commits behind three hiding places at once (`#[ignore]`, a `--bench` flag nobody passed, an unpushed branch) while the figure it certifies appeared in three documents. Its first run found `perf_report`, which produces the ABL scaling numbers and had never been executed by CI. No baseline: the live set is 2 and both are covered, so green is the honest state. |
+| `scripts/check-crypto-inventory.sh` | that `SECURITY_AUDIT.md` §2 names every crypto dependency in every `Cargo.toml`, that its inventory *table* names only crates some lockfile contains, and that every **hand-rolled** primitive is mentioned. §2 concluded "no secret keying, no signatures, no KDF" while the repository held HMAC-SHA256 under a fleet key, Ed25519 provenance signatures and a TLS transport — all of it arriving with crates added after §2's scope was written. **An absence claim stays green by doing nothing**, which is why it needed a check that does something. |
 | `scripts/check-security-register.sh` | that `SECURITY_AUDIT.md` §1's accepted-risk register agrees with what `cargo audit` reports across all five surfaces, and that `video/` is at zero. Both directions: a reported advisory with no row, and an **Accepted** row nothing reports any more. The rows are read *out of* §1 rather than copied into the script, so adding a row is what tells the check the row exists. The `audit` job below finds advisories; this reads what was *decided* about the ones that stay — which nothing did, which is how §1 came to list `RUSTSEC-2026-0097` after it stopped firing while missing `RUSTSEC-2026-0190` for two months. No baseline: every row currently agrees, so green is the honest state. |
 | CI `audit` job | `cargo audit` over all five lockfiles separately, plus `npm audit` on `video/` — which nothing covered until a high-severity advisory was sitting in it |
 | CI ontology step | `MAGE_ONTOLOGY.json` matches a fresh `--emit-ontology` |

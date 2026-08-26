@@ -1,13 +1,20 @@
 //! Shared message-authentication primitives.
 //!
-//! Two subsystems need to prove authorship of a record — [`germline::attest`]
-//! for verdicts, [`ribosome::provenance`] for build results — and both were
-//! going to grow their own copy of HMAC. One implementation, checked once
+//! Three call sites need this, and two of them prove authorship of a record —
+//! [`germline::attest`] for verdicts, [`ribosome::provenance`] for build
+//! results — while [`remote`] uses it differently, as a **challenge-response
+//! handshake** authenticating a worker rather than a stored claim. Each was
+//! going to grow its own copy of HMAC. One implementation, checked once
 //! against the standard's vectors, is the only defensible arrangement: a second
 //! hand-rolled copy is a second chance to get the padding wrong.
 //!
+//! (This comment said "two subsystems" while there were three, which is a small
+//! instance of the reason the count matters at all: a reader auditing where key
+//! material is used starts from a list like this one.)
+//!
 //! [`germline::attest`]: crate::germline::attest
 //! [`ribosome::provenance`]: crate::provenance
+//! [`remote`]: crate::remote
 //!
 //! **Symmetric, deliberately scoped.** HMAC proves a record came from someone
 //! holding the key, which means any verifier can also forge. That is adequate
