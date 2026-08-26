@@ -99,6 +99,14 @@ jobs:
       # growing and keeps the size of it visible.
       - name: internals/ documents items that exist
         run: bash scripts/check-internals-doc.sh
+      # `DOCS.md` says "This index says which is which", and only its *count*
+      # was checked. A count catches adding a document and forgetting the
+      # number; it does not catch adding one, updating the number, and
+      # forgetting the entry — which is the failure that sentence exists to
+      # prevent. Both directions, including a dead pointer to a document that
+      # has been renamed away.
+      - name: Every root document is in DOCS.md
+        run: bash scripts/check-docs-index.sh
       # Every check above asks a question about code that compiles. Nothing
       # asked whether it compiles at all — and `compute/cuda_full.rs` is 1,812
       # lines with 16 `unsafe` blocks and 6 tests that no `mod` declaration

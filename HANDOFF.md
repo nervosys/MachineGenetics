@@ -355,6 +355,30 @@ was true of RAP and false of the repository, and `mac.rs`'s own doc comment said
 a different *use* of the key, which is precisely what an auditor tracing key
 material needs the list for.
 
+### A negative result, and the narrow hole beside it
+
+Worth recording because it is the first thread this session that came back
+mostly clean. `DOCS.md` opens "There are 22 Markdown documents at the
+repository root… **This index says which is which**" — a universal claim,
+guarded only by the `root_docs` *count* pin. Checked by hand: **all 22 are
+indexed, and every root document `DOCS.md` names exists.** The claim holds.
+
+The hole is narrower than the claim and real: a count catches adding a document
+and forgetting the number, but **not** adding one, updating the number, and
+forgetting the entry — nor two documents swapped in the same commit, which nets
+to zero. That is rule 4 again, one size down: a claim that says "every",
+guarded by a check that counts. `scripts/check-docs-index.sh` closes it in both
+directions, including a dead pointer left behind by a rename.
+
+Also measured, and *not* a defect: **13 documentation directories are indexed
+nowhere** — `agent-guide/`, `cookbook/`, `internals/`, `migration-guide/`,
+`quick-start/` and others, 68 files between them. `DOCS.md` scopes itself to
+the root in its first sentence, so this breaks no promise. It is worth knowing
+anyway, because `internals/` turned out to describe a compiler that was never
+built, and one reason it went unexamined this long is that no index points at
+it. Recorded rather than fixed: an index nobody has committed to maintaining is
+the next thing to go stale.
+
 ### `internals/` documents a compiler that was designed and not built
 
 Found by asking the neighbourhood question: `check-rmi-api-doc.sh` covers
@@ -697,6 +721,7 @@ baseline nobody is required to shrink is just a list.
 | `scripts/check-rmi-api-doc.sh` | every item `rmi/docs/*.md` documents exists in the crate, and every `**Module:**` path resolves — baseline **0**, so any invented name fails |
 | `scripts/check-orphan-sources.sh` | that every `.rs` file is reachable by some `mod` declaration — i.e. that it compiles at all. Every other row asks a question *about* compiled code; this one asks whether there is any. Found two on its first run. `wasm.rs` turned out to compile clean once a `mod` declaration was added, so it is fixed and the baseline shrank to one: `cuda_full.rs` (1,812 lines, 16 `unsafe`, 6 tests that have never run), which cannot be wired up without a CUDA toolkit. |
 | `scripts/check-ignored-tests.sh` | that every `#[ignore]`d test is named by some CI job — i.e. that something, somewhere, runs it. The sibling of the row above: that one finds files nothing compiles, this one finds tests nothing schedules. `eval_bench` was red for 76 commits behind three hiding places at once (`#[ignore]`, a `--bench` flag nobody passed, an unpushed branch) while the figure it certifies appeared in three documents. Its first run found `perf_report`, which produces the ABL scaling numbers and had never been executed by CI. No baseline: the live set is 2 and both are covered, so green is the honest state. |
+| `scripts/check-docs-index.sh` | that every Markdown document at the root has an entry in `DOCS.md`, and every root document `DOCS.md` names still exists. `DOCS.md` claims "this index says which is which" and only its **count** was pinned — which catches adding a document and forgetting the number, but not adding one, updating the number, and forgetting the entry. All 21 were indexed when this was written; it keeps them that way. Root only, because that is `DOCS.md`'s own scope. |
 | `scripts/check-internals-doc.sh` | that every Rust item `internals/*.md` documents has a **definition** in `prototype/src`. `README.md` calls that set "Compiler-internals documentation" and it is written in the present tense; **15 of 36 documented items do not exist**, and its opening prose describes a Salsa-based, query-driven, multi-crate compiler where `prototype` is one crate with no query engine and no `salsa` dependency. Baseline **15**, shrink-only — this bounds the problem rather than fixing it. Blind to prose, which is where the worst of it is. |
 | `scripts/check-crypto-inventory.sh` | that `SECURITY_AUDIT.md` §2 names every crypto dependency in every `Cargo.toml`, that its inventory *table* names only crates some lockfile contains, and that every **hand-rolled** primitive is mentioned. §2 concluded "no secret keying, no signatures, no KDF" while the repository held HMAC-SHA256 under a fleet key, Ed25519 provenance signatures and a TLS transport — all of it arriving with crates added after §2's scope was written. **An absence claim stays green by doing nothing**, which is why it needed a check that does something. |
 | `scripts/check-security-register.sh` | that `SECURITY_AUDIT.md` §1's accepted-risk register agrees with what `cargo audit` reports across all five surfaces, and that `video/` is at zero. Both directions: a reported advisory with no row, and an **Accepted** row nothing reports any more. The rows are read *out of* §1 rather than copied into the script, so adding a row is what tells the check the row exists. The `audit` job below finds advisories; this reads what was *decided* about the ones that stay — which nothing did, which is how §1 came to list `RUSTSEC-2026-0097` after it stopped firing while missing `RUSTSEC-2026-0190` for two months. No baseline: every row currently agrees, so green is the honest state. |
