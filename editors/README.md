@@ -6,7 +6,7 @@ Configuration files for using MAGE with various editors.
 
 | Editor                      | Directory         | Status                          |
 | --------------------------- | ----------------- | ------------------------------- |
-| [VS Code](../MAGE-vscode/) | `MAGE-vscode/`   | Full extension (TextMate + RAP) |
+| ~~VS Code~~                  | —                 | **Does not exist.** This row linked to `../MAGE-vscode/`, which is not in the repository and never has been (checked 2026-08-25). |
 | [Neovim](neovim/)           | `editors/neovim/` | LSP + tree-sitter + ftdetect    |
 | [Helix](helix/)             | `editors/helix/`  | Language config + queries       |
 | [Zed](zed/)                 | `editors/zed/`    | Extension manifest + highlights |
