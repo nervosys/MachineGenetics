@@ -5,7 +5,7 @@
   "layer": "languages",
   "role": "Agentic-first programming language and compiler infrastructure for recursive self-improvement.",
   "ontology": {
-    "command": "mage-parse --emit-ontology",
+    "command": "mage-parse --manifest",
     "document": "prototype/src/cli_manifest.rs",
     "schema": 1
   },
@@ -227,5 +227,5 @@
       ]
     }
   ],
-  "note": "requires_grant is derived from the effect class MAGE already declares per mode under its agentic-eval taxonomy: pure and read_local need no grant, write_local and network do. That is its classification, not one applied from outside. emit-ontology is write_local and therefore shows as requiring a grant, which reads oddly for a discovery command but is correct -- it dumps the ontology to a file. budgeted is not declared and is judged here. It marks the modes whose cost is model compute scaling with the workload rather than with the input file -- abl-train, abl-run, abl-infer, abl-generate, abl-compute -- plus rap, which serves the agent protocol over TCP for an unbounded time. Note the four modes that are budgeted but ungranted: abl-infer, abl-generate, abl-compute and, before it writes, the compute path generally. They are read_local, so they need no authority, but they can run a model for as long as the caller asks. Those are the entries where the two fields disagree on purpose -- authority and cost are different questions here, and a caller enforcing only grants would meter none of them."
+  "note": "requires_grant is derived from the effect class MAGE already declares per mode under its agentic-eval taxonomy: pure and read_local need no grant, write_local and network do. That is its classification, not one applied from outside. emit-ontology is write_local and therefore shows as requiring a grant, which reads oddly for a discovery command but is correct -- it dumps the ontology to a file. That is why `ontology.command` names `--manifest` and not `--emit-ontology`: --manifest is the agent-facing 'read this first' index, effect class pure and grant-free, so discovery does not require the authority it exists to inform. --emit-ontology remains the way to obtain the complete document when writing a file is wanted. budgeted is not declared and is judged here. It marks the modes whose cost is model compute scaling with the workload rather than with the input file -- abl-train, abl-run, abl-infer, abl-generate, abl-compute -- plus rap, which serves the agent protocol over TCP for an unbounded time. Note the four modes that are budgeted but ungranted: abl-infer, abl-generate, abl-compute and, before it writes, the compute path generally. They are read_local, so they need no authority, but they can run a model for as long as the caller asks. Those are the entries where the two fields disagree on purpose -- authority and cost are different questions here, and a caller enforcing only grants would meter none of them."
 }
