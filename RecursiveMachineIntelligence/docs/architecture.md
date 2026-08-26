@@ -439,8 +439,8 @@ pub struct InferenceEngine {
 }
 
 impl InferenceEngine {
-    pub fn forward_chain(&mut self, kb: &KnowledgeBase) -> Vec<Clause>;
-    pub fn backward_chain(&mut self, kb: &KnowledgeBase, goal: &Predicate) -> bool;
+    pub fn forward_chain(&self, kb: &mut KnowledgeBase);
+    pub fn prove(&mut self, kb: &KnowledgeBase, goal: &Predicate) -> bool;
 }
 ```
 

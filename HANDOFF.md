@@ -20,7 +20,7 @@ each claim has a command beside it.
 | Reliability floors | file-oracle parse 99/100, perturbed pattern-heal 42, native-lexer ratio 0.997 |
 | Examples | 12 of 12 typecheck, run, and print their recorded answer |
 | `.mg` sources | **101 checked, 0 sketches** — every `.mg` file in the repository typechecks |
-| Documentation | 205 MAGE blocks typecheck; 57 documentation entry points run; 269 `rmi/docs` API items all exist — and "exist" now means **a definition exists**, not that the name appears somewhere in `src/`. It was 275 under the weaker criterion, 8 of them held up by English words in comments |
+| Documentation | 205 MAGE blocks typecheck; 57 documentation entry points run; 268 `rmi/docs` API items all exist — and "exist" now means **a definition exists**, not that the name appears somewhere in `src/`. It was 275 under the weaker criterion, 8 of them held up by English words in comments; the phantom entries are gone and a duplicate went with them |
 | Release | `v0.3.0`, with the promo video attached as a release asset |
 
 Reproduce all of it:
@@ -431,8 +431,11 @@ the entries were fixed, not because the bar moved — the same shape as
 
 **It is still not a signature check**, and says so: `backward_chain` would
 survive the new criterion too, since a test function *is* a definition. Arity
-and receiver remain deliberately unchecked, for rule 10's reasons, which this
-pass re-confirmed by tripping over the placeholders.
+and receiver remain unchecked *by CI* — but they are now **measurable on
+demand**: `scripts/measure-rmi-doc-arity.sh` ships the method rule 10 recorded
+only as numbers, and reports **117 comparable functions, 0 disagreeing**, with
+the three placeholder false positives filtered rather than tolerated. See rule
+10 for what that changes and what it deliberately does not.
 
 The count moved **275 → 269**, and that figure had no pin — which is how the
 criterion could tighten under it unnoticed. It has one now (`rmi_api_items`,
@@ -812,6 +815,41 @@ false-positive class that tripped twice on my own placeholders while I was
 writing the fixes. A check that is right 41% of the time and cries wolf
 **converts "unknown" into "passing"**, which is the state every rule above
 describes. The measurement is recorded instead, to be repeated by hand.
+
+**Repeated 2026-08-25, and the repeat found the flaw in "repeat by hand".**
+Only the *numbers* were recorded, not the method — so the reconstruction gave
+210 functions and 119 uniquely defined against 162 and 66, with **no way to
+tell drift from a different counting rule**. A number without its method is not
+a measurement anyone else can take. `scripts/measure-rmi-doc-arity.sh` is now
+that method: it prints the figures, exits 0 whatever it finds, and is not wired
+into CI — the decision below stands.
+
+Three things the repeat established that the original could only assume:
+
+- **The false-positive class is a one-line filter.** All three false positives
+  were `pub fn name(/* … */);` — an elided parameter list a naive parser reads
+  as one argument. The same placeholders that tripped the original author
+  tripped this pass; skipping them removes every false positive on the corpus.
+- **Coverage is 60%, not 41%** — 117 of 196 comparable — because the corpus
+  grew.
+- **0 of the 117 now disagree**, after this pass fixed the four that did.
+
+So the ledger has changed: 60% coverage with no false positives is not the
+41%-and-cries-wolf that was declined. **The decision is still not overturned
+here**, because it should be made with the numbers rather than by whoever
+happens to be holding them — and because the tool's soundness rests on an
+assumption worth staring at: it matches by bare name, so a function defined
+once anywhere is *assumed* to be the documented one. That assumption is why
+`backward_chain` was flagged, and the flag was correct by luck — the only
+definition of that name is a `#[test] fn` in an unrelated module, and had it
+taken two arguments the check would have passed.
+
+**And the break test for it failed first, informatively.** Dropping a parameter
+from `connect` produced no report, which looked like a broken tool and was a
+badly-chosen test: `connect` is defined twice and is one of the 79 the script
+deliberately skips. Re-broken on `add_fact`, which is in the comparable set, it
+reported immediately. *Verifying against the wrong entry point is a way to be
+green about nothing* — this document's own words, earned again.
 
 The same judgement applies in reverse: `benchmarks/RELIABILITY_REPORT.md`
 deliberately has *no* freshness check, because it embeds p50/p95/p99 latencies
