@@ -185,7 +185,50 @@ allowlist remains the stricter option if a release gate is ever wanted.
 - **No FIPS-validated cryptographic module is in use.** SHA-256 via RustCrypto is the correct *algorithm* but the crate carries no CMVP certificate. For any deployment with a FIPS 140-3 requirement (federal/CMMC L2+), the SHA-256 calls must route through a validated module (e.g. AWS-LC-FIPS / OpenSSL 3 FIPS provider).
 - **~~All SHA-256 usage is integrity/addressing, not confidentiality or authentication. No secret keying, no signatures, no KDF.~~** **False, and the conclusion drawn from it does not hold.** SHA-256 is *also* keyed, as HMAC, to authenticate build-cache claims, germline verdicts and worker handshakes; Ed25519 signs provenance with per-worker private keys. **There is secret key material in this system** — a fleet HMAC key and per-worker Ed25519 seeds — and its handling is a real security property, not a compliance abstraction. Still no KDF: keys are supplied, not derived, which is worth stating because it means **key provisioning is entirely the operator's problem and nothing here helps with it**. The FIPS gap is therefore *not* purely non-cryptographic-assurance: for a regulated deployment, the HMAC and Ed25519 paths are in scope for validated-module requirements, where the old finding said nothing was.
 - **No transport encryption on RAP**, and this row used to say "no transport encryption" flat. The RAP server (`--rap`) is **plaintext JSON-RPC over TCP** — verified 2026-08-25 — so no cipher-suite FIPS question arises *there*; see ATT&CK §3. But `ribosome` ships a **TLS 1.3 worker transport** behind `--features tls` (`rustls` + `ring`), so the repository does have transport encryption and does raise a cipher-suite question, just not on the surface this row was looking at. Open item 3 records the trust posture as deliberately the operator's.
-- **Action (documented, not yet implemented):** (a) gate SHA-256 **and the HMAC and Ed25519 paths** behind a `fips` feature that swaps to a validated provider for regulated deployments — the original said SHA-256 only, because it did not know the other two existed; (b) if RAP is ever exposed beyond loopback, require rustls with a FIPS-validated backend, and build `ribosome`'s existing `tls` feature on `aws-lc-rs` FIPS rather than `ring` for the same reason; (c) document key provisioning and rotation for the fleet HMAC key and the per-worker Ed25519 seeds, which nothing currently does.
+**Key management, measured 2026-08-25.** §2 previously said nothing about keys
+because it believed there were none. What the code actually does, and what it
+leaves to whoever embeds it:
+
+- **There is no production key source.** Every `Signer::new`, every
+  `AsymmetricSigner::from_seed`, and every `auth_key` call site in this
+  repository is **in a test**. No environment variable, config field or CLI
+  flag provisions a key. That is a defensible library posture — the fleet key
+  is the embedder's — but it means there is no reference path, and none of the
+  guidance below exists anywhere else.
+- **Keys are not validated, and an empty one is accepted.** Measured, not
+  inferred: `Signer::new("w", Vec::new())` signs, and the record verifies; so
+  does a one-byte key. **An empty `Vec` is what an unset environment variable
+  or a missing config field naturally becomes**, so a fleet whose key was never
+  provisioned would authenticate every claim and report success while providing
+  nothing — and no verifier can tell, because a MAC over an empty key is a
+  well-formed MAC. RFC 2104 recommends at least the hash output length, 32
+  bytes here. **Left as an owner decision rather than changed**: refusing a
+  weak key means `Signer::new` returns a `Result`, which is a breaking change
+  to a public API, and this document is not the place to make that call. The
+  constructor's rustdoc now warns; the recommendation is below.
+- **The two schemes have opposite rotation stories, and only one is written
+  down.** The Ed25519 path rotates properly: keys are per-worker, `TrustStore`
+  holds public keys, `revoke` records a revocation rather than deleting the key
+  so a rejoining node cannot re-trust itself, and `verify` fails closed on
+  revoked, unknown, substituted-key, wrong-subject and bad-signature — checked
+  by reading every branch. The **HMAC path has no rotation at all**: one key per
+  `Signer`, one `auth_key` per `WorkerServer`, no key id and no overlapping
+  acceptance window, so changing the fleet key requires every worker and every
+  verifier to change simultaneously. For a shared secret that is the hardest
+  operation to perform safely, and it is the one with no support.
+- **The auth nonce is deliberately predictable**, and says so:
+  `ribosome::remote::next_nonce` is `HMAC(b"ribosome-nonce", clock ‖ counter)`
+  under a **constant, public** key, with a comment arguing that "the
+  requirement is uniqueness per connection, not unpredictability, because the
+  secret is the key". That holds against replay. It is weaker against a
+  **pre-play** attacker who can predict which nonce the server will issue and
+  induce a legitimate client to answer it first — which needs a rogue endpoint
+  and a guess at the issuing nanosecond, and is off the table entirely when the
+  `tls` transport is used. **Recorded as a stated assumption for the owner to
+  confirm, not as a defect**: whether it matters is a threat-model question,
+  and the reasoning in the code is explicit rather than accidental.
+
+- **Action (documented, not yet implemented):** (a) gate SHA-256 **and the HMAC and Ed25519 paths** behind a `fips` feature that swaps to a validated provider for regulated deployments — the original said SHA-256 only, because it did not know the other two existed; (b) if RAP is ever exposed beyond loopback, require rustls with a FIPS-validated backend, and build `ribosome`'s existing `tls` feature on `aws-lc-rs` FIPS rather than `ring` for the same reason; (c) **the three key-management items above**, in priority order: refuse a weak or empty HMAC key (an owner's API call, and the highest-value of the three because the failure mode is silent success); give the HMAC path a key id and an overlapping acceptance window so the fleet secret can be rotated without a simultaneous fleet-wide change; and confirm or revise the stated assumption that the auth nonce need not be unpredictable.
 
 ---
 

@@ -76,6 +76,20 @@ pub struct Signer {
 }
 
 impl Signer {
+    /// Build a signer for one worker identity from the fleet's shared key.
+    ///
+    /// **The key is not validated, and an empty one is accepted.** Measured,
+    /// not inferred: `Signer::new("w", Vec::new())` signs, and the record
+    /// verifies. That is the dangerous case, because an empty `Vec` is what an
+    /// unset environment variable or a missing config field naturally becomes —
+    /// so a fleet whose key was never provisioned authenticates every claim and
+    /// reports success while providing nothing. Nothing downstream can tell the
+    /// difference: a MAC over an empty key is a well-formed MAC.
+    ///
+    /// RFC 2104 recommends a key of at least the hash output length, so **32
+    /// bytes** here. Validating that is a caller's job today; see
+    /// `SECURITY_AUDIT.md` §2 for why the constructor was left permissive
+    /// rather than changed to return a `Result` without the owner's say-so.
     pub fn new(worker: impl Into<String>, key: impl Into<Vec<u8>>) -> Self {
         Signer { worker: worker.into(), key: key.into() }
     }

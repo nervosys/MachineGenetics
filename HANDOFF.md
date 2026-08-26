@@ -351,6 +351,65 @@ was true of RAP and false of the repository, and `mac.rs`'s own doc comment said
 a different *use* of the key, which is precisely what an auditor tracing key
 material needs the list for.
 
+### Then the keys, which §2 had never mentioned because it thought there were none
+
+Having found the cryptography, the next question is the one a posture section
+exists to answer: **where do the keys come from?** Four results, and the
+verification story is the interesting part — the code that handles keys is
+better than the code that accepts them.
+
+**There is no production key source.** Every `Signer::new`, every
+`AsymmetricSigner::from_seed`, every `auth_key` in the repository is **in a
+test**. No environment variable, config field or CLI flag provisions a key.
+Defensible for a library — the fleet key is the embedder's — but it means there
+is no reference path and no guidance, which is why none of the below was
+written down anywhere.
+
+**An empty key is accepted and verifies.** Measured with a throwaway probe
+rather than inferred from the constructor: `Signer::new("w", Vec::new())` signs,
+the record verifies, and an independent signer holding the same empty key forges
+successfully. A one-byte key likewise. **The reason this matters is that an
+empty `Vec` is what an unset environment variable becomes** — a fleet whose key
+was never provisioned would authenticate every claim and report success while
+providing nothing, and no verifier could tell, because a MAC over an empty key
+is a well-formed MAC. This is the `guard`-fall-through shape in a security
+primitive: the system says yes and means nothing.
+
+**Left as an owner decision, deliberately.** Refusing a weak key means
+`Signer::new` returns a `Result`, a breaking change to a public API of the
+build engine. Having already changed one CLI contract this session, making a
+second unilateral API change on a security primitive is not mine to make. The
+constructor's rustdoc now warns with the measured behaviour, `SECURITY_AUDIT.md`
+§2 records it, and the recommendation names it first because the failure mode is
+silent success. **This is the "waiting on a decision, not on work" category, and
+it is worth stating why rather than filing it blank** — the last time an item
+sat here framed as a design question, it turned out to be a defect nobody had
+run the check on.
+
+**The two schemes have opposite rotation stories, and only one was written
+down.** Ed25519 rotates properly — per-worker keys, a `TrustStore`, and `revoke`
+that *records* a revocation rather than deleting the key, so a rejoining
+compromised node cannot re-trust itself by re-announcing. `verify` fails closed
+on revoked, unknown worker, substituted key, wrong subject and bad signature; I
+read every branch. The **HMAC path has no rotation at all**: one key per
+`Signer`, one `auth_key` per server, no key id, no overlapping acceptance
+window. Changing the fleet secret requires every worker and verifier to change
+at once — the hardest operation to perform safely is the one with no support.
+
+**And one thing recorded as an assumption rather than a defect.**
+`remote::next_nonce` is `HMAC(b"ribosome-nonce", clock ‖ counter)` under a
+**constant, public** key, with a comment arguing unpredictability is not
+required "because the secret is the key". That holds against replay; it is
+weaker against a pre-play attacker who predicts the next nonce and induces a
+legitimate client to answer it first, which needs a rogue endpoint and a guess
+at the issuing nanosecond, and is moot under the `tls` transport. Whether that
+matters is a threat-model question, and **the reasoning in the code is explicit
+rather than accidental** — which is the difference between an assumption to
+confirm and a bug to fix. Recorded as the former. Six times this document has
+warned that a comment agreeing with its author is not evidence; the honest
+answer here is that the comment states a real trade-off and the owner is the one
+who knows the deployment.
+
 ### The lesson had been learned, written down, and half-applied
 
 Found by accident, which is how most of these are found: after the full suite
@@ -743,6 +802,8 @@ asked. Only "there was no call" belongs in `error`.
 |---|---|---|
 | 2 | GPU CI runner | Correctness **is** verified on the hardware here and recorded. What is missing is a self-hosted runner so `cuda-gpu` runs unattended — an account action, declined once already. |
 | 3 | TLS trust posture | The transport seam and a `rustls` implementation exist behind `--features tls`. Pinned self-signed / mutual TLS / public PKI is deliberately the operator's; `acceptor`/`connector` take your config. |
+| 19 | **`Signer::new` accepts an empty HMAC key** | Measured 2026-08-25: it signs, the record verifies, and an unset environment variable is exactly how a caller gets there — so an unprovisioned fleet authenticates everything and reports success. Refusing it means returning a `Result` from a public API of the build engine, which is a breaking change and the owner's call. Rustdoc warns; `SECURITY_AUDIT.md` §2 records it and ranks it first of three key-management actions. **Not a "design question" filed against a defect** — the check has been run, the behaviour is measured, and only the API decision is open. |
+| 20 | **The HMAC path cannot be rotated** | One key per `Signer`, one `auth_key` per `WorkerServer`, no key id, no overlapping acceptance window — so changing the fleet secret needs a simultaneous fleet-wide change. The Ed25519 path beside it rotates and revokes properly, which is what makes the gap visible. Adding a key id is a wire-format change; hence a decision, not a patch. |
 
 ### Deliberate, and not defects
 
