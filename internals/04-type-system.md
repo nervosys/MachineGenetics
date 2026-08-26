@@ -1,5 +1,18 @@
 # Chapter 4: Type System Internals
 
+> **Checked against the code 2026-08-25.** Unification, the occurs check,
+> substitution and generic instantiation are all real, and generics are
+> instantiated fresh per call site — the machinery this chapter is about
+> exists. What was wrong: the context is `TypeChecker`, not `InferCtxt`;
+> `unify` and `occurs_in` are free functions over a private `Subst`, not
+> methods; there is no `TypeError` type (`unify` returns `Result<(), String>`).
+>
+> Two sections described features that do not exist. **§4.4 trait solving**
+> has no implementation at all, and where-clause bounds are parsed and then
+> discarded — a bound naming a trait that does not exist typechecks clean.
+> **§4.6** listed seven coercions where two exist, both on array literals.
+
+
 The MAGE type system performs inference, checking, and desugaring. It
 operates on the HIR and populates every expression with its resolved type.
 
@@ -29,34 +42,59 @@ The type system lives in `rdx_types` (prototype: `prototype/src/types.rs`).
   checker (in `rdx_skb`) validates borrowing via SKB rules, not type-level
   lifetimes.
 
-## 4.2 Inference Context
+## 4.2 The type checker
 
-**Not implemented.** Design sketch — no such item exists in `prototype/src`. See Chapter 1's status note for what the compiler actually is.
+The real inference context is `TypeChecker` (`prototype/src/types.rs`), reached
+through one entry point:
+
+```rust
+pub fn check(module: &ast::Module) -> TypeChecker;
+
+pub struct TypeChecker {
+    supply: TyVarSupply,                     // fresh type variables
+    subst: Subst,                            // TyVar -> Ty
+    env: TypeEnv,
+    struct_defs: HashMap<String, StructDefEntry>,
+    fn_sigs: HashMap<String, FnSigEntry>,
+    fn_generics: HashMap<String, Vec<TyVar>>,
+    // …
+    pub diagnostics: Vec<Diagnostic>,
+}
+```
+
+`check` returns the checker itself rather than a `Result`, and the caller reads
+`diagnostics` — which is why phase 4 of the pipeline reports every type error in
+one run instead of stopping at the first (Chapter 1 §1.1).
+
+Substitution is a private struct, and unification and the occurs check are
+**free functions over it**, not methods on the context:
+
+```rust
+struct Subst {
+    map: HashMap<TyVar, Ty>,
+}
+
+fn unify(subst: &mut Subst, a: &Ty, b: &Ty) -> Result<(), String>;
+fn occurs_in(var: TyVar, ty: &Ty) -> bool;
+```
+
+`unify` reports failure as a `String`, not a structured error: there is no
+`TypeError` type. Diagnostics get their structure where they are recorded, not
+where they are detected.
+
+**Not implemented.** Design sketch — the original `InferCtxt`, with the obligation list §4.4 explains does not exist.
 
 ```rust
 pub struct InferCtxt {
-    /// Type variable counter.
     next_var: u32,
-    /// Substitution: type variable → resolved type.
     substitution: HashMap<u32, Ty>,
-    /// Trait obligations: (type, trait) pairs to verify.
     obligations: Vec<TraitObligation>,
-    /// Diagnostics.
     errors: Vec<TypeError>,
 }
 
 impl InferCtxt {
-    /// Create a fresh type variable.
-    pub fn fresh_var(&mut self) -> Ty {
-        let id = self.next_var;
-        self.next_var += 1;
-        Ty::TypeVar(id)
-    }
-
-    /// Unify two types, recording substitutions.
-    pub fn unify(&mut self, a: &Ty, b: &Ty) -> Result<(), TypeError> {
-        // ...
-    }
+    pub fn fresh_var(&mut self) -> Ty;
+    pub fn unify(&mut self, a: &Ty, b: &Ty) -> Result<(), TypeError>;
 }
 ```
 
@@ -161,59 +199,38 @@ The type checker resolves MAGE sugar to canonical HIR types:
 | `[T; N]`     | `Array { T, N }`           | `Ty::Array(T, N)`     | `[T; N]`        |
 | `_T`         | `SelfType`                 | `Ty::Named(self_sym)` | `Self`          |
 
-## 4.4 Trait Solving
+## 4.4 Trait Solving — not implemented
 
-### Obligation Collection
+**Corrected 2026-08-25.** This section described obligation collection, a
+solver, and where-clause handling. `prototype/src/types.rs` has **none of it**:
+no obligations, no impl table, and the word `bounds` does not appear in the
+file. `ItemKind::Trait` is handled by `elision`, `fmt`, `mlir` and `nl_engine`
+— formatted and lowered, never checked.
 
-When the type checker encounters a trait bound, it records an obligation:
+**Where clauses parse and are then discarded.** `~> T: Bound` is parsed into
+`Vec<WherePredicate>` and stored on the function, and every consumer of that
+field either prints it (`fmt`), strips lifetimes from it (`elision`), counts
+its tokens (`token_budget`), or constructs an empty one. Nothing resolves the
+bound and nothing enforces it:
 
-**Not implemented.** Design sketch — no such item exists in `prototype/src`. See Chapter 1's status note for what the compiler actually is.
+```mage
+f describe[T](v: T) -> str ~> T: TotallyMadeUpTrait {
+    "described"
+}
 
-```rust
-pub struct TraitObligation {
-    pub ty: Ty,
-    pub trait_id: SymbolId,
-    pub span: Span,  // for error reporting
+f main() -> str {
+    describe(42)
 }
 ```
 
-For example, `f sort[T: Ord](data: &![T]~)` generates an obligation
-`T: Ord` for every call site's concrete type argument.
+`--check` reports **`Errors: 0`, `Status: OK`** on that program. `TotallyMadeUpTrait`
+does not exist anywhere, and the bound naming it is neither resolved nor
+applied.
 
-### Solving
-
-After inference is complete, the solver checks each obligation:
-
-```rust
-fn check_obligation(&self, ob: &TraitObligation) -> Result<(), TypeError> {
-    let concrete_ty = self.resolve(&ob.ty);
-    let impls = self.find_trait_impls(ob.trait_id);
-
-    for impl_block in impls {
-        if self.try_match_impl(&concrete_ty, impl_block).is_ok() {
-            return Ok(());
-        }
-    }
-
-    Err(TypeError::TraitNotImplemented {
-        ty: concrete_ty,
-        trait_name: self.trait_name(ob.trait_id),
-        span: ob.span,
-    })
-}
-```
-
-### Where Clauses
-
-Where clauses (`~>`) add extra obligations:
-
-```MAGE
-f process[T](data: [T]~) -> s ~> T: Display + Hash {
-    // ...
-}
-```
-
-Each bound in the where clause becomes a `TraitObligation`.
+This is the taxonomy's "accepted and silently discarded" — the same shape as a
+swarm's `dispatch` block, which also parsed, was stored, and reached only the
+formatter. A constraint that typechecks and means nothing is worse than a
+missing feature, because the program *looks* constrained.
 
 ## 4.5 Generic Instantiation
 
@@ -221,41 +238,39 @@ When a generic function or type is used with concrete type arguments, the
 type checker substitutes:
 
 ```rust
-fn instantiate_generic(
-    &mut self,
-    def_id: DefId,
-    type_args: &[Ty],
-) -> Ty {
-    let generic_params = self.generic_params(def_id);
-    let substitution: HashMap<SymbolId, Ty> = generic_params
-        .iter()
-        .zip(type_args.iter())
-        .map(|(param, arg)| (param.symbol, arg.clone()))
-        .collect();
-
-    self.apply_substitution(&self.type_of(def_id), &substitution)
-}
+// types.rs — each call site gets its own copy of the quantified variables.
+fn instantiate(&mut self, ty: &Ty, map: &HashMap<TyVar, Ty>) -> Ty;
 ```
+
+The generic parameters of a function are recorded in `fn_generics` as the type
+variables its signature was lowered with, and are *universally quantified*:
+without a fresh copy per call site, `id(1)` and `id("ab")` in one program would
+conflict. Lowering `T` to a nominal `Ty::Named` instead — a type that unifies
+with nothing — was a real defect, and is why the comment in `types.rs` is as
+long as it is.
+
 
 If type arguments are omitted, the checker creates fresh type variables and
 lets unification fill them in.
 
 ## 4.6 Coercions
 
-The type checker applies implicit coercions at specific points:
+**Corrected 2026-08-25.** This section listed seven coercions — `&!T`→`&T`,
+auto-borrow, `[T]~`→`&[T]`, `s`→`&s`, and deref for `^T`/`$T`/`@T` — and said
+they were inserted as `HirExpr::Coercion` nodes. There is no `HirExpr`, no
+`Coercion` node, and none of those seven is implemented.
 
-| From   | To     | When                                          |
-| ------ | ------ | --------------------------------------------- |
-| `&!T`  | `&T`   | Passing mutable ref where shared ref expected |
-| `T`    | `&T`   | Auto-borrow for method receivers              |
-| `[T]~` | `&[T]` | Vec to slice coercion                         |
-| `s`    | `&s`   | String to str coercion                        |
-| `^T`   | `&T`   | Box deref coercion                            |
-| `$T`   | `&T`   | Rc deref coercion                             |
-| `@T`   | `&T`   | Arc deref coercion                            |
+The checker performs **two** coercions, both on an array literal, both added
+for the same reason: an agent writing `[1, 2, 3]` for a `Vec` or a slice
+parameter is writing the obvious thing.
 
-Coercions are inserted as explicit HIR nodes (`HirExpr::Coercion`) so
-downstream passes see them.
+| From | To | Where |
+|---|---|---|
+| array literal | `Vec<T>` | `types.rs`, "Agentic coercion: a list literal annotated as a Vec" |
+| array literal | `[T]` slice parameter | the same, for a slice parameter |
+
+Both are done during unification rather than by rewriting the tree, so nothing
+downstream sees a coercion node.
 
 ## 4.7 Error Messages
 
