@@ -29,8 +29,14 @@ the Agentic Binary Language path, not this one. `--run=abl-bytes` lowers `net`
 items to ABL and dispatches them to a compute backend — `CpuBackend`, or
 `CudaBackend` under `--features cuda`, which routes matmul through cuBLASLt and
 elementwise ops through NVRTC (1,229 CUDA tests pass on the hardware). That
-path shares no code with `mlir.rs`. A reader who wants to know how MAGE reaches
-a GPU should read Chapter 8 and `abl_compute`, not this chapter.
+path shares no code with `mlir.rs`.
+
+**No `internals/` chapter covers that path.** This pointer originally sent
+readers to Chapter 8, which is SKB and ACI — a wrong cross-reference,
+introduced in the same commit that corrected this chapter and caught two
+commits later. For the ABL path read `ARCHITECTURE.md` and `UNIFICATION.md`,
+then the modules themselves: `abl_bridge` (lowering), `abl_compute`
+(dispatch) and `cuda_backend`.
 
 **The cost oracle in §6.5 is real** (`prototype/src/cost.rs`: `query_cost`,
 `list_costs`, `compare`), but it is a standalone table keyed by construct and
