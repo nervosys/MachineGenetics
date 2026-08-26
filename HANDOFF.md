@@ -407,16 +407,36 @@ the repository, describing a system that was never there. An agent reading
 `internals/` to learn the codebase learns a compiler it will not find, and
 learns it in the register of fact.
 
-Not fixed — **recorded, bounded and labelled**, which is the proportionate
-response to a documentation set this size found late:
+**Labelled, not rewritten** — and the distinction matters, because labelling
+could be a way of getting a baseline to zero without doing anything.
 
-- `scripts/check-internals-doc.sh`, baseline **15**, shrink-only, in CI on the
-  rmi job. It requires a **definition**, not a mention, from the start —
-  earning that criterion the hard way in `check-rmi-api-doc.sh` was enough.
-  Verified in both directions: a new phantom fails, and a baseline that has
-  stopped applying fails too.
+First, each of the 15 was checked individually: **none is a rename.** The real
+compiler has `Effect`, `EffectAnalysis`, `Type`, `TypeAlias`; there is no
+`TypeError`, `InferCtxt`, `DefId`, `EffectChecker`, `AstVisitor`, `HirExpr` or
+`CompileSession` under any name. Correcting beats labelling wherever the thing
+exists, and here nothing did.
+
+So the 12 blocks holding them now carry `**Not implemented.** Design sketch —
+no such item exists in prototype/src`, which is exactly `MAGE_SPEC.md`'s
+precedent: five constructs it documents and does not implement, each labelled
+where it appears, *"the design intent is worth keeping, the false impression is
+not."*
+
+- `scripts/check-internals-doc.sh` skips a labelled block, the same way
+  `check-doc-blocks.sh` skips a MAGE block labelled "Invalid MAGE today" — one
+  convention, not two. Baseline **0**, meaning *nothing here claims to exist
+  without existing*, which is not the same as *nothing left to do here*.
+- **The run prints "17 documented items, 12 block(s) skipped"** on every
+  invocation, so the size of the gap survives the label. A ratchet that reaches
+  zero by relabelling and then says nothing about it would be the exact defect
+  this repository keeps finding.
+- Verified in both directions, including the new one: a new phantom fails, a
+  baseline that has stopped applying fails, and **removing a label from a block
+  that still describes nothing fails**.
 - `internals/01-architecture.md` opens with a measured status note naming the
-  three false claims and pointing at `ARCHITECTURE.md` for what exists.
+  three false claims, the labelling, and the fact that its ASCII crate graph
+  (`rdx_driver`, `rdx_lexer`, `rdx_parser` …) describes crates that do not
+  exist either — those are not `pub` items, so no checker will ever see them.
 
 **The prose has no mechanism and cannot get one from this.** None of those
 three claims names a `pub` item, so the checker is blind to every one of them —
@@ -703,7 +723,7 @@ when the backlog is real and the fix is incremental:
 | `scripts/rmi-api-doc-baseline.txt` | documented API items that do not exist | **0** — same |
 | `scripts/orphan-sources-baseline.txt` | `.rs` files no `mod` reaches | **1** — `cuda_full.rs`, needs a CUDA toolkit to wire up |
 | `benchmarks/token-claims-baseline.txt` | corpus `token_count` claims that disagree with measurement | **150** — the subject of `benchmarks/FINDINGS.md` §1, a finding rather than a regression |
-| `scripts/internals-doc-baseline.txt` | `internals/*.md` items with no definition in `prototype/src` | **15** of 36 — a documentation set describing a compiler that was designed and not built |
+| `scripts/internals-doc-baseline.txt` | `internals/*.md` items with no definition in `prototype/src`, outside blocks labelled as design | **0** — was 15 of 36; the 12 blocks holding them are now labelled `**Not implemented.**` and skipped, and the run prints how many were skipped so the gap stays visible |
 
 Every one of them fails in both directions: a new entry fails, and so does an
 entry that has silently stopped applying and should have been deleted. A
@@ -722,7 +742,7 @@ baseline nobody is required to shrink is just a list.
 | `scripts/check-orphan-sources.sh` | that every `.rs` file is reachable by some `mod` declaration — i.e. that it compiles at all. Every other row asks a question *about* compiled code; this one asks whether there is any. Found two on its first run. `wasm.rs` turned out to compile clean once a `mod` declaration was added, so it is fixed and the baseline shrank to one: `cuda_full.rs` (1,812 lines, 16 `unsafe`, 6 tests that have never run), which cannot be wired up without a CUDA toolkit. |
 | `scripts/check-ignored-tests.sh` | that every `#[ignore]`d test is named by some CI job — i.e. that something, somewhere, runs it. The sibling of the row above: that one finds files nothing compiles, this one finds tests nothing schedules. `eval_bench` was red for 76 commits behind three hiding places at once (`#[ignore]`, a `--bench` flag nobody passed, an unpushed branch) while the figure it certifies appeared in three documents. Its first run found `perf_report`, which produces the ABL scaling numbers and had never been executed by CI. No baseline: the live set is 2 and both are covered, so green is the honest state. |
 | `scripts/check-docs-index.sh` | that every Markdown document at the root has an entry in `DOCS.md`, and every root document `DOCS.md` names still exists. `DOCS.md` claims "this index says which is which" and only its **count** was pinned — which catches adding a document and forgetting the number, but not adding one, updating the number, and forgetting the entry. All 21 were indexed when this was written; it keeps them that way. Root only, because that is `DOCS.md`'s own scope. |
-| `scripts/check-internals-doc.sh` | that every Rust item `internals/*.md` documents has a **definition** in `prototype/src`. `README.md` calls that set "Compiler-internals documentation" and it is written in the present tense; **15 of 36 documented items do not exist**, and its opening prose describes a Salsa-based, query-driven, multi-crate compiler where `prototype` is one crate with no query engine and no `salsa` dependency. Baseline **15**, shrink-only — this bounds the problem rather than fixing it. Blind to prose, which is where the worst of it is. |
+| `scripts/check-internals-doc.sh` | that every Rust item `internals/*.md` documents has a **definition** in `prototype/src`. `README.md` calls that set "Compiler-internals documentation" and it is written in the present tense; **15 of 36 documented items do not exist**, and its opening prose describes a Salsa-based, query-driven, multi-crate compiler where `prototype` is one crate with no query engine and no `salsa` dependency. Baseline **0** — was 15; the 12 blocks holding those items now carry a `**Not implemented.**` label and are skipped, MAGE_SPEC.md's precedent rather than a route to zero, with the skipped count printed on every run. Blind to prose, which is where the worst of it is. |
 | `scripts/check-crypto-inventory.sh` | that `SECURITY_AUDIT.md` §2 names every crypto dependency in every `Cargo.toml`, that its inventory *table* names only crates some lockfile contains, and that every **hand-rolled** primitive is mentioned. §2 concluded "no secret keying, no signatures, no KDF" while the repository held HMAC-SHA256 under a fleet key, Ed25519 provenance signatures and a TLS transport — all of it arriving with crates added after §2's scope was written. **An absence claim stays green by doing nothing**, which is why it needed a check that does something. |
 | `scripts/check-security-register.sh` | that `SECURITY_AUDIT.md` §1's accepted-risk register agrees with what `cargo audit` reports across all five surfaces, and that `video/` is at zero. Both directions: a reported advisory with no row, and an **Accepted** row nothing reports any more. The rows are read *out of* §1 rather than copied into the script, so adding a row is what tells the check the row exists. The `audit` job below finds advisories; this reads what was *decided* about the ones that stay — which nothing did, which is how §1 came to list `RUSTSEC-2026-0097` after it stopped firing while missing `RUSTSEC-2026-0190` for two months. No baseline: every row currently agrees, so green is the honest state. |
 | CI `audit` job | `cargo audit` over all five lockfiles separately, plus `npm audit` on `video/` — which nothing covered until a high-severity advisory was sitting in it |

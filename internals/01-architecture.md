@@ -12,11 +12,25 @@
 > | "The query engine (based on Salsa)…" | **`salsa` is not a dependency of any crate here**, and nothing in `prototype/src` implements a query cache |
 > | "The `CompileSession` holds all configuration" | there is no `CompileSession` |
 >
-> Across `internals/`, **15 of 36 documented `pub` items do not exist** —
+> Across `internals/`, **15 of 36 documented `pub` items did not exist** —
 > `CompileSession`, `DefId`, `InferCtxt`, `TraitObligation`, `EffectChecker`
 > and others are rustc/salsa-shaped names for a compiler that was designed and
-> not built. `scripts/check-internals-doc.sh` holds that count and lets it only
-> shrink; the prose has no such mechanism, which is why this note is here.
+> not built. Each was checked individually against `prototype/src`: **none is a
+> rename.** The real compiler has `Effect`, `EffectAnalysis`, `Type` and
+> `TypeAlias`; there is no `TypeError`, `InferCtxt` or `DefId` under any name.
+>
+> The **12 blocks** holding them now carry a `**Not implemented.**` label,
+> following `MAGE_SPEC.md`'s precedent for the five constructs it documents and
+> does not implement — *the design intent is worth keeping, the false
+> impression is not*. `scripts/check-internals-doc.sh` skips a labelled block
+> and holds the rest at **0**, so a newly invented item fails and a label
+> removed from a block that still describes nothing fails too. What it reports
+> is "17 documented items, 12 blocks skipped", which keeps the size of the gap
+> visible rather than hiding it behind a green tick.
+>
+> The prose has no such mechanism. Neither do the ASCII diagrams below, which
+> show a `rdx_driver` / `rdx_lexer` / `rdx_parser` crate graph that does not
+> exist either.
 >
 > The design is worth keeping. Reading it as a map of the current code is not:
 > the real pipeline is a single crate, eager rather than demand-driven. Start
@@ -104,6 +118,8 @@ The compiler is built on an incremental query engine inspired by Salsa
 
 ### Query Definition
 
+**Not implemented.** Design sketch — no such item exists in `prototype/src`. See Chapter 1's status note for what the compiler actually is.
+
 ```rust
 // In rdx_types/src/queries.rs
 #[salsa::query_group(TypeCheckStorage)]
@@ -186,6 +202,8 @@ pub struct Span {
 
 Every named item gets a `DefId` — a unique identifier across the crate graph:
 
+**Not implemented.** Design sketch — no such item exists in `prototype/src`. See Chapter 1's status note for what the compiler actually is.
+
 ```rust
 pub struct DefId {
     pub crate_id: CrateId,
@@ -199,6 +217,8 @@ The resolver assigns these during name resolution.
 ### Interning
 
 Strings (identifiers, paths) are interned for O(1) comparison:
+
+**Not implemented.** Design sketch — no such item exists in `prototype/src`. See Chapter 1's status note for what the compiler actually is.
 
 ```rust
 pub struct Symbol(u32);  // index into global string interner
@@ -231,6 +251,8 @@ agent consumers or rendered as terminal output for humans.
 ## 1.7 Session Configuration
 
 The `CompileSession` holds all configuration for a compilation:
+
+**Not implemented.** Design sketch — no such item exists in `prototype/src`. See Chapter 1's status note for what the compiler actually is.
 
 ```rust
 pub struct CompileSession {

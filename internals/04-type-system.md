@@ -31,6 +31,8 @@ The type system lives in `rdx_types` (prototype: `prototype/src/types.rs`).
 
 ## 4.2 Inference Context
 
+**Not implemented.** Design sketch — no such item exists in `prototype/src`. See Chapter 1's status note for what the compiler actually is.
+
 ```rust
 pub struct InferCtxt {
     /// Type variable counter.
@@ -165,6 +167,8 @@ The type checker resolves MAGE sugar to canonical HIR types:
 
 When the type checker encounters a trait bound, it records an obligation:
 
+**Not implemented.** Design sketch — no such item exists in `prototype/src`. See Chapter 1's status note for what the compiler actually is.
+
 ```rust
 pub struct TraitObligation {
     pub ty: Ty,
@@ -256,6 +260,8 @@ downstream passes see them.
 ## 4.7 Error Messages
 
 Type errors include:
+
+**Not implemented.** Design sketch — no such item exists in `prototype/src`. See Chapter 1's status note for what the compiler actually is.
 
 ```rust
 pub enum TypeError {

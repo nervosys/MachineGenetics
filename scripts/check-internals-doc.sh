@@ -27,8 +27,13 @@
 # there. An agent reading this to learn the codebase learns an architecture it
 # will not find.
 #
-# This does not fix that. It stops it getting worse, and makes the size of it a
-# number somebody has to look at.
+# The 12 blocks holding those 15 items now carry a `**Not implemented.**`
+# label and are skipped, which is MAGE_SPEC.md's precedent rather than a way
+# of getting to zero: the design text stays, the false impression goes, and the
+# count of skipped blocks is printed on every run so the size of the gap stays
+# visible. Each of the 15 was checked individually first -- none is a rename.
+# The baseline is therefore 0, and it means "nothing here claims to exist
+# without existing", not "there is nothing left to do here".
 #
 # ─────────────────────────────────────────────────────────────────────────────
 # HOW IT DECIDES
@@ -83,14 +88,45 @@ if not os.path.isdir(DOC_DIR):
     print('  x  %s/ is missing; the documentation set moved' % DOC_DIR)
     sys.exit(1)
 
+# A block whose label says it describes a design rather than the code is
+# skipped, exactly as `check-doc-blocks.sh` skips a MAGE block labelled
+# "Invalid MAGE today". `MAGE_SPEC.md` set that precedent for five constructs
+# it documents and does not implement: **the design is worth keeping, the false
+# impression is not.** The same applies here, and the label is the difference
+# between the two.
+#
+# The label is the nearest non-blank line above the fence, lowercased — the
+# same rule `check-doc-blocks.sh` uses, so there is one convention to learn.
+DESIGN_MARKERS = ('not implemented', 'not built', 'designed and not',
+                  'aspirational', 'does not exist', 'proposed', 'planned')
+
 names = {}
+skipped = 0
 for fname in sorted(f for f in os.listdir(DOC_DIR) if f.endswith('.md')):
-    text = io.open(os.path.join(DOC_DIR, fname), encoding='utf-8',
-                   errors='replace').read()
-    for block in re.findall(r'```rust\n(.*?)```', text, re.S):
-        for kind in ('fn', 'struct', 'enum', 'trait', 'type'):
-            for n in re.findall(r'\bpub ' + kind + r' (\w+)', block):
-                names.setdefault(n, fname)
+    lines = io.open(os.path.join(DOC_DIR, fname), encoding='utf-8',
+                    errors='replace').read().splitlines()
+    i = 0
+    while i < len(lines):
+        if lines[i].strip() == '```rust':
+            start = j = i + 1
+            while j < len(lines) and not lines[j].strip().startswith('```'):
+                j += 1
+            body = '\n'.join(lines[start:j])
+            label = ''
+            k = start - 2
+            while k >= 0 and not lines[k].strip():
+                k -= 1
+            if k >= 0:
+                label = lines[k].strip().lower()
+            i = j + 1
+            if any(m in label for m in DESIGN_MARKERS):
+                skipped += 1
+                continue
+            for kind in ('fn', 'struct', 'enum', 'trait', 'type'):
+                for n in re.findall(r'\bpub ' + kind + r' (\w+)', body):
+                    names.setdefault(n, fname)
+        else:
+            i += 1
 
 if not names:
     print('  x  no documented `pub` items found in %s/; the extraction broke'
@@ -109,7 +145,7 @@ DEFINITION = r'\b(?:fn|struct|enum|trait|type|const|static|mod|macro_rules!)\s+%
 missing = sorted((n, f) for n, f in names.items()
                  if not re.search(DEFINITION % re.escape(n), src))
 
-print('documented items: %d' % len(names))
+print('documented items: %d  (%d block(s) skipped: labelled as design)' % (len(names), skipped))
 print('not defined in %s/: %d' % (SRC, len(missing)))
 for n, f in missing:
     print('  x  %-24s %s/%s' % (n, DOC_DIR, f))

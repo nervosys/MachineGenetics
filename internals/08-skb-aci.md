@@ -86,6 +86,8 @@ Key fields:
 The matcher walks the HIR looking for patterns that match rule
 constraints:
 
+**Not implemented.** Design sketch — no such item exists in `prototype/src`. See Chapter 1's status note for what the compiler actually is.
+
 ```rust
 pub struct RuleMatch {
     pub rule_id: String,

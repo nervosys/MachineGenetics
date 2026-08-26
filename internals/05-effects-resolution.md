@@ -105,6 +105,8 @@ step 2a.
 > rather than per function, because the call graph has to be closed before any
 > function's set is final. The shape below is still roughly what step 2 does.
 
+**Not implemented.** Design sketch — no such item exists in `prototype/src`. See Chapter 1's status note for what the compiler actually is.
+
 ```rust
 pub struct EffectChecker<'a> {
     db: &'a dyn HirDatabase,

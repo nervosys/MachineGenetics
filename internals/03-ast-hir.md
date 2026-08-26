@@ -135,6 +135,8 @@ Name resolution is in `rdx_resolve` (prototype: `prototype/src/resolve.rs`).
 
 ### Scope Model
 
+**Not implemented.** Design sketch — no such item exists in `prototype/src`. See Chapter 1's status note for what the compiler actually is.
+
 ```rust
 pub struct Scope {
     pub parent: Option<ScopeId>,
@@ -290,6 +292,8 @@ The seventeen built-in kinds are `MAGE_SPEC.md` §11.2; see
 
 ### HIR Expression
 
+**Not implemented.** Design sketch — no such item exists in `prototype/src`. See Chapter 1's status note for what the compiler actually is.
+
 ```rust
 pub struct HirExpr {
     pub id: HirExprId,
@@ -331,6 +335,8 @@ The lowering pass performs these transformations:
 ## 3.4 AST Visitors
 
 Both AST and HIR provide visitor traits for implementing passes:
+
+**Not implemented.** Design sketch — no such item exists in `prototype/src`. See Chapter 1's status note for what the compiler actually is.
 
 ```rust
 pub trait AstVisitor {
