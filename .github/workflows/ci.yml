@@ -67,6 +67,22 @@ jobs:
         run: cargo build --release --manifest-path RecursiveMachineIntelligence/Cargo.toml --no-default-features --features cpu
       - name: Test
         run: cargo test --manifest-path RecursiveMachineIntelligence/Cargo.toml --no-default-features --features cpu
+      # `cargo build` and `cargo test` compile lib, bins and test targets —
+      # **not examples, and not benches**. `rmi` has 9 examples and 1 bench,
+      # and until 2026-08-25 nothing in this workflow or in `test-all.sh`
+      # compiled any of them: the only `--all-targets` here is the CUDA
+      # compile-check, and `prototype` has no examples at all.
+      #
+      # That is the third way code sits in the tree without ever running, after
+      # the two `check-orphan-sources.sh` and `check-ignored-tests.sh` already
+      # cover. Those two look at `src/` and at `#[ignore]`d tests; an example
+      # is outside `src/`, so no `mod` needs to reach it and neither script can
+      # see it. All ten compile clean today — verified by breaking one and
+      # watching this fail — which is exactly why it is worth a step: nothing
+      # was keeping them that way, and an example that stops compiling is one a
+      # reader copies from.
+      - name: Examples and benches still compile
+        run: cargo check --manifest-path RecursiveMachineIntelligence/Cargo.toml --no-default-features --features cpu --examples --benches
       # `docs/api.md` is 1,463 lines of signatures and nothing resolved any of
       # them: it documented an FFI API whose types exist in no source file, and
       # every "Module:" line named a crate this one has not been called for some

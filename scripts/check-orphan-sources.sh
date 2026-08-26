@@ -45,6 +45,17 @@
 # gap. This one is currently never wrong, and the conditions under which that
 # stops holding are written above.
 #
+# SCOPE, stated because it is narrower than "every .rs file": this walks
+# `<crate>/src` only. **Example and bench targets live outside `src/` and are
+# invisible here** — an example needs no `mod` declaration to reach it, because
+# Cargo compiles it as its own target. They are therefore not orphans by this
+# script's definition and never will be, however broken they get.
+#
+# They are also not compiled by `cargo build` or `cargo test`. Until
+# 2026-08-25 nothing compiled `rmi`'s 9 examples and 1 bench at all; CI now has
+# a `--examples --benches` step for that. This note exists so the next person
+# does not read a green run here as covering them.
+#
 # Usage:
 #     bash scripts/check-orphan-sources.sh          # verify against baseline
 #     rm scripts/orphan-sources-baseline.txt && bash scripts/check-orphan-sources.sh

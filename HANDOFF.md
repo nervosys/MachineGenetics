@@ -88,8 +88,12 @@ triage, including the ones below.
   scaling figures in `MEASUREMENTS.md`, compiled by every `cargo test` and
   executed by nothing.
 
-Together they cover the two ways code sits in the tree without ever running: a
-file no `mod` reaches, and a test no schedule names.
+Together they cover **two of the three** ways code sits in the tree without ever
+running: a file no `mod` reaches, and a test no schedule names. The third —
+example and bench targets, which `cargo build` and `cargo test` do not compile —
+was found open on 2026-08-25 with ten files in it, and is covered by a CI step
+now. This sentence said "the two ways" until then, which is the confidence a
+pair of instruments buys you whether or not it is warranted.
 
 **Left undone, and known** — *done 2026-08-25, see below.* `SECURITY_AUDIT.md`
 §1's accepted-risk register was still not compared against what `cargo audit`
@@ -350,6 +354,33 @@ was true of RAP and false of the repository, and `mac.rs`'s own doc comment said
 "two subsystems" where there are three — the third being the worker handshake,
 a different *use* of the key, which is precisely what an auditor tracing key
 material needs the list for.
+
+### A third way code sits in the tree without ever running
+
+`check-orphan-sources.sh` finds files no `mod` reaches. `check-ignored-tests.sh`
+finds tests no schedule names. The handoff says together they "cover the two
+ways code sits in the tree without ever running". There is a third, and it had
+ten files in it.
+
+**`cargo build` and `cargo test` do not compile examples or benches.**
+`rmi` has 9 examples and 1 bench. The only `--all-targets` anywhere in CI is the
+CUDA compile-check, and `prototype` has no examples — so **nothing in this
+repository had ever compiled any of the ten.** They are outside `src/`, so no
+`mod` needs to reach them and `check-orphan-sources.sh` structurally cannot see
+them; they are not `#[ignore]`d tests, so the other script cannot either. Each
+instrument was correct and the gap sat exactly between them.
+
+All ten compile clean today — **which I verified by breaking one and watching
+the check fail**, because a green `cargo check` proves nothing until you know it
+reached the targets you meant. It did: `error: could not compile rmi (example
+"swarm_collaboration")`. CI now has a `--examples --benches` step, and
+`check-orphan-sources.sh`'s header states the boundary rather than leaving a
+green run there to be read as coverage.
+
+The negative result is the point. Nothing was broken, and nothing was keeping
+it that way — which is the same state `compute/wasm.rs` and `perf_report` were
+found in, and both of those *were* broken by the time anyone looked. **An
+example that stops compiling is one a reader copies from.**
 
 ### A baseline of zero, held up by English words in comments
 
