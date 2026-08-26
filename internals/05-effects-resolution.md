@@ -1,5 +1,25 @@
 # Chapter 5: Effects & Resolution
 
+> **Re-verified against the compiler 2026-08-25, and it holds.** Unlike
+> Chapters 1–4, this one had already been corrected: §5.3 (hierarchy), §5.4
+> (capability validation), §5.5 (effect polymorphism) and §5.7's diagnostic
+> renderings each carry an accurate "design, not implementation" caveat.
+> Four of its claims were re-run rather than taken on trust:
+>
+> - **No hierarchy.** `/ net` on a caller does *not* cover an inferred `io`:
+>   the checker reports `performs undeclared effects: [IO]`.
+> - **Over-declaration is silent.** `+f f(x: i32) -> i32 / io { x }` is 0
+>   errors and 0 warnings — the annotation is an upper bound, and the `W0410`
+>   warning §5.7 renders does not exist.
+> - **The `Effect` enum matches exactly** — 18 variants, the seventeen
+>   non-`Custom` ones being §11.2's built-in kinds.
+> - **User-defined effects work.** An `effect Db { … }` block satisfies
+>   `/ Db`; an undeclared one errors by name.
+>
+> The only edit was removing a redundant label this session's own automated
+> pass had stacked on top of §5.2's more specific caveat.
+
+
 The effect system tracks and validates what side effects a function may
 produce. Effects are MAGE's alternative to Rust's `unsafe` keyword — they
 express capabilities explicitly and hierarchically.
@@ -103,9 +123,8 @@ step 2a.
 > crate. The real entry point is `effects::infer_effects(&ast::Module) ->
 > EffectInfer`, which walks the AST — not HIR — in passes over the whole module
 > rather than per function, because the call graph has to be closed before any
-> function's set is final. The shape below is still roughly what step 2 does.
-
-**Not implemented.** Design sketch — no such item exists in `prototype/src`. See Chapter 1's status note for what the compiler actually is.
+> function's set is final. The shape below is still roughly what step 2 does,
+> but it is **not implemented**.
 
 ```rust
 pub struct EffectChecker<'a> {
