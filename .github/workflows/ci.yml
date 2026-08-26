@@ -90,6 +90,15 @@ jobs:
       # that exists — with a baseline that can only shrink.
       - name: Documented API items exist
         run: bash scripts/check-rmi-api-doc.sh
+      # The same question one directory over. `internals/` is listed in
+      # README.md as "Compiler-internals documentation" and written in the
+      # present tense, and 15 of its 36 documented `pub` items do not exist —
+      # `CompileSession`, `DefId`, `InferCtxt` and friends are names for a
+      # query-driven multi-crate compiler that was designed and not built.
+      # Baselined at 15 and shrink-only: this does not fix it, it stops it
+      # growing and keeps the size of it visible.
+      - name: internals/ documents items that exist
+        run: bash scripts/check-internals-doc.sh
       # Every check above asks a question about code that compiles. Nothing
       # asked whether it compiles at all — and `compute/cuda_full.rs` is 1,812
       # lines with 16 `unsafe` blocks and 6 tests that no `mod` declaration

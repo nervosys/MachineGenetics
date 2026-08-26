@@ -1,5 +1,27 @@
 # Chapter 1: Architecture Overview
 
+> **Status, measured 2026-08-25: this chapter describes an intended
+> architecture, not the shipped one.** It is written in the present tense and
+> `README.md` lists `internals/` as "Compiler-internals documentation", so it
+> reads as description. Three of its opening claims were checked and none
+> holds:
+>
+> | It says | Measured |
+> |---|---|
+> | "Each stage is a separate crate" | `prototype` is **one** crate — 64 files under a single `[package]` |
+> | "The query engine (based on Salsa)…" | **`salsa` is not a dependency of any crate here**, and nothing in `prototype/src` implements a query cache |
+> | "The `CompileSession` holds all configuration" | there is no `CompileSession` |
+>
+> Across `internals/`, **15 of 36 documented `pub` items do not exist** —
+> `CompileSession`, `DefId`, `InferCtxt`, `TraitObligation`, `EffectChecker`
+> and others are rustc/salsa-shaped names for a compiler that was designed and
+> not built. `scripts/check-internals-doc.sh` holds that count and lets it only
+> shrink; the prose has no such mechanism, which is why this note is here.
+>
+> The design is worth keeping. Reading it as a map of the current code is not:
+> the real pipeline is a single crate, eager rather than demand-driven. Start
+> from `ARCHITECTURE.md` for what exists.
+
 The MAGE compiler transforms `.mg` source files into optimized machine code
 through a pipeline of well-defined stages. Each stage is a separate crate with
 a clean query-based interface.
