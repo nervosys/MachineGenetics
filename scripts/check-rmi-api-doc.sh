@@ -82,9 +82,40 @@ for root, _dirs, files in os.walk(os.path.join('RecursiveMachineIntelligence', '
             src.append(io.open(os.path.join(root, f), encoding='utf-8', errors='replace').read())
 src = '\n'.join(src)
 
-# Word-boundary match: the name has to appear as an identifier, not as a
-# substring of a longer one. `save` must not be satisfied by `save_with_tensors`.
-missing = sorted(n for n in names if not re.search(r'\b' + re.escape(n) + r'\b', src))
+# A **definition** must exist, not merely a mention.
+#
+# This was a word-boundary search for the bare name anywhere in `src/`, and
+# that is much weaker than "the item exists". Measured 2026-08-25: of 275
+# documented items, **8 were satisfied by an occurrence that was not a
+# definition**, and six of those were ordinary English words inside comments —
+#
+#   facts      "// Find most similar facts"
+#   rules      "//! ... types, operations, composition rules, and"
+#   positive   "/// Matrix must be positive definite."
+#   negative   "/// ... log of non-positive, sqrt of negative"
+#   satisfies  "/// Algebraic properties this operation satisfies."
+#   variable   "/// Type variable for polymorphism"
+#   symbol     inside a string literal
+#   add_edge   `graph.add_edge(...)`, a petgraph call
+#
+# Every one was documented as a public method that does not exist —
+# `KnowledgeBase::facts`/`rules` (really `get`/`all`), `Term::variable`/`symbol`
+# (really `var`/`constant`), `State::satisfies` (really `holds_all`),
+# `NetworkArchitecture::add_edge` (really `connect`). The check reported
+# **0 missing** the whole time, because prose in an unrelated module answered
+# for them. A baseline of zero held by matching comments is the shape rule 8
+# describes: a passing result on a subject outside the assertion's reach.
+#
+# Requiring a definition does not make this a signature check — `backward_chain`
+# was documented as a public method and satisfied by a `#[test] fn
+# backward_chain()` in `lang/grad.rs`, which is a definition of the wrong kind
+# in an unrelated module, and this still accepts it. Arity and receiver remain
+# unchecked on purpose (see HANDOFF.md rule 10 for why no arity checker was
+# built). This closes the *prose* hole, which is the one that was quietly
+# holding the baseline at zero.
+DEFINITION = r'\b(?:fn|struct|enum|trait|type|const|static|mod|macro_rules!)\s+%s\b'
+missing = sorted(n for n in names
+                 if not re.search(DEFINITION % re.escape(n), src))
 
 print('documented items: %d' % len(names))
 print('not found in src/: %d' % len(missing))

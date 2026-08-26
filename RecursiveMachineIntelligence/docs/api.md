@@ -638,12 +638,11 @@ DAG representation of neural network.
 
 ```rust
 impl NetworkArchitecture {
-    pub fn new(name: &str) -> Self;
-    pub fn name(&self) -> &str;
-    pub fn add_node(&mut self, node: ArchitectureNode) -> NodeId;
-    pub fn add_edge(&mut self, from: NodeId, to: NodeId, edge: ArchitectureEdge);
+    pub fn new(name: impl Into<String>) -> Self;
+    pub fn add_node(&mut self, node: ArchitectureNode) -> Uuid;
+    pub fn connect(&mut self, from: Uuid, to: Uuid, edge: ArchitectureEdge) -> bool;
     pub fn nodes(&self) -> impl Iterator<Item = &ArchitectureNode>;
-    pub fn topological_order(&self) -> Vec<NodeId>;
+    pub fn topological_order(&self) -> Option<Vec<Uuid>>;
 }
 ```
 
@@ -707,9 +706,9 @@ pub enum Term {
 }
 
 impl Term {
-    pub fn variable(name: &str) -> Self;
-    pub fn symbol(name: &str) -> Self;
-    pub fn function(name: &str, args: Vec<Term>) -> Self;
+    pub fn var(name: impl Into<String>) -> Self;
+    pub fn constant(name: impl Into<String>) -> Self;
+    pub fn func(name: impl Into<String>, args: Vec<Term>) -> Self;
     pub fn list(terms: Vec<Term>) -> Self;
     pub fn is_variable(&self) -> bool;
     pub fn is_ground(&self) -> bool;
@@ -739,15 +738,15 @@ impl Predicate {
 Positive or negated predicate.
 
 ```rust
-pub struct Literal {
-    pub predicate: Predicate,
-    pub negated: bool,
-}
-
-impl Literal {
-    pub fn positive(predicate: Predicate) -> Self;
-    pub fn negative(predicate: Predicate) -> Self;
-}
+// `Literal` is a PRIVATE enum inside `symbolic::inference` — not public API,
+// and not a struct. It is recorded here only because this file used to
+// document it as `pub struct Literal { predicate, negated }` with `positive`
+// and `negative` constructors, none of which exist:
+//
+//     enum Literal {
+//         Positive(Predicate),
+//         Negative(Predicate),
+//     }
 ```
 
 #### `Clause`
@@ -781,9 +780,8 @@ impl KnowledgeBase {
     pub fn new() -> Self;
     pub fn add_fact(&mut self, name: impl Into<String>, args: Vec<Term>);
     pub fn add_rule(&mut self, clause: Clause);
-    pub fn facts(&self) -> &[Clause];
-    pub fn rules(&self) -> &[Clause];
-    pub fn query(&self, predicate: &Predicate) -> Vec<&Clause>;
+    pub fn get(&self, name: &str) -> &[Clause];
+    pub fn all(&self) -> &[Clause];
 }
 ```
 
@@ -798,13 +796,14 @@ pub struct Substitution {
     pub bindings: HashMap<String, Term>,
 }
 
-impl Substitution {
-    pub fn empty() -> Self;
-    pub fn bind(&mut self, var: &str, term: Term);
-    pub fn lookup(&self, var: &str) -> Option<&Term>;
-    pub fn apply(&self, term: &Term) -> Term;
-    pub fn compose(&self, other: &Substitution) -> Substitution;
-}
+// `Substitution` is a type ALIAS, so it has no inherent methods — bind with
+// `insert`, look up with `get`. This file previously documented an
+// `impl Substitution` block with `empty`/`bind`/`lookup`/`apply`/`compose`,
+// none of which exist as methods.
+pub type Substitution = HashMap<String, Term>;
+
+// Free functions in `rmi::symbolic::unification`:
+pub fn compose(s1: &Substitution, s2: &Substitution) -> Substitution;
 ```
 
 #### Functions
@@ -833,8 +832,8 @@ pub struct InferenceEngine {
 
 impl InferenceEngine {
     pub fn new(config: InferenceConfig) -> Self;
-    pub fn forward_chain(&mut self, kb: &KnowledgeBase) -> Vec<Clause>;
-    pub fn backward_chain(&mut self, kb: &KnowledgeBase, goal: &Predicate) -> bool;
+    pub fn forward_chain(&self, kb: &mut KnowledgeBase);
+    pub fn prove(&mut self, kb: &KnowledgeBase, goal: &Predicate) -> bool;
     pub fn query(&mut self, kb: &KnowledgeBase, goal: &Predicate) -> Vec<Substitution>;
 }
 ```
@@ -879,7 +878,7 @@ impl State {
     pub fn add(&mut self, predicate: Predicate);
     pub fn remove(&mut self, predicate: &Predicate);
     pub fn holds(&self, predicate: &Predicate) -> bool;
-    pub fn satisfies(&self, goal: &State) -> bool;
+    pub fn holds_all(&self, facts: &[Predicate]) -> bool;
 }
 ```
 
@@ -887,12 +886,8 @@ impl State {
 
 ```rust
 /// Find a plan from initial to goal state
-pub fn plan(
-    initial: &State,
-    goal: &State,
-    actions: &[Action],
-    max_depth: usize,
-) -> Option<Vec<GroundAction>>;
+// Method on the planner, not a free function:
+pub fn plan(&self, domain: &Domain, initial: &State, goal: &Goal) -> Option<Plan>;
 ```
 
 ---

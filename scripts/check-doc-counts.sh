@@ -158,6 +158,7 @@ SECURITY_AUDIT.md	\*\*[0-9,]+ `unsafe` items in	unsafe_memory_pool
 SECURITY_AUDIT.md	[0-9,]+ in the never-compiled	unsafe_cuda_full
 SECURITY_AUDIT.md	\*\* [0-9,]+ blocks in a file no	unsafe_cuda_full
 SECURITY_AUDIT.md	cuda_backend\.rs`\*\* \([0-9]+ blocks	unsafe_cuda_backend
+HANDOFF.md	[0-9,]+ `rmi/docs` API items	rmi_api_items
 EOF
 )
 

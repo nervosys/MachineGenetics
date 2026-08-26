@@ -20,7 +20,7 @@ each claim has a command beside it.
 | Reliability floors | file-oracle parse 99/100, perturbed pattern-heal 42, native-lexer ratio 0.997 |
 | Examples | 12 of 12 typecheck, run, and print their recorded answer |
 | `.mg` sources | **101 checked, 0 sketches** — every `.mg` file in the repository typechecks |
-| Documentation | 205 MAGE blocks typecheck; 57 documentation entry points run; 275 `rmi/docs` API items all exist |
+| Documentation | 205 MAGE blocks typecheck; 57 documentation entry points run; 269 `rmi/docs` API items all exist — and "exist" now means **a definition exists**, not that the name appears somewhere in `src/`. It was 275 under the weaker criterion, 8 of them held up by English words in comments |
 | Release | `v0.3.0`, with the promo video attached as a release asset |
 
 Reproduce all of it:
@@ -350,6 +350,93 @@ was true of RAP and false of the repository, and `mac.rs`'s own doc comment said
 "two subsystems" where there are three — the third being the worker handshake,
 a different *use* of the key, which is precisely what an auditor tracing key
 material needs the list for.
+
+### A baseline of zero, held up by English words in comments
+
+Rule 10 declined to build an arity checker and recorded a measurement instead —
+"of 162 documented functions, the 66 defined exactly once are arity-checkable,
+and four disagreed… The measurement is recorded instead, **to be repeated by
+hand**." This is that repeat, and the first thing it found is about the
+instruction itself.
+
+**The measurement cannot be repeated, because the method was not recorded.**
+The obvious reconstruction — unique `pub fn` names in ```rust blocks across
+`RecursiveMachineIntelligence/docs/*.md`, the same extraction
+`check-rmi-api-doc.sh` uses — gives **210 documented functions, 119 defined
+exactly once**, against the recorded 162 and 66. Nothing distinguishes drift
+from a different counting rule. **A number recorded without its method is not a
+measurement anyone else can take**, which is the one thing an instruction to
+repeat by hand has to supply.
+
+Re-measuring from scratch, the arity comparison found **7 disagreements — and
+3 were false positives of exactly the class rule 10 named.** `find_similar`,
+`get_subgraph` and `put_raw` are documented as `pub fn name(/* … */);`, an
+elided parameter list a naive parser reads as one argument. Rule 10 said an
+arity checker "has a false-positive class that tripped twice on my own
+placeholders"; it tripped on the same placeholders again. **That judgment was
+right and is now confirmed rather than asserted** — which is the useful outcome
+of repeating a measurement whose conclusion was "do not build this".
+
+The other four were real, and pulling them opened something larger.
+
+**`check-rmi-api-doc.sh`'s baseline of 0 was partly held up by prose.** Its
+existence test was a word-boundary search for the documented name anywhere in
+`src/`. Measured: of 275 documented items, **8 were satisfied by an occurrence
+that was not a definition**, six of them ordinary English words inside
+comments —
+
+| Documented as | What satisfied it |
+|---|---|
+| `KnowledgeBase::facts` / `rules` | `// Find most similar facts`; `…composition rules, and` |
+| `Literal::positive` / `negative` | `/// Matrix must be positive definite.`; `sqrt of negative` |
+| `State::satisfies` | `/// Algebraic properties this operation satisfies.` |
+| `Term::variable` | `/// Type variable for polymorphism` |
+| `Term::symbol` | a string literal |
+| `NetworkArchitecture::add_edge` | `graph.add_edge(…)`, a petgraph call |
+
+Every one is a public method that **does not exist**: the real names are
+`get`/`all`, `Literal` is a *private enum* with `Positive`/`Negative` variants
+rather than a struct with constructors, `holds_all`, `var`, `constant`, and
+`connect`. The check reported **0 missing** throughout. **A baseline of zero
+held by matching comments is rule 8 exactly** — a passing result on a subject
+outside the assertion's reach, wearing a green tick.
+
+Pulling the same thread through the blocks those names live in found more that
+the name check cannot see by design:
+
+- **`NodeId` is not a type anywhere in the crate.** It appears in three
+  documented signatures; the real ids are `Uuid`. The checker never looks at
+  types *used in* signatures, only at names the docs *define*.
+- **`Substitution` is a type alias for `HashMap<String, Term>`**, documented
+  with an entire `impl` block — `empty`, `bind`, `lookup`, `apply`, `compose` —
+  none of which exist as methods. `compose` is a free function.
+- **`plan` was documented twice, inconsistently, and neither matched.**
+  `api.md` gave four free-function parameters, `architecture.md` gave three,
+  and the implementation is a *method* taking a `&Domain` and a `&Goal` and
+  returning `Option<Plan>`. Rule 9 warns that two documents agreeing is not
+  corroboration when one is a copy; here they did not even agree.
+- **`InferenceEngine::backward_chain` does not exist** — the real name is
+  `prove` — and the name check passed it because `lang/grad.rs` contains
+  `#[test] fn backward_chain()`, an unrelated gradient-tape test. **A
+  definition of the wrong kind, in the wrong module, answering for a public
+  API.** Its neighbour `forward_chain` had its receiver and argument mutability
+  the wrong way round: documented `&mut self, &KnowledgeBase`, actual
+  `&self, &mut KnowledgeBase`.
+
+All of the above are corrected, and the checker now requires a **definition**
+rather than a mention. Verified by reintroducing one phantom and watching the
+tightened criterion fail where the old one passes. The baseline stays 0 because
+the entries were fixed, not because the bar moved — the same shape as
+`check-doc-blocks.sh`, where the count went up when the criterion did.
+
+**It is still not a signature check**, and says so: `backward_chain` would
+survive the new criterion too, since a test function *is* a definition. Arity
+and receiver remain deliberately unchecked, for rule 10's reasons, which this
+pass re-confirmed by tripping over the placeholders.
+
+The count moved **275 → 269**, and that figure had no pin — which is how the
+criterion could tighten under it unnoticed. It has one now (`rmi_api_items`,
+measured by running the checker), taking documented-count pins to **85**.
 
 ### Then the keys, which §2 had never mentioned because it thought there were none
 
@@ -2079,7 +2166,7 @@ harder to notice because it arrives wearing a green tick.
 
 - Prototype tests **1,066 → 1,202**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
-  across five crates **2,915**; documented-count pins **84**, up from 46 — the
+  across five crates **2,915**; documented-count pins **85**, up from 46 — the
   four newest hold `SECURITY_AUDIT.md`'s `unsafe` inventory, a claim that had
   been wrong twice.
 - Every typechecker fix has landed without breaking an existing test **except

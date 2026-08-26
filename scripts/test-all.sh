@@ -162,6 +162,12 @@ if [ "$CHECKDOCS" -eq 1 ]; then
         # document quotes, and this is the same expression §3 tells a reader
         # to run. Inside `echo` rather than bare, because `grep -c` exits 1 on
         # a zero count and `set -e` would kill the script at a bare assignment.
+        # Documented `rmi/docs` API items. HANDOFF.md states this figure and
+        # nothing pinned it, so when the criterion tightened on 2026-08-25 —
+        # from "the name appears in src/" to "a definition exists" — the count
+        # moved 275 -> 269 with no mechanism to notice. Measured by running the
+        # checker, so the claim cannot drift from the check that produces it.
+        echo "rmi_api_items=$(bash "$REPO/scripts/check-rmi-api-doc.sh" 2>/dev/null | awk '/^documented items:/ {print $3}')"
         unsafe_re='\bunsafe\s*(\{|fn |impl )'
         echo "unsafe_memory_pool=$(grep -cE "$unsafe_re" "$REPO/RecursiveMachineIntelligence/src/runtime/memory_pool.rs")"
         echo "unsafe_cuda_full=$(grep -cE "$unsafe_re" "$REPO/RecursiveMachineIntelligence/src/compute/cuda_full.rs")"

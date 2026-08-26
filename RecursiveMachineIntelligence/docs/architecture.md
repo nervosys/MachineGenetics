@@ -457,7 +457,7 @@ pub struct Action {
     pub delete_effects: Vec<Predicate>,
 }
 
-pub fn plan(initial: &State, goal: &State, actions: &[Action]) -> Option<Vec<GroundAction>>;
+pub fn plan(&self, domain: &Domain, initial: &State, goal: &Goal) -> Option<Plan>;
 ```
 
 ---
