@@ -379,6 +379,47 @@ built, and one reason it went unexamined this long is that no index points at
 it. Recorded rather than fixed: an index nobody has committed to maintaining is
 the next thing to go stale.
 
+### The internals rewrite: nine files, three compiler findings
+
+All of `internals/` was gone through against `prototype/src` on 2026-08-25.
+What nine files came to:
+
+| Outcome | Chapters |
+|---|---|
+| Described a system that does not exist | **1** (query engine, nine crates), **6** (MLIR → LLVM → machine code) |
+| Real machinery under wrong names | **2**, **3**, **4**, **7** |
+| Documented something that parses and is discarded | **2** (parser recovery), **4** (trait bounds), **8** (the rule JSON) |
+| Already correct — re-run rather than trusted | **5** |
+
+The one that inverts the usual lesson: **rewriting documentation found three
+compiler defects.** Reading code to describe it accurately is a different
+activity from reading it to review it, and it reaches places review does not:
+items 21 (`~>` bounds parse and are discarded), 22 (the Neovim LSP
+registration cannot work, for three independent reasons), and 23 (`skb/` is 56
+rules nothing reads while the binary serves 255).
+
+Two patterns worth carrying:
+
+**Under-claiming is as common as invention.** Chapter 6 described a backend
+that does not exist; Chapter 7 documented **3 of 37** RAP methods and listed
+eleven "planned" ones that had shipped under different names. Chapter 3's
+enums were each a *partial* listing presented as a definition — `ItemKind` 11
+of 20, and the nine missing were exactly MAGE's distinctive constructs
+(`Agent`, `Net`, `Kb`, `Swarm`, `Train`, …). A reader learning the AST from it
+would not know those are items at all.
+
+**The name-level checker passed nearly all of it**, which is its documented
+limit stated in numbers: it cannot see a partial enum, a wrong signature, or a
+type used in a signature it never defines (`NodeId` appeared in three
+signatures and exists nowhere).
+
+**And two of the mistakes were mine.** A false cross-reference introduced in
+the very commit that corrected Chapter 6 — sending readers to Chapter 8 for a
+GPU story it does not tell — caught two chapters later; and a Chapter 4 commit
+that turned CI red by adding a MAGE block, moving two pinned counts, and going
+unnoticed while two more commits landed on top. Both are recorded where they
+happened. Writing documentation is not a safer activity than writing code.
+
 ### `internals/` documents a compiler that was designed and not built
 
 Found by asking the neighbourhood question: `check-rmi-api-doc.sh` covers
@@ -407,8 +448,13 @@ the repository, describing a system that was never there. An agent reading
 `internals/` to learn the codebase learns a compiler it will not find, and
 learns it in the register of fact.
 
-**Labelled, not rewritten** — and the distinction matters, because labelling
-could be a way of getting a baseline to zero without doing anything.
+**Labelled first, then rewritten.** This paragraph said "labelled, not
+rewritten" for about two hours, which was true when written and false by the
+end of the day — the same decay this section is about, inside it. All nine
+files were subsequently gone through against `prototype/src`; see
+[the rewrite](#the-internals-rewrite-nine-files-three-compiler-findings).
+The labelling still matters and is described below, because labelling could
+be a way of getting a baseline to zero without doing anything.
 
 First, each of the 15 was checked individually: **none is a rename.** The real
 compiler has `Effect`, `EffectAnalysis`, `Type`, `TypeAlias`; there is no
