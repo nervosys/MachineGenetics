@@ -4,6 +4,9 @@
   "product": "MAGE",
   "layer": "languages",
   "role": "Agentic-first programming language and compiler infrastructure for recursive self-improvement.",
+  "depends_on": [
+    "ironaccelerator"
+  ],
   "ontology": {
     "command": "mage-parse --manifest",
     "document": "prototype/src/cli_manifest.rs",
