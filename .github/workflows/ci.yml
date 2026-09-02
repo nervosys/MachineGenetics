@@ -106,6 +106,19 @@ on:
       # with no mechanism behind it.
       - "video/package-lock.json"
 
+# One run per branch. Without this, pushing a fix to a branch left the previous
+# run going: on 2026-09-02 three superseded runs — 4484beaf6, e2896c0d9,
+# 9e6948fa1 — each took all nine jobs to completion and failed on an npm
+# advisory that the queued commits behind them already fixed. Twenty-seven job
+# slots spent re-reporting a known failure against commits at no branch tip,
+# while the runs that mattered waited an hour.
+#
+# `master` is exempt: a merge should always get a complete verdict, and a merge
+# train is not a superseded push.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
+
 jobs:
   rmi:
     name: rmi — build + test (cpu)
@@ -215,6 +228,31 @@ jobs:
       # silently changed meaning under a table it had produced. 3 seconds.
       - name: Performance harness runs (publishes MEASUREMENTS figures)
         run: cargo test --release --manifest-path prototype/Cargo.toml perf_report -- --ignored --nocapture
+      # The same argument, one level out. `README.md` says of its benchmark
+      # section "Every number below is produced by actually compiling and
+      # running code ... Reproduce with benchmarks/cross_lang/run.sh", and
+      # `ARCHITECTURE_DSL.md` cites `benchmarks/constructs/run.sh` for
+      # "10.2× fewer tokens, measured" and "141 B vs 126 B — 1.12×".
+      #
+      # **Nothing ran any of the three scripts.** Not CI, not a checker. The
+      # numbers were correct when measured on 2026-09-02 — capstone still gives
+      # `dispatched=97 unsupported=[]` and 1.09×, constructs still gives 82 vs
+      # 839 and 1.12× — but a citation with no mechanism behind it is the shape
+      # this repository keeps finding, and these are the figures the front page
+      # leads with.
+      #
+      # Two of the three are self-contained and take seconds, so they run here.
+      # `cross_lang/run.sh` does not: it shells out to `rustc`, `javac`, `go`
+      # and `node` to compile the same five tasks in each language, and a
+      # missing toolchain makes it report a language as failing rather than as
+      # absent. Wiring that up needs the runner's toolchains pinned first, which
+      # is a decision about what the benchmark means, not a step to add. It is
+      # item 26.
+      - name: Cited benchmarks still produce their published numbers
+        run: |
+          cargo build --release --manifest-path forge/Cargo.toml --bin forge
+          bash benchmarks/capstone/run.sh
+          bash benchmarks/constructs/run.sh
       # `mage-parse@<version>` is the tool id Ribosome writes into every action
       # key, so if the binary and the registry disagree the cache is keyed on a
       # version that never ran. They live in different crates with no compiler

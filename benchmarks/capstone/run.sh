@@ -88,19 +88,31 @@ echo "   source: ${SRC_B} B  ·  ~41 cl100k tokens (recorded)  ·  block def liv
 echo
 
 # ── Step 3: forge check — resolves the handle AND runs the typed gate ──
+failures=0
+note() { echo "   !! $1" >&2; failures=$((failures+1)); }
+
 echo "3. forge check — pulls TransformerBlock from the registry + shape-checks it:"
-( cd "$WORK/proj" && "$FORGE" check 2>&1 ) | grep -iE 'check passed|error' | strip | sed 's/^/   /'
+CHECK_OUT="$( cd "$WORK/proj" && "$FORGE" check 2>&1 )"
+printf '%s
+' "$CHECK_OUT" | grep -iE 'check passed|error' | strip | sed 's/^/   /'
+printf '%s' "$CHECK_OUT" | grep -qi 'check passed' || note "forge check did not pass"
 # Negative control: a shape-broken residual must be REJECTED at check.
 cat > "$WORK/bad.mg" <<'EOF'
 net Bad { residual { layer up: Linear(256, 512); } }
 EOF
 echo "   negative control — a non-shape-preserving residual is rejected at check:"
-"$MG" --check "$WORK/bad.mg" 2>&1 | grep -iE 'residual body' | sed 's#.*error: #     ✗ #' | head -1
+BAD_OUT="$("$MG" --check "$WORK/bad.mg" 2>&1)"
+printf '%s
+' "$BAD_OUT" | grep -iE 'residual body' | sed 's#.*error: #     ✗ #' | head -1
+printf '%s' "$BAD_OUT" | grep -qi 'residual body' || note "the negative control was ACCEPTED — the shape gate is not gating"
 echo
 
 # ── Step 4: forge build + the REPEAT-folded binary, O(1) in depth ──
 echo "4. forge build — lower to the REPEAT-folded binary IR:"
-( cd "$WORK/proj" && "$FORGE" build 2>&1 ) | grep -iE 'build complete|error' | strip | sed 's/^/   /'
+BUILD_OUT="$( cd "$WORK/proj" && "$FORGE" build 2>&1 )"
+printf '%s
+' "$BUILD_OUT" | grep -iE 'build complete|error' | strip | sed 's/^/   /'
+printf '%s' "$BUILD_OUT" | grep -qi 'build complete' || note "forge build did not complete"
 # Measure the artifact: 12 blocks vs 1 (self-contained, same content forge resolves).
 BLK="$(cat "$WORK/transformer_block.mg")"
 printf '%s\nnet One { layer embed: Embedding(50000, 256); stack 1 { TransformerBlock(256, 8, 1024) } forward { embed } }\n'  "$BLK" > "$WORK/one.mg"
@@ -115,7 +127,11 @@ echo
 # The folded artifact for the agent's actual net (Embedding → 12 residual blocks)
 # runs: embedding, batched attention, the per-block residual adds, norms, MLPs.
 echo "5. run the binary — the full GPT (embed → 12 residual blocks) dispatches:"
-"$MG" --run=abl-bytes "$WORK/twelve.abl" 2>&1 | grep -iE 'dispatched' | strip | sed 's/^/   /'
+RUN_OUT="$("$MG" --run=abl-bytes "$WORK/twelve.abl" 2>&1)"
+printf '%s
+' "$RUN_OUT" | grep -iE 'dispatched' | strip | sed 's/^/   /'
+printf '%s' "$RUN_OUT" | grep -q 'unsupported=\[\]' || note "ops were left unsupported — the binary did not fully dispatch"
+printf '%s' "$RUN_OUT" | grep -q 'dispatched=' || note "the binary did not run"
 echo "   (all ops dispatch, unsupported=[]: the 24 residual RES_ADDs compute, not skipped)"
 echo
 line
@@ -125,3 +141,15 @@ echo "ships O(1) in depth as a folded binary, and executes — every step measur
 echo
 echo "Reproduce BPE token counts (real cl100k), from benchmarks/constructs:"
 echo "  cargo run -q -p agentic-eval --example tokens_of --features real-tokens -- <files>"
+
+# The script printed all of this before it asserted any of it. `forge check`
+# and `forge build` were piped straight into `grep`, so a failing step printed
+# "error ..." and the run still exited 0 — a benchmark that reports instead of
+# deciding, which is exactly what makes wiring one into CI theatre. README.md
+# cites this script for `dispatched=97, unsupported=[]` and the 1.09x fold, so
+# those are the things it now refuses to be wrong about.
+if [ "$failures" -ne 0 ]; then
+  echo >&2
+  echo "$failures step(s) above did not do what this benchmark claims they do." >&2
+  exit 1
+fi
