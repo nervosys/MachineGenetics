@@ -209,8 +209,18 @@ if [ "$CHECKDOCS" -eq 1 ]; then
         # green. A guard wearing a stronger name than it earns. These pin the
         # measured integers; the cited ratios (1.09x, 1.12x, 10.2x) are
         # derived from them, so the parts are enough.
-        bash "$REPO/benchmarks/capstone/run.sh"   2>&1 >/dev/null | grep -E '^capstone_'   || true
-        bash "$REPO/benchmarks/constructs/run.sh" 2>&1 >/dev/null | grep -E '^constructs_' || true
+        # Both scripts need the *release* binaries, and this function runs in
+        # whatever profile the caller asked for — debug by default. The first
+        # version of this omitted the builds and swallowed the result with
+        # `|| true`, so in CI the scripts printed "missing binary", emitted no
+        # keys, and `check-doc-counts.sh` failed downstream with six INCOMPLETE
+        # rows. It was right to: an unchecked claim is an unguarded claim. The
+        # `|| true` was the bug — it turned "the benchmark could not run" into
+        # silence at the one place that knew.
+        cargo build --release --quiet --manifest-path "$REPO/prototype/Cargo.toml" --bin mage-parse
+        cargo build --release --quiet --manifest-path "$REPO/forge/Cargo.toml"     --bin forge
+        bash "$REPO/benchmarks/capstone/run.sh"   2>&1 >/dev/null | grep -E '^capstone_'
+        bash "$REPO/benchmarks/constructs/run.sh" 2>&1 >/dev/null | grep -E '^constructs_'
         python - "$REPO/MAGE_ONTOLOGY.json" <<'ONTO'
 import json, sys
 d = json.load(open(sys.argv[1], encoding='utf-8'))
