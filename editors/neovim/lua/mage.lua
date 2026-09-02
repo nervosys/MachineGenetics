@@ -35,6 +35,29 @@ vim.filetype.add({
 function M.setup_lsp(opts)
   opts = opts or {}
 
+  -- Without an explicit `rap_cmd`, this would register `cmd = { 'rap' }` — a
+  -- binary that does not exist, speaking a protocol RAP does not implement,
+  -- over a transport it does not use. Neovim's failure for that arrives later
+  -- and elsewhere: a spawn error in `:LspLog`, from a server the user did not
+  -- knowingly configure. Say it here instead, where the call was made.
+  --
+  -- `rap_cmd` is still honoured, because supplying your own LSP shim is the
+  -- one way this function can do something useful today. Passing it is a
+  -- statement that you have one.
+  if not opts.rap_cmd then
+    vim.notify(
+      'MAGE: no LSP server is available. RAP is an agent protocol (JSON-RPC over '
+        .. 'TCP, 37 custom methods), not a language server: it implements no '
+        .. '`initialize` and no `textDocument/*`, and there is no `rap` binary — '
+        .. 'the server is `mage-parse --rap`. Tree-sitter highlighting works and '
+        .. 'is set up separately by require("mage").setup(). To use your own LSP '
+        .. 'shim over RAP, pass rap_cmd (a string or an argv table). '
+        .. 'See internals/07-rap-server.md §7.6.',
+      vim.log.levels.WARN
+    )
+    return
+  end
+
   local lspconfig_ok, lspconfig = pcall(require, 'lspconfig')
   if not lspconfig_ok then
     vim.notify('MAGE: nvim-lspconfig not found', vim.log.levels.WARN)
@@ -47,7 +70,10 @@ function M.setup_lsp(opts)
   if not configs.rap then
     configs.rap = {
       default_config = {
-        cmd = { opts.rap_cmd or 'rap' },
+        -- `rap_cmd` was a bare string here before, so both shapes are taken:
+        -- changing an option's contract to fix a warning would be its own
+        -- small version of this file's problem.
+        cmd = type(opts.rap_cmd) == 'table' and opts.rap_cmd or { opts.rap_cmd },
         filetypes = { 'MAGE' },
         root_dir = lspconfig.util.root_pattern('Forge.toml', '.git'),
         settings = {
