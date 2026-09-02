@@ -120,6 +120,12 @@ printf '%s\nnet GPT { layer embed: Embedding(50000, 256); stack 12 { Transformer
 "$MG" --target=abl-bytes "$WORK/one.mg"    "$WORK/one.abl"    >/dev/null 2>&1
 "$MG" --target=abl-bytes "$WORK/twelve.mg" "$WORK/twelve.abl" >/dev/null 2>&1
 B1=$(wc -c < "$WORK/one.abl"); B12=$(wc -c < "$WORK/twelve.abl")
+# Machine-readable, on stderr so the readable report above is untouched.
+# `check-doc-counts.sh` compares these against the figures README.md quotes,
+# so the front page cannot drift from the run that produces it. Integers
+# only: the cited 1.09x is B12/B1, so pinning the parts pins the ratio.
+echo "capstone_abl_one=$B1"    >&2
+echo "capstone_abl_twelve=$B12" >&2
 echo "   binary container: 1 block = ${B1} B,  12 blocks = ${B12} B  →  $(awk "BEGIN{printf \"%.2f\", $B12/$B1}")× (O(1) in depth)"
 echo
 
@@ -131,6 +137,8 @@ RUN_OUT="$("$MG" --run=abl-bytes "$WORK/twelve.abl" 2>&1)"
 printf '%s
 ' "$RUN_OUT" | grep -iE 'dispatched' | strip | sed 's/^/   /'
 printf '%s' "$RUN_OUT" | grep -q 'unsupported=\[\]' || note "ops were left unsupported — the binary did not fully dispatch"
+# The dispatched count itself, which README.md quotes as `dispatched=97`.
+echo "capstone_dispatched=$(printf '%s' "$RUN_OUT" | grep -oE 'dispatched=[0-9]+' | head -1 | cut -d= -f2)" >&2
 printf '%s' "$RUN_OUT" | grep -q 'dispatched=' || note "the binary did not run"
 echo "   (all ops dispatch, unsupported=[]: the 24 residual RES_ADDs compute, not skipped)"
 echo

@@ -126,6 +126,12 @@ HANDOFF.md	[0-9,]+ MAGE blocks typecheck	doc_blocks
 HANDOFF.md	[0-9,]+ documentation entry points	doc_evals
 HANDOFF.md	file-oracle parse [0-9]+/	floor_parse
 HANDOFF.md	pattern-heal [0-9]+,	floor_heal
+README.md	dispatched=[0-9]+,	capstone_dispatched
+README.md	`dispatched=[0-9]+ unsupported	capstone_dispatched
+ARCHITECTURE_DSL.md	is \*\*[0-9,]+ B vs	constructs_abl_twelve
+ARCHITECTURE_DSL.md	B vs [0-9,]+ B for one block	constructs_abl_one
+ARCHITECTURE_DSL.md	= [0-9,]+ real	constructs_stack_tokens
+ARCHITECTURE_DSL.md	tokens vs [0-9,]+ for the	constructs_manual_tokens
 benchmarks/STATUS.md	├─ sigils \([0-9]+\)	onto_sigils
 benchmarks/STATUS.md	├─ keywords \([0-9]+\)	onto_keywords
 benchmarks/STATUS.md	├─ types \([0-9]+\)	onto_types

@@ -201,6 +201,16 @@ if [ "$CHECKDOCS" -eq 1 ]; then
         # states them in its status table; the ontology publishes the
         # thresholds. Nothing enforced either until check-ci-floors.sh.
         bash "$REPO/scripts/check-ci-floors.sh" 2>&1 >/dev/null | grep -E '^floor_' || true
+        # The figures README.md and ARCHITECTURE_DSL.md quote from the two
+        # benchmark scripts they cite. Those scripts ran nowhere until
+        # 2026-09-02, and once wired into CI they asserted only *structural*
+        # success — "check passed", "unsupported=[]" — so the numbers the
+        # documents actually quote could have drifted with the step still
+        # green. A guard wearing a stronger name than it earns. These pin the
+        # measured integers; the cited ratios (1.09x, 1.12x, 10.2x) are
+        # derived from them, so the parts are enough.
+        bash "$REPO/benchmarks/capstone/run.sh"   2>&1 >/dev/null | grep -E '^capstone_'   || true
+        bash "$REPO/benchmarks/constructs/run.sh" 2>&1 >/dev/null | grep -E '^constructs_' || true
         python - "$REPO/MAGE_ONTOLOGY.json" <<'ONTO'
 import json, sys
 d = json.load(open(sys.argv[1], encoding='utf-8'))

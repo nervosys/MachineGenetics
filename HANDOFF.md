@@ -654,7 +654,7 @@ the three placeholder false positives filtered rather than tolerated. See rule
 
 The count moved **275 → 269**, and that figure had no pin — which is how the
 criterion could tighten under it unnoticed. It has one now (`rmi_api_items`,
-measured by running the checker), taking documented-count pins to **85**.
+measured by running the checker), taking documented-count pins to **91**.
 
 ### Then the keys, which §2 had never mentioned because it thought there were none
 
@@ -2510,7 +2510,7 @@ harder to notice because it arrives wearing a green tick.
 
 - Prototype tests **1,066 → 1,211**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
-  across five crates **2,924**; documented-count pins **85**, up from 46 — the
+  across five crates **2,924**; documented-count pins **91**, up from 46 — the
   four newest hold `SECURITY_AUDIT.md`'s `unsafe` inventory, a claim that had
   been wrong twice.
 - Every typechecker fix has landed without breaking an existing test **except

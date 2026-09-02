@@ -99,6 +99,12 @@ echo
 echo "=== Depth scaling — the 'stack N' repeat combinator (O(depth) -> O(1) surface) ==="
 echo "A 12-deep transformer, written by hand (12× the block) vs \`stack 12 { block }\`."
 echo "Tokens real cl100k (recorded); text + ABL bytes measured live."
+# The recorded cl100k counts for this section, named once. They were typed
+# into two printf calls and would have been typed into the pin below as a
+# third copy — the "a copy here would be a third list" problem this
+# repository already names. One variable, quoted everywhere.
+MANUAL_TOKENS=839
+STACK_TOKENS=82
 # generate the manual 12× form
 { echo "net Manual {"; for i in $(seq 1 12); do
   printf '    layer attn%d: MultiHeadAttention(256, 8);\n    layer n%da: LayerNorm;\n    layer ff%da: Linear(256, 1024);\n    layer act%d: GELU;\n    layer ff%db: Linear(1024, 256);\n    layer n%db: LayerNorm;\n' $i $i $i $i $i $i
@@ -113,9 +119,19 @@ sed 's/stack 12/stack 1/' deep_transformer_stack.mg > /tmp/_one.mg
 "$MG" --target=abl-bytes deep_transformer_stack.mg /tmp/_s.abl >/dev/null 2>&1
 "$MG" --target=abl-bytes /tmp/_one.mg /tmp/_one.abl >/dev/null 2>&1
  b1=$(wc -c </tmp/_one.abl); b12=$(wc -c </tmp/_s.abl)
+# Machine-readable, on stderr. ARCHITECTURE_DSL.md quotes "141 B vs 126 B —
+# 1.12x" and "82 ... vs 839 ... 10.2x fewer"; `check-doc-counts.sh` compares
+# these against the document, so neither can move without the other. The two
+# byte counts are measured here; the two token counts are the recorded cl100k
+# figures at the top of this file, so pinning them keeps the prose and the
+# script from drifting apart. Both ratios are derived, so the parts suffice.
+echo "constructs_abl_one=$b1"    >&2
+echo "constructs_abl_twelve=$b12" >&2
+echo "constructs_stack_tokens=$STACK_TOKENS"   >&2
+echo "constructs_manual_tokens=$MANUAL_TOKENS" >&2
 printf "  %-18s %6s %8s %8s   %s\n" "form" "tokens" "text" "ABL" "check"
-printf "  %-18s %6s %7dB %7dB   %s\n" "manual 12×" "839" "$(wc -c </tmp/_manual12.mg)" "$(wc -c </tmp/_m.abl)" "$mok"
-printf "  %-18s %6s %7dB %7dB   %s\n" "stack 12 { block }" "82" "$(wc -c <deep_transformer_stack.mg)" "$b12" "$sok"
+printf "  %-18s %6s %7dB %7dB   %s\n" "manual 12×" "$MANUAL_TOKENS" "$(wc -c </tmp/_manual12.mg)" "$(wc -c </tmp/_m.abl)" "$mok"
+printf "  %-18s %6s %7dB %7dB   %s\n" "stack 12 { block }" "$STACK_TOKENS" "$(wc -c <deep_transformer_stack.mg)" "$b12" "$sok"
 printf "  %-18s %6s %8s %7dB\n" "(1 block, ref)" "" "" "$b1"
 echo "  → surface: 82 vs 839 tokens (10.2× fewer), FLAT in depth (100 layers ≈ 83 tok)."
 echo "  → ABL is now O(1) in depth too: the container REPEAT-folds at encode, so 12"
