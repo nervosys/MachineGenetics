@@ -179,6 +179,16 @@ jobs:
       # baseline stops being measured.
       - name: CI is triggered by every file a checker reads
         run: bash scripts/check-ci-paths.sh
+      # RAP states its method surface three times — the dispatch arms, the
+      # `METHODS` list it publishes for discovery, and internals/07. Nothing
+      # checked that they agree. They did (37/37/37), but the failure modes are
+      # silent both ways: an arm with no list entry is a method that works and
+      # cannot be found, and a list entry with no arm is one an agent is told
+      # about and gets an error from. For an agent protocol the advertised
+      # surface *is* the surface, and the chapter was documented at 3 of 37 as
+      # recently as 2026-08-25.
+      - name: The RAP method surface agrees with itself and its chapter
+        run: bash scripts/check-rap-methods.sh
       # Every check above asks a question about code that compiles. Nothing
       # asked whether it compiles at all — and `compute/cuda_full.rs` is 1,812
       # lines with 16 `unsafe` blocks and 6 tests that no `mod` declaration
