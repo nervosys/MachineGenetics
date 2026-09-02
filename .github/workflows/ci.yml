@@ -32,6 +32,18 @@ on:
       - "ARCHITECTURE.md"
       - "RIBOSOME.md"
       - "GERMLINE.md"
+      # The rest of what `check-doc-counts.sh` pins. Seven of the fourteen
+      # files it reads were outside this filter, so a pull request touching
+      # only one of them moved a pinned count with no CI run at all — the
+      # checker was correct and simply never reached. `check-ci-paths.sh`
+      # now fails if that gap reopens.
+      - "HANDOFF.md"
+      - "SECURITY_AUDIT.md"
+      - "README.md"
+      - "DOCS.md"
+      - "UNIFICATION.md"
+      - "DIRECT_CODEGEN_STRATEGY.md"
+      - "benchmarks/STATUS.md"
       # The audit job checks video/'s npm lockfile, so a change there should
       # trigger it. Nothing did before, and "0 npm" in HANDOFF.md was a figure
       # with no mechanism behind it.
@@ -51,6 +63,18 @@ on:
       - "ARCHITECTURE.md"
       - "RIBOSOME.md"
       - "GERMLINE.md"
+      # The rest of what `check-doc-counts.sh` pins. Seven of the fourteen
+      # files it reads were outside this filter, so a pull request touching
+      # only one of them moved a pinned count with no CI run at all — the
+      # checker was correct and simply never reached. `check-ci-paths.sh`
+      # now fails if that gap reopens.
+      - "HANDOFF.md"
+      - "SECURITY_AUDIT.md"
+      - "README.md"
+      - "DOCS.md"
+      - "UNIFICATION.md"
+      - "DIRECT_CODEGEN_STRATEGY.md"
+      - "benchmarks/STATUS.md"
       # The audit job checks video/'s npm lockfile, so a change there should
       # trigger it. Nothing did before, and "0 npm" in HANDOFF.md was a figure
       # with no mechanism behind it.
@@ -107,6 +131,15 @@ jobs:
       # has been renamed away.
       - name: Every root document is in DOCS.md
         run: bash scripts/check-docs-index.sh
+      # And the step above it only runs if CI runs. Seven of the fourteen
+      # files `check-doc-counts.sh` pins were outside this workflow's paths
+      # filter — `HANDOFF.md` and `SECURITY_AUDIT.md` among them — so a pull
+      # request touching only one of them moved a pinned count and got no run
+      # at all. Not a red build: no build. The checker had been correct and
+      # simply unreachable, which is the same shape as a ratchet whose
+      # baseline stops being measured.
+      - name: CI is triggered by every file a checker reads
+        run: bash scripts/check-ci-paths.sh
       # Every check above asks a question about code that compiles. Nothing
       # asked whether it compiles at all — and `compute/cuda_full.rs` is 1,812
       # lines with 16 `unsafe` blocks and 6 tests that no `mod` declaration
