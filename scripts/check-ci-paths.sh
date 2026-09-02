@@ -21,11 +21,23 @@
 #      covered. Directory globs (`prototype/**`) are exempt — they are
 #      prefixes, not paths, and a repository is allowed to not have one yet.
 #
-# Deliberately NOT checked: whether every *tracked* file is covered. Most of
-# the repository is documentation no checker reads, and demanding coverage
-# for it would make this fail forever and be switched off. The rule is
-# narrower and enforceable: **if something checks it, CI must run when it
-# changes.**
+# **The first version of this script was itself too narrow, and stated
+# something false while being it.** It said "most of the repository is
+# documentation no checker reads". It is not. `check-doc-blocks.sh` walks the
+# entire tree and compiles every MAGE block in every `.md`; `check-mg-sources.sh`
+# and `check-examples.sh` do the same for every `.mg`. Every markdown and MAGE
+# source here is read by a checker — and **76 of 101 `.md` files and 83 of 101
+# `.mg` files were outside the filter**, `MAGE_SPEC.md` and the whole of
+# `quick-start/`, `agent-guide/`, `cookbook/` and `training/prompts/` among them.
+# Those are the documents an agent reads to learn the language, and a pull
+# request adding a block to one of them that does not typecheck ran no CI.
+# Direction 3 is the consequence.
+#
+# Still NOT checked: every tracked file of every kind. `LICENSE`, `media/` and
+# `.gitignore` are read by nothing, and demanding coverage there would make this
+# fail forever and be switched off. The rule has not changed — **if something
+# checks it, CI must run when it changes** — what changed is the honest answer
+# to "what does something check".
 set -o errexit
 set -o nounset
 set -o pipefail
@@ -77,11 +89,41 @@ if not triggers:
     raise SystemExit(0)
 
 
+def _glob_re(entry):
+    """GitHub's paths glob as a regex.
+
+    `**` crosses directory separators, `*` and `?` do not — the filter syntax
+    GitHub documents, not `fnmatch`, whose `*` would quietly match across `/`
+    and make `prototype/*` look like `prototype/**`. Everything else is escaped,
+    so a `.` in `HANDOFF.md` matches a dot and not any character.
+    """
+    out, i = [], 0
+    while i < len(entry):
+        if entry.startswith('**', i):
+            out.append('.*')
+            i += 2
+        elif entry[i] == '*':
+            out.append('[^/]*')
+            i += 1
+        elif entry[i] == '?':
+            out.append('[^/]')
+            i += 1
+        else:
+            out.append(re.escape(entry[i]))
+            i += 1
+    return re.compile('^' + ''.join(out) + '$')
+
+
+_glob_cache = {}
+
+
 def covered(path, entries):
     for e in entries:
         if e == path:
             return True
-        if e.endswith('/**') and path.startswith(e[:-2]):
+        if e not in _glob_cache:
+            _glob_cache[e] = _glob_re(e)
+        if _glob_cache[e].match(path):
             return True
     return False
 
@@ -92,6 +134,22 @@ for name, entries in sorted(triggers.items()):
         if not covered(p, entries):
             print('UNCOVERED\t%s\t%s' % (name, p))
 
+# Direction 3 — every file a *content* checker compiles. `check-doc-blocks.sh`
+# walks the tree for `.md` and `check-mg-sources.sh` for `.mg`, and both compile
+# what they find, so any one of these files can turn CI red and every one of
+# them must be able to turn CI on. Read from `git ls-files`, not a list here, so
+# a new document is covered the day it is added rather than the day someone
+# remembers this script exists.
+import subprocess
+
+tracked = subprocess.run(
+    ['git', 'ls-files'], capture_output=True, text=True).stdout.splitlines()
+compiled = [p for p in tracked if p.endswith('.md') or p.endswith('.mg')]
+for name, entries in sorted(triggers.items()):
+    for p in compiled:
+        if not covered(p, entries):
+            print('UNREAD\t%s\t%s' % (name, p))
+
 # Direction 2 — a filter entry naming a file that is not there.
 for name, entries in sorted(triggers.items()):
     for e in sorted(entries):
@@ -100,7 +158,7 @@ for name, entries in sorted(triggers.items()):
         if not os.path.exists(e):
             print('NOSUCHFILE\t%s\t%s' % (name, e))
 
-print('COUNTED\t%d\t%d' % (len(pinned), len(triggers)))
+print('COUNTED\t%d\t%d\t%d' % (len(pinned), len(triggers), len(compiled)))
 PY
 )"
 
@@ -108,11 +166,16 @@ uncovered=0
 missing=0
 pinned_n=0
 triggers_n=0
+compiled_n=0
 
-while IFS=$'\t' read -r kind a b; do
+while IFS=$'\t' read -r kind a b c; do
     case "$kind" in
         UNCOVERED)
             echo "  x  $b is read by $COUNTS and no '$a' paths entry covers it" >&2
+            uncovered=$((uncovered + 1))
+            ;;
+        UNREAD)
+            echo "  x  $b is compiled by a doc/source checker and no '$a' paths entry covers it" >&2
             uncovered=$((uncovered + 1))
             ;;
         NOSUCHFILE)
@@ -126,6 +189,7 @@ while IFS=$'\t' read -r kind a b; do
         COUNTED)
             pinned_n="$a"
             triggers_n="$b"
+            compiled_n="$c"
             ;;
     esac
 done <<< "$report"
@@ -137,5 +201,5 @@ if [ "$uncovered" -ne 0 ] || [ "$missing" -ne 0 ]; then
     exit 1
 fi
 
-echo "  ok all $pinned_n file(s) pinned by check-doc-counts.sh are covered by" \
+echo "  ok all $pinned_n pinned and $compiled_n compiled file(s) are covered by" \
      "each of the $triggers_n CI trigger(s), and every named path exists."
