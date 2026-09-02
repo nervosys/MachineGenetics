@@ -125,7 +125,14 @@ if ($CheckDocs -and $failed.Count -eq 0) {
     } else {
         Push-Location $repo
         try {
-            $lines -join "`n" | & $bash 'scripts/check-doc-counts.sh'
+            # Through `emit-doc-counts.sh` first. This used to pipe the six
+            # crate counts straight into the checker, which has 91 pins, so
+            # -CheckDocs reported "INCOMPLETE - 46 documented count(s) had
+            # nothing to compare against" and exited 1 -- on every Windows
+            # run, since the bash twin grew past crate counts. The comment
+            # above says "one implementation of the check"; the measurements
+            # were the half still duplicated. Item 27.
+            $lines -join "`n" | & $bash 'scripts/emit-doc-counts.sh' | & $bash 'scripts/check-doc-counts.sh'
             if ($LASTEXITCODE -ne 0) { $failed += 'documented counts' }
         } finally { Pop-Location }
     }
