@@ -1,7 +1,7 @@
 //! # MAGE SKB ↔ RMI Ontology Adapter
 //!
-//! Translates between MAGE's [`crate::skb`] (9,157+ safety rules organized
-//! by [`RuleDatabase`]) and RMI's [`rmi::core::ontology::Ontology`] (a
+//! Translates between MAGE's [`crate::skb`] (255 safety rules across eight
+//! [`RuleDatabase`]s) and RMI's [`rmi::core::ontology::Ontology`] (a
 //! concept-relation graph used by [`rmi::core::agent::Agent`] discovery).
 //!
 //! ## Semantic mapping

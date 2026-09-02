@@ -48,7 +48,7 @@ MAGE (Machine Genetics) is a systems programming language designed for the age o
 
 2. **Dual encoding.** Human mode uses clear, modern keywords (`val`, `var`, `data`, `extend`, `guard`, `defer`) that improve on Rust's conventions while remaining instantly readable. Agent mode compresses every concept into minimal symbols — Greek letters for AI constructs, mathematical operators for tensor algebra — achieving the density of hexadecimal applied to intelligence.
 
-3. **Safety without ceremony.** Ownership, borrowing, and lifetimes are enforced but fully inferred. No lifetime annotations, no `PhantomData`, no `Pin`. The Safety Knowledge Base (SKB) encodes 9,157 rules that the compiler applies automatically. In agent mode, **all safety constructs are handled by the compiler and SKB** — `unsafe` blocks, lifetime annotations, `Send`/`Sync` bounds, and `Pin<T>` are entirely elided from the language surface, maximizing token efficiency while the compiler maintains full safety guarantees.
+3. **Safety without ceremony.** Ownership, borrowing, and lifetimes are enforced but fully inferred. No lifetime annotations, no `PhantomData`, no `Pin`. The Safety Knowledge Base (SKB) encodes 255 rules across eight databases (*designed, not built: no compiler stage consults them — see §7.3*). In agent mode, **all safety constructs are handled by the compiler and SKB** — `unsafe` blocks, lifetime annotations, `Send`/`Sync` bounds, and `Pin<T>` are entirely elided from the language surface, maximizing token efficiency while the compiler maintains full safety guarantees.
 
 4. **Effects make side effects visible.** Every function declares its effects (`/ io`, `/ gpu`, `/ llm`). Pure functions have no annotation. Algebraic effect handlers provide structured concurrency and composable I/O.
 
@@ -953,13 +953,19 @@ pub fn check_types(from: str, to: str) -> bool / rules {
 
 ### 7.3 Integration with the Safety Knowledge Base (SKB)
 
-The SKB from the compiler is itself a `kb` instance with 9,157 rules across:
-- Ownership and borrowing (2,100 rules)
-- Type safety (1,800 rules)
-- Concurrency (1,500 rules)
-- FFI safety (1,200 rules)
-- Memory layout (1,300 rules)
-- API contracts (1,257 rules)
+The SKB from the compiler holds **255 rules** across eight databases:
+- Ownership (40), Borrow (40), Lifetime (35)
+- TypeSafety (40), Concurrency (35), FFI (20)
+- AgentElision (30), SwarmSafety (15)
+
+**Corrected 2026-09-02.** This list read "9,157 rules" across six differently
+named categories — Ownership and borrowing 2,100, Type safety 1,800,
+Concurrency 1,500, FFI safety 1,200, Memory layout 1,300, API contracts 1,257.
+That figure appears in four documents with **three mutually inconsistent
+decompositions**, and none of them matches the compiler, which serves the
+counts above from `builtin_rules()` in `prototype/src/skb.rs`, pinned by a
+test. `skb/README.md` records where the number came from and what is designed
+rather than built.
 
 Agents can query the SKB at compile time:
 
@@ -1620,7 +1626,10 @@ spec Sortable<T: Ord> {
 
 Contracts are verified via:
 1. **Static analysis** — SMT solver for decidable predicates
-2. **SKB cross-reference** — matching against 9,157 known safety rules
+2. **SKB cross-reference** — matching against the 255 known safety rules
+   *(designed, not built: no compiler stage consults the SKB. `types.rs`,
+   `effects.rs`, `resolve.rs`, `verify.rs`, `heal.rs` and `mlir.rs` contain
+   zero references to it. The rules are served to agents over RAP.)*
 3. **Runtime assertion** — fallback for undecidable predicates
 
 ---

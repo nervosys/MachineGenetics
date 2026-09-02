@@ -1,66 +1,128 @@
 # MAGE Safety Knowledge Base (SKB)
 
-The SKB is a corpus of **9,157 safety rules** that the MAGE compiler queries
-at compile time to verify code safety, suggest fixes, and provide agent-readable
-diagnostics.
+> **Corrected 2026-09-02.** This file described a 9,157-rule corpus that the
+> compiler queries at compile time, a query language, and two MLIR operations.
+> The compiler serves **255 rules**, from a table compiled into the binary, and
+> **reads nothing in this directory**. The query language and both MLIR
+> operations do not exist. What follows is what is here; the design that was
+> here before is kept at the end, labelled, because the intent is worth keeping
+> and the false impression is not.
 
-## Structure
+## What the compiler actually serves
 
-```shell
+`prototype/src/skb.rs` holds `builtin_rules()`, a `Vec<Rule>` compiled into
+`mage-parse`. Counts below are from `skb::rule_counts_by_db()` and
+`skb::rule_count()`, and are pinned by `rule_counts_per_database` in
+`skb.rs` — so they cannot drift from this table without a test failing.
+
+| Database | Rules | ID prefix | Covers |
+| --- | ---: | --- | --- |
+| Ownership | 40 | `OWN-` | Move semantics, Copy, Clone, Drop |
+| Borrow | 40 | `BOR-` | Aliasing XOR mutability, iterator invalidation |
+| Lifetime | 35 | `LIF-` | Dangling references, elision, struct lifetimes |
+| TypeSafety | 40 | `TYP-` | Type mismatch, overflow, Option/Result, effects |
+| Concurrency | 35 | `CON-` | Data races, deadlocks, Send/Sync, async |
+| FFI | 20 | `FFI-` | Null pointers, ABI, strings, repr(C) |
+| AgentElision | 30 | `AEL-` | Safety constructs agent mode elides from syntax |
+| SwarmSafety | 15 | `SWM-` | Consensus, topology, fault tolerance, deadlock |
+| **Total** | **255** | | |
+
+The last two are not a detail. `AgentElision` and `SwarmSafety` are the
+databases that make this a *MAGE* safety knowledge base rather than a Rust one,
+they are 45 of the 255 rules, and the previous version of this file did not
+mention either.
+
+## What is in this directory
+
+Six JSON files holding **56 rules**, plus a manifest and a schema:
+
+```
 skb/
-├── manifest.json           # Version, database sizes, hashes
-├── rule-schema.json        # JSON Schema for rule validation
-├── README.md               # This file
-└── rule s/
-    ├──  ownership.json     # OWN-xxx  (2,847 rules in full corpus)
-    ├──  borrow.json        # BR-xxx   (1,203 rules in full corpus)
-    ├──  lifetime.json      # LT-xxx   (894 rules in full corpus)
-    ├──  type_safety.json   # TS-xxx   (3,412 rules in full corpus)
-    ├── concurrency.json    # CC-xxx   (567 rules in full corpus)
-    └── ffi.json            # FFI-xxx  (234 rules in full corpus)
+├── manifest.json        version, database sizes, hashes
+├── rule-schema.json     JSON Schema for a rule
+├── README.md            this file
+└── rules/
+    ├── ownership.json   10      ├── type_safety.json  13
+    ├── borrow.json      10      ├── concurrency.json   8
+    ├── lifetime.json     8      └── ffi.json           7
 ```
 
-## Rule Categories
+**No crate reads any of it.** The `"skb/rules"` occurrences in `rap.rs` and
+`ontology.rs` are the JSON-RPC *method name*, which is easy to mistake for
+evidence that the directory is loaded. There is no `include_str!`, no
+`read_to_string`, and no path constant pointing here.
 
-| Database    | Rules     | ID Prefix | Covers                                          |
-| ----------- | --------- | --------- | ----------------------------------------------- |
-| Ownership   | 2,847     | `OWN-`    | Move semantics, Copy, Clone, Drop               |
-| Borrow      | 1,203     | `BR-`     | Aliasing XOR mutability, iterator invalidation  |
-| Lifetime    | 894       | `LT-`     | Dangling references, elision, struct lifetimes  |
-| Type Safety | 3,412     | `TS-`     | Type mismatch, overflow, Option/Result, effects |
-| Concurrency | 567       | `CC-`     | Data races, deadlocks, Send/Sync, async         |
-| FFI         | 234       | `FFI-`    | Null pointers, ABI, strings, repr(C)            |
-| **Total**   | **9,157** |           |                                                 |
+Nor is this tree the source the built-in rules were generated from. The two do
+not share an identifier scheme:
 
-## Rule Lifecycle
+| | on disk | in the binary |
+| --- | --- | --- |
+| Borrow | `BR-` | `BOR-` |
+| Lifetime | `LT-` | `LIF-` |
+| TypeSafety | `TS-` | `TYP-` |
+| Concurrency | `CC-` | `CON-` |
+| — | `MEM-`, `TC-` (1 each) | no such database |
+| AgentElision, SwarmSafety | *no file* | 30 and 15 rules |
 
-1. **Proposed** — new rule submitted for review
-2. **Staged** — under testing; may generate warnings only
-3. **Active** — fully enforced by the compiler
-4. **Deprecated** — superseded or found to be incorrect
+So the directory is neither an input nor an export. It is a parallel corpus,
+and it can drift from the compiler without anything noticing — which is the
+`stdlib/` shape this repository has found before.
 
-## Seed Corpus
+**This is open item 23 in `HANDOFF.md`**, and the decision it needs is which of
+these the tree should be: the source of truth (load it, and delete
+`builtin_rules()`), an export (generate it, and check it), or documentation
+(say so — this file now does). Until that is decided, prefer `builtin_rules()`:
+it is what runs.
 
-This directory contains **seed rules** — representative examples for each
-category that define the schema, patterns, and fix templates. The full 9,157-rule
-corpus is generated from these seeds and empirical data from the Rust ecosystem.
+## Querying the rules
 
-## Query Language (SKB-QL)
+Over RAP (`mage-parse --rap`), which is the only programmatic surface:
 
-Rules are queried using SKB-QL, which supports both SQL-like and compact forms:
+| Method | Serves |
+| --- | --- |
+| `skb/rules` | the 255 safety rules, optionally filtered by `domain` |
+| `skb/query` | the **symbol** knowledge base — effects, capabilities, tags, Rust aliases — by `fqn`, `effect`, `capability`, `tag`, `rust_alias` or `module` |
+| `skb/spec` | one function's `@req`/`@ens` spec block, by `fqn` |
+
+**Only the first of those serves rules.** `skb/query` and `skb/spec` read
+`builtin_skb()`, a table of symbol metadata that happens to live in the same
+module; `skb/rules` reads `builtin_rules()`. Two knowledge bases share the
+prefix, and asking `skb/query` for `UseAfterMove` correctly returns nothing.
+
+Outside RAP, `skb::` is called from exactly two other places — `codegen_bridge`
+and `rmi_ontology_adapter` — and from **no** stage of the compiler.
+`types.rs`, `effects.rs`, `resolve.rs`, `verify.rs`, `heal.rs` and `mlir.rs`
+contain zero references to it between them.
+
+---
+
+## Design, not implemented
+
+Kept because the intent is worth keeping. Everything in this section describes
+something that **does not exist today**, and `MAGE_SPEC.md` uses the same
+convention for the five constructs it documents and does not implement.
+
+**A 9,157-rule corpus** — Ownership 2,847, Borrow 1,203, Lifetime 894, Type
+Safety 3,412, Concurrency 567, FFI 234 — generated from the seed rules in this
+directory plus empirical data from the Rust ecosystem. There is no generator,
+and the figure appears in no measurement.
+
+**SKB-QL**, a query language in SQL-like and compact agent-optimised forms:
 
 ```
-// SQL-like
 SELECT * FROM borrow WHERE category = 'double-borrow' AND severity = 'error'
-
-// Compact (agent-optimized)
 ?borrow MutBorrow(Vec<*>) @loop
 ```
 
-## Integration
+Not implemented. The only occurrences of this syntax in the tree are three
+example lines in `skb.rs`'s own header comment, which document a language the
+file below them does not parse.
 
-The SKB is part of the formal type judgment: **Γ; Σ; Δ ⊢ e : τ ⊣ ε**, where
-**Σ** is the SKB context. Rules are queried via the MLIR `MAGE.skb.query` and
-`MAGE.skb.validate` operations during compile-time evaluation.
+**A rule lifecycle** — Proposed → Staged → Active → Deprecated. `RuleSeverity`
+exists; a lifecycle state does not.
 
-The RAP server exposes SKB queries via `skb/query` JSON-RPC method.
+**MLIR integration**, `MAGE.skb.query` and `MAGE.skb.validate` operations
+consulted during compile-time evaluation, with the SKB as **Σ** in the judgment
+Γ; Σ; Δ ⊢ e : τ ⊣ ε. Neither operation appears anywhere in the tree. The
+compiler does not consult the SKB during checking at all — the rules are served
+to agents over RAP, and that is their only consumer.

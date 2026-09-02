@@ -24,7 +24,7 @@ use serde::{Deserialize, Serialize};
 //  Rule Data Model (proposal §15.1)
 // ══════════════════════════════════════════════════════════════════════
 
-/// Which of the seven rule databases a rule belongs to.
+/// Which of the eight rule databases a rule belongs to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum RuleDatabase {
     Ownership,

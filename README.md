@@ -262,7 +262,7 @@ prototype). Reproduce with `agentic-eval --example swe_languages`.
 
 - 🎯 **Formal Contracts** — Built-in `@req`, `@ens`, and `@inv` annotations enable spec-first development. The compiler verifies contracts and uses them for synthesis.
 
-- 🎯 **Safety Knowledge Base** — 9,157 safety rules across ownership, borrowing, lifetimes, type safety, concurrency, and FFI — queryable at compile time via SKB-QL, removing surface-syntax noise (no lifetime annotations in source).
+- 🎯 **Safety Knowledge Base** — 255 safety rules across eight databases: ownership, borrowing, lifetimes, type safety, concurrency, FFI, agent elision and swarm safety. Served to agents over RAP (`skb/rules`); see [skb/README.md](skb/README.md) for what is and is not built.
 
 - 🎯 **Cost Oracle** — Every construct exposes predicted cost (cycles, memory, latency, energy) per target architecture **before** code generation. Agents make informed optimization decisions.
 
@@ -394,7 +394,7 @@ framework/          Framewerx — neurosymbolic layer over `rmi`
 forge/              Project toolchain + content-addressed block registry
                     (`forge new/check/build/run/publish/block`, `Forge.toml`)
 stdlib/             Standard library (`.mg` source)
-skb/                Safety Knowledge Base (9,157 rules, 6 categories)
+skb/                Safety Knowledge Base seed corpus (56 rules; the compiler serves 255 of its own)
 benchmarks/         Evaluation corpus + cross-language executability harness
 examples/           Self-contained example projects (`Forge.toml` + `src/main.mg`)
 editors/            Editor support: tree-sitter grammar, Helix, Neovim
@@ -459,7 +459,7 @@ Twelve self-contained projects in [`examples/`](examples/), each with a
 | [agent-guide/](agent-guide/)                               | AI agent SDK (prompts, patterns, RAP methods)      |
 | [cookbook/](cookbook/)                                     | Practical recipes (I/O, HTTP, agents, concurrency) |
 | [migration-guide/](migration-guide/)                       | Rust → MAGE migration                           |
-| [skb/](skb/)                                               | Safety Knowledge Base (9,157 rules, 6 categories)  |
+| [skb/](skb/)                                               | Safety Knowledge Base seed corpus (56 rules, unread) |
 | [training/](training/)                                     | Training data and evaluation (100 samples)         |
 | [benchmarks/](benchmarks/)                                 | 100-task evaluation corpus with metrics            |
 

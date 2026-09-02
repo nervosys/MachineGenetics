@@ -1147,7 +1147,7 @@ asked. Only "there was no call" belongs in `error`.
 | 2 | GPU CI runner | Correctness **is** verified on the hardware here and recorded. What is missing is a self-hosted runner so `cuda-gpu` runs unattended — an account action, declined once already. |
 | 3 | TLS trust posture | The transport seam and a `rustls` implementation exist behind `--features tls`. Pinned self-signed / mutual TLS / public PKI is deliberately the operator's; `acceptor`/`connector` take your config. |
 | 19 | **`Signer::new` accepts an empty HMAC key** | Measured 2026-08-25: it signs, the record verifies, and an unset environment variable is exactly how a caller gets there — so an unprovisioned fleet authenticates everything and reports success. Refusing it means returning a `Result` from a public API of the build engine, which is a breaking change and the owner's call. Rustdoc warns; `SECURITY_AUDIT.md` §2 records it and ranks it first of three key-management actions. **Not a "design question" filed against a defect** — the check has been run, the behaviour is measured, and only the API decision is open. |
-| 23 | **`skb/` is a 56-rule JSON tree that nothing reads** | Found 2026-08-25 rewriting `internals/08-skb-aci.md`. The compiler serves **255 rules across 8 databases** from `builtin_rules()` in `skb.rs`, pinned by `rule_counts_per_database`. On disk, `skb/manifest.json` + `skb/rule-schema.json` + six `skb/rules/*.json` hold **56 rules**, and **no crate reads any of them** — the `"skb/rules"` occurrences in `rap.rs` and `ontology.rs` are the RAP *method name*, which is easy to mistake for evidence the directory is loaded. Two of the databases (`AgentElision`, `SwarmSafety`, 45 rules) have no JSON file at all. This is the `stdlib/` shape: authoritative-looking, read by nothing, diverging silently. `check-orphan-sources.sh` cannot see it — it finds `.rs` files no `mod` reaches, not **data** nothing loads. Decide whether the tree is the source of truth (load it) or documentation (say so in `skb/README.md`), then delete or wire it. |
+| 23 | **`skb/` is a 56-rule JSON tree that nothing reads** | Found 2026-08-25. **Documented 2026-09-02; the load-or-delete decision is still open.** The compiler serves **255 rules across 8 databases** from `builtin_rules()`, pinned by `rule_counts_per_database` and confirmed live through `skb::rule_count()`. On disk: `manifest.json` + `rule-schema.json` + six `rules/*.json` holding **56 rules**, read by nothing — the `"skb/rules"` occurrences in `rap.rs` and `ontology.rs` are the JSON-RPC *method name*. Two databases (`AgentElision` 30, `SwarmSafety` 15) have no file at all. **And the tree is not the binary's source either**: they do not share an ID scheme (`BR-`/`LT-`/`TS-`/`CC-` on disk against `BOR-`/`LIF-`/`TYP-`/`CON-` in the binary, plus two stray `MEM-`/`TC-` rules), so it is neither an input nor an export. `skb/README.md` now says so; what remains is the decision — load it, generate it, or delete it. |
 | 22 | **The Neovim LSP registration cannot work** | Found 2026-08-25 rewriting `internals/07-rap-server.md` §7.6. `editors/neovim/lua/mage.lua` registers RAP as an `lspconfig` server with `cmd = { 'rap' }`. Three independent blockers: `rap.rs` has **zero** occurrences of `initialize` or `textDocument`, so it is not an LSP server; there is no `rap` binary (it is `mage-parse --rap`); and RAP is TCP while `lspconfig`'s `cmd` speaks stdio. Its settings block names `completion.autoimport`, `inlayHints.typeHints` and `diagnostics.skb`, none of which RAP has methods for. Tree-sitter highlighting works in all four editors; nothing else does. The file now carries a warning rather than being deleted, because the fix is a decision: write an LSP shim over RAP, or accept that RAP is an agent protocol and not an editor one — which is what §7.1's design goals describe. **Related:** `editors/README.md` advertised a VS Code extension at `../MAGE-vscode/`; that directory has never existed and no VS Code file is tracked anywhere. |
 | 21 | **Bounds are reported, and still not enforced** | Found 2026-08-25; the silence fixed 2026-09-01. `f describe[T](v: T) -> str ~> T: TotallyMadeUpTrait { … }` reported **`Errors: 0`, `Status: OK`** and nothing else — the trait exists nowhere and the bound naming it was neither resolved nor enforced. `resolve.rs` now emits a warning naming each bound it discards, at all eight surface forms that can carry one (inline on function, struct, enum, trait, impl, `spec`, `net`, and the `~>` clause); five tests pin it and each was verified by breaking it. **It is a warning, not an error, and that was the judgement call**: an error would reject `quick-start/03-syntax-tour.md` and `migration-guide/04-types.md`, which teach writing bounds and which `check-doc-blocks.sh` certifies — and the *names* cannot be checked either, because `Clone`, `Display` and `Ord` are declared in no MAGE source, so "unknown trait" would fire on every correct bound. **What is still open is the feature**: `types.rs` has no obligations and no impl table, so deciding to build trait solving is a decision about scope, not a defect waiting on a patch. The program no longer *looks* constrained without saying it is not. |
 | 20 | **The HMAC path cannot be rotated** | One key per `Signer`, one `auth_key` per `WorkerServer`, no key id, no overlapping acceptance window — so changing the fleet secret needs a simultaneous fleet-wide change. The Ed25519 path beside it rotates and revokes properly, which is what makes the gap visible. Adding a key id is a wire-format change; hence a decision, not a patch. |
@@ -1835,6 +1835,35 @@ elsewhere, pointing at the wrong line.
 ### 5. The document is wrong, not the compiler
 
 The mirror image, and easy to get backwards.
+
+**9,157, in four documents, with three different decompositions.** The SKB's
+rule count is the largest single false figure found so far, and it had been
+stated so often that it read as established. `skb/README.md` broke it down as
+2,847 / 1,203 / 894 / 3,412 / 567 / 234; `MAGE_SPEC.md` §7.3 broke the *same*
+total down as 2,100 / 1,800 / 1,500 / 1,200 / 1,300 / 1,257 under six
+differently named categories; `README.md` published it as the headline feature
+"queryable at compile time via SKB-QL". The compiler serves **255**, across
+eight databases, two of which (`AgentElision`, `SwarmSafety`) no document
+mentioned at all — and they are the two that make it a *MAGE* safety corpus
+rather than a Rust one.
+
+Nothing about SKB-QL, the rule lifecycle, or the MLIR `MAGE.skb.query` /
+`MAGE.skb.validate` operations exists. The compiler does not consult the SKB
+during checking at all: `types.rs`, `effects.rs`, `resolve.rs`, `verify.rs`,
+`heal.rs` and `mlir.rs` contain zero references to it between them. The rules
+are served to agents over RAP, and that is their only consumer.
+
+Corrected where a document describes what ships — `README.md`, `MAGE_SPEC.md`
+(three places), `skb/README.md`, and two source comments. **Left alone in
+`MAGE_PROPOSAL.md` and `AGENTIC_IR_DESIGN.md`, deliberately**: those are
+proposals, a proposed figure is honest in one, and rewriting them would erase
+where the number came from. Recorded here so the next reader knows the
+remaining three occurrences were a decision and not an oversight.
+
+The mechanism is worth naming: **a number repeated in enough places stops
+looking like a claim.** Three inconsistent decompositions of one total sat in
+the repository for the entire life of the project, and each made the others
+look corroborated.
 
 **And the newest instance is one I created, not one I found.** Item 24 said the
 parser never reads generics for `Y` and `D`. It reads them, and always has. My
