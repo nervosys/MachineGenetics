@@ -158,7 +158,58 @@ for name, entries in sorted(triggers.items()):
         if not os.path.exists(e):
             print('NOSUCHFILE\t%s\t%s' % (name, e))
 
-print('COUNTED\t%d\t%d\t%d' % (len(pinned), len(triggers), len(compiled)))
+# Direction 4 — a checker CI never invokes. The first three directions ask
+# whether CI *starts* when a checked file changes; this asks whether the
+# checker runs once it has. A `check-*.sh` nobody wired up is the most likely
+# next instance of "the checker was correct and simply never reached", and it
+# is invisible: it passes locally, it is in the repository, and no run mentions
+# it. Reachability is transitive — `check-doc-counts.sh` is invoked by
+# `test-all.sh`, which CI invokes, and that counts — so this walks the closure
+# rather than only the workflow's own `run:` lines.
+import glob
+
+# An *invocation*, not a mention. The first version of this walk matched any
+# occurrence of `scripts/x.sh` in a script's text, and comments are full of
+# them — this file names `check-doc-counts.sh` in its own header because it
+# reads it. The consequence was not a missed report but a false clean one:
+# cutting `check-doc-counts.sh` out of `test-all.sh` left it genuinely
+# unreachable and this check still passed, certifying reachability that was
+# not there. Found by breaking it, which is the only way that class shows up.
+#
+# So: comments stripped first, and the reference must be preceded by an
+# interpreter, `./`, or the start of a command.
+INVOKE = re.compile(
+    r'(?:(?:^|[|&;(]|\bthen\b|\bdo\b|\belse\b)\s*|\b(?:bash|sh|zsh|pwsh|powershell|source|\.)\s+)'
+    r'"?\$?\{?[A-Za-z_]*\}?/?(scripts/[A-Za-z0-9_.-]+\.(?:sh|ps1))')
+
+
+def invoked_in(text, strip_comments):
+    if strip_comments:
+        text = '\n'.join(l for l in text.split('\n') if not l.lstrip().startswith('#'))
+    return [m.group(1) for m in INVOKE.finditer(text)]
+
+
+seen, frontier = set(), []
+# The workflow's `run:` blocks are commands already; its YAML `#` comments are
+# stripped for the same reason.
+for m in re.finditer(r'^\s*run:\s*\|?(.*(?:\n\s{8,}.*)*)', wf, re.M):
+    frontier += invoked_in(m.group(1), strip_comments=True)
+while frontier:
+    s = frontier.pop()
+    if s in seen:
+        continue
+    seen.add(s)
+    if not os.path.exists(s):
+        continue
+    body = io.open(s, encoding='utf-8', errors='replace').read()
+    frontier += invoked_in(body, strip_comments=True)
+
+checkers = sorted(glob.glob('scripts/check-*.sh'))
+for c in checkers:
+    if c.replace(os.sep, '/') not in seen:
+        print('UNRUN\t-\t%s' % c.replace(os.sep, '/'))
+
+print('COUNTED\t%d\t%d\t%d\t%d' % (len(pinned), len(triggers), len(compiled), len(checkers)))
 PY
 )"
 
@@ -167,8 +218,9 @@ missing=0
 pinned_n=0
 triggers_n=0
 compiled_n=0
+checkers_n=0
 
-while IFS=$'\t' read -r kind a b c; do
+while IFS=$'\t' read -r kind a b c d; do
     case "$kind" in
         UNCOVERED)
             echo "  x  $b is read by $COUNTS and no '$a' paths entry covers it" >&2
@@ -176,6 +228,10 @@ while IFS=$'\t' read -r kind a b c; do
             ;;
         UNREAD)
             echo "  x  $b is compiled by a doc/source checker and no '$a' paths entry covers it" >&2
+            uncovered=$((uncovered + 1))
+            ;;
+        UNRUN)
+            echo "  x  $b exists and no CI step reaches it, directly or through a script CI runs" >&2
             uncovered=$((uncovered + 1))
             ;;
         NOSUCHFILE)
@@ -190,6 +246,7 @@ while IFS=$'\t' read -r kind a b c; do
             pinned_n="$a"
             triggers_n="$b"
             compiled_n="$c"
+            checkers_n="$d"
             ;;
     esac
 done <<< "$report"
@@ -202,4 +259,5 @@ if [ "$uncovered" -ne 0 ] || [ "$missing" -ne 0 ]; then
 fi
 
 echo "  ok all $pinned_n pinned and $compiled_n compiled file(s) are covered by" \
-     "each of the $triggers_n CI trigger(s), and every named path exists."
+     "each of the $triggers_n CI trigger(s), every named path exists, and all" \
+     "$checkers_n checker(s) are reached by a CI step."
