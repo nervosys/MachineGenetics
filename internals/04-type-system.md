@@ -223,14 +223,43 @@ f main() -> str {
 }
 ```
 
-`--check` reports **`Errors: 0`, `Status: OK`** on that program. `TotallyMadeUpTrait`
-does not exist anywhere, and the bound naming it is neither resolved nor
-applied.
+`--check` reported **`Errors: 0`, `Status: OK`** on that program, and said
+nothing else. `TotallyMadeUpTrait` does not exist anywhere, and the bound
+naming it is neither resolved nor applied.
 
 This is the taxonomy's "accepted and silently discarded" — the same shape as a
 swarm's `dispatch` block, which also parsed, was stored, and reached only the
 formatter. A constraint that typechecks and means nothing is worse than a
 missing feature, because the program *looks* constrained.
+
+**The silence is fixed; the discarding is not.** As of 2026-09-01 the resolver
+reports every bound it is about to throw away:
+
+```
+warning: `describe`: the bound `T: TotallyMadeUpTrait` is parsed and then
+discarded — MAGE has no trait solving, so it constrains nothing and a call
+that violates it still reports `Errors: 0`. Keep it as documentation of
+intent, or remove it
+```
+
+`Errors: 0` and `Status: OK` are unchanged, deliberately. Making the bound an
+error would reject `quick-start/03-syntax-tour.md` and
+`migration-guide/04-types.md`, which teach writing one and which
+`check-doc-blocks.sh` certifies. Nor can the *name* be checked and the unknown
+ones rejected: `Clone`, `Display` and `Ord` are declared in no MAGE source, so
+"unknown trait" would fire on every correct bound — the absence of a trait
+universe, seen from the other side.
+
+Every surface form that can carry a bound is covered — inline `[T: Bound]` on
+a function, struct, enum, trait, impl, `spec` and `net`, and the `~>` clause —
+and `resolve.rs`'s tests fail if any one of them stops reporting. Two of the
+nine generic-bearing AST items, `TypeAlias` and `DataDef`, carry a `generics`
+field **no surface syntax reaches**: `Y Alias[T] = T` and `D Rec[T] { v: T, }`
+are both parse errors today. The resolver reports their bounds anyway, so
+whichever day the parser accepts them, nothing is quietly skipped.
+
+Enforcing bounds remains a feature, and unbuilt. What changed is that a
+program no longer looks constrained without being told otherwise.
 
 ## 4.5 Generic Instantiation
 

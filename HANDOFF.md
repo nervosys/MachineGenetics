@@ -12,7 +12,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **2,915** — rmi 1,384 · prototype 1,202 · ribosome 164 · germline 112 · forge 53 |
+| Tests | **2,920** — rmi 1,384 · prototype 1,207 · ribosome 164 · germline 112 · forge 53 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — the fix exists only on `handoff` |
@@ -397,6 +397,13 @@ activity from reading it to review it, and it reaches places review does not:
 items 21 (`~>` bounds parse and are discarded), 22 (the Neovim LSP
 registration cannot work, for three independent reasons), and 23 (`skb/` is 56
 rules nothing reads while the binary serves 255).
+
+**Item 21 has since been half-closed, and closing it found a fourth.** The
+compiler now reports every bound it discards (2026-09-01). Covering *all* the
+surface forms rather than functions alone is what turned up item 24: `Y` and
+`D` carry a `generics` field the parser never fills, because neither
+`Y Alias[T] = T` nor `D Rec[T] { v: T, }` parses. Doing the complete version
+of a small fix is what found it; the function-only version would not have.
 
 Two patterns worth carrying:
 
@@ -1100,7 +1107,7 @@ asked. Only "there was no call" belongs in `error`.
 | 19 | **`Signer::new` accepts an empty HMAC key** | Measured 2026-08-25: it signs, the record verifies, and an unset environment variable is exactly how a caller gets there — so an unprovisioned fleet authenticates everything and reports success. Refusing it means returning a `Result` from a public API of the build engine, which is a breaking change and the owner's call. Rustdoc warns; `SECURITY_AUDIT.md` §2 records it and ranks it first of three key-management actions. **Not a "design question" filed against a defect** — the check has been run, the behaviour is measured, and only the API decision is open. |
 | 23 | **`skb/` is a 56-rule JSON tree that nothing reads** | Found 2026-08-25 rewriting `internals/08-skb-aci.md`. The compiler serves **255 rules across 8 databases** from `builtin_rules()` in `skb.rs`, pinned by `rule_counts_per_database`. On disk, `skb/manifest.json` + `skb/rule-schema.json` + six `skb/rules/*.json` hold **56 rules**, and **no crate reads any of them** — the `"skb/rules"` occurrences in `rap.rs` and `ontology.rs` are the RAP *method name*, which is easy to mistake for evidence the directory is loaded. Two of the databases (`AgentElision`, `SwarmSafety`, 45 rules) have no JSON file at all. This is the `stdlib/` shape: authoritative-looking, read by nothing, diverging silently. `check-orphan-sources.sh` cannot see it — it finds `.rs` files no `mod` reaches, not **data** nothing loads. Decide whether the tree is the source of truth (load it) or documentation (say so in `skb/README.md`), then delete or wire it. |
 | 22 | **The Neovim LSP registration cannot work** | Found 2026-08-25 rewriting `internals/07-rap-server.md` §7.6. `editors/neovim/lua/mage.lua` registers RAP as an `lspconfig` server with `cmd = { 'rap' }`. Three independent blockers: `rap.rs` has **zero** occurrences of `initialize` or `textDocument`, so it is not an LSP server; there is no `rap` binary (it is `mage-parse --rap`); and RAP is TCP while `lspconfig`'s `cmd` speaks stdio. Its settings block names `completion.autoimport`, `inlayHints.typeHints` and `diagnostics.skb`, none of which RAP has methods for. Tree-sitter highlighting works in all four editors; nothing else does. The file now carries a warning rather than being deleted, because the fix is a decision: write an LSP shim over RAP, or accept that RAP is an agent protocol and not an editor one — which is what §7.1's design goals describe. **Related:** `editors/README.md` advertised a VS Code extension at `../MAGE-vscode/`; that directory has never existed and no VS Code file is tracked anywhere. |
-| 21 | **`~>` where-clause bounds parse and are then discarded** | Found 2026-08-25 while rewriting `internals/04-type-system.md`. `f describe[T](v: T) -> str ~> T: TotallyMadeUpTrait { … }` reports **`Errors: 0`, `Status: OK`** — the trait does not exist anywhere and the bound naming it is neither resolved nor enforced. `where_clause` is parsed into `Vec<WherePredicate>` and stored, and every consumer either prints it (`fmt`), strips lifetimes (`elision`), counts tokens (`token_budget`) or builds an empty one; `types.rs` never mentions `bounds`. There is no trait solving at all — no obligations, no impl table. **Taxonomy §3, "accepted and silently discarded"**, the same shape as a swarm's `dispatch` block. The cheap honest fix is the one `use` got: warn that the bound is not enforced. Resolving bounds properly is a feature. Not done unilaterally — this is a compiler behaviour change and the second one this session would be one too many without a decision. |
+| 21 | **Bounds are reported, and still not enforced** | Found 2026-08-25; the silence fixed 2026-09-01. `f describe[T](v: T) -> str ~> T: TotallyMadeUpTrait { … }` reported **`Errors: 0`, `Status: OK`** and nothing else — the trait exists nowhere and the bound naming it was neither resolved nor enforced. `resolve.rs` now emits a warning naming each bound it discards, at all eight surface forms that can carry one (inline on function, struct, enum, trait, impl, `spec`, `net`, and the `~>` clause); five tests pin it and each was verified by breaking it. **It is a warning, not an error, and that was the judgement call**: an error would reject `quick-start/03-syntax-tour.md` and `migration-guide/04-types.md`, which teach writing bounds and which `check-doc-blocks.sh` certifies — and the *names* cannot be checked either, because `Clone`, `Display` and `Ord` are declared in no MAGE source, so "unknown trait" would fire on every correct bound. **What is still open is the feature**: `types.rs` has no obligations and no impl table, so deciding to build trait solving is a decision about scope, not a defect waiting on a patch. The program no longer *looks* constrained without saying it is not. |
 | 20 | **The HMAC path cannot be rotated** | One key per `Signer`, one `auth_key` per `WorkerServer`, no key id, no overlapping acceptance window — so changing the fleet secret needs a simultaneous fleet-wide change. The Ed25519 path beside it rotates and revokes properly, which is what makes the gap visible. Adding a key id is a wire-format change; hence a decision, not a patch. |
 
 ### Deliberate, and not defects
@@ -1307,7 +1314,7 @@ implementation task**:
 - **Then the evaluator rework.** `eval.rs` is 2,987 lines, 39 expression forms
   and 53 recursive `self.eval(` sites, all of which keep the continuation in the
   Rust call stack — where it cannot be captured. Multi-shot needs CPS or an
-  explicit CEK-style machine, which touches every form, with 1,202 tests riding
+  explicit CEK-style machine, which touches every form, with 1,207 tests riding
   on current behaviour.
 
 **This item was filed under "real work, unstarted" with no blocker marked**,
@@ -1337,8 +1344,8 @@ hand.
 
 ### Small, sharp, cheap
 
-Three, all left by this session and all recorded where they were found rather
-than acted on:
+Two open, and one more added on 2026-09-01 — all recorded where they were
+found rather than acted on:
 
 | # | Item | Why it is here and not done |
 |---|---|---|
@@ -1347,6 +1354,7 @@ than acted on:
 | 16 | ~~**`rmi`'s `Send`/`Sync` on refcounted buffers read the counter `Relaxed`**~~ | **Closed 2026-08-19, and it was unsound after all** — the row previously said "not demonstrated unsound", which was true only because nobody had written the interleaving down. `as_bytes_mut` is `Arc::get_mut` by hand, and it loaded the count `Relaxed`. Thread A reads through `as_bytes`, then drops its handle (`fetch_sub`, `Release`). Thread B's `Relaxed` load observes `1` **without** synchronizing-with that `Release`, so B's writes through the returned `&mut [u8]` are unordered against A's reads of the same bytes: a data race on the ordinary sharing path. Now `Acquire`, which is the ordering `Arc::get_mut` uses and for exactly this reason. The four `unsafe impl` are sound under that ordering. `refcount()` stays `Relaxed` and is now documented as advisory, since a statistic confers nothing. **No test here verifies this**, and none can: the fix is invisible to a single-threaded suite, and on x86 — where loads are acquire in hardware — the broken version would never have manifested either. `loom` would verify it and is not a dependency this vendored crate should gain on my say-so. Recorded rather than instrumented, per rule 9. |
 | 17 | ~~**`rmi`'s `wasm` feature builds, pulls a dependency, and enables no code**~~ | **Closed 2026-08-19, the day it was filed.** `compute/wasm.rs` was 208 lines no `mod` declaration reached, so `--features wasm` succeeded, pulled `wasm-bindgen v0.2.126` into the graph, and enabled nothing — while `core/discoverability.rs` advertised a "WASM Backend" unconditionally. The fix was two lines: `#[cfg(feature = "wasm")] pub mod wasm;`. It compiles clean, `--features wasm` and the default build are both warning-free, and all 1,230 lib tests still pass. The file was never broken — only unreferenced, which is the whole reason it survived. Removed from the orphan baseline in the same commit, as that ratchet requires. |
 | 18 | **`rmi` publishes five hardware backends that are CPU code, and they report invented device properties** | Found 2026-08-19 while checking whether the ontology should gate backends by feature — the answer turned out to matter less than what it was gating. `compute/metal.rs`, `vulkan.rs`, `webgpu.rs`, `apple_ane.rs` and `qualcomm.rs` carry no binding for the API they are named after, and `Cargo.toml` declares none: the only GPU crate in the manifest is optional `wgpu`. They are CPU implementations under hardware names, and each constructor comments what a real one *would* do while returning fabricated `DeviceInfo` — `metal.rs` announces itself as `"Metal (Apple GPU)"` with 16 GB of unified memory and 10 compute units; `vulkan.rs` reports 32. **The ontology half is fixed** (`add_extra_compute_backends` now publishes what the code does, plus an `implementation` field naming each as a cpu-scaffold, and the false `feature_flag: "gpu"` on Metal and Vulkan is gone — neither is gated at all). **What is left is a behaviour change in a vendored crate**: a caller that reads `DeviceInfo` to size a workload is told about memory and compute units that do not exist, and correcting that changes what every consumer sees. Options are to report the real CPU device, or to make construction fail when the API is absent — both are upstream's call. Worth ranking above items 15 and 17, because those cost a dependency and this one returns wrong numbers to anyone who asks. |
+| 24 | **`Y` and `D` carry generics no syntax can reach** | Found 2026-09-01 while covering every bound-bearing item for item 21. `TypeAlias` and `DataDef` both have a `generics: Vec<GenericParam>` field, and both `Y Alias[T] = T` and `D Rec[T] { v: T, }` are **parse errors** — the parser never reads generics for either. So the field is constructed empty, threaded through `fmt`, `elision` and `token_budget`, and can hold nothing. This is dead weight rather than a lie: no document promises generic type aliases, and nothing reports success on one. Either wire the parser or drop the field; until then the resolver reports their bounds anyway, so the day the parser accepts them nothing is silently skipped. **Cheap, and worth doing by whoever next touches the parser** — it is two lines of `parse_generics` away, and leaving a field that cannot be populated is how the next reader concludes the feature exists. |
 
 The five items previously here — `guard` as a reference, the `+=` diagnostic,
 `scan`'s seed, `pub` on a `data` field, and the array-literal/slice mismatch —
@@ -2323,6 +2331,14 @@ doc_evals=M
 - **Regenerate the ontology from a *rebuilt* binary.** One commit shipped a stale
   `MAGE_ONTOLOGY.json` because `--emit-ontology` ran from a binary built before
   the change. `cargo test` builds the test harness, not `mage-parse`.
+- **A stale *debug* artifact can fail a test that passes in release.** `forge`'s
+  `the_manifest_and_the_dispatcher_agree` reads `src/bin/forge.rs` through
+  `env!("CARGO_MANIFEST_DIR")`, and a debug object left over from before the
+  MechGen → MAGE rename still had the old path baked in — so `test-all.sh` (which
+  defaults to debug) failed while `--release` passed, on the same tree. Touching
+  the source cleared it. Nothing was wrong with the repository, which is exactly
+  why it cost time: the failure looked like a real one, and reproduced.
+  **Check a suspicious failure against a clean rebuild before believing it.**
 
 ---
 
@@ -2386,9 +2402,9 @@ harder to notice because it arrives wearing a green tick.
 
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,202**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,207**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
-  across five crates **2,915**; documented-count pins **85**, up from 46 — the
+  across five crates **2,920**; documented-count pins **85**, up from 46 — the
   four newest hold `SECURITY_AUDIT.md`'s `unsafe` inventory, a claim that had
   been wrong twice.
 - Every typechecker fix has landed without breaking an existing test **except

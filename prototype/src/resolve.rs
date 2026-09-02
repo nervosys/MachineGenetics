@@ -460,10 +460,21 @@ impl Resolver {
             ast::ItemKind::TypeAlias(ta) => self.resolve_type_alias(ta),
             ast::ItemKind::Const(cd) => self.resolve_const(cd),
             ast::ItemKind::Effect(ed) => self.resolve_effect(ed),
-            ast::ItemKind::Spec(_) => { /* spec bodies are declarative, skip for now */ }
+            // These three bodies are not resolved, but their generic
+            // parameters can still carry bounds, and a bound discarded in a
+            // `spec`, a `net` or a `data` is discarded exactly as silently as
+            // one in a function. Reporting five of eight sites would have left
+            // three to be found later.
+            ast::ItemKind::Spec(sd) => {
+                self.warn_discarded_bounds(&format!("`{}`", sd.name), &sd.generics, &[]);
+                /* spec bodies are declarative, skip for now */
+            }
             ast::ItemKind::Agent(_) => { /* agent bodies are declarative, skip for now */ }
             ast::ItemKind::Swarm(_) => { /* swarm bodies are declarative, skip for now */ }
-            ast::ItemKind::Net(_) => { /* net bodies resolved later */ }
+            ast::ItemKind::Net(nd) => {
+                self.warn_discarded_bounds(&format!("`{}`", nd.name), &nd.generics, &[]);
+                /* net bodies resolved later */
+            }
             ast::ItemKind::Kb(_) => { /* kb bodies resolved later */ }
             ast::ItemKind::Evolve(_) => { /* evolve bodies resolved later */ }
             ast::ItemKind::Train(_) => { /* train bodies resolved later */ }
@@ -471,7 +482,10 @@ impl Resolver {
                 self.resolve_ast_type(&sd.ty);
                 self.resolve_expr(&sd.value);
             }
-            ast::ItemKind::Data(_) => { /* data fields are simple, skip for now */ }
+            ast::ItemKind::Data(dd) => {
+                self.warn_discarded_bounds(&format!("`{}`", dd.name), &dd.generics, &[]);
+                /* data fields are simple, skip for now */
+            }
             ast::ItemKind::Extend(eb) => {
                 self.push_scope();
                 self.resolve_ast_type(&eb.target_type);
@@ -485,6 +499,7 @@ impl Resolver {
     }
 
     fn resolve_function(&mut self, fd: &ast::FunctionDef) {
+        self.warn_discarded_bounds(&format!("`{}`", fd.name), &fd.generics, &fd.where_clause);
         self.push_scope();
 
         // Generic params.
@@ -514,6 +529,7 @@ impl Resolver {
     }
 
     fn resolve_struct(&mut self, sd: &ast::StructDef) {
+        self.warn_discarded_bounds(&format!("`{}`", sd.name), &sd.generics, &[]);
         self.push_scope();
         for gp in &sd.generics {
             self.define_type(&gp.name, SymbolKind::GenericParam);
@@ -525,6 +541,7 @@ impl Resolver {
     }
 
     fn resolve_enum(&mut self, ed: &ast::EnumDef) {
+        self.warn_discarded_bounds(&format!("`{}`", ed.name), &ed.generics, &[]);
         self.push_scope();
         for gp in &ed.generics {
             self.define_type(&gp.name, SymbolKind::GenericParam);
@@ -548,6 +565,7 @@ impl Resolver {
     }
 
     fn resolve_trait(&mut self, td: &ast::TraitDef) {
+        self.warn_discarded_bounds(&format!("`{}`", td.name), &td.generics, &[]);
         self.push_scope();
         for gp in &td.generics {
             self.define_type(&gp.name, SymbolKind::GenericParam);
@@ -560,6 +578,13 @@ impl Resolver {
     }
 
     fn resolve_impl(&mut self, ib: &ast::ImplBlock) {
+        // An impl block has no name of its own; the trait it implements is the
+        // most useful thing to point at, and there is not always one.
+        let owner = match &ib.trait_path {
+            Some(path) => format!("the impl of `{}`", path.join(".")),
+            None => "an impl block".to_string(),
+        };
+        self.warn_discarded_bounds(&owner, &ib.generics, &[]);
         self.push_scope();
         for gp in &ib.generics {
             self.define_type(&gp.name, SymbolKind::GenericParam);
@@ -636,7 +661,70 @@ impl Resolver {
         ));
     }
 
+    // ── Bounds ───────────────────────────────────────────────────────
+    //
+    // `[T: Bound]` and `~> T: Bound` both parse into a `Vec<String>` that is
+    // stored and never resolved. Every consumer of that field prints it
+    // (`fmt`), strips lifetimes from it (`elision`) or counts its tokens
+    // (`token_budget`); `types.rs` does not mention `bounds` at all, and has
+    // no obligations and no impl table to check one against. So
+    //
+    //     f describe[T](v: T) -> str ~> T: TotallyMadeUpTrait { "described" }
+    //
+    // reported `Errors: 0`, `Status: OK` — a constraint naming a trait that
+    // exists nowhere, accepted in silence.
+    //
+    // This is a **warning**, not an error, and deliberately so on both counts.
+    //
+    // Not an error, because the bound is not wrong. It records what the author
+    // meant, `quick-start/03-syntax-tour.md` and `migration-guide/04-types.md`
+    // both teach writing one, and rejecting them would fail documentation this
+    // repository certifies. Nor can the name be resolved and the unknown ones
+    // rejected: `Clone`, `Display` and `Ord` are declared in no MAGE source,
+    // so "unknown trait" would fire on every *correct* bound. There is no
+    // trait universe to resolve against, which is the same finding from the
+    // other side.
+    //
+    // But not silence either. A program that looks constrained and is not is
+    // worse than one that never claimed to be — the shape this repository
+    // keeps finding, and the reason `use` was given a diagnostic rather than
+    // being left to do nothing quietly. Enforcing bounds is a feature; saying
+    // they are not enforced is a sentence.
+
+    fn warn_discarded_bound(&mut self, owner: &str, param: &str, bounds: &[String]) {
+        if bounds.is_empty() {
+            return;
+        }
+        let listed = bounds.join(" + ");
+        self.diagnostics.push(Diagnostic::categorized(
+            Severity::Warning,
+            format!(
+                "{owner}: the bound `{param}: {listed}` is parsed and then discarded — MAGE has no trait solving, so it constrains nothing and a call that violates it still reports `Errors: 0`. Keep it as documentation of intent, or remove it"
+            ),
+            DiagnosticCategory::Other,
+            None,
+        ));
+    }
+
+    /// Every place a bound can be written on one item: the inline generic
+    /// bounds and, for functions, the `~>` clause. Both are discarded, so
+    /// both are reported, and by one path so neither can be forgotten.
+    fn warn_discarded_bounds(
+        &mut self,
+        owner: &str,
+        generics: &[ast::GenericParam],
+        where_clause: &[ast::WherePredicate],
+    ) {
+        for gp in generics {
+            self.warn_discarded_bound(owner, &gp.name, &gp.bounds);
+        }
+        for pred in where_clause {
+            self.warn_discarded_bound(owner, &pred.type_param, &pred.bounds);
+        }
+    }
+
     fn resolve_type_alias(&mut self, ta: &ast::TypeAlias) {
+        self.warn_discarded_bounds(&format!("`{}`", ta.name), &ta.generics, &[]);
         self.push_scope();
         for gp in &ta.generics {
             self.define_type(&gp.name, SymbolKind::GenericParam);
@@ -1315,5 +1403,99 @@ f P(x: i32) -> i32 { x }"),
         // collides with the first.
         assert!(dup("M net { }\nM net { }"), "duplicate after shadowing missed");
         assert!(dup("f map() -> i32 { 1 }\nf map() -> i32 { 2 }"), "duplicate vocab missed");
+    }
+
+    // ── Discarded bounds ─────────────────────────────────────────────
+
+    fn bound_warnings(src: &str) -> Vec<String> {
+        resolve_source(src)
+            .diagnostics
+            .iter()
+            .filter(|d| d.message.contains("is parsed and then discarded"))
+            .map(|d| d.message.clone())
+            .collect()
+    }
+
+    /// HANDOFF item 21, exactly as it was reported: the bound names a trait
+    /// that exists nowhere, and the program was accepted in silence.
+    #[test]
+    fn a_where_clause_bound_naming_no_trait_is_reported() {
+        let warnings = bound_warnings(
+            "f describe[T](v: T) -> s ~> T: TotallyMadeUpTrait { \"described\" }",
+        );
+        assert_eq!(warnings.len(), 1, "expected one warning: {warnings:?}");
+        assert!(
+            warnings[0].contains("`T: TotallyMadeUpTrait`"),
+            "the warning must name the bound it is about: {}",
+            warnings[0]
+        );
+    }
+
+    /// And it stays a *warning*. Turning it into an error would reject
+    /// `quick-start/03-syntax-tour.md` and `migration-guide/04-types.md`,
+    /// which teach writing bounds and which `check-doc-blocks.sh` certifies.
+    #[test]
+    fn a_discarded_bound_is_never_an_error() {
+        let r = resolve_source("f g[T](x: T) -> T ~> T: Clone { x }");
+        assert!(
+            !r.diagnostics.iter().any(|d| d.severity == Severity::Error),
+            "a bound must not fail the program: {:?}",
+            r.diagnostics
+        );
+    }
+
+    /// The other direction, and the one that matters most: a program with no
+    /// bounds must produce no bound warnings. A check that fires on
+    /// everything reports nothing.
+    #[test]
+    fn a_program_without_bounds_is_left_alone() {
+        for src in [
+            "f id[T](x: T) -> T { x }",
+            "f add(a: i32, b: i32) -> i32 { a + b }",
+            "S Point { x: f64, y: f64, }",
+        ] {
+            assert!(
+                bound_warnings(src).is_empty(),
+                "unprompted bound warning on `{src}`"
+            );
+        }
+    }
+
+    /// Every surface form that can carry a bound reports one. This is the
+    /// test that would have caught a fix applied to functions alone — the
+    /// AST has nine generic-bearing items and `resolve_item` visits six.
+    ///
+    /// Two of the nine are absent on purpose: `Y` (type alias) and `D`
+    /// (data) carry a `generics` field that **no surface syntax reaches** —
+    /// `Y Alias[T] = T` and `D Rec[T] { v: T, }` are both parse errors. The
+    /// resolver reports their bounds anyway, so the day the parser accepts
+    /// them nothing is silently skipped.
+    #[test]
+    fn every_form_that_can_carry_a_bound_reports_it() {
+        for src in [
+            "f g[T: Clone](x: T) -> T { x }",           // inline, on a function
+            "f h[T](x: T) -> T ~> T: Clone { x }",      // the `~>` clause
+            "S Box[T: Clone] { v: T, }",                // struct
+            "E Opt[T: Clone] { Some(T), None, }",       // enum
+            "T Show[T: Clone] { }",                     // trait
+            "T Sh { }\nI[T: Clone] Sh { }",             // impl block
+            "sp Contract[T: Clone] { }",                // spec
+            "net Model[T: Clone] { }",                  // net
+        ] {
+            let warnings = bound_warnings(src);
+            assert!(
+                !warnings.is_empty(),
+                "no bound warning for `{src}` — a discarded bound went unreported"
+            );
+        }
+    }
+
+    /// Each predicate is reported separately, so a function with two
+    /// unenforced constraints does not look like one.
+    #[test]
+    fn each_bound_is_reported_separately() {
+        let warnings =
+            bound_warnings("f k[T, U](x: T, y: U) -> T ~> T: Clone, U: Debug { x }");
+        assert_eq!(warnings.len(), 2, "expected one per predicate: {warnings:?}");
     }
 }
