@@ -43,6 +43,23 @@ which is how PR #4 once landed with CI still pending. So the merge is a human
 action, and until someone takes it `master` keeps the `nanoid` advisory that
 `handoff` fixes. That is the only item here with an outside clock on it.
 
+**It went unmergeable on 2026-08-31, and that turned CI off rather than red.**
+`master` had published `.well-known/ironstack.json`; this branch had published
+the identical file and then fixed it twice, so the two adds conflicted. CI here
+runs on `pull_request` only — `push` is filtered to `master` — and GitHub cannot
+build a merge ref for a conflicted PR, so the workflow did not run at all. The
+commit after that touched `prototype/**`, `scripts/**` and three pinned
+documents, every one of them in the paths filter, and got **no run**. Merged on
+2026-09-01, resolved in favour of this branch's two fixes (master's version is
+byte-identical to this branch's file before them, so nothing was dropped); the
+next push produced a run, green, which is what confirmed the cause.
+
+**A branch can stop being tested without anything turning red.** "CI green on
+every commit" above was true of every commit CI ran, and that is a different
+sentence. Check that a run *exists* for the SHA, not only that the last one
+passed — `gh run list --json headSha` — which is the same discipline as reading
+a checker's "skipped" line and not only its exit status.
+
 ---
 
 ## What changed on 2026-08-19 → 24, and what it cost
@@ -2328,6 +2345,12 @@ doc_evals=M
   running the **whole** suite rather than one crate.
 - **`gh pr merge --auto` merges immediately** when the repo has no required
   status checks. It does not queue and does not warn.
+- **A conflicted PR does not run CI at all.** `push` is filtered to `master`, so
+  a branch is tested only through its `pull_request` run, and GitHub cannot build
+  a merge ref for a conflicted PR. The result is silence, not a red build, and
+  `gh run list --limit 1` then hands you an *older* commit's success. Select the
+  run by `headSha` and confirm one exists — the same trap as reading a run list
+  that raced the push, one step earlier.
 - **Regenerate the ontology from a *rebuilt* binary.** One commit shipped a stale
   `MAGE_ONTOLOGY.json` because `--emit-ontology` ran from a binary built before
   the change. `cargo test` builds the test harness, not `mage-parse`.
