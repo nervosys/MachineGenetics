@@ -44,6 +44,19 @@ on:
       - "UNIFICATION.md"
       - "DIRECT_CODEGEN_STRATEGY.md"
       - "benchmarks/STATUS.md"
+      # And then every document, because `check-doc-blocks.sh` walks the whole
+      # tree: 76 of the 101 tracked `.md` files were outside this filter,
+      # including `MAGE_SPEC.md` and all of `quick-start/`, `agent-guide/`,
+      # `cookbook/` and `training/prompts/` — the documents that teach an agent
+      # the language. A pull request adding a MAGE block that does not typecheck
+      # to any of them ran no CI at all. Same for the 83 uncovered `.mg` sources
+      # under `framework/`, `benchmarks/` and `examples/`, which
+      # `check-mg-sources.sh` and `check-examples.sh` compile and run.
+      #
+      # Two globs rather than fifteen directories, so a new directory of docs is
+      # covered the day it appears rather than the day someone remembers.
+      - "**.md"
+      - "**.mg"
       # The audit job checks video/'s npm lockfile, so a change there should
       # trigger it. Nothing did before, and "0 npm" in HANDOFF.md was a figure
       # with no mechanism behind it.
@@ -75,6 +88,19 @@ on:
       - "UNIFICATION.md"
       - "DIRECT_CODEGEN_STRATEGY.md"
       - "benchmarks/STATUS.md"
+      # And then every document, because `check-doc-blocks.sh` walks the whole
+      # tree: 76 of the 101 tracked `.md` files were outside this filter,
+      # including `MAGE_SPEC.md` and all of `quick-start/`, `agent-guide/`,
+      # `cookbook/` and `training/prompts/` — the documents that teach an agent
+      # the language. A pull request adding a MAGE block that does not typecheck
+      # to any of them ran no CI at all. Same for the 83 uncovered `.mg` sources
+      # under `framework/`, `benchmarks/` and `examples/`, which
+      # `check-mg-sources.sh` and `check-examples.sh` compile and run.
+      #
+      # Two globs rather than fifteen directories, so a new directory of docs is
+      # covered the day it appears rather than the day someone remembers.
+      - "**.md"
+      - "**.mg"
       # The audit job checks video/'s npm lockfile, so a change there should
       # trigger it. Nothing did before, and "0 npm" in HANDOFF.md was a figure
       # with no mechanism behind it.
