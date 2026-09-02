@@ -43,14 +43,26 @@ which is how PR #4 once landed with CI still pending. So the merge is a human
 action, and until someone takes it `master` keeps the `nanoid` advisory that
 `handoff` fixes. That is the only item here with an outside clock on it.
 
-**It went unmergeable on 2026-08-31, and that turned CI off rather than red.**
-`master` had published `.well-known/ironstack.json`; this branch had published
-the identical file and then fixed it twice, so the two adds conflicted. CI here
-runs on `pull_request` only — `push` is filtered to `master` — and GitHub cannot
-build a merge ref for a conflicted PR, so the workflow did not run at all. The
-commit after that touched `prototype/**`, `scripts/**` and three pinned
+**It went unmergeable on 2026-08-26, and that turned CI off rather than red.**
+`master` published `.well-known/ironstack.json` in `83d2852f3`; this branch had
+published the byte-identical file in `f09f2640a`. That is an add/add of the same
+content, which git merges **cleanly** — so the file sat on both sides for a week
+and nothing was wrong. The conflict began the moment the content diverged, in
+`87ec57858`, and every commit from there was affected:
+
+| Commit | Merges with master | CI run |
+|---|---|---|
+| `c66952c2a` (08-25) | cleanly — file identical | ran, green |
+| `87ec57858` (08-26) | **conflict** | none |
+| `5d150edfc` (08-31) | **conflict** | none |
+| `1ffcac82e` (09-01) | **conflict** | none |
+| `3535400ee` (09-01, the merge) | resolved | ran, green |
+
+CI here runs on `pull_request` only — `push` is filtered to `master` — and
+GitHub cannot build a merge ref for a conflicted PR, so the workflow did not run
+at all. `1ffcac82e` touched `prototype/**`, `scripts/**` and three pinned
 documents, every one of them in the paths filter, and got **no run**. Merged on
-2026-09-01, resolved in favour of this branch's two fixes (master's version is
+2026-09-01 in favour of this branch's two fixes (master's version is
 byte-identical to this branch's file before them, so nothing was dropped); the
 next push produced a run, green, which is what confirmed the cause.
 
@@ -59,6 +71,16 @@ every commit" above was true of every commit CI ran, and that is a different
 sentence. Check that a run *exists* for the SHA, not only that the last one
 passed — `gh run list --json headSha` — which is the same discipline as reading
 a checker's "skipped" line and not only its exit status.
+
+**And the `pull_request` paths filter is not the `push` one.** It is evaluated
+against the pull request's *accumulated* diff, not the files in the commit you
+just pushed: `c66952c2a` changed `HANDOFF.md` alone — a path in no filter list —
+and was tested, because the PR as a whole touched `prototype/**`. So a
+documentation-only commit on this branch **is** covered, and a missing run means
+something is wrong rather than filtered. I first recorded the opposite here, and
+used it to excuse two of the three silent commits as ordinary. They were not
+ordinary; they were the same defect, and saying so confidently made the record
+worse than saying nothing.
 
 ---
 
@@ -812,6 +834,7 @@ baseline nobody is required to shrink is just a list.
 | `scripts/check-orphan-sources.sh` | that every `.rs` file is reachable by some `mod` declaration — i.e. that it compiles at all. Every other row asks a question *about* compiled code; this one asks whether there is any. Found two on its first run. `wasm.rs` turned out to compile clean once a `mod` declaration was added, so it is fixed and the baseline shrank to one: `cuda_full.rs` (1,812 lines, 16 `unsafe`, 6 tests that have never run), which cannot be wired up without a CUDA toolkit. |
 | `scripts/check-ignored-tests.sh` | that every `#[ignore]`d test is named by some CI job — i.e. that something, somewhere, runs it. The sibling of the row above: that one finds files nothing compiles, this one finds tests nothing schedules. `eval_bench` was red for 76 commits behind three hiding places at once (`#[ignore]`, a `--bench` flag nobody passed, an unpushed branch) while the figure it certifies appeared in three documents. Its first run found `perf_report`, which produces the ABL scaling numbers and had never been executed by CI. No baseline: the live set is 2 and both are covered, so green is the honest state. |
 | `scripts/check-docs-index.sh` | that every Markdown document at the root has an entry in `DOCS.md`, and every root document `DOCS.md` names still exists. `DOCS.md` claims "this index says which is which" and only its **count** was pinned — which catches adding a document and forgetting the number, but not adding one, updating the number, and forgetting the entry. All 21 were indexed when this was written; it keeps them that way. Root only, because that is `DOCS.md`'s own scope. |
+| `scripts/check-ci-paths.sh` | that CI is actually triggered by every file a checker reads — the instrument on the instruments. `check-doc-counts.sh` pins 85 numbers across fourteen files, and **seven of those fourteen were outside this workflow's paths filter**, `HANDOFF.md` and `SECURITY_AUDIT.md` among them. A pull request touching only one of them moved a pinned count and got **no run at all** — not a red build, no build. Both directions, per trigger: a pinned file no `paths` entry covers, and a `paths` entry naming a file that does not exist (a typo covers nothing and looks identical to coverage). It does *not* demand that every tracked file be covered — most of the repository is prose no checker reads, and a rule that fails forever gets switched off. The enforceable rule is narrower: **if something checks it, CI must run when it changes.** |
 | `scripts/check-internals-doc.sh` | that every Rust item `internals/*.md` documents has a **definition** in `prototype/src`. `README.md` calls that set "Compiler-internals documentation" and it is written in the present tense; **15 of 36 documented items do not exist**, and its opening prose describes a Salsa-based, query-driven, multi-crate compiler where `prototype` is one crate with no query engine and no `salsa` dependency. Baseline **0** — was 15; the 12 blocks holding those items now carry a `**Not implemented.**` label and are skipped, MAGE_SPEC.md's precedent rather than a route to zero, with the skipped count printed on every run. Blind to prose, which is where the worst of it is. |
 | `scripts/check-crypto-inventory.sh` | that `SECURITY_AUDIT.md` §2 names every crypto dependency in every `Cargo.toml`, that its inventory *table* names only crates some lockfile contains, and that every **hand-rolled** primitive is mentioned. §2 concluded "no secret keying, no signatures, no KDF" while the repository held HMAC-SHA256 under a fleet key, Ed25519 provenance signatures and a TLS transport — all of it arriving with crates added after §2's scope was written. **An absence claim stays green by doing nothing**, which is why it needed a check that does something. |
 | `scripts/check-security-register.sh` | that `SECURITY_AUDIT.md` §1's accepted-risk register agrees with what `cargo audit` reports across all five surfaces, and that `video/` is at zero. Both directions: a reported advisory with no row, and an **Accepted** row nothing reports any more. The rows are read *out of* §1 rather than copied into the script, so adding a row is what tells the check the row exists. The `audit` job below finds advisories; this reads what was *decided* about the ones that stay — which nothing did, which is how §1 came to list `RUSTSEC-2026-0097` after it stopped firing while missing `RUSTSEC-2026-0190` for two months. No baseline: every row currently agrees, so green is the honest state. |
@@ -2351,6 +2374,15 @@ doc_evals=M
   `gh run list --limit 1` then hands you an *older* commit's success. Select the
   run by `headSha` and confirm one exists — the same trap as reading a run list
   that raced the push, one step earlier.
+- **An add/add of *identical* content is not a conflict.** The same file
+  published on both sides sat there for a week and merged cleanly; the conflict
+  started when one side edited it. So "when did this stop merging" is answered by
+  the commit that changed the content, not the one that added the file — and
+  `git merge-tree --write-tree <master> <sha>` answers it per commit in a loop,
+  which is faster than reasoning about dates and does not get it wrong.
+- **`pull_request` paths filters read the whole PR diff, not your push.** A
+  commit touching only `HANDOFF.md` is still tested on a PR that touches
+  `prototype/**`. Do not excuse a missing run as "filtered" without checking.
 - **Regenerate the ontology from a *rebuilt* binary.** One commit shipped a stale
   `MAGE_ONTOLOGY.json` because `--emit-ontology` ran from a binary built before
   the change. `cargo test` builds the test harness, not `mage-parse`.
