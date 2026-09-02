@@ -251,12 +251,24 @@ ones rejected: `Clone`, `Display` and `Ord` are declared in no MAGE source, so
 universe, seen from the other side.
 
 Every surface form that can carry a bound is covered — inline `[T: Bound]` on
-a function, struct, enum, trait, impl, `spec` and `net`, and the `~>` clause —
-and `resolve.rs`'s tests fail if any one of them stops reporting. Two of the
-nine generic-bearing AST items, `TypeAlias` and `DataDef`, carry a `generics`
-field **no surface syntax reaches**: `Y Alias[T] = T` and `D Rec[T] { v: T, }`
-are both parse errors today. The resolver reports their bounds anyway, so
-whichever day the parser accepts them, nothing is quietly skipped.
+a function, struct, enum, trait, impl, `spec`, `net`, `Y` (type alias) and `D`
+(data), plus the `~>` clause — and `resolve.rs`'s tests fail if any one of the
+ten stops reporting.
+
+**Corrected 2026-09-02.** This paragraph claimed `TypeAlias` and `DataDef`
+carried a `generics` field "no surface syntax reaches", citing
+`Y Alias[T] = T` and `D Rec[T] { v: T, }` as parse errors. Both *are* parse
+errors, for reasons that have nothing to do with generics: a type alias needs
+its terminating `;`, and a `data` record is written with parentheses rather
+than braces. `Y Alias[T: Clone] = T;` and `D Rec[T: Clone](v: T)` both parse
+and both report their bound — `parse_type_alias` and `parse_data_def` have
+called `parse_generic_params` all along.
+
+The mistake is worth keeping visible because it is a small instance of a
+recurring one: **a parse error is evidence about the input, not about the
+language.** Two errors of my own making were read as a missing feature, and
+written up with a confident mechanism ("the parser never reads generics for
+either") that a single glance at the parser would have refuted.
 
 Enforcing bounds remains a feature, and unbuilt. What changed is that a
 program no longer looks constrained without being told otherwise.

@@ -1465,11 +1465,14 @@ f P(x: i32) -> i32 { x }"),
     /// test that would have caught a fix applied to functions alone — the
     /// AST has nine generic-bearing items and `resolve_item` visits six.
     ///
-    /// Two of the nine are absent on purpose: `Y` (type alias) and `D`
-    /// (data) carry a `generics` field that **no surface syntax reaches** —
-    /// `Y Alias[T] = T` and `D Rec[T] { v: T, }` are both parse errors. The
-    /// resolver reports their bounds anyway, so the day the parser accepts
-    /// them nothing is silently skipped.
+    /// **All nine are reachable from source, including `Y` and `D`.** An
+    /// earlier version of this comment said those two carried a `generics`
+    /// field no syntax could reach, citing `Y Alias[T] = T` and
+    /// `D Rec[T] { v: T, }` as parse errors. Both are — for reasons that have
+    /// nothing to do with generics: a type alias needs its `;`, and a `data`
+    /// record is written with parentheses, not braces. `parse_type_alias` and
+    /// `parse_data_def` have both called `parse_generic_params` all along.
+    /// A parse error is evidence about the input, not about the language.
     #[test]
     fn every_form_that_can_carry_a_bound_reports_it() {
         for src in [
@@ -1481,6 +1484,8 @@ f P(x: i32) -> i32 { x }"),
             "T Sh { }\nI[T: Clone] Sh { }",             // impl block
             "sp Contract[T: Clone] { }",                // spec
             "net Model[T: Clone] { }",                  // net
+            "Y Alias[T: Clone] = T;",                   // type alias
+            "D Rec[T: Clone](v: T)",                    // data record
         ] {
             let warnings = bound_warnings(src);
             assert!(
