@@ -12,7 +12,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **2,920** — rmi 1,384 · prototype 1,207 · ribosome 164 · germline 112 · forge 53 |
+| Tests | **2,924** — rmi 1,384 · prototype 1,211 · ribosome 164 · germline 112 · forge 53 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — the fix exists only on `handoff` |
@@ -1356,7 +1356,7 @@ implementation task**:
 - **Then the evaluator rework.** `eval.rs` is 2,987 lines, 39 expression forms
   and 53 recursive `self.eval(` sites, all of which keep the continuation in the
   Rust call stack — where it cannot be captured. Multi-shot needs CPS or an
-  explicit CEK-style machine, which touches every form, with 1,207 tests riding
+  explicit CEK-style machine, which touches every form, with 1,211 tests riding
   on current behaviour.
 
 **This item was filed under "real work, unstarted" with no blocker marked**,
@@ -1397,7 +1397,7 @@ found rather than acted on:
 | 17 | ~~**`rmi`'s `wasm` feature builds, pulls a dependency, and enables no code**~~ | **Closed 2026-08-19, the day it was filed.** `compute/wasm.rs` was 208 lines no `mod` declaration reached, so `--features wasm` succeeded, pulled `wasm-bindgen v0.2.126` into the graph, and enabled nothing — while `core/discoverability.rs` advertised a "WASM Backend" unconditionally. The fix was two lines: `#[cfg(feature = "wasm")] pub mod wasm;`. It compiles clean, `--features wasm` and the default build are both warning-free, and all 1,230 lib tests still pass. The file was never broken — only unreferenced, which is the whole reason it survived. Removed from the orphan baseline in the same commit, as that ratchet requires. |
 | 18 | **`rmi` publishes five hardware backends that are CPU code, and they report invented device properties** | Found 2026-08-19 while checking whether the ontology should gate backends by feature — the answer turned out to matter less than what it was gating. `compute/metal.rs`, `vulkan.rs`, `webgpu.rs`, `apple_ane.rs` and `qualcomm.rs` carry no binding for the API they are named after, and `Cargo.toml` declares none: the only GPU crate in the manifest is optional `wgpu`. They are CPU implementations under hardware names, and each constructor comments what a real one *would* do while returning fabricated `DeviceInfo` — `metal.rs` announces itself as `"Metal (Apple GPU)"` with 16 GB of unified memory and 10 compute units; `vulkan.rs` reports 32. **The ontology half is fixed** (`add_extra_compute_backends` now publishes what the code does, plus an `implementation` field naming each as a cpu-scaffold, and the false `feature_flag: "gpu"` on Metal and Vulkan is gone — neither is gated at all). **What is left is a behaviour change in a vendored crate**: a caller that reads `DeviceInfo` to size a workload is told about memory and compute units that do not exist, and correcting that changes what every consumer sees. Options are to report the real CPU device, or to make construction fail when the API is absent — both are upstream's call. Worth ranking above items 15 and 17, because those cost a dependency and this one returns wrong numbers to anyone who asks. |
 | 24 | ~~**`Y` and `D` carry generics no syntax can reach**~~ | **Withdrawn 2026-09-02, one day after filing: the claim was false and I had checked nothing.** `parse_type_alias` and `parse_data_def` both call `parse_generic_params`, and always have. `Y Alias[T: Clone] = T;` and `D Rec[T: Clone](v: T)` parse and report their bound. The two "parse errors" I built the item on were mine — a type alias needs its terminating `;`, and a `data` record takes parentheses, not braces — and I turned them into a mechanism ("the parser never reads generics for either") without opening the parser. Kept struck rather than deleted: the *shape* is the one this document keeps recording, and it is worth seeing it happen to a filed item and not only to old documentation. **A parse error is evidence about the input, not about the language.** The two forms are now in `resolve.rs`'s coverage test, so the ten-of-ten claim is measured rather than asserted. |
-| 25 | **`--fmt` cannot be an editor formatter: no stdin** | Found 2026-09-02 while removing the editor LSP claims. `mage-parse --fmt-compact <file.mg> [out]` takes a **filename**; `-` is treated as one (`Error reading -: The system cannot find the file specified`). Every editor's format hook — Helix's `formatter`, Neovim's `formatprg`, Zed's external formatter — pipes the buffer to **stdin** and reads stdout. So the one compiler capability that maps cleanly onto an editor feature, and needs no protocol at all, is the one that cannot be wired up. Helix's `auto-format = true` was removed for this reason rather than the LSP one. **Cheap and self-contained**: read stdin when the path is `-`, write to stdout, which `--fmt-compact` already does when no `[out]` is given. That is the whole change, and it would give all four editors working format-on-save without an LSP. |
+| 25 | ~~**`--fmt` cannot be an editor formatter: no stdin**~~ | **Closed 2026-09-02, filed the same hour.** `mage-parse --fmt-compact <file.mg|-> [out]` now reads standard input when the path is `-`, which is what every editor's format hook needs. Two other things were wrong in the same handler and are fixed with it: **`[out]` was published and ignored** — the capability manifest advertised `<file.mg> [out]`, "Writes to [out] or stdout", effect class `write_local`, so an agent was told the mode needs a write grant and can direct output to a file, and it always printed to stdout (`--target=abl-bytes` implements the identical argument correctly, which is why it was invisible) — and a failed write now exits non-zero rather than reporting success having written nothing. Four integration tests, each verified by breaking it. Helix gets `formatter` + `auto-format`, Neovim gets `formatprg`, both real. |
 
 The five items previously here — `guard` as a reference, the `+=` diagnostic,
 `scan`'s seed, `pub` on a `data` field, and the array-literal/slice mismatch —
@@ -2507,9 +2507,9 @@ harder to notice because it arrives wearing a green tick.
 
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,207**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,211**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
-  across five crates **2,920**; documented-count pins **85**, up from 46 — the
+  across five crates **2,924**; documented-count pins **85**, up from 46 — the
   four newest hold `SECURITY_AUDIT.md`'s `unsafe` inventory, a claim that had
   been wrong twice.
 - Every typechecker fix has landed without breaking an existing test **except

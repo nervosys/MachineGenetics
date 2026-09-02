@@ -33,13 +33,18 @@ indent = { tab-width = 4, unit = "    " }
 # methods for. Left registered, Helix reports a spawn failure on every MAGE
 # buffer; removed, highlighting and indentation work and nothing lies.
 #
-# `auto-format = true` went with it: with no language server, formatting would
-# need a `formatter` command, and `mage-parse --fmt-compact` cannot be one —
-# it takes a *filename* and has no stdin mode, while Helix pipes the buffer to
-# stdin. That is the concrete blocker for editor formatting in every editor
-# here, and it is open item 25 in HANDOFF.md.
+# `auto-format = true` went with it, because it was relying on the language
+# server. Formatting came back a different way the same day: `mage-parse
+# --fmt-compact -` now reads standard input, which is exactly what a Helix
+# `formatter` needs, so the block below is real and does work. It was filed as
+# item 25 and closed in the same change that removed this LSP registration —
+# the one compiler capability that maps onto an editor feature without any
+# protocol at all.
 #
 # See internals/07-rap-server.md §7.6 and open item 22.
+
+formatter = { command = "mage-parse", args = ["--fmt-compact", "-"] }
+auto-format = true
 
 # ── Forge.toml uses TOML highlighting ────────────────────────────────
 

@@ -35,9 +35,23 @@ registration has been removed from `editors/helix/languages.toml`, and
 it — it still accepts `rap_cmd` if you have written your own LSP shim over RAP.
 
 **What does work in every editor here is tree-sitter highlighting**, which is
-what the `queries/` and `grammar.js` files are for. What does not work anywhere
-is formatting: `mage-parse --fmt-compact` takes a filename and has no stdin
-mode, and every editor's formatter hook pipes the buffer through stdin.
+what the `queries/` and `grammar.js` files are for.
+
+**And formatting, as of 2026-09-02.** Two hours earlier this paragraph said
+formatting worked nowhere, and it was true: `mage-parse --fmt-compact` took a
+filename, `-` was opened as a file, and every editor's format hook pipes the
+buffer through stdin. `--fmt-compact -` now reads standard input, so the one
+compiler capability that maps onto an editor feature without any protocol at
+all is finally reachable:
+
+| Editor | Formatting |
+| --- | --- |
+| Neovim | `formatprg` is set on MAGE buffers by `require('mage').setup()`; `gq` formats. Override with `fmt_cmd`, disable with `fmt = false` |
+| Helix | `formatter` + `auto-format` in `languages.toml`, already configured |
+| Zed, others | run `mage-parse --fmt-compact -` as an external formatter |
+
+It needs `mage-parse` on `PATH`, and it is byte-stable over a pipe
+(`fmt(fmt(x)) == fmt(x)`), which is what makes format-on-save safe.
 
 ### Helix
 

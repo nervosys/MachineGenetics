@@ -131,15 +131,18 @@ pub const MODES: &[CliMode] = &[
     },
     CliMode {
         flag: "--fmt-compact",
-        args: "<file.mg> [out]",
+        args: "<file.mg|-> [out]",
         summary: "reformat to Agent mode (token-compact symbols)",
         effect: "write_local",
         detail: "Deterministic formatter to the Agent-mode surface (symbol keywords,\n\
-                 elision). Writes to [out] or stdout. Byte-stable: fmt(fmt(x)) == fmt(x).",
+                 elision). Reads standard input when the file is `-`, so an editor can\n\
+                 pipe a buffer through it. Writes to [out] or stdout, and exits non-zero\n\
+                 if [out] cannot be written. Byte-stable: fmt(fmt(x)) == fmt(x), over a\n\
+                 pipe too.",
     },
     CliMode {
         flag: "--fmt-expand",
-        args: "<file.mg> [out]",
+        args: "<file.mg|-> [out]",
         summary: "reformat to Human mode (Rust-style keywords)",
         effect: "write_local",
         detail: "Inverse of --fmt-compact; same determinism guarantee.",

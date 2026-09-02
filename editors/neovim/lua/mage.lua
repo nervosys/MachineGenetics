@@ -19,6 +19,26 @@ vim.filetype.add({
   },
 })
 
+-- ── Formatting ──────────────────────────────────────────────────────
+--
+-- `gq` and `:normal gggqG` run this; it needs no language server, because
+-- `mage-parse --fmt-compact -` reads the buffer from standard input and writes
+-- the formatted source to stdout. That stdin mode did not exist until
+-- 2026-09-02 (open item 25) — before it, `-` was opened as a *file*, which is
+-- why nothing here formatted despite `--fmt-compact` having worked all along.
+--
+-- `opts.fmt_cmd` overrides it; `opts.fmt = false` leaves `formatprg` alone.
+
+vim.api.nvim_create_autocmd('FileType', {
+  pattern = 'MAGE',
+  callback = function(ev)
+    if M._fmt == false then
+      return
+    end
+    vim.bo[ev.buf].formatprg = M._fmt_cmd or 'mage-parse --fmt-compact -'
+  end,
+})
+
 -- ── LSP (RAP) ───────────────────────────────────────────────────────
 --
 -- WARNING (checked 2026-08-25): this registration cannot work as written.
@@ -243,7 +263,19 @@ end
 
 function M.setup(opts)
   opts = opts or {}
-  M.setup_lsp(opts)
+
+  M._fmt = opts.fmt
+  M._fmt_cmd = opts.fmt_cmd
+
+  -- LSP is opt-in now. `setup_lsp()` explains that there is no language server
+  -- and returns, which is the right answer when someone asks for one — and the
+  -- wrong thing to say to everyone who called `setup()` for highlighting.
+  -- Making it unconditional would have turned an accurate message into noise
+  -- on every MAGE buffer, which is how accurate messages get ignored.
+  if opts.rap_cmd or opts.lsp then
+    M.setup_lsp(opts)
+  end
+
   M.setup_treesitter()
   M.setup_syntax()
   M.setup_keymaps()
