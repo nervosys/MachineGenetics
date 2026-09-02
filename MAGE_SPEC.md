@@ -225,6 +225,42 @@ See [Appendix D](#appendix-d-Agent-mode-symbol-reference) for the complete symbo
 
 ---
 
+### 2.3 One flat namespace
+
+**MAGE has no module system, and this is the design rather than a gap.** Every
+name — the standard vocabulary of §8, the capability namespaces of §11, and
+every item a program declares — lives in one namespace and is in scope
+everywhere. There is no import, no path qualification, and no visibility
+boundary between files.
+
+The reason is the language's premise. An import is pure overhead in tokens: it
+names something the compiler already knows, costs a line at the top of every
+file, and buys separation that matters when a library is large and unstable. The
+standard library here is **31 words** (§8) plus **20 capability namespaces**
+(§11.3), both fixed and both published in `MAGE_ONTOLOGY.json`. An agent
+generating a program should not spend tokens re-deriving what it can already
+reach.
+
+What follows from that:
+
+- `pub` (`+`) controls whether an item is part of a module's published surface
+  for effect purposes — a `pub` function must declare its effects (§11.4) — not
+  whether another file can see it. Everything can see everything.
+- **`use` is an error.** It parses, so a Rust-shaped import gets a diagnostic
+  naming this section rather than a syntax error, but it cannot bring anything
+  into scope and no longer typechecks. It was a warning until 2026-08-19, while
+  this decision was still open.
+- `mod` (`M`) likewise declares a name and introduces no scope.
+- There is no `stdlib/`. A directory of that name held 25 sketches in Rust
+  syntax, read by nothing; it was deleted when this decision was made.
+
+**If this is ever revisited**, the cost is not the parser — `use` and `mod`
+already parse. It is that every name in every published table becomes
+path-qualified, and every agent-facing document that teaches a bare name has to
+teach a path instead.
+
+---
+
 ## 3. Lexical Grammar
 
 ### 3.1 Source Encoding
@@ -440,7 +476,7 @@ function_def = 'fn' IDENT [ generic_params ] '(' [ param_list ] ')'
 async_function_def = 'async' function_def ;
 
 param_list   = param { ',' param }* [ ',' ] ;
-param        = IDENT ':' type ;
+param        = IDENT ':' type [ '=' expression ] ;
 self_param   = '&' 'self' | '&' 'mut' 'self' | 'self' ;
 
 generic_params    = '<' generic_param { ',' generic_param }* '>' ;
@@ -451,6 +487,25 @@ where_clause      = 'where' where_predicate { ',' where_predicate }* ;
 where_predicate   = type ':' type_bound_list ;
 
 effect_annotation = '/' effect_name { ',' effect_name }* ;
+```
+
+**Default arguments.** A parameter may declare a default, and a caller may omit
+it. Only *trailing* defaults may be omitted: in `f g(a: i32, b: i32 = 2, c: i32)`
+all three arguments are still required, because a default in the middle would
+make a positional call ambiguous. The required arity is therefore the position
+after the last parameter without a default.
+
+Defaults are evaluated in the callee's environment, left to right, at each call
+that omits them — so a later default may refer to an earlier parameter:
+
+```mg
+f scaled(a: i32, b: i32 = a * 2) -> i32 { a + b }
+
+f uses() -> i32 {
+    v both = scaled(5, 1)   // 6
+    v one = scaled(5)       // 15
+    both + one              // 21
+}
 ```
 
 ### 4.3 Data Types
@@ -594,94 +649,101 @@ MAGE treats neural networks as first-class language constructs. A `net` block de
 ### 5.1 Network Definition
 
 ```mg
-// Human mode
 net Classifier {
-    layer dense(784, 256, relu)
-    layer dropout(0.3)
-    layer dense(256, 128, relu)
-    layer dense(128, 10, softmax)
+    layer hidden: Linear(784, 256)
+    layer act: ReLU(256)
+    layer drop: Dropout(0.3)
+    layer out: Linear(256, 10)
+    forward { out(drop(act(hidden))) }
 }
 ```
 
-```mg
-// Agent mode
-Ψ Classifier {
-    λ δ(784, 256, relu)
-    λ ∅(0.3)
-    λ δ(256, 128, relu)
-    λ δ(128, 10, softmax)
-}
-```
+**Every layer is named.** The name is how `forward` refers to it, and how a
+shape error names the layer it is about. The kind is a **surface name from the
+layer map** (`Linear`, `Conv2D`, `Attention`, `Embed`, `Dropout`, `Softmax`,
+`ReLU`, `GELU`, `SiLU`, `Sigmoid`, `Tanh`, `Mish`, `Softplus`, `LayerNorm`,
+`BatchNorm`, `RMSNorm`, `GroupNorm`, `InstanceNorm`, `MaxPool`, `AvgPool`,
+`GlobalAvgPool`, `Unify`, `Resolve`, `Infer`, `Plan`, `Send`, `Recv`, `Spawn`,
+`Delegate`, `Hash`, `Typeof`), and it is **case-sensitive**: `layer b: Lienar(…)`
+is an error naming the unknown kind, not a silently identity layer.
 
 **Grammar:**
 
 ```
-net_def = 'net' IDENT [ generic_params ] [ ':' type_bound_list ]
-          '{' { layer_def }* [ forward_def ] '}' ;
+net_def = 'net' IDENT '{' { layer_def }* [ forward_def ] '}' ;
 
-layer_def = 'layer' layer_kind '(' layer_args ')' ;
+layer_def = 'layer' IDENT ':' layer_kind '(' layer_args ')' [ ';' ] ;
 
-layer_kind = 'dense' | 'conv2d' | 'conv3d' | 'lstm' | 'gru'
-           | 'attention' | 'multihead_attention'
-           | 'embedding' | 'layernorm' | 'batchnorm'
-           | 'dropout' | 'flatten' | 'reshape'
-           | 'residual' | 'pool2d' | IDENT ;   /* extensible */
+layer_kind = IDENT ;   /* a surface name from the layer map, case-sensitive */
 
-forward_def = 'def' 'forward' '(' param_list ')' '->' type block ;
+forward_def = 'forward' block ;
 ```
 
 ### 5.2 Layer Types
 
-| Layer                                        | Parameters                        | Description            |
-| -------------------------------------------- | --------------------------------- | ---------------------- |
-| `dense(in, out, act)`                        | Input dim, output dim, activation | Fully connected        |
-| `conv2d(ch_in, ch_out, kernel, stride, pad)` | Channels, kernel size             | 2D convolution         |
-| `conv3d(...)`                                | Same pattern for 3D               | 3D convolution         |
-| `lstm(in, hidden)`                           | Input size, hidden size           | Long short-term memory |
-| `gru(in, hidden)`                            | Input size, hidden size           | Gated recurrent unit   |
-| `attention(dim, heads)`                      | Model dim, number of heads        | Multi-head attention   |
-| `embedding(vocab, dim)`                      | Vocabulary size, embedding dim    | Token embedding        |
-| `layernorm(dim)`                             | Feature dimension                 | Layer normalization    |
-| `batchnorm(features)`                        | Number of features                | Batch normalization    |
-| `dropout(rate)`                              | Drop probability                  | Regularization         |
-| `flatten()`                                  | —                                 | Flatten to 1D          |
-| `residual(block)`                            | Sub-network                       | Skip connection        |
-| `pool2d(kind, kernel, stride)`               | max/avg, kernel, stride           | 2D pooling             |
+These are the surface names the compiler maps to opcodes. The list is
+published in `MAGE_ONTOLOGY.json` under `layer_map`, generated from the same
+table the checker uses, so it cannot drift.
+
+| Family | Layers |
+| ------ | ------ |
+| Dense / conv | `Linear(in, out)`, `Conv2D(ch_in, ch_out, k)` |
+| Attention | `Attention(dim, heads)`, `Embed(vocab, dim)` |
+| Normalisation | `LayerNorm(dim)`, `BatchNorm(n)`, `RMSNorm(dim)`, `GroupNorm(g, n)`, `InstanceNorm(n)` |
+| Pooling | `MaxPool(k)`, `AvgPool(k)`, `GlobalAvgPool()` |
+| Regularisation | `Dropout(rate)` |
+| Symbolic | `Unify`, `Resolve`, `Infer`, `Plan` |
+| Agentic | `Send`, `Recv`, `Spawn`, `Delegate` |
+| Utility | `Hash`, `Typeof` |
 
 ### 5.3 Activation Functions
 
-Built-in activations: `relu`, `sigmoid`, `tanh`, `softmax`, `gelu`, `swish`, `leaky_relu`, `elu`, `silu`, `mish`.
+Activations are **layers**, not arguments: `ReLU`, `GELU`, `SiLU`, `Sigmoid`,
+`Tanh`, `Mish`, `Softplus`, `Softmax`. A `Linear` layer takes no activation
+parameter — add the activation as the next layer and name it, so `forward` can
+refer to it.
 
 ### 5.4 Training Blocks
 
 ```mg
-train mnist_training {
-    model: Classifier,
-    data: Dataset.load("mnist"),
-    optimizer: Adam { lr: 0.001, betas: (0.9, 0.999) },
-    loss: cross_entropy,
-    epochs: 100,
-    batch_size: 64,
+net Classifier {
+    layer hidden: Linear(784, 256)
+    layer out: Linear(256, 10)
+    forward { out(hidden) }
+}
 
-    fn on_epoch(epoch: u32, metrics: &Metrics) {
-        println!("Epoch {epoch}: loss={metrics.loss:.4}, acc={metrics.accuracy:.2}%");
-    }
+train mnist_training {
+    net: Classifier
+    dataset: "mnist"
+    optimizer: adam
+    loss: cross_entropy
+    epochs: 100
+    batch_size: 64
+    lr_schedule: cosine
+    warmup_steps: 500
+    weight_decay: 0.01
+    clip_grad: 1.0
+    seed: 42
 }
 ```
+
+The field naming the network is **`net`**, and the data source is
+**`dataset`**. There are no callbacks: a `train` block is declarative, and a
+field it does not recognise is an error naming the field rather than a silently
+ignored line.
 
 **Grammar:**
 
 ```
 train_def = 'train' IDENT '{' { train_field }* '}' ;
 
-train_field = 'model' ':' expression ','
-            | 'data' ':' expression ','
-            | 'optimizer' ':' expression ','
-            | 'loss' ':' expression ','
-            | 'epochs' ':' expression ','
-            | 'batch_size' ':' expression ','
-            | 'def' IDENT '(' param_list ')' block   /* callbacks */
-            ;
+train_field = ( 'net' | 'dataset' | 'optimizer' | 'loss' | 'epochs'
+              | 'batch_size' | 'body' | 'inputs' | 'targets' | 'val_split'
+              | 'checkpoint' | 'patience' | 'plateau_patience' | 'lr_factor'
+              | 'prompt' | 'max_tokens' | 'temperature' | 'top_k' | 'top_p'
+              | 'seed' | 'clip_grad' | 'warmup_steps' | 'lr_schedule'
+              | 'weight_decay' | 'tied_embeddings' )
+              ':' expression [ ',' ] ;
 ```
 
 ### 5.5 LLM Integration
@@ -689,44 +751,40 @@ train_field = 'model' ':' expression ','
 MAGE provides native types for language model invocation:
 
 ```mg
-use std::llm::{LLM, Prompt, Response};
-
-pub fn summarize(text: &str) -> String / llm {
-    val model = LLM.load("local://llama-3-8b");
-    val prompt = Prompt.new("Summarize the following text:\n{text}");
-    val response = model.generate(prompt, max_tokens: 256);
-    response.text()
+pub fn summarize(text: String) -> String / llm {
+    llm.generate(f"Summarize the following text:\n{text}")
 }
 ```
 
-The `/ llm` effect annotation makes LLM usage explicit and handleable.
+`llm` is a **capability namespace** — in scope everywhere, with nothing to
+import. Reaching it is what puts `llm` in the inferred set, and a public
+function must declare it. There is no `LLM` type, no `Prompt` type and no
+named-argument syntax; a prompt is a string, and an f-string builds it.
+
+Because the call is an effect, it is also *handleable*: wrap it in
+`handle { … } with` an effect you declare, and a test never reaches a model.
 
 ### 5.6 Autograd
 
 The `grad` keyword computes gradients automatically:
 
+**Design, not implementation.** `grad` is a reserved word with no expression
+form: `grad(loss, w)` is a parse error (`expected expression, found KwGrad`),
+and there is no computation-graph tracing in the compiler. The block below is
+**invalid MAGE** today, and records the intent:
+
 ```mg
-pub fn train_step(model: &mut Classifier, x: Tensor<f32, [B, 784]>,
-                  y: Tensor<i64, [B]>) -> f32 / gpu {
-    val logits = model.forward(x);
-    val loss = cross_entropy(logits, y);
-
-    // Compute gradients of loss w.r.t. all model parameters
-    val grads = grad(loss, model.params());
-
-    // Update parameters
-    model.apply_grads(grads, lr: 0.001);
-    loss.item()
+pub fn train_step(x: tensor[f32, B, 784], y: tensor[i64, B]) -> f32 / gpu {
+    val loss = cross_entropy(forward(x), y)
+    val grads = grad(loss, params())      // parse error today
+    apply_grads(grads, 0.001)
+    loss
 }
 ```
 
-**Grammar:**
-
-```
-grad_expr = 'grad' '(' expression ',' expression ')' ;
-```
-
-The compiler traces the computation graph at compile time through the type system, generating backward passes for all differentiable operations. Non-differentiable operations (comparisons, casts, integer ops) are compile-time errors inside `grad` contexts.
+What *does* exist is the `train` block of §5.4, which is declarative: the
+optimiser, schedule and loss are fields, and the backward pass is the
+runtime's business rather than something the source expresses.
 
 ---
 
@@ -736,63 +794,66 @@ Tensors are first-class types with compile-time shape checking and automatic har
 
 ### 6.1 Tensor Types
 
-```mg
-// Statically shaped tensors
-val a: Tensor<f32, [3, 224, 224]>;      // 3×224×224 image
-val b: Tensor<f64, [1000]>;             // 1000-element vector
-val c: Tensor<f16, [B, 512, 512]>;      // batched matrix (B is generic)
+The type is `tensor[T, dims…]`, and a learnable parameter is
+`param[T, dims…]`. Both are **lowercase keywords**, and the shape is a
+comma-separated list inside the same brackets — not a nested `[…]`, and not
+`<…>`:
 
-// Learnable parameters (tracked for autograd)
-val w: Param<f32, [512, 256]>;          // weight matrix
-val bias: Param<f32, [256]>;            // bias vector
-```
-
-Agent mode:
 ```mg
-v a: Φ[f32; 3, 224, 224]
-v w: Π[f32; 512, 256]
+// Statically shaped tensors, in a signature
+f classify(
+    image: tensor[f32, 3, 224, 224],     // 3x224x224 image
+    weights: param[f32, 512, 256],       // learnable weight matrix
+    bias: param[f32, 256],
+) -> tensor[f32, 3, 224, 224] {
+    image
+}
+
+// A dimension may be a name rather than a literal — `B` is a shape variable.
+// (`f16` and `bf16` are not type names today; `f32` and `f64` are.)
+f batched(x: tensor[f32, B, 512, 512]) -> tensor[f32, B, 512, 512] {
+    x
+}
 ```
 
 ### 6.2 Tensor Operations
 
-| Operation             | Human                  | Agent    | Description              |
-| --------------------- | ---------------------- | -------- | ------------------------ |
-| Matrix multiply       | `A @ B`                | `A ⊗ B`  | Shape: [M,K]×[K,N]→[M,N] |
-| Element-wise multiply | `A .* B`               | `A ⊙ B`  | Hadamard product         |
-| Element-wise add      | `A + B`                | `A + B`  | Broadcast-compatible     |
-| Transpose             | `A.T`                  | `A⊤`     | Swap last two dims       |
-| Flatten               | `A.flatten()`          | `A⊥`     | Reshape to 1D            |
-| Reshape               | `A.reshape([2,3])`     | —        | Arbitrary reshape        |
-| Sum                   | `A.sum()`              | —        | Reduce sum               |
-| Mean                  | `A.mean(axis: 0)`      | —        | Reduce mean              |
-| Gradient              | `grad(loss, w)`        | `∇(l,w)` | Autograd                 |
-| Slice                 | `A[0..3, ..]`          | —        | Tensor slicing           |
-| Broadcast             | automatic              | —        | Shape broadcasting       |
-| Concatenate           | `cat([A, B], axis: 0)` | —        | Join along axis          |
-| Stack                 | `stack([A, B])`        | —        | New dimension            |
+**Design, not implementation.** None of the operators below parse today —
+`A @ B` in particular cannot, because `@` is the for-loop sigil. Tensor
+computation is expressed through `net` blocks and their layers (§5), where the
+shapes *are* checked; the operator surface is recorded here as intent.
+
+| Operation | Intended surface | Description |
+| --------- | ---------------- | ----------- |
+| Matrix multiply | `A @ B` | [M,K]x[K,N] -> [M,N] |
+| Element-wise multiply | `A .* B` | Hadamard product |
+| Element-wise add | `A + B` | Broadcast-compatible |
+| Transpose | `A.T` | Swap last two dims |
+| Reshape / flatten | `A.reshape([2,3])`, `A.flatten()` | |
+| Reductions | `A.sum()`, `A.mean(axis: 0)` | |
+| Gradient | `grad(loss, w)` | Autograd (§5.6) |
+| Slice / concat / stack | `A[0..3, ..]`, `cat([A, B], axis: 0)`, `stack([A, B])` | |
 
 ### 6.3 Shape Checking
 
 The compiler verifies tensor shape compatibility at compile time:
 
-```mg
-val a: Tensor<f32, [3, 4]>;
-val b: Tensor<f32, [4, 5]>;
-val c = a @ b;               // OK: c is Tensor<f32, [3, 5]>
+Shape checking happens where shapes are declared: in a `net` block, across
+adjacent layers. A `Linear(784, 256)` followed by a `Linear(128, 10)` is a
+shape error naming both layers, and an unknown layer kind is an error rather
+than a silent identity — that one cost a real bug (`layer b: Lienar(128, 64)`
+lowered to a pass-through and the net trained around it).
 
-val d: Tensor<f32, [2, 3]>;
-val e = a @ d;               // COMPILE ERROR: shape mismatch [3,4] @ [2,3]
-```
-
-Shape variables allow generic tensor functions:
+Shape *variables* are written as names in the type, and a function generic over
+them needs no `const` parameters:
 
 ```mg
-fn linear<const M: usize, const N: usize, const K: usize>(
-    x: Tensor<f32, [M, K]>,
-    w: Param<f32, [K, N]>,
-    b: Param<f32, [N]>,
-) -> Tensor<f32, [M, N]> {
-    x @ w + b
+f linear(
+    x: tensor[f32, M, K],
+    w: param[f32, K, N],
+    b: param[f32, N],
+) -> tensor[f32, M, N] {
+    x
 }
 ```
 
@@ -813,21 +874,22 @@ Annotations override automatic dispatch:
 
 ### 6.5 Tensor Literals
 
+There is **no `tensor!` literal and no constructor function**: `tensor![…]` is
+a macro, and MAGE has no macros. A tensor-shaped value is written as a list
+literal, and its shape lives in the annotation:
+
 ```mg
-// Vector literal
-val v = tensor![1.0, 2.0, 3.0, 4.0];
+f identity3() -> [[f64]~]~ {
+    [
+        [1.0, 0.0, 0.0],
+        [0.0, 1.0, 0.0],
+        [0.0, 0.0, 1.0],
+    ]
+}
 
-// Matrix literal
-val m = tensor![
-    [1.0, 0.0, 0.0],
-    [0.0, 1.0, 0.0],
-    [0.0, 0.0, 1.0],
-];
-
-// Zeros/ones/random constructors
-val z = Tensor::<f32, [3, 3]>::zeros();
-val o = Tensor::<f32, [256]>::ones();
-val r = Tensor::<f32, [64, 784]>::randn();
+f zeros(n: usize) -> [f64]~ {
+    map(range(n), |i| 0.0)
+}
 ```
 
 ---
@@ -840,37 +902,20 @@ MAGE integrates symbolic AI as language-level constructs: knowledge bases with f
 
 ```mg
 kb TypeRules {
-    // Facts — ground truth assertions
-    fact numeric("i8");
-    fact numeric("i16");
+    // Facts — ground truth assertions.
     fact numeric("i32");
-    fact numeric("i64");
-    fact numeric("f32");
     fact numeric("f64");
-    fact unsigned("u8");
-    fact unsigned("u16");
     fact unsigned("u32");
-    fact unsigned("u64");
 
-    // Rules — logical inference
-    rule integer(T) :- numeric(T), !floating(T);
-    rule floating(T) :- T == "f32" | T == "f64";
-    rule safe_cast(From, To) :- numeric(From), numeric(To), bitwidth(From) <= bitwidth(To);
-
-    // Queries — compile-time or runtime inference
-    query can_cast(From, To) :- safe_cast(From, To);
+    // Rules — a head, its parameters, and a body block of terms.
+    rule integer(t: str) { numeric(t) }
+    rule castable(t: str) { numeric(t) }
 }
 ```
 
-Agent mode:
-```mg
-κ TypeRules {
-    ⊢ numeric("i32")
-    ⊢ numeric("f64")
-    ρ integer(T) :- numeric(T), !floating(T)
-    ? can_cast(From, To) :- safe_cast(From, To)
-}
-```
+**A rule is `rule head(params) { body }`** — not Prolog's `head :- body`, which
+is a parse error. There is no `query` item inside a `kb` block either; a query
+is a *use* of the knowledge base, not a declaration in it.
 
 **Grammar:**
 
@@ -878,24 +923,31 @@ Agent mode:
 kb_def = 'kb' IDENT '{' { kb_item }* '}' ;
 
 kb_item = 'fact' IDENT '(' arg_list ')' ';'
-        | 'rule' IDENT '(' param_list ')' ':-' rule_body ';'
-        | 'query' IDENT '(' param_list ')' ':-' rule_body ';'
-        ;
+        | 'rule' IDENT '(' param_list ')' block ;
 
-rule_body = rule_term { ',' rule_term }* ;
-rule_term = IDENT '(' arg_list ')'
-          | '!' rule_term
-          | expression ;
+arg_list = ( IDENT | STRING | NUMBER ) { ',' ( IDENT | STRING | NUMBER ) }* ;
 ```
 
 ### 7.2 Runtime Querying
 
-```mg
-use std::kb::KnowledgeBase;
+`kb` is a capability namespace — in scope everywhere, with nothing to import.
+It **deliberately attributes no effect**: no built-in kind names a store, and
+inventing one would infer an effect that §11.4 then refuses in an annotation.
+For a store you want gated, declare an `effect` and call its operations, which
+is also what makes it mockable:
 
-pub fn check_types(from: &str, to: &str) -> bool {
-    val kb = TypeRules.new();
-    kb.query("can_cast", &[from, to]).is_some()
+```mg
+kb TypeRules {
+    fact numeric("i32");
+    rule castable(t: str) { numeric(t) }
+}
+
+effect Rules {
+    f castable(from: str, to: str) -> bool;
+}
+
+pub fn check_types(from: str, to: str) -> bool / rules {
+    Rules.castable(from, to)
 }
 ```
 
@@ -911,14 +963,18 @@ The SKB from the compiler is itself a `kb` instance with 9,157 rules across:
 
 Agents can query the SKB at compile time:
 
-```mg
-use std::skb;
+**Not implemented.** There is no `std::skb`, no `skb` namespace and no
+compile-time query API; the block below is **invalid MAGE**, and records the
+intent. The reachable form today is the same as §7.2 — declare an effect for
+the store and handle it:
 
-pub fn validate_borrow(code: &str) -> [Diagnostic]~ {
-    skb::query()
-        .category("borrow")
-        .severity("error")
-        .check(code)
+```mg
+effect Skb {
+    f check(category: str, code: str) -> [str]~;
+}
+
+pub fn validate_borrow(code: str) -> [str]~ / skb {
+    Skb.check("borrow", code)
 }
 ```
 
@@ -932,143 +988,107 @@ MAGE has first-class support for genetic algorithms, neuroevolution, and evoluti
 
 ```mg
 evolve NeuralArchSearch {
-    genome: [LayerGene]~,
-    population: 200,
-    generations: 1000,
+    genome: [i32]~
+    population: 200
+    generations: 1000
 
-    fn fitness(&self) -> f64 / gpu {
-        val model = self.genome.build_net();
-        model |> train(mnist, epochs: 5) |> evaluate(test_set)
-    }
-
-    select tournament(k: 8),
-    crossover uniform(rate: 0.7),
-    mutate gaussian(sigma: 0.02),
-    target fitness > 0.98,
-
-    fn on_generation(gen: u32, best: &Self, stats: &EvolveStats) {
-        println!("Gen {gen}: best_fitness={best.fitness():.4}");
-    }
+    fitness { 0.98 }
+    select { 8 }
+    crossover { 0.7 }
+    mutate { 0.02 }
 }
 ```
 
-Agent mode:
-```mg
-Ω NeuralArchSearch {
-    Γ: [LayerGene]~,
-    η: 200,
-    ∞: 1000,
-
-    f φ(&self) -> f64 / gpu {
-        v model = self.Γ.build_net()
-        model ▸ Θ(mnist, 5) ▸ eval(test_set)
-    }
-
-    ⊳ tournament(k: 8),
-    χ uniform(r: 0.7),
-    μ gaussian(σ: 0.02),
-    → φ > 0.98,
-}
-```
+**Seven fields, and each strategy is a block, not a call.** `fitness`,
+`select`, `crossover` and `mutate` take `{ … }` — there is no
+`select tournament(k: 8)` form, no `target` field and no `on_generation`
+callback, and a field the parser does not recognise is an error naming it.
 
 **Grammar:**
 
 ```
 evolve_def = 'evolve' IDENT '{' { evolve_field }* '}' ;
 
-evolve_field = 'genome' ':' type ','
-             | 'population' ':' expression ','
-             | 'generations' ':' expression ','
-             | fitness_def
-             | 'select' selection_strategy ','
-             | 'crossover' crossover_strategy ','
-             | 'mutate' mutation_strategy ','
-             | 'target' 'fitness' comparison expression ','
-             | callback_def
-             ;
-
-fitness_def = 'fn' 'fitness' '(' '&' 'self' ')' '->' 'f64' [ effect_annotation ] block ;
-
-selection_strategy  = 'tournament' '(' kvp_list ')'
-                    | 'roulette' | 'rank' | 'elitist' '(' kvp_list ')' ;
-crossover_strategy  = 'uniform' '(' kvp_list ')'
-                    | 'single_point' | 'two_point' | 'blend' '(' kvp_list ')' ;
-mutation_strategy   = 'gaussian' '(' kvp_list ')'
-                    | 'uniform' '(' kvp_list ')' | 'bitflip' '(' kvp_list ')' ;
+evolve_field = 'genome' ':' type [ ';' | ',' ]
+             | 'population' ':' expression [ ';' | ',' ]
+             | 'generations' ':' expression [ ';' | ',' ]
+             | 'fitness' block
+             | 'select' block
+             | 'crossover' block
+             | 'mutate' block ;
 ```
 
 ### 8.2 Genome Types
 
+A genome is an ordinary type. There are **no derive macros** — `#[derive(…)]`
+does not parse, and neither does MAGE's own `@d(…)` generate genetic
+operators; the `evolve` block's `crossover` and `mutate` blocks are where those
+live.
+
 ```mg
-// A genome is a typed genotype that can be crossed over and mutated.
-#[derive(Genome)]
-pub data ArchGenome {
++S ArchGenome {
     layers: [LayerGene]~,
     learning_rate: f64,
     dropout_rate: f64,
 }
 
-#[derive(Gene)]
-pub data LayerGene {
-    Dense { units: u32, activation: Activation },
-    Conv2d { filters: u32, kernel: u32 },
-    Attention { heads: u32, dim: u32 },
++E LayerGene {
+    Dense(u32),
+    Conv2d(u32, u32),
+    Attention(u32, u32),
     Skip,
 }
 ```
 
-The `#[derive(Genome)]` macro generates `crossover`, `mutate`, and `random` implementations. `#[derive(Gene)]` generates per-variant mutation operators.
-
 ### 8.3 Reinforcement Learning
 
+**Not implemented.** `rl`, `policy` and `reward` are reserved words that no
+parser arm consumes: an `rl` block is a parse error (`expected item, found
+KwRl`), and there is no `std::rl`. What follows records the intent.
+
+**Invalid MAGE today:**
+
 ```mg
-use std::rl::{Env, Policy, PPO, Trajectory};
-
-pub fn train_agent(env: &mut impl Env) -> Policy<f32, f32> / gpu {
-    var agent = PPO.new(
-        obs_dim: env.observation_space(),
-        act_dim: env.action_space(),
-        hidden: 256,
-        lr: 3e-4,
-    );
-
-    for episode in 0..10_000 {
-        val trajectory = env.rollout(&agent);
-        val metrics = agent.update(&trajectory);
-
-        if episode % 100 == 0 {
-            println!("Episode {episode}: reward={metrics.mean_reward:.2}");
-        }
-    }
-
-    agent.policy()
+rl CartPole {
+    policy: ppo
+    reward: total
+    episodes: 10000
 }
 ```
+
+What is reachable today is the ordinary loop: a `net` for the policy, a
+`train` block for the optimisation, and `/ gpu` on whatever reaches the
+device.
 
 ### 8.4 Self-Improvement
 
 The combination of evolutionary computation and neural networks enables **recursive self-improvement**: programs that optimize their own architectures, hyperparameters, and strategies:
 
 ```mg
-// A MAGE program that evolves its own compiler optimization passes.
+// A MAGE program that evolves its own compiler optimisation passes.
++E OptimizationPass { Inline, Unroll, Vectorize, DeadCode }
+
+f score(passes: [OptimizationPass]~) -> f64 {
+    (len(passes) as f64) / 4.0
+}
+
 evolve CompilerOptimizer {
-    genome: [OptimizationPass]~,
-    population: 50,
-    generations: 500,
+    genome: [OptimizationPass]~
+    population: 50
+    generations: 500
 
-    fn fitness(&self) -> f64 {
-        val compiler = Compiler.with_passes(&self.genome);
-        val binary = compiler.compile(benchmark_suite);
-        val perf = binary.run_benchmarks();
-        perf.throughput / perf.binary_size  // multi-objective
-    }
-
-    select tournament(k: 4),
-    crossover uniform(rate: 0.6),
-    mutate gaussian(sigma: 0.05),
-    target fitness > baseline * 1.5,
+    fitness { score([Inline, Unroll]) }
+    select { 4 }
+    crossover { 0.6 }
+    mutate { 0.05 }
 }
 ```
+
+The `fitness` block is where the recursion lives: it is ordinary MAGE, so it
+may compile and measure MAGE — including the compiler itself. What the block
+form costs is the callback and the multi-objective `target`; what it buys is
+that the search is *declared*, and therefore checkable, rather than assembled
+at run time.
 
 ---
 
@@ -1078,93 +1098,77 @@ Agents are autonomous computational entities that combine neural reasoning, symb
 
 ### 9.1 Agent Definition
 
+**An `agent` block declares a role, not a class.** It has exactly two fields,
+both lists of bare identifiers, and it carries **no state and no methods** —
+there is no `brain`, no `memory`, no `handle`, and nothing to override:
+
 ```mg
 agent CodeReviewer {
-    brain: LLM,
-    kb: KnowledgeBase,
-    memory: [Review]~,
+    capabilities: [llm, io]
+    requires_approval: [publish]
+}
 
-    fn handle(&mut self, msg: Message<CodeSubmission>) -> Review or AgentError / agent, llm {
-        val rules = self.kb.query("style_rules");
-        val analysis = self.brain.analyze(&msg.payload.code, context: &rules);
-        val review = Review.from(analysis);
-        self.memory.push(review.clone());
-        Ok(review)
-    }
-
-    fn capabilities(&self) -> [Capability]~ {
-        vec![
-            Capability.new("llm", CapabilityScope::Instance),
-            Capability.new("io", CapabilityScope::Sandboxed),
-        ]
-    }
+// The work is an ordinary function. The annotation is what ties it to the
+// role: what this function can reach is what the checker enforces.
++f review(code: str) -> str / llm, io {
+    v analysis = llm.generate(f"Review this code:\n{code}")
+    p"{analysis}"
+    analysis
 }
 ```
+
+`capabilities` lists what the role may use; `requires_approval` lists
+operations it may *request* but not perform unilaterally. `mage-parse --check`
+reports each agent as **Verified** when every name is in the known set and
+**Partial** otherwise — a report, not an error.
 
 **Grammar:**
 
 ```
-agent_def = 'agent' IDENT [ ':' type_bound_list ]
-            '{' { agent_field | agent_method }* '}' ;
+agent_def = 'agent' IDENT '{' { agent_field }* '}' ;
 
-agent_field  = IDENT ':' type ',' ;
-agent_method = visibility? function_def ;
+agent_field = 'capabilities' ':' '[' [ IDENT { ',' IDENT }* ] ']'
+            | 'requires_approval' ':' '[' [ IDENT { ',' IDENT }* ] ']' ;
 ```
 
 ### 9.2 Swarm Definition (First-Class Construct)
 
 Swarms are first-class language constructs that manage a coordinated group of agents:
 
-**Human mode:**
 ```mg
+agent CodeReviewer { capabilities: [llm] }
+
 swarm ReviewTeam {
-    agent: CodeReviewer;
-    size: 5;
-    topology: mesh;
-    consensus: majority;
+    agent: CodeReviewer
+    size: 5
+    topology: mesh
+    consensus: majority
+}
 
-    dispatch {
-        scatter files |agent, file| {
-            agent.review(file)
-        }
-    }
+// Dispatch and aggregation are code, not fields: `map` fans out, `fold` fans
+// in, and the consensus the block *declares* is computed here rather than
+// assumed.
+f review(file: str) -> bool / llm { len(llm.generate(file)) > 0 }
 
-    aggregate {
-        gather results |reviews| {
-            reviews.consensus()
-        }
-    }
-
-    on_failure {
-        retry(3, backoff: exponential)
-    }
++f team_verdict(files: [str]~) -> bool / llm {
+    v votes = map(files, |file| review(file))
+    v yes = len(filter(votes, |vote| vote))
+    yes * 2 > len(votes)
 }
 ```
 
-**Agent mode (Σ):**
-```mg
-Σ ReviewTeam {
-    α: CodeReviewer;
-    size: 5;
-    topo: mesh;
-    cons: majority;
-    dispatch { ... }
-    aggregate { ... }
-    on_failure { ... }
-}
-```
+**Four fields, and no behaviour blocks.** There is no `dispatch`, `aggregate`
+or `on_failure` — a field the parser does not recognise is an error naming it.
 
 **Grammar:**
 ```ebnf
 swarm_def = 'swarm' IDENT '{' { swarm_field }* '}' ;
 
-swarm_field = 'agent' ':' IDENT ';'
-            | 'size' ':' expr ';'
-            | 'topology' ':' IDENT ';'     (* star | ring | mesh | broadcast | tree *)
-            | 'consensus' ':' IDENT ';'    (* majority | unanimous | weighted | quorum *)
-            | 'dispatch' block
-            | 'aggregate' block
-            | 'on_failure' block ;
+swarm_field = 'agent' ':' IDENT [ ';' ]
+            | 'size' ':' expr [ ';' ]
+            | 'topology' ':' IDENT [ ';' ]   (* star | ring | mesh | broadcast | tree *)
+            | 'consensus' ':' IDENT [ ';' ]  (* majority | unanimous | weighted | quorum *)
+            ;
 ```
 
 **Topologies:**
@@ -1193,40 +1197,65 @@ capability propagation, topology connectivity, and agent Send+Sync requirements.
 
 For dynamic swarm usage, a library API is also available:
 
+**There is no library API.** `std::agent` does not exist, and neither do
+`Swarm`, `SwarmConfig` or `ConsensusStrategy`. Dynamic swarm usage is the same
+code as static: functions, `map` and `fold`, with the capabilities in the
+annotation.
+
 ```mg
-use std::agent::{Swarm, SwarmConfig, ConsensusStrategy};
+agent CodeReviewer { capabilities: [agent] }
 
-pub async fn distributed_review(files: [String]~) -> [Review]~ / agent, io {
-    val config = SwarmConfig {
-        size: 5,
-        consensus: ConsensusStrategy::Majority,
-        timeout: Duration::from_secs(30),
-    };
-    var swarm = Swarm::<CodeReviewer>::new(config);
+swarm ReviewTeam {
+    agent: CodeReviewer
+    size: 5
+    consensus: majority
+}
 
-    val reviews: [Review]~ = swarm.map(files, |agent, file| {
-        val code = std::fs::read(&file)?;
-        agent.handle(Message.new(CodeSubmission { code }))
-    }).await?;
+f review_one(path: str) -> str / fs, agent {
+    agent.spawn(path)
+    fs.read_to_string(path)
+}
 
-    reviews
++f distributed_review(files: [str]~) -> [str]~ / fs, agent {
+    map(files, |file| review_one(file))
 }
 ```
+
+The five `swarm_*` orchestration keywords (`swarm_map_reduce`,
+`swarm_pipeline`, `swarm_saga`, `swarm_fan_out`, `swarm_race`) are reserved by
+the lexer and consumed by nothing; writing one is a parse error that says so.
 
 ### 9.4 Capability-Based Security
 
 All agent operations are gated by capabilities — fine-grained permissions that can be requested, leased, and revoked:
 
-```mg
-use std::agent::{Capability, Region};
+**There is no `Capability` type, no `Region`, and no runtime request.** The
+gate is static, and it is the one described in §11:
 
-pub fn sandboxed_analysis(code: &str) -> Analysis or Error / agent {
-    val cap = Capability.request("analyze")?;
-    Region.enter(cap, || {
-        // Only analysis operations allowed here.
-        // No file I/O, no network, no LLM calls unless explicitly granted.
-        parse_and_analyze(code)
-    })
+- **Reaching a capability namespace is the request.** `fs.read_to_string(p)`
+  puts `fs` in the function's inferred set — there is no separate call to
+  forget, and no way to reach the resource without the checker seeing it.
+- **The `/ effect` annotation is the grant**, required on every `pub` function
+  for everything it performs (`inferred ⊆ declared`).
+- **The check happens before the program runs**, not at the moment of use.
+- **`handle … with` is revocation**, scoped to a block: it discharges an
+  effect, so code inside it can no longer reach the real resource.
+
+```mg
+effect Analyze {
+    f run(code: str) -> str;
+}
+
+f analyse(code: str) -> str / analyze { Analyze.run(code) }
+
+// Sandboxed: the handler supplies the answer, so this function performs
+// nothing at all — no file I/O, no network, no model call.
++f sandboxed_analysis(code: str) -> str {
+    handle {
+        analyse(code)
+    } with Analyze {
+        run(source) => f"{len(source)} bytes",
+    }
 }
 ```
 
@@ -1305,7 +1334,11 @@ Every function has an effect signature. Effects are algebraic — declared, comp
 
 ### 11.2 Standard Effects
 
-| Effect       | Operations                   | Description                     |
+These seventeen names are the built-in effect kinds. Each may be written in a `/ …`
+annotation with no declaration; any other name must be declared by an `effect`
+block (§11.5), or it is an error (§11.4).
+
+| Effect       | Domain                       | Description                     |
 | ------------ | ---------------------------- | ------------------------------- |
 | `io`         | read, write, seek, close     | File and stream I/O             |
 | `net`        | connect, listen, send        | Network I/O                     |
@@ -1323,6 +1356,62 @@ Every function has an effect signature. Effects are algebraic — declared, comp
 | **`learn`**  | **forward, backward, step**  | **Training / gradient descent** |
 | **`rng`**    | **random, seed, sample**     | **Random number generation**    |
 | `agent`      | lifecycle, message, lease    | Agent coordination              |
+| `proc`       | spawn, exec, tool invocation | Process and system access       |
+
+The middle column names each effect's **domain**. It is not a table of callable
+operations: a built-in effect has no `effect` block, so nothing declares
+`dispatch` or `lifecycle` and calling them performs nothing. A function acquires
+a built-in effect three ways, and only three:
+
+1. **By annotation.** `/ gpu` puts `gpu` in the function's set, and it
+   propagates to every caller. This works for all seventeen.
+2. **Through a capability handle.** `io.println(…)`, `net.connect(…)`,
+   `llm.generate(…)` — the receiver names the capability, and the capability is
+   what gets attributed. This is the same rule as `Audit.record(…)` performing
+   `audit` (§11.5): the effect comes from the receiver, not the operation.
+
+   | Namespace | Effect | | Namespace | Effect |
+   | --- | --- | --- | --- | --- |
+   | `io` `log` | `io` | | `gpu` | `gpu` |
+   | `fs` | `fs` | | `llm` | `llm` |
+   | `net` `http` | `net` | | `rng` | `rng` |
+   | `env` | `env` | | `agent` `swarm` | `agent` |
+   | `time` | `time` | | `os` `sys` `process` `tools` | `proc` |
+   | `mem` | `alloc` | | `json` `kb` `db` | — |
+
+   `json` computes over values already in hand. `kb` and `db` reach a store that
+   no built-in kind names; declare `effect Db { … }` and call it, which is what
+   `examples/effects-showcase` does.
+
+3. **By calling a recognized builtin.** A fixed set of names is attributed by
+   name alone:
+
+   | Effect  | Names attributed on call |
+   | ------- | ------------------------ |
+   | `io`    | `print` `println` `eprint` `eprintln` `write` `writeln` `read` `read_line` `read_to_string` |
+   | `fs`    | `open` `create` `remove` `rename` `mkdir` `stat` |
+   | `net`   | `connect` `listen` `bind` `send` `recv` |
+   | `async` | `spawn` `select` |
+   | `alloc` | `alloc` `dealloc` `realloc` |
+   | `panic` | `panic` |
+   | `env`   | `env` `get_env` `set_env` |
+   | `time`  | `now` `sleep` `timeout` |
+
+   The standard vocabulary wins every collision: `join` is the vocabulary's
+   pure `([str], str) -> str`, so calling it is pure and does **not** mean a
+   thread join. `ffi`, `npu`, `evolve` and `learn` attribute no names at all —
+   reach them by annotation, or declare an `effect` block whose operations you
+   can actually call and handle.
+
+This last table is deliberately short, and route 2 is preferred over it.
+Attribution by bare name claims a word out of the whole program's namespace, so
+a user function that happens to share one inherits an effect it does not
+perform. A capability handle cannot collide that way: the receiver has to be the
+namespace.
+
+A **declared effect wins the name.** An `effect Io { … }` block in the module
+makes `Io.…` that module's own effect, checked against its own operation list,
+rather than the built-in capability.
 
 ### 11.3 Effect Typing Rules
 
@@ -1375,6 +1464,10 @@ Calling an operation performs the effect — this is the introduction rule, and
 what puts `audit` in the function's inferred set:
 
 ```mg
+effect Audit {
+    f record(entry: String) -> usize;
+}
+
 f transcribe(entry: String) -> usize / audit {
     Audit.record(entry)
 }
@@ -1384,6 +1477,14 @@ f transcribe(entry: String) -> usize / audit {
 from the block it wraps, so the handling function can be pure:
 
 ```mg
+effect Audit {
+    f record(entry: String) -> usize;
+}
+
+f transcribe(entry: String) -> usize / audit {
+    Audit.record(entry)
+}
+
 f summarize(entry: String) -> String {
     val n = handle { transcribe(entry) } with Audit {
         record(e) => len(chars(e))
@@ -1401,15 +1502,101 @@ Handlers are found **dynamically** (the innermost handler for an operation
 wins) and evaluated **lexically** (an arm sees the scope the handler was
 written in, not the frame that performed the operation).
 
-**Handlers do not resume.** An operation call dispatches to its arm and returns
-like an ordinary call. `resume`, and with it generators and backtracking from
-the same mechanism, is not implemented.
+**Resumption is single-shot and implicit.** An operation call dispatches to its
+arm, and the arm's value becomes the value of the call — so the body carries on
+from where it left off. Two operations in sequence each resume, and the arm is
+re-evaluated per call rather than computed once:
+
+```mg
+effect A { f ask() -> i32; }
+
+f work() -> i32 / a {
+    v got = A.ask()
+    got + 100
+}
+
+f run() -> i32 {
+    handle { work() } with A { ask() => 7 }   // 107
+}
+```
+
+**An arm may abort instead, with `ret`.** That discards the rest of the handled
+body and makes `ret`'s value the value of the whole `handle` expression. It does
+*not* return from the enclosing function:
+
+```mg
+effect A { f ask() -> i32; }
+
+f work() -> i32 / a {
+    v got = A.ask()
+    got + 100
+}
+
+f caller() -> i32 {
+    v r = handle { work() } with A { ask() => ret 7 }
+    r + 1000                                          // 1007
+}
+```
+
+#### Single-shot is the whole of it, and that is final
+
+**Resumption is single-shot. There is no `resume` keyword, no reified
+continuation, and neither is planned.** This is a decision, not a gap awaiting
+work — it was recorded as "missing" for some time, which invited the reading
+that multi-shot was coming.
+
+The continuation cannot be stored in a variable, returned, or invoked twice.
+Handlers that need none of that — state, reader, logging, tracing, retry
+policies, capability interception and test mocking — are the handlers MAGE
+exists to serve, and all of them work today. What is genuinely excluded is
+generators, backtracking search, and any scheduler that re-enters a suspended
+computation more than once.
+
+The reason to stop here is cost, and it is concrete. Multi-shot needs the
+continuation as a first-class value, which in a dual-surface language means a
+keyword *and* a sigil on every handler arm that uses it, plus a rule in the
+effect system for what a resumed continuation performs and whether those
+effects are re-attributed. It also needs the evaluator to hold the continuation
+somewhere it can be copied, which the tree-walking evaluator cannot: the
+continuation lives in the Rust call stack. That is a CPS or CEK rewrite across
+every expression form. For a language whose premise is that tokens are scarce
+and behaviour must be predictable to an agent, paying a permanent per-arm token
+cost and an evaluator rewrite to enable backtracking is the wrong trade.
+
+If a program needs multi-shot control, express it as data rather than control
+flow: return the choices and let the caller iterate. That is more tokens at the
+call site and fewer everywhere else.
+
+Nothing here is irreversible. Should a real MAGE program need multi-shot, this
+section is the thing to change first, and it should be changed with a program
+that needs it in hand — not on the strength of the feature existing elsewhere.
 
 ---
 
 ## 12. Contract System
 
 ### 12.1 Contract Attributes
+
+Contracts live in a **`spec` block that shares the function's name** (`sp` in
+agent mode) — not as attributes above the signature, which is a parse error:
+
+```mg
+sp withdraw {
+    @req(1b)
+    @ens(1b)
+    @fx()
+}
+
+pub fn withdraw(balance: u64, amount: u64) -> u64 or str {
+    guard balance >= amount else { ret Err("insufficient funds") }
+    Ok(balance - amount)
+}
+```
+
+`result` and `old` are **not in scope** inside `@ens`: express the
+postcondition over the arguments, or enforce it in the body with a `guard`,
+which is what the example above does. The older attribute form is recorded
+here as intent and does not parse:
 
 ```mg
 @req(balance >= amount, "sufficient funds")
@@ -1463,6 +1650,13 @@ $$
 ## 14. Module System
 
 ### 14.1 Standard Library
+
+**There is no module system today, and no standard library to import from.**
+`mod name { … }` parses as an item and resolves nothing; `use` parses and
+brings nothing into scope (the checker warns); `::` is a parse error
+everywhere. Whether MAGE *should* have modules is an open design question —
+an import costs tokens and buys little when the library is small, fixed and
+global — and this section records the shape it would take, as **invalid MAGE**:
 
 ```mg
 // File: src/lib.mg (crate root)
@@ -1546,12 +1740,19 @@ DispatchStrategy:
 
 ### 15.3 SIMD Types
 
+**Not implemented.** `f32x4` and its siblings are not type names — the
+checker reports `unresolved type`. Vectorisation is the backend's business
+today: a `tensor[f32, …]` lowers to whatever the selected target supports, and
+`@target(cpu)` / `@precision(f16)` steer it. What follows records the intent.
+
+**Invalid MAGE today:**
+
 ```mg
 // Built-in SIMD types
-val a: f32x4;     // 128-bit, 4 × f32
-val b: f32x8;     // 256-bit, 8 × f32
-val c: f64x4;     // 256-bit, 4 × f64
-val d: f32x16;    // 512-bit, 16 × f32 (AVX-512)
+val a: f32x4;     // 128-bit, 4 x f32
+val b: f32x8;     // 256-bit, 8 x f32
+val c: f64x4;     // 256-bit, 4 x f64
+val d: f32x16;    // 512-bit, 16 x f32 (AVX-512)
 
 // SIMD operations
 val sum = a + b;
@@ -1653,7 +1854,10 @@ val dot = (a * b).sum();
 
 ## Appendix B: Dual Syntax Mapping Table
 
-Every Human-mode construct has a Agent-mode equivalent. Both parse to the same AST.
+Every Human-mode construct has an Agent-mode equivalent, and both parse to the
+same AST — where both exist. **Every row below was checked against the
+compiler**; the ones that do not parse are marked, because this table is the
+first thing an agent reads to learn the compressed surface.
 
 ### B.1 Declaration Keywords
 
@@ -1662,7 +1866,7 @@ Every Human-mode construct has a Agent-mode equivalent. Both parse to the same A
 | `fn`           | `f`   | Function          |
 | `val`          | `v`   | Immutable binding |
 | `var`          | `m`   | Mutable binding   |
-| `const`        | `c`   | Constant          |
+| `const`        | `C`   | Constant (uppercase; lowercase `c` is an identifier) |
 | `data`         | `D`   | Data declaration  |
 | `data (sum)`   | `D`   | Sum type          |
 | `trait`        | `T`   | Trait             |
@@ -1671,10 +1875,19 @@ Every Human-mode construct has a Agent-mode equivalent. Both parse to the same A
 | `use`          | `u`   | Import            |
 | `pub`          | `+`   | Public prefix     |
 | `async fn`     | `af`  | Async function    |
-| `const fn`     | `c f` | Const function    |
-| `pub(crate)`   | `~`   | Crate-visible     |
+| ~~`const fn`~~ | ~~`c f`~~ | **Neither parses.** There are no const functions |
+| ~~`pub(crate)`~~ | ~~`~`~~ | **Neither parses.** Visibility is `pub`/`+` or private |
 
 ### B.2 AI Constructs
+
+> **Status: lexed, not parsed.** Fifteen of these Greek symbols are real
+> tokens (`Ψ` produces `KwPsi`, `Σ` produces `KwSigma`), and **no parser arm
+> consumes any of them** — `Ψ Classifier { … }` is `expected item, found
+> KwPsi`. `?:` is not even a token. The AI blocks use the **same keyword in
+> both modes**: `net`, `layer`, `train`, `kb`, `fact`, `rule`, `agent`,
+> `swarm`, `evolve`, `genome`, `fitness`, `select`, `crossover`, `mutate`,
+> `population`, `generations`. The table is the design, and Appendix D says
+> the same thing at more length.
 
 | Human           | Agent    | Meaning             |
 | --------------- | -------- | ------------------- |
@@ -1710,15 +1923,14 @@ Every Human-mode construct has a Agent-mode equivalent. Both parse to the same A
 | -------------- | ---------- | ------------- |
 | `if`           | `?`        | Conditional   |
 | `else`         | `:`        | Else branch   |
-| `else if`      | `:?`       | Else-if       |
-| `match`        | `? expr {` | Pattern match |
-| `for x in y`   | `@ x ~ y`  | For loop      |
-| `loop`         | `loop`     | Infinite loop |
-| `while`        | `loop ?`   | While loop    |
+| `else if`      | `: ?`      | Else-if. The space matters: `:?` is not a token |
+| `match`        | `?= expr {` | Pattern match. `? expr {` also parses |
+| `for x in y`   | `@ x in y` | For loop. The separator is `in`; `~` does not parse |
+| `loop`         | `@@` or `loop` | Infinite loop |
+| `while`        | `@w cond`  | While loop. `loop ?` does not parse |
 | `return`       | `ret`      | Return        |
 | `break`        | `!`        | Break         |
 | `continue`     | `>>`       | Continue      |
-| `break`        | `!`        | Break         |
 | `continue`     | `>>`       | Continue      |
 | `true`/`false` | `1b`/`0b`  | Booleans      |
 
@@ -1756,13 +1968,11 @@ Every Human-mode construct has a Agent-mode equivalent. Both parse to the same A
 
 ### B.6 Path and Scope
 
-| Human       | Agent        | Meaning        |
+| Rust        | MAGE         | Meaning        |
 | ----------- | ------------ | -------------- |
-| `::`        | `.`          | Path separator |
-| `crate::`   | `~.`         | Crate root     |
-| `super::`   | `super.`     | Parent module  |
-| `self::`    | `self.`      | Current module |
-| `Foo { x }` | `Foo @{ x }` | Struct literal |
+| `::`        | `.`          | Path separator. `::` does not parse in either MAGE mode |
+| `Foo { x }` | `@Foo { x: 1 }` | Struct literal. The `@` goes **before** the name, every field is named, and bare `Foo { … }` is a *map* |
+| ~~`crate::`~~ | ~~`~.`~~   | **Does not parse.** There is no module system, so there is no crate root, `super` or `self` path |
 
 ### B.7 Attributes
 
@@ -1779,7 +1989,9 @@ Every Human-mode construct has a Agent-mode equivalent. Both parse to the same A
 
 ### B.8 Shared Syntax (Identical in Both Modes)
 
-- All numeric types (`i32`, `u64`, `f64`, `f16`, `bf16`, etc.)
+- The numeric types that exist (`i8`–`i128`, `u8`–`u128`, `isize`, `usize`,
+  `f32`, `f64`). **`f16` and `bf16` are not type names** — the checker reports
+  `unresolved type` — though `@precision(f16)` is accepted as an attribute
 - Arithmetic, comparison, logical, bitwise operators
 - Semicolons, braces, parentheses
 - Comments (`//`, `/* */`, `///`, `//!`)
@@ -1787,8 +1999,8 @@ Every Human-mode construct has a Agent-mode equivalent. Both parse to the same A
 - Contract attributes (`@req`, `@ens`, `@inv`, `@perf`, `@fx`, `@spec`)
 - Range operators (`..`, `..=`)
 - Try operator (`?` postfix)
-- Closures (`|x| expr`)
-- `tensor!` literals
+- Closures (`|x| expr`, and `fn(x) => expr`)
+- ~~`tensor!` literals~~ — **there are no macros**; write a list literal
 
 ### B.9 Agent Mode Safety Philosophy
 
@@ -1841,6 +2053,20 @@ From highest to lowest. Left-associative unless noted.
 ## Appendix D: Agent Mode Symbol Reference
 
 A complete lexicon of Agent mode symbols, organized by category. This is the "genetic alphabet" of MAGE — each symbol encodes a high-level concept in minimal space.
+
+> **Status: lexed, not parsed.** The Greek and mathematical symbols in D.1,
+> D.2 and D.3 are recognised by the lexer — `Ψ` produces `KwPsi`, `Σ` produces
+> `KwSigma`, and so on for fifteen of them — and **no parser arm consumes any
+> of them**. `Ψ Classifier { … }` is `expected item, found KwPsi`. The agent
+> mode that *works* is the one in D.4–D.6: the ASCII declaration sigils (`+f`,
+> `v`, `m`, `S`, `E`, `I`, `T`), the control compressions (`?`, `?=`, `@`,
+> `@@`, `!`), and the short aliases (`sw`, `topo`, `cons`, `fx`, `hx`, `gd`,
+> `df`, `xd`). The AI-construct blocks — `net`, `layer`, `train`, `kb`,
+> `agent`, `swarm`, `evolve` — use the **same keyword in both modes**.
+>
+> The tables below are the design. They are worth keeping, because the
+> compression argument is the reason the language has two surfaces at all; but
+> nothing in them compiles today.
 
 ### D.1 Greek Letters — AI Constructs
 
@@ -1966,243 +2192,234 @@ In agent mode, the following constructs have **no syntax** — the compiler's SK
 
 ### D.7 Swarm Constructs
 
-| Human Field  | Agent Field  | Meaning                | SKB Rule |
-| ------------ | ------------ | ---------------------- | -------- |
-| `swarm`      | `Σ` / `sw`   | Swarm definition       | SWM-0014 |
-| `agent:`     | `α:`         | Agent type in swarm    | SWM-0004 |
-| `topology:`  | `topo:`      | Communication topology | SWM-0003 |
-| `consensus:` | `cons:`      | Consensus strategy     | SWM-0002 |
-| `dispatch`   | `dispatch`   | Scatter/map block      | SWM-0005 |
-| `aggregate`  | `aggregate`  | Gather/reduce block    | SWM-0006 |
-| `on_failure` | `on_failure` | Fault tolerance block  | SWM-0010 |
+| Human Field  | Agent Field | Meaning |
+| ------------ | ----------- | ------- |
+| `swarm`      | `sw`        | Swarm definition |
+| `agent:`     | `agent:`    | Agent type in the swarm |
+| `size:`      | `size:`     | Number of members |
+| `topology:`  | `topo:`     | Communication topology |
+| `consensus:` | `cons:`     | Consensus strategy |
+
+Four fields, and **no behaviour blocks**: `dispatch`, `aggregate` and
+`on_failure` do not exist — a swarm block declares the group, and the work is
+ordinary functions with `map` and `fold` (§9.2). `Σ` is a reserved token that
+no parser arm consumes; `sw` is the agent-mode spelling that works.
 
 ---
 
 ## Appendix E: Side-by-Side — Human vs Agent
 
-use std::neural::{net, train, Metrics};
-use std::tensor::Tensor;
+The same three programs in both surfaces. **Every block below was verified with
+`mage-parse --check`** — the two modes are the same language, so a construct
+that is missing from one is missing from both: there is no Greek layer syntax,
+no `Ψ`/`Ω`/`κ`/`α` block keywords, and nothing to import in either mode.
 
+What actually differs is the *declaration* and *binding* spellings, and the
+print form.
+
+### E.1 A neural network and its training loop
+
+**Human:**
+```mg
 net ImageClassifier {
-    layer conv2d(3, 32, 3, 1, 1)
-    layer batchnorm(32)
-    layer conv2d(32, 64, 3, 1, 1)
-    layer flatten()
-    layer dense(64 * 7 * 7, 128, relu)
-    layer dropout(0.5)
-    layer dense(128, 10, softmax)
+    layer conv1: Conv2D(3, 32, 3)
+    layer norm1: BatchNorm(32)
+    layer conv2: Conv2D(32, 64, 3)
+    layer hidden: Linear(28, 128)
+    layer act: ReLU(128)
+    layer drop: Dropout(0.5)
+    layer out: Linear(128, 10)
+    forward { out(drop(act(hidden(conv2(norm1(conv1)))))) }
 }
 
-pub fn main() / io, gpu {
-    val model = ImageClassifier.new();
-    val data = Dataset.load("cifar10");
+train cifar_train {
+    net: ImageClassifier
+    dataset: "cifar10"
+    optimizer: adam
+    loss: cross_entropy
+    epochs: 50
+    batch_size: 128
+}
 
-    train cifar_train {
-        model: model,
-        data: data,
-        optimizer: Adam { lr: 0.001 },
-        loss: cross_entropy,
-        epochs: 50,
-        batch_size: 128,
-    }
-
-    val accuracy = model.evaluate(data.test());
-    println!("Test accuracy: {accuracy:.2}%");
+pub fn main() -> i32 / io, gpu {
+    println("training ImageClassifier on cifar10")
+    0
 }
 ```
 
 **Agent:**
 ```mg
-#![syntax(agent)]
-u std.neural.{Ψ, Θ, Metrics}
-u std.tensor.Φ
-
-Ψ ImageClassifier {
-    λ ⊞(3, 32, 3, 1, 1)
-    λ bn(32)
-    λ ⊞(32, 64, 3, 1, 1)
-    λ ⊥()
-    λ δ(64*7*7, 128, relu)
-    λ ∅(0.5)
-    λ δ(128, 10, σ)
+net ImageClassifier {
+    layer conv1: Conv2D(3, 32, 3)
+    layer norm1: BatchNorm(32)
+    layer conv2: Conv2D(32, 64, 3)
+    layer hidden: Linear(28, 128)
+    layer act: ReLU(128)
+    layer drop: Dropout(0.5)
+    layer out: Linear(128, 10)
+    forward { out(drop(act(hidden(conv2(norm1(conv1)))))) }
 }
 
-+f main() / io, gpu {
-    v model = ImageClassifier.new()
-    v data = Dataset.load("cifar10")
+train cifar_train {
+    net: ImageClassifier
+    dataset: "cifar10"
+    optimizer: adam
+    loss: cross_entropy
+    epochs: 50
+    batch_size: 128
+}
 
-    Θ cifar_train {
-        model: model,
-        data: data,
-        opt: Adam @{ lr: 0.001 },
-        loss: cross_entropy,
-        epochs: 50,
-        batch: 128,
-    }
-
-    v accuracy = model.eval(data.test())
-    p"Test accuracy: {accuracy:.2}%"
++f main() -> i32 / io, gpu {
+    p"training ImageClassifier on cifar10"
+    0
 }
 ```
 
-use std::evolve::{Genome, Gene, EvolveStats};
-use std::neural::net;
+The `net` block is identical: layer names, kinds and the `forward` expression
+are the same in both modes. What changes is `pub fn` → `+f`, `val` → `v`, and
+`println(…)` → `p"…"`. Note the shape check is real — a `Linear` whose input
+dim disagrees with the preceding layer's last dimension is an error naming
+both.
 
-#[derive(Genome)]
-pub data ArchGenome {
+### E.2 Architecture search
+
+**Human:**
+```mg
+pub enum LayerGene {
+    Dense(u32),
+    Conv2d(u32, u32),
+    Attention(u32, u32),
+    Skip,
+}
+
+pub struct ArchGenome {
     layers: [LayerGene]~,
     lr: f64,
     dropout: f64,
 }
 
-#[derive(Gene)]
-pub data LayerGene {
-    Dense { units: u32, activation: Activation },
-    Conv2d { filters: u32, kernel: u32 },
-    Attention { heads: u32, dim: u32 },
-    Skip,
+fn score(genome: ArchGenome) -> f64 {
+    genome.lr * (1.0 - genome.dropout)
 }
 
 evolve NeuralArchSearch {
-    genome: ArchGenome,
-    population: 200,
-    generations: 500,
+    genome: ArchGenome
+    population: 200
+    generations: 500
 
-    fn fitness(&self) -> f64 / gpu {
-        val model = self.genome.build_net();
-        val data = Dataset.load("cifar10");
-        model |> train_quick(data, epochs: 5) |> evaluate(data.test())
-    }
-
-    select tournament(k: 8),
-    crossover uniform(rate: 0.7),
-    mutate gaussian(sigma: 0.02),
-    target fitness > 0.95,
-
-    fn on_generation(gen: u32, best: &Self, stats: &EvolveStats) {
-        println!("Gen {gen}: best={best.fitness():.4}, mean={stats.mean:.4}");
-    }
+    fitness { score(@ArchGenome { layers: [Skip], lr: 0.01, dropout: 0.5 }) }
+    select { 8 }
+    crossover { 0.7 }
+    mutate { 0.02 }
 }
 ```
 
 **Agent:**
 ```mg
-#![syntax(agent)]
-u std.evolve.{Γ, Gene, EvolveStats}
-u std.neural.Ψ
++E LayerGene {
+    Dense(u32),
+    Conv2d(u32, u32),
+    Attention(u32, u32),
+    Skip,
+}
 
-@d(Genome)
 +S ArchGenome {
     layers: [LayerGene]~,
     lr: f64,
     dropout: f64,
 }
 
-@d(Gene)
-+E LayerGene {
-    Dense { units: u32, act: Activation },
-    Conv2d { filters: u32, kernel: u32 },
-    Attention { heads: u32, dim: u32 },
-    Skip,
+f score(genome: ArchGenome) -> f64 {
+    genome.lr * (1.0 - genome.dropout)
 }
 
-Ω NeuralArchSearch {
-    Γ: ArchGenome,
-    η: 200,
-    ∞: 500,
+evolve NeuralArchSearch {
+    genome: ArchGenome
+    population: 200
+    generations: 500
 
-    f φ(&self) -> f64 / gpu {
-        v model = self.Γ.build_net()
-        v data = Dataset.load("cifar10")
-        model ▸ train_quick(data, 5) ▸ eval(data.test())
-    }
-
-    ⊳ tournament(k: 8),
-    χ uniform(r: 0.7),
-    μ gaussian(σ: 0.02),
-    → φ > 0.95,
+    fitness { score(@ArchGenome { layers: [Skip], lr: 0.01, dropout: 0.5 }) }
+    select { 8 }
+    crossover { 0.7 }
+    mutate { 0.02 }
 }
 ```
 
-use std::agent::{Agent, Swarm, Message, Capability};
-use std::llm::{LLM, Prompt};
-use std::kb::KnowledgeBase;
+`pub struct` → `+S`, `pub enum` → `+E`, `fn` → `f`. The `evolve` block is the
+same in both: its fields are fixed and its strategies are blocks.
 
+### E.3 A code-review swarm
+
+**Human:**
+```mg
 kb StyleRules {
     fact max_line_length(120);
     fact max_fn_lines(50);
-    fact require_doc_comments(true);
-    rule violation(file, line, msg) :- too_long(file, line), max_line_length(max),
-                                       line_length(file, line) > max;
+    rule violation(line: str) { max_line_length(line) }
 }
 
 agent CodeReviewer {
-    brain: LLM,
-    rules: KnowledgeBase,
-    history: [Review]~,
-
-    fn handle(&mut self, msg: Message<String>) -> Review or AgentError / agent, llm {
-        val violations = self.rules.query("violation", &[&msg.payload]);
-        val analysis = self.brain.generate(
-            Prompt.new("Review this code. Known violations: {violations}\n\n{msg.payload}"),
-            max_tokens: 512,
-        );
-        val review = Review { violations, analysis: analysis.text(), score: analysis.score() };
-        self.history.push(review.clone());
-        Ok(review)
-    }
+    capabilities: [llm, fs]
 }
 
-pub async fn review_codebase(files: [String]~) -> [Review]~ / agent, llm, io {
-    var swarm = Swarm::<CodeReviewer>::new(SwarmConfig { size: 4 });
-    swarm.map(files, |agent, file| {
-        val code = std::fs::read(&file)?;
-        agent.handle(Message.new(code))
-    }).await
+swarm ReviewTeam {
+    agent: CodeReviewer
+    size: 4
+    topology: mesh
+    consensus: majority
+}
+
+pub struct Review { file: str, analysis: str, score: i32 }
+
+fn review_file(path: str) -> Review / fs, llm {
+    val code = fs.read_to_string(path)
+    val analysis = llm.generate(f"Review this code:\n{code}")
+    @Review { file: path, analysis: analysis, score: len(code) as i32 }
+}
+
+pub fn review_codebase(files: [str]~) -> [Review]~ / fs, llm {
+    map(files, |file| review_file(file))
 }
 ```
 
 **Agent:**
 ```mg
-#![syntax(agent)]
-u std.agent.{α, Swarm, Message, Capability}
-u std.llm.{Λ, Prompt}
-u std.kb.Κ
-
-κ StyleRules {
-    ⊢ max_line_length(120)
-    ⊢ max_fn_lines(50)
-    ⊢ require_doc_comments(1b)
-    ρ violation(file, line, msg) :- too_long(file, line), max_line_length(max),
-                                    line_length(file, line) > max
+kb StyleRules {
+    fact max_line_length(120);
+    fact max_fn_lines(50);
+    rule violation(line: s) { max_line_length(line) }
 }
 
-α CodeReviewer {
-    brain: Λ,
-    rules: Κ,
-    history: [Review]~,
-
-    f handle(&!self, msg: Message[s]) -> R[Review, AgentError] / agent, llm {
-        v violations = self.rules.query("violation", &[&msg.payload])
-        v analysis = self.brain.generate(
-            Prompt.new(f"Review this code. Violations: {violations}\n\n{msg.payload}"),
-            max_tokens: 512,
-        )
-        v review = Review @{ violations, analysis: analysis.text(), score: analysis.score() }
-        self.history.push(review.clone())
-        Ok(review)
-    }
+agent CodeReviewer {
+    capabilities: [llm, fs]
 }
 
-+af review_codebase(files: [s]~) -> [Review]~ / agent, llm, io {
-    m swarm = Swarm[CodeReviewer].new(SwarmConfig @{ size: 4 })
-    swarm.map(files, |agent, file| {
-        v code = std.fs.read(&file)?
-        agent.handle(Message.new(code))
-    }).await
+swarm ReviewTeam {
+    agent: CodeReviewer
+    size: 4
+    topology: mesh
+    consensus: majority
+}
+
++S Review { file: s, analysis: s, score: i32 }
+
+f review_file(path: s) -> Review / fs, llm {
+    v code = fs.read_to_string(path)
+    v analysis = llm.generate(f"Review this code:\n{code}")
+    @Review { file: path, analysis: analysis, score: len(code) as i32 }
+}
+
++f review_codebase(files: [s]~) -> [Review]~ / fs, llm {
+    map(files, |file| review_file(file))
 }
 ```
 
+`kb`, `agent` and `swarm` blocks are identical across modes. The type `str`
+is spelled `s` in agent mode, and the effect annotations — `/ fs, llm` — are
+the same, because they are the part that has to be checked rather than
+compressed.
+
 ---
+
 
 *End of MAGE (Machine Genetics) Language Specification v1.0.0*

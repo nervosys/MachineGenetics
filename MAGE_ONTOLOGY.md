@@ -93,12 +93,28 @@ Envelope {
 
 RAP exposes 24 JSON-RPC 2.0 endpoints. Each request is a JSON object with `method`, `params`, `id`:
 
+> **Corrected 2026-08-18.** Thirteen of the twenty-three method rows below
+> listed parameters the server does not read, checked against the `rap_methods`
+> section of `MAGE_ONTOLOGY.json` — which is itself verified by
+> `every_published_rap_key_is_real`, a test that calls each method with the
+> published names and asserts the answer's shape. Every method named here
+> exists; the drift was in the parameters. The sharpest were `skb/query`
+> (`{database, category}` for `{by, value}`) and `attribute/expand` /
+> `attribute/compress` (`{source}` for `{name}`) — a caller following those got
+> an empty result rather than an error, because the arm reads names that were
+> not sent and falls back to the empty string. **Prefer the JSON**, as
+> `DOCS.md` says: it is generated and checked, and this page is neither.
+>
+> The `mode` parameter on the two language services was never real — both modes
+> lex and parse through the same entry point, which is the whole point of the
+> dual surface.
+
 #### 5.1 Language Services
 
 | Method            | Params           | Returns        | Description                   |
 | ----------------- | ---------------- | -------------- | ----------------------------- |
-| `language/tokens` | `{source, mode}` | `Vec<Token>`   | Tokenize source in given mode |
-| `language/parse`  | `{source, mode}` | `Module` (AST) | Parse to full AST             |
+| `language/tokens` | `{source}` | `Vec<Token>`   | Tokenize source (both modes lex the same) |
+| `language/parse`  | `{source}` | `Module` (AST) | Parse to full AST             |
 
 #### 5.2 Build Services
 
@@ -111,17 +127,17 @@ RAP exposes 24 JSON-RPC 2.0 endpoints. Each request is a JSON object with `metho
 
 | Method         | Params                           | Returns          | Description                    |
 | -------------- | -------------------------------- | ---------------- | ------------------------------ |
-| `cost/query`   | `{construct, target, opt_level}` | `CostEstimate`   | Per-construct cost query       |
-| `cost/compare` | `{a, b, target, opt_level}`      | `CostComparison` | Compare two constructs         |
+| `cost/query`   | `{construct, target, opt}` | `CostEstimate`   | Per-construct cost query       |
+| `cost/compare` | `{a, b, target}`      | `CostComparison` | Compare two constructs         |
 | `token/report` | `{source}`                       | `TokenReport`    | Per-item token budget analysis |
 
 #### 5.4 Safety & Verification Services
 
 | Method             | Params                 | Returns                   | Description                 |
 | ------------------ | ---------------------- | ------------------------- | --------------------------- |
-| `skb/query`        | `{database, category}` | `Vec<Rule>`               | Query Safety Knowledge Base |
-| `skb/rules`        | `{}`                   | `Vec<Rule>`               | List all 255 safety rules   |
-| `verify/contracts` | `{fqn, spec, effects}` | `VerificationResult`      | Verify function contracts   |
+| `skb/query`        | `{by, value}` | `Vec<Rule>`               | Query Safety Knowledge Base |
+| `skb/rules`        | `{domain}`                   | `Vec<Rule>`               | List all 255 safety rules   |
+| `verify/contracts` | `{fqn, requires, ensures, declared_effects, used_effects}` | `VerificationResult`      | Verify function contracts   |
 | `verify/module`    | `{source}`             | `Vec<VerificationResult>` | Verify entire module        |
 
 #### 5.5 Effect Services
@@ -144,17 +160,17 @@ RAP exposes 24 JSON-RPC 2.0 endpoints. Each request is a JSON object with `metho
 
 | Method             | Params               | Returns           | Description              |
 | ------------------ | -------------------- | ----------------- | ------------------------ |
-| `capability/check` | `{agent, operation}` | `bool`            | Check agent capability   |
-| `sandbox/policy`   | `{agent}`            | `ResourceLimits`  | Get agent sandbox policy |
-| `heal/graph`       | `{diagnostic}`       | `DiagnosticGraph` | Rich diagnostic graph    |
+| `capability/check` | `{source}` | `bool`            | Check agent capability   |
+| `sandbox/policy`   | `{source, agent}`            | `ResourceLimits`  | Get agent sandbox policy |
+| `heal/graph`       | `{source}`       | `DiagnosticGraph` | Rich diagnostic graph    |
 
 #### 5.8 Attribute & Documentation Services
 
 | Method               | Params     | Returns  | Description                  |
 | -------------------- | ---------- | -------- | ---------------------------- |
-| `attribute/expand`   | `{source}` | `String` | Expand compressed attributes |
-| `attribute/compress` | `{source}` | `String` | Compress to sigil attributes |
-| `doc/query`          | `{symbol}` | `String` | Symbol documentation lookup  |
+| `attribute/expand`   | `{name}` | `String` | Expand compressed attributes |
+| `attribute/compress` | `{name}` | `String` | Compress to sigil attributes |
+| `doc/query`          | `{fqn}` | `String` | Symbol documentation lookup  |
 
 ### 6. Concurrency Protocol
 

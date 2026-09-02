@@ -32,6 +32,10 @@ on:
       - "ARCHITECTURE.md"
       - "RIBOSOME.md"
       - "GERMLINE.md"
+      # The audit job checks video/'s npm lockfile, so a change there should
+      # trigger it. Nothing did before, and "0 npm" in HANDOFF.md was a figure
+      # with no mechanism behind it.
+      - "video/package-lock.json"
   pull_request:
     paths:
       - "prototype/**"
@@ -47,6 +51,10 @@ on:
       - "ARCHITECTURE.md"
       - "RIBOSOME.md"
       - "GERMLINE.md"
+      # The audit job checks video/'s npm lockfile, so a change there should
+      # trigger it. Nothing did before, and "0 npm" in HANDOFF.md was a figure
+      # with no mechanism behind it.
+      - "video/package-lock.json"
 
 jobs:
   rmi:
@@ -59,6 +67,70 @@ jobs:
         run: cargo build --release --manifest-path RecursiveMachineIntelligence/Cargo.toml --no-default-features --features cpu
       - name: Test
         run: cargo test --manifest-path RecursiveMachineIntelligence/Cargo.toml --no-default-features --features cpu
+      # `cargo build` and `cargo test` compile lib, bins and test targets —
+      # **not examples, and not benches**. `rmi` has 9 examples and 1 bench,
+      # and until 2026-08-25 nothing in this workflow or in `test-all.sh`
+      # compiled any of them: the only `--all-targets` here is the CUDA
+      # compile-check, and `prototype` has no examples at all.
+      #
+      # That is the third way code sits in the tree without ever running, after
+      # the two `check-orphan-sources.sh` and `check-ignored-tests.sh` already
+      # cover. Those two look at `src/` and at `#[ignore]`d tests; an example
+      # is outside `src/`, so no `mod` needs to reach it and neither script can
+      # see it. All ten compile clean today — verified by breaking one and
+      # watching this fail — which is exactly why it is worth a step: nothing
+      # was keeping them that way, and an example that stops compiling is one a
+      # reader copies from.
+      - name: Examples and benches still compile
+        run: cargo check --manifest-path RecursiveMachineIntelligence/Cargo.toml --no-default-features --features cpu --examples --benches
+      # `docs/api.md` is 1,463 lines of signatures and nothing resolved any of
+      # them: it documented an FFI API whose types exist in no source file, and
+      # every "Module:" line named a crate this one has not been called for some
+      # time. Name-level only — it cannot see a wrong signature on a function
+      # that exists — with a baseline that can only shrink.
+      - name: Documented API items exist
+        run: bash scripts/check-rmi-api-doc.sh
+      # The same question one directory over. `internals/` is listed in
+      # README.md as "Compiler-internals documentation" and written in the
+      # present tense, and 15 of its 36 documented `pub` items do not exist —
+      # `CompileSession`, `DefId`, `InferCtxt` and friends are names for a
+      # query-driven multi-crate compiler that was designed and not built.
+      # Baselined at 15 and shrink-only: this does not fix it, it stops it
+      # growing and keeps the size of it visible.
+      - name: internals/ documents items that exist
+        run: bash scripts/check-internals-doc.sh
+      # `DOCS.md` says "This index says which is which", and only its *count*
+      # was checked. A count catches adding a document and forgetting the
+      # number; it does not catch adding one, updating the number, and
+      # forgetting the entry — which is the failure that sentence exists to
+      # prevent. Both directions, including a dead pointer to a document that
+      # has been renamed away.
+      - name: Every root document is in DOCS.md
+        run: bash scripts/check-docs-index.sh
+      # Every check above asks a question about code that compiles. Nothing
+      # asked whether it compiles at all — and `compute/cuda_full.rs` is 1,812
+      # lines with 16 `unsafe` blocks and 6 tests that no `mod` declaration
+      # reaches, so it never has. Its tests cannot run on any hardware and its
+      # `unsafe` was covered by SECURITY_AUDIT.md's "all reviewed". The first
+      # run also found `compute/wasm.rs`, whose backend `discoverability.rs`
+      # advertises to callers — that one compiled clean once a `mod` was added
+      # and is fixed. `cuda_full.rs` stays baselined: wiring it up needs a CUDA
+      # toolkit, so it is the vendored crate's owner's call. The point is that
+      # a new one fails.
+      - name: No source file is unreachable by `mod`
+        run: bash scripts/check-orphan-sources.sh
+      # The sibling failure: a file that compiles, holding a test that never
+      # runs. `eval_bench` was red for 76 commits behind three separate
+      # hiding places — `#[ignore]`, a `--bench` flag nobody passed, and an
+      # unpushed branch — while the number it certifies was published in three
+      # documents. `cargo test` prints such a test as "ignored", which reads
+      # like a decision being made each run, and is not.
+      #
+      # This asks only whether some job names it. Its first run found
+      # `perf_report`, which produces the ABL scaling figures and had never
+      # been executed by CI.
+      - name: Every #[ignore]d test has a runner
+        run: bash scripts/check-ignored-tests.sh
 
   prototype:
     name: prototype — build + test
@@ -72,6 +144,18 @@ jobs:
         run: cargo test --release --manifest-path prototype/Cargo.toml
       - name: Evaluator correctness bench (73/73 exact)
         run: cargo test --release --manifest-path prototype/Cargo.toml eval_bench -- --ignored --nocapture
+      # `perf_report` is the harness that produced the ABL artifact-scaling
+      # figures in MEASUREMENTS.md and ARCHITECTURE_DSL.md. `cargo test`
+      # compiles it, so it cannot rot into a build error unnoticed — but until
+      # 2026-08-24 nothing ever *ran* it: the step above names `eval_bench`
+      # specifically, and no job passes `--bench`. A runtime panic in it would
+      # have surfaced only when someone next tried to regenerate the published
+      # numbers, which is precisely when a broken harness is most expensive.
+      #
+      # Same shape as HANDOFF rule 6, which this harness is the subject of: it
+      # silently changed meaning under a table it had produced. 3 seconds.
+      - name: Performance harness runs (publishes MEASUREMENTS figures)
+        run: cargo test --release --manifest-path prototype/Cargo.toml perf_report -- --ignored --nocapture
       # `mage-parse@<version>` is the tool id Ribosome writes into every action
       # key, so if the binary and the registry disagree the cache is keyed on a
       # version that never ran. They live in different crates with no compiler
@@ -100,6 +184,46 @@ jobs:
       # recorded answer at all.
       - name: Example programs match their recorded state
         run: bash scripts/check-examples.sh
+      # The examples check covers the twelve in `examples/`. Nothing covered
+      # the other 89 `.mg` files in the repo, and 36 of them do not typecheck —
+      # `stdlib/` was 4,402 lines of Rust behind a MAGE extension, read by
+      # nothing and checked by nothing. A file with no consumer has no error
+      # message; this was the consumer. The sketch list could only shrink, and
+      # on 2026-08-19 it reached zero: item 1 was decided as *no module
+      # system*, so an import-based standard library had nothing to be, and
+      # `stdlib/` was deleted. Every `.mg` file in the repository now
+      # typechecks.
+      - name: Every .mg source typechecks or is a listed sketch
+        run: bash scripts/check-mg-sources.sh
+      # 258 MAGE-tagged code blocks live in the markdown, and 177 of them did
+      # not parse when anyone first checked — Rust `::` paths, Rust signatures,
+      # brace imports — in the guides an agent reads to learn the language, and
+      # in `training/prompts/`, whose few-shot blocks teach a model what MAGE
+      # looks like. They are all fixed; the baseline is empty, so this now
+      # fails on any new one.
+      - name: Every documentation block typechecks
+        run: bash scripts/check-doc-blocks.sh
+      # And `--check` is only one of the two oracles. Running the blocks that
+      # define an entry point found that thirteen of the seventeen registered
+      # builtins — `assert` among them — had no arm in the evaluator at all.
+      - name: Every documentation entry point runs
+        run: bash scripts/check-doc-evals.sh
+      # The 31 words of §8 are the whole standard library. Three lists have to
+      # agree for one to work — the resolver's, the checker's and the
+      # evaluator's — and `scan` and `group` were missing from the middle one,
+      # so `scan(1, 2, 3, 4, 5)` typechecked clean for as long as they existed.
+      - name: Every vocabulary word checks, runs, and returns what §8 publishes
+        run: bash scripts/check-vocabulary.sh
+      # The ontology published six "CI floors" and this workflow enforced none
+      # of them — the section's own doc comment said they were read from this
+      # file. Three are measurable and now are.
+      #
+      # This step also runs `token-bench`, which nothing ran: the published
+      # token-ratio ceiling was being enforced by reading a *committed*
+      # TOKEN_REPORT.md that had gone stale in two categories. The script now
+      # measures fresh and fails if the committed report differs.
+      - name: Published reliability floors hold
+        run: bash scripts/check-ci-floors.sh
       - name: Compiler version matches Ribosome's registry entry
         run: |
           binv=$(cargo run --quiet --release --manifest-path prototype/Cargo.toml \
@@ -239,6 +363,34 @@ jobs:
               && cargo audit ) || exit 1
             echo "::endgroup::"
           done
+      # `video/` has a tracked package-lock.json and nothing audited it.
+      # `HANDOFF.md` said "0 npm" while `npm audit` reported one high-severity
+      # advisory (nanoid < 3.3.18, transitive via postcss) — a figure with no
+      # mechanism behind it, true only until the next advisory landed.
+      #
+      # `--audit-level=high` for the same reason `-D warnings` is off above:
+      # low/moderate findings in a dev-only video pipeline should be read, not
+      # gate the build.
+      - name: npm audit (video pipeline)
+        run: cd video && npm audit --audit-level=high
+      # The two steps above find advisories; neither reads what was *decided*
+      # about the ones that stay. `-D warnings` is off by design, so the entire
+      # warning surface is printed and nothing compares it against
+      # SECURITY_AUDIT.md §1 — which is exactly how that register came to list
+      # RUSTSEC-2026-0097 after it stopped firing while missing
+      # RUSTSEC-2026-0190 for two months. This step closes the loop in both
+      # directions. It runs last because it depends on the rmi lockfile the
+      # `cargo audit` step generates.
+      - name: Accepted-risk register agrees with what cargo audit reports
+        run: bash scripts/check-security-register.sh
+      # §2's inventory concluded "no secret keying, no signatures, no KDF" while
+      # the repository held HMAC-SHA256 under a fleet key, Ed25519 provenance
+      # signatures, and a TLS worker transport — all of which arrived with
+      # `ribosome` and `germline` after §2's scope was written, and none of
+      # which anything compared against the manifests. An absence claim stays
+      # green by doing nothing, so it needs a check that does something.
+      - name: Crypto inventory names every crypto dependency
+        run: bash scripts/check-crypto-inventory.sh
 
   cuda:
     name: prototype — cuda feature (compile check)
@@ -250,7 +402,7 @@ jobs:
       # backend compiles with no CUDA toolkit and no GPU present — a runner
       # without a driver can still prove the code builds. It cannot prove the
       # kernels are *correct*: that needs `cargo test --features cuda` on a
-      # CUDA box (dual 3090 Ti locally, 1,071 tests green).
+      # CUDA box (dual 3090 Ti locally, 1,229 tests green).
       - name: Compile-check the CUDA backend
         run: cargo check --manifest-path prototype/Cargo.toml --features cuda --all-targets
 

@@ -319,6 +319,15 @@ supervision → fallback and assert the seams line up:
 | `a_promoted_successor_that_fails_is_demoted_and_the_whole_story_is_on_record` | failure → fallback, fully journalled |
 | `tampering_with_the_record_after_the_fact_is_detectable` | rewriting a candidate's provenance breaks the chain |
 | `the_gate_cannot_be_bypassed_by_driving_the_cycle_out_of_order` | no path to authority skips adjudication |
+| `the_runner_drives_a_real_workload_to_a_bounded_stop` | the whole thing unattended, evaluated by actual Ribosome builds — **no stubs in the path** |
+| `an_unattended_run_that_breaks_falls_back_to_something_runnable` | when that unattended run breaks, the champion it lands on is one that runs |
+
+> **Corrected 2026-08-18.** This table listed 4 of the 6 closed-loop
+> scenarios. Every name it did list exists — the gap was omission — but the two
+> missing are the ones that answer the obvious sceptical question about an RSI
+> loop, which is whether anything in the path is a stub. They drive a real
+> workload through real builds, unattended, to a bounded stop. Leaving them out
+> understated the strongest evidence in the crate.
 
 | Scenario | Property |
 |---|---|

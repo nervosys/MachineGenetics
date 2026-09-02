@@ -20,7 +20,7 @@ get involved, from reporting bugs to proposing new language features.
 | Bug reports        | File issues with reproduction steps               |     Yes     |
 | Documentation      | Fix typos, improve examples, add cookbook entries |     Yes     |
 | Training data      | Add JSONL samples to `training/samples/`          |     Yes     |
-| Standard library   | Implement stubs in `stdlib/`                      |     Yes     |
+| Standard library   | There is none, by design — MAGE has one flat namespace (`MAGE_SPEC.md` §2.3). The 31-word vocabulary of §8 is the library; propose additions there |     Yes     |
 | Transpiler rules   | Add patterns to `rust2mg` or `mg2rs`            |   Medium    |
 | SKB rules          | Propose new Safety Knowledge Base rules           |   Medium    |
 | Editor support     | Improve VS Code, Neovim, Helix, or Zed configs    |   Medium    |

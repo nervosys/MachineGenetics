@@ -5,7 +5,9 @@
 //   - Mutable variable (var)
 //   - Expression-body functions
 
-pub fn main() {
+// `/ io` is required: `io.println` is a capability handle, and performing a
+// capability from a `pub` function means declaring it.
+pub fn main() / io {
     // Immutable value binding.
     val greeting: String = "Hello, MAGE!";
     io.println(greeting);

@@ -4,7 +4,8 @@
 //! vocabulary); IO/structs/traits are out of scope and report an honest error.
 
 use crate::ast::{
-    Block, Expr, FunctionDef, ItemKind, LiteralKind, Module, Pattern, Stmt, Type, VariantKind,
+    Block, DataKind, Expr, FunctionDef, ItemKind, LiteralKind, Module, Pattern, Stmt, Type,
+    VariantKind,
 };
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -237,6 +238,22 @@ impl Interp {
                             .insert((ed.name.clone(), variant.name.clone()), arity);
                     }
                 }
+                // `data Shape = Circle(f64) | Rect(f64, f64)` is the concise
+                // spelling of the arm above and needs the same runtime
+                // representation. Registering the variants in `resolve` alone
+                // made the program *typecheck* and then die on
+                // `unknown function \`Rect\`` — the class `--check` cannot see
+                // and only `--eval` can, which is why the example pin runs it.
+                ItemKind::Data(dd) => {
+                    if let DataKind::Sum(variants) = &dd.kind {
+                        for variant in variants {
+                            enum_variants.insert(
+                                (dd.name.clone(), variant.name.clone()),
+                                variant.fields.len(),
+                            );
+                        }
+                    }
+                }
                 _ => {}
             }
         }
@@ -275,6 +292,27 @@ impl Interp {
         self.methods.get(&(type_name.to_string(), method.to_string()))
     }
 
+    /// Resolve a bare name to a zero-field enum variant, if exactly one
+    /// declares it.
+    ///
+    /// Exactly one: two enums sharing a unit-variant name is the same
+    /// ambiguity the bare *constructor* path guards against, and picking one
+    /// would let `Left { X }` and `Right { X }` be confused again. Here the
+    /// fallback is `Value::Func`, which fails later — a worse message than it
+    /// could be, but not a wrong answer. Qualify to disambiguate.
+    fn unit_variant(&self, name: &str) -> Option<Value> {
+        let mut matching = self
+            .enum_variants
+            .iter()
+            .filter(|((_, variant), arity)| variant == name && **arity == 0);
+        match (matching.next(), matching.next()) {
+            (Some(((enum_name, variant), _)), None) => {
+                Some(Value::Enum(enum_name.clone(), variant.clone(), Vec::new()))
+            }
+            _ => None,
+        }
+    }
+
     /// Resolve `Path.Variant` to the variant it names, if it is one.
     ///
     /// Checks the enum name too, so a field access that merely happens to share
@@ -298,7 +336,24 @@ impl Interp {
 
     fn call_user(&self, fd: &FunctionDef, args: Vec<Value>) -> R {
         let mut env = Env::new();
+        let supplied = args.len();
         for (p, v) in fd.params.iter().zip(args) {
+            env.define(p.name.clone(), v);
+        }
+        // Trailing parameters the caller omitted take their declared default.
+        //
+        // The parser has always stored these (`Param::default`), and a test
+        // asserted it stored them — but nothing downstream ever read the
+        // field, so `f g(a: i32, b: i32 = 2)` parsed and `g(1)` failed with
+        // `expected 2 argument(s), found 1`. The default was accepted and
+        // discarded, and the error pointed at the call rather than at the
+        // default that was ignored.
+        //
+        // Evaluated in the callee's own environment, left to right, so a later
+        // default can refer to an earlier parameter.
+        for p in fd.params.iter().skip(supplied) {
+            let Some(default) = &p.default else { continue };
+            let v = self.eval(default, &mut env)?;
             env.define(p.name.clone(), v);
         }
         if let Some(be) = &fd.body_expr {
@@ -404,7 +459,20 @@ impl Interp {
                 // literals are `1b`/`0b`); map the words so both forms work.
                 None if name == "true" => Ok(Value::Bool(true)),
                 None if name == "false" => Ok(Value::Bool(false)),
-                None => Ok(Value::Func(name.clone())),
+                // A bare *unit* variant: `Square`, not `Square()` and not
+                // `Shape.Square`. It has no arguments, so it arrives here as an
+                // identifier rather than a call, and fell through to
+                // `Value::Func` below — which matches no variant pattern, so
+                // `?= s { Circle => 0, Square => 4 }` silently took the first
+                // arm and returned the wrong answer. No error, just 0.
+                //
+                // That is bug 5 from the example rewrite happening again in a
+                // different spelling: a variant pattern matching nothing and a
+                // `match` quietly picking another arm.
+                None => match self.unit_variant(name) {
+                    Some(v) => Ok(v),
+                    None => Ok(Value::Func(name.clone())),
+                },
             },
             Expr::Await { expr } => {
                 // `e.await` — this evaluator is synchronous (no event loop), so
@@ -695,6 +763,20 @@ impl Interp {
                             payload.push(self.eval(a, env)?);
                         }
                         return Ok(Value::Enum(enum_name, method.clone(), payload));
+                    }
+                    // A capability namespace: `fs.read_to_string(p)`. Like the
+                    // arms above, the receiver is not a value, so this has to
+                    // be resolved from the name — falling through evaluated
+                    // `fs` as an expression and then looked `read_to_string`
+                    // up in the builtin table, where it is not.
+                    if env.get(name).is_none()
+                        && crate::hir::CAPABILITY_NAMESPACES.iter().any(|(ns, _)| ns == name)
+                    {
+                        let mut av = Vec::with_capacity(args.len());
+                        for a in args {
+                            av.push(self.eval(a, env)?);
+                        }
+                        return self.call_capability(name, method, av);
                     }
                     // An associated function written on the type itself
                     // (`Point.new(1)`). Like a unit variant, there is no
@@ -1056,6 +1138,22 @@ impl Interp {
                 // `None` written as a bare ident still matches the empty option.
                 if name == "None" {
                     matches!(val, Value::Opt(None))
+                } else if let Some(Value::Enum(_, variant, _)) = self.unit_variant(name) {
+                    // A bare *unit variant* pattern tests; it does not bind.
+                    //
+                    // `?= s { Circle => 0, Square => 4, Triangle => 3 }` used to
+                    // bind `s` to a fresh variable called `Circle` and take the
+                    // first arm — every time, for every input. It checked clean
+                    // and returned the wrong answer, which is bug 5 from the
+                    // example rewrite in a different spelling.
+                    //
+                    // Only names that *are* a zero-field variant test this way,
+                    // so an ordinary binding pattern is unaffected. A name two
+                    // enums both declare is not resolved here (see
+                    // `unit_variant`) and keeps binding, because silently
+                    // choosing one is the failure this guards against.
+                    matches!(val, Value::Enum(_, v, fields)
+                        if *v == variant && fields.is_empty())
                 } else {
                     env.define(name.clone(), val.clone());
                     true
@@ -1136,6 +1234,122 @@ impl Interp {
         }
     }
 
+    /// `fs.read_to_string(p)`, `io.println(x)`, `env.get_env(k)`, `time.now()`
+    /// — a call through a capability namespace.
+    ///
+    /// These typechecked and then died with `unknown function
+    /// \`read_to_string\``: the receiver is not a value, so the call fell
+    /// through to the ordinary builtin table, which knows nothing about
+    /// namespaces. Every capability the documentation shows an agent reaching
+    /// for was in that state, so no example using one could be *run* — the
+    /// class of divergence this repository keeps finding, in the one place the
+    /// language points at hardest.
+    ///
+    /// Four namespaces are implementable in a tree-walking interpreter: `io`,
+    /// `fs`, `env` and `time` (and `log`, which is `io`). The rest name
+    /// resources this process cannot provide, and say so rather than
+    /// answering with a unit value that would make a wrong program look
+    /// finished.
+    fn call_capability(&self, ns: &str, op: &str, a: Vec<Value>) -> R {
+        let arg = |i: usize| a.get(i).cloned().unwrap_or(Value::Unit);
+        let text = |i: usize| as_str(&arg(i));
+        match (ns, op) {
+            // ── io ────────────────────────────────────────────────────
+            ("io" | "log", "println" | "print" | "eprintln" | "eprint" | "write" | "writeln") => {
+                self.call_builtin(if op.starts_with('e') { "eprintln" } else { "println" }, a)
+            }
+            ("io", "read_line") => {
+                let mut line = String::new();
+                std::io::stdin()
+                    .read_line(&mut line)
+                    .map_err(|e| Control::Err(format!("io.read_line: {e}")))?;
+                Ok(Value::Str(line.trim_end_matches(['\n', '\r']).to_string()))
+            }
+            ("io", "read" | "read_to_string") => {
+                use std::io::Read;
+                let mut buf = String::new();
+                std::io::stdin()
+                    .read_to_string(&mut buf)
+                    .map_err(|e| Control::Err(format!("io.{op}: {e}")))?;
+                Ok(Value::Str(buf))
+            }
+
+            // ── fs ────────────────────────────────────────────────────
+            ("fs", "read" | "read_to_string") => std::fs::read_to_string(text(0)?)
+                .map(Value::Str)
+                .map_err(|e| Control::Err(format!("fs.{op}: {e}"))),
+            ("fs", "write" | "create") => std::fs::write(text(0)?, text(1).unwrap_or_default())
+                .map(|()| Value::Unit)
+                .map_err(|e| Control::Err(format!("fs.{op}: {e}"))),
+            ("fs", "remove") => std::fs::remove_file(text(0)?)
+                .map(|()| Value::Unit)
+                .map_err(|e| Control::Err(format!("fs.remove: {e}"))),
+            ("fs", "mkdir") => std::fs::create_dir_all(text(0)?)
+                .map(|()| Value::Unit)
+                .map_err(|e| Control::Err(format!("fs.mkdir: {e}"))),
+            ("fs", "rename") => std::fs::rename(text(0)?, text(1)?)
+                .map(|()| Value::Unit)
+                .map_err(|e| Control::Err(format!("fs.rename: {e}"))),
+            ("fs", "stat") => std::fs::metadata(text(0)?)
+                .map(|m| Value::Int(m.len() as i64))
+                .map_err(|e| Control::Err(format!("fs.stat: {e}"))),
+            ("fs", "exists") => Ok(Value::Bool(std::path::Path::new(&text(0)?).exists())),
+
+            // ── env ───────────────────────────────────────────────────
+            ("env", "get_env" | "var" | "env") => {
+                Ok(Value::Str(std::env::var(text(0)?).unwrap_or_default()))
+            }
+            ("env", "args") => Ok(Value::List(
+                std::env::args().map(Value::Str).collect(),
+            )),
+
+            // ── time ──────────────────────────────────────────────────
+            ("time", "now") => {
+                let ms = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| d.as_millis() as i64)
+                    .unwrap_or(0);
+                Ok(Value::Int(ms))
+            }
+            ("time", "sleep") => {
+                let ms = as_int(&arg(0)).unwrap_or(0).max(0) as u64;
+                std::thread::sleep(std::time::Duration::from_millis(ms));
+                Ok(Value::Unit)
+            }
+
+            _ => {
+                // The recovery path an agent needs is "which operations *can*
+                // I call", and this used to answer "Implemented: io, fs, env,
+                // time" — a list of *namespaces*, which reads as a promise that
+                // `io.op` works. It does not: within those four only the
+                // operations below have arms. Naming the namespace an agent
+                // just tried, when that namespace has any, is the answer to the
+                // question it actually asked.
+                let implemented: &[(&str, &str)] = &[
+                    ("io", "println, print, eprintln, eprint, write, writeln, \
+                            read_line, read, read_to_string"),
+                    ("log", "println, print, eprintln, eprint, write, writeln"),
+                    ("fs", "read, read_to_string, write, create, remove, mkdir, \
+                            rename, stat, exists"),
+                    ("env", "get_env, var, env, args"),
+                    ("time", "now, sleep"),
+                ];
+                let detail = match implemented.iter().find(|(n, _)| *n == ns) {
+                    Some((_, ops)) => format!("`{ns}` implements: {ops}"),
+                    None => format!(
+                        "no operation of `{ns}` is implemented; the namespaces \
+                         with any are {}",
+                        implemented.iter().map(|(n, _)| *n).collect::<Vec<_>>().join(", ")
+                    ),
+                };
+                err(format!(
+                    "`{ns}.{op}` has no interpreter implementation — the checker \
+                     tracks the capability, but `--eval` cannot perform it. {detail}"
+                ))
+            }
+        }
+    }
+
     fn call_builtin(&self, name: &str, a: Vec<Value>) -> R {
         let arg = |i: usize| a.get(i).cloned().unwrap_or(Value::Unit);
         match name {
@@ -1176,6 +1390,71 @@ impl Interp {
                 Value::Map(m) => Ok(Value::Bool(m.iter().any(|(k, _)| *k == arg(1)))),
                 other => Ok(Value::Bool(as_list(&other)?.iter().any(|x| *x == arg(1)))),
             },
+            // ── Diagnostics and construction ──────────────────────────
+            //
+            // `resolve` registers seventeen builtin names so that ordinary
+            // agent-written code resolves; thirteen of them had no arm here,
+            // so they typechecked and died with `unknown function`. `assert`
+            // is the one that matters most — it is the *only* assertion the
+            // language has, every `@test` in the documentation reaches for it,
+            // and it did nothing but fail at run time. This is the `println`
+            // bug again, one drawer over.
+            "assert" => {
+                if !matches!(arg(0), Value::Bool(true)) {
+                    let msg = a.get(1).map(interp_str).unwrap_or_default();
+                    return err(if msg.is_empty() {
+                        "assertion failed".to_string()
+                    } else {
+                        format!("assertion failed: {msg}")
+                    });
+                }
+                Ok(Value::Unit)
+            }
+            "assert_eq" | "assert_ne" => {
+                let (l, r) = (arg(0), arg(1));
+                let same = l == r;
+                let want_same = name == "assert_eq";
+                if same != want_same {
+                    let op = if want_same { "==" } else { "!=" };
+                    return err(format!(
+                        "assertion failed: {} {op} {}",
+                        interp_str(&l),
+                        interp_str(&r)
+                    ));
+                }
+                Ok(Value::Unit)
+            }
+            "panic" => err(format!("panic: {}", interp_str(&arg(0)))),
+            "todo" | "unimplemented" | "unreachable" => {
+                err(format!("`{name}()` reached at run time"))
+            }
+            // Prints and passes the value through, as Rust's `dbg!` does.
+            "dbg" => {
+                let v = arg(0);
+                println!("{}", render_for_print(&v));
+                Ok(v)
+            }
+            "drop" => Ok(Value::Unit),
+            "vec" => Ok(Value::List(a.clone())),
+            // Registered, but nothing sensible to do: say which, and what to
+            // use instead, rather than `unknown function`.
+            "format" => err(
+                "`format(…)` builds nothing here — use an f-string: `f\"hi {x}\"`"
+                    .to_string(),
+            ),
+            "matches" => err(
+                "`matches(…)` needs a pattern, and MAGE has no macro form — \
+                 use `?= value { pattern => 1b, _ => 0b }`"
+                    .to_string(),
+            ),
+            "swap" | "replace" => err(format!(
+                "`{name}(…)` mutates through a reference, which this evaluator \
+                 does not model — rebind instead"
+            )),
+            "default" => err(
+                "`default()` has no type to default to here — write the value"
+                    .to_string(),
+            ),
             "min" | "max" => {
                 // Either min(a, b) or min(list).
                 let items = if a.len() == 1 { as_list(&arg(0))? } else { a.clone() };
@@ -1198,6 +1477,13 @@ impl Interp {
                 _ => err("abs expects a number"),
             },
             "range" => {
+                // The checker rejects any other arity; refuse it here too, so
+                // `--eval` on its own does not quietly answer for `0..arg(0)`.
+                // The two oracles have to agree about what the program means.
+                if a.len() != 1 {
+                    return err("range expects 1 argument — `range(n)` is `0..n`; \
+                                for a start and an end write `a..b`");
+                }
                 let n = as_int(&arg(0))?;
                 Ok(Value::List((0..n).map(Value::Int).collect()))
             }
@@ -1362,6 +1648,37 @@ impl Interp {
                     .collect();
                 Ok(Value::Str(parts.join(&as_str(&arg(1))?)))
             }
+            // Output. These were registered as builtins in `resolve`, typed,
+            // and attributed `IO` by the effect system — and the evaluator had
+            // no arm for any of them, so `println("hi")` checked clean and died
+            // with `unknown function \`println\``.
+            //
+            // This is the most common function in the language and the first
+            // line of anyone's first program. It survived because no shipped
+            // example calls it: `check-examples.sh` pins each example's
+            // *returned value*, and twelve examples return theirs rather than
+            // printing. A pin only covers what it exercises.
+            //
+            // Arguments are joined with a space, like Rust's `println!` with
+            // multiple `{}` — and unlike it, no format string is required.
+            "println" | "print" | "eprintln" | "eprint" => {
+                let rendered: Vec<String> = a.iter().map(render_for_print).collect();
+                let line = rendered.join(" ");
+                let to_stderr = name.starts_with('e');
+                let newline = name.ends_with("ln");
+                if to_stderr {
+                    if newline {
+                        eprintln!("{line}");
+                    } else {
+                        eprint!("{line}");
+                    }
+                } else if newline {
+                    println!("{line}");
+                } else {
+                    print!("{line}");
+                }
+                Ok(Value::Unit)
+            }
             "upper" => Ok(Value::Str(as_str(&arg(0))?.to_uppercase())),
             "lower" => Ok(Value::Str(as_str(&arg(0))?.to_lowercase())),
             // Option construction — pairs with the §8 totality story (first/find/
@@ -1376,7 +1693,47 @@ impl Interp {
             // user enums already use.
             "Ok" => Ok(Value::Enum("Result".into(), "Ok".into(), vec![arg(0)])),
             "Err" => Ok(Value::Enum("Result".into(), "Err".into(), vec![arg(0)])),
-            other => err(format!("unknown function `{other}`")),
+            other => {
+                // A bare variant constructor: `Rect(3.0, 4.0)` rather than
+                // `Shape.Rect(3.0, 4.0)`. Both spellings typecheck, and only
+                // the qualified one evaluated — so the natural spelling was
+                // accepted in full and died here with `unknown function`. Same
+                // class as `Ok`/`Err` two arms up, which is why those are
+                // special-cased at all.
+                // Sorted, because `enum_variants` is a HashMap and an
+                // ambiguity message that names the two enums in a different
+                // order on each run is not a message anyone can act on — or
+                // test.
+                let mut matching: Vec<_> = self
+                    .enum_variants
+                    .iter()
+                    .filter(|((_, variant), _)| variant == other)
+                    .collect();
+                matching.sort_by(|((a, _), _), ((b, _), _)| a.cmp(b));
+                let mut matching = matching.into_iter();
+                match (matching.next(), matching.next()) {
+                    (Some(((enum_name, variant), arity)), None) => {
+                        if a.len() != *arity {
+                            return err(format!(
+                                "variant `{enum_name}.{variant}` takes {arity} field(s), \
+                                 given {}",
+                                a.len()
+                            ));
+                        }
+                        Ok(Value::Enum(enum_name.clone(), variant.clone(), a))
+                    }
+                    // Two enums declaring the same variant name. Picking one
+                    // would resurrect the bug that keying variants by name
+                    // alone caused — `Left { X }` and `Right { X }` evicting
+                    // each other — so say which enums and make the author
+                    // qualify it.
+                    (Some(((a, _), _)), Some(((b, _), _))) => err(format!(
+                        "`{other}` is ambiguous: both `{a}` and `{b}` declare it — \
+                         qualify it as `{a}.{other}` or `{b}.{other}`"
+                    )),
+                    _ => err(format!("unknown function `{other}`")),
+                }
+            }
         }
     }
 }
@@ -1461,6 +1818,20 @@ fn as_map(v: &Value) -> Result<Vec<(Value, Value)>, Control> {
     }
 }
 
+/// Render a value the way `println` should show it.
+///
+/// `Display for Value` quotes strings (`{s:?}`), which is right for echoing a
+/// result back — `--eval` prints `"hi"` so you can tell a string from a bare
+/// word — and wrong for output, where `println("hi")` must emit `hi`. Only the
+/// top level is unquoted: a string *inside* a list still shows its quotes, so
+/// `[a, b]` and `["a", "b"]` stay distinguishable.
+fn render_for_print(v: &Value) -> String {
+    match v {
+        Value::Str(s) => s.clone(),
+        other => other.to_string(),
+    }
+}
+
 fn as_str(v: &Value) -> Result<String, Control> {
     match v {
         Value::Str(s) => Ok(s.clone()),
@@ -1529,6 +1900,18 @@ fn binop(op: &str, l: Value, r: Value) -> R {
     }
 }
 
+/// Remove the *one* delimiter at each end of a literal's raw text.
+///
+/// `trim_matches` removed every one, so a string ending in an escaped quote
+/// lost both trailing quote characters and the unescaper read what was left as
+/// a lone backslash: `"x\""` evaluated to `x\`. `contains(html, "\"")` was then
+/// false and `split(html, "href=\"")` never split — every string-scanning
+/// program looking for a quote silently found nothing, with no error anywhere.
+fn strip_delims(value: &str, delim: char) -> &str {
+    let v = value.strip_prefix(delim).unwrap_or(value);
+    v.strip_suffix(delim).unwrap_or(v)
+}
+
 fn parse_literal(value: &str, kind: &LiteralKind) -> R {
     match kind {
         LiteralKind::Int | LiteralKind::Byte => parse_int_literal(value).map(Value::Int),
@@ -1537,9 +1920,9 @@ fn parse_literal(value: &str, kind: &LiteralKind) -> R {
         // Rust-style words `true`/`false`. Anything else (incl. `0b`) is false.
         LiteralKind::Bool => Ok(Value::Bool(value == "true" || value == "1b")),
         LiteralKind::String | LiteralKind::FormatString => {
-            Ok(Value::Str(unescape(value.trim_matches('"'))))
+            Ok(Value::Str(unescape(strip_delims(value, '"'))))
         }
-        LiteralKind::Char => Ok(Value::Str(unescape(value.trim_matches('\'')))),
+        LiteralKind::Char => Ok(Value::Str(unescape(strip_delims(value, '\'')))),
     }
 }
 
@@ -1623,7 +2006,7 @@ fn lit_matches(lit: &str, val: &Value) -> bool {
     match val {
         Value::Int(n) => parse_int_literal(lit).map(|x| x == *n).unwrap_or(false),
         Value::Bool(b) => lit == if *b { "true" } else { "false" },
-        Value::Str(s) => &unescape(lit.trim_matches('"')) == s,
+        Value::Str(s) => &unescape(strip_delims(lit, '"')) == s,
         _ => false,
     }
 }
@@ -1658,7 +2041,12 @@ fn collect_methods(
 }
 
 /// The bare head name of a type, peeling references and smart-pointer wrappers.
-fn type_head_name(t: &Type) -> Option<String> {
+///
+/// `pub(crate)` because `effects` needs the same answer: a method is keyed by
+/// the type it is attached to in both the interpreter's method table and the
+/// effect checker's call graph, and two spellings of that key would let a
+/// method be effect-checked under one name and dispatched under another.
+pub(crate) fn type_head_name(t: &Type) -> Option<String> {
     match t {
         Type::Path { segments, .. } => segments.last().cloned(),
         Type::Reference { inner, .. }
@@ -1694,6 +2082,206 @@ mod tests {
     // its operand, so the call attached to the *negation* rather than to `f`.
     // Nothing constrained what `!` applied to, so this checked clean and then
     // failed at run time with `value is not callable`.
+
+    /// Every operation the "no implementation" diagnostic advertises must
+    /// actually have an arm.
+    ///
+    /// That message is the whole recovery path for an agent that reached a
+    /// capability `--eval` cannot perform, and it used to read "Implemented:
+    /// io, fs, env, time" — a list of *namespaces*, which promises that
+    /// `io.op` works. It does not; only the operations named below have arms.
+    /// Having replaced the namespace list with an operation list, the list is
+    /// now a claim that can be wrong, so this checks it.
+    ///
+    /// `io.read_line`, `io.read` and `io.read_to_string` are excluded and read
+    /// stdin — under a test harness that is a block, not a result. They are
+    /// the only three excluded, and the reason is the harness rather than the
+    /// implementation.
+    #[test]
+    fn every_advertised_capability_operation_has_an_arm() {
+        let dir = std::env::temp_dir().join("mage_cap_arms");
+        let _ = std::fs::create_dir_all(&dir);
+        let f = dir.join("a.txt");
+        let g = dir.join("b.txt");
+        let fp = f.to_string_lossy().replace('\\', "/");
+        let gp = g.to_string_lossy().replace('\\', "/");
+        let _ = std::fs::write(&f, "x");
+
+        // Arguments chosen so each call succeeds without needing anything the
+        // machine does not already have.
+        let calls: Vec<String> = vec![
+            "io.println(\"\")".into(),
+            "io.print(\"\")".into(),
+            "io.eprintln(\"\")".into(),
+            "io.eprint(\"\")".into(),
+            "io.write(\"\")".into(),
+            "io.writeln(\"\")".into(),
+            "log.println(\"\")".into(),
+            "log.print(\"\")".into(),
+            "log.eprintln(\"\")".into(),
+            "log.eprint(\"\")".into(),
+            "log.write(\"\")".into(),
+            "log.writeln(\"\")".into(),
+            format!("fs.read(\"{fp}\")"),
+            format!("fs.read_to_string(\"{fp}\")"),
+            format!("fs.write(\"{gp}\", \"y\")"),
+            format!("fs.create(\"{gp}\", \"y\")"),
+            format!("fs.stat(\"{fp}\")"),
+            format!("fs.exists(\"{fp}\")"),
+            format!("fs.mkdir(\"{}\")", dir.join("sub").to_string_lossy().replace('\\', "/")),
+            format!("fs.rename(\"{gp}\", \"{gp}\")"),
+            format!("fs.remove(\"{gp}\")"),
+            "env.get_env(\"PATH\")".into(),
+            "env.var(\"PATH\")".into(),
+            "env.env(\"PATH\")".into(),
+            "env.args()".into(),
+            "time.now()".into(),
+            "time.sleep(0)".into(),
+        ];
+
+        for call in &calls {
+            let src = format!("f a() {{ {call} }}");
+            let out = run_source(&src, "a", &[]);
+            let msg = match out {
+                Ok(_) => continue,
+                Err(e) => e,
+            };
+            assert!(
+                !msg.contains("no interpreter implementation"),
+                "the diagnostic advertises `{call}` and there is no arm for it: {msg}"
+            );
+        }
+
+        // And the inverse, so the message cannot quietly become a promise
+        // about a namespace with nothing behind it: a namespace it does *not*
+        // name must say so.
+        for ns in ["net", "llm", "gpu", "agent", "http", "mem", "swarm", "os", "sys",
+                   "process", "tools", "json", "kb", "db", "rng"] {
+            let src = format!("f a() {{ {ns}.op(\"x\") }}");
+            let msg = run_source(&src, "a", &[]).expect_err("unimplemented");
+            assert!(
+                msg.contains("no operation of") && msg.contains("is implemented"),
+                "`{ns}.op` should report that nothing in `{ns}` is implemented: {msg}"
+            );
+        }
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+    /// Every builtin `resolve` registers must reach an arm here.
+    ///
+    /// Thirteen of the seventeen did not: they typechecked and died with
+    /// `unknown function`. `assert` is the worst of them — the only assertion
+    /// the language has, reached for by every `@test` in the documentation,
+    /// and it could only ever fail. The four that worked were `min`, `max`,
+    /// `abs` and the print family.
+    ///
+    /// "Reaching an arm" is the bar, not "succeeding": `format` and `matches`
+    /// deliberately report what to use instead. What must not happen is
+    /// `unknown function`, which says the name was never implemented at all.
+    #[test]
+    fn every_registered_builtin_reaches_an_arm() {
+        let calls = [
+            ("assert", "assert(1b)"),
+            ("assert_eq", "assert_eq(1, 1)"),
+            ("assert_ne", "assert_ne(1, 2)"),
+            ("panic", "panic(\"x\")"),
+            ("todo", "todo()"),
+            ("unimplemented", "unimplemented()"),
+            ("unreachable", "unreachable()"),
+            ("dbg", "dbg(5)"),
+            ("drop", "drop(5)"),
+            ("vec", "vec(1, 2)"),
+            ("format", "format(\"x\")"),
+            ("matches", "matches(1, 1)"),
+            ("swap", "swap(1, 2)"),
+            ("replace", "replace(1, 2)"),
+            ("default", "default()"),
+            ("min", "min(1, 2)"),
+            ("max", "max(1, 2)"),
+            ("abs", "abs(0 - 1)"),
+            ("println", "println(\"x\")"),
+        ];
+        for (name, call) in calls {
+            let src = format!("f s() {{ {call} }}");
+            if let Err(e) = run_source(&src, "s", &[]) {
+                assert!(
+                    !e.contains("unknown function"),
+                    "`{name}` is registered in resolve and has no arm in the \
+                     evaluator: {e}"
+                );
+            }
+        }
+    }
+
+    /// A capability call has to *evaluate*, not just typecheck.
+    ///
+    /// `fs.read_to_string(p)` and every other namespace call died with
+    /// `unknown function` — the receiver is not a value, so the call fell
+    /// through to the ordinary builtin table. Every documented way for an
+    /// agent to reach a resource was checkable and unrunnable.
+    #[test]
+    fn a_capability_call_evaluates() {
+        // `time.now` is the cheapest one with an observable answer.
+        assert!(matches!(
+            run("+f s() -> i64 / time { time.now() }", "s", &[]),
+            Value::Int(ms) if ms > 0
+        ));
+        // `env` reads the real environment; PATH is set on every platform CI
+        // runs on, and the empty-string fallback keeps the test honest if not.
+        assert!(matches!(
+            run("+f s() -> str / env { env.get_env(\"PATH\") }", "s", &[]),
+            Value::Str(_)
+        ));
+        // A namespace the interpreter cannot serve says so, naming both parts
+        // — it must not answer with a unit value.
+        let e = run_source("+f s() -> i32 / net { net.connect(\"x\") }", "s", &[])
+            .expect_err("net has no implementation");
+        assert!(e.contains("net.connect") && e.contains("no interpreter implementation"), "{e}");
+    }
+
+    /// `p"…"` prints and interpolates.
+    ///
+    /// It did neither: the parser folded it into a plain string literal, so
+    /// the statement was a no-op whose value was the raw text with the braces
+    /// still in it. The cookbook uses `p"…"` as its print form throughout.
+    #[test]
+    fn a_print_string_prints_and_interpolates() {
+        // `println` writes and returns unit; the desugaring itself is pinned
+        // in the parser test. What matters here is that the interpolation runs
+        // — a hole naming an unbound variable must fail, which it cannot do if
+        // the text is still an inert string literal.
+        assert_eq!(run("f s() { v x = 7\n p\"value {x}\" }", "s", &[]), Value::Unit);
+        assert_eq!(run("f s() { v x = 7\n ep\"err {x}\" }", "s", &[]), Value::Unit);
+        // And the hole is evaluated, not carried through as text: the same
+        // string as an f-string interpolates, which is what the print form
+        // now shares a code path with.
+        assert_eq!(
+            run("f s() { v x = 7\n f\"value {x}\" }", "s", &[]),
+            Value::Str("value 7".into())
+        );
+    }
+
+    /// A literal ending in an escaped delimiter keeps it.
+    ///
+    /// `trim_matches` stripped *every* trailing quote, so `"x\""` became `x\`
+    /// — the escaped quote turned into a backslash. Nothing errored: string
+    /// scanning for a `"` just never matched, so an HTML link extractor
+    /// returned an empty list and looked like a logic bug in the program.
+    #[test]
+    fn a_literal_ending_in_an_escaped_delimiter_keeps_it() {
+        // `"\""` is one character, and it is a quote.
+        assert_eq!(run("f s() { \"\\\"\" }", "s", &[]), Value::Str("\"".into()));
+        assert_eq!(run("f s() { \"x\\\"\" }", "s", &[]), Value::Str("x\"".into()));
+        // Which is what makes the string vocabulary work on it.
+        assert_eq!(
+            run("f s() { contains(\"a\\\"b\", \"\\\"\") }", "s", &[]),
+            Value::Bool(true)
+        );
+        assert_eq!(
+            run("f s() { len(split(\"a\\\"b\", \"\\\"\")) }", "s", &[]),
+            Value::Int(2)
+        );
+    }
 
     #[test]
     fn not_applies_to_the_call_result_not_to_the_function() {
@@ -1758,6 +2346,278 @@ mod tests {
 
         let src = "E Left { X }\nE Right { X }\nf s() { Left.X == Left.X }";
         assert_eq!(run(src, "s", &[]), Value::Bool(true));
+    }
+
+    /// `data Shape = Circle(f64) | Rect(f64, f64)` gets a runtime
+    /// representation, like `E Shape { … }` already had.
+    ///
+    /// The ontology publishes `data` as "record or sum type". The record half
+    /// worked, so `data` looked implemented; the sum half registered no
+    /// variants at all, giving `unresolved name: Rect` at check time. Fixing
+    /// resolution alone made it *typecheck* and then die on
+    /// `unknown function \`Rect\`` — the class only `--eval` can see.
+    #[test]
+    fn data_sum_variants_construct_and_match() {
+        let src = "data Shape = Circle(f64) | Rect(f64, f64)
+                   f s() { ?= Shape.Rect(3.0, 4.0) { Shape.Rect(w, h) => w * h, _ => 0.0 } }";
+        assert_eq!(run(src, "s", &[]), Value::Float(12.0));
+    }
+
+    /// A bare variant constructor evaluates, not just a qualified one.
+    ///
+    /// `Rect(3.0, 4.0)` typechecked and died at run time while
+    /// `Shape.Rect(3.0, 4.0)` worked — and the bare form is the one the
+    /// concise `data Shape = …` syntax invites, since it never names the type.
+    /// Affected `E` enums equally; only `Ok`/`Err`/`Some`/`None` were
+    /// special-cased into working.
+    #[test]
+    fn a_bare_variant_constructor_evaluates() {
+        for decl in [
+            "data Shape = Circle(f64) | Rect(f64, f64)",
+            "E Shape { Circle(f64), Rect(f64, f64) }",
+        ] {
+            let src = format!("{decl}
+f s() {{ ?= Rect(3.0, 4.0) {{ Rect(w, h) => w * h, _ => 0.0 }} }}");
+            assert_eq!(run(&src, "s", &[]), Value::Float(12.0), "for `{decl}`");
+        }
+    }
+
+    /// A bare name two enums both declare is an error naming both, not a
+    /// silent pick.
+    ///
+    /// Choosing one would resurrect the bug where variants keyed by name alone
+    /// let `Left { X }` and `Right { X }` evict each other. The message is
+    /// sorted because `enum_variants` is a HashMap and an ambiguity report
+    /// that names the enums in a different order each run cannot be acted on.
+    #[test]
+    fn an_ambiguous_bare_variant_names_both_enums() {
+        let err = run_source("E A { X(i32) }
+E B { X(i32) }
+f s() { X(1) }", "s", &[])
+            .expect_err("ambiguous variant must fail");
+        assert!(err.contains("ambiguous"), "unexpected: {err}");
+        assert!(err.contains("`A`") && err.contains("`B`"), "must name both: {err}");
+        assert!(err.find("`A`") < err.find("`B`"), "must be deterministic: {err}");
+    }
+
+    /// Arity is checked for the bare form too.
+    #[test]
+    fn a_bare_variant_constructor_checks_arity() {
+        let err = run_source("data S = Rect(f64, f64)
+f s() { Rect(3.0) }", "s", &[])
+            .expect_err("wrong arity must fail");
+        assert!(err.contains("takes 2 field"), "unexpected: {err}");
+    }
+
+    /// An unknown name is still unknown — the variant lookup must not swallow
+    /// the ordinary diagnostic.
+    #[test]
+    fn an_unknown_function_is_still_unknown() {
+        let err = run_source("f s() { nope(1) }", "s", &[]).expect_err("must fail");
+        assert!(err.contains("unknown function `nope`"), "unexpected: {err}");
+    }
+
+    /// An operation call resumes: the arm's value becomes the operation's
+    /// value and the body continues.
+    ///
+    /// The spec said "**Handlers do not resume.** An operation call dispatches
+    /// to its arm and returns like an ordinary call." The second sentence is
+    /// mechanically exact, and *returning like an ordinary call is* single-shot
+    /// tail resumption — the body carries on with the value. The first
+    /// sentence reads as "the body stops", which is not what happens, and
+    /// nothing tested either way.
+    ///
+    /// *Multi-shot* resumption is deliberately absent, not pending: the
+    /// continuation is never reified, so it cannot be stored or invoked twice.
+    /// That is what generators and backtracking need. State, reader, logging
+    /// and mocking — the common handler uses — all work today. See
+    /// `single_shot_resumption_is_a_decision_not_a_gap` below, and
+    /// `MAGE_SPEC.md` §11.6, which was made normative on 2026-08-19.
+    #[test]
+    fn an_operation_resumes_and_the_body_continues() {
+        let src = "effect A { f ask() -> i32; }
+                   f work() -> i32 / a { v got = A.ask()
+ got + 100 }
+                   f s() { handle { work() } with A { ask() => 7 } }";
+        assert_eq!(run(src, "s", &[]), Value::Int(107));
+
+        // Two operations in sequence both resume, and the arm is re-evaluated
+        // for each — it is not a value computed once.
+        let src = "effect A { f ask() -> i32; }
+                   f work() -> i32 / a { A.ask() + A.ask() }
+                   f s() { handle { work() } with A { ask() => 5 } }";
+        assert_eq!(run(src, "s", &[]), Value::Int(10));
+    }
+
+    /// Single-shot resumption is the language's answer, not a stage it is
+    /// passing through.
+    ///
+    /// `MAGE_SPEC.md` §11.6 said multi-shot was "what is missing" for long
+    /// enough that HANDOFF filed it as unstarted work, which invited the
+    /// reading that an evaluator rewrite was owed. On 2026-08-19 it was
+    /// decided the other way and the section made normative. This pins both
+    /// halves of that, because a decision recorded only in prose decays into a
+    /// gap again the moment someone reads the evaluator and sees the absence.
+    ///
+    /// The falsifiable half is the keyword. "There is no `resume` keyword"
+    /// means `resume` must still be an ordinary identifier — if someone starts
+    /// implementing multi-shot by reserving the word, this fails first, before
+    /// the 39 expression forms get touched.
+    #[test]
+    fn single_shot_resumption_is_a_decision_not_a_gap() {
+        // `resume` is a plain identifier: definable, callable, bindable.
+        let src = "f resume(x: i32) -> i32 { x + 1 }
+                   f s() -> i32 { v resume_val = resume(41)
+ resume_val }";
+        assert_eq!(
+            run(src, "s", &[]),
+            Value::Int(42),
+            "`resume` must remain an ordinary identifier; reserving it is the \
+             first edit multi-shot would require, and it is a breaking change \
+             to every program that uses the name"
+        );
+
+        // And the spec must still say so. This is the same doc-to-code pin
+        // used for `use` and §2.3: the code cannot state a language decision,
+        // only implement one, so the normative sentence is the subject.
+        let spec = std::fs::read_to_string(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .parent()
+                .expect("repo root")
+                .join("MAGE_SPEC.md"),
+        )
+        .expect("MAGE_SPEC.md");
+        assert!(
+            spec.contains("Resumption is single-shot. There is no `resume` keyword"),
+            "MAGE_SPEC.md §11.6 no longer states the single-shot decision \
+             normatively. If multi-shot is being added, that sentence is the \
+             thing to change first — and this test is the reminder that the \
+             decision was explicit"
+        );
+    }
+
+    /// `ret` in an arm aborts the handled block — and only that block.
+    ///
+    /// This is proper abort semantics for an effect handler: the rest of the
+    /// body is skipped, the `handle` expression takes the arm's value, and the
+    /// enclosing function keeps running. Untested until now, so it could have
+    /// regressed to "returns from the whole function" without anything
+    /// noticing — and the two are indistinguishable in any program that has
+    /// nothing after the `handle`.
+    #[test]
+    fn ret_in_an_arm_aborts_only_the_handled_block() {
+        let src = "effect A { f fail() -> i32; }
+                   f work() -> i32 / a { v x = A.fail()
+ x + 100 }
+                   f s() { v r = handle { work() } with A { fail() => ret 7 }
+ r + 1000 }";
+        // 1007, not 7: the enclosing function continues after the handle.
+        assert_eq!(run(src, "s", &[]), Value::Int(1007));
+    }
+
+    /// Aborting skips the remainder of the handled body, including operations
+    /// it would otherwise have performed.
+    #[test]
+    fn aborting_skips_the_rest_of_the_body() {
+        let src = "effect A { f fail() -> i32; }
+                   effect L { f note(n: i32) -> i32; }
+                   f work() -> i32 / a, l { v x = A.fail()
+ L.note(1)
+ x + 100 }
+                   f s() { handle { work() } with A { fail() => ret 7 } }";
+        assert_eq!(run(src, "s", &[]), Value::Int(7));
+    }
+
+    /// A bare unit variant is a *test* in a pattern, not a binding.
+    ///
+    /// `?= s { Circle => 0, Square => 4, Triangle => 3 }` bound `s` to a fresh
+    /// variable named `Circle` and took the first arm — every time, for every
+    /// input. It checked clean and returned the wrong answer, which is bug 5
+    /// from the example rewrite in a different spelling: a variant pattern
+    /// matching nothing while the `match` quietly picks another arm.
+    #[test]
+    fn a_bare_unit_variant_pattern_tests_rather_than_binds() {
+        for decl in ["data Shape = Circle | Square | Triangle", "E Shape { Circle, Square, Triangle }"] {
+            let src = format!(
+                "{decl}
+                 f sides(s: Shape) -> i32 {{ ?= s {{ Circle => 0, Square => 4, Triangle => 3 }} }}
+                 f s() {{ sides(Square) }}"
+            );
+            assert_eq!(run(&src, "s", &[]), Value::Int(4), "for `{decl}`");
+
+            let src = format!(
+                "{decl}
+                 f sides(s: Shape) -> i32 {{ ?= s {{ Circle => 0, Square => 4, Triangle => 3 }} }}
+                 f s() {{ sides(Triangle) }}"
+            );
+            assert_eq!(run(&src, "s", &[]), Value::Int(3), "for `{decl}`");
+        }
+    }
+
+    /// An ordinary binding pattern still binds. Only names that *are* a
+    /// zero-field variant test, so the fix must not turn every lowercase
+    /// pattern into a comparison.
+    #[test]
+    fn an_ordinary_binding_pattern_still_binds() {
+        assert_eq!(run("f s() { ?= 7 { n => n } }", "s", &[]), Value::Int(7));
+        assert_eq!(
+            run("f s() { ?= Some(5) { Some(x) => x, None => 0 } }", "s", &[]),
+            Value::Int(5)
+        );
+        assert_eq!(
+            run("f s() { ?= None { None => 7, Some(_) => 0 } }", "s", &[]),
+            Value::Int(7)
+        );
+    }
+
+    /// `println` and friends evaluate.
+    ///
+    /// They were registered as builtins, typed, and attributed `IO` — and the
+    /// evaluator had no arm for any of them, so `println("hi")` checked clean
+    /// and died with `unknown function`. It survived because no shipped
+    /// example calls it: the example pin records each example's *returned
+    /// value*, and all twelve return theirs rather than printing. A pin covers
+    /// only what it exercises.
+    #[test]
+    fn output_builtins_evaluate() {
+        for name in ["println", "print", "eprintln", "eprint"] {
+            let src = format!("f s() {{ {name}(\"hi\"); 0 }}");
+            assert_eq!(run(&src, "s", &[]), Value::Int(0), "`{name}` should evaluate");
+        }
+        // Multiple arguments are joined, and a string prints unquoted.
+        assert_eq!(run("f s() { println(\"a\", 1); 0 }", "s", &[]), Value::Int(0));
+    }
+
+    /// A trailing parameter's default is used when the caller omits it.
+    ///
+    /// `Param::default` was parsed and stored — with a parser test asserting it
+    /// was stored — and read by nothing. `f g(a: i32, b: i32 = 2)` parsed, and
+    /// `g(1)` failed with `expected 2 argument(s), found 1`: the default was
+    /// accepted, discarded, and the error pointed at the call rather than at
+    /// the default that had been ignored.
+    #[test]
+    fn a_trailing_default_is_used_when_omitted() {
+        let src = "f g(a: i32, b: i32 = 2) -> i32 { a + b }
+f s() { g(1) }";
+        assert_eq!(run(src, "s", &[]), Value::Int(3));
+
+        let src = "f g(a: i32, b: i32 = 2) -> i32 { a + b }
+f s() { g(1, 10) }";
+        assert_eq!(run(src, "s", &[]), Value::Int(11));
+
+        let src = "f g(a: i32, b: i32 = 2, c: i32 = 3) -> i32 { a + b + c }
+f s() { g(1) }";
+        assert_eq!(run(src, "s", &[]), Value::Int(6));
+    }
+
+    /// Defaults evaluate in the callee's environment, left to right, so a
+    /// later one may refer to an earlier parameter. This is the example the
+    /// spec gives.
+    #[test]
+    fn a_default_may_refer_to_an_earlier_parameter() {
+        let src = "f scaled(a: i32, b: i32 = a * 2) -> i32 { a + b }
+f s() { scaled(5) }";
+        assert_eq!(run(src, "s", &[]), Value::Int(15));
     }
 
     #[test]
@@ -2031,8 +2891,14 @@ mod tests {
             ("f s(){ len(filter(\"hello world\", fn(c) => c != \" \")) }", "s", &[], Value::Int(10)),
             // Compound assignment to a map element (`m[k] += …`) — the classic
             // histogram build. `m`/`v` are KwM/KwV but must read as variables.
-            ("f s(){ var m = {\"a\": 10}\n m[\"a\"] += 5\n m[\"b\"] = 1\n m[\"a\"] + m[\"b\"] }", "s", &[], Value::Int(16)),
-            ("f s(){ var v = [1, 2, 3]\n v[0] *= 100\n v[0] + v[1] }", "s", &[], Value::Int(102)),
+            // `m` and `v` were the binding names here until 2026-08-19. They are
+            // the agent-mode sigils for `let mut` and `let`, and the parser
+            // rejects them as binding names by design — with a diagnostic that
+            // names the collision. These two fixtures predated that rule and
+            // had been failing ever since; nothing ran them, because this whole
+            // bench is `#[ignore]`d.
+            ("f s(){ var mp = {\"a\": 10}\n mp[\"a\"] += 5\n mp[\"b\"] = 1\n mp[\"a\"] + mp[\"b\"] }", "s", &[], Value::Int(16)),
+            ("f s(){ var xs = [1, 2, 3]\n xs[0] *= 100\n xs[0] + xs[1] }", "s", &[], Value::Int(102)),
             // Slice indexing: list sub-range, open-ended, and substring.
             ("f s(){ sum([10, 20, 30, 40, 50][1..3]) }", "s", &[], Value::Int(50)),
             ("f s(){ sum([1, 2, 3, 4, 5][2..]) + len([1,2,3,4,5][..2]) }", "s", &[], Value::Int(14)),

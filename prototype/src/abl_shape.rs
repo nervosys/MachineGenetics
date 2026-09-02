@@ -217,6 +217,25 @@ fn apply_op(
                 }
         }
 
+        // ── Global pooling: collapses every spatial axis. ──────────
+        //
+        // This fell into the `_` arm below and was treated as
+        // shape-preserving, so a `GlobalAvgPool` left [N, C, H, W] intact and
+        // the `Linear` after it was checked against **W** instead of C.
+        // `framework/framewerx/examples/resnet_classifier.mg` — a textbook
+        // ResNet head — reported "expects last dim 256, but the preceding
+        // layer produced [1, 256, 20, 2]" and was written off as a sketch
+        // whose architecture nobody could adjudicate. The example was right;
+        // the rule was missing.
+        Op::GLOBAL_POOL => {
+            *current = match current.as_slice() {
+                [n, c, _h, _w] => vec![*n, *c],
+                [c, _h, _w] => vec![*c],
+                [c, _l] => vec![*c],
+                other => other.to_vec(),
+            };
+        }
+
         Op::MATMUL => {
             let dims = extract_int_args(args);
             let (k, n) = match dims.as_slice() {
@@ -297,7 +316,34 @@ pub fn check_module_shapes(module: &crate::ast::Module) -> Vec<NetShapeDiag> {
         let crate::ast::ItemKind::Net(net) = &item.kind else {
             continue;
         };
-        let expr = crate::abl_bridge::NetTranslator::translate(net).expr;
+        let translation = crate::abl_bridge::NetTranslator::translate(net);
+
+        // An unrecognised layer type lowers to `Op::IDENTITY` — a pass-through.
+        // That is a *wrong answer*, not a failure: `layer b: Lienar(128, 64)`
+        // used to check clean, lower, and run, with that layer quietly doing
+        // nothing. The translator has always recorded these in
+        // `unknown_layers`, but the only readers were the ABL-lowering path and
+        // a `train` warning, so `--check` never mentioned it and nothing on the
+        // ordinary path did either. Same class as a misspelled effect
+        // operation, one surface over.
+        //
+        // Reported before the shape pass, because a net whose input shape
+        // cannot be inferred returns early below and would otherwise say
+        // nothing at all.
+        for unknown in &translation.unknown_layers {
+            out.push(NetShapeDiag {
+                net: net.name.clone(),
+                message: format!(
+                    "net `{}`: unknown layer type `{unknown}` — it lowers to IDENTITY \
+                     (a pass-through), so the layer silently does nothing. Check the \
+                     spelling against the layer names in `MAGE_ONTOLOGY.json` \
+                     (`layer_map`); they are case-sensitive.",
+                    net.name
+                ),
+            });
+        }
+
+        let expr = translation.expr;
         let Some(input) = crate::abl_compute::infer_input_shape(&expr) else {
             continue;
         };
@@ -349,6 +395,23 @@ mod tests {
         let report = infer_shape(&expr, &[8]);
         assert!(report.mismatches.is_empty(), "{:?}", report.mismatches);
         assert_eq!(report.output_shape, vec![1, 4]);
+    }
+
+    /// Global pooling collapses the spatial axes, so a `Linear` after it sees
+    /// the channel count.
+    ///
+    /// It used to be shape-preserving (it fell into the unknown-op arm), so
+    /// `Conv2D >> GlobalAvgPool >> Linear(256, 1000)` — the standard ResNet
+    /// head — reported a mismatch against the *width*. The example was blamed
+    /// and skipped as an unadjudicable sketch for two sessions.
+    #[test]
+    fn global_pool_collapses_the_spatial_axes() {
+        let expr = Expr::op(Op::CONV2D, vec![Expr::int(3), Expr::int(256), Expr::int(3)])
+            >> Expr::op1(Op::GLOBAL_POOL)
+            >> Expr::op(Op::LINEAR, vec![Expr::int(256), Expr::int(1000)]);
+        let report = infer_shape(&expr, &[3, 32, 32]);
+        assert!(report.mismatches.is_empty(), "{:?}", report.mismatches);
+        assert_eq!(report.output_shape, vec![1, 1000]);
     }
 
     #[test]
@@ -492,5 +555,45 @@ mod tests {
         let report = infer_shape(&expr, &[4]);
         assert_eq!(report.output_shape, vec![4]);
         assert!(report.unknown.contains(&Op::SPAWN));
+    }
+
+    /// An unrecognised layer type is a check-time error.
+    ///
+    /// It used to lower to `Op::IDENTITY` — a pass-through — so
+    /// `layer b: Lienar(128, 64)` checked clean, lowered, and ran with that
+    /// layer silently doing nothing. A wrong answer, not a failure. The
+    /// translator recorded it in `unknown_layers` all along, but the only
+    /// readers were the ABL-lowering path and a `train` warning, so `--check`
+    /// never said a word.
+    #[test]
+    fn an_unknown_layer_type_is_rejected() {
+        let net = |layer: &str| {
+            format!("net N {{
+ layer a: Linear(8, 128);
+ layer b: {layer};
+ forward {{ b(a) }}
+}}")
+        };
+        let unknown_reported = |src: &str| {
+            let module = crate::parser::parse(&crate::lexer::lex(src)).expect("parse");
+            check_module_shapes(&module)
+                .iter()
+                .any(|d| d.message.contains("unknown layer type"))
+        };
+
+        // A typo, a hallucinated name, and a real op that is not a layer.
+        for bad in ["Lienar(128, 64)", "NotALayer", "Transformer"] {
+            assert!(
+                unknown_reported(&net(bad)),
+                "`layer b: {bad}` should be rejected as an unknown layer type"
+            );
+        }
+        // Canonical names and documented aliases still pass.
+        for good in ["ReLU", "Relu", "GELU", "Linear(128, 64)", "Dense(128, 64)"] {
+            assert!(
+                !unknown_reported(&net(good)),
+                "`layer b: {good}` is a real layer and must not be rejected"
+            );
+        }
     }
 }

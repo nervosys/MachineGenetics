@@ -1,6 +1,14 @@
 # RecursiveMachineIntelligence AI Concepts Ontology
 
-This document describes the AI concepts ontology embedded in RecursiveMachineIntelligence, providing machine-readable knowledge for agent reasoning.
+This document describes the AI concepts ontology embedded in
+RecursiveMachineIntelligence, providing machine-readable knowledge for agent
+reasoning.
+
+> **Read the domain taxonomies as a design sketch, not an inventory.** The
+> relation set, the domain set and the concept-property table below were
+> checked against `knowledge/ai_concepts.rs` on 2026-08-18 and each was wrong;
+> they are corrected. The per-domain concept trees were *measured* rather than
+> corrected — see the note under "Concept Domains" for the numbers.
 
 ---
 
@@ -15,6 +23,26 @@ The ontology organizes AI concepts into a hierarchical graph with typed relation
 ---
 
 ## Concept Domains
+
+`ConceptDomain` has **ten** variants: `Neural`, `Symbolic`, `Neurosymbolic`,
+`Learning`, `Architecture`, `Representation`, `Reasoning`, `Computation`,
+`Evaluation`, `Safety`.
+
+> **Corrected 2026-08-18.** The five headings below — ML, DL, SYM, NS, MAS —
+> are not the domain set the code uses, and only `Symbolic`/`Neurosymbolic`
+> have a counterpart at all. There is no `MultiAgentSystems` domain, and
+> `Learning`, `Architecture`, `Representation`, `Reasoning`, `Computation`,
+> `Evaluation` and `Safety` have no heading here.
+>
+> **The taxonomies below are aspirational, and now measured as such.** They
+> hold **166 nodes**; `with_core_concepts()` populates **28** concepts, of
+> which one is a test fixture; and **12** of the 166 correspond to something
+> the crate ships (Adam, BatchNormalization, Dropout, FirstOrderLogic, GELU,
+> NeurosymbolicAI, ReLU, Regularization, SymbolicAI, Transformer, Unification,
+> WeightDecay). The other 154 are a survey of the field, which is a reasonable
+> thing for this document to contain and a misleading thing for it to present
+> as the contents of a crate. Generating this section from
+> `populate_core_concepts` would make the two agree; that is not done.
 
 ### Machine Learning (ML)
 
@@ -224,28 +252,35 @@ MultiAgentSystems
 
 ## Relationships
 
+`ConceptRelation` has **eleven** variants (`knowledge/ai_concepts.rs`):
+
 ### Hierarchy
 
-- `is_a`: Subsumption (e.g., LSTM is_a RNN)
-- `part_of`: Composition (e.g., MultiHeadAttention part_of Transformer)
-
-### Semantic
-
-- `related_to`: Conceptual similarity (e.g., BatchNorm related_to LayerNorm)
-- `alternative_to`: Functionally interchangeable (e.g., ReLU alternative_to GELU)
-- `extends`: Enhancement (e.g., ResNet extends CNN)
+- `IsA`: Subsumption (e.g., LSTM is-a RNN)
+- `PartOf`: Composition (e.g., MultiHeadAttention part-of Transformer)
+- `InstanceOf`: Membership, as distinct from subsumption
+- `Generalizes`: The inverse direction of `IsA`
 
 ### Functional
 
-- `used_for`: Application (e.g., CNN used_for ImageClassification)
-- `requires`: Dependency (e.g., Backpropagation requires DifferentiableFunction)
-- `improves`: Enhancement (e.g., ResidualConnections improves GradientFlow)
+- `Requires`: Dependency (e.g., Backpropagation requires a differentiable function)
+- `Enables`: The inverse of `Requires`
+- `Uses`: Employs without depending on
+- `Computes`: Produces a quantity
+- `Optimizes`: Improves an objective
 
-### Historical
+### Comparative
 
-- `builds_on`: Intellectual lineage (e.g., Transformer builds_on Attention)
-- `introduced_by`: Attribution (e.g., Backpropagation introduced_by Rumelhart)
-- `superseded_by`: Replacement (e.g., RNN superseded_by Transformer)
+- `AlternativeTo`: Functionally interchangeable (e.g., ReLU / GELU)
+- `Improves`: Enhancement (e.g., residual connections improve gradient flow)
+
+> **Corrected 2026-08-18.** Six of the eleven relations listed here did not
+> exist — `related_to`, `extends`, `used_for`, `builds_on`, `introduced_by`,
+> `superseded_by` — and six real ones were missing: `Enables`, `Generalizes`,
+> `InstanceOf`, `Uses`, `Computes`, `Optimizes`. The "Historical" group in
+> particular described an attribution model (`introduced_by`, `superseded_by`)
+> that the concept graph does not have; lineage lives in `AIHistoryKB`
+> instead. Variants are Rust identifiers, not the snake_case shown before.
 
 ---
 
@@ -253,14 +288,24 @@ MultiAgentSystems
 
 Each concept has:
 
-| Property             | Type           | Description                           |
-| -------------------- | -------------- | ------------------------------------- |
-| name                 | String         | Unique identifier                     |
-| domain               | Domain         | Primary domain (ML, DL, SYM, NS, MAS) |
-| description          | String         | Natural language description          |
-| math_notation        | Option<String> | LaTeX mathematical definition         |
-| complexity           | Option<String> | Big-O complexity                      |
-| implementation_hints | Vec<String>    | Code implementation notes             |
+| Property            | Type                          | Description                          |
+| ------------------- | ----------------------------- | ------------------------------------ |
+| id                  | Uuid                          | Identity — **lookups key on this**   |
+| name                | String                        | Human-readable name                  |
+| domain              | ConceptDomain                 | Primary domain (ten of them, below)  |
+| definition          | String                        | Natural language definition          |
+| math                | Option\<String\>              | LaTeX mathematical definition        |
+| complexity          | Option\<ComplexitySpec\>      | Structured complexity, not a string  |
+| properties          | HashMap\<String, PropertyValue\> | Open attribute bag                |
+| applicable_tasks    | Vec\<String\>                 | Where the concept applies            |
+| contraindications   | Vec\<String\>                 | Where it does not                    |
+
+> **Corrected 2026-08-18.** `name` is not the unique identifier — `id: Uuid`
+> is, which is why every lookup in the API takes one. `description` is
+> `definition`, `math_notation` is `math`, `complexity` is a structured
+> `ComplexitySpec` rather than a string, and `implementation_hints` does not
+> exist; `properties`, `applicable_tasks` and `contraindications` were
+> missing.
 
 ---
 

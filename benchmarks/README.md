@@ -39,12 +39,12 @@ All tasks follow the `MAGE-training-v1` schema defined in [`corpus-schema.json`]
 
 ## Evaluation Metrics
 
-Agents are scored on seven metrics (targets from mage_ECOSYSTEM.md §4.4):
+Agents are scored on seven metrics (targets from [`MAGE_ECOSYSTEM.md`](../MAGE_ECOSYSTEM.md) §4.4):
 
 | Metric                  | Target  | Description                                |
 | ----------------------- | ------- | ------------------------------------------ |
 | First-pass success rate | > 95%   | Compiles and passes tests on first attempt |
-| Token efficiency ratio  | < 1.1   | `rdx_tokens / reference_tokens`            |
+| Token efficiency ratio  | < 1.1   | `solution.token_count / rust_equivalent.token_count` |
 | Effect correctness      | > 99%   | Correct effect annotations                 |
 | Spec compliance         | > 98%   | Conforms to MAGE language spec            |
 | Migration accuracy      | > 99%   | Rust↔MAGE round-trip fidelity             |

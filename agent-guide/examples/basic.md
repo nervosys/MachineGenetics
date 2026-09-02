@@ -1,7 +1,16 @@
 # Worked Examples: Basic
 
 > Prompt → Response pairs for AI agent training and evaluation.
-> All examples use **human syntax** (default).
+> All examples use **human syntax** (`pub fn`, `struct`, `match`, `if`).
+> Every response below was verified with `mage-parse --check`, and the ones
+> with a `main` were run.
+
+These pairs are training data: the response is the *answer* a model learns to
+give. The previous version of this file answered every prompt in Rust —
+`#[derive(Debug)]`, `&Vec<i32>`, `.iter().collect()`, `println!`, `use std::io`,
+`impl` with `&self`. Four of the ten did not parse; the other six were Rust
+that the lenient parser happened to accept. **A worked example that is wrong
+teaches the wrong thing far more efficiently than prose does.**
 
 ---
 
@@ -11,8 +20,9 @@
 
 **Response:**
 ```MAGE
-pub fn main() / io {
-    println!("Hello, world!");
+pub fn main() -> i32 / io {
+    println("Hello, world!")
+    0
 }
 ```
 
@@ -20,12 +30,14 @@ pub fn main() / io {
 
 ## Example 2: Sum of a List
 
-**Prompt:** Write a MAGE function that takes a vector of integers and returns their sum.
+**Prompt:** Write a MAGE function that takes a list of integers and returns their sum.
 
 **Response:**
 ```MAGE
-fn sum(numbers: &Vec<i32>) -> i32 {
-    numbers.iter().sum()
+// `sum` is part of the standard vocabulary — a global function, not a method.
+// `[i32]~` is a slice of i32; there is no `Vec` and no `&`.
+pub fn total(numbers: [i32]~) -> i32 {
+    sum(numbers)
 }
 ```
 
@@ -37,47 +49,43 @@ fn sum(numbers: &Vec<i32>) -> i32 {
 
 **Response:**
 ```MAGE
-pub fn main() / io {
-    for n in 1..=100 {
+pub fn main() -> i32 / io {
+    for n in 1..101 {
         if n % 15 == 0 {
-            println!("FizzBuzz");
+            println("FizzBuzz")
         } else if n % 3 == 0 {
-            println!("Fizz");
+            println("Fizz")
         } else if n % 5 == 0 {
-            println!("Buzz");
+            println("Buzz")
         } else {
-            println!("{n}");
+            println(n)
         }
     }
+    0
 }
 ```
 
 ---
 
-## Example 4: Struct with Constructor
+## Example 4: Struct with Methods
 
-**Prompt:** Define a MAGE struct `Rectangle` with width and height, and a method to compute area.
+**Prompt:** Define a MAGE struct `Rectangle` with width and height, and methods for area and perimeter.
 
 **Response:**
 ```MAGE
-#[derive(Debug, Clone)]
-pub struct Rectangle {
-    pub width: f64,
-    pub height: f64,
+// No attributes, no `Self`, no field shorthand: a struct literal names every
+// field, and `@Name { … }` is the literal form — bare `Name { … }` is a map.
+pub struct Rectangle { width: f64, height: f64 }
+
+extend Rectangle {
+    pub fn area(self) -> f64 { self.width * self.height }
+
+    pub fn perimeter(self) -> f64 { 2.0 * (self.width + self.height) }
 }
 
-impl Rectangle {
-    pub fn new(width: f64, height: f64) -> Self {
-        Self { width, height }
-    }
-
-    pub fn area(&self) -> f64 {
-        self.width * self.height
-    }
-
-    pub fn perimeter(&self) -> f64 {
-        2.0 * (self.width + self.height)
-    }
+pub fn main() -> f64 {
+    val r = @Rectangle { width: 3.0, height: 4.0 }
+    r.area() + r.perimeter()
 }
 ```
 
@@ -89,32 +97,32 @@ impl Rectangle {
 
 **Response:**
 ```MAGE
-#[derive(Debug, Clone)]
-pub enum Color {
-    Red,
-    Green,
-    Blue,
-}
+pub enum Color { Red, Green, Blue }
 
-pub fn to_hex(color: &Color) -> &str {
+// Variants match bare. Qualify (`Color.Red`) only when two enums share a
+// variant name — unqualified, that is an error naming both, not a silent pick.
+pub fn to_hex(color: Color) -> str {
     match color {
-        Color::Red => "#FF0000",
-        Color::Green => "#00FF00",
-        Color::Blue => "#0000FF",
+        Red => "#FF0000",
+        Green => "#00FF00",
+        Blue => "#0000FF",
     }
 }
+
+pub fn main() -> str { to_hex(Green) }
 ```
 
 ---
 
-## Example 6: Option Handling
+## Example 6: Optional Values
 
-**Prompt:** Write a function that finds the first even number in a list, returning None if there are no even numbers.
+**Prompt:** Write a function that finds the first even number in a list, returning nothing if there are none.
 
 **Response:**
 ```MAGE
-fn first_even(numbers: &Vec<i32>) -> Option<i32> {
-    numbers.iter().find(|n| *n % 2 == 0).copied()
+// `?i32` is the optional type; `find` returns one.
+pub fn first_even(numbers: [i32]~) -> ?i32 {
+    find(numbers, |n| n % 2 == 0)
 }
 ```
 
@@ -126,23 +134,24 @@ fn first_even(numbers: &Vec<i32>) -> Option<i32> {
 
 **Response:**
 ```MAGE
-fn reverse_upper(input: &str) -> String {
-    input.chars().rev().collect::<String>().to_uppercase()
+// `chars`, `reverse`, `join` and `upper` are vocabulary functions; there is no
+// method chain and no turbofish.
+pub fn reverse_upper(input: str) -> str {
+    upper(join(reverse(chars(input)), ""))
 }
 ```
 
 ---
 
-## Example 8: Vector Transformation
+## Example 8: List Transformation
 
-**Prompt:** Given a vector of names, return a new vector with each name prefixed by "Hello, " and suffixed with "!".
+**Prompt:** Given a list of names, return a new list with each name prefixed by "Hello, " and suffixed with "!".
 
 **Response:**
 ```MAGE
-fn greet_all(names: &Vec<String>) -> Vec<String> {
-    names.iter()
-        .map(|name| format!("Hello, {name}!"))
-        .collect()
+// No `format!`. Build the string with `join`.
+pub fn greet_all(names: [str]~) -> [str]~ {
+    map(names, |name| join(["Hello, ", name, "!"], ""))
 }
 ```
 
@@ -150,16 +159,15 @@ fn greet_all(names: &Vec<String>) -> Vec<String> {
 
 ## Example 9: Reading User Input
 
-**Prompt:** Write a MAGE function that reads a line from stdin and returns it trimmed.
+**Prompt:** Write a MAGE function that reads a line from stdin.
 
 **Response:**
 ```MAGE
-use std::io;
-
-fn read_line() -> Result<String, io::Error> / io {
-    let mut buf = String::new();
-    io::stdin().read_line(&mut buf)?;
-    return buf.trim().to_string();
+// `io` is a capability namespace, in scope everywhere — nothing is imported.
+// Reaching it is what puts `io` in the inferred set, and a `pub` function must
+// declare what it performs.
+pub fn read_line() -> str / io {
+    io.read_line()
 }
 ```
 
@@ -171,12 +179,15 @@ fn read_line() -> Result<String, io::Error> / io {
 
 **Response:**
 ```MAGE
-use std::fs;
-
-pub fn count_lines(path: &str) -> Result<usize, io::Error> / io {
-    let content = fs::read_to_string(path)?;
-    let count = content.lines().count();
-    println!("File {path} has {count} lines");
-    return count;
+// Two capabilities, two effects, both declared: `fs` for the read and `io` for
+// the print. There is no hierarchy — neither implies the other.
+pub fn count_lines(path: str) -> i32 / fs, io {
+    val content = fs.read_to_string(path)
+    val n = len(lines(content)) as i32
+    println(path)
+    println(n)
+    n
 }
 ```
+
+---

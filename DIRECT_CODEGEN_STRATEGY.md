@@ -674,20 +674,25 @@ perform.
 #### Example 1: Cross-Function Vectorization
 
 ```mg
-@req data.len() % 16 == 0
-pub fn normalize(data: &mut Vec<f64>) / pure {
-    let sum = sum_all(data);                // call
-    for i in 0..data.len() {
-        data[i] = data[i] / sum;          // divide each element
-    }
+sp normalize {
+    @req(1b)
+    @ens(1b)
+    @fx()
 }
 
-@req data.len() > 0
-@ens result > 0.0
-pub fn sum_all(data: &Vec<f64>) -> f64 / pure {
-    let mut acc = 0.0;
-    for x in data { acc = acc + *x; }
-    acc
+pub fn normalize(data: [f64]~) -> [f64]~ {
+    val total = sum_all(data)
+    map(data, |x| x / total)
+}
+
+sp sum_all {
+    @req(1b)
+    @ens(1b)
+    @fx()
+}
+
+pub fn sum_all(data: [f64]~) -> f64 {
+    fold(data, 0.0, |acc, x| acc + x)
 }
 ```
 
@@ -720,13 +725,17 @@ vbroadcastsd zmm2, xmm_sum      ; broadcast sum to all lanes
 #### Example 2: Branch-Free Hot Path
 
 ```mg
-@req 0 < age && age <= 200
-@req 0.0 < income
-pub fn tax_bracket(age: u32, income: f64) -> f64 / pure {
+sp tax_bracket {
+    @req(1b)
+    @ens(1b)
+    @fx()
+}
+
+pub fn tax_bracket(age: i32, income: f64) -> f64 {
     if age < 18 { 0.0 }
     else if age < 65 {
-        if income < 50_000.0 { income * 0.12 }
-        else if income < 100_000.0 { income * 0.22 }
+        if income < 50000.0 { income * 0.12 }
+        else if income < 100000.0 { income * 0.22 }
         else { income * 0.32 }
     }
     else { income * 0.10 }   // senior discount
@@ -755,13 +764,14 @@ ret
 #### Example 3: Zero-Allocation String Processing
 
 ```mg
-@req input.len() <= 4096
-pub fn to_uppercase(input: &str) -> String / alloc {
-    let mut result = String::with_capacity(input.len());
-    for c in input.chars() {
-        result.push(c.to_ascii_uppercase());
-    }
-    result
+sp to_uppercase {
+    @req(1b)
+    @ens(1b)
+    @fx()
+}
+
+pub fn to_uppercase(input: str) -> str {
+    upper(input)
 }
 ```
 

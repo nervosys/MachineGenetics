@@ -23,26 +23,16 @@ Use the following examples to guide MAGE code generation.
 
 **MAGE:**
 ```MAGE
-+S Counter {
-    count: i32,
-}
++S Counter { count: i32 }
 
-I ~ Counter {
-    +f new() -> Self {
-        Counter @{ count: 0 }
-    }
+I Counter {
+    +f new() -> Counter { @Counter { count: 0 } }
 
-    +f increment(&!self) {
-        self.count += 1;
-    }
+    +f increment(self) -> Counter { @Counter { count: self.count + 1 } }
 
-    +f decrement(&!self) {
-        self.count -= 1;
-    }
+    +f decrement(self) -> Counter { @Counter { count: self.count - 1 } }
 
-    +f value(&self) -> i32 {
-        self.count
-    }
+    +f value(self) -> i32 { self.count }
 }
 ```
 
@@ -54,15 +44,12 @@ I ~ Counter {
 
 **MAGE:**
 ```MAGE
-+E Shape {
-    Circle(f64),
-    Rectangle(f64, f64),
-}
++E Shape { Circle(f64), Rectangle(f64, f64) }
 
-I ~ Shape {
-    +f area(&self) -> f64 {
-        ? self {
-            Shape.Circle(r) => std.f64.consts.PI * r * r,
+I Shape {
+    +f area(self) -> f64 {
+        ?= self {
+            Shape.Circle(r) => 3.14159 * r * r,
             Shape.Rectangle(w, h) => w * h,
         }
     }
@@ -77,69 +64,50 @@ I ~ Shape {
 
 **MAGE:**
 ```MAGE
-+f find_max[T: Ord](items: &[T]) -> &T {
-    m max = &items[0];
-    @ item ~ &items[1..] {
-        ? item > max {
-            max = item;
-        }
++f find_max(items: [i32]~) -> i32 {
+    m best = items[0]
+    @ item in items {
+        ? item > best { best = item } : { }
     }
-    max
+    best
 }
 ```
 
 ---
 
-## Example 5: Async with effects
+## Example 5: A declared effect, performed and guarded
 
-**Task:** Write an async function that fetches JSON from a URL and parses it.
+**Task:** Declare an `http` effect, and write a function that performs it after
+checking its argument.
 
 **MAGE:**
 ```MAGE
-u serde.de.DeserializeOwned
+effect Http {
+    f get(url: str) -> str;
+}
 
-+af fetch_json[T: DeserializeOwned](url: &s) -> R[T, reqwest.Error] / io + net {
-    v response = reqwest.get(url).await?;
-    v data = response.json::[T]().await?;
-    R.Ok(data)
++f fetch_body(url: str) -> R[str, str] / http {
+    guard len(url) > 0 else { ret Err("empty url") }
+    Ok(Http.get(url))
 }
 ```
 
 ---
 
-## Example 6: Error type with From impls
+## Example 6: An error enum, matched exhaustively
 
-**Task:** Write an AppError enum that wraps io::Error and serde_json::Error.
+**Task:** Write an `AppError` enum and a function that turns each variant into
+a message.
 
 **MAGE:**
 ```MAGE
-u std.io
++E AppError { NotFound, Invalid(str) }
 
-@d(Debug)
-+E AppError {
-    Io(io.Error),
-    Json(serde_json.Error),
-    Custom(s),
-}
-
-I std.fmt.Display ~ AppError {
-    f fmt(&self, f: &!std.fmt.Formatter) -> std.fmt.Result {
-        ? self {
-            AppError.Io(e) => e.fmt(f),
-            AppError.Json(e) => e.fmt(f),
-            AppError.Custom(msg) => f.write_str(msg),
-        }
++f describe(e: AppError) -> str {
+    ?= e {
+        AppError.NotFound => "not found",
+        AppError.Invalid(why) => why,
     }
-}
-
-I std.error.Error ~ AppError {}
-
-I std.convert.From[io.Error] ~ AppError {
-    f from(e: io.Error) -> Self { AppError.Io(e) }
-}
-
-I std.convert.From[serde_json.Error] ~ AppError {
-    f from(e: serde_json.Error) -> Self { AppError.Json(e) }
 }
 ```
 
@@ -151,3 +119,5 @@ Now generate MAGE code for the following task:
 
 **MAGE:**
 ```MAGE
+
+```

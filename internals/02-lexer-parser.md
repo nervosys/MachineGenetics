@@ -1,5 +1,15 @@
 # Chapter 2: Lexer & Parser Internals
 
+> **Checked against the code 2026-08-25, and mostly right.** `Token`, `Span`
+> and the `Lexer` struct match `prototype/src/lexer.rs` exactly, and the Pratt
+> parser is real (`parse_expr_bp`, precedence climbing). Three things were
+> not: the `Parser` struct and `parse`'s signature, which named a
+> `ParseResult<Ast>` where neither `ParseResult` nor `Ast` exists; and the
+> parser's "Error Recovery" section, which described synchronization the
+> parser does not do. All three are corrected below and marked where they
+> were.
+
+
 The MAGE frontend converts source text into an AST through two stages:
 tokenization (lexer) and parsing. Both are designed for LL(1) operation —
 no backtracking, no ambiguity, every decision resolved by looking at the
@@ -166,18 +176,24 @@ design decision that makes MAGE agent-friendly.
 ### Parser Structure
 
 ```rust
-pub struct Parser {
-    tokens: Vec<Token>,
+// `Parser` is private: `parse` is the only way in. It borrows the token
+// slice rather than taking ownership.
+struct Parser<'a> {
+    tokens: &'a [Token],
     pos: usize,
-    diagnostics: Vec<Diagnostic>,
+    /// `block` macros seen so far, by name (resolved at their use site).
+    blocks: HashMap<String, BlockDef>,
 }
 
-impl Parser {
-    pub fn parse(tokens: Vec<Token>) -> ParseResult<Ast> {
-        let mut parser = Parser { tokens, pos: 0, diagnostics: vec![] };
-        let items = parser.parse_items()?;
-        Ok(Ast { items, diagnostics: parser.diagnostics })
-    }
+pub fn parse(tokens: &[Token]) -> Result<Module, ParseError> {
+    let mut parser = Parser::new(tokens);
+    parser.parse_module()
+}
+
+pub struct ParseError {
+    pub line: usize,
+    pub col: usize,
+    pub message: String,
 }
 ```
 
@@ -235,7 +251,7 @@ Expressions use a Pratt parser (precedence climbing) for correct operator
 binding:
 
 ```rust
-fn parse_expr(&mut self, min_bp: u8) -> ParseResult<Expr> {
+fn parse_expr_bp(&mut self, min_bp: u8) -> Result<Expr, ParseError> {
     let mut lhs = self.parse_prefix()?;
 
     loop {
@@ -271,19 +287,29 @@ Binding powers (higher = tighter):
 | 11         | `!` `-` (unary) `&` `&!` `*` | Prefix        |
 | 12         | `.` function call `[index]`  | Postfix       |
 
-### Error Recovery
+### Error Recovery — the parser has none
 
-When the parser encounters an unexpected token:
+**Corrected 2026-08-25.** This section described synchronizing on `;`, `}` or a
+top-level keyword and resuming, producing partial ASTs for error-tolerant
+tooling. **The parser does none of that.** `parse` returns
+`Result<Module, ParseError>`: the first unexpected token aborts, and `Parser`
+has no diagnostics list to accumulate into. Verified by running a file with two
+syntax errors — only the first is reported, and `--check` exits 1 without
+reaching name resolution.
 
-1. Emit a diagnostic with the expected vs found tokens
-2. **Synchronize** — skip tokens until a recovery point:
-   - `;` (statement boundary)
-   - `}` (block end)
-   - Top-level keyword (`f`, `S`, `E`, `T`, `I`, `M`, `u`, `+`)
-3. Resume parsing from the recovery point
+The asymmetry with the lexer above is real and worth understanding, because it
+is the reason a parse error is the pipeline's one hard stop (Chapter 1 §1.1):
 
-This produces partial ASTs for error-tolerant tooling (IDE highlighting,
-agent code generation with holes).
+| | On bad input |
+|---|---|
+| **Lexer** | emits `TokenKind::Error` in place, keeps going, hands the parser a complete stream. `run_check` counts those tokens as errors and continues |
+| **Parser** | returns the first `ParseError` and stops. Every later pass takes an `ast::Module`, and there is no partial one to give them |
+
+Recovery would be worth having for exactly the reasons the old text gave — IDE
+highlighting, agent generation with holes — and building it means giving
+`Parser` a diagnostics list and a resync routine, then deciding what a
+half-parsed `Module` means to the eight passes downstream. That is a design
+question, not an oversight, and nothing here has answered it.
 
 ### Attribute Parsing
 

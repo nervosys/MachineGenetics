@@ -104,6 +104,58 @@ fn occurs_in(var: TyVar, ty: &Ty) -> bool {
     }
 }
 
+/// The value of an unsuffixed integer literal, for range checking. Handles the
+/// radix prefixes and digit separators the lexer accepts. Anything unparseable
+/// yields 0, which passes every range — the checker's job here is to catch a
+/// literal that plainly does not fit, not to re-lex.
+fn parse_int_literal_value(text: &str) -> i128 {
+    let t: String = text.trim().chars().filter(|c| *c != '_').collect();
+    let t = t.trim_start_matches('+');
+    let (neg, t) = match t.strip_prefix('-') {
+        Some(rest) => (true, rest),
+        None => (false, t),
+    };
+    let parsed = if let Some(h) = t.strip_prefix("0x").or_else(|| t.strip_prefix("0X")) {
+        i128::from_str_radix(h, 16)
+    } else if let Some(o) = t.strip_prefix("0o").or_else(|| t.strip_prefix("0O")) {
+        i128::from_str_radix(o, 8)
+    } else if let Some(b) = t.strip_prefix("0b").or_else(|| t.strip_prefix("0B")) {
+        i128::from_str_radix(b, 2)
+    } else {
+        t.parse::<i128>()
+    };
+    let n = parsed.unwrap_or(0);
+    if neg { -n } else { n }
+}
+
+/// Inclusive range of a signed integer kind. `None` for the kinds whose width
+/// is target-dependent or wider than `i128` can bound.
+fn signed_range(k: IntTy) -> Option<(i128, i128)> {
+    Some(match k {
+        IntTy::I8 => (i8::MIN as i128, i8::MAX as i128),
+        IntTy::I16 => (i16::MIN as i128, i16::MAX as i128),
+        IntTy::I32 => (i32::MIN as i128, i32::MAX as i128),
+        IntTy::I64 => (i64::MIN as i128, i64::MAX as i128),
+        // `isize` is target-dependent; 64-bit is the floor this toolchain
+        // targets, and being permissive here beats rejecting a valid program.
+        IntTy::Isize => (i64::MIN as i128, i64::MAX as i128),
+        IntTy::I128 => return None,
+    })
+}
+
+/// Inclusive maximum of an unsigned integer kind, or `None` when unbounded
+/// within `i128`.
+fn unsigned_max(k: UintTy) -> Option<i128> {
+    Some(match k {
+        UintTy::U8 => u8::MAX as i128,
+        UintTy::U16 => u16::MAX as i128,
+        UintTy::U32 => u32::MAX as i128,
+        UintTy::U64 => u64::MAX as i128,
+        UintTy::Usize => u64::MAX as i128,
+        UintTy::U128 => return None,
+    })
+}
+
 fn unify(subst: &mut Subst, a: &Ty, b: &Ty) -> Result<(), String> {
     let a = subst.apply(a);
     let b = subst.apply(b);
@@ -160,10 +212,23 @@ fn unify(subst: &mut Subst, a: &Ty, b: &Ty) -> Result<(), String> {
         (Ty::Vec(t1), Ty::Array(t2, _)) | (Ty::Array(t2, _), Ty::Vec(t1)) => {
             unify(subst, t1, t2)
         }
+        // The same coercion for a *slice* parameter. `[T]~` accepted a literal
+        // and `[T]` did not — `f g(xs: [i32])` called as `g([1, 2, 3])`
+        // reported `[I32] vs [?T; 3]` — which is a distinction with no
+        // meaning at this level, and every example rewritten this session hit
+        // it. A slice is the borrowed view; a literal is a legitimate value
+        // for one.
+        (Ty::Slice(t1), Ty::Array(t2, _)) | (Ty::Array(t2, _), Ty::Slice(t1)) => {
+            unify(subst, t1, t2)
+        }
+        (Ty::Slice(t1), Ty::Vec(t2)) | (Ty::Vec(t2), Ty::Slice(t1)) => unify(subst, t1, t2),
         (Ty::Option(t1), Ty::Option(t2)) => unify(subst, t1, t2),
         (Ty::Ptr(t1), Ty::Ptr(t2)) => unify(subst, t1, t2),
         (Ty::Array(t1, n1), Ty::Array(t2, n2)) => {
-            if n1 != n2 {
+            // 0 means "size not known at this level" — a `[T; N]` whose length
+            // is a const generic or an expression rather than a literal. It
+            // unifies with any length rather than blocking the call.
+            if *n1 != 0 && *n2 != 0 && n1 != n2 {
                 return Err(format!("array size mismatch: {n1} vs {n2}"));
             }
             unify(subst, t1, t2)
@@ -304,6 +369,26 @@ pub struct TypeChecker {
     struct_defs: HashMap<String, StructDefEntry>,
     /// Function signatures: name → params, return type, declared effects.
     fn_sigs: HashMap<String, FnSigEntry>,
+    /// Generic parameters of each function, as the type variables its signature
+    /// was lowered with.
+    ///
+    /// These are *universally quantified*: each call site gets its own fresh
+    /// copy. Without that, `f id[T](v: T) -> T` lowered `T` to a nominal
+    /// `Ty::Named` — a distinct type that unifies with nothing — so every call
+    /// reported `type mismatch: I32 vs sym1` while evaluating correctly. Even
+    /// after lowering `T` to a variable, sharing one variable across call sites
+    /// would make `id(1)` and `id("ab")` in the same program conflict.
+    fn_generics: HashMap<String, Vec<TyVar>>,
+    /// Generic parameter names currently in scope while lowering a signature or
+    /// a body, so `T` lowers to its type variable rather than being interned as
+    /// a nominal type.
+    generic_binding: HashMap<String, Ty>,
+    /// How many leading parameters a function *requires* — its parameter count
+    /// minus the trailing ones that declare a default.
+    ///
+    /// Kept beside `fn_sigs` rather than inside it because the signature tuple
+    /// is destructured in a dozen places and only the arity check needs this.
+    fn_required_arity: HashMap<String, usize>,
     /// Enum definitions: enum name → its variant names. Used for match
     /// exhaustiveness checking.
     enum_defs: HashMap<String, Vec<String>>,
@@ -336,7 +421,12 @@ pub struct TypeChecker {
     /// any concrete int width from context; whatever stays unbound at end of a
     /// function defaults to i32 (Rust-style integer literal polymorphism). This
     /// is what lets `let x: i64 = 3` and `[i64]~ = [1,2,3]` check clean.
-    int_lit_vars: Vec<u32>,
+    /// Unsuffixed integer literals: `(type var, value, source text)`.
+    ///
+    /// The value is carried so the literal can be **range-checked** against
+    /// whatever integer kind it ends up unified with. Without it, `g(300)`
+    /// where `g` takes a `u8` typechecked clean.
+    int_lit_vars: Vec<(u32, i128, String)>,
 }
 
 impl Default for TypeChecker {
@@ -353,6 +443,9 @@ impl TypeChecker {
             env: TypeEnv::new(),
             struct_defs: HashMap::new(),
             fn_sigs: HashMap::new(),
+            fn_generics: HashMap::new(),
+            generic_binding: HashMap::new(),
+            fn_required_arity: HashMap::new(),
             enum_defs: HashMap::new(),
             effect_ops: HashMap::new(),
             effect_defs: Vec::new(),
@@ -393,9 +486,24 @@ impl TypeChecker {
             ast::Type::Rc { inner } => Ty::Rc(Box::new(self.lower_type(inner))),
             ast::Type::Arc { inner } => Ty::Arc(Box::new(self.lower_type(inner))),
             ast::Type::Slice { inner } => Ty::Slice(Box::new(self.lower_type(inner))),
-            ast::Type::Array { inner, .. } => {
-                // For prototype: array size as constant (simplified).
-                Ty::Array(Box::new(self.lower_type(inner)), 0)
+            ast::Type::Array { inner, size } => {
+                // Lower the *declared* size when it is a literal. It used to be
+                // dropped and replaced with 0, while an array literal types as
+                // `[T; n]` with its real length — so `f take(xs: [i32; 3])`
+                // called as `take([1, 2, 3])` failed with "array size mismatch:
+                // 3 vs 0". Every fixed-size array parameter in the language was
+                // uncallable with a literal.
+                //
+                // A non-literal size (a const generic, an expression) still
+                // lowers to 0, which unifies with anything by the arm above —
+                // permissive rather than wrong.
+                let n = match size.as_ref() {
+                    ast::Expr::Literal { value, kind: ast::LiteralKind::Int } => {
+                        value.trim().parse::<u64>().unwrap_or(0)
+                    }
+                    _ => 0,
+                };
+                Ty::Array(Box::new(self.lower_type(inner)), n)
             }
             ast::Type::Vec { inner } => Ty::Vec(Box::new(self.lower_type(inner))),
             ast::Type::Tuple { elements } => {
@@ -478,6 +586,62 @@ impl TypeChecker {
     }
 
     /// Map a named type path to a canonical Ty.
+    /// Replace each quantified type variable with a fresh one.
+    ///
+    /// This is what makes a generic function usable more than once: `id(1)` and
+    /// `id("ab")` in the same program each get their own `T`, instead of
+    /// unifying it to `I32` for the first call and then failing the second.
+    fn instantiate(&mut self, ty: &Ty, map: &HashMap<TyVar, Ty>) -> Ty {
+        let go = |me: &mut Self, t: &Ty| me.instantiate(t, map);
+        match ty {
+            Ty::Var(v) => map.get(v).cloned().unwrap_or_else(|| ty.clone()),
+            Ty::Named(id, args) => {
+                let args = args.iter().map(|a| self.instantiate(a, map)).collect();
+                Ty::Named(*id, args)
+            }
+            Ty::Ref(m, inner) => Ty::Ref(*m, Box::new(go(self, inner))),
+            Ty::OwnedPtr(t) => Ty::OwnedPtr(Box::new(go(self, t))),
+            Ty::Rc(t) => Ty::Rc(Box::new(go(self, t))),
+            Ty::Arc(t) => Ty::Arc(Box::new(go(self, t))),
+            Ty::Slice(t) => Ty::Slice(Box::new(go(self, t))),
+            Ty::Array(t, n) => Ty::Array(Box::new(go(self, t)), *n),
+            Ty::Vec(t) => Ty::Vec(Box::new(go(self, t))),
+            Ty::Option(t) => Ty::Option(Box::new(go(self, t))),
+            Ty::Ptr(t) => Ty::Ptr(Box::new(go(self, t))),
+            Ty::Genome(t) => Ty::Genome(Box::new(go(self, t))),
+            Ty::Simd(t, n) => Ty::Simd(Box::new(go(self, t)), *n),
+            Ty::Tensor(t, d) => Ty::Tensor(Box::new(go(self, t)), d.clone()),
+            Ty::Param(t, d) => Ty::Param(Box::new(go(self, t)), d.clone()),
+            Ty::Result(a, b) => {
+                Ty::Result(Box::new(go(self, a)), Box::new(go(self, b)))
+            }
+            Ty::Map(k, v) => Ty::Map(Box::new(go(self, k)), Box::new(go(self, v))),
+            Ty::Policy(a, b) => {
+                Ty::Policy(Box::new(go(self, a)), Box::new(go(self, b)))
+            }
+            Ty::Tuple(ts) => Ty::Tuple(ts.iter().map(|t| self.instantiate(t, map)).collect()),
+            Ty::Fn(ps, r, fx) => {
+                let ps = ps.iter().map(|t| self.instantiate(t, map)).collect();
+                let r = Box::new(go(self, r));
+                Ty::Fn(ps, r, fx.clone())
+            }
+            other => other.clone(),
+        }
+    }
+
+    /// A fresh instantiation of `name`'s signature, if it is generic.
+    fn instantiated_sig(&mut self, name: &str, params: &[Ty], ret: &Ty) -> (Vec<Ty>, Ty) {
+        let quantified = self.fn_generics.get(name).cloned().unwrap_or_default();
+        if quantified.is_empty() {
+            return (params.to_vec(), ret.clone());
+        }
+        let map: HashMap<TyVar, Ty> =
+            quantified.into_iter().map(|v| (v, self.fresh())).collect();
+        let params = params.iter().map(|p| self.instantiate(p, &map)).collect();
+        let ret = self.instantiate(ret, &map);
+        (params, ret)
+    }
+
     fn resolve_named_type(&mut self, name: &str, args: Vec<Ty>) -> Ty {
         match name {
             "i8" => Ty::Int(IntTy::I8),
@@ -498,6 +662,12 @@ impl TypeChecker {
             "char" => Ty::Char,
             "str" => Ty::Str,
             "String" => Ty::Str,
+            // A generic parameter in scope lowers to its type variable. This
+            // must come before the interning below, which would otherwise make
+            // `T` a nominal type that unifies with nothing.
+            _ if self.generic_binding.contains_key(name) => {
+                self.generic_binding[name].clone()
+            }
             _ => {
                 // A user-defined struct/enum/type alias. Interned to a stable
                 // id so distinct names are distinct types.
@@ -547,6 +717,19 @@ impl TypeChecker {
                 }
             }
             ast::ItemKind::Function(fd) => {
+                // Bind this function's generic parameters to fresh type
+                // variables for the duration of lowering its signature, and
+                // remember them so each call site can instantiate its own copy.
+                let mut quantified = Vec::new();
+                let saved = std::mem::take(&mut self.generic_binding);
+                for gp in &fd.generics {
+                    let tv = match self.fresh() {
+                        Ty::Var(v) => v,
+                        _ => unreachable!("fresh() yields a variable"),
+                    };
+                    quantified.push(tv);
+                    self.generic_binding.insert(gp.name.clone(), Ty::Var(tv));
+                }
                 let params: Vec<Ty> = fd.params.iter().map(|p| self.lower_type(&p.ty)).collect();
                 // No return annotation → a fresh inference var, resolved from the
                 // body in pass 2. Sharing it here means recursive calls and
@@ -556,7 +739,20 @@ impl TypeChecker {
                     Some(t) => self.lower_type(t),
                     None => self.fresh(),
                 };
+                // Trailing parameters with a default may be omitted at the
+                // call site. Anything before the first default stays required,
+                // so `f g(a, b = 2, c)` still needs three arguments — a default
+                // in the middle grants nothing, which keeps positional calls
+                // unambiguous.
+                let required = fd
+                    .params
+                    .iter()
+                    .rposition(|p| p.default.is_none())
+                    .map_or(0, |i| i + 1);
+                self.fn_required_arity.insert(fd.name.clone(), required);
                 self.fn_sigs.insert(fd.name.clone(), (params, ret, fd.effects.clone()));
+                self.fn_generics.insert(fd.name.clone(), quantified);
+                self.generic_binding = saved;
             }
             ast::ItemKind::Struct(sd) => {
                 let generics: Vec<String> = sd.generics.iter().map(|g| g.name.clone()).collect();
@@ -655,7 +851,7 @@ impl TypeChecker {
         match &t {
             Ty::Array(e, _) | Ty::Slice(e) | Ty::Vec(e) => self.subst.apply(e),
             // An unconstrained integer literal (e.g. `sum(5)`) is NOT a collection.
-            Ty::Var(tv) if self.int_lit_vars.contains(&tv.0) => {
+            Ty::Var(tv) if self.int_lit_vars.iter().any(|(v, _, _)| *v == tv.0) => {
                 self.emit_error("expected a collection, found an integer".to_string());
                 self.fresh()
             }
@@ -685,11 +881,41 @@ impl TypeChecker {
     /// it also made `sum("hi")` typecheck, which an existing test correctly
     /// forbids. Length-like and element-like uses want different rules, so they
     /// get different helpers.
+    /// The argument to `len` / `count`: a string, or a collection.
     fn sized_arg(&mut self, ty: &Ty) {
-        if matches!(self.subst.apply(ty), Ty::Str) {
-            return;
+        let t = self.subst.apply(ty);
+        match &t {
+            Ty::Str => (),
+            // Still unconstrained. `len` accepts either, so committing to a
+            // collection here decides the program by statement order:
+            //
+            //     val body = net.connect(url)   // type still open
+            //     len(body)                     // ← committed it to [?T]~
+            //     @Response { body: body }      // str vs [?T]~
+            //
+            // The same three lines in the other order checked clean. Leave it
+            // open and let a use that actually knows the type decide.
+            Ty::Var(tv) if !self.int_lit_vars.iter().any(|(v, _, _)| *v == tv.0) => (),
+            _ => {
+                self.collection_elem(&t);
+            }
         }
-        self.collection_elem(ty);
+    }
+
+    /// Unify an argument against what a vocabulary function requires, and
+    /// **report** a mismatch.
+    ///
+    /// Every arm below used `let _ = unify(…)`, discarding the failure. So
+    /// `contains(email, 42)`, `join(xs, 7)` and `upper(5)` all checked clean:
+    /// the vocabulary's types existed to *infer* with, and enforced nothing.
+    /// The one thing a fixed, closed set of 31 combinators is for is catching
+    /// misuse.
+    fn unify_arg(&mut self, name: &str, got: &Ty, want: &Ty) {
+        if unify(&mut self.subst, got, want).is_err() {
+            let got = self.subst.apply(got);
+            let want = self.subst.apply(want);
+            self.emit_error(format!("`{name}`: expected {want}, found {got}"));
+        }
     }
 
     fn vocab_arity(&mut self, name: &str, got: usize, want: usize) {
@@ -701,7 +927,7 @@ impl TypeChecker {
     /// Precise, fresh-per-call types for the §8 standard vocabulary, so misuse is
     /// caught (the reliability win) rather than inferred loosely. Returns `Some`
     /// for a typed combinator; `None` lets the call fall through to generic
-    /// inference (min/max/abs, group/scan, or a user function that shadows it —
+    /// inference (min/max/abs, or a user function that shadows it —
     /// user functions are handled before this is reached). No args are inferred
     /// for names it does not type, so there is no double inference.
     fn infer_vocab_call(&mut self, name: &str, args: &[ast::Expr]) -> Option<Ty> {
@@ -709,8 +935,15 @@ impl TypeChecker {
             "len", "count", "sum", "first", "last", "sort", "reverse", "take",
             "flatten", "contains", "zip", "freq", "keys", "values", "range", "map",
             "filter", "any", "all", "find", "fold", "reduce", "split", "join",
-            "chars", "words", "lines", "upper", "lower",
+            "chars", "words", "lines", "upper", "lower", "scan", "group",
         ];
+        // This gate exists so arguments are not inferred twice for names with
+        // no arm (the caller infers them again after a `None`). It is a second
+        // copy of the arm list and drifts from it silently — `scan` and `group`
+        // were published vocabulary, absent here, and therefore accepted any
+        // number of arguments. `every_typed_vocabulary_name_checks_its_arity`
+        // is what holds the two together: it iterates `VOCABULARY`, and a name
+        // missing from this list produces no arity error and fails there.
         if !TYPED.contains(&name) {
             return None;
         }
@@ -752,9 +985,37 @@ impl TypeChecker {
             "contains" => {
                 self.vocab_arity(name, n, 2);
                 if n >= 1 {
-                    let e = self.collection_elem(&a[0]);
-                    if n >= 2 {
-                        let _ = unify(&mut self.subst, &e, &a[1]);
+                    // Three receivers, as the evaluator has always had:
+                    // substring for a string, key membership for a map,
+                    // element membership for a list. The checker knew only
+                    // the third, so `contains(email, "@")` — the substring
+                    // test, and the common one — evaluated correctly and
+                    // reported `expected a collection, found str`.
+                    match self.subst.apply(&a[0]) {
+                        Ty::Str => {
+                            if n >= 2 {
+                                self.unify_arg(name, &a[1], &Ty::Str);
+                            }
+                        }
+                        Ty::Map(k, _) => {
+                            if n >= 2 {
+                                self.unify_arg(name, &a[1], &k);
+                            }
+                        }
+                        // Still open — `contains` accepts all three, so
+                        // committing here would decide the type by argument
+                        // order, exactly as `len` used to. Inside
+                        // `filter(xs, |part| contains(part, ","))` the
+                        // parameter is open at this point, and forcing a
+                        // collection made the closure `f([str]~) -> bool`
+                        // where `filter` wanted `f(str) -> bool`.
+                        Ty::Var(tv) if !self.int_lit_vars.iter().any(|(v, _, _)| *v == tv.0) => (),
+                        other => {
+                            let e = self.collection_elem(&other);
+                            if n >= 2 {
+                                self.unify_arg(name, &e, &a[1]);
+                            }
+                        }
                     }
                 }
                 Ty::Bool
@@ -789,8 +1050,19 @@ impl TypeChecker {
                 Ty::Vec(Box::new(if name == "keys" { k } else { v }))
             }
             "range" => {
+                // `range(n)` is `0..n` — the one vocabulary arm with no arity
+                // check. `range(1, 101)`, the spelling every other language
+                // teaches, typechecked, and the evaluator read argument 0 and
+                // discarded the rest: the loop ran `0..1`, so a FizzBuzz over
+                // `range(1, 101)` printed one line and returned cleanly.
+                if n != 1 {
+                    self.emit_error(format!(
+                        "`range` expects 1 argument(s), found {n} — `range(n)` is \
+                         `0..n`; for a start and an end write `a..b`"
+                    ));
+                }
                 for t in &a {
-                    let _ = unify(&mut self.subst, t, &usize_ty);
+                    self.unify_arg(name, t, &usize_ty);
                 }
                 Ty::Vec(Box::new(usize_ty))
             }
@@ -800,7 +1072,7 @@ impl TypeChecker {
                 let b = self.fresh();
                 if n >= 2 {
                     let f = Ty::Fn(vec![e], Box::new(b.clone()), pure());
-                    let _ = unify(&mut self.subst, &a[1], &f);
+                    self.unify_arg(name, &a[1], &f);
                 }
                 Ty::Vec(Box::new(self.subst.apply(&b)))
             }
@@ -809,7 +1081,7 @@ impl TypeChecker {
                 let e = if n >= 1 { self.collection_elem(&a[0]) } else { self.fresh() };
                 if n >= 2 {
                     let f = Ty::Fn(vec![e.clone()], Box::new(Ty::Bool), pure());
-                    let _ = unify(&mut self.subst, &a[1], &f);
+                    self.unify_arg(name, &a[1], &f);
                 }
                 Ty::Vec(Box::new(e))
             }
@@ -818,7 +1090,7 @@ impl TypeChecker {
                 let e = if n >= 1 { self.collection_elem(&a[0]) } else { self.fresh() };
                 if n >= 2 {
                     let f = Ty::Fn(vec![e], Box::new(Ty::Bool), pure());
-                    let _ = unify(&mut self.subst, &a[1], &f);
+                    self.unify_arg(name, &a[1], &f);
                 }
                 Ty::Bool
             }
@@ -827,7 +1099,7 @@ impl TypeChecker {
                 let e = if n >= 1 { self.collection_elem(&a[0]) } else { self.fresh() };
                 if n >= 2 {
                     let f = Ty::Fn(vec![e.clone()], Box::new(Ty::Bool), pure());
-                    let _ = unify(&mut self.subst, &a[1], &f);
+                    self.unify_arg(name, &a[1], &f);
                 }
                 Ty::Option(Box::new(e))
             }
@@ -837,16 +1109,44 @@ impl TypeChecker {
                 let acc = if n >= 2 { a[1].clone() } else { self.fresh() };
                 if n >= 3 {
                     let f = Ty::Fn(vec![acc.clone(), e], Box::new(acc.clone()), pure());
-                    let _ = unify(&mut self.subst, &a[2], &f);
+                    self.unify_arg(name, &a[2], &f);
                 }
                 self.subst.apply(&acc)
+            }
+            // `scan` and `group` are published vocabulary (§8) and had no arm
+            // here at all, so they fell through to `_ => return None` — no
+            // type, and no arity check either: `scan(1, 2, 3, 4, 5)` checked
+            // clean. Their signatures are the published ones.
+            "scan" => {
+                self.vocab_arity(name, n, 3);
+                let e = if n >= 1 { self.collection_elem(&a[0]) } else { self.fresh() };
+                let acc = if n >= 2 { a[1].clone() } else { self.fresh() };
+                if n >= 3 {
+                    let f = Ty::Fn(vec![acc.clone(), e], Box::new(acc.clone()), pure());
+                    self.unify_arg(name, &a[2], &f);
+                }
+                // Unlike `fold`, the result is the sequence of accumulators.
+                Ty::Vec(Box::new(self.subst.apply(&acc)))
+            }
+            "group" => {
+                self.vocab_arity(name, n, 2);
+                let e = if n >= 1 { self.collection_elem(&a[0]) } else { self.fresh() };
+                let k = self.fresh();
+                if n >= 2 {
+                    let f = Ty::Fn(vec![e.clone()], Box::new(k.clone()), pure());
+                    self.unify_arg(name, &a[1], &f);
+                }
+                Ty::Map(
+                    Box::new(self.subst.apply(&k)),
+                    Box::new(Ty::Vec(Box::new(self.subst.apply(&e)))),
+                )
             }
             "reduce" => {
                 self.vocab_arity(name, n, 2);
                 let e = if n >= 1 { self.collection_elem(&a[0]) } else { self.fresh() };
                 if n >= 2 {
                     let f = Ty::Fn(vec![e.clone(), e.clone()], Box::new(e.clone()), pure());
-                    let _ = unify(&mut self.subst, &a[1], &f);
+                    self.unify_arg(name, &a[1], &f);
                 }
                 Ty::Option(Box::new(e))
             }
@@ -854,31 +1154,31 @@ impl TypeChecker {
             "split" => {
                 self.vocab_arity(name, n, 2);
                 for t in a.iter().take(2) {
-                    let _ = unify(&mut self.subst, t, &Ty::Str);
+                    self.unify_arg(name, t, &Ty::Str);
                 }
                 Ty::Vec(Box::new(Ty::Str))
             }
             "chars" | "words" | "lines" => {
                 self.vocab_arity(name, n, 1);
                 if n >= 1 {
-                    let _ = unify(&mut self.subst, &a[0], &Ty::Str);
+                    self.unify_arg(name, &a[0], &Ty::Str);
                 }
                 Ty::Vec(Box::new(Ty::Str))
             }
             "join" => {
                 self.vocab_arity(name, n, 2);
                 if n >= 1 {
-                    let _ = unify(&mut self.subst, &a[0], &Ty::Vec(Box::new(Ty::Str)));
+                    self.unify_arg(name, &a[0], &Ty::Vec(Box::new(Ty::Str)));
                 }
                 if n >= 2 {
-                    let _ = unify(&mut self.subst, &a[1], &Ty::Str);
+                    self.unify_arg(name, &a[1], &Ty::Str);
                 }
                 Ty::Str
             }
             "upper" | "lower" => {
                 self.vocab_arity(name, n, 1);
                 if n >= 1 {
-                    let _ = unify(&mut self.subst, &a[0], &Ty::Str);
+                    self.unify_arg(name, &a[0], &Ty::Str);
                 }
                 Ty::Str
             }
@@ -968,7 +1268,7 @@ impl TypeChecker {
     /// than a bug fix.
     fn default_int_literals(&mut self) {
         let pending = std::mem::take(&mut self.int_lit_vars);
-        for v in pending {
+        for (v, value, text) in pending {
             let tv = Ty::Var(crate::hir::TyVar(v));
             let resolved = self.subst.apply(&tv);
             match resolved {
@@ -976,7 +1276,31 @@ impl TypeChecker {
                     // Still unbound → default to i32.
                     let _ = unify(&mut self.subst, &tv, &Ty::Int(IntTy::I32));
                 }
-                Ty::Int(_) | Ty::Uint(_) | Ty::Float(_) | Ty::Never => {}
+                // The literal adopts the width the context demands — and now
+                // has to *fit* it. `g(300)` where `g` takes a `u8` checked
+                // clean before this: the kind was adopted and the magnitude
+                // never looked at.
+                Ty::Int(k) => {
+                    if let Some((lo, hi)) = signed_range(k)
+                        && (value < lo || value > hi)
+                    {
+                        self.emit_error(format!(
+                            "integer literal `{text}` does not fit in `{}`                              (range {lo}..={hi})",
+                            Ty::Int(k)
+                        ));
+                    }
+                }
+                Ty::Uint(k) => {
+                    if let Some(hi) = unsigned_max(k)
+                        && (value < 0 || value > hi)
+                    {
+                        self.emit_error(format!(
+                            "integer literal `{text}` does not fit in `{}`                              (range 0..={hi})",
+                            Ty::Uint(k)
+                        ));
+                    }
+                }
+                Ty::Float(_) | Ty::Never => {}
                 other => self.emit_error(format!(
                     "integer literal used where `{}` is required",
                     other
@@ -1219,6 +1543,27 @@ impl TypeChecker {
                         }
                         self.subst.apply(&lt)
                     }
+                    // Compound assignment: `x += 1` is `x = x + 1`, so the two
+                    // sides must agree and the result is unit.
+                    //
+                    // These reported `unknown operator: \`+=\`` — a claim that
+                    // is simply false; the parser produces them and the
+                    // evaluator runs them. Every program using `+=` evaluated
+                    // correctly and failed `--check`, which is the third shape
+                    // of that kind found this session, after the pipeline
+                    // operator and generic calls.
+                    //
+                    // Recorded in the handoff as "the operand type is unknown,
+                    // which happens with untyped parameters". That was wrong:
+                    // `+=` failed with fully annotated types too. The
+                    // untyped-parameter program it was found in simply had two
+                    // problems at once.
+                    "+=" | "-=" | "*=" | "/=" | "%=" => {
+                        if let Err(e) = unify(&mut self.subst, &lt, &rt) {
+                            self.emit_error(format!("compound assignment `{op}`: {e}"));
+                        }
+                        Ty::Unit
+                    }
                     // Tensor operators: operands must be tensor types.
                     "\u{2297}" | "\u{2299}" => {
                         // ⊗ (matmul), ⊙ (hadamard) — both operands tensor, result tensor.
@@ -1308,11 +1653,23 @@ impl TypeChecker {
                 // per-argument diagnostics instead of one opaque `call:` error.
                 if let ast::Expr::Ident { name } = func.as_ref()
                     && let Some((params, ret, _)) = self.fn_sigs.get(name).cloned() {
+                        // A generic function gets a fresh copy of its type
+                        // variables per call, so two calls cannot conflict.
+                        let (params, ret) = self.instantiated_sig(name, &params, &ret);
                         let arg_tys: Vec<Ty> = args.iter().map(|a| self.infer_expr(a)).collect();
-                        if params.len() != arg_tys.len() {
+                        let required = self
+                            .fn_required_arity
+                            .get(name)
+                            .copied()
+                            .unwrap_or(params.len());
+                        if arg_tys.len() < required || arg_tys.len() > params.len() {
+                            let expected = if required == params.len() {
+                                format!("{}", params.len())
+                            } else {
+                                format!("{required} to {}", params.len())
+                            };
                             self.emit_error(format!(
-                                "call `{name}`: expected {} argument(s), found {}",
-                                params.len(),
+                                "call `{name}`: expected {expected} argument(s), found {}",
                                 arg_tys.len()
                             ));
                         } else {
@@ -1789,9 +2146,41 @@ impl TypeChecker {
                 self.fresh()
             }
 
+            // `x |> f(a, b)` *is* `f(x, a, b)` — so typecheck the call it
+            // desugars to, exactly as the evaluator does.
+            //
+            // This inferred the two sides independently, which meant checking
+            // `f(a, b)` as a standalone call with the piped argument missing:
+            // `10 |> add(5)` reported `call \`add\`: expected 2 argument(s),
+            // found 1` while *evaluating* to 15. The documented operator
+            // (§540, and three other places in the spec) produced a program
+            // that ran correctly and failed `--check`.
+            //
+            // That is the inverse of the usual shape here. The familiar bug is
+            // "typechecks and does not evaluate"; this one evaluated and did
+            // not typecheck, so the checker was rejecting working programs.
             ast::Expr::Pipeline { left, right } => {
-                self.infer_expr(left);
-                self.infer_expr(right)
+                if let ast::Expr::Call { func, args } = right.as_ref() {
+                    let mut all = Vec::with_capacity(args.len() + 1);
+                    all.push((**left).clone());
+                    all.extend(args.iter().cloned());
+                    let desugared = ast::Expr::Call {
+                        func: func.clone(),
+                        args: all,
+                    };
+                    self.infer_expr(&desugared)
+                } else {
+                    // `x |> f` — a bare function reference. Apply it to one
+                    // argument.
+                    let arg = self.infer_expr(left);
+                    let f = self.infer_expr(right);
+                    let ret = self.fresh();
+                    let expected = Ty::Fn(vec![arg], Box::new(ret.clone()), Default::default());
+                    if let Err(e) = unify(&mut self.subst, &f, &expected) {
+                        self.emit_error(format!("pipeline `|>`: {e}"));
+                    }
+                    self.subst.apply(&ret)
+                }
             }
 
             ast::Expr::Is { expr, .. } => {
@@ -1838,7 +2227,8 @@ impl TypeChecker {
                     // (see `default_int_literals`).
                     let ty = self.fresh();
                     if let Ty::Var(v) = &ty {
-                        self.int_lit_vars.push(v.0);
+                        let n = parse_int_literal_value(value);
+                        self.int_lit_vars.push((v.0, n, value.to_string()));
                     }
                     ty
                 }
@@ -1938,6 +2328,200 @@ mod tests {
         assert!(tc.diagnostics.is_empty(), "errors: {:?}", tc.diagnostics);
     }
 
+    /// Compound assignment typechecks.
+    ///
+    /// `x += 1` reported `unknown operator: \`+=\`` — a claim that is simply
+    /// false, since the parser produces it and the evaluator runs it. Every
+    /// program using one evaluated correctly and failed `--check`.
+    ///
+    /// The handoff had recorded this as "the operand type is unknown, which
+    /// happens with untyped parameters". Wrong: it failed with fully annotated
+    /// types too. The program it was found in had two problems at once, and
+    /// the diagnosis stopped at the first.
+    #[test]
+    fn compound_assignment_typechecks() {
+        let errs = |src: &str| {
+            check_source(src)
+                .diagnostics
+                .iter()
+                .filter(|d| matches!(d.severity, crate::hir::Severity::Error))
+                .map(|d| d.message.clone())
+                .collect::<Vec<_>>()
+        };
+        for op in ["+=", "-=", "*=", "/=", "%="] {
+            let src = format!("f s() -> i32 {{ m x = 8
+ x {op} 2
+ x }}");
+            assert!(errs(&src).is_empty(), "`{op}` should typecheck: {:?}", errs(&src));
+        }
+        // A mismatch across a compound assignment is still an error.
+        assert!(!errs("f s() -> i32 { m x = 8
+ x += \"s\"
+ x }").is_empty());
+    }
+
+    /// A generic function can actually be called.
+    ///
+    /// `f id[T](v: T) -> T` lowered `T` to a nominal `Ty::Named` — a distinct
+    /// type unifying with nothing — because signature collection ran
+    /// `lower_type` with no generic binding. `check_function` bound the
+    /// generics as fresh variables, but only for the *body*. So every call
+    /// reported `type mismatch: I32 vs sym1` while evaluating correctly:
+    /// generic functions were declarable and uncallable.
+    #[test]
+    fn a_generic_function_can_be_called() {
+        let errs = |src: &str| {
+            check_source(src)
+                .diagnostics
+                .iter()
+                .filter(|d| matches!(d.severity, crate::hir::Severity::Error))
+                .map(|d| d.message.clone())
+                .collect::<Vec<_>>()
+        };
+        let id = "f id[T](v: T) -> T { v }
+";
+
+        assert!(errs(&format!("{id}f s() -> i32 {{ id(1) }}")).is_empty());
+        assert!(errs(&format!("{id}f s() -> i32 {{ id(1) + 1 }}")).is_empty());
+        assert!(
+            errs("f fst[A, B](a: A, b: B) -> A { a }
+f s() -> i32 { fst(1, \"x\") }").is_empty(),
+            "two distinct parameters should each instantiate"
+        );
+    }
+
+    /// Each call site gets its *own* copy of the quantified variables.
+    ///
+    /// Lowering `T` to a single shared variable would fix one call and break
+    /// the next: `id(1)` would bind `T := I32`, and `id("ab")` in the same
+    /// program would then fail. This is the test that separates a real
+    /// instantiation from a variable that merely happens to unify once.
+    #[test]
+    fn each_call_site_instantiates_its_own_type_variables() {
+        let errs = check_source(
+            "f id[T](v: T) -> T { v }
+             f s() -> i32 { id(1) + (len(id(\"ab\")) as i32) }",
+        )
+        .diagnostics
+        .iter()
+        .filter(|d| matches!(d.severity, crate::hir::Severity::Error))
+        .map(|d| d.message.clone())
+        .collect::<Vec<_>>();
+        assert!(errs.is_empty(), "two instantiations should not conflict: {errs:?}");
+    }
+
+    /// Instantiation must not become a hole. Real mistakes through a generic
+    /// call are still errors.
+    #[test]
+    fn a_generic_call_still_checks_types_and_arity() {
+        let errs = |src: &str| {
+            check_source(src)
+                .diagnostics
+                .iter()
+                .filter(|d| matches!(d.severity, crate::hir::Severity::Error))
+                .count()
+        };
+        assert!(errs("f id[T](v: T) -> T { v }
+f s() -> str { id(1) }") > 0);
+        assert!(errs("f fst[A, B](a: A, b: B) -> A { a }
+f s() -> i32 { fst(1) }") > 0);
+    }
+
+    /// `x |> f(a)` typechecks as `f(x, a)`.
+    ///
+    /// The checker used to infer the two sides independently, so the right
+    /// side was checked as a standalone call with the piped argument missing:
+    /// `10 |> add(5)` reported `expected 2 argument(s), found 1` while
+    /// *evaluating* to 15. The operator is in the spec four times — prose, a
+    /// token definition, a grammar rule and a worked example — and every
+    /// program using it failed `--check`.
+    ///
+    /// Inverse of the usual shape: the familiar bug here is "typechecks and
+    /// does not evaluate". This one evaluated and did not typecheck.
+    #[test]
+    fn a_pipeline_typechecks_as_the_call_it_desugars_to() {
+        let errs = |src: &str| {
+            check_source(src)
+                .diagnostics
+                .iter()
+                .filter(|d| matches!(d.severity, crate::hir::Severity::Error))
+                .map(|d| d.message.clone())
+                .collect::<Vec<_>>()
+        };
+        let add = "f add(a: i32, b: i32) -> i32 { a + b }
+";
+
+        assert!(errs(&format!("{add}f s() -> i32 {{ 10 |> add(5) }}")).is_empty());
+        assert!(
+            errs(&format!("{add}f mul(a: i32, b: i32) -> i32 {{ a * b }}
+f s() -> i32 {{ 10 |> add(5) |> mul(2) }}"))
+                .is_empty()
+        );
+        assert!(
+            errs("f dbl(x: i32) -> i32 { x * 2 }
+f s() -> i32 { 10 |> dbl }").is_empty(),
+            "a bare function reference should pipe"
+        );
+
+        // Real mistakes through the pipe are still caught — the fix must not
+        // silence the arity and type checks it routes around.
+        assert!(
+            !errs(&format!("{add}f s() -> i32 {{ 10 |> add(5, 6) }}")).is_empty(),
+            "too many arguments through a pipe must still fail"
+        );
+        assert!(
+            !errs(&format!("{add}f s() -> i32 {{ \"s\" |> add(5) }}")).is_empty(),
+            "a type mismatch through a pipe must still fail"
+        );
+    }
+
+    /// A call may omit trailing parameters that declare a default.
+    ///
+    /// Only trailing ones: `f g(a, b = 2, c)` still needs three arguments,
+    /// because a default in the middle would make a positional call
+    /// ambiguous. The arity message says the range when there is one.
+    #[test]
+    fn a_call_may_omit_trailing_defaults() {
+        let errs = |src: &str| {
+            check_source(src)
+                .diagnostics
+                .iter()
+                .filter(|d| matches!(d.severity, crate::hir::Severity::Error))
+                .map(|d| d.message.clone())
+                .collect::<Vec<_>>()
+        };
+
+        assert!(errs("f g(a: i32, b: i32 = 2) -> i32 { a + b }
+f s() -> i32 { g(1) }").is_empty());
+        assert!(
+            errs("f g(a: i32, b: i32 = 2) -> i32 { a + b }
+f s() -> i32 { g(1, 5) }").is_empty()
+        );
+
+        // Too few, too many, and a middle default all still report errors.
+        let too_few = errs("f g(a: i32, b: i32 = 2) -> i32 { a + b }
+f s() -> i32 { g() }");
+        assert!(
+            too_few.iter().any(|m| m.contains("expected 1 to 2 argument")),
+            "expected a range in the message, got {too_few:?}"
+        );
+
+        let middle = errs("f g(a: i32, b: i32 = 2, c: i32) -> i32 { a }
+f s() -> i32 { g(1, 2) }");
+        assert!(
+            middle.iter().any(|m| m.contains("expected 3 argument")),
+            "a middle default grants nothing, got {middle:?}"
+        );
+
+        // A function with no defaults keeps the exact message it had.
+        let plain = errs("f g(a: i32, b: i32) -> i32 { a + b }
+f s() -> i32 { g(1) }");
+        assert!(
+            plain.iter().any(|m| m.contains("expected 2 argument(s), found 1")),
+            "unexpected: {plain:?}"
+        );
+    }
+
     #[test]
     fn test_type_mismatch() {
         let tc = check_source("f bad() -> i32 { 1b }");
@@ -2006,6 +2590,152 @@ mod tests {
     fn vocab_arity_is_checked() {
         assert!(!check_source("f t() { sum() }").diagnostics.is_empty());
         assert!(!check_source("f t() { map([1, 2, 3]) }").diagnostics.is_empty());
+    }
+
+    /// An unsuffixed integer literal adopts the width the context demands —
+    /// and has to fit it.
+    ///
+    /// It adopted the width and the magnitude was never looked at, so
+    /// `f g(n: u8)` called as `g(300)` typechecked clean. The literal's value
+    /// is now carried alongside its type variable for exactly this check.
+    #[test]
+    fn an_integer_literal_must_fit_the_width_it_adopts() {
+        let too_big = [
+            ("f g(n: u8) -> u8 { n }\nf t() -> u8 { g(300) }", "300"),
+            ("f g(n: i8) -> i8 { n }\nf t() -> i8 { g(200) }", "200"),
+            ("f g(n: i32) -> i32 { n }\nf t() -> i32 { g(3000000000) }", "3000000000"),
+            ("f g(n: u32) -> u32 { n }\nf t() -> u32 { g(0x100000000) }", "0x100000000"),
+        ];
+        for (src, lit) in too_big {
+            let diags = check_source(src).diagnostics;
+            assert!(
+                diags.iter().any(|d| d.message.contains("does not fit") && d.message.contains(lit)),
+                "`{lit}` must not fit: {diags:?}"
+            );
+        }
+
+        // The boundaries themselves are fine, and so is a float context.
+        for src in [
+            "f g(n: u8) -> u8 { n }\nf t() -> u8 { g(255) }",
+            "f g(n: i8) -> i8 { n }\nf t() -> i8 { g(127) }",
+            "f g(n: u32) -> u32 { n }\nf t() -> u32 { g(0xFFFFFFFF) }",
+            "f g(n: i64) -> i64 { n }\nf t() -> i64 { g(3000000000) }",
+            "f g(x: f64) -> f64 { x }\nf t() -> f64 { g(5) }",
+        ] {
+            let diags = check_source(src).diagnostics;
+            assert!(diags.is_empty(), "`{src}` should check: {diags:?}");
+        }
+    }
+
+    /// A slice parameter accepts a list literal and a vec, as `[T]~` already
+    /// did. `f g(xs: [i32])` called as `g([1, 2, 3])` reported
+    /// `[I32] vs [?T; 3]`.
+    #[test]
+    fn a_slice_parameter_accepts_a_literal_and_a_vec() {
+        for src in [
+            "f g(xs: [i32]) -> usize { len(xs) }\nf t() -> usize { g([1, 2, 3]) }",
+            "f g(xs: [i32]) -> usize { len(xs) }\nf t(v: [i32]~) -> usize { g(v) }",
+            "f g(xs: [i32]~) -> usize { len(xs) }\nf t(v: [i32]) -> usize { g(v) }",
+        ] {
+            let tc = check_source(src);
+            assert!(tc.diagnostics.is_empty(), "`{src}`: {:?}", tc.diagnostics);
+        }
+        // The element type still has to agree.
+        assert!(
+            !check_source("f g(xs: [i32]) -> usize { len(xs) }\nf t() -> usize { g([\"a\"]) }")
+                .diagnostics
+                .is_empty()
+        );
+    }
+
+    /// A fixed-size array parameter accepts a literal of that size.
+    ///
+    /// `lower_type` dropped the declared length and used 0, while an array
+    /// literal types with its real length — so `f take(xs: [i32; 3])` called
+    /// as `take([1, 2, 3])` failed with "array size mismatch: 3 vs 0". Every
+    /// fixed-size array parameter in the language was uncallable with a
+    /// literal.
+    #[test]
+    fn a_fixed_size_array_parameter_accepts_a_literal_of_that_size() {
+        let ok = check_source(
+            "f take3(xs: [i32; 3]) -> usize { len(xs) }\nf t() -> usize { take3([1, 2, 3]) }",
+        );
+        assert!(ok.diagnostics.is_empty(), "{:?}", ok.diagnostics);
+        // And the length is still checked.
+        let bad = check_source(
+            "f take3(xs: [i32; 3]) -> usize { len(xs) }\nf t() -> usize { take3([1, 2]) }",
+        );
+        assert!(
+            bad.diagnostics.iter().any(|d| d.message.contains("array size mismatch")),
+            "a two-element literal must not satisfy `[i32; 3]`: {:?}",
+            bad.diagnostics
+        );
+    }
+
+    /// `contains` works on a string, a map and a list — as the evaluator has
+    /// always done. The checker knew only the list, so the substring test
+    /// evaluated correctly and failed `--check`.
+    #[test]
+    fn contains_accepts_a_string_a_map_and_a_list() {
+        for src in [
+            "f t(e: str) -> bool { contains(e, \"@\") }",
+            "f t(m: {str: i32}) -> bool { contains(m, \"k\") }",
+            "f t(xs: [i32]~) -> bool { contains(xs, 1) }",
+        ] {
+            let diags = check_source(src).diagnostics;
+            assert!(diags.is_empty(), "`{src}` should check: {diags:?}");
+        }
+        // And the needle still has to match what it is searched in. (An
+        // *unsuffixed integer literal* is exempt: it stays width-polymorphic
+        // until something constrains it, so `contains(e, 1)` passes here —
+        // open item 12, the int-literal constraint.)
+        assert!(!check_source("f t(e: str, n: i32) -> bool { contains(e, n) }").diagnostics.is_empty());
+        assert!(
+            !check_source("f t(xs: [i32]~) -> bool { contains(xs, \"a\") }")
+                .diagnostics
+                .is_empty()
+        );
+    }
+
+    /// `len` accepts a string or a collection, so it must not decide which one
+    /// an open type is. It did: the same three statements checked or failed
+    /// depending on their order.
+    #[test]
+    fn len_does_not_commit_an_open_type_to_a_collection() {
+        let tc = check_source(
+            "+S Resp { body: str }\n\
+             +f f(url: str) -> Resp / net {\n\
+             v body = net.connect(url)\n\
+             v n = len(body)\n\
+             @Resp { body: body }\n\
+             }",
+        );
+        assert!(tc.diagnostics.is_empty(), "len fixed the type: {:?}", tc.diagnostics);
+        // Still an error on something that is neither.
+        assert!(!check_source("f t() { len(1b) }").diagnostics.is_empty());
+        assert!(!check_source("f t() { len(5) }").diagnostics.is_empty());
+    }
+
+    /// Every typed vocabulary arm must check its arity. `range` did not, so
+    /// `range(1, 101)` typechecked and then ran as `0..1`.
+    #[test]
+    fn every_typed_vocabulary_name_checks_its_arity() {
+        // One call per name with a deliberately absurd argument count. A name
+        // that accepts it is silently discarding arguments.
+        //
+        // Iterated from `VOCABULARY`, not from a list written here: the list
+        // that used to be here held 29 of the 31 published words, and the two
+        // it omitted — `scan` and `group` — were the two with no typed arm at
+        // all, so `scan(1, 2, 3, 4, 5)` typechecked clean. A test naming its
+        // own subjects cannot report the subject it never names.
+        for (name, _sig, _doc) in crate::resolve::VOCABULARY {
+            let src = format!("f t() {{ {name}(1, 2, 3, 4, 5) }}");
+            let diags = check_source(&src).diagnostics;
+            assert!(
+                diags.iter().any(|d| d.message.contains("argument(s), found 5")),
+                "`{name}` accepted five arguments without an arity error: {diags:?}"
+            );
+        }
     }
 
     #[test]

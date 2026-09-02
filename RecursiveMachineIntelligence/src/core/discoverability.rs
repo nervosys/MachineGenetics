@@ -1345,28 +1345,92 @@ fn add_api_signatures(ont: &Ontology) {
 
 // ── Extra Compute Backends ───────────────────────────────────────────────────
 
+/// Publish the non-default compute backends.
+///
+/// This is the map an agent navigates by when it asks what this crate can
+/// compute on, so every field here is a claim about the code. Two of them were
+/// wrong on 2026-08-19, in opposite directions, and both were found by asking
+/// what the files actually contain rather than what they are called.
+///
+/// **The gating was wrong.** `metal_backend` and `vulkan_backend` published
+/// `feature_gated: true, feature_flag: "gpu"`. `compute/metal.rs` and
+/// `compute/vulkan.rs` carry no `#[cfg(feature = ...)]` at all and are declared
+/// unconditionally in `compute/mod.rs`, so they are in every default build and
+/// `--features gpu` changes nothing about them — it adds `wgpu_backend.rs`.
+/// An agent reading this was told to enable a feature it did not need.
+///
+/// **The technology was wrong, which matters more.** `technology` named a real
+/// API for each. `metal.rs` imports no Metal binding, `vulkan.rs` no Vulkan
+/// binding, and `Cargo.toml` declares no such dependency — the only GPU crate
+/// in the manifest is optional `wgpu`. They are CPU implementations under
+/// hardware names, and their constructors say so in comments while reporting
+/// invented device properties to callers (`metal.rs` announces itself as
+/// "Metal (Apple GPU)" with 16 GB of unified memory and 10 compute units).
+/// An agent selecting "Metal Backend" for GPU acceleration gets none, and gets
+/// a device description that agrees with its mistake.
+///
+/// So `technology` now says what the code does, and `implementation` says what
+/// it is. The scaffolds are still published — they exist, they compute, and
+/// hiding them would be its own inaccuracy — but they are no longer published
+/// as hardware paths. Fixing what the backends *report* is a behaviour change
+/// in a vendored crate and is not done here; see HANDOFF item 18.
 fn add_extra_compute_backends(ont: &Ontology) {
-    for (name, label, tech, feature_flag) in [
+    // (name, label, technology, required feature, what it actually is)
+    for (name, label, tech, feature_flag, implementation) in [
         (
             "webgpu_backend",
             "WebGPU Backend",
-            "wgpu compute shaders",
-            "gpu",
+            "CPU compute; the real wgpu path is a separate module",
+            Some("gpu"),
+            "cpu-scaffold: `compute/webgpu.rs` computes on the CPU. The working \
+             wgpu implementation is `compute/wgpu_backend.rs`, compiled only \
+             under `--features gpu`, and its own docs describe it as replacing \
+             this stub",
         ),
-        ("metal_backend", "Metal Backend", "Apple Metal MSL", "gpu"),
-        ("vulkan_backend", "Vulkan Backend", "Vulkan SPIR-V", "gpu"),
-        ("wasm_backend", "WASM Backend", "WebAssembly SIMD", "wasm"),
+        (
+            "metal_backend",
+            "Metal Backend",
+            "CPU compute; no Metal API is called",
+            None,
+            "cpu-scaffold: no Metal binding is imported and none is declared in \
+             `Cargo.toml`. Compiled in every build. Reports placeholder device \
+             properties (16 GB unified memory, 10 compute units)",
+        ),
+        (
+            "vulkan_backend",
+            "Vulkan Backend",
+            "CPU compute; no Vulkan API is called",
+            None,
+            "cpu-scaffold: no Vulkan binding is imported and none is declared in \
+             `Cargo.toml`. Compiled in every build. Reports placeholder device \
+             properties (32 compute units)",
+        ),
+        (
+            "wasm_backend",
+            "WASM Backend",
+            "wasm-bindgen interop for JavaScript hosts",
+            Some("wasm"),
+            "real: `compute/wasm.rs` exports `WasmTensor` over `wasm-bindgen`. \
+             Note it is JS interop rather than an implementation of the \
+             `Backend` trait, so it is not interchangeable with the others. \
+             Unreachable by any `mod` declaration, and therefore never \
+             compiled, until 2026-08-19",
+        ),
     ] {
+        let mut props = vec![
+            ("technology", s(tech)),
+            ("feature_gated", b(feature_flag.is_some())),
+            ("implementation", s(implementation)),
+        ];
+        if let Some(flag) = feature_flag {
+            props.push(("feature_flag", s(flag)));
+        }
         ont.add_concept(concept(
             NS_COMPUTE,
             name,
             ConceptType::Entity,
             label,
-            vec![
-                ("technology", s(tech)),
-                ("feature_gated", b(true)),
-                ("feature_flag", s(feature_flag)),
-            ],
+            props,
         ));
         relate(
             ont,

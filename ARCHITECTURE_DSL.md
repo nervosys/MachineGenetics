@@ -168,6 +168,20 @@ artifact decodes/decompiles back to the **full 72 layers** and `--run=abl-bytes`
 **dispatches all 72** — so the shipped net is now O(1) in depth in *both* tokens
 and bytes, with execution and round-trip intact.
 
+> **Re-verified 2026-08-18**, every byte figure in this section, from the
+> checked-in `benchmarks/constructs/deep_transformer_stack.mg`: source 271 B,
+> container 141 B, expr 110 B, single-block container 126 B and expr 95 B,
+> decompiles to 72 layers, `dispatched=72 unsupported=[]`. All exact.
+>
+> **The token figures above cannot be reproduced from this repository.** The
+> cl100k tokenizer lives in `agentic-eval`, a separate repo, and the "839
+> manual" baseline is a hand-expanded source that is not checked in — a
+> reconstruction of it comes out at 2,749 B against the 2,320 B stated, which
+> proves nothing except that the naming differed. The byte claims are the ones
+> a reader here can check, and they hold; treat the token ratios as reported
+> rather than reproducible until that file is committed beside the other
+> constructs.
+
 ### 4.5 Typed / contracted composition (safety) ✅
 
 A big block library only helps if composition is *safe*. The shape inferer

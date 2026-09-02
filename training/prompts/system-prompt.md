@@ -73,44 +73,73 @@ Declare effects with the `effect` keyword:
 
 ```MAGE
 effect Db {
-    f query(sql: &s) -> R[Rows, DbError];
-    f execute(sql: &s) -> R[u64, DbError];
+    f query(sql: s) -> [s]~;
+    f execute(sql: s) -> u64;
 }
 ```
 
 Annotate functions with their effects using `/`:
 
 ```MAGE
-+f save_record(data: &Record) -> R[(), AppError] / io + Db {
-    v json = serde_json.to_string(data)?;
-    Db.execute(&f"INSERT INTO records VALUES ('{json}')")?;
-    R.Ok(())
+effect Db {
+    f execute(sql: s) -> u64;
+}
+
++S Record { id: u64, body: s }
+
+// Two effects, comma-separated. `db` is the annotation spelling of the
+// `effect Db` block above — the declaration and the annotation name the same
+// thing, and every effect performed must appear. None implies another.
++f save_record(data: Record) -> u64 / io, db {
+    p"saving {data.id}"
+    Db.execute(f"INSERT INTO records VALUES ('{data.body}')")
 }
 ```
 
-Handle effects with `handle`:
+Handle an effect with `handle ... with`. The effect being handled is named
+after `with`, and each arm names an operation bare and maps it to a value:
 
 ```MAGE
-handle Db {
-    f query(sql: &s) -> R[Rows, DbError] {
-        // concrete implementation
+effect Db {
+    f query(sql: str) -> i32;
+}
+
+f count_rows(sql: str) -> i32 / db {
+    Db.query(sql)
+}
+
++f main() -> i32 {
+    handle {
+        count_rows("select 1")
+    } with Db {
+        query(sql) => 42
     }
 }
 ```
 
+The arm's value becomes the value of the operation call, so the handled body
+resumes and carries on. An arm may `ret` instead, which abandons the rest of
+the body and makes that the value of the whole `handle`.
+
 ## Struct Literals
 
-Use `@{` for struct construction:
+Prefix the type name with `@`. A bare `Point { x: 10 }` is a **map literal**,
+not a struct, and will not typecheck as one:
 
 ```MAGE
-v point = Point @{ x: 10, y: 20 };
+S Point { x: i32, y: i32 }
+
++f main() -> i32 {
+    v point = @Point { x: 10, y: 20 }
+    point.x + point.y
+}
 ```
 
 ## Rules for Generating MAGE Code
 
 1. Always use `.` not `::` for path separators
-2. Use `[T]` not `<T>` for generics (except in turbofish: `.collect::[Vec]()`)
-3. Use `@` for `for` loops: `@ item ~ collection { ... }`
+2. Use `[T]` not `<T>` for generics: `f id[T](v: T) -> T`
+3. Use `@` for `for` loops: `@ item in collection { ... }` (`:` also separates)
 4. Use `?`/`:` for `if`/`else`: `? condition { ... } : { ... }`
 5. Use `1b`/`0b` for boolean literals
 6. Annotate all side-effecting functions with `/ effect`

@@ -4,11 +4,11 @@
 > Each step is a concrete, testable increment.
 >
 > **Last verified: 2026-08-11** — all five crates built and tested: prototype
-> **1,107**, rmi **1,380**, ribosome **164**, germline **112**, forge **52** —
-> **2,815 tests, 0 failures, 0 warnings**. The crate count went from three to
+> **1,207**, rmi **1,384**, ribosome **164**, germline **112**, forge **53** —
+> **2,920 tests, 0 failures, 0 warnings**. The crate count went from three to
 > five when the build engine (step 148) and the RSI control plane (step 149)
 > were extracted from `forge`; the total is unchanged by those moves, and
-> `forge`'s 52 is what the registry alone measured before they were parked in
+> `forge`'s 53 is what the registry alone measured before they were parked in
 > it. Forge's old "235" was stale as well as merged: accurate immediately before
 > step 144, never updated through steps 144–146, which added 36 tests. See
 > `MEASUREMENTS.md` for the per-commit counts.
@@ -190,7 +190,7 @@
 | 84 | Unified multi-item containers | ✅ | One ABL container holds net + kb (+ agent + swarm) — a whole neurosymbolic application in a single artifact |
 | 85 | agent + swarm construction | ✅ | Capability/approval policy and swarm topology/consensus/transport build, describe, and execute |
 | 86 | Round-trip fidelity | ✅ | Every item kind decompiles back to exact source; content hashes match across build→describe |
-| 87 | No-exec introspection | ✅ | `--describe=abl` reports structure as pure bounds-checked data — **12.6 µs** for an 858 B artifact, `exec:false` |
+| 87 | No-exec introspection | ✅ | `--describe=abl` reports structure as pure bounds-checked data — **7.4 µs** for a 67 B folded artifact (12.6 µs for the 858 B unfolded one it was measured on), `exec:false` |
 | 88 | SPINE collaboration bridge | ✅ | ABL agents communicate over SPINE (Hyperlight); gap analysis + `spine-mage` bridge, 5 tests |
 
 ## Phase J: Measurement infrastructure (Steps 89–92)
@@ -343,7 +343,7 @@
 
 | # | Item | Status | Notes |
 | - | ---- | ------ | ----- |
-| 1 | CUDA runtime correctness needs a GPU runner | 🔧 | **Correctness itself is verified**, 2026-08-05: `cargo test --features cuda` → **1,071 passing, 0 failed** on dual RTX 3090 Ti, driver 610.88, against pinned IronAccelerator `v2.2.0`. That retired the documented **1,269**, which was written *before* the library split collapsed 171 duplicate executions; `1,269 − 171 = 1,098` still leaves **27 unexplained**, so the figure was replaced by the measurement rather than reverse-engineered into agreement. `scripts/*.sh --cuda --check-docs` now verifies the CUDA number in all 6 places it is claimed, so it cannot drift again. **Remaining is genuinely infrastructure:** the `cuda-gpu` job is gated on `vars.HAS_GPU_RUNNER == 'true'` and needs a self-hosted runner registered — an *unattended CI* check, which a developer box running the suite by hand is not. |
+| 1 | CUDA runtime correctness needs a GPU runner | 🔧 | **Correctness itself is verified**, 2026-08-05: `cargo test --features cuda` → **1,229 passing, 0 failed** on dual RTX 3090 Ti, driver 610.88, against pinned IronAccelerator `v2.2.0`. That retired the documented **1,269**, which was written *before* the library split collapsed 171 duplicate executions; `1,269 − 171 = 1,098` still leaves **27 unexplained**, so the figure was replaced by the measurement rather than reverse-engineered into agreement. `scripts/*.sh --cuda --check-docs` now verifies the CUDA number in all 6 places it is claimed, so it cannot drift again. **Remaining is genuinely infrastructure:** the `cuda-gpu` job is gated on `vars.HAS_GPU_RUNNER == 'true'` and needs a self-hosted runner registered — an *unattended CI* check, which a developer box running the suite by hand is not. |
 | 2 | IronAccelerator version drift | ✅ | **Fixed 2026-08-03.** Was a path dep on a sibling checkout, so the lock silently re-resolved whenever that checkout moved (it drifted 1.2.0 → 2.2.0 exactly this way) and `--features cuda` could not build from a clean clone. Now pinned to the published tag `v2.2.0` (rev `46ceb09d`); `prototype/Cargo.toml` carries a commented `[patch]` block for local IronAccelerator development. |
 | 3 | Steps 2c & 3 of the ab-initio migration | ⬚ | Declined as negative-sum (step 99). Revisit only with new measurement. |
 | 4 | Single-workspace build | ⬚ | The four crates are separate workspaces by design: rmi is vendored and must stay independently buildable, and `ribosome` must be able to leave without taking MAGE with it. `scripts/test-all.{ps1,sh}` is the supported way to build/test everything at once — see the note in `ARCHITECTURE.md`. |

@@ -165,33 +165,87 @@ errors combined).
 }
 ```
 
-## 7.4 Planned Methods
+## 7.4 The method surface
 
-The protocol is designed to grow as the compiler matures:
+**Corrected 2026-08-25.** This section was a "Planned Methods" table listing
+three implemented methods and eleven planned ones. **37 methods are published
+and dispatch** — the count is pinned, and a test exercises every one against
+its published parameter list. None of the eleven exists under the name given,
+and most of the capabilities they described shipped under a different one:
 
-| Method              | Description                                   | Status        |
-| ------------------- | --------------------------------------------- | ------------- |
-| `language/tokens`   | Tokenise source                               | ✅ Implemented |
-| `language/parse`    | Parse to AST                                  | ✅ Implemented |
-| `build/check`       | Lex + parse diagnostics                       | ✅ Implemented |
-| `build/full`        | Full pipeline (type check, effects, MLIR)     | Planned       |
-| `query/type`        | Query the type of an expression at a position | Planned       |
-| `query/effects`     | Query the effect set of a function            | Planned       |
-| `query/cost`        | Query the cost oracle for a function          | Planned       |
-| `query/completions` | Return code completions at a position         | Planned       |
-| `query/hover`       | Return hover information at a position        | Planned       |
-| `query/definition`  | Go-to-definition                              | Planned       |
-| `query/references`  | Find all references to a symbol               | Planned       |
-| `skb/suggest`       | SKB rule suggestions for a code region        | Planned       |
-| `skb/explain`       | Explain why a rule fired                      | Planned       |
-| `agent/context`     | Return agent-optimised context for a file     | Planned       |
-| `agent/refactor`    | Apply an agent-proposed refactoring           | Planned       |
+| §7.4 planned | What was actually built |
+|---|---|
+| `query/cost` | `cost/query`, `cost/compare` |
+| `query/effects` | `effects/infer`, `effects/check` |
+| `skb/suggest`, `skb/explain` | `skb/query`, `skb/rules`, `skb/spec` |
+| `build/full` | `build/heal`, `build/recover`, `pipeline/recover-and-encode` |
+| `query/type`, `query/completions`, `query/hover`, `query/definition`, `query/references` | nothing — these are the editor-service methods, and §7.6's VS Code integration is the part that did not happen |
+| `agent/context` | nothing under that name; `format/agent` and `nl/*` cover some of the intent |
+
+The naming convention that won is `namespace/verb` grouped by *subsystem*
+(`cost/query`) rather than `query/noun` grouped by *operation* (`query/cost`).
+That is worth knowing before adding a method.
+
+The full published surface, generated from `MAGE_ONTOLOGY.json`'s
+`rap_methods` section — which CI checks against a fresh `--emit-ontology`, so
+this table cannot drift from the binary without the ontology drifting first:
+
+| Method | Params | Summary |
+|---|---|---|
+| `abl/decode` | `abl_hex` | Agentic Binary Language bytes (hex) -> decompiled per-item view |
+| `abl/encode` | `source` | Source -> Agentic Binary Language bytes (hex) |
+| `abl/run` | `source` | Source -> encode -> CpuBackend dispatch |
+| `attribute/compress` | `name` | Compress attributes back to shorthand |
+| `attribute/expand` | `name` | Expand attribute shorthand |
+| `build/check` | `source` | Lex + parse + report diagnostics |
+| `build/heal` | `source` | Generate fix candidates for diagnostics |
+| `build/recover` | `source` | Run the 5-stage recovery pipeline; return final source |
+| `capability/check` | `source` | List capabilities required by source |
+| `cost/compare` | `a`, `b`, `target` | Compare costs of two constructs |
+| `cost/query` | `construct`, `target`, `opt` | Per-construct cost estimate |
+| `doc/query` | `fqn` | Lookup documentation by FQN |
+| `effects/check` | `source` | Check declared effects against inferred |
+| `effects/infer` | `source` | Infer effects of each function |
+| `elision/apply` | `source` | Apply elision rules to compact source |
+| `format/agent` | `source` | Format source in agent-canonical sigil mode |
+| `format/human` | `source` | Format source in human-readable keyword mode |
+| `grammar/list` | — | List grammar extensions |
+| `heal/graph` | `source` | Heal-pipeline diagnostic graph |
+| `language/parse` | `source` | Parse source to AST (JSON) |
+| `language/tokens` | `source` | Tokenize source |
+| `lint/check` | `source` | Run lints on source |
+| `manifest/generate` | `source`, `crate_name`, `version` | Generate capability manifest for a module |
+| `nl/explain` | `source` | Explain source in natural language |
+| `nl/generate` | `prompt` | Generate MAGE from a natural-language prompt |
+| `nl/query` | `prompt` | General NL query against the SKB |
+| `nl/refactor` | `source` | Refactor source via natural-language request |
+| `ontology/full` | — | Return this complete ontology |
+| `ontology/section` | `section` | Return one named section of the ontology |
+| `pipeline/recover-and-encode` | `source` | Recover then encode Agentic Binary Language in one call |
+| `sandbox/policy` | `source`, `agent` | Lookup sandbox policy by name |
+| `skb/query` | `by`, `value` | Query structured knowledge base |
+| `skb/rules` | `domain` | List SKB rules |
+| `skb/spec` | `fqn` | Lookup spec block for a symbol |
+| `token/report` | `source` | Per-construct token cost report for source |
+| `verify/contracts` | `fqn`, `requires`, `ensures`, `declared_effects`, `used_effects` | Verify function contracts (req/ens/inv) |
+| `verify/module` | `source` | Verify entire module |
+
+Three of these are documented in detail in §7.3 above. The rest are single-turn
+request/response in the same shape.
 
 ## 7.5 Dispatch Architecture
 
-The dispatcher is a simple pattern-match on the method string:
+The dispatcher is a pattern-match on the method string, behind a gate that
+separates *protocol* failure from *program* failure:
 
 ```rust
+fn dispatch_checked(method: &str, params: &Value) -> Result<Value, RpcError> {
+    if !METHODS.contains(&method) {
+        return Err(RpcError::method_not_found(method));  // -32601
+    }
+    Ok(dispatch(method, params))
+}
+
 fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
     let source = params.get("source").and_then(|v| v.as_str()).unwrap_or("");
 
@@ -199,10 +253,33 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
         "language/tokens" => { /* lex source, return tokens */ }
         "language/parse"  => { /* parse source, return AST */ }
         "build/check"     => { /* lex + parse, return errors */ }
-        _ => serde_json::json!({ "error": format!("unknown method: {method}") }),
+        _ => /* unreachable from the wire; guards METHODS-vs-arms drift */
     }
 }
 ```
+
+That split is the one thing to carry away from this section. **A MAGE program
+that fails to check is a successful call.** `language/parse` answering
+`{"ok": false, "error": {"line": 3, ...}}` inside `result` is correct: the
+server was asked a question and answered it. What belongs in JSON-RPC's `error`
+member is only the case where no call happened at all:
+
+| Condition | Code | Member |
+|---|---:|---|
+| Frame is not JSON | -32700 | `error` |
+| No string `method` | -32600 | `error` |
+| Method not in `METHODS` | -32601 | `error` |
+| Method ran; program was bad | — | `result`, with `ok: false` |
+
+Until 2026-08-19 the first three also came back as `result`, so a client doing
+the one thing JSON-RPC guarantees — checking for the `error` member — read a
+typo'd method name as success and only noticed when it indexed the object it
+got back. `rap/methods` remains the discovery call, and the -32601 response
+carries a `data.hint` pointing at it.
+
+A malformed frame is now **answered** rather than closing the connection. The
+parse error used to propagate out of `handle_connection`, so a client that sent
+one bad line lost every later request on that socket with no explanation.
 
 The production dispatcher will use a trait-based registration system:
 
@@ -228,28 +305,42 @@ impl RapMethod for TokensMethod {
 }
 ```
 
-## 7.6 VS Code Integration
+## 7.6 Editor integration
 
-The `MAGE-vscode` extension connects to the RAP server as an LSP-like
-client:
+**Corrected 2026-08-25.** This section described a `MAGE-vscode` extension
+speaking to the RAP server, with a diagram routing hover through `query/type`
+and completions through `query/completions`. **The extension does not exist** —
+there is no `MAGE-vscode/` directory and no VS Code file is tracked anywhere in
+the repository — and neither of those two methods exists either (§7.4).
 
-```
-┌──────────────┐       JSON-RPC/TCP       ┌──────────────┐
-│  VS Code     │  ────────────────────▶   │  RAP Server  │
-│  Extension   │  ◀────────────────────   │  (mg rap)   │
-│              │                          │              │
-│  • Syntax    │  language/tokens ──────▶  │  • Lexer     │
-│  • Errors    │  build/check ─────────▶  │  • Parser    │
-│  • Hover     │  query/type ──────────▶  │  • TypeCheck │
-│  • Complete  │  query/completions ───▶  │  • Resolve   │
-└──────────────┘                          └──────────────┘
-```
+What ships is in `editors/`:
 
-The extension provides:
-- **Syntax highlighting**: TextMate grammar for `.mg` files
-- **Error underlining**: Maps `build/check` errors to VS Code diagnostics
-- **Hover information**: Maps `query/type` to tooltip display
-- **Completions**: Maps `query/completions` to VS Code completion items
+| Editor | What it is | Talks to RAP? |
+|---|---|---|
+| Neovim | `lua/mage.lua`: filetype detection, tree-sitter, and an LSP registration | **No — see below** |
+| Helix | `languages.toml`: language config and highlight queries | No |
+| Zed | `extension.json` and highlights | No |
+| tree-sitter | `tree-sitter-mage/`: the grammar the above share | n/a |
+
+**The Neovim LSP registration cannot work, for three independent reasons.** It
+registers RAP as a custom `lspconfig` server with `cmd = { 'rap' }`, and:
+
+1. **RAP is not LSP.** `rap.rs` contains **zero** occurrences of `initialize`
+   or `textDocument` — it speaks `language/parse`, not the LSP handshake, so a
+   client would fail before sending anything useful.
+2. **There is no `rap` binary.** The server is `mage-parse --rap`; no
+   `[[bin]]` is named `rap`.
+3. **RAP is TCP, not stdio.** It binds a `TcpListener` (§7.2); `lspconfig`'s
+   `cmd` spawns a process and speaks over stdin/stdout.
+
+The settings block it registers — `completion.autoimport`, `inlayHints.typeHints`,
+`diagnostics.skb` — names capabilities RAP has no methods for. Syntax
+highlighting via tree-sitter works in all four editors; nothing else does.
+
+Making it work means either an LSP shim translating `textDocument/*` to RAP
+methods, or accepting that RAP is an agent protocol rather than an editor one —
+which is what §7.1's design goals actually describe. That is a decision, and
+nobody has made it.
 
 ## 7.7 Agent Interaction Patterns
 
@@ -266,8 +357,14 @@ def rap_call(method, source):
     req = json.dumps({"jsonrpc": "2.0", "id": 1,
                        "method": method, "params": {"source": source}})
     s.sendall((req + "\n").encode())
-    resp = s.makefile().readline()
-    return json.loads(resp)["result"]
+    resp = json.loads(s.makefile().readline())
+    # A protocol failure has no `result` member at all. Reaching straight
+    # for ["result"] raises KeyError with nothing to say why; the server
+    # put the reason, and a discovery hint, in `error`.
+    if "error" in resp:
+        e = resp["error"]
+        raise RuntimeError(f'{e["code"]}: {e["message"]} {e.get("data", "")}')
+    return resp["result"]
 
 ast = rap_call("language/parse", '+f main() { p"hello" }')
 ```

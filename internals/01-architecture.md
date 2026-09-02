@@ -1,128 +1,158 @@
 # Chapter 1: Architecture Overview
 
-The MAGE compiler transforms `.mg` source files into optimized machine code
-through a pipeline of well-defined stages. Each stage is a separate crate with
-a clean query-based interface.
+> **Rewritten 2026-08-25 against the code.** Every structural claim below was
+> checked by reading `prototype/src`. The chapter this replaces described a
+> query-driven, incremental, Salsa-backed compiler split across nine crates.
+> None of that exists, and it had been presented in the present tense as
+> documentation of the shipped compiler since the file was written. The design
+> is preserved in [Appendix 1.A](#appendix-1a-the-original-design-not-implemented),
+> labelled.
+
+The MAGE compiler is **one crate**, `mage-prototype`, whose library surface is
+62 modules under `prototype/src`. It compiles a `.mg` source file by running a
+fixed sequence of passes, eagerly, front to back. There is no query engine, no
+incremental recomputation, and no per-stage crate split.
+
+That is a smaller machine than the original design, and worth stating plainly
+rather than apologising for: the passes are ordinary functions, each takes the
+whole module and returns diagnostics, and the order they run in is written out
+literally in one function.
 
 ---
 
-## 1.1 Design Principles
+## 1.1 The compilation pipeline
 
-1. **Query-driven**: Every compiler computation is a named, memoized query.
-   Nothing is computed eagerly — results are demanded by downstream stages
-   and cached for reuse.
+`run_check` in `prototype/src/main.rs` *is* the pipeline. The phase numbering
+below is the numbering in its own comments:
 
-2. **Incremental**: Changing one file re-runs only the queries whose inputs
-   changed. The query engine (based on Salsa) tracks dependencies automatically.
+| Phase | Call | What it does |
+|---|---|---|
+| 0 | `legacy::translate` | Legacy-syntax translation. Only under `--syntax=legacy` |
+| 1 | `lexer::lex` | Source → tokens. Emits `TokenKind::Error` in place rather than aborting |
+| 2 | `parser::parse` | Tokens → `ast::Module`. A parse error **exits 1** here; nothing downstream runs |
+| 2.5 | `elision::elide` | Safety elision, on by default in agentic mode |
+| 3 | `resolve::resolve` | Name resolution |
+| 4 | `types::check` | Type checking |
+| 5 | `effects::infer_effects` | Effect inference |
+| 5.5 | `verify::verify_module` | Contract verification (`spec` blocks) |
+| 5.6 | `abl_shape::check_module_shapes` | Typed-composition gate — rejects a shape-mismatched `net` composition |
+| 6 | `heal::…` | Self-healing: generates fix candidates for the diagnostics collected above |
 
-3. **Parallel**: Independent queries run on separate threads. The query engine
-   manages the task graph and ensures deterministic results.
+Phases 3 through 5.6 each return a diagnostic list rather than halting, so one
+run reports resolution, type, effect, contract and shape problems together.
+Parse failure is the one hard stop, because every later pass takes an
+`ast::Module`.
 
-4. **Agent-friendly**: Every query result is serializable to JSON. The RAP
-   protocol exposes the full query namespace to external tools and agents.
+**Eager, not demand-driven.** Each phase is called once, on the whole module,
+in this order. Nothing is memoised and nothing is skipped when a file has not
+changed; there is no dependency graph between phases beyond the order of these
+statements.
 
-5. **Layered IR**: Source passes through four intermediate representations
-   (Token → AST → HIR → MLIR → LLVM IR), each with a clear role.
+## 1.2 Module layout
 
-## 1.2 Compilation Pipeline
-
-```
-┌──────────────────────────────────────────────────────────┐
-│                    rdx_driver                            │
-│  CompileSession orchestrates the full pipeline           │
-│                                                          │
-│  ┌────────────────────────────────────────────────────┐  │
-│  │ Phase 1: Frontend                                  │  │
-│  │                                                    │  │
-│  │  .mg files                                        │  │
-│  │      │                                             │  │
-│  │      ▼                                             │  │
-│  │  rdx_lexer ──→ Token Stream                        │  │
-│  │      │                                             │  │
-│  │      ▼                                             │  │
-│  │  rdx_parser ──→ Unresolved AST                     │  │
-│  │      │                                             │  │
-│  │      ▼                                             │  │
-│  │  rdx_resolve ──→ Resolved AST (with DefIds)        │  │
-│  │      │                                             │  │
-│  │      ▼                                             │  │
-│  │  rdx_hir::lower ──→ HIR                            │  │
-│  └────────────────────────────────────────────────────┘  │
-│                                                          │
-│  ┌────────────────────────────────────────────────────┐  │
-│  │ Phase 2: Analysis                                  │  │
-│  │                                                    │  │
-│  │  rdx_types ──→ Typed HIR                           │  │
-│  │      │                                             │  │
-│  │      ▼                                             │  │
-│  │  rdx_effects ──→ Effect-checked HIR                │  │
-│  │      │                                             │  │
-│  │      ▼                                             │  │
-│  │  rdx_skb ──→ Safety-validated HIR                  │  │
-│  └────────────────────────────────────────────────────┘  │
-│                                                          │
-│  ┌────────────────────────────────────────────────────┐  │
-│  │ Phase 3: Backend                                   │  │
-│  │                                                    │  │
-│  │  rdx_mlir ──→ MAGE MLIR Dialect                   │  │
-│  │      │                                             │  │
-│  │      ▼                                             │  │
-│  │  MLIR Passes ──→ LLVM MLIR Dialect                 │  │
-│  │      │                                             │  │
-│  │      ▼                                             │  │
-│  │  LLVM ──→ Object Files ──→ Linker ──→ Binary       │  │
-│  └────────────────────────────────────────────────────┘  │
-└──────────────────────────────────────────────────────────┘
-```
-
-## 1.3 Query Engine
-
-The compiler is built on an incremental query engine inspired by Salsa
-(used in rust-analyzer). Every piece of information flows through queries.
-
-### Query Definition
+`prototype/src/lib.rs` declares **62 public modules**. The pipeline above uses:
 
 ```rust
-// In rdx_types/src/queries.rs
-#[salsa::query_group(TypeCheckStorage)]
-pub trait TypeCheck: HirDatabase {
-    /// Infer the type of an expression.
-    fn infer_expr(&self, expr: HirExprId) -> TypeResult<Ty>;
+pub mod lexer;      // tokens
+pub mod parser;     // ast::Module
+pub mod ast;        // the syntax tree
+pub mod elision;    // safety elision
+pub mod resolve;    // name resolution
+pub mod types;      // type checking
+pub mod effects;    // effect inference
+pub mod verify;     // contract verification
+pub mod abl_shape;  // typed-composition gate
+pub mod heal;       // fix generation
+pub mod hir;        // Diagnostic, Severity — shared by every pass
+```
 
-    /// Check that a function body matches its declared signature.
-    fn check_fn_body(&self, def_id: DefId) -> TypeResult<()>;
+The rest are the surrounding system rather than the front end: `eval` (the
+tree-walking evaluator), `abl_bridge` / `abl_compute` (the Agentic Binary
+Language pipeline), `mlir`, `rap` (the JSON-RPC server), `ontology`,
+`skb`, `aci`, and the agent/swarm modules. `rmi` — the AI framework — is a
+separate crate that `prototype` path-depends on.
 
-    /// Resolve a type annotation to a concrete Ty.
-    fn resolve_type(&self, ty_ann: &TyAnnotation) -> TypeResult<Ty>;
+## 1.3 Key data structures
+
+**`Span`** — `prototype/src/lexer.rs`. Carried by tokens and diagnostics:
+
+```rust
+pub struct Span {
+    pub offset: usize,
+    pub len: usize,
+    pub line: usize,
+    pub col: usize,
 }
 ```
 
-### Query Dependencies
+A span is an offset and a length into *the* source string, plus a
+precomputed line and column. There is **no `FileId` and no `SourceMap`**: the
+compiler works on one source at a time, and the filename is passed alongside
+as a `&str` for diagnostics.
 
+**`ast::Module`** — the parser's output and every later pass's input:
+
+```rust
+pub struct Module {
+    pub items: Vec<Item>,
+}
 ```
-parse_file(FileId)
-    └→ resolve_names(FileId)
-        └→ lower_to_hir(FileId)
-            ├→ infer_expr(HirExprId)
-            ├→ check_fn_body(DefId)
-            └→ infer_effects(DefId)
-                └→ check_capabilities(DefId)
-                    └→ lower_to_mlir(DefId)
+
+**`hir::Diagnostic`** — what phases 3 through 5.6 return:
+
+```rust
+pub struct Diagnostic {
+    pub severity: Severity,
+    pub message: String,
+    pub span: Option<Span>,
+    /// Unique error code (e.g. "E0502"). None for ad-hoc diagnostics.
+    pub id: Option<String>,
+    // … semantic category, and the fields the healer reads
+}
+
+pub enum Severity {
+    Error,
+    Warning,
+    Info,
+}
 ```
 
-### Incrementality
+`run_check` counts a diagnostic toward `total_errors` only when its severity is
+`Error`, so warnings and info are reported and do not fail the run.
 
-When a file changes:
+## 1.4 Entry points
 
-1. The driver invalidates `parse_file(file_id)`
-2. The query engine propagates: which `resolve_names` results changed?
-3. Only affected subtrees are recomputed
-4. Unchanged queries return cached results instantly
+The compiler is driven by a flag as the first argument, dispatched in `main`.
+The ones that exercise the pipeline above:
 
-This means editing a single function re-checks only that function and its
-callers — not the entire crate.
+| Flag | Path |
+|---|---|
+| `--check` | the full pipeline, human-readable summary |
+| `--check --json` | the same, as JSON (`--json` is a modifier, not its own flag) |
+| `--eval` | pipeline, then `eval` walks the module |
+| `--fmt-compact` / `--fmt-expand` | parse, then print. There is no plain `--fmt` |
+| `--target=abl` / `--target=abl-bytes` | lower to Agentic Binary Language |
+| `--run=abl` / `--run=abl-bytes` | lower and dispatch to a compute backend |
+| `--from=abl-bytes` | decode a container back to a MAGE view |
+| `--rap` | the JSON-RPC server, loopback-only by default |
 
-## 1.4 Crate Dependency Graph
+Modifiers, which are matched anywhere in the argument list rather than
+dispatched on: `--json`, `--no-elision`, `--token-report`,
+`--syntax=legacy`.
+
+`mage-parse --help` is the authority; `MAGE_ONTOLOGY.json`'s `cli_flags`
+section is checked against the binary by the test suite.
+
+---
+
+## Appendix 1.A: the original design (not implemented)
+
+Everything below described the compiler this chapter was originally written
+for. It is kept because the design intent is worth having, and labelled
+because presenting it as description is what made this file misleading. None
+of it is in `prototype/src`.
+
+**Not implemented.** Design sketch — the crate split below does not exist; `prototype` is a single crate.
 
 ```
 rdx_driver
@@ -139,88 +169,25 @@ rdx_driver
 └── rdx_span         (source locations)
 ```
 
-Leaf crates (`rdx_lexer`, `rdx_span`, `rdx_errors`) have no compiler
-dependencies and can be used standalone.
+The design principles that went with it — **query-driven** (every computation
+a named, memoised query), **incremental** (changing one file re-runs only the
+affected queries), **parallel** (independent queries on separate threads) —
+describe a Salsa-style engine. `salsa` is not a dependency of any crate in this
+repository, and nothing in `prototype/src` implements a query cache or a
+dependency graph.
 
-## 1.5 Key Data Structures
-
-### Span
-
-Every token, AST node, and diagnostic carries a `Span` — a range within a
-source file:
+**Not implemented.** Design sketch — no `CompileSession`, no `DefId`, no query trait, no interner.
 
 ```rust
-pub struct Span {
-    pub file: FileId,
-    pub start: ByteOffset,
-    pub end: ByteOffset,
+// The query group the design was built around.
+#[salsa::query_group(TypeCheckStorage)]
+pub trait TypeCheck: HirDatabase {
+    fn infer_expr(&self, expr: HirExprId) -> TypeResult<Ty>;
+    fn check_fn_body(&self, def_id: DefId) -> TypeResult<()>;
+    fn resolve_type(&self, ty_ann: &TyAnnotation) -> TypeResult<Ty>;
 }
 ```
 
-`FileId` is an interned identifier. The `SourceMap` (in `rdx_span`) maps
-`FileId` to filenames and source text.
-
-### DefId
-
-Every named item gets a `DefId` — a unique identifier across the crate graph:
-
-```rust
-pub struct DefId {
-    pub crate_id: CrateId,
-    pub local_id: LocalDefId,
-}
-```
-
-Functions, types, traits, modules, constants — all are identified by `DefId`.
-The resolver assigns these during name resolution.
-
-### Interning
-
-Strings (identifiers, paths) are interned for O(1) comparison:
-
-```rust
-pub struct Symbol(u32);  // index into global string interner
-
-impl Symbol {
-    pub fn intern(s: &str) -> Symbol { ... }
-    pub fn as_str(&self) -> &str { ... }
-}
-```
-
-## 1.6 Error Handling
-
-The compiler never panics on invalid input. Every stage produces structured
-diagnostics:
-
-```rust
-pub struct Diagnostic {
-    pub severity: Severity,     // Error, Warning, Note, Help
-    pub message: String,
-    pub span: Span,
-    pub code: Option<DiagCode>, // E0001, W0042, etc.
-    pub children: Vec<SubDiagnostic>,
-    pub fixes: Vec<SuggestedFix>,
-}
-```
-
-Diagnostics are collected in a `DiagnosticSink` and serialized as JSON for
-agent consumers or rendered as terminal output for humans.
-
-## 1.7 Session Configuration
-
-The `CompileSession` holds all configuration for a compilation:
-
-```rust
-pub struct CompileSession {
-    pub config: Config,           // CLI flags, Forge.toml settings
-    pub source_map: SourceMap,    // file → source text mapping
-    pub diags: DiagnosticSink,    // accumulated diagnostics
-    pub query_db: Database,       // Salsa database
-    pub target: TargetSpec,       // compilation target
-    pub edition: Edition,         // 2025, 2026, etc.
-    pub capabilities: CapabilitySet, // granted capabilities
-}
-```
-
-The driver creates one `CompileSession` per invocation and threads it through
-all pipeline stages.
+If incrementality is ever wanted, the thing to change first is phase ordering
+in `run_check`: the passes take whole modules and return whole diagnostic
+lists, which is the property a query engine would have to break.

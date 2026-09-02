@@ -76,17 +76,17 @@ echo "STEP 3  Compile to binary IR (Agentic Binary Language container)"
 echo "(equivalent to abl/encode over RAP)"
 separator
 
-Agentic Binary Language="$DEMO_DIR/flash_attention_block.abl"
-"$MGP" --target=abl-bytes "$TEMPLATE" "$Agentic Binary Language"
-if [ -f "$Agentic Binary Language" ]; then
-    SIZE=$(wc -c < "$Agentic Binary Language")
+ABL="$DEMO_DIR/flash_attention_block.abl"
+"$MGP" --target=abl-bytes "$TEMPLATE" "$ABL"
+if [ -f "$ABL" ]; then
+    SIZE=$(wc -c < "$ABL")
     SRC_SIZE=$(wc -c < "$TEMPLATE")
     echo
     echo "  $TEMPLATE: $SRC_SIZE bytes (text)"
-    echo "  $(basename "$Agentic Binary Language"): $SIZE bytes (binary IR)"
+    echo "  $(basename "$ABL"): $SIZE bytes (binary IR)"
     echo "  First 32 bytes (hex):"
-    xxd -l 32 -g 1 "$Agentic Binary Language" 2>/dev/null | sed 's/^/    /' || \
-        od -An -tx1 -N 32 "$Agentic Binary Language" | sed 's/^/    /'
+    xxd -l 32 -g 1 "$ABL" 2>/dev/null | sed 's/^/    /' || \
+        od -An -tx1 -N 32 "$ABL" | sed 's/^/    /'
 fi
 
 # ── Step 4: decode round-trip ────────────────────────────────────────
@@ -95,7 +95,7 @@ echo "STEP 4  Decode the Agentic Binary Language back to a MAGE view"
 echo "(equivalent to abl/decode over RAP)"
 separator
 
-"$MGP" --from=abl-bytes "$Agentic Binary Language" 2>&1 | head -16 | sed 's/^/  /'
+"$MGP" --from=abl-bytes "$ABL" 2>&1 | head -16 | sed 's/^/  /'
 
 # ── Step 5: dispatch on CpuBackend ───────────────────────────────────
 separator
@@ -103,7 +103,7 @@ echo "STEP 5  Dispatch the Agentic Binary Language on the CpuBackend"
 echo "(equivalent to abl/run over RAP)"
 separator
 
-"$MGP" --run=abl-bytes "$Agentic Binary Language" 2>&1 | head -20 | sed 's/^/  /'
+"$MGP" --run=abl-bytes "$ABL" 2>&1 | head -20 | sed 's/^/  /'
 
 separator
 echo "Done. The same five steps via RAP would be:"

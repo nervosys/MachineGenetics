@@ -20,6 +20,17 @@ vim.filetype.add({
 })
 
 -- ── LSP (RAP) ───────────────────────────────────────────────────────
+--
+-- WARNING (checked 2026-08-25): this registration cannot work as written.
+--   1. RAP is not LSP. `prototype/src/rap.rs` has zero occurrences of
+--      `initialize` or `textDocument`; it speaks `language/parse` and 36
+--      other custom methods, so the LSP handshake never completes.
+--   2. There is no `rap` binary. The server is `mage-parse --rap`.
+--   3. RAP listens on TCP (127.0.0.1:9876 by default); `cmd` below spawns a
+--      process and speaks over stdio.
+-- The settings block names completion/inlayHints/diagnostics capabilities RAP
+-- has no methods for. Tree-sitter highlighting (above) does work.
+-- See internals/07-rap-server.md §7.6.
 
 function M.setup_lsp(opts)
   opts = opts or {}

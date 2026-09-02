@@ -1,5 +1,56 @@
 # Chapter 6: MLIR Pipeline
 
+> **Status, measured 2026-08-25: this chapter describes a backend that does not
+> exist.** The whole of it — dialect lowering, passes, LLVM IR, machine code,
+> six targets — is design. What the compiler has is one function.
+
+**What is real.** `prototype/src/mlir.rs` exports exactly one public item:
+
+```rust
+pub fn emit(module: &ast::Module, effects: &EffectInfer) -> String;
+```
+
+It walks the **AST** — not HIR, which does not exist as a lowered form — and
+writes MLIR-flavoured text into a `String`, starting with a banner comment. It
+has one caller: `--pipeline`, whose phase 6 does this with the result:
+
+```
+▸ Phase 6/7: MLIR lowering
+  ✓ 47 lines of MLIR generated
+```
+
+It counts the lines. Nothing parses that text, lowers it, or feeds it to
+anything. **No `llvm`, `mlir`, `inkwell` or `melior` crate appears in any
+manifest in this repository**, there is no pass infrastructure in `mlir.rs`,
+and nothing anywhere emits an object file or links one.
+
+**Where compilation to hardware actually happens**, because it does: through
+the Agentic Binary Language path, not this one. `--run=abl-bytes` lowers `net`
+items to ABL and dispatches them to a compute backend — `CpuBackend`, or
+`CudaBackend` under `--features cuda`, which routes matmul through cuBLASLt and
+elementwise ops through NVRTC (1,229 CUDA tests pass on the hardware). That
+path shares no code with `mlir.rs`.
+
+**No `internals/` chapter covers that path.** This pointer originally sent
+readers to Chapter 8, which is SKB and ACI — a wrong cross-reference,
+introduced in the same commit that corrected this chapter and caught two
+commits later. For the ABL path read `ARCHITECTURE.md` and `UNIFICATION.md`,
+then the modules themselves: `abl_bridge` (lowering), `abl_compute`
+(dispatch) and `cuda_backend`.
+
+**The cost oracle in §6.5 is real** (`prototype/src/cost.rs`: `query_cost`,
+`list_costs`, `compare`), but it is a standalone table keyed by construct and
+target. §6.1's claim that "MLIR's analysis framework enables the cost oracle"
+is false in the specific sense that matters: the oracle does not read MLIR.
+
+Everything from §6.1 onward is the design, kept because it is a coherent plan
+and labelled because presenting it as description is what made this chapter
+misleading.
+
+---
+
+**Not implemented.** Design sketch — none of the lowering below exists; `emit` produces text and the text is counted.
+
 The backend lowers typed, effect-checked HIR into MLIR (Multi-Level
 Intermediate Representation), then progressively lowers through MLIR
 dialects to LLVM IR and finally machine code.
@@ -281,6 +332,8 @@ The cost oracle is queried by:
 
 ## 6.6 Multi-Target Code Generation
 
+**Not implemented.** Design sketch — no target below produces any artifact; see this chapter's status note for the path that does reach a GPU.
+
 MLIR enables targeting multiple backends from the same HIR:
 
 | Target       | MLIR Path                           | Output         |
@@ -295,9 +348,14 @@ MLIR enables targeting multiple backends from the same HIR:
 The `@pt(target)` annotation controls target selection:
 
 ```MAGE
-@pt(auto)  // let the compiler choose (default)
-@pt(cpu)   // force CPU
-@pt(gpu)   // force GPU
+@pt(auto)   // let the compiler choose (the default)
+f plan_auto(x: i32) -> i32 { x }
+
+@pt(cpu)    // force CPU
+f plan_cpu(x: i32) -> i32 { x }
+
+@pt(gpu)    // force GPU
+f plan_gpu(x: i32) -> i32 { x }
 ```
 
 ## 6.7 Testing the Backend

@@ -1,0 +1,9 @@
+# Source files no `mod` declaration reaches, and which therefore never
+# compile. One path per line, sorted. May only shrink.
+#
+# The remaining entry is in the vendored `rmi` crate. `compute/wasm.rs` was
+# here too until 2026-08-19, when it turned out to compile clean once a
+# `mod` declaration was added — the file was never broken, only
+# unreferenced. `cuda_full.rs` cannot be fixed that way: it needs
+# cudarc 0.10, whose build script wants a CUDA toolkit. See HANDOFF item 15.
+RecursiveMachineIntelligence/src/compute/cuda_full.rs

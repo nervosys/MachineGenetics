@@ -439,8 +439,8 @@ pub struct InferenceEngine {
 }
 
 impl InferenceEngine {
-    pub fn forward_chain(&mut self, kb: &KnowledgeBase) -> Vec<Clause>;
-    pub fn backward_chain(&mut self, kb: &KnowledgeBase, goal: &Predicate) -> bool;
+    pub fn forward_chain(&self, kb: &mut KnowledgeBase);
+    pub fn prove(&mut self, kb: &KnowledgeBase, goal: &Predicate) -> bool;
 }
 ```
 
@@ -457,7 +457,7 @@ pub struct Action {
     pub delete_effects: Vec<Predicate>,
 }
 
-pub fn plan(initial: &State, goal: &State, actions: &[Action]) -> Option<Vec<GroundAction>>;
+pub fn plan(&self, domain: &Domain, initial: &State, goal: &Goal) -> Option<Plan>;
 ```
 
 ---
@@ -471,14 +471,11 @@ Hybrid neural-symbolic integration.
 Maps discrete symbols to continuous vectors:
 
 ```rust
-pub struct SymbolEmbedding {
-    pub embeddings: HashMap<String, Vec<f64>>,
-    pub dim: usize,
-}
+pub struct SymbolEmbedder { /* private */ }
 
-impl SymbolEmbedding {
-    pub fn embed(&mut self, symbol: &str) -> Vec<f64>;
-    pub fn similarity(&self, a: &str, b: &str) -> f64;
+impl SymbolEmbedder {
+    pub fn get_embedding(&mut self, symbol: &str) -> Vec<f32>;
+    pub fn similarity(emb1: &[f32], emb2: &[f32]) -> f32;   // associated fn
 }
 ```
 

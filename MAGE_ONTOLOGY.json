@@ -1,12 +1,12 @@
 {
   "builtin_framework": "RecursiveMachineIntelligence (rmi crate) — the built-in agentic-first AI framework",
   "counts": {
-    "ast_kinds": 18,
+    "ast_kinds": 20,
     "bench_backends": 4,
     "ci_floors": 6,
-    "cli_flags": 17,
+    "cli_flags": 36,
     "docs": 7,
-    "effects": 15,
+    "effects": 22,
     "examples": 10,
     "framewerx_modules": 256,
     "hardware_accelerators": 8,
@@ -16,7 +16,7 @@
     "project_layout": 22,
     "rap_methods": 37,
     "recovery_stages": 7,
-    "sigils": 38,
+    "sigils": 50,
     "types": 30,
     "vocabulary": 31,
     "wrapper_protocol": 9
@@ -28,10 +28,11 @@
   "sections": {
     "abl": {
       "format": [
-        "magic    : 4 bytes (\"Agentic Binary Language\")",
+        "magic    : 4 bytes (\"ABL1\")",
         "version  : u16 LE",
         "count    : u32 LE",
-        "per item : { name_len:u32, name:utf8, expr_len:u32, expr:bytes }"
+        "per item : { name_len:u32, name:utf8, expr_len:u32, expr:bytes }",
+        "symbols  : u32 LE count, then { name_len:u32, name:utf8 } in id order"
       ],
       "magic": "ABL1",
       "media_type": "application/abl",
@@ -44,11 +45,15 @@
       },
       {
         "kind": "Struct",
-        "summary": "Struct definition"
+        "summary": "Struct definition (`struct` / `S`)"
       },
       {
         "kind": "Enum",
-        "summary": "Enum definition"
+        "summary": "Enum definition (`enum` / `E`)"
+      },
+      {
+        "kind": "Data",
+        "summary": "Record or sum: `data Point(x: f64)` / `data Shape = A | B`"
       },
       {
         "kind": "Trait",
@@ -56,15 +61,19 @@
       },
       {
         "kind": "Impl",
-        "summary": "impl block"
+        "summary": "impl block: `impl Trait for Type` or `impl Type`"
       },
       {
-        "kind": "Mod",
-        "summary": "Module declaration"
+        "kind": "Extend",
+        "summary": "Methods on a type: `extend Type { … }` (`xd`)"
+      },
+      {
+        "kind": "Module",
+        "summary": "Module declaration. Parses; resolves nothing — there is no module system"
       },
       {
         "kind": "Use",
-        "summary": "use import"
+        "summary": "use import. Parses and is an ERROR — MAGE has one flat namespace (spec §2.3)"
       },
       {
         "kind": "Const",
@@ -79,36 +88,36 @@
         "summary": "type alias"
       },
       {
-        "kind": "NetDef",
+        "kind": "Net",
         "summary": "AI: neural network (Agentic Binary Language-routed)"
       },
       {
-        "kind": "KbDef",
+        "kind": "Kb",
         "summary": "AI: symbolic knowledge base (Agentic Binary Language-routed)"
       },
       {
-        "kind": "AgentDef",
+        "kind": "Agent",
         "summary": "AI: agent role (Agentic Binary Language-routed)"
       },
       {
-        "kind": "SwarmDef",
+        "kind": "Swarm",
         "summary": "AI: swarm topology (Agentic Binary Language-routed)"
       },
       {
-        "kind": "TrainDef",
+        "kind": "Train",
         "summary": "AI: training pipeline (Agentic Binary Language-routed)"
       },
       {
-        "kind": "EvolveDef",
+        "kind": "Evolve",
         "summary": "AI: evolutionary search (Agentic Binary Language-routed)"
       },
       {
-        "kind": "EffectDef",
-        "summary": "Effect declaration"
+        "kind": "Effect",
+        "summary": "Effect declaration: `effect Name { … }` (`fx`)"
       },
       {
-        "kind": "SpecBlock",
-        "summary": "Spec / contract block"
+        "kind": "Spec",
+        "summary": "Spec / contract block: `spec name { @req … }` (`sp`)"
       }
     ],
     "bench_backends": [
@@ -136,33 +145,33 @@
     "ci_floors": [
       {
         "name": "MIN_PARSE",
-        "protects": "File-oracle parse rate (100-task corpus) must not regress",
+        "protects": "File-oracle parse rate (100-task corpus) must not regress. Enforced by scripts/check-ci-floors.sh",
         "threshold": ">= 98"
       },
       {
-        "name": "file-oracle structural-heal",
-        "protects": "Trim-bad-token mechanism (P51) must keep contributing",
-        "threshold": ">= 2"
-      },
-      {
         "name": "MIN_HEAL",
-        "protects": "Perturbed-8 pattern-heal recovery count must not regress",
+        "protects": "Perturbed-oracle pattern-heal recovery count must not regress. Enforced by scripts/check-ci-floors.sh",
         "threshold": ">= 40"
       },
       {
+        "name": "native-lexer ratio",
+        "protects": "MAGE text size must stay within 10% of equivalent Rust, read from the native-lexer Total row of benchmarks/TOKEN_REPORT.md. Enforced by scripts/check-ci-floors.sh",
+        "threshold": "<= 1.100"
+      },
+      {
+        "name": "file-oracle structural-heal",
+        "protects": "Trim-bad-token recovers the single corpus task that does not parse cleanly. An observation, not a floor: the count is 1, and the >= 2 this section used to publish was never met",
+        "threshold": "= 1 (observed)"
+      },
+      {
         "name": "refine smoke",
-        "protects": "Stage-3 refine wrapper protocol must fire end-to-end",
-        "threshold": "> 0"
+        "protects": "Stage-3 refine contributes only when `--agent perturbed+refine:<cmd>` supplies a wrapper; a default run reports 0",
+        "threshold": "0 without a wrapper (observed)"
       },
       {
         "name": "subprocess echo smoke",
-        "protects": "Subprocess agent backend must be invocable",
+        "protects": "Subprocess agent backend must be invocable; exercised by the wrapper protocol tests",
         "threshold": "no-op"
-      },
-      {
-        "name": "native-lexer ratio",
-        "protects": "MAGE text size must stay within 10% of equivalent Rust",
-        "threshold": "<= 1.100"
       }
     ],
     "cli_flags": [
@@ -243,13 +252,108 @@
       },
       {
         "flag": "--backend=<name>",
-        "purpose": "Select hardware accelerator for dispatch (default: cpu). See ontology.hardware_accelerators for the catalog.",
+        "purpose": "Select the hardware accelerator for dispatch (default: cpu). Honoured by --run=abl-bytes and by every --target=abl-* path; a subprocess backend has no in-process Backend, so those paths report the fallback rather than using it silently. See ontology.hardware_accelerators for the catalog.",
         "takes_path": false
       },
       {
         "flag": "--backends-file=<path>",
         "purpose": "Register additional backend descriptors at runtime from a JSON file. Stacks with RDX_BACKENDS_PATH env var and ~/.mage/backends.json. Schema: [{ name, family, vendor, requires, summary, available_at_runtime, tags }].",
         "takes_path": true
+      },
+      {
+        "flag": "--eval",
+        "purpose": "Evaluate the module and print the value of `main` (or of the named function). The second oracle: a program can typecheck and fail to run, and the reverse.",
+        "takes_path": true
+      },
+      {
+        "flag": "--version",
+        "purpose": "Print the compiler version. Ribosome keys its registry on this string.",
+        "takes_path": false
+      },
+      {
+        "flag": "--manifest",
+        "purpose": "Print the tool manifest: version, capabilities, and the flag surface.",
+        "takes_path": false
+      },
+      {
+        "flag": "--rain",
+        "purpose": "Render the source as MAGE digital rain (a display, not an analysis).",
+        "takes_path": true
+      },
+      {
+        "flag": "--build=schema",
+        "purpose": "Print the JSON schema a build spec must satisfy.",
+        "takes_path": false
+      },
+      {
+        "flag": "--build=abl",
+        "purpose": "Build a `net` / `swarm` spec from JSON into MAGE source; `--fix` attempts deterministic repair first.",
+        "takes_path": true
+      },
+      {
+        "flag": "--describe",
+        "purpose": "Describe a module in JSON. Takes a mode; run it with none to see the list.",
+        "takes_path": true
+      },
+      {
+        "flag": "--describe=abl",
+        "purpose": "Describe an Agentic Binary Language container in JSON.",
+        "takes_path": true
+      },
+      {
+        "flag": "--run=abl",
+        "purpose": "Run an Agentic Binary Language container and print a JSON result.",
+        "takes_path": true
+      },
+      {
+        "flag": "--spine=frame",
+        "purpose": "Emit a spine frame (JSON) for the given module.",
+        "takes_path": true
+      },
+      {
+        "flag": "--spine=profile",
+        "purpose": "Emit an agent profile from a JSON agent spec.",
+        "takes_path": true
+      },
+      {
+        "flag": "--spine=swarm",
+        "purpose": "Emit a swarm profile from a JSON swarm spec.",
+        "takes_path": true
+      },
+      {
+        "flag": "--json",
+        "purpose": "Report diagnostics as structured JSON (code/span/category/fix) rather than text.",
+        "takes_path": false
+      },
+      {
+        "flag": "--fix",
+        "purpose": "With `--build=abl`: attempt deterministic auto-repair before rejecting a spec.",
+        "takes_path": false
+      },
+      {
+        "flag": "--input",
+        "purpose": "With `--run=abl`: the JSON input value for the run, as the next argument.",
+        "takes_path": false
+      },
+      {
+        "flag": "--no-elision",
+        "purpose": "Skip the elision pass, so the AST is checked exactly as written.",
+        "takes_path": false
+      },
+      {
+        "flag": "--syntax=legacy",
+        "purpose": "Translate legacy syntax before lexing.",
+        "takes_path": false
+      },
+      {
+        "flag": "--syntax=canonical",
+        "purpose": "Read the source as canonical syntax (the default).",
+        "takes_path": false
+      },
+      {
+        "flag": "--token-report",
+        "purpose": "Print a token-count report alongside the check.",
+        "takes_path": false
       }
     ],
     "docs": [
@@ -317,52 +421,87 @@
       },
       {
         "name": "io",
-        "purpose": "Standard input/output",
-        "slot": "effect_name"
-      },
-      {
-        "name": "fs",
-        "purpose": "Filesystem access",
+        "purpose": "File and stream I/O",
         "slot": "effect_name"
       },
       {
         "name": "net",
-        "purpose": "Network access",
+        "purpose": "Network I/O",
         "slot": "effect_name"
       },
       {
-        "name": "db",
-        "purpose": "Database access",
-        "slot": "effect_name"
-      },
-      {
-        "name": "log",
-        "purpose": "Logging",
+        "name": "fs",
+        "purpose": "Filesystem operations",
         "slot": "effect_name"
       },
       {
         "name": "async",
-        "purpose": "Asynchronous execution",
+        "purpose": "Asynchronous task management",
         "slot": "effect_name"
       },
       {
-        "name": "llm",
-        "purpose": "LLM invocation",
+        "name": "alloc",
+        "purpose": "Heap memory allocation",
         "slot": "effect_name"
       },
       {
-        "name": "tools",
-        "purpose": "External tool use",
+        "name": "panic",
+        "purpose": "Unwinding / structured panics",
         "slot": "effect_name"
       },
       {
-        "name": "rand",
-        "purpose": "Nondeterministic randomness",
+        "name": "ffi",
+        "purpose": "Foreign function invocation",
+        "slot": "effect_name"
+      },
+      {
+        "name": "env",
+        "purpose": "Environment variable access",
         "slot": "effect_name"
       },
       {
         "name": "time",
-        "purpose": "Wall-clock access",
+        "purpose": "Clock and timer access",
+        "slot": "effect_name"
+      },
+      {
+        "name": "gpu",
+        "purpose": "GPU computation",
+        "slot": "effect_name"
+      },
+      {
+        "name": "npu",
+        "purpose": "Neural processing unit",
+        "slot": "effect_name"
+      },
+      {
+        "name": "llm",
+        "purpose": "Language model invocation",
+        "slot": "effect_name"
+      },
+      {
+        "name": "evolve",
+        "purpose": "Evolutionary computation",
+        "slot": "effect_name"
+      },
+      {
+        "name": "learn",
+        "purpose": "Training / gradient descent",
+        "slot": "effect_name"
+      },
+      {
+        "name": "rng",
+        "purpose": "Random number generation",
+        "slot": "effect_name"
+      },
+      {
+        "name": "agent",
+        "purpose": "Agent coordination",
+        "slot": "effect_name"
+      },
+      {
+        "name": "proc",
+        "purpose": "Process and system access",
         "slot": "effect_name"
       }
     ],
@@ -2101,105 +2240,139 @@
     ],
     "heal_patterns": [
       {
+        "example": "expected return type",
         "name": "missing-return-type"
       },
       {
+        "example": "unexpected token `;`",
         "name": "unexpected-token"
       },
       {
+        "example": "function `f` performs undeclared effect [io]",
         "name": "undeclared-effect"
       },
       {
+        "example": "type mismatch: I32 vs Str",
         "name": "type-mismatch"
       },
       {
+        "example": "cannot find `foo` in this scope",
         "name": "unknown-identifier"
       },
       {
+        "example": "spec `positive` violated",
         "name": "spec-violation"
       },
       {
+        "example": "expected `)` to close `(`",
         "name": "missing-closing-paren"
       },
       {
+        "example": "expected `]` to close `[`",
         "name": "missing-closing-bracket"
       },
       {
+        "example": "cannot borrow `x` as mutable",
         "name": "borrow-conflict"
       },
       {
+        "example": "use of moved value `x`",
         "name": "move-after-use"
       },
       {
+        "example": "unused variable `x`",
         "name": "unused-variable"
       },
       {
+        "example": "missing field `y` in initializer",
         "name": "missing-field"
       },
       {
+        "example": "precondition `n > 0` does not hold",
         "name": "contract-precondition-fail"
       },
       {
+        "example": "postcondition `ret > 0` does not hold",
         "name": "contract-postcondition-fail"
       },
       {
+        "example": "invariant `len <= cap` does not hold",
         "name": "invariant-violation"
       },
       {
+        "example": "capability `net` denied",
         "name": "capability-denied"
       },
       {
+        "example": "performance budget exceeded",
         "name": "performance-budget-exceeded"
       },
       {
+        "example": "expected Semi, found RBrace '}'",
         "name": "parse-missing-semi"
       },
       {
+        "example": "expected RBrace, found Eof ''",
         "name": "parse-missing-rbrace"
       },
       {
+        "example": "expected RParen, found Semi ';'",
         "name": "parse-missing-rparen"
       },
       {
+        "example": "expected RBrack, found Semi ';'",
         "name": "parse-missing-rbrack"
       },
       {
+        "example": "expected Colon, found RParen ')'",
         "name": "parse-missing-type-colon"
       },
       {
+        "example": "expected LBrace, found Semi ';'",
         "name": "parse-empty-block"
       },
       {
+        "example": "expected identifier, found Comma ','",
         "name": "parse-stray-comma-in-name-position"
       },
       {
+        "example": "expected KwF, found Semi ';'",
         "name": "parse-stray-semi-in-item-position"
       },
       {
+        "example": "expected Semi, found Ident 'x'",
         "name": "parse-insert-missing-semi"
       },
       {
+        "example": "expected expression, found Eof ''",
         "name": "parse-truncated-expr-at-eof"
       },
       {
+        "example": "expected identifier, found Eof ''",
         "name": "parse-truncated-ident-at-eof"
       },
       {
+        "example": "expected expression, found Semi ';'",
         "name": "parse-stray-semi"
       },
       {
+        "example": "expected expression, found RBrace '}'",
         "name": "parse-empty-where-expr-expected"
       },
       {
+        "example": "expected expression, found Comma ','",
         "name": "parse-stray-comma"
       },
       {
+        "example": "expected Colon, found Comma ','",
         "name": "parse-missing-colon-before-comma"
       },
       {
+        "example": "expected Assign, found Semi ';'",
         "name": "parse-missing-init"
       },
       {
+        "example": "expected identifier, found Arrow '->'",
         "name": "parse-stray-arrow"
       }
     ],
@@ -3362,7 +3535,7 @@
         "summary": "reserved word → KwAf token"
       },
       {
-        "introduces": "AgentDef",
+        "introduces": "KwAgent",
         "keyword": "agent",
         "summary": "agent role; lowers to Agentic Binary Language agent ops"
       },
@@ -3392,12 +3565,12 @@
         "summary": "reserved word → KwCrossover token"
       },
       {
-        "introduces": "Data",
+        "introduces": "KwData",
         "keyword": "data",
         "summary": "record or sum type (also `D`)"
       },
       {
-        "introduces": "Defer",
+        "introduces": "KwDefer",
         "keyword": "defer",
         "summary": "run expression on scope exit (also `df`)"
       },
@@ -3407,7 +3580,7 @@
         "summary": "reserved word → KwDefer token"
       },
       {
-        "introduces": "Effect",
+        "introduces": "KwEffect",
         "keyword": "effect",
         "summary": "effect declaration"
       },
@@ -3422,17 +3595,17 @@
         "summary": "reserved word → KwE token"
       },
       {
-        "introduces": "EvolveDef",
+        "introduces": "KwEvolve",
         "keyword": "evolve",
         "summary": "evolutionary search; lowers to Agentic Binary Language meta"
       },
       {
-        "introduces": "Extend",
+        "introduces": "KwExtend",
         "keyword": "extend",
         "summary": "inherent/trait methods on a type (also `xd`)"
       },
       {
-        "introduces": "Extern",
+        "introduces": "KwExtern",
         "keyword": "extern",
         "summary": "FFI block"
       },
@@ -3462,7 +3635,7 @@
         "summary": "reserved word → At token"
       },
       {
-        "introduces": "Forward",
+        "introduces": "KwForward",
         "keyword": "forward",
         "summary": "forward pass inside a net block"
       },
@@ -3497,12 +3670,12 @@
         "summary": "reserved word → KwGrammarExt token"
       },
       {
-        "introduces": "Guard",
+        "introduces": "KwGuard",
         "keyword": "guard",
         "summary": "early-exit guard (also `gd`)"
       },
       {
-        "introduces": "Handle",
+        "introduces": "KwHandle",
         "keyword": "handle",
         "summary": "effect handler"
       },
@@ -3532,12 +3705,12 @@
         "summary": "reserved word → KwIs token"
       },
       {
-        "introduces": "KbDef",
+        "introduces": "KwKb",
         "keyword": "kb",
         "summary": "symbolic knowledge base; lowers to Agentic Binary Language"
       },
       {
-        "introduces": "Layer",
+        "introduces": "KwLayer",
         "keyword": "layer",
         "summary": "neural-net layer inside a net block"
       },
@@ -3557,7 +3730,7 @@
         "summary": "reserved word → KwM token"
       },
       {
-        "introduces": "Match",
+        "introduces": "QuestionEq",
         "keyword": "match",
         "summary": "pattern match (sigil `?`)"
       },
@@ -3577,7 +3750,7 @@
         "summary": "reserved word → KwMutate token"
       },
       {
-        "introduces": "NetDef",
+        "introduces": "KwNet",
         "keyword": "net",
         "summary": "neural network definition; lowers to Agentic Binary Language"
       },
@@ -3652,7 +3825,7 @@
         "summary": "reserved word → KwSpec token"
       },
       {
-        "introduces": "Spec",
+        "introduces": "KwSpec",
         "keyword": "spec",
         "summary": "spec/contract block"
       },
@@ -3672,7 +3845,7 @@
         "summary": "reserved word → KwSwarm token"
       },
       {
-        "introduces": "SwarmDef",
+        "introduces": "KwSwarm",
         "keyword": "swarm",
         "summary": "agent swarm topology; lowers to Agentic Binary Language"
       },
@@ -3707,7 +3880,7 @@
         "summary": "reserved word → KwTensor token"
       },
       {
-        "introduces": "TrainDef",
+        "introduces": "KwTrain",
         "keyword": "train",
         "summary": "training pipeline; lowers to Agentic Binary Language compute"
       },
@@ -3747,12 +3920,12 @@
         "summary": "reserved word → KwV token"
       },
       {
-        "introduces": "Let",
+        "introduces": "KwVal",
         "keyword": "val",
         "summary": "immutable binding (also `v`)"
       },
       {
-        "introduces": "Let",
+        "introduces": "KwVar",
         "keyword": "var",
         "summary": "mutable binding (also `m`)"
       },
@@ -4072,7 +4245,7 @@
         ],
         "returns": [
           "ok",
-          "diagnostics"
+          "errors"
         ],
         "summary": "Lex + parse + report diagnostics."
       },
@@ -4162,10 +4335,9 @@
           "opt"
         ],
         "returns": [
-          "construct",
-          "target",
-          "opt",
-          "estimate"
+          "ok",
+          "estimate",
+          "error"
         ],
         "summary": "Per-construct cost estimate."
       },
@@ -4174,23 +4346,25 @@
         "params": [
           "a",
           "b",
-          "target",
-          "opt"
+          "target"
         ],
         "returns": [
-          "a",
-          "b",
-          "winner"
+          "ok",
+          "comparison",
+          "error"
         ],
         "summary": "Compare costs of two constructs."
       },
       {
         "method": "skb/query",
         "params": [
-          "query"
+          "by",
+          "value"
         ],
         "returns": [
-          "results"
+          "ok",
+          "query",
+          "matches"
         ],
         "summary": "Query structured knowledge base."
       },
@@ -4200,27 +4374,35 @@
           "fqn"
         ],
         "returns": [
-          "found",
-          "spec"
+          "ok",
+          "spec",
+          "error"
         ],
         "summary": "Lookup spec block for a symbol."
       },
       {
         "method": "skb/rules",
-        "params": [],
+        "params": [
+          "domain"
+        ],
         "returns": [
-          "rules"
+          "ok",
+          "matches"
         ],
         "summary": "List SKB rules."
       },
       {
         "method": "verify/contracts",
         "params": [
-          "source"
+          "fqn",
+          "requires",
+          "ensures",
+          "declared_effects",
+          "used_effects"
         ],
         "returns": [
           "ok",
-          "results"
+          "result"
         ],
         "summary": "Verify function contracts (req/ens/inv)."
       },
@@ -4242,7 +4424,9 @@
         ],
         "returns": [
           "ok",
-          "formatted"
+          "formatted",
+          "ast",
+          "error"
         ],
         "summary": "Format source in agent-canonical sigil mode."
       },
@@ -4253,7 +4437,9 @@
         ],
         "returns": [
           "ok",
-          "formatted"
+          "formatted",
+          "ast",
+          "error"
         ],
         "summary": "Format source in human-readable keyword mode."
       },
@@ -4264,7 +4450,9 @@
         ],
         "returns": [
           "ok",
-          "lints"
+          "verify",
+          "effect_diagnostics",
+          "error"
         ],
         "summary": "Run lints on source."
       },
@@ -4297,7 +4485,8 @@
         ],
         "returns": [
           "ok",
-          "results"
+          "diagnostics",
+          "error"
         ],
         "summary": "Check declared effects against inferred."
       },
@@ -4308,29 +4497,32 @@
         ],
         "returns": [
           "ok",
-          "elided"
+          "ast",
+          "error"
         ],
         "summary": "Apply elision rules to compact source."
       },
       {
         "method": "attribute/expand",
         "params": [
-          "source"
+          "name"
         ],
         "returns": [
           "ok",
-          "expanded"
+          "expanded",
+          "error"
         ],
         "summary": "Expand attribute shorthand."
       },
       {
         "method": "attribute/compress",
         "params": [
-          "source"
+          "name"
         ],
         "returns": [
           "ok",
-          "compressed"
+          "compressed",
+          "error"
         ],
         "summary": "Compress attributes back to shorthand."
       },
@@ -4341,7 +4533,7 @@
         ],
         "returns": [
           "ok",
-          "capabilities"
+          "results"
         ],
         "summary": "List capabilities required by source."
       },
@@ -4352,18 +4544,22 @@
         ],
         "returns": [
           "ok",
-          "graph"
+          "graphs"
         ],
         "summary": "Heal-pipeline diagnostic graph."
       },
       {
         "method": "sandbox/policy",
         "params": [
-          "name"
+          "source",
+          "agent"
         ],
         "returns": [
           "ok",
-          "policy"
+          "agent",
+          "capabilities",
+          "requires_approval",
+          "error"
         ],
         "summary": "Lookup sandbox policy by name."
       },
@@ -4373,8 +4569,8 @@
           "fqn"
         ],
         "returns": [
-          "found",
-          "doc"
+          "ok",
+          "matches"
         ],
         "summary": "Lookup documentation by FQN."
       },
@@ -4569,6 +4765,71 @@
         "summary": "impl block"
       },
       {
+        "ast_kind": "Struct",
+        "sigil": "+S",
+        "summary": "pub struct declaration"
+      },
+      {
+        "ast_kind": "Enum",
+        "sigil": "+E",
+        "summary": "pub enum declaration"
+      },
+      {
+        "ast_kind": "Trait",
+        "sigil": "+T",
+        "summary": "pub trait declaration"
+      },
+      {
+        "ast_kind": "Data",
+        "sigil": "+D",
+        "summary": "pub data record or sum type"
+      },
+      {
+        "ast_kind": "Data",
+        "sigil": "D",
+        "summary": "data record or sum type"
+      },
+      {
+        "ast_kind": "Extend",
+        "sigil": "xd",
+        "summary": "extend Type — inherent methods"
+      },
+      {
+        "ast_kind": "Effect",
+        "sigil": "fx",
+        "summary": "effect declaration"
+      },
+      {
+        "ast_kind": "Spec",
+        "sigil": "sp",
+        "summary": "spec block — contracts on a function"
+      },
+      {
+        "ast_kind": "Swarm",
+        "sigil": "sw",
+        "summary": "swarm declaration"
+      },
+      {
+        "ast_kind": "Function",
+        "sigil": "af",
+        "summary": "async fn — note `async fn` is not the spelling"
+      },
+      {
+        "ast_kind": "Guard",
+        "sigil": "gd",
+        "summary": "guard cond else { … } — the else must diverge"
+      },
+      {
+        "ast_kind": "Defer",
+        "sigil": "df",
+        "summary": "defer expr — run at scope exit"
+      },
+      {
+        "ast_kind": "Yield",
+        "sigil": "yl",
+        "summary": "yield expression"
+      },
+      {
         "ast_kind": "Mod",
         "sigil": "M",
         "summary": "module declaration"
@@ -4592,11 +4853,6 @@
         "ast_kind": "Match",
         "sigil": "?=",
         "summary": "match expression"
-      },
-      {
-        "ast_kind": "If",
-        "sigil": "?:",
-        "summary": "human-mode if (sugar for ?)"
       },
       {
         "ast_kind": "For/Attr/Arc",
@@ -4675,7 +4931,7 @@
       },
       {
         "ast_kind": "Return",
-        "sigil": "^",
+        "sigil": "ret",
         "summary": "return expression"
       },
       {
@@ -4777,8 +5033,8 @@
       },
       {
         "category": "string",
-        "name": "S",
-        "summary": "owned string (Rust `String`); sigil shorthand"
+        "name": "String",
+        "summary": "owned string (Rust `String`). `S` is *not* a spelling of it — `S` is the `struct` keyword."
       },
       {
         "category": "unit",
@@ -4832,13 +5088,13 @@
       },
       {
         "category": "map",
-        "name": "Map[K,V]",
-        "summary": "HashMap<K, V>; standard map type"
+        "name": "{K: V}",
+        "summary": "HashMap<K, V>; standard map type. Written with braces, not `Map[K,V]`."
       },
       {
         "category": "set",
-        "name": "Set[T]",
-        "summary": "HashSet<T>; standard set type"
+        "name": "{T}",
+        "summary": "HashSet<T>; standard set type. Written with braces, not `Set[T]`."
       },
       {
         "category": "smart",
@@ -4965,7 +5221,7 @@
       {
         "name": "scan",
         "signature": "([A], B, (B,A)->B) -> [B]",
-        "summary": "running fold (each intermediate)"
+        "summary": "running fold, seed first (len+1 results)"
       },
       {
         "name": "contains",

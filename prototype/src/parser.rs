@@ -263,7 +263,22 @@ impl<'a> Parser<'a> {
             // Additional keywords the corpus uses as plain identifiers
             // (effect-handler methods, struct field names, etc.). KwNet / KwVal /
             // KwVar / KwRule / KwQuery / KwSelect are already covered above.
-            | TokenKind::KwYield => Ok(self.advance().text.clone()),
+            | TokenKind::KwYield
+            // `agent` and `swarm` introduce items *and* name things: they are
+            // registered capability namespaces (`agent.spawn(…)`), `agent` is
+            // a documented effect, and a module or use-path may be called
+            // either (`M agent { … }`, `u std.agent`). `kb` was already
+            // covered above, which is why it failed on the *duplicate
+            // definition* rule rather than on parsing.
+            //
+            // This is the generalising fix. The same collision was patched
+            // three separate times before it: in effect-annotation position,
+            // in expression-prefix position, and here — each time only where
+            // it had been noticed, each time leaving the others broken. Item
+            // dispatch happens on `peek` in `parse_item` before any of these
+            // paths are reached, so `agent Worker { … }` is unaffected.
+            | TokenKind::KwAgent
+            | TokenKind::KwSwarm => Ok(self.advance().text.clone()),
             _ => {
                 let tok = self.current();
                 Err(ParseError {
@@ -273,6 +288,34 @@ impl<'a> Parser<'a> {
                 })
             }
         }
+    }
+
+    /// Parse an effect name in a `/ …` annotation.
+    ///
+    /// Effect-annotation position is unambiguous — every name after `/`, `+` or
+    /// `,` in a signature is an effect — so a name that also happens to be a
+    /// keyword elsewhere is accepted here. `agent` is the case that forced
+    /// this: it is a documented effect in `MAGE_SPEC.md` §11.2 *and* the
+    /// keyword introducing an `agent` item, so `/ agent` was a parse error and
+    /// the spec advertised an effect nobody could write.
+    ///
+    /// Restricted to identifier-shaped text so `/ +` or `/ 3` still fail at the
+    /// annotation rather than being swallowed as an effect named `+`.
+    fn expect_effect_name(&mut self) -> Result<String, ParseError> {
+        let tok = self.current();
+        let ident_shaped = {
+            let mut chars = tok.text.chars();
+            matches!(chars.next(), Some(c) if c.is_ascii_alphabetic() || c == '_')
+                && chars.all(|c| c.is_ascii_alphanumeric() || c == '_')
+        };
+        if tok.kind == TokenKind::Ident || ident_shaped {
+            return Ok(self.advance().text.clone());
+        }
+        Err(ParseError {
+            line: tok.span.line,
+            col: tok.span.col,
+            message: format!("expected effect name, found '{}'", tok.text),
+        })
     }
 
     fn error(&self, message: &str) -> ParseError {
@@ -575,7 +618,7 @@ impl<'a> Parser<'a> {
         // `/ llm, tools, io` (corpus uses both `+` and `,` as separator).
         let effects = if self.peek() == TokenKind::Slash {
             self.advance();
-            let mut effs = vec![self.expect_ident()?];
+            let mut effs = vec![self.expect_effect_name()?];
             // Effects may carry generic-type arguments: `channel[i32]`.
             // We don't currently model them in the AST - parse-and-drop
             // so the rest of the signature stays well-formed.
@@ -596,7 +639,7 @@ impl<'a> Parser<'a> {
             }
             while self.peek() == TokenKind::Plus || self.peek() == TokenKind::Comma {
                 self.advance();
-                effs.push(self.expect_ident()?);
+                effs.push(self.expect_effect_name()?);
                 if matches!(self.peek(), TokenKind::LBrack | TokenKind::Lt) {
                     let close = if self.peek() == TokenKind::LBrack {
                         TokenKind::RBrack
@@ -1339,9 +1382,20 @@ impl<'a> Parser<'a> {
                     self.advance();
                 }
                 _ => {
+                    // Reached when the wrong word is a *keyword* — `handle`,
+                    // `agent`, `swarm`. The `Ident` arm above names the field
+                    // it did not recognise, so `agent A { brain: x }` said
+                    // "unknown agent field `brain`" while `handle: x` said
+                    // "found KwHandle": the same mistake, reported two ways,
+                    // and §14 promises the first.
+                    let found = self.tokens.get(self.pos).map_or(String::new(), |t| t.text.clone());
+                    let what = if found.is_empty() {
+                        format!("{:?}", self.peek())
+                    } else {
+                        format!("`{found}`")
+                    };
                     return Err(self.error(&format!(
-                        "expected agent field or `}}`, found {:?}",
-                        self.peek()
+                        "{what} is not an agent field. The two are `capabilities`                          and `requires_approval` (MAGE_SPEC.md §14)"
                     )));
                 }
             }
@@ -1356,7 +1410,11 @@ impl<'a> Parser<'a> {
 
     // ── Swarm ───────────────────────────────────────────────
 
-    /// Parse: `swarm Name { agent: Type; size: N; topology: topo; consensus: strat; dispatch { ... } aggregate { ... } on_failure { ... } }`
+    /// Parse: `swarm Name { agent: Type; size: N; topology: topo; consensus: strat;
+    /// transport: t }` — five labels, four of them settings and one the agent type.
+    ///
+    /// This comment used to end `… dispatch { ... } aggregate { ... } on_failure { ... }`,
+    /// and so did the parser. Those three are rejected now: see the arm below.
     fn parse_swarm_def(&mut self) -> Result<SwarmDef, ParseError> {
         self.expect(TokenKind::KwSwarm)?;
         let name = self.expect_ident()?;
@@ -1366,9 +1424,12 @@ impl<'a> Parser<'a> {
         let mut size = None;
         let mut topology = None;
         let mut consensus = None;
-        let mut on_dispatch = None;
-        let mut on_aggregate = None;
-        let mut on_failure = None;
+        // Not `mut`: the surface no longer has a way to set these — see the
+        // rejecting arm below. They stay on `SwarmDef` because the bridge
+        // builds one directly.
+        let on_dispatch = None;
+        let on_aggregate = None;
+        let on_failure = None;
         let mut transport = None;
 
         while self.peek() != TokenKind::RBrace && self.peek() != TokenKind::Eof {
@@ -1407,14 +1468,28 @@ impl<'a> Parser<'a> {
                                 self.advance();
                             }
                         }
-                        "dispatch" => {
-                            on_dispatch = Some(self.parse_block()?);
-                        }
-                        "aggregate" => {
-                            on_aggregate = Some(self.parse_block()?);
-                        }
-                        "on_failure" => {
-                            on_failure = Some(self.parse_block()?);
+                        // Parsed, stored, and then nothing: no resolve pass
+                        // walks these blocks, no typechecker enters them, the
+                        // evaluator has never seen them, and `--fmt` prints
+                        // them back as the literal text `dispatch { ... }`, so
+                        // a format round-trip *deleted the body*. They reached
+                        // exactly one consumer, the MLIR text dump. A block an
+                        // agent can write, that `--check` calls OK, and that
+                        // never runs is the worst failure this compiler has —
+                        // and §14/§15 already say these three do not exist.
+                        //
+                        // The parse arms in `mlir.rs`, `fmt.rs` and `ast.rs`
+                        // stay: they are reachable from the bridge, and this
+                        // is a decision about the *surface*, which is where
+                        // the damage was.
+                        "dispatch" | "aggregate" | "on_failure" => {
+                            return Err(self.error(&format!(
+                                "`{label_text}` is not a swarm field. A swarm block declares \
+                                 the group — `agent`, `size`, `topology`, `consensus`, \
+                                 `transport` — and the work is ordinary functions with `map` \
+                                 and `fold` (MAGE_SPEC.md §9.2, §15). Nothing runs a \
+                                 `{label_text}` block."
+                            )));
                         }
                         "transport" => {
                             self.expect(TokenKind::Colon)?;
@@ -1432,9 +1507,17 @@ impl<'a> Parser<'a> {
                     self.advance();
                 }
                 _ => {
+                    // The keyword case, same as `agent`/`evolve`/`kb`: the
+                    // `Ident` arm above names the field, this one named the
+                    // token kind, and they are the same mistake.
+                    let found = self.tokens.get(self.pos).map_or(String::new(), |t| t.text.clone());
+                    let what = if found.is_empty() {
+                        format!("{:?}", self.peek())
+                    } else {
+                        format!("`{found}`")
+                    };
                     return Err(self.error(&format!(
-                        "expected swarm field or `}}`, found {:?}",
-                        self.peek()
+                        "{what} is not a swarm field. The five labels are `agent`,                          `size`, `topology`, `consensus` and `transport`                          (MAGE_SPEC.md §15)"
                     )));
                 }
             }
@@ -1726,9 +1809,16 @@ impl<'a> Parser<'a> {
                     self.advance();
                 }
                 _ => {
+                    // Named the alternatives and not the word, so the writer
+                    // had to find their own typo. Every other block names it.
+                    let found = self.tokens.get(self.pos).map_or(String::new(), |t| t.text.clone());
+                    let what = if found.is_empty() {
+                        format!("{:?}", self.peek())
+                    } else {
+                        format!("`{found}`")
+                    };
                     return Err(self.error(&format!(
-                        "expected `fact`, `rule`, or `}}` in kb, found {:?}",
-                        self.peek()
+                        "{what} is not a kb entry. A `kb` block holds `fact` and                          `rule` declarations (MAGE_SPEC.md §13)"
                     )));
                 }
             }
@@ -1800,9 +1890,25 @@ impl<'a> Parser<'a> {
                     self.advance();
                 }
                 _ => {
+                    // §12 promises "a field the parser does not recognise is
+                    // an error naming it", and this named the *token kind*:
+                    // `evolve E { zzz: 1 }` reported "expected evolve field or
+                    // `}`, found Ident", which does not tell the writer which
+                    // word was wrong or what the alternatives are. The swarm
+                    // and agent blocks both name theirs; this one is the
+                    // outlier because its fields are keywords rather than
+                    // identifiers, so the mistake falls through to a generic
+                    // arm instead of a `match` on the text.
+                    let found = self.tokens.get(self.pos).map_or(String::new(), |t| t.text.clone());
+                    let what = if found.is_empty() {
+                        format!("{:?}", self.peek())
+                    } else {
+                        format!("`{found}`")
+                    };
                     return Err(self.error(&format!(
-                        "expected evolve field or `}}`, found {:?}",
-                        self.peek()
+                        "{what} is not an evolve field. The seven are `genome`, \
+                         `population`, `generations`, `fitness`, `mutate`, `crossover` \
+                         and `select` (MAGE_SPEC.md §12)"
                     )));
                 }
             }
@@ -2106,6 +2212,16 @@ impl<'a> Parser<'a> {
             self.advance();
             let mut fields = Vec::new();
             while self.peek() != TokenKind::RParen && self.peek() != TokenKind::Eof {
+                // `pub` (which lexes as `+`) on a record field. MAGE_SPEC.md
+                // §4.3 has `struct_field = visibility? IDENT ':' type`, and a
+                // `struct` field accepts it — a `data` record field did not,
+                // so `data Point(pub x: f64, pub y: f64)` was a parse error
+                // pointing at `pub`. Fields are public with their type either
+                // way here; what matters is that the documented spelling
+                // parses.
+                if self.peek() == TokenKind::Plus {
+                    self.advance();
+                }
                 let fname = self.expect_ident()?;
                 self.expect(TokenKind::Colon)?;
                 let ty = self.parse_type()?;
@@ -2394,6 +2510,28 @@ impl<'a> Parser<'a> {
 
     /// Parse a closure parameter list — like `parse_param_list` but each
     /// param's type annotation is optional (`fn(x) => …`, `fn(x: i32) => …`).
+    /// Closure parameters between the two `|`s: `|x|`, `|x, y|`, `|x: i32|`.
+    ///
+    /// Separate from [`Self::parse_closure_param_list`] only because that one
+    /// terminates on `)` and this one on `|`.
+    fn parse_closure_params_until_pipe(&mut self) -> Result<Vec<Param>, ParseError> {
+        let mut params = Vec::new();
+        while self.peek() != TokenKind::BitOr && self.peek() != TokenKind::Eof {
+            let name = self.expect_ident()?;
+            let ty = if self.peek() == TokenKind::Colon {
+                self.advance();
+                self.parse_type()?
+            } else {
+                Type::Inferred
+            };
+            params.push(Param { name, ty, default: None });
+            if self.peek() == TokenKind::Comma {
+                self.advance();
+            }
+        }
+        Ok(params)
+    }
+
     fn parse_closure_param_list(&mut self) -> Result<Vec<Param>, ParseError> {
         let mut params = Vec::new();
         while self.peek() != TokenKind::RParen && self.peek() != TokenKind::Eof {
@@ -2883,7 +3021,17 @@ impl<'a> Parser<'a> {
                 {
                     stmts.push(self.parse_let_stmt()?);
                 }
-                TokenKind::KwGuard => {
+                // `guard` starts a guard statement only when a condition
+                // follows. `guard` is also a legal *name* — `v guard = 2`
+                // binds one — and referencing it at the start of a line
+                // (`guard + 1`) took this arm and died with
+                // `expected expression, found Plus '+'`. Using it anywhere
+                // else on the line (`2 + guard`) always worked, which is the
+                // giveaway: the position was the whole problem.
+                //
+                // A binary operator cannot begin the condition, so if one
+                // follows, this is a reference and not a guard.
+                TokenKind::KwGuard if self.guard_starts_a_statement() => {
                     stmts.push(self.parse_guard_stmt()?);
                 }
                 TokenKind::KwDefer => {
@@ -3007,41 +3155,104 @@ impl<'a> Parser<'a> {
         if matches!(next, TokenKind::LParen | TokenKind::LBrack) {
             return matches!(first, TokenKind::KwVal | TokenKind::KwVar);
         }
+        if Self::is_binding_name(next) {
+            return true;
+        }
+        // A keyword in binding-name position, with a `=` or `:` after it, is
+        // unambiguously a binding whose name is a keyword — `v f = 3`,
+        // `var v = 3`. Claim it as a let statement anyway so `parse_let_stmt`
+        // can say so; see `keyword_as_binding_name_error` for why the errors
+        // these produced otherwise were worse than useless.
         matches!(
-            next,
-            TokenKind::Ident
-                    | TokenKind::Underscore
-                    // Keywords that double as identifiers in
-                    // binding-name position. The lexer tokenises
-                    // common variable names (`val`, `guard`, `data`,
-                    // `query`, etc.) as their keyword variants - any
-                    // of these can legally appear as a binding name,
-                    // so peek-ahead must treat them as ident-like.
-                    | TokenKind::KwVal
-                    | TokenKind::KwVar
-                    | TokenKind::KwData
-                    | TokenKind::KwGuard
-                    | TokenKind::KwDefer
-                    | TokenKind::KwQuery
-                    | TokenKind::KwRule
-                    | TokenKind::KwFact
-                    | TokenKind::KwSelect
-                    | TokenKind::KwYield
-                    | TokenKind::KwOk
-                    | TokenKind::KwErr
-                    | TokenKind::KwSome
-                    | TokenKind::KwNone
-                    | TokenKind::KwIs
-                    | TokenKind::KwLayer
-                    | TokenKind::KwTensor
-                    | TokenKind::KwParam
-                    | TokenKind::KwForward
-                    | TokenKind::KwReward
-                    | TokenKind::KwPolicy
-                    | TokenKind::KwFitness
-                    | TokenKind::KwGenome
-                    | TokenKind::KwMutate
+            self.tokens.get(self.pos + 2).map(|t| t.kind),
+            Some(TokenKind::Assign) | Some(TokenKind::Colon)
         )
+    }
+
+    /// Tokens that may serve as a binding name.
+    ///
+    /// The lexer tokenises common variable names (`val`, `guard`, `data`,
+    /// `query`, …) as their keyword variants, so any of these can legally
+    /// appear where an identifier is expected and peek-ahead must treat them
+    /// as ident-like.
+    fn is_binding_name(kind: TokenKind) -> bool {
+        matches!(
+            kind,
+            TokenKind::Ident
+                | TokenKind::Underscore
+                | TokenKind::KwVal
+                | TokenKind::KwVar
+                | TokenKind::KwData
+                | TokenKind::KwGuard
+                | TokenKind::KwDefer
+                | TokenKind::KwQuery
+                | TokenKind::KwRule
+                | TokenKind::KwFact
+                | TokenKind::KwSelect
+                | TokenKind::KwYield
+                | TokenKind::KwOk
+                | TokenKind::KwErr
+                | TokenKind::KwSome
+                | TokenKind::KwNone
+                | TokenKind::KwIs
+                | TokenKind::KwLayer
+                | TokenKind::KwTensor
+                | TokenKind::KwParam
+                | TokenKind::KwForward
+                | TokenKind::KwReward
+                | TokenKind::KwPolicy
+                | TokenKind::KwFitness
+                | TokenKind::KwGenome
+                | TokenKind::KwMutate
+        )
+    }
+
+    /// The diagnostic for a keyword used as a binding name.
+    ///
+    /// This is the whole point of the fix. `v f = 3` used to report
+    /// `expected expression, found KwF 'f'` — the right token under a message
+    /// about the wrong thing, since nothing here wants an expression. Worse,
+    /// `var v = 3` reported `unresolved name: \`var\``, pointing at the
+    /// *binding keyword* and naming it as an undefined variable: the statement
+    /// was not recognised as a binding at all, so `var` fell through to
+    /// expression position and the error landed on a token the author had
+    /// written correctly.
+    ///
+    /// The alternate spellings come from `lexer::KEYWORDS`, so the hint cannot
+    /// drift from the table that caused the problem. Most of these letters are
+    /// the agent-mode spelling of a word-shaped keyword — `f` is `fn`, `S` is
+    /// `struct` — which is the fact that makes the error make sense.
+    fn keyword_as_binding_name_error(&self) -> ParseError {
+        let tok = self.current();
+        let mut alts: Vec<&str> = crate::lexer::KEYWORDS
+            .iter()
+            .filter(|(spelling, kind)| *kind == tok.kind && *spelling != tok.text)
+            .map(|(spelling, _)| *spelling)
+            .collect();
+        alts.sort_unstable();
+        alts.dedup();
+
+        let also = match alts.len() {
+            0 => String::new(),
+            1 => format!(" (the same keyword as `{}`)", alts[0]),
+            _ => format!(
+                " (the same keyword as {})",
+                alts.iter()
+                    .map(|a| format!("`{a}`"))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+        };
+
+        ParseError {
+            line: tok.span.line,
+            col: tok.span.col,
+            message: format!(
+                "`{}` is a keyword{also} and cannot be used as a binding name — \
+                 rename the binding",
+                tok.text
+            ),
+        }
     }
 
     fn parse_let_stmt(&mut self) -> Result<Stmt, ParseError> {
@@ -3051,6 +3262,15 @@ impl<'a> Parser<'a> {
         // here.
         let mutable = matches!(self.peek(), TokenKind::KwM | TokenKind::KwVar);
         self.advance(); // consume the binding keyword
+
+        // A keyword where the name belongs. Destructuring binders start with
+        // `(` / `[` and are a different shape, so they are excluded here and
+        // left to `parse_pattern`.
+        if !Self::is_binding_name(self.peek())
+            && !matches!(self.peek(), TokenKind::LParen | TokenKind::LBrack)
+        {
+            return Err(self.keyword_as_binding_name_error());
+        }
 
         let pattern = self.parse_pattern()?;
 
@@ -3228,6 +3448,12 @@ impl<'a> Parser<'a> {
                     continue;
                 }
                 TokenKind::LBrack => {
+                    // A `[` opening a new line is the next statement's array
+                    // literal, not an index on `lhs`. See the `LParen` arm
+                    // below for why postfix must not cross a newline.
+                    if self.newline_before_current() {
+                        break;
+                    }
                     self.advance();
                     // Range slicing inside index brackets — supports
                     //   arr[a..b]   arr[a..=b]   arr[a..]   arr[..b]   arr[..]
@@ -3271,6 +3497,26 @@ impl<'a> Parser<'a> {
                     continue;
                 }
                 TokenKind::LParen => {
+                    // A `(` opening a new line begins the next statement — a
+                    // parenthesised expression or a tuple — not a call on
+                    // `lhs`. Statements here are newline-terminated, so without
+                    // this the terminator is invisible to the postfix loop and
+                    //
+                    //     while i < 3 { i = i + 1 }
+                    //     (i + 5)
+                    //
+                    // parses as `while(…)(i + 5)`, reported as
+                    // `call: type mismatch: () vs f(…)` — a diagnostic pointing
+                    // at a call the author never wrote. It is not only blocks:
+                    // `v x = 1` followed by `(i + 5)` called the literal `1`.
+                    //
+                    // A multi-line argument list is unaffected, because its `(`
+                    // hugs the callee on the callee's own line. This is the
+                    // rule the `Question` arm above already applies, and the
+                    // one `expect_stmt_end` applies to statements.
+                    if self.newline_before_current() {
+                        break;
+                    }
                     self.advance();
                     let mut args = Vec::new();
                     while self.peek() != TokenKind::RParen && self.peek() != TokenKind::Eof {
@@ -3347,6 +3593,40 @@ impl<'a> Parser<'a> {
                 break;
             }
 
+            // `+` at the start of a line, followed by a declaration keyword, is
+            // the `pub` sigil of the *next item* — not addition.
+            //
+            // An expression-body function (`+f a(x) = x + 1`) swallowed
+            // everything after it: the next line's `+f b(x) = …` continued the
+            // expression as `x + 1 + f…`, and the file failed with "expected
+            // expression, found KwF". A module could hold at most one such
+            // function, and only as its last item. README.md's second headline
+            // example is written this way.
+            if matches!(self.peek(), TokenKind::Plus)
+                && self.newline_before_current()
+                && matches!(
+                    self.peek_n(1),
+                    TokenKind::KwF
+                        | TokenKind::KwAf
+                        | TokenKind::KwUf
+                        | TokenKind::KwS
+                        | TokenKind::KwE
+                        | TokenKind::KwT
+                        | TokenKind::KwI
+                        | TokenKind::KwData
+                        | TokenKind::KwMod
+                        | TokenKind::KwC
+                        | TokenKind::KwZ
+                        | TokenKind::KwY
+                        | TokenKind::KwUse
+                        | TokenKind::KwEffect
+                        | TokenKind::KwSpec
+                        | TokenKind::KwExtend
+                )
+            {
+                break;
+            }
+
             self.advance();
 
             // Handle pipeline
@@ -3398,8 +3678,149 @@ impl<'a> Parser<'a> {
         self.parse_expr_bp(MAX_INFIX_BP)
     }
 
+    /// True when a `guard` token begins a guard *statement* rather than being
+    /// a reference to a variable called `guard`.
+    ///
+    /// The test is whether a condition can follow. A binary operator, a `)`,
+    /// a `,`, a `;` or a line break cannot begin one, so `guard` followed by
+    /// any of those is an ordinary name.
+    fn guard_starts_a_statement(&self) -> bool {
+        !matches!(
+            self.peek_n(1),
+            TokenKind::Plus
+                | TokenKind::Minus
+                | TokenKind::Star
+                | TokenKind::Slash
+                | TokenKind::Percent
+                | TokenKind::Eq
+                | TokenKind::Neq
+                | TokenKind::Lt
+                | TokenKind::Gt
+                | TokenKind::Le
+                | TokenKind::Ge
+                | TokenKind::And
+                | TokenKind::Or
+                | TokenKind::Dot
+                | TokenKind::Assign
+                | TokenKind::Semi
+                | TokenKind::Comma
+                | TokenKind::RParen
+                | TokenKind::RBrace
+                | TokenKind::RBrack
+                | TokenKind::Eof
+        ) && !self
+            .tokens
+            .get(self.pos + 1)
+            .zip(self.tokens.get(self.pos))
+            .is_some_and(|(next, kw)| next.span.line > kw.span.line)
+    }
+
+    /// True when a `!` in prefix position is `break` rather than logical not.
+    ///
+    /// The test is whether an operand follows. Logical not requires one and
+    /// break cannot take one, so the two never compete: `!c` is not, `!` at
+    /// the end of a block is break. A newline counts as "no operand" for the
+    /// same reason it ends a statement everywhere else here.
+    fn bang_is_break(&self) -> bool {
+        matches!(
+            self.peek_n(1),
+            TokenKind::Semi
+                | TokenKind::RBrace
+                | TokenKind::Comma
+                | TokenKind::RParen
+                | TokenKind::RBrack
+                | TokenKind::Eof
+        ) || self
+            .tokens
+            .get(self.pos + 1)
+            .zip(self.tokens.get(self.pos))
+            .is_some_and(|(next, bang)| next.span.line > bang.span.line)
+    }
+
+    /// `println!(…)`, `format!(…)`, `vec![…]` — a Rust macro call.
+    ///
+    /// MAGE has no macros, and this was the worst way to not have them: the
+    /// `!` parsed as logical *not* applied to the call, so `format!("hi {x}")`
+    /// evaluated to `true` and `println!("hi")` printed nothing and returned a
+    /// bool. No error at any stage. `println!` is the single most likely thing
+    /// for a model carrying Rust habits to type, and it silently did nothing.
+    ///
+    /// Adjacency is the test — `name!(` with no space — so a genuine
+    /// `f(x) ! (y)` is untouched.
+    fn macro_call_ahead(&self) -> Option<String> {
+        let name = self.tokens.get(self.pos)?;
+        if name.kind != TokenKind::Ident {
+            return None;
+        }
+        let bang = self.tokens.get(self.pos + 1)?;
+        if bang.kind != TokenKind::Bang
+            || bang.span.line != name.span.line
+            || bang.span.col != name.span.col + name.text.chars().count()
+        {
+            return None;
+        }
+        let open = self.tokens.get(self.pos + 2)?;
+        matches!(
+            open.kind,
+            TokenKind::LParen | TokenKind::LBrack | TokenKind::LBrace
+        )
+        .then(|| name.text.clone())
+    }
+
     fn parse_prefix_expr(&mut self) -> Result<Expr, ParseError> {
+        // The five swarm orchestration patterns and `grammar_extension` are
+        // reserved by the lexer and consumed by *nothing* — no parser arm, no
+        // evaluator, and no mention in MAGE_SPEC.md. Reserving them costs the
+        // name twice over: `swarm_map_reduce(…)` is a parse error, and a user
+        // cannot define a function to fill the gap either. Say so, rather than
+        // reporting `expected expression, found KwSwarmMapReduce`.
+        if matches!(
+            self.peek(),
+            TokenKind::KwSwarmMapReduce
+                | TokenKind::KwSwarmPipeline
+                | TokenKind::KwSwarmSaga
+                | TokenKind::KwSwarmFanOut
+                | TokenKind::KwSwarmRace
+                | TokenKind::KwGrammarExt
+        ) {
+            let name = self.tokens[self.pos].text.clone();
+            return Err(self.error(&format!(
+                "`{name}` is a reserved word with no implementation — nothing \
+                 in the compiler consumes it. Fan out with `map` and fan in \
+                 with `fold` over the values an agent function returns"
+            )));
+        }
+        if let Some(name) = self.macro_call_ahead() {
+            let hint = match name.as_str() {
+                "println" | "print" | "eprintln" | "eprint" => {
+                    format!("call `{name}(…)` — it is an ordinary function here")
+                }
+                "format" => "use an f-string: `f\"hi {x}\"`".to_string(),
+                "vec" => "write a list literal: `[1, 2, 3]`".to_string(),
+                _ => format!("there is no `{name}!` — MAGE has no macros"),
+            };
+            return Err(self.error(&format!(
+                "`{name}!(…)` is a Rust macro call and MAGE has no macros — {hint}"
+            )));
+        }
         match self.peek() {
+            // `!` with no operand is `break` — the spelling the lexer calls
+            // canonical (`KwBreak, // break (legacy — canonical is !)`) and
+            // the one the ontology publishes as the Break sigil. It parsed
+            // nowhere: prefix `!` always demanded an operand, so `@@ { ? done
+            // { ! } : { } }` failed with `expected expression, found RBrace`,
+            // and only the "legacy" `break` worked. A comment two arms down
+            // said `!`-as-break was "handled via context in statement
+            // parsing"; the only other `Bang` arm is the `!` *type* (Never).
+            //
+            // Unambiguous because logical-not needs an operand and break
+            // cannot take one: if what follows cannot start an expression,
+            // there is no `not` to parse.
+            TokenKind::Bang if self.bang_is_break() => {
+                self.advance();
+                Ok(Expr::Break { value: None })
+            }
+
             // Unary operators
             TokenKind::Minus | TokenKind::Bang | TokenKind::Star => {
                 let tok = self.advance();
@@ -3409,6 +3830,35 @@ impl<'a> Parser<'a> {
                     op,
                     operand: Box::new(operand),
                 })
+            }
+
+            // `^ x` is `return x` — the Return sigil the ontology publishes,
+            // and the one-character form an agent optimising for tokens
+            // reaches for first. It did not parse: `^` lexes as `BitXor`, and
+            // nothing accepted it in prefix position, so only `ret` / `return`
+            // worked.
+            //
+            // Prefix position is unambiguous: binary `^` needs a left operand
+            // and never starts an expression, and the `^T` Box type is parsed
+            // by `parse_type` on a different path entirely.
+            TokenKind::BitXor => {
+                self.advance();
+                if matches!(
+                    self.peek(),
+                    TokenKind::Semi
+                        | TokenKind::RBrace
+                        | TokenKind::Comma
+                        | TokenKind::RParen
+                        | TokenKind::RBrack
+                        | TokenKind::Eof
+                ) {
+                    Ok(Expr::Return { value: None })
+                } else {
+                    let val = self.parse_expr()?;
+                    Ok(Expr::Return {
+                        value: Some(Box::new(val)),
+                    })
+                }
             }
             TokenKind::BitAnd => {
                 let tok = self.advance();
@@ -3777,6 +4227,17 @@ impl<'a> Parser<'a> {
             TokenKind::KwGuard
             | TokenKind::KwHandle
             | TokenKind::KwNet
+            // Capability namespaces that also introduce an item: `agent.op(x)`
+            // is a handle call, `agent Worker { … }` is a declaration. Items
+            // are dispatched in `parse_item` before expression parsing is
+            // reached, so the two never compete. `net` was already here; these
+            // three were not, which made `agent.spawn(…)` a parse error while
+            // `net.connect(…)` worked — and `agent` is a registered capability
+            // namespace *and* a documented effect, so it was unusable twice
+            // over.
+            | TokenKind::KwAgent
+            | TokenKind::KwSwarm
+            | TokenKind::KwKb
             | TokenKind::KwDefer
             | TokenKind::KwQuery
             | TokenKind::KwRule
@@ -3830,6 +4291,46 @@ impl<'a> Parser<'a> {
                 } else {
                     Ok(Expr::Ident { name })
                 }
+            }
+
+            // Closure: `|x| expr`, `|x, y| expr`, `|x| { … }`, `|| expr`.
+            //
+            // This is the form `MAGE_SPEC.md` defines — in the formal grammar
+            // (`closure_expr = '|' [ param_list ] '|' ( expression | block )`)
+            // and again in the feature list ("Closures (`|x| expr`)") — and it
+            // did not parse. Only `f(x) => expr` did, which the spec does not
+            // mention. Both now work.
+            //
+            // Unambiguous: `|` is `BitOr`, a binary operator that needs a left
+            // operand, so it never begins an expression. `||` lexes as `Or` and
+            // is the zero-parameter closure, for the same reason.
+            //
+            // Worth spelling out why this is not the `^`-as-return mistake
+            // repeated: there, one ontology line claimed a meaning the spec
+            // contradicted, so the entry was wrong. Here the *spec* is the
+            // claimant, twice, and the spec defines the language.
+            TokenKind::BitOr | TokenKind::Or => {
+                let zero_params = self.peek() == TokenKind::Or;
+                self.advance(); // `|` or `||`
+                let params = if zero_params {
+                    Vec::new()
+                } else {
+                    let params = self.parse_closure_params_until_pipe()?;
+                    self.expect(TokenKind::BitOr)?;
+                    params
+                };
+                let body = if self.peek() == TokenKind::LBrace {
+                    let block = self.parse_block()?;
+                    Expr::Block { block }
+                } else {
+                    // `,` and `)` are not infix operators, so the body stops
+                    // at the end of the argument on its own.
+                    self.parse_expr()?
+                };
+                Ok(Expr::Closure {
+                    params,
+                    body: Box::new(body),
+                })
             }
 
             // Closure: fn(params) => expr   (params may be untyped)
@@ -3938,10 +4439,30 @@ impl<'a> Parser<'a> {
                     kind,
                 })
             }
-            TokenKind::StringLiteral
-            | TokenKind::FormatString
-            | TokenKind::PrintString
-            | TokenKind::EprintString => {
+            // `p"…"` prints, `e"…"` prints to stderr, and both interpolate.
+            //
+            // They did neither: this arm folded them into a plain
+            // `LiteralKind::String`, so `p"value {x}"` was a no-op statement
+            // whose value was the literal text — braces and all. The print was
+            // dropped *and* the interpolation was, with no diagnostic. They
+            // are the print form the cookbook uses throughout, and the one an
+            // agent optimising for tokens reaches for.
+            TokenKind::PrintString | TokenKind::EprintString => {
+                let tok = self.advance();
+                let name = if tok.kind == TokenKind::PrintString {
+                    "println"
+                } else {
+                    "eprintln"
+                };
+                Ok(Expr::Call {
+                    func: Box::new(Expr::Ident { name: name.to_string() }),
+                    args: vec![Expr::Literal {
+                        value: tok.text.clone(),
+                        kind: LiteralKind::FormatString,
+                    }],
+                })
+            }
+            TokenKind::StringLiteral | TokenKind::FormatString => {
                 let tok = self.advance();
                 let kind = match tok.kind {
                     TokenKind::FormatString => LiteralKind::FormatString,
@@ -4176,6 +4697,110 @@ mod tests {
     // unchanged (the `{` path runs first); only newline-introduced bodies use
     // the column-tracked layout path.
 
+    /// Every AI block names the word it did not recognise.
+    ///
+    /// The spec promises this for each of them, and three of the four broke
+    /// the promise in the same way: the recognised fields are *keywords*, so a
+    /// wrong word falls past every arm to a generic one that reports the token
+    /// kind. `agent A { brain: x }` said "unknown agent field `brain`" and
+    /// `agent A { handle: x }` said "found KwHandle" — the same mistake, two
+    /// reports, and only one of them usable. `evolve` named nothing at all and
+    /// `kb` named the alternatives but not the word.
+    ///
+    /// The wrong word here is deliberately one that *is* a keyword in each
+    /// block, because that is the case the generic arm catches.
+    #[test]
+    fn every_ai_block_names_the_field_it_rejects() {
+        for (src, word) in [
+            ("agent A { handle: x }", "handle"),
+            ("agent A { brain: x }", "brain"),
+            ("swarm S { handle: x }", "handle"),
+            ("swarm S { zzz: 1 }", "zzz"),
+            ("evolve E { handle: x }", "handle"),
+            ("evolve E { zzz: 1 }", "zzz"),
+            ("kb K { handle: x }", "handle"),
+            ("kb K { zzz: 1 }", "zzz"),
+        ] {
+            let e = try_parse(src).expect_err("must be rejected");
+            assert!(
+                e.message.contains(&format!("`{word}`")),
+                "`{src}` must name `{word}`, said: {}",
+                e.message
+            );
+            // And it must not fall back to naming the token kind, which is
+            // what the generic arms did.
+            assert!(
+                !e.message.contains("Kw") && !e.message.contains("found Ident"),
+                "`{src}` reports a token kind rather than the word: {}",
+                e.message
+            );
+        }
+    }
+    /// The fields §14/§15 say a `swarm` block has, and the three it says it
+    /// does not.
+    ///
+    /// `dispatch { … }`, `aggregate { … }` and `on_failure { … }` **parsed**.
+    /// They were stored on `SwarmDef`, reached exactly one consumer — the MLIR
+    /// text dump — and were touched by no resolve pass, no typechecker and no
+    /// evaluator. `--check` said OK. Worse, `--fmt` printed them back as the
+    /// literal string `dispatch { ... }`, so a format round-trip deleted the
+    /// body. An agent could write coordination logic in a swarm, be told it
+    /// was fine, and have it never run.
+    ///
+    /// The spec says in two places that these do not exist; the parser now
+    /// agrees, and says what to write instead.
+    #[test]
+    fn a_swarm_has_four_fields_and_no_behaviour_blocks() {
+        let ok = "swarm S { agent: Worker, size: 4, topology: mesh, \
+                  consensus: quorum, transport: local }";
+        assert!(try_parse(ok).is_ok(), "the documented swarm fields must parse: {ok}");
+        // Short spellings, also documented.
+        assert!(try_parse("swarm S { size: 2, topo: ring, cons: raft }").is_ok());
+
+        for field in ["dispatch", "aggregate", "on_failure"] {
+            let src = format!("swarm S {{ size: 2, {field} {{ 1 }} }}");
+            let e = try_parse(&src).expect_err("a behaviour block must be rejected");
+            assert!(
+                e.message.contains(field) && e.message.contains("not a swarm field"),
+                "rejecting `{field}` must name it: {}",
+                e.message
+            );
+        }
+
+        let e = try_parse("swarm S { zzz: 1 }").expect_err("unknown field");
+        assert!(e.message.contains("zzz"), "{}", e.message);
+    }
+
+    /// An unrecognised `evolve` field is an error **naming it**.
+    ///
+    /// §12 says so, and this was the one block where it was not true: the
+    /// seven fields are keywords rather than identifiers, so a wrong word fell
+    /// through to a generic arm and reported "expected evolve field or `}`,
+    /// found Ident" — the token kind, not the word. `swarm` and `agent` both
+    /// name theirs.
+    #[test]
+    fn an_unknown_evolve_field_is_named() {
+        let e = try_parse("evolve E { zzz: 1 }").expect_err("unknown field");
+        assert!(
+            e.message.contains("`zzz`") && e.message.contains("not an evolve field"),
+            "the diagnostic must name the field: {}",
+            e.message
+        );
+        // And it must list the alternatives, which is the part that makes it
+        // recoverable without opening the spec.
+        for field in ["genome", "population", "generations", "fitness", "mutate",
+                      "crossover", "select"] {
+            assert!(e.message.contains(field), "`{field}` missing from: {}", e.message);
+            // Each of the seven must also actually parse, or the list is a
+            // second claim that could be wrong.
+            let src = match field {
+                "genome" => "evolve E { genome: i32 }".to_string(),
+                "population" | "generations" => format!("evolve E {{ {field}: 10 }}"),
+                _ => format!("evolve E {{ {field} {{ 1 }} }}"),
+            };
+            assert!(try_parse(&src).is_ok(), "`{field}` is advertised and does not parse");
+        }
+    }
     #[test]
     fn layout_braced_block_unchanged() {
         // Regression sentinel — explicit braces still parse.
@@ -4274,6 +4899,128 @@ mod tests {
         } else {
             panic!("expected function");
         }
+    }
+
+    /// `p"…"` / `e"…"` desugar to a print call over an interpolated string.
+    /// They used to parse as a plain string literal — no print, no
+    /// interpolation, no diagnostic.
+    #[test]
+    fn a_print_string_desugars_to_a_print_call() {
+        for (src, want) in [("f a() { p\"x\" }", "println"), ("f a() { ep\"x\" }", "eprintln")] {
+            let module = parse_source(src);
+            let ItemKind::Function(ref f) = module.items[0].kind else {
+                panic!("expected function");
+            };
+            let tail = f.body.tail_expr.as_deref().expect("a tail expression");
+            let Expr::Call { func, args } = tail else {
+                panic!("`{src}` should desugar to a call, got {tail:?}");
+            };
+            assert!(matches!(func.as_ref(), Expr::Ident { name } if name == want));
+            assert!(matches!(
+                args.as_slice(),
+                [Expr::Literal { kind: LiteralKind::FormatString, .. }]
+            ));
+        }
+    }
+
+    /// An expression-body function does not swallow the next item.
+    ///
+    /// `+f a(x) = x + 1` followed by `+f b(x) = x + 2` failed with "expected
+    /// expression, found KwF": the `+` starting the next line was read as
+    /// addition, so a module could hold at most one expression-body function
+    /// and only as its last item. README.md's second headline example — the
+    /// agentic-first form of `sum_even_squares` — is written that way.
+    #[test]
+    fn an_expression_body_ends_at_the_next_item() {
+        let module = parse_source("+f a(x) = x + 1
+
++f b(x) = x + 2
+");
+        assert_eq!(module.items.len(), 2, "both functions must parse");
+
+        // And the same across every declaration sigil that can follow.
+        for next in ["+f g() = 1", "+S P { x: i32 }", "+E K { A }", "D R(x: i32)"] {
+            let src = format!("+f a(x) = x + 1
+{next}
+");
+            let m = parse_source(&src);
+            assert_eq!(m.items.len(), 2, "`{next}` must be its own item: {src}");
+        }
+
+        // Arithmetic that really does continue on the next line still works:
+        // a `+` followed by a value, not a declaration keyword.
+        let m = parse_source("f a(x: i32) -> i32 { x
+ + 1 }");
+        assert_eq!(m.items.len(), 1);
+    }
+
+    /// `pub` on a `data` record field parses.
+    /// `pub` on a `data` record field parses.
+    ///
+    /// MAGE_SPEC.md §4.3 has `struct_field = visibility? IDENT ':' type`, and
+    /// a `struct` field accepted it — a `data` record field did not, so the
+    /// documented spelling `data Point(pub x: f64, pub y: f64)` was a parse
+    /// error pointing at `pub`.
+    #[test]
+    fn a_data_record_field_may_be_public() {
+        let module = parse_source("data Point(pub x: f64, y: f64)");
+        let ItemKind::Data(ref d) = module.items[0].kind else {
+            panic!("expected a data item");
+        };
+        let DataKind::Record(ref fields) = d.kind else {
+            panic!("expected a record");
+        };
+        assert_eq!(fields.len(), 2);
+        assert_eq!(fields[0].name, "x");
+        assert_eq!(fields[1].name, "y");
+    }
+
+    /// A reserved word nothing implements must say so.
+    #[test]
+    fn the_unimplemented_swarm_patterns_name_themselves() {
+        for name in [
+            "swarm_map_reduce",
+            "swarm_pipeline",
+            "swarm_saga",
+            "swarm_fan_out",
+            "swarm_race",
+            "grammar_extension",
+        ] {
+            let err = try_parse(&format!("f a() {{ {name}(1) }}"))
+                .expect_err(&format!("`{name}` is reserved and unimplemented"));
+            assert!(
+                err.message.contains(name) && err.message.contains("no implementation"),
+                "want a reserved-word diagnostic for `{name}`, got {:?}",
+                err.message
+            );
+        }
+    }
+
+    /// A Rust macro call must be rejected, by name.
+    ///
+    /// It used to parse: `!` became logical not applied to the call, so
+    /// `format!("hi")` evaluated to `true` and `println!("hi")` printed
+    /// nothing and returned a bool — the most likely line for a model with
+    /// Rust habits to write, silently doing nothing.
+    #[test]
+    fn a_rust_macro_call_is_rejected_by_name() {
+        for (src, want) in [
+            ("f a() { println!(\"hi\") }", "println"),
+            ("f a() { format!(\"hi\") }", "format"),
+            ("f a() { vec![1, 2] }", "vec"),
+            ("f a() { assert_eq!(1, 1) }", "assert_eq"),
+        ] {
+            let err = try_parse(src).expect_err(&format!("`{src}` must not parse"));
+            assert!(
+                err.message.contains(want) && err.message.contains("macro"),
+                "want a macro diagnostic naming `{want}`, got {:?}",
+                err.message
+            );
+        }
+        // Ordinary calls and a genuine logical-not are untouched.
+        assert!(try_parse("f a() { println(\"hi\") }").is_ok());
+        assert!(try_parse("f a(b: bool) { !b }").is_ok());
+        assert!(try_parse("f a(b: bool) { ? !yes() { 1 } : { 2 } }").is_ok());
     }
 
     #[test]
@@ -4939,6 +5686,255 @@ mod tests {
         } else {
             panic!("expected function");
         }
+    }
+
+    #[test]
+    fn test_keyword_named_effect_in_annotation() {
+        // `agent` is a documented effect (MAGE_SPEC.md §11.2) *and* the keyword
+        // introducing an `agent` item, so `/ agent` was `expected identifier,
+        // found KwAgent`. Effect-annotation position is unambiguous; a name
+        // there is an effect name whatever it lexes as elsewhere.
+        let m = parse_source("f x() -> i32 / agent + io { 1 }");
+        if let ItemKind::Function(ref f) = m.items[0].kind {
+            assert_eq!(f.effects, vec!["agent".to_string(), "io".to_string()]);
+        } else {
+            panic!("expected function");
+        }
+        // The `agent` item form must still parse — the keyword was not removed.
+        let m = parse_source("agent Worker { }");
+        assert!(matches!(m.items[0].kind, ItemKind::Agent(_)), "agent item lost");
+    }
+
+    #[test]
+    fn test_paren_on_a_new_line_is_not_a_call() {
+        // `while … { … }` followed by `(i + 5)` parsed as `while(…)(i + 5)`,
+        // reported as `call: type mismatch: () vs f(…)` — a diagnostic naming
+        // a call the author never wrote. Statements here are newline-
+        // terminated, and the postfix loop could not see the terminator.
+        let tail = |src: &str| -> Expr {
+            let m = parse_source(src);
+            let ItemKind::Function(ref f) = m.items[0].kind else {
+                panic!("expected function");
+            };
+            *f.body.tail_expr.clone().expect("expected a tail expression")
+        };
+
+        // The `while` is a statement; `(i + 5)` is the tail, and is not a call.
+        assert!(
+            !matches!(
+                tail("f x() -> i32 {\n  m i = 0\n  while i < 3 {\n    i = i + 1\n  }\n  (i + 5)\n}"),
+                Expr::Call { .. }
+            ),
+            "`(…)` after a block was parsed as calling the block"
+        );
+
+        // Not only blocks: any expression followed by a parenthesised line was
+        // called. `v a = 1` then `(2 + 3)` called the literal `1`.
+        assert!(
+            !matches!(tail("f x() -> i32 {\n  v a = 1\n  (2 + 3)\n}"), Expr::Call { .. }),
+            "`(…)` after a binding was parsed as calling the bound value"
+        );
+
+        // A multi-line argument list must still be one call: its `(` hugs the
+        // callee on the callee's own line, so the guard never fires.
+        assert!(
+            matches!(tail("f x() -> i32 {\n  add(\n    1,\n    2\n  )\n}"), Expr::Call { .. }),
+            "a multi-line argument list stopped being a call"
+        );
+    }
+
+    #[test]
+    fn test_keyword_as_binding_name_points_at_the_name() {
+        // `v f = 3` reported `expected expression, found KwF 'f'` — the right
+        // token under a message about the wrong thing. Worse, `var v = 3`
+        // reported `unresolved name: `var``: the statement was never
+        // recognised as a binding, so the binding keyword fell through to
+        // expression position and the error landed on the one token the
+        // author had written correctly.
+        let err = |src: &str| parse(&lexer::lex(src)).expect_err("must be rejected");
+
+        let e = err("f x() -> i32 {\n  v f = 3\n  0\n}");
+        assert!(
+            e.message.contains("`f` is a keyword") && e.message.contains("binding name"),
+            "unexpected diagnostic: {}",
+            e.message
+        );
+        assert_eq!((e.line, e.col), (2, 5), "diagnostic must point at the name");
+        // The hint comes from `lexer::KEYWORDS`, so it cannot drift from the
+        // table that causes the collision.
+        assert!(e.message.contains("`fn`"), "expected the `fn` hint: {}", e.message);
+
+        // The reported case: the error used to name the binding keyword.
+        let e = err("f x() -> i32 {\n  var v = 3\n  0\n}");
+        assert!(
+            e.message.contains("`v` is a keyword"),
+            "diagnostic still blames the wrong token: {}",
+            e.message
+        );
+        assert_eq!((e.line, e.col), (2, 7), "diagnostic must point at the name");
+
+        // Every sigil letter, and `ret`, reaches the same diagnostic.
+        for name in ["f", "v", "m", "C", "S", "E", "T", "I", "M", "u", "Y", "Z", "ret"] {
+            let e = err(&format!("f x() -> i32 {{\n  v {name} = 3\n  0\n}}"));
+            assert!(
+                e.message.contains(&format!("`{name}` is a keyword")),
+                "`v {name} = 3` gave: {}",
+                e.message
+            );
+        }
+    }
+
+    #[test]
+    fn test_keyword_that_is_a_legal_binding_name_still_binds() {
+        // The fix must not make the error path greedy: the lexer tokenises
+        // plenty of ordinary variable names as keywords, and those bind.
+        for src in [
+            "f x() -> i32 {\n  v val = 41\n  0\n}",
+            "f x() -> i32 {\n  val (a, b) = (1, 2)\n  0\n}",
+            "f x() -> i32 {\n  v y: i32 = 42\n  0\n}",
+        ] {
+            assert!(parse(&lexer::lex(src)).is_ok(), "wrongly rejected: {src}");
+        }
+    }
+
+    #[test]
+    fn test_bracket_on_a_new_line_is_not_an_index() {
+        // Same class as the `(` case: an array literal opening a line was an
+        // index on the previous statement.
+        let tail = |src: &str| -> Expr {
+            let m = parse_source(src);
+            let ItemKind::Function(ref f) = m.items[0].kind else {
+                panic!("expected function");
+            };
+            *f.body.tail_expr.clone().expect("expected a tail expression")
+        };
+
+        assert!(
+            !matches!(tail("f x() -> i32 {\n  v a = 1\n  [1, 2]\n}"), Expr::Index { .. }),
+            "`[…]` opening a line was parsed as an index on the previous statement"
+        );
+
+        // A real index hugs its operand, so it is untouched.
+        assert!(
+            matches!(tail("f x() -> i32 {\n  v xs = [10, 20]\n  xs[1]\n}"), Expr::Index { .. }),
+            "a same-line index stopped being an index"
+        );
+    }
+
+    #[test]
+    fn test_guard_is_a_name_when_no_condition_follows() {
+        // `guard` is a legal name — `v guard = 2` binds one — but referencing
+        // it at the start of a line took the guard-statement arm and died with
+        // `expected expression, found Plus '+'`. Using it anywhere else on the
+        // line always worked, which is the giveaway: position was the problem.
+        for src in [
+            "f x() -> i32 {
+ v guard = 2
+ guard + 1
+}",
+            "f x() -> i32 {
+ v guard = 2
+ guard
+}",
+            "f x() -> i32 {
+ v guard = 2
+ 2 + guard
+}",
+        ] {
+            assert!(parse(&lexer::lex(src)).is_ok(), "`guard` should be a name here: {src}");
+        }
+        // And the statement form still parses.
+        for src in [
+            "f x() -> i32 {
+ guard 1 > 0 else { ret 0 }
+ 7
+}",
+            "f x(o: ?i32) -> i32 {
+ guard o is Some(_) else { ret 0 }
+ 1
+}",
+        ] {
+            assert!(parse(&lexer::lex(src)).is_ok(), "guard statement broke: {src}");
+        }
+    }
+
+    #[test]
+    fn test_pipe_closures_parse() {
+        // `MAGE_SPEC.md` defines `closure_expr = '|' [ param_list ] '|'
+        // ( expression | block )` in its formal grammar, and lists
+        // "Closures (`|x| expr`)" as a feature. It did not parse — only
+        // `f(x) => expr`, which the spec never mentions. The vocabulary is
+        // built on higher-order functions (`map`, `filter`, `fold`), so the
+        // documented way to pass one was the one that failed.
+        for src in [
+            "f a() -> i32 { map(xs, |x| x * 2) }",
+            "f a() -> i32 { fold(xs, 0, |acc, x| acc + x) }",
+            "f a() -> i32 { map(xs, |x| { x * 3 }) }",
+            "f a() -> i32 { map(xs, |x: i32| x + 1) }",
+            "f a() -> i32 { run(|| 7) }",
+        ] {
+            assert!(parse(&lexer::lex(src)).is_ok(), "should parse: {src}");
+        }
+        // The form that already worked keeps working.
+        assert!(parse(&lexer::lex("f a() -> i32 { map(xs, f(x) => x * 2) }")).is_ok());
+    }
+
+    #[test]
+    fn test_pipe_closures_do_not_break_bitwise_or() {
+        // `|` is `BitOr` and `||` is `Or`. Prefix position is the only place a
+        // closure can start, because a binary operator needs a left operand —
+        // so the two never compete. This is the check that says so.
+        let m = parse_source("f a() -> i32 { 6 | 1 }");
+        let ItemKind::Function(ref f) = m.items[0].kind else {
+            panic!("expected function");
+        };
+        assert!(
+            matches!(f.body.tail_expr.as_deref(), Some(Expr::Binary { op, .. }) if op == "|"),
+            "`6 | 1` must stay a bitwise or"
+        );
+        assert!(parse(&lexer::lex("f a() -> bool { x || y }")).is_ok());
+        // A `|` inside a closure body is still binary.
+        assert!(parse(&lexer::lex("f a() -> i32 { map(xs, |x| x | 1) }")).is_ok());
+    }
+
+    #[test]
+    fn test_item_keywords_are_identifiers_everywhere() {
+        // `agent`, `swarm` and `kb` introduce items *and* name things. The
+        // collision was patched three separate times — effect annotations,
+        // expression prefix, and finally `expect_ident` — each time only where
+        // someone had hit it. These are the positions that were still broken
+        // when the fourth report came in, from a module declaration and a use
+        // path in `stdlib/`.
+        for name in ["agent", "swarm", "kb"] {
+            for src in [
+                format!("M {name} {{ }}"),
+                format!("u std.{name}"),
+                format!("S P {{ {name}: i32 }}"),
+                format!("f x() -> i32 {{ {name}.op(1) }}"),
+                format!("f x() -> i32 / {name} {{ 1 }}"),
+            ] {
+                assert!(
+                    parse(&lexer::lex(&src)).is_ok(),
+                    "`{name}` should be usable here: {src}"
+                );
+            }
+        }
+        // The item forms are untouched — dispatch happens on `peek` first.
+        assert!(parse(&lexer::lex("agent Worker { }")).is_ok());
+        assert!(parse(&lexer::lex("swarm Fleet { }")).is_ok());
+    }
+
+    #[test]
+    fn test_non_identifier_effect_name_is_rejected() {
+        // Loosening the annotation position must not make it accept anything:
+        // an effect name is still identifier-shaped.
+        let tokens = lexer::lex("f x() -> i32 / 3 { 1 }");
+        let err = parse(&tokens).expect_err("`/ 3` must be rejected");
+        assert!(
+            err.message.contains("expected effect name"),
+            "unexpected diagnostic: {}",
+            err.message
+        );
     }
 
     #[test]

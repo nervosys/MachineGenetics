@@ -22,38 +22,44 @@ The RecursiveMachineIntelligence protocol is a binary message format designed fo
 
 ## Message Format
 
+All header fields are **big-endian**. Offsets are from the start of the frame.
+
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                        HEADER (32 bytes)                     │
-├──────────────┬──────────────────────────────────────────────┤
-│ Magic (4)    │ FRWX (0x46 0x52 0x57 0x58)                   │
-│ Version (2)  │ Protocol version (major.minor)               │
-│ Flags (2)    │ Message flags (see below)                    │
-│ Type (4)     │ Message type identifier                      │
-│ Length (4)   │ Total message length (bytes)                 │
-│ MsgId (8)    │ Unique message identifier                    │
-│ Timestamp (8)│ Unix epoch microseconds                      │
-├──────────────┴──────────────────────────────────────────────┤
-│                     SENDER ID (variable)                     │
-├─────────────────────────────────────────────────────────────┤
-│ Length (2)   │ Sender ID length in bytes                    │
-│ Data         │ UTF-8 encoded agent identifier               │
-├─────────────────────────────────────────────────────────────┤
-│                      PAYLOAD (variable)                      │
-├─────────────────────────────────────────────────────────────┤
-│ Length (4)   │ Payload length in bytes                      │
-│ Data         │ MessagePack-encoded payload (optionally LZ4) │
-├─────────────────────────────────────────────────────────────┤
-│                   ATTACHMENTS (variable)                     │
-├─────────────────────────────────────────────────────────────┤
-│ Count (2)    │ Number of tensor attachments                 │
-│ Tensors      │ Array of tensor attachments                  │
-├─────────────────────────────────────────────────────────────┤
-│                      CHECKSUM (4 bytes)                      │
-├─────────────────────────────────────────────────────────────┤
-│ CRC32        │ CRC32 of header + sender + payload + attach. │
-└─────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────┐
+│                       HEADER (32 bytes)                        │
+├─────────────┬──────────────┬───────────────────────────────────┤
+│ 0..4        │ magic        │ "FWRX" (0x46 0x57 0x52 0x58)      │
+│ 4..6        │ version      │ u16, currently 1                  │
+│ 6..8        │ message_type │ u16                               │
+│ 8..12       │ flags        │ u32 (see below)                   │
+│ 12..20      │ payload_len  │ u64 — 8 + payload + tensor bytes  │
+│ 20..28      │ checksum     │ u64, XXH64 (see Checksum)         │
+│ 28..32      │ reserved     │ u32, zero                         │
+├─────────────┴──────────────┴───────────────────────────────────┤
+│                        BODY (variable)                         │
+├─────────────┬──────────────┬───────────────────────────────────┤
+│ 32..40      │ payload_len  │ u64 **little-endian**             │
+│ 40..        │ payload      │ MessagePack, LZ4 when COMPRESSED  │
+│ …           │ tensors      │ concatenated tensor attachments   │
+└─────────────┴──────────────┴───────────────────────────────────┘
 ```
+
+> **Corrected 2026-08-18.** The previous diagram matched the implementation in
+> almost no respect, and a client written from it fails at byte 4:
+>
+> - **The magic was `FRWX`; it is `FWRX`.** The W and R are transposed, and the
+>   hex given alongside spelled out the same wrong order, so the two agreed
+>   with each other and not with the code.
+> - `flags` and `message_type` were the wrong widths *and* the wrong way round.
+> - **`MsgId` and `Timestamp` are not in the header.** Those 16 bytes are
+>   `payload_length` and `checksum`.
+> - **The checksum is inside the header, not a 4-byte trailer.** There is no
+>   trailer.
+> - There is **no sender-ID section** and no attachment count; the body is a
+>   little-endian length followed by the payload and then tensor bytes.
+>
+> Every one of those is a silent interop failure rather than a compile error,
+> which is what makes a wrong wire-format diagram worse than a missing one.
 
 ---
 
@@ -379,11 +385,22 @@ pub fn decode_payload<T: DeserializeOwned>(data: &[u8], compressed: bool) -> Res
 
 ### Checksum
 
-CRC32 (IEEE polynomial) computed over:
-- Header bytes (32)
-- Sender length + sender data
-- Payload length + payload data
-- Attachment count + all attachment data
+**XXH64** (seed 0), stored as a big-endian `u64` at header offset 20..28.
+Computed over, in this order:
+
+1. the compressed payload length, as **little-endian `u64`**
+2. the compressed payload bytes
+3. the serialized tensor bytes, if any
+
+> **Corrected 2026-08-18.** This said "CRC32 (IEEE polynomial)" over the
+> header, sender, payload and attachments. Every part was wrong, and the error
+> is not cosmetic: an interoperable client written from the old text computes a
+> **32-bit** digest over the **wrong bytes in the wrong order**, and the wire
+> format carries a 64-bit field. Every message would fail validation, and the
+> implementer would have no way to tell which of the four discrepancies was
+> responsible. Note the mixed endianness — the header is big-endian throughout,
+> while the length fed to the hasher is little-endian — because that is what
+> `MessageEnvelope::to_binary` does and a client has to match it.
 
 ---
 

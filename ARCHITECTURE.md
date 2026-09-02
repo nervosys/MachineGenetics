@@ -7,7 +7,7 @@ text. It is the leverage the text-token floor denies the language track (see
 [IDEAL_AGENTIC_LANGUAGE.md](IDEAL_AGENTIC_LANGUAGE.md) for that analysis).
 
 > **Scope.** Everything below is implemented and test-covered in `prototype/`
-> (**1,107 tests** green) and scored in the sibling `agentic-eval` crate (80
+> (**1,207 tests** green) and scored in the sibling `agentic-eval` crate (80
 > tests, in the AetherShell repository and not verifiable from here). The one
 > deliberate non-feature is agent/swarm *execution* — see
 > [Honest boundaries](#honest-boundaries).
@@ -42,6 +42,13 @@ count   : u32 LE            (item count)
 items   : count × { name_len:u32, name, expr_len:u32, expr_bytes }
 symbols : sym_count:u32, then per id (in order) { name_len:u32, name }
 ```
+
+> **This block was right when four others were wrong.** On 2026-08-18 the
+> symbol-table line was found missing from `MAGE_ONTOLOGY.json`'s `abl.format`,
+> from `AGENT_PROTOCOL.md`, and from the module docs in both `abl.rs` and
+> `main.rs` — so a decoder written from any of those stopped 100 bytes early on
+> a 420-byte container. It was here, correct, the whole time. Nobody had
+> compared the five descriptions of one format against each other.
 
 `decode_container` returns the items (pure data); `decode_symbols` returns the
 id→name table; both are bounds-checked and never execute. Extension: **`.abl`**.
@@ -174,11 +181,11 @@ are **five independent Cargo workspaces**:
 
 | Path | Crate | Tests | Notes |
 |---|---|--:|---|
-| `RecursiveMachineIntelligence/` | `rmi` | 1,380 | The low-level neurosymbolic framework. Feature-gated (`cpu` / `gpu` / `cuda`); build with `--no-default-features --features cpu` for the portable set |
-| `prototype/` | `mage-prototype` | 1,107 | Compiler, evaluator, ABL, RAP server. Path-depends on `rmi` |
+| `RecursiveMachineIntelligence/` | `rmi` | 1,384 | The low-level neurosymbolic framework. Feature-gated (`cpu` / `gpu` / `cuda`); build with `--no-default-features --features cpu` for the portable set |
+| `prototype/` | `mage-prototype` | 1,207 | Compiler, evaluator, ABL, RAP server. Path-depends on `rmi` |
 | `ribosome/` | `ribosome` | 164 | The distributed build engine. Depends on nothing in this repository — see below |
 | `germline/` | `germline` | 112 | Model succession, handoff, fallback — the RSI control plane. Path-depends on `ribosome` |
-| `forge/` | `forge` | 52 | The package registry, and only that |
+| `forge/` | `forge` | 53 | The package registry, and only that |
 
 The dependency graph is a forest, not a web:
 
@@ -186,9 +193,12 @@ The dependency graph is a forest, not a web:
 rmi ←── prototype          ribosome ←── germline          forge
 ```
 
-`forge`'s 52 is not a regression. `ribosome` and `germline` were developed
-inside it and moved out on 2026-08-04; 52 is what the registry alone was before
-they arrived, and this table said exactly that until they did.
+`forge`'s count is not a regression. `ribosome` and `germline` were developed
+inside it and moved out on 2026-08-04; **52** is what the registry alone was
+before they arrived, and this table said exactly that until they did. It reads
+53 now for an unrelated reason: 2026-08-18 added a test comparing `forge
+manifest` against the binary's dispatcher, which nothing had ever done, and
+removed one that checked three command names by hand.
 
 A root workspace *did* exist, but it listed only `compiler/*` — the forked-rustc
 compiler — and was removed with it on 2026-06-11 (`b1b910f`). The surviving
@@ -204,8 +214,13 @@ Keeping them separate is a trade, not an oversight:
 - **`ribosome` must not depend on MAGE.** Its central claim — that no language
   is privileged below the planner (`RIBOSOME.md` §2.1) — is not credible from a
   crate that depends on one language's compiler, so its default dependency list
-  is `serde`, `serde_json`, `sha2`, `ed25519-dalek` and nothing else: 39 crates
-  transitively. Encryption (`rustls`) is behind the optional `tls` feature and
+  is `serde`, `serde_json`, `sha2`, `ed25519-dalek` and nothing else:
+  **28 crates transitively** — 34 counting the six that resolve at two versions
+  (`sha2`, `digest`, `block-buffer`, `crypto-common`, `cpufeatures`, `syn`).
+  This said 39, and so did `RIBOSOME.md`, because one was copied from the other
+  and neither was measured. Now pinned: `scripts/test-all.sh --check-docs`
+  measures it with `cargo tree -e normal` and fails if either document drifts.
+  Say which of the two counts you mean — they differ by a fifth. Encryption (`rustls`) is behind the optional `tls` feature and
   CI checks it has not leaked into the default build, because "optional" is a
   property that decays the moment something in the default path uses it.
 - **`ribosome` must not depend on `germline`.** The Weismann barrier is
@@ -227,7 +242,7 @@ So the supported entry points are:
 scripts/test-all.sh              # all five crates, debug
 scripts/test-all.sh --release    # optimized
 scripts/test-all.sh --bench      # + eval_bench (73/73) and perf_report
-scripts/test-all.sh --cuda       # + prototype --features cuda (1,071 tests)
+scripts/test-all.sh --cuda       # + prototype --features cuda (1,229 tests)
 ```
 
 ```powershell
@@ -249,7 +264,7 @@ developing against a local IronAccelerator.
 Because IronAccelerator dispatches through `libloading`, the backend **compiles
 with no CUDA toolkit and no GPU**, so CI can compile-check it (`cargo check
 --features cuda --all-targets`). CI cannot *run* the kernels; GPU correctness is
-verified on hardware — 1,071 tests on dual 3090 Ti.
+verified on hardware — 1,229 tests on dual 3090 Ti.
 
 ---
 

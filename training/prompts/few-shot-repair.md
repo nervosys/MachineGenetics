@@ -67,18 +67,13 @@ u std::collections::HashMap
 
 **Fixed MAGE:**
 ```MAGE
-u std.collections.HashMap
-
-+f count_words(text: &s) -> {s: usize} {
-    m map = HashMap.new();
-    @ word ~ text.split_whitespace() {
-        *map.entry(word.to_string()).or_insert(0) += 1;
-    }
-    map
++f count_words(text: str) -> {str: usize} {
+    freq(words(text))
 }
 ```
 
-**Fix:** Replace all `::` with `.` for path separators.
+**Fix:** Replace `::` with `.`, and reach for the standard vocabulary —
+`words` and `freq` do this without a loop or a map type.
 
 ---
 
@@ -160,13 +155,14 @@ u std.collections.HashMap
 
 **Fixed MAGE:**
 ```MAGE
-+f save(path: &s, content: &s) -> R[(), std.io.Error] / io {
-    std.fs.write(path, content)?;
-    R.Ok(())
++f save(path: str, content: str) -> R[i32, str] / fs {
+    fs.write(path, content)
+    Ok(1)
 }
 ```
 
-**Fix:** Add `/ io` to the function signature to declare the I/O effect.
+**Fix:** Add the effect to the signature. Writing a file is `/ fs`, not
+`/ io` — `fs` is its own built-in kind and `/ io` does not cover it.
 
 ---
 

@@ -1,5 +1,22 @@
 # Chapter 3: AST & HIR
 
+> **Checked against the code 2026-08-25.** The AST types are all real —
+> `Module`, `Item`, `ItemKind`, `Type`, `Expr`, `Block`, `Stmt`, `Ty`,
+> `Effect` — and `Item` matches field for field. What was wrong was
+> systematic: **every enum here except `Effect` was a partial listing**,
+> presented as the definition. `ItemKind` showed 11 of 20 variants, `Type`
+> 17 of 32, `Expr` 22 of 35, `Stmt` 3 of 5, `Ty` 24 of 31.
+>
+> The nine `ItemKind` variants missing were exactly MAGE's distinctive ones:
+> `Agent`, `Net`, `Kb`, `Evolve`, `Train`, `Swarm`, `Data`, `Extend` and
+> `Static`. A reader learning the AST from the old text would not have known
+> that `net`, `agent` or `swarm` are items at all.
+>
+> All five are now **regenerated from source** rather than hand-listed —
+> hand-listing 35 variants is how the drift happened — and the variant name
+> sets were compared, not just the counts.
+
+
 The compiler uses two tree representations: the **AST** (Abstract Syntax
 Tree), produced by the parser, and the **HIR** (High-level Intermediate
 Representation), produced by lowering the AST after name resolution.
@@ -33,13 +50,26 @@ pub enum ItemKind {
     Use(UseDef),
     TypeAlias(TypeAlias),
     Const(ConstDef),
+    Static(StaticDef),
     Effect(EffectDef),
     Spec(SpecDef),
+    Agent(AgentDef),
+    Net(NetDef),
+    Kb(KbDef),
+    Evolve(EvolveDef),
+    Train(Box<TrainDef>),
+    Swarm(SwarmDef),
+    Data(DataDef),
+    Extend(ExtendBlock),
 }
 ```
 
 Every AST node is `Serialize`/`Deserialize` — the entire AST can be emitted
-as JSON for agent consumption via `mg parse --emit ast`.
+as JSON for agent consumption — but **not from the CLI**. There is no
+`mg` binary (it is `mage-parse`) and no `--emit` flag; `--check --json`
+returns diagnostics, not the tree. The route that works is the **RAP
+server**: `language/parse` returns the serialized module in an `"ast"`
+field (`prototype/src/rap.rs`).
 
 ### Type Representation
 
@@ -48,23 +78,101 @@ sugar:
 
 ```rust
 pub enum Type {
-    Path { segments: Vec<String>, type_args: Vec<Type> },
-    Reference { mutable: bool, inner: Box<Type> },
-    OwnedPtr { inner: Box<Type> },         // ^T  (Box)
-    Rc { inner: Box<Type> },               // $T  (Rc)
-    Arc { inner: Box<Type> },              // @T  (Arc)
-    Slice { inner: Box<Type> },            // [T]
-    Array { inner: Box<Type>, size: Box<Expr> },  // [T; N]
-    Vec { inner: Box<Type> },              // [T]~
-    Tuple { elements: Vec<Type> },
-    Option { inner: Box<Type> },           // ?T
-    Result { ok: Box<Type>, err: Box<Type> },  // R[T, E]
-    Map { key: Box<Type>, value: Box<Type> },  // {K: V}
-    Fn { params: Vec<Type>, ret: Option<Box<Type>> },
-    Never,                                 // !
-    Inferred,                              // _
-    SelfType,                              // _T
-    StringType,                            // s
+    Path {
+        segments: Vec<String>,
+        type_args: Vec<Type>,
+    },
+    Reference {
+        mutable: bool,
+        inner: Box<Type>,
+    },
+    OwnedPtr {
+        inner: Box<Type>,
+    }, // ^T
+    Rc {
+        inner: Box<Type>,
+    }, // $T
+    Arc {
+        inner: Box<Type>,
+    }, // @T
+    Cow {
+        inner: Box<Type>,
+    }, // &~T
+    Cell {
+        inner: Box<Type>,
+    }, // %T
+    RefCell {
+        inner: Box<Type>,
+    }, // %!T
+    Mutex {
+        inner: Box<Type>,
+    }, // #T
+    RwLock {
+        inner: Box<Type>,
+    }, // #~T
+    Slice {
+        inner: Box<Type>,
+    }, // [T]
+    Array {
+        inner: Box<Type>,
+        size: Box<Expr>,
+    }, // [T; N]
+    Vec {
+        inner: Box<Type>,
+    }, // [T]~
+    Set {
+        inner: Box<Type>,
+    }, // {T}
+    Tuple {
+        elements: Vec<Type>,
+    },
+    Option {
+        inner: Box<Type>,
+    }, // ?T
+    Result {
+        ok: Box<Type>,
+        err: Box<Type>,
+    }, // R[T, E]
+    Map {
+        key: Box<Type>,
+        value: Box<Type>,
+    }, // {K: V}
+    Ptr {
+        inner: Box<Type>,
+    }, // Ptr[T]
+    Simd {
+        inner: Box<Type>,
+        width: u64,
+    }, // Simd[T, N]
+    Tensor {
+        inner: Box<Type>,
+        shape: Vec<TensorDim>,
+    }, // Tensor[T, Shape]
+    ParamTy {
+        inner: Box<Type>,
+        shape: Vec<TensorDim>,
+    }, // Param[T, Shape]
+    Genome {
+        inner: Box<Type>,
+    }, // Genome[T]
+    Policy {
+        state: Box<Type>,
+        action: Box<Type>,
+    }, // Policy[S, A]
+    KnowledgeBase, // KnowledgeBase
+    LlmType,       // LLM
+    Fn {
+        params: Vec<Type>,
+        ret: Option<Box<Type>>,
+    },
+    Never,      // !
+    Inferred,   // _
+    SelfType,   // _T
+    StringType, // s
+    Refined {
+        base: Box<Type>,
+        predicate: String,
+    },
 }
 ```
 
@@ -75,29 +183,132 @@ For example, `?T` in source becomes `Type::Option { inner: T }` in the AST.
 
 ```rust
 pub enum Expr {
-    Literal { value: String, kind: LiteralKind },
-    Ident { name: String },
-    Binary { op: String, left: Box<Expr>, right: Box<Expr> },
-    Unary { op: String, operand: Box<Expr> },
-    Call { func: Box<Expr>, args: Vec<Expr> },
-    MethodCall { receiver: Box<Expr>, method: String, args: Vec<Expr> },
-    FieldAccess { object: Box<Expr>, field: String },
-    Index { object: Box<Expr>, index: Box<Expr> },
-    StructLit { path: Vec<String>, fields: Vec<FieldInit> },
-    If { condition: Box<Expr>, then_block: Block, else_block: Option<Block> },
-    Match { scrutinee: Box<Expr>, arms: Vec<MatchArm> },
-    ForLoop { pattern: Pattern, iter: Box<Expr>, body: Block },
-    Loop { body: Block },
-    Block(Block),
-    Return { value: Option<Box<Expr>> },
-    Closure { params: Vec<Param>, body: Box<Expr> },
-    Await { inner: Box<Expr> },
-    Try { inner: Box<Expr> },     // ?  postfix
-    Range { start: Option<Box<Expr>>, end: Option<Box<Expr>>, inclusive: bool },
-    FormatString { parts: Vec<FormatPart> },
-    PrintString { parts: Vec<FormatPart> },
-    Handle { effects: Vec<String>, body: Block, handlers: Vec<Handler> },
-    // ...
+    Literal {
+        value: String,
+        kind: LiteralKind,
+    },
+    Ident {
+        name: String,
+    },
+    Binary {
+        op: String,
+        left: Box<Expr>,
+        right: Box<Expr>,
+    },
+    Unary {
+        op: String,
+        operand: Box<Expr>,
+    },
+    Call {
+        func: Box<Expr>,
+        args: Vec<Expr>,
+    },
+    MethodCall {
+        receiver: Box<Expr>,
+        method: String,
+        type_args: Vec<Type>,
+        args: Vec<Expr>,
+    },
+    FieldAccess {
+        object: Box<Expr>,
+        field: String,
+    },
+    Index {
+        object: Box<Expr>,
+        index: Box<Expr>,
+    },
+    StructLit {
+        path: Vec<String>,
+        fields: Vec<FieldInit>,
+    },
+    TupleLit {
+        elements: Vec<Expr>,
+    },
+    ArrayLit {
+        elements: Vec<Expr>,
+    },
+    ArrayRepeat {
+        value: Box<Expr>,
+        count: Box<Expr>,
+    },
+    MapLit {
+        entries: Vec<(Expr, Expr)>,
+    },
+    Closure {
+        params: Vec<Param>,
+        body: Box<Expr>,
+    },
+    If {
+        cond: Box<Expr>,
+        then_block: Block,
+        else_block: Option<Block>,
+    },
+    Match {
+        scrutinee: Option<Box<Expr>>,
+        arms: Vec<MatchArm>,
+    },
+    Handle {
+        body: Block,
+        effect: String,
+        arms: Vec<HandlerArm>,
+    },
+    Loop {
+        body: Block,
+    },
+    While {
+        cond: Box<Expr>,
+        body: Block,
+    },
+    For {
+        pattern: Pattern,
+        iter: Box<Expr>,
+        body: Block,
+    },
+    Block {
+        block: Block,
+    },
+    Return {
+        value: Option<Box<Expr>>,
+    },
+    Break {
+        value: Option<Box<Expr>>,
+    },
+    Continue,
+    Try {
+        expr: Box<Expr>,
+    },
+    Await {
+        expr: Box<Expr>,
+    },
+    Cast {
+        expr: Box<Expr>,
+        ty: Type,
+    },
+    Assign {
+        target: Box<Expr>,
+        value: Box<Expr>,
+    },
+    Range {
+        start: Box<Expr>,
+        end: Box<Expr>,
+        inclusive: bool,
+    },
+    Pipeline {
+        left: Box<Expr>,
+        right: Box<Expr>,
+    },
+    Is {
+        expr: Box<Expr>,
+        pattern: Pattern,
+    },
+    Todo,
+    Unimplemented,
+    UnsafeBlock {
+        block: Block,
+    },
+    Error {
+        message: String,
+    },
 }
 ```
 
@@ -110,9 +321,25 @@ pub struct Block {
 }
 
 pub enum Stmt {
-    Let { mutable: bool, pattern: Pattern, ty: Option<Type>, value: Expr },
-    Expr { expr: Expr },
-    Item { item: Box<Item> },
+    Let {
+        mutable: bool,
+        pattern: Pattern,
+        ty: Option<Type>,
+        value: Expr,
+    },
+    Expr {
+        expr: Expr,
+    },
+    Item {
+        item: Box<Item>,
+    },
+    Guard {
+        cond: Expr,
+        else_block: Block,
+    },
+    Defer {
+        expr: Expr,
+    },
 }
 ```
 
@@ -134,6 +361,8 @@ Name resolution is in `rdx_resolve` (prototype: `prototype/src/resolve.rs`).
 5. Build the module tree (visibility, imports)
 
 ### Scope Model
+
+**Not implemented.** Design sketch — no such item exists in `prototype/src`. See Chapter 1's status note for what the compiler actually is.
 
 ```rust
 pub struct Scope {
@@ -157,26 +386,57 @@ its parent module scope. Name lookup walks up the scope chain.
 
 ### Use Resolution
 
-```MAGE
-u std.collections.{HashMap, HashSet}
-```
+> **There is none, and as of 2026-08-19 that is the documented design** —
+> `MAGE_SPEC.md` §2.3, "One flat namespace". All four steps below were listed
+> here while `resolve_use`'s body was a comment saying it would one day do
+> them, and the six import styles describe resolution that has never happened.
+>
+> `resolve_use` now emits an **error**: a `use` cannot bring anything into
+> scope, so it no longer typechecks. It was a warning while the decision was
+> open. The example that stood here — `u std.collections.{HashMap, HashSet}` —
+> is therefore no longer a valid MAGE block and is quoted inline rather than
+> shown as code.
 
-The resolver:
-1. Parses the use path (`std` → `collections` → `{HashMap, HashSet}`)
-2. Walks the module tree to find each target
-3. Inserts the imported names into the current scope
-4. Records the `SymbolId` mapping
+What a module system here *would* do, and does not:
+1. Parse the use path (`std` → `collections` → `{HashMap, HashSet}`) — this
+   part is real
+2. Walk the module tree to find each target
+3. Insert the imported names into the current scope
+4. Record the `SymbolId` mapping
 
-### Import Styles
+Steps 2–4 do not exist, so an import grants nothing: `u std.io.read_to_string`
+followed by `read_to_string("x")` fails with `unresolved name`. The error lands
+on the call, never on the import that was supposed to supply it.
 
-| Syntax                                 | Resolution                     |
-| -------------------------------------- | ------------------------------ |
-| `u std.fs`                             | Import module `fs`             |
-| `u std.fs.read_to_string`              | Import single function         |
-| `u std.collections.{HashMap, HashSet}` | Import multiple items          |
-| `u std.collections.*`                  | Glob import (all public items) |
-| `u crate.utils.helper`                 | Crate-relative import          |
-| `u super.sibling`                      | Parent-relative import         |
+`use` now emits a **warning** saying so, rather than being accepted in silence.
+
+### The library surface is global
+
+MAGE has no module system, and for an agentic language that is close to the
+right answer rather than a gap to fill: an import costs tokens and buys nothing
+when the library is small and fixed. Everything available is in scope
+everywhere, with no import:
+
+| Surface | What | Where it comes from |
+| --- | --- | --- |
+| Standard vocabulary | `map` `filter` `fold` `join` `split` … (31) | `resolve::VOCABULARY` |
+| Capability namespaces | `io` `fs` `net` `llm` `gpu` `agent` … (20) | `hir::CAPABILITY_NAMESPACES` |
+| Builtin functions | `println` `vec` `panic` `assert` `min` `max` … | `register_builtins` |
+
+A source definition **shadows** any of these — `M net { … }` and
+`f map() -> i32 { … }` are legal, and only a second *source* definition of the
+same name is a duplicate.
+
+The import syntax below parses, and every row of it is currently a no-op:
+
+| Syntax                                 | Parses | Resolves |
+| -------------------------------------- | ------ | -------- |
+| `u std.fs`                             | yes    | no       |
+| `u std.fs.read_to_string`              | yes    | no       |
+| `u std.collections.{HashMap, HashSet}` | yes    | no       |
+| `u std.collections.*`                  | yes    | no       |
+| `u crate.utils.helper`                 | yes    | no       |
+| `u super.sibling`                      | yes    | no       |
 
 ---
 
@@ -200,30 +460,37 @@ The HIR differs from the AST in several ways:
 
 ```rust
 pub enum Ty {
-    Int(IntTy),          // i8, i16, i32, i64, i128, isize
-    Uint(UintTy),        // u8, u16, u32, u64, u128, usize
-    Float(FloatTy),      // f32, f64
+    Int(IntTy),
+    Uint(UintTy),
+    Float(FloatTy),
     Bool,
-    Str,                 // &str
+    Str,
     Char,
-    Unit,                // ()
-    Never,               // !
-    Named(SymbolId, Vec<Ty>),  // user-defined type + type args
-    Ref(bool, Box<Ty>),  // &T or &!T
-    OwnedPtr(Box<Ty>),   // ^T
-    Rc(Box<Ty>),         // $T
-    Arc(Box<Ty>),        // @T
-    Slice(Box<Ty>),      // [T]
-    Array(Box<Ty>, u64), // [T; N]
-    Vec(Box<Ty>),        // [T]~
+    Unit,
+    Never,
+    Named(SymbolId, Vec<Ty>),
+    Ref(bool, Box<Ty>),
+    OwnedPtr(Box<Ty>),
+    Rc(Box<Ty>),
+    Arc(Box<Ty>),
+    Slice(Box<Ty>),
+    Array(Box<Ty>, u64),
+    Vec(Box<Ty>),
     Tuple(Vec<Ty>),
-    Option(Box<Ty>),     // ?T
-    Result(Box<Ty>, Box<Ty>),  // R[T, E]
-    Map(Box<Ty>, Box<Ty>),     // {K: V}
-    Set(Box<Ty>),              // {T}
-    Fn(Vec<Ty>, Box<Ty>),      // fn type
-    TypeVar(u32),              // inference variable
-    Error,                     // sentinel for error recovery
+    Option(Box<Ty>),
+    Result(Box<Ty>, Box<Ty>),
+    Map(Box<Ty>, Box<Ty>),
+    Ptr(Box<Ty>),
+    Simd(Box<Ty>, u64),
+    Tensor(Box<Ty>, Vec<TensorDimHir>),
+    Param(Box<Ty>, Vec<TensorDimHir>),
+    Genome(Box<Ty>),
+    Policy(Box<Ty>, Box<Ty>),
+    KnowledgeBase,
+    LlmType,
+    Fn(Vec<Ty>, Box<Ty>, EffectSet),
+    Var(TyVar),
+    Error,
 }
 ```
 
@@ -233,19 +500,33 @@ pub enum Ty {
 pub type EffectSet = BTreeSet<Effect>;
 
 pub enum Effect {
-    Io,        // file system, stdio
+    IO,        // file and stream I/O
     Net,       // network access
+    FS,        // filesystem operations
     Async,     // async operations
-    Unsafe,    // unsafe code
-    Db,        // database access
-    Agent,     // agent spawning
-    Log,       // logging / tracing
+    Alloc,     // heap allocation
+    Panic,     // unwinding / structured panics
+    FFI,       // foreign function invocation
     Env,       // environment variables
+    Time,      // clock and timer access
+    Gpu,       // GPU computation
+    Npu,       // neural processing unit
+    Llm,       // language model invocation
+    Evolve,    // evolutionary computation
+    Learn,     // training / gradient descent
+    Rng,       // random number generation
+    Agent,     // agent coordination
+    Proc,      // process / system access
     Custom(String),  // user-defined effects
 }
 ```
 
+The seventeen built-in kinds are `MAGE_SPEC.md` §11.2; see
+[Effects & Resolution](05-effects-resolution.md).
+
 ### HIR Expression
+
+**Not implemented.** Design sketch — no such item exists in `prototype/src`. See Chapter 1's status note for what the compiler actually is.
 
 ```rust
 pub struct HirExpr {
@@ -288,6 +569,8 @@ The lowering pass performs these transformations:
 ## 3.4 AST Visitors
 
 Both AST and HIR provide visitor traits for implementing passes:
+
+**Not implemented.** Design sketch — no such item exists in `prototype/src`. See Chapter 1's status note for what the compiler actually is.
 
 ```rust
 pub trait AstVisitor {

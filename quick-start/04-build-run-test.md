@@ -134,10 +134,17 @@ mg doc --open               # generate and open in browser
 
 ```MAGE
 // benches/perf.mg
+//
+// A benchmark is a function marked `@bench`. There is no `Bencher` type and
+// no `b.iter(…)` — the harness times the call.
+
+f factorial(n: i32) -> i32 {
+    ? n <= 1 { 1 } : { n * factorial(n - 1) }
+}
 
 @bench
-f bench_factorial(b: &!Bencher) {
-    b.iter(|| factorial(20))
+f bench_factorial() -> i32 {
+    factorial(20)
 }
 ```
 

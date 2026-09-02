@@ -2,6 +2,39 @@
 
 This document provides a comprehensive reference for the RecursiveMachineIntelligence public API.
 
+> **Status: every documented name now exists in the crate, checked by
+> `scripts/check-rmi-api-doc.sh`; signatures are not checked.** The script
+> matches each documented item name as an identifier against `src/` and fails
+> if one is missing — the baseline is **0**, so any new invented name breaks
+> the build. It cannot see a *wrong signature on a function that exists*, and
+> that was the commoner defect here, so `cargo doc` is still the authority.
+>
+> Two problems were found and fixed on 2026-08-18 while looking for something
+> else, which is the only reason they were found at all:
+>
+> - Every **Module:** line named `framewerx::…`. The crate is `rmi`; the name
+>   changed and this file did not. All twelve paths were wrong, and all twelve
+>   modules do exist — so the fix was mechanical, and an agent following the old
+>   paths would have concluded the modules were missing.
+> - The **FFI Bridge** section described types that exist nowhere in the crate
+>   (`FfiValue`, `FfiFuncPtr`) and marked `call_unchecked` `unsafe` when it is
+>   not. See that section for the detail; it is the one part of this file that
+>   has now been read line-by-line against the source.
+>
+> The drift ran deeper than those two. **27 of 228 documented items existed
+> nowhere in the crate**; all 27 are now corrected against the source, along
+> with every signature they sat beside. What the sweep kept finding, in section
+> after section, was one mistake: **documented lookups keyed by *name* where
+> the real API takes a `Uuid`** — `Ontology`, `AIConceptsOntology`,
+> `AIHistoryKB`, `CheckpointManager` all had it. That is the kind of error that
+> survives review, because the call reads correctly and only fails at the type
+> checker.
+>
+> Signatures were spot-checked too: of 162 documented functions, the 66 defined
+> exactly once in `src/` are now in exact arity agreement. The remaining 96
+> share a name with another definition, so nothing automatic can tell which one
+> a block refers to.
+
 ---
 
 ## Table of Contents
@@ -30,7 +63,7 @@ This document provides a comprehensive reference for the RecursiveMachineIntelli
 
 ## Compute Module
 
-**Module:** `framewerx::compute`
+**Module:** `rmi::compute`
 
 ### Types
 
@@ -181,7 +214,7 @@ impl CudaBackend {
 
 ### BLAS Operations
 
-**Module:** `framewerx::compute::blas`
+**Module:** `rmi::compute::blas`
 
 Pure-Rust BLAS (Basic Linear Algebra Subprograms) operating on f64 with tiled algorithms.
 
@@ -208,7 +241,7 @@ The CPU backend (`CpuBackend`) automatically routes matrices ≥32×32 through B
 
 ### Kernel Fusion
 
-**Module:** `framewerx::compute::fusion`
+**Module:** `rmi::compute::fusion`
 
 Detects and rewrites fusible RMIL op sequences into fused kernels.
 
@@ -248,7 +281,7 @@ Also available via the optimization pipeline as `RmilOptimizer` (see [Optimizati
 
 ### JIT Compiler
 
-**Module:** `framewerx::lang::jit`
+**Module:** `rmi::lang::jit`
 
 Compiles RMIL `Expr` trees into native `f64 → f64` functions at runtime.
 
@@ -277,70 +310,112 @@ The VM exposes `eval_jit()` which tries JIT first, then falls back to tree-walki
 
 ### FFI Bridge
 
-**Module:** `framewerx::lang::ffi`
+**Module:** `rmi::lang::ffi`
 
-Safe and unsafe foreign function interface for calling external C-ABI functions from RMIL.
+Interface for calling **host closures** from RMIL. Despite the name, no raw
+C-ABI pointers are involved and nothing here is `unsafe`.
 
 ```rust
+pub type FfiFn = Box<dyn Fn(&[Val]) -> Result<Val, String> + Send + Sync>;
+
 pub struct FfiRegistry { /* ... */ }
 impl FfiRegistry {
     pub fn new() -> Self;
-    pub fn register(&mut self, name: &str, sig: FfiSignature, ptr: FfiFuncPtr) -> Result<(), FfiError>;
-    pub fn call(&self, name: &str, args: &[FfiValue]) -> Result<FfiValue, FfiError>;
-    pub unsafe fn call_unchecked(&self, name: &str, args: &[FfiValue]) -> FfiValue;
-    pub fn list_functions(&self) -> Vec<(&str, &FfiSignature)>;
+    pub fn register(&mut self, binding: FfiBinding);
+    pub fn register_fn(
+        &mut self,
+        name: impl Into<String>,
+        signature: FfiSignature,
+        func: impl Fn(&[Val]) -> Result<Val, String> + Send + Sync + 'static,
+    );
+    pub fn call(&self, name: &str, args: &[Val]) -> Result<Val, FfiError>;
+    // Skips the arity and type checks `call` performs. Safe: the callee is a
+    // Rust closure, not a foreign pointer.
+    pub fn call_unchecked(&self, name: &str, args: &[Val]) -> Result<Val, FfiError>;
 }
-
-pub enum FfiValue { F64(f64), I64(i64), Bool(bool), Ptr(*mut u8), Void }
-pub enum FfiType { F64, I64, Bool, Ptr, Void }
-pub struct FfiSignature { pub args: Vec<FfiType>, pub ret: FfiType }
 ```
+
+> **Corrected 2026-08-18.** This block previously described an API that does
+> not exist: `FfiValue` and `FfiFuncPtr` appear **nowhere in the crate**,
+> `register` takes an `FfiBinding` rather than `(name, sig, ptr)`, `call`
+> deals in `Val`, and `call_unchecked` is **not `unsafe`** and returns
+> `Result<Val, FfiError>`. Code written against the old block would not
+> compile — and it painted a more alarming picture than the truth, implying a
+> raw-pointer FFI surface (`Ptr(*mut u8)`) and an unsafe entry point where the
+> real thing passes RMIL values to safe Rust closures. `unsafe` in a signature
+> is a contract; documenting one that isn't there is as much a defect as
+> omitting one that is.
 
 ### LSP Server
 
-**Module:** `framewerx::lang::lsp`
+**Module:** `rmi::lang::lsp`
 
 Language Server Protocol implementation for RMIL source files.
 
 ```rust
-pub struct RmilLanguageServer { /* ... */ }
-impl RmilLanguageServer {
+pub struct LanguageServer { /* private: documents */ }
+impl LanguageServer {
     pub fn new() -> Self;
-    pub fn completion(&self, source: &str, pos: Position) -> Vec<CompletionItem>;
-    pub fn hover(&self, source: &str, pos: Position) -> Option<HoverInfo>;
-    pub fn diagnostics(&self, source: &str) -> Vec<Diagnostic>;
-    pub fn definition(&self, source: &str, pos: Position) -> Option<Location>;
-    pub fn references(&self, source: &str, pos: Position) -> Vec<Location>;
-    pub fn document_symbols(&self, source: &str) -> Vec<DocumentSymbol>;
+    pub fn open(&mut self, uri: &str, source: &str);
+    pub fn update(&mut self, uri: &str, source: &str);
+    pub fn close(&mut self, uri: &str);
+    pub fn diagnostics(&self, uri: &str) -> Vec<Diagnostic>;
+    pub fn hover(&self, uri: &str, pos: Position) -> Option<HoverInfo>;
+    pub fn completions(&self, uri: &str, pos: Position) -> Vec<CompletionItem>;
+    pub fn document_symbols(&self, uri: &str) -> Vec<DocumentSymbol>;
 }
 ```
 
-### Op Registry
+> **Corrected 2026-08-18.** The type is `LanguageServer`, not
+> `RmilLanguageServer`. It is document-oriented — `open`/`update`/`close` keep
+> the source, and every query takes a `uri` rather than a `&str` of source, so
+> the documented calling convention was wrong for all of them. `completion` is
+> `completions`, and `definition`/`references` do not exist.
 
-**Module:** `framewerx::lang::registry`
+### Package Registry
 
-Runtime-extensible operation registry allowing user-defined ops.
+**Module:** `rmi::lang::registry`
+
+Versioned registry of RMIL packages, with semver resolution and dependency
+resolution.
 
 ```rust
-pub struct OpRegistry { /* ... */ }
-impl OpRegistry {
-    pub fn new() -> Self;
-    pub fn with_builtins() -> Self;
-    pub fn register(&mut self, meta: OpMeta) -> Result<RegisteredOp, RegistryError>;
-    pub fn get(&self, name: &str) -> Option<&RegisteredOp>;
-    pub fn lookup_by_tag(&self, tag: &str) -> Vec<&RegisteredOp>;
-    pub fn all_ops(&self) -> Vec<&RegisteredOp>;
-    pub fn len(&self) -> usize;
+pub struct PackageMeta {
+    pub name: String,
+    pub version: SemVer,
+    pub description: Option<String>,
+    pub author: Option<String>,
+    pub tags: Vec<String>,
+    /* … */
 }
 
-pub struct RegisteredOp { pub op: Op, pub meta: OpMeta, pub version: u32 }
+pub struct Registry { /* private: packages, counter */ }
+impl Registry {
+    pub fn new() -> Self;
+    pub fn publish(&mut self, meta: PackageMeta, expr: Expr) -> Result<(), RegistryError>;
+    pub fn resolve(&self, name: &str, req: &VersionReq) -> Option<&Package>;
+    pub fn versions(&self, name: &str) -> &[Package];
+    pub fn get(&self, name: &str, version: &SemVer) -> Option<&Package>;
+    pub fn search_by_tag(&self, tag: &str) -> Vec<&Package>;
+    pub fn search_by_name(&self, query: &str) -> Vec<&Package>;
+    pub fn list(&self) -> Vec<&str>;
+    pub fn total_packages(&self) -> usize;
+}
 ```
+
+> **Corrected 2026-08-18.** This section described an *operation* registry —
+> `OpRegistry`, `RegisteredOp`, `with_builtins`, `lookup_by_tag`, `all_ops` —
+> none of which exists in any source file. The module of that name registers
+> **packages**: versioned RMIL expressions with semver resolution. Five
+> fictional items in one block, under a heading that named the wrong subject,
+> which is why they survived: the module path resolved and the section read
+> plausibly.
 
 ---
 
 ## Neural Module
 
-**Module:** `framewerx::neural`
+**Module:** `rmi::neural`
 
 ### Core Types
 
@@ -563,12 +638,11 @@ DAG representation of neural network.
 
 ```rust
 impl NetworkArchitecture {
-    pub fn new(name: &str) -> Self;
-    pub fn name(&self) -> &str;
-    pub fn add_node(&mut self, node: ArchitectureNode) -> NodeId;
-    pub fn add_edge(&mut self, from: NodeId, to: NodeId, edge: ArchitectureEdge);
+    pub fn new(name: impl Into<String>) -> Self;
+    pub fn add_node(&mut self, node: ArchitectureNode) -> Uuid;
+    pub fn connect(&mut self, from: Uuid, to: Uuid, edge: ArchitectureEdge) -> bool;
     pub fn nodes(&self) -> impl Iterator<Item = &ArchitectureNode>;
-    pub fn topological_order(&self) -> Vec<NodeId>;
+    pub fn topological_order(&self) -> Option<Vec<Uuid>>;
 }
 ```
 
@@ -578,12 +652,28 @@ Builder pattern for architectures.
 
 ```rust
 impl ArchitectureBuilder {
-    pub fn new(name: &str) -> Self;
-    pub fn add_layer(self, layer: LayerSpec) -> Self;
-    pub fn add_skip_connection(self, from: usize, to: usize) -> Self;
+    pub fn new(name: impl Into<String>) -> Self;
+    pub fn input(self, name: impl Into<String>, shape: ShapeSpec) -> Self;
+    pub fn linear(self, name: impl Into<String>, out_features: i64) -> Self;
+    pub fn layer_norm(self, name: impl Into<String>) -> Self;
+    pub fn relu(self, name: impl Into<String>) -> Self;
+    pub fn gelu(self, name: impl Into<String>) -> Self;
+    pub fn attention(self, name: impl Into<String>, heads: i64, head_dim: i64) -> Self;
+    pub fn dropout(self, name: impl Into<String>, p: f64) -> Self;
+    pub fn residual_add(self, name: impl Into<String>, skip_from: Uuid) -> Self;
+    pub fn output(self) -> Self;
+    pub fn current(&self) -> Option<Uuid>;
+    pub fn fork(&self) -> Self;
     pub fn build(self) -> NetworkArchitecture;
 }
 ```
+
+> **Corrected 2026-08-18.** There is no `add_layer(LayerSpec)` — the builder
+> has one method per layer kind, each naming the layer, and it threads a
+> `Uuid` cursor (`current`) rather than indices. Skip connections are
+> `residual_add(name, skip_from: Uuid)`, not
+> `add_skip_connection(from: usize, to: usize)`: **a caller following the old
+> signature would be passing positions where the API wants node ids.**
 
 ### Functions
 
@@ -599,7 +689,7 @@ pub fn grad(tape: &GradientTape, output: &Variable, var: &Variable) -> Variable;
 
 ## Symbolic Module
 
-**Module:** `framewerx::symbolic`
+**Module:** `rmi::symbolic`
 
 ### Logic Types
 
@@ -616,9 +706,9 @@ pub enum Term {
 }
 
 impl Term {
-    pub fn variable(name: &str) -> Self;
-    pub fn symbol(name: &str) -> Self;
-    pub fn function(name: &str, args: Vec<Term>) -> Self;
+    pub fn var(name: impl Into<String>) -> Self;
+    pub fn constant(name: impl Into<String>) -> Self;
+    pub fn func(name: impl Into<String>, args: Vec<Term>) -> Self;
     pub fn list(terms: Vec<Term>) -> Self;
     pub fn is_variable(&self) -> bool;
     pub fn is_ground(&self) -> bool;
@@ -648,15 +738,15 @@ impl Predicate {
 Positive or negated predicate.
 
 ```rust
-pub struct Literal {
-    pub predicate: Predicate,
-    pub negated: bool,
-}
-
-impl Literal {
-    pub fn positive(predicate: Predicate) -> Self;
-    pub fn negative(predicate: Predicate) -> Self;
-}
+// `Literal` is a PRIVATE enum inside `symbolic::inference` — not public API,
+// and not a struct. It is recorded here only because this file used to
+// document it as `pub struct Literal { predicate, negated }` with `positive`
+// and `negative` constructors, none of which exist:
+//
+//     enum Literal {
+//         Positive(Predicate),
+//         Negative(Predicate),
+//     }
 ```
 
 #### `Clause`
@@ -688,11 +778,10 @@ pub struct KnowledgeBase {
 
 impl KnowledgeBase {
     pub fn new() -> Self;
-    pub fn add_fact(&mut self, clause: Clause);
+    pub fn add_fact(&mut self, name: impl Into<String>, args: Vec<Term>);
     pub fn add_rule(&mut self, clause: Clause);
-    pub fn facts(&self) -> &[Clause];
-    pub fn rules(&self) -> &[Clause];
-    pub fn query(&self, predicate: &Predicate) -> Vec<&Clause>;
+    pub fn get(&self, name: &str) -> &[Clause];
+    pub fn all(&self) -> &[Clause];
 }
 ```
 
@@ -707,13 +796,14 @@ pub struct Substitution {
     pub bindings: HashMap<String, Term>,
 }
 
-impl Substitution {
-    pub fn empty() -> Self;
-    pub fn bind(&mut self, var: &str, term: Term);
-    pub fn lookup(&self, var: &str) -> Option<&Term>;
-    pub fn apply(&self, term: &Term) -> Term;
-    pub fn compose(&self, other: &Substitution) -> Substitution;
-}
+// `Substitution` is a type ALIAS, so it has no inherent methods — bind with
+// `insert`, look up with `get`. This file previously documented an
+// `impl Substitution` block with `empty`/`bind`/`lookup`/`apply`/`compose`,
+// none of which exist as methods.
+pub type Substitution = HashMap<String, Term>;
+
+// Free functions in `rmi::symbolic::unification`:
+pub fn compose(s1: &Substitution, s2: &Substitution) -> Substitution;
 ```
 
 #### Functions
@@ -742,8 +832,8 @@ pub struct InferenceEngine {
 
 impl InferenceEngine {
     pub fn new(config: InferenceConfig) -> Self;
-    pub fn forward_chain(&mut self, kb: &KnowledgeBase) -> Vec<Clause>;
-    pub fn backward_chain(&mut self, kb: &KnowledgeBase, goal: &Predicate) -> bool;
+    pub fn forward_chain(&self, kb: &mut KnowledgeBase);
+    pub fn prove(&mut self, kb: &KnowledgeBase, goal: &Predicate) -> bool;
     pub fn query(&mut self, kb: &KnowledgeBase, goal: &Predicate) -> Vec<Substitution>;
 }
 ```
@@ -788,7 +878,7 @@ impl State {
     pub fn add(&mut self, predicate: Predicate);
     pub fn remove(&mut self, predicate: &Predicate);
     pub fn holds(&self, predicate: &Predicate) -> bool;
-    pub fn satisfies(&self, goal: &State) -> bool;
+    pub fn holds_all(&self, facts: &[Predicate]) -> bool;
 }
 ```
 
@@ -796,48 +886,57 @@ impl State {
 
 ```rust
 /// Find a plan from initial to goal state
-pub fn plan(
-    initial: &State,
-    goal: &State,
-    actions: &[Action],
-    max_depth: usize,
-) -> Option<Vec<GroundAction>>;
+// Method on the planner, not a free function:
+pub fn plan(&self, domain: &Domain, initial: &State, goal: &Goal) -> Option<Plan>;
 ```
 
 ---
 
 ## Neurosymbolic Module
 
-**Module:** `framewerx::neurosymbolic`
+**Module:** `rmi::neurosymbolic`
 
 ### Symbol Embedding
 
-#### `SymbolEmbedding`
+#### `SymbolEmbedder`
 
 Maps symbols to vectors.
 
 ```rust
-pub struct SymbolEmbedding {
-    // Internal
-}
+pub struct SymbolEmbedder { /* private */ }
 
-impl SymbolEmbedding {
+impl SymbolEmbedder {
     pub fn new(config: EmbeddingConfig) -> Self;
-    pub fn embed(&mut self, symbol: &str) -> Vec<f64>;
-    pub fn embed_predicate(&mut self, pred: &Predicate) -> Vec<f64>;
-    pub fn similarity(&self, a: &str, b: &str) -> f64;
+    pub fn default_embedder() -> Self;
+    pub fn get_embedding(&mut self, symbol: &str) -> Vec<f32>;
+    pub fn embed_term(&mut self, term: &Term) -> Vec<f32>;
+    pub fn embed_predicate(&mut self, pred: &Predicate) -> Vec<f32>;
+    pub fn embed_formula(&mut self, formula: &Formula) -> Vec<f32>;
+    pub fn embed_clause(&mut self, clause: &Clause) -> Vec<f32>;
+    pub fn similarity(emb1: &[f32], emb2: &[f32]) -> f32;   // associated fn, not a method
+    pub fn vocab_size(&self) -> usize;
 }
 ```
+
+> **Corrected 2026-08-18.** The type is `SymbolEmbedder`, and every vector is
+> `Vec<f32>`, not `Vec<f64>` — a caller writing to the documented type would
+> have had the wrong element width throughout. `embed` is `get_embedding`, and
+> four further `embed_*` methods went unlisted.
 
 #### `EmbeddingConfig`
 
 ```rust
 pub struct EmbeddingConfig {
     pub embedding_dim: usize,
-    pub use_position_encoding: bool,
-    pub normalize: bool,
+    pub max_vocab: usize,
+    pub use_positional: bool,
+    pub aggregation: AggregationMethod,
 }
 ```
+
+> **Corrected 2026-08-18.** `use_position_encoding` is `use_positional`, there
+> is no `normalize`, and `max_vocab`/`aggregation` were missing — so a struct
+> literal built from the old block would not compile in either direction.
 
 ### Differentiable Constraints
 
@@ -922,14 +1021,14 @@ pub struct HybridReasoner {
 
 impl HybridReasoner {
     pub fn new(config: HybridConfig) -> Self;
-    pub fn query(&self, kb: &KnowledgeBase, query: &Predicate) -> HybridResult;
-    pub fn query_with_embeddings(
-        &self,
-        kb: &KnowledgeBase,
-        query: &Predicate,
-        embedder: &mut SymbolEmbedding,
-    ) -> HybridResult;
+    pub fn query(&mut self, query: &Predicate, kb: &KnowledgeBase) -> HybridResult;
 }
+
+// Corrected 2026-08-18: `query_with_embeddings` does not exist — the reasoner
+// owns its embedder. `query` takes `&mut self` and its two arguments are the
+// other way round: `(query, kb)`, not `(kb, query)`. Both are `&`-references
+// of different types, so a swapped call is a type error rather than a silent
+// mistake — but the documented order was still wrong.
 ```
 
 #### `HybridConfig`
@@ -948,7 +1047,7 @@ pub struct HybridConfig {
 
 ## Core Module
 
-**Module:** `framewerx::core`
+**Module:** `rmi::core`
 
 ### Agent
 
@@ -958,39 +1057,56 @@ Autonomous AI agent.
 
 ```rust
 pub struct Agent {
-    pub id: AgentId,
-    pub config: AgentConfig,
-    pub state: AgentState,
+    pub identity: AgentIdentity,
+    /* private: state, context, current_goal, goal_stack,
+       execution_trace, message_tx, message_rx */
 }
 
 impl Agent {
-    pub fn new(config: AgentConfig) -> Self;
-    pub async fn execute(&self, goal: Goal) -> Result<ExecutionResult>;
-    pub async fn send_message(&self, to: &AgentId, msg: Message) -> Result<()>;
-    pub async fn receive_message(&self) -> Option<Message>;
+    pub fn builder() -> AgentBuilder;
+    pub fn state(&self) -> AgentState;
+    pub fn has_capability(&self, capability: AgentCapability) -> bool;
+    pub fn add_capability(&mut self, capability: AgentCapability);
+    pub fn set_goal(&self, goal: Goal);
+    pub fn push_subgoal(&self, subgoal: Goal);
+    pub fn pop_goal(&self) -> Option<Goal>;
+    pub async fn execute(&self, goal: Goal) -> Result<GoalResult>;
 }
 ```
+
+> **Corrected 2026-08-18.** `Agent` has no `id`, `config` or public `state`
+> field, and no `new(config)` — it is built through `Agent::builder()`, and
+> `state` is a method over an atomic. `execute` returns `GoalResult`, not
+> `ExecutionResult`.
 
 #### `Goal`
 
-Agent objective.
+Agent objective. **An enum**, not a struct with a `goal_type` tag:
 
 ```rust
-pub struct Goal {
-    pub id: String,
-    pub goal_type: GoalType,
-    pub target: String,
-    pub constraints: HashMap<String, f64>,
-    pub priority: f64,
-}
-
-pub enum GoalType {
-    Minimize,
-    Maximize,
-    Satisfy,
-    Achieve,
+pub enum Goal {
+    MinimizeLoss    { metric_name: String, target_value: Option<f64>,
+                      constraints: HashMap<String, f64> },
+    MaximizeMetric  { metric_name: String, target_value: Option<f64>,
+                      constraints: HashMap<String, f64> },
+    ArchitectureSearch { task_type: String,
+                         input_schema: HashMap<String, String>,
+                         output_schema: HashMap<String, String>,
+                         resource_constraints: HashMap<String, f64> },
+    Inference { model_id: String, input_data: Vec<u8> },
+    Train     { model_id: String, data_source: String, epochs: u32, batch_size: u32 },
+    Reason    { query: String, context_concepts: Vec<ConceptId> },
+    Custom    { goal_type: String, spec: Vec<u8> },
 }
 ```
+
+> **Corrected 2026-08-18.** The previous block described a struct with
+> `id`/`goal_type`/`target`/`constraints`/`priority` and a companion
+> `GoalType { Minimize, Maximize, Satisfy, Achieve }` enum. Neither exists —
+> `GoalType` is in no source file, and the tag it stood for is the enum variant
+> itself. A `Goal` *does* exist in `rmi::symbolic::planner` as well, holding
+> positive and negative predicate lists, so the name resolves twice and neither
+> matches what was written here.
 
 ### Protocol
 
@@ -1000,15 +1116,37 @@ Binary communication protocol.
 
 ```rust
 pub struct Protocol {
-    pub config: ProtocolConfig,
+    pub compression: String,
+    pub encryption: Option<String>,
+    pub schema_format: String,
+    pub max_message_size: usize,
+    pub stream_chunk_size: usize,
+    /* private: schemas */
 }
 
 impl Protocol {
-    pub fn new(config: ProtocolConfig) -> Self;
-    pub fn encode<T: Serialize>(&self, msg: &Message<T>) -> Result<Vec<u8>>;
-    pub fn decode<T: DeserializeOwned>(&self, data: &[u8]) -> Result<Message<T>>;
+    pub fn new() -> Self;
+    pub fn binary() -> Self;
+    pub fn secure(encryption: &str) -> Self;
+    pub fn register_schema(&mut self, schema: MessageSchema);
+    pub fn get_schema(&self, name: &str) -> Option<&MessageSchema>;
+    pub fn create_message(
+        &self,
+        sender_id: Uuid,
+        recipient_id: Uuid,
+        message_type: MessageType,
+        payload: HashMap<String, serde_json::Value>,
+    ) -> Result<Message>;
 }
 ```
+
+> **Corrected 2026-08-18.** `Protocol` has no `config` field and no
+> `encode`/`decode`. Those two belong to `Frame` in
+> `rmi::distributed::transport` and have different shapes —
+> `Frame::encode(&self) -> Vec<u8>` and
+> `Frame::decode(data: &[u8]) -> Result<(Self, usize)>`, an associated function
+> rather than a method. `Protocol` is a schema registry with compression and
+> encryption settings.
 
 #### `Message`
 
@@ -1040,52 +1178,66 @@ pub enum MessageType {
 High-performance key-value store with LRU caching and disk persistence.
 
 ```rust
-pub struct KeyValueStore {
-    cache: LruCache<String, Vec<u8>>,
-    base_path: PathBuf,
-    compression_enabled: bool,
-}
+pub struct KeyValueStore { /* private: base_path, cache, lru_order, … */ }
 
 impl KeyValueStore {
-    pub fn new(base_path: PathBuf, cache_capacity: usize) -> Self;
-    pub fn with_compression(base_path: PathBuf, cache_capacity: usize) -> Self;
-    pub fn set<T: Serialize>(&mut self, key: &str, value: &T) -> Result<()>;
-    pub fn get<T: DeserializeOwned>(&mut self, key: &str) -> Result<Option<T>>;
-    pub fn delete(&mut self, key: &str) -> Result<bool>;
-    pub fn contains(&self, key: &str) -> bool;
-    pub fn list_keys(&self, prefix: Option<&str>) -> Result<Vec<String>>;
-    pub fn clear_cache(&mut self);
+    pub fn new(base_path: impl AsRef<Path>) -> Result<Self>;
+    pub fn in_memory() -> Self;
+    pub fn with_cache_size(self, bytes: usize) -> Self;      // builder
+    pub fn without_compression(self) -> Self;                // builder
+    pub fn put<T: Serialize>(&self, key: &str, value: &T) -> Result<StorageMetadata>;
+    pub fn put_raw(/* … */) -> Result<StorageMetadata>;
+    pub fn get<T: DeserializeOwned>(&self, key: &str) -> Result<Option<T>>;
+    pub fn get_raw(&self, key: &str) -> Result<Option<(Vec<u8>, StorageMetadata)>>;
+    pub fn exists(&self, key: &str) -> bool;
+    pub fn delete(&self, key: &str) -> Result<bool>;
+    pub fn list_keys(&self, prefix: &str) -> Result<Vec<String>>;
+    pub fn metadata(&self, key: &str) -> Result<Option<StorageMetadata>>;
 }
 ```
+
+> **Corrected 2026-08-18.** Four differences worth calling out. Compression is
+> **opt-out**, not opt-in: the real builder is `without_compression`, and a
+> reader following the old `with_compression` would have enabled something that
+> was already on. `set` is `put` and returns `StorageMetadata` rather than
+> `()`; `contains` is `exists`; and every method takes `&self`, not `&mut self`
+> — the cache is behind an `RwLock`, so a shared handle is the intended usage
+> and the documented signatures would have forced needless `mut`.
 
 #### `TensorStorage`
 
 Efficient binary tensor storage format (similar to safetensors).
 
 ```rust
-pub struct TensorStorage {
-    index: HashMap<String, TensorIndexEntry>,
-    data_file: File,
-}
+pub struct TensorStorage { /* private: path, index, mmap_data */ }
 
 pub struct TensorIndexEntry {
     pub name: String,
     pub shape: Vec<usize>,
-    pub dtype: StorageDataType,
+    pub dtype: String,
     pub offset: u64,
-    pub length: u64,
+    pub size: u64,
     pub checksum: u64,
 }
 
 impl TensorStorage {
-    pub fn create(path: &Path) -> Result<Self>;
-    pub fn open(path: &Path) -> Result<Self>;
-    pub fn write_tensor(&mut self, name: &str, data: &[u8], shape: &[usize], dtype: StorageDataType) -> Result<()>;
-    pub fn read_tensor(&self, name: &str) -> Result<(Vec<u8>, Vec<usize>, StorageDataType)>;
-    pub fn list_tensors(&self) -> Vec<&TensorIndexEntry>;
-    pub fn contains(&self, name: &str) -> bool;
+    pub fn create(path: impl AsRef<Path>) -> Result<Self>;
+    pub fn open(path: impl AsRef<Path>) -> Result<Self>;
+    pub fn add_f32(&mut self, name: &str, shape: &[usize], data: &[f32]) -> Result<()>;
+    pub fn add_f64(&mut self, name: &str, shape: &[usize], data: &[f64]) -> Result<()>;
+    pub fn add_raw(&mut self, name: &str, shape: &[usize], dtype: &str, data: &[u8]) -> Result<()>;
+    pub fn save(&self, tensors_data: &HashMap<String, Vec<u8>>) -> Result<()>;
+    pub fn get_f32(&self, name: &str) -> Result<Option<(Vec<usize>, Vec<f32>)>>;
+    pub fn tensor_names(&self) -> Vec<&str>;
+    pub fn tensor_info(&self, name: &str) -> Option<&TensorIndexEntry>;
 }
 ```
+
+> **Corrected 2026-08-18.** None of `write_tensor`, `read_tensor` or
+> `list_tensors` exists; the real API is typed (`add_f32`/`add_f64`/`add_raw`,
+> `get_f32`) and names are listed by `tensor_names`. `dtype` is a `String`, not
+> a `StorageDataType` enum — that type does not exist either — and the index
+> field is `size`, not `length`.
 
 #### `CheckpointManager`
 
@@ -1109,14 +1261,40 @@ pub struct CheckpointMeta {
 }
 
 impl CheckpointManager {
-    pub fn new(checkpoint_dir: PathBuf, max_checkpoints: usize) -> Result<Self>;
-    pub fn save_checkpoint<T: Serialize>(&mut self, checkpoint_type: CheckpointType, data: &T, metrics: HashMap<String, f64>) -> Result<String>;
-    pub fn load_checkpoint<T: DeserializeOwned>(&self, id: &str) -> Result<T>;
-    pub fn list_checkpoints(&self) -> &[CheckpointMeta];
-    pub fn get_latest(&self, checkpoint_type: Option<CheckpointType>) -> Option<&CheckpointMeta>;
-    pub fn delete_checkpoint(&mut self, id: &str) -> Result<bool>;
+    pub fn new(base_path: impl AsRef<Path>) -> Result<Self>;
+    pub fn with_max_checkpoints(self, max: usize) -> Self;   // builder
+    pub fn save<T: Serialize>(
+        &self,
+        checkpoint_type: CheckpointType,
+        step: u64,
+        description: &str,
+        data: &T,
+        metrics: HashMap<String, f64>,
+    ) -> Result<CheckpointMeta>;
+    pub fn save_with_tensors(
+        &self,
+        checkpoint_type: CheckpointType,
+        step: u64,
+        description: &str,
+        state: &HashMap<String, Vec<u8>>,
+        tensors: &HashMap<String, (Vec<usize>, Vec<f32>)>,
+        metrics: HashMap<String, f64>,
+    ) -> Result<CheckpointMeta>;
+    pub fn load<T: DeserializeOwned>(&self, id: Uuid) -> Result<Option<(CheckpointMeta, T)>>;
+    pub fn load_tensors(&self, id: Uuid) -> Result<Option<TensorStorage>>;
+    pub fn list(&self) -> Result<Vec<CheckpointMeta>>;
+    pub fn latest(&self) -> Result<Option<CheckpointMeta>>;
+    pub fn delete(&self, id: Uuid) -> Result<()>;
 }
 ```
+
+> **Corrected 2026-08-18.** Every method in this block was wrong: the names
+> carried a `_checkpoint` suffix the code does not use (`save_checkpoint` →
+> `save`), `new` took `(dir, max)` where the real one takes a path and a
+> `with_max_checkpoints` builder, ids are `Uuid` rather than `&str`, and the
+> return types differ throughout. `CheckpointManager` itself exists — which is
+> what made this hard to notice: the type resolves, so only calling a method
+> reveals the drift.
 
 #### `ConsistentHashRing`
 
@@ -1138,12 +1316,17 @@ pub struct ShardInfo {
 }
 
 impl ConsistentHashRing {
-    pub fn new(virtual_nodes: usize) -> Self;
-    pub fn add_node(&mut self, info: ShardInfo);
-    pub fn remove_node(&mut self, node_id: &str);
-    pub fn get_node(&self, key: &str) -> Option<&ShardInfo>;
-    pub fn get_nodes_for_replication(&self, key: &str, count: usize) -> Vec<&ShardInfo>;
+    pub fn new(replication_factor: u32) -> Self;
+    pub fn add_agent(&mut self, agent_id: Uuid);
+    pub fn remove_agent(&mut self, agent_id: Uuid);
+    pub fn get_agents(&self, key: &str, count: u32) -> Vec<Uuid>;
 }
+
+// Corrected 2026-08-18: the ring holds agent `Uuid`s, not `ShardInfo`. Its
+// constructor takes a replication factor, not a virtual-node count — two
+// different numbers with different meanings, and a caller passing one for the
+// other gets a ring that works and replicates wrongly. `get_node` /
+// `get_nodes_for_replication` are the single `get_agents(key, count)`.
 ```
 
 ### Message Bus
@@ -1158,10 +1341,14 @@ pub struct Topic {
 }
 
 impl Topic {
-    pub fn new(path: &str) -> Self;           // "agent.task.compute"
-    pub fn matches(&self, pattern: &Topic) -> bool;
-    pub fn as_string(&self) -> String;
+    pub fn new(name: &str) -> Self;
+    pub fn with_namespace(name: &str, namespace: &str) -> Self;
+    pub fn full_path(&self) -> String;
+    pub fn matches(&self, pattern: &str) -> bool;
 }
+
+// Corrected 2026-08-18: `as_string` is `full_path`, and `matches` takes a
+// `&str` pattern rather than another `Topic`.
 
 // Wildcard patterns:
 // - "*" matches exactly one segment: "agent.*.compute"
@@ -1273,15 +1460,32 @@ pub struct Ontology {
 }
 
 impl Ontology {
-    pub fn new() -> Self;
-    pub fn load(path: &str) -> Result<Self>;
-    pub fn add_concept(&mut self, concept: Concept);
-    pub fn add_relation(&mut self, from: &str, to: &str, relation: Relation);
-    pub fn get_concept(&self, name: &str) -> Option<&Concept>;
-    pub fn related_concepts(&self, name: &str, relation: Relation) -> Vec<&Concept>;
-    pub fn similarity(&self, a: &str, b: &str) -> f64;
+    pub fn new(namespace: &str) -> Self;
+    pub fn load(uri: &str) -> Result<Self>;
+    pub fn save(&self, path: &str) -> Result<()>;
+    pub fn add_concept(&self, concept: Concept);
+    pub fn add_concepts(&self, concepts: Vec<Concept>);
+    pub fn add_relation(&self, relation: Relation);
+    pub fn get(&self, id: &ConceptId) -> Option<Concept>;
+    pub fn get_many(&self, ids: &[ConceptId]) -> Vec<Option<Concept>>;
+    pub fn lookup(&self, name: &str) -> Option<Concept>;
+    pub fn get_related(&self, id: &ConceptId, rel_type: RelationType) -> Vec<Concept>;
+    pub fn get_subgraph(/* … */);
+    pub fn query(&self, q: &OntologyQuery) -> Vec<Concept>;
+    pub fn find_similar(/* … */);
+    pub fn merge(&self, other: &Ontology, strategy: MergeStrategy);
+    pub fn to_binary(&self) -> Vec<u8>;
+    pub fn from_binary(data: &[u8]) -> Result<Self>;
 }
 ```
+
+> **Corrected 2026-08-18.** `get_concept` and `related_concepts` do not exist:
+> lookups are `get(&ConceptId)` or `lookup(&str)` — **ids and names are
+> different keys** — and relations are `get_related(&ConceptId, RelationType)`.
+> `new` takes a namespace. `add_concept`/`add_relation` take `&self`, not
+> `&mut self`, and `add_relation` takes a whole `Relation` rather than
+> `(from, to, relation)`. `similarity` is not a method here at all; it belongs
+> to `rmi::neurosymbolic::embedding` and is listed under that module.
 
 ### Optimization
 
@@ -1333,7 +1537,7 @@ pub struct RmilOptStats {
 
 ## Knowledge Module
 
-**Module:** `framewerx::knowledge`
+**Module:** `rmi::knowledge`
 
 ### AI History
 
@@ -1348,15 +1552,25 @@ pub struct AIHistoryKB {
 
 impl AIHistoryKB {
     pub fn new() -> Self;
-    pub fn all_contributions(&self) -> &[AIContribution];
-    pub fn by_year(&self, year: u32) -> Vec<&AIContribution>;
+    pub fn with_history() -> Self;
+    pub fn add(&mut self, contrib: AIContribution) -> Uuid;
+    pub fn get(&self, id: &Uuid) -> Option<&AIContribution>;
+    pub fn by_year(&self, year: i32) -> Vec<&AIContribution>;
     pub fn by_era(&self, era: AIEra) -> Vec<&AIContribution>;
-    pub fn by_category(&self, category: ContributionCategory) -> Vec<&AIContribution>;
-    pub fn by_concept(&self, concept: &str) -> Vec<&AIContribution>;
-    pub fn by_author(&self, author: &str) -> Vec<&AIContribution>;
-    pub fn lineage(&self, title: &str) -> Vec<&AIContribution>;
+    pub fn by_category(&self, cat: ContributionCategory) -> Vec<&AIContribution>;
+    pub fn search_concept(&self, concept: &str) -> Vec<&AIContribution>;
+    pub fn search_author(&self, author: &str) -> Vec<&AIContribution>;
+    pub fn chronological(&self) -> Vec<&AIContribution>;
+    pub fn lineage(&self, id: &Uuid) -> Vec<&AIContribution>;
 }
 ```
+
+> **Corrected 2026-08-18.** `all_contributions` does not exist —
+> `chronological()` is the closest thing. `by_concept`/`by_author` are
+> `search_concept`/`search_author`. `by_year` takes `i32`, not `u32`, which
+> matters for BC-era dates. And `lineage` takes a **`Uuid`, not a title** —
+> the same name-versus-id substitution this file makes in every knowledge
+> section.
 
 #### `AIContribution`
 
@@ -1408,13 +1622,28 @@ pub struct AIConceptsOntology {
 
 impl AIConceptsOntology {
     pub fn new() -> Self;
-    pub fn get_concept(&self, name: &str) -> Option<&AIConcept>;
+    pub fn with_core_concepts() -> Self;
+    pub fn add_concept(&mut self, concept: AIConcept) -> Uuid;
+    pub fn add_relation(&mut self, from: Uuid, to: Uuid, relation: ConceptRelation);
+    pub fn get(&self, id: &Uuid) -> Option<&AIConcept>;
+    pub fn get_by_name(&self, name: &str) -> Option<&AIConcept>;
+    pub fn get_id_by_name(&self, name: &str) -> Option<Uuid>;
     pub fn by_domain(&self, domain: ConceptDomain) -> Vec<&AIConcept>;
-    pub fn related(&self, name: &str, relation: ConceptRelation) -> Vec<&AIConcept>;
-    pub fn ancestors(&self, name: &str) -> Vec<&AIConcept>;
-    pub fn descendants(&self, name: &str) -> Vec<&AIConcept>;
+    pub fn related(&self, id: &Uuid, relation: ConceptRelation) -> Vec<&AIConcept>;
+    pub fn parents(&self, id: &Uuid, relation: ConceptRelation) -> Vec<&AIConcept>;
+    pub fn all_subtypes(&self, id: &Uuid) -> Vec<&AIConcept>;
+    pub fn for_task(&self, task: &str) -> Vec<&AIConcept>;
+    pub fn by_tag(&self, tag: &str) -> Vec<&AIConcept>;
 }
 ```
+
+> **Corrected 2026-08-18.** The same name-versus-id confusion as `Ontology`
+> above, and it is the one mistake this file makes repeatedly: **every lookup
+> here is keyed by `Uuid`**, not by name, and `get_id_by_name` is the bridge
+> between the two. `get_concept` is `get`/`get_by_name`; `ancestors` and
+> `descendants` are `parents(id, relation)` and `all_subtypes(id)`, which are
+> relation-aware rather than a bare hierarchy walk. Five methods were
+> unlisted.
 
 #### `AIConcept`
 
@@ -1435,18 +1664,30 @@ pub struct AIConcept {
 
 ## Error Handling
 
-All fallible operations return `Result<T, RecursiveMachineIntelligenceError>`.
+All fallible operations return `Result<T, RmiError>`.
 
 ```rust
-pub enum RecursiveMachineIntelligenceError {
-    Compute(String),
-    Protocol(String),
+pub enum RmiError {
+    Primitive(String),
     Ontology(String),
-    Inference(String),
     Agent(String),
-    Io(std::io::Error),
+    Protocol(String),
+    Compute(String),
+    Serialization(String),
+    Io(#[from] std::io::Error),
+    ShapeMismatch { /* … */ },
+    ResourceExhausted(String),
+    InvalidConfig(String),
+    Neural(String),
+    Symbolic(String),
 }
 ```
+
+> **Corrected 2026-08-18.** The type is `RmiError`. The old name was a
+> rename artifact — a global `Rmi` → `RecursiveMachineIntelligence` pass
+> rewrote the *type* along with the prose, and no such type ever existed.
+> `Inference` is not a variant; six others were missing, including
+> `ResourceExhausted`, which the memory pool returns.
 
 ---
 

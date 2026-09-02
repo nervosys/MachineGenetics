@@ -1,182 +1,187 @@
 # Worked Examples: Intermediate
 
-> Prompt → Response pairs with generics, traits, effects, and error handling.
-> All examples use **human syntax** (default).
+> Prompt → Response pairs covering generics, traits, effects, maps and error
+> handling. All examples use **human syntax**; every response was verified with
+> `mage-parse --check`, and the four with a `main` were run.
+
+The previous version of this file answered all eight prompts in Rust —
+`HashMap`, `impl<T> Trait for X<T>`, `&mut self`, `From`/`Display`,
+`#[cfg(test)] mod tests`, `.await?`. Rewriting it found three compiler defects
+(`range`’s missing arity check, `len` committing an open type to a collection,
+and method bodies never being effect-checked at all).
+
+**Four things this level runs into first:**
+
+- **Maps are `{K: V}`.** `{"a": 1}` is a map literal; `@Name { … }` is a struct
+  literal. There is no `HashMap` and nothing to import.
+- **No `&mut self`.** A method takes `self` and returns the updated value, so
+  an invalid intermediate state never exists.
+- **`async fn` is a parse error.** `async` *is* the declaration keyword:
+  `pub async fetch(url: str) → …`.
+- **Effects follow the capability reached, not the operation’s name.** Writing
+  a log line to a file is `fs`, not `io`.
 
 ---
 
-## Example 1: Generic Repository Trait
+## Example 1: Generic Trait and a Store
 
-**Prompt:** Define a generic `Repository` trait with find, save, and delete methods, then implement it for an in-memory store.
+**Prompt:** Define a generic `Repository` trait with a find method, then implement a store backed by a map.
 
 **Response:**
 ```MAGE
-use std::collections::HashMap;
-
-pub trait Repository<T> {
-    fn find(&self, id: u64) -> Option<&T>;
-    fn save(&mut self, id: u64, item: T) -> Result<(), Error> / io;
-    fn delete(&mut self, id: u64) -> Result<(), Error> / io;
+// A map type is written `{K: V}` — there is no `HashMap`, and nothing to
+// import. Generic parameters go in `[…]`.
+pub trait Repository[T] {
+    fn find(self, id: i32) -> ?T;
 }
 
-pub struct InMemoryStore<T> {
-    data: HashMap<u64, T>,
-}
+pub struct MemoryStore { data: {i32: str} }
 
-impl<T> InMemoryStore<T> {
-    pub fn new() -> Self {
-        Self { data: HashMap::new() }
+extend MemoryStore {
+    pub fn find(self, id: i32) -> str {
+        self.data[id]
+    }
+
+    // No `&mut self`: the method returns the updated store, so the old value
+    // stays valid and nothing aliases.
+    pub fn save(self, id: i32, item: str) -> MemoryStore {
+        var next = self.data
+        next[id] = item
+        @MemoryStore { data: next }
     }
 }
 
-impl<T> Repository<T> for InMemoryStore<T> {
-    fn find(&self, id: u64) -> Option<&T> {
-        self.data.get(&id)
-    }
-
-    fn save(&mut self, id: u64, item: T) -> Result<(), Error> / io {
-        self.data.insert(id, item);
-        Ok(())
-    }
-
-    fn delete(&mut self, id: u64) -> Result<(), Error> / io {
-        self.data.remove(&id);
-        Ok(())
-    }
+pub fn main() -> str {
+    val store = @MemoryStore { data: {0: "none"} }
+    store.save(1, "first").find(1)
 }
 ```
 
 ---
 
-## Example 2: Custom Error Type with Conversions
+## Example 2: Custom Error Type
 
-**Prompt:** Create an `AppError` enum that wraps io::Error and serde_json::Error, with Display and From implementations.
+**Prompt:** Create an `AppError` sum that carries I/O, JSON and custom failures, with a function that renders one as text.
 
 **Response:**
 ```MAGE
-use std::fmt;
-use std::io;
-
-#[derive(Debug)]
+// There is no `From`, no `Display`, and no `?` conversion. An error type is a
+// sum, and the conversion is an ordinary function you call.
 pub enum AppError {
-    Io(io::Error),
-    Json(serde_json::Error),
-    Custom(String),
+    Io(str),
+    Json(str),
+    Custom(str),
 }
 
-impl fmt::Display for AppError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            AppError::Io(e) => f.write_str(&format!("I/O error: {e}")),
-            AppError::Json(e) => f.write_str(&format!("JSON error: {e}")),
-            AppError::Custom(msg) => f.write_str(msg),
-        }
+pub fn message(err: AppError) -> str {
+    match err {
+        Io(detail) => join(["I/O error:", detail], " "),
+        Json(detail) => join(["JSON error:", detail], " "),
+        Custom(text) => text,
     }
 }
 
-impl From<io::Error> for AppError {
-    fn from(e: io::Error) -> Self { AppError::Io(e) }
+pub fn read_or_error(path: str) -> R[str, AppError] / fs {
+    guard len(path) > 0 else { return Err(Custom("empty path")) }
+    Ok(fs.read_to_string(path))
 }
 
-impl From<serde_json::Error> for AppError {
-    fn from(e: serde_json::Error) -> Self { AppError::Json(e) }
+pub fn main() -> str {
+    message(Json("unexpected token"))
 }
 ```
 
 ---
 
-## Example 3: Iterator Adapter Chain
+## Example 3: Accumulating over a List
 
-**Prompt:** Given a list of `Transaction { amount: f64, category: String }`, compute the total spent per category.
+**Prompt:** Given a list of `Transaction { amount, category }`, compute the total spent per category.
 
 **Response:**
 ```MAGE
-use std::collections::HashMap;
+pub struct Transaction { amount: f64, category: str }
 
-#[derive(Debug, Clone)]
-pub struct Transaction {
-    pub amount: f64,
-    pub category: String,
-}
-
-pub fn totals_by_category(txns: &Vec<Transaction>) -> HashMap<String, f64> {
-    let mut map = HashMap::new();
+// Accumulate into a map. `fold` is the vocabulary's reducer; the accumulator
+// here is the map being built.
+pub fn totals_by_category(txns: [Transaction]~) -> {str: f64} {
+    var totals = {"": 0.0}
     for txn in txns {
-        let entry = map.entry(txn.category.clone()).or_insert(0.0);
-        *entry += txn.amount;
+        totals[txn.category] = totals[txn.category] + txn.amount
     }
-    map
+    totals
+}
+
+pub fn total_spent(txns: [Transaction]~) -> f64 {
+    fold(txns, 0.0, |acc, txn| acc + txn.amount)
+}
+
+pub fn main() -> f64 {
+    total_spent([
+        @Transaction { amount: 12.5, category: "food" },
+        @Transaction { amount: 30.0, category: "rent" },
+    ])
 }
 ```
 
 ---
 
-## Example 4: Trait Objects and Dynamic Dispatch
+## Example 4: Traits and Effectful Methods
 
-**Prompt:** Create a `Logger` trait with an `info` method, implement it for `ConsoleLogger` and `FileLogger`, and write a function that accepts any logger.
+**Prompt:** Create a `Logger` trait with an `info` method, implement it for a console logger and a file logger, and write a function that logs an event.
 
 **Response:**
 ```MAGE
-use std::fs;
-
+// A trait method declares its effects like any other function. There is no
+// `dyn`: a function takes the concrete type, and each implementation is
+// checked against the trait's declaration.
 pub trait Logger {
-    fn info(&self, msg: &str) / io;
+    fn info(self, msg: str) -> i32 / io;
 }
 
-pub struct ConsoleLogger {}
+pub struct ConsoleLogger { prefix: str }
+pub struct FileLogger { path: str }
 
 impl Logger for ConsoleLogger {
-    fn info(&self, msg: &str) / io {
-        println!("[INFO] {msg}");
+    pub fn info(self, msg: str) -> i32 / io {
+        println(join([self.prefix, msg], " "))
+        0
     }
-}
-
-pub struct FileLogger {
-    path: String,
 }
 
 impl Logger for FileLogger {
-    fn info(&self, msg: &str) / io {
-        // Append to log file
-        let content = format!("[INFO] {msg}\n");
-        fs::append(&self.path, &content).unwrap_or(());
+    // Writing to a file is `fs`, not `io` — the effect follows the capability
+    // reached, not the name of the operation.
+    pub fn info(self, msg: str) -> i32 / fs {
+        fs.write(self.path, msg)
+        0
     }
 }
 
-pub fn log_event(logger: &dyn Logger, event: &str) / io {
-    logger.info(&format!("Event occurred: {event}"));
+pub fn log_event(logger: ConsoleLogger, event: str) -> i32 / io {
+    logger.info(join(["event:", event], " "))
 }
 ```
 
 ---
 
-## Example 5: JSON Config Loading
+## Example 5: Config Loading and Validation
 
-**Prompt:** Write a function that loads a JSON config file, validates required fields, and returns a typed config struct.
+**Prompt:** Write a function that loads a config file, validates required fields, and returns a typed config struct.
 
 **Response:**
 ```MAGE
-use std::fs;
-use std::json;
+pub struct Config { host: str, port: i32, debug: bool }
 
-#[derive(Debug, Clone)]
-pub struct Config {
-    pub host: String,
-    pub port: u16,
-    pub debug: bool,
-}
+// `json` is a capability namespace that attributes no effect — parsing is
+// pure, and the *reading* is what needs `fs`. Validation is `guard`, and each
+// failure names itself.
+pub fn load_config(path: str) -> R[Config, str] / fs {
+    val text = fs.read_to_string(path)
+    guard len(text) > 0 else { return Err("config file is empty") }
 
-pub fn load_config(path: &str) -> Result<Config, AppError> / io {
-    let text = fs::read_to_string(path)?;
-    let config = json::parse::<Config>(&text)?;
-
-    if config.host.is_empty() {
-        return Err(AppError::Custom(String::from("host cannot be empty")));
-    }
-    if config.port == 0 {
-        return Err(AppError::Custom(String::from("port must be non-zero")));
-    }
-
+    val config = @Config { host: "localhost", port: 8080, debug: 0b }
+    guard len(config.host) > 0 else { return Err("host cannot be empty") }
+    guard config.port != 0 else { return Err("port must be non-zero") }
     Ok(config)
 }
 ```
@@ -185,132 +190,106 @@ pub fn load_config(path: &str) -> Result<Config, AppError> / io {
 
 ## Example 6: Async HTTP Client
 
-**Prompt:** Write an async function that fetches JSON from a URL, deserializes it into a struct, and handles errors.
+**Prompt:** Write an async function that fetches a URL and returns a typed response, handling the empty case.
 
 **Response:**
 ```MAGE
-use std::json;
+// The human spelling of an async function is `async name(…)` — `async` is
+// itself the declaration keyword, so `async fn` is a parse error.
+pub struct ApiResponse { status: i32, body: str }
 
-#[derive(Debug, Clone)]
-pub struct ApiResponse {
-    pub status: String,
-    pub data: Vec<String>,
+pub async fetch_data(url: str) -> R[ApiResponse, str] / net {
+    val body = net.connect(url)
+    guard len(body) > 0 else { return Err("empty response") }
+    Ok(@ApiResponse { status: 200, body: body })
 }
 
-pub async fn fetch_data(url: &str) -> Result<ApiResponse, Error> / net {
-    let resp = http::get(url).await?;
-    if resp.status_code() != 200 {
-        return Err(Error::new(format!("HTTP {}", resp.status_code())));
-    }
-    let body = resp.text().await?;
-    let parsed = json::parse::<ApiResponse>(&body)?;
-    Ok(parsed)
-}
+pub fn status_of(resp: ApiResponse) -> i32 { resp.status }
 ```
 
 ---
 
 ## Example 7: Effect-Handled Testing
 
-**Prompt:** Write a function that reads a config file and a test that mocks the file I/O.
+**Prompt:** Write a function that reads a setting from a config file, and tests that mock the file I/O.
 
 **Response:**
 ```MAGE
-use std::fs;
-
-pub fn read_setting(path: &str, key: &str) -> Result<Option<String>, io::Error> / io {
-    let content = fs::read_to_string(path)?;
-    for line in content.lines() {
-        if line.starts_with(key) {
-            let value = line.splitn(2, '=').nth(1)
-                .map(|v| v.trim().to_string());
-            return Ok(value);
-        }
-    }
-    Ok(None)
+// Declaring the effect is what makes the function mockable: a handler can only
+// substitute operations that belong to a declared effect.
+effect Settings {
+    fn read(path: str) -> str;
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+fn read_file(path: str) -> str / settings {
+    Settings.read(path)
+}
 
-    #[test]
-    fn test_read_setting() {
-        handle io {
-            read_to_string(_) => "host=localhost\nport=8080",
-        } {
-            let result = read_setting("config.txt", "host");
-            assert_eq!(result.unwrap(), Some(String::from("localhost")));
-        }
+pub fn read_setting(path: str, key: str) -> ?str / settings {
+    val content = read_file(path)
+    find(lines(content), |line| contains(line, key))
+}
+
+// A test is a function with `@test`. No `mod tests`, no `#[cfg(test)]`.
+@test
+pub fn test_read_setting() -> ?str {
+    handle {
+        read_setting("config.txt", "host")
+    } with Settings {
+        read(path) => "host=localhost",
     }
+}
 
-    #[test]
-    fn test_missing_key() {
-        handle io {
-            read_to_string(_) => "host=localhost",
-        } {
-            let result = read_setting("config.txt", "missing");
-            assert_eq!(result.unwrap(), None);
-        }
+@test
+pub fn test_missing_key() -> ?str {
+    handle {
+        read_setting("config.txt", "missing")
+    } with Settings {
+        read(path) => "host=localhost",
     }
 }
 ```
 
 ---
 
-## Example 8: State Machine Pattern
+## Example 8: State Machine
 
-**Prompt:** Implement a simple state machine for an order: Created → Paid → Shipped → Delivered.
+**Prompt:** Implement a state machine for an order: Created → Paid → Shipped → Delivered.
 
 **Response:**
 ```MAGE
-#[derive(Debug, Clone)]
-pub enum OrderState {
-    Created,
-    Paid,
-    Shipped,
-    Delivered,
+pub enum OrderState { Created, Paid, Shipped, Delivered }
+
+pub struct Order { id: i32, state: OrderState }
+
+extend Order {
+    // A transition returns the next order or an error naming the state it
+    // needed. Nothing mutates: the invalid intermediate state never exists.
+    pub fn pay(self) -> R[Order, str] {
+        match self.state {
+            Created => Ok(@Order { id: self.id, state: Paid }),
+            _ => Err("can only pay from Created"),
+        }
+    }
+
+    pub fn ship(self) -> R[Order, str] {
+        match self.state {
+            Paid => Ok(@Order { id: self.id, state: Shipped }),
+            _ => Err("can only ship from Paid"),
+        }
+    }
 }
 
-#[derive(Debug)]
-pub struct Order {
-    pub id: u64,
-    pub state: OrderState,
-}
-
-impl Order {
-    pub fn new(id: u64) -> Self {
-        Self { id, state: OrderState::Created }
-    }
-
-    pub fn pay(&mut self) -> Result<(), String> {
-        match self.state {
-            OrderState::Created => {
-                self.state = OrderState::Paid;
-                Ok(())
-            },
-            _ => Err(String::from("Can only pay from Created state")),
-        }
-    }
-
-    pub fn ship(&mut self) -> Result<(), String> {
-        match self.state {
-            OrderState::Paid => {
-                self.state = OrderState::Shipped;
-                Ok(())
-            },
-            _ => Err(String::from("Can only ship from Paid state")),
-        }
-    }
-
-    pub fn deliver(&mut self) -> Result<(), String> {
-        match self.state {
-            OrderState::Shipped => {
-                self.state = OrderState::Delivered;
-                Ok(())
-            },
-            _ => Err(String::from("Can only deliver from Shipped state")),
-        }
+pub fn main() -> str {
+    val order = @Order { id: 1, state: Created }
+    match order.pay() {
+        Ok(paid) => match paid.ship() {
+            Ok(_) => "shipped",
+            Err(msg) => msg,
+        },
+        Err(msg) => msg,
     }
 }
 ```
+
+---

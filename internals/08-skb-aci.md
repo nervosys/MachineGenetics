@@ -32,19 +32,39 @@ warnings, intelligent debugging, and performance advice.
 
 ### Rule Database
 
-Rules live in `skb/rules/` as JSON files organised by category:
+**Corrected 2026-08-25.** This section said "Rules live in `skb/rules/` as JSON
+files organised by category" and listed six files. **Nothing reads those
+files.** The rules the compiler serves are compiled in, from `builtin_rules()`
+in `prototype/src/skb.rs`.
 
-```
-skb/
-├── manifest.json          # lists all rule files
-├── rule-schema.json       # JSON Schema for rules
-└── rules/
-    ├── ownership.json     # OWN-xxxx rules
-    ├── borrowing.json     # BR-xxxx rules
-    ├── lifetimes.json     # LT-xxxx rules
-    ├── type_safety.json   # TS-xxxx rules
-    ├── concurrency.json   # CON-xxxx rules
-    └── ffi.json           # FFI-xxxx rules
+| | Rules | Databases |
+|---|---|---|
+| **`builtin_rules()` — what the compiler uses** | **255** | 8 |
+| `skb/rules/*.json` — read by no crate | 56 | 6 |
+
+The compiled counts are pinned by a test (`rule_counts_per_database`):
+Ownership 40, Borrow 40, Lifetime 35, TypeSafety 40, Concurrency 35, FFI 20,
+**AgentElision 30, SwarmSafety 15**. The last two have no JSON file at all —
+they are the MAGE-specific databases, and the on-disk tree predates them.
+
+The JSON tree is real and is not junk — `skb/manifest.json`, a
+`skb/rule-schema.json`, and six rule files — but **editing it changes nothing**,
+and its two filenames the old text gave were wrong anyway (`borrowing.json` and
+`lifetimes.json`; the files are `borrow.json` and `lifetime.json`). This is the
+`stdlib/` shape: a directory that looks authoritative, is read by nothing, and
+diverges silently from the thing that is.
+
+The query surface is in `skb.rs` and exposed over RAP as `skb/query`,
+`skb/rules` and `skb/spec` — note that `skb/rules` there is a **method name**,
+not a path, which is easy to mistake for evidence the directory is loaded:
+
+```rust
+pub fn rule_count() -> usize;
+pub fn rule_counts_by_db() -> Vec<(RuleDatabase, usize)>;
+pub fn query_rules_by_db(db: RuleDatabase) -> RuleQueryResult;
+pub fn query_rules_by_category(category: &str) -> RuleQueryResult;
+pub fn query_rules_by_tag(tag: &str) -> RuleQueryResult;
+pub fn query_rule_by_id(id: &str) -> Option<Rule>;
 ```
 
 ### Rule Schema
@@ -85,6 +105,8 @@ Key fields:
 
 The matcher walks the HIR looking for patterns that match rule
 constraints:
+
+**Not implemented.** Design sketch — no such item exists in `prototype/src`. See Chapter 1's status note for what the compiler actually is.
 
 ```rust
 pub struct RuleMatch {
