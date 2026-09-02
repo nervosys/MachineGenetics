@@ -43,14 +43,26 @@ which is how PR #4 once landed with CI still pending. So the merge is a human
 action, and until someone takes it `master` keeps the `nanoid` advisory that
 `handoff` fixes. That is the only item here with an outside clock on it.
 
-**It went unmergeable on 2026-08-31, and that turned CI off rather than red.**
-`master` had published `.well-known/ironstack.json`; this branch had published
-the identical file and then fixed it twice, so the two adds conflicted. CI here
-runs on `pull_request` only — `push` is filtered to `master` — and GitHub cannot
-build a merge ref for a conflicted PR, so the workflow did not run at all. The
-commit after that touched `prototype/**`, `scripts/**` and three pinned
+**It went unmergeable on 2026-08-26, and that turned CI off rather than red.**
+`master` published `.well-known/ironstack.json` in `83d2852f3`; this branch had
+published the byte-identical file in `f09f2640a`. That is an add/add of the same
+content, which git merges **cleanly** — so the file sat on both sides for a week
+and nothing was wrong. The conflict began the moment the content diverged, in
+`87ec57858`, and every commit from there was affected:
+
+| Commit | Merges with master | CI run |
+|---|---|---|
+| `c66952c2a` (08-25) | cleanly — file identical | ran, green |
+| `87ec57858` (08-26) | **conflict** | none |
+| `5d150edfc` (08-31) | **conflict** | none |
+| `1ffcac82e` (09-01) | **conflict** | none |
+| `3535400ee` (09-01, the merge) | resolved | ran, green |
+
+CI here runs on `pull_request` only — `push` is filtered to `master` — and
+GitHub cannot build a merge ref for a conflicted PR, so the workflow did not run
+at all. `1ffcac82e` touched `prototype/**`, `scripts/**` and three pinned
 documents, every one of them in the paths filter, and got **no run**. Merged on
-2026-09-01, resolved in favour of this branch's two fixes (master's version is
+2026-09-01 in favour of this branch's two fixes (master's version is
 byte-identical to this branch's file before them, so nothing was dropped); the
 next push produced a run, green, which is what confirmed the cause.
 
@@ -59,6 +71,16 @@ every commit" above was true of every commit CI ran, and that is a different
 sentence. Check that a run *exists* for the SHA, not only that the last one
 passed — `gh run list --json headSha` — which is the same discipline as reading
 a checker's "skipped" line and not only its exit status.
+
+**And the `pull_request` paths filter is not the `push` one.** It is evaluated
+against the pull request's *accumulated* diff, not the files in the commit you
+just pushed: `c66952c2a` changed `HANDOFF.md` alone — a path in no filter list —
+and was tested, because the PR as a whole touched `prototype/**`. So a
+documentation-only commit on this branch **is** covered, and a missing run means
+something is wrong rather than filtered. I first recorded the opposite here, and
+used it to excuse two of the three silent commits as ordinary. They were not
+ordinary; they were the same defect, and saying so confidently made the record
+worse than saying nothing.
 
 ---
 
@@ -2351,6 +2373,15 @@ doc_evals=M
   `gh run list --limit 1` then hands you an *older* commit's success. Select the
   run by `headSha` and confirm one exists — the same trap as reading a run list
   that raced the push, one step earlier.
+- **An add/add of *identical* content is not a conflict.** The same file
+  published on both sides sat there for a week and merged cleanly; the conflict
+  started when one side edited it. So "when did this stop merging" is answered by
+  the commit that changed the content, not the one that added the file — and
+  `git merge-tree --write-tree <master> <sha>` answers it per commit in a loop,
+  which is faster than reasoning about dates and does not get it wrong.
+- **`pull_request` paths filters read the whole PR diff, not your push.** A
+  commit touching only `HANDOFF.md` is still tested on a PR that touches
+  `prototype/**`. Do not excuse a missing run as "filtered" without checking.
 - **Regenerate the ontology from a *rebuilt* binary.** One commit shipped a stale
   `MAGE_ONTOLOGY.json` because `--emit-ontology` ran from a binary built before
   the change. `cargo test` builds the test harness, not `mage-parse`.
