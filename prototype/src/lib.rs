@@ -32,6 +32,7 @@ pub mod cost_calibration;
 pub mod crdt;
 pub mod decompose;
 pub mod effects;
+pub mod differentiable;
 pub mod eval;
 pub mod elision;
 pub mod evolve_gen;
