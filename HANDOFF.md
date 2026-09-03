@@ -1,10 +1,20 @@
-# Handoff — through 2026-08-25
+# Handoff
 
 What this repository is, what state it is in, and what to do next. Written for
 someone picking it up cold.
 
----
+Read it in this order. **Where things stand** is the verified state and how to
+reproduce it. **Start here** is the work. **Traps** will save you the most time
+per line. The **failure taxonomy** is the long part and the reason this document
+is worth its length: it is a catalogue of the specific ways claims in this
+repository have turned out to be false, kept because the shapes recur.
 
+Every number below is measured by a command named beside it, and most are pinned
+by `scripts/check-doc-counts.sh` — 92 of them — so a figure that drifts fails CI
+rather than surviving in prose. That mechanism exists because the figures did
+drift, repeatedly, and for months.
+
+---
 ## Where things stand
 
 `master` is green and released. Everything below is verified, not asserted —
@@ -48,686 +58,44 @@ retargeted them and the content cascaded sideways. It was caught by looking at
 
 ---
 
-## What changed on 2026-08-19 → 24, and what it cost
-
-Eight commits. Every open item that could be closed from inside this repository
-is closed; what remains is listed under [Open items](#open-items) with a reason
-attached to each.
-
-| Item | Outcome |
-|---|---|
-| 0 — unpushed branch | Pushed. PR #6 open, CI green, **not merged** (see above) |
-| 1 — module system | **Declined.** One flat namespace, `MAGE_SPEC.md` §2.3 normative. `use` is now an error; `stdlib/` deleted, 26 files and 4,402 lines |
-| 4 — RAP error shape | **Fixed.** Protocol failures use the JSON-RPC `error` member; program failures stay in `result` |
-| 10 — multi-shot resumption | **Declined.** §11.6 normative. No `resume` keyword, no CPS rewrite |
-| 14 — `token-bench` gating | **Fixed.** Shrink-only baseline; the status reports movement, not the size of a known set |
-| 15 — `rmi` `cuda` feature | **Feature builds now.** `cuda = []`; cudarc was mandatory for a feature gating nothing that could run |
-| 16 — `Relaxed` refcount | **Fixed, and it was unsound** — not "not demonstrated unsound", as recorded |
-| 17 — `rmi` `wasm` feature | **Fixed** the day it was filed. Two lines |
-| 18 — fabricated `DeviceInfo` | **New, and open.** The ontology half is fixed; the behaviour half is upstream's |
-
-**Two decisions, not two implementations.** Items 1 and 10 were both filed as
-real work, unstarted. Neither was: each was a design question nobody had
-answered, and an undecided design is indistinguishable from an unimplemented one
-from outside. Both closed by writing the answer down normatively and pinning it
-with a test that fails when someone starts building the thing that was declined.
-For item 10 that pin is `resume` remaining a usable identifier — reserving the
-word is the first edit multi-shot needs, so it trips before the 39 expression
-forms get touched.
-
-**Two more were mis-framed the other way.** Items 15 and 17 were filed as
-"vendored — owner's call", and that framing was repeated three times in this
-session before anyone checked it. The real blockers were two lines and one
-deleted dependency. Only `cuda_full.rs` genuinely belongs upstream. **Five of
-the eight closures came from re-reading how an item was filed, not from writing
-much code** — which is worth knowing before trusting any remaining row's
-triage, including the ones below.
-
-**Two new instruments**, both of which found something on their first run:
-
-- `check-orphan-sources.sh` found `compute/wasm.rs` — 208 lines nothing
-  compiled, whose backend the crate advertised to callers.
-- `check-ignored-tests.sh` found `perf_report` — the harness behind the ABL
-  scaling figures in `MEASUREMENTS.md`, compiled by every `cargo test` and
-  executed by nothing.
-
-Together they cover **two of the three** ways code sits in the tree without ever
-running: a file no `mod` reaches, and a test no schedule names. The third —
-example and bench targets, which `cargo build` and `cargo test` do not compile —
-was found open on 2026-08-25 with ten files in it, and is covered by a CI step
-now. This sentence said "the two ways" until then, which is the confidence a
-pair of instruments buys you whether or not it is warranted.
-
-**Left undone, and known** — *done 2026-08-25, see below.* `SECURITY_AUDIT.md`
-§1's accepted-risk register was still not compared against what `cargo audit`
-actually reports, the gap that document names itself. It now is:
-`scripts/check-security-register.sh`. And §1 said "four committed lockfiles"
-while the CI job is named "all five" — the fifth is git-ignored and resolved
-fresh, so the two describe different surfaces and neither said so. §1 now says
-so.
-
 ---
 
-## What changed on 2026-08-25
-
-One commit, closing the item the section above left open.
-
-`scripts/check-security-register.sh` compares `SECURITY_AUDIT.md` §1's
-accepted-risk register against what `cargo audit` reports across all five
-lockfile surfaces, plus `npm audit` on `video/`. It fails in both directions —
-an advisory reported by some surface with no row in the table, **and** a row
-marked **Accepted** that no surface reports any more — which is the shape the
-register's own history demands, because it had drifted both ways at once.
-
-**The register agrees today, and that is the finding.** All five surfaces were
-re-run: four committed lockfiles report zero findings of any kind, and `paste`
-(RUSTSEC-2024-0436, unmaintained) is reported only by `rmi`'s git-ignored
-lockfile, exactly as §1 records. `npm audit` on `video/` is 0. Nothing had
-changed since 2026-08-18 — but nothing had *established* that either, which is
-the difference the script makes. The `Vulnerabilities` row above says to treat
-that line as a claim with a date on it; it now has a mechanism instead.
-
-Three things are worth carrying out of building it:
-
-- **The "Accepted" direction only works over the union of all five surfaces.**
-  `paste` is reported by exactly one — the git-ignored one — so a check that
-  audited only the four committed lockfiles would have declared a correct row
-  stale. The narrower scope is the more defensible-sounding one, and it would
-  have been wrong.
-- **A row the check cannot classify is a failure, not a pass.** If a Status
-  column says none of FIXED / Accepted / "No longer applies", the script says
-  so and exits 1. That is rule 8 applied at row granularity: a row outside the
-  assertion's reach must not look like a row that passed.
-- **The npm total is summed from the severity buckets, not read from
-  `"total"`.** `npm audit --json` has two keys named `total` —
-  `vulnerabilities.total` and `dependencies.total`, which is 293 here — and
-  telling them apart by document order is a parse that reads the package count
-  as a vulnerability count on the day that order changes. Verified against
-  synthetic reports with the blocks in both orders.
-
-Verified by breaking it, five ways, each failing for its own reason: a reported
-advisory deleted from the table, an Accepted row flipped to FIXED, an invented
-Accepted row nothing reports, an unclassifiable Status column, and the `## 1.`
-heading renamed. The npm arm reads 0 against the live surface no matter what
-the table says, so no break test reaches it; its parser was tested separately
-against synthetic reports, including the shape-changed case, which must yield
-"cannot parse" rather than 0.
-
-**The first version told a correct document it was wrong.** Testing the path
-CI actually depends on — the git-ignored lockfile absent, because CI generates
-it in a prior step — the check reported the missing surface *and then* reported
-`paste`'s Accepted row as an acceptance that had stopped applying, advising
-that it be struck through. Both messages were produced by one cause, and the
-second sends someone to edit a row that was right. That is the trap already
-recorded under Traps — **a checker must distinguish "wrong" from "not
-checked", because the two have opposite remedies.** The "accepted but reported
-nowhere" direction now runs only when every surface was audited, and says so
-when it does not. The other direction — "recorded as fixed and reported again"
-— still runs on a partial set, because a finding that is there is there.
-
-**And running it in CI corrected §1.** The row saying the `paste` warning is "a
-property of a local resolve rather than of this repository" was the right
-phrasing for `crossbeam-epoch 0.9.18`, a stale artifact in one working copy.
-`paste` is not that: CI resolves `rmi`'s lockfile from scratch and reports the
-identical single advisory, so a fresh consumer gets it too. It is git-ignored,
-not local. The two look the same in a report, and only the fresh resolve tells
-them apart — which is the argument for the CI job auditing five surfaces while
-§1 counts four.
-
-**A trap, paid for in this session.** The break-test harness restored the
-document between cases with `git checkout -- SECURITY_AUDIT.md`, which also
-reverted the *uncommitted documentation edits* made earlier in the same
-session. `git checkout --` does not distinguish your experiment from your work.
-Commit before running a harness that reverts, or point it at a copy.
-
-### Then §2–§4, which nothing had ever checked
-
-§1 now has an instrument. The rest of `SECURITY_AUDIT.md` does not, and its
-claims are specific enough to check — which the taxonomy says is the one thread
-worth pulling through code. Four results, three of them defects:
-
-**§3's `unsafe` count was still wrong, after being corrected once.** It said
-"the real surface is **9** `unsafe` blocks in `memory_pool.rs`". There are
-**13**: 9 blocks plus **4 `unsafe impl Send`/`Sync`** on `Slab` and
-`TensorBuffer`. The omitted four are the higher-risk half — a block's soundness
-is local, an `unsafe impl` is an unchecked global assertion — and they are
-exactly where the fifth defect was. This is the same row that previously
-asserted the allocator did not exist at all. **Corrected twice now, understated
-both times, and both times the omitted part was where a real bug lived.**
-
-**§5 described a fixed data race as an open question.** It called the four
-`unsafe impl` "defensible under the refcount discipline", said reading the
-counter `Relaxed` while gating mutation was "a synchronisation decision rather
-than a counter — worth a second opinion from someone who owns this code", and
-left it there. That hedge is how it survived: item 16 wrote the interleaving
-down and it *is* a data race on the ordinary sharing path, fixed 2026-08-19 by
-making the load `Acquire` (`memory_pool.rs:516`, verified). A security document
-saying "possibly fine, someone should look" about a defect that was found and
-fixed six days earlier is decay in the direction that reads as caution.
-
-**§2's "no TLS" claim is true, and worth recording as checked.** `--rap` really
-is plaintext JSON-RPC over TCP; the `rustls` implementation behind
-`--features tls` is `ribosome`'s *worker transport* (`ribosome/src/tls.rs`),
-not RAP, so it does not contradict §2 — which it looks like it might, given
-open item 3. A negative result, recorded so nobody re-derives it.
-
-**The inventory is now pinned.** `test-all.sh` emits `unsafe_memory_pool`,
-`unsafe_cuda_full` and `unsafe_cuda_backend` from the same expression §3 tells
-a reader to run, and four `CHECKS` rows compare them against the two documents
-that state them — pinning both of `cuda_full.rs`'s mentions to one key, as the
-rule above requires. Verified in both directions: a measured value that
-disagrees is reported as a mismatch, and a reworded claim is reported as a
-pattern that no longer matches. Documented-count pins are now **84**.
-
-Confirmed by the same sweep, so it is measured rather than assumed: **the only
-Rust `unsafe` anywhere in the owned crates** is 3 blocks in
-`prototype/src/cuda_backend.rs`, 13 in `memory_pool.rs` and 16 in the
-never-compiled `cuda_full.rs`. `forge`, `ribosome` and `germline` have none,
-and neither do rmi's benches or examples. Everything else matching `unsafe` in
-`prototype/src` — 74 hits across 16 files — is the *MAGE keyword*, not Rust.
-§3 named three files as keyword-only hits; there are sixteen.
-
-### And §2–§4, where the guards worked and nobody could tell
-
-Five more results, one of them a fix.
-
-**Both ABL container decoders exited 0 on every corrupt container.**
-`--from=abl-bytes` and `--run=abl-bytes` hand-roll the same `take()`-guarded
-decoder, and §3 cites it as evidence that decode is bounds-validated. It is:
-eight malformed containers — truncated header, bad magic, bad version, a
-four-billion item count, and `name_len`/`expr_len` at the `u32` ceiling — each
-produce a clean diagnostic and **no panic, abort or hang**, through both entry
-points. That claim is now measured rather than read.
-
-But every one of those eight **exited 0**, while the same `match` arm exits 1
-when the file merely cannot be read. A caller driving the tool by exit status —
-which is how an agent drives it — could not distinguish a decoded container
-from a rejected one. **This is "detected, recorded, and never surfaced"**, the
-same shape as the unknown net layer lowered to `Op::IDENTITY`: the guard fires,
-prints, and returns success. Fixed, and pinned by
-`prototype/tests/abl_container_exit_status.rs`, the repository's first
-integration test that spawns the binary — because the failure *is* a process
-exit status and `std::process::exit` cannot be observed from inside the
-binary's own harness. Verified by reverting the fix and watching the corrupt
-case fail. The test asserts both directions: a valid container must still exit
-0, which is what catches an over-eager fix that makes the decoder always fail.
-
-**A near-finding, recorded as a non-finding.** `take`'s bound is
-`*pos + n > buf.len()`, an unchecked add, and the identical shape had already
-been a real defect in rmi (`TensorBuffer::slice`, fixed with `checked_add`).
-Here it is not reachable: `n` comes from a `u32` field and `pos` from the
-buffer, so it cannot overflow a 64-bit `usize`, and on a 32-bit target it would
-wrap to a panicking slice range rather than an out-of-bounds read. **Written
-down as a parenthetical rather than reported as a defect** — the taxonomy's
-"reproduce before believing" applies to one's own pattern-matching too.
-
-**§4's RA row still recommended what had been done twenty days earlier** —
-"Recommend wiring `cargo audit`/`cargo deny` into CI as a gate (the one
-concrete CI action item)", wired 2026-08-05 — and the "Open recommendations"
-section on the same page already said so. Two parts of one document
-disagreeing, neither noticed.
-
-**§4's CM row claimed `Cargo.lock` committed → reproducible builds ✅**, where
-`git ls-files '*Cargo.lock'` returns **four**. The fifth is git-ignored by
-design. Same four-versus-five distinction as §1, unqualified in both places
-until now.
-
-**"Confirmed zero secret/credential material (leak scan)" named no tool, no
-corpus and no date.** Re-run over 559 tracked files against high-signal issuer
-patterns — still zero — and the line now says what it does *not* cover: no
-entropy analysis, no history scan, and no `gitleaks`/`trufflehog` installed
-here. A vague claim is unfalsifiable and therefore safe to ignore, which is the
-worst thing a security assertion can be.
-
-**Two §3 claims verified true and left alone**: the RAP non-loopback refusal
-(rc=2, and the `MAGE_RAP_ALLOW_REMOTE=1` override warns then binds — both
-halves run, where the row had only ever exercised one), and the subprocess
-backend passing argv rather than a shell string (`Command::new(prog).args(…)`,
-the only two `Command::new` sites in `prototype/src`). Negative results are
-worth recording so the next person does not re-derive them.
-
-### §2 said there were no signatures. There are two signature schemes.
-
-The largest single find of the session, and the one that best explains why the
-rest of this document exists.
-
-`SECURITY_AUDIT.md` §2 — the FIPS/cryptographic-posture section — inventoried
-three primitives (SHA-256 for content-addressing, xxHash, an LCG) and concluded
-**"No secret keying, no signatures, no KDF"**, and from that, that the FIPS gap
-"affects compliance posture, not present-day confidentiality."
-
-What the repository actually contains:
-
-| | Where |
-|---|---|
-| **HMAC-SHA256 under a fleet secret key**, hand-rolled (RFC 2104) | `ribosome/src/mac.rs`, used by **three** call sites |
-| **Ed25519 signatures** over build provenance, per-worker private seeds, `TrustStore` with revocation | `ribosome/src/provenance.rs` |
-| **Constant-time comparison** | `ribosome/src/mac.rs` |
-| **Challenge-response worker authentication** | `ribosome/src/remote.rs` |
-| **TLS 1.3** (`rustls` + `ring`) behind `--features tls` | `ribosome/src/tls.rs` |
-
-There is secret key material in this system, and the section whose job is to
-inventory cryptography listed none of it.
-
-**The code is not the problem, and saying so matters.** The hand-rolled HMAC is
-verified against **RFC 4231 cases 1–3**, long-key case included — a claim its
-own module comment makes, which I checked because it is specific enough to
-check. Comparison is constant-time. `provenance.rs` states its trust model at
-the top, including the limitation that HMAC is symmetric so any verifier can
-also mint, and names asymmetric keys as the fix — then implements them. This is
-careful work. **The defect is entirely in the document.**
-
-**Why it happened is the mechanism, not the oversight.** The **Scope** line at
-the top of `SECURITY_AUDIT.md` named three surfaces: `rmi`, `prototype`,
-`agentic-eval`. `ribosome` and `germline` were extracted from `forge` later
-(§1's own note, steps 148–149). §1 was widened to audit five lockfiles. §2's
-scope never moved. Every cryptographic mechanism in the repository arrived
-inside crates that the crypto section did not consider itself to cover.
-
-**An absence claim cannot fail loudly.** "There is no X" stays green by doing
-nothing, and a scope change expires it silently — with no diff, no failing
-test, and no reader able to tell. That is the worst property a security finding
-can have, and it is the reason this one survived while numeric claims in the
-same document were caught by pins.
-
-`scripts/check-crypto-inventory.sh` now fails when a crypto dependency in any
-`Cargo.toml` is not named in §2, when §2's inventory **table** names a crate no
-lockfile contains, and when a **hand-rolled** primitive exists that §2 never
-mentions — the last because `mac.rs`'s HMAC has no manifest entry and is
-invisible to every dependency scan, which is exactly how it went unlisted.
-Verified by breaking all five cases, plus a sixth to isolate the second
-direction, which the obvious break did not reach.
-
-**Its first draft cried wolf four times on a correct document**, and fixing
-that is the more useful lesson. Comparing every crypto name appearing anywhere
-in §2 against the *direct* dependencies reported `ring` (real, reached through
-`rustls`'s feature rather than declared), `ed25519` (real, pulled in by
-`ed25519-dalek`), `signature` (a real crate *and* an ordinary English word in a
-section about signatures), and `aws-lc-rs` (the FIPS migration target §2
-recommends — a dependency the repository deliberately does **not** have). Four
-failures, all wrong. Per rule 10 that is worse than no check: an instrument
-that cries wolf converts "unknown" into "passing" as soon as people learn to
-skip it. The fix was to narrow what the check treats as a *claim* — the table's
-Crate column is where the document asserts a dependency; prose is where it
-discusses one — and to compare against the **lockfiles** rather than the
-manifests, so a transitive or feature-gated crate is not called missing.
-
-Two smaller things fell out of the same reading: §2's "no transport encryption"
-was true of RAP and false of the repository, and `mac.rs`'s own doc comment said
-"two subsystems" where there are three — the third being the worker handshake,
-a different *use* of the key, which is precisely what an auditor tracing key
-material needs the list for.
-
-### A negative result, and the narrow hole beside it
-
-Worth recording because it is the first thread this session that came back
-mostly clean. `DOCS.md` opens "There are 22 Markdown documents at the
-repository root… **This index says which is which**" — a universal claim,
-guarded only by the `root_docs` *count* pin. Checked by hand: **all 22 are
-indexed, and every root document `DOCS.md` names exists.** The claim holds.
-
-The hole is narrower than the claim and real: a count catches adding a document
-and forgetting the number, but **not** adding one, updating the number, and
-forgetting the entry — nor two documents swapped in the same commit, which nets
-to zero. That is rule 4 again, one size down: a claim that says "every",
-guarded by a check that counts. `scripts/check-docs-index.sh` closes it in both
-directions, including a dead pointer left behind by a rename.
-
-Also measured, and *not* a defect: **13 documentation directories are indexed
-nowhere** — `agent-guide/`, `cookbook/`, `internals/`, `migration-guide/`,
-`quick-start/` and others, 68 files between them. `DOCS.md` scopes itself to
-the root in its first sentence, so this breaks no promise. It is worth knowing
-anyway, because `internals/` turned out to describe a compiler that was never
-built, and one reason it went unexamined this long is that no index points at
-it. Recorded rather than fixed: an index nobody has committed to maintaining is
-the next thing to go stale.
-
-### The internals rewrite: nine files, three compiler findings
-
-All of `internals/` was gone through against `prototype/src` on 2026-08-25.
-What nine files came to:
-
-| Outcome | Chapters |
-|---|---|
-| Described a system that does not exist | **1** (query engine, nine crates), **6** (MLIR → LLVM → machine code) |
-| Real machinery under wrong names | **2**, **3**, **4**, **7** |
-| Documented something that parses and is discarded | **2** (parser recovery), **4** (trait bounds), **8** (the rule JSON) |
-| Already correct — re-run rather than trusted | **5** |
-
-The one that inverts the usual lesson: **rewriting documentation found three
-compiler defects.** Reading code to describe it accurately is a different
-activity from reading it to review it, and it reaches places review does not:
-items 21 (`~>` bounds parse and are discarded), 22 (the Neovim LSP
-registration cannot work, for three independent reasons), and 23 (`skb/` is 56
-rules nothing reads while the binary serves 255).
-
-**Item 21 has since been half-closed.** The compiler now reports every bound
-it discards (2026-09-01), at all ten surface forms that can carry one.
-
-Covering all of them rather than functions alone also produced item 24 — `Y`
-and `D` carrying a `generics` field the parser supposedly never fills — which
-was **withdrawn on 2026-09-02 as false**. See the taxonomy's §5; the two parse
-errors I read as a missing feature were a missing `;` and the wrong record
-delimiter, both mine.
-
-Two patterns worth carrying:
-
-**Under-claiming is as common as invention.** Chapter 6 described a backend
-that does not exist; Chapter 7 documented **3 of 37** RAP methods and listed
-eleven "planned" ones that had shipped under different names. Chapter 3's
-enums were each a *partial* listing presented as a definition — `ItemKind` 11
-of 20, and the nine missing were exactly MAGE's distinctive constructs
-(`Agent`, `Net`, `Kb`, `Swarm`, `Train`, …). A reader learning the AST from it
-would not know those are items at all.
-
-**The name-level checker passed nearly all of it**, which is its documented
-limit stated in numbers: it cannot see a partial enum, a wrong signature, or a
-type used in a signature it never defines (`NodeId` appeared in three
-signatures and exists nowhere).
-
-**And two of the mistakes were mine.** A false cross-reference introduced in
-the very commit that corrected Chapter 6 — sending readers to Chapter 8 for a
-GPU story it does not tell — caught two chapters later; and a Chapter 4 commit
-that turned CI red by adding a MAGE block, moving two pinned counts, and going
-unnoticed while two more commits landed on top. Both are recorded where they
-happened. Writing documentation is not a safer activity than writing code.
-
-### `internals/` documents a compiler that was designed and not built
-
-Found by asking the neighbourhood question: `check-rmi-api-doc.sh` covers
-`RecursiveMachineIntelligence/docs` and nothing else. **What about the other
-crates' documentation?** Seventeen markdown files outside that directory carry
-Rust `pub` items in fenced blocks, and nothing checks any of them. Most are
-design documents and legitimately so. `internals/` is not: `README.md` lists it
-as **"Compiler-internals documentation"**, and it is written throughout in the
-present tense.
-
-**15 of its 36 documented `pub` items do not exist.** And the prose is further
-from the code than the signatures are — Chapter 1's opening three claims, each
-checked:
-
-| It says | Measured |
-|---|---|
-| "Each stage is a separate crate with a clean query-based interface" | `prototype` is **one** crate: 64 files, a single `[package]` |
-| "The query engine (based on Salsa) tracks dependencies automatically" | **`salsa` is not a dependency of any crate in this repository**, and nothing in `prototype/src` implements a query cache |
-| "The `CompileSession` holds all configuration for a compilation" | there is no `CompileSession` |
-
-`CompileSession`, `DefId`, `InferCtxt`, `TraitObligation`, `EffectChecker` are
-rustc/salsa-shaped names for an architecture that was designed and not built.
-**Writing that down was reasonable; presenting it as documentation of what
-exists is the `cookbook/` failure again** — the most detailed documentation in
-the repository, describing a system that was never there. An agent reading
-`internals/` to learn the codebase learns a compiler it will not find, and
-learns it in the register of fact.
-
-**Labelled first, then rewritten.** This paragraph said "labelled, not
-rewritten" for about two hours, which was true when written and false by the
-end of the day — the same decay this section is about, inside it. All nine
-files were subsequently gone through against `prototype/src`; see
-[the rewrite](#the-internals-rewrite-nine-files-three-compiler-findings).
-The labelling still matters and is described below, because labelling could
-be a way of getting a baseline to zero without doing anything.
-
-First, each of the 15 was checked individually: **none is a rename.** The real
-compiler has `Effect`, `EffectAnalysis`, `Type`, `TypeAlias`; there is no
-`TypeError`, `InferCtxt`, `DefId`, `EffectChecker`, `AstVisitor`, `HirExpr` or
-`CompileSession` under any name. Correcting beats labelling wherever the thing
-exists, and here nothing did.
-
-So the 12 blocks holding them now carry `**Not implemented.** Design sketch —
-no such item exists in prototype/src`, which is exactly `MAGE_SPEC.md`'s
-precedent: five constructs it documents and does not implement, each labelled
-where it appears, *"the design intent is worth keeping, the false impression is
-not."*
-
-- `scripts/check-internals-doc.sh` skips a labelled block, the same way
-  `check-doc-blocks.sh` skips a MAGE block labelled "Invalid MAGE today" — one
-  convention, not two. Baseline **0**, meaning *nothing here claims to exist
-  without existing*, which is not the same as *nothing left to do here*.
-- **The run prints "17 documented items, 12 block(s) skipped"** on every
-  invocation, so the size of the gap survives the label. A ratchet that reaches
-  zero by relabelling and then says nothing about it would be the exact defect
-  this repository keeps finding.
-- Verified in both directions, including the new one: a new phantom fails, a
-  baseline that has stopped applying fails, and **removing a label from a block
-  that still describes nothing fails**.
-- `internals/01-architecture.md` opens with a measured status note naming the
-  three false claims, the labelling, and the fact that its ASCII crate graph
-  (`rdx_driver`, `rdx_lexer`, `rdx_parser` …) describes crates that do not
-  exist either — those are not `pub` items, so no checker will ever see them.
-
-**The prose has no mechanism and cannot get one from this.** None of those
-three claims names a `pub` item, so the checker is blind to every one of them —
-and they are the most misleading part of the document, because a reader follows
-a stated rule where the examples do not reach. That is the same asymmetry the
-system prompts had: *nothing checks prose*. The label is hand-written and will
-decay like any other hand-written thing.
-
-### A third way code sits in the tree without ever running
-
-`check-orphan-sources.sh` finds files no `mod` reaches. `check-ignored-tests.sh`
-finds tests no schedule names. The handoff says together they "cover the two
-ways code sits in the tree without ever running". There is a third, and it had
-ten files in it.
-
-**`cargo build` and `cargo test` do not compile examples or benches.**
-`rmi` has 9 examples and 1 bench. The only `--all-targets` anywhere in CI is the
-CUDA compile-check, and `prototype` has no examples — so **nothing in this
-repository had ever compiled any of the ten.** They are outside `src/`, so no
-`mod` needs to reach them and `check-orphan-sources.sh` structurally cannot see
-them; they are not `#[ignore]`d tests, so the other script cannot either. Each
-instrument was correct and the gap sat exactly between them.
-
-All ten compile clean today — **which I verified by breaking one and watching
-the check fail**, because a green `cargo check` proves nothing until you know it
-reached the targets you meant. It did: `error: could not compile rmi (example
-"swarm_collaboration")`. CI now has a `--examples --benches` step, and
-`check-orphan-sources.sh`'s header states the boundary rather than leaving a
-green run there to be read as coverage.
-
-The negative result is the point. Nothing was broken, and nothing was keeping
-it that way — which is the same state `compute/wasm.rs` and `perf_report` were
-found in, and both of those *were* broken by the time anyone looked. **An
-example that stops compiling is one a reader copies from.**
-
-### A baseline of zero, held up by English words in comments
-
-Rule 10 declined to build an arity checker and recorded a measurement instead —
-"of 162 documented functions, the 66 defined exactly once are arity-checkable,
-and four disagreed… The measurement is recorded instead, **to be repeated by
-hand**." This is that repeat, and the first thing it found is about the
-instruction itself.
-
-**The measurement cannot be repeated, because the method was not recorded.**
-The obvious reconstruction — unique `pub fn` names in ```rust blocks across
-`RecursiveMachineIntelligence/docs/*.md`, the same extraction
-`check-rmi-api-doc.sh` uses — gives **210 documented functions, 119 defined
-exactly once**, against the recorded 162 and 66. Nothing distinguishes drift
-from a different counting rule. **A number recorded without its method is not a
-measurement anyone else can take**, which is the one thing an instruction to
-repeat by hand has to supply.
-
-Re-measuring from scratch, the arity comparison found **7 disagreements — and
-3 were false positives of exactly the class rule 10 named.** `find_similar`,
-`get_subgraph` and `put_raw` are documented as `pub fn name(/* … */);`, an
-elided parameter list a naive parser reads as one argument. Rule 10 said an
-arity checker "has a false-positive class that tripped twice on my own
-placeholders"; it tripped on the same placeholders again. **That judgment was
-right and is now confirmed rather than asserted** — which is the useful outcome
-of repeating a measurement whose conclusion was "do not build this".
-
-The other four were real, and pulling them opened something larger.
-
-**`check-rmi-api-doc.sh`'s baseline of 0 was partly held up by prose.** Its
-existence test was a word-boundary search for the documented name anywhere in
-`src/`. Measured: of 275 documented items, **8 were satisfied by an occurrence
-that was not a definition**, six of them ordinary English words inside
-comments —
-
-| Documented as | What satisfied it |
-|---|---|
-| `KnowledgeBase::facts` / `rules` | `// Find most similar facts`; `…composition rules, and` |
-| `Literal::positive` / `negative` | `/// Matrix must be positive definite.`; `sqrt of negative` |
-| `State::satisfies` | `/// Algebraic properties this operation satisfies.` |
-| `Term::variable` | `/// Type variable for polymorphism` |
-| `Term::symbol` | a string literal |
-| `NetworkArchitecture::add_edge` | `graph.add_edge(…)`, a petgraph call |
-
-Every one is a public method that **does not exist**: the real names are
-`get`/`all`, `Literal` is a *private enum* with `Positive`/`Negative` variants
-rather than a struct with constructors, `holds_all`, `var`, `constant`, and
-`connect`. The check reported **0 missing** throughout. **A baseline of zero
-held by matching comments is rule 8 exactly** — a passing result on a subject
-outside the assertion's reach, wearing a green tick.
-
-Pulling the same thread through the blocks those names live in found more that
-the name check cannot see by design:
-
-- **`NodeId` is not a type anywhere in the crate.** It appears in three
-  documented signatures; the real ids are `Uuid`. The checker never looks at
-  types *used in* signatures, only at names the docs *define*.
-- **`Substitution` is a type alias for `HashMap<String, Term>`**, documented
-  with an entire `impl` block — `empty`, `bind`, `lookup`, `apply`, `compose` —
-  none of which exist as methods. `compose` is a free function.
-- **`plan` was documented twice, inconsistently, and neither matched.**
-  `api.md` gave four free-function parameters, `architecture.md` gave three,
-  and the implementation is a *method* taking a `&Domain` and a `&Goal` and
-  returning `Option<Plan>`. Rule 9 warns that two documents agreeing is not
-  corroboration when one is a copy; here they did not even agree.
-- **`InferenceEngine::backward_chain` does not exist** — the real name is
-  `prove` — and the name check passed it because `lang/grad.rs` contains
-  `#[test] fn backward_chain()`, an unrelated gradient-tape test. **A
-  definition of the wrong kind, in the wrong module, answering for a public
-  API.** Its neighbour `forward_chain` had its receiver and argument mutability
-  the wrong way round: documented `&mut self, &KnowledgeBase`, actual
-  `&self, &mut KnowledgeBase`.
-
-All of the above are corrected, and the checker now requires a **definition**
-rather than a mention. Verified by reintroducing one phantom and watching the
-tightened criterion fail where the old one passes. The baseline stays 0 because
-the entries were fixed, not because the bar moved — the same shape as
-`check-doc-blocks.sh`, where the count went up when the criterion did.
-
-**It is still not a signature check**, and says so: `backward_chain` would
-survive the new criterion too, since a test function *is* a definition. Arity
-and receiver remain unchecked *by CI* — but they are now **measurable on
-demand**: `scripts/measure-rmi-doc-arity.sh` ships the method rule 10 recorded
-only as numbers, and reports **117 comparable functions, 0 disagreeing**, with
-the three placeholder false positives filtered rather than tolerated. See rule
-10 for what that changes and what it deliberately does not.
-
-The count moved **275 → 269**, and that figure had no pin — which is how the
-criterion could tighten under it unnoticed. It has one now (`rmi_api_items`,
-measured by running the checker), taking documented-count pins to **92**.
-
-### Then the keys, which §2 had never mentioned because it thought there were none
-
-Having found the cryptography, the next question is the one a posture section
-exists to answer: **where do the keys come from?** Four results, and the
-verification story is the interesting part — the code that handles keys is
-better than the code that accepts them.
-
-**There is no production key source.** Every `Signer::new`, every
-`AsymmetricSigner::from_seed`, every `auth_key` in the repository is **in a
-test**. No environment variable, config field or CLI flag provisions a key.
-Defensible for a library — the fleet key is the embedder's — but it means there
-is no reference path and no guidance, which is why none of the below was
-written down anywhere.
-
-**An empty key is accepted and verifies.** Measured with a throwaway probe
-rather than inferred from the constructor: `Signer::new("w", Vec::new())` signs,
-the record verifies, and an independent signer holding the same empty key forges
-successfully. A one-byte key likewise. **The reason this matters is that an
-empty `Vec` is what an unset environment variable becomes** — a fleet whose key
-was never provisioned would authenticate every claim and report success while
-providing nothing, and no verifier could tell, because a MAC over an empty key
-is a well-formed MAC. This is the `guard`-fall-through shape in a security
-primitive: the system says yes and means nothing.
-
-**Left as an owner decision, deliberately.** Refusing a weak key means
-`Signer::new` returns a `Result`, a breaking change to a public API of the
-build engine. Having already changed one CLI contract this session, making a
-second unilateral API change on a security primitive is not mine to make. The
-constructor's rustdoc now warns with the measured behaviour, `SECURITY_AUDIT.md`
-§2 records it, and the recommendation names it first because the failure mode is
-silent success. **This is the "waiting on a decision, not on work" category, and
-it is worth stating why rather than filing it blank** — the last time an item
-sat here framed as a design question, it turned out to be a defect nobody had
-run the check on.
-
-**The two schemes have opposite rotation stories, and only one was written
-down.** Ed25519 rotates properly — per-worker keys, a `TrustStore`, and `revoke`
-that *records* a revocation rather than deleting the key, so a rejoining
-compromised node cannot re-trust itself by re-announcing. `verify` fails closed
-on revoked, unknown worker, substituted key, wrong subject and bad signature; I
-read every branch. The **HMAC path has no rotation at all**: one key per
-`Signer`, one `auth_key` per server, no key id, no overlapping acceptance
-window. Changing the fleet secret requires every worker and verifier to change
-at once — the hardest operation to perform safely is the one with no support.
-
-**And one thing recorded as an assumption rather than a defect.**
-`remote::next_nonce` is `HMAC(b"ribosome-nonce", clock ‖ counter)` under a
-**constant, public** key, with a comment arguing unpredictability is not
-required "because the secret is the key". That holds against replay; it is
-weaker against a pre-play attacker who predicts the next nonce and induces a
-legitimate client to answer it first, which needs a rogue endpoint and a guess
-at the issuing nanosecond, and is moot under the `tls` transport. Whether that
-matters is a threat-model question, and **the reasoning in the code is explicit
-rather than accidental** — which is the difference between an assumption to
-confirm and a bug to fix. Recorded as the former. Six times this document has
-warned that a comment agreeing with its author is not evidence; the honest
-answer here is that the comment states a real trade-off and the owner is the one
-who knows the deployment.
-
-### The lesson had been learned, written down, and half-applied
-
-Found by accident, which is how most of these are found: after the full suite
-ran, `git status` showed `benchmarks/RELIABILITY_REPORT.md` **modified**, and
-nothing had edited it.
-
-`check-ci-floors.sh` runs `reliability-bench` twice to measure the parse and
-heal floors, and that binary **writes `RELIABILITY_REPORT.md` every time**. The
-same script already save-and-restores `TOKEN_REPORT.md` around the token bench,
-under a comment explaining exactly why — *a check that rewrites a tracked file
-is not a check either*, rule 6 above. **The rule was applied to one artifact of
-that script and not to the other.**
-
-The consequence is worse for this one, because the file embeds p50/p95/p99
-**latencies**. Running the suite on a machine already busy with other runs
-rewrote them 30/247/348 → **51/551/1089 µs**, and a `git add -A` would have
-committed load-dependent timing noise into the repository as though it were a
-measurement. Which is very nearly what happened here.
-
-Now restored on every exit path via a `trap`, including a floor breach — a
-check that fails must not leave the tree rewritten either. **Restored, not
-compared**: `TOKEN_REPORT.md` earns a staleness check because it is
-byte-stable, and this one deliberately does not, because a latency table would
-be permanently red. That is the same distinction rule 10 draws — whether the
-artifact records a measurement or a timing — and it is why the two artifacts
-need *different* treatment rather than the same treatment.
-
-Worth stating plainly, because it generalises: **an instrument with a side
-effect on tracked state is a defect even when its verdict is correct**, and the
-side effect is invisible in the instrument's own output. The only thing that
-surfaced it was `git status` on an unrelated commit.
-
-**A trap, and a near miss.** Inserting the `CHECKS` rows with
-`awk -v new="$ROWS"` silently stripped every backslash, turning
-`\*\*[0-9,]+` into `**[0-9,]+` — a different and invalid regex, in a
-tab-separated table where a wrong field also fails silently. **`awk -v`
-processes escape sequences in the value.** Reverted and done in Python, which
-also had to take the row terminator from the anchor line rather than assume
-`\n`, because the working copy is CRLF.
-
-**What the register check deliberately does not check** is the *rationale* in
-the Status column. "Only under the non-default `gpu` feature" is a claim about a
-dependency graph, and re-deriving it per row is a `cargo tree` reachability
-argument with a false-positive class — rule 10 says a weak instrument is worse
-than a documented gap, so the gap is documented in the script's header and in
-§1.
+## Start here
+
+`master` is green with nothing outstanding, so there is no rescue work. The
+useful next moves, in the order I would take them:
+
+**1 — Extend the differentiability pass to the `net` DSL.**
+`prototype/src/differentiable.rs` computes a four-state lattice over functions,
+and measured against this repository it reports **0 of 155 differentiable**, 125
+of them for want of a floating-point parameter. That is not a defect in the pass;
+it is the corpus. MAGE's numerical surface is `net` / `layer` / `train`, where
+`autograd.rs` already builds a reverse-mode tape, and that is where the analysis
+has a subject. See `DIFFERENTIABILITY.md`.
+
+**2 — Then `grad` as an expression**, with the differentiability obligation as
+its typing rule. `grad` is a reserved word today with no expression form;
+`MAGE_SPEC.md` records that. This needs open item 21, which is why item 21
+reopened.
+
+**3 — The shared verdict vocabulary.** `verify.rs` has a deductive lattice
+(`Verified` / `Partial` / `Failed` / `Trivial`) and the neural half has none, so
+you cannot say "this property is evidenced at *n* samples" anywhere in this
+language. `Trivial` is worse than absent: it means *no contracts to verify* and
+is rendered by skipping the row, so a function with no contracts and a function
+whose contracts all hold look identical. That is the coverage-hole-as-clean-bill
+error inside MAGE's own verifier. The sibling project `StatodynamicAnalysis` has
+already designed the lattice this wants — `Confirmed` / `Refuted` / **`Unreached`**
+/ `Unpredicted` — and sharing the vocabulary across the two codebases is worth
+more than either inventing its own.
+
+**Not urgent, and deliberately so:** `TENSOR_PRODUCT_BINDING.md` specifies
+binding symbolic structure into tensors, which would give `kb` and `net` a shared
+representation instead of merely a shared container. It stays a specification
+until there is numerical MAGE code that wants it. Building a construct with no
+caller is the mistake `DIFFERENTIABILITY.md` measured its way out of.
 
 ---
-
 ## Where this phase ended, 2026-09-03
 
 Everything below the line is on `master`, green, with no open pull requests.
@@ -780,6 +148,8 @@ lock is global.
 The failure shapes travel better than the conclusions, which is why they are in
 the chapters rather than in a list.
 
+---
+
 ## The one thing to understand
 
 Five sessions have now found well over a hundred defects in this repository,
@@ -815,6 +185,155 @@ was a script that had been broken and exiting 0 since the edit. The same held fo
 [Failure taxonomy](#failure-taxonomy) is the useful part of this document. It
 groups what has gone wrong by *shape*, because the shapes repeat, and knowing
 them tells you where to look next.
+
+---
+
+---
+
+## What the compiler actually is
+
+Corrected facts, each verified by running it. Several documents said otherwise.
+
+**The effect system is the security boundary.** There are 17 built-in kinds
+(§11.2). A function acquires one three ways: by annotation, through a capability
+handle (`io.println(…)` — the receiver names the capability), or by calling a
+recognised builtin by bare name. A `pub` function must declare what it performs;
+a private one infers silently and its effects reach its public callers.
+Annotation is an **upper bound** — over-declaring is deliberately allowed and
+never warned about. `handle … with` discharges an effect **per block, not per
+function**, and a handler's own effects are attributed honestly.
+
+**Handlers resume, single-shot and implicitly** — the arm's value becomes the
+operation's value and the body continues — and an arm may `ret` instead, which
+aborts the handled block only and leaves the enclosing function running. *Multi-shot* resumption is
+deliberately absent — decided 2026-08-19, `MAGE_SPEC.md` §11.6 (item 10).
+
+What it does *not* have: no effect hierarchy (`/ io` grants nothing else), no
+per-file or per-module capability grants, no effect polymorphism.
+
+**There is no module system.** `use` parses and is discarded; it now warns. The
+library surface is **global** — 31 vocabulary combinators
+(`resolve::VOCABULARY`), 20 capability namespaces (`hir::CAPABILITY_NAMESPACES`)
+and the builtin functions are in scope everywhere, with no import and no tokens
+spent on one. For a language optimising for token efficiency that is plausibly
+right rather than a gap, but it was written down nowhere — and it is what makes
+a hand-written `stdlib/` unreachable by construction.
+
+**36 of 126 `.mg` files were not MAGE.** `stdlib/` is 25 files, 4,402 lines, and
+all of it Rust — read by nothing, checked by nothing, and resolvable-around
+because imports are nominal. It now carries a `README.md` saying what it is and
+the ordered prerequisites for making it real. `check-mg-sources.sh` is the
+consumer it never had; its sketch list only shrinks, and is down from 36 to 30.
+Only `stdlib/` and four `framewerx` files remain.
+
+---
+
+---
+
+## Traps, so you do not repeat them
+
+- **`${#arr[@]}` on a never-assigned associative array is *unbound*.** Under
+  `set -u`, `declare -A ACTUAL` followed by a `read` loop that assigns nothing
+  makes `[ "${#ACTUAL[@]}" -eq 0 ]` abort the line — so the empty-input guard
+  in `check-doc-counts.sh` never ran, and the script went on to report
+  "documentation disagrees with measurement" for all 74 claims when what had
+  actually happened was that nothing was measured. Count with a plain integer
+  assigned before the loop, so it is always bound. Corollary, and the reason
+  this mattered more than the syntax: **a checker must distinguish "wrong" from
+  "not checked"**, because the two have opposite remedies — edit the doc versus
+  run the suite — and reporting the wrong one sends someone to change numbers
+  that were correct.
+- **Adding a MAGE block to documentation moves two pinned counts.** A fenced
+  `mage` block raises `doc_blocks`, and if it defines `main` it also raises
+  `doc_evals` — both stated in HANDOFF.md and both pinned. Running
+  `check-doc-blocks.sh` proves the block *typechecks* and says nothing about
+  the count, so it is easy to verify the thing you changed and not the thing
+  that measures it. That is how 2026-08-25's Chapter 4 commit went red.
+  Before committing a doc change that adds a block:
+  `printf 'doc_blocks=N
+doc_evals=M
+' | bash scripts/check-doc-counts.sh`,
+  with N and M from the two checkers' own stdout.
+- **`grep -c` exits 1 when the count is zero.** `cargo clippy … | grep -c
+  '^warning' && git commit …` printed `0` and then did not commit: a clean
+  result is a *failure* exit for `grep`, so the `&&` chain stopped. Same
+  family as the `grep -q` pipefail trap below, opposite direction.
+- **Editing a shell script while it runs.** `bash` reads a script
+  incrementally, so an edit that changes byte offsets can make the running
+  copy execute a *fragment* of a line. The symptom is a nonsense error naming
+  a line that is a comment — `test-all.sh: line 160: a: command not found`.
+  Nothing was wrong with the script; the run was reading a file that moved
+  under it. Wait for the run, or copy the script first.
+- **`cmd | grep -q` under `set -o pipefail`.** `grep -q` exits at the first
+  match, the writer takes SIGPIPE, and the pipeline reports failure — so every
+  match reads as no-match. Cost two separate bugs, the second *despite a comment
+  about it in the first file*. Capture the output, then match.
+- **A tool's output means nothing until you know what you pointed it at.** A
+  probe loop reported `ok` for every case because the shell was already inside
+  `prototype/`, so `./prototype/target/release/mage-parse` did not exist and the
+  missing-binary message matched no error pattern.
+- **`bash` from PowerShell is WSL's**, which cannot open a `C:/…` path; a Windows
+  path with backslashes gets read as escapes. Prefer Git's bash and repo-relative
+  paths.
+- **Shell mode bits do not survive a Windows checkout.** `chmod +x` locally is
+  not enough; use `git update-index --chmod=+x`, and invoke via `bash` anyway.
+- **MAGE is not Rust.** Struct literals are `@P { x: 1 }`, not `P { x: 1 }`
+  (which parses as a *map*). Booleans are `1b`/`0b`. `[T]~` is a type suffix, not
+  a value one. Receivers are `self`, not `&self`.
+- **`remove_dir_all` then `create_dir_all` on a fixed path is unsound on
+  Windows.** Deletion returns while the directory is still open somewhere,
+  leaving it delete-pending: it exists, cannot be opened, cannot be recreated,
+  and `os error 183` points at the creation rather than the deletion that caused
+  it.
+- **Tight timeouts are flaky under whole-suite load.** Both flaky tests found so
+  far were invisible to CI and visible only locally, and both were found by
+  running the **whole** suite rather than one crate.
+- **`gh pr merge --auto` merges immediately** when the repo has no required
+  status checks. It does not queue and does not warn.
+- **A conflicted PR does not run CI at all.** `push` is filtered to `master`, so
+  a branch is tested only through its `pull_request` run, and GitHub cannot build
+  a merge ref for a conflicted PR. The result is silence, not a red build, and
+  `gh run list --limit 1` then hands you an *older* commit's success. Select the
+  run by `headSha` and confirm one exists — the same trap as reading a run list
+  that raced the push, one step earlier.
+- **An add/add of *identical* content is not a conflict.** The same file
+  published on both sides sat there for a week and merged cleanly; the conflict
+  started when one side edited it. So "when did this stop merging" is answered by
+  the commit that changed the content, not the one that added the file — and
+  `git merge-tree --write-tree <master> <sha>` answers it per commit in a loop,
+  which is faster than reasoning about dates and does not get it wrong.
+- **`pull_request` paths filters read the whole PR diff, not your push.** A
+  commit touching only `HANDOFF.md` is still tested on a PR that touches
+  `prototype/**`. Do not excuse a missing run as "filtered" without checking.
+- **Regenerate the ontology from a *rebuilt* binary.** One commit shipped a stale
+  `MAGE_ONTOLOGY.json` because `--emit-ontology` ran from a binary built before
+  the change. `cargo test` builds the test harness, not `mage-parse`.
+- **`prototype/target/release/mage-parse` is not where cargo builds it, on this
+  machine.** `~/.cargo/config.toml` redirects every Rust build to a shared
+  `C:/Users/adamm/.cargo-target` (written 2026-08-17, after 1.33 TB of build
+  artifacts across 79 target directories filled the disk). Every script here
+  hard-codes `prototype/target/release/mage-parse`, so on this machine they run
+  a **leftover binary** in a directory cargo no longer writes to. It cost an
+  hour: `cargo build` reported `Compiling` and `Finished`, the source change was
+  present and compiled, and the binary at that path kept emitting the old
+  answer — through a `cargo clean -p`, three rebuilds, and a deliberate syntax
+  error that proved the file *was* being compiled. Nothing was wrong except
+  which file I was running.
+  **`cargo metadata --format-version 1 | jq .target_directory` settles it in one
+  command**, and is worth running before believing any local binary. CI is
+  unaffected — a clean checkout has no leftover `prototype/target/` and no user
+  config — which is exactly what makes it a local-only trap that invalidates
+  local verification silently.
+- **A stale *debug* artifact can fail a test that passes in release.** `forge`'s
+  `the_manifest_and_the_dispatcher_agree` reads `src/bin/forge.rs` through
+  `env!("CARGO_MANIFEST_DIR")`, and a debug object left over from before the
+  MechGen → MAGE rename still had the old path baked in — so `test-all.sh` (which
+  defaults to debug) failed while `--release` passed, on the same tree. Touching
+  the source cleared it. Nothing was wrong with the repository, which is exactly
+  why it cost time: the failure looked like a real one, and reproduced.
+  **Check a suspicious failure against a clean rebuild before believing it.**
+
+---
 
 ---
 
@@ -1136,6 +655,8 @@ from a real run survived and the prose written by hand around them did not.**
 
 ---
 
+---
+
 ## Open items
 
 Grouped by what would actually unblock them, because "open" has meant three
@@ -1434,6 +955,8 @@ rather than a decision anyone needed to make.
 **A "design question" filed against a defect stops anyone from running the
 check that would settle it.** Both of the last two sat here for a session
 because the note framed them as needing judgment.
+
+---
 
 ---
 
@@ -2340,147 +1863,6 @@ claimed the code had been reviewed, and the claim was specific enough to check.
 
 ---
 
-## What the compiler actually is
-
-Corrected facts, each verified by running it. Several documents said otherwise.
-
-**The effect system is the security boundary.** There are 17 built-in kinds
-(§11.2). A function acquires one three ways: by annotation, through a capability
-handle (`io.println(…)` — the receiver names the capability), or by calling a
-recognised builtin by bare name. A `pub` function must declare what it performs;
-a private one infers silently and its effects reach its public callers.
-Annotation is an **upper bound** — over-declaring is deliberately allowed and
-never warned about. `handle … with` discharges an effect **per block, not per
-function**, and a handler's own effects are attributed honestly.
-
-**Handlers resume, single-shot and implicitly** — the arm's value becomes the
-operation's value and the body continues — and an arm may `ret` instead, which
-aborts the handled block only and leaves the enclosing function running. *Multi-shot* resumption is
-deliberately absent — decided 2026-08-19, `MAGE_SPEC.md` §11.6 (item 10).
-
-What it does *not* have: no effect hierarchy (`/ io` grants nothing else), no
-per-file or per-module capability grants, no effect polymorphism.
-
-**There is no module system.** `use` parses and is discarded; it now warns. The
-library surface is **global** — 31 vocabulary combinators
-(`resolve::VOCABULARY`), 20 capability namespaces (`hir::CAPABILITY_NAMESPACES`)
-and the builtin functions are in scope everywhere, with no import and no tokens
-spent on one. For a language optimising for token efficiency that is plausibly
-right rather than a gap, but it was written down nowhere — and it is what makes
-a hand-written `stdlib/` unreachable by construction.
-
-**36 of 126 `.mg` files were not MAGE.** `stdlib/` is 25 files, 4,402 lines, and
-all of it Rust — read by nothing, checked by nothing, and resolvable-around
-because imports are nominal. It now carries a `README.md` saying what it is and
-the ordered prerequisites for making it real. `check-mg-sources.sh` is the
-consumer it never had; its sketch list only shrinks, and is down from 36 to 30.
-Only `stdlib/` and four `framewerx` files remain.
-
----
-
-## Traps, so you do not repeat them
-
-- **`${#arr[@]}` on a never-assigned associative array is *unbound*.** Under
-  `set -u`, `declare -A ACTUAL` followed by a `read` loop that assigns nothing
-  makes `[ "${#ACTUAL[@]}" -eq 0 ]` abort the line — so the empty-input guard
-  in `check-doc-counts.sh` never ran, and the script went on to report
-  "documentation disagrees with measurement" for all 74 claims when what had
-  actually happened was that nothing was measured. Count with a plain integer
-  assigned before the loop, so it is always bound. Corollary, and the reason
-  this mattered more than the syntax: **a checker must distinguish "wrong" from
-  "not checked"**, because the two have opposite remedies — edit the doc versus
-  run the suite — and reporting the wrong one sends someone to change numbers
-  that were correct.
-- **Adding a MAGE block to documentation moves two pinned counts.** A fenced
-  `mage` block raises `doc_blocks`, and if it defines `main` it also raises
-  `doc_evals` — both stated in HANDOFF.md and both pinned. Running
-  `check-doc-blocks.sh` proves the block *typechecks* and says nothing about
-  the count, so it is easy to verify the thing you changed and not the thing
-  that measures it. That is how 2026-08-25's Chapter 4 commit went red.
-  Before committing a doc change that adds a block:
-  `printf 'doc_blocks=N
-doc_evals=M
-' | bash scripts/check-doc-counts.sh`,
-  with N and M from the two checkers' own stdout.
-- **`grep -c` exits 1 when the count is zero.** `cargo clippy … | grep -c
-  '^warning' && git commit …` printed `0` and then did not commit: a clean
-  result is a *failure* exit for `grep`, so the `&&` chain stopped. Same
-  family as the `grep -q` pipefail trap below, opposite direction.
-- **Editing a shell script while it runs.** `bash` reads a script
-  incrementally, so an edit that changes byte offsets can make the running
-  copy execute a *fragment* of a line. The symptom is a nonsense error naming
-  a line that is a comment — `test-all.sh: line 160: a: command not found`.
-  Nothing was wrong with the script; the run was reading a file that moved
-  under it. Wait for the run, or copy the script first.
-- **`cmd | grep -q` under `set -o pipefail`.** `grep -q` exits at the first
-  match, the writer takes SIGPIPE, and the pipeline reports failure — so every
-  match reads as no-match. Cost two separate bugs, the second *despite a comment
-  about it in the first file*. Capture the output, then match.
-- **A tool's output means nothing until you know what you pointed it at.** A
-  probe loop reported `ok` for every case because the shell was already inside
-  `prototype/`, so `./prototype/target/release/mage-parse` did not exist and the
-  missing-binary message matched no error pattern.
-- **`bash` from PowerShell is WSL's**, which cannot open a `C:/…` path; a Windows
-  path with backslashes gets read as escapes. Prefer Git's bash and repo-relative
-  paths.
-- **Shell mode bits do not survive a Windows checkout.** `chmod +x` locally is
-  not enough; use `git update-index --chmod=+x`, and invoke via `bash` anyway.
-- **MAGE is not Rust.** Struct literals are `@P { x: 1 }`, not `P { x: 1 }`
-  (which parses as a *map*). Booleans are `1b`/`0b`. `[T]~` is a type suffix, not
-  a value one. Receivers are `self`, not `&self`.
-- **`remove_dir_all` then `create_dir_all` on a fixed path is unsound on
-  Windows.** Deletion returns while the directory is still open somewhere,
-  leaving it delete-pending: it exists, cannot be opened, cannot be recreated,
-  and `os error 183` points at the creation rather than the deletion that caused
-  it.
-- **Tight timeouts are flaky under whole-suite load.** Both flaky tests found so
-  far were invisible to CI and visible only locally, and both were found by
-  running the **whole** suite rather than one crate.
-- **`gh pr merge --auto` merges immediately** when the repo has no required
-  status checks. It does not queue and does not warn.
-- **A conflicted PR does not run CI at all.** `push` is filtered to `master`, so
-  a branch is tested only through its `pull_request` run, and GitHub cannot build
-  a merge ref for a conflicted PR. The result is silence, not a red build, and
-  `gh run list --limit 1` then hands you an *older* commit's success. Select the
-  run by `headSha` and confirm one exists — the same trap as reading a run list
-  that raced the push, one step earlier.
-- **An add/add of *identical* content is not a conflict.** The same file
-  published on both sides sat there for a week and merged cleanly; the conflict
-  started when one side edited it. So "when did this stop merging" is answered by
-  the commit that changed the content, not the one that added the file — and
-  `git merge-tree --write-tree <master> <sha>` answers it per commit in a loop,
-  which is faster than reasoning about dates and does not get it wrong.
-- **`pull_request` paths filters read the whole PR diff, not your push.** A
-  commit touching only `HANDOFF.md` is still tested on a PR that touches
-  `prototype/**`. Do not excuse a missing run as "filtered" without checking.
-- **Regenerate the ontology from a *rebuilt* binary.** One commit shipped a stale
-  `MAGE_ONTOLOGY.json` because `--emit-ontology` ran from a binary built before
-  the change. `cargo test` builds the test harness, not `mage-parse`.
-- **`prototype/target/release/mage-parse` is not where cargo builds it, on this
-  machine.** `~/.cargo/config.toml` redirects every Rust build to a shared
-  `C:/Users/adamm/.cargo-target` (written 2026-08-17, after 1.33 TB of build
-  artifacts across 79 target directories filled the disk). Every script here
-  hard-codes `prototype/target/release/mage-parse`, so on this machine they run
-  a **leftover binary** in a directory cargo no longer writes to. It cost an
-  hour: `cargo build` reported `Compiling` and `Finished`, the source change was
-  present and compiled, and the binary at that path kept emitting the old
-  answer — through a `cargo clean -p`, three rebuilds, and a deliberate syntax
-  error that proved the file *was* being compiled. Nothing was wrong except
-  which file I was running.
-  **`cargo metadata --format-version 1 | jq .target_directory` settles it in one
-  command**, and is worth running before believing any local binary. CI is
-  unaffected — a clean checkout has no leftover `prototype/target/` and no user
-  config — which is exactly what makes it a local-only trap that invalidates
-  local verification silently.
-- **A stale *debug* artifact can fail a test that passes in release.** `forge`'s
-  `the_manifest_and_the_dispatcher_agree` reads `src/bin/forge.rs` through
-  `env!("CARGO_MANIFEST_DIR")`, and a debug object left over from before the
-  MechGen → MAGE rename still had the old path baked in — so `test-all.sh` (which
-  defaults to debug) failed while `--release` passed, on the same tree. Touching
-  the source cleared it. Nothing was wrong with the repository, which is exactly
-  why it cost time: the failure looked like a real one, and reproduced.
-  **Check a suspicious failure against a clean rebuild before believing it.**
-
 ---
 
 ## The pattern worth carrying forward
@@ -2500,6 +1882,16 @@ memory-safety defects in `rmi`'s allocator — was found because a security
 document said that code had been reviewed and named what the review concluded.
 Vague claims are unfalsifiable and therefore safe to ignore; precise wrong ones
 lead somewhere.
+
+A third, which inverts the usual advice: **rewriting documentation finds
+compiler defects.** Going through `internals/` against `prototype/src` in
+one pass produced three — unenforced `~>` bounds, an editor LSP
+registration that cannot work, and 56 rules in a JSON tree nothing read.
+None came from reviewing the compiler; all came from trying to *describe*
+it accurately. Reading code with the intent to modify or explain it reaches
+places that reading it to judge it does not, which is also why item 24 was
+withdrawn: the claim survived several readings and died the moment I opened
+the parser to change it.
 
 Five counter-lessons, each of which cost real time:
 
@@ -2541,6 +1933,41 @@ harder to notice because it arrives wearing a green tick.
 
 ---
 
+---
+
+## How this document stays true
+
+It has been wrong before, in every way the taxonomy below describes, and the
+rules that keep it honest are worth stating because each was learned by breaking
+one.
+
+**Every number here is pinned or measured.** Sixteen patterns in this file are
+read by `scripts/check-doc-counts.sh`, which compares them against a live run and
+fails when they disagree. If you edit a figure, run
+`scripts/test-all.sh --check-docs` before pushing. The pin count is itself
+pinned, so adding a pin without saying so fails too.
+
+**An unchecked claim is treated as a failure, not a pass.** `check-doc-counts.sh`
+exits non-zero on `INCOMPLETE` — a documented number with nothing to compare
+against — as well as on a mismatch. That distinction is the single most useful
+idea in this repository's tooling, and it generalises: *the claim is untested, not
+clean.*
+
+**Struck-through rows are history, not staleness.** A `~~closed item~~` records
+what was believed and why it was wrong. Deleting them loses the failure shape,
+which is the part that recurs.
+
+**Dated corrections stay dated.** "Corrected 2026-09-02" beside a claim is more
+useful than a silently fixed one, because it tells the next reader how long the
+wrong version survived and therefore how much else to doubt.
+
+**When you fix something here, check what it made stale.** This document has
+described its own branch as unmerged after the merge, its own instrument counts
+as smaller than they were, and — within two hours of writing it — a section as
+"labelled, not rewritten" that had just been rewritten. Grep for what you
+changed before you commit.
+
+---
 ## Notes on the shape of the work
 
 - Prototype tests **1,066 → 1,221**, all green — checked against the live run, so
