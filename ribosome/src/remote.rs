@@ -728,7 +728,7 @@ mod tests {
         let addr = listener.local_addr().unwrap().to_string();
         let exec: Arc<dyn Executor> = Arc::new(LocalExecutor::new(name, platform, tools()));
         let server = WorkerServer::new(exec)
-            .with_signer(Arc::new(Signer::new(name, b"fleet key".to_vec())));
+            .with_signer(Arc::new(Signer::new(name, b"fleet key that is at least 32 bytes long!".to_vec()).expect("32-byte test key")));
         let shutdown = server.shutdown_handle();
         std::thread::spawn(move || {
             let _ = server.serve(listener);
@@ -835,7 +835,7 @@ mod tests {
                 assert_eq!(p.action_key, action.key());
 
                 // And it verifies against the fleet key over the real outputs.
-                let signer = Signer::new("signer-node", b"fleet key".to_vec());
+                let signer = Signer::new("signer-node", b"fleet key that is at least 32 bytes long!".to_vec()).expect("32-byte test key");
                 let mut result = super::super::cas::ActionResult::ok("signer-node");
                 for (path, hex) in &outputs {
                     result.outputs.insert(path.clone(), Digest::of(&hex_decode(hex).unwrap()));
