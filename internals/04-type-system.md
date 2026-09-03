@@ -273,6 +273,23 @@ either") that a single glance at the parser would have refuted.
 Enforcing bounds remains a feature, and unbuilt. What changed is that a
 program no longer looks constrained without being told otherwise.
 
+**Assessed 2026-09-03, and the measurement is the argument.** Across the
+repository's **101 `.mg` sources** there are **zero** bounds and **zero** `~>`
+clauses — one trait declaration, `T Module`, and 95 impl blocks. Every one of
+the eighteen bounds in the tree is in *prose*: `quick-start/`,
+`migration-guide/`, `MAGE_PROPOSAL.md`, teaching the syntax.
+
+So a solver would have no call site to check on any file here. Its correctness
+could be demonstrated only against tests written to demonstrate it, which is
+the weakest evidence a checker can have — and this chapter has already recorded
+what happens when a guard's only witness is itself.
+
+The machinery is not trivial either: an impl table, obligation collection at
+call sites, and decisions on coherence and orphan rules that nothing in
+`MAGE_SPEC.md` settles. But the deciding fact is the absent demand, not the
+effort. **The signal to revisit is a `.mg` source that writes a bound and means
+it** — `check-mg-sources.sh` already walks all 101, so noticing costs nothing.
+
 ## 4.5 Generic Instantiation
 
 When a generic function or type is used with concrete type arguments, the
