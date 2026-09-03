@@ -97,7 +97,7 @@ ontology/full
   ├─ ir_ops (107)            — every Agentic Binary Language opcode w/ metadata
   ├─ op_families (7)         — Neural/Symbolic/Control/Memory/Agent/Meta/Math
   ├─ layer_map (21)          — surface name → opcode
-  ├─ rap_methods (37)        — every callable method w/ inputs/outputs
+  ├─ rap_methods (38)        — every callable method w/ inputs/outputs
   ├─ heal_patterns (34)      — mechanical fix patterns, each w/ a matching message
   ├─ recovery_stages (7)     — the 5-stage pipeline
   ├─ machine                    — binary container format constants

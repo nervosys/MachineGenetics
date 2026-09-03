@@ -281,6 +281,15 @@ const RAP_METHODS: &[(&str, &str, &[&str], &[&str])] = &[
         &["source"], &["ok", "verify", "effect_diagnostics", "error"]),
     ("token/report", "Per-construct token cost report for source.",
         &["source"], &["ok", "report"]),
+    // The method that lists the methods, missing from the list of methods.
+    //
+    // `rap.rs` serves it and `METHODS` advertises it; this table — a fourth,
+    // hand-maintained copy of the same list — omitted it, so an agent doing
+    // discovery through the ontology was never told that discovery has an
+    // endpoint. Found 2026-09-02 by comparing all four statements of the list
+    // after `check-rap-methods.sh` compared only three.
+    ("rap/methods", "List every method this server serves, with its count.",
+        &[], &["ok", "count", "methods"]),
     ("effects/infer", "Infer effects of each function.",
         &["source"], &["ok", "effects"]),
     ("effects/check", "Check declared effects against inferred.",

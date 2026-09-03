@@ -1,31 +1,43 @@
 #!/usr/bin/env bash
-# The RAP method surface agrees with itself, and with what documents it.
+# The RAP method surface agrees with itself, with the ontology, and with the
+# chapter that documents it.
 #
-# `rap.rs` states its 37 methods twice: once as `"ns/verb" =>` dispatch arms,
-# once in the `METHODS` list the server publishes for discovery. Nothing checked
-# that those two agree. They do today — 37 and 37, exactly — but the failure
-# modes are silent in both directions: an arm with no list entry is a method
-# that works and cannot be discovered, and a list entry with no arm is a method
-# an agent is told about and gets an error from. An agent protocol's whole point
-# is that the advertised surface *is* the surface.
+# The same list is stated **four** times: the `"ns/verb" =>` dispatch arms in
+# `rap.rs`, the `METHODS` list the server publishes, the `rap_methods` section
+# of `MAGE_ONTOLOGY.json` (generated from a hand-maintained table in
+# `ontology.rs`), and `internals/07-rap-server.md`. Nothing compared any of
+# them.
 #
-# `internals/07-rap-server.md` is the third statement of the same list, and it
-# was documented at **3 of 37** until 2026-08-25. So the doc is checked too.
+# Three of the four agreed. The ontology did not: it omitted `rap/methods`, the
+# method whose entire job is enumerating the methods, so an agent discovering
+# the protocol through the ontology could not discover that discovery has an
+# endpoint. Three documents also published the count as 37 while the server has
+# always answered `METHODS.len()`, which is 38.
 #
-# Three directions:
+# The failure modes are silent in every direction. An arm with no `METHODS`
+# entry is a method that works and cannot be found; a `METHODS` entry with no
+# arm is one an agent is told about and gets an error from; an ontology omission
+# is invisible to exactly the client that reads machine-readable discovery. For
+# a protocol whose premise is that an agent learns what it can call, the
+# advertised surface *is* the surface. The chapter was at **3 of 38** as
+# recently as 2026-08-25.
+#
+# Five directions enforced, one ratcheted:
 #
 #   1. a dispatch arm missing from `METHODS`
 #   2. a `METHODS` entry with no dispatch arm
-#   3. a served method the chapter never names
+#   3. a served method the ontology does not publish
+#   4. an ontology entry with no dispatch arm
+#   5. a served method the chapter never names
 #
-# And a fourth, ratcheted rather than enforced: a method-shaped name in the
-# chapter that the server does not serve. Thirteen of those are legitimate —
-# `internals/07` carries a table mapping names that were planned or documented
-# elsewhere to what actually shipped (`skb/suggest` → `skb/query`, the five
-# `query/*` editor-service methods → nothing), plus `namespace/verb`, which is
-# the naming *convention* and not a method at all. Deleting that table would
-# lose the most useful thing in the section. So they are baselined: the count
-# may shrink, never grow, and a *new* phantom fails.
+# And ratcheted: a method-shaped name in the chapter the server does not serve.
+# Thirteen are legitimate -- `internals/07` maps names that were planned or
+# documented elsewhere to what shipped (`skb/suggest` -> `skb/query`, the five
+# `query/*` editor-service methods -> nothing), plus `agent/context`, labelled
+# "(planned method)" where it appears, and `namespace/verb`, which is the naming
+# *convention* and not a method. Deleting that table would lose the most useful
+# paragraph in the section, so the count is baselined: it may shrink, never
+# grow, and a new phantom fails.
 set -o errexit
 set -o nounset
 set -o pipefail
@@ -34,34 +46,49 @@ cd "$(dirname "$0")/.."
 
 SRC=prototype/src/rap.rs
 DOC=internals/07-rap-server.md
+ONTO=MAGE_ONTOLOGY.json
 BASELINE=scripts/rap-planned-baseline.txt
 
-for f in "$SRC" "$DOC"; do
+for f in "$SRC" "$DOC" "$ONTO"; do
     if [ ! -f "$f" ]; then
         echo "  x  $f is missing; this check cannot mean anything" >&2
         exit 1
     fi
 done
 
-report="$(python - "$SRC" "$DOC" <<'PY'
-import io, re, sys
+report="$(python - "$SRC" "$DOC" "$ONTO" <<'PY'
+import io, json, re, sys
+
+# Hyphens are part of a method name. The first version of this pattern was
+# `[a-zA-Z_]+`, which dropped `pipeline/recover-and-encode` out of every list
+# at once — so the check reported "37 and 37 agree" when there were 38 of each.
+# A false clean, in a script written to prevent false cleans. It was caught by
+# comparing against a *fourth* source this script did not yet read.
+NAME = r'[a-z]+/[a-zA-Z_][a-zA-Z_-]*'
 
 src = io.open(sys.argv[1], encoding='utf-8').read()
 doc = io.open(sys.argv[2], encoding='utf-8').read()
+onto = json.load(io.open(sys.argv[3], encoding='utf-8'))
 
 # The dispatch arms: `"ns/verb" =>` at the head of a match arm. Anchored to the
 # line so a method *name* appearing inside a string elsewhere is not counted —
 # the mistake `check-rmi-api-doc.sh` made in its first version, where English
 # words in comments satisfied it.
-served = sorted(set(re.findall(r'^\s+"([a-z]+/[a-zA-Z_]+)" =>', src, re.M)))
+served = sorted(set(re.findall(r'^\s+"(%s)" =>' % NAME, src, re.M)))
 
 m = re.search(r'METHODS[^=]*=\s*&?\[(.*?)\];', src, re.S)
-advertised = sorted(set(re.findall(r'"([a-z]+/[a-zA-Z_]+)"', m.group(1)))) if m else []
+advertised = sorted(set(re.findall(r'"(%s)"' % NAME, m.group(1)))) if m else []
 if not m:
     print('NOLIST\t')
 
 # Backticked in the chapter, which is how every method there is written.
-documented = sorted(set(re.findall(r'`([a-z]+/[a-zA-Z_]+)`', doc)))
+documented = sorted(set(re.findall(r'`(%s)`' % NAME, doc)))
+
+# The fourth statement of the same list, and the one an agent actually reads to
+# discover the protocol. Generated from `RAP_METHODS` in `ontology.rs`, a
+# hand-maintained table, which had drifted: it omitted `rap/methods`, so
+# discovery-by-ontology could not discover that discovery has an endpoint.
+in_ontology = sorted({e['method'] for e in onto['sections']['rap_methods']})
 
 for name in served:
     if name not in advertised:
@@ -72,11 +99,17 @@ for name in advertised:
 for name in served:
     if name not in documented:
         print('UNDOCUMENTED\t%s' % name)
+for name in served:
+    if name not in in_ontology:
+        print('UNPUBLISHED\t%s' % name)
+for name in in_ontology:
+    if name not in served:
+        print('PHANTOM\t%s' % name)
 for name in documented:
     if name not in served:
         print('PLANNED\t%s' % name)
 
-print('COUNTED\t%d\t%d\t%d' % (len(served), len(advertised), len(documented)))
+print('COUNTED\t%d\t%d\t%d\t%d' % (len(served), len(advertised), len(documented), len(in_ontology)))
 PY
 )"
 
@@ -85,8 +118,9 @@ planned=0
 served_n=0
 adv_n=0
 doc_n=0
+onto_n=0
 
-while IFS=$'\t' read -r kind a b c; do
+while IFS=$'\t' read -r kind a b c d; do
     case "$kind" in
         NOLIST)
             echo "  x  no METHODS list found in $SRC — the discovery surface is unreadable" >&2
@@ -100,6 +134,14 @@ while IFS=$'\t' read -r kind a b c; do
             echo "  x  '$a' is in METHODS but has no dispatch arm — advertised and it errors" >&2
             fail=$((fail + 1))
             ;;
+        UNPUBLISHED)
+            echo "  x  '$a' is served and MAGE_ONTOLOGY.json does not publish it — discovery cannot find it" >&2
+            fail=$((fail + 1))
+            ;;
+        PHANTOM)
+            echo "  x  MAGE_ONTOLOGY.json publishes '$a', which has no dispatch arm" >&2
+            fail=$((fail + 1))
+            ;;
         UNDOCUMENTED)
             echo "  x  '$a' is served and $DOC never names it" >&2
             fail=$((fail + 1))
@@ -108,7 +150,7 @@ while IFS=$'\t' read -r kind a b c; do
             planned=$((planned + 1))
             ;;
         COUNTED)
-            served_n="$a"; adv_n="$b"; doc_n="$c"
+            served_n="$a"; adv_n="$b"; doc_n="$c"; onto_n="$d"
             ;;
     esac
 done <<< "$report"
@@ -132,4 +174,4 @@ if [ "$planned" -lt "$want" ]; then
 fi
 
 echo "  ok RAP serves $served_n method(s); METHODS advertises the same $adv_n;" \
-     "$DOC names all of them ($doc_n backticked, $planned planned and not served)."
+     "the ontology publishes $onto_n, and $DOC names all of them ($planned planned, not served)."

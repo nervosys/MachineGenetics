@@ -168,7 +168,7 @@ errors combined).
 ## 7.4 The method surface
 
 **Corrected 2026-08-25.** This section was a "Planned Methods" table listing
-three implemented methods and eleven planned ones. **37 methods are published
+three implemented methods and eleven planned ones. **38 methods are published
 and dispatch** — the count is pinned, and a test exercises every one against
 its published parameter list. None of the eleven exists under the name given,
 and most of the capabilities they described shipped under a different one:

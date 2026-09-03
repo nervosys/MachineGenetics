@@ -1581,7 +1581,7 @@ elsewhere, pointing at the wrong line.
   `extract_code_block` reads source *only* from a ``` fence. So `intent.source`
   was always `None` and both answered "No source code provided" for every
   input, including well-formed ones. They are the natural-language surface —
-  the methods an agent reaches for first — and the only 4 of 37 RAP methods
+  the methods an agent reaches for first — and the only 4 of 38 RAP methods
   with no test.
 - **Capability handles performed no effect.** `resolve.rs` registered twenty
   namespaces and said their "use is tracked by the effect system". It was not: a
@@ -2439,6 +2439,22 @@ doc_evals=M
 - **Regenerate the ontology from a *rebuilt* binary.** One commit shipped a stale
   `MAGE_ONTOLOGY.json` because `--emit-ontology` ran from a binary built before
   the change. `cargo test` builds the test harness, not `mage-parse`.
+- **`prototype/target/release/mage-parse` is not where cargo builds it, on this
+  machine.** `~/.cargo/config.toml` redirects every Rust build to a shared
+  `C:/Users/adamm/.cargo-target` (written 2026-08-17, after 1.33 TB of build
+  artifacts across 79 target directories filled the disk). Every script here
+  hard-codes `prototype/target/release/mage-parse`, so on this machine they run
+  a **leftover binary** in a directory cargo no longer writes to. It cost an
+  hour: `cargo build` reported `Compiling` and `Finished`, the source change was
+  present and compiled, and the binary at that path kept emitting the old
+  answer — through a `cargo clean -p`, three rebuilds, and a deliberate syntax
+  error that proved the file *was* being compiled. Nothing was wrong except
+  which file I was running.
+  **`cargo metadata --format-version 1 | jq .target_directory` settles it in one
+  command**, and is worth running before believing any local binary. CI is
+  unaffected — a clean checkout has no leftover `prototype/target/` and no user
+  config — which is exactly what makes it a local-only trap that invalidates
+  local verification silently.
 - **A stale *debug* artifact can fail a test that passes in release.** `forge`'s
   `the_manifest_and_the_dispatcher_agree` reads `src/bin/forge.rs` through
   `env!("CARGO_MANIFEST_DIR")`, and a debug object left over from before the

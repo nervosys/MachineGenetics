@@ -14,7 +14,7 @@
     "keywords": 102,
     "op_families": 7,
     "project_layout": 22,
-    "rap_methods": 37,
+    "rap_methods": 38,
     "recovery_stages": 7,
     "sigils": 50,
     "types": 30,
@@ -4466,6 +4466,16 @@
           "report"
         ],
         "summary": "Per-construct token cost report for source."
+      },
+      {
+        "method": "rap/methods",
+        "params": [],
+        "returns": [
+          "ok",
+          "count",
+          "methods"
+        ],
+        "summary": "List every method this server serves, with its count."
       },
       {
         "method": "effects/infer",
