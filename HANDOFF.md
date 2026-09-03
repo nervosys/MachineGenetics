@@ -437,12 +437,14 @@ items 21 (`~>` bounds parse and are discarded), 22 (the Neovim LSP
 registration cannot work, for three independent reasons), and 23 (`skb/` is 56
 rules nothing reads while the binary serves 255).
 
-**Item 21 has since been half-closed, and closing it found a fourth.** The
-compiler now reports every bound it discards (2026-09-01). Covering *all* the
-surface forms rather than functions alone is what turned up item 24: `Y` and
-`D` carry a `generics` field the parser never fills, because neither
-`Y Alias[T] = T` nor `D Rec[T] { v: T, }` parses. Doing the complete version
-of a small fix is what found it; the function-only version would not have.
+**Item 21 has since been half-closed.** The compiler now reports every bound
+it discards (2026-09-01), at all ten surface forms that can carry one.
+
+Covering all of them rather than functions alone also produced item 24 — `Y`
+and `D` carrying a `generics` field the parser supposedly never fills — which
+was **withdrawn on 2026-09-02 as false**. See the taxonomy's §5; the two parse
+errors I read as a missing feature were a missing `;` and the wrong record
+delimiter, both mine.
 
 Two patterns worth carrying:
 
@@ -1394,7 +1396,7 @@ found rather than acted on:
 | 16 | ~~**`rmi`'s `Send`/`Sync` on refcounted buffers read the counter `Relaxed`**~~ | **Closed 2026-08-19, and it was unsound after all** — the row previously said "not demonstrated unsound", which was true only because nobody had written the interleaving down. `as_bytes_mut` is `Arc::get_mut` by hand, and it loaded the count `Relaxed`. Thread A reads through `as_bytes`, then drops its handle (`fetch_sub`, `Release`). Thread B's `Relaxed` load observes `1` **without** synchronizing-with that `Release`, so B's writes through the returned `&mut [u8]` are unordered against A's reads of the same bytes: a data race on the ordinary sharing path. Now `Acquire`, which is the ordering `Arc::get_mut` uses and for exactly this reason. The four `unsafe impl` are sound under that ordering. `refcount()` stays `Relaxed` and is now documented as advisory, since a statistic confers nothing. **No test here verifies this**, and none can: the fix is invisible to a single-threaded suite, and on x86 — where loads are acquire in hardware — the broken version would never have manifested either. `loom` would verify it and is not a dependency this vendored crate should gain on my say-so. Recorded rather than instrumented, per rule 9. |
 | 17 | ~~**`rmi`'s `wasm` feature builds, pulls a dependency, and enables no code**~~ | **Closed 2026-08-19, the day it was filed.** `compute/wasm.rs` was 208 lines no `mod` declaration reached, so `--features wasm` succeeded, pulled `wasm-bindgen v0.2.126` into the graph, and enabled nothing — while `core/discoverability.rs` advertised a "WASM Backend" unconditionally. The fix was two lines: `#[cfg(feature = "wasm")] pub mod wasm;`. It compiles clean, `--features wasm` and the default build are both warning-free, and all 1,230 lib tests still pass. The file was never broken — only unreferenced, which is the whole reason it survived. Removed from the orphan baseline in the same commit, as that ratchet requires. |
 | 18 | **`rmi` publishes five hardware backends that are CPU code, and they report invented device properties** | Found 2026-08-19 while checking whether the ontology should gate backends by feature — the answer turned out to matter less than what it was gating. `compute/metal.rs`, `vulkan.rs`, `webgpu.rs`, `apple_ane.rs` and `qualcomm.rs` carry no binding for the API they are named after, and `Cargo.toml` declares none: the only GPU crate in the manifest is optional `wgpu`. They are CPU implementations under hardware names, and each constructor comments what a real one *would* do while returning fabricated `DeviceInfo` — `metal.rs` announces itself as `"Metal (Apple GPU)"` with 16 GB of unified memory and 10 compute units; `vulkan.rs` reports 32. **The ontology half is fixed** (`add_extra_compute_backends` now publishes what the code does, plus an `implementation` field naming each as a cpu-scaffold, and the false `feature_flag: "gpu"` on Metal and Vulkan is gone — neither is gated at all). **What is left is a behaviour change in a vendored crate**: a caller that reads `DeviceInfo` to size a workload is told about memory and compute units that do not exist, and correcting that changes what every consumer sees. Options are to report the real CPU device, or to make construction fail when the API is absent — both are upstream's call. Worth ranking above items 15 and 17, because those cost a dependency and this one returns wrong numbers to anyone who asks. |
-| 24 | **`Y` and `D` carry generics no syntax can reach** | Found 2026-09-01 while covering every bound-bearing item for item 21. `TypeAlias` and `DataDef` both have a `generics: Vec<GenericParam>` field, and both `Y Alias[T] = T` and `D Rec[T] { v: T, }` are **parse errors** — the parser never reads generics for either. So the field is constructed empty, threaded through `fmt`, `elision` and `token_budget`, and can hold nothing. This is dead weight rather than a lie: no document promises generic type aliases, and nothing reports success on one. Either wire the parser or drop the field; until then the resolver reports their bounds anyway, so the day the parser accepts them nothing is silently skipped. **Cheap, and worth doing by whoever next touches the parser** — it is two lines of `parse_generics` away, and leaving a field that cannot be populated is how the next reader concludes the feature exists. |
+| 24 | ~~**`Y` and `D` carry generics no syntax can reach**~~ | **Withdrawn 2026-09-02, one day after filing: the claim was false and I had checked nothing.** `parse_type_alias` and `parse_data_def` both call `parse_generic_params`, and always have. `Y Alias[T: Clone] = T;` and `D Rec[T: Clone](v: T)` parse and report their bound. The two "parse errors" I built the item on were mine — a type alias needs its terminating `;`, and a `data` record takes parentheses, not braces — and I turned them into a mechanism ("the parser never reads generics for either") without opening the parser. Kept struck rather than deleted: the *shape* is the one this document keeps recording, and it is worth seeing it happen to a filed item and not only to old documentation. **A parse error is evidence about the input, not about the language.** The two forms are now in `resolve.rs`'s coverage test, so the ten-of-ten claim is measured rather than asserted. |
 
 The five items previously here — `guard` as a reference, the `+=` diagnostic,
 `scan`'s seed, `pub` on a `data` field, and the array-literal/slice mismatch —
@@ -1833,6 +1835,24 @@ elsewhere, pointing at the wrong line.
 ### 5. The document is wrong, not the compiler
 
 The mirror image, and easy to get backwards.
+
+**And the newest instance is one I created, not one I found.** Item 24 said the
+parser never reads generics for `Y` and `D`. It reads them, and always has. My
+evidence was two parse errors on `Y Alias[T] = T` and `D Rec[T] { v: T, }`,
+which fail on a missing `;` and on brace-instead-of-parenthesis respectively —
+nothing to do with generics. I turned two mistakes of my own into a mechanism
+and filed it as an open item, without opening `parse_type_alias`.
+
+**A parse error is evidence about the input, not about the language.** The same
+sentence, in the compiler's own terms: a rejected program tells you the program
+was rejected. Which construct is unsupported is a separate question, and the
+parser answers it in about thirty seconds.
+
+It is worth noticing what caught this and what did not. Not review — the item
+had been read several times. It was caught by going to *implement* the fix and
+reading `parse_type_alias` to find the two lines to change, which is the same
+mechanism that made the `internals/` rewrite productive: **the intent to change
+code reads it differently from the intent to judge it.**
 
 - **`^` as Return.** One ontology line claimed it; the spec names `ret` in both
   sigil tables and mentions `^` exactly once, as bitwise XOR — and `^` is already
