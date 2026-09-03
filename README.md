@@ -6,7 +6,7 @@
 
 [Specification](MAGE_SPEC.md) · [Architecture](ARCHITECTURE.md) · [Benchmarks](#benchmarks-measured) · [Agent Protocol](AGENT_PROTOCOL.md) · [Roadmap](ROADMAP.md) · [Examples](examples/)
 
-[**All documentation →**](DOCS.md) — eighteen root documents, indexed by what is
+[**All documentation →**](DOCS.md) — 24 root documents, indexed by what is
 normative, what is design history, and what was never built.
 
 </div>

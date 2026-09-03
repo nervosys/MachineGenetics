@@ -154,6 +154,7 @@ benchmarks/STATUS.md	Ontology \([0-9]+ sections	onto_sections
 UNIFICATION.md	in \*\*[0-9]+ sections\*\*	onto_sections
 DOCS.md	the [0-9]+-section ontology	onto_sections
 DOCS.md	There are [0-9]+ Markdown documents	root_docs
+README.md	— [0-9]+ root documents, indexed	root_docs
 UNIFICATION.md	cli_flags \([0-9]+\)	onto_cli_flags
 UNIFICATION.md	effects \([0-9]+\)	onto_effects
 UNIFICATION.md	wrapper_protocol \([0-9]+\)	onto_wrapper_protocol

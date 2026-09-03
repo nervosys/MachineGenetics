@@ -12,7 +12,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **2,928** — rmi 1,384 · prototype 1,211 · ribosome 168 · germline 112 · forge 53 |
+| Tests | **2,938** — rmi 1,384 · prototype 1,221 · ribosome 168 · germline 112 · forge 53 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — the fix exists only on `handoff` |
@@ -654,7 +654,7 @@ the three placeholder false positives filtered rather than tolerated. See rule
 
 The count moved **275 → 269**, and that figure had no pin — which is how the
 criterion could tighten under it unnoticed. It has one now (`rmi_api_items`,
-measured by running the checker), taking documented-count pins to **91**.
+measured by running the checker), taking documented-count pins to **92**.
 
 ### Then the keys, which §2 had never mentioned because it thought there were none
 
@@ -1358,7 +1358,7 @@ implementation task**:
 - **Then the evaluator rework.** `eval.rs` is 2,987 lines, 39 expression forms
   and 53 recursive `self.eval(` sites, all of which keep the continuation in the
   Rust call stack — where it cannot be captured. Multi-shot needs CPS or an
-  explicit CEK-style machine, which touches every form, with 1,211 tests riding
+  explicit CEK-style machine, which touches every form, with 1,221 tests riding
   on current behaviour.
 
 **This item was filed under "real work, unstarted" with no blocker marked**,
@@ -2527,9 +2527,9 @@ harder to notice because it arrives wearing a green tick.
 
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,211**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,221**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
-  across five crates **2,928**; documented-count pins **91**, up from 46 — the
+  across five crates **2,938**; documented-count pins **92**, up from 46 — the
   four newest hold `SECURITY_AUDIT.md`'s `unsafe` inventory, a claim that had
   been wrong twice.
 - Every typechecker fix has landed without breaking an existing test **except

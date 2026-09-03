@@ -6,7 +6,7 @@
 # WHY THIS EXISTS
 # ─────────────────────────────────────────────────────────────────────────────
 #
-# `DOCS.md` opens: "There are 22 Markdown documents at the repository root…
+# `DOCS.md` opens: "There are N Markdown documents at the repository root…
 # **This index says which is which**, so nothing here has to be read to find
 # out whether it is still true." That is a universal claim, and the only thing
 # checking it was the `root_docs` count pin — which compares the *number* in
