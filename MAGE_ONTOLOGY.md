@@ -91,7 +91,25 @@ Envelope {
 
 ### 5. RAP (MAGE Agent Protocol) — Compiler Interface
 
-RAP exposes 24 JSON-RPC 2.0 endpoints. Each request is a JSON object with `method`, `params`, `id`:
+RAP exposes **38** JSON-RPC 2.0 endpoints. The tables below name **23** of
+them. Each request is a JSON object with `method`, `params`, `id`:
+
+> **Corrected 2026-09-02.** This line said "24 endpoints" and the tables below
+> hold 23 rows, against a server that serves 38. Three numbers, none of which
+> agreed with another. The August correction on this section audited the method
+> *names* — every one of the 23 is real, and still is — but not the count, and
+> not what was missing. An audit that fixes what is written cannot see what is
+> absent.
+>
+> The fifteen unlisted methods are not added here. This page would then be the
+> **sixth** hand-maintained copy of one list, after the dispatch arms, the
+> `METHODS` list, `ontology.rs`'s table, `MAGE_ONTOLOGY.json` and
+> `internals/07-rap-server.md` — and the last correction to this very section
+> was needed because a hand-maintained copy drifted. `scripts/check-rap-methods.sh`
+> now compares the generated sources and pins the two numbers in this sentence,
+> so they cannot drift again. **For the complete list, call `rap/methods`, or
+> read the `rap_methods` section of the generated `MAGE_ONTOLOGY.json`** — which
+> is what the note below already says, and is the right advice.
 
 > **Corrected 2026-08-18.** Thirteen of the twenty-three method rows below
 > listed parameters the server does not read, checked against the `rap_methods`

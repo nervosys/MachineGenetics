@@ -2,7 +2,7 @@
 # The RAP method surface agrees with itself, with the ontology, and with the
 # chapter that documents it.
 #
-# The same list is stated **four** times: the `"ns/verb" =>` dispatch arms in
+# The same list is stated **six** times: the `"ns/verb" =>` dispatch arms in
 # `rap.rs`, the `METHODS` list the server publishes, the `rap_methods` section
 # of `MAGE_ONTOLOGY.json` (generated from a hand-maintained table in
 # `ontology.rs`), and `internals/07-rap-server.md`. Nothing compared any of
@@ -29,6 +29,7 @@
 #   3. a served method the ontology does not publish
 #   4. an ontology entry with no dispatch arm
 #   5. a served method the chapter never names
+#   6. `MAGE_ONTOLOGY.md` section 5's two published counts
 #
 # And ratcheted: a method-shaped name in the chapter the server does not serve.
 # Thirteen are legitimate -- `internals/07` maps names that were planned or
@@ -45,18 +46,19 @@ set -o pipefail
 cd "$(dirname "$0")/.."
 
 SRC=prototype/src/rap.rs
+ONTOMD=MAGE_ONTOLOGY.md
 DOC=internals/07-rap-server.md
 ONTO=MAGE_ONTOLOGY.json
 BASELINE=scripts/rap-planned-baseline.txt
 
-for f in "$SRC" "$DOC" "$ONTO"; do
+for f in "$SRC" "$DOC" "$ONTO" "$ONTOMD"; do
     if [ ! -f "$f" ]; then
         echo "  x  $f is missing; this check cannot mean anything" >&2
         exit 1
     fi
 done
 
-report="$(python - "$SRC" "$DOC" "$ONTO" <<'PY'
+report="$(python - "$SRC" "$DOC" "$ONTO" "$ONTOMD" <<'PY'
 import io, json, re, sys
 
 # Hyphens are part of a method name. The first version of this pattern was
@@ -109,6 +111,24 @@ for name in documented:
     if name not in served:
         print('PLANNED\t%s' % name)
 
+# `MAGE_ONTOLOGY.md` section 5 is a *sixth* statement of the list, and a partial
+# one on purpose. It said "RAP exposes 24 JSON-RPC 2.0 endpoints" above a table
+# of 23 rows, against a server serving 38 — three numbers, none agreeing with
+# another. Rather than duplicate the list a sixth time, both figures in that
+# sentence are pinned to what is measured here.
+md = io.open(sys.argv[4], encoding='utf-8').read()
+sec = md[md.index('### 5. RAP'):md.index('### 6. Concurrency')]
+m2 = re.search(r'RAP exposes \*\*(\d+)\*\* JSON-RPC', sec)
+m3 = re.search(r'name \*\*(\d+)\*\* of', sec)
+rows = len(set(re.findall(r'^\|\s*`(%s)`' % NAME, sec, re.M)))
+if not m2 or not m3:
+    print('MDSHAPE\t')
+else:
+    if int(m2.group(1)) != len(served):
+        print('MDTOTAL\t%s\t%d' % (m2.group(1), len(served)))
+    if int(m3.group(1)) != rows:
+        print('MDROWS\t%s\t%d' % (m3.group(1), rows))
+
 print('COUNTED\t%d\t%d\t%d\t%d' % (len(served), len(advertised), len(documented), len(in_ontology)))
 PY
 )"
@@ -132,6 +152,18 @@ while IFS=$'\t' read -r kind a b c d; do
             ;;
         UNSERVED)
             echo "  x  '$a' is in METHODS but has no dispatch arm — advertised and it errors" >&2
+            fail=$((fail + 1))
+            ;;
+        MDSHAPE)
+            echo "  x  cannot find the endpoint counts in $ONTOMD section 5 — the sentence changed shape" >&2
+            fail=$((fail + 1))
+            ;;
+        MDTOTAL)
+            echo "  x  $ONTOMD says RAP exposes $a endpoints; the server serves $b" >&2
+            fail=$((fail + 1))
+            ;;
+        MDROWS)
+            echo "  x  $ONTOMD claims to name $a methods; its tables hold $b rows" >&2
             fail=$((fail + 1))
             ;;
         UNPUBLISHED)
