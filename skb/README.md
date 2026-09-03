@@ -1,6 +1,6 @@
 # MAGE Safety Knowledge Base (SKB)
 
-> **Corrected 2026-09-02.** This file described a 9,157-rule corpus that the
+> **Corrected and then regenerated, 2026-09-02.** This file described a 9,157-rule corpus that the
 > compiler queries at compile time, a query language, and two MLIR operations.
 > The compiler serves **255 rules**, from a table compiled into the binary, and
 > **reads nothing in this directory**. The query language and both MLIR
@@ -34,26 +34,35 @@ mention either.
 
 ## What is in this directory
 
-Six JSON files holding **56 rules**, plus a manifest and a schema:
+**Generated. Do not edit these files.** `mage-parse --emit-skb skb` writes them
+from `builtin_rules()`, and `scripts/check-skb-tree.sh` regenerates the tree in
+CI and fails if the committed one differs. To change a rule, change `skb.rs`
+and re-emit.
 
 ```
 skb/
-├── manifest.json        version, database sizes, hashes
+├── manifest.json        generated: totals and per-database counts
 ├── rule-schema.json     JSON Schema for a rule
 ├── README.md            this file
 └── rules/
-    ├── ownership.json   10      ├── type_safety.json  13
-    ├── borrow.json      10      ├── concurrency.json   8
-    ├── lifetime.json     8      └── ffi.json           7
+    ├── ownership.json     40    ├── concurrency.json     35
+    ├── borrow.json        40    ├── ffi.json             20
+    ├── lifetime.json      35    ├── agent_elision.json   30
+    ├── type_safety.json   40    └── swarm_safety.json    15
 ```
 
-**No crate reads any of it.** The `"skb/rules"` occurrences in `rap.rs` and
-`ontology.rs` are the JSON-RPC *method name*, which is easy to mistake for
-evidence that the directory is loaded. There is no `include_str!`, no
-`read_to_string`, and no path constant pointing here.
+Each rule carries the nine fields a `Rule` has: `id`, `database`, `category`,
+`severity`, `description`, `rationale`, `fix_template`, `fix_confidence`,
+`tags`.
 
-Nor is this tree the source the built-in rules were generated from. The two do
-not share an identifier scheme:
+### What it was until 2026-09-02
+
+Six files holding **56 rules that nothing read**. Not the compiler, not any
+tool — the `"skb/rules"` occurrences in `rap.rs` and `ontology.rs` are the
+JSON-RPC *method name*, easy to mistake for evidence the directory is loaded.
+
+It was not the source of the built-in rules either. The two did not share an
+identifier scheme:
 
 | | on disk | in the binary |
 | --- | --- | --- |
@@ -64,15 +73,22 @@ not share an identifier scheme:
 | — | `MEM-`, `TC-` (1 each) | no such database |
 | AgentElision, SwarmSafety | *no file* | 30 and 15 rules |
 
-So the directory is neither an input nor an export. It is a parallel corpus,
-and it can drift from the compiler without anything noticing — which is the
-`stdlib/` shape this repository has found before.
+So it was neither an input nor an export: a parallel corpus, free to drift from
+the compiler with nothing to notice — the `stdlib/` shape this repository has
+found before. `check-orphan-sources.sh` could not see it, because that finds
+`.rs` files no `mod` reaches, not **data** nothing loads.
 
-**This is open item 23 in `HANDOFF.md`**, and the decision it needs is which of
-these the tree should be: the source of truth (load it, and delete
-`builtin_rules()`), an export (generate it, and check it), or documentation
-(say so — this file now does). Until that is decided, prefer `builtin_rules()`:
-it is what runs.
+Open item 23 offered three answers: load it, generate it, or delete it.
+**Generating won.** Loading would have made 56 rules authoritative and discarded
+the 199 that actually run, needing a schema migration on the way. Deleting would
+lose a machine-readable corpus worth having on disk. Generating makes the tree
+true by construction — and only stays true because something regenerates and
+compares, which is the check above.
+
+The old files carried seventeen fields. Eight of them — `pattern`, `context`,
+`alternatives`, `false_positive_rate`, `frequency`, `scope`, `source`,
+`version` — were metadata about rules that were not the rules being enforced,
+populated by nothing and read by nothing. They are not in the export.
 
 ## Querying the rules
 

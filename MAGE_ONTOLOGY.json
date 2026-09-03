@@ -4,7 +4,7 @@
     "ast_kinds": 20,
     "bench_backends": 4,
     "ci_floors": 6,
-    "cli_flags": 36,
+    "cli_flags": 37,
     "docs": 7,
     "effects": 22,
     "examples": 10,
@@ -183,6 +183,11 @@
       {
         "flag": "--emit-ontology",
         "purpose": "Dump the complete ontology to disk as static JSON",
+        "takes_path": true
+      },
+      {
+        "flag": "--emit-skb",
+        "purpose": "Regenerate skb/ from the rules compiled into this binary",
         "takes_path": true
       },
       {

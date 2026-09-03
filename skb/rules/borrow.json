@@ -1,192 +1,616 @@
 [
   {
-    "id": "BR-001",
-    "database": "borrow",
-    "version": "0.1.0",
-    "severity": "error",
-    "category": "double-borrow",
-    "description": "Cannot borrow value as mutable while it is also borrowed as immutable",
-    "rationale": "Aliasing XOR mutability: a value can have either one mutable reference or any number of immutable references, never both",
-    "scope": "function",
-    "pattern": "Borrow(&x); ... BorrowMut(&mut x)",
-    "context": "overlapping lifetimes",
-    "fix_template": "Drop the immutable borrow before creating the mutable borrow",
-    "fix_confidence": 0.90,
-    "alternatives": ["Use Cell/RefCell for interior mutability", "Restructure to separate read and write phases"],
-    "source": "builtin",
-    "frequency": 156789,
-    "false_positive_rate": 0.001,
-    "tags": ["borrow", "mut", "alias", "safety", "common"]
-  },
-  {
-    "id": "BR-002",
-    "database": "borrow",
-    "version": "0.1.0",
-    "severity": "error",
-    "category": "double-mut-borrow",
-    "description": "Cannot borrow value as mutable more than once at a time",
-    "rationale": "Multiple mutable references to the same data enable data races and aliasing bugs",
-    "scope": "function",
-    "pattern": "BorrowMut(&mut x); ... BorrowMut(&mut x)",
-    "context": "overlapping lifetimes",
-    "fix_template": "Scope the first mutable borrow to end before the second begins",
+    "id": "BOR-0001",
+    "database": "Borrow",
+    "category": "double-mutable-borrow",
+    "severity": "Error",
+    "description": "Two mutable borrows of same value active simultaneously",
+    "rationale": "Rust/MAGE allows only one &mut at a time",
+    "fix_template": "Restructure to avoid overlapping mutable borrows",
     "fix_confidence": 0.85,
-    "alternatives": ["Use indices instead of references", "Split the data structure"],
-    "source": "builtin",
-    "frequency": 98765,
-    "false_positive_rate": 0.0,
-    "tags": ["borrow", "mut", "safety"]
+    "tags": [
+      "borrow",
+      "mutable",
+      "aliasing"
+    ]
   },
   {
-    "id": "BR-003",
-    "database": "borrow",
-    "version": "0.1.0",
-    "severity": "error",
-    "category": "borrow-moved",
-    "description": "Cannot borrow value after it has been moved",
-    "rationale": "Once ownership is transferred, the original binding is invalid and cannot be borrowed",
-    "scope": "function",
-    "pattern": "Move(x); ... Borrow(&x)",
-    "context": "x: !Copy",
-    "fix_template": "Borrow before moving, or clone the value",
-    "fix_confidence": 0.90,
-    "alternatives": ["Use a reference instead of moving"],
-    "source": "builtin",
-    "frequency": 45678,
-    "false_positive_rate": 0.0,
-    "tags": ["borrow", "move", "safety"]
+    "id": "BOR-0002",
+    "database": "Borrow",
+    "category": "mutable-and-shared",
+    "severity": "Error",
+    "description": "Mutable and shared borrow active simultaneously",
+    "rationale": "Cannot have &mut and & at the same time",
+    "fix_template": "Use shared borrow only, or restructure",
+    "fix_confidence": 0.85,
+    "tags": [
+      "borrow",
+      "mutable",
+      "shared",
+      "aliasing"
+    ]
   },
   {
-    "id": "BR-004",
-    "database": "borrow",
-    "version": "0.1.0",
-    "severity": "error",
-    "category": "iter-invalidation",
-    "description": "Collection modified while iterating over it",
-    "rationale": "Mutating a collection during iteration can invalidate the iterator, causing undefined behavior",
-    "scope": "function",
-    "pattern": "Iter(col); ... Mutate(col) inside loop",
-    "context": "iterator active",
-    "fix_template": "Collect indices to modify, then apply changes after the loop",
-    "fix_confidence": 0.80,
-    "alternatives": ["Use retain() or drain_filter()", "Build a new collection"],
-    "source": "builtin",
-    "frequency": 34567,
-    "false_positive_rate": 0.005,
-    "tags": ["borrow", "iterator", "collection", "safety", "common"]
+    "id": "BOR-0003",
+    "database": "Borrow",
+    "category": "borrow-in-loop-mutate",
+    "severity": "Error",
+    "description": "Immutable borrow in loop body, mutable usage outside",
+    "rationale": "Borrow persists across loop iteration",
+    "fix_template": "Clone or restructure borrow scope",
+    "fix_confidence": 0.7,
+    "tags": [
+      "borrow",
+      "loop",
+      "mutable"
+    ]
   },
   {
-    "id": "BR-005",
-    "database": "borrow",
-    "version": "0.1.0",
-    "severity": "warning",
-    "category": "unnecessary-borrow",
-    "description": "Unnecessary borrow: value is Copy and could be passed by value",
-    "rationale": "For small Copy types, passing by value is as efficient as passing by reference and avoids indirection",
-    "scope": "function",
-    "pattern": "Borrow(&x) where x: Copy, sizeof(typeof(x)) <= 16",
-    "context": null,
-    "fix_template": "Pass by value instead of by reference",
+    "id": "BOR-0004",
+    "database": "Borrow",
+    "category": "borrow-escapes-scope",
+    "severity": "Error",
+    "description": "Borrow escapes the scope of the referent",
+    "rationale": "Reference outlives the value it points to",
+    "fix_template": "Shorten borrow or extend referent lifetime",
+    "fix_confidence": 0.8,
+    "tags": [
+      "borrow",
+      "escape",
+      "scope"
+    ]
+  },
+  {
+    "id": "BOR-0005",
+    "database": "Borrow",
+    "category": "iterator-invalidation",
+    "severity": "Error",
+    "description": "Collection mutated while iterator is active",
+    "rationale": "Iterators hold borrows; mutation invalidates them",
+    "fix_template": "Collect indices first, then mutate",
     "fix_confidence": 0.75,
-    "alternatives": [],
-    "source": "builtin",
-    "frequency": 78901,
-    "false_positive_rate": 0.10,
-    "tags": ["borrow", "performance", "copy"]
+    "tags": [
+      "borrow",
+      "iterator",
+      "invalidation",
+      "collection"
+    ]
   },
   {
-    "id": "BR-006",
-    "database": "borrow",
-    "version": "0.1.0",
-    "severity": "error",
-    "category": "return-local-borrow",
-    "description": "Cannot return a reference to a local variable",
-    "rationale": "Local variables are dropped at the end of the function; returning a reference to them creates a dangling pointer",
-    "scope": "function",
-    "pattern": "v x = ...; ... Return(&x)",
-    "context": "x: local",
-    "fix_template": "Return the value by ownership instead of by reference",
-    "fix_confidence": 0.95,
-    "alternatives": ["Allocate on the heap with Box/Rc/Arc"],
-    "source": "builtin",
-    "frequency": 56789,
-    "false_positive_rate": 0.0,
-    "tags": ["borrow", "lifetime", "dangling", "safety", "common"]
+    "id": "BOR-0006",
+    "database": "Borrow",
+    "category": "reborrow-implicit",
+    "severity": "Info",
+    "description": "Implicit reborrow of &mut to &",
+    "rationale": "Compiler inserts reborrow automatically",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "borrow",
+      "reborrow",
+      "implicit"
+    ]
   },
   {
-    "id": "BR-007",
-    "database": "borrow",
-    "version": "0.1.0",
-    "severity": "error",
-    "category": "mut-borrow-across-await",
-    "description": "Mutable borrow held across an await point",
-    "rationale": "Await points suspend execution; holding a mutable borrow across one could allow concurrent access in another task",
-    "scope": "function",
-    "pattern": "BorrowMut(&mut x); ... Await; ... Use(&mut x)",
-    "context": "async function",
-    "fix_template": "Scope the mutable borrow to end before the await, or clone the data",
-    "fix_confidence": 0.80,
-    "alternatives": ["Use a Mutex for cross-await access"],
-    "source": "builtin",
-    "frequency": 12345,
-    "false_positive_rate": 0.01,
-    "tags": ["borrow", "async", "await", "concurrency"]
+    "id": "BOR-0007",
+    "database": "Borrow",
+    "category": "borrow-split",
+    "severity": "Hint",
+    "description": "Borrow can be split into disjoint fields",
+    "rationale": "Borrowing different struct fields is allowed",
+    "fix_template": "Borrow specific fields instead of whole struct",
+    "fix_confidence": 0.8,
+    "tags": [
+      "borrow",
+      "split",
+      "disjoint",
+      "struct"
+    ]
   },
   {
-    "id": "BR-008",
-    "database": "borrow",
-    "version": "0.1.0",
-    "severity": "warning",
-    "category": "borrow-in-match",
-    "description": "Borrow used in match arm prevents modification in other arms",
-    "rationale": "Match arms may need exclusive access; holding borrows across arms constrains what other arms can do",
-    "scope": "function",
-    "pattern": "Match(x) { arm1 => Borrow(&x.field), arm2 => BorrowMut(&mut x.field) }",
-    "context": null,
-    "fix_template": "Extract the borrowed value before the match",
-    "fix_confidence": 0.70,
-    "alternatives": ["Restructure the match to avoid cross-arm borrows"],
-    "source": "builtin",
-    "frequency": 9876,
-    "false_positive_rate": 0.05,
-    "tags": ["borrow", "match", "pattern"]
+    "id": "BOR-0008",
+    "database": "Borrow",
+    "category": "nll-scope",
+    "severity": "Info",
+    "description": "Non-lexical lifetime: borrow ends at last use",
+    "rationale": "Borrows end at last use, not at block end",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "borrow",
+      "nll",
+      "scope"
+    ]
   },
   {
-    "id": "BR-042",
-    "database": "borrow",
-    "version": "0.1.0",
-    "severity": "error",
-    "category": "mut-vec-across-loop",
-    "description": "Cannot hold &mut Vec<T> across loop iteration that also reads via &Vec<T>",
-    "rationale": "Simultaneous mutable and immutable access to a Vec can cause iterator invalidation and data corruption",
-    "scope": "function",
-    "pattern": "BorrowMut(&mut vec); Loop { Borrow(&vec) }",
-    "context": "vec: Vec<T>",
-    "fix_template": "Clone before loop or use index-based access",
-    "fix_confidence": 1.0,
-    "alternatives": ["Pre-allocate and use split_at_mut()"],
-    "source": "builtin",
-    "frequency": 23456,
-    "false_positive_rate": 0.0,
-    "tags": ["borrow", "vec", "loop", "safety"]
-  },
-  {
-    "id": "BR-043",
-    "database": "borrow",
-    "version": "0.1.0",
-    "severity": "warning",
-    "category": "realloc-invalidation",
-    "description": "Mutable borrow inside loop may cause reallocation invalidation",
-    "rationale": "Vec::push() may reallocate the backing buffer, invalidating any existing references to elements",
-    "scope": "function",
-    "pattern": "Borrow(&vec[i]); ... vec.push(x)",
-    "context": "vec: Vec<T>",
-    "fix_template": "Pre-allocate with Vec::with_capacity() before loop",
+    "id": "BOR-0009",
+    "database": "Borrow",
+    "category": "temporary-borrow",
+    "severity": "Warning",
+    "description": "Borrowing a temporary expression",
+    "rationale": "Temporary dropped at end of statement",
+    "fix_template": "Bind expression to variable first",
     "fix_confidence": 0.85,
-    "alternatives": ["Use indices instead of references", "Collect into a new Vec"],
-    "source": "builtin",
-    "frequency": 18765,
-    "false_positive_rate": 0.03,
-    "tags": ["borrow", "vec", "push", "reallocation", "performance"]
+    "tags": [
+      "borrow",
+      "temporary",
+      "drop"
+    ]
+  },
+  {
+    "id": "BOR-0010",
+    "database": "Borrow",
+    "category": "closure-borrow-conflict",
+    "severity": "Error",
+    "description": "Closure borrows value conflicting with outer code",
+    "rationale": "Closure captures borrow; outer code can't use value",
+    "fix_template": "Move value into closure or restructure",
+    "fix_confidence": 0.7,
+    "tags": [
+      "borrow",
+      "closure",
+      "conflict"
+    ]
+  },
+  {
+    "id": "BOR-0011",
+    "database": "Borrow",
+    "category": "ref-to-moved",
+    "severity": "Error",
+    "description": "Reference to moved value",
+    "rationale": "Value moved; reference is dangling",
+    "fix_template": "Clone before moving, or take reference before move",
+    "fix_confidence": 0.9,
+    "tags": [
+      "borrow",
+      "move",
+      "dangling"
+    ]
+  },
+  {
+    "id": "BOR-0012",
+    "database": "Borrow",
+    "category": "cell-shared-mutation",
+    "severity": "Info",
+    "description": "Cell/RefCell allow interior mutability through shared reference",
+    "rationale": "Shared mutation via runtime checks instead of &mut",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "borrow",
+      "cell",
+      "interior-mutability"
+    ]
+  },
+  {
+    "id": "BOR-0013",
+    "database": "Borrow",
+    "category": "refcell-runtime-panic",
+    "severity": "Warning",
+    "description": "RefCell borrow can panic at runtime if already borrowed mutably",
+    "rationale": "borrow() panics if borrow_mut() is active",
+    "fix_template": "Use try_borrow() to handle gracefully",
+    "fix_confidence": 0.8,
+    "tags": [
+      "borrow",
+      "refcell",
+      "panic",
+      "runtime"
+    ]
+  },
+  {
+    "id": "BOR-0014",
+    "database": "Borrow",
+    "category": "index-borrow",
+    "severity": "Info",
+    "description": "Indexing operation implicitly borrows the collection",
+    "rationale": "Index creates a shared or mutable borrow",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "borrow",
+      "index",
+      "implicit"
+    ]
+  },
+  {
+    "id": "BOR-0015",
+    "database": "Borrow",
+    "category": "deref-coercion",
+    "severity": "Info",
+    "description": "Deref coercion converts &Box<T> to &T automatically",
+    "rationale": "Deref trait enables transparent borrowing",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "borrow",
+      "deref",
+      "coercion"
+    ]
+  },
+  {
+    "id": "BOR-0016",
+    "database": "Borrow",
+    "category": "as-ref-as-mut",
+    "severity": "Hint",
+    "description": "Use AsRef/AsMut for generic borrowing in function parameters",
+    "rationale": "AsRef enables accepting &T, &String, &str, etc.",
+    "fix_template": "Change parameter to impl AsRef<T>",
+    "fix_confidence": 0.75,
+    "tags": [
+      "borrow",
+      "asref",
+      "generic"
+    ]
+  },
+  {
+    "id": "BOR-0017",
+    "database": "Borrow",
+    "category": "borrow-guard",
+    "severity": "Info",
+    "description": "MutexGuard/RwLockGuard holds borrow until dropped",
+    "rationale": "Lock guard lifetime = borrow lifetime",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "borrow",
+      "guard",
+      "lock",
+      "scope"
+    ]
+  },
+  {
+    "id": "BOR-0018",
+    "database": "Borrow",
+    "category": "slice-borrow",
+    "severity": "Info",
+    "description": "Slices borrow the underlying collection",
+    "rationale": "&[T] is a borrowed view into Vec or array",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "borrow",
+      "slice",
+      "view"
+    ]
+  },
+  {
+    "id": "BOR-0019",
+    "database": "Borrow",
+    "category": "string-str-borrow",
+    "severity": "Hint",
+    "description": "Use &str instead of &String in function parameters",
+    "rationale": "&str is more general; accepts both String and &str",
+    "fix_template": "Change parameter type to &str",
+    "fix_confidence": 0.9,
+    "tags": [
+      "borrow",
+      "string",
+      "str",
+      "parameter"
+    ]
+  },
+  {
+    "id": "BOR-0020",
+    "database": "Borrow",
+    "category": "vec-slice-borrow",
+    "severity": "Hint",
+    "description": "Use &[T] instead of &Vec<T> in function parameters",
+    "rationale": "&[T] is more general; accepts arrays and slices too",
+    "fix_template": "Change parameter type to &[T]",
+    "fix_confidence": 0.9,
+    "tags": [
+      "borrow",
+      "vec",
+      "slice",
+      "parameter"
+    ]
+  },
+  {
+    "id": "BOR-0021",
+    "database": "Borrow",
+    "category": "entry-borrow-conflict",
+    "severity": "Warning",
+    "description": "HashMap entry API avoids double borrow on lookup+insert",
+    "rationale": "get() then insert() borrows immutably then mutably",
+    "fix_template": "Use entry().or_insert()",
+    "fix_confidence": 0.85,
+    "tags": [
+      "borrow",
+      "hashmap",
+      "entry"
+    ]
+  },
+  {
+    "id": "BOR-0022",
+    "database": "Borrow",
+    "category": "match-borrow",
+    "severity": "Info",
+    "description": "Match arms borrow the scrutinee",
+    "rationale": "Pattern matching creates borrows of matched value",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "borrow",
+      "match",
+      "pattern"
+    ]
+  },
+  {
+    "id": "BOR-0023",
+    "database": "Borrow",
+    "category": "nested-borrow",
+    "severity": "Warning",
+    "description": "Nested mutable borrows through struct fields",
+    "rationale": "Borrowing field of &mut struct creates nested borrow",
+    "fix_template": "Split borrows by field",
+    "fix_confidence": 0.7,
+    "tags": [
+      "borrow",
+      "nested",
+      "struct",
+      "field"
+    ]
+  },
+  {
+    "id": "BOR-0024",
+    "database": "Borrow",
+    "category": "method-receiver",
+    "severity": "Info",
+    "description": "&self borrows immutably, &mut self borrows mutably, self moves",
+    "rationale": "Method receiver determines borrow kind",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "borrow",
+      "method",
+      "receiver",
+      "self"
+    ]
+  },
+  {
+    "id": "BOR-0025",
+    "database": "Borrow",
+    "category": "two-phase-borrow",
+    "severity": "Info",
+    "description": "Two-phase borrows allow &mut in method call arguments",
+    "rationale": "Compiler splits activation of mutable borrows",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "borrow",
+      "two-phase",
+      "method-call"
+    ]
+  },
+  {
+    "id": "BOR-0026",
+    "database": "Borrow",
+    "category": "autoref",
+    "severity": "Info",
+    "description": "Compiler auto-references method receivers",
+    "rationale": ". operator adds & or &mut as needed",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "borrow",
+      "autoref",
+      "method"
+    ]
+  },
+  {
+    "id": "BOR-0027",
+    "database": "Borrow",
+    "category": "pin-borrow",
+    "severity": "Info",
+    "description": "Pin<&mut T> prevents moving the borrowed value",
+    "rationale": "Pin ensures address stability through borrow",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "borrow",
+      "pin",
+      "move"
+    ]
+  },
+  {
+    "id": "BOR-0028",
+    "database": "Borrow",
+    "category": "unsafe-alias",
+    "severity": "Error",
+    "description": "Unsafe code creates aliased &mut references",
+    "rationale": "Undefined behavior: two &mut to same memory",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "borrow",
+      "unsafe",
+      "aliasing",
+      "ub"
+    ]
+  },
+  {
+    "id": "BOR-0029",
+    "database": "Borrow",
+    "category": "return-borrow",
+    "severity": "Warning",
+    "description": "Returned reference must outlive function",
+    "rationale": "Returned &T must live at least as long as caller needs",
+    "fix_template": "Return owned value or tie lifetime to input",
+    "fix_confidence": 0.75,
+    "tags": [
+      "borrow",
+      "return",
+      "lifetime"
+    ]
+  },
+  {
+    "id": "BOR-0030",
+    "database": "Borrow",
+    "category": "async-borrow-across-await",
+    "severity": "Error",
+    "description": "Borrow held across .await point",
+    "rationale": "Borrow must be valid across suspension; may cause issues",
+    "fix_template": "Clone value or restructure to not hold borrow across await",
+    "fix_confidence": 0.65,
+    "tags": [
+      "borrow",
+      "async",
+      "await",
+      "suspension"
+    ]
+  },
+  {
+    "id": "BOR-0031",
+    "database": "Borrow",
+    "category": "fn-once-borrow",
+    "severity": "Info",
+    "description": "FnOnce captures by value; FnMut by &mut; Fn by &",
+    "rationale": "Closure trait hierarchy determines capture mode",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "borrow",
+      "closure",
+      "fn-trait"
+    ]
+  },
+  {
+    "id": "BOR-0032",
+    "database": "Borrow",
+    "category": "static-borrow",
+    "severity": "Info",
+    "description": "'static borrows live for entire program duration",
+    "rationale": "Only constants and leaked values have 'static lifetime",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "borrow",
+      "static",
+      "lifetime"
+    ]
+  },
+  {
+    "id": "BOR-0033",
+    "database": "Borrow",
+    "category": "borrow-as-ptr",
+    "severity": "Warning",
+    "description": "Converting borrow to raw pointer bypasses borrow checker",
+    "rationale": "Raw pointers are unchecked; ensure safety",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "borrow",
+      "raw-pointer",
+      "unsafe"
+    ]
+  },
+  {
+    "id": "BOR-0034",
+    "database": "Borrow",
+    "category": "coerce-unsized",
+    "severity": "Info",
+    "description": "&Box<T> coerces to &T via Deref; &Vec<T> to &[T]",
+    "rationale": "Compiler applies deref coercions automatically",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "borrow",
+      "coercion",
+      "unsized"
+    ]
+  },
+  {
+    "id": "BOR-0035",
+    "database": "Borrow",
+    "category": "iter-borrow-kind",
+    "severity": "Info",
+    "description": ".iter() yields &T, .iter_mut() yields &mut T",
+    "rationale": "Choose iterator to match needed borrow kind",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "borrow",
+      "iterator",
+      "reference-kind"
+    ]
+  },
+  {
+    "id": "BOR-0036",
+    "database": "Borrow",
+    "category": "map-values-borrow",
+    "severity": "Hint",
+    "description": "Use .values() / .values_mut() to iterate only map values",
+    "rationale": "Avoids borrowing keys when only values needed",
+    "fix_template": "Replace .iter().map(|(_, v)| v) with .values()",
+    "fix_confidence": 0.85,
+    "tags": [
+      "borrow",
+      "hashmap",
+      "values",
+      "idiom"
+    ]
+  },
+  {
+    "id": "BOR-0037",
+    "database": "Borrow",
+    "category": "windows-chunks",
+    "severity": "Hint",
+    "description": "Use .windows() or .chunks() for sliding/fixed slices",
+    "rationale": "Avoids manual index borrowing",
+    "fix_template": "Replace manual loop with .windows(n) or .chunks(n)",
+    "fix_confidence": 0.8,
+    "tags": [
+      "borrow",
+      "slice",
+      "windows",
+      "chunks"
+    ]
+  },
+  {
+    "id": "BOR-0038",
+    "database": "Borrow",
+    "category": "collect-borrow-end",
+    "severity": "Info",
+    "description": "collect() consumes iterator — ends iterator's borrow",
+    "rationale": "After collect(), original collection is no longer borrowed",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "borrow",
+      "collect",
+      "iterator"
+    ]
+  },
+  {
+    "id": "BOR-0039",
+    "database": "Borrow",
+    "category": "to-vec-clone",
+    "severity": "Info",
+    "description": ".to_vec() clones a slice into a new Vec",
+    "rationale": "Creates owned copy; original borrow ends",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "borrow",
+      "to_vec",
+      "clone"
+    ]
+  },
+  {
+    "id": "BOR-0040",
+    "database": "Borrow",
+    "category": "splitn-borrow",
+    "severity": "Info",
+    "description": "split / splitn borrows the string or slice",
+    "rationale": "Split iterators keep borrow alive",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "borrow",
+      "split",
+      "string",
+      "slice"
+    ]
   }
 ]

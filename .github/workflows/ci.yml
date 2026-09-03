@@ -189,6 +189,12 @@ jobs:
       # recently as 2026-08-25.
       - name: The RAP method surface agrees with itself and its chapter
         run: bash scripts/check-rap-methods.sh
+      # `skb/` is a generated export now, not a parallel corpus. It held 56
+      # rules nothing read while the binary served 255, under a different
+      # identifier scheme, missing two whole databases. Generated trees are
+      # only true while something regenerates and compares.
+      - name: skb/ matches what the compiler serves
+        run: bash scripts/check-skb-tree.sh
       # Every check above asks a question about code that compiles. Nothing
       # asked whether it compiles at all — and `compute/cuda_full.rs` is 1,812
       # lines with 16 `unsafe` blocks and 6 tests that no `mod` declaration

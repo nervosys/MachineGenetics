@@ -192,6 +192,20 @@ fn main() {
             }
             println!("wrote {} bytes to {out}", json.len());
         }
+        Some("--emit-skb") => {
+            // Regenerate `skb/` from `builtin_rules()`. See `skb::emit_tree`
+            // and open item 23: that tree held 56 rules nothing read while the
+            // binary served 255, under a different identifier scheme, missing
+            // two whole databases.
+            let out = filtered.get(1).copied().unwrap_or("skb");
+            match skb::emit_tree(std::path::Path::new(out)) {
+                Ok(n) => println!("wrote {n} rules to {out}/"),
+                Err(e) => {
+                    eprintln!("emit-skb: {out}: {e}");
+                    std::process::exit(1);
+                }
+            }
+        }
         Some("--fmt-compact") => {
             let path = filtered.get(1).unwrap_or_else(|| {
                 eprintln!("Usage: mage-parse --fmt-compact <file.mg|-> [out]");
@@ -3351,7 +3365,7 @@ mod cli_arg_tests {
                     || f.starts_with("--describe")
                     || f.starts_with("--spine=")
                     || matches!(f, "--check" | "--eval" | "--pipeline" | "--rap"
-                                | "--fmt-compact" | "--fmt-expand" | "--emit-ontology"
+                                | "--fmt-compact" | "--fmt-expand" | "--emit-ontology" | "--emit-skb"
                                 | "--manifest" | "--rain" | "--version" | "--input") =>
                 {
                     continue
