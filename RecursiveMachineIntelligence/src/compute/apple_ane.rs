@@ -71,12 +71,18 @@ impl AppleAneBackend {
 
         Ok(Self {
             device_info: DeviceInfo {
-                name: "Apple Neural Engine".to_string(),
+                // Zeroed 2026-09-02. These were placeholders -- 16 GB, 12 GB,
+                // 10 compute units -- reported by a backend that runs CPU code
+                // and has no binding for the API it is named after. A caller
+                // sizing work by `available_memory` acted on memory that does
+                // not exist. Zero reads as "unknown"; a placeholder is a number
+                // something will divide by. See open item 18.
+                name: "Apple Neural Engine (not implemented: no ANE binding in this build)".to_string(),
                 backend_type: BackendType::AppleAne,
-                total_memory: 16 * 1024 * 1024 * 1024, // Unified memory pool
-                available_memory: 12 * 1024 * 1024 * 1024,
+                total_memory: 0,
+                available_memory: 0,
                 compute_capability: None,
-                compute_units: 16, // ANE cores placeholder (M-series)
+                compute_units: 0,
             },
             next_id: AtomicU64::new(1),
             storage: RwLock::new(HashMap::new()),
@@ -91,9 +97,10 @@ impl AppleAneBackend {
 
     /// Query the ANE generation and TOPS rating.
     pub fn ane_tops(&self) -> f32 {
-        // Real impl: IOKit device tree → ANE generation
-        // M1: 11 TOPS, M2: 15.8 TOPS, M3: 18 TOPS, M4: 38 TOPS
-        15.8
+        // 0.0, not 15.8. That figure is the M2's rating, returned by code that
+        // never queried a device and cannot reach the ANE. A caller choosing a
+        // backend by TOPS was being handed a number from a comment. Item 18.
+        0.0
     }
 
     #[inline]
@@ -155,7 +162,16 @@ impl Backend for AppleAneBackend {
     }
 
     fn is_available(&self) -> bool {
-        Self::is_supported()
+        // False, deliberately, and not a placeholder to be flipped later.
+        //
+        // This returned `Self::is_supported()` -- so on macOS and iOS a caller asking for the best
+        // available accelerator was handed a backend named after an API this
+        // build has no binding for, and ran on the CPU believing otherwise.
+        // `is_supported()` still answers the question it is named for ("could
+        // this platform host the Apple Neural Engine"), which is a fact about the machine.
+        // Whether *this backend* can execute there is a fact about this crate,
+        // and the answer is no until someone writes the binding. See item 18.
+        false
     }
 
     fn allocate(&self, shape: &[usize], dtype: DType) -> Result<TensorHandle> {
@@ -499,8 +515,13 @@ mod tests {
 
     #[test]
     fn ane_tops_rating() {
+        // Inverted 2026-09-02. This asserted `> 0.0` and so pinned the
+        // fabrication: `ane_tops()` returned 15.8 -- the M2's published rating
+        // -- from code that never queried a device and cannot reach the ANE.
+        // The test would have failed anyone who made it honest. It now pins the
+        // honesty instead: nothing was measured, so the answer is zero.
         let backend = AppleAneBackend::new().unwrap();
-        assert!(backend.ane_tops() > 0.0);
+        assert_eq!(backend.ane_tops(), 0.0, "no device is queried; a rating here is invented");
     }
 
     #[test]

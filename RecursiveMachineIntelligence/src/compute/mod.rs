@@ -443,12 +443,29 @@ pub fn get_backend_by_type(backend_type: BackendType) -> Result<Arc<dyn Backend>
         #[cfg(not(feature = "cuda"))]
         BackendType::Cuda => Err(RmiError::compute_simple("CUDA support not compiled")),
         BackendType::WebGpu => {
-            let wgpu = webgpu::WebGpuBackend::new()?;
-            if wgpu.is_available() {
-                Ok(Arc::new(wgpu))
-            } else {
-                Err(RmiError::compute_simple("WebGPU not available"))
+            // The real one, when it is compiled in.
+            //
+            // `wgpu_backend.rs` is 1,103 lines that genuinely drive wgpu --
+            // `wgpu::Device`, `wgpu::Buffer`, real dispatch -- behind
+            // `feature = "gpu"`. It implements `Backend`, it is `pub`, and until
+            // 2026-09-02 **nothing outside its own file ever named it**: this
+            // arm handed out `webgpu::WebGpuBackend`, the stub, even with the
+            // feature on. A working GPU backend, shadowed by a placeholder, in
+            // the crate's own dispatcher.
+            #[cfg(feature = "gpu")]
+            {
+                let real = wgpu_backend::WgpuBackend::new()?;
+                if real.is_available() {
+                    return Ok(Arc::new(real));
+                }
+                return Err(RmiError::compute_simple("WebGPU adapter not available"));
             }
+            // Without the feature there is no wgpu binding at all, and the stub
+            // must not pretend otherwise. See item 18.
+            #[cfg(not(feature = "gpu"))]
+            Err(RmiError::compute_simple(
+                "WebGPU support not compiled (build with --features gpu)",
+            ))
         }
         BackendType::Metal => {
             let mtl = metal::MetalBackend::new()?;
@@ -561,34 +578,30 @@ mod tests {
 
     #[test]
     fn get_backend_by_type_stubs() {
-        let webgpu = get_backend_by_type(BackendType::WebGpu).unwrap();
-        assert_eq!(webgpu.backend_type(), BackendType::WebGpu);
+        // Rewritten 2026-09-02. This asserted that Metal, Vulkan, WebGPU, ANE
+        // and Qualcomm backends could be *obtained* -- unconditionally for two
+        // of them and per-platform for three -- which is precisely the claim
+        // that was false. None of the five has a binding for the API it is
+        // named after, so `get_backend_by_type` now refuses all five, and
+        // asking for a GPU gets an error instead of CPU code wearing its name.
+        //
+        // The CPU backend is the one that works, and is checked here so this
+        // test still says something positive.
+        let cpu = get_backend_by_type(BackendType::Cpu).unwrap();
+        assert_eq!(cpu.backend_type(), BackendType::Cpu);
+        assert!(cpu.is_available());
 
-        // Metal is only available on macOS/iOS
-        if cfg!(any(target_os = "macos", target_os = "ios")) {
-            let metal = get_backend_by_type(BackendType::Metal).unwrap();
-            assert_eq!(metal.backend_type(), BackendType::Metal);
-        } else {
-            assert!(get_backend_by_type(BackendType::Metal).is_err());
-        }
-
-        let vulkan = get_backend_by_type(BackendType::Vulkan).unwrap();
-        assert_eq!(vulkan.backend_type(), BackendType::Vulkan);
-
-        // Apple ANE is only available on macOS/iOS
-        if cfg!(any(target_os = "macos", target_os = "ios")) {
-            let ane = get_backend_by_type(BackendType::AppleAne).unwrap();
-            assert_eq!(ane.backend_type(), BackendType::AppleAne);
-        } else {
-            assert!(get_backend_by_type(BackendType::AppleAne).is_err());
-        }
-
-        // Qualcomm is only available on Android/Linux
-        if cfg!(any(target_os = "android", target_os = "linux")) {
-            let qc = get_backend_by_type(BackendType::Qualcomm).unwrap();
-            assert_eq!(qc.backend_type(), BackendType::Qualcomm);
-        } else {
-            assert!(get_backend_by_type(BackendType::Qualcomm).is_err());
+        for ty in [
+            BackendType::WebGpu,
+            BackendType::Metal,
+            BackendType::Vulkan,
+            BackendType::AppleAne,
+            BackendType::Qualcomm,
+        ] {
+            assert!(
+                get_backend_by_type(ty).is_err(),
+                "{ty:?} has no binding in this build and must not be handed out"
+            );
         }
     }
 
