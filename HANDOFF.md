@@ -15,8 +15,8 @@ each claim has a command beside it.
 | Tests | **2,938** — rmi 1,384 · prototype 1,221 · ribosome 168 · germline 112 · forge 53 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
-| Vulnerabilities | 0 Rust across five lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — the fix exists only on `handoff` |
-| CI | 10 jobs defined, **9 of which ever run** — green on `master` and on `handoff`. The tenth, `prototype — cuda kernels (self-hosted GPU)`, has no runner and has never executed (open item 2) |
+| Vulnerabilities | 0 Rust across five lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
+| CI | 10 jobs defined, **9 of which ever run** — green on `master`. The tenth, `prototype — cuda kernels (self-hosted GPU)`, has no runner and has never executed (open item 2) |
 | Reliability floors | file-oracle parse 99/100, perturbed pattern-heal 42, native-lexer ratio 0.997 |
 | Examples | 12 of 12 typecheck, run, and print their recorded answer |
 | `.mg` sources | **101 checked, 0 sketches** — every `.mg` file in the repository typechecks |
@@ -33,54 +33,18 @@ scripts/check-security-register.sh        # §1's accepted risks vs. what cargo 
 scripts/test-all.sh --cuda --bench --check-docs   # + GPU and the benchmark harnesses
 ```
 
-**`handoff` is pushed and PR #6 is open against `master`, with CI green on
-every commit.** It was not pushed when this document was first written; that was
-open item 0, and it is closed.
+**All of it is on `master`, and the `handoff` branch is gone.** PR #6 merged
+on 2026-09-02, and the twelve pull requests that followed it — #7 through #21 —
+landed the rest by 2026-09-03. There are no open pull requests and no branches
+but `master` and `docs/ironstack-manifest`.
 
-It has **not** been merged, deliberately — `gh pr merge --auto` merges
-*immediately* in this repository, because there are no required status checks,
-which is how PR #4 once landed with CI still pending. So the merge is a human
-action, and until someone takes it `master` keeps the `nanoid` advisory that
-`handoff` fixes. That is the only item here with an outside clock on it.
-
-**It went unmergeable on 2026-08-26, and that turned CI off rather than red.**
-`master` published `.well-known/ironstack.json` in `83d2852f3`; this branch had
-published the byte-identical file in `f09f2640a`. That is an add/add of the same
-content, which git merges **cleanly** — so the file sat on both sides for a week
-and nothing was wrong. The conflict began the moment the content diverged, in
-`87ec57858`, and every commit from there was affected:
-
-| Commit | Merges with master | CI run |
-|---|---|---|
-| `c66952c2a` (08-25) | cleanly — file identical | ran, green |
-| `87ec57858` (08-26) | **conflict** | none |
-| `5d150edfc` (08-31) | **conflict** | none |
-| `1ffcac82e` (09-01) | **conflict** | none |
-| `3535400ee` (09-01, the merge) | resolved | ran, green |
-
-CI here runs on `pull_request` only — `push` is filtered to `master` — and
-GitHub cannot build a merge ref for a conflicted PR, so the workflow did not run
-at all. `1ffcac82e` touched `prototype/**`, `scripts/**` and three pinned
-documents, every one of them in the paths filter, and got **no run**. Merged on
-2026-09-01 in favour of this branch's two fixes (master's version is
-byte-identical to this branch's file before them, so nothing was dropped); the
-next push produced a run, green, which is what confirmed the cause.
-
-**A branch can stop being tested without anything turning red.** "CI green on
-every commit" above was true of every commit CI ran, and that is a different
-sentence. Check that a run *exists* for the SHA, not only that the last one
-passed — `gh run list --json headSha` — which is the same discipline as reading
-a checker's "skipped" line and not only its exit status.
-
-**And the `pull_request` paths filter is not the `push` one.** It is evaluated
-against the pull request's *accumulated* diff, not the files in the commit you
-just pushed: `c66952c2a` changed `HANDOFF.md` alone — a path in no filter list —
-and was tested, because the PR as a whole touched `prototype/**`. So a
-documentation-only commit on this branch **is** covered, and a missing run means
-something is wrong rather than filtered. I first recorded the opposite here, and
-used it to excuse two of the three silent commits as ordinary. They were not
-ordinary; they were the same defect, and saying so confidently made the record
-worse than saying nothing.
+The merge itself is worth one line of warning, because it went wrong in a way
+that reported success. Eight stacked pull requests were merged bottom-up and
+eight said `MERGED`; only the first reached `master`, because each one's base
+was the *previous branch* and `--delete-branch` was not passed, so GitHub never
+retargeted them and the content cascaded sideways. It was caught by looking at
+`master` rather than believing eight green lines. **Merge a stack with
+`--delete-branch`, and check the destination afterwards.**
 
 ---
 
@@ -764,6 +728,58 @@ than a documented gap, so the gap is documented in the script's header and in
 
 ---
 
+## Where this phase ended, 2026-09-03
+
+Everything below the line is on `master`, green, with no open pull requests.
+
+**Six of seven open items closed**, and the seventh reopened for a better reason
+than it was shut. Item 21 — enforcing `~>` bounds — was closed on the measured
+evidence that no `.mg` source writes a bound, so a trait solver would have had
+nothing to check. That was right about the code and wrong about the direction:
+`Differentiable` is a typeclass, and it reopened within the hour.
+
+**Two new design documents, both labelled for what they are.**
+`DIFFERENTIABILITY.md` has a lattice and a working inference pass;
+`TENSOR_PRODUCT_BINDING.md` is specification only, deliberately, because the
+same pass measured **0 of 155 functions in this repository as differentiable**
+and 125 of them have no floating-point parameter at all. There is no numerical
+MAGE code to build a binding construct for yet. Building it anyway would repeat
+the mistake the sibling document was written to avoid.
+
+### The question that found nearly everything
+
+*Is the thing that checks this actually reached?*
+
+Asked of CI triggers (a conflicted PR turns CI **off**, not red), of the paths
+filter (76 of 101 markdown files and 83 of 101 `.mg` sources were outside it),
+of checker invocations (a walk that counted comments as calls), of three cited
+benchmarks (all three exited 0 having measured nothing, two could not run on
+Linux at all), of four copies of the RAP method list and five of the CLI flag
+list — and finally of a merge, which reported eight successes while landing one.
+
+It stopped paying on the fourth consecutive negative result. That is the signal
+to stop, not fatigue.
+
+### What the seven external readings changed
+
+Two of them reversed a decision already shipped. `StatodynamicAnalysis` supplied
+the missing word — **`Unreached`: the claim is untested, not clean** — which is
+now a state in a compiler pass rather than a habit. The TPR paper showed that
+`abl_bridge.rs` already lowers both `Net` and `Kb` into one container with
+nothing joining them, which is a gap that had been describing itself as future
+work.
+
+### Four mistakes of mine, recorded where they happened
+
+Two filed items that did not survive checking. A guard I wrote that certified a
+false clean on its first run. An `rm -rf` on a directory I had not looked at.
+And cargo processes killed that were not mine — `~/.cargo/config.toml` points
+every Rust project on this machine at one shared target directory, so the build
+lock is global.
+
+The failure shapes travel better than the conclusions, which is why they are in
+the chapters rather than in a list.
+
 ## The one thing to understand
 
 Five sessions have now found well over a hundred defects in this repository,
@@ -1133,7 +1149,7 @@ module system" is a question that will be asked again.
 
 | # | Was | Decision | What it cost |
 |---|---|---|---|
-| 0 | Unpushed commits on `handoff` | **Pushed**, not auto-merged. `gh pr merge --auto` merges *immediately* here — the repo has no required status checks — so the branch is up and CI runs against a PR that a human closes. | — |
+| 0 | ~~Unpushed commits on `handoff`~~ | **Closed 2026-09-02/03.** PR #6 merged, then #7–#21 landed the rest; the branch is deleted and `master` carries everything. `gh pr merge --auto` still merges *immediately* here — there are no required status checks — which is why every merge in that sequence was made only after its run was confirmed green by `headSha`, not by `--limit 1`. |
 | 1 | Module system | **There is none, and now the spec says so** (`MAGE_SPEC.md` §2.3). An import costs tokens and buys nothing when the library is small, fixed and global. `use` is an **error**, not a warning: a construct that can never mean anything should not typecheck. | `stdlib/` deleted — 26 files, 4,402 lines, of which 36 files never typechecked and nothing ever read. The corpus cost of the error, which was the stated reason to keep it a warning, was **one line in one example**. Every `.mg` file in the repository now typechecks. |
 | 4 | RAP error shape | **Protocol failures moved to the JSON-RPC `error` member**; program failures stayed in `result`. Unknown method is -32601, a non-JSON frame -32700, a frame with no `method` -32600. | The wire change is real but small: the only consumer in the repo was the example client in `internals/07`, which reached straight for `["result"]`. A malformed frame is now *answered* rather than closing the connection, which it used to do silently. |
 
