@@ -1,249 +1,626 @@
 [
   {
-    "id": "TS-001",
-    "database": "type_safety",
-    "version": "0.1.0",
-    "severity": "error",
+    "id": "TYP-0001",
+    "database": "TypeSafety",
     "category": "type-mismatch",
-    "description": "Expected type `A` but found type `B`",
-    "rationale": "Type mismatches indicate logic errors; MAGE enforces strict Hindley-Milner type unification",
-    "scope": "function",
-    "pattern": "Unify(A, B) where A != B and !coercible(A, B)",
-    "context": null,
-    "fix_template": "Convert the value to the expected type using an explicit conversion",
-    "fix_confidence": 0.70,
-    "alternatives": ["Change the expected type", "Use a generic type parameter"],
-    "source": "builtin",
-    "frequency": 234567,
-    "false_positive_rate": 0.001,
-    "tags": ["type", "mismatch", "safety", "common"]
+    "severity": "Error",
+    "description": "Expected type A, found type B",
+    "rationale": "Type system enforces correct usage",
+    "fix_template": "Cast, convert, or fix the producing expression",
+    "fix_confidence": 0.8,
+    "tags": [
+      "type",
+      "mismatch"
+    ]
   },
   {
-    "id": "TS-002",
-    "database": "type_safety",
-    "version": "0.1.0",
-    "severity": "error",
-    "category": "integer-overflow",
-    "description": "Integer arithmetic may overflow at runtime",
-    "rationale": "Unchecked integer overflow can cause panics in debug mode or wrap around in release mode",
-    "scope": "function",
-    "pattern": "Add(x: T, y: T) where T: integer and !checked",
-    "context": "values not bounded",
-    "fix_template": "Use checked arithmetic: `x.checked_add(y)` returns ?T",
-    "fix_confidence": 0.80,
-    "alternatives": ["Use wrapping arithmetic if overflow is intentional", "Use saturating arithmetic"],
-    "source": "builtin",
-    "frequency": 56789,
-    "false_positive_rate": 0.15,
-    "tags": ["type", "overflow", "integer", "safety"]
-  },
-  {
-    "id": "TS-003",
-    "database": "type_safety",
-    "version": "0.1.0",
-    "severity": "error",
-    "category": "lossy-cast",
-    "description": "Numeric cast may lose precision or truncate",
-    "rationale": "Implicit lossy casts hide data corruption; MAGE requires explicit @cast for narrowing conversions",
-    "scope": "function",
-    "pattern": "Cast(x: T, U) where sizeof(U) < sizeof(T) or signed(T) != signed(U)",
-    "context": null,
-    "fix_template": "Use `@cast(x, U)` to make the narrowing explicit, or `x.try_into()` for a checked conversion",
-    "fix_confidence": 0.90,
-    "alternatives": ["Widen the target type"],
-    "source": "builtin",
-    "frequency": 45678,
-    "false_positive_rate": 0.02,
-    "tags": ["type", "cast", "narrowing", "safety"]
-  },
-  {
-    "id": "TC-101",
-    "database": "type_safety",
-    "version": "0.1.0",
-    "severity": "info",
-    "category": "lossless-cast",
-    "description": "u32→usize is lossless on 32-bit and 64-bit targets",
-    "rationale": "usize is always >= 32 bits; u32→usize never loses data",
-    "scope": "function",
-    "pattern": "Cast(x: u32, usize)",
-    "context": "target_pointer_width >= 32",
-    "fix_template": "@cast(value, usize)",
-    "fix_confidence": 1.0,
-    "alternatives": [],
-    "source": "builtin",
-    "frequency": 78901,
-    "false_positive_rate": 0.0,
-    "tags": ["type", "cast", "lossless", "usize"]
-  },
-  {
-    "id": "TS-004",
-    "database": "type_safety",
-    "version": "0.1.0",
-    "severity": "error",
-    "category": "unhandled-option",
-    "description": "Option value used without checking for None",
-    "rationale": "Accessing the inner value of a None causes a panic; all Option values must be explicitly matched or unwrapped safely",
-    "scope": "function",
-    "pattern": "Use(?T) without Match or if-let",
-    "context": null,
-    "fix_template": "Use pattern matching: `? opt { Some(v) => use(v), None => handle() }`",
+    "id": "TYP-0002",
+    "database": "TypeSafety",
+    "category": "narrowing-cast",
+    "severity": "Warning",
+    "description": "Narrowing cast may lose data (e.g., i64 → i32)",
+    "rationale": "Target type cannot represent all source values",
+    "fix_template": "Use try_into() to handle overflow",
     "fix_confidence": 0.85,
-    "alternatives": ["Use unwrap_or() with a default", "Use the ? operator for propagation"],
-    "source": "builtin",
-    "frequency": 123456,
-    "false_positive_rate": 0.005,
-    "tags": ["type", "option", "null-safety", "common"]
+    "tags": [
+      "type",
+      "cast",
+      "narrowing",
+      "overflow"
+    ]
   },
   {
-    "id": "TS-005",
-    "database": "type_safety",
-    "version": "0.1.0",
-    "severity": "error",
-    "category": "unhandled-result",
-    "description": "Result value used without checking for Err",
-    "rationale": "Ignoring errors hides failures; all Result values must be matched, propagated (?), or explicitly discarded",
-    "scope": "function",
-    "pattern": "Use(R[T, E]) without Match or ?",
-    "context": null,
-    "fix_template": "Propagate the error with `?` or handle it with pattern matching",
-    "fix_confidence": 0.90,
-    "alternatives": ["Use unwrap_or_else() with a fallback"],
-    "source": "builtin",
-    "frequency": 156789,
-    "false_positive_rate": 0.003,
-    "tags": ["type", "result", "error-handling", "common"]
+    "id": "TYP-0003",
+    "database": "TypeSafety",
+    "category": "unsound-transmute",
+    "severity": "Error",
+    "description": "mem::transmute between incompatible types",
+    "rationale": "Types must have same size and compatible layout",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "type",
+      "transmute",
+      "unsound",
+      "unsafe"
+    ]
   },
   {
-    "id": "TS-006",
-    "database": "type_safety",
-    "version": "0.1.0",
-    "severity": "error",
-    "category": "non-exhaustive-match",
-    "description": "Match expression does not cover all variants of the enum",
-    "rationale": "Missing match arms cause runtime panics; MAGE requires exhaustive pattern matching",
-    "scope": "function",
-    "pattern": "Match(x: E) where !exhaustive(arms, variants(E))",
-    "context": "x is an enum type",
-    "fix_template": "Add missing variants or use a wildcard `_ => ...` arm",
-    "fix_confidence": 0.95,
-    "alternatives": [],
-    "source": "builtin",
-    "frequency": 89012,
-    "false_positive_rate": 0.001,
-    "tags": ["type", "match", "exhaustive", "enum", "common"]
+    "id": "TYP-0004",
+    "database": "TypeSafety",
+    "category": "uninit-read",
+    "severity": "Error",
+    "description": "Reading from uninitialized memory",
+    "rationale": "Uninitialized values are undefined behavior",
+    "fix_template": "Initialize the variable before use",
+    "fix_confidence": 0.9,
+    "tags": [
+      "type",
+      "uninit",
+      "ub"
+    ]
   },
   {
-    "id": "TS-007",
-    "database": "type_safety",
-    "version": "0.1.0",
-    "severity": "warning",
+    "id": "TYP-0005",
+    "database": "TypeSafety",
+    "category": "missing-trait-impl",
+    "severity": "Error",
+    "description": "Required trait not implemented for type",
+    "rationale": "Operation requires trait bound that type doesn't satisfy",
+    "fix_template": "Implement the trait or change the type",
+    "fix_confidence": 0.7,
+    "tags": [
+      "type",
+      "trait",
+      "bound",
+      "missing"
+    ]
+  },
+  {
+    "id": "TYP-0006",
+    "database": "TypeSafety",
+    "category": "exhaustive-match",
+    "severity": "Error",
+    "description": "Match expression not exhaustive",
+    "rationale": "All possible values must be handled",
+    "fix_template": "Add missing arms or use _ wildcard",
+    "fix_confidence": 0.9,
+    "tags": [
+      "type",
+      "match",
+      "exhaustive"
+    ]
+  },
+  {
+    "id": "TYP-0007",
+    "database": "TypeSafety",
     "category": "unreachable-pattern",
-    "description": "Pattern in match arm is unreachable — previous arms already cover it",
-    "rationale": "Unreachable patterns indicate dead code or logic errors in pattern ordering",
-    "scope": "function",
-    "pattern": "Match { arm_i => ..., arm_j => ... } where arm_i subsumes arm_j, i < j",
-    "context": null,
-    "fix_template": "Remove the unreachable arm or reorder patterns",
-    "fix_confidence": 0.90,
-    "alternatives": [],
-    "source": "builtin",
-    "frequency": 23456,
-    "false_positive_rate": 0.02,
-    "tags": ["type", "match", "dead-code"]
+    "severity": "Warning",
+    "description": "Pattern is unreachable — covered by earlier arm",
+    "rationale": "Redundant arm; may indicate logic error",
+    "fix_template": "Remove unreachable arm",
+    "fix_confidence": 0.9,
+    "tags": [
+      "type",
+      "match",
+      "unreachable",
+      "lint"
+    ]
   },
   {
-    "id": "TS-008",
-    "database": "type_safety",
-    "version": "0.1.0",
-    "severity": "error",
-    "category": "trait-not-implemented",
-    "description": "Required trait not implemented for the type",
-    "rationale": "Calling a method or using a type in a generic context requires the appropriate trait bound to be satisfied",
-    "scope": "function",
-    "pattern": "Call(x.method()) where typeof(x): !impl Trait for method",
-    "context": null,
-    "fix_template": "Implement the required trait: `I Trait for Type { ... }`",
-    "fix_confidence": 0.70,
-    "alternatives": ["Add a trait bound to the generic parameter", "Use a different method"],
-    "source": "builtin",
-    "frequency": 67890,
-    "false_positive_rate": 0.005,
-    "tags": ["type", "trait", "bound"]
+    "id": "TYP-0008",
+    "database": "TypeSafety",
+    "category": "never-type",
+    "severity": "Info",
+    "description": "! type indicates computation never completes normally",
+    "rationale": "Used for diverging functions (panic, loop forever)",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "type",
+      "never",
+      "diverge"
+    ]
   },
   {
-    "id": "TS-009",
-    "database": "type_safety",
-    "version": "0.1.0",
-    "severity": "error",
-    "category": "infinite-type",
-    "description": "Type cannot be constructed — infinite recursion in type definition",
-    "rationale": "A type that contains itself directly has infinite size; use indirection (^T, $T, @T) to break the cycle",
-    "scope": "module",
-    "pattern": "S Foo { field: Foo }",
-    "context": "no indirection",
-    "fix_template": "Add indirection: `S Foo { field: ^Foo }` (Box/owned pointer)",
-    "fix_confidence": 0.95,
-    "alternatives": ["Use Rc for shared recursive structures"],
-    "source": "builtin",
-    "frequency": 12345,
-    "false_positive_rate": 0.0,
-    "tags": ["type", "recursive", "infinite", "struct"]
+    "id": "TYP-0009",
+    "database": "TypeSafety",
+    "category": "integer-overflow",
+    "severity": "Warning",
+    "description": "Integer overflow in debug mode panics, wraps in release",
+    "rationale": "Implicit overflow is usually a bug",
+    "fix_template": "Use wrapping_add() or checked_add()",
+    "fix_confidence": 0.75,
+    "tags": [
+      "type",
+      "integer",
+      "overflow"
+    ]
   },
   {
-    "id": "TS-010",
-    "database": "type_safety",
-    "version": "0.1.0",
-    "severity": "warning",
-    "category": "unused-variable",
-    "description": "Variable declared but never used",
-    "rationale": "Unused variables may indicate dead code or missing logic",
-    "scope": "function",
-    "pattern": "v x = ...; !Use(x)",
-    "context": null,
-    "fix_template": "Prefix with underscore: `v _x = ...` to indicate intentional discard",
-    "fix_confidence": 0.90,
-    "alternatives": ["Remove the binding entirely"],
-    "source": "builtin",
-    "frequency": 345678,
-    "false_positive_rate": 0.08,
-    "tags": ["type", "unused", "lint", "style"]
+    "id": "TYP-0010",
+    "database": "TypeSafety",
+    "category": "float-equality",
+    "severity": "Warning",
+    "description": "Floating-point equality comparison may be imprecise",
+    "rationale": "f64 == f64 can give unexpected results",
+    "fix_template": "Use (a - b).abs() < epsilon",
+    "fix_confidence": 0.8,
+    "tags": [
+      "type",
+      "float",
+      "equality",
+      "comparison"
+    ]
   },
   {
-    "id": "TS-011",
-    "database": "type_safety",
-    "version": "0.1.0",
-    "severity": "error",
-    "category": "missing-field",
-    "description": "Struct literal is missing required field(s)",
-    "rationale": "All struct fields must be initialized; uninitialized fields contain undefined memory",
-    "scope": "function",
-    "pattern": "StructLit(S) where fields(S) - fields(lit) != {}",
-    "context": null,
-    "fix_template": "Add the missing field(s) to the struct literal",
-    "fix_confidence": 0.95,
-    "alternatives": ["Use Default::default() for fields with a default value"],
-    "source": "builtin",
-    "frequency": 78901,
-    "false_positive_rate": 0.0,
-    "tags": ["type", "struct", "field", "initialization"]
+    "id": "TYP-0011",
+    "database": "TypeSafety",
+    "category": "option-unwrap",
+    "severity": "Warning",
+    "description": "unwrap() on Option panics if None",
+    "rationale": "Use match, if-let, or unwrap_or_else instead",
+    "fix_template": "Replace with unwrap_or_default() or ?",
+    "fix_confidence": 0.85,
+    "tags": [
+      "type",
+      "option",
+      "unwrap",
+      "panic"
+    ]
   },
   {
-    "id": "TS-012",
-    "database": "type_safety",
-    "version": "0.1.0",
-    "severity": "error",
-    "category": "effect-violation",
-    "description": "Function performs an effect not declared in its signature",
-    "rationale": "Effect inference verifies that declared effects are a superset of actual effects; undeclared effects violate the effect contract",
-    "scope": "function",
-    "pattern": "fn f() !{IO} performs IO",
-    "context": "effect system enabled",
-    "fix_template": "Add the effect to the function signature: `f foo() !{IO} { ... }`",
-    "fix_confidence": 0.95,
-    "alternatives": ["Remove the effectful operation", "Handle the effect inside the function"],
-    "source": "builtin",
-    "frequency": 34567,
-    "false_positive_rate": 0.01,
-    "tags": ["type", "effect", "safety"]
+    "id": "TYP-0012",
+    "database": "TypeSafety",
+    "category": "result-unwrap",
+    "severity": "Warning",
+    "description": "unwrap() on Result panics if Err",
+    "rationale": "Handle errors instead of panicking",
+    "fix_template": "Replace with ? operator or match",
+    "fix_confidence": 0.85,
+    "tags": [
+      "type",
+      "result",
+      "unwrap",
+      "panic"
+    ]
+  },
+  {
+    "id": "TYP-0013",
+    "database": "TypeSafety",
+    "category": "infallible-conversion",
+    "severity": "Info",
+    "description": "From/Into conversions that cannot fail",
+    "rationale": "Use .into() for infallible conversions",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "type",
+      "conversion",
+      "infallible"
+    ]
+  },
+  {
+    "id": "TYP-0014",
+    "database": "TypeSafety",
+    "category": "fallible-conversion",
+    "severity": "Info",
+    "description": "TryFrom/TryInto conversions that may fail",
+    "rationale": "Returns Result; must handle errors",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "type",
+      "conversion",
+      "fallible"
+    ]
+  },
+  {
+    "id": "TYP-0015",
+    "database": "TypeSafety",
+    "category": "coercion-deref",
+    "severity": "Info",
+    "description": "&String coerces to &str; &Vec<T> to &[T]",
+    "rationale": "Deref coercion simplifies API boundaries",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "type",
+      "coercion",
+      "deref"
+    ]
+  },
+  {
+    "id": "TYP-0016",
+    "database": "TypeSafety",
+    "category": "turbofish",
+    "severity": "Hint",
+    "description": "Use ::<Type> (turbofish) when type inference is ambiguous",
+    "rationale": "Explicit type annotation resolves ambiguity",
+    "fix_template": "Add ::<ConcreteType> to the call",
+    "fix_confidence": 0.8,
+    "tags": [
+      "type",
+      "turbofish",
+      "inference"
+    ]
+  },
+  {
+    "id": "TYP-0017",
+    "database": "TypeSafety",
+    "category": "phantom-variance",
+    "severity": "Info",
+    "description": "PhantomData<T> controls variance without storing T",
+    "rationale": "Used to influence type relationships",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "type",
+      "phantomdata",
+      "variance"
+    ]
+  },
+  {
+    "id": "TYP-0018",
+    "database": "TypeSafety",
+    "category": "unsized-type",
+    "severity": "Info",
+    "description": "dyn Trait, str, [T] are unsized; need indirection",
+    "rationale": "Must be behind pointer: &dyn Trait, &str, &[T], Box<dyn Trait>",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "type",
+      "unsized",
+      "dyn",
+      "slice"
+    ]
+  },
+  {
+    "id": "TYP-0019",
+    "database": "TypeSafety",
+    "category": "orphan-rule",
+    "severity": "Error",
+    "description": "Cannot implement foreign trait on foreign type",
+    "rationale": "Orphan rule prevents conflicting impls across crates",
+    "fix_template": "Create a newtype wrapper",
+    "fix_confidence": 0.7,
+    "tags": [
+      "type",
+      "orphan",
+      "trait",
+      "impl"
+    ]
+  },
+  {
+    "id": "TYP-0020",
+    "database": "TypeSafety",
+    "category": "blanket-impl",
+    "severity": "Info",
+    "description": "impl<T: Trait> OtherTrait for T — applies to all T satisfying Trait",
+    "rationale": "Blanket implementations provide automatic impls",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "type",
+      "blanket",
+      "impl",
+      "generic"
+    ]
+  },
+  {
+    "id": "TYP-0021",
+    "database": "TypeSafety",
+    "category": "coherence",
+    "severity": "Error",
+    "description": "Overlapping trait implementations detected",
+    "rationale": "Only one impl can apply for any given type",
+    "fix_template": "Specialize or use different types",
+    "fix_confidence": 0.6,
+    "tags": [
+      "type",
+      "coherence",
+      "overlap"
+    ]
+  },
+  {
+    "id": "TYP-0022",
+    "database": "TypeSafety",
+    "category": "type-alias-opaque",
+    "severity": "Info",
+    "description": "type Foo = Bar creates a transparent alias; impl Trait is opaque",
+    "rationale": "Aliases are structurally identical; opaque types are abstract",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "type",
+      "alias",
+      "opaque"
+    ]
+  },
+  {
+    "id": "TYP-0023",
+    "database": "TypeSafety",
+    "category": "zero-sized",
+    "severity": "Info",
+    "description": "Zero-sized types (ZSTs) occupy no memory",
+    "rationale": "() and PhantomData are ZSTs; free at runtime",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "type",
+      "zst",
+      "zero-sized"
+    ]
+  },
+  {
+    "id": "TYP-0024",
+    "database": "TypeSafety",
+    "category": "enum-layout",
+    "severity": "Info",
+    "description": "Enums store the largest variant + tag",
+    "rationale": "Size equals max(variant sizes) + discriminant",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "type",
+      "enum",
+      "layout",
+      "size"
+    ]
+  },
+  {
+    "id": "TYP-0025",
+    "database": "TypeSafety",
+    "category": "niche-optimization",
+    "severity": "Info",
+    "description": "Option<&T> has same size as &T — null niche fills None",
+    "rationale": "Compiler exploits impossible values for tag-free enums",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "type",
+      "option",
+      "niche",
+      "optimization"
+    ]
+  },
+  {
+    "id": "TYP-0026",
+    "database": "TypeSafety",
+    "category": "repr-c",
+    "severity": "Info",
+    "description": "#[repr(C)] ensures C-compatible struct layout",
+    "rationale": "Required for FFI structs",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "type",
+      "repr",
+      "c-layout",
+      "ffi"
+    ]
+  },
+  {
+    "id": "TYP-0027",
+    "database": "TypeSafety",
+    "category": "repr-transparent",
+    "severity": "Info",
+    "description": "#[repr(transparent)] makes newtype same as inner type",
+    "rationale": "Single-field struct has identical ABI to field",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "type",
+      "repr",
+      "transparent",
+      "newtype"
+    ]
+  },
+  {
+    "id": "TYP-0028",
+    "database": "TypeSafety",
+    "category": "recursive-type",
+    "severity": "Error",
+    "description": "Recursive type has infinite size",
+    "rationale": "Must use indirection: Box, Rc, or reference",
+    "fix_template": "Wrap recursive field in Box<T>",
+    "fix_confidence": 0.9,
+    "tags": [
+      "type",
+      "recursive",
+      "infinite",
+      "box"
+    ]
+  },
+  {
+    "id": "TYP-0029",
+    "database": "TypeSafety",
+    "category": "downcasting",
+    "severity": "Warning",
+    "description": "Downcast trait object to concrete type may fail",
+    "rationale": "Use Any::downcast_ref for runtime type checking",
+    "fix_template": "Use downcast_ref::<T>()",
+    "fix_confidence": 0.7,
+    "tags": [
+      "type",
+      "downcast",
+      "trait-object",
+      "any"
+    ]
+  },
+  {
+    "id": "TYP-0030",
+    "database": "TypeSafety",
+    "category": "clone-vs-copy",
+    "severity": "Info",
+    "description": "Copy is bitwise clone; Clone may be expensive",
+    "rationale": "Copy is implicit; Clone requires explicit .clone()",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "type",
+      "copy",
+      "clone",
+      "semantics"
+    ]
+  },
+  {
+    "id": "TYP-0031",
+    "database": "TypeSafety",
+    "category": "sized-bound",
+    "severity": "Info",
+    "description": "T: Sized is the default bound; opt out with T: ?Sized",
+    "rationale": "Most generics require known size at compile time",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "type",
+      "sized",
+      "bound",
+      "generic"
+    ]
+  },
+  {
+    "id": "TYP-0032",
+    "database": "TypeSafety",
+    "category": "associated-type",
+    "severity": "Info",
+    "description": "Associated types are fixed per impl; generic params vary per call",
+    "rationale": "Use associated types when there's one natural choice",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "type",
+      "associated",
+      "generic",
+      "trait"
+    ]
+  },
+  {
+    "id": "TYP-0033",
+    "database": "TypeSafety",
+    "category": "newtype-pattern",
+    "severity": "Hint",
+    "description": "Newtype pattern wraps a type for type safety or trait impl",
+    "rationale": "struct Meters(f64) prevents mixing with Seconds(f64)",
+    "fix_template": "Create newtype wrapper struct",
+    "fix_confidence": 0.8,
+    "tags": [
+      "type",
+      "newtype",
+      "pattern",
+      "safety"
+    ]
+  },
+  {
+    "id": "TYP-0034",
+    "database": "TypeSafety",
+    "category": "builder-pattern",
+    "severity": "Hint",
+    "description": "Builder pattern for complex struct construction",
+    "rationale": "Fluent API: builder.field(v).field2(v2).build()",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "type",
+      "builder",
+      "pattern",
+      "construction"
+    ]
+  },
+  {
+    "id": "TYP-0035",
+    "database": "TypeSafety",
+    "category": "from-error",
+    "severity": "Hint",
+    "description": "Implement From<SubError> for Error to enable ? operator",
+    "rationale": "Automatic error conversion via From trait",
+    "fix_template": "impl From<SubError> for Error {...}",
+    "fix_confidence": 0.85,
+    "tags": [
+      "type",
+      "error",
+      "from",
+      "conversion"
+    ]
+  },
+  {
+    "id": "TYP-0036",
+    "database": "TypeSafety",
+    "category": "never-constructed",
+    "severity": "Warning",
+    "description": "Enum variant never constructed",
+    "rationale": "Dead code; may indicate incomplete implementation",
+    "fix_template": "Remove unused variant or implement construction",
+    "fix_confidence": 0.7,
+    "tags": [
+      "type",
+      "enum",
+      "dead-code"
+    ]
+  },
+  {
+    "id": "TYP-0037",
+    "database": "TypeSafety",
+    "category": "must-use",
+    "severity": "Warning",
+    "description": "#[must_use] result ignored",
+    "rationale": "Ignoring Result/Option silently discards errors",
+    "fix_template": "Handle the return value or explicitly ignore with let _ =",
+    "fix_confidence": 0.9,
+    "tags": [
+      "type",
+      "must-use",
+      "result",
+      "lint"
+    ]
+  },
+  {
+    "id": "TYP-0038",
+    "database": "TypeSafety",
+    "category": "display-debug",
+    "severity": "Hint",
+    "description": "Implement Display for user-facing output; Debug for developer",
+    "rationale": "Display for {}, Debug for {:?}",
+    "fix_template": "impl fmt::Display for Type {...}",
+    "fix_confidence": 0.75,
+    "tags": [
+      "type",
+      "display",
+      "debug",
+      "fmt"
+    ]
+  },
+  {
+    "id": "TYP-0039",
+    "database": "TypeSafety",
+    "category": "as-cast-truncation",
+    "severity": "Warning",
+    "description": "as cast truncates silently — use try_into for safe conversion",
+    "rationale": "i64 as i32 wraps without warning",
+    "fix_template": "Replace with x.try_into().unwrap_or(default)",
+    "fix_confidence": 0.8,
+    "tags": [
+      "type",
+      "cast",
+      "truncation",
+      "as"
+    ]
+  },
+  {
+    "id": "TYP-0040",
+    "database": "TypeSafety",
+    "category": "const-generics",
+    "severity": "Info",
+    "description": "Const generics parameterize types by compile-time values",
+    "rationale": "Array<T, N> where const N: usize",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "type",
+      "const-generics",
+      "parameter"
+    ]
   }
 ]

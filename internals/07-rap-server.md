@@ -168,7 +168,7 @@ errors combined).
 ## 7.4 The method surface
 
 **Corrected 2026-08-25.** This section was a "Planned Methods" table listing
-three implemented methods and eleven planned ones. **37 methods are published
+three implemented methods and eleven planned ones. **38 methods are published
 and dispatch** — the count is pinned, and a test exercises every one against
 its published parameter list. None of the eleven exists under the name given,
 and most of the capabilities they described shipped under a different one:
@@ -306,6 +306,28 @@ impl RapMethod for TokensMethod {
 ```
 
 ## 7.6 Editor integration
+
+> **Decided 2026-09-02: RAP is an agent protocol, and this repository will not
+> pretend it is an editor one.** The question left open here was whether to
+> write an LSP shim over RAP or to accept the mismatch. Accepted, on the
+> evidence in §7.1: the design goals describe an agent protocol, and the method
+> list is agent-shaped — `build/heal`, `nl/generate`, `abl/encode`,
+> `abl/run`. An LSP server is a different thing with a different lifecycle:
+> `initialize`, `textDocument` synchronisation, incremental sync, push diagnostics,
+> position encodings. Writing one is a project, and calling RAP one was the
+> defect.
+>
+> So the editor configurations now do what they can do, and say what they
+> cannot. Tree-sitter highlighting works in all four. Formatting works as of
+> today, because `mage-parse --fmt-compact -` reads stdin and every editor's
+> format hook wants exactly that — no protocol required (item 25). What is
+> gone is the language-server registration, in Neovim and Helix, along with
+> eight invented settings for capabilities RAP has no methods for.
+>
+> If someone does want an LSP later, the honest shape is a separate binary that
+> speaks LSP on stdio and calls RAP over TCP — a translator, not a rename. It
+> would need the five `query/*` methods §7.4 lists as never-implemented.
+
 
 **Corrected 2026-08-25.** This section described a `MAGE-vscode` extension
 speaking to the RAP server, with a diagram routing hover through `query/type`

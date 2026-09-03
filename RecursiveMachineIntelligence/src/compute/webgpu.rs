@@ -64,12 +64,18 @@ impl WebGpuBackend {
 
         Ok(Self {
             device_info: DeviceInfo {
-                name: "WebGPU (wgpu)".to_string(),
+                // Zeroed 2026-09-02. These were placeholders -- 16 GB, 12 GB,
+                // 10 compute units -- reported by a backend that runs CPU code
+                // and has no binding for the API it is named after. A caller
+                // sizing work by `available_memory` acted on memory that does
+                // not exist. Zero reads as "unknown"; a placeholder is a number
+                // something will divide by. See open item 18.
+                name: "WebGPU (not implemented: no wgpu binding in this build)".to_string(),
                 backend_type: BackendType::WebGpu,
-                total_memory: 4 * 1024 * 1024 * 1024,     // 4 GB placeholder
-                available_memory: 3 * 1024 * 1024 * 1024,  // 3 GB placeholder
+                total_memory: 0,
+                available_memory: 0,
                 compute_capability: None,
-                compute_units: 16, // placeholder work groups
+                compute_units: 0,
             },
             next_id: AtomicU64::new(1),
             storage: RwLock::new(HashMap::new()),
@@ -146,8 +152,16 @@ impl Backend for WebGpuBackend {
     }
 
     fn is_available(&self) -> bool {
-        // Real impl would check wgpu adapter availability
-        true
+        // False, deliberately, and not a placeholder to be flipped later.
+        //
+        // This returned `true` -- so on every platform a caller asking for the best
+        // available accelerator was handed a backend named after an API this
+        // build has no binding for, and ran on the CPU believing otherwise.
+        // `is_supported()` still answers the question it is named for ("could
+        // this platform host WebGPU"), which is a fact about the machine.
+        // Whether *this backend* can execute there is a fact about this crate,
+        // and the answer is no until someone writes the binding. See item 18.
+        false
     }
 
     // ==================== Memory Management ====================
@@ -494,7 +508,10 @@ mod tests {
     #[test]
     fn webgpu_backend_creation() {
         let backend = WebGpuBackend::new().unwrap();
-        assert!(backend.is_available());
+        // Inverted 2026-09-02: this asserted the backend was available, which
+        // is what let it claim to be a WebGpu device on every platform while
+        // running CPU code. There is no WebGpu binding in this build.
+        assert!(!backend.is_available(), "no WebGpu binding exists; claiming availability is the defect");
         assert_eq!(backend.backend_type(), BackendType::WebGpu);
         assert!(backend.device_info().name.contains("WebGPU"));
     }

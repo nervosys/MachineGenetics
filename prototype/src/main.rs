@@ -28,6 +28,58 @@ fn is_modifier_flag(a: &str) -> bool {
         || a.starts_with("--backends-file=")
 }
 
+/// Read a source file, or standard input when the path is `-`.
+///
+/// Editors format a buffer by piping it to a command's stdin and reading
+/// stdout — Helix's `formatter`, Neovim's `formatprg`, Zed's external
+/// formatter, all of them. `--fmt-compact` took a filename and nothing else,
+/// so `-` was opened as a file and failed with "The system cannot find the
+/// file specified": the one compiler capability that maps cleanly onto an
+/// editor feature, and needs no protocol at all, was the one that could not be
+/// wired up. `editors/helix/languages.toml` had `auto-format = true` set
+/// against a language server that does not exist, which is how it went
+/// unnoticed — the setting could not work for a second, unrelated reason.
+///
+/// `-` is the conventional spelling and was already the one being tried.
+fn read_source(path: &str) -> String {
+    if path == "-" {
+        let mut buf = String::new();
+        if let Err(e) = std::io::stdin().read_to_string(&mut buf) {
+            eprintln!("Error reading standard input: {e}");
+            std::process::exit(1);
+        }
+        return buf;
+    }
+    std::fs::read_to_string(path).unwrap_or_else(|e| {
+        eprintln!("Error reading {path}: {e}");
+        std::process::exit(1);
+    })
+}
+
+/// Write formatter output to `[out]`, or to stdout when it is absent.
+///
+/// The manifest published `--fmt-compact <file.mg> [out]`, "Writes to [out] or
+/// stdout", with effect class `write_local` — so an agent reading the
+/// capability index was told the mode needs a write grant and can direct its
+/// output to a file. It ignored the argument entirely and always printed to
+/// stdout. `--target=abl-bytes` implements the same `[out]` correctly, which is
+/// the shape followed here.
+///
+/// A failed write exits non-zero. Reporting success while having written
+/// nothing is the defect this repository already fixed once, for corrupt ABL
+/// containers.
+fn write_formatted(text: &str, out_path: Option<&str>) {
+    match out_path {
+        Some(out) => {
+            if let Err(e) = std::fs::write(out, text) {
+                eprintln!("write {out}: {e}");
+                std::process::exit(1);
+            }
+        }
+        None => println!("{text}"),
+    }
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     let no_elision = args.iter().any(|a| a == "--no-elision");
@@ -140,15 +192,27 @@ fn main() {
             }
             println!("wrote {} bytes to {out}", json.len());
         }
+        Some("--emit-skb") => {
+            // Regenerate `skb/` from `builtin_rules()`. See `skb::emit_tree`
+            // and open item 23: that tree held 56 rules nothing read while the
+            // binary served 255, under a different identifier scheme, missing
+            // two whole databases.
+            let out = filtered.get(1).copied().unwrap_or("skb");
+            match skb::emit_tree(std::path::Path::new(out)) {
+                Ok(n) => println!("wrote {n} rules to {out}/"),
+                Err(e) => {
+                    eprintln!("emit-skb: {out}: {e}");
+                    std::process::exit(1);
+                }
+            }
+        }
         Some("--fmt-compact") => {
             let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: mage-parse --fmt-compact <file>");
+                eprintln!("Usage: mage-parse --fmt-compact <file.mg|-> [out]");
                 std::process::exit(1);
             });
-            let source = std::fs::read_to_string(path).unwrap_or_else(|e| {
-                eprintln!("Error reading {path}: {e}");
-                std::process::exit(1);
-            });
+            let out_path = filtered.get(2).copied();
+            let source = read_source(path);
             let source = if syntax_legacy {
                 legacy::translate(&source)
             } else {
@@ -162,7 +226,7 @@ fn main() {
                     } else {
                         module
                     };
-                    println!("{}", fmt::format_agent(&module));
+                    write_formatted(&fmt::format_agent(&module), out_path);
                 }
                 Err(e) => {
                     eprintln!("{path}:{}:{}: parse error: {}", e.line, e.col, e.message);
@@ -172,13 +236,11 @@ fn main() {
         }
         Some("--fmt-expand") => {
             let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: mage-parse --fmt-expand <file>");
+                eprintln!("Usage: mage-parse --fmt-expand <file.mg|-> [out]");
                 std::process::exit(1);
             });
-            let source = std::fs::read_to_string(path).unwrap_or_else(|e| {
-                eprintln!("Error reading {path}: {e}");
-                std::process::exit(1);
-            });
+            let out_path = filtered.get(2).copied();
+            let source = read_source(path);
             let source = if syntax_legacy {
                 legacy::translate(&source)
             } else {
@@ -192,7 +254,7 @@ fn main() {
                     } else {
                         module
                     };
-                    println!("{}", fmt::format_human(&module));
+                    write_formatted(&fmt::format_human(&module), out_path);
                 }
                 Err(e) => {
                     eprintln!("{path}:{}:{}: parse error: {}", e.line, e.col, e.message);
@@ -3303,7 +3365,7 @@ mod cli_arg_tests {
                     || f.starts_with("--describe")
                     || f.starts_with("--spine=")
                     || matches!(f, "--check" | "--eval" | "--pipeline" | "--rap"
-                                | "--fmt-compact" | "--fmt-expand" | "--emit-ontology"
+                                | "--fmt-compact" | "--fmt-expand" | "--emit-ontology" | "--emit-skb"
                                 | "--manifest" | "--rain" | "--version" | "--input") =>
                 {
                     continue

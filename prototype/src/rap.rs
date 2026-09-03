@@ -1618,6 +1618,13 @@ mod tests {
                 "agent": "Planner",
             })),
             ("nl/refactor", serde_json::json!({ "source": SRC })),
+            // Takes no parameters; the contract being checked is the response
+            // shape (`ok`, `count`, `methods`). It was served and advertised
+            // but absent from the ontology, so this test never demanded a call
+            // for it — the omission hid itself from the guard that would have
+            // caught it, which is why the four lists had to be compared from
+            // outside. See `scripts/check-rap-methods.sh`.
+            ("rap/methods", serde_json::json!({})),
         ];
 
         let published = crate::ontology::section("rap_methods").expect("rap_methods");

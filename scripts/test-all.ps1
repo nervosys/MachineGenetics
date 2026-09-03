@@ -8,12 +8,12 @@
     This is the single entry point that covers everything CI covers:
 
         rmi (cpu)   1,384 tests
-        prototype   1,207 tests
-        ribosome      164 tests
+        prototype   1,211 tests
+        ribosome      168 tests
         germline      112 tests
         forge          53 tests
         -------------------------
-        total       2,920 tests, 0 warnings
+        total       2,928 tests, 0 warnings
 
 .PARAMETER Release
     Build and test in release mode (slower to build, much faster to run).
@@ -125,7 +125,14 @@ if ($CheckDocs -and $failed.Count -eq 0) {
     } else {
         Push-Location $repo
         try {
-            $lines -join "`n" | & $bash 'scripts/check-doc-counts.sh'
+            # Through `emit-doc-counts.sh` first. This used to pipe the six
+            # crate counts straight into the checker, which has 91 pins, so
+            # -CheckDocs reported "INCOMPLETE - 46 documented count(s) had
+            # nothing to compare against" and exited 1 -- on every Windows
+            # run, since the bash twin grew past crate counts. The comment
+            # above says "one implementation of the check"; the measurements
+            # were the half still duplicated. Item 27.
+            $lines -join "`n" | & $bash 'scripts/emit-doc-counts.sh' | & $bash 'scripts/check-doc-counts.sh'
             if ($LASTEXITCODE -ne 0) { $failed += 'documented counts' }
         } finally { Pop-Location }
     }

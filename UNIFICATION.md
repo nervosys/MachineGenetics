@@ -9,7 +9,7 @@
 > structural-balance, structural-completion, trim-bad-token, refine).
 >
 > **Complete ontology over language + IR + protocol + operations + hardware**
-> in **22 sections**. Beyond the language/IR/framework: cli_flags (36),
+> in **22 sections**. Beyond the language/IR/framework: cli_flags (37),
 > bench_backends (4), effects (22), wrapper_protocol (9),
 > project_layout (22), docs (7), ci_floors (6), **hardware_accelerators
 > (extensible runtime registry, 8 builtins)**. Single RAP call

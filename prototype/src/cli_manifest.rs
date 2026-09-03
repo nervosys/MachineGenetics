@@ -131,15 +131,18 @@ pub const MODES: &[CliMode] = &[
     },
     CliMode {
         flag: "--fmt-compact",
-        args: "<file.mg> [out]",
+        args: "<file.mg|-> [out]",
         summary: "reformat to Agent mode (token-compact symbols)",
         effect: "write_local",
         detail: "Deterministic formatter to the Agent-mode surface (symbol keywords,\n\
-                 elision). Writes to [out] or stdout. Byte-stable: fmt(fmt(x)) == fmt(x).",
+                 elision). Reads standard input when the file is `-`, so an editor can\n\
+                 pipe a buffer through it. Writes to [out] or stdout, and exits non-zero\n\
+                 if [out] cannot be written. Byte-stable: fmt(fmt(x)) == fmt(x), over a\n\
+                 pipe too.",
     },
     CliMode {
         flag: "--fmt-expand",
-        args: "<file.mg> [out]",
+        args: "<file.mg|-> [out]",
         summary: "reformat to Human mode (Rust-style keywords)",
         effect: "write_local",
         detail: "Inverse of --fmt-compact; same determinism guarantee.",
@@ -221,6 +224,17 @@ pub const MODES: &[CliMode] = &[
         effect: "read_local",
         detail: "Lex → heal → parse → elide → typecheck with ranked fix candidates\n\
                  on failure (structured recovery — the reliability-bench surface).",
+    },
+    CliMode {
+        flag: "--emit-skb",
+        args: "[dir]",
+        summary: "regenerate skb/ from the rules compiled into this binary",
+        effect: "write_local",
+        detail: "Default dir `skb`. Writes rules/<database>.json, manifest.json and
+                 rule-schema.json from `builtin_rules()` -- 255 rules across eight
+                 databases. The tree is a generated export, not a source: it held 56
+                 rules nothing read, under a different id scheme, missing two
+                 databases. `scripts/check-skb-tree.sh` regenerates and diffs it.",
     },
     CliMode {
         flag: "--emit-ontology",

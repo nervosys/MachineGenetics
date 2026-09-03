@@ -15,20 +15,36 @@ roots = ["Forge.toml"]
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
 indent = { tab-width = 4, unit = "    " }
+
+# ── Language server: none, and this used to claim one ────────────────
+#
+# Removed 2026-09-02. This file registered `[language-server.rap]` with
+# `command = "rap"` and listed it in `language-servers`, which cannot work for
+# three independent reasons — the same three as the Neovim config had:
+#
+#   1. RAP is not LSP. `prototype/src/rap.rs` has zero occurrences of
+#      `initialize` or `textDocument`; it speaks `language/parse` and 36 other
+#      custom methods, so the handshake never completes.
+#   2. There is no `rap` binary. The server is `mage-parse --rap`.
+#   3. RAP listens on TCP; Helix spawns `command` and speaks over stdio.
+#
+# The `[language-server.rap.config]` block set `checkOnSave`, `diagnostics.skb`,
+# `completion.autoimport` and `inlayHints.typeHints` — capabilities RAP has no
+# methods for. Left registered, Helix reports a spawn failure on every MAGE
+# buffer; removed, highlighting and indentation work and nothing lies.
+#
+# `auto-format = true` went with it, because it was relying on the language
+# server. Formatting came back a different way the same day: `mage-parse
+# --fmt-compact -` now reads standard input, which is exactly what a Helix
+# `formatter` needs, so the block below is real and does work. It was filed as
+# item 25 and closed in the same change that removed this LSP registration —
+# the one compiler capability that maps onto an editor feature without any
+# protocol at all.
+#
+# See internals/07-rap-server.md §7.6 and open item 22.
+
+formatter = { command = "mage-parse", args = ["--fmt-compact", "-"] }
 auto-format = true
-language-servers = ["rap"]
-
-# ── Language server ──────────────────────────────────────────────────
-
-[language-server.rap]
-command = "rap"
-args = []
-
-[language-server.rap.config]
-checkOnSave = true
-diagnostics = { enable = true, skb = true, effects = true }
-completion = { autoimport = true }
-inlayHints = { enable = true, typeHints = true, effectHints = true }
 
 # ── Forge.toml uses TOML highlighting ────────────────────────────────
 

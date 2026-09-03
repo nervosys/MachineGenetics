@@ -75,12 +75,18 @@ impl QualcommBackend {
 
         Ok(Self {
             device_info: DeviceInfo {
-                name: "Qualcomm Hexagon NPU".to_string(),
+                // Zeroed 2026-09-02. These were placeholders -- 16 GB, 12 GB,
+                // 10 compute units -- reported by a backend that runs CPU code
+                // and has no binding for the API it is named after. A caller
+                // sizing work by `available_memory` acted on memory that does
+                // not exist. Zero reads as "unknown"; a placeholder is a number
+                // something will divide by. See open item 18.
+                name: "Qualcomm Hexagon NPU (not implemented: no QNN binding in this build)".to_string(),
                 backend_type: BackendType::Qualcomm,
-                total_memory: 8 * 1024 * 1024 * 1024, // Shared system memory
-                available_memory: 4 * 1024 * 1024 * 1024,
+                total_memory: 0,
+                available_memory: 0,
                 compute_capability: None,
-                compute_units: 8, // HTP/HVX execution units placeholder
+                compute_units: 0,
             },
             next_id: AtomicU64::new(1),
             storage: RwLock::new(HashMap::new()),
@@ -95,10 +101,8 @@ impl QualcommBackend {
 
     /// Query the HTP generation and peak TOPS rating.
     pub fn htp_tops(&self) -> f32 {
-        // Real impl: QNN device query
-        // Snapdragon 8 Gen 1: 27 TOPS, 8 Gen 2: 36 TOPS,
-        // 8 Gen 3: 45 TOPS, 8 Elite: 75 TOPS
-        45.0
+        // 0.0, for the same reason as `ane_tops`: nothing was queried. Item 18.
+        0.0
     }
 
     #[inline]
@@ -160,7 +164,16 @@ impl Backend for QualcommBackend {
     }
 
     fn is_available(&self) -> bool {
-        Self::is_supported()
+        // False, deliberately, and not a placeholder to be flipped later.
+        //
+        // This returned `Self::is_supported()` -- so on Android *and any Linux host* a caller asking for the best
+        // available accelerator was handed a backend named after an API this
+        // build has no binding for, and ran on the CPU believing otherwise.
+        // `is_supported()` still answers the question it is named for ("could
+        // this platform host a Hexagon NPU"), which is a fact about the machine.
+        // Whether *this backend* can execute there is a fact about this crate,
+        // and the answer is no until someone writes the binding. See item 18.
+        false
     }
 
     fn allocate(&self, shape: &[usize], dtype: DType) -> Result<TensorHandle> {
@@ -504,8 +517,10 @@ mod tests {
 
     #[test]
     fn qualcomm_htp_tops() {
+        // Inverted for the same reason as `ane_tops_rating`: the assertion
+        // held the invented number in place.
         let backend = QualcommBackend::new().unwrap();
-        assert!(backend.htp_tops() > 0.0);
+        assert_eq!(backend.htp_tops(), 0.0, "no device is queried; a rating here is invented");
     }
 
     #[test]

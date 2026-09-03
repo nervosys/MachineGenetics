@@ -4,7 +4,7 @@
     "ast_kinds": 20,
     "bench_backends": 4,
     "ci_floors": 6,
-    "cli_flags": 36,
+    "cli_flags": 37,
     "docs": 7,
     "effects": 22,
     "examples": 10,
@@ -14,7 +14,7 @@
     "keywords": 102,
     "op_families": 7,
     "project_layout": 22,
-    "rap_methods": 37,
+    "rap_methods": 38,
     "recovery_stages": 7,
     "sigils": 50,
     "types": 30,
@@ -183,6 +183,11 @@
       {
         "flag": "--emit-ontology",
         "purpose": "Dump the complete ontology to disk as static JSON",
+        "takes_path": true
+      },
+      {
+        "flag": "--emit-skb",
+        "purpose": "Regenerate skb/ from the rules compiled into this binary",
         "takes_path": true
       },
       {
@@ -2181,9 +2186,9 @@
         "available_at_runtime": false,
         "family": "gpu",
         "name": "metal",
-        "requires": "feature:metal + macOS",
+        "requires": "a Metal binding, which does not exist yet",
         "source": "builtin",
-        "summary": "Apple Metal GPU (M-series and Intel Macs with discrete GPU).",
+        "summary": "Apple Metal GPU. NOT IMPLEMENTED: compute/metal.rs has no Metal binding and no `metal` cargo feature exists. Requesting it returns an error.",
         "tags": [],
         "vendor": "Apple"
       },
@@ -2191,9 +2196,9 @@
         "available_at_runtime": false,
         "family": "npu",
         "name": "apple_ane",
-        "requires": "feature:apple_ane + macOS 13+",
+        "requires": "an ANE binding, which does not exist yet",
         "source": "builtin",
-        "summary": "Apple Neural Engine. Low-power inference on M1/M2/M3 SoC.",
+        "summary": "Apple Neural Engine. NOT IMPLEMENTED: no ANE binding, no `apple_ane` feature. Requesting it returns an error.",
         "tags": [],
         "vendor": "Apple"
       },
@@ -2201,9 +2206,9 @@
         "available_at_runtime": false,
         "family": "gpu",
         "name": "vulkan",
-        "requires": "feature:vulkan + Vulkan loader",
+        "requires": "a Vulkan binding, which does not exist yet",
         "source": "builtin",
-        "summary": "Cross-vendor GPU via Vulkan. Linux + Windows support.",
+        "summary": "Cross-vendor GPU via Vulkan. NOT IMPLEMENTED: no Vulkan binding, no `vulkan` feature. Requesting it returns an error.",
         "tags": [],
         "vendor": "any (AMD/Intel/NVIDIA)"
       },
@@ -2211,9 +2216,9 @@
         "available_at_runtime": false,
         "family": "gpu",
         "name": "webgpu",
-        "requires": "feature:webgpu",
+        "requires": "cargo feature `gpu` (rmi), which builds the real wgpu backend",
         "source": "builtin",
-        "summary": "wgpu-based cross-platform GPU. Same backend works in browser.",
+        "summary": "wgpu-based cross-platform GPU. Real, behind rmi feature `gpu` (compute/wgpu_backend.rs); without it, requesting WebGPU returns an error.",
         "tags": [],
         "vendor": "any"
       },
@@ -2221,9 +2226,9 @@
         "available_at_runtime": false,
         "family": "npu",
         "name": "qualcomm",
-        "requires": "feature:qualcomm + Hexagon SDK",
+        "requires": "a QNN binding, which does not exist yet",
         "source": "builtin",
-        "summary": "Qualcomm Hexagon DSP/NPU. Mobile / edge inference.",
+        "summary": "Qualcomm Hexagon DSP/NPU. NOT IMPLEMENTED: no QNN binding, no `qualcomm` feature. Requesting it returns an error.",
         "tags": [],
         "vendor": "Qualcomm"
       },
@@ -4466,6 +4471,16 @@
           "report"
         ],
         "summary": "Per-construct token cost report for source."
+      },
+      {
+        "method": "rap/methods",
+        "params": [],
+        "returns": [
+          "ok",
+          "count",
+          "methods"
+        ],
+        "summary": "List every method this server serves, with its count."
       },
       {
         "method": "effects/infer",

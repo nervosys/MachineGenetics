@@ -19,6 +19,26 @@ vim.filetype.add({
   },
 })
 
+-- ── Formatting ──────────────────────────────────────────────────────
+--
+-- `gq` and `:normal gggqG` run this; it needs no language server, because
+-- `mage-parse --fmt-compact -` reads the buffer from standard input and writes
+-- the formatted source to stdout. That stdin mode did not exist until
+-- 2026-09-02 (open item 25) — before it, `-` was opened as a *file*, which is
+-- why nothing here formatted despite `--fmt-compact` having worked all along.
+--
+-- `opts.fmt_cmd` overrides it; `opts.fmt = false` leaves `formatprg` alone.
+
+vim.api.nvim_create_autocmd('FileType', {
+  pattern = 'MAGE',
+  callback = function(ev)
+    if M._fmt == false then
+      return
+    end
+    vim.bo[ev.buf].formatprg = M._fmt_cmd or 'mage-parse --fmt-compact -'
+  end,
+})
+
 -- ── LSP (RAP) ───────────────────────────────────────────────────────
 --
 -- WARNING (checked 2026-08-25): this registration cannot work as written.
@@ -35,6 +55,29 @@ vim.filetype.add({
 function M.setup_lsp(opts)
   opts = opts or {}
 
+  -- Without an explicit `rap_cmd`, this would register `cmd = { 'rap' }` — a
+  -- binary that does not exist, speaking a protocol RAP does not implement,
+  -- over a transport it does not use. Neovim's failure for that arrives later
+  -- and elsewhere: a spawn error in `:LspLog`, from a server the user did not
+  -- knowingly configure. Say it here instead, where the call was made.
+  --
+  -- `rap_cmd` is still honoured, because supplying your own LSP shim is the
+  -- one way this function can do something useful today. Passing it is a
+  -- statement that you have one.
+  if not opts.rap_cmd then
+    vim.notify(
+      'MAGE: no LSP server is available. RAP is an agent protocol (JSON-RPC over '
+        .. 'TCP, 37 custom methods), not a language server: it implements no '
+        .. '`initialize` and no `textDocument/*`, and there is no `rap` binary — '
+        .. 'the server is `mage-parse --rap`. Tree-sitter highlighting works and '
+        .. 'is set up separately by require("mage").setup(). To use your own LSP '
+        .. 'shim over RAP, pass rap_cmd (a string or an argv table). '
+        .. 'See internals/07-rap-server.md §7.6.',
+      vim.log.levels.WARN
+    )
+    return
+  end
+
   local lspconfig_ok, lspconfig = pcall(require, 'lspconfig')
   if not lspconfig_ok then
     vim.notify('MAGE: nvim-lspconfig not found', vim.log.levels.WARN)
@@ -47,29 +90,23 @@ function M.setup_lsp(opts)
   if not configs.rap then
     configs.rap = {
       default_config = {
-        cmd = { opts.rap_cmd or 'rap' },
+        -- `rap_cmd` was a bare string here before, so both shapes are taken:
+        -- changing an option's contract to fix a warning would be its own
+        -- small version of this file's problem.
+        cmd = type(opts.rap_cmd) == 'table' and opts.rap_cmd or { opts.rap_cmd },
         filetypes = { 'MAGE' },
         root_dir = lspconfig.util.root_pattern('Forge.toml', '.git'),
-        settings = {
-          rap = {
-            checkOnSave = true,
-            diagnostics = {
-              enable = true,
-              skb = true,
-              effects = true,
-            },
-            completion = {
-              autoimport = true,
-              sigils = true,
-            },
-            inlayHints = {
-              enable = true,
-              typeHints = true,
-              effectHints = true,
-              costHints = false,
-            },
-          },
-        },
+        -- No `settings` block.
+        --
+        -- This carried `checkOnSave`, `diagnostics.skb`, `diagnostics.effects`,
+        -- `completion.autoimport`, `completion.sigils`, `inlayHints.typeHints`,
+        -- `inlayHints.effectHints` and `inlayHints.costHints` -- eight options
+        -- for capabilities RAP has no methods for, invented wholesale. A user
+        -- pointing `rap_cmd` at their own shim would have had MAGE's imaginary
+        -- configuration sent to it as if it meant something.
+        --
+        -- Pass your shim's real settings through `opts.lsp` instead; whatever
+        -- you put there reaches `lspconfig` untouched.
       },
     }
   end
@@ -217,7 +254,19 @@ end
 
 function M.setup(opts)
   opts = opts or {}
-  M.setup_lsp(opts)
+
+  M._fmt = opts.fmt
+  M._fmt_cmd = opts.fmt_cmd
+
+  -- LSP is opt-in now. `setup_lsp()` explains that there is no language server
+  -- and returns, which is the right answer when someone asks for one — and the
+  -- wrong thing to say to everyone who called `setup()` for highlighting.
+  -- Making it unconditional would have turned an accurate message into noise
+  -- on every MAGE buffer, which is how accurate messages get ignored.
+  if opts.rap_cmd or opts.lsp then
+    M.setup_lsp(opts)
+  end
+
   M.setup_treesitter()
   M.setup_syntax()
   M.setup_keymaps()

@@ -7,8 +7,21 @@
 # the recorded measurement; reproduce with the command at the end).
 set -u
 cd "$(dirname "$0")"
+# The default names the Windows binary; everywhere else, strip the suffix.
+#
+# This *appended* `.exe` instead of stripping it, so on Linux it looked for
+# `mage-parse.exe.exe` — which is why this script had never run in CI. And it
+# did not stop there: with no binary, every pair reported `CHECK-FAIL(ll)`, the
+# token table printed anyway, the "43%" headline printed anyway, and the script
+# **exited 0**. Wired into CI in that state it would have gone green while
+# measuring nothing, which is the failure this benchmark exists to disprove.
+# `capstone/run.sh` had the strip and the guard right; this one had neither.
 MG="${MG:-../../prototype/target/release/mage-parse.exe}"
-[ -x "$MG" ] || MG="${MG}.exe"
+[ -x "$MG" ] || MG="${MG%.exe}"
+if [ ! -x "$MG" ]; then
+  echo "missing binary: ${MG##*/} — build with: cargo build --release --manifest-path prototype/Cargo.toml" >&2
+  exit 1
+fi
 
 # pair  driver-call(input)               expected   high-level construct
 PAIRS=(
@@ -25,6 +38,7 @@ echo "=== High-level vs explicit constructs — token efficiency (verified pairs
 printf "%-16s %5s %5s  %6s   %s\n" "construct" "HL" "LL" "−tok" "equiv/check"
 echo "---------------------------------------------------------------------------"
 thl=0; tll=0
+failures=0
 for row in "${PAIRS[@]}"; do
   IFS='|' read -r name call expect desc <<< "$row"
   # check both
@@ -36,6 +50,11 @@ for row in "${PAIRS[@]}"; do
   h=${HL[$name]}; l=${LL[$name]}; red=$(( (l-h)*100/l ))
   printf "%-16s %5s %5s  %5s%%   %s %s\n" "$name" "$h" "$l" "$red" "$ok" "$eq"
   thl=$((thl+h)); tll=$((tll+l))
+  # A row that does not check, or whose two forms disagree, is not a
+  # measurement -- it is the absence of one. Counted, and the script exits
+  # non-zero below, because printing a percentage under a column of failures
+  # is how a green benchmark comes to mean nothing.
+  case "$ok$eq" in *CHECK-FAIL*|*"≠"*) failures=$((failures+1)) ;; esac
 done
 echo "---------------------------------------------------------------------------"
 printf "%-16s %5s %5s  %5s%%   (high-level total vs explicit total)\n" "TOTAL" "$thl" "$tll" "$(( (tll-thl)*100/tll ))"
@@ -57,6 +76,7 @@ echo "--------------------------------------------------------------------------
 declare -A NHL=( [mlp]=50 [transformer]=73 ); declare -A NLL=( [mlp]=78 [transformer]=142 )
 for n in mlp transformer; do
   "$MG" "${n}_mage.mg" >/dev/null 2>&1 && chk="✓" || chk="check-FAIL"
+  [ "$chk" = "check-FAIL" ] && failures=$((failures+1))
   "$MG" --target=abl-bytes "${n}_mage.mg" /tmp/_n.abl >/dev/null 2>&1
   tb=$(wc -c <"${n}_mage.mg"); ab=$(wc -c </tmp/_n.abl 2>/dev/null)
   h=${NHL[$n]}; l=${NLL[$n]}; red=$(( ((l-h)*100 + l/2)/l )); abr=$(( ((tb-ab)*100 + tb/2)/tb ))
@@ -79,21 +99,39 @@ echo
 echo "=== Depth scaling — the 'stack N' repeat combinator (O(depth) -> O(1) surface) ==="
 echo "A 12-deep transformer, written by hand (12× the block) vs \`stack 12 { block }\`."
 echo "Tokens real cl100k (recorded); text + ABL bytes measured live."
+# The recorded cl100k counts for this section, named once. They were typed
+# into two printf calls and would have been typed into the pin below as a
+# third copy — the "a copy here would be a third list" problem this
+# repository already names. One variable, quoted everywhere.
+MANUAL_TOKENS=839
+STACK_TOKENS=82
 # generate the manual 12× form
 { echo "net Manual {"; for i in $(seq 1 12); do
   printf '    layer attn%d: MultiHeadAttention(256, 8);\n    layer n%da: LayerNorm;\n    layer ff%da: Linear(256, 1024);\n    layer act%d: GELU;\n    layer ff%db: Linear(1024, 256);\n    layer n%db: LayerNorm;\n' $i $i $i $i $i $i
 done; echo "    forward { attn1 }"; echo "}"; } > /tmp/_manual12.mg
 "$MG" /tmp/_manual12.mg >/dev/null 2>&1 && mok=✓ || mok=FAIL
 "$MG" deep_transformer_stack.mg >/dev/null 2>&1 && sok=✓ || sok=FAIL
+[ "$mok" = FAIL ] && failures=$((failures+1))
+[ "$sok" = FAIL ] && failures=$((failures+1))
 # one-block form, for the binary O(1)-in-depth ratio
 sed 's/stack 12/stack 1/' deep_transformer_stack.mg > /tmp/_one.mg
 "$MG" --target=abl-bytes /tmp/_manual12.mg /tmp/_m.abl >/dev/null 2>&1
 "$MG" --target=abl-bytes deep_transformer_stack.mg /tmp/_s.abl >/dev/null 2>&1
 "$MG" --target=abl-bytes /tmp/_one.mg /tmp/_one.abl >/dev/null 2>&1
  b1=$(wc -c </tmp/_one.abl); b12=$(wc -c </tmp/_s.abl)
+# Machine-readable, on stderr. ARCHITECTURE_DSL.md quotes "141 B vs 126 B —
+# 1.12x" and "82 ... vs 839 ... 10.2x fewer"; `check-doc-counts.sh` compares
+# these against the document, so neither can move without the other. The two
+# byte counts are measured here; the two token counts are the recorded cl100k
+# figures at the top of this file, so pinning them keeps the prose and the
+# script from drifting apart. Both ratios are derived, so the parts suffice.
+echo "constructs_abl_one=$b1"    >&2
+echo "constructs_abl_twelve=$b12" >&2
+echo "constructs_stack_tokens=$STACK_TOKENS"   >&2
+echo "constructs_manual_tokens=$MANUAL_TOKENS" >&2
 printf "  %-18s %6s %8s %8s   %s\n" "form" "tokens" "text" "ABL" "check"
-printf "  %-18s %6s %7dB %7dB   %s\n" "manual 12×" "839" "$(wc -c </tmp/_manual12.mg)" "$(wc -c </tmp/_m.abl)" "$mok"
-printf "  %-18s %6s %7dB %7dB   %s\n" "stack 12 { block }" "82" "$(wc -c <deep_transformer_stack.mg)" "$b12" "$sok"
+printf "  %-18s %6s %7dB %7dB   %s\n" "manual 12×" "$MANUAL_TOKENS" "$(wc -c </tmp/_manual12.mg)" "$(wc -c </tmp/_m.abl)" "$mok"
+printf "  %-18s %6s %7dB %7dB   %s\n" "stack 12 { block }" "$STACK_TOKENS" "$(wc -c <deep_transformer_stack.mg)" "$b12" "$sok"
 printf "  %-18s %6s %8s %7dB\n" "(1 block, ref)" "" "" "$b1"
 echo "  → surface: 82 vs 839 tokens (10.2× fewer), FLAT in depth (100 layers ≈ 83 tok)."
 echo "  → ABL is now O(1) in depth too: the container REPEAT-folds at encode, so 12"
@@ -101,3 +139,15 @@ printf  "    blocks = %dB vs %dB for one = %s× (decodes to the full 72 layers; 
         "$b12" "$b1" "$(awk "BEGIN{printf \"%.2f\", $b12/$b1}")"
 echo "    dispatches all 72). See ARCHITECTURE_DSL.md §4.4."
 rm -f /tmp/_manual12.mg /tmp/_m.abl /tmp/_s.abl /tmp/_one.mg /tmp/_one.abl 2>/dev/null
+
+# One verdict, after every section, over every check this script makes: the
+# four construct pairs, the two net declarations, and the two depth forms.
+# Counting only the first group would have left three-quarters of the script
+# able to print FAIL and still exit 0 -- which is what it did until
+# 2026-09-02, and why nothing noticed it could not run on Linux at all.
+if [ "$failures" -ne 0 ]; then
+  echo >&2
+  echo "$failures check(s) failed -- the percentages above are not" >&2
+  echo "measurements of anything. See the FAIL markers in the tables." >&2
+  exit 1
+fi

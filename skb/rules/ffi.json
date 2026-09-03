@@ -1,135 +1,321 @@
 [
   {
-    "id": "FFI-001",
-    "database": "ffi",
-    "version": "0.1.0",
-    "severity": "error",
-    "category": "null-pointer",
-    "description": "FFI function receives a potentially null pointer",
-    "rationale": "C functions often cannot handle null pointers; passing one causes undefined behavior or crashes",
-    "scope": "function",
-    "pattern": "FFICall(fn, arg) where arg: *T and nullable(arg)",
-    "context": "extern function call",
-    "fix_template": "Check for null before the FFI call: `? ptr.is_null() { ret Err(...) }`",
+    "id": "FFI-0001",
+    "database": "FFI",
+    "category": "null-pointer-deref",
+    "severity": "Error",
+    "description": "Potential null pointer dereference from foreign function",
+    "rationale": "C functions may return null; must check before deref",
+    "fix_template": "Check for null before dereferencing",
+    "fix_confidence": 0.9,
+    "tags": [
+      "ffi",
+      "null",
+      "pointer",
+      "deref"
+    ]
+  },
+  {
+    "id": "FFI-0002",
+    "database": "FFI",
+    "category": "layout-mismatch",
+    "severity": "Error",
+    "description": "Struct layout mismatch between MAGE and foreign type",
+    "rationale": "ABI incompatibility; use #[repr(C)]",
+    "fix_template": "Add #[repr(C)] to struct definition",
     "fix_confidence": 0.85,
-    "alternatives": ["Use NonNull<T> for non-nullable pointer types"],
-    "source": "builtin",
-    "frequency": 23456,
-    "false_positive_rate": 0.05,
-    "tags": ["ffi", "null", "pointer", "safety"]
+    "tags": [
+      "ffi",
+      "layout",
+      "repr-c",
+      "abi"
+    ]
   },
   {
-    "id": "FFI-002",
-    "database": "ffi",
-    "version": "0.1.0",
-    "severity": "error",
-    "category": "abi-mismatch",
-    "description": "Function signature does not match the expected C ABI",
-    "rationale": "ABI mismatches cause stack corruption, wrong values, or crashes at the FFI boundary",
-    "scope": "function",
-    "pattern": "extern 'C' fn f(args) where args_layout != C_layout",
-    "context": "extern function declaration",
-    "fix_template": "Ensure the function uses C-compatible types (i32, f64, *T) and correct calling convention",
+    "id": "FFI-0003",
+    "database": "FFI",
+    "category": "missing-free",
+    "severity": "Error",
+    "description": "Foreign-allocated memory not freed",
+    "rationale": "C allocations need explicit free(); Rust Drop won't fire",
+    "fix_template": "Call the appropriate free function",
+    "fix_confidence": 0.8,
+    "tags": [
+      "ffi",
+      "free",
+      "leak",
+      "memory"
+    ]
+  },
+  {
+    "id": "FFI-0004",
+    "database": "FFI",
+    "category": "string-nul",
+    "severity": "Error",
+    "description": "C string missing NUL terminator",
+    "rationale": "C expects NUL-terminated strings",
+    "fix_template": "Use CString or add \\0",
+    "fix_confidence": 0.9,
+    "tags": [
+      "ffi",
+      "string",
+      "nul",
+      "cstring"
+    ]
+  },
+  {
+    "id": "FFI-0005",
+    "database": "FFI",
+    "category": "string-utf8",
+    "severity": "Warning",
+    "description": "Foreign string may not be valid UTF-8",
+    "rationale": "Rust strings require valid UTF-8",
+    "fix_template": "Use CStr::to_string_lossy() or validate",
+    "fix_confidence": 0.8,
+    "tags": [
+      "ffi",
+      "string",
+      "utf8",
+      "encoding"
+    ]
+  },
+  {
+    "id": "FFI-0006",
+    "database": "FFI",
+    "category": "extern-abi",
+    "severity": "Warning",
+    "description": "Function missing extern \"C\" ABI declaration",
+    "rationale": "Default Rust ABI is incompatible with C",
+    "fix_template": "Add extern \"C\" to function signature",
+    "fix_confidence": 0.9,
+    "tags": [
+      "ffi",
+      "extern",
+      "abi",
+      "c"
+    ]
+  },
+  {
+    "id": "FFI-0007",
+    "database": "FFI",
+    "category": "opaque-pointer",
+    "severity": "Info",
+    "description": "Opaque foreign types should be modeled as extern type or non-constructable struct",
+    "rationale": "Prevents accidental construction or size assumptions",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "ffi",
+      "opaque",
+      "extern-type"
+    ]
+  },
+  {
+    "id": "FFI-0008",
+    "database": "FFI",
+    "category": "callback-panic",
+    "severity": "Error",
+    "description": "Panic across FFI boundary is undefined behavior",
+    "rationale": "Panics must be caught before returning to C",
+    "fix_template": "Use catch_unwind at FFI boundary",
+    "fix_confidence": 0.85,
+    "tags": [
+      "ffi",
+      "callback",
+      "panic",
+      "unwind"
+    ]
+  },
+  {
+    "id": "FFI-0009",
+    "database": "FFI",
+    "category": "alignment",
+    "severity": "Warning",
+    "description": "Type alignment may differ between Rust and C",
+    "rationale": "Misaligned access is UB on some platforms",
+    "fix_template": "Verify alignment with #[repr(C, align(N))]",
+    "fix_confidence": 0.7,
+    "tags": [
+      "ffi",
+      "alignment",
+      "repr",
+      "ub"
+    ]
+  },
+  {
+    "id": "FFI-0010",
+    "database": "FFI",
+    "category": "borrow-across-ffi",
+    "severity": "Warning",
+    "description": "Reference passed to C code — aliasing rules cannot be enforced",
+    "rationale": "C code may alias or store the pointer beyond borrow scope",
+    "fix_template": "Pass raw pointer instead if C stores it",
+    "fix_confidence": 0.6,
+    "tags": [
+      "ffi",
+      "borrow",
+      "pointer",
+      "aliasing"
+    ]
+  },
+  {
+    "id": "FFI-0011",
+    "database": "FFI",
+    "category": "enum-repr",
+    "severity": "Error",
+    "description": "Enum without defined repr has unstable discriminant values",
+    "rationale": "FFI enums need #[repr(C)] or #[repr(i32)]",
+    "fix_template": "Add #[repr(C)] to the enum",
+    "fix_confidence": 0.9,
+    "tags": [
+      "ffi",
+      "enum",
+      "repr",
+      "discriminant"
+    ]
+  },
+  {
+    "id": "FFI-0012",
+    "database": "FFI",
+    "category": "bool-repr",
+    "severity": "Warning",
+    "description": "Rust bool is 1 byte; C _Bool may differ",
+    "rationale": "Use c_int or c_char for FFI booleans",
+    "fix_template": "Replace bool with c_int in FFI signatures",
     "fix_confidence": 0.75,
-    "alternatives": ["Use bindgen to auto-generate correct signatures"],
-    "source": "builtin",
-    "frequency": 12345,
-    "false_positive_rate": 0.03,
-    "tags": ["ffi", "abi", "calling-convention"]
+    "tags": [
+      "ffi",
+      "bool",
+      "size",
+      "c"
+    ]
   },
   {
-    "id": "FFI-003",
-    "database": "ffi",
-    "version": "0.1.0",
-    "severity": "error",
-    "category": "string-encoding",
-    "description": "MAGE string passed to C function without null termination",
-    "rationale": "C strings require null termination; MAGE strings do not. Passing a MAGE string directly causes buffer overreads",
-    "scope": "function",
-    "pattern": "FFICall(fn, s) where s: str and !CString(s)",
-    "context": "argument expects *c_char",
-    "fix_template": "Convert to CString first: `v cs = CString.new(s)?; fn(cs.as_ptr())`",
-    "fix_confidence": 0.90,
-    "alternatives": ["Use a pre-allocated buffer with null terminator"],
-    "source": "builtin",
-    "frequency": 18765,
-    "false_positive_rate": 0.01,
-    "tags": ["ffi", "string", "encoding", "safety"]
+    "id": "FFI-0013",
+    "database": "FFI",
+    "category": "size-t-usize",
+    "severity": "Info",
+    "description": "C size_t maps to Rust usize; ensure target compatibility",
+    "rationale": "Both are pointer-sized on the target platform",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "ffi",
+      "size_t",
+      "usize",
+      "portability"
+    ]
   },
   {
-    "id": "FFI-004",
-    "database": "ffi",
-    "version": "0.1.0",
-    "severity": "warning",
-    "category": "uninitialized-buffer",
-    "description": "Buffer passed to FFI function may not be fully initialized",
-    "rationale": "Reading uninitialized memory is undefined behavior; buffers passed to C functions for writing must be properly sized",
-    "scope": "function",
-    "pattern": "v buf = [0u8; N]; FFICall(fn, buf.as_mut_ptr(), N) where N runtime-variable",
-    "context": null,
-    "fix_template": "Zero-initialize the buffer: `v buf = [0u8; N]` and validate the size",
-    "fix_confidence": 0.80,
-    "alternatives": ["Use MaybeUninit for performance-critical paths"],
-    "source": "builtin",
-    "frequency": 9876,
-    "false_positive_rate": 0.08,
-    "tags": ["ffi", "buffer", "initialization"]
+    "id": "FFI-0014",
+    "database": "FFI",
+    "category": "variadic-unsafe",
+    "severity": "Warning",
+    "description": "Variadic C functions are inherently unsafe",
+    "rationale": "No type checking on variadic arguments",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "ffi",
+      "variadic",
+      "unsafe",
+      "printf"
+    ]
   },
   {
-    "id": "FFI-005",
-    "database": "ffi",
-    "version": "0.1.0",
-    "severity": "error",
-    "category": "ownership-across-ffi",
-    "description": "Ownership of heap-allocated memory transferred across FFI boundary without matching deallocation",
-    "rationale": "Memory allocated on one side of the FFI boundary must be freed on the same side (same allocator)",
-    "scope": "function",
-    "pattern": "FFICall(fn, box_ptr) where box_ptr from Box::into_raw()",
-    "context": "no corresponding from_raw",
-    "fix_template": "Ensure matching deallocation: `v ptr = ^T.into_raw(val); ... v val = ^T.from_raw(ptr)`",
-    "fix_confidence": 0.75,
-    "alternatives": ["Document ownership transfer in the FFI contract", "Use a callback-based API"],
-    "source": "builtin",
-    "frequency": 5432,
-    "false_positive_rate": 0.05,
-    "tags": ["ffi", "ownership", "memory", "safety"]
+    "id": "FFI-0015",
+    "database": "FFI",
+    "category": "global-c-state",
+    "severity": "Warning",
+    "description": "C library may have global mutable state",
+    "rationale": "Thread-safety depends on the C library's guarantees",
+    "fix_template": "Synchronize access or verify C library thread-safety",
+    "fix_confidence": 0.5,
+    "tags": [
+      "ffi",
+      "global",
+      "state",
+      "thread-safety"
+    ]
   },
   {
-    "id": "FFI-006",
-    "database": "ffi",
-    "version": "0.1.0",
-    "severity": "warning",
-    "category": "repr-missing",
-    "description": "Struct passed across FFI boundary lacks #[repr(C)] layout guarantee",
-    "rationale": "Without repr(C), the compiler may reorder fields; C code expects a specific layout",
-    "scope": "module",
-    "pattern": "FFICall(fn, &s) where typeof(s): struct and !repr_C(typeof(s))",
-    "context": "struct used at FFI boundary",
-    "fix_template": "Add `@repr(C)` to the struct definition",
-    "fix_confidence": 0.90,
-    "alternatives": ["Manually marshal the data to a C-compatible layout"],
-    "source": "builtin",
-    "frequency": 7654,
-    "false_positive_rate": 0.02,
-    "tags": ["ffi", "repr", "layout", "struct"]
+    "id": "FFI-0016",
+    "database": "FFI",
+    "category": "wasm-import",
+    "severity": "Info",
+    "description": "WASM imports use extern \"C\" with #[link(wasm_import_module)]",
+    "rationale": "WebAssembly host functions require specific linking",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "ffi",
+      "wasm",
+      "import",
+      "link"
+    ]
   },
   {
-    "id": "MEM-017",
-    "database": "ffi",
-    "version": "0.1.0",
-    "severity": "error",
-    "category": "gpu-buffer-init",
-    "description": "GPU buffers must be initialized before kernel dispatch",
-    "rationale": "Dispatching a GPU kernel on uninitialized buffer memory causes undefined behavior and GPU hangs",
-    "scope": "function",
-    "pattern": "GPUDispatch(kernel, buffer) where !initialized(buffer)",
-    "context": "GPU compute pipeline",
-    "fix_template": "Initialize the buffer before dispatch: `buffer.fill(0)` or `buffer.copy_from(data)`",
-    "fix_confidence": 0.90,
-    "alternatives": ["Use a staging buffer with pre-filled data"],
-    "source": "builtin",
-    "frequency": 3210,
-    "false_positive_rate": 0.005,
-    "tags": ["ffi", "gpu", "buffer", "initialization", "safety"]
+    "id": "FFI-0017",
+    "database": "FFI",
+    "category": "bindgen",
+    "severity": "Hint",
+    "description": "Use bindgen to auto-generate FFI bindings from C headers",
+    "rationale": "Reduces manual binding errors",
+    "fix_template": "Run `bindgen header.h -o bindings.rs`",
+    "fix_confidence": 0.85,
+    "tags": [
+      "ffi",
+      "bindgen",
+      "header",
+      "autogenerate"
+    ]
+  },
+  {
+    "id": "FFI-0018",
+    "database": "FFI",
+    "category": "cbindgen",
+    "severity": "Hint",
+    "description": "Use cbindgen to generate C headers from Rust code",
+    "rationale": "Ensures C consumers have correct declarations",
+    "fix_template": "Run `cbindgen --config cbindgen.toml --output header.h`",
+    "fix_confidence": 0.85,
+    "tags": [
+      "ffi",
+      "cbindgen",
+      "header",
+      "export"
+    ]
+  },
+  {
+    "id": "FFI-0019",
+    "database": "FFI",
+    "category": "pin-ffi",
+    "severity": "Warning",
+    "description": "Pinned types should not be passed across FFI — C doesn't understand Pin",
+    "rationale": "C code may move the value",
+    "fix_template": "Unpin before passing to C, or use raw pointer",
+    "fix_confidence": 0.6,
+    "tags": [
+      "ffi",
+      "pin",
+      "move",
+      "safety"
+    ]
+  },
+  {
+    "id": "FFI-0020",
+    "database": "FFI",
+    "category": "error-code",
+    "severity": "Hint",
+    "description": "Use explicit error codes instead of Result across FFI",
+    "rationale": "C doesn't have Result; use int return + out-parameter",
+    "fix_template": "Return c_int error code and pass result via out-pointer",
+    "fix_confidence": 0.8,
+    "tags": [
+      "ffi",
+      "error",
+      "return-code",
+      "c"
+    ]
   }
 ]

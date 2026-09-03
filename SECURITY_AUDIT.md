@@ -195,17 +195,19 @@ leaves to whoever embeds it:
   flag provisions a key. That is a defensible library posture — the fleet key
   is the embedder's — but it means there is no reference path, and none of the
   guidance below exists anywhere else.
-- **Keys are not validated, and an empty one is accepted.** Measured, not
-  inferred: `Signer::new("w", Vec::new())` signs, and the record verifies; so
-  does a one-byte key. **An empty `Vec` is what an unset environment variable
-  or a missing config field naturally becomes**, so a fleet whose key was never
-  provisioned would authenticate every claim and report success while providing
-  nothing — and no verifier can tell, because a MAC over an empty key is a
-  well-formed MAC. RFC 2104 recommends at least the hash output length, 32
-  bytes here. **Left as an owner decision rather than changed**: refusing a
-  weak key means `Signer::new` returns a `Result`, which is a breaking change
-  to a public API, and this document is not the place to make that call. The
-  constructor's rustdoc now warns; the recommendation is below.
+- ~~**Keys are not validated, and an empty one is accepted.**~~ **Fixed
+  2026-09-02.** It was measured, not inferred: `Signer::new("w", Vec::new())`
+  signed, the record verified, and a second empty-key signer verified it too —
+  so a fleet whose key was never provisioned authenticated every claim and
+  reported success, an empty `Vec` being what an unset environment variable
+  naturally becomes. No verifier could tell, because a MAC over an empty key is
+  a well-formed MAC. `Signer::new` now returns `Result<Signer, KeyError>` and
+  refuses anything under **32 bytes** (RFC 2104 §3). This *is* the breaking
+  change this document declined to make on its own authority, taken once the
+  owner asked for it; four call sites were updated, and their 9-byte test keys
+  were themselves refused, which is the rule working on its first run. Because
+  no verifier can distinguish a weak key downstream, construction is the only
+  place the difference is knowable, and so the only place worth refusing it.
 - **The two schemes have opposite rotation stories, and only one is written
   down.** The Ed25519 path rotates properly: keys are per-worker, `TrustStore`
   holds public keys, `revoke` records a revocation rather than deleting the key
@@ -213,9 +215,15 @@ leaves to whoever embeds it:
   revoked, unknown, substituted-key, wrong-subject and bad-signature — checked
   by reading every branch. The **HMAC path has no rotation at all**: one key per
   `Signer`, one `auth_key` per `WorkerServer`, no key id and no overlapping
-  acceptance window, so changing the fleet key requires every worker and every
-  verifier to change simultaneously. For a shared secret that is the hardest
-  operation to perform safely, and it is the one with no support.
+  acceptance window, so changing the fleet key required every worker and every
+  verifier to change simultaneously — which is not a rotation but an outage
+  with a key change in it. **Fixed 2026-09-02:** `Provenance` carries an
+  optional `key_id`, bound into the MAC so a record cannot be relabelled onto
+  another key, and `Keyring` accepts several keys at once. That is the
+  overlapping window: workers migrate in any order, and an id leaves the ring
+  when nothing signs with it. Records written before the field existed still
+  verify — it is `#[serde(default)]` and absorbed into the MAC only when
+  present.
 - **The auth nonce is deliberately predictable**, and says so:
   `ribosome::remote::next_nonce` is `HMAC(b"ribosome-nonce", clock ‖ counter)`
   under a **constant, public** key, with a comment arguing that "the
