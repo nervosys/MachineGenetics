@@ -379,6 +379,7 @@ fn hardware_accelerators_section() -> serde_json::Value {
 const CLI_FLAGS: &[(&str, &str, bool)] = &[
     ("--rap", "Start the RAP JSON-RPC server on the given addr (default 127.0.0.1:9876)", false),
     ("--emit-ontology", "Dump the complete ontology to disk as static JSON", true),
+    ("--emit-skb", "Regenerate skb/ from the rules compiled into this binary", true),
     ("--check", "Lex + parse + resolve; report diagnostics", true),
     ("--fmt-compact", "Reformat source in agent-canonical sigil mode", true),
     ("--fmt-expand", "Reformat source in human-readable keyword mode", true),

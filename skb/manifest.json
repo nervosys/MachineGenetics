@@ -1,14 +1,41 @@
 {
-  "version": "0.1.0",
   "databases": {
-    "ownership": { "rules": 2847, "hash": "sha256:placeholder" },
-    "borrow":    { "rules": 1203, "hash": "sha256:placeholder" },
-    "lifetime":  { "rules": 894,  "hash": "sha256:placeholder" },
-    "type_safety": { "rules": 3412, "hash": "sha256:placeholder" },
-    "concurrency": { "rules": 567, "hash": "sha256:placeholder" },
-    "ffi":       { "rules": 234,  "hash": "sha256:placeholder" }
+    "agent_elision": {
+      "id_prefix": "AEL",
+      "rules": 30
+    },
+    "borrow": {
+      "id_prefix": "BOR",
+      "rules": 40
+    },
+    "concurrency": {
+      "id_prefix": "CON",
+      "rules": 35
+    },
+    "ffi": {
+      "id_prefix": "FFI",
+      "rules": 20
+    },
+    "lifetime": {
+      "id_prefix": "LIF",
+      "rules": 35
+    },
+    "ownership": {
+      "id_prefix": "OWN",
+      "rules": 40
+    },
+    "swarm_safety": {
+      "id_prefix": "SWM",
+      "rules": 15
+    },
+    "type_safety": {
+      "id_prefix": "TYP",
+      "rules": 40
+    }
   },
-  "total_rules": 9157,
-  "min_compiler_version": "0.1.0",
-  "schema_version": "1"
+  "generated_by": "mage-parse --emit-skb",
+  "generated_from": "prototype/src/skb.rs::builtin_rules()",
+  "note": "Generated. Edits here are overwritten; change builtin_rules() instead.                  CI regenerates this tree and fails if it differs (item 23).",
+  "schema_version": 2,
+  "total_rules": 255
 }

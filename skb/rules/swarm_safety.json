@@ -1,0 +1,227 @@
+[
+  {
+    "id": "SWM-0001",
+    "database": "SwarmSafety",
+    "category": "swarm-deadlock-prevention",
+    "severity": "Error",
+    "description": "Detect potential deadlocks in swarm message passing",
+    "rationale": "Agents in a swarm must not form circular blocking dependencies; the compiler verifies message DAGs are acyclic",
+    "fix_template": null,
+    "fix_confidence": 0.9,
+    "tags": [
+      "swarm",
+      "deadlock",
+      "message-passing"
+    ]
+  },
+  {
+    "id": "SWM-0002",
+    "database": "SwarmSafety",
+    "category": "consensus-quorum-validation",
+    "severity": "Error",
+    "description": "Consensus strategy must be achievable given swarm size",
+    "rationale": "A `unanimous` consensus with size > 1 requires all agents respond; `majority` requires size >= 3 for meaningful voting",
+    "fix_template": null,
+    "fix_confidence": 1.0,
+    "tags": [
+      "swarm",
+      "consensus",
+      "quorum"
+    ]
+  },
+  {
+    "id": "SWM-0003",
+    "database": "SwarmSafety",
+    "category": "topology-connectivity",
+    "severity": "Warning",
+    "description": "Swarm topology must be connected — no isolated agents",
+    "rationale": "For `ring`, `mesh`, and `tree` topologies, the compiler verifies every agent is reachable from every other agent",
+    "fix_template": null,
+    "fix_confidence": 1.0,
+    "tags": [
+      "swarm",
+      "topology",
+      "connectivity"
+    ]
+  },
+  {
+    "id": "SWM-0004",
+    "database": "SwarmSafety",
+    "category": "agent-capability-propagation",
+    "severity": "Error",
+    "description": "Swarm inherits the union of its agents' required capabilities",
+    "rationale": "A swarm dispatching to agents that require `llm` or `io` capabilities must itself hold those capabilities",
+    "fix_template": null,
+    "fix_confidence": 1.0,
+    "tags": [
+      "swarm",
+      "capability",
+      "propagation"
+    ]
+  },
+  {
+    "id": "SWM-0005",
+    "database": "SwarmSafety",
+    "category": "dispatch-type-safety",
+    "severity": "Error",
+    "description": "Dispatch block input/output types must match agent handler signatures",
+    "rationale": "The data scattered to agents must be compatible with the agent's handle() method signature",
+    "fix_template": null,
+    "fix_confidence": 1.0,
+    "tags": [
+      "swarm",
+      "dispatch",
+      "type-safety"
+    ]
+  },
+  {
+    "id": "SWM-0006",
+    "database": "SwarmSafety",
+    "category": "aggregate-completeness",
+    "severity": "Warning",
+    "description": "Aggregate block should handle partial results for fault tolerance",
+    "rationale": "When on_failure is not defined, the aggregate block must handle the case where fewer results return than dispatched",
+    "fix_template": null,
+    "fix_confidence": 0.8,
+    "tags": [
+      "swarm",
+      "aggregate",
+      "fault-tolerance"
+    ]
+  },
+  {
+    "id": "SWM-0007",
+    "database": "SwarmSafety",
+    "category": "swarm-effect-composition",
+    "severity": "Error",
+    "description": "Swarm operations compose effects from all constituent agents",
+    "rationale": "A swarm combining agents with / llm and / io effects must declare both in its own effect signature",
+    "fix_template": null,
+    "fix_confidence": 1.0,
+    "tags": [
+      "swarm",
+      "effects",
+      "composition"
+    ]
+  },
+  {
+    "id": "SWM-0008",
+    "database": "SwarmSafety",
+    "category": "message-ordering-guarantee",
+    "severity": "Info",
+    "description": "Message delivery order depends on topology",
+    "rationale": "Star topology: hub sees all messages; ring: sequential ordering; mesh: no ordering guarantee; broadcast: simultaneous",
+    "fix_template": null,
+    "fix_confidence": 1.0,
+    "tags": [
+      "swarm",
+      "message",
+      "ordering"
+    ]
+  },
+  {
+    "id": "SWM-0009",
+    "database": "SwarmSafety",
+    "category": "swarm-size-bounds",
+    "severity": "Warning",
+    "description": "Swarm size should be bounded to prevent resource exhaustion",
+    "rationale": "Swarms without an explicit size or with size > 1024 generate a warning; use @perf contracts for large swarms",
+    "fix_template": null,
+    "fix_confidence": 0.7,
+    "tags": [
+      "swarm",
+      "size",
+      "resource"
+    ]
+  },
+  {
+    "id": "SWM-0010",
+    "database": "SwarmSafety",
+    "category": "failure-cascade-prevention",
+    "severity": "Error",
+    "description": "Swarm must not cascade failures across agents",
+    "rationale": "An agent failure in a swarm must be isolated; the on_failure handler determines recovery (retry, skip, abort)",
+    "fix_template": null,
+    "fix_confidence": 0.9,
+    "tags": [
+      "swarm",
+      "failure",
+      "cascade"
+    ]
+  },
+  {
+    "id": "SWM-0011",
+    "database": "SwarmSafety",
+    "category": "broadcast-storm-prevention",
+    "severity": "Warning",
+    "description": "Broadcast topology with large swarms risks message storms",
+    "rationale": "Broadcast to > 100 agents without rate limiting generates a warning; prefer scatter/gather patterns",
+    "fix_template": null,
+    "fix_confidence": 0.8,
+    "tags": [
+      "swarm",
+      "broadcast",
+      "storm"
+    ]
+  },
+  {
+    "id": "SWM-0012",
+    "database": "SwarmSafety",
+    "category": "consensus-timeout-required",
+    "severity": "Warning",
+    "description": "Consensus operations should have explicit timeouts",
+    "rationale": "A swarm with consensus but no timeout may block indefinitely; the compiler inserts a default 30s timeout if omitted",
+    "fix_template": null,
+    "fix_confidence": 0.9,
+    "tags": [
+      "swarm",
+      "consensus",
+      "timeout"
+    ]
+  },
+  {
+    "id": "SWM-0013",
+    "database": "SwarmSafety",
+    "category": "swarm-send-sync-agents",
+    "severity": "Error",
+    "description": "Agents in a swarm must be Send + Sync for safe concurrent dispatch",
+    "rationale": "The compiler verifies agent types satisfy Send + Sync bounds before allowing swarm membership",
+    "fix_template": null,
+    "fix_confidence": 1.0,
+    "tags": [
+      "swarm",
+      "concurrency",
+      "send-sync"
+    ]
+  },
+  {
+    "id": "SWM-0014",
+    "database": "SwarmSafety",
+    "category": "swarm-keyword-compression",
+    "severity": "Info",
+    "description": "Agent mode compression for swarm constructs",
+    "rationale": "swarm→Σ/sw, topology→topo, consensus→cons in agent mode; human mode uses full keywords",
+    "fix_template": null,
+    "fix_confidence": 1.0,
+    "tags": [
+      "swarm",
+      "agent-elision",
+      "compression"
+    ]
+  },
+  {
+    "id": "SWM-0015",
+    "database": "SwarmSafety",
+    "category": "swarm-determinism-annotation",
+    "severity": "Info",
+    "description": "Non-deterministic swarm operations should be annotated",
+    "rationale": "Swarms with mesh topology or weighted consensus produce non-deterministic output; @inv contracts can constrain this",
+    "fix_template": null,
+    "fix_confidence": 0.7,
+    "tags": [
+      "swarm",
+      "determinism",
+      "annotation"
+    ]
+  }
+]

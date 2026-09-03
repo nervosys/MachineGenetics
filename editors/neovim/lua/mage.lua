@@ -96,26 +96,17 @@ function M.setup_lsp(opts)
         cmd = type(opts.rap_cmd) == 'table' and opts.rap_cmd or { opts.rap_cmd },
         filetypes = { 'MAGE' },
         root_dir = lspconfig.util.root_pattern('Forge.toml', '.git'),
-        settings = {
-          rap = {
-            checkOnSave = true,
-            diagnostics = {
-              enable = true,
-              skb = true,
-              effects = true,
-            },
-            completion = {
-              autoimport = true,
-              sigils = true,
-            },
-            inlayHints = {
-              enable = true,
-              typeHints = true,
-              effectHints = true,
-              costHints = false,
-            },
-          },
-        },
+        -- No `settings` block.
+        --
+        -- This carried `checkOnSave`, `diagnostics.skb`, `diagnostics.effects`,
+        -- `completion.autoimport`, `completion.sigils`, `inlayHints.typeHints`,
+        -- `inlayHints.effectHints` and `inlayHints.costHints` -- eight options
+        -- for capabilities RAP has no methods for, invented wholesale. A user
+        -- pointing `rap_cmd` at their own shim would have had MAGE's imaginary
+        -- configuration sent to it as if it meant something.
+        --
+        -- Pass your shim's real settings through `opts.lsp` instead; whatever
+        -- you put there reaches `lspconfig` untouched.
       },
     }
   end

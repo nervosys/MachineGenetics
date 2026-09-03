@@ -189,6 +189,12 @@ jobs:
       # recently as 2026-08-25.
       - name: The RAP method surface agrees with itself and its chapter
         run: bash scripts/check-rap-methods.sh
+      # `skb/` is a generated export now, not a parallel corpus. It held 56
+      # rules nothing read while the binary served 255, under a different
+      # identifier scheme, missing two whole databases. Generated trees are
+      # only true while something regenerates and compares.
+      - name: skb/ matches what the compiler serves
+        run: bash scripts/check-skb-tree.sh
       # Every check above asks a question about code that compiles. Nothing
       # asked whether it compiles at all — and `compute/cuda_full.rs` is 1,812
       # lines with 16 `unsafe` blocks and 6 tests that no `mod` declaration
@@ -263,6 +269,22 @@ jobs:
           cargo build --release --manifest-path forge/Cargo.toml --bin forge
           bash benchmarks/capstone/run.sh
           bash benchmarks/constructs/run.sh
+      # The third one, wired up once it could tell "absent" from "failing".
+      #
+      # It reports a language the runner does not have as *not measured* rather
+      # than as five wrong answers, so this step does not become a test of
+      # GitHub's image: `ubuntu-latest` has rustc, go, java and node; it has no
+      # `bun`, and TypeScript will read as not measured until it does. What the
+      # step does enforce is that MAGE is always measured -- its toolchain is in
+      # this repository, so its absence means the benchmark measured nothing --
+      # and that any language the runner *does* have produces the expected
+      # output, including a compiler that is present and fails to compile.
+      #
+      # This is item 26. The decision it needed was what the benchmark means
+      # when a language is missing, and the answer is: nothing about that
+      # language, and nothing that should turn CI red.
+      - name: Cross-language executability, for whatever this runner has
+        run: bash benchmarks/cross_lang/run.sh
       # `mage-parse@<version>` is the tool id Ribosome writes into every action
       # key, so if the binary and the registry disagree the cache is keyed on a
       # version that never ran. They live in different crates with no compiler

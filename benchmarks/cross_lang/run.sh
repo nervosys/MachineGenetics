@@ -37,6 +37,15 @@ have() { command -v "$1" >/dev/null 2>&1; }
 absent() { printf "%-12s   %-28s (not measured)
 " "$1" "$2 not installed"; }
 
+# A language that is present and gets the wrong answer is a failure; a language
+# that is absent is not. Counted here, and acted on at the end of the script --
+# without that, this prints a table of FAILs and reports success, which is what
+# `constructs/run.sh` did until today and the reason none of these three scripts
+# could be wired into CI honestly.
+measured=0
+wrong=0
+mage_measured=""
+
 # compare NAME <multiline-output> : compares 5 lines to EXPECT, prints the row.
 compare() {
   local name="$1" out="$2"
@@ -47,6 +56,8 @@ compare() {
     if [ "$got" = "${EXPECT[$i]}" ]; then row+="  PASS"; pass=$((pass+1)); else row+="  FAIL"; fi
   done
   printf "%-12s %s    %d/5\n" "$name" "$row" "$pass"
+  measured=$((measured + 1))
+  [ "$pass" -eq 5 ] || wrong=$((wrong + 1))
 }
 
 mage_all() {
@@ -61,7 +72,7 @@ echo "=== Cross-language agentic-SWE executability (MEASURED: real compile+run) 
 echo "tasks: fact sumto fib distinct collatz   expected: ${EXPECT[*]}"
 printf "%-12s %s    %s\n" "language" " f1    f2    f3    f4    f5" "pass"
 echo "----------------------------------------------------------------"
-compare MAGE    "$(mage_all 2>/dev/null)"
+compare MAGE    "$(mage_all 2>/dev/null)"; mage_measured=yes
 have node  && compare JavaScript "$(node tasks.js 2>/dev/null)"   || absent JavaScript node
 have bun   && compare TypeScript "$(bun tasks.ts 2>/dev/null)"    || absent TypeScript bun
 # Compiled as its own step, like Rust and Java. `go run` compiles *and* runs,
@@ -74,6 +85,7 @@ if have go; then
     compare Go "$(./tasks_go.exe 2>/dev/null)"
   else
     echo "Go           compile FAILED (go present)"
+    measured=$((measured + 1)); wrong=$((wrong + 1))
   fi
 else
   absent Go go
@@ -83,6 +95,7 @@ if have rustc; then
     compare Rust "$(./tasks_rs.exe 2>/dev/null)"
   else
     echo "Rust         compile FAILED (rustc present)"
+    measured=$((measured + 1)); wrong=$((wrong + 1))
   fi
 else
   absent Rust rustc
@@ -92,6 +105,7 @@ if have javac && have java; then
     compare Java "$(java Tasks 2>/dev/null)"
   else
     echo "Java         compile FAILED (javac present)"
+    measured=$((measured + 1)); wrong=$((wrong + 1))
   fi
 else
   absent Java javac
@@ -110,13 +124,27 @@ else
   absent Python python3
 fi
 echo "----------------------------------------------------------------"
-# The Python row is measured above like every other language. This line used to
-# assert "runtime not installed on this host" unconditionally -- a frozen
-# observation about one machine on one day, printed even where Python is
-# present, in a script whose header says "no judgments".
 echo
 echo "SOURCE SIZE (bytes — measured wc -c):"
 for f in tasks.mg tasks.js tasks.ts tasks.go tasks.rs Tasks.java; do
   printf "  %-12s %5d\n" "$f" "$(wc -c < "$f")"
 done
 rm -f tasks_rs.exe tasks_go.exe Tasks.class tasks_rs.pdb 2>/dev/null
+
+# ── Verdict ─────────────────────────────────────────────────────────────
+#
+# MAGE is the one language whose toolchain lives in this repository, so it is
+# the one that must always be measured. If it is missing, this benchmark is not
+# measuring the thing it exists to measure, and a "5/5" about the other five
+# would be beside the point.
+if [ -z "$mage_measured" ]; then
+  echo "MAGE was not measured; this benchmark has nothing to say without it" >&2
+  exit 1
+fi
+if [ "$wrong" -ne 0 ]; then
+  echo >&2
+  echo "$wrong of $measured measured language(s) did not produce the expected output." >&2
+  echo "A language absent from this host reads as 'not measured' and is not counted here," >&2
+  echo "so this is a real disagreement, not a missing toolchain." >&2
+  exit 1
+fi

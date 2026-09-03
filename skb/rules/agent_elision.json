@@ -1,0 +1,461 @@
+[
+  {
+    "id": "AEL-0001",
+    "database": "AgentElision",
+    "category": "unsafe-block-elision",
+    "severity": "Info",
+    "description": "Compiler infers unsafe boundaries from SKB rules in agent mode",
+    "rationale": "Agent mode elides `unsafe` blocks; the compiler uses OWN/BOR/FFI rules to verify safety",
+    "fix_template": null,
+    "fix_confidence": 1.0,
+    "tags": [
+      "agent-elision",
+      "unsafe",
+      "safety"
+    ]
+  },
+  {
+    "id": "AEL-0002",
+    "database": "AgentElision",
+    "category": "unsafe-fn-elision",
+    "severity": "Info",
+    "description": "Compiler marks functions as unsafe internally based on body analysis",
+    "rationale": "Agent mode does not require `unsafe fn` — the compiler detects FFI calls, raw pointer ops, and union access",
+    "fix_template": null,
+    "fix_confidence": 1.0,
+    "tags": [
+      "agent-elision",
+      "unsafe",
+      "function"
+    ]
+  },
+  {
+    "id": "AEL-0003",
+    "database": "AgentElision",
+    "category": "lifetime-annotation-elision",
+    "severity": "Info",
+    "description": "Compiler infers all lifetime annotations in agent mode",
+    "rationale": "Explicit lifetime annotations are elided; the compiler's LIF rules resolve all borrows",
+    "fix_template": null,
+    "fix_confidence": 1.0,
+    "tags": [
+      "agent-elision",
+      "lifetime",
+      "annotation"
+    ]
+  },
+  {
+    "id": "AEL-0004",
+    "database": "AgentElision",
+    "category": "mutability-inference",
+    "severity": "Info",
+    "description": "Compiler infers &mut from usage context in agent mode",
+    "rationale": "&T vs &mut T is determined by the compiler from write operations on the reference",
+    "fix_template": null,
+    "fix_confidence": 1.0,
+    "tags": [
+      "agent-elision",
+      "mutability",
+      "reference"
+    ]
+  },
+  {
+    "id": "AEL-0005",
+    "database": "AgentElision",
+    "category": "send-sync-inference",
+    "severity": "Info",
+    "description": "Compiler derives Send/Sync bounds automatically in agent mode",
+    "rationale": "Send and Sync bounds are inferred from type structure; no explicit annotations needed",
+    "fix_template": null,
+    "fix_confidence": 0.95,
+    "tags": [
+      "agent-elision",
+      "send",
+      "sync",
+      "concurrency"
+    ]
+  },
+  {
+    "id": "AEL-0006",
+    "database": "AgentElision",
+    "category": "closure-capture-inference",
+    "severity": "Info",
+    "description": "Compiler infers move vs borrow capture for closures in agent mode",
+    "rationale": "The `move` keyword is unnecessary; compiler determines capture mode from usage",
+    "fix_template": null,
+    "fix_confidence": 1.0,
+    "tags": [
+      "agent-elision",
+      "closure",
+      "move",
+      "capture"
+    ]
+  },
+  {
+    "id": "AEL-0007",
+    "database": "AgentElision",
+    "category": "pin-inference",
+    "severity": "Info",
+    "description": "Compiler handles Pin<T> wrapping for self-referential types",
+    "rationale": "Pin requirements are detected and enforced without explicit syntax",
+    "fix_template": null,
+    "fix_confidence": 0.9,
+    "tags": [
+      "agent-elision",
+      "pin",
+      "self-referential"
+    ]
+  },
+  {
+    "id": "AEL-0008",
+    "database": "AgentElision",
+    "category": "dyn-impl-inference",
+    "severity": "Info",
+    "description": "Compiler chooses between static and dynamic dispatch automatically",
+    "rationale": "No `dyn`/`impl` distinction needed — compiler selects based on call site analysis",
+    "fix_template": null,
+    "fix_confidence": 0.9,
+    "tags": [
+      "agent-elision",
+      "dispatch",
+      "trait-object"
+    ]
+  },
+  {
+    "id": "AEL-0009",
+    "database": "AgentElision",
+    "category": "borrow-check-relaxation",
+    "severity": "Info",
+    "description": "Borrow checker runs post-hoc in agent mode, not as syntax constraint",
+    "rationale": "Agent code is accepted without explicit borrow annotations; violations detected as compiler diagnostics",
+    "fix_template": null,
+    "fix_confidence": 1.0,
+    "tags": [
+      "agent-elision",
+      "borrow",
+      "check"
+    ]
+  },
+  {
+    "id": "AEL-0010",
+    "database": "AgentElision",
+    "category": "bounds-check-elision",
+    "severity": "Info",
+    "description": "Runtime bounds checks may be elided when compiler proves safety",
+    "rationale": "Index operations skip bounds checks when the compiler can prove the index is in range",
+    "fix_template": "Compiler inserts `unreachable_unchecked()` for proven bounds",
+    "fix_confidence": 0.85,
+    "tags": [
+      "agent-elision",
+      "bounds",
+      "performance"
+    ]
+  },
+  {
+    "id": "AEL-0011",
+    "database": "AgentElision",
+    "category": "overflow-check-elision",
+    "severity": "Info",
+    "description": "Arithmetic overflow checks elided when compiler proves no overflow",
+    "rationale": "Agent mode skips overflow checks for operations proved to be in range",
+    "fix_template": null,
+    "fix_confidence": 0.8,
+    "tags": [
+      "agent-elision",
+      "overflow",
+      "arithmetic"
+    ]
+  },
+  {
+    "id": "AEL-0012",
+    "database": "AgentElision",
+    "category": "phantom-data-elision",
+    "severity": "Info",
+    "description": "PhantomData<T> fields inserted automatically by compiler",
+    "rationale": "Variance and drop-check markers handled internally without explicit PhantomData",
+    "fix_template": null,
+    "fix_confidence": 0.95,
+    "tags": [
+      "agent-elision",
+      "phantom",
+      "variance"
+    ]
+  },
+  {
+    "id": "AEL-0013",
+    "database": "AgentElision",
+    "category": "async-await-compression",
+    "severity": "Info",
+    "description": "`.await` compressed to `.w` in agent mode syntax",
+    "rationale": "Agent mode minimizes token count; `.w` is a 4-character saving per await point",
+    "fix_template": null,
+    "fix_confidence": 1.0,
+    "tags": [
+      "agent-elision",
+      "async",
+      "await",
+      "compression"
+    ]
+  },
+  {
+    "id": "AEL-0014",
+    "database": "AgentElision",
+    "category": "return-compression",
+    "severity": "Info",
+    "description": "`return` compressed to `ret` in agent mode syntax",
+    "rationale": "Agent mode uses `ret` for 3-character saving per return statement",
+    "fix_template": null,
+    "fix_confidence": 1.0,
+    "tags": [
+      "agent-elision",
+      "return",
+      "compression"
+    ]
+  },
+  {
+    "id": "AEL-0015",
+    "database": "AgentElision",
+    "category": "effect-compression",
+    "severity": "Info",
+    "description": "`effect` compressed to `fx` in agent mode syntax",
+    "rationale": "Agent mode uses `fx` for 4-character saving per effect declaration",
+    "fix_template": null,
+    "fix_confidence": 1.0,
+    "tags": [
+      "agent-elision",
+      "effect",
+      "compression"
+    ]
+  },
+  {
+    "id": "AEL-0016",
+    "database": "AgentElision",
+    "category": "handle-compression",
+    "severity": "Info",
+    "description": "`handle` compressed to `hx` in agent mode syntax",
+    "rationale": "Agent mode uses `hx` for 4-character saving per handler",
+    "fix_template": null,
+    "fix_confidence": 1.0,
+    "tags": [
+      "agent-elision",
+      "handle",
+      "compression"
+    ]
+  },
+  {
+    "id": "AEL-0017",
+    "database": "AgentElision",
+    "category": "spec-compression",
+    "severity": "Info",
+    "description": "`spec` compressed to `sp` in agent mode syntax",
+    "rationale": "Agent mode uses `sp` for 2-character saving per spec block",
+    "fix_template": null,
+    "fix_confidence": 1.0,
+    "tags": [
+      "agent-elision",
+      "spec",
+      "compression"
+    ]
+  },
+  {
+    "id": "AEL-0018",
+    "database": "AgentElision",
+    "category": "extern-compression",
+    "severity": "Info",
+    "description": "`extern` compressed to `xn` in agent mode syntax",
+    "rationale": "Agent mode uses `xn` for 4-character saving per extern block",
+    "fix_template": null,
+    "fix_confidence": 1.0,
+    "tags": [
+      "agent-elision",
+      "extern",
+      "ffi",
+      "compression"
+    ]
+  },
+  {
+    "id": "AEL-0019",
+    "database": "AgentElision",
+    "category": "yield-compression",
+    "severity": "Info",
+    "description": "`yield` compressed to `yl` in agent mode syntax",
+    "rationale": "Agent mode uses `yl` for 3-character saving per yield expression",
+    "fix_template": null,
+    "fix_confidence": 1.0,
+    "tags": [
+      "agent-elision",
+      "yield",
+      "compression"
+    ]
+  },
+  {
+    "id": "AEL-0020",
+    "database": "AgentElision",
+    "category": "unsafe-skb-coverage",
+    "severity": "Warning",
+    "description": "Unsafe op detected — SKB rules OWN/BOR/FFI provide compile-time verification",
+    "rationale": "The compiler cross-references unsafe operations against SKB rules to verify correctness without language-level `unsafe` syntax",
+    "fix_template": "Verify operation is covered by existing SKB rule; if not, add a new AEL rule",
+    "fix_confidence": 0.9,
+    "tags": [
+      "agent-elision",
+      "unsafe",
+      "verification"
+    ]
+  },
+  {
+    "id": "AEL-0021",
+    "database": "AgentElision",
+    "category": "raw-pointer-inference",
+    "severity": "Info",
+    "description": "Raw pointer operations (*const T, *mut T) verified via SKB without `unsafe` block",
+    "rationale": "The compiler detects raw pointer dereferences and verifies alignment, validity, and aliasing via FFI and OWN rules",
+    "fix_template": null,
+    "fix_confidence": 0.85,
+    "tags": [
+      "agent-elision",
+      "raw-pointer",
+      "unsafe"
+    ]
+  },
+  {
+    "id": "AEL-0022",
+    "database": "AgentElision",
+    "category": "union-access-inference",
+    "severity": "Info",
+    "description": "Union field access verified via type rules without `unsafe` block",
+    "rationale": "The compiler ensures discriminant is checked before union field access",
+    "fix_template": null,
+    "fix_confidence": 0.85,
+    "tags": [
+      "agent-elision",
+      "union",
+      "unsafe"
+    ]
+  },
+  {
+    "id": "AEL-0023",
+    "database": "AgentElision",
+    "category": "global-mut-inference",
+    "severity": "Info",
+    "description": "Mutable static access verified via concurrency rules without `unsafe` block",
+    "rationale": "The compiler ensures mutable statics are only accessed under proper synchronization",
+    "fix_template": null,
+    "fix_confidence": 0.8,
+    "tags": [
+      "agent-elision",
+      "static-mut",
+      "concurrency"
+    ]
+  },
+  {
+    "id": "AEL-0024",
+    "database": "AgentElision",
+    "category": "extern-fn-inference",
+    "severity": "Info",
+    "description": "Extern function calls verified via FFI rules without `unsafe` block",
+    "rationale": "The compiler validates argument types, nullable pointers, and calling conventions for extern calls",
+    "fix_template": null,
+    "fix_confidence": 0.9,
+    "tags": [
+      "agent-elision",
+      "extern",
+      "ffi",
+      "unsafe"
+    ]
+  },
+  {
+    "id": "AEL-0025",
+    "database": "AgentElision",
+    "category": "transmute-inference",
+    "severity": "Info",
+    "description": "Transmute operations verified via type layout rules without `unsafe` block",
+    "rationale": "The compiler ensures size, alignment, and validity invariants hold for transmutations",
+    "fix_template": "Verify source and target types have compatible layouts",
+    "fix_confidence": 0.75,
+    "tags": [
+      "agent-elision",
+      "transmute",
+      "unsafe",
+      "layout"
+    ]
+  },
+  {
+    "id": "AEL-0026",
+    "database": "AgentElision",
+    "category": "inline-asm-inference",
+    "severity": "Info",
+    "description": "Inline assembly verified via platform rules without `unsafe` block",
+    "rationale": "The compiler validates register constraints and side effects for inline asm",
+    "fix_template": null,
+    "fix_confidence": 0.7,
+    "tags": [
+      "agent-elision",
+      "asm",
+      "unsafe",
+      "platform"
+    ]
+  },
+  {
+    "id": "AEL-0027",
+    "database": "AgentElision",
+    "category": "ai-construct-compression",
+    "severity": "Info",
+    "description": "AI construct keywords compressed to Greek symbols in agent mode",
+    "rationale": "net→Ψ, layer→λ, tensor→Φ, train→Θ, agent→α, kb→κ, evolve→Ω enable 3-5× density",
+    "fix_template": null,
+    "fix_confidence": 1.0,
+    "tags": [
+      "agent-elision",
+      "ai",
+      "compression",
+      "greek"
+    ]
+  },
+  {
+    "id": "AEL-0028",
+    "database": "AgentElision",
+    "category": "type-sigil-compression",
+    "severity": "Info",
+    "description": "Type constructors compressed to sigils in agent mode",
+    "rationale": "Box→^, Rc→$, Arc→@, Mutex→#, Vec→[]~, Option→?, Result→R[] enable compact type expressions",
+    "fix_template": null,
+    "fix_confidence": 1.0,
+    "tags": [
+      "agent-elision",
+      "type",
+      "compression",
+      "sigil"
+    ]
+  },
+  {
+    "id": "AEL-0029",
+    "database": "AgentElision",
+    "category": "control-flow-compression",
+    "severity": "Info",
+    "description": "Control flow keywords compressed to operators in agent mode",
+    "rationale": "if→?, else→:, for→@, loop→@@, break→!, continue→>>, match→?= minimize control flow tokens",
+    "fix_template": null,
+    "fix_confidence": 1.0,
+    "tags": [
+      "agent-elision",
+      "control-flow",
+      "compression"
+    ]
+  },
+  {
+    "id": "AEL-0030",
+    "database": "AgentElision",
+    "category": "declaration-sigil-compression",
+    "severity": "Info",
+    "description": "Declaration keywords compressed to single characters in agent mode",
+    "rationale": "fn→f, let→v, let mut→m, struct→S, enum→E, trait→T, impl→I, mod→M, use→u, pub→+",
+    "fix_template": null,
+    "fix_confidence": 1.0,
+    "tags": [
+      "agent-elision",
+      "declaration",
+      "compression"
+    ]
+  }
+]

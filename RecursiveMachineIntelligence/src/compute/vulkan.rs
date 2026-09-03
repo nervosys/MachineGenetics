@@ -64,12 +64,18 @@ impl VulkanBackend {
         Ok(Self {
             device_id,
             device_info: DeviceInfo {
-                name: format!("Vulkan Device {}", device_id),
+                // Zeroed 2026-09-02. These were placeholders -- 16 GB, 12 GB,
+                // 10 compute units -- reported by a backend that runs CPU code
+                // and has no binding for the API it is named after. A caller
+                // sizing work by `available_memory` acted on memory that does
+                // not exist. Zero reads as "unknown"; a placeholder is a number
+                // something will divide by. See open item 18.
+                name: format!("Vulkan (not implemented: no Vulkan binding in this build), slot {}", device_id),
                 backend_type: BackendType::Vulkan,
-                total_memory: 8 * 1024 * 1024 * 1024,
-                available_memory: 6 * 1024 * 1024 * 1024,
+                total_memory: 0,
+                available_memory: 0,
                 compute_capability: None,
-                compute_units: 32, // placeholder compute units
+                compute_units: 0,
             },
             next_id: AtomicU64::new(1),
             storage: RwLock::new(HashMap::new()),
@@ -145,8 +151,16 @@ impl Backend for VulkanBackend {
     }
 
     fn is_available(&self) -> bool {
-        // Real impl: check vkEnumeratePhysicalDevices
-        true
+        // False, deliberately, and not a placeholder to be flipped later.
+        //
+        // This returned `true` -- so on every platform a caller asking for the best
+        // available accelerator was handed a backend named after an API this
+        // build has no binding for, and ran on the CPU believing otherwise.
+        // `is_supported()` still answers the question it is named for ("could
+        // this platform host Vulkan"), which is a fact about the machine.
+        // Whether *this backend* can execute there is a fact about this crate,
+        // and the answer is no until someone writes the binding. See item 18.
+        false
     }
 
     fn allocate(&self, shape: &[usize], dtype: DType) -> Result<TensorHandle> {
@@ -469,7 +483,10 @@ mod tests {
     #[test]
     fn vulkan_backend_creation() {
         let backend = VulkanBackend::new(0).unwrap();
-        assert!(backend.is_available());
+        // Inverted 2026-09-02: this asserted the backend was available, which
+        // is what let it claim to be a Vulkan device on every platform while
+        // running CPU code. There is no Vulkan binding in this build.
+        assert!(!backend.is_available(), "no Vulkan binding exists; claiming availability is the defect");
         assert_eq!(backend.backend_type(), BackendType::Vulkan);
         assert_eq!(backend.device_id(), 0);
     }

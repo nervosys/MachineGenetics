@@ -226,6 +226,17 @@ pub const MODES: &[CliMode] = &[
                  on failure (structured recovery — the reliability-bench surface).",
     },
     CliMode {
+        flag: "--emit-skb",
+        args: "[dir]",
+        summary: "regenerate skb/ from the rules compiled into this binary",
+        effect: "write_local",
+        detail: "Default dir `skb`. Writes rules/<database>.json, manifest.json and
+                 rule-schema.json from `builtin_rules()` -- 255 rules across eight
+                 databases. The tree is a generated export, not a source: it held 56
+                 rules nothing read, under a different id scheme, missing two
+                 databases. `scripts/check-skb-tree.sh` regenerates and diffs it.",
+    },
+    CliMode {
         flag: "--emit-ontology",
         args: "[path]",
         summary: "dump the complete system ontology as JSON",

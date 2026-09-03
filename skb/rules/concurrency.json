@@ -1,154 +1,554 @@
 [
   {
-    "id": "CC-001",
-    "database": "concurrency",
-    "version": "0.1.0",
-    "severity": "error",
+    "id": "CON-0001",
+    "database": "Concurrency",
     "category": "data-race",
-    "description": "Potential data race: shared mutable state accessed from multiple threads without synchronization",
-    "rationale": "Data races are undefined behavior; all cross-thread mutable access must use Mutex, RwLock, or atomic operations",
-    "scope": "module",
-    "pattern": "SharedMut(x) across Thread(t1), Thread(t2) without Lock",
-    "context": "x: !Send + Sync, or shared without Arc<Mutex>",
-    "fix_template": "Wrap in Arc<Mutex<T>>: `v shared = @Mutex.new(data)`",
-    "fix_confidence": 0.85,
-    "alternatives": ["Use channels for message passing", "Use atomic types for simple values"],
-    "source": "builtin",
-    "frequency": 34567,
-    "false_positive_rate": 0.01,
-    "tags": ["concurrency", "data-race", "safety", "common"]
+    "severity": "Error",
+    "description": "Potential data race: shared mutable state across threads",
+    "rationale": "Undefined behavior in Rust/MAGE",
+    "fix_template": "Wrap in Mutex, RwLock, or use Atomic types",
+    "fix_confidence": 0.8,
+    "tags": [
+      "concurrency",
+      "data-race",
+      "thread"
+    ]
   },
   {
-    "id": "CC-002",
-    "database": "concurrency",
-    "version": "0.1.0",
-    "severity": "error",
+    "id": "CON-0002",
+    "database": "Concurrency",
     "category": "deadlock",
-    "description": "Potential deadlock: multiple locks acquired in inconsistent order",
-    "rationale": "Acquiring locks A then B in one thread and B then A in another can cause both threads to wait forever",
-    "scope": "module",
-    "pattern": "Lock(a); Lock(b) in Thread(t1); Lock(b); Lock(a) in Thread(t2)",
-    "context": "a != b",
-    "fix_template": "Always acquire locks in a consistent global order (e.g. by address or ID)",
-    "fix_confidence": 0.75,
-    "alternatives": ["Use try_lock() with backoff", "Reduce lock granularity", "Use lock-free data structures"],
-    "source": "builtin",
-    "frequency": 12345,
-    "false_positive_rate": 0.08,
-    "tags": ["concurrency", "deadlock", "safety"]
+    "severity": "Warning",
+    "description": "Potential deadlock: lock ordering violation",
+    "rationale": "Two locks acquired in different orders across threads",
+    "fix_template": "Establish consistent lock ordering",
+    "fix_confidence": 0.55,
+    "tags": [
+      "concurrency",
+      "deadlock",
+      "lock",
+      "ordering"
+    ]
   },
   {
-    "id": "CC-003",
-    "database": "concurrency",
-    "version": "0.1.0",
-    "severity": "error",
+    "id": "CON-0003",
+    "database": "Concurrency",
     "category": "send-violation",
-    "description": "Type does not implement Send but is transferred across thread boundary",
-    "rationale": "Only Send types can be safely moved between threads; non-Send types may contain thread-local state",
-    "scope": "function",
-    "pattern": "Spawn(closure) where closure captures x: !Send",
-    "context": "spawn or async context",
-    "fix_template": "Use a Send-compatible wrapper or clone the data before spawning",
-    "fix_confidence": 0.80,
-    "alternatives": ["Keep the data on the original thread and use channels"],
-    "source": "builtin",
-    "frequency": 23456,
-    "false_positive_rate": 0.005,
-    "tags": ["concurrency", "send", "thread", "safety"]
+    "severity": "Error",
+    "description": "Type not Send — cannot be transferred between threads",
+    "rationale": "Type contains non-thread-safe internals (Rc, raw pointers)",
+    "fix_template": "Use Arc instead of Rc; ensure all fields are Send",
+    "fix_confidence": 0.8,
+    "tags": [
+      "concurrency",
+      "send",
+      "thread",
+      "transfer"
+    ]
   },
   {
-    "id": "CC-004",
-    "database": "concurrency",
-    "version": "0.1.0",
-    "severity": "error",
+    "id": "CON-0004",
+    "database": "Concurrency",
     "category": "sync-violation",
-    "description": "Type does not implement Sync but is shared across threads via reference",
-    "rationale": "Only Sync types can be safely referenced from multiple threads simultaneously",
-    "scope": "function",
-    "pattern": "Share(&x) across Thread(t1), Thread(t2) where typeof(x): !Sync",
-    "context": null,
-    "fix_template": "Wrap in a Sync-compatible type (Mutex<T>, RwLock<T>, or atomic)",
+    "severity": "Error",
+    "description": "Type not Sync — cannot be shared between threads via &",
+    "rationale": "Type allows mutation through shared reference without synchronization",
+    "fix_template": "Wrap in Mutex for synchronized access",
+    "fix_confidence": 0.8,
+    "tags": [
+      "concurrency",
+      "sync",
+      "shared",
+      "thread"
+    ]
+  },
+  {
+    "id": "CON-0005",
+    "database": "Concurrency",
+    "category": "mutex-poison",
+    "severity": "Warning",
+    "description": "Mutex may be poisoned after panic in another thread",
+    "rationale": "lock() returns Err if holder panicked",
+    "fix_template": "Use lock().unwrap_or_else(|e| e.into_inner())",
+    "fix_confidence": 0.75,
+    "tags": [
+      "concurrency",
+      "mutex",
+      "poison",
+      "panic"
+    ]
+  },
+  {
+    "id": "CON-0006",
+    "database": "Concurrency",
+    "category": "rwlock-writer-starvation",
+    "severity": "Info",
+    "description": "RwLock may cause writer starvation under heavy read load",
+    "rationale": "Many readers can block writers indefinitely",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "concurrency",
+      "rwlock",
+      "starvation"
+    ]
+  },
+  {
+    "id": "CON-0007",
+    "database": "Concurrency",
+    "category": "channel-disconnect",
+    "severity": "Warning",
+    "description": "Channel recv() may fail if all senders dropped",
+    "rationale": "Disconnected channel returns RecvError",
+    "fix_template": "Handle Err case from recv()",
+    "fix_confidence": 0.8,
+    "tags": [
+      "concurrency",
+      "channel",
+      "disconnect"
+    ]
+  },
+  {
+    "id": "CON-0008",
+    "database": "Concurrency",
+    "category": "arc-mutex-pattern",
+    "severity": "Info",
+    "description": "Arc<Mutex<T>> is the standard shared mutable state pattern",
+    "rationale": "Arc for shared ownership, Mutex for interior mutability",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "concurrency",
+      "arc",
+      "mutex",
+      "pattern"
+    ]
+  },
+  {
+    "id": "CON-0009",
+    "database": "Concurrency",
+    "category": "atomic-ordering",
+    "severity": "Warning",
+    "description": "Incorrect atomic memory ordering may cause subtle bugs",
+    "rationale": "Use SeqCst when unsure; Relaxed only for counters",
+    "fix_template": "Use Ordering::SeqCst for correctness",
+    "fix_confidence": 0.6,
+    "tags": [
+      "concurrency",
+      "atomic",
+      "ordering",
+      "memory"
+    ]
+  },
+  {
+    "id": "CON-0010",
+    "database": "Concurrency",
+    "category": "thread-spawn-lifetime",
+    "severity": "Warning",
+    "description": "Spawned thread requires 'static or scoped thread",
+    "rationale": "std::thread::spawn requires 'static closure",
+    "fix_template": "Use std::thread::scope for non-'static references",
+    "fix_confidence": 0.8,
+    "tags": [
+      "concurrency",
+      "thread",
+      "spawn",
+      "lifetime"
+    ]
+  },
+  {
+    "id": "CON-0011",
+    "database": "Concurrency",
+    "category": "tokio-runtime-block",
+    "severity": "Error",
+    "description": "Blocking in async runtime blocks the executor thread",
+    "rationale": "Use spawn_blocking() for blocking operations",
+    "fix_template": "Move blocking code to spawn_blocking()",
     "fix_confidence": 0.85,
-    "alternatives": ["Clone the data for each thread"],
-    "source": "builtin",
-    "frequency": 18765,
-    "false_positive_rate": 0.003,
-    "tags": ["concurrency", "sync", "thread", "safety"]
+    "tags": [
+      "concurrency",
+      "async",
+      "blocking",
+      "tokio"
+    ]
   },
   {
-    "id": "CC-005",
-    "database": "concurrency",
-    "version": "0.1.0",
-    "severity": "warning",
-    "category": "lock-contention",
-    "description": "Lock held for an extended scope; may cause contention under high concurrency",
-    "rationale": "Holding locks for long periods blocks other threads and reduces parallelism",
-    "scope": "function",
-    "pattern": "Lock(m); ... (>10 statements) ... Unlock(m)",
-    "context": "critical section > threshold",
-    "fix_template": "Minimize the critical section: extract non-shared work outside the lock",
-    "fix_confidence": 0.70,
-    "alternatives": ["Use RwLock for read-heavy workloads", "Use lock-free data structures"],
-    "source": "builtin",
-    "frequency": 9876,
-    "false_positive_rate": 0.12,
-    "tags": ["concurrency", "lock", "performance"]
+    "id": "CON-0012",
+    "database": "Concurrency",
+    "category": "async-mutex",
+    "severity": "Warning",
+    "description": "Using std::sync::Mutex in async; prefer tokio::sync::Mutex",
+    "rationale": "std Mutex blocks the thread; tokio Mutex yields",
+    "fix_template": "Replace with tokio::sync::Mutex",
+    "fix_confidence": 0.8,
+    "tags": [
+      "concurrency",
+      "async",
+      "mutex",
+      "tokio"
+    ]
   },
   {
-    "id": "CC-006",
-    "database": "concurrency",
-    "version": "0.1.0",
-    "severity": "warning",
-    "category": "unbounded-channel",
-    "description": "Unbounded channel may grow without limit under load",
-    "rationale": "Unbounded channels can cause memory exhaustion if producers outpace consumers",
-    "scope": "function",
-    "pattern": "Channel::unbounded()",
-    "context": null,
-    "fix_template": "Use a bounded channel with appropriate capacity: `Channel::bounded(1024)`",
+    "id": "CON-0013",
+    "database": "Concurrency",
+    "category": "select-fairness",
+    "severity": "Info",
+    "description": "tokio::select! is not fair — first ready branch wins",
+    "rationale": "Under contention, some branches may starve",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "concurrency",
+      "async",
+      "select",
+      "fairness"
+    ]
+  },
+  {
+    "id": "CON-0014",
+    "database": "Concurrency",
+    "category": "cancellation-safety",
+    "severity": "Warning",
+    "description": "Async operation not cancellation-safe in select!",
+    "rationale": "Partial progress lost when branch is cancelled",
+    "fix_template": "Complete the future before selecting",
+    "fix_confidence": 0.6,
+    "tags": [
+      "concurrency",
+      "async",
+      "cancellation",
+      "select"
+    ]
+  },
+  {
+    "id": "CON-0015",
+    "database": "Concurrency",
+    "category": "rayon-par-iter",
+    "severity": "Info",
+    "description": "Rayon parallel iterators require Send + Sync bounds",
+    "rationale": "Data must be safely shareable for parallelism",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "concurrency",
+      "rayon",
+      "parallel",
+      "iterator"
+    ]
+  },
+  {
+    "id": "CON-0016",
+    "database": "Concurrency",
+    "category": "global-state",
+    "severity": "Warning",
+    "description": "Global mutable state requires synchronization",
+    "rationale": "static mut is unsafe; use Mutex<T> or atomics",
+    "fix_template": "Use std::sync::OnceLock or Lazy for initialization",
+    "fix_confidence": 0.8,
+    "tags": [
+      "concurrency",
+      "global",
+      "static",
+      "mutex"
+    ]
+  },
+  {
+    "id": "CON-0017",
+    "database": "Concurrency",
+    "category": "crossbeam-scope",
+    "severity": "Hint",
+    "description": "crossbeam::scope allows non-'static references in threads",
+    "rationale": "Scoped threads join before scope ends, ensuring lifetimes",
+    "fix_template": "Use crossbeam::scope for scoped parallelism",
+    "fix_confidence": 0.7,
+    "tags": [
+      "concurrency",
+      "crossbeam",
+      "scope",
+      "thread"
+    ]
+  },
+  {
+    "id": "CON-0018",
+    "database": "Concurrency",
+    "category": "once-cell",
+    "severity": "Hint",
+    "description": "Use OnceLock/LazyLock for thread-safe lazy initialization",
+    "rationale": "Initialized at most once; safe to share across threads",
+    "fix_template": "Replace manual init with OnceLock::new()",
+    "fix_confidence": 0.85,
+    "tags": [
+      "concurrency",
+      "once-cell",
+      "lazy",
+      "init"
+    ]
+  },
+  {
+    "id": "CON-0019",
+    "database": "Concurrency",
+    "category": "barrier",
+    "severity": "Info",
+    "description": "Barrier synchronizes N threads at a rendezvous point",
+    "rationale": "All threads wait until the last one arrives",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "concurrency",
+      "barrier",
+      "synchronization"
+    ]
+  },
+  {
+    "id": "CON-0020",
+    "database": "Concurrency",
+    "category": "condvar",
+    "severity": "Info",
+    "description": "Condvar allows waiting for a condition with a Mutex",
+    "rationale": "Use with Mutex for efficient event waiting",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "concurrency",
+      "condvar",
+      "wait",
+      "mutex"
+    ]
+  },
+  {
+    "id": "CON-0021",
+    "database": "Concurrency",
+    "category": "parking-lot",
+    "severity": "Hint",
+    "description": "Consider parking_lot::Mutex for better performance",
+    "rationale": "Faster than std Mutex in many workloads",
+    "fix_template": "Replace std::sync::Mutex with parking_lot::Mutex",
     "fix_confidence": 0.65,
-    "alternatives": ["Add backpressure mechanism", "Monitor queue depth at runtime"],
-    "source": "builtin",
-    "frequency": 5432,
-    "false_positive_rate": 0.15,
-    "tags": ["concurrency", "channel", "memory", "performance"]
+    "tags": [
+      "concurrency",
+      "parking-lot",
+      "mutex",
+      "performance"
+    ]
   },
   {
-    "id": "CC-007",
-    "database": "concurrency",
-    "version": "0.1.0",
-    "severity": "error",
-    "category": "spawn-join-missing",
-    "description": "Spawned task/thread is never joined; results may be silently lost",
-    "rationale": "Not joining a spawned task means errors, panics, or results are silently discarded",
-    "scope": "function",
-    "pattern": "Spawn(task); ... !Join(task) in scope",
-    "context": null,
-    "fix_template": "Join the task: `v result = task.join()?`",
-    "fix_confidence": 0.80,
-    "alternatives": ["Use structured concurrency (spawn + automatic join)", "Detach explicitly if intentional"],
-    "source": "builtin",
-    "frequency": 7654,
-    "false_positive_rate": 0.10,
-    "tags": ["concurrency", "spawn", "join", "async"]
+    "id": "CON-0022",
+    "database": "Concurrency",
+    "category": "work-stealing",
+    "severity": "Info",
+    "description": "Work-stealing scheduler distributes tasks across threads",
+    "rationale": "Rayon and Tokio use work-stealing for load balancing",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "concurrency",
+      "work-stealing",
+      "scheduler"
+    ]
   },
   {
-    "id": "CC-008",
-    "database": "concurrency",
-    "version": "0.1.0",
-    "severity": "warning",
-    "category": "blocking-in-async",
-    "description": "Blocking operation called inside async context",
-    "rationale": "Blocking calls in async code starve the executor's thread pool, causing deadlocks or poor performance",
-    "scope": "function",
-    "pattern": "AsyncFn { ... BlockingCall(...) ... }",
-    "context": "async function or block",
-    "fix_template": "Use the async equivalent or wrap in `spawn_blocking()`",
-    "fix_confidence": 0.85,
-    "alternatives": ["Move to a dedicated blocking thread pool"],
-    "source": "builtin",
-    "frequency": 15678,
-    "false_positive_rate": 0.05,
-    "tags": ["concurrency", "async", "blocking", "performance"]
+    "id": "CON-0023",
+    "database": "Concurrency",
+    "category": "pin-future",
+    "severity": "Info",
+    "description": "Futures must be Pinned before polling",
+    "rationale": "Async state machines contain self-references",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "concurrency",
+      "async",
+      "pin",
+      "future"
+    ]
+  },
+  {
+    "id": "CON-0024",
+    "database": "Concurrency",
+    "category": "send-future",
+    "severity": "Warning",
+    "description": "Future not Send — cannot be spawned on multi-threaded runtime",
+    "rationale": "Future holds non-Send types across await",
+    "fix_template": "Clone data before await or use single-threaded runtime",
+    "fix_confidence": 0.7,
+    "tags": [
+      "concurrency",
+      "async",
+      "future",
+      "send"
+    ]
+  },
+  {
+    "id": "CON-0025",
+    "database": "Concurrency",
+    "category": "unbounded-channel",
+    "severity": "Warning",
+    "description": "Unbounded channel can grow without limit",
+    "rationale": "Memory usage grows if consumer is slower than producer",
+    "fix_template": "Use bounded channel with backpressure",
+    "fix_confidence": 0.65,
+    "tags": [
+      "concurrency",
+      "channel",
+      "unbounded",
+      "memory"
+    ]
+  },
+  {
+    "id": "CON-0026",
+    "database": "Concurrency",
+    "category": "actor-model",
+    "severity": "Info",
+    "description": "Actor model: each actor has private state, communicates via messages",
+    "rationale": "Avoids shared state; good for concurrency",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "concurrency",
+      "actor",
+      "model",
+      "pattern"
+    ]
+  },
+  {
+    "id": "CON-0027",
+    "database": "Concurrency",
+    "category": "semaphore",
+    "severity": "Info",
+    "description": "Semaphore limits concurrent access to a resource",
+    "rationale": "Allows N concurrent holders",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "concurrency",
+      "semaphore",
+      "limit"
+    ]
+  },
+  {
+    "id": "CON-0028",
+    "database": "Concurrency",
+    "category": "lock-free",
+    "severity": "Info",
+    "description": "Lock-free data structures use atomics instead of locks",
+    "rationale": "Avoids blocking but complex to implement correctly",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "concurrency",
+      "lock-free",
+      "atomic"
+    ]
+  },
+  {
+    "id": "CON-0029",
+    "database": "Concurrency",
+    "category": "rwlock-deadlock-recursive",
+    "severity": "Warning",
+    "description": "RwLock read lock inside write lock causes deadlock on some platforms",
+    "rationale": "Re-entrant read inside write blocks forever",
+    "fix_template": "Avoid acquiring read lock while holding write lock",
+    "fix_confidence": 0.7,
+    "tags": [
+      "concurrency",
+      "rwlock",
+      "deadlock",
+      "recursive"
+    ]
+  },
+  {
+    "id": "CON-0030",
+    "database": "Concurrency",
+    "category": "thread-local",
+    "severity": "Info",
+    "description": "thread_local! provides per-thread storage without synchronization",
+    "rationale": "Each thread has its own copy",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "concurrency",
+      "thread-local",
+      "storage"
+    ]
+  },
+  {
+    "id": "CON-0031",
+    "database": "Concurrency",
+    "category": "volatile",
+    "severity": "Info",
+    "description": "Volatile access for memory-mapped I/O: std::ptr::read_volatile",
+    "rationale": "Prevents compiler from optimizing away reads/writes",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "concurrency",
+      "volatile",
+      "mmio",
+      "unsafe"
+    ]
+  },
+  {
+    "id": "CON-0032",
+    "database": "Concurrency",
+    "category": "spinlock",
+    "severity": "Warning",
+    "description": "Spinlock wastes CPU cycles; prefer Mutex for general use",
+    "rationale": "Spinning is only appropriate for very short critical sections",
+    "fix_template": "Replace with std::sync::Mutex",
+    "fix_confidence": 0.7,
+    "tags": [
+      "concurrency",
+      "spinlock",
+      "performance"
+    ]
+  },
+  {
+    "id": "CON-0033",
+    "database": "Concurrency",
+    "category": "task-spawn-cost",
+    "severity": "Info",
+    "description": "Async task spawn is cheaper than OS thread spawn",
+    "rationale": "Use tasks for fine-grained concurrency",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "concurrency",
+      "async",
+      "task",
+      "spawn",
+      "cost"
+    ]
+  },
+  {
+    "id": "CON-0034",
+    "database": "Concurrency",
+    "category": "structured-concurrency",
+    "severity": "Hint",
+    "description": "Prefer structured concurrency: spawn tasks in a scope",
+    "rationale": "JoinSet/TaskGroup ensure all tasks complete before proceeding",
+    "fix_template": "Use JoinSet to manage spawned tasks",
+    "fix_confidence": 0.7,
+    "tags": [
+      "concurrency",
+      "structured",
+      "joinset",
+      "scope"
+    ]
+  },
+  {
+    "id": "CON-0035",
+    "database": "Concurrency",
+    "category": "priority-inversion",
+    "severity": "Info",
+    "description": "Priority inversion: high-priority thread waits on low-priority holding lock",
+    "rationale": "OS scheduling anomaly with locks",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "concurrency",
+      "priority",
+      "inversion",
+      "scheduling"
+    ]
   }
 ]

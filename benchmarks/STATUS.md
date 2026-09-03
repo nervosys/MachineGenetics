@@ -103,7 +103,7 @@ ontology/full
   ├─ machine                    — binary container format constants
   ├─ examples (10)           — parse-verified working snippets
   ├─ framewerx_modules (256) — RecursiveMachineIntelligence-MG framework (FLAX-equivalent)
-  ├─ cli_flags (36)          — every mage-parse flag
+  ├─ cli_flags (37)          — every mage-parse flag
   ├─ bench_backends (4)      — reliability-bench backends
   ├─ effects (22)            — @fx/@req/@ens + canonical effect names
   ├─ wrapper_protocol (9)    — subprocess agent contract

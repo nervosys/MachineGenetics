@@ -61,12 +61,18 @@ impl MetalBackend {
 
         Ok(Self {
             device_info: DeviceInfo {
-                name: "Metal (Apple GPU)".to_string(),
+                // Zeroed 2026-09-02. These were placeholders -- 16 GB, 12 GB,
+                // 10 compute units -- reported by a backend that runs CPU code
+                // and has no binding for the API it is named after. A caller
+                // sizing work by `available_memory` acted on memory that does
+                // not exist. Zero reads as "unknown"; a placeholder is a number
+                // something will divide by. See open item 18.
+                name: "Metal (not implemented: no Metal binding in this build)".to_string(),
                 backend_type: BackendType::Metal,
-                total_memory: 16 * 1024 * 1024 * 1024, // 16 GB placeholder (M-series unified)
-                available_memory: 12 * 1024 * 1024 * 1024, // 12 GB placeholder
+                total_memory: 0,
+                available_memory: 0,
                 compute_capability: None,
-                compute_units: 10, // GPU core groups placeholder
+                compute_units: 0,
             },
             next_id: AtomicU64::new(1),
             storage: RwLock::new(HashMap::new()),
@@ -138,7 +144,16 @@ impl Backend for MetalBackend {
     }
 
     fn is_available(&self) -> bool {
-        Self::is_supported()
+        // False, deliberately, and not a placeholder to be flipped later.
+        //
+        // This returned `Self::is_supported()` -- so on macOS and iOS a caller asking for the best
+        // available accelerator was handed a backend named after an API this
+        // build has no binding for, and ran on the CPU believing otherwise.
+        // `is_supported()` still answers the question it is named for ("could
+        // this platform host Metal"), which is a fact about the machine.
+        // Whether *this backend* can execute there is a fact about this crate,
+        // and the answer is no until someone writes the binding. See item 18.
+        false
     }
 
     fn allocate(&self, shape: &[usize], dtype: DType) -> Result<TensorHandle> {

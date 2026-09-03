@@ -51,6 +51,20 @@ pub struct Provenance {
     /// Digest over the canonical `(action_key, outputs, worker)` encoding.
     pub subject: Digest,
     pub mac: String,
+    /// Which key signed this, when the signer was given an id.
+    ///
+    /// Without this a verifier cannot tell *which* secret produced a MAC, so
+    /// there is no way to accept two keys at once and therefore no way to
+    /// rotate: every worker and every verifier would have to change in the
+    /// same instant. That was open item 20. A [`Keyring`] uses this to pick
+    /// the right key, which gives rotation an overlapping window.
+    ///
+    /// `Option`, and `#[serde(default)]`, because records written before this
+    /// field existed must still deserialise and still verify. It is absorbed
+    /// into the subject digest **only when present**, so an unkeyed record
+    /// hashes exactly as it did before.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub key_id: Option<String>,
 }
 
 /// Canonical digest of what a provenance record asserts.
@@ -69,29 +83,111 @@ pub fn canonical_digest(action_key: &Digest, result: &ActionResult, worker: &str
     Digest(format!("{:x}", h.finalize()))
 }
 
+/// The smallest HMAC key this will accept, in bytes.
+///
+/// RFC 2104 §3: a key shorter than the hash output length is "strongly
+/// discouraged"; for SHA-256 that is 32 bytes.
+pub const MIN_KEY_LEN: usize = 32;
+
+/// Why a key was refused.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum KeyError {
+    /// Shorter than [`MIN_KEY_LEN`]. `len == 0` is the case that motivated
+    /// this: an unset environment variable or a missing config field becomes
+    /// an empty `Vec`, and an empty key signs perfectly well and verifies
+    /// perfectly well — so an unprovisioned fleet authenticated every claim
+    /// and reported success, and a second signer built the same way agreed
+    /// with it. Nothing downstream could tell: a MAC over an empty key is a
+    /// well-formed MAC. Open item 19.
+    TooShort { len: usize, min: usize },
+}
+
+impl std::fmt::Display for KeyError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            KeyError::TooShort { len: 0, min } => write!(
+                f,
+                "the HMAC key is empty; {min} bytes are required. An unset                  environment variable is the usual cause, and an empty key                  authenticates everything while reporting success"
+            ),
+            KeyError::TooShort { len, min } => write!(
+                f,
+                "the HMAC key is {len} bytes; {min} are required (RFC 2104 §3)"
+            ),
+        }
+    }
+}
+
+impl std::error::Error for KeyError {}
+
 /// Signs and verifies provenance for one worker identity.
 pub struct Signer {
     worker: String,
     key: Vec<u8>,
+    key_id: Option<String>,
+}
+
+/// Redacting, deliberately hand-written rather than derived.
+///
+/// `#[derive(Debug)]` here would print the fleet's shared secret into any log
+/// line, panic message or test failure that formats a `Signer` — and one of
+/// those, `unwrap_err()` on a `Result<Signer, _>`, is exactly what the tests
+/// below need. The key length is safe to show and is the thing worth knowing
+/// when a construction was refused.
+impl std::fmt::Debug for Signer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Signer")
+            .field("worker", &self.worker)
+            .field("key_id", &self.key_id)
+            .field("key", &format_args!("<{} bytes redacted>", self.key.len()))
+            .finish()
+    }
 }
 
 impl Signer {
     /// Build a signer for one worker identity from the fleet's shared key.
     ///
-    /// **The key is not validated, and an empty one is accepted.** Measured,
-    /// not inferred: `Signer::new("w", Vec::new())` signs, and the record
-    /// verifies. That is the dangerous case, because an empty `Vec` is what an
-    /// unset environment variable or a missing config field naturally becomes —
-    /// so a fleet whose key was never provisioned authenticates every claim and
-    /// reports success while providing nothing. Nothing downstream can tell the
-    /// difference: a MAC over an empty key is a well-formed MAC.
+    /// **Fallible since 2026-09-02, and this is a breaking change on purpose.**
+    /// It used to take any key at all and return a `Signer`. `Signer::new("w",
+    /// Vec::new())` signed, the record verified, and a second empty-key signer
+    /// verified it too — so a fleet whose key was never provisioned
+    /// authenticated every claim and reported success. An empty `Vec` is what
+    /// an unset environment variable or a missing config field naturally
+    /// becomes, which made it the likely state rather than an exotic one.
     ///
-    /// RFC 2104 recommends a key of at least the hash output length, so **32
-    /// bytes** here. Validating that is a caller's job today; see
-    /// `SECURITY_AUDIT.md` §2 for why the constructor was left permissive
-    /// rather than changed to return a `Result` without the owner's say-so.
-    pub fn new(worker: impl Into<String>, key: impl Into<Vec<u8>>) -> Self {
-        Signer { worker: worker.into(), key: key.into() }
+    /// A warning would not have fixed it: the whole failure is that nothing
+    /// downstream can tell a MAC over an empty key from any other MAC. The
+    /// only place the difference is knowable is here, at construction, so this
+    /// is where it is refused. See [`MIN_KEY_LEN`] and open item 19.
+    pub fn new(
+        worker: impl Into<String>,
+        key: impl Into<Vec<u8>>,
+    ) -> Result<Self, KeyError> {
+        let key = key.into();
+        if key.len() < MIN_KEY_LEN {
+            return Err(KeyError::TooShort { len: key.len(), min: MIN_KEY_LEN });
+        }
+        Ok(Signer { worker: worker.into(), key, key_id: None })
+    }
+
+    /// The same, tagging every record with which key signed it.
+    ///
+    /// The id is not a secret and is written into the record in clear. It
+    /// exists so a verifier can hold two keys at once and know which to try,
+    /// which is the whole of what rotation needs — see [`Keyring`] and open
+    /// item 20.
+    pub fn with_key_id(
+        worker: impl Into<String>,
+        key_id: impl Into<String>,
+        key: impl Into<Vec<u8>>,
+    ) -> Result<Self, KeyError> {
+        let mut s = Self::new(worker, key)?;
+        s.key_id = Some(key_id.into());
+        Ok(s)
+    }
+
+    /// Which key this signer stamps its records with, if any.
+    pub fn key_id(&self) -> Option<&str> {
+        self.key_id.as_deref()
     }
 
     pub fn worker(&self) -> &str {
@@ -101,24 +197,122 @@ impl Signer {
     pub fn sign(&self, action_key: &Digest, result: &ActionResult) -> Provenance {
         let subject = canonical_digest(action_key, result, &self.worker);
         Provenance {
-            mac: hex_encode(&hmac_sha256(&self.key, subject.0.as_bytes())),
+            mac: hex_encode(&hmac_sha256(&self.key, &Self::mac_input(&subject, self.key_id.as_deref()))),
             action_key: action_key.clone(),
             worker: self.worker.clone(),
             subject,
+            key_id: self.key_id.clone(),
         }
+    }
+
+    /// What the MAC is computed over: the subject, and the key id when there
+    /// is one.
+    ///
+    /// Binding the id in means a record cannot have its `key_id` rewritten to
+    /// point a verifier at a different key — the MAC would no longer match.
+    /// It is length-prefixed rather than concatenated so that a subject ending
+    /// in one thing and an id beginning with another cannot be confused for a
+    /// different pair.
+    ///
+    /// **A record with no id hashes exactly as it did before this field
+    /// existed**, so every provenance record written by an earlier build still
+    /// verifies. That is the only reason the id is `Option` rather than always
+    /// present.
+    fn mac_input(subject: &Digest, key_id: Option<&str>) -> Vec<u8> {
+        let mut v = Vec::new();
+        v.extend_from_slice(subject.0.as_bytes());
+        if let Some(id) = key_id {
+            v.extend_from_slice(b"|kid:");
+            v.extend_from_slice(&(id.len() as u64).to_le_bytes());
+            v.extend_from_slice(id.as_bytes());
+        }
+        v
     }
 
     /// Verify a record against the result it claims to describe.
     ///
     /// Recomputes the subject rather than trusting the field, so a record cannot
     /// carry a valid MAC over one subject while naming another.
+    ///
+    /// A record's `key_id` must match this signer's: a signer holding one key
+    /// has no business accepting a record minted under another, and saying so
+    /// here is what makes [`Keyring`] the only place that decides *which* key
+    /// applies.
     pub fn verify(&self, p: &Provenance, action_key: &Digest, result: &ActionResult) -> bool {
         let subject = canonical_digest(action_key, result, &p.worker);
         if subject != p.subject || &p.action_key != action_key {
             return false;
         }
+        if p.key_id.as_deref() != self.key_id.as_deref() {
+            return false;
+        }
         let Ok(got) = hex_decode(&p.mac) else { return false };
-        ct_eq(&hmac_sha256(&self.key, subject.0.as_bytes()), &got)
+        ct_eq(
+            &hmac_sha256(&self.key, &Self::mac_input(&subject, self.key_id.as_deref())),
+            &got,
+        )
+    }
+}
+
+/// Several keys, so a fleet can change one.
+///
+/// Open item 20 was that the HMAC path could not be rotated: one key per
+/// `Signer`, one `auth_key` per server, no key id, and therefore no way to
+/// accept the old and the new secret at once. Changing the fleet secret meant
+/// changing every worker and every verifier in the same instant — which is not
+/// a rotation, it is an outage with a key change in it. The Ed25519 path beside
+/// it rotates properly, and that contrast is what made the gap visible.
+///
+/// A verifier holds every key it will accept. Workers move to the new one in
+/// any order; when none is left signing with the old id, it is dropped from the
+/// ring. That is the overlapping window.
+pub struct Keyring {
+    keys: Vec<Signer>,
+}
+
+impl Keyring {
+    /// An empty ring accepts nothing, which is the correct starting point.
+    pub fn new() -> Self {
+        Keyring { keys: Vec::new() }
+    }
+
+    /// Add a key this verifier will accept.
+    pub fn with(mut self, signer: Signer) -> Self {
+        self.keys.push(signer);
+        self
+    }
+
+    /// How many keys are accepted. During a rotation this is 2.
+    pub fn len(&self) -> usize {
+        self.keys.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.keys.is_empty()
+    }
+
+    /// Verify against whichever held key the record names.
+    ///
+    /// **The `filter` is an optimisation, not the security boundary**, and it
+    /// is worth being exact about which is which. Correctness comes from
+    /// [`Signer::verify`], which refuses any record whose `key_id` is not its
+    /// own; the filter only avoids computing MACs that are already known to
+    /// fail, so adding keys to the ring does not multiply per-record work.
+    /// Deleting the filter changes no outcome — checked by deleting it and
+    /// watching every test still pass, which is why this comment no longer
+    /// claims the filter is what keeps an old record from verifying under a
+    /// new key.
+    pub fn verify(&self, p: &Provenance, action_key: &Digest, result: &ActionResult) -> bool {
+        self.keys
+            .iter()
+            .filter(|s| s.key_id.as_deref() == p.key_id.as_deref())
+            .any(|s| s.verify(p, action_key, result))
+    }
+}
+
+impl Default for Keyring {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -279,11 +473,101 @@ mod tests {
     }
 
     fn signer() -> Signer {
-        Signer::new("worker-7", b"fleet key".to_vec())
+        Signer::new("worker-7", b"fleet key that is at least 32 bytes long!".to_vec()).expect("32-byte test key")
     }
 
     fn key() -> Digest {
         Digest::of(b"action key")
+    }
+
+    // ── Item 19: the key that authenticates everything ───────────────
+
+    /// The measured failure, now impossible to construct.
+    ///
+    /// Before this, `Signer::new("w", Vec::new())` signed, the record verified,
+    /// and — the part that makes it a fleet-wide failure rather than a local
+    /// one — a *second, independently built* empty-key signer verified it too.
+    /// Every unprovisioned worker therefore accepted every other's claims while
+    /// reporting success.
+    #[test]
+    fn an_empty_key_is_refused_at_construction() {
+        assert_eq!(
+            Signer::new("w", Vec::new()).unwrap_err(),
+            KeyError::TooShort { len: 0, min: MIN_KEY_LEN }
+        );
+        // And the near-miss that is just as dangerous: a short key that looks
+        // deliberate. The old tests used one of these.
+        assert!(Signer::new("w", b"fleet key".to_vec()).is_err());
+        // The boundary itself, from both sides.
+        assert!(Signer::new("w", vec![7u8; MIN_KEY_LEN - 1]).is_err());
+        assert!(Signer::new("w", vec![7u8; MIN_KEY_LEN]).is_ok());
+    }
+
+    // ── Item 20: two keys at once, which is what rotation is ─────────
+
+    /// A ring holding the old and the new key verifies records from both, which
+    /// is the overlapping window that was impossible without a key id.
+    #[test]
+    fn a_keyring_accepts_both_keys_during_a_rotation() {
+        let old = Signer::with_key_id("w", "2026-08", vec![1u8; 32]).unwrap();
+        let new = Signer::with_key_id("w", "2026-09", vec![2u8; 32]).unwrap();
+        let ring = Keyring::new()
+            .with(Signer::with_key_id("w", "2026-08", vec![1u8; 32]).unwrap())
+            .with(Signer::with_key_id("w", "2026-09", vec![2u8; 32]).unwrap());
+        assert_eq!(ring.len(), 2);
+
+        for s in [&old, &new] {
+            let p = s.sign(&key(), &result());
+            assert!(ring.verify(&p, &key(), &result()), "ring must accept key id {:?}", s.key_id());
+        }
+
+        // Retiring the old key ends the window: its records stop verifying.
+        let only_new = Keyring::new()
+            .with(Signer::with_key_id("w", "2026-09", vec![2u8; 32]).unwrap());
+        assert!(!only_new.verify(&old.sign(&key(), &result()), &key(), &result()));
+    }
+
+    /// A rewritten key id is rejected — and this test proves it is the **MAC
+    /// binding** that rejects it, not the cheaper equality check beside it.
+    ///
+    /// The obvious version of this test does not. Signing under id `A`,
+    /// rewriting the field to `B` and verifying with the `A` signer fails at
+    /// `p.key_id != self.key_id` before any MAC is computed, so it passes
+    /// whether or not the id is in the MAC at all — verified by removing the
+    /// binding and watching that version still pass.
+    ///
+    /// So: two signers sharing one key and differing only in id. The record is
+    /// minted as `A`, relabelled `B`, and offered to the `B` signer. The
+    /// equality check now agrees, both hold the same secret, and the only thing
+    /// left that can refuse it is the id being inside the MAC.
+    #[test]
+    fn a_relabelled_record_fails_on_the_mac_not_the_label() {
+        let shared = vec![9u8; 32];
+        let a = Signer::with_key_id("w", "2026-08", shared.clone()).unwrap();
+        let b = Signer::with_key_id("w", "2026-09", shared).unwrap();
+
+        let mut p = a.sign(&key(), &result());
+        assert!(a.verify(&p, &key(), &result()));
+
+        p.key_id = Some("2026-09".to_string());
+        assert!(
+            !b.verify(&p, &key(), &result()),
+            "a record relabelled onto another id must fail even when that id's              holder has the same key — the id is covered by the MAC"
+        );
+    }
+
+    /// Records written before `key_id` existed carry none, and must still
+    /// verify — the reason the field is `Option` and is absorbed into the MAC
+    /// only when present.
+    #[test]
+    fn an_unkeyed_record_still_verifies() {
+        let s = Signer::new("w", vec![3u8; 32]).unwrap();
+        let p = s.sign(&key(), &result());
+        assert!(p.key_id.is_none());
+        assert!(s.verify(&p, &key(), &result()));
+        // And a keyed signer must not accept it, nor the reverse.
+        let keyed = Signer::with_key_id("w", "2026-09", vec![3u8; 32]).unwrap();
+        assert!(!keyed.verify(&p, &key(), &result()));
     }
 
     #[test]
@@ -321,7 +605,7 @@ mod tests {
     #[test]
     fn a_foreign_key_does_not_verify() {
         let real = signer();
-        let outsider = Signer::new("worker-7", b"not the fleet key".to_vec());
+        let outsider = Signer::new("worker-7", b"a different 32+ byte fleet key here.....".to_vec()).expect("32-byte test key");
         let p = outsider.sign(&key(), &result());
         assert!(!real.verify(&p, &key(), &result()));
     }

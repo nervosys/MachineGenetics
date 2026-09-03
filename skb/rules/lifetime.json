@@ -1,154 +1,529 @@
 [
   {
-    "id": "LT-001",
-    "database": "lifetime",
-    "version": "0.1.0",
-    "severity": "error",
+    "id": "LIF-0001",
+    "database": "Lifetime",
     "category": "dangling-reference",
-    "description": "Reference outlives the data it points to",
-    "rationale": "A reference must never outlive its referent; otherwise it becomes a dangling pointer",
-    "scope": "function",
-    "pattern": "Borrow(&x, lt_a); Drop(x); Use(&x, lt_a)",
-    "context": "lt_a extends beyond Drop(x)",
-    "fix_template": "Ensure the referent lives as long as the reference: extend the scope or use owned data",
-    "fix_confidence": 0.90,
-    "alternatives": ["Clone the data", "Use Rc/Arc for shared ownership"],
-    "source": "builtin",
-    "frequency": 67890,
-    "false_positive_rate": 0.001,
-    "tags": ["lifetime", "dangling", "safety", "common"]
+    "severity": "Error",
+    "description": "Reference outlives its referent",
+    "rationale": "Accessing freed memory is undefined behavior",
+    "fix_template": "Return owned value or ensure referent lives long enough",
+    "fix_confidence": 0.85,
+    "tags": [
+      "lifetime",
+      "dangling",
+      "reference"
+    ]
   },
   {
-    "id": "LT-002",
-    "database": "lifetime",
-    "version": "0.1.0",
-    "severity": "error",
+    "id": "LIF-0002",
+    "database": "Lifetime",
     "category": "lifetime-mismatch",
-    "description": "Lifetime of returned reference does not match any input lifetime",
-    "rationale": "Returned references must be tied to an input lifetime to guarantee validity",
-    "scope": "function",
-    "pattern": "fn f(&a x) -> &b T where b != a and b != static",
-    "context": "no valid lifetime relationship",
-    "fix_template": "Annotate the return type with the same lifetime as the input: `f(x: &T) -> &T`",
-    "fix_confidence": 0.85,
-    "alternatives": ["Return an owned value instead"],
-    "source": "builtin",
-    "frequency": 34567,
-    "false_positive_rate": 0.002,
-    "tags": ["lifetime", "annotation", "return"]
+    "severity": "Error",
+    "description": "Lifetime of reference does not satisfy constraint",
+    "rationale": "Function signature requires longer lifetime than provided",
+    "fix_template": "Adjust lifetime annotation or restructure",
+    "fix_confidence": 0.7,
+    "tags": [
+      "lifetime",
+      "mismatch",
+      "constraint"
+    ]
   },
   {
-    "id": "LT-003",
-    "database": "lifetime",
-    "version": "0.1.0",
-    "severity": "warning",
-    "category": "unnecessary-lifetime",
-    "description": "Lifetime annotation can be elided per elision rules",
-    "rationale": "MAGE applies lifetime elision automatically; explicit annotations add noise without benefit",
-    "scope": "function",
-    "pattern": "fn f<lt_a>(&lt_a T) -> &lt_a T",
-    "context": "single input reference, single output reference",
-    "fix_template": "Remove the lifetime annotation: `f(x: &T) -> &T`",
-    "fix_confidence": 0.95,
-    "alternatives": [],
-    "source": "builtin",
-    "frequency": 89012,
-    "false_positive_rate": 0.05,
-    "tags": ["lifetime", "elision", "style"]
-  },
-  {
-    "id": "LT-004",
-    "database": "lifetime",
-    "version": "0.1.0",
-    "severity": "error",
-    "category": "struct-lifetime-outlive",
-    "description": "Struct contains a reference that may outlive the data it refers to",
-    "rationale": "Structs holding references must encode the lifetime dependency to prevent dangling references",
-    "scope": "module",
-    "pattern": "S Foo { field: &T } where T lifetime not constrained by Foo",
-    "context": "struct definition",
-    "fix_template": "Add a lifetime parameter: `S Foo[lt_a] { field: &lt_a T }`",
-    "fix_confidence": 0.85,
-    "alternatives": ["Store owned data instead of references", "Use Rc/Arc"],
-    "source": "builtin",
-    "frequency": 23456,
-    "false_positive_rate": 0.003,
-    "tags": ["lifetime", "struct", "safety"]
-  },
-  {
-    "id": "LT-005",
-    "database": "lifetime",
-    "version": "0.1.0",
-    "severity": "error",
-    "category": "closure-capture-outlive",
-    "description": "Closure captures a reference that does not live long enough",
-    "rationale": "Closures that outlive their captured references (e.g. returned from function) create dangling pointers",
-    "scope": "function",
-    "pattern": "Closure captures &x; Closure escapes scope of x",
-    "context": "closure returned or stored",
-    "fix_template": "Use `move` to capture by value, or ensure the reference lives long enough",
-    "fix_confidence": 0.80,
-    "alternatives": ["Use owned values in the closure", "Use Arc for thread-safe sharing"],
-    "source": "builtin",
-    "frequency": 18765,
-    "false_positive_rate": 0.005,
-    "tags": ["lifetime", "closure", "capture", "safety"]
-  },
-  {
-    "id": "LT-006",
-    "database": "lifetime",
-    "version": "0.1.0",
-    "severity": "info",
-    "category": "in-place-mutation",
-    "description": "In-place mutation verified: no dangling references during modification",
-    "rationale": "Confirms that the mutation pattern is safe — reference scopes are properly nested",
-    "scope": "function",
-    "pattern": "BorrowMut(&mut x); Mutate(x); DropBorrow(&mut x)",
-    "context": "no overlapping borrows",
+    "id": "LIF-0003",
+    "database": "Lifetime",
+    "category": "elision-rules",
+    "severity": "Info",
+    "description": "Lifetime elision applies: single input lifetime → output",
+    "rationale": "Compiler infers output lifetime from single input ref",
     "fix_template": null,
-    "fix_confidence": 1.0,
-    "alternatives": [],
-    "source": "builtin",
-    "frequency": 123456,
-    "false_positive_rate": 0.0,
-    "tags": ["lifetime", "mutation", "verified"]
+    "fix_confidence": 0.0,
+    "tags": [
+      "lifetime",
+      "elision",
+      "inference"
+    ]
   },
   {
-    "id": "LT-007",
-    "database": "lifetime",
-    "version": "0.1.0",
-    "severity": "error",
-    "category": "temp-ref",
-    "description": "Reference to a temporary value that is dropped immediately",
-    "rationale": "Temporaries are dropped at the end of the statement; references to them become dangling",
-    "scope": "function",
-    "pattern": "v ref = &Temp()",
-    "context": "temporary expression",
-    "fix_template": "Bind the temporary to a variable first: `v tmp = expr; v ref = &tmp`",
-    "fix_confidence": 0.95,
-    "alternatives": [],
-    "source": "builtin",
-    "frequency": 45678,
-    "false_positive_rate": 0.0,
-    "tags": ["lifetime", "temporary", "dangling", "common"]
+    "id": "LIF-0004",
+    "database": "Lifetime",
+    "category": "elision-self",
+    "severity": "Info",
+    "description": "Lifetime elision: &self lifetime used for output references",
+    "rationale": "Methods returning references use &self's lifetime",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "lifetime",
+      "elision",
+      "self"
+    ]
   },
   {
-    "id": "LT-008",
-    "database": "lifetime",
-    "version": "0.1.0",
-    "severity": "warning",
-    "category": "static-promotion",
-    "description": "Value could be promoted to static lifetime for zero-cost access",
-    "rationale": "Constant values known at compile time can be placed in static storage, avoiding runtime allocation",
-    "scope": "module",
-    "pattern": "v x: &T = &CONST_EXPR",
-    "context": "const-evaluable expression",
-    "fix_template": "Use `c` (const) declaration for compile-time constant",
-    "fix_confidence": 0.70,
-    "alternatives": ["Keep as runtime value if it may change"],
-    "source": "builtin",
-    "frequency": 12345,
-    "false_positive_rate": 0.08,
-    "tags": ["lifetime", "static", "const", "performance"]
+    "id": "LIF-0005",
+    "database": "Lifetime",
+    "category": "static-lifetime",
+    "severity": "Info",
+    "description": "'static means lives for entire program; string literals are 'static",
+    "rationale": "Only constants and leaked values are truly 'static",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "lifetime",
+      "static",
+      "string"
+    ]
+  },
+  {
+    "id": "LIF-0006",
+    "database": "Lifetime",
+    "category": "hrtb",
+    "severity": "Info",
+    "description": "Higher-ranked trait bounds: for<'a> Fn(&'a T)",
+    "rationale": "Function works for any lifetime of the argument",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "lifetime",
+      "hrtb",
+      "higher-ranked"
+    ]
+  },
+  {
+    "id": "LIF-0007",
+    "database": "Lifetime",
+    "category": "struct-lifetime",
+    "severity": "Info",
+    "description": "Struct holding references needs lifetime parameter",
+    "rationale": "Struct cannot outlive its borrowed fields",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "lifetime",
+      "struct",
+      "parameter"
+    ]
+  },
+  {
+    "id": "LIF-0008",
+    "database": "Lifetime",
+    "category": "impl-lifetime",
+    "severity": "Info",
+    "description": "impl block may need lifetime parameter if struct has one",
+    "rationale": "impl<'a> Foo<'a> matches struct Foo<'a>",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "lifetime",
+      "impl",
+      "parameter"
+    ]
+  },
+  {
+    "id": "LIF-0009",
+    "database": "Lifetime",
+    "category": "closure-lifetime",
+    "severity": "Warning",
+    "description": "Closure borrows may require explicit lifetime annotation",
+    "rationale": "Closure captures can create complex lifetime requirements",
+    "fix_template": "Move values into closure or annotate lifetime",
+    "fix_confidence": 0.6,
+    "tags": [
+      "lifetime",
+      "closure",
+      "capture"
+    ]
+  },
+  {
+    "id": "LIF-0010",
+    "database": "Lifetime",
+    "category": "variance-covariant",
+    "severity": "Info",
+    "description": "Covariant lifetime: &'long T can be used where &'short T expected",
+    "rationale": "Subtyping allows shrinking lifetimes",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "lifetime",
+      "variance",
+      "covariant"
+    ]
+  },
+  {
+    "id": "LIF-0011",
+    "database": "Lifetime",
+    "category": "variance-contravariant",
+    "severity": "Info",
+    "description": "Contravariant lifetime: fn(&'short T) can be used where fn(&'long T) expected",
+    "rationale": "Function parameters are contravariant",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "lifetime",
+      "variance",
+      "contravariant"
+    ]
+  },
+  {
+    "id": "LIF-0012",
+    "database": "Lifetime",
+    "category": "variance-invariant",
+    "severity": "Info",
+    "description": "&mut T is invariant in T — cannot change the type",
+    "rationale": "Mutable references require exact type match",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "lifetime",
+      "variance",
+      "invariant"
+    ]
+  },
+  {
+    "id": "LIF-0013",
+    "database": "Lifetime",
+    "category": "reborrow-lifetime",
+    "severity": "Info",
+    "description": "Reborrow creates a shorter-lived reference from &mut",
+    "rationale": "Temporary reborrow allows interleaving uses",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "lifetime",
+      "reborrow"
+    ]
+  },
+  {
+    "id": "LIF-0014",
+    "database": "Lifetime",
+    "category": "trait-object-lifetime",
+    "severity": "Warning",
+    "description": "Trait objects have implicit lifetime bound",
+    "rationale": "Box<dyn Trait> defaults to Box<dyn Trait + 'static>",
+    "fix_template": "Add explicit lifetime bound if needed",
+    "fix_confidence": 0.7,
+    "tags": [
+      "lifetime",
+      "trait-object",
+      "dyn"
+    ]
+  },
+  {
+    "id": "LIF-0015",
+    "database": "Lifetime",
+    "category": "lifetime-subtyping",
+    "severity": "Info",
+    "description": "'a: 'b means 'a outlives 'b",
+    "rationale": "If 'a outlives 'b, &'a T can be used where &'b T expected",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "lifetime",
+      "subtyping",
+      "outlives"
+    ]
+  },
+  {
+    "id": "LIF-0016",
+    "database": "Lifetime",
+    "category": "multiple-lifetimes",
+    "severity": "Info",
+    "description": "Functions can have multiple lifetime parameters for different borrows",
+    "rationale": "Separate lifetimes when inputs have different origins",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "lifetime",
+      "multiple",
+      "parameter"
+    ]
+  },
+  {
+    "id": "LIF-0017",
+    "database": "Lifetime",
+    "category": "anonymous-lifetime",
+    "severity": "Info",
+    "description": "'_ is the anonymous/elided lifetime placeholder",
+    "rationale": "Used in impls and function signatures for readability",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "lifetime",
+      "anonymous",
+      "placeholder"
+    ]
+  },
+  {
+    "id": "LIF-0018",
+    "database": "Lifetime",
+    "category": "bound-lifetime",
+    "severity": "Warning",
+    "description": "Lifetime bound on generic: T: 'a means T must outlive 'a",
+    "rationale": "Type must not contain references shorter than 'a",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "lifetime",
+      "bound",
+      "generic"
+    ]
+  },
+  {
+    "id": "LIF-0019",
+    "database": "Lifetime",
+    "category": "early-vs-late-bound",
+    "severity": "Info",
+    "description": "Early-bound lifetimes are set at call site; late-bound during use",
+    "rationale": "Affects when the lifetime is determined",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "lifetime",
+      "early-bound",
+      "late-bound"
+    ]
+  },
+  {
+    "id": "LIF-0020",
+    "database": "Lifetime",
+    "category": "nll-two-phase",
+    "severity": "Info",
+    "description": "NLL two-phase borrows allow nested method calls",
+    "rationale": "Activation of mutable borrow deferred to first mutation",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "lifetime",
+      "nll",
+      "two-phase"
+    ]
+  },
+  {
+    "id": "LIF-0021",
+    "database": "Lifetime",
+    "category": "polonius",
+    "severity": "Info",
+    "description": "Polonius is an experimental borrow checker with better precision",
+    "rationale": "May accept programs the current checker rejects",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "lifetime",
+      "polonius",
+      "borrow-checker"
+    ]
+  },
+  {
+    "id": "LIF-0022",
+    "database": "Lifetime",
+    "category": "drop-check",
+    "severity": "Warning",
+    "description": "Drop-check may require PhantomData to assert ownership",
+    "rationale": "Compiler checks drop doesn't use dangling references",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "lifetime",
+      "drop-check",
+      "phantomdata"
+    ]
+  },
+  {
+    "id": "LIF-0023",
+    "database": "Lifetime",
+    "category": "self-referential-pin",
+    "severity": "Info",
+    "description": "Pin enables self-referential structures by preventing moves",
+    "rationale": "Required for async state machines",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "lifetime",
+      "self-referential",
+      "pin",
+      "async"
+    ]
+  },
+  {
+    "id": "LIF-0024",
+    "database": "Lifetime",
+    "category": "async-lifetime",
+    "severity": "Warning",
+    "description": "Async functions capture all parameter lifetimes",
+    "rationale": "Returned Future must satisfy all input lifetimes",
+    "fix_template": "Use owned values or explicit lifetime bounds",
+    "fix_confidence": 0.6,
+    "tags": [
+      "lifetime",
+      "async",
+      "future"
+    ]
+  },
+  {
+    "id": "LIF-0025",
+    "database": "Lifetime",
+    "category": "stacked-borrows",
+    "severity": "Info",
+    "description": "Stacked Borrows: formal model for reference aliasing rules",
+    "rationale": "Miri uses this to detect UB in unsafe code",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "lifetime",
+      "stacked-borrows",
+      "miri"
+    ]
+  },
+  {
+    "id": "LIF-0026",
+    "database": "Lifetime",
+    "category": "tree-borrows",
+    "severity": "Info",
+    "description": "Tree Borrows: newer alternative model to Stacked Borrows",
+    "rationale": "More permissive; may become the standard model",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "lifetime",
+      "tree-borrows",
+      "model"
+    ]
+  },
+  {
+    "id": "LIF-0027",
+    "database": "Lifetime",
+    "category": "ref-counted-lifetime",
+    "severity": "Info",
+    "description": "Rc/Arc extend lifetime via reference counting",
+    "rationale": "Value lives until last Rc/Arc is dropped",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "lifetime",
+      "rc",
+      "arc",
+      "refcount"
+    ]
+  },
+  {
+    "id": "LIF-0028",
+    "database": "Lifetime",
+    "category": "leaked-lifetime",
+    "severity": "Warning",
+    "description": "Box::leak converts owned to &'static",
+    "rationale": "Value lives forever; potential memory leak",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "lifetime",
+      "leak",
+      "static"
+    ]
+  },
+  {
+    "id": "LIF-0029",
+    "database": "Lifetime",
+    "category": "scope-guard",
+    "severity": "Info",
+    "description": "Scope guards ensure cleanup at end of scope — ties lifetime to scope",
+    "rationale": "RAII pattern: resource released when guard drops",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "lifetime",
+      "scope",
+      "raii",
+      "guard"
+    ]
+  },
+  {
+    "id": "LIF-0030",
+    "database": "Lifetime",
+    "category": "temp-lifetime-extension",
+    "severity": "Info",
+    "description": "Temporaries bound to let have extended lifetime",
+    "rationale": "let x = &temp extends temp's life to match x",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "lifetime",
+      "temporary",
+      "extension"
+    ]
+  },
+  {
+    "id": "LIF-0031",
+    "database": "Lifetime",
+    "category": "type-inference-lifetime",
+    "severity": "Info",
+    "description": "Compiler infers lifetimes during type inference",
+    "rationale": "Explicit annotations only needed when ambiguous",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "lifetime",
+      "inference",
+      "type-check"
+    ]
+  },
+  {
+    "id": "LIF-0032",
+    "database": "Lifetime",
+    "category": "gat",
+    "severity": "Info",
+    "description": "Generic Associated Types allow lifetime-parameterized associated types",
+    "rationale": "GATs enable lending iterators and related patterns",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "lifetime",
+      "gat",
+      "associated-type"
+    ]
+  },
+  {
+    "id": "LIF-0033",
+    "database": "Lifetime",
+    "category": "rpitit",
+    "severity": "Info",
+    "description": "Return-position impl Trait in trait: returned type captures lifetimes",
+    "rationale": "Returned opaque type may hold borrows from inputs",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "lifetime",
+      "rpitit",
+      "impl-trait"
+    ]
+  },
+  {
+    "id": "LIF-0034",
+    "database": "Lifetime",
+    "category": "existential-lifetime",
+    "severity": "Info",
+    "description": "impl Trait return types have anonymous existential lifetime",
+    "rationale": "Compiler picks the appropriate lifetime",
+    "fix_template": null,
+    "fix_confidence": 0.0,
+    "tags": [
+      "lifetime",
+      "existential",
+      "impl-trait"
+    ]
+  },
+  {
+    "id": "LIF-0035",
+    "database": "Lifetime",
+    "category": "send-lifetime",
+    "severity": "Warning",
+    "description": "Values sent across threads must satisfy 'static or explicit lifetime constraints",
+    "rationale": "Thread may outlive the sender's scope",
+    "fix_template": "Use owned values or Arc for shared data",
+    "fix_confidence": 0.75,
+    "tags": [
+      "lifetime",
+      "send",
+      "thread"
+    ]
   }
 ]
