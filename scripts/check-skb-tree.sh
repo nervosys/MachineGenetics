@@ -51,7 +51,12 @@ for f in "$tmp"/rules/*.json "$tmp"/manifest.json; do
         continue
     fi
     # `diff -q` rather than a hash, so a real diff is one command away.
-    if ! diff -q "$f" "$rel" >/dev/null 2>&1; then
+    # --strip-trailing-cr, because git checks these out with CRLF on Windows
+    # while --emit-skb writes LF. Without it this check fails for every Windows
+    # contributor and passes in CI -- the same shape as the `.exe` fallbacks
+    # that made two benchmarks unrunnable on Linux, inverted, and in a script
+    # written the same day as the fix for those.
+    if ! diff -q --strip-trailing-cr "$f" "$rel" >/dev/null 2>&1; then
         echo "  x  $rel differs from a fresh --emit-skb" >&2
         drift=$((drift + 1))
     fi
