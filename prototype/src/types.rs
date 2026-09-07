@@ -2183,6 +2183,91 @@ impl TypeChecker {
                 }
             }
 
+            // `grad(e, w)` — §5.6, and the typing rule `DIFFERENTIABILITY.md`
+            // states:
+            //
+            //   Γ ⊢ e : f32     Γ ⊢ w : f32     diff(e) ⊑ AlmostEverywhere
+            //   ───────────────────────────────────────────────────────────
+            //                    Γ ⊢ grad(e, w) : typeof(w)
+            //
+            // **The differentiability premise is not checked here**, and the
+            // omission is deliberate rather than a gap. `diff(e)` is a property
+            // of the *call graph* — an `e` that calls a function that compares
+            // floats is not differentiable, and nothing in this expression says
+            // so. `infer_expr` sees one expression. `differentiable.rs` sees the
+            // module, and carries the obligation there; splitting it that way is
+            // what stops this arm from answering a question it cannot see the
+            // evidence for.
+            //
+            // The gradient has **the shape of `w`**, not of `e`. That is the
+            // standard fact and it is why `e` must be scalar: with a
+            // non-scalar `e` the derivative is a Jacobian, which is a different
+            // construct and is not this one.
+            ast::Expr::Grad { value, wrt } => {
+                let vt = self.infer_expr(value);
+                let wt = self.infer_expr(wrt);
+                let vt = self.subst.apply(&vt);
+                let wt = self.subst.apply(&wt);
+
+                // `w` names the thing being varied, so it has to *be* a name.
+                // `grad(loss, x + 1)` asks for the derivative with respect to
+                // an expression, which is not a question with an answer.
+                if !matches!(wrt.as_ref(), ast::Expr::Ident { .. }) {
+                    self.emit_error(
+                        "the second argument of `grad` is the variable to \
+                         differentiate with respect to, so it must be a name — \
+                         `grad(loss, w)`, not an expression",
+                    );
+                    return Ty::Error;
+                }
+
+                // Tensors are refused rather than accepted-and-unimplemented.
+                // §5.6 records tensor autograd as designed and not built, and
+                // the evaluator has no tensor value at all; accepting
+                // `grad(loss, weights)` here would typecheck a program that
+                // cannot run, which is the documented-but-unimplemented shape
+                // this repository keeps finding. Refusing it says so at the
+                // point where it is still cheap to hear.
+                for (t, which) in [(&vt, "first"), (&wt, "second")] {
+                    if matches!(t, Ty::Tensor(..) | Ty::Param(..)) {
+                        self.emit_error(format!(
+                            "`grad` over tensors is designed and not built \
+                             (MAGE_SPEC.md §5.6): the {which} argument is \
+                             `{t:?}`. Scalar `f32` gradients do work — \
+                             `grad(loss, w)` where both are `f32`"
+                        ));
+                        return Ty::Error;
+                    }
+                }
+
+                let scalar = |t: &Ty| matches!(t, Ty::Float(_) | Ty::Var(_) | Ty::Error);
+                if !scalar(&vt) {
+                    self.emit_error(format!(
+                        "`grad` differentiates a scalar quantity: the first \
+                         argument is `{vt:?}`, and a derivative of a \
+                         non-scalar is a Jacobian, which is a different \
+                         construct"
+                    ));
+                    return Ty::Error;
+                }
+                if !scalar(&wt) {
+                    self.emit_error(format!(
+                        "`grad` differentiates with respect to a continuous \
+                         variable: `{wt:?}` is discrete, and there is no limit \
+                         to take"
+                    ));
+                    return Ty::Error;
+                }
+
+                // Both sides are floats. Unifying them pins a literal-typed
+                // operand (`grad(2.0 * w, w)`) to the same width as `w`.
+                if let Err(e) = unify(&mut self.subst, &vt, &wt) {
+                    self.emit_error(format!("`grad`: {e}"));
+                    return Ty::Error;
+                }
+                self.subst.apply(&wt)
+            }
+
             ast::Expr::Is { expr, .. } => {
                 self.infer_expr(expr);
                 Ty::Bool

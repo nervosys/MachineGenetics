@@ -3,10 +3,13 @@
 > **Status: the lattice and the inference pass are built
 > (`prototype/src/differentiable.rs`), over all three subjects — `f` functions,
 > `net` definitions and `train` blocks — and reachable as
-> `mage-parse --differentiable <file.mg> [--json]`. `grad` as an expression,
-> and differentiation as an ABL→ABL transform, are designed and not built** —
+> `mage-parse --differentiable <file.mg> [--json]`. `grad(e, w)` is an
+> expression that typechecks and runs, for scalars, with the differentiability
+> obligation as a premise of its typing rule. `grad` over tensors, and
+> differentiation as an ABL→ABL transform, are designed and not built** —
 > labelled as such below, in the convention `MAGE_SPEC.md` uses for constructs
-> it documents and does not implement.
+> it documents and does not implement. The tensor case is *refused* by the type
+> checker rather than accepted and left to fail later.
 
 ## The claim, stated so it can be false
 
@@ -201,22 +204,90 @@ the reason. The inference pass here does not need it: it computes a property
 over the call graph. A `grad` expression whose typing rule *requires* its
 argument to be differentiable does.
 
+## `grad`, and where the obligation is discharged
+
+`grad(e, w)` is an expression as of 2026-09-07, for scalars. `∇(e, w)` is the
+same thing in sigil mode — the Gradient row of the sigil table, which had
+published both spellings for a construct that had neither.
+
+```mg
+f slope(w: f64) -> f64 { grad(w * w * 3.0 + w * 2.0, w) }
+```
+
+`slope(4.0)` is `26.0`, exactly — the chain rule, not a finite difference.
+
+```
+Γ ⊢ e : f32     Γ ⊢ w : f32     diff(e) ⊑ AlmostEverywhere
+──────────────────────────────────────────────────────────
+              Γ ⊢ grad(e, w) : typeof(w)
+```
+
+The rule shipped narrower than the one this document proposed, in two ways, and
+both are corrections rather than compromises.
+
+**The gradient has the shape of `w`, not of `e`.** The proposed conclusion,
+`tensor[f32, shape(w)]`, was right about the shape; the premise
+`e : tensor[f32, S]` was wrong outright. `e` must be **scalar** — the derivative
+of a non-scalar is a Jacobian, which is a different construct. `MAGE_SPEC.md`
+§10.4's T-Grad rule had `L : Tensor⟨T, []⟩`, a *scalar* tensor, so the two
+documents disagreed with each other as well as with what was buildable. There is
+now one rule.
+
+**Tensors are refused, not deferred.** `grad` over `tensor`/`param` is designed
+and not built, and the type checker says so at the call site instead of
+accepting a program the evaluator cannot run — it has no tensor value at all.
+Accepting it would be the documented-but-unimplemented shape the failure
+taxonomy collects under §4.
+
+### The obligation is not checked by the type checker
+
+`diff(e) ⊑ AlmostEverywhere` is the interesting premise, and it is discharged by
+`differentiable.rs`, not by `types.rs`. The reason is not layering aesthetics.
+
+This program is **invalid**, and this is the diagnostic it gets:
+
+```mg
++f noisy(x: f64) -> f64 / io { println("tick"); x * 2.0 }
+f bad(w: f64) -> f64 { grad(noisy(w), w) }
+```
+
+> error: in `bad`: `grad` needs an expression with a derivative, and this one
+> has none — performs the `IO` effect, so its output is not a function of its
+> inputs
+
+Nothing in `grad(noisy(w), w)` says that `noisy` reaches a console, and nothing
+in `grad(cmp(w) * 2.0, w)` would say that `cmp` compares two floats. **`diff` is
+a property of the call graph**, and `infer_expr` sees one expression at a time.
+Putting the premise where the evidence is, is what stops the type checker
+answering a question it cannot see the answer to.
+
+The severities are deliberately asymmetric: `NotDifferentiable` is an **error**
+naming the reason, `Unknown` is a **warning**. Refusing a program because the
+compiler failed to analyse it would turn the absence of a verdict into a
+rejection, and the fourth state exists to keep those apart.
+
+### Forward mode, because there is one `w`
+
+The evaluator carries dual numbers: `Value::Dual(v, dv/dw)`. `grad(e, w)` seeds
+`w` with a derivative of 1, evaluates `e` once, and reads the derivative off the
+result. One pass, exact.
+
+Forward mode is the right algorithm *for this construct*, and the reason is in
+its signature: `grad(e, w)` names one `w`. Reverse mode wins when there are many
+parameters and one output, which is what a `train` block does — and
+`autograd.rs` already builds a tape for exactly that. Two algorithms because
+there are two questions, not because one of them is legacy.
+
+Nested `grad` is refused rather than answered: a second derivative needs a
+second level of dual numbers, and returning the first derivative instead would
+be a silently wrong answer.
+
+**How it is known to be right.** Every gradient test checks the exact result
+against a central difference — the inductive half of the pairing set out at the
+end of this document. The pass proves a derivative exists; gradient checking
+evidences that the computed one is correct; neither stands in for the other.
+
 ## Design, not implemented
-
-### `grad` as an expression
-
-`grad` is a reserved word today with no expression form — `grad(loss, w)` is a
-parse error, and `MAGE_SPEC.md` records that. The typing rule it wants:
-
-```
-Γ ⊢ e : tensor[f32, S]      diff(e) ⊑ AlmostEverywhere      w : Param
-─────────────────────────────────────────────────────────────────────
-                  Γ ⊢ grad(e, w) : tensor[f32, shape(w)]
-```
-
-with `diff(e) = NotDifferentiable` an error naming the reason, and
-`diff(e) = Unknown` a warning, because refusing a program the compiler merely
-failed to analyse is worse than saying so.
 
 ### Lowering as an ABL→ABL transform
 
@@ -307,9 +378,11 @@ with no command beside it is the shape this repository has spent five sessions
 removing from its own documents, and it does not get an exception for being a
 figure this repository liked.
 
-**The next step follows from the nets now having verdicts**: `grad` as an
-expression, with the differentiability obligation as its typing rule — the
-verdicts above are what such a rule would consult.
+**`grad` now consults these verdicts.** It shipped 2026-09-07 for scalars, with
+`diff(e) ⊑ AlmostEverywhere` as a premise of its typing rule. No `.mg` source in
+the corpus writes one yet, which is why the table above is unchanged by it: the
+construct is a day old, and a figure that moved would mean something had been
+written to make it move.
 
 ## How the claim gets verified, in both senses
 

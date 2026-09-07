@@ -683,6 +683,11 @@ impl<'a> EmitCtx<'a> {
                 let r = self.fresh();
                 format!("MAGE.pipeline {l} |> {r}")
             }
+            ast::Expr::Grad { .. } => {
+                let e = self.fresh();
+                let w = self.fresh();
+                format!("MAGE.grad {e} wrt {w}")
+            }
             ast::Expr::Is { .. } => {
                 let v = self.fresh();
                 format!("MAGE.is {v} pattern")

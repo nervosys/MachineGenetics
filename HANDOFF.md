@@ -22,7 +22,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **2,951** — rmi 1,384 · prototype 1,234 · ribosome 168 · germline 112 · forge 53 |
+| Tests | **2,965** — rmi 1,384 · prototype 1,248 · ribosome 168 · germline 112 · forge 53 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -31,7 +31,8 @@ each claim has a command beside it.
 | Examples | 12 of 12 typecheck, run, and print their recorded answer |
 | `.mg` sources | **101 checked, 0 sketches** — every `.mg` file in the repository typechecks |
 | Differentiability | **34 of 34 nets and 7 of 7 train blocks; 0 of 155 functions** — `scripts/measure-differentiability.sh`, re-derived in CI and compared against `DIFFERENTIABILITY.md` in both directions |
-| Documentation | 206 MAGE blocks typecheck; 58 documentation entry points run; 268 `rmi/docs` API items all exist — and "exist" now means **a definition exists**, not that the name appears somewhere in `src/`. It was 275 under the weaker criterion, 8 of them held up by English words in comments; the phantom entries are gone and a duplicate went with them |
+| `grad` | An expression that typechecks and **runs**, for scalars: forward-mode duals, checked against central differences. The differentiability obligation is a premise of its typing rule, discharged by the call-graph pass. Tensors are refused, not deferred |
+| Documentation | 208 MAGE blocks typecheck; 58 documentation entry points run; 268 `rmi/docs` API items all exist — and "exist" now means **a definition exists**, not that the name appears somewhere in `src/`. It was 275 under the weaker criterion, 8 of them held up by English words in comments; the phantom entries are gone and a duplicate went with them |
 | Release | `v0.3.0`, with the promo video attached as a release asset |
 
 Reproduce all of it:
@@ -67,13 +68,48 @@ retargeted them and the content cascaded sideways. It was caught by looking at
 `master` is green with nothing outstanding, so there is no rescue work. The
 useful next moves, in the order I would take them:
 
-**1 — `grad` as an expression**, with the differentiability obligation as its
-typing rule. `grad` is a reserved word today with no expression form;
-`MAGE_SPEC.md` records that. This needs open item 21, which is why item 21
-reopened.
+**1 — Reverse-mode `grad`, or tensors.** `grad(e, w)` is an expression as of
+2026-09-07 and it runs — but only for **scalars**, and only for **one** `w`.
+Both limits are honest and both are the next work.
 
-The pass it would consult is now built over all three subjects — this was item 1
-on 2026-09-03 and closed on 2026-09-07. `prototype/src/differentiable.rs`
+The evaluator carries forward-mode dual numbers, which is the right
+algorithm for the signature `grad(e, w)` has: one `w`, one pass, exact.
+It is the *wrong* one for `grad(loss, every_parameter)`, which is what
+training wants and what `autograd.rs`'s tape already does for `train`
+blocks. So the two obvious moves are a `grad` over many parameters (reverse
+mode, and the tape is already written) and `grad` over `tensor`/`param`,
+which the type checker currently **refuses** rather than accepting and
+failing later — the evaluator has no tensor value at all.
+
+What shipped with it is worth reading before extending it:
+
+* **The obligation lives in `differentiable.rs`, not `types.rs`.** `diff(e)`
+  is a property of the call graph — nothing in `grad(noisy(w), w)` says that
+  `noisy` reaches a console — and `infer_expr` sees one expression at a
+  time. Putting the premise where the evidence is, is what stops the type
+  checker answering a question it cannot see the answer to.
+* **`NotDifferentiable` is an error, `Unknown` is a warning.** The asymmetry
+  is the design: refusing a program because the compiler failed to analyse
+  it would turn the absence of a verdict into a rejection.
+* **Two documents disagreed about the typing rule** and neither matched what
+  was buildable. `MAGE_SPEC.md` §10.4 had `grad(L, P) : Vec⟨Tensor⟩` over a
+  vector of params; `DIFFERENTIABILITY.md` had a single `w` and a premise
+  `e : tensor[f32, S]` that is wrong outright, since the derivative of a
+  non-scalar is a Jacobian. There is now one rule, and it is the one that
+  is implemented.
+
+**Item 21 did *not* turn out to be a prerequisite, and that is a finding.**
+The reopening argument was that `Differentiable` is a typeclass, so `grad`
+would need `~>` bounds enforced. It does not: the obligation is discharged
+directly against the call graph at each `grad` site, and a trait solver
+would have had nothing extra to do. Item 21's own evidence still stands —
+no `.mg` source writes a bound — and `grad` did not change it, because
+`grad` creates demand for *checking* differentiability, not for *quantifying
+over* it. Bounds get a caller when someone writes a generic function over
+differentiable types, which nobody has.
+
+The pass it consults was built over all three subjects the day before — item 1
+as of 2026-09-03, closed 2026-09-07. `prototype/src/differentiable.rs`
 analyses `net` and `train` alongside `f`, `mage-parse --differentiable` reaches
 it, and `scripts/measure-differentiability.sh` aggregates the corpus:
 **34 of 34 nets and 7 of 7 train blocks are differentiable, and 0 of 155
@@ -288,6 +324,20 @@ Only `stdlib/` and four `framewerx` files remain.
   built", and saying so beats running something older. Seven copies of a path
   is the same defect as [four copies of the RAP method list](#the-one-thing-to-understand)
   — one edit, many costumes.
+
+  **And the first fix missed three of them, which is the part worth
+  keeping.** `check-doc-blocks.sh`, `check-doc-evals.sh` and
+  `check-vocabulary.sh` each carry a `python - <<'PY'` heredoc that opened
+  with its *own* `BIN = os.path.join('prototype', 'target', 'release',
+  'mage-parse')`. A quoted heredoc does not expand `$BIN`, so pointing the
+  shell variable at cargo's real target directory changed nothing in those
+  three: they went on running the stale binary, under a fix that said they
+  no longer did. Found by running them — a documentation block that
+  typechecks was reported as failing, because the compiler being asked had
+  never heard of the construct in it. **A path inside a heredoc is a copy
+  that does not look like one.** Finding six copies was the reason to go
+  looking for the seventh, and the lesson is one this document already
+  states: a sweep is not finished when the obvious instances are.
 - **`${#arr[@]}` on a never-assigned associative array is *unbound*.** Under
   `set -u`, `declare -A ACTUAL` followed by a `read` loop that assigns nothing
   makes `[ "${#ACTUAL[@]}" -eq 0 ]` abort the line — so the empty-input guard
@@ -951,7 +1001,7 @@ implementation task**:
 - **Then the evaluator rework.** `eval.rs` is 2,987 lines, 39 expression forms
   and 53 recursive `self.eval(` sites, all of which keep the continuation in the
   Rust call stack — where it cannot be captured. Multi-shot needs CPS or an
-  explicit CEK-style machine, which touches every form, with 1,234 tests riding
+  explicit CEK-style machine, which touches every form, with 1,248 tests riding
   on current behaviour.
 
 **This item was filed under "real work, unstarted" with no blocker marked**,
@@ -2026,9 +2076,9 @@ changed before you commit.
 ---
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,234**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,248**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
-  across five crates **2,951**; documented-count pins **92**, up from 46 — the
+  across five crates **2,965**; documented-count pins **92**, up from 46 — the
   four newest hold `SECURITY_AUDIT.md`'s `unsafe` inventory, a claim that had
   been wrong twice.
 - Every typechecker fix has landed without breaking an existing test **except

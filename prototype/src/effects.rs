@@ -504,6 +504,20 @@ impl EffectInfer {
                 self.collect_calls_in_expr(left, callees, local_effects);
                 self.collect_calls_in_expr(right, callees, local_effects);
             }
+            // `grad(e, w)` evaluates `e`, so it reaches everything `e`
+            // reaches and performs everything `e` performs. `grad` itself
+            // introduces no effect: differentiating is arithmetic.
+            //
+            // The effects that turn up here are also what makes the
+            // gradient meaningless — an `e` that reads a clock is not a
+            // function of `w` — but that judgement belongs to
+            // `differentiable.rs`, which already owns the rule and says
+            // which effect broke it. Inferring the effect and judging it
+            // are two jobs.
+            ast::Expr::Grad { value, wrt } => {
+                self.collect_calls_in_expr(value, callees, local_effects);
+                self.collect_calls_in_expr(wrt, callees, local_effects);
+            }
             ast::Expr::Is { expr, .. } => {
                 self.collect_calls_in_expr(expr, callees, local_effects);
             }

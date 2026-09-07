@@ -616,6 +616,11 @@ fn count_expr_agent(expr: &Expr) -> u32 {
         Expr::Pipeline { left, right } => {
             count_expr_agent(left) + 1 + count_expr_agent(right) // |>
         }
+        // `\u{2207}` `(` `,` `)` — one token for the sigil against four
+        // characters of `grad`, which is the whole point of the sigil.
+        Expr::Grad { value, wrt } => {
+            count_expr_agent(value) + count_expr_agent(wrt) + 4
+        }
         Expr::Is { expr, .. } => count_expr_agent(expr) + 2, // is Pattern
         Expr::Error { .. } => 1,
     }
@@ -1054,6 +1059,10 @@ fn count_expr_human(expr: &Expr) -> u32 {
         Expr::UnsafeBlock { block } => 1 + count_block_human(block), // raw
         Expr::Pipeline { left, right } => {
             count_expr_human(left) + 1 + count_expr_human(right) // |>
+        }
+        // `grad` `(` `,` `)`
+        Expr::Grad { value, wrt } => {
+            count_expr_human(value) + count_expr_human(wrt) + 4
         }
         Expr::Is { expr, .. } => count_expr_human(expr) + 2, // is Pattern
         Expr::Error { .. } => 1,

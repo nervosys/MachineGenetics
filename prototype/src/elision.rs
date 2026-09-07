@@ -590,6 +590,10 @@ fn elide_expr(expr: &Expr) -> Expr {
             left: Box::new(elide_expr(left)),
             right: Box::new(elide_expr(right)),
         },
+        Expr::Grad { value, wrt } => Expr::Grad {
+            value: Box::new(elide_expr(value)),
+            wrt: Box::new(elide_expr(wrt)),
+        },
         Expr::Is {
             expr: inner,
             pattern,

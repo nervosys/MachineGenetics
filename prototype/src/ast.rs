@@ -348,6 +348,18 @@ pub enum Expr {
         left: Box<Expr>,
         right: Box<Expr>,
     },
+    /// `grad(e, w)` — the derivative of `e` with respect to the variable `w`.
+    /// Spelled `∇(e, w)` in sigil mode.
+    ///
+    /// `wrt` is an expression rather than a `String` so that a second argument
+    /// which is *not* a variable parses and is then rejected by the type
+    /// checker with a sentence about what the argument means. Rejecting it in
+    /// the parser would report `expected identifier`, which says what the
+    /// grammar wanted and not why.
+    Grad {
+        value: Box<Expr>,
+        wrt: Box<Expr>,
+    },
     Is {
         expr: Box<Expr>,
         pattern: Pattern,

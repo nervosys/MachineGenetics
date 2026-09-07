@@ -1442,6 +1442,16 @@ fn emit_expr(buf: &mut String, expr: &Expr, mode: Mode) {
             buf.push_str(" |> ");
             emit_expr(buf, right, mode);
         }
+        // `∇(e, w)` in agent mode, `grad(e, w)` in human mode — the
+        // Gradient row of the sigil table (§3), which published both
+        // spellings for a construct that had neither.
+        Expr::Grad { value, wrt } => {
+            buf.push_str(if mode == Mode::Agent { "\u{2207}(" } else { "grad(" });
+            emit_expr(buf, value, mode);
+            buf.push_str(", ");
+            emit_expr(buf, wrt, mode);
+            buf.push(')');
+        }
         Expr::Is { expr, pattern } => {
             emit_expr(buf, expr, mode);
             buf.push_str(" is ");
