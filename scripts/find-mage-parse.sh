@@ -12,6 +12,16 @@
 # Six checkers had their own copy of the line `BIN=prototype/target/release/
 # mage-parse`, and every copy was wrong in the same two ways:
 #
+# — and then **three of them had a second copy**, inside a `python - <<'PY'`
+#   heredoc, which is quoted and so does not expand `$BIN`. Replacing the shell
+#   variable with a resolved path fixed nothing in those three: they went on
+#   running whatever binary sat in `prototype/target/`. That was found the way
+#   everything here gets found — by running it, when a documentation block that
+#   typechecks was reported as failing, because the compiler being asked was
+#   three weeks old and had never heard of the construct in it. **A path in a
+#   heredoc is a copy that does not look like one**, and finding six is a
+#   reason to go looking for the seventh.
+#
 #   1. **The binary is not always there.** A `~/.cargo/config.toml` with a
 #      shared `build.target-dir` redirects every Rust project on a machine to
 #      one target directory — this repository's own HANDOFF.md records that as
