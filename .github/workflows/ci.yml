@@ -176,6 +176,12 @@ jobs:
       # forced anyone to look at it again.
       - name: Open-item counts match their own tables
         run: bash scripts/check-open-items.sh
+      # `MAGE_ONTOLOGY.md` counts the compiler's own enums, in a document
+      # `DOCS.md` tells readers to prefer over the prose. Nothing compared
+      # the counts against the enums; six were wrong, one of them saying a
+      # statement has three kinds when `Guard` and `Defer` bring it to five.
+      - name: Ontology type counts match the source
+        run: bash scripts/check-ontology-types.sh
       # And the step above it only runs if CI runs. Seven of the fourteen
       # files `check-doc-counts.sh` pins were outside this workflow's paths
       # filter — `HANDOFF.md` and `SECURITY_AUDIT.md` among them — so a pull
