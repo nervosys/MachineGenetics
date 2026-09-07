@@ -22,7 +22,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **2,938** — rmi 1,384 · prototype 1,221 · ribosome 168 · germline 112 · forge 53 |
+| Tests | **2,951** — rmi 1,384 · prototype 1,234 · ribosome 168 · germline 112 · forge 53 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -30,6 +30,7 @@ each claim has a command beside it.
 | Reliability floors | file-oracle parse 99/100, perturbed pattern-heal 42, native-lexer ratio 0.997 |
 | Examples | 12 of 12 typecheck, run, and print their recorded answer |
 | `.mg` sources | **101 checked, 0 sketches** — every `.mg` file in the repository typechecks |
+| Differentiability | **34 of 34 nets and 7 of 7 train blocks; 0 of 155 functions** — `scripts/measure-differentiability.sh`, re-derived in CI and compared against `DIFFERENTIABILITY.md` in both directions |
 | Documentation | 206 MAGE blocks typecheck; 58 documentation entry points run; 268 `rmi/docs` API items all exist — and "exist" now means **a definition exists**, not that the name appears somewhere in `src/`. It was 275 under the weaker criterion, 8 of them held up by English words in comments; the phantom entries are gone and a duplicate went with them |
 | Release | `v0.3.0`, with the promo video attached as a release asset |
 
@@ -40,6 +41,7 @@ scripts/test-all.sh --check-docs          # everything + documentation check
 scripts/check-examples.sh                 # the 12 shipped examples, end to end
 scripts/check-mg-sources.sh               # every .mg file in the repo
 scripts/check-security-register.sh        # §1's accepted risks vs. what cargo audit reports
+scripts/measure-differentiability.sh      # the corpus aggregate (--check verifies the doc)
 scripts/test-all.sh --cuda --bench --check-docs   # + GPU and the benchmark harnesses
 ```
 
@@ -65,20 +67,38 @@ retargeted them and the content cascaded sideways. It was caught by looking at
 `master` is green with nothing outstanding, so there is no rescue work. The
 useful next moves, in the order I would take them:
 
-**1 — Extend the differentiability pass to the `net` DSL.**
-`prototype/src/differentiable.rs` computes a four-state lattice over functions,
-and measured against this repository it reports **0 of 155 differentiable**, 125
-of them for want of a floating-point parameter. That is not a defect in the pass;
-it is the corpus. MAGE's numerical surface is `net` / `layer` / `train`, where
-`autograd.rs` already builds a reverse-mode tape, and that is where the analysis
-has a subject. See `DIFFERENTIABILITY.md`.
-
-**2 — Then `grad` as an expression**, with the differentiability obligation as
-its typing rule. `grad` is a reserved word today with no expression form;
+**1 — `grad` as an expression**, with the differentiability obligation as its
+typing rule. `grad` is a reserved word today with no expression form;
 `MAGE_SPEC.md` records that. This needs open item 21, which is why item 21
 reopened.
 
-**3 — The shared verdict vocabulary.** `verify.rs` has a deductive lattice
+The pass it would consult is now built over all three subjects — this was item 1
+on 2026-09-03 and closed on 2026-09-07. `prototype/src/differentiable.rs`
+analyses `net` and `train` alongside `f`, `mage-parse --differentiable` reaches
+it, and `scripts/measure-differentiability.sh` aggregates the corpus:
+**34 of 34 nets and 7 of 7 train blocks are differentiable, and 0 of 155
+functions are.** Three things in that are worth carrying:
+
+* The subjects are reported separately and deliberately not merged. One ratio
+  over all 196 would be "41 of 196" and would answer neither question — the
+  finding *is* that the two populations differ.
+* A net is judged with respect to its **parameters**, not its inputs, because
+  that is what `train` optimises. Judged on inputs, every language model here
+  would report `NotDifferentiable` at its embedding.
+* Verdicts are keyed on the **surface layer type, not the opcode**.
+  `HardSigmoid` and `Sigmoid` are one `Op::SIGMOID` — the bridge says
+  "close-enough lowering" — and only one has a kink; an unrecognised layer
+  lowers to `Op::IDENTITY`, which is perfectly smooth. Reading verdicts off the
+  lowered form would have reported both as `Smooth`.
+
+The measurement half mattered as much as the analysis. The "0 of 155" figure had
+been published for a whole phase during which **nothing could produce it**: the
+pass was library-only, no CLI mode reached it, and reproducing the number meant
+writing a program. It was right — the new command reproduces 155 and 154 exactly
+— which is the uncomfortable part, because it was right by luck of nobody having
+changed anything, not by anything checking.
+
+**2 — The shared verdict vocabulary.** `verify.rs` has a deductive lattice
 (`Verified` / `Partial` / `Failed` / `Trivial`) and the neural half has none, so
 you cannot say "this property is evidenced at *n* samples" anywhere in this
 language. `Trivial` is worse than absent: it means *no contracts to verify* and
@@ -92,8 +112,20 @@ more than either inventing its own.
 **Not urgent, and deliberately so:** `TENSOR_PRODUCT_BINDING.md` specifies
 binding symbolic structure into tensors, which would give `kb` and `net` a shared
 representation instead of merely a shared container. It stays a specification
-until there is numerical MAGE code that wants it. Building a construct with no
-caller is the mistake `DIFFERENTIABILITY.md` measured its way out of.
+until something wants it. Building a construct with no caller is the mistake
+`DIFFERENTIABILITY.md` measured its way out of.
+
+**The reason recorded for that on 2026-09-03 was wrong, and the correction is
+the more useful half.** It said there was "no numerical MAGE code to build a
+binding construct for", on the evidence of 0 of 155 differentiable functions.
+There is: 34 nets, all of them differentiable — the pass had simply never been
+pointed at them. What is actually thin is the *overlap*: three tracked sources
+declare a `net` and a `kb` together (`neurosymbolic_qa.mg`,
+`neurosymbolic.mg`, `unified.mg`), which is the population a binding construct
+would serve. That is a much narrower claim than the one it replaces, and it is
+the one to re-measure before starting. **A measurement quoted as evidence for a
+decision about a different population is not evidence** — the figure was about
+`f` functions and the decision was about nets.
 
 ---
 ## Where this phase ended, 2026-09-03
@@ -113,6 +145,13 @@ same pass measured **0 of 155 functions in this repository as differentiable**
 and 125 of them have no floating-point parameter at all. There is no numerical
 MAGE code to build a binding construct for yet. Building it anyway would repeat
 the mistake the sibling document was written to avoid.
+
+> **Corrected 2026-09-07.** The second sentence does not follow from the first.
+> Extending the pass to `net` found 34 differentiable nets; the corpus had
+> numerical MAGE code all along, and what the figure measured was `f`
+> functions. The conclusion — leave it specified — survives on a different and
+> narrower fact: three sources declare a `net` and a `kb` together. See
+> **Start here**.
 
 ### The question that found nearly everything
 
@@ -232,6 +271,23 @@ Only `stdlib/` and four `framewerx` files remain.
 
 ## Traps, so you do not repeat them
 
+- **A checker can run the wrong compiler and pass.** Seven scripts each carried
+  their own `BIN=prototype/target/release/mage-parse`. A `~/.cargo/config.toml`
+  with a shared `build.target-dir` — this machine has one, and it is why the
+  build lock is global here — sends `cargo build` somewhere else entirely,
+  while a `prototype/target/` left over from before that config still holds a
+  binary, and it is found first. The one sitting there on 2026-09-07 was three
+  weeks old. A new script ran all 101 `.mg` sources through it and reported
+  "101 of 101 could not be parsed"; `check-mg-sources.sh` and four others would
+  have answered "every `.mg` source typechecks" on the same evidence, which is
+  worse, because that one **passes**. CI never saw it: a fresh runner has no
+  shared target directory and no leftovers, so the hardcoded path is right
+  there and only there. `scripts/find-mage-parse.sh` is now the one answer, and
+  it asks `cargo metadata` rather than guessing; there is deliberately no
+  fallback to the hardcoded path, because "not where cargo puts it" means "not
+  built", and saying so beats running something older. Seven copies of a path
+  is the same defect as [four copies of the RAP method list](#the-one-thing-to-understand)
+  — one edit, many costumes.
 - **`${#arr[@]}` on a never-assigned associative array is *unbound*.** Under
   `set -u`, `declare -A ACTUAL` followed by a `read` loop that assigns nothing
   makes `[ "${#ACTUAL[@]}" -eq 0 ]` abort the line — so the empty-input guard
@@ -895,7 +951,7 @@ implementation task**:
 - **Then the evaluator rework.** `eval.rs` is 2,987 lines, 39 expression forms
   and 53 recursive `self.eval(` sites, all of which keep the continuation in the
   Rust call stack — where it cannot be captured. Multi-shot needs CPS or an
-  explicit CEK-style machine, which touches every form, with 1,221 tests riding
+  explicit CEK-style machine, which touches every form, with 1,234 tests riding
   on current behaviour.
 
 **This item was filed under "real work, unstarted" with no blocker marked**,
@@ -1970,9 +2026,9 @@ changed before you commit.
 ---
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,221**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,234**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
-  across five crates **2,938**; documented-count pins **92**, up from 46 — the
+  across five crates **2,951**; documented-count pins **92**, up from 46 — the
   four newest hold `SECURITY_AUDIT.md`'s `unsafe` inventory, a claim that had
   been wrong twice.
 - Every typechecker fix has landed without breaking an existing test **except

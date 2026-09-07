@@ -322,6 +322,21 @@ pub fn op_to_layer_name(op: Op) -> Option<&'static str> {
 /// inspect [`TranslationReport::unknown_layers`] to surface diagnostics.
 pub struct NetTranslator;
 
+/// One declared layer, as the lowering sees it.
+///
+/// Carries the **surface type name** alongside the opcode because the opcode
+/// drops distinctions that matter to a caller who is not generating code.
+/// `Sigmoid` and `HardSigmoid` are both `Op::SIGMOID`, and only one of the two
+/// has a kink; `differentiable.rs` needs to tell them apart. A second table
+/// keyed the same way would drift, so the name travels with the op.
+#[derive(Debug, Clone)]
+struct LayerEntry {
+    op: Op,
+    args: Vec<Expr>,
+    /// The type written in the source: `Linear`, `HardSigmoid`, `MyFancyLayer`.
+    ty: String,
+}
+
 /// Outcome of a [`NetTranslator`] run.
 #[derive(Debug, Clone)]
 pub struct NetTranslation {
@@ -329,20 +344,37 @@ pub struct NetTranslation {
     pub expr: Expr,
     /// Layer names that did not resolve to a known Agentic Binary Language opcode.
     pub unknown_layers: Vec<String>,
+    /// The surface layer *type* names the lowered expression actually applies,
+    /// in application order — with repeats, so a layer applied twice appears
+    /// twice and a declared layer the forward pass never reaches appears not
+    /// at all.
+    ///
+    /// Recorded by the lowering itself rather than re-derived, because the
+    /// choice between the forward walk and the declaration-order fallback is a
+    /// heuristic (`count_app_nodes`), and a second copy of that heuristic would
+    /// be a second thing to keep true. A caller asking "which layers are in the
+    /// function this net computes?" gets the lowering's own answer.
+    ///
+    /// A `wrap Op { … }` contributes its wrapping op twice — once for the pre
+    /// stage and once for the post — matching the sandwich it lowers to.
+    pub applied_layer_types: Vec<String>,
 }
 
 impl NetTranslator {
     /// Translate a `net` definition.
     ///
     /// Strategy:
-    /// 1. Build a `layer_name → (Op, args)` table from `net.layers`.
+    /// 1. Build a `layer_name → (Op, args, type)` table from `net.layers`.
     /// 2. If `net.forward` has meaningful content, walk it with
     ///    [`ForwardWalker`] to produce a data-flow-respecting expression.
     /// 3. Otherwise (empty forward, or forward is just a single layer name),
     ///    fall back to declaration-order sequential composition.
+    ///
+    /// Whichever path is taken records the layer types it applied into
+    /// [`NetTranslation::applied_layer_types`].
     pub fn translate(net: &ast::NetDef) -> NetTranslation {
         let mut unknown = Vec::new();
-        let mut layer_table: HashMap<String, (Op, Vec<Expr>)> = HashMap::new();
+        let mut layer_table: HashMap<String, LayerEntry> = HashMap::new();
 
         // Build the layer name → opcode + literal args table.
         for layer in &net.layers {
@@ -350,11 +382,21 @@ impl NetTranslator {
             match layer_name_to_op(layer_type_name) {
                 Some(op) => {
                     let args = layer.args.iter().filter_map(translate_literal).collect();
-                    layer_table.insert(layer.name.clone(), (op, args));
+                    layer_table.insert(
+                        layer.name.clone(),
+                        LayerEntry { op, args, ty: layer_type_name.to_string() },
+                    );
                 }
                 None => {
                     unknown.push(layer_type_name.to_string());
-                    layer_table.insert(layer.name.clone(), (Op::IDENTITY, Vec::new()));
+                    layer_table.insert(
+                        layer.name.clone(),
+                        LayerEntry {
+                            op: Op::IDENTITY,
+                            args: Vec::new(),
+                            ty: layer_type_name.to_string(),
+                        },
+                    );
                 }
             }
         }
@@ -369,33 +411,43 @@ impl NetTranslator {
         // would otherwise inflate node_count).
         let walker = ForwardWalker::new(&layer_table);
         let forward_expr = walker.walk_block(&net.forward);
+        // The walker records what it applied as it goes; the fallback path
+        // records into a fresh list. Only the branch actually taken is kept.
+        let walked_types = walker.applied.into_inner();
+        let mut applied_layer_types = Vec::new();
         let expr = match forward_expr {
-            None => Self::lower_body(net, &layer_table),
+            None => Self::lower_body(net, &layer_table, &mut applied_layer_types),
             Some(expr) if count_app_nodes(&expr) < net.layers.len() => {
-                Self::lower_body(net, &layer_table)
+                Self::lower_body(net, &layer_table, &mut applied_layer_types)
             }
-            Some(expr) => expr,
+            Some(expr) => {
+                applied_layer_types = walked_types;
+                expr
+            }
         };
 
         NetTranslation {
             expr,
             unknown_layers: unknown,
+            applied_layer_types,
         }
     }
 
     /// Sequentially compose every declared layer in declaration order.
     fn declaration_order(
         layers: &[ast::LayerDef],
-        table: &HashMap<String, (Op, Vec<Expr>)>,
+        table: &HashMap<String, LayerEntry>,
+        applied: &mut Vec<String>,
     ) -> Expr {
         let stages: Vec<Expr> = layers
             .iter()
             .filter_map(|l| table.get(&l.name))
-            .map(|(op, args)| {
-                if args.is_empty() {
-                    Expr::op1(*op)
+            .map(|e| {
+                applied.push(e.ty.clone());
+                if e.args.is_empty() {
+                    Expr::op1(e.op)
                 } else {
-                    Expr::op(*op, args.clone())
+                    Expr::op(e.op, e.args.clone())
                 }
             })
             .collect();
@@ -414,10 +466,14 @@ impl NetTranslator {
     /// `composition` tree if the `residual`/`branch`/`wrap` operators built one,
     /// else fall back to plain declaration order (unchanged for every existing
     /// net).
-    fn lower_body(net: &ast::NetDef, table: &HashMap<String, (Op, Vec<Expr>)>) -> Expr {
+    fn lower_body(
+        net: &ast::NetDef,
+        table: &HashMap<String, LayerEntry>,
+        applied: &mut Vec<String>,
+    ) -> Expr {
         match &net.composition {
-            Some(items) => compose_seq(items, table),
-            None => Self::declaration_order(&net.layers, table),
+            Some(items) => compose_seq(items, table, applied),
+            None => Self::declaration_order(&net.layers, table, applied),
         }
     }
 }
@@ -433,8 +489,15 @@ impl NetTranslator {
 // flat one.
 
 /// Lower a sequence of [`ast::Compose`] items, composed left-to-right with `>>`.
-fn compose_seq(items: &[ast::Compose], table: &HashMap<String, (Op, Vec<Expr>)>) -> Expr {
-    let stages: Vec<Expr> = items.iter().map(|c| compose_one(c, table)).collect();
+fn compose_seq(
+    items: &[ast::Compose],
+    table: &HashMap<String, LayerEntry>,
+    applied: &mut Vec<String>,
+) -> Expr {
+    let stages: Vec<Expr> = items
+        .iter()
+        .map(|c| compose_one(c, table, applied))
+        .collect();
     match stages.len() {
         0 => Expr::id(),
         1 => stages.into_iter().next().unwrap(),
@@ -443,30 +506,51 @@ fn compose_seq(items: &[ast::Compose], table: &HashMap<String, (Op, Vec<Expr>)>)
 }
 
 /// Lower one [`ast::Compose`] node to its Agentic Binary Language expression.
-fn compose_one(c: &ast::Compose, table: &HashMap<String, (Op, Vec<Expr>)>) -> Expr {
+fn compose_one(
+    c: &ast::Compose,
+    table: &HashMap<String, LayerEntry>,
+    applied: &mut Vec<String>,
+) -> Expr {
     match c {
         ast::Compose::Layer(name) => match table.get(name) {
-            Some((op, args)) if args.is_empty() => Expr::op1(*op),
-            Some((op, args)) => Expr::op(*op, args.clone()),
+            Some(e) => {
+                applied.push(e.ty.clone());
+                if e.args.is_empty() {
+                    Expr::op1(e.op)
+                } else {
+                    Expr::op(e.op, e.args.clone())
+                }
+            }
+            // A leaf naming no declared layer applies nothing, and records
+            // nothing — the identity it lowers to has no layer behind it.
             None => Expr::id(),
         },
         // x + f(x)
-        ast::Compose::Residual(body) => compose_seq(body, table).residual(),
+        ast::Compose::Residual(body) => compose_seq(body, table, applied).residual(),
         // Op >> body >> Op  (pre + post sandwich, e.g. a norm)
         ast::Compose::Wrap(op_name, body) => {
-            let inner = compose_seq(body, table);
+            let inner = compose_seq(body, table, applied);
             match layer_name_to_op(op_name) {
-                Some(op) => Expr::op1(op) >> inner >> Expr::op1(op),
+                Some(op) => {
+                    // Two stages lower, so two are recorded.
+                    applied.push(op_name.clone());
+                    applied.push(op_name.clone());
+                    Expr::op1(op) >> inner >> Expr::op1(op)
+                }
                 None => inner, // unknown wrap op → no-op sandwich
             }
         }
         // parallel paths → left-folded PAR; the tuple feeds the next stage
         ast::Compose::Branch(paths) => {
-            let mut it = paths.iter().map(|p| compose_seq(p, table));
-            match it.next() {
-                None => Expr::id(),
-                Some(first) => it.fold(first, |acc, next| acc.par(next)),
+            let mut acc: Option<Expr> = None;
+            for p in paths {
+                let e = compose_seq(p, table, applied);
+                acc = Some(match acc {
+                    None => e,
+                    Some(a) => a.par(e),
+                });
             }
+            acc.unwrap_or_else(Expr::id)
         }
     }
 }
@@ -658,12 +742,20 @@ fn translate_literal(expr: &ast::Expr) -> Option<Expr> {
 /// Anything else lowers to an inert `Op::IDENTITY` (returned as `None` at
 /// block scope so the caller can fall back to declaration order).
 struct ForwardWalker<'a> {
-    layers: &'a HashMap<String, (Op, Vec<Expr>)>,
+    layers: &'a HashMap<String, LayerEntry>,
+    /// Surface layer types applied, in the order [`Self::layer_app`] resolved
+    /// them. Interior mutability because the walk is `&self` throughout; the
+    /// alternative is threading an `&mut` through six recursive arms.
+    ///
+    /// The walk runs even when its result is discarded for the
+    /// declaration-order fallback, so this list is only meaningful to a caller
+    /// that took the walk's expression.
+    applied: std::cell::RefCell<Vec<String>>,
 }
 
 impl<'a> ForwardWalker<'a> {
-    fn new(layers: &'a HashMap<String, (Op, Vec<Expr>)>) -> Self {
-        Self { layers }
+    fn new(layers: &'a HashMap<String, LayerEntry>) -> Self {
+        Self { layers, applied: std::cell::RefCell::new(Vec::new()) }
     }
 
     /// Walk a `forward { ... }` block. Returns `None` if the block is empty
@@ -781,11 +873,12 @@ impl<'a> ForwardWalker<'a> {
 
     /// If `name` is a declared layer, return its Agentic Binary Language App with carried args.
     fn layer_app(&self, name: &str) -> Option<Expr> {
-        let (op, args) = self.layers.get(name)?;
-        if args.is_empty() {
-            Some(Expr::op1(*op))
+        let e = self.layers.get(name)?;
+        self.applied.borrow_mut().push(e.ty.clone());
+        if e.args.is_empty() {
+            Some(Expr::op1(e.op))
         } else {
-            Some(Expr::op(*op, args.clone()))
+            Some(Expr::op(e.op, e.args.clone()))
         }
     }
 }

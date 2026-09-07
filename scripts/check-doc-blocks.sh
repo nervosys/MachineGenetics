@@ -39,11 +39,13 @@ set -o pipefail
 
 cd "$(dirname "$0")/.."
 
-BIN=prototype/target/release/mage-parse
-if [ ! -x "$BIN" ]; then
-    echo "building the compiler first..."
-    cargo build --release --manifest-path prototype/Cargo.toml --bin mage-parse
-fi
+# The compiler this checker runs, resolved through cargo rather than a
+# hardcoded `prototype/target/release/mage-parse`. Six checkers each carried
+# their own copy of that path, and on a machine with a shared cargo target
+# directory every one of them ran whatever stale binary happened to be sitting
+# there. See scripts/find-mage-parse.sh.
+. scripts/find-mage-parse.sh
+BIN="$(build_and_find_mage_parse)"
 
 BASELINE=scripts/doc-blocks-baseline.txt
 

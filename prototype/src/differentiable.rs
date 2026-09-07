@@ -117,6 +117,10 @@ pub const NON_FUNCTIONAL: &[Effect] = &[
 pub struct DiffInfer {
     /// Inferred status per function.
     pub inferred: HashMap<String, Diff>,
+    /// Inferred status per `net`, in declaration order.
+    pub nets: Vec<NetDiff>,
+    /// Inferred status per `train`, in declaration order.
+    pub trains: Vec<TrainDiff>,
     /// Call graph: caller → callees, the same shape `effects.rs` builds.
     call_graph: HashMap<String, Vec<String>>,
     /// Cycle detection for mutually recursive functions.
@@ -135,10 +139,30 @@ impl DiffInfer {
     pub fn new() -> Self {
         DiffInfer {
             inferred: HashMap::new(),
+            nets: Vec::new(),
+            trains: Vec::new(),
             call_graph: HashMap::new(),
             in_progress: Vec::new(),
             local: HashMap::new(),
         }
+    }
+
+    /// The verdict for a `net` by name, or `Unknown` if this pass never saw it.
+    pub fn net_of(&self, name: &str) -> Diff {
+        self.nets
+            .iter()
+            .find(|n| n.name == name)
+            .map(|n| n.verdict.clone())
+            .unwrap_or_else(|| Diff::Unknown(format!("no analysis for net `{name}`")))
+    }
+
+    /// The verdict for a `train` block by name, or `Unknown` if unseen.
+    pub fn train_of(&self, name: &str) -> Diff {
+        self.trains
+            .iter()
+            .find(|t| t.name == name)
+            .map(|t| t.verdict.clone())
+            .unwrap_or_else(|| Diff::Unknown(format!("no analysis for train `{name}`")))
     }
 
     /// The status of a function, or `Unknown` if this pass never saw it.
@@ -265,6 +289,21 @@ pub fn infer(module: &ast::Module, effects: &EffectInfer) -> DiffInfer {
         let d = resolve(&mut engine, &name);
         engine.inferred.insert(name, d);
     }
+
+    // Pass 3: the `net` DSL, where the numerical code in this language lives.
+    // Nets first, because a `train` block's verdict is built on its net's.
+    for item in &module.items {
+        if let ast::ItemKind::Net(net) = &item.kind {
+            let d = net_diff(net);
+            engine.nets.push(d);
+        }
+    }
+    for item in &module.items {
+        if let ast::ItemKind::Train(td) = &item.kind {
+            let d = train_diff(td, &engine.nets);
+            engine.trains.push(d);
+        }
+    }
     engine
 }
 
@@ -388,7 +427,8 @@ fn expr_status(e: &ast::Expr) -> Diff {
         // it selects. So a comparison in a condition is expected and does not
         // disqualify the `if`, unlike a comparison whose value is returned.
         ast::Expr::If {
-            cond,
+            // Deliberately not consulted — see the comment below the join.
+            cond: _,
             then_block,
             else_block,
         } => {
@@ -398,13 +438,15 @@ fn expr_status(e: &ast::Expr) -> Diff {
                     .map(block_status)
                     .unwrap_or(Diff::Smooth),
             );
-            let boundary = if matches!(cond.as_ref(), ast::Expr::Binary { op, .. } if is_comparison(op))
-            {
-                Diff::AlmostEverywhere
-            } else {
-                Diff::AlmostEverywhere
-            };
-            branches.join(boundary)
+            // The boundary is `AlmostEverywhere` whatever the condition is.
+            // This was written as an `if` on whether the condition is a
+            // comparison, with both arms returning the same value — clippy's
+            // `if_same_then_else`, and a reader would reasonably assume the
+            // two cases differ and go looking for how. They do not, and the
+            // reason is the interesting part: a condition on a `bool` variable
+            // still has a boundary, it was just drawn where the `bool` was
+            // made, and that is already accounted for there.
+            branches.join(Diff::AlmostEverywhere)
         }
 
         ast::Expr::Block { block } => block_status(block),
@@ -472,6 +514,266 @@ fn builtin_status(name: &str) -> Diff {
     }
 }
 
+// ── The `net` DSL ────────────────────────────────────────────────────
+//
+// The pass above answers a question about `f` functions, and measured against
+// this repository it reported 0 of 155 differentiable — 125 of them for want of
+// a floating-point parameter. That is not the analysis being strict; it is the
+// corpus. MAGE's numerical surface is `net` / `layer` / `train`, and this half
+// of the pass is where the analysis has a subject.
+//
+// **A net is judged with respect to its parameters, not its inputs.** That is
+// the difference that matters and it is not a technicality: `train` optimises
+// weights, so the derivative anyone wants from a net is ∂loss/∂w. It is why
+// `Embedding` is `Smooth` here — its *input* is a discrete token id, with no
+// derivative at all, while its table is an ordinary dense parameter and the
+// gradient that reaches it is the one training uses.
+//
+// **The verdicts are keyed on the surface layer type, not the opcode it lowers
+// to.** `abl_bridge` maps `HardSigmoid` and `Sigmoid` onto one `Op::SIGMOID`
+// and says so — "close-enough lowering" — and only one of the two has a kink.
+// Reading the verdict off the opcode would report the kinked one as `Smooth`,
+// which is the overclaim this whole pass exists to prevent.
+
+/// Layer types that are smooth on their domain.
+///
+/// Attention is here because softmax and the matmuls around it are smooth; the
+/// causal mask is a constant, not a branch on a value. The recurrent and
+/// state-space cells are here because their gates are `tanh`/`sigmoid`. The
+/// PEFT adapters are low-rank affine maps.
+const SMOOTH_LAYERS: &[&str] = &[
+    // Affine, convolution, embedding
+    "Linear", "Dense", "FullyConnected", "MatMul", "Conv2D", "Conv",
+    "Embedding", "Embed", "SinusoidalPE", "PositionalEncoding", "PE",
+    "LearnedPE", "LearnedPositionalEmbedding", "PositionalEmbedding",
+    "RotaryEmbedding", "RoPE",
+    // Attention, in every variant the bridge recognises
+    "Attention", "MultiHeadAttention", "Attn", "FlashAttention",
+    "SlidingWindowAttention", "LongformerAttention", "LinearAttention",
+    "PerformerAttention", "GroupedQueryAttention", "GQA",
+    "MultiQueryAttention", "MQA", "CrossAttention", "Softmax",
+    // Smooth activations
+    "GELU", "Gelu", "SiLU", "Silu", "Swish", "Sigmoid", "Tanh", "Mish",
+    "Softplus", "SwiGLU", "GeGLU",
+    // Normalisations — all are rational functions of the batch statistics
+    "LayerNorm", "BatchNorm", "RMSNorm", "RmsNorm", "GroupNorm", "InstanceNorm",
+    // Averaging pools
+    "AvgPool", "AveragePool", "GlobalPool", "GlobalAvgPool", "GlobalMeanPool",
+    "GlobalSumPool",
+    // PEFT adapters: low-rank or full affine addends
+    "LoRA", "QLoRA", "DoRA", "IA3", "Adapter", "PrefixTuning", "PromptTuning",
+    // Recurrent and state-space cells
+    "RNNCell", "LSTMCell", "GRUCell", "RNN", "LSTM", "GRU",
+    "S4Layer", "S5Layer", "MambaBlock", "H3Layer",
+    // Graph layers: an affine map over aggregated neighbour features
+    "GCNLayer", "GATLayer", "GraphSAGELayer", "EdgeConv",
+    // One expert is a Linear; the router is not (see KINKED_LAYERS)
+    "Expert",
+    // Losses
+    "MSE", "MseLoss", "CrossEntropy", "BCE", "BceLoss", "NLL", "NllLoss",
+    "KLDiv", "KlDiv",
+];
+
+/// Layer types differentiable off a measure-zero set, and the reason each one
+/// is here. Four separate reasons live in this list, and they are worth keeping
+/// distinct even though the verdict is the same:
+///
+/// * **A kink.** `ReLU`, `LeakyReLU`, `ELU`, `SELU`, `HardSwish`,
+///   `HardSigmoid`, `MaxPool`, `GlobalMaxPool`, `Huber` — one non-smooth point,
+///   measure zero. `AdaptivePool` is here because the name does not say whether
+///   it averages or maxes, and `AlmostEverywhere` is the correct join over both
+///   readings rather than a hedge.
+///
+/// * **A selection boundary.** `SparseMoE` and the routers pick top-k experts.
+///   The choice is piecewise constant, so the composed function is smooth
+///   inside each cell and the cell boundaries are measure zero.
+///
+/// * **A rounding step.** `Int8Linear`, `Int4Linear`, `BitNetLinear` quantise.
+///   Their derivative is zero almost everywhere — *defined, and useless*, the
+///   same honest-awkward row as `floor` in `DIFFERENTIABILITY.md`. The
+///   straight-through estimator is a change of program, not a change of
+///   verdict.
+///
+/// * **A sampled mask.** `Dropout` and friends. This is the one decision here
+///   that deserves an argument rather than a table entry, so it has one below.
+const KINKED_LAYERS: &[&str] = &[
+    "ReLU", "Relu", "LeakyReLU", "ELU", "SELU", "HardSwish", "HardSigmoid",
+    "MaxPool", "GlobalMaxPool", "AdaptivePool",
+    "Huber", "SmoothL1",
+    "SparseMoE", "TopKRouter", "SwitchRouter", "ExpertChoiceRouter",
+    "Int8Linear", "Int4Linear", "BitNetLinear",
+    // Dropout: the layer computes `mask ⊙ x / (1-p)`, which is *linear* given
+    // the mask, and the mask is noise drawn independently of the input. So the
+    // conditional derivative — the one every AD implementation actually
+    // computes — exists and is the standard object.
+    //
+    // It is reported one grade below `Smooth` rather than as `Smooth` because
+    // the function that includes the sampling step is not a function of its
+    // inputs alone, which is the same rule `NON_FUNCTIONAL` applies to `Rng`
+    // for ordinary functions. Ranking it `AlmostEverywhere` says "there is a
+    // derivative, and it is not unconditional". Ranking it `No` would make
+    // nearly every real network non-differentiable and would be wrong about
+    // what training does; ranking it `Smooth` would hide the conditioning.
+    "Dropout", "Drop", "Dropout2D", "DropPath", "StochasticDepth",
+];
+
+/// The differentiability of one surface layer type.
+///
+/// Anything absent from both tables is `Unknown` — never `Smooth`. A layer type
+/// the bridge does not recognise lowers to `Op::IDENTITY`, and an identity is
+/// perfectly smooth, so reading the verdict off the lowered form would report a
+/// layer nobody has ever analysed as the best case in the lattice. That is
+/// precisely the silently-wrong-answer shape this repository keeps finding.
+pub fn layer_type_diff(name: &str) -> Diff {
+    if SMOOTH_LAYERS.contains(&name) {
+        Diff::Smooth
+    } else if KINKED_LAYERS.contains(&name) {
+        Diff::AlmostEverywhere
+    } else {
+        Diff::Unknown(format!(
+            "layer type `{name}` is not in the differentiability tables"
+        ))
+    }
+}
+
+/// The verdict for one `net`, with the working shown.
+#[derive(Debug, Clone)]
+pub struct NetDiff {
+    pub name: String,
+    /// Join over the applied layers and the composition structure.
+    pub verdict: Diff,
+    /// Surface layer types the lowered forward pass applies, each with its
+    /// verdict and how many times it is applied — in first-application order.
+    pub layers: Vec<(String, usize, Diff)>,
+    /// How many layers the net declares.
+    pub declared: usize,
+    /// How many layer applications the lowered forward pass contains. Larger
+    /// than `declared` when a layer is applied more than once (a `wrap`
+    /// sandwich, a reused stage); smaller when a declared layer is never
+    /// reached, in which case it contributes no gradient path and is not part
+    /// of the verdict.
+    pub applied: usize,
+}
+
+/// The verdict for one `train` block.
+#[derive(Debug, Clone)]
+pub struct TrainDiff {
+    pub name: String,
+    /// Join over the net, the loss and the block body.
+    pub verdict: Diff,
+    /// The net this block trains.
+    pub net: String,
+    /// The net's own verdict, before the loss is folded in.
+    pub net_verdict: Diff,
+    /// The loss function's verdict, and the name it was written as.
+    pub loss: Option<(String, Diff)>,
+}
+
+/// Infer differentiability for one `net`.
+///
+/// The set of layers judged is **the lowering's own answer**, taken from
+/// `abl_bridge::NetTranslation::applied_layer_types`, not re-derived here.
+/// Which layers a net applies is decided by a heuristic — a `forward` block
+/// that names fewer stages than the net declares means "run them all in
+/// declaration order" — and a second copy of that heuristic in this file would
+/// be a second thing that has to stay true. It would also mean this pass could
+/// report on a program the compiler does not build, which is the failure this
+/// repository has spent five sessions removing.
+pub fn net_diff(net: &ast::NetDef) -> NetDiff {
+    let t = crate::abl_bridge::NetTranslator::translate(net);
+
+    // Count applications per type, keeping first-application order.
+    let mut order: Vec<String> = Vec::new();
+    let mut counts: HashMap<String, usize> = HashMap::new();
+    for ty in &t.applied_layer_types {
+        if !counts.contains_key(ty) {
+            order.push(ty.clone());
+        }
+        *counts.entry(ty.clone()).or_insert(0) += 1;
+    }
+
+    let layers: Vec<(String, usize, Diff)> = order
+        .iter()
+        .map(|ty| (ty.clone(), counts[ty], layer_type_diff(ty)))
+        .collect();
+
+    // A net whose forward pass applies nothing lowers to the identity, and the
+    // identity is smooth — which would be a true sentence and a useless
+    // verdict. There is no computation here to have a derivative.
+    let verdict = if layers.is_empty() {
+        Diff::Unknown("the lowered forward pass applies no layer".into())
+    } else {
+        layers
+            .iter()
+            .fold(Diff::Smooth, |acc, (_, _, d)| acc.join(d.clone()))
+    };
+
+    NetDiff {
+        name: net.name.clone(),
+        verdict,
+        layers,
+        declared: net.layers.len(),
+        applied: t.applied_layer_types.len(),
+    }
+}
+
+/// The name a loss was written as, when it is one the tables can judge.
+///
+/// `loss: MSE` parses as an identifier and `loss: Huber(1.0)` as a call; both
+/// name a loss. Anything else is left to `expr_status`.
+fn loss_name(e: &ast::Expr) -> Option<&str> {
+    match e {
+        ast::Expr::Ident { name } => Some(name.as_str()),
+        ast::Expr::Call { func, .. } => match func.as_ref() {
+            ast::Expr::Ident { name } => Some(name.as_str()),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+/// Infer differentiability for one `train` block.
+///
+/// The verdict is the join of the net, the loss and the block body. The
+/// optimiser is deliberately absent: it *consumes* gradients rather than
+/// contributing to the function being differentiated, so `SGD` versus `Adam`
+/// cannot change whether a derivative exists.
+///
+/// A `train` naming a net this module does not define is `Unknown`, not
+/// `NotDifferentiable` — nothing was analysed, so there is no verdict to give.
+pub fn train_diff(td: &ast::TrainDef, nets: &[NetDiff]) -> TrainDiff {
+    let net_verdict = nets
+        .iter()
+        .find(|n| n.name == td.net)
+        .map(|n| n.verdict.clone())
+        .unwrap_or_else(|| {
+            Diff::Unknown(format!("trains net `{}`, which is not in this module", td.net))
+        });
+
+    let loss = td.loss.as_ref().map(|e| match loss_name(e) {
+        Some(n) => (n.to_string(), layer_type_diff(n)),
+        None => ("<expression>".to_string(), expr_status(e)),
+    });
+
+    let mut verdict = net_verdict.clone();
+    if let Some((_, d)) = &loss {
+        verdict = verdict.join(d.clone());
+    } else {
+        // No loss is not a gap in the analysis — it is a training block with
+        // nothing to take a gradient of.
+        verdict = verdict.join(Diff::No("no loss to differentiate".into()));
+    }
+    verdict = verdict.join(block_status(&td.body));
+
+    TrainDiff {
+        name: td.name.clone(),
+        verdict,
+        net: td.net.clone(),
+        net_verdict,
+        loss,
+    }
+}
+
 fn variant_name(e: &ast::Expr) -> &'static str {
     match e {
         ast::Expr::MethodCall { .. } => "a method call",
@@ -486,6 +788,209 @@ fn variant_name(e: &ast::Expr) -> &'static str {
         ast::Expr::MapLit { .. } => "a map literal",
         _ => "this expression",
     }
+}
+
+// ── Reporting ────────────────────────────────────────────────────────
+//
+// In the library rather than in `main.rs`, for the reason the binary's own
+// module doc gives: the reference surface should be `pub` API, and a format
+// that only exists inside a CLI arm cannot be tested. Both renderings are
+// deterministic — fixed order, no map iteration — so a diff of two runs is a
+// diff of two programs.
+
+/// Counts by verdict, in lattice order: smooth, a.e., unknown, not.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Tally {
+    pub smooth: usize,
+    pub almost_everywhere: usize,
+    pub unknown: usize,
+    pub not: usize,
+}
+
+impl Tally {
+    pub fn add(&mut self, d: &Diff) {
+        match d {
+            Diff::Smooth => self.smooth += 1,
+            Diff::AlmostEverywhere => self.almost_everywhere += 1,
+            Diff::Unknown(_) => self.unknown += 1,
+            Diff::No(_) => self.not += 1,
+        }
+    }
+
+    pub fn total(&self) -> usize {
+        self.smooth + self.almost_everywhere + self.unknown + self.not
+    }
+
+    /// Subjects with a derivative, a.e. or better.
+    pub fn differentiable(&self) -> usize {
+        self.smooth + self.almost_everywhere
+    }
+}
+
+/// Tallies for each of the three subjects the pass analyses, kept apart.
+///
+/// Kept apart because merging them is how "0 of 155 differentiable" would get
+/// quoted about a repository whose nets are all differentiable: functions and
+/// nets are different populations asking different questions, and one number
+/// over both answers neither.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Tallies {
+    pub functions: Tally,
+    pub nets: Tally,
+    pub trains: Tally,
+}
+
+pub fn tally(engine: &DiffInfer) -> Tallies {
+    let mut t = Tallies::default();
+    for (_, d) in engine.all() {
+        t.functions.add(&d);
+    }
+    for n in &engine.nets {
+        t.nets.add(&n.verdict);
+    }
+    for tr in &engine.trains {
+        t.trains.add(&tr.verdict);
+    }
+    t
+}
+
+fn verdict_cell(d: &Diff) -> String {
+    match d.reason() {
+        Some(r) => format!("{} — {r}", d.label()),
+        None => d.label().to_string(),
+    }
+}
+
+/// A human-readable, deterministic report over one module.
+pub fn report(engine: &DiffInfer, path: &str) -> String {
+    let mut s = String::new();
+    s.push_str(&format!("// differentiability — {path}\n"));
+
+    for n in &engine.nets {
+        s.push_str(&format!(
+            "net   {:<28} {}\n",
+            n.name,
+            verdict_cell(&n.verdict)
+        ));
+        for (ty, count, d) in &n.layers {
+            s.push_str(&format!(
+                "        {:<20} ×{:<3} {}\n",
+                ty,
+                count,
+                verdict_cell(d)
+            ));
+        }
+        if n.applied != n.declared {
+            s.push_str(&format!(
+                "        {} of {} declared layers reached by the forward pass\n",
+                n.applied, n.declared
+            ));
+        }
+    }
+
+    for t in &engine.trains {
+        s.push_str(&format!(
+            "train {:<28} {}\n",
+            t.name,
+            verdict_cell(&t.verdict)
+        ));
+        s.push_str(&format!(
+            "        net {:<16}     {}\n",
+            t.net,
+            verdict_cell(&t.net_verdict)
+        ));
+        match &t.loss {
+            Some((name, d)) => s.push_str(&format!(
+                "        loss {:<15}     {}\n",
+                name,
+                verdict_cell(d)
+            )),
+            None => s.push_str("        loss —               none declared\n"),
+        }
+    }
+
+    for (name, d) in engine.all() {
+        s.push_str(&format!("f     {:<28} {}\n", name, verdict_cell(&d)));
+    }
+
+    let t = tally(engine);
+    for (label, c) in [
+        ("nets", t.nets),
+        ("trains", t.trains),
+        ("functions", t.functions),
+    ] {
+        if c.total() > 0 {
+            s.push_str(&format!(
+                "{label}: {} of {} differentiable — {} smooth, {} almost everywhere, {} unknown, {} not\n",
+                c.differentiable(),
+                c.total(),
+                c.smooth,
+                c.almost_everywhere,
+                c.unknown,
+                c.not
+            ));
+        }
+    }
+    if t.functions.total() + t.nets.total() + t.trains.total() == 0 {
+        s.push_str("nothing to analyse: no function, net or train in this module\n");
+    }
+    s
+}
+
+fn diff_json(d: &Diff) -> serde_json::Value {
+    match d.reason() {
+        Some(r) => serde_json::json!({ "status": d.label(), "reason": r }),
+        None => serde_json::json!({ "status": d.label() }),
+    }
+}
+
+fn tally_json(t: &Tally) -> serde_json::Value {
+    serde_json::json!({
+        "smooth": t.smooth,
+        "almost_everywhere": t.almost_everywhere,
+        "unknown": t.unknown,
+        "not_differentiable": t.not,
+        "total": t.total(),
+        "differentiable": t.differentiable(),
+    })
+}
+
+/// The same report as machine-readable JSON, for an agent that should parse
+/// structure rather than scrape prose.
+pub fn report_json(engine: &DiffInfer, path: &str) -> serde_json::Value {
+    let t = tally(engine);
+    serde_json::json!({
+        "path": path,
+        "nets": engine.nets.iter().map(|n| serde_json::json!({
+            "name": n.name,
+            "verdict": diff_json(&n.verdict),
+            "declared_layers": n.declared,
+            "applied_layers": n.applied,
+            "layers": n.layers.iter().map(|(ty, c, d)| serde_json::json!({
+                "type": ty,
+                "applications": c,
+                "verdict": diff_json(d),
+            })).collect::<Vec<_>>(),
+        })).collect::<Vec<_>>(),
+        "trains": engine.trains.iter().map(|tr| serde_json::json!({
+            "name": tr.name,
+            "verdict": diff_json(&tr.verdict),
+            "net": tr.net,
+            "net_verdict": diff_json(&tr.net_verdict),
+            "loss": tr.loss.as_ref().map(|(n, d)| serde_json::json!({
+                "name": n, "verdict": diff_json(d),
+            })),
+        })).collect::<Vec<_>>(),
+        "functions": engine.all().iter().map(|(name, d)| serde_json::json!({
+            "name": name,
+            "verdict": diff_json(d),
+        })).collect::<Vec<_>>(),
+        "summary": {
+            "nets": tally_json(&t.nets),
+            "trains": tally_json(&t.trains),
+            "functions": tally_json(&t.functions),
+        },
+    })
 }
 
 // ── Call collection ──────────────────────────────────────────────────
@@ -657,6 +1162,205 @@ mod tests {
         assert_eq!(no.clone().join(unk.clone()), no);
         assert_eq!(Diff::Smooth.join(unk.clone()), unk);
         assert_eq!(Diff::AlmostEverywhere.join(Diff::Smooth), Diff::AlmostEverywhere);
+    }
+
+    // ── The `net` DSL ────────────────────────────────────────────────
+
+    #[test]
+    fn a_linear_stack_is_smooth() {
+        let d = infer_src(
+            "net Affine {\n\
+                 layer fc1: Linear(3, 8);\n\
+                 layer fc2: Linear(8, 1);\n\
+                 forward { fc1 }\n\
+             }",
+        );
+        assert_eq!(d.net_of("Affine"), Diff::Smooth, "{:?}", d.net_of("Affine"));
+    }
+
+    /// One `ReLU` costs the whole net a grade, and only a grade.
+    #[test]
+    fn a_relu_in_the_stack_is_almost_everywhere() {
+        let d = infer_src(
+            "net Mlp {\n\
+                 layer fc1: Linear(3, 8);\n\
+                 layer act: ReLU;\n\
+                 layer fc2: Linear(8, 1);\n\
+                 forward { fc1 }\n\
+             }",
+        );
+        assert_eq!(d.net_of("Mlp"), Diff::AlmostEverywhere, "{:?}", d.net_of("Mlp"));
+    }
+
+    /// **The property this half of the pass exists for.** A layer type nothing
+    /// recognises lowers to `Op::IDENTITY`, and an identity is smooth — so a
+    /// verdict read off the lowered form would report a layer no one has ever
+    /// analysed as the best state in the lattice.
+    #[test]
+    fn an_unrecognised_layer_is_unknown_not_smooth() {
+        let d = infer_src(
+            "net Custom {\n\
+                 layer fc: Linear(3, 8);\n\
+                 layer mystery: MyFancyLayer;\n\
+                 forward { fc }\n\
+             }",
+        );
+        let v = d.net_of("Custom");
+        assert!(matches!(v, Diff::Unknown(_)), "{v:?}");
+        assert!(v.reason().unwrap().contains("MyFancyLayer"), "{v:?}");
+        assert!(!v.is_differentiable(), "Unknown must not count as differentiable");
+    }
+
+    /// The verdict is keyed on the surface type, not the opcode. `HardSigmoid`
+    /// and `Sigmoid` are one `Op::SIGMOID` in the bridge — "close-enough
+    /// lowering", it says so — and only one of them has a kink. Reading the
+    /// verdict off the opcode reports the kinked one as `Smooth`.
+    #[test]
+    fn a_lossy_lowering_does_not_upgrade_the_verdict() {
+        let smooth = infer_src("net S { layer a: Sigmoid; forward { a } }");
+        assert_eq!(smooth.net_of("S"), Diff::Smooth);
+
+        let kinked = infer_src("net H { layer a: HardSigmoid; forward { a } }");
+        assert_eq!(
+            kinked.net_of("H"),
+            Diff::AlmostEverywhere,
+            "HardSigmoid lowers to Op::SIGMOID and must not inherit its verdict"
+        );
+    }
+
+    /// A quantised linear rounds, and rounding's derivative is zero almost
+    /// everywhere — *defined, and useless*, the same honest-awkward row as
+    /// `floor`. The straight-through estimator is a different program.
+    #[test]
+    fn a_quantised_layer_is_not_smooth() {
+        let d = infer_src("net Q { layer fc: Int8Linear(4, 4); forward { fc } }");
+        assert_eq!(d.net_of("Q"), Diff::AlmostEverywhere);
+    }
+
+    /// Dropout's derivative exists *given the sampled mask*, which is the one
+    /// every AD implementation computes. It is a grade below `Smooth` because
+    /// the function including the sampling is not a function of its inputs
+    /// alone — the same rule `NON_FUNCTIONAL` applies to `Rng`.
+    #[test]
+    fn dropout_is_conditional_not_smooth() {
+        let d = infer_src(
+            "net D { layer fc: Linear(4, 4); layer drop: Dropout(0.1); forward { fc } }",
+        );
+        assert_eq!(d.net_of("D"), Diff::AlmostEverywhere);
+    }
+
+    /// A net with nothing in it lowers to the identity, and the identity is
+    /// smooth. Reporting that would be a true sentence and a useless verdict:
+    /// there is no computation here to have a derivative.
+    #[test]
+    fn a_net_that_applies_nothing_is_unknown() {
+        let d = infer_src("net Empty { forward { } }");
+        assert!(matches!(d.net_of("Empty"), Diff::Unknown(_)));
+    }
+
+    /// The set of layers judged is the lowering's own answer. `forward { fc1 }`
+    /// names one layer and means "run all three in declaration order" — so the
+    /// `ReLU` the forward block never mentions still costs the verdict.
+    #[test]
+    fn the_declaration_order_fallback_is_what_gets_judged() {
+        let d = infer_src(
+            "net Fallback {\n\
+                 layer fc1: Linear(3, 8);\n\
+                 layer act: ReLU;\n\
+                 layer fc2: Linear(8, 1);\n\
+                 forward { fc1 }\n\
+             }",
+        );
+        let n = d.nets.iter().find(|n| n.name == "Fallback").unwrap();
+        assert_eq!(n.applied, 3, "all three layers lower, not just the named one");
+        assert_eq!(n.declared, 3);
+        assert_eq!(n.verdict, Diff::AlmostEverywhere);
+    }
+
+    // ── `train` ──────────────────────────────────────────────────────
+
+    #[test]
+    fn a_train_block_joins_its_net_and_its_loss() {
+        let d = infer_src(
+            "net Affine { layer fc: Linear(3, 1); forward { fc } }\n\
+             train Fit { net: Affine; optimizer: SGD(0.05); loss: MSE; epochs: 10; }",
+        );
+        assert_eq!(d.train_of("Fit"), Diff::Smooth, "{:?}", d.train_of("Fit"));
+
+        let d = infer_src(
+            "net Affine { layer fc: Linear(3, 1); forward { fc } }\n\
+             train Fit { net: Affine; optimizer: SGD(0.05); loss: Huber; epochs: 10; }",
+        );
+        assert_eq!(d.train_of("Fit"), Diff::AlmostEverywhere);
+    }
+
+    /// The optimiser consumes gradients rather than contributing to the
+    /// function being differentiated, so it cannot change the verdict.
+    #[test]
+    fn the_optimiser_does_not_change_the_verdict() {
+        let sgd = infer_src(
+            "net A { layer fc: Linear(3, 1); forward { fc } }\n\
+             train T { net: A; optimizer: SGD(0.05); loss: MSE; epochs: 1; }",
+        );
+        let adam = infer_src(
+            "net A { layer fc: Linear(3, 1); forward { fc } }\n\
+             train T { net: A; optimizer: Adam(0.001); loss: MSE; epochs: 1; }",
+        );
+        assert_eq!(sgd.train_of("T"), adam.train_of("T"));
+    }
+
+    /// A `train` naming a net this module does not define analysed nothing, so
+    /// it has no verdict — not a negative one.
+    #[test]
+    fn a_train_naming_a_missing_net_is_unknown() {
+        let d = infer_src("train Fit { net: Nowhere; optimizer: SGD(0.1); loss: MSE; epochs: 1; }");
+        let v = d.train_of("Fit");
+        assert!(matches!(v, Diff::Unknown(_)), "{v:?}");
+        assert!(v.reason().unwrap().contains("Nowhere"));
+    }
+
+    // ── Reporting ────────────────────────────────────────────────────
+
+    /// The summary lines are a **format contract**, not prose:
+    /// `scripts/measure-differentiability.sh` parses them to aggregate the
+    /// corpus figures quoted in `DIFFERENTIABILITY.md`. Changing the wording
+    /// silently would leave the script matching nothing and reporting zero —
+    /// a checker that stops reaching its subject, which is the shape this
+    /// repository keeps finding. Change the line and this test tells you to
+    /// change the script.
+    #[test]
+    fn the_summary_line_shape_is_a_contract() {
+        let d = infer_src(
+            "net A { layer fc: Linear(3, 1); layer r: ReLU; forward { fc } }\n\
+             train T { net: A; optimizer: SGD(0.1); loss: MSE; epochs: 1; }\n\
+             f id(x: f32) -> f32 { x }",
+        );
+        let r = report(&d, "t.mg");
+        assert!(
+            r.contains("nets: 1 of 1 differentiable — 0 smooth, 1 almost everywhere, 0 unknown, 0 not"),
+            "{r}"
+        );
+        assert!(
+            r.contains("trains: 1 of 1 differentiable — 0 smooth, 1 almost everywhere, 0 unknown, 0 not"),
+            "{r}"
+        );
+        assert!(
+            r.contains("functions: 1 of 1 differentiable — 1 smooth, 0 almost everywhere, 0 unknown, 0 not"),
+            "{r}"
+        );
+    }
+
+    #[test]
+    fn the_report_is_deterministic() {
+        let d = infer_src(
+            "net A { layer fc: Linear(3, 1); forward { fc } }\n\
+             f b(x: f32) -> f32 { x }\n\
+             f a(x: f32) -> f32 { x }",
+        );
+        assert_eq!(report(&d, "t.mg"), report(&d, "t.mg"));
+        let j = report_json(&d, "t.mg");
+        assert_eq!(j["summary"]["nets"]["smooth"], 1);
+        assert_eq!(j["nets"][0]["layers"][0]["type"], "Linear");
     }
 
     /// Mutual recursion must terminate rather than blow the stack.

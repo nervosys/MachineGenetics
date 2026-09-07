@@ -57,12 +57,16 @@ if [ "${1:-}" = "--print" ]; then
     shift
 fi
 
+# An explicit path still wins, so this can be pointed at any build.
+# Otherwise cargo is asked where the binary is: release first, then debug,
+# because checking the examples against a debug build is legitimate. The
+# scan this replaces started at `prototype/target/release`, which on a
+# machine with a shared cargo target directory is a leftover rather than a
+# build — see scripts/find-mage-parse.sh.
+. scripts/find-mage-parse.sh
 MP="${1:-}"
 if [ -z "$MP" ]; then
-    for c in prototype/target/release/mage-parse prototype/target/release/mage-parse.exe \
-             prototype/target/debug/mage-parse prototype/target/debug/mage-parse.exe; do
-        [ -x "$c" ] && MP="$c" && break
-    done
+    MP="$(find_mage_parse release 2>/dev/null || find_mage_parse debug 2>/dev/null || true)"
 fi
 if [ -z "$MP" ] || [ ! -x "$MP" ]; then
     echo "check-examples: no mage-parse binary; build it first" >&2

@@ -277,6 +277,41 @@ fn main() {
                 run_check(&source, path, !no_elision, syntax_legacy, token_report);
             }
         }
+        // Differentiability, over all three subjects the pass analyses:
+        // `f` functions, `net` definitions and `train` blocks. The pass existed
+        // for a phase with no way to run it, so the one figure quoted about it
+        // — "0 of 155 functions differentiable" — was reproducible only by
+        // writing a program. A claim with no command beside it is the exact
+        // shape this repository keeps having to remove.
+        Some("--differentiable") => {
+            let path = filtered.get(1).unwrap_or_else(|| {
+                eprintln!("Usage: mage-parse --differentiable <file.mg> [--json]");
+                std::process::exit(1);
+            });
+            let source = read_source(path);
+            let tokens = lexer::lex(&source);
+            let module = match parser::parse(&tokens) {
+                Ok(m) => m,
+                Err(e) => {
+                    eprintln!("{path}: parse failed: {e:?}");
+                    std::process::exit(1);
+                }
+            };
+            let eff = effects::infer_effects(&module);
+            let engine = differentiable::infer(&module, &eff);
+            if json_out {
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&differentiable::report_json(&engine, path))
+                        .unwrap_or_else(|e| {
+                            eprintln!("serialize: {e}");
+                            std::process::exit(1);
+                        })
+                );
+            } else {
+                print!("{}", differentiable::report(&engine, path));
+            }
+        }
         Some("--target=abl-bytes") => {
             let path = filtered.get(1).unwrap_or_else(|| {
                 eprintln!("Usage: mage-parse --target=abl-bytes <file.mg> [<out.abl>]");
@@ -3364,7 +3399,7 @@ mod cli_arg_tests {
                     || f.starts_with("--build=")
                     || f.starts_with("--describe")
                     || f.starts_with("--spine=")
-                    || matches!(f, "--check" | "--eval" | "--pipeline" | "--rap"
+                    || matches!(f, "--check" | "--eval" | "--pipeline" | "--rap" | "--differentiable"
                                 | "--fmt-compact" | "--fmt-expand" | "--emit-ontology" | "--emit-skb"
                                 | "--manifest" | "--rain" | "--version" | "--input") =>
                 {
