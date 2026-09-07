@@ -170,6 +170,12 @@ jobs:
       # has been renamed away.
       - name: Every root document is in DOCS.md
         run: bash scripts/check-docs-index.sh
+      # HANDOFF.md's open-item headings said three pieces of small work were
+      # available while every row under them was struck through. The rows were
+      # right; the prose above them is what a reader acts on, and nothing
+      # forced anyone to look at it again.
+      - name: Open-item counts match their own tables
+        run: bash scripts/check-open-items.sh
       # And the step above it only runs if CI runs. Seven of the fourteen
       # files `check-doc-counts.sh` pins were outside this workflow's paths
       # filter — `HANDOFF.md` and `SECURITY_AUDIT.md` among them — so a pull

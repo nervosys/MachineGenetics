@@ -440,6 +440,18 @@ Only `stdlib/` and four `framewerx` files remain.
   fails on a changed *figure*, which is the only thing it is supposed to
   catch. The lesson is not about line endings: **a checker only its own CI
   can satisfy is exercised solely by the machine that agrees with it.**
+- **A struck-through row does not update the sentence above it.** Every item
+  in `Open items` was correctly struck the day it closed, and two headings
+  went on advertising work that no longer existed — "Two open, and one more
+  added on 2026-09-01" above **nine** struck rows, and "Two items, and
+  neither is actually unblocked" above two closed ones. Three pieces of
+  available small work, none of them real, in the section a reader picking
+  this up cold reads *first*. The tables were never wrong. **The summary is
+  the part that decays, because it is written once while its subject is
+  fresh and nothing forces anyone to look at it again** — which is the
+  premise `check-doc-counts.sh` was built on, one document further in than
+  anyone had applied it. Each heading now carries a `**N open, M closed.**`
+  line and `scripts/check-open-items.sh` counts the rows against it.
 - **`${#arr[@]}` on a never-assigned associative array is *unbound*.** Under
   `set -u`, `declare -A ACTUAL` followed by a `read` loop that assigns nothing
   makes `[ "${#ACTUAL[@]}" -eq 0 ]` abort the line — so the empty-input guard
@@ -872,9 +884,11 @@ different things.
 
 ### Decided on 2026-08-19
 
-Three of the five rows below this heading were decisions rather than work, and
-they are made. Recorded here rather than deleted, because "why is there no
-module system" is a question that will be asked again.
+**2 open, 1 closed.**
+
+The decisions are made; the two rows that stay open are the standing answers
+themselves, kept because "why is there no module system" is a question that
+will be asked again.
 
 | # | Was | Decision | What it cost |
 |---|---|---|---|
@@ -889,6 +903,8 @@ asked. Only "there was no call" belongs in `error`.
 
 ### Waiting on a decision, not on work
 
+**3 open, 4 closed.**
+
 | # | Item | The decision |
 |---|---|---|
 | 2 | GPU CI runner | Correctness **is** verified on the hardware here and recorded. What is missing is a self-hosted runner so `cuda-gpu` runs unattended — an account action, declined once already. |
@@ -900,6 +916,9 @@ asked. Only "there was no call" belongs in `error`.
 | 20 | ~~**The HMAC path cannot be rotated**~~ | **Closed 2026-09-02.** `Provenance` gained `key_id: Option<String>`, and `Keyring` verifies against several keys at once, which is the overlapping window rotation needs: workers move to the new key in any order, and the old id leaves the ring when nothing signs with it. The id is **bound into the MAC**, so a record cannot be relabelled to aim a verifier at a different key. `#[serde(default)]` and absorbed only when present, so every record written before the field existed still deserialises and still verifies. **Two of my three break tests initially passed**: the obvious "rewrite the key id" test was satisfied by the equality check in `verify` rather than by the MAC binding it claimed to test, and it took two signers sharing one key and differing only in id to isolate it. The `Keyring` filter turned out to be an optimisation rather than a security boundary — correctness is in `Signer::verify` — and the comment claiming otherwise is corrected. |
 
 ### Deliberate, and not defects
+
+**5 open, 0 closed.** Open here means *standing*, not *pending*: each row is a
+decision that holds until the reason under it stops being true.
 
 | # | Item | Why it stays |
 |---|---|---|
@@ -1076,9 +1095,15 @@ exact arity agreement). See rule 10 above for why no arity checker was built.
 
 ### Real work, unstarted
 
-Two items, and **neither is actually unblocked** — which is the finding, not the
-framing this section had. Both are downstream of a decision, and only one said
-so.
+**0 open, 2 closed.** The heading is kept for the record and the section has
+nothing in it: both items closed, one by deciding against it and one by
+deletion.
+
+That is worth a sentence rather than a silent edit. This section said "Two
+items, and **neither is actually unblocked**" for long enough that both of them
+closed underneath it, and the intro went on advertising them. **Nobody was
+careless with the rows** — each was struck the day it closed. What decayed was
+the prose above the table, which is the part a reader acts on.
 
 | # | Item | Size |
 |---|---|---|
@@ -1133,8 +1158,18 @@ hand.
 
 ### Small, sharp, cheap
 
-Two open, and one more added on 2026-09-01 — all recorded where they were
-found rather than acted on:
+**0 open, 9 closed.**
+
+This heading opened with "Two open, and one more added on 2026-09-01" while
+**every one of its nine rows was struck through** — three pieces of available
+work advertised to anyone picking this document up cold, none of them real.
+Corrected 2026-09-07, and `scripts/check-open-items.sh` now counts the rows and
+fails if a heading disagrees with its own table.
+
+One row is *partly* closed and says so in its own text: item 15's remaining
+half is an upstream decision about `cuda_full.rs`, not work anyone here can
+pick up. It is counted closed because the part this repository could act on is
+done, and the row explains the rest.
 
 | # | Item | Why it is here and not done |
 |---|---|---|
