@@ -144,6 +144,20 @@ pub const MODES: &[CliMode] = &[
                  capability and the interpreter cannot perform it.",
     },
     CliMode {
+        flag: "--gradcheck",
+        args: "<file.mg> [--json]",
+        summary: "check computed derivatives against central differences; evidence, not proof",
+        effect: "read_local",
+        detail: "The inductive half of the differentiability claim. --differentiable asks
+                 whether a derivative exists (deductive, over all inputs); this asks whether
+                 the one the compiler computes is correct, at fixed sample points. Reports
+                 both verdicts side by side and never merges them: `evidenced at n samples`
+                 is not `proved`, and the sample count is printed with it so it cannot read
+                 as one. A point where a kink sits inside the difference window is skipped
+                 with its reason, not counted either way. Exits non-zero only on a refuted
+                 derivative — an unchecked claim is not a failure.",
+    },
+    CliMode {
         flag: "--fmt-compact",
         args: "<file.mg|-> [out]",
         summary: "reformat to Agent mode (token-compact symbols)",

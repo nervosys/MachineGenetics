@@ -22,7 +22,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **2,965** — rmi 1,384 · prototype 1,248 · ribosome 168 · germline 112 · forge 53 |
+| Tests | **2,976** — rmi 1,384 · prototype 1,259 · ribosome 168 · germline 112 · forge 53 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -134,16 +134,36 @@ writing a program. It was right — the new command reproduces 155 and 154 exact
 — which is the uncomfortable part, because it was right by luck of nobody having
 changed anything, not by anything checking.
 
-**2 — The shared verdict vocabulary.** `verify.rs` has a deductive lattice
-(`Verified` / `Partial` / `Failed` / `Trivial`) and the neural half has none, so
-you cannot say "this property is evidenced at *n* samples" anywhere in this
-language. `Trivial` is worse than absent: it means *no contracts to verify* and
-is rendered by skipping the row, so a function with no contracts and a function
-whose contracts all hold look identical. That is the coverage-hole-as-clean-bill
-error inside MAGE's own verifier. The sibling project `StatodynamicAnalysis` has
-already designed the lattice this wants — `Confirmed` / `Refuted` / **`Unreached`**
-/ `Unpredicted` — and sharing the vocabulary across the two codebases is worth
-more than either inventing its own.
+**2 — Carry the verdict vocabulary into the rest of the compiler.** `verdict.rs`
+exists as of 2026-09-07 — `Proved` / `Evidenced { n }` / `Unspecified` /
+`Unreached { why }` / `Refuted { at }`, with the correspondence to
+`StatodynamicAnalysis`'s lattice written out in the module docs. `verify.rs` and
+`--gradcheck` speak it. **`heal.rs`, `verify`'s effect checks and the RAP
+surface's other `ok` booleans do not**, and each of those is a place where a
+one-bit answer is still standing in for a verdict.
+
+Three defects of the shape it was built to prevent were sitting in the verifier,
+and all three are fixed:
+
+* **`VerifyStatus::Trivial` meant *nobody specified this*, and the reporter
+  skipped its rows** while the summary line counted them. A module with one
+  contract across two functions printed `Contracts checked: 2` and listed one.
+  It is `Unspecified` now, every subject gets a row, and the count says
+  `1 contract(s)` because that is how many there were.
+* **`Partial` rendered as `~` beside `✓`** — one character from looking like
+  success, for a claim nothing adjudicated. It maps to `Unreached`.
+* **RAP answered `"ok": true` for `Trivial`.** An agent asking the verification
+  oracle about an unspecified function was told it was fine. That is the
+  coverage-hole-as-clean-bill error in a machine-readable API, which is worse
+  than in prose: prose gets read sceptically and a boolean does not. `ok` now
+  means *a contract was checked and it holds*, with `verdict` and `detail`
+  beside it — a deliberate behaviour change, because a one-bit answer cannot
+  separate "verified" from "nobody claimed anything" and picking the friendlier
+  bit is not a fix.
+
+The sharing is **one-directional**: MAGE adopted the sibling's words and nothing
+in `StatodynamicAnalysis` was changed to match. Saying so beats implying a
+coordination that has not happened.
 
 **Not urgent, and deliberately so:** `TENSOR_PRODUCT_BINDING.md` specifies
 binding symbolic structure into tensors, which would give `kb` and `net` a shared
@@ -1001,7 +1021,7 @@ implementation task**:
 - **Then the evaluator rework.** `eval.rs` is 2,987 lines, 39 expression forms
   and 53 recursive `self.eval(` sites, all of which keep the continuation in the
   Rust call stack — where it cannot be captured. Multi-shot needs CPS or an
-  explicit CEK-style machine, which touches every form, with 1,248 tests riding
+  explicit CEK-style machine, which touches every form, with 1,259 tests riding
   on current behaviour.
 
 **This item was filed under "real work, unstarted" with no blocker marked**,
@@ -2076,9 +2096,9 @@ changed before you commit.
 ---
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,248**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,259**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
-  across five crates **2,965**; documented-count pins **92**, up from 46 — the
+  across five crates **2,976**; documented-count pins **92**, up from 46 — the
   four newest hold `SECURITY_AUDIT.md`'s `unsafe` inventory, a claim that had
   been wrong twice.
 - Every typechecker fix has landed without breaking an existing test **except

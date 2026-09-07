@@ -396,6 +396,41 @@ be conflated:
 
 Gradient checking is inductive verification of a deductive claim, and it is the
 standard practice in every AD implementation. The pairing is exactly the one
-`StatodynamicAnalysis` formalises, and it is worth keeping the vocabulary shared:
-`Proven` that a derivative exists, `Evidenced { n }` that the implementation
-computes it, and neither one standing in for the other.
+`StatodynamicAnalysis` formalises, and the vocabulary is now shared rather than
+merely admired: `prototype/src/verdict.rs` defines `Proved` / `Evidenced { n }` /
+`Unspecified` / `Unreached { why }` / `Refuted { at }`, with the correspondence
+table to the sibling's lattice written out beside it.
+
+Both halves are commands:
+
+```
+$ mage-parse --gradcheck examples/slope.mg
+dpoly
+    deductive  unreached — untested, not clean: `grad` — the differentiability of a derivative is not analysed
+    inductive  evidenced at 10 samples, by central differences — not a proof
+```
+
+That output is worth reading twice, because it is the pairing doing its job. The
+*inductive* verdict says the computed derivative is right everywhere it was
+checked. The *deductive* one says nothing at all — the body of `dpoly` is itself
+a `grad`, so asking whether `dpoly` is differentiable asks for a **second**
+derivative, which the pass does not analyse. Two honest verdicts about two
+different questions, and a design that merged them would have had to invent an
+answer to one of them.
+
+Three rules the vocabulary enforces rather than suggests:
+
+* **`Evidenced` cannot render without its sample count.** `describe()` prints
+  `evidenced at 10 samples … — not a proof`. A verdict that could print as the
+  bare word *evidenced* would be read as one.
+* **An absence of evidence is not a hold.** `Unspecified` and `Unreached` both
+  answer `false` to `holds()`, so a caller counting how many subjects are fine
+  cannot sweep up the ones nobody looked at.
+* **The summary always names the coverage hole**, including when it is zero. A
+  field that appears only when there is bad news teaches a reader to stop
+  looking for it.
+
+A sample point where a kink sits inside the difference window is **skipped with
+its reason**, not counted either way: a central difference across a kink
+averages two different one-sided slopes and disagrees with any correct
+derivative. That is the oracle's limitation, not the compiler's error.

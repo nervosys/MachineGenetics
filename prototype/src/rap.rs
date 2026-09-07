@@ -488,8 +488,26 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
             };
             let result = verify::verify_contracts(fqn, spec_input.as_ref(), &effects);
 
+            // `ok` used to be `Verified || Trivial`, and `Trivial` means **no
+            // contracts to verify** — so an agent asking the verification
+            // oracle about a function nobody had specified was told `ok: true`.
+            // That is the coverage-hole-as-clean-bill error in a
+            // machine-readable API, which is worse than in a human report:
+            // prose gets read sceptically and a boolean does not.
+            //
+            // **A deliberate behaviour change.** `ok` now means *a contract was
+            // checked and it holds*, so the unspecified case answers `false`.
+            // On its own that would be a different lie — nothing failed either
+            // — so `verdict` and `detail` carry the distinction an agent needs
+            // to act correctly, in the shared vocabulary of `verdict.rs`. A
+            // one-bit answer cannot separate "verified" from "nobody claimed
+            // anything", and the fix is to stop pretending it can rather than
+            // to pick the friendlier bit.
+            let evidence = result.status.evidence(fqn);
             serde_json::json!({
-                "ok": result.status == verify::VerifyStatus::Verified || result.status == verify::VerifyStatus::Trivial,
+                "ok": evidence.holds(),
+                "verdict": evidence.label(),
+                "detail": evidence.describe(),
                 "result": serde_json::to_value(&result).unwrap_or_default()
             })
         }
