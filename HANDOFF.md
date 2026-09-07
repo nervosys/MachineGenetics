@@ -428,6 +428,18 @@ Only `stdlib/` and four `framewerx` files remain.
   prevent, committed while extending the machinery that prevents it.
   `--pipeline` now says what the tape covers and **does not print a tick when
   the answer is nothing**.
+- **A check that cannot pass locally is a check nobody runs.**
+  `check-ci-floors.sh` compared `benchmarks/TOKEN_REPORT.md` against a fresh
+  run with `cmp -s`. Git checks that file out CRLF on Windows and
+  `token-bench` writes LF, so on the platform this repository is actually
+  developed on it reported the report as stale on **every** run — content
+  identical, every line differing. CI is Linux and never saw it. The
+  precedent was one directory over: `check-skb-tree.sh` already had
+  `--strip-trailing-cr`, added for the same reason and not carried across.
+  Fixed by using the same flag, and verified in both directions — it still
+  fails on a changed *figure*, which is the only thing it is supposed to
+  catch. The lesson is not about line endings: **a checker only its own CI
+  can satisfy is exercised solely by the machine that agrees with it.**
 - **`${#arr[@]}` on a never-assigned associative array is *unbound*.** Under
   `set -u`, `declare -A ACTUAL` followed by a `read` loop that assigns nothing
   makes `[ "${#ACTUAL[@]}" -eq 0 ]` abort the line — so the empty-input guard

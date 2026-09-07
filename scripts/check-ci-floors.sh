@@ -142,7 +142,18 @@ cp "$REPORT" "$saved"
 bench_out="$(cargo run --quiet --release --manifest-path prototype/Cargo.toml \
                  --bin token-bench 2>&1)" || bench_status=$?
 ratio="$(printf '%s\n' "$bench_out" | awk '/native lexers:/ { for (i = 1; i <= NF; i++) if ($i ~ /^ratio=/) { sub(/^ratio=/, "", $i); print $i; exit } }')"
-if cmp -s "$REPORT" "$saved"; then
+# `diff --strip-trailing-cr` rather than `cmp -s`, for the reason
+# `check-skb-tree.sh` already uses it: git checks these files out CRLF on
+# Windows and `token-bench` writes LF, so a byte comparison reported the
+# report as stale on **every** run on the platform this repository is
+# actually developed on. Content identical, every line differing.
+#
+# CI is Linux and never saw it, which is the whole shape of the problem: a
+# check that cannot pass locally is a check the person doing the work learns
+# to skip, and then it is only ever exercised by the machine that agrees
+# with it. The precedent was one directory over — the same flag, added to
+# `check-skb-tree.sh` for the same reason, and not carried across.
+if diff -q --strip-trailing-cr "$REPORT" "$saved" >/dev/null 2>&1; then
     stale=""
 else
     stale="yes"
