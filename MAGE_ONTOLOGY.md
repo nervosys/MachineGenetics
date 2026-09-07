@@ -1565,7 +1565,7 @@ Report TaskResult::Success
 | ACI engines              | 4     |
 | Ontological concepts     | 184   |
 | Cross-domain relations   | 18    |
-| System invariants        | 34    |
+| System invariants        | 56    |
 | Compiler pipeline phases | 13    |
 
 > **`Effect kinds` is 17, and `Effect` has 18 variants.** The eighteenth is
@@ -1575,6 +1575,17 @@ Report TaskResult::Success
 > own `effects` ontology section lists those seventeen beside five
 > annotations, which is where the JSON's `effects: 22` comes from. Three
 > numbers, one subject, and each is right about a different question.
+>
+> **`Ontological concepts` and `Cross-domain relations` are not checked.**
+> Neither has a stated counting rule — which subsections count, whether a
+> relation row counts once or once per direction — so a checker would be
+> inventing the definition it then verifies. `System invariants` *is*
+> checked, because every invariant is defined exactly once as
+> `- **INV-xx**: …`, which is a rule the document already follows.
+> `scripts/check-ontology-types.sh` prints both as NOT CHECKED on every
+> run rather than letting their silence read as agreement.
+>
+> That row said **34**; there are **56**.
 >
 > Recorded because this row said **16** — which is none of them — and the
 > first correction made it 18, the enum count, before checking what the

@@ -133,6 +133,7 @@ for root in ROOTS:
                     defs.setdefault(name, {})[path] = len(vs)
 
 doc = io.open(DOC, encoding="utf-8", errors="replace").read()
+doc_text = doc
 wrong, absent, ambiguous, unchecked = [], [], [], []
 ok = 0
 
@@ -212,6 +213,11 @@ derived = {
     "GradOp (autograd)": enum_count("prototype/src/autograd.rs", "GradOp"),
     "Consensus phases": enum_count("prototype/src/consensus.rs", "Phase"),
     "CRDT operations": enum_count("prototype/src/crdt.rs", "CrdtOp"),
+    # The document counting itself. Every invariant is defined once, as
+    # `- **INV-xx**: …`, so the count is not a matter of interpretation —
+    # which is why this row is checkable and `Ontological concepts` is not.
+    "System invariants": len(set(re.findall(r"^- \*\*(INV-[A-Z0-9]+)\*\*:",
+                                            doc_text, re.M))),
 }
 try:
     onto = json.load(io.open("MAGE_ONTOLOGY.json", encoding="utf-8"))
