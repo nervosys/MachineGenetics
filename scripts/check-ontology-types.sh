@@ -166,6 +166,21 @@ for m in re.finditer(
             ok += 1
 
 # ── The Counts Summary: rows that are arithmetic about the source ────────────
+def builtin_effect_kinds():
+    """The effect kinds a `/ …` annotation may name: every `Effect`
+    variant except `Custom`, which represents a declared effect block.
+
+    Asserts `Custom` is actually there rather than subtracting one on
+    faith: if the variant is ever renamed, this must fail loudly rather
+    than quietly return a number one short.
+    """
+    src = io.open("prototype/src/hir.rs", encoding="utf-8", errors="replace").read()
+    vs = variant_names(src, "Effect")
+    if vs is None or "Custom" not in vs:
+        return None
+    return len([v for v in vs if v != "Custom"])
+
+
 def enum_count(path, name):
     src = io.open(path, encoding="utf-8", errors="replace").read()
     vs = variant_names(src, name)
@@ -179,7 +194,20 @@ derived = {
     "AST ExprKind variants": enum_count("prototype/src/ast.rs", "Expr"),
     "AST Type variants": enum_count("prototype/src/ast.rs", "Type"),
     "HIR Ty variants": enum_count("prototype/src/hir.rs", "Ty"),
-    "Effect kinds": enum_count("prototype/src/hir.rs", "Effect"),
+    # NOT the variant count. `Effect` has 18 variants and MAGE has
+    # **17** built-in effect kinds: the eighteenth is `Custom(String)`,
+    # which is how a *user-declared* `effect` block is represented, not a
+    # name anyone can write in a `/ …` annotation. MAGE_SPEC.md §11.2 says
+    # "these seventeen names", its table has seventeen rows, and the
+    # ontology's own `effects` section lists seventeen kinds beside five
+    # annotations.
+    #
+    # This row said 16, which is neither. I corrected it to 18 — the enum
+    # count — and that was the wrong one of the two candidate meanings,
+    # caught before it merged by asking what the *other* three documents
+    # said. **A figure with two plausible readings needs the reading
+    # written down, not just the number fixed.**
+    "Effect kinds": builtin_effect_kinds(),
     "Semantic VCS operations": enum_count("prototype/src/semantic_vcs.rs", "SemanticOp"),
     "GradOp (autograd)": enum_count("prototype/src/autograd.rs", "GradOp"),
     "Consensus phases": enum_count("prototype/src/consensus.rs", "Phase"),

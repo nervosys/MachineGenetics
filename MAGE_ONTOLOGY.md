@@ -1548,7 +1548,7 @@ Report TaskResult::Success
 | AST ExprKind variants    | 35    |
 | AST Type variants        | 32    |
 | HIR Ty variants          | 31    |
-| Effect kinds             | 18    |
+| Effect kinds             | 17    |
 | SKB rule databases       | 8     |
 | SKB rules total          | 255   |
 | RAP endpoints            | 38    |
@@ -1567,3 +1567,15 @@ Report TaskResult::Success
 | Cross-domain relations   | 18    |
 | System invariants        | 34    |
 | Compiler pipeline phases | 13    |
+
+> **`Effect kinds` is 17, and `Effect` has 18 variants.** The eighteenth is
+> `Custom(String)`, which is how a *declared* `effect` block is represented —
+> not a name a `/ …` annotation may use. §11.2 of `MAGE_SPEC.md` says
+> "these seventeen names" and its table has seventeen rows; this document's
+> own `effects` ontology section lists those seventeen beside five
+> annotations, which is where the JSON's `effects: 22` comes from. Three
+> numbers, one subject, and each is right about a different question.
+>
+> Recorded because this row said **16** — which is none of them — and the
+> first correction made it 18, the enum count, before checking what the
+> other three documents meant.
