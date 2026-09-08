@@ -788,15 +788,15 @@ Four compiler-integrated AI subsystems, each operating as a pipeline phase.
 #### 18.1 Shape Inference
 
 **Concepts**:
-- `ShapeDim`: `Lit(u64)` | `Var(String)` — Static or symbolic dimension.
-- `Shape`: `Vec<ShapeDim>` — Ordered dimension list.
+- `TensorDim`: `Lit(u64)` | `Var(String)` — Static or symbolic dimension.
+- `Shape`: `Vec<TensorDim>` — Ordered dimension list.
 
 **Operations**:
-- `broadcast(a: &[ShapeDim], b: &[ShapeDim]) -> Result<Vec<ShapeDim>>` — NumPy-style broadcasting.
-- `matmul_shape(a, b) -> Result<Vec<ShapeDim>>` — `[M,K] ⊗ [K,N] → [M,N]`.
-- `transpose(shape) -> Vec<ShapeDim>` — Reverse dimension order.
-- `reshape(shape, target) -> Result<Vec<ShapeDim>>` — Reshape with element count preservation.
-- `conv2d_output(input, kernel, stride, padding) -> Vec<ShapeDim>` — Convolution output dimensions.
+- `broadcast(a: &[TensorDim], b: &[TensorDim]) -> Result<Vec<TensorDim>>` — NumPy-style broadcasting.
+- `matmul_shape(a, b) -> Result<Vec<TensorDim>>` — `[M,K] ⊗ [K,N] → [M,N]`.
+- `transpose(shape) -> Vec<TensorDim>` — Reverse dimension order.
+- `reshape(shape, target) -> Result<Vec<TensorDim>>` — Reshape with element count preservation.
+- `conv2d_output(input, kernel, stride, padding) -> Vec<TensorDim>` — Convolution output dimensions.
 
 **Invariants**:
 - **INV-SH1**: Broadcasting is right-aligned; mismatched non-1 dims produce error.
@@ -806,7 +806,21 @@ Four compiler-integrated AI subsystems, each operating as a pipeline phase.
 #### 18.2 Automatic Differentiation
 
 **Concepts**:
-- `DiffOp` — 20+ differentiable operations: `Add`, `Sub`, `Mul`, `Div`, `MatMul`, `Transpose`, `Sum`, `Mean`, `ReLU`, `Sigmoid`, `Tanh`, `Softmax`, `LogSoftmax`, `CrossEntropy`, `MSE`, `L1Loss`, `Conv2d`, `MaxPool2d`, `BatchNorm`, `Dropout`, `LayerNorm`, `Exp`, `Log`, `Neg`, `Abs`, `Pow`.
+- `GradOp` — the **22** operations `prototype/src/autograd.rs` defines:
+  three leaves (`Param`, `Const`, `Input`), `Call`, and the differentiable
+  operations `Add`, `Sub`, `Mul`, `Div`, `MatMul`, `Transpose`, `Sum`,
+  `Mean`, `ReLU`, `Sigmoid`, `Tanh`, `Softmax`, `CrossEntropy`, `MSE`,
+  `Exp`, `Log`, `Neg`, `Pow`.
+
+  > **Corrected 2026-09-07.** This line named the type `DiffOp`, which does
+  > not exist, and listed **eight operations that are not variants of
+  > anything** — `Abs`, `BatchNorm`, `Conv2d`, `Dropout`, `L1Loss`,
+  > `LayerNorm`, `LogSoftmax`, `MaxPool2d` — while omitting the four that
+  > carry the tape's structure (`Param`, `Const`, `Input`, `Call`). An agent
+  > building a tape from this section would have emitted a type and a
+  > variant that both had to be invented. `scripts/check-ontology-types.sh`
+  > now checks the count; the *names* are checked by nothing, which is why
+  > they are quoted from the source rather than described.
 - `TapeEntry` — Wengert list entry: `{ op, inputs, output, shape }`.
 - `Tape` — Forward-pass computation graph.
 
@@ -1235,7 +1249,7 @@ Complete alphabetical index of all ontological concepts:
 | ContractCheck           | Verification | `ContractCheck`          | §21.1   |
 | ContractClause          | Syntactic    | `ContractClause`         | §13.3   |
 | ContractClauseKind      | Syntactic    | enum (3)                 | §13.3   |
-| ContractKind            | Verification | enum (2)                 | §21.1   |
+| ContractKind            | Verification | enum (2 @ prototype/src/verify.rs)                 | §21.1   |
 | CostComparison          | Tooling      | `CostComparison`         | §22.1   |
 | CostEstimate            | Tooling      | `CostEstimate`           | §22.1   |
 | CrateManifest           | Package      | `CrateManifest`          | §23.2   |
@@ -1249,9 +1263,9 @@ Complete alphabetical index of all ontological concepts:
 | DiagnosticGraph         | Cross-domain | `DiagnosticGraph`        | §8      |
 | DiagnosticNode          | Cross-domain | `DiagnosticNode`         | §8      |
 | DiagnosticNodeKind      | Cross-domain | enum (3)                 | §8      |
-| DiffOp                  | AI/Autograd  | enum (26)                | §18.2   |
+| GradOp                  | AI/Autograd  | enum (22 @ prototype/src/autograd.rs) | §18.2   |
 | DynamicWarningEngine    | Tooling      | `DynamicWarningEngine`   | §22.4   |
-| Effect                  | Effect       | enum (16)                | §16     |
+| Effect                  | Effect       | enum (18 @ prototype/src/hir.rs)                | §16     |
 | EffectAnalysis          | Verification | `EffectAnalysis`         | §21.1   |
 | EffectCheck             | Verification | `EffectCheck`            | §21.1   |
 | EffectCheckResult       | Verification | enum (3)                 | §21.1   |
@@ -1264,7 +1278,7 @@ Complete alphabetical index of all ontological concepts:
 | Envelope                | Agent        | `Envelope`               | §3      |
 | EvolveDef               | Syntactic    | `EvolveDef`              | §13.2   |
 | EvolutionConfig         | AI/Evolution | `EvolutionConfig`        | §18.4   |
-| Expr (ExprKind)         | Syntactic    | enum (31)                | §13.1   |
+| Expr (ExprKind)         | Syntactic    | enum (36 @ prototype/src/ast.rs)                | §13.1   |
 | FactDef                 | Syntactic    | `FactDef`                | §13.2   |
 | FieldInit               | Syntactic    | `FieldInit`              | §13.1   |
 | FieldPattern            | Syntactic    | `FieldPattern`           | §13.1   |
@@ -1286,7 +1300,7 @@ Complete alphabetical index of all ontological concepts:
 | IntelligentDebugEngine  | Tooling      | `IntelligentDebugEngine` | §22.4   |
 | IntTy                   | Type         | enum (6)                 | §15     |
 | Item                    | Syntactic    | `Item`                   | §13.1   |
-| ItemKind                | Syntactic    | enum (18)                | §13.1   |
+| ItemKind                | Syntactic    | enum (20 @ prototype/src/ast.rs)                | §13.1   |
 | ItemMetricKind          | Tooling      | enum (7)                 | §22.2   |
 | KbDef                   | Syntactic    | `KbDef`                  | §13.2   |
 | KnowledgeBase (runtime) | AI/Logic     | `KnowledgeBase`          | §18.3   |
@@ -1312,7 +1326,7 @@ Complete alphabetical index of all ontological concepts:
 | Orchestrator            | Agent        | `Orchestrator`           | §19.1   |
 | Param                   | Syntactic    | `Param`                  | §13.1   |
 | ParseError              | Tooling      | enum (3)                 | §22.3   |
-| PatchStatus             | Tooling      | enum (4)                 | §10     |
+| PatchStatus             | Tooling      | enum (4 @ prototype/src/hot_reload.rs)                 | §10     |
 | PatchUnit               | Tooling      | `PatchUnit`              | §10     |
 | Pattern                 | Syntactic    | enum (9)                 | §13.1   |
 | Payload                 | Agent        | enum (4)                 | §3      |
@@ -1321,7 +1335,7 @@ Complete alphabetical index of all ontological concepts:
 | PerfHotspot             | Tooling      | `PerfHotspot`            | §22.4   |
 | PerfRegistry            | Tooling      | `PerfRegistry`           | §22.3   |
 | PerformanceAdvisor      | Tooling      | `PerformanceAdvisor`     | §22.4   |
-| Phase                   | Agent        | enum (5)                 | §6.3    |
+| Phase                   | Agent        | enum (5 @ prototype/src/consensus.rs)                 | §6.3    |
 | Proposal                | Agent        | `Proposal`               | §6.3    |
 | ProofStep               | Verification | enum (3)                 | §21.1   |
 | Recipient               | Agent        | enum (3)                 | §3      |
@@ -1337,19 +1351,19 @@ Complete alphabetical index of all ontological concepts:
 | RuleSeverity            | Safety       | enum (4)                 | §17.1   |
 | Sandbox                 | Agent        | `Sandbox`                | §19.1   |
 | Scope                   | Semantic     | `Scope`                  | §14     |
-| SemanticOp              | Package      | enum (18)                | §23.3   |
+| SemanticOp              | Package      | enum (17 @ prototype/src/semantic_vcs.rs)                | §23.3   |
 | SemanticRegion          | Agent        | `SemanticRegion`         | §6.1    |
-| Severity (diagnostic)   | Cross-domain | enum (3)                 | §8      |
-| Severity (ACI)          | Tooling      | enum (5)                 | §22.4   |
-| Shape                   | AI/Shape     | `Vec<ShapeDim>`          | §18.1   |
-| ShapeDim                | AI/Shape     | enum (2)                 | §18.1   |
+| Severity (diagnostic)   | Cross-domain | enum (3 @ prototype/src/hir.rs)                 | §8      |
+| Severity (ACI)          | Tooling      | enum (5 @ prototype/src/aci.rs)                 | §22.4   |
+| Shape                   | AI/Shape     | `Vec<TensorDim>`         | §18.1   |
+| TensorDim               | AI/Shape     | enum (2 @ prototype/src/ast.rs) | §18.1   |
 | Span (lexer)            | Lexical      | `Span`                   | §12     |
 | Span (HIR)              | Type         | `Span`                   | §15     |
 | SpecDef                 | Syntactic    | `SpecDef`                | §13.3   |
 | SpecItem                | Syntactic    | enum (5)                 | §13.3   |
 | StampedOp               | Agent        | `StampedOp`              | §6.2    |
 | StaticDef               | Syntactic    | `StaticDef`              | §13.1   |
-| Stmt                    | Syntactic    | enum (3)                 | §13.1   |
+| Stmt                    | Syntactic    | enum (5 @ prototype/src/ast.rs)                 | §13.1   |
 | Strategy                | Verification | enum (5)                 | §21.2   |
 | StructDef               | Syntactic    | `StructDef`              | §13.1   |
 | StructField             | Syntactic    | `StructField`            | §13.1   |
@@ -1361,7 +1375,7 @@ Complete alphabetical index of all ontological concepts:
 | SwarmDef                | Syntactic    | `SwarmDef`               | §13.2   |
 | Symbol                  | Semantic     | `Symbol`                 | §14     |
 | SymbolId                | Semantic     | `SymbolId(u32)`          | §14     |
-| SymbolKind              | Semantic     | enum (19)                | §14     |
+| SymbolKind              | Semantic     | enum (19 @ prototype/src/resolve.rs)                | §14     |
 | SymbolTable             | Semantic     | `SymbolTable`            | §14     |
 | SynthesisOracle         | Verification | `SynthesisOracle`        | §21.2   |
 | SynthesisSpec           | Verification | `SynthesisSpec`          | §21.2   |
@@ -1374,17 +1388,17 @@ Complete alphabetical index of all ontological concepts:
 | TaskState               | Agent        | enum (5)                 | §7      |
 | TensorDim               | Syntactic    | enum (2)                 | §13.4   |
 | TensorDimHir            | Type         | enum (2)                 | §15     |
-| Term                    | AI/Logic     | enum (3)                 | §18.3   |
+| Term                    | AI/Logic     | enum (2 @ prototype/src/logic.rs)                 | §18.3   |
 | TextEdit                | Tooling      | `TextEdit`               | §22     |
 | ThreeWayMerge           | Package      | `ThreeWayMerge`          | §23.3   |
 | Token                   | Lexical      | `Token`                  | §12.1   |
-| TokenKind               | Lexical      | enum (168)               | §12.1   |
+| TokenKind               | Lexical      | enum (182 @ prototype/src/lexer.rs)               | §12.1   |
 | TokenMetrics            | Tooling      | `TokenMetrics`           | §22.2   |
 | TokenReport             | Tooling      | `TokenReport`            | §22.2   |
 | Topic                   | Agent        | enum (10)                | §3.1    |
 | TrainDef                | Syntactic    | `TrainDef`               | §13.2   |
 | TraitDef                | Syntactic    | `TraitDef`               | §13.1   |
-| Ty (HIR)                | Type         | enum (31)                | §15     |
+| Ty (HIR)                | Type         | enum (31 @ prototype/src/hir.rs)                | §15     |
 | Type (AST)              | Syntactic    | enum (32)                | §13.1   |
 | TypeAlias               | Syntactic    | `TypeAlias`              | §13.1   |
 | TypeChecker             | Type         | `TypeChecker`            | §15     |
@@ -1528,22 +1542,22 @@ Report TaskResult::Success
 
 | Category                 | Count |
 | ------------------------ | ----- |
-| Source modules           | 42    |
-| TokenKind variants       | 168   |
-| AST ItemKind variants    | 18    |
-| AST ExprKind variants    | 31    |
+| Source modules           | 67    |
+| TokenKind variants       | 182   |
+| AST ItemKind variants    | 20    |
+| AST ExprKind variants    | 36    |
 | AST Type variants        | 32    |
 | HIR Ty variants          | 31    |
-| Effect kinds             | 16    |
+| Effect kinds             | 17    |
 | SKB rule databases       | 8     |
 | SKB rules total          | 255   |
-| RAP endpoints            | 24    |
+| RAP endpoints            | 38    |
 | Agent roles              | 8     |
 | Message topics           | 10    |
 | CRDT operations          | 6     |
 | Consensus phases         | 5     |
-| Semantic VCS operations  | 18    |
-| DiffOp (autograd)        | 26    |
+| Semantic VCS operations  | 17    |
+| GradOp (autograd)        | 22    |
 | Selection methods        | 4     |
 | Crossover methods        | 3     |
 | Mutation methods         | 3     |
@@ -1551,5 +1565,36 @@ Report TaskResult::Success
 | ACI engines              | 4     |
 | Ontological concepts     | 184   |
 | Cross-domain relations   | 18    |
-| System invariants        | 34    |
+| System invariants        | 56    |
 | Compiler pipeline phases | 13    |
+
+> **`Effect kinds` is 17, and `Effect` has 18 variants.** The eighteenth is
+> `Custom(String)`, which is how a *declared* `effect` block is represented —
+> not a name a `/ …` annotation may use. §11.2 of `MAGE_SPEC.md` says
+> "these seventeen names" and its table has seventeen rows; this document's
+> own `effects` ontology section lists those seventeen beside five
+> annotations, which is where the JSON's `effects: 22` comes from. Three
+> numbers, one subject, and each is right about a different question.
+>
+> **Three of these moved during the merge that landed them.** `Expr` gained
+> `Grad` (35 → 36) and `Source modules` gained `verdict.rs` and
+> `gradcheck.rs` (65 → 67), between this document being corrected and the
+> branch reaching `master`. The checker caught all three on the rebase,
+> which is the argument for having built it: **a correction is only as
+> durable as the thing that re-derives it**, and a figure fixed by hand in
+> one commit is stale by the next.
+>
+> **`Ontological concepts` and `Cross-domain relations` are not checked.**
+> Neither has a stated counting rule — which subsections count, whether a
+> relation row counts once or once per direction — so a checker would be
+> inventing the definition it then verifies. `System invariants` *is*
+> checked, because every invariant is defined exactly once as
+> `- **INV-xx**: …`, which is a rule the document already follows.
+> `scripts/check-ontology-types.sh` prints both as NOT CHECKED on every
+> run rather than letting their silence read as agreement.
+>
+> That row said **34**; there are **56**.
+>
+> Recorded because this row said **16** — which is none of them — and the
+> first correction made it 18, the enum count, before checking what the
+> other three documents meant.

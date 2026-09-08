@@ -452,6 +452,42 @@ Only `stdlib/` and four `framewerx` files remain.
   premise `check-doc-counts.sh` was built on, one document further in than
   anyone had applied it. Each heading now carries a `**N open, M closed.**`
   line and `scripts/check-open-items.sh` counts the rows against it.
+- **A correction fixes the copy you are looking at.** `MAGE_ONTOLOGY.md` §5
+  was corrected on 2026-09-02 from "24 endpoints" to **38**, with a note in
+  the document recording the correction — and the *same file's* Counts
+  Summary, eighty lines further down, still said 24. The four copies of the
+  RAP method list, inside one document. When a figure turns out to be
+  wrong, `grep` for the number before editing the line you found it on.
+- **The ontology counted the compiler's own enums, and nothing counted the
+  enums.** `DOCS.md` tells readers to prefer `MAGE_ONTOLOGY.md` over the
+  prose, and its type index gives a variant count for each — 62 claims, of
+  which **six were wrong**: `TokenKind` 168 against 182, `Expr` 31 against
+  35, `ItemKind` 18 against 20, `Effect` 16 against 18, `SemanticOp` 18
+  against 17, and `Stmt` **3 against 5**. That last one tells an agent a
+  statement has three kinds, with `Guard` and `Defer` — two constructs with
+  their own spec sections — not among them. §18.2 was worse than a count:
+  it named a type `DiffOp` that does not exist and listed **eight
+  operations that are not variants of anything**, while omitting the four
+  that carry the tape's structure. `scripts/check-ontology-types.sh` counts
+  them now.
+- **A checker that resolves an ambiguity by picking is a checker that
+  invents findings.** Ten of those type names are defined more than once
+  across the five crates — `Severity` five times. My first scan took the
+  same-named enum with the most variants and reported **eleven**
+  disagreements; four were it comparing `ContractKind` in `forge.rs`
+  against a row about the one in `verify.rs`. The document now says which
+  one it means (`enum (35 @ prototype/src/ast.rs)`), and an ambiguous row
+  with no path is a **failure** rather than a skip — leaving it unchecked
+  is how `Expr` and `ItemKind`, the two rows an agent is likeliest to act
+  on, would have stayed wrong forever.
+- **Three of my own scans returned three different numbers.** `TokenKind`
+  came back 179, 180 and 182 from three versions of the same scrape, because
+  doc comments, attributes and nested delimiters each break a naive line
+  count differently. **A checker that cannot reproduce its own number would
+  have replaced six wrong figures with six differently wrong ones.** The one
+  that ships matches braces, strips comments and attributes, and splits on
+  top-level commas — and it is the only counter used, so every figure in
+  the document comes from the same place.
 - **`${#arr[@]}` on a never-assigned associative array is *unbound*.** Under
   `set -u`, `declare -A ACTUAL` followed by a `read` loop that assigns nothing
   makes `[ "${#ACTUAL[@]}" -eq 0 ]` abort the line — so the empty-input guard
