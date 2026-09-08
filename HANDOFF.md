@@ -464,6 +464,24 @@ Only `stdlib/` and four `framewerx` files remain.
   prevent, committed while extending the machinery that prevents it.
   `--pipeline` now says what the tape covers and **does not print a tick when
   the answer is nothing**.
+- **`|| true` on a verdict, and the same two words correct one line below.**
+  `check-mg-sources.sh` ran `out="$("$BIN" --check "$f" 2>&1 || true)"` and
+  then decided the file's fate from two grep patterns. **Any failure phrased
+  differently counted as a pass.** `--check` on a file it cannot read prints
+  `Error reading …` and exits 1, matching neither: a directory named
+  `zzprobe.mg` made it report **"Checked 102 .mg files … every .mg source
+  outside the sketch list typechecks"**, exit 0, about a file the compiler
+  never opened. The status is the fail-closed half; the patterns are the
+  message. `check-ci-floors.sh` already carried this exact lesson.
+
+  **And fixing it exposed a crash in the reporting path.** The line that
+  builds the failure message greps for a *lowercase* `error:`, which every
+  diagnostic has and `Error reading …` does not — so under `errexit` +
+  `pipefail` a grep matching nothing killed the script **while reporting a
+  failure**, printing nothing and exiting 1. It had never run, because until
+  the status was honoured nothing reached it. `|| true` belongs there, and
+  that is the distinction: **on a verdict it is the defect, on a message it
+  is correct.**
 - **A denylist of failure modes is a promise to have thought of all of
   them.** `check-doc-evals.sh` decided whether a documentation example had
   failed by matching its output against ten error substrings — `unknown

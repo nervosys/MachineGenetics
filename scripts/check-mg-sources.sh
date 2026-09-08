@@ -88,10 +88,32 @@ while IFS= read -r f; do
     # Capture, then match. `cmd | grep -q` under `set -o pipefail` reports
     # failure when grep exits early and the writer takes SIGPIPE, so every
     # match reads as no-match. This has cost two bugs in this repo already.
-    out="$("$BIN" --check "$f" 2>&1 || true)"
-    if printf '%s' "$out" | grep -qE 'parse error|Errors: [1-9]'; then
+    # `|| true` used to discard the exit status, leaving two grep patterns
+    # as the only verdict — so **any failure phrased differently counted as
+    # a pass**. `--check` on a file it cannot read prints
+    # `Error reading …` and exits 1, matching neither pattern: a directory
+    # named `zzprobe.mg` made this report "Checked 102 .mg files … every
+    # .mg source outside the sketch list typechecks", exit 0, about a file
+    # the compiler never opened.
+    #
+    # The status is the fail-closed half and the patterns are the message.
+    # `check-ci-floors.sh` already carries this lesson — a `|| true` there
+    # swallowed exit 2 from a bench that could not run at all.
+    if out="$("$BIN" --check "$f" 2>&1)"; then rc=0; else rc=$?; fi
+    if [ "$rc" -ne 0 ] || printf '%s' "$out" | grep -qE 'parse error|Errors: [1-9]'; then
         failed=$((failed + 1))
-        first="$(printf '%s' "$out" | grep -E 'parse error|error:' | head -1)"
+        # `|| true` and a fallback, because this extracts a *message* rather
+        # than deciding a verdict — the distinction that matters. A `|| true`
+        # on the verdict above is the defect this commit fixes; here it is
+        # correct, and its absence was a latent crash.
+        #
+        # This line assumed the output contains a lowercase `error:`, which
+        # holds for diagnostics and not for `Error reading …`. Under
+        # `errexit` + `pipefail` a grep that matches nothing killed the
+        # script *while reporting a failure* — printing nothing at all and
+        # exiting 1. It had never run, because until now nothing reached it.
+        first="$(printf '%s' "$out" | grep -iE 'parse error|error' | head -1 || true)"
+        [ -n "$first" ] || first="$(printf '%s' "$out" | head -1)"
         failures="${failures}  ${f}
       ${first}
 "
