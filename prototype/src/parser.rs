@@ -3821,6 +3821,35 @@ impl<'a> Parser<'a> {
                 Ok(Expr::Break { value: None })
             }
 
+            // `grad(e, w)` / `∇(e, w)` — §5.6. Reserved by the lexer since the
+            // beginning and consumed by nothing until now: `grad(loss, w)`
+            // failed with `expected expression, found KwGrad`, and
+            // `MAGE_SPEC.md` recorded that as the state of things.
+            //
+            // Only `grad` *immediately followed by `(`* is the gradient form.
+            // `grad` is on `expect_ident`'s list of keywords usable as
+            // identifiers — a field or variable may be called `grad` — and
+            // taking the token unconditionally here would break those.
+            TokenKind::KwGrad | TokenKind::KwNabla if self.peek_n(1) == TokenKind::LParen => {
+                self.advance(); // grad / ∇
+                self.expect(TokenKind::LParen)?;
+                let value = self.parse_expr()?;
+                if self.peek() != TokenKind::Comma {
+                    return Err(self.error(
+                        "`grad` takes two arguments: the quantity to differentiate \
+                         and the variable to differentiate it with respect to — \
+                         `grad(loss, w)`",
+                    ));
+                }
+                self.expect(TokenKind::Comma)?;
+                let wrt = self.parse_expr()?;
+                self.expect(TokenKind::RParen)?;
+                Ok(Expr::Grad {
+                    value: Box::new(value),
+                    wrt: Box::new(wrt),
+                })
+            }
+
             // Unary operators
             TokenKind::Minus | TokenKind::Bang | TokenKind::Star => {
                 let tok = self.advance();

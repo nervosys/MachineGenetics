@@ -766,25 +766,63 @@ Because the call is an effect, it is also *handleable*: wrap it in
 
 ### 5.6 Autograd
 
-The `grad` keyword computes gradients automatically:
-
-**Design, not implementation.** `grad` is a reserved word with no expression
-form: `grad(loss, w)` is a parse error (`expected expression, found KwGrad`),
-and there is no computation-graph tracing in the compiler. The block below is
-**invalid MAGE** today, and records the intent:
+`grad(e, w)` is the derivative of `e` with respect to the variable `w`, and
+`∇(e, w)` is the same thing in sigil mode.
 
 ```mg
-pub fn train_step(x: tensor[f32, B, 784], y: tensor[i64, B]) -> f32 / gpu {
-    val loss = cross_entropy(forward(x), y)
-    val grads = grad(loss, params())      // parse error today
-    apply_grads(grads, 0.001)
-    loss
-}
+f slope(w: f64) -> f64 { grad(w * w * 3.0 + w * 2.0, w) }
 ```
 
-What *does* exist is the `train` block of §5.4, which is declarative: the
-optimiser, schedule and loss are fields, and the backward pass is the
-runtime's business rather than something the source expresses.
+`slope(4.0)` is `26.0`, and it is exact: this is the chain rule, not a finite
+difference.
+
+**The typing rule.**
+
+```
+Γ ⊢ e : f32     Γ ⊢ w : f32     diff(e) ⊑ AlmostEverywhere
+──────────────────────────────────────────────────
+                  Γ ⊢ grad(e, w) : typeof(w)
+```
+
+Three things in that rule are decisions rather than notation:
+
+* **The gradient has the shape of `w`, not of `e`** — which is why `e` must be
+  scalar. The derivative of a non-scalar is a Jacobian, a different construct.
+* **`w` must be a name.** `grad(loss, x + 1)` asks for a derivative with
+  respect to an expression, which is not a question with an answer.
+* **`diff(e) ⊑ AlmostEverywhere` is the differentiability obligation**, checked
+  by the pass in `prototype/src/differentiable.rs` and *not* by the type
+  checker. `diff` is a property of the call graph — an `e` whose only sin is
+  calling a function that compares two floats has no derivative, and nothing in
+  the expression says so. `NotDifferentiable` is an error naming the reason;
+  `Unknown` is a **warning**, because refusing a program the compiler merely
+  failed to analyse is worse than saying so.
+
+This program is **invalid**, and this is the diagnostic it gets:
+
+```mg
++f noisy(x: f64) -> f64 / io { println("tick"); x * 2.0 }
+f bad(w: f64) -> f64 { grad(noisy(w), w) }
+```
+
+> error: in `bad`: `grad` needs an expression with a derivative, and this one
+> has none — performs the `IO` effect, so its output is not a function of its
+> inputs
+
+**What is implemented, and what is not.** Scalar `f64`/`f32` gradients work and
+run. `grad` over `tensor` and `param` is **designed and not built**, and the
+type checker refuses it with that sentence rather than accepting a program that
+cannot run — the evaluator has no tensor value at all. Nested `grad` is refused
+too: a second derivative needs a second level of dual numbers.
+
+The implementation is forward-mode automatic differentiation, and forward mode
+specifically because `grad(e, w)` names **one** `w`: one pass gives ∂e/∂w
+exactly. Reverse mode is the right algorithm for many parameters at once, which
+is what the `train` block of §5.4 does through its own tape.
+
+Alongside it, the `train` block stays declarative: the optimiser, schedule and
+loss are fields, and the backward pass is the runtime's business rather than
+something the source expresses.
 
 ---
 
@@ -831,7 +869,7 @@ shapes *are* checked; the operator surface is recorded here as intent.
 | Transpose | `A.T` | Swap last two dims |
 | Reshape / flatten | `A.reshape([2,3])`, `A.flatten()` | |
 | Reductions | `A.sum()`, `A.mean(axis: 0)` | |
-| Gradient | `grad(loss, w)` | Autograd (§5.6) |
+| Gradient | `grad(loss, w)` | Autograd (§5.6) — scalar only; over tensors it is designed and not built |
 | Slice / concat / stack | `A[0..3, ..]`, `cat([A, B], axis: 0)`, `stack([A, B])` | |
 
 ### 6.3 Shape Checking
@@ -1320,7 +1358,7 @@ $$
 $$
 
 $$
-\frac{L : \text{Tensor}\langle T, []\rangle \quad P : \text{Vec}\langle\text{Param}\langle T, S_i\rangle\rangle}{\text{grad}(L, P) : \text{Vec}\langle\text{Tensor}\langle T, S_i\rangle\rangle} \quad \text{[T-Grad]}
+\frac{e : T \quad w : T \quad T \in \{f32, f64\} \quad \text{diff}(e) \sqsubseteq \text{AlmostEverywhere}}{\text{grad}(e, w) : T} \quad \text{[T-Grad]}
 $$
 
 ### 10.5 Type Inference

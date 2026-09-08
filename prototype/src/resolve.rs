@@ -1100,6 +1100,14 @@ impl Resolver {
                 self.resolve_expr(left);
                 self.resolve_expr(right);
             }
+            // Both operands resolve in the enclosing scope. `w` in
+            // `grad(e, w)` is a *use* of an existing binding, not a new
+            // one — `grad(loss, undeclared)` must say `unresolved name`
+            // like any other reference.
+            ast::Expr::Grad { value, wrt } => {
+                self.resolve_expr(value);
+                self.resolve_expr(wrt);
+            }
             ast::Expr::Is { expr, .. } => {
                 self.resolve_expr(expr);
             }

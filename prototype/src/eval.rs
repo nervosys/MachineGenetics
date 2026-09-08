@@ -22,6 +22,25 @@ type SiblingGroup = Rc<RefCell<Vec<(String, Weak<ClosureData>)>>>;
 pub enum Value {
     Int(i64),
     Float(f64),
+    /// A float carrying its derivative with respect to the one variable a
+    /// `grad(…)` is currently differentiating against: `(value, dv/dw)`.
+    ///
+    /// Forward-mode automatic differentiation, and forward mode specifically
+    /// because `grad(e, w)` names **one** `w`: one pass gives ∂e/∂w exactly,
+    /// with no tape and no second traversal. Reverse mode is the right
+    /// algorithm for many inputs at once, which is what `train` blocks do
+    /// through `autograd.rs`; it is the wrong one for this construct.
+    ///
+    /// Exact, not approximate — this is the chain rule, not a finite
+    /// difference. `differentiable::tests` check it against central differences
+    /// anyway, because agreement between an exact method and a numerical one is
+    /// the standard evidence that the exact one is implemented right.
+    ///
+    /// A `Dual` exists only inside the evaluation of a `grad` body: the arm
+    /// that creates it takes the derivative part and returns a plain `Float`.
+    /// Nothing else constructs one, and the evaluator has no mutable global
+    /// state for one to escape into.
+    Dual(f64, f64),
     Bool(bool),
     Str(String),
     List(Vec<Value>),
@@ -62,6 +81,11 @@ impl std::fmt::Display for Value {
         match self {
             Value::Int(n) => write!(f, "{n}"),
             Value::Float(x) => write!(f, "{x}"),
+            // Shown as the number it is. A `Dual` should never reach a
+            // print — `grad` unwraps it — but rendering the derivative
+            // here would make a leak look like a formatting bug rather
+            // than the wrong value.
+            Value::Dual(x, _) => write!(f, "{x}"),
             Value::Bool(b) => write!(f, "{b}"),
             Value::Str(s) => write!(f, "{s:?}"),
             Value::List(xs) => {
@@ -100,6 +124,11 @@ impl PartialEq for Value {
         match (self, other) {
             (Int(a), Int(b)) => a == b,
             (Float(a), Float(b)) => a == b,
+            // A dual compares as its value: inside a `grad` body the
+            // seeded variable must still behave like the number it is.
+            (Dual(a, _), Dual(b, _)) => a == b,
+            (Dual(a, _), Float(b)) | (Float(b), Dual(a, _)) => a == b,
+            (Dual(a, _), Int(b)) | (Int(b), Dual(a, _)) => *a == *b as f64,
             (Bool(a), Bool(b)) => a == b,
             (Str(a), Str(b)) => a == b,
             (List(a), List(b)) => a == b,
@@ -493,6 +522,7 @@ impl Interp {
                 match (op.as_str(), v) {
                     ("-", Value::Int(n)) => Ok(Value::Int(-n)),
                     ("-", Value::Float(f)) => Ok(Value::Float(-f)),
+                    ("-", Value::Dual(v, d)) => Ok(Value::Dual(-v, -d)),
                     // `!` negates truthiness, so `!0` / `![]` work, not just bools.
                     ("!", v) => Ok(Value::Bool(!truthy(&v))),
                     (o, _) => err(format!("unsupported unary `{o}`")),
@@ -894,6 +924,72 @@ impl Interp {
                 let v = self.eval(expr, env)?;
                 Ok(Value::Bool(self.match_pat(pattern, &v, env)))
             }
+            // `grad(e, w)` — forward-mode automatic differentiation (§5.6).
+            //
+            // Seed `w` with a derivative of 1 and evaluate `e`. Every constant
+            // it meets carries a derivative of 0, the arithmetic rules in
+            // `binop` propagate the chain rule, and what comes back is the
+            // exact ∂e/∂w. One pass, because there is one `w`.
+            //
+            // The seeding is a *shadowing binding* in a pushed scope rather
+            // than a mutation of the existing one: `grad(loss, w)` must not
+            // leave `w` a dual afterwards, and a program may take two
+            // gradients of the same variable in one expression.
+            Expr::Grad { value, wrt } => {
+                let name = match wrt.as_ref() {
+                    Expr::Ident { name } => name.clone(),
+                    // The type checker says this properly, with the reason.
+                    // Reached only by `--eval` on unchecked source, which is a
+                    // supported way to run this compiler: the two oracles are
+                    // independent, so this one cannot assume the other ran.
+                    other => {
+                        return err(format!(
+                            "`grad` differentiates with respect to a variable, and \
+                             {} is not one",
+                            variant(other)
+                        ));
+                    }
+                };
+                let seed = match self.eval(wrt, env)? {
+                    Value::Float(v) => v,
+                    Value::Int(n) => n as f64,
+                    // A dual here means `grad(grad(…))`. Second derivatives
+                    // need a second, nested dual level, which this does not
+                    // have — and answering with the first derivative would be
+                    // silently wrong rather than unsupported.
+                    Value::Dual(..) => {
+                        return err(
+                            "nested `grad` is not supported: a second derivative needs \
+                             a second level of dual numbers, and this evaluator carries \
+                             one",
+                        );
+                    }
+                    other => {
+                        return err(format!(
+                            "`grad` differentiates with respect to a continuous \
+                             variable; `{name}` is `{other}`"
+                        ));
+                    }
+                };
+
+                env.push();
+                env.define(name.clone(), Value::Dual(seed, 1.0));
+                let out = self.eval(value, env);
+                env.pop();
+
+                match out? {
+                    Value::Dual(_, d) => Ok(Value::Float(d)),
+                    // `e` evaluated to a number that never touched `w`. The
+                    // derivative of a constant is zero, and that is a real
+                    // answer rather than a failure — `grad(1.0, w)` is 0.
+                    Value::Float(_) | Value::Int(_) => Ok(Value::Float(0.0)),
+                    other => err(format!(
+                        "`grad` differentiates a number; this expression evaluated to \
+                         `{other}`"
+                    )),
+                }
+            }
+
             other => err(format!("evaluator does not support {} yet", variant(other))),
         }
     }
@@ -1474,6 +1570,22 @@ impl Interp {
             "abs" => match arg(0) {
                 Value::Int(n) => Ok(Value::Int(n.abs())),
                 Value::Float(f) => Ok(Value::Float(f.abs())),
+                // |x|' = sign(x), and at exactly zero there is no
+                // derivative. 0 is the conventional subgradient and the
+                // one every AD implementation returns; the *kink* is what
+                // makes `abs` AlmostEverywhere rather than Smooth, and
+                // that verdict is reported statically rather than being
+                // discovered here.
+                Value::Dual(v, d) => Ok(Value::Dual(
+                    v.abs(),
+                    if v > 0.0 {
+                        d
+                    } else if v < 0.0 {
+                        -d
+                    } else {
+                        0.0
+                    },
+                )),
                 _ => err("abs expects a number"),
             },
             "range" => {
@@ -1850,6 +1962,12 @@ fn cmp_value(a: &Value, b: &Value) -> std::cmp::Ordering {
         (Value::Float(x), Value::Int(y)) => x.partial_cmp(&(*y as f64)).unwrap_or(Ordering::Equal),
         (Value::Str(x), Value::Str(y)) => x.cmp(y),
         (Value::Bool(x), Value::Bool(y)) => x.cmp(y),
+        // Duals order by value. A comparison is where differentiability
+        // is *lost* — the result is a bool — but it still has to answer
+        // correctly, or `? x > 0.0` inside a `grad` body takes the wrong
+        // branch and the derivative is of a different function.
+        (Value::Dual(x, _), _) => cmp_value(&Value::Float(*x), b),
+        (_, Value::Dual(y, _)) => cmp_value(a, &Value::Float(*y)),
         _ => Ordering::Equal,
     }
 }
@@ -1868,6 +1986,42 @@ fn binop(op: &str, l: Value, r: Value) -> R {
         ("*", Float(a), Float(b)) => Ok(Float(a * b)),
         ("/", Float(a), Float(b)) => Ok(Float(a / b)),
         ("%", Float(a), Float(b)) => Ok(Float(a % b)),
+        // ── Forward-mode dual arithmetic ─────────────────────────────
+        //
+        // The chain rule, one rule per operator. `Dual(v, d)` is `v` with
+        // `d = dv/dw`; a plain `Float` or `Int` met inside a `grad` body
+        // is a constant, so its derivative is 0 and it promotes to
+        // `Dual(v, 0.0)`. Promoting rather than adding a dozen mixed
+        // arms keeps the rules readable and keeps them in one place.
+        (o @ ("+" | "-" | "*" | "/" | "%"), Dual(a, da), Dual(b, db)) => {
+            Ok(match o {
+                "+" => Dual(a + b, da + db),
+                "-" => Dual(a - b, da - db),
+                "*" => Dual(a * b, da * b + a * db),
+                // Quotient rule. Division by zero is the same non-event
+                // it is for `Float`: IEEE infinity, not an error, because
+                // `/` is *undefined* at zero rather than non-
+                // differentiable — the distinction DIFFERENTIABILITY.md
+                // draws for the `+ - * /` row.
+                "/" => Dual(a / b, (da * b - a * db) / (b * b)),
+                // `%` is piecewise linear in `a` with unit slope, and
+                // discontinuous at each multiple of `b`; a.e. its
+                // derivative is `da`.
+                _ => Dual(a % b, da),
+            })
+        }
+        (o @ ("+" | "-" | "*" | "/" | "%"), Dual(a, da), Float(b)) => {
+            binop(o, Dual(a, da), Dual(b, 0.0))
+        }
+        (o @ ("+" | "-" | "*" | "/" | "%"), Float(a), Dual(b, db)) => {
+            binop(o, Dual(a, 0.0), Dual(b, db))
+        }
+        (o @ ("+" | "-" | "*" | "/" | "%"), Dual(a, da), Int(b)) => {
+            binop(o, Dual(a, da), Dual(b as f64, 0.0))
+        }
+        (o @ ("+" | "-" | "*" | "/" | "%"), Int(a), Dual(b, db)) => {
+            binop(o, Dual(a as f64, 0.0), Dual(b, db))
+        }
         ("+", Str(a), Str(b)) => Ok(Str(a + &b)),
         // List concatenation: `[1,2] + [3,4]` => `[1,2,3,4]` (so fold over a
         // list accumulator works: `fold(xs, [], fn(a, x) => a + [f(x)])`).
@@ -2074,6 +2228,123 @@ mod tests {
 
     fn run(src: &str, f: &str, args: &[i64]) -> Value {
         run_source(src, f, args).expect("run failed")
+    }
+
+    // ── `grad` — forward-mode automatic differentiation (§5.6) ───────────
+    //
+    // The oracle for every case below is **central differences**:
+    // (f(w+h) - f(w-h)) / 2h, which is accurate to O(h²). Agreement between an
+    // exact method and a numerical one is the standard evidence that the exact
+    // one is implemented right, and it is the *inductive* half of the pairing
+    // `DIFFERENTIABILITY.md` sets out: the pass proves a derivative exists,
+    // gradient checking evidences that the computed one is correct.
+
+    /// `grad(body, w)` at `w`, and the central difference of `body` at `w`.
+    fn grad_and_fd(body: &str, w: f64) -> (f64, f64) {
+        let g = eval_f64(&format!("f p() -> f64 {{ val w = {w:?}; grad({body}, w) }}"));
+        let h = 1e-6;
+        let f = |x: f64| eval_f64(&format!("f p() -> f64 {{ val w = {x:?}; {body} }}"));
+        (g, (f(w + h) - f(w - h)) / (2.0 * h))
+    }
+
+    fn eval_f64(src: &str) -> f64 {
+        match run_source(src, "p", &[]).expect("run failed") {
+            Value::Float(f) => f,
+            Value::Int(n) => n as f64,
+            other => panic!("expected a number, got {other}"),
+        }
+    }
+
+    fn assert_close(a: f64, b: f64, what: &str) {
+        assert!(
+            (a - b).abs() < 1e-4,
+            "{what}: exact {a}, central difference {b}"
+        );
+    }
+
+    #[test]
+    fn grad_of_a_polynomial_matches_finite_differences() {
+        for body in ["w * w", "w * w * 3.0 + w * 2.0", "w * w * w", "w / 4.0 + 1.0"] {
+            for w in [-2.0, 0.5, 3.0] {
+                let (g, fd) = grad_and_fd(body, w);
+                assert_close(g, fd, &format!("d/dw {body} at {w}"));
+            }
+        }
+    }
+
+    /// The product and quotient rules, where a wrong implementation gives an
+    /// answer that is close rather than absurd — which is why the oracle is
+    /// numerical rather than a hand-computed constant.
+    #[test]
+    fn grad_follows_the_product_and_quotient_rules() {
+        let (g, fd) = grad_and_fd("(w + 1.0) * (w * 2.0 - 3.0)", 1.5);
+        assert_close(g, fd, "product rule");
+        let (g, fd) = grad_and_fd("(w * w + 1.0) / (w + 3.0)", 2.0);
+        assert_close(g, fd, "quotient rule");
+    }
+
+    /// A constant has derivative zero, and so does a variable the expression
+    /// never mentions. Both must answer 0 rather than failing: `grad(1.0, w)`
+    /// is a well-posed question.
+    #[test]
+    fn grad_of_something_independent_of_w_is_zero() {
+        assert_eq!(eval_f64("f p() -> f64 { val w = 2.0; grad(1.0, w) }"), 0.0);
+        assert_eq!(
+            eval_f64("f p() -> f64 { val w = 2.0; val k = 9.0; grad(k * 3.0, w) }"),
+            0.0
+        );
+    }
+
+    /// `abs` has a kink, and the derivative either side of it is exact.
+    /// At the kink itself the convention is 0 — the subgradient every AD
+    /// implementation returns — and the *existence* of the kink is what the
+    /// static pass reports as `AlmostEverywhere`.
+    #[test]
+    fn grad_of_abs_is_the_sign_and_zero_at_the_kink() {
+        assert_eq!(eval_f64("f p() -> f64 { val w = 3.0; grad(abs(w), w) }"), 1.0);
+        assert_eq!(eval_f64("f p() -> f64 { val w = 0.0 - 3.0; grad(abs(w), w) }"), -1.0);
+        assert_eq!(eval_f64("f p() -> f64 { val w = 0.0; grad(abs(w), w) }"), 0.0);
+    }
+
+    /// A branch on the value being differentiated takes the branch the value
+    /// selects, and differentiates *that* one. Getting the comparison wrong
+    /// would silently differentiate the other arm.
+    #[test]
+    fn grad_differentiates_the_branch_actually_taken() {
+        let src = "f p() -> f64 { val w = 2.0; grad(? w > 1.0 { w * 5.0 } : { w * 11.0 }, w) }";
+        assert_eq!(eval_f64(src), 5.0);
+        let src = "f p() -> f64 { val w = 0.5; grad(? w > 1.0 { w * 5.0 } : { w * 11.0 }, w) }";
+        assert_eq!(eval_f64(src), 11.0);
+    }
+
+    /// The chain rule across a user-defined function — the case a
+    /// tape-per-construct implementation gets wrong, because the derivative
+    /// has to travel through a call.
+    #[test]
+    fn grad_crosses_a_function_call() {
+        let src = "f sq(x: f64) -> f64 { x * x }\n\
+                   f p() -> f64 { val w = 3.0; grad(sq(w) * 2.0, w) }";
+        assert_eq!(eval_f64(src), 12.0); // d/dw 2w² = 4w = 12
+    }
+
+    /// Seeding must not leak: `w` is an ordinary number again afterwards, and
+    /// two gradients in one expression do not interfere.
+    #[test]
+    fn the_seeded_variable_does_not_escape_the_grad() {
+        let src = "f p() -> f64 { val w = 4.0; val g = grad(w * w, w); g + w }";
+        assert_eq!(eval_f64(src), 12.0); // 8 + 4
+        let src = "f p() -> f64 { val w = 4.0; grad(w * w, w) + grad(w * 3.0, w) }";
+        assert_eq!(eval_f64(src), 11.0); // 8 + 3
+    }
+
+    /// A second derivative needs a second level of dual numbers, which this
+    /// evaluator does not carry. It says so rather than answering with the
+    /// first derivative, which is the shape of a silently wrong answer.
+    #[test]
+    fn nested_grad_is_refused_rather_than_answered_wrongly() {
+        let e = run_source("f p() -> f64 { val w = 2.0; grad(grad(w * w, w), w) }", "p", &[])
+            .expect_err("nested grad must not succeed");
+        assert!(e.contains("nested `grad`"), "{e}");
     }
 
     // ── prefix operators bind looser than the postfix chain ──────────────

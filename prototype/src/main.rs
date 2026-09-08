@@ -2796,6 +2796,15 @@ fn run_check_json(source: &str, filename: &str, do_elision: bool, legacy: bool) 
         all.extend(types::check(&module).diagnostics);
         let effect_infer = effects::infer_effects(&module);
         all.extend(effect_infer.diagnostics.clone());
+        // The `grad` obligation (§5.6): `grad(e, w)` needs an `e` with a
+        // derivative. Reported here as well as in the human path — an
+        // agent that validates generated MAGE with `--check --json` must
+        // see the same errors a person does, or the two oracles disagree
+        // about what the program means.
+        all.extend(differentiable::check_grad_obligations(
+            &module,
+            &differentiable::infer(&module, &effect_infer),
+        ));
         for (func, declared, inferred) in effect_infer.effect_surface() {
             effect_surface.push(serde_json::json!({
                 "function": func,
@@ -2926,6 +2935,22 @@ fn run_check(source: &str, filename: &str, do_elision: bool, legacy: bool, token
         }
     }
 
+    // Phase 5.4: The `grad` obligation (§5.6).
+    //
+    // Separate from type checking on purpose. `types.rs` gives
+    // `grad(e, w)` its type from the expression in front of it; whether
+    // `e` *has* a derivative is a property of the call graph, which only
+    // this pass can see. Splitting them is what stops the type checker
+    // answering a question it has no evidence for.
+    let diff_infer = differentiable::infer(&module, &effect_infer);
+    let grad_diags = differentiable::check_grad_obligations(&module, &diff_infer);
+    for diag in &grad_diags {
+        eprintln!("{filename}: {diag}");
+        if diag.severity == hir::Severity::Error {
+            total_errors += 1;
+        }
+    }
+
     // Report.
     let sym_count = resolver.symbols.len();
     let fn_count = effect_infer.inferred.len();
@@ -2956,6 +2981,7 @@ fn run_check(source: &str, filename: &str, do_elision: bool, legacy: bool, token
     all_diagnostics.extend(resolver.diagnostics.iter().cloned());
     all_diagnostics.extend(checker.diagnostics.iter().cloned());
     all_diagnostics.extend(effect_infer.diagnostics.iter().cloned());
+    all_diagnostics.extend(grad_diags.iter().cloned());
 
     let healed = heal::heal(&all_diagnostics);
     let fix_count: usize = healed.iter().map(|h| h.fixes.len()).sum();

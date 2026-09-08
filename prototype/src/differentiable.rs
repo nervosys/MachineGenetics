@@ -25,7 +25,7 @@
 
 use crate::ast;
 use crate::effects::EffectInfer;
-use crate::hir::Effect;
+use crate::hir::{Diagnostic, DiagnosticCategory, Effect, Severity};
 use std::collections::HashMap;
 
 /// How differentiable something is.
@@ -495,6 +495,14 @@ fn expr_status(e: &ast::Expr) -> Diff {
         }
         ast::Expr::Assign { value, .. } => expr_status(value),
 
+        // A `grad` inside the thing being differentiated is a second
+        // derivative. It may well exist; this pass does not compute it, and
+        // the evaluator carries one level of dual numbers, so both halves
+        // agree that the answer is "not analysed" rather than a verdict.
+        ast::Expr::Grad { .. } => {
+            Diff::Unknown("`grad` — the differentiability of a derivative is not analysed".into())
+        }
+
         // Everything else is unanalysed rather than assumed fine. Naming the
         // variant makes the gap actionable instead of silent.
         other => Diff::Unknown(format!("{} not analysed", variant_name(other))),
@@ -787,6 +795,170 @@ fn variant_name(e: &ast::Expr) -> &'static str {
         ast::Expr::StructLit { .. } => "a struct literal",
         ast::Expr::MapLit { .. } => "a map literal",
         _ => "this expression",
+    }
+}
+
+// ── The `grad` obligation ────────────────────────────────────────────
+//
+// `types.rs` gives `grad(e, w)` its type and deliberately does not check that
+// `e` has a derivative, because that premise is a property of the **call
+// graph**: an `e` whose only sin is calling a function that compares two floats
+// is not differentiable, and nothing in the expression says so. This pass has
+// the call graph, so the obligation lives here.
+//
+// The severities are not symmetric, and the asymmetry is the design:
+//
+//   NotDifferentiable → **error**, naming the reason. The program asked for a
+//                       derivative that does not exist.
+//   Unknown           → **warning**. Refusing a program because the compiler
+//                       failed to analyse it is worse than saying so: the
+//                       fourth state is the absence of a verdict, and turning
+//                       an absence into a rejection would make every
+//                       unmodelled construct a hard error.
+//
+// That is the rule `DIFFERENTIABILITY.md` states for the typing judgement, and
+// this is where it is enforced.
+
+/// The differentiability of an expression, folding in what its calls reach.
+///
+/// `expr_status` alone judges only the syntax in front of it — a call
+/// contributes its *arguments* and nothing else, because the callee's verdict
+/// comes from the call graph. This joins that back in, the same way `resolve`
+/// does for a whole function.
+fn expr_status_resolved(engine: &DiffInfer, e: &ast::Expr) -> Diff {
+    let mut d = expr_status(e);
+    let mut callees = Vec::new();
+    collect_calls_expr(e, &mut callees);
+    for c in callees {
+        let cd = if engine.inferred.contains_key(&c) {
+            engine.diff_of(&c)
+        } else {
+            builtin_status(&c)
+        };
+        d = d.join(cd);
+    }
+    d
+}
+
+/// Check every `grad(e, w)` in the module against the differentiability
+/// obligation, and report what fails it.
+pub fn check_grad_obligations(module: &ast::Module, engine: &DiffInfer) -> Vec<Diagnostic> {
+    let mut out = Vec::new();
+    let mut sites = Vec::new();
+    for item in &module.items {
+        if let ast::ItemKind::Function(fd) = &item.kind {
+            collect_grads_block(&fd.body, &fd.name, &mut sites);
+            if let Some(be) = &fd.body_expr {
+                collect_grads_expr(be, &fd.name, &mut sites);
+            }
+        }
+    }
+    for (owner, value) in sites {
+        match expr_status_resolved(engine, &value) {
+            Diff::Smooth | Diff::AlmostEverywhere => {}
+            Diff::No(reason) => out.push(Diagnostic::categorized(
+                Severity::Error,
+                format!(
+                    "in `{owner}`: `grad` needs an expression with a derivative, and \
+                     this one has none — {reason}"
+                ),
+                DiagnosticCategory::TypeMismatch,
+                None,
+            )),
+            Diff::Unknown(reason) => out.push(Diagnostic::categorized(
+                Severity::Warning,
+                format!(
+                    "in `{owner}`: `grad` could not be checked — {reason}. The gradient \
+                     is computed anyway; this says the compiler did not verify that one \
+                     exists, not that it does not"
+                ),
+                DiagnosticCategory::Other,
+                None,
+            )),
+        }
+    }
+    out
+}
+
+fn collect_grads_block(b: &ast::Block, owner: &str, out: &mut Vec<(String, ast::Expr)>) {
+    for s in &b.stmts {
+        match s {
+            ast::Stmt::Expr { expr } | ast::Stmt::Defer { expr } => {
+                collect_grads_expr(expr, owner, out)
+            }
+            ast::Stmt::Let { value, .. } => collect_grads_expr(value, owner, out),
+            ast::Stmt::Guard { cond, else_block } => {
+                collect_grads_expr(cond, owner, out);
+                collect_grads_block(else_block, owner, out);
+            }
+            ast::Stmt::Item { .. } => {}
+        }
+    }
+    if let Some(t) = &b.tail_expr {
+        collect_grads_expr(t, owner, out);
+    }
+}
+
+fn collect_grads_expr(e: &ast::Expr, owner: &str, out: &mut Vec<(String, ast::Expr)>) {
+    if let ast::Expr::Grad { value, .. } = e {
+        out.push((owner.to_string(), (**value).clone()));
+    }
+    // Walk everything, so a `grad` nested inside a branch or a call argument is
+    // still reached. The shape mirrors `collect_calls_expr`; the difference is
+    // that this one descends into `Grad` too, because a `grad` inside a `grad`
+    // body is a site in its own right.
+    match e {
+        ast::Expr::Grad { value, wrt } => {
+            collect_grads_expr(value, owner, out);
+            collect_grads_expr(wrt, owner, out);
+        }
+        ast::Expr::Call { func, args } => {
+            collect_grads_expr(func, owner, out);
+            for a in args {
+                collect_grads_expr(a, owner, out);
+            }
+        }
+        ast::Expr::MethodCall { receiver, args, .. } => {
+            collect_grads_expr(receiver, owner, out);
+            for a in args {
+                collect_grads_expr(a, owner, out);
+            }
+        }
+        ast::Expr::Binary { left, right, .. } | ast::Expr::Pipeline { left, right } => {
+            collect_grads_expr(left, owner, out);
+            collect_grads_expr(right, owner, out);
+        }
+        ast::Expr::Unary { operand, .. } => collect_grads_expr(operand, owner, out),
+        ast::Expr::If {
+            cond,
+            then_block,
+            else_block,
+        } => {
+            collect_grads_expr(cond, owner, out);
+            collect_grads_block(then_block, owner, out);
+            if let Some(b) = else_block {
+                collect_grads_block(b, owner, out);
+            }
+        }
+        ast::Expr::Block { block } => collect_grads_block(block, owner, out),
+        ast::Expr::Loop { body } => collect_grads_block(body, owner, out),
+        ast::Expr::Return { value: Some(inner) } => collect_grads_expr(inner, owner, out),
+        ast::Expr::For { body, .. } => collect_grads_block(body, owner, out),
+        ast::Expr::While { cond, body } => {
+            collect_grads_expr(cond, owner, out);
+            collect_grads_block(body, owner, out);
+        }
+        ast::Expr::ArrayLit { elements } | ast::Expr::TupleLit { elements } => {
+            for i in elements {
+                collect_grads_expr(i, owner, out);
+            }
+        }
+        ast::Expr::Cast { expr, .. } => collect_grads_expr(expr, owner, out),
+        ast::Expr::Index { object, .. } | ast::Expr::FieldAccess { object, .. } => {
+            collect_grads_expr(object, owner, out)
+        }
+        ast::Expr::Assign { value, .. } => collect_grads_expr(value, owner, out),
+        _ => {}
     }
 }
 
@@ -1361,6 +1533,85 @@ mod tests {
         let j = report_json(&d, "t.mg");
         assert_eq!(j["summary"]["nets"]["smooth"], 1);
         assert_eq!(j["nets"][0]["layers"][0]["type"], "Linear");
+    }
+
+
+    // ── The `grad` obligation ────────────────────────────────────────
+
+    fn obligations(src: &str) -> Vec<String> {
+        let tokens = lexer::lex(src);
+        let module = parser::parse(&tokens).expect("parse failed");
+        let eff = effects::infer_effects(&module);
+        let engine = infer(&module, &eff);
+        check_grad_obligations(&module, &engine)
+            .iter()
+            .map(|d| format!("{:?}: {}", d.severity, d.message))
+            .collect()
+    }
+
+    /// A `grad` over ordinary float arithmetic raises nothing.
+    #[test]
+    fn a_differentiable_grad_is_silent() {
+        assert!(obligations("f p(w: f64) -> f64 { grad(w * w + 1.0, w) }").is_empty());
+    }
+
+    /// **The obligation the construct exists for.** A comparison produces a
+    /// bool, so there is no derivative — and the error says which operator
+    /// destroyed it rather than "not differentiable".
+    #[test]
+    fn a_non_differentiable_grad_is_an_error_naming_the_reason() {
+        let o = obligations("f p(w: f64) -> f64 { grad(w > 1.0, w) }");
+        assert_eq!(o.len(), 1, "{o:?}");
+        assert!(o[0].starts_with("Error"), "{o:?}");
+        assert!(o[0].contains('>'), "the reason names the operator: {o:?}");
+    }
+
+    /// **The premise `types.rs` cannot check**, and the reason this pass owns
+    /// the obligation: nothing in `grad(cmp(w), w)` says that `cmp` compares.
+    /// Only the call graph does.
+    #[test]
+    fn the_obligation_follows_calls() {
+        let o = obligations(
+            "f cmp(x: f64) -> f64 { x > 1.0 }\n\
+             f p(w: f64) -> f64 { grad(cmp(w) * 2.0, w) }",
+        );
+        assert_eq!(o.len(), 1, "a call into a non-differentiable function: {o:?}");
+        assert!(o[0].starts_with("Error"), "{o:?}");
+    }
+
+    /// An effect in the differentiated expression means the value is not a
+    /// function of `w` at all, whatever the arithmetic looks like.
+    #[test]
+    fn an_effectful_expression_fails_the_obligation() {
+        let o = obligations(
+            "+f noisy(x: f64) -> f64 / io { println(\"hi\"); x * 2.0 }\n\
+             f p(w: f64) -> f64 { grad(noisy(w), w) }",
+        );
+        assert_eq!(o.len(), 1, "{o:?}");
+        assert!(o[0].contains("effect"), "{o:?}");
+    }
+
+    /// `Unknown` warns and does not refuse. Rejecting a program because the
+    /// compiler failed to analyse it is worse than saying so — the fourth
+    /// state is the absence of a verdict, not a negative one.
+    #[test]
+    fn an_unanalysed_expression_warns_rather_than_failing() {
+        // A pipeline is a construct `expr_status` does not model, which is
+        // exactly the case: not "there is no derivative", but "this pass did
+        // not look".
+        let o = obligations("f p(w: f64) -> f64 { grad(w |> abs, w) }");
+        assert_eq!(o.len(), 1, "{o:?}");
+        assert!(o[0].starts_with("Warning"), "{o:?}");
+        assert!(o[0].contains("not analysed"), "{o:?}");
+    }
+
+    /// A `grad` nested inside another expression is still a site. A collector
+    /// that only looked at statement position would miss it and report clean.
+    #[test]
+    fn a_grad_in_argument_position_is_still_checked() {
+        let o = obligations("f p(w: f64) -> f64 { abs(grad(w > 1.0, w)) }");
+        assert_eq!(o.len(), 1, "{o:?}");
+        assert!(o[0].starts_with("Error"), "{o:?}");
     }
 
     /// Mutual recursion must terminate rather than blow the stack.
