@@ -81,6 +81,39 @@ echo "mg_checked=$(printf '%s' "$mg_line" | awk '{print $2}')"
 # Field 5, not 4: the line reads "Checked 101 .mg files; 25 skipped",
 # so `$4` is "files;". The pin caught it on its first run.
 echo "mg_sketches=$(printf '%s' "$mg_line" | awk '{print $5}')"
+# Sources declaring a `kb`, and the subset that also declares a `net`.
+# HANDOFF.md's decision to leave `TENSOR_PRODUCT_BINDING.md` a specification
+# rests on how small that overlap is — it is the population a binding
+# construct would serve — so it is measured rather than counted by hand. It
+# had been counted by hand: the figure lived in two sentences of prose and
+# nothing re-derived it.
+#
+# **The counting rule, stated because a checker without one invents the
+# definition it verifies.** A *tracked* `.mg` file (`git ls-files`, the same
+# corpus `measure-differentiability.sh` walks) with a line whose first token
+# is `kb` / `net`. The lexer maps exactly one spelling to `KwKb` and one to
+# `KwNet` — checked, not assumed — and MAGE's sigil surface does not rename
+# either, both already being short enough that D.4 gives them no entry. So a
+# text scan cannot miss a second spelling, which is the failure that would
+# otherwise make this number quietly low.
+#
+# `if grep …; then` rather than `grep … && flag=1`: under `set -o errexit` a
+# short-circuited `&&` returns 1 and kills the script, so the no-match case —
+# the common one — would abort the emitter rather than count a zero.
+mg_kb=0
+mg_net_kb=0
+while IFS= read -r f; do
+    [ -n "$f" ] || continue
+    if grep -qE '^[[:space:]]*kb[[:space:]]+[A-Za-z_]' "$f"; then
+        mg_kb=$((mg_kb + 1))
+        if grep -qE '^[[:space:]]*net[[:space:]]+[A-Za-z_]' "$f"; then
+            mg_net_kb=$((mg_net_kb + 1))
+        fi
+    fi
+done < <(cd "$REPO" && git ls-files '*.mg')
+echo "mg_kb=$mg_kb"
+echo "mg_net_kb=$mg_net_kb"
+
 # The three lines below each run a checker to *measure* what the docs
 # claim, which makes `--check-docs` a few minutes slower. CI runs the
 # same checkers as their own steps; this is the price of the claims

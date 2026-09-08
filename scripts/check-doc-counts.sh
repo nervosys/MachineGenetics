@@ -122,6 +122,8 @@ HANDOFF.md	→ [0-9,]+\*\*, all green	prototype
 HANDOFF.md	\| CI \| [0-9,]+ jobs	ci_jobs
 HANDOFF.md	\*\*[0-9,]+ checked	mg_checked
 HANDOFF.md	checked, [0-9,]+ sketches	mg_sketches
+HANDOFF.md	\*\*[0-9,]+\*\* tracked sources	mg_kb
+HANDOFF.md	\*\*[0-9,]+\*\* of them declare a	mg_net_kb
 HANDOFF.md	[0-9,]+ MAGE blocks typecheck	doc_blocks
 HANDOFF.md	[0-9,]+ documentation entry points	doc_evals
 HANDOFF.md	file-oracle parse [0-9]+/	floor_parse

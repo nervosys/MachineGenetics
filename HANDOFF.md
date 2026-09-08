@@ -251,13 +251,33 @@ until something wants it. Building a construct with no caller is the mistake
 the more useful half.** It said there was "no numerical MAGE code to build a
 binding construct for", on the evidence of 0 of 155 differentiable functions.
 There is: 34 nets, all of them differentiable — the pass had simply never been
-pointed at them. What is actually thin is the *overlap*: three tracked sources
-declare a `net` and a `kb` together (`neurosymbolic_qa.mg`,
-`neurosymbolic.mg`, `unified.mg`), which is the population a binding construct
-would serve. That is a much narrower claim than the one it replaces, and it is
-the one to re-measure before starting. **A measurement quoted as evidence for a
-decision about a different population is not evidence** — the figure was about
-`f` functions and the decision was about nets.
+pointed at them. What is actually thin is the *overlap*, and **it was
+re-measured on 2026-09-08 rather than re-quoted**: **3** tracked sources
+declare a `kb` at all, and **3** of them declare a `net` as well
+(`neurosymbolic_qa.mg`, `neurosymbolic.mg`, `unified.mg`) — the population a
+binding construct would serve. **A measurement quoted as evidence for a
+decision about a different population is not evidence** — the figure that used
+to stand here was about `f` functions and the decision was about nets.
+
+The two numbers being equal is the finding, and it is sharper than the sentence
+it replaces. **No source in this repository declares a `kb` without a `net`.**
+So the constraint on tensor-product binding is not that nets and knowledge
+bases rarely meet — where a `kb` appears, a `net` always does. It is that `kb`
+barely appears: the sources listed above are *every* source in the repository
+that declares one. That is a different thing to go and fix if someone wants the
+construct — the missing demand is for `kb`, not for the join — and it is stated
+without a count on purpose, because a second copy of a pinned figure is the
+parallel-copy problem this document keeps recording.
+
+Both figures are now emitted by `scripts/emit-doc-counts.sh` and pinned, so
+the sentence above fails CI rather than decaying — which is the whole reason
+the previous version of it went stale. **The counting rule is written down in
+the emitter**, because a checker without one invents the definition it
+verifies: a tracked `.mg` file with a line whose first token is `kb` / `net`.
+The lexer was read to confirm exactly one spelling maps to `KwKb` and one to
+`KwNet`, and that MAGE's sigil surface renames neither — D.4 gives them no
+entry. Had a second spelling existed, the scan would have read low and the
+decision would have rested on it.
 
 ---
 ## Where this phase ended, 2026-09-08
@@ -490,8 +510,9 @@ the mistake the sibling document was written to avoid.
 > Extending the pass to `net` found 34 differentiable nets; the corpus had
 > numerical MAGE code all along, and what the figure measured was `f`
 > functions. The conclusion — leave it specified — survives on a different and
-> narrower fact: three sources declare a `net` and a `kb` together. See
-> **Start here**.
+> narrower fact: every source that declares a `kb` also declares a `net`, and
+> there are very few of either. The count is deliberately not repeated here —
+> it is pinned in one place. See **Start here**.
 
 ### The question that found nearly everything
 
@@ -2583,9 +2604,10 @@ changed before you commit.
 
 - Prototype tests **1,066 → 1,261**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
-  across five crates **2,978**; documented-count pins **92**, up from 46 — the
-  four newest hold `SECURITY_AUDIT.md`'s `unsafe` inventory, a claim that had
-  been wrong twice.
+  across five crates **2,978**; documented-count pins **94**, up from 46 — the
+  two newest hold the `kb`/`net` overlap the tensor-product-binding decision
+  rests on, a figure that had lived in two sentences of prose with nothing
+  re-deriving it.
 - Every typechecker fix has landed without breaking an existing test **except
   one**, where widening `collection_elem` made `sum("hi")` legal and
   `vocab_rejects_non_collection` caught it. That is the datapoint showing the
