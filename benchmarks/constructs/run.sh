@@ -16,8 +16,22 @@ cd "$(dirname "$0")"
 # **exited 0**. Wired into CI in that state it would have gone green while
 # measuring nothing, which is the failure this benchmark exists to disprove.
 # `capstone/run.sh` had the strip and the guard right; this one had neither.
-MG="${MG:-../../prototype/target/release/mage-parse.exe}"
-[ -x "$MG" ] || MG="${MG%.exe}"
+# Ask cargo where the binary is rather than guessing at
+# `prototype/target/release/mage-parse.exe`.
+#
+# The guess resolves to a **leftover** on any machine whose cargo target
+# directory is not the default. `~/.cargo/config.toml` sets a shared one for
+# every Rust project here, so `prototype/target/` holds whatever was built
+# before that change -- on 2026-09-08, a binary six days stale. A benchmark
+# measuring with an old compiler is the "green result that is evidence about
+# nothing" failure `scripts/find-mage-parse.sh` exists to end, and four of the
+# figures below are pinned by `check-doc-counts.sh`.
+#
+# That file's own comment says "six checkers each carried their own copy": the
+# sweep converted the six **checkers** and left the two benchmarks, the two
+# demos and the agent wrapper still guessing. `MG`/`MGP` still override.
+. ../../scripts/find-mage-parse.sh  # cwd is this script's dir (cd on line 9)
+MG="${MG:-$(find_crate_bin prototype mage-parse release)}"
 if [ ! -x "$MG" ]; then
   echo "missing binary: ${MG##*/} — build with: cargo build --release --manifest-path prototype/Cargo.toml" >&2
   exit 1

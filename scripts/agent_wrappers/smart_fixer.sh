@@ -19,11 +19,21 @@ set -uo pipefail
 
 MODE="${RDX_BENCH_MODE:-propose}"
 PARSE_ERR="${RDX_PARSE_ERROR:-}"
-# mage-parse binary location (release build).
-MGP="prototype/target/release/mage-parse.exe"
-if [ ! -x "$MGP" ]; then
-    MGP="prototype/target/release/mage-parse"
-fi
+# Ask cargo where the binary is rather than guessing at
+# `prototype/target/release/mage-parse.exe`.
+#
+# The guess resolves to a leftover on any machine whose cargo target directory
+# is not the default — `~/.cargo/config.toml` sets a shared one for every Rust
+# project here, so `prototype/target/` holds whatever was built before that
+# change, six days stale on 2026-09-08. `scripts/find-mage-parse.sh` exists to
+# end that, and its own comment says "six checkers each carried their own
+# copy": the sweep converted the six **checkers** and left the two benchmarks,
+# the two demos and this wrapper still guessing. `MGP` still overrides.
+#
+# This one is a *fixer*: it decides whether a repair parses. A stale compiler
+# here does not merely mis-measure, it accepts or rejects the wrong programs.
+. "$(dirname "$0")/../find-mage-parse.sh"
+MGP="${MGP:-$(find_crate_bin prototype mage-parse release)}"
 
 INPUT=$(cat)
 
