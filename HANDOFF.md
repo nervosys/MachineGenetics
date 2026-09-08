@@ -162,6 +162,19 @@ Recorded so nobody re-opens them as oversights. Every one is the decision
 | Checking `Ontological concepts` / `Cross-domain relations` | neither has a stated counting rule, so a checker would invent the definition it verifies |
 | Deleting `Expr::UnsafeBlock` | eight passes handle it and it is what an implementation would need; the parser arm is the missing half |
 
+**1a — The checker audit is done, and it is the shape to keep applying.** The
+lead recorded on 2026-09-08 — *fail closed on exit status; string matching only
+for the message* — was taken the same day. Two of seventeen were fail-open:
+`check-examples.sh` certified twelve examples while every one of its `--check`
+calls exited 101, and `check-rmi-api-doc.sh` printed `OK - 0 documented items`
+where its own twin `check-internals-doc.sh` refuses to. Both fixed, both
+verified by breaking them, full account under **The checker audit, 2026-09-08**.
+
+The residue worth carrying is the *question*, not the rule: **what does this
+print when its subject is empty or its subprocess is dead?** Reading for
+`|| true` would have found neither of these. Two checkers take the binary path
+as an argument, so asking is a one-line experiment.
+
 **2 — Carry the verdict vocabulary into the rest of the compiler.** `verdict.rs`
 exists as of 2026-09-07 — `Proved` / `Evidenced { n }` / `Unspecified` /
 `Unreached { why }` / `Refuted { at }`, with the correspondence to
@@ -365,8 +378,94 @@ files, in the commit handing off a session about not doing that.
 Four checkers needed the same fix: **fail closed on exit status, and use string
 matching only for the human-readable message.** `check-ci-floors.sh` had a
 `|| true` swallowing exit 2; `check-mg-sources.sh` had one swallowing exit 1;
-`check-doc-evals.sh` had a denylist instead of a status. The remaining sixteen
-have **not** been audited against that rule. It is the cheapest known lead.
+`check-doc-evals.sh` had a denylist instead of a status.
+
+**The rest were audited on 2026-09-08, and the lead paid: two checkers were
+fail-open, both demonstrated by breaking them.** See the section below.
+
+---
+## The checker audit, 2026-09-08
+
+The lead above was taken. **Two were fail-open; both are fixed, and each fix
+was verified in both directions by making the subject fail.**
+
+**"The remaining sixteen" was seventeen.** `ls scripts/check-*.sh` gives 20,
+three of which were fixed in the previous phase. The sentence naming the lead
+counted its own subject wrong, which is a small instance of the thing the lead
+was about: nobody had run the command beside the claim.
+
+### `check-examples.sh` certified twelve examples while every `--check` died
+
+The verdict on the typecheck half was `grep -q "error:"` with the exit status
+discarded, so **any failure phrased differently counted as a pass**. Pointed at
+a wrapper that exits 101 printing `thread 'main' panicked …`, it reported:
+
+```
+Checked 12 examples against 12 recorded answers.
+OK — all 12 examples typecheck, run, and print what they should.
+```
+
+Twelve `--check` calls, twelve non-zero exits, one green line. It is reached by
+CI (`ci.yml:327`), so this was live. The status is the verdict now and the
+pattern is the message, which is `check-mg-sources.sh`'s shape exactly.
+
+**The second half of that script carried a comment that was false, and nobody
+had run it.** It said an eval error "is printed to stdout like any other line,
+so the exit status cannot be trusted to distinguish 'ran' from 'died'", and used
+a two-string denylist as the whole verdict. `--eval` exits 1 on an eval error
+(`index out of bounds`), on a missing entry point (`no function \`nosuch\``) and
+on an unreadable file (`Error reading …`) — measured, all three. A shim that
+prints the pinned answer and then exits 101 passed before the fix and fails
+after it. **A comment asserting that a status is untrustworthy is a claim like
+any other**, and this one had been load-bearing for the design of the check.
+
+### `check-rmi-api-doc.sh` had no subject guard, and its own twin does
+
+`check-internals-doc.sh` and `check-rmi-api-doc.sh` are the same script pointed
+at two documentation trees. The first has carried `if not names: … the
+extraction broke` since it was written. The second never got it — so an empty
+extraction gives an empty `missing`, `len(missing) == baseline == 0`, and:
+
+```
+OK - 0 documented items, 0 missing (at the baseline), all module paths resolve.
+```
+
+Exit 0, about nothing. Retagging the four vendored docs' fences from ` ```rust `
+to ` ```rs ` produces that line, which is how it was measured rather than
+argued. The `**Module:**` scan one level down had the identical hole — no lines
+found, no bad paths, "all module paths resolve" — and both are guarded now. The
+verdict also prints `all 12 module paths resolve`, because **"all" is true of an
+empty set and a reader cannot tell the two apart without the count.**
+
+Indirectly it would have been caught: `rmi_api_items` is a pinned
+documented count, so `0` fails `check-doc-counts.sh` on the 268. But only on a
+`--check-docs` run; the CI job that runs this checker alone was green.
+
+### The fifteen that were already right, and why that is the useful half
+
+Recorded so nobody re-audits them, and because the reasons are the rule:
+
+| checker | why it fails closed |
+|---|---|
+| `check-doc-blocks.sh`, `check-vocabulary.sh` | they match `'Errors: 0' not in out`, so a compiler that dies produces no `Errors: 0` and counts as a **failure**. The status is discarded and the direction is still safe — an absent success string is not the same as an absent failure string, which is the whole difference between a denylist and an allowlist |
+| `check-ontology-fresh.sh`, `check-skb-tree.sh` | the binary is run bare under `set -o errexit`, which is the status honoured by default |
+| `measure-differentiability.sh` | `if out="$("$BIN" --differentiable …)"` — the status *is* the branch, and a file the front end cannot read is counted rather than skipped |
+| `check-doc-counts.sh`, `emit-doc-counts.sh` | a subordinate checker that fails emits an empty value, an empty value is `missing`, and `missing` exits 1. The dropped statuses in the emitter are covered by the consumer |
+| `check-security-register.sh` | `cargo audit` exits non-zero *because it found something*, so the status cannot be the verdict; empty JSON increments `surfaces_unaudited`, which fails |
+| `check-ci-paths.sh` | python under `errexit`, plus `if not triggers` |
+| `check-rap-methods.sh`, `check-open-items.sh`, `check-internals-doc.sh`, `check-ontology-types.sh`, `check-docs-index.sh`, `check-crypto-inventory.sh` | each already refuses to pass on a subject it cannot find. Verified on two of them by removing the subject: gutting `rap.rs` gives *"MAGE_ONTOLOGY.md says RAP exposes 38 endpoints; the server serves 0"*, and a `HANDOFF.md` with no `## Open items` gives *"this check cannot mean anything"* |
+| `check-orphan-sources.sh` | its baseline is diffed in **both** directions, so a scan that collapses to zero reports every baselined orphan as `gone` and fails |
+| `check-ignored-tests.sh` | it has no zero guard and does not need one: *"all 0 `#[ignore]`d tests are run by a CI job"* is the **no violation found** kind, where vacuous truth is correct — the same rule that left five RAP `ok` booleans alone |
+
+**The audit's own finding is the ratio.** Fifteen of seventeen were already
+right, and the two that were not are a *sibling pair with one guarded and one
+not* and a *comment that asserted a status was useless*. Neither would have been
+found by reading for `|| true`, which is what the original lead described. What
+found both was asking each checker the same question the phase had been asking
+of everything else: **what does it print when its subject is empty or its
+subprocess is dead?** Pointing a checker at a binary that fails is cheap — two
+of these take the path as an argument — and it is the only way the green line
+gets read as evidence rather than as decoration.
 
 ---
 ## Where this phase ended, 2026-09-03

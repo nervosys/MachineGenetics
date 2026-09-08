@@ -75,6 +75,22 @@ for block in re.findall(r'```rust\n(.*?)```', doc, re.S):
         names |= set(re.findall(r'\bpub ' + kind + r' (\w+)', block))
 names -= set(EXEMPT)
 
+# A checker that cannot find its subject must not pass. Without this, an
+# empty `names` gives an empty `missing`, `len(missing) == baseline == 0`,
+# and the script prints **"OK - 0 documented items, 0 missing (at the
+# baseline), all module paths resolve"** and exits 0 — an accurate sentence
+# about nothing, which is the shape this repository has found most often.
+#
+# Not hypothetical, and not expensive to trigger: retagging the four docs'
+# fences from ```rust to ```rs produces exactly that line. Measured
+# 2026-09-08 by doing it. `check-internals-doc.sh` is the same script
+# against `internals/` and has carried this guard since it was written;
+# this one never got it.
+if not names:
+    print('  x  no documented `pub` items found in %s/; the extraction broke'
+          % doc_dir)
+    sys.exit(1)
+
 src = []
 for root, _dirs, files in os.walk(os.path.join('RecursiveMachineIntelligence', 'src')):
     for f in files:
@@ -125,7 +141,16 @@ for m in missing:
 # Module paths, checked separately — these were all wrong at once, and a wrong
 # crate prefix is invisible to the name check above.
 bad_paths = []
-for mod in re.findall(r'^\*\*Module:\*\* `([\w:]+)`', doc, re.M):
+mods = re.findall(r'^\*\*Module:\*\* `([\w:]+)`', doc, re.M)
+# The same emptiness one level down: with no `**Module:**` lines found, the
+# loop below does not run, `bad_paths` stays empty, and the summary claims
+# "all module paths resolve" about none. There are 12; a reworded convention
+# would take that to 0 without a word of the verdict changing.
+if not mods:
+    print('  x  no `**Module:**` lines found in %s/; the extraction broke'
+          % doc_dir)
+    sys.exit(1)
+for mod in mods:
     parts = mod.split('::')
     if not parts or parts[0] != 'rmi':
         bad_paths.append('%s (crate is `rmi`)' % mod)
@@ -158,6 +183,8 @@ if len(missing) < baseline:
     print('%d missing (baseline %d) — the ratchet moved. Update %s to %d in this commit.'
           % (len(missing), baseline, baseline_file, len(missing)))
     sys.exit(1)
-print('OK - %d documented items, %d missing (at the baseline), all module paths resolve.'
-      % (len(names), len(missing)))
+# The counts are in the verdict on purpose: "all module paths resolve" is
+# true of an empty set, and a reader cannot tell the two apart without them.
+print('OK - %d documented items, %d missing (at the baseline), all %d module paths resolve.'
+      % (len(names), len(missing), len(mods)))
 PY

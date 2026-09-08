@@ -116,21 +116,46 @@ for dir in examples/*/; do
     # `scripts/purge-video-from-history.sh` carries a comment about this exact
     # trap, written after hitting it twice. Knowing about a footgun evidently
     # does not stop one standing on it.
-    out="$("$MP" --check "$src" 2>&1)"
-    if printf '%s' "$out" | grep -q "error:"; then
+    #
+    # The status is the fail-closed half and the pattern is the message —
+    # the same correction `check-mg-sources.sh` and `check-ci-floors.sh`
+    # already carry. Until 2026-09-08 the grep was the *only* verdict here,
+    # so a `--check` that failed while phrasing it any other way counted as
+    # a pass. Demonstrated by pointing this script at a wrapper that exits
+    # 101 printing a panic message: it reported **"OK — all 12 examples
+    # typecheck, run, and print what they should"**, having had every one of
+    # its twelve `--check` calls fail. `--check` on a file it cannot read
+    # prints `Error reading …` and exits 1, which matches `error:` in
+    # neither case nor punctuation.
+    if out="$("$MP" --check "$src" 2>&1)"; then rc=0; else rc=$?; fi
+    if [ "$rc" -ne 0 ] || printf '%s' "$out" | grep -q "error:"; then
         check_failed+=("$name")
         continue
     fi
 
-    got="$("$MP" --eval "$src" main 2>&1 | tail -1)"
+    if ev="$("$MP" --eval "$src" main 2>&1)"; then ev_rc=0; else ev_rc=$?; fi
+    got="$(printf '%s\n' "$ev" | tail -1)"
 
     if [ "$PRINT" = "1" ]; then
         printf "    [%s]='%s'\n" "$name" "$got"
         continue
     fi
 
-    # An eval error is printed to stdout like any other line, so the exit status
-    # cannot be trusted to distinguish "ran" from "died".
+    # This used to read "an eval error is printed to stdout like any other
+    # line, so the exit status cannot be trusted to distinguish 'ran' from
+    # 'died'", and use the two patterns below as the whole verdict. **The
+    # claim was false and nobody had run it**: `--eval` exits 1 on an eval
+    # error (`index out of bounds`), on a missing entry point (`no function
+    # \`nosuch\``) and on an unreadable file (`Error reading …`). Measured
+    # 2026-09-08, all three.
+    #
+    # So the status decides. The patterns stay as a second gate, for an
+    # error printed with a zero status — which is a thing that has happened
+    # here — and to name which failure it was in the report.
+    if [ "$ev_rc" -ne 0 ]; then
+        eval_failed+=("$name: $got")
+        continue
+    fi
     case "$got" in
         *"eval error"*|*"Error reading"*) eval_failed+=("$name: $got"); continue ;;
     esac
