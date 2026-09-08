@@ -932,6 +932,46 @@ fn main() {
             });
             run_pipeline(&source, path, !no_elision, syntax_legacy, token_report);
         }
+        // An unrecognised `--flag` is never a filename.
+        //
+        // This arm is the catch-all: anything that matched no mode above is
+        // opened as a path. So every unknown flag was answered with
+        // `Error reading --whatever: The system cannot find the file
+        // specified` — a diagnostic about the filesystem for a mistake in the
+        // command line, naming the wrong thing entirely.
+        //
+        // **This file has already fixed that twice, one flag at a time.**
+        // `--version` has an arm whose comment says passing it "made the
+        // binary try to *open a file called `--version`* … a confusing answer
+        // to the most standard flag there is", and `--fix` was added to
+        // `is_modifier_flag` because `--build=abl --fix spec.json out.abl`
+        // "consumed the flag as the input filename". Both are the same bug,
+        // and the population was never swept: `--help` — the *other* most
+        // standard flag there is, and the one a person types first — still
+        // answered `Error reading --help` as of 2026-09-08.
+        //
+        // The general rule costs one arm and retires the growing list of
+        // special cases.
+        //
+        // The test is a leading `-`, not a leading `--`, because the first
+        // version of this arm caught `--help` and left `-h` still answering
+        // `Error reading -h` — half a fix, and the half that a person is just
+        // as likely to type. `-V` is already an accepted alias, so single-dash
+        // spellings reach this dispatch and have to be answered here too.
+        //
+        // **Bare `-` is deliberately excluded**: it is the conventional
+        // spelling for standard input, which `read_source` implements and
+        // `--fmt-compact -` depends on (see `tests/fmt_stdin_and_out.rs`).
+        //
+        // Exit 2 and the manifest, matching `--describe`'s existing no-match
+        // path exactly, so "you named a mode I do not have" has one answer
+        // rather than two.
+        Some(flag) if flag.starts_with('-') && flag != "-" => {
+            eprintln!("unknown mode: {flag}");
+            eprintln!("valid modes:");
+            eprint!("{}", cli_manifest::manifest());
+            std::process::exit(2);
+        }
         Some(path) => {
             let source = std::fs::read_to_string(path).unwrap_or_else(|e| {
                 eprintln!("Error reading {path}: {e}");

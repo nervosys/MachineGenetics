@@ -22,7 +22,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **2,978** — rmi 1,384 · prototype 1,261 · ribosome 168 · germline 112 · forge 53 |
+| Tests | **2,984** — rmi 1,384 · prototype 1,267 · ribosome 168 · germline 112 · forge 53 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -1542,7 +1542,7 @@ implementation task**:
 - **Then the evaluator rework.** `eval.rs` is 2,987 lines, 39 expression forms
   and 53 recursive `self.eval(` sites, all of which keep the continuation in the
   Rust call stack — where it cannot be captured. Multi-shot needs CPS or an
-  explicit CEK-style machine, which touches every form, with 1,261 tests riding
+  explicit CEK-style machine, which touches every form, with 1,267 tests riding
   on current behaviour.
 
 **This item was filed under "real work, unstarted" with no blocker marked**,
@@ -1572,7 +1572,7 @@ hand.
 
 ### Small, sharp, cheap
 
-**0 open, 9 closed.**
+**0 open, 10 closed.**
 
 This heading opened with "Two open, and one more added on 2026-09-01" while
 **every one of its nine rows was struck through** — three pieces of available
@@ -1596,6 +1596,7 @@ done, and the row explains the rest.
 | 25 | ~~**`--fmt` cannot be an editor formatter: no stdin**~~ | **Closed 2026-09-02, filed the same hour.** `mage-parse --fmt-compact <file.mg|-> [out]` now reads standard input when the path is `-`, which is what every editor's format hook needs. Two other things were wrong in the same handler and are fixed with it: **`[out]` was published and ignored** — the capability manifest advertised `<file.mg> [out]`, "Writes to [out] or stdout", effect class `write_local`, so an agent was told the mode needs a write grant and can direct output to a file, and it always printed to stdout (`--target=abl-bytes` implements the identical argument correctly, which is why it was invisible) — and a failed write now exits non-zero rather than reporting success having written nothing. Four integration tests, each verified by breaking it. Helix gets `formatter` + `auto-format`, Neovim gets `formatprg`, both real. |
 | 26 | ~~**`cross_lang/run.sh` is cited by the README and run by nothing**~~ | **Decided and closed 2026-09-02: CI runs it, for whatever the runner has.** The decision it needed was what the benchmark means when a language is absent, and the answer is *nothing about that language, and nothing that should turn CI red*. So the script distinguishes the two — absent reads "not measured"; present-and-wrong is a failure — and only then was it honest to wire up. `ubuntu-latest` supplies rustc, go, java and node; it has no `bun`, so TypeScript will read as not measured. What the step enforces: **MAGE is always measured** (its toolchain is in this repository, so its absence means the benchmark measured nothing), and every language the runner does have produces the expected output — including the case of a compiler that is present and fails to compile, which printed "compile FAILED" and still exited 0 until I counted it. Four defects fixed along the way: the `.exe` fallback that made it unrunnable on Linux (third copy of that line), absent-vs-failing, a cold Go build cache scored as 0/5, and a hard-coded "Python: runtime not installed on this host" that was false when written — the real reason is that no `tasks.py` exists. |
 | 27 | ~~**`test-all.ps1 -CheckDocs` cannot pass**~~ | **Closed 2026-09-02, filed the same hour.** The ps1 emitted **6** keys (five crate counts plus `total`) into a checker with **91** pins, so it printed `INCOMPLETE - 46 documented count(s) had nothing to compare against; 45 matched` and exited 1 — on every Windows run, since the bash twin grew `doc_blocks`, `doc_evals`, `floor_*`, `onto_*`, `rmi_api_items`, `unsafe_*`, `mg_*` and the benchmark figures and the ps1 grew none of them. CI runs the bash version, so nothing noticed. The 43 non-crate measurements now live in `scripts/emit-doc-counts.sh`, which both harnesses pipe through: crate counts in on stdin (only the harness that ran the suites knows them), 49 keys out. The ps1's own comment already had the principle — *"One implementation of the check, in bash, rather than two that can drift"* — one level too low: it was true of the check, and the **measurements** were the half still duplicated. Verified as a before/after on the six keys the ps1 supplies: exit 1 straight into the checker, exit 0 through the new script, and a drifted figure still exits 1. |
+| 28 | ~~**An unrecognised flag was opened as a filename**~~ | **Closed 2026-09-08, found by sweeping the CLI with the audit's own question.** `mage-parse --help` answered `Error reading --help: The system cannot find the file specified` — a filesystem diagnostic for a command-line mistake, naming the wrong thing entirely (taxonomy §6). **`main.rs` had already fixed this twice, one flag at a time, and both fixes carry a comment about it**: `--version` has an arm because passing it "made the binary try to *open a file called `--version`*", and `--fix` went into `is_modifier_flag` because `--build=abl --fix spec.json out.abl` "consumed the flag as the input filename". Nobody swept the population, so the flag a person types *first* was still broken, in an agent-facing CLI whose manifest calls itself the thing to read first. One arm now answers any leading-`-` argument that matched no mode with `unknown mode: <flag>` plus the manifest and exit 2 — `--describe`'s existing no-match path, so there is one answer rather than two. **My first version tested `starts_with("--")` and left `-h` still saying `Error reading -h`** — the same one-short sweep, committed while writing the fix for it, and caught only by probing rather than reading. Six integration tests, verified by breaking: the three that assert the new behaviour fail without the arm, and the three regression guards — `-V` still dispatching, bare `-` still meaning stdin, a real path still parsing — pass either way, which is what a guard is for. |
 
 The five items previously here — `guard` as a reference, the `+=` diagnostic,
 `scan`'s seed, `pub` on a `data` field, and the array-literal/slice mismatch —
@@ -2627,9 +2628,9 @@ changed before you commit.
 ---
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,261**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,267**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
-  across five crates **2,978**; documented-count pins **94**, up from 46 — the
+  across five crates **2,984**; documented-count pins **94**, up from 46 — the
   two newest hold the `kb`/`net` overlap the tensor-product-binding decision
   rests on, a figure that had lived in two sentences of prose with nothing
   re-deriving it.
