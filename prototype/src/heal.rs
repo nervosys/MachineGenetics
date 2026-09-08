@@ -26,7 +26,26 @@ pub struct FixCandidate {
     pub description: String,
     /// The text edits that implement this fix.
     pub edits: Vec<TextEdit>,
-    /// Confidence score: 0.0 (wild guess) to 1.0 (certain).
+    /// **A hand-assigned ranking prior, not a measured success rate.**
+    ///
+    /// All 44 of these are literals in this file. Nothing computes them and
+    /// nothing calibrates them against whether the fix actually works — the
+    /// reliability bench measures heal success *in aggregate*
+    /// (`MIN_HEAL: perturbed pattern-heal 42`) and does not record which
+    /// pattern fired, so a per-pattern rate is derivable in principle and
+    /// is not derived today.
+    ///
+    /// What it is genuinely for is **ordering**: `reliability_bench` tries
+    /// candidates in descending order of this number, and a rename fix
+    /// really is likelier to be right than a guess. An uncalibrated prior is
+    /// a fine thing to sort by.
+    ///
+    /// What it is not is a probability, and it was rendered as one —
+    /// `[conf=85%]` — while `agent-guide/rap-agentic.md` told agents to
+    /// "apply the highest-confidence fix". Two significant figures of
+    /// precision that nothing behind them supports. `verdict.rs` refuses to
+    /// carry a score for exactly this reason; this one earns its keep by
+    /// sorting, and now says so where it is defined and where it is printed.
     pub confidence: f64,
     /// Whether applying this fix preserves program semantics.
     pub semantics_preserving: bool,

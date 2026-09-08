@@ -163,8 +163,19 @@ Recorded so nobody re-opens them as oversights. Every one is the decision
 exists as of 2026-09-07 — `Proved` / `Evidenced { n }` / `Unspecified` /
 `Unreached { why }` / `Refuted { at }`, with the correspondence to
 `StatodynamicAnalysis`'s lattice written out in the module docs. `verify.rs` and
-`--gradcheck` speak it. **`heal.rs` and `verify`'s effect checks do not**, and
-each is a place where a one-bit answer still stands in for a verdict.
+`--gradcheck` speak it. **`heal.rs` and `verify`'s effect checks were examined
+on 2026-09-08 and neither needs it**, which is worth recording because I had
+written them down as remaining work without looking.
+
+`verify_effects` compares declared effects against used ones; every result is
+a real finding about a real effect, and an empty list means there were no
+effects to compare, not that something passed. It is the *no violation found*
+kind, like the five RAP booleans below.
+
+`heal.rs` had a different problem — a hand-assigned prior rendered as a
+measured percentage — and it is fixed in the traps below rather than by
+giving it a verdict. A ranking is not a claim about whether a property holds,
+and `verdict.rs` is the wrong tool for it.
 
 **The RAP surface's remaining `ok` booleans were swept, and five of them are
 right as they are** — which is worth recording, because the obvious next move
@@ -453,6 +464,23 @@ Only `stdlib/` and four `framewerx` files remain.
   prevent, committed while extending the machinery that prevents it.
   `--pipeline` now says what the tape covers and **does not print a tick when
   the answer is nothing**.
+- **Two significant figures nothing measures.** `heal.rs` gives every fix
+  candidate a `confidence: f64`, and all **44** of them are literals in that
+  file. Nothing computes them; nothing calibrates them against whether the
+  fix works. It was rendered `[conf=85%]` — a percentage — while
+  `agent-guide/rap-agentic.md` told agents to "apply the highest-confidence
+  fix".
+
+  **The numbers are not deleted, because they do real work**: the recovery
+  bench tries candidates in descending order of them, and a rename fix really
+  is likelier to be right than a guess. An uncalibrated prior is a fine thing
+  to sort by. What was wrong was presenting it as a probability. It prints
+  `[rank 0.85]` now, and both the field and the guide say what it is.
+
+  Per-pattern rates *are* derivable — `reliability_bench` measures heal
+  success in aggregate and would only need to record which pattern fired —
+  and are not derived. Written down as available work rather than done,
+  because sorting does not need it.
 - **A checker that lives in the workflow is invisible to the guard that
   finds unreached checkers.** `check-ci-paths.sh` audits "every checker is
   reached by a CI step" by walking `scripts/`. The

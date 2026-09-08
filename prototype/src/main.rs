@@ -3080,8 +3080,8 @@ fn run_check(source: &str, filename: &str, do_elision: bool, legacy: bool, token
                 eprintln!("    ▸ {}: {} fix(es)", h.diagnostic.message, h.fixes.len());
                 for fix in &h.fixes {
                     eprintln!(
-                        "      - [conf={:.0}%] {}",
-                        fix.confidence * 100.0,
+                        "      - [rank {:.2}] {}",
+                        fix.confidence,
                         fix.description
                     );
                 }
@@ -3423,8 +3423,8 @@ fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool, to
         for h in &healed {
             for fix in &h.fixes {
                 eprintln!(
-                    "    ▸ [conf={:.0}%] {}",
-                    fix.confidence * 100.0,
+                    "    ▸ [rank {:.2}] {}",
+                    fix.confidence,
                     fix.description
                 );
             }
