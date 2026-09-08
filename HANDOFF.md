@@ -32,7 +32,7 @@ each claim has a command beside it.
 | `.mg` sources | **101 checked, 0 sketches** — every `.mg` file in the repository typechecks |
 | Differentiability | **34 of 34 nets and 7 of 7 train blocks; 0 of 155 functions** — `scripts/measure-differentiability.sh`, re-derived in CI and compared against `DIFFERENTIABILITY.md` in both directions |
 | `grad` | An expression that typechecks and **runs**, for scalars: forward-mode duals, checked against central differences. The differentiability obligation is a premise of its typing rule, discharged by the call-graph pass. Tensors are refused, not deferred |
-| Documentation | 208 MAGE blocks typecheck; 58 documentation entry points run; 268 `rmi/docs` API items all exist — and "exist" now means **a definition exists**, not that the name appears somewhere in `src/`. It was 275 under the weaker criterion, 8 of them held up by English words in comments; the phantom entries are gone and a duplicate went with them |
+| Documentation | 208 MAGE blocks typecheck; 59 documentation entry points run; 268 `rmi/docs` API items all exist — and "exist" now means **a definition exists**, not that the name appears somewhere in `src/`. It was 275 under the weaker criterion, 8 of them held up by English words in comments; the phantom entries are gone and a duplicate went with them |
 | Release | `v0.3.0`, with the promo video attached as a release asset |
 
 Reproduce all of it:
@@ -464,6 +464,32 @@ Only `stdlib/` and four `framewerx` files remain.
   prevent, committed while extending the machinery that prevents it.
   `--pipeline` now says what the tape covers and **does not print a tick when
   the answer is nothing**.
+- **A denylist of failure modes is a promise to have thought of all of
+  them.** `check-doc-evals.sh` decided whether a documentation example had
+  failed by matching its output against ten error substrings — `unknown
+  function`, `type mismatch`, and eight more. Anything phrased differently
+  **passed**. `expected a collection` is not among the ten, so an example
+  that typechecks and dies at run time would have gone on passing until
+  somebody thought to add that string. It fails closed now: any `eval
+  error:` or non-zero exit is a failure unless it matches a short list of
+  genuinely benign ones — an unimplemented capability, or a file this
+  machine does not have. Verified by planting an example that fails with a
+  message outside the old ten.
+
+  Its first line also claimed "every documentation block that defines an
+  entry point must run", while the regex matched only `main` and `@test`.
+  Now `run`, `demo` and `example` too — **zero-argument only**, because
+  `--eval` invokes an entry point with no arguments.
+
+  **Widening what a checker looks at invents findings as readily as
+  narrowing it hides them.** The first widened version reported five
+  failures and *all five* were mine: two were examples printing the word
+  "error" in their own output (`"JSON error: unexpected token"`,
+  `[LOG] error: disk full`), two were `+f run(argv)` called with no
+  argument, and one was `f run(code: str) -> str;` — an **effect operation
+  declared inside `effect Analyze { … }`**, not a function at all. Three
+  false-positive classes in one change, each caught by reading the output
+  instead of trusting the count.
 - **Two significant figures nothing measures.** `heal.rs` gives every fix
   candidate a `confidence: f64`, and all **44** of them are literals in that
   file. Nothing computes them; nothing calibrates them against whether the

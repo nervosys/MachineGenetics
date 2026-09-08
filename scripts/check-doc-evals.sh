@@ -58,13 +58,51 @@ probe = os.path.join('prototype', 'target', '.docevals.mg')
 UNRUNNABLE = ('net.', 'agent.', 'llm.', 'gpu.', 'process.', 'swarm.', 'json.',
               'kb.', 'io.read_line', 'io.read', 'fs.walk', 'time.sleep')
 
-# Errors the language owns. An OS error reaching a real resource is the
-# example's environment, not its correctness.
-OURS = ('unknown function', 'parse error', 'type mismatch', 'assertion failed',
-        'not callable', 'unresolved', 'wrong number of arguments',
-        'no method', 'unknown effect', 'expects')
+# Errors that are **not** the language's fault. Everything else is.
+#
+# This was the other way round until 2026-09-08: a denylist of ten error
+# substrings, so an evaluator error phrased any other way **passed**.
+# `migration-guide/08-case-studies.md` fails with `expected a collection`,
+# which is not one of the ten, and would have gone on passing for as long as
+# nobody added that string to the list.
+#
+# A denylist of failure modes is a promise to have thought of all of them.
+# Every other checker here fails closed; this one now does too, so a *new*
+# evaluator error is a failure the day it appears rather than the day
+# somebody remembers to name it.
+BENIGN = (
+    # A capability the interpreter cannot perform. The block reached past
+    # what `--eval` implements, which the UNRUNNABLE prefilter usually
+    # catches first; this is the backstop for the ones it does not.
+    'has no interpreter implementation',
+    'no operation of',
+    # A real resource the example names and this machine does not have.
+    # The example's environment, not its correctness.
+    'os error',
+    'cannot find the file',
+    'no such file',
+)
 
-MAIN = re.compile(r'^\s*(?:\+f|f|pub\s+fn|fn)\s+main\s*\(', re.M)
+# What counts as an entry point.
+#
+# `main` and `@test` only, until 2026-09-08 — and this script's own first
+# line says "every documentation block that defines an entry point must
+# run". `migration-guide/08-case-studies.md` defines `+f run(argv)`, twice,
+# in the document that teaches porting a real crate, and **neither was ever
+# evaluated**. The claim was broader than the regex.
+#
+# **Zero-argument only**, and both halves of that matter. `--eval <file>
+# <entry>` invokes the entry with no arguments, so a function that takes
+# one cannot be an entry point here. Widening the *name* set without
+# widening it carefully produced three false failures on the first run:
+# `migration-guide/08-case-studies.md`'s `+f run(argv: [s]~)` twice, which
+# is a working function called wrongly, and `MAGE_SPEC.md`'s
+# `f run(code: str) -> str;` — an **effect operation declared inside
+# `effect Analyze { … }`**, which is not a function at all.
+#
+# Widening what a checker looks at invents findings exactly as readily as
+# narrowing it hides them.
+MAIN = re.compile(r'^\s*(?:\+f|f|pub\s+fn|fn)\s+(main|run|demo|example)\s*\(\s*\)', re.M)
 TEST = re.compile(r'@test\s*\n\s*(?:\+f|f|pub\s+fn|fn)\s+(\w+)\s*\(', re.M)
 
 ran = 0
@@ -99,8 +137,9 @@ for dirpath, dirnames, filenames in os.walk('.'):
                 if any(ns in body for ns in UNRUNNABLE):
                     continue
                 entries = []
-                if MAIN.search(body):
-                    entries.append('main')
+                m = MAIN.search(body)
+                if m:
+                    entries.append(m.group(1))
                 entries.extend(TEST.findall(body))
                 if not entries:
                     continue
@@ -117,7 +156,20 @@ for dirpath, dirnames, filenames in os.walk('.'):
                     out = ((r.stdout or '') + (r.stderr or '')).strip()
                     ran += 1
                     low = out.lower()
-                    if any(m in low for m in OURS):
+                    # The evaluator's own marker, plus its exit status —
+                    # **not** the word "error" anywhere in the output.
+                    #
+                    # My first version of this rule matched `'error' in
+                    # output` and immediately reported two false positives:
+                    # `agent-guide/examples/intermediate.md` legitimately
+                    # prints `"JSON error: unexpected token"` and
+                    # `cookbook/agents.md` prints `[LOG] error: disk full`.
+                    # Both are the example working. A checker that reads a
+                    # program's output as its own diagnostics invents
+                    # findings, which is the failure this whole file exists
+                    # to avoid on the other side.
+                    is_error = r.returncode != 0 or 'eval error:' in low
+                    if is_error and not any(b in low for b in BENIGN):
                         failed += 1
                         first = [l for l in out.split('\n') if 'error' in l.lower()]
                         print('  x  %s:%d  %s()  %s'
