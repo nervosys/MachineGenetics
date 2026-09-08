@@ -53,8 +53,29 @@ run_crate() {
     if ! cargo test --manifest-path "$REPO/$manifest" "${PROFILE[@]}" "$@" 2>&1 | tee "$log"; then
         failed+=("$name")
     fi
-    COUNTS["$name"]="$(grep -oE '^test result: ok\. [0-9]+ passed' "$log" \
-        | grep -oE '[0-9]+' | awk '{s+=$1} END {print s+0}')"
+    # `grep | grep | awk` under `set -o pipefail`: the first `grep` exits 1 when
+    # the crate printed no `test result` line **at all** — one that failed to
+    # compile, or a cargo that could not run — and `set -o errexit` then kills
+    # the script *at this assignment*. Everything below, including the `failed`
+    # array and the `FAILED: <crate>` line that names what broke, is never
+    # reached. **The harness answered a build failure with a bare exit 1 and no
+    # word about which crate**, which is the one case its reporting exists for.
+    #
+    # Found 2026-09-08 by hitting it three times: this machine's cargo build
+    # lock is global (see `find-mage-parse.sh`), so an unrelated project
+    # building elsewhere left `rmi` with nothing but "Blocking waiting for file
+    # lock" in its log, and the run died here rather than saying so.
+    #
+    # `scripts/emit-doc-counts.sh` documents this exact trap — *"a zero count
+    # and `set -e` would kill the script at a bare assignment"* — and the
+    # lesson had not been carried across to the script that calls it.
+    #
+    # One `awk`, which exits 0 on no match. Measuring is awk's job and the
+    # verdict is the `failed` array's; keeping them apart is what makes the
+    # failure reportable at all.
+    COUNTS["$name"]="$(awk '/^test result: ok\./ {
+        for (i = 1; i <= NF; i++) if ($i == "ok.") s += $(i + 1)
+    } END { print s + 0 }' "$log")"
     rm -f "$log"
 }
 

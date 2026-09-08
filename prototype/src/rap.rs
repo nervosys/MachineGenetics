@@ -252,7 +252,22 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
                     })
                 })
                 .collect();
-            serde_json::json!({ "tokens": token_list })
+            // **This was the one method of the 38 with no `ok` field at all.**
+            // A generic client reads a missing member as falsy, so a lex that
+            // succeeded reported failure — and a lex full of `TokenKind::Error`
+            // was indistinguishable from a clean one, because neither said
+            // anything.
+            //
+            // The claim is real rather than vacuous: `lexer::lex` returns a
+            // `Vec<Token>` and cannot fail as a call, but it marks what it
+            // could not read with `TokenKind::Error`, so "did this source
+            // lex?" has an answer worth reporting.
+            let lex_errors = tokens.iter().filter(|t| t.kind == lexer::TokenKind::Error).count();
+            serde_json::json!({
+                "ok": lex_errors == 0,
+                "lex_errors": lex_errors,
+                "tokens": token_list
+            })
         }
 
         "language/parse" => {
@@ -415,8 +430,21 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
                 _ => skb::query_by_fqn(value),
             };
 
+            // `ok` was the literal `true`, so a query that matched nothing
+            // answered the same as one that matched. **`doc/query` calls the
+            // identical `skb::query_by_fqn` and answers
+            // `!result.matches.is_empty()`** — two methods, one operation,
+            // opposite booleans for the same input, which is a defect whichever
+            // one is right.
+            //
+            // `doc/query`'s reading is the one this repository has already
+            // ruled on: it is "a positive claim that is correctly false when
+            // empty". Aligned to it, and `count` added so the distinction a
+            // boolean cannot carry is on the wire either way — the same remedy
+            // `verify/contracts` uses for the same reason.
             serde_json::json!({
-                "ok": true,
+                "ok": !result.matches.is_empty(),
+                "count": result.matches.len(),
                 "query": result.query_text,
                 "matches": serde_json::to_value(&result.matches).unwrap_or_default()
             })
@@ -520,8 +548,56 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
             match parser::parse(&tokens) {
                 Ok(module) => {
                     let results = verify::verify_module(&module);
+
+                    // `ok` used to be the literal `true`, on the *parse*
+                    // succeeding. It therefore answered `true` for a module
+                    // with nothing to verify (`results: []`) and `true` for a
+                    // module whose only contract came back `Partial` — the
+                    // status `VerifyStatus::evidence` maps to `Unreached`
+                    // because "could not be verified statically" is a claim
+                    // nothing adjudicated, not a weak pass.
+                    //
+                    // **`verify/contracts`, the arm immediately above, was
+                    // changed on 2026-09-07 for exactly this**, and carries a
+                    // comment saying a one-bit answer cannot separate
+                    // "verified" from "nobody claimed anything". The sweep
+                    // stopped one method short: the two are the same oracle,
+                    // one per-function and one per-module, and an agent that
+                    // asked the module-shaped question got the old answer.
+                    //
+                    // Measured 2026-09-08 before the change: `f main() -> i32
+                    // { 1 }` gave `ok: true, results: []`, and `@req(n > 0)`
+                    // gave `ok: true` over a single `Partial`.
+                    //
+                    // `ok` now means *something was checked and all of it
+                    // holds*: a non-empty population, nothing refuted, and
+                    // nothing left unadjudicated. `verdict` and `detail` carry
+                    // the distinction the boolean cannot, in `verdict.rs`'s
+                    // shared vocabulary, and `detail` is `Tally::summary`,
+                    // which names the coverage hole even when it is zero.
+                    let mut tally = verdict::Tally::default();
+                    for r in &results {
+                        tally.add(&r.status.evidence(&r.fqn));
+                    }
+                    let ok = tally.subjects() > 0
+                        && tally.refuted == 0
+                        && tally.unadjudicated() == 0;
+                    // The aggregate label, in the same words a single subject
+                    // would get. Ordered worst-first: a refutation is the
+                    // headline even if everything else proved.
+                    let verdict_label = if tally.refuted > 0 {
+                        "Refuted"
+                    } else if tally.subjects() == 0 {
+                        "Unspecified"
+                    } else if tally.unadjudicated() > 0 {
+                        "Unreached"
+                    } else {
+                        "Proved"
+                    };
                     serde_json::json!({
-                        "ok": true,
+                        "ok": ok,
+                        "verdict": verdict_label,
+                        "detail": tally.summary(),
                         "results": serde_json::to_value(&results).unwrap_or_default()
                     })
                 }
@@ -1306,10 +1382,24 @@ mod tests {
 
     // ── Original 9 methods ───────────────────────────────────────
 
+    /// `language/tokens` was the one method of the 38 answering with no `ok`.
+    ///
+    /// A generic client reads a missing member as falsy, so a lex that
+    /// succeeded reported failure — and a source full of `TokenKind::Error`
+    /// was indistinguishable from a clean one, since neither said anything.
+    /// The old test asserted only that *some* tokens came back, which is true
+    /// of unreadable input too.
     #[test]
-    fn test_language_tokens() {
+    fn language_tokens_reports_whether_the_source_lexed() {
         let r = call("language/tokens", src_params("f main() {}"));
         assert!(!r.get("tokens").unwrap().as_array().unwrap().is_empty());
+        assert_eq!(r["ok"], true, "clean source lexes");
+        assert_eq!(r["lex_errors"], 0);
+
+        // `@@@` and a stray control byte are not tokens this lexer knows.
+        let r = call("language/tokens", src_params("f main( @@@ \u{0} }"));
+        assert_eq!(r["ok"], false, "a source the lexer could not read is not ok");
+        assert!(r["lex_errors"].as_u64().unwrap_or(0) > 0);
     }
 
     #[test]
@@ -1361,15 +1451,36 @@ mod tests {
         assert!(r.get("ok").is_some());
     }
 
+    /// `skb/query` and `doc/query` are the same lookup and must answer alike.
+    ///
+    /// Both call `skb::query_by_fqn`. `skb/query` hardcoded `ok: true`, so a
+    /// miss and a hit were indistinguishable, while `doc/query` had always
+    /// answered `!matches.is_empty()`.
+    ///
+    /// **The old test was itself vacuous, and only the hardcoded boolean hid
+    /// it.** It asserted `ok == true` for `{by: "fqn", value: "Vec"}` — a
+    /// query that matches **nothing**, since the SKB is keyed on names like
+    /// `std.io.read_file`. Making `ok` mean something turned that test red,
+    /// which is how the empty subject came to light: the assertion had never
+    /// been about a result. A real fqn is used below.
     #[test]
-    fn test_skb_query() {
-        let r = call(
+    fn skb_query_and_doc_query_agree_about_a_miss() {
+        let hit = call("skb/query", serde_json::json!({ "by": "fqn", "value": "std.io.read_file" }));
+        assert_eq!(hit["ok"], true, "a hit is still a hit");
+        assert!(hit["count"].as_u64().unwrap_or(0) > 0);
+
+        let miss = call(
             "skb/query",
-            serde_json::json!({
-                "by": "fqn", "value": "Vec"
-            }),
+            serde_json::json!({ "by": "fqn", "value": "no_such_symbol_anywhere" }),
         );
-        assert_eq!(r["ok"], true);
+        assert_eq!(miss["ok"], false, "a query that matched nothing did not find anything");
+        assert_eq!(miss["count"], 0);
+
+        let doc_miss = call("doc/query", serde_json::json!({ "fqn": "no_such_symbol_anywhere" }));
+        assert_eq!(
+            miss["ok"], doc_miss["ok"],
+            "two methods, one operation: the booleans must agree"
+        );
     }
 
     #[test]
@@ -1393,10 +1504,40 @@ mod tests {
 
     // ── New methods (Step 36) ────────────────────────────────────
 
+    /// `ok` means *something was checked and all of it holds* — not *the
+    /// source parsed*.
+    ///
+    /// **This test used to assert the bug.** It called `verify/module` on
+    /// `f main() {}` — a module with no contract and no effect, so nothing to
+    /// verify — and asserted `ok == true`. That is the shape the five
+    /// fabricated backend tests had (HANDOFF.md item 18): a test pinning the
+    /// wrong answer, which would have failed anyone who made it honest.
     #[test]
-    fn test_verify_module() {
+    fn verify_module_ok_means_verified_not_parsed() {
+        // Nothing claimed anywhere: not a pass.
         let r = call("verify/module", src_params("f main() {}"));
-        assert_eq!(r["ok"], true);
+        assert_eq!(r["ok"], false, "a module with nothing to verify is not verified");
+        assert_eq!(r["verdict"], "Unspecified");
+        // The summary names the coverage hole even when it is zero.
+        assert!(
+            r["detail"].as_str().unwrap_or("").contains("unspecified"),
+            "detail should name the hole: {}",
+            r["detail"]
+        );
+
+        // A contract the checker could not adjudicate is `Unreached`, not a
+        // weak pass — the distinction `VerifyStatus::Partial` maps to.
+        let r = call("verify/module", src_params("@req(n > 0)\nf main(n: i32) -> i32 { n }\n"));
+        assert_eq!(r["ok"], false, "Partial is a claim nothing adjudicated");
+        assert_eq!(r["verdict"], "Unreached");
+
+        // And the rule is not simply always-false: the sibling oracle, given a
+        // condition its heuristic recognises, still proves.
+        let r = call(
+            "verify/contracts",
+            serde_json::json!({ "fqn": "main", "requires": ["xs.len() >= 0"] }),
+        );
+        assert_eq!(r["ok"], true, "verify/contracts must still be able to hold");
     }
 
     #[test]

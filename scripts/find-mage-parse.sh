@@ -52,6 +52,73 @@
 # This does not make a binary *fresh* — only building does, and callers that
 # care build first. It makes the path the one cargo would use.
 
+# Print the path to any crate's binary, or return 1 with a diagnostic.
+#
+# `find_mage_parse` below is this with the arguments filled in. The general
+# form exists because the 2026-09 sweep that introduced this file converted the
+# six **checkers** and stopped there, while `benchmarks/capstone/run.sh`,
+# `scripts/demo_agent_workflow.sh`, `scripts/demo_rap_workflow.sh` and
+# `scripts/agent_wrappers/smart_fixer.sh` went on carrying
+# `<crate>/target/release/<bin>.exe` by hand — and `forge` had no resolver at
+# all, so its consumer could only guess.
+#
+# What that costs, measured on this machine 2026-09-08: `forge/target/` does
+# not exist (cargo builds to `~/.cargo-target`), so `capstone/run.sh` exited 1
+# with "missing binary: forge", which killed `emit-doc-counts.sh` mid-stream
+# and produced `INCOMPLETE - 31 documented count(s) had nothing to compare
+# against`. And `prototype/target/release/mage-parse.exe` **does** exist — a
+# leftover dated six days earlier — so where the guess resolves at all it
+# resolves to a stale compiler, which is the original failure this file was
+# written about.
+#
+#   $1 crate directory (relative to the repo root, e.g. "forge")
+#   $2 binary name (e.g. "forge")
+#   $3 profile (default "release")
+find_crate_bin() {
+    local crate="$1" bin="$2" profile="${3:-release}"
+    local root target dir
+    root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+    target="$(cargo metadata --format-version 1 --no-deps \
+                --manifest-path "$root/$crate/Cargo.toml" 2>/dev/null \
+              | sed 's/.*"target_directory":"\([^"]*\)".*/\1/')"
+    if [ -z "$target" ]; then
+        echo "find_crate_bin: cargo metadata failed for $crate; is cargo on PATH?" >&2
+        return 1
+    fi
+
+    dir="$target/$profile"
+    # `.exe` **first**, which is the opposite of `find_mage_parse` below, and
+    # the difference is deliberate.
+    #
+    # Under MSYS/Git Bash, `[ -x "$dir/mage-parse" ]` is true when only
+    # `mage-parse.exe` exists — the runtime resolves the extensionless name for
+    # you — so the extensionless path works for anything bash executes, and is
+    # *not a file* to anything else. `capstone/run.sh` hands its resolved
+    # compiler to `forge` as `FORGE_MG`, and forge is a native Windows program
+    # that opens it: it answered `error: FORGE_MG points at
+    # C:/…/release/mage-parse, which is not a file`, and the benchmark reported
+    # "forge check did not pass" for a compiler that was sitting right there.
+    #
+    # `find_mage_parse` orders these the other way and says why: so a stale
+    # `.exe` cannot shadow a real Unix binary beside it. That concern is a
+    # cross-build artifact — on Linux `$bin.exe` does not exist, so this order
+    # falls straight through to the same answer — and it is worth less here
+    # than handing a consumer a path it cannot open.
+    if [ -x "$dir/$bin.exe" ]; then
+        printf '%s' "$dir/$bin.exe"
+        return 0
+    fi
+    if [ -x "$dir/$bin" ]; then
+        printf '%s' "$dir/$bin"
+        return 0
+    fi
+
+    echo "find_crate_bin: no $bin in $dir — build it:" >&2
+    echo "    cargo build --$profile --manifest-path $crate/Cargo.toml --bin $bin" >&2
+    return 1
+}
+
 # Print the path to `mage-parse` for a profile, or return 1 with a diagnostic.
 find_mage_parse() {
     local profile="${1:-release}"

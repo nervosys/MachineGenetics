@@ -18,12 +18,30 @@ cd "$(dirname "$0")"
 HERE="$(pwd)"
 REPO="$(cd ../.. && pwd)"
 
-MG="${MG:-$REPO/prototype/target/release/mage-parse.exe}"
-[ -x "$MG" ] || MG="${MG%.exe}"
-FORGE="${FORGE:-$REPO/forge/target/release/forge.exe}"
-[ -x "$FORGE" ] || FORGE="${FORGE%.exe}"
+# Ask cargo where the binaries are rather than guessing at
+# `<crate>/target/release/<bin>.exe`.
+#
+# The guess was wrong in both directions on a machine with a shared cargo
+# target directory, which `~/.cargo/config.toml` configures for every Rust
+# project here. `forge/target/` does not exist, so this script exited 1 with
+# "missing binary: forge" — and because `scripts/emit-doc-counts.sh` pipes it
+# through `grep -E '^capstone_'` under `set -o pipefail`, the failure killed the
+# emitter mid-stream and `check-doc-counts.sh` reported `INCOMPLETE - 31
+# documented count(s) had nothing to compare against`, naming none of the cause.
+# Meanwhile `prototype/target/release/mage-parse.exe` *did* exist, six days
+# stale, so the half that resolved would have measured `capstone_dispatched` —
+# a pinned figure in README.md — with an old compiler.
+#
+# `scripts/find-mage-parse.sh` was written for exactly this and converted the
+# six checkers; the benchmarks and demos were not swept, and `forge` had no
+# resolver at all. `find_crate_bin` is that resolver, generalised.
+#
+# `MG` / `FORGE` still override, which is what CI and a bisect want.
+. "$REPO/scripts/find-mage-parse.sh"
+MG="${MG:-$(find_crate_bin prototype mage-parse release)}"
+FORGE="${FORGE:-$(find_crate_bin forge forge release)}"
 for bin in "$MG" "$FORGE"; do
-  if [ ! -x "$bin" ]; then
+  if [ -z "$bin" ] || [ ! -x "$bin" ]; then
     echo "missing binary: ${bin##*/} — build with: cargo build --release (in prototype/ and forge/)" >&2
     exit 1
   fi

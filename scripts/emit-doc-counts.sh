@@ -24,6 +24,29 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
+# Say where it stopped.
+#
+# Every measuring stage below ends in `| grep -E '^some_prefix'`, and a `grep`
+# that matches nothing exits 1 — so under `errexit` + `pipefail` **any
+# measurement that cannot run kills this script at that line**, taking every
+# later key with it. Failing closed is correct and deliberate (see the
+# `|| true` note further down, which records why the alternative is worse).
+# Saying nothing about it is not.
+#
+# What that cost on 2026-09-08: three separate causes — a benchmark whose
+# hardcoded binary path did not match cargo's target directory, a leftover
+# `mage-parse --rap` process holding the `.exe` so `cargo build` could not
+# replace it, and the same again after a partial fix — each surfaced only as
+# `check-doc-counts.sh` reporting `INCOMPLETE - N documented count(s) had
+# nothing to compare against`, with N as the sole clue. Diagnosing them meant
+# re-running a multi-minute pipeline and bisecting by counting the keys that
+# made it out. A locked file, a missing binary, and a genuinely wrong figure
+# were indistinguishable from outside.
+#
+# The trap costs one line and names the stage. `$LINENO` inside an ERR trap is
+# the line that failed.
+trap 'rc=$?; echo "emit-doc-counts: FAILED at line $LINENO (exit $rc) — that stage emitted no key, and every key below it is missing. Run that line alone to see its error; stderr is redirected to /dev/null on several of them precisely because they are noisy when they work." >&2' ERR
+
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 # Pass the caller's crate counts through untouched.
