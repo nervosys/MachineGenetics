@@ -22,7 +22,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **2,976** — rmi 1,384 · prototype 1,259 · ribosome 168 · germline 112 · forge 53 |
+| Tests | **2,977** — rmi 1,384 · prototype 1,260 · ribosome 168 · germline 112 · forge 53 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -138,9 +138,24 @@ changed anything, not by anything checking.
 exists as of 2026-09-07 — `Proved` / `Evidenced { n }` / `Unspecified` /
 `Unreached { why }` / `Refuted { at }`, with the correspondence to
 `StatodynamicAnalysis`'s lattice written out in the module docs. `verify.rs` and
-`--gradcheck` speak it. **`heal.rs`, `verify`'s effect checks and the RAP
-surface's other `ok` booleans do not**, and each of those is a place where a
-one-bit answer is still standing in for a verdict.
+`--gradcheck` speak it. **`heal.rs` and `verify`'s effect checks do not**, and
+each is a place where a one-bit answer still stands in for a verdict.
+
+**The RAP surface's remaining `ok` booleans were swept, and five of them are
+right as they are** — which is worth recording, because the obvious next move
+is to convert them all and that would make the surface worse. The rule that
+separates them:
+
+> Does `ok: true` claim a **property was established**, or report that **no
+> violation was found**?
+
+`language/parse`, `lint/check`, `effects/check` and `heal/graph` answer the
+second question, and vacuous truth is the correct answer there: a module with
+nothing in it genuinely has nothing wrong with it. `doc/query` answers
+`!matches.is_empty()`, a positive claim that is correctly false when empty.
+`verify/contracts` and `capability/check` answered the *first* question and
+got vacuous truth anyway, which is why those two changed and the others did
+not.
 
 Three defects of the shape it was built to prevent were sitting in the verifier,
 and all three are fixed:
@@ -152,6 +167,15 @@ and all three are fixed:
   `1 contract(s)` because that is how many there were.
 * **`Partial` rendered as `~` beside `✓`** — one character from looking like
   success, for a claim nothing adjudicated. It maps to `Unreached`.
+* **`capability/check` answered `"ok": true` for a module with no agents.**
+  `.all()` on an empty iterator is `true`, so filtering the results down to
+  `agent.*` and asking whether they all verified answered *yes* about no
+  agent at all — a safety question, in the surface an agent calls before
+  deciding whether it may act. **`.all()` is where this hides**: the
+  emptiness is invisible at the call site, and the line reads as "every one
+  of them is verified" to anyone not specifically hunting the vacuous case.
+  Found *after* the fix below, by sweeping the surface a second time — the
+  same one-short stop as the heredoc copies.
 * **RAP answered `"ok": true` for `Trivial`.** An agent asking the verification
   oracle about an unspecified function was told it was fine. That is the
   coverage-hole-as-clean-bill error in a machine-readable API, which is worse
@@ -1021,7 +1045,7 @@ implementation task**:
 - **Then the evaluator rework.** `eval.rs` is 2,987 lines, 39 expression forms
   and 53 recursive `self.eval(` sites, all of which keep the continuation in the
   Rust call stack — where it cannot be captured. Multi-shot needs CPS or an
-  explicit CEK-style machine, which touches every form, with 1,259 tests riding
+  explicit CEK-style machine, which touches every form, with 1,260 tests riding
   on current behaviour.
 
 **This item was filed under "real work, unstarted" with no blocker marked**,
@@ -2096,9 +2120,9 @@ changed before you commit.
 ---
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,259**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,260**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
-  across five crates **2,976**; documented-count pins **92**, up from 46 — the
+  across five crates **2,977**; documented-count pins **92**, up from 46 — the
   four newest hold `SECURITY_AUDIT.md`'s `unsafe` inventory, a claim that had
   been wrong twice.
 - Every typechecker fix has landed without breaking an existing test **except

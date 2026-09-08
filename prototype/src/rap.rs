@@ -29,6 +29,7 @@ use crate::lexer;
 use crate::parser;
 use crate::skb;
 use crate::token_budget;
+use crate::verdict;
 use crate::verify;
 
 /// True if `addr` names a non-loopback bind target — i.e. something other than
@@ -721,8 +722,37 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
                         .iter()
                         .filter(|r| r.fqn.starts_with("agent."))
                         .collect();
+                    // `.all()` on an empty iterator is `true`, so this answered
+                    // **`ok: true` for a module with no agents in it** — a
+                    // safety question ("are this agent's capabilities in the
+                    // known taxonomy?") answered in the affirmative about no
+                    // agent at all.
+                    //
+                    // The same vacuous pass `verify/contracts` had, in a second
+                    // method, missed by the sweep that fixed the first. `.all()`
+                    // is where this hides: the emptiness is not visible at the
+                    // call site, and every reviewer reads it as "every one of
+                    // them is verified".
+                    //
+                    // Now there is a verdict rather than a bit. `Unspecified`
+                    // when there was nothing to check — which `holds()` reports
+                    // as false, so `ok` is false and `verdict` says why.
+                    let evidence = if agent_results.is_empty() {
+                        verdict::Evidence::Unspecified
+                    } else if let Some(bad) =
+                        agent_results.iter().find(|r| r.status != verify::VerifyStatus::Verified)
+                    {
+                        bad.status.evidence(&bad.fqn)
+                    } else {
+                        verdict::Evidence::Proved {
+                            by: format!("capability check over {} agent(s)", agent_results.len()),
+                        }
+                    };
                     serde_json::json!({
-                        "ok": agent_results.iter().all(|r| r.status == verify::VerifyStatus::Verified),
+                        "ok": evidence.holds(),
+                        "verdict": evidence.label(),
+                        "detail": evidence.describe(),
+                        "agents_checked": agent_results.len(),
                         "results": serde_json::to_value(&agent_results).unwrap_or_default()
                     })
                 }
@@ -1448,6 +1478,31 @@ mod tests {
         let src = "agent CodeBot { capabilities: [read_source, write_source] requires_approval: [write_source] }";
         let r = call("capability/check", src_params(src));
         assert_eq!(r["ok"], true);
+        assert_eq!(r["agents_checked"], 1);
+        assert_eq!(r["verdict"], "proved");
+    }
+
+    /// **A module with no agents is not a module whose agents check out.**
+    ///
+    /// This answered `ok: true`, because the arm filtered results down to
+    /// `agent.*` and then called `.all()` — and `.all()` on an empty iterator
+    /// is `true`. A safety question answered in the affirmative about no agent
+    /// at all, in the machine-readable surface an agent calls before deciding
+    /// whether it is allowed to do something.
+    ///
+    /// `.all()` is where this hides. The emptiness is invisible at the call
+    /// site, and the line reads as "every one of them is verified" to anyone
+    /// who is not specifically looking for the vacuous case.
+    #[test]
+    fn capability_check_does_not_pass_a_module_with_no_agents() {
+        let r = call("capability/check", src_params("f main() -> i64 { 1 }"));
+        assert_eq!(r["ok"], false, "nothing was checked, so nothing holds: {r}");
+        assert_eq!(r["verdict"], "unspecified");
+        assert_eq!(r["agents_checked"], 0);
+        assert!(
+            r["detail"].as_str().unwrap().contains("nothing was claimed"),
+            "the reason has to be sayable: {r}"
+        );
     }
 
     #[test]
