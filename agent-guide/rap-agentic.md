@@ -38,7 +38,19 @@ ranked fix candidates with confidence scores and token cost.
 ```
 
 **Agent workflow**: Call `build/heal` instead of `build/check`. If fixes are
-returned, apply the highest-confidence fix and re-check. Iterate until clean.
+returned, apply the highest-`confidence` fix and re-check. Iterate until clean.
+
+> **`confidence` is a ranking prior, not a measured success rate.** All 44
+> values are literals in `prototype/src/heal.rs`; nothing computes them and
+> nothing calibrates them against whether the fix works. The reliability
+> bench measures heal success in aggregate and does not record which pattern
+> fired, so a per-pattern rate is derivable and not derived.
+>
+> Sorting by it is the intended use and a reasonable one — a rename fix
+> really is likelier to be right than a guess, and the recovery bench tries
+> candidates in this order. **Reading `0.85` as "85% likely correct" is
+> not.** Re-check after applying, which this workflow already tells you to
+> do, and treat the number as an ordering and nothing more.
 
 ## `cost/query`
 
