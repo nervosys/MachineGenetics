@@ -382,6 +382,23 @@ Only `stdlib/` and four `framewerx` files remain.
   that does not look like one.** Finding six copies was the reason to go
   looking for the seventh, and the lesson is one this document already
   states: a sweep is not finished when the obvious instances are.
+- **Eight passes handling a variant is not evidence anything makes one.**
+  `Expr::UnsafeBlock` is handled in `elision`, `effects`, `fmt`, `mlir`,
+  `resolve`, `types` and twice in `token_budget` — and **constructed in
+  `parser.rs` zero times**. `unsafe { 1 }` is `expected expression, found
+  KwUnsafe` in every position: expression, statement, initialiser.
+  `MAGE_SPEC.md` documented it as accepted-and-elided in *three* places, so
+  it read as implemented from both directions at once — the spec said yes
+  and the code looked busy. Taxonomy §4, with the handling arms as the
+  decoy. `unsafe fn` (spelled `uf`) does parse and is elided correctly; no
+  `.mg` source writes one.
+- **A success line that has never had a subject.** `--pipeline` printed
+  `✓ safety annotations stripped` unconditionally, on every file, and
+  **nothing in the corpus has ever been elidable** — the two files matching
+  `grep unsafe` match it in comments. It now compares the AST before and
+  after and says `- no safety annotations to strip in this file`, which is
+  what every file in this repository gets. Compared through the tree rather
+  than by re-deriving elision's rules, so it cannot drift from them.
 - **A construct can be reached, run, and still be handed nothing.**
   `autograd.rs`'s reverse-mode tape is cited in `DIFFERENTIABILITY.md` as the
   reason MAGE has two AD algorithms — and `build_tape_from_train` walks

@@ -3155,7 +3155,26 @@ fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool, to
     let module = if do_elision {
         eprintln!("▸ Phase 2.5: Safety elision (agentic mode)");
         let elided = elision::elide(&module);
-        eprintln!("  ✓ safety annotations stripped");
+        // Say whether anything was actually stripped.
+        //
+        // This printed "✓ safety annotations stripped" unconditionally, for
+        // every file, whether or not the module contained a single thing to
+        // strip — and **no `.mg` source in this repository contains one**.
+        // The two files that match `grep unsafe` match it in comments. So
+        // the line has reported an action that has never once had a subject.
+        //
+        // Compared through the AST rather than by re-deriving what elision
+        // removes: `elide` owns those rules (`SAFETY_BOUNDS`,
+        // `ELIMINATED_TYPES`, `unsafe` blocks, `&mut`, `move`, `ref`), and a
+        // second copy here would drift from them. Asking whether the
+        // transform changed the tree cannot.
+        let changed = serde_json::to_string(&module).ok()
+            != serde_json::to_string(&elided).ok();
+        if changed {
+            eprintln!("  ✓ safety annotations stripped");
+        } else {
+            eprintln!("  - no safety annotations to strip in this file");
+        }
         elided
     } else {
         eprintln!("▸ Phase 2.5: Safety elision — SKIPPED (--no-elision)");

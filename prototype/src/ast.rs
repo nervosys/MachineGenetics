@@ -366,6 +366,20 @@ pub enum Expr {
     },
     Todo,
     Unimplemented,
+    /// `unsafe { … }` — **the parser never constructs this.**
+    ///
+    /// Eight passes handle it (`elision`, `effects`, `fmt`, `mlir`,
+    /// `resolve`, `types`, and `token_budget` twice) and `parser.rs`
+    /// produces it zero times, so no MAGE source can make one:
+    /// `unsafe { 1 }` is `expected expression, found KwUnsafe` in every
+    /// position. `MAGE_SPEC.md` documented it as accepted-and-elided in
+    /// three places until 2026-09-07, and now records that it does not
+    /// parse.
+    ///
+    /// Kept rather than deleted: the eight arms are what an implementation
+    /// would need, and removing them would make the parser arm look like
+    /// more work than it is. `unsafe fn` — spelled `uf` — does parse, and
+    /// elision clears its marker.
     UnsafeBlock {
         block: Block,
     },
