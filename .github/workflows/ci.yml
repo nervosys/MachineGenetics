@@ -351,6 +351,13 @@ jobs:
       # token-ratio ceiling was being enforced by reading a *committed*
       # TOKEN_REPORT.md that had gone stale in two categories. The script now
       # measures fresh and fails if the committed report differs.
+      # DIFFERENTIABILITY.md published "0 of 155 functions differentiable" for a
+      # whole phase in which nothing could produce it: the pass was library-only
+      # and no CLI mode reached it, so the figure could be reproduced only by
+      # writing a program. `mage-parse --differentiable` is now the command and
+      # this re-derives the corpus aggregate, failing if the document disagrees.
+      - name: Differentiability figures match the pass
+        run: bash scripts/measure-differentiability.sh --check
       - name: Published reliability floors hold
         run: bash scripts/check-ci-floors.sh
       - name: Compiler version matches Ribosome's registry entry

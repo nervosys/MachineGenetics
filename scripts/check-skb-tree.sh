@@ -26,14 +26,11 @@ set -o pipefail
 
 cd "$(dirname "$0")/.."
 
-BIN="${MG:-prototype/target/release/mage-parse}"
-[ -x "$BIN" ] || BIN="$BIN.exe"
-if [ ! -x "$BIN" ]; then
-    echo "building the compiler first..." >&2
-    cargo build --release --quiet --manifest-path prototype/Cargo.toml --bin mage-parse
-    BIN=prototype/target/release/mage-parse
-    [ -x "$BIN" ] || BIN="$BIN.exe"
-fi
+# `$MG` still overrides, for running this against a binary elsewhere. Without
+# it, cargo is asked where the binary is rather than told — see
+# scripts/find-mage-parse.sh for the stale-binary failure that motivates it.
+. scripts/find-mage-parse.sh
+BIN="${MG:-$(build_and_find_mage_parse)}"
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT

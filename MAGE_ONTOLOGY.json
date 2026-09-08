@@ -4,7 +4,7 @@
     "ast_kinds": 20,
     "bench_backends": 4,
     "ci_floors": 6,
-    "cli_flags": 37,
+    "cli_flags": 38,
     "docs": 7,
     "effects": 22,
     "examples": 10,
@@ -193,6 +193,11 @@
       {
         "flag": "--check",
         "purpose": "Lex + parse + resolve; report diagnostics",
+        "takes_path": true
+      },
+      {
+        "flag": "--differentiable",
+        "purpose": "Report differentiability for every function, net and train block (smooth / almost everywhere / unknown / not, with reasons)",
         "takes_path": true
       },
       {

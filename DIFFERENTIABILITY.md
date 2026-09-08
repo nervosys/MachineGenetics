@@ -1,9 +1,12 @@
 # Differentiability by design
 
-> **Status: the lattice and the inference pass are built (`prototype/src/differentiable.rs`).
-> `grad` as an expression, and differentiation as an ABL→ABL transform, are
-> designed and not built** — labelled as such below, in the convention
-> `MAGE_SPEC.md` uses for constructs it documents and does not implement.
+> **Status: the lattice and the inference pass are built
+> (`prototype/src/differentiable.rs`), over all three subjects — `f` functions,
+> `net` definitions and `train` blocks — and reachable as
+> `mage-parse --differentiable <file.mg> [--json]`. `grad` as an expression,
+> and differentiation as an ABL→ABL transform, are designed and not built** —
+> labelled as such below, in the convention `MAGE_SPEC.md` uses for constructs
+> it documents and does not implement.
 
 ## The claim, stated so it can be false
 
@@ -96,6 +99,95 @@ This is the cheapest correct thing in the design. It required no new analysis �
 only the decision about which effects are disqualifying, which is written above
 so it can be argued with.
 
+## The `net` DSL, which is where the derivative actually lives
+
+Everything above is about `f` functions, and measured against this repository
+that half of the pass reports **0 of 155 functions** differentiable — 125 of
+them for want of a floating-point parameter. That is not the analysis being
+strict. It is the corpus: MAGE's `f` functions are agent and tooling code, and
+its numerical surface is `net` / `layer` / `train`. A pass over functions is
+looking in the wrong place for a subject, which is the same finding that
+reopened item 21.
+
+So the pass has a second half, over the `net` DSL. Three decisions shape it,
+and each is a decision rather than a detail.
+
+### A net is judged with respect to its parameters
+
+`train` optimises weights, so the derivative anyone wants from a net is
+∂loss/∂w, not ∂out/∂in. This is not a technicality — it is why `Embedding` is
+`Smooth`. Its *input* is a discrete token id with no derivative at all, while
+its table is an ordinary dense parameter and the gradient reaching it is the one
+training uses. Judged on inputs, every language model in this repository would
+report `NotDifferentiable` at its first layer, which would be a true sentence
+about a question nobody asked.
+
+### The verdict is keyed on the surface layer type, not the opcode
+
+`abl_bridge` maps `HardSigmoid` and `Sigmoid` onto one `Op::SIGMOID`, and says
+so in a comment — "close-enough lowering". For code generation that is fine.
+For this pass it is not: only one of the two has a kink, and a verdict read off
+the lowered opcode reports the kinked one as `Smooth`. Same for `HardSwish` and
+`SiLU`. The tables are therefore keyed on what the source says.
+
+The stronger version of the same point: an unrecognised layer type lowers to
+`Op::IDENTITY`, and an identity is perfectly smooth. Reading verdicts off the
+lowered form would report a layer nobody has ever analysed as the *best* state
+in the lattice. Unrecognised layer types are `Unknown`, and
+`differentiable::tests::an_unrecognised_layer_is_unknown_not_smooth` is the
+test that says so.
+
+### Which layers get judged is the lowering's own answer
+
+`forward { fc1 }` names one layer in a net that declares three, and it means
+"run all three in declaration order" — the bridge decides this by counting
+application nodes and falling back. That heuristic is not re-implemented here.
+`NetTranslator` records the layer types it applied, and the pass reads them, so
+the analysis is of the program the compiler builds rather than of a plausible
+reconstruction of it. A declared layer the forward pass never reaches
+contributes no gradient path and is not part of the verdict; the report says so
+by printing applied-versus-declared when they differ.
+
+### Where the boundary sits for layers
+
+| Layer | Status | Why |
+|---|---|---|
+| `Linear`, `Conv2D`, `MatMul`, `Embedding` | `Smooth` | affine in the parameters |
+| `Attention` and every variant, `Softmax` | `Smooth` | softmax and matmul are smooth; the causal mask is a constant, not a branch |
+| `LayerNorm`, `RMSNorm`, `BatchNorm`, `GroupNorm` | `Smooth` | rational in the batch statistics |
+| `GELU`, `SiLU`, `Sigmoid`, `Tanh`, `Mish`, `Softplus` | `Smooth` | smooth activations |
+| `LSTM`, `GRU`, `Mamba`, `S4`, the graph layers, the PEFT adapters | `Smooth` | gates are `tanh`/`sigmoid`; the rest is affine |
+| `MSE`, `CrossEntropy`, `BCE`, `NLL`, `KLDiv` | `Smooth` | the losses `train` blocks actually use |
+| `ReLU`, `LeakyReLU`, `ELU`, `SELU`, `MaxPool`, `Huber` | `AlmostEverywhere` | one kink |
+| `AdaptivePool` | `AlmostEverywhere` | the name does not say whether it averages or maxes; this is the join over both readings, not a hedge |
+| `SparseMoE`, `TopKRouter`, `SwitchRouter` | `AlmostEverywhere` | top-k selection is piecewise constant, so the cell boundaries are measure zero |
+| `Int8Linear`, `Int4Linear`, `BitNetLinear` | `AlmostEverywhere` | quantisation rounds: the derivative is zero a.e., the same *defined-and-useless* row as `floor` |
+| `Dropout` and friends | `AlmostEverywhere` | see below |
+| anything else | `Unknown` | never `Smooth` |
+
+**`Dropout` is the one that deserves an argument rather than a table row.** The
+layer computes `mask ⊙ x / (1-p)`, which is *linear* given the mask, and the
+mask is noise drawn independently of the input — so the conditional derivative,
+the one every AD implementation actually computes, exists and is the standard
+object. It is reported one grade below `Smooth` rather than as `Smooth` because
+the function that includes the sampling step is not a function of its inputs
+alone, which is the same rule `NON_FUNCTIONAL` applies to `Rng` for ordinary
+functions. `AlmostEverywhere` says *there is a derivative, and it is not
+unconditional*. Calling it `NotDifferentiable` would make nearly every real
+network non-differentiable and would be wrong about what training does; calling
+it `Smooth` would hide the conditioning.
+
+### `train`
+
+A `train` block's verdict is the join of its net, its loss and its body. The
+optimiser is deliberately absent: it *consumes* gradients rather than
+contributing to the function being differentiated, so `SGD` versus `Adam`
+cannot change whether a derivative exists, and
+`differentiable::tests::the_optimiser_does_not_change_the_verdict` pins that. A
+`train` naming a net the module does not define is `Unknown` — nothing was
+analysed, so there is no verdict to give, which is not the same as a negative
+one.
+
 ## Differentiability is a typeclass, which is why item 21 reopens
 
 Deciding that `tensor[f32]` and `f32` have derivatives while `i64`, `bool` and
@@ -144,37 +236,80 @@ what an operational-vs-denotational equivalence proof would be *about*.
 
 ## What it says about this repository today
 
-Run over all 101 tracked `.mg` sources, the pass analyses 155 functions:
+Run over all 101 tracked `.mg` sources:
 
-| status | count |
-|---|---:|
-| `NotDifferentiable` | 154 |
-| `Unknown` | 1 |
-| `AlmostEverywhere` | 0 |
-| `Smooth` | 0 |
+```
+$ scripts/measure-differentiability.sh
 
-with the reasons dominated by one:
+101 tracked .mg sources; 0 could not be parsed.
+
+subject      total    diff  smooth    a.e. unknown     not
+nets            34      34      19      15       0       0
+trains           7       7       7       0       0       0
+functions      155       0       0       0       1     154
+```
+
+**34 of 34 nets and 7 of 7 train blocks are differentiable; 0 of 155 functions
+are.** The two halves of that sentence are one finding, not two. The negative
+half is dominated by a single reason:
 
 ```
  125  no floating-point parameter to differentiate with respect to
   10  performs the `FS` effect, so its output is not a function of its inputs
    8  performs the `IO` effect
    6  performs the `Llm` effect
+   3  performs the `Net` effect
 ```
 
-**Nothing in this repository's MAGE code is differentiable**, and the reason is
-not that the analysis is too strict — it is that 125 of 155 functions take no
-floating-point argument at all. The corpus is agent and tooling code.
+125 of 155 functions take no floating-point argument at all. The `f` corpus is
+agent and tooling code and always was; the numerical code is in the `net` DSL,
+where the analysis now reports on it. The 15 nets that are `AlmostEverywhere`
+rather than `Smooth` are almost all `ReLU`; the `Smooth` 19 are the transformer
+and embedding stacks.
 
-That is the same shape as the finding that closed item 21: the numerical surface
-of MAGE is the `net` DSL, not `f` functions, and a pass over functions is
-looking in the wrong place for a subject. It is reported here rather than
-buried, because a pass whose honest output is "0 differentiable functions"
-should say so before anyone quotes a better-sounding number.
+**This is reported per-subject and not merged.** One ratio over all 196
+subjects would be 41 of 196 and would answer neither question: functions and
+nets are different populations, and the interesting fact is precisely that the
+two answers differ.
 
-**The next step follows from it**: extend the analysis to `net` / `layer` /
-`train`, where the differentiable computation in this language actually lives,
-and where `autograd.rs` already builds a tape.
+The figures above are re-derived in CI by
+`scripts/measure-differentiability.sh --check`, which fails if this document
+and the pass disagree. The pinned form it compares against:
+
+```
+$ scripts/measure-differentiability.sh --pins
+mg_files=101
+mg_unparsed=0
+nets_total=34
+nets_differentiable=34
+nets_smooth=19
+nets_almost_everywhere=15
+nets_unknown=0
+nets_not=0
+trains_total=7
+trains_differentiable=7
+trains_smooth=7
+trains_almost_everywhere=0
+trains_unknown=0
+trains_not=0
+functions_total=155
+functions_differentiable=0
+functions_smooth=0
+functions_almost_everywhere=0
+functions_unknown=1
+functions_not=154
+```
+
+That check exists because the "0 of 155" figure was published for a whole phase
+during which **nothing could produce it**: the pass was library-only, no CLI
+mode reached it, and reproducing the number meant writing a program. A figure
+with no command beside it is the shape this repository has spent five sessions
+removing from its own documents, and it does not get an exception for being a
+figure this repository liked.
+
+**The next step follows from the nets now having verdicts**: `grad` as an
+expression, with the differentiability obligation as its typing rule — the
+verdicts above are what such a rule would consult.
 
 ## How the claim gets verified, in both senses
 

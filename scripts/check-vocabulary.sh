@@ -29,13 +29,15 @@ set -o pipefail
 
 cd "$(dirname "$0")/.."
 
-BIN=prototype/target/release/mage-parse
-if [ ! -x "$BIN" ]; then
-    echo "building the compiler first..."
-    cargo build --release --manifest-path prototype/Cargo.toml --bin mage-parse
-fi
+# The compiler this checker runs, resolved through cargo rather than a
+# hardcoded `prototype/target/release/mage-parse`. Six checkers each carried
+# their own copy of that path, and on a machine with a shared cargo target
+# directory every one of them ran whatever stale binary happened to be sitting
+# there. See scripts/find-mage-parse.sh.
+. scripts/find-mage-parse.sh
+BIN="$(build_and_find_mage_parse)"
 
-python - <<'PY'
+MAGE_PARSE_BIN="$BIN" python - <<'PY'
 import io
 import json
 import os
@@ -43,7 +45,16 @@ import subprocess
 import sys
 import tempfile
 
-BIN = os.path.join('prototype', 'target', 'release', 'mage-parse')
+# Passed in rather than rebuilt here. This block used to open with its own
+# `BIN = os.path.join('prototype', 'target', 'release', 'mage-parse')`, a
+# *second* copy of the path the shell above had already resolved — and a
+# quoted heredoc does not expand `$BIN`, so the copy silently won. Pointing
+# the shell variable at cargo's real target directory fixed nothing here:
+# three checkers went on running whatever stale binary sat in
+# `prototype/target/`. Found when a documentation block that typechecks
+# was reported as failing, because the compiler being asked was three
+# weeks old and had never heard of the construct in it.
+BIN = os.environ['MAGE_PARSE_BIN']
 
 # (name, call, expected `--eval` output). Each call is the smallest one that
 # exercises the published signature. The expected value is written out rather

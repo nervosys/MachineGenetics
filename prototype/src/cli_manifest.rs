@@ -110,6 +110,20 @@ pub const MODES: &[CliMode] = &[
                  diagnostic, sorted (byte-stable). Parse structurally; don't scrape prose.\n\
                  The cheapest way for an agent to validate generated MAGE.",
     },
+    CliMode {
+        flag: "--differentiable",
+        args: "<file.mg> [--json]",
+        summary: "which functions, nets and train blocks have a derivative, and why not",
+        effect: "read_local",
+        detail: "Reports one of four states per subject: smooth, almost everywhere,\n\
+                 unknown, not differentiable — the last two carrying a reason. Unknown\n\
+                 is the absence of a verdict, not a grade: a construct the pass does not\n\
+                 model never reads as smooth. Nets are judged with respect to their\n\
+                 parameters (what `train` optimises), functions with respect to their\n\
+                 arguments. With --json: per-subject verdicts plus per-layer detail and\n\
+                 a summary tally. See DIFFERENTIABILITY.md for where the\n\
+                 almost-everywhere boundary sits and why.",
+    },
     // `--eval` was on the DELIBERATELY_UNLISTED allowlist, annotated
     // "superseded by --run=abl". It is not: `--run=abl` reads an Agentic
     // Binary Language *container* and answers `bad magic` on a `.mg` file.
