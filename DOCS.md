@@ -1,6 +1,6 @@
 # Documentation index
 
-There are 24 Markdown documents at the repository root, written across five
+There are 25 Markdown documents at the repository root, written across five
 months. They are **not** all current, and several describe
 designs that were deliberately *not* built. This index says which is which, so
 nothing here has to be read to find out whether it is still true.
