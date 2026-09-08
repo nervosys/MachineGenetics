@@ -43,6 +43,9 @@ scripts/check-examples.sh                 # the 12 shipped examples, end to end
 scripts/check-mg-sources.sh               # every .mg file in the repo
 scripts/check-security-register.sh        # §1's accepted risks vs. what cargo audit reports
 scripts/measure-differentiability.sh      # the corpus aggregate (--check verifies the doc)
+scripts/check-ontology-types.sh           # MAGE_ONTOLOGY.md's counts vs. the enums
+scripts/check-ontology-fresh.sh           # the committed ontology vs. a fresh generation
+scripts/check-open-items.sh               # the open-item headings vs. their own tables
 scripts/test-all.sh --cuda --bench --check-docs   # + GPU and the benchmark harnesses
 ```
 
@@ -242,6 +245,128 @@ would serve. That is a much narrower claim than the one it replaces, and it is
 the one to re-measure before starting. **A measurement quoted as evidence for a
 decision about a different population is not evidence** — the figure was about
 `f` functions and the decision was about nets.
+
+---
+## Where this phase ended, 2026-09-08
+
+Everything below the line is on `master`, green, with no open pull requests.
+Fourteen merged in one sitting, and the shape of what they found matters more
+than the count.
+
+**The differentiability pass got a subject, and `grad` became a construct that
+runs.** The pass reported 0 of 155 functions differentiable, which was the
+corpus rather than the analysis. It now covers `net` and `train` as well —
+**34 of 34 nets, 7 of 7 train blocks** — and reports them separately, because
+one ratio over all 196 would answer neither question. `grad(e, w)` is an
+expression with the differentiability obligation as a premise of its typing
+rule, discharged by the call-graph pass rather than by the type checker, which
+cannot see the evidence.
+
+**Two kinds of claim got different words.** `verdict.rs`: `Proved` /
+`Evidenced { n }` / `Unspecified` / `Unreached { why }` / `Refuted { at }`,
+borrowed from `../StatodynamicAnalysis`. `Evidenced` cannot render without its
+sample count; `holds()` is false for both absences; the summary names the
+coverage hole even when it is zero. **No ordering and no score**, because both
+invite the collapse the module exists to prevent.
+
+**Four new checkers**, taking CI from 17 to 20 reached: `check-open-items.sh`,
+`check-ontology-types.sh`, `check-ontology-fresh.sh`, and
+`scripts/find-mage-parse.sh` as the one answer to "where is the compiler".
+
+### The shape that dominated: an accurate statement about an empty subject
+
+Nine instances, in eight places, and every one rendered as success:
+
+| where | said |
+|---|---|
+| `VerifyStatus::Trivial` | rows skipped, while the summary counted them |
+| RAP `verify/contracts` | `"ok": true` for a function nobody specified |
+| RAP `capability/check` | `"ok": true` for a module with no agents — `.all()` on an empty iterator |
+| `--pipeline` elision | `✓ safety annotations stripped`, on a corpus where nothing has ever been elidable |
+| `--pipeline` autograd | `✓ train Learn: 1 forward ops, 1 backward ops`, over a tape holding one node |
+| `check-doc-evals.sh` | a denylist of ten error strings; anything else passed |
+| `check-mg-sources.sh` | `\|\| true` on the verdict — a file the compiler never opened counted as typechecking |
+| `MAGE_ONTOLOGY.md` | `System invariants \| 34`, in a document defining 56 |
+| `heal.rs` | `[conf=85%]` from 44 hand-picked literals nothing measures |
+
+**The count is usually right. That is why these survive.** An accurate number
+about a population nobody looked at reads as progress, and a tick in front of it
+finishes the job.
+
+**Five cases were swept and deliberately left alone**, which matters as much as
+the fixes. The rule that separates them:
+
+> Does `ok: true` claim a **property was established**, or report that **no
+> violation was found**?
+
+`language/parse`, `lint/check`, `effects/check` and `heal/graph` answer the
+second, where vacuous truth is correct — a module with nothing in it genuinely
+has nothing wrong with it. Converting all of them would have made the surface
+worse.
+
+### Things that turned out not to be true
+
+* **`autograd.rs`'s tape is never given anything to differentiate.**
+  `build_tape_from_train` walks `TrainDef.body`; every `train` block is
+  declarative and no `.mg` source writes a train `body` at all. It was cited in
+  `DIFFERENTIABILITY.md` as the reason this language has two AD algorithms, and
+  in two pull request descriptions I wrote the same day **from that document,
+  without running it**.
+* **`unsafe { … }` does not parse.** `Expr::UnsafeBlock` is handled by eight
+  passes and constructed by none, while `MAGE_SPEC.md` documented it as
+  accepted-and-elided in three places. It reads as implemented from both
+  directions at once: the spec says yes and the code looks busy.
+* **Item 21 was not a prerequisite for `grad`**, which is why it had reopened.
+  The obligation discharges against the call graph directly.
+
+### Four mistakes of mine, and what each one is worth
+
+1. **A sweep that stopped one short, twice.** Six copies of a hardcoded binary
+   path replaced with one resolver — and three more hiding inside `python <<'PY'`
+   heredocs, where a quoted heredoc does not expand `$BIN`. Then the same
+   again: `verify/contracts` fixed, `capability/check` missed until a second
+   pass. **A path inside a heredoc is a copy that does not look like one.**
+2. **A checker that resolved an ambiguity by picking.** My first enum-count scan
+   took the same-named type with the most variants and reported eleven
+   disagreements, four of them comparing `ContractKind` in `forge.rs` against a
+   row about `verify.rs`. **A checker that guesses invents findings.** The
+   document now names the file it means.
+3. **Three scans, three counts for one enum** — 179, 180, 182 for `TokenKind`.
+   I published none of them until one algorithm could reproduce itself.
+4. **A correction to the wrong one of two readings.** `Effect kinds` was 16,
+   which is wrong; I made it 18, the enum count, when the row means the 17
+   built-in kinds — `Custom(String)` is how a *declared* effect is represented.
+   Three documents already said seventeen and I had not asked them. **A figure
+   with two plausible readings needs the reading written down, not just the
+   number fixed.**
+
+And two smaller ones worth their shapes: widening `check-doc-evals`'s
+entry-point regex produced **five failures of which all five were mine** —
+examples printing the word "error" in their own output, functions taking an
+argument `--eval` cannot supply, and an effect operation that is not a function
+at all. **Widening what a checker looks at invents findings as readily as
+narrowing it hides them.** And adding a document moved a pinned count in two
+files, in the commit handing off a session about not doing that.
+
+### What the merge itself taught
+
+* **`--delete-branch` on a stacked pull request closes the one above it.**
+  Merging #24 that way closed #25, which cannot be reopened once its base is
+  gone; the same branch went up as #31. Delete branches after a stack is
+  merged, not as you go.
+* **Three ontology figures went stale between being corrected and landing** —
+  `Expr` gained `Grad`, `Source modules` gained two files — and
+  `check-ontology-types.sh` caught all three on the rebase. **A correction is
+  only as durable as the thing that re-derives it.** That is the strongest
+  argument in this phase for building checkers rather than fixing numbers.
+
+### The generalisation worth acting on next
+
+Four checkers needed the same fix: **fail closed on exit status, and use string
+matching only for the human-readable message.** `check-ci-floors.sh` had a
+`|| true` swallowing exit 2; `check-mg-sources.sh` had one swallowing exit 1;
+`check-doc-evals.sh` had a denylist instead of a status. The remaining sixteen
+have **not** been audited against that rule. It is the cheapest known lead.
 
 ---
 ## Where this phase ended, 2026-09-03
