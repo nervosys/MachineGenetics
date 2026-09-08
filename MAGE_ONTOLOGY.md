@@ -1278,7 +1278,7 @@ Complete alphabetical index of all ontological concepts:
 | Envelope                | Agent        | `Envelope`               | §3      |
 | EvolveDef               | Syntactic    | `EvolveDef`              | §13.2   |
 | EvolutionConfig         | AI/Evolution | `EvolutionConfig`        | §18.4   |
-| Expr (ExprKind)         | Syntactic    | enum (35 @ prototype/src/ast.rs)                | §13.1   |
+| Expr (ExprKind)         | Syntactic    | enum (36 @ prototype/src/ast.rs)                | §13.1   |
 | FactDef                 | Syntactic    | `FactDef`                | §13.2   |
 | FieldInit               | Syntactic    | `FieldInit`              | §13.1   |
 | FieldPattern            | Syntactic    | `FieldPattern`           | §13.1   |
@@ -1542,10 +1542,10 @@ Report TaskResult::Success
 
 | Category                 | Count |
 | ------------------------ | ----- |
-| Source modules           | 65    |
+| Source modules           | 67    |
 | TokenKind variants       | 182   |
 | AST ItemKind variants    | 20    |
-| AST ExprKind variants    | 35    |
+| AST ExprKind variants    | 36    |
 | AST Type variants        | 32    |
 | HIR Ty variants          | 31    |
 | Effect kinds             | 17    |
@@ -1575,6 +1575,14 @@ Report TaskResult::Success
 > own `effects` ontology section lists those seventeen beside five
 > annotations, which is where the JSON's `effects: 22` comes from. Three
 > numbers, one subject, and each is right about a different question.
+>
+> **Three of these moved during the merge that landed them.** `Expr` gained
+> `Grad` (35 → 36) and `Source modules` gained `verdict.rs` and
+> `gradcheck.rs` (65 → 67), between this document being corrected and the
+> branch reaching `master`. The checker caught all three on the rebase,
+> which is the argument for having built it: **a correction is only as
+> durable as the thing that re-derives it**, and a figure fixed by hand in
+> one commit is stale by the next.
 >
 > **`Ontological concepts` and `Cross-domain relations` are not checked.**
 > Neither has a stated counting rule — which subsections count, whether a
