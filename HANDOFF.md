@@ -68,18 +68,29 @@ retargeted them and the content cascaded sideways. It was caught by looking at
 `master` is green with nothing outstanding, so there is no rescue work. The
 useful next moves, in the order I would take them:
 
-**1 — Reverse-mode `grad`, or tensors.** `grad(e, w)` is an expression as of
-2026-09-07 and it runs — but only for **scalars**, and only for **one** `w`.
-Both limits are honest and both are the next work.
+**1 — Nothing here is urgent, and that is the finding.** `grad(e, w)` is an
+expression as of 2026-09-07 and it runs, for **scalars** and one `w`. The two
+obvious extensions — reverse mode over many parameters, and `grad` over
+`tensor`/`param` — were both examined and **declined**, on this repository's
+own standard: a construct with no caller is the mistake, not the missing
+construct.
 
-The evaluator carries forward-mode dual numbers, which is the right
-algorithm for the signature `grad(e, w)` has: one `w`, one pass, exact.
-It is the *wrong* one for `grad(loss, every_parameter)`, which is what
-training wants and what `autograd.rs`'s tape already does for `train`
-blocks. So the two obvious moves are a `grad` over many parameters (reverse
-mode, and the tape is already written) and `grad` over `tensor`/`param`,
-which the type checker currently **refuses** rather than accepting and
-failing later — the evaluator has no tensor value at all.
+* **Reverse mode** serves `grad(loss, [w1..wn])` in `f` functions, and nothing
+  in the corpus writes one. Forward mode is the right algorithm for the
+  signature `grad` actually has: one `w`, one pass, exact.
+* **Tensors** are *refused* by the type checker at the call site rather than
+  accepted into a program the evaluator cannot run — it has no tensor value at
+  all. Build the value first if something starts wanting it.
+
+> **A claim this section made until 2026-09-07 was false.** It said reverse
+> mode is "what `autograd.rs`'s tape already does for `train` blocks".
+> `build_tape_from_train` walks `TrainDef.body`, every `train` block is
+> declarative, and no `.mg` source writes a train `body` at all — so the tape
+> holds one node on all seven of them. The corrected account is in
+> `DIFFERENTIABILITY.md` and in the traps below. It mattered because the
+> sentence was load-bearing: it was the stated reason the language has two AD
+> algorithms, and it was repeated into two pull request descriptions before
+> anyone ran it.
 
 What shipped with it is worth reading before extending it:
 
@@ -133,6 +144,20 @@ pass was library-only, no CLI mode reached it, and reproducing the number meant
 writing a program. It was right — the new command reproduces 155 and 154 exactly
 — which is the uncomfortable part, because it was right by luck of nobody having
 changed anything, not by anything checking.
+
+### Declined on 2026-09-07/08, each for the same reason
+
+Recorded so nobody re-opens them as oversights. Every one is the decision
+`DIFFERENTIABILITY.md` used to keep tensor-product binding a specification.
+
+| what | why not |
+|---|---|
+| Reverse-mode `grad` over many parameters | no `.mg` source writes one |
+| `grad` over `tensor`/`param` | the evaluator has no tensor value; refused at the call site instead |
+| Walking `NetDef.layers` into the autograd tape | `backward` emits MLIR text nothing executes or checks |
+| Converting the other five RAP `ok` booleans | they report *no violation found*, where vacuous truth is correct |
+| Checking `Ontological concepts` / `Cross-domain relations` | neither has a stated counting rule, so a checker would invent the definition it verifies |
+| Deleting `Expr::UnsafeBlock` | eight passes handle it and it is what an implementation would need; the parser arm is the missing half |
 
 **2 — Carry the verdict vocabulary into the rest of the compiler.** `verdict.rs`
 exists as of 2026-09-07 — `Proved` / `Evidenced { n }` / `Unspecified` /
