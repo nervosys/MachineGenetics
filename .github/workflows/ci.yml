@@ -309,14 +309,14 @@ jobs:
       # anyone building to the published ontology produced artifacts this
       # toolchain refuses. A generated file that is committed but not checked is
       # just a stale file with extra authority.
+      #
+      # Moved out of this file on 2026-09-08. Inlined here it could not be run
+      # before pushing, and it sat outside `check-ci-paths.sh`'s audit of
+      # "every checker is reached by a CI step" — which walks `scripts/`, so
+      # the one mechanism built to catch unreached checkers could not see this
+      # one. It also compared bytes, which fails on a CRLF checkout.
       - name: Committed ontology matches a fresh generation
-        run: |
-          cargo run --quiet --release --manifest-path prototype/Cargo.toml \
-            --bin mage-parse -- --emit-ontology /tmp/onto-fresh.json
-          diff MAGE_ONTOLOGY.json /tmp/onto-fresh.json || {
-            echo "::error::MAGE_ONTOLOGY.json is stale — regenerate with --emit-ontology"
-            exit 1
-          }
+        run: bash scripts/check-ontology-fresh.sh
       # The shipped examples are data, not tests, so `cargo test` never touched
       # them and 11 of 12 had stopped typechecking unnoticed. All 12 now
       # typecheck and run; this pins the answer each one prints, because two of

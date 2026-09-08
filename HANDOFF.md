@@ -428,6 +428,17 @@ Only `stdlib/` and four `framewerx` files remain.
   prevent, committed while extending the machinery that prevents it.
   `--pipeline` now says what the tape covers and **does not print a tick when
   the answer is nothing**.
+- **A checker that lives in the workflow is invisible to the guard that
+  finds unreached checkers.** `check-ci-paths.sh` audits "every checker is
+  reached by a CI step" by walking `scripts/`. The
+  `Committed ontology matches a fresh generation` step was six lines inlined
+  in `ci.yml`, so the one mechanism this repository built to catch unreached
+  checkers **could not see it** — and it could not be run before pushing
+  either, since every other check here is `bash scripts/check-*.sh`. It also
+  compared bytes, so it would have failed on a CRLF checkout for anyone who
+  did retype the commands. Extracted 2026-09-08; the audit now counts 20
+  checkers instead of 19, and the extra one is the one it previously could
+  not find.
 - **A check that cannot pass locally is a check nobody runs.**
   `check-ci-floors.sh` compared `benchmarks/TOKEN_REPORT.md` against a fresh
   run with `cmp -s`. Git checks that file out CRLF on Windows and
