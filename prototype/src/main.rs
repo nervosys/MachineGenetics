@@ -3233,12 +3233,36 @@ fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool, to
                 })
                 .collect();
             let grad_result = autograd::backward(&tape, loss_id, &param_names);
-            ai_info.push(format!(
-                "train {}: {} forward ops, {} backward ops",
-                train.name,
-                tape.nodes.len(),
-                grad_result.mlir_ops.len()
-            ));
+            // A tape with one node covers nothing: `build_tape_from_train`
+            // walks `TrainDef.body`, and every declarative `train` block —
+            // which is all of them — puts its net, loss and optimiser in
+            // *typed fields* instead. The single node is the `param`
+            // registered for the net's name, and the single backward op is
+            // the `d(loss)/d(loss) = 1.0` seed landing on a leaf where
+            // accumulation stops.
+            //
+            // This printed "1 forward ops, 1 backward ops" with a tick for
+            // every train block in the repository. The count was accurate
+            // and read as progress, which is the only reason it survived:
+            // `backward` emits MLIR text that nothing executes, so a tape
+            // covering nothing has no other symptom.
+            //
+            // Training is unaffected — the real backward pass is in `rmi`'s
+            // backend, which never touches this module.
+            if tape.nodes.len() <= 1 {
+                ai_info.push(format!(
+                    "!train {}: autograd tape covers nothing ({} node) — it reads `body`, and this block declares its net and loss as fields. No gradient is computed here; training itself uses rmi's backend",
+                    train.name,
+                    tape.nodes.len()
+                ));
+            } else {
+                ai_info.push(format!(
+                    "train {}: {} forward ops, {} backward ops",
+                    train.name,
+                    tape.nodes.len(),
+                    grad_result.mlir_ops.len()
+                ));
+            }
             for diag in &grad_result.diagnostics {
                 eprintln!("  {filename}: {diag}");
                 if diag.severity == hir::Severity::Error {
@@ -3293,8 +3317,15 @@ fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool, to
         }
     }
 
+    // A leading `!` marks a line that is *not* a success. Every entry used
+    // to print with a tick, including "autograd tape covers nothing" — the
+    // tick is the whole reason that line read as progress for as long as it
+    // did.
     for info in &ai_info {
-        eprintln!("  ✓ {info}");
+        match info.strip_prefix('!') {
+            Some(rest) => eprintln!("  ! {rest}"),
+            None => eprintln!("  ✓ {info}"),
+        }
     }
     if ai_info.is_empty() {
         eprintln!("  - no AI subsystem blocks");

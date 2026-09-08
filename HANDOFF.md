@@ -22,7 +22,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **2,977** — rmi 1,384 · prototype 1,260 · ribosome 168 · germline 112 · forge 53 |
+| Tests | **2,978** — rmi 1,384 · prototype 1,261 · ribosome 168 · germline 112 · forge 53 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -382,6 +382,35 @@ Only `stdlib/` and four `framewerx` files remain.
   that does not look like one.** Finding six copies was the reason to go
   looking for the seventh, and the lesson is one this document already
   states: a sweep is not finished when the obvious instances are.
+- **A construct can be reached, run, and still be handed nothing.**
+  `autograd.rs`'s reverse-mode tape is cited in `DIFFERENTIABILITY.md` as the
+  reason MAGE has two AD algorithms — and `build_tape_from_train` walks
+  `TrainDef.body`, while every `train` block in the repository is
+  declarative: `net:`, `loss:` and `optimizer:` are *typed fields*, and **no
+  `.mg` source writes a train `body` at all**. So the tape holds one node,
+  the net's name, on all seven train blocks. `--pipeline` printed
+  `✓ train Learn: 1 forward ops, 1 backward ops` for every one of them, and
+  **the count was accurate** — which is exactly why it survived. An accurate
+  number can still be a claim about nothing.
+
+  Worse than empty. With one node, that node is *both* the loss and the
+  parameter, so the seed `d(loss)/d(loss) = 1.0` lands in `param_grads` as
+  the gradient of the loss with respect to the net. An empty result would at
+  least have been silent; this one answers. My first test asserted
+  `param_grads.is_empty()` and failed, which is how the distinction surfaced.
+
+  **Training is unaffected and genuinely works** — `--target=abl-train`
+  reduces `train_demo.mg`'s loss by 99.95% — because the real backward pass
+  is in `rmi`'s backend and never touches this module. That is what let it
+  survive: the thing the tape is cited as evidence for *does* work,
+  elsewhere. And `backward` emits MLIR **text** that nothing executes, so a
+  tape covering nothing has no other symptom.
+
+  I repeated the claim in two pull request descriptions the same day, from
+  this document, without running it — the failure this repository is built to
+  prevent, committed while extending the machinery that prevents it.
+  `--pipeline` now says what the tape covers and **does not print a tick when
+  the answer is nothing**.
 - **`${#arr[@]}` on a never-assigned associative array is *unbound*.** Under
   `set -u`, `declare -A ACTUAL` followed by a `read` loop that assigns nothing
   makes `[ "${#ACTUAL[@]}" -eq 0 ]` abort the line — so the empty-input guard
@@ -1045,7 +1074,7 @@ implementation task**:
 - **Then the evaluator rework.** `eval.rs` is 2,987 lines, 39 expression forms
   and 53 recursive `self.eval(` sites, all of which keep the continuation in the
   Rust call stack — where it cannot be captured. Multi-shot needs CPS or an
-  explicit CEK-style machine, which touches every form, with 1,260 tests riding
+  explicit CEK-style machine, which touches every form, with 1,261 tests riding
   on current behaviour.
 
 **This item was filed under "real work, unstarted" with no blocker marked**,
@@ -2120,9 +2149,9 @@ changed before you commit.
 ---
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,260**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,261**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
-  across five crates **2,977**; documented-count pins **92**, up from 46 — the
+  across five crates **2,978**; documented-count pins **92**, up from 46 — the
   four newest hold `SECURITY_AUDIT.md`'s `unsafe` inventory, a claim that had
   been wrong twice.
 - Every typechecker fix has landed without breaking an existing test **except

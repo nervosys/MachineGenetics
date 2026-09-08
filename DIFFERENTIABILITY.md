@@ -274,9 +274,12 @@ result. One pass, exact.
 
 Forward mode is the right algorithm *for this construct*, and the reason is in
 its signature: `grad(e, w)` names one `w`. Reverse mode wins when there are many
-parameters and one output, which is what a `train` block does — and
-`autograd.rs` already builds a tape for exactly that. Two algorithms because
+parameters and one output, which is what training does. Two algorithms because
 there are two questions, not because one of them is legacy.
+
+> **Corrected 2026-09-07.** This paragraph said `autograd.rs` "already builds
+> a tape for exactly that", and the sentence was written twice in this
+> document before anyone ran it. It does not. See below.
 
 Nested `grad` is refused rather than answered: a second derivative needs a
 second level of dual numbers, and returning the first derivative instead would
@@ -291,9 +294,49 @@ evidences that the computed one is correct; neither stands in for the other.
 
 ### Lowering as an ABL→ABL transform
 
-`autograd.rs` has a working reverse-mode tape — `GradNode`, `GradOp`,
-`GradTape`, `backward` — driven from `train` blocks. That is AD attached to one
-construct rather than a property of the language.
+`autograd.rs` defines a reverse-mode tape — `GradNode`, `GradOp`, `GradTape`,
+`backward` — and **it is never given anything to differentiate.**
+
+`build_tape_from_train` walks `TrainDef.body`. Every `train` block in this
+repository is declarative — `net: X; optimizer: SGD(0.05); loss: MSE;` — and
+those are *typed fields* on `TrainDef`, not statements in `body`. **No `.mg`
+source in the repository writes a train `body` at all.** So the tape is built
+from an empty block and contains exactly one node, the `param` registered for
+the net's name.
+
+Measured, on every train block in the corpus:
+
+```
+$ mage-parse --pipeline prototype/examples/tiny_lm.mg
+  ✓ train Learn: 1 forward ops, 1 backward ops
+  ✓ train LearnPlateau: 1 forward ops, 1 backward ops
+```
+
+One forward node is the net's name. One backward op is the seed,
+`d(loss)/d(loss) = 1.0` — and because that single node is *both* the loss and
+the parameter, the seed is recorded as **the gradient of the loss with
+respect to the net**. `param_grads` is not empty. It holds the derivative of
+the loss with respect to itself, under a parameter's name, and the line
+reported it with a tick.
+
+An empty result would at least have been silent. This one answers.
+
+Training itself is unaffected and genuinely works — `--target=abl-train` on
+`train_demo.mg` reduces loss by 99.95% — because the real backward pass lives
+in `rmi`'s backend and never touches this module. That is what made this
+survive: the thing the tape is cited as evidence for does work, just not
+here.
+
+The module is not broken. Given a body it would build a tape; it is handed
+the wrong half of the AST. The net's layers are in `NetDef.layers`, and
+nothing walks them into a tape.
+
+**What it is not is evidence for a design argument**, and it was being used as
+one — twice in this document, and in two pull request descriptions written
+the same day, by me, quoting this file without running it. `backward` emits
+MLIR *text* that nothing executes and nothing checks, which is why a tape
+covering nothing produced no visible symptom for however long it has been
+this way.
 
 The design that fits MAGE rather than PyTorch: **differentiation is a transform
 from an ABL container to an ABL container.** ABL is a static container of 107

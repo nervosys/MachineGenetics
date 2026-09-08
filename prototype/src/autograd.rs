@@ -516,6 +516,78 @@ fn build_tape_expr(tape: &mut GradTape, expr: &ast::Expr) -> usize {
 mod tests {
     use super::*;
 
+    /// **The tape is never given anything to differentiate.**
+    ///
+    /// `build_tape_from_train` walks `TrainDef.body`. Every `train` block in
+    /// this repository is declarative — `net: X; optimizer: SGD(0.05);
+    /// loss: MSE;` — and those are *typed fields* on `TrainDef`, not
+    /// statements in `body`. No `.mg` source writes a train `body` at all.
+    /// So the tape is built from an empty block and holds exactly one node:
+    /// the `param` registered for the net's name.
+    ///
+    /// `--pipeline` reported this as "1 forward ops, 1 backward ops" with a
+    /// tick, for every train block in the corpus, and the count was accurate.
+    /// An accurate number can still be a claim about nothing.
+    ///
+    /// This test pins the *current* behaviour rather than asserting the
+    /// behaviour anyone wants — it fails the moment someone walks the net's
+    /// layers into a tape, which is the change that would make the module
+    /// mean something. Delete it then, and say what it now covers.
+    #[test]
+    fn a_declarative_train_block_builds_a_tape_of_one_node() {
+        let src = "net N { layer fc: Linear(3, 1); forward { fc } }
+\n                   train T { net: N; optimizer: SGD(0.05); loss: MSE; epochs: 10; }";
+        let toks = crate::lexer::lex(src);
+        let module = crate::parser::parse(&toks).expect("parse");
+        let train = module
+            .items
+            .iter()
+            .find_map(|i| match &i.kind {
+                ast::ItemKind::Train(t) => Some(t),
+                _ => None,
+            })
+            .expect("a train block");
+        assert!(
+            train.body.stmts.is_empty() && train.body.tail_expr.is_none(),
+            "a declarative train block has an empty `body`"
+        );
+        let tape = build_tape_from_train(train);
+        assert_eq!(
+            tape.nodes.len(),
+            1,
+            "the tape holds only the net-name param: {:?}",
+            tape.nodes.iter().map(|n| &n.op).collect::<Vec<_>>()
+        );
+        // And the backward pass over it is worse than empty.
+        //
+        // With one node, that node is *both* the loss and the parameter, so
+        // the seed `d(loss)/d(loss) = 1.0` is recorded as the gradient of
+        // the loss with respect to the net. `param_grads` is not empty — it
+        // holds the derivative of the loss with respect to itself, under a
+        // parameter's name.
+        //
+        // My first version of this test asserted `param_grads.is_empty()`
+        // and failed, which is how the distinction was found. An empty
+        // result would at least be silent; this one answers.
+        let g = backward(&tape, 0, &["N".to_string()]);
+        assert_eq!(
+            g.param_grads.len(),
+            1,
+            "the one node is both loss and param: {:?}",
+            g.param_grads
+        );
+        let seed = &g.mlir_ops[0];
+        assert!(
+            seed.contains("1.0") && seed.contains("d(loss)/d(loss)"),
+            "and the gradient it reports is the seed itself: {seed}"
+        );
+        assert_eq!(
+            g.param_grads.get("N").map(String::as_str),
+            Some("%grad_0"),
+            "which is the seed's own SSA name"
+        );
+    }
+
     #[test]
     fn tape_simple_linear() {
         let mut tape = GradTape::new();
