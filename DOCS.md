@@ -1,6 +1,6 @@
 # Documentation index
 
-There are 25 Markdown documents at the repository root, written across five
+There are 24 Markdown documents at the repository root, written across five
 months. They are **not** all current, and several describe
 designs that were deliberately *not* built. This index says which is which, so
 nothing here has to be read to find out whether it is still true.
@@ -59,7 +59,6 @@ Read these to understand the system as it exists.
 | Document | What it covers |
 | --- | --- |
 | [HANDOFF.md](HANDOFF.md) | Session handoff: current verified state, the checks now in place, open items, and the traps worth not repeating. Start here if you are picking this up cold |
-| [SESSION_2026-09-07.md](SESSION_2026-09-07.md) | One session's handoff: six open pull requests, the findings grouped by shape, five mistakes worth the shapes they teach, and what was deliberately not built. **Dated and disposable** — fold into HANDOFF.md or delete once those merge |
 | [README.md](README.md) | Entry point: the four forms, the composition algebra, measured benchmarks |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | ABL and tool-mediated construction — the current architecture, including a §6 "Honest boundaries" |
 | [MEASUREMENTS.md](MEASUREMENTS.md) | Every measured functionality and performance figure, with reproduction commands |
