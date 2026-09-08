@@ -2055,9 +2055,24 @@ In agent mode, safety constructs are **fully handled by the compiler and SKB** (
 
 | Human Syntax                   | Agent Mode Handling                              | SKB Rules |
 | ------------------------------ | ------------------------------------------------ | --------- |
-| `unsafe { ... }`               | Elided — compiler verifies via OWN/BOR/FFI       | AEL-0001  |
+| `unsafe { ... }`               | **Parse error** — see the note below              | AEL-0001  |
 | `unsafe fn`                    | Elided — compiler detects from body analysis     | AEL-0002  |
 | Lifetime annotations (`'a`)    | Inferred by compiler's LIF rules                 | AEL-0003  |
+
+> **`unsafe { ... }` does not parse.** Corrected 2026-09-07. It is a parse
+> error in every position — expression, statement, and initialiser — with
+> `expected expression, found KwUnsafe`. The AST has an `Expr::UnsafeBlock`
+> variant and **eight passes handle it** (`elision`, `effects`, `fmt`, `mlir`,
+> `resolve`, `types`, and `token_budget` twice); `parser.rs` constructs it
+> **zero** times, so no MAGE source can produce one.
+>
+> `unsafe fn` *does* work, spelled `uf`, and elision clears its marker — that
+> row is accurate. No `.mg` source in the repository writes one.
+>
+> The block form is documented as accepted-and-elided in three places (here,
+> §26's equivalence table, and the keyword list in the grammar), which is why
+> it reads as implemented. Eight handling arms are the evidence that someone
+> intended it; the parser arm is the one that was never written.
 | `&mut T` explicit annotation   | Inferred — compiler determines mutability        | AEL-0004  |
 | `Send` / `Sync` bounds         | Derived automatically from type structure        | AEL-0005  |
 | `move` keyword on closures     | Inferred — compiler determines capture mode      | AEL-0006  |
@@ -2229,7 +2244,7 @@ In agent mode, the following constructs have **no syntax** — the compiler's SK
 
 | Human Syntax     | Agent Equivalent | Compiler Handling        |
 | ---------------- | ---------------- | ------------------------ |
-| `unsafe { ... }` | `{ ... }`        | SKB verifies operations  |
+| `unsafe { ... }` | *(does not parse)* | See §24 — the block form is unimplemented |
 | `unsafe fn`      | `f`              | Compiler detects unsafe  |
 | `'a` lifetimes   | *(omitted)*      | LIF rules infer all      |
 | `Send + Sync`    | *(omitted)*      | CON rules derive bounds  |

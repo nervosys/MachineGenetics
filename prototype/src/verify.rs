@@ -6,6 +6,7 @@
 ///
 /// RAP method: verify/contracts → { module, function } → VerificationResult
 use crate::ast;
+use crate::verdict::Evidence;
 use serde::{Deserialize, Serialize};
 
 /// Result of verifying a function's contracts.
@@ -30,8 +31,55 @@ pub enum VerifyStatus {
     Partial,
     /// Contract violations found.
     Failed,
-    /// No contracts to verify.
-    Trivial,
+    /// **Nothing was claimed here**, so nothing was verified.
+    ///
+    /// Named `Trivial` until 2026-09-07, and the name was the defect rather
+    /// than a quibble: "trivial" reads as *it passed, easily*, and the reporter
+    /// acted on that reading by **skipping the row**. A function nobody had
+    /// specified was therefore invisible in the listing while still being
+    /// counted in the summary line above it — `Contracts checked: 2` for a
+    /// module with one contract. A coverage hole rendered as coverage, which is
+    /// the error `../StatodynamicAnalysis` built its `Unreached` row around:
+    /// *the claim is untested, not clean*.
+    ///
+    /// See `verdict.rs` for the shared vocabulary and the correspondence table.
+    Unspecified,
+}
+
+impl VerifyStatus {
+    /// This status as a verdict in the shared vocabulary (`verdict.rs`).
+    ///
+    /// Every one of these is *deductive* — contract checking quantifies over
+    /// executions rather than sampling them — so nothing here can produce
+    /// `Evidenced`. That asymmetry is why both words exist.
+    pub fn evidence(&self, fqn: &str) -> Evidence {
+        match self {
+            VerifyStatus::Verified => Evidence::Proved {
+                by: "contract checking".into(),
+            },
+            // "Could not be verified statically" is a claim nothing
+            // adjudicated, not a weak pass. It rendered as `~` beside `✓` —
+            // one character away from looking like success.
+            VerifyStatus::Partial => Evidence::Unreached {
+                why: "some conditions need a runtime check that nothing performs".into(),
+            },
+            VerifyStatus::Failed => Evidence::Refuted { at: fqn.to_string() },
+            VerifyStatus::Unspecified => Evidence::Unspecified,
+        }
+    }
+
+    /// The character a report puts in front of the row.
+    ///
+    /// `Unspecified` gets `?`, not `-`. A dash reads as *nothing to see here*,
+    /// which is exactly the reading that let these rows be dropped.
+    pub fn symbol(&self) -> &'static str {
+        match self {
+            VerifyStatus::Verified => "✓",
+            VerifyStatus::Partial => "~",
+            VerifyStatus::Failed => "✗",
+            VerifyStatus::Unspecified => "?",
+        }
+    }
 }
 
 /// Result of checking a single pre/post condition.
@@ -96,7 +144,7 @@ pub fn verify_contracts(
     effects: &EffectAnalysis,
 ) -> VerificationResult {
     let mut checks = Vec::new();
-    let mut status = VerifyStatus::Trivial;
+    let mut status = VerifyStatus::Unspecified;
 
     if let Some(spec) = spec {
         for req in &spec.requires {
@@ -122,7 +170,7 @@ pub fn verify_contracts(
 
     // If effects are inconsistent, downgrade status
     if effect_checks.iter().any(|e| e.result == EffectCheckResult::Undeclared)
-        && (status == VerifyStatus::Verified || status == VerifyStatus::Trivial) {
+        && (status == VerifyStatus::Verified || status == VerifyStatus::Unspecified) {
             status = VerifyStatus::Partial;
         }
 
@@ -286,7 +334,7 @@ fn verify_item(kind: &ast::ItemKind, prefix: &str, results: &mut Vec<Verificatio
                 } else if has_unknown {
                     VerifyStatus::Partial
                 } else if checks.is_empty() {
-                    VerifyStatus::Trivial
+                    VerifyStatus::Unspecified
                 } else {
                     VerifyStatus::Verified
                 };
@@ -437,7 +485,7 @@ mod tests {
     fn trivial_no_spec() {
         let effects = EffectAnalysis { declared: vec![], used: vec![] };
         let result = verify_contracts("my.fn", None, &effects);
-        assert_eq!(result.status, VerifyStatus::Trivial);
+        assert_eq!(result.status, VerifyStatus::Unspecified);
         assert!(result.checks.is_empty());
     }
 

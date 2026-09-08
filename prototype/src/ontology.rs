@@ -382,6 +382,7 @@ const CLI_FLAGS: &[(&str, &str, bool)] = &[
     ("--emit-skb", "Regenerate skb/ from the rules compiled into this binary", true),
     ("--check", "Lex + parse + resolve; report diagnostics", true),
     ("--differentiable", "Report differentiability for every function, net and train block (smooth / almost everywhere / unknown / not, with reasons)", true),
+    ("--gradcheck", "Check computed derivatives against central differences; reports deductive and inductive verdicts separately", true),
     ("--fmt-compact", "Reformat source in agent-canonical sigil mode", true),
     ("--fmt-expand", "Reformat source in human-readable keyword mode", true),
     ("--target=abl", "Print per-item Agentic Binary Language stats (nodes/depth/hash/bytes)", true),

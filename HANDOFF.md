@@ -22,7 +22,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **2,965** — rmi 1,384 · prototype 1,248 · ribosome 168 · germline 112 · forge 53 |
+| Tests | **2,978** — rmi 1,384 · prototype 1,261 · ribosome 168 · germline 112 · forge 53 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -134,16 +134,60 @@ writing a program. It was right — the new command reproduces 155 and 154 exact
 — which is the uncomfortable part, because it was right by luck of nobody having
 changed anything, not by anything checking.
 
-**2 — The shared verdict vocabulary.** `verify.rs` has a deductive lattice
-(`Verified` / `Partial` / `Failed` / `Trivial`) and the neural half has none, so
-you cannot say "this property is evidenced at *n* samples" anywhere in this
-language. `Trivial` is worse than absent: it means *no contracts to verify* and
-is rendered by skipping the row, so a function with no contracts and a function
-whose contracts all hold look identical. That is the coverage-hole-as-clean-bill
-error inside MAGE's own verifier. The sibling project `StatodynamicAnalysis` has
-already designed the lattice this wants — `Confirmed` / `Refuted` / **`Unreached`**
-/ `Unpredicted` — and sharing the vocabulary across the two codebases is worth
-more than either inventing its own.
+**2 — Carry the verdict vocabulary into the rest of the compiler.** `verdict.rs`
+exists as of 2026-09-07 — `Proved` / `Evidenced { n }` / `Unspecified` /
+`Unreached { why }` / `Refuted { at }`, with the correspondence to
+`StatodynamicAnalysis`'s lattice written out in the module docs. `verify.rs` and
+`--gradcheck` speak it. **`heal.rs` and `verify`'s effect checks do not**, and
+each is a place where a one-bit answer still stands in for a verdict.
+
+**The RAP surface's remaining `ok` booleans were swept, and five of them are
+right as they are** — which is worth recording, because the obvious next move
+is to convert them all and that would make the surface worse. The rule that
+separates them:
+
+> Does `ok: true` claim a **property was established**, or report that **no
+> violation was found**?
+
+`language/parse`, `lint/check`, `effects/check` and `heal/graph` answer the
+second question, and vacuous truth is the correct answer there: a module with
+nothing in it genuinely has nothing wrong with it. `doc/query` answers
+`!matches.is_empty()`, a positive claim that is correctly false when empty.
+`verify/contracts` and `capability/check` answered the *first* question and
+got vacuous truth anyway, which is why those two changed and the others did
+not.
+
+Three defects of the shape it was built to prevent were sitting in the verifier,
+and all three are fixed:
+
+* **`VerifyStatus::Trivial` meant *nobody specified this*, and the reporter
+  skipped its rows** while the summary line counted them. A module with one
+  contract across two functions printed `Contracts checked: 2` and listed one.
+  It is `Unspecified` now, every subject gets a row, and the count says
+  `1 contract(s)` because that is how many there were.
+* **`Partial` rendered as `~` beside `✓`** — one character from looking like
+  success, for a claim nothing adjudicated. It maps to `Unreached`.
+* **`capability/check` answered `"ok": true` for a module with no agents.**
+  `.all()` on an empty iterator is `true`, so filtering the results down to
+  `agent.*` and asking whether they all verified answered *yes* about no
+  agent at all — a safety question, in the surface an agent calls before
+  deciding whether it may act. **`.all()` is where this hides**: the
+  emptiness is invisible at the call site, and the line reads as "every one
+  of them is verified" to anyone not specifically hunting the vacuous case.
+  Found *after* the fix below, by sweeping the surface a second time — the
+  same one-short stop as the heredoc copies.
+* **RAP answered `"ok": true` for `Trivial`.** An agent asking the verification
+  oracle about an unspecified function was told it was fine. That is the
+  coverage-hole-as-clean-bill error in a machine-readable API, which is worse
+  than in prose: prose gets read sceptically and a boolean does not. `ok` now
+  means *a contract was checked and it holds*, with `verdict` and `detail`
+  beside it — a deliberate behaviour change, because a one-bit answer cannot
+  separate "verified" from "nobody claimed anything" and picking the friendlier
+  bit is not a fix.
+
+The sharing is **one-directional**: MAGE adopted the sibling's words and nothing
+in `StatodynamicAnalysis` was changed to match. Saying so beats implying a
+coordination that has not happened.
 
 **Not urgent, and deliberately so:** `TENSOR_PRODUCT_BINDING.md` specifies
 binding symbolic structure into tensors, which would give `kb` and `net` a shared
@@ -338,6 +382,52 @@ Only `stdlib/` and four `framewerx` files remain.
   that does not look like one.** Finding six copies was the reason to go
   looking for the seventh, and the lesson is one this document already
   states: a sweep is not finished when the obvious instances are.
+- **Eight passes handling a variant is not evidence anything makes one.**
+  `Expr::UnsafeBlock` is handled in `elision`, `effects`, `fmt`, `mlir`,
+  `resolve`, `types` and twice in `token_budget` — and **constructed in
+  `parser.rs` zero times**. `unsafe { 1 }` is `expected expression, found
+  KwUnsafe` in every position: expression, statement, initialiser.
+  `MAGE_SPEC.md` documented it as accepted-and-elided in *three* places, so
+  it read as implemented from both directions at once — the spec said yes
+  and the code looked busy. Taxonomy §4, with the handling arms as the
+  decoy. `unsafe fn` (spelled `uf`) does parse and is elided correctly; no
+  `.mg` source writes one.
+- **A success line that has never had a subject.** `--pipeline` printed
+  `✓ safety annotations stripped` unconditionally, on every file, and
+  **nothing in the corpus has ever been elidable** — the two files matching
+  `grep unsafe` match it in comments. It now compares the AST before and
+  after and says `- no safety annotations to strip in this file`, which is
+  what every file in this repository gets. Compared through the tree rather
+  than by re-deriving elision's rules, so it cannot drift from them.
+- **A construct can be reached, run, and still be handed nothing.**
+  `autograd.rs`'s reverse-mode tape is cited in `DIFFERENTIABILITY.md` as the
+  reason MAGE has two AD algorithms — and `build_tape_from_train` walks
+  `TrainDef.body`, while every `train` block in the repository is
+  declarative: `net:`, `loss:` and `optimizer:` are *typed fields*, and **no
+  `.mg` source writes a train `body` at all**. So the tape holds one node,
+  the net's name, on all seven train blocks. `--pipeline` printed
+  `✓ train Learn: 1 forward ops, 1 backward ops` for every one of them, and
+  **the count was accurate** — which is exactly why it survived. An accurate
+  number can still be a claim about nothing.
+
+  Worse than empty. With one node, that node is *both* the loss and the
+  parameter, so the seed `d(loss)/d(loss) = 1.0` lands in `param_grads` as
+  the gradient of the loss with respect to the net. An empty result would at
+  least have been silent; this one answers. My first test asserted
+  `param_grads.is_empty()` and failed, which is how the distinction surfaced.
+
+  **Training is unaffected and genuinely works** — `--target=abl-train`
+  reduces `train_demo.mg`'s loss by 99.95% — because the real backward pass
+  is in `rmi`'s backend and never touches this module. That is what let it
+  survive: the thing the tape is cited as evidence for *does* work,
+  elsewhere. And `backward` emits MLIR **text** that nothing executes, so a
+  tape covering nothing has no other symptom.
+
+  I repeated the claim in two pull request descriptions the same day, from
+  this document, without running it — the failure this repository is built to
+  prevent, committed while extending the machinery that prevents it.
+  `--pipeline` now says what the tape covers and **does not print a tick when
+  the answer is nothing**.
 - **`${#arr[@]}` on a never-assigned associative array is *unbound*.** Under
   `set -u`, `declare -A ACTUAL` followed by a `read` loop that assigns nothing
   makes `[ "${#ACTUAL[@]}" -eq 0 ]` abort the line — so the empty-input guard
@@ -1001,7 +1091,7 @@ implementation task**:
 - **Then the evaluator rework.** `eval.rs` is 2,987 lines, 39 expression forms
   and 53 recursive `self.eval(` sites, all of which keep the continuation in the
   Rust call stack — where it cannot be captured. Multi-shot needs CPS or an
-  explicit CEK-style machine, which touches every form, with 1,248 tests riding
+  explicit CEK-style machine, which touches every form, with 1,261 tests riding
   on current behaviour.
 
 **This item was filed under "real work, unstarted" with no blocker marked**,
@@ -2076,9 +2166,9 @@ changed before you commit.
 ---
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,248**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,261**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
-  across five crates **2,965**; documented-count pins **92**, up from 46 — the
+  across five crates **2,978**; documented-count pins **92**, up from 46 — the
   four newest hold `SECURITY_AUDIT.md`'s `unsafe` inventory, a claim that had
   been wrong twice.
 - Every typechecker fix has landed without breaking an existing test **except

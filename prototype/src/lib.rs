@@ -41,6 +41,7 @@ pub mod fmt;
 #[cfg(test)]
 pub mod fuzz;
 pub mod forge;
+pub mod gradcheck;
 pub mod grammar;
 pub mod heal;
 pub mod hir;
@@ -78,5 +79,6 @@ pub mod synthesis;
 pub mod token_budget;
 pub mod token_canonical;
 pub mod types;
+pub mod verdict;
 pub mod verify;
 

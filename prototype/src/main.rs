@@ -312,6 +312,49 @@ fn main() {
                 print!("{}", differentiable::report(&engine, path));
             }
         }
+        // Gradient checking — the inductive half of the differentiability
+        // claim (`verdict.rs`). `--differentiable` answers "does a
+        // derivative exist"; this answers "is the one we compute right",
+        // by central differences at fixed sample points. Two commands
+        // because they are two questions, and a single verdict over both
+        // would let a sample count read as a proof.
+        Some("--gradcheck") => {
+            let path = filtered.get(1).unwrap_or_else(|| {
+                eprintln!("Usage: mage-parse --gradcheck <file.mg> [--json]");
+                std::process::exit(1);
+            });
+            let source = read_source(path);
+            let tokens = lexer::lex(&source);
+            let module = match parser::parse(&tokens) {
+                Ok(m) => m,
+                Err(e) => {
+                    eprintln!("{path}: parse failed: {e:?}");
+                    std::process::exit(1);
+                }
+            };
+            let eff = effects::infer_effects(&module);
+            let rows = gradcheck::check_module(&module, &eff);
+            if json_out {
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&gradcheck::report_json(&rows, path))
+                        .unwrap_or_else(|e| {
+                            eprintln!("serialize: {e}");
+                            std::process::exit(1);
+                        })
+                );
+            } else {
+                print!("{}", gradcheck::report(&rows, path));
+            }
+            // A refuted derivative is a wrong answer from the compiler,
+            // so it exits non-zero. `Unreached` does not: nothing was
+            // checked, which is not a failure and must not be reported as
+            // one.
+            if rows.iter().any(|r| matches!(r.inductive, verdict::Evidence::Refuted { .. }))
+            {
+                std::process::exit(1);
+            }
+        }
         Some("--target=abl-bytes") => {
             let path = filtered.get(1).unwrap_or_else(|| {
                 eprintln!("Usage: mage-parse --target=abl-bytes <file.mg> [<out.abl>]");
@@ -2956,16 +2999,20 @@ fn run_check(source: &str, filename: &str, do_elision: bool, legacy: bool, token
     let fn_count = effect_infer.inferred.len();
 
     // Phase 5.5: Contract verification.
+    //
+    // `contract_count` used to be `verifications.len()` and was printed as
+    // "Contracts checked: N". That is the number of *subjects*, not the
+    // number of contracts: a module with one contract across two functions
+    // reported `Contracts checked: 2`, and the function with no contracts
+    // had its row skipped, so the second subject was invisible and counted
+    // at the same time. Both numbers are now derived from what they name.
     let verifications = verify::verify_module(&module);
-    let contract_count = verifications.len();
-    let verified_count = verifications
-        .iter()
-        .filter(|v| v.status == verify::VerifyStatus::Verified)
-        .count();
-    let failed_count = verifications
-        .iter()
-        .filter(|v| v.status == verify::VerifyStatus::Failed)
-        .count();
+    let subject_count = verifications.len();
+    let contract_count: usize = verifications.iter().map(|v| v.checks.len()).sum();
+    let mut verdicts = verdict::Tally::default();
+    for v in &verifications {
+        verdicts.add(&v.status.evidence(&v.fqn));
+    }
 
     // Phase 5.6: Typed-composition gate — a shape-mismatched `net` composition
     // (`stack`/`residual`/`branch`/`wrap` whose layer dims don't line up) is
@@ -3004,20 +3051,25 @@ fn run_check(source: &str, filename: &str, do_elision: bool, legacy: bool, token
     eprintln!("  Errors: {total_errors}");
 
     // Contract verification report.
-    if contract_count > 0 {
+    //
+    // **Every subject gets a row, including the unspecified ones.** The
+    // listing used to skip `Trivial`, which meant a function nobody had
+    // specified looked exactly like one that was not there — while the
+    // count above included it. That is a coverage hole rendered as
+    // coverage, and it is the defect `verdict.rs` exists to make
+    // unwritable.
+    if subject_count > 0 {
         eprintln!(
-            "  Contracts checked: {contract_count} (verified: {verified_count}, failed: {failed_count})"
+            "  {contract_count} contract(s); {}",
+            verdicts.summary()
         );
         for v in &verifications {
-            let symbol = match v.status {
-                verify::VerifyStatus::Verified => "✓",
-                verify::VerifyStatus::Partial => "~",
-                verify::VerifyStatus::Failed => "✗",
-                verify::VerifyStatus::Trivial => "-",
-            };
-            if v.status != verify::VerifyStatus::Trivial {
-                eprintln!("    {symbol} {}: {:?}", v.fqn, v.status);
-            }
+            eprintln!(
+                "    {} {}: {}",
+                v.status.symbol(),
+                v.fqn,
+                v.status.evidence(&v.fqn).describe()
+            );
         }
     }
 
@@ -3103,7 +3155,26 @@ fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool, to
     let module = if do_elision {
         eprintln!("▸ Phase 2.5: Safety elision (agentic mode)");
         let elided = elision::elide(&module);
-        eprintln!("  ✓ safety annotations stripped");
+        // Say whether anything was actually stripped.
+        //
+        // This printed "✓ safety annotations stripped" unconditionally, for
+        // every file, whether or not the module contained a single thing to
+        // strip — and **no `.mg` source in this repository contains one**.
+        // The two files that match `grep unsafe` match it in comments. So
+        // the line has reported an action that has never once had a subject.
+        //
+        // Compared through the AST rather than by re-deriving what elision
+        // removes: `elide` owns those rules (`SAFETY_BOUNDS`,
+        // `ELIMINATED_TYPES`, `unsafe` blocks, `&mut`, `move`, `ref`), and a
+        // second copy here would drift from them. Asking whether the
+        // transform changed the tree cannot.
+        let changed = serde_json::to_string(&module).ok()
+            != serde_json::to_string(&elided).ok();
+        if changed {
+            eprintln!("  ✓ safety annotations stripped");
+        } else {
+            eprintln!("  - no safety annotations to strip in this file");
+        }
         elided
     } else {
         eprintln!("▸ Phase 2.5: Safety elision — SKIPPED (--no-elision)");
@@ -3181,12 +3252,36 @@ fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool, to
                 })
                 .collect();
             let grad_result = autograd::backward(&tape, loss_id, &param_names);
-            ai_info.push(format!(
-                "train {}: {} forward ops, {} backward ops",
-                train.name,
-                tape.nodes.len(),
-                grad_result.mlir_ops.len()
-            ));
+            // A tape with one node covers nothing: `build_tape_from_train`
+            // walks `TrainDef.body`, and every declarative `train` block —
+            // which is all of them — puts its net, loss and optimiser in
+            // *typed fields* instead. The single node is the `param`
+            // registered for the net's name, and the single backward op is
+            // the `d(loss)/d(loss) = 1.0` seed landing on a leaf where
+            // accumulation stops.
+            //
+            // This printed "1 forward ops, 1 backward ops" with a tick for
+            // every train block in the repository. The count was accurate
+            // and read as progress, which is the only reason it survived:
+            // `backward` emits MLIR text that nothing executes, so a tape
+            // covering nothing has no other symptom.
+            //
+            // Training is unaffected — the real backward pass is in `rmi`'s
+            // backend, which never touches this module.
+            if tape.nodes.len() <= 1 {
+                ai_info.push(format!(
+                    "!train {}: autograd tape covers nothing ({} node) — it reads `body`, and this block declares its net and loss as fields. No gradient is computed here; training itself uses rmi's backend",
+                    train.name,
+                    tape.nodes.len()
+                ));
+            } else {
+                ai_info.push(format!(
+                    "train {}: {} forward ops, {} backward ops",
+                    train.name,
+                    tape.nodes.len(),
+                    grad_result.mlir_ops.len()
+                ));
+            }
             for diag in &grad_result.diagnostics {
                 eprintln!("  {filename}: {diag}");
                 if diag.severity == hir::Severity::Error {
@@ -3241,8 +3336,15 @@ fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool, to
         }
     }
 
+    // A leading `!` marks a line that is *not* a success. Every entry used
+    // to print with a tick, including "autograd tape covers nothing" — the
+    // tick is the whole reason that line read as progress for as long as it
+    // did.
     for info in &ai_info {
-        eprintln!("  ✓ {info}");
+        match info.strip_prefix('!') {
+            Some(rest) => eprintln!("  ! {rest}"),
+            None => eprintln!("  ✓ {info}"),
+        }
     }
     if ai_info.is_empty() {
         eprintln!("  - no AI subsystem blocks");
@@ -3270,32 +3372,30 @@ fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool, to
     // ── Phase 5.5: Contract verification ────────────────────────────
     eprintln!("▸ Phase 5.5: Contract verification");
     let verifications = verify::verify_module(&module);
-    let contract_total = verifications.len();
-    let contract_verified = verifications
-        .iter()
-        .filter(|v| v.status == verify::VerifyStatus::Verified)
-        .count();
-    let contract_failed = verifications
-        .iter()
-        .filter(|v| v.status == verify::VerifyStatus::Failed)
-        .count();
-    if contract_total > 0 {
+    let subject_total = verifications.len();
+    let contract_total: usize = verifications.iter().map(|v| v.checks.len()).sum();
+    let mut verdicts = verdict::Tally::default();
+    for v in &verifications {
+        verdicts.add(&v.status.evidence(&v.fqn));
+    }
+    if subject_total > 0 {
+        // No leading `✓`. The tick belonged to the phase completing, and
+        // read as the contracts having passed — including when every one
+        // of them was unspecified.
         eprintln!(
-            "  ✓ {contract_total} symbols checked (verified: {contract_verified}, failed: {contract_failed})"
+            "  {contract_total} contract(s); {}",
+            verdicts.summary()
         );
         for v in &verifications {
-            if v.status != verify::VerifyStatus::Trivial {
-                let sym = match v.status {
-                    verify::VerifyStatus::Verified => "✓",
-                    verify::VerifyStatus::Partial => "~",
-                    verify::VerifyStatus::Failed => "✗",
-                    verify::VerifyStatus::Trivial => "-",
-                };
-                eprintln!("    {sym} {}: {:?}", v.fqn, v.status);
-            }
+            eprintln!(
+                "    {} {}: {}",
+                v.status.symbol(),
+                v.fqn,
+                v.status.evidence(&v.fqn).describe()
+            );
         }
     } else {
-        eprintln!("  - no contracts to verify");
+        eprintln!("  - nothing to verify: no function declares a contract or an effect");
     }
 
     // ── Phase 6: MLIR lowering ───────────────────────────────────────
@@ -3346,7 +3446,14 @@ fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool, to
     eprintln!("  Items:           {}", module.items.len());
     eprintln!("  Symbols:         {}", resolver.symbols.len());
     eprintln!("  Functions:       {}", effect_infer.inferred.len());
-    eprintln!("  Contracts:       {contract_total} (verified: {contract_verified})");
+    // The summary reports the unadjudicated count beside the proved one.
+    // "Contracts: 2 (verified: 1)" invites the reader to conclude the other
+    // one is fine, when in fact nobody specified it.
+    eprintln!(
+        "  Contracts:       {contract_total} over {subject_total} subject(s); {} proved, {} unadjudicated",
+        verdicts.proved,
+        verdicts.unadjudicated()
+    );
     eprintln!("  AI subsystems:   {}", ai_info.len());
     eprintln!("  MLIR lines:      {mlir_lines}");
     eprintln!("  Fix candidates:  {fix_count}");
@@ -3426,6 +3533,7 @@ mod cli_arg_tests {
                     || f.starts_with("--describe")
                     || f.starts_with("--spine=")
                     || matches!(f, "--check" | "--eval" | "--pipeline" | "--rap" | "--differentiable"
+                                | "--gradcheck"
                                 | "--fmt-compact" | "--fmt-expand" | "--emit-ontology" | "--emit-skb"
                                 | "--manifest" | "--rain" | "--version" | "--input") =>
                 {
