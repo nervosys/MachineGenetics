@@ -467,7 +467,7 @@ Recorded so nobody re-audits them, and because the reasons are the rule:
 
 | checker | why it fails closed |
 |---|---|
-| `check-doc-blocks.sh`, `check-vocabulary.sh` | they match `'Errors: 0' not in out`, so a compiler that dies produces no `Errors: 0` and counts as a **failure**. The status is discarded and the direction is still safe — an absent success string is not the same as an absent failure string, which is the whole difference between a denylist and an allowlist |
+| `check-doc-blocks.sh`, `check-vocabulary.sh` | they match `'Errors: 0' not in out`, so a compiler that dies produces no `Errors: 0` and counts as a **failure**. The status is discarded and the direction is still safe — an absent success string is not the same as an absent failure string, which is the whole difference between a denylist and an allowlist. **Read-verified, not injected** — see below |
 | `check-ontology-fresh.sh`, `check-skb-tree.sh` | the binary is run bare under `set -o errexit`, which is the status honoured by default |
 | `measure-differentiability.sh` | `if out="$("$BIN" --differentiable …)"` — the status *is* the branch, and a file the front end cannot read is counted rather than skipped |
 | `check-doc-counts.sh`, `emit-doc-counts.sh` | a subordinate checker that fails emits an empty value, an empty value is `missing`, and `missing` exits 1. The dropped statuses in the emitter are covered by the consumer |
@@ -476,6 +476,31 @@ Recorded so nobody re-audits them, and because the reasons are the rule:
 | `check-rap-methods.sh`, `check-open-items.sh`, `check-internals-doc.sh`, `check-ontology-types.sh`, `check-docs-index.sh`, `check-crypto-inventory.sh` | each already refuses to pass on a subject it cannot find. Verified on two of them by removing the subject: gutting `rap.rs` gives *"MAGE_ONTOLOGY.md says RAP exposes 38 endpoints; the server serves 0"*, and a `HANDOFF.md` with no `## Open items` gives *"this check cannot mean anything"* |
 | `check-orphan-sources.sh` | its baseline is diffed in **both** directions, so a scan that collapses to zero reports every baselined orphan as `gone` and fails |
 | `check-ignored-tests.sh` | it has no zero guard and does not need one: *"all 0 `#[ignore]`d tests are run by a CI job"* is the **no violation found** kind, where vacuous truth is correct — the same rule that left five RAP `ok` booleans alone |
+
+**Two rows are read-verified rather than injected, and the reason is worth
+knowing before anyone repeats this.** `check-doc-blocks.sh` and
+`check-vocabulary.sh` reach the compiler from inside a `python … <<'PY'`
+heredoc via `subprocess.run`. The obvious fault injection — drop a shell-script
+shim named `mage-parse` where `find_mage_parse` resolves, which works for
+`check-examples.sh` — **cannot work here on Windows**: `subprocess.run` calls
+`CreateProcess`, which refuses a file with a `#!` line, so the run dies with
+`OSError: [WinError 193] %1 is not a valid Win32 application` rather than
+exercising the checker's verdict. Both scripts exit 1, but for the wrong
+reason, which is not a demonstration of anything. Injecting into these two
+needs a real `.exe` that exits non-zero. Their fail-closed direction is an
+argument about `'Errors: 0' not in out`, which is sound but is reasoning, and
+this document distinguishes the two.
+
+**A second thing went wrong in that attempt, and it is the more expensive
+lesson.** The shim was placed in an isolated `CARGO_TARGET_DIR` under the
+scratchpad, which is the right way to dodge this machine's global cargo build
+lock — and a second full build tree is **3.7 GB**. It took `C:` from roughly
+7 GB free to **3 MB**, and cargo started reporting `database or disk is full`
+and `os error 112` mid-run. Nothing was corrupted (`git fsck` clean, tree in
+sync) because the repository is not what got written to, but a green run under
+those conditions would have meant nothing. **Delete the isolated target
+directory when the run that needed it is done** — it is a cache, and on this
+machine it does not fit alongside the shared one.
 
 **The audit's own finding is the ratio.** Fifteen of seventeen were already
 right, and the two that were not are a *sibling pair with one guarded and one
