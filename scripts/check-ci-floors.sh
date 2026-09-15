@@ -25,6 +25,13 @@ cd "$(dirname "$0")/.."
 
 # ── The floors ────────────────────────────────────────────────────────
 MIN_PARSE=98        # file-oracle parse rate, out of a 100-task corpus
+# The basis that floor is a floor *of*. `MIN_PARSE=98` means nothing without
+# it: against a 120-task corpus, 98 is a weaker bar than it reads as, and the
+# message printed `$parse/100` with the 100 as a literal while the numerator
+# came from the bench — so the denominator could change and the line would
+# keep saying 100. Checked rather than assumed, and a change here is meant to
+# be a deliberate edit of both numbers together.
+PARSE_BASIS=100
 MIN_HEAL=40         # perturbed-oracle pattern-heal successes
 MAX_LEX_RATIO=1.100 # native-lexer total ratio, MAGE vs Rust
 
@@ -74,15 +81,27 @@ run_bench() {
 # parse cleanly and recovers via structural-heal), so its status is not the
 # signal — the numbers it prints are.
 oracle="$(run_bench)"
-parse="$(printf '%s' "$oracle" | grep -oE 'parse [0-9]+/' | grep -oE '[0-9]+' | head -1)"
-if [ -z "${parse:-}" ]; then
+parse_pair="$(printf '%s' "$oracle" | grep -oE 'parse [0-9]+/[0-9]+' | head -1)"
+parse="${parse_pair##parse }"; parse="${parse%%/*}"
+parse_total="${parse_pair##*/}"
+if [ -z "${parse:-}" ] || [ -z "${parse_total:-}" ]; then
     echo "  x  could not read the file-oracle parse rate from the bench" >&2
     fail=1
+elif [ "$parse_total" -ne "$PARSE_BASIS" ]; then
+    # The corpus changed size, so `MIN_PARSE` no longer means what it says.
+    # Loud rather than silent: the old code printed a literal `/100` beside a
+    # numerator it had read from the bench, so a resized corpus would have been
+    # reported as `118/100` and compared against a floor set for a different
+    # denominator.
+    echo "  x  MIN_PARSE: the bench reports a $parse_total-task corpus, not $PARSE_BASIS." >&2
+    echo "       MIN_PARSE=$MIN_PARSE was set against $PARSE_BASIS tasks and does not" >&2
+    echo "       carry over. Update both, deliberately, in this file." >&2
+    fail=1
 elif [ "$parse" -lt "$MIN_PARSE" ]; then
-    echo "  x  MIN_PARSE: file-oracle parse $parse/100, floor >= $MIN_PARSE" >&2
+    echo "  x  MIN_PARSE: file-oracle parse $parse/$parse_total, floor >= $MIN_PARSE" >&2
     fail=1
 else
-    echo "  ok MIN_PARSE: file-oracle parse $parse/100 (floor >= $MIN_PARSE)"
+    echo "  ok MIN_PARSE: file-oracle parse $parse/$parse_total (floor >= $MIN_PARSE)"
     echo "floor_parse=$parse" >&2
 fi
 
