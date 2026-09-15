@@ -203,19 +203,36 @@ that is never emitted has no file on *either* side — nothing to diff, nothing
 to report as an orphan. That is a population of one, and it is now guarded by
 `skb::tests::per_database_counts_sum_to_the_total` rather than by the checker.
 
-**Swept and found clean, 2026-09-15, so nobody repeats it.** Every RAP method's
-published contract was compared against its dispatcher arm: do the `params` it
-publishes get read, and are the `returns` keys it publishes actually produced?
-That is the shape this document records twice — the `format/*` methods published
-`{formatted, ok}` and returned the AST, and `--fmt-compact` published `[out]` as
-a write target and ignored it. **35 of 38 compared, zero mismatches.** The
-population came from `MAGE_ONTOLOGY.json`'s generated `rap_methods` section, not
-the hand-written markdown table, which carries a `{param}` cell for only 23. The
-three that did not compare are the detector's limits, confirmed by reading:
-`ontology/full` and `rap/methods` are arms without a bare block, and
-`pipeline/recover-and-encode` has a hyphen the name pattern excluded. The
-detector was validated against two injected faults first, because a null result
-from an unvalidated detector is what the paragraph below is about.
+**A sweep I recorded as clean, and the correction that followed within the
+hour.** `c8bba53ab` reported that every RAP method's published contract had been
+compared against its dispatcher arm — 35 of 38, zero mismatches — and wrote it
+here *so nobody would repeat the work*. **The audit was one-directional.** It
+asked whether every published `returns` key is produced, and never whether every
+produced key is published. Inverting it found **25 keys across 10 methods** that
+no ontology row declares, so an agent reading the index does not know they
+exist.
+
+Five were mine, added in `38bb0f427` — including the `ok` on `language/tokens`,
+which was the whole point of that change. `capability/check` and
+`verify/contracts` gained `verdict` and `detail` in the 2026-09-07 verdict
+work, whose subject is that a one-bit answer cannot carry the distinction, and
+neither published the keys that carry it. `nl/generate`, `nl/refactor`,
+`ontology/full`, `pipeline/recover-and-encode` and `effects/infer` predate all
+of it.
+
+**The guard already knew.** `every_published_rap_key_is_real` checks parameters
+in *both* directions and its own comment calls the reverse "the one that hides
+real gaps" — then, four lines below, checks return keys in one direction only.
+The lesson was written down, applied to params, and not carried across inside
+the same function. It now collects every violation and asserts once, so a run
+names the population instead of the first offender.
+
+**Two failures of mine worth keeping.** Recording a clean sweep is worse than
+recording nothing when the sweep is partial: it would have deterred the next
+person from looking. And the first enumeration piped through `head -25` against
+a header plus exactly 24 keys — the window ended precisely where the data did,
+so a truncated list looked complete and self-consistent, and `nl/refactor` was
+found only on the following run.
 
 The generalisation that did pay: **a passing check and a correct check look
 identical from outside.** Four things were green for the wrong reason in one

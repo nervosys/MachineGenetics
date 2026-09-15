@@ -1858,6 +1858,7 @@ mod tests {
             );
         }
 
+        let mut unpublished_returns: Vec<String> = Vec::new();
         for (method, params) in &calls {
             let row = rows
                 .iter()
@@ -1904,7 +1905,36 @@ mod tests {
                      the response: {r}"
                 );
             }
+
+            // And the other direction for returns, which this test did both of
+            // for *parameters* — its comment above even calls that "the one
+            // that hides real gaps" — and then did not do for return keys.
+            //
+            // A response key nobody published is the same broken contract
+            // pointed the other way: an agent reading the ontology does not
+            // know it exists. Found 2026-09-15 by inverting this test's own
+            // params check against its returns, after three methods gained
+            // keys in 38bb0f427 and none of them were published — including
+            // the `ok` on `language/tokens`, which was the entire point of
+            // that change.
+            let pub_returns: Vec<&str> =
+                row["returns"].as_array().unwrap().iter().map(|k| k.as_str().unwrap()).collect();
+            if let Some(obj) = r.as_object() {
+                for key in obj.keys() {
+                    if !pub_returns.contains(&key.as_str()) {
+                        unpublished_returns.push(format!("{method} returns `{key}`"));
+                    }
+                }
+            }
         }
+
+        // Collected rather than asserted per method, so one run names the whole
+        // population instead of the first offender.
+        assert!(
+            unpublished_returns.is_empty(),
+            "response keys that no ontology row publishes:\n  {}",
+            unpublished_returns.join("\n  ")
+        );
     }
 
     /// The four `nl/*` methods had no test at all.

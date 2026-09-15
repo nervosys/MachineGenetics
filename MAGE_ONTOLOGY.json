@@ -4249,6 +4249,8 @@
           "source"
         ],
         "returns": [
+          "ok",
+          "lex_errors",
           "tokens"
         ],
         "summary": "Tokenize source."
@@ -4337,7 +4339,10 @@
           "ok",
           "recover_stage",
           "recovered_source",
+          "candidates_tried",
+          "changed",
           "abl_hex",
+          "container_bytes",
           "items"
         ],
         "summary": "Recover then encode Agentic Binary Language in one call."
@@ -4378,6 +4383,7 @@
         ],
         "returns": [
           "ok",
+          "count",
           "query",
           "matches"
         ],
@@ -4417,6 +4423,8 @@
         ],
         "returns": [
           "ok",
+          "verdict",
+          "detail",
           "result"
         ],
         "summary": "Verify function contracts (req/ens/inv)."
@@ -4428,6 +4436,8 @@
         ],
         "returns": [
           "ok",
+          "verdict",
+          "detail",
           "results"
         ],
         "summary": "Verify entire module."
@@ -4499,7 +4509,8 @@
         ],
         "returns": [
           "ok",
-          "effects"
+          "effects",
+          "diagnostics"
         ],
         "summary": "Infer effects of each function."
       },
@@ -4558,6 +4569,9 @@
         ],
         "returns": [
           "ok",
+          "verdict",
+          "detail",
+          "agents_checked",
           "results"
         ],
         "summary": "List capabilities required by source."
@@ -4629,7 +4643,11 @@
         "returns": [
           "ok",
           "code_human",
-          "code_agent"
+          "code_agent",
+          "explanation",
+          "diagnostics",
+          "fixes",
+          "verification"
         ],
         "summary": "Generate MAGE from a natural-language prompt."
       },
@@ -4652,7 +4670,8 @@
         "returns": [
           "ok",
           "code_human",
-          "code_agent"
+          "code_agent",
+          "explanation"
         ],
         "summary": "Refactor source via natural-language request."
       },
@@ -4673,7 +4692,13 @@
         "params": [],
         "returns": [
           "ok",
+          "schema_version",
           "version",
+          "project",
+          "short_name",
+          "organization",
+          "builtin_framework",
+          "counts",
           "sections"
         ],
         "summary": "Return this complete ontology."
