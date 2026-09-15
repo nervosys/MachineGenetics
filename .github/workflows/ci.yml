@@ -115,8 +115,35 @@ on:
 #
 # `master` is exempt: a merge should always get a complete verdict, and a merge
 # train is not a superseded push.
+#
+# **That exemption did not hold, and the fix is the group rather than the
+# flag.** Measured 2026-09-15: the run for `316af7f27` ended `cancelled` at
+# 20:31:24Z, one second after the run for its successor `9a1f1c578` was created
+# at 20:31:23Z. Two pushes to `master` a couple of minutes apart, and the first
+# commit's verdict was thrown away by the second — exactly what
+# `cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}` is written to
+# prevent. That commit changed `scripts/check-ci-floors.sh`, which CI runs, and
+# no CI run ever verified it.
+#
+# A cancelled run on `master` is usually harmless, because the next run
+# verifies the *tree* rather than the diff and so covers its predecessor. It is
+# not harmless at the tip: if the last push of a session is cancelled, `master`
+# has no verdict at all while every list of runs shows green above it.
+#
+# Making the group unique per commit on `master` removes the question instead
+# of arguing with the expression: two master runs can no longer share a group,
+# so there is nothing for a successor to cancel. Branches keep one group per
+# ref and still supersede, which is the behaviour the paragraph above wants.
+#
+# **This does change one thing on purpose.** A shared group with
+# `cancel-in-progress: false` makes master runs *queue*; unique groups let them
+# run in parallel. For a workflow that only builds, tests and audits, parallel
+# is fine and finishes sooner — there is no deployment and no shared mutable
+# state between runs. The queueing was a side effect of the exemption, not the
+# thing it was written for: the sentence above asks for a complete verdict per
+# merge, not for one run at a time.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.ref == 'refs/heads/master' && github.sha || 'shared' }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
 
 jobs:
