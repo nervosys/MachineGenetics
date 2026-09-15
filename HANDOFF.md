@@ -203,6 +203,20 @@ that is never emitted has no file on *either* side — nothing to diff, nothing
 to report as an orphan. That is a population of one, and it is now guarded by
 `skb::tests::per_database_counts_sum_to_the_total` rather than by the checker.
 
+**Swept and found clean, 2026-09-15, so nobody repeats it.** Every RAP method's
+published contract was compared against its dispatcher arm: do the `params` it
+publishes get read, and are the `returns` keys it publishes actually produced?
+That is the shape this document records twice — the `format/*` methods published
+`{formatted, ok}` and returned the AST, and `--fmt-compact` published `[out]` as
+a write target and ignored it. **35 of 38 compared, zero mismatches.** The
+population came from `MAGE_ONTOLOGY.json`'s generated `rap_methods` section, not
+the hand-written markdown table, which carries a `{param}` cell for only 23. The
+three that did not compare are the detector's limits, confirmed by reading:
+`ontology/full` and `rap/methods` are arms without a bare block, and
+`pipeline/recover-and-encode` has a hyphen the name pattern excluded. The
+detector was validated against two injected faults first, because a null result
+from an unvalidated detector is what the paragraph below is about.
+
 The generalisation that did pay: **a passing check and a correct check look
 identical from outside.** Four things were green for the wrong reason in one
 session — a test asserting a constant rather than a result (`test_skb_query`,
