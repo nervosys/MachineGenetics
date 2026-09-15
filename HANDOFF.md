@@ -234,6 +234,18 @@ a header plus exactly 24 keys — the window ended precisely where the data did,
 so a truncated list looked complete and self-consistent, and `nl/refactor` was
 found only on the following run.
 
+**Which direction binds depends on what the document claims, and getting that
+wrong manufactures gaps.** Both directions are owed by an index that claims
+completeness — the ontology says it lists "the complete, ground-truth keyword
+surface", so a published keyword the lexer lacks is a defect and so is a lexer
+keyword it omits. A *curated* reference owes only one: `check-rmi-api-doc.sh`
+verifies that every item `rmi/docs/*.md` names exists, and stops there
+deliberately, with `cargo doc` named in its header as the authority. Measured
+2026-09-15: **268 documented against 2,033 public items in the crate** — about
+13%. Demanding the reverse there would file a coverage gap against a document
+that never claimed coverage. Ask what the artifact promises before deciding
+which way its guard should run.
+
 The generalisation that did pay: **a passing check and a correct check look
 identical from outside.** Four things were green for the wrong reason in one
 session — a test asserting a constant rather than a result (`test_skb_query`,
