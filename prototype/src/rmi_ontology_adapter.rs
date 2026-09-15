@@ -103,17 +103,15 @@ pub fn unified_search(query: &str, ontology: &Ontology) -> Vec<UnifiedHit> {
     let mut hits = Vec::new();
 
     // ── MAGE SKB side: scan all rules across the eight databases ─
-    let dbs = [
-        RuleDatabase::Ownership,
-        RuleDatabase::Borrow,
-        RuleDatabase::Lifetime,
-        RuleDatabase::TypeSafety,
-        RuleDatabase::Concurrency,
-        RuleDatabase::FFI,
-        RuleDatabase::AgentElision,
-        RuleDatabase::SwarmSafety,
-    ];
-    for db in dbs {
+    //
+    // `RuleDatabase::ALL` rather than a copy of the list. This was a second
+    // literal array of the same eight variants, under the comment above
+    // promising it scans *all* of them — a promise nothing enforced, since an
+    // array literal is not exhaustive the way a `match` is. A ninth database
+    // would have been missing here and from `rule_counts_by_db`, and
+    // `check-skb-tree.sh` could not have seen it: it diffs the committed tree
+    // against a fresh `--emit-skb`, and both sides come from that same list.
+    for db in RuleDatabase::ALL {
         for rule in crate::skb::query_rules_by_db(db).matches {
             let hay = format!(
                 "{} {} {} {}",
