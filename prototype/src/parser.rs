@@ -123,6 +123,31 @@ fn compose_has_dataflow(items: &[Compose]) -> bool {
 /// What a referenced block expands to: its layers, and its composition items.
 type ExpandedBlock = (Vec<LayerDef>, Vec<Compose>);
 
+/// Append a token's text, inserting a space only where the source had one.
+///
+/// Four places rebuilt a span of source by pushing `tok.text` into a `Vec` and
+/// calling `join(" ")`: contract conditions (`@req`/`@ens`/`@inv`), the
+/// `collect_paren_text` helper the `spec` block uses for the same clauses, the
+/// `~>` refinement predicate, and the `optimize` metric. All four produced a
+/// string the author never wrote — `@ens(|result| result.shape.len() > 0)`
+/// came back as `| result | result . shape . len ( ) > 0` — and all four are
+/// handed to agents, in the AST and in `verify/module`'s `checks[].condition`.
+///
+/// `parse()` takes `&[Token]` and has no source string to slice, but it does
+/// not need one: the tokens carry byte spans, so two of them were separated by
+/// whitespace exactly when the later one starts past the end of the earlier.
+/// Runs of whitespace collapse to a single space, which is the canonical form
+/// and the only detail this loses.
+fn push_token_text(out: &mut String, prev_end: &mut Option<usize>, tok: &Token) {
+    if let Some(end) = *prev_end {
+        if tok.span.offset > end {
+            out.push(' ');
+        }
+    }
+    *prev_end = Some(tok.span.offset + tok.span.len);
+    out.push_str(&tok.text);
+}
+
 struct Parser<'a> {
     tokens: &'a [Token],
     pos: usize,
@@ -500,7 +525,32 @@ impl<'a> Parser<'a> {
 
         // Collect condition tokens until we hit a comma-separated message or close paren.
         // Format: @req(condition) or @req(condition, "message")
-        let mut condition_parts = Vec::new();
+        //
+        // Rebuilt from spans rather than joined with spaces. `ContractClause`
+        // documents `condition` as "the condition expression text", and
+        // `condition_parts.join(" ")` turned `@req(xs.len() >= 0)` into
+        // `xs . len ( ) >= 0` — a string the author never wrote, handed
+        // straight to agents: `verify/module` returns it verbatim in
+        // `checks[].condition`.
+        //
+        // The tokens carry byte offsets, so adjacency is recoverable without
+        // the source: two tokens were separated by whitespace exactly when the
+        // later one starts past the end of the earlier. `parse()` takes
+        // `&[Token]` and has no source string to slice, so this is the local
+        // fix rather than threading source through a public signature with
+        // many callers.
+        //
+        // **This changes no verdict in this repository, measured rather than
+        // assumed.** `verify::check_condition` recognises `.len() >= 0`,
+        // `.len() > -1`, and `.is_ok()` with `=>`. All twelve contract clauses
+        // across every `.mg` source were checked: the only two using `.len()`
+        // are `.len() > 0`, no clause has `.is_ok()`, and none ends
+        // `.exists()`. Every one is `Unknown` before and after, so every
+        // function stays `Partial`. What would change is a *future* clause
+        // written `.len() >= 0`, which becomes `Verified` where today the
+        // mangled text hid it from a branch that was written to catch it.
+        let mut condition = String::new();
+        let mut prev_end: Option<usize> = None;
         let mut message: Option<String> = None;
         let mut depth: usize = 0;
 
@@ -528,12 +578,10 @@ impl<'a> Parser<'a> {
                 break;
             }
             let tok = self.advance();
-            condition_parts.push(tok.text.clone());
+            push_token_text(&mut condition, &mut prev_end, tok);
         }
 
         self.expect(TokenKind::RParen)?;
-
-        let condition = condition_parts.join(" ");
         Ok(ContractClause {
             kind,
             condition,
@@ -1044,11 +1092,13 @@ impl<'a> Parser<'a> {
         // Optional refinement predicate: ~> condition ;
         let refinement = if self.peek() == TokenKind::TildeArrow {
             self.advance();
-            let mut parts = Vec::new();
+            let mut text = String::new();
+            let mut prev_end: Option<usize> = None;
             while self.peek() != TokenKind::Semi && self.peek() != TokenKind::Eof {
-                parts.push(self.advance().text.clone());
+                let tok = self.advance();
+                push_token_text(&mut text, &mut prev_end, tok);
             }
-            Some(parts.join(" "))
+            Some(text)
         } else {
             None
         };
@@ -1277,14 +1327,15 @@ impl<'a> Parser<'a> {
                     self.advance();
                     self.expect(TokenKind::LParen)?;
                     // Collect metric (tokens up to first comma)
-                    let mut metric_parts = Vec::new();
+                    let mut metric = String::new();
+                    let mut metric_end: Option<usize> = None;
                     while self.peek() != TokenKind::Comma
                         && self.peek() != TokenKind::RParen
                         && self.peek() != TokenKind::Eof
                     {
-                        metric_parts.push(self.advance().text.clone());
+                        let tok = self.advance();
+                        push_token_text(&mut metric, &mut metric_end, tok);
                     }
-                    let metric = metric_parts.join(" ");
                     // Collect bound (tokens after comma, handling nested parens)
                     let mut bound = String::new();
                     if self.peek() == TokenKind::Comma {
@@ -1329,7 +1380,8 @@ impl<'a> Parser<'a> {
     /// Helper: consume `(...)` and return all tokens as a single string.
     fn collect_paren_text(&mut self) -> Result<String, ParseError> {
         self.expect(TokenKind::LParen)?;
-        let mut parts = Vec::new();
+        let mut text = String::new();
+        let mut prev_end: Option<usize> = None;
         let mut depth: usize = 0;
         while self.peek() != TokenKind::RParen || depth > 0 {
             if self.peek() == TokenKind::Eof {
@@ -1342,10 +1394,10 @@ impl<'a> Parser<'a> {
                 depth -= 1;
             }
             let tok = self.advance();
-            parts.push(tok.text.clone());
+            push_token_text(&mut text, &mut prev_end, tok);
         }
         self.expect(TokenKind::RParen)?;
-        Ok(parts.join(" "))
+        Ok(text)
     }
 
     // ── Agent Definitions ───────────────────────────────────
