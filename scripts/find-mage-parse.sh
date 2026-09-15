@@ -120,34 +120,24 @@ find_crate_bin() {
 }
 
 # Print the path to `mage-parse` for a profile, or return 1 with a diagnostic.
+#
+# One line, because it is `find_crate_bin` with the arguments filled in.
+#
+# It used to be a second copy of the same twenty lines, and for about an hour
+# on 2026-09-08 the two copies **disagreed about which name to try first** —
+# this one Unix-then-`.exe`, the general one `.exe`-then-Unix after a native
+# consumer choked on the extensionless path. Two functions in one file
+# resolving the same binary by different rules is the parallel-copy problem
+# this repository keeps recording, and I introduced it here while fixing
+# something else. Deleting the copy is the fix; keeping both and documenting
+# the divergence, which is what I did first, is the thing that decays.
+#
+# The behaviour change is `.exe` first. Safe in both directions: on Linux
+# `mage-parse.exe` does not exist so the order falls through to the same
+# answer, and on Windows every checker already runs against the `.exe` that
+# `capstone/run.sh` has been resolving this way since it was converted.
 find_mage_parse() {
-    local profile="${1:-release}"
-    local root target dir
-    root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-
-    target="$(cargo metadata --format-version 1 --no-deps \
-                --manifest-path "$root/prototype/Cargo.toml" 2>/dev/null \
-              | sed 's/.*"target_directory":"\([^"]*\)".*/\1/')"
-    if [ -z "$target" ]; then
-        echo "find_mage_parse: cargo metadata failed; is cargo on PATH?" >&2
-        return 1
-    fi
-
-    dir="$target/$profile"
-    if [ -x "$dir/mage-parse" ]; then
-        printf '%s' "$dir/mage-parse"
-        return 0
-    fi
-    # Windows. Checked second so a Unix binary is never shadowed by a stale
-    # `.exe` sitting beside it.
-    if [ -x "$dir/mage-parse.exe" ]; then
-        printf '%s' "$dir/mage-parse.exe"
-        return 0
-    fi
-
-    echo "find_mage_parse: no mage-parse in $dir — build it:" >&2
-    echo "    cargo build --$profile --manifest-path prototype/Cargo.toml --bin mage-parse" >&2
-    return 1
+    find_crate_bin prototype mage-parse "${1:-release}"
 }
 
 # Build, then resolve. For callers that would otherwise run whatever is lying
