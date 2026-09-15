@@ -107,10 +107,15 @@ pub fn unified_search(query: &str, ontology: &Ontology) -> Vec<UnifiedHit> {
     // `RuleDatabase::ALL` rather than a copy of the list. This was a second
     // literal array of the same eight variants, under the comment above
     // promising it scans *all* of them — a promise nothing enforced, since an
-    // array literal is not exhaustive the way a `match` is. A ninth database
-    // would have been missing here and from `rule_counts_by_db`, and
-    // `check-skb-tree.sh` could not have seen it: it diffs the committed tree
-    // against a fresh `--emit-skb`, and both sides come from that same list.
+    // array literal is not exhaustive the way a `match` is. One list means one
+    // place to update and one assertion covering both callers.
+    //
+    // The `match` twenty lines above *is* exhaustive, so adding a ninth
+    // variant is a compile error right here. What that does not force is
+    // adding it to `ALL`, and `check-skb-tree.sh` cannot see that gap: it
+    // diffs the committed tree against a fresh `--emit-skb` built from `ALL`,
+    // so both sides omit the same database. Measured — see
+    // `skb::tests::per_database_counts_sum_to_the_total`.
     for db in RuleDatabase::ALL {
         for rule in crate::skb::query_rules_by_db(db).matches {
             let hay = format!(
