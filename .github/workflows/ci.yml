@@ -143,12 +143,15 @@ on:
 # thing it was written for: the sentence above asks for a complete verdict per
 # merge, not for one run at a time.
 #
-# Verified by construction — a group keyed on `github.sha` cannot collide
-# between two commits — and by the YAML parsing with all ten jobs intact. The
-# behaviour itself is demonstrated by the next two master pushes landing close
-# together: if the earlier run reaches a conclusion instead of `cancelled`,
-# this holds. Recording which of those two kinds of verification this had,
-# because the difference is the whole subject of `HANDOFF.md` item 32.
+# **Measured, not argued** — the distinction is the whole subject of
+# `HANDOFF.md` item 32, so this one was demonstrated rather than reasoned:
+#
+#   before   `316af7f27` ended `cancelled` at 20:31:24Z, one second after the
+#            run for its successor was created at 20:31:23Z
+#   after    `2bc6b3500` ended `success`, with a successor (`e363d7efa`)
+#            pushed while it was still in flight
+#
+# Same repository, same shape of push, opposite outcome.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ github.ref == 'refs/heads/master' && github.sha || 'shared' }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
