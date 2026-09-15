@@ -142,6 +142,13 @@ on:
 # state between runs. The queueing was a side effect of the exemption, not the
 # thing it was written for: the sentence above asks for a complete verdict per
 # merge, not for one run at a time.
+#
+# Verified by construction — a group keyed on `github.sha` cannot collide
+# between two commits — and by the YAML parsing with all ten jobs intact. The
+# behaviour itself is demonstrated by the next two master pushes landing close
+# together: if the earlier run reaches a conclusion instead of `cancelled`,
+# this holds. Recording which of those two kinds of verification this had,
+# because the difference is the whole subject of `HANDOFF.md` item 32.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ github.ref == 'refs/heads/master' && github.sha || 'shared' }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
