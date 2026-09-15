@@ -78,8 +78,24 @@ if [ "$drift" -ne 0 ]; then
     exit 1
 fi
 
-rules="$(python -c "
+# Count both figures. `$rules` was already counted from disk; **"8 databases"
+# was a literal in the message** — a number this checker asserted and nothing
+# verified, which is the shape it exists to catch, in its own success line.
+#
+# Measured 2026-09-15: with a ninth database present in `builtin_rules()` but
+# absent from `RuleDatabase::ALL`, `--emit-skb` never writes its file, and this
+# line reported "255 rules across 8 databases" while 256 rules across 9
+# databases existed. The rule count was right about the tree and the database
+# count was right by coincidence — it matched because nobody had added one.
+#
+# Counting the files does not close that gap (the file is not written, so it
+# cannot be counted; `skb::tests::per_database_counts_sum_to_the_total` is what
+# catches it). It stops the message from stating a figure it never checked.
+read -r rules dbs <<EOF
+$(python -c "
 import json, io, glob
-print(sum(len(json.load(io.open(f, encoding='utf-8'))) for f in glob.glob('skb/rules/*.json')))
-")"
-echo "  ok skb/ matches a fresh --emit-skb: $rules rules across 8 databases."
+files = sorted(glob.glob('skb/rules/*.json'))
+print(sum(len(json.load(io.open(f, encoding='utf-8'))) for f in files), len(files))
+")
+EOF
+echo "  ok skb/ matches a fresh --emit-skb: $rules rules across $dbs databases."
