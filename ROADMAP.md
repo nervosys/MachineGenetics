@@ -4,8 +4,8 @@
 > Each step is a concrete, testable increment.
 >
 > **Last verified: 2026-09-15** — all five crates built and tested: prototype
-> **1,268**, rmi **1,384**, ribosome **168**, germline **112**, forge **54** —
-> **2,986 tests, 0 failures, 0 warnings**. The crate count went from three to
+> **1,268**, rmi **1,384**, ribosome **168**, germline **117**, forge **54** —
+> **2,991 tests, 0 failures, 0 warnings**. The crate count went from three to
 > five when the build engine (step 148) and the RSI control plane (step 149)
 > were extracted from `forge`; the total is unchanged by those moves, and
 > `forge`'s 54 is what the registry alone measured before they were parked in
@@ -257,7 +257,7 @@
 
 | Step | Title | Status | Description |
 | ---- | ----- | ------ | ----------- |
-| 112 | `stack N { … }` repeat combinator | ✅ | O(1) surface cost in depth |
+| 117 | `stack N { … }` repeat combinator | ✅ | O(1) surface cost in depth |
 | 113 | Named `block` macros | ✅ | The leaf-library tier, registry-ready |
 | 114 | `residual` / `branch` / `wrap` | ✅ | Dataflow composition operators; blocks can hold combinators |
 | 115 | REPEAT-folded binary | ✅ | Stacked nets are O(1) in depth **in bytes too** |

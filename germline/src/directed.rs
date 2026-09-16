@@ -37,15 +37,15 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CandidateSpec {
     pub id: String,
-    /// Whatever the search varies — hyperparameters, architecture choices,
-    /// data mixture. Opaque here; the predictor interprets it.
-    pub genome: Vec<f64>,
+    /// Whatever the search varies — scalars, and the genes the organism is
+    /// built from. Opaque here; the predictor and the workload interpret it.
+    pub genome: crate::variation::Genome,
     /// Which generation it was derived from.
     pub parent: Option<u64>,
 }
 
 impl CandidateSpec {
-    pub fn new(id: impl Into<String>, genome: Vec<f64>) -> Self {
+    pub fn new(id: impl Into<String>, genome: crate::variation::Genome) -> Self {
         CandidateSpec { id: id.into(), genome, parent: None }
     }
 }
@@ -196,11 +196,18 @@ impl<'a> DirectedSearch<'a> {
 mod tests {
     use super::*;
 
+    /// A genome of plain scalars, which is what these tests vary.
+    fn g(vs: &[f64]) -> crate::variation::Genome {
+        vs.iter().map(|v| crate::variation::Locus::param(*v)).collect()
+    }
+
     /// Predicts the mean of the genome — perfectly accurate against `truth`.
     struct MeanPredictor;
     impl FitnessPredictor for MeanPredictor {
         fn predict(&self, c: &CandidateSpec) -> Prediction {
-            let m = c.genome.iter().sum::<f64>() / c.genome.len().max(1) as f64;
+            // Scalars only: a gene carries a hash, which has no mean.
+            let scalars = crate::variation::params_of(&c.genome);
+            let m = scalars.iter().sum::<f64>() / scalars.len().max(1) as f64;
             Prediction {
                 predicted: FitnessVector::new().with("capability", m),
                 self_reported_confidence: 0.99,
@@ -221,10 +228,10 @@ mod tests {
 
     fn pool() -> Vec<CandidateSpec> {
         vec![
-            CandidateSpec::new("a", vec![0.1]),
-            CandidateSpec::new("b", vec![0.9]),
-            CandidateSpec::new("c", vec![0.5]),
-            CandidateSpec::new("d", vec![0.7]),
+            CandidateSpec::new("a", g(&[0.1])),
+            CandidateSpec::new("b", g(&[0.9])),
+            CandidateSpec::new("c", g(&[0.5])),
+            CandidateSpec::new("d", g(&[0.7])),
         ]
     }
 

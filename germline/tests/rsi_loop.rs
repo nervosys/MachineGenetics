@@ -23,7 +23,7 @@ use germline::gate::{Episode, PromotionGate};
 use germline::journal::{Entry, Journal};
 use germline::lineage::Lineage;
 use germline::supervisor::{HealthSample, SupervisionPolicy, Supervisor};
-use germline::variation::{propose, VariationPlan};
+use germline::variation::{propose, GenePool, VariationPlan};
 use germline::{
     EvalSuite, FitnessVector, Generation, Measurement, Status, SuiteKind,
 };
@@ -34,6 +34,16 @@ use ribosome::heal::DefaultHealer;
 use ribosome::sched::Scheduler;
 use ribosome::{Action, Digest, Platform};
 use std::path::PathBuf;
+
+/// A genome of plain scalars — the shape these scenarios vary.
+///
+/// A genome is a sequence of loci now, each either a tunable scalar or a gene
+/// carried by content hash. These tests predate genes and only vary scalars,
+/// so they say so explicitly rather than relying on a bare `Vec<f64>` meaning
+/// what it used to.
+fn g(vs: &[f64]) -> germline::variation::Genome {
+    vs.iter().map(|v| germline::variation::Locus::param(*v)).collect()
+}
 
 const SUITE: &[u8] = b"heldout-suite-v1";
 const EVALUATOR: &str = "independent-harness";
@@ -101,7 +111,9 @@ fn build_and_measure(store: &Store, source: &[u8]) -> ribosome::sched::BuildRepo
 struct MeanPredictor;
 impl FitnessPredictor for MeanPredictor {
     fn predict(&self, c: &CandidateSpec) -> Prediction {
-        let m = c.genome.iter().sum::<f64>() / c.genome.len().max(1) as f64;
+        // Scalars only: a gene carries a hash, which has no mean.
+        let scalars = germline::variation::params_of(&c.genome);
+        let m = scalars.iter().sum::<f64>() / scalars.len().max(1) as f64;
         Prediction {
             predicted: FitnessVector::new().with("capability", m),
             self_reported_confidence: 0.8,
@@ -125,16 +137,19 @@ fn the_whole_loop_runs_from_proposal_to_authority() {
 
     // --- propose: deterministic variation over a scored population
     let population = vec![
-        (vec![0.6, 0.6, 0.6], 0.60),
-        (vec![0.7, 0.7, 0.7], 0.70),
-        (vec![0.4, 0.4, 0.4], 0.40),
+        (g(&[0.6, 0.6, 0.6]), 0.60),
+        (g(&[0.7, 0.7, 0.7]), 0.70),
+        (g(&[0.4, 0.4, 0.4]), 0.40),
     ];
     let seed = 0x5EED_u64;
-    let candidates = propose(&population, VariationPlan::default(), seed);
+    // An empty pool: `Substitute` is a no-op, so this round varies scalars
+    // exactly as it did before genes existed.
+    let pool = GenePool::default();
+    let candidates = propose(&population, VariationPlan::default(), &pool, seed).candidates;
     assert!(!candidates.is_empty());
     assert_eq!(
         candidates,
-        propose(&population, VariationPlan::default(), seed),
+        propose(&population, VariationPlan::default(), &pool, seed).candidates,
         "the proposal round must be re-derivable from its seed"
     );
 
@@ -303,7 +318,7 @@ fn the_runner_drives_a_real_workload_to_a_bounded_stop() {
 
     // Seed champion: a shallow architecture, actually built.
     let seed_artifact = workload
-        .materialize(&CandidateSpec::new("seed", vec![0.0, 0.0, 1.0]))
+        .materialize(&CandidateSpec::new("seed", g(&[0.0, 0.0, 1.0])))
         .unwrap();
     let mut lineage = Lineage::new();
     let champ = lineage.next_id();
@@ -379,7 +394,7 @@ fn an_unattended_run_that_breaks_falls_back_to_something_runnable() {
     let mut workload = BuildWorkload::new(Store::open(root.join("store")));
 
     let seed_artifact = workload
-        .materialize(&CandidateSpec::new("seed", vec![0.0, 0.0, 1.0]))
+        .materialize(&CandidateSpec::new("seed", g(&[0.0, 0.0, 1.0])))
         .unwrap();
     let mut lineage = Lineage::new();
     let champ = lineage.next_id();

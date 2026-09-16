@@ -7,7 +7,7 @@ numbers are machine-dependent; the shapes (throughput, scaling) are not.
 Date: 2026-06-10. Build: `release` for perf, `cargo test` for functionality.
 
 > **Re-verified 2026-09-15** — all five crates tested: prototype **1,268**, rmi
-> **1,384**, ribosome **168**, germline **112**, forge **54** = **2,986 passing,
+> **1,384**, ribosome **168**, germline **117**, forge **54** = **2,991 passing,
 > 0 failing, 0 warnings**.
 >
 > *One figure below had not regressed — it had been superseded.* The ABL
@@ -56,6 +56,8 @@ Date: 2026-06-10. Build: `release` for perf, `cargo test` for functionality.
 > duplication. **1,038 is the number of distinct tests and always was** — nothing
 > was removed, and the same assertions still run.
 > The CUDA path is re-verified on hardware: **1,229 passing, 0 failed**
+>
+> *Since 2026-09-15 it is 117: the genome became a sequence of loci — each a tunable scalar or a gene carried by content hash — rather than a vector of scalars, and five tests came with it. The figures above are left as written because they record what was counted when the 141 was investigated, and a record rewritten to match today's number stops being evidence of anything.*
 > (`cargo test --features cuda`, dual RTX 3090 Ti, driver 610.88), built against
 > the pinned IronAccelerator tag `v2.2.0`. Reproduce with `scripts/test-all.ps1
 > -Bench -Cuda` (or `test-all.sh --bench --cuda`).
@@ -79,7 +81,7 @@ Date: 2026-06-10. Build: `release` for perf, `cargo test` for functionality.
 | MAGE prototype | **1268 pass** (+2 ignored perf harnesses) | `cargo test` |
 | rmi (`cpu`) | **1384 pass** | `cargo test --no-default-features --features cpu` |
 | ribosome (build engine) | **168 pass** | `cargo test --manifest-path ribosome/Cargo.toml` |
-| germline (RSI control plane) | **112 pass** | `cargo test --manifest-path germline/Cargo.toml` |
+| germline (RSI control plane) | **117 pass** | `cargo test --manifest-path germline/Cargo.toml` |
 | forge (registry) | **54 pass** | `cargo test --manifest-path forge/Cargo.toml` |
 | agentic-eval (AetherShell) | **80 pass** | `cargo test -p agentic-eval` |
 | SPINE `spine-agentic` | **285 pass** | `cargo test -p spine-agentic` |

@@ -49,7 +49,7 @@ use super::gate::Episode;
 use super::journal::{Entry, Journal};
 use super::lineage::Lineage;
 use super::supervisor::{FailureMode, HealthSample, SupervisionPolicy, Supervisor};
-use super::variation::{propose, VariationPlan};
+use crate::variation::{propose, GenePool, Locus, Proposal, VariationPlan};
 use super::{EvalSuite, FitnessVector, Generation, GenerationId, Measurement};
 use ribosome::mac::absorb;
 use ribosome::Digest;
@@ -289,19 +289,45 @@ impl<'a> Runner<'a> {
         workload: &mut dyn Workload,
     ) -> Result<CycleOutcome, String> {
         // Population = the lineage's measured generations.
-        let population: Vec<(Vec<f64>, f64)> = lineage
+        let population: Vec<(crate::variation::Genome, f64)> = lineage
             .generations()
             .iter()
-            .filter_map(|g| g.heldout_fitness().map(|f| (vec![f.composite()], f.composite())))
+            .filter_map(|g| {
+                g.heldout_fitness()
+                    .map(|f| (vec![Locus::param(f.composite())], f.composite()))
+            })
             .collect();
-        let seedpop = if population.is_empty() { vec![(vec![0.5], 0.5)] } else { population };
+        let seedpop =
+            if population.is_empty() { vec![(vec![Locus::param(0.5)], 0.5)] } else { population };
 
-        let specs = propose(&seedpop, self.policy.variation, seed);
-        let spec = specs
+        // An empty pool until a registry is wired in: `Substitute` is then a
+        // no-op and the run behaves exactly as it did before genes existed.
+        let Proposal { candidates, refused } =
+            propose(&seedpop, self.policy.variation, &GenePool::default(), seed);
+        let spec = candidates
             .into_iter()
             .take(self.policy.candidates_per_cycle)
             .next()
-            .ok_or_else(|| "variation produced no candidates".to_string())?;
+            .ok_or_else(|| {
+                // "produced no candidates" and "produced candidates and refused
+                // all of them" are different facts, and the second is the one
+                // worth acting on: the search is pushing against a capability
+                // boundary rather than running out of room.
+                if refused.is_empty() {
+                    "variation produced no candidates".to_string()
+                } else {
+                    let why: Vec<String> = refused
+                        .iter()
+                        .map(|r| format!("{} acquired {}", r.id, r.acquired.join(", ")))
+                        .collect();
+                    format!(
+                        "variation produced {} candidate(s) and refused every one \
+                         for acquiring effects no parent declared: {}",
+                        refused.len(),
+                        why.join("; ")
+                    )
+                }
+            })?;
 
         let artifact = workload.materialize(&spec)?;
         let fitness = workload.evaluate(&artifact, &self.suite)?;

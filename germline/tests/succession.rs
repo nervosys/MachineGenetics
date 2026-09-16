@@ -16,6 +16,16 @@ use germline::{
 use ribosome::Digest;
 use std::collections::HashSet;
 
+/// A genome of plain scalars — the shape these scenarios vary.
+///
+/// A genome is a sequence of loci now, each either a tunable scalar or a gene
+/// carried by content hash. These tests predate genes and only vary scalars,
+/// so they say so explicitly rather than relying on a bare `Vec<f64>` meaning
+/// what it used to.
+fn g(vs: &[f64]) -> germline::variation::Genome {
+    vs.iter().map(|v| germline::variation::Locus::param(*v)).collect()
+}
+
 const SUITE_BYTES: &[u8] = b"heldout-suite-v1";
 const EVALUATOR: &str = "independent-harness";
 
@@ -308,7 +318,9 @@ fn drift_across_many_generations_is_stopped_at_the_high_water_mark() {
 struct MeanPredictor;
 impl FitnessPredictor for MeanPredictor {
     fn predict(&self, c: &CandidateSpec) -> Prediction {
-        let m = c.genome.iter().sum::<f64>() / c.genome.len().max(1) as f64;
+        // Scalars only: a gene carries a hash, which has no mean.
+        let scalars = germline::variation::params_of(&c.genome);
+        let m = scalars.iter().sum::<f64>() / scalars.len().max(1) as f64;
         Prediction {
             predicted: FitnessVector::new().with("capability", m),
             self_reported_confidence: 0.9,
@@ -330,10 +342,10 @@ fn directed_search_spends_budget_on_the_best_predicted_candidates() {
     assert!(search.calibration.trust() > 0.9);
 
     let pool = vec![
-        CandidateSpec::new("weak", vec![0.1]),
-        CandidateSpec::new("strong", vec![0.95]),
-        CandidateSpec::new("mid", vec![0.5]),
-        CandidateSpec::new("good", vec![0.8]),
+        CandidateSpec::new("weak", g(&[0.1])),
+        CandidateSpec::new("strong", g(&[0.95])),
+        CandidateSpec::new("mid", g(&[0.5])),
+        CandidateSpec::new("good", g(&[0.8])),
     ];
     let selected = search.select(pool);
     assert_eq!(selected.len(), 2, "a trusted predictor concentrates the budget");
@@ -345,9 +357,9 @@ fn directed_search_spends_budget_on_the_best_predicted_candidates() {
 fn an_unproven_predictor_does_not_get_to_narrow_the_search() {
     let search = DirectedSearch::new(&MeanPredictor, 1);
     let pool = vec![
-        CandidateSpec::new("a", vec![0.1]),
-        CandidateSpec::new("b", vec![0.9]),
-        CandidateSpec::new("c", vec![0.5]),
+        CandidateSpec::new("a", g(&[0.1])),
+        CandidateSpec::new("b", g(&[0.9])),
+        CandidateSpec::new("c", g(&[0.5])),
     ];
     assert_eq!(
         search.select(pool).len(),
@@ -367,10 +379,10 @@ fn a_predictor_that_stops_being_right_loses_its_selectivity() {
     }
     let pool = || {
         vec![
-            CandidateSpec::new("a", vec![0.1]),
-            CandidateSpec::new("b", vec![0.9]),
-            CandidateSpec::new("c", vec![0.5]),
-            CandidateSpec::new("d", vec![0.4]),
+            CandidateSpec::new("a", g(&[0.1])),
+            CandidateSpec::new("b", g(&[0.9])),
+            CandidateSpec::new("c", g(&[0.5])),
+            CandidateSpec::new("d", g(&[0.4])),
         ]
     };
     assert_eq!(search.select(pool()).len(), 1, "calibrated: narrow");

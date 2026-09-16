@@ -185,7 +185,7 @@ impl Workload for BuildWorkload {
         if self.broken {
             return Err("synthesis backend unavailable".into());
         }
-        let arch = Architecture::decode(&spec.genome);
+        let arch = Architecture::decode(&crate::variation::params_of(&spec.genome));
         let (_, artifact) = self.build(&arch)?;
         self.history.push(arch);
         Ok(artifact)
@@ -223,6 +223,11 @@ impl Workload for BuildWorkload {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A genome of plain scalars, which is what these tests vary.
+    fn g(vs: &[f64]) -> crate::variation::Genome {
+        vs.iter().map(|v| crate::variation::Locus::param(*v)).collect()
+    }
     use std::path::PathBuf;
 
     fn tmp(name: &str) -> PathBuf {
@@ -261,7 +266,7 @@ mod tests {
     #[test]
     fn a_genome_builds_a_real_artifact() {
         let (mut w, root) = workload("build");
-        let spec = CandidateSpec::new("c1", vec![0.5, 0.5, 1.0]);
+        let spec = CandidateSpec::new("c1", g(&[0.5, 0.5, 1.0]));
         let artifact = w.materialize(&spec).unwrap();
         assert!(w.materialized(&artifact), "the artifact must be in the CAS");
         assert!(w.store().cas.get(&artifact).unwrap().starts_with(b"ABL1"));
@@ -271,12 +276,12 @@ mod tests {
     #[test]
     fn the_same_genome_is_a_cache_hit_the_second_time() {
         let (mut w, root) = workload("cachehit");
-        let spec = CandidateSpec::new("c1", vec![0.5, 0.5, 1.0]);
+        let spec = CandidateSpec::new("c1", g(&[0.5, 0.5, 1.0]));
         let a = w.materialize(&spec).unwrap();
         let b = w.materialize(&spec).unwrap();
         assert_eq!(a, b, "identical architectures must produce identical artifacts");
 
-        let arch = Architecture::decode(&spec.genome);
+        let arch = Architecture::decode(&crate::variation::params_of(&spec.genome));
         let (report, _) = w.build(&arch).unwrap();
         assert_eq!(report.cache_hits, 1, "a rebuilt architecture must not re-synthesize");
         let _ = std::fs::remove_dir_all(&root);
@@ -285,8 +290,8 @@ mod tests {
     #[test]
     fn deeper_architectures_score_higher_on_capability() {
         let (mut w, root) = workload("depth");
-        let shallow = CandidateSpec::new("s", vec![0.0, 0.0, 1.0]);
-        let deep = CandidateSpec::new("d", vec![1.0, 0.0, 1.0]);
+        let shallow = CandidateSpec::new("s", g(&[0.0, 0.0, 1.0]));
+        let deep = CandidateSpec::new("d", g(&[1.0, 0.0, 1.0]));
 
         let a = w.materialize(&shallow).unwrap();
         let fs = w.evaluate(&a, &EvalSuite::new("s", super::super::SuiteKind::HeldOut, Digest::of(b"x"))).unwrap();
@@ -317,7 +322,7 @@ mod tests {
     fn a_broken_backend_reports_failure_rather_than_a_bad_artifact() {
         let (mut w, root) = workload("broken");
         w.broken = true;
-        assert!(w.materialize(&CandidateSpec::new("c", vec![0.5])).is_err());
+        assert!(w.materialize(&CandidateSpec::new("c", g(&[0.5]))).is_err());
         let _ = std::fs::remove_dir_all(&root);
     }
 
@@ -331,7 +336,7 @@ mod tests {
     #[test]
     fn shadow_fails_when_the_artifact_is_gone() {
         let (mut w, root) = workload("gone");
-        let artifact = w.materialize(&CandidateSpec::new("c", vec![0.5, 0.5, 1.0])).unwrap();
+        let artifact = w.materialize(&CandidateSpec::new("c", g(&[0.5, 0.5, 1.0]))).unwrap();
         assert!(w.shadow(&artifact).success);
         w.store().cas.evict(&artifact).unwrap();
         assert!(!w.shadow(&artifact).success, "a vanished artifact must not report healthy");
