@@ -369,7 +369,7 @@ Much of that policy is already data, and one surface is now loadable:
 
 | surface | size | governs | today |
 |---|---|---|---|
-| SKB safety rules | 255, 8 databases | what variation may legally produce | **loaded overlay over a Rust floor** |
+| SKB safety rules | 255, 8 databases | what agents and codegen are *told* is unsafe | **loaded overlay over a Rust floor** |
 | heal patterns | 34 | what a broken candidate recovers to | Rust |
 | elision rules | — | the agent-mode surface itself | Rust |
 | cost model | `cost.rs` | which constructs search prefers | Rust |
@@ -404,6 +404,27 @@ literals rather than artifacts. The smallest real step was to move one of them,
 and the SKB was the obvious candidate — `skb/` is already a generated tree and
 `check-skb-tree.sh` already compares it against the compiler. That step is
 taken.
+
+### What the SKB is, and is not
+
+**No SKB rule is executed.** The 255 rules are knowledge, not a compiler pass:
+`codegen_bridge` reads `query_rules_by_tag("safety")` and keeps the
+*descriptions* as strings, and `rmi_ontology_adapter` substring-matches over
+category, description, rationale and tags so agents can find them. Nothing
+matches a rule id against an AST, and the effect checker, the type checker and
+the contract verifier are separate machinery that does not consult the SKB at
+all.
+
+This row of the table said the SKB governs "what variation may legally
+produce". It does not, and did not — that is `propose`'s legality check and the
+front-end passes. What the SKB governs is what an agent is *told*, which is a
+real thing to protect and a smaller one than enforcement.
+
+It matters here because it sets what the floor below is worth. An overlay that
+could lower severities would change the advice a synthesising agent receives,
+silently and with no diagnostic anywhere; it would not turn off a check,
+because there is no check to turn off. Making these rules executable is a
+separate step that nothing in this section has taken.
 
 ### The builtin rules are a floor, not a default
 

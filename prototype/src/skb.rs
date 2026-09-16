@@ -3051,6 +3051,14 @@ pub enum PolicySource {
 
 /// Why an overlay was refused.
 ///
+/// Scope, so the refusals below are not read as more than they are: **no SKB
+/// rule is executed.** These 255 rules are knowledge — `codegen_bridge` keeps
+/// their descriptions as strings and `rmi_ontology_adapter` substring-matches
+/// them for agent search. Nothing matches a rule id against an AST. An overlay
+/// that lowered a severity would change the advice a synthesising agent
+/// receives, with no diagnostic anywhere; it would not turn off a check,
+/// because there is no check to turn off.
+///
 /// Every variant halts. None of them falls back to the builtin set, and the
 /// distinction from an *absent* overlay is the whole point: absence means
 /// nobody has written a policy, while any of these means someone did and it
