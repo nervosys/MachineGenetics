@@ -271,6 +271,101 @@ verified on hardware — 1,229 tests on dual 3090 Ti.
 
 ---
 
+## Two regimes: where failure is free, and where it is fatal
+
+Evolution needs somewhere most candidates die cheaply. Governance needs
+somewhere nothing takes authority without being adjudicated. Those are opposite
+requirements, and this repository is built almost entirely to the second —
+every checker fails closed, the promotion gate promotes only on an empty reason
+list, provenance refuses five ways before it accepts. That instinct is correct
+for authority and wrong for exploration: a search in which every candidate must
+survive a canary phase and a held-out suite runs at perhaps 10³ a day, and
+biology runs 10⁶.
+
+**The split is not a new mechanism.** It is a statement about which existing
+mechanism belongs on which side, because one used on the wrong side is either a
+bottleneck or a hole.
+
+| | sandbox — failure is free | authority — failure is fatal |
+|---|---|---|
+| capabilities | none; nothing here may act | `requires_approval`, `sandbox/policy` |
+| persistence | nothing survives the candidate | the journal, written as it happens |
+| fitness | proxy only — `directed::Predictor`, modelled size, static checks | the held-out suite, `min_shadow_successes` |
+| decision | `variation::propose` and its refusals | `gate::Episode::adjudicate` |
+| identity | none | evaluator ≠ challenger, Ed25519 across a trust boundary |
+| refusals | expected steady state, returned as data | an incident, journaled |
+| what matters | throughput | attribution |
+
+**`propose` is the boundary.** Everything before it is search, and a candidate
+refused there costs a set difference. Everything after is succession, and a
+candidate refused there has already cost a build, an evaluation and a canary.
+`Proposal::refused` exists so the two are distinguishable: a search that
+produces eight candidates and refuses all eight is pushing against a capability
+boundary, which is a different fact from finding nothing.
+
+A consequence worth stating plainly: **a candidate that cannot be evaluated
+cheaply will not be tried.** If proxy fitness requires a full build, the search
+is authority-regime whatever it is called, and its throughput will be the
+gate's. `Architecture::decode` is total over `&[f64]` precisely so that
+rejection is about fitness rather than parsing — that totality is what makes
+the sandbox regime affordable, and it is worth protecting when the decoder
+grows to read genes.
+
+## The improvable surface
+
+For *recursive* to mean anything, the improver must be improvable. Today it is
+not: the compiler is Rust, agents write MAGE, so agents improve artifacts and
+not the substrate that judges them.
+
+Self-hosting is the obvious answer and the wrong first move. Biology does not
+encode its ribosome in the mRNA it translates — expression machinery sits
+outside the genome, which is why the build engine here is called `ribosome` and
+the heritable material `germline`. What makes a loop recursive is not that the
+compiler is written in the language. It is that **the policy the compiler
+applies is data the loop can change.**
+
+Much of that policy is already data, and none of it is yet evolvable:
+
+| surface | size | governs | today |
+|---|---|---|---|
+| SKB safety rules | 255, 8 databases | what variation may legally produce | Rust `const` |
+| heal patterns | 34 | what a broken candidate recovers to | Rust |
+| elision rules | — | the agent-mode surface itself | Rust |
+| cost model | `cost.rs` | which constructs search prefers | Rust |
+| CI floors | 6 | what counts as a regression | shell, hand-edited |
+| the 20 checkers | — | what "green" means | shell |
+| the pins | 94 | which claims must match measurement | shell + docs |
+
+**The harness is the part that moves under a fixed model.** With the weights
+held constant, improvement comes from scaffolding: a sharper legality check, a
+cheaper proxy fitness, a checker that catches a class of error one stage
+earlier, a heal pattern that recovers a mutation that would otherwise be
+discarded. Those are all harness changes, and none of them is reachable by a
+loop that may only emit `.mg` files. A system whose agents can rewrite their
+own evaluation criteria but not their own tools has the recursion pointed at
+the least useful half.
+
+Making a surface evolvable means four things, and the repository already has
+machinery for each:
+
+1. **Content-addressed** — `forge` stores blocks by hash and `ribosome`'s CAS
+   rehashes on read, so an artifact's identity is its content.
+2. **Constructible and rejectable** — `--build=abl <spec>` builds from a typed
+   spec and refuses invalid ones, which is closure under variation implemented
+   as a gate rather than an encoding.
+3. **Gated** — changes take effect only through `Episode::adjudicate`, so a
+   policy change is a succession like any other.
+4. **Attributable** — the journal records the operators and seed, so
+   "generation 47 was produced from 46 under seed 0x…" stays checkable.
+
+What is missing is not mechanism but *representation*: these surfaces are Rust
+literals rather than artifacts. The smallest real step is to move one of them —
+the SKB is the obvious candidate, since `skb/` is already a generated tree and
+`check-skb-tree.sh` already compares it against the compiler — from `const` to
+a loaded artifact, and let the gate govern changes to it. Nothing about that
+requires self-hosting, and it is the difference between a loop that improves
+what it writes and one that improves how it judges.
+
 ## 8. Why this is the agentic frontier
 
 For a token-emitting model, the cost of *naming* a computation is irreducible, so
