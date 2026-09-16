@@ -8,12 +8,12 @@
     This is the single entry point that covers everything CI covers:
 
         rmi (cpu)   1,384 tests
-        prototype   1,278 tests
+        prototype   1,282 tests
         ribosome      168 tests
         germline      130 tests
         forge          60 tests
         -------------------------
-        total       3,020 tests, 0 warnings
+        total       3,024 tests, 0 warnings
 
 .PARAMETER Release
     Build and test in release mode (slower to build, much faster to run).

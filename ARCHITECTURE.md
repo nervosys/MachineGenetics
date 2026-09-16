@@ -7,7 +7,7 @@ text. It is the leverage the text-token floor denies the language track (see
 [IDEAL_AGENTIC_LANGUAGE.md](IDEAL_AGENTIC_LANGUAGE.md) for that analysis).
 
 > **Scope.** Everything below is implemented and test-covered in `prototype/`
-> (**1,278 tests** green) and scored in the sibling `agentic-eval` crate (80
+> (**1,282 tests** green) and scored in the sibling `agentic-eval` crate (80
 > tests, in the AetherShell repository and not verifiable from here). The one
 > deliberate non-feature is agent/swarm *execution* — see
 > [Honest boundaries](#honest-boundaries).
@@ -182,7 +182,7 @@ are **five independent Cargo workspaces**:
 | Path | Crate | Tests | Notes |
 |---|---|--:|---|
 | `RecursiveMachineIntelligence/` | `rmi` | 1,384 | The low-level neurosymbolic framework. Feature-gated (`cpu` / `gpu` / `cuda`); build with `--no-default-features --features cpu` for the portable set |
-| `prototype/` | `mage-prototype` | 1,278 | Compiler, evaluator, ABL, RAP server. Path-depends on `rmi` |
+| `prototype/` | `mage-prototype` | 1,282 | Compiler, evaluator, ABL, RAP server. Path-depends on `rmi` |
 | `ribosome/` | `ribosome` | 168 | The distributed build engine. Depends on nothing in this repository — see below |
 | `germline/` | `germline` | 130 | Model succession, handoff, fallback — the RSI control plane. Path-depends on `ribosome` |
 | `forge/` | `forge` | 60 | The package registry, and only that |
@@ -419,6 +419,26 @@ This row of the table said the SKB governs "what variation may legally
 produce". It does not, and did not — that is `propose`'s legality check and the
 front-end passes. What the SKB governs is what an agent is *told*, which is a
 real thing to protect and a smaller one than enforcement.
+
+**And a large part of it describes conditions no pass can detect.** The
+pipeline is lex, parse, resolve, typecheck, effect inference, MLIR lowering,
+heal — there is no ownership or borrow-checking phase. So of the 255 rules,
+the 40 ownership and 40 borrow rules are knowledge about a language rule the
+checker does not implement, and the 35 lifetime rules sit behind
+`AEL-0003`'s claim that lifetimes are inferred rather than checked. That is not
+a defect to fix by deleting rules — the knowledge is what agents search — but a
+reader who assumed `mage-parse --check` enforces the ownership database would
+be wrong, and this paragraph exists because I assumed it.
+
+`DiagnosticCategory` tells the same story from the other side. Ten variants,
+each with a stable code that hir.rs calls "machine-matchable" and part of the
+agent contract; measured against the crate, **`UseAfterMove` had no producer at
+all** and `BorrowConflict`'s only one is the healer classifying a message it was
+handed. `E0382` was unreachable: `heal::infer_category` folded "move" into the
+borrow branch, so *use of moved value `x`* came back coded `E0502` while the
+code that names it could not be emitted — and the fix table three hundred lines
+above recognised the same message as a move and offered move fixes for it. Two
+predicates, disagreeing. They are one function now.
 
 It matters here because it sets what the floor below is worth. An overlay that
 could lower severities would change the advice a synthesising agent receives,
