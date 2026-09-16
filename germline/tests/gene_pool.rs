@@ -84,6 +84,20 @@ impl EffectOracle for Oracle {
     }
 }
 
+/// A fresh registry root.
+///
+/// **Cleared before use, not merely created.** The name is keyed on the process
+/// id, which an operating system reuses, and one test here deliberately ends by
+/// republishing its blocks through an oracle — leaving `index.json` holding
+/// `"state": "checked"` entries in a directory that nothing removes on the way
+/// out. A later run landing on the same pid and counter then began its
+/// *unchecked* phase against a checked registry, proposed candidates where it
+/// asserted none, and failed.
+///
+/// It passed every time it was run during development and failed once the
+/// machine had accumulated enough leftovers to collide, which is the worst
+/// shape for a test to have: green until the evidence is inconvenient.
+/// `remove_dir_all` first makes the fixture a function of this run only.
 fn tmp(tag: &str) -> PathBuf {
     static NEXT: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
     let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
@@ -91,6 +105,7 @@ fn tmp(tag: &str) -> PathBuf {
         "germline-genepool-{tag}-{}-{n}",
         std::process::id()
     ));
+    let _ = std::fs::remove_dir_all(&p);
     std::fs::create_dir_all(&p).unwrap();
     p
 }

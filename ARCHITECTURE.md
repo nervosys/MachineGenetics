@@ -430,6 +430,20 @@ a defect to fix by deleting rules — the knowledge is what agents search — bu
 reader who assumed `mage-parse --check` enforces the ownership database would
 be wrong, and this paragraph exists because I assumed it.
 
+`DiagnosticCategory` divides the same way, and `check-diagnostic-codes.sh`
+now records the split. Seven variants are constructed by a pass on finding the
+condition — `TypeMismatch` (types.rs), `UnresolvedName`, `UnresolvedType`,
+`DuplicateDefinition` (resolve.rs), `UndeclaredEffect` (effects.rs),
+`SyntaxError`, `Other`. Three — `BorrowConflict`, `UseAfterMove`,
+`SpecViolation` — have exactly one non-test mention each, all inside
+`heal::infer_category`, the function that guesses a category from a message
+someone else already wrote. Those three say the compiler can *relay* such an
+error, not that it can *find* one, and for the first two that is precisely
+because no ownership or borrow-checking phase exists. `SpecViolation` is the
+third for a different reason: the contract verifier runs and prints its own
+summary rather than emitting diagnostics, so a refuted contract produces no
+coded diagnostic at all.
+
 `DiagnosticCategory` tells the same story from the other side. Ten variants,
 each with a stable code that hir.rs calls "machine-matchable" and part of the
 agent contract; measured against the crate, **`UseAfterMove` had no producer at

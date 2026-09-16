@@ -1,0 +1,24 @@
+# Diagnostic categories that only `heal::infer_category` names.
+#
+# Each is reachable — a message carrying the right words gets the right code —
+# but no analysis pass constructs one, so the compiler can relay such an error
+# and cannot find one. That is the true state for all three, and each line says
+# which analysis is missing rather than leaving the reader to infer it.
+#
+# Adding a line here is a claim that no pass *should* produce it yet. Removing
+# one is required the moment a pass does; the checker fails either way round.
+
+# No ownership or borrow-checking phase exists. The pipeline is lex, parse,
+# resolve, typecheck, effect inference, MLIR lowering, heal. The SKB's 40 borrow
+# rules describe conditions nothing detects.
+BorrowConflict
+
+# Same gap, other half: the 40 ownership rules. E0382 was additionally
+# unreachable until 2026-09-16, because `infer_category` folded "move" into the
+# borrow branch.
+UseAfterMove
+
+# The contract verifier runs and prints its own summary — "0 contract(s); 1
+# subject(s): 0 proved, 0 evidenced, 0 refuted" — rather than emitting
+# diagnostics. A refuted contract should produce one of these and does not.
+SpecViolation

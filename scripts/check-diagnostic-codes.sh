@@ -54,10 +54,30 @@
 #
 # It remains a weak check in the other axis: it does not prove a *program*
 # exists that reaches the mention, so a producer behind a condition that is
-# never true still passes. It catches the failure that actually happened, which
-# is a variant no non-test code names at all. Strengthening it to "a test
-# demonstrates each code end to end" is the obvious next version and would have
-# to come with those tests.
+# never true still passes.
+#
+# ── The second question: produced, or merely classified? ─────────────────────
+#
+# Being named somewhere is a low bar, and three variants clear it in a way worth
+# separating. `BorrowConflict`, `UseAfterMove` and `SpecViolation` each have
+# exactly one non-test mention in the crate, and all three are inside
+# `heal::infer_category` — the function that guesses a category from a message
+# someone else already wrote. No analysis pass emits them.
+#
+# That is not the same state as `TypeMismatch` (types.rs), `UnresolvedName`,
+# `UnresolvedType`, `DuplicateDefinition` (resolve.rs), `UndeclaredEffect`
+# (effects.rs) or `SyntaxError`, each of which some pass constructs on finding
+# the condition. A classifier-only code says the compiler can *relay* such an
+# error, not that it can *find* one — and for these three that is exactly right,
+# because there is no ownership or borrow-checking phase and the contract
+# verifier prints its own summary rather than emitting diagnostics.
+#
+# So the split is recorded in a baseline rather than judged. A variant moving
+# from pass-produced to classifier-only is a real regression and fails; one
+# moving the other way is progress and fails too, asking for the baseline entry
+# to be dropped in the same commit — the same shape as
+# `check-orphan-sources.sh`, and for the same reason: a baseline nobody prunes
+# stops meaning anything.
 #
 # Two things it deliberately does not do:
 #
@@ -117,7 +137,18 @@ if [ -z "$non_test_source" ]; then
     exit 1
 fi
 
+# The same source again, minus the healer, which answers the second question:
+# which variants some *pass* constructs rather than only the text classifier.
+HEAL="prototype/src/heal.rs"
+pass_source="$(
+    find prototype/src -name '*.rs' ! -name "$(basename "$HIR")" ! -name "$(basename "$HEAL")" -print0 \
+        | xargs -0 awk '/^[[:space:]]*#\[cfg\(test\)\]/{nextfile} /^[[:space:]]*(pub )?mod tests[[:space:]]*\{/{nextfile} {print}'
+)"
+
+BASELINE="scripts/diagnostic-codes-classifier-only.txt"
+
 unreachable=""
+classifier_only=""
 n=0
 for v in $variants; do
     n=$((n + 1))
@@ -131,6 +162,8 @@ for v in $variants; do
     # check has to break in, and is the only reason it was obvious.
     if ! grep -q "DiagnosticCategory::$v" <<< "$non_test_source"; then
         unreachable="$unreachable$v"$'\n'
+    elif ! grep -q "DiagnosticCategory::$v" <<< "$pass_source"; then
+        classifier_only="$classifier_only$v"$'\n'
     fi
 done
 
@@ -147,4 +180,38 @@ if [ -n "$unreachable" ]; then
     exit 1
 fi
 
-echo "  ok all $n DiagnosticCategory variant(s) are named by non-test code outside $HIR, so every code can be emitted."
+found="$(printf '%s' "$classifier_only" | sed '/^$/d' | sort)"
+
+if [ ! -f "$BASELINE" ]; then
+    printf '%s\n' "$found" > "$BASELINE"
+    echo "check-diagnostic-codes: no baseline; wrote $(printf '%s\n' "$found" | grep -c . ) entr(ies) to $BASELINE." >&2
+fi
+
+was="$(grep -vE '^[[:space:]]*(#|$)' "$BASELINE" | sort)"
+new_only="$(comm -23 <(printf '%s\n' "$found") <(printf '%s\n' "$was"))"
+now_produced="$(comm -13 <(printf '%s\n' "$found") <(printf '%s\n' "$was"))"
+
+fail=0
+
+if [ -n "$new_only" ]; then
+    echo "  x  diagnostic categor(ies) that only \`heal::infer_category\` names, and are not baselined:" >&2
+    printf '%s\n' "$new_only" | sed 's/^/       /' >&2
+    echo "     No pass constructs these, so the compiler can relay such an error but" >&2
+    echo "     cannot find one. Either emit it where the condition is detected, or add" >&2
+    echo "     it to $BASELINE with a line saying which analysis is missing." >&2
+    fail=1
+fi
+
+if [ -n "$now_produced" ]; then
+    echo "  +  baseline entr(ies) now produced by a pass — remove them in this commit:" >&2
+    printf '%s\n' "$now_produced" | sed 's/^/       /' >&2
+    echo "     A baseline nobody prunes stops meaning anything." >&2
+    fail=1
+fi
+
+if [ "$fail" -ne 0 ]; then
+    exit 1
+fi
+
+classified="$(printf '%s\n' "$found" | grep -c . || true)"
+echo "  ok all $n DiagnosticCategory variant(s) are named by non-test code outside $HIR ($classified reachable only via the healer's classifier, baselined)."
