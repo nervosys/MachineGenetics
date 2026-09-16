@@ -7,7 +7,7 @@ text. It is the leverage the text-token floor denies the language track (see
 [IDEAL_AGENTIC_LANGUAGE.md](IDEAL_AGENTIC_LANGUAGE.md) for that analysis).
 
 > **Scope.** Everything below is implemented and test-covered in `prototype/`
-> (**1,276 tests** green) and scored in the sibling `agentic-eval` crate (80
+> (**1,278 tests** green) and scored in the sibling `agentic-eval` crate (80
 > tests, in the AetherShell repository and not verifiable from here). The one
 > deliberate non-feature is agent/swarm *execution* — see
 > [Honest boundaries](#honest-boundaries).
@@ -182,7 +182,7 @@ are **five independent Cargo workspaces**:
 | Path | Crate | Tests | Notes |
 |---|---|--:|---|
 | `RecursiveMachineIntelligence/` | `rmi` | 1,384 | The low-level neurosymbolic framework. Feature-gated (`cpu` / `gpu` / `cuda`); build with `--no-default-features --features cpu` for the portable set |
-| `prototype/` | `mage-prototype` | 1,276 | Compiler, evaluator, ABL, RAP server. Path-depends on `rmi` |
+| `prototype/` | `mage-prototype` | 1,278 | Compiler, evaluator, ABL, RAP server. Path-depends on `rmi` |
 | `ribosome/` | `ribosome` | 168 | The distributed build engine. Depends on nothing in this repository — see below |
 | `germline/` | `germline` | 130 | Model succession, handoff, fallback — the RSI control plane. Path-depends on `ribosome` |
 | `forge/` | `forge` | 60 | The package registry, and only that |
@@ -439,11 +439,25 @@ set. The committed `skb/` tree is a projection of the floor and its manifest
 says so; if it tracked the active policy, `check-skb-tree.sh` would be testing
 whether `$MAGE_SKB_OVERLAY` happened to be set in CI's shell.
 
-What is *not* yet done: the overlay is loaded at startup and every rule query in
-the process answers from it, but no CLI flag surfaces the rule set, and changes
-to it do not yet pass through `Episode::adjudicate` — so this is policy as data,
-not yet policy as a gated succession. The remaining six surfaces in the table
-above are untouched.
+### A policy has a name
+
+`RuleSet::digest()` is SHA-256 over the rules in force, and the startup line
+reports it. It hashes the **merged set**, not the overlay files: what a run
+needs to be able to state afterwards is which policy it enforced, and that is
+the rules, not the spelling of the directory that produced them. Two overlays
+that differ in filenames, formatting or how rules are split across files are the
+same policy and hash the same; moving one severity does not. The builtins have a
+digest too, so "which rules ran" has an answer on every run rather than only on
+configured ones.
+
+That is the fourth of the four properties above — attributable — and it is what
+makes the third worth having. A gate can only adjudicate a policy change if the
+policy before and after have names.
+
+What is *not* yet done: no CLI flag surfaces the rule set, and changes to it do
+not pass through `Episode::adjudicate`, so this is policy as named data rather
+than policy as a gated succession. The remaining six surfaces in the table above
+are untouched.
 
 ## 8. Why this is the agentic frontier
 

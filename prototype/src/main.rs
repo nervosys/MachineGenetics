@@ -97,9 +97,13 @@ fn main() {
             if let mage_prototype::skb::PolicySource::Overlay { dir, added, strengthened } =
                 set.source()
             {
+                // The digest names the rules in force, so a run that behaved
+                // oddly can be matched to the policy it was enforcing rather
+                // than to a directory whose contents have since moved.
                 eprintln!(
-                    "mage: SKB overlay {} — {added} rule(s) added, {strengthened} strengthened",
-                    dir.display()
+                    "mage: SKB overlay {} — {added} rule(s) added, {strengthened} strengthened, policy {}",
+                    dir.display(),
+                    &set.digest()[..12]
                 );
             }
             mage_prototype::skb::install(set);

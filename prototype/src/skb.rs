@@ -3102,17 +3102,59 @@ impl RuleSeverity {
     }
 }
 
-/// The rules in force, and where they came from.
+/// The rules in force, where they came from, and which policy they are.
 #[derive(Debug, Clone)]
 pub struct RuleSet {
     rules: Vec<Rule>,
     source: PolicySource,
+    digest: String,
+}
+
+/// SHA-256 over the rules in force, lowercase hex.
+///
+/// **Over the merged set, not the overlay files.** What a run needs to be able
+/// to state afterwards is which policy was enforced, and that is the rules —
+/// not the spelling of the directory that produced them. Two overlays that
+/// differ in whitespace, filenames or how the rules are split across files are
+/// the same policy and hash the same; one that moves a single severity does
+/// not. The builtins have a digest too, so the question "which rules ran" has
+/// an answer on every run rather than only on configured ones.
+fn digest_of(rules: &[Rule]) -> String {
+    use sha2::{Digest, Sha256};
+    let mut h = Sha256::new();
+    // Field-by-field rather than via serde, so a derive attribute changing the
+    // JSON spelling cannot silently renumber every policy in the journal.
+    for r in rules {
+        h.update(r.id.as_bytes());
+        h.update([0]);
+        h.update(format!("{:?}", r.database).as_bytes());
+        h.update([0]);
+        h.update(format!("{:?}", r.severity).as_bytes());
+        h.update([0]);
+        h.update(r.category.as_bytes());
+        h.update([0]);
+        h.update(r.description.as_bytes());
+        h.update([0]);
+        h.update(r.rationale.as_bytes());
+        h.update([0]);
+        h.update(r.fix_template.as_deref().unwrap_or("").as_bytes());
+        h.update([0]);
+        h.update(r.fix_confidence.to_bits().to_le_bytes());
+        for t in &r.tags {
+            h.update(t.as_bytes());
+            h.update([0]);
+        }
+        h.update([1]);
+    }
+    format!("{:x}", h.finalize())
 }
 
 impl RuleSet {
     /// The compiled-in rules.
     pub fn builtin() -> Self {
-        RuleSet { rules: builtin_rules(), source: PolicySource::Builtin }
+        let rules = builtin_rules();
+        let digest = digest_of(&rules);
+        RuleSet { rules, source: PolicySource::Builtin, digest }
     }
 
     pub fn rules(&self) -> &[Rule] {
@@ -3121,6 +3163,11 @@ impl RuleSet {
 
     pub fn source(&self) -> &PolicySource {
         &self.source
+    }
+
+    /// SHA-256 of the rules in force — the name of this policy.
+    pub fn digest(&self) -> &str {
+        &self.digest
     }
 
     /// Load the builtin rules with an overlay applied from `dir`.
@@ -3209,9 +3256,11 @@ impl RuleSet {
             }
         }
 
+        let digest = digest_of(&rules);
         Ok(RuleSet {
             rules,
             source: PolicySource::Overlay { dir: dir.to_path_buf(), added, strengthened },
+            digest,
         })
     }
 
@@ -4073,6 +4122,64 @@ mod tests {
         assert_eq!(n, builtin_rules().len(), "the tree is the floor, not the policy");
         let _ = std::fs::remove_dir_all(&dir);
         let _ = std::fs::remove_dir_all(&out);
+    }
+
+    #[test]
+    fn the_same_policy_has_the_same_name_however_it_was_spelled() {
+        // The digest names the rules in force, not the directory that produced
+        // them. Splitting one overlay file into two, or reformatting it, is the
+        // same policy and must not read as a different one in a journal.
+        let one = overlay_dir("spell-1");
+        write_overlay(
+            &one,
+            "all.json",
+            &[
+                overlay_rule("XTR-1001", RuleDatabase::Ownership, RuleSeverity::Error),
+                overlay_rule("XTR-1002", RuleDatabase::Borrow, RuleSeverity::Error),
+            ],
+        );
+        let two = overlay_dir("spell-2");
+        write_overlay(
+            &two,
+            "a.json",
+            &[overlay_rule("XTR-1001", RuleDatabase::Ownership, RuleSeverity::Error)],
+        );
+        write_overlay(
+            &two,
+            "b.json",
+            &[overlay_rule("XTR-1002", RuleDatabase::Borrow, RuleSeverity::Error)],
+        );
+
+        let a = RuleSet::load(&one).expect("loads");
+        let b = RuleSet::load(&two).expect("loads");
+        assert_eq!(a.digest(), b.digest(), "same rules, same policy");
+        assert_ne!(a.digest(), RuleSet::builtin().digest(), "but not the floor");
+        let _ = std::fs::remove_dir_all(&one);
+        let _ = std::fs::remove_dir_all(&two);
+    }
+
+    #[test]
+    fn moving_one_severity_changes_the_policy_name() {
+        // The other half: a digest that did not move when the rules did would
+        // make attribution worthless precisely when it matters.
+        let target = builtin_rules()
+            .into_iter()
+            .find(|r| r.severity != RuleSeverity::Error)
+            .expect("some rule is below Error");
+        let dir = overlay_dir("rename");
+        write_overlay(
+            &dir,
+            "strict.json",
+            &[overlay_rule(&target.id, target.database, RuleSeverity::Error)],
+        );
+        let set = RuleSet::load(&dir).expect("strengthening is allowed");
+        assert_eq!(set.rules().len(), builtin_rules().len(), "no rule added");
+        assert_ne!(
+            set.digest(),
+            RuleSet::builtin().digest(),
+            "one severity moved, so this is a different policy"
+        );
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
