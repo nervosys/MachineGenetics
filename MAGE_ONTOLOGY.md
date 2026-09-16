@@ -1047,7 +1047,27 @@ CostEstimate { construct, target, opt_level: OptLevel, cycles, memory_bytes, all
 OptLevel: Debug | Release | ReleaseLto
 ```
 
-The cost oracle provides per-construct cost queries. Agents query before emitting code to choose optimal implementations. The `CalibrationSuite` validates estimates against measured values.
+The cost oracle provides per-construct cost queries. Agents query before emitting code to choose optimal implementations.
+
+`CostEstimate` carries `is_exact` and `confidence`, and **both are asserted by
+whoever wrote the entry**. `builtin_costs()` is a table of literals whose own
+doc comment says "a real implementation would compute from MLIR cost models",
+so an agent reading `is_exact: true` is reading a claim, not a measurement.
+
+This paragraph previously said the `CalibrationSuite` "validates estimates
+against measured values". It does not, on either count. The samples come from
+`load_standard_benchmarks`, whose `measured_cycles` are literals in the source
+under a comment reading *"Simulated measured costs … In a real implementation,
+these come from hardware profiling data"* — so the suite compares one table of
+guesses against another and grades the agreement. And nothing calls it:
+`load_standard_benchmarks` and `CalibrationReport` have no callers outside
+`cost_calibration.rs`, so those grades are produced only by that module's own
+tests and reach no agent, no CLI flag and no report.
+
+The machinery is real and the arithmetic is right; what is missing is an input.
+It is the same gap `HANDOFF.md` records for the healer's fix confidences —
+numbers that are fine as priors and are not evidence — and it is worth stating
+here because the sentence it replaces claimed the opposite.
 
 #### 22.2 Token Budget
 
