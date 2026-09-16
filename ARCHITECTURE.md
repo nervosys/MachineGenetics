@@ -185,7 +185,7 @@ are **five independent Cargo workspaces**:
 | `prototype/` | `mage-prototype` | 1,268 | Compiler, evaluator, ABL, RAP server. Path-depends on `rmi` |
 | `ribosome/` | `ribosome` | 168 | The distributed build engine. Depends on nothing in this repository — see below |
 | `germline/` | `germline` | 112 | Model succession, handoff, fallback — the RSI control plane. Path-depends on `ribosome` |
-| `forge/` | `forge` | 53 | The package registry, and only that |
+| `forge/` | `forge` | 54 | The package registry, and only that |
 
 The dependency graph is a forest, not a web:
 
@@ -196,9 +196,12 @@ rmi ←── prototype          ribosome ←── germline          forge
 `forge`'s count is not a regression. `ribosome` and `germline` were developed
 inside it and moved out on 2026-08-04; **52** is what the registry alone was
 before they arrived, and this table said exactly that until they did. It reads
-53 now for an unrelated reason: 2026-08-18 added a test comparing `forge
+54 now for two unrelated reasons: 2026-08-18 added a test comparing `forge
 manifest` against the binary's dispatcher, which nothing had ever done, and
-removed one that checked three command names by hand.
+removed one that checked three command names by hand; 2026-09-15 added
+`a_block_that_does_not_hash_to_its_name_is_refused`, after `get_by_sha` was
+found serving a block whose bytes no longer matched the content address naming
+its file.
 
 A root workspace *did* exist, but it listed only `compiler/*` — the forked-rustc
 compiler — and was removed with it on 2026-06-11 (`b1b910f`). The surviving

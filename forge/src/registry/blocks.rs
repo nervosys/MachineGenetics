@@ -104,8 +104,36 @@ impl BlockStore {
     }
 
     /// Fetch a block's source by its exact content hash.
+    /// Fetch a block by content address, **verifying that it is one**.
+    ///
+    /// `block.rs` calls `sha256` "the content-address (integrity + dedup key)",
+    /// and the integrity half was not enforced: the hash named the file
+    /// (`blocks/<sha>.mg`) and nothing re-derived it on read, so a block whose
+    /// bytes had changed — a partial write, a bad sector, an edit under
+    /// `~/.forge/blocks/` — was served as the content that hashed to that name
+    /// and compiled into the project.
+    ///
+    /// `ribosome`'s content store already does this correctly and its caller
+    /// says why: *"Reading is what verifies: `Cas::get` rehashes."* Same store,
+    /// same property, same repository — this one just never re-derived it.
+    ///
+    /// Fails closed by returning `None`, which the resolver in `project.rs`
+    /// treats as an unresolved block, so a build fails rather than succeeding
+    /// on content nobody vouched for. The warning is there because a silent
+    /// `None` would present corruption as a missing block, and sending someone
+    /// to look for a file that is sitting right there is its own bug.
     pub fn get_by_sha(&self, sha: &str) -> Option<String> {
-        std::fs::read_to_string(self.block_path(sha)).ok()
+        let body = std::fs::read_to_string(self.block_path(sha)).ok()?;
+        let actual = sha256_hex(&body);
+        if actual != sha {
+            eprintln!(
+                "forge: block {} does not hash to its name (content hashes to {}) — refusing it",
+                &sha[..sha.len().min(12)],
+                &actual[..actual.len().min(12)]
+            );
+            return None;
+        }
+        Some(body)
     }
 
     /// Fetch the most-recently-published block with this name.
@@ -276,6 +304,44 @@ mod tests {
     }
 
     #[test]
+    /// A block whose bytes no longer hash to its name is refused.
+    ///
+    /// The store is content-addressed and said so — `block.rs` calls `sha256`
+    /// "the content-address (integrity + dedup key)" — but `get_by_sha` read
+    /// `blocks/<sha>.mg` and returned it without re-deriving the hash. The
+    /// address was a filename. Corruption or an edit under the registry was
+    /// served as the content that hashed to that name and compiled into the
+    /// project.
+    ///
+    /// Verified by doing it: publish, overwrite the stored file, read it back.
+    /// Before the fix this returned the tampered text; it now returns `None`,
+    /// and `project.rs` treats that as an unresolved block, so the build fails
+    /// instead of succeeding on content nobody vouched for.
+    #[test]
+    fn a_block_that_does_not_hash_to_its_name_is_refused() {
+        let store = temp_store("tampered");
+        let handles = store.publish_source(SRC).expect("published");
+        let sha = handles[0].sha256.clone();
+
+        // Intact: the store serves it.
+        assert!(store.get_by_sha(&sha).is_some(), "a freshly published block must read back");
+
+        // Tampered: same filename, different bytes.
+        let path = store.blocks_dir().join(format!("{sha}.mg"));
+        std::fs::write(&path, "block TransformerBlock(d, h, ff) {\n    layer evil: Exfiltrate;\n}\n")
+            .expect("overwrite");
+
+        assert!(
+            store.get_by_sha(&sha).is_none(),
+            "a block whose content no longer hashes to its name must not be served"
+        );
+        // And the name lookup, which goes through get_by_sha, must not launder it.
+        assert!(
+            store.get_by_name("TransformerBlock").is_none(),
+            "get_by_name must not return content get_by_sha refused"
+        );
+    }
+
     fn identical_block_is_deduplicated() {
         let store = temp_store("dedup");
         let h1 = store.publish_source(SRC).unwrap();

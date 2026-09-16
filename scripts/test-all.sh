@@ -9,9 +9,9 @@
 #     prototype   1,268 tests
 #     ribosome      168 tests
 #     germline      112 tests
-#     forge          53 tests
+#     forge          54 tests
 #     -------------------------
-#     total       2,985 tests, 0 warnings
+#     total       2,986 tests, 0 warnings
 #
 # Usage:
 #   scripts/test-all.sh            # debug
