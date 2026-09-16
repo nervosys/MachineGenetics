@@ -53,6 +53,74 @@ pub struct Architecture {
     pub residual: bool,
 }
 
+/// Resolves a gene to the source it stands for.
+///
+/// A genome carries genes by content hash and nothing else — `germline` holds
+/// heritable material and does not depend on `forge`, because resolving a
+/// sequence into something that runs is the expression machinery's job. This
+/// trait is that seam: the registry lives on the other side of it, and a test
+/// can put a stub there.
+pub trait GeneResolver {
+    /// The block source for this hash, or `None` if the registry lacks it.
+    fn resolve(&self, sha256: &str) -> Option<String>;
+}
+
+/// A resolver that knows nothing, for a run with no registry attached.
+///
+/// Not a convenience: a workload with no registry genuinely cannot express a
+/// genome that carries genes, and [`express`] refuses rather than pretending.
+#[derive(Debug, Default, Clone, Copy)]
+pub struct NoRegistry;
+
+impl GeneResolver for NoRegistry {
+    fn resolve(&self, _sha256: &str) -> Option<String> {
+        None
+    }
+}
+
+/// Express a genome as MAGE source: the genes it carries, then the net its
+/// scalars describe.
+///
+/// **Fails closed on an unresolved gene.** A genome naming a gene the registry
+/// does not have must not express as though the gene were absent: that would
+/// silently produce a *different organism* from the one the genome describes,
+/// and it would score as though it were the same one. The whole point of
+/// carrying genes by content hash is that the thing expressed is the thing
+/// inherited, and an expression step that quietly drops a locus breaks exactly
+/// that guarantee.
+///
+/// This is the same rule the rest of the repository keeps arriving at — an
+/// absence must not read as success — applied at the moment a genotype becomes
+/// a phenotype.
+pub fn express(
+    genome: &crate::variation::Genome,
+    resolver: &dyn GeneResolver,
+) -> Result<String, String> {
+    use crate::variation::Locus;
+
+    let mut blocks = String::new();
+    for locus in genome {
+        if let Locus::Gene { name, sha256, signature, .. } = locus {
+            match resolver.resolve(sha256) {
+                Some(src) => {
+                    blocks.push_str(src.trim_end());
+                    blocks.push_str("\n\n");
+                }
+                None => {
+                    return Err(format!(
+                        "gene `{name}` {} ({signature}) is not in the registry — \
+                         a genome cannot be expressed without the genes it names",
+                        &sha256[..sha256.len().min(12)]
+                    ))
+                }
+            }
+        }
+    }
+
+    let arch = Architecture::decode(&crate::variation::params_of(genome));
+    Ok(format!("{blocks}{}", arch.to_source()))
+}
+
 const MAX_DEPTH: usize = 16;
 
 impl Architecture {
@@ -223,6 +291,58 @@ impl Workload for BuildWorkload {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A registry stub: hash -> source.
+    struct Stub(std::collections::BTreeMap<String, String>);
+
+    impl GeneResolver for Stub {
+        fn resolve(&self, sha256: &str) -> Option<String> {
+            self.0.get(sha256).cloned()
+        }
+    }
+
+    fn gene(name: &str, sha: &str) -> crate::variation::Locus {
+        crate::variation::Locus::gene(name, sha, format!("{name}()"), vec![])
+    }
+
+    #[test]
+    fn expression_emits_the_genes_then_the_net() {
+        let mut m = std::collections::BTreeMap::new();
+        m.insert("sha-a".to_string(), "block Attn(d) { layer a: X; }".to_string());
+        let genome = vec![gene("Attn", "sha-a"), crate::variation::Locus::param(0.5)];
+
+        let src = express(&genome, &Stub(m)).expect("resolvable");
+        assert!(src.contains("block Attn(d)"), "the gene is in the phenotype: {src}");
+        assert!(src.contains("net Evolved"), "and so is the net: {src}");
+        assert!(
+            src.find("block Attn").unwrap() < src.find("net Evolved").unwrap(),
+            "definitions precede the net that uses them"
+        );
+    }
+
+    #[test]
+    fn an_unresolved_gene_refuses_rather_than_expressing_without_it() {
+        // The dangerous case: dropping the gene would still produce a valid
+        // `net`, which would build, score, and be a *different organism* from
+        // the one the genome describes — scored as though it were the same.
+        let genome = vec![gene("Missing", "sha-nope"), crate::variation::Locus::param(0.5)];
+        let err = express(&genome, &NoRegistry).expect_err("must not express");
+        assert!(err.contains("Missing"), "the error names the gene: {err}");
+        assert!(err.contains("not in the registry"), "and why: {err}");
+    }
+
+    #[test]
+    fn a_genome_of_scalars_expresses_without_a_registry() {
+        // Genes are optional. A scalar-only genome is what this crate has
+        // always evolved, and it must not now require a registry.
+        let genome = crate::variation::Genome::from(vec![
+            crate::variation::Locus::param(0.5),
+            crate::variation::Locus::param(0.5),
+            crate::variation::Locus::param(1.0),
+        ]);
+        let src = express(&genome, &NoRegistry).expect("scalars need no registry");
+        assert!(src.starts_with("net Evolved"), "no stray blocks: {src}");
+    }
 
     /// A genome of plain scalars, which is what these tests vary.
     fn g(vs: &[f64]) -> crate::variation::Genome {

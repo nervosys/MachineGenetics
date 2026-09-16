@@ -4,8 +4,8 @@
 > Each step is a concrete, testable increment.
 >
 > **Last verified: 2026-09-15** — all five crates built and tested: prototype
-> **1,268**, rmi **1,384**, ribosome **168**, germline **117**, forge **54** —
-> **2,991 tests, 0 failures, 0 warnings**. The crate count went from three to
+> **1,268**, rmi **1,384**, ribosome **168**, germline **120**, forge **54** —
+> **2,994 tests, 0 failures, 0 warnings**. The crate count went from three to
 > five when the build engine (step 148) and the RSI control plane (step 149)
 > were extracted from `forge`; the total is unchanged by those moves, and
 > `forge`'s 54 is what the registry alone measured before they were parked in
@@ -257,12 +257,12 @@
 
 | Step | Title | Status | Description |
 | ---- | ----- | ------ | ----------- |
-| 117 | `stack N { … }` repeat combinator | ✅ | O(1) surface cost in depth |
+| 120 | `stack N { … }` repeat combinator | ✅ | O(1) surface cost in depth |
 | 113 | Named `block` macros | ✅ | The leaf-library tier, registry-ready |
 | 114 | `residual` / `branch` / `wrap` | ✅ | Dataflow composition operators; blocks can hold combinators |
 | 115 | REPEAT-folded binary | ✅ | Stacked nets are O(1) in depth **in bytes too** |
 | 116 | CPU execution of RES_ADD / PAR | ✅ | The operators lower to RMIL primitives and actually run |
-| 117 | Typed-composition gate | ✅ | `--check` rejects shape-mismatched net compositions |
+| 120 | Typed-composition gate | ✅ | `--check` rejects shape-mismatched net compositions |
 | 118 | Capstone benchmark | ✅ | A real residual GPT (Embedding → batched 3-D attention → …) runs end to end |
 
 ## Phase O: Release (Steps 119–122)
