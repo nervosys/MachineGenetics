@@ -81,6 +81,35 @@ fn write_formatted(text: &str, out_path: Option<&str>) {
 }
 
 fn main() {
+    // Policy first, before anything consults it.
+    //
+    // $MAGE_SKB_OVERLAY may add safety rules or raise their severity; it can
+    // never lower one, because the merge starts from the compiled-in rules and
+    // removal is not something the format expresses. That is what makes an
+    // unset variable safe to accept — the builtins are a floor, not a default.
+    //
+    // An overlay that exists and cannot be honoured halts here instead. Falling
+    // back to the floor would mean corrupting or truncating a policy file
+    // silently changes which rules are enforced, and a policy change that
+    // disappears quietly is worse than one that never happened.
+    match mage_prototype::skb::RuleSet::from_env() {
+        Ok(set) => {
+            if let mage_prototype::skb::PolicySource::Overlay { dir, added, strengthened } =
+                set.source()
+            {
+                eprintln!(
+                    "mage: SKB overlay {} — {added} rule(s) added, {strengthened} strengthened",
+                    dir.display()
+                );
+            }
+            mage_prototype::skb::install(set);
+        }
+        Err(e) => {
+            eprintln!("mage: {e}");
+            std::process::exit(1);
+        }
+    }
+
     let args: Vec<String> = std::env::args().collect();
     let no_elision = args.iter().any(|a| a == "--no-elision");
     let syntax_legacy = args.iter().any(|a| a == "--syntax=legacy");

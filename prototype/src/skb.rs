@@ -3030,6 +3030,223 @@ fn swarm_safety_rules() -> Vec<Rule> {
 //  Rule Query API
 // ══════════════════════════════════════════════════════════════════════
 
+// ══════════════════════════════════════════════════════════════════════
+//  The SKB as loaded policy (ARCHITECTURE.md, "The improvable surface")
+// ══════════════════════════════════════════════════════════════════════
+
+/// Where the active rule set came from.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PolicySource {
+    /// `builtin_rules()` alone — no overlay directory exists.
+    Builtin,
+    /// `builtin_rules()` plus an overlay, which may only have made it stricter.
+    Overlay {
+        dir: std::path::PathBuf,
+        /// Rules the overlay introduced that no builtin id covers.
+        added: usize,
+        /// Builtin rules the overlay raised the severity of.
+        strengthened: usize,
+    },
+}
+
+/// Why an overlay was refused.
+///
+/// Every variant halts. None of them falls back to the builtin set, and the
+/// distinction from an *absent* overlay is the whole point: absence means
+/// nobody has written a policy, while any of these means someone did and it
+/// cannot be honoured. Treating the second as the first would let deleting or
+/// corrupting a policy file silently change which rules are enforced, which is
+/// the same failure as an unchecked gene reading as a pure one.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PolicyError {
+    /// The overlay directory or a file in it could not be read.
+    Unreadable { path: String, why: String },
+    /// A file was read and is not a rule array.
+    Malformed { path: String, why: String },
+    /// Two overlay rules claim the same id, so neither can be said to apply.
+    DuplicateId { id: String, path: String },
+    /// An overlay rule would make a builtin rule *less* severe.
+    Weakened { id: String, from: RuleSeverity, to: RuleSeverity },
+}
+
+impl std::fmt::Display for PolicyError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PolicyError::Unreadable { path, why } => {
+                write!(f, "SKB overlay {path} could not be read: {why}")
+            }
+            PolicyError::Malformed { path, why } => {
+                write!(f, "SKB overlay {path} is not a rule array: {why}")
+            }
+            PolicyError::DuplicateId { id, path } => {
+                write!(f, "SKB overlay {path} declares rule {id} twice")
+            }
+            PolicyError::Weakened { id, from, to } => write!(
+                f,
+                "SKB overlay would lower {id} from {from:?} to {to:?}; \
+                 the builtin rules are a floor, not a default"
+            ),
+        }
+    }
+}
+
+impl RuleSeverity {
+    /// Lower is stricter. `Error` < `Warning` < `Info` < `Hint`.
+    fn strictness(self) -> u8 {
+        match self {
+            RuleSeverity::Error => 0,
+            RuleSeverity::Warning => 1,
+            RuleSeverity::Info => 2,
+            RuleSeverity::Hint => 3,
+        }
+    }
+}
+
+/// The rules in force, and where they came from.
+#[derive(Debug, Clone)]
+pub struct RuleSet {
+    rules: Vec<Rule>,
+    source: PolicySource,
+}
+
+impl RuleSet {
+    /// The compiled-in rules.
+    pub fn builtin() -> Self {
+        RuleSet { rules: builtin_rules(), source: PolicySource::Builtin }
+    }
+
+    pub fn rules(&self) -> &[Rule] {
+        &self.rules
+    }
+
+    pub fn source(&self) -> &PolicySource {
+        &self.source
+    }
+
+    /// Load the builtin rules with an overlay applied from `dir`.
+    ///
+    /// **The builtin rules are a floor, not a default.** The merge starts from
+    /// them and an overlay may only add an id or raise a severity, so removing
+    /// a rule is not something the format can express — the guarantee is
+    /// structural rather than checked, which is the difference between a
+    /// property and a test of one. That is what makes an absent overlay safe
+    /// to accept: falling back to the builtins cannot be a downgrade, because
+    /// no reachable policy is weaker than they are.
+    ///
+    /// A missing directory is therefore `Ok` and yields [`PolicySource::Builtin`].
+    /// A directory that exists and cannot be honoured is an error, and the
+    /// caller must halt rather than proceeding on the floor: something was
+    /// written, and running as though it had not been is how a policy change
+    /// disappears silently.
+    pub fn load(dir: &std::path::Path) -> Result<Self, PolicyError> {
+        if !dir.exists() {
+            return Ok(RuleSet::builtin());
+        }
+        let entries = std::fs::read_dir(dir).map_err(|e| PolicyError::Unreadable {
+            path: dir.display().to_string(),
+            why: e.to_string(),
+        })?;
+        let mut files: Vec<std::path::PathBuf> = Vec::new();
+        for e in entries {
+            let e = e.map_err(|e| PolicyError::Unreadable {
+                path: dir.display().to_string(),
+                why: e.to_string(),
+            })?;
+            let p = e.path();
+            if p.extension().and_then(|x| x.to_str()) == Some("json") {
+                files.push(p);
+            }
+        }
+        // Read in a fixed order, so the same directory always produces the same
+        // rule set and any error it reports is the same error.
+        files.sort();
+
+        let mut rules = builtin_rules();
+        let mut index: std::collections::HashMap<String, usize> =
+            rules.iter().enumerate().map(|(i, r)| (r.id.clone(), i)).collect();
+        let mut seen_in_overlay: std::collections::HashSet<String> = Default::default();
+        let mut added = 0usize;
+        let mut strengthened = 0usize;
+
+        for path in &files {
+            let text = std::fs::read_to_string(path).map_err(|e| PolicyError::Unreadable {
+                path: path.display().to_string(),
+                why: e.to_string(),
+            })?;
+            let parsed: Vec<Rule> =
+                serde_json::from_str(&text).map_err(|e| PolicyError::Malformed {
+                    path: path.display().to_string(),
+                    why: e.to_string(),
+                })?;
+            for r in parsed {
+                if !seen_in_overlay.insert(r.id.clone()) {
+                    return Err(PolicyError::DuplicateId {
+                        id: r.id,
+                        path: dir.display().to_string(),
+                    });
+                }
+                match index.get(&r.id) {
+                    Some(&i) => {
+                        let from = rules[i].severity;
+                        if r.severity.strictness() > from.strictness() {
+                            return Err(PolicyError::Weakened {
+                                id: r.id,
+                                from,
+                                to: r.severity,
+                            });
+                        }
+                        if r.severity.strictness() < from.strictness() {
+                            strengthened += 1;
+                        }
+                        rules[i] = r;
+                    }
+                    None => {
+                        index.insert(r.id.clone(), rules.len());
+                        rules.push(r);
+                        added += 1;
+                    }
+                }
+            }
+        }
+
+        Ok(RuleSet {
+            rules,
+            source: PolicySource::Overlay { dir: dir.to_path_buf(), added, strengthened },
+        })
+    }
+
+    /// Load from `$MAGE_SKB_OVERLAY`, or the builtins if it is unset.
+    pub fn from_env() -> Result<Self, PolicyError> {
+        match std::env::var_os("MAGE_SKB_OVERLAY") {
+            Some(dir) => RuleSet::load(std::path::Path::new(&dir)),
+            None => Ok(RuleSet::builtin()),
+        }
+    }
+}
+
+static ACTIVE: std::sync::OnceLock<Vec<Rule>> = std::sync::OnceLock::new();
+
+/// Install `set` as the rules every query in this module answers from.
+///
+/// Returns `false` if a set was already installed, in which case nothing
+/// changes — the policy in force must not shift underneath a run that has
+/// already consulted it.
+pub fn install(set: RuleSet) -> bool {
+    ACTIVE.set(set.rules).is_ok()
+}
+
+/// The rules in force: whatever was installed, else the compiled-in floor.
+///
+/// Nothing installed means nothing tried to, which is the state of every test
+/// and every embedding that does not opt in. It is not the state of a failed
+/// load, because [`RuleSet::load`] returns an error there and the caller halts.
+fn active_rules() -> Vec<Rule> {
+    match ACTIVE.get() {
+        Some(rules) => rules.clone(),
+        None => builtin_rules(),
+    }
+}
+
 /// Result of a rule query.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RuleQueryResult {
@@ -3039,37 +3256,37 @@ pub struct RuleQueryResult {
 
 /// Query rules by database.
 pub fn query_rules_by_db(db: RuleDatabase) -> RuleQueryResult {
-    let matches: Vec<_> = builtin_rules().into_iter().filter(|r| r.database == db).collect();
+    let matches: Vec<_> = active_rules().into_iter().filter(|r| r.database == db).collect();
     RuleQueryResult { query_text: format!("database = {:?}", db), matches }
 }
 
 /// Query rules by category (exact match).
 pub fn query_rules_by_category(category: &str) -> RuleQueryResult {
-    let matches: Vec<_> = builtin_rules().into_iter().filter(|r| r.category == category).collect();
+    let matches: Vec<_> = active_rules().into_iter().filter(|r| r.category == category).collect();
     RuleQueryResult { query_text: format!("category = {category}"), matches }
 }
 
 /// Query rules by tag.
 pub fn query_rules_by_tag(tag: &str) -> RuleQueryResult {
     let matches: Vec<_> =
-        builtin_rules().into_iter().filter(|r| r.tags.iter().any(|t| t == tag)).collect();
+        active_rules().into_iter().filter(|r| r.tags.iter().any(|t| t == tag)).collect();
     RuleQueryResult { query_text: format!("rule tag = {tag}"), matches }
 }
 
 /// Query a rule by its ID (e.g. "OWN-0001").
 pub fn query_rule_by_id(id: &str) -> Option<Rule> {
-    builtin_rules().into_iter().find(|r| r.id == id)
+    active_rules().into_iter().find(|r| r.id == id)
 }
 
 /// Query rules by severity.
 pub fn query_rules_by_severity(sev: RuleSeverity) -> RuleQueryResult {
-    let matches: Vec<_> = builtin_rules().into_iter().filter(|r| r.severity == sev).collect();
+    let matches: Vec<_> = active_rules().into_iter().filter(|r| r.severity == sev).collect();
     RuleQueryResult { query_text: format!("severity = {:?}", sev), matches }
 }
 
 /// Count total rules in the SKB.
 pub fn rule_count() -> usize {
-    builtin_rules().len()
+    active_rules().len()
 }
 
 /// Count rules per database.
@@ -3117,7 +3334,14 @@ pub fn emit_tree(dir: &std::path::Path) -> std::io::Result<usize> {
     let mut databases = serde_json::Map::new();
     for (db, _) in rule_counts_by_db() {
         let stem = database_file_stem(db);
-        let matches = query_rules_by_db(db).matches;
+        // `builtin_rules()`, not the installed set. This tree is a projection
+        // of the compiled-in floor — its manifest says so — and
+        // `check-skb-tree.sh` regenerates it and fails on any difference. If
+        // it emitted the active rules, the committed tree would depend on
+        // whether \ happened to be set in the shell that ran
+        // CI, and the checker would be testing the environment.
+        let matches: Vec<Rule> =
+            builtin_rules().into_iter().filter(|r| r.database == db).collect();
         total += matches.len();
         databases.insert(
             stem.to_string(),
@@ -3673,5 +3897,190 @@ mod tests {
         let json = serde_json::to_string(&rule).unwrap();
         assert!(json.contains("BOR-0001"));
         assert!(json.contains("double-mutable-borrow"));
+    }
+
+    // ── The SKB as loaded policy ──────────────────────────────────────
+
+    fn overlay_dir(tag: &str) -> std::path::PathBuf {
+        static NEXT: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+        let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let p = std::env::temp_dir()
+            .join(format!("mage-skb-overlay-{tag}-{}-{n}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&p);
+        std::fs::create_dir_all(&p).unwrap();
+        p
+    }
+
+    /// A rule as an overlay would write it.
+    fn overlay_rule(id: &str, db: RuleDatabase, sev: RuleSeverity) -> serde_json::Value {
+        serde_json::json!({
+            "id": id,
+            "database": db,
+            "severity": sev,
+            "category": "test",
+            "description": "d",
+            "rationale": "r",
+            "fix_template": null,
+            "fix_confidence": 0.0,
+            "tags": ["test"],
+        })
+    }
+
+    fn write_overlay(dir: &std::path::Path, name: &str, rules: &[serde_json::Value]) {
+        std::fs::write(
+            dir.join(name),
+            serde_json::to_string_pretty(&rules).unwrap(),
+        )
+        .unwrap();
+    }
+
+    /// A one-line description of a load outcome.
+    ///
+    /// `{other:?}` on a `Result<RuleSet, _>` prints all 255 rules, which buries
+    /// the assertion that failed under the corpus it was checking.
+    fn outcome(r: &Result<RuleSet, PolicyError>) -> String {
+        match r {
+            Ok(set) => format!("Ok({:?}, {} rules)", set.source(), set.rules().len()),
+            Err(e) => format!("Err({e})"),
+        }
+    }
+
+    #[test]
+    fn an_absent_overlay_is_the_builtin_floor() {
+        // Absence is safe *because* removal is unrepresentable: no policy the
+        // format can express is weaker than the builtins, so falling back to
+        // them cannot be a downgrade.
+        let missing = std::env::temp_dir().join("mage-skb-overlay-does-not-exist");
+        let _ = std::fs::remove_dir_all(&missing);
+        let set = RuleSet::load(&missing).expect("a missing overlay is not an error");
+        assert_eq!(*set.source(), PolicySource::Builtin);
+        assert_eq!(set.rules().len(), builtin_rules().len());
+    }
+
+    #[test]
+    fn an_overlay_may_add_a_rule() {
+        let dir = overlay_dir("add");
+        write_overlay(
+            &dir,
+            "extra.json",
+            &[overlay_rule("XTR-0001", RuleDatabase::Ownership, RuleSeverity::Error)],
+        );
+        let set = RuleSet::load(&dir).expect("adding is allowed");
+        assert_eq!(
+            *set.source(),
+            PolicySource::Overlay { dir: dir.clone(), added: 1, strengthened: 0 }
+        );
+        assert_eq!(set.rules().len(), builtin_rules().len() + 1);
+        assert!(set.rules().iter().any(|r| r.id == "XTR-0001"));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn an_overlay_may_make_a_builtin_rule_stricter() {
+        // Find a builtin rule that is not already at the strictest severity.
+        let target = builtin_rules()
+            .into_iter()
+            .find(|r| r.severity != RuleSeverity::Error)
+            .expect("some rule is below Error");
+        let dir = overlay_dir("strengthen");
+        write_overlay(
+            &dir,
+            "strict.json",
+            &[overlay_rule(&target.id, target.database, RuleSeverity::Error)],
+        );
+        let set = RuleSet::load(&dir).expect("raising severity is allowed");
+        assert_eq!(
+            *set.source(),
+            PolicySource::Overlay { dir: dir.clone(), added: 0, strengthened: 1 }
+        );
+        assert_eq!(set.rules().len(), builtin_rules().len(), "replaced, not appended");
+        let now = set.rules().iter().find(|r| r.id == target.id).unwrap();
+        assert_eq!(now.severity, RuleSeverity::Error);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn an_overlay_may_not_weaken_a_builtin_rule() {
+        // The property the whole design exists for. Without it, the overlay is
+        // a way to turn safety rules off, and "policy is data the loop can
+        // change" means the loop can change what counts as unsafe.
+        let target = builtin_rules()
+            .into_iter()
+            .find(|r| r.severity == RuleSeverity::Error)
+            .expect("some rule is an Error");
+        let dir = overlay_dir("weaken");
+        write_overlay(
+            &dir,
+            "lax.json",
+            &[overlay_rule(&target.id, target.database, RuleSeverity::Hint)],
+        );
+        match RuleSet::load(&dir) {
+            Err(PolicyError::Weakened { id, from, to }) => {
+                assert_eq!(id, target.id);
+                assert_eq!(from, RuleSeverity::Error);
+                assert_eq!(to, RuleSeverity::Hint);
+            }
+            other => panic!("a weakening overlay must be refused, got {}", outcome(&other)),
+        }
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_corrupt_overlay_halts_rather_than_falling_back() {
+        // An overlay that exists and cannot be parsed is not the same fact as
+        // no overlay. Reading it as absence would mean corrupting a policy file
+        // silently restores different rules — an absence claim that cannot fail
+        // loudly, one level up from `get_by_sha`.
+        let dir = overlay_dir("corrupt");
+        std::fs::write(dir.join("broken.json"), "{ not a rule array").unwrap();
+        match RuleSet::load(&dir) {
+            Err(PolicyError::Malformed { path, .. }) => {
+                assert!(path.contains("broken.json"), "{path}");
+            }
+            other => panic!("a corrupt overlay must halt, got {}", outcome(&other)),
+        }
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn an_overlay_may_not_declare_the_same_rule_twice() {
+        let dir = overlay_dir("dup");
+        write_overlay(
+            &dir,
+            "a.json",
+            &[overlay_rule("XTR-0002", RuleDatabase::Borrow, RuleSeverity::Error)],
+        );
+        write_overlay(
+            &dir,
+            "b.json",
+            &[overlay_rule("XTR-0002", RuleDatabase::Borrow, RuleSeverity::Warning)],
+        );
+        match RuleSet::load(&dir) {
+            Err(PolicyError::DuplicateId { id, .. }) => assert_eq!(id, "XTR-0002"),
+            other => panic!("two rules with one id cannot both apply, got {}", outcome(&other)),
+        }
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn the_emitted_tree_is_the_builtin_floor_whatever_is_installed() {
+        // `check-skb-tree.sh` regenerates this tree and fails on a difference.
+        // If it tracked the installed set, the checker would be testing whether
+        // $MAGE_SKB_OVERLAY happened to be set in CI's shell.
+        let dir = overlay_dir("emit");
+        let out = overlay_dir("emit-out");
+        let n = emit_tree(&out).expect("emitted");
+        assert_eq!(n, builtin_rules().len(), "the tree is the floor, not the policy");
+        let _ = std::fs::remove_dir_all(&dir);
+        let _ = std::fs::remove_dir_all(&out);
+    }
+
+    #[test]
+    fn severity_strictness_orders_the_way_the_floor_needs() {
+        // `load` compares severities numerically; if this order were wrong the
+        // weakening check would read backwards and admit exactly what it bars.
+        assert!(RuleSeverity::Error.strictness() < RuleSeverity::Warning.strictness());
+        assert!(RuleSeverity::Warning.strictness() < RuleSeverity::Info.strictness());
+        assert!(RuleSeverity::Info.strictness() < RuleSeverity::Hint.strictness());
     }
 }

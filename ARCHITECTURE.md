@@ -7,7 +7,7 @@ text. It is the leverage the text-token floor denies the language track (see
 [IDEAL_AGENTIC_LANGUAGE.md](IDEAL_AGENTIC_LANGUAGE.md) for that analysis).
 
 > **Scope.** Everything below is implemented and test-covered in `prototype/`
-> (**1,268 tests** green) and scored in the sibling `agentic-eval` crate (80
+> (**1,276 tests** green) and scored in the sibling `agentic-eval` crate (80
 > tests, in the AetherShell repository and not verifiable from here). The one
 > deliberate non-feature is agent/swarm *execution* — see
 > [Honest boundaries](#honest-boundaries).
@@ -182,7 +182,7 @@ are **five independent Cargo workspaces**:
 | Path | Crate | Tests | Notes |
 |---|---|--:|---|
 | `RecursiveMachineIntelligence/` | `rmi` | 1,384 | The low-level neurosymbolic framework. Feature-gated (`cpu` / `gpu` / `cuda`); build with `--no-default-features --features cpu` for the portable set |
-| `prototype/` | `mage-prototype` | 1,268 | Compiler, evaluator, ABL, RAP server. Path-depends on `rmi` |
+| `prototype/` | `mage-prototype` | 1,276 | Compiler, evaluator, ABL, RAP server. Path-depends on `rmi` |
 | `ribosome/` | `ribosome` | 168 | The distributed build engine. Depends on nothing in this repository — see below |
 | `germline/` | `germline` | 130 | Model succession, handoff, fallback — the RSI control plane. Path-depends on `ribosome` |
 | `forge/` | `forge` | 60 | The package registry, and only that |
@@ -365,11 +365,11 @@ the heritable material `germline`. What makes a loop recursive is not that the
 compiler is written in the language. It is that **the policy the compiler
 applies is data the loop can change.**
 
-Much of that policy is already data, and none of it is yet evolvable:
+Much of that policy is already data, and one surface is now loadable:
 
 | surface | size | governs | today |
 |---|---|---|---|
-| SKB safety rules | 255, 8 databases | what variation may legally produce | Rust `const` |
+| SKB safety rules | 255, 8 databases | what variation may legally produce | **loaded overlay over a Rust floor** |
 | heal patterns | 34 | what a broken candidate recovers to | Rust |
 | elision rules | — | the agent-mode surface itself | Rust |
 | cost model | `cost.rs` | which constructs search prefers | Rust |
@@ -400,12 +400,50 @@ machinery for each:
    "generation 47 was produced from 46 under seed 0x…" stays checkable.
 
 What is missing is not mechanism but *representation*: these surfaces are Rust
-literals rather than artifacts. The smallest real step is to move one of them —
-the SKB is the obvious candidate, since `skb/` is already a generated tree and
-`check-skb-tree.sh` already compares it against the compiler — from `const` to
-a loaded artifact, and let the gate govern changes to it. Nothing about that
-requires self-hosting, and it is the difference between a loop that improves
-what it writes and one that improves how it judges.
+literals rather than artifacts. The smallest real step was to move one of them,
+and the SKB was the obvious candidate — `skb/` is already a generated tree and
+`check-skb-tree.sh` already compares it against the compiler. That step is
+taken.
+
+### The builtin rules are a floor, not a default
+
+`$MAGE_SKB_OVERLAY` names a directory of rule arrays merged onto
+`builtin_rules()` at startup. The merge **starts from** the builtins and an
+overlay may only introduce a new id or raise a severity, so removing a rule is
+not something the format can express. The guarantee is structural rather than
+checked, which is the difference between a property and a test of one.
+
+That is what makes the fail-open/fail-closed question dissolve rather than get
+decided. The obvious framing is a dilemma — halting on an unreadable policy
+store stops the loop, while continuing evaporates the safety check exactly when
+something is wrong — and it is a dilemma only because it assumes the fallback
+might be weaker than what was lost. Under a floor it cannot be, so the two
+cases separate cleanly:
+
+| state | result | why |
+|---|---|---|
+| no overlay directory | the builtins | nobody wrote a policy, and no expressible policy is weaker |
+| overlay adds ids / raises severities | applied, reported on stderr | the loop improving how it judges |
+| overlay would lower a severity | **halt** | the floor is the point |
+| overlay unreadable, malformed, or self-contradictory | **halt** | something *was* written and cannot be honoured |
+
+The last row is the one worth stating separately. Reading a corrupt overlay as
+an absent one would mean truncating a policy file silently restores different
+rules — an absence claim that cannot fail loudly, the same shape as `get_by_sha`
+serving a block whose bytes no longer matched its name, and as an unchecked gene
+reading as a pure one. Three occurrences in one subsystem is a house style, not
+a coincidence.
+
+`--emit-skb` deliberately still emits the builtins rather than the installed
+set. The committed `skb/` tree is a projection of the floor and its manifest
+says so; if it tracked the active policy, `check-skb-tree.sh` would be testing
+whether `$MAGE_SKB_OVERLAY` happened to be set in CI's shell.
+
+What is *not* yet done: the overlay is loaded at startup and every rule query in
+the process answers from it, but no CLI flag surfaces the rule set, and changes
+to it do not yet pass through `Episode::adjudicate` — so this is policy as data,
+not yet policy as a gated succession. The remaining six surfaces in the table
+above are untouched.
 
 ## 8. Why this is the agentic frontier
 
