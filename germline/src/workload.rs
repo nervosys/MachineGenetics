@@ -158,6 +158,18 @@ impl Architecture {
 /// Architecture search driven by real builds.
 pub struct BuildWorkload {
     store: Store,
+    /// Resolves the genes a genome carries. [`NoRegistry`] by default, which
+    /// means a genome carrying genes cannot be materialized — correct for a
+    /// run with no registry attached, and it says so rather than dropping them.
+    resolver: Box<dyn GeneResolver>,
+    /// The source `materialize` actually built.
+    ///
+    /// `evaluate` re-builds, and it must re-build *the same thing*. Rebuilding
+    /// from the architecture alone would silently drop the genes — producing a
+    /// different artifact from the one that was materialized and scoring it as
+    /// though it were the same, which is the divergence this whole change
+    /// exists to prevent.
+    last_source: Option<String>,
     /// Fails materialization when set — used to exercise the runner's halt path.
     pub broken: bool,
     /// Makes champion observations fail — used to exercise demotion.
@@ -168,7 +180,20 @@ pub struct BuildWorkload {
 
 impl BuildWorkload {
     pub fn new(store: Store) -> Self {
-        BuildWorkload { store, broken: false, champion_fails: false, history: Vec::new() }
+        BuildWorkload {
+            store,
+            resolver: Box::new(NoRegistry),
+            last_source: None,
+            broken: false,
+            champion_fails: false,
+            history: Vec::new(),
+        }
+    }
+
+    /// Attach a registry, so genomes carrying genes can be expressed.
+    pub fn with_resolver(mut self, resolver: Box<dyn GeneResolver>) -> Self {
+        self.resolver = resolver;
+        self
     }
 
     pub fn store(&self) -> &Store {
@@ -197,7 +222,15 @@ impl BuildWorkload {
 
     /// Build one architecture, returning its report and artifact digest.
     fn build(&self, arch: &Architecture) -> Result<(ribosome::sched::BuildReport, Digest), String> {
-        let source = arch.to_source();
+        self.build_source(arch, &arch.to_source())
+    }
+
+    /// Build a specific source. `arch` still names the action and its cost.
+    fn build_source(
+        &self,
+        arch: &Architecture,
+        source: &str,
+    ) -> Result<(ribosome::sched::BuildReport, Digest), String> {
         let src_digest = self.store.cas.put(source.as_bytes()).map_err(|e| e.to_string())?;
 
         let mut graph = ActionGraph::new();
@@ -253,18 +286,24 @@ impl Workload for BuildWorkload {
         if self.broken {
             return Err("synthesis backend unavailable".into());
         }
+        // Express first: a genome naming a gene the registry lacks must fail
+        // here, before anything is built, rather than quietly building the
+        // organism that is left when the gene is dropped.
+        let source = express(&spec.genome, self.resolver.as_ref())?;
         let arch = Architecture::decode(&crate::variation::params_of(&spec.genome));
-        let (_, artifact) = self.build(&arch)?;
+        let (_, artifact) = self.build_source(&arch, &source)?;
         self.history.push(arch);
+        self.last_source = Some(source);
         Ok(artifact)
     }
 
     fn evaluate(&mut self, artifact: &Digest, _suite: &EvalSuite) -> Result<FitnessVector, String> {
         let arch = self.history.last().cloned().ok_or("nothing materialized yet")?;
+        let source = self.last_source.clone().ok_or("nothing materialized yet")?;
         if !self.store.cas.has(artifact) {
             return Err(format!("artifact {} is not in storage", artifact.short()));
         }
-        let (report, _) = self.build(&arch)?;
+        let (report, _) = self.build_source(&arch, &source)?;
         Ok(self.score(&arch, &report))
     }
 
@@ -359,6 +398,64 @@ mod tests {
         let _ = std::fs::remove_dir_all(&p);
         std::fs::create_dir_all(&p).unwrap();
         p
+    }
+
+    #[test]
+    fn a_resolved_gene_reaches_the_artifact_that_is_built() {
+        // The end of the path: a genome carrying a gene, through materialize,
+        // into the source the builder actually stored. Wiring that compiles
+        // but does not carry the gene through would pass every other test here.
+        let root = tmp("gene-expressed");
+        let mut m = std::collections::BTreeMap::new();
+        m.insert("sha-attn".to_string(), "block Attn(d) { layer a: X; }".to_string());
+        let mut w = BuildWorkload::new(Store::open(&root)).with_resolver(Box::new(Stub(m)));
+
+        let genome = vec![
+            crate::variation::Locus::gene("Attn", "sha-attn", "Attn(d)", vec![]),
+            crate::variation::Locus::param(0.5),
+            crate::variation::Locus::param(0.5),
+            crate::variation::Locus::param(1.0),
+        ];
+        let genome2 = genome.clone();
+        let artifact = w
+            .materialize(&CandidateSpec::new("withgene", genome))
+            .expect("a resolvable genome materializes");
+        assert!(w.materialized(&artifact));
+
+        // Assert on what reached the *store*, not on what the workload says it
+        // intended.
+        //
+        // The first version of this test checked `w.last_source`, which
+        // `materialize` sets from `express` whether or not that source is what
+        // gets built. Disconnecting the gene path — `build(&arch)` instead of
+        // `build_source(&arch, &source)` — left that field full of genes while
+        // the builder built the bare net, and the test passed. It asserted an
+        // intention.
+        //
+        // `build_source` puts the source it compiles into the CAS, which is
+        // content-addressed, so the digest of the expected source is present
+        // only if that exact text was the text built.
+        let mut m2 = std::collections::BTreeMap::new();
+        m2.insert("sha-attn".to_string(), "block Attn(d) { layer a: X; }".to_string());
+        let expected = express(&genome2, &Stub(m2)).expect("expressible");
+        assert!(expected.contains("block Attn(d)"), "fixture sanity: {expected}");
+        assert!(
+            w.store.cas.get(&Digest::of(expected.as_bytes())).is_ok(),
+            "the source built must be the source expressed, genes included"
+        );
+    }
+
+    #[test]
+    fn without_a_registry_a_gene_carrying_genome_does_not_materialize() {
+        let (mut w, _root) = workload("gene-unresolvable");
+        let genome = vec![
+            crate::variation::Locus::gene("Missing", "sha-nope", "Missing()", vec![]),
+            crate::variation::Locus::param(0.5),
+        ];
+        let err = w
+            .materialize(&CandidateSpec::new("nogene", genome))
+            .expect_err("no registry means the gene cannot be expressed");
+        assert!(err.contains("Missing"), "the failure names the gene: {err}");
     }
 
     fn workload(name: &str) -> (BuildWorkload, PathBuf) {
