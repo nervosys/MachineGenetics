@@ -49,7 +49,7 @@ use super::gate::Episode;
 use super::journal::{Entry, Journal};
 use super::lineage::Lineage;
 use super::supervisor::{FailureMode, HealthSample, SupervisionPolicy, Supervisor};
-use crate::variation::{propose, GenePool, Locus, Proposal, VariationPlan};
+use crate::variation::{propose, GenePool, Legality, Locus, Proposal, VariationPlan};
 use super::{EvalSuite, FitnessVector, Generation, GenerationId, Measurement};
 use ribosome::mac::absorb;
 use ribosome::Digest;
@@ -318,11 +318,24 @@ impl<'a> Runner<'a> {
                 } else {
                     let why: Vec<String> = refused
                         .iter()
-                        .map(|r| format!("{} acquired {}", r.id, r.acquired.join(", ")))
+                        .map(|r| match &r.because {
+                            Legality::Acquired { effects } => {
+                                format!("{} acquired {}", r.id, effects.join(", "))
+                            }
+                            Legality::Unknowable { genes } => format!(
+                                "{} carries unchecked gene(s) {}",
+                                r.id,
+                                genes.join(", ")
+                            ),
+                            Legality::Inherited => format!("{} (refused with no reason)", r.id),
+                        })
                         .collect();
+                    // The two reasons are different problems and want different
+                    // fixes. An escalation means the search found a capability;
+                    // an unchecked gene means the registry never recorded what a
+                    // block does, and no amount of further search will help.
                     format!(
-                        "variation produced {} candidate(s) and refused every one \
-                         for acquiring effects no parent declared: {}",
+                        "variation produced {} candidate(s) and refused every one: {}",
                         refused.len(),
                         why.join("; ")
                     )

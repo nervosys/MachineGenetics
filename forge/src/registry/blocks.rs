@@ -18,7 +18,7 @@
 //! itself is pure filesystem + hashing, so it is deterministic and unit-testable
 //! without a running server.
 
-use crate::models::BlockHandle;
+use crate::models::{BlockHandle, Effects};
 use std::path::PathBuf;
 
 /// A content-addressed store of published blocks, rooted at a shared directory.
@@ -69,10 +69,35 @@ impl BlockStore {
         std::fs::write(self.index_path(), json).map_err(|e| format!("writing index: {e}"))
     }
 
+    /// Publish every `block` definition found in `src`, **unchecked**.
+    ///
+    /// The store cannot typecheck what it stores, so every handle this produces
+    /// carries [`Effects::Unchecked`]. Use [`publish_source_with`] to publish
+    /// through an oracle that can.
+    ///
+    /// [`publish_source_with`]: BlockStore::publish_source_with
+    pub fn publish_source(&self, src: &str) -> Result<Vec<BlockHandle>, String> {
+        self.publish_source_with(src, &NoOracle)
+    }
+
     /// Publish every `block` definition found in `src`. Each is stored under its
     /// content hash (deduplicated) and indexed by name. Returns the handles in
     /// source order. Errors only on I/O or if `src` has no block definitions.
-    pub fn publish_source(&self, src: &str) -> Result<Vec<BlockHandle>, String> {
+    ///
+    /// `oracle` is asked what each block's source does. Whatever it reports is
+    /// recorded as [`Effects::Checked`]; declining leaves the block
+    /// [`Effects::Unchecked`], which consumers must not read as pure.
+    ///
+    /// Re-publishing identical bytes through an oracle **upgrades** an existing
+    /// unchecked entry, so a block published before anyone could check it does
+    /// not stay unusable forever. Two oracles reporting *different* effects for
+    /// the same content hash is a contradiction about fixed bytes rather than a
+    /// merge, and is an error.
+    pub fn publish_source_with(
+        &self,
+        src: &str,
+        oracle: &dyn EffectOracle,
+    ) -> Result<Vec<BlockHandle>, String> {
         let parsed = split_blocks(src);
         if parsed.is_empty() {
             return Err("no `block Name(...) { ... }` definitions found".into());
@@ -87,15 +112,37 @@ impl BlockStore {
             if !path.exists() {
                 std::fs::write(&path, &b.source).map_err(|e| format!("storing block: {e}"))?;
             }
+            let effects = match oracle.effects_of(&b.source) {
+                Some(declared) => Effects::Checked { declared },
+                None => Effects::Unchecked,
+            };
             let handle = BlockHandle {
                 name: b.name,
                 sha256: sha,
                 signature: b.signature,
+                effects,
             };
             // Dedup the index by content hash (re-publishing the same bytes is a
-            // no-op for the index, not a duplicate entry).
-            if !idx.iter().any(|h| h.sha256 == handle.sha256) {
-                idx.push(handle.clone());
+            // no-op for the index, not a duplicate entry) — except that a check
+            // is new information about those bytes, so it is recorded.
+            match idx.iter_mut().find(|h| h.sha256 == handle.sha256) {
+                None => idx.push(handle.clone()),
+                Some(existing) => match (&existing.effects, &handle.effects) {
+                    (Effects::Unchecked, Effects::Checked { .. }) => {
+                        existing.effects = handle.effects.clone();
+                    }
+                    (Effects::Checked { declared: a }, Effects::Checked { declared: b })
+                        if a != b =>
+                    {
+                        return Err(format!(
+                            "block {} was checked as {{{}}} and is now checked as {{{}}} —                              the same bytes cannot do two different things",
+                            &handle.sha256[..12],
+                            a.join(", "),
+                            b.join(", ")
+                        ));
+                    }
+                    _ => {}
+                },
             }
             published.push(handle);
         }
@@ -143,6 +190,33 @@ impl BlockStore {
             .rev()
             .find(|h| h.name == name)
             .and_then(|h| self.get_by_sha(&h.sha256))
+    }
+}
+
+/// Something that can say what a block's source does.
+///
+/// The mirror of `germline`'s `GeneResolver`, and separate for the same reason:
+/// `forge` hashes and stores bytes, and deciding what those bytes *do* is a
+/// front-end pass it does not contain. The compiler computes per-function
+/// effects already (`mage-parse --check` reports them); this is the seam that
+/// lets whoever holds a compiler put that answer into the registry, without the
+/// registry growing a dependency on one.
+pub trait EffectOracle {
+    /// The effects `block_source` performs, or `None` to decline.
+    ///
+    /// Declining is not "no effects" — it produces [`Effects::Unchecked`]. An
+    /// oracle that cannot analyse a block must return `None` rather than an
+    /// empty vector, which would be a purity claim it has not earned.
+    fn effects_of(&self, block_source: &str) -> Option<Vec<String>>;
+}
+
+/// The oracle that knows nothing, and says so. The default for [`BlockStore::publish_source`].
+#[derive(Debug, Default, Clone, Copy)]
+pub struct NoOracle;
+
+impl EffectOracle for NoOracle {
+    fn effects_of(&self, _: &str) -> Option<Vec<String>> {
+        None
     }
 }
 
@@ -303,7 +377,6 @@ mod tests {
         assert_eq!(by_name, by_sha);
     }
 
-    #[test]
     /// A block whose bytes no longer hash to its name is refused.
     ///
     /// The store is content-addressed and said so — `block.rs` calls `sha256`
@@ -342,6 +415,7 @@ mod tests {
         );
     }
 
+    #[test]
     fn identical_block_is_deduplicated() {
         let store = temp_store("dedup");
         let h1 = store.publish_source(SRC).unwrap();
@@ -372,5 +446,117 @@ mod tests {
     fn empty_source_is_an_error() {
         let store = temp_store("empty");
         assert!(store.publish_source("net N { layer a: Linear(2, 2); }").is_err());
+    }
+
+    /// An oracle that reports whatever the test wants, keyed by a substring of
+    /// the source. Standing in for the compiler, which is in another workspace.
+    struct Oracle(Vec<(&'static str, Vec<String>)>);
+
+    impl EffectOracle for Oracle {
+        fn effects_of(&self, src: &str) -> Option<Vec<String>> {
+            self.0
+                .iter()
+                .find(|(needle, _)| src.contains(needle))
+                .map(|(_, eff)| eff.clone())
+        }
+    }
+
+    #[test]
+    fn a_block_nobody_checked_is_unchecked_not_pure() {
+        let store = temp_store("unchecked");
+        let h = store.publish_source("block A(x) {
+    layer a: L;
+}
+").unwrap();
+        assert_eq!(h[0].effects, Effects::Unchecked);
+        // The distinction this type exists for: there is no effect list to read,
+        // as opposed to an empty one.
+        assert_eq!(h[0].effects.declared(), None);
+        assert_eq!(store.list()[0].effects, Effects::Unchecked);
+    }
+
+    #[test]
+    fn an_oracle_puts_effects_in_the_index() {
+        let store = temp_store("checked");
+        let oracle = Oracle(vec![("layer a: L", vec!["io".into()])]);
+        let h = store
+            .publish_source_with("block A(x) {
+    layer a: L;
+}
+", &oracle)
+            .unwrap();
+        assert_eq!(h[0].effects.declared(), Some(&["io".to_string()][..]));
+        // And it survives the round trip through index.json.
+        assert_eq!(store.list()[0].effects.declared(), Some(&["io".to_string()][..]));
+    }
+
+    #[test]
+    fn an_oracle_that_declines_one_block_leaves_only_that_one_unchecked() {
+        let store = temp_store("partial");
+        let oracle = Oracle(vec![("layer a: L", Vec::new())]);
+        let h = store
+            .publish_source_with(
+                "block A(x) {
+    layer a: L;
+}
+block B(y) {
+    layer b: M;
+}
+",
+                &oracle,
+            )
+            .unwrap();
+        // A checked block with no effects is a purity *claim*; the declined one
+        // looks identical as a vector and must not.
+        assert_eq!(h[0].effects, Effects::Checked { declared: Vec::new() });
+        assert_eq!(h[1].effects, Effects::Unchecked);
+        assert!(h[0].effects.is_checked() && !h[1].effects.is_checked());
+    }
+
+    #[test]
+    fn checking_later_upgrades_an_unchecked_entry() {
+        let store = temp_store("upgrade");
+        let src = "block A(x) {
+    layer a: L;
+}
+";
+        store.publish_source(src).unwrap();
+        assert_eq!(store.list()[0].effects, Effects::Unchecked);
+
+        let oracle = Oracle(vec![("layer a: L", vec!["net".into()])]);
+        store.publish_source_with(src, &oracle).unwrap();
+
+        let idx = store.list();
+        assert_eq!(idx.len(), 1, "same bytes, still one entry");
+        assert_eq!(idx[0].effects.declared(), Some(&["net".to_string()][..]));
+    }
+
+    #[test]
+    fn two_oracles_disagreeing_about_the_same_bytes_is_an_error() {
+        let store = temp_store("contradiction");
+        let src = "block A(x) {
+    layer a: L;
+}
+";
+        store
+            .publish_source_with(src, &Oracle(vec![("layer a: L", vec!["io".into()])]))
+            .unwrap();
+        let err = store
+            .publish_source_with(src, &Oracle(vec![("layer a: L", vec!["net".into()])]))
+            .expect_err("a content address fixes the content, so it fixes the answer");
+        assert!(err.contains("two different things"), "{err}");
+        // And the first answer stands rather than being half-overwritten.
+        assert_eq!(store.list()[0].effects.declared(), Some(&["io".to_string()][..]));
+    }
+
+    #[test]
+    fn an_index_written_before_effects_existed_reads_back_unchecked() {
+        // The field is new. Every index.json already on disk lacks it, and the
+        // safe reading of a missing field is "nobody checked", not "pure".
+        let h: BlockHandle = serde_json::from_str(
+            r#"{"name":"A","sha256":"deadbeef","signature":"A(x)"}"#,
+        )
+        .expect("an old entry still parses");
+        assert_eq!(h.effects, Effects::Unchecked);
     }
 }

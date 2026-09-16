@@ -184,8 +184,8 @@ are **five independent Cargo workspaces**:
 | `RecursiveMachineIntelligence/` | `rmi` | 1,384 | The low-level neurosymbolic framework. Feature-gated (`cpu` / `gpu` / `cuda`); build with `--no-default-features --features cpu` for the portable set |
 | `prototype/` | `mage-prototype` | 1,268 | Compiler, evaluator, ABL, RAP server. Path-depends on `rmi` |
 | `ribosome/` | `ribosome` | 168 | The distributed build engine. Depends on nothing in this repository — see below |
-| `germline/` | `germline` | 125 | Model succession, handoff, fallback — the RSI control plane. Path-depends on `ribosome` |
-| `forge/` | `forge` | 54 | The package registry, and only that |
+| `germline/` | `germline` | 130 | Model succession, handoff, fallback — the RSI control plane. Path-depends on `ribosome` |
+| `forge/` | `forge` | 60 | The package registry, and only that |
 
 The dependency graph is a forest, not a web:
 
@@ -196,12 +196,18 @@ rmi ←── prototype          ribosome ←── germline          forge
 `forge`'s count is not a regression. `ribosome` and `germline` were developed
 inside it and moved out on 2026-08-04; **52** is what the registry alone was
 before they arrived, and this table said exactly that until they did. It reads
-54 now for two unrelated reasons: 2026-08-18 added a test comparing `forge
+60 now for three unrelated reasons. 2026-08-18 added a test comparing `forge
 manifest` against the binary's dispatcher, which nothing had ever done, and
-removed one that checked three command names by hand; 2026-09-15 added
+removed one that checked three command names by hand. 2026-09-15 added
 `a_block_that_does_not_hash_to_its_name_is_refused`, after `get_by_sha` was
 found serving a block whose bytes no longer matched the content address naming
-its file.
+its file. Later the same day, six tests arrived with `Effects` and
+`EffectOracle` — and the count moved by six rather than seven, because that
+same commit fixed a duplicated `#[test]` attribute. The duplicate had been
+generating a phantom second copy of the tampering test while swallowing the
+attribute on `identical_block_is_deduplicated`, so the registry's dedup
+property had never once been exercised and the total had been inflated by one
+to hide it.
 
 A root workspace *did* exist, but it listed only `compiler/*` — the forked-rustc
 compiler — and was removed with it on 2026-06-11 (`b1b910f`). The surviving
@@ -302,6 +308,41 @@ candidate refused there has already cost a build, an evaluation and a canary.
 `Proposal::refused` exists so the two are distinguishable: a search that
 produces eight candidates and refuses all eight is pushing against a capability
 boundary, which is a different fact from finding nothing.
+
+### What the boundary can and cannot read
+
+`propose` refuses a child that declares an effect no parent did. That is only a
+check if the effects it compares are *known*, and for most of this session they
+were not: the registry recorded no effects at all, genes arrived carrying an
+empty list, and an empty list read as a purity claim. Every candidate passed —
+not because nothing escalated, but because there was nothing to compare. **A
+check that cannot fail is not a check**, and this one could not, which is the
+same shape as the absence-claim problem `check-crypto-inventory.sh` names.
+
+The fix is a type rather than a rule. `forge::models::Effects` and
+`germline::variation::Effects` both distinguish `Checked { declared }` from
+`Unchecked`, so "found to have no effects" and "nobody looked" stop being the
+same value. The error then runs the safe way:
+
+| gene state | `legality` | why |
+|---|---|---|
+| checked, effects ⊆ parents' | `Inherited` | proposable |
+| checked, effects ⊄ parents' | `Acquired` | the escalation signal the boundary exists to produce |
+| unchecked | `Unknowable` | reading it as pure would admit exactly what is being checked for |
+
+Refusing the unchecked case costs one candidate and names the block that needs
+checking; admitting it costs the property. An unchecked gene is refused even
+when a parent carries the same one — inheritance legitimately launders a
+*declared* effect, but two unknowns do not make a known.
+
+`forge` cannot populate `Checked` itself: it hashes and stores bytes, and
+deciding what bytes do is a front-end pass it does not contain. `EffectOracle`
+is that seam, mirroring `GeneResolver` on the germline side and separate for
+the same reason. The compiler already computes per-function effects
+(`mage-parse --check` reports them); the oracle is how that answer reaches the
+registry without the registry depending on a compiler. Checking a block later
+**upgrades** its index entry, so the remedy for a refusal is checking the block
+rather than weakening the check.
 
 A consequence worth stating plainly: **a candidate that cannot be evaluated
 cheaply will not be tried.** If proxy fitness requires a full build, the search

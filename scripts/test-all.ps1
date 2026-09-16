@@ -10,10 +10,10 @@
         rmi (cpu)   1,384 tests
         prototype   1,268 tests
         ribosome      168 tests
-        germline      125 tests
-        forge          54 tests
+        germline      130 tests
+        forge          60 tests
         -------------------------
-        total       2,999 tests, 0 warnings
+        total       3,010 tests, 0 warnings
 
 .PARAMETER Release
     Build and test in release mode (slower to build, much faster to run).
