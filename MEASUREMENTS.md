@@ -7,7 +7,7 @@ numbers are machine-dependent; the shapes (throughput, scaling) are not.
 Date: 2026-06-10. Build: `release` for perf, `cargo test` for functionality.
 
 > **Re-verified 2026-09-15** — all five crates tested: prototype **1,282**, rmi
-> **1,384**, ribosome **168**, germline **130**, forge **60** = **3,024 passing,
+> **1,384**, ribosome **168**, germline **134**, forge **60** = **3,028 passing,
 > 0 failing, 0 warnings**.
 >
 > *One figure below had not regressed — it had been superseded.* The ABL
@@ -79,7 +79,7 @@ Date: 2026-06-10. Build: `release` for perf, `cargo test` for functionality.
 | MAGE prototype | **1282 pass** (+2 ignored perf harnesses) | `cargo test` |
 | rmi (`cpu`) | **1384 pass** | `cargo test --no-default-features --features cpu` |
 | ribosome (build engine) | **168 pass** | `cargo test --manifest-path ribosome/Cargo.toml` |
-| germline (RSI control plane) | **130 pass** | `cargo test --manifest-path germline/Cargo.toml` |
+| germline (RSI control plane) | **134 pass** | `cargo test --manifest-path germline/Cargo.toml` |
 | forge (registry) | **60 pass** | `cargo test --manifest-path forge/Cargo.toml` |
 | agentic-eval (AetherShell) | **80 pass** | `cargo test -p agentic-eval` |
 | SPINE `spine-agentic` | **285 pass** | `cargo test -p spine-agentic` |
