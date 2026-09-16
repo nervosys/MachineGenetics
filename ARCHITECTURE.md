@@ -374,7 +374,7 @@ Much of that policy is already data, and one surface is now loadable:
 | elision rules | — | the agent-mode surface itself | Rust |
 | cost model | `cost.rs` | which constructs search prefers | Rust |
 | CI floors | 6 | what counts as a regression | shell, hand-edited |
-| the 20 checkers | — | what "green" means | shell |
+| the 21 checkers | — | what "green" means | shell |
 | the pins | 94 | which claims must match measurement | shell + docs |
 
 **The harness is the part that moves under a fixed model.** With the weights

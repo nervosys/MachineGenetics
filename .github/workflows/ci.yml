@@ -256,6 +256,14 @@ jobs:
       # a new one fails.
       - name: No source file is unreachable by `mod`
         run: bash scripts/check-orphan-sources.sh
+      # The same question one level up, about the agent contract rather than
+      # about files. `DiagnosticCategory::UseAfterMove` carried the code E0382,
+      # which hir.rs calls "machine-matchable", and no code outside the enum's
+      # own file ever constructed it — so an agent could match on a code no
+      # program could emit. The enum compiled, `code()` was exhaustive, every
+      # test passed; reachability was simply not a question anything asked.
+      - name: Every diagnostic code can be emitted
+        run: bash scripts/check-diagnostic-codes.sh
       # The sibling failure: a file that compiles, holding a test that never
       # runs. `eval_bench` was red for 76 commits behind three separate
       # hiding places — `#[ignore]`, a `--bench` flag nobody passed, and an
