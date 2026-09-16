@@ -16,3 +16,12 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.10"
 ribosome = { path = "../ribosome" }
+
+[dev-dependencies]
+# The registry, for the gene-pool adapter in tests/gene_pool.rs only.
+#
+# A dev-dependency on purpose: germline holds heritable material and must not
+# know what a registry is, forge stores blocks and must not know what a genome
+# is, and dev-dependencies do not propagate to consumers. The adapter is
+# demonstrated without either library gaining an edge on the other.
+forge = { path = "../forge" }

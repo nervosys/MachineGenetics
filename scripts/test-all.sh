@@ -8,10 +8,10 @@
 #     rmi (cpu)   1,384 tests
 #     prototype   1,268 tests
 #     ribosome      168 tests
-#     germline      122 tests
+#     germline      125 tests
 #     forge          54 tests
 #     -------------------------
-#     total       2,996 tests, 0 warnings
+#     total       2,999 tests, 0 warnings
 #
 # Usage:
 #   scripts/test-all.sh            # debug

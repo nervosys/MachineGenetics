@@ -4,8 +4,8 @@
 > Each step is a concrete, testable increment.
 >
 > **Last verified: 2026-09-15** — all five crates built and tested: prototype
-> **1,268**, rmi **1,384**, ribosome **168**, germline **122**, forge **54** —
-> **2,996 tests, 0 failures, 0 warnings**. The crate count went from three to
+> **1,268**, rmi **1,384**, ribosome **168**, germline **125**, forge **54** —
+> **2,999 tests, 0 failures, 0 warnings**. The crate count went from three to
 > five when the build engine (step 148) and the RSI control plane (step 149)
 > were extracted from `forge`; the total is unchanged by those moves, and
 > `forge`'s 54 is what the registry alone measured before they were parked in
@@ -257,12 +257,12 @@
 
 | Step | Title | Status | Description |
 | ---- | ----- | ------ | ----------- |
-| 122 | `stack N { … }` repeat combinator | ✅ | O(1) surface cost in depth |
+| 125 | `stack N { … }` repeat combinator | ✅ | O(1) surface cost in depth |
 | 113 | Named `block` macros | ✅ | The leaf-library tier, registry-ready |
 | 114 | `residual` / `branch` / `wrap` | ✅ | Dataflow composition operators; blocks can hold combinators |
 | 115 | REPEAT-folded binary | ✅ | Stacked nets are O(1) in depth **in bytes too** |
 | 116 | CPU execution of RES_ADD / PAR | ✅ | The operators lower to RMIL primitives and actually run |
-| 122 | Typed-composition gate | ✅ | `--check` rejects shape-mismatched net compositions |
+| 125 | Typed-composition gate | ✅ | `--check` rejects shape-mismatched net compositions |
 | 118 | Capstone benchmark | ✅ | A real residual GPT (Embedding → batched 3-D attention → …) runs end to end |
 
 ## Phase O: Release (Steps 119–122)
@@ -270,9 +270,9 @@
 | Step | Title | Status | Description |
 | ---- | ----- | ------ | ----------- |
 | 119 | Rebrand + vendor rmi | ✅ | REDOX → MechGen → **MAGE (Machine Genetics)**; `RecursiveMachineIntelligence` vendored into the monorepo |
-| 122 | Security audit | ✅ | CVE/RustSec, NIST FIPS 140-3, MITRE ATT&CK, CMMC 2.0 — one High CVE fixed (`lz4_flex` ≥ 0.11.6), rest triaged in `SECURITY_AUDIT.md` |
+| 125 | Security audit | ✅ | CVE/RustSec, NIST FIPS 140-3, MITRE ATT&CK, CMMC 2.0 — one High CVE fixed (`lz4_flex` ≥ 0.11.6), rest triaged in `SECURITY_AUDIT.md` |
 | 121 | Dead-subsystem removal | ✅ | Forked-rustc compiler, REDOX-named tools and CI removed |
-| 122 | v0.2.0 tag + announcement | ✅ | prototype + forge at 0.2.0, tagged, blog post + X thread |
+| 125 | v0.2.0 tag + announcement | ✅ | prototype + forge at 0.2.0, tagged, blog post + X thread |
 
 ## Phase P: Ribosome — the distributed build engine (Steps 123–130)
 

@@ -1,7 +1,7 @@
 # Germline — model succession, handoff, and fallback
 
 > **Status: control plane complete and runnable; workload not.**
-> `germline/` — its own crate, 122 tests. Variation, directed search, the gate,
+> `germline/` — its own crate, 125 tests. Variation, directed search, the gate,
 > attestation, lineage, the durable journal, the cycle state machine, and
 > supervision are built and tested ✅. Model training and inference are **not**
 > here and are not claimed ◻ — this decides *whether* a successor takes over, not
@@ -14,7 +14,7 @@
 > the extraction removed nothing — 112 both before and after, across four
 > commits.*
 >
-> *Since 2026-09-15 it is 122: the genome became a sequence of loci — each a tunable scalar or a gene carried by content hash — rather than a vector of scalars (five tests), and expression gained a resolver seam that refuses a genome naming a gene the registry lacks (three more), and wiring it through `materialize` so the artifact built is the genome expressed added two. The figures above are left as written because they record what was counted when the 141 was investigated, and a record rewritten to match today's number stops being evidence of anything.*
+> *Since 2026-09-15 it is 125: the genome became a sequence of loci — each a tunable scalar or a gene carried by content hash — rather than a vector of scalars (five tests), and expression gained a resolver seam that refuses a genome naming a gene the registry lacks (three more), and wiring it through `materialize` so the artifact built is the genome expressed added two, and connecting `forge`'s registry as the gene pool added three. The figures above are left as written because they record what was counted when the 141 was investigated, and a record rewritten to match today's number stops being evidence of anything.*
 
 It depends on `ribosome` and nothing else in this repository, and the direction
 is load-bearing rather than incidental: the barrier described below is one-way,
@@ -306,7 +306,7 @@ nobody chose, one individually-defensible promotion at a time.
 ## 10. Reproducing
 
 ```powershell
-cargo test --manifest-path germline/Cargo.toml                  # 122 tests
+cargo test --manifest-path germline/Cargo.toml                  # 125 tests
 cargo test --manifest-path germline/Cargo.toml --test rsi_loop  # 6 closed-loop scenarios
 cargo test --manifest-path germline/Cargo.toml --test succession # 13 succession scenarios
 ```
