@@ -422,6 +422,19 @@ containable, and **revocable** — `TrustStore::revoke` excludes one worker with
 disturbing the rest. Verifiers hold only public keys, so a mirror or auditor can
 check provenance without being able to produce it.
 
+*Built, and not yet on any execution path — measured 2026-09-15.*
+`AsymmetricSigner`, `TrustStore` and `SignedProvenance` appear in
+`provenance.rs` and nowhere else in the repository; `remote.rs` carries an
+`Option<Arc<Signer>>` and uses the **symmetric** path. That is consistent with
+the seam below being a seam rather than a socket — the asymmetric path is for
+crossing a trust boundary, and nothing here crosses one yet — but the tick above
+marks a capability that exists, not one that runs. Worth stating, because "a
+construct with no caller is the mistake, not the missing construct" is this
+repository's own standard, and the answer here is *deliberately built ahead of
+its transport*, which only survives as an answer if it is written down. Note
+also that `TrustStore` derives `Debug, Default` and not `Serialize`: revocations
+live in memory, so whatever connects the seam has to decide how they persist.
+
 ✅ **A transport seam, not a socket.** The protocol is length-prefixed JSON over
 an ordered byte stream; it was *written* against `TcpStream` concretely, and that
 spelling — not cryptography — was what blocked encrypting it. Both ends are now
