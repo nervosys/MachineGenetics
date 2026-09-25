@@ -6,8 +6,8 @@ numbers are machine-dependent; the shapes (throughput, scaling) are not.
 
 Date: 2026-06-10. Build: `release` for perf, `cargo test` for functionality.
 
-> **Re-verified 2026-09-15** — all five crates tested: prototype **1,268**, rmi
-> **1,384**, ribosome **168**, germline **125**, forge **54** = **2,999 passing,
+> **Re-verified 2026-09-25** — all five crates tested: prototype **1,288**, rmi
+> **1,384**, ribosome **168**, germline **134**, forge **60** = **3,034 passing,
 > 0 failing, 0 warnings**.
 >
 > *One figure below had not regressed — it had been superseded.* The ABL
@@ -56,8 +56,6 @@ Date: 2026-06-10. Build: `release` for perf, `cargo test` for functionality.
 > duplication. **1,038 is the number of distinct tests and always was** — nothing
 > was removed, and the same assertions still run.
 > The CUDA path is re-verified on hardware: **1,229 passing, 0 failed**
->
-> *Since 2026-09-15 it is 125: the genome became a sequence of loci — each a tunable scalar or a gene carried by content hash — rather than a vector of scalars (five tests), and expression gained a resolver seam that refuses a genome naming a gene the registry lacks (three more), and wiring it through `materialize` so the artifact built is the genome expressed added two, and connecting `forge`'s registry as the gene pool added three. The figures above are left as written because they record what was counted when the 141 was investigated, and a record rewritten to match today's number stops being evidence of anything.*
 > (`cargo test --features cuda`, dual RTX 3090 Ti, driver 610.88), built against
 > the pinned IronAccelerator tag `v2.2.0`. Reproduce with `scripts/test-all.ps1
 > -Bench -Cuda` (or `test-all.sh --bench --cuda`).
@@ -78,11 +76,11 @@ Date: 2026-06-10. Build: `release` for perf, `cargo test` for functionality.
 ### Test suites (all green)
 | Suite | Tests | Cmd |
 |---|---|---|
-| MAGE prototype | **1268 pass** (+2 ignored perf harnesses) | `cargo test` |
+| MAGE prototype | **1288 pass** (+2 ignored perf harnesses) | `cargo test` |
 | rmi (`cpu`) | **1384 pass** | `cargo test --no-default-features --features cpu` |
 | ribosome (build engine) | **168 pass** | `cargo test --manifest-path ribosome/Cargo.toml` |
-| germline (RSI control plane) | **125 pass** | `cargo test --manifest-path germline/Cargo.toml` |
-| forge (registry) | **54 pass** | `cargo test --manifest-path forge/Cargo.toml` |
+| germline (RSI control plane) | **134 pass** | `cargo test --manifest-path germline/Cargo.toml` |
+| forge (registry) | **60 pass** | `cargo test --manifest-path forge/Cargo.toml` |
 | agentic-eval (AetherShell) | **80 pass** | `cargo test -p agentic-eval` |
 | SPINE `spine-agentic` | **285 pass** | `cargo test -p spine-agentic` |
 | SPINE `spine-mage` (ABL bridge) | **5 pass** | `cargo test -p spine-mage` |
@@ -192,7 +190,7 @@ Recursive transitive closure / fixpoint (now ≈ output-size, was cubic):
 **Complexity:** join went from ~O(N²) → ~O(N) (the `arg0` index makes a chain
 join an O(matches) lookup); the fixpoint went from ~O(N³) → ~O(output) (semi-naive
 derives each fact ~once). Correctness unchanged (the suite was 984 tests green when this
-was measured, and 1,268 today; the evaluator still terminates at the least
+was measured, and 1,288 today; the evaluator still terminates at the least
 fixpoint). This was the one perf gap the prior report flagged — now fixed.
 
 ### CUDA backend — CPU vs GPU (measured 2026-08-05)
@@ -280,7 +278,7 @@ run-to-run identical. → content-hashable cache keys, meaningful diffs.
 - **The kb Datalog evaluator was the one perf gap — now FIXED:** rewritten as
   indexed semi-naive (interning + `(pred,arg0)` index + delta evaluation), giving
   up to **~1430×** on transitive closure and ~O(N)/~O(N²) instead of ~O(N²)/~O(N³),
-  with identical results (984 tests green at the time; 1,268 now).
+  with identical results (984 tests green at the time; 1,288 now).
 - **Per-invocation latency is startup-bound (~30 ms)**, not compute-bound — use
   the RAP server for high-frequency agent loops.
 - **Tokens are at the irreducible text floor**; the leverage is the binary IR +

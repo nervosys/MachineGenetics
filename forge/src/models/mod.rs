@@ -7,7 +7,7 @@ pub mod skb_rule;
 pub mod spec;
 pub mod version;
 
-pub use block::BlockHandle;
+pub use block::{BlockHandle, Effects};
 pub use dependency::{Dependency, DependencySource};
 pub use effect::{EffectDecl, EffectMethod};
 pub use metadata::ModuleMetadata;

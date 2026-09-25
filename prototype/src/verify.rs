@@ -191,11 +191,76 @@ pub struct EffectAnalysis {
     pub used: Vec<String>,
 }
 
+/// Whether a condition is false on every execution.
+///
+/// **Until 2026-09-25 nothing could return `Violated`.** Every branch of
+/// `check_condition` answered `Verified` or `Unknown`, so `VerifyStatus::Failed`,
+/// `Evidence::Refuted` and the `✗` row were unreachable from all five arms of
+/// `verify_item` — and `SpecViolation` (`E0560`) had nothing to fire on. The
+/// handoff recorded that as the corpus lacking a refuted contract; the corpus
+/// could not have supplied one.
+///
+/// Two refutations, both deliberately narrow:
+///
+///   * the literal `false`, in both surfaces — `false` and the sigil `0b`
+///     (`MAGE_SPEC.md` §2.2). The lexer maps both to `TokenKind::False`; a rule
+///     matching only the keyword would refute half the language;
+///   * `<path>.len() < 0` — the negation of the one fact the `Verified` branch
+///     below already relies on, that a length is unsigned. Proving `>= 0` and
+///     not refuting `< 0` would be the verifier believing half of its premise.
+///
+/// The path must be a bare place expression. `ret.is_ok() => ret.len() < 0`
+/// is **not** refuted: an implication with a false consequent holds whenever
+/// its antecedent is false, and saying otherwise would turn a heuristic into a
+/// false accusation — a worse error here than `Unknown`, because `Violated`
+/// is now a compile error.
+fn is_refuted(condition: &str) -> bool {
+    let c = condition.trim();
+    if c == "false" || c == "0b" {
+        return true;
+    }
+    match c.strip_suffix(".len() < 0") {
+        Some(path) => {
+            !path.is_empty()
+                && path.chars().all(|ch| ch.is_alphanumeric() || ch == '_' || ch == '.')
+        }
+        None => false,
+    }
+}
+
+/// A coded `SpecViolation` diagnostic for every refuted clause.
+///
+/// The verifier used to report only through its own summary line, so an agent
+/// reading the structured `--check --json` stream saw a refutation only if some
+/// other message happened to mention "spec". `Unknown` and `Unspecified` are
+/// not diagnosed: an unadjudicated claim is a gap in the verifier, not a fault
+/// in the program, and `verdict.rs` already renders it as one.
+pub fn diagnostics(results: &[VerificationResult]) -> Vec<crate::hir::Diagnostic> {
+    use crate::hir::{Diagnostic, DiagnosticCategory, Severity};
+    let mut out = Vec::new();
+    for r in results {
+        // No "precondition"/"postcondition" in the message: struct invariants
+        // and type refinements are checked as `Requires` too, so the kind
+        // would mislabel them.
+        for c in r.checks.iter().filter(|c| c.result == CheckResult::Violated) {
+            out.push(Diagnostic::categorized(
+                Severity::Error,
+                format!("`{}`: contract `{}` is false on every execution", r.fqn, c.condition),
+                DiagnosticCategory::SpecViolation,
+                None,
+            ));
+        }
+    }
+    out
+}
+
 fn check_condition(condition: &str, kind: ContractKind) -> ContractCheck {
     // Simple heuristic-based static verification.
     // A real implementation would use symbolic execution or SMT solving.
 
-    let result = if condition.contains(".len() >= 0") || condition.contains(".len() > -1") {
+    let result = if is_refuted(condition) {
+        CheckResult::Violated
+    } else if condition.contains(".len() >= 0") || condition.contains(".len() > -1") {
         // Always true for unsigned lengths.
         CheckResult::Verified
     } else if condition.contains(".is_ok()") && condition.contains("=>") {
@@ -480,6 +545,46 @@ fn verify_item(kind: &ast::ItemKind, prefix: &str, results: &mut Vec<Verificatio
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_false_contract_is_refuted_and_diagnosed() {
+        for cond in ["false", "0b", "xs.len() < 0", " self.items.len() < 0 "] {
+            let spec = SpecInput { requires: vec![cond.into()], ensures: vec![] };
+            let effects = EffectAnalysis { declared: vec![], used: vec![] };
+            let result = verify_contracts("my.fn", Some(&spec), &effects);
+            assert_eq!(result.status, VerifyStatus::Failed, "{cond}");
+            assert!(matches!(result.status.evidence("my.fn"), Evidence::Refuted { .. }));
+
+            let diags = diagnostics(&[result]);
+            assert_eq!(diags.len(), 1, "{cond}");
+            let cat = diags[0].category.expect("categorised");
+            assert_eq!(cat, crate::hir::DiagnosticCategory::SpecViolation);
+            assert_eq!(cat.code(), "E0560");
+            assert_eq!(diags[0].severity, crate::hir::Severity::Error);
+        }
+    }
+
+    #[test]
+    fn a_false_consequent_under_an_implication_is_not_refuted() {
+        // Holds whenever the antecedent is false; refuting it would be a
+        // false accusation, and `Violated` is a compile error.
+        for cond in ["ret.is_ok() => ret.len() < 0", "a || xs.len() < 0", "f(x).len() < 0", ".len() < 0"] {
+            assert_ne!(
+                check_condition(cond, ContractKind::Ensures).result,
+                CheckResult::Violated,
+                "{cond}"
+            );
+        }
+    }
+
+    #[test]
+    fn unknown_and_unspecified_produce_no_diagnostic() {
+        let effects = EffectAnalysis { declared: vec![], used: vec![] };
+        let spec = SpecInput { requires: vec!["path.exists()".into()], ensures: vec![] };
+        let partial = verify_contracts("a", Some(&spec), &effects);
+        let unspecified = verify_contracts("b", None, &effects);
+        assert!(diagnostics(&[partial, unspecified]).is_empty());
+    }
 
     #[test]
     fn trivial_no_spec() {

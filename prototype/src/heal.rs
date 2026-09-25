@@ -411,9 +411,7 @@ fn builtin_patterns() -> Vec<ErrorPattern> {
         ErrorPattern {
             name: "move-after-use",
             example: "use of moved value `x`",
-            matches: |msg| {
-                msg.contains("use of moved value") || msg.contains("value used after move")
-            },
+            matches: is_move_error,
             generate: |_diag| {
                 vec![
                     FixCandidate {
@@ -1101,9 +1099,30 @@ pub fn heal_one(diag: &Diagnostic) -> HealedDiagnostic {
 
 // ── DiagnosticGraph integration ──────────────────────────────────────
 
+/// Whether a message reports a value used after it was moved.
+///
+/// **One predicate, because there were two and they disagreed.** The
+/// `move-after-use` pattern above recognised these messages and offered fixes
+/// for them, while `infer_category` folded "move" into the same branch as
+/// "borrow" — so a diagnostic reading *use of moved value `x`* got fix
+/// candidates for a move and the error code for a borrow conflict. `E0382`
+/// exists for exactly this message and nothing could produce it.
+///
+/// Codes are part of the agent contract — hir.rs calls them "machine-matchable"
+/// — so an agent keying on `E0382` saw nothing and an agent keying on `E0502`
+/// saw a move error wearing a borrow's code.
+fn is_move_error(msg: &str) -> bool {
+    msg.contains("use of moved value") || msg.contains("value used after move")
+}
+
 /// Infer a `DiagnosticCategory` from the message text.
 fn infer_category(msg: &str) -> DiagnosticCategory {
-    if msg.contains("borrow") || msg.contains("move") {
+    // Checked before `borrow`, and by the same predicate the fix table uses.
+    // "cannot move out of `x` because it is borrowed" mentions both and is a
+    // borrow conflict; the move-specific phrasings above are not.
+    if is_move_error(msg) {
+        DiagnosticCategory::UseAfterMove
+    } else if msg.contains("borrow") || msg.contains("move") {
         DiagnosticCategory::BorrowConflict
     } else if msg.contains("type mismatch") || msg.contains("mismatched types") {
         DiagnosticCategory::TypeMismatch
@@ -1532,5 +1551,67 @@ mod tests {
         let healed = heal_one(&diag);
         assert!(!healed.fixes.is_empty());
         assert_eq!(healed.fixes[0].id, "optimize-algorithm");
+    }
+
+    #[test]
+    fn a_move_error_gets_the_move_code_not_the_borrow_one() {
+        // `DiagnosticCategory::UseAfterMove` had no producer anywhere in the
+        // crate. `infer_category` was the only path that could have made one
+        // and it folded "move" into the borrow branch, so a diagnostic reading
+        // `use of moved value` came back coded E0502 while E0382 — declared for
+        // exactly this and part of the agent contract — was unreachable.
+        let diag = error_with_span("use of moved value `buf`", 8, 5);
+        let graph = &heal_to_graphs(std::slice::from_ref(&diag))[0];
+        assert_eq!(graph.root.category, Some(DiagnosticCategory::UseAfterMove));
+        assert_eq!(
+            graph.root.category.unwrap().code(),
+            "E0382",
+            "the code an agent matches on must name the error it got"
+        );
+    }
+
+    #[test]
+    fn a_borrow_conflict_still_gets_the_borrow_code() {
+        // The other direction, because a fix that moves every message into the
+        // new branch would pass the test above and break the category that was
+        // already right.
+        let diag = error_with_span("cannot borrow `x` as mutable more than once", 3, 1);
+        let graph = &heal_to_graphs(std::slice::from_ref(&diag))[0];
+        assert_eq!(graph.root.category, Some(DiagnosticCategory::BorrowConflict));
+        assert_eq!(graph.root.category.unwrap().code(), "E0502");
+    }
+
+    #[test]
+    fn moving_out_of_a_borrowed_value_is_a_borrow_conflict() {
+        // This message contains both words. It is a borrow conflict, and the
+        // move-specific phrasings are what distinguish the two — which is why
+        // `is_move_error` matches phrases rather than the word "move".
+        assert!(!is_move_error("cannot move out of `x` because it is borrowed"));
+        let diag = error_with_span("cannot move out of `x` because it is borrowed", 1, 1);
+        let graph = &heal_to_graphs(std::slice::from_ref(&diag))[0];
+        assert_eq!(graph.root.category, Some(DiagnosticCategory::BorrowConflict));
+    }
+
+    #[test]
+    fn the_fix_table_and_the_category_agree_about_what_a_move_error_is() {
+        // The defect was two predicates disagreeing: the pattern below offered
+        // move fixes while the categoriser called it a borrow. They are one
+        // function now, and this is what notices if they are ever split again.
+        let move_pattern = builtin_patterns()
+            .into_iter()
+            .find(|p| p.name == "move-after-use")
+            .expect("the move-after-use pattern exists");
+        for msg in [
+            "use of moved value `x`",
+            "value used after move",
+            "cannot borrow `x` as mutable more than once",
+            "cannot move out of `x` because it is borrowed",
+        ] {
+            assert_eq!(
+                (move_pattern.matches)(msg),
+                infer_category(msg) == DiagnosticCategory::UseAfterMove,
+                "fix table and category disagree about {msg:?}"
+            );
+        }
     }
 }

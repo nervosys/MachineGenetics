@@ -10,9 +10,17 @@ is worth its length: it is a catalogue of the specific ways claims in this
 repository have turned out to be false, kept because the shapes recur.
 
 Every number below is measured by a command named beside it, and most are pinned
-by `scripts/check-doc-counts.sh` — 92 of them — so a figure that drifts fails CI
+by `scripts/check-doc-counts.sh` — 94 of them — so a figure that drifts fails CI
 rather than surviving in prose. That mechanism exists because the figures did
 drift, repeatedly, and for months.
+
+That sentence said **92** until 2026-09-16, while the checker reported 94 and
+this document's own closing note said 94. It is not pinned — the pin count is
+the one number `check-doc-counts.sh` cannot check, because it is the checker's
+own subject — so nothing caught it. The opening paragraph of the document about
+documents decaying had decayed, in the clause describing the mechanism that
+stops decay. Recorded rather than quietly corrected, because the lesson is the
+one below: an instrument cannot be its own subject.
 
 ---
 ## Where things stand
@@ -22,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **2,999** — rmi 1,384 · prototype 1,268 · ribosome 168 · germline 125 · forge 54 |
+| Tests | **3,034** — rmi 1,384 · prototype 1,288 · ribosome 168 · germline 134 · forge 60 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -359,6 +367,184 @@ entry. Had a second spelling existed, the scan would have read low and the
 decision would have rested on it.
 
 ---
+## Where this phase ended, 2026-09-25
+
+One item, and it was the only open one under **Small, sharp, cheap**: item 34,
+a refuted contract with no coded diagnostic. That section now reads **0 open**.
+
+**The previous phase's question, asked one level further down.** Item 34 had
+asked whether `E0560` was reachable, found it was not, and explained why: the
+verifier reports through a summary line, and the corpus has no refuted contract
+to test with. Both true. Neither was the reason. The diagnostic depended on a
+verdict, and nobody had asked whether *the verdict* was reachable —
+`CheckResult::Violated` had four mentions in the crate and every one of them
+read it. Nothing constructed it. The row said "the verdict already exists";
+the type did, the value never had.
+
+The check that found it is the cheapest one available: **grep for
+constructions of a variant, not for its name.** A variant with consumers and no
+producers compiles, is matched exhaustively, and looks load-bearing at every
+site that reads it.
+
+Two things rode along that would otherwise have surfaced one at a time:
+
+* **`--check` exited 0 over a `✗` row.** Verdicts were tallied and printed and
+  never counted as errors, in all three reporting paths. Invisible only because
+  nothing could produce one.
+* **The refutation had to be dual-surface.** The first draft refuted `false`
+  and not `0b`, which the lexer maps to the same token — the one-short sweep
+  this document records under items 28 and 30, caught here by reading §2.2
+  before committing rather than after.
+
+Counts: prototype 1,282 → **1,288**, total 3,028 → **3,034**. Classifier-only
+diagnostic categories 3 → **2**, both waiting on item 35's borrow checker.
+
+**Pre-existing, not from this change:** `cargo clippy` 0.1.98 (2026-09-01)
+reports 15 warnings in `prototype` — 14 `chunks_exact` with a constant size in
+`abl_compute.rs` and older parts of `main.rs`, one collapsible `if` in
+`parser.rs`. They come from lints newer than the toolchain that recorded
+"0 clippy", so the claim in **Where things stand** is now stale for current
+toolchains. None are in lines this phase touched.
+
+## Where this phase ended, 2026-09-16
+
+Nine commits, on `master`, green. The phase began as architecture work — make
+the language able to express the genetics of an agent's offspring — and turned
+into one question asked repeatedly, which is the part worth carrying forward.
+
+**The question: is this reachable?** Not *is this correct*, which every test
+here already asks. Five subsystems answered badly, and all five had the same
+shape: machinery that is correct, tested, documented, and not connected to what
+it was built for.
+
+| what | the gap |
+|---|---|
+| gene effects | a legality check that passed because nothing was comparable |
+| `E0382` | a code in the agent contract that no program could emit |
+| `CalibrationSuite` | grades literals against literals, and has no caller |
+| directed search | `runner` imported one name from `directed`; `candidates_per_cycle` was inert |
+| 3 diagnostic categories | the compiler can relay those errors and cannot find one |
+
+**Every one of those subsystems had passing tests, and that is why the gaps
+survived.** Each test exercised its subsystem *directly* — `DirectedSearch` was
+tested by constructing a `DirectedSearch`, not by running the loop that was
+supposed to use one. A test that reaches past the seam is the only kind that
+answers this question, and none of them did.
+
+### Three became working code
+
+**The genome is a sequence of loci, and a gene carries what it may do.**
+`Genome` was `Vec<f64>`, so offspring differed in degree and never in kind. A
+locus is now a scalar or a **gene** — a registry block by content hash — which
+makes the existing crossover operators exchange whole genes for free.
+`forge`'s registry supplies them, `express` resolves them and **fails closed on
+one it cannot find**, because dropping a gene yields a valid net that builds and
+scores as a *different organism* under the same name.
+
+The legality check that guards this could not fail. Genes arrived carrying
+`Vec::new()`, an empty effect list read as a purity claim, and every candidate
+passed — because there was nothing to compare, not because nothing escalated.
+`Effects` is now `Checked { declared }` or `Unchecked` in both crates, and
+`legality` returns `Inherited` / `Acquired` / `Unknowable`. An unchecked gene is
+refused, and is **not** laundered by a parent carrying the same one:
+inheritance launders a declared effect, but two unknowns do not make a known.
+
+**The SKB is loaded policy with a name.** `$MAGE_SKB_OVERLAY` merges onto
+`builtin_rules()`, and the merge *starts from* them, so an overlay may add an id
+or raise a severity and **removing a rule is not expressible**. The guarantee is
+structural rather than checked, which is what dissolves the fail-open/fail-closed
+question instead of deciding it: absence is safe because no expressible policy is
+weaker, and a corrupt overlay halts because something *was* written and cannot be
+honoured. `RuleSet::digest()` names the merged set, so a run can state which
+policy it enforced.
+
+**The loop does directed search now.** `runner.rs` chose its candidate with
+`.take(candidates_per_cycle).next()` — element 0 for every non-zero policy — so
+each cycle proposed eight offspring, evaluated the first, discarded seven, and
+the policy field changed nothing. It now ranks with an optional predictor and
+**samples** within the width trust has earned. The sampling is load-bearing:
+`selection_width` returns the whole pool at zero trust, so no predictor means
+undirected search exactly, and a fresh one is not followed on cycle one.
+
+### Two became corrections, because the machinery was fine
+
+**No SKB rule is executed.** The improvable-surface table said the SKB governs
+"what variation may legally produce". It does not and did not — that is
+`propose` and the front-end passes. The 255 rules are knowledge:
+`codegen_bridge` keeps their descriptions as strings and the ontology adapter
+substring-matches them. I built the overlay on the table's claim and checked it
+afterwards, which is the wrong order.
+
+**The calibration suite compares guesses to guesses.** `MAGE_ONTOLOGY.md` said
+it "validates estimates against measured values". Its `measured_cycles` are
+literals typed into the file beside the estimated ones, under a comment reading
+*"Simulated measured costs"*, and nothing calls it outside its own tests. The
+numbers stay — an uncalibrated prior is a fine thing to sort by, the same
+resolution this document already records for the healer's 44 fix confidences —
+but they stopped being called measurement.
+
+### The 21st checker, and what it cost to get right
+
+`check-diagnostic-codes.sh` asks the reachability question of the agent
+contract: every `DiagnosticCategory` must be named by non-test code outside the
+file declaring it, and the 7/3 split between *produced by a pass* and *only
+classified from text* is baselined with each entry annotated with which analysis
+is missing.
+
+It caught me twice while being written, and both are in the script.
+
+**It passed when it should not have.** The break-verification — revert the fix,
+confirm it fails — came back green, because the commit fixing `UseAfterMove`
+also added tests asserting on it. Four `assert_eq!`s satisfied the grep. The
+checker would have reported the exact bug it exists for as fine. Files are now
+truncated at their first `#[cfg(test)]`.
+
+**Then it failed everything.** All ten variants reported unreachable, including
+one with fourteen producers. `grep -q` exits on the first match, the upstream
+`printf` takes SIGPIPE, and `pipefail` reports the pipeline failed *because* the
+match was found. That one failed toward the alarm rather than the false pass,
+which is the direction a reachability check has to break in, and is the only
+reason it took a minute rather than sitting green forever like the first.
+
+### Four mistakes of mine, and what each is worth
+
+**A break-test that proved nothing.** Removing `TypeMismatch`'s producer from
+`types.rs` left the checker green, and I nearly recorded the check as
+one-directional. `TypeMismatch` has three producers. Retried with
+`UndeclaredEffect`, which has one, and it fired. *Break-verification needs a
+subject with exactly one cause.*
+
+**`head -3` again.** I nearly asserted the typechecker does not emit
+`TypeMismatch`, from a truncated listing that had cut `types.rs` below
+alphabetically earlier files. This is the sixth time in this repository's record
+that a truncated search produced a confident wrong claim.
+
+**A flaky test, green until the evidence was inconvenient.** `tmp()` in
+`gene_pool.rs` created its registry root without clearing it, keyed on a process
+id the OS reuses — and the test *ends* by republishing its blocks through an
+oracle, leaving `index.json` marked `checked`. A later run colliding on pid and
+counter began its unchecked phase against a checked registry. Confirmed from 21
+leftover directories on disk rather than inferred, then reproduced
+deterministically: with the pid removed from the path, the old code passes on
+run 1 and fails on run 2. It sat badly on a test about not trusting unearned
+state.
+
+**`FAILED: <crate>` is not a diagnosis.** The suite reported it three times.
+Twice it was output truncation and the crates passed in isolation at their
+pinned counts; **once it was a real failing test.** Recognising the shape is not
+diagnosing the cause, and I had written a memory note that invited the shortcut.
+
+### What this leaves
+
+The improvable-surface table has one surface moved and six standing, and the
+remaining ones are blocked on prerequisites that are now *measured* rather than
+guessed — items 35, 36 and 37 below. The cheap wins there are gone; what is left
+is a scope decision about which prerequisite is worth building.
+
+Counts: germline 125 → 134, forge 54 → 60, prototype 1,268 → 1,282, total
+2,999 → **3,028**. Checkers 20 → **21**. 94 pins verified against a live run on
+every commit.
+
 ## Where this phase ended, 2026-09-08
 
 Everything below the line is on `master`, green, with no open pull requests.
@@ -1618,19 +1804,26 @@ exact arity agreement). See rule 10 above for why no arity checker was built.
 
 ### Real work, unstarted
 
-**0 open, 2 closed.** The heading is kept for the record and the section has
-nothing in it: both items closed, one by deciding against it and one by
-deletion.
+**3 open, 2 closed.** The section was empty from 2026-08-19 until 2026-09-16,
+when asking which harness surfaces could be made evolvable turned up three that
+cannot be, yet, and named why for each.
 
-That is worth a sentence rather than a silent edit. This section said "Two
-items, and **neither is actually unblocked**" for long enough that both of them
-closed underneath it, and the intro went on advertising them. **Nobody was
+All three are **prerequisites, not tasks** — each was reached by trying to do
+the obvious thing and measuring what stopped it, so none of them is an estimate.
+Picking one is a scope decision and deliberately not made here.
+
+The older note is kept because its lesson outlived its rows. This section said
+"Two items, and **neither is actually unblocked**" for long enough that both of
+them closed underneath it, and the intro went on advertising them. **Nobody was
 careless with the rows** — each was struck the day it closed. What decayed was
 the prose above the table, which is the part a reader acts on.
 
 | # | Item | Size |
 |---|---|---|
 | 10 | ~~**Multi-shot resumption for effect handlers**~~ | **Closed 2026-08-19 by deciding against it**, the same way item 1 closed. The row below said the implementation was downstream of a decision nobody had made; the decision is made. Single-shot is the language's answer, and `MAGE_SPEC.md` §11.6 now says so normatively instead of listing multi-shot under "what is missing". No evaluator rework, no `resume` keyword, no sigil. |
+| 35 | **No ownership or borrow-checking phase exists** | The pipeline is lex, parse, resolve, typecheck, effect inference, MLIR lowering, heal. So the SKB's **40 ownership and 40 borrow rules describe conditions nothing detects**, the 35 lifetime rules sit behind `AEL-0003`'s claim that lifetimes are *inferred* rather than checked, and `BorrowConflict` and `UseAfterMove` are reachable only by `heal::infer_category` classifying a message someone else wrote — baselined in `scripts/diagnostic-codes-classifier-only.txt`. **Size: a borrow checker.** This row exists because I wrote that "making a subset of SKB rules executable" was the next step, which read like wiring and is not; the scope only became visible after `grep`ping for a pass that emits those categories and finding none. Nothing is broken today — the rules are knowledge and work as knowledge — so this is a capability decision, not a defect. |
+| 36 | **Heal patterns are code, not data, so the surface cannot be loaded** | `ARCHITECTURE.md` lists the 34 heal patterns as an improvable surface. Measured: **30 of 34 `generate` closures consume the diagnostic**, computing fixes from message content and spans, and `matches` is a predicate. Converting them to loaded data therefore needs a **fix-template language** — a real language design with its own evaluator and its own failure modes — not a serialisation change. Recorded before starting rather than after, which is the whole point of the row. |
+| 37 | **The cost model is loadable data with nothing to calibrate it against** | `builtin_costs()` is a table and `CostEstimate` carries `is_exact` and `confidence`, both asserted by whoever typed the entry. `CalibrationSuite` exists to check estimates against measurement, but `load_standard_benchmarks` supplies `measured_cycles` as literals beside the estimates, under a comment reading *"Simulated measured costs"*, and nothing calls it outside its own tests. Making the model loadable would let the loop tune a preference function against a calibration path with **no input**, which automates a number nobody has earned. The prerequisite is hardware profiling feeding real samples in — then the loader is trivial. |
 | 13 | ~~`stdlib/`~~ | **Closed 2026-08-19, by deletion.** Item 1 resolved as *no module system*, and a standard library reached by imports has no meaning without one. The 25 sketches — 4,402 lines of Rust behind a `.mg` extension, read by nothing — are gone. `scripts/check-mg-sources.sh` now reports **101 checked, 0 skipped**: every `.mg` file in the repository typechecks, and the sketch list it was built to shrink is empty. |
 
 **Item 10, scoped.** Single-shot resumption is verified working, exactly as
@@ -1651,7 +1844,7 @@ implementation task**:
 - **Then the evaluator rework.** `eval.rs` is 2,987 lines, 39 expression forms
   and 53 recursive `self.eval(` sites, all of which keep the continuation in the
   Rust call stack — where it cannot be captured. Multi-shot needs CPS or an
-  explicit CEK-style machine, which touches every form, with 1,268 tests riding
+  explicit CEK-style machine, which touches every form, with 1,282 tests riding
   on current behaviour.
 
 **This item was filed under "real work, unstarted" with no blocker marked**,
@@ -1681,7 +1874,7 @@ hand.
 
 ### Small, sharp, cheap
 
-**0 open, 13 closed.**
+**0 open, 14 closed.**
 
 This heading opened with "Two open, and one more added on 2026-09-01" while
 **every one of its nine rows was struck through** — three pieces of available
@@ -1696,6 +1889,7 @@ done, and the row explains the rest.
 
 | # | Item | Why it is here and not done |
 |---|---|---|
+| 34 | ~~**A refuted contract produces no coded diagnostic**~~ | **Closed 2026-09-25, and the row's own diagnosis was wrong.** It said this "needs no new analysis: the verdict already exists and wants a `Diagnostic` beside the summary line", and blamed the corpus — 12 clauses, all `Unknown`. **`CheckResult::Violated` was never constructed anywhere in the crate.** Every branch of `check_condition` answered `Verified` or `Unknown`, so `VerifyStatus::Failed`, `Evidence::Refuted` and the `✗` row were unreachable from all five arms of `verify_item` — the agent arm's `else { Failed }` is dead too, since "not all verified" over a two-valued result means "some unknown". No corpus could have supplied a refutation. Found by `grep`ping for constructions of the variant rather than consumers: four mentions, all of them reading it. **And had one existed, `--check` printed `✗` and exited 0** — the verifier's verdicts were never counted as errors. Now: `verify::is_refuted` refutes the literal `false` in both surfaces (`false`, `0b` — the first draft had only the keyword) and a bare `<path>.len() < 0`, the negation of the unsigned-length fact the `Verified` branch already relied on. It refuses to refute under `=>`, `||` or a call, because an implication with a false consequent holds when its antecedent is false, and `Violated` is now a compile error — a false accusation is worse than `Unknown`. `verify::diagnostics` emits one `E0560` per refuted clause, counted as an error in `--check`, `--check --json` and the pipeline. `SpecViolation` left the classifier-only baseline, so `check-diagnostic-codes.sh` reports 8 produced / 2 classified; break-verified both ways (stale baseline → "remove them in this commit"; producer reverted → "not baselined"). Three unit tests and three CLI tests (`tests/refuted_contract_is_a_diagnostic.rs`). No corpus figure moved: 101 sources still typecheck, 12 examples still pass. **Left alone deliberately:** `1b`/`true` still verify as `Unknown` — proving them is the obvious symmetric move and would shift item 29's pinned contract figures, which is a separate change with its own measurements. |
 | 14 | ~~**`token-bench`'s exit status cannot gate anything**~~ | **Closed 2026-08-19.** The row said correcting the 150 disagreeing claims "is a decision about what the field means, not a fix" — still true, and still undecided. But the exit status did not need that decision; it needed to stop reporting the *size* of a known set and start reporting *movement* against it. The known set is now `benchmarks/token-claims-baseline.txt`, shrink-only, the same pattern as `scripts/doc-blocks-baseline.txt`. A 151st disagreement fails; so does a baseline entry that has stopped disagreeing and should have been deleted. `check-ci-floors.sh` honours the status again — and dropping its `|| true` turned out to matter twice, because `set -o errexit` means a bare command substitution that fails kills the script *at the assignment*: my first version gated correctly and printed no reason, which is a worse instrument than the one it replaced. Exit 2 (the bench could not run at all) was being swallowed by the same `|| true` and now fails. |
 | 15 | ~~**`rmi`'s `cuda` feature cannot build, and gates a stub if it could**~~ | **Partly closed 2026-08-19: the feature builds now.** `cuda = ["dep:cudarc"]` made cudarc 0.10 mandatory, and its build script wants `include/cuda.h` from an installed toolkit — so `cargo build --features cuda` failed before compiling a line of the crate. The only file using cudarc is `cuda_full.rs`, which no `mod` reaches, so the dependency was mandatory for a feature that gated nothing that could run. Verified no compiled file mentions cudarc, then changed it to `cuda = []`: the feature now builds, cudarc is out of the graph, and `--features cudarc` still reaches it for anyone wiring `cuda_full.rs` up. **What remains is genuinely the owner's call**: `cuda_full.rs` is still unreachable, with its 16 `unsafe` blocks and 6 `#[ignore]`d tests that have never run on any hardware, and deleting it or porting it to cudarc 0.19 is an upstream decision. It stays baselined in `scripts/orphan-sources-baseline.txt`. The **1,229 CUDA tests** verified on this hardware are all `prototype --features cuda`, the real path, and are unaffected. |
 | 16 | ~~**`rmi`'s `Send`/`Sync` on refcounted buffers read the counter `Relaxed`**~~ | **Closed 2026-08-19, and it was unsound after all** — the row previously said "not demonstrated unsound", which was true only because nobody had written the interleaving down. `as_bytes_mut` is `Arc::get_mut` by hand, and it loaded the count `Relaxed`. Thread A reads through `as_bytes`, then drops its handle (`fetch_sub`, `Release`). Thread B's `Relaxed` load observes `1` **without** synchronizing-with that `Release`, so B's writes through the returned `&mut [u8]` are unordered against A's reads of the same bytes: a data race on the ordinary sharing path. Now `Acquire`, which is the ordering `Arc::get_mut` uses and for exactly this reason. The four `unsafe impl` are sound under that ordering. `refcount()` stays `Relaxed` and is now documented as advisory, since a statistic confers nothing. **No test here verifies this**, and none can: the fix is invisible to a single-threaded suite, and on x86 — where loads are acquire in hardware — the broken version would never have manifested either. `loom` would verify it and is not a dependency this vendored crate should gain on my say-so. Recorded rather than instrumented, per rule 9. |
@@ -2740,9 +2934,9 @@ changed before you commit.
 ---
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,268**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,288**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
-  across five crates **2,999**; documented-count pins **94**, up from 46 — the
+  across five crates **3,034**; documented-count pins **94**, up from 46 — the
   two newest hold the `kb`/`net` overlap the tensor-product-binding decision
   rests on, a figure that had lived in two sentences of prose with nothing
   re-deriving it.
