@@ -17,8 +17,3 @@ BorrowConflict
 # unreachable until 2026-09-16, because `infer_category` folded "move" into the
 # borrow branch.
 UseAfterMove
-
-# The contract verifier runs and prints its own summary — "0 contract(s); 1
-# subject(s): 0 proved, 0 evidenced, 0 refuted" — rather than emitting
-# diagnostics. A refuted contract should produce one of these and does not.
-SpecViolation

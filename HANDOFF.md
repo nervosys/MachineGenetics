@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,028** — rmi 1,384 · prototype 1,282 · ribosome 168 · germline 134 · forge 60 |
+| Tests | **3,034** — rmi 1,384 · prototype 1,288 · ribosome 168 · germline 134 · forge 60 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across five lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -367,6 +367,45 @@ entry. Had a second spelling existed, the scan would have read low and the
 decision would have rested on it.
 
 ---
+## Where this phase ended, 2026-09-25
+
+One item, and it was the only open one under **Small, sharp, cheap**: item 34,
+a refuted contract with no coded diagnostic. That section now reads **0 open**.
+
+**The previous phase's question, asked one level further down.** Item 34 had
+asked whether `E0560` was reachable, found it was not, and explained why: the
+verifier reports through a summary line, and the corpus has no refuted contract
+to test with. Both true. Neither was the reason. The diagnostic depended on a
+verdict, and nobody had asked whether *the verdict* was reachable —
+`CheckResult::Violated` had four mentions in the crate and every one of them
+read it. Nothing constructed it. The row said "the verdict already exists";
+the type did, the value never had.
+
+The check that found it is the cheapest one available: **grep for
+constructions of a variant, not for its name.** A variant with consumers and no
+producers compiles, is matched exhaustively, and looks load-bearing at every
+site that reads it.
+
+Two things rode along that would otherwise have surfaced one at a time:
+
+* **`--check` exited 0 over a `✗` row.** Verdicts were tallied and printed and
+  never counted as errors, in all three reporting paths. Invisible only because
+  nothing could produce one.
+* **The refutation had to be dual-surface.** The first draft refuted `false`
+  and not `0b`, which the lexer maps to the same token — the one-short sweep
+  this document records under items 28 and 30, caught here by reading §2.2
+  before committing rather than after.
+
+Counts: prototype 1,282 → **1,288**, total 3,028 → **3,034**. Classifier-only
+diagnostic categories 3 → **2**, both waiting on item 35's borrow checker.
+
+**Pre-existing, not from this change:** `cargo clippy` 0.1.98 (2026-09-01)
+reports 15 warnings in `prototype` — 14 `chunks_exact` with a constant size in
+`abl_compute.rs` and older parts of `main.rs`, one collapsible `if` in
+`parser.rs`. They come from lints newer than the toolchain that recorded
+"0 clippy", so the claim in **Where things stand** is now stale for current
+toolchains. None are in lines this phase touched.
+
 ## Where this phase ended, 2026-09-16
 
 Nine commits, on `master`, green. The phase began as architecture work — make
@@ -1835,7 +1874,7 @@ hand.
 
 ### Small, sharp, cheap
 
-**1 open, 13 closed.**
+**0 open, 14 closed.**
 
 This heading opened with "Two open, and one more added on 2026-09-01" while
 **every one of its nine rows was struck through** — three pieces of available
@@ -1850,7 +1889,7 @@ done, and the row explains the rest.
 
 | # | Item | Why it is here and not done |
 |---|---|---|
-| 34 | **A refuted contract produces no coded diagnostic** | `DiagnosticCategory::SpecViolation` has a stable code and exactly one non-test mention in the crate, inside `heal::infer_category`. The contract verifier *runs* — `--check` prints `0 contract(s); 1 subject(s): 0 proved, 0 evidenced, 0 refuted, 1 unspecified` — but reports through its own summary rather than emitting diagnostics, so an agent watching the structured stream sees a refutation only if some other text mentions "spec". Unlike items 35–37 this needs no new analysis: the verdict already exists and wants a `Diagnostic` beside the summary line. It is baselined in `scripts/diagnostic-codes-classifier-only.txt`, and that file's checker fails the moment a pass starts producing it, so the row cannot close silently. The reason it is not already done is that nothing in this phase exercised a refuted contract; item 29 measured the corpus at 12 contract clauses with all 12 `Unknown`, which is the same empty-subject shape this document catalogues — fixing the diagnostic without a refutation to fire it would be untestable. |
+| 34 | ~~**A refuted contract produces no coded diagnostic**~~ | **Closed 2026-09-25, and the row's own diagnosis was wrong.** It said this "needs no new analysis: the verdict already exists and wants a `Diagnostic` beside the summary line", and blamed the corpus — 12 clauses, all `Unknown`. **`CheckResult::Violated` was never constructed anywhere in the crate.** Every branch of `check_condition` answered `Verified` or `Unknown`, so `VerifyStatus::Failed`, `Evidence::Refuted` and the `✗` row were unreachable from all five arms of `verify_item` — the agent arm's `else { Failed }` is dead too, since "not all verified" over a two-valued result means "some unknown". No corpus could have supplied a refutation. Found by `grep`ping for constructions of the variant rather than consumers: four mentions, all of them reading it. **And had one existed, `--check` printed `✗` and exited 0** — the verifier's verdicts were never counted as errors. Now: `verify::is_refuted` refutes the literal `false` in both surfaces (`false`, `0b` — the first draft had only the keyword) and a bare `<path>.len() < 0`, the negation of the unsigned-length fact the `Verified` branch already relied on. It refuses to refute under `=>`, `||` or a call, because an implication with a false consequent holds when its antecedent is false, and `Violated` is now a compile error — a false accusation is worse than `Unknown`. `verify::diagnostics` emits one `E0560` per refuted clause, counted as an error in `--check`, `--check --json` and the pipeline. `SpecViolation` left the classifier-only baseline, so `check-diagnostic-codes.sh` reports 8 produced / 2 classified; break-verified both ways (stale baseline → "remove them in this commit"; producer reverted → "not baselined"). Three unit tests and three CLI tests (`tests/refuted_contract_is_a_diagnostic.rs`). No corpus figure moved: 101 sources still typecheck, 12 examples still pass. **Left alone deliberately:** `1b`/`true` still verify as `Unknown` — proving them is the obvious symmetric move and would shift item 29's pinned contract figures, which is a separate change with its own measurements. |
 | 14 | ~~**`token-bench`'s exit status cannot gate anything**~~ | **Closed 2026-08-19.** The row said correcting the 150 disagreeing claims "is a decision about what the field means, not a fix" — still true, and still undecided. But the exit status did not need that decision; it needed to stop reporting the *size* of a known set and start reporting *movement* against it. The known set is now `benchmarks/token-claims-baseline.txt`, shrink-only, the same pattern as `scripts/doc-blocks-baseline.txt`. A 151st disagreement fails; so does a baseline entry that has stopped disagreeing and should have been deleted. `check-ci-floors.sh` honours the status again — and dropping its `|| true` turned out to matter twice, because `set -o errexit` means a bare command substitution that fails kills the script *at the assignment*: my first version gated correctly and printed no reason, which is a worse instrument than the one it replaced. Exit 2 (the bench could not run at all) was being swallowed by the same `|| true` and now fails. |
 | 15 | ~~**`rmi`'s `cuda` feature cannot build, and gates a stub if it could**~~ | **Partly closed 2026-08-19: the feature builds now.** `cuda = ["dep:cudarc"]` made cudarc 0.10 mandatory, and its build script wants `include/cuda.h` from an installed toolkit — so `cargo build --features cuda` failed before compiling a line of the crate. The only file using cudarc is `cuda_full.rs`, which no `mod` reaches, so the dependency was mandatory for a feature that gated nothing that could run. Verified no compiled file mentions cudarc, then changed it to `cuda = []`: the feature now builds, cudarc is out of the graph, and `--features cudarc` still reaches it for anyone wiring `cuda_full.rs` up. **What remains is genuinely the owner's call**: `cuda_full.rs` is still unreachable, with its 16 `unsafe` blocks and 6 `#[ignore]`d tests that have never run on any hardware, and deleting it or porting it to cudarc 0.19 is an upstream decision. It stays baselined in `scripts/orphan-sources-baseline.txt`. The **1,229 CUDA tests** verified on this hardware are all `prototype --features cuda`, the real path, and are unaffected. |
 | 16 | ~~**`rmi`'s `Send`/`Sync` on refcounted buffers read the counter `Relaxed`**~~ | **Closed 2026-08-19, and it was unsound after all** — the row previously said "not demonstrated unsound", which was true only because nobody had written the interleaving down. `as_bytes_mut` is `Arc::get_mut` by hand, and it loaded the count `Relaxed`. Thread A reads through `as_bytes`, then drops its handle (`fetch_sub`, `Release`). Thread B's `Relaxed` load observes `1` **without** synchronizing-with that `Release`, so B's writes through the returned `&mut [u8]` are unordered against A's reads of the same bytes: a data race on the ordinary sharing path. Now `Acquire`, which is the ordering `Arc::get_mut` uses and for exactly this reason. The four `unsafe impl` are sound under that ordering. `refcount()` stays `Relaxed` and is now documented as advisory, since a statistic confers nothing. **No test here verifies this**, and none can: the fix is invisible to a single-threaded suite, and on x86 — where loads are acquire in hardware — the broken version would never have manifested either. `loom` would verify it and is not a dependency this vendored crate should gain on my say-so. Recorded rather than instrumented, per rule 9. |
@@ -2895,9 +2934,9 @@ changed before you commit.
 ---
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,282**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,288**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
-  across five crates **3,028**; documented-count pins **94**, up from 46 — the
+  across five crates **3,034**; documented-count pins **94**, up from 46 — the
   two newest hold the `kb`/`net` overlap the tensor-product-binding decision
   rests on, a figure that had lived in two sentences of prose with nothing
   re-deriving it.

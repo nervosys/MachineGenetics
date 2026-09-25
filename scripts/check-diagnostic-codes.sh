@@ -58,19 +58,24 @@
 #
 # ── The second question: produced, or merely classified? ─────────────────────
 #
-# Being named somewhere is a low bar, and three variants clear it in a way worth
-# separating. `BorrowConflict`, `UseAfterMove` and `SpecViolation` each have
-# exactly one non-test mention in the crate, and all three are inside
+# Being named somewhere is a low bar, and two variants clear it in a way worth
+# separating. `BorrowConflict` and `UseAfterMove` each have exactly one
+# non-test mention in the crate, and both are inside
 # `heal::infer_category` — the function that guesses a category from a message
 # someone else already wrote. No analysis pass emits them.
 #
 # That is not the same state as `TypeMismatch` (types.rs), `UnresolvedName`,
 # `UnresolvedType`, `DuplicateDefinition` (resolve.rs), `UndeclaredEffect`
-# (effects.rs) or `SyntaxError`, each of which some pass constructs on finding
-# the condition. A classifier-only code says the compiler can *relay* such an
-# error, not that it can *find* one — and for these three that is exactly right,
-# because there is no ownership or borrow-checking phase and the contract
-# verifier prints its own summary rather than emitting diagnostics.
+# (effects.rs), `SyntaxError` or `SpecViolation` (verify.rs), each of which
+# some pass constructs on finding the condition. A classifier-only code says the
+# compiler can *relay* such an error, not that it can *find* one — and for these
+# two that is exactly right, because there is no ownership or borrow-checking
+# phase.
+#
+# `SpecViolation` was the third until 2026-09-25. The baseline said the verifier
+# "prints its own summary rather than emitting diagnostics", which was true and
+# was not the reason: nothing in the verifier could return `Violated`, so there
+# was no refutation to emit one for.
 #
 # So the split is recorded in a baseline rather than judged. A variant moving
 # from pass-produced to classifier-only is a real regression and fails; one
