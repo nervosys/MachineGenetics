@@ -7,7 +7,7 @@ use crate::ast::{
     Block, DataKind, Expr, FunctionDef, ItemKind, LiteralKind, Module, Pattern, Stmt, Type,
     VariantKind,
 };
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::rc::{Rc, Weak};
 
@@ -229,6 +229,39 @@ pub struct Interp {
     /// `RefCell` because `eval` takes `&self`; the alternative is threading a
     /// handler stack through every expression form.
     handlers: RefCell<Vec<HandlerFrame>>,
+    /// Remaining fuel, when this interpreter was built with
+    /// [`Interp::with_fuel`]; `None` is the ordinary, unbounded evaluator.
+    ///
+    /// Added for the arena (`arena/`), which runs programs *generated* by
+    /// agents. A generated program may loop forever or ask for `range(1e12)`,
+    /// and an evaluator that can be driven into either by its input cannot be
+    /// the substrate of a search. Every expression costs one unit, and every
+    /// list or string a builtin returns costs its length — charged *before*
+    /// allocating wherever the size is known from a scalar (`range`, `a..b`,
+    /// `[x; n]`), because charging after would let one call exhaust memory
+    /// before the budget noticed.
+    fuel: Cell<Option<u64>>,
+    /// Call depth, enforced only under fuel: a generated program must not be
+    /// able to overflow the Rust stack, which would abort the process rather
+    /// than fail the candidate.
+    depth: Cell<u32>,
+}
+
+/// The message a fuel-bounded run fails with when its budget runs out.
+/// Matched by [`run_bounded`] to tell exhaustion from an ordinary error.
+pub const FUEL_EXHAUSTED: &str = "fuel exhausted";
+
+/// Deepest call nesting a fuel-bounded run may reach.
+pub const MAX_BOUNDED_DEPTH: u32 = 256;
+
+/// How a fuel-bounded run ended, when it did not return a value.
+#[derive(Debug, Clone, PartialEq)]
+pub enum BoundedError {
+    /// The budget ran out. Not a fault in the program — it may have been about
+    /// to finish — so a search should treat it as *too expensive*, not *wrong*.
+    FuelExhausted,
+    /// Any other runtime error.
+    Error(String),
 }
 
 /// One installed `handle … with E { … }`.
@@ -286,7 +319,14 @@ impl Interp {
                 _ => {}
             }
         }
-        Interp { funcs, methods, enum_variants, handlers: RefCell::new(Vec::new()) }
+        Interp {
+            funcs,
+            methods,
+            enum_variants,
+            handlers: RefCell::new(Vec::new()),
+            fuel: Cell::new(None),
+            depth: Cell::new(0),
+        }
     }
 
     /// The innermost installed handler for `effect.op`, if any.
@@ -342,6 +382,53 @@ impl Interp {
         }
     }
 
+    /// An interpreter that fails with [`FUEL_EXHAUSTED`] after `fuel` units.
+    pub fn with_fuel(module: &Module, fuel: u64) -> Self {
+        let i = Interp::new(module);
+        i.fuel.set(Some(fuel));
+        i
+    }
+
+    /// Fuel left, or `None` for an unbounded interpreter.
+    pub fn fuel_left(&self) -> Option<u64> {
+        self.fuel.get()
+    }
+
+    /// Spend `n` units, or fail. A no-op when unbounded.
+    fn charge(&self, n: u64) -> Result<(), Control> {
+        match self.fuel.get() {
+            None => Ok(()),
+            Some(left) if left >= n => {
+                self.fuel.set(Some(left - n));
+                Ok(())
+            }
+            Some(_) => {
+                self.fuel.set(Some(0));
+                err(FUEL_EXHAUSTED)
+            }
+        }
+    }
+
+    /// Charge for a list of `n` elements about to be allocated. A negative
+    /// `n` allocates nothing, so it costs nothing.
+    fn charge_alloc(&self, n: i64) -> Result<(), Control> {
+        self.charge(n.max(0) as u64)
+    }
+
+    /// Enter a call; paired with [`Interp::leave`]. Bounded only under fuel.
+    fn enter(&self) -> Result<(), Control> {
+        let d = self.depth.get() + 1;
+        if self.fuel.get().is_some() && d > MAX_BOUNDED_DEPTH {
+            return err(format!("call depth exceeds {MAX_BOUNDED_DEPTH}"));
+        }
+        self.depth.set(d);
+        Ok(())
+    }
+
+    fn leave(&self) {
+        self.depth.set(self.depth.get().saturating_sub(1));
+    }
+
     /// Resolve `Path.Variant` to the variant it names, if it is one.
     ///
     /// Checks the enum name too, so a field access that merely happens to share
@@ -364,6 +451,13 @@ impl Interp {
     }
 
     fn call_user(&self, fd: &FunctionDef, args: Vec<Value>) -> R {
+        self.enter()?;
+        let r = self.call_user_inner(fd, args);
+        self.leave();
+        r
+    }
+
+    fn call_user_inner(&self, fd: &FunctionDef, args: Vec<Value>) -> R {
         let mut env = Env::new();
         let supplied = args.len();
         for (p, v) in fd.params.iter().zip(args) {
@@ -476,6 +570,7 @@ impl Interp {
     }
 
     fn eval(&self, e: &Expr, env: &mut Env) -> R {
+        self.charge(1)?;
         match e {
             Expr::Literal { value, kind } => match kind {
                 LiteralKind::FormatString => self.eval_format_string(value, env),
@@ -672,6 +767,7 @@ impl Interp {
                 let s = as_int(&self.eval(start, env)?)?;
                 let e = as_int(&self.eval(end, env)?)?;
                 let hi = if *inclusive { e + 1 } else { e };
+                self.charge_alloc(hi.saturating_sub(s))?;
                 Ok(Value::List((s..hi).map(Value::Int).collect()))
             }
             Expr::Closure { params, body } => Ok(Value::Closure(Rc::new(ClosureData {
@@ -894,6 +990,7 @@ impl Interp {
                 // `[x; n]` — a list of `n` copies of `x`.
                 let v = self.eval(value, env)?;
                 let n = as_int(&self.eval(count, env)?)?;
+                self.charge_alloc(n)?;
                 Ok(Value::List(vec![v; n.max(0) as usize]))
             }
             Expr::Cast { expr, ty } => {
@@ -1182,6 +1279,13 @@ impl Interp {
     }
 
     fn apply(&self, f: &Value, args: Vec<Value>) -> R {
+        self.enter()?;
+        let r = self.apply_inner(f, args);
+        self.leave();
+        r
+    }
+
+    fn apply_inner(&self, f: &Value, args: Vec<Value>) -> R {
         match f {
             Value::Func(name) => {
                 if let Some(fd) = self.funcs.get(name) {
@@ -1447,6 +1551,20 @@ impl Interp {
     }
 
     fn call_builtin(&self, name: &str, a: Vec<Value>) -> R {
+        let v = self.call_builtin_inner(name, a)?;
+        // Output charged by size. Every builtin that can produce more than a
+        // constant multiple of its inputs from a *scalar* precharges above;
+        // the rest are bounded by inputs already paid for, so charging after
+        // the fact keeps total allocation within a constant factor of fuel.
+        match &v {
+            Value::List(xs) => self.charge(xs.len() as u64)?,
+            Value::Str(s) => self.charge(s.len() as u64)?,
+            _ => {}
+        }
+        Ok(v)
+    }
+
+    fn call_builtin_inner(&self, name: &str, a: Vec<Value>) -> R {
         let arg = |i: usize| a.get(i).cloned().unwrap_or(Value::Unit);
         match name {
             "len" | "count" => match arg(0) {
@@ -1597,6 +1715,7 @@ impl Interp {
                                 for a start and an end write `a..b`");
                 }
                 let n = as_int(&arg(0))?;
+                self.charge_alloc(n)?;
                 Ok(Value::List((0..n).map(Value::Int).collect()))
             }
             "zip" => {
@@ -2214,6 +2333,84 @@ pub(crate) fn type_head_name(t: &Type) -> Option<String> {
     }
 }
 
+/// Run `name(args)` on `module` with at most `fuel` units of work.
+pub fn run_bounded(
+    module: &Module,
+    name: &str,
+    args: Vec<Value>,
+    fuel: u64,
+) -> Result<Value, BoundedError> {
+    // On a thread of its own, with a stack sized for the depth bound. A depth
+    // limit means nothing without a known stack beneath it: 256 MAGE calls is
+    // many Rust frames each, and on a caller's 2 MB test thread the process
+    // overflowed well before the bound fired. `Value` holds `Rc`, so arguments
+    // and the result cross the thread boundary as plain integers and lists.
+    let args = args.iter().map(Portable::from_value).collect::<Result<Vec<_>, _>>()?;
+    std::thread::scope(|scope| {
+        std::thread::Builder::new()
+            .stack_size(BOUNDED_STACK_BYTES)
+            .spawn_scoped(scope, move || {
+                let interp = Interp::with_fuel(module, fuel);
+                let args = args.into_iter().map(Portable::into_value).collect();
+                match interp.run(name, args) {
+                    Ok(v) => Portable::from_value(&v),
+                    Err(e) if e == FUEL_EXHAUSTED => Err(BoundedError::FuelExhausted),
+                    Err(e) => Err(BoundedError::Error(e)),
+                }
+            })
+            .map_err(|e| BoundedError::Error(format!("spawn evaluator thread: {e}")))?
+            .join()
+            .map_err(|_| BoundedError::Error("evaluator thread panicked".into()))?
+    })
+    .map(Portable::into_value)
+}
+
+/// Stack for a fuel-bounded run. Reserved address space, not committed memory.
+const BOUNDED_STACK_BYTES: usize = 256 * 1024 * 1024;
+
+/// The part of [`Value`] that can cross a thread boundary: data, not closures.
+enum Portable {
+    Int(i64),
+    Float(f64),
+    Bool(bool),
+    Str(String),
+    List(Vec<Portable>),
+    Tuple(Vec<Portable>),
+    Unit,
+}
+
+impl Portable {
+    fn from_value(v: &Value) -> Result<Portable, BoundedError> {
+        let all = |xs: &[Value]| xs.iter().map(Portable::from_value).collect::<Result<Vec<_>, _>>();
+        Ok(match v {
+            Value::Int(n) => Portable::Int(*n),
+            Value::Float(x) => Portable::Float(*x),
+            Value::Bool(b) => Portable::Bool(*b),
+            Value::Str(s) => Portable::Str(s.clone()),
+            Value::List(xs) => Portable::List(all(xs)?),
+            Value::Tuple(xs) => Portable::Tuple(all(xs)?),
+            Value::Unit => Portable::Unit,
+            other => {
+                return Err(BoundedError::Error(format!(
+                    "a bounded run takes and returns plain data; got `{other}`"
+                )));
+            }
+        })
+    }
+
+    fn into_value(self) -> Value {
+        match self {
+            Portable::Int(n) => Value::Int(n),
+            Portable::Float(x) => Value::Float(x),
+            Portable::Bool(b) => Value::Bool(b),
+            Portable::Str(s) => Value::Str(s),
+            Portable::List(xs) => Value::List(xs.into_iter().map(Portable::into_value).collect()),
+            Portable::Tuple(xs) => Value::Tuple(xs.into_iter().map(Portable::into_value).collect()),
+            Portable::Unit => Value::Unit,
+        }
+    }
+}
+
 /// Convenience for the CLI / tests: parse, then run `name` with integer args.
 pub fn run_source(src: &str, name: &str, args: &[i64]) -> Result<Value, String> {
     let toks = crate::lexer::lex(src);
@@ -2228,6 +2425,60 @@ mod tests {
 
     fn run(src: &str, f: &str, args: &[i64]) -> Value {
         run_source(src, f, args).expect("run failed")
+    }
+
+    // ── Fuel-bounded evaluation (the arena's substrate) ──────────────────
+
+    fn bounded(src: &str, fuel: u64) -> Result<Value, BoundedError> {
+        let module = crate::parser::parse(&crate::lexer::lex(src)).expect("parses");
+        run_bounded(&module, "g", vec![], fuel)
+    }
+
+    #[test]
+    fn bounded_run_agrees_with_unbounded_when_fuel_suffices() {
+        let src = "f g() -> [i64] { flatten([range(4).scan(1, |a, i| a * 2 + i), range(3).reverse()]) }";
+        let free = run(src, "g", &[]);
+        assert_eq!(bounded(src, 10_000).expect("enough fuel"), free);
+    }
+
+    #[test]
+    fn an_infinite_loop_exhausts_fuel_instead_of_hanging() {
+        let src = "f g() -> i64 { m i = 0\n @w 1b { i = i + 1 }\n i }";
+        assert_eq!(bounded(src, 5_000), Err(BoundedError::FuelExhausted));
+    }
+
+    #[test]
+    fn a_huge_range_is_refused_before_it_allocates() {
+        // Charged before allocation: 10^12 elements would be ~24 TB. The test
+        // finishing at all is the assertion that nothing was allocated.
+        for src in [
+            "f g() -> [i64] { range(1000000000000) }",
+            // `a..b` parses only as a `for` header or a slice; this reaches the
+            // allocating `Expr::Range` arm through the loop.
+            "f g() -> i64 { m t = 0\n for i in 0..1000000000000 { t = t + 1 }\n t }",
+            "f g() -> [i64] { [0; 1000000000000] }",
+        ] {
+            assert_eq!(bounded(src, 1_000_000), Err(BoundedError::FuelExhausted), "{src}");
+        }
+    }
+
+    #[test]
+    fn unbounded_recursion_hits_the_depth_bound_not_the_stack() {
+        let src = "f g() -> i64 { h(0) }\nf h(n: i64) -> i64 { h(n + 1) }";
+        match bounded(src, u64::MAX) {
+            Err(BoundedError::Error(e)) => assert!(e.contains("call depth"), "{e}"),
+            other => panic!("expected a depth error, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn exhaustion_is_monotone_in_fuel() {
+        // A program that succeeds with n units succeeds with more, and the
+        // smallest sufficient budget is where it flips — no second flip.
+        let src = "f g() -> [i64] { range(20).map(|i| i * i).reverse() }";
+        let ok: Vec<bool> = (0..200).map(|n| bounded(src, n).is_ok()).collect();
+        let first = ok.iter().position(|&b| b).expect("succeeds within 200");
+        assert!(ok[first..].iter().all(|&b| b));
     }
 
     // ── `grad` — forward-mode automatic differentiation (§5.6) ───────────
