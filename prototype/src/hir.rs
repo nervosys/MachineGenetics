@@ -262,6 +262,15 @@ pub enum Effect {
     /// kind that named it, and leaving it silent is the hole this exists to
     /// close.
     Proc,
+    /// Reading held-out evaluation data.
+    ///
+    /// The one thing a candidate must never do, because a program that can
+    /// see the test set can fit it. Reached through the `heldout.` namespace,
+    /// and allowed only to the `evaluator` and `gate` roles (see [`ROLES`]).
+    Heldout,
+    /// Changing who has authority: promoting a generation, writing the
+    /// journal. Allowed only to the `gate` role.
+    Promote,
     /// User-defined effect.
     Custom(String),
 }
@@ -303,6 +312,9 @@ pub const CAPABILITY_NAMESPACES: &[(&str, Option<Effect>)] = &[
     ("sys", Some(Effect::Proc)),
     ("process", Some(Effect::Proc)),
     ("tools", Some(Effect::Proc)),
+    // The kernel's two authorities: evaluation data, and succession.
+    ("heldout", Some(Effect::Heldout)),
+    ("gate", Some(Effect::Promote)),
     // Deliberately unattributed.
     //
     // `json` is pure computation over values already in hand. `kb` and `db`
@@ -336,6 +348,8 @@ impl fmt::Display for Effect {
             Effect::Rng => write!(f, "Rng"),
             Effect::Agent => write!(f, "Agent"),
             Effect::Proc => write!(f, "Proc"),
+            Effect::Heldout => write!(f, "Heldout"),
+            Effect::Promote => write!(f, "Promote"),
             Effect::Custom(name) => write!(f, "{name}"),
         }
     }
@@ -365,10 +379,65 @@ impl Effect {
             "rng" => Effect::Rng,
             "agent" => Effect::Agent,
             "proc" => Effect::Proc,
+            "heldout" => Effect::Heldout,
+            "promote" => Effect::Promote,
             _ => Effect::Custom(name.to_string()),
         }
     }
 }
+
+/// Every built-in effect kind, by the name an annotation spells it.
+///
+/// The single list. Until 2026-09-25 there were three hand-kept copies — the
+/// spec's table, the ontology's `effects` section, and the ontology test's
+/// array — and adding `heldout` and `promote` passed every checker while none
+/// of the three listed them. `builtin_effects_cover_every_variant` fails to
+/// compile when a variant is added without a row here, and the ontology test
+/// now reads this rather than its own copy.
+pub const BUILTIN_EFFECTS: &[(&str, Effect)] = &[
+    ("io", Effect::IO),
+    ("net", Effect::Net),
+    ("fs", Effect::FS),
+    ("async", Effect::Async),
+    ("alloc", Effect::Alloc),
+    ("panic", Effect::Panic),
+    ("ffi", Effect::FFI),
+    ("env", Effect::Env),
+    ("time", Effect::Time),
+    ("gpu", Effect::Gpu),
+    ("npu", Effect::Npu),
+    ("llm", Effect::Llm),
+    ("evolve", Effect::Evolve),
+    ("learn", Effect::Learn),
+    ("rng", Effect::Rng),
+    ("agent", Effect::Agent),
+    ("proc", Effect::Proc),
+    ("heldout", Effect::Heldout),
+    ("promote", Effect::Promote),
+];
+
+/// The roles a function may declare with `@role(name)`, and the effects each
+/// may perform — directly or through anything it calls.
+///
+/// This is the Weismann barrier as a type error. A self-improving system's
+/// worst failures are a candidate that reads the test set and a harness edit
+/// that rewrites its own evaluator: both are *effects*, and effect inference is
+/// already transitive through the call graph, so a role is just a ceiling on
+/// the inferred set. Until 2026-09-25 `@role(…)` parsed and was ignored.
+///
+/// * `candidate` — generated code: pure. It may compute, and nothing else.
+/// * `learner` — may train, allocate, use a GPU and draw randomness.
+/// * `evaluator` — a learner's powers, plus reading held-out data.
+/// * `gate` — an evaluator's powers, plus promoting and journaling.
+pub const ROLES: &[(&str, &[Effect])] = &[
+    ("candidate", &[]),
+    ("learner", &[Effect::Learn, Effect::Gpu, Effect::Alloc, Effect::Rng]),
+    ("evaluator", &[Effect::Learn, Effect::Gpu, Effect::Alloc, Effect::Rng, Effect::Heldout]),
+    (
+        "gate",
+        &[Effect::Learn, Effect::Gpu, Effect::Alloc, Effect::Rng, Effect::Heldout, Effect::Promote],
+    ),
+];
 
 /// An effect set — the set of effects a function/expression may perform.
 pub type EffectSet = BTreeSet<Effect>;
@@ -480,6 +549,8 @@ pub enum DiagnosticCategory {
     DuplicateDefinition,
     /// Contract/spec violation.
     SpecViolation,
+    /// A function performs an effect its declared `@role` does not allow.
+    RoleViolation,
     /// Other.
     Other,
 }
@@ -500,6 +571,7 @@ impl DiagnosticCategory {
             DiagnosticCategory::SyntaxError => "E0001",
             DiagnosticCategory::DuplicateDefinition => "E0428",
             DiagnosticCategory::SpecViolation => "E0560",
+            DiagnosticCategory::RoleViolation => "E0551",
             DiagnosticCategory::Other => "E9999",
         }
     }
@@ -532,6 +604,9 @@ impl DiagnosticCategory {
             }
             DiagnosticCategory::DuplicateDefinition => {
                 "rename or remove one of the duplicate definitions"
+            }
+            DiagnosticCategory::RoleViolation => {
+                "remove the operation, or move it to a function whose role allows it — never widen a candidate's role"
             }
             DiagnosticCategory::SpecViolation => {
                 "satisfy the contract (@req/@ens/@inv) or correct the contract"
@@ -701,6 +776,45 @@ impl fmt::Display for DiagnosticGraph {
 mod diagnostic_code_tests {
     use super::*;
 
+    #[test]
+    fn builtin_effects_cover_every_variant() {
+        // Exhaustive on purpose: a new variant is a compile error here until it
+        // is given a row in BUILTIN_EFFECTS (or argued out of being built-in).
+        fn listed(e: &Effect) -> bool {
+            match e {
+                Effect::IO
+                | Effect::Net
+                | Effect::FS
+                | Effect::Async
+                | Effect::Alloc
+                | Effect::Panic
+                | Effect::FFI
+                | Effect::Env
+                | Effect::Time
+                | Effect::Gpu
+                | Effect::Npu
+                | Effect::Llm
+                | Effect::Evolve
+                | Effect::Learn
+                | Effect::Rng
+                | Effect::Agent
+                | Effect::Proc
+                | Effect::Heldout
+                | Effect::Promote => BUILTIN_EFFECTS.iter().any(|(_, b)| b == e),
+                Effect::Custom(_) => true,
+            }
+        }
+        for (name, effect) in BUILTIN_EFFECTS {
+            assert!(listed(effect));
+            assert_eq!(&Effect::from_name(name), effect, "`{name}` must parse to its own row");
+            assert_eq!(effect.to_string().to_lowercase(), *name, "display and name agree");
+        }
+        let mut names: Vec<&str> = BUILTIN_EFFECTS.iter().map(|(n, _)| *n).collect();
+        names.sort_unstable();
+        names.dedup();
+        assert_eq!(names.len(), BUILTIN_EFFECTS.len(), "no duplicate names");
+    }
+
     /// Every category has a non-empty code and fix hint, and codes are unique —
     /// the stable agent contract behind `--check --json`.
     #[test]
@@ -715,6 +829,7 @@ mod diagnostic_code_tests {
             DiagnosticCategory::SyntaxError,
             DiagnosticCategory::DuplicateDefinition,
             DiagnosticCategory::SpecViolation,
+            DiagnosticCategory::RoleViolation,
             DiagnosticCategory::Other,
         ];
         let mut seen = std::collections::HashSet::new();

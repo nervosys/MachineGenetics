@@ -76,6 +76,38 @@ impl Default for EffectInfer {
 ///
 /// `trait` blocks are skipped: their items are signatures, and a signature has
 /// nothing to infer — the obligation belongs to the `impl` that supplies a body.
+/// Every `@role(name)` on a free function or method, keyed as the effect
+/// tables key them (`name`, or `Type.method`). A role attribute with no
+/// argument is reported as the unknown role `""`, not skipped.
+fn collect_roles(module: &ast::Module) -> Vec<(String, String)> {
+    fn role_of(attrs: &[ast::Attribute]) -> Option<String> {
+        attrs.iter().find(|a| a.name == "role").map(|a| a.args.first().cloned().unwrap_or_default())
+    }
+    let mut out = Vec::new();
+    for item in &module.items {
+        match &item.kind {
+            ast::ItemKind::Function(fd) => {
+                if let Some(r) = role_of(&item.attributes) {
+                    out.push((fd.name.clone(), r));
+                }
+            }
+            ast::ItemKind::Impl(ast::ImplBlock { self_type: target, items, .. })
+            | ast::ItemKind::Extend(ast::ExtendBlock { target_type: target, items, .. }) => {
+                let Some(type_name) = crate::eval::type_head_name(target) else { continue };
+                for member in items {
+                    if let ast::ItemKind::Function(fd) = &member.kind
+                        && let Some(r) = role_of(&member.attributes)
+                    {
+                        out.push((format!("{type_name}.{}", fd.name), r));
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    out
+}
+
 fn collect_methods(module: &ast::Module) -> Vec<(String, ast::FunctionDef, bool)> {
     let mut out = Vec::new();
     for item in &module.items {
@@ -236,6 +268,43 @@ impl EffectInfer {
                         effects.join(", ")
                     ),
                     DiagnosticCategory::UndeclaredEffect,
+                    None,
+                ));
+            }
+        }
+
+        // Pass 4: roles. A function that declares `@role(r)` may perform —
+        // directly or through anything it reaches — only what `r` allows, and
+        // may not *declare* more either. An unknown role is an error: a typo
+        // must not become an unconstrained function.
+        for (key, role) in collect_roles(module) {
+            let Some((_, allowed)) = crate::hir::ROLES.iter().find(|(r, _)| *r == role) else {
+                let known: Vec<&str> = crate::hir::ROLES.iter().map(|(r, _)| *r).collect();
+                self.diagnostics.push(Diagnostic::categorized(
+                    crate::hir::Severity::Error,
+                    format!("function `{key}` declares unknown role `{role}` (roles: {})", known.join(", ")),
+                    DiagnosticCategory::RoleViolation,
+                    None,
+                ));
+                continue;
+            };
+            let mut exceeded: Vec<String> = Vec::new();
+            for set in [self.inferred.get(&key), self.declared.get(&key)].into_iter().flatten() {
+                for e in set {
+                    if !allowed.contains(e) && !exceeded.contains(&e.to_string()) {
+                        exceeded.push(e.to_string());
+                    }
+                }
+            }
+            if !exceeded.is_empty() {
+                exceeded.sort();
+                self.diagnostics.push(Diagnostic::categorized(
+                    crate::hir::Severity::Error,
+                    format!(
+                        "function `{key}` has role `{role}`, which does not allow [{}]",
+                        exceeded.join(", ")
+                    ),
+                    DiagnosticCategory::RoleViolation,
                     None,
                 ));
             }
@@ -685,6 +754,53 @@ mod tests {
         infer_effects(&module)
     }
 
+    // ── Roles (§11.6) ────────────────────────────────────────────────────
+
+    fn role_errors(src: &str) -> Vec<String> {
+        infer_source(src)
+            .diagnostics
+            .iter()
+            .filter(|d| d.category == Some(DiagnosticCategory::RoleViolation))
+            .map(|d| d.message.clone())
+            .collect()
+    }
+
+    #[test]
+    fn a_candidate_cannot_read_held_out_data_even_through_a_helper() {
+        // The whole point: the leak is transitive, so it must be caught at the
+        // candidate even though the candidate's own body names no effect.
+        let direct = "@role(candidate)\nf gen(s: usize) -> [usize] { heldout.read(\"t\") }";
+        let helper = "f peek() -> [usize] / heldout { heldout.read(\"t\") }\n\
+                      @role(candidate)\nf gen(s: usize) -> [usize] { peek() }";
+        for src in [direct, helper] {
+            let e = role_errors(src);
+            assert_eq!(e.len(), 1, "{src}: {e:?}");
+            assert!(e[0].contains("Heldout"), "{e:?}");
+        }
+    }
+
+    #[test]
+    fn roles_nest_and_only_the_gate_promotes() {
+        let reads = "@role(evaluator)\nf score() -> [usize] / heldout { heldout.read(\"t\") }";
+        assert_eq!(role_errors(reads), Vec::<String>::new());
+        let promotes = "@role(evaluator)\nf p(g: usize) -> usize / promote { gate.promote(g) }";
+        assert_eq!(role_errors(promotes).len(), 1);
+        let gate = "@role(gate)\nf p(g: usize) -> usize / promote, heldout { gate.promote(g) }";
+        assert_eq!(role_errors(gate), Vec::<String>::new());
+    }
+
+    #[test]
+    fn a_role_bounds_declarations_too_and_unknown_roles_are_refused() {
+        // Declaring an effect the role forbids is refused even if unused: a
+        // declaration is a claim of authority.
+        assert_eq!(role_errors("@role(candidate)\nf g() -> usize / io { 1 }").len(), 1);
+        // A typo must not produce an unconstrained function.
+        let typo = role_errors("@role(candidat)\nf g() -> usize { 1 }");
+        assert!(typo.len() == 1 && typo[0].contains("unknown role"), "{typo:?}");
+        // No role, no ceiling: existing code is unaffected.
+        assert_eq!(role_errors("f g() -> usize / io { 1 }"), Vec::<String>::new());
+    }
+
     #[test]
     fn test_pure_function() {
         let ei = infer_source("f add(a: i32, b: i32) -> i32 { a + b }");
@@ -1061,8 +1177,8 @@ mod handler_tests {
             .collect();
         assert_eq!(
             names.len(),
-            17,
-            "§11.2 no longer has 17 effect rows ({names:?}) — if the table grew or              shrank, the sentence above it and `ontology::EFFECT_NAMES` both need              the same change"
+            crate::hir::BUILTIN_EFFECTS.len(),
+            "§11.2's effect rows no longer match hir::BUILTIN_EFFECTS ({names:?}) — if the table grew or              shrank, the sentence above it and `ontology::EFFECT_NAMES` both need              the same change"
         );
         for effect in names {
             let msgs = errors(&format!("+f a() -> i32 / {effect} {{ 1 }}"));
@@ -1125,6 +1241,9 @@ mod handler_tests {
             "dispatch", "synchronize", "generate", "embed", "analyze", "evaluate", "mutate",
             "forward", "backward", "step", "random", "seed", "sample", "lifecycle", "message",
             "lease", "exec",
+            // `promote`/`journal` as bare calls perform nothing; the
+            // authority is reached only through the `gate.` handle (§11.6).
+            "promote", "journal",
         ];
         for name in pure_names {
             let inferred = infer_source(&format!("f a() -> i32 {{ {name}(); 0 }}"))

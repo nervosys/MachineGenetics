@@ -331,6 +331,8 @@ impl Resolver {
             "unreachable", "matches",
             // common free functions
             "min", "max", "abs", "drop", "swap", "replace", "default",
+            // modular arithmetic by name; the operators trap (§4.10)
+            "wrapping_add", "wrapping_sub", "wrapping_mul",
             // bare enum-value constructors agents call positionally
             "Some", "None", "Ok", "Err",
         ];

@@ -7,10 +7,12 @@
 //! same gates any MAGE program does, in order, and the first it fails is the
 //! reason it is refused:
 //!
-//! 1. it **parses**, and declares exactly `f gen(s: usize) -> [usize]`;
+//! 1. it **parses**, and declares exactly `@role(candidate) f gen(s: usize) -> [usize]`;
 //! 2. it **typechecks** with no errors;
 //! 3. its effects are **pure** — inferred, not declared, so a program cannot
-//!    reach a console, a file or the network by leaving an annotation off;
+//!    reach a console, a file or the network by leaving an annotation off.
+//!    The `candidate` role makes this the language's rule (§11.6, `E0551`);
+//!    the explicit check below stays as a second, independent reading;
 //! 4. it **runs within fuel** ([`mage_prototype::eval::run_bounded`]);
 //! 5. it returns a **non-empty list of integers**, which become bytes mod 256.
 //!
@@ -148,6 +150,12 @@ fn check_signature(module: &ast::Module) -> Result<(), String> {
         return Err(format!("expected exactly one item, `f {ENTRY}`; found {}", module.items.len()));
     }
     let f = fns[0];
+    let role = module.items[0].attributes.iter().find(|a| a.name == "role");
+    match role.and_then(|a| a.args.first()) {
+        Some(r) if r == "candidate" => {}
+        Some(r) => return Err(format!("`{ENTRY}` must have role `candidate`, not `{r}`")),
+        None => return Err(format!("`{ENTRY}` must declare `@role(candidate)`")),
+    }
     if f.name != ENTRY {
         return Err(format!("the function must be named `{ENTRY}`, not `{}`", f.name));
     }
@@ -167,7 +175,7 @@ mod tests {
 
     #[test]
     fn a_valid_program_yields_bytes() {
-        let src = "f gen(s: usize) -> [usize] { range(4).map(|x| x * 2 + s) }";
+        let src = "@role(candidate)\nf gen(s: usize) -> [usize] { range(4).map(|x| x * 2 + s) }";
         match sub().run(src, 3) {
             Outcome::Bytes { bytes, .. } => assert_eq!(bytes, vec![3, 5, 7, 9]),
             other => panic!("{other:?}"),
@@ -176,7 +184,7 @@ mod tests {
 
     #[test]
     fn output_is_taken_mod_256_and_truncated() {
-        let src = "f gen(s: usize) -> [usize] { range(100).map(|x| x + 250) }";
+        let src = "@role(candidate)\nf gen(s: usize) -> [usize] { range(100).map(|x| x + 250) }";
         match sub().run(src, 0) {
             Outcome::Bytes { bytes, .. } => {
                 assert_eq!(bytes.len(), 64);
@@ -195,26 +203,46 @@ mod tests {
 
     #[test]
     fn each_gate_refuses_for_its_own_reason() {
-        assert_eq!(refusal("f gen(s: usize) -> [usize] { range( }"), Refusal::Parse);
+        assert_eq!(refusal("@role(candidate)\nf gen(s: usize) -> [usize] { range( }"), Refusal::Parse);
         assert_eq!(refusal("f other(s: usize) -> [usize] { range(3) }"), Refusal::Signature);
         assert_eq!(
-            refusal("f gen(s: usize) -> [usize] { range(3) }\nf h() -> usize { 1 }"),
+            refusal("@role(candidate)\nf gen(s: usize) -> [usize] { range(3) }\nf h() -> usize { 1 }"),
             Refusal::Signature
         );
-        // Not `range(3).map(|x| x + "a")`: that typechecks today and fails only
-        // at run time — closure bodies are under-checked, recorded in HANDOFF.
-        assert_eq!(refusal("f gen(s: usize) -> [usize] { \"abc\" }"), Refusal::Type);
+        assert_eq!(refusal("@role(candidate)\nf gen(s: usize) -> [usize] { \"abc\" }"), Refusal::Type);
+        // Typechecked clean until method calls were typed (item 39): the
+        // type gate let it through and the evaluator refused it at run time.
+        assert_eq!(refusal("@role(candidate)\nf gen(s: usize) -> [usize] { range(3).map(|x| x + \"a\") }"), Refusal::Type);
         assert_eq!(
-            refusal("f gen(s: usize) -> [usize] { m i = 0\n @w 1b { i = i + 1 }\n [i] }"),
+            refusal("@role(candidate)\nf gen(s: usize) -> [usize] { m i = 0\n @w 1b { i = i + 1 }\n [i] }"),
             Refusal::Fuel
         );
-        assert_eq!(refusal("f gen(s: usize) -> [usize] { range(0) }"), Refusal::Empty);
+        assert_eq!(refusal("@role(candidate)\nf gen(s: usize) -> [usize] { range(0) }"), Refusal::Empty);
+    }
+
+    #[test]
+    fn a_program_without_the_candidate_role_is_refused() {
+        for src in [
+            "f gen(s: usize) -> [usize] { range(3) }",
+            "@role(evaluator)\nf gen(s: usize) -> [usize] { range(3) }",
+        ] {
+            assert_eq!(refusal(src), Refusal::Signature, "{src}");
+        }
+    }
+
+    #[test]
+    fn a_candidate_that_reads_held_out_data_is_refused_by_the_language() {
+        let src = "@role(candidate)\nf gen(s: usize) -> [usize] { heldout.read(\"test\") }";
+        match sub().run(src, 1) {
+            Outcome::Refused(Refusal::Effect, why) => assert!(why.contains("candidate"), "{why}"),
+            other => panic!("{other:?}"),
+        }
     }
 
     #[test]
     fn an_effectful_program_is_refused_even_undeclared() {
         // No `/ io` on the signature: the verdict is inferred, not trusted.
-        let src = "f gen(s: usize) -> [usize] { println(\"hi\")\n range(3) }";
+        let src = "@role(candidate)\nf gen(s: usize) -> [usize] { println(\"hi\")\n range(3) }";
         let r = sub().run(src, 1);
         assert!(
             matches!(r, Outcome::Refused(Refusal::Effect, _) | Outcome::Refused(Refusal::Type, _)),

@@ -1279,13 +1279,13 @@ Complete alphabetical index of all ontological concepts:
 | Decision                | Agent        | enum (3)                 | §6.3    |
 | DecompError             | Agent        | enum (4)                 | §7      |
 | Diagnostic              | Cross-domain | `Diagnostic`             | §8      |
-| DiagnosticCategory      | Cross-domain | enum (10)                | §8      |
+| DiagnosticCategory      | Cross-domain | enum (11)                | §8      |
 | DiagnosticGraph         | Cross-domain | `DiagnosticGraph`        | §8      |
 | DiagnosticNode          | Cross-domain | `DiagnosticNode`         | §8      |
 | DiagnosticNodeKind      | Cross-domain | enum (3)                 | §8      |
 | GradOp                  | AI/Autograd  | enum (22 @ prototype/src/autograd.rs) | §18.2   |
 | DynamicWarningEngine    | Tooling      | `DynamicWarningEngine`   | §22.4   |
-| Effect                  | Effect       | enum (18 @ prototype/src/hir.rs)                | §16     |
+| Effect                  | Effect       | enum (20 @ prototype/src/hir.rs)                | §16     |
 | EffectAnalysis          | Verification | `EffectAnalysis`         | §21.1   |
 | EffectCheck             | Verification | `EffectCheck`            | §21.1   |
 | EffectCheckResult       | Verification | enum (3)                 | §21.1   |
@@ -1568,7 +1568,7 @@ Report TaskResult::Success
 | AST ExprKind variants    | 36    |
 | AST Type variants        | 32    |
 | HIR Ty variants          | 31    |
-| Effect kinds             | 17    |
+| Effect kinds             | 19    |
 | SKB rule databases       | 8     |
 | SKB rules total          | 255   |
 | RAP endpoints            | 38    |
@@ -1588,12 +1588,12 @@ Report TaskResult::Success
 | System invariants        | 56    |
 | Compiler pipeline phases | 13    |
 
-> **`Effect kinds` is 17, and `Effect` has 18 variants.** The eighteenth is
+> **`Effect kinds` is 19, and `Effect` has 20 variants.** The twentieth is
 > `Custom(String)`, which is how a *declared* `effect` block is represented —
 > not a name a `/ …` annotation may use. §11.2 of `MAGE_SPEC.md` says
-> "these seventeen names" and its table has seventeen rows; this document's
-> own `effects` ontology section lists those seventeen beside five
-> annotations, which is where the JSON's `effects: 22` comes from. Three
+> "these nineteen names" and its table has nineteen rows; this document's
+> own `effects` ontology section lists those nineteen beside five
+> annotations, which is where the JSON's `effects: 24` comes from. Three
 > numbers, one subject, and each is right about a different question.
 >
 > **Three of these moved during the merge that landed them.** `Expr` gained
