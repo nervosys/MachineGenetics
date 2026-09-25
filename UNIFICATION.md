@@ -10,7 +10,7 @@
 >
 > **Complete ontology over language + IR + protocol + operations + hardware**
 > in **22 sections**. Beyond the language/IR/framework: cli_flags (39),
-> bench_backends (4), effects (22), wrapper_protocol (9),
+> bench_backends (4), effects (24), wrapper_protocol (9),
 > project_layout (22), docs (7), ci_floors (6), **hardware_accelerators
 > (extensible runtime registry, 8 builtins)**. Single RAP call
 > `ontology/full` or static dump at `MAGE_ONTOLOGY.json` (~140 KB,

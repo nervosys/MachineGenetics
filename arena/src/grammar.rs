@@ -182,7 +182,9 @@ impl Program {
     pub fn source(&self) -> String {
         let mut body = String::new();
         self.body.render(&mut body);
-        format!("f gen(s: usize) -> [usize] {{\n    {body}\n}}\n")
+        // `@role(candidate)`: the language, not this crate, is what forbids a
+        // generated program from reading held-out data or acting (§11.6).
+        format!("@role(candidate)\nf gen(s: usize) -> [usize] {{\n    {body}\n}}\n")
     }
 
     /// Length in MAGE tokens — the description length the Solomonoff prior

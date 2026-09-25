@@ -2591,6 +2591,23 @@ mod tests {
     }
 
     #[test]
+    fn the_spec_states_the_fuel_model_this_evaluator_implements() {
+        // §4.11 is normative; its one number must be this file's number.
+        let spec = std::fs::read_to_string(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../MAGE_SPEC.md"),
+        )
+        .expect("MAGE_SPEC.md is beside the prototype")
+        .replace("\r\n", "\n");
+        let section = spec.split("### 4.11 Fuel").nth(1).expect("§4.11 exists");
+        let section = section.split("\n### ").next().unwrap().replace('\n', " ");
+        assert!(
+            section.contains(&format!("call depth is bounded at {MAX_BOUNDED_DEPTH}")),
+            "§4.11 must state the depth bound the evaluator enforces ({MAX_BOUNDED_DEPTH})"
+        );
+        assert!(section.contains(FUEL_EXHAUSTED), "§4.11 must name the exhaustion message");
+    }
+
+    #[test]
     fn metered_runs_report_what_they_spent() {
         let module = crate::parser::parse(&crate::lexer::lex(
             "f g() -> [i64] { range(20).map(|i| i * i).reverse() }",

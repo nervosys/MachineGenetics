@@ -112,6 +112,8 @@ pub const NON_FUNCTIONAL: &[Effect] = &[
     Effect::Llm,
     Effect::Agent,
     Effect::Async,
+    Effect::Heldout,
+    Effect::Promote,
 ];
 
 pub struct DiffInfer {

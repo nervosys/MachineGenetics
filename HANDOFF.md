@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,081** — rmi 1,384 · prototype 1,300 · ribosome 168 · germline 142 · forge 60 · arena 27 |
+| Tests | **3,088** — rmi 1,384 · prototype 1,305 · ribosome 168 · germline 142 · forge 60 · arena 29 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -446,8 +446,49 @@ recommended syntax that does not parse. This
 is the arena's other use: it runs the compiler thousands of times on
 programs no person wrote.
 
-Counts: prototype 1,282 → **1,300**, germline 134 → **142**, arena **27** (new),
-total 3,028 → **3,081**. Pins 94 → **101**. CI jobs 10 → **11**.
+### The redesign, and phase 1 of its plan
+
+After the arena ran, the language and system were rethought from first
+principles against the RSI objective. The result is a small trusted kernel,
+roles as capabilities, cost as semantics, content-addressed definitions,
+`param` domains, and three loops (weights, programs, harness), with a 10-phase
+plan to get there. Decisions D1–D3 were confirmed: **trap on overflow**,
+**joules as the fixed unit of compute**, and **a language surface only for
+what the typechecker enforces**. D4, the LLM proposer, is still open.
+
+**Phase 1 is done except 1.1** (a formal `--check --core` subset):
+
+- **1.2 Roles are capabilities.** `@role(candidate|learner|evaluator|gate)`
+  caps a function's inferred *and* declared effects, transitively, as `E0551`
+  (§11.6). Two new built-in effects, `heldout` and `promote`, are reached
+  through the `heldout.` and `gate.` handles. A candidate that reads held-out
+  data, even through a helper, is now a type error. `@role(…)` used to parse
+  and be ignored. The arena now requires `@role(candidate)` on every program,
+  so its purity is the language's rule. A test proves the refusal comes from
+  the language: it fails when the role pass is disabled even though the
+  arena's own purity check still runs.
+- **The effect list had three hand-kept copies,** and adding two effects
+  passed every checker while none of them listed the additions.
+  `hir::BUILTIN_EFFECTS` is now the one list: an exhaustive-match test fails to
+  compile when a variant is added without a row, and the ontology test reads
+  it. The spec table and the ontology document are still prose copies, but
+  tests read both, and the pins caught `onto_effects` in two more documents.
+- **1.3 and 1.4**, items 38–40, are above.
+- **1.5 Fuel is semantics.** `MAGE_SPEC.md` §4.11 states the cost model, and a
+  test holds its depth bound to the evaluator's constant.
+
+**One stale reference, noted rather than fixed:** this document calls the
+single-shot decision "§11.6", and that decision is a `####` inside §11.5.
+§11.6 is now Roles.
+
+**Merging needs a person.** Local `master` carried ten commits never pushed,
+the whole 2026-09-16 phase. PR #38 therefore holds 11 commits, all
+CI-green. The attempt to merge it was refused by the permission layer as a
+merge without review, which is the right outcome for an agent. #39 (the
+arena) is stacked on #38 and retargets when #38 merges with `--delete-branch`.
+
+Counts: prototype 1,282 → **1,305**, germline 134 → **142**, arena **29** (new),
+total 3,028 → **3,088**. Pins 94 → **101**. CI jobs 10 → **11**.
 
 **Pre-existing, not from this change:** `cargo clippy` 0.1.98 (2026-09-01)
 reports 15 warnings in `prototype` — 14 `chunks_exact` with a constant size in
@@ -2987,9 +3028,9 @@ changed before you commit.
 ---
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,300**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,305**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
-  across six crates **3,081**; documented-count pins **101**, up from 46 — the
+  across six crates **3,088**; documented-count pins **101**, up from 46 — the
   two newest hold the `kb`/`net` overlap the tensor-product-binding decision
   rests on, a figure that had lived in two sentences of prose with nothing
   re-deriving it.
