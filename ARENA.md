@@ -1,0 +1,153 @@
+# The Arena
+
+> `arena/` — its own crate, depending on `prototype` and `germline`. The
+> self-driven improvement loop: agents write MAGE, the compiler gates and runs
+> it, learners predict what it outputs, and every joule is either measured or
+> labelled an estimate. **Status: built, tested, measured once — and the first
+> measurement is mostly a list of what to fix next.** That is recorded below as
+> measured, not smoothed.
+
+## The objective
+
+Set on 2026-09-25:
+
+> A self-driven, agentic system for **multi-objective convex and non-convex
+> optimization**, focused on **intelligence per second per watt for a fixed
+> unit of compute**, supporting **one to many agents collaborating and
+> competing**.
+
+Three consequences shape everything here.
+
+**Intelligence per second per watt is intelligence per joule.** A watt is a
+joule per second. The ratio alone therefore cannot tell a slow, frugal system
+from a fast, hungry one, so latency is kept as its own objective and the
+problem is multi-objective by construction: held-out bits per byte ↓, joules ↓,
+latency ↓.
+
+**A weighted sum cannot optimise a non-convex front.** Scalarising objectives
+with any fixed weights finds only points on the convex hull of the Pareto
+front. `germline::FitnessVector::composite` is an unweighted mean, so
+`germline::pareto` was added: dominance, fronts, exact hypervolume, and
+per-point contribution. A test pins a concave point that every weighting misses
+and hypervolume credits.
+
+**Intelligence has to be measured by something no agent can move.** The score
+is bits per byte on held-out natural data, which no agent can read. It is an exact
+likelihood, computed deterministically — the top of the verification hierarchy
+the 2026 RSI literature ranks evaluators by — and not a judge that can be
+flattered.
+
+## The design: self-play pretraining, with MAGE as the substrate
+
+From Cowsik et al., *Self-Play Pretraining with Zero Data* (arXiv:2609.30063):
+a generator writes programs, a learner predicts their outputs, and the
+generator is rewarded for the **learning progress** it causes —
+`|⟨∇θL(y), P ⊙ δθ⟩|`, the alignment between the gradient a sequence would
+produce and the direction the learner is actually moving. Rewarding difficulty
+collapses into noise; rewarding progress keeps the generator on the learner's
+frontier. The paper names the expressiveness of its Brainfuck-like substrate
+as the limit on scaling. MAGE is a typed language whose compiler can refuse a
+bad program before running it.
+
+| piece | module | what it does |
+|---|---|---|
+| agents | `arena::agents` | `Proposer` trait; `GrammarAgent` (REINFORCE over MAGE productions), `UniformAgent` (fixed prior, the control), `MutatorAgent` (varies anyone's pool entries). One shared pool; a fixed budget per round split by **learning progress per unit of fuel** |
+| program space | `arena::grammar` | typed trees over `range`/`map`/`scan`/`filter`/`reverse`/`sort`/`take`/`flatten`/`[e; n]`, rendered to MAGE; mutation and closed-subtree crossover |
+| substrate | `arena::substrate` | parse → signature → typecheck → **inferred**-pure effects → fuel-bounded run → bytes mod 256. Each refusal is data, counted by reason |
+| fuel | `prototype::eval::run_metered` | every expression one unit; every returned list its length, **precharged before allocation** where a scalar sets the size; depth bounded on a thread with a known stack |
+| learner | `arena::learner` | hashed-context softmax with exact gradients and sparse Adam; the learning-progress reward with a lookback between `e/4` and `e/2` |
+| energy | `arena::energy` | NVML's cumulative energy counter, loaded at run time → **Measured**; a wall-clock CPU estimate → **Estimated**, with its wattage stated; unreadable → **Unavailable**, never zero |
+| selection | `germline::pareto` | learners' front over (bits/byte, joules, latency); hypervolume contribution as credit |
+
+**Convex and non-convex.** The combinatorial half — which program, which
+structure — is the agents' search over program trees. The continuous half —
+learner width, context order, learning rate — is the `LearnerConfig` of
+competing learners, placed on the same front. Nesting an exact continuous
+solver inside the combinatorial search is the next step for that half, not
+something built yet.
+
+**Collaboration and competition.** Collaboration is the shared pool: any agent
+may mutate or recombine any entry, as in Group-Evolving Agents. Competition is
+the budget: `agents::allocate` gives each round's fixed evaluations out in
+proportion to credit per unit cost, with a floor so one bad round cannot starve
+an agent into silence. With one agent, it reduces to a single loop.
+
+## Running it
+
+```sh
+cargo run --release --manifest-path arena/Cargo.toml -- \
+    --heldout README.md,germline/src/gate.rs \
+    --rounds 40 --programs 48 \
+    --agents grammar:2,uniform:1,mutator:1 \
+    --learners 3:12:0.02,2:10:0.05,1:8:0.1 \
+    --json report.json
+```
+
+## What the first runs measured (2026-09-25)
+
+40 rounds × 48 programs, four agents, three learners, on dual RTX 3090 Ti with
+NVML live. About 19 seconds per run.
+
+**The learned generator out-competes the fixed prior.** `grammar-1` reached a
+credit-per-cost score of 9.56 against `uniform-0`'s 2.13 and took 26 of 48
+evaluations in the last round. That is the paper's central ablation, reproduced
+at toy scale: a learned generator earns more learning progress per unit of
+compute than sampling the prior.
+
+**The reward was hacked twice, within one session.**
+
+1. With the reference snapshot as a short moving average, the best programs
+   were constant runs — `[129; 6]`, `range(41).map(|v| 232)`. A short lookback
+   makes the reward self-confirming: whatever the learner just saw dominates its
+   recent movement, so more of the same aligns best. Fixed with the paper's
+   `e/2` window plus count-based novelty (repeats earn `progress / (1 + n)`).
+   Distinct outputs rose to 80%.
+2. The generator then found `[s; k]` — constant runs keyed on the seed, so each
+   seed is "new" to the novelty count while the content stays trivial. **Open.**
+   The next fix is to fingerprint output *structure* rather than bytes, or to
+   score novelty against the learner's own prediction.
+
+**Transfer to natural data is weak, and the learner is why.** The learners fit
+their training data (1.9–3.4 bits/byte in distribution), but on held-out text
+and code only the largest beats a uniform model (7.51 bits/byte). The two
+smaller ones get *worse* the longer they train (9.3 and 12.7): they overfit the
+synthetic distribution. An n-gram learner can only transfer byte frequencies.
+Copying, recursion and composition — the regularities self-play pretraining
+found to transfer — need a learner with in-context mechanisms, which is the
+paper's own finding about its transformer. **The loop is not the bottleneck;
+the learner class is.**
+
+**Energy is honest and mostly idle.** NVML measured both GPUs across every
+training span (≈1,000 J for the largest learner over the run), but the learner
+runs on the CPU, so that figure is idle draw attributed to the work, beside a
+CPU figure that is an estimate. The report says both. Only a GPU learner makes
+the measured joules the ones doing the work.
+
+## What surfaced in MAGE itself
+
+The arena runs the compiler thousands of times on programs no person wrote,
+and in its first hour it found three things about the language:
+
+- **Closure bodies are under-checked.** `range(3).map(|x| x + "a")` typechecks
+  and fails only at run time.
+- **Integer overflow depends on the build profile.** `binop` uses plain `a * b`,
+  which panics in a debug build and wraps in release, so one MAGE program has
+  two meanings. `MAGE_SPEC.md` says nothing about overflow. **This is a language
+  decision — wrap or trap — and it is not made here.** The arena works under
+  either: a panicking candidate is caught, charged its full fuel, and refused.
+- **`range`'s own error message recommends a form that does not parse.** It
+  says "for a start and an end write `a..b`", and `a..b` parses only in `for`
+  headers and slices.
+
+## Next, in order
+
+1. **A GPU learner** — a small byte-level transformer behind the same `Learner`
+   interface, so the measured joules are the ones doing the work and the
+   learner class can express what self-play is supposed to teach.
+2. **Structural novelty**, to close the seed-keyed exploit.
+3. **The continuous half**: an inner solver over `LearnerConfig` nested inside
+   the program search.
+4. **An LLM agent** as a fourth `Proposer`, competing on the same budget.
+5. **Promotion through `germline`**: learners that survive the front become
+   candidates for `Episode::adjudicate`, so authority still changes hands only
+   through the gate.

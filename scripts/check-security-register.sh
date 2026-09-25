@@ -91,9 +91,9 @@ set -o pipefail
 cd "$(dirname "$0")/.." || exit 1
 
 DOC=SECURITY_AUDIT.md
-# The four committed surfaces, then the git-ignored one. CI audits the same
-# five; keep the two lists in step.
-SURFACES="prototype forge ribosome germline RecursiveMachineIntelligence"
+# The five committed surfaces, then the git-ignored one. CI audits the same
+# six; keep the two lists in step.
+SURFACES="prototype forge ribosome germline arena RecursiveMachineIntelligence"
 GIT_IGNORED_SURFACE=RecursiveMachineIntelligence
 NPM_SURFACE=video
 

@@ -66,7 +66,7 @@ set -o pipefail
 
 cd "$(dirname "$0")/.."
 
-CRATES="prototype RecursiveMachineIntelligence ribosome germline forge framework/framewerx"
+CRATES="prototype RecursiveMachineIntelligence ribosome germline forge arena framework/framewerx"
 BASELINE=scripts/orphan-sources-baseline.txt
 
 found=""

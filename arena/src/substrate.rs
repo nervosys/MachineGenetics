@@ -1,0 +1,224 @@
+//! The substrate: a MAGE program in, a byte sequence out — or a reason why not.
+//!
+//! Self-play pretraining (Cowsik et al., arXiv:2609.30063) needs a program
+//! space in which every program terminates with bounded output, and it names
+//! the expressiveness of its substrate — a Brainfuck-like machine — as the
+//! limit on scaling. MAGE is the substrate here. A candidate must clear the
+//! same gates any MAGE program does, in order, and the first it fails is the
+//! reason it is refused:
+//!
+//! 1. it **parses**, and declares exactly `f gen(s: usize) -> [usize]`;
+//! 2. it **typechecks** with no errors;
+//! 3. its effects are **pure** — inferred, not declared, so a program cannot
+//!    reach a console, a file or the network by leaving an annotation off;
+//! 4. it **runs within fuel** ([`mage_prototype::eval::run_bounded`]);
+//! 5. it returns a **non-empty list of integers**, which become bytes mod 256.
+//!
+//! Every refusal is ordinary data. Most generated programs are expected to fail
+//! somewhere, and the gate that catches them is the cheapest place in the whole
+//! system to die — the sandbox side of `ARCHITECTURE.md`'s two regimes, where
+//! failure is free and throughput is what matters.
+
+use mage_prototype::eval::{run_metered, BoundedError, Value};
+use mage_prototype::{ast, effects, hir, lexer, parser, types};
+use serde::{Deserialize, Serialize};
+
+/// Why a program produced no data.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Refusal {
+    Parse,
+    Signature,
+    Type,
+    Effect,
+    Fuel,
+    Runtime,
+    Empty,
+}
+
+impl Refusal {
+    pub const ALL: [Refusal; 7] = [
+        Refusal::Parse,
+        Refusal::Signature,
+        Refusal::Type,
+        Refusal::Effect,
+        Refusal::Fuel,
+        Refusal::Runtime,
+        Refusal::Empty,
+    ];
+}
+
+/// What running a program produced.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Outcome {
+    Bytes { bytes: Vec<u8>, fuel_used: u64 },
+    Refused(Refusal, String),
+}
+
+/// The substrate's limits.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct Substrate {
+    /// Evaluation budget per run, in [`mage_prototype::eval`] fuel units.
+    pub fuel: u64,
+    /// Output is truncated to this many bytes.
+    pub max_bytes: usize,
+}
+
+impl Default for Substrate {
+    fn default() -> Self {
+        Substrate { fuel: 200_000, max_bytes: 1024 }
+    }
+}
+
+/// The entry point every generated program declares.
+pub const ENTRY: &str = "gen";
+
+impl Substrate {
+    /// Check `source` and run `gen(seed)`.
+    pub fn run(&self, source: &str, seed: u64) -> Outcome {
+        let module = match parser::parse(&lexer::lex(source)) {
+            Ok(m) => m,
+            Err(e) => return Outcome::Refused(Refusal::Parse, e.message),
+        };
+        if let Err(why) = check_signature(&module) {
+            return Outcome::Refused(Refusal::Signature, why);
+        }
+        let typed = types::check(&module);
+        if let Some(d) = typed.diagnostics.iter().find(|d| d.severity == hir::Severity::Error) {
+            return Outcome::Refused(Refusal::Type, d.message.clone());
+        }
+        let fx = effects::infer_effects(&module);
+        if let Some(d) = fx.diagnostics.iter().find(|d| d.severity == hir::Severity::Error) {
+            return Outcome::Refused(Refusal::Effect, d.message.clone());
+        }
+        match fx.inferred.get(ENTRY) {
+            Some(set) if set.is_empty() => {}
+            Some(set) => {
+                let names: Vec<String> = set.iter().map(|e| e.to_string()).collect();
+                return Outcome::Refused(
+                    Refusal::Effect,
+                    format!("`{ENTRY}` performs {{ {} }}; generated data must be pure", names.join(", ")),
+                );
+            }
+            None => {
+                return Outcome::Refused(Refusal::Effect, format!("no effect verdict for `{ENTRY}`"));
+            }
+        }
+        // Seeds are kept small so `s` stays in the byte-ish range a program's
+        // arithmetic was written for; the seed's job is variety, not magnitude.
+        let arg = Value::Int((seed % 256) as i64);
+        let (result, fuel_used) = run_metered(&module, ENTRY, vec![arg], self.fuel);
+        match result {
+            Ok(Value::List(xs)) => {
+                let mut bytes = Vec::with_capacity(xs.len().min(self.max_bytes));
+                for x in xs.iter().take(self.max_bytes) {
+                    match x {
+                        Value::Int(n) => bytes.push((*n).rem_euclid(256) as u8),
+                        other => {
+                            return Outcome::Refused(
+                                Refusal::Runtime,
+                                format!("element `{other}` is not an integer"),
+                            );
+                        }
+                    }
+                }
+                if bytes.is_empty() {
+                    return Outcome::Refused(Refusal::Empty, "empty output".into());
+                }
+                Outcome::Bytes { bytes, fuel_used }
+            }
+            Ok(other) => Outcome::Refused(Refusal::Runtime, format!("returned `{other}`, not a list")),
+            Err(BoundedError::FuelExhausted) => Outcome::Refused(Refusal::Fuel, "fuel exhausted".into()),
+            Err(BoundedError::Error(e)) => Outcome::Refused(Refusal::Runtime, e),
+        }
+    }
+}
+
+/// Exactly one item, `f gen(s: usize) -> [usize]`.
+fn check_signature(module: &ast::Module) -> Result<(), String> {
+    let fns: Vec<&ast::FunctionDef> = module
+        .items
+        .iter()
+        .filter_map(|i| match &i.kind {
+            ast::ItemKind::Function(f) => Some(f),
+            _ => None,
+        })
+        .collect();
+    if module.items.len() != 1 || fns.len() != 1 {
+        return Err(format!("expected exactly one item, `f {ENTRY}`; found {}", module.items.len()));
+    }
+    let f = fns[0];
+    if f.name != ENTRY {
+        return Err(format!("the function must be named `{ENTRY}`, not `{}`", f.name));
+    }
+    if f.params.len() != 1 {
+        return Err(format!("`{ENTRY}` takes exactly one parameter"));
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn sub() -> Substrate {
+        Substrate { fuel: 100_000, max_bytes: 64 }
+    }
+
+    #[test]
+    fn a_valid_program_yields_bytes() {
+        let src = "f gen(s: usize) -> [usize] { range(4).map(|x| x * 2 + s) }";
+        match sub().run(src, 3) {
+            Outcome::Bytes { bytes, .. } => assert_eq!(bytes, vec![3, 5, 7, 9]),
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn output_is_taken_mod_256_and_truncated() {
+        let src = "f gen(s: usize) -> [usize] { range(100).map(|x| x + 250) }";
+        match sub().run(src, 0) {
+            Outcome::Bytes { bytes, .. } => {
+                assert_eq!(bytes.len(), 64);
+                assert_eq!(&bytes[..7], &[250, 251, 252, 253, 254, 255, 0]);
+            }
+            other => panic!("{other:?}"),
+        }
+    }
+
+    fn refusal(src: &str) -> Refusal {
+        match sub().run(src, 1) {
+            Outcome::Refused(r, _) => r,
+            other => panic!("expected a refusal for {src}, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn each_gate_refuses_for_its_own_reason() {
+        assert_eq!(refusal("f gen(s: usize) -> [usize] { range( }"), Refusal::Parse);
+        assert_eq!(refusal("f other(s: usize) -> [usize] { range(3) }"), Refusal::Signature);
+        assert_eq!(
+            refusal("f gen(s: usize) -> [usize] { range(3) }\nf h() -> usize { 1 }"),
+            Refusal::Signature
+        );
+        // Not `range(3).map(|x| x + "a")`: that typechecks today and fails only
+        // at run time — closure bodies are under-checked, recorded in HANDOFF.
+        assert_eq!(refusal("f gen(s: usize) -> [usize] { \"abc\" }"), Refusal::Type);
+        assert_eq!(
+            refusal("f gen(s: usize) -> [usize] { m i = 0\n @w 1b { i = i + 1 }\n [i] }"),
+            Refusal::Fuel
+        );
+        assert_eq!(refusal("f gen(s: usize) -> [usize] { range(0) }"), Refusal::Empty);
+    }
+
+    #[test]
+    fn an_effectful_program_is_refused_even_undeclared() {
+        // No `/ io` on the signature: the verdict is inferred, not trusted.
+        let src = "f gen(s: usize) -> [usize] { println(\"hi\")\n range(3) }";
+        let r = sub().run(src, 1);
+        assert!(
+            matches!(r, Outcome::Refused(Refusal::Effect, _) | Outcome::Refused(Refusal::Type, _)),
+            "{r:?}"
+        );
+    }
+}

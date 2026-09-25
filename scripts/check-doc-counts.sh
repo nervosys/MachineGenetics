@@ -91,12 +91,14 @@ scripts/test-all.sh	#     prototype +[0-9,]+ tests	prototype
 scripts/test-all.sh	#     ribosome +[0-9,]+ tests	ribosome
 scripts/test-all.sh	#     germline +[0-9,]+ tests	germline
 scripts/test-all.sh	#     forge +[0-9,]+ tests	forge
+scripts/test-all.sh	#     arena +[0-9,]+ tests	arena
 scripts/test-all.sh	#     total +[0-9,]+ tests	total
 scripts/test-all.ps1	rmi \(cpu\) +[0-9,]+ tests	rmi
 scripts/test-all.ps1	prototype +[0-9,]+ tests	prototype
 scripts/test-all.ps1	ribosome +[0-9,]+ tests	ribosome
 scripts/test-all.ps1	germline +[0-9,]+ tests	germline
 scripts/test-all.ps1	forge +[0-9,]+ tests	forge
+scripts/test-all.ps1	arena +[0-9,]+ tests	arena
 scripts/test-all.ps1	total +[0-9,]+ tests	total
 ARCHITECTURE.md	\(\*\*[0-9,]+ tests\*\* green\)	prototype
 ARCHITECTURE.md	`rmi` \| [0-9,]+ 	rmi
@@ -104,10 +106,12 @@ ARCHITECTURE.md	`mage-prototype` \| [0-9,]+ 	prototype
 ARCHITECTURE.md	`ribosome` \| [0-9,]+ 	ribosome
 ARCHITECTURE.md	`germline` \| [0-9,]+ 	germline
 ARCHITECTURE.md	`forge` \| [0-9,]+ 	forge
+ARCHITECTURE.md	`arena` \| [0-9,]+ 	arena
 MEASUREMENTS.md	MAGE prototype \| \*\*[0-9,]+ pass	prototype
 MEASUREMENTS.md	ribosome \(build engine\) \| \*\*[0-9,]+ pass	ribosome
 MEASUREMENTS.md	germline \(RSI control plane\) \| \*\*[0-9,]+ pass	germline
 MEASUREMENTS.md	forge \(registry\) \| \*\*[0-9,]+ pass	forge
+MEASUREMENTS.md	arena \(self-play arena\) \| \*\*[0-9,]+ pass	arena
 RIBOSOME.md	its own crate, [0-9,]+ tests	ribosome
 RIBOSOME.md	ribosome/Cargo.toml +# [0-9,]+ tests	ribosome
 GERMLINE.md	its own crate, [0-9,]+ tests	germline
@@ -117,7 +121,8 @@ HANDOFF.md	rmi [0-9,]+ ·	rmi
 HANDOFF.md	prototype [0-9,]+ ·	prototype
 HANDOFF.md	ribosome [0-9,]+ ·	ribosome
 HANDOFF.md	germline [0-9,]+ ·	germline
-HANDOFF.md	forge [0-9,]+ \|	forge
+HANDOFF.md	forge [0-9,]+ ·	forge
+HANDOFF.md	arena [0-9,]+ \|	arena
 HANDOFF.md	→ [0-9,]+\*\*, all green	prototype
 HANDOFF.md	\| CI \| [0-9,]+ jobs	ci_jobs
 HANDOFF.md	\*\*[0-9,]+ checked	mg_checked
@@ -308,7 +313,7 @@ for file in $PROSE_FILES; do
         continue
     fi
     flat="$(flatten "$file")"
-    for key in rmi prototype ribosome germline forge; do
+    for key in rmi prototype ribosome germline forge arena; do
         hit="$(printf '%s' "$flat" | grep -oE "$key \*\*[0-9,]+\*\*" | head -1)"
         if [ -z "$hit" ]; then
             echo "  !  $file: no '$key **N**' claim found - reworded?" >&2
