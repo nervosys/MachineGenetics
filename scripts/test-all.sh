@@ -1,17 +1,18 @@
 #!/usr/bin/env bash
-# Build and test all five MAGE crates.
+# Build and test all six MAGE crates.
 #
-# The repository is five separate Cargo workspaces on purpose (see
+# The repository is six separate Cargo workspaces on purpose (see
 # ARCHITECTURE.md §"Repository layout"), so a root `cargo test` does nothing.
 # This is the single entry point that covers everything CI covers:
 #
 #     rmi (cpu)   1,384 tests
-#     prototype   1,288 tests
+#     prototype   1,294 tests
 #     ribosome      168 tests
-#     germline      134 tests
+#     germline      142 tests
 #     forge          60 tests
+#     arena          27 tests
 #     -------------------------
-#     total       3,034 tests, 0 warnings
+#     total       3,075 tests, 0 warnings
 #
 # Usage:
 #   scripts/test-all.sh            # debug
@@ -86,6 +87,7 @@ run_crate prototype prototype/Cargo.toml
 run_crate ribosome  ribosome/Cargo.toml
 run_crate germline  germline/Cargo.toml
 run_crate forge     forge/Cargo.toml
+run_crate arena     arena/Cargo.toml
 
 if [ "$CUDA" -eq 1 ]; then
     run_crate 'prototype (cuda)' prototype/Cargo.toml --features cuda
@@ -140,11 +142,11 @@ fi
 echo 'All crates green.'
 
 if [ "$CHECKDOCS" -eq 1 ]; then
-    # Sum the five crates by name, not every key in COUNTS: a --cuda run adds a
+    # Sum the six crates by name, not every key in COUNTS: a --cuda run adds a
     # `cuda` entry that re-tests prototype, and folding it into the total would
     # count that crate twice and make the documented total unreachable.
     total=0
-    for k in rmi prototype ribosome germline forge; do
+    for k in rmi prototype ribosome germline forge arena; do
         total=$((total + ${COUNTS[$k]:-0}))
     done
     echo

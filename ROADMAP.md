@@ -3,9 +3,9 @@
 > Tracking progress from prototype toward production. Steps 1–22 completed prior.
 > Each step is a concrete, testable increment.
 >
-> **Last verified: 2026-09-15** — all five crates built and tested: prototype
-> **1,288**, rmi **1,384**, ribosome **168**, germline **134**, forge **60** —
-> **3,034 tests, 0 failures, 0 warnings**. The crate count went from three to
+> **Last verified: 2026-09-25** — all six crates built and tested: prototype
+> **1,294**, rmi **1,384**, ribosome **168**, germline **142**, forge **60**, arena **27** —
+> **3,075 tests, 0 failures, 0 warnings**. The crate count went from three to
 > five when the build engine (step 148) and the RSI control plane (step 149)
 > were extracted from `forge`; the total is unchanged by those moves, and
 > `forge`'s count is the registry alone, as it measured before they were parked in

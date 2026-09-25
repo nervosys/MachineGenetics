@@ -132,7 +132,7 @@ repository, and a finding on the fifth may not be.
 > which had been false since the npm step was added the same day.
 
 **Recommendation (CMMC SI / supply chain): ✅ implemented 2026-08-05.** CI now
-has an `audit` job running `cargo audit` over each of the five lockfiles
+has an `audit` job running `cargo audit` over each of the six lockfiles
 separately — separately because each workspace resolves its own dependency graph
 and a clean result in one says nothing about the others.
 
