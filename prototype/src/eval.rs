@@ -2340,29 +2340,58 @@ pub fn run_bounded(
     args: Vec<Value>,
     fuel: u64,
 ) -> Result<Value, BoundedError> {
+    run_metered(module, name, args, fuel).0
+}
+
+/// [`run_bounded`], also reporting the fuel spent — exactly `fuel` when the
+/// budget ran out. This is the unit a search compares candidates' cost in.
+pub fn run_metered(
+    module: &Module,
+    name: &str,
+    args: Vec<Value>,
+    fuel: u64,
+) -> (Result<Value, BoundedError>, u64) {
+    let args = match args.iter().map(Portable::from_value).collect::<Result<Vec<_>, _>>() {
+        Ok(a) => a,
+        Err(e) => return (Err(e), 0),
+    };
+    let (result, spent) = run_on_bounded_thread(module, name, args, fuel);
+    (result.map(Portable::into_value), spent)
+}
+
+fn run_on_bounded_thread(
+    module: &Module,
+    name: &str,
+    args: Vec<Portable>,
+    fuel: u64,
+) -> (Result<Portable, BoundedError>, u64) {
     // On a thread of its own, with a stack sized for the depth bound. A depth
     // limit means nothing without a known stack beneath it: 256 MAGE calls is
     // many Rust frames each, and on a caller's 2 MB test thread the process
     // overflowed well before the bound fired. `Value` holds `Rc`, so arguments
     // and the result cross the thread boundary as plain integers and lists.
-    let args = args.iter().map(Portable::from_value).collect::<Result<Vec<_>, _>>()?;
     std::thread::scope(|scope| {
-        std::thread::Builder::new()
+        let spawned = std::thread::Builder::new()
             .stack_size(BOUNDED_STACK_BYTES)
             .spawn_scoped(scope, move || {
                 let interp = Interp::with_fuel(module, fuel);
                 let args = args.into_iter().map(Portable::into_value).collect();
-                match interp.run(name, args) {
+                let result = match interp.run(name, args) {
                     Ok(v) => Portable::from_value(&v),
                     Err(e) if e == FUEL_EXHAUSTED => Err(BoundedError::FuelExhausted),
                     Err(e) => Err(BoundedError::Error(e)),
-                }
-            })
-            .map_err(|e| BoundedError::Error(format!("spawn evaluator thread: {e}")))?
-            .join()
-            .map_err(|_| BoundedError::Error("evaluator thread panicked".into()))?
+                };
+                (result, fuel - interp.fuel_left().unwrap_or(0))
+            });
+        match spawned {
+            Err(e) => (Err(BoundedError::Error(format!("spawn evaluator thread: {e}"))), 0),
+            // A panic (integer overflow in a debug build, say) spent an unknown
+            // amount; report the whole budget rather than pretend it was free.
+            Ok(handle) => handle
+                .join()
+                .unwrap_or_else(|_| (Err(BoundedError::Error("evaluator thread panicked".into())), fuel)),
+        }
     })
-    .map(Portable::into_value)
 }
 
 /// Stack for a fuel-bounded run. Reserved address space, not committed memory.
@@ -2479,6 +2508,25 @@ mod tests {
         let ok: Vec<bool> = (0..200).map(|n| bounded(src, n).is_ok()).collect();
         let first = ok.iter().position(|&b| b).expect("succeeds within 200");
         assert!(ok[first..].iter().all(|&b| b));
+    }
+
+    #[test]
+    fn metered_runs_report_what_they_spent() {
+        let module = crate::parser::parse(&crate::lexer::lex(
+            "f g() -> [i64] { range(20).map(|i| i * i).reverse() }",
+        ))
+        .expect("parses");
+        let (r, spent) = run_metered(&module, "g", vec![], 10_000);
+        assert!(r.is_ok());
+        // The smallest budget that succeeds is exactly what a run spends.
+        let (r2, spent2) = run_metered(&module, "g", vec![], spent);
+        assert!(r2.is_ok(), "the reported cost must itself suffice");
+        assert_eq!(spent2, spent);
+        assert!(run_metered(&module, "g", vec![], spent - 1).0.is_err());
+        // Exhaustion spends the whole budget.
+        let (r3, spent3) = run_metered(&module, "g", vec![], 5);
+        assert_eq!(r3, Err(BoundedError::FuelExhausted));
+        assert_eq!(spent3, 5);
     }
 
     // ── `grad` — forward-mode automatic differentiation (§5.6) ───────────
