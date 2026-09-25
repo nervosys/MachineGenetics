@@ -94,10 +94,12 @@ fn main() {
         );
     }
     eprintln!(
-        "\n  distinct outputs {} of {} ({:.0}%)",
+        "\n  distinct outputs {} of {} ({:.0}%), distinct shapes {}, cache hits {}",
         report.distinct_outputs,
         report.total_outputs,
-        100.0 * report.distinct_outputs as f64 / report.total_outputs.max(1) as f64
+        100.0 * report.distinct_outputs as f64 / report.total_outputs.max(1) as f64,
+        report.distinct_shapes,
+        report.cache_hits
     );
     eprintln!("\n=== refusals ===");
     for (k, v) in &report.refusals {
@@ -124,7 +126,10 @@ fn main() {
     }
     eprintln!("\n=== best programs ===");
     for (agent, reward, src) in &report.best_programs {
-        eprintln!("  [{agent}, progress {reward:.4}] {}", src.lines().nth(1).unwrap_or("").trim());
+        // The body is the line after the signature; `@role(…)` and the
+        // signature come first, so do not count lines — find the signature.
+        let body = src.lines().skip_while(|l| !l.starts_with("f gen")).nth(1).unwrap_or("").trim();
+        eprintln!("  [{agent}, progress {reward:.4}] {body}");
     }
     if let Some(path) = json_out {
         let json = serde_json::to_string_pretty(&report).unwrap_or_else(|e| fail(e));

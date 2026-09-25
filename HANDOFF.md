@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,088** — rmi 1,384 · prototype 1,305 · ribosome 168 · germline 142 · forge 60 · arena 29 |
+| Tests | **3,095** — rmi 1,384 · prototype 1,310 · ribosome 168 · germline 142 · forge 60 · arena 31 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -481,14 +481,32 @@ what the typechecker enforces**. D4, the LLM proposer, is still open.
 single-shot decision "§11.6", and that decision is a `####` inside §11.5.
 §11.6 is now Roles.
 
+**Phase 2, content addressing, is done except 2.4** (definitions in forge).
+`mage_prototype::canon` hashes a definition's normal form: bound names become
+`_0, _1, …` in binding order, with shadowing respected, and the function's own
+name is dropped. A second, shape hash also erases literal values. Both are
+break-verified: without the renaming, the alpha-equivalence tests fail. The
+arena's substrate splits into `prepare` (every static gate, plus both hashes)
+and `execute`. Novelty is counted on shape, which **closes the seed-keyed
+exploit**. Evaluations are cached by (definition hash, seed), so a repeat
+costs no fuel.
+
+**The next exploit appeared in the next run** and is recorded in `ARENA.md`:
+constant emitters padded into distinct shapes. Three exploits in one day, each
+one level up from the last (bytes, seeds, syntax), all driven by one pressure
+— an n-gram learner's progress is largest on constants. That is the
+measurement that makes the GPU learner (plan 4.2) the critical-path item it
+was planned as. The novelty keys will keep losing to a reward whose optimum
+is degenerate.
+
 **Merging needs a person.** Local `master` carried ten commits never pushed,
 the whole 2026-09-16 phase. PR #38 therefore holds 11 commits, all
 CI-green. The attempt to merge it was refused by the permission layer as a
 merge without review, which is the right outcome for an agent. #39 (the
 arena) is stacked on #38 and retargets when #38 merges with `--delete-branch`.
 
-Counts: prototype 1,282 → **1,305**, germline 134 → **142**, arena **29** (new),
-total 3,028 → **3,088**. Pins 94 → **101**. CI jobs 10 → **11**.
+Counts: prototype 1,282 → **1,310**, germline 134 → **142**, arena **31** (new),
+total 3,028 → **3,095**. Pins 94 → **101**. CI jobs 10 → **11**.
 
 **Pre-existing, not from this change:** `cargo clippy` 0.1.98 (2026-09-01)
 reports 15 warnings in `prototype` — 14 `chunks_exact` with a constant size in
@@ -3028,9 +3046,9 @@ changed before you commit.
 ---
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,305**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,310**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
-  across six crates **3,088**; documented-count pins **101**, up from 46 — the
+  across six crates **3,095**; documented-count pins **101**, up from 46 — the
   two newest hold the `kb`/`net` overlap the tensor-product-binding decision
   rests on, a figure that had lived in two sentences of prose with nothing
   re-deriving it.
