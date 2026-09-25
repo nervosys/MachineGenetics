@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,075** — rmi 1,384 · prototype 1,294 · ribosome 168 · germline 142 · forge 60 · arena 27 |
+| Tests | **3,081** — rmi 1,384 · prototype 1,300 · ribosome 168 · germline 142 · forge 60 · arena 27 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -439,13 +439,15 @@ figures: `test-all.sh`/`.ps1`, CI, the audit's six lockfiles and the pins.
 says it cannot be, and the checker proved otherwise by failing on "94".
 
 **The compiler got three findings from programs no person wrote** — items
-38–40. Integer overflow depends on the build profile. Closure bodies are
-under-checked. `range`'s error recommends syntax that does not parse. This
+38–40, all closed the same day. Integer overflow depended on the build profile
+(it now traps, per §4.10). The method-call spelling of the vocabulary was not
+typed at all, which is worse than the row first said. `range`'s error
+recommended syntax that does not parse. This
 is the arena's other use: it runs the compiler thousands of times on
 programs no person wrote.
 
-Counts: prototype 1,282 → **1,294**, germline 134 → **142**, arena **27** (new),
-total 3,028 → **3,075**. Pins 94 → **101**. CI jobs 10 → **11**.
+Counts: prototype 1,282 → **1,300**, germline 134 → **142**, arena **27** (new),
+total 3,028 → **3,081**. Pins 94 → **101**. CI jobs 10 → **11**.
 
 **Pre-existing, not from this change:** `cargo clippy` 0.1.98 (2026-09-01)
 reports 15 warnings in `prototype` — 14 `chunks_exact` with a constant size in
@@ -1658,11 +1660,11 @@ asked. Only "there was no call" belongs in `error`.
 
 ### Waiting on a decision, not on work
 
-**5 open, 5 closed.**
+**4 open, 6 closed.**
 
 | # | Item | The decision |
 |---|---|---|
-| 38 | **Integer overflow means two different things** | `eval::binop` computes `a * b`, `a + b` and `a - b` with plain Rust operators, which **panic in a debug build and wrap in release** — so one MAGE program returns a value from `mage-parse --release` and crashes under `cargo test`. Found 2026-09-25 by the arena, whose generated programs overflow routinely (`range(70).scan(s, \|a, x\| a * a + x)`). `MAGE_SPEC.md` says nothing about overflow. **Wrap or trap is a language decision** — wrap is what release does today and what a byte-producing generator wants; trap is what a language whose premise is *provable safety* would choose. Either is a one-line change per operator (`wrapping_*` or `checked_*` with an error); what is not acceptable is the current answer depending on the build profile. The arena works under both: a panicking candidate is caught, charged its whole fuel budget, and refused. |
+| 38 | ~~**Integer overflow means two different things**~~ | **Decided and closed 2026-09-25: trap.** `binop` used plain `a + b`, which panics in a debug build and wraps in release, so one program had two meanings. Integer `+ - * / %`, unary `-` and `abs` now use checked arithmetic and fail with `integer overflow in …` in every build; `i64::MIN / -1` and `-i64::MIN` included, and `% 0` now says *remainder by zero* rather than falling through to a type error. Modular arithmetic is asked for by name — `wrapping_add`/`_sub`/`_mul` — and `MAGE_SPEC.md` §4.10 is normative. The arena's generator renders its arithmetic that way, which is the design's point: code that wants wrapping says so where a reader can see it. Tests pin the error for each operator and the wrapping builtins' values. |
 | 2 | GPU CI runner | Correctness **is** verified on the hardware here and recorded. What is missing is a self-hosted runner so `cuda-gpu` runs unattended — an account action, declined once already. |
 | 3 | TLS trust posture | The transport seam and a `rustls` implementation exist behind `--features tls`. Pinned self-signed / mutual TLS / public PKI is deliberately the operator's; `acceptor`/`connector` take your config. |
 | 19 | ~~**`Signer::new` accepts an empty HMAC key**~~ | **Closed 2026-09-02.** `Signer::new` now returns `Result<Signer, KeyError>` and refuses anything under 32 bytes (RFC 2104 §3: a key shorter than the hash output is "strongly discouraged"). **A breaking change, taken deliberately**: the whole failure is that nothing downstream can distinguish a MAC over an empty key from any other MAC, so a warning would have changed nothing — the only place the difference is knowable is at construction, and that is where it is refused. Four call sites updated; their 9-byte test keys were themselves rejected by the new rule, which is the rule earning its keep on its first run. `Signer` also gained a **hand-written, redacting `Debug`** — deriving it would print the fleet secret into any log line or panic message that formats a signer, and the tests need `unwrap_err()`, which requires `Debug`. Verified: `Signer { worker: "w", key_id: Some("k1"), key: <32 bytes redacted> }`. |
@@ -1923,7 +1925,7 @@ hand.
 
 ### Small, sharp, cheap
 
-**2 open, 14 closed.**
+**0 open, 16 closed.**
 
 This heading opened with "Two open, and one more added on 2026-09-01" while
 **every one of its nine rows was struck through** — three pieces of available
@@ -1938,8 +1940,8 @@ done, and the row explains the rest.
 
 | # | Item | Why it is here and not done |
 |---|---|---|
-| 39 | **Closure bodies are under-checked** | `range(3).map(\|x\| x + "a")` — a `usize` plus a string — typechecks with no error and fails only at run time. Found 2026-09-25 by the arena's substrate test, which had to switch to an unambiguous type error to test the type gate at all. Likely cause, not yet verified: closure parameters are untyped, so the body's arithmetic is checked against an unknown. Small because the fix is local to `types.rs`; measure first, since the arena's programs are all closures and any tightening changes which of them typecheck. |
-| 40 | **`range`'s error recommends a form that does not parse** | `range(1, 2)` is refused with *"`range(n)` is `0..n`; for a start and an end write `a..b`"*, in both the checker and the evaluator. `a..b` parses only as a `for` header or a slice — as an expression it is `expected expression, found DotDot`. A diagnostic whose suggested fix is itself a syntax error is the shape taxonomy §6 collects. Either make `a..b` an expression (the evaluator already has the `Expr::Range` arm, and fuel now precharges it) or change the message to `range(b).map(\|i\| i + a)`. |
+| 39 | ~~**Closure bodies are under-checked**~~ | **Closed 2026-09-25, and it was much worse than filed.** The row blamed untyped closure parameters. The cause was that **the method-call spelling of the vocabulary was not typed at all**: `Expr::MethodCall` inferred the receiver and arguments and returned a fresh variable, so `xs.filter(p).map(f)` — the form agents write, and the only form the arena generates — was unchecked end to end, while `map(xs, f)` was checked. The evaluator desugars `recv.m(a)` to `m(recv, a)`; the checker now does the same, unless the program defines a method of that name (the evaluator's precedence, pinned by `a_user_method_still_wins_over_the_vocabulary`). Closure literals are now checked *against* the parameter types their combinator expects (bidirectional), so `range(3).filter(\|x\| x + 1)` is refused for returning a number where a `bool` is required. **Measured before committing:** 101 `.mg` sources, 12 examples, 59 doc evals and every arena program still check; two published prompt examples regressed, both false positives from Rust-style references (`d.len()` on `&[i32]`, `sum` of `&i32`), fixed by auto-deref in `collection_elem`, `sized_arg` and `sum`. **The arena's type gate had been checking almost nothing** — the grammar was well-typed by construction, which is the only reason nothing broke. Break-verified: disabling the desugaring fails the test on the exact program it names. |
+| 40 | ~~**`range`'s error recommends a form that does not parse**~~ | **Closed 2026-09-25.** The checker and the evaluator each carried a copy of the message; there is now one, `eval::RANGE_HINT`, recommending `range(b - a).map(\|i\| i + a)`. `the_range_hint_runs` extracts the expression *from the hint text itself* and evaluates it, so rewording the hint into something that does not parse fails a test — the property the old message lacked. |
 | 34 | ~~**A refuted contract produces no coded diagnostic**~~ | **Closed 2026-09-25, and the row's own diagnosis was wrong.** It said this "needs no new analysis: the verdict already exists and wants a `Diagnostic` beside the summary line", and blamed the corpus — 12 clauses, all `Unknown`. **`CheckResult::Violated` was never constructed anywhere in the crate.** Every branch of `check_condition` answered `Verified` or `Unknown`, so `VerifyStatus::Failed`, `Evidence::Refuted` and the `✗` row were unreachable from all five arms of `verify_item` — the agent arm's `else { Failed }` is dead too, since "not all verified" over a two-valued result means "some unknown". No corpus could have supplied a refutation. Found by `grep`ping for constructions of the variant rather than consumers: four mentions, all of them reading it. **And had one existed, `--check` printed `✗` and exited 0** — the verifier's verdicts were never counted as errors. Now: `verify::is_refuted` refutes the literal `false` in both surfaces (`false`, `0b` — the first draft had only the keyword) and a bare `<path>.len() < 0`, the negation of the unsigned-length fact the `Verified` branch already relied on. It refuses to refute under `=>`, `||` or a call, because an implication with a false consequent holds when its antecedent is false, and `Violated` is now a compile error — a false accusation is worse than `Unknown`. `verify::diagnostics` emits one `E0560` per refuted clause, counted as an error in `--check`, `--check --json` and the pipeline. `SpecViolation` left the classifier-only baseline, so `check-diagnostic-codes.sh` reports 8 produced / 2 classified; break-verified both ways (stale baseline → "remove them in this commit"; producer reverted → "not baselined"). Three unit tests and three CLI tests (`tests/refuted_contract_is_a_diagnostic.rs`). No corpus figure moved: 101 sources still typecheck, 12 examples still pass. **Left alone deliberately:** `1b`/`true` still verify as `Unknown` — proving them is the obvious symmetric move and would shift item 29's pinned contract figures, which is a separate change with its own measurements. |
 | 14 | ~~**`token-bench`'s exit status cannot gate anything**~~ | **Closed 2026-08-19.** The row said correcting the 150 disagreeing claims "is a decision about what the field means, not a fix" — still true, and still undecided. But the exit status did not need that decision; it needed to stop reporting the *size* of a known set and start reporting *movement* against it. The known set is now `benchmarks/token-claims-baseline.txt`, shrink-only, the same pattern as `scripts/doc-blocks-baseline.txt`. A 151st disagreement fails; so does a baseline entry that has stopped disagreeing and should have been deleted. `check-ci-floors.sh` honours the status again — and dropping its `|| true` turned out to matter twice, because `set -o errexit` means a bare command substitution that fails kills the script *at the assignment*: my first version gated correctly and printed no reason, which is a worse instrument than the one it replaced. Exit 2 (the bench could not run at all) was being swallowed by the same `|| true` and now fails. |
 | 15 | ~~**`rmi`'s `cuda` feature cannot build, and gates a stub if it could**~~ | **Partly closed 2026-08-19: the feature builds now.** `cuda = ["dep:cudarc"]` made cudarc 0.10 mandatory, and its build script wants `include/cuda.h` from an installed toolkit — so `cargo build --features cuda` failed before compiling a line of the crate. The only file using cudarc is `cuda_full.rs`, which no `mod` reaches, so the dependency was mandatory for a feature that gated nothing that could run. Verified no compiled file mentions cudarc, then changed it to `cuda = []`: the feature now builds, cudarc is out of the graph, and `--features cudarc` still reaches it for anyone wiring `cuda_full.rs` up. **What remains is genuinely the owner's call**: `cuda_full.rs` is still unreachable, with its 16 `unsafe` blocks and 6 `#[ignore]`d tests that have never run on any hardware, and deleting it or porting it to cudarc 0.19 is an upstream decision. It stays baselined in `scripts/orphan-sources-baseline.txt`. The **1,229 CUDA tests** verified on this hardware are all `prototype --features cuda`, the real path, and are unaffected. |
@@ -2985,9 +2987,9 @@ changed before you commit.
 ---
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,294**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,300**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
-  across six crates **3,075**; documented-count pins **101**, up from 46 — the
+  across six crates **3,081**; documented-count pins **101**, up from 46 — the
   two newest hold the `kb`/`net` overlap the tensor-product-binding decision
   rests on, a figure that had lived in two sentences of prose with nothing
   re-deriving it.

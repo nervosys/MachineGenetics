@@ -427,6 +427,21 @@ pub struct TypeChecker {
     /// whatever integer kind it ends up unified with. Without it, `g(300)`
     /// where `g` takes a `u8` typechecked clean.
     int_lit_vars: Vec<(u32, i128, String)>,
+    /// Parameter types for the closure literal about to be inferred, set by a
+    /// combinator that knows them (`map`'s is the element type) and consumed
+    /// by the very next `Expr::Closure`.
+    ///
+    /// Without it a closure was inferred *before* the combinator unified it
+    /// with what it expects, so an unannotated parameter was a fresh variable,
+    /// arithmetic on it produced a type that unifies with anything, and
+    /// `range(3).map(|x| x + "a")` and `range(3).filter(|x| x + 1)` both
+    /// checked clean — found 2026-09-25 by the arena (item 39). Checking the
+    /// literal *against* the expected type is the standard bidirectional fix.
+    closure_hint: Option<Vec<Ty>>,
+    /// Every method name some `impl`, `extend` or trait in the module defines.
+    /// A method call to one of these is the user's, not the vocabulary's —
+    /// the precedence the evaluator uses (`vocabulary_methods_still_win_where_no_method_is_defined`).
+    user_methods: std::collections::HashSet<String>,
 }
 
 impl Default for TypeChecker {
@@ -454,6 +469,8 @@ impl TypeChecker {
             ret_stack: Vec::new(),
             diagnostics: Vec::new(),
             int_lit_vars: Vec::new(),
+            closure_hint: None,
+            user_methods: std::collections::HashSet::new(),
         }
     }
 
@@ -689,6 +706,27 @@ impl TypeChecker {
     // ── Module-level checking ────────────────────────────────────────
 
     pub fn check_module(&mut self, module: &ast::Module) {
+        fn methods(items: &[ast::Item], out: &mut std::collections::HashSet<String>) {
+            for item in items {
+                match &item.kind {
+                    ast::ItemKind::Impl(b) => methods(&b.items, out),
+                    ast::ItemKind::Extend(b) => methods(&b.items, out),
+                    ast::ItemKind::Trait(t) => methods(&t.items, out),
+                    ast::ItemKind::Function(f) => {
+                        out.insert(f.name.clone());
+                    }
+                    _ => {}
+                }
+            }
+        }
+        for item in &module.items {
+            match &item.kind {
+                ast::ItemKind::Impl(b) => methods(&b.items, &mut self.user_methods),
+                ast::ItemKind::Extend(b) => methods(&b.items, &mut self.user_methods),
+                ast::ItemKind::Trait(t) => methods(&t.items, &mut self.user_methods),
+                _ => {}
+            }
+        }
         // First pass: collect function signatures and struct definitions.
         for item in &module.items {
             self.collect_item_sig(item);
@@ -849,6 +887,11 @@ impl TypeChecker {
     fn collection_elem(&mut self, ty: &Ty) -> Ty {
         let t = self.subst.apply(ty);
         match &t {
+            // Auto-deref: `data: &[i32]` is a collection for `data.len()`.
+            // Unreached while method calls went untyped; typing them (the
+            // arena's finding) made `&[T]` receivers fail as "not a
+            // collection" in two published prompt examples.
+            Ty::Ref(_, inner) => self.collection_elem(inner),
             Ty::Array(e, _) | Ty::Slice(e) | Ty::Vec(e) => self.subst.apply(e),
             // An unconstrained integer literal (e.g. `sum(5)`) is NOT a collection.
             Ty::Var(tv) if self.int_lit_vars.iter().any(|(v, _, _)| *v == tv.0) => {
@@ -885,6 +928,7 @@ impl TypeChecker {
     fn sized_arg(&mut self, ty: &Ty) {
         let t = self.subst.apply(ty);
         match &t {
+            Ty::Ref(_, inner) => self.sized_arg(inner),
             Ty::Str => (),
             // Still unconstrained. `len` accepts either, so committing to a
             // collection here decides the program by statement order:
@@ -948,7 +992,32 @@ impl TypeChecker {
             return None;
         }
         let usize_ty = Ty::Uint(crate::hir::UintTy::Usize);
-        let a: Vec<Ty> = args.iter().map(|e| self.infer_expr(e)).collect();
+        // Where the combinator takes a closure, and what its parameters are:
+        // (argument index, parameter types). Computed from the arguments
+        // before it, so those are inferred first and the closure last.
+        let closure_at = match name {
+            "map" | "filter" | "any" | "all" | "find" | "group" => Some(1),
+            "reduce" => Some(1),
+            "fold" | "scan" => Some(2),
+            _ => None,
+        };
+        let mut a: Vec<Ty> = Vec::with_capacity(args.len());
+        for (i, e) in args.iter().enumerate() {
+            if Some(i) == closure_at && matches!(e, ast::Expr::Closure { .. }) && !a.is_empty() {
+                let elem = self.collection_elem(&a[0]);
+                self.closure_hint = Some(match name {
+                    "reduce" => vec![elem.clone(), elem],
+                    "fold" | "scan" if a.len() >= 2 => vec![a[1].clone(), elem],
+                    "fold" | "scan" => vec![self.fresh(), elem],
+                    _ => vec![elem],
+                });
+            }
+            let t = self.infer_expr(e);
+            // A hint the closure arm did not consume must not leak into the
+            // next closure somewhere else.
+            self.closure_hint = None;
+            a.push(t);
+        }
         let n = a.len();
         let res = match name {
             "len" | "count" => {
@@ -961,7 +1030,13 @@ impl TypeChecker {
             "sum" => {
                 self.vocab_arity(name, n, 1);
                 if n >= 1 {
-                    self.collection_elem(&a[0])
+                    // The sum of `&i32`s is an `i32`, as in Rust: summing
+                    // references yields the value type.
+                    let e = self.collection_elem(&a[0]);
+                    match self.subst.apply(&e) {
+                        Ty::Ref(_, inner) => *inner,
+                        other => other,
+                    }
                 } else {
                     self.fresh()
                 }
@@ -1057,8 +1132,8 @@ impl TypeChecker {
                 // `range(1, 101)` printed one line and returned cleanly.
                 if n != 1 {
                     self.emit_error(format!(
-                        "`range` expects 1 argument(s), found {n} — `range(n)` is \
-                         `0..n`; for a start and an end write `a..b`"
+                        "`range` expects 1 argument(s), found {n} — {}",
+                        crate::eval::RANGE_HINT
                     ));
                 }
                 for t in &a {
@@ -1757,6 +1832,20 @@ impl TypeChecker {
                         if ops.is_empty() { "none".to_string() } else { ops.join(", ") }
                     ));
                 }
+                // `xs.map(f)` is `map(xs, f)` — the evaluator desugars it so,
+                // and until 2026-09-25 this arm did not: it inferred the parts
+                // and returned a fresh variable, so the whole method-call
+                // spelling of the vocabulary (`xs.filter(p).map(f)`, the one
+                // agents write) was unchecked. Found by the arena, every one of
+                // whose generated programs is written this way.
+                if !self.user_methods.contains(method.as_str()) {
+                    let mut desugared = Vec::with_capacity(args.len() + 1);
+                    desugared.push((**receiver).clone());
+                    desugared.extend(args.iter().cloned());
+                    if let Some(t) = self.infer_vocab_call(method, &desugared) {
+                        return t;
+                    }
+                }
                 self.infer_expr(receiver);
                 for arg in args {
                     self.infer_expr(arg);
@@ -1918,11 +2007,22 @@ impl TypeChecker {
             }
 
             ast::Expr::Closure { params, body } => {
+                let hint = self.closure_hint.take();
                 self.env.push();
                 let param_tys: Vec<Ty> = params
                     .iter()
-                    .map(|p| {
-                        let ty = self.lower_type(&p.ty);
+                    .enumerate()
+                    .map(|(i, p)| {
+                        // An annotation wins; an unannotated parameter takes
+                        // the type its combinator expects, when one is known.
+                        let hinted = match (&p.ty, &hint) {
+                            (ast::Type::Inferred, Some(h)) => h.get(i).cloned(),
+                            _ => None,
+                        };
+                        let ty = match hinted {
+                            Some(t) => t,
+                            None => self.lower_type(&p.ty),
+                        };
                         self.env.insert(p.name.clone(), ty.clone());
                         ty
                     })
@@ -2405,6 +2505,61 @@ mod tests {
         let tokens = lexer::lex(src);
         let module = parser::parse(&tokens).expect("parse failed");
         check(&module)
+    }
+
+    fn error_messages(src: &str) -> Vec<String> {
+        check_source(src)
+            .diagnostics
+            .iter()
+            .filter(|d| d.severity == crate::hir::Severity::Error)
+            .map(|d| d.message.clone())
+            .collect()
+    }
+
+    // ── Method-call vocabulary and closure bodies (item 39) ──────────────
+
+    #[test]
+    fn method_call_vocabulary_is_typed_like_the_call() {
+        // `xs.map(f)` is `map(xs, f)`. Both spellings must reject the same
+        // programs; until 2026-09-25 only the call spelling was checked.
+        for bad in [
+            "f g() -> [usize] { range(3).map(|x| x + \"a\") }",
+            "f g() -> [usize] { map(range(3), |x| x + \"a\") }",
+            "f g() -> [usize] { range(3).filter(|x| x + 1) }",
+            "f g() -> [usize] { filter(range(3), |x| x + 1) }",
+        ] {
+            assert!(!error_messages(bad).is_empty(), "accepted: {bad}");
+        }
+        for good in [
+            "f g() -> [usize] { range(3).map(|x| x * 2).reverse().take(2) }",
+            "f g() -> [usize] { range(9).filter(|x| x % 2 == 0) }",
+            "f g() -> [usize] { range(4).scan(0, |a, x| a + x) }",
+            "f g() -> usize { range(4).fold(0, |a, x| a + x) }",
+        ] {
+            assert_eq!(error_messages(good), Vec::<String>::new(), "{good}");
+        }
+    }
+
+    #[test]
+    fn a_user_method_still_wins_over_the_vocabulary() {
+        // The evaluator's precedence: a method the program defines is called,
+        // not the builtin of the same name, so the checker must not type it as
+        // the builtin either.
+        let src = "S P { x: i32 }\nI P { +f map(&self, k: i32) -> i32 { self.x * k } }\n\
+                   f g(p: P) -> i32 { p.map(3) }";
+        assert_eq!(error_messages(src), Vec::<String>::new());
+    }
+
+    #[test]
+    fn references_to_collections_are_collections() {
+        // Auto-deref, which typing method calls made reachable.
+        for good in [
+            "f g(d: &[i32]) -> usize { d.len() }",
+            "f g(s: &str) -> usize { s.len() }",
+            "f g(d: &[i32]) -> i32 { sum(d) }",
+        ] {
+            assert_eq!(error_messages(good), Vec::<String>::new(), "{good}");
+        }
     }
 
     #[test]

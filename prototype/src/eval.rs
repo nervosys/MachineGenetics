@@ -615,7 +615,10 @@ impl Interp {
             Expr::Unary { op, operand } => {
                 let v = self.eval(operand, env)?;
                 match (op.as_str(), v) {
-                    ("-", Value::Int(n)) => Ok(Value::Int(-n)),
+                    ("-", Value::Int(n)) => match n.checked_neg() {
+                        Some(m) => Ok(Value::Int(m)),
+                        None => err(format!("integer overflow in `-{n}`")),
+                    },
                     ("-", Value::Float(f)) => Ok(Value::Float(-f)),
                     ("-", Value::Dual(v, d)) => Ok(Value::Dual(-v, -d)),
                     // `!` negates truthiness, so `!0` / `![]` work, not just bools.
@@ -1686,7 +1689,10 @@ impl Interp {
                 best.ok_or(Control::Err(format!("`{name}` of empty input")))
             }
             "abs" => match arg(0) {
-                Value::Int(n) => Ok(Value::Int(n.abs())),
+                Value::Int(n) => match n.checked_abs() {
+                    Some(m) => Ok(Value::Int(m)),
+                    None => err(format!("integer overflow in `abs({n})`")),
+                },
                 Value::Float(f) => Ok(Value::Float(f.abs())),
                 // |x|' = sign(x), and at exactly zero there is no
                 // derivative. 0 is the conventional subgradient and the
@@ -1706,13 +1712,22 @@ impl Interp {
                 )),
                 _ => err("abs expects a number"),
             },
+            // Modular arithmetic, asked for by name — the explicit
+            // alternative to the trapping operators (§4.10).
+            "wrapping_add" | "wrapping_sub" | "wrapping_mul" => match (arg(0), arg(1)) {
+                (Value::Int(x), Value::Int(y)) => Ok(Value::Int(match name {
+                    "wrapping_add" => x.wrapping_add(y),
+                    "wrapping_sub" => x.wrapping_sub(y),
+                    _ => x.wrapping_mul(y),
+                })),
+                (x, y) => err(format!("{name} takes two integers, got `{x}` and `{y}`")),
+            },
             "range" => {
                 // The checker rejects any other arity; refuse it here too, so
                 // `--eval` on its own does not quietly answer for `0..arg(0)`.
                 // The two oracles have to agree about what the program means.
                 if a.len() != 1 {
-                    return err("range expects 1 argument — `range(n)` is `0..n`; \
-                                for a start and an end write `a..b`");
+                    return err(format!("range expects 1 argument — {RANGE_HINT}"));
                 }
                 let n = as_int(&arg(0))?;
                 self.charge_alloc(n)?;
@@ -2091,15 +2106,29 @@ fn cmp_value(a: &Value, b: &Value) -> std::cmp::Ordering {
     }
 }
 
+/// Integer overflow is an error, in every build (`MAGE_SPEC.md` §4.10).
+///
+/// These arms were plain `a + b` / `a * b` until 2026-09-25, which Rust
+/// compiles to a **panic** in a debug build and a **silent wrap** in release —
+/// so one MAGE program returned a value from `mage-parse --release` and
+/// crashed under `cargo test`. The arena found it: its generated programs
+/// overflow routinely. Trapping was chosen over wrapping because a safety-first
+/// language should not change a program's answer without saying so; code that
+/// wants modular arithmetic asks for it with `wrapping_add`/`_sub`/`_mul`.
+fn overflow(a: i64, op: &str, b: i64) -> R {
+    err(format!("integer overflow in `{a} {op} {b}`"))
+}
+
 fn binop(op: &str, l: Value, r: Value) -> R {
     use Value::*;
     match (op, l, r) {
-        ("+", Int(a), Int(b)) => Ok(Int(a + b)),
-        ("-", Int(a), Int(b)) => Ok(Int(a - b)),
-        ("*", Int(a), Int(b)) => Ok(Int(a * b)),
-        ("/", Int(a), Int(b)) if b != 0 => Ok(Int(a / b)),
-        ("/", Int(_), Int(_)) => err("division by zero"),
-        ("%", Int(a), Int(b)) if b != 0 => Ok(Int(a % b)),
+        ("+", Int(a), Int(b)) => a.checked_add(b).map(Int).map_or_else(|| overflow(a, "+", b), Ok),
+        ("-", Int(a), Int(b)) => a.checked_sub(b).map(Int).map_or_else(|| overflow(a, "-", b), Ok),
+        ("*", Int(a), Int(b)) => a.checked_mul(b).map(Int).map_or_else(|| overflow(a, "*", b), Ok),
+        ("/", Int(_), Int(0)) => err("division by zero"),
+        ("/", Int(a), Int(b)) => a.checked_div(b).map(Int).map_or_else(|| overflow(a, "/", b), Ok),
+        ("%", Int(_), Int(0)) => err("remainder by zero"),
+        ("%", Int(a), Int(b)) => a.checked_rem(b).map(Int).map_or_else(|| overflow(a, "%", b), Ok),
         ("+", Float(a), Float(b)) => Ok(Float(a + b)),
         ("-", Float(a), Float(b)) => Ok(Float(a - b)),
         ("*", Float(a), Float(b)) => Ok(Float(a * b)),
@@ -2333,6 +2362,15 @@ pub(crate) fn type_head_name(t: &Type) -> Option<String> {
     }
 }
 
+/// What `range` with the wrong arity recommends — one string, so the checker and
+/// the evaluator cannot drift apart, and a test runs the suggestion.
+///
+/// It said "for a start and an end write `a..b`" until 2026-09-25, and `a..b`
+/// parses only as a `for` header or a slice: the recommended fix was itself a
+/// syntax error. `eval::tests::the_range_hint_runs` evaluates what this says.
+pub const RANGE_HINT: &str = "`range(n)` is `0..n`; for a start and an end write \
+     `range(b - a).map(|i| i + a)`, or `for i in a..b` in a loop";
+
 /// Run `name(args)` on `module` with at most `fuel` units of work.
 pub fn run_bounded(
     module: &Module,
@@ -2454,6 +2492,48 @@ mod tests {
 
     fn run(src: &str, f: &str, args: &[i64]) -> Value {
         run_source(src, f, args).expect("run failed")
+    }
+
+    #[test]
+    fn the_range_hint_runs() {
+        // Pull the expression out of the hint itself, so rewording the hint
+        // into something that does not parse fails here.
+        let start = RANGE_HINT.find("`range(b").expect("hint names the expression") + 1;
+        let expr = &RANGE_HINT[start..start + RANGE_HINT[start..].find('`').unwrap()];
+        let src = format!("f g(a: i64, b: i64) -> [i64] {{ {expr} }}");
+        let got = run(&src, "g", &[2, 5]);
+        assert_eq!(got, Value::List(vec![Value::Int(2), Value::Int(3), Value::Int(4)]), "{src}");
+    }
+
+    // ── Integer overflow: an error in every build (§4.10) ──────────────────
+
+    #[test]
+    fn integer_overflow_is_an_error_not_a_panic_or_a_wrap() {
+        // Before: a panic under `cargo test`, a wrapped value under --release.
+        for (src, needle) in [
+            ("f g() -> i64 { 9223372036854775807 + 1 }", "overflow"),
+            ("f g() -> i64 { 0 - 9223372036854775807 - 2 }", "overflow"),
+            ("f g() -> i64 { 3037000500 * 3037000500 }", "overflow"),
+            ("f g() -> i64 { (0 - 9223372036854775807 - 1) / (0 - 1) }", "overflow"),
+            ("f g() -> i64 { (0 - 9223372036854775807 - 1) % (0 - 1) }", "overflow"),
+            ("f g() -> i64 { abs(0 - 9223372036854775807 - 1) }", "overflow"),
+            ("f g() -> i64 { 7 % 0 }", "remainder by zero"),
+        ] {
+            match run_source(src, "g", &[]) {
+                Err(e) => assert!(e.contains(needle), "{src}: {e}"),
+                Ok(v) => panic!("{src} returned {v}; overflow must be an error"),
+            }
+        }
+    }
+
+    #[test]
+    fn wrapping_arithmetic_is_asked_for_by_name() {
+        let src = "f g() -> i64 { wrapping_add(9223372036854775807, 1) }";
+        assert_eq!(run(src, "g", &[]), Value::Int(i64::MIN));
+        let src = "f g() -> i64 { wrapping_mul(3037000500, 3037000500) }";
+        assert_eq!(run(src, "g", &[]), Value::Int(3037000500i64.wrapping_mul(3037000500)));
+        let src = "f g() -> i64 { wrapping_sub(0, 1) }";
+        assert_eq!(run(src, "g", &[]), Value::Int(-1));
     }
 
     // ── Fuel-bounded evaluation (the arena's substrate) ──────────────────

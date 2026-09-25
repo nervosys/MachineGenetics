@@ -201,9 +201,10 @@ mod tests {
             refusal("f gen(s: usize) -> [usize] { range(3) }\nf h() -> usize { 1 }"),
             Refusal::Signature
         );
-        // Not `range(3).map(|x| x + "a")`: that typechecks today and fails only
-        // at run time — closure bodies are under-checked, recorded in HANDOFF.
         assert_eq!(refusal("f gen(s: usize) -> [usize] { \"abc\" }"), Refusal::Type);
+        // Typechecked clean until method calls were typed (item 39): the
+        // type gate let it through and the evaluator refused it at run time.
+        assert_eq!(refusal("f gen(s: usize) -> [usize] { range(3).map(|x| x + \"a\") }"), Refusal::Type);
         assert_eq!(
             refusal("f gen(s: usize) -> [usize] { m i = 0\n @w 1b { i = i + 1 }\n [i] }"),
             Refusal::Fuel
