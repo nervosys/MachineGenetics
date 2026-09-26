@@ -243,6 +243,15 @@ pub struct Generation {
     /// Digest of the gate in force when this generation was promoted.
     pub promoted_under: Option<Digest>,
     pub note: String,
+    /// The genome this generation was built from.
+    ///
+    /// Absent until 2026-09-25, and its absence meant the runner had no
+    /// heredity at all: each cycle rebuilt the population's "genomes" as the
+    /// generations' fitness scores wrapped in a parameter, so offspring were
+    /// perturbations of their parents' *scores*. Skipped when `None` so
+    /// generations written before it serialise, and hash, exactly as they did.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub genome: Option<crate::variation::Genome>,
 }
 
 impl Generation {
@@ -255,6 +264,7 @@ impl Generation {
             status: Status::Candidate,
             promoted_under: None,
             note: String::new(),
+            genome: None,
         }
     }
 
