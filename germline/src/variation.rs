@@ -404,26 +404,34 @@ pub fn select(
     count: usize,
     rng: &mut Rng,
 ) -> Vec<Genome> {
+    select_indices(population, s, count, rng).into_iter().map(|i| population[i].0.clone()).collect()
+}
+
+/// [`select`], returning *which* members were chosen. Parents need an identity
+/// for a lineage to record who descended from whom; a clone has none.
+pub fn select_indices(population: &[(Genome, f64)], s: Selection, count: usize, rng: &mut Rng) -> Vec<usize> {
     if population.is_empty() {
         return Vec::new();
     }
     match s {
         Selection::Tournament { size } => (0..count)
             .map(|_| {
-                let mut best = &population[rng.below(population.len())];
+                let mut best = rng.below(population.len());
                 for _ in 1..size.max(1) {
-                    let c = &population[rng.below(population.len())];
-                    if c.1 > best.1 {
+                    let c = rng.below(population.len());
+                    if population[c].1 > population[best].1 {
                         best = c;
                     }
                 }
-                best.0.clone()
+                best
             })
             .collect(),
         Selection::Elitist { keep } => {
-            let mut ranked: Vec<&(Genome, f64)> = population.iter().collect();
-            ranked.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-            ranked.into_iter().take(keep.max(1)).take(count).map(|p| p.0.clone()).collect()
+            let mut ranked: Vec<usize> = (0..population.len()).collect();
+            ranked.sort_by(|&a, &b| {
+                population[b].1.partial_cmp(&population[a].1).unwrap_or(std::cmp::Ordering::Equal)
+            });
+            ranked.into_iter().take(keep.max(1)).take(count).collect()
         }
     }
 }
@@ -481,10 +489,11 @@ pub fn propose(
     seed: u64,
 ) -> Proposal {
     let mut rng = Rng::seed(seed);
-    let parents = select(population, plan.selection, plan.offspring * 2, &mut rng);
-    if parents.is_empty() {
+    let chosen = select_indices(population, plan.selection, plan.offspring * 2, &mut rng);
+    if chosen.is_empty() {
         return Proposal::default();
     }
+    let parents: Vec<Genome> = chosen.iter().map(|&i| population[i].0.clone()).collect();
     let mut candidates = Vec::new();
     let mut refused = Vec::new();
     for i in 0..plan.offspring {
@@ -501,7 +510,13 @@ pub fn propose(
         // acquires an effect neither parent held is a capability escalation,
         // and the cheapest moment to notice is the one before evaluation.
         match legality(&[a, b], &child) {
-            Legality::Inherited => candidates.push(CandidateSpec::new(id, child)),
+            Legality::Inherited => {
+                // The first parent, as an index into `population`: the caller
+                // maps it back to a generation.
+                let mut spec = CandidateSpec::new(id, child);
+                spec.parent = Some(chosen[(i * 2) % chosen.len()] as u64);
+                candidates.push(spec)
+            }
             because => refused.push(Refusal { id, because }),
         }
     }
