@@ -521,6 +521,14 @@ It is still never below uniform on natural data. The remaining levers are
 scale, and a policy that drifts back to low-entropy programs; `ARENA.md` has
 the tables.
 
+**At 25.6M parameters the learner beats uniform on held-out code, at 7.79
+bits/byte (round 75),** which is the first transfer from zero natural data.
+Text reaches 8.41. Both model sizes peak near round 75 and degrade as the
+generator policy drifts toward low-entropy programs, so drift is the next fix.
+Three things are owed: per-device energy metering (NVML sums the display GPU
+too), a memory profile (24 GB GPU and 9 GB host for 25M parameters), and
+progress output, which is now added.
+
 **Merging needs a person.** Local `master` carried ten commits never pushed,
 the whole 2026-09-16 phase. PR #38 therefore holds 11 commits, all
 CI-green. The attempt to merge it was refused by the permission layer as a

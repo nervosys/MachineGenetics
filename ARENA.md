@@ -209,6 +209,38 @@ paper's 25M-parameter models trained far longer. The other is a policy that
 drifts back toward low-entropy programs as the run goes on (mean output LZ
 falls to 1.11), whose best programs still end in constant maps.
 
+**Scale: the first transfer below uniform.** The same run at 25.6M parameters
+(width 512, 8 layers, 8 heads, learning rate 3·10⁻⁴), pinned to the idle
+second GPU:
+
+| round | held-out text | held-out code | cumulative joules |
+|---|---|---|---|
+| 25 | 9.49 | 8.80 | 77,023 |
+| 50 | 8.73 | 8.15 | 172,723 |
+| **75** | **8.41** | **7.79** | 212,089 |
+| 100 | 8.61 | 7.85 | 231,360 |
+| 150 | 9.04 | 8.29 | 266,951 |
+
+At round 75, held-out **code is predicted at 7.79 bits/byte, better than a
+uniform model**. That is the first measured transfer from zero natural data:
+the learner saw nothing but MAGE programs written by agents. Scale is a
+clear lever: best code goes from 8.69 at 900k parameters to 7.79, and best
+text from 9.42 to 8.41. Plan task 4.3 is half met, because text is not yet
+below uniform.
+
+Both sizes **peak near round 75 and then degrade**, while their programs'
+output entropy falls. That is the policy drift, and it now has a clear
+signature: scale moves the curve down, and drift bends it back up. Fixing the
+drift comes next: a description-length charge on every agent's credit, and an
+entropy floor.
+
+About 0.9 bits/byte on code cost roughly 10× the energy (267 kJ against
+25 kJ). NVML sums both GPUs, including the display adapter's ~27 W at rest,
+so per-device metering is owed before intelligence-per-joule figures can be
+compared across machines. The run also held 24 GB of GPU memory and 9 GB of
+host memory, far above what 25M parameters need. That is worth profiling
+before scaling further.
+
 ## What surfaced in MAGE itself
 
 The arena runs the compiler thousands of times on programs no person wrote,
