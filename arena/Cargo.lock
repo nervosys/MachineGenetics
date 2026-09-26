@@ -55,6 +55,7 @@ dependencies = [
  "germline",
  "libloading 0.8.9",
  "mage-prototype",
+ "ribosome",
  "serde",
  "serde_json",
  "sha2 0.10.9",
