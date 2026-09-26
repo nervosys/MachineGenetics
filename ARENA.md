@@ -315,6 +315,44 @@ took different paths to similar finals. The best checkpoint, not the last,
 is the fair figure, which argues for succession to promote a session's best
 round rather than its end state.
 
+## Fuel against joules: a poor proxy, measured (plan 3.2)
+
+Decision D2 made joules the fixed unit of compute, with fuel as their
+calibrated proxy. Every round now meters its program phase (proposing,
+gating, and running every program and probe) and pairs the joules read with
+the fuel the evaluator spent, refusals included. `CalibrationSuite` fits
+`joules = overhead + slope · fuel` over the rounds (`report.fuel_calibration`).
+An intercept is fitted because a meter reads everything its device did,
+idle draw and fuel-free work included; a ratio of totals would charge all of
+it to fuel.
+
+The first calibration was CPU-only (`--meter-gpus none`), because both GPUs
+were busy with other work and the program phase does not use them. That makes
+the energy the labelled 65 W wall-clock estimate, so it is a measurement of
+time priced at an assumed wattage, and the CPU was shared, which inflates
+time. 100 rounds × 48 programs, one n-gram learner:
+
+| | |
+|---|---|
+| marginal cost | **5.1·10⁻⁵ J per unit of fuel** |
+| fixed cost | **51 J per round**, about 0.5 J per program run |
+| r² | **0.05**: fuel explains 5% of the variation in energy |
+| fuel spent | 25.9M, about 1.3 kJ at the marginal rate, against 5.1 kJ fixed |
+
+**Fuel is not yet a good proxy for what a program costs.** Most of the
+program phase's energy goes to work that spends no fuel. The likely causes
+are gating (parse, typecheck, effects, canonical hashing) and a thread spawned
+per execution, but this fit cannot separate them: every round runs the same
+number of programs, so all per-program cost lands in the intercept.
+
+Two consequences:
+- The arena's allocation charges agents in fuel, so it undercharges programs
+  that are cheap to run but still pay the fixed per-program cost. Plan 7.1,
+  allocating in joules, should charge `overhead / programs + slope · fuel`.
+- A calibration with the count of gated programs as a second regressor, on a
+  quiet machine with a hardware CPU counter (plan 3.3), is what would locate
+  the fixed cost.
+
 ## The harness in MAGE (plan 5.1)
 
 The compression reward is now `arena/harness/reward.mg`, a MAGE program
