@@ -181,6 +181,34 @@ can fit.
 The GPU transformer's training was the cheaper learner in the mixed run:
 2,481 J against the CPU n-gram's 10,167 J for the same rounds.
 
+**The structural vocabulary helps, and is not enough.** Three productions were
+added: `copy` (`flatten([xs; n])`), `cycle` (periodic templates) and `nest`
+(nested counting). Two measurements follow.
+
+First, a quick proxy, `arena --prior-lz N`. It scores what the uniform prior
+writes with the Lempel–Ziv (1976) entropy-rate estimate (`arena::measure`) on
+identical 32-byte windows, because the estimate is length-biased and the two
+vocabularies write different lengths. The old nine productions score **3.44
+bits/byte**; all twelve score **1.84**.
+
+Second, the real test: run 5 repeated exactly, with only the vocabulary
+changed.
+
+| | old vocabulary | new vocabulary |
+|---|---|---|
+| fit to own training data | 5.91 | **4.67** |
+| held-out code, best / final | 9.45 / 10.48 | **8.69** / 9.39 |
+| held-out text, best / final | 9.69 / 11.22 | **9.42** / 10.20 |
+| training joules | 30,881 | **24,969** |
+
+The learner fits more, transfers better and spends less, and held-out
+prediction now *improves* for about 75 rounds before degrading. It still never
+beats a uniform model on natural data, so plan task 4.3 remains unmet. Two
+limits remain. One is scale: 900k parameters and 2.5M bytes, against the
+paper's 25M-parameter models trained far longer. The other is a policy that
+drifts back toward low-entropy programs as the run goes on (mean output LZ
+falls to 1.11), whose best programs still end in constant maps.
+
 ## What surfaced in MAGE itself
 
 The arena runs the compiler thousands of times on programs no person wrote,
