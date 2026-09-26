@@ -23,6 +23,16 @@ sha2 = "0.10"
 # NVML is loaded at run time rather than linked, so the crate builds and runs on
 # machines with no NVIDIA driver and simply reports energy as unavailable there.
 libloading = "0.8"
+# The transformer learner (plan task 4.2). Optional: the default build is the
+# n-gram learner only, and needs no ML stack. `gpu` adds CUDA, whose Windows
+# build needs MSVC's environment and NVCC_APPEND_FLAGS=-Xcompiler /Zc:preprocessor
+# (see src/transformer.rs).
+candle-core = { version = "0.11", optional = true }
+candle-nn = { version = "0.11", optional = true }
+
+[features]
+transformer = ["dep:candle-core", "dep:candle-nn"]
+gpu = ["transformer", "candle-core/cuda", "candle-nn/cuda"]
 
 [[bin]]
 name = "arena"
