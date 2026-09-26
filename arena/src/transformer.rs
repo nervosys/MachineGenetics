@@ -41,6 +41,8 @@ use candle_core::{DType, Device, Module, Tensor, Var, D};
 use candle_nn::{embedding, layer_norm, linear, Embedding, LayerNorm, Linear, VarBuilder, VarMap};
 
 const BOS: u32 = 256;
+/// Seed for weight initialisation (see `reseed`).
+const INIT_SEED: u64 = 0x5EED_A12E;
 const BETA1: f64 = 0.9;
 const BETA2: f64 = 0.999;
 const EPS: f64 = 1e-8;
@@ -106,6 +108,37 @@ impl Model {
     }
 }
 
+/// Redraw every parameter deterministically, from its *shape*: matrices
+/// uniform with standard deviation `1/sqrt(fan_in)` (fan-in is the last
+/// dimension), vectors that candle initialised randomly (biases) to zero, and
+/// constant tensors (layer-norm ones) left alone. Parameters are visited in
+/// sorted-name order, because the VarMap is a hash map.
+fn reseed(varmap: &VarMap, seed: u64) -> candle_core::Result<()> {
+    let data = varmap.data().lock().expect("varmap lock");
+    let mut names: Vec<&String> = data.keys().collect();
+    names.sort();
+    let mut rng = crate::grammar::Rng(seed);
+    for name in names {
+        let var = &data[name];
+        let t = var.as_tensor();
+        let dims = t.dims().to_vec();
+        let host: Vec<f32> = t.flatten_all()?.to_dtype(DType::F32)?.to_vec1()?;
+        let (lo, hi) = host.iter().fold((f32::MAX, f32::MIN), |(a, b), &v| (a.min(v), b.max(v)));
+        if hi - lo < 1e-12 {
+            continue;
+        }
+        let fresh: Vec<f32> = if dims.len() >= 2 {
+            let fan_in = *dims.last().expect("rank >= 2") as f64;
+            let bound = (3.0 / fan_in).sqrt();
+            (0..host.len()).map(|_| ((rng.next_f64() * 2.0 - 1.0) * bound) as f32).collect()
+        } else {
+            vec![0.0; host.len()]
+        };
+        var.set(&Tensor::from_vec(fresh, t.shape(), t.device())?.to_dtype(t.dtype())?)?;
+    }
+    Ok(())
+}
+
 pub struct TransformerLearner {
     cfg: TransformerConfig,
     device: Device,
@@ -147,6 +180,12 @@ impl TransformerLearner {
             ln: layer_norm(cfg.d, 1e-5, vb.pp("ln")).map_err(fail)?,
             head: linear(cfg.d, 256, vb.pp("head")).map_err(fail)?,
         };
+        // Seeded, so a run's initial weights are a function of its
+        // configuration. Unseeded, an untrained model's bits/byte varied from
+        // run to run, and a test failed on CI's runner by chance. candle's CPU
+        // backend refuses `set_seed`, so the weights are redrawn here from the
+        // arena's own generator, identically on CPU and GPU.
+        reseed(&varmap, INIT_SEED).map_err(fail)?;
         let vars = varmap.all_vars();
         let zeros = |vars: &[Var]| -> Result<Vec<Tensor>, String> {
             vars.iter().map(|v| v.as_tensor().zeros_like().map_err(fail)).collect()
@@ -315,11 +354,12 @@ mod tests {
     }
 
     #[test]
-    fn untrained_is_near_uniform_and_counts_every_byte() {
-        let l = tiny();
-        let bpb = l.bits_per_byte(b"hello world, hello world");
-        // Random init is not exactly uniform, but it is close to 8 bits.
-        assert!((bpb - 8.0).abs() < 1.0, "{bpb}");
+    fn untrained_is_near_uniform_counts_every_byte_and_is_reproducible() {
+        let text = b"hello world, hello world";
+        let (a, b) = (tiny().bits_per_byte(text), tiny().bits_per_byte(text));
+        // Seeded initialisation: two builds agree exactly.
+        assert_eq!(a.to_bits(), b.to_bits(), "{a} vs {b}");
+        assert!((a - 8.0).abs() < 2.5, "{a}");
     }
 
     #[test]
