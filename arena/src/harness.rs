@@ -58,6 +58,9 @@ impl RewardProgram {
         let errors = |ds: &[hir::Diagnostic]| {
             ds.iter().find(|d| d.severity == hir::Severity::Error).map(|d| d.message.clone())
         };
+        if let Some(e) = errors(&mage_prototype::core_subset::check(&module)) {
+            return Err(format!("reward: not MAGE-core: {e}"));
+        }
         if let Some(e) = errors(&types::check(&module).diagnostics) {
             return Err(format!("reward: type: {e}"));
         }

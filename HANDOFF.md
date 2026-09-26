@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,113** — rmi 1,384 · prototype 1,312 · ribosome 168 · germline 144 · forge 60 · arena 45 |
+| Tests | **3,118** — rmi 1,384 · prototype 1,317 · ribosome 168 · germline 144 · forge 60 · arena 45 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -606,14 +606,39 @@ little headroom to begin with. Build output now goes to a file, never a pipe
 that can die first, and the arena's dev profile keeps line tables only: full
 debug info had also exceeded MSVC's program-database limit (LNK1140).
 
+**Plan 1.1: MAGE-core is a checked subset** (`MAGE_SPEC.md` §4.12,
+`mage-parse --check --core`, `mage_prototype::core_subset`). It requires three
+things: every function and method declares a role (`E0551`), no `unsafe`, and
+only core items. `use`, `mod`, `static` and the domain constructs (`net`,
+`train`, `evolve`, `kb`, `agent`, `swarm`) are `E0552`. The arena's substrate
+and its reward loader both require it now, on top of their own contracts.
+`unsafe` has no parser arm, so its test builds the AST directly, which is how
+an agent emitting AST would deliver it; the tests assert that their sources
+parse, so none can pass vacuously.
+
+**Two misses of mine, both caught by CI on the stacked PRs, which I had
+pushed without checking.**
+
+- `canon.rs` (phase 2) raised the source-module count from 67 to 68, and I
+  had not run `check-ontology-types`. The `rmi` job, which runs it, went red
+  on #41 and on every PR above it.
+- `reward.mg` (#46) added a 102nd `.mg` file and a 156th function, **the
+  first differentiable `f` function in the corpus: the reward itself**. That
+  put `DIFFERENTIABILITY.md`'s pinned 101/155/0 out of date.
+
+Each is fixed on the branch that introduced it and merged forward through the
+stack, so every PR is green on its own, not only the top one. The lesson is
+the handoff's own, applied to myself: **a green local run is not CI**, and a
+stack of PRs is one CI result per PR, each worth reading.
+
 **Merging needs a person.** Local `master` carried ten commits never pushed,
 the whole 2026-09-16 phase. PR #38 therefore holds 11 commits, all
 CI-green. The attempt to merge it was refused by the permission layer as a
 merge without review, which is the right outcome for an agent. #39 (the
 arena) is stacked on #38 and retargets when #38 merges with `--delete-branch`.
 
-Counts: prototype 1,282 → **1,312**, germline 134 → **144**, arena **45** (new),
-total 3,028 → **3,113**. Pins 94 → **101**. CI jobs 10 → **11**.
+Counts: prototype 1,282 → **1,317**, germline 134 → **144**, arena **45** (new),
+total 3,028 → **3,118**. Pins 94 → **101**. CI jobs 10 → **11**.
 
 **Pre-existing, not from this change:** `cargo clippy` 0.1.98 (2026-09-01)
 reports 15 warnings in `prototype` — 14 `chunks_exact` with a constant size in
@@ -3153,9 +3178,9 @@ changed before you commit.
 ---
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,312**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,317**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
-  across six crates **3,113**; documented-count pins **101**, up from 46 — the
+  across six crates **3,118**; documented-count pins **101**, up from 46 — the
   two newest hold the `kb`/`net` overlap the tensor-product-binding decision
   rests on, a figure that had lived in two sentences of prose with nothing
   re-deriving it.

@@ -23,7 +23,7 @@ fn is_modifier_flag(a: &str) -> bool {
     matches!(
         a,
         "--no-elision" | "--syntax=legacy" | "--syntax=canonical" | "--token-report"
-            | "--json" | "--fix"
+            | "--json" | "--fix" | "--core"
     ) || a.starts_with("--backend=")
         || a.starts_with("--backends-file=")
 }
@@ -122,6 +122,9 @@ fn main() {
     // stream instead of human prose, so an agent parses errors structurally
     // (code/span/category/fix) rather than scraping stderr.
     let json_out = args.iter().any(|a| a == "--json");
+    // `--check --core`: also require MAGE-core (§4.12), the subset the RSI
+    // kernel runs — every function roled, no `unsafe`, only core items.
+    let core = args.iter().any(|a| a == "--core");
     // Optional --backend=<name> selects hardware accelerator for any
     // subsequent --run=abl-bytes / --target=abl-run dispatch. Lives
     // outside the main flag table so it can attach to any dispatching
@@ -305,9 +308,9 @@ fn main() {
                 std::process::exit(1);
             });
             if json_out {
-                run_check_json(&source, path, !no_elision, syntax_legacy);
+                run_check_json(&source, path, !no_elision, syntax_legacy, core);
             } else {
-                run_check(&source, path, !no_elision, syntax_legacy, token_report);
+                run_check(&source, path, !no_elision, syntax_legacy, token_report, core);
             }
         }
         // Differentiability, over all three subjects the pass analyses:
@@ -2852,7 +2855,7 @@ fn run_parse(source: &str, filename: &str, do_elision: bool, legacy: bool, token
 /// output and an agent parses errors structurally — `{code, severity, line,
 /// col, category, message, fix}` — instead of scraping human prose. Every
 /// diagnostic carries a stable error code and an actionable `fix` hint.
-fn run_check_json(source: &str, filename: &str, do_elision: bool, legacy: bool) {
+fn run_check_json(source: &str, filename: &str, do_elision: bool, legacy: bool, core: bool) {
     use hir::Severity;
 
     let source = if legacy { legacy::translate(source) } else { source.to_string() };
@@ -2931,6 +2934,9 @@ fn run_check_json(source: &str, filename: &str, do_elision: bool, legacy: bool) 
                 "inferred": inferred,
             }));
         }
+        if core {
+            all.extend(core_subset::check(&module));
+        }
         for d in &all {
             let cat = d.category.unwrap_or(hir::DiagnosticCategory::Other);
             let (line, col) = d.span.map(|s| (s.line, s.col)).unwrap_or((0, 0));
@@ -2986,7 +2992,7 @@ fn run_check_json(source: &str, filename: &str, do_elision: bool, legacy: bool) 
     }
 }
 
-fn run_check(source: &str, filename: &str, do_elision: bool, legacy: bool, token_report: bool) {
+fn run_check(source: &str, filename: &str, do_elision: bool, legacy: bool, token_report: bool, core: bool) {
     // Phase 0: Legacy syntax translation (if active).
     let source = if legacy {
         legacy::translate(source)
@@ -3105,6 +3111,12 @@ fn run_check(source: &str, filename: &str, do_elision: bool, legacy: bool, token
     for d in &shape_diags {
         eprintln!("{filename}: error: {}", d.message);
         total_errors += 1;
+    }
+    if core {
+        for d in &core_subset::check(&module) {
+            eprintln!("{filename}: {d}");
+            total_errors += 1;
+        }
     }
 
     // Phase 6: Self-healing — generate fix candidates for all diagnostics.

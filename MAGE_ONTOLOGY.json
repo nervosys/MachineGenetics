@@ -4,7 +4,7 @@
     "ast_kinds": 20,
     "bench_backends": 4,
     "ci_floors": 6,
-    "cli_flags": 39,
+    "cli_flags": 40,
     "docs": 7,
     "effects": 24,
     "examples": 10,
@@ -343,6 +343,11 @@
       {
         "flag": "--fix",
         "purpose": "With `--build=abl`: attempt deterministic auto-repair before rejecting a spec.",
+        "takes_path": false
+      },
+      {
+        "flag": "--core",
+        "purpose": "With `--check`: also require MAGE-core (MAGE_SPEC.md §4.12), the subset the RSI kernel runs.",
         "takes_path": false
       },
       {
