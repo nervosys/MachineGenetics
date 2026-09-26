@@ -305,6 +305,16 @@ central differences. A guard test requires every smooth builtin the pass
 names to resolve and evaluate. The exceptions, `softmax` and `matmul`, need
 tensor values the evaluator deliberately lacks, and they are exempt by name.
 
+## Succession: authority through the gate (plan 8.1–8.2)
+
+`arena::succession::ArenaWorkload` makes an arena session a germline
+candidate. The genome is the arena's configuration. `materialize` runs a
+session, and `evaluate` scores it on the registered held-out suite, as
+`capability` (primary) and `efficiency` (guard). A better learner therefore
+becomes the champion only when `Episode::adjudicate` says so, with every step
+journaled, which is the redesign's rule that authority changes hands only
+through the gate.
+
 ## What surfaced in MAGE itself
 
 The arena runs the compiler thousands of times on programs no person wrote,
