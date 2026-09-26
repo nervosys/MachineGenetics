@@ -67,6 +67,19 @@ fn main() {
             "--programs" => cfg.programs_per_round = num(value(i), "--programs") as usize,
             "--seed" => cfg.seed = num(value(i), "--seed"),
             "--fuel" => cfg.substrate.fuel = num(value(i), "--fuel"),
+            "--length-charge" => {
+                cfg.length_charge = value(i).parse().unwrap_or_else(|_| fail("--length-charge: not a number"))
+            }
+            "--entropy-floor" => {
+                cfg.entropy_floor = value(i).parse().unwrap_or_else(|_| fail("--entropy-floor: not a number"))
+            }
+            "--reward" => {
+                cfg.reward = match value(i) {
+                    "alignment" => arena::arena::Reward::Alignment,
+                    "compression" => arena::arena::Reward::Compression,
+                    other => fail(format!("--reward: `{other}` is neither alignment nor compression")),
+                }
+            }
             "--learner-steps" => cfg.learner_steps = num(value(i), "--learner-steps") as usize,
             "--eval-every" => cfg.eval_every = num(value(i), "--eval-every").max(1) as usize,
             "--cpu-watts" => cfg.cpu_watts = value(i).parse().unwrap_or_else(|_| fail("--cpu-watts: not a number")),
