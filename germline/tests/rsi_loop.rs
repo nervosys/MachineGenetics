@@ -25,7 +25,7 @@ use germline::lineage::Lineage;
 use germline::supervisor::{HealthSample, SupervisionPolicy, Supervisor};
 use germline::variation::{propose, GenePool, VariationPlan};
 use germline::{
-    EvalSuite, FitnessVector, Generation, Measurement, Status, SuiteKind,
+    EvalSuite, FitnessVector, Generation, GenerationId, Measurement, Status, SuiteKind,
 };
 use ribosome::cas::Store;
 use ribosome::exec::{LocalExecutor, ToolOutput, ToolRegistry};
@@ -73,6 +73,16 @@ fn episode(shadow: u32) -> Episode {
         Digest::of(SUITE),
         EVALUATOR,
     )
+}
+
+/// Install the first champion through the gate like any other: with no
+/// incumbent, any held-out measurement is an improvement over nothing.
+fn install(lineage: &mut Lineage, id: GenerationId) {
+    let g = lineage.get(id).expect("added first").clone();
+    let approval = episode(0)
+        .approve(&g, lineage, 0, &|_| true)
+        .unwrap_or_else(|v| panic!("the first champion is refused: {:?}", v.reasons()));
+    lineage.promote(approval).unwrap();
 }
 
 fn measurement(cap: f64, safety: f64) -> Measurement {
@@ -133,7 +143,7 @@ fn the_whole_loop_runs_from_proposal_to_authority() {
     lineage.add(
         Generation::new(champ_id, Digest::of(b"champion")).measured(measurement(0.70, 0.95)),
     );
-    lineage.promote(champ_id, episode(0).gate_digest, EVALUATOR).unwrap();
+    install(&mut lineage, champ_id);
 
     // --- propose: deterministic variation over a scored population
     let population = vec![
@@ -218,7 +228,7 @@ fn a_promoted_successor_that_fails_is_demoted_and_the_whole_story_is_on_record()
     lineage.add(
         Generation::new(champ_id, Digest::of(b"champion")).measured(measurement(0.70, 0.95)),
     );
-    lineage.promote(champ_id, episode(0).gate_digest, EVALUATOR).unwrap();
+    install(&mut lineage, champ_id);
 
     // Promote a successor through the full cycle.
     let cand_id = lineage.next_id();
@@ -275,7 +285,7 @@ fn tampering_with_the_record_after_the_fact_is_detectable() {
     lineage.add(
         Generation::new(champ_id, Digest::of(b"champion")).measured(measurement(0.70, 0.95)),
     );
-    lineage.promote(champ_id, episode(0).gate_digest, EVALUATOR).unwrap();
+    install(&mut lineage, champ_id);
 
     let cand_id = lineage.next_id();
     let candidate = Generation::new(cand_id, Digest::of(b"successor")).parent(champ_id);
@@ -331,7 +341,7 @@ fn the_runner_drives_a_real_workload_to_a_bounded_stop() {
             .with("correctness", 1.0),
         evaluator: EVALUATOR.into(),
     }));
-    lineage.promote(champ, episode(0).gate_digest, EVALUATOR).unwrap();
+    install(&mut lineage, champ);
 
     let policy = RunnerPolicy {
         name: "architecture-search".into(),
@@ -407,7 +417,7 @@ fn an_unattended_run_that_breaks_falls_back_to_something_runnable() {
             .with("correctness", 1.0),
         evaluator: EVALUATOR.into(),
     }));
-    lineage.promote(champ, episode(0).gate_digest, EVALUATOR).unwrap();
+    install(&mut lineage, champ);
 
     // Anything promoted will fail in production.
     workload.champion_fails = true;
@@ -470,7 +480,7 @@ fn the_gate_cannot_be_bypassed_by_driving_the_cycle_out_of_order() {
     lineage.add(
         Generation::new(champ_id, Digest::of(b"champion")).measured(measurement(0.70, 0.95)),
     );
-    lineage.promote(champ_id, episode(0).gate_digest, EVALUATOR).unwrap();
+    install(&mut lineage, champ_id);
 
     // A candidate that would clearly fail the gate: safety down 0.10.
     let cand_id = lineage.next_id();

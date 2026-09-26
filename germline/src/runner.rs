@@ -694,7 +694,7 @@ mod tests {
             fitness: FitnessVector::new().with("capability", 0.50).with("safety", 0.95),
             evaluator: EVALUATOR.into(),
         }));
-        l.promote(id, episode().gate_digest, EVALUATOR).unwrap();
+        l.grant(id, episode().gate_digest, EVALUATOR).unwrap();
         l
     }
 

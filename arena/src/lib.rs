@@ -18,6 +18,8 @@
 //!   likelihood no agent can reach or edit;
 //! * **energy** ([`energy`]) is read from hardware counters where they exist
 //!   and labelled an estimate where they do not;
+//! * the **trusted kernel** ([`kernel`]) is what the loop cannot vary: it owns
+//!   held-out data, and moving authority takes the gate's approval;
 //! * **selection** is Pareto, over bits per byte, joules and latency, via
 //!   `germline::pareto` — because a weighted sum cannot see a non-convex front.
 //!
@@ -30,6 +32,7 @@ pub mod arena;
 pub mod energy;
 pub mod grammar;
 pub mod harness;
+pub mod kernel;
 pub mod learner;
 pub mod measure;
 pub mod substrate;
