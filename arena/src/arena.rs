@@ -32,6 +32,7 @@ use crate::energy::{self, Meter, Reading, Span};
 use crate::grammar::Rng;
 use crate::learner::{self, ByteLearner, LearnerSpec};
 use crate::substrate::{Outcome, Refusal, Substrate};
+use mage_prototype::cost_calibration::{CalibrationSuite, EnergySample, FuelCalibration};
 use germline::pareto::{Archive, Objective};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -207,7 +208,15 @@ pub struct Report {
     pub mean_output_lz_bits: f64,
     pub best_programs: Vec<(String, f64, String)>,
     pub hypervolume: f64,
+    /// Fuel calibrated to joules over the run's program phases (plan 3.2):
+    /// one sample per round, the fuel the evaluator spent against the energy
+    /// the meters read meanwhile. `None` when the fit is undetermined.
+    #[serde(default)]
+    pub fuel_calibration: Option<FuelCalibration>,
 }
+
+/// The calibration target the arena's program phase reports under.
+pub const PROGRAM_PHASE: &str = "arena-program-phase";
 
 /// Mean bits per byte of each sequence across learners, batched per learner.
 fn mean_bpb_many(learners: &[Box<dyn ByteLearner>], seqs: &[&[u8]]) -> Vec<f64> {
@@ -273,6 +282,8 @@ impl Novelty {
 pub struct EvalCache {
     results: std::collections::HashMap<(String, u64), Outcome>,
     pub hits: usize,
+    /// Fuel actually spent by the evaluator, refusals included; hits add 0.
+    pub fuel_spent: u64,
 }
 
 impl EvalCache {
@@ -287,7 +298,8 @@ impl EvalCache {
                 refused => refused,
             };
         }
-        let o = sub.execute(prepared, seed);
+        let (o, fuel) = sub.execute_metered(prepared, seed);
+        self.fuel_spent += fuel;
         self.results.insert(key, o.clone());
         o
     }
@@ -333,12 +345,18 @@ pub fn default_meters(cpu_watts: f64) -> (Vec<Box<dyn Meter>>, Vec<String>) {
 pub fn meters_for(cpu_watts: f64, gpus: Option<&[u32]>) -> (Vec<Box<dyn Meter>>, Vec<String>) {
     let mut meters: Vec<Box<dyn Meter>> = Vec::new();
     let mut notes = Vec::new();
-    match energy::Nvml::open_devices(gpus) {
-        Ok(n) => {
-            notes.push(format!("nvml: {} device(s), measured", n.device_count()));
-            meters.push(Box::new(n));
+    // An empty list is "no GPU": a CPU-only run on a machine whose GPUs are
+    // busy with other work would otherwise be charged for that work.
+    if gpus.is_some_and(|g| g.is_empty()) {
+        notes.push("nvml: no devices requested".into());
+    } else {
+        match energy::Nvml::open_devices(gpus) {
+            Ok(n) => {
+                notes.push(format!("nvml: {} device(s), measured", n.device_count()));
+                meters.push(Box::new(n));
+            }
+            Err(why) => notes.push(format!("nvml unavailable: {why}")),
         }
-        Err(why) => notes.push(format!("nvml unavailable: {why}")),
     }
     meters.push(Box::new(energy::WallClock::new("cpu-estimate", cpu_watts)));
     notes.push(format!("cpu: estimated at {cpu_watts} W"));
@@ -390,6 +408,7 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
     let mut cache = EvalCache::default();
     let mut run_credit = vec![0.0f64; agents.len()];
     let mut run_cost = vec![0.0f64; agents.len()];
+    let mut calibration = CalibrationSuite::new();
 
     for round in 0..cfg.rounds {
         // 1. Allocate.
@@ -409,6 +428,11 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
         // multiplier, bits/byte before training).
         // (agent, index, probe, [seen, tokens, structure], before)
         let mut pending: Vec<(usize, usize, Vec<u8>, [f64; 3], f64)> = Vec::new();
+        // The program phase is metered as a whole: proposing, gating and
+        // running every program and probe. Its fixed part (proposing, parsing,
+        // idle draw) lands in the calibration's intercept, not its slope.
+        let program_span = Span::start(&mut meters);
+        let fuel_before = cache.fuel_spent;
         for (ai, agent) in agents.iter_mut().enumerate() {
             standing[ai].last_share = shares[ai];
             // 2. Propose.
@@ -485,6 +509,14 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
             }
             round_credit[ai] = credit;
             round_cost[ai] = cost;
+        }
+
+        let (_, readings) = program_span.stop(&mut meters);
+        if let Some((j, measured)) = energy::total(&readings) {
+            calibration.add_energy_sample(
+                PROGRAM_PHASE,
+                EnergySample { fuel: cache.fuel_spent - fuel_before, joules: j, measured },
+            );
         }
 
         // Replay: revisit what taught the most, so learners do not forget it.
@@ -652,6 +684,7 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
         mean_output_lz_bits: lz_sum / total_outputs.max(1) as f64,
         best_programs,
         hypervolume: archive.hypervolume(),
+        fuel_calibration: calibration.fuel_calibration(PROGRAM_PHASE),
     })
 }
 
@@ -702,6 +735,56 @@ mod tests {
         assert!(r.agents.iter().any(|a| a.credit > 0.0));
         assert!(r.learners.iter().any(|l| l.on_front));
         assert!(r.pool_size > 0);
+    }
+
+    /// A hardware counter that reads exactly 1 J per span, so a run's
+    /// calibration is deterministic.
+    struct OneJoule;
+    impl Meter for OneJoule {
+        fn name(&self) -> String {
+            "one-joule".into()
+        }
+        fn start(&mut self) {}
+        fn stop(&mut self) -> Reading {
+            Reading { meter: self.name(), joules: Some(1.0), basis: energy::Basis::Measured }
+        }
+    }
+
+    #[test]
+    fn every_round_feeds_the_fuel_calibration_from_its_meters() {
+        // Plan 3.2: samples come from the meters, one per round. With a meter
+        // that reads 1 J whatever happens, fuel explains nothing: the fit's
+        // overhead is the 1 J and its slope is 0.
+        let r = run(tiny_cfg(), heldout(), vec![Box::new(OneJoule)], vec![]).unwrap();
+        let c = r.fuel_calibration.expect("six rounds of varying fuel calibrate");
+        assert_eq!(c.samples, 6);
+        assert!(c.all_measured);
+        assert!(c.joules_per_fuel.abs() < 1e-12 && (c.overhead_joules - 1.0).abs() < 1e-9, "{c:?}");
+        assert_eq!(c.r_squared, 0.0);
+
+        // A wall-clock meter is an estimate, and the calibration says so.
+        let e = run(tiny_cfg(), heldout(), cpu_only().0, vec![]).unwrap();
+        assert!(!e.fuel_calibration.expect("calibrates").all_measured);
+    }
+
+    #[test]
+    fn an_empty_gpu_list_meters_no_gpu() {
+        let (m, notes) = meters_for(65.0, Some(&[]));
+        assert_eq!(m.iter().map(|m| m.name()).collect::<Vec<_>>(), vec!["cpu-estimate".to_string()]);
+        assert!(notes[0].contains("no devices requested"), "{notes:?}");
+    }
+
+    #[test]
+    fn fuel_spent_counts_exhausted_budgets_and_not_cache_hits() {
+        let sub = Substrate { fuel: 2_000, max_bytes: 64 };
+        let spin = sub
+            .prepare("@role(candidate)\nf gen(s: usize) -> [usize] { m i = 0\n @w 1b { i = i + 1 }\n [i] }")
+            .expect("valid");
+        let mut cache = EvalCache::default();
+        assert!(matches!(cache.run(&sub, &spin, 1), Outcome::Refused(Refusal::Fuel, _)));
+        assert_eq!(cache.fuel_spent, 2_000, "an exhausted budget was spent in full");
+        cache.run(&sub, &spin, 1);
+        assert_eq!(cache.fuel_spent, 2_000, "a cache hit spends nothing");
     }
 
     #[test]

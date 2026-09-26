@@ -4,7 +4,7 @@
 //! arena --heldout <file>[,<file>…] [--rounds N] [--programs N] [--seed S]
 //!       [--agents grammar:2,uniform:1,mutator:1]
 //!       [--learners ng:orders:log2buckets:lr | tf:d:layers:heads:ctx:lr[:gpu] [,…]]
-//!       [--fuel F] [--cpu-watts W]
+//!       [--fuel F] [--cpu-watts W] [--meter-gpus <i>[,<i>…] | none]
 //!       [--json <out.json>]
 //! ```
 //!
@@ -82,7 +82,10 @@ fn main() {
                 }
             }
             "--meter-gpus" => {
-                meter_gpus = Some(value(i).split(',').map(|g| num(g, "--meter-gpus") as u32).collect())
+                meter_gpus = Some(match value(i) {
+                    "none" => Vec::new(),
+                    v => v.split(',').map(|g| num(g, "--meter-gpus") as u32).collect(),
+                })
             }
             "--reward-program" => cfg.reward_program = Some(value(i).to_string()),
             "--learner-steps" => cfg.learner_steps = num(value(i), "--learner-steps") as usize,
@@ -172,6 +175,17 @@ fn main() {
         report.cache_hits,
         report.mean_output_lz_bits
     );
+    match &report.fuel_calibration {
+        Some(c) => eprintln!(
+            "fuel: {:.3e} J/fuel + {:.3} J/round overhead, r²={:.2} over {} rounds ({})",
+            c.joules_per_fuel,
+            c.overhead_joules,
+            c.r_squared,
+            c.samples,
+            if c.all_measured { "measured" } else { "includes estimates" }
+        ),
+        None => eprintln!("fuel: not calibrated (too few rounds, or fuel never varied)"),
+    }
     eprintln!("\n=== refusals ===");
     for (k, v) in &report.refusals {
         eprintln!("  {k:<10} {v}");

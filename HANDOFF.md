@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,123** — rmi 1,384 · prototype 1,317 · ribosome 168 · germline 146 · forge 60 · arena 48 |
+| Tests | **3,131** — rmi 1,384 · prototype 1,322 · ribosome 168 · germline 146 · forge 60 · arena 51 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -666,6 +666,29 @@ and `Lineage` is still `Deserialize`, so a forged lineage file is closed only
 by journal verification on resume (plan 8.3).
 
 Counts: germline 144 → **146**, arena 45 → **48**, total 3,118 → **3,123**.
+
+**Plan 3.2: fuel is calibrated against meters, and the calibration says fuel
+is a poor proxy.** `CalibrationSuite` now takes `EnergySample`s (fuel spent,
+joules metered, and whether the reading was measured or estimated) and fits
+`joules = overhead + slope · fuel`. It refuses to fit fewer than three samples
+or fuel that never varied. The arena feeds it one sample per round from its
+program phase, which is the suite's first caller outside its own tests.
+
+Two things had to change to make the samples honest:
+- **Refusals count.** `EvalCache` now tracks fuel actually spent, including
+  full budgets burned by programs that exhausted them, which the old
+  per-success `fuel_used` never counted.
+- **`--meter-gpus none`.** It meters no GPU, so a CPU-only run on a machine
+  whose GPUs are busy isn't charged for that work.
+
+The first run (CPU-only, wall-clock estimate, shared CPU) found
+**5.1·10⁻⁵ J/fuel marginal, 51 J/round fixed, r² = 0.05**. Most of the program
+phase's energy is per-program work that spends no fuel. ARENA.md has the
+table and the two consequences, one of which is for plan 7.1. Item 37 is
+narrowed rather than closed: fuel has a calibration path with real input, and
+`builtin_costs()`' cycle table still has none.
+
+Counts: prototype 1,317 → **1,322**, arena 48 → **51**, total 3,123 → **3,131**.
 
 **Pre-existing, not from this change:** `cargo clippy` 0.1.98 (2026-09-01)
 reports 15 warnings in `prototype` — 14 `chunks_exact` with a constant size in
@@ -2092,7 +2115,7 @@ the prose above the table, which is the part a reader acts on.
 | 10 | ~~**Multi-shot resumption for effect handlers**~~ | **Closed 2026-08-19 by deciding against it**, the same way item 1 closed. The row below said the implementation was downstream of a decision nobody had made; the decision is made. Single-shot is the language's answer, and `MAGE_SPEC.md` §11.6 now says so normatively instead of listing multi-shot under "what is missing". No evaluator rework, no `resume` keyword, no sigil. |
 | 35 | **No ownership or borrow-checking phase exists** | The pipeline is lex, parse, resolve, typecheck, effect inference, MLIR lowering, heal. So the SKB's **40 ownership and 40 borrow rules describe conditions nothing detects**, the 35 lifetime rules sit behind `AEL-0003`'s claim that lifetimes are *inferred* rather than checked, and `BorrowConflict` and `UseAfterMove` are reachable only by `heal::infer_category` classifying a message someone else wrote — baselined in `scripts/diagnostic-codes-classifier-only.txt`. **Size: a borrow checker.** This row exists because I wrote that "making a subset of SKB rules executable" was the next step, which read like wiring and is not; the scope only became visible after `grep`ping for a pass that emits those categories and finding none. Nothing is broken today — the rules are knowledge and work as knowledge — so this is a capability decision, not a defect. |
 | 36 | **Heal patterns are code, not data, so the surface cannot be loaded** | `ARCHITECTURE.md` lists the 34 heal patterns as an improvable surface. Measured: **30 of 34 `generate` closures consume the diagnostic**, computing fixes from message content and spans, and `matches` is a predicate. Converting them to loaded data therefore needs a **fix-template language** — a real language design with its own evaluator and its own failure modes — not a serialisation change. Recorded before starting rather than after, which is the whole point of the row. |
-| 37 | **The cost model is loadable data with nothing to calibrate it against** | `builtin_costs()` is a table and `CostEstimate` carries `is_exact` and `confidence`, both asserted by whoever typed the entry. `CalibrationSuite` exists to check estimates against measurement, but `load_standard_benchmarks` supplies `measured_cycles` as literals beside the estimates, under a comment reading *"Simulated measured costs"*, and nothing calls it outside its own tests. Making the model loadable would let the loop tune a preference function against a calibration path with **no input**, which automates a number nobody has earned. The prerequisite is hardware profiling feeding real samples in — then the loader is trivial. |
+| 37 | **The cost model is loadable data with nothing to calibrate it against** | *Narrowed 2026-09-26:* fuel, the cost the loop charges, now has a calibration path with real input: the arena feeds `CalibrationSuite` one metered `EnergySample` per round (plan 3.2, ARENA.md). What follows still holds for the per-construct table. `builtin_costs()` is a table and `CostEstimate` carries `is_exact` and `confidence`, both asserted by whoever typed the entry. `CalibrationSuite` exists to check estimates against measurement, but `load_standard_benchmarks` supplies `measured_cycles` as literals beside the estimates, under a comment reading *"Simulated measured costs"*, and nothing calls it outside its own tests. Making the model loadable would let the loop tune a preference function against a calibration path with **no input**, which automates a number nobody has earned. The prerequisite is hardware profiling feeding real samples in — then the loader is trivial. |
 | 13 | ~~`stdlib/`~~ | **Closed 2026-08-19, by deletion.** Item 1 resolved as *no module system*, and a standard library reached by imports has no meaning without one. The 25 sketches — 4,402 lines of Rust behind a `.mg` extension, read by nothing — are gone. `scripts/check-mg-sources.sh` now reports **101 checked, 0 skipped**: every `.mg` file in the repository typechecks, and the sketch list it was built to shrink is empty. |
 
 **Item 10, scoped.** Single-shot resumption is verified working, exactly as
@@ -3205,9 +3228,9 @@ changed before you commit.
 ---
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,317**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,322**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
-  across six crates **3,123**; documented-count pins **101**, up from 46 — the
+  across six crates **3,131**; documented-count pins **101**, up from 46 — the
   two newest hold the `kb`/`net` overlap the tensor-product-binding decision
   rests on, a figure that had lived in two sentences of prose with nothing
   re-deriving it.
