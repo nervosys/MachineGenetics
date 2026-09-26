@@ -84,6 +84,7 @@ fn main() {
             "--meter-gpus" => {
                 meter_gpus = Some(value(i).split(',').map(|g| num(g, "--meter-gpus") as u32).collect())
             }
+            "--reward-program" => cfg.reward_program = Some(value(i).to_string()),
             "--learner-steps" => cfg.learner_steps = num(value(i), "--learner-steps") as usize,
             "--eval-every" => cfg.eval_every = num(value(i), "--eval-every").max(1) as usize,
             "--cpu-watts" => cfg.cpu_watts = value(i).parse().unwrap_or_else(|_| fail("--cpu-watts: not a number")),

@@ -91,6 +91,9 @@ pub struct Config {
     pub entropy_floor: f64,
     /// What a program's output is credited with.
     pub reward: Reward,
+    /// Path to the MAGE program that computes the compression reward;
+    /// `None` is the shipped `harness/reward.mg` (plan 5.1).
+    pub reward_program: Option<String>,
 }
 
 /// The learning signal a program earns.
@@ -136,6 +139,7 @@ impl Default for Config {
             // Measured better than alignment on every held-out figure at 900k
             // parameters, and without the late collapse (ARENA.md, run 9).
             reward: Reward::Compression,
+            reward_program: None,
         }
     }
 }
@@ -240,13 +244,16 @@ fn mean_bpb_many(learners: &[Box<dyn ByteLearner>], seqs: &[&[u8]]) -> Vec<f64> 
 /// the learner is still absorbing them; these two terms make constants and
 /// padding cheap to ignore rather than profitable to repeat.
 pub fn shaping(cfg: &Config, tokens: usize, bytes: &[u8]) -> f64 {
-    let length = (-cfg.length_charge * tokens as f64).exp();
-    let structure = if cfg.entropy_floor > 0.0 {
+    (-cfg.length_charge * tokens as f64).exp() * structure_factor(cfg, bytes)
+}
+
+/// `min(1, lz / entropy_floor)`, or 1 with the floor off.
+pub fn structure_factor(cfg: &Config, bytes: &[u8]) -> f64 {
+    if cfg.entropy_floor > 0.0 {
         (crate::measure::lz_bits_per_byte(bytes) / cfg.entropy_floor).min(1.0)
     } else {
         1.0
-    };
-    length * structure
+    }
 }
 
 /// Count-based novelty over program shapes.
@@ -259,10 +266,16 @@ impl Novelty {
     /// The factor a program of this shape earns: `1 / (1 + times seen)`,
     /// counting this occurrence afterwards.
     pub fn discount(&mut self, shape: &str) -> f64 {
+        1.0 / (1.0 + self.observe(shape) as f64)
+    }
+
+    /// How many times this shape was seen before now, counting this one
+    /// afterwards. The reward program is given the count, not the factor.
+    pub fn observe(&mut self, shape: &str) -> u32 {
         let n = self.seen.entry(shape.to_string()).or_insert(0);
-        let f = 1.0 / (1.0 + *n as f64);
+        let before = *n;
         *n += 1;
-        f
+        before
     }
 
     pub fn distinct(&self) -> usize {
@@ -361,6 +374,14 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
         .iter()
         .map(|a| AgentStanding { id: a.id().to_string(), kind: a.kind().to_string(), ..Default::default() })
         .collect();
+    // The compression reward is a MAGE program (plan 5.1), gated at load.
+    let reward_program = match (cfg.reward, &cfg.reward_program) {
+        (Reward::Compression, Some(path)) => Some(crate::harness::RewardProgram::load(
+            &std::fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?,
+        )?),
+        (Reward::Compression, None) => Some(crate::harness::RewardProgram::load(crate::harness::DEFAULT_REWARD)?),
+        (Reward::Alignment, _) => None,
+    };
     let mut learners: Vec<Box<dyn ByteLearner>> =
         cfg.learners.iter().map(|s| learner::build(*s)).collect::<Result<_, _>>()?;
     let mut joules: Vec<Option<f64>> = vec![Some(0.0); learners.len()];
@@ -402,7 +423,8 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
         let mut round_cost = vec![0.0f64; agents.len()];
         // Compression mode: (agent, index into its scored list, bytes,
         // multiplier, bits/byte before training).
-        let mut pending: Vec<(usize, usize, Vec<u8>, f64, f64)> = Vec::new();
+        // (agent, index, probe, [seen, tokens, structure], before)
+        let mut pending: Vec<(usize, usize, Vec<u8>, [f64; 3], f64)> = Vec::new();
         for (ai, agent) in agents.iter_mut().enumerate() {
             standing[ai].last_share = shares[ai];
             // 2. Propose.
@@ -427,8 +449,9 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
                         // 4. Credit. Alignment is known now, before any
                         // learner trains on the output; compression progress
                         // only after.
-                        let mult = novelty.discount(shape.as_deref().unwrap_or_default())
-                            * shaping(&cfg, c.program.token_len(), &bytes);
+                        let seen = novelty.observe(shape.as_deref().unwrap_or_default());
+                        let tokens = c.program.token_len();
+                        let mult = shaping(&cfg, tokens, &bytes) / (1.0 + seen as f64);
                         total_outputs += 1;
                         lz_sum += crate::measure::lz_bits_per_byte(&bytes);
                         outputs_seen.insert(fingerprint(&bytes));
@@ -457,7 +480,8 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
                                 };
                                 // Scored in one batch per learner below,
                                 // before training.
-                                pending.push((ai, scored.len(), probe, mult, 0.0));
+                                let inputs = [seen as f64, tokens as f64, structure_factor(&cfg, &bytes)];
+                                pending.push((ai, scored.len(), probe, inputs, 0.0));
                                 scored.push((c, None));
                             }
                         }
@@ -521,8 +545,19 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
             let probes: Vec<&[u8]> = pending.iter().map(|p| p.2.as_slice()).collect();
             mean_bpb_many(&learners, &probes)
         };
-        for ((ai, idx, probe, mult, before), after) in pending.into_iter().zip(after_all) {
-            let r = (before - after).max(0.0) * probe.len() as f64 * mult;
+        for ((ai, idx, probe, [seen, tokens, structure], before), after) in pending.into_iter().zip(after_all) {
+            let program = reward_program.as_ref().expect("compression mode loads a reward program");
+            let r = program
+                .eval(&crate::harness::RewardInputs {
+                    before,
+                    after,
+                    len: probe.len() as f64,
+                    seen,
+                    tokens,
+                    charge: cfg.length_charge,
+                    structure,
+                })
+                .map_err(|e| format!("round {round}: {e}"))?;
             standing[ai].credit += r;
             round_credit[ai] += r;
             let program = round_scored[ai][idx].0.program.clone();

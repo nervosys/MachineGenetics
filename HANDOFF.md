@@ -30,14 +30,14 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,104** — rmi 1,384 · prototype 1,310 · ribosome 168 · germline 144 · forge 60 · arena 38 |
+| Tests | **3,110** — rmi 1,384 · prototype 1,312 · ribosome 168 · germline 144 · forge 60 · arena 42 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
 | CI | 11 jobs defined, **10 of which ever run** — green on `master`. The eleventh, `prototype — cuda kernels (self-hosted GPU)`, has no runner and has never executed (open item 2) |
 | Reliability floors | file-oracle parse 99/100, perturbed pattern-heal 42, native-lexer ratio 0.997 |
 | Examples | 12 of 12 typecheck, run, and print their recorded answer |
-| `.mg` sources | **101 checked, 0 sketches** — every `.mg` file in the repository typechecks |
+| `.mg` sources | **102 checked, 0 sketches** — every `.mg` file in the repository typechecks |
 | Differentiability | **34 of 34 nets and 7 of 7 train blocks; 0 of 155 functions** — `scripts/measure-differentiability.sh`, re-derived in CI and compared against `DIFFERENTIABILITY.md` in both directions |
 | `grad` | An expression that typechecks and **runs**, for scalars: forward-mode duals, checked against central differences. The differentiability obligation is a premise of its typing rule, discharged by the call-graph pass. Tensors are refused, not deferred |
 | Documentation | 208 MAGE blocks typecheck; 59 documentation entry points run; 268 `rmi/docs` API items all exist — and "exist" now means **a definition exists**, not that the name appears somewhere in `src/`. It was 275 under the weaker criterion, 8 of them held up by English words in comments; the phantom entries are gone and a duplicate went with them |
@@ -570,14 +570,27 @@ actually derived from, not always the champion.
 journal one entry short of its end. No test had driven a run to a stall and
 then checked the anchor. It is fixed and break-verified.
 
+**25M confirms the drift fix.** Under compression progress, held-out code
+stays below uniform to the end (final 7.93, against 8.29 under alignment),
+and text improves (final 9.04 → 8.44) without crossing 8.
+
+**Plan 5.1: the reward is a MAGE program** (`arena/harness/reward.mg`,
+`@role(evaluator)`), equal to the Rust formula to 1e-12 and replaceable with
+`--reward-program`. **It surfaced a gap: 15 of the 16 builtins
+`differentiable.rs` classifies as smooth did not exist.** The pass reasoned
+about `exp`, `sin`, `sigmoid` and the rest, and a program calling them failed
+name resolution. Thirteen now exist with exact derivatives. `softmax` and
+`matmul` need tensors and are exempt by name. A guard test holds the pass and
+the language together.
+
 **Merging needs a person.** Local `master` carried ten commits never pushed,
 the whole 2026-09-16 phase. PR #38 therefore holds 11 commits, all
 CI-green. The attempt to merge it was refused by the permission layer as a
 merge without review, which is the right outcome for an agent. #39 (the
 arena) is stacked on #38 and retargets when #38 merges with `--delete-branch`.
 
-Counts: prototype 1,282 → **1,310**, germline 134 → **144**, arena **38** (new),
-total 3,028 → **3,104**. Pins 94 → **101**. CI jobs 10 → **11**.
+Counts: prototype 1,282 → **1,312**, germline 134 → **144**, arena **42** (new),
+total 3,028 → **3,110**. Pins 94 → **101**. CI jobs 10 → **11**.
 
 **Pre-existing, not from this change:** `cargo clippy` 0.1.98 (2026-09-01)
 reports 15 warnings in `prototype` — 14 `chunks_exact` with a constant size in
@@ -3117,9 +3130,9 @@ changed before you commit.
 ---
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,310**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,312**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
-  across six crates **3,104**; documented-count pins **101**, up from 46 — the
+  across six crates **3,110**; documented-count pins **101**, up from 46 — the
   two newest hold the `kb`/`net` overlap the tensor-product-binding decision
   rests on, a figure that had lived in two sentences of prose with nothing
   re-deriving it.
