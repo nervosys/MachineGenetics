@@ -248,7 +248,7 @@ const KINKED: &[&str] = &[
 ];
 
 /// Builtins that are smooth wherever they are defined.
-const SMOOTH_BUILTINS: &[&str] = &[
+pub(crate) const SMOOTH_BUILTINS: &[&str] = &[
     "exp", "ln", "log", "sqrt", "sin", "cos", "tan", "tanh", "sigmoid", "softmax", "gelu", "silu",
     "sum", "mean", "dot", "matmul",
 ];
