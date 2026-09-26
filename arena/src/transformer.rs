@@ -41,7 +41,7 @@ use candle_core::{DType, Device, Module, Tensor, Var, D};
 use candle_nn::{embedding, layer_norm, linear, Embedding, LayerNorm, Linear, VarBuilder, VarMap};
 
 const BOS: u32 = 256;
-/// Seed for weight initialisation (see `reseed`).
+/// Seed for weight initialisation (see `TransformerLearner::new`).
 const INIT_SEED: u64 = 0x5EED_A12E;
 const BETA1: f64 = 0.9;
 const BETA2: f64 = 0.999;
@@ -113,6 +113,12 @@ impl Model {
 /// dimension), vectors that candle initialised randomly (biases) to zero, and
 /// constant tensors (layer-norm ones) left alone. Parameters are visited in
 /// sorted-name order, because the VarMap is a hash map.
+///
+/// The first version scaled each tensor by the extremes of candle's own
+/// unseeded draw. That was neither reproducible (the bound varied with the
+/// draw) nor sane: the maximum of a normal sample is about 4 sigma, so the
+/// redrawn weights were ~2.3x too wide and an untrained model scored 16
+/// bits/byte.
 fn reseed(varmap: &VarMap, seed: u64) -> candle_core::Result<()> {
     let data = varmap.data().lock().expect("varmap lock");
     let mut names: Vec<&String> = data.keys().collect();
@@ -181,10 +187,12 @@ impl TransformerLearner {
             head: linear(cfg.d, 256, vb.pp("head")).map_err(fail)?,
         };
         // Seeded, so a run's initial weights are a function of its
-        // configuration. Unseeded, an untrained model's bits/byte varied from
-        // run to run, and a test failed on CI's runner by chance. candle's CPU
-        // backend refuses `set_seed`, so the weights are redrawn here from the
-        // arena's own generator, identically on CPU and GPU.
+        // configuration. Unseeded, the untrained model's bits/byte varied from
+        // run to run (8.3, then 9.9), which made a test pass or fail by chance,
+        // and the arena's promise that a run is reproducible from its seed was
+        // quietly false for this learner. candle's CPU backend refuses
+        // `set_seed`, so the weights are redrawn here from the arena's own
+        // generator, identically on CPU and GPU.
         reseed(&varmap, INIT_SEED).map_err(fail)?;
         let vars = varmap.all_vars();
         let zeros = |vars: &[Var]| -> Result<Vec<Tensor>, String> {
@@ -244,6 +252,29 @@ impl TransformerLearner {
         Ok(((picked * keep)?.sum_all()?.neg()?, n))
     }
 
+    /// Per-window summed negative log-likelihood (nats), not differentiated.
+    fn nll_rows(&self, windows: &[&[u8]]) -> candle_core::Result<Vec<f32>> {
+        let t = windows.iter().map(|w| w.len()).max().unwrap_or(0);
+        let b = windows.len();
+        let mut ids = vec![0u32; b * t];
+        let mut tgt = vec![0u32; b * t];
+        let mut keep = vec![0f32; b * t];
+        for (i, w) in windows.iter().enumerate() {
+            for (j, &byte) in w.iter().enumerate() {
+                ids[i * t + j] = if j == 0 { BOS } else { w[j - 1] as u32 };
+                tgt[i * t + j] = byte as u32;
+                keep[i * t + j] = 1.0;
+            }
+        }
+        let ids = Tensor::from_vec(ids, (b, t), &self.device)?;
+        let tgt = Tensor::from_vec(tgt, (b * t, 1), &self.device)?;
+        let keep = Tensor::from_vec(keep, (b, t), &self.device)?;
+        let logits = self.model.forward(&ids, &self.mask(t)?)?.reshape((b * t, 256))?;
+        let logp = candle_nn::ops::log_softmax(&logits, D::Minus1)?;
+        let picked = logp.gather(&tgt, D::Minus1)?.reshape((b, t))?;
+        (picked * keep)?.sum(D::Minus1)?.neg()?.to_vec1::<f32>()
+    }
+
     fn adam_step(&mut self, loss: &Tensor) -> candle_core::Result<()> {
         let grads = loss.backward()?;
         self.step += 1;
@@ -298,6 +329,33 @@ impl ByteLearner for TransformerLearner {
             }
         }
         nats / bytes.len() as f64 / std::f64::consts::LN_2
+    }
+
+    fn bits_per_byte_many(&self, seqs: &[&[u8]]) -> Vec<f64> {
+        // Every window of every sequence, tagged with its sequence, scored in
+        // groups of 64 windows rather than one pass per sequence.
+        let mut tagged: Vec<(usize, &[u8])> = Vec::new();
+        for (si, s) in seqs.iter().enumerate() {
+            for w in self.windows(s) {
+                tagged.push((si, w));
+            }
+        }
+        let mut nats = vec![0.0f64; seqs.len()];
+        for group in tagged.chunks(64) {
+            let windows: Vec<&[u8]> = group.iter().map(|(_, w)| *w).collect();
+            match self.nll_rows(&windows) {
+                Ok(rows) => {
+                    for ((si, _), v) in group.iter().zip(rows) {
+                        nats[*si] += v as f64;
+                    }
+                }
+                Err(_) => return vec![f64::NAN; seqs.len()],
+            }
+        }
+        seqs.iter()
+            .zip(nats)
+            .map(|(s, n)| if s.is_empty() { f64::NAN } else { n / s.len() as f64 / std::f64::consts::LN_2 })
+            .collect()
     }
 
     fn progress(&self, bytes: &[u8]) -> f64 {
@@ -359,6 +417,8 @@ mod tests {
         let (a, b) = (tiny().bits_per_byte(text), tiny().bits_per_byte(text));
         // Seeded initialisation: two builds agree exactly.
         assert_eq!(a.to_bits(), b.to_bits(), "{a} vs {b}");
+        // Random init is not uniform; measured spread across unseeded inits
+        // reached 9.9 bits, so the band is what init actually guarantees.
         assert!((a - 8.0).abs() < 2.5, "{a}");
     }
 
@@ -385,6 +445,22 @@ mod tests {
             l.train(&[&data]);
         }
         assert!(l.progress(&data) > 0.0);
+    }
+
+    #[test]
+    fn batched_scoring_agrees_with_one_at_a_time() {
+        let mut l = tiny();
+        let data: Vec<u8> = b"vwxyz".iter().cycle().take(80).cloned().collect();
+        for _ in 0..20 {
+            l.train(&[&data]);
+        }
+        let seqs: Vec<Vec<u8>> = vec![data.clone(), b"hello".to_vec(), (0u8..70).collect()];
+        let refs: Vec<&[u8]> = seqs.iter().map(|s| s.as_slice()).collect();
+        let many = l.bits_per_byte_many(&refs);
+        for (s, m) in refs.iter().zip(many) {
+            let one = l.bits_per_byte(s);
+            assert!((one - m).abs() < 1e-3, "{one} vs {m}");
+        }
     }
 
     #[test]

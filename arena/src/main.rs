@@ -11,7 +11,7 @@
 //! Held-out files are read once, hashed, and never shown to an agent. The
 //! summary goes to stderr; `--json` writes the full report.
 
-use arena::arena::{default_meters, run, Config, Corpus};
+use arena::arena::{meters_for, run, Config, Corpus};
 use arena::learner::{LearnerConfig, LearnerSpec, TransformerConfig};
 
 fn fail(msg: impl std::fmt::Display) -> ! {
@@ -57,6 +57,7 @@ fn main() {
     let mut cfg = Config::default();
     let mut heldout_paths: Vec<String> = Vec::new();
     let mut json_out: Option<String> = None;
+    let mut meter_gpus: Option<Vec<u32>> = None;
     let mut i = 0;
     let value = |i: usize| -> &str { args.get(i + 1).map(String::as_str).unwrap_or_else(|| fail(format!("{} needs a value", args[i]))) };
     let num = |s: &str, what: &str| -> u64 { s.parse().unwrap_or_else(|_| fail(format!("{what}: `{s}` is not a number"))) };
@@ -67,6 +68,22 @@ fn main() {
             "--programs" => cfg.programs_per_round = num(value(i), "--programs") as usize,
             "--seed" => cfg.seed = num(value(i), "--seed"),
             "--fuel" => cfg.substrate.fuel = num(value(i), "--fuel"),
+            "--length-charge" => {
+                cfg.length_charge = value(i).parse().unwrap_or_else(|_| fail("--length-charge: not a number"))
+            }
+            "--entropy-floor" => {
+                cfg.entropy_floor = value(i).parse().unwrap_or_else(|_| fail("--entropy-floor: not a number"))
+            }
+            "--reward" => {
+                cfg.reward = match value(i) {
+                    "alignment" => arena::arena::Reward::Alignment,
+                    "compression" => arena::arena::Reward::Compression,
+                    other => fail(format!("--reward: `{other}` is neither alignment nor compression")),
+                }
+            }
+            "--meter-gpus" => {
+                meter_gpus = Some(value(i).split(',').map(|g| num(g, "--meter-gpus") as u32).collect())
+            }
             "--learner-steps" => cfg.learner_steps = num(value(i), "--learner-steps") as usize,
             "--eval-every" => cfg.eval_every = num(value(i), "--eval-every").max(1) as usize,
             "--cpu-watts" => cfg.cpu_watts = value(i).parse().unwrap_or_else(|_| fail("--cpu-watts: not a number")),
@@ -132,7 +149,7 @@ fn main() {
         })
         .collect();
 
-    let (meters, notes) = default_meters(cfg.cpu_watts);
+    let (meters, notes) = meters_for(cfg.cpu_watts, meter_gpus.as_deref());
     for n in &notes {
         eprintln!("meter: {n}");
     }
