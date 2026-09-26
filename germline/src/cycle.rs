@@ -35,7 +35,7 @@
 //! without a person reading them.
 
 use super::attest::{Attestation, Attestor};
-use super::gate::{Episode, Verdict};
+use super::gate::{Approval, Episode, Verdict};
 use super::journal::{Entry, Journal};
 use super::lineage::Lineage;
 use super::supervisor::HealthSample;
@@ -118,6 +118,8 @@ pub struct Cycle {
     shadow_successes: u32,
     shadow_failures: u32,
     verdict: Option<Verdict>,
+    /// Held from an approving adjudication until `promote` spends it.
+    approval: Option<Approval>,
     attestation: Option<Attestation>,
 }
 
@@ -138,6 +140,7 @@ impl Cycle {
             shadow_successes: 0,
             shadow_failures: 0,
             verdict: None,
+            approval: None,
             attestation: None,
         })
     }
@@ -224,8 +227,11 @@ impl Cycle {
             return Err(CycleError::Unevaluated);
         }
 
-        let verdict =
-            episode.adjudicate(&self.candidate, lineage, self.shadow_successes, materialized);
+        let (verdict, approval) =
+            match episode.approve(&self.candidate, lineage, self.shadow_successes, materialized) {
+                Ok(approval) => (approval.verdict(), Some(approval)),
+                Err(rejected) => (rejected, None),
+            };
         let attestation = attestor.attest(&verdict);
 
         journal
@@ -237,6 +243,7 @@ impl Cycle {
 
         self.phase = Phase::Adjudicated;
         self.verdict = Some(verdict);
+        self.approval = approval;
         self.attestation = Some(attestation);
         Ok(self.verdict.as_ref().unwrap())
     }
@@ -263,7 +270,7 @@ impl Cycle {
             return Err(CycleError::Unattested);
         }
 
-        let Verdict::Promote { generation, gate, evaluator } = verdict else {
+        let Verdict::Promote { generation, .. } = verdict else {
             let reasons = self.verdict.as_ref().map(|v| v.reasons()).unwrap_or_default();
             lineage.refuse(self.candidate.id, reasons.clone());
             self.phase = Phase::Refused;
@@ -275,10 +282,11 @@ impl Cycle {
             return Err(CycleError::Rejected { reasons });
         };
 
+        // The attested verdict and the approval were minted together; an
+        // approving verdict without one did not come from `adjudicate`.
+        let approval = self.approval.take().ok_or(CycleError::Unattested)?;
         lineage.add(self.candidate.clone());
-        lineage
-            .promote(generation, gate, &evaluator)
-            .map_err(|e| CycleError::Lineage(e.to_string()))?;
+        lineage.promote(approval).map_err(|e| CycleError::Lineage(e.to_string()))?;
 
         let event = lineage.events().last().cloned();
         if let Some(event) = event {
@@ -359,7 +367,7 @@ mod tests {
         let mut l = Lineage::new();
         let id = l.next_id();
         l.add(Generation::new(id, Digest::of(b"champ")).measured(measurement(0.70)));
-        l.promote(id, episode().gate_digest, "independent-harness").unwrap();
+        l.grant(id, episode().gate_digest, "independent-harness").unwrap();
         l
     }
 

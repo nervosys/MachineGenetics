@@ -36,24 +36,8 @@ use germline::pareto::{Archive, Objective};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-/// A held-out corpus: data no agent can reach, used only for scoring.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Corpus {
-    pub name: String,
-    #[serde(skip)]
-    pub bytes: Vec<u8>,
-    /// SHA-256 of the bytes, so a report states exactly what it was scored on.
-    pub sha256: String,
-    pub len: usize,
-}
-
-impl Corpus {
-    pub fn new(name: impl Into<String>, bytes: Vec<u8>) -> Corpus {
-        use sha2::{Digest, Sha256};
-        let sha256 = format!("{:x}", Sha256::digest(&bytes));
-        Corpus { name: name.into(), len: bytes.len(), bytes, sha256 }
-    }
-}
+/// Held-out data lives in the trusted kernel, which alone reads its bytes.
+pub use crate::kernel::Corpus;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
@@ -575,7 +559,7 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
         if (round + 1) % cfg.eval_every == 0 || round + 1 == cfg.rounds {
             for (li, learner) in learners.iter().enumerate() {
                 let heldout_bpb: BTreeMap<String, f64> =
-                    heldout.iter().map(|c| (c.name.clone(), learner.bits_per_byte(&c.bytes))).collect();
+                    heldout.iter().map(|c| (c.name().to_string(), c.score(learner.as_ref()))).collect();
                 let mean_bpb = heldout_bpb.values().sum::<f64>() / heldout_bpb.len() as f64;
                 // Progress on stderr: a 25M-parameter run takes most of an
                 // hour, and the first one printed nothing until it finished.
@@ -609,11 +593,8 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
     let mut results = Vec::new();
     let pool_bytes: Vec<u8> = pool.entries.iter().flat_map(|e| e.bytes.iter().cloned()).take(1 << 16).collect();
     for (li, learner) in learners.iter().enumerate() {
-        let mean_bpb = heldout.iter().map(|c| learner.bits_per_byte(&c.bytes)).sum::<f64>() / heldout.len() as f64;
-        let sample: Vec<u8> = heldout[0].bytes.iter().take(4096).cloned().collect();
-        let t = std::time::Instant::now();
-        let _ = learner.bits_per_byte(&sample);
-        let latency = t.elapsed().as_secs_f64() / (sample.len().max(1) as f64 / 1024.0);
+        let mean_bpb = heldout.iter().map(|c| c.score(learner.as_ref())).sum::<f64>() / heldout.len() as f64;
+        let latency = heldout[0].latency_s_per_kb(learner.as_ref(), 4096);
         results.push(LearnerResult {
             index: li,
             config: cfg.learners[li],

@@ -174,6 +174,76 @@ impl Verdict {
     }
 }
 
+/// Proof that the gate approved a generation, and the only thing
+/// [`Lineage::promote`] accepts.
+///
+/// Its fields are private and it has no public constructor, no `Clone` and no
+/// `Deserialize`, so outside this crate the one way to hold an `Approval` is
+/// [`Episode::approve`], and each one moves authority at most once. Before it
+/// existed, `promote` took a generation id, a gate digest and an evaluator
+/// name, and "the caller must already hold an approving verdict" was a doc
+/// comment: any code with a `&mut Lineage` could grant authority without the
+/// gate. `Verdict` cannot serve as the proof, because it is public data that
+/// anyone can construct or deserialize.
+///
+/// ```compile_fail
+/// // Outside germline, an approval cannot be written down; it must be earned.
+/// let a = germline::gate::Approval {
+///     generation: germline::GenerationId(1),
+///     gate: ribosome::Digest::of(b"g"),
+///     evaluator: "me".into(),
+///     incumbent: None,
+/// };
+/// ```
+#[derive(Debug, PartialEq)]
+pub struct Approval {
+    generation: GenerationId,
+    gate: Digest,
+    evaluator: String,
+    /// The champion the challenger was judged against. An approval earned
+    /// against one incumbent does not transfer authority from another.
+    incumbent: Option<GenerationId>,
+}
+
+impl Approval {
+    pub fn generation(&self) -> GenerationId {
+        self.generation
+    }
+
+    pub fn gate(&self) -> &Digest {
+        &self.gate
+    }
+
+    pub fn evaluator(&self) -> &str {
+        &self.evaluator
+    }
+
+    pub fn incumbent(&self) -> Option<GenerationId> {
+        self.incumbent
+    }
+
+    /// The verdict this approval embodies, for the journal and attestation.
+    pub fn verdict(&self) -> Verdict {
+        Verdict::Promote {
+            generation: self.generation,
+            gate: self.gate.clone(),
+            evaluator: self.evaluator.clone(),
+        }
+    }
+
+    /// For this crate's unit tests, which build lineages in states the gate
+    /// would not produce (a safety decline, a promotion over nothing).
+    #[cfg(test)]
+    pub(crate) fn unchecked(
+        generation: GenerationId,
+        gate: Digest,
+        evaluator: &str,
+        incumbent: Option<GenerationId>,
+    ) -> Approval {
+        Approval { generation, gate, evaluator: evaluator.to_string(), incumbent }
+    }
+}
+
 /// Everything an episode pinned at the moment it opened.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Episode {
@@ -271,6 +341,26 @@ impl Episode {
             }
         } else {
             Verdict::Reject { generation: challenger.id, reasons }
+        }
+    }
+
+    /// Adjudicate, and on approval mint the [`Approval`] that
+    /// [`Lineage::promote`] requires. A rejection comes back as its verdict.
+    pub fn approve(
+        &self,
+        challenger: &Generation,
+        lineage: &Lineage,
+        shadow_successes: u32,
+        materialized: &dyn Fn(&Digest) -> bool,
+    ) -> Result<Approval, Verdict> {
+        match self.adjudicate(challenger, lineage, shadow_successes, materialized) {
+            Verdict::Promote { generation, gate, evaluator } => Ok(Approval {
+                generation,
+                gate,
+                evaluator,
+                incumbent: lineage.champion().map(|g| g.id),
+            }),
+            rejected => Err(rejected),
         }
     }
 
@@ -376,7 +466,7 @@ mod tests {
         let g = Generation::new(id, Digest::of(b"champ"))
             .measured(measured(0.70, 0.95, 0.98, "independent-harness"));
         l.add(g);
-        l.promote(id, episode().gate_digest, "independent-harness").unwrap();
+        l.grant(id, episode().gate_digest, "independent-harness").unwrap();
         (l, id)
     }
 
@@ -491,7 +581,7 @@ mod tests {
                 g = g.parent(p);
             }
             l.add(g);
-            l.promote(id, episode().gate_digest, "independent-harness").unwrap();
+            l.grant(id, episode().gate_digest, "independent-harness").unwrap();
             parent = Some(id);
             last = id;
         }
@@ -563,7 +653,7 @@ mod tests {
         let (mut l, champ) = seeded();
         let c = challenger(&mut l, champ, measured(0.85, 0.95, 0.98, "independent-harness"));
         let cid = l.add(c.clone());
-        l.promote(cid, episode().gate_digest, "independent-harness").unwrap();
+        l.grant(cid, episode().gate_digest, "independent-harness").unwrap();
         l.demote_champion("malfunction", &yes()).unwrap();
 
         let v = episode().adjudicate(&c, &l, 0, &yes());

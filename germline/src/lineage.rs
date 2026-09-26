@@ -22,6 +22,7 @@
 //! Comparing only to the incumbent makes every one of those promotions look
 //! reasonable in isolation, which is exactly how the capability disappears.
 
+use super::gate::Approval;
 use super::{Generation, GenerationId, Status};
 use ribosome::Digest;
 use serde::{Deserialize, Serialize};
@@ -55,6 +56,9 @@ pub enum LineageError {
     Quarantined(GenerationId),
     /// There is no earlier champion to fall back to.
     NoFallback,
+    /// The approval was earned against a champion that no longer holds
+    /// authority, so it says nothing about the challenger against this one.
+    StaleApproval { judged_against: Option<GenerationId>, champion: Option<GenerationId> },
 }
 
 impl std::fmt::Display for LineageError {
@@ -70,6 +74,12 @@ impl std::fmt::Display for LineageError {
                 write!(f, "generation {g} is quarantined and is not a valid rollback target")
             }
             LineageError::NoFallback => write!(f, "no earlier champion exists to fall back to"),
+            LineageError::StaleApproval { judged_against, champion } => write!(
+                f,
+                "the approval was earned against {} and the champion is now {}",
+                judged_against.map(|g| g.to_string()).unwrap_or_else(|| "no champion".into()),
+                champion.map(|g| g.to_string()).unwrap_or_else(|| "no champion".into())
+            ),
         }
     }
 }
@@ -179,17 +189,22 @@ impl Lineage {
             })
     }
 
-    /// Grant authority. The caller must already hold an approving verdict —
-    /// this records the transfer, it does not decide it.
-    pub fn promote(
-        &mut self,
-        id: GenerationId,
-        gate: Digest,
-        evaluator: &str,
-    ) -> Result<(), LineageError> {
+    /// Grant authority on the gate's [`Approval`], which only
+    /// [`Episode::approve`](super::gate::Episode::approve) mints. This records
+    /// the transfer; the gate decided it. The approval is consumed.
+    pub fn promote(&mut self, approval: Approval) -> Result<(), LineageError> {
+        let id = approval.generation();
         if self.get(id).is_none() {
             return Err(LineageError::UnknownGeneration(id));
         }
+        if approval.incumbent() != self.champion {
+            return Err(LineageError::StaleApproval {
+                judged_against: approval.incumbent(),
+                champion: self.champion,
+            });
+        }
+        let gate = approval.gate().clone();
+        let evaluator = approval.evaluator();
         let from = self.champion;
         if let Some(prev) = from {
             if let Some(g) = self.get_mut(prev) {
@@ -208,6 +223,13 @@ impl Lineage {
             evaluator: evaluator.to_string(),
         });
         Ok(())
+    }
+
+    /// Promote without the gate, for this crate's unit tests only.
+    #[cfg(test)]
+    pub(crate) fn grant(&mut self, id: GenerationId, gate: Digest, evaluator: &str) -> Result<(), LineageError> {
+        let incumbent = self.champion;
+        self.promote(Approval::unchecked(id, gate, evaluator, incumbent))
     }
 
     pub fn refuse(&mut self, id: GenerationId, reasons: Vec<String>) {
@@ -362,8 +384,8 @@ mod tests {
         let mut l = Lineage::new();
         let a = gen(&mut l, None, 0.9);
         let b = gen(&mut l, Some(a), 0.92);
-        l.promote(a, Digest::of(b"gate"), "harness").unwrap();
-        l.promote(b, Digest::of(b"gate"), "harness").unwrap();
+        l.grant(a, Digest::of(b"gate"), "harness").unwrap();
+        l.grant(b, Digest::of(b"gate"), "harness").unwrap();
         assert_eq!(l.champion().unwrap().id, b);
         assert_eq!(l.get(a).unwrap().status, Status::Retired);
     }
@@ -373,8 +395,8 @@ mod tests {
         let mut l = Lineage::new();
         let a = gen(&mut l, None, 0.9);
         let b = gen(&mut l, Some(a), 0.8);
-        l.promote(a, Digest::of(b"g"), "h").unwrap();
-        l.promote(b, Digest::of(b"g"), "h").unwrap();
+        l.grant(a, Digest::of(b"g"), "h").unwrap();
+        l.grant(b, Digest::of(b"g"), "h").unwrap();
         l.demote_champion("bad", &always_materialized()).unwrap();
         let c = gen(&mut l, Some(a), 0.95);
         assert_eq!(c.0, 2, "ids advance even across demotion — history stays legible");
@@ -385,8 +407,8 @@ mod tests {
         let mut l = Lineage::new();
         let a = gen(&mut l, None, 0.9);
         let b = gen(&mut l, Some(a), 0.95);
-        l.promote(a, Digest::of(b"g"), "h").unwrap();
-        l.promote(b, Digest::of(b"g"), "h").unwrap();
+        l.grant(a, Digest::of(b"g"), "h").unwrap();
+        l.grant(b, Digest::of(b"g"), "h").unwrap();
 
         let target = l.demote_champion("fitness collapsed", &always_materialized()).unwrap();
         assert_eq!(target, a);
@@ -400,9 +422,9 @@ mod tests {
         let a = gen(&mut l, None, 0.9);
         let b = gen(&mut l, Some(a), 0.95);
         let c = gen(&mut l, Some(b), 0.96);
-        l.promote(a, Digest::of(b"g"), "h").unwrap();
-        l.promote(b, Digest::of(b"g"), "h").unwrap();
-        l.promote(c, Digest::of(b"g"), "h").unwrap();
+        l.grant(a, Digest::of(b"g"), "h").unwrap();
+        l.grant(b, Digest::of(b"g"), "h").unwrap();
+        l.grant(c, Digest::of(b"g"), "h").unwrap();
 
         // b failed earlier and was quarantined; falling back must skip it.
         l.demote_champion("c malfunctioned", &always_materialized()).unwrap();
@@ -417,8 +439,8 @@ mod tests {
         let mut l = Lineage::new();
         let a = gen(&mut l, None, 0.9);
         let b = gen(&mut l, Some(a), 0.95);
-        l.promote(a, Digest::of(b"g"), "h").unwrap();
-        l.promote(b, Digest::of(b"g"), "h").unwrap();
+        l.grant(a, Digest::of(b"g"), "h").unwrap();
+        l.grant(b, Digest::of(b"g"), "h").unwrap();
 
         let gone = |_: &Digest| false;
         assert_eq!(l.demote_champion("boom", &gone), Err(LineageError::NoFallback));
@@ -444,8 +466,8 @@ mod tests {
         let mut l = Lineage::new();
         let a = gen(&mut l, None, 0.9);
         let b = gen(&mut l, Some(a), 0.95);
-        l.promote(a, Digest::of(b"g"), "h").unwrap();
-        l.promote(b, Digest::of(b"g"), "h").unwrap();
+        l.grant(a, Digest::of(b"g"), "h").unwrap();
+        l.grant(b, Digest::of(b"g"), "h").unwrap();
         l.demote_champion("b broke", &always_materialized()).unwrap();
 
         assert_eq!(
@@ -459,7 +481,7 @@ mod tests {
         let mut l = Lineage::new();
         let a = gen(&mut l, None, 0.9);
         let gate = Digest::of(b"gate-v1");
-        l.promote(a, gate.clone(), "harness").unwrap();
+        l.grant(a, gate.clone(), "harness").unwrap();
         match &l.events()[0] {
             SuccessionEvent::Promoted { generation, gate: g, evaluator, .. } => {
                 assert_eq!(*generation, a);
@@ -475,8 +497,8 @@ mod tests {
         let mut l = Lineage::new();
         let a = gen(&mut l, None, 0.9);
         let b = gen(&mut l, Some(a), 0.95);
-        l.promote(a, Digest::of(b"g"), "h").unwrap();
-        l.promote(b, Digest::of(b"g"), "h").unwrap();
+        l.grant(a, Digest::of(b"g"), "h").unwrap();
+        l.grant(b, Digest::of(b"g"), "h").unwrap();
         l.demote_champion("failed", &always_materialized()).unwrap();
         assert!(l.previously_demoted(b));
         assert!(!l.previously_demoted(a));

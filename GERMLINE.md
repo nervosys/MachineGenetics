@@ -1,7 +1,7 @@
 # Germline — model succession, handoff, and fallback
 
 > **Status: control plane complete and runnable; workload not.**
-> `germline/` — its own crate, 144 tests. Variation, directed search, the gate,
+> `germline/` — its own crate, 146 tests. Variation, directed search, the gate,
 > attestation, lineage, the durable journal, the cycle state machine, and
 > supervision are built and tested ✅. Model training and inference are **not**
 > here and are not claimed ◻ — this decides *whether* a successor takes over, not
@@ -78,6 +78,18 @@ what the invariants below exist to make structurally impossible.
 | 5 | Fallback targets must be **materialized** — verified before authority moves | `Lineage::demote_champion` | ✅ |
 | 6 | A demoted generation is not re-promotable without new evidence | `RejectReason::PreviouslyDemoted` | ✅ |
 | 7 | History is append-only; demotions stay in the record with their reason | `Lineage` | ✅ |
+| 8 | Authority moves **only on the gate's approval**, earned against the champion it replaces | `Lineage::promote` takes a `gate::Approval`, which only `Episode::approve` mints | ✅ |
+
+On (8): until 2026-09-26 `Lineage::promote` took a generation id, a gate
+digest and an evaluator name, and "the caller must already hold an approving
+verdict" was its doc comment. Any code with a `&mut Lineage` could grant
+authority, and a `Verdict` could not serve as proof because it is public data
+anyone can construct or deserialize. `Approval` has private fields, no `Clone`
+and no `Deserialize`, so outside the crate it can only be earned, and each one
+is spent once. It also records the incumbent it was judged against: an
+approval earned against one champion is refused (`StaleApproval`) after
+authority has moved to another. A `compile_fail` doctest fails if the fields
+become constructible, which was checked by making them public.
 
 On (1): the check exists because a "helpful" relaxation is indistinguishable from
 an attack in its effects. `a_successor_cannot_widen_the_gate_that_judges_it`
@@ -330,7 +342,7 @@ nobody chose, one individually-defensible promotion at a time.
 ## 10. Reproducing
 
 ```powershell
-cargo test --manifest-path germline/Cargo.toml                  # 144 tests
+cargo test --manifest-path germline/Cargo.toml                  # 146 tests
 cargo test --manifest-path germline/Cargo.toml --test rsi_loop  # 6 closed-loop scenarios
 cargo test --manifest-path germline/Cargo.toml --test succession # 13 succession scenarios
 ```
