@@ -186,7 +186,7 @@ are **six independent Cargo workspaces**:
 | `ribosome/` | `ribosome` | 168 | The distributed build engine. Depends on nothing in this repository — see below |
 | `germline/` | `germline` | 142 | Model succession, handoff, fallback — the RSI control plane. Path-depends on `ribosome` |
 | `forge/` | `forge` | 60 | The package registry, and only that |
-| `arena/` | `arena` | 37 | The self-driven loop: agents write MAGE, learners predict it, joules are counted. Path-depends on `prototype` and `germline` |
+| `arena/` | `arena` | 38 | The self-driven loop: agents write MAGE, learners predict it, joules are counted. Path-depends on `prototype` and `germline` |
 
 The dependency graph is a forest, not a web:
 

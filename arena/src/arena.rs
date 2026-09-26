@@ -221,9 +221,15 @@ pub struct Report {
     pub hypervolume: f64,
 }
 
-/// Mean bits per byte of `bytes` across learners.
-fn mean_bpb(learners: &[Box<dyn ByteLearner>], bytes: &[u8]) -> f64 {
-    learners.iter().map(|l| l.bits_per_byte(bytes)).sum::<f64>() / learners.len() as f64
+/// Mean bits per byte of each sequence across learners, batched per learner.
+fn mean_bpb_many(learners: &[Box<dyn ByteLearner>], seqs: &[&[u8]]) -> Vec<f64> {
+    let mut acc = vec![0.0f64; seqs.len()];
+    for l in learners {
+        for (a, v) in acc.iter_mut().zip(l.bits_per_byte_many(seqs)) {
+            *a += v;
+        }
+    }
+    acc.into_iter().map(|a| a / learners.len() as f64).collect()
 }
 
 /// The credit multiplier for a program's length and its output's structure.
@@ -322,9 +328,15 @@ fn build_agents(spec: &[(String, usize)]) -> Result<Vec<Box<dyn Proposer>>, Stri
 /// The meters available on this machine: NVML if it opens, and always the
 /// CPU wall-clock estimate.
 pub fn default_meters(cpu_watts: f64) -> (Vec<Box<dyn Meter>>, Vec<String>) {
+    meters_for(cpu_watts, None)
+}
+
+/// Meters for the listed NVML GPUs (all of them for `None`), plus the CPU
+/// estimate.
+pub fn meters_for(cpu_watts: f64, gpus: Option<&[u32]>) -> (Vec<Box<dyn Meter>>, Vec<String>) {
     let mut meters: Vec<Box<dyn Meter>> = Vec::new();
     let mut notes = Vec::new();
-    match energy::Nvml::open() {
+    match energy::Nvml::open_devices(gpus) {
         Ok(n) => {
             notes.push(format!("nvml: {} device(s), measured", n.device_count()));
             meters.push(Box::new(n));
@@ -443,8 +455,9 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
                                     Some(Outcome::Bytes { bytes: pb, .. }) => pb,
                                     _ => bytes.clone(),
                                 };
-                                let before = mean_bpb(&learners, &probe);
-                                pending.push((ai, scored.len(), probe, mult, before));
+                                // Scored in one batch per learner below,
+                                // before training.
+                                pending.push((ai, scored.len(), probe, mult, 0.0));
                                 scored.push((c, None));
                             }
                         }
@@ -473,6 +486,15 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
             }
         }
 
+        // Compression mode: every probe's bits/byte before training, batched.
+        if !pending.is_empty() {
+            let probes: Vec<&[u8]> = pending.iter().map(|p| p.2.as_slice()).collect();
+            let before = mean_bpb_many(&learners, &probes);
+            for (p, b) in pending.iter_mut().zip(before) {
+                p.4 = b;
+            }
+        }
+
         // 5. Train, each learner in its own energy span.
         let batch: Vec<&[u8]> = round_data.iter().map(|b| b.as_slice()).collect();
         for (li, learner) in learners.iter_mut().enumerate() {
@@ -495,8 +517,11 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
         // Compression progress on each program's probe: what the round's
         // training taught about output it never saw, in bits, discounted by
         // novelty and shaping.
-        for (ai, idx, probe, mult, before) in pending {
-            let after = mean_bpb(&learners, &probe);
+        let after_all = {
+            let probes: Vec<&[u8]> = pending.iter().map(|p| p.2.as_slice()).collect();
+            mean_bpb_many(&learners, &probes)
+        };
+        for ((ai, idx, probe, mult, before), after) in pending.into_iter().zip(after_all) {
             let r = (before - after).max(0.0) * probe.len() as f64 * mult;
             standing[ai].credit += r;
             round_credit[ai] += r;

@@ -64,6 +64,8 @@ pub struct Nvml {
     energy: unsafe extern "C" fn(DeviceHandle, *mut u64) -> NvmlReturn,
     shutdown: unsafe extern "C" fn() -> NvmlReturn,
     devices: Vec<DeviceHandle>,
+    /// NVML indices of `devices`, for the meter's name.
+    indices: Vec<u32>,
     at_start: Option<u64>,
     _lib: libloading::Library,
 }
@@ -72,6 +74,19 @@ impl Nvml {
     /// Load NVML and open every device. `Err` explains why not — no driver,
     /// no devices, or a counter the hardware does not provide (pre-Volta).
     pub fn open() -> Result<Nvml, String> {
+        Nvml::open_devices(None)
+    }
+
+    /// Open only the listed NVML device indices, or every device for `None`.
+    ///
+    /// Summing every GPU was right on an otherwise idle machine and wrong the
+    /// first time it was not: a 25M-parameter run pinned to GPU 1 reported
+    /// 585 kJ by round 25 while GPU 0 ran someone else's workload at 100%.
+    /// The joules a learner is charged must be the joules of the device it
+    /// runs on. Indices are NVML's, which need not match CUDA's ordering, so
+    /// they are given explicitly rather than guessed from
+    /// `CUDA_VISIBLE_DEVICES`.
+    pub fn open_devices(only: Option<&[u32]>) -> Result<Nvml, String> {
         let names: &[&str] = if cfg!(windows) {
             &["nvml.dll"]
         } else {
@@ -114,13 +129,26 @@ impl Nvml {
                 return Err("NVML reports no devices".into());
             }
             let mut devices = Vec::new();
+            let mut indices = Vec::new();
             for i in 0..n {
+                if let Some(want) = only {
+                    if !want.contains(&i) {
+                        continue;
+                    }
+                }
                 let mut h: DeviceHandle = std::ptr::null_mut();
                 if handle(i, &mut h) == NVML_SUCCESS {
                     devices.push(h);
+                    indices.push(i);
                 }
             }
-            let nvml = Nvml { energy, shutdown, devices, at_start: None, _lib: lib };
+            if let Some(want) = only {
+                if let Some(missing) = want.iter().find(|w| !indices.contains(w)) {
+                    shutdown();
+                    return Err(format!("NVML device {missing} does not exist (found {n})"));
+                }
+            }
+            let nvml = Nvml { energy, shutdown, devices, indices, at_start: None, _lib: lib };
             nvml.total_mj().map_err(|e| format!("energy counter unreadable: {e}"))?;
             Ok(nvml)
         }
@@ -157,7 +185,8 @@ impl Drop for Nvml {
 
 impl Meter for Nvml {
     fn name(&self) -> String {
-        format!("nvml:{}gpu", self.devices.len())
+        let ids: Vec<String> = self.indices.iter().map(|i| i.to_string()).collect();
+        format!("nvml:gpu[{}]", ids.join(","))
     }
 
     fn start(&mut self) {
@@ -292,6 +321,20 @@ mod tests {
         assert_eq!(total(&[measured.clone()]), Some((2.0, true)));
         assert_eq!(total(&[measured, est]), Some((5.0, false)));
         assert_eq!(total(&[]), None);
+    }
+
+    #[test]
+    fn nvml_meters_only_the_devices_it_is_given() {
+        match Nvml::open_devices(Some(&[0])) {
+            Ok(n) => {
+                assert_eq!(n.device_count(), 1);
+                assert_eq!(n.name(), "nvml:gpu[0]");
+                // A device that does not exist is refused, not silently dropped:
+                // metering nothing would read as free.
+                assert!(Nvml::open_devices(Some(&[99])).is_err());
+            }
+            Err(why) => assert!(!why.is_empty()),
+        }
     }
 
     #[test]
