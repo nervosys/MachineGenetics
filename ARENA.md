@@ -103,9 +103,21 @@ compute than sampling the prior.
    `e/2` window plus count-based novelty (repeats earn `progress / (1 + n)`).
    Distinct outputs rose to 80%.
 2. The generator then found `[s; k]` — constant runs keyed on the seed, so each
-   seed is "new" to the novelty count while the content stays trivial. **Open.**
-   The next fix is to fingerprint output *structure* rather than bytes, or to
-   score novelty against the learner's own prediction.
+   seed is "new" to the novelty count while the content stays trivial. **Closed
+   2026-09-25** by counting novelty on a program's *shape*: its structure with
+   bound names canonicalised and constants erased (`mage_prototype::canon`).
+   A test pins it: 40 genuinely different outputs from `[s; k]` over five `k`
+   and eight seeds earn one shape's harmonic credit (≈4.3), not 40.
+3. **The generator then padded its way to new shapes.** The best programs of
+   the next run were constant emitters in varied syntactic wrappers —
+   `range(19)….map(|v| s).map(|v| 222)`, `[78; 5].reverse().sort().reverse()
+   .map(|v| 2)` — each a distinct shape, all saying one thing. **Open.** Each
+   fix has moved the exploit one level up — bytes, seeds, syntax — and the
+   pressure under all three is the same: an n-gram learner's learning progress
+   is largest on constant runs. The two remedies the paper implies are charging
+   description length (the Solomonoff prior) to every agent's credit, so
+   padding costs, and a learner whose frontier is not constants (next step 1).
+   An attacker agent paid to find the next level is plan task 7.4.
 
 **Transfer to natural data is weak, and the learner is why.** The learners fit
 their training data (1.9–3.4 bits/byte in distribution), but on held-out text

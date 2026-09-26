@@ -17,6 +17,7 @@
 pub mod aci;
 pub mod agent_runtime;
 pub mod ast;
+pub mod canon;
 pub mod autograd;
 pub mod backends;
 pub mod bench;
