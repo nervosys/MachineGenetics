@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,095** — rmi 1,384 · prototype 1,310 · ribosome 168 · germline 142 · forge 60 · arena 31 |
+| Tests | **3,098** — rmi 1,384 · prototype 1,310 · ribosome 168 · germline 142 · forge 60 · arena 34 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -512,14 +512,31 @@ structure is constant runs. **This reorders the plan:** the program vocabulary
 is a bottleneck alongside the learner, and structure-producing combinators
 come next.
 
+**The vocabulary change helped, measurably, and did not reach the bar.**
+`copy`, `cycle` and `nest` bring the prior's output entropy down from 3.44 to
+1.84 bits/byte on identical windows (`arena --prior-lz`). In the same GPU run
+they improved fit (5.91 → 4.67), best held-out (code 9.45 → 8.69) and energy
+(30.9 → 25.0 kJ), and held-out now improves for 75 rounds before degrading.
+It is still never below uniform on natural data. The remaining levers are
+scale, and a policy that drifts back to low-entropy programs; `ARENA.md` has
+the tables.
+
+**At 25.6M parameters the learner beats uniform on held-out code, at 7.79
+bits/byte (round 75),** which is the first transfer from zero natural data.
+Text reaches 8.41. Both model sizes peak near round 75 and degrade as the
+generator policy drifts toward low-entropy programs, so drift is the next fix.
+Three things are owed: per-device energy metering (NVML sums the display GPU
+too), a memory profile (24 GB GPU and 9 GB host for 25M parameters), and
+progress output, which is now added.
+
 **Merging needs a person.** Local `master` carried ten commits never pushed,
 the whole 2026-09-16 phase. PR #38 therefore holds 11 commits, all
 CI-green. The attempt to merge it was refused by the permission layer as a
 merge without review, which is the right outcome for an agent. #39 (the
 arena) is stacked on #38 and retargets when #38 merges with `--delete-branch`.
 
-Counts: prototype 1,282 → **1,310**, germline 134 → **142**, arena **31** (new),
-total 3,028 → **3,095**. Pins 94 → **101**. CI jobs 10 → **11**.
+Counts: prototype 1,282 → **1,310**, germline 134 → **142**, arena **34** (new),
+total 3,028 → **3,098**. Pins 94 → **101**. CI jobs 10 → **11**.
 
 **Pre-existing, not from this change:** `cargo clippy` 0.1.98 (2026-09-01)
 reports 15 warnings in `prototype` — 14 `chunks_exact` with a constant size in
@@ -3061,7 +3078,7 @@ changed before you commit.
 
 - Prototype tests **1,066 → 1,310**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
-  across six crates **3,095**; documented-count pins **101**, up from 46 — the
+  across six crates **3,098**; documented-count pins **101**, up from 46 — the
   two newest hold the `kb`/`net` overlap the tensor-product-binding decision
   rests on, a figure that had lived in two sentences of prose with nothing
   re-deriving it.

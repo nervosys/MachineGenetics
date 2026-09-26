@@ -19,6 +19,39 @@ fn fail(msg: impl std::fmt::Display) -> ! {
     std::process::exit(2);
 }
 
+fn prior_lz(n: usize, sub: arena::substrate::Substrate) {
+    use arena::grammar::{Policy, Rng, LIST_RULES};
+    use arena::substrate::Outcome;
+    let base = Policy::default();
+    let mut old = Policy::default();
+    // The nine productions before `copy`, `cycle` and `nest`.
+    for l in old.list_logits.iter_mut().skip(9) {
+        *l = -1e9;
+    }
+    for (name, policy) in [("original 9 productions", &old), (&*format!("all {}", LIST_RULES.len()), &base)] {
+        let mut rng = Rng(2026);
+        let (mut lz, mut len, mut ok) = (0.0, 0usize, 0usize);
+        for _ in 0..n {
+            let (p, _) = policy.sample(&mut rng);
+            // Like with like: LZ76 is biased on short inputs, and the two
+            // vocabularies produce different lengths, so score only outputs of
+            // at least 32 bytes, truncated to exactly 32.
+            if let Outcome::Bytes { bytes, .. } = sub.run(&p.source(), rng.next_u64()) {
+                if bytes.len() >= 32 {
+                    lz += arena::measure::lz_bits_per_byte(&bytes[..32]);
+                    len += bytes.len();
+                    ok += 1;
+                }
+            }
+        }
+        eprintln!(
+            "{name:<24} {ok}/{n} produced >= 32 bytes; mean length {:.1}; mean LZ76 {:.3} bits/byte",
+            len as f64 / ok.max(1) as f64,
+            lz / ok.max(1) as f64
+        );
+    }
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let mut cfg = Config::default();
@@ -74,6 +107,12 @@ fn main() {
                     })
                     .collect();
             }
+            // Vocabulary diagnostic: the structure of what the uniform prior
+            // writes, with and without the structural productions. No run.
+            "--prior-lz" => {
+                prior_lz(num(value(i), "--prior-lz") as usize, cfg.substrate);
+                std::process::exit(0);
+            }
             "-h" | "--help" => {
                 eprintln!("{}", include_str!("main.rs").lines().skip(2).take(7).map(|l| l.trim_start_matches("//! ")).collect::<Vec<_>>().join("\n"));
                 std::process::exit(0);
@@ -107,12 +146,13 @@ fn main() {
         );
     }
     eprintln!(
-        "\n  distinct outputs {} of {} ({:.0}%), distinct shapes {}, cache hits {}",
+        "\n  distinct outputs {} of {} ({:.0}%), distinct shapes {}, cache hits {}, mean output LZ {:.3} bits/byte",
         report.distinct_outputs,
         report.total_outputs,
         100.0 * report.distinct_outputs as f64 / report.total_outputs.max(1) as f64,
         report.distinct_shapes,
-        report.cache_hits
+        report.cache_hits,
+        report.mean_output_lz_bits
     );
     eprintln!("\n=== refusals ===");
     for (k, v) in &report.refusals {

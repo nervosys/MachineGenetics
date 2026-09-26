@@ -181,6 +181,66 @@ can fit.
 The GPU transformer's training was the cheaper learner in the mixed run:
 2,481 J against the CPU n-gram's 10,167 J for the same rounds.
 
+**The structural vocabulary helps, and is not enough.** Three productions were
+added: `copy` (`flatten([xs; n])`), `cycle` (periodic templates) and `nest`
+(nested counting). Two measurements follow.
+
+First, a quick proxy, `arena --prior-lz N`. It scores what the uniform prior
+writes with the Lempel–Ziv (1976) entropy-rate estimate (`arena::measure`) on
+identical 32-byte windows, because the estimate is length-biased and the two
+vocabularies write different lengths. The old nine productions score **3.44
+bits/byte**; all twelve score **1.84**.
+
+Second, the real test: run 5 repeated exactly, with only the vocabulary
+changed.
+
+| | old vocabulary | new vocabulary |
+|---|---|---|
+| fit to own training data | 5.91 | **4.67** |
+| held-out code, best / final | 9.45 / 10.48 | **8.69** / 9.39 |
+| held-out text, best / final | 9.69 / 11.22 | **9.42** / 10.20 |
+| training joules | 30,881 | **24,969** |
+
+The learner fits more, transfers better and spends less, and held-out
+prediction now *improves* for about 75 rounds before degrading. It still never
+beats a uniform model on natural data, so plan task 4.3 remains unmet. Two
+limits remain. One is scale: 900k parameters and 2.5M bytes, against the
+paper's 25M-parameter models trained far longer. The other is a policy that
+drifts back toward low-entropy programs as the run goes on (mean output LZ
+falls to 1.11), whose best programs still end in constant maps.
+
+**Scale: the first transfer below uniform.** The same run at 25.6M parameters
+(width 512, 8 layers, 8 heads, learning rate 3·10⁻⁴), pinned to the idle
+second GPU:
+
+| round | held-out text | held-out code | cumulative joules |
+|---|---|---|---|
+| 25 | 9.49 | 8.80 | 77,023 |
+| 50 | 8.73 | 8.15 | 172,723 |
+| **75** | **8.41** | **7.79** | 212,089 |
+| 100 | 8.61 | 7.85 | 231,360 |
+| 150 | 9.04 | 8.29 | 266,951 |
+
+At round 75, held-out **code is predicted at 7.79 bits/byte, better than a
+uniform model**. That is the first measured transfer from zero natural data:
+the learner saw nothing but MAGE programs written by agents. Scale is a
+clear lever: best code goes from 8.69 at 900k parameters to 7.79, and best
+text from 9.42 to 8.41. Plan task 4.3 is half met, because text is not yet
+below uniform.
+
+Both sizes **peak near round 75 and then degrade**, while their programs'
+output entropy falls. That is the policy drift, and it now has a clear
+signature: scale moves the curve down, and drift bends it back up. Fixing the
+drift comes next: a description-length charge on every agent's credit, and an
+entropy floor.
+
+About 0.9 bits/byte on code cost roughly 10× the energy (267 kJ against
+25 kJ). NVML sums both GPUs, including the display adapter's ~27 W at rest,
+so per-device metering is owed before intelligence-per-joule figures can be
+compared across machines. The run also held 24 GB of GPU memory and 9 GB of
+host memory, far above what 25M parameters need. That is worth profiling
+before scaling further.
+
 ## What surfaced in MAGE itself
 
 The arena runs the compiler thousands of times on programs no person wrote,

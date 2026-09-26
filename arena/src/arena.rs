@@ -174,6 +174,9 @@ pub struct Report {
     pub total_outputs: usize,
     /// Evaluations answered from the cache instead of run.
     pub cache_hits: usize,
+    /// Mean LZ76 entropy-rate estimate of the outputs produced, bits/byte
+    /// (`crate::measure`): near 0 for constants, near 8 for noise.
+    pub mean_output_lz_bits: f64,
     pub best_programs: Vec<(String, f64, String)>,
     pub hypervolume: f64,
 }
@@ -302,6 +305,7 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
     let mut novelty = Novelty::default();
     let mut outputs_seen: std::collections::HashSet<u64> = std::collections::HashSet::new();
     let mut total_outputs = 0usize;
+    let mut lz_sum = 0.0f64;
     // Results by (definition hash, seed): a program evaluated once for a seed
     // is never evaluated for it again, so a repeat costs no fuel.
     let mut cache = EvalCache::default();
@@ -341,6 +345,7 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
                         let raw = learners.iter().map(|l| l.progress(&bytes)).sum::<f64>() / learners.len() as f64;
                         let r = raw * novelty.discount(shape.as_deref().unwrap_or_default());
                         total_outputs += 1;
+                        lz_sum += crate::measure::lz_bits_per_byte(&bytes);
                         outputs_seen.insert(fingerprint(&bytes));
                         standing[ai].produced += 1;
                         standing[ai].credit += r;
@@ -402,6 +407,15 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
                 let heldout_bpb: BTreeMap<String, f64> =
                     heldout.iter().map(|c| (c.name.clone(), learner.bits_per_byte(&c.bytes))).collect();
                 let mean_bpb = heldout_bpb.values().sum::<f64>() / heldout_bpb.len() as f64;
+                // Progress on stderr: a 25M-parameter run takes most of an
+                // hour, and the first one printed nothing until it finished.
+                eprintln!(
+                    "arena: round {:>4}/{} learner {li} held-out {mean_bpb:.3} bits/byte, {} J, {:.0} s",
+                    round + 1,
+                    cfg.rounds,
+                    joules[li].map(|j| format!("{j:.0}")).unwrap_or_else(|| "n/a".into()),
+                    seconds[li]
+                );
                 checkpoints.push(Checkpoint {
                     round: round + 1,
                     learner: li,
@@ -484,6 +498,7 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
         distinct_shapes: novelty.distinct(),
         total_outputs,
         cache_hits: cache.hits,
+        mean_output_lz_bits: lz_sum / total_outputs.max(1) as f64,
         best_programs,
         hypervolume: archive.hypervolume(),
     })

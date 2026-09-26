@@ -30,6 +30,7 @@ pub mod arena;
 pub mod energy;
 pub mod grammar;
 pub mod learner;
+pub mod measure;
 pub mod substrate;
 #[cfg(feature = "transformer")]
 pub mod transformer;
