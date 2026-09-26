@@ -135,6 +135,52 @@ runs on the CPU, so that figure is idle draw attributed to the work, beside a
 CPU figure that is an estimate. The report says both. Only a GPU learner makes
 the measured joules the ones doing the work.
 
+## The transformer learner, and what it showed (2026-09-25)
+
+**Choosing the backend (plan 4.1), measured.** The repository's own ABL
+training path computes attention in scalar Rust loops over host memory, and no
+MAGE source has ever trained an attention net through it. candle trained a
+3.4M-parameter, 4-layer causal byte model at **20 ms per step, about 408k
+tokens/s** on one 3090 Ti, which is 134× faster than its own CPU backend on the
+same model. candle it is. On Windows the `gpu` build needs MSVC's
+`vcvars64.bat`, `CUDA_PATH`, and `NVCC_APPEND_FLAGS=-Xcompiler /Zc:preprocessor`,
+because CUDA 13's headers refuse MSVC's traditional preprocessor.
+
+**The learner (plan 4.2).** `arena::transformer`, behind the `transformer`
+feature (candle on CPU, tested in CI) and the `gpu` feature (CUDA). It keeps
+its own Adam state so the learning-progress reward uses the real
+preconditioner, and it feeds `[BOS, …]` so every byte is predicted and its
+bits per byte are comparable with the n-gram learner's. Its in-context test
+drives a period-5 pattern below 30% of its starting bits per byte.
+
+**The experiment (plan 4.3): the acceptance bar is not met, and the reason
+is new.** Transformer only, 150 rounds × 48 programs, 24 steps a round, on the
+GPU:
+
+| round | held-out text | held-out code | joules (measured + estimated) |
+|---|---|---|---|
+| 25 | 9.69 | 9.45 | 5,848 |
+| 75 | 10.40 | 9.64 | 16,193 |
+| 150 | 11.22 | 10.48 | 30,881 |
+
+Held-out bits per byte get *worse* with training on both, and the model fits
+its own training data only to 5.9 bits per byte after 3,600 steps. A
+900k-parameter transformer that cannot fit its data is being fed something
+close to incompressible, and that is what the vocabulary produces. Chains of
+`wrapping_mul` and `wrapping_add` modulo 256 behave like hash functions, so most
+generated programs emit **pseudo-random bytes**. The learning-progress reward
+is right to pay nothing for noise, and the only learnable structure left is
+constant runs. That is why the generators returned to constants under every
+novelty key and with both learners. **The bottleneck is the program
+vocabulary as much as the learner.** The paper's substrate naturally produces
+copying, repetition and recursion; this one mostly produces noise and
+constants. The next step is structure-producing combinators (copy, interleave,
+nest, template) in place of hash-like arithmetic, measured by what the learner
+can fit.
+
+The GPU transformer's training was the cheaper learner in the mixed run:
+2,481 J against the CPU n-gram's 10,167 J for the same rounds.
+
 ## What surfaced in MAGE itself
 
 The arena runs the compiler thousands of times on programs no person wrote,

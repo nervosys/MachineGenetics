@@ -509,6 +509,11 @@ jobs:
         run: cargo build --release --manifest-path arena/Cargo.toml
       - name: Test
         run: cargo test --manifest-path arena/Cargo.toml
+      # The transformer learner on candle's CPU backend: the same model the GPU
+      # build trains, at test size. `--features gpu` needs CUDA and is
+      # verified on the hardware (ARENA.md), like the prototype's cuda kernels.
+      - name: Test the transformer learner (CPU)
+        run: cargo test --manifest-path arena/Cargo.toml --features transformer
 
   forge:
     name: forge — build + test

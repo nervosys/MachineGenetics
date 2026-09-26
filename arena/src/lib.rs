@@ -31,3 +31,5 @@ pub mod energy;
 pub mod grammar;
 pub mod learner;
 pub mod substrate;
+#[cfg(feature = "transformer")]
+pub mod transformer;
