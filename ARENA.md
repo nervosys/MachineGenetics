@@ -285,6 +285,36 @@ against 835: repetitive outputs run long and batches grow. Its energy figure
 (5.7 MJ) is unusable, because the run predates per-device metering and shared
 the machine with another GPU workload.
 
+## The first clean intelligence-per-joule figures (2026-09-26)
+
+Per-device metering (`--meter-gpus`) was built after a 25M run was charged
+for another workload on the other GPU. Its first use was on a machine in
+exactly that state: GPU 0 running someone else's job at about 400 W, and
+GPU 1 idle. The run was pinned to GPU 1 with `CUDA_DEVICE_ORDER=PCI_BUS_ID`
+and `CUDA_VISIBLE_DEVICES=1`, and `--meter-gpus 1` metered that card.
+
+**Attribution was checked, not assumed.** NVML and CUDA can number devices
+differently, and the measured draw (~350 W) was close to the other job's
+(~400 W). Sampling during a short run showed GPU 1 going from 0 to 2.3–3.5 GB
+and 244–357 W, while GPU 0 held at 16.9 GB and ~395 W. The metered card is
+the one doing the work.
+
+At 900k parameters with the compression reward (150 rounds):
+
+| | |
+|---|---|
+| training energy | **47.3 kJ**: ≈39.9 kJ measured on GPU 1, plus a 7.4 kJ labelled CPU estimate |
+| mean GPU draw while training | ≈350 W |
+| best held-out code | **7.85 bits/byte** (round 125), below uniform |
+| best held-out text | 8.58 |
+| final held-out mean | 8.89, so end-of-run intelligence per joule is negative |
+| at the best code checkpoint | 0.15 bits/byte saved per 39.1 kJ ≈ **3.9·10⁻⁶ bits/byte/J** |
+
+The trajectory is noisy: run 9 and this run, with the same configuration,
+took different paths to similar finals. The best checkpoint, not the last,
+is the fair figure, which argues for succession to promote a session's best
+round rather than its end state.
+
 ## The harness in MAGE (plan 5.1)
 
 The compression reward is now `arena/harness/reward.mg`, a MAGE program
