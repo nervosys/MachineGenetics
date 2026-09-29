@@ -356,12 +356,11 @@ Two consequences:
 ## Charging agents in joules (plan 7.1)
 
 Agents are now charged in joules by default (`--cost joules`; `--cost fuel`
-keeps the old charge for comparison). Each round's program phase is metered
-as a whole, and `split_phase_energy` divides the measured total among the
-agents: a fixed share per program they submitted plus a marginal share per
-unit of fuel they spent, both from the fuel calibration so far. Negative
-fitted terms are clamped to zero. The total charged is always the
-measurement; the calibration only decides how it is divided.
+keeps the old charge for comparison). As first built, each round's program
+phase was metered as a whole, and a model split the total among agents by
+program count and fuel. Plan 3.5 replaced the split with direct measurement:
+every agent's proposing and every program it submits is metered in its own
+span, so an agent is charged exactly what its own actions read.
 
 This has a cost: **a run is reproducible from its seed only under a
 deterministic meter**, because the budget now follows what the meters read.
@@ -390,6 +389,41 @@ What it shows:
 
 What would settle it: several seeds per arm, on a quiet machine, with a
 hardware CPU energy counter (plan 3.3).
+
+## A fixed energy budget, enforced by the kernel (plan 3.5)
+
+`arena::kernel::EnergyLedger` charges every metered joule the loop spends to
+an account: `programs` (proposing, gating, running, probes), `training`, and
+`probes` (scoring probes before and after training). Held-out evaluation is
+metered and reported but not charged. It is the kernel measuring the loop,
+and charging it would make evaluating more often look like doing more work.
+
+Two limits, both checked before work starts rather than after:
+- **`--energy-budget J`**, the run's fixed unit of compute. Once the ledger
+  reaches it, remaining programs are refused (`budget`), training stops, and
+  the run halts, with the reason in `report.energy.halted`.
+- **`--joules-per-program J`**, an agent's allowance. Granted `k` programs in
+  a round, it may spend `k · J` before the kernel refuses the rest of its
+  programs for that round, mid-round.
+
+Both are break-verified: removing either check fails its test.
+
+Metering per action changed the fuel calibration's samples from one per round
+to one per program. A 60-round run with a 12 kJ budget (CPU-only, 65 W
+wall-clock estimate, shared CPU):
+
+| | |
+|---|---|
+| rounds run | **22 of 60**, halted at 12,029 J (0.24% over) |
+| charged | training 9,998 J (83%), programs 1,950 J (16%), probe scoring 82 J |
+| evaluation, uncharged | 46 J |
+| fuel calibration | **1.55 J fixed per program + 3.8·10⁻⁵ J/fuel**, r² 0.07, 1,056 programs |
+
+With about 3,600 fuel per program, the fixed part is about 92% of a program's
+energy. The per-round calibration's finding now holds on 17 times the samples:
+**fuel measures the cheap part of a program's cost**, and gating dominates.
+It also shows where a budget goes: at this scale, training is five times
+everything the agents do.
 
 ## The harness in MAGE (plan 5.1)
 

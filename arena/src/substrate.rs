@@ -36,10 +36,13 @@ pub enum Refusal {
     Fuel,
     Runtime,
     Empty,
+    /// Not run: the kernel's energy budget or the agent's allowance was
+    /// spent (plan 3.5).
+    Budget,
 }
 
 impl Refusal {
-    pub const ALL: [Refusal; 7] = [
+    pub const ALL: [Refusal; 8] = [
         Refusal::Parse,
         Refusal::Signature,
         Refusal::Type,
@@ -47,6 +50,7 @@ impl Refusal {
         Refusal::Fuel,
         Refusal::Runtime,
         Refusal::Empty,
+        Refusal::Budget,
     ];
 }
 

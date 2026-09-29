@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,133** — rmi 1,384 · prototype 1,322 · ribosome 168 · germline 146 · forge 60 · arena 53 |
+| Tests | **3,134** — rmi 1,384 · prototype 1,322 · ribosome 168 · germline 146 · forge 60 · arena 54 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -707,6 +707,28 @@ in ARENA.md. **The second half of 7.1, allocating by marginal hypervolume per
 joule, is not done:** agents are still scored on scalar credit per joule.
 
 Counts: arena 51 → **53**, total 3,131 → **3,133**.
+
+**Plan 3.5: a fixed energy budget, enforced by the kernel.**
+`kernel::EnergyLedger` charges every metered joule to `programs`, `training`
+or `probes`. Held-out evaluation is metered and reported, not charged. The
+kernel enforces two limits, each checked before work begins, and each
+break-verified:
+- **`--energy-budget`**: when the ledger reaches it, remaining programs are
+  refused (`Refusal::Budget`), training stops, and the run halts with the
+  reason recorded.
+- **`--joules-per-program`**: an agent's per-round allowance. Past it, the
+  rest of its programs are refused mid-round.
+
+To stop an agent mid-round the kernel needs per-action readings, so every
+proposal and every program is now metered in its own span. That **replaces
+#51's modelled split with direct measurement**: `split_phase_energy` is gone,
+and each agent is charged exactly its own spans. It also gives the fuel
+calibration one sample per program. A 12 kJ run halted after 22 of 60 rounds,
+0.24% over budget. Training took 83% of the energy. The calibration over 1,056
+programs gives 1.55 J fixed + 3.8·10⁻⁵ J/fuel, so the fixed part is about 92%
+of a program's energy. ARENA.md has the table.
+
+Counts: arena 53 → **54**, total 3,133 → **3,134**.
 
 **Pre-existing, not from this change:** `cargo clippy` 0.1.98 (2026-09-01)
 reports 15 warnings in `prototype` — 14 `chunks_exact` with a constant size in
@@ -3248,7 +3270,7 @@ changed before you commit.
 
 - Prototype tests **1,066 → 1,322**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
-  across six crates **3,133**; documented-count pins **101**, up from 46 — the
+  across six crates **3,134**; documented-count pins **101**, up from 46 — the
   two newest hold the `kb`/`net` overlap the tensor-product-binding decision
   rests on, a figure that had lived in two sentences of prose with nothing
   re-deriving it.
