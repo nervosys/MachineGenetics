@@ -5,6 +5,7 @@
 //!       [--agents grammar:2,uniform:1,mutator:1]
 //!       [--learners ng:orders:log2buckets:lr | tf:d:layers:heads:ctx:lr[:gpu] [,…]]
 //!       [--fuel F] [--cpu-watts W] [--meter-gpus <i>[,<i>…] | none] [--cost joules|fuel]
+//!       [--energy-budget J] [--joules-per-program J]
 //!       [--json <out.json>]
 //! ```
 //!
@@ -88,6 +89,13 @@ fn main() {
                 })
             }
             "--reward-program" => cfg.reward_program = Some(value(i).to_string()),
+            "--energy-budget" => {
+                cfg.energy_budget = Some(value(i).parse().unwrap_or_else(|_| fail("--energy-budget: not a number of joules")))
+            }
+            "--joules-per-program" => {
+                cfg.joules_per_program =
+                    Some(value(i).parse().unwrap_or_else(|_| fail("--joules-per-program: not a number of joules")))
+            }
             "--cost" => {
                 cfg.cost_unit = match value(i) {
                     "joules" => arena::arena::CostUnit::Joules,
@@ -142,7 +150,7 @@ fn main() {
                 std::process::exit(0);
             }
             "-h" | "--help" => {
-                eprintln!("{}", include_str!("main.rs").lines().skip(2).take(7).map(|l| l.trim_start_matches("//! ")).collect::<Vec<_>>().join("\n"));
+                eprintln!("{}", include_str!("main.rs").lines().skip(2).take(8).map(|l| l.trim_start_matches("//! ")).collect::<Vec<_>>().join("\n"));
                 std::process::exit(0);
             }
             other => fail(format!("unknown argument `{other}`")),
@@ -184,7 +192,7 @@ fn main() {
     );
     match &report.fuel_calibration {
         Some(c) => eprintln!(
-            "fuel: {:.3e} J/fuel + {:.3} J/round overhead, r²={:.2} over {} rounds ({})",
+            "fuel: {:.3e} J/fuel + {:.3} J/program overhead, r²={:.2} over {} programs ({})",
             c.joules_per_fuel,
             c.overhead_joules,
             c.r_squared,
@@ -193,6 +201,16 @@ fn main() {
         ),
         None => eprintln!("fuel: not calibrated (too few rounds, or fuel never varied)"),
     }
+    let e = &report.energy;
+    eprintln!(
+        "energy: {:.1} J charged ({}) against {}, evaluation {:.1} J uncharged, {} rounds run{}",
+        e.total(),
+        e.charged.iter().map(|(k, v)| format!("{k} {v:.1}")).collect::<Vec<_>>().join(", "),
+        e.budget_joules.map(|b| format!("a budget of {b:.1} J")).unwrap_or_else(|| "no budget".into()),
+        e.evaluation_joules,
+        report.rounds_completed,
+        e.halted.as_ref().map(|h| format!(" (halted: {h})")).unwrap_or_default()
+    );
     eprintln!("\n=== refusals ===");
     for (k, v) in &report.refusals {
         eprintln!("  {k:<10} {v}");

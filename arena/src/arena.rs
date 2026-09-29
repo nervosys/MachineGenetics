@@ -31,6 +31,7 @@ use crate::agents::{allocate, Candidate, GrammarAgent, MutatorAgent, Pool, Propo
 use crate::energy::{self, Meter, Reading, Span};
 use crate::grammar::Rng;
 use crate::learner::{self, ByteLearner, LearnerSpec};
+use crate::kernel::{EnergyLedger, PROBES, PROGRAMS, TRAINING};
 use crate::substrate::{Outcome, Refusal, Substrate};
 use mage_prototype::cost_calibration::{CalibrationSuite, EnergySample, FuelCalibration};
 use germline::pareto::{Archive, Objective};
@@ -83,52 +84,32 @@ pub struct Config {
     /// the credit-per-cost score that allocates the budget.
     #[serde(default)]
     pub cost_unit: CostUnit,
+    /// The run's fixed energy budget in joules (plan 3.5): when the kernel's
+    /// ledger reaches it, remaining programs are refused and the run stops.
+    /// `None` is unbounded.
+    #[serde(default)]
+    pub energy_budget: Option<f64>,
+    /// An agent's allowance per program it is granted, in joules: granted `k`
+    /// programs in a round, it may spend `k` times this before the kernel
+    /// refuses the rest of its programs for that round. `None` is no cap.
+    #[serde(default)]
+    pub joules_per_program: Option<f64>,
 }
 
 /// The unit agents are charged in (plan 7.1).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum CostUnit {
-    /// Each round's metered program-phase energy, split among the agents that
-    /// spent it (see [`split_phase_energy`]). Decision D2's unit. A run is
-    /// then reproducible from its seed only under a deterministic meter,
-    /// because the allocation depends on what the meters read.
+    /// The joules each agent's own actions measured: its proposing, and each
+    /// program's gating, run and probe, each in its own energy span. Decision
+    /// D2's unit. A run is then reproducible from its seed only under a
+    /// deterministic meter, because the allocation follows the readings.
     #[default]
     Joules,
     /// Fuel, with one unit per program as a floor. The unit before plan 7.1,
     /// kept for comparison. The fuel calibration found it charges a program's
     /// fixed cost, most of its energy, at almost nothing (ARENA.md).
     Fuel,
-}
-
-/// Split a program phase's measured `joules` among agents.
-///
-/// Agent `i` ran `programs[i]` programs (gated, whether or not they ran) and
-/// spent `fuel[i]`, probes and exhausted budgets included. With a fuel
-/// calibration, its weight is `programs[i] · fixed + fuel[i] · slope`, where
-/// `fixed` is the calibration's per-round overhead shared per program; without
-/// one (the first rounds), it is `programs[i]`, since per-program cost
-/// dominated the first calibration. A negative fitted term is noise and is
-/// clamped to zero. Shares are scaled to sum to `joules`: the total is always
-/// the measurement, and the model only divides it.
-pub fn split_phase_energy(joules: f64, programs: &[usize], fuel: &[u64], calibration: Option<&FuelCalibration>) -> Vec<f64> {
-    let total_programs: usize = programs.iter().sum();
-    let weights: Vec<f64> = match calibration {
-        Some(c) if total_programs > 0 => {
-            let fixed = (c.overhead_joules / total_programs as f64).max(0.0);
-            let slope = c.joules_per_fuel.max(0.0);
-            programs.iter().zip(fuel).map(|(&p, &f)| p as f64 * fixed + f as f64 * slope).collect()
-        }
-        _ => programs.iter().map(|&p| p as f64).collect(),
-    };
-    let sum: f64 = weights.iter().sum();
-    if sum > 0.0 && sum.is_finite() {
-        weights.iter().map(|w| joules * w / sum).collect()
-    } else if total_programs > 0 {
-        programs.iter().map(|&p| joules * p as f64 / total_programs as f64).collect()
-    } else {
-        vec![0.0; programs.len()]
-    }
 }
 
 /// The learning signal a program earns.
@@ -176,6 +157,8 @@ impl Default for Config {
             reward: Reward::Compression,
             reward_program: None,
             cost_unit: CostUnit::Joules,
+            energy_budget: None,
+            joules_per_program: None,
         }
     }
 }
@@ -191,8 +174,8 @@ pub struct AgentStanding {
     pub credit: f64,
     /// Total fuel spent running its programs.
     pub fuel: u64,
-    /// Joules charged to it: its share of every program phase's measured
-    /// energy. Zero under [`CostUnit::Fuel`].
+    /// Joules its own actions measured, over the run. Zero under
+    /// [`CostUnit::Fuel`].
     #[serde(default)]
     pub joules: f64,
     /// Running credit per unit cost, which drives allocation.
@@ -263,15 +246,23 @@ pub struct Report {
     pub mean_output_lz_bits: f64,
     pub best_programs: Vec<(String, f64, String)>,
     pub hypervolume: f64,
-    /// Fuel calibrated to joules over the run's program phases (plan 3.2):
-    /// one sample per round, the fuel the evaluator spent against the energy
-    /// the meters read meanwhile. `None` when the fit is undetermined.
+    /// Fuel calibrated to joules (plan 3.2): one sample per program, the
+    /// fuel its run and probe spent against the energy its span read,
+    /// gating included. `None` when the fit is undetermined.
     #[serde(default)]
     pub fuel_calibration: Option<FuelCalibration>,
+    /// The kernel's energy ledger: what was charged, to what, against which
+    /// budget, and whether the run halted on it.
+    #[serde(default)]
+    pub energy: EnergyLedger,
+    /// Rounds run; fewer than configured when the budget ran out, and the
+    /// last of them may have been cut short.
+    #[serde(default)]
+    pub rounds_completed: usize,
 }
 
-/// The calibration target the arena's program phase reports under.
-pub const PROGRAM_PHASE: &str = "arena-program-phase";
+/// The calibration target the arena's programs report under.
+pub const PROGRAM_TARGET: &str = "arena-program";
 
 /// Mean bits per byte of each sequence across learners, batched per learner.
 fn mean_bpb_many(learners: &[Box<dyn ByteLearner>], seqs: &[&[u8]]) -> Vec<f64> {
@@ -464,8 +455,18 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
     let mut run_credit = vec![0.0f64; agents.len()];
     let mut run_cost = vec![0.0f64; agents.len()];
     let mut calibration = CalibrationSuite::new();
+    let mut ledger = EnergyLedger::new(cfg.energy_budget);
+    let mut rounds_completed = 0usize;
 
     for round in 0..cfg.rounds {
+        if ledger.exhausted() {
+            ledger.halted = Some(format!(
+                "the energy budget of {:.1} J was spent after {round} of {} rounds",
+                cfg.energy_budget.unwrap_or(0.0),
+                cfg.rounds
+            ));
+            break;
+        }
         // 1. Allocate.
         let scores: Vec<f64> = (0..agents.len())
             .map(|i| if run_cost[i] > 0.0 { run_credit[i] / run_cost[i] } else { 0.0 })
@@ -483,24 +484,33 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
         // multiplier, bits/byte before training).
         // (agent, index, probe, [seen, tokens, structure], before)
         let mut pending: Vec<(usize, usize, Vec<u8>, [f64; 3], f64)> = Vec::new();
-        // The program phase is metered as a whole: proposing, gating and
-        // running every program and probe. Its fixed part (proposing, parsing,
-        // idle draw) lands in the calibration's intercept, not its slope.
-        let program_span = Span::start(&mut meters);
-        let fuel_before = cache.fuel_spent;
-        let mut programs_run = vec![0usize; agents.len()];
-        let mut fuel_by_agent = vec![0u64; agents.len()];
+        // Every agent action is metered in its own span (plan 3.5), so each
+        // agent is charged what it spent, and the kernel can stop one mid-round.
+        let mut round_joules = vec![0.0f64; agents.len()];
         for (ai, agent) in agents.iter_mut().enumerate() {
             standing[ai].last_share = shares[ai];
             // 2. Propose.
+            let span = Span::start(&mut meters);
             let cands: Vec<Candidate> = agent.propose(shares[ai], &pool, &mut rng);
+            let (_, r) = span.stop(&mut meters);
+            round_joules[ai] += ledger.charge(PROGRAMS, &r).map_or(0.0, |(j, _)| j);
+            let allowance = cfg.joules_per_program.map(|p| p * shares[ai] as f64);
             let scored = &mut round_scored[ai];
             let mut credit = 0.0;
             let mut cost = 0.0;
-            let agent_fuel_before = cache.fuel_spent;
-            programs_run[ai] = cands.len();
             for c in cands {
                 standing[ai].proposed += 1;
+                // The kernel's limits, checked before any work is done: the
+                // run's budget, then this agent's allowance for the round.
+                if ledger.exhausted() || allowance.is_some_and(|a| round_joules[ai] >= a) {
+                    *standing[ai].refusals.entry("budget".into()).or_insert(0) += 1;
+                    *refusals.entry("budget".into()).or_insert(0) += 1;
+                    cost += 1.0;
+                    scored.push((c, None));
+                    continue;
+                }
+                let span = Span::start(&mut meters);
+                let fuel_at = cache.fuel_spent;
                 // 3. Gate, then run — or reuse what an identical program
                 // already produced for this seed.
                 let seed = rng.next_u64();
@@ -565,28 +575,24 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
                         scored.push((c, None));
                     }
                 }
+                let (_, r) = span.stop(&mut meters);
+                if let Some((j, measured)) = ledger.charge(PROGRAMS, &r) {
+                    round_joules[ai] += j;
+                    calibration.add_energy_sample(
+                        PROGRAM_TARGET,
+                        EnergySample { fuel: cache.fuel_spent - fuel_at, joules: j, measured },
+                    );
+                }
             }
             round_credit[ai] = credit;
-            round_cost[ai] = cost;
-            fuel_by_agent[ai] = cache.fuel_spent - agent_fuel_before;
-        }
-
-        let (_, readings) = program_span.stop(&mut meters);
-        if let Some((j, measured)) = energy::total(&readings) {
-            calibration.add_energy_sample(
-                PROGRAM_PHASE,
-                EnergySample { fuel: cache.fuel_spent - fuel_before, joules: j, measured },
-            );
-            // Plan 7.1: charge the measured energy, not fuel. A round with no
-            // reading keeps its fuel costs, which only happens with no meter
-            // that produced a figure at all.
+            // Plan 7.1: charged the joules its own actions measured. Without
+            // any reading (no meter produced a figure), fuel stands in.
+            round_cost[ai] = match cfg.cost_unit {
+                CostUnit::Joules if round_joules[ai] > 0.0 => round_joules[ai],
+                _ => cost,
+            };
             if cfg.cost_unit == CostUnit::Joules {
-                let fit = calibration.fuel_calibration(PROGRAM_PHASE);
-                let shares = split_phase_energy(j, &programs_run, &fuel_by_agent, fit.as_ref());
-                for (ai, share) in shares.into_iter().enumerate() {
-                    round_cost[ai] = share;
-                    standing[ai].joules += share;
-                }
+                standing[ai].joules += round_joules[ai];
             }
         }
 
@@ -599,21 +605,29 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
 
         // Compression mode: every probe's bits/byte before training, batched.
         if !pending.is_empty() {
+            let span = Span::start(&mut meters);
             let probes: Vec<&[u8]> = pending.iter().map(|p| p.2.as_slice()).collect();
             let before = mean_bpb_many(&learners, &probes);
             for (p, b) in pending.iter_mut().zip(before) {
                 p.4 = b;
             }
+            let (_, r) = span.stop(&mut meters);
+            ledger.charge(PROBES, &r);
         }
 
         // 5. Train, each learner in its own energy span.
         let batch: Vec<&[u8]> = round_data.iter().map(|b| b.as_slice()).collect();
         for (li, learner) in learners.iter_mut().enumerate() {
+            // A spent budget stops training too, mid-round.
+            if ledger.exhausted() {
+                break;
+            }
             let span = Span::start(&mut meters);
             for _ in 0..cfg.learner_steps {
                 learner.train(&batch);
             }
             let (secs, readings) = span.stop(&mut meters);
+            ledger.charge(TRAINING, &readings);
             seconds[li] += secs;
             match energy::total(&readings) {
                 Some((j, measured)) => {
@@ -629,8 +643,12 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
         // training taught about output it never saw, in bits, discounted by
         // novelty and shaping.
         let after_all = {
+            let span = Span::start(&mut meters);
             let probes: Vec<&[u8]> = pending.iter().map(|p| p.2.as_slice()).collect();
-            mean_bpb_many(&learners, &probes)
+            let after = mean_bpb_many(&learners, &probes);
+            let (_, r) = span.stop(&mut meters);
+            ledger.charge(PROBES, &r);
+            after
         };
         for ((ai, idx, probe, [seen, tokens, structure], before), after) in pending.into_iter().zip(after_all) {
             let program = reward_program.as_ref().expect("compression mode loads a reward program");
@@ -661,8 +679,11 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
 
         if (round + 1) % cfg.eval_every == 0 || round + 1 == cfg.rounds {
             for (li, learner) in learners.iter().enumerate() {
+                let span = Span::start(&mut meters);
                 let heldout_bpb: BTreeMap<String, f64> =
                     heldout.iter().map(|c| (c.name().to_string(), c.score(learner.as_ref()))).collect();
+                let (_, r) = span.stop(&mut meters);
+                ledger.evaluate(&r);
                 let mean_bpb = heldout_bpb.values().sum::<f64>() / heldout_bpb.len() as f64;
                 // Progress on stderr: a 25M-parameter run takes most of an
                 // hour, and the first one printed nothing until it finished.
@@ -685,6 +706,7 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
                 });
             }
         }
+        rounds_completed = round + 1;
     }
 
     for (ai, agent) in agents.iter().enumerate() {
@@ -755,7 +777,9 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
         mean_output_lz_bits: lz_sum / total_outputs.max(1) as f64,
         best_programs,
         hypervolume: archive.hypervolume(),
-        fuel_calibration: calibration.fuel_calibration(PROGRAM_PHASE),
+        fuel_calibration: calibration.fuel_calibration(PROGRAM_TARGET),
+        energy: ledger,
+        rounds_completed,
     })
 }
 
@@ -822,13 +846,13 @@ mod tests {
     }
 
     #[test]
-    fn every_round_feeds_the_fuel_calibration_from_its_meters() {
-        // Plan 3.2: samples come from the meters, one per round. With a meter
-        // that reads 1 J whatever happens, fuel explains nothing: the fit's
-        // overhead is the 1 J and its slope is 0.
+    fn every_program_feeds_the_fuel_calibration_from_its_meters() {
+        // Plan 3.2: samples come from the meters, one per program run. With a
+        // meter that reads 1 J whatever happens, fuel explains nothing: the
+        // fit's overhead is the 1 J and its slope is 0.
         let r = run(tiny_cfg(), heldout(), vec![Box::new(OneJoule)], vec![]).unwrap();
-        let c = r.fuel_calibration.expect("six rounds of varying fuel calibrate");
-        assert_eq!(c.samples, 6);
+        let c = r.fuel_calibration.expect("programs of varying fuel calibrate");
+        assert_eq!(c.samples, 6 * 16, "one sample per program");
         assert!(c.all_measured);
         assert!(c.joules_per_fuel.abs() < 1e-12 && (c.overhead_joules - 1.0).abs() < 1e-9, "{c:?}");
         assert_eq!(c.r_squared, 0.0);
@@ -839,42 +863,54 @@ mod tests {
     }
 
     #[test]
-    fn phase_energy_is_split_by_the_calibration_and_sums_to_the_measurement() {
-        use mage_prototype::cost_calibration::FuelCalibration;
-        let fit = |overhead: f64, slope: f64| FuelCalibration {
-            joules_per_fuel: slope,
-            overhead_joules: overhead,
-            r_squared: 0.5,
-            samples: 10,
-            all_measured: true,
-        };
-        // Fixed cost only: shares follow program counts, fuel is free.
-        let s = split_phase_energy(12.0, &[1, 2, 3], &[0, 10_000, 0], Some(&fit(6.0, 0.0)));
-        assert_eq!(s, vec![2.0, 4.0, 6.0]);
-        // An agent whose programs spend no fuel still pays for each one, which
-        // the fuel charge (one unit per program) made almost free.
-        let s = split_phase_energy(10.0, &[10, 10], &[0, 1_000_000], Some(&fit(5.0, 1e-5)));
-        // Charged in fuel, it would pay 10 units to the other's 1,000,000.
-        assert!(s[0] / s[1] > 0.1 && (s[0] + s[1] - 10.0).abs() < 1e-12, "{s:?}");
-        // No calibration yet: by program count. A negative fitted slope is
-        // noise, not a refund.
-        assert_eq!(split_phase_energy(4.0, &[1, 3], &[5, 5], None), vec![1.0, 3.0]);
-        let s = split_phase_energy(4.0, &[1, 1], &[0, 100], Some(&fit(1.0, -0.5)));
-        assert_eq!(s, vec![2.0, 2.0]);
-        assert_eq!(split_phase_energy(3.0, &[0, 0], &[0, 0], None), vec![0.0, 0.0]);
-    }
-
-    #[test]
     fn agents_are_charged_every_measured_joule_of_the_program_phase() {
-        // One joule per span: the program phase reads 1 J every round, so the
-        // agents' charges must total exactly the round count.
+        // One joule per span, and a span per proposal and per program: agents
+        // are charged exactly what the ledger's program account holds.
         let r = run(tiny_cfg(), heldout(), vec![Box::new(OneJoule)], vec![]).unwrap();
         let charged: f64 = r.agents.iter().map(|a| a.joules).sum();
-        assert!((charged - 6.0).abs() < 1e-9, "{charged}");
+        assert_eq!(charged, r.energy.account(PROGRAMS));
+        assert_eq!(charged, (6 * 16 + 6 * 3) as f64, "a proposal and 16 programs a round, three agents");
         assert!(r.agents.iter().all(|a| a.joules > 0.0));
+        assert!(r.energy.account(TRAINING) > 0.0 && r.energy.account(PROBES) > 0.0);
+        assert!(r.energy.evaluation_joules > 0.0, "evaluation is metered");
+        assert_eq!(r.energy.total(), r.energy.charged.values().sum::<f64>(), "and not charged");
 
         let f = run(Config { cost_unit: CostUnit::Fuel, ..tiny_cfg() }, heldout(), vec![Box::new(OneJoule)], vec![]).unwrap();
         assert!(f.agents.iter().all(|a| a.joules == 0.0), "fuel mode charges no joules");
+    }
+
+    #[test]
+    fn an_agent_over_its_allowance_is_stopped_mid_round() {
+        // 1 J per span; an allowance of 0.8 J per program granted. An agent
+        // granted k programs spends 1 J proposing and 1 J per program, so the
+        // kernel refuses the rest once it reaches 0.8k: after 12 of 16.
+        let capped = Config { joules_per_program: Some(0.8), ..tiny_cfg() };
+        let r = run(capped, heldout(), vec![Box::new(OneJoule)], vec![]).unwrap();
+        let stopped = r.refusals.get("budget").copied().unwrap_or(0);
+        assert!(stopped > 0, "{:?}", r.refusals);
+        let proposed: usize = r.agents.iter().map(|a| a.proposed).sum();
+        assert_eq!(proposed, 6 * 16, "stopped programs are still counted as proposed");
+        // Unit budget refusals cost nothing to run: every agent's charge is
+        // its proposals plus the programs it was allowed.
+        for a in &r.agents {
+            let refused = a.refusals.get("budget").copied().unwrap_or(0);
+            assert_eq!(a.joules, (6 + a.proposed - refused) as f64, "{}", a.id);
+        }
+
+        let free = run(tiny_cfg(), heldout(), vec![Box::new(OneJoule)], vec![]).unwrap();
+        assert!(!free.refusals.contains_key("budget"), "no allowance, no refusals");
+    }
+
+    #[test]
+    fn the_run_stops_when_its_energy_budget_is_spent() {
+        let r = run(Config { energy_budget: Some(40.0), ..tiny_cfg() }, heldout(), vec![Box::new(OneJoule)], vec![])
+            .unwrap();
+        assert!(r.rounds_completed < 6, "{}", r.rounds_completed);
+        assert!(r.energy.halted.as_deref().is_some_and(|h| h.contains("40.0 J")), "{:?}", r.energy.halted);
+        // The check runs before every program and training step, so the
+        // overshoot is at most the tail of one round (probe scoring).
+        assert!(r.energy.total() >= 40.0 && r.energy.total() < 44.0, "{}", r.energy.total());
+        assert!(r.refusals.get("budget").copied().unwrap_or(0) > 0, "stopped mid-round");
     }
 
     #[test]
