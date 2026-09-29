@@ -496,8 +496,8 @@ jobs:
       - name: Test
         run: cargo test --manifest-path germline/Cargo.toml
 
-  # The arena path-depends on prototype and germline, both already in the
-  # path filters above, so a change to either re-runs it. Its NVML test
+  # The arena path-depends on prototype, germline and forge, all already in
+  # the path filters above, so a change to any of them re-runs it. Its NVML test
   # passes on a runner with no GPU by asserting `open` explains why not.
   arena:
     name: arena — build + test

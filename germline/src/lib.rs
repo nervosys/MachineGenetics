@@ -252,6 +252,12 @@ pub struct Generation {
     /// generations written before it serialise, and hash, exactly as they did.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub genome: Option<crate::variation::Genome>,
+    /// Content hashes of the definitions this generation was built from
+    /// (plan 2.4): canonical hashes, so a renamed copy of a definition is the
+    /// same attribution. Empty when the workload names none, and then skipped,
+    /// so earlier generations serialise and hash exactly as they did.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub definitions: Vec<String>,
 }
 
 impl Generation {
@@ -265,6 +271,7 @@ impl Generation {
             promoted_under: None,
             note: String::new(),
             genome: None,
+            definitions: Vec::new(),
         }
     }
 

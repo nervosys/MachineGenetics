@@ -98,6 +98,8 @@ pub fn suite_digest(corpora: &[Corpus]) -> Digest {
 struct Built {
     mean_bpb: f64,
     joules: Option<f64>,
+    /// Canonical hashes of the session's best programs: what it learned from.
+    definitions: Vec<String>,
 }
 
 /// Germline's [`Workload`], backed by arena sessions.
@@ -139,7 +141,9 @@ impl Workload for ArenaWorkload {
             "pool_bpb": learner.pool_bpb.to_bits(),
         });
         let d = Digest(format!("{:x}", Sha256::digest(identity.to_string().as_bytes())));
-        self.built.insert(d.0.clone(), Built { mean_bpb: learner.mean_bpb, joules: learner.train_joules });
+        let definitions =
+            report.best_programs.iter().map(|(_, _, _, exact)| exact.clone()).filter(|e| !e.is_empty()).collect();
+        self.built.insert(d.0.clone(), Built { mean_bpb: learner.mean_bpb, joules: learner.train_joules, definitions });
         Ok(d)
     }
 
@@ -169,6 +173,11 @@ impl Workload for ArenaWorkload {
 
     fn materialized(&self, artifact: &Digest) -> bool {
         self.built.contains_key(&artifact.0)
+    }
+
+    /// The session's best programs by canonical hash, for the journal.
+    fn attribution(&self, artifact: &Digest) -> Vec<String> {
+        self.built.get(&artifact.0).map(|b| b.definitions.clone()).unwrap_or_default()
     }
 }
 
@@ -273,6 +282,18 @@ mod tests {
         };
         let mut runner = Runner::new(policy, &ep, &at, suite, 11);
         let report = runner.run(&mut lineage, &mut journal, &mut w);
+        // Every proposed session is attributed, in the journal, to the
+        // programs it learned from, by canonical hash (plan 2.4).
+        let attributed: Vec<Vec<String>> = journal
+            .replay()
+            .unwrap()
+            .into_iter()
+            .filter_map(|r| match r.entry {
+                germline::journal::Entry::Proposed { definitions, .. } => Some(definitions),
+                _ => None,
+            })
+            .collect();
+        assert!(!attributed.is_empty() && attributed.iter().all(|d| !d.is_empty() && d.iter().all(|h| h.len() == 64)), "{attributed:?}");
         let _ = std::fs::remove_dir_all(&dir);
 
         assert!(!report.cycles.is_empty(), "the runner drove arena sessions");

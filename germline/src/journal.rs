@@ -37,7 +37,16 @@ use std::path::{Path, PathBuf};
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Entry {
     /// A candidate entered the lineage, with the provenance to re-derive it.
-    Proposed { generation: GenerationId, artifact: Digest, seed: u64, plan: String },
+    Proposed {
+        generation: GenerationId,
+        artifact: Digest,
+        seed: u64,
+        plan: String,
+        /// The definitions it was built from, by canonical hash (plan 2.4).
+        /// Skipped when empty, so earlier entries hash as they did.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        definitions: Vec<String>,
+    },
     /// A candidate was measured.
     Evaluated { generation: GenerationId, fitness: String, suite: Digest, evaluator: String },
     /// The gate ruled.
@@ -231,6 +240,7 @@ pub fn proposed(g: &Generation, seed: u64, plan: &str) -> Entry {
         artifact: g.artifact.clone(),
         seed,
         plan: plan.to_string(),
+        definitions: g.definitions.clone(),
     }
 }
 
