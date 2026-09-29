@@ -353,6 +353,44 @@ Two consequences:
   quiet machine with a hardware CPU counter (plan 3.3), is what would locate
   the fixed cost.
 
+## Charging agents in joules (plan 7.1)
+
+Agents are now charged in joules by default (`--cost joules`; `--cost fuel`
+keeps the old charge for comparison). Each round's program phase is metered
+as a whole, and `split_phase_energy` divides the measured total among the
+agents: a fixed share per program they submitted plus a marginal share per
+unit of fuel they spent, both from the fuel calibration so far. Negative
+fitted terms are clamped to zero. The total charged is always the
+measurement; the calibration only decides how it is divided.
+
+This has a cost: **a run is reproducible from its seed only under a
+deterministic meter**, because the budget now follows what the meters read.
+The reproducibility test uses a meter that reads 1 J per span.
+
+An A/B on the same seed (60 rounds × 48 programs, CPU-only, 65 W wall-clock
+estimate, on a CPU shared with other work):
+
+| | charged in fuel | charged in joules |
+|---|---|---|
+| best held-out | 7.39 (round 15) | 7.54 (round 20) |
+| final held-out | 8.08 | 8.22 |
+| shares, last round (grammar-0/grammar-1/uniform/mutator) | 29 / 7 / 6 / 6 | 5 / 18 / 5 / 20 |
+| fuel calibration | −4.6·10⁻⁵ J/fuel, r² 0.07 | −3.3·10⁻⁵ J/fuel, r² 0.01 |
+
+What it shows:
+- **The allocation changes a lot**, and the learning outcome doesn't
+  measurably change. One seed per arm, on a machine whose load varied (the
+  fixed cost read 61 J/round in one run and 105 in the other), cannot separate
+  a 0.15 bits/byte difference from noise.
+- **The marginal cost of fuel was not detected.** Both slopes are negative,
+  and the earlier 5.1·10⁻⁵ had r² 0.05. Under a wall-clock estimate on a
+  shared CPU, the fuel calibration is consistent with zero. Joule charging
+  here therefore reduces to a per-program charge scaled to the measured energy.
+  That is the finding plan 3.2 pointed at, stated more plainly.
+
+What would settle it: several seeds per arm, on a quiet machine, with a
+hardware CPU energy counter (plan 3.3).
+
 ## The harness in MAGE (plan 5.1)
 
 The compression reward is now `arena/harness/reward.mg`, a MAGE program
