@@ -185,6 +185,16 @@ impl Substrate {
     }
 }
 
+/// Canonical hashes for forge's definition store (plan 2.4), from the same
+/// gates and hashes the arena uses: a source must pass every gate a candidate
+/// passes before it gets an address.
+impl forge::registry::Canonicalizer for Substrate {
+    fn canonicalize(&self, source: &str) -> Result<forge::registry::Canonical, String> {
+        let p = self.prepare(source).map_err(|(why, msg)| format!("{why:?}: {msg}"))?;
+        Ok(forge::registry::Canonical { exact: p.exact, shape: p.shape })
+    }
+}
+
 /// Exactly one item, `f gen(s: usize) -> [usize]`.
 fn check_signature(module: &ast::Module) -> Result<(), String> {
     let fns: Vec<&ast::FunctionDef> = module

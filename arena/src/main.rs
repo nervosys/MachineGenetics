@@ -5,7 +5,7 @@
 //!       [--agents grammar:2,uniform:1,mutator:1]
 //!       [--learners ng:orders:log2buckets:lr | tf:d:layers:heads:ctx:lr[:gpu] [,…]]
 //!       [--fuel F] [--cpu-watts W] [--meter-gpus <i>[,<i>…] | none] [--cost joules|fuel]
-//!       [--energy-budget J] [--joules-per-program J]
+//!       [--energy-budget J] [--joules-per-program J] [--definitions <forge registry dir>]
 //!       [--json <out.json>]
 //! ```
 //!
@@ -96,6 +96,7 @@ fn main() {
                 cfg.joules_per_program =
                     Some(value(i).parse().unwrap_or_else(|_| fail("--joules-per-program: not a number of joules")))
             }
+            "--definitions" => cfg.definitions_dir = Some(value(i).to_string()),
             "--cost" => {
                 cfg.cost_unit = match value(i) {
                     "joules" => arena::arena::CostUnit::Joules,
@@ -235,7 +236,7 @@ fn main() {
         eprintln!("    {} → {:?}", r.meter, r.basis);
     }
     eprintln!("\n=== best programs ===");
-    for (agent, reward, src) in &report.best_programs {
+    for (agent, reward, src, _) in &report.best_programs {
         // The body is the line after the signature; `@role(…)` and the
         // signature come first, so do not count lines — find the signature.
         let body = src.lines().skip_while(|l| !l.starts_with("f gen")).nth(1).unwrap_or("").trim();
