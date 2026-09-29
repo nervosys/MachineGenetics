@@ -4,7 +4,7 @@
 //! arena --heldout <file>[,<file>…] [--rounds N] [--programs N] [--seed S]
 //!       [--agents grammar:2,uniform:1,mutator:1]
 //!       [--learners ng:orders:log2buckets:lr | tf:d:layers:heads:ctx:lr[:gpu] [,…]]
-//!       [--fuel F] [--cpu-watts W] [--meter-gpus <i>[,<i>…] | none]
+//!       [--fuel F] [--cpu-watts W] [--meter-gpus <i>[,<i>…] | none] [--cost joules|fuel]
 //!       [--json <out.json>]
 //! ```
 //!
@@ -88,6 +88,13 @@ fn main() {
                 })
             }
             "--reward-program" => cfg.reward_program = Some(value(i).to_string()),
+            "--cost" => {
+                cfg.cost_unit = match value(i) {
+                    "joules" => arena::arena::CostUnit::Joules,
+                    "fuel" => arena::arena::CostUnit::Fuel,
+                    other => fail(format!("--cost: `{other}` is neither joules nor fuel")),
+                }
+            }
             "--learner-steps" => cfg.learner_steps = num(value(i), "--learner-steps") as usize,
             "--eval-every" => cfg.eval_every = num(value(i), "--eval-every").max(1) as usize,
             "--cpu-watts" => cfg.cpu_watts = value(i).parse().unwrap_or_else(|_| fail("--cpu-watts: not a number")),
@@ -162,8 +169,8 @@ fn main() {
     eprintln!("\n=== agents (credit per unit cost drives the budget) ===");
     for a in &report.agents {
         eprintln!(
-            "  {:<12} proposed {:>5}  produced {:>5}  credit {:>10.4}  score {:>10.3e}  last share {:>3}",
-            a.id, a.proposed, a.produced, a.credit, a.score, a.last_share
+            "  {:<12} proposed {:>5}  produced {:>5}  credit {:>10.4}  charged {:>9.1} J  score {:>10.3e}  last share {:>3}",
+            a.id, a.proposed, a.produced, a.credit, a.joules, a.score, a.last_share
         );
     }
     eprintln!(

@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,131** — rmi 1,384 · prototype 1,322 · ribosome 168 · germline 146 · forge 60 · arena 51 |
+| Tests | **3,133** — rmi 1,384 · prototype 1,322 · ribosome 168 · germline 146 · forge 60 · arena 53 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -689,6 +689,24 @@ narrowed rather than closed: fuel has a calibration path with real input, and
 `builtin_costs()`' cycle table still has none.
 
 Counts: prototype 1,317 → **1,322**, arena 48 → **51**, total 3,123 → **3,131**.
+
+**Plan 7.1, first half: agents are charged in joules.** Each round's metered
+program-phase energy is split among the agents that spent it: a fixed share
+per program plus a marginal share per unit of fuel, from the running fuel
+calibration. The total charged always equals the measurement. `--cost fuel`
+keeps the old charge. A test checks that every measured joule is charged, and
+it was break-verified. The reproducibility test now runs under a
+deterministic meter: charging measured energy makes the allocation depend on
+the meter, which is D2's price.
+
+The A/B (one seed per arm, shared CPU) moved the budget substantially and
+didn't measurably change held-out learning. Both runs' fuel slopes came out
+negative, so on this machine fuel's marginal energy cost is below what can be
+detected, and joule charging reduces to a per-program charge. The table is
+in ARENA.md. **The second half of 7.1, allocating by marginal hypervolume per
+joule, is not done:** agents are still scored on scalar credit per joule.
+
+Counts: arena 51 → **53**, total 3,131 → **3,133**.
 
 **Pre-existing, not from this change:** `cargo clippy` 0.1.98 (2026-09-01)
 reports 15 warnings in `prototype` — 14 `chunks_exact` with a constant size in
@@ -3230,7 +3248,7 @@ changed before you commit.
 
 - Prototype tests **1,066 → 1,322**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
-  across six crates **3,131**; documented-count pins **101**, up from 46 — the
+  across six crates **3,133**; documented-count pins **101**, up from 46 — the
   two newest hold the `kb`/`net` overlap the tensor-product-binding decision
   rests on, a figure that had lived in two sentences of prose with nothing
   re-deriving it.
