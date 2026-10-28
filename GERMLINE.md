@@ -1,7 +1,7 @@
 # Germline — model succession, handoff, and fallback
 
 > **Status: control plane complete and runnable; workload not.**
-> `germline/` — its own crate, 147 tests. Variation, directed search, the gate,
+> `germline/` — its own crate, 156 tests. Variation, directed search, the gate,
 > attestation, lineage, the durable journal, the cycle state machine, and
 > supervision are built and tested ✅. Model training and inference are **not**
 > here and are not claimed ◻ — this decides *whether* a successor takes over, not
@@ -79,6 +79,7 @@ what the invariants below exist to make structurally impossible.
 | 6 | A demoted generation is not re-promotable without new evidence | `RejectReason::PreviouslyDemoted` | ✅ |
 | 7 | History is append-only; demotions stay in the record with their reason | `Lineage` | ✅ |
 | 8 | Authority moves **only on the gate's approval**, earned against the champion it replaces | `Lineage::promote` takes a `gate::Approval`, which only `Episode::approve` mints | ✅ |
+| 9 | A restarted run's authority comes **only from the verified journal**, replayed under the rules that wrote it | `Lineage` is not `Deserialize`; `Lineage::replay` verifies the chain (and the published head, if given) and re-checks every succession event | ✅ |
 
 On (8): until 2026-09-26 `Lineage::promote` took a generation id, a gate
 digest and an evaluator name, and "the caller must already hold an approving
@@ -90,6 +91,28 @@ is spent once. It also records the incumbent it was judged against: an
 approval earned against one champion is refused (`StaleApproval`) after
 authority has moved to another. A `compile_fail` doctest fails if the fields
 become constructible, which was checked by making them public.
+
+On (9), plan 8.3: (8) protects authority inside one process, and a restart
+used to be outside it. `Lineage` derived `Deserialize`, so a lineage file
+naming any champion would have been as good as the gate's approval. Nothing
+read one yet, which is why it was a gap and not a hole. Now a restarted run
+calls `Lineage::replay(genesis, &journal, anchor)`. It verifies the hash
+chain, compares the head with `anchor` when one was published (the only way
+to catch truncation), and re-applies every event through the same
+transitions the live methods use. A promotion must name the champion it
+displaced and a generation that was proposed and measured on a held-out
+suite. A demotion must fall back to a retired generation. A rollback may
+not return to a quarantined one. So even a journal rewritten with valid
+links can't name a champion the rules would not have produced.
+`Runner::resume` continues the cycle numbering, and so the cycle seeds, and
+the count of refusals in a row. A test kills a run after every cycle in turn
+and checks that the resumed lineage and journal events equal the
+uninterrupted run's. Replay requires journals to record each generation's
+parent, genome, note and suite, which entries now carry. Older journals are
+refused as `Predates` rather than replayed with guesses. Writing the test
+found a real defect: serde_json parsed some floats one ULP off, so a
+verdict's reasons re-serialised differently and an untouched journal failed
+`verify`. germline now enables serde_json's `float_roundtrip`.
 
 On (1): the check exists because a "helpful" relaxation is indistinguishable from
 an attack in its effects. `a_successor_cannot_widen_the_gate_that_judges_it`
@@ -342,7 +365,7 @@ nobody chose, one individually-defensible promotion at a time.
 ## 10. Reproducing
 
 ```powershell
-cargo test --manifest-path germline/Cargo.toml                  # 147 tests
+cargo test --manifest-path germline/Cargo.toml                  # 156 tests
 cargo test --manifest-path germline/Cargo.toml --test rsi_loop  # 6 closed-loop scenarios
 cargo test --manifest-path germline/Cargo.toml --test succession # 13 succession scenarios
 ```

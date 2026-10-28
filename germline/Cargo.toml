@@ -13,7 +13,9 @@ repository = "https://github.com/nervosys/MAGE"
 # `ribosome` must never be able to reach back into succession. CI checks it.
 [dependencies]
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+# `float_roundtrip`: journal links are checked by re-serialising parsed
+# entries, so every float must parse back to the same bits.
+serde_json = { version = "1", features = ["float_roundtrip"] }
 sha2 = "0.10"
 ribosome = { path = "../ribosome" }
 
