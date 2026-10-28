@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,247** — rmi 1,384 · prototype 1,400 · ribosome 168 · germline 156 · forge 63 · arena 76 |
+| Tests | **3,264** — rmi 1,384 · prototype 1,400 · ribosome 168 · germline 173 · forge 63 · arena 76 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -956,6 +956,32 @@ left.
   role allows no effects, so the priority is memoised on `(reward, age)`,
   exactly; the run is back to 80-95 s.
 Arena +5 tests; `.mg` sources 104.
+
+**Plan 5.4: a harness edit must state a prediction.** `germline::manifest`
+gives a candidate a `PredictionManifest`: the metric it will move, the
+direction, and by how much.
+- A `runner::Proposer` is a named external source of candidates. When one is
+  set, every candidate it offers is checked before anything else: no manifest,
+  a metric that is not one of the suite's axes, or a magnitude that is not
+  finite and positive, and it is refused, journalled as a note, and never
+  materialized. A cycle whose candidates are all refused counts as a refusal,
+  so `SearchStalled` ends a proposer that never states one.
+- After evaluation, the measured change on the stated metric (against the
+  champion) is scored against the prediction: 0 for the wrong sign, otherwise
+  `1 - |predicted - measured| / max(|predicted|, |measured|)`. Each score is
+  journalled as a new `Entry::Calibrated`, with the proposer's trust after it.
+- Trust is the mean score once there are three, and 0 before. It sets how
+  many of the proposer's candidates are admitted a cycle,
+  `max(1, round(trust x candidates_per_cycle))`, so an unproven or
+  miscalibrated proposer gets one at a time.
+- The undirected path is unchanged: no manifest is required of variation's
+  own candidates, the policy digest and existing journal hashes are the same,
+  and replay ignores `Calibrated`.
+- Not done: a resumed run does not rebuild a proposer's trust from the
+  journal, and all-refused cycles write no succession event, so replay does
+  not count them. Both are in GERMLINE.md §5a.
+Break-checked: accepting a missing manifest fails the refusal test. Germline
++17 tests.
 
 **Pre-existing, not from this change:** `cargo clippy` 0.1.98 (2026-09-01)
 reports 15 warnings in `prototype` — 14 `chunks_exact` with a constant size in
