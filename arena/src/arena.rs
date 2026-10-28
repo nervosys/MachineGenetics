@@ -28,8 +28,8 @@
 //! each meter's [`crate::energy::Basis`] beside it.
 
 use crate::agents::{
-    allocate, marginal_hypervolume, non_dominated, Candidate, GrammarAgent, MutatorAgent, Pool, Proposer, Scored,
-    UniformAgent,
+    allocate, marginal_hypervolume, non_dominated, AttackerAgent, Candidate, GrammarAgent, MutatorAgent, Pool,
+    Proposer, Role, Scored, UniformAgent,
 };
 use crate::energy::{self, Meter, Reading, Span};
 use crate::grammar::Rng;
@@ -111,7 +111,33 @@ pub struct Config {
     /// its length plus two bytes to each corpus.
     #[serde(default)]
     pub canary: Option<String>,
+    /// What a program's novelty is counted on (plan 7.4).
+    #[serde(default)]
+    pub novelty: NoveltyKey,
 }
+
+/// What a program's novelty is counted on (plan 7.4).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum NoveltyKey {
+    /// Its shape: its structure with constants erased. Costs nothing, and is
+    /// exploitable: a rewrite that changes structure and not output, such as
+    /// `xs.reverse().reverse()`, is a new shape. The attacker finds this.
+    #[default]
+    Shape,
+    /// Its behaviour: its outputs on [`BEHAVIOUR_SEEDS`]. An output-preserving
+    /// rewrite has its parent's key. Two programs that agree on those seeds
+    /// and differ elsewhere share a key too. Costs up to three evaluations
+    /// per new program, cached.
+    Behaviour,
+}
+
+/// The seeds a program's behaviour is fingerprinted on.
+pub const BEHAVIOUR_SEEDS: [u64; 3] = [17, 101, 211];
+
+/// Seeds, besides the scoring seed, on which the kernel checks an attacker's
+/// claim that a candidate behaves as its parent.
+const ATTACK_SEEDS: u64 = 3;
 
 /// What an agent's credit is, in the credit-per-cost score that divides the
 /// budget (plan 7.1b).
@@ -197,6 +223,7 @@ impl Default for Config {
             definitions_dir: None,
             allocation: Allocation::Share,
             canary: None,
+            novelty: NoveltyKey::Shape,
         }
     }
 }
@@ -314,6 +341,26 @@ pub struct Report {
     /// last of them may have been cut short.
     #[serde(default)]
     pub rounds_completed: usize,
+    /// Exploits the attacker confirmed (plan 7.4): output-preserving
+    /// rewrites, checked by the kernel, that novelty counted as new.
+    #[serde(default)]
+    pub attacks: Vec<Attack>,
+    /// Attacker claims the kernel checked, confirmed or not.
+    #[serde(default)]
+    pub attack_claims: usize,
+}
+
+/// A confirmed exploit of the novelty count (plan 7.4).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Attack {
+    pub round: usize,
+    pub agent: String,
+    /// The pool entry it rewrote.
+    pub parent: u64,
+    /// The rewrite's source.
+    pub source: String,
+    /// Seeds on which the kernel found it and its parent identical.
+    pub seeds_checked: usize,
 }
 
 /// The calibration target the arena's programs report under.
@@ -406,6 +453,21 @@ impl EvalCache {
     }
 }
 
+/// The key a program's novelty is counted under.
+fn novelty_key(cfg: &Config, cache: &mut EvalCache, prepared: &crate::substrate::Prepared) -> String {
+    match cfg.novelty {
+        NoveltyKey::Shape => prepared.shape.clone(),
+        NoveltyKey::Behaviour => BEHAVIOUR_SEEDS
+            .iter()
+            .map(|&s| match cache.run(&cfg.substrate, prepared, s) {
+                Outcome::Bytes { bytes, .. } => format!("{:016x}", fingerprint(&bytes)),
+                Outcome::Refused(why, _) => format!("{why:?}"),
+            })
+            .collect::<Vec<_>>()
+            .join(","),
+    }
+}
+
 /// FNV-1a over a byte sequence.
 fn fingerprint(bytes: &[u8]) -> u64 {
     let mut h: u64 = 0xcbf2_9ce4_8422_2325;
@@ -425,7 +487,8 @@ fn build_agents(spec: &[(String, usize)]) -> Result<Vec<Box<dyn Proposer>>, Stri
                 "grammar" => Box::new(GrammarAgent::new(id)),
                 "uniform" => Box::new(UniformAgent::new(id)),
                 "mutator" => Box::new(MutatorAgent::new(id)),
-                other => return Err(format!("unknown agent kind `{other}` (grammar, uniform, mutator)")),
+                "attacker" => Box::new(AttackerAgent::new(id)),
+                other => return Err(format!("unknown agent kind `{other}` (grammar, uniform, mutator, attacker)")),
             });
         }
     }
@@ -523,11 +586,14 @@ pub fn run_with(
     let mut refusals: BTreeMap<String, usize> = BTreeMap::new();
     let mut checkpoints = Vec::new();
     // Novelty is counted on a program's *shape* — its structure with
-    // constants erased (`mage_prototype::canon`) — and a repeat earns
+    // constants erased (`mage_prototype::canon`) — or, under
+    // `NoveltyKey::Behaviour`, on its outputs, and a repeat earns
     // progress / (1 + times seen). It was counted on output bytes first, and
     // the generators found `[s; k]`: constant runs keyed on the seed, new bytes
     // every seed, one idea. Distinct outputs are still reported beside it.
     let mut novelty = Novelty::default();
+    let mut attacks: Vec<Attack> = Vec::new();
+    let mut attack_claims = 0usize;
     let mut outputs_seen: std::collections::HashSet<u64> = std::collections::HashSet::new();
     let mut total_outputs = 0usize;
     let mut lz_sum = 0.0f64;
@@ -606,11 +672,11 @@ pub fn run_with(
                 // 3. Gate, then run — or reuse what an identical program
                 // already produced for this seed.
                 let seed = rng.next_u64();
-                let (outcome, shape, prepared) = match cfg.substrate.prepare(&c.program.source()) {
-                    Err((why, msg)) => (Outcome::Refused(why, msg), None, None),
+                let (outcome, prepared) = match cfg.substrate.prepare(&c.program.source()) {
+                    Err((why, msg)) => (Outcome::Refused(why, msg), None),
                     Ok(prepared) => {
                         let outcome = cache.run(&cfg.substrate, &prepared, seed);
-                        (outcome, Some(prepared.shape.clone()), Some(prepared))
+                        (outcome, Some(prepared))
                     }
                 };
                 // The canary check comes before any credit or training: a
@@ -630,7 +696,31 @@ pub fn run_with(
                         // 4. Credit. Alignment is known now, before any
                         // learner trains on the output; compression progress
                         // only after.
-                        let seen = novelty.observe(shape.as_deref().unwrap_or_default());
+                        let key = prepared.as_ref().map(|p| novelty_key(&cfg, &mut cache, p)).unwrap_or_default();
+                        let seen = novelty.observe(&key);
+                        // An attacker's candidate claims to behave as its
+                        // parent. The kernel checks the claim; if it holds
+                        // and novelty still counted the candidate as new,
+                        // the reward has an exploit.
+                        let parent = c.parents.first().and_then(|id| pool.entries.iter().find(|e| e.id == *id));
+                        if let (Role::Attacker, Some(variant), Some(parent)) = (agent.role(), prepared.as_ref(), parent) {
+                            if let Ok(parent_prepared) = cfg.substrate.prepare(&parent.program.source()) {
+                                attack_claims += 1;
+                                let seeds: Vec<u64> = (2..2 + ATTACK_SEEDS).map(|k| seed + k).collect();
+                                if crate::kernel::verify_preserving(&cfg.substrate, &parent_prepared, variant, &seeds).is_ok()
+                                    && seen == 0
+                                    && novelty_key(&cfg, &mut cache, &parent_prepared) != key
+                                {
+                                    attacks.push(Attack {
+                                        round,
+                                        agent: agent.id().to_string(),
+                                        parent: parent.id,
+                                        source: c.program.source(),
+                                        seeds_checked: seeds.len(),
+                                    });
+                                }
+                            }
+                        }
                         let tokens = c.program.token_len();
                         let mult = shaping(&cfg, tokens, &bytes) / (1.0 + seen as f64);
                         total_outputs += 1;
@@ -954,6 +1044,8 @@ pub fn run_with(
         fuel_calibration: calibration.fuel_calibration(PROGRAM_TARGET),
         energy: ledger,
         rounds_completed,
+        attacks,
+        attack_claims,
     })
 }
 
@@ -1040,6 +1132,40 @@ mod tests {
         let plain = run_with(tiny_cfg(), vec![Box::new(Leaker(CANARY.as_bytes().to_vec()))], heldout(), m, n).expect("runs");
         assert_eq!(plain.energy.halted, None);
         assert_eq!(plain.rounds_completed, tiny_cfg().rounds);
+    }
+
+    #[test]
+    fn the_attacker_finds_that_shape_novelty_credits_output_preserving_rewrites() {
+        let cfg = |novelty| Config {
+            agents: vec![("grammar".into(), 1), ("attacker".into(), 1)],
+            novelty,
+            ..tiny_cfg()
+        };
+        let (m, n) = cpu_only();
+        let shape = run(cfg(NoveltyKey::Shape), heldout(), m, n).expect("runs");
+        assert!(shape.attack_claims > 0, "the attacker made no claims");
+        assert!(!shape.attacks.is_empty(), "shape keying credits `xs.reverse().reverse()` as new");
+        for a in &shape.attacks {
+            assert_eq!(a.agent, "attacker-0");
+            assert_eq!(a.seeds_checked, ATTACK_SEEDS as usize);
+        }
+        // Keyed on behaviour, the same rewrites are their parents.
+        let (m, n) = cpu_only();
+        let behaviour = run(cfg(NoveltyKey::Behaviour), heldout(), m, n).expect("runs");
+        assert!(behaviour.attack_claims > 0, "the attacker made no claims");
+        assert!(behaviour.attacks.is_empty(), "{:?}", behaviour.attacks);
+    }
+
+    #[test]
+    fn the_kernel_refutes_a_rewrite_that_changes_output() {
+        use crate::grammar::{ListExpr, Program};
+        let sub = tiny_cfg().substrate;
+        let parent = Program { body: ListExpr::Range(9) };
+        let reversed = Program { body: ListExpr::Reverse(Box::new(ListExpr::Range(9))) };
+        let twice = Program { body: crate::agents::identity_rewrite(&parent.body, 0) };
+        let p = sub.prepare(&parent.source()).unwrap();
+        assert!(crate::kernel::verify_preserving(&sub, &p, &sub.prepare(&reversed.source()).unwrap(), &[1, 2]).is_err());
+        assert_eq!(crate::kernel::verify_preserving(&sub, &p, &sub.prepare(&twice.source()).unwrap(), &[1, 2]), Ok(()));
     }
 
     #[test]

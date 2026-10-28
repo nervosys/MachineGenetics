@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,183** — rmi 1,384 · prototype 1,348 · ribosome 168 · germline 156 · forge 63 · arena 64 |
+| Tests | **3,186** — rmi 1,384 · prototype 1,348 · ribosome 168 · germline 156 · forge 63 · arena 67 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -820,6 +820,16 @@ E0553 (`ParamDomain`): a non-`const` item, a non-numeric type, a malformed
 or empty domain, a non-literal default, or a default outside its domain.
 MAGE_SPEC §11.7. Not yet wired into the arena: the mutator does not sample
 within domains. Prototype +24 tests.
+
+**Plan 7.4: an attacker, and the exploit it found.** An `attacker`-role
+agent wraps pool entries in output-preserving rewrites
+(`xs.reverse().reverse()`, `xs ++ xs.take(0)`, `xs.map(|v| v + 0)`). The
+kernel checks each claim on three further seeds and for determinism
+(`kernel::verify_preserving`). Under shape-keyed novelty, 70 of 135 verified
+rewrites were credited as novel (seed 7, 20 rounds). `--novelty behaviour`
+keys novelty on outputs at three fixed seeds instead, and the count drops
+to 0 of 180. It is opt-in until its held-out effect is measured. Confirmed
+exploits are listed in `Report.attacks` (ARENA.md). Arena +3 tests.
 
 **Pre-existing, not from this change:** `cargo clippy` 0.1.98 (2026-09-01)
 reports 15 warnings in `prototype` — 14 `chunks_exact` with a constant size in
