@@ -2,10 +2,10 @@
 //!
 //! ```text
 //! arena --heldout <file>[,<file>…] [--rounds N] [--programs N] [--seed S]
-//!       [--agents grammar:2,uniform:1,mutator:1]
+//!       [--agents grammar:2,uniform:1,mutator:1,attacker:1]
 //!       [--learners ng:orders:log2buckets:lr | tf:d:layers:heads:ctx:lr[:gpu] [,…]]
 //!       [--fuel F] [--cpu-watts W] [--meter-gpus <i>[,<i>…] | none] [--cost joules|fuel]
-//!       [--allocate share|hypervolume] [--canary <string>]
+//!       [--allocate share|hypervolume] [--novelty shape|behaviour] [--canary <string>]
 //!       [--energy-budget J] [--joules-per-program J] [--definitions <forge registry dir>]
 //!       [--json <out.json>]
 //! ```
@@ -106,6 +106,13 @@ fn main() {
                 }
             }
             "--canary" => cfg.canary = Some(value(i).to_string()),
+            "--novelty" => {
+                cfg.novelty = match value(i) {
+                    "shape" => arena::arena::NoveltyKey::Shape,
+                    "behaviour" => arena::arena::NoveltyKey::Behaviour,
+                    other => fail(format!("--novelty: `{other}` is neither shape nor behaviour")),
+                }
+            }
             "--allocate" => {
                 cfg.allocation = match value(i) {
                     "share" => arena::arena::Allocation::Share,
@@ -221,6 +228,13 @@ fn main() {
         report.rounds_completed,
         e.halted.as_ref().map(|h| format!(" (halted: {h})")).unwrap_or_default()
     );
+    if report.attack_claims > 0 {
+        eprintln!(
+            "\nattacks: {} of {} output-preserving claims were credited as novel",
+            report.attacks.len(),
+            report.attack_claims
+        );
+    }
     eprintln!("\n=== refusals ===");
     for (k, v) in &report.refusals {
         eprintln!("  {k:<10} {v}");
