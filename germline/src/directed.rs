@@ -44,11 +44,31 @@ pub struct CandidateSpec {
     /// [`crate::variation::propose`], an index into the population it was
     /// given, which the runner maps back to a generation id.
     pub parent: Option<u64>,
+    /// What an external proposer predicts this edit will do. Required for a
+    /// proposer's candidate and absent from the undirected search. See
+    /// [`crate::manifest`].
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub manifest: Option<crate::manifest::PredictionManifest>,
+    /// The external proposer that made this candidate, by its name.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub proposer: Option<String>,
 }
 
 impl CandidateSpec {
     pub fn new(id: impl Into<String>, genome: crate::variation::Genome) -> Self {
-        CandidateSpec { id: id.into(), genome, parent: None }
+        CandidateSpec { id: id.into(), genome, parent: None, manifest: None, proposer: None }
+    }
+
+    /// State the prediction this edit makes.
+    pub fn with_manifest(mut self, manifest: crate::manifest::PredictionManifest) -> Self {
+        self.manifest = Some(manifest);
+        self
+    }
+
+    /// Name the external proposer that made this edit.
+    pub fn by(mut self, proposer: impl Into<String>) -> Self {
+        self.proposer = Some(proposer.into());
+        self
     }
 }
 

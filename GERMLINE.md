@@ -1,7 +1,7 @@
 # Germline — model succession, handoff, and fallback
 
 > **Status: control plane complete and runnable; workload not.**
-> `germline/` — its own crate, 156 tests. Variation, directed search, the gate,
+> `germline/` — its own crate, 173 tests. Variation, directed search, the gate,
 > attestation, lineage, the durable journal, the cycle state machine, and
 > supervision are built and tested ✅. Model training and inference are **not**
 > here and are not claimed ◻ — this decides *whether* a successor takes over, not
@@ -189,6 +189,45 @@ That degradation path is the property worth having: **the response to "my model
 of the world is wrong" must be to explore more, not to trust the model harder.**
 `a_predictor_that_stops_being_right_loses_its_selectivity` asserts it. ✅
 
+### 5a. Prediction manifests for external edits (plan 5.4)
+
+An external proposer (an agent editing the harness) can be attached with
+`Runner::with_proposer`. Its edits are not sampled from the lineage's own
+population, and each one must state a prediction, a `PredictionManifest`: the
+metric it moves, the direction, and the magnitude, on the metric's `[0,1]`
+scale.
+
+- **No manifest, no build.** A candidate without a manifest, on a metric that is
+  not one of the held-out suite's axes, or with a magnitude that is not finite
+  and positive, is refused before anything is materialized. Each refusal is
+  journalled as a note: `refused edit <id> from <proposer>: <reason>`. A
+  metric is only checked against the axes once a held-out champion exists to
+  name them; before that any metric is accepted, but a manifest is still required.
+- **Calibration is journalled.** After an admitted edit is measured, its
+  prediction is scored against what happened. The measured change is the
+  candidate's held-out value on the metric minus the champion's (or zero if
+  there is no champion). The score, in `[0,1]`, is `1` for an exact match, `0`
+  when the signs differ or the measured change is zero while one was predicted,
+  and otherwise `1 - |predicted - measured| / max(|predicted|, |measured|)`. Each
+  scored prediction is an `Entry::Calibrated`, carrying the proposer's trust
+  after that sample.
+- **Trust is earned, not asserted.** A proposer's trust is the mean of its
+  scores once it has three of them, and zero before that. An unproven proposer
+  starts at zero trust.
+- **Trust controls admission.** Each cycle admits
+  `max(1, round(trust × candidates_per_cycle))` of the proposer's candidates,
+  the first that pass the manifest check, and samples one of those. A proposer
+  with no record admits one a cycle, and a proven one may admit the whole batch.
+  This is the same stance as §5: an untrusted source explores at a minimal rate
+  and is not allowed to set the budget.
+- **An all-refused cycle is a refusal.** It promotes nothing and counts toward
+  `max_consecutive_refusals`, so a proposer that never states a checkable
+  prediction stalls the search rather than consuming its budget.
+
+Not yet covered: a resumed run does not rebuild a proposer's trust, and an
+all-refused cycle writes no succession event, so replay does not count it toward
+the cycle index or the stall count. A proposer run is not resumable exactly.
+
 ## 6. Supervision and fallback
 
 Promotion is a prediction that the successor will do better. Supervision is what
@@ -365,7 +404,7 @@ nobody chose, one individually-defensible promotion at a time.
 ## 10. Reproducing
 
 ```powershell
-cargo test --manifest-path germline/Cargo.toml                  # 156 tests
+cargo test --manifest-path germline/Cargo.toml                  # 173 tests
 cargo test --manifest-path germline/Cargo.toml --test rsi_loop  # 6 closed-loop scenarios
 cargo test --manifest-path germline/Cargo.toml --test succession # 13 succession scenarios
 ```

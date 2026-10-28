@@ -48,6 +48,7 @@ use super::directed::{Calibration, CandidateSpec, DirectedSearch, FitnessPredict
 use super::gate::Episode;
 use super::journal::{Entry, Journal};
 use super::lineage::Lineage;
+use super::manifest::{self, ProposerRecord};
 use super::supervisor::{FailureMode, HealthSample, SupervisionPolicy, Supervisor};
 use crate::variation::{propose, GenePool, Legality, Locus, Proposal, VariationPlan};
 use super::{EvalSuite, FitnessVector, Generation, GenerationId, Measurement};
@@ -55,6 +56,7 @@ use ribosome::mac::absorb;
 use ribosome::Digest;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest as _, Sha256};
+use std::collections::BTreeMap;
 
 /// What the runner is permitted to do. Pinned by digest and journalled.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -176,6 +178,33 @@ pub trait Workload {
     }
 }
 
+/// An external source of candidate edits: an agent, not the built-in search.
+///
+/// A proposer's edits are not sampled from the lineage's own population. Each
+/// one must carry a [`crate::manifest::PredictionManifest`], and the proposer's
+/// trust, earned from how its predictions scored, decides how many of its
+/// candidates a cycle admits (see [`admission_width`]).
+pub trait Proposer {
+    /// The name the proposer is known by in the journal and in its record.
+    fn name(&self) -> &str;
+
+    /// Candidate edits against the current champion's held-out fitness, if
+    /// there is one. Each should state its manifest; a candidate that does not
+    /// is refused, not materialized.
+    fn propose(&mut self, champion: Option<&FitnessVector>, seed: u64) -> Vec<CandidateSpec>;
+}
+
+/// How many of a proposer's candidates a cycle admits.
+///
+/// This is the trust mechanism for external edits: `max(1, round(trust *
+/// candidates_per_cycle))`. A proposer with no record admits one candidate
+/// per cycle, and a proven one may admit the whole batch. The floor of one
+/// keeps an untrusted proposer able to make progress, so that it can earn
+/// trust at all.
+pub fn admission_width(trust: f64, candidates_per_cycle: usize) -> usize {
+    ((trust.clamp(0.0, 1.0) * candidates_per_cycle as f64).round() as usize).max(1)
+}
+
 /// Drives bounded succession cycles.
 pub struct Runner<'a> {
     pub policy: RunnerPolicy,
@@ -202,6 +231,10 @@ pub struct Runner<'a> {
     predictor: Option<Box<dyn FitnessPredictor>>,
     /// Trust in that predictor — moved only by measurements, never asserted.
     calibration: Calibration,
+    /// The external proposer, if one is attached. See [`Proposer`].
+    proposer: Option<Box<dyn Proposer>>,
+    /// Each proposer's standing, by name. Moved only by scored predictions.
+    proposer_records: BTreeMap<String, ProposerRecord>,
     /// The cycle this invocation starts at, and the refusals carried into it:
     /// zero for a fresh run, and what [`Lineage::replay`] found for a resumed
     /// one, so the cycle seeds and the stall count continue where they were.
@@ -225,6 +258,8 @@ impl<'a> Runner<'a> {
             seed,
             predictor: None,
             calibration: Calibration::new(),
+            proposer: None,
+            proposer_records: BTreeMap::new(),
             first_cycle: 0,
             carried_refusals: 0,
         }
@@ -259,6 +294,32 @@ impl<'a> Runner<'a> {
         } else {
             0.0
         }
+    }
+
+    /// Take candidate edits from an external proposer instead of the built-in
+    /// search.
+    ///
+    /// With a proposer attached, the undirected `variation::propose` is not
+    /// called, and every candidate must state a prediction. Refused candidates
+    /// are journalled as notes and never materialized. A cycle whose candidates
+    /// are all refused counts as a refusal toward the stall limit.
+    ///
+    /// Not resumable exactly. Trust is not rebuilt from the journal, so a
+    /// resumed run starts each proposer at zero trust. And a cycle whose
+    /// candidates were all refused writes no succession event, which
+    /// [`Lineage::replay`] counts toward neither the cycle index nor the
+    /// trailing-refusal count.
+    pub fn with_proposer(mut self, proposer: Box<dyn Proposer>) -> Self {
+        self.proposer_records.entry(proposer.name().to_string()).or_default();
+        self.proposer = Some(proposer);
+        self
+    }
+
+    /// Trust the named proposer has earned, in `[0,1]`. `0.0` if it is
+    /// unknown or has fewer than [`ProposerRecord::MIN_SAMPLES`] scored
+    /// predictions.
+    pub fn proposer_trust(&self, name: &str) -> f64 {
+        self.proposer_records.get(name).map_or(0.0, ProposerRecord::trust)
     }
 
     /// Run until a halt condition. Never runs unbounded.
@@ -385,12 +446,72 @@ impl<'a> Runner<'a> {
 
         // An empty pool until a registry is wired in: `Substitute` is then a
         // no-op and the run behaves exactly as it did before genes existed.
-        let Proposal { candidates, refused } =
-            propose(&seedpop, self.policy.variation, &GenePool::default(), seed);
-        let pool: Vec<CandidateSpec> = candidates
-            .into_iter()
-            .take(self.policy.candidates_per_cycle)
-            .collect();
+        let cpc = self.policy.candidates_per_cycle;
+        let champion_fitness: Option<FitnessVector> =
+            lineage.champion().and_then(|g| g.heldout_fitness().cloned());
+
+        // Either the built-in search, or an external proposer whose every
+        // candidate must state a prediction before anything else happens.
+        let (pool, refused) = match self.proposer.as_mut() {
+            None => {
+                let Proposal { candidates, refused } =
+                    propose(&seedpop, self.policy.variation, &GenePool::default(), seed);
+                let pool: Vec<CandidateSpec> = candidates.into_iter().take(cpc).collect();
+                (pool, refused)
+            }
+            Some(proposer) => {
+                let name = proposer.name().to_string();
+                // The suite's axes, from the champion's held-out measurement.
+                // With no champion measured yet there are none to name, and
+                // any metric is accepted while a manifest is still required.
+                let axes_owned: Vec<String> = champion_fitness
+                    .as_ref()
+                    .map(|f| f.axes().map(str::to_string).collect())
+                    .unwrap_or_default();
+                let axes: Vec<&str> = axes_owned.iter().map(String::as_str).collect();
+
+                let proposed: Vec<CandidateSpec> = proposer
+                    .propose(champion_fitness.as_ref(), seed)
+                    .into_iter()
+                    .take(cpc)
+                    .map(|c| c.by(name.clone()))
+                    .collect();
+                if proposed.is_empty() {
+                    return Err(format!("proposer `{name}` produced no candidates"));
+                }
+
+                let mut passing = Vec::new();
+                let mut refusals = Vec::new();
+                for spec in proposed {
+                    match manifest::check(spec.manifest.as_ref(), &axes) {
+                        Ok(_) => passing.push(spec),
+                        Err(reason) => {
+                            let text = format!("refused edit {} from {name}: {reason}", spec.id);
+                            let _ = journal.append(Entry::Note { text: text.clone() });
+                            refusals.push(text);
+                        }
+                    }
+                }
+                if passing.is_empty() {
+                    // Every candidate refused. That is a refusal, not a
+                    // failure: the cycle makes no promotion, and the run counts
+                    // it toward the stall limit like any other refused cycle.
+                    return Ok(CycleOutcome {
+                        cycle: index,
+                        candidate: None,
+                        promoted: false,
+                        reasons: refusals,
+                    });
+                }
+
+                // Trust decides the width. The passing candidates beyond it
+                // are not admitted this cycle; they are neither refused nor
+                // journalled, since nothing was judged about them.
+                let trust = self.proposer_records.get(&name).map_or(0.0, ProposerRecord::trust);
+                passing.truncate(admission_width(trust, cpc));
+                (passing, Vec::new())
+            }
+        };
         // Rank if there is a surrogate, then *sample* within the width trust has
         // earned. Taking the top-ranked candidate outright would follow an
         // uncalibrated predictor from the first cycle, which is the failure
@@ -461,6 +582,31 @@ impl<'a> Runner<'a> {
         let artifact = workload.materialize(&spec)?;
         let fitness = workload.evaluate(&artifact, &self.suite)?;
 
+        // What the proposer predicted, against what the measurement says the
+        // edit did, relative to the champion it was proposed against. Taken
+        // before `fitness` moves into the measurement.
+        let calibration = match (spec.proposer.clone(), spec.manifest.clone()) {
+            (Some(name), Some(m)) => match fitness.get(&m.metric) {
+                Some(value) => {
+                    let base = champion_fitness
+                        .as_ref()
+                        .and_then(|c| c.get(&m.metric))
+                        .unwrap_or(0.0);
+                    Some((name, m, value - base))
+                }
+                None => {
+                    let _ = journal.append(Entry::Note {
+                        text: format!(
+                            "calibration skipped for {}: the measurement has no `{}`",
+                            spec.id, m.metric
+                        ),
+                    });
+                    None
+                }
+            },
+            _ => None,
+        };
+
         // The only thing that moves trust. A prediction that is never followed
         // by a measurement teaches the calibration nothing, which is why this
         // sits next to the evaluation rather than anywhere more convenient.
@@ -498,6 +644,24 @@ impl<'a> Runner<'a> {
                 journal,
             )
             .map_err(|e| e.to_string())?;
+
+        // Journalled after the evaluation it scores, so it follows `Evaluated`.
+        if let Some((proposer, m, measured)) = calibration {
+            let expected = m.predicted_delta();
+            let score = manifest::score(expected, measured);
+            let record = self.proposer_records.entry(proposer.clone()).or_default();
+            record.observe(score);
+            let trust = record.trust();
+            let _ = journal.append(Entry::Calibrated {
+                generation: id,
+                proposer,
+                metric: m.metric,
+                predicted: expected,
+                measured,
+                score,
+                trust,
+            });
+        }
 
         for _ in 0..self.policy.shadow_runs {
             let sample = workload.shadow(&artifact);
@@ -1335,5 +1499,205 @@ mod tests {
         .unwrap();
         assert!(matches!(Lineage::replay(Lineage::new(), &j, None), Err(ReplayError::Predates { index: 0, .. })));
         let _ = std::fs::remove_dir_all(path.parent().unwrap());
+    }
+
+    // ---- external proposers and prediction manifests (plan 5.4) ----
+
+    use crate::manifest::{Direction, PredictionManifest};
+
+    /// Builds each artifact with its genome's parameter as capability, and
+    /// counts how many it was asked to build.
+    struct Counted {
+        capability: std::collections::HashMap<String, f64>,
+        materialized: std::rc::Rc<std::cell::Cell<u32>>,
+    }
+
+    impl Workload for Counted {
+        fn materialize(&mut self, spec: &CandidateSpec) -> Result<Digest, String> {
+            self.materialized.set(self.materialized.get() + 1);
+            let cap = crate::variation::params_of(&spec.genome).first().copied().unwrap_or(0.0);
+            let d = Digest::of(spec.id.as_bytes());
+            self.capability.insert(d.0.clone(), cap);
+            Ok(d)
+        }
+        fn evaluate(&mut self, artifact: &Digest, _: &EvalSuite) -> Result<FitnessVector, String> {
+            let cap = self.capability.get(&artifact.0).copied().ok_or("not materialized")?;
+            Ok(FitnessVector::new().with("capability", cap).with("safety", 0.95))
+        }
+        fn shadow(&mut self, _: &Digest) -> HealthSample {
+            HealthSample::ok()
+        }
+        fn observe_champion(&mut self, _: &Digest) -> HealthSample {
+            HealthSample::ok()
+        }
+        fn materialized(&self, _: &Digest) -> bool {
+            true
+        }
+    }
+
+    /// Proposes edits that move capability by `step` from the champion. The
+    /// manifest (if any) claims `claim` with the step's magnitude, so it is
+    /// right exactly when `claim` agrees with the sign of `step`.
+    struct Stepper {
+        name: &'static str,
+        step: f64,
+        claim: Direction,
+        manifests: bool,
+        calls: u32,
+    }
+
+    impl Proposer for Stepper {
+        fn name(&self) -> &str {
+            self.name
+        }
+        fn propose(&mut self, champion: Option<&FitnessVector>, _seed: u64) -> Vec<CandidateSpec> {
+            self.calls += 1;
+            let base = champion.and_then(|f| f.get("capability")).unwrap_or(0.5);
+            (0..2)
+                .map(|i| {
+                    let spec = CandidateSpec::new(
+                        format!("{}-{}-{i}", self.name, self.calls),
+                        vec![Locus::param(base + self.step)],
+                    );
+                    if self.manifests {
+                        spec.with_manifest(PredictionManifest {
+                            metric: "capability".into(),
+                            direction: self.claim,
+                            magnitude: self.step.abs(),
+                        })
+                    } else {
+                        spec
+                    }
+                })
+                .collect()
+        }
+    }
+
+    struct Driven {
+        report: RunReport,
+        entries: Vec<Entry>,
+        verified: bool,
+        materialized: u32,
+        trust: f64,
+    }
+
+    fn drive(proposer: Stepper, policy: RunnerPolicy, seed: u64) -> Driven {
+        let name = proposer.name;
+        let path = tmp(&format!("proposer-{name}-{seed}"));
+        let mut j = Journal::open(&path).unwrap();
+        let materialized = std::rc::Rc::new(std::cell::Cell::new(0));
+        let mut w = Counted { capability: Default::default(), materialized: materialized.clone() };
+        let mut l = genesis();
+        let (ep, at) = (episode(), attestor());
+        let mut r = Runner::new(policy, &ep, &at, suite(), seed).with_proposer(Box::new(proposer));
+        let report = r.run(&mut l, &mut j, &mut w);
+        let driven = Driven {
+            report,
+            entries: j.replay().unwrap().into_iter().map(|r| r.entry).collect(),
+            verified: j.verify().is_ok(),
+            materialized: materialized.get(),
+            trust: r.proposer_trust(name),
+        };
+        let _ = std::fs::remove_dir_all(path.parent().unwrap());
+        driven
+    }
+
+    #[test]
+    fn an_edit_without_a_manifest_is_refused_and_never_materialized() {
+        let d = drive(
+            Stepper { name: "stepper", step: 0.05, claim: Direction::Increase, manifests: false, calls: 0 },
+            patient(3),
+            1,
+        );
+        assert_eq!(d.materialized, 0, "a candidate that states no prediction is never built");
+        assert!(
+            d.entries.iter().any(|e| matches!(
+                e,
+                Entry::Note { text } if text.contains("refused edit")
+                    && text.contains("from stepper")
+                    && text.contains("a harness edit must state a prediction")
+            )),
+            "the refusal is on the record, with its reason"
+        );
+        assert!(!d.entries.iter().any(|e| matches!(e, Entry::Calibrated { .. })), "nothing was scored");
+        assert_eq!(d.report.promotions, 0);
+        assert!(d.verified, "the chain holds");
+    }
+
+    #[test]
+    fn a_well_calibrated_proposer_earns_trust_and_each_prediction_is_journalled() {
+        let d = drive(
+            Stepper { name: "stepper", step: 0.05, claim: Direction::Increase, manifests: true, calls: 0 },
+            patient(6),
+            2,
+        );
+        let cal: Vec<(f64, f64)> = d
+            .entries
+            .iter()
+            .filter_map(|e| match e {
+                Entry::Calibrated { score, trust, .. } => Some((*score, *trust)),
+                _ => None,
+            })
+            .collect();
+        assert!(cal.len() >= 3, "each evaluated edit with a manifest is scored: {cal:?}");
+        assert_eq!(cal[1].1, 0.0, "two predictions are not yet a record");
+        assert!(cal[2].1 > 0.0, "three scored predictions earn trust: {cal:?}");
+        assert!(d.trust > 0.0, "the runner reports the earned trust");
+        for (score, _) in &cal {
+            assert!(*score > 0.99, "a prediction that came true scores near 1, got {score}");
+        }
+        assert!(d.verified, "calibration entries keep the chain intact");
+    }
+
+    #[test]
+    fn a_badly_calibrated_proposer_stays_untrusted() {
+        // Claims a decrease; every edit increases capability. Wrong sign, every time.
+        let d = drive(
+            Stepper { name: "stepper", step: 0.05, claim: Direction::Decrease, manifests: true, calls: 0 },
+            patient(6),
+            3,
+        );
+        let scores: Vec<f64> = d
+            .entries
+            .iter()
+            .filter_map(|e| match e {
+                Entry::Calibrated { score, .. } => Some(*score),
+                _ => None,
+            })
+            .collect();
+        assert!(scores.len() >= 3, "{scores:?}");
+        assert!(scores.iter().all(|s| *s == 0.0), "a wrong sign scores zero: {scores:?}");
+        assert_eq!(d.trust, 0.0, "a proposer that is always wrong earns nothing");
+        assert_eq!(admission_width(d.trust, 4), 1, "and admits one candidate a cycle");
+        assert!(
+            d.materialized as usize <= d.report.cycles.len(),
+            "one admitted candidate per cycle at most: {} built over {} cycles",
+            d.materialized,
+            d.report.cycles.len()
+        );
+    }
+
+    #[test]
+    fn a_proposer_whose_candidates_are_all_refused_stalls_the_search() {
+        // A cycle that refuses everything is a refusal, so the stall limit
+        // applies to it rather than the run grinding through its budget.
+        let d = drive(
+            Stepper { name: "stepper", step: 0.05, claim: Direction::Increase, manifests: false, calls: 0 },
+            RunnerPolicy { max_cycles: 50, ..policy() },
+            4,
+        );
+        assert!(matches!(d.report.halt, Halt::SearchStalled { .. }), "{:?}", d.report.halt);
+        assert!(d.report.cycles.len() < 50);
+        assert_eq!(d.report.refusals as usize, d.report.cycles.len(), "every cycle was a refusal");
+        assert_eq!(d.materialized, 0);
+    }
+
+    #[test]
+    fn admission_width_is_trust_scaled_with_a_floor_of_one() {
+        assert_eq!(admission_width(0.0, 4), 1, "no record, one candidate");
+        assert_eq!(admission_width(0.5, 4), 2);
+        assert_eq!(admission_width(0.9, 4), 4, "round(3.6) is 4");
+        assert_eq!(admission_width(1.0, 4), 4);
+        assert_eq!(admission_width(0.0, 0), 1, "the floor holds even for an empty batch");
     }
 }
