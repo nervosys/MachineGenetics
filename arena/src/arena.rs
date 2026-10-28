@@ -28,7 +28,7 @@
 //! each meter's [`crate::energy::Basis`] beside it.
 
 use crate::agents::{
-    allocate, marginal_hypervolume, non_dominated, AttackerAgent, Candidate, GrammarAgent, MutatorAgent, Pool,
+    marginal_hypervolume, non_dominated, AttackerAgent, Candidate, GrammarAgent, MutatorAgent, Pool,
     Proposer, Role, Scored, UniformAgent,
 };
 use crate::energy::{self, Meter, Reading, Span};
@@ -83,6 +83,10 @@ pub struct Config {
     /// Path to the MAGE program that computes the compression reward;
     /// `None` is the shipped `harness/reward.mg` (plan 5.1).
     pub reward_program: Option<String>,
+    /// Path to the MAGE program that turns agents' scores into budget
+    /// weights; `None` is the shipped `harness/allocation.mg` (plan 5.2).
+    #[serde(default)]
+    pub allocation_program: Option<String>,
     /// What an agent's programs are charged in, which is the denominator of
     /// the credit-per-cost score that allocates the budget.
     #[serde(default)]
@@ -217,6 +221,7 @@ impl Default for Config {
             // parameters, and without the late collapse (ARENA.md, run 9).
             reward: Reward::Compression,
             reward_program: None,
+            allocation_program: None,
             cost_unit: CostUnit::Joules,
             energy_budget: None,
             joules_per_program: None,
@@ -575,6 +580,10 @@ pub fn run_with(
         (Reward::Compression, None) => Some(crate::harness::RewardProgram::load(crate::harness::DEFAULT_REWARD)?),
         (Reward::Alignment, _) => None,
     };
+    let allocation_program = crate::harness::AllocationProgram::load(&match &cfg.allocation_program {
+        Some(path) => std::fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?,
+        None => crate::harness::DEFAULT_ALLOCATION.to_string(),
+    })?;
     let mut learners: Vec<Box<dyn ByteLearner>> =
         cfg.learners.iter().map(|s| learner::build(*s)).collect::<Result<_, _>>()?;
     let mut joules: Vec<Option<f64>> = vec![Some(0.0); learners.len()];
@@ -623,7 +632,7 @@ pub fn run_with(
         let scores: Vec<f64> = (0..agents.len())
             .map(|i| if run_cost[i] > 0.0 { run_credit[i] / run_cost[i] } else { 0.0 })
             .collect();
-        let shares = allocate(cfg.programs_per_round, &scores, cfg.floor, cfg.temperature);
+        let shares = allocation_program.allocate(cfg.programs_per_round, &scores, cfg.floor, cfg.temperature)?;
 
         let mut round_data: Vec<Vec<u8>> = Vec::new();
         // Per agent: its scored candidates, credit and cost this round.

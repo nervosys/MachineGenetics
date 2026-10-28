@@ -90,6 +90,7 @@ fn main() {
                 })
             }
             "--reward-program" => cfg.reward_program = Some(value(i).to_string()),
+            "--allocation-program" => cfg.allocation_program = Some(value(i).to_string()),
             "--energy-budget" => {
                 cfg.energy_budget = Some(value(i).parse().unwrap_or_else(|_| fail("--energy-budget: not a number of joules")))
             }
