@@ -2490,6 +2490,9 @@ impl TypeChecker {
 pub fn check(module: &ast::Module) -> TypeChecker {
     let mut checker = TypeChecker::new();
     checker.check_module(module);
+    // Tunable parameters (`@param`, plan 6.1): a default outside its declared
+    // domain is a type error, so the arena refuses it as a Type refusal.
+    checker.diagnostics.extend(crate::params::params(module).1);
     checker
 }
 
