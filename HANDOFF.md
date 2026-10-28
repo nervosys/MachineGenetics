@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,212** — rmi 1,384 · prototype 1,370 · ribosome 168 · germline 156 · forge 63 · arena 71 |
+| Tests | **3,231** — rmi 1,384 · prototype 1,389 · ribosome 168 · germline 156 · forge 63 · arena 71 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -890,6 +890,33 @@ constructs 9.1 found without callers are gone from the core.
 
 `mod`/`use` stay: they have no callers, but the name resolver is built on
 them. Prototype −7 +4 tests.
+
+**Plan 9.3: one canonical form.** Every `.mg` source in the repository (103)
+now prints, in either surface, to text that reparses to the identical AST, and
+printing that AST again gives the same text.
+`prototype/tests/canonical_round_trip.rs` checks this over the whole corpus,
+and names the first AST path that differs. When it was first run, 14 of 103
+survived:
+- The agent printer used sigils the parser has no rule for (`Ψ` net, `Θ`
+  train, `κ`/`⊢`/`ρ` kb, `Ω` evolve, `Σ` swarm, `α` agent). These now print
+  as keywords in both surfaces.
+- It printed stubs (`forward { ... }`, `fitness { ... }`, `size: ...`) and
+  dropped layer types, fact arguments, rule bodies, and every train field but the net.
+- It dropped the `@` of a struct literal, so `@P { x: 1 }` came back as `P`
+  followed by a block.
+- It printed `String`, `&mut`, `.w` and `! x`, which the parser reads as a
+  path, a reference to a type named `mut`, a field and logical not. They now
+  print as `s`, `&!`, `.await` and `break x`.
+- Operands are parenthesised by the parser's binding powers.
+- One print crashed the lexer: an unknown multi-byte character (`⊢`) stopped
+  mid-character, and slicing the token text panicked. An error token now
+  consumes the whole character.
+
+The sigil tables in MAGE_SPEC, README, BOOK and LANGUAGE_SPEC listed `.w`,
+`&m` and `!` for break, and those never parsed as documented; they now give
+the forms that do. One loss remains: a swarm's `on_dispatch`/`on_aggregate`/
+`on_failure` have no surface syntax (the parser rejects them, only the bridge
+sets them), so a bridge-built swarm prints without them. Prototype +19 tests.
 
 **Pre-existing, not from this change:** `cargo clippy` 0.1.98 (2026-09-01)
 reports 15 warnings in `prototype` — 14 `chunks_exact` with a constant size in
@@ -3429,7 +3456,7 @@ changed before you commit.
 ---
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,370**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,389**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
   across six crates **3,140**; documented-count pins **101**, up from 46 — the
   two newest hold the `kb`/`net` overlap the tensor-product-binding decision
