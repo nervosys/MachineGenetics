@@ -1792,6 +1792,26 @@ Domains are not checked, and constant sub-expressions are not evaluated:
 `ln(2) * exp(x)` is `Unknown`. Plan 6.3 reads a `Convex` or `Concave` verdict to
 choose an exact solver.
 
+### 11.9 Solver choice (plan 6.3)
+
+The solver module (`prototype/src/solve.rs`) minimises or maximises a function
+over a box of `Real` parameters. Its choice follows the convexity certificate:
+
+- Projected gradient runs only when the curvature is `Convex` (or `Affine` or
+  `Constant`) for minimisation, or `Concave` (or `Affine` or `Constant`) for
+  maximisation, and every domain is `Real`.
+- Otherwise a (1+1) evolution strategy runs, with the 1/5th success rule. Its
+  reason names each check that failed: the curvature verdict, the sense, or a
+  non-real domain.
+
+`Unknown` is not non-convexity, so it falls back to the evolution strategy.
+`2 * x * x` is convex but unknown to DCP, and it takes that route.
+
+Each run returns a `Solution` that records the solver, the reason, the point,
+the value, and the evaluations and fuel spent. Its JSON form is the journal
+entry for the run. Fuel, from `eval::run_metered`, is the cost measure for both
+solvers.
+
 ---
 
 ## 12. Contract System
