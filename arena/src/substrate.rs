@@ -39,10 +39,13 @@ pub enum Refusal {
     /// Not run: the kernel's energy budget or the agent's allowance was
     /// spent (plan 3.5).
     Budget,
+    /// Its output carried a canary planted in the held-out data (plan 7.5),
+    /// so an agent has seen held-out bytes. The run halts.
+    Canary,
 }
 
 impl Refusal {
-    pub const ALL: [Refusal; 8] = [
+    pub const ALL: [Refusal; 9] = [
         Refusal::Parse,
         Refusal::Signature,
         Refusal::Type,
@@ -51,6 +54,7 @@ impl Refusal {
         Refusal::Runtime,
         Refusal::Empty,
         Refusal::Budget,
+        Refusal::Canary,
     ];
 }
 

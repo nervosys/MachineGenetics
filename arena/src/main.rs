@@ -5,7 +5,7 @@
 //!       [--agents grammar:2,uniform:1,mutator:1]
 //!       [--learners ng:orders:log2buckets:lr | tf:d:layers:heads:ctx:lr[:gpu] [,…]]
 //!       [--fuel F] [--cpu-watts W] [--meter-gpus <i>[,<i>…] | none] [--cost joules|fuel]
-//!       [--allocate share|hypervolume]
+//!       [--allocate share|hypervolume] [--canary <string>]
 //!       [--energy-budget J] [--joules-per-program J] [--definitions <forge registry dir>]
 //!       [--json <out.json>]
 //! ```
@@ -105,6 +105,7 @@ fn main() {
                     other => fail(format!("--cost: `{other}` is neither joules nor fuel")),
                 }
             }
+            "--canary" => cfg.canary = Some(value(i).to_string()),
             "--allocate" => {
                 cfg.allocation = match value(i) {
                     "share" => arena::arena::Allocation::Share,
