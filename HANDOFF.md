@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,231** — rmi 1,384 · prototype 1,389 · ribosome 168 · germline 156 · forge 63 · arena 71 |
+| Tests | **3,242** — rmi 1,384 · prototype 1,400 · ribosome 168 · germline 156 · forge 63 · arena 71 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -917,6 +917,28 @@ The sigil tables in MAGE_SPEC, README, BOOK and LANGUAGE_SPEC listed `.w`,
 the forms that do. One loss remains: a swarm's `on_dispatch`/`on_aggregate`/
 `on_failure` have no surface syntax (the parser rejects them, only the bridge
 sets them), so a bridge-built swarm prints without them. Prototype +19 tests.
+
+**Plan 6.3: the solver is chosen by the convexity certificate.**
+`prototype/src/solve.rs` takes a MAGE objective over a box of domains.
+- Projected gradient runs only when `convexity::function_curvature` certifies
+  the right curvature for the sense (`Convex` to minimise, `Concave` to
+  maximise) and every domain is real. It uses central differences, Armijo
+  backtracking, and projection onto the box after each step.
+- Otherwise a (1+1)-ES with the 1/5th success rule runs, deterministic for a
+  seed, with integer and set domains snapped. There was no ES or BO in the
+  repository to fall back to, despite what the plan assumed; this is the first.
+- `Unknown` falls back conservatively: `2*x*x` is convex but uncertified, so
+  it gets ES.
+- Each `Solution` serialises the solver that ran and the reason. That record
+  is the journal entry, and nothing stores it yet.
+- `solve_params` takes the domains from the `@param` consts named like the
+  objective's parameters.
+
+On the convex quadratic `(x-1.5)² + (y+0.5)²` over [-4,4]², projected gradient
+reaches the optimum within 1e-4 on 195 fuel (13 evaluations); ES needs 3,855
+fuel (257 evaluations) to get as close. Fuel is the stand-in for joules here.
+Break-checked: always choosing projected gradient fails the never-the-convex-
+route test. MAGE_SPEC §11.9. Prototype +11 tests.
 
 **Pre-existing, not from this change:** `cargo clippy` 0.1.98 (2026-09-01)
 reports 15 warnings in `prototype` — 14 `chunks_exact` with a constant size in
@@ -3456,7 +3478,7 @@ changed before you commit.
 ---
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,389**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,400**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
   across six crates **3,140**; documented-count pins **101**, up from 46 — the
   two newest hold the `kb`/`net` overlap the tensor-product-binding decision
