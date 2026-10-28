@@ -160,19 +160,35 @@ impl Pool {
 /// Every agent gets `floor` first; the remainder goes by a softmax over scores
 /// normalised to the best, at `temperature`, rounded by largest remainder so the
 /// shares always sum to `total`. Deterministic: equal scores, equal shares.
+/// The softmax is shifted by the best's term, so no weight overflows: before
+/// plan 5.2 found it, a temperature below about 0.0014 made the weights
+/// infinite and the shares NaN-rounded garbage.
+///
+/// The Rust reference for `harness/allocation.mg`, which the arena runs
+/// (plan 5.2); a test holds the two to identical shares.
 pub fn allocate(total: usize, score: &[f64], floor: usize, temperature: f64) -> Vec<usize> {
-    let n = score.len();
+    let best = score.iter().cloned().fold(0.0f64, f64::max);
+    let norm: Vec<f64> =
+        score.iter().map(|s| if best > 0.0 && s.is_finite() { s / best } else { 0.0 }).collect();
+    let t = temperature.max(1e-6);
+    let w: Vec<f64> = norm.iter().map(|x| ((x - 1.0) / t).exp()).collect();
+    allocate_weights(total, &w, floor)
+}
+
+/// The kernel's half of allocation: every agent gets `floor` first, and the
+/// remainder is divided in proportion to `weights`, rounded by largest
+/// remainder so the shares always sum to `total`. Weights that sum to zero,
+/// or to something not finite, divide the remainder equally.
+pub fn allocate_weights(total: usize, weights: &[f64], floor: usize) -> Vec<usize> {
+    let n = weights.len();
     if n == 0 {
         return Vec::new();
     }
     let floor = floor.min(total / n);
     let rest = total - floor * n;
-    let best = score.iter().cloned().fold(0.0f64, f64::max);
-    let norm: Vec<f64> =
-        score.iter().map(|s| if best > 0.0 && s.is_finite() { s / best } else { 0.0 }).collect();
-    let t = temperature.max(1e-6);
-    let w: Vec<f64> = norm.iter().map(|x| (x / t).exp()).collect();
-    let z: f64 = w.iter().sum();
+    let z: f64 = weights.iter().sum();
+    let equal = vec![1.0; n];
+    let (w, z) = if z > 0.0 && z.is_finite() { (weights, z) } else { (&equal[..], n as f64) };
     let exact: Vec<f64> = w.iter().map(|x| rest as f64 * x / z).collect();
     let mut share: Vec<usize> = exact.iter().map(|x| x.floor() as usize).collect();
     let mut left = rest - share.iter().sum::<usize>();
@@ -473,6 +489,13 @@ mod tests {
             }
         }
         assert!(checked >= 30, "only {checked} rewrites checked");
+    }
+
+    #[test]
+    fn allocation_at_a_near_zero_temperature_gives_the_best_agent_the_rest() {
+        // Unshifted, these weights were exp(1e6) = inf, and the shares NaN.
+        assert_eq!(allocate(10, &[1.0, 2.0, 0.5], 1, 0.0), vec![1, 8, 1]);
+        assert_eq!(allocate(10, &[1.0, 2.0, 0.5], 1, 0.0).iter().sum::<usize>(), 10);
     }
 
     #[test]
