@@ -1420,18 +1420,6 @@ fn emit_expr(buf: &mut String, expr: &Expr, mode: Mode) {
         }
         Expr::Todo => buf.push_str("todo!()"),
         Expr::Unimplemented => buf.push_str("unimplemented!()"),
-        Expr::UnsafeBlock { block } => match mode {
-            Mode::Agent => {
-                buf.push_str("{\n");
-                emit_block_body(buf, block, mode, 1);
-                buf.push('}');
-            }
-            Mode::Human => {
-                buf.push_str("unsafe {\n");
-                emit_block_body(buf, block, mode, 1);
-                buf.push('}');
-            }
-        },
         Expr::Error { message } => {
             buf.push_str("/* error: ");
             buf.push_str(message);

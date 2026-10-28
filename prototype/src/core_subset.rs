@@ -49,12 +49,6 @@ fn check_function(item: &ast::Item, f: &ast::FunctionDef, key: &str, out: &mut V
     if f.is_unsafe {
         out.push(violation(format!("`{key}` is `unsafe`, which MAGE-core does not admit")));
     }
-    // An `unsafe { … }` block anywhere in the body. Found on the serde form,
-    // as `canon` walks it, so a new expression form cannot hide one.
-    let body = serde_json::to_value(f).unwrap_or_default();
-    if contains_type(&body, "UnsafeBlock") {
-        out.push(violation(format!("`{key}` contains an `unsafe` block, which MAGE-core does not admit")));
-    }
 }
 
 fn check_item(item: &ast::Item, prefix: &str, out: &mut Vec<Diagnostic>) {
@@ -98,15 +92,6 @@ fn check_item(item: &ast::Item, prefix: &str, out: &mut Vec<Diagnostic>) {
     }
 }
 
-fn contains_type(v: &serde_json::Value, ty: &str) -> bool {
-    match v {
-        serde_json::Value::Object(m) => {
-            m.get("type").and_then(|t| t.as_str()) == Some(ty) || m.values().any(|c| contains_type(c, ty))
-        }
-        serde_json::Value::Array(xs) => xs.iter().any(|c| contains_type(c, ty)),
-        _ => false,
-    }
-}
 
 #[cfg(test)]
 mod tests {
@@ -153,9 +138,8 @@ mod tests {
 
     #[test]
     fn unsafe_is_outside_core() {
-        // `unsafe` has an AST form and no parser arm (HANDOFF, Expr::UnsafeBlock),
-        // so it can only arrive in an AST built programmatically — which is
-        // exactly how an agent emitting AST would deliver it. Built here.
+        // `unsafe` functions (`uf`) are the only unsafe form: the `unsafe { }`
+        // block was retired in plan 9.2. A flagged AST is built programmatically.
         let mut m = crate::parser::parse(&crate::lexer::lex("@role(candidate)
 f g() -> i64 { 1 }")).unwrap();
         if let ItemKind::Function(f) = &mut m.items[0].kind {

@@ -38,7 +38,6 @@ pub mod effects;
 pub mod differentiable;
 pub mod eval;
 pub mod elision;
-pub mod evolve_gen;
 pub mod ffi_gen;
 pub mod fmt;
 #[cfg(test)]
