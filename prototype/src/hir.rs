@@ -426,11 +426,20 @@ pub const BUILTIN_EFFECTS: &[(&str, Effect)] = &[
 /// the inferred set. Until 2026-09-25 `@role(…)` parsed and was ignored.
 ///
 /// * `candidate` — generated code: pure. It may compute, and nothing else.
+/// * `proposer` — writes candidates: may draw randomness, allocate, and
+///   learn its own policy. No GPU, no held-out data, no promotion.
+/// * `mutator` — varies existing candidates: randomness and allocation only.
+/// * `attacker` — searches for exploits of the reward, the substrate and the
+///   checkers (plan 7.4): a proposer's powers. It attacks the proxy, so it
+///   must never see the held-out data the proxy is checked against.
 /// * `learner` — may train, allocate, use a GPU and draw randomness.
 /// * `evaluator` — a learner's powers, plus reading held-out data.
 /// * `gate` — an evaluator's powers, plus promoting and journaling.
 pub const ROLES: &[(&str, &[Effect])] = &[
     ("candidate", &[]),
+    ("proposer", &[Effect::Learn, Effect::Alloc, Effect::Rng]),
+    ("mutator", &[Effect::Alloc, Effect::Rng]),
+    ("attacker", &[Effect::Learn, Effect::Alloc, Effect::Rng]),
     ("learner", &[Effect::Learn, Effect::Gpu, Effect::Alloc, Effect::Rng]),
     ("evaluator", &[Effect::Learn, Effect::Gpu, Effect::Alloc, Effect::Rng, Effect::Heldout]),
     (

@@ -790,6 +790,24 @@ mod tests {
     }
 
     #[test]
+    fn agent_roles_draw_randomness_and_reach_neither_held_out_data_nor_authority() {
+        // Plan 7.2. Every agent role may sample; none may read the held-out
+        // set or promote, and only the proposer and attacker may learn.
+        for (role, learns) in [("proposer", true), ("mutator", false), ("attacker", true)] {
+            let rng = format!("@role({role})\nf s() -> usize / rng {{ 1 }}");
+            assert_eq!(role_errors(&rng), Vec::<String>::new(), "{role} sampling");
+            let learn = format!("@role({role})\nf s() -> usize / learn {{ 1 }}");
+            assert_eq!(role_errors(&learn).is_empty(), learns, "{role} learning");
+            let gpu = format!("@role({role})\nf s() -> usize / gpu {{ 1 }}");
+            assert_eq!(role_errors(&gpu).len(), 1, "{role} using a GPU");
+            let peek = format!("@role({role})\nf s() -> [usize] {{ heldout.read(\"t\") }}");
+            assert_eq!(role_errors(&peek).len(), 1, "{role} reading held-out data");
+            let promote = format!("@role({role})\nf s(g: usize) -> usize {{ gate.promote(g) }}");
+            assert_eq!(role_errors(&promote).len(), 1, "{role} promoting");
+        }
+    }
+
+    #[test]
     fn a_role_bounds_declarations_too_and_unknown_roles_are_refused() {
         // Declaring an effect the role forbids is refused even if unused: a
         // declaration is a claim of authority.

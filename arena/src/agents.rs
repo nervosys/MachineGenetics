@@ -47,9 +47,44 @@ pub struct Candidate {
 /// substrate refused it.
 pub type Scored = (Candidate, Option<f64>);
 
+/// What an agent is for (plan 7.2). Each is a language role of the same
+/// name, so an agent written in MAGE runs under that role's effect ceiling,
+/// and the kernel's ledger accounts agents' energy by role.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Role {
+    /// Writes new candidates.
+    #[default]
+    Proposer,
+    /// Varies candidates already in the pool.
+    Mutator,
+    /// Searches for exploits of the reward, the substrate and the checkers.
+    Attacker,
+    /// Measures: the only agent role that may read held-out data.
+    Evaluator,
+}
+
+impl Role {
+    pub const ALL: [Role; 4] = [Role::Proposer, Role::Mutator, Role::Attacker, Role::Evaluator];
+
+    /// The language role's name.
+    pub fn name(self) -> &'static str {
+        match self {
+            Role::Proposer => "proposer",
+            Role::Mutator => "mutator",
+            Role::Attacker => "attacker",
+            Role::Evaluator => "evaluator",
+        }
+    }
+}
+
 pub trait Proposer {
     fn id(&self) -> &str;
     fn kind(&self) -> &'static str;
+    /// The role it acts in. Writing new programs, by default.
+    fn role(&self) -> Role {
+        Role::Proposer
+    }
     fn propose(&mut self, n: usize, pool: &Pool, rng: &mut Rng) -> Vec<Candidate>;
     fn feedback(&mut self, scored: &[Scored]);
     /// Anything worth reporting about the agent's internal state.
@@ -309,6 +344,10 @@ impl Proposer for MutatorAgent {
 
     fn kind(&self) -> &'static str {
         "mutator"
+    }
+
+    fn role(&self) -> Role {
+        Role::Mutator
     }
 
     fn propose(&mut self, n: usize, pool: &Pool, rng: &mut Rng) -> Vec<Candidate> {
