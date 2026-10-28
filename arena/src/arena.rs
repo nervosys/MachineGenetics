@@ -87,6 +87,10 @@ pub struct Config {
     /// weights; `None` is the shipped `harness/allocation.mg` (plan 5.2).
     #[serde(default)]
     pub allocation_program: Option<String>,
+    /// Path to the MAGE program that gives each pool entry the priority replay
+    /// evicts by; `None` is the shipped `harness/retention.mg` (plan 5.2).
+    #[serde(default)]
+    pub retention_program: Option<String>,
     /// What an agent's programs are charged in, which is the denominator of
     /// the credit-per-cost score that allocates the budget.
     #[serde(default)]
@@ -222,6 +226,7 @@ impl Default for Config {
             reward: Reward::Compression,
             reward_program: None,
             allocation_program: None,
+            retention_program: None,
             cost_unit: CostUnit::Joules,
             energy_budget: None,
             joules_per_program: None,
@@ -584,6 +589,10 @@ pub fn run_with(
         Some(path) => std::fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?,
         None => crate::harness::DEFAULT_ALLOCATION.to_string(),
     })?;
+    let retention_program = crate::harness::RetentionProgram::load(&match &cfg.retention_program {
+        Some(path) => std::fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?,
+        None => crate::harness::DEFAULT_RETENTION.to_string(),
+    })?;
     let mut learners: Vec<Box<dyn ByteLearner>> =
         cfg.learners.iter().map(|s| learner::build(*s)).collect::<Result<_, _>>()?;
     let mut joules: Vec<Option<f64>> = vec![Some(0.0); learners.len()];
@@ -747,7 +756,15 @@ pub fn run_with(
                                 let r = raw * mult;
                                 standing[ai].credit += r;
                                 credit += r;
-                                pool.add(c.program.clone(), bytes.clone(), r, agent.id(), round);
+                                pool.add_with(
+                                    c.program.clone(),
+                                    bytes.clone(),
+                                    r,
+                                    agent.id(),
+                                    round,
+                                    round,
+                                    &|r, age| retention_program.priority(r, age),
+                                )?;
                                 scored.push((c, Some(r)));
                             }
                             Reward::Compression => {
@@ -885,7 +902,7 @@ pub fn run_with(
             standing[ai].credit += r;
             round_credit[ai] += r;
             let program = round_scored[ai][idx].0.program.clone();
-            pool.add(program, probe, r, agents[ai].id(), round);
+            pool.add_with(program, probe, r, agents[ai].id(), round, round, &|r, age| retention_program.priority(r, age))?;
             round_scored[ai][idx].1 = Some(r);
         }
 

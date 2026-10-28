@@ -8,7 +8,10 @@
 //! runs it under fuel for every program the agents write. The budget
 //! allocation is the second (plan 5.2): [`AllocationProgram`] loads
 //! `harness/allocation.mg` under the `candidate` role, which allows no
-//! effects, and the kernel rounds its weights to shares.
+//! effects, and the kernel rounds its weights to shares. Replay's retention
+//! is the third: [`RetentionProgram`] loads `harness/retention.mg`, which
+//! gives the priority the pool evicts by, and the kernel keeps the eviction.
+//! The curriculum is the reward, so it needed no move of its own.
 
 use mage_prototype::eval::{run_bounded, BoundedError, Value};
 use mage_prototype::{ast, effects, hir, lexer, parser, types};
@@ -18,6 +21,9 @@ pub const DEFAULT_REWARD: &str = include_str!("../harness/reward.mg");
 
 /// The allocation policy shipped with the arena (plan 5.2).
 pub const DEFAULT_ALLOCATION: &str = include_str!("../harness/allocation.mg");
+
+/// The replay retention shipped with the arena (plan 5.2).
+pub const DEFAULT_RETENTION: &str = include_str!("../harness/retention.mg");
 
 /// Parse and gate a harness policy: `source` defines a function `name` of
 /// `arity` parameters with `@role(role)`, which is MAGE-core, typechecks and
@@ -99,6 +105,33 @@ impl AllocationProgram {
             .map(|&s| self.weight(if s.is_finite() { s } else { 0.0 }, best, temperature))
             .collect::<Result<Vec<f64>, String>>()?;
         Ok(crate::agents::allocate_weights(total, &weights, floor))
+    }
+}
+
+/// A checked, loaded replay retention policy (plan 5.2).
+pub struct RetentionProgram {
+    module: ast::Module,
+    pub fuel: u64,
+}
+
+impl RetentionProgram {
+    /// Parse and gate `source`: one function `priority(reward, age)` with
+    /// `@role(candidate)`, which allows no effects.
+    pub fn load(source: &str) -> Result<RetentionProgram, String> {
+        Ok(RetentionProgram { module: load_policy("retention", source, "priority", 2, "candidate")?, fuel: 10_000 })
+    }
+
+    /// The priority of an entry with `reward` that is `age` rounds old. The
+    /// kernel evicts the lowest, so the kernel refuses one that is not finite,
+    /// since the order it would give is undefined.
+    pub fn priority(&self, reward: f64, age: f64) -> Result<f64, String> {
+        let args = vec![Value::Float(reward), Value::Float(age)];
+        let p = run_number("retention", &self.module, "priority", args, self.fuel)?;
+        if p.is_finite() {
+            Ok(p)
+        } else {
+            Err(format!("retention: priority {p} for reward {reward} at age {age} is not finite"))
+        }
     }
 }
 
@@ -241,5 +274,90 @@ mod tests {
         let p = RewardProgram::load(flat).unwrap();
         let x = RewardInputs { before: 8.0, after: 2.0, len: 10.0, seen: 0.0, tokens: 1.0, charge: 0.0, structure: 1.0 };
         assert_eq!(p.eval(&x).unwrap(), 1.0);
+    }
+
+    #[test]
+    fn the_shipped_retention_keeps_the_reward_and_ignores_age() {
+        let p = RetentionProgram::load(DEFAULT_RETENTION).expect("the shipped retention loads");
+        for (r, a) in [(0.5, 0.0), (-2.0, 7.0), (3.25, 100.0)] {
+            assert_eq!(p.priority(r, a).unwrap(), r);
+        }
+    }
+
+    #[test]
+    fn the_mage_retention_evicts_what_the_rust_pool_evicted() {
+        use crate::agents::Pool;
+        use crate::grammar::{ListExpr, Program};
+        let p = RetentionProgram::load(DEFAULT_RETENTION).expect("the shipped retention loads");
+        let prog = Program { body: ListExpr::Range(1) };
+        let mut rng = crate::grammar::Rng(29);
+        for case in 0..300 {
+            let cap = 3 + rng.below(6);
+            let mut reference = Pool::new(cap);
+            let mut mage = Pool::new(cap);
+            let mut round = 0usize;
+            for step in 0..(1 + rng.below(40)) {
+                round += rng.below(3);
+                // Ties and repeats are the cases eviction order decides, so
+                // a fixed set of rewards is drawn as often as a fresh one.
+                let reward = match rng.below(4) {
+                    0 => 0.0,
+                    1 => 1.0,
+                    2 => [0.5, 2.0][rng.below(2)],
+                    _ => 3.0 * rng.next_f64(),
+                };
+                let id_ref = reference.add(prog.clone(), vec![0], reward, "a", round);
+                let id_mage = mage
+                    .add_with(prog.clone(), vec![0], reward, "a", round, round, &|r, a| p.priority(r, a))
+                    .expect("evicts");
+                assert_eq!(id_ref, id_mage, "case {case} step {step}");
+                let kept = |pool: &Pool| pool.entries.iter().map(|e| e.id).collect::<Vec<u64>>();
+                assert_eq!(kept(&mage), kept(&reference), "case {case} step {step}, reward {reward}, cap {cap}");
+            }
+        }
+    }
+
+    #[test]
+    fn a_retention_that_prefers_recent_entries_evicts_an_old_high_reward_one() {
+        use crate::agents::Pool;
+        use crate::grammar::{ListExpr, Program};
+        let prog = Program { body: ListExpr::Range(1) };
+        // Old and rewarding, against recent and less so: `add` keeps the
+        // old entry, since it has the higher reward.
+        let recent = "@role(candidate)\nf priority(reward: f64, age: f64) -> f64 {\n    reward - age\n}\n";
+        let p = RetentionProgram::load(recent).unwrap();
+        let mut by_reward = Pool::new(2);
+        by_reward.add(prog.clone(), vec![0], 10.0, "old", 0);
+        by_reward.add(prog.clone(), vec![0], 3.0, "b", 10);
+        by_reward.add(prog.clone(), vec![0], 2.0, "c", 10);
+        let kept: Vec<u64> = by_reward.entries.iter().map(|e| e.id).collect();
+        assert_eq!(kept, vec![0, 1]);
+        let mut by_age = Pool::new(2);
+        by_age.add_with(prog.clone(), vec![0], 10.0, "old", 0, 0, &|r, a| p.priority(r, a)).unwrap();
+        by_age.add_with(prog.clone(), vec![0], 3.0, "b", 10, 10, &|r, a| p.priority(r, a)).unwrap();
+        by_age.add_with(prog, vec![0], 2.0, "c", 10, 10, &|r, a| p.priority(r, a)).unwrap();
+        let kept: Vec<u64> = by_age.entries.iter().map(|e| e.id).collect();
+        assert_eq!(kept, vec![1, 2]);
+    }
+
+    #[test]
+    fn the_kernel_refuses_a_non_finite_retention_priority() {
+        use crate::agents::Pool;
+        use crate::grammar::{ListExpr, Program};
+        let blow_up = "@role(candidate)\nf priority(reward: f64, age: f64) -> f64 {\n    exp(reward * 1000.0)\n}\n";
+        let p = RetentionProgram::load(blow_up).unwrap();
+        let e = p.priority(1.0, 0.0).err().expect("refused");
+        assert!(e.contains("not finite"), "{e}");
+        // Through the pool, the error reaches the caller and is not swallowed.
+        let prog = Program { body: ListExpr::Range(1) };
+        let mut pool = Pool::new(1);
+        pool.add_with(prog.clone(), vec![0], 1.0, "a", 0, 0, &|r, a| p.priority(r, a)).unwrap();
+        assert!(pool.add_with(prog, vec![0], 1.0, "b", 0, 0, &|r, a| p.priority(r, a)).is_err());
+    }
+
+    #[test]
+    fn a_retention_with_the_evaluator_role_is_refused_at_load() {
+        let evaluator = "@role(evaluator)\nf priority(reward: f64, age: f64) -> f64 {\n    reward\n}\n";
+        assert!(RetentionProgram::load(evaluator).err().expect("refused").contains("@role(candidate)"));
     }
 }
