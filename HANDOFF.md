@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,159** — rmi 1,384 · prototype 1,324 · ribosome 168 · germline 156 · forge 63 · arena 64 |
+| Tests | **3,183** — rmi 1,384 · prototype 1,348 · ribosome 168 · germline 156 · forge 63 · arena 64 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -40,7 +40,7 @@ each claim has a command beside it.
 | `.mg` sources | **102 checked, 0 sketches** — every `.mg` file in the repository typechecks |
 | Differentiability | **34 of 34 nets and 7 of 7 train blocks; 1 of 156 functions** (the arena's reward) — `scripts/measure-differentiability.sh`, re-derived in CI and compared against `DIFFERENTIABILITY.md` in both directions |
 | `grad` | An expression that typechecks and **runs**, for scalars: forward-mode duals, checked against central differences. The differentiability obligation is a premise of its typing rule, discharged by the call-graph pass. Tensors are refused, not deferred |
-| Documentation | 208 MAGE blocks typecheck; 59 documentation entry points run; 268 `rmi/docs` API items all exist — and "exist" now means **a definition exists**, not that the name appears somewhere in `src/`. It was 275 under the weaker criterion, 8 of them held up by English words in comments; the phantom entries are gone and a duplicate went with them |
+| Documentation | 209 MAGE blocks typecheck; 59 documentation entry points run; 268 `rmi/docs` API items all exist — and "exist" now means **a definition exists**, not that the name appears somewhere in `src/`. It was 275 under the weaker criterion, 8 of them held up by English words in comments; the phantom entries are gone and a duplicate went with them |
 | Release | `v0.3.0`, with the promo video attached as a release asset |
 
 Reproduce all of it:
@@ -811,6 +811,15 @@ MAGE source in Rust test strings:
 Candidates for retirement (9.2) are therefore `evolve`, `Z`, and the
 `unsafe` block's arms. `mod`/`use` have no callers but are the name
 resolver's subject, so retiring them needs a decision on modules first.
+
+**Plan 6.1: `@param` domains on constants.** `@param(lo, hi)` or
+`@param(in, a, b, ...)` on a `const` declares the values a tunable may take.
+`prototype/src/params.rs` reads them (`params(module)` returns each
+`ParamDecl` with its `Domain`), and `types::check` reports any problem as
+E0553 (`ParamDomain`): a non-`const` item, a non-numeric type, a malformed
+or empty domain, a non-literal default, or a default outside its domain.
+MAGE_SPEC §11.7. Not yet wired into the arena: the mutator does not sample
+within domains. Prototype +24 tests.
 
 **Pre-existing, not from this change:** `cargo clippy` 0.1.98 (2026-09-01)
 reports 15 warnings in `prototype` — 14 `chunks_exact` with a constant size in
@@ -3350,7 +3359,7 @@ changed before you commit.
 ---
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,324**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,348**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
   across six crates **3,140**; documented-count pins **101**, up from 46 — the
   two newest hold the `kb`/`net` overlap the tensor-product-binding decision
