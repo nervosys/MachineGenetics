@@ -425,6 +425,48 @@ energy. The per-round calibration's finding now holds on 17 times the samples:
 It also shows where a budget goes: at this scale, training is five times
 everything the agents do.
 
+## Allocating by hypervolume per joule (plan 7.1b)
+
+`--allocate hypervolume` changes what an agent is credited with when the
+budget is divided. The run keeps a front of programs on two objectives:
+reward (higher is better) and the program's own metered cost (lower is
+better). Each round, an agent's credit is the hypervolume its programs add
+to that front as it stood before the round. Dividing by the agent's joules
+gives the score that sets its share, with the same floor and softmax as
+before. Two properties follow, and the default `share` credit has neither:
+- A copy of earlier work earns nothing, because a dominated program adds no
+  volume.
+- Agents are not credited by the order they ran in.
+
+The cost axis's reference is fixed at four times the costliest program of
+the first round that produced any, so a program costing more than that
+counts as worse than nothing on cost. Every agent's `hypervolume_added` is
+reported under either allocation, so a run can compare the two credits
+without changing which one is in force. The front bookkeeping runs outside
+the agents' energy spans and is not charged to any agent.
+
+One A/B: seed 7, 60 rounds × 48 programs, a 12 kJ budget, CPU-only (65 W
+wall-clock estimate). Another project held GPU 1 at 100%.
+
+| | `share` | `hypervolume` |
+|---|---|---|
+| rounds before the budget halted the run | 29 | 27 |
+| held-out bits/byte, final | 7.618 | 7.517 |
+| held-out bits/byte, rounds 15 / 20 / 25 | 7.567 / 7.523 / 7.588 | 7.414 / 7.410 / 7.440 |
+| charged: training / programs / probes | 11,569 / 535 / 105 J | 7,924 / 4,079 / 101 J |
+| last round's shares (grammar-0, grammar-1, uniform, mutator) | 20 / 12 / 5 / 11 | 6 / 30 / 6 / 6 |
+| distinct program shapes | 1,064 | 916 |
+
+Held-out came out 0.10 bits/byte lower under hypervolume at every
+checkpoint. **That is not yet evidence for it.** The energy split shows why:
+training does the same work every round, yet it read 399 J per round in
+one run and 293 J in the other, and programs read 0.38 J and 3.1 J each.
+The meter is wall-clock time × 65 W on a CPU shared with other projects'
+builds, so these figures measure the machine's load as much as the loop.
+Hypervolume allocation did concentrate the budget: by the end, grammar-1
+held 30 of 48 programs. It is not the default. Deciding needs the
+multi-seed run on a quiet machine, with hardware counters (plan 3.3).
+
 ## The harness in MAGE (plan 5.1)
 
 The compression reward is now `arena/harness/reward.mg`, a MAGE program
