@@ -145,7 +145,15 @@ fn emit_function(buf: &mut String, f: &FunctionDef, vis: Visibility, mode: Mode,
 
     if let Some(ref rt) = f.return_type {
         buf.push_str(" -> ");
-        emit_type(buf, rt, mode);
+        match (mode, rt) {
+            // The parser reads `T or E` as a result only after `->`.
+            (Mode::Human, Type::Result { ok, err }) => {
+                emit_type(buf, ok, mode);
+                buf.push_str(" or ");
+                emit_type(buf, err, mode);
+            }
+            _ => emit_type(buf, rt, mode),
+        }
     }
 
     emit_where_clause(buf, &f.where_clause, mode);
@@ -727,9 +735,11 @@ fn emit_swarm(buf: &mut String, s: &SwarmDef, mode: Mode, depth: usize) {
         buf.push_str(";\n");
     }
     // size
-    if s.size.is_some() {
+    if let Some(ref size) = s.size {
         indent(buf, depth + 1);
-        buf.push_str("size: ...\n");
+        buf.push_str("size: ");
+        emit_expr(buf, size, mode);
+        buf.push_str(";\n");
     }
     // topology
     if let Some(ref topo) = s.topology {
@@ -945,24 +955,23 @@ fn emit_type(buf: &mut String, ty: &Type, mode: Mode) {
         } => {
             buf.push_str(&segments.join("."));
             if !type_args.is_empty() {
-                buf.push('<');
+                // `Path[A, B]` — the parser's type-argument form. `<…>` is
+                // also accepted, but `Path<Inner<T>>` ends in `>>`, which the
+                // lexer reads as one shift token.
+                buf.push('[');
                 for (i, a) in type_args.iter().enumerate() {
                     if i > 0 {
                         buf.push_str(", ");
                     }
                     emit_type(buf, a, mode);
                 }
-                buf.push('>');
+                buf.push(']');
             }
         }
         Type::Reference { mutable, inner } => {
-            buf.push('&');
-            if *mutable {
-                match mode {
-                    Mode::Agent => buf.push_str("m "),
-                    Mode::Human => buf.push_str("mut "),
-                }
-            }
+            // `&!T` is the only mutable-reference spelling the parser reads
+            // (`&m T` and `&mut T` do not parse), in both modes.
+            buf.push_str(if *mutable { "&!" } else { "&" });
             emit_type(buf, inner, mode);
         }
         Type::OwnedPtr { inner } => {
@@ -1033,20 +1042,16 @@ fn emit_type(buf: &mut String, ty: &Type, mode: Mode) {
             buf.push('?');
             emit_type(buf, inner, mode);
         }
-        Type::Result { ok, err } => match mode {
-            Mode::Agent => {
-                buf.push_str("R[");
-                emit_type(buf, ok, mode);
-                buf.push_str(", ");
-                emit_type(buf, err, mode);
-                buf.push(']');
-            }
-            Mode::Human => {
-                emit_type(buf, ok, mode);
-                buf.push_str(" or ");
-                emit_type(buf, err, mode);
-            }
-        },
+        // `R[T, E]` in both modes. The human `T or E` spelling is read only as
+        // a function's return type (see `emit_function`), so it cannot stand
+        // for a result anywhere else.
+        Type::Result { ok, err } => {
+            buf.push_str("R[");
+            emit_type(buf, ok, mode);
+            buf.push_str(", ");
+            emit_type(buf, err, mode);
+            buf.push(']');
+        }
         Type::Map { key, value } => {
             buf.push('{');
             emit_type(buf, key, mode);
@@ -1085,12 +1090,17 @@ fn emit_type(buf: &mut String, ty: &Type, mode: Mode) {
         }
         Type::Never => buf.push('!'),
         Type::Inferred => buf.push('_'),
-        Type::SelfType => buf.push_str("Self"),
-        Type::StringType => buf.push_str("String"),
-        Type::KnowledgeBase => buf.push_str("KnowledgeBase"),
+        // Each spelling below is the one the parser maps back to the same
+        // variant. `Self` and `String` are plain identifiers to the parser,
+        // so they would come back as paths.
+        Type::SelfType => buf.push_str("_T"),
+        // `s` is the only spelling the parser reads as the string type, in
+        // both modes (`String` parses as a path).
+        Type::StringType => buf.push('s'),
+        Type::KnowledgeBase => buf.push_str("kb"),
         Type::LlmType => buf.push_str("LLM"),
         Type::Tensor { inner, shape } => {
-            buf.push_str("Tensor[");
+            buf.push_str("tensor[");
             emit_type(buf, inner, mode);
             for d in shape {
                 buf.push_str(", ");
@@ -1102,7 +1112,7 @@ fn emit_type(buf: &mut String, ty: &Type, mode: Mode) {
             buf.push(']');
         }
         Type::ParamTy { inner, shape } => {
-            buf.push_str("Param[");
+            buf.push_str("param[");
             emit_type(buf, inner, mode);
             for d in shape {
                 buf.push_str(", ");
@@ -1113,13 +1123,15 @@ fn emit_type(buf: &mut String, ty: &Type, mode: Mode) {
             }
             buf.push(']');
         }
+        // `tensor`, `param`, `genome` and `policy` are keywords to the lexer,
+        // so only the lowercase spellings reach the parser's AI-type arms.
         Type::Genome { inner } => {
-            buf.push_str("Genome[");
+            buf.push_str("genome[");
             emit_type(buf, inner, mode);
             buf.push(']');
         }
         Type::Policy { state, action } => {
-            buf.push_str("Policy[");
+            buf.push_str("policy[");
             emit_type(buf, state, mode);
             buf.push_str(", ");
             emit_type(buf, action, mode);
@@ -1133,6 +1145,80 @@ fn emit_type(buf: &mut String, ty: &Type, mode: Mode) {
     }
 }
 
+// ── Operator precedence ──────────────────────────────────────────────
+//
+// `parser::parse_expr_bp` is a Pratt loop: an infix operator with left binding
+// power `l` takes its right operand at `l + 1`, and a prefix operator takes
+// its operand at a power above every infix one, so `-a + b` is `(-a) + b`.
+// A child is parenthesised exactly when the loop would not take it at the
+// power its parent gives it. Parentheses leave no node in the AST, so the
+// parenthesised text reparses to the same tree.
+
+/// Left binding power of an infix operator spelling, as the parser has it.
+fn infix_bp(op: &str) -> u8 {
+    match op {
+        "=" | "+=" | "-=" | "*=" | "/=" | "%=" => 1,
+        "||" | "|>" | "▸" => 3,
+        "&&" => 5,
+        "==" | "!=" => 7,
+        "<" | ">" | "<=" | ">=" => 9,
+        "|" => 11,
+        "^" => 13,
+        "&" => 15,
+        "<<" | ">>" => 17,
+        "+" | "-" => 19,
+        "*" | "/" | "%" => 21,
+        "⊗" | "⊙" => 23,
+        _ => 0,
+    }
+}
+
+/// The binding power an expression carries as the operand of an infix
+/// operator. `u8::MAX` means it binds tighter than every infix operator.
+/// A closure, `ret` or `break` takes everything after it, so it is 0.
+fn operand_bp(expr: &Expr) -> u8 {
+    match expr {
+        Expr::Binary { op, .. } => infix_bp(op),
+        Expr::Assign { .. } => 1,
+        Expr::Pipeline { .. } => 3,
+        Expr::Closure { .. } | Expr::Return { .. } | Expr::Break { .. } => 0,
+        _ => u8::MAX,
+    }
+}
+
+/// True when the expression prints as one primary, so that a postfix operator
+/// (`.f`, `(…)`, `[…]`, `?`, `.await`) may follow it unparenthesised. Prefix
+/// and postfix operators, casts, ranges and control flow are excluded: a
+/// postfix operator after a block-like `}` does not attach in the parser.
+fn is_primary(expr: &Expr) -> bool {
+    operand_bp(expr) == u8::MAX
+        && !matches!(
+            expr,
+            Expr::Unary { .. }
+                | Expr::Cast { .. }
+                | Expr::Is { .. }
+                | Expr::Range { .. }
+                | Expr::Continue
+                | Expr::If { .. }
+                | Expr::Match { .. }
+                | Expr::Loop { .. }
+                | Expr::While { .. }
+                | Expr::For { .. }
+                | Expr::Block { .. }
+        )
+}
+
+/// Emit `expr`, wrapped in parentheses when `parens` is set.
+fn emit_child(buf: &mut String, expr: &Expr, mode: Mode, parens: bool) {
+    if parens {
+        buf.push('(');
+        emit_expr(buf, expr, mode);
+        buf.push(')');
+    } else {
+        emit_expr(buf, expr, mode);
+    }
+}
+
 // ── Expressions ──────────────────────────────────────────────────────
 
 fn emit_expr(buf: &mut String, expr: &Expr, mode: Mode) {
@@ -1140,18 +1226,33 @@ fn emit_expr(buf: &mut String, expr: &Expr, mode: Mode) {
         Expr::Literal { value, .. } => buf.push_str(value),
         Expr::Ident { name } => buf.push_str(name),
         Expr::Binary { op, left, right } => {
-            emit_expr(buf, left, mode);
+            // Left-associative: the left operand may share the operator's
+            // power, the right operand must bind tighter than it.
+            let bp = infix_bp(op);
+            emit_child(buf, left, mode, operand_bp(left) < bp);
             buf.push(' ');
             buf.push_str(op);
             buf.push(' ');
-            emit_expr(buf, right, mode);
+            emit_child(buf, right, mode, operand_bp(right) <= bp);
+        }
+        Expr::Unary { op, operand } if op == "⊤" || op == "⊥" => {
+            // Tensor transpose and flatten are postfix in the parser.
+            emit_child(buf, operand, mode, !is_primary(operand));
+            buf.push_str(op);
         }
         Expr::Unary { op, operand } => {
             buf.push_str(op);
-            emit_expr(buf, operand, mode);
+            // A prefix operand is parsed with its postfix chain but no infix
+            // operator. Another prefix operator also needs parentheses: `&&x`
+            // lexes as logical and, not as two `&`.
+            let prefix_operand = matches!(
+                &**operand,
+                Expr::Unary { op, .. } if op != "⊤" && op != "⊥"
+            );
+            emit_child(buf, operand, mode, operand_bp(operand) != u8::MAX || prefix_operand);
         }
         Expr::Call { func, args } => {
-            emit_expr(buf, func, mode);
+            emit_child(buf, func, mode, !is_primary(func));
             buf.push('(');
             for (i, a) in args.iter().enumerate() {
                 if i > 0 {
@@ -1164,12 +1265,23 @@ fn emit_expr(buf: &mut String, expr: &Expr, mode: Mode) {
         Expr::MethodCall {
             receiver,
             method,
+            type_args,
             args,
-            ..
         } => {
-            emit_expr(buf, receiver, mode);
+            emit_child(buf, receiver, mode, !is_primary(receiver));
             buf.push('.');
             buf.push_str(method);
+            if !type_args.is_empty() {
+                // Turbofish `.m::<T>(…)`, read by the parser's postfix loop.
+                buf.push_str("::<");
+                for (i, t) in type_args.iter().enumerate() {
+                    if i > 0 {
+                        buf.push_str(", ");
+                    }
+                    emit_type(buf, t, mode);
+                }
+                buf.push('>');
+            }
             buf.push('(');
             for (i, a) in args.iter().enumerate() {
                 if i > 0 {
@@ -1180,17 +1292,21 @@ fn emit_expr(buf: &mut String, expr: &Expr, mode: Mode) {
             buf.push(')');
         }
         Expr::FieldAccess { object, field } => {
-            emit_expr(buf, object, mode);
+            emit_child(buf, object, mode, !is_primary(object));
             buf.push('.');
             buf.push_str(field);
         }
         Expr::Index { object, index } => {
-            emit_expr(buf, object, mode);
+            emit_child(buf, object, mode, !is_primary(object));
             buf.push('[');
             emit_expr(buf, index, mode);
             buf.push(']');
         }
         Expr::StructLit { path, fields } => {
+            // Both modes spell a struct literal `@Path { … }`. Without the `@`
+            // the parser reads `Path` as a name and `{ … }` as a block after
+            // it, so a function tail `Dropout { rate: r }` split in two.
+            buf.push('@');
             buf.push_str(&path.join("."));
             buf.push_str(" { ");
             for (i, f) in fields.iter().enumerate() {
@@ -1212,6 +1328,11 @@ fn emit_expr(buf: &mut String, expr: &Expr, mode: Mode) {
                     buf.push_str(", ");
                 }
                 emit_expr(buf, e, mode);
+            }
+            // `(a)` is a parenthesised expression; a one-element tuple needs
+            // its trailing comma.
+            if elements.len() == 1 {
+                buf.push(',');
             }
             buf.push(')');
         }
@@ -1299,9 +1420,13 @@ fn emit_expr(buf: &mut String, expr: &Expr, mode: Mode) {
             buf.push('}');
         }
         Expr::Match { scrutinee, arms } => {
-            match mode {
-                Mode::Agent => buf.push_str("?= "),
-                Mode::Human => buf.push_str("match "),
+            // A match without a scrutinee has no `match` spelling: `?= {`
+            // and `match {` do not parse. `? {` and `if {` do.
+            match (mode, scrutinee) {
+                (Mode::Agent, Some(_)) => buf.push_str("?= "),
+                (Mode::Agent, None) => buf.push_str("? "),
+                (Mode::Human, Some(_)) => buf.push_str("match "),
+                (Mode::Human, None) => buf.push_str("if "),
             }
             if let Some(s) = scrutinee {
                 emit_expr(buf, s, mode);
@@ -1371,9 +1496,11 @@ fn emit_expr(buf: &mut String, expr: &Expr, mode: Mode) {
             }
         }
         Expr::Break { value } => {
-            match mode {
-                Mode::Agent => buf.push('!'),
-                Mode::Human => buf.push_str("break"),
+            // Bare `!` is `break` in agent mode, but `! x` lexes as logical
+            // not, so a break with a value is spelled `break` in both modes.
+            match (mode, value) {
+                (Mode::Agent, None) => buf.push('!'),
+                _ => buf.push_str("break"),
             }
             if let Some(v) = value {
                 buf.push(' ');
@@ -1385,25 +1512,26 @@ fn emit_expr(buf: &mut String, expr: &Expr, mode: Mode) {
             Mode::Human => buf.push_str("continue"),
         },
         Expr::Try { expr } => {
-            emit_expr(buf, expr, mode);
+            emit_child(buf, expr, mode, !is_primary(expr));
             buf.push('?');
         }
         Expr::Await { expr } => {
-            emit_expr(buf, expr, mode);
-            match mode {
-                Mode::Agent => buf.push_str(".w"),
-                Mode::Human => buf.push_str(".await"),
-            }
+            emit_child(buf, expr, mode, !is_primary(expr));
+            // `.w` is not read as await in agent mode: the parser takes it for
+            // a field access. `.await` is accepted in both modes.
+            buf.push_str(".await");
         }
         Expr::Cast { expr, ty } => {
-            emit_expr(buf, expr, mode);
+            emit_child(buf, expr, mode, !is_primary(expr));
             buf.push_str(" as ");
             emit_type(buf, ty, mode);
         }
         Expr::Assign { target, value } => {
-            emit_expr(buf, target, mode);
+            // The parser reads `a = b = c` as `(a = b) = c`, so an assignment
+            // used as the value is bracketed.
+            emit_child(buf, target, mode, operand_bp(target) < 1);
             buf.push_str(" = ");
-            emit_expr(buf, value, mode);
+            emit_child(buf, value, mode, operand_bp(value) <= 1);
         }
         Expr::Range {
             start,
@@ -1418,17 +1546,19 @@ fn emit_expr(buf: &mut String, expr: &Expr, mode: Mode) {
             }
             emit_expr(buf, end, mode);
         }
-        Expr::Todo => buf.push_str("todo!()"),
-        Expr::Unimplemented => buf.push_str("unimplemented!()"),
+        // `??` and `???` are the parser's todo and unimplemented tokens. A
+        // Rust-style `todo!()` is a macro call, which MAGE does not have.
+        Expr::Todo => buf.push_str("??"),
+        Expr::Unimplemented => buf.push_str("???"),
         Expr::Error { message } => {
             buf.push_str("/* error: ");
             buf.push_str(message);
             buf.push_str(" */");
         }
         Expr::Pipeline { left, right } => {
-            emit_expr(buf, left, mode);
+            emit_child(buf, left, mode, operand_bp(left) < 3);
             buf.push_str(" |> ");
-            emit_expr(buf, right, mode);
+            emit_child(buf, right, mode, operand_bp(right) <= 3);
         }
         // `∇(e, w)` in agent mode, `grad(e, w)` in human mode — the
         // Gradient row of the sigil table (§3), which published both
@@ -1441,7 +1571,7 @@ fn emit_expr(buf: &mut String, expr: &Expr, mode: Mode) {
             buf.push(')');
         }
         Expr::Is { expr, pattern } => {
-            emit_expr(buf, expr, mode);
+            emit_child(buf, expr, mode, !is_primary(expr));
             buf.push_str(" is ");
             emit_pattern(buf, pattern);
         }
@@ -1466,6 +1596,8 @@ fn emit_pattern(buf: &mut String, pat: &Pattern) {
             buf.push(')');
         }
         Pattern::Struct { path, fields } => {
+            // `@Path { … }` in both modes, as for struct literals.
+            buf.push('@');
             buf.push_str(&path.join("."));
             buf.push_str(" { ");
             for (i, f) in fields.iter().enumerate() {
@@ -1502,7 +1634,9 @@ fn emit_pattern(buf: &mut String, pat: &Pattern) {
                 emit_pattern(buf, p);
             }
             if *rest {
-                buf.push_str(", ..");
+                // `[..]` alone: a comma before the rest would read as a
+                // pattern element.
+                buf.push_str(if elements.is_empty() { ".." } else { ", .." });
                 if let Some(name) = rest_name {
                     buf.push_str(name);
                 }
@@ -1547,6 +1681,12 @@ fn emit_stmt(buf: &mut String, stmt: &Stmt, mode: Mode, depth: usize) {
         } => {
             indent(buf, depth);
             match mode {
+                // `v (a, b) = …` parses as a call of `v`: only the long
+                // keywords start a destructuring binder. Name-only patterns
+                // keep the short form.
+                Mode::Agent if !matches!(pattern, Pattern::Ident { .. } | Pattern::Wildcard) => {
+                    buf.push_str(if *mutable { "var " } else { "val " });
+                }
                 Mode::Agent => {
                     if *mutable {
                         buf.push_str("m ");
@@ -1872,5 +2012,154 @@ mod tests {
         let m = parse_source("f read() -> String or IoError { }");
         let out = format_agent(&m);
         assert!(out.contains("R["), "agent mode should use R[]: {out}");
+    }
+
+    // ── Round-trip (parse → print → parse) ───────────────────────────
+
+    /// Parse `src`, print it in both modes, reparse each print, and check that
+    /// the AST is unchanged and that printing again gives the same text.
+    fn assert_round_trips(src: &str) {
+        let m = parse_source(src);
+        let before = serde_json::to_value(&m).unwrap();
+        let printers: [(&str, fn(&Module) -> String); 2] =
+            [("agent", format_agent), ("human", format_human)];
+        for (mode, print) in printers {
+            let out = print(&m);
+            let again = parser::parse(&lexer::lex(&out)).unwrap_or_else(|e| {
+                panic!("{mode}: reparse failed at {}:{}: {}\n{out}", e.line, e.col, e.message)
+            });
+            assert_eq!(
+                serde_json::to_value(&again).unwrap(),
+                before,
+                "{mode}: AST changed:\n{out}"
+            );
+            assert_eq!(print(&again), out, "{mode}: not a fixpoint:\n{out}");
+        }
+    }
+
+    #[test]
+    fn round_trip_struct_literals_and_patterns() {
+        // A struct literal is `@Path { … }`; without the `@` it reads as a name
+        // followed by a block, so a function tail split in two.
+        assert_round_trips(
+            "S Dropout { rate: f32 }
+             f make(rate: f32) -> Dropout { @Dropout { rate: rate } }
+             f pair() -> [Dropout] { [@Dropout { rate: 0.5 }, @Dropout { rate: 0.1 }] }
+             f size_of(d: Dropout) -> f32 { ?= d { @Dropout { rate: r } => r, } }",
+        );
+    }
+
+    #[test]
+    fn round_trip_string_and_special_types() {
+        // `s` is the string type; `String` would come back as a path.
+        assert_round_trips(
+            "S Person { name: s, tags: [s]~ }
+             f greet(p: &Person) -> s { p.name }
+             f same(x: _T) -> _T { x }
+             f ask(k: kb) -> s { \"\" }
+             f bump(c: &!i32) {}
+             f nested(m: Map[s, List[i32]]) {}
+             f shaped(t: tensor[f32, 2, n]) {}
+             f learn(p: policy[s, i32], g: genome[f32], w: param[f32, 3]) {}",
+        );
+    }
+
+    #[test]
+    fn round_trip_result_types() {
+        // `T or E` is read only as a return type; a result in any other position
+        // is `R[T, E]`.
+        assert_round_trips(
+            "f read(path: s) -> s or IoError { path }
+             f wrap(r: R[s, IoError]) -> R[s, IoError] { r }
+             f hold() { v r: R[i32, s] = 0; }",
+        );
+    }
+
+    #[test]
+    fn round_trip_binary_precedence() {
+        // Each parenthesised operand binds looser than its parent, so the
+        // parentheses must survive printing.
+        assert_round_trips(
+            "f calc(a: i32, b: i32, c: i32) -> i32 {
+                 v x = (a + b) * c;
+                 v y = a - (b - c);
+                 v z = a / (b * c);
+                 v w = a + b * c;
+                 v eq = a == (b < c);
+                 v t = (a == b) < c;
+                 v r = -(a + b) * c;
+                 v p = a |> (b |> c);
+                 x + y + z + w + eq + t + r
+             }",
+        );
+    }
+
+    #[test]
+    fn round_trip_unary_and_postfix() {
+        // A prefix or postfix operator needs its operand parenthesised when the
+        // operand is an operator application or another prefix operator.
+        assert_round_trips(
+            "f post(a: i32, b: i32, xs: [i32]) -> i32 {
+                 v n = (a + b).abs();
+                 v k = (-a).abs();
+                 v c = (a + b) as f64;
+                 v d = -(-a);
+                 v e = !(a == b);
+                 v g = xs[a + 1];
+                 v h = (a + b)?;
+                 n + k + d + g + h
+             }",
+        );
+    }
+
+    #[test]
+    fn round_trip_await_turbofish_and_patterns() {
+        // `.await` (not `.w`, which reads as a field), a turbofish call, a
+        // one-element tuple, and destructuring binders (which need `val`).
+        assert_round_trips(
+            "f fetch(url: s) -> s { url }
+             f run(xs: [i32]) -> i32 {
+                 v s = fetch(\"a\").await;
+                 v n = xs.len::<i32>();
+                 v t = (1,);
+                 val (a, b) = (2, 3);
+                 val [h, ..rest] = xs;
+                 val [..] = xs;
+                 n
+             }",
+        );
+    }
+
+    #[test]
+    fn round_trip_break_todo_and_scrutinee_less_match() {
+        // `break 3` is spelled `break` in agent mode too, since `! 3` is a
+        // logical not. `??` is todo, and `? { … }` is a match with no scrutinee.
+        assert_round_trips(
+            "f spin() -> i32 {
+                 v r = @@ { break 3; };
+                 ??
+             }
+             f pick(x: i32) -> i32 { ? { 0 => 1, _ => x } }",
+        );
+    }
+
+    #[test]
+    fn round_trip_swarm_size_expression() {
+        // `size:` is an expression. The printer wrote `size: ...`, which the
+        // parser cannot read. Only the human spelling is checked here: the
+        // agent-mode swarm sigil does not parse yet.
+        let m = parse_source(
+            "swarm ReviewTeam {
+                 agent: Critic
+                 size: 2 + 1
+                 topology: mesh
+             }",
+        );
+        let before = serde_json::to_value(&m).unwrap();
+        let out = format_human(&m);
+        let again = parser::parse(&lexer::lex(&out)).unwrap_or_else(|e| {
+            panic!("human: reparse failed at {}:{}: {}\n{out}", e.line, e.col, e.message)
+        });
+        assert_eq!(serde_json::to_value(&again).unwrap(), before, "AST changed:\n{out}");
     }
 }
