@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,186** — rmi 1,384 · prototype 1,348 · ribosome 168 · germline 156 · forge 63 · arena 67 |
+| Tests | **3,188** — rmi 1,384 · prototype 1,350 · ribosome 168 · germline 156 · forge 63 · arena 67 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -830,6 +830,16 @@ rewrites were credited as novel (seed 7, 20 rounds). `--novelty behaviour`
 keys novelty on outputs at three fixed seeds instead, and the count drops
 to 0 of 180. It is opt-in until its held-out effect is measured. Confirmed
 exploits are listed in `Report.attacks` (ARENA.md). Arena +3 tests.
+
+**B11: one evaluator thread per caller, reused.** Profiling the arena found
+95–99% of a program's time was spawning a fresh 256 MB-stack thread for each
+bounded run, not interpreting it. `run_metered` now sends an owned job (the
+module is cloned) to a thread-local worker with the same stack, spawned on
+first use. A panic in a run is caught and reported as before, with the whole
+budget spent, and the worker serves the next run; a worker that died is
+replaced and the job retried once. 1,000 trivial bounded runs, debug build:
+24.5 s → 0.41 s. The arena's library tests went from 75.6 s to 25.4 s.
+Prototype +2 tests.
 
 **Pre-existing, not from this change:** `cargo clippy` 0.1.98 (2026-09-01)
 reports 15 warnings in `prototype` — 14 `chunks_exact` with a constant size in
@@ -3369,7 +3379,7 @@ changed before you commit.
 ---
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,348**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,350**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
   across six crates **3,140**; documented-count pins **101**, up from 46 — the
   two newest hold the `kb`/`net` overlap the tensor-product-binding decision
