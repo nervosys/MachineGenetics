@@ -2316,27 +2316,6 @@ mod tests {
 
     // ── Round-trip (parse → print → parse) ───────────────────────────
 
-    /// Parse `src`, print it in both modes, reparse each print, and check that
-    /// the AST is unchanged and that printing again gives the same text.
-    fn assert_round_trips(src: &str) {
-        let m = parse_source(src);
-        let before = serde_json::to_value(&m).unwrap();
-        let printers: [(&str, fn(&Module) -> String); 2] =
-            [("agent", format_agent), ("human", format_human)];
-        for (mode, print) in printers {
-            let out = print(&m);
-            let again = parser::parse(&lexer::lex(&out)).unwrap_or_else(|e| {
-                panic!("{mode}: reparse failed at {}:{}: {}\n{out}", e.line, e.col, e.message)
-            });
-            assert_eq!(
-                serde_json::to_value(&again).unwrap(),
-                before,
-                "{mode}: AST changed:\n{out}"
-            );
-            assert_eq!(print(&again), out, "{mode}: not a fixpoint:\n{out}");
-        }
-    }
-
     #[test]
     fn round_trip_struct_literals_and_patterns() {
         // A struct literal is `@Path { … }`; without the `@` it reads as a name

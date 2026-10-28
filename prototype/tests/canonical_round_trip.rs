@@ -1,3 +1,18 @@
+//! Plan 9.3: one canonical form. Every `.mg` source in the repository, printed
+//! by either surface (`--fmt-compact`, the sigil projection agents write in, or
+//! `--fmt-expand`, the keyword projection), reparses to the identical AST, and
+//! printing that AST again gives the same text. So the AST is the language and
+//! both surfaces are lossless views of it.
+//!
+//! The canonical form is what the parser reads. When this test was first run,
+//! 14 of 103 sources survived: the agent printer used sigils the parser has no
+//! rule for (`Ψ` for a net, `⊢` for a kb fact), printed stubs (`forward { ...
+//! }`), dropped the `@` that makes `@P { .. }` a struct literal, and printed
+//! `String`, which the parser reads as a path rather than the string type `s`.
+//! One print also crashed the lexer (an unknown multi-byte character).
+//!
+//! A failure names the file, the surface, and the first AST path that differs.
+
 use mage_prototype::{fmt, lexer, parser};
 use serde_json::Value;
 use std::path::{Path, PathBuf};
@@ -72,10 +87,8 @@ fn line_of(s: &str, err: &str) -> String {
     s.lines().nth(n.saturating_sub(1)).unwrap_or("").chars().take(120).collect()
 }
 
-/// Diagnostic, not yet an assertion: run with `--ignored` and `PROBE_OUT=<file>`.
 #[test]
-#[ignore]
-fn probe() {
+fn every_source_round_trips_through_both_surfaces() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
     let mut files = Vec::new();
     corpus(root, &mut files);
@@ -123,9 +136,10 @@ fn probe() {
             report += &format!("{rel}\n{}\n", errs.join("\n"));
         }
     }
-    report += &format!("ok {ok} bad {bad} unparsed {skip}\n");
-    match std::env::var("PROBE_OUT") {
-        Ok(p) => std::fs::write(p, report).unwrap(),
-        Err(_) => print!("{report}"),
-    }
+    // A walk that finds nothing would pass vacuously.
+    assert!(ok >= 100, "only {ok} sources found under {}", root.display());
+    assert!(
+        bad == 0 && skip == 0,
+        "{report}{ok} round-trip, {bad} do not, {skip} do not parse"
+    );
 }
