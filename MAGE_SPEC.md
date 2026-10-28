@@ -1719,6 +1719,44 @@ The three agent roles (plan 7.2) are for the code that writes, varies and
 attacks candidates. Each may sample, and none may use a GPU, read held-out
 data or promote. An attacker has a proposer's powers and no more, because
 it attacks the proxy and must not see what the proxy is checked against.
+### 11.7 Tunable parameters
+
+A **tunable parameter** is a `const` whose `@param(...)` attribute states the
+domain its value must lie in. The domain is part of the declaration, so an
+agent that tunes the value can read the admissible range without evaluating
+anything, and the typechecker refuses a value outside it.
+
+```mg
+@param(0.0, 1.0)
+const LR: f64 = 0.02;      // closed real interval [0.0, 1.0]
+
+@param(1, 64)
+const LAYERS: i64 = 4;     // closed integer interval [1, 64]
+
+@param(in, 1, 2, 4, 8)
+const HEADS: i64 = 4;      // finite set {1, 2, 4, 8}
+```
+
+- **Real interval** `@param(lo, hi)` on an `f32` or `f64` constant: closed,
+  both bounds included.
+- **Integer interval** `@param(lo, hi)` on an integer constant (`i8`..`i64`,
+  `u8`..`u64`, `isize`, `usize`): closed, bounds must be integers.
+- **Finite set** `@param(in, a, b, ...)` on either kind: the value must be one
+  of the listed members, which must be of the constant's kind.
+
+Negative bounds and values are written with a leading `-`, as in
+`@param(-1.0, 1.0)` with the value `-0.5`. The default value must be a numeric
+literal, optionally negated, so it can be read without evaluation.
+
+A `@param` declaration is refused with **E0553** (`ParamDomain`) when it is
+annotated on anything other than a `const`; when the domain is malformed (the
+wrong number of arguments, a non-numeric bound, `lo > hi`, or an empty `in`
+set); when the constant's type is neither integer nor float, or a bound or set
+member is not of the constant's kind; when the value is not a numeric literal;
+or when the value lies outside its domain. The message names the constant,
+its value and its domain, for example "`LR` = 1.5 is outside its domain
+[0, 1]". The diagnostic is an ordinary type error, so an out-of-domain
+parameter stops the program at the typechecker.
 
 ---
 
