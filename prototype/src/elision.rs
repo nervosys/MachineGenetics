@@ -2,10 +2,19 @@
 ///
 /// In agentic mode (the default), this pass strips safety annotations from the
 /// AST that are redundant in MAGE's design: lifetimes, `unsafe`, `&mut`,
-/// `move`, `ref`, `Pin`, `PhantomData`, `Send`/`Sync`/`Copy`/`Unpin`/`Sized`
-/// bounds, etc.  The compiler and SKB handle these concerns automatically;
-/// removing them from the surface syntax makes the AST dramatically simpler
-/// for both human and agent consumption (per §4 of the MAGE proposal).
+/// `ref` patterns, `Pin`, `PhantomData`, and `Send`/`Sync`/`Copy`/`Unpin`/
+/// `Sized`/`Freeze` bounds. (`move` is not listed because the AST has no
+/// `move` flag to strip.) The compiler and SKB handle these concerns
+/// automatically; removing them from the surface syntax makes the AST
+/// dramatically simpler for both human and agent consumption (per §4 of the
+/// MAGE proposal).
+///
+/// Which parts are data (plan 5.3, measured): the eliminated bounds, the
+/// eliminated wrapper types and the attribute abbreviations are tables a
+/// self-improving loop could vary. The structural rewrites (`&mut` → `&`,
+/// `Pin<T>` → `T`, unwrapping `unsafe` blocks and `ref` patterns) stay code.
+/// A pattern language able to express them would be larger than the
+/// roughly 26 lines they take, and the AST walker is code either way.
 use crate::ast::*;
 
 /// Safety-related trait bounds that are eliminated in agentic mode.
@@ -142,7 +151,8 @@ fn elide_module(m: &ModuleDef) -> ModuleDef {
 }
 
 fn elide_use(u: &UseDef) -> UseDef {
-    // Filter out use-imports of eliminated types
+    // Copied unchanged. Imports of eliminated types such as
+    // `std::pin::Pin` survive this pass; nothing filters them.
     UseDef {
         path: u.path.clone(),
         alias: u.alias.clone(),
@@ -255,7 +265,8 @@ fn elide_type(ty: &Type) -> Type {
             type_args,
         } if is_eliminated_type(segments) => {
             if segments.last().map(|s| s.as_str()) == Some("PhantomData") {
-                // PhantomData<T> → Unit (field can be removed by later passes)
+                // PhantomData<T> → `()`. The field itself stays: no pass
+                // removes unit fields.
                 Type::Tuple { elements: vec![] }
             } else {
                 // Pin<T> → T (unwrap)
@@ -648,42 +659,45 @@ fn elide_pattern(pat: &Pattern) -> Pattern {
 // Maps compressed MAGE attribute shorthands (`@d`, `@r`, …) to their
 // full Rust equivalents (`derive`, `repr`, …).
 
+/// Attribute abbreviations, `(short, full)`: the one table both directions
+/// read, so they cannot drift apart. `cfg` maps to itself and is listed for
+/// completeness.
+pub const ATTRIBUTE_ABBREVIATIONS: &[(&str, &str)] = &[
+    ("d", "derive"),
+    ("r", "repr"),
+    ("mu", "must_use"),
+    ("a", "allow"),
+    ("x", "deny"),
+    ("cfg", "cfg"),
+    ("t", "test"),
+    ("b", "bench"),
+    ("se", "serde"),
+    ("pi", "proc_macro"),
+    ("pnb", "non_blocking"),
+    ("pv", "visibility"),
+    ("pt", "target_feature"),
+    ("pa", "align"),
+    ("pp", "packed"),
+    ("at", "async_trait"),
+    ("co", "cold"),
+    ("il", "inline"),
+    ("ila", "inline_always"),
+    ("na", "no_alloc"),
+    ("nm", "no_mangle"),
+    ("dp", "deprecated"),
+    ("dc", "doc"),
+    ("gl", "global_allocator"),
+    ("as", "agent_skill"),
+    ("ac", "agent_capability"),
+    ("ax", "agent_export"),
+    ("ao", "agent_observable"),
+    ("ae", "agent_effect"),
+];
+
 /// Expand a compressed MAGE attribute name to its full Rust equivalent.
 /// Returns `None` if the name is already full-form or unknown.
 pub fn expand_attribute_name(name: &str) -> Option<&'static str> {
-    match name {
-        "d" => Some("derive"),
-        "r" => Some("repr"),
-        "mu" => Some("must_use"),
-        "a" => Some("allow"),
-        "x" => Some("deny"),
-        "cfg" => Some("cfg"), // already full, included for completeness
-        "t" => Some("test"),
-        "b" => Some("bench"),
-        "se" => Some("serde"),
-        "pi" => Some("proc_macro"),
-        "pnb" => Some("non_blocking"),
-        "pv" => Some("visibility"),
-        "pt" => Some("target_feature"),
-        "pa" => Some("align"),
-        "pp" => Some("packed"),
-        "at" => Some("async_trait"),
-        "co" => Some("cold"),
-        "il" => Some("inline"),
-        "ila" => Some("inline_always"),
-        "na" => Some("no_alloc"),
-        "nm" => Some("no_mangle"),
-        "dp" => Some("deprecated"),
-        "dc" => Some("doc"),
-        "gl" => Some("global_allocator"),
-        // Agent discovery attributes
-        "as" => Some("agent_skill"),
-        "ac" => Some("agent_capability"),
-        "ax" => Some("agent_export"),
-        "ao" => Some("agent_observable"),
-        "ae" => Some("agent_effect"),
-        _ => None,
-    }
+    ATTRIBUTE_ABBREVIATIONS.iter().find(|(short, _)| *short == name).map(|(_, full)| *full)
 }
 
 /// Expand a single compressed attribute to its full-form equivalent.
@@ -705,39 +719,7 @@ pub fn expand_attributes(attrs: &[Attribute]) -> Vec<Attribute> {
 
 /// Return the compressed form for a Rust attribute name, if one exists.
 pub fn compress_attribute_name(rust_name: &str) -> Option<&'static str> {
-    match rust_name {
-        "derive" => Some("d"),
-        "repr" => Some("r"),
-        "must_use" => Some("mu"),
-        "allow" => Some("a"),
-        "deny" => Some("x"),
-        "cfg" => Some("cfg"),
-        "test" => Some("t"),
-        "bench" => Some("b"),
-        "serde" => Some("se"),
-        "proc_macro" => Some("pi"),
-        "non_blocking" => Some("pnb"),
-        "visibility" => Some("pv"),
-        "target_feature" => Some("pt"),
-        "align" => Some("pa"),
-        "packed" => Some("pp"),
-        "async_trait" => Some("at"),
-        "cold" => Some("co"),
-        "inline" => Some("il"),
-        "inline_always" => Some("ila"),
-        "no_alloc" => Some("na"),
-        "no_mangle" => Some("nm"),
-        "deprecated" => Some("dp"),
-        "doc" => Some("dc"),
-        "global_allocator" => Some("gl"),
-        // Agent discovery attributes
-        "agent_skill" => Some("as"),
-        "agent_capability" => Some("ac"),
-        "agent_export" => Some("ax"),
-        "agent_observable" => Some("ao"),
-        "agent_effect" => Some("ae"),
-        _ => None,
-    }
+    ATTRIBUTE_ABBREVIATIONS.iter().find(|(_, full)| *full == rust_name).map(|(short, _)| *short)
 }
 
 // ── Tests ────────────────────────────────────────────────────────────
@@ -944,6 +926,24 @@ mod tests {
     #[test]
     fn compress_must_use_roundtrip() {
         assert_eq!(compress_attribute_name("must_use"), Some("mu"));
+    }
+
+    #[test]
+    fn the_abbreviation_table_is_a_bijection() {
+        // Both directions read one table; a duplicate on either side would
+        // make one of them ambiguous.
+        let mut shorts: Vec<&str> = ATTRIBUTE_ABBREVIATIONS.iter().map(|(s, _)| *s).collect();
+        let mut fulls: Vec<&str> = ATTRIBUTE_ABBREVIATIONS.iter().map(|(_, f)| *f).collect();
+        shorts.sort_unstable();
+        shorts.dedup();
+        fulls.sort_unstable();
+        fulls.dedup();
+        assert_eq!(shorts.len(), ATTRIBUTE_ABBREVIATIONS.len());
+        assert_eq!(fulls.len(), ATTRIBUTE_ABBREVIATIONS.len());
+        for (short, full) in ATTRIBUTE_ABBREVIATIONS {
+            assert_eq!(compress_attribute_name(expand_attribute_name(short).unwrap()), Some(*short));
+            assert_eq!(expand_attribute_name(compress_attribute_name(full).unwrap()), Some(*full));
+        }
     }
 
     #[test]
