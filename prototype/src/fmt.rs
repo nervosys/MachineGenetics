@@ -81,7 +81,7 @@ fn emit_item(buf: &mut String, item: &Item, mode: Mode, depth: usize) {
         ItemKind::Static(s) => emit_static(buf, s, item.visibility, mode, depth),
         ItemKind::Effect(e) => emit_effect(buf, e, mode, depth),
         ItemKind::Spec(s) => emit_spec(buf, s, mode, depth),
-        ItemKind::Agent(a) => emit_agent(buf, a, mode, depth),
+        ItemKind::Agent(a) => emit_agent(buf, a, depth),
         ItemKind::Net(n) => emit_net(buf, n, mode, depth),
         ItemKind::Kb(k) => emit_kb(buf, k, mode, depth),
         ItemKind::Evolve(e) => emit_evolve(buf, e, mode, depth),
@@ -102,18 +102,19 @@ fn emit_function(buf: &mut String, f: &FunctionDef, vis: Visibility, mode: Mode,
     }
 
     indent(buf, depth);
+    // The parser takes one function keyword per item, and `async` (`af`) and
+    // `uf` are alternatives to `f`, so an async function drops `unsafe` (the
+    // parser cannot produce both flags). `unsafe` has no keyword of its own:
+    // the parser reads `uf` only, so both modes print `uf`.
     match mode {
         Mode::Agent => {
-            // In agent mode, `unsafe` is elided — the compiler's SKB handles
-            // all safety analysis.  `unsafe fn` emits as plain `f`.
+            if vis == Visibility::Public {
+                buf.push('+');
+            }
             if f.is_async {
-                if vis == Visibility::Public {
-                    buf.push_str("+af ");
-                } else {
-                    buf.push_str("af ");
-                }
-            } else if vis == Visibility::Public {
-                buf.push_str("+f ");
+                buf.push_str("af ");
+            } else if f.is_unsafe {
+                buf.push_str("uf ");
             } else {
                 buf.push_str("f ");
             }
@@ -123,12 +124,14 @@ fn emit_function(buf: &mut String, f: &FunctionDef, vis: Visibility, mode: Mode,
                 buf.push_str("pub ");
             }
             if f.is_async {
+                // `async` is the function keyword itself: `async name(…)`,
+                // with no `fn` before the name.
                 buf.push_str("async ");
+            } else if f.is_unsafe {
+                buf.push_str("uf ");
+            } else {
+                buf.push_str("fn ");
             }
-            if f.is_unsafe {
-                buf.push_str("unsafe ");
-            }
-            buf.push_str("fn ");
         }
     }
 
@@ -520,7 +523,13 @@ fn emit_effect(buf: &mut String, e: &EffectDef, mode: Mode, depth: usize) {
     buf.push_str(&e.name);
     buf.push_str(" {\n");
     for op in &e.operations {
+        // Each operation is a function signature: keyword, name, `(params)`,
+        // optional `-> type`, and a `;`. The parser requires all of them.
         indent(buf, depth + 1);
+        match mode {
+            Mode::Agent => buf.push_str("f "),
+            Mode::Human => buf.push_str("fn "),
+        }
         buf.push_str(&op.name);
         buf.push('(');
         for (i, p) in op.params.iter().enumerate() {
@@ -534,7 +543,7 @@ fn emit_effect(buf: &mut String, e: &EffectDef, mode: Mode, depth: usize) {
             buf.push_str(" -> ");
             emit_type(buf, rt, mode);
         }
-        buf.push_str(",\n");
+        buf.push_str(";\n");
     }
     indent(buf, depth);
     buf.push_str("}\n");
@@ -549,6 +558,7 @@ fn emit_spec(buf: &mut String, s: &SpecDef, mode: Mode, depth: usize) {
         Mode::Human => buf.push_str("spec "),
     }
     buf.push_str(&s.name);
+    emit_generics(buf, &s.generics);
     if !s.params.is_empty() {
         buf.push('(');
         for (i, p) in s.params.iter().enumerate() {
@@ -603,12 +613,10 @@ fn emit_spec(buf: &mut String, s: &SpecDef, mode: Mode, depth: usize) {
 
 // ── Agent ────────────────────────────────────────────────────────────
 
-fn emit_agent(buf: &mut String, a: &AgentDef, mode: Mode, depth: usize) {
+fn emit_agent(buf: &mut String, a: &AgentDef, depth: usize) {
     indent(buf, depth);
-    match mode {
-        Mode::Agent => buf.push_str("\u{03B1} "), // α
-        Mode::Human => buf.push_str("agent "),
-    }
+    // `agent` in both modes: the parser has no rule for the `α` sigil.
+    buf.push_str("agent ");
     buf.push_str(&a.name);
     buf.push_str(" {\n");
     indent(buf, depth + 1);
@@ -627,52 +635,192 @@ fn emit_agent(buf: &mut String, a: &AgentDef, mode: Mode, depth: usize) {
 
 fn emit_net(buf: &mut String, n: &NetDef, mode: Mode, depth: usize) {
     indent(buf, depth);
-    match mode {
-        Mode::Agent => buf.push_str("\u{03A8} "), // Ψ
-        Mode::Human => buf.push_str("net "),
-    }
+    // `net` in both modes: the parser has no rule for the `Ψ` sigil.
+    buf.push_str("net ");
     buf.push_str(&n.name);
+    emit_generics(buf, &n.generics);
     buf.push_str(" {\n");
-    for l in &n.layers {
-        indent(buf, depth + 1);
-        match mode {
-            Mode::Agent => buf.push_str("\u{03BB} "), // λ
-            Mode::Human => buf.push_str("layer "),
+    match &n.composition {
+        None => {
+            for l in &n.layers {
+                emit_layer(buf, l, mode, depth + 1);
+            }
         }
-        buf.push_str(&l.name);
-        buf.push_str(";\n");
+        Some(tree) => {
+            // Layers the composition tree does not name are declared first, so
+            // none is dropped. The parser never produces such a net.
+            let mut named = Vec::new();
+            compose_layer_names(tree, &mut named);
+            for l in n.layers.iter().filter(|l| !named.contains(&l.name.as_str())) {
+                emit_layer(buf, l, mode, depth + 1);
+            }
+            emit_compose(buf, tree, &n.layers, mode, depth + 1);
+        }
     }
     indent(buf, depth + 1);
-    buf.push_str("forward { ... }\n");
+    buf.push_str("forward ");
+    emit_braced_block(buf, &n.forward, mode, depth + 1);
+    buf.push('\n');
     indent(buf, depth);
     buf.push_str("}\n");
 }
 
+/// One `layer name: Type(args);` declaration inside a `net`.
+fn emit_layer(buf: &mut String, l: &LayerDef, mode: Mode, depth: usize) {
+    indent(buf, depth);
+    // `layer` in both modes: the parser has no rule for the `λ` sigil.
+    buf.push_str("layer ");
+    buf.push_str(&l.name);
+    buf.push_str(": ");
+    emit_type(buf, &l.layer_type, mode);
+    if !l.args.is_empty() {
+        buf.push('(');
+        emit_expr_list(buf, &l.args, mode);
+        buf.push(')');
+    }
+    buf.push_str(";\n");
+}
+
+/// The dataflow tree of a `net` (`residual`, `wrap`, `branch`), with each
+/// `Compose::Layer` leaf printed as the layer declaration it names. The parser
+/// reads a declaration at a leaf's position, so the tree round-trips.
+fn emit_compose(
+    buf: &mut String,
+    items: &[Compose],
+    layers: &[LayerDef],
+    mode: Mode,
+    depth: usize,
+) {
+    for c in items {
+        match c {
+            Compose::Layer(name) => {
+                if let Some(l) = layers.iter().find(|l| &l.name == name) {
+                    emit_layer(buf, l, mode, depth);
+                }
+            }
+            Compose::Residual(inner) => {
+                indent(buf, depth);
+                buf.push_str("residual ");
+                emit_compose_block(buf, inner, layers, mode, depth);
+                buf.push('\n');
+            }
+            Compose::Wrap(op, inner) => {
+                indent(buf, depth);
+                buf.push_str("wrap ");
+                buf.push_str(op);
+                buf.push(' ');
+                emit_compose_block(buf, inner, layers, mode, depth);
+                buf.push('\n');
+            }
+            Compose::Branch(paths) => {
+                indent(buf, depth);
+                buf.push_str("branch");
+                for path in paths {
+                    buf.push(' ');
+                    emit_compose_block(buf, path, layers, mode, depth);
+                }
+                buf.push('\n');
+            }
+        }
+    }
+}
+
+/// A `{ … }` combinator body: the opening brace on the current line, the
+/// closing brace at `depth`. The parser reads one `{ … }` per `branch` path.
+fn emit_compose_block(
+    buf: &mut String,
+    items: &[Compose],
+    layers: &[LayerDef],
+    mode: Mode,
+    depth: usize,
+) {
+    if items.is_empty() {
+        buf.push_str("{}");
+        return;
+    }
+    buf.push_str("{\n");
+    emit_compose(buf, items, layers, mode, depth + 1);
+    indent(buf, depth);
+    buf.push('}');
+}
+
+/// Collect the layer names a composition tree refers to.
+fn compose_layer_names<'a>(items: &'a [Compose], out: &mut Vec<&'a str>) {
+    for c in items {
+        match c {
+            Compose::Layer(name) => out.push(name.as_str()),
+            Compose::Residual(inner) | Compose::Wrap(_, inner) => compose_layer_names(inner, out),
+            Compose::Branch(paths) => {
+                for path in paths {
+                    compose_layer_names(path, out);
+                }
+            }
+        }
+    }
+}
+
+/// A block printed `{` … `}`, with `{}` for an empty one and the closing brace
+/// at `depth`. The caller writes the line end.
+fn emit_braced_block(buf: &mut String, block: &Block, mode: Mode, depth: usize) {
+    if block.stmts.is_empty() && block.tail_expr.is_none() {
+        buf.push_str("{}");
+        return;
+    }
+    buf.push_str("{\n");
+    emit_block_body(buf, block, mode, depth + 1);
+    indent(buf, depth);
+    buf.push('}');
+}
+
+/// Comma-separated expressions, as used for layer arguments and fact arguments.
+fn emit_expr_list(buf: &mut String, exprs: &[Expr], mode: Mode) {
+    for (i, e) in exprs.iter().enumerate() {
+        if i > 0 {
+            buf.push_str(", ");
+        }
+        emit_expr(buf, e, mode);
+    }
+}
+
 fn emit_kb(buf: &mut String, k: &KbDef, mode: Mode, depth: usize) {
     indent(buf, depth);
-    match mode {
-        Mode::Agent => buf.push_str("\u{03BA} "), // κ
-        Mode::Human => buf.push_str("kb "),
-    }
+    // `kb` in both modes: the parser has no rule for the `κ` sigil.
+    buf.push_str("kb ");
     buf.push_str(&k.name);
     buf.push_str(" {\n");
     for f in &k.facts {
+        // `fact name(args);`. The parser requires the argument list, even if empty.
         indent(buf, depth + 1);
-        match mode {
-            Mode::Agent => buf.push_str("\u{22A2} "), // ⊢
-            Mode::Human => buf.push_str("fact "),
-        }
+        buf.push_str("fact ");
         buf.push_str(&f.name);
-        buf.push_str(";\n");
+        buf.push('(');
+        emit_expr_list(buf, &f.args, mode);
+        buf.push_str(");\n");
     }
     for r in &k.rules {
+        // `rule name(params) [where conds] { body }`. The parser has no rule for
+        // the `ρ` sigil.
         indent(buf, depth + 1);
-        match mode {
-            Mode::Agent => buf.push_str("\u{03C1} "), // ρ
-            Mode::Human => buf.push_str("rule "),
-        }
+        buf.push_str("rule ");
         buf.push_str(&r.name);
-        buf.push_str(";\n");
+        buf.push('(');
+        for (i, p) in r.params.iter().enumerate() {
+            if i > 0 {
+                buf.push_str(", ");
+            }
+            emit_param(buf, p, mode);
+        }
+        buf.push(')');
+        if !r.conditions.is_empty() {
+            match mode {
+                Mode::Agent => buf.push_str(" ~> "),
+                Mode::Human => buf.push_str(" where "),
+            }
+            emit_expr_list(buf, &r.conditions, mode);
+        }
+        buf.push(' ');
+        emit_braced_block(buf, &r.body, mode, depth + 1);
+        buf.push('\n');
     }
     indent(buf, depth);
     buf.push_str("}\n");
@@ -680,29 +828,101 @@ fn emit_kb(buf: &mut String, k: &KbDef, mode: Mode, depth: usize) {
 
 fn emit_evolve(buf: &mut String, e: &EvolveDef, mode: Mode, depth: usize) {
     indent(buf, depth);
-    match mode {
-        Mode::Agent => buf.push_str("\u{03A9} "), // Ω
-        Mode::Human => buf.push_str("evolve "),
-    }
+    // `evolve` in both modes: the parser has no rule for the `Ω` sigil.
+    buf.push_str("evolve ");
     buf.push_str(&e.name);
     buf.push_str(" {\n");
+    // The parser's default for an absent `genome` is `Type::Inferred`; that
+    // default is not written, so it is not printed.
+    if !matches!(e.genome_type, Type::Inferred) {
+        indent(buf, depth + 1);
+        buf.push_str("genome: ");
+        emit_type(buf, &e.genome_type, mode);
+        buf.push_str(";\n");
+    }
+    if let Some(ref p) = e.population_size {
+        indent(buf, depth + 1);
+        buf.push_str("population: ");
+        emit_expr(buf, p, mode);
+        buf.push_str(";\n");
+    }
+    if let Some(ref g) = e.generations {
+        indent(buf, depth + 1);
+        buf.push_str("generations: ");
+        emit_expr(buf, g, mode);
+        buf.push_str(";\n");
+    }
     indent(buf, depth + 1);
-    buf.push_str("fitness { ... }\n");
+    buf.push_str("fitness ");
+    emit_braced_block(buf, &e.fitness, mode, depth + 1);
+    buf.push('\n');
+    for (keyword, block) in [
+        ("mutate", &e.mutate_fn),
+        ("crossover", &e.crossover_fn),
+        ("select", &e.select_fn),
+    ] {
+        if let Some(b) = block {
+            indent(buf, depth + 1);
+            buf.push_str(keyword);
+            buf.push(' ');
+            emit_braced_block(buf, b, mode, depth + 1);
+            buf.push('\n');
+        }
+    }
     indent(buf, depth);
     buf.push_str("}\n");
 }
 
 fn emit_train(buf: &mut String, t: &TrainDef, mode: Mode, depth: usize) {
     indent(buf, depth);
-    match mode {
-        Mode::Agent => buf.push_str("\u{0398} "), // Θ
-        Mode::Human => buf.push_str("train "),
-    }
+    // `train` in both modes: the parser has no rule for the `Θ` sigil.
+    buf.push_str("train ");
     buf.push_str(&t.name);
     buf.push_str(" {\n");
+    if !t.net.is_empty() {
+        indent(buf, depth + 1);
+        buf.push_str("net: ");
+        buf.push_str(&t.net);
+        buf.push_str(";\n");
+    }
+    // Every expression field is a `label: expr;` line, in the parser's labels.
+    let fields: [(&str, &Option<Expr>); 23] = [
+        ("optimizer", &t.optimizer),
+        ("loss", &t.loss),
+        ("epochs", &t.epochs),
+        ("inputs", &t.inputs),
+        ("targets", &t.targets),
+        ("dataset", &t.dataset),
+        ("val_split", &t.val_split),
+        ("checkpoint", &t.checkpoint),
+        ("batch_size", &t.batch_size),
+        ("patience", &t.patience),
+        ("prompt", &t.prompt),
+        ("max_tokens", &t.max_tokens),
+        ("temperature", &t.temperature),
+        ("top_k", &t.top_k),
+        ("top_p", &t.top_p),
+        ("seed", &t.seed),
+        ("clip_grad", &t.clip_grad),
+        ("warmup_steps", &t.warmup_steps),
+        ("lr_schedule", &t.lr_schedule),
+        ("weight_decay", &t.weight_decay),
+        ("tied_embeddings", &t.tied_embeddings),
+        ("plateau_patience", &t.plateau_patience),
+        ("lr_factor", &t.lr_factor),
+    ];
+    for (label, value) in fields {
+        if let Some(e) = value {
+            indent(buf, depth + 1);
+            buf.push_str(label);
+            buf.push_str(": ");
+            emit_expr(buf, e, mode);
+            buf.push_str(";\n");
+        }
+    }
     indent(buf, depth + 1);
-    buf.push_str("net: ");
-    buf.push_str(&t.net);
+    buf.push_str("body ");
+    emit_braced_block(buf, &t.body, mode, depth + 1);
     buf.push('\n');
     indent(buf, depth);
     buf.push_str("}\n");
@@ -710,26 +930,23 @@ fn emit_train(buf: &mut String, t: &TrainDef, mode: Mode, depth: usize) {
 
 fn emit_swarm(buf: &mut String, s: &SwarmDef, mode: Mode, depth: usize) {
     indent(buf, depth);
-    match mode {
-        Mode::Agent => buf.push_str("\u{03A3} "), // Σ
-        Mode::Human => buf.push_str("swarm "),
-    }
+    // `swarm` in both modes: the parser has no rule for the `Σ` sigil.
+    buf.push_str("swarm ");
     buf.push_str(&s.name);
     buf.push_str(" {\n");
-    // agent type
+    // agent type: `agent:` in both modes, since the parser has no `α` sigil.
     if !s.agent_type.is_empty() {
         indent(buf, depth + 1);
-        match mode {
-            Mode::Agent => buf.push_str("\u{03B1}: "), // α:
-            Mode::Human => buf.push_str("agent: "),
-        }
+        buf.push_str("agent: ");
         buf.push_str(&s.agent_type);
         buf.push_str(";\n");
     }
     // size
-    if s.size.is_some() {
+    if let Some(ref size) = s.size {
         indent(buf, depth + 1);
-        buf.push_str("size: ...\n");
+        buf.push_str("size: ");
+        emit_expr(buf, size, mode);
+        buf.push_str(";\n");
     }
     // topology
     if let Some(ref topo) = s.topology {
@@ -751,21 +968,16 @@ fn emit_swarm(buf: &mut String, s: &SwarmDef, mode: Mode, depth: usize) {
         buf.push_str(cons);
         buf.push_str(";\n");
     }
-    // dispatch block
-    if s.on_dispatch.is_some() {
+    // transport
+    if let Some(ref transport) = s.transport {
         indent(buf, depth + 1);
-        buf.push_str("dispatch { ... }\n");
+        buf.push_str("transport: ");
+        buf.push_str(transport);
+        buf.push_str(";\n");
     }
-    // aggregate block
-    if s.on_aggregate.is_some() {
-        indent(buf, depth + 1);
-        buf.push_str("aggregate { ... }\n");
-    }
-    // on_failure block
-    if s.on_failure.is_some() {
-        indent(buf, depth + 1);
-        buf.push_str("on_failure { ... }\n");
-    }
+    // `on_dispatch`, `on_aggregate` and `on_failure` have no surface syntax:
+    // the parser rejects `dispatch`/`aggregate`/`on_failure` blocks (see
+    // `parse_swarm_def`), so they are only set by the bridge and are not printed.
     indent(buf, depth);
     buf.push_str("}\n");
 }
@@ -1755,7 +1967,97 @@ mod tests {
     fn compact_agent() {
         let m = parse_source("agent Bot { capabilities: [read_source] requires_approval: [] }");
         let out = format_agent(&m);
-        assert!(out.contains("α Bot"), "got: {out}");
+        // `α` is not a sigil the parser reads, so agent mode keeps the keyword.
+        assert!(out.contains("agent Bot"), "got: {out}");
+    }
+
+    /// Parse `src`, print it in both modes, reparse each print, and check that
+    /// the AST is unchanged and that printing the reparsed AST is a fixpoint.
+    fn assert_round_trips(src: &str) {
+        let original = parse_source(src);
+        let before = serde_json::to_value(&original).expect("the AST serialises");
+        for (mode, printed) in [
+            ("agent", format_agent(&original)),
+            ("human", format_human(&original)),
+        ] {
+            let tokens = lexer::lex(&printed);
+            let reparsed = parser::parse(&tokens).unwrap_or_else(|e| {
+                panic!("{mode} print does not reparse: {e:?}\n{printed}")
+            });
+            let after = serde_json::to_value(&reparsed).expect("the AST serialises");
+            assert_eq!(before, after, "{mode} print changed the AST:\n{printed}");
+            let again = match mode {
+                "agent" => format_agent(&reparsed),
+                _ => format_human(&reparsed),
+            };
+            assert_eq!(printed, again, "{mode} print is not a fixpoint");
+        }
+    }
+
+    #[test]
+    fn round_trip_net_layers_and_forward() {
+        // The sigils `Ψ`/`λ` are not read by the parser; a layer keeps its type and args.
+        assert_round_trips(
+            "net TinyLM {\n    layer tok: Embedding(8, 4);\n    layer head: Linear(4, 8, 1);\n    forward { tok }\n}\n",
+        );
+    }
+
+    #[test]
+    fn round_trip_net_composition() {
+        // `residual` and `branch` keep their tree; the layers they name are printed in place.
+        assert_round_trips(
+            "net Block {\n    layer a: Linear(4, 4);\n    residual { layer b: Linear(4, 4); }\n    branch { layer c: Linear(4, 4); } { layer d: Linear(4, 4); }\n    forward { a }\n}\n",
+        );
+    }
+
+    #[test]
+    fn round_trip_kb_facts_and_rules() {
+        // A fact keeps its arguments; a rule keeps its parameters, conditions and body.
+        assert_round_trips(
+            "kb Facts {\n    fact edge(1, 2);\n    rule path(x: i32) where x > 0 { x }\n}\n",
+        );
+    }
+
+    #[test]
+    fn round_trip_train_fields() {
+        // Every `label: expr;` field and the `body` block survive the printer.
+        assert_round_trips(
+            "train Learn {\n    net: TinyLM;\n    epochs: 3;\n    seed: 7;\n    lr_factor: 0.5;\n    body { }\n}\n",
+        );
+    }
+
+    #[test]
+    fn round_trip_evolve_blocks() {
+        // The genome, population, generations and the mutate/crossover/select blocks are all printed.
+        assert_round_trips(
+            "evolve Search {\n    genome: i32;\n    population: 10;\n    generations: 5;\n    fitness { 1 }\n    mutate { 2 }\n    select { 3 }\n}\n",
+        );
+    }
+
+    #[test]
+    fn round_trip_swarm_fields() {
+        // `size` and `transport` are printed; neither was lost before.
+        assert_round_trips(
+            "swarm Crew {\n    agent: Bot;\n    size: 4;\n    topology: ring;\n    consensus: majority;\n    transport: local;\n}\n",
+        );
+    }
+
+    #[test]
+    fn round_trip_effect_operations() {
+        // Each operation needs its `f` keyword and a `;` end, as the parser reads them.
+        assert_round_trips("effect Audit {\n    f record(entry: i32) -> i32;\n}\n");
+    }
+
+    #[test]
+    fn round_trip_async_and_unsafe_functions() {
+        // `async` is the function keyword; `unsafe` is written `uf`, the one keyword the parser reads.
+        assert_round_trips("af fetch(x: i32) -> i32 {\n    x\n}\nuf scrub(x: i32) {}\n");
+    }
+
+    #[test]
+    fn round_trip_spec_generics() {
+        // A spec's generic parameters are part of its AST and are printed.
+        assert_round_trips("sp Pos[T] {\n    @req(x > 0)\n}\n");
     }
 
     #[test]
