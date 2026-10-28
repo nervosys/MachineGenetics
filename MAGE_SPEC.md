@@ -170,7 +170,7 @@ Agent mode maps every concept to 1-2 characters. Like hexadecimal compresses 4 b
 | Module         | `mod`          | `M`        | Declaration    |
 | Import         | `use`          | `u`        | Declaration    |
 | Type alias     | `type`         | `Y`        | Declaration    |
-| Static         | `static`       | `Z`        | Declaration    |
+| Static (retired in plan 9.2, E0554: write `C NAME: T = value;`) | `static` | `Z` | Declaration |
 | Neural net     | `net`          | `Ψ`        | AI — Neural    |
 | Layer          | `layer`        | `λ`        | AI — Neural    |
 | Tensor         | `Tensor`       | `Φ`        | AI — Algebra   |
@@ -1098,9 +1098,13 @@ pub fn validate_borrow(code: str) -> [str]~ / skb {
 
 ## 8. Evolutionary Computation
 
+> **Retired in plan 9.2.** The `evolve` item had no callers in any `.mg` file and is now an error (E0554). Write an evolutionary search as an ordinary function, or as an arena agent. The sections below describe the retired form and are kept for reference.
+
 MAGE has first-class support for genetic algorithms, neuroevolution, and evolutionary strategies. The `evolve` block declaratively specifies population, fitness, selection, crossover, and mutation — the compiler generates optimized parallel evolution loops.
 
 ### 8.1 Evolve Block
+
+**Retired in plan 9.2 (E0554), so this block is Invalid MAGE today.** Write an evolutionary search as an ordinary function, or as an arena agent.
 
 ```mg
 evolve NeuralArchSearch {
@@ -1179,6 +1183,8 @@ device.
 ### 8.4 Self-Improvement
 
 The combination of evolutionary computation and neural networks enables **recursive self-improvement**: programs that optimize their own architectures, hyperparameters, and strategies:
+
+**Retired in plan 9.2 (E0554), so this block is Invalid MAGE today.**
 
 ```mg
 // A MAGE program that evolves its own compiler optimisation passes.
@@ -2230,6 +2236,8 @@ In agent mode, safety constructs are **fully handled by the compiler and SKB** (
 | `unsafe fn`                    | Elided — compiler detects from body analysis     | AEL-0002  |
 | Lifetime annotations (`'a`)    | Inferred by compiler's LIF rules                 | AEL-0003  |
 
+> **Retired in plan 9.2.** The `unsafe { ... }` block has no parser producer, no source used it, and its `Expr::UnsafeBlock` variant and eight pass arms were removed. Put the code in a `uf` (unsafe function) instead.
+>
 > **`unsafe { ... }` does not parse.** Corrected 2026-09-07. It is a parse
 > error in every position — expression, statement, and initialiser — with
 > `expected expression, found KwUnsafe`. The AST has an `Expr::UnsafeBlock`
@@ -2516,7 +2524,7 @@ both.
 
 ### E.2 Architecture search
 
-**Human:**
+**Human (Invalid MAGE today: `evolve` was retired in plan 9.2, E0554):**
 ```mg
 pub enum LayerGene {
     Dense(u32),
@@ -2547,7 +2555,7 @@ evolve NeuralArchSearch {
 }
 ```
 
-**Agent:**
+**Agent (Invalid MAGE today: `evolve` was retired in plan 9.2, E0554):**
 ```mg
 +E LayerGene {
     Dense(u32),

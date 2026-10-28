@@ -2194,8 +2194,6 @@ impl TypeChecker {
 
             ast::Expr::Todo | ast::Expr::Unimplemented => Ty::Never,
 
-            ast::Expr::UnsafeBlock { block } => self.infer_block(block),
-
             ast::Expr::Try { expr } => {
                 let t = self.infer_expr(expr);
                 // ? operator: Result<T, E> → T (propagating E).
@@ -2493,7 +2491,39 @@ pub fn check(module: &ast::Module) -> TypeChecker {
     // Tunable parameters (`@param`, plan 6.1): a default outside its declared
     // domain is a type error, so the arena refuses it as a Type refusal.
     checker.diagnostics.extend(crate::params::params(module).1);
+    checker.diagnostics.extend(retired_constructs(module));
     checker
+}
+
+/// Items of constructs retired in plan 9.2 (`evolve`, `Z`). They still parse,
+/// so the diagnostic can name the item, but each is an error (E0554) whose
+/// message says what to write instead.
+fn retired_constructs(module: &ast::Module) -> Vec<Diagnostic> {
+    module
+        .items
+        .iter()
+        .filter_map(|item| {
+            let msg = match &item.kind {
+                ast::ItemKind::Evolve(e) => format!(
+                    "`evolve {}` was retired in plan 9.2 (E0554): it had no callers. \
+                     Write an evolutionary search as an ordinary function, or as an arena agent.",
+                    e.name
+                ),
+                ast::ItemKind::Static(s) => format!(
+                    "`Z {}` was retired in plan 9.2 (E0554): it had no callers. \
+                     A module-level value is written `C {}: T = value;` (a const).",
+                    s.name, s.name
+                ),
+                _ => return None,
+            };
+            Some(Diagnostic::categorized(
+                Severity::Error,
+                msg,
+                DiagnosticCategory::Deprecated,
+                None,
+            ))
+        })
+        .collect()
 }
 
 // ── Tests ────────────────────────────────────────────────────────────
@@ -3432,5 +3462,46 @@ mod string_length_tests {
         assert!(errors("+f f(v: [i32]) -> usize { len(v) }").is_empty());
         assert!(!errors(r#"+f f() -> i32 { sum("hi") }"#).is_empty());
         assert!(!errors("+f f() -> i32 { sum(5) }").is_empty());
+    }
+}
+
+#[cfg(test)]
+mod retired_construct_tests {
+    use crate::hir::{DiagnosticCategory, Severity};
+    use crate::{lexer, parser, types};
+
+    /// Error messages the checker reports under the `Deprecated` category.
+    fn retired(src: &str) -> Vec<String> {
+        let module = parser::parse(&lexer::lex(src)).expect("parses");
+        types::check(&module)
+            .diagnostics
+            .iter()
+            .filter(|d| d.category == Some(DiagnosticCategory::Deprecated) && d.severity == Severity::Error)
+            .map(|d| d.message.clone())
+            .collect()
+    }
+
+    #[test]
+    fn evolve_item_is_retired_with_a_pointer() {
+        let msgs = retired("evolve Opt { genome: i32 }");
+        assert_eq!(msgs.len(), 1, "{msgs:?}");
+        assert!(msgs[0].contains("E0554"), "{msgs:?}");
+        assert!(msgs[0].contains("`evolve Opt`"), "{msgs:?}");
+        assert!(msgs[0].contains("ordinary function"), "{msgs:?}");
+        assert!(msgs[0].contains("arena agent"), "{msgs:?}");
+    }
+
+    #[test]
+    fn static_item_is_retired_and_points_at_const() {
+        let msgs = retired("Z COUNT: i32 = 0;");
+        assert_eq!(msgs.len(), 1, "{msgs:?}");
+        assert!(msgs[0].contains("E0554"), "{msgs:?}");
+        assert!(msgs[0].contains("`Z COUNT`"), "{msgs:?}");
+        assert!(msgs[0].contains("`C COUNT: T = value;`"), "{msgs:?}");
+    }
+
+    #[test]
+    fn const_is_not_retired() {
+        assert!(retired("C COUNT: i32 = 0;").is_empty());
     }
 }

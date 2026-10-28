@@ -507,9 +507,6 @@ impl EffectInfer {
             ast::Expr::Closure { body, .. } => {
                 self.collect_calls_in_expr(body, callees, local_effects);
             }
-            ast::Expr::UnsafeBlock { block } => {
-                self.collect_calls_in_block(block, callees, local_effects);
-            }
             ast::Expr::Return { value } | ast::Expr::Break { value } => {
                 if let Some(v) = value {
                     self.collect_calls_in_expr(v, callees, local_effects);
