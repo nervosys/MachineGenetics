@@ -14,6 +14,8 @@
 //! The curriculum is the reward, so it needed no move of its own.
 
 use mage_prototype::eval::{run_bounded, BoundedError, Value};
+use std::cell::RefCell;
+use std::collections::HashMap;
 use mage_prototype::{ast, effects, hir, lexer, parser, types};
 
 /// The reward shipped with the arena.
@@ -112,22 +114,37 @@ impl AllocationProgram {
 pub struct RetentionProgram {
     module: ast::Module,
     pub fuel: u64,
+    /// Priorities already computed, by the bits of `(reward, age)`. Exact,
+    /// because `@role(candidate)` allows no effects, so the same arguments
+    /// always give the same priority. Needed because a full pool scores every
+    /// entry on every insertion: at the default capacity of 256 that was about
+    /// 12,000 runs a round, where only the entries' ages change between rounds.
+    memo: RefCell<HashMap<(u64, u64), f64>>,
 }
 
 impl RetentionProgram {
     /// Parse and gate `source`: one function `priority(reward, age)` with
     /// `@role(candidate)`, which allows no effects.
     pub fn load(source: &str) -> Result<RetentionProgram, String> {
-        Ok(RetentionProgram { module: load_policy("retention", source, "priority", 2, "candidate")?, fuel: 10_000 })
+        Ok(RetentionProgram {
+            module: load_policy("retention", source, "priority", 2, "candidate")?,
+            fuel: 10_000,
+            memo: RefCell::new(HashMap::new()),
+        })
     }
 
     /// The priority of an entry with `reward` that is `age` rounds old. The
     /// kernel evicts the lowest, so the kernel refuses one that is not finite,
     /// since the order it would give is undefined.
     pub fn priority(&self, reward: f64, age: f64) -> Result<f64, String> {
+        let key = (reward.to_bits(), age.to_bits());
+        if let Some(p) = self.memo.borrow().get(&key) {
+            return Ok(*p);
+        }
         let args = vec![Value::Float(reward), Value::Float(age)];
         let p = run_number("retention", &self.module, "priority", args, self.fuel)?;
         if p.is_finite() {
+            self.memo.borrow_mut().insert(key, p);
             Ok(p)
         } else {
             Err(format!("retention: priority {p} for reward {reward} at age {age} is not finite"))
