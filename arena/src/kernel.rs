@@ -58,6 +58,10 @@ pub struct EnergyLedger {
     pub budget_joules: Option<f64>,
     /// Joules charged, by account.
     pub charged: BTreeMap<String, f64>,
+    /// The agents' share of the charges, by role (plan 7.2): who in the loop
+    /// spent the budget, beside what it was spent on.
+    #[serde(default)]
+    pub by_role: BTreeMap<String, f64>,
     /// Joules spent on held-out evaluation, not charged.
     pub evaluation_joules: f64,
     /// False when any charged or evaluation reading was an estimate.
@@ -84,6 +88,15 @@ impl EnergyLedger {
                 self.all_measured &= measured;
             }
             None => self.unmetered_spans += 1,
+        }
+        reading
+    }
+
+    /// Charge a span an agent acting in `role` spent, to `account`.
+    pub fn charge_role(&mut self, account: &str, role: &str, readings: &[Reading]) -> Option<(f64, bool)> {
+        let reading = self.charge(account, readings);
+        if let Some((j, _)) = reading {
+            *self.by_role.entry(role.to_string()).or_insert(0.0) += j;
         }
         reading
     }
@@ -193,6 +206,9 @@ mod tests {
         let expected: &[(&str, bool, bool)] = &[
             // role,       may read held-out, may promote
             ("candidate", false, false),
+            ("proposer", false, false),
+            ("mutator", false, false),
+            ("attacker", false, false),
             ("learner", false, false),
             ("evaluator", true, false),
             ("gate", true, true),
@@ -205,6 +221,15 @@ mod tests {
         for &(role, heldout, promote) in expected {
             assert_eq!(!role_refuses(role, "heldout.read(\"test\")"), heldout, "{role} reading held-out data");
             assert_eq!(!role_refuses(role, "gate.promote(1)"), promote, "{role} promoting");
+        }
+    }
+
+    #[test]
+    fn every_agent_role_is_a_language_role() {
+        // An agent's role is the effect ceiling its MAGE runs under, so each
+        // must name one the typechecker enforces.
+        for role in crate::agents::Role::ALL {
+            assert!(ROLES.iter().any(|(r, _)| *r == role.name()), "{} is not a language role", role.name());
         }
     }
 

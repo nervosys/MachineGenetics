@@ -1696,6 +1696,9 @@ perform — directly, or through anything it calls:
 
 ```text
 @role(candidate)   pure: computes, and nothing else
+@role(proposer)    learn, alloc, rng
+@role(mutator)     alloc, rng
+@role(attacker)    learn, alloc, rng
 @role(learner)     learn, gpu, alloc, rng
 @role(evaluator)   a learner's effects, plus heldout
 @role(gate)        an evaluator's effects, plus promote
@@ -1711,6 +1714,11 @@ reads the test set, and a harness change that rewrites its own evaluator. Both
 are effects (`heldout` and `promote`), and effect inference is already
 transitive, so a role turns both into type errors rather than things an audit
 must catch. Until 2026-09-25 `@role(…)` parsed and was ignored.
+
+The three agent roles (plan 7.2) are for the code that writes, varies and
+attacks candidates. Each may sample, and none may use a GPU, read held-out
+data or promote. An attacker has a proposer's powers and no more, because
+it attacks the proxy and must not see what the proxy is checked against.
 
 ---
 
