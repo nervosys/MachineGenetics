@@ -117,23 +117,52 @@ impl Pool {
         Pool { entries: Vec::new(), capacity, next_id: 0 }
     }
 
+    /// Add an entry, retaining by reward: the Rust reference for
+    /// [`Pool::add_with`] under `|r, _| Ok(r)`.
     pub fn add(&mut self, program: Program, bytes: Vec<u8>, reward: f64, agent: &str, round: usize) -> u64 {
+        self.add_with(program, bytes, reward, agent, round, round, &|r, _| Ok(r))
+            .expect("the reward priority cannot fail")
+    }
+
+    /// Add an entry, then, if the pool is over capacity, evict the entry with
+    /// the lowest `priority(reward, age)`, oldest id first among ties, where
+    /// `age` is `current_round - entry.round`. The kernel keeps the eviction
+    /// and the tie order; `priority` is the policy (plan 5.2,
+    /// `harness/retention.mg`). An error from `priority` is returned, and the
+    /// pool is left with the entry added and nothing evicted.
+    #[allow(clippy::too_many_arguments)]
+    pub fn add_with(
+        &mut self,
+        program: Program,
+        bytes: Vec<u8>,
+        reward: f64,
+        agent: &str,
+        round: usize,
+        current_round: usize,
+        priority: &dyn Fn(f64, f64) -> Result<f64, String>,
+    ) -> Result<u64, String> {
         let id = self.next_id;
         self.next_id += 1;
         self.entries.push(PoolEntry { id, program, bytes, reward, agent: agent.to_string(), round });
         if self.entries.len() > self.capacity {
-            // Evict the lowest-reward entry, oldest first among ties: replay
+            // Evict the lowest-priority entry, oldest first among ties: replay
             // should keep what taught the most, not merely what is recent.
+            let mut priorities = Vec::with_capacity(self.entries.len());
+            for e in &self.entries {
+                let age = current_round as f64 - e.round as f64;
+                priorities.push(priority(e.reward, age)?);
+            }
             let worst = self
                 .entries
                 .iter()
+                .zip(&priorities)
                 .enumerate()
-                .min_by(|a, b| a.1.reward.total_cmp(&b.1.reward).then(a.1.id.cmp(&b.1.id)))
+                .min_by(|(_, (x, px)), (_, (y, py))| px.total_cmp(py).then(x.id.cmp(&y.id)))
                 .map(|(i, _)| i)
                 .expect("non-empty");
             self.entries.remove(worst);
         }
-        id
+        Ok(id)
     }
 
     /// The `k` highest-reward entries.
