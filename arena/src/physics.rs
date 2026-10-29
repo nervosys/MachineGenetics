@@ -778,11 +778,82 @@ pub fn wrap_angle(theta: f64) -> f64 {
 
 // ── Byte encoding (plan P2) ──────────────────────────────────────────────
 
-/// Encodes a trajectory. Angles are wrapped to `(-π, π]`. Each value becomes
-/// `i32` as `round(value / quantum)`. Values past the `i32` range saturate,
-/// which Rust's float-to-int cast does, so [`System::default_quantum`] should
-/// keep magnitudes in range.
+/// How the body of an encoded trajectory lays out its values. The header is the
+/// same for every encoding, and records the quantum the values were stored at.
+/// The decoder needs the encoding to read the body; it is not in the header,
+/// so [`encode`] and [`decode`] stay byte-for-byte the plan P2 layout, which is
+/// [`Encoding::I32`].
+///
+/// Every encoding stores values in the same order: per timestep, each channel,
+/// with angle channels wrapped to `(-π, π]`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Encoding {
+    /// Each value is `i32` little-endian, `round(value / quantum)`, at
+    /// [`System::default_quantum`]. Values past the `i32` range saturate.
+    I32,
+    /// As `I32`, but at 100 times the default quantum and as `i16`
+    /// little-endian. Values past the `i16` range saturate.
+    Coarse,
+    /// The `I32` values, laid out byte-plane-major within the trajectory: byte 0
+    /// of every value in time order, then byte 1, and so on, as Blosc's shuffle.
+    Planes,
+    /// Per channel, the `i32` second difference `q[t] - 2 q[t-1] + q[t-2]` for
+    /// `t >= 2`, with wrapping arithmetic. The first two samples are raw. This
+    /// is the residual against constant-velocity extrapolation.
+    Diff2,
+}
+
+impl Encoding {
+    /// Every encoding, in the order `physics-baseline` documents them.
+    pub const ALL: [Encoding; 4] = [Encoding::I32, Encoding::Coarse, Encoding::Planes, Encoding::Diff2];
+
+    /// The name `--encoding` takes.
+    pub fn name(self) -> &'static str {
+        match self {
+            Encoding::I32 => "i32",
+            Encoding::Coarse => "coarse",
+            Encoding::Planes => "planes",
+            Encoding::Diff2 => "diff2",
+        }
+    }
+
+    /// The encoding a `--encoding` name denotes, if any.
+    pub fn from_name(name: &str) -> Option<Encoding> {
+        Encoding::ALL.into_iter().find(|e| e.name() == name)
+    }
+
+    /// The quantum this encoding stores `system`'s values at.
+    pub fn quantum(self, system: System) -> f64 {
+        match self {
+            Encoding::Coarse => 100.0 * system.default_quantum(),
+            _ => system.default_quantum(),
+        }
+    }
+
+    /// Bytes per stored value.
+    fn width(self) -> usize {
+        match self {
+            Encoding::Coarse => 2,
+            _ => 4,
+        }
+    }
+}
+
+/// Encodes a trajectory as `i32` values at `quantum`, the plan P2 layout. Angles
+/// are wrapped to `(-π, π]`. Each value becomes `round(value / quantum)`. Values
+/// past the `i32` range saturate, which Rust's float-to-int cast does, so
+/// [`System::default_quantum`] should keep magnitudes in range.
 pub fn encode(system: System, params: &Params, states: &[State], quantum: f64) -> Vec<u8> {
+    encode_body(system, params, states, quantum, Encoding::I32)
+}
+
+/// Encodes a trajectory in `encoding`, at that encoding's quantum for `system`.
+/// For [`Encoding::I32`] this is [`encode`] at [`System::default_quantum`].
+pub fn encode_as(system: System, params: &Params, states: &[State], encoding: Encoding) -> Vec<u8> {
+    encode_body(system, params, states, encoding.quantum(system), encoding)
+}
+
+fn encode_body(system: System, params: &Params, states: &[State], quantum: f64, encoding: Encoding) -> Vec<u8> {
     assert_eq!(params.system(), system, "params belong to another system");
     assert!(quantum > 0.0 && quantum.is_finite(), "quantum must be positive");
     let ch = system.channels();
@@ -796,12 +867,40 @@ pub fn encode(system: System, params: &Params, states: &[State], quantum: f64) -
     out.extend_from_slice(&(ch as u32).to_le_bytes());
     out.extend_from_slice(&(states.len() as u32).to_le_bytes());
     let angles = system.angle_channels();
+    let mut values: Vec<f64> = Vec::with_capacity(states.len() * ch);
     for s in states {
         assert_eq!(s.len(), ch, "state has the wrong channel count");
         for (c, &x) in s.iter().enumerate() {
-            let x = if angles.contains(&c) { wrap_angle(x) } else { x };
-            let q = (x / quantum).round() as i32;
-            out.extend_from_slice(&q.to_le_bytes());
+            values.push(if angles.contains(&c) { wrap_angle(x) } else { x });
+        }
+    }
+    match encoding {
+        Encoding::I32 => {
+            for &x in &values {
+                out.extend_from_slice(&((x / quantum).round() as i32).to_le_bytes());
+            }
+        }
+        Encoding::Coarse => {
+            for &x in &values {
+                out.extend_from_slice(&((x / quantum).round() as i16).to_le_bytes());
+            }
+        }
+        Encoding::Planes => {
+            let q: Vec<[u8; 4]> = values.iter().map(|&x| ((x / quantum).round() as i32).to_le_bytes()).collect();
+            for k in 0..4 {
+                out.extend(q.iter().map(|b| b[k]));
+            }
+        }
+        Encoding::Diff2 => {
+            let q: Vec<i32> = values.iter().map(|&x| (x / quantum).round() as i32).collect();
+            for i in 0..q.len() {
+                let d = if i < 2 * ch {
+                    q[i]
+                } else {
+                    q[i].wrapping_sub(q[i - ch].wrapping_mul(2)).wrapping_add(q[i - 2 * ch])
+                };
+                out.extend_from_slice(&d.to_le_bytes());
+            }
         }
     }
     out
@@ -890,10 +989,19 @@ fn read_header(bytes: &[u8]) -> Result<(Header, usize), String> {
 /// Decodes one encoded trajectory. The input must be exactly one trajectory:
 /// use [`encoded_len`] to split a stream.
 pub fn decode(bytes: &[u8]) -> Result<Decoded, String> {
+    decode_as(bytes, Encoding::I32)
+}
+
+/// Decodes one trajectory encoded in `encoding` by [`encode_as`]. As with
+/// [`decode`], the input must be exactly one trajectory.
+pub fn decode_as(bytes: &[u8], encoding: Encoding) -> Result<Decoded, String> {
     let (h, header_len) = read_header(bytes)?;
-    let body_len = h
+    let n = h
         .steps
-        .checked_mul(h.channels * 4)
+        .checked_mul(h.channels)
+        .ok_or_else(|| "step count overflows".to_string())?;
+    let body_len = n
+        .checked_mul(encoding.width())
         .ok_or_else(|| "step count overflows".to_string())?;
     let total = header_len
         .checked_add(body_len)
@@ -904,25 +1012,54 @@ pub fn decode(bytes: &[u8]) -> Result<Decoded, String> {
             bytes.len()
         ));
     }
-    let mut states = Vec::with_capacity(h.steps);
-    for t in 0..h.steps {
-        let mut s = Vec::with_capacity(h.channels);
-        for c in 0..h.channels {
-            let i = header_len + (t * h.channels + c) * 4;
-            let q = i32::from_le_bytes(bytes[i..i + 4].try_into().expect("4 bytes"));
-            s.push(q as f64 * h.quantum);
+    let body = &bytes[header_len..];
+    let le4 = |b: &[u8]| i32::from_le_bytes(b.try_into().expect("4 bytes"));
+    // The stored integers, in stream order: time-major, channel-minor.
+    let q: Vec<i32> = match encoding {
+        Encoding::I32 => body.chunks_exact(4).map(le4).collect(),
+        Encoding::Coarse => body
+            .chunks_exact(2)
+            .map(|b| i16::from_le_bytes(b.try_into().expect("2 bytes")) as i32)
+            .collect(),
+        Encoding::Planes => (0..n)
+            .map(|i| le4(&[body[i], body[n + i], body[2 * n + i], body[3 * n + i]]))
+            .collect(),
+        Encoding::Diff2 => {
+            let d: Vec<i32> = body.chunks_exact(4).map(le4).collect();
+            let mut q: Vec<i32> = Vec::with_capacity(n);
+            for i in 0..n {
+                let v = if i < 2 * h.channels {
+                    d[i]
+                } else {
+                    d[i]
+                        .wrapping_add(q[i - h.channels].wrapping_mul(2))
+                        .wrapping_sub(q[i - 2 * h.channels])
+                };
+                q.push(v);
+            }
+            q
         }
-        states.push(s);
-    }
+    };
+    let values: Vec<f64> = q.iter().map(|&v| v as f64 * h.quantum).collect();
+    let states = if h.channels == 0 {
+        Vec::new()
+    } else {
+        values.chunks_exact(h.channels).map(|s| s.to_vec()).collect()
+    };
     Ok((h.system, h.params, states, h.quantum))
 }
 
 /// The length in bytes of the encoded trajectory at the start of `bytes`,
 /// read from its header. Use it to walk a corpus stream.
 pub fn encoded_len(bytes: &[u8]) -> Result<usize, String> {
+    encoded_len_as(bytes, Encoding::I32)
+}
+
+/// As [`encoded_len`], for a trajectory encoded in `encoding`.
+pub fn encoded_len_as(bytes: &[u8], encoding: Encoding) -> Result<usize, String> {
     let (h, header_len) = read_header(bytes)?;
     h.steps
-        .checked_mul(h.channels * 4)
+        .checked_mul(h.channels * encoding.width())
         .and_then(|b| b.checked_add(header_len))
         .ok_or_else(|| "length overflows".to_string())
 }
@@ -937,12 +1074,25 @@ pub fn corpus(
     trajectories: usize,
     steps: usize,
 ) -> Vec<u8> {
+    corpus_as(system, range, seed, trajectories, steps, Encoding::I32)
+}
+
+/// As [`corpus`], with each trajectory encoded in `encoding`. The same
+/// parameters and states are drawn for every encoding, so only the bytes differ.
+pub fn corpus_as(
+    system: System,
+    range: ParamRange,
+    seed: u64,
+    trajectories: usize,
+    steps: usize,
+    encoding: Encoding,
+) -> Vec<u8> {
     let mut rng = Rng(seed);
     let mut out = Vec::new();
     for _ in 0..trajectories {
         let (p, s) = sample_params(system, range, &mut rng);
         let states = simulate(system, &p, s, system.default_dt(), steps);
-        out.extend(encode(system, &p, &states, system.default_quantum()));
+        out.extend(encode_as(system, &p, &states, encoding));
     }
     out
 }
@@ -988,14 +1138,29 @@ pub fn parse_spec(spec: &str) -> Result<PhysicsSpec, String> {
     Ok(PhysicsSpec { system, trajectories, steps, seed })
 }
 
+/// The encoding of `--heldout-physics` corpora. Plan P4b measured four, and
+/// byte-planes and second differences both passed its gate. Planes is chosen:
+/// it holds the same values as `i32`, only reordered, so what a learner gains
+/// on it is learned. `diff2` builds a constant-velocity predictor into the
+/// bytes, which does part of the physics for the learner.
+pub const HELDOUT_ENCODING: Encoding = Encoding::Planes;
+
 /// The held-out corpus a `--heldout-physics` spec names: `trajectories` whole
-/// trajectories drawn from [`ParamRange::HeldOut`], with the spec's seed. Its
-/// name is `physics:<system>:<trajectories>:<steps>:seed<seed>`, so a report
-/// says what was scored.
+/// trajectories drawn from [`ParamRange::HeldOut`], with the spec's seed,
+/// encoded as [`HELDOUT_ENCODING`]. Its name is
+/// `physics:<system>:<trajectories>:<steps>:seed<seed>:<encoding>`, so a report
+/// says what was scored, and figures from different encodings cannot be mixed.
 pub fn physics_corpus(spec: &str) -> Result<Corpus, String> {
     let s = parse_spec(spec)?;
-    let bytes = corpus(s.system, ParamRange::HeldOut, s.seed, s.trajectories, s.steps);
-    let name = format!("physics:{}:{}:{}:seed{}", s.system.spec_name(), s.trajectories, s.steps, s.seed);
+    let bytes = corpus_as(s.system, ParamRange::HeldOut, s.seed, s.trajectories, s.steps, HELDOUT_ENCODING);
+    let name = format!(
+        "physics:{}:{}:{}:seed{}:{}",
+        s.system.spec_name(),
+        s.trajectories,
+        s.steps,
+        s.seed,
+        HELDOUT_ENCODING.name()
+    );
     Ok(Corpus::new(name, bytes))
 }
 
@@ -1108,12 +1273,31 @@ pub fn physics_baseline(
     steps: usize,
     seed: u64,
 ) -> Result<Curve, String> {
+    physics_baseline_as(system, spec, budget, steps, seed, Encoding::I32)
+}
+
+/// [`physics_baseline`] with both corpora encoded in `encoding` (plan P4b).
+pub fn physics_baseline_as(
+    system: System,
+    spec: LearnerSpec,
+    budget: usize,
+    steps: usize,
+    seed: u64,
+    encoding: Encoding,
+) -> Result<Curve, String> {
     // Whole trajectories, just enough to cover the budget. The held-out side is
     // just enough to cover the evaluation window.
-    let train_per = corpus(system, ParamRange::Train, seed, 1, steps).len().max(1);
-    let held_per = corpus(system, ParamRange::HeldOut, seed, 1, steps).len().max(1);
-    let train = corpus(system, ParamRange::Train, seed, budget.div_ceil(train_per).max(1), steps);
-    let heldout = corpus(system, ParamRange::HeldOut, seed, BASELINE_EVAL_BYTES.div_ceil(held_per).max(1), steps);
+    let train_per = corpus_as(system, ParamRange::Train, seed, 1, steps, encoding).len().max(1);
+    let held_per = corpus_as(system, ParamRange::HeldOut, seed, 1, steps, encoding).len().max(1);
+    let train = corpus_as(system, ParamRange::Train, seed, budget.div_ceil(train_per).max(1), steps, encoding);
+    let heldout = corpus_as(
+        system,
+        ParamRange::HeldOut,
+        seed,
+        BASELINE_EVAL_BYTES.div_ceil(held_per).max(1),
+        steps,
+        encoding,
+    );
     learning_curve(spec, &train, &heldout, budget, BASELINE_CHUNK, BASELINE_BATCH)
 }
 
@@ -1367,6 +1551,154 @@ mod tests {
         }
     }
 
+    /// Asserts that `encoding` decodes to exactly the values the i32 encoding
+    /// decodes to, bit for bit, and that its header and length are as documented.
+    fn check_exact(system: System, p: &Params, states: &[State], encoding: Encoding) {
+        let bytes = encode_as(system, p, states, encoding);
+        let (s2, p2, back, q2) = decode_as(&bytes, encoding).expect("decodes");
+        assert_eq!(s2, system);
+        assert_eq!(&p2, p);
+        assert_eq!(q2.to_bits(), encoding.quantum(system).to_bits());
+        assert_eq!(encoded_len_as(&bytes, encoding).expect("len"), bytes.len());
+        let want = decode(&encode(system, p, states, system.default_quantum())).expect("i32 decodes").2;
+        assert_eq!(back.len(), want.len());
+        for (a, b) in back.iter().zip(&want) {
+            for (x, y) in a.iter().zip(b) {
+                assert_eq!(x.to_bits(), y.to_bits(), "{} {}", system.name(), encoding.name());
+            }
+        }
+    }
+
+    /// The header length of every encoding of `system`: magic, system code,
+    /// parameters, quantum, channel count and step count.
+    fn header_len(system: System) -> usize {
+        4 + 1 + 8 * system.param_count() + 8 + 4 + 4
+    }
+
+    #[test]
+    fn encoding_names_round_trip() {
+        for e in Encoding::ALL {
+            assert_eq!(Encoding::from_name(e.name()), Some(e));
+        }
+        assert_eq!(Encoding::from_name("i16"), None);
+        assert_eq!(Encoding::from_name(""), None);
+    }
+
+    #[test]
+    fn i32_encode_as_is_the_plan_p2_layout_unchanged() {
+        for system in SYSTEMS {
+            let (p, states) = trajectory(system, 5, 50);
+            assert_eq!(
+                encode_as(system, &p, &states, Encoding::I32),
+                encode(system, &p, &states, system.default_quantum()),
+                "{}",
+                system.name()
+            );
+        }
+    }
+
+    #[test]
+    fn planes_round_trip_exactly_keep_the_header_and_group_byte_zero_first() {
+        for system in SYSTEMS {
+            let (p, states) = trajectory(system, 7, 200);
+            check_exact(system, &p, &states, Encoding::Planes);
+            let plain = encode(system, &p, &states, system.default_quantum());
+            let planes = encode_as(system, &p, &states, Encoding::Planes);
+            let hl = header_len(system);
+            assert_eq!(planes[..hl], plain[..hl], "{} header", system.name());
+            assert_eq!(planes.len(), plain.len());
+            // Byte 0 of every value comes first, in stream order.
+            let n = states.len() * system.channels();
+            for i in 0..n {
+                assert_eq!(planes[hl + i], plain[hl + 4 * i], "{} value {i}", system.name());
+            }
+        }
+    }
+
+    #[test]
+    fn diff2_round_trips_exactly_to_the_i32_values() {
+        for system in SYSTEMS {
+            let (p, states) = trajectory(system, 7, 200);
+            check_exact(system, &p, &states, Encoding::Diff2);
+        }
+    }
+
+    #[test]
+    fn diff2_wraps_and_still_round_trips_values_past_the_i32_range() {
+        // Values past the i32 range saturate, and their second differences then
+        // overflow, so this exercises the wrapping arithmetic on both sides.
+        let p = Params::Spring {
+            k: 2.0,
+            m: 1.0,
+            c: 0.0,
+        };
+        let states = vec![
+            vec![1e30, -1e30],
+            vec![-1e30, 1e30],
+            vec![1e30, 0.0],
+            vec![0.0, -1e30],
+            vec![3.0, 4.0],
+        ];
+        check_exact(System::Spring, &p, &states, Encoding::Diff2);
+    }
+
+    #[test]
+    fn diff2_of_constant_velocity_is_zero_after_the_first_two_samples() {
+        // x = 1e-4 (3 + 5t) and v = 1e-4 (-2 + 7t) are linear in t, so at the
+        // spring's 1e-5 quantum each channel is an exact arithmetic sequence.
+        let p = Params::Spring {
+            k: 2.0,
+            m: 1.0,
+            c: 0.0,
+        };
+        let states: Vec<State> = (0..20)
+            .map(|t| vec![1e-4 * (3.0 + 5.0 * t as f64), 1e-4 * (-2.0 + 7.0 * t as f64)])
+            .collect();
+        let bytes = encode_as(System::Spring, &p, &states, Encoding::Diff2);
+        let hl = header_len(System::Spring);
+        let ch = System::Spring.channels();
+        for i in 2 * ch..states.len() * ch {
+            assert_eq!(&bytes[hl + 4 * i..hl + 4 * i + 4], &[0, 0, 0, 0], "residual {i}");
+        }
+        check_exact(System::Spring, &p, &states, Encoding::Diff2);
+    }
+
+    #[test]
+    fn coarse_round_trips_within_its_quantum() {
+        for system in SYSTEMS {
+            let (p, states) = trajectory(system, 7, 200);
+            let q = Encoding::Coarse.quantum(system);
+            let bytes = encode_as(system, &p, &states, Encoding::Coarse);
+            let (s2, p2, back, q2) = decode_as(&bytes, Encoding::Coarse).expect("decodes");
+            assert_eq!(s2, system);
+            assert_eq!(p2, p);
+            assert_eq!(q2.to_bits(), q.to_bits());
+            assert_eq!(encoded_len_as(&bytes, Encoding::Coarse).expect("len"), bytes.len());
+            assert_eq!(bytes.len(), header_len(system) + 2 * states.len() * system.channels());
+            for (orig, got) in states.iter().zip(&back) {
+                for (c, (&x, &y)) in orig.iter().zip(got).enumerate() {
+                    let want = if system.angle_channels().contains(&c) { wrap_angle(x) } else { x };
+                    assert!((y - want).abs() <= q / 2.0 + 1e-12, "{} channel {c}: {y} vs {want}", system.name());
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn coarse_saturates_instead_of_wrapping() {
+        let p = Params::Spring {
+            k: 2.0,
+            m: 1.0,
+            c: 0.0,
+        };
+        let q = Encoding::Coarse.quantum(System::Spring);
+        let states = vec![vec![1e6, -1e6]];
+        let (_, _, back, _) = decode_as(&encode_as(System::Spring, &p, &states, Encoding::Coarse), Encoding::Coarse)
+            .expect("decodes");
+        assert_eq!(back[0][0].to_bits(), (i16::MAX as f64 * q).to_bits());
+        assert_eq!(back[0][1].to_bits(), (i16::MIN as f64 * q).to_bits());
+    }
+
     #[test]
     fn angles_outside_minus_pi_to_pi_are_wrapped_on_encode() {
         let p = Params::DoublePendulum {
@@ -1541,7 +1873,7 @@ mod tests {
         let c = physics_corpus("pendulum:2:200:2").expect("valid");
         assert_eq!(a.sha256(), b.sha256(), "the same spec, the same bytes");
         assert_ne!(a.sha256(), c.sha256(), "a different seed, different bytes");
-        assert_eq!(a.name(), "physics:pendulum:2:200:seed1");
+        assert_eq!(a.name(), "physics:pendulum:2:200:seed1:planes");
         assert_eq!(a.len(), corpus(System::Pendulum, ParamRange::HeldOut, 1, 2, 200).len());
     }
 
@@ -1574,7 +1906,7 @@ mod tests {
         assert!(!report.checkpoints.is_empty());
         for c in &report.checkpoints {
             let keys: Vec<&String> = c.heldout_bpb.keys().collect();
-            assert_eq!(keys, vec!["physics:pendulum:4:300:seed1"], "checkpoint at round {}", c.round);
+            assert_eq!(keys, vec!["physics:pendulum:4:300:seed1:planes"], "checkpoint at round {}", c.round);
             assert!(c.heldout_bpb.values().all(|b| b.is_finite()));
         }
     }

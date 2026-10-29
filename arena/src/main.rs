@@ -13,7 +13,7 @@
 //!       [--proposer-command "<cmd> <args…>"] [--proposer-timeout S]
 //!       [--json <out.json>]
 //! arena physics-baseline [--system pendulum|spring|double_pendulum|nbody|bounce|none] [--steps N]
-//!       [--seed S] [--budget BYTES] [--learners SPEC,…]
+//!       [--seed S] [--budget BYTES] [--learners SPEC,…] [--encoding i32|coarse|planes|diff2]
 //!       [--text-train <file> --text-heldout <file>]
 //! ```
 //!
@@ -28,7 +28,7 @@
 
 use arena::arena::{meters_for, run, Config, Corpus};
 use arena::learner::{EntropyConfig, LearnerConfig, LearnerSpec, TransformerConfig};
-use arena::physics::{self, System, SYSTEMS};
+use arena::physics::{self, Encoding, System, SYSTEMS};
 
 fn fail(msg: impl std::fmt::Display) -> ! {
     eprintln!("arena: {msg}");
@@ -112,6 +112,7 @@ fn physics_baseline_cmd(args: &[String]) {
     let mut text_files: Option<(String, String)> = None;
     let mut text_train: Option<String> = None;
     let mut text_heldout: Option<String> = None;
+    let mut encoding = Encoding::I32;
     let mut i = 0;
     while i < args.len() {
         let v = args.get(i + 1).map(String::as_str).unwrap_or_else(|| fail(format!("{} needs a value", args[i])));
@@ -129,6 +130,12 @@ fn physics_baseline_cmd(args: &[String]) {
             "--seed" => seed = v.parse().unwrap_or_else(|_| fail("--seed: not a number")),
             "--budget" => budget = v.parse().unwrap_or_else(|_| fail("--budget: not a number of bytes")),
             "--learners" => learners = Some(parse_learners(v).unwrap_or_else(|e| fail(e))),
+            "--encoding" => {
+                encoding = Encoding::from_name(v).unwrap_or_else(|| {
+                    let names: Vec<&str> = Encoding::ALL.iter().map(|e| e.name()).collect();
+                    fail(format!("--encoding: `{v}` is not one of {}", names.join(", ")))
+                })
+            }
             other => fail(format!("physics-baseline: unknown argument `{other}`")),
         }
         i += 2;
@@ -154,7 +161,8 @@ fn physics_baseline_cmd(args: &[String]) {
     };
     println!(
         "physics-baseline: budget {budget} bytes per learner, trajectories of {steps} steps, seed {seed}, \
-         chunks of {} bytes x {} per train step, measured on the first {} bytes of each corpus",
+         encoding {}, chunks of {} bytes x {} per train step, measured on the first {} bytes of each corpus",
+        encoding.name(),
         physics::BASELINE_CHUNK,
         physics::BASELINE_BATCH,
         physics::BASELINE_EVAL_BYTES
@@ -180,7 +188,7 @@ fn physics_baseline_cmd(args: &[String]) {
     let mut curves: Vec<String> = Vec::new();
     for spec in &learners {
         for &system in &systems {
-            let curve = physics::physics_baseline(system, *spec, budget, steps, seed).unwrap_or_else(|e| fail(e));
+            let curve = physics::physics_baseline_as(system, *spec, budget, steps, seed, encoding).unwrap_or_else(|e| fail(e));
             row(system.spec_name(), &describe(spec), &curve);
             curves.push(format!(
                 "{} / {}: held-out {}",

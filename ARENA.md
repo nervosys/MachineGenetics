@@ -842,8 +842,9 @@ debug build).
 corpus of physical trajectories. It may repeat, and it combines with
 `--heldout <files>`. At least one of the two is required. The systems are
 `pendulum`, `spring`, `double_pendulum`, `nbody` and `bounce`. Each spec is
-`physics::corpus(system, ParamRange::HeldOut, seed, trajectories, steps)`,
-named `physics:<system>:<trajectories>:<steps>:seed<seed>`, and from then on it
+`physics::corpus_as(system, ParamRange::HeldOut, seed, trajectories, steps,
+HELDOUT_ENCODING)`, in the `planes` encoding (plan P4c, below), named
+`physics:<system>:<trajectories>:<steps>:seed<seed>:planes`, and from then on it
 is an ordinary held-out corpus: its digest enters the succession suite digest,
 and canaries and slicing apply to it. An unknown system, a field that is not a
 whole number, a zero count, or a wrong field count is refused at start-up.
@@ -855,7 +856,7 @@ cargo run --release --manifest-path arena/Cargo.toml -- \
 ```
 
 `arena physics-baseline [--system S|none] [--steps N] [--seed S] [--budget BYTES]
-[--learners SPEC,…] [--text-train FILE --text-heldout FILE]` trains learners on physics directly, outside the loop, and
+[--learners SPEC,…] [--encoding i32|coarse|planes|diff2] [--text-train FILE --text-heldout FILE]` trains learners on physics directly, outside the loop, and
 reports learning curves on physics and on the README-to-`gate.rs` text
 comparison (plan P4). The result is in `MEASUREMENTS.md`, under "Physics
 baseline (plan P4)". Its verdict is no: held-out bits per byte falls well below
@@ -864,6 +865,20 @@ baseline (plan P4)". Its verdict is no: held-out bits per byte falls well below
 larger learner, by 0.04 bits, and spring's held-out range is heavily damped. So
 the sub-8 figures are mostly the encoding's byte statistics, and physics is not
 yet shown to be learned. Re-planning follows, per the plan.
+
+`--encoding` picks how the trajectories are laid out as bytes (plan P4b):
+`i32` (the default here, and P2's layout), `coarse`
+(100 times the quantum, as `i16`), `planes` (byte-plane-major, as Blosc's
+shuffle), or `diff2` (the second difference, the residual against
+constant-velocity extrapolation). The encoders and their decoders are in
+`arena::physics` (`Encoding`, `encode_as`, `decode_as`). The four-encoding table
+and the gate are in `MEASUREMENTS.md`, under "Physics encodings (plan P4b)".
+`planes` and `diff2` pass the gate. **`--heldout-physics` uses `planes`**
+(`physics::HELDOUT_ENCODING`, plan P4c). It holds the same values as `i32`, only
+reordered, so a learner's gain on it is learned. `diff2` builds a
+constant-velocity predictor into the bytes, which does part of the physics for
+the learner. Corpus names end in the encoding, so figures from different
+encodings are never mixed.
 
 ## What surfaced in MAGE itself
 
