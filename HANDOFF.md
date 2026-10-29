@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,271** — rmi 1,384 · prototype 1,405 · ribosome 168 · germline 175 · forge 63 · arena 76 |
+| Tests | **3,272** — rmi 1,384 · prototype 1,405 · ribosome 168 · germline 175 · forge 63 · arena 77 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -1007,6 +1007,19 @@ minimisation, and every domain is real","x":[1.5],"value":0.0,"evals":9,
 "fuel":63}`. A parameter without a `@param` exits 1. The mode is in the
 capability manifest (`read_local`) and the ontology's flag list. Prototype +5
 tests, which spawn the binary.
+
+**Plan 7.4 follow-up: novelty is keyed on behaviour by default.** The
+held-out comparison was listed as needing a quiet machine, because allocation
+follows measured joules. It did not: with `--cost fuel`, two runs of one seed
+differ only in energy and time, so held-out results are exact under any load.
+Six seeds of 20 rounds, agents `grammar:1,mutator:1,attacker:1`: behaviour
+minus shape is −0.076 held-out bits/byte (sd 0.175, lower on 4 of 6), about
+one standard error, while shape keying credited 95–120 confirmed exploits a
+run and behaviour none. The learner transfers little to the held-out text at
+this scale (about 7.5 of 8 bits/byte), so the comparison has little power;
+what it settles is that closing the exploit costs nothing measurable. A
+recorded config without the field ran on shape and still reads as shape. The
+table is in ARENA.md. Arena +1 test.
 
 **Pre-existing, not from this change:** `cargo clippy` 0.1.98 (2026-09-01)
 reports 15 warnings in `prototype` — 14 `chunks_exact` with a constant size in
