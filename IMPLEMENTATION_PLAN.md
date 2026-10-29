@@ -50,7 +50,8 @@ The yardstick everything later is judged by, so it goes first.
   - This is Cartesia's compute multiplier with joules as the unit.
   - Done when a `measure` subcommand prints multipliers with seed spread, from
     a directory of run JSONs.
-- [x] **M3** A multi-seed runner. **S [H]**
+- [ ] **M3** A multi-seed runner. **S [H]** *Runner built (`scripts/arena-seeds.sh`);
+  reproducing PR #71's 20-round table with it is still to do.*
   - Generalise the `scratchpad/ab.py` used for PR #71 into
     `scripts/arena-seeds.sh`: N seeds by M configs, run in parallel under
     `--cost fuel`, which is deterministic.
