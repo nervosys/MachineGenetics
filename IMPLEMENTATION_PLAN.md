@@ -267,3 +267,19 @@ Physics as programs agents write, checked by the language, not only as data.
 The critical path is **M1 → P4 → L3**: it decides whether the new domain gives
 the self-improvement loop a measurable signal, which is the point of the
 exercise.
+
+**Where the critical path landed (L3).**
+- **Yes, physics gives a measurable signal.** On held-out text every learner
+  scores *above* the corpus's own order-0 entropy (5.08-5.40 against 4.67), so
+  text gives no headroom at CPU scale. On planes-encoded physics every learner
+  beats order-0 by 0.5-1.1 bits. Six seeds vary the trajectories, so the
+  margins have a spread to be judged against, which text, with nothing seeded,
+  cannot have.
+- **No learner is advantaged on physics but not on text.** The entropy learner
+  ties the n-gram on physics (bytes multiplier about 1.00, sd at most 0.07)
+  despite 0.64 on text and code. The SSM's 0.43-0.51 on pendulum and double
+  pendulum is real against its seed sd, but it is also cheaper on text (0.81),
+  and it is worse on n-body (1.29 ± 0.05).
+- **Next:** wire physics into the loop (P5: can agent programs teach it?) and
+  measure joules on the L3 axes once RAPL exists (X3). L3 used bytes and
+  seconds.
