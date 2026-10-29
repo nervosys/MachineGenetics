@@ -60,6 +60,8 @@
 //! P4). Reproduce with `cargo test -- --ignored --nocapture lz_bits_per_byte_64_kib`.
 
 use crate::grammar::Rng;
+use crate::kernel::Corpus;
+use crate::learner::{build, LearnerSpec};
 use std::f64::consts::PI;
 
 /// The magic that opens every encoded trajectory.
@@ -152,6 +154,22 @@ impl System {
             System::NBody => "nbody",
             System::Bounce => "bounce",
         }
+    }
+
+    /// The name a `--heldout-physics` spec uses for this system.
+    pub fn spec_name(self) -> &'static str {
+        match self {
+            System::Pendulum => "pendulum",
+            System::Spring => "spring",
+            System::DoublePendulum => "double_pendulum",
+            System::NBody => "nbody",
+            System::Bounce => "bounce",
+        }
+    }
+
+    /// The system a spec name names, if any.
+    pub fn from_spec_name(name: &str) -> Option<System> {
+        SYSTEMS.iter().copied().find(|s| s.spec_name() == name)
     }
 
     /// Channels per timestep, in order:
@@ -929,6 +947,176 @@ pub fn corpus(
     out
 }
 
+/// A parsed `--heldout-physics` spec: `<system>:<trajectories>:<steps>:<seed>`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PhysicsSpec {
+    pub system: System,
+    pub trajectories: usize,
+    pub steps: usize,
+    pub seed: u64,
+}
+
+/// Parse `<system>:<trajectories>:<steps>:<seed>`. The system is one of
+/// `pendulum`, `spring`, `double_pendulum`, `nbody`, `bounce`. Trajectories
+/// and steps are at least 1; the seed is any `u64`.
+pub fn parse_spec(spec: &str) -> Result<PhysicsSpec, String> {
+    let fields: Vec<&str> = spec.split(':').collect();
+    let [sys, trajectories, steps, seed] = fields.as_slice() else {
+        return Err(format!(
+            "physics spec `{spec}` has {} fields, not 4 (expected <system>:<trajectories>:<steps>:<seed>)",
+            fields.len()
+        ));
+    };
+    let system = System::from_spec_name(sys).ok_or_else(|| {
+        let names: Vec<&str> = SYSTEMS.iter().map(|s| s.spec_name()).collect();
+        format!("physics spec `{spec}`: unknown system `{sys}` (expected one of {})", names.join(", "))
+    })?;
+    let count = |field: &str, what: &str| -> Result<usize, String> {
+        let n: usize = field
+            .parse()
+            .map_err(|_| format!("physics spec `{spec}`: {what} `{field}` is not a whole number"))?;
+        if n == 0 {
+            return Err(format!("physics spec `{spec}`: {what} must be at least 1"));
+        }
+        Ok(n)
+    };
+    let trajectories = count(trajectories, "trajectories")?;
+    let steps = count(steps, "steps")?;
+    let seed: u64 = seed
+        .parse()
+        .map_err(|_| format!("physics spec `{spec}`: seed `{seed}` is not an unsigned 64-bit number"))?;
+    Ok(PhysicsSpec { system, trajectories, steps, seed })
+}
+
+/// The held-out corpus a `--heldout-physics` spec names: `trajectories` whole
+/// trajectories drawn from [`ParamRange::HeldOut`], with the spec's seed. Its
+/// name is `physics:<system>:<trajectories>:<steps>:seed<seed>`, so a report
+/// says what was scored.
+pub fn physics_corpus(spec: &str) -> Result<Corpus, String> {
+    let s = parse_spec(spec)?;
+    let bytes = corpus(s.system, ParamRange::HeldOut, s.seed, s.trajectories, s.steps);
+    let name = format!("physics:{}:{}:{}:seed{}", s.system.spec_name(), s.trajectories, s.steps, s.seed);
+    Ok(Corpus::new(name, bytes))
+}
+
+/// Bytes per sequence in a baseline train step. Each chunk is one sequence,
+/// so context resets at chunk starts, as it does at program starts in the arena.
+pub const BASELINE_CHUNK: usize = 1024;
+/// Sequences per train step in the physics baseline.
+pub const BASELINE_BATCH: usize = 4;
+/// Bytes of each corpus that bits per byte is measured on: the start of the
+/// train corpus, and the start of the held-out corpus.
+pub const BASELINE_EVAL_BYTES: usize = 64 << 10;
+/// Checkpoints across the budget, each a tenth of it, plus the untrained start.
+pub const BASELINE_CHECKPOINTS: usize = 10;
+
+/// One checkpoint of a learning curve.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct CurvePoint {
+    /// Bytes the learner has been trained on so far.
+    pub bytes_trained: u64,
+    /// Bits per byte on the first [`BASELINE_EVAL_BYTES`] of the train corpus.
+    /// Those bytes are in the training stream, so this is a fit measure.
+    pub train_bpb: f64,
+    /// Bits per byte on the first [`BASELINE_EVAL_BYTES`] of the held-out corpus.
+    pub heldout_bpb: f64,
+}
+
+/// A learning curve, and the order-0 (byte-frequency) entropy of the evaluation
+/// windows. Order-0 is what a memoryless model achieves, so a learner that is
+/// not below it has learned no more than byte frequencies. The fair reference
+/// is `train_order0_bpb`: a byte-frequency model fit on the train side, applied
+/// to held-out data. `heldout_order0_bpb` is stricter: it is the held-out
+/// window's own entropy, an oracle no model could be trained to reach.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Curve {
+    pub points: Vec<CurvePoint>,
+    /// Empirical byte entropy of the train evaluation window, in bits per byte.
+    pub train_order0_bpb: f64,
+    /// Empirical byte entropy of the held-out evaluation window, in bits per byte.
+    pub heldout_order0_bpb: f64,
+}
+
+/// The empirical order-0 entropy of `bytes`, in bits per byte.
+pub fn order0_bits_per_byte(bytes: &[u8]) -> f64 {
+    if bytes.is_empty() {
+        return f64::NAN;
+    }
+    let mut counts = [0usize; 256];
+    for &b in bytes {
+        counts[b as usize] += 1;
+    }
+    let n = bytes.len() as f64;
+    -counts.iter().filter(|&&c| c > 0).map(|&c| (c as f64 / n) * (c as f64 / n).log2()).sum::<f64>()
+}
+
+/// Train `spec` on `train` in contiguous chunks, and measure it at each tenth of
+/// `budget` bytes (plus the untrained start). Train steps read `train` in order
+/// and never revisit a byte, so `budget` must not exceed `train.len()`. The
+/// `train` argument need not be physics: the text comparison calls this too.
+pub fn learning_curve(
+    spec: LearnerSpec,
+    train: &[u8],
+    heldout: &[u8],
+    budget: usize,
+    chunk: usize,
+    batch: usize,
+) -> Result<Curve, String> {
+    let per_step = chunk * batch;
+    let steps = budget / per_step;
+    if steps < BASELINE_CHECKPOINTS {
+        return Err(format!(
+            "budget of {budget} bytes is under {BASELINE_CHECKPOINTS} train steps of {per_step} bytes"
+        ));
+    }
+    if steps * per_step > train.len() {
+        return Err(format!("train corpus is {} bytes, short of the {} bytes the budget trains on", train.len(), steps * per_step));
+    }
+    if heldout.is_empty() {
+        return Err("held-out corpus is empty".into());
+    }
+    let mut learner = build(spec)?;
+    let tw = &train[..train.len().min(BASELINE_EVAL_BYTES)];
+    let hw = &heldout[..heldout.len().min(BASELINE_EVAL_BYTES)];
+    let mut points = Vec::with_capacity(BASELINE_CHECKPOINTS + 1);
+    let mut done = 0usize;
+    for k in 0..=BASELINE_CHECKPOINTS {
+        let target = steps * k / BASELINE_CHECKPOINTS;
+        while done < target {
+            let start = done * per_step;
+            let batch_slices: Vec<&[u8]> = (0..batch).map(|i| &train[start + i * chunk..start + (i + 1) * chunk]).collect();
+            learner.train(&batch_slices);
+            done += 1;
+        }
+        points.push(CurvePoint {
+            bytes_trained: learner.bytes_seen(),
+            train_bpb: learner.bits_per_byte(tw),
+            heldout_bpb: learner.bits_per_byte(hw),
+        });
+    }
+    Ok(Curve { points, train_order0_bpb: order0_bits_per_byte(tw), heldout_order0_bpb: order0_bits_per_byte(hw) })
+}
+
+/// The physics baseline (plan P4): train `spec` directly on `system`'s
+/// [`ParamRange::Train`] trajectories, and measure it against the same system's
+/// [`ParamRange::HeldOut`] trajectories, over `budget` bytes. `steps` is the
+/// length of each trajectory and `seed` seeds both corpora. No agents are involved.
+pub fn physics_baseline(
+    system: System,
+    spec: LearnerSpec,
+    budget: usize,
+    steps: usize,
+    seed: u64,
+) -> Result<Curve, String> {
+    // Whole trajectories, just enough to cover the budget. The held-out side is
+    // just enough to cover the evaluation window.
+    let train_per = corpus(system, ParamRange::Train, seed, 1, steps).len().max(1);
+    let held_per = corpus(system, ParamRange::HeldOut, seed, 1, steps).len().max(1);
+    let train = corpus(system, ParamRange::Train, seed, budget.div_ceil(train_per).max(1), steps);
+    let heldout = corpus(system, ParamRange::HeldOut, seed, BASELINE_EVAL_BYTES.div_ceil(held_per).max(1), steps);
+    learning_curve(spec, &train, &heldout, budget, BASELINE_CHUNK, BASELINE_BATCH)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1322,5 +1510,94 @@ mod tests {
         for (system, lz) in rows {
             eprintln!("{:>15}: {lz:.4}", system.name());
         }
+    }
+
+    #[test]
+    fn a_physics_spec_parses_and_each_bad_field_is_named() {
+        assert_eq!(
+            parse_spec("pendulum:8:1100:1"),
+            Ok(PhysicsSpec { system: System::Pendulum, trajectories: 8, steps: 1100, seed: 1 })
+        );
+        assert_eq!(parse_spec("double_pendulum:2:50:0").map(|s| s.system), Ok(System::DoublePendulum));
+        assert_eq!(parse_spec("bounce:1:1:18446744073709551615").map(|s| s.seed), Ok(u64::MAX));
+        // The hyphenated `System::name` is not a spec name.
+        for bad in ["double-pendulum:2:50:1", "foo:2:50:1"] {
+            let e = parse_spec(bad).expect_err(bad);
+            assert!(e.contains("unknown system"), "{bad}: {e}");
+        }
+        assert!(parse_spec("pendulum:8:1100").unwrap_err().contains("3 fields"));
+        assert!(parse_spec("pendulum:8:1100:1:9").unwrap_err().contains("5 fields"));
+        assert!(parse_spec("pendulum:0:1100:1").unwrap_err().contains("trajectories must be at least 1"));
+        assert!(parse_spec("pendulum:8:0:1").unwrap_err().contains("steps must be at least 1"));
+        assert!(parse_spec("pendulum:eight:1100:1").unwrap_err().contains("trajectories `eight`"));
+        assert!(parse_spec("pendulum:8:1100:-1").unwrap_err().contains("seed `-1`"));
+        assert!(physics_corpus("nbody:-2:50:1").is_err(), "a negative count is refused");
+    }
+
+    #[test]
+    fn the_same_physics_spec_gives_the_same_corpus_and_a_new_seed_a_new_one() {
+        let a = physics_corpus("pendulum:2:200:1").expect("valid");
+        let b = physics_corpus("pendulum:2:200:1").expect("valid");
+        let c = physics_corpus("pendulum:2:200:2").expect("valid");
+        assert_eq!(a.sha256(), b.sha256(), "the same spec, the same bytes");
+        assert_ne!(a.sha256(), c.sha256(), "a different seed, different bytes");
+        assert_eq!(a.name(), "physics:pendulum:2:200:seed1");
+        assert_eq!(a.len(), corpus(System::Pendulum, ParamRange::HeldOut, 1, 2, 200).len());
+    }
+
+    #[test]
+    fn the_suite_digest_covers_a_physics_corpus() {
+        use crate::succession::suite_digest;
+        let text = Corpus::new("text", b"the quick brown fox".to_vec());
+        let physics = physics_corpus("spring:2:100:1").expect("valid");
+        assert_ne!(suite_digest(std::slice::from_ref(&text)), suite_digest(&[text.clone(), physics.clone()]));
+        assert_ne!(suite_digest(std::slice::from_ref(&physics)), suite_digest(&[physics_corpus("spring:2:100:2").unwrap()]));
+    }
+
+    fn tiny_run_cfg() -> crate::arena::Config {
+        crate::arena::Config {
+            rounds: 4,
+            programs_per_round: 8,
+            learners: vec![LearnerSpec::Ngram(crate::learner::LearnerConfig { orders: 2, log2_buckets: 8, lr: 0.05 })],
+            eval_every: 2,
+            replay_per_round: 2,
+            ..crate::arena::Config::default()
+        }
+    }
+
+    #[test]
+    fn a_run_on_physics_held_out_data_alone_reports_it_at_every_checkpoint() {
+        use crate::energy::WallClock;
+        let meters: Vec<Box<dyn crate::energy::Meter>> = vec![Box::new(WallClock::new("cpu-estimate", 65.0))];
+        let heldout = vec![physics_corpus("pendulum:4:300:1").expect("valid")];
+        let report = crate::arena::run(tiny_run_cfg(), heldout, meters, vec![]).expect("runs on physics alone");
+        assert!(!report.checkpoints.is_empty());
+        for c in &report.checkpoints {
+            let keys: Vec<&String> = c.heldout_bpb.keys().collect();
+            assert_eq!(keys, vec!["physics:pendulum:4:300:seed1"], "checkpoint at round {}", c.round);
+            assert!(c.heldout_bpb.values().all(|b| b.is_finite()));
+        }
+    }
+
+    #[test]
+    fn order0_is_the_byte_frequency_entropy() {
+        assert_eq!(order0_bits_per_byte(&[7; 16]), 0.0, "a constant window has no entropy");
+        assert!((order0_bits_per_byte(&[0, 1, 0, 1]) - 1.0).abs() < 1e-12, "two equal bytes are one bit each");
+        assert!((order0_bits_per_byte(&(0..=255).collect::<Vec<u8>>()) - 8.0).abs() < 1e-12, "all bytes equally: eight bits");
+        assert!(order0_bits_per_byte(&[]).is_nan());
+    }
+
+    #[test]
+    fn a_physics_baseline_is_finite_and_trains_below_uniform() {
+        let spec = LearnerSpec::Ngram(crate::learner::LearnerConfig { orders: 2, log2_buckets: 8, lr: 0.05 });
+        // Ten steps of 4 KiB each: the smallest budget the curve accepts.
+        let budget = BASELINE_CHUNK * BASELINE_BATCH * BASELINE_CHECKPOINTS;
+        let points = physics_baseline(System::Pendulum, spec, budget, 200, 1).expect("runs").points;
+        assert_eq!(points.len(), BASELINE_CHECKPOINTS + 1);
+        assert!((points[0].train_bpb - 8.0).abs() < 1e-9, "untrained is uniform, not {}", points[0].train_bpb);
+        let last = points.last().expect("points");
+        assert!(last.train_bpb.is_finite() && last.heldout_bpb.is_finite());
+        assert!(last.train_bpb < 8.0, "train bpb {} is not below uniform", last.train_bpb);
+        assert!(last.bytes_trained as usize >= budget);
     }
 }

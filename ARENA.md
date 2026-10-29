@@ -826,6 +826,35 @@ plan P4. Reproduce the table with
 `cargo test -- --ignored --nocapture lz_bits_per_byte_64_kib` (about 25 s in a
 debug build).
 
+### Physics as a held-out suite (plan P3)
+
+`--heldout-physics <system>:<trajectories>:<steps>:<seed>` adds a held-out
+corpus of physical trajectories. It may repeat, and it combines with
+`--heldout <files>`. At least one of the two is required. The systems are
+`pendulum`, `spring`, `double_pendulum`, `nbody` and `bounce`. Each spec is
+`physics::corpus(system, ParamRange::HeldOut, seed, trajectories, steps)`,
+named `physics:<system>:<trajectories>:<steps>:seed<seed>`, and from then on it
+is an ordinary held-out corpus: its digest enters the succession suite digest,
+and canaries and slicing apply to it. An unknown system, a field that is not a
+whole number, a zero count, or a wrong field count is refused at start-up.
+
+```sh
+cargo run --release --manifest-path arena/Cargo.toml -- \
+    --heldout-physics pendulum:8:1100:1,double_pendulum:8:1100:1 \
+    --heldout README.md
+```
+
+`arena physics-baseline [--system S] [--steps N] [--seed S] [--budget BYTES]
+[--learners SPEC,…]` trains learners on physics directly, outside the loop, and
+reports learning curves on physics and on the README-to-`gate.rs` text
+comparison (plan P4). The result is in `MEASUREMENTS.md`, under "Physics
+baseline (plan P4)". Its verdict is no: held-out bits per byte falls well below
+8 on every system, but the learners do not clearly beat the byte-frequency
+(order-0) entropy of the held-out windows. The one exception is spring with the
+larger learner, by 0.04 bits, and spring's held-out range is heavily damped. So
+the sub-8 figures are mostly the encoding's byte statistics, and physics is not
+yet shown to be learned. Re-planning follows, per the plan.
+
 ## What surfaced in MAGE itself
 
 The arena runs the compiler thousands of times on programs no person wrote,

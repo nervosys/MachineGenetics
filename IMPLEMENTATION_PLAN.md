@@ -76,19 +76,22 @@ The yardstick everything later is judged by, so it goes first.
     and scale.
   - Done when encode→decode round-trips within the quantum, and the encoding
     is documented in ARENA.md.
-- [ ] **P3** Physics as a held-out suite. **M [H]**
+- [x] **P3** Physics as a held-out suite. **M [H]**
   - `--heldout-physics <system>:<n>:<seed>` generates held-out corpora from
     parameter ranges disjoint from any training range.
   - The corpora are registered like files: digest, canary planting, and
     slicing all apply.
   - Done when a run reports physics held-out bpb, and the succession suite
     digest covers it.
-- [ ] **P4** Baseline signal check. **S**
+- [x] **P4** Baseline signal check. **S**
   - Train the existing learners on physics trajectories directly, outside the
     agent loop, and record bpb against uniform.
   - Done when MEASUREMENTS.md records whether physics is learnable at CPU
     scale. This is the premise of the whole phase, so if it fails, stop and
     re-plan here.
+  - Verdict (negative): the sub-8 held-out figures are mostly byte statistics;
+    the learners do not clearly beat held-out order-0 except spring. Stop and
+    re-plan; see MEASUREMENTS.md, "Physics baseline (plan P4)".
 - [ ] **P5** Can agents write physics-like data? **M**
   - Arena programs are `gen(s) -> [usize]`, built from integer
     `scan`/`map`/`mod` combinators.
