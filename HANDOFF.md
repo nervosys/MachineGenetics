@@ -1276,6 +1276,32 @@ Bytes multipliers against `ng`, physics as a per-seed mean ± sd:
 
 Arena +10 tests.
 
+**Implementation plan P5: the grammar teaches physics no better than random
+programs.** Three seeds at 20 rounds under `--cost fuel`, with physics held-out
+only, comparing default agents against a `uniform:1` control.
+
+Fraction of the gap to direct physics training that the run closes (mean ± sd):
+
+| system | grammar | uniform control |
+|---|---|---|
+| pendulum | 10 ± 12% | 13 ± 11% |
+| double pendulum | 13 ± 8% | 8 ± 6% |
+| spring | 33 ± 4% | 32 ± 7% |
+
+No difference reaches one standard error. What closes the gap is the learner's
+generic adaptation, not the programs: the search adds nothing measurable on
+physics.
+
+Corrected while stacking: the agent's draft said `scan` over `scan` already
+expresses second-order dynamics. It does not. `scan` has one accumulator, so a
+composition is a cascade of first-order stages with real poles, which cannot
+oscillate, and pendulum and spring need a complex pole pair. The grammar
+cannot write an oscillator. P5b adds a two-state recurrence behind a flag and
+re-runs this grid; that is the next test of whether the loop can learn
+physics from its own programs.
+
+No code changed.
+
 **Pre-existing, not from this change:** `cargo clippy` 0.1.98 (2026-09-01)
 reports 15 warnings in `prototype` — 14 `chunks_exact` with a constant size in
 `abl_compute.rs` and older parts of `main.rs`, one collapsible `if` in

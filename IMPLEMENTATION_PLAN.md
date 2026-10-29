@@ -122,6 +122,16 @@ The yardstick everything later is judged by, so it goes first.
   predictor into the bytes.*
 - [x] **P5** Can agents write physics-like data? **M**
   - Result: no, not measurably. Over 3 seeds at 20 rounds, the grammar closes 10% (pendulum), 13% (double pendulum) and 33% (spring) of the gap to the physics baseline, the same as a uniform-program control within seed spread. No production added; default unchanged. See ARENA.md, "Physics from programs (plan P5)".
+- [ ] **P5b** A second-order production. **M**
+  - `scan` carries one accumulator, so the grammar can only write cascades of
+    first-order recurrences, which have real poles and cannot oscillate.
+    Pendulum and spring need a complex pole pair.
+  - Add a two-state recurrence, `(x1, x2) -> (a*x1 - b*x2) >> k` over bounded
+    integers, behind a config flag (default off). It must round-trip through
+    `Program::parse`, stay within `MAX_DEPTH`, and respect fuel.
+  - Re-run P5's grid with it on. Done when ARENA.md says whether grammar agents
+    then beat the uniform control on the oscillators, against the seed
+    spread.
 - [ ] **P6** Rollout metrics. **M**
   - For learners, generate k steps and decode them. Report error against
     horizon and conservation drift, alongside bpb.

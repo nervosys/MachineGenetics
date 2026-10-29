@@ -1036,14 +1036,19 @@ pendulum 7.2 to 7.6 against 5.82).
 brief asked for one only when the fraction closed is small. Pendulum (10.2) and
 double pendulum (13.3) sit at the threshold, and spring (32.7) is above it, so
 the rule does not settle it. What settles it is the control: the fraction the
-grammar closes is no different from a learner trained on uniform programs. Two
-further points weigh against adding a production now:
+grammar closes is no different from a learner trained on uniform programs: the
+search adds nothing measurable on physics. Two further points:
 
-- The grammar already expresses a two-stage linear recurrence. A `scan` over
-  another `scan` is a list-of-list composition the parser and sampler both
-  accept, so a second-order-looking dynamics is written by existing productions.
-  A new production would give the sampler a shortcut to that shape, not new
-  expressivity. Whether the shortcut matters is not measured.
+- **The grammar cannot write an oscillator.** `scan` carries one accumulator,
+  so each `scan` is a first-order recurrence. Composing two gives a cascade of
+  first-order stages, whose poles are both real, so it can decay or grow but
+  never oscillate. A pendulum or spring needs a complex-conjugate pole pair: a
+  true second-order recurrence, with two values of state. That needs tuple
+  state or a fixed production. This is new expressivity, not a shortcut, and
+  it is the obvious candidate for why the search finds nothing the uniform
+  control does not. It is not built or measured here: see P5b in
+  `IMPLEMENTATION_PLAN.md`. (This paragraph corrects the first draft, which
+  said `scan` over `scan` already expressed second-order dynamics.)
 - A mod-256 recurrence emits low bytes of integers. The physics bytes are
   byte-planes of 1e-5 quanta, whose structure a recurrence does not obviously
   share. This is a hypothesis, not a measurement.
