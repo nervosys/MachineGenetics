@@ -374,10 +374,12 @@ and code better than the hashed n-gram it is built on, at the same orders and
 buckets? The learner marks a chunk boundary before byte `t` when the n-gram's
 next-byte entropy there exceeds a threshold, set so the mean chunk length is
 `L = 4` on the training data. It mixes two experts linearly, with weights learned
-online: the n-gram, and a count table keyed by (previous chunk, bytes so far in
+online, and they keep moving while the learner scores: the n-gram, and a count table keyed by (previous chunk, bytes so far in
 this chunk) that backs off to the n-gram. `bits_per_byte` is the honest coding
 cost, `−log2 P(byte)` under that mixture. Design and choices are in the module
 docs of `arena/src/entropy.rs`.
+
+**The figures in this section are after the adaptive-weight fix** (see the out-of-distribution bullet). Before the fix the mixture weights were learned in training and then frozen during scoring. Pre-fix figures are kept, labelled, only where a conclusion depended on them.
 
 Commands, from the `arena` directory with a release build. Both use the same
 learners, and both train for one budget of whole 1 KiB steps (4 chunks of 256
@@ -402,12 +404,12 @@ minus the n-gram's at the same orders and buckets (negative is better).
 |---|---|---|---|---|---|
 | text, README → gate.rs | ngram 3×2¹² | 28,672 | 5.102 | 5.498 | |
 | text, README → gate.rs | ngram 4×2¹⁴ | 28,672 | 4.930 | 5.400 | |
-| text, README → gate.rs | entropy 3×2¹² L4 | 28,672 | 4.092 | 6.294 | +0.796 |
-| text, README → gate.rs | entropy 4×2¹⁴ L4 | 28,672 | 3.258 | 5.151 | −0.249 |
+| text, README → gate.rs | entropy 3×2¹² L4 | 28,672 | 3.756 | 5.410 | −0.088 |
+| text, README → gate.rs | entropy 4×2¹⁴ L4 | 28,672 | 3.169 | 4.805 | −0.595 |
 | code, gate.rs → transformer.rs | ngram 3×2¹² | 27,648 | 4.682 | 5.400 | |
 | code, gate.rs → transformer.rs | ngram 4×2¹⁴ | 27,648 | 4.332 | 5.223 | |
-| code, gate.rs → transformer.rs | entropy 3×2¹² L4 | 27,648 | 3.364 | 5.558 | +0.158 |
-| code, gate.rs → transformer.rs | entropy 4×2¹⁴ L4 | 27,648 | 2.886 | 4.605 | −0.618 |
+| code, gate.rs → transformer.rs | entropy 3×2¹² L4 | 27,648 | 3.062 | 4.898 | −0.502 |
+| code, gate.rs → transformer.rs | entropy 4×2¹⁴ L4 | 27,648 | 2.655 | 4.674 | −0.549 |
 
 Held-out bits per byte at 0%, 10%, … 100% of the budget, for the same runs:
 
@@ -415,40 +417,26 @@ Held-out bits per byte at 0%, 10%, … 100% of the budget, for the same runs:
 text, README → gate.rs
   ngram 3×2^12:     8.000 7.839 7.512 7.202 6.920 6.660 6.495 6.227 5.970 5.723 5.498
   ngram 4×2^14:     8.000 7.837 7.489 7.171 6.886 6.623 6.456 6.178 5.902 5.639 5.400
-  entropy 3×2^12 L4: 8.000 7.643 6.518 6.512 6.646 6.334 6.014 5.822 5.792 5.629 6.294
-  entropy 4×2^14 L4: 8.000 7.665 6.245 6.075 5.859 5.634 5.621 5.320 5.742 5.048 5.151
+  entropy 3×2^12 L4: 8.000 7.715 6.304 6.113 5.870 5.653 5.585 5.258 5.078 4.947 5.410
+  entropy 3×2^12 L4, before the fix: 8.000 7.643 6.518 6.512 6.646 6.334 6.014 5.822 5.792 5.629 6.294
+  entropy 4×2^14 L4: 8.000 7.626 6.203 5.965 5.719 5.511 5.431 5.111 4.962 4.848 4.805
+  entropy 4×2^14 L4, before the fix: 8.000 7.665 6.245 6.075 5.859 5.634 5.621 5.320 5.742 5.048 5.151
 code, gate.rs → transformer.rs
   ngram 3×2^12:     8.000 7.808 7.499 7.203 7.003 6.706 6.409 6.212 5.926 5.653 5.400
   ngram 4×2^14:     8.000 7.805 7.477 7.162 6.948 6.629 6.307 6.094 5.784 5.491 5.223
-  entropy 3×2^12 L4: 8.000 7.473 6.139 6.266 6.132 5.816 5.464 5.235 5.813 5.426 5.558
-  entropy 4×2^14 L4: 8.000 7.597 6.024 5.971 5.750 5.431 5.406 5.113 5.356 4.835 4.605
+  entropy 3×2^12 L4: 8.000 7.631 6.143 5.926 5.758 5.449 5.214 5.062 5.261 5.089 4.898
+  entropy 3×2^12 L4, before the fix: 8.000 7.473 6.139 6.266 6.132 5.816 5.464 5.235 5.813 5.426 5.558
+  entropy 4×2^14 L4: 8.000 7.532 6.028 5.833 5.608 5.264 5.224 5.060 5.117 4.856 4.674
+  entropy 4×2^14 L4, before the fix: 8.000 7.597 6.024 5.971 5.750 5.431 5.406 5.113 5.356 4.835 4.605
 ```
 
 What the table says, and what it does not:
 
-- **Matched on bytes, the entropy learner wins at 4×2¹⁴ on both corpora** (−0.25
-  on text, −0.62 on code). It loses at 3×2¹², by 0.80 on text and by 0.16 on
-  code. The sign depends on the size, so one configuration does not settle it.
-- **The curves are noisy, and the last point is one sample.** The 3×2¹² text
-  curve falls from 5.63 at 90% to 6.29 at 100%. The figures here are single
-  runs with one seed, so differences under about 0.3 bits are not established.
-- **Train bits per byte are in-sample, and the entropy learner's gap is large.**
-  Its train figure is 1.7 to 2.2 bits below its held-out figure, against 0.4 to
-  0.9 for the n-gram. The chunk table memorises the chunks it has seen, which is
-  the cost of a count table on its own training data.
-- **Unit-test figures** (debug build, `cargo test`): on the first 512 bytes of
-  the README repeated eight times, trained four epochs at 3×2¹⁰, the entropy
-  learner scores 0.303 bits per byte against the n-gram's 0.280. The test asserts
-  it is within 0.05 of the n-gram. On the README's first 4 KiB, after training,
-  the mean chunk length is 4.66 against the target of 4.
-- **Out of distribution it can be confidently wrong.** A three-round arena run
-  on the self-play pool, scored on `README.md`, with
-  `arena --heldout ../README.md --rounds 3 --programs 16 --learners ent:3:12:4:0.02,ng:3:12:0.02 --cost fuel`,
-  gave the entropy learner 9.52 bits per byte against the n-gram's 7.96. The
-  mixture is proper, and the tests check it sums to one, so this is not a
-  normalisation fault. The chunk table had memorised the pool's repeated
-  structure, and the mixture weight learned on that data stayed on it. Above 8
-  bits per byte is worse than a uniform model. This is open.
+- **Matched on bytes, the entropy learner now wins at both sizes on both corpora.** After the fix: at 4×2¹⁴ it is 0.60 below the n-gram on text and 0.55 below on code; at 3×2¹² it is 0.09 below on text and 0.50 below on code. Before the fix it lost at 3×2¹² by 0.80 on text and 0.16 on code, and the sign depended on the size. That reading came from frozen mixture weights, so it is not kept as a finding about size.
+- **The curves are noisy, and the last point is one sample.** The 3×2¹² text curve now falls to 4.95 at 90% and ends at 5.41, a rise of 0.46 at the last checkpoint (before the fix it rose from 5.63 to 6.29). The figures are single runs with one seed, so differences under about 0.3 bits are not established.
+- **Train bits per byte are in-sample, and the entropy learner's gap is large.** After the fix its train figure is 1.6 to 2.0 bits below its held-out figure (before the fix, 1.7 to 2.2), against 0.4 to 0.9 for the n-gram. The chunk table still memorises the chunks it has seen, which is the cost of a count table on its own training data.
+- **Unit-test figures** (debug build, `cargo test`, recorded before the fix and not re-measured): on the first 512 bytes of the README repeated eight times, trained four epochs at 3×2¹⁰, the entropy learner scores 0.303 bits per byte against the n-gram's 0.280. The test asserts it is within 0.05 of the n-gram. On the README's first 4 KiB, after training, the mean chunk length is 4.66 against the target of 4.
+- **Out of distribution, the mixture was confidently wrong, and the fix removed it.** Before the fix, a three-round arena run on the self-play pool, scored on `README.md`, with `arena --heldout ../README.md --rounds 3 --programs 16 --learners ent:3:12:4:0.02,ng:3:12:0.02 --cost fuel`, gave the entropy learner 9.52 bits per byte against the n-gram's 7.96. The mixture is proper, and the tests check it sums to one, so this was not a normalisation fault. Cause: 99.2% of the README's bytes were unseen in their chunk key. For an unseen key the chunk table backs off to the n-gram with a Dirichlet prior (β = 1), so its probability for a byte is the n-gram's divided by N+1, which costs about log₂(N+1) bits. The mixture weight that put 0.99 on the chunk table in training was then frozen during scoring, so the mixture kept paying that cost. The fix updates the weights per byte while scoring, as a Bayes update with a fixed share of 0.02, starting from the trained weights. The same run now gives 8.00 bits per byte against the n-gram's 7.99. The n-gram figure moved from 7.96 because the self-play pool changes with learner credit. A test checks this, and with the weights frozen again the test fails (8.92 against 8.55).
 
 Not measured: physics rows (P4b, below, now chooses an encoding for them), and the joule and latency axes.
 
@@ -619,37 +607,30 @@ below the order-0 of the training window).
 | corpus | system | learner | params | held-out bpb | held-out order-0 | held-out − order-0 | ≤ −0.3? | held-out < train order-0? | wall (s) |
 |---|---|---|---|---|---|---|---|---|---|
 | text, README → gate.rs | — | ng 4×2¹⁴ | 16.8 M | 5.400 | 4.666 | +0.734 | no | no | 5.1 |
-| text, README → gate.rs | — | ent 4×2¹⁴ L4 | 21.0 M | 5.151 | 4.666 | +0.485 | no | no | 12.3 |
+| text, README → gate.rs | — | ent 4×2¹⁴ L4 | 21.0 M | 4.805 (was 5.151) | 4.666 | +0.139 (was +0.485) | no | yes (5.117; was no) | 12.3 (pre-fix) |
 | text, README → gate.rs | — | ssm d16 | 9,248 | **5.075** | 4.666 | +0.409 | no | yes (5.117) | 4.8 |
 | code, gate.rs → transformer.rs | — | ng 4×2¹⁴ | 16.8 M | 5.223 | 4.907 | +0.316 | no | no (4.666) | 7.2 |
-| code, gate.rs → transformer.rs | — | ent 4×2¹⁴ L4 | 21.0 M | **4.605** | 4.907 | −0.302 | yes | yes (4.666) | 9.7 |
+| code, gate.rs → transformer.rs | — | ent 4×2¹⁴ L4 | 21.0 M | **4.674** (was 4.605) | 4.907 | −0.233 (was −0.302) | no | no (4.666) | 9.7 (pre-fix) |
 | code, gate.rs → transformer.rs | — | ssm d16 | 9,248 | 5.043 | 4.907 | +0.136 | no | no | 2.3 |
 | physics, planes | pendulum | ng 4×2¹⁴ | 16.8 M | 5.822 | 6.498 | −0.676 | yes | yes | |
-| physics, planes | pendulum | ent 4×2¹⁴ L4 | 21.0 M | 5.822 | 6.498 | −0.676 | yes | yes | |
+| physics, planes | pendulum | ent 4×2¹⁴ L4 | 21.0 M | 5.828 (was 5.822) | 6.498 | −0.670 (was −0.676) | yes | yes | |
 | physics, planes | pendulum | ssm d16 | 9,248 | 5.679 | 6.498 | −0.819 | yes | yes | |
 | physics, planes | spring | ng 4×2¹⁴ | 16.8 M | 2.386 | 3.505 | −1.119 | yes | yes | |
-| physics, planes | spring | ent 4×2¹⁴ L4 | 21.0 M | 2.390 | 3.505 | −1.115 | yes | yes | |
+| physics, planes | spring | ent 4×2¹⁴ L4 | 21.0 M | 2.400 (was 2.390) | 3.505 | −1.105 (was −1.115) | yes | yes | |
 | physics, planes | spring | ssm d16 | 9,248 | 2.500 | 3.505 | −1.005 | yes | yes | |
 | physics, planes | double pendulum | ng 4×2¹⁴ | 16.8 M | 4.959 | 5.739 | −0.780 | yes | yes | |
-| physics, planes | double pendulum | ent 4×2¹⁴ L4 | 21.0 M | 4.968 | 5.739 | −0.771 | yes | yes | |
+| physics, planes | double pendulum | ent 4×2¹⁴ L4 | 21.0 M | 4.966 (was 4.968) | 5.739 | −0.773 (was −0.771) | yes | yes | |
 | physics, planes | double pendulum | ssm d16 | 9,248 | 4.904 | 5.739 | −0.835 | yes | yes | |
 | physics, planes | n-body | ng 4×2¹⁴ | 16.8 M | 5.388 | 5.972 | −0.584 | yes | yes | |
-| physics, planes | n-body | ent 4×2¹⁴ L4 | 21.0 M | **7.836** | 5.972 | +1.864 | no | no | |
+| physics, planes | n-body | ent 4×2¹⁴ L4 | 21.0 M | **5.397** (was 7.836) | 5.972 | −0.575 (was +1.864) | yes | yes | |
 | physics, planes | n-body | ssm d16 | 9,248 | 5.160 | 5.972 | −0.812 | yes | yes | |
 | physics, planes | bounce | ng 4×2¹⁴ | 16.8 M | 6.095 | 6.655 | −0.560 | yes | yes | |
-| physics, planes | bounce | ent 4×2¹⁴ L4 | 21.0 M | 6.098 | 6.655 | −0.557 | yes | yes | |
+| physics, planes | bounce | ent 4×2¹⁴ L4 | 21.0 M | 6.084 (was 6.098) | 6.655 | −0.571 (was −0.557) | yes | yes | |
 | physics, planes | bounce | ssm d16 | 9,248 | 6.153 | 6.655 | −0.502 | yes | yes | |
 
-Wall time per learner. The physics wall time covers all five systems and the
-text row. ng: text 5.1 s, code 7.2 s, physics 101.8 s. ent: text 12.3 s, code 9.7
-s, physics 260.3 s. ssm: text 4.8 s, code 2.3 s, physics 59.5 s. One run each, on
-this machine, release build.
+Wall time per learner. The physics wall time covers all five systems and the text row. ng: text 5.1 s, code 7.2 s, physics 101.8 s. ent: text 12.3 s, code 9.7 s, physics 260.3 s (all pre-fix). ssm: text 4.8 s, code 2.3 s, physics 59.5 s. One run each, sequential, on this machine, release build. The after-fix entropy runs were made 12 jobs at once, so their seconds are not reported. The fix adds a per-byte posterior update to the entropy learner, so its pre-fix seconds may understate its cost now.
 
-Gate counts, the plan's rule, on the five planes systems: **ng 5 of 5** (the
-P4b result again, which this run reproduces to the third decimal on all five),
-**ent 4 of 5** (it fails n-body), **ssm 5 of 5**. Against the train-side
-order-0, ssm is below it on all five; ng is below on all five; ent is above it on
-n-body (7.836 against 5.951).
+Gate counts, the plan's rule, on the five planes systems: **ng 5 of 5** (the P4b result again, which this run reproduces to the third decimal on all five), **ent 5 of 5** (it was 4 of 5 before the fix, failing n-body), **ssm 5 of 5**. Against the train-side order-0, ssm, ng and ent are all below it on all five. Before the fix the entropy learner was above it on n-body (7.836 against 5.951); after the fix it is below (5.397).
 
 Held-out bits per byte at 0%, 10%, … 100% of the budget, for the rows whose
 curves change the reading:
@@ -657,52 +638,37 @@ curves change the reading:
 ```
 n-body
   ng:   8.000 7.977 7.730 7.288 7.114 6.639 6.350 6.177 5.734 5.582 5.388
-  ent:  8.000 8.653 9.798 7.257 8.615 7.103 6.344 6.172 7.117 7.590 7.836
+  ent:  8.000 7.989 7.713 7.041 7.038 4.763 6.230 6.082 4.821 5.596 5.397
+  ent, before the fix: 8.000 8.653 9.798 7.257 8.615 7.103 6.344 6.172 7.117 7.590 7.836
   ssm:  8.000 7.994 7.940 7.692 7.144 5.362 5.172 5.167 5.202 6.116 5.160
 bounce
   ng:   8.000 7.825 7.520 7.311 7.020 6.771 6.572 6.371 6.248 6.155 6.095
-  ent:  8.000 9.430 7.495 7.269 8.441 6.769 6.585 6.368 6.245 6.162 6.098
+  ent:  8.000 7.814 7.472 6.638 6.741 6.647 6.536 6.327 6.228 6.163 6.084
+  ent, before the fix: 8.000 9.430 7.495 7.269 8.441 6.769 6.585 6.368 6.245 6.162 6.098
   ssm:  8.000 7.963 7.801 7.327 6.361 6.422 6.443 6.369 6.329 6.249 6.153
 text (README → gate.rs)
   ng:   8.000 7.837 7.489 7.171 6.886 6.623 6.456 6.178 5.902 5.639 5.400
-  ent:  8.000 7.665 6.245 6.075 5.859 5.634 5.621 5.320 5.742 5.048 5.151
+  ent:  8.000 7.626 6.203 5.965 5.719 5.511 5.431 5.111 4.962 4.848 4.805
+  ent, before the fix: 8.000 7.665 6.245 6.075 5.859 5.634 5.621 5.320 5.742 5.048 5.151
   ssm:  8.000 7.950 7.816 7.460 6.589 5.522 5.524 5.749 5.487 5.113 5.075
 ```
 
 What the table says, and what it does not:
 
-- **Text: the SSM is lowest, but only the n-gram margin clears the 0.3 bar, and
-  that is one seed.** At 9,248 parameters it reaches 5.075, against 5.151 for the
-  entropy learner (0.08 lower) and 5.400 for the n-gram (0.33 lower). The 0.33 is
-  above 0.3, but it is one seed, so it is suggestive rather than established; the
-  0.08 is a tie. Its training figure is 5.22, above its held-out figure, so it
-  underfits the README at 28 steps. Its curve is still falling at the end.
-- **Code: the entropy learner is lowest.** Its 4.605 is 0.44 below the SSM and 0.62
-  below the n-gram. The SSM beats the n-gram by 0.18, which is under 0.3 and not
-  established. Here the entropy learner's train figure (2.886) is 1.7 bits under
-  its held-out figure, the memorisation gap from L1, and the SSM's gap is small.
-- **Physics: on the gate, the SSM and the n-gram pass all five, the entropy
-  learner four.** Its n-body result is the failure. The entropy learner's
-  held-out curve is above 8 bits at 10% and 20% of the budget (8.65 and 9.80),
-  and it ends at 7.84, against 5.39 for the n-gram at the same bytes. The points
-  above 8 bits are worse than uniform, a failure of the kind L1 recorded out of
-  distribution. L1 blamed the mixture's global weight; this run is consistent with
-  that, but did not test it. Bounce shows the same spike at 10% (9.43), though it
-  recovers.
+- **Text: the entropy learner is lowest, and the SSM beats the n-gram by 0.33 on one seed.** After the fix the entropy learner reaches 4.805 (was 5.151). The SSM is at 5.075, 0.27 above it, and the n-gram at 5.400, 0.60 above it. The SSM's 0.33 margin over the n-gram is above 0.3, but it is one seed, so it is suggestive rather than established. Its training figure is 5.22, above its held-out figure, so it underfits the README at 28 steps. Its curve is still falling at the end. Before the fix the SSM was lowest on text; that no longer holds.
+- **Code: the entropy learner is lowest.** Its 4.674 is 0.37 below the SSM and 0.55 below the n-gram (before the fix: 4.605, 0.44 and 0.62). The SSM beats the n-gram by 0.18, which is under 0.3 and not established. Here the entropy learner's train figure (2.655) is 2.0 bits under its held-out figure, the memorisation gap from L1, and the SSM's gap is small.
+- **Physics: on the gate, all three learners pass all five.** The entropy learner's n-body result, the failure before the fix, is now 5.397 at the end, against 5.388 for the n-gram. Its n-body curve is still non-monotone: it is 7.99 and 7.71 at 10% and 20% of the budget, falls to 4.76 at 50%, rises to 6.23 at 60%, and ends at 5.40. Before the fix it was above uniform at 10% and 20% (8.65 and 9.80) and ended at 7.84. That was the frozen mixture weight (L1), and the fix removed it. Bounce's 10% point is 7.81 now (was 9.43 before the fix), and it recovers as before.
 - **Physics: the SSM is level with the n-gram, and the differences are small.**
   Against the n-gram it is lower on pendulum (0.14), double pendulum (0.06) and
   n-body (0.23), and higher on spring (0.11) and bounce (0.06). None of these is
   over 0.3, so none is established. The n-gram and the entropy learner agree on
-  pendulum to the third decimal (5.822 both), so the chunk table adds nothing there.
+  pendulum to within 0.01 (5.822 and 5.828 after the fix; 5.822 both before), so the chunk table adds nothing there.
 - **Size.** The SSM has about 0.05% of the n-gram's parameters, and its state is
   16 numbers per position. That it matches or beats the n-gram on text and on
   four of five physics systems says that the recurrence is a useful bias for
   these streams. It does not say the SSM is the better learner at equal size, and
   no size-matched run was made.
-- **Cost.** The SSM was the cheapest of the three on every corpus here: 59.5 s
-  for the physics invocation, against 101.8 s for the n-gram and 260.3 s for the
-  entropy learner. The cause of the n-gram's and the entropy learner's extra time
-  was not isolated.
+- **Cost.** The SSM was the cheapest of the three on every corpus here: 59.5 s for the physics invocation, against 101.8 s for the n-gram and 260.3 s for the entropy learner, all pre-fix sequential runs. The cause of the n-gram's and the entropy learner's extra time was not isolated. The fix adds a per-byte posterior to the entropy learner, so its cost may have changed, and it was not re-timed cleanly.
 - **Optimisation is not smooth.** The SSM's n-body curve goes from 5.17 at 60%
   of the budget up to 6.12 at 90%, then back to 5.16. The learning rate was not
   tuned; a smaller rate or a schedule may remove the spike, and this was not tested.
@@ -731,41 +697,34 @@ arena physics-baseline --system none --learners LEARNER --text-train ../germline
 arena measure-curves curves/ code-ng.json code-ent.json code-ssm.json --json measurement.json
 ```
 
-The grid ran sequentially in one background process, so the wall-clock figures are not contaminated by parallel runs. It took 1,774 s in total (29.6 min): ng 84–121 s per seed, ent 130–172 s, ssm 38–43 s; the code runs took 2–3 s each. The default budget of 192 KiB per learner was used, so no budget reduction was needed.
+The pre-fix grid ran sequentially in one background process, so its wall-clock figures are not contaminated by parallel runs. It took 1,774 s in total (29.6 min): ng 84–121 s per seed, ent 130–172 s, ssm 38–43 s; the code runs took 2–3 s each. The default budget of 192 KiB per learner was used, so no budget reduction was needed. **After the fix the grid was re-run with 12 jobs at once** to save time. Its bytes multipliers are deterministic and are reported below; its wall-clock seconds are contaminated by the parallel run and are not reported. The seconds columns are the pre-fix sequential figures.
 
 **What `--seed` varies.** It seeds the physics trajectories only: `physics_corpus` draws the train and held-out trajectories from `Rng(seed)`. The text and code curves do not use it, the n-gram and entropy learners are deterministic, and the SSM's initialisation uses a fixed internal seed. The text and code rows are therefore **single-seed**, and no spread is reported for them. The duplicate text rows that the six physics sweeps carry were checked to agree bit for bit on every bits-per-byte figure before one was kept.
 
-Target: the worst final held-out bits per byte among the three learners on that corpus, so every frontier is asked for a loss its own curve reaches. Per corpus: pendulum 5.871, spring 2.682, double pendulum 5.016, n-body 7.984, bounce 6.153, text 5.400, code 5.223.
+Target: the worst final held-out bits per byte among the three learners on that corpus, so every frontier is asked for a loss its own curve reaches. Per corpus, after the fix: pendulum 5.871, spring 2.682, double pendulum 4.9825 (was 5.016), n-body 5.591 (was 7.984), bounce 6.153, text 5.400, code 5.223.
 
 The multiplier is cost(learner) / cost(ng) to reach the target. Above 1 means the learner needs more. Pooled is over the six seeds' frontiers together; the per-seed columns are each seed's own frontiers, as mean ± sample sd over the seeds that reach the target.
 
-| corpus | learner | bytes: pooled | bytes: per seed | seconds: pooled | seconds: per seed |
+| corpus | learner | bytes: pooled | bytes: per seed | seconds: pooled | seconds: per seed (pre-fix) |
 |---|---|---|---|---|---|
-| pendulum | ent | 1.005 | 0.999 ± 0.004 (6) | 1.033 | 1.360 ± 0.288 (6) |
+| pendulum | ent | 0.982 (was 1.005) | 0.982 ± 0.016 (6) (was 0.999 ± 0.004) | 1.033 | 1.360 ± 0.288 (6) |
 | pendulum | ssm | 0.442 | 0.508 ± 0.139 (6) | 0.031 | 0.039 ± 0.010 (6) |
-| spring | ent | 1.002 | 1.008 ± 0.007 (6) | 1.224 | 1.312 ± 0.278 (6) |
+| spring | ent | 0.969 (was 1.002) | 1.001 ± 0.006 (6) (was 1.008 ± 0.007) | 1.224 | 1.312 ± 0.278 (6) |
 | spring | ssm | 0.929 | 1.024 ± 0.101 (6) | 0.121 | 0.108 ± 0.021 (6) |
-| double pendulum | ent | 1.010 | 1.016 ± 0.013 (6) | 1.149 | 1.225 ± 0.294 (6) |
-| double pendulum | ssm | 0.429 | 0.439 ± 0.030 (6) | 0.059 | 0.055 ± 0.014 (6) |
-| n-body | ent | n/a | 2.680 (1 seed) | n/a | 1.086 (1 seed) |
-| n-body | ssm | n/a | 1.086 (1 seed) | n/a | 0.042 (1 seed) |
-| bounce | ent | 1.008 | 1.010 ± 0.002 (6) | 1.095 | 1.096 ± 0.241 (6) |
+| double pendulum | ent | n/a (was 1.010) | 0.994 ± 0.009 (5; seed 4 misses the target) (was 1.016 ± 0.013 (6)) | 1.149 | 1.225 ± 0.294 (6) |
+| double pendulum | ssm | 0.421 (was 0.429) | 0.455 ± 0.065 (6) (was 0.439 ± 0.030) | 0.059 | 0.055 ± 0.014 (6) |
+| n-body | ent | 0.252 (was n/a) | 0.594 ± 0.285 (6) (was n/a) | not re-timed | not re-timed |
+| n-body | ssm | 0.527 (was n/a) | 0.504 ± 0.025 (6) (was n/a) | not re-timed | not re-timed |
+| bounce | ent | 1.002 (was 1.008) | 1.007 ± 0.005 (6) (was 1.010 ± 0.002) | 1.095 | 1.096 ± 0.241 (6) |
 | bounce | ssm | 0.454 | 0.886 ± 0.251 (6) | 0.048 | 0.074 ± 0.020 (6) |
-| text (README → gate.rs) | ent | 0.648 | single run | 1.125 | single run |
+| text (README → gate.rs) | ent | 0.581 (was 0.648) | single run | 1.125 | single run |
 | text (README → gate.rs) | ssm | 0.809 | single run | 0.085 | single run |
-| code (gate.rs → transformer.rs) | ent | 0.638 | single run | 0.778 | single run |
+| code (gate.rs → transformer.rs) | ent | 0.593 (was 0.638) | single run | 0.778 | single run |
 | code (gate.rs → transformer.rs) | ssm | 0.885 | single run | 0.113 | single run |
 
 Notes on the table:
 
-- **n-body is `n/a` because of the default target, and that is a grid artefact.** The default target, 7.984, is the entropy learner's final loss on seed 4. The n-gram's first checkpoint (10% of the budget) is already at about 7.977 on every seed, so the n-gram's frontier has no point above 7.984 and cannot say when it crossed. The n-body multipliers are therefore undefined at this target, for both learners, and the only per-seed value (seed 4) is a case where the n-gram's first checkpoint sits just above the target. Re-measured at `--target 7.5`, which every frontier reaches, the n-body multipliers are defined:
-
-  | n-body, `--target 7.5` | learner | bytes: pooled | bytes: per seed | seconds: pooled | seconds: per seed |
-  |---|---|---|---|---|---|
-  | | ent | 1.021 | 1.016 ± 0.070 (6) | 1.039 | 1.238 ± 0.291 (6) |
-  | | ssm | 1.289 | 1.307 ± 0.047 (6) | 0.160 | 0.149 ± 0.024 (6) |
-
-  At this target the SSM is consistently *more* expensive than the n-gram on n-body (its curve stays near 8 bits until about 40% of the budget, then falls), so its default-target advantage on the other systems is not uniform across physics. The raw output is in `grid/measure-nbody-t75.txt`, alongside the full `measure.txt`.
+- **n-body was `n/a` before the fix, because of the default target, and that was a grid artefact.** The default target was 7.984, the entropy learner's final loss on seed 4. It lay above the n-gram's first checkpoint on every seed, so the n-gram's frontier could not say when it crossed. After the fix the entropy learner's final loss is 5.397, the default target is 5.591, and every frontier reaches it. So n-body is defined at the default: entropy 0.252 pooled (0.594 ± 0.285 per seed; five of six seeds below 1), and SSM 0.527 (0.504 ± 0.025). The entropy learner's pooled figure rests on single-checkpoint dips: the seed-1 curve (L2) falls to 4.76 at 50% of the budget and is back at 6.23 at 60%. Read the per-seed mean and its spread, not the pooled figure alone. At `--target 7.5`, which every frontier reaches, the entropy learner is now 0.432 pooled (0.751 ± 0.250 per seed; before the fix 1.021, 1.016 ± 0.070), and the SSM is unchanged at 1.289 (1.307 ± 0.047). The SSM is consistently more expensive than the n-gram at 7.5, because its curve stays near 8 bits until about 40% of the budget, so its default-target advantage on the other systems is not uniform across physics. The pre-fix raw output is in `grid/measure-nbody-t75.txt`, alongside the full `measure.txt`; the `grid/` files were not regenerated, and the after-fix outputs are not committed.
 - **Seconds** are wall-clock, cumulative over train steps, evaluation excluded. They include the learners' per-byte cost, so the SSM's seconds figure reflects its size (9,248 parameters) as much as its learning.
 - **Bytes** is the same byte grid for all three learners (every checkpoint at 10% steps of the budget), so the bytes multiplier only says at which checkpoint each curve crosses the target. It is coarse, and it is not a compute measure.
 
@@ -775,23 +734,23 @@ Fitted by `fit_loss_to_loss` over all trained checkpoints pooled over seeds (n =
 
 | corpus | ng: c, rmse | ent: c, rmse | ssm: c, rmse |
 |---|---|---|---|
-| pendulum | 1.25, 0.039 | 0.25, 0.378 | 0.40, 0.061 |
-| spring | 1.20, 0.047 | 0.45, 0.256 | 0.65, 0.101 |
-| double pendulum | 1.05, 0.023 | 0.25, 0.462 | 1.05, 0.054 |
-| n-body | 1.05, 0.028 | 0.95, 0.572 | 1.30, 0.073 |
-| bounce | 1.60, 0.020 | 0.75, 0.580 | 0.45, 0.065 |
-| text | 1.00, 0.018 | 3.00, 0.156 | 1.15, 0.056 |
-| code | 1.05, 0.005 | 0.40, 0.176 | 0.65, 0.084 |
+| pendulum | 1.25, 0.039 | 1.30, 0.072 (was 0.25, 0.378) | 0.40, 0.061 |
+| spring | 1.20, 0.047 | 1.10, 0.226 (was 0.45, 0.256) | 0.65, 0.101 |
+| double pendulum | 1.05, 0.023 | 0.85, 0.278 (was 0.25, 0.462) | 1.05, 0.054 |
+| n-body | 1.05, 0.028 | 0.60, 0.211 (was 0.95, 0.572) | 1.30, 0.073 |
+| bounce | 1.60, 0.020 | 2.50, 0.129 (was 0.75, 0.580) | 0.45, 0.065 |
+| text | 1.00, 0.018 | 2.85, 0.134 (was 3.00, 0.156) | 1.15, 0.056 |
+| code | 1.05, 0.005 | 1.00, 0.080 (was 0.40, 0.176) | 0.65, 0.084 |
 
-The fits are good for the n-gram and reasonable for the SSM, and poor for the entropy learner on every physics system (rmse 0.26 to 0.58, with fitted exponents below 1 and negative intercepts in most cases). Its held-out curve is not a smooth function of its train curve: it spikes above uniform at early checkpoints and then recovers (L2 section, n-body and bounce). The M1 fit should not be used to extrapolate the entropy learner.
+The fits are good for the n-gram and reasonable for the SSM. For the entropy learner they are now reasonable on every system: rmse 0.07 to 0.28 on physics (before the fix, 0.26 to 0.58), 0.13 on text (was 0.16) and 0.08 on code (was 0.18). The fitted exponent still varies from 0.60 (n-body) to 2.50 (bounce), so the loss-to-loss map is not stable across systems. Its held-out curve is also still not a smooth function of its train curve: on n-body it falls to 4.76 at 50% of the budget and rises to 6.23 at 60% (seed 1), and before the fix it spiked above uniform at early checkpoints. The M1 fit should not be used to extrapolate the entropy learner.
 
 ### Plain conclusions
 
-- **The entropy learner is no cheaper than the n-gram on physics.** Its bytes multiplier is 1.00 to 1.01 on every system where it is defined, with per-seed sd at most 0.013. It is the same learner on physics as the n-gram, at the same bytes.
-- **The entropy learner's text and code advantage does not carry to physics.** It needs 0.65 and 0.64 of the n-gram's bytes on text and code (single runs), and 1.00 on physics. This is the reverse of what a "better on physics" claim would need.
-- **The SSM needs fewer bytes than the n-gram on text (0.81) and on code (0.89).** On the physics systems where its multiplier is defined at the default target, its pooled figure is below 1 on all four (0.43 to 0.93), but its per-seed mean is below 1 on only three: 0.51 ± 0.14 (pendulum), 0.44 ± 0.03 (double pendulum), 0.89 ± 0.25 (bounce), and 1.02 ± 0.10 on spring. On n-body it is undefined at the default target, and at `--target 7.5` it is 1.29 ± 0.05, worse than the n-gram. Its advantage is therefore not specific to physics, and it is not uniform across the physics systems. It is largest, and most consistent across seeds, on the double pendulum.
+- **The entropy learner is no cheaper than the n-gram on four physics systems, and cheaper on n-body in five of six seeds.** Its bytes multiplier after the fix is 0.98 on the pendulum, 1.00 on the spring, 0.99 on the double pendulum (five seeds) and 1.01 on the bounce, with per-seed sd at most 0.016 (before the fix, 1.00 to 1.01). On n-body it is 0.25 pooled and 0.59 ± 0.29 per seed (before the fix: undefined at the default target, and 1.02 at 7.5, now 0.43 pooled and 0.75 ± 0.25 per seed). The per-seed mean is 0.41 below 1, less than two seed sd (0.57), so the n-body advantage is not established, though five of six seeds are below 1.
+- **The entropy learner's text and code advantage now carries to n-body, but not to the other four physics systems.** It needs 0.58 and 0.59 of the n-gram's bytes on text and code (single runs; before the fix 0.65 and 0.64), and 0.98 to 1.01 on the pendulum, spring, double pendulum and bounce. On n-body the sign matches text and code. The earlier reading that the physics result was the reverse of text and code held only for the pre-fix learner.
+- **The SSM needs fewer bytes than the n-gram on text (0.81) and on code (0.89).** On the physics systems its pooled figure is below 1 on all five (0.42 to 0.93), and its per-seed mean is below 1 on four: 0.51 ± 0.14 (pendulum), 0.46 ± 0.07 (double pendulum; was 0.44 ± 0.03), 0.50 ± 0.03 (n-body; undefined before the fix), and 0.89 ± 0.25 (bounce). Spring is 1.02 ± 0.10. At `--target 7.5` the n-body figure is 1.29 ± 0.05, worse than the n-gram, so its n-body advantage depends on the target. Its advantage is therefore not specific to physics, and it is not uniform across the physics systems. It is the largest in magnitude on the double pendulum (pooled 0.42), and most consistent across seeds on n-body.
 - **Seconds favour the SSM strongly on every corpus,** because it is roughly 8 to 30 times cheaper per byte at this size. That is a statement about the model's cost, not its learning. Under this measure it is not a claim that the SSM learns physics better.
-- **Nothing is established at the level of two seed standard deviations.** Each physics difference between the SSM and the n-gram is judged against the physics seed spread. The text and code figures are single runs with no spread, so there is no sd against which to set them. The SSM's text figure (0.81) lies outside the physics per-seed ranges for the pendulum (0.42 to 0.78) and the double pendulum (0.40 to 0.48), and inside the bounce's (0.45 to 1.11). A single text run is not a sample from the same distribution, so these comparisons are suggestive, not a test.
+- **Nothing is established at the level of two seed standard deviations.** Each physics difference between the SSM and the n-gram is judged against the physics seed spread. The text and code figures are single runs with no spread, so there is no sd against which to set them. The SSM's text figure (0.81) lies outside the physics per-seed ranges for the pendulum (0.42 to 0.78), the double pendulum (0.39 to 0.58) and the n-body (0.47 to 0.55), and inside the bounce's (0.45 to 1.11). A single text run is not a sample from the same distribution, so these comparisons are suggestive, not a test.
 
 ### Critical-path question
 
@@ -799,19 +758,19 @@ The fits are good for the n-gram and reasonable for the SSM, and poor for the en
 
 No, not in the sense of an advantage present on physics and absent on text.
 
-- The entropy learner has an advantage on text and code and none on physics. The direction is the reverse.
-- The SSM has an advantage on text (0.81 bytes, single run) and on physics (0.44 to 0.89 pooled or per-seed mean on four of five systems). Its physics advantage is larger in magnitude on the pendulum, the double pendulum and the bounce, and it is consistent across seeds on the double pendulum (0.44 ± 0.03). That is a signal that the SSM is cheaper to fit physics data than the n-gram. It is not a signal that the physics data is special for the SSM: the same ordering holds on text. Whether the physics advantage is larger than the text advantage cannot be settled, because the text figure has no seed spread.
-- On the seconds axis the SSM is cheaper on every corpus where it is defined, for the cost reason above; the entropy learner is no cheaper on any physics system.
+- The entropy learner has an advantage on text and code (0.58 and 0.59), and on n-body in five of six seeds (0.59 per seed). It has none on the other four physics systems. Its n-body sign matches its text and code sign, so the direction is not reversed for that system.
+- The SSM has an advantage on text (0.81 bytes, single run) and on physics (0.42 to 0.93 pooled, and 0.46 to 0.89 per-seed mean on four of the five systems, spring excepted). Its physics advantage is larger in magnitude on the pendulum, the double pendulum and the bounce, and it is most consistent across seeds on n-body (0.50 ± 0.03) and the double pendulum (0.46 ± 0.07). That is a signal that the SSM is cheaper to fit physics data than the n-gram. It is not a signal that the physics data is special for the SSM: the same ordering holds on text. Whether the physics advantage is larger than the text advantage cannot be settled, because the text figure has no seed spread.
+- On the seconds axis the SSM is cheaper on every corpus where it is defined, for the cost reason above; the entropy learner is no cheaper on any physics system measured in the sequential run (its n-body seconds were not re-timed).
 
-So on this corpus set, the signal the critical path asks for is not there. The SSM's physics advantage is real on the pendulum, the double pendulum and, less consistently, the bounce, but it is not confined to physics, and it reverses on n-body at a target both frontiers reach. The self-improvement loop would get the same answer from the SSM on text, with the same sign. The result is for untuned learners, one configuration each, and a 10% checkpoint grid.
+So on this corpus set, the signal the critical path asks for is still not there. The entropy learner's n-body advantage (five of six seeds below 1) matches its text and code advantage in sign, so it does not meet the question's test either. The SSM's physics advantage is real on the pendulum, the double pendulum and, less consistently, the bounce, but it is not confined to physics, and it reverses on n-body at a target both frontiers reach. The self-improvement loop would get the same answer from the SSM on text, with the same sign. The result is for untuned learners, one configuration each, and a 10% checkpoint grid.
 
 ### Limits of this measurement
 
 - One configuration per learner, untuned, and no size-matched comparison. The SSM has about 0.05% of the n-gram's parameters, so the bytes advantage is not an equal-size comparison (see the L2 section).
-- The frontier is the lower envelope of the checkpoints, so a curve that dips below the target at one checkpoint earns that dip (the M2 definition). The entropy learner's n-body curve has such a dip at 30% of the budget (7.26, against 7.84 at the end), so its n-body multiplier would be lower than its curve supports if it were defined.
+- The frontier is the lower envelope of the checkpoints, so a curve that dips below the target at one checkpoint earns that dip (the M2 definition). The entropy learner's n-body curve has such dips: the seed-1 curve falls to 4.76 at 50% of the budget (against 5.40 at the end), and its n-body multiplier rests on them. Read the per-seed spread (0.25 to 1.01) rather than the pooled 0.25 alone.
 - Checkpoints are at 10% steps of the budget. Bytes multipliers are therefore resolved only to about one tenth of the budget.
-- The default target is the worst learner's final held-out loss, so that learner's own frontier ends exactly at the target. The same target can lie above the reference's first checkpoint, which is what makes n-body `n/a` at the default. A `--target` inside every frontier's range is the remedy, and it is reported above for n-body only. The other corpora were not re-run at other targets, so their figures hold at the default target only.
-- Wall-clock seconds were recorded on a shared machine, one learner at a time. They are noisy: the per-seed sd of the entropy learner's seconds is about 20–25% of its mean.
+- The default target is the worst learner's final held-out loss, so that learner's own frontier ends exactly at the target. Before the fix the default target for n-body lay above the reference's first checkpoint, which made it `n/a`. After the fix every frontier reaches the default (5.591). A `--target 7.5` re-run is reported above for n-body only. The other corpora were not re-run at other targets, so their figures hold at the default target only.
+- Pre-fix wall-clock seconds were recorded on a shared machine, one learner at a time. The after-fix grid ran 12 jobs at once, so its seconds are not reported. They are noisy: the per-seed sd of the entropy learner's seconds is about 20–25% of its mean.
 - Joules were not measured on this axis; only bytes and seconds.
 
 ## Rollout metrics (plan P6)
@@ -827,13 +786,13 @@ Design, and what each figure means:
 - **Two trivial baselines** on the same contexts. *Hold* repeats the last given state. *Constant velocity* extrapolates the last two given states. A learner **beats the trivial baseline** at a horizon when its error is below the smaller of the two.
 - Holding a state conserves energy exactly, so *hold* has near-zero drift on a conservative system. The drift column is read with the error columns, not on its own.
 
-Command, from the `arena` directory with a release build (about three to four minutes of run time on this machine, one run):
+Command, from the `arena` directory with a release build (about three to four minutes of run time on this machine, one run, before the fix; the after-fix greedy and sampled runs took about 900 to 1,265 s each, 12 jobs at once):
 
 ```sh
 CARGO_TARGET_DIR=<scratchpad>/tgt-p6 cargo run --release --bin arena -- physics-rollout
 ```
 
-The defaults are the learners of the L1 and L2 sections (`ng:4:14:0.02`, `ent:4:14:4:0.02`, `ssm:16:0.01`), a training budget of 192 KiB on trajectories of 1,100 steps, seed 1, and 8 held-out trajectories per system of 110 steps (10 given, 100 generated).
+The defaults are the learners of the L1 and L2 sections (`ng:4:14:0.02`, `ent:4:14:4:0.02`, `ssm:16:0.01`), a training budget of 192 KiB on trajectories of 1,100 steps, seed 1, and 8 held-out trajectories per system of 110 steps (10 given, 100 generated). The table is after the adaptive-weight fix: only the entropy rows changed, on the double pendulum and the n-body system.
 
 | system | learner | err @1 | err @10 | err @100 | energy drift | beats the better trivial baseline at |
 |---|---|---|---|---|---|---|
@@ -844,8 +803,8 @@ The defaults are the learners of the L1 and L2 sections (`ng:4:14:0.02`, `ent:4:
 | bounce | ng 4×2¹⁴ | 2.9430 | 2.9442 | 2.9984 | n/a | none |
 | pendulum | ent 4×2¹⁴ L4 | 1.7528 | 1.7708 | 3.0992 | 1.00e0 | none |
 | spring | ent 4×2¹⁴ L4 | 3.2946 | 1.8535 | 0.5227 | n/a | 10, 100 |
-| double pendulum | ent 4×2¹⁴ L4 | 1.3882 | 1.3889 | 1.4225 | 5.02e0 | none |
-| n-body | ent 4×2¹⁴ L4 | 7756.8774 | 8532.9468 | 2212.8203 | 6.61e9 | none |
+| double pendulum | ent 4×2¹⁴ L4 | 1.8028 (was 1.3882) | 1.3889 | 1.4225 | 1.24e5 (was 5.02e0) | none |
+| n-body | ent 4×2¹⁴ L4 | 7770.1242 (was 7756.8774) | 1026.6792 (was 8532.9468) | 7334.8471 (was 2212.8203) | 4.18e9 (was 6.61e9) | none |
 | bounce | ent 4×2¹⁴ L4 | 2.9430 | 2.9442 | 2.9984 | n/a | none |
 | pendulum | ssm d16 | 1.7528 | 1.7708 | 3.0992 | 1.00e0 | none |
 | spring | ssm d16 | 3.2946 | 1.8535 | 0.5227 | n/a | 10, 100 |
@@ -870,23 +829,43 @@ The trivial baselines, which do not depend on the learner:
 
 ### What the greedy rollouts actually emit
 
-The three learners' rows are the same on the pendulum, the spring and the bounce, and the double pendulum differs only in the fourth decimal. A check on the n-gram (one held-out trajectory per system, the same training as above, not committed) found that greedy decoding emits **one constant byte in every position** on all five systems: `0xFF` on the pendulum, the double pendulum and the bounce, which is the `i32` value −1, one quantum and so effectively zero; and `0x00` on the spring and the n-body system, which is zero. The n-gram's predicted state is therefore the zero state. Its error matches the zero state's to about four significant figures (pendulum at horizon 1: 3.3755 for the learner, 3.3755 for zero; spring and n-body exactly). The SSM and entropy rows match the n-gram's to four decimals on those systems, so they are presumed to emit the same constant, but their bytes were not inspected. The entropy row on the n-body system is not the same: its predicted values reach about 2 × 10⁵ in magnitude, which is why its error is in the thousands.
+Before the fix, the three learners' rows were the same on the pendulum, the spring and the bounce, and the double pendulum differed only in the fourth decimal. After the fix the entropy row on the double pendulum differs at horizon 1 (1.8028 against 1.3881) and has energy drift 1.24e5. That row was not inspected, so it is not read as the zero state. A check on the n-gram (one held-out trajectory per system, the same training as above, not committed) found that greedy decoding emits **one constant byte in every position** on all five systems: `0xFF` on the pendulum, the double pendulum and the bounce, which is the `i32` value −1, one quantum and so effectively zero; and `0x00` on the spring and the n-body system, which is zero. The n-gram's predicted state is therefore the zero state. Its error matches the zero state's to about four significant figures (pendulum at horizon 1: 3.3755 for the learner, 3.3755 for zero; spring and n-body exactly). The SSM and entropy rows match the n-gram's to four decimals on those systems, so they are presumed to emit the same constant, but their bytes were not inspected. Before the fix, the entropy row on the n-body system was not the same: its predicted values reached about 2 × 10⁵ in magnitude, which is why its error was in the thousands. After the fix its error is still in the thousands (7770, 1027, 7335), and its predicted values were not re-inspected.
 
-The mode of a byte distribution, read greedily at every position, is therefore the zero state. For these learners at this budget the rollout is a constant predictor, not a model of the dynamics.
+The mode of a byte distribution, read greedily at every position, is therefore the zero state. For the n-gram at this budget the rollout is a constant predictor, not a model of the dynamics, and before the fix the other rows matched it on those systems.
+
+### Sampled rollouts (`--decode sample:0.5 --samples 8`)
+
+Run once, on the same seed and contexts, for the entropy learner before and after the fix. The n-gram row did not change between the runs and is shown for reference. Each cell is state error at horizons 1, 10 and 100, and the drift column is the after-fix value. One run, eight samples per context.
+
+| system | ent before the fix @1 / @10 / @100 | ent after the fix @1 / @10 / @100 | ent drift (before / after) | ng @1 / @10 / @100 |
+|---|---|---|---|---|
+| pendulum | 1914.1896 / 2346.3253 / 2850.3016 | 2585.7961 / 2881.6145 / 2553.2120 | 1.75e7 / 2.18e7 | 2245.9078 / 1287.0536 / 1889.6567 |
+| spring | 165.0552 / 545.3825 / 869.9983 | 415.6688 / 385.5141 / 0.5227 (beats hold at 100) | n/a | 258.6407 / 1162.6779 / 1112.1973 |
+| double pendulum | 10149.7208 / 9728.2253 / 15185.6360 | 18614.4971 / 38.1583 / 112.4447 | 6.17e9 / 2.02e9 | 13493.1053 / 7484.4881 / 15708.1455 |
+| n-body | 44848.8985 / 40579.0713 / 43059.0608 | 43354.0521 / 41445.0898 / 42161.1482 | 8.80e10 / 9.59e10 | 40214.0540 / 41805.3651 / 33110.0606 |
+| bounce | 3232.5732 / 921.3660 / 1661.6357 | 2732.2335 / 5363.7079 / 5530.1295 | n/a | 4240.3555 / 1214.5225 / 2564.6738 |
+
+What it says:
+
+- For four of five systems the sampled errors are in the thousands for every learner, the same scale as the n-gram. Sampling does not make the learners track the trajectories.
+- The double pendulum's error falls from 18614 at horizon 1 to 38 at horizon 10 and is 112 at horizon 100. A tracking rollout's error grows with horizon, and this one is largest at horizon 1, so it is not a tracking signal. It was not inspected further.
+- The spring's 0.5227 at horizon 100 is the greedy zero-state error (the same figure as the n-gram's greedy row), so the sampled entropy learner's win over hold at horizon 100 is the zero-state artefact again, not learned dynamics. The sampled-rollouts commit message says the spring wins disappear under sampling. That held for the entropy learner before the fix, and it does not hold after it.
+- The n-body divergence does not go away under sampling. The entropy learner's error stays near 4 × 10⁴ at all three horizons, as the n-gram's does, so the divergence is not a greedy-decoding artefact.
+- The sampled runs took 904 s (before) and 1,230 s (after), run 12 jobs at once, so their times are not comparable and are not reported as cost.
 
 ### Plain conclusions
 
 - **No learner beats the trivial baselines on the pendulum, the double pendulum, the n-body system or the bounce, at any horizon.** The constant-velocity baseline has error 0.0003 at horizon 1 on the pendulum, against 1.7528 for every learner. The learners are a long way behind even the hold baseline on every conservative system.
 - **On the spring, the learners "beat" the trivial baseline at horizons 10 and 100, and that win is not learned dynamics.** At horizon 10 the learner's 1.85 is below hold's 2.09, and at horizon 100 its 0.52 is below hold's 2.81. The learners emit the zero state, and the damped spring decays toward zero, so zero is closer to the truth than a held state. The learners are not better than the zero state anywhere. The zero state is not one of the baselines in this table, and it should be the next one added. At horizon 1 the spring learners are at 3.29 against 0.06 to 0.18 for the baselines, which is the constant-output error showing through.
-- **Energy drift confirms the zero state.** A learner whose predicted state is zero has energy zero, so its relative drift is exactly `|0 − E_0| / |E_0|`, which is 1 for the pendulum (the reported 1.00). The hold baseline's drift on the pendulum is 1.7 × 10⁻⁶ because holding a state conserves energy; that is why drift is never read alone.
-- **Bits per byte and rollouts disagree in an instructive way.** The learners code held-out physics below uniform (5 to 6 bits per byte, the P4 and L2 rows), yet their greedy generations are constant. A distribution that is well calibrated over many bytes can still have its mode at one byte, and greedy decoding reads only the mode. The rollout measures what the learner predicts, and bits per byte measures how much it codes; the two are not the same question.
-- **So the answer to the P6 question is no, in this configuration.** At 192 KiB of training and greedy `i32` decoding, none of the three learners generates a trajectory that tracks the true one. Whether a different decoding (sampling, or a learned value read-out) or more training would change this is not measured here.
+- **Energy drift confirms the zero state.** A learner whose predicted state is zero has energy zero, so its relative drift is exactly `|0 − E_0| / |E_0|`, which is 1 for the pendulum (the reported 1.00). The hold baseline's drift on the pendulum is 1.7 × 10⁻⁶ because holding a state conserves energy; that is why drift is never read alone. The entropy row on the double pendulum after the fix has drift 1.24e5 and is not the zero state.
+- **Bits per byte and rollouts disagree in an instructive way.** The learners code held-out physics below uniform (2.4 to 6.1 bits per byte across the five systems after the fix, the L2 rows), yet their greedy generations are constant. A distribution that is well calibrated over many bytes can still have its mode at one byte, and greedy decoding reads only the mode. The rollout measures what the learner predicts, and bits per byte measures how much it codes; the two are not the same question.
+- **So the answer to the P6 question is no, in this configuration.** At 192 KiB of training and greedy `i32` decoding, none of the three learners generates a trajectory that tracks the true one. Sampling at temperature 0.5 was run once and did not change it (above). A learned value read-out and more training are not measured here.
 
 ### Limits of this measurement
 
 - One seed, one set of 8 held-out trajectories per system, one budget (192 KiB), one configuration per learner. The learners are untuned.
-- Greedy decoding only. Sampling from the learner's distribution, which might escape the constant mode, was not run.
+- Greedy decoding was the main run. Sampling at temperature 0.5 with eight samples was run once, on the same seed, and is reported above.
 - The context is 10 timesteps. A longer context is not tested.
 - Trajectory length 110 steps, so horizon 100 is the longest measured.
 - The zero-state baseline is described above but not in the table, and it is not part of `physics-rollout`. The spring "beats" are therefore explained by the zero-state check, not measured against it in the command.
-- The energy drift of the entropy learner on the n-body system (6.61 × 10⁹) is a figure from garbage predictions, not a physical drift.
+- The energy drift of the entropy learner on the n-body system (6.61 × 10⁹) (6.61 × 10⁹ before the fix, 4.18 × 10⁹ after) is a figure from garbage predictions, not a physical drift.

@@ -144,7 +144,7 @@ The yardstick everything later is judged by, so it goes first.
 
 ## Phase L: Learners from the byte-level literature
 
-- [x] **L1** Entropy-chunked learner (BLT-like). **M [H]** *Done: `ent:` learner, `arena/src/entropy.rs`. At 4×2¹⁴ it beats `ng` on text (5.15 vs 5.40 bpb) and code (4.61 vs 5.22); at 3×2¹² it is worse (6.29 vs 5.50 text). Single seed. Out of distribution it can score above uniform (9.52 on README after training on the pool) because the chunk table's weight is global; confidence-dependent weights are the fix, not yet done. Physics rows, which waited on P4b, are in the L2 section of MEASUREMENTS.md: under planes, ent passes the gate on four of five systems and fails n-body (7.84 bpb).*
+- [x] **L1** Entropy-chunked learner (BLT-like). **M [H]** *Done: `ent:` learner, `arena/src/entropy.rs`. The mixture weights now keep adapting per byte while the learner scores, not only in training: a Bayes update with a fixed share, so the weights are not frozen (the earlier frozen weights, not confidence buckets, were the cause). At 4×2¹⁴ it beats `ng` on text (4.81 vs 5.40 bpb) and code (4.67 vs 5.22); at 3×2¹² it beats `ng` on text (5.41 vs 5.50) and code (4.90 vs 5.40). Single seed. Out of distribution it scored 9.52 on README after training on the pool, against 7.96 for the n-gram; after the fix it scores 8.00 against 7.99. Physics rows, which waited on P4b, are in the L2 section of MEASUREMENTS.md: under planes, ent passes the gate on all five systems after the fix (n-body 5.40 bpb, was 7.84 before the fix).*
   - The existing n-gram model's next-byte entropy marks chunk boundaries,
     tuned to a target compression.
   - A chunk-level model predicts over chunks, and a byte decoder predicts
