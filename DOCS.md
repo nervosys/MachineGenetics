@@ -1,6 +1,6 @@
 # Documentation index
 
-There are 26 Markdown documents at the repository root, written across five
+There are 27 Markdown documents at the repository root, written across five
 months. They are **not** all current, and several describe
 designs that were deliberately *not* built. This index says which is which, so
 nothing here has to be read to find out whether it is still true.
@@ -62,7 +62,8 @@ Read these to understand the system as it exists.
 | [README.md](README.md) | Entry point: the four forms, the composition algebra, measured benchmarks |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | ABL and tool-mediated construction — the current architecture, including a §6 "Honest boundaries" |
 | [MEASUREMENTS.md](MEASUREMENTS.md) | Every measured functionality and performance figure, with reproduction commands |
-| [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) | The current plan, with checklists: loss-to-loss measurement, physical simulation as a second domain, byte-level learners, re-measuring the token-cost thesis, and simulation programs in MAGE. Items are ticked in the PR that does them |
+| [NEUROSYMBOLIC_PLAN.md](NEUROSYMBOLIC_PLAN.md) | The top-level plan, with checklists: MAGE as three parts (neural, symbolic, knowledge base) joined by an ontology that is the knowledge base's schema, rethought from first principles. Nothing in it is built yet |
+| [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) | The arena research-track plan, under [NEUROSYMBOLIC_PLAN.md](NEUROSYMBOLIC_PLAN.md), with checklists: loss-to-loss measurement, physical simulation as a second domain, byte-level learners, re-measuring the token-cost thesis, and simulation programs in MAGE. Items are ticked in the PR that does them |
 | [ROADMAP.md](ROADMAP.md) | The implementation steps — numbered to 159, listed selectively rather than exhaustively — plus the open-items list. *This said "all 158 steps"; the numbering runs to 159 and has 67 gaps, so "all" was wrong in both directions* |
 | [ARCHITECTURE_DSL.md](ARCHITECTURE_DSL.md) | The composition algebra (`stack`/`residual`/`branch`/`wrap`) and its measured basis |
 | [RIBOSOME.md](RIBOSOME.md) | The distributed, agent-operated build engine — its own crate, `ribosome/`. **Mixed status, marked inline**: the core (graph, keys, CAS, executor seam, healing, scheduler, fitness), network distribution with authentication and signed provenance, sandboxed subprocess execution, multi-language support, and TLS (optional `tls` feature) are implemented and tested ✅; the evolutionary loop above the build is designed ◻. *This row said distribution was unbuilt through step 7 and was not updated when it landed — corrected 2026-08-04.* |
