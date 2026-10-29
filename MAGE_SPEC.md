@@ -2173,8 +2173,13 @@ with an error naming the clause, the function and where it was written:
 contract violated: `@ens(result.balance == old(account).balance - amount, "correct deduction")` of `withdraw` (sp withdraw) is false: `withdraw` returned Account { balance: 6 }
 ```
 
-A call that breaks a `@req` never runs its body, and the run fails with the
-clause named, as `contract violated: \`@req(...)\` of \`f\` (sp f) is false: ...`.
+A call that breaks a `@req` never runs its body. The run fails with the clause
+named, and the arguments it was called with:
+
+```text
+contract violated: `@req(b != 0)` of `div` (sp div) is false: `div` called with a = 1, b = 0
+```
+
 Where such a call should instead be refused with a value, use a `guard`.
 The two examples below parse, typecheck and run.
 
