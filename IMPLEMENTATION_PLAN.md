@@ -59,7 +59,7 @@ The yardstick everything later is judged by, so it goes first.
 
 ## Phase P: Physical simulation as a domain
 
-- [ ] **P1** Trajectory generator. **M [H]**
+- [x] **P1** Trajectory generator. **M [H]**
   - Add a deterministic `arena/src/physics.rs` with these systems:
     - a pendulum;
     - a damped spring;
@@ -70,7 +70,7 @@ The yardstick everything later is judged by, so it goes first.
     system's parameters and initial conditions drawn from stated ranges.
   - Done when each system conserves what it should (energy within a stated
     drift, momentum exactly for n-body), with a test per system.
-- [ ] **P2** Byte encoding. **S [H]**
+- [x] **P2** Byte encoding. **S [H]**
   - Quantise states to fixed-point integers, encode them little-endian, and
     interleave channels per timestep, with a header naming system, parameters
     and scale.

@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,312** — rmi 1,384 · prototype 1,405 · ribosome 168 · germline 175 · forge 63 · arena 117 |
+| Tests | **3,330** — rmi 1,384 · prototype 1,405 · ribosome 168 · germline 175 · forge 63 · arena 135 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -1090,6 +1090,25 @@ to reach the same held-out loss.
   reach the target. That is the text-signal problem the physics domain (plan P)
   is meant to fix.
 Arena +13 tests.
+
+**Implementation plan P1 and P2: physical trajectories as bytes.** Held-out
+text sits near 8 bits/byte at CPU scale, so comparisons have little power.
+Simulated physics is unlimited, uncontaminated, and structured.
+- `arena/src/physics.rs` generates five deterministic systems:
+  - a pendulum;
+  - a damped spring, against its exact solution;
+  - a double pendulum, chaotic, with RK4;
+  - n-body gravity, n = 3, softened, with velocity Verlet;
+  - a ball bouncing on a floor, with crossing-time contact.
+  Each has a test for what it conserves.
+- Parameters come from `ParamRange::Train` or the disjoint `ParamRange::HeldOut`.
+- The encoding is a `PHY1` header naming the system, its parameters and scale,
+  then i32 fixed-point states, little-endian, with channels interleaved per
+  step. Decoding round-trips within the quantum.
+- A first sign of learnable structure: LZ compresses the trajectories to
+  3.5-4.3 bits/byte, against 6.8 for random bytes. P4 measures it with the
+  arena's learners.
+Arena +18 tests.
 
 **Pre-existing, not from this change:** `cargo clippy` 0.1.98 (2026-09-01)
 reports 15 warnings in `prototype` — 14 `chunks_exact` with a constant size in

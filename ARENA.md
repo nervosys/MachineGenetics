@@ -721,6 +721,92 @@ becomes the champion only when `Episode::adjudicate` says so, with every step
 journaled, which is the redesign's rule that authority changes hands only
 through the gate.
 
+## Physical trajectories (plan P1–P2)
+
+`arena::physics` generates trajectories of five classical systems, and encodes
+them as bytes, so that later items can hold them out for byte-level learners.
+Every trajectory is a pure function of its parameters, its initial state and
+its seed. The same seed gives a bit-identical trajectory.
+
+Systems, integrators and conservation checks:
+
+- **Pendulum**, θ'' = -(g/L) sin θ. Velocity Verlet. Energy drift is below
+  1e-4 over 10,000 steps at dt = 1e-3 (measured 2.3e-6).
+- **Damped spring**, x'' = -(k/m) x - (c/m) x'. The exact closed-form solution
+  (underdamped, critical and overdamped), not a numerical integrator. With
+  c = 0 the drift is below 1e-6 (measured 4.4e-16). With c > 0 energy never
+  rises from one step to the next.
+- **Double pendulum**, equal or unequal masses and lengths, with the standard
+  Lagrangian equations written out in `double_accel` (Shinbrot et al., Am. J.
+  Phys. 60, 491, 1992). RK4 at dt = 1e-3, which is **not** symplectic. Energy
+  drift is below 1e-3 over 2,000 steps (measured 7.6e-11).
+- **N-body gravity**, n = 3 in 2D, Plummer softening ε = 0.05, G = 1. Velocity
+  Verlet on pairwise forces, at dt = 1e-4 over 20,000 steps. Total momentum
+  stays within 1e-12 of zero at every step, and the test checks every step.
+  The final-state deviation was at most 1.1e-14 across five seeds. Energy drift
+  is below 1e-3 (measured at most 5.2e-10).
+- **Bouncing ball**, y'' = -g on a floor at y = 0. Velocity Verlet, which is
+  exact for constant gravity, plus contact handling: when a step ends below the
+  floor, the crossing time is solved within the step, the velocity reflects
+  there with restitution e, and the rest of the step is flown from the floor.
+  With e = 1 every peak stays within 1e-3 of the drop height (measured worst
+  4e-7). With e = 0.8 consecutive peaks differ by a factor of e² within 1e-3
+  (measured worst 8e-7).
+
+Parameter ranges are drawn with the arena's `Rng`, from `ParamRange::Train` or
+`ParamRange::HeldOut`. The two are disjoint in every dimension, and the test
+checks this over 1,000 samples per system. Initial energies are disjoint too,
+for the pendulum, spring and bounce.
+
+| system | Train | HeldOut |
+|---|---|---|
+| pendulum | L ∈ [0.5, 1.0], amplitude ∈ [0.2, 1.0] rad | L ∈ [1.5, 2.0], amplitude ∈ [2.0, 2.8] rad |
+| spring | k ∈ [1, 4], c ∈ [0, 0.3], amplitude ∈ [0.2, 1.0] | k ∈ [6, 9], c ∈ [0.5, 0.9], amplitude ∈ [1.5, 2.5] |
+| double pendulum | lengths ∈ [0.8, 1.0], masses ∈ [0.5, 1.0], amplitude ∈ [0.2, 1.0] rad | lengths ∈ [1.2, 1.4], masses ∈ [1.5, 2.0], amplitude ∈ [1.8, 2.8] rad |
+| n-body | masses ∈ [0.5, 1.0], orbit radius ∈ [1.0, 1.5] | masses ∈ [1.5, 2.0], orbit radius ∈ [2.5, 3.0] |
+| bounce | e ∈ [0.5, 0.8], drop height ∈ [0.5, 1.5] | e ∈ [0.85, 0.95], drop height ∈ [3.0, 5.0] |
+
+Encoding (`encode`, `decode`, `corpus`). All integers are little-endian.
+
+```text
+header:  "PHY1" (4 bytes) | system (1) | parameters (f64 each)
+         | quantum (f64) | channels (u32) | timesteps (u32)
+body:    for each timestep, for each channel: round(value / quantum) as i32
+```
+
+The timesteps include the initial state, so a trajectory of n steps has n + 1
+of them. Channels per timestep are: pendulum θ, ω; spring x, v; double
+pendulum θ1, θ2, ω1, ω2; n-body x1, y1, x2, y2, x3, y3, vx1, vy1, vx2, vy2,
+vx3, vy3; bounce y, v. Angles are wrapped to (-π, π] before quantisation.
+
+The quanta are chosen so that each system's largest plausible magnitudes fit
+in `i32` with headroom of at least 2^8, and a test checks this on sampled
+trajectories. Pendulum, spring and bounce use 1e-5. Double pendulum and n-body
+use 1e-4. Each value round-trips within half a quantum. `decode` returns an
+error for a bad magic, an unknown system, a wrong channel count, a truncated
+body or trailing bytes. `corpus(system, range, seed, trajectories, steps)`
+concatenates whole trajectories, and `encoded_len` walks the stream.
+
+The LZ76 measure (`measure::lz_bits_per_byte`) of the first 64 KiB of an
+eight-trajectory corpus, in bits per byte:
+
+| source | bits/byte |
+|---|---|
+| random bytes | 6.83 |
+| pendulum | 4.29 |
+| spring | 3.81 |
+| double pendulum | 3.70 |
+| n-body | 3.50 |
+| bounce | 4.21 |
+
+The random baseline is 6.83, not the 8 an ideal entropy estimate would give,
+because LZ76 is biased low on 64 KiB. The comparison is with that baseline.
+Every physical system is well below it, so this is a first, crude learnability
+signal. It does not show that a learner can predict these bytes. That is
+plan P4. Reproduce the table with
+`cargo test -- --ignored --nocapture lz_bits_per_byte_64_kib` (about 25 s in a
+debug build).
+
 ## What surfaced in MAGE itself
 
 The arena runs the compiler thousands of times on programs no person wrote,
