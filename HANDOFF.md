@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,454** — rmi 1,384 · prototype 1,452 · ribosome 168 · germline 175 · forge 63 · arena 212 |
+| Tests | **3,459** — rmi 1,384 · prototype 1,457 · ribosome 168 · germline 175 · forge 63 · arena 212 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -1639,6 +1639,29 @@ remaining untested option. One seed and one 8-trajectory set.
 
 Break-checked: replacing the 1/T exponent with T fails 2 of the 6 new tests.
 Arena +6 tests.
+
+**Follow-up to C1: contract clauses carry their source span.**
+`ContractClause` and `SpecItem::Require/Ensure/Invariant` now record each
+clause's span, from its keyword to its closing parenthesis, beside the text.
+`--check` and `--check --json` give diagnostics raised inside a clause (E0561,
+type errors, unresolved names) the clause's line and column. For example,
+`@req(result > 0)` on line 5 reports `5:5 E0561`. The round-trip tests now
+strip spans before comparing ASTs, because a reprint moves them.
+
+The verifier's `Partial` verdict no longer says "some conditions need a
+runtime check that nothing performs". It now says `--eval` checks `@req` and
+`@ens`, and that nothing checks a struct's `@inv`, a spec with no function, or
+an undeclared effect.
+
+Still without a location:
+- E0560, a refuted clause from the verifier.
+- The run-time `contract violated` errors, which are strings.
+
+E0562 inside a clause cannot happen yet, because the units check walks
+function bodies only.
+
+Break-checked: dropping the type checker's span stamp fails 4 of the 5 new
+tests. Prototype +5 tests.
 
 ## Where this phase ended, 2026-09-16
 
@@ -4171,7 +4194,7 @@ changed before you commit.
 ---
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,452**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,457**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
   across six crates **3,140**; documented-count pins **101**, up from 46 — the
   two newest hold the `kb`/`net` overlap the tensor-product-binding decision
