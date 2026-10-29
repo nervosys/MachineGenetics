@@ -74,7 +74,8 @@ pub struct Config {
     pub credit_decay: f64,
     /// Wattage assumed by the wall-clock estimate of CPU energy.
     pub cpu_watts: f64,
-    /// Description-length charge per MAGE token: credit is multiplied by
+    /// Description-length charge per unit of `length_unit` (MAGE tokens by
+    /// default): credit is multiplied by
     /// `exp(-length_charge · tokens)`. The Solomonoff prior self-play
     /// pretraining regularises its generator toward, applied to every agent's
     /// credit rather than one agent's policy, so padding costs whoever pads.
@@ -150,6 +151,11 @@ pub struct Config {
     /// call that times out proposes nothing.
     #[serde(default = "default_proposer_timeout_s")]
     pub proposer_timeout_s: u64,
+    /// The unit a program's description length is charged in (plan S1):
+    /// `tokens` is MAGE's lexer token count, `bytes` the UTF-8 length of the
+    /// rendered source. A config without the field was charged in tokens.
+    #[serde(default)]
+    pub length_unit: LengthUnit,
 }
 
 fn default_heldout_slices() -> usize {
@@ -162,6 +168,25 @@ fn default_proposer_timeout_s() -> u64 {
 
 fn default_refresh_drift() -> f64 {
     0.5
+}
+
+/// The unit a program's description length is charged in (plan S1).
+///
+/// `Tokens` is MAGE's lexer token count and the default: every run before this
+/// unit existed was charged in it, so it must not change. `Bytes` is the UTF-8
+/// length of the rendered source, the same text the token count lexes.
+///
+/// Deferred to S2, not implemented: a BPE token count under a named tokenizer,
+/// and measured bits per byte under an arena learner. Each needs a vendored
+/// tokenizer or a learner in the charge loop, so neither is a variant yet.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum LengthUnit {
+    /// MAGE lexer tokens: today's unit, and the default.
+    #[default]
+    Tokens,
+    /// UTF-8 bytes of the rendered source.
+    Bytes,
 }
 
 /// What a program's novelty is counted on (plan 7.4).
@@ -286,6 +311,7 @@ impl Default for Config {
             refresh_drift: default_refresh_drift(),
             proposer_command: None,
             proposer_timeout_s: default_proposer_timeout_s(),
+            length_unit: LengthUnit::Tokens,
         }
     }
 }
@@ -584,7 +610,7 @@ fn build_agents(cfg: &Config) -> Result<Vec<Box<dyn Proposer>>, String> {
         for i in 0..*n {
             let id = format!("{kind}-{i}");
             out.push(match kind.as_str() {
-                "grammar" => Box::new(GrammarAgent::new(id)),
+                "grammar" => Box::new(GrammarAgent { length_unit: cfg.length_unit, ..GrammarAgent::new(id) }),
                 "uniform" => Box::new(UniformAgent::new(id)),
                 "mutator" => Box::new(MutatorAgent::new(id)),
                 "attacker" => Box::new(AttackerAgent::new(id)),
@@ -854,7 +880,7 @@ pub fn run_with(
                                 }
                             }
                         }
-                        let tokens = c.program.token_len();
+                        let tokens = c.program.length(cfg.length_unit);
                         let mult = shaping(&cfg, tokens, &bytes) / (1.0 + seen as f64);
                         total_outputs += 1;
                         lz_sum += crate::measure::lz_bits_per_byte(&bytes);
@@ -1665,6 +1691,27 @@ mod tests {
         recorded.as_object_mut().expect("an object").remove("novelty");
         let read: Config = serde_json::from_value(recorded).expect("deserialises");
         assert_eq!(read.novelty, NoveltyKey::Shape);
+    }
+
+    #[test]
+    fn length_is_tokens_by_default_and_old_configs_read_as_tokens() {
+        assert_eq!(Config::default().length_unit, LengthUnit::Tokens);
+        // A config recorded before the field existed was charged in tokens.
+        let mut recorded = serde_json::to_value(Config::default()).expect("serialises");
+        recorded.as_object_mut().expect("an object").remove("length_unit");
+        let read: Config = serde_json::from_value(recorded).expect("deserialises");
+        assert_eq!(read.length_unit, LengthUnit::Tokens);
+    }
+
+    #[test]
+    fn a_short_run_charged_in_bytes_completes_and_records_bytes() {
+        let (m, n) = cpu_only();
+        let cfg = Config { length_unit: LengthUnit::Bytes, ..tiny_cfg() };
+        let r = run(cfg, heldout(), m, n).expect("runs");
+        assert_eq!(r.rounds_completed, tiny_cfg().rounds);
+        assert_eq!(r.config.length_unit, LengthUnit::Bytes);
+        let json = serde_json::to_value(&r.config).expect("serialises");
+        assert_eq!(json["length_unit"], "bytes");
     }
 
     /// Held-out text large enough for two slices of at least 1 KiB (plan 7.5).

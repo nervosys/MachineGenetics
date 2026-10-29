@@ -221,6 +221,15 @@ impl Program {
         mage_prototype::lexer::lex(&self.source()).len()
     }
 
+    /// Length in the configured unit (plan S1): `Tokens` is [`Program::token_len`],
+    /// `Bytes` is the UTF-8 length of [`Program::source`], the text it lexes.
+    pub fn length(&self, unit: crate::arena::LengthUnit) -> usize {
+        match unit {
+            crate::arena::LengthUnit::Tokens => self.token_len(),
+            crate::arena::LengthUnit::Bytes => self.source().len(),
+        }
+    }
+
     pub fn size(&self) -> usize {
         self.body.size()
     }
@@ -1302,6 +1311,16 @@ mod tests {
             body: ListExpr::Concat(Box::new(ListExpr::Range(3)), Box::new(ListExpr::Range(4))),
         };
         assert!(long.token_len() > short.token_len());
+    }
+
+    #[test]
+    fn byte_length_is_the_utf8_length_of_the_source() {
+        use crate::arena::LengthUnit;
+        let p = Program {
+            body: ListExpr::Concat(Box::new(ListExpr::Range(3)), Box::new(ListExpr::Range(4))),
+        };
+        assert_eq!(p.length(LengthUnit::Bytes), p.source().len());
+        assert_eq!(p.length(LengthUnit::Tokens), p.token_len());
     }
 
     fn assert_round_trips(p: &Program) {
