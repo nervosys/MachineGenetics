@@ -146,6 +146,18 @@ pub const MODES: &[CliMode] = &[
                  capability and the interpreter cannot perform it.",
     },
     CliMode {
+        flag: "--solve",
+        args: "<file.mg|-> <fn> [--max] [--fuel N] [--seed S]",
+        summary: "minimise or maximise a function over its @param box; prints the Solution JSON",
+        effect: "read_local",
+        detail: "Domains come from the @param consts named like the parameters (case-\n\
+                 insensitive). Projected gradient runs only when the function is certified\n\
+                 convex (or concave with --max) and every domain is real; otherwise an\n\
+                 evolution strategy runs. The JSON names the solver (`solver`) and why it\n\
+                 was chosen (`reason`), with the point, value, evaluations and fuel spent.\n\
+                 Defaults: fuel 1000000, seed 0.",
+    },
+    CliMode {
         flag: "--gradcheck",
         args: "<file.mg> [--json]",
         summary: "check computed derivatives against central differences; evidence, not proof",
