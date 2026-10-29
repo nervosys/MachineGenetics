@@ -1078,7 +1078,8 @@ impl Interp {
             Expr::Cast { expr, ty } => {
                 // Numeric casts: `x as f64` / `x as i64` (the well-defined ones).
                 let v = self.eval(expr, env)?;
-                let target = match ty {
+                // A unit is erased: `x as f64[m]` is `x as f64`.
+                let target = match ty.strip_units() {
                     Type::Path { segments, .. } => segments.last().map(|s| s.as_str()).unwrap_or(""),
                     _ => "",
                 };

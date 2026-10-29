@@ -379,6 +379,10 @@ fn elide_type(ty: &Type) -> Type {
             base: Box::new(elide_type(base)),
             predicate: predicate.clone(),
         },
+        Type::Dimensioned { base, unit } => Type::Dimensioned {
+            base: Box::new(elide_type(base)),
+            unit: unit.clone(),
+        },
     }
 }
 

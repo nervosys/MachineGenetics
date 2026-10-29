@@ -860,7 +860,7 @@ impl Resolver {
                 self.resolve_ast_type(state);
                 self.resolve_ast_type(action);
             }
-            ast::Type::Refined { base, .. } => {
+            ast::Type::Refined { base, .. } | ast::Type::Dimensioned { base, .. } => {
                 self.resolve_ast_type(base);
             }
         }

@@ -84,6 +84,7 @@ pub mod synthesis;
 pub mod token_budget;
 pub mod token_canonical;
 pub mod types;
+pub mod units;
 pub mod verdict;
 pub mod verify;
 

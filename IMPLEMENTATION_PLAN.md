@@ -209,12 +209,17 @@ Physics as programs agents write, checked by the language, not only as data.
     where it was written, and the value returned. `@req` is still not
     evaluated. Code: `prototype/src/contract.rs`; tests there and in
     `prototype/tests/ens_result_is_checked.rs`.
-- [ ] **C2** Units of measure. **L**
+- [x] **C2** Units of measure. **L**
   - Dimension annotations on numeric types, for example `f64<m/s>`, inferred
     through arithmetic. Adding mismatched units is a type error with a new
     error code.
   - Done when the typechecker refuses `metres + seconds`, accepts
     `metres / seconds` as `m/s`, and the corpus typechecks unchanged.
+  - Result: `f64[m/s]` (brackets, since `<...>` is already generics), SI base
+    exponent vectors, polymorphic literals; `m + s` is E0562 (`cannot add m and
+    s`), `m / s` infers `m/s`, and all 111 `.mg` files still typecheck. Units
+    are erased before evaluation. Code: `prototype/src/units.rs`; MAGE_SPEC
+    §10.6.
 - [x] **C3** A physics program task. **M**
   - Agents propose `step(state, params, dt) -> state` under
     `@role(candidate)`.

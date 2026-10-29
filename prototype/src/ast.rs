@@ -183,6 +183,25 @@ pub enum Type {
         base: Box<Type>,
         predicate: String,
     },
+    /// A float with a unit of measure (plan C2): `f64[m/s]`. `base` is the
+    /// `f32` or `f64` path; `unit` is the unit's canonical spelling
+    /// ([`crate::units::canonical`]). The unit is checked by `units.rs` and
+    /// erased everywhere else.
+    Dimensioned {
+        base: Box<Type>,
+        unit: String,
+    },
+}
+
+impl Type {
+    /// This type with any unit of measure removed: what every pass but the
+    /// unit checker sees.
+    pub fn strip_units(&self) -> &Type {
+        match self {
+            Type::Dimensioned { base, .. } => base.strip_units(),
+            other => other,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
