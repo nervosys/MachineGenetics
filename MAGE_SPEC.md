@@ -2165,15 +2165,18 @@ keyword, so `v result = …` in a body is still an ordinary variable.
 `--check` typechecks every clause of a spec that shares a function's name,
 in that function's parameter scope: the condition must be a `bool`.
 `--eval` (and the fuel-bounded evaluator the arena runs, §4.11) checks every
-`@ens` each time the function returns. A clause that is false fails the run
+`@req` on entry, after the parameters are bound and before the body runs, and
+every `@ens` each time the function returns. A clause that is false fails the run
 with an error naming the clause, the function and where it was written:
 
 ```text
 contract violated: `@ens(result.balance == old(account).balance - amount, "correct deduction")` of `withdraw` (sp withdraw) is false: `withdraw` returned Account { balance: 6 }
 ```
 
-`@req` is not evaluated at run time; express it with a `guard` where the call
-must be refused. The two examples below parse, typecheck and run.
+A call that breaks a `@req` never runs its body, and the run fails with the
+clause named, as `contract violated: \`@req(...)\` of \`f\` (sp f) is false: ...`.
+Where such a call should instead be refused with a value, use a `guard`.
+The two examples below parse, typecheck and run.
 
 ```mg
 struct Account { balance: u64 }

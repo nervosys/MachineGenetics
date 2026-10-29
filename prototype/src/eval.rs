@@ -251,8 +251,11 @@ pub struct Interp {
     /// able to overflow the Rust stack, which would abort the process rather
     /// than fail the candidate.
     depth: Cell<u32>,
+    /// `@req` preconditions of each top-level function, parsed, checked on
+    /// entry: after the parameters are bound, before the body runs.
+    preconditions: HashMap<String, Vec<(crate::contract::Clause, Expr)>>,
     /// `@ens` postconditions of each top-level function, parsed, checked at
-    /// every return (plan C1). Preconditions are not evaluated here.
+    /// every return (plan C1).
     postconditions: HashMap<String, Vec<(crate::contract::Clause, Expr)>>,
 }
 
@@ -334,16 +337,20 @@ impl Interp {
         }
         // A clause `contract::prepare` refuses is a type error, reported by
         // `--check`; a program run without checking simply does not have it.
+        let mut preconditions: HashMap<String, Vec<(crate::contract::Clause, Expr)>> =
+            HashMap::new();
         let mut postconditions: HashMap<String, Vec<(crate::contract::Clause, Expr)>> =
             HashMap::new();
         for (clause, fd) in crate::contract::collect(module) {
             let Some(fd) = fd else { continue };
-            if clause.kind != crate::ast::ContractClauseKind::Ensures {
-                continue;
-            }
+            let map = match clause.kind {
+                crate::ast::ContractClauseKind::Requires => &mut preconditions,
+                crate::ast::ContractClauseKind::Ensures => &mut postconditions,
+                crate::ast::ContractClauseKind::Invariant => continue,
+            };
             let params: Vec<String> = fd.params.iter().map(|p| p.name.clone()).collect();
             if let Ok(expr) = crate::contract::prepare(&clause, Some(&params)) {
-                postconditions.entry(fd.name.clone()).or_default().push((clause, expr));
+                map.entry(fd.name.clone()).or_default().push((clause, expr));
             }
         }
         Interp {
@@ -354,6 +361,7 @@ impl Interp {
             handlers: RefCell::new(Vec::new()),
             fuel: Cell::new(None),
             depth: Cell::new(0),
+            preconditions,
             postconditions,
         }
     }
@@ -488,12 +496,35 @@ impl Interp {
 
     fn call_user_inner(&self, fd: &FunctionDef, args: Vec<Value>) -> R {
         let mut env = self.bind_params(fd, args)?;
+        // Preconditions are checked on entry, with the parameters bound and
+        // before the body runs, so a failing `@req` stops the body from running.
+        if let Some(pres) = self.contract_clauses(&self.preconditions, fd) {
+            for (clause, expr) in pres {
+                let mut scope = env.clone();
+                let holds = self.eval(expr, &mut scope)?;
+                if !truthy(&holds) {
+                    let shown: Vec<String> = fd
+                        .params
+                        .iter()
+                        .map(|p| {
+                            let v = env.get(&p.name).map(|v| v.to_string()).unwrap_or_default();
+                            format!("{} = {}", p.name, v)
+                        })
+                        .collect();
+                    return err(format!(
+                        "contract violated: `{}` of `{}` ({}) is false: `{}` called with {}",
+                        clause.display(),
+                        fd.name,
+                        clause.origin,
+                        fd.name,
+                        shown.join(", ")
+                    ));
+                }
+            }
+        }
         // Postconditions belong to the top-level function of that name, not
         // to a method that happens to share it.
-        let posts = self
-            .postconditions
-            .get(&fd.name)
-            .filter(|_| self.funcs.get(&fd.name).is_some_and(|f| std::ptr::eq(f, fd)));
+        let posts = self.contract_clauses(&self.postconditions, fd);
         let Some(posts) = posts else {
             return self.run_body(fd, &mut env);
         };
@@ -517,6 +548,17 @@ impl Interp {
             }
         }
         Ok(v)
+    }
+
+    /// The clauses in `map` that belong to `fd`: those of the top-level
+    /// function of that name, not of a method that happens to share it.
+    fn contract_clauses<'a>(
+        &self,
+        map: &'a HashMap<String, Vec<(crate::contract::Clause, Expr)>>,
+        fd: &FunctionDef,
+    ) -> Option<&'a Vec<(crate::contract::Clause, Expr)>> {
+        map.get(&fd.name)
+            .filter(|_| self.funcs.get(&fd.name).is_some_and(|f| std::ptr::eq(f, fd)))
     }
 
     /// A fresh environment holding `fd`'s parameters bound to `args`, with

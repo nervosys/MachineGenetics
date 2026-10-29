@@ -431,4 +431,58 @@ mod tests {
             "{r:?}"
         );
     }
+
+    // ── Preconditions (`@req`) ───────────────────────────────────
+
+    const DIV: &str = "f div(a: i64, b: i64) -> i64 { a / b }\n";
+
+    #[test]
+    fn a_precondition_that_holds_lets_the_body_run() {
+        let src = format!(
+            "sp div {{\n    @req(b != 0, \"nonzero divisor\")\n}}\n{DIV}f main() -> i64 {{ div(6, 3) }}\n"
+        );
+        assert_eq!(run(&src), Ok(crate::eval::Value::Int(2)));
+    }
+
+    #[test]
+    fn a_violated_precondition_is_an_error_naming_the_contract() {
+        let src = format!(
+            "sp div {{\n    @req(b != 0, \"nonzero divisor\")\n}}\n{DIV}f main() -> i64 {{ div(1, 0) }}\n"
+        );
+        let Err(crate::eval::BoundedError::Error(e)) = run(&src) else {
+            panic!("a violated precondition must fail the run, got {:?}", run(&src))
+        };
+        assert_eq!(
+            e,
+            "contract violated: `@req(b != 0, \"nonzero divisor\")` of `div` (sp div) is false: `div` called with a = 1, b = 0"
+        );
+    }
+
+    #[test]
+    fn a_failing_precondition_stops_the_body_before_it_can_fail_itself() {
+        // `a / b` with b = 0 is an error in the body. The @req must be the
+        // error reported, which can only happen if the body never ran.
+        let src = format!(
+            "sp div {{\n    @req(b != 0)\n    @ens(result * b == a)\n}}\n{DIV}f main() -> i64 {{ div(1, 0) }}\n"
+        );
+        let Err(crate::eval::BoundedError::Error(e)) = run(&src) else {
+            panic!("a violated precondition must fail the run, got {:?}", run(&src))
+        };
+        assert_eq!(
+            e,
+            "contract violated: `@req(b != 0)` of `div` (sp div) is false: `div` called with a = 1, b = 0"
+        );
+    }
+
+    #[test]
+    fn a_precondition_written_above_the_function_is_checked_too() {
+        let src = format!("@req(b != 0)\n{DIV}f main() -> i64 {{ div(1, 0) }}\n");
+        let Err(crate::eval::BoundedError::Error(e)) = run(&src) else {
+            panic!("a violated precondition must fail the run, got {:?}", run(&src))
+        };
+        assert_eq!(
+            e,
+            "contract violated: `@req(b != 0)` of `div` (f div) is false: `div` called with a = 1, b = 0"
+        );
+    }
 }
