@@ -1352,6 +1352,13 @@ fn emit_type(buf: &mut String, ty: &Type, mode: Mode) {
             buf.push_str(" ~> ");
             buf.push_str(predicate);
         }
+        // `f64[m/s]` in both modes: the unit is stored canonical.
+        Type::Dimensioned { base, unit } => {
+            emit_type(buf, base, mode);
+            buf.push('[');
+            buf.push_str(unit);
+            buf.push(']');
+        }
     }
 }
 

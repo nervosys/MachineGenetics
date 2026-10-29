@@ -599,6 +599,8 @@ impl TypeChecker {
                 // Lower to the base type; predicate is checked separately by verify
                 self.lower_type(base)
             }
+            // A unit is erased here; `units::check` checks it (plan C2).
+            ast::Type::Dimensioned { base, .. } => self.lower_type(base),
         }
     }
 
@@ -2562,6 +2564,8 @@ pub fn check(module: &ast::Module) -> TypeChecker {
     // domain is a type error, so the arena refuses it as a Type refusal.
     checker.diagnostics.extend(crate::params::params(module).1);
     checker.diagnostics.extend(retired_constructs(module));
+    // Units of measure (plan C2): a mismatch is a type error, E0562.
+    checker.diagnostics.extend(crate::units::check(module).diagnostics);
     checker
 }
 

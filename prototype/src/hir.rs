@@ -572,6 +572,9 @@ pub enum DiagnosticCategory {
     /// A construct that was retired (plan 9.2) and is no longer compiled: its
     /// message names the replacement.
     Deprecated,
+    /// Two quantities whose units of measure disagree where they must match,
+    /// such as `m + s` (plan C2). The message names both units.
+    UnitMismatch,
     /// Other.
     Other,
 }
@@ -593,6 +596,7 @@ impl DiagnosticCategory {
             DiagnosticCategory::DuplicateDefinition => "E0428",
             DiagnosticCategory::SpecViolation => "E0560",
             DiagnosticCategory::ContractScope => "E0561",
+            DiagnosticCategory::UnitMismatch => "E0562",
             DiagnosticCategory::RoleViolation => "E0551",
             DiagnosticCategory::CoreViolation => "E0552",
             DiagnosticCategory::ParamDomain => "E0553",
@@ -647,6 +651,9 @@ impl DiagnosticCategory {
             }
             DiagnosticCategory::Deprecated => {
                 "replace the retired construct with the one named in the message; retired constructs are not compiled"
+            }
+            DiagnosticCategory::UnitMismatch => {
+                "make the units agree: fix an annotation, multiply or divide by a quantity of the missing unit, or drop a unit deliberately with `as f64`"
             }
             DiagnosticCategory::Other => "see the message for details",
         }
@@ -871,6 +878,7 @@ mod diagnostic_code_tests {
             DiagnosticCategory::CoreViolation,
             DiagnosticCategory::ParamDomain,
             DiagnosticCategory::Deprecated,
+            DiagnosticCategory::UnitMismatch,
             DiagnosticCategory::Other,
         ];
         let mut seen = std::collections::HashSet::new();

@@ -813,6 +813,8 @@ impl<'a> EmitCtx<'a> {
                 // Refinement types lower to their base type in MLIR
                 self.mlir_type(base)
             }
+            // Units are erased.
+            ast::Type::Dimensioned { base, .. } => self.mlir_type(base),
             ast::Type::Tensor { inner, shape } => {
                 let dims: Vec<String> = shape
                     .iter()
