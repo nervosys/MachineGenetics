@@ -83,14 +83,18 @@ UPPER_CASE        Non-terminal
 
 MAGE supports two interchangeable surface syntaxes that parse to the same AST:
 
-| Mode      | Pragma              | Purpose                              | Density |
+| Mode      | Pragma              | Purpose                              | Measured cost, relative to Human (§2.4) |
 | --------- | ------------------- | ------------------------------------ | ------- |
-| **Human** | (default)           | Human-readable, terse keywords       | 1×      |
-| **Agent** | `#![syntax(agent)]` | Machine-optimized, symbol-compressed | ~3×     |
+| **Human** | (default)           | Human-readable, terse keywords       | 1       |
+| **Agent** | `#![syntax(agent)]` | Symbol-compressed                    | 0.96 in bytes; 1.00 in MAGE tokens, cl100k tokens and learner bits |
+
+*This column said "~3×" density for Agent mode. Measured over the 106-file
+corpus (plan S2, §2.4), the sigil surface saves 3.8% of bytes and nothing in any
+token unit, so the figure was wrong and is replaced by the measurement.*
 
 A `#![syntax(agent)]` pragma at the top of a `.mg` file selects Agent mode. Human is the default.
 
-Both modes are byte-for-byte round-trippable via `mg fmt --human` and `mg fmt --agent`. The compiler accepts both in the same project.
+Both modes print the same AST, so converting between them (`mage-parse --fmt-expand` and `--fmt-compact`) loses nothing the compiler sees, and every `.mg` file in the tree round-trips through both. It is not byte-for-byte: comments are dropped by the lexer, so neither printer keeps them. The compiler accepts both in the same project.
 
 ### 2.1 Human mode Keywords
 
@@ -293,8 +297,9 @@ and, failing that, reports the BPE unit as unavailable rather than estimating it
 **Reading.** The sigil surface is cheaper in bytes, by 3.8% in total. It is not
 cheaper in any token unit. In MAGE lexer tokens and in cl100k BPE tokens it is
 0.2% more expensive, because `f` and `fn` are each one token. In learner bits it
-ties with the keyword surface to within 0.01%. The table above gives ~3× agent
-density for the sigil surface. On this corpus, the saving is in bytes only.
+ties with the keyword surface to within 0.01%. The table in §2 said ~3× agent
+density for the sigil surface, and now gives these figures instead. On this
+corpus, the saving is in bytes only.
 
 **Caveats.**
 - One learner configuration, `ng:4:14:0.02`, one run. The learner is
