@@ -647,4 +647,25 @@ mod tests {
         let c = m.propose(4, &pool, &mut rng);
         assert!(c.iter().all(|c| c.parents.contains(&id)));
     }
+
+    /// F1, the source of a bounded run's over-depth parents: an attacker
+    /// rewrite adds one or two list levels around its parent, so a program
+    /// within MAX_DEPTH can yield a candidate past it. The gate admits that
+    /// candidate, and a bounded graft keeps the wrapper it inherited.
+    #[test]
+    fn an_identity_rewrite_can_take_an_in_depth_program_past_max_depth() {
+        let mut rng = Rng(7);
+        let policy = Policy::default();
+        let mut past = 0;
+        for _ in 0..200 {
+            let (p, _) = policy.sample(&mut rng);
+            assert!(crate::grammar::check_list_depth(&p.body, 0).is_ok(), "{}", p.source());
+            for which in 0..IDENTITY_REWRITES {
+                if crate::grammar::check_list_depth(&identity_rewrite(&p.body, which), 0).is_err() {
+                    past += 1;
+                }
+            }
+        }
+        assert!(past > 0, "no rewrite of an in-depth program went past MAX_DEPTH");
+    }
 }

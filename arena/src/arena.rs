@@ -1789,6 +1789,14 @@ mod tests {
     /// `bound_grafts`, none do. The unbounded run is checked to exceed it, so
     /// the bounded zero means something. (The arena's gate does not enforce
     /// the limit, so such variants are evaluated, not refused.)
+    ///
+    /// Scope: this run has a mutator only, so every parent is in-depth and
+    /// the zero is what the sampler guarantees. It does not cover a run with
+    /// an attacker. There, the attacker's identity rewrites can take an
+    /// in-depth parent past MAX_DEPTH, the gate admits that candidate to the
+    /// pool, and a bounded graft keeps the wrapper it inherited, so the
+    /// mutator can report over-depth variants (seed 1 of the F1 six-seed run:
+    /// 100 of 506 grafts, every one descended from an over-deep attacker entry).
     #[test]
     fn bounded_grafts_put_no_mutant_past_max_depth_into_a_run() {
         let over_depth = |bound: bool| {
