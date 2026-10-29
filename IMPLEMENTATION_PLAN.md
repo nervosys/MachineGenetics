@@ -235,11 +235,15 @@ Physics as programs agents write, checked by the language, not only as data.
   - Result: spring (`k`, `c`) and pendulum (`L`) both ran ES, since the loop
     is uncertified; each recovers its known value within 0.01 (test
     `prototype/tests/system_id.rs`).
-- [ ] **C5** Contact as a convex step. **M**
+- [x] **C5** Contact as a convex step. **M**
   - Pose the bouncing-ball contact as a box-constrained quadratic program, so
     6.3's certified projected-gradient path solves it.
   - Done when the convexity pass certifies the objective, and the solved step
     matches P1's reference.
+  - Result: `prototype/examples/contact_step.mg` poses a step as a sum of
+    squares, certified convex, so `--solve` runs projected gradient. The free
+    step matches bounce, and the floor clamp gives `yp = 0`; the QP does not
+    cover restitution (MAGE_SPEC §11.12, `prototype/tests/contact_step.rs`).
 
 ## Phase F: Follow-ups found along the way
 
