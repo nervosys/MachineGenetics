@@ -214,13 +214,18 @@ Physics as programs agents write, checked by the language, not only as data.
     error code.
   - Done when the typechecker refuses `metres + seconds`, accepts
     `metres / seconds` as `m/s`, and the corpus typechecks unchanged.
-- [ ] **C3** A physics program task. **M**
+- [x] **C3** A physics program task. **M**
   - Agents propose `step(state, params, dt) -> state` under
     `@role(candidate)`.
   - The score is held-out rollout error against P1's trajectories, and
     conservation is enforced as a C1 contract.
   - Done when a run has agents competing on it, and a wrong integrator is
     refused by its contract.
+  - Result: a spring task, `prototype/examples/physics_task/`, scored by
+    `prototype/tests/physics_task.rs`. Verlet's RMS error is 0.0013 and
+    symplectic Euler's is 0.0255. Explicit Euler and a Verlet with a dropped
+    1/2 are refused by an energy-drift `@ens`. The arena task is deferred
+    (MAGE_SPEC §11.11).
 - [x] **C4** System identification with `--solve`. **S [H]**
   - Fit a pendulum's length, and a spring's stiffness and damping, from a
     trajectory: `@param` domains, a squared-error objective, and `--solve`.

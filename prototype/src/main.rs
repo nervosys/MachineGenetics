@@ -583,17 +583,62 @@ fn main() {
         Some("--eval") => {
             // Run a pure function and print its value — executes the §8 standard
             // vocabulary (map/filter/fold/…) and the arithmetic/control flow
-            // around it. Usage: mage-parse --eval <file.mg> <fn> [int args...]
-            let path = filtered.get(1).unwrap_or_else(|| {
-                eprintln!("Usage: mage-parse --eval <file.mg> <fn> [int args...]");
+            // around it. Usage: mage-parse --eval <file.mg> <fn> [int args...] [--fuel N]
+            //
+            // `--fuel N` runs under the fuel-bounded evaluator the arena uses
+            // (§4.11) and reports the fuel spent on stderr. The arguments are
+            // read from `args`, as `--solve` reads them: `filtered` would leave
+            // the fuel value behind as a positional, read as an integer argument.
+            let after = args.iter().position(|a| a == "--eval").map_or(0, |i| i + 1);
+            let mut positional: Vec<&str> = Vec::new();
+            let mut fuel: Option<u64> = None;
+            let mut rest = args[after..].iter();
+            while let Some(a) = rest.next() {
+                match a.as_str() {
+                    "--fuel" => {
+                        let Some(n) = rest.next().and_then(|v| v.parse::<u64>().ok()) else {
+                            eprintln!("--fuel needs a whole number");
+                            std::process::exit(1);
+                        };
+                        fuel = Some(n);
+                    }
+                    other if is_modifier_flag(other) => {}
+                    other => positional.push(other),
+                }
+            }
+            let Some(path) = positional.first() else {
+                eprintln!("Usage: mage-parse --eval <file.mg> <fn> [int args...] [--fuel N]");
                 std::process::exit(1);
-            });
-            let func = filtered.get(2).map(|s| &**s).unwrap_or("main");
-            let nums: Vec<i64> = filtered.iter().skip(3).filter_map(|s| s.parse().ok()).collect();
-            let src = std::fs::read_to_string(path).unwrap_or_else(|e| {
-                eprintln!("Error reading {path}: {e}");
-                std::process::exit(1);
-            });
+            };
+            let func = positional.get(1).copied().unwrap_or("main");
+            let nums: Vec<i64> = positional.iter().skip(2).filter_map(|s| s.parse().ok()).collect();
+            // `-` reads standard input, so a task and a candidate can be
+            // composed with `cat task candidate | mage-parse --eval - …`.
+            let src = read_source(path);
+            if let Some(fuel) = fuel {
+                let module = match parser::parse(&lexer::lex(&src)) {
+                    Ok(m) => m,
+                    Err(e) => {
+                        eprintln!("eval error: parse error at {}:{}: {}", e.line, e.col, e.message);
+                        std::process::exit(1);
+                    }
+                };
+                let args = nums.iter().map(|n| eval::Value::Int(*n)).collect();
+                let (result, spent) = eval::run_metered(&module, func, args, fuel);
+                eprintln!("fuel spent: {spent} of {fuel}");
+                match result {
+                    Ok(v) => println!("{v}"),
+                    Err(eval::BoundedError::FuelExhausted) => {
+                        eprintln!("eval error: fuel exhausted");
+                        std::process::exit(1);
+                    }
+                    Err(eval::BoundedError::Error(e)) => {
+                        eprintln!("eval error: {e}");
+                        std::process::exit(1);
+                    }
+                }
+                return;
+            }
             match eval::run_source(&src, func, &nums) {
                 Ok(v) => println!("{v}"),
                 Err(e) => {
