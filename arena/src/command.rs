@@ -22,7 +22,8 @@
 //! ## Energy
 //!
 //! [`crate::arena::run_with`] wraps each agent's `propose` in its own energy
-//! span, and charges that span to the agent and to the `proposer` role. The
+//! span, and charges that span to the agent, to its role and to its kind (the
+//! ledger's `by_role` and `by_kind`, plan F2). The
 //! command runs inside `propose`, so a local model behind it is metered by that
 //! span, which is the local-model half of plan 3.4. Nothing here measures
 //! energy itself.
@@ -146,7 +147,23 @@ pub fn split_blocks(reply: &str) -> Vec<String> {
 
 /// The prompt for a round that asks for `n` programs, showing `top`, the pool's
 /// best entries, as `source()` with their rewards.
+///
+/// The prompt ends on a clean token boundary: exactly one newline after the
+/// final instruction line, with no trailing space and no partial line. A
+/// tokenized model's next-token distribution is skewed by a prompt that ends
+/// mid-token, so the last line is always the whole instruction. See Cartesia,
+/// *From Tokens to Bytes, Part II*: https://www.cartesia.ai/blog/from-tokens-to-bytes-part-2
+/// (plan F3).
 pub fn build_prompt(n: usize, top: &[&PoolEntry]) -> String {
+    let sources: Vec<(f64, String)> = top.iter().map(|e| (e.reward, e.program.source())).collect();
+    let shown: Vec<(f64, &str)> = sources.iter().map(|(r, s)| (*r, s.as_str())).collect();
+    render_prompt(n, &shown)
+}
+
+/// The prompt text for [`build_prompt`], from entries given as reward and
+/// source text. Each source is written without its trailing whitespace, so no
+/// line of the prompt ends in a space, whatever the source held.
+fn render_prompt(n: usize, top: &[(f64, &str)]) -> String {
     let mut p = String::from(
         "You write programs for the arena, a search over small typed MAGE programs. \
          A body is one list expression over the seed `s`. Write bodies only: no `f gen`, \
@@ -157,8 +174,8 @@ pub fn build_prompt(n: usize, top: &[&PoolEntry]) -> String {
     if top.is_empty() {
         p.push_str("(none yet)\n\n");
     }
-    for e in top {
-        p.push_str(&format!("reward {:.4}:\n{}\n", e.reward, e.program.source()));
+    for (reward, source) in top {
+        p.push_str(&format!("reward {:.4}:\n{}\n", reward, source.trim_end()));
     }
     p.push_str(&format!(
         "Write up to {n} new programs, different from these. Each is a single body expression. \
@@ -405,5 +422,51 @@ mod tests {
     fn split_blocks_drops_blank_blocks_and_keeps_bodies_whole() {
         let blocks = split_blocks("\n---\nrange(2)\n  \n---\n---\n[1;\n2]\n");
         assert_eq!(blocks, vec!["range(2)\n  \n".to_string(), "[1;\n2]\n".to_string()]);
+    }
+
+    /// The prompt ends on exactly one newline after a last line with no
+    /// trailing whitespace (plan F3).
+    fn assert_clean_boundary(prompt: &str) {
+        assert!(prompt.ends_with('\n'), "the prompt does not end on a newline: {prompt:?}");
+        assert!(!prompt.ends_with("\n\n"), "the prompt ends on a blank line: {prompt:?}");
+        let last = prompt.lines().last().expect("a prompt has a last line");
+        assert_eq!(last.trim_end(), last, "the last line has trailing whitespace: {last:?}");
+        assert!(last.starts_with("Write up to "), "the last line is not the instruction: {last:?}");
+    }
+
+    #[test]
+    fn the_prompt_ends_on_a_clean_boundary_for_every_pool_size() {
+        // Empty, one entry, a full prompt's worth, and more than it shows.
+        for k in [0usize, 1, PROMPT_EXAMPLES, PROMPT_EXAMPLES + 4] {
+            let mut pool = Pool::new(32);
+            for i in 0..k {
+                pool.add(Program { body: ListExpr::Range(i as u64 + 1) }, vec![0], i as f64 + 1.0, "other", 0);
+            }
+            let (mut a, prompts) = agent(Ok("range(5)"));
+            a.propose(3, &pool, &mut Rng(1));
+            let prompt = prompts.borrow()[0].clone();
+            assert_clean_boundary(&prompt);
+            if k == 0 {
+                assert!(prompt.contains("(none yet)\n\n"), "an empty pool says so");
+            }
+        }
+    }
+
+    #[test]
+    fn an_entry_with_trailing_whitespace_does_not_move_the_boundary() {
+        // Sources from `source()` never end in whitespace, so this is for a
+        // source that does: it is shown without it, and the prompt still ends
+        // on the instruction.
+        for shown in [
+            vec![(0.5, "range(2)  \n\n")],
+            vec![(0.5, "range(2)\t"), (0.2, "range(3) \n")],
+            vec![],
+        ] {
+            let prompt = render_prompt(2, &shown);
+            assert_clean_boundary(&prompt);
+            for (_, source) in &shown {
+                assert!(prompt.contains(&format!("{}\n", source.trim_end())), "{source:?} is not shown trimmed");
+            }
+        }
     }
 }

@@ -191,11 +191,11 @@ Physics as programs agents write, checked by the language, not only as data.
     by PR #73's round-trip test).
   - Measure whether bounding the grafts changes held-out results (M3 under
     `--cost fuel`), then bound them or record why not.
-- [ ] **F2** A separate ledger account for command proposers. **S [H]**
+- [x] **F2** A separate ledger account for command proposers. **S [H]**
   - Command proposers currently share the `proposer` role's account with
     grammar agents.
   - Done when a command agent's joules appear under its own role or account.
-- [ ] **F3** Prompt boundaries. **S [H]**
+- [x] **F3** Prompt boundaries. **S [H]**
   - Cartesia II's prompt-boundary problem: a prompt that ends mid-token
     skews a tokenized model.
   - Done when the command proposer's prompt is guaranteed to end on a newline

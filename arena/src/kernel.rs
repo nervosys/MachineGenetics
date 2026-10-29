@@ -63,6 +63,11 @@ pub struct EnergyLedger {
     /// spent the budget, beside what it was spent on.
     #[serde(default)]
     pub by_role: BTreeMap<String, f64>,
+    /// The same share, by the kind of agent (`Proposer::kind`), so a model
+    /// behind a command has its own account rather than the grammar agents'
+    /// (plan F2). Sums to `by_role`, which sums to the PROGRAMS account.
+    #[serde(default)]
+    pub by_kind: BTreeMap<String, f64>,
     /// Joules spent on held-out evaluation, not charged.
     pub evaluation_joules: f64,
     /// False when any charged or evaluation reading was an estimate.
@@ -93,11 +98,13 @@ impl EnergyLedger {
         reading
     }
 
-    /// Charge a span an agent acting in `role` spent, to `account`.
-    pub fn charge_role(&mut self, account: &str, role: &str, readings: &[Reading]) -> Option<(f64, bool)> {
+    /// Charge a span an agent of `kind`, acting in `role`, spent, to `account`.
+    /// The joules are booked under both the role and the kind.
+    pub fn charge_agent(&mut self, account: &str, role: &str, kind: &str, readings: &[Reading]) -> Option<(f64, bool)> {
         let reading = self.charge(account, readings);
         if let Some((j, _)) = reading {
             *self.by_role.entry(role.to_string()).or_insert(0.0) += j;
+            *self.by_kind.entry(kind.to_string()).or_insert(0.0) += j;
         }
         reading
     }
