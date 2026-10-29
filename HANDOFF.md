@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,399** — rmi 1,384 · prototype 1,428 · ribosome 168 · germline 175 · forge 63 · arena 181 |
+| Tests | **3,406** — rmi 1,384 · prototype 1,428 · ribosome 168 · germline 175 · forge 63 · arena 188 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -1332,6 +1332,35 @@ Fixed while stacking: the new scope rule refused framewerx's `specs.mg`
 
 Break-checked: disabling the check fails two unit tests and the CLI test.
 Prototype +20 tests.
+
+**Implementation plan P5b: an oscillator production. Expressivity was a
+bottleneck; search still is not the answer.**
+- `--second-order` (`Config.second_order`, default off) adds a two-state linear
+  recurrence. It is rendered in plain MAGE as a `scan` over pair state, then a
+  `map` projecting one component:
+  `range(n).scan((x1, x0), |p, v| { val (c, q) = p; ((a*c - b*q) >> k, c) }).map(...)`
+  with wrapping arithmetic. Bounds keep it stable: k in 1..=6, b < 2^k, and
+  a <= 2^(k+1).
+- With the flag off, sampling is bit-identical to before, checked with a
+  golden hash over seeds 1-3. Break-checked: flipping the b term fails the
+  oscillation test.
+
+P5's grid with a third variant, `second`. At round 20, held-out bpb is lower
+than the uniform control's by 4.3, 16.9 and 4.7 standard errors (pendulum,
+double pendulum, spring). A further control, uniform programs with the
+production on, matches `second` (z +0.6, +0.5, +0.2). So:
+- the grammar could not express what physics needed, and now it can;
+- the agents' search still adds nothing over random sampling.
+
+The fraction-closed metric reads negative for `second` only because its
+round-5 start is already much lower. The flag stays off by default.
+
+Next questions:
+- Whether a command (LLM) proposer told about the production does better than
+  sampling. Its prompt (`describe_grammar`) does not mention it yet.
+- Why grammar search fails to beat uniform at all on physics.
+
+Arena +7 tests.
 
 **Pre-existing, not from this change:** `cargo clippy` 0.1.98 (2026-09-01)
 reports 15 warnings in `prototype` — 14 `chunks_exact` with a constant size in
