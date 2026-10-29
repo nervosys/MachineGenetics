@@ -1386,8 +1386,8 @@ round-trippable". They are not, because the lexer drops comments, so neither
 printer keeps them. The section now says they print the same AST, which is
 what PR #65's round-trip test checks.
 
-For S3, a description-length charge in MAGE tokens or in bytes differs by 4%
-between surfaces, and by nothing in BPE or learner bits.
+For S3, a description-length charge differs by 4% between surfaces in bytes,
+and by 0.2% or less in MAGE tokens, BPE or learner bits.
 
 `MAGE_ONTOLOGY.json` was regenerated, which also picked up `--solve` and its
 flags, missing since #70. `cli_flags` goes from 40 to 45.
