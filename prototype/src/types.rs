@@ -742,7 +742,13 @@ impl TypeChecker {
         // Third: contract clauses, in the scope of the function each belongs
         // to, with `result` bound in a postcondition (plan C1).
         for (clause, fd) in crate::contract::collect(module) {
+            let before = self.diagnostics.len();
             self.check_contract(&clause, fd);
+            // Whatever a clause reports (E0561, a type error, a name it cannot
+            // resolve) points at the clause's own line, not at no line.
+            for d in &mut self.diagnostics[before..] {
+                d.span = d.span.or(clause.diag_span());
+            }
         }
     }
 

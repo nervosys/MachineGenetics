@@ -317,6 +317,7 @@ impl Resolver {
             self.pop_scope();
             for d in &mut self.diagnostics[before..] {
                 d.message = format!("{} in contract `{}` of `{}`", d.message, clause.display(), clause.function);
+                d.span = d.span.or(clause.diag_span());
             }
         }
 

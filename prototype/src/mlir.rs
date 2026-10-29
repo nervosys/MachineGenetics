@@ -318,13 +318,13 @@ impl<'a> EmitCtx<'a> {
         self.indent += 1;
         for item in &sp.items {
             match item {
-                ast::SpecItem::Require(cond) => {
+                ast::SpecItem::Require(cond, _) => {
                     self.line(&format!("MAGE.contract.requires \"{cond}\""));
                 }
-                ast::SpecItem::Ensure(cond) => {
+                ast::SpecItem::Ensure(cond, _) => {
                     self.line(&format!("MAGE.contract.ensures \"{cond}\""));
                 }
-                ast::SpecItem::Invariant(cond) => {
+                ast::SpecItem::Invariant(cond, _) => {
                     self.line(&format!("MAGE.contract.invariant \"{cond}\""));
                 }
                 ast::SpecItem::Performance(metric, bound) => {
