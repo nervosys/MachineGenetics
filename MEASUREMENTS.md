@@ -7,7 +7,7 @@ numbers are machine-dependent; the shapes (throughput, scaling) are not.
 Date: 2026-06-10. Build: `release` for perf, `cargo test` for functionality.
 
 > **Re-verified 2026-09-25** — all six crates tested: prototype **1,432**, rmi
-> **1,384**, ribosome **168**, germline **175**, forge **63**, arena **192** = **3,414 passing,
+> **1,384**, ribosome **168**, germline **175**, forge **63**, arena **200** = **3,422 passing,
 > 0 failing, 0 warnings**.
 >
 > *One figure below had not regressed — it had been superseded.* The ABL
@@ -80,7 +80,7 @@ Date: 2026-06-10. Build: `release` for perf, `cargo test` for functionality.
 | rmi (`cpu`) | **1384 pass** | `cargo test --no-default-features --features cpu` |
 | ribosome (build engine) | **168 pass** | `cargo test --manifest-path ribosome/Cargo.toml` |
 | germline (RSI control plane) | **175 pass** | `cargo test --manifest-path germline/Cargo.toml` |
-| arena (self-play arena) | **192 pass** | `cargo test --manifest-path arena/Cargo.toml` |
+| arena (self-play arena) | **200 pass** | `cargo test --manifest-path arena/Cargo.toml` |
 | forge (registry) | **63 pass** | `cargo test --manifest-path forge/Cargo.toml` |
 | agentic-eval (AetherShell) | **80 pass** | `cargo test -p agentic-eval` |
 | SPINE `spine-agentic` | **285 pass** | `cargo test -p spine-agentic` |
@@ -813,3 +813,80 @@ So on this corpus set, the signal the critical path asks for is not there. The S
 - The default target is the worst learner's final held-out loss, so that learner's own frontier ends exactly at the target. The same target can lie above the reference's first checkpoint, which is what makes n-body `n/a` at the default. A `--target` inside every frontier's range is the remedy, and it is reported above for n-body only. The other corpora were not re-run at other targets, so their figures hold at the default target only.
 - Wall-clock seconds were recorded on a shared machine, one learner at a time. They are noisy: the per-seed sd of the entropy learner's seconds is about 20–25% of its mean.
 - Joules were not measured on this axis; only bytes and seconds.
+
+## Rollout metrics (plan P6)
+
+Question: can a learner trained on physics *predict* a trajectory, not just code it? The learner is given the header and the first 10 timesteps of a held-out trajectory, generates 100 more timesteps one byte at a time, and the bytes are decoded and compared with the true states. Bits per byte says how well a learner codes trajectories; this measures whether its predictions track them. The code is `arena/src/rollout.rs`, and the generator is `Predictor`, a per-learner next-byte accessor in `arena/src/learner.rs`.
+
+Design, and what each figure means:
+
+- **The encoding is `i32`, and only `i32`.** Planes lay out the byte-planes across the whole trajectory, so a planes prefix holds no whole timestep and cannot be generated a step at a time. (`coarse` and `diff2` could be rolled out, but the plan specifies `i32`, and they are not measured here.) Training is on the `i32` training corpus, as `physics-baseline` does; the held-out trajectories are `i32` too.
+- **Generation is greedy.** Each byte is the most probable byte under the learner's distribution, so the rollout is deterministic. Predictions are decoded with `physics::decode_prefix`.
+- **State error** at horizons 1, 10 and 100 is the RMS over 8 held-out trajectories of the RMS over channels, in the system's units. Angles are compared on the circle. Channels mix units (angles, rates, positions, velocities), so the figure is a scale, not a single quantity.
+- **Energy drift** is the largest `|E_n − E_0| / |E_0|` over the generated steps, with `E` from `physics::energy` (the same function the conservation tests use) and `E_0` the true initial energy, averaged over trajectories. It is reported only for the pendulum, the double pendulum and the n-body system, which conserve energy. The spring (damped) and the bounce (restitution below 1) lose energy by design, so they have no drift figure.
+- **Two trivial baselines** on the same contexts. *Hold* repeats the last given state. *Constant velocity* extrapolates the last two given states. A learner **beats the trivial baseline** at a horizon when its error is below the smaller of the two.
+- Holding a state conserves energy exactly, so *hold* has near-zero drift on a conservative system. The drift column is read with the error columns, not on its own.
+
+Command, from the `arena` directory with a release build (about three to four minutes of run time on this machine, one run):
+
+```sh
+CARGO_TARGET_DIR=<scratchpad>/tgt-p6 cargo run --release --bin arena -- physics-rollout
+```
+
+The defaults are the learners of the L1 and L2 sections (`ng:4:14:0.02`, `ent:4:14:4:0.02`, `ssm:16:0.01`), a training budget of 192 KiB on trajectories of 1,100 steps, seed 1, and 8 held-out trajectories per system of 110 steps (10 given, 100 generated).
+
+| system | learner | err @1 | err @10 | err @100 | energy drift | beats the better trivial baseline at |
+|---|---|---|---|---|---|---|
+| pendulum | ng 4×2¹⁴ | 1.7528 | 1.7708 | 3.0992 | 1.00e0 | none |
+| spring | ng 4×2¹⁴ | 3.2946 | 1.8535 | 0.5227 | n/a | 10, 100 |
+| double pendulum | ng 4×2¹⁴ | 1.3882 | 1.3889 | 1.4225 | 5.02e0 | none |
+| n-body | ng 4×2¹⁴ | 1.4010 | 1.4010 | 1.4012 | 2.67e2 | none |
+| bounce | ng 4×2¹⁴ | 2.9430 | 2.9442 | 2.9984 | n/a | none |
+| pendulum | ent 4×2¹⁴ L4 | 1.7528 | 1.7708 | 3.0992 | 1.00e0 | none |
+| spring | ent 4×2¹⁴ L4 | 3.2946 | 1.8535 | 0.5227 | n/a | 10, 100 |
+| double pendulum | ent 4×2¹⁴ L4 | 1.3882 | 1.3889 | 1.4225 | 5.02e0 | none |
+| n-body | ent 4×2¹⁴ L4 | 7756.8774 | 8532.9468 | 2212.8203 | 6.61e9 | none |
+| bounce | ent 4×2¹⁴ L4 | 2.9430 | 2.9442 | 2.9984 | n/a | none |
+| pendulum | ssm d16 | 1.7528 | 1.7708 | 3.0992 | 1.00e0 | none |
+| spring | ssm d16 | 3.2946 | 1.8535 | 0.5227 | n/a | 10, 100 |
+| double pendulum | ssm d16 | 1.3881 | 1.3889 | 1.4225 | 5.02e0 | none |
+| n-body | ssm d16 | 1.4010 | 1.4010 | 1.4012 | 2.67e2 | none |
+| bounce | ssm d16 | 2.9430 | 2.9442 | 2.9984 | n/a | none |
+
+The trivial baselines, which do not depend on the learner:
+
+| system | baseline | err @1 | err @10 | err @100 | energy drift |
+|---|---|---|---|---|---|
+| pendulum | hold | 0.0257 | 0.2641 | 3.3710 | 1.71e-6 |
+| pendulum | constant velocity | 0.0003 | 0.0159 | 1.6694 | 6.41e-1 |
+| spring | hold | 0.1804 | 2.0872 | 2.8130 | n/a |
+| spring | constant velocity | 0.0613 | 2.9078 | 22.3656 | n/a |
+| double pendulum | hold | 0.0035 | 0.0353 | 0.3514 | 5.92e-5 |
+| double pendulum | constant velocity | 0.0001 | 0.0006 | 0.0227 | 9.36e-2 |
+| n-body | hold | 0.0004 | 0.0036 | 0.0357 | 1.29e-4 |
+| n-body | constant velocity | 0.0001 | 0.0004 | 0.0040 | 9.52e-3 |
+| bounce | hold | 0.0069 | 0.0694 | 0.6949 | n/a |
+| bounce | constant velocity | 0.0000 | 0.0004 | 0.0351 | n/a |
+
+### What the greedy rollouts actually emit
+
+The three learners' rows are the same on the pendulum, the spring and the bounce, and the double pendulum differs only in the fourth decimal. A check on the n-gram (one held-out trajectory per system, the same training as above, not committed) found that greedy decoding emits **one constant byte in every position** on all five systems: `0xFF` on the pendulum, the double pendulum and the bounce, which is the `i32` value −1, one quantum and so effectively zero; and `0x00` on the spring and the n-body system, which is zero. The n-gram's predicted state is therefore the zero state. Its error matches the zero state's to about four significant figures (pendulum at horizon 1: 3.3755 for the learner, 3.3755 for zero; spring and n-body exactly). The SSM and entropy rows match the n-gram's to four decimals on those systems, so they are presumed to emit the same constant, but their bytes were not inspected. The entropy row on the n-body system is not the same: its predicted values reach about 2 × 10⁵ in magnitude, which is why its error is in the thousands.
+
+The mode of a byte distribution, read greedily at every position, is therefore the zero state. For these learners at this budget the rollout is a constant predictor, not a model of the dynamics.
+
+### Plain conclusions
+
+- **No learner beats the trivial baselines on the pendulum, the double pendulum, the n-body system or the bounce, at any horizon.** The constant-velocity baseline has error 0.0003 at horizon 1 on the pendulum, against 1.7528 for every learner. The learners are a long way behind even the hold baseline on every conservative system.
+- **On the spring, the learners "beat" the trivial baseline at horizons 10 and 100, and that win is not learned dynamics.** At horizon 10 the learner's 1.85 is below hold's 2.09, and at horizon 100 its 0.52 is below hold's 2.81. The learners emit the zero state, and the damped spring decays toward zero, so zero is closer to the truth than a held state. The learners are not better than the zero state anywhere. The zero state is not one of the baselines in this table, and it should be the next one added. At horizon 1 the spring learners are at 3.29 against 0.06 to 0.18 for the baselines, which is the constant-output error showing through.
+- **Energy drift confirms the zero state.** A learner whose predicted state is zero has energy zero, so its relative drift is exactly `|0 − E_0| / |E_0|`, which is 1 for the pendulum (the reported 1.00). The hold baseline's drift on the pendulum is 1.7 × 10⁻⁶ because holding a state conserves energy; that is why drift is never read alone.
+- **Bits per byte and rollouts disagree in an instructive way.** The learners code held-out physics below uniform (5 to 6 bits per byte, the P4 and L2 rows), yet their greedy generations are constant. A distribution that is well calibrated over many bytes can still have its mode at one byte, and greedy decoding reads only the mode. The rollout measures what the learner predicts, and bits per byte measures how much it codes; the two are not the same question.
+- **So the answer to the P6 question is no, in this configuration.** At 192 KiB of training and greedy `i32` decoding, none of the three learners generates a trajectory that tracks the true one. Whether a different decoding (sampling, or a learned value read-out) or more training would change this is not measured here.
+
+### Limits of this measurement
+
+- One seed, one set of 8 held-out trajectories per system, one budget (192 KiB), one configuration per learner. The learners are untuned.
+- Greedy decoding only. Sampling from the learner's distribution, which might escape the constant mode, was not run.
+- The context is 10 timesteps. A longer context is not tested.
+- Trajectory length 110 steps, so horizon 100 is the longest measured.
+- The zero-state baseline is described above but not in the table, and it is not part of `physics-rollout`. The spring "beats" are therefore explained by the zero-state check, not measured against it in the command.
+- The energy drift of the entropy learner on the n-body system (6.61 × 10⁹) is a figure from garbage predictions, not a physical drift.

@@ -61,7 +61,7 @@
 
 use crate::grammar::Rng;
 use crate::kernel::Corpus;
-use crate::learner::{build, LearnerSpec};
+use crate::learner::{build, ByteLearner, LearnerSpec};
 use std::f64::consts::PI;
 
 /// The magic that opens every encoded trajectory.
@@ -1064,6 +1064,30 @@ pub fn encoded_len_as(bytes: &[u8], encoding: Encoding) -> Result<usize, String>
         .ok_or_else(|| "length overflows".to_string())
 }
 
+/// The length in bytes of the header of an encoded trajectory of `system`: magic,
+/// system code, parameters, quantum, channel count and step count.
+pub fn header_len(system: System) -> usize {
+    4 + 1 + 8 * system.param_count() + 8 + 4 + 4
+}
+
+/// Decodes the whole timesteps of an `i32`-encoded trajectory that may stop
+/// early: the header, then any number of complete timesteps. A rollout (plan P6)
+/// reads a trajectory this way, since it has only the steps generated so far.
+/// Bytes after the last complete timestep are dropped. The step count in the
+/// header is not checked, so use [`decode`] when the input must be exact.
+pub fn decode_prefix(bytes: &[u8]) -> Result<(System, Params, f64, Vec<State>), String> {
+    let (h, header_len) = read_header(bytes)?;
+    let body = &bytes[header_len..];
+    let per_step = h.channels * 4;
+    let body = &body[..body.len() / per_step * per_step];
+    let values: Vec<f64> = body
+        .chunks_exact(4)
+        .map(|b| i32::from_le_bytes(b.try_into().expect("4 bytes")) as f64 * h.quantum)
+        .collect();
+    let states = values.chunks_exact(h.channels).map(|s| s.to_vec()).collect();
+    Ok((h.system, h.params, h.quantum, states))
+}
+
 /// `trajectories` encoded trajectories of `system`, drawn from `range` with
 /// one RNG seeded by `seed`, each of `steps` steps at
 /// [`System::default_dt`], concatenated into one byte stream.
@@ -1306,6 +1330,38 @@ pub fn physics_baseline_as(
         encoding,
     );
     learning_curve(spec, &train, &heldout, budget, BASELINE_CHUNK, BASELINE_BATCH)
+}
+
+/// Trains `spec` on the same train corpus, for the same number of steps, as
+/// [`physics_baseline_as`], and returns the trained learner rather than its curve
+/// (plan P6). A rollout needs the learner itself. Training is deterministic, so
+/// this learner is the one whose curve the baseline measured.
+pub fn physics_train(
+    system: System,
+    spec: LearnerSpec,
+    budget: usize,
+    steps: usize,
+    seed: u64,
+    encoding: Encoding,
+) -> Result<Box<dyn ByteLearner>, String> {
+    let per_step = BASELINE_CHUNK * BASELINE_BATCH;
+    let n_steps = budget / per_step;
+    if n_steps < BASELINE_CHECKPOINTS {
+        return Err(format!(
+            "budget of {budget} bytes is under {BASELINE_CHECKPOINTS} train steps of {per_step} bytes"
+        ));
+    }
+    let train_per = corpus_as(system, ParamRange::Train, seed, 1, steps, encoding).len().max(1);
+    let train = corpus_as(system, ParamRange::Train, seed, budget.div_ceil(train_per).max(1), steps, encoding);
+    let mut learner = build(spec)?;
+    for step in 0..n_steps {
+        let start = step * per_step;
+        let batch: Vec<&[u8]> = (0..BASELINE_BATCH)
+            .map(|i| &train[start + i * BASELINE_CHUNK..start + (i + 1) * BASELINE_CHUNK])
+            .collect();
+        learner.train(&batch);
+    }
+    Ok(learner)
 }
 
 #[cfg(test)]
@@ -1951,5 +2007,23 @@ mod tests {
         assert!(points.windows(2).all(|w| w[1].seconds >= w[0].seconds), "seconds fall: {points:?}");
         let last = points.last().expect("points");
         assert!(last.seconds > 0.0 && last.seconds.is_finite(), "{}", last.seconds);
+    }
+
+    #[test]
+    fn decode_prefix_reads_whole_steps_of_a_cut_short_trajectory() {
+        // Plan P6: a rollout reads the header and the steps generated so far.
+        let (p, states) = trajectory(System::DoublePendulum, 4, 30);
+        let bytes = encode(System::DoublePendulum, &p, &states, 1e-4);
+        let (s, p2, q, all) = decode_prefix(&bytes).expect("whole trajectory");
+        assert_eq!((s, p2, q), (System::DoublePendulum, p, 1e-4));
+        assert_eq!(all, decode(&bytes).expect("exact").2);
+        // Cut mid-step: the partial step is dropped, the whole ones are kept.
+        let hl = header_len(System::DoublePendulum);
+        let per_step = System::DoublePendulum.channels() * 4;
+        let cut = &bytes[..hl + 7 * per_step + 5];
+        let (_, _, _, prefix) = decode_prefix(cut).expect("prefix");
+        assert_eq!(prefix.len(), 7);
+        assert_eq!(prefix[..], all[..7]);
+        assert_eq!(header_len(System::Pendulum), 4 + 1 + 16 + 8 + 4 + 4);
     }
 }
