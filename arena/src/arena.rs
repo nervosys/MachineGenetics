@@ -1722,6 +1722,19 @@ mod tests {
     }
 
     #[test]
+    fn a_short_run_with_a_state_space_learner_completes_and_reports_it() {
+        let (m, n) = cpu_only();
+        let ssm = LearnerSpec::Ssm(crate::learner::SsmConfig { d: 4, lr: 0.02, bptt: 16 });
+        let cfg = Config { learners: vec![LearnerSpec::default(), ssm], ..tiny_cfg() };
+        let r = run(cfg, heldout(), m, n).expect("runs");
+        assert_eq!(r.rounds_completed, tiny_cfg().rounds);
+        assert_eq!(r.learners.len(), 2);
+        assert!(r.learners[1].describe.starts_with("ssm d4 bptt16"), "{}", r.learners[1].describe);
+        assert!(matches!(r.learners[1].config, LearnerSpec::Ssm(_)));
+        assert!(r.learners[1].mean_bpb.is_finite());
+    }
+
+    #[test]
     fn a_short_run_charged_in_bytes_completes_and_records_bytes() {
         let (m, n) = cpu_only();
         let cfg = Config { length_unit: LengthUnit::Bytes, ..tiny_cfg() };

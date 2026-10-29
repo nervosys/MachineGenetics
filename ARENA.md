@@ -92,6 +92,11 @@ cargo run --release --manifest-path arena/Cargo.toml -- \
   n-gram's next-byte entropy exceeds the threshold that makes the mean chunk length `target_len`
   (at least 1 byte). Its bits per byte are the mixture's, and it reports as kind `entropy`. Design and
   measurements: `arena/src/entropy.rs`, and "Entropy-chunked learner (plan L1)" in `MEASUREMENTS.md`.
+- `ssm:d:lr[:bptt]` — the diagonal state-space learner (plan L2). A byte embedding drives `d` stable linear
+  channels (decay `exp(−exp(ℓ))`), with a gated output and a softmax head, trained by hand-written
+  backpropagation and Adam. `bptt` is the number of bytes the gradient may cross through the recurrence
+  before it is cut (default 64; 0 for no cut). It reports as kind `ssm`. Design, gradient check and
+  measurements: `arena/src/ssm.rs`, and "State-space learner (plan L2)" in `MEASUREMENTS.md`.
 
 ## What the first runs measured (2026-09-25)
 

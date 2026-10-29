@@ -4,7 +4,7 @@
 //! arena measure [--axis bytes|joules] [--target T] [--json OUT] <run.json | dir>…
 //! arena [--heldout <file>[,<file>…]] [--heldout-physics <system>:<trajectories>:<steps>:<seed>]… [--rounds N] [--programs N] [--seed S]
 //!       [--agents grammar:2,uniform:1,mutator:1,attacker:1]
-//!       [--learners ng:orders:log2buckets:lr | tf:d:layers:heads:ctx:lr[:gpu] | ent:orders:log2buckets:target_len:lr [,…]]
+//!       [--learners ng:orders:log2buckets:lr | tf:d:layers:heads:ctx:lr[:gpu] | ent:orders:log2buckets:target_len:lr | ssm:d:lr[:bptt] [,…]]
 //!       [--fuel F] [--cpu-watts W] [--meter-gpus <i>[,<i>…] | none] [--cost joules|fuel]
 //!       [--allocate share|hypervolume] [--novelty behaviour|shape]
 //!       [--length-unit tokens|bytes] [--canary <string>]
@@ -27,7 +27,7 @@
 //! outside the loop, and prints its learning curve (plan P4).
 
 use arena::arena::{meters_for, run, Config, Corpus};
-use arena::learner::{EntropyConfig, LearnerConfig, LearnerSpec, TransformerConfig};
+use arena::learner::{EntropyConfig, LearnerConfig, LearnerSpec, SsmConfig, TransformerConfig};
 use arena::physics::{self, Encoding, System, SYSTEMS};
 
 fn fail(msg: impl std::fmt::Display) -> ! {
@@ -63,13 +63,26 @@ fn parse_learners(list: &str) -> Result<Vec<LearnerSpec>, String> {
                         lr: float(lr)?,
                     }))
                 }
+                // Before the bare n-gram form, which also has three fields.
+                ["ssm", d, lr, rest @ ..] if rest.len() <= 1 => {
+                    let d = int(d, "d")? as usize;
+                    let lr = float(lr)?;
+                    if d == 0 || !(lr.is_finite() && lr > 0.0) {
+                        return Err(format!("--learners: `{p}`: d must be at least 1 and lr a positive number"));
+                    }
+                    let bptt = match rest.first() {
+                        Some(b) => int(b, "bptt")? as usize,
+                        None => arena::ssm::DEFAULT_BPTT,
+                    };
+                    Ok(LearnerSpec::Ssm(SsmConfig { d, lr, bptt }))
+                }
                 ["ng", o, b, lr] | [o, b, lr] => Ok(LearnerSpec::Ngram(LearnerConfig {
                     orders: int(o, "orders")? as usize,
                     log2_buckets: int(b, "log2buckets")? as u32,
                     lr: float(lr)?,
                 })),
                 _ => Err(format!(
-                    "--learners: `{p}` is none of ng:orders:log2buckets:lr, tf:d:layers:heads:ctx:lr[:gpu], ent:orders:log2buckets:target_len:lr"
+                    "--learners: `{p}` is none of ng:orders:log2buckets:lr, tf:d:layers:heads:ctx:lr[:gpu], ent:orders:log2buckets:target_len:lr, ssm:d:lr[:bptt]"
                 )),
             }
         })
@@ -95,6 +108,24 @@ mod tests {
             parse_learners("ng:3:12:0.02").expect("parses"),
             vec![LearnerSpec::Ngram(LearnerConfig { orders: 3, log2_buckets: 12, lr: 0.02 })]
         );
+    }
+
+    #[test]
+    fn ssm_parses_with_an_optional_bptt_and_rejects_nonsense() {
+        assert_eq!(
+            parse_learners("ssm:8:0.01").expect("parses"),
+            vec![LearnerSpec::Ssm(SsmConfig { d: 8, lr: 0.01, bptt: arena::ssm::DEFAULT_BPTT })]
+        );
+        assert_eq!(
+            parse_learners("ssm:8:0.01:16").expect("parses"),
+            vec![LearnerSpec::Ssm(SsmConfig { d: 8, lr: 0.01, bptt: 16 })]
+        );
+        assert!(parse_learners("ssm:0:0.01").is_err());
+        assert!(parse_learners("ssm:8:nan").is_err());
+        assert!(parse_learners("ssm:8:-0.1").is_err());
+        assert!(parse_learners("ssm:8").is_err());
+        assert!(parse_learners("ssm:8:0.01:16:3").is_err());
+        assert!(parse_learners("ssm:8:0.01:").is_err());
     }
 }
 
@@ -158,6 +189,7 @@ fn physics_baseline_cmd(args: &[String]) {
         LearnerSpec::Ngram(c) => format!("ngram {}×2^{} lr{}", c.orders, c.log2_buckets, c.lr),
         LearnerSpec::Transformer(c) => format!("transformer d{} L{} H{} ctx{} lr{}", c.d, c.layers, c.heads, c.ctx, c.lr),
         LearnerSpec::Entropy(c) => format!("entropy {}×2^{} L{} lr{}", c.orders, c.log2_buckets, c.target_len, c.lr),
+        LearnerSpec::Ssm(c) => format!("ssm d{} bptt{} lr{}", c.d, c.bptt, c.lr),
     };
     println!(
         "physics-baseline: budget {budget} bytes per learner, trajectories of {steps} steps, seed {seed}, \
