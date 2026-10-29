@@ -92,7 +92,8 @@ The yardstick everything later is judged by, so it goes first.
   - Verdict (negative): the sub-8 held-out figures are mostly byte statistics;
     the learners do not clearly beat held-out order-0 except spring. Stop and
     re-plan; see MEASUREMENTS.md, "Physics baseline (plan P4)".
-- [ ] **P4b** Re-plan after P4's negative verdict: is it the encoding? **S [H]**
+- [x] **P4b** Re-plan after P4's negative verdict: is it the encoding? **S [H]**
+  - Result: `planes` and `diff2` pass the gate (5 of 5 on held-out order-0; 4 of 5 on train order-0); `i32` (1 of 5) and `coarse` (0 of 5) fail. Default not changed; see MEASUREMENTS.md, "Physics encodings (plan P4b)".
   - P4 found the learners do not beat each held-out corpus's own order-0
     entropy. The likely cause is the encoding, not the physics. At a 1e-5
     quantum a sample is about 17 bits, and its low byte moves by hundreds of

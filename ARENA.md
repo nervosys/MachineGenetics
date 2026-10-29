@@ -855,7 +855,7 @@ cargo run --release --manifest-path arena/Cargo.toml -- \
 ```
 
 `arena physics-baseline [--system S|none] [--steps N] [--seed S] [--budget BYTES]
-[--learners SPEC,…] [--text-train FILE --text-heldout FILE]` trains learners on physics directly, outside the loop, and
+[--learners SPEC,…] [--encoding i32|coarse|planes|diff2] [--text-train FILE --text-heldout FILE]` trains learners on physics directly, outside the loop, and
 reports learning curves on physics and on the README-to-`gate.rs` text
 comparison (plan P4). The result is in `MEASUREMENTS.md`, under "Physics
 baseline (plan P4)". Its verdict is no: held-out bits per byte falls well below
@@ -864,6 +864,15 @@ baseline (plan P4)". Its verdict is no: held-out bits per byte falls well below
 larger learner, by 0.04 bits, and spring's held-out range is heavily damped. So
 the sub-8 figures are mostly the encoding's byte statistics, and physics is not
 yet shown to be learned. Re-planning follows, per the plan.
+
+`--encoding` picks how the trajectories are laid out as bytes (plan P4b):
+`i32` (the default, and the layout `--heldout-physics` always uses), `coarse`
+(100 times the quantum, as `i16`), `planes` (byte-plane-major, as Blosc's
+shuffle), or `diff2` (the second difference, the residual against
+constant-velocity extrapolation). The encoders and their decoders are in
+`arena::physics` (`Encoding`, `encode_as`, `decode_as`). The four-encoding table
+and the gate are in `MEASUREMENTS.md`, under "Physics encodings (plan P4b)".
+`planes` and `diff2` pass the gate; the default is not changed by this option.
 
 ## What surfaced in MAGE itself
 
