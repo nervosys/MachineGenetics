@@ -7,7 +7,7 @@ numbers are machine-dependent; the shapes (throughput, scaling) are not.
 Date: 2026-06-10. Build: `release` for perf, `cargo test` for functionality.
 
 > **Re-verified 2026-09-25** — all six crates tested: prototype **1,408**, rmi
-> **1,384**, ribosome **168**, germline **175**, forge **63**, arena **138** = **3,336 passing,
+> **1,384**, ribosome **168**, germline **175**, forge **63**, arena **144** = **3,342 passing,
 > 0 failing, 0 warnings**.
 >
 > *One figure below had not regressed — it had been superseded.* The ABL
@@ -80,7 +80,7 @@ Date: 2026-06-10. Build: `release` for perf, `cargo test` for functionality.
 | rmi (`cpu`) | **1384 pass** | `cargo test --no-default-features --features cpu` |
 | ribosome (build engine) | **168 pass** | `cargo test --manifest-path ribosome/Cargo.toml` |
 | germline (RSI control plane) | **175 pass** | `cargo test --manifest-path germline/Cargo.toml` |
-| arena (self-play arena) | **138 pass** | `cargo test --manifest-path arena/Cargo.toml` |
+| arena (self-play arena) | **144 pass** | `cargo test --manifest-path arena/Cargo.toml` |
 | forge (registry) | **63 pass** | `cargo test --manifest-path forge/Cargo.toml` |
 | agentic-eval (AetherShell) | **80 pass** | `cargo test -p agentic-eval` |
 | SPINE `spine-agentic` | **285 pass** | `cargo test -p spine-agentic` |
@@ -287,3 +287,82 @@ run-to-run identical. → content-hashable cache keys, meaningful diffs.
 
 Reproduce perf: `cargo test --release perf_report -- --ignored --nocapture`
 (`prototype/src/perf_measure.rs`).
+
+## Physics baseline (plan P4)
+
+Question: can the arena's learners learn physics at CPU scale? Each learner is
+trained directly on `physics::corpus(system, Train, seed, …)`, in contiguous
+chunks, outside the agent loop, and measured at every tenth of a 192 KiB byte
+budget. The held-out corpus is `corpus(system, HeldOut, seed, …)`. Bits per byte
+is measured on the first 64 KiB of each corpus. Uniform is 8.0.
+
+Command (release build, from the `arena` directory):
+
+```sh
+CARGO_TARGET_DIR=<scratchpad>/tgt-g cargo run --release --bin arena -- physics-baseline
+```
+
+Learner config. The default is `Config::default().learners`, which is
+`ng:3:12:0.02` (3 orders, 2¹² rows per order, lr 0.02; 3.1 M parameters). The
+larger n-gram is `ng:4:14:0.02` (4 orders, 2¹⁴ rows; 16.8 M parameters, about
+335 MB with its Adam state). Both use one optimiser step per train call, with
+train steps of 4 chunks of 1024 bytes each (48 train steps for 192 KiB). Each
+trajectory is 1,100 steps, with seed 1. The text row is the same learner trained
+on the README (28,672 bytes, whole 1 KiB steps of 4 chunks of 256 bytes), with
+`germline/src/gate.rs` as the held-out text.
+
+| system | learner | train bpb | held-out bpb | gap (held-out − train) | train order-0 bpb | held-out order-0 bpb | held-out < 6? | held-out < train order-0? |
+|---|---|---|---|---|---|---|---|---|
+| pendulum | ng 3×2¹² | 4.912 | 6.257 | +1.345 | 6.027 | 6.368 | no | no |
+| spring | ng 3×2¹² | 4.535 | 3.794 | −0.741 | 5.267 | 3.506 | yes | yes |
+| double pendulum | ng 3×2¹² | 4.729 | 5.556 | +0.828 | 5.339 | 5.469 | yes | no |
+| n-body | ng 3×2¹² | 4.761 | 5.560 | +0.798 | 5.220 | 5.239 | yes | no |
+| bounce | ng 3×2¹² | 4.604 | 6.218 | +1.614 | 6.053 | 6.537 | no | no |
+| pendulum | ng 4×2¹⁴ | 4.837 | 6.288 | +1.451 | 6.027 | 6.368 | no | no |
+| spring | ng 4×2¹⁴ | 4.458 | 3.469 | −0.988 | 5.267 | 3.506 | yes | yes |
+| double pendulum | ng 4×2¹⁴ | 4.639 | 5.753 | +1.114 | 5.339 | 5.469 | yes | no |
+| n-body | ng 4×2¹⁴ | 4.659 | 5.742 | +1.083 | 5.220 | 5.239 | yes | no |
+| bounce | ng 4×2¹⁴ | 4.451 | 6.194 | +1.743 | 6.053 | 6.537 | no | no |
+| text (README → gate.rs) | ng 3×2¹² | 5.102 | 5.498 | +0.397 | 5.117 | 4.666 | yes | no |
+| text (README → gate.rs) | ng 4×2¹⁴ | 4.930 | 5.400 | +0.470 | 5.117 | 4.666 | yes | no |
+
+Learning curves (held-out bpb at 0%, 10%, … 100% of the budget), for the
+larger learner:
+
+```text
+pendulum        8.000 7.806 7.582 7.359 7.144 6.950 6.806 6.637 6.492 6.378 6.288
+spring          8.000 7.493 6.855 6.254 5.686 5.113 4.694 4.221 3.888 3.647 3.469
+double pendulum 8.000 7.793 7.537 7.264 6.996 6.742 6.555 6.329 6.111 5.928 5.753
+n-body          8.000 7.785 7.508 7.254 6.997 6.761 6.574 6.342 6.127 5.921 5.742
+bounce          8.000 7.792 7.548 7.307 7.087 6.875 6.726 6.543 6.399 6.285 6.194
+text            8.000 7.837 7.489 7.171 6.886 6.623 6.456 6.178 5.902 5.639 5.400
+```
+
+Every curve is still falling at 100% of the budget, so none of these is a
+converged figure. The 3×2¹² learner's curves are in the command's output: its
+held-out figure at 100% is the 3.794 (spring) to 6.257 (pendulum) of the table.
+
+The order-0 columns are the byte-frequency entropy of the same evaluation
+windows. Order-0 is what a memoryless model achieves. The held-out order-0 is an
+oracle, the held-out window's own entropy. The train order-0 is the fair
+reference, because a byte-frequency model fit on the train side is what a
+learner could reach without seeing held-out data.
+
+**Verdict: no, physics is not shown to be learnable beyond byte statistics at
+this scale.** The sub-8 figures in the "held-out < 6?" column are real, but they
+are mostly the byte statistics of the encoding. The encoding is little-endian
+`i32` with small magnitudes, so the high bytes are nearly constant. Against the
+fair reference, the learner beats the train-side order-0 on spring only, and
+spring is the case where the held-out order-0 (3.51) is far below the train
+order-0 (5.27). A likely reason, not checked here, is that the spring held-out
+range is heavily damped (c ∈ [0.5, 0.9]), so held-out trajectories decay toward
+zero, which lowers their byte entropy. That is a distribution shift, not learned
+dynamics. Against the held-out oracle, the learners are between 0.34 bits below
+order-0 (bounce) and 0.50 bits above it (n-body, larger learner). Pendulum and
+bounce sit below it, and n-body and double pendulum above it. Text is in the
+same regime. Its learner is 0.73 to 0.83 bits above its own held-out order-0,
+and no better than physics on the order-0 test. So in this comparison physics is no weaker than text, and neither system
+is shown to be learned beyond byte frequencies. The plan's premise fails at this
+budget, so per plan P4 the next step is to re-plan. A longer budget might change
+this, because the curves had not flattened, but that is a larger run than the
+10-minute baseline allows.
