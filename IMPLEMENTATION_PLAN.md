@@ -19,6 +19,9 @@ in order). Two sources drive the new work:
   functions, `@param` domains, the convexity pass, `--solve`, and forward-mode
   `grad`.
 
+**Under [`NEUROSYMBOLIC_PLAN.md`](NEUROSYMBOLIC_PLAN.md) since 2026-10-29.** That
+plan is the top-level one; this one is its arena research track.
+
 Sizes: **S** is under a day, **M** is a few days, **L** is a week or more.
 **[H]** marks an item a Haiku subagent can take from a precise brief. Every
 item ends the way plans 5–9 did: tests (break-checked where a test guards a
