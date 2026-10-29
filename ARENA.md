@@ -83,6 +83,16 @@ cargo run --release --manifest-path arena/Cargo.toml -- \
     --json report.json
 ```
 
+`--learners` takes a comma-separated list of learner specs, each one of:
+
+- `ng:orders:log2buckets:lr` — the hashed n-gram (the bare form `orders:log2buckets:lr` also parses).
+- `tf:d:layers:heads:ctx:lr[:gpu]` — the byte transformer, which needs the `transformer` feature.
+- `ent:orders:log2buckets:target_len:lr` — the entropy-chunked learner (plan L1). It is the n-gram
+  of the same orders and buckets, plus a chunk-keyed count table. A chunk boundary falls where the
+  n-gram's next-byte entropy exceeds the threshold that makes the mean chunk length `target_len`
+  (at least 1 byte). Its bits per byte are the mixture's, and it reports as kind `entropy`. Design and
+  measurements: `arena/src/entropy.rs`, and "Entropy-chunked learner (plan L1)" in `MEASUREMENTS.md`.
+
 ## What the first runs measured (2026-09-25)
 
 40 rounds × 48 programs, four agents, three learners, on dual RTX 3090 Ti with
@@ -844,8 +854,8 @@ cargo run --release --manifest-path arena/Cargo.toml -- \
     --heldout README.md
 ```
 
-`arena physics-baseline [--system S] [--steps N] [--seed S] [--budget BYTES]
-[--learners SPEC,…]` trains learners on physics directly, outside the loop, and
+`arena physics-baseline [--system S|none] [--steps N] [--seed S] [--budget BYTES]
+[--learners SPEC,…] [--text-train FILE --text-heldout FILE]` trains learners on physics directly, outside the loop, and
 reports learning curves on physics and on the README-to-`gate.rs` text
 comparison (plan P4). The result is in `MEASUREMENTS.md`, under "Physics
 baseline (plan P4)". Its verdict is no: held-out bits per byte falls well below

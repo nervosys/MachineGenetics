@@ -130,7 +130,7 @@ The yardstick everything later is judged by, so it goes first.
 
 ## Phase L: Learners from the byte-level literature
 
-- [ ] **L1** Entropy-chunked learner (BLT-like). **M [H]**
+- [x] **L1** Entropy-chunked learner (BLT-like). **M [H]** *Done: `ent:` learner, `arena/src/entropy.rs`. At 4×2¹⁴ it beats `ng` on text (5.15 vs 5.40 bpb) and code (4.61 vs 5.22); at 3×2¹² it is worse (6.29 vs 5.50 text). Physics rows wait on P4b.*
   - The existing n-gram model's next-byte entropy marks chunk boundaries,
     tuned to a target compression.
   - A chunk-level model predicts over chunks, and a byte decoder predicts
