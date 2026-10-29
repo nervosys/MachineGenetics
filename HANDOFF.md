@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,438** — rmi 1,384 · prototype 1,448 · ribosome 168 · germline 175 · forge 63 · arena 200 |
+| Tests | **3,442** — rmi 1,384 · prototype 1,452 · ribosome 168 · germline 175 · forge 63 · arena 200 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -1567,6 +1567,22 @@ reports 15 warnings in `prototype` — 14 `chunks_exact` with a constant size in
 `parser.rs`. They come from lints newer than the toolchain that recorded
 "0 clippy", so the claim in **Where things stand** is now stale for current
 toolchains. None are in lines this phase touched.
+
+**Follow-up to C1: `@req` is checked at run time.** `--eval` and the arena's
+fuel-bounded evaluator now evaluate each `@req` of a top-level function on
+entry, after its parameters are bound and before its body runs. They take the
+same clauses `--check` typechecks: those written on the function, or in a spec
+block that shares its name.
+- A false precondition stops the call. The error names the clause, where it was
+  written and the arguments, for example ``contract violated: `@req(b != 0)` of
+  `div` (sp div) is false: `div` called with a = 1, b = 0``.
+- MAGE_SPEC section 12.1 no longer says `@req` is not evaluated.
+- Of the three tracked `.mg` files with an `@req`, none changes: framewerx's
+  `specs.mg` spec has no function of its name, `spec_synthesis.mg`'s are
+  `@req(1b)`, and `sandboxed_agent.mg`'s is in a comment.
+
+Break-checked: skipping the check fails 3 of the 4 new tests. Prototype +4
+tests.
 
 ## Where this phase ended, 2026-09-16
 
@@ -4099,7 +4115,7 @@ changed before you commit.
 ---
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,448**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,452**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
   across six crates **3,140**; documented-count pins **101**, up from 46 — the
   two newest hold the `kb`/`net` overlap the tensor-product-binding decision
