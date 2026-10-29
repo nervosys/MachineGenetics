@@ -162,6 +162,13 @@ pub struct Config {
     /// off, so every earlier run samples the same programs.
     #[serde(default)]
     pub second_order: bool,
+    /// Whether `mutate` and `crossover` graft subtrees at the depth they
+    /// replace (plan F1), so every variant stays within `MAX_DEPTH`. Off by
+    /// default: grafts are sampled from depth 0, and about 16% of variants
+    /// then exceed the limit and are refused by the parser. A config without
+    /// the field reads as off, so every earlier run grafts as it did.
+    #[serde(default)]
+    pub bound_grafts: bool,
 }
 
 fn default_heldout_slices() -> usize {
@@ -319,6 +326,7 @@ impl Default for Config {
             proposer_timeout_s: default_proposer_timeout_s(),
             length_unit: LengthUnit::Tokens,
             second_order: false,
+            bound_grafts: false,
         }
     }
 }
@@ -623,7 +631,7 @@ fn build_agents(cfg: &Config) -> Result<Vec<Box<dyn Proposer>>, String> {
                     ..GrammarAgent::new(id)
                 }),
                 "uniform" => Box::new(UniformAgent::with_second_order(id, cfg.second_order)),
-                "mutator" => Box::new(MutatorAgent::with_second_order(id, cfg.second_order)),
+                "mutator" => Box::new(MutatorAgent::with_options(id, cfg.second_order, cfg.bound_grafts)),
                 "attacker" => Box::new(AttackerAgent::new(id)),
                 "command" => Box::new(command_agent(id, cfg)?),
                 other => {
@@ -1715,6 +1723,16 @@ mod tests {
     }
 
     #[test]
+    fn bound_grafts_is_off_by_default_and_old_configs_read_as_off() {
+        assert!(!Config::default().bound_grafts);
+        // A config recorded before F1 has no field, and grafted from depth 0.
+        let mut recorded = serde_json::to_value(Config::default()).expect("serialises");
+        recorded.as_object_mut().expect("an object").remove("bound_grafts");
+        let read: Config = serde_json::from_value(recorded).expect("deserialises");
+        assert!(!read.bound_grafts);
+    }
+
+    #[test]
     fn second_order_is_off_by_default_and_old_configs_read_as_off() {
         assert!(!Config::default().second_order);
         // A config recorded before P5b has no field, and sampled first-order programs only.
@@ -1764,6 +1782,34 @@ mod tests {
         assert_eq!(r.config.length_unit, LengthUnit::Bytes);
         let json = serde_json::to_value(&r.config).expect("serialises");
         assert_eq!(json["length_unit"], "bytes");
+    }
+
+    /// F1, end to end: the mutator counts its own variants and those past
+    /// MAX_DEPTH. Grafted from depth 0 they exceed the limit; with
+    /// `bound_grafts`, none do. The unbounded run is checked to exceed it, so
+    /// the bounded zero means something. (The arena's gate does not enforce
+    /// the limit, so such variants are evaluated, not refused.)
+    #[test]
+    fn bounded_grafts_put_no_mutant_past_max_depth_into_a_run() {
+        let over_depth = |bound: bool| {
+            let (m, n) = cpu_only();
+            let cfg = Config {
+                agents: vec![("mutator".into(), 1)],
+                rounds: 12,
+                programs_per_round: 48,
+                bound_grafts: bound,
+                ..tiny_cfg()
+            };
+            let r = run(cfg, heldout(), m, n).expect("runs");
+            assert!(r.config.bound_grafts == bound);
+            let standing = r.agents.iter().find(|a| a.kind == "mutator").expect("a mutator");
+            assert!(standing.proposed > 0);
+            let grafts = standing.state["grafts"].as_u64().expect("a graft count");
+            assert!(grafts > 0, "the mutator never grafted");
+            standing.state["over_depth"].as_u64().expect("an over-depth count")
+        };
+        assert_eq!(over_depth(true), 0);
+        assert!(over_depth(false) > 0, "unbounded grafts never exceeded MAX_DEPTH in this run");
     }
 
     /// Held-out text large enough for two slices of at least 1 KiB (plan 7.5).
