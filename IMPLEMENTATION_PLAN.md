@@ -115,6 +115,11 @@ The yardstick everything later is judged by, so it goes first.
       L3), and keep physics as *programs* (C1, C3-C5). C4 already shows that
       track working.
   - Done when MEASUREMENTS.md has the four-encoding table and the decision.
+- [x] **P4c** Choose the held-out encoding. **S** *`planes` is now the
+  `--heldout-physics` default (`physics::HELDOUT_ENCODING`), and corpus names end
+  in the encoding. It holds the same values as `i32`, only reordered, so its
+  gain is the learner's. `diff2` also passed, but it builds a constant-velocity
+  predictor into the bytes.*
 - [ ] **P5** Can agents write physics-like data? **M**
   - Arena programs are `gen(s) -> [usize]`, built from integer
     `scan`/`map`/`mod` combinators.

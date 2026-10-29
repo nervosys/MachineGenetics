@@ -1138,14 +1138,29 @@ pub fn parse_spec(spec: &str) -> Result<PhysicsSpec, String> {
     Ok(PhysicsSpec { system, trajectories, steps, seed })
 }
 
+/// The encoding of `--heldout-physics` corpora. Plan P4b measured four, and
+/// byte-planes and second differences both passed its gate. Planes is chosen:
+/// it holds the same values as `i32`, only reordered, so what a learner gains
+/// on it is learned. `diff2` builds a constant-velocity predictor into the
+/// bytes, which does part of the physics for the learner.
+pub const HELDOUT_ENCODING: Encoding = Encoding::Planes;
+
 /// The held-out corpus a `--heldout-physics` spec names: `trajectories` whole
-/// trajectories drawn from [`ParamRange::HeldOut`], with the spec's seed. Its
-/// name is `physics:<system>:<trajectories>:<steps>:seed<seed>`, so a report
-/// says what was scored.
+/// trajectories drawn from [`ParamRange::HeldOut`], with the spec's seed,
+/// encoded as [`HELDOUT_ENCODING`]. Its name is
+/// `physics:<system>:<trajectories>:<steps>:seed<seed>:<encoding>`, so a report
+/// says what was scored, and figures from different encodings cannot be mixed.
 pub fn physics_corpus(spec: &str) -> Result<Corpus, String> {
     let s = parse_spec(spec)?;
-    let bytes = corpus(s.system, ParamRange::HeldOut, s.seed, s.trajectories, s.steps);
-    let name = format!("physics:{}:{}:{}:seed{}", s.system.spec_name(), s.trajectories, s.steps, s.seed);
+    let bytes = corpus_as(s.system, ParamRange::HeldOut, s.seed, s.trajectories, s.steps, HELDOUT_ENCODING);
+    let name = format!(
+        "physics:{}:{}:{}:seed{}:{}",
+        s.system.spec_name(),
+        s.trajectories,
+        s.steps,
+        s.seed,
+        HELDOUT_ENCODING.name()
+    );
     Ok(Corpus::new(name, bytes))
 }
 
@@ -1858,7 +1873,7 @@ mod tests {
         let c = physics_corpus("pendulum:2:200:2").expect("valid");
         assert_eq!(a.sha256(), b.sha256(), "the same spec, the same bytes");
         assert_ne!(a.sha256(), c.sha256(), "a different seed, different bytes");
-        assert_eq!(a.name(), "physics:pendulum:2:200:seed1");
+        assert_eq!(a.name(), "physics:pendulum:2:200:seed1:planes");
         assert_eq!(a.len(), corpus(System::Pendulum, ParamRange::HeldOut, 1, 2, 200).len());
     }
 
@@ -1891,7 +1906,7 @@ mod tests {
         assert!(!report.checkpoints.is_empty());
         for c in &report.checkpoints {
             let keys: Vec<&String> = c.heldout_bpb.keys().collect();
-            assert_eq!(keys, vec!["physics:pendulum:4:300:seed1"], "checkpoint at round {}", c.round);
+            assert_eq!(keys, vec!["physics:pendulum:4:300:seed1:planes"], "checkpoint at round {}", c.round);
             assert!(c.heldout_bpb.values().all(|b| b.is_finite()));
         }
     }
