@@ -245,6 +245,9 @@ pub struct Interp {
     /// able to overflow the Rust stack, which would abort the process rather
     /// than fail the candidate.
     depth: Cell<u32>,
+    /// `@ens` postconditions of each top-level function, parsed, checked at
+    /// every return (plan C1). Preconditions are not evaluated here.
+    postconditions: HashMap<String, Vec<(crate::contract::Clause, Expr)>>,
 }
 
 /// The message a fuel-bounded run fails with when its budget runs out.
@@ -319,6 +322,20 @@ impl Interp {
                 _ => {}
             }
         }
+        // A clause `contract::prepare` refuses is a type error, reported by
+        // `--check`; a program run without checking simply does not have it.
+        let mut postconditions: HashMap<String, Vec<(crate::contract::Clause, Expr)>> =
+            HashMap::new();
+        for (clause, fd) in crate::contract::collect(module) {
+            let Some(fd) = fd else { continue };
+            if clause.kind != crate::ast::ContractClauseKind::Ensures {
+                continue;
+            }
+            let params: Vec<String> = fd.params.iter().map(|p| p.name.clone()).collect();
+            if let Ok(expr) = crate::contract::prepare(&clause, Some(&params)) {
+                postconditions.entry(fd.name.clone()).or_default().push((clause, expr));
+            }
+        }
         Interp {
             funcs,
             methods,
@@ -326,6 +343,7 @@ impl Interp {
             handlers: RefCell::new(Vec::new()),
             fuel: Cell::new(None),
             depth: Cell::new(0),
+            postconditions,
         }
     }
 
@@ -458,6 +476,41 @@ impl Interp {
     }
 
     fn call_user_inner(&self, fd: &FunctionDef, args: Vec<Value>) -> R {
+        let mut env = self.bind_params(fd, args)?;
+        // Postconditions belong to the top-level function of that name, not
+        // to a method that happens to share it.
+        let posts = self
+            .postconditions
+            .get(&fd.name)
+            .filter(|_| self.funcs.get(&fd.name).is_some_and(|f| std::ptr::eq(f, fd)));
+        let Some(posts) = posts else {
+            return self.run_body(fd, &mut env);
+        };
+        // Values are immutable, so the parameters as bound on entry are what
+        // `old(x)` names, and what every other parameter in the clause names.
+        let entry = env.clone();
+        let v = self.run_body(fd, &mut env)?;
+        for (clause, expr) in posts {
+            let mut scope = entry.clone();
+            scope.define("result".to_string(), v.clone());
+            let holds = self.eval(expr, &mut scope)?;
+            if !truthy(&holds) {
+                return err(format!(
+                    "contract violated: `{}` of `{}` ({}) is false: `{}` returned {}",
+                    clause.display(),
+                    fd.name,
+                    clause.origin,
+                    fd.name,
+                    v
+                ));
+            }
+        }
+        Ok(v)
+    }
+
+    /// A fresh environment holding `fd`'s parameters bound to `args`, with
+    /// omitted trailing parameters taking their defaults.
+    fn bind_params(&self, fd: &FunctionDef, args: Vec<Value>) -> Result<Env, Control> {
         let mut env = Env::new();
         let supplied = args.len();
         for (p, v) in fd.params.iter().zip(args) {
@@ -479,10 +532,15 @@ impl Interp {
             let v = self.eval(default, &mut env)?;
             env.define(p.name.clone(), v);
         }
+        Ok(env)
+    }
+
+    /// Run `fd`'s body in `env`, its parameters already bound.
+    fn run_body(&self, fd: &FunctionDef, env: &mut Env) -> R {
         if let Some(be) = &fd.body_expr {
-            return self.eval(be, &mut env);
+            return self.eval(be, env);
         }
-        match self.eval_block(&fd.body, &mut env) {
+        match self.eval_block(&fd.body, env) {
             Err(Control::Return(v)) => Ok(v),
             other => other,
         }
