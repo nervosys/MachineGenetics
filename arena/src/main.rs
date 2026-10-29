@@ -15,6 +15,8 @@
 //! arena physics-baseline [--system pendulum|spring|double_pendulum|nbody|bounce|none] [--steps N]
 //!       [--seed S] [--budget BYTES] [--learners SPEC,…] [--encoding i32|coarse|planes|diff2]
 //!       [--text-train <file> --text-heldout <file>] [--json OUT]
+//! arena physics-rollout [--system pendulum|spring|double_pendulum|nbody|bounce|all] [--learners SPEC,…]
+//!       [--budget BYTES] [--steps N] [--seed S] [--trajectories K]
 //! arena measure-curves [--target T] [--json OUT] <curves.json | dir>…
 //! ```
 //!
@@ -28,10 +30,16 @@
 //! outside the loop, and prints its learning curve (plan P4). `--json` writes
 //! every curve, with per-checkpoint wall-clock seconds, for `measure-curves`,
 //! which prints the compute multipliers against the n-gram (plan L3).
+//!
+//! `physics-rollout` trains each learner as `physics-baseline` does, then rolls
+//! it forward over held-out trajectories: it prints the state error at horizons
+//! 1, 10 and 100, the energy drift, and two trivial baselines (plan P6). It runs
+//! on the `i32` encoding only; see `arena::rollout`.
 
 use arena::arena::{meters_for, run, Config, Corpus};
 use arena::learner::{EntropyConfig, LearnerConfig, LearnerSpec, SsmConfig, TransformerConfig};
 use arena::physics::{self, Encoding, System, SYSTEMS};
+use arena::rollout::{self, CONTEXT, HORIZON};
 use arena::transfer;
 
 fn fail(msg: impl std::fmt::Display) -> ! {
@@ -289,6 +297,117 @@ fn physics_baseline_cmd(args: &[String]) {
     }
 }
 
+/// `arena physics-rollout`: train each learner on each system's physics
+/// trajectories, as `physics-baseline` does, then roll it forward over held-out
+/// trajectories and score its predictions against the truth (plan P6). The
+/// encoding is `i32`, the only one that can be generated a step at a time (see
+/// `arena::rollout`).
+fn physics_rollout_cmd(args: &[String]) {
+    let mut systems: Vec<System> = SYSTEMS.to_vec();
+    let mut budget = 192usize << 10;
+    let mut steps = 1100usize;
+    let mut seed = 1u64;
+    let mut trajectories = 8usize;
+    let mut learners: Option<Vec<LearnerSpec>> = None;
+    let mut i = 0;
+    while i < args.len() {
+        let v = args.get(i + 1).map(String::as_str).unwrap_or_else(|| fail(format!("{} needs a value", args[i])));
+        match args[i].as_str() {
+            "--system" if v == "all" => systems = SYSTEMS.to_vec(),
+            "--system" => {
+                systems = vec![System::from_spec_name(v).unwrap_or_else(|| {
+                    let names: Vec<&str> = SYSTEMS.iter().map(|s| s.spec_name()).collect();
+                    fail(format!("--system: `{v}` is not one of all, {}", names.join(", ")))
+                })]
+            }
+            "--budget" => budget = v.parse().unwrap_or_else(|_| fail("--budget: not a number of bytes")),
+            "--steps" => steps = v.parse().unwrap_or_else(|_| fail("--steps: not a number")),
+            "--seed" => seed = v.parse().unwrap_or_else(|_| fail("--seed: not a number")),
+            "--trajectories" => {
+                trajectories = v.parse().unwrap_or_else(|_| fail("--trajectories: not a number"));
+                if trajectories == 0 {
+                    fail("--trajectories: must be at least 1");
+                }
+            }
+            "--learners" => learners = Some(parse_learners(v).unwrap_or_else(|e| fail(e))),
+            other => fail(format!("physics-rollout: unknown argument `{other}`")),
+        }
+        i += 2;
+    }
+    if steps == 0 {
+        fail("--steps: must be at least 1");
+    }
+    // The arena's three learners at the sizes measured in MEASUREMENTS.md.
+    let learners = learners.unwrap_or_else(|| {
+        vec![
+            LearnerSpec::Ngram(LearnerConfig { orders: 4, log2_buckets: 14, lr: 0.02 }),
+            LearnerSpec::Entropy(EntropyConfig { orders: 4, log2_buckets: 14, target_len: 4.0, lr: 0.02 }),
+            LearnerSpec::Ssm(SsmConfig { d: 16, lr: 0.01, bptt: arena::ssm::DEFAULT_BPTT }),
+        ]
+    });
+    println!(
+        "physics-rollout: i32 encoding, training budget {budget} bytes per learner on trajectories of {steps} steps, seed {seed}; \
+         held-out: {trajectories} trajectories per system, {CONTEXT} steps given, {HORIZON} generated greedily"
+    );
+    let mut cells: Vec<rollout::Cell> = Vec::new();
+    for spec in &learners {
+        for &system in &systems {
+            let learner = physics::physics_train(system, *spec, budget, steps, seed, Encoding::I32).unwrap_or_else(|e| fail(e));
+            cells.push(rollout::run_rollouts(learner.as_ref(), system, seed, trajectories).unwrap_or_else(|e| fail(e)));
+        }
+    }
+    let err = |v: f64| format!("{v:.4}");
+    let drift = |d: Option<f64>| d.map_or("n/a".to_string(), |v| format!("{v:.2e}"));
+    println!(
+        "\nstate error: RMS over held-out trajectories of the RMS over channels, in each system's units (angles in rad, \
+         rates, positions, velocities mixed). Energy drift: largest |E_n − E_0| / |E_0| over the generated steps, mean over \
+         trajectories; n/a where energy is not conserved.\n"
+    );
+    println!("| system | learner | err @1 | err @10 | err @100 | energy drift | beats the better trivial baseline at |");
+    println!("|---|---|---|---|---|---|---|");
+    for c in &cells {
+        let beats: Vec<String> = rollout::HORIZONS
+            .iter()
+            .zip(c.beats_trivial())
+            .filter(|(_, b)| *b)
+            .map(|(h, _)| h.to_string())
+            .collect();
+        println!(
+            "| {} | {} | {} | {} | {} | {} | {} |",
+            c.system.spec_name(),
+            c.learner,
+            err(c.learner_rms[0]),
+            err(c.learner_rms[1]),
+            err(c.learner_rms[2]),
+            drift(c.learner_drift),
+            if beats.is_empty() { "none".to_string() } else { beats.join(", ") }
+        );
+    }
+    println!("\n| system | trivial baseline | err @1 | err @10 | err @100 | energy drift |");
+    println!("|---|---|---|---|---|---|");
+    // The baselines do not depend on the learner, so each system's first cell gives them.
+    for &system in &systems {
+        if let Some(c) = cells.iter().find(|c| c.system == system) {
+            println!(
+                "| {} | hold | {} | {} | {} | {} |",
+                system.spec_name(),
+                err(c.hold_rms[0]),
+                err(c.hold_rms[1]),
+                err(c.hold_rms[2]),
+                drift(c.hold_drift)
+            );
+            println!(
+                "| {} | constant velocity | {} | {} | {} | {} |",
+                system.spec_name(),
+                err(c.cv_rms[0]),
+                err(c.cv_rms[1]),
+                err(c.cv_rms[2]),
+                drift(c.cv_drift)
+            );
+        }
+    }
+}
+
 /// A learning curve's checkpoints, as the curve file records them.
 fn checkpoints_of(curve: &physics::Curve) -> Vec<transfer::CurveCheckpoint> {
     curve
@@ -354,6 +473,10 @@ fn main() {
     }
     if args.first().map(String::as_str) == Some("physics-baseline") {
         physics_baseline_cmd(&args[1..]);
+        return;
+    }
+    if args.first().map(String::as_str) == Some("physics-rollout") {
+        physics_rollout_cmd(&args[1..]);
         return;
     }
     let mut cfg = Config::default();

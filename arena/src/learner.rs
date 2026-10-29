@@ -58,6 +58,20 @@ impl Default for LearnerConfig {
     }
 }
 
+/// A causal next-byte predictor over a learner's current parameters (plan P6).
+///
+/// [`ByteLearner::bits_per_byte`] scores a whole sequence; generating one byte
+/// at a time needs the distribution after each prefix, and this carries that
+/// context incrementally, so a rollout costs one step per byte rather than a
+/// replay of the prefix. Each learner's predictor computes the same
+/// distribution its `bits_per_byte` uses, and a test checks that the two agree.
+pub trait Predictor {
+    /// The probability of each byte value `0..=255` as the next byte.
+    fn distribution(&self) -> [f64; 256];
+    /// Appends the byte that was coded or generated.
+    fn push(&mut self, byte: u8);
+}
+
 /// What the arena needs of any learner: an exact score, the learning-progress
 /// reward, and a training step. The n-gram [`Learner`] and the transformer
 /// (`crate::transformer`, behind the `transformer` feature) both implement it,
@@ -78,6 +92,12 @@ pub trait ByteLearner {
     /// round and one small pass each left the GPU mostly idle.
     fn bits_per_byte_many(&self, seqs: &[&[u8]]) -> Vec<f64> {
         seqs.iter().map(|s| self.bits_per_byte(s)).collect()
+    }
+    /// A [`Predictor`] for generation (plan P6). `None` for a learner that
+    /// cannot be run one byte at a time; the n-gram, entropy and SSM learners
+    /// provide one.
+    fn predictor(&self) -> Option<Box<dyn Predictor + '_>> {
+        None
     }
 }
 
@@ -164,6 +184,24 @@ impl ByteLearner for Learner {
     }
     fn describe(&self) -> String {
         format!("ngram {}×2^{} lr{}", self.cfg.orders, self.cfg.log2_buckets, self.cfg.lr)
+    }
+    fn predictor(&self) -> Option<Box<dyn Predictor + '_>> {
+        Some(Box::new(NgramPredictor { learner: self, history: Vec::new() }))
+    }
+}
+
+/// The n-gram's predictor: the bytes so far, and the distribution after them.
+struct NgramPredictor<'a> {
+    learner: &'a Learner,
+    history: Vec<u8>,
+}
+
+impl Predictor for NgramPredictor<'_> {
+    fn distribution(&self) -> [f64; 256] {
+        self.learner.distribution(&self.history, self.history.len())
+    }
+    fn push(&mut self, byte: u8) {
+        self.history.push(byte);
     }
 }
 

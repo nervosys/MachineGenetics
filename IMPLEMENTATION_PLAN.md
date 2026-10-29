@@ -135,7 +135,8 @@ The yardstick everything later is judged by, so it goes first.
   - Re-run P5's grid with it on. Done when ARENA.md says whether grammar agents
     then beat the uniform control on the oscillators, against the seed
     spread.
-- [ ] **P6** Rollout metrics. **M**
+- [x] **P6** Rollout metrics. **M**
+  - Result: no learner predicts physics at 192 KiB under greedy `i32` decoding. The n-gram emits a constant zero-state byte (checked), and `ent` and `ssm` match it to four decimals; none beats hold or constant velocity at horizons 1, 10 or 100 on the pendulum, double pendulum, n-body or bounce, and the spring's wins at 10 and 100 are the zero state's. See MEASUREMENTS.md, "Rollout metrics (plan P6)".
   - For learners, generate k steps and decode them. Report error against
     horizon and conservation drift, alongside bpb.
   - Done when the report carries error at horizons 1, 10 and 100 for each
