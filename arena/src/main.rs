@@ -7,6 +7,7 @@
 //!       [--fuel F] [--cpu-watts W] [--meter-gpus <i>[,<i>…] | none] [--cost joules|fuel]
 //!       [--allocate share|hypervolume] [--novelty behaviour|shape] [--canary <string>]
 //!       [--energy-budget J] [--joules-per-program J] [--definitions <forge registry dir>]
+//!       [--heldout-slices K] [--refresh-drift X]
 //!       [--json <out.json>]
 //! ```
 //!
@@ -108,6 +109,20 @@ fn main() {
                 }
             }
             "--canary" => cfg.canary = Some(value(i).to_string()),
+            "--heldout-slices" => {
+                let k = num(value(i), "--heldout-slices");
+                if k == 0 {
+                    fail("--heldout-slices: must be at least 1 (1 means no slicing)");
+                }
+                cfg.heldout_slices = k as usize;
+            }
+            "--refresh-drift" => {
+                let x: f64 = value(i).parse().unwrap_or_else(|_| fail("--refresh-drift: not a number"));
+                if !x.is_finite() || x < 0.0 {
+                    fail("--refresh-drift: must be finite and at least 0");
+                }
+                cfg.refresh_drift = x;
+            }
             "--novelty" => {
                 cfg.novelty = match value(i) {
                     "shape" => arena::arena::NoveltyKey::Shape,
@@ -169,7 +184,7 @@ fn main() {
                 std::process::exit(0);
             }
             "-h" | "--help" => {
-                eprintln!("{}", include_str!("main.rs").lines().skip(2).take(8).map(|l| l.trim_start_matches("//! ")).collect::<Vec<_>>().join("\n"));
+                eprintln!("{}", include_str!("main.rs").lines().skip(2).take(9).map(|l| l.trim_start_matches("//! ")).collect::<Vec<_>>().join("\n"));
                 std::process::exit(0);
             }
             other => fail(format!("unknown argument `{other}`")),
