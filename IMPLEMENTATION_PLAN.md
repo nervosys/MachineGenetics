@@ -120,14 +120,8 @@ The yardstick everything later is judged by, so it goes first.
   in the encoding. It holds the same values as `i32`, only reordered, so its
   gain is the learner's. `diff2` also passed, but it builds a constant-velocity
   predictor into the bytes.*
-- [ ] **P5** Can agents write physics-like data? **M**
-  - Arena programs are `gen(s) -> [usize]`, built from integer
-    `scan`/`map`/`mod` combinators.
-  - Measure what fraction of a physics trajectory's held-out bpb the current
-    grammar's programs can teach.
-  - Then either add fixed-point dynamics productions (for example a
-    `scan`-based second-order recurrence), or record why not.
-  - Done when the decision is in ARENA.md, with the measurement.
+- [x] **P5** Can agents write physics-like data? **M**
+  - Result: no, not measurably. Over 3 seeds at 20 rounds, the grammar closes 10% (pendulum), 13% (double pendulum) and 33% (spring) of the gap to the physics baseline, the same as a uniform-program control within seed spread. No production added; default unchanged. See ARENA.md, "Physics from programs (plan P5)".
 - [ ] **P6** Rollout metrics. **M**
   - For learners, generate k steps and decode them. Report error against
     horizon and conservation drift, alongside bpb.

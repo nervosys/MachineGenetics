@@ -977,6 +977,90 @@ held-out loss sits between 7.8 and 8.1 bits/byte, and each seed's frontiers
 span a few hundredths of a bit, so a target from the pooled median often falls
 outside them. Choose `--target` inside the range the runs covered.
 
+## Physics from programs (plan P5)
+
+Question: can the arena's agents write data that a learner can use on physics?
+The loop was run with physics held out and nothing else, so every figure is
+the held-out bits per byte of the physics corpora, as the loop's own learner
+scores them.
+
+Commands, from the repository root with `bash` (the script is run by `bash`,
+not `sh`). `--heldout-physics` repeats; it does not take a comma list.
+
+```sh
+bash scripts/arena-seeds.sh --out DIR --seeds 1-3 --jobs 3 \
+    --variant grammar="" --variant uniform="--agents uniform:1" \
+    -- --heldout-physics pendulum:8:1100:1 \
+       --heldout-physics double_pendulum:8:1100:1 \
+       --heldout-physics spring:8:1100:1 --rounds 20
+```
+
+`grammar` is the default agents (`grammar:2,uniform:1,mutator:1`) and the
+default learner (`ng` 3×2¹², which is `LearnerConfig::default()`). `uniform` is
+the control: `--agents uniform:1`, so every program is drawn from the fixed
+prior and nothing learns to write them. `--cost fuel` is added by the script,
+so the figures are deterministic. Checkpoints fall at rounds 5, 10, 15 and 20.
+The table gives the first (round 5) and the last (round 20).
+
+Fraction closed = (start − end) / (start − baseline), with the baseline the
+physics-baseline ng 4×2¹⁴ planes figure from the table in "Physics encodings
+(plan P4b)": pendulum 5.822, double pendulum 4.959, spring 2.386. Per seed,
+then mean ± sample standard deviation over the three seeds.
+
+| system | agents | held-out bpb at round 5 (seeds 1, 2, 3) | at round 20 | fraction closed, % | mean ± sd |
+|---|---|---|---|---|---|
+| pendulum | grammar | 7.600, 7.268, 7.534 | 7.643, 6.947, 7.345 | −2.6, 22.2, 11.0 | 10.2 ± 12.4 |
+| pendulum | uniform | 7.565, 7.605, 7.558 | 7.217, 7.593, 7.218 | 20.0, 0.7, 19.6 | 13.4 ± 11.0 |
+| double pendulum | grammar | 7.657, 7.431, 7.646 | 7.494, 6.906, 7.301 | 6.0, 21.2, 12.8 | 13.3 ± 7.6 |
+| double pendulum | uniform | 7.663, 7.594, 7.670 | 7.335, 7.572, 7.388 | 12.1, 0.8, 10.4 | 7.8 ± 6.1 |
+| spring | grammar | 5.661, 4.621, 5.272 | 4.499, 3.988, 4.279 | 35.5, 28.3, 34.4 | 32.7 ± 3.9 |
+| spring | uniform | 5.112, 5.202, 5.300 | 4.121, 4.518, 4.261 | 36.4, 24.3, 35.7 | 32.1 ± 6.8 |
+
+**Margins against the seed spread.** The grammar minus the uniform control, in
+mean fraction closed: pendulum −3.2 points, double pendulum +5.5, spring +0.6.
+The standard error of a difference of two three-seed means is about 0.82 times
+the pooled seed sd, which is 9.6 points for pendulum, 5.6 for double pendulum
+and 4.5 for spring. So the margins are −0.3, +1.0 and +0.1 standard errors. None
+is distinguishable from zero, and the grammar is not separable from the control
+on any system.
+
+**Reading.** The loop does lower held-out bits per byte on physics, by 1.5 to
+2.8 bits on spring and by 0.2 to 1.2 on pendulum and double pendulum. But the
+control, which never learns to write programs, closes the same share of the gap.
+So the closing is the learner's generic adaptation to the byte statistics of
+the physics encoding, not the grammar teaching physics. At the end of round 20
+every system is still far above its direct-training baseline (for example
+pendulum 7.2 to 7.6 against 5.82).
+
+**Decision: measurement 2 was not run, and no production was added.** The
+brief asked for one only when the fraction closed is small. Pendulum (10.2) and
+double pendulum (13.3) sit at the threshold, and spring (32.7) is above it, so
+the rule does not settle it. What settles it is the control: the fraction the
+grammar closes is no different from a learner trained on uniform programs. Two
+further points weigh against adding a production now:
+
+- The grammar already expresses a two-stage linear recurrence. A `scan` over
+  another `scan` is a list-of-list composition the parser and sampler both
+  accept, so a second-order-looking dynamics is written by existing productions.
+  A new production would give the sampler a shortcut to that shape, not new
+  expressivity. Whether the shortcut matters is not measured.
+- A mod-256 recurrence emits low bytes of integers. The physics bytes are
+  byte-planes of 1e-5 quanta, whose structure a recurrence does not obviously
+  share. This is a hypothesis, not a measurement.
+
+Nothing in the arena changed. The default is unchanged, and no run flags or
+tests were added.
+
+**Caveats.** Three seeds vary the arena's program search only: the held-out
+corpora are fixed (seed 1), and their figures are the arena's own
+measurement on 8 trajectories of 1,100 steps, not the 64 KiB window of
+`physics-baseline`, so the baseline column is a reference point, not the same
+measurement. Round 5, the first checkpoint, is after five rounds of training,
+not the untrained model (8 bits per byte). The seed spread is small (the
+standard deviation is 4 to 12 points) and the three-seed standard error is
+still a few points, so margins under about 10 points on pendulum and double
+pendulum are not resolved by this grid.
+
 ## Next, in order
 
 1. **A GPU learner** — a small byte-level transformer behind the same `Learner`
