@@ -414,6 +414,11 @@ pub struct Report {
     /// unless `heldout_slices > 1` and the gap drifted.
     #[serde(default)]
     pub refreshes: Vec<Refresh>,
+    /// The loss-to-loss fit of each learner, held-out bits/byte against proxy
+    /// bits/byte over its checkpoints (plan M1). `arena measure` pools these
+    /// across runs.
+    #[serde(default)]
+    pub loss_fits: Vec<crate::transfer::LearnerFit>,
 }
 
 /// A held-out slice rotation (plan 7.5). Rotations happen only at checkpoints,
@@ -1203,6 +1208,7 @@ pub fn run_with(
             store.publish(src, &cfg.substrate)?;
         }
     }
+    let loss_fits = crate::transfer::learner_fits(&checkpoints, &results);
     Ok(Report {
         config: cfg,
         heldout,
@@ -1226,6 +1232,7 @@ pub fn run_with(
         attacks,
         attack_claims,
         refreshes,
+        loss_fits,
     })
 }
 
@@ -1356,6 +1363,11 @@ mod tests {
         for c in &r.checkpoints {
             assert!(c.proxy_bpb.is_finite() && c.proxy_bpb >= 0.0, "{c:?}");
             assert!((c.gap - (c.mean_bpb - c.proxy_bpb)).abs() < 1e-12);
+        }
+        // The report carries each learner's loss-to-loss fit (plan M1), over its checkpoints.
+        assert_eq!(r.loss_fits.len(), r.learners.len());
+        for f in &r.loss_fits {
+            assert_eq!(f.fit.n, r.checkpoints.iter().filter(|c| c.learner == f.learner).count());
         }
     }
 

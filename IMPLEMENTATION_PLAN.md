@@ -36,21 +36,21 @@ fix), pins updated, a HANDOFF entry, and a stacked PR.
 
 The yardstick everything later is judged by, so it goes first.
 
-- [ ] **M1** Loss-to-loss curves. **M [H]**
+- [x] **M1** Loss-to-loss curves. **M [H]**
   - From arena checkpoints, which already record `proxy_bpb` and held-out
     `mean_bpb`, fit held-out bpb as a function of proxy bpb per learner
     family, across seeds and rounds.
   - Report the fit and its residuals.
   - Done when `arena --json` carries the fit, and a test fits a known
     synthetic curve within tolerance.
-- [ ] **M2** Joule multipliers. **M [H]**
+- [x] **M2** Joule multipliers. **M [H]**
   - For two learner families, find the joules (or fuel, under `--cost fuel`)
     each needs to reach the same held-out bpb, interpolating each family's
     frontier.
   - This is Cartesia's compute multiplier with joules as the unit.
   - Done when a `measure` subcommand prints multipliers with seed spread, from
     a directory of run JSONs.
-- [ ] **M3** A multi-seed runner. **S [H]**
+- [x] **M3** A multi-seed runner. **S [H]**
   - Generalise the `scratchpad/ab.py` used for PR #71 into
     `scripts/arena-seeds.sh`: N seeds by M configs, run in parallel under
     `--cost fuel`, which is deterministic.
