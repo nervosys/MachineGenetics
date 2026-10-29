@@ -1089,10 +1089,53 @@ is a *use* of the knowledge base, not a declaration in it.
 kb_def = 'kb' IDENT '{' { kb_item }* '}' ;
 
 kb_item = 'fact' IDENT '(' arg_list ')' ';'
-        | 'rule' IDENT '(' param_list ')' block ;
+        | 'rule' IDENT '(' param_list ')' [ 'where' literal { ',' literal }* ] block ;
 
 arg_list = ( IDENT | STRING | NUMBER ) { ',' ( IDENT | STRING | NUMBER ) }* ;
+
+block    = '{' literal { '&&' literal }* '}' ;
+literal  = [ '!' ] IDENT '(' term { ',' term }* ')' ;
+term     = IDENT | STRING | NUMBER ;
 ```
+
+**What a rule means.** A rule derives its head for every way of satisfying
+its body.
+
+- **Every identifier in a rule is a logic variable**: the head's parameters,
+  and any name that appears only in the body (`y` below). `_` is a fresh
+  variable each time it is written. Constants in a rule are string or number
+  literals. In a `fact`, an identifier is a constant.
+- **The body is one conjunction**: the `where` conditions and the block's
+  literals, joined by `&&`.
+- **`!p(..)` is negation**: true when no fact matches. It is stratified: a
+  predicate is computed only after everything it negates is complete, and a
+  predicate that depends on its own negation is an error.
+- **A rule must be safe.** Every head parameter, and every variable in a
+  negated literal, must appear in a positive literal of the body.
+
+```mg
+kb Family {
+    fact parent("ann", "bob");
+    fact parent("bob", "cy");
+    fact person("ann");
+    fact person("bob");
+    fact person("cy");
+    rule grandparent(x: str, z: str) { parent(x, y) && parent(y, z) }
+    rule root(x: str) { person(x) && !parent(_, x) }
+}
+```
+
+`grandparent("ann", "cy")` and `root("ann")` are derived. A rule or fact the
+engine cannot evaluate is **E0570** (`KbRule`), and the message says why: a
+body holding something other than predicate calls, an unbound parameter, an
+unstratifiable negation, or a fact argument that is not a constant.
+
+**Corrected 2026-10-29.** The engine read only a rule's `where` conditions,
+ignored its block, and took a lowercase parameter for a constant, so the first
+example in this section derived nothing. A fact argument it could not read was
+dropped, changing the fact's arity. Both were silent. The binary form
+(`--target=abl-*`) still lowers only the `where` conditions and has no
+negation; the two are being made one engine.
 
 ### 7.2 Runtime Querying
 

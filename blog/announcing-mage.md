@@ -49,7 +49,7 @@ standard vocabulary — `map`/`filter`/`fold`, each a **single BPE token**. It c
 
 **4 · Binary.** What an agent actually ships: the program lowered to a compact
 binary IR (the "Agentic Binary Language"), which **decompiles back to the source
-above**. The five-item `unified.mg` is 420 bytes of binary versus 1866 of text.
+above**. The five-item `unified.mg` is 420 bytes of binary versus 1893 of text.
 
 > An agent writes intent in form 2 (fewest tokens), the compiler verifies it
 > against form 1's types, and ships form 4 (fewest bytes). No human-first language

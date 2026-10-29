@@ -3044,6 +3044,8 @@ fn run_check_json(source: &str, filename: &str, do_elision: bool, legacy: bool, 
         // Refuted contracts (E0560), for the same reason: the human path
         // counts them as errors, so this stream must carry them.
         all.extend(verify::diagnostics(&verify::verify_module(&module)));
+        // `kb` facts and rules the logic engine cannot evaluate (E0570).
+        all.extend(logic::module_diagnostics(&module));
         for (func, declared, inferred) in effect_infer.effect_surface() {
             effect_surface.push(serde_json::json!({
                 "function": func,
@@ -3219,6 +3221,14 @@ fn run_check(source: &str, filename: &str, do_elision: bool, legacy: bool, token
     for diag in &spec_diags {
         eprintln!("{filename}: {diag}");
         total_errors += 1;
+    }
+
+    // A `kb` fact or rule the logic engine cannot evaluate (E0570).
+    for diag in logic::module_diagnostics(&module) {
+        eprintln!("{filename}: {diag}");
+        if diag.severity == hir::Severity::Error {
+            total_errors += 1;
+        }
     }
 
     // Phase 5.6: Typed-composition gate — a shape-mismatched `net` composition
