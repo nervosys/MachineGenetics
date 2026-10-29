@@ -222,11 +222,17 @@ scale.
   and is not allowed to set the budget.
 - **An all-refused cycle is a refusal.** It promotes nothing and counts toward
   `max_consecutive_refusals`, so a proposer that never states a checkable
-  prediction stalls the search rather than consuming its budget.
+  prediction stalls the search rather than consuming its budget. It writes an
+  `Entry::CycleRefused` beside its refusal notes, because such a cycle proposes
+  nothing and would otherwise leave no trace in the journal.
 
-Not yet covered: a resumed run does not rebuild a proposer's trust, and an
-all-refused cycle writes no succession event, so replay does not count it toward
-the cycle index or the stall count. A proposer run is not resumable exactly.
+Resuming a proposer run is exact. `Lineage::replay` rebuilds each proposer's
+record from its `Calibrated` entries, in journal order, and fails with an
+inconsistency if a recorded trust does not match the rebuilt one. It counts each
+`CycleRefused` as a proposal and a refusal, as the live run did, so
+`Runner::resume` continues the cycle numbering, the cycle seeds, and the stall
+count. Entries written before `CycleRefused` existed do not carry that record,
+so an old journal undercounts its all-refused cycles.
 
 ## 6. Supervision and fallback
 

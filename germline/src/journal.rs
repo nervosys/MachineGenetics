@@ -82,6 +82,12 @@ pub enum Entry {
         score: f64,
         trust: f64,
     },
+    /// A proposer's cycle was refused whole: none of its `refused` candidates
+    /// passed the manifest check, so none was materialized and none has a
+    /// `Proposed` entry. Written beside the per-candidate notes, so that replay
+    /// can count the cycle as the refusal it was. A new variant, so every
+    /// earlier entry hashes as it did.
+    CycleRefused { proposer: String, refused: u32 },
     /// The gate ruled.
     Adjudicated { verdict: Verdict, attestation: Option<String> },
     /// Authority moved (or was refused).
