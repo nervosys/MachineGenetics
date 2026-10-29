@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,442** — rmi 1,384 · prototype 1,452 · ribosome 168 · germline 175 · forge 63 · arena 200 |
+| Tests | **3,448** — rmi 1,384 · prototype 1,452 · ribosome 168 · germline 175 · forge 63 · arena 206 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -1583,6 +1583,37 @@ block that shares its name.
 
 Break-checked: skipping the check fails 3 of the 4 new tests. Prototype +4
 tests.
+
+**Follow-ups to P5b and F1: the proposer hears about the oscillator, and the
+bounded run's over-depth variants are explained.**
+
+**P5b.** `describe_grammar(second_order)` now matches the policy in use. The
+command proposer takes `--second-order` (`CommandAgent::with_second_order`),
+so with the flag on its prompt names `osc`, gives a rendered example and states
+the coefficient bounds. With it off, the prompt is byte-identical to before,
+and a test holds it to the captured text. `Program::parse_for_policy` refuses
+an oscillator when the policy has it off. The proposer parses with it.
+`Program::parse` still accepts every oscillator, because it inverts the
+policy-free `source()`. Break-checked. Untested: whether a model told about
+`osc` out-searches uniform sampling. That needs X1.
+
+**F1.** The 4% of bounded variants past `MAX_DEPTH` are not a bug in the
+bounded path. Seed 1 of the F1 run, instrumented (20% over depth in that
+seed, against 4% over all six):
+- All 100 of the mutator's 506 over-depth variants descend from a parent
+  already past `MAX_DEPTH`. None came from an in-depth parent.
+- Those parents come from the attacker. Its identity rewrites add one or two
+  list levels, and 67 of its 96 rewrites of an in-depth parent went past the
+  limit. The gate does not check depth, so it admits them, and a bounded
+  graft keeps the wrapper it inherits.
+- The arena test for bounded grafts runs a mutator alone, which is why it sees
+  zero. Its doc comment now says so, and a new test shows a rewrite taking an
+  in-depth program past `MAX_DEPTH`.
+
+Whether the gate, or the attacker, should respect `MAX_DEPTH` is open. Either
+would change default runs and break M3's exact reproduction.
+
+Arena +6 tests.
 
 ## Where this phase ended, 2026-09-16
 
