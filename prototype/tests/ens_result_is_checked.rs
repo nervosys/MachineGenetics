@@ -71,7 +71,7 @@ fn a_violated_postcondition_fails_the_run_and_names_the_contract() {
     assert!(
         all.contains(
             "contract violated: `@ens(result == old(balance) - amount, \"correct deduction\")` \
-             of `withdraw` (sp withdraw) is false: `withdraw` returned 4"
+             of `withdraw` (sp withdraw, line 3:5) is false: `withdraw` returned 4"
         ),
         "got:\n{all}"
     );

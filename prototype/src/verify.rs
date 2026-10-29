@@ -93,6 +93,10 @@ pub struct ContractCheck {
     pub result: CheckResult,
     /// Explanation if not verified.
     pub explanation: Option<String>,
+    /// Where the clause was written, when it has source; the line and column
+    /// an `E0560` diagnostic reports.
+    #[serde(default)]
+    pub span: Option<crate::hir::Span>,
 }
 
 /// Pre or post condition.
@@ -148,10 +152,10 @@ pub fn verify_contracts(
 
     if let Some(spec) = spec {
         for req in &spec.requires {
-            checks.push(check_condition(req, ContractKind::Requires));
+            checks.push(check_condition(&req.text, ContractKind::Requires, req.span));
         }
         for ens in &spec.ensures {
-            checks.push(check_condition(ens, ContractKind::Ensures));
+            checks.push(check_condition(&ens.text, ContractKind::Ensures, ens.span));
         }
 
         let has_violation = checks.iter().any(|c| c.result == CheckResult::Violated);
@@ -179,8 +183,32 @@ pub fn verify_contracts(
 
 /// Input spec block for verification.
 pub struct SpecInput {
-    pub requires: Vec<String>,
-    pub ensures: Vec<String>,
+    pub requires: Vec<SpecClause>,
+    pub ensures: Vec<SpecClause>,
+}
+
+/// One clause of a spec: its condition text, and where it was written.
+#[derive(Debug, Clone)]
+pub struct SpecClause {
+    pub text: String,
+    pub span: Option<crate::hir::Span>,
+}
+
+impl From<&str> for SpecClause {
+    fn from(text: &str) -> Self {
+        SpecClause { text: text.into(), span: None }
+    }
+}
+
+impl From<String> for SpecClause {
+    fn from(text: String) -> Self {
+        SpecClause { text, span: None }
+    }
+}
+
+/// A parser span as the line and column a diagnostic reports.
+fn hir_span(s: &crate::lexer::Span) -> crate::hir::Span {
+    crate::hir::Span { line: s.line as u32, col: s.col as u32 }
 }
 
 /// Effect analysis result from the compiler.
@@ -243,18 +271,24 @@ pub fn diagnostics(results: &[VerificationResult]) -> Vec<crate::hir::Diagnostic
         // and type refinements are checked as `Requires` too, so the kind
         // would mislabel them.
         for c in r.checks.iter().filter(|c| c.result == CheckResult::Violated) {
-            out.push(Diagnostic::categorized(
+            let mut d = Diagnostic::categorized(
                 Severity::Error,
                 format!("`{}`: contract `{}` is false on every execution", r.fqn, c.condition),
                 DiagnosticCategory::SpecViolation,
                 None,
-            ));
+            );
+            d.span = c.span;
+            out.push(d);
         }
     }
     out
 }
 
-fn check_condition(condition: &str, kind: ContractKind) -> ContractCheck {
+fn check_condition(
+    condition: &str,
+    kind: ContractKind,
+    span: Option<crate::hir::Span>,
+) -> ContractCheck {
     // Simple heuristic-based static verification.
     // A real implementation would use symbolic execution or SMT solving.
 
@@ -280,7 +314,7 @@ fn check_condition(condition: &str, kind: ContractKind) -> ContractCheck {
         CheckResult::Unknown => Some("Cannot verify statically; runtime check required".into()),
     };
 
-    ContractCheck { condition: condition.into(), kind, result, explanation }
+    ContractCheck { condition: condition.into(), kind, result, explanation, span }
 }
 
 fn verify_effects(analysis: &EffectAnalysis) -> Vec<EffectCheck> {
@@ -317,6 +351,15 @@ fn verify_effects(analysis: &EffectAnalysis) -> Vec<EffectCheck> {
 
 // ── AST-driven module verification ───────────────────────────────────
 
+/// The clauses of one kind, with the spans the parser recorded for them.
+fn clauses_of(contracts: &[ast::ContractClause], kind: ast::ContractClauseKind) -> Vec<SpecClause> {
+    contracts
+        .iter()
+        .filter(|c| c.kind == kind)
+        .map(|c| SpecClause { text: c.condition.clone(), span: c.span.as_ref().map(hir_span) })
+        .collect()
+}
+
 /// Verify all contract-annotated functions in a module.
 ///
 /// Walks the module AST, extracts `@req`/`@ens`/`@inv` contract clauses
@@ -345,18 +388,8 @@ fn verify_item(kind: &ast::ItemKind, prefix: &str, results: &mut Vec<Verificatio
             };
 
             // Build SpecInput from contracts
-            let requires: Vec<String> = func
-                .contracts
-                .iter()
-                .filter(|c| c.kind == ast::ContractClauseKind::Requires)
-                .map(|c| c.condition.clone())
-                .collect();
-            let ensures: Vec<String> = func
-                .contracts
-                .iter()
-                .filter(|c| c.kind == ast::ContractClauseKind::Ensures)
-                .map(|c| c.condition.clone())
-                .collect();
+            let requires = clauses_of(&func.contracts, ast::ContractClauseKind::Requires);
+            let ensures = clauses_of(&func.contracts, ast::ContractClauseKind::Ensures);
 
             let spec = if requires.is_empty() && ensures.is_empty() {
                 None
@@ -380,16 +413,11 @@ fn verify_item(kind: &ast::ItemKind, prefix: &str, results: &mut Vec<Verificatio
                     format!("{prefix}.{}", st.name)
                 };
 
-                let invariants: Vec<String> = st
-                    .contracts
-                    .iter()
-                    .filter(|c| c.kind == ast::ContractClauseKind::Invariant)
-                    .map(|c| c.condition.clone())
-                    .collect();
+                let invariants = clauses_of(&st.contracts, ast::ContractClauseKind::Invariant);
 
                 let checks: Vec<ContractCheck> = invariants
                     .iter()
-                    .map(|inv| check_condition(inv, ContractKind::Requires))
+                    .map(|inv| check_condition(&inv.text, ContractKind::Requires, inv.span))
                     .collect();
 
                 let has_violation = checks.iter().any(|c| c.result == CheckResult::Violated);
@@ -438,19 +466,23 @@ fn verify_item(kind: &ast::ItemKind, prefix: &str, results: &mut Vec<Verificatio
                 format!("{prefix}.spec.{}", spec.name)
             };
 
-            let requires: Vec<String> = spec
+            let requires: Vec<SpecClause> = spec
                 .items
                 .iter()
                 .filter_map(|item| match item {
-                    ast::SpecItem::Require(s, _) => Some(s.clone()),
+                    ast::SpecItem::Require(s, sp) => {
+                        Some(SpecClause { text: s.clone(), span: Some(hir_span(sp)) })
+                    }
                     _ => None,
                 })
                 .collect();
-            let ensures: Vec<String> = spec
+            let ensures: Vec<SpecClause> = spec
                 .items
                 .iter()
                 .filter_map(|item| match item {
-                    ast::SpecItem::Ensure(s, _) => Some(s.clone()),
+                    ast::SpecItem::Ensure(s, sp) => {
+                        Some(SpecClause { text: s.clone(), span: Some(hir_span(sp)) })
+                    }
                     _ => None,
                 })
                 .collect();
@@ -482,7 +514,7 @@ fn verify_item(kind: &ast::ItemKind, prefix: &str, results: &mut Vec<Verificatio
                     format!("{prefix}.type.{}", ta.name)
                 };
 
-                let check = check_condition(predicate, ContractKind::Requires);
+                let check = check_condition(predicate, ContractKind::Requires, None);
                 let status = match check.result {
                     CheckResult::Verified => VerifyStatus::Verified,
                     CheckResult::Violated => VerifyStatus::Failed,
@@ -520,6 +552,7 @@ fn verify_item(kind: &ast::ItemKind, prefix: &str, results: &mut Vec<Verificatio
                     condition: format!("capability:{}", cap),
                     result,
                     explanation: None,
+                    span: None,
                 });
             }
             if !checks.is_empty() {
@@ -570,11 +603,25 @@ mod tests {
         // false accusation, and `Violated` is a compile error.
         for cond in ["ret.is_ok() => ret.len() < 0", "a || xs.len() < 0", "f(x).len() < 0", ".len() < 0"] {
             assert_ne!(
-                check_condition(cond, ContractKind::Ensures).result,
+                check_condition(cond, ContractKind::Ensures, None).result,
                 CheckResult::Violated,
                 "{cond}"
             );
         }
+    }
+
+    #[test]
+    fn a_refuted_clause_reports_the_span_it_was_written_at() {
+        let at = crate::hir::Span { line: 7, col: 9 };
+        let spec = SpecInput {
+            requires: vec![],
+            ensures: vec![SpecClause { text: "false".into(), span: Some(at) }],
+        };
+        let effects = EffectAnalysis { declared: vec![], used: vec![] };
+        let diags = diagnostics(&[verify_contracts("my.fn", Some(&spec), &effects)]);
+        assert_eq!(diags.len(), 1);
+        let span = diags[0].span.expect("a refuted clause carries its span");
+        assert_eq!((span.line, span.col), (7, 9));
     }
 
     #[test]

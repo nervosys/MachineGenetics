@@ -29,7 +29,7 @@ const FUEL: &str = "1000000";
 
 /// The clause a refused candidate must be refused by, as the violation quotes it.
 const CONTRACT: &str = "`@ens(abs(energy(result, k) - e0) <= DRIFT * e0, \
-                        \"energy stays within DRIFT of its initial value\")` of `advance` (sp advance)";
+                        \"energy stays within DRIFT of its initial value\")` of `advance` (sp advance, line 42:5)";
 
 fn bin() -> PathBuf {
     // `target/<profile>/deps/<test>` — the binary is two levels up.
