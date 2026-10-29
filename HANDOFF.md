@@ -1362,6 +1362,38 @@ Next questions:
 
 Arena +7 tests.
 
+**Implementation plan S2: the sigil surface saves bytes, not tokens.** For each
+of the 106 `.mg` files, `scripts/surface-units.py` prints both surfaces
+(`--fmt-compact` and `--fmt-expand`) and counts them four ways:
+- bytes;
+- MAGE lexer tokens, with the new `mage-parse --count-tokens`, the lexer
+  `token_len` uses;
+- cl100k BPE, with agentic-eval's `tokens_of` from AetherShell, built offline;
+- held-out learner bits under `ng:4:14:0.02`, with every fifth file held out.
+
+| unit | sigil / keyword |
+|---|---|
+| bytes | 0.962 |
+| MAGE tokens | 1.002 |
+| cl100k tokens | 1.002 |
+| learner bits | 1.000 |
+
+MAGE_SPEC section 2 claimed "~3x" density for the sigil (Agent) mode. That
+was wrong, and its table now carries these measurements.
+
+Found and fixed in the same section: it said the modes were "byte-for-byte
+round-trippable". They are not, because the lexer drops comments, so neither
+printer keeps them. The section now says they print the same AST, which is
+what PR #65's round-trip test checks.
+
+For S3, a description-length charge differs by 4% between surfaces in bytes,
+and by 0.2% or less in MAGE tokens, BPE or learner bits.
+
+`MAGE_ONTOLOGY.json` was regenerated, which also picked up `--solve` and its
+flags, missing since #70. `cli_flags` goes from 40 to 45.
+
+No tests added; an existing stdin test covers `--count-tokens`.
+
 **Pre-existing, not from this change:** `cargo clippy` 0.1.98 (2026-09-01)
 reports 15 warnings in `prototype` — 14 `chunks_exact` with a constant size in
 `abl_compute.rs` and older parts of `main.rs`, one collapsible `if` in

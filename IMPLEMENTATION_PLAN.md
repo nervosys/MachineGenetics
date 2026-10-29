@@ -176,7 +176,7 @@ erase that advantage.
     - a named BPE tokenizer, vendored offline or as a pinned crate;
     - measured bpb under a given arena learner.
   - Done when the arena charge takes `--length-unit`, defaulting to today's.
-- [ ] **S2** Sigil against keyword surfaces. **M**
+- [x] **S2** Sigil against keyword surfaces. **M** *Done: sigil is 3.8% smaller in bytes, but in MAGE lexer tokens, cl100k and learner bits it ties with keyword within 0.2% (`scripts/surface-units.py`, MAGE_SPEC §2.4).*
   - Over the 103-file corpus (lossless both ways since PR #65), measure each
     surface in all four S1 units.
   - Done when MAGE_SPEC records which surface is cheaper in which unit, and

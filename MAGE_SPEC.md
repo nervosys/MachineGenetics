@@ -83,14 +83,18 @@ UPPER_CASE        Non-terminal
 
 MAGE supports two interchangeable surface syntaxes that parse to the same AST:
 
-| Mode      | Pragma              | Purpose                              | Density |
+| Mode      | Pragma              | Purpose                              | Measured cost, relative to Human (§2.4) |
 | --------- | ------------------- | ------------------------------------ | ------- |
-| **Human** | (default)           | Human-readable, terse keywords       | 1×      |
-| **Agent** | `#![syntax(agent)]` | Machine-optimized, symbol-compressed | ~3×     |
+| **Human** | (default)           | Human-readable, terse keywords       | 1       |
+| **Agent** | `#![syntax(agent)]` | Symbol-compressed                    | 0.96 in bytes; 1.00 in MAGE tokens, cl100k tokens and learner bits |
+
+*This column said "~3×" density for Agent mode. Measured over the 106-file
+corpus (plan S2, §2.4), the sigil surface saves 3.8% of bytes and nothing in any
+token unit, so the figure was wrong and is replaced by the measurement.*
 
 A `#![syntax(agent)]` pragma at the top of a `.mg` file selects Agent mode. Human is the default.
 
-Both modes are byte-for-byte round-trippable via `mg fmt --human` and `mg fmt --agent`. The compiler accepts both in the same project.
+Both modes print the same AST, so converting between them (`mage-parse --fmt-expand` and `--fmt-compact`) loses nothing the compiler sees, and every `.mg` file in the tree round-trips through both. It is not byte-for-byte: comments are dropped by the lexer, so neither printer keeps them. The compiler accepts both in the same project.
 
 ### 2.1 Human mode Keywords
 
@@ -258,6 +262,57 @@ What follows from that:
 already parse. It is that every name in every published table becomes
 path-qualified, and every agent-facing document that teaches a bare name has to
 teach a path instead.
+
+### 2.4 Which surface is cheaper, by unit (plan S2)
+
+Both surfaces print every `.mg` file losslessly (`mage-parse --fmt-compact` is
+the sigil surface, `--fmt-expand` the keyword surface). Each is measured over the
+106 tracked files in four units. Totals are over all 106 files, except bits,
+which are over the 21 held-out files. Ratio is sigil over keyword, so below 1
+means the sigil surface is cheaper.
+
+| unit | sigil | keyword | sigil / keyword | per-file median |
+| --- | ---: | ---: | ---: | ---: |
+| UTF-8 bytes | 93,331 | 96,983 | 0.962 | 0.961 |
+| MAGE lexer tokens (`--count-tokens`) | 22,807 | 22,765 | 1.002 | 1.000 |
+| cl100k BPE tokens | 29,560 | 29,498 | 1.002 | 1.000 |
+| learner bits, held-out (`ng:4:14:0.02`) | 60,985 | 60,977 | 1.000 | 1.002 |
+
+Learner bits are bpb × bytes over the held-out files: sigil 3.2140 × 18,975 B,
+keyword 3.0867 × 19,755 B. The per-file median for bits is over the 21 held-out
+files only, one learner run per file.
+
+Reproduce with:
+
+```sh
+cargo build --release --manifest-path prototype/Cargo.toml
+cargo build --release --manifest-path arena/Cargo.toml
+TOKENS_OF=<agentic-eval tokens_of binary, built with --features real-tokens> \
+  python scripts/surface-units.py --json surface-units.json
+```
+
+`TOKENS_OF` is optional. Without it, the script falls back to Python `tiktoken`
+and, failing that, reports the BPE unit as unavailable rather than estimating it.
+
+**Reading.** The sigil surface is cheaper in bytes, by 3.8% in total. It is not
+cheaper in any token unit. In MAGE lexer tokens and in cl100k BPE tokens it is
+0.2% more expensive, because `f` and `fn` are each one token. In learner bits it
+ties with the keyword surface to within 0.01%. The table in §2 said ~3× agent
+density for the sigil surface, and now gives these figures instead. On this
+corpus, the saving is in bytes only.
+
+**Caveats.**
+- One learner configuration, `ng:4:14:0.02`, one run. The learner is
+  deterministic, so no seed variance was measured, and a different learner could
+  rank the surfaces differently.
+- Train and held-out come from one small corpus: about 75 KB of training text
+  and 19 KB of held-out text, split by sorted path, every 5th file held out. The
+  files share authors and style, so held-out is not independent of training.
+- Training uses whole 4 KB steps. Sigil trained on 73,728 of 74,356 bytes and
+  keyword on 76,800 of 77,228 bytes.
+- `prototype/examples/sandboxed_agent.mg` holds only comments, and the lexer
+  drops comments, so both surfaces are empty for it. It contributes 0 bytes and
+  0 bits, and is left out of the per-file ratios. Neither surface keeps comments.
 
 ---
 

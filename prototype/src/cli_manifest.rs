@@ -190,6 +190,16 @@ pub const MODES: &[CliMode] = &[
         detail: "Inverse of --fmt-compact; same determinism guarantee.",
     },
     CliMode {
+        flag: "--count-tokens",
+        args: "<file.mg|->",
+        summary: "print the MAGE lexer token count of a file, the description-length unit the arena charges",
+        effect: "read_local",
+        detail: "Prints one integer: the lexer's output with Eof included and whitespace and \
+                 comments excluded, the same count as the arena's Program::token_len. Reads \
+                 standard input when the file is `-`. Plan S2 counts both printed surfaces \
+                 with it.",
+    },
+    CliMode {
         flag: "--target=abl-bytes",
         args: "<file.mg> [out.abl]",
         summary: "lower Agentic Binary Language-routed items to a framed binary Agentic Binary Language container",

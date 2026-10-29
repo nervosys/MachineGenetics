@@ -385,6 +385,7 @@ const CLI_FLAGS: &[(&str, &str, bool)] = &[
     ("--gradcheck", "Check computed derivatives against central differences; reports deductive and inductive verdicts separately", true),
     ("--fmt-compact", "Reformat source in agent-canonical sigil mode", true),
     ("--fmt-expand", "Reformat source in human-readable keyword mode", true),
+    ("--count-tokens", "Print the MAGE lexer token count of a file (the arena's description-length unit)", true),
     ("--target=abl", "Print per-item Agentic Binary Language stats (nodes/depth/hash/bytes)", true),
     ("--target=abl-bytes", "Encode Agentic Binary Language-routed items to a binary Agentic Binary Language container", true),
     ("--from=abl-bytes", "Decode a Agentic Binary Language container back to MAGE view", true),
