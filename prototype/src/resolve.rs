@@ -298,6 +298,28 @@ impl Resolver {
             self.resolve_item(item);
         }
 
+        // Contract clauses of a function resolve in its parameter scope, plus
+        // `result` in a postcondition (plan C1). A clause `contract::prepare`
+        // refuses is reported by the typechecker, once, so it is skipped here.
+        for (clause, fd) in crate::contract::collect(module) {
+            let Some(fd) = fd else { continue };
+            let params: Vec<String> = fd.params.iter().map(|p| p.name.clone()).collect();
+            let Ok(expr) = crate::contract::prepare(&clause, Some(&params)) else { continue };
+            let before = self.diagnostics.len();
+            self.push_scope();
+            for p in &fd.params {
+                self.define_value(&p.name, SymbolKind::Param);
+            }
+            if clause.kind == ast::ContractClauseKind::Ensures {
+                self.define_value("result", SymbolKind::Variable { mutable: false });
+            }
+            self.resolve_expr(&expr);
+            self.pop_scope();
+            for d in &mut self.diagnostics[before..] {
+                d.message = format!("{} in contract `{}` of `{}`", d.message, clause.display(), clause.function);
+            }
+        }
+
         self.pop_scope();
     }
 
@@ -952,9 +974,20 @@ impl Resolver {
                 if let Some(id) = self.lookup_value(name) {
                     self.resolved.insert(name.clone(), id);
                 } else {
+                    // `result` and `old(x)` are names only a postcondition
+                    // has (plan C1). Written in a body, say so, rather than
+                    // leave a bare `unresolved name` for something the
+                    // contract syntax taught.
+                    let hint = match name.as_str() {
+                        "result" => {
+                            " (`result` names the return value only inside `@ens`)"
+                        }
+                        "old" => " (`old(x)` names a parameter only inside `@ens`)",
+                        _ => "",
+                    };
                     self.diagnostics.push(Diagnostic::categorized(
                         Severity::Error,
-                        format!("unresolved name: `{name}`"),
+                        format!("unresolved name: `{name}`{hint}"),
                         DiagnosticCategory::UnresolvedName,
                         None,
                     ));

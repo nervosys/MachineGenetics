@@ -62,6 +62,20 @@ pub fn parse(tokens: &[Token]) -> Result<Module, ParseError> {
     parser.parse_module()
 }
 
+/// Parse `tokens` as exactly one expression, ending at `Eof`.
+///
+/// For the expression text a contract clause stores (`@req`, `@ens`): the
+/// clause is kept as source text, so checking or evaluating it means parsing
+/// it again, on its own.
+pub fn parse_expression(tokens: &[Token]) -> Result<Expr, ParseError> {
+    let mut parser = Parser::new(tokens);
+    let expr = parser.parse_expr()?;
+    if parser.peek() != TokenKind::Eof {
+        return Err(parser.error(&format!("unexpected `{}` after the expression", parser.peek_text())));
+    }
+    Ok(expr)
+}
+
 /// Substitute block-macro parameters (`Ident`s) with their call-site argument
 /// expressions, recursively through the common layer-arg shapes.
 fn subst_expr(e: &Expr, map: &HashMap<String, Expr>) -> Expr {
