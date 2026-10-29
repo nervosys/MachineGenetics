@@ -44,6 +44,11 @@ gpu = ["transformer", "candle-core/cuda", "candle-nn/cuda"]
 name = "arena"
 path = "src/main.rs"
 
+# A stand-in proposer for the command-backed agent's tests: it prints a file.
+[[bin]]
+name = "fixed-proposer"
+path = "src/bin/fixed_proposer.rs"
+
 # Line tables only in debug builds. The arena's test binary links prototype,
 # rmi, germline, ribosome and ed25519, and with full debug info it exceeded the
 # MSVC linker's program-database limit (LNK1140) once the succession tests

@@ -8,6 +8,7 @@
 //!       [--allocate share|hypervolume] [--novelty behaviour|shape] [--canary <string>]
 //!       [--energy-budget J] [--joules-per-program J] [--definitions <forge registry dir>]
 //!       [--heldout-slices K] [--refresh-drift X]
+//!       [--proposer-command "<cmd> <args…>"] [--proposer-timeout S]
 //!       [--json <out.json>]
 //! ```
 //!
@@ -141,6 +142,18 @@ fn main() {
             "--eval-every" => cfg.eval_every = num(value(i), "--eval-every").max(1) as usize,
             "--cpu-watts" => cfg.cpu_watts = value(i).parse().unwrap_or_else(|_| fail("--cpu-watts: not a number")),
             "--json" => json_out = Some(value(i).to_string()),
+            // The command's argv is the value split on whitespace, so it
+            // cannot carry an argument with a space in it.
+            "--proposer-command" => {
+                cfg.proposer_command = Some(value(i).split_whitespace().map(str::to_string).collect())
+            }
+            "--proposer-timeout" => {
+                let s = num(value(i), "--proposer-timeout");
+                if s == 0 {
+                    fail("--proposer-timeout: must be at least 1 second");
+                }
+                cfg.proposer_timeout_s = s;
+            }
             "--agents" => {
                 cfg.agents = value(i)
                     .split(',')
@@ -184,7 +197,7 @@ fn main() {
                 std::process::exit(0);
             }
             "-h" | "--help" => {
-                eprintln!("{}", include_str!("main.rs").lines().skip(2).take(9).map(|l| l.trim_start_matches("//! ")).collect::<Vec<_>>().join("\n"));
+                eprintln!("{}", include_str!("main.rs").lines().skip(2).take(10).map(|l| l.trim_start_matches("//! ")).collect::<Vec<_>>().join("\n"));
                 std::process::exit(0);
             }
             other => fail(format!("unknown argument `{other}`")),
