@@ -175,11 +175,14 @@ Physics as programs agents write, checked by the language, not only as data.
     conservation is enforced as a C1 contract.
   - Done when a run has agents competing on it, and a wrong integrator is
     refused by its contract.
-- [ ] **C4** System identification with `--solve`. **S [H]**
+- [x] **C4** System identification with `--solve`. **S [H]**
   - Fit a pendulum's length, and a spring's stiffness and damping, from a
     trajectory: `@param` domains, a squared-error objective, and `--solve`.
   - Done when the known parameters are recovered within tolerance, and the
     solver choice is recorded (convex or ES).
+  - Result: spring (`k`, `c`) and pendulum (`L`) both ran ES, since the loop
+    is uncertified; each recovers its known value within 0.01 (test
+    `prototype/tests/system_id.rs`).
 - [ ] **C5** Contact as a convex step. **M**
   - Pose the bouncing-ball contact as a box-constrained quadratic program, so
     6.3's certified projected-gradient path solves it.
