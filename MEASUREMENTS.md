@@ -7,7 +7,7 @@ numbers are machine-dependent; the shapes (throughput, scaling) are not.
 Date: 2026-06-10. Build: `release` for perf, `cargo test` for functionality.
 
 > **Re-verified 2026-09-25** — all six crates tested: prototype **1,408**, rmi
-> **1,384**, ribosome **168**, germline **175**, forge **63**, arena **171** = **3,369 passing,
+> **1,384**, ribosome **168**, germline **175**, forge **63**, arena **181** = **3,379 passing,
 > 0 failing, 0 warnings**.
 >
 > *One figure below had not regressed — it had been superseded.* The ABL
@@ -80,7 +80,7 @@ Date: 2026-06-10. Build: `release` for perf, `cargo test` for functionality.
 | rmi (`cpu`) | **1384 pass** | `cargo test --no-default-features --features cpu` |
 | ribosome (build engine) | **168 pass** | `cargo test --manifest-path ribosome/Cargo.toml` |
 | germline (RSI control plane) | **175 pass** | `cargo test --manifest-path germline/Cargo.toml` |
-| arena (self-play arena) | **171 pass** | `cargo test --manifest-path arena/Cargo.toml` |
+| arena (self-play arena) | **181 pass** | `cargo test --manifest-path arena/Cargo.toml` |
 | forge (registry) | **63 pass** | `cargo test --manifest-path forge/Cargo.toml` |
 | agentic-eval (AetherShell) | **80 pass** | `cargo test -p agentic-eval` |
 | SPINE `spine-agentic` | **285 pass** | `cargo test -p spine-agentic` |
@@ -713,3 +713,103 @@ What the table says, and what it does not:
   size-matched comparisons, and the joule and latency axes. Every difference
   under about 0.3 bits in this table is one seed's difference, and should be read
   as a tie.
+
+## Learner comparison (plan L3)
+
+Question: on each corpus, how much more or less data (bytes, and wall-clock seconds) does each learner need to reach the same held-out bits per byte as the n-gram `ng:4:14:0.02`? Learners: `ng:4:14:0.02`, `ent:4:14:4:0.02` and `ssm:16:0.01`, the same configurations as the L1 and L2 sections, untuned, one configuration each. Corpora: text (README → `gate.rs`), code (`gate.rs` → `transformer.rs`), and the five physics systems under `--encoding planes`. Seeds 1 to 6 for physics. The text and code rows are one run each, because `--seed` does not reach them (see below).
+
+Commands, from the `arena` directory, release build:
+
+```sh
+# physics: one invocation per learner and seed, all five systems plus the README text row
+arena physics-baseline --encoding planes --seed S --learners ng:4:14:0.02 --json curves/seedS-ng.json
+arena physics-baseline --encoding planes --seed S --learners ent:4:14:4:0.02 --json curves/seedS-ent.json
+arena physics-baseline --encoding planes --seed S --learners ssm:16:0.01 --json curves/seedS-ssm.json
+# code: text only, one invocation per learner
+arena physics-baseline --system none --learners LEARNER --text-train ../germline/src/gate.rs --text-heldout src/transformer.rs --json code-TAG.json
+# measurement
+arena measure-curves curves/ code-ng.json code-ent.json code-ssm.json --json measurement.json
+```
+
+The grid ran sequentially in one background process, so the wall-clock figures are not contaminated by parallel runs. It took 1,774 s in total (29.6 min): ng 84–121 s per seed, ent 130–172 s, ssm 38–43 s; the code runs took 2–3 s each. The default budget of 192 KiB per learner was used, so no budget reduction was needed.
+
+**What `--seed` varies.** It seeds the physics trajectories only: `physics_corpus` draws the train and held-out trajectories from `Rng(seed)`. The text and code curves do not use it, the n-gram and entropy learners are deterministic, and the SSM's initialisation uses a fixed internal seed. The text and code rows are therefore **single-seed**, and no spread is reported for them. The duplicate text rows that the six physics sweeps carry were checked to agree bit for bit on every bits-per-byte figure before one was kept.
+
+Target: the worst final held-out bits per byte among the three learners on that corpus, so every frontier is asked for a loss its own curve reaches. Per corpus: pendulum 5.871, spring 2.682, double pendulum 5.016, n-body 7.984, bounce 6.153, text 5.400, code 5.223.
+
+The multiplier is cost(learner) / cost(ng) to reach the target. Above 1 means the learner needs more. Pooled is over the six seeds' frontiers together; the per-seed columns are each seed's own frontiers, as mean ± sample sd over the seeds that reach the target.
+
+| corpus | learner | bytes: pooled | bytes: per seed | seconds: pooled | seconds: per seed |
+|---|---|---|---|---|---|
+| pendulum | ent | 1.005 | 0.999 ± 0.004 (6) | 1.033 | 1.360 ± 0.288 (6) |
+| pendulum | ssm | 0.442 | 0.508 ± 0.139 (6) | 0.031 | 0.039 ± 0.010 (6) |
+| spring | ent | 1.002 | 1.008 ± 0.007 (6) | 1.224 | 1.312 ± 0.278 (6) |
+| spring | ssm | 0.929 | 1.024 ± 0.101 (6) | 0.121 | 0.108 ± 0.021 (6) |
+| double pendulum | ent | 1.010 | 1.016 ± 0.013 (6) | 1.149 | 1.225 ± 0.294 (6) |
+| double pendulum | ssm | 0.429 | 0.439 ± 0.030 (6) | 0.059 | 0.055 ± 0.014 (6) |
+| n-body | ent | n/a | 2.680 (1 seed) | n/a | 1.086 (1 seed) |
+| n-body | ssm | n/a | 1.086 (1 seed) | n/a | 0.042 (1 seed) |
+| bounce | ent | 1.008 | 1.010 ± 0.002 (6) | 1.095 | 1.096 ± 0.241 (6) |
+| bounce | ssm | 0.454 | 0.886 ± 0.251 (6) | 0.048 | 0.074 ± 0.020 (6) |
+| text (README → gate.rs) | ent | 0.648 | single run | 1.125 | single run |
+| text (README → gate.rs) | ssm | 0.809 | single run | 0.085 | single run |
+| code (gate.rs → transformer.rs) | ent | 0.638 | single run | 0.778 | single run |
+| code (gate.rs → transformer.rs) | ssm | 0.885 | single run | 0.113 | single run |
+
+Notes on the table:
+
+- **n-body is `n/a` because of the default target, and that is a grid artefact.** The default target, 7.984, is the entropy learner's final loss on seed 4. The n-gram's first checkpoint (10% of the budget) is already at about 7.977 on every seed, so the n-gram's frontier has no point above 7.984 and cannot say when it crossed. The n-body multipliers are therefore undefined at this target, for both learners, and the only per-seed value (seed 4) is a case where the n-gram's first checkpoint sits just above the target. Re-measured at `--target 7.5`, which every frontier reaches, the n-body multipliers are defined:
+
+  | n-body, `--target 7.5` | learner | bytes: pooled | bytes: per seed | seconds: pooled | seconds: per seed |
+  |---|---|---|---|---|---|
+  | | ent | 1.021 | 1.016 ± 0.070 (6) | 1.039 | 1.238 ± 0.291 (6) |
+  | | ssm | 1.289 | 1.307 ± 0.047 (6) | 0.160 | 0.149 ± 0.024 (6) |
+
+  At this target the SSM is consistently *more* expensive than the n-gram on n-body (its curve stays near 8 bits until about 40% of the budget, then falls), so its default-target advantage on the other systems is not uniform across physics. The raw output is in `grid/measure-nbody-t75.txt`, alongside the full `measure.txt`.
+- **Seconds** are wall-clock, cumulative over train steps, evaluation excluded. They include the learners' per-byte cost, so the SSM's seconds figure reflects its size (9,248 parameters) as much as its learning.
+- **Bytes** is the same byte grid for all three learners (every checkpoint at 10% steps of the budget), so the bytes multiplier only says at which checkpoint each curve crosses the target. It is coarse, and it is not a compute measure.
+
+### M1 loss-to-loss fits (train bpb as proxy, held-out bpb as target)
+
+Fitted by `fit_loss_to_loss` over all trained checkpoints pooled over seeds (n = 60 per physics learner, n = 10 per text or code learner).
+
+| corpus | ng: c, rmse | ent: c, rmse | ssm: c, rmse |
+|---|---|---|---|
+| pendulum | 1.25, 0.039 | 0.25, 0.378 | 0.40, 0.061 |
+| spring | 1.20, 0.047 | 0.45, 0.256 | 0.65, 0.101 |
+| double pendulum | 1.05, 0.023 | 0.25, 0.462 | 1.05, 0.054 |
+| n-body | 1.05, 0.028 | 0.95, 0.572 | 1.30, 0.073 |
+| bounce | 1.60, 0.020 | 0.75, 0.580 | 0.45, 0.065 |
+| text | 1.00, 0.018 | 3.00, 0.156 | 1.15, 0.056 |
+| code | 1.05, 0.005 | 0.40, 0.176 | 0.65, 0.084 |
+
+The fits are good for the n-gram and reasonable for the SSM, and poor for the entropy learner on every physics system (rmse 0.26 to 0.58, with fitted exponents below 1 and negative intercepts in most cases). Its held-out curve is not a smooth function of its train curve: it spikes above uniform at early checkpoints and then recovers (L2 section, n-body and bounce). The M1 fit should not be used to extrapolate the entropy learner.
+
+### Plain conclusions
+
+- **The entropy learner is no cheaper than the n-gram on physics.** Its bytes multiplier is 1.00 to 1.01 on every system where it is defined, with per-seed sd at most 0.013. It is the same learner on physics as the n-gram, at the same bytes.
+- **The entropy learner's text and code advantage does not carry to physics.** It needs 0.65 and 0.64 of the n-gram's bytes on text and code (single runs), and 1.00 on physics. This is the reverse of what a "better on physics" claim would need.
+- **The SSM needs fewer bytes than the n-gram on text (0.81) and on code (0.89).** On the physics systems where its multiplier is defined at the default target, its pooled figure is below 1 on all four (0.43 to 0.93), but its per-seed mean is below 1 on only three: 0.51 ± 0.14 (pendulum), 0.44 ± 0.03 (double pendulum), 0.89 ± 0.25 (bounce), and 1.02 ± 0.10 on spring. On n-body it is undefined at the default target, and at `--target 7.5` it is 1.29 ± 0.05, worse than the n-gram. Its advantage is therefore not specific to physics, and it is not uniform across the physics systems. It is largest, and most consistent across seeds, on the double pendulum.
+- **Seconds favour the SSM strongly on every corpus,** because it is roughly 8 to 30 times cheaper per byte at this size. That is a statement about the model's cost, not its learning. Under this measure it is not a claim that the SSM learns physics better.
+- **Nothing is established at the level of two seed standard deviations.** Each physics difference between the SSM and the n-gram is judged against the physics seed spread. The text and code figures are single runs with no spread, so there is no sd against which to set them. The SSM's text figure (0.81) lies outside the physics per-seed ranges for the pendulum (0.42 to 0.78) and the double pendulum (0.40 to 0.48), and inside the bounce's (0.45 to 1.11). A single text run is not a sample from the same distribution, so these comparisons are suggestive, not a test.
+
+### Critical-path question
+
+*Does any learner show a consistent advantage, or a measurable signal, on physics that it does not on text?*
+
+No, not in the sense of an advantage present on physics and absent on text.
+
+- The entropy learner has an advantage on text and code and none on physics. The direction is the reverse.
+- The SSM has an advantage on text (0.81 bytes, single run) and on physics (0.44 to 0.89 pooled or per-seed mean on four of five systems). Its physics advantage is larger in magnitude on the pendulum, the double pendulum and the bounce, and it is consistent across seeds on the double pendulum (0.44 ± 0.03). That is a signal that the SSM is cheaper to fit physics data than the n-gram. It is not a signal that the physics data is special for the SSM: the same ordering holds on text. Whether the physics advantage is larger than the text advantage cannot be settled, because the text figure has no seed spread.
+- On the seconds axis the SSM is cheaper on every corpus where it is defined, for the cost reason above; the entropy learner is no cheaper on any physics system.
+
+So on this corpus set, the signal the critical path asks for is not there. The SSM's physics advantage is real on the pendulum, the double pendulum and, less consistently, the bounce, but it is not confined to physics, and it reverses on n-body at a target both frontiers reach. The self-improvement loop would get the same answer from the SSM on text, with the same sign. The result is for untuned learners, one configuration each, and a 10% checkpoint grid.
+
+### Limits of this measurement
+
+- One configuration per learner, untuned, and no size-matched comparison. The SSM has about 0.05% of the n-gram's parameters, so the bytes advantage is not an equal-size comparison (see the L2 section).
+- The frontier is the lower envelope of the checkpoints, so a curve that dips below the target at one checkpoint earns that dip (the M2 definition). The entropy learner's n-body curve has such a dip at 30% of the budget (7.26, against 7.84 at the end), so its n-body multiplier would be lower than its curve supports if it were defined.
+- Checkpoints are at 10% steps of the budget. Bytes multipliers are therefore resolved only to about one tenth of the budget.
+- The default target is the worst learner's final held-out loss, so that learner's own frontier ends exactly at the target. The same target can lie above the reference's first checkpoint, which is what makes n-body `n/a` at the default. A `--target` inside every frontier's range is the remedy, and it is reported above for n-body only. The other corpora were not re-run at other targets, so their figures hold at the default target only.
+- Wall-clock seconds were recorded on a shared machine, one learner at a time. They are noisy: the per-seed sd of the entropy learner's seconds is about 20–25% of its mean.
+- Joules were not measured on this axis; only bytes and seconds.

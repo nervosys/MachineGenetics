@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,369** — rmi 1,384 · prototype 1,408 · ribosome 168 · germline 175 · forge 63 · arena 171 |
+| Tests | **3,379** — rmi 1,384 · prototype 1,408 · ribosome 168 · germline 175 · forge 63 · arena 181 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -1239,6 +1239,40 @@ Open:
   budget.
 - Its n-body curve spikes at 90%, so the learning rate may be too high.
 - One seed. L3 is the multi-seed comparison.
+
+Arena +10 tests.
+
+**Implementation plan L3: the learner comparison, and the critical path's
+answer.**
+- `physics-baseline --json` writes every learning curve.
+- `arena measure-curves` reuses transfer.rs's frontier, multiplier and fitter
+  to give each learner's cost relative to `ng` at a common held-out target. It
+  reports bytes and seconds axes, pooled and as a per-seed mean ± sd.
+- Six seeds took 30 minutes. `--seed` varies only the physics trajectories:
+  text and code rows are single runs, checked bit-identical across seeds.
+
+Bytes multipliers against `ng`, physics as a per-seed mean ± sd:
+
+| corpus | ent | ssm |
+|---|---|---|
+| pendulum | 1.00 ± 0.00 | 0.51 ± 0.14 |
+| double pendulum | 1.02 ± 0.01 | 0.44 ± 0.03 |
+| spring | 1.01 ± 0.01 | 1.02 ± 0.10 |
+| bounce | 1.01 ± 0.00 | 0.89 ± 0.25 |
+| n-body (target 7.5) | 1.02 ± 0.07 | 1.31 ± 0.05 |
+| text (single run) | 0.65 | 0.81 |
+| code (single run) | 0.64 | 0.89 |
+
+- Physics gives the loop a measurable signal that text does not: learners beat
+  order-0 by 0.5-1.1 bits there, and sit above it on text.
+- No learner is advantaged on physics but not on text.
+- The seconds axis favours the SSM everywhere, which reflects its size (9,248
+  parameters), not better learning.
+- Joules were not measured; that waits on RAPL (X3).
+- The entropy learner's loss-to-loss fits are poor on physics (rmse up to
+  0.58) because its curves spike, so they should not be extrapolated.
+- At the default target n-body is `n/a`: the n-gram's first checkpoint already
+  beats the worst final loss. A reachable target, 7.5, is reported instead.
 
 Arena +10 tests.
 
