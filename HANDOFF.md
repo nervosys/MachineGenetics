@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,462** — rmi 1,384 · prototype 1,457 · ribosome 168 · germline 175 · forge 63 · arena 215 |
+| Tests | **3,466** — rmi 1,384 · prototype 1,457 · ribosome 168 · germline 175 · forge 63 · arena 219 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -1707,6 +1707,45 @@ Caveats:
 
 Break-checked: freezing the weights again fails the out-of-distribution test
 (8.92 against 8.55). Arena +3 tests.
+
+**Follow-up to C3: the physics-program task runs in the arena.**
+`arena physics-task [--fuel N] [FILE...]` takes candidate integrators, by
+default the five shipped with `prototype/examples/physics_task/`.
+- It admits each one: a single `step`, `@role(candidate)`, and the
+  `--check --core` gate.
+- It splices the candidate into `task.mg.in` and checks it, then runs the
+  task's `score` under fuel.
+- Each candidate gets a score, or a refusal of one class: `parse`,
+  `signature`, `type`, `contract`, `fuel` or `runtime`.
+
+A contract violation is its own refusal class, separate from running out of
+fuel. With fuel 100, both Verlet and explicit Euler are refused as `fuel`.
+
+The ranking matches #91:
+
+| candidate | verdict |
+|---|---|
+| velocity Verlet | first, 0.0013 |
+| symplectic Euler | second, 0.025 |
+| frozen | third, 1.03 |
+| explicit Euler | refused, `contract`, energy drift |
+| Verlet missing its ½ | refused, `contract`, energy drift |
+
+Explicit Euler is refused with the same returned state as before.
+
+Design notes:
+- The task has its own verdict enum, so `substrate::Refusal`'s ledger keys
+  stay as they are.
+- The splice and admission code is copied, not shared, with
+  `prototype/tests/physics_task.rs`. The prototype crate cannot depend on the
+  arena, and the copy is about 15 lines.
+
+MAGE_SPEC section 11.11 and IMPLEMENTATION_PLAN C3 no longer call the wiring
+deferred. This is a fixed population scored once; no agent proposes
+integrators yet.
+
+Break-checked: a contract classifier that never matches fails 2 of the 4 new
+tests. Arena +4 tests.
 
 ## Where this phase ended, 2026-09-16
 
