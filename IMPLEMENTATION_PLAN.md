@@ -28,7 +28,7 @@ fix), pins updated, a HANDOFF entry, and a stacked PR.
 
 ## Phase 0: Housekeeping
 
-- [ ] **0.1** Merge PRs #38–#99 in order (the stack grew as the plan was worked). This needs the user. **S**
+- [ ] **0.1** Merge PRs #38–#100 in order (the stack grew as the plan was worked). This needs the user. **S**
 - [ ] **0.2** Keep this file current. Tick items in the PR that does them, so
   the plan never lives only in a session transcript. **S**
 
@@ -230,8 +230,11 @@ Physics as programs agents write, checked by the language, not only as data.
   - Result: a spring task, `prototype/examples/physics_task/`, scored by
     `prototype/tests/physics_task.rs`. Verlet's RMS error is 0.0013 and
     symplectic Euler's is 0.0255. Explicit Euler and a Verlet with a dropped
-    1/2 are refused by an energy-drift `@ens`. The arena task is deferred
-    (MAGE_SPEC §11.11).
+    1/2 are refused by an energy-drift `@ens`. The arena task kind is wired:
+    `arena physics-task` ranks candidates against the same harness, and a
+    contract violation is a refusal of its own class, apart from fuel
+    exhaustion (`arena/src/physics_task.rs`, ARENA.md). The `prototype/tests`
+    harness is unchanged.
 - [x] **C4** System identification with `--solve`. **S [H]**
   - Fit a pendulum's length, and a spring's stiffness and damping, from a
     trajectory: `@param` domains, a squared-error objective, and `--solve`.
