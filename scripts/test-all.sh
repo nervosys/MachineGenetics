@@ -6,13 +6,13 @@
 # This is the single entry point that covers everything CI covers:
 #
 #     rmi (cpu)   1,384 tests
-#     prototype   1,432 tests
+#     prototype   1,435 tests
 #     ribosome      168 tests
 #     germline      175 tests
 #     forge          63 tests
 #     arena          200 tests
 #     -------------------------
-#     total       3,422 tests, 0 warnings
+#     total       3,425 tests, 0 warnings
 #
 # Usage:
 #   scripts/test-all.sh            # debug
