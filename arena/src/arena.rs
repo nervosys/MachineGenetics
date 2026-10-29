@@ -119,8 +119,10 @@ pub struct Config {
     /// its length plus two bytes to each corpus.
     #[serde(default)]
     pub canary: Option<String>,
-    /// What a program's novelty is counted on (plan 7.4).
-    #[serde(default)]
+    /// What a program's novelty is counted on (plan 7.4). A recorded config
+    /// without the field predates the choice and was keyed on shape, so it
+    /// still reads as shape; a new config defaults to behaviour.
+    #[serde(default = "NoveltyKey::recorded_before_the_choice")]
     pub novelty: NoveltyKey,
 }
 
@@ -131,13 +133,21 @@ pub enum NoveltyKey {
     /// Its shape: its structure with constants erased. Costs nothing, and is
     /// exploitable: a rewrite that changes structure and not output, such as
     /// `xs.reverse().reverse()`, is a new shape. The attacker finds this.
-    #[default]
     Shape,
     /// Its behaviour: its outputs on [`BEHAVIOUR_SEEDS`]. An output-preserving
     /// rewrite has its parent's key. Two programs that agree on those seeds
     /// and differ elsewhere share a key too. Costs up to three evaluations
-    /// per new program, cached.
+    /// per new program, cached. The default since a six-seed held-out
+    /// comparison found no cost to switching (ARENA.md).
+    #[default]
     Behaviour,
+}
+
+impl NoveltyKey {
+    /// The key of a config recorded before the field existed: shape.
+    fn recorded_before_the_choice() -> NoveltyKey {
+        NoveltyKey::Shape
+    }
 }
 
 /// The seeds a program's behaviour is fingerprinted on.
@@ -233,7 +243,7 @@ impl Default for Config {
             definitions_dir: None,
             allocation: Allocation::Share,
             canary: None,
-            novelty: NoveltyKey::Shape,
+            novelty: NoveltyKey::Behaviour,
         }
     }
 }
@@ -1484,5 +1494,16 @@ mod tests {
     fn missing_heldout_data_is_refused() {
         let (m, n) = cpu_only();
         assert!(run(tiny_cfg(), vec![], m, n).is_err());
+    }
+
+    #[test]
+    fn new_configs_key_novelty_on_behaviour_and_old_records_on_shape() {
+        assert_eq!(Config::default().novelty, NoveltyKey::Behaviour);
+        // A config recorded before plan 7.4 has no `novelty` field. It ran
+        // keyed on shape, and must still read that way.
+        let mut recorded = serde_json::to_value(Config::default()).expect("serialises");
+        recorded.as_object_mut().expect("an object").remove("novelty");
+        let read: Config = serde_json::from_value(recorded).expect("deserialises");
+        assert_eq!(read.novelty, NoveltyKey::Shape);
     }
 }

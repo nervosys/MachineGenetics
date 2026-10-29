@@ -5,7 +5,7 @@
 //!       [--agents grammar:2,uniform:1,mutator:1,attacker:1]
 //!       [--learners ng:orders:log2buckets:lr | tf:d:layers:heads:ctx:lr[:gpu] [,…]]
 //!       [--fuel F] [--cpu-watts W] [--meter-gpus <i>[,<i>…] | none] [--cost joules|fuel]
-//!       [--allocate share|hypervolume] [--novelty shape|behaviour] [--canary <string>]
+//!       [--allocate share|hypervolume] [--novelty behaviour|shape] [--canary <string>]
 //!       [--energy-budget J] [--joules-per-program J] [--definitions <forge registry dir>]
 //!       [--json <out.json>]
 //! ```
