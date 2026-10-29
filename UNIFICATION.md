@@ -710,6 +710,42 @@ agents to use." The reality after 49 phases of honest measurement:
 The story is reliability-led, not size-led. The CI floors codify that
 position so future patches can only improve it.
 
+## The description-length unit (implementation plan S3, 2026-10-29)
+
+The arena charges each candidate program a description length
+(`length_charge` times its length), so the unit decides which programs count as
+simple. Cartesia's byte-level results raised the question of whether lexer
+tokens, a tokenizer's prior, are the right unit. S1 made the unit selectable
+(`--length-unit tokens|bytes`). S2 and L3 measured the alternatives.
+
+**Decision: keep MAGE lexer tokens.** The evidence:
+
+- **Tokens already track BPE.** Over the 106-file corpus, MAGE lexer tokens and
+  cl100k BPE tokens move together. The sigil/keyword ratio is 1.002 in both
+  (MAGE_SPEC section 2.4). Phase 49's 0.998 native-lexer ratio against Rust
+  says the same. A vendored BPE would cost a dependency and change nothing
+  measurable.
+- **Bytes would add a surface bias and nothing else.** Bytes are the only unit
+  where the two surfaces differ, by 4%. Arena programs are rendered in one
+  surface, so this does not move rankings today. It would make the charge
+  depend on a formatting choice.
+- **Learner bits is the principled unit, but not a usable one yet.** Charging
+  `-log2 P(program)` under a learner is minimum description length proper. L3
+  showed learners disagree by more than 2x in data cost on the same corpus, and the
+  entropy learner can exceed 8 bits/byte out of distribution (L1). Making the
+  objective depend on the learner under study would couple what is measured
+  to what is optimised.
+
+Limits of the evidence:
+- S2 measured whole source files, not the small grammar-generated bodies the
+  arena charges. The token/BPE agreement is assumed to carry over, not
+  measured on them.
+- The learner-bits comparison is one configuration and one run.
+
+`--length-unit bytes` stays available. A learner-bits unit is worth revisiting
+once a learner is stable out of distribution and the charge can be computed
+under a fixed reference learner, not the one being trained.
+
 ## Phase 56-67 (condensed): the corpus-completion arc
 
 P55 declared "project complete" at 76/100 file-oracle. The user kept
