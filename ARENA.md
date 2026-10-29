@@ -53,7 +53,7 @@ bad program before running it.
 |---|---|---|
 | agents | `arena::agents` | `Proposer` trait; `GrammarAgent` (REINFORCE over MAGE productions), `UniformAgent` (fixed prior, the control), `MutatorAgent` (varies anyone's pool entries). One shared pool; a fixed budget per round split by **learning progress per unit of fuel** |
 | program space | `arena::grammar` | typed trees over `range`/`map`/`scan`/`filter`/`reverse`/`sort`/`take`/`flatten`/`[e; n]`, rendered to MAGE; mutation and closed-subtree crossover |
-| substrate | `arena::substrate` | parse → signature → typecheck → **inferred**-pure effects → fuel-bounded run → bytes mod 256. Each refusal is data, counted by reason |
+| substrate | `arena::substrate` | depth (`MAX_DEPTH`, checked by the arena before any front end) → parse → signature → typecheck → **inferred**-pure effects → fuel-bounded run → bytes mod 256. Each refusal is data, counted by reason |
 | fuel | `prototype::eval::run_metered` | every expression one unit; every returned list its length, **precharged before allocation** where a scalar sets the size; depth bounded on a thread with a known stack |
 | learner | `arena::learner` | hashed-context softmax with exact gradients and sparse Adam; the learning-progress reward with a lookback between `e/4` and `e/2` |
 | energy | `arena::energy` | NVML's cumulative energy counter, loaded at run time → **Measured**; a wall-clock CPU estimate → **Estimated**, with its wattage stated; unreadable → **Unavailable**, never zero |
@@ -589,6 +589,9 @@ held-out `README.md,germline/src/gate.rs`:
 | 5 | 7.656 | 7.500 | 97 | 0 |
 | 6 | 7.561 | 7.333 | 118 | 0 |
 
+These are the figures before the depth gate. After it, the shape arm credits about
+41 exploits a run, not 111; see "Multi-seed held-out, and bounded grafts" below.
+
 Behaviour minus shape is −0.076 bits/byte on average (sd 0.175; lower on 4 of
 6 seeds), about one standard error: no detectable held-out effect either way.
 The comparison has little power, because at this scale the learner transfers
@@ -740,9 +743,10 @@ asks for.
 than `MAX_DEPTH`. The search's own `mutate` and `crossover` graft subtrees
 sampled from depth 0, so they can sit deeper than that. In the property test
 (seed 2026, 2,000 sampled programs with one mutation and one crossover each),
-637 of 4,000 variants were too deep, about 16%. The search still keeps them,
-since it was measured with them. The proposer's parser refuses them, and the
-test requires that it does. Making the grafts respect the depth would change
+637 of 4,000 variants were too deep, about 16%. That count predates the depth
+gate. Since the gate, the arena refuses such a candidate as `depth` before it
+runs, so none is credited or kept in the pool. The proposer's parser refuses
+them too, and the test requires that it does. Making the grafts respect the depth would change
 what the search explores, so it was measured as a separate choice (plan F1,
 below), and it is off by default.
 
@@ -1224,21 +1228,59 @@ other learners. Two points remain unchecked:
 
 ## Multi-seed held-out, and bounded grafts (plans M3, F1)
 
-**Reproducing the six-seed table (M3).** `scripts/arena-seeds.sh` reran the
-table in "The held-out comparison, and the default" at commit `6dbe2a47a`, with
-the same arguments: seeds 1–6, `--novelty shape` and `--novelty behaviour`,
-20 rounds of 48 programs, `--agents grammar:1,mutator:1,attacker:1`,
-`--cost fuel`, held-out `README.md,germline/src/gate.rs`. All twelve runs
-reproduce it. The credited exploit counts match exactly, 115/95/119/120/97/118
-for shape and 0 for behaviour. Held-out bits/byte match to the table's three
-decimals on ten of twelve runs. On seed 6 the two arms differ from the table by
-0.001. The unrounded means are 7.56050 and 7.33248, and the table's 7.561 and
-7.333 come from rounding to four places and then to three (7.5605 → 7.561,
-7.3325 → 7.333). The table is right to within
-that rounding, so the numbers did not drift. The code has changed since the
-table was written, with new learners and the oscillator behind a default-off
-flag, and `Config` has new keys. The defaults keep behaviour, and the exact
-match is the check on that. I did not bisect, since nothing differs.
+**The depth gate.** The arena refuses a candidate whose grammar tree is nested
+deeper than `MAX_DEPTH`, before any MAGE front end parses it. It is counted as
+`depth` in the refusals, and it is never run, credited or pooled. Before this
+the gate admitted such candidates. An attacker's identity rewrite adds one or
+two list levels, so it can take an in-depth parent past the limit, and the
+candidate was evaluated and credited. `Program::parse`, which the command
+proposer uses, already refused them, so the arena now agrees with it. There is
+no flag: the limit is the grammar's own, and an opt-out would only admit trees
+the grammar never writes.
+
+Tests: `a_candidate_past_max_depth_is_refused_as_depth_and_never_run`,
+`a_candidate_within_max_depth_is_not_refused_for_depth`, and
+`with_an_attacker_the_pool_never_holds_a_program_past_max_depth`, which wraps
+each proposer and checks every pool entry against the limit on every round.
+Break-checked by disabling the gate: the first two fail with no `depth`
+refusals, and the third reads 1,032 over-depth pool entries. Arena tests: 215
+before, 218 after, release.
+
+**Reproducing the six-seed table (M3), before the gate.** At commit
+`1cacaa8fd`, before the gate, `scripts/arena-seeds.sh` reproduced the table in
+"The held-out comparison, and the default" with the same arguments: seeds 1–6,
+`--novelty shape` and `--novelty behaviour`, 20 rounds of 48 programs,
+`--agents grammar:1,mutator:1,attacker:1`, `--cost fuel`, held-out
+`README.md,germline/src/gate.rs`. All twelve runs match the credited exploit
+counts (115/95/119/120/97/118 for shape, 0 for behaviour). Held-out bits/byte
+match to the table's three decimals on ten of twelve runs. On seed 6 both arms
+differ from the table by 0.001, from the table's double rounding. That exact
+match was the check on the defaults at the time. The gate changes default runs,
+so the table below supersedes it for the current code.
+
+**Six seeds after the gate (M3).** The same arguments, on the code with the
+gate. The before figures are from the pre-gate run above.
+
+| seed | shape bpb, before → after | behaviour bpb, before → after | shape credited exploits, before → after | depth refusals, shape / behaviour |
+|---|---|---|---|---|
+| 1 | 7.675 → 7.753 | 7.496 → 7.346 | 115 → 51 | 244 / 264 |
+| 2 | 7.477 → 7.501 | 7.662 → 7.794 | 95 → 36 | 204 / 227 |
+| 3 | 7.756 → 7.969 | 7.572 → 7.509 | 119 → 35 | 265 / 212 |
+| 4 | 7.800 → 7.841 | 7.905 → 7.906 | 120 → 34 | 381 / 274 |
+| 5 | 7.656 → 7.589 | 7.500 → 7.387 | 97 → 49 | 237 / 168 |
+| 6 | 7.561 → 7.328 | 7.333 → 7.401 | 118 → 41 | 263 / 248 |
+| mean | 7.654 → 7.663 | 7.578 → 7.557 | 110.7 → 41.0 | 1,594 / 1,393 in total |
+
+Behaviour minus shape, paired by seed, is −0.076 before the gate (sd 0.175,
+standard error 0.072, lower on four seeds of six) and −0.106 after (sd 0.299,
+standard error 0.122, lower on three of six). Both are about one standard error,
+so there is still no detectable held-out effect either way, and `behaviour`
+stays the default. What changes is the exploit count. The shape arm's credited
+exploits fall from 111 to 41 a run, because over-depth attacker candidates are
+refused before the kernel checks them, so they are no longer credited (the pool
+trajectory also changes, so the per-seed counts are not an exact tally of those
+refusals). The earlier reason for the default, that removing roughly a hundred
+credited exploits costs nothing measurable, now reads as removing about forty.
 
 **Bounded grafts (plan F1).** `--bound-grafts` makes `mutate` sample its fresh
 subtree at the depth of the node it replaces (`Policy::sample_at`), and makes
@@ -1252,40 +1294,44 @@ the limit), `bounded_grafts_put_no_mutant_past_max_depth_into_a_run`, and
 `a_subtree_sampled_at_depth_fits_there`. The first was break-checked, with both
 bounded branches made to ignore the flag: it fails with "too deep".
 
-One correction to the section above. The arena's gate does not enforce
-`MAX_DEPTH`: it parses candidates with the MAGE front end, so a too-deep graft
-is evaluated, not refused. The refusal the section describes is for
-`Program::parse`, which the command proposer uses. The mutator therefore counts
-its own variants and those past the limit, reported as `over_depth` under its
-`state`.
-
 **The measurement.** Six seeds, 20 rounds, 48 programs, `--novelty behaviour`,
 `--cost fuel`, the same agents as above. The unbounded arm is the default
-(`unbounded`), and the bounded arm adds `--bound-grafts`.
+(`unbounded`), and the bounded arm adds `--bound-grafts`. Before and after the
+gate:
 
-| seed | unbounded bpb | bounded bpb | bounded − unbounded |
+| seed | unbounded bpb, before → after | bounded bpb, before → after | bounded − unbounded, before → after |
 |---|---|---|---|
-| 1 | 7.4960 | 7.5514 | +0.0554 |
-| 2 | 7.6623 | 7.7183 | +0.0559 |
-| 3 | 7.5717 | 7.6689 | +0.0972 |
-| 4 | 7.9053 | 7.7319 | −0.1733 |
-| 5 | 7.4995 | 8.0887 | +0.5892 |
-| 6 | 7.3325 | 7.4220 | +0.0895 |
+| 1 | 7.496 → 7.346 | 7.551 → 7.452 | +0.055 → +0.105 |
+| 2 | 7.662 → 7.794 | 7.718 → 8.548 | +0.056 → +0.754 |
+| 3 | 7.572 → 7.509 | 7.669 → 7.527 | +0.097 → +0.018 |
+| 4 | 7.905 → 7.906 | 7.732 → 7.955 | −0.173 → +0.050 |
+| 5 | 7.500 → 7.387 | 8.089 → 7.504 | +0.589 → +0.117 |
+| 6 | 7.333 → 7.401 | 7.422 → 7.426 | +0.089 → +0.024 |
+| mean | 7.578 → 7.557 | 7.697 → 7.735 | +0.119 → +0.178 |
 
-The difference is +0.119 bits/byte on average, sd 0.251, standard error 0.103,
-so about 1.2 standard errors. Bounding is worse on five seeds of six, and not
-significant on this sample. Over depth, the mutator's variants (summed over
-seeds) are 52% of the unbounded arm's, 1,145 of 2,190, and 4% of the bounded
-arm's, 127 of 3,215. The bounded arm's remaining 4% is not explained by grafts.
-I have not checked it, but the likely cause is parents: the attacker's wrappers
-add two list levels, and the gate admits them to the pool, so a bounded graft
-can keep an over-deep ancestor. Counting over-deep parents would confirm it.
+The difference, bounded minus unbounded, is +0.119 bits/byte before the gate
+(sd 0.251, standard error 0.103, about 1.2 standard errors, worse on five seeds
+of six) and +0.178 after (sd 0.285, standard error 0.116, about 1.5 standard
+errors, worse on all six). Seed 2 carries much of the after figure, at +0.754;
+without it the mean is +0.063. Neither is significant at two standard errors.
 
-**Decision: off by default.** The measurement does not support a flip. Bounding
-removes the over-deep variants as intended, but on this sample the held-out
-result is slightly worse, and the seed spread is wide. The flag stays, as an
-experiment, and the default stays where it was. A longer grid or a held-out
-test with more power would be needed before the default could change.
+Over depth, among the mutator's own variants, summed over seeds. Before the
+gate, 52% of the unbounded arm's (1,145 of 2,190) and 4% of the bounded arm's
+(127 of 3,215). After it, 28% (799 of 2,881) and 0% (0 of 3,077). The bounded
+arm's 4% is now explained: those variants were grafted from over-deep parents
+the attacker had put in the pool, and the gate keeps those out. The unbounded
+arm's share falls too, which fits the same cause, since its grafts also draw
+parents from the pool. The mutator's counter is taken before the gate, so the
+refusals are the gate's: 1,393 `depth` refusals in the unbounded arm and 646 in
+the bounded arm. In the bounded arm they can only come from the attacker, since
+the mutator's own variants there are all within the limit.
+
+**Decision: off by default.** The measurement does not support a flip, before
+the gate or after it. Bounding removes the over-deep variants as intended. On
+this sample the held-out result is worse, now on every seed, and the seed spread
+is wide. The flag stays as an experiment, and the default stays where it was. A
+longer grid, or a held-out test with more power, would be needed before the
+default could change.
 
 ## Next, in order
 

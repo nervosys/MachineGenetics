@@ -28,7 +28,7 @@ fix), pins updated, a HANDOFF entry, and a stacked PR.
 
 ## Phase 0: Housekeeping
 
-- [ ] **0.1** Merge PRs #38–#101 in order (the stack grew as the plan was worked). This needs the user. **S**
+- [ ] **0.1** Merge PRs #38–#102 in order (the stack grew as the plan was worked). This needs the user. **S**
 - [ ] **0.2** Keep this file current. Tick items in the PR that does them, so
   the plan never lives only in a session transcript. **S**
 
@@ -262,8 +262,11 @@ Physics as programs agents write, checked by the language, not only as data.
     `--cost fuel`), then bound them or record why not.
   - Result: `--bound-grafts` added, off by default. Bounded is worse by +0.119
     bpb (sd 0.251, six seeds, behaviour novelty), so the default stays off. Over
-    depth in the arena is 52% unbounded and 4% bounded. The arena gate does not
-    enforce `MAX_DEPTH`, so the 16% figure is for `Program::parse`.
+    depth in the arena is 52% unbounded and 4% bounded. At that point the arena
+    gate did not enforce `MAX_DEPTH`, so the 16% figure was for `Program::parse`.
+    The gate now refuses over-depth candidates as `depth` (ARENA.md, "Multi-seed
+    held-out, and bounded grafts"); after it, bounded is worse on all six seeds
+    (+0.178 bpb, sd 0.285), and the default stays off.
 - [x] **F2** A separate ledger account for command proposers. **S [H]**
   - Command proposers currently share the `proposer` role's account with
     grammar agents.
