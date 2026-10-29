@@ -1898,6 +1898,85 @@ examples are `prototype/examples/system_id_spring.mg` (stiffness `k` and damping
 run the (1+1) evolution strategy. Each recovers its known value within 0.01. The
 test is `prototype/tests/system_id.rs`.
 
+### 11.11 A physics program task (plan C3)
+
+Agents write integrators in MAGE, a held-out rollout ranks them, and a
+contract refuses the ones that do not conserve energy. The system is an
+undamped unit-mass spring, `x'' = -k x`. A candidate is one function:
+
+```mg
+@role(candidate)
+f step(s: [f64], k: f64, dt: f64) -> [f64] {
+    val vel = s[1] - dt * k * s[0];
+    [s[0] + dt * vel, vel]
+}
+```
+
+The state is `[x, v]`. Tuples have no field access (`s.0` does not parse), and
+a struct would have to be declared by both the candidate and the task, so it
+is a two-element list. Everything else belongs to the task,
+`prototype/examples/physics_task/task.mg.in`: the energy, the contract, the
+rollout, the reference trajectories and `score`. The candidate never owns the
+contract, so it cannot drop it. The task is not a `.mg` file because it calls
+`step` and so does not typecheck alone. The harness appends a candidate to it
+and runs the result under fuel:
+
+```text
+cat task.mg.in symplectic_euler.mg | mage-parse --eval - score --fuel 1000000
+```
+
+Every step passes through `advance`, which carries the contract:
+
+```text
+sp advance {
+    @ens(abs(energy(result, k) - e0) <= DRIFT * e0, "energy stays within DRIFT of its initial value")
+}
+```
+
+`e0` is the trajectory's initial energy and `DRIFT` is 0.1. At the task's
+`w dt` of 0.1 and 0.075, symplectic Euler's energy error stays below 5.3% and
+velocity Verlet's below 0.3%. Explicit Euler multiplies the energy by
+`1 + k dt^2` every step, so it crosses 10% at step 10. The bound is on drift
+from `e0`, not on the change across one step. A one-step bound can be
+written, as `energy(result, k) <= energy(old(s), k) * 1.01`, and it runs. But
+no one-step bound separates the two integrators. At `w dt = 0.1`, symplectic
+Euler's largest one-step gain is 1.0049% and explicit Euler's is exactly
+1.0000%, so a 1% bound refuses symplectic Euler.
+
+The score is the RMS position error over two held-out cases, `(k, x0, v0)` =
+`(4, 1, 0)` and `(2.25, 0, 1.5)`, with 100 steps of `dt = 0.05` each. The
+reference is the exact solution, so a candidate's error is its own. The
+literals come from `scripts/physics-task-reference.py`. The candidate is pure,
+since its role caps it, so it cannot read them.
+
+The fixed population and what happens to each:
+
+| candidate | verdict |
+| --- | --- |
+| `velocity_verlet.mg` | 0.00130 |
+| `symplectic_euler.mg` | 0.0255 |
+| `frozen.mg` (returns `s`) | 1.03, last: energy is conserved exactly, so only the score catches it |
+| `explicit_euler.mg` | refused at step 10 |
+| `verlet_missing_half.mg` (`dt * dt * a` for `0.5 * dt * dt * a`) | refused at step 26 |
+
+A refusal names the clause:
+
+```text
+contract violated: `@ens(abs(energy(result, k) - e0) <= DRIFT * e0, "energy stays within DRIFT of its initial value")` of `advance` (sp advance) is false: `advance` returned [0.5707904498999999, -1.7650160200000002]
+```
+
+The harness is `prototype/tests/physics_task.rs`. It admits a candidate only
+if the candidate is a single `@role(candidate) f step` that passes
+`--check --core`, then composes it with the task, checks the result, and
+scores it. Its break-check deletes `sp advance`, and explicit Euler then
+scores 0.21 instead of being refused.
+
+The arena does not run this task yet. Its tasks score byte predictors and
+generated programs against a corpus. Two things are missing: a task kind
+whose program is appended to a fixed MAGE harness, and a verdict that treats
+a contract violation as a refusal rather than as a crash. Those are a design
+change to the arena, not a test, so C3 stops at a ranked fixed population.
+
 ---
 
 ## 12. Contract System

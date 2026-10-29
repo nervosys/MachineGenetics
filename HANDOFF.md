@@ -30,17 +30,17 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,410** — rmi 1,384 · prototype 1,428 · ribosome 168 · germline 175 · forge 63 · arena 192 |
+| Tests | **3,414** — rmi 1,384 · prototype 1,432 · ribosome 168 · germline 175 · forge 63 · arena 192 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
 | CI | 11 jobs defined, **10 of which ever run** — green on `master`. The eleventh, `prototype — cuda kernels (self-hosted GPU)`, has no runner and has never executed (open item 2) |
 | Reliability floors | file-oracle parse 99/100, perturbed pattern-heal 42, native-lexer ratio 0.997 |
 | Examples | 12 of 12 typecheck, run, and print their recorded answer |
-| `.mg` sources | **106 checked, 0 sketches** — every `.mg` file in the repository typechecks |
+| `.mg` sources | **111 checked, 0 sketches** — every `.mg` file in the repository typechecks |
 | Differentiability | **34 of 34 nets and 7 of 7 train blocks; 1 of 156 functions** (the arena's reward) — `scripts/measure-differentiability.sh`, re-derived in CI and compared against `DIFFERENTIABILITY.md` in both directions |
 | `grad` | An expression that typechecks and **runs**, for scalars: forward-mode duals, checked against central differences. The differentiability obligation is a premise of its typing rule, discharged by the call-graph pass. Tensors are refused, not deferred |
-| Documentation | 208 MAGE blocks typecheck; 59 documentation entry points run; 268 `rmi/docs` API items all exist — and "exist" now means **a definition exists**, not that the name appears somewhere in `src/`. It was 275 under the weaker criterion, 8 of them held up by English words in comments; the phantom entries are gone and a duplicate went with them |
+| Documentation | 209 MAGE blocks typecheck; 59 documentation entry points run; 268 `rmi/docs` API items all exist — and "exist" now means **a definition exists**, not that the name appears somewhere in `src/`. It was 275 under the weaker criterion, 8 of them held up by English words in comments; the phantom entries are gone and a duplicate went with them |
 | Release | `v0.3.0`, with the promo video attached as a release asset |
 
 Reproduce all of it:
@@ -1434,6 +1434,51 @@ tokens.**
 
 The reasoning and its limits are in UNIFICATION.md, "The description-length
 unit". `--length-unit bytes` stays available. Docs only.
+
+**Implementation plan C3: a physics program task, where contracts refuse wrong
+integrators.** Each candidate supplies only
+`@role(candidate) f step(s: [f64], k: f64, dt: f64) -> [f64]` for a spring.
+The harness, `prototype/examples/physics_task/task.mg.in`, owns the rest:
+- every rollout step goes through `advance`, whose `@ens` bounds energy drift
+  from the initial energy (`abs(energy(result, k) - e0) <= DRIFT * e0`, with
+  `DRIFT = 0.1`);
+- the score is RMS position error over two held-out cases, 100 steps each,
+  against the exact solution.
+
+`prototype/tests/physics_task.rs` admits a candidate only if it is exactly one
+`step` with `@role(candidate)` and passes `--check --core`. It then runs
+`--eval - score --fuel 1000000`.
+
+| candidate | result |
+|---|---|
+| velocity Verlet | 0.0013 (first) |
+| symplectic Euler | 0.025 |
+| `frozen` (returns its input) | 1.03 (last; conserves energy, so only the score catches it) |
+| explicit Euler | refused at step 10 |
+| Verlet missing the 1/2 | refused at step 26 |
+
+The violation names the clause, as in C1.
+
+Why drift from `e0` and not one step with `old(s)`: at this dt, symplectic
+Euler's largest one-step gain (1.0049%) exceeds explicit Euler's (1.0000%), so
+no per-step bound separates them. A per-step version was tried, and it refused
+the correct integrator.
+
+Break-checked: deleting the contract admits explicit Euler, at about 160 times
+Verlet's error.
+
+Found and fixed: the evaluator never bound top-level `const` items, so
+`DRIFT * e0` failed at run time. `--eval` also gains `--fuel N` (the bounded
+evaluator) and `-` for stdin.
+
+Deferred:
+- wiring this into the arena. It needs a task kind that appends a program to a
+  harness, and a verdict that treats a contract violation as a refusal;
+- the pendulum;
+- references from P1's simulator rather than the exact solution.
+
+`.mg` sources go from 106 to 111, and documentation blocks from 208 to 209.
+Prototype +4 tests.
 
 **Pre-existing, not from this change:** `cargo clippy` 0.1.98 (2026-09-01)
 reports 15 warnings in `prototype` — 14 `chunks_exact` with a constant size in
@@ -3973,7 +4018,7 @@ changed before you commit.
 ---
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,428**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,432**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
   across six crates **3,140**; documented-count pins **101**, up from 46 — the
   two newest hold the `kb`/`net` overlap the tensor-product-binding decision
