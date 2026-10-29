@@ -339,7 +339,7 @@ impl Proposer for GrammarAgent {
             names.iter().zip(p).map(|(n, x)| ((*n).to_string(), serde_json::json!((x * 1000.0).round() / 1000.0))).collect::<serde_json::Map<_, _>>().into()
         };
         serde_json::json!({
-            "list": named(&crate::grammar::LIST_RULES, l),
+            "list": named(&crate::grammar::list_rule_names(self.policy.second_order()), l),
             "int": named(&crate::grammar::INT_RULES, i),
         })
     }
@@ -353,7 +353,12 @@ pub struct UniformAgent {
 
 impl UniformAgent {
     pub fn new(id: impl Into<String>) -> Self {
-        UniformAgent { id: id.into(), policy: Policy::default() }
+        UniformAgent::with_second_order(id, false)
+    }
+
+    /// The uniform prior, with the second-order production when asked (P5b).
+    pub fn with_second_order(id: impl Into<String>, second_order: bool) -> Self {
+        UniformAgent { id: id.into(), policy: Policy::with_second_order(second_order) }
     }
 }
 
@@ -386,7 +391,12 @@ pub struct MutatorAgent {
 
 impl MutatorAgent {
     pub fn new(id: impl Into<String>) -> Self {
-        MutatorAgent { id: id.into(), elite: 16, policy: Policy::default() }
+        MutatorAgent::with_second_order(id, false)
+    }
+
+    /// The mutator, with the second-order production in its fresh subtrees when asked (P5b).
+    pub fn with_second_order(id: impl Into<String>, second_order: bool) -> Self {
+        MutatorAgent { id: id.into(), elite: 16, policy: Policy::with_second_order(second_order) }
     }
 }
 

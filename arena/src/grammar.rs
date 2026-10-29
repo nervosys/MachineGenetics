@@ -75,6 +75,31 @@ pub enum ListExpr {
     Cycle(String, Vec<IntExpr>, u64),
     /// `flatten(range(n).map(|v| range(v % k + 1)))` — nested counting.
     Nest(String, u64, u64),
+    /// A second-order linear recurrence over a pair of state (plan P5b). Only
+    /// sampled when the policy has the second-order production on.
+    Osc(Oscillator),
+}
+
+/// `x_{t+1} = (a·x_t − b·x_{t−1}) >> k`, emitting `x_1 … x_n`.
+///
+/// `scan` carries one accumulator, so any cascade of scans is a cascade of
+/// first-order recurrences, whose poles are real and cannot oscillate. This
+/// carries the pair `(x_t, x_{t−1})`, whose characteristic roots are complex
+/// when `a²/4 < b·2^k` (the bounds below keep them inside the unit circle, so
+/// the values stay bounded). The pair is MAGE's tuple, destructured with `val`
+/// and projected by a `map`. Its surface is fixed; see [`Oscillator::render`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct Oscillator {
+    /// Values emitted, `2..=MAX_LEN + 1`. The scan takes `n − 1` steps.
+    pub n: u64,
+    pub x1: u64,
+    pub x0: u64,
+    /// Coefficient of `x_t`, in `0..=2^(k+1)`, so `|a / 2^k| ≤ 2`.
+    pub a: u64,
+    /// Coefficient of `x_{t−1}`, in `0..2^k`, so the roots lie inside the unit circle.
+    pub b: u64,
+    /// Shift, in [`bounds::OSC_SHIFT`].
+    pub k: u64,
 }
 
 /// A whole generated program: `f gen(s: usize) -> [usize] { body }`.
@@ -184,6 +209,7 @@ impl ListExpr {
             ListExpr::Nest(v, n, k) => {
                 out.push_str(&format!("flatten(range({n}).map(|{v}| range({v} % {k} + 1)))"));
             }
+            ListExpr::Osc(o) => o.render(out),
         }
     }
 
@@ -199,8 +225,26 @@ impl ListExpr {
             ListExpr::Concat(a, b) => 1 + a.size() + b.size(),
             ListExpr::Copy(xs, _) => 1 + xs.size(),
             ListExpr::Cycle(_, elems, _) => 1 + elems.iter().map(IntExpr::size).sum::<usize>(),
-            ListExpr::Nest(..) => 1,
+            ListExpr::Nest(..) | ListExpr::Osc(_) => 1,
         }
+    }
+}
+
+impl Oscillator {
+    /// The MAGE this denotes. The state is `(c, q)`, current and previous, so
+    /// the step is `((a·c − b·q) >> k, c)`. The first value the scan emits is
+    /// the seed `x_1`, and the step count is `n − 1`, so `n` values come out.
+    /// [`Program::parse`] reads exactly this text back.
+    fn render(&self, out: &mut String) {
+        out.push_str(&format!(
+            "range({}).scan(({}, {}), |p, v| {{ val (c, q) = p; ((wrapping_sub(wrapping_mul({}, c), wrapping_mul({}, q)) >> {}), c) }}).map(|p| {{ val (c, q) = p; c }})",
+            self.n - 1,
+            self.x1,
+            self.x0,
+            self.a,
+            self.b,
+            self.k
+        ));
     }
 }
 
@@ -279,8 +323,23 @@ pub const LIST_RULES: [&str; 12] = [
     "range", "repeat", "map", "scan", "filter", "reverse", "sort", "take", "concat", "copy", "cycle", "nest",
 ];
 
-/// List productions allowed at the depth limit: the leaves.
-const LIST_LEAVES: [usize; 4] = [0, 1, 10, 11];
+/// The second-order production (plan P5b). It is not in [`LIST_RULES`]: a
+/// policy has it only when built with [`Policy::with_second_order`], so the
+/// default policy's logits, and every program it samples, are unchanged.
+pub const SECOND_ORDER_RULE: &str = "osc";
+
+/// The list productions a policy draws from, in logit order.
+pub fn list_rule_names(second_order: bool) -> Vec<&'static str> {
+    let mut names = LIST_RULES.to_vec();
+    if second_order {
+        names.push(SECOND_ORDER_RULE);
+    }
+    names
+}
+
+/// List productions allowed at the depth limit: the leaves. `osc` (index 12)
+/// is a leaf, and is only ever a choice when the policy has it.
+const LIST_LEAVES: [usize; 5] = [0, 1, 10, 11, 12];
 /// Integer productions, in logit order.
 pub const INT_RULES: [&str; 6] = ["lit", "var", "add", "sub", "mul", "mod"];
 
@@ -301,7 +360,22 @@ pub struct Policy {
 impl Default for Policy {
     /// Uniform over productions — the fixed prior a learned policy must beat.
     fn default() -> Self {
-        Policy { list_logits: vec![0.0; LIST_RULES.len()], int_logits: vec![0.0; INT_RULES.len()] }
+        Policy::with_second_order(false)
+    }
+}
+
+impl Policy {
+    /// The uniform prior, with the second-order production when asked (P5b).
+    /// Off, it is exactly [`Policy::default`]: the same logits, and so the
+    /// same draws from the same seed.
+    pub fn with_second_order(second_order: bool) -> Self {
+        let n = list_rule_names(second_order).len();
+        Policy { list_logits: vec![0.0; n], int_logits: vec![0.0; INT_RULES.len()] }
+    }
+
+    /// Whether this policy can write the second-order production.
+    pub fn second_order(&self) -> bool {
+        self.list_logits.len() > LIST_RULES.len()
     }
 }
 
@@ -344,7 +418,7 @@ impl Sampler<'_> {
         let probs = softmax(&self.policy.list_logits);
         // At the depth limit only leaves are allowed.
         let leaf = depth >= MAX_DEPTH;
-        let allowed: Vec<bool> = (0..LIST_RULES.len()).map(|i| !leaf || LIST_LEAVES.contains(&i)).collect();
+        let allowed: Vec<bool> = (0..probs.len()).map(|i| !leaf || LIST_LEAVES.contains(&i)).collect();
         let rule = pick(self.rng, &probs, &allowed);
         self.trace.push(Choice { list: true, rule });
         match rule {
@@ -392,6 +466,17 @@ impl Sampler<'_> {
                     })
                     .collect();
                 ListExpr::Cycle(self.var(), elems, self.rng.range(4, MAX_LEN))
+            }
+            12 => {
+                // Shift first: the coefficient ranges depend on it. b < 2^k keeps
+                // the roots inside the unit circle; a <= 2^(k+1) bounds a / 2^k.
+                let k = self.rng.range(bounds::OSC_SHIFT.0, bounds::OSC_SHIFT.1);
+                let b = self.rng.range(1, (1 << k) - 1);
+                let a = self.rng.range(0, 1 << (k + 1));
+                let n = self.rng.range(bounds::OSC_LEN.0, bounds::OSC_LEN.1);
+                let x1 = self.rng.range(bounds::LITERAL.0, bounds::LITERAL.1);
+                let x0 = self.rng.range(bounds::LITERAL.0, bounds::LITERAL.1);
+                ListExpr::Osc(Oscillator { n, x1, x0, a, b, k })
             }
             _ => ListExpr::Nest(self.var(), self.rng.range(2, 12), self.rng.range(2, 8)),
         }
@@ -467,7 +552,7 @@ fn list_paths(e: &ListExpr, here: Vec<usize>, out: &mut Vec<Vec<usize>>) {
         | ListExpr::Take(xs, _) => vec![xs],
         ListExpr::Concat(a, b) => vec![a, b],
         ListExpr::Copy(xs, _) => vec![xs],
-        ListExpr::Range(_) | ListExpr::Repeat(..) | ListExpr::Cycle(..) | ListExpr::Nest(..) => vec![],
+        ListExpr::Range(_) | ListExpr::Repeat(..) | ListExpr::Cycle(..) | ListExpr::Nest(..) | ListExpr::Osc(_) => vec![],
     };
     for (i, k) in kids.into_iter().enumerate() {
         let mut p = here.clone();
@@ -559,7 +644,7 @@ fn closed(e: &ListExpr, scope: &mut Vec<String>) -> bool {
         ListExpr::Concat(a, b) => closed(a, scope) && closed(b, scope),
         ListExpr::Copy(xs, _) => closed(xs, scope),
         ListExpr::Cycle(_, elems, _) => elems.iter().all(|e| int_closed(e, scope)),
-        ListExpr::Nest(..) => true,
+        ListExpr::Nest(..) | ListExpr::Osc(_) => true,
     }
 }
 
@@ -604,7 +689,9 @@ fn freshen(e: &mut ListExpr, tag: &str) {
         ListExpr::Copy(xs, _) => freshen(xs, tag),
         // The bound variable is used only in the rendering, never in `elems`.
         ListExpr::Cycle(v, ..) | ListExpr::Nest(v, ..) => *v = format!("{v}{tag}"),
-        ListExpr::Range(_) | ListExpr::Repeat(..) => {}
+        // The oscillator binds `p`, `c`, `q` and `v` only inside its own text,
+        // and names nothing from outside, so it needs no renaming.
+        ListExpr::Range(_) | ListExpr::Repeat(..) | ListExpr::Osc(_) => {}
     }
 }
 
@@ -658,6 +745,11 @@ pub mod bounds {
     pub const NEST_COUNT: (u64, u64) = (2, 12);
     pub const NEST_MOD: (u64, u64) = (2, 8);
     pub const FILTER_MOD: (u64, u64) = (2, 7);
+    /// Values an oscillator emits (plan P5b): the scan runs `n − 1` steps over `range(n − 1)`.
+    pub const OSC_LEN: (u64, u64) = (2, MAX_LEN + 1);
+    /// Shift of the oscillator's `>>`. Coefficients are checked against it:
+    /// `a <= 2^(k+1)` and `b < 2^k`.
+    pub const OSC_SHIFT: (u64, u64) = (1, 6);
 }
 
 /// One example of each production, rendered by this module's own renderers, in
@@ -785,12 +877,12 @@ impl Program {
 /// a leaf; at deeper levels there are none. Integer operators stop two levels
 /// below the list depth limit.
 fn check_list_depth(e: &ListExpr, d: usize) -> Result<(), String> {
-    let leaf = matches!(e, ListExpr::Range(_) | ListExpr::Repeat(..) | ListExpr::Cycle(..) | ListExpr::Nest(..));
+    let leaf = matches!(e, ListExpr::Range(_) | ListExpr::Repeat(..) | ListExpr::Cycle(..) | ListExpr::Nest(..) | ListExpr::Osc(_));
     if d > MAX_DEPTH || (d == MAX_DEPTH && !leaf) {
         return Err(format!("nested deeper than MAX_DEPTH = {MAX_DEPTH}"));
     }
     match e {
-        ListExpr::Range(_) | ListExpr::Cycle(..) | ListExpr::Nest(..) => Ok(()),
+        ListExpr::Range(_) | ListExpr::Cycle(..) | ListExpr::Nest(..) | ListExpr::Osc(_) => Ok(()),
         ListExpr::Repeat(i, _) => check_int_depth(i, d + 1),
         ListExpr::Map(xs, _, b) => {
             check_list_depth(xs, d + 1)?;
@@ -962,6 +1054,9 @@ impl<'a> Parser<'a> {
     }
 
     fn list_atom(&mut self, scope: &[String]) -> Result<ListExpr, String> {
+        if let Some(o) = self.oscillator()? {
+            return Ok(ListExpr::Osc(o));
+        }
         if self.eat("[") {
             let e = self.int(scope)?;
             self.expect(";")?;
@@ -984,6 +1079,131 @@ impl<'a> Parser<'a> {
             "flatten" => self.flatten(scope),
             other => Err(format!("unknown list expression `{other}` at byte {at}")),
         }
+    }
+
+    /// An oscillator, if the text starts with one. The opening is a lookahead:
+    /// nothing is consumed unless `range(m).scan((` and a literal and a comma
+    /// follow, since a generic `scan` takes an integer init, and `(5 % 3)` is
+    /// one. From there the text is committed, so a malformed oscillator is
+    /// refused with its reason.
+    fn oscillator(&mut self) -> Result<Option<Oscillator>, String> {
+        let save = self.pos;
+        match self.oscillator_opening() {
+            Some(m) => self.oscillator_body(m).map(Some),
+            None => {
+                self.pos = save;
+                Ok(None)
+            }
+        }
+    }
+
+    /// `range(m).scan((` followed by a literal and a comma: `Some(m)`, with the
+    /// text consumed through the `((`. `None` if it is not that.
+    fn oscillator_opening(&mut self) -> Option<u64> {
+        if !(self.eat("range") && self.eat("(")) {
+            return None;
+        }
+        self.skip_ws();
+        let rest = self.rest();
+        let n = rest.find(|c: char| !c.is_ascii_digit()).unwrap_or(rest.len());
+        if n == 0 || (n > 1 && rest.starts_with('0')) {
+            return None;
+        }
+        let m: u64 = rest[..n].parse().ok()?;
+        self.pos += n;
+        if !(self.eat(")") && self.eat(".") && self.eat("scan") && self.eat("(") && self.eat("(")) {
+            return None;
+        }
+        self.skip_ws();
+        let rest = self.rest();
+        let d = rest.find(|c: char| !c.is_ascii_digit()).unwrap_or(rest.len());
+        if d == 0 || !rest[d..].trim_start().starts_with(',') {
+            return None;
+        }
+        Some(m)
+    }
+
+    /// The rest of an oscillator, after its opening. Every token is fixed by
+    /// [`Oscillator::render`]; the literals are bounded, and so are the
+    /// coefficients against the shift.
+    fn oscillator_body(&mut self, m: u64) -> Result<Oscillator, String> {
+        if !(bounds::RANGE.0..=bounds::RANGE.1).contains(&m) {
+            return Err(format!("range length {m} is outside the grammar's {:?}", bounds::RANGE));
+        }
+        let x1 = self.number(bounds::LITERAL, "oscillator start")?;
+        self.expect(",")?;
+        let x0 = self.number(bounds::LITERAL, "oscillator start")?;
+        self.expect(")")?;
+        self.expect(",")?;
+        self.expect("|")?;
+        self.expect("p")?;
+        self.expect(",")?;
+        self.expect("v")?;
+        self.expect("|")?;
+        self.expect("{")?;
+        self.expect("val")?;
+        self.expect("(")?;
+        self.expect("c")?;
+        self.expect(",")?;
+        self.expect("q")?;
+        self.expect(")")?;
+        self.expect("=")?;
+        self.expect("p")?;
+        self.expect(";")?;
+        self.expect("(")?;
+        self.expect("(")?;
+        self.expect("wrapping_sub")?;
+        self.expect("(")?;
+        self.expect("wrapping_mul")?;
+        self.expect("(")?;
+        let a = self.number(bounds::LITERAL, "oscillator coefficient")?;
+        self.expect(",")?;
+        self.expect("c")?;
+        self.expect(")")?;
+        self.expect(",")?;
+        self.expect("wrapping_mul")?;
+        self.expect("(")?;
+        let b = self.number(bounds::LITERAL, "oscillator coefficient")?;
+        self.expect(",")?;
+        self.expect("q")?;
+        self.expect(")")?;
+        self.expect(")")?;
+        self.expect(">>")?;
+        let k = self.number(bounds::OSC_SHIFT, "oscillator shift")?;
+        self.expect(")")?;
+        self.expect(",")?;
+        self.expect("c")?;
+        self.expect(")")?;
+        self.expect("}")?;
+        self.expect(")")?;
+        self.expect(".")?;
+        self.expect("map")?;
+        self.expect("(")?;
+        self.expect("|")?;
+        self.expect("p")?;
+        self.expect("|")?;
+        self.expect("{")?;
+        self.expect("val")?;
+        self.expect("(")?;
+        self.expect("c")?;
+        self.expect(",")?;
+        self.expect("q")?;
+        self.expect(")")?;
+        self.expect("=")?;
+        self.expect("p")?;
+        self.expect(";")?;
+        self.expect("c")?;
+        self.expect("}")?;
+        self.expect(")")?;
+        // The stability bounds, as the sampler draws them: |a / 2^k| <= 2 and
+        // the roots inside the unit circle, b / 2^k < 1.
+        if a > 1u64 << (k + 1) {
+            return Err(format!("oscillator coefficient a = {a} is above 2^(k+1) = {}", 1u64 << (k + 1)));
+        }
+        if b >= 1u64 << k {
+            return Err(format!("oscillator coefficient b = {b} is not below 2^k = {}", 1u64 << k));
+        }
+        Ok(Oscillator { n: m + 1, x1, x0, a, b, k })
     }
 
     /// `flatten(…)` is nested counting, concatenation or copying.
@@ -1406,6 +1626,190 @@ mod tests {
         assert!(Program::parse(&format!("range(3).map(|x| {})", adds(6))).is_ok());
         let deep = Program::parse(&format!("range(3).map(|x| {})", adds(7))).expect_err("seven adds");
         assert!(deep.contains("integer expression nested deeper"), "{deep}");
+    }
+
+    /// FNV-1a over the source of every program sampled, mutated and crossed
+    /// from the default policy under seeds 1-3. The value was taken from the
+    /// arena before the second-order production existed, so a change to
+    /// sampling with the flag off shows up here as a different hash.
+    #[test]
+    fn with_the_flag_off_sampling_is_bit_identical_to_before_p5b() {
+        let policy = Policy::with_second_order(false);
+        assert_eq!(policy.list_logits.len(), LIST_RULES.len());
+        assert!(!policy.second_order());
+        let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+        let mut feed = |s: &str| {
+            for b in s.bytes() {
+                h ^= b as u64;
+                h = h.wrapping_mul(0x0000_0100_0000_01b3);
+            }
+            h ^= 0xff;
+            h = h.wrapping_mul(0x0000_0100_0000_01b3);
+        };
+        for seed in [1u64, 2, 3] {
+            let mut rng = Rng(seed);
+            for _ in 0..300 {
+                let (p, _) = policy.sample(&mut rng);
+                feed(&p.source());
+                let (q, _) = policy.sample(&mut rng);
+                feed(&mutate(&p, &policy, &mut rng).source());
+                feed(&crossover(&p, &q, &mut rng).source());
+            }
+        }
+        assert_eq!(h, 0x8cf8_ad38_8c05_87e3, "sampling changed with the flag off");
+    }
+
+    /// The reference recurrence, in plain integers, with the same floor shift.
+    fn reference(o: &Oscillator) -> Vec<i64> {
+        let (mut c, mut q) = (o.x1 as i64, o.x0 as i64);
+        let mut out = vec![c];
+        for _ in 1..o.n {
+            let next = (o.a as i64 * c - o.b as i64 * q) >> o.k;
+            (c, q) = (next, c);
+            out.push(c);
+        }
+        out
+    }
+
+    /// The MAGE program's values, signed, from the evaluator directly: the
+    /// substrate's bytes are mod 256 and would hide the sign.
+    fn signed_values(p: &Program) -> Vec<i64> {
+        use mage_prototype::eval::{run_metered, Value};
+        let module = mage_prototype::parser::parse(&mage_prototype::lexer::lex(&p.source())).expect("parses");
+        let (result, _) = run_metered(&module, "gen", vec![Value::Int(0)], 1_000_000);
+        match result {
+            Ok(Value::List(xs)) => xs
+                .into_iter()
+                .map(|x| match x {
+                    Value::Int(n) => n,
+                    other => panic!("element {other} is not an integer"),
+                })
+                .collect(),
+            other => panic!("did not return a list: {other:?}"),
+        }
+    }
+
+    fn osc_program(o: Oscillator) -> Program {
+        Program { body: ListExpr::Osc(o) }
+    }
+
+    /// The oscillation a pole pair must show, checked on a hand-written instance:
+    /// `x_{t+1} = (64·x_t − 32·x_{t−1}) >> 6` has roots `0.5 ± 0.5i`, so it
+    /// spirals in with period 8 rather than decaying monotonically.
+    #[test]
+    fn an_oscillating_instance_changes_sign_at_least_twice() {
+        let o = Oscillator { n: 24, x1: 200, x0: 200, a: 64, b: 32, k: 6 };
+        let p = osc_program(o);
+        let got = signed_values(&p);
+        assert_eq!(got, reference(&o), "the MAGE output is not the recurrence");
+        let signs: Vec<bool> = got.iter().filter(|v| **v != 0).map(|v| *v > 0).collect();
+        let changes = signs.windows(2).filter(|w| w[0] != w[1]).count();
+        assert!(changes >= 2, "only {changes} sign changes in {got:?}");
+    }
+
+    #[test]
+    fn the_oscillator_renders_as_checked_mage_and_fuel_is_charged() {
+        let sub = crate::substrate::Substrate { fuel: 200_000, max_bytes: 1024 };
+        let p = osc_program(Oscillator { n: 12, x1: 100, x0: 0, a: 64, b: 32, k: 6 });
+        assert!(p.source().contains("wrapping_mul(64, c), wrapping_mul(32, q)) >> 6"), "{}", p.source());
+        let (bytes, fuel) = match sub.run(&p.source(), 1) {
+            crate::substrate::Outcome::Bytes { bytes, fuel_used } => (bytes, fuel_used),
+            other => panic!("{other:?}\n{}", p.source()),
+        };
+        assert_eq!(bytes.len(), 12, "n values come out");
+        assert!(fuel > 0, "fuel is charged");
+        let longer = osc_program(Oscillator { n: 48, x1: 100, x0: 0, a: 64, b: 32, k: 6 });
+        let more = match sub.run(&longer.source(), 1) {
+            crate::substrate::Outcome::Bytes { fuel_used, .. } => fuel_used,
+            other => panic!("{other:?}"),
+        };
+        assert!(more > fuel, "fuel grows with the steps: {more} vs {fuel}");
+        let starved = crate::substrate::Substrate { fuel: 5, max_bytes: 1024 };
+        assert!(matches!(starved.run(&p.source(), 1), crate::substrate::Outcome::Refused(crate::substrate::Refusal::Fuel, _)));
+    }
+
+    #[test]
+    fn the_oscillator_round_trips_and_is_refused_out_of_bounds() {
+        let o = Oscillator { n: 12, x1: 100, x0: 7, a: 64, b: 32, k: 6 };
+        assert_round_trips(&osc_program(o));
+        let refused = |src: &str| Program::parse(src).expect_err(src);
+        let text = |o: &Oscillator| osc_program(*o).source();
+        let bad_b = Oscillator { b: 64, ..o };
+        assert!(refused(&text(&bad_b)).contains("not below 2^k"), "{}", refused(&text(&bad_b)));
+        let bad_a = Oscillator { a: 129, ..o };
+        assert!(refused(&text(&bad_a)).contains("above 2^(k+1)"));
+        let bad_k = Oscillator { k: 7, ..o };
+        assert!(refused(&text(&bad_k)).contains("oscillator shift 7"));
+        let bad_x = Oscillator { x1: 256, ..o };
+        assert!(refused(&text(&bad_x)).contains("oscillator start 256"));
+    }
+
+    #[test]
+    fn sampled_oscillators_are_bounded_stable_and_round_trip() {
+        let policy = Policy::with_second_order(true);
+        assert!(policy.second_order());
+        let mut rng = Rng(2027);
+        let (mut osc, mut oscillating) = (0usize, 0usize);
+        for _ in 0..3000 {
+            let (p, _) = policy.sample(&mut rng);
+            assert!(check_list_depth(&p.body, 0).is_ok(), "sampled too deep: {}", p.source());
+            assert_round_trips(&p);
+            let (q, _) = policy.sample(&mut rng);
+            for v in [mutate(&p, &policy, &mut rng), crossover(&p, &q, &mut rng)] {
+                if check_list_depth(&v.body, 0).is_ok() {
+                    assert_round_trips(&v);
+                }
+            }
+            let mut found = Vec::new();
+            oscillators_in(&p.body, &mut found);
+            for o in found {
+                osc += 1;
+                assert!((bounds::OSC_LEN.0..=bounds::OSC_LEN.1).contains(&o.n));
+                assert!((bounds::OSC_SHIFT.0..=bounds::OSC_SHIFT.1).contains(&o.k));
+                assert!(o.a <= 1 << (o.k + 1) && o.b < 1 << o.k, "{o:?}");
+                // Complex roots: (a/2^k)^2 < 4 b/2^k, written without division.
+                if o.a * o.a < (4 * o.b) << o.k {
+                    oscillating += 1;
+                }
+            }
+        }
+        assert!(osc > 100, "the second-order production was drawn only {osc} times");
+        assert!(oscillating * 10 > osc, "only {oscillating} of {osc} can oscillate");
+    }
+
+    fn oscillators_in(e: &ListExpr, out: &mut Vec<Oscillator>) {
+        match e {
+            ListExpr::Osc(o) => out.push(*o),
+            ListExpr::Map(xs, ..)
+            | ListExpr::Scan(xs, ..)
+            | ListExpr::Filter(xs, ..)
+            | ListExpr::Reverse(xs)
+            | ListExpr::Sort(xs)
+            | ListExpr::Take(xs, _)
+            | ListExpr::Copy(xs, _) => oscillators_in(xs, out),
+            ListExpr::Concat(a, b) => {
+                oscillators_in(a, out);
+                oscillators_in(b, out);
+            }
+            ListExpr::Range(_) | ListExpr::Repeat(..) | ListExpr::Cycle(..) | ListExpr::Nest(..) => {}
+        }
+    }
+
+    #[test]
+    fn the_second_order_policy_still_clears_the_static_gates() {
+        let policy = Policy::with_second_order(true);
+        let sub = crate::substrate::Substrate { fuel: 50_000, max_bytes: 256 };
+        let mut rng = Rng(5);
+        let mut bad = Vec::new();
+        for _ in 0..300 {
+            let (p, _) = policy.sample(&mut rng);
+            if let crate::substrate::Outcome::Refused(r, why) = sub.run(&p.source(), 3) {
+                if matches!(r, crate::substrate::Refusal::Parse | crate::substrate::Refusal::Signature | crate::substrate::Refusal::Type) {
+                    bad.push(format!("{r:?}: {why}"));
+                }
+            }
+        }
+        assert!(bad.is_empty(), "{bad:?}");
     }
 
     #[test]
