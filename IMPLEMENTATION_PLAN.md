@@ -149,7 +149,7 @@ The yardstick everything later is judged by, so it goes first.
   - SSMs are discretised ODEs, a natural fit for physics.
   - Done when `--learners ssm:...` runs and is gradient-checked against
     central differences.
-- [ ] **L3** Learner comparison. **M**
+- [x] **L3** Learner comparison. **M** *Done: `arena measure-curves` over the physics-baseline curves, n-gram as reference, bytes and seconds axes. On physics the SSM needs 0.43 to 0.51 of the n-gram's bytes on the double pendulum and pendulum (per-seed sd 0.03 and 0.14) and 1.29 on n-body at a reachable target; the entropy learner ties the n-gram on physics (about 1.00) despite its text and code advantage. Nothing is advantaged on physics but not text; see the L3 section of MEASUREMENTS.md.*
   - Use M2's joule multipliers for n-gram, transformer, L1 and L2, on text,
     code and each physics system, 6 seeds each.
   - Done when the table is in MEASUREMENTS.md, with the loss-to-loss fits

@@ -14,7 +14,8 @@
 //!       [--json <out.json>]
 //! arena physics-baseline [--system pendulum|spring|double_pendulum|nbody|bounce|none] [--steps N]
 //!       [--seed S] [--budget BYTES] [--learners SPEC,…] [--encoding i32|coarse|planes|diff2]
-//!       [--text-train <file> --text-heldout <file>]
+//!       [--text-train <file> --text-heldout <file>] [--json OUT]
+//! arena measure-curves [--target T] [--json OUT] <curves.json | dir>…
 //! ```
 //!
 //! Held-out files are read once, hashed, and never shown to an agent. A
@@ -24,11 +25,14 @@
 //! The summary goes to stderr; `--json` writes the full report.
 //!
 //! `physics-baseline` trains each learner directly on physics trajectories,
-//! outside the loop, and prints its learning curve (plan P4).
+//! outside the loop, and prints its learning curve (plan P4). `--json` writes
+//! every curve, with per-checkpoint wall-clock seconds, for `measure-curves`,
+//! which prints the compute multipliers against the n-gram (plan L3).
 
 use arena::arena::{meters_for, run, Config, Corpus};
 use arena::learner::{EntropyConfig, LearnerConfig, LearnerSpec, SsmConfig, TransformerConfig};
 use arena::physics::{self, Encoding, System, SYSTEMS};
+use arena::transfer;
 
 fn fail(msg: impl std::fmt::Display) -> ! {
     eprintln!("arena: {msg}");
@@ -144,6 +148,7 @@ fn physics_baseline_cmd(args: &[String]) {
     let mut text_train: Option<String> = None;
     let mut text_heldout: Option<String> = None;
     let mut encoding = Encoding::I32;
+    let mut json_out: Option<String> = None;
     let mut i = 0;
     while i < args.len() {
         let v = args.get(i + 1).map(String::as_str).unwrap_or_else(|| fail(format!("{} needs a value", args[i])));
@@ -151,6 +156,7 @@ fn physics_baseline_cmd(args: &[String]) {
             "--system" if v == "none" => systems = Vec::new(),
             "--text-train" => text_train = Some(v.to_string()),
             "--text-heldout" => text_heldout = Some(v.to_string()),
+            "--json" => json_out = Some(v.to_string()),
             "--system" => {
                 systems = vec![System::from_spec_name(v).unwrap_or_else(|| {
                     let names: Vec<&str> = SYSTEMS.iter().map(|s| s.spec_name()).collect();
@@ -218,7 +224,9 @@ fn physics_baseline_cmd(args: &[String]) {
         );
     };
     let mut curves: Vec<String> = Vec::new();
+    let mut runs: Vec<transfer::CurveRun> = Vec::new();
     for spec in &learners {
+        let config = serde_json::to_value(spec).expect("a learner spec serialises");
         for &system in &systems {
             let curve = physics::physics_baseline_as(system, *spec, budget, steps, seed, encoding).unwrap_or_else(|e| fail(e));
             row(system.spec_name(), &describe(spec), &curve);
@@ -228,6 +236,14 @@ fn physics_baseline_cmd(args: &[String]) {
                 describe(spec),
                 curve.points.iter().map(|p| format!("{:.3}", p.heldout_bpb)).collect::<Vec<_>>().join(" ")
             ));
+            runs.push(transfer::CurveRun {
+                corpus: format!("physics {}", system.spec_name()),
+                seed: Some(seed),
+                encoding: Some(encoding.name().to_string()),
+                describe: describe(spec),
+                config: config.clone(),
+                checkpoints: checkpoints_of(&curve),
+            });
         }
     }
     // Text comparison: the README as raw training text, gate.rs as held-out text.
@@ -252,11 +268,39 @@ fn physics_baseline_cmd(args: &[String]) {
             describe(spec),
             curve.points.iter().map(|p| format!("{:.3}", p.heldout_bpb)).collect::<Vec<_>>().join(" ")
         ));
+        // Text does not reach `--seed`, so its curve has no seed.
+        runs.push(transfer::CurveRun {
+            corpus: label.clone(),
+            seed: None,
+            encoding: None,
+            describe: describe(spec),
+            config: serde_json::to_value(spec).expect("a learner spec serialises"),
+            checkpoints: checkpoints_of(&curve),
+        });
     }
     println!("\nlearning curves, held-out bits per byte at 0%, 10%, … 100% of the budget:");
     for c in curves {
         println!("  {c}");
     }
+    if let Some(path) = json_out {
+        let json = serde_json::to_string_pretty(&transfer::CurveFile { runs }).expect("curves serialise");
+        std::fs::write(&path, json).unwrap_or_else(|e| fail(format!("--json {path}: {e}")));
+        println!("learning curves written to {path}");
+    }
+}
+
+/// A learning curve's checkpoints, as the curve file records them.
+fn checkpoints_of(curve: &physics::Curve) -> Vec<transfer::CurveCheckpoint> {
+    curve
+        .points
+        .iter()
+        .map(|p| transfer::CurveCheckpoint {
+            bytes_trained: p.bytes_trained,
+            train_bpb: p.train_bpb,
+            heldout_bpb: p.heldout_bpb,
+            seconds: p.seconds,
+        })
+        .collect()
 }
 
 fn prior_lz(n: usize, sub: arena::substrate::Substrate) {
@@ -297,6 +341,13 @@ fn main() {
     // `arena measure …` reads run reports and prints fits and multipliers (plan M1–M2).
     if args.first().map(String::as_str) == Some("measure") {
         if let Err(e) = arena::transfer::measure_cli(&args[1..]) {
+            fail(e);
+        }
+        return;
+    }
+    // `arena measure-curves …` reads physics-baseline curves and prints multipliers against the n-gram (plan L3).
+    if args.first().map(String::as_str) == Some("measure-curves") {
+        if let Err(e) = arena::transfer::measure_curves_cli(&args[1..]) {
             fail(e);
         }
         return;

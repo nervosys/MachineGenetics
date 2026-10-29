@@ -1185,6 +1185,9 @@ pub struct CurvePoint {
     pub train_bpb: f64,
     /// Bits per byte on the first [`BASELINE_EVAL_BYTES`] of the held-out corpus.
     pub heldout_bpb: f64,
+    /// Wall-clock seconds spent in train steps so far, evaluation excluded.
+    /// Noisy on a shared machine, so it is a cost reading, not a constant.
+    pub seconds: f64,
 }
 
 /// A learning curve, and the order-0 (byte-frequency) entropy of the evaluation
@@ -1245,18 +1248,22 @@ pub fn learning_curve(
     let hw = &heldout[..heldout.len().min(BASELINE_EVAL_BYTES)];
     let mut points = Vec::with_capacity(BASELINE_CHECKPOINTS + 1);
     let mut done = 0usize;
+    let mut seconds = 0.0f64;
     for k in 0..=BASELINE_CHECKPOINTS {
         let target = steps * k / BASELINE_CHECKPOINTS;
+        let began = std::time::Instant::now();
         while done < target {
             let start = done * per_step;
             let batch_slices: Vec<&[u8]> = (0..batch).map(|i| &train[start + i * chunk..start + (i + 1) * chunk]).collect();
             learner.train(&batch_slices);
             done += 1;
         }
+        seconds += began.elapsed().as_secs_f64();
         points.push(CurvePoint {
             bytes_trained: learner.bytes_seen(),
             train_bpb: learner.bits_per_byte(tw),
             heldout_bpb: learner.bits_per_byte(hw),
+            seconds,
         });
     }
     Ok(Curve { points, train_order0_bpb: order0_bits_per_byte(tw), heldout_order0_bpb: order0_bits_per_byte(hw) })
@@ -1931,5 +1938,18 @@ mod tests {
         assert!(last.train_bpb.is_finite() && last.heldout_bpb.is_finite());
         assert!(last.train_bpb < 8.0, "train bpb {} is not below uniform", last.train_bpb);
         assert!(last.bytes_trained as usize >= budget);
+    }
+
+    #[test]
+    fn a_curve_records_cumulative_train_seconds_at_every_checkpoint() {
+        // Plan L3: the seconds axis. Zero before any training, then never falling,
+        // and the last value is the run's whole training time.
+        let spec = LearnerSpec::Ngram(crate::learner::LearnerConfig { orders: 2, log2_buckets: 8, lr: 0.05 });
+        let budget = BASELINE_CHUNK * BASELINE_BATCH * BASELINE_CHECKPOINTS;
+        let points = physics_baseline(System::Pendulum, spec, budget, 200, 1).expect("runs").points;
+        assert!(points[0].seconds < 1e-2, "nothing is trained at the start, so no time is spent: {}", points[0].seconds);
+        assert!(points.windows(2).all(|w| w[1].seconds >= w[0].seconds), "seconds fall: {points:?}");
+        let last = points.last().expect("points");
+        assert!(last.seconds > 0.0 && last.seconds.is_finite(), "{}", last.seconds);
     }
 }
