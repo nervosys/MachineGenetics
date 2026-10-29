@@ -1425,6 +1425,16 @@ Two findings:
 
 Arena +4 tests.
 
+**Implementation plan S3: the description-length charge stays in MAGE lexer
+tokens.**
+- Tokens track cl100k BPE to 0.2% (S2), and to 0.998 against Rust (phase 49).
+- Bytes differ from tokens only by a 4% surface bias.
+- Learner bits is minimum description length proper, but L1 and L3 show
+  learners are not yet stable enough to price programs with.
+
+The reasoning and its limits are in UNIFICATION.md, "The description-length
+unit". `--length-unit bytes` stays available. Docs only.
+
 **Pre-existing, not from this change:** `cargo clippy` 0.1.98 (2026-09-01)
 reports 15 warnings in `prototype` — 14 `chunks_exact` with a constant size in
 `abl_compute.rs` and older parts of `main.rs`, one collapsible `if` in
