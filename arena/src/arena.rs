@@ -616,7 +616,7 @@ fn command_agent(id: String, cfg: &Config) -> Result<CommandAgent, String> {
         .filter(|argv| !argv.is_empty())
         .ok_or_else(|| "agent kind `command` needs --proposer-command \"<cmd> <args...>\"".to_string())?;
     let timeout = Duration::from_secs(cfg.proposer_timeout_s);
-    Ok(CommandAgent::new(id, Box::new(CommandBackend { argv, timeout })))
+    Ok(CommandAgent::with_second_order(id, Box::new(CommandBackend { argv, timeout }), cfg.second_order))
 }
 
 fn build_agents(cfg: &Config) -> Result<Vec<Box<dyn Proposer>>, String> {

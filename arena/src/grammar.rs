@@ -854,15 +854,26 @@ pub fn production_examples() -> (Vec<(&'static str, String)>, Vec<(&'static str,
     )
 }
 
+/// The second-order production's example (P5b), rendered by its own renderer.
+/// [`describe_grammar`] names it only when the policy has it on.
+pub fn second_order_example() -> String {
+    let mut s = String::new();
+    ListExpr::Osc(Oscillator { n: 12, x1: 100, x0: 7, a: 64, b: 32, k: 6 }).render(&mut s);
+    s
+}
+
 /// The grammar as a proposer is told it: every production as its rendered
 /// example, and the bounds. Generated from [`production_examples`] and
 /// [`bounds`], never written out by hand.
-pub fn describe_grammar() -> String {
+pub fn describe_grammar(second_order: bool) -> String {
     let (lists, ints) = production_examples();
     let range = |(lo, hi): (u64, u64)| format!("{lo}..={hi}");
     let mut s = String::from("A body is one list expression over the seed `s`. Its forms, one example each:\n");
     for (name, text) in &lists {
         s.push_str(&format!("  {name:<8} {text}\n"));
+    }
+    if second_order {
+        s.push_str(&format!("  {SECOND_ORDER_RULE:<8} {}\n", second_order_example()));
     }
     s.push_str("Integer expressions, inside any of them:\n");
     for (name, text) in &ints {
@@ -884,6 +895,9 @@ pub fn describe_grammar() -> String {
         range(bounds::NEST_MOD),
         range(bounds::FILTER_MOD),
     ));
+    if second_order {
+        s.push_str(&format!("The second-order form `{SECOND_ORDER_RULE}` is the only one whose values can oscillate: it emits values in {}, its start values are literals {}, its shift is {}, and its coefficient a is at most 2^(k+1) and b below 2^k. Write it as its example, with the numbers changed within these bounds.\n", range(bounds::OSC_LEN), range(bounds::LITERAL), range(bounds::OSC_SHIFT)));
+    }
     s
 }
 
@@ -903,7 +917,17 @@ impl Program {
     /// It does not judge meaning. A text that parses here can still be refused
     /// by the substrate, for fuel or types. That is the gate's job.
     pub fn parse(src: &str) -> Result<Program, String> {
-        let mut p = Parser { src, pos: 0, nest: 0 };
+        Program::parse_with(src, true)
+    }
+
+    /// [`Program::parse`], read under a policy: with `second_order` off, an
+    /// oscillator is refused, as the prompt for that policy does not name it.
+    pub fn parse_for_policy(src: &str, second_order: bool) -> Result<Program, String> {
+        Program::parse_with(src, second_order)
+    }
+
+    fn parse_with(src: &str, second_order: bool) -> Result<Program, String> {
+        let mut p = Parser { src, pos: 0, nest: 0, second_order };
         let scope = ["s".to_string()];
         let body = if src.trim_start().starts_with('@') {
             for tok in ["@role", "(", "candidate", ")", "f", "gen", "(", "s", ":", "usize", ")", "->", "[", "usize", "]", "{"] {
@@ -976,6 +1000,8 @@ struct Parser<'a> {
     src: &'a str,
     pos: usize,
     nest: usize,
+    /// Whether `osc` is in the policy the text is read under (P5b).
+    second_order: bool,
 }
 
 impl<'a> Parser<'a> {
@@ -1137,6 +1163,7 @@ impl<'a> Parser<'a> {
     fn oscillator(&mut self) -> Result<Option<Oscillator>, String> {
         let save = self.pos;
         match self.oscillator_opening() {
+            Some(_) if !self.second_order => Err(self.error("the second-order production is not in this policy")),
             Some(m) => self.oscillator_body(m).map(Some),
             None => {
                 self.pos = save;
@@ -1905,6 +1932,80 @@ mod tests {
         assert!(bad.is_empty(), "{bad:?}");
     }
 
+    const GOLDEN_OFF: &str = concat!(
+        "A body is one list expression over the seed `s`. Its forms, one example each:\n",
+        "  range    range(8)\n",
+        "  repeat   [3; 4]\n",
+        "  map      range(4).map(|x| wrapping_mul(x, 3))\n",
+        "  scan     range(4).scan(s, |a, x| wrapping_add(a, x))\n",
+        "  filter   range(8).filter(|x| x % 3 == 1)\n",
+        "  reverse  range(5).reverse()\n",
+        "  sort     range(5).sort()\n",
+        "  take     range(9).take(4)\n",
+        "  concat   flatten([range(3), range(2)])\n",
+        "  copy     flatten([range(3); 2])\n",
+        "  cycle    range(6).map(|v| [1, s, 0][v % 3])\n",
+        "  nest     flatten(range(4).map(|v| range(v % 3 + 1)))\n",
+        "Integer expressions, inside any of them:\n",
+        "  lit      7\n",
+        "  var      s\n",
+        "  add      wrapping_add(s, 3)\n",
+        "  sub      wrapping_sub(s, 3)\n",
+        "  mul      wrapping_mul(s, 3)\n",
+        "  mod      (s % 5)\n",
+        "Bounds: range and take lengths 1..=48; repeat lengths 1..=12; literals 0..=255; modulus 2..=256; cycle templates have 2..=6 elements and length 4..=48; copy counts 2..=6; nest counts 2..=12 and moduli 2..=8; filter moduli 2..=7. Lists nest at most 5 levels deep. Every variable must be `s` or a closure parameter in scope.\n",
+    );
+
+    /// With the second-order production off, the prompt is the text it was before
+    /// the production existed, byte for byte (captured from the pre-P5b-flag output).
+    #[test]
+    fn the_grammar_description_with_the_second_order_off_is_unchanged() {
+        assert_eq!(describe_grammar(false), GOLDEN_OFF);
+        assert!(!describe_grammar(false).contains("osc"));
+    }
+
+    /// With it on, the description adds the production, its example and its bounds,
+    /// and changes nothing else; the example the proposer is shown parses under the policy.
+    #[test]
+    fn the_grammar_description_with_the_second_order_on_names_the_oscillator_and_its_example_parses() {
+        let on = describe_grammar(true);
+        for line in GOLDEN_OFF.lines() {
+            assert!(on.contains(line), "the on-description lost the line {line:?}");
+        }
+        let example = second_order_example();
+        let line = on.lines().find(|l| l.starts_with("  osc ")).expect("the osc line is named");
+        assert_eq!(line, format!("  {SECOND_ORDER_RULE:<8} {example}"));
+        assert!(on.contains("second-order form `osc`"));
+        let parsed = Program::parse_for_policy(&example, true).expect("the example parses");
+        assert!(matches!(parsed.body, ListExpr::Osc(_)));
+        let refused = Program::parse_for_policy(&example, false).expect_err("off refuses osc");
+        assert!(refused.contains("not in this policy"), "{refused}");
+    }
+
+    /// Programs sampled under each policy round-trip through `source()` under that
+    /// policy, and the off policy never writes an oscillator to begin with.
+    #[test]
+    fn programs_sampled_under_each_policy_round_trip_under_that_policy() {
+        let on = Policy::with_second_order(true);
+        let mut oscillators = 0;
+        for seed in 1..=400u64 {
+            let (p, _) = on.sample(&mut Rng(seed));
+            let mut found = Vec::new();
+            oscillators_in(&p.body, &mut found);
+            oscillators += found.len();
+            assert_eq!(Program::parse_for_policy(&p.source(), true), Ok(p.clone()), "{}", p.source());
+        }
+        assert!(oscillators > 0, "no sampled program had an oscillator in 400 draws");
+        let off = Policy::with_second_order(false);
+        for seed in 1..=400u64 {
+            let (p, _) = off.sample(&mut Rng(seed));
+            let mut found = Vec::new();
+            oscillators_in(&p.body, &mut found);
+            assert!(found.is_empty(), "the off policy wrote an oscillator: {}", p.source());
+            assert_eq!(Program::parse_for_policy(&p.source(), false), Ok(p.clone()), "{}", p.source());
+        }
+    }
+
     #[test]
     fn the_prompt_grammar_names_every_production_and_its_examples_parse() {
         let (lists, ints) = production_examples();
@@ -1919,7 +2020,7 @@ mod tests {
             let wrapped = format!("range(3).map(|x| {text})");
             assert!(Program::parse(&wrapped).is_ok(), "{wrapped}");
         }
-        let described = describe_grammar();
+        let described = describe_grammar(false);
         for name in LIST_RULES.iter().chain(INT_RULES.iter()) {
             assert!(described.contains(name), "{name} missing from the description");
         }
