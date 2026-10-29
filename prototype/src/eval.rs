@@ -515,7 +515,7 @@ impl Interp {
                         "contract violated: `{}` of `{}` ({}) is false: `{}` called with {}",
                         clause.display(),
                         fd.name,
-                        clause.origin,
+                        clause.located_origin(),
                         fd.name,
                         shown.join(", ")
                     ));
@@ -541,7 +541,7 @@ impl Interp {
                     "contract violated: `{}` of `{}` ({}) is false: `{}` returned {}",
                     clause.display(),
                     fd.name,
-                    clause.origin,
+                    clause.located_origin(),
                     fd.name,
                     v
                 ));

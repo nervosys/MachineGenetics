@@ -78,3 +78,21 @@ fn unadjudicated_contracts_raise_nothing() {
     assert!(!stdout.contains("E0560"), "got:\n{stdout}");
     assert_eq!(code, 0, "got:\n{stdout}");
 }
+
+#[test]
+fn refuted_ens_reports_e0560_at_its_line_and_column() {
+    // `@ens(false)` is on line 5, column 5: four spaces, then the `@`.
+    let src = "sp fine {\n    @req(xs.len() >= 0)\n}\nsp never {\n    @ens(false)\n}\n";
+    let (stdout, _, _) = check("located", src, &["--check", "--json"]);
+    let v: serde_json::Value = serde_json::from_str(&stdout).expect("--json emits JSON");
+    let hit = v["diagnostics"]
+        .as_array()
+        .expect("diagnostics array")
+        .iter()
+        .find(|d| d["code"] == "E0560")
+        .unwrap_or_else(|| panic!("one E0560; got:\n{stdout}"));
+    assert_eq!((hit["line"].as_u64(), hit["col"].as_u64()), (Some(5), Some(5)), "got:\n{stdout}");
+
+    let (_, stderr2, _) = check("located-human", src, &["--check"]);
+    assert!(stderr2.contains("5:5:") && stderr2.contains("`spec.never`"),"the human stream names the clause; got:\n{stderr2}");
+}

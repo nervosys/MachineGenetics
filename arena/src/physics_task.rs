@@ -321,7 +321,7 @@ mod tests {
 
     /// The clause a contract refusal quotes, as `prototype/tests/physics_task.rs` has it.
     const CLAUSE: &str = "`@ens(abs(energy(result, k) - e0) <= DRIFT * e0, \
-                          \"energy stays within DRIFT of its initial value\")` of `advance` (sp advance)";
+                          \"energy stays within DRIFT of its initial value\")` of `advance` (sp advance, line 42:5)";
 
     #[test]
     fn explicit_euler_is_refused_at_the_step_that_crosses_the_bound() {
