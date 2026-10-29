@@ -403,6 +403,10 @@ const CLI_FLAGS: &[(&str, &str, bool)] = &[
         true),
     // ── Running and inspecting ────────────────────────────────────────
     ("--eval", "Evaluate the module and print the value of `main` (or of the named function). The second oracle: a program can typecheck and fail to run, and the reverse.", true),
+    ("--solve", "Minimise (or with --max, maximise) a function over the box given by its @param consts; prints the Solution JSON naming the solver (ProjectedGradient when certified convex or concave, else Es) and why. Takes [--fuel N] [--seed S].", true),
+    ("--max", "With `--solve`: maximise the objective instead of minimising it.", false),
+    ("--fuel", "With `--solve`: the fuel budget for the search (default 1000000). Takes a whole number after it.", false),
+    ("--seed", "With `--solve`: the seed for the evolution strategy (default 0). Takes a whole number after it.", false),
     ("--version", "Print the compiler version. Ribosome keys its registry on this string.", false),
     ("--manifest", "Print the tool manifest: version, capabilities, and the flag surface.", false),
     ("--rain", "Render the source as MAGE digital rain (a display, not an analysis).", true),

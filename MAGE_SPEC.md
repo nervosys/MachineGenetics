@@ -1810,7 +1810,8 @@ over a box of `Real` parameters. Its choice follows the convexity certificate:
 Each run returns a `Solution` that records the solver, the reason, the point,
 the value, and the evaluations and fuel spent. Its JSON form is the journal
 entry for the run. Fuel, from `eval::run_metered`, is the cost measure for both
-solvers.
+solvers. `mage-parse --solve <file.mg|-> <fn> [--max] [--fuel N] [--seed S]`
+solves a function over its `@param` box and prints that JSON record.
 
 ---
 

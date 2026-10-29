@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,266** — rmi 1,384 · prototype 1,400 · ribosome 168 · germline 175 · forge 63 · arena 76 |
+| Tests | **3,271** — rmi 1,384 · prototype 1,405 · ribosome 168 · germline 175 · forge 63 · arena 76 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -996,6 +996,17 @@ gaps 5.4 left are closed.
 No existing entry changed shape, so earlier journals hash as they did; those
 written before this undercount their all-refused cycles. Break-checked:
 ignoring `Calibrated` on replay fails the trust test. Germline +2 tests.
+
+**Plan 6.3 follow-up: `mage-parse --solve`.** The solver had no caller outside
+its tests. `mage-parse --solve <file.mg|-> <fn> [--max] [--fuel N] [--seed S]`
+reads the domains from the `@param` consts named like the function's
+parameters, solves, and prints the `Solution` as one JSON line: the journal
+record of which solver ran and why. For example, a convex objective gives
+`{"solver":"ProjectedGradient","reason":"curvature is Convex, certified for
+minimisation, and every domain is real","x":[1.5],"value":0.0,"evals":9,
+"fuel":63}`. A parameter without a `@param` exits 1. The mode is in the
+capability manifest (`read_local`) and the ontology's flag list. Prototype +5
+tests, which spawn the binary.
 
 **Pre-existing, not from this change:** `cargo clippy` 0.1.98 (2026-09-01)
 reports 15 warnings in `prototype` — 14 `chunks_exact` with a constant size in
@@ -3535,7 +3546,7 @@ changed before you commit.
 ---
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,400**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,405**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
   across six crates **3,140**; documented-count pins **101**, up from 46 — the
   two newest hold the `kb`/`net` overlap the tensor-product-binding decision
