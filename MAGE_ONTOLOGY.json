@@ -11,12 +11,12 @@
     "framewerx_modules": 256,
     "hardware_accelerators": 8,
     "ir_ops": 107,
-    "keywords": 102,
+    "keywords": 100,
     "op_families": 7,
     "project_layout": 22,
     "rap_methods": 40,
     "recovery_stages": 7,
-    "sigils": 50,
+    "sigils": 49,
     "types": 30,
     "vocabulary": 31,
     "wrapper_protocol": 9
@@ -4003,16 +4003,6 @@
         "introduces": "KwExtern",
         "keyword": "xn",
         "summary": "reserved word → KwExtern token"
-      },
-      {
-        "introduces": "KwYield",
-        "keyword": "yield",
-        "summary": "reserved word → KwYield token"
-      },
-      {
-        "introduces": "KwYield",
-        "keyword": "yl",
-        "summary": "reserved word → KwYield token"
       }
     ],
     "layer_map": [
@@ -4940,11 +4930,6 @@
         "ast_kind": "Defer",
         "sigil": "df",
         "summary": "defer expr — run at scope exit"
-      },
-      {
-        "ast_kind": "Yield",
-        "sigil": "yl",
-        "summary": "yield expression"
       },
       {
         "ast_kind": "Mod",

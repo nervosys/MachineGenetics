@@ -96,7 +96,6 @@ fn classify_ident(text: &str) -> TokenKind {
         "loop"     => KwLoop,
         "break"    => KwBreak,
         "continue" => KwContinue,
-        "yield"    => KwYield,
         "effect"   => KwEffect,
         "handle"   => KwHandle,
         "spec"     => KwSpec,
