@@ -224,7 +224,7 @@ facts are grouped into files and namespaces. They are not classes.
 
 ### Phase 0: Preconditions
 
-- [ ] Merge the stack #38–#118, this plan included, in order (needs the user). **S**
+- [ ] Merge the stack #38–#119, this plan included, in order (needs the user). **S**
 - [ ] Settle the open questions in section 8. **S**
 - [ ] Census every module in `prototype/src` (73 files) into neural, symbolic, knowledge base, interface, or outside the design (for example `crdt.rs`, `consensus.rs`, `hot_reload.rs`). Record it in `ARCHITECTURE.md`. Outside-the-design modules are kept but not extended. **S [H]**
 
@@ -255,7 +255,7 @@ facts are grouped into files and namespaces. They are not classes.
 - [x] Conformance, generation direction: sentences sampled from the grammar facts are accepted by the kernel parser, or the mismatch is recorded as a known gap fact. *Done:* 297 of 300 sentences sampled from `kb/grammar.mg` and written out with the lexicon's spellings parse; a test holds it to 98% and requires each refusal to stop in a production the grammar marks `GAP` (`Generics`, `DoComposeBody`). The gaps are `GAP` comments plus that list, not facts yet. Getting there took quoted spellings in the EBNF (`'block'`, `'as'`, `'self'`, the train and swarm labels), so a text test in the parser is exact in the grammar. Before them, 204 of 300 parsed. Earlier: of 249 one-token deletions from the corpus that the parser rejects, the grammar rejects 243, and a test holds it to 95% (a catch-all `Module` alternative drops it to 0). Every token kind the lexer produces now has a spelling in the lexicon (171 of 181; the 10 without are named, with why), so a sampled sentence can be written out as source. **M**
 - [x] Bootstrap check: the files in `kb/` parse with the kernel and are recognised by their own grammar facts. *(They are in the corpus, `kb/grammar.mg` included.)* **S**
 - [x] Parse errors name the production they were in. `ParseError::production` is stamped by `Parser::within`, innermost first; 44 `parse_*` functions are wrapped. The CLI prints `(in StructDef)`, RAP adds a `production` field, and a test reads the names from `parser.rs` and requires each to be a production of `kb/grammar.mg`. **M**
-- [ ] Generate the `sigils`, `keywords` and `ast_kinds` sections of `ontology.rs` from the knowledge base and delete the hand tables. The JSON is byte-identical apart from the new `schema` key. **S [H]**
+- [x] Generate the `sigils`, `keywords` and `ast_kinds` sections of `ontology.rs` from the knowledge base and delete the hand tables. The JSON is byte-identical apart from the new `schema` key. **S [H]** *Done, with one difference:* `SIGILS`, `KEYWORD_DOCS` and `AST_KINDS` are gone; schema v5 adds `summary` and `sigil_row`, and `kb/grammar.mg` states the 20 `AstKind`s with the production that `parses_as` each. The `keywords` section is byte-identical (and `the_keywords_section_is_the_lexer_table` holds it to `lexer::KEYWORDS`); `sigils` and `ast_kinds` hold the same rows in name order, since facts are a set. No `schema` key was added.
 
 **Done when:** no table of tokens, keywords, sigils or productions is maintained by hand outside `kb/` and the kernel, and the kernel is held to `kb/` both ways.
 

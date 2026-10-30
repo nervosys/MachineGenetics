@@ -40,64 +40,64 @@
     },
     "ast_kinds": [
       {
-        "kind": "Function",
-        "summary": "Function definition (incl. async / unsafe variants)"
-      },
-      {
-        "kind": "Struct",
-        "summary": "Struct definition (`struct` / `S`)"
-      },
-      {
-        "kind": "Enum",
-        "summary": "Enum definition (`enum` / `E`)"
-      },
-      {
-        "kind": "Data",
-        "summary": "Record or sum: `data Point(x: f64)` / `data Shape = A | B`"
-      },
-      {
-        "kind": "Trait",
-        "summary": "Trait definition"
-      },
-      {
-        "kind": "Impl",
-        "summary": "impl block: `impl Trait for Type` or `impl Type`"
-      },
-      {
-        "kind": "Extend",
-        "summary": "Methods on a type: `extend Type { … }` (`xd`)"
-      },
-      {
-        "kind": "Module",
-        "summary": "Module declaration. Parses; resolves nothing — there is no module system"
-      },
-      {
-        "kind": "Use",
-        "summary": "use import. Parses and is an ERROR — MAGE has one flat namespace (spec §2.3)"
+        "kind": "Agent",
+        "summary": "AI: agent role (Agentic Binary Language-routed)"
       },
       {
         "kind": "Const",
         "summary": "const declaration"
       },
       {
-        "kind": "Static",
-        "summary": "static declaration"
+        "kind": "Data",
+        "summary": "Record or sum: `data Point(x: f64)` / `data Shape = A | B`"
       },
       {
-        "kind": "TypeAlias",
-        "summary": "type alias"
+        "kind": "Effect",
+        "summary": "Effect declaration: `effect Name { … }` (`fx`)"
       },
       {
-        "kind": "Net",
-        "summary": "AI: neural network (Agentic Binary Language-routed)"
+        "kind": "Enum",
+        "summary": "Enum definition (`enum` / `E`)"
+      },
+      {
+        "kind": "Evolve",
+        "summary": "AI: evolutionary search (Agentic Binary Language-routed)"
+      },
+      {
+        "kind": "Extend",
+        "summary": "Methods on a type: `extend Type { … }` (`xd`)"
+      },
+      {
+        "kind": "Function",
+        "summary": "Function definition (incl. async / unsafe variants)"
+      },
+      {
+        "kind": "Impl",
+        "summary": "impl block: `impl Trait for Type` or `impl Type`"
       },
       {
         "kind": "Kb",
         "summary": "AI: symbolic knowledge base (Agentic Binary Language-routed)"
       },
       {
-        "kind": "Agent",
-        "summary": "AI: agent role (Agentic Binary Language-routed)"
+        "kind": "Module",
+        "summary": "Module declaration. Parses; resolves nothing — there is no module system"
+      },
+      {
+        "kind": "Net",
+        "summary": "AI: neural network (Agentic Binary Language-routed)"
+      },
+      {
+        "kind": "Spec",
+        "summary": "Spec / contract block: `spec name { @req … }` (`sp`)"
+      },
+      {
+        "kind": "Static",
+        "summary": "static declaration"
+      },
+      {
+        "kind": "Struct",
+        "summary": "Struct definition (`struct` / `S`)"
       },
       {
         "kind": "Swarm",
@@ -108,16 +108,16 @@
         "summary": "AI: training pipeline (Agentic Binary Language-routed)"
       },
       {
-        "kind": "Evolve",
-        "summary": "AI: evolutionary search (Agentic Binary Language-routed)"
+        "kind": "Trait",
+        "summary": "Trait definition"
       },
       {
-        "kind": "Effect",
-        "summary": "Effect declaration: `effect Name { … }` (`fx`)"
+        "kind": "TypeAlias",
+        "summary": "type alias"
       },
       {
-        "kind": "Spec",
-        "summary": "Spec / contract block: `spec name { @req … }` (`sp`)"
+        "kind": "Use",
+        "summary": "use import. Parses and is an ERROR — MAGE has one flat namespace (spec §2.3)"
       }
     ],
     "bench_backends": [
@@ -4812,9 +4812,44 @@
     ],
     "sigils": [
       {
-        "ast_kind": "Function",
-        "sigil": "+f",
-        "summary": "pub fn — public function declaration"
+        "ast_kind": "Break/Not",
+        "sigil": "!",
+        "summary": "break, or logical not, or assert"
+      },
+      {
+        "ast_kind": "MutRefType",
+        "sigil": "&!T",
+        "summary": "mutable reference type"
+      },
+      {
+        "ast_kind": "RefType",
+        "sigil": "&T",
+        "summary": "shared reference type"
+      },
+      {
+        "ast_kind": "Visibility",
+        "sigil": "+",
+        "summary": "pub — public; prefixes any item (`+f`, `+S`, ...)"
+      },
+      {
+        "ast_kind": "Data",
+        "sigil": "+D",
+        "summary": "pub data record or sum type"
+      },
+      {
+        "ast_kind": "Enum",
+        "sigil": "+E",
+        "summary": "pub enum declaration"
+      },
+      {
+        "ast_kind": "Struct",
+        "sigil": "+S",
+        "summary": "pub struct declaration"
+      },
+      {
+        "ast_kind": "Trait",
+        "sigil": "+T",
+        "summary": "pub trait declaration"
       },
       {
         "ast_kind": "Function",
@@ -4823,128 +4858,33 @@
       },
       {
         "ast_kind": "Function",
+        "sigil": "+f",
+        "summary": "pub fn — public function declaration"
+      },
+      {
+        "ast_kind": "Function",
         "sigil": "+uf",
         "summary": "pub unsafe fn"
       },
       {
-        "ast_kind": "Function",
-        "sigil": "f",
-        "summary": "fn — private function"
+        "ast_kind": "Bool",
+        "sigil": "0b",
+        "summary": "false"
       },
       {
-        "ast_kind": "Let",
-        "sigil": "v",
-        "summary": "val — immutable binding (Rust `let`)"
+        "ast_kind": "Bool",
+        "sigil": "1b",
+        "summary": "true"
       },
       {
-        "ast_kind": "Let",
-        "sigil": "m",
-        "summary": "var — mutable binding (Rust `let mut`)"
+        "ast_kind": "In/Else",
+        "sigil": ":",
+        "summary": "in after a for pattern, else after an if block; also a type annotation"
       },
       {
-        "ast_kind": "Const",
-        "sigil": "C",
-        "summary": "const declaration"
-      },
-      {
-        "ast_kind": "Static",
-        "sigil": "Z",
-        "summary": "static — retired (E0554): write `C NAME: T = value;`"
-      },
-      {
-        "ast_kind": "Struct",
-        "sigil": "S",
-        "summary": "struct declaration"
-      },
-      {
-        "ast_kind": "Enum",
-        "sigil": "E",
-        "summary": "enum declaration"
-      },
-      {
-        "ast_kind": "Trait",
-        "sigil": "T",
-        "summary": "trait declaration"
-      },
-      {
-        "ast_kind": "Impl",
-        "sigil": "I",
-        "summary": "impl block"
-      },
-      {
-        "ast_kind": "Struct",
-        "sigil": "+S",
-        "summary": "pub struct declaration"
-      },
-      {
-        "ast_kind": "Enum",
-        "sigil": "+E",
-        "summary": "pub enum declaration"
-      },
-      {
-        "ast_kind": "Trait",
-        "sigil": "+T",
-        "summary": "pub trait declaration"
-      },
-      {
-        "ast_kind": "Data",
-        "sigil": "+D",
-        "summary": "pub data record or sum type"
-      },
-      {
-        "ast_kind": "Data",
-        "sigil": "D",
-        "summary": "data record or sum type"
-      },
-      {
-        "ast_kind": "Extend",
-        "sigil": "xd",
-        "summary": "extend Type — inherent methods"
-      },
-      {
-        "ast_kind": "Effect",
-        "sigil": "fx",
-        "summary": "effect declaration"
-      },
-      {
-        "ast_kind": "Spec",
-        "sigil": "sp",
-        "summary": "spec block — contracts on a function"
-      },
-      {
-        "ast_kind": "Swarm",
-        "sigil": "sw",
-        "summary": "swarm declaration"
-      },
-      {
-        "ast_kind": "Function",
-        "sigil": "af",
-        "summary": "async — async function, written `async name(`; `async fn` is not the spelling"
-      },
-      {
-        "ast_kind": "Guard",
-        "sigil": "gd",
-        "summary": "guard cond else { … } — the else must diverge"
-      },
-      {
-        "ast_kind": "Defer",
-        "sigil": "df",
-        "summary": "defer expr — run at scope exit"
-      },
-      {
-        "ast_kind": "Mod",
-        "sigil": "M",
-        "summary": "mod — module declaration"
-      },
-      {
-        "ast_kind": "Use",
-        "sigil": "u",
-        "summary": "use import"
-      },
-      {
-        "ast_kind": "TypeAlias",
-        "sigil": "Y",
-        "summary": "type alias"
+        "ast_kind": "Continue",
+        "sigil": ">>",
+        "summary": "continue"
       },
       {
         "ast_kind": "If/Option/Try",
@@ -4957,6 +4897,21 @@
         "summary": "match expression"
       },
       {
+        "ast_kind": "Todo",
+        "sigil": "??",
+        "summary": "todo!()"
+      },
+      {
+        "ast_kind": "Unimplemented",
+        "sigil": "???",
+        "summary": "unimplemented!()"
+      },
+      {
+        "ast_kind": "OptionType",
+        "sigil": "?T",
+        "summary": "Option<T> sugar"
+      },
+      {
         "ast_kind": "For/Attr/Arc",
         "sigil": "@",
         "summary": "for loop, attribute, struct literal, or Arc type"
@@ -4967,34 +4922,69 @@
         "summary": "infinite loop"
       },
       {
-        "ast_kind": "While",
-        "sigil": "@w",
-        "summary": "while loop"
-      },
-      {
-        "ast_kind": "RefType",
-        "sigil": "&T",
-        "summary": "shared reference type"
-      },
-      {
-        "ast_kind": "MutRefType",
-        "sigil": "&!T",
-        "summary": "mutable reference type"
-      },
-      {
         "ast_kind": "ArcType",
         "sigil": "@T",
         "summary": "Arc<T> shared ownership"
       },
       {
-        "ast_kind": "OptionType",
-        "sigil": "?T",
-        "summary": "Option<T> sugar"
+        "ast_kind": "While",
+        "sigil": "@w",
+        "summary": "while loop"
+      },
+      {
+        "ast_kind": "Const",
+        "sigil": "C",
+        "summary": "const declaration"
+      },
+      {
+        "ast_kind": "Data",
+        "sigil": "D",
+        "summary": "data record or sum type"
+      },
+      {
+        "ast_kind": "Enum",
+        "sigil": "E",
+        "summary": "enum declaration"
+      },
+      {
+        "ast_kind": "Impl",
+        "sigil": "I",
+        "summary": "impl block"
+      },
+      {
+        "ast_kind": "Mod",
+        "sigil": "M",
+        "summary": "mod — module declaration"
+      },
+      {
+        "ast_kind": "ResultType",
+        "sigil": "R",
+        "summary": "`R[T, E]` is `T or E` (Rust `Result<T, E>`)"
       },
       {
         "ast_kind": "ResultType",
         "sigil": "R[T,E]",
         "summary": "Result<T, E>"
+      },
+      {
+        "ast_kind": "Struct",
+        "sigil": "S",
+        "summary": "struct declaration"
+      },
+      {
+        "ast_kind": "Trait",
+        "sigil": "T",
+        "summary": "trait declaration"
+      },
+      {
+        "ast_kind": "TypeAlias",
+        "sigil": "Y",
+        "summary": "type alias"
+      },
+      {
+        "ast_kind": "Static",
+        "sigil": "Z",
+        "summary": "static — retired (E0554): write `C NAME: T = value;`"
       },
       {
         "ast_kind": "Slice",
@@ -5007,21 +4997,6 @@
         "summary": "Vec<T>"
       },
       {
-        "ast_kind": "Str",
-        "sigil": "s",
-        "summary": "string type"
-      },
-      {
-        "ast_kind": "Bool",
-        "sigil": "1b",
-        "summary": "true"
-      },
-      {
-        "ast_kind": "Bool",
-        "sigil": "0b",
-        "summary": "false"
-      },
-      {
         "ast_kind": "SelfVal",
         "sigil": "_",
         "summary": "self value"
@@ -5032,34 +5007,9 @@
         "summary": "Self type"
       },
       {
-        "ast_kind": "Visibility",
-        "sigil": "+",
-        "summary": "pub — public; prefixes any item (`+f`, `+S`, ...)"
-      },
-      {
-        "ast_kind": "Handle",
-        "sigil": "hx",
-        "summary": "handle — effect handler"
-      },
-      {
-        "ast_kind": "Extern",
-        "sigil": "xn",
-        "summary": "extern — reserved, not yet supported"
-      },
-      {
-        "ast_kind": "In/Else",
-        "sigil": ":",
-        "summary": "in after a for pattern, else after an if block; also a type annotation"
-      },
-      {
-        "ast_kind": "Where",
-        "sigil": "~>",
-        "summary": "where clause"
-      },
-      {
-        "ast_kind": "ResultType",
-        "sigil": "R",
-        "summary": "`R[T, E]` is `T or E` (Rust `Result<T, E>`)"
+        "ast_kind": "Function",
+        "sigil": "af",
+        "summary": "async — async function, written `async name(`; `async fn` is not the spelling"
       },
       {
         "ast_kind": "SwarmField",
@@ -5067,9 +5017,34 @@
         "summary": "consensus — swarm field"
       },
       {
-        "ast_kind": "SwarmField",
-        "sigil": "topo",
-        "summary": "topology — swarm field"
+        "ast_kind": "Defer",
+        "sigil": "df",
+        "summary": "defer expr — run at scope exit"
+      },
+      {
+        "ast_kind": "Function",
+        "sigil": "f",
+        "summary": "fn — private function"
+      },
+      {
+        "ast_kind": "Effect",
+        "sigil": "fx",
+        "summary": "effect declaration"
+      },
+      {
+        "ast_kind": "Guard",
+        "sigil": "gd",
+        "summary": "guard cond else { … } — the else must diverge"
+      },
+      {
+        "ast_kind": "Handle",
+        "sigil": "hx",
+        "summary": "handle — effect handler"
+      },
+      {
+        "ast_kind": "Let",
+        "sigil": "m",
+        "summary": "var — mutable binding (Rust `let mut`)"
       },
       {
         "ast_kind": "Return",
@@ -5077,24 +5052,49 @@
         "summary": "return expression"
       },
       {
-        "ast_kind": "Break/Not",
-        "sigil": "!",
-        "summary": "break, or logical not, or assert"
+        "ast_kind": "Str",
+        "sigil": "s",
+        "summary": "string type"
       },
       {
-        "ast_kind": "Continue",
-        "sigil": ">>",
-        "summary": "continue"
+        "ast_kind": "Spec",
+        "sigil": "sp",
+        "summary": "spec block — contracts on a function"
       },
       {
-        "ast_kind": "Todo",
-        "sigil": "??",
-        "summary": "todo!()"
+        "ast_kind": "Swarm",
+        "sigil": "sw",
+        "summary": "swarm declaration"
       },
       {
-        "ast_kind": "Unimplemented",
-        "sigil": "???",
-        "summary": "unimplemented!()"
+        "ast_kind": "SwarmField",
+        "sigil": "topo",
+        "summary": "topology — swarm field"
+      },
+      {
+        "ast_kind": "Use",
+        "sigil": "u",
+        "summary": "use import"
+      },
+      {
+        "ast_kind": "Let",
+        "sigil": "v",
+        "summary": "val — immutable binding (Rust `let`)"
+      },
+      {
+        "ast_kind": "Extend",
+        "sigil": "xd",
+        "summary": "extend Type — inherent methods"
+      },
+      {
+        "ast_kind": "Extern",
+        "sigil": "xn",
+        "summary": "extern — reserved, not yet supported"
+      },
+      {
+        "ast_kind": "Where",
+        "sigil": "~>",
+        "summary": "where clause"
       }
     ],
     "types": [
