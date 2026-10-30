@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,525** — rmi 1,384 · prototype 1,513 · ribosome 168 · germline 175 · forge 63 · arena 222 |
+| Tests | **3,527** — rmi 1,384 · prototype 1,515 · ribosome 168 · germline 175 · forge 63 · arena 222 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -2021,6 +2021,21 @@ every `within("…")` name from `parser.rs` and requires it to be a production
 of `kb/grammar.mg`, so the two cannot drift. Removing the stamping fails the
 two behaviour tests. Prototype +3 tests. The wrapping was done by a Haiku
 subagent from an exact brief.
+
+**Sampling from the grammar.** `recognise.rs` now samples sentences from the
+grammar facts (`Grammar::sample`, a seeded random derivation that takes the
+shallowest alternative past a depth and never a rule that needs an
+unspellable kind) and writes them out with the lexicon's spellings
+(`spellings`, `spell`). Most refusals at first were the grammar's own
+supersets: wherever the parser tests an identifier's text (`block`, `as`,
+`dyn`, `self`, `with`, `R`/`Ptr`/`Simd`, the agent, swarm, net and train
+labels) the grammar had said `Ident`. The EBNF now has quoted spellings,
+terminals matched by text, and those places are exact; a Haiku subagent
+rewrote them from a brief. 297 of 300 sampled sentences parse. The test
+`sampled_sentences_parse` holds that to 98% and requires every refusal to
+stop in a `GAP` production: `Generics` (the parser commits to `[` after `I`)
+or `DoComposeBody` (a block reference must be declared). Making `&self`
+and `dyn` plain `Ident` again fails it at seed 60. Prototype +2 tests.
 
 **A spelling for every token kind.** 86 more spellings in `kb/lexicon.mg`:
 punctuation, operators, literals (`"\"s\""`, `"p\"s\""`, `"1.5"`), and the
@@ -4570,7 +4585,7 @@ changed before you commit.
 ---
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,513**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,515**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
   across six crates **3,140**; documented-count pins **101**, up from 46 — the
   two newest hold the `kb`/`net` overlap the tensor-product-binding decision
