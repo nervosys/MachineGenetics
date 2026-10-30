@@ -141,6 +141,11 @@ fn vars_of(atom: &Atom) -> impl Iterator<Item = &str> {
 
 /// Try to unify an atom with a ground fact's arguments, returning bindings if
 /// successful.
+/// A fresh variable `atom_of` made for `_`.
+fn is_wildcard(v: &str) -> bool {
+    v.len() > 1 && v.starts_with('_') && v[1..].bytes().all(|b| b.is_ascii_digit())
+}
+
 fn unify_args(pattern: &Atom, fact: &[String], binding: &Binding) -> Option<Binding> {
     if pattern.args.len() != fact.len() {
         return None;
@@ -239,8 +244,10 @@ impl KnowledgeBase {
                 "head parameter `{v}` is not bound by any positive literal in the body"
             ));
         }
+        // `_` inside a negation is a wildcard, local to it: `!parent(_, x)`
+        // means no fact `parent(y, x)` for any `y`.
         for lit in rule.body.iter().filter(|l| l.negated) {
-            if let Some(v) = vars_of(&lit.atom).find(|v| !bound.contains(v)) {
+            if let Some(v) = vars_of(&lit.atom).find(|v| !bound.contains(v) && !is_wildcard(v)) {
                 return Some(format!(
                     "`{v}` in `{lit}` is not bound by any positive literal, so the negation has no meaning"
                 ));
@@ -395,13 +402,12 @@ impl KnowledgeBase {
                 }
             }
             for binding in &bindings {
+                // Blocked when any fact matches; a safe rule leaves only
+                // wildcards unbound here, and they match anything.
                 let blocked = negative.iter().any(|atom| {
-                    let ground = apply_binding_atom(atom, binding);
-                    let args: Vec<String> = ground.args.iter().map(|t| match t {
-                        Term::Const(c) => c.clone(),
-                        Term::Var(_) => unreachable!("a safe rule binds every negated variable"),
-                    }).collect();
-                    full(&atom.predicate).contains(&args)
+                    full(&atom.predicate)
+                        .iter()
+                        .any(|fact| unify_args(atom, fact, binding).is_some())
                 });
                 if blocked {
                     continue;
@@ -864,6 +870,30 @@ mod tests {
         let mut kb = kb_of("kb F {\n    fact p(a);\n    rule r(x: str) { p(x) && !q(x, y) }\n}\n");
         kb.materialize();
         assert!(errors(&kb).iter().any(|e| e.contains("`y` in `!q(x, y)`")), "{:?}", errors(&kb));
+    }
+
+    /// MAGE_SPEC §7.1's example. `_` in a negation is a wildcard, so
+    /// `root` holds for a person with no parent at all.
+    #[test]
+    fn a_wildcard_in_a_negation_matches_any_fact() {
+        let mut kb = kb_of(concat!(
+            "kb Family {\n",
+            "    fact parent(\"ann\", \"bob\");\n",
+            "    fact parent(\"bob\", \"cy\");\n",
+            "    fact person(\"ann\");\n",
+            "    fact person(\"bob\");\n",
+            "    fact person(\"cy\");\n",
+            "    rule grandparent(x: str, z: str) { parent(x, y) && parent(y, z) }\n",
+            "    rule root(x: str) { person(x) && !parent(_, x) }\n",
+            "}\n",
+        ));
+        kb.materialize();
+        assert!(errors(&kb).is_empty(), "{:?}", errors(&kb));
+        assert_eq!(kb.query("root", &["?"]), vec![vec!["ann".to_string()]]);
+        assert_eq!(
+            kb.query("grandparent", &["?", "?"]),
+            vec![vec!["ann".to_string(), "cy".to_string()]]
+        );
     }
 
     /// `prototype/examples/unified.mg` had `rule grandparent(..) { x }`, which

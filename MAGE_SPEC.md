@@ -1110,8 +1110,10 @@ its body.
 - **`!p(..)` is negation**: true when no fact matches. It is stratified: a
   predicate is computed only after everything it negates is complete, and a
   predicate that depends on its own negation is an error.
-- **A rule must be safe.** Every head parameter, and every variable in a
-  negated literal, must appear in a positive literal of the body.
+- **A rule must be safe.** Every head parameter, and every named variable in
+  a negated literal, must appear in a positive literal of the body. `_` in a
+  negated literal is a wildcard local to it: `!parent(_, x)` holds when no
+  fact `parent(y, x)` exists for any `y`.
 
 ```mg
 kb Family {
