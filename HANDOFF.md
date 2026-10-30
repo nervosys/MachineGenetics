@@ -339,15 +339,18 @@ the more useful half.** It said there was "no numerical MAGE code to build a
 binding construct for", on the evidence of 0 of 155 differentiable functions.
 There is: 34 nets, all of them differentiable — the pass had simply never been
 pointed at them. What is actually thin is the *overlap*, and **it was
-re-measured on 2026-09-08 rather than re-quoted**: **3** tracked sources
+re-measured on 2026-09-08 rather than re-quoted**: **4** tracked sources
 declare a `kb` at all, and **3** of them declare a `net` as well
 (`neurosymbolic_qa.mg`, `neurosymbolic.mg`, `unified.mg`) — the population a
-binding construct would serve. **A measurement quoted as evidence for a
+binding construct would serve. *(The first figure was 3 until 2026-10-29,
+when `kb/schema.mg` was added: the knowledge base's own schema, a `kb` with no
+`net`. Of programs, the sentences below still hold: no program declares a `kb`
+without a `net`.)* **A measurement quoted as evidence for a
 decision about a different population is not evidence** — the figure that used
 to stand here was about `f` functions and the decision was about nets.
 
-The two numbers being equal is the finding, and it is sharper than the sentence
-it replaces. **No source in this repository declares a `kb` without a `net`.**
+The two numbers being equal was the finding, and it is sharper than the sentence
+it replaced. **No program in this repository declares a `kb` without a `net`.**
 So the constraint on tensor-product binding is not that nets and knowledge
 bases rarely meet — where a `kb` appears, a `net` always does. It is that `kb`
 barely appears: the sources listed above are *every* source in the repository
