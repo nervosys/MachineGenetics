@@ -170,11 +170,12 @@ emits per-item Agentic Binary Language statistics:
 ```
 // MAGE → Agentic Binary Language lowering for prototype/examples/unified.mg
 // MLIR-routed items: 2
-// Agentic Binary Language-routed items: 4
+// Agentic Binary Language-routed items: 5
 // TransformerBlock: nodes=15 depth=8 hash=7def99cdb73a14e2 wire=47B
-// MLP:              nodes=5  depth=3 hash=bc5d35ff371e638c wire=17B
-// ResNetStage:      nodes=11 depth=6 hash=87e783b56ef29d60 wire=35B
-// FamilyKb:         nodes=13 depth=4 hash=c621b275c166196e wire=68B
+// MLP: nodes=5 depth=3 hash=bc5d35ff371e638c wire=17B
+// ResNetStage: nodes=11 depth=6 hash=87e783b56ef29d60 wire=35B
+// Workers: nodes=13 depth=5 hash=713954a39ed194a9 wire=58B
+// FamilyKb: nodes=26 depth=6 hash=68e12e1998172e84 wire=110B
 ```
 
 A transformer block in **47 bytes**. That is the unification payoff.

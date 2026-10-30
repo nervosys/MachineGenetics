@@ -10,7 +10,7 @@ measurement, re-run 2026-08-18.
 
 | Mission axis | Tool | Where it stands now |
 |---|---|---|
-| Token-efficient | `cargo run --bin token-bench` | Text surface tied with Rust (native-lexer ratio **0.997**); binary IR **2-6×** smaller per declaration, 0.222 for a whole container. See §1. |
+| Token-efficient | `cargo run --bin token-bench` | Text surface tied with Rust (native-lexer ratio **0.997**); binary IR **1.3-6×** smaller per declaration, 0.247 for a whole container. See §1. |
 | Reliable for agents | `cargo run --bin reliability-bench` | file-oracle parse **99 / 100**, effective **100 / 100**. Perturbed input parses 27 / 100 and heals to **70 / 100**. See §2 and §6 for how it got there — both record much lower numbers, because both are snapshots of when they were written. |
 
 ---
@@ -91,10 +91,13 @@ MAGE text against its encoded expr:
 |---|---:|---:|---:|
 | TransformerBlock | 243 B | **47 B** | 0.19 |
 | MLP | 98 B | **17 B** | 0.17 |
-| FamilyKb | 143 B | **68 B** | 0.48 |
+| FamilyKb | 143 B | **110 B** | 0.77 |
 
-So **roughly 2-6× on the declaration itself**, and 0.222 for the whole
-container once names, length fields and the symbol table are counted. This
+So **roughly 1.3-6× on the declaration itself**, and 0.247 for the whole
+container once names, length fields and the symbol table are counted.
+`FamilyKb` was 68 B until 2026-10-29: its rule lowered without a body, so the
+container was smaller and derived nothing. It now carries
+`parent(x, y) && parent(y, z)` and derives `grandparent(a, c)`. This
 section was headed "where the ~50 % claim *is* real" and said the encodings
 were "1-2 orders of magnitude smaller than the equivalent text in either MAGE
 or Rust"; against MAGE text they are not, and the heading promised a figure
@@ -119,8 +122,8 @@ delivered value:
   (effects, contracts, SKB, cost oracle, self-healing).
 - A **modestly more compact surface** for declaration-heavy code.
 - A **binary IR (Agentic Binary Language) that is genuinely smaller** than
-  text — measured at **0.222** on `prototype/examples/unified.mg` (1893 B →
-  420 B) and 47 bytes for a transformer block — intended as the primary agent
+  text — measured at **0.247** on `prototype/examples/unified.mg` (1893 B →
+  467 B) and 47 bytes for a transformer block — intended as the primary agent
   output target. This line read "~50× smaller"; no module in the repository
   gets near that, and the same figure had propagated into `AGENT_PROTOCOL.md`,
   the README and the blog post. Reproduce with `mage-parse --target=abl-bytes`,
@@ -543,13 +546,13 @@ holds — the earlier one is what the finding was written about.
 | Finding | Tool | At the time | Now |
 |---|---|---|---|
 | Text token reduction vs Rust | `token-bench` | ~tied (claim was 50 %) | ~tied — native-lexer ratio **0.997** |
-| Binary IR efficiency | `token-bench` + manual | "83 % smaller than text" | **2-6×** per declaration (243→47, 98→17, 143→68 B); 0.222 for a whole container |
+| Binary IR efficiency | `token-bench` + manual | "83 % smaller than text" | **1.3-6×** per declaration (243→47, 98→17, 143→110 B); 0.247 for a whole container |
 | Corpus parse-rate | `reliability-bench` | 25 → 69 / 100 | **99 / 100**, floor-gated at 98 |
 | Self-heal coverage on corpus | `reliability-bench` (P36) | 0 % healed | 0/1 — only one task fails, and structural-heal takes it |
 | Self-heal coverage on perturbed | `reliability-bench` (P38) | **17.6 % healed** | **57.5 %** (42 of 73) |
 | Effective pass under near-correct input | `reliability-bench` (P38) | **39 / 100** | **70 / 100** — still the honest agent-reliability headline, and still the gap worth closing |
 
 The "83 %" in row two was never measured against anything: the container
-ratio on `prototype/examples/unified.mg` is 0.222, and per-declaration the
-range is 0.17-0.59. It had propagated to `AGENT_PROTOCOL.md` (as "~50×"),
+ratio on `prototype/examples/unified.mg` is 0.247, and per-declaration the
+range is 0.17-0.77. It had propagated to `AGENT_PROTOCOL.md` (as "~50×"),
 the README and the blog post before anyone ran the numbers.
