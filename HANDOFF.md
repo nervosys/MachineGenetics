@@ -30,14 +30,14 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,490** — rmi 1,384 · prototype 1,478 · ribosome 168 · germline 175 · forge 63 · arena 222 |
+| Tests | **3,497** — rmi 1,384 · prototype 1,485 · ribosome 168 · germline 175 · forge 63 · arena 222 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
 | CI | 11 jobs defined, **10 of which ever run** — green on `master`. The eleventh, `prototype — cuda kernels (self-hosted GPU)`, has no runner and has never executed (open item 2) |
 | Reliability floors | file-oracle parse 99/100, perturbed pattern-heal 42, native-lexer ratio 0.997 |
 | Examples | 12 of 12 typecheck, run, and print their recorded answer |
-| `.mg` sources | **112 checked, 0 sketches** — every `.mg` file in the repository typechecks |
+| `.mg` sources | **113 checked, 0 sketches** — every `.mg` file in the repository typechecks |
 | Differentiability | **34 of 34 nets and 7 of 7 train blocks; 1 of 156 functions** (the arena's reward) — `scripts/measure-differentiability.sh`, re-derived in CI and compared against `DIFFERENTIABILITY.md` in both directions |
 | `grad` | An expression that typechecks and **runs**, for scalars: forward-mode duals, checked against central differences. The differentiability obligation is a premise of its typing rule, discharged by the call-graph pass. Tensors are refused, not deferred |
 | Documentation | 212 MAGE blocks typecheck; 59 documentation entry points run; 268 `rmi/docs` API items all exist — and "exist" now means **a definition exists**, not that the name appears somewhere in `src/`. It was 275 under the weaker criterion, 8 of them held up by English words in comments; the phantom entries are gone and a duplicate went with them |
@@ -1894,6 +1894,22 @@ lowering leaves such a rule out by name, as it does negation.
 MAGE_SPEC's appendix grammar still gave `rule .. :- body ;` and a `query`
 item, both of which §7.1 calls parse errors; it now matches §7.1. Prototype +2
 tests.
+
+**`kb/schema.mg` and `prototype/src/kb.rs` (plan Phase 1).** The top-level
+schema is now a MAGE `kb` block, checked by the kernel: 9 root classes
+(the plan's seven, plus `Profile` and `Text`), their subclasses, 15 relations
+with the class of each argument, and 11 invariants, each a rule whose results
+are violations. `kb::load()` embeds `kb/*.mg`, materialises it with
+`logic.rs`, and refuses to load when a fact uses an undeclared predicate, has
+the wrong arity, has an argument of the wrong class (subclass instances
+count), an invariant derives anything, or the engine refuses a rule. The
+schema alone loads.
+
+Each invariant has a fact set that breaks it, and a test requires one for every
+`invariant` fact. Making `unenforced_rule` unable to fire fails the
+per-invariant test. Not yet: line numbers in messages (`ast::FactDef` has no
+span), and "every Diagnostic the compiler emits is a fact" (needs the codes as
+facts). `.mg` sources go from 112 to 113. Prototype +7 tests.
 
 Break-checked: a gate that admits everything fails all 3 new tests. Arena +3
 tests.
@@ -4429,7 +4445,7 @@ changed before you commit.
 ---
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,478**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,485**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
   across six crates **3,140**; documented-count pins **101**, up from 46 — the
   two newest hold the `kb`/`net` overlap the tensor-product-binding decision
