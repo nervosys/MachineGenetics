@@ -258,6 +258,46 @@ mod tests {
         assert!(e.iter().any(|m| m.contains("argument 1 of `enforced_by`, `Linear`, is not a `Rule`")), "{e:#?}");
     }
 
+    /// MAGE_ONTOLOGY.md §11.1 documents the schema. Every backticked name in
+    /// its three tables' first two columns that looks like a class, relation
+    /// or invariant (or one of the schema's own predicates) must be one, and
+    /// every one the schema declares must be
+    /// named there: the page cannot drift from `kb/schema.mg` in either
+    /// direction.
+    #[test]
+    fn the_ontology_names_exactly_the_schema() {
+        let doc = include_str!("../../MAGE_ONTOLOGY.md").replace("\r\n", "\n");
+        let start = doc.find("#### 11.1 The top-level schema").expect("§11.1");
+        let end = start + doc[start..].find("\n### 12.").expect("§12 follows");
+        let section = &doc[start..end];
+        let kb = load().expect("loads");
+        let col = |p: &str| -> std::collections::BTreeSet<String> {
+            kb.facts(p).into_iter().map(|f| f[0].clone()).collect()
+        };
+        let (classes, relations, invariants) = (col("class"), col("relation"), col("invariant"));
+        // Names in the first two cells of each table row.
+        let mut named = std::collections::BTreeSet::new();
+        for line in section.lines().filter(|l| l.starts_with("| `")) {
+            let cells: Vec<&str> = line.split('|').skip(1).take(2).collect();
+            for cell in cells {
+                for (i, part) in cell.split('`').enumerate() {
+                    if i % 2 == 1 {
+                        named.insert(part.to_string());
+                    }
+                }
+            }
+        }
+        for n in &named {
+            assert!(
+                classes.contains(n) || relations.contains(n) || invariants.contains(n) || META.contains(&n.as_str()),
+                "MAGE_ONTOLOGY.md §11.1 names `{n}`, which kb/schema.mg does not declare"
+            );
+        }
+        for n in classes.iter().chain(&relations).chain(&invariants) {
+            assert!(named.contains(n), "kb/schema.mg declares `{n}`, which MAGE_ONTOLOGY.md §11.1 does not name");
+        }
+    }
+
     /// A subclass instance satisfies its superclass: a `Diagnostic` is a
     /// `Rule`, so it may be `enforced_by` something.
     #[test]
