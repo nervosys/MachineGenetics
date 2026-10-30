@@ -30,14 +30,14 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,528** — rmi 1,384 · prototype 1,516 · ribosome 168 · germline 175 · forge 63 · arena 222 |
+| Tests | **3,529** — rmi 1,384 · prototype 1,517 · ribosome 168 · germline 175 · forge 63 · arena 222 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
 | CI | 11 jobs defined, **10 of which ever run** — green on `master`. The eleventh, `prototype — cuda kernels (self-hosted GPU)`, has no runner and has never executed (open item 2) |
 | Reliability floors | file-oracle parse 99/100, perturbed pattern-heal 42, native-lexer ratio 0.997 |
 | Examples | 12 of 12 typecheck, run, and print their recorded answer |
-| `.mg` sources | **115 checked, 0 sketches** — every `.mg` file in the repository typechecks |
+| `.mg` sources | **116 checked, 0 sketches** — every `.mg` file in the repository typechecks |
 | Differentiability | **34 of 34 nets and 7 of 7 train blocks; 1 of 156 functions** (the arena's reward) — `scripts/measure-differentiability.sh`, re-derived in CI and compared against `DIFFERENTIABILITY.md` in both directions |
 | `grad` | An expression that typechecks and **runs**, for scalars: forward-mode duals, checked against central differences. The differentiability obligation is a premise of its typing rule, discharged by the call-graph pass. Tensors are refused, not deferred |
 | Documentation | 212 MAGE blocks typecheck; 59 documentation entry points run; 268 `rmi/docs` API items all exist — and "exist" now means **a definition exists**, not that the name appears somewhere in `src/`. It was 275 under the weaker criterion, 8 of them held up by English words in comments; the phantom entries are gone and a duplicate went with them |
@@ -339,11 +339,12 @@ the more useful half.** It said there was "no numerical MAGE code to build a
 binding construct for", on the evidence of 0 of 155 differentiable functions.
 There is: 34 nets, all of them differentiable — the pass had simply never been
 pointed at them. What is actually thin is the *overlap*, and **it was
-re-measured on 2026-09-08 rather than re-quoted**: **6** tracked sources
+re-measured on 2026-09-08 rather than re-quoted**: **7** tracked sources
 declare a `kb` at all, and **3** of them declare a `net` as well
 (`neurosymbolic_qa.mg`, `neurosymbolic.mg`, `unified.mg`) — the population a
 binding construct would serve. *(The first figure was 3 until 2026-10-29,
-when `kb/schema.mg`, `kb/lexicon.mg` and `kb/grammar.mg` were added: the
+when `kb/schema.mg`, `kb/lexicon.mg` and `kb/grammar.mg` were added, and
+`kb/forms.mg` on 2026-10-30: the
 knowledge base's own files, each a `kb` with no `net`. Of programs, the sentences below still hold: no program declares a `kb`
 without a `net`.)* **A measurement quoted as evidence for a
 decision about a different population is not evidence** — the figure that used
@@ -2021,6 +2022,26 @@ every `within("…")` name from `parser.rs` and requires it to be a production
 of `kb/grammar.mg`, so the two cannot drift. Removing the stamping fails the
 two behaviour tests. Prototype +3 tests. The wrapping was done by a Haiku
 subagent from an exact brief.
+
+**`kb/forms.mg`: the forms and the lowerings between them.** 13 forms (one
+per form class, and six `Declarative`: net, kb, agent, swarm, train, evolve)
+and 16 `lowers_to` facts. AST → human or sigil text, AST → declaration, and
+RMIL → ABL `round_trips`. The other 12 state 36 `loses` facts, each read from the code: parsing drops
+comments, layout, parentheses and block names; there is no HIR tree (types
+and effects are per name); a net lowers without its layer names, generics,
+forward block and non-literal arguments; swarm `on_*` handlers are never
+read; train's optimizer/loss/epochs never reach the ops. Decompile loses
+more than the plan assumed: `RES_ADD` is skipped without being recorded and
+a `Par` is flattened into one layer list. A Haiku subagent surveyed the code;
+the claims the facts rest on were checked by hand.
+`module_lowering_round_trips_through_codec` only encoded; it now decodes and
+compares name and expression. Test `every_form_takes_part_in_a_lowering`;
+deleting a `loses` fact refuses the load (`unaccounted_lowering`). Prototype
++1 test. Stale comments found, not fixed: `SymbolicView` and `AgenticView`
+(abl_bridge.rs) say predicate names and topology are not recoverable, but
+the symbol table is serialized and `topology_sym` is recovered; fmt.rs
+~2500 says the `sw` sigil does not parse; hir.rs's header describes a typed
+tree it does not have.
 
 **Ontology sections from the knowledge base.** `ontology.rs`'s `SIGILS`,
 `KEYWORD_DOCS` and `AST_KINDS` tables are deleted. Their rows are facts:
@@ -4598,7 +4619,7 @@ changed before you commit.
 ---
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,516**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,517**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
   across six crates **3,140**; documented-count pins **101**, up from 46 — the
   two newest hold the `kb`/`net` overlap the tensor-product-binding decision

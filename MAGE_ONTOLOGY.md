@@ -393,6 +393,11 @@ alternative each, in EBNF); `recognise.rs` runs them, and every `.mg` source
 in the repo, the grammar included, is recognised by them. It also states the
 20 `AstKind`s, each with the item production that `parses_as` it.
 
+[`kb/forms.mg`](kb/forms.mg) states the forms a program takes (one instance
+of each form class; six `Declarative` ones, for the AI items) and every
+lowering between them, each with `round_trips` or the `loses` facts that say
+exactly what it drops.
+
 The JSON's `sigils`, `keywords` and `ast_kinds` sections are generated from
 these facts: `sigil_row` and `summary` facts in the lexicon, the reserved
 words among its `lexes_as` facts, and the `AstKind` instances in the grammar.
