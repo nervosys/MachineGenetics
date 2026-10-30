@@ -608,6 +608,7 @@ impl NlEngine {
                 .kb_facts
                 .iter()
                 .map(|(pred, args)| FactDef {
+                    line: 0,
                     name: pred.clone(),
                     args: args
                         .iter()

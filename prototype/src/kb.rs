@@ -55,7 +55,7 @@ pub fn load_files(files: &[(&str, &str)]) -> Result<Kb, Vec<String>> {
     let mut base = KnowledgeBase::new("mage");
     let mut refused = Vec::new();
     // Every stated fact, with the file it came from, for the schema checks.
-    let mut stated: Vec<(&str, String, Vec<String>)> = Vec::new();
+    let mut stated: Vec<(String, String, Vec<String>)> = Vec::new();
     let mut rule_heads: HashSet<String> = HashSet::new();
 
     for &(path, src) in files {
@@ -74,12 +74,12 @@ pub fn load_files(files: &[(&str, &str)]) -> Result<Kb, Vec<String>> {
             for fact in &def.facts {
                 match logic::read_fact(fact) {
                     Ok(args) => {
-                        stated.push((path, fact.name.clone(), args.clone()));
+                        stated.push((format!("{path}:{}", fact.line), fact.name.clone(), args.clone()));
                         base.add_fact(&fact.name, args);
                     }
                     Err(n) => refused.push(format!(
-                        "{path}: argument {n} of fact `{}` is not a constant",
-                        fact.name
+                        "{path}:{}: argument {n} of fact `{}` is not a constant",
+                        fact.line, fact.name
                     )),
                 }
             }
@@ -89,7 +89,7 @@ pub fn load_files(files: &[(&str, &str)]) -> Result<Kb, Vec<String>> {
                         rule_heads.insert(r.head.predicate.clone());
                         base.add_rule(r);
                     }
-                    Err(why) => refused.push(format!("{path}: rule `{}` cannot be read: {why}", rule.name)),
+                    Err(why) => refused.push(format!("{path}:{}: rule `{}` cannot be read: {why}", rule.line, rule.name)),
                 }
             }
         }
@@ -141,7 +141,14 @@ pub fn load_files(files: &[(&str, &str)]) -> Result<Kb, Vec<String>> {
             continue;
         }
         for v in base.get_facts(name) {
-            refused.push(format!("invariant `{name}` ({says}) is broken by ({})", v.join(", ")));
+            // Where to look: the first stated fact that mentions the
+            // violation's first value.
+            let at = stated
+                .iter()
+                .find(|(_, _, args)| args.first() == v.first())
+                .map(|(at, p, args)| format!(" — see {at}: {p}({})", args.join(", ")))
+                .unwrap_or_default();
+            refused.push(format!("invariant `{name}` ({says}) is broken by ({}){at}", v.join(", ")));
         }
     }
 
@@ -250,7 +257,16 @@ mod tests {
     #[test]
     fn an_undeclared_predicate_is_refused() {
         let e = refused("fact frobnicates(a);");
-        assert!(e.iter().any(|m| m == "kb/extra.mg: fact `frobnicates` uses a predicate the schema does not declare"), "{e:#?}");
+        // Line 2: `with` puts the extra facts after `kb Extra {`.
+        assert!(e.iter().any(|m| m == "kb/extra.mg:2: fact `frobnicates` uses a predicate the schema does not declare"), "{e:#?}");
+    }
+
+    /// A violation points at a stated fact that takes part in it, by line.
+    #[test]
+    fn an_invariant_violation_names_a_line() {
+        let e = refused("fact instance_of(plus_f, Sigil);\nfact instance_of(fn_kw, Keyword);\nfact instance_of(pub_kw, Keyword);\nfact abbreviates(plus_f, fn_kw);\nfact abbreviates(plus_f, pub_kw);");
+        let m = e.iter().find(|m| m.starts_with("invariant `sigil_two_keywords`")).expect("fires");
+        assert!(m.contains("see kb/extra.mg:2: instance_of(plus_f, Sigil)"), "{m}");
     }
 
     #[test]
