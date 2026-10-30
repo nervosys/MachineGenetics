@@ -512,6 +512,9 @@ kb Lexicon {
     fact lexes_as("▸", TensorPipeline);
     fact instance_of("1", Token);
     fact lexes_as("1", IntLiteral);
+    // A plain identifier, for writing sampled sentences out as source.
+    fact instance_of("x", Token);
+    fact lexes_as("x", Ident);
     fact instance_of("1.5", Token);
     fact lexes_as("1.5", FloatLiteral);
     fact instance_of("f\"x\"", Token);

@@ -5,7 +5,9 @@
 //! An `rhs(P, "…")` fact is one alternative of production `P`, written in
 //! EBNF over production names and `TokenKind` names: juxtaposition is
 //! sequence, `|` alternation, `?` `*` `+` the usual repetitions, and
-//! parentheses group. Earley accepts any context-free grammar, left
+//! parentheses group. A quoted spelling (`'block'`) is a terminal that
+//! matches a token by its text, whatever its kind: where the parser tests an
+//! identifier's spelling, the grammar can say which. Earley accepts any context-free grammar, left
 //! recursion and ambiguity included, so the facts can say what the language
 //! is without being shaped for a particular parsing method.
 //!
@@ -22,6 +24,8 @@ use std::collections::{BTreeSet, HashMap, HashSet};
 enum Sym {
     /// A token kind, by name.
     T(String),
+    /// A token with exactly this text, of any kind.
+    S(String),
     /// A nonterminal, by index into `Grammar::names`.
     N(usize),
 }
@@ -65,6 +69,7 @@ pub fn names_in(rhs: &str) -> Result<Vec<String>, String> {
 enum Tok {
     Name(String),
     Punct(char),
+    Lit(String),
 }
 
 impl std::fmt::Display for Tok {
@@ -72,6 +77,7 @@ impl std::fmt::Display for Tok {
         match self {
             Tok::Name(n) => f.write_str(n),
             Tok::Punct(c) => write!(f, "{c}"),
+            Tok::Lit(s) => write!(f, "'{s}'"),
         }
     }
 }
@@ -96,6 +102,20 @@ fn tokens(rhs: &str) -> Result<Vec<Tok>, String> {
         } else if "()|?*+".contains(c) {
             out.push(Tok::Punct(c));
             chars.next();
+        } else if c == '\'' {
+            chars.next();
+            let mut s = String::new();
+            loop {
+                match chars.next() {
+                    Some('\'') => break,
+                    Some(c) => s.push(c),
+                    None => return Err("a `'` is not closed".to_string()),
+                }
+            }
+            if s.is_empty() {
+                return Err("an empty spelling `''`".to_string());
+            }
+            out.push(Tok::Lit(s));
         } else {
             return Err(format!("`{c}` is not EBNF here"));
         }
@@ -117,6 +137,7 @@ type Helper = Vec<Vec<SymOrHelper>>;
 #[derive(Clone, Debug)]
 enum SymOrHelper {
     Name(String),
+    Lit(String),
     /// Index into the helper list.
     Helper(usize),
 }
@@ -152,6 +173,11 @@ impl Reader {
                     self.pos += 1;
                     name(&n);
                     SymOrHelper::Name(n)
+                }
+                Some(Tok::Lit(s)) => {
+                    let s = s.clone();
+                    self.pos += 1;
+                    SymOrHelper::Lit(s)
                 }
                 Some(Tok::Punct('(')) => {
                     self.pos += 1;
@@ -246,6 +272,7 @@ impl Grammar {
                         Some(&i) => Sym::N(i),
                         None => Sym::T(n.clone()),
                     },
+                    SymOrHelper::Lit(s) => Sym::S(s.clone()),
                     SymOrHelper::Helper(h) => Sym::N(base + h),
                 }
             };
@@ -299,8 +326,8 @@ impl Grammar {
         self.rules.len()
     }
 
-    /// Recognise a sequence of token kind names (no `Eof`).
-    pub fn recognise(&self, input: &[String]) -> Result<(), Stall> {
+    /// Recognise a sequence of tokens, each (kind name, text), no `Eof`.
+    pub fn recognise(&self, input: &[(String, String)]) -> Result<(), Stall> {
         // An item: (rule, dot, origin).
         type Item = (usize, usize, usize);
         let n = input.len();
@@ -329,7 +356,12 @@ impl Grammar {
                         }
                     }
                     Some(Sym::T(t)) => {
-                        if k < n && input[k] == *t {
+                        if k < n && input[k].0 == *t {
+                            add(&mut sets, &mut seen, k + 1, (r, dot + 1, origin));
+                        }
+                    }
+                    Some(Sym::S(s)) => {
+                        if k < n && input[k].1 == *s {
                             add(&mut sets, &mut seen, k + 1, (r, dot + 1, origin));
                         }
                     }
@@ -367,6 +399,7 @@ impl Grammar {
             .iter()
             .filter_map(|&(r, dot, _)| match self.rules[r].1.get(dot) {
                 Some(Sym::T(t)) => Some(t.clone()),
+                Some(Sym::S(s)) => Some(format!("'{s}'")),
                 _ => None,
             })
             .collect();
@@ -379,12 +412,133 @@ impl Grammar {
     }
 }
 
-/// The token kind names of `src`, as the recogniser reads them.
-pub fn kinds_of(src: &str) -> Vec<(String, usize)> {
-    crate::lexer::lex(src)
+impl Grammar {
+    /// Each nonterminal's height: the depth of its shallowest complete
+    /// derivation. `usize::MAX` for one that derives no finite sentence.
+    /// A rule that needs a token kind `spellable` refuses derives nothing.
+    fn heights(&self, spellable: &HashSet<String>) -> Vec<usize> {
+        let mut h = vec![usize::MAX; self.names.len()];
+        loop {
+            let mut changed = false;
+            for (l, rhs) in &self.rules {
+                let mut deepest = 0usize;
+                let mut finite = true;
+                for s in rhs {
+                    match s {
+                        Sym::N(n) if h[*n] == usize::MAX => finite = false,
+                        Sym::N(n) => deepest = deepest.max(h[*n]),
+                        Sym::T(t) if !spellable.contains(t) => finite = false,
+                        _ => {}
+                    }
+                    if !finite {
+                        break;
+                    }
+                }
+                if finite && deepest + 1 < h[*l] {
+                    h[*l] = deepest + 1;
+                    changed = true;
+                }
+            }
+            if !changed {
+                return h;
+            }
+        }
+    }
+
+    /// One sentence, derived at random from the start symbol: token kind
+    /// names, and quoted spellings as `'text'`. Rules that need a kind not in
+    /// `spellable` are never chosen. Past `depth` levels every choice takes
+    /// the shallowest alternative, so the derivation ends. Deterministic in
+    /// `seed`.
+    pub fn sample(&self, seed: u64, depth: usize, spellable: &HashSet<String>) -> Vec<String> {
+        let heights = self.heights(spellable);
+        let mut rng = seed.wrapping_mul(0x9E37_79B9_7F4A_7C15) | 1;
+        let mut next = move || {
+            rng ^= rng << 13;
+            rng ^= rng >> 7;
+            rng ^= rng << 17;
+            rng
+        };
+        let mut out = Vec::new();
+        // A stack of (symbol, depth); expanded leftmost first.
+        let mut stack: Vec<(Sym, usize)> = vec![(Sym::N(self.start), 0)];
+        while let Some((sym, d)) = stack.pop() {
+            match sym {
+                Sym::T(t) => out.push(t),
+                Sym::S(s) => out.push(format!("'{s}'")),
+                Sym::N(n) => {
+                    let rules = &self.by_lhs[n];
+                    let height = |r: usize| {
+                        self.rules[r].1.iter().fold(0usize, |m, s| match s {
+                            Sym::N(c) => m.max(heights[*c]),
+                            Sym::T(t) if !spellable.contains(t) => usize::MAX,
+                            _ => m,
+                        })
+                    };
+                    let r = if d >= depth || out.len() > 400 {
+                        *rules.iter().min_by_key(|&&r| height(r)).expect("a nonterminal has a rule")
+                    } else {
+                        let finite: Vec<usize> = rules.iter().copied().filter(|&r| height(r) != usize::MAX).collect();
+                        finite[(next() % finite.len() as u64) as usize]
+                    };
+                    for s in self.rules[r].1.iter().rev() {
+                        stack.push((s.clone(), d + 1));
+                    }
+                }
+            }
+        }
+        out
+    }
+}
+
+/// The spelling the sampler writes for each token kind: a plain `Token`
+/// before a sigil or keyword, then the shortest, then the first in order.
+pub fn spellings(kb: &crate::kb::Kb) -> HashMap<String, String> {
+    let plain: HashSet<String> = kb
+        .facts("instance_of")
         .into_iter()
-        .map(|t| (format!("{:?}", t.kind), t.span.line))
-        .filter(|(k, _)| k != "Eof")
+        .filter(|f| f[1] == "Token")
+        .map(|f| f[0].clone())
+        .collect();
+    let mut best: HashMap<String, String> = HashMap::new();
+    for f in kb.facts("lexes_as") {
+        let (s, k) = (&f[0], &f[1]);
+        let key = |s: &str| (!plain.contains(s), s.chars().count(), s.to_string());
+        let better = match best.get(k) {
+            None => true,
+            Some(cur) => key(s) < key(cur),
+        };
+        if better {
+            best.insert(k.clone(), s.clone());
+        }
+    }
+    best
+}
+
+/// A source text for a sampled sentence: each kind written with its
+/// spelling, each quoted spelling as itself, separated by spaces.
+pub fn spell(spellings: &HashMap<String, String>, sentence: &[String]) -> Result<String, String> {
+    let mut words = Vec::with_capacity(sentence.len());
+    for k in sentence {
+        if let Some(text) = k.strip_prefix('\'').and_then(|t| t.strip_suffix('\'')) {
+            words.push(text.to_string());
+        } else {
+            words.push(spellings.get(k).cloned().ok_or_else(|| format!("no spelling for {k}"))?);
+        }
+    }
+    Ok(words.join(" "))
+}
+
+/// The token kind names of `src`, as the recogniser reads them.
+pub fn kinds_of(src: &str) -> Vec<(String, String, usize)> {
+    tokens_of(&crate::lexer::lex(src))
+}
+
+/// Lexer tokens as the recogniser reads them: (kind, text, line), no `Eof`.
+pub fn tokens_of(toks: &[crate::lexer::Token]) -> Vec<(String, String, usize)> {
+    toks.iter()
+        .map(|t| (format!("{:?}", t.kind), t.text.clone(), t.span.line))
+        .filter(|(k, _, _)| k != "Eof")
         .collect()
 }
 
@@ -392,9 +546,9 @@ pub fn kinds_of(src: &str) -> Vec<(String, usize)> {
 /// line, the token found and the kinds that would have continued.
 pub fn recognise_source(g: &Grammar, src: &str) -> Result<(), String> {
     let toks = kinds_of(src);
-    let kinds: Vec<String> = toks.iter().map(|(k, _)| k.clone()).collect();
-    g.recognise(&kinds).map_err(|s| {
-        let (found, line) = toks.get(s.at).map(|(k, l)| (k.as_str(), *l)).unwrap_or(("end of input", 0));
+    let input: Vec<(String, String)> = toks.iter().map(|(k, t, _)| (k.clone(), t.clone())).collect();
+    g.recognise(&input).map_err(|s| {
+        let (found, line) = toks.get(s.at).map(|(k, _, l)| (k.as_str(), *l)).unwrap_or(("end of input", 0));
         let expected: Vec<&str> = s.expected.iter().map(|e| e.as_str()).collect();
         format!("line {line}: found {found}; expected one of {}", expected.join(" "))
     })
@@ -410,8 +564,8 @@ mod tests {
         crate::kb::load_files(&files).unwrap_or_else(|e| panic!("{e:#?}"))
     }
 
-    fn words(s: &str) -> Vec<String> {
-        s.split_whitespace().map(String::from).collect()
+    fn words(s: &str) -> Vec<(String, String)> {
+        s.split_whitespace().map(|w| (w.to_string(), w.to_string())).collect()
     }
 
     /// Left recursion, nullable helpers and groups, which a recursive-descent
@@ -433,6 +587,23 @@ mod tests {
         assert_eq!(e.at, 2);
         assert!(e.expected.contains("Plus") && e.expected.contains("Comma") && e.expected.contains("RBrack"), "{e:?}");
         assert!(g.recognise(&words(&format!("LBrack {i}"))).is_err());
+    }
+
+    /// A quoted spelling matches a token by its text, whatever its kind,
+    /// and is not a name: it derives nothing.
+    #[test]
+    fn a_quoted_spelling_matches_by_text() {
+        let k = kb("fact instance_of(Block, Production);
+                    fact start_symbol(Block);
+                    fact rhs(Block, \"'block' Ident LBrace RBrace\");");
+        let g = Grammar::from_kb(&k).unwrap_or_else(|e| panic!("{e:#?}"));
+        let toks = |a: &str| -> Vec<(String, String)> {
+            vec![("Ident".into(), a.into()), ("Ident".into(), "b".into()), ("LBrace".into(), "{".into()), ("RBrace".into(), "}".into())]
+        };
+        assert_eq!(g.recognise(&toks("block")), Ok(()));
+        let e = g.recognise(&toks("other")).unwrap_err();
+        assert_eq!((e.at, e.expected.iter().cloned().collect::<Vec<_>>()), (0, vec!["'block'".to_string()]));
+        assert_eq!(names_in("'block' Ident").unwrap(), vec!["Ident".to_string()]);
     }
 
     /// A name that is neither a production nor a token kind is refused.
@@ -494,15 +665,43 @@ mod tests {
                     continue;
                 }
                 total += 1;
-                let kinds: Vec<String> =
-                    mutant.iter().map(|t| format!("{:?}", t.kind)).filter(|k| k != "Eof").collect();
-                if g.recognise(&kinds).is_err() {
+                let input: Vec<(String, String)> =
+                    tokens_of(&mutant).into_iter().map(|(k, t, _)| (k, t)).collect();
+                if g.recognise(&input).is_err() {
                     rejected += 1;
                 }
             }
         }
         assert!(total >= 200, "only {total} mutants: the corpus or the cut points changed");
         assert!(rejected * 100 >= total * 95, "the grammar rejects only {rejected} of {total} mutants the parser rejects");
+    }
+
+    /// The other direction: sentences sampled from the grammar, written out
+    /// with the lexicon's spellings, parse. Where the parser refuses one, it
+    /// stopped in a production the grammar marks `GAP` (a superset the token
+    /// kinds cannot narrow): `Generics`, which the parser commits to on `[`
+    /// after `I` where the grammar may read a type, and `DoComposeBody`, whose
+    /// block references must name a declared block.
+    #[test]
+    fn sampled_sentences_parse() {
+        const GAPS: &[&str] = &["Generics", "DoComposeBody"];
+        let kb = crate::kb::load().expect("loads");
+        let g = Grammar::from_kb(&kb).expect("builds");
+        let sp = spellings(&kb);
+        let spellable: HashSet<String> = sp.keys().cloned().collect();
+        let (mut ok, total) = (0, 300);
+        for seed in 1..=total as u64 {
+            let src = spell(&sp, &g.sample(seed, 8, &spellable)).expect("spells");
+            match crate::parser::parse(&crate::lexer::lex(&src)) {
+                Ok(_) => ok += 1,
+                Err(e) => assert!(
+                    e.production.is_some_and(|p| GAPS.contains(&p)),
+                    "seed {seed}: {}\n{src}",
+                    e.describe()
+                ),
+            }
+        }
+        assert!(ok * 100 >= total * 98, "only {ok} of {total} sampled sentences parse");
     }
 
     /// A malformed right-hand side is refused when the knowledge base loads,
