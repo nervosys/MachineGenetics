@@ -514,5 +514,28 @@ mod tests {
         let e = crate::kb::load_files(&files).err().expect("refused");
         assert!(e.iter().any(|m| m.starts_with("kb/g.mg:4: the rhs `(IntLiteral` of `A` does not read")), "{e:#?}");
     }
+
+    /// Every production a parse error can name is a production of the
+    /// grammar: the parser's `within("…")` names, read from its source.
+    #[test]
+    fn parse_errors_name_grammar_productions() {
+        let kb = crate::kb::load().expect("loads");
+        let productions: std::collections::BTreeSet<String> = kb
+            .facts("instance_of")
+            .into_iter()
+            .filter(|f| f[1] == "Production")
+            .map(|f| f[0].clone())
+            .collect();
+        let src = include_str!("parser.rs");
+        let names: Vec<&str> = src
+            .split("self.within(\"")
+            .skip(1)
+            .filter_map(|rest| rest.split('"').next())
+            .collect();
+        assert!(names.len() >= 40, "found {} within() names", names.len());
+        for n in names {
+            assert!(productions.contains(n), "parser.rs names `{n}`, which kb/grammar.mg does not define");
+        }
+    }
 }
 

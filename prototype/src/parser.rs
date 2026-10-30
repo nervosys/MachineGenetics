@@ -26,6 +26,19 @@ pub struct ParseError {
     pub line: usize,
     pub col: usize,
     pub message: String,
+    /// The innermost grammar production (kb/grammar.mg) being parsed when
+    /// the error arose; `None` outside every named production.
+    pub production: Option<&'static str>,
+}
+
+impl ParseError {
+    /// The message, with the production it arose in.
+    pub fn describe(&self) -> String {
+        match self.production {
+            Some(p) => format!("{} (in {p})", self.message),
+            None => self.message.clone(),
+        }
+    }
 }
 
 /// Fold a well-known std wrapper path (`Option<T>`, `Box<T>`, `Result<T, E>`,
@@ -237,6 +250,7 @@ impl<'a> Parser<'a> {
             Err(ParseError {
                 line: tok.span.line,
                 col: tok.span.col,
+                production: None,
                 message: format!("expected {:?}, found {:?} '{}'", kind, tok.kind, tok.text),
             })
         }
@@ -323,6 +337,7 @@ impl<'a> Parser<'a> {
                 Err(ParseError {
                     line: tok.span.line,
                     col: tok.span.col,
+                    production: None,
                     message: format!("expected identifier, found {:?} '{}'", tok.kind, tok.text),
                 })
             }
@@ -353,7 +368,21 @@ impl<'a> Parser<'a> {
         Err(ParseError {
             line: tok.span.line,
             col: tok.span.col,
+            production: None,
             message: format!("expected effect name, found '{}'", tok.text),
+        })
+    }
+
+    /// Run `f` as production `name`: an error from inside it that names no
+    /// production yet is stamped with this one, so the innermost wins.
+    fn within<T>(
+        &mut self,
+        name: &'static str,
+        f: impl FnOnce(&mut Self) -> Result<T, ParseError>,
+    ) -> Result<T, ParseError> {
+        f(self).map_err(|mut e| {
+            e.production.get_or_insert(name);
+            e
         })
     }
 
@@ -362,6 +391,7 @@ impl<'a> Parser<'a> {
         ParseError {
             line: tok.span.line,
             col: tok.span.col,
+            production: None,
             message: message.to_string(),
         }
     }
@@ -369,6 +399,10 @@ impl<'a> Parser<'a> {
     // ── Module ──────────────────────────────────────────────
 
     fn parse_module(&mut self) -> Result<Module, ParseError> {
+        self.within("Module", |p| p.parse_module_body())
+    }
+
+    fn parse_module_body(&mut self) -> Result<Module, ParseError> {
         let mut items = Vec::new();
         while self.peek() != TokenKind::Eof {
             // `block Name(params) { layer …; }` — a macro for the architecture
@@ -388,6 +422,10 @@ impl<'a> Parser<'a> {
 
     /// Parse and record a `block Name(p1, p2) { layer …; }` macro.
     fn parse_block_def(&mut self) -> Result<(), ParseError> {
+        self.within("ItBlockDef", |p| p.parse_block_def_body())
+    }
+
+    fn parse_block_def_body(&mut self) -> Result<(), ParseError> {
         self.advance(); // `block`
         let name = self.expect_ident()?;
         let mut params = Vec::new();
@@ -455,6 +493,10 @@ impl<'a> Parser<'a> {
     // ── Item ────────────────────────────────────────────────
 
     fn parse_item(&mut self) -> Result<Item, ParseError> {
+        self.within("Item", |p| p.parse_item_body())
+    }
+
+    fn parse_item_body(&mut self) -> Result<Item, ParseError> {
         let mut attributes = Vec::new();
         let mut contracts = Vec::new();
         loop {
@@ -539,6 +581,10 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_contract_clause(&mut self) -> Result<ContractClause, ParseError> {
+        self.within("Contract", |p| p.parse_contract_clause_body())
+    }
+
+    fn parse_contract_clause_body(&mut self) -> Result<ContractClause, ParseError> {
         let start = self.current().span.clone();
         let kind = match self.peek() {
             TokenKind::KwReq => {
@@ -629,6 +675,10 @@ impl<'a> Parser<'a> {
     // ── Attribute ───────────────────────────────────────────
 
     fn parse_attribute(&mut self) -> Result<Attribute, ParseError> {
+        self.within("Attr", |p| p.parse_attribute_body())
+    }
+
+    fn parse_attribute_body(&mut self) -> Result<Attribute, ParseError> {
         self.expect(TokenKind::At)?;
         let name = self.expect_ident()?;
 
@@ -656,6 +706,15 @@ impl<'a> Parser<'a> {
     // ── Function ────────────────────────────────────────────
 
     fn parse_function_def(
+        &mut self,
+        is_async: bool,
+        is_unsafe: bool,
+        contracts: Vec<ContractClause>,
+    ) -> Result<FunctionDef, ParseError> {
+        self.within("FunctionDef", |p| p.parse_function_def_body(is_async, is_unsafe, contracts))
+    }
+
+    fn parse_function_def_body(
         &mut self,
         is_async: bool,
         is_unsafe: bool,
@@ -811,6 +870,13 @@ impl<'a> Parser<'a> {
         &mut self,
         contracts: Vec<ContractClause>,
     ) -> Result<StructDef, ParseError> {
+        self.within("StructDef", |p| p.parse_struct_def_body(contracts))
+    }
+
+    fn parse_struct_def_body(
+        &mut self,
+        contracts: Vec<ContractClause>,
+    ) -> Result<StructDef, ParseError> {
         self.expect(TokenKind::KwS)?;
         let name = self.expect_ident()?;
 
@@ -854,6 +920,10 @@ impl<'a> Parser<'a> {
     // ── Enum ────────────────────────────────────────────────
 
     fn parse_enum_def(&mut self) -> Result<EnumDef, ParseError> {
+        self.within("EnumDef", |p| p.parse_enum_def_body())
+    }
+
+    fn parse_enum_def_body(&mut self) -> Result<EnumDef, ParseError> {
         self.expect(TokenKind::KwE)?;
         let name = self.expect_ident()?;
 
@@ -921,6 +991,10 @@ impl<'a> Parser<'a> {
     // ── Trait ────────────────────────────────────────────────
 
     fn parse_trait_def(&mut self) -> Result<TraitDef, ParseError> {
+        self.within("TraitDef", |p| p.parse_trait_def_body())
+    }
+
+    fn parse_trait_def_body(&mut self) -> Result<TraitDef, ParseError> {
         self.expect(TokenKind::KwT)?;
         let name = self.expect_ident()?;
 
@@ -961,6 +1035,10 @@ impl<'a> Parser<'a> {
     // ── Impl ────────────────────────────────────────────────
 
     fn parse_impl_block(&mut self) -> Result<ImplBlock, ParseError> {
+        self.within("ImplBlock", |p| p.parse_impl_block_body())
+    }
+
+    fn parse_impl_block_body(&mut self) -> Result<ImplBlock, ParseError> {
         self.expect(TokenKind::KwI)?;
 
         let generics = if matches!(self.peek(), TokenKind::LBrack | TokenKind::Lt) {
@@ -1012,6 +1090,10 @@ impl<'a> Parser<'a> {
     // ── Module Def ──────────────────────────────────────────
 
     fn parse_module_def(&mut self) -> Result<ModuleDef, ParseError> {
+        self.within("ModuleDef", |p| p.parse_module_def_body())
+    }
+
+    fn parse_module_def_body(&mut self) -> Result<ModuleDef, ParseError> {
         self.expect(TokenKind::KwMod)?;
         let name = self.expect_ident()?;
 
@@ -1035,6 +1117,10 @@ impl<'a> Parser<'a> {
     // ── Use ─────────────────────────────────────────────────
 
     fn parse_use_decl(&mut self) -> Result<UseDef, ParseError> {
+        self.within("UseDecl", |p| p.parse_use_decl_body())
+    }
+
+    fn parse_use_decl_body(&mut self) -> Result<UseDef, ParseError> {
         self.expect(TokenKind::KwUse)?;
         let mut path = vec![self.expect_ident()?];
 
@@ -1102,6 +1188,10 @@ impl<'a> Parser<'a> {
     // ── Type Alias ──────────────────────────────────────────
 
     fn parse_type_alias(&mut self) -> Result<TypeAlias, ParseError> {
+        self.within("TypeAlias", |p| p.parse_type_alias_body())
+    }
+
+    fn parse_type_alias_body(&mut self) -> Result<TypeAlias, ParseError> {
         // Accept both KwType ("type") and KwY ("Y")
         self.advance();
         let name = self.expect_ident()?;
@@ -1153,6 +1243,10 @@ impl<'a> Parser<'a> {
     // ── Const ───────────────────────────────────────────────
 
     fn parse_const_def(&mut self) -> Result<ConstDef, ParseError> {
+        self.within("ConstDef", |p| p.parse_const_def_body())
+    }
+
+    fn parse_const_def_body(&mut self) -> Result<ConstDef, ParseError> {
         self.expect(TokenKind::KwC)?;
         let name = self.expect_ident()?;
         self.expect(TokenKind::Colon)?;
@@ -1167,6 +1261,10 @@ impl<'a> Parser<'a> {
     // ── Static ──────────────────────────────────────────────
 
     fn parse_static_def(&mut self) -> Result<StaticDef, ParseError> {
+        self.within("StaticDef", |p| p.parse_static_def_body())
+    }
+
+    fn parse_static_def_body(&mut self) -> Result<StaticDef, ParseError> {
         if self.peek() == TokenKind::KwStatic {
             self.advance();
         } else {
@@ -1196,6 +1294,10 @@ impl<'a> Parser<'a> {
     // ── Where Clause ────────────────────────────────────────
 
     fn parse_where_clause(&mut self) -> Result<Vec<WherePredicate>, ParseError> {
+        self.within("WhereClause", |p| p.parse_where_clause_body())
+    }
+
+    fn parse_where_clause_body(&mut self) -> Result<Vec<WherePredicate>, ParseError> {
         self.expect(TokenKind::TildeArrow)?;
         let mut predicates = Vec::new();
         loop {
@@ -1228,6 +1330,10 @@ impl<'a> Parser<'a> {
     /// operation name alone does not say which effect it belongs to, and two
     /// effects are allowed to declare an operation with the same name.
     fn parse_handle_expr(&mut self) -> Result<Expr, ParseError> {
+        self.within("HandleExpr", |p| p.parse_handle_expr_body())
+    }
+
+    fn parse_handle_expr_body(&mut self) -> Result<Expr, ParseError> {
         self.advance(); // `handle` / `hx`
         let body = self.parse_block()?;
 
@@ -1266,6 +1372,10 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_effect_def(&mut self) -> Result<EffectDef, ParseError> {
+        self.within("EffectDef", |p| p.parse_effect_def_body())
+    }
+
+    fn parse_effect_def_body(&mut self) -> Result<EffectDef, ParseError> {
         self.expect(TokenKind::KwEffect)?;
         let name = self.expect_ident()?;
         // Optional generic params on the effect itself: `effect channel[T] { ... }`.
@@ -1306,6 +1416,10 @@ impl<'a> Parser<'a> {
     // ── Spec ────────────────────────────────────────────────
 
     fn parse_spec_def(&mut self) -> Result<SpecDef, ParseError> {
+        self.within("SpecDef", |p| p.parse_spec_def_body())
+    }
+
+    fn parse_spec_def_body(&mut self) -> Result<SpecDef, ParseError> {
         self.expect(TokenKind::KwSpec)?;
         let name = self.expect_ident()?;
 
@@ -1458,6 +1572,10 @@ impl<'a> Parser<'a> {
 
     /// Parse: `agent Name { capabilities: [cap1, cap2] requires_approval: [op1, op2] }`
     fn parse_agent_def(&mut self) -> Result<AgentDef, ParseError> {
+        self.within("AgentDef", |p| p.parse_agent_def_body())
+    }
+
+    fn parse_agent_def_body(&mut self) -> Result<AgentDef, ParseError> {
         self.expect(TokenKind::KwAgent)?;
         let name = self.expect_ident()?;
         self.expect(TokenKind::LBrace)?;
@@ -1522,6 +1640,10 @@ impl<'a> Parser<'a> {
     /// This comment used to end `… dispatch { ... } aggregate { ... } on_failure { ... }`,
     /// and so did the parser. Those three are rejected now: see the arm below.
     fn parse_swarm_def(&mut self) -> Result<SwarmDef, ParseError> {
+        self.within("SwarmDef", |p| p.parse_swarm_def_body())
+    }
+
+    fn parse_swarm_def_body(&mut self) -> Result<SwarmDef, ParseError> {
         self.expect(TokenKind::KwSwarm)?;
         let name = self.expect_ident()?;
         self.expect(TokenKind::LBrace)?;
@@ -1646,6 +1768,10 @@ impl<'a> Parser<'a> {
 
     /// Parse `net Name[T] { layer ...; forward { ... } }`
     fn parse_net_def(&mut self) -> Result<NetDef, ParseError> {
+        self.within("NetDef", |p| p.parse_net_def_body())
+    }
+
+    fn parse_net_def_body(&mut self) -> Result<NetDef, ParseError> {
         self.expect(TokenKind::KwNet)?;
         let name = self.expect_ident()?;
 
@@ -1777,6 +1903,13 @@ impl<'a> Parser<'a> {
         &mut self,
         layers_out: &mut Vec<LayerDef>,
     ) -> Result<Vec<Compose>, ParseError> {
+        self.within("DoComposeBody", |p| p.parse_compose_body_body(layers_out))
+    }
+
+    fn parse_compose_body_body(
+        &mut self,
+        layers_out: &mut Vec<LayerDef>,
+    ) -> Result<Vec<Compose>, ParseError> {
         self.expect(TokenKind::LBrace)?;
         let mut items = Vec::new();
         while self.peek() != TokenKind::RBrace && self.peek() != TokenKind::Eof {
@@ -1831,6 +1964,10 @@ impl<'a> Parser<'a> {
     /// optional trailing `;` — after the `layer` keyword has been consumed.
     /// Shared by plain `layer …` and the `stack N { … }` combinator.
     fn parse_layer_body(&mut self) -> Result<LayerDef, ParseError> {
+        self.within("DoLayerBody", |p| p.parse_layer_body_body())
+    }
+
+    fn parse_layer_body_body(&mut self) -> Result<LayerDef, ParseError> {
         let name = self.expect_ident()?;
         self.expect(TokenKind::Colon)?;
         let layer_type = self.parse_type()?;
@@ -1855,6 +1992,10 @@ impl<'a> Parser<'a> {
 
     /// Parse `kb Name { fact ...; rule ...; }`
     fn parse_kb_def(&mut self) -> Result<KbDef, ParseError> {
+        self.within("KbDef", |p| p.parse_kb_def_body())
+    }
+
+    fn parse_kb_def_body(&mut self) -> Result<KbDef, ParseError> {
         self.expect(TokenKind::KwKb)?;
         let name = self.expect_ident()?;
         self.expect(TokenKind::LBrace)?;
@@ -1941,6 +2082,10 @@ impl<'a> Parser<'a> {
 
     /// Parse `evolve Name { genome Type; fitness { ... }; ... }`
     fn parse_evolve_def(&mut self) -> Result<EvolveDef, ParseError> {
+        self.within("EvolveDef", |p| p.parse_evolve_def_body())
+    }
+
+    fn parse_evolve_def_body(&mut self) -> Result<EvolveDef, ParseError> {
         self.expect(TokenKind::KwEvolve)?;
         let name = self.expect_ident()?;
         self.expect(TokenKind::LBrace)?;
@@ -2044,6 +2189,10 @@ impl<'a> Parser<'a> {
 
     /// Parse `train Name { net: ident; optimizer: expr; loss: expr; epochs: expr; body { ... } }`
     fn parse_train_def(&mut self) -> Result<TrainDef, ParseError> {
+        self.within("TrainDef", |p| p.parse_train_def_body())
+    }
+
+    fn parse_train_def_body(&mut self) -> Result<TrainDef, ParseError> {
         self.expect(TokenKind::KwTrain)?;
         let name = self.expect_ident()?;
         self.expect(TokenKind::LBrace)?;
@@ -2307,6 +2456,10 @@ impl<'a> Parser<'a> {
     // ── Data Definition ─────────────────────────────────────
 
     fn parse_data_def(&mut self) -> Result<DataDef, ParseError> {
+        self.within("DataDef", |p| p.parse_data_def_body())
+    }
+
+    fn parse_data_def_body(&mut self) -> Result<DataDef, ParseError> {
         self.advance(); // consume 'data' / 'D'
         let name = self.expect_ident()?;
 
@@ -2403,6 +2556,10 @@ impl<'a> Parser<'a> {
     // ── Extend Block ────────────────────────────────────────
 
     fn parse_extend_block(&mut self) -> Result<ExtendBlock, ParseError> {
+        self.within("ExtendBlock", |p| p.parse_extend_block_body())
+    }
+
+    fn parse_extend_block_body(&mut self) -> Result<ExtendBlock, ParseError> {
         self.advance(); // consume 'extend' / 'xd'
         let target_type = self.parse_type()?;
         self.expect(TokenKind::LBrace)?;
@@ -2417,6 +2574,10 @@ impl<'a> Parser<'a> {
     // ── Guard Statement ─────────────────────────────────────
 
     fn parse_guard_stmt(&mut self) -> Result<Stmt, ParseError> {
+        self.within("StGuard", |p| p.parse_guard_stmt_body())
+    }
+
+    fn parse_guard_stmt_body(&mut self) -> Result<Stmt, ParseError> {
         self.advance(); // consume 'guard' / 'gd'
         let cond = self.parse_expr()?;
         if self.peek() != TokenKind::KwElse
@@ -2433,6 +2594,10 @@ impl<'a> Parser<'a> {
     // ── Defer Statement ─────────────────────────────────────
 
     fn parse_defer_stmt(&mut self) -> Result<Stmt, ParseError> {
+        self.within("StDefer", |p| p.parse_defer_stmt_body())
+    }
+
+    fn parse_defer_stmt_body(&mut self) -> Result<Stmt, ParseError> {
         self.advance(); // consume 'defer' / 'df'
         let expr = self.parse_expr()?;
         if self.peek() == TokenKind::Semi {
@@ -2443,6 +2608,10 @@ impl<'a> Parser<'a> {
 
     /// Parse `[ident1, ident2, ...]` → Vec<String>
     fn parse_bracket_string_list(&mut self) -> Result<Vec<String>, ParseError> {
+        self.within("EfNameList", |p| p.parse_bracket_string_list_body())
+    }
+
+    fn parse_bracket_string_list_body(&mut self) -> Result<Vec<String>, ParseError> {
         self.expect(TokenKind::LBrack)?;
         let mut items = Vec::new();
         while self.peek() != TokenKind::RBrack && self.peek() != TokenKind::Eof {
@@ -2459,6 +2628,10 @@ impl<'a> Parser<'a> {
     // ── Generic Params ──────────────────────────────────────
 
     fn parse_generic_params(&mut self) -> Result<Vec<GenericParam>, ParseError> {
+        self.within("Generics", |p| p.parse_generic_params_body())
+    }
+
+    fn parse_generic_params_body(&mut self) -> Result<Vec<GenericParam>, ParseError> {
         // Accept either `[T, ...]` (MAGE native) or `<T, ...>`
         // (Rust-style). The corpus mixes both styles.
         let (open, close) = match self.peek() {
@@ -2510,6 +2683,10 @@ impl<'a> Parser<'a> {
     // ── Param List ──────────────────────────────────────────
 
     fn parse_param_list(&mut self) -> Result<Vec<Param>, ParseError> {
+        self.within("Params", |p| p.parse_param_list_body())
+    }
+
+    fn parse_param_list_body(&mut self) -> Result<Vec<Param>, ParseError> {
         let mut params = Vec::new();
 
         while self.peek() != TokenKind::RParen && self.peek() != TokenKind::Eof {
@@ -2624,6 +2801,10 @@ impl<'a> Parser<'a> {
     /// Separate from [`Self::parse_closure_param_list`] only because that one
     /// terminates on `)` and this one on `|`.
     fn parse_closure_params_until_pipe(&mut self) -> Result<Vec<Param>, ParseError> {
+        self.within("ClosureParams", |p| p.parse_closure_params_until_pipe_body())
+    }
+
+    fn parse_closure_params_until_pipe_body(&mut self) -> Result<Vec<Param>, ParseError> {
         let mut params = Vec::new();
         while self.peek() != TokenKind::BitOr && self.peek() != TokenKind::Eof {
             let name = self.expect_ident()?;
@@ -2642,6 +2823,10 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_closure_param_list(&mut self) -> Result<Vec<Param>, ParseError> {
+        self.within("PxFnParams", |p| p.parse_closure_param_list_body())
+    }
+
+    fn parse_closure_param_list_body(&mut self) -> Result<Vec<Param>, ParseError> {
         let mut params = Vec::new();
         while self.peek() != TokenKind::RParen && self.peek() != TokenKind::Eof {
             let name = self.expect_ident()?;
@@ -2668,6 +2853,10 @@ impl<'a> Parser<'a> {
     /// `[m/s]`, `[kg*m/s^2]`, `[1/s]`. Each `/` divides by the one factor
     /// after it. Whether a name is a unit is the unit checker's question.
     fn parse_unit(&mut self) -> Result<String, ParseError> {
+        self.within("TyUnit", |p| p.parse_unit_body())
+    }
+
+    fn parse_unit_body(&mut self) -> Result<String, ParseError> {
         self.expect(TokenKind::LBrack)?;
         let mut factors: Vec<(String, i32)> = Vec::new();
         let mut sign = 1;
@@ -2711,6 +2900,10 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_type(&mut self) -> Result<Type, ParseError> {
+        self.within("Type", |p| p.parse_type_body())
+    }
+
+    fn parse_type_body(&mut self) -> Result<Type, ParseError> {
         match self.peek() {
             // &T or &!T
             TokenKind::BitAnd => {
@@ -3133,6 +3326,10 @@ impl<'a> Parser<'a> {
     // ── Block ───────────────────────────────────────────────
 
     fn parse_block(&mut self) -> Result<Block, ParseError> {
+        self.within("Block", |p| p.parse_block_inner_body())
+    }
+
+    fn parse_block_inner_body(&mut self) -> Result<Block, ParseError> {
         if self.peek() == TokenKind::LBrace {
             self.advance();
             let block = self.parse_block_body(None)?;
@@ -3170,6 +3367,10 @@ impl<'a> Parser<'a> {
     /// = layout (bounded by a dedent below `col`). The braced path reproduces the
     /// original behaviour exactly.
     fn parse_block_body(&mut self, layout_col: Option<usize>) -> Result<Block, ParseError> {
+        self.within("BlockBody", |p| p.parse_block_body_body(layout_col))
+    }
+
+    fn parse_block_body_body(&mut self, layout_col: Option<usize>) -> Result<Block, ParseError> {
         let mut stmts = Vec::new();
         let mut tail_expr = None;
 
@@ -3184,6 +3385,7 @@ impl<'a> Parser<'a> {
                     return Err(ParseError {
                         line: tok.span.line,
                         col: tok.span.col,
+                        production: None,
                         message: "`let` is not a MAGE keyword — use `val` for an immutable \
                                   binding or `var` for a mutable one (e.g. `val x = 1;` / \
                                   `var x = 1;`)"
@@ -3419,6 +3621,7 @@ impl<'a> Parser<'a> {
         ParseError {
             line: tok.span.line,
             col: tok.span.col,
+            production: None,
             message: format!(
                 "`{}` is a keyword{also} and cannot be used as a binding name — \
                  rename the binding",
@@ -3428,6 +3631,10 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_let_stmt(&mut self) -> Result<Stmt, ParseError> {
+        self.within("StLet", |p| p.parse_let_stmt_body())
+    }
+
+    fn parse_let_stmt_body(&mut self) -> Result<Stmt, ParseError> {
         // Binding keyword: `v`/`val` (immutable) or `m`/`var` (mutable).
         // `let` was removed from the language — it's rejected earlier in the
         // statement dispatcher with a "use val/var" hint, so it never reaches
@@ -3494,6 +3701,7 @@ impl<'a> Parser<'a> {
             Err(ParseError {
                 line: tok.span.line,
                 col: tok.span.col,
+                production: None,
                 message: "expected `;` or a newline to end the statement".to_string(),
             })
         }
@@ -3502,6 +3710,10 @@ impl<'a> Parser<'a> {
     // ── Expression (Pratt Parsing) ──────────────────────────
 
     fn parse_expr(&mut self) -> Result<Expr, ParseError> {
+        self.within("Expr", |p| p.parse_expr_body())
+    }
+
+    fn parse_expr_body(&mut self) -> Result<Expr, ParseError> {
         self.parse_expr_bp(0)
     }
 
@@ -3941,6 +4153,10 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_prefix_expr(&mut self) -> Result<Expr, ParseError> {
+        self.within("PrefixExpr", |p| p.parse_prefix_expr_body())
+    }
+
+    fn parse_prefix_expr_body(&mut self) -> Result<Expr, ParseError> {
         // The five swarm orchestration patterns and `grammar_extension` are
         // reserved by the lexer and consumed by *nothing* — no parser arm, no
         // evaluator, and no mention in MAGE_SPEC.md. Reserving them costs the
@@ -4702,6 +4918,10 @@ impl<'a> Parser<'a> {
     // ── Pattern ─────────────────────────────────────────────
 
     fn parse_pattern(&mut self) -> Result<Pattern, ParseError> {
+        self.within("Pattern", |p| p.parse_pattern_body())
+    }
+
+    fn parse_pattern_body(&mut self) -> Result<Pattern, ParseError> {
         match self.peek() {
             TokenKind::Underscore => {
                 self.advance();
@@ -6274,5 +6494,15 @@ mod tests {
         } else {
             panic!("expected function");
         }
+    }
+
+    /// A parse error names the innermost grammar production it arose in.
+    #[test]
+    fn a_parse_error_names_its_production() {
+        let e = try_parse("S P {\n    x i32,\n}\n").expect_err("missing colon");
+        assert_eq!(e.production, Some("StructDef"), "{e:?}");
+        assert!(e.describe().ends_with("(in StructDef)"), "{}", e.describe());
+        let e = try_parse("f g(a: ) {}\n").expect_err("missing type");
+        assert_eq!(e.production, Some("Type"), "{e:?}");
     }
 }
