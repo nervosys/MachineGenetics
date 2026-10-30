@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,488** — rmi 1,384 · prototype 1,476 · ribosome 168 · germline 175 · forge 63 · arena 222 |
+| Tests | **3,490** — rmi 1,384 · prototype 1,478 · ribosome 168 · germline 175 · forge 63 · arena 222 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -1882,6 +1882,18 @@ benchmarks/FINDINGS.md, the blog and UNIFICATION.md (whose sample output also
 still listed four items). The 420 in `abl.rs`, `ontology.rs` and
 ARCHITECTURE.md describes the 2026-08-18 symbol-table finding and stays.
 Prototype +4 tests.
+
+**`a == b` and `a != b` in `kb` rule bodies.** Two of the schema's invariants
+need inequality: "every `Rule` has exactly one `enforced_by`" and "`abbreviates`
+is a bijection". The engine had none. A comparison is a body literal whose
+predicate is the operator, so it never meets a stored relation: it is left out
+of the join and the stratification and filters complete bindings. Both sides
+must be bound by a positive literal (E0570 otherwise), and the binary-IR
+lowering leaves such a rule out by name, as it does negation.
+
+MAGE_SPEC's appendix grammar still gave `rule .. :- body ;` and a `query`
+item, both of which §7.1 calls parse errors; it now matches §7.1. Prototype +2
+tests.
 
 Break-checked: a gate that admits everything fails all 3 new tests. Arena +3
 tests.
@@ -4417,7 +4429,7 @@ changed before you commit.
 ---
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,476**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,478**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
   across six crates **3,140**; documented-count pins **101**, up from 46 — the
   two newest hold the `kb`/`net` overlap the tensor-product-binding decision

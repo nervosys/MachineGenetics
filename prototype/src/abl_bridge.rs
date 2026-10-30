@@ -974,10 +974,13 @@ impl KbTranslator {
 
 /// Why the binary form cannot carry `rule`, if it cannot. A `MATCH` argument
 /// is a symbol that [`evaluate_kb`] reads as a variable, and there is no
-/// negated `MATCH`: lowering a constant or a negation would change what the
-/// rule derives.
+/// negated or comparing `MATCH`: lowering a constant, a negation or a
+/// comparison would change what the rule derives.
 fn abl_cannot_carry(rule: &crate::logic::Rule) -> Option<String> {
     for lit in &rule.body {
+        if lit.is_comparison() {
+            return Some(format!("`{lit}` is a comparison, which the binary IR cannot carry"));
+        }
         if lit.negated {
             return Some(format!("`{lit}` is a negation, which the binary IR cannot carry"));
         }
@@ -1920,13 +1923,15 @@ mod tests {
         let src = "kb F {\n    fact p(a);\n    fact q(a);\n\
                    \x20   rule r(x: str) { p(x) && !q(x) }\n\
                    \x20   rule s(x: str) { p(x) && q(\"a\") }\n\
-                   \x20   rule t(x: str) { p(x) }\n}\n";
+                   \x20   rule t(x: str) { p(x) }\n\
+                   \x20   rule u(x: str) { p(x) && q(y) && x != y }\n}\n";
         let module = crate::parser::parse(&crate::lexer::lex(src)).expect("parses");
         let lowered = lower_module(&module);
         let d = &lowered.diagnostics;
         assert!(d.iter().any(|m| m.contains("rule `r` left out") && m.contains("negation")), "{d:?}");
         assert!(d.iter().any(|m| m.contains("rule `s` left out") && m.contains("constant `a`")), "{d:?}");
-        assert_eq!(d.len(), 2, "{d:?}");
+        assert!(d.iter().any(|m| m.contains("rule `u` left out") && m.contains("comparison")), "{d:?}");
+        assert_eq!(d.len(), 3, "{d:?}");
         let view = decompile_symbolic(&lowered.items[0].1);
         assert_eq!(view.rule_syms.len(), 1, "only `t` is lowered");
     }
