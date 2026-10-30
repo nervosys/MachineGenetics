@@ -388,12 +388,16 @@ and the 100 reserved spellings, and a test holds `lexer.rs` to it both ways.
 The mode is the class: a `Sigil` (`f`) prints in agent mode, the `Keyword` it
 abbreviates (`fn`) in human mode, and a plain `Token` in both. The 37
 `abbreviates` pairs are held to `fmt.rs` over every `.mg` source in the repo.
+[`kb/grammar.mg`](kb/grammar.mg) states the productions as `rhs` facts (one
+alternative each, in EBNF); `recognise.rs` runs them, and every `.mg` source
+in the repo, the grammar included, is recognised by them.
 
 | Relation | Arguments |
 |---|---|
 | `lexes_as` | `Token` × `TokenKind` |
 | `abbreviates` | `Sigil` × `Keyword` |
-| `derives` | `Production` × `Construct` |
+| `rhs` | `Production` × `Text` (one alternative, in EBNF) |
+| `derives` | `Production` × `Construct` (read off `rhs`) |
 | `start_symbol` | `Production` |
 | `parses_as` | `Production` × `AstKind` |
 | `lowers_to` | `Form` × `Form` |
@@ -1635,7 +1639,7 @@ Report TaskResult::Success
 
 | Category                 | Count |
 | ------------------------ | ----- |
-| Source modules           | 74    |
+| Source modules           | 75    |
 | TokenKind variants       | 181   |
 | AST ItemKind variants    | 20    |
 | AST ExprKind variants    | 35    |
@@ -1675,7 +1679,8 @@ Report TaskResult::Success
 > gained `KbRule` (E0570), and `Source modules` gained `kb.rs`. The other four
 > (`Expr` 36 → 35, `Type` 32 → 33, and the earlier part of the
 > `DiagnosticCategory` 12 → 17 and `Source modules` 69 → 74 moves) were older.
-> All seven are now the source's figures.
+> All seven are now the source's figures. (`Source modules` went to 75 with `recognise.rs`, the
+> grammar's recogniser.)
 >
 > **Three of these moved during the merge that landed them.** `Expr` gained
 > `Grad` (35 → 36) and `Source modules` gained `verdict.rs` and
