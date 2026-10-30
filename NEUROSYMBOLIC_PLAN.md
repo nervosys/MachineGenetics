@@ -203,7 +203,7 @@ Invariants (each a Datalog rule whose results are violations):
 
 - [x] Every fact's predicate is a declared class or relation, with arguments of the declared classes. *(Checked by `kb.rs`, not a Datalog rule: it is about predicates, not facts.)*
 - [x] Every `Rule` has exactly one `enforced_by`. *(`unenforced_rule`, `rule_enforced_twice`.)*
-- [x] `abbreviates` is a bijection within each mode. *(`sigil_two_keywords`, `keyword_two_sigils`. Sigils exist only in Agent mode, so "within a mode" is global for now.)*
+- [x] `abbreviates` is a bijection within each mode. *(`keyword_two_sigils`. `sigil_two_keywords` was dropped in schema v3: the formatter prints `:` for both `in` and `else`, and the grammar, not the spelling, tells them apart.)*
 - [x] Every `lowers_to` either round-trips or states what it `loses`. *(`unaccounted_lowering`; `round_trips` and the ternary `loses(from, to, what)` are relations.)*
 - [x] Every `Production` is reachable from the start symbol, and every `AstKind` is built by some production. *(`unreachable_production` from `start_symbol`, `unbuilt_ast_kind`.)*
 - [ ] Every `Diagnostic` code the compiler can emit is a fact, and every `Diagnostic` fact is emitted by some test. *(Second half only: `untested_diagnostic` over `tested_by`. The first half needs the compiler's codes as facts, Phase 3.)*
@@ -246,7 +246,8 @@ facts are grouped into files and namespaces. They are not classes.
 
 ### Phase 2: Lexicon and grammar
 
-- [ ] `kb/lexicon.mg`: every token kind, keyword and sigil, with modes and the `abbreviates` pairs. *Started:* all 181 token kinds and the 100 reserved spellings with `lexes_as` (schema v2 adds `TokenKind`, `lexes_as`, and the invariant `spelling_two_kinds`). Modes, `abbreviates` and the punctuation spellings remain; the pairing lives in four hand tables that disagree (`lexer::KEYWORDS`, `grammar.rs`'s builtins, `ontology.rs`'s `SIGILS`, and `fmt.rs` inline). **M [H]**
+- [x] `kb/lexicon.mg`: every token kind, keyword and sigil, with modes and the `abbreviates` pairs. All 181 token kinds and the 100 reserved spellings with `lexes_as` (schema v2), 15 more spellings with a keyword reading (punctuation such as `?=`, and identifiers such as `cons`), and 37 `abbreviates` pairs. The mode is the class (`Sigil` agent, `Keyword` human, `Token` both). A test prints every `.mg` source in both modes and holds `fmt.rs` to the pairs. **M [H]**
+- [ ] Check `ontology.rs`'s `SIGILS` against the pairs: every pair's sigil has a row naming its keyword (`v`/`m` still say `let`/`let mut`; `+`, `hx`, `xn`, `:` and `~>` have no row). `grammar.rs`'s builtins map sigils to their *Rust* equivalents (`v` -> `let`), which is a different relation and correct as it stands. **S [H]**
 - [x] Conformance test: `lexer::KEYWORDS` and the token kinds equal the lexicon facts, in both directions. The variants are read from `lexer.rs`'s source, since the enum has no runtime list. **S [H]**
 - [ ] `kb/grammar.mg`: the productions of `parser.rs`, each with an id, written by reading the parser function by function (48 `parse_*` functions). **L**
 - [ ] A recogniser in `kb.rs` that runs the grammar facts directly. **M**

@@ -175,7 +175,7 @@ mod tests {
     #[test]
     fn the_schema_alone_loads() {
         let mut kb = load_files(&FILES[..1]).unwrap_or_else(|e| panic!("{e:#?}"));
-        assert_eq!(kb.facts("schema_version"), vec![vec!["2".to_string()]]);
+        assert_eq!(kb.facts("schema_version"), vec![vec!["3".to_string()]]);
         assert!(!kb.query("below", &["Keyword", "Construct"]).is_empty());
     }
 
@@ -192,14 +192,6 @@ mod tests {
              fact instance_of(checker, SymbolicComponent);\n\
              fact enforced_by(no_alias, parser);\n\
              fact enforced_by(no_alias, checker);",
-        ),
-        (
-            "sigil_two_keywords",
-            "fact instance_of(plus_f, Sigil);\n\
-             fact instance_of(pub_kw, Keyword);\n\
-             fact instance_of(fn_kw, Keyword);\n\
-             fact abbreviates(plus_f, pub_kw);\n\
-             fact abbreviates(plus_f, fn_kw);",
         ),
         (
             "keyword_two_sigils",
@@ -264,9 +256,9 @@ mod tests {
     /// A violation points at a stated fact that takes part in it, by line.
     #[test]
     fn an_invariant_violation_names_a_line() {
-        let e = refused("fact instance_of(plus_f, Sigil);\nfact instance_of(fn_kw, Keyword);\nfact instance_of(pub_kw, Keyword);\nfact abbreviates(plus_f, fn_kw);\nfact abbreviates(plus_f, pub_kw);");
-        let m = e.iter().find(|m| m.starts_with("invariant `sigil_two_keywords`")).expect("fires");
-        assert!(m.contains("see kb/extra.mg:2: instance_of(plus_f, Sigil)"), "{m}");
+        let e = refused("fact instance_of(plus_f, Sigil);\nfact instance_of(at_f, Sigil);\nfact instance_of(fn_kw, Keyword);\nfact abbreviates(plus_f, fn_kw);\nfact abbreviates(at_f, fn_kw);");
+        let m = e.iter().find(|m| m.starts_with("invariant `keyword_two_sigils`")).expect("fires");
+        assert!(m.contains("see kb/extra.mg:4: instance_of(fn_kw, Keyword)"), "{m}");
     }
 
     #[test]
@@ -329,21 +321,116 @@ mod tests {
         }
     }
 
-    /// `lexer::KEYWORDS` is exactly the lexicon's `lexes_as` facts, both ways.
+    /// Every entry of `lexer::KEYWORDS` is a `lexes_as` fact, and every
+    /// `lexes_as` fact is true: its spelling lexes as one token of that kind.
+    /// The second direction covers the spellings the lexer scans by character
+    /// (`?=`, `@w`) and the identifiers with a keyword reading (`cons`).
     #[test]
     fn the_lexicon_states_every_keyword() {
         let kb = load().expect("loads");
         let stated: std::collections::BTreeSet<(String, String)> =
             kb.facts("lexes_as").into_iter().map(|f| (f[0].clone(), f[1].clone())).collect();
-        let real: std::collections::BTreeSet<(String, String)> = crate::lexer::KEYWORDS
-            .iter()
-            .map(|(s, k)| (s.to_string(), format!("{k:?}")))
-            .collect();
-        for (s, k) in &real {
-            assert!(stated.contains(&(s.clone(), k.clone())), "KEYWORDS has `{s}` -> {k}; kb/lexicon.mg does not");
+        for (s, k) in crate::lexer::KEYWORDS {
+            let k = format!("{k:?}");
+            assert!(stated.contains(&(s.to_string(), k.clone())), "KEYWORDS has `{s}` -> {k}; kb/lexicon.mg does not");
         }
         for (s, k) in &stated {
-            assert!(real.contains(&(s.clone(), k.clone())), "kb/lexicon.mg has `{s}` -> {k}; KEYWORDS does not");
+            let kinds: Vec<String> = crate::lexer::lex(s)
+                .iter()
+                .map(|t| format!("{:?}", t.kind))
+                .filter(|k| k != "Eof")
+                .collect();
+            assert_eq!(kinds, vec![k.clone()], "kb/lexicon.mg says `{s}` lexes as {k}");
+        }
+    }
+
+    /// Every `.mg` source in the repository, and a supplement for the pairs
+    /// the corpus does not use.
+    fn corpus() -> Vec<String> {
+        fn walk(dir: &std::path::Path, out: &mut Vec<String>) {
+            let Ok(entries) = std::fs::read_dir(dir) else { return };
+            for e in entries.flatten() {
+                let p = e.path();
+                let name = e.file_name().to_string_lossy().to_string();
+                if p.is_dir() {
+                    if !matches!(name.as_str(), "target" | "node_modules" | ".git" | ".claude") {
+                        walk(&p, out);
+                    }
+                } else if name.ends_with(".mg") {
+                    out.push(std::fs::read_to_string(&p).expect("readable"));
+                }
+            }
+        }
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
+        let mut out = Vec::new();
+        for d in ["arena", "benchmarks", "examples", "framework", "kb", "prototype/examples"] {
+            walk(&root.join(d), &mut out);
+        }
+        assert!(out.len() >= 114, "the corpus walk found {} sources", out.len());
+        out.push(
+            "Y Id = i32;\nZ N: i32 = 1;\nM inner {\n    f g() {}\n}\nu std.io;\n\
+             f h[T](x: T) -> i32 ~> T: Ord {\n    @@ {\n        v a = 1;\n        >>;\n    }\n    \
+             @@ {\n        !;\n    }\n    0\n}\n"
+                .to_string(),
+        );
+        out
+    }
+
+    /// The formatter prints exactly the lexicon's pairs. Every source is
+    /// printed in both modes and each spelling counted; the agent count minus
+    /// the human count is `d`. A pair moves occurrences from its keyword to
+    /// its sigil, so within each connected group of `abbreviates` pairs the
+    /// `d`s sum to zero, each sigil's is positive and each keyword's negative
+    /// (`xn`/`extern` excepted: reserved, so nothing prints them). A spelling
+    /// in no pair prints the same in both modes: `d` is zero. An unstated pair
+    /// breaks the last rule; a stated pair the formatter does not print breaks
+    /// the sign rules.
+    #[test]
+    fn the_formatter_prints_the_lexicon_pairs() {
+        use std::collections::{BTreeMap, BTreeSet};
+        let kb = load().expect("loads");
+        let pairs: Vec<(String, String)> =
+            kb.facts("abbreviates").into_iter().map(|f| (f[0].clone(), f[1].clone())).collect();
+        let spellings: BTreeSet<String> = kb.facts("lexes_as").into_iter().map(|f| f[0].clone()).collect();
+        let mut d: BTreeMap<String, i64> = BTreeMap::new();
+        for src in corpus() {
+            let m = crate::parser::parse(&crate::lexer::lex(&src)).expect("the corpus parses");
+            for t in crate::lexer::lex(&crate::fmt::format_agent(&m)) {
+                *d.entry(t.text.clone()).or_default() += 1;
+            }
+            for t in crate::lexer::lex(&crate::fmt::format_human(&m)) {
+                *d.entry(t.text.clone()).or_default() -= 1;
+            }
+        }
+        let d = |s: &str| d.get(s).copied().unwrap_or(0);
+        // Connected groups, by repeated merging.
+        let mut groups: Vec<BTreeSet<String>> = Vec::new();
+        for (s, k) in &pairs {
+            let mut g: BTreeSet<String> = [s.clone(), k.clone()].into();
+            groups.retain(|o| {
+                if o.contains(s) || o.contains(k) {
+                    g.extend(o.iter().cloned());
+                    false
+                } else {
+                    true
+                }
+            });
+            groups.push(g);
+        }
+        for g in &groups {
+            let sum: i64 = g.iter().map(|s| d(s)).sum();
+            assert_eq!(sum, 0, "the pairs {g:?} do not balance: {:?}", g.iter().map(|s| (s, d(s))).collect::<Vec<_>>());
+        }
+        for (s, k) in &pairs {
+            if s == "xn" {
+                continue;
+            }
+            assert!(d(s) > 0, "the formatter never prints `{s}` in agent mode for `{k}` (d = {})", d(s));
+            assert!(d(k) < 0, "the formatter never prints `{k}` in human mode for `{s}` (d = {})", d(k));
+        }
+        let paired: BTreeSet<&String> = pairs.iter().flat_map(|(s, k)| [s, k]).collect();
+        for s in spellings.iter().filter(|s| !paired.contains(s)) {
+            assert_eq!(d(s), 0, "`{s}` prints differently in the two modes, and no `abbreviates` pair says so");
         }
     }
 
