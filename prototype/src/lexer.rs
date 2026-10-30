@@ -35,8 +35,7 @@ pub enum TokenKind {
     At,           // @ (for loop / attribute / struct literal / arc type)
     AtAt,         // @@ (loop — infinite)
     AtW,          // @w (while)
-    KwRet,        // ret (return) — also `^` in expression context
-    KwYield,      // yield
+    KwRet,        // ret (return)
     DoubleArrowR, // >> (continue)
     Bang,         // ! (break, also logical NOT / assert)
 
@@ -1065,7 +1064,7 @@ pub const KEYWORDS: &[(&str, TokenKind)] = &[
     // Multi-char keywords (shared) + agent-mode aliases
     ("loop", TokenKind::KwLoop), ("break", TokenKind::KwBreak),
     ("continue", TokenKind::KwContinue), ("return", TokenKind::KwRet),
-    ("ret", TokenKind::KwRet), ("yield", TokenKind::KwYield), ("yl", TokenKind::KwYield),
+    ("ret", TokenKind::KwRet),
     ("effect", TokenKind::KwEffect), ("fx", TokenKind::KwEffect),
     ("handle", TokenKind::KwHandle), ("hx", TokenKind::KwHandle),
     ("spec", TokenKind::KwSpec), ("sp", TokenKind::KwSpec), ("agent", TokenKind::KwAgent),

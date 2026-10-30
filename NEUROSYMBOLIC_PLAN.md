@@ -224,7 +224,7 @@ facts are grouped into files and namespaces. They are not classes.
 
 ### Phase 0: Preconditions
 
-- [ ] Merge the stack #38–#111, this plan included, in order (needs the user). **S**
+- [ ] Merge the stack #38–#112, this plan included, in order (needs the user). **S**
 - [ ] Settle the open questions in section 8. **S**
 - [ ] Census every module in `prototype/src` (73 files) into neural, symbolic, knowledge base, interface, or outside the design (for example `crdt.rs`, `consensus.rs`, `hot_reload.rs`). Record it in `ARCHITECTURE.md`. Outside-the-design modules are kept but not extended. **S [H]**
 
@@ -246,7 +246,7 @@ facts are grouped into files and namespaces. They are not classes.
 
 ### Phase 2: Lexicon and grammar
 
-- [ ] `kb/lexicon.mg`: every token kind, keyword and sigil, with modes and the `abbreviates` pairs. *Started:* all 182 token kinds and the 102 reserved spellings with `lexes_as` (schema v2 adds `TokenKind`, `lexes_as`, and the invariant `spelling_two_kinds`). Modes, `abbreviates` and the punctuation spellings remain; the pairing lives in four hand tables that disagree (`lexer::KEYWORDS`, `grammar.rs`'s builtins, `ontology.rs`'s `SIGILS`, and `fmt.rs` inline). **M [H]**
+- [ ] `kb/lexicon.mg`: every token kind, keyword and sigil, with modes and the `abbreviates` pairs. *Started:* all 181 token kinds and the 100 reserved spellings with `lexes_as` (schema v2 adds `TokenKind`, `lexes_as`, and the invariant `spelling_two_kinds`). Modes, `abbreviates` and the punctuation spellings remain; the pairing lives in four hand tables that disagree (`lexer::KEYWORDS`, `grammar.rs`'s builtins, `ontology.rs`'s `SIGILS`, and `fmt.rs` inline). **M [H]**
 - [x] Conformance test: `lexer::KEYWORDS` and the token kinds equal the lexicon facts, in both directions. The variants are read from `lexer.rs`'s source, since the enum has no runtime list. **S [H]**
 - [ ] `kb/grammar.mg`: the productions of `parser.rs`, each with an id, written by reading the parser function by function (48 `parse_*` functions). **L**
 - [ ] A recogniser in `kb.rs` that runs the grammar facts directly. **M**
