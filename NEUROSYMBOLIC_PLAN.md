@@ -224,7 +224,7 @@ facts are grouped into files and namespaces. They are not classes.
 
 ### Phase 0: Preconditions
 
-- [ ] Merge the stack #38–#112, this plan included, in order (needs the user). **S**
+- [ ] Merge the stack #38–#114, this plan included, in order (needs the user). **S**
 - [ ] Settle the open questions in section 8. **S**
 - [ ] Census every module in `prototype/src` (73 files) into neural, symbolic, knowledge base, interface, or outside the design (for example `crdt.rs`, `consensus.rs`, `hot_reload.rs`). Record it in `ARCHITECTURE.md`. Outside-the-design modules are kept but not extended. **S [H]**
 
@@ -247,7 +247,7 @@ facts are grouped into files and namespaces. They are not classes.
 ### Phase 2: Lexicon and grammar
 
 - [x] `kb/lexicon.mg`: every token kind, keyword and sigil, with modes and the `abbreviates` pairs. All 181 token kinds and the 100 reserved spellings with `lexes_as` (schema v2), 15 more spellings with a keyword reading (punctuation such as `?=`, and identifiers such as `cons`), and 37 `abbreviates` pairs. The mode is the class (`Sigil` agent, `Keyword` human, `Token` both). A test prints every `.mg` source in both modes and holds `fmt.rs` to the pairs. **M [H]**
-- [ ] Check `ontology.rs`'s `SIGILS` against the pairs: every pair's sigil has a row naming its keyword (`v`/`m` still say `let`/`let mut`; `+`, `hx`, `xn`, `:` and `~>` have no row). `grammar.rs`'s builtins map sigils to their *Rust* equivalents (`v` -> `let`), which is a different relation and correct as it stands. **S [H]**
+- [x] Check `ontology.rs`'s `SIGILS` against the pairs: every pair's sigil has a row naming its keyword. *(`every_abbreviation_has_a_sigil_row`; `v`/`m` now say `val`/`var`, and 8 rows were added: `+`, `hx`, `xn`, `:`, `~>`, `R`, `cons`, `topo`.)* `grammar.rs`'s builtins map sigils to their *Rust* equivalents (`v` -> `let`), which is a different relation and correct as it stands. **S [H]**
 - [x] Conformance test: `lexer::KEYWORDS` and the token kinds equal the lexicon facts, in both directions. The variants are read from `lexer.rs`'s source, since the enum has no runtime list. **S [H]**
 - [ ] `kb/grammar.mg`: the productions of `parser.rs`, each with an id, written by reading the parser function by function (48 `parse_*` functions). **L**
 - [ ] A recogniser in `kb.rs` that runs the grammar facts directly. **M**
