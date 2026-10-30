@@ -22,6 +22,7 @@ pub const FILES: &[(&str, &str)] = &[
     ("kb/schema.mg", include_str!("../../kb/schema.mg")),
     ("kb/lexicon.mg", include_str!("../../kb/lexicon.mg")),
     ("kb/grammar.mg", include_str!("../../kb/grammar.mg")),
+    ("kb/forms.mg", include_str!("../../kb/forms.mg")),
 ];
 
 /// The schema's own predicates: a fact may use these without a `relation`.
@@ -365,6 +366,37 @@ mod tests {
         }
         for v in &stated {
             assert!(real.contains(v), "kb/lexicon.mg names `{v}`, which TokenKind does not have");
+        }
+    }
+
+    /// Every form class has an instance, and every form takes part in a
+    /// lowering: `kb/forms.mg` states each form the compiler has, and no
+    /// form is stated that nothing lowers to or from.
+    #[test]
+    fn every_form_takes_part_in_a_lowering() {
+        let kb = load().expect("loads");
+        let classes: Vec<String> = kb
+            .facts("subclass_of")
+            .into_iter()
+            .filter(|f| f[1] == "Form")
+            .map(|f| f[0].clone())
+            .collect();
+        assert_eq!(classes.len(), 7, "the seven form classes");
+        let instances: Vec<(String, String)> = kb
+            .facts("instance_of")
+            .into_iter()
+            .filter(|f| classes.contains(&f[1]))
+            .map(|f| (f[0].clone(), f[1].clone()))
+            .collect();
+        for c in &classes {
+            assert!(instances.iter().any(|(_, k)| k == c), "no instance of the form class {c}");
+        }
+        let lowerings = kb.facts("lowers_to");
+        for (x, _) in &instances {
+            assert!(
+                lowerings.iter().any(|f| &f[0] == x || &f[1] == x),
+                "the form {x} takes part in no lowers_to"
+            );
         }
     }
 
