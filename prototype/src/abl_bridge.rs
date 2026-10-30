@@ -890,79 +890,111 @@ impl<'a> ForwardWalker<'a> {
 /// RMI symbolic VM.
 pub struct KbTranslator;
 
+/// A lowered `kb` block and what the lowering left out, each with the reason.
+pub struct KbLowering {
+    pub expr: Expr,
+    pub refused: Vec<String>,
+}
+
 impl KbTranslator {
     /// Translate a `kb` definition into an Agentic Binary Language expression.
-    pub fn translate(kb: &ast::KbDef, symbols: &mut SymbolTable) -> Expr {
+    /// Facts and rules are read by [`crate::logic::read_fact`] and
+    /// [`crate::logic::read_rule`], so the container holds what `--check`
+    /// checked. A rule the binary form cannot carry is left out and named in
+    /// `refused`, never lowered to something that means less.
+    pub fn translate(kb: &ast::KbDef, symbols: &mut SymbolTable) -> KbLowering {
         let mut stages: Vec<Expr> = Vec::new();
+        let mut refused = Vec::new();
 
         // fact `p(a, b)` → RESOLVE(p_sym, a_sym, b_sym): predicate name + every
         // ground term is interned, so the full fact recovers on decode (arity =
         // number of term args).
         for fact in &kb.facts {
+            let terms = match crate::logic::read_fact(fact) {
+                Ok(t) => t,
+                Err(n) => {
+                    refused.push(format!(
+                        "kb `{}`: fact `{}` left out: argument {n} is not a constant",
+                        kb.name, fact.name
+                    ));
+                    continue;
+                }
+            };
             let mut args = vec![Expr::sym(symbols.intern(&fact.name))];
-            for a in &fact.args {
-                args.push(Expr::sym(symbols.intern(&term_name(a))));
+            for t in &terms {
+                args.push(Expr::sym(symbols.intern(t)));
             }
             stages.push(Expr::op(Op::RESOLVE, args));
         }
 
-        // rule `r(x, z) where p(x, y), p(y, z) {…}` lowers to a Horn clause:
+        // rule `r(x, z) { p(x, y) && p(y, z) }` lowers to a Horn clause:
         //   UNIFY(r, x, z) >> MATCH(p, x, y) >> MATCH(p, y, z) >> INFER
         // — head (name + params) then one MATCH per body literal, INFER closing
         // the clause. The whole thing recovers via the flat-Seq state machine in
         // `decompile_symbolic`, and is what the evaluator forward-chains over.
         for rule in &kb.rules {
+            let r = match crate::logic::read_rule(rule) {
+                Ok(r) => r,
+                Err(why) => {
+                    refused.push(format!("kb `{}`: rule `{}` left out: {why}", kb.name, rule.name));
+                    continue;
+                }
+            };
+            if let Some(why) = abl_cannot_carry(&r) {
+                refused.push(format!("kb `{}`: rule `{}` left out: {why}", kb.name, rule.name));
+                continue;
+            }
             let mut head_args = vec![Expr::sym(symbols.intern(&rule.name))];
-            for p in &rule.params {
-                head_args.push(Expr::sym(symbols.intern(&p.name)));
+            for t in &r.head.args {
+                head_args.push(Expr::sym(symbols.intern(term_text(t))));
             }
             let mut stage = Expr::op(Op::UNIFY, head_args);
-            for cond in &rule.conditions {
-                if let Some((pred, cargs)) = call_pred(cond) {
-                    let mut m = vec![Expr::sym(symbols.intern(&pred))];
-                    for a in &cargs {
-                        m.push(Expr::sym(symbols.intern(a)));
-                    }
-                    stage = stage >> Expr::op(Op::MATCH, m);
+            for lit in &r.body {
+                let mut m = vec![Expr::sym(symbols.intern(&lit.atom.predicate))];
+                for t in &lit.atom.args {
+                    m.push(Expr::sym(symbols.intern(term_text(t))));
                 }
+                stage = stage >> Expr::op(Op::MATCH, m);
             }
             stage = stage >> Expr::op1(Op::INFER);
             stages.push(stage);
         }
 
-        match stages.len() {
+        let expr = match stages.len() {
             0 => Expr::id(),
             1 => stages.into_iter().next().unwrap(),
             _ => stages
                 .into_iter()
                 .reduce(|acc, next| acc >> next)
                 .unwrap_or_else(Expr::id),
-        }
+        };
+        KbLowering { expr, refused }
     }
 }
 
-/// Extract a fact term's name for interning (identifiers and literals; other
-/// expression shapes collapse to `_`).
-fn term_name(e: &ast::Expr) -> String {
-    match e {
-        ast::Expr::Ident { name } => name.clone(),
-        ast::Expr::Literal { value, .. } => value.clone(),
-        _ => "_".to_string(),
+/// Why the binary form cannot carry `rule`, if it cannot. A `MATCH` argument
+/// is a symbol that [`evaluate_kb`] reads as a variable, and there is no
+/// negated `MATCH`: lowering a constant or a negation would change what the
+/// rule derives.
+fn abl_cannot_carry(rule: &crate::logic::Rule) -> Option<String> {
+    for lit in &rule.body {
+        if lit.negated {
+            return Some(format!("`{lit}` is a negation, which the binary IR cannot carry"));
+        }
+        if let Some(c) = lit.atom.args.iter().find(|t| !t.is_var()) {
+            return Some(format!(
+                "`{lit}` has the constant `{}`, which the binary IR would read as a variable",
+                term_text(c)
+            ));
+        }
     }
+    None
 }
 
-/// Extract `(predicate, [args])` from a rule's `where` condition (a call like
-/// `parent(x, y)`). Returns `None` for non-call conditions.
-fn call_pred(e: &ast::Expr) -> Option<(String, Vec<String>)> {
-    match e {
-        ast::Expr::Call { func, args } => {
-            let pred = match func.as_ref() {
-                ast::Expr::Ident { name } => name.clone(),
-                _ => return None,
-            };
-            Some((pred, args.iter().map(term_name).collect()))
-        }
-        _ => None,
+/// A term's name, as interned: a variable's name or a constant's value.
+fn term_text(t: &crate::logic::Term) -> &str {
+    match t {
+        crate::logic::Term::Var(v) | crate::logic::Term::Const(v) => v,
     }
 }
 
@@ -1103,7 +1135,9 @@ pub fn lower_module(module: &ast::Module) -> AblModule {
                 items.push((net.name.clone(), t.expr));
             }
             ast::ItemKind::Kb(kb) => {
-                items.push((kb.name.clone(), KbTranslator::translate(kb, &mut symbols)));
+                let t = KbTranslator::translate(kb, &mut symbols);
+                diagnostics.extend(t.refused);
+                items.push((kb.name.clone(), t.expr));
             }
             ast::ItemKind::Agent(agent) => {
                 items.push((
@@ -1393,6 +1427,29 @@ pub struct KbRule {
     pub params: Vec<String>,
     /// Body literals: `(predicate, [variable args])`.
     pub body: Vec<(String, Vec<String>)>,
+}
+
+/// The facts and rules of a decoded `kb` item, with symbol ids resolved by
+/// `name`: what [`evaluate_kb`] runs.
+pub fn kb_program(view: &SymbolicView, name: impl Fn(u32) -> String) -> (Vec<GroundFact>, Vec<KbRule>) {
+    let facts = view
+        .fact_syms
+        .iter()
+        .zip(&view.fact_arg_syms)
+        .map(|(&p, terms)| (name(p), terms.iter().map(|&t| name(t)).collect()))
+        .collect();
+    let rules = view
+        .rule_syms
+        .iter()
+        .zip(&view.rule_param_syms)
+        .zip(&view.rule_body_syms)
+        .map(|((&r, params), body)| KbRule {
+            head: name(r),
+            params: params.iter().map(|&p| name(p)).collect(),
+            body: body.iter().map(|(p, a)| (name(*p), a.iter().map(|&x| name(x)).collect())).collect(),
+        })
+        .collect();
+    (facts, rules)
 }
 
 /// Forward-chain `rules` over `facts` to the least fixpoint and return the
@@ -1808,6 +1865,71 @@ fn walk_agentic(expr: &Expr, v: &mut AgenticView) {
 mod tests {
     use super::*;
     use rmi::lang::codec;
+
+    /// Lower `src` and run each `kb` item's binary form through
+    /// [`evaluate_kb`], and the same block through `logic.rs`. Returns, per
+    /// block, (binary-form derived, logic-engine derived), both sorted.
+    fn both_engines(src: &str) -> Vec<(String, Vec<GroundFact>, Vec<GroundFact>)> {
+        let module = crate::parser::parse(&crate::lexer::lex(src)).expect("parses");
+        let lowered = lower_module(&module);
+        let name = |id: u32| lowered.symbols.resolve(Sym(id)).to_string();
+        let mut out = Vec::new();
+        for item in &module.items {
+            let ast::ItemKind::Kb(def) = &item.kind else { continue };
+            let expr = &lowered.items.iter().find(|(n, _)| n == &def.name).expect("lowered").1;
+            let (facts, rules) = kb_program(&decompile_symbolic(expr), name);
+            let mut abl = evaluate_kb(&facts, &rules);
+            abl.sort();
+            let mut kb = crate::logic::build_kb(def);
+            let mut logic: Vec<GroundFact> = Vec::new();
+            for r in &def.rules {
+                for args in kb.query(&r.name, &vec!["?"; r.params.len()]) {
+                    logic.push((r.name.clone(), args));
+                }
+            }
+            logic.sort();
+            logic.dedup();
+            out.push((def.name.clone(), abl, logic));
+        }
+        out
+    }
+
+    /// Every `kb` block in the repo derives the same facts from its binary
+    /// form as from `logic.rs`. Before 2026-10-29 the lowering read only
+    /// `where`, so each of these rules lowered with an empty body.
+    #[test]
+    fn the_binary_form_derives_what_the_logic_engine_derives() {
+        for (file, src) in [
+            ("unified.mg", include_str!("../examples/unified.mg")),
+            ("neurosymbolic_qa.mg", include_str!("../../framework/framewerx/examples/neurosymbolic_qa.mg")),
+            ("neurosymbolic.mg", include_str!("../../framework/framewerx/src/neurosymbolic.mg")),
+        ] {
+            let blocks = both_engines(src);
+            assert!(!blocks.is_empty(), "{file} has a kb block");
+            for (kb, abl, logic) in blocks {
+                assert!(!logic.is_empty(), "{file} `{kb}` derives something");
+                assert_eq!(abl, logic, "{file} `{kb}`");
+            }
+        }
+    }
+
+    /// A negation or a constant in a rule body would change meaning in the
+    /// binary form, so the rule is left out and the diagnostic says why.
+    #[test]
+    fn a_rule_the_binary_form_cannot_carry_is_left_out_and_named() {
+        let src = "kb F {\n    fact p(a);\n    fact q(a);\n\
+                   \x20   rule r(x: str) { p(x) && !q(x) }\n\
+                   \x20   rule s(x: str) { p(x) && q(\"a\") }\n\
+                   \x20   rule t(x: str) { p(x) }\n}\n";
+        let module = crate::parser::parse(&crate::lexer::lex(src)).expect("parses");
+        let lowered = lower_module(&module);
+        let d = &lowered.diagnostics;
+        assert!(d.iter().any(|m| m.contains("rule `r` left out") && m.contains("negation")), "{d:?}");
+        assert!(d.iter().any(|m| m.contains("rule `s` left out") && m.contains("constant `a`")), "{d:?}");
+        assert_eq!(d.len(), 2, "{d:?}");
+        let view = decompile_symbolic(&lowered.items[0].1);
+        assert_eq!(view.rule_syms.len(), 1, "only `t` is lowered");
+    }
 
     fn make_layer(type_name: &str) -> ast::LayerDef {
         ast::LayerDef {
