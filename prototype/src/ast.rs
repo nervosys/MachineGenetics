@@ -695,6 +695,10 @@ pub struct KbDef {
 pub struct FactDef {
     pub name: String,
     pub args: Vec<Expr>,
+    /// The source line of `fact`, 0 when the fact was not parsed from text.
+    /// Not serialised: the published AST shape is unchanged.
+    #[serde(skip)]
+    pub line: usize,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -703,6 +707,9 @@ pub struct RuleDef {
     pub params: Vec<Param>,
     pub conditions: Vec<Expr>,
     pub body: Block,
+    /// The source line of `rule`, 0 when not parsed from text. Not serialised.
+    #[serde(skip)]
+    pub line: usize,
 }
 
 /// Evolutionary computation definition: `evolve Name { genome ...; fitness { ... } }`

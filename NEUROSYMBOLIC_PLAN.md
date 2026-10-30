@@ -224,7 +224,7 @@ facts are grouped into files and namespaces. They are not classes.
 
 ### Phase 0: Preconditions
 
-- [ ] Merge the stack #38–#110, this plan included, in order (needs the user). **S**
+- [ ] Merge the stack #38–#111, this plan included, in order (needs the user). **S**
 - [ ] Settle the open questions in section 8. **S**
 - [ ] Census every module in `prototype/src` (73 files) into neural, symbolic, knowledge base, interface, or outside the design (for example `crdt.rs`, `consensus.rs`, `hot_reload.rs`). Record it in `ARCHITECTURE.md`. Outside-the-design modules are kept but not extended. **S [H]**
 
@@ -237,7 +237,7 @@ facts are grouped into files and namespaces. They are not classes.
 - [x] Comparisons `a == b`, `a != b` in rule bodies: "exactly one" and "bijection" need inequality. Safe only when both sides are bound; not carried by the binary IR. **S**
 - [x] Write `kb/schema.mg`: the classes, relations and invariants of section 5. **M**
 - [x] Write `prototype/src/kb.rs`: embed `kb/*.mg` with `include_str!`, parse with the kernel parser, materialise, validate every fact against the schema, run the invariants, and refuse to load on any violation. **M**
-- [ ] Error messages for schema violations name the file, line and the invariant broken. *(File and invariant now; the line needs spans on `ast::FactDef`, which has none.)* **S**
+- [x] Error messages for schema violations name the file, line and the invariant broken. `FactDef` and `RuleDef` carry the line of their keyword (not serialised, so the AST JSON is unchanged); an invariant violation points at a stated fact that takes part in it. Rule errors from the logic engine itself still carry no line. **S**
 - [x] A test that each invariant catches a deliberately bad fact (break-check). A second test requires a breaking example for every `invariant` fact; making `unenforced_rule` unable to fire fails the first. **S [H]**
 - [x] RAP methods `kb/schema` and `kb/query`, read from the loaded base, not a copy. **S**
 - [x] `MAGE_ONTOLOGY.md` Part II documents `kb/schema.mg` (§11.1), with a test that it names every class, relation and invariant in the schema and nothing else. The domain sections after it stay as reference until their facts move into `kb/` (Phases 2-3); rewriting them now would document facts the knowledge base does not hold. **M**
