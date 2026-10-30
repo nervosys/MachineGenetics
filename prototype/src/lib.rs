@@ -51,6 +51,7 @@ pub mod hir;
 pub mod hot_reload;
 pub mod lease;
 pub mod legacy;
+pub mod kb;
 pub mod lexer;
 pub mod logic;
 pub mod manifest;
