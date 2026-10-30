@@ -32,10 +32,10 @@ const SIGILS: &[(&str, &str, &str)] = &[
     ("+af", "Function", "pub async fn"),
     ("+uf", "Function", "pub unsafe fn"),
     ("f", "Function", "fn — private function"),
-    ("v", "Let", "let — immutable binding"),
-    ("m", "Let", "let mut — mutable binding"),
+    ("v", "Let", "val — immutable binding (Rust `let`)"),
+    ("m", "Let", "var — mutable binding (Rust `let mut`)"),
     ("C", "Const", "const declaration"),
-    ("Z", "Static", "static declaration"),
+    ("Z", "Static", "static — retired (E0554): write `C NAME: T = value;`"),
     ("S", "Struct", "struct declaration"),
     ("E", "Enum", "enum declaration"),
     ("T", "Trait", "trait declaration"),
@@ -59,10 +59,10 @@ const SIGILS: &[(&str, &str, &str)] = &[
     ("fx", "Effect", "effect declaration"),
     ("sp", "Spec", "spec block — contracts on a function"),
     ("sw", "Swarm", "swarm declaration"),
-    ("af", "Function", "async fn — note `async fn` is not the spelling"),
+    ("af", "Function", "async — async function, written `async name(`; `async fn` is not the spelling"),
     ("gd", "Guard", "guard cond else { … } — the else must diverge"),
     ("df", "Defer", "defer expr — run at scope exit"),
-    ("M", "Mod", "module declaration"),
+    ("M", "Mod", "mod — module declaration"),
     ("u", "Use", "use import"),
     ("Y", "TypeAlias", "type alias"),
     ("?", "If/Option/Try", "if expression, or Option type prefix, or try operator"),
@@ -82,6 +82,16 @@ const SIGILS: &[(&str, &str, &str)] = &[
     ("0b", "Bool", "false"),
     ("_", "SelfVal", "self value"),
     ("_T", "SelfType", "Self type"),
+    // Rows for the remaining `abbreviates` pairs in kb/lexicon.mg; the test
+    // `every_abbreviation_has_a_sigil_row` holds this table to them.
+    ("+", "Visibility", "pub — public; prefixes any item (`+f`, `+S`, ...)"),
+    ("hx", "Handle", "handle — effect handler"),
+    ("xn", "Extern", "extern — reserved, not yet supported"),
+    (":", "In/Else", "in after a for pattern, else after an if block; also a type annotation"),
+    ("~>", "Where", "where clause"),
+    ("R", "ResultType", "`R[T, E]` is `T or E` (Rust `Result<T, E>`)"),
+    ("cons", "SwarmField", "consensus — swarm field"),
+    ("topo", "SwarmField", "topology — swarm field"),
     // `ret`, not `^`. This entry said `^` and it was wrong: `MAGE_SPEC.md`
     // names `ret` as the Return sigil in both of its sigil tables, and
     // mentions `^` exactly once — as bitwise XOR. `^` is also the `^T` Box
@@ -2739,6 +2749,25 @@ mod tests {
                 unresolved.is_empty(),
                 "documented type `{name}` (as `{concrete}`) does not resolve: {unresolved:?}"
             );
+        }
+    }
+
+    /// Every `abbreviates(sigil, keyword)` pair in `kb/lexicon.mg` has a
+    /// `SIGILS` row for its sigil whose summary names the keyword as a word,
+    /// so an agent reading the ontology learns the same pairs the formatter
+    /// prints.
+    #[test]
+    fn every_abbreviation_has_a_sigil_row() {
+        let kb = crate::kb::load().expect("the knowledge base loads");
+        for f in kb.facts("abbreviates") {
+            let (sigil, keyword) = (&f[0], &f[1]);
+            let named = SIGILS.iter().any(|(s, _, summary)| {
+                s == sigil
+                    && summary
+                        .split(|c: char| !c.is_ascii_alphanumeric())
+                        .any(|w| w == keyword)
+            });
+            assert!(named, "no SIGILS row for `{sigil}` names `{keyword}`");
         }
     }
 
