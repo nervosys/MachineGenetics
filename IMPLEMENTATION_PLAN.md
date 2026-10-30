@@ -31,7 +31,7 @@ fix), pins updated, a HANDOFF entry, and a stacked PR.
 
 ## Phase 0: Housekeeping
 
-- [ ] **0.1** Merge PRs #38–#105 in order (the stack grew as the plan was worked). This needs the user. **S**
+- [ ] **0.1** Merge PRs #38–#106 in order (the stack grew as the plan was worked). This needs the user. **S**
 - [ ] **0.2** Keep this file current. Tick items in the PR that does them, so
   the plan never lives only in a session transcript. **S**
 

@@ -219,7 +219,7 @@ facts are grouped into files and namespaces. They are not classes.
 
 ### Phase 0: Preconditions
 
-- [ ] Merge the stack #38–#105, this plan included, in order (needs the user). **S**
+- [ ] Merge the stack #38–#106, this plan included, in order (needs the user). **S**
 - [ ] Settle the open questions in section 8. **S**
 - [ ] Census every module in `prototype/src` (73 files) into neural, symbolic, knowledge base, interface, or outside the design (for example `crdt.rs`, `consensus.rs`, `hot_reload.rs`). Record it in `ARCHITECTURE.md`. Outside-the-design modules are kept but not extended. **S [H]**
 
@@ -229,6 +229,7 @@ facts are grouped into files and namespaces. They are not classes.
   *Found (2026-10-29):* besides no negation, `build_kb` read only a rule's `where` conditions, ignored its block, took lowercase parameters for constants, and dropped fact arguments it could not read. So MAGE_SPEC §7.1's own example derived nothing. There are also **three** engines over `kb` blocks, not one: `logic.rs` (`--check`), `abl_bridge::evaluate_kb` with `KbTranslator` (`--run=abl`; it too reads only `where`), and `builder.rs`'s K0004–K0007 validation.
 - [x] Add stratified negation to `logic.rs`, with tests for stratification errors. Rules now mean what §7.1 says; anything unevaluable is E0570. **M**
 - [x] **One engine.** `KbTranslator` lowers the same body `logic.rs` reads (block and `where`), and `builder.rs`'s checks call it (K0008). A rule the binary form cannot carry (negation, constants) is left out at lowering, naming the loss, not lowered wrongly. `evaluate_kb` stays as the container's indexed interpreter; a test requires it to derive what `logic.rs` derives on every `kb` block in the repo. *Found:* the lowering had dropped every rule body, so `unified.mg`'s container derived nothing; it is now 467 bytes, not 420, and derives `grandparent(a, c)`. **M**
+- [x] Comparisons `a == b`, `a != b` in rule bodies: "exactly one" and "bijection" need inequality. Safe only when both sides are bound; not carried by the binary IR. **S**
 - [ ] Write `kb/schema.mg`: the classes, relations and invariants of section 5. **M**
 - [ ] Write `prototype/src/kb.rs`: embed `kb/*.mg` with `include_str!`, parse with the kernel parser, materialise, validate every fact against the schema, run the invariants, and refuse to load on any violation. **M**
 - [ ] Error messages for schema violations name the file, line and the invariant broken. **S**
