@@ -224,7 +224,7 @@ facts are grouped into files and namespaces. They are not classes.
 
 ### Phase 0: Preconditions
 
-- [ ] Merge the stack #38–#114, this plan included, in order (needs the user). **S**
+- [ ] Merge the stack #38–#115, this plan included, in order (needs the user). **S**
 - [ ] Settle the open questions in section 8. **S**
 - [ ] Census every module in `prototype/src` (73 files) into neural, symbolic, knowledge base, interface, or outside the design (for example `crdt.rs`, `consensus.rs`, `hot_reload.rs`). Record it in `ARCHITECTURE.md`. Outside-the-design modules are kept but not extended. **S [H]**
 
@@ -249,11 +249,11 @@ facts are grouped into files and namespaces. They are not classes.
 - [x] `kb/lexicon.mg`: every token kind, keyword and sigil, with modes and the `abbreviates` pairs. All 181 token kinds and the 100 reserved spellings with `lexes_as` (schema v2), 15 more spellings with a keyword reading (punctuation such as `?=`, and identifiers such as `cons`), and 37 `abbreviates` pairs. The mode is the class (`Sigil` agent, `Keyword` human, `Token` both). A test prints every `.mg` source in both modes and holds `fmt.rs` to the pairs. **M [H]**
 - [x] Check `ontology.rs`'s `SIGILS` against the pairs: every pair's sigil has a row naming its keyword. *(`every_abbreviation_has_a_sigil_row`; `v`/`m` now say `val`/`var`, and 8 rows were added: `+`, `hx`, `xn`, `:`, `~>`, `R`, `cons`, `topo`.)* `grammar.rs`'s builtins map sigils to their *Rust* equivalents (`v` -> `let`), which is a different relation and correct as it stands. **S [H]**
 - [x] Conformance test: `lexer::KEYWORDS` and the token kinds equal the lexicon facts, in both directions. The variants are read from `lexer.rs`'s source, since the enum has no runtime list. **S [H]**
-- [ ] `kb/grammar.mg`: the productions of `parser.rs`, each with an id, written by reading the parser function by function (48 `parse_*` functions). **L**
-- [ ] A recogniser in `kb.rs` that runs the grammar facts directly. **M**
-- [ ] Conformance, corpus direction: all 114 `.mg` sources the kernel parser accepts are recognised by the grammar facts. **S**
-- [ ] Conformance, generation direction: sentences sampled from the grammar facts are accepted by the kernel parser, or the mismatch is recorded as a known gap fact. **M**
-- [ ] Bootstrap check: the files in `kb/` parse with the kernel and are recognised by their own grammar facts. **S**
+- [x] `kb/grammar.mg`: the productions of `parser.rs`, each with an id, written by reading the parser function by function (48 `parse_*` functions). 148 productions, 289 `rhs` alternatives in EBNF (schema v4 adds `rhs`; `derives` is read off it), each naming its parser function and lines. Transcribed by seven subagents, one per section, then reconciled: the `unreachable_production` invariant found the 11 helpers two sections had both defined. 26 `GAP` comments mark where the grammar is a superset (layout, spelling tests on identifiers, lookahead). **L**
+- [x] A recogniser that runs the grammar facts directly: `recognise.rs`, Earley over token kinds, so left recursion and ambiguity need no reshaping of the facts. **M**
+- [x] Conformance, corpus direction: all 115 `.mg` sources the kernel parser accepts are recognised by the grammar facts. A ratchet list (`NOT_YET`, empty) can only shrink. Deleting the `StructDef` alternative fails 53 sources. **S**
+- [ ] Conformance, generation direction: sentences sampled from the grammar facts are accepted by the kernel parser, or the mismatch is recorded as a known gap fact. *Started:* of 249 one-token deletions from the corpus that the parser rejects, the grammar rejects 243, and a test holds it to 95% (a catch-all `Module` alternative drops it to 0). Sampling from the grammar remains. **M**
+- [x] Bootstrap check: the files in `kb/` parse with the kernel and are recognised by their own grammar facts. *(They are in the corpus, `kb/grammar.mg` included.)* **S**
 - [ ] Parse errors name the production they were in. **M**
 - [ ] Generate the `sigils`, `keywords` and `ast_kinds` sections of `ontology.rs` from the knowledge base and delete the hand tables. The JSON is byte-identical apart from the new `schema` key. **S [H]**
 

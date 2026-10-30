@@ -17,7 +17,9 @@ kb Schema {
     // v2 (2026-10-29): `TokenKind` and `lexes_as`, for kb/lexicon.mg.
     // v3 (2026-10-29): `sigil_two_keywords` dropped: `:` abbreviates both
     // `in` and `else`, and the grammar, not the spelling, says which.
-    fact schema_version(3);
+    // v4 (2026-10-29): `rhs`, for kb/grammar.mg. `derives` is now read off
+    // the `rhs` facts by the loader, not stated.
+    fact schema_version(4);
 
     // ── Classes ─────────────────────────────────────────────────────────
     // Seven roots. The twelve domains of MAGE_ONTOLOGY.md group facts into
@@ -107,6 +109,11 @@ kb Schema {
     fact relation(abbreviates);
     fact arg_class(abbreviates, 1, Sigil);
     fact arg_class(abbreviates, 2, Keyword);
+    // One alternative of a production, in EBNF over production and
+    // `TokenKind` names (`recognise.rs` reads it).
+    fact relation(rhs);
+    fact arg_class(rhs, 1, Production);
+    fact arg_class(rhs, 2, Text);
     fact relation(derives);
     fact arg_class(derives, 1, Production);
     fact arg_class(derives, 2, Construct);
