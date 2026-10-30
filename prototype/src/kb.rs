@@ -18,7 +18,10 @@ use crate::ast;
 use crate::logic::{self, KnowledgeBase};
 
 /// The knowledge-base files, in load order: the schema first.
-pub const FILES: &[(&str, &str)] = &[("kb/schema.mg", include_str!("../../kb/schema.mg"))];
+pub const FILES: &[(&str, &str)] = &[
+    ("kb/schema.mg", include_str!("../../kb/schema.mg")),
+    ("kb/lexicon.mg", include_str!("../../kb/lexicon.mg")),
+];
 
 /// The schema's own predicates: a fact may use these without a `relation`.
 pub const META: &[&str] =
@@ -164,8 +167,8 @@ mod tests {
 
     #[test]
     fn the_schema_alone_loads() {
-        let mut kb = load().unwrap_or_else(|e| panic!("{e:#?}"));
-        assert_eq!(kb.facts("schema_version"), vec![vec!["1".to_string()]]);
+        let mut kb = load_files(&FILES[..1]).unwrap_or_else(|e| panic!("{e:#?}"));
+        assert_eq!(kb.facts("schema_version"), vec![vec!["2".to_string()]]);
         assert!(!kb.query("below", &["Keyword", "Construct"]).is_empty());
     }
 
@@ -214,6 +217,14 @@ mod tests {
              fact enforced_by(E0570, logic);",
         ),
         ("unnamed_refusal", "fact instance_of(r1, Refusal);"),
+        (
+            "spelling_two_kinds",
+            "fact instance_of(KwF, TokenKind);\n\
+             fact instance_of(KwV, TokenKind);\n\
+             fact instance_of(\"fn\", Token);\n\
+             fact lexes_as(\"fn\", KwF);\n\
+             fact lexes_as(\"fn\", KwV);",
+        ),
     ];
 
     #[test]
@@ -256,6 +267,68 @@ mod tests {
              fact enforced_by(Linear, parser);",
         );
         assert!(e.iter().any(|m| m.contains("argument 1 of `enforced_by`, `Linear`, is not a `Rule`")), "{e:#?}");
+    }
+
+    #[test]
+    fn the_whole_knowledge_base_loads() {
+        load().unwrap_or_else(|e| panic!("{e:#?}"));
+    }
+
+    /// `TokenKind`'s variants, read from the lexer's source: the enum has no
+    /// runtime list, and a hand-written one here would be the copy this test
+    /// exists to remove.
+    fn token_kind_variants() -> std::collections::BTreeSet<String> {
+        let src = include_str!("lexer.rs").replace("\r\n", "\n");
+        let start = src.find("pub enum TokenKind {").expect("the enum");
+        let body = &src[start..start + src[start..].find("\n}\n").expect("its end")];
+        body.lines()
+            .skip(1)
+            .filter_map(|l| {
+                let t = l.strip_prefix("    ")?;
+                let name: String = t.chars().take_while(|c| c.is_ascii_alphanumeric() || *c == '_').collect();
+                (name.starts_with(|c: char| c.is_ascii_uppercase())
+                    && t[name.len()..].trim_start().starts_with([',', '(', '{']))
+                    .then_some(name)
+            })
+            .collect()
+    }
+
+    /// The lexer's token kinds are exactly the lexicon's, both ways.
+    #[test]
+    fn the_lexicon_names_every_token_kind() {
+        let kb = load().expect("loads");
+        let stated: std::collections::BTreeSet<String> = kb
+            .facts("instance_of")
+            .into_iter()
+            .filter(|f| f[1] == "TokenKind")
+            .map(|f| f[0].clone())
+            .collect();
+        let real = token_kind_variants();
+        assert_eq!(real.len(), 182, "the variant reader still reads the enum");
+        for v in &real {
+            assert!(stated.contains(v), "TokenKind::{v} is not in kb/lexicon.mg");
+        }
+        for v in &stated {
+            assert!(real.contains(v), "kb/lexicon.mg names `{v}`, which TokenKind does not have");
+        }
+    }
+
+    /// `lexer::KEYWORDS` is exactly the lexicon's `lexes_as` facts, both ways.
+    #[test]
+    fn the_lexicon_states_every_keyword() {
+        let kb = load().expect("loads");
+        let stated: std::collections::BTreeSet<(String, String)> =
+            kb.facts("lexes_as").into_iter().map(|f| (f[0].clone(), f[1].clone())).collect();
+        let real: std::collections::BTreeSet<(String, String)> = crate::lexer::KEYWORDS
+            .iter()
+            .map(|(s, k)| (s.to_string(), format!("{k:?}")))
+            .collect();
+        for (s, k) in &real {
+            assert!(stated.contains(&(s.clone(), k.clone())), "KEYWORDS has `{s}` -> {k}; kb/lexicon.mg does not");
+        }
+        for (s, k) in &stated {
+            assert!(real.contains(&(s.clone(), k.clone())), "kb/lexicon.mg has `{s}` -> {k}; KEYWORDS does not");
+        }
     }
 
     /// MAGE_ONTOLOGY.md §11.1 documents the schema. Every backticked name in

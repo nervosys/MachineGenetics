@@ -246,11 +246,11 @@ facts are grouped into files and namespaces. They are not classes.
 
 ### Phase 2: Lexicon and grammar
 
-- [ ] `kb/lexicon.mg`: every token kind, keyword and sigil, with modes and the `abbreviates` pairs. **M [H]**
-- [ ] Conformance test: `lexer::KEYWORDS` and the token kinds equal the lexicon facts, in both directions. **S [H]**
+- [ ] `kb/lexicon.mg`: every token kind, keyword and sigil, with modes and the `abbreviates` pairs. *Started:* all 182 token kinds and the 102 reserved spellings with `lexes_as` (schema v2 adds `TokenKind`, `lexes_as`, and the invariant `spelling_two_kinds`). Modes, `abbreviates` and the punctuation spellings remain; the pairing lives in four hand tables that disagree (`lexer::KEYWORDS`, `grammar.rs`'s builtins, `ontology.rs`'s `SIGILS`, and `fmt.rs` inline). **M [H]**
+- [x] Conformance test: `lexer::KEYWORDS` and the token kinds equal the lexicon facts, in both directions. The variants are read from `lexer.rs`'s source, since the enum has no runtime list. **S [H]**
 - [ ] `kb/grammar.mg`: the productions of `parser.rs`, each with an id, written by reading the parser function by function (48 `parse_*` functions). **L**
 - [ ] A recogniser in `kb.rs` that runs the grammar facts directly. **M**
-- [ ] Conformance, corpus direction: all 112 `.mg` sources the kernel parser accepts are recognised by the grammar facts. **S**
+- [ ] Conformance, corpus direction: all 114 `.mg` sources the kernel parser accepts are recognised by the grammar facts. **S**
 - [ ] Conformance, generation direction: sentences sampled from the grammar facts are accepted by the kernel parser, or the mismatch is recorded as a known gap fact. **M**
 - [ ] Bootstrap check: the files in `kb/` parse with the kernel and are recognised by their own grammar facts. **S**
 - [ ] Parse errors name the production they were in. **M**
