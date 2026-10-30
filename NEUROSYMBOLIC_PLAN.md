@@ -239,7 +239,7 @@ facts are grouped into files and namespaces. They are not classes.
 - [x] Write `prototype/src/kb.rs`: embed `kb/*.mg` with `include_str!`, parse with the kernel parser, materialise, validate every fact against the schema, run the invariants, and refuse to load on any violation. **M**
 - [ ] Error messages for schema violations name the file, line and the invariant broken. *(File and invariant now; the line needs spans on `ast::FactDef`, which has none.)* **S**
 - [x] A test that each invariant catches a deliberately bad fact (break-check). A second test requires a breaking example for every `invariant` fact; making `unenforced_rule` unable to fire fails the first. **S [H]**
-- [ ] RAP methods `kb/schema` and `kb/query`. **S**
+- [x] RAP methods `kb/schema` and `kb/query`, read from the loaded base, not a copy. **S**
 - [ ] Rewrite `MAGE_ONTOLOGY.md` Part II as documentation of `kb/schema.mg`, plus a test that every class it names exists in the schema. **M**
 
 **Done when:** `kb::load()` succeeds on a schema-only knowledge base, and each invariant has a failing example.

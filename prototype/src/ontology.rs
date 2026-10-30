@@ -290,6 +290,10 @@ const RAP_METHODS: &[(&str, &str, &[&str], &[&str])] = &[
     // after `check-rap-methods.sh` compared only three.
     ("rap/methods", "List every method this server serves, with its count.",
         &[], &["ok", "count", "methods"]),
+    ("kb/schema", "The knowledge base's schema: classes, relations, invariants.",
+        &[], &["ok", "schema_version", "classes", "relations", "invariants", "error"]),
+    ("kb/query", "Facts of a predicate in the knowledge base, stated or derived; \"?\" matches any.",
+        &["predicate", "args"], &["ok", "count", "matches", "error"]),
     ("effects/infer", "Infer effects of each function.",
         &["source"], &["ok", "effects", "diagnostics"]),
     ("effects/check", "Check declared effects against inferred.",
