@@ -1291,6 +1291,87 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
         // Derived from `METHODS` below, which is asserted against the real
         // dispatch arms by a test, so this cannot drift from what the server
         // actually answers.
+        "kb/schema" => {
+            // The knowledge base's top-level schema (kb/schema.mg): its
+            // classes, relations and invariants, from the loaded base rather
+            // than a hand-written copy.
+            match crate::kb::load() {
+                Ok(kb) => {
+                    let col = |p: &str, i: usize| -> Vec<String> {
+                        kb.facts(p).into_iter().map(|f| f[i].clone()).collect()
+                    };
+                    let subclass = kb.facts("subclass_of");
+                    let mut classes: Vec<serde_json::Value> = col("class", 0)
+                        .into_iter()
+                        .map(|c| {
+                            let parent = subclass.iter().find(|s| s[0] == c).map(|s| s[1].clone());
+                            serde_json::json!({ "name": c, "subclass_of": parent })
+                        })
+                        .collect();
+                    classes.sort_by(|a, b| a["name"].as_str().cmp(&b["name"].as_str()));
+                    let arg_class = kb.facts("arg_class");
+                    let mut relations: Vec<serde_json::Value> = col("relation", 0)
+                        .into_iter()
+                        .map(|r| {
+                            let mut args: Vec<(usize, String)> = arg_class
+                                .iter()
+                                .filter(|a| a[0] == r)
+                                .map(|a| (a[1].parse().unwrap_or(0), a[2].clone()))
+                                .collect();
+                            args.sort();
+                            let args: Vec<String> = args.into_iter().map(|(_, c)| c).collect();
+                            serde_json::json!({ "name": r, "args": args })
+                        })
+                        .collect();
+                    relations.sort_by(|a, b| a["name"].as_str().cmp(&b["name"].as_str()));
+                    let mut invariants: Vec<serde_json::Value> = kb
+                        .facts("invariant")
+                        .into_iter()
+                        .map(|i| serde_json::json!({ "name": i[0], "says": i[1] }))
+                        .collect();
+                    invariants.sort_by(|a, b| a["name"].as_str().cmp(&b["name"].as_str()));
+                    serde_json::json!({
+                        "ok": true,
+                        "schema_version": col("schema_version", 0).first(),
+                        "classes": classes,
+                        "relations": relations,
+                        "invariants": invariants,
+                    })
+                }
+                Err(refused) => serde_json::json!({
+                    "ok": false,
+                    "error": format!("the knowledge base does not load: {}", refused.join("; ")),
+                }),
+            }
+        }
+
+        "kb/query" => {
+            // Facts of one predicate, stated or derived. `args` is optional;
+            // `"?"` in it matches anything. `ok` is a claim that something
+            // matched, as `skb/query` and `doc/query` read it.
+            let predicate = params.get("predicate").and_then(|v| v.as_str()).unwrap_or("");
+            match crate::kb::load() {
+                Ok(mut kb) => {
+                    let matches = match params.get("args").and_then(|v| v.as_array()) {
+                        Some(a) => {
+                            let args: Vec<&str> = a.iter().map(|x| x.as_str().unwrap_or("?")).collect();
+                            kb.query(predicate, &args)
+                        }
+                        None => kb.facts(predicate),
+                    };
+                    serde_json::json!({
+                        "ok": !matches.is_empty(),
+                        "count": matches.len(),
+                        "matches": matches,
+                    })
+                }
+                Err(refused) => serde_json::json!({
+                    "ok": false,
+                    "error": format!("the knowledge base does not load: {}", refused.join("; ")),
+                }),
+            }
+        }
+
         "rap/methods" => serde_json::json!({
             "ok": true,
             "count": METHODS.len(),
@@ -1336,6 +1417,8 @@ pub const METHODS: &[&str] = &[
     "format/human",
     "grammar/list",
     "heal/graph",
+    "kb/query",
+    "kb/schema",
     "language/parse",
     "language/tokens",
     "lint/check",
@@ -1365,6 +1448,32 @@ mod tests {
 
     fn call(method: &str, params: serde_json::Value) -> serde_json::Value {
         dispatch(method, &params)
+    }
+
+    #[test]
+    fn kb_schema_lists_classes_relations_and_invariants() {
+        let r = call("kb/schema", serde_json::json!({}));
+        assert_eq!(r["ok"], true, "{r}");
+        assert_eq!(r["schema_version"], "1");
+        let classes = r["classes"].as_array().unwrap();
+        assert!(classes.iter().any(|c| c["name"] == "Keyword" && c["subclass_of"] == "Token"));
+        assert!(classes.iter().any(|c| c["name"] == "Form" && c["subclass_of"].is_null()));
+        let rels = r["relations"].as_array().unwrap();
+        let enforced = rels.iter().find(|x| x["name"] == "enforced_by").expect("enforced_by");
+        assert_eq!(enforced["args"], serde_json::json!(["Rule", "SymbolicComponent"]));
+        assert!(r["invariants"].as_array().unwrap().iter().any(|i| i["name"] == "class_cycle"));
+    }
+
+    /// Derived facts answer too, and a query that matches nothing is not ok.
+    #[test]
+    fn kb_query_answers_derived_facts_and_says_when_nothing_matched() {
+        let r = call("kb/query", serde_json::json!({ "predicate": "below", "args": ["Keyword", "?"] }));
+        assert_eq!(r["ok"], true, "{r}");
+        let supers: Vec<&str> = r["matches"].as_array().unwrap().iter().map(|m| m[1].as_str().unwrap()).collect();
+        assert!(supers.contains(&"Token") && supers.contains(&"Construct"), "{r}");
+        let none = call("kb/query", serde_json::json!({ "predicate": "no_such_predicate" }));
+        assert_eq!(none["ok"], false);
+        assert_eq!(none["count"], 0);
     }
 
     #[test]
@@ -1842,6 +1951,8 @@ mod tests {
             // caught it, which is why the four lists had to be compared from
             // outside. See `scripts/check-rap-methods.sh`.
             ("rap/methods", serde_json::json!({})),
+            ("kb/schema", serde_json::json!({})),
+            ("kb/query", serde_json::json!({ "predicate": "below", "args": ["Keyword", "?"] })),
         ];
 
         let published = crate::ontology::section("rap_methods").expect("rap_methods");
