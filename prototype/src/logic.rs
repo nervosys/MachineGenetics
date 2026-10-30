@@ -516,11 +516,36 @@ impl KnowledgeBase {
 
 /// A constant from a fact argument or a rule literal: a string (unquoted),
 /// a number or `true`/`false`, or a negated number.
+/// A string literal's text as a constant: one quote off each end, and `\"`
+/// and `\\` unescaped, so a fact can state a spelling that itself contains a
+/// quote (`"\"s\""` is the three characters `"s"`). `trim_matches` stripped
+/// every quote at each end, an escaped one included. Other escapes are kept
+/// as written.
+fn string_constant(value: &str) -> String {
+    let inner = value.strip_prefix('"').unwrap_or(value);
+    let inner = inner.strip_suffix('"').unwrap_or(inner);
+    let mut out = String::with_capacity(inner.len());
+    let mut chars = inner.chars();
+    while let Some(c) = chars.next() {
+        if c == '\\' {
+            match chars.next() {
+                Some(q @ ('"' | '\\')) => out.push(q),
+                Some(other) => {
+                    out.push('\\');
+                    out.push(other);
+                }
+                None => out.push('\\'),
+            }
+        } else {
+            out.push(c);
+        }
+    }
+    out
+}
+
 fn literal_constant(expr: &ast::Expr) -> Option<String> {
     match expr {
-        ast::Expr::Literal { value, kind: ast::LiteralKind::String } => {
-            Some(value.trim_matches('"').to_string())
-        }
+        ast::Expr::Literal { value, kind: ast::LiteralKind::String } => Some(string_constant(value)),
         ast::Expr::Literal { value, .. } => Some(value.clone()),
         ast::Expr::Unary { op, operand } if op == "-" => match operand.as_ref() {
             ast::Expr::Literal { value, kind } if !matches!(kind, ast::LiteralKind::String) => {
@@ -692,6 +717,16 @@ fn term_of(a: &ast::Expr, fresh: &mut usize) -> Option<Term> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A string constant loses one quote at each end and has `\"` and `\\`
+    /// unescaped; other escapes stay as written.
+    #[test]
+    fn string_constants_unescape_quotes() {
+        assert_eq!(string_constant(r#""plain""#), "plain");
+        assert_eq!(string_constant(r#""\"s\"""#), r#""s""#);
+        assert_eq!(string_constant(r#""a\\b""#), r"a\b");
+        assert_eq!(string_constant(r#""a\nb""#), r"a\nb");
+    }
 
     fn atom(p: &str, args: &[&str]) -> Atom {
         Atom {
