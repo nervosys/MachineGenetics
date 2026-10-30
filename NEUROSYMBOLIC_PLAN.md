@@ -224,7 +224,7 @@ facts are grouped into files and namespaces. They are not classes.
 
 ### Phase 0: Preconditions
 
-- [ ] Merge the stack #38–#115, this plan included, in order (needs the user). **S**
+- [ ] Merge the stack #38–#116, this plan included, in order (needs the user). **S**
 - [ ] Settle the open questions in section 8. **S**
 - [ ] Census every module in `prototype/src` (73 files) into neural, symbolic, knowledge base, interface, or outside the design (for example `crdt.rs`, `consensus.rs`, `hot_reload.rs`). Record it in `ARCHITECTURE.md`. Outside-the-design modules are kept but not extended. **S [H]**
 
@@ -254,7 +254,7 @@ facts are grouped into files and namespaces. They are not classes.
 - [x] Conformance, corpus direction: all 115 `.mg` sources the kernel parser accepts are recognised by the grammar facts. A ratchet list (`NOT_YET`, empty) can only shrink. Deleting the `StructDef` alternative fails 53 sources. **S**
 - [ ] Conformance, generation direction: sentences sampled from the grammar facts are accepted by the kernel parser, or the mismatch is recorded as a known gap fact. *Started:* of 249 one-token deletions from the corpus that the parser rejects, the grammar rejects 243, and a test holds it to 95% (a catch-all `Module` alternative drops it to 0). Sampling from the grammar remains. **M**
 - [x] Bootstrap check: the files in `kb/` parse with the kernel and are recognised by their own grammar facts. *(They are in the corpus, `kb/grammar.mg` included.)* **S**
-- [ ] Parse errors name the production they were in. **M**
+- [x] Parse errors name the production they were in. `ParseError::production` is stamped by `Parser::within`, innermost first; 44 `parse_*` functions are wrapped. The CLI prints `(in StructDef)`, RAP adds a `production` field, and a test reads the names from `parser.rs` and requires each to be a production of `kb/grammar.mg`. **M**
 - [ ] Generate the `sigils`, `keywords` and `ast_kinds` sections of `ontology.rs` from the knowledge base and delete the hand tables. The JSON is byte-identical apart from the new `schema` key. **S [H]**
 
 **Done when:** no table of tokens, keywords, sigils or productions is maintained by hand outside `kb/` and the kernel, and the kernel is held to `kb/` both ways.

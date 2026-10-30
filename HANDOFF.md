@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,520** — rmi 1,384 · prototype 1,508 · ribosome 168 · germline 175 · forge 63 · arena 222 |
+| Tests | **3,523** — rmi 1,384 · prototype 1,511 · ribosome 168 · germline 175 · forge 63 · arena 222 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -2010,6 +2010,17 @@ section of `parser.rs`, from one brief with a shared table of production
 names; reconciling them took four renames and dropping 11 helpers that two
 sections both defined, which the invariant found. `.mg` sources 114 -> 115;
 files declaring a `kb` 5 -> 6. Prototype +5 tests.
+
+**Parse errors name their production.** `ParseError` gained `production`,
+stamped by `Parser::within(name, f)`: the innermost named production wins.
+The 44 `parse_*` functions that match a grammar production are wrapped (the
+body keeps its code under a `_body` name, so no call site changed). The CLI
+prints `expected Colon, found Ident 'i32' (in StructDef)`; RAP's parse errors
+carry `"production": "StructDef"` beside the unchanged `message`. A test reads
+every `within("…")` name from `parser.rs` and requires it to be a production
+of `kb/grammar.mg`, so the two cannot drift. Removing the stamping fails the
+two behaviour tests. Prototype +3 tests. The wrapping was done by a Haiku
+subagent from an exact brief.
 
 Break-checked: a gate that admits everything fails all 3 new tests. Arena +3
 tests.
@@ -4545,7 +4556,7 @@ changed before you commit.
 ---
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,508**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,511**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
   across six crates **3,140**; documented-count pins **101**, up from 46 — the
   two newest hold the `kb`/`net` overlap the tensor-product-binding decision
