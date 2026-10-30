@@ -1,19 +1,33 @@
 /// MAGE Logic Inference Engine — Datalog-style reasoning for KB blocks.
 ///
 /// Compiles `kb` definitions into an in-memory fact store with
-/// bottom-up (semi-naive) evaluation of rules.
+/// bottom-up, semi-naive evaluation of rules, one stratum at a time.
 ///
 /// Supports:
-///   - Ground facts: `parent("alice", "bob")`
-///   - Rules with conjunctive bodies: `ancestor(X, Y) :- parent(X, Z), ancestor(Z, Y)`
+///   - Ground facts: `fact parent("alice", "bob");`
+///   - Rules whose body is a conjunction of predicate calls:
+///     `rule ancestor(x: str, z: str) { parent(x, y) && ancestor(y, z) }`
+///   - Stratified negation: `rule orphan(x: str) { person(x) && !parent(y, x) }`
 ///   - Queries: `kb.query("ancestor", &["alice", "?"])`
-///   - Stratified negation (future)
+///
+/// **What a rule means (MAGE_SPEC §7.1).** Every identifier in a rule is a
+/// logic variable — the head's parameters and any name that appears only in
+/// the body — and constants are string or number literals. The body is the
+/// rule's `where` conditions and its block, joined by `&&`. A rule is refused
+/// (E0570) rather than dropped when its body holds something that is not a
+/// predicate call, when a head parameter or a negated variable is not bound by
+/// a positive literal, or when its negation cannot be stratified.
+///
+/// This used to read only the `where` conditions, ignore the block, and treat
+/// a lowercase parameter as a constant, so the spec's own example
+/// `rule integer(t: str) { numeric(t) }` derived nothing, and a fact argument
+/// it could not read was dropped, changing the fact's arity.
 ///
 /// The engine generates MLIR-compatible operation sequences for
 /// materializing the knowledge base at compile time.
 use crate::ast;
 use crate::hir::{Diagnostic, DiagnosticCategory, Severity};
-use std::collections::{HashMap, BTreeSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 
 // ── Terms and atoms ─────────────────────────────────────────────────
 
@@ -22,7 +36,7 @@ use std::collections::{HashMap, BTreeSet};
 pub enum Term {
     /// A constant value (ground).
     Const(String),
-    /// A logic variable (starts with uppercase by convention).
+    /// A logic variable.
     Var(String),
 }
 
@@ -52,11 +66,40 @@ impl std::fmt::Display for Atom {
 /// A ground atom (all terms are constants).
 pub type GroundAtom = Atom;
 
+/// A body literal: an atom, possibly negated.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Literal {
+    pub atom: Atom,
+    pub negated: bool,
+}
+
+impl Literal {
+    /// A positive literal.
+    pub fn pos(atom: Atom) -> Self {
+        Literal { atom, negated: false }
+    }
+
+    /// A negated literal: true when no fact matches the atom.
+    pub fn neg(atom: Atom) -> Self {
+        Literal { atom, negated: true }
+    }
+}
+
+impl std::fmt::Display for Literal {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.negated {
+            write!(f, "!{}", self.atom)
+        } else {
+            write!(f, "{}", self.atom)
+        }
+    }
+}
+
 /// A rule: head :- body₁, body₂, ..., bodyₙ
 #[derive(Debug, Clone)]
 pub struct Rule {
     pub head: Atom,
-    pub body: Vec<Atom>,
+    pub body: Vec<Literal>,
 }
 
 // ── Substitution (variable bindings) ────────────────────────────────
@@ -87,27 +130,38 @@ fn is_ground(atom: &Atom) -> bool {
     atom.args.iter().all(|t| matches!(t, Term::Const(_)))
 }
 
+fn vars_of(atom: &Atom) -> impl Iterator<Item = &str> {
+    atom.args.iter().filter_map(|t| match t {
+        Term::Var(v) => Some(v.as_str()),
+        Term::Const(_) => None,
+    })
+}
+
 // ── Unification ─────────────────────────────────────────────────────
 
-/// Try to unify an atom with a ground fact, returning bindings if successful.
-fn unify_atom(pattern: &Atom, fact: &Atom, binding: &Binding) -> Option<Binding> {
-    if pattern.predicate != fact.predicate || pattern.args.len() != fact.args.len() {
+/// Try to unify an atom with a ground fact's arguments, returning bindings if
+/// successful.
+/// A fresh variable `atom_of` made for `_`.
+fn is_wildcard(v: &str) -> bool {
+    v.len() > 1 && v.starts_with('_') && v[1..].bytes().all(|b| b.is_ascii_digit())
+}
+
+fn unify_args(pattern: &Atom, fact: &[String], binding: &Binding) -> Option<Binding> {
+    if pattern.args.len() != fact.len() {
         return None;
     }
 
     let mut result = binding.clone();
-    for (pat, val) in pattern.args.iter().zip(&fact.args) {
-        let pat = apply_binding(pat, &result);
-        match (&pat, val) {
-            (Term::Const(a), Term::Const(b)) => {
-                if a != b {
+    for (pat, val) in pattern.args.iter().zip(fact) {
+        match apply_binding(pat, &result) {
+            Term::Const(a) => {
+                if &a != val {
                     return None;
                 }
             }
-            (Term::Var(v), Term::Const(c)) => {
-                result.insert(v.clone(), c.clone());
+            Term::Var(v) => {
+                result.insert(v, val.clone());
             }
-            _ => return None, // Facts must be ground.
         }
     }
     Some(result)
@@ -115,11 +169,13 @@ fn unify_atom(pattern: &Atom, fact: &Atom, binding: &Binding) -> Option<Binding>
 
 // ── Knowledge base ──────────────────────────────────────────────────
 
+type Relation = BTreeSet<Vec<String>>;
+
 /// An in-memory knowledge base with facts and rules.
 pub struct KnowledgeBase {
     pub name: String,
     /// Ground facts, indexed by predicate name.
-    facts: HashMap<String, BTreeSet<Vec<String>>>,
+    facts: HashMap<String, Relation>,
     /// Rules for deriving new facts.
     rules: Vec<Rule>,
     /// Whether fixpoint has been reached.
@@ -144,7 +200,8 @@ impl KnowledgeBase {
         self.materialized = false;
     }
 
-    /// Add a rule.
+    /// Add a rule. It is checked for safety when the base is materialized; an
+    /// unsafe rule is reported there and derives nothing.
     pub fn add_rule(&mut self, rule: Rule) {
         self.rules.push(rule);
         self.materialized = false;
@@ -163,84 +220,205 @@ impl KnowledgeBase {
         self.facts.values().map(|s| s.len()).sum()
     }
 
-    /// Evaluate all rules to fixpoint using semi-naive bottom-up evaluation.
+    fn error(&mut self, msg: String) {
+        self.diagnostics.push(Diagnostic::categorized(
+            Severity::Error,
+            msg,
+            DiagnosticCategory::KbRule,
+            None,
+        ));
+    }
+
+    /// The reason a rule cannot be evaluated, if any: a head variable or a
+    /// negated variable that no positive literal binds. Without that, the
+    /// rule's results would depend on the whole universe of constants.
+    fn unsafe_reason(rule: &Rule) -> Option<String> {
+        let bound: HashSet<&str> = rule
+            .body
+            .iter()
+            .filter(|l| !l.negated)
+            .flat_map(|l| vars_of(&l.atom))
+            .collect();
+        if let Some(v) = vars_of(&rule.head).find(|v| !bound.contains(v)) {
+            return Some(format!(
+                "head parameter `{v}` is not bound by any positive literal in the body"
+            ));
+        }
+        // `_` inside a negation is a wildcard, local to it: `!parent(_, x)`
+        // means no fact `parent(y, x)` for any `y`.
+        for lit in rule.body.iter().filter(|l| l.negated) {
+            if let Some(v) = vars_of(&lit.atom).find(|v| !bound.contains(v) && !is_wildcard(v)) {
+                return Some(format!(
+                    "`{v}` in `{lit}` is not bound by any positive literal, so the negation has no meaning"
+                ));
+            }
+        }
+        None
+    }
+
+    /// Assign each derived predicate a stratum, so that a predicate is
+    /// computed only after everything it negates is complete. `Err` names a
+    /// predicate that depends negatively on itself.
+    fn strata(rules: &[&Rule]) -> Result<HashMap<String, usize>, String> {
+        let mut stratum: HashMap<String, usize> =
+            rules.iter().map(|r| (r.head.predicate.clone(), 0)).collect();
+        let limit = stratum.len();
+        loop {
+            let mut changed = false;
+            for rule in rules {
+                for lit in &rule.body {
+                    let below = stratum.get(&lit.atom.predicate).copied().unwrap_or(0);
+                    let need = if lit.negated { below + 1 } else { below };
+                    let head = stratum.get_mut(&rule.head.predicate).expect("every head has a stratum");
+                    if *head < need {
+                        if need > limit {
+                            return Err(rule.head.predicate.clone());
+                        }
+                        *head = need;
+                        changed = true;
+                    }
+                }
+            }
+            if !changed {
+                return Ok(stratum);
+            }
+        }
+    }
+
+    /// Evaluate all rules to fixpoint, stratum by stratum, semi-naively. A
+    /// rule that is unsafe is reported and skipped; if the rules' negation
+    /// cannot be stratified, it is reported and no rule is evaluated.
     pub fn materialize(&mut self) {
         if self.materialized {
             return;
         }
+        self.materialized = true;
 
-        let max_iterations = 1000; // Safety bound.
-        for iteration in 0..max_iterations {
-            let mut new_facts = Vec::new();
-
-            for rule in &self.rules {
-                let derived = self.evaluate_rule(rule);
-                for atom in derived {
-                    let args: Vec<String> = atom.args.iter().map(|t| match t {
-                        Term::Const(c) => c.clone(),
-                        Term::Var(_) => unreachable!("derived facts must be ground"),
-                    }).collect();
-
-                    let existing = self.facts.entry(atom.predicate.clone()).or_default();
-                    if !existing.contains(&args) {
-                        new_facts.push((atom.predicate.clone(), args));
-                    }
+        let rules = std::mem::take(&mut self.rules);
+        let mut usable: Vec<&Rule> = Vec::new();
+        for rule in &rules {
+            match Self::unsafe_reason(rule) {
+                Some(why) => {
+                    let name = self.name.clone();
+                    self.error(format!(
+                        "kb `{name}`: rule `{}` cannot be evaluated: {why}",
+                        rule.head.predicate
+                    ));
                 }
+                None => usable.push(rule),
             }
+        }
 
-            if new_facts.is_empty() {
-                self.materialized = true;
-                return;
-            }
-
-            for (pred, args) in new_facts {
-                self.facts.entry(pred).or_default().insert(args);
-            }
-
-            if iteration == max_iterations - 1 {
-                self.diagnostics.push(Diagnostic::categorized(
-                    Severity::Warning,
-                    format!("kb `{}`: fixpoint not reached after {max_iterations} iterations", self.name),
-                    DiagnosticCategory::TypeMismatch,
-                    None,
+        match Self::strata(&usable) {
+            Err(pred) => {
+                let name = self.name.clone();
+                self.error(format!(
+                    "kb `{name}`: `{pred}` depends on its own negation, so its rules cannot be \
+                     stratified and none was evaluated"
                 ));
             }
+            Ok(stratum) => {
+                let top = stratum.values().copied().max().unwrap_or(0);
+                for level in 0..=top {
+                    let layer: Vec<&Rule> = usable
+                        .iter()
+                        .copied()
+                        .filter(|r| stratum[&r.head.predicate] == level)
+                        .collect();
+                    self.fixpoint(&layer);
+                }
+            }
         }
 
-        self.materialized = true;
+        self.rules = rules;
     }
 
-    /// Evaluate a single rule against current facts.
-    fn evaluate_rule(&self, rule: &Rule) -> Vec<GroundAtom> {
-        // Start with an empty binding.
-        let bindings = vec![Binding::new()];
-
-        // Join each body atom with current facts.
-        let mut current_bindings = bindings;
-        for body_atom in &rule.body {
-            let mut next_bindings = Vec::new();
-            let pred_facts = self.get_facts(&body_atom.predicate);
-
-            for binding in &current_bindings {
-                for fact_args in &pred_facts {
-                    let fact = Atom {
-                        predicate: body_atom.predicate.clone(),
-                        args: fact_args.iter().map(|a| Term::Const(a.clone())).collect(),
-                    };
-                    if let Some(new_binding) = unify_atom(body_atom, &fact, binding) {
-                        next_bindings.push(new_binding);
+    /// Semi-naive fixpoint of one stratum. After the first round, a rule fires
+    /// only through at least one fact derived in the previous round. Datalog
+    /// has no function symbols, so the set of possible facts is finite and
+    /// this terminates.
+    fn fixpoint(&mut self, rules: &[&Rule]) {
+        let mut delta: Option<HashMap<String, Relation>> = None;
+        loop {
+            let mut round: HashMap<String, Relation> = HashMap::new();
+            for rule in rules {
+                for args in self.evaluate_rule(rule, delta.as_ref()) {
+                    let known = self
+                        .facts
+                        .get(&rule.head.predicate)
+                        .is_some_and(|r| r.contains(&args));
+                    if !known {
+                        round.entry(rule.head.predicate.clone()).or_default().insert(args);
                     }
                 }
             }
-            current_bindings = next_bindings;
+            if round.values().all(|r| r.is_empty()) {
+                return;
+            }
+            for (pred, rel) in &round {
+                self.facts.entry(pred.clone()).or_default().extend(rel.iter().cloned());
+            }
+            delta = Some(round);
         }
+    }
 
-        // Apply bindings to head to generate derived facts.
+    /// Evaluate a single rule against current facts. With `delta`, only
+    /// derivations that use at least one fact from it are produced.
+    fn evaluate_rule(&self, rule: &Rule, delta: Option<&HashMap<String, Relation>>) -> Vec<Vec<String>> {
+        let positive: Vec<&Atom> = rule.body.iter().filter(|l| !l.negated).map(|l| &l.atom).collect();
+        let negative: Vec<&Atom> = rule.body.iter().filter(|l| l.negated).map(|l| &l.atom).collect();
+        let empty = Relation::new();
+        let full = |p: &str| self.facts.get(p).unwrap_or(&empty);
+
+        // Each pass `d` takes literal `d` from the delta and the rest from the
+        // full relation; without a delta there is one pass over the full set.
+        let passes: Vec<Option<usize>> = match delta {
+            None => vec![None],
+            Some(d) => (0..positive.len())
+                .filter(|&i| d.get(&positive[i].predicate).is_some_and(|r| !r.is_empty()))
+                .map(Some)
+                .collect(),
+        };
+
         let mut results = Vec::new();
-        for binding in &current_bindings {
-            let derived = apply_binding_atom(&rule.head, binding);
-            if is_ground(&derived) {
-                results.push(derived);
+        for pass in passes {
+            let mut bindings = vec![Binding::new()];
+            for (i, atom) in positive.iter().enumerate() {
+                let rel = match (pass, delta) {
+                    (Some(d), Some(dm)) if d == i => dm.get(&atom.predicate).unwrap_or(&empty),
+                    _ => full(&atom.predicate),
+                };
+                let mut next = Vec::new();
+                for binding in &bindings {
+                    for fact in rel {
+                        if let Some(b) = unify_args(atom, fact, binding) {
+                            next.push(b);
+                        }
+                    }
+                }
+                bindings = next;
+                if bindings.is_empty() {
+                    break;
+                }
+            }
+            for binding in &bindings {
+                // Blocked when any fact matches; a safe rule leaves only
+                // wildcards unbound here, and they match anything.
+                let blocked = negative.iter().any(|atom| {
+                    full(&atom.predicate)
+                        .iter()
+                        .any(|fact| unify_args(atom, fact, binding).is_some())
+                });
+                if blocked {
+                    continue;
+                }
+                let derived = apply_binding_atom(&rule.head, binding);
+                if is_ground(&derived) {
+                    results.push(derived.args.into_iter().map(|t| match t {
+                        Term::Const(c) => c,
+                        Term::Var(_) => unreachable!("checked ground"),
+                    }).collect());
+                }
             }
         }
         results
@@ -281,7 +459,7 @@ impl KnowledgeBase {
 
         for (i, rule) in self.rules.iter().enumerate() {
             let head_str = format!("{}", rule.head);
-            let body_strs: Vec<String> = rule.body.iter().map(|a| format!("{a}")).collect();
+            let body_strs: Vec<String> = rule.body.iter().map(|l| format!("{l}")).collect();
             ops.push(format!(
                 "  MAGE.kb.rule @rule_{i} \"{head_str}\" :- {}",
                 body_strs.join(", ")
@@ -295,71 +473,158 @@ impl KnowledgeBase {
 
 // ── AST → KB builder ───────────────────────────────────────────────
 
-/// Build a KnowledgeBase from an AST KbDef.
+/// A constant from a fact argument or a rule literal: a string (unquoted),
+/// a number or `true`/`false`, or a negated number.
+fn literal_constant(expr: &ast::Expr) -> Option<String> {
+    match expr {
+        ast::Expr::Literal { value, kind: ast::LiteralKind::String } => {
+            Some(value.trim_matches('"').to_string())
+        }
+        ast::Expr::Literal { value, .. } => Some(value.clone()),
+        ast::Expr::Unary { op, operand } if op == "-" => match operand.as_ref() {
+            ast::Expr::Literal { value, kind } if !matches!(kind, ast::LiteralKind::String) => {
+                Some(format!("-{value}"))
+            }
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+/// Build a KnowledgeBase from an AST KbDef. Anything that cannot be read as a
+/// fact or a rule is reported as an error (E0570) in `diagnostics` and left
+/// out whole — a fact is never stored with fewer arguments than it was written
+/// with.
 pub fn build_kb(def: &ast::KbDef) -> KnowledgeBase {
     let mut kb = KnowledgeBase::new(&def.name);
 
     for fact in &def.facts {
-        let args: Vec<String> = fact.args.iter().filter_map(|e| match e {
-            ast::Expr::Literal { value, kind: ast::LiteralKind::String } => {
-                Some(value.trim_matches('"').to_string())
+        let mut args = Vec::with_capacity(fact.args.len());
+        let mut bad = None;
+        for (i, e) in fact.args.iter().enumerate() {
+            match e {
+                ast::Expr::Ident { name } => args.push(name.clone()),
+                _ => match literal_constant(e) {
+                    Some(c) => args.push(c),
+                    None => {
+                        bad = Some(i + 1);
+                        break;
+                    }
+                },
             }
-            ast::Expr::Literal { value, .. } => Some(value.clone()),
-            ast::Expr::Ident { name } => Some(name.clone()),
-            _ => None,
-        }).collect();
-        kb.add_fact(&fact.name, args);
+        }
+        match bad {
+            None => kb.add_fact(&fact.name, args),
+            Some(n) => kb.error(format!(
+                "kb `{}`: argument {n} of fact `{}` is not a constant; a fact's arguments are \
+                 names, strings or numbers",
+                def.name, fact.name
+            )),
+        }
     }
 
     for rule in &def.rules {
-        let head_args: Vec<Term> = rule.params.iter().map(|p| {
-            if p.name.chars().next().map(|c| c.is_uppercase()).unwrap_or(false) {
-                Term::Var(p.name.clone())
-            } else {
-                Term::Const(p.name.clone())
-            }
-        }).collect();
-
-        let head = Atom {
-            predicate: rule.name.clone(),
-            args: head_args,
-        };
-
-        let body: Vec<Atom> = rule.conditions.iter().filter_map(|cond| {
-            expr_to_atom(cond)
-        }).collect();
-
-        kb.add_rule(Rule { head, body });
+        match rule_of(rule) {
+            Ok(r) => kb.add_rule(r),
+            Err(why) => kb.error(format!(
+                "kb `{}`: rule `{}` cannot be read: {why}",
+                def.name, rule.name
+            )),
+        }
     }
 
     kb
 }
 
-/// Try to interpret a condition expression as a logic atom.
-fn expr_to_atom(expr: &ast::Expr) -> Option<Atom> {
-    match expr {
-        ast::Expr::Call { func, args } => {
-            let pred = match func.as_ref() {
-                ast::Expr::Ident { name } => name.clone(),
-                _ => return None,
-            };
-            let terms: Vec<Term> = args.iter().map(|a| match a {
-                ast::Expr::Ident { name } => {
-                    if name.chars().next().map(|c| c.is_uppercase()).unwrap_or(false) {
-                        Term::Var(name.clone())
-                    } else {
-                        Term::Const(name.clone())
-                    }
-                }
-                ast::Expr::Literal { value, .. } => {
-                    Term::Const(value.trim_matches('"').to_string())
-                }
-                _ => Term::Const("_".into()),
-            }).collect();
-            Some(Atom { predicate: pred, args: terms })
+/// Build and materialize every `kb` block in `module`, returning what the
+/// engine reported. `--check` and `--check --json` call this: until
+/// 2026-10-29 only `--pipeline` ran the logic engine, so a rule that could not
+/// be evaluated passed `--check` with `Errors: 0`.
+pub fn module_diagnostics(module: &ast::Module) -> Vec<Diagnostic> {
+    let mut out = Vec::new();
+    for item in &module.items {
+        if let ast::ItemKind::Kb(def) = &item.kind {
+            let mut kb = build_kb(def);
+            kb.materialize();
+            out.append(&mut kb.diagnostics);
         }
-        _ => None,
     }
+    out
+}
+
+/// The body expressions of a rule: its `where` conditions, then its block's
+/// statements and tail, each split at `&&`.
+fn rule_body_exprs(rule: &ast::RuleDef) -> Vec<&ast::Expr> {
+    fn conjuncts<'a>(e: &'a ast::Expr, out: &mut Vec<&'a ast::Expr>) {
+        match e {
+            ast::Expr::Binary { op, left, right } if op == "&&" => {
+                conjuncts(left, out);
+                conjuncts(right, out);
+            }
+            _ => out.push(e),
+        }
+    }
+    let mut out = Vec::new();
+    for c in &rule.conditions {
+        conjuncts(c, &mut out);
+    }
+    for stmt in &rule.body.stmts {
+        if let ast::Stmt::Expr { expr } = stmt {
+            conjuncts(expr, &mut out);
+        }
+    }
+    if let Some(tail) = &rule.body.tail_expr {
+        conjuncts(tail, &mut out);
+    }
+    out
+}
+
+/// Read a rule's head and body literals. Every identifier is a variable.
+fn rule_of(rule: &ast::RuleDef) -> Result<Rule, String> {
+    if rule.body.stmts.iter().any(|s| !matches!(s, ast::Stmt::Expr { .. })) {
+        return Err("its body holds a statement; a rule body is predicate calls joined by `&&`".into());
+    }
+    let head = Atom {
+        predicate: rule.name.clone(),
+        args: rule.params.iter().map(|p| Term::Var(p.name.clone())).collect(),
+    };
+    let mut body = Vec::new();
+    let mut fresh = 0usize;
+    for e in rule_body_exprs(rule) {
+        let (call, negated) = match e {
+            ast::Expr::Unary { op, operand } if op == "!" => (operand.as_ref(), true),
+            _ => (e, false),
+        };
+        let atom = atom_of(call, &mut fresh).ok_or_else(|| {
+            "its body holds something that is not a predicate call; write each condition as \
+             `p(x, ..)` or `!p(x, ..)`, joined by `&&`"
+                .to_string()
+        })?;
+        body.push(Literal { atom, negated });
+    }
+    if body.is_empty() {
+        return Err("its body has no predicate calls".into());
+    }
+    Ok(Rule { head, body })
+}
+
+/// Read `p(a, ..)` as an atom: identifiers are variables (`_` a fresh one
+/// each time), literals are constants.
+fn atom_of(expr: &ast::Expr, fresh: &mut usize) -> Option<Atom> {
+    let ast::Expr::Call { func, args } = expr else { return None };
+    let ast::Expr::Ident { name: predicate } = func.as_ref() else { return None };
+    let mut terms = Vec::with_capacity(args.len());
+    for a in args {
+        terms.push(match a {
+            ast::Expr::Ident { name } if name == "_" => {
+                *fresh += 1;
+                Term::Var(format!("_{fresh}"))
+            }
+            ast::Expr::Ident { name } => Term::Var(name.clone()),
+            _ => Term::Const(literal_constant(a)?),
+        });
+    }
+    Some(Atom { predicate: predicate.clone(), args: terms })
 }
 
 // ── Tests ───────────────────────────────────────────────────────────
@@ -367,6 +632,38 @@ fn expr_to_atom(expr: &ast::Expr) -> Option<Atom> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn atom(p: &str, args: &[&str]) -> Atom {
+        Atom {
+            predicate: p.into(),
+            args: args
+                .iter()
+                .map(|a| if a.starts_with(char::is_uppercase) { Term::Var(a.to_string()) } else { Term::Const(a.to_string()) })
+                .collect(),
+        }
+    }
+
+    /// Parse `src` (one `kb` block) and build it.
+    fn kb_of(src: &str) -> KnowledgeBase {
+        let module = crate::parser::parse(&crate::lexer::lex(src)).expect("parses");
+        let def = module
+            .items
+            .iter()
+            .find_map(|i| match &i.kind {
+                ast::ItemKind::Kb(k) => Some(k),
+                _ => None,
+            })
+            .expect("a kb block");
+        build_kb(def)
+    }
+
+    fn errors(kb: &KnowledgeBase) -> Vec<String> {
+        kb.diagnostics
+            .iter()
+            .filter(|d| d.severity == Severity::Error)
+            .map(|d| d.message.clone())
+            .collect()
+    }
 
     #[test]
     fn simple_fact_query() {
@@ -399,31 +696,16 @@ mod tests {
 
         // ancestor(X, Y) :- parent(X, Y)
         kb.add_rule(Rule {
-            head: Atom {
-                predicate: "ancestor".into(),
-                args: vec![Term::Var("X".into()), Term::Var("Y".into())],
-            },
-            body: vec![Atom {
-                predicate: "parent".into(),
-                args: vec![Term::Var("X".into()), Term::Var("Y".into())],
-            }],
+            head: atom("ancestor", &["X", "Y"]),
+            body: vec![Literal::pos(atom("parent", &["X", "Y"]))],
         });
 
         // ancestor(X, Z) :- parent(X, Y), ancestor(Y, Z)
         kb.add_rule(Rule {
-            head: Atom {
-                predicate: "ancestor".into(),
-                args: vec![Term::Var("X".into()), Term::Var("Z".into())],
-            },
+            head: atom("ancestor", &["X", "Z"]),
             body: vec![
-                Atom {
-                    predicate: "parent".into(),
-                    args: vec![Term::Var("X".into()), Term::Var("Y".into())],
-                },
-                Atom {
-                    predicate: "ancestor".into(),
-                    args: vec![Term::Var("Y".into()), Term::Var("Z".into())],
-                },
+                Literal::pos(atom("parent", &["X", "Y"])),
+                Literal::pos(atom("ancestor", &["Y", "Z"])),
             ],
         });
 
@@ -440,31 +722,16 @@ mod tests {
 
         // reachable(X, Y) :- edge(X, Y)
         kb.add_rule(Rule {
-            head: Atom {
-                predicate: "reachable".into(),
-                args: vec![Term::Var("X".into()), Term::Var("Y".into())],
-            },
-            body: vec![Atom {
-                predicate: "edge".into(),
-                args: vec![Term::Var("X".into()), Term::Var("Y".into())],
-            }],
+            head: atom("reachable", &["X", "Y"]),
+            body: vec![Literal::pos(atom("edge", &["X", "Y"]))],
         });
 
         // reachable(X, Z) :- edge(X, Y), reachable(Y, Z)
         kb.add_rule(Rule {
-            head: Atom {
-                predicate: "reachable".into(),
-                args: vec![Term::Var("X".into()), Term::Var("Z".into())],
-            },
+            head: atom("reachable", &["X", "Z"]),
             body: vec![
-                Atom {
-                    predicate: "edge".into(),
-                    args: vec![Term::Var("X".into()), Term::Var("Y".into())],
-                },
-                Atom {
-                    predicate: "reachable".into(),
-                    args: vec![Term::Var("Y".into()), Term::Var("Z".into())],
-                },
+                Literal::pos(atom("edge", &["X", "Y"])),
+                Literal::pos(atom("reachable", &["Y", "Z"])),
             ],
         });
 
@@ -505,5 +772,155 @@ mod tests {
         kb.add_fact("color", vec!["sky".into(), "blue".into()]);
         kb.add_fact("color", vec!["sky".into(), "blue".into()]);
         assert_eq!(kb.fact_count(), 1);
+    }
+
+    /// MAGE_SPEC §7.1's example, verbatim. It derived nothing while the block
+    /// body was ignored and lowercase `t` was read as a constant.
+    #[test]
+    fn the_spec_example_derives_from_its_block_body() {
+        let mut kb = kb_of(
+            "kb TypeRules {\n    fact numeric(\"i32\");\n    fact numeric(\"f64\");\n    \
+             fact unsigned(\"u32\");\n    rule integer(t: str) { numeric(t) }\n    \
+             rule castable(t: str) { numeric(t) }\n}\n",
+        );
+        assert!(errors(&kb).is_empty(), "{:?}", errors(&kb));
+        assert_eq!(kb.query("integer", &["?"]), vec![vec!["f64"], vec!["i32"]]);
+        assert_eq!(kb.query("castable", &["i32"]).len(), 1);
+        assert_eq!(kb.fact_count(), 7);
+    }
+
+    #[test]
+    fn a_body_variable_absent_from_the_head_joins() {
+        let mut kb = kb_of(
+            "kb F {\n    fact parent(a, b);\n    fact parent(b, c);\n    \
+             rule grandparent(x: str, z: str) { parent(x, y) && parent(y, z) }\n}\n",
+        );
+        assert!(errors(&kb).is_empty(), "{:?}", errors(&kb));
+        assert_eq!(kb.query("grandparent", &["?", "?"]), vec![vec!["a", "c"]]);
+    }
+
+    #[test]
+    fn where_conditions_and_the_block_are_one_conjunction() {
+        let mut kb = kb_of(
+            "kb F {\n    fact p(1);\n    fact p(2);\n    fact q(2);\n    \
+             rule both(x: i32) where p(x) { q(x) }\n}\n",
+        );
+        assert!(errors(&kb).is_empty(), "{:?}", errors(&kb));
+        assert_eq!(kb.query("both", &["?"]), vec![vec!["2"]]);
+    }
+
+    #[test]
+    fn a_string_literal_in_a_rule_is_a_constant() {
+        let mut kb = kb_of(
+            "kb F {\n    fact kind(x, \"form\");\n    fact kind(y, \"rule\");\n    \
+             rule form(n: str) { kind(n, \"form\") }\n}\n",
+        );
+        assert_eq!(kb.query("form", &["?"]), vec![vec!["x"]]);
+    }
+
+    #[test]
+    fn negation_subtracts_a_lower_stratum() {
+        let mut kb = kb_of(
+            "kb F {\n    fact rule_id(r1);\n    fact rule_id(r2);\n    fact enforced_by(r1, verifier);\n    \
+             rule enforced(r: str) { enforced_by(r, _) }\n    \
+             rule unenforced(r: str) { rule_id(r) && !enforced(r) }\n}\n",
+        );
+        assert!(errors(&kb).is_empty(), "{:?}", errors(&kb));
+        assert_eq!(kb.query("unenforced", &["?"]), vec![vec!["r2"]]);
+    }
+
+    /// Stratification, not rule order, decides when a negation is read: the
+    /// negated predicate is declared after the rule that negates it.
+    #[test]
+    fn negation_waits_for_the_predicate_it_negates() {
+        let mut kb = kb_of(
+            "kb F {\n    fact node(a);\n    fact node(b);\n    fact node(c);\n    fact edge(a, b);\n    \
+             rule unreached(n: str) { node(n) && !reached(n) }\n    \
+             rule reached(n: str) { edge(\"a\", n) }\n    \
+             rule reached(n: str) { reached(m) && edge(m, n) }\n}\n",
+        );
+        assert!(errors(&kb).is_empty(), "{:?}", errors(&kb));
+        assert_eq!(kb.query("unreached", &["?"]), vec![vec!["a"], vec!["c"]]);
+    }
+
+    #[test]
+    fn a_negation_cycle_is_refused_and_evaluates_nothing() {
+        let mut kb = kb_of(
+            "kb F {\n    fact s(a);\n    rule p(x: str) { s(x) && !q(x) }\n    \
+             rule q(x: str) { s(x) && !p(x) }\n}\n",
+        );
+        kb.materialize();
+        let errs = errors(&kb);
+        assert_eq!(errs.len(), 1, "{errs:?}");
+        assert!(errs[0].contains("its own negation"), "{errs:?}");
+        assert!(kb.query("p", &["?"]).is_empty() && kb.query("q", &["?"]).is_empty());
+    }
+
+    #[test]
+    fn an_unbound_head_parameter_is_refused() {
+        let mut kb = kb_of("kb F {\n    fact p(a);\n    rule r(x: str, y: str) { p(x) }\n}\n");
+        kb.materialize();
+        let errs = errors(&kb);
+        assert!(errs.iter().any(|e| e.contains("`y` is not bound")), "{errs:?}");
+        assert!(kb.query("r", &["?", "?"]).is_empty());
+    }
+
+    #[test]
+    fn an_unbound_negated_variable_is_refused() {
+        let mut kb = kb_of("kb F {\n    fact p(a);\n    rule r(x: str) { p(x) && !q(x, y) }\n}\n");
+        kb.materialize();
+        assert!(errors(&kb).iter().any(|e| e.contains("`y` in `!q(x, y)`")), "{:?}", errors(&kb));
+    }
+
+    /// MAGE_SPEC §7.1's example. `_` in a negation is a wildcard, so
+    /// `root` holds for a person with no parent at all.
+    #[test]
+    fn a_wildcard_in_a_negation_matches_any_fact() {
+        let mut kb = kb_of(concat!(
+            "kb Family {\n",
+            "    fact parent(\"ann\", \"bob\");\n",
+            "    fact parent(\"bob\", \"cy\");\n",
+            "    fact person(\"ann\");\n",
+            "    fact person(\"bob\");\n",
+            "    fact person(\"cy\");\n",
+            "    rule grandparent(x: str, z: str) { parent(x, y) && parent(y, z) }\n",
+            "    rule root(x: str) { person(x) && !parent(_, x) }\n",
+            "}\n",
+        ));
+        kb.materialize();
+        assert!(errors(&kb).is_empty(), "{:?}", errors(&kb));
+        assert_eq!(kb.query("root", &["?"]), vec![vec!["ann".to_string()]]);
+        assert_eq!(
+            kb.query("grandparent", &["?", "?"]),
+            vec![vec!["ann".to_string(), "cy".to_string()]]
+        );
+    }
+
+    /// `prototype/examples/unified.mg` had `rule grandparent(..) { x }`, which
+    /// was accepted and meant nothing.
+    #[test]
+    fn a_body_that_is_not_a_predicate_call_is_refused() {
+        let kb = kb_of("kb F {\n    fact p(a);\n    rule r(x: i32) { x }\n}\n");
+        let errs = errors(&kb);
+        assert!(errs.iter().any(|e| e.contains("not a predicate call")), "{errs:?}");
+        assert!(kb.diagnostics.iter().all(|d| d.category == Some(DiagnosticCategory::KbRule)));
+    }
+
+    #[test]
+    fn module_diagnostics_reports_every_kb_block() {
+        let src = "kb A {\n    fact p(a);\n    rule r(x: i32) { x }\n}\n\
+                   kb B {\n    fact q(a);\n    rule s(x: str) { q(x) }\n}\n";
+        let module = crate::parser::parse(&crate::lexer::lex(src)).expect("parses");
+        let diags = module_diagnostics(&module);
+        assert_eq!(diags.len(), 1, "{diags:?}");
+        assert!(diags[0].message.contains("kb `A`: rule `r`"), "{diags:?}");
+        assert_eq!(diags[0].category.map(|c| c.code()), Some("E0570"));
+    }
+
+    #[test]
+    fn a_fact_argument_that_is_not_a_constant_refuses_the_whole_fact() {
+        let mut kb = kb_of("kb F {\n    fact p(a, 1 + 2);\n    fact p(b, -3);\n}\n");
+        assert!(errors(&kb).iter().any(|e| e.contains("argument 2 of fact `p`")), "{:?}", errors(&kb));
+        assert_eq!(kb.query("p", &["?", "?"]), vec![vec!["b", "-3"]]);
     }
 }

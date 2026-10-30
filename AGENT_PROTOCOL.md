@@ -27,7 +27,7 @@ block costs ~250-400 bytes as MAGE text and 47 as bytes — so the block
 count per response rises by roughly **5-8×**, not the three orders of
 magnitude this paragraph used to claim. The larger win is at the whole-module
 level only when the module is mostly `net` declarations: `unified.mg`, which
-is, still lands at 0.225 of its text.
+is, still lands at 0.222 of its text.
 
 ## The flow
 
@@ -101,7 +101,7 @@ End-to-end demo on `prototype/examples/unified.mg`:
 ```
 $ mage-parse --target=abl-bytes unified.mg unified.abl
 // MAGE → Agentic Binary Language bytes for unified.mg
-// text source: 1866 bytes    Agentic Binary Language container: 420 bytes    ratio: 0.225 (77.5% reduction)
+// text source: 1893 bytes    Agentic Binary Language container: 420 bytes    ratio: 0.222 (77.8% reduction)
 //   TransformerBlock: 47B  hash=7def99cdb73a14e2
 //   MLP: 17B  hash=bc5d35ff371e638c
 //   ResNetStage: 35B  hash=87e783b56ef29d60
@@ -134,7 +134,7 @@ net TransformerBlock {
 **Gains**
 - Smaller output → more programs per response, lower inference cost. This
   line read "~50× smaller", which the measurement two sections above it
-  contradicts: `unified.mg` goes 1866 B → 420 B, a ratio of 0.225, and the
+  contradicts: `unified.mg` goes 1893 B → 420 B, a ratio of 0.222, and the
   smaller `benchmarks/constructs/mlp_mage.mg` only manages 139 B → 92 B. The
   win is real and it is roughly **1.5–4.5×** on the modules in this
   repository, not an order of magnitude. Reproduce with

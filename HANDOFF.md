@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,471** — rmi 1,384 · prototype 1,459 · ribosome 168 · germline 175 · forge 63 · arena 222 |
+| Tests | **3,484** — rmi 1,384 · prototype 1,472 · ribosome 168 · germline 175 · forge 63 · arena 222 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -40,7 +40,7 @@ each claim has a command beside it.
 | `.mg` sources | **112 checked, 0 sketches** — every `.mg` file in the repository typechecks |
 | Differentiability | **34 of 34 nets and 7 of 7 train blocks; 1 of 156 functions** (the arena's reward) — `scripts/measure-differentiability.sh`, re-derived in CI and compared against `DIFFERENTIABILITY.md` in both directions |
 | `grad` | An expression that typechecks and **runs**, for scalars: forward-mode duals, checked against central differences. The differentiability obligation is a premise of its typing rule, discharged by the call-graph pass. Tensors are refused, not deferred |
-| Documentation | 211 MAGE blocks typecheck; 59 documentation entry points run; 268 `rmi/docs` API items all exist — and "exist" now means **a definition exists**, not that the name appears somewhere in `src/`. It was 275 under the weaker criterion, 8 of them held up by English words in comments; the phantom entries are gone and a duplicate went with them |
+| Documentation | 212 MAGE blocks typecheck; 59 documentation entry points run; 268 `rmi/docs` API items all exist — and "exist" now means **a definition exists**, not that the name appears somewhere in `src/`. It was 275 under the weaker criterion, 8 of them held up by English words in comments; the phantom entries are gone and a duplicate went with them |
 | Release | `v0.3.0`, with the promo video attached as a release asset |
 
 Reproduce all of it:
@@ -1808,6 +1808,48 @@ with checklists. Its central choice is to write the knowledge base in MAGE's
 own `kb` blocks, checked by `prototype/src/logic.rs`, which first needs
 stratified negation. `IMPLEMENTATION_PLAN.md` is now its arena research track.
 Documentation only; root documents 26 -> 27.
+
+**`kb` rules mean what MAGE_SPEC §7.1 says (plan Phase 1).** The spike for the
+neurosymbolic plan found the logic engine could not carry a schema, and worse:
+`build_kb` read only a rule's `where` conditions, ignored its block, and took a
+lowercase parameter for a constant. So §7.1's own example,
+`rule integer(t: str) { numeric(t) }`, derived nothing, and so did every rule
+in the repo's three `.mg` files with `kb` blocks. A fact argument it could not
+read was dropped, changing the fact's arity. And `--check` never ran the
+engine at all: only `--pipeline` did, so a meaningless rule passed with
+`Errors: 0`.
+
+Now:
+- Every identifier in a rule is a variable; constants are literals.
+- The body is the `where` conditions and the block, joined by `&&`.
+- `!p(..)` is stratified negation.
+- Anything the engine cannot evaluate is **E0570** (`KbRule`), in `--check`
+  and `--check --json`: a body that is not predicate calls, an unbound head
+  parameter or negated variable, a negation cycle, or a fact argument that is
+  not a constant.
+
+`prototype/examples/unified.mg` had `rule grandparent(..) { x }`; its body is
+now `parent(x, y) && parent(y, z)`. Its binary container still carries no body
+for that rule, because the ABL lowering reads only `where` (next item). The
+container is still 420 bytes with the same item hashes, but the text grew from
+1866 to 1893 bytes, so the whole-module ratio quoted in README.md,
+AGENT_PROTOCOL.md, benchmarks/FINDINGS.md and the blog is now 0.222, not
+0.225, and `FamilyKb`'s declaration is 143 B to 68 B (0.48), not 116 B (0.59).
+Older entries above keep the figures they measured.
+
+There are three engines over `kb` blocks, not one: `logic.rs`,
+`abl_bridge::evaluate_kb` with `KbTranslator` (`--run=abl`), and `builder.rs`'s
+K0004-K0007 checks. Making them one is the next plan item.
+
+Also found: cargo's shared target directory is `E:/cargo-target`.
+`prototype/target/debug/mage-parse.exe` is a September binary, and running it
+after a rebuild tests old code.
+
+The doc-block check caught the spec's new example refused by the engine it
+documents: `!parent(_, x)` was read as an unbound variable. `_` inside a
+negation is now a wildcard local to it, as in Soufflé, and §7.1 says so. A test
+runs the spec's example; forcing the wildcard test off fails it.
+Documentation blocks go from 211 to 212. Prototype +13 tests.
 
 Break-checked: a gate that admits everything fails all 3 new tests. Arena +3
 tests.
@@ -4343,7 +4385,7 @@ changed before you commit.
 ---
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,459**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,472**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
   across six crates **3,140**; documented-count pins **101**, up from 46 — the
   two newest hold the `kb`/`net` overlap the tensor-product-binding decision

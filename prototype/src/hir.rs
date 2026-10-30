@@ -575,6 +575,11 @@ pub enum DiagnosticCategory {
     /// Two quantities whose units of measure disagree where they must match,
     /// such as `m + s` (plan C2). The message names both units.
     UnitMismatch,
+    /// A `kb` fact or rule the logic engine cannot evaluate: a body that is
+    /// not predicate calls, an unbound head parameter or negated variable,
+    /// a negation that cannot be stratified, or a fact argument that is not
+    /// a constant (MAGE_SPEC §7.1).
+    KbRule,
     /// Other.
     Other,
 }
@@ -598,6 +603,7 @@ impl DiagnosticCategory {
             DiagnosticCategory::ContractScope => "E0561",
             DiagnosticCategory::UnitMismatch => "E0562",
             DiagnosticCategory::RoleViolation => "E0551",
+            DiagnosticCategory::KbRule => "E0570",
             DiagnosticCategory::CoreViolation => "E0552",
             DiagnosticCategory::ParamDomain => "E0553",
             DiagnosticCategory::Deprecated => "E0554",
@@ -654,6 +660,9 @@ impl DiagnosticCategory {
             }
             DiagnosticCategory::UnitMismatch => {
                 "make the units agree: fix an annotation, multiply or divide by a quantity of the missing unit, or drop a unit deliberately with `as f64`"
+            }
+            DiagnosticCategory::KbRule => {
+                "write the rule body as predicate calls joined by `&&`, each optionally negated with `!`, binding every head parameter in a positive call; give constants as string or number literals"
             }
             DiagnosticCategory::Other => "see the message for details",
         }
