@@ -1680,7 +1680,7 @@ Report TaskResult::Success
 
 | Category                 | Count |
 | ------------------------ | ----- |
-| Source modules           | 75    |
+| Source modules           | 76    |
 | TokenKind variants       | 181   |
 | AST ItemKind variants    | 20    |
 | AST ExprKind variants    | 35    |
