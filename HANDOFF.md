@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,537** — rmi 1,384 · prototype 1,525 · ribosome 168 · germline 175 · forge 63 · arena 222 |
+| Tests | **3,538** — rmi 1,384 · prototype 1,526 · ribosome 168 · germline 175 · forge 63 · arena 222 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -2023,11 +2023,23 @@ of `kb/grammar.mg`, so the two cannot drift. Removing the stamping fails the
 two behaviour tests. Prototype +3 tests. The wrapping was done by a Haiku
 subagent from an exact brief.
 
+**The meaning sections come from `kb/`.** `ontology.rs`'s `TYPES`,
+`OP_FAMILIES`, `LAYER_SURFACE_NAMES` and `EFFECTS` are deleted; `ir_ops`,
+`op_families`, `layer_map`, `types`, `effects` and `abl` read facts (schema v7:
+`canonical_layer`, `abl_field`, `abl_media_type`). `ir_ops`, `op_families` and
+`abl` are byte-identical; the other three have the same rows in name order. The
+tables' history moved to comments in `kb/meaning.mg`. `abl`'s magic and version
+stay the code's constants. A trade-off: a new op in `rmi` no longer reaches the
+JSON by itself; it fails `every_op_has_a_fact_and_every_fact_an_op` until
+stated. Nothing on the code side holds family summaries or type and effect
+prose. The tests that compared tables with facts now compare facts with `Op`,
+or check rows against instances. A Haiku subagent did the work from a brief.
+Prototype +1 test.
+
 **`kb/meaning.mg`: ops, layers, types and effects.** Schema v6. 945 facts: 107
 ops with every `OpMeta` field, 7 families, 108 layer spellings, 30 types, 24
 effects, generated once by a Haiku subagent's script and canonical from here.
-Four tests hold the code to them both ways. `ontology.rs`'s tables stay until
-the sections are generated. `every_layer_spelling_is_stated` found the two
+Four tests hold the code to them both ways. `every_layer_spelling_is_stated` found the two
 layer tables disagreeing with `layer_name_to_op`. `LAYER_SURFACE_NAMES` held
 10 non-layers that `layer_map_section` filtered out, so they were deleted (the
 JSON is unchanged). `op_to_layer_name` names 12 ops `layer_name_to_op` refuses,
@@ -4649,7 +4661,7 @@ changed before you commit.
 ---
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,525**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,526**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
   across six crates **3,140**; documented-count pins **101**, up from 46 — the
   two newest hold the `kb`/`net` overlap the tensor-product-binding decision
