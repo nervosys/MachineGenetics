@@ -374,7 +374,7 @@ material; each becomes documentation of `kb/` as its facts move there
 | `Form` | `HumanSource`, `SigilSource`, `Declarative`, `Ast`, `Hir`, `IrOp`, `BinaryContainer` |
 | `Construct` | `Token` (`Keyword`, `Sigil`), `Production`, `AstKind`, `TokenKind` |
 | `Meaning` | `Type`, `Effect`, `Op`, `Layer`, `OpFamily`, `RuleDatabase`, `Severity` |
-| `Rule` | `TypeRule`, `SafetyRule`, `Contract`, `GrammarConstraint`, `Diagnostic` |
+| `Rule` | `TypeRule`, `SafetyRule`, `Contract`, `GrammarConstraint`, `Diagnostic`, `GateRule` |
 | `Component` | `NeuralComponent`, `SymbolicComponent` |
 | `Artifact` | `Program`, `Block`, `Container` |
 | `Evidence` | `Refusal`, `Measurement` |
@@ -452,6 +452,7 @@ words among its `lexes_as` facts, and the `AstKind` instances in the grammar.
 | `contract_row` | `Contract` × `Text` × `Text` (spelling, meaning) |
 | `clause_checked` | `Contract` × `Text` × `SymbolicComponent` (placement, and the component that checks the clause there) |
 | `constraint_row` | `GrammarConstraint` × `Text` × `Text` (value, meaning) |
+| `gate_row` | `GateRule` × `Text` (what the gate requires) |
 
 Each invariant is a rule whose results are violations; the knowledge base
 loads only when every one derives nothing.

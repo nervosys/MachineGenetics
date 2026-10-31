@@ -24,6 +24,7 @@
 //! failure is free and throughput is what matters.
 
 use mage_prototype::eval::{run_metered, BoundedError, Value};
+use mage_prototype::verdict::Verdict;
 use mage_prototype::{ast, canon, effects, hir, lexer, parser, types};
 use serde::{Deserialize, Serialize};
 
@@ -63,6 +64,38 @@ impl Refusal {
         Refusal::Budget,
         Refusal::Canary,
     ];
+
+    /// This class's name in `kb/rules/refusals.mg`.
+    pub fn label(&self) -> &'static str {
+        match self {
+            Refusal::Depth => "depth",
+            Refusal::Parse => "parse",
+            Refusal::Signature => "signature",
+            Refusal::Type => "type",
+            Refusal::Effect => "effect",
+            Refusal::Fuel => "fuel",
+            Refusal::Runtime => "runtime",
+            Refusal::Empty => "empty",
+            Refusal::Budget => "budget",
+            Refusal::Canary => "canary",
+        }
+    }
+
+    /// The rule behind this class: its `refused_by` fact.
+    pub fn rule(&self) -> &'static str {
+        match self {
+            Refusal::Depth => "max_depth",
+            Refusal::Parse => "E0001",
+            Refusal::Signature => "gate_signature",
+            Refusal::Type => "gate_type",
+            Refusal::Effect => "gate_effect",
+            Refusal::Fuel => "gate_fuel",
+            Refusal::Runtime => "gate_runtime",
+            Refusal::Empty => "gate_empty",
+            Refusal::Budget => "gate_budget",
+            Refusal::Canary => "gate_canary",
+        }
+    }
 }
 
 /// What running a program produced.
@@ -98,6 +131,16 @@ pub struct Prepared {
     pub exact: String,
     /// `canon::shape_hash` — the same program, whatever its constants.
     pub shape: String,
+}
+
+impl Outcome {
+    /// The shared verdict on this outcome.
+    pub fn verdict(&self) -> Verdict {
+        match self {
+            Outcome::Bytes { .. } => Verdict::default(),
+            Outcome::Refused(r, why) => Verdict::refused(r.rule(), why.clone()),
+        }
+    }
 }
 
 impl Substrate {
@@ -238,6 +281,32 @@ fn check_signature(module: &ast::Module) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn every_class_names_its_stated_rule() {
+        let kb = mage_prototype::kb::load().expect("the knowledge base loads");
+        let stated = kb.facts("refused_by");
+        for r in Refusal::ALL {
+            let fact = vec![r.label().to_string(), r.rule().to_string()];
+            assert!(stated.contains(&fact), "no fact for {fact:?}");
+        }
+        // `contract` is `physics_task`'s; every other fact is a class here.
+        for f in &stated {
+            assert!(
+                f[0] == "contract" || Refusal::ALL.iter().any(|r| r.label() == f[0]),
+                "{f:?} is no class"
+            );
+        }
+    }
+
+    #[test]
+    fn the_verdict_on_an_outcome_is_the_gates() {
+        let s = Substrate::default();
+        let v = s.run("f gen( -> i32", 0).verdict();
+        assert!(!v.accepted());
+        assert_eq!(v.refusals[0].rule, "E0001");
+        assert!(Outcome::Bytes { bytes: vec![1], fuel_used: 1 }.verdict().accepted());
+    }
 
     fn sub() -> Substrate {
         Substrate { fuel: 100_000, max_bytes: 64 }
