@@ -30,14 +30,14 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,533** — rmi 1,384 · prototype 1,521 · ribosome 168 · germline 175 · forge 63 · arena 222 |
+| Tests | **3,537** — rmi 1,384 · prototype 1,525 · ribosome 168 · germline 175 · forge 63 · arena 222 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
 | CI | 11 jobs defined, **10 of which ever run** — green on `master`. The eleventh, `prototype — cuda kernels (self-hosted GPU)`, has no runner and has never executed (open item 2) |
 | Reliability floors | file-oracle parse 99/100, perturbed pattern-heal 42, native-lexer ratio 0.997 |
 | Examples | 12 of 12 typecheck, run, and print their recorded answer |
-| `.mg` sources | **116 checked, 0 sketches** — every `.mg` file in the repository typechecks |
+| `.mg` sources | **117 checked, 0 sketches** — every `.mg` file in the repository typechecks |
 | Differentiability | **34 of 34 nets and 7 of 7 train blocks; 1 of 156 functions** (the arena's reward) — `scripts/measure-differentiability.sh`, re-derived in CI and compared against `DIFFERENTIABILITY.md` in both directions |
 | `grad` | An expression that typechecks and **runs**, for scalars: forward-mode duals, checked against central differences. The differentiability obligation is a premise of its typing rule, discharged by the call-graph pass. Tensors are refused, not deferred |
 | Documentation | 212 MAGE blocks typecheck; 59 documentation entry points run; 268 `rmi/docs` API items all exist — and "exist" now means **a definition exists**, not that the name appears somewhere in `src/`. It was 275 under the weaker criterion, 8 of them held up by English words in comments; the phantom entries are gone and a duplicate went with them |
@@ -339,12 +339,12 @@ the more useful half.** It said there was "no numerical MAGE code to build a
 binding construct for", on the evidence of 0 of 155 differentiable functions.
 There is: 34 nets, all of them differentiable — the pass had simply never been
 pointed at them. What is actually thin is the *overlap*, and **it was
-re-measured on 2026-09-08 rather than re-quoted**: **7** tracked sources
+re-measured on 2026-09-08 rather than re-quoted**: **8** tracked sources
 declare a `kb` at all, and **3** of them declare a `net` as well
 (`neurosymbolic_qa.mg`, `neurosymbolic.mg`, `unified.mg`) — the population a
 binding construct would serve. *(The first figure was 3 until 2026-10-29,
 when `kb/schema.mg`, `kb/lexicon.mg` and `kb/grammar.mg` were added, and
-`kb/forms.mg` on 2026-10-30: the
+`kb/forms.mg` and `kb/meaning.mg` on 2026-10-30: the
 knowledge base's own files, each a `kb` with no `net`. Of programs, the sentences below still hold: no program declares a `kb`
 without a `net`.)* **A measurement quoted as evidence for a
 decision about a different population is not evidence** — the figure that used
@@ -2022,6 +2022,17 @@ every `within("…")` name from `parser.rs` and requires it to be a production
 of `kb/grammar.mg`, so the two cannot drift. Removing the stamping fails the
 two behaviour tests. Prototype +3 tests. The wrapping was done by a Haiku
 subagent from an exact brief.
+
+**`kb/meaning.mg`: ops, layers, types and effects.** Schema v6. 945 facts: 107
+ops with every `OpMeta` field, 7 families, 108 layer spellings, 30 types, 24
+effects, generated once by a Haiku subagent's script and canonical from here.
+Four tests hold the code to them both ways. `ontology.rs`'s tables stay until
+the sections are generated. `every_layer_spelling_is_stated` found the two
+layer tables disagreeing with `layer_name_to_op`. `LAYER_SURFACE_NAMES` held
+10 non-layers that `layer_map_section` filtered out, so they were deleted (the
+JSON is unchanged). `op_to_layer_name` names 12 ops `layer_name_to_op` refuses,
+now an exact list. So a kb or agent decompiles to a layer the compiler refuses:
+a new stated loss with a witness, 39 in all. Prototype +4 tests.
 
 **Every lowering checked against what it claims.** `prototype/tests/lowerings.rs`
 gives each of the 38 `loses` facts a witness (a small source run through the
@@ -4638,7 +4649,7 @@ changed before you commit.
 ---
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,521**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,525**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
   across six crates **3,140**; documented-count pins **101**, up from 46 — the
   two newest hold the `kb`/`net` overlap the tensor-product-binding decision

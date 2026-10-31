@@ -67,6 +67,7 @@ const LOSSES: &[(&str, &str, &str, fn() -> bool)] = &[
     ("AblBytes", "NetDecl", "RES_ADD: skipped without being recorded", decompile_res_add_lost),
     ("AblBytes", "NetDecl", "branches: a Par is flattened into one layer list", decompile_branch_lost),
     ("AblBytes", "NetDecl", "layer arguments that are not literals", decompile_args_lost),
+    ("AblBytes", "NetDecl", "a symbolic or agent op: it becomes a layer of a type the compiler refuses", decompile_symbolic_lost),
     ("AblBytes", "NetDecl", "IDENTITY: skipped without being recorded, so an unknown layer vanishes", decompile_identity_lost),
     ("AblBytes", "NetDecl", "ops with no layer name: recorded in DecompileResult::skipped", decompile_skipped_lost),
 ];
@@ -626,6 +627,20 @@ fn decompile_args_lost() -> bool {
         Some(ast::Expr::Literal { value, .. }) if value == "4"
     );
     original == 2 && back_a.len() == 1 && literal_four && back_full == 2
+}
+
+/// A kb's RESOLVE has a name for decompile, so it comes back as a layer, but
+/// `layer_name_to_op` refuses that name: lowering the result gives IDENTITY,
+/// not RESOLVE. A real layer in a net comes back through the same path.
+fn decompile_symbolic_lost() -> bool {
+    let d = decompiled("kb K {\n    fact p(1);\n}\n");
+    let again = abl_bridge::NetTranslator::translate(&d.net);
+    let net = decompiled("net N {\n    layer a1: Linear(4, 4);\n    forward { a1 }\n}\n");
+    layer_names(&d.net) == ["l_resolve_1"]
+        && abl_bridge::layer_name_to_op("Resolve").is_none()
+        && again.unknown_layers == ["Resolve"]
+        && !again.expr.opcodes().contains(&Op::RESOLVE)
+        && abl_bridge::NetTranslator::translate(&net.net).unknown_layers.is_empty()
 }
 
 /// A layer of an unknown type lowers to IDENTITY, and decompile drops it with
