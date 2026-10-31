@@ -1187,6 +1187,7 @@ pub fn healed_to_graph(hd: &HealedDiagnostic) -> DiagnosticGraph {
     let mut root = hd.diagnostic.clone();
     if root.category.is_none() {
         root.category = Some(category);
+        root.id = Some(category.code().to_string());
     }
 
     DiagnosticGraph {
