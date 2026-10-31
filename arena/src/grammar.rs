@@ -1748,6 +1748,40 @@ mod tests {
         assert!(deep.contains("integer expression nested deeper"), "{deep}");
     }
 
+    /// The `kb/rules/grammar.mg` facts for the two arena limits state the values
+    /// the code has.
+    #[test]
+    fn the_limits_are_the_stated_ones() {
+        let kb = mage_prototype::kb::load().expect("the knowledge base loads");
+        let value = |name: &str| -> String {
+            kb.facts("constraint_row")
+                .into_iter()
+                .find(|f| f[0] == name)
+                .unwrap_or_else(|| panic!("no constraint_row fact for `{name}`"))[1]
+                .clone()
+        };
+        assert_eq!(value("max_depth").parse::<usize>(), Ok(MAX_DEPTH));
+        assert_eq!(value("max_nest").parse::<usize>(), Ok(MAX_NEST));
+    }
+
+    /// `Parser::enter` refuses the (MAX_NEST + 1)th level of nesting, and
+    /// nothing else in the parser refuses for nesting at that depth.
+    #[test]
+    fn a_program_nested_past_max_nest_is_refused() {
+        // Levels counted by `enter`: the outer list is level 1, the map body
+        // level 2, and each operand of a `wrapping_add` one more. So the
+        // innermost `s` of `adds(n)` is at level `n + 2`, and `adds(MAX_NEST - 1)`
+        // is the first program nested past the limit.
+        let adds = |n: usize| (0..n).fold("s".to_string(), |e, _| format!("wrapping_add({e}, 1)"));
+        let program = |n: usize| format!("range(3).map(|x| {})", adds(n));
+        let deep = Program::parse(&program(MAX_NEST - 1)).expect_err("nested past MAX_NEST");
+        assert!(deep.contains(&format!("nested more than {MAX_NEST} levels deep")), "{deep}");
+        // At the limit: refused, if at all, for the integer depth limit, not for nesting.
+        let at_limit = Program::parse(&program(MAX_NEST - 2)).expect_err("refused for MAX_DEPTH");
+        assert!(!at_limit.contains("levels deep"), "{at_limit}");
+        assert!(at_limit.contains("MAX_DEPTH"), "{at_limit}");
+    }
+
     /// FNV-1a over the source of every program sampled, mutated and crossed
     /// from the default policy under seeds 1-3. The value was taken from the
     /// arena before the second-order production existed, so a change to

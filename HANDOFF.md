@@ -30,14 +30,14 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,543** — rmi 1,384 · prototype 1,531 · ribosome 168 · germline 175 · forge 63 · arena 222 |
+| Tests | **3,548** — rmi 1,384 · prototype 1,534 · ribosome 168 · germline 175 · forge 63 · arena 224 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
 | CI | 11 jobs defined, **10 of which ever run** — green on `master`. The eleventh, `prototype — cuda kernels (self-hosted GPU)`, has no runner and has never executed (open item 2) |
 | Reliability floors | file-oracle parse 99/100, perturbed pattern-heal 42, native-lexer ratio 0.997 |
 | Examples | 12 of 12 typecheck, run, and print their recorded answer |
-| `.mg` sources | **119 checked, 0 sketches** — every `.mg` file in the repository typechecks |
+| `.mg` sources | **121 checked, 0 sketches** — every `.mg` file in the repository typechecks |
 | Differentiability | **34 of 34 nets and 7 of 7 train blocks; 1 of 156 functions** (the arena's reward) — `scripts/measure-differentiability.sh`, re-derived in CI and compared against `DIFFERENTIABILITY.md` in both directions |
 | `grad` | An expression that typechecks and **runs**, for scalars: forward-mode duals, checked against central differences. The differentiability obligation is a premise of its typing rule, discharged by the call-graph pass. Tensors are refused, not deferred |
 | Documentation | 212 MAGE blocks typecheck; 59 documentation entry points run; 268 `rmi/docs` API items all exist — and "exist" now means **a definition exists**, not that the name appears somewhere in `src/`. It was 275 under the weaker criterion, 8 of them held up by English words in comments; the phantom entries are gone and a duplicate went with them |
@@ -339,7 +339,7 @@ the more useful half.** It said there was "no numerical MAGE code to build a
 binding construct for", on the evidence of 0 of 155 differentiable functions.
 There is: 34 nets, all of them differentiable — the pass had simply never been
 pointed at them. What is actually thin is the *overlap*, and **it was
-re-measured on 2026-09-08 rather than re-quoted**: **10** tracked sources
+re-measured on 2026-09-08 rather than re-quoted**: **12** tracked sources
 declare a `kb` at all, and **3** of them declare a `net` as well
 (`neurosymbolic_qa.mg`, `neurosymbolic.mg`, `unified.mg`) — the population a
 binding construct would serve. *(The first figure was 3 until 2026-10-29,
@@ -2022,6 +2022,24 @@ every `within("…")` name from `parser.rs` and requires it to be a production
 of `kb/grammar.mg`, so the two cannot drift. Removing the stamping fails the
 two behaviour tests. Prototype +3 tests. The wrapping was done by a Haiku
 subagent from an exact brief.
+
+**What a contract clause means, as a tested grid.** `kb/rules/contracts.mg` states
+which of `types`, `contract`, `verify` and `eval` checks each of `@req`, `@ens` and
+`@inv` in each of four placements (schema v10), and `prototype/tests/rules.rs`
+probes all 48 cells against the real compiler both ways: 25 are checked. `@inv` is
+never checked at run time. Clauses on a struct reach only `verify`, and only
+`@inv`. `verify` refutes `0b`, the text `false`, and `path.len() < 0`, nothing
+more; `false` is not a MAGE literal, so `@req(false)` also draws E0425. Units never
+visit a clause: the plan's "skips" undersold it. `kb/rules/grammar.mg` states 14
+constraints the productions cannot, each with a witness, including three gaps: a
+clause above an `enum` or similar is silently dropped, layout blocks are outside
+`kb/grammar.mg` so the recogniser refuses a valid layout program, and an
+overflowing tensor dimension reads as 0. An arena test holds `max_depth` and
+`max_nest` to the constants; Phase 5 reads them from the fact. Also unfixed:
+`codegen_bridge` returns `Success` with a refuted contract in `verification`.
+Parser, lexer and `fmt.rs` recursion has no bound. Haiku subagents did the
+inventory and the probes; a removed and an invented cell both fail the grid.
+Prototype +3 tests, arena +2.
 
 **Every diagnostic is a fact.** `kb/rules/diagnostics.mg` states 19 codes and 7
 warning classes (schema v9), and `prototype/tests/diagnostics.rs` holds the code
@@ -4686,7 +4704,7 @@ changed before you commit.
 ---
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,531**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,534**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
   across six crates **3,140**; documented-count pins **101**, up from 46 — the
   two newest hold the `kb`/`net` overlap the tensor-product-binding decision

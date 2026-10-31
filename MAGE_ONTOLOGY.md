@@ -449,6 +449,9 @@ words among its `lexes_as` facts, and the `AstKind` instances in the grammar.
 | `diagnostic_row` | `Diagnostic` × `Severity` × `Text` × `Text` (category, summary) |
 | `warning_carries` | `Diagnostic` × `Diagnostic` (a warning class, and the code it goes out under) |
 | `gap` | `Rule` × `Text` (a rule nothing checks, and why) |
+| `contract_row` | `Contract` × `Text` × `Text` (spelling, meaning) |
+| `clause_checked` | `Contract` × `Text` × `SymbolicComponent` (placement, and the component that checks the clause there) |
+| `constraint_row` | `GrammarConstraint` × `Text` × `Text` (value, meaning) |
 
 Each invariant is a rule whose results are violations; the knowledge base
 loads only when every one derives nothing.
