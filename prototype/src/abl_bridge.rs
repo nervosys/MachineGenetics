@@ -1195,9 +1195,12 @@ fn _exports(_: &Sym, _: &Ty, _: &Val) {}
 /// per recognised opcode. Args carried in each `App` are converted back to
 /// MAGE integer / float literals.
 ///
-/// Non-neural opcodes encountered during the walk are recorded in
-/// [`DecompileResult::skipped`] so callers can decide whether the result is
-/// faithful or only a partial reconstruction.
+/// Opcodes with no layer name are recorded in [`DecompileResult::skipped`] so
+/// callers can decide whether the result is faithful or only a partial
+/// reconstruction. That is not the same as non-neural: `SPAWN` and `RESOLVE`
+/// have layer names and become layers, and `IDENTITY` and `RES_ADD` are
+/// dropped with no record. `kb/forms.mg` states the losses and
+/// `tests/lowerings.rs` checks them.
 ///
 /// Round-trip guarantee: for any [`ast::NetDef`] whose layers are all
 /// canonical (i.e. resolve via [`layer_name_to_op`]) and whose `forward`
