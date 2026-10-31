@@ -2,11 +2,12 @@
 //
 // A clause can stand in four places: on a function, in a `sp` that shares a
 // top-level function's name, in a `sp` with no such function, or on a struct.
-// Four components can check it: `types` (it is a bool), `contract` (`result` and
-// `old` are in scope), `verify` (it is not refuted) and `eval` (it holds when
-// the function runs). `clause_checked` states each cell of that grid that is
-// checked. Every other cell is unchecked, and that is a statement too:
-// prototype/tests/rules.rs probes all 48 cells against the compiler, both ways.
+// Five components can check it: `types` (it is a bool), `units` (its dimensions
+// agree), `contract` (`result` and `old` are in scope), `verify` (it is not
+// refuted) and `eval` (it holds when the function runs). `clause_checked` states
+// each cell of that grid that is checked. Every other cell is unchecked, and
+// that is a statement too: prototype/tests/rules.rs probes all 60 cells against
+// the compiler, both ways.
 //
 // `verify` refutes very little: the literal `0b`, the text `false` (which is not
 // a MAGE literal: it is also an unresolved name), or `path.len() < 0`.
@@ -23,10 +24,12 @@ kb Contracts {
     fact contract_row("invariant", "@inv", "Must always hold of a struct's values");
 
     fact clause_checked("requires", "function", "types");
+    fact clause_checked("requires", "function", "units");
     fact clause_checked("requires", "function", "contract");
     fact clause_checked("requires", "function", "verify");
     fact clause_checked("requires", "function", "eval");
     fact clause_checked("requires", "spec", "types");
+    fact clause_checked("requires", "spec", "units");
     fact clause_checked("requires", "spec", "contract");
     fact clause_checked("requires", "spec", "verify");
     fact clause_checked("requires", "spec", "eval");
@@ -34,18 +37,22 @@ kb Contracts {
     fact clause_checked("requires", "orphan_spec", "verify");
 
     fact clause_checked("ensures", "function", "types");
+    fact clause_checked("ensures", "function", "units");
     fact clause_checked("ensures", "function", "contract");
     fact clause_checked("ensures", "function", "verify");
     fact clause_checked("ensures", "function", "eval");
     fact clause_checked("ensures", "spec", "types");
+    fact clause_checked("ensures", "spec", "units");
     fact clause_checked("ensures", "spec", "contract");
     fact clause_checked("ensures", "spec", "verify");
     fact clause_checked("ensures", "spec", "eval");
     fact clause_checked("ensures", "orphan_spec", "verify");
 
     fact clause_checked("invariant", "function", "types");
+    fact clause_checked("invariant", "function", "units");
     fact clause_checked("invariant", "function", "contract");
     fact clause_checked("invariant", "spec", "types");
+    fact clause_checked("invariant", "spec", "units");
     fact clause_checked("invariant", "spec", "contract");
     fact clause_checked("invariant", "orphan_spec", "contract");
     fact clause_checked("invariant", "struct", "verify");

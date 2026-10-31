@@ -11,7 +11,7 @@ use std::process::Command;
 
 const KINDS: [(&str, &str); 3] = [("requires", "@req"), ("ensures", "@ens"), ("invariant", "@inv")];
 const PLACES: [&str; 4] = ["function", "spec", "orphan_spec", "struct"];
-const STAGES: [&str; 4] = ["types", "contract", "verify", "eval"];
+const STAGES: [&str; 5] = ["types", "units", "contract", "verify", "eval"];
 
 /// Writes `src` to a file of its own and returns its path.
 fn write_source(src: &str, ext: &str) -> PathBuf {
@@ -110,6 +110,7 @@ fn placed(clause: &str, place: &str) -> String {
 /// not the second:
 /// - `types`: the clause `1`, which is not a bool: E0308. Control: `a > 0`,
 ///   except where `a` is not in scope.
+/// - `units`: `d + t > 0.0` over `d: f64[m], t: f64[s]`: E0562. Control: `d > 0.0`.
 /// - `contract`: for `@ens` `old(zz) > 0`, otherwise `result > 0`: E0561.
 /// - `verify`: the clause `0b`, a bool literal that is false: E0560. The
 ///   spelling `false` is not a literal here: it is an unresolved name, and it
@@ -123,6 +124,15 @@ fn checked(tag: &str, kind: &str, place: &str, stage: &str) -> bool {
         "types" => {
             control(&placed(&clause("a > 0"), place));
             emits(&placed(&clause("1"), place), "E0308")
+        }
+        "units" => {
+            let with_units = |c: &str| {
+                placed(&clause(c), place)
+                    .replace("f add(a: i64, b: i64) -> i64 { a + b }", "f add(d: f64[m], t: f64[s]) -> f64[m] { d }")
+                    .replace("f main() -> i64 { add(1, 2) }", "f main() -> f64[m] { add(1.0, 2.0) }")
+            };
+            control(&with_units("d > 0.0"));
+            emits(&with_units("d + t > 0.0"), "E0562")
         }
         "contract" => {
             control(&placed(&clause("a > 0"), place));

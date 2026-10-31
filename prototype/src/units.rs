@@ -30,6 +30,9 @@
 //!   `x.f()`.
 //! - `x as f64` drops a unit, and `x as f64[m]` asserts one: the deliberate
 //!   escape hatch.
+//! - A contract clause of a function is checked like its body, with the
+//!   parameters in scope and `result` carrying the return dimension in an
+//!   `@ens`. A clause `contract::collect` does not reach is not checked.
 //!
 //! Where the pass cannot tell a dimension (a method of a user type, a closure
 //! parameter, an index into something untyped), it says nothing. A mismatch
@@ -248,6 +251,11 @@ pub fn check(module: &ast::Module) -> Report {
     for item in &module.items {
         c.item(item, None);
     }
+    for (clause, f) in crate::contract::collect(module) {
+        if let Some(f) = f {
+            c.clause(&clause, f);
+        }
+    }
     Report { diagnostics: c.diagnostics, inferred: c.inferred }
 }
 
@@ -437,7 +445,33 @@ impl Checker {
         }
     }
 
-    fn function(&mut self, f: &ast::FunctionDef, self_ty: Option<&str>) {
+    /// One contract clause of `f`. A clause that does not prepare is the
+    /// type checker's to report.
+    fn clause(&mut self, clause: &crate::contract::Clause, f: &ast::FunctionDef) {
+        let params: Vec<String> = f.params.iter().map(|p| p.name.clone()).collect();
+        let Ok(expr) = crate::contract::prepare(clause, Some(&params)) else { return };
+        let mut scope = self.signature_scope(f, None);
+        if clause.kind == ast::ContractClauseKind::Ensures
+            && let Some(t) = &f.return_type
+        {
+            let v = self.of_type(t);
+            scope.insert("result".to_string(), v);
+        }
+        // `seen` is by message, and the clause's text goes on the message
+        // only afterwards: `d + t` in a body must not hide it in a clause.
+        let seen = std::mem::take(&mut self.seen);
+        let before = self.diagnostics.len();
+        self.scopes.push(scope);
+        self.expr(&expr);
+        self.scopes.pop();
+        self.seen = seen;
+        for d in &mut self.diagnostics[before..] {
+            d.message =
+                format!("{} in contract `{}` of `{}`", d.message, clause.display(), clause.function);
+        }
+    }
+
+    fn signature_scope(&mut self, f: &ast::FunctionDef, self_ty: Option<&str>) -> HashMap<String, V> {
         let mut scope = HashMap::new();
         for (name, ty) in &self.consts.clone() {
             let v = self.of_type(ty);
@@ -456,6 +490,11 @@ impl Checker {
             };
             scope.insert(p.name.clone(), v);
         }
+        scope
+    }
+
+    fn function(&mut self, f: &ast::FunctionDef, self_ty: Option<&str>) {
+        let scope = self.signature_scope(f, self_ty);
         let want = match &f.return_type {
             Some(t) => self.of_type(t),
             None => V::Other,
@@ -1021,6 +1060,28 @@ mod tests {
             let twice = print(&module(&once), mode);
             assert_eq!(once, twice, "{name} printing is not a fixed point");
         }
+    }
+
+    #[test]
+    fn a_clause_is_checked_for_units() {
+        let src = "@req(d + t > 0.0)\nf bad(d: f64[m], t: f64[s]) -> f64[m] { d }";
+        assert_eq!(
+            unit_errors(src),
+            ["cannot add m and s in contract `@req(d + t > 0.0)` of `bad`"]
+        );
+        // In a spec too, with `result` carrying the return dimension.
+        let src = "sp bad {\n    @ens(result > t)\n}\nf bad(d: f64[m], t: f64[s]) -> f64[m] { d }";
+        assert_eq!(unit_errors(src).len(), 1, "{:?}", unit_errors(src));
+        // `old(x)` is the parameter, with its dimension.
+        let src = "@ens(result == old(d))\nf ok(d: f64[m]) -> f64[m] { d }";
+        assert!(unit_errors(src).is_empty());
+    }
+
+    /// `seen` must not let a mismatch in the body hide the same one in a clause.
+    #[test]
+    fn the_same_mismatch_in_a_clause_and_the_body_is_reported_twice() {
+        let src = "@req(d + t > 0.0)\nf bad(d: f64[m], t: f64[s]) -> f64[m] { d + t }";
+        assert_eq!(unit_errors(src).len(), 2, "{:?}", unit_errors(src));
     }
 
     #[test]
