@@ -34,8 +34,8 @@
     }
   },
   "generated_by": "mage-parse --emit-skb",
-  "generated_from": "prototype/src/skb.rs::builtin_rules()",
-  "note": "Generated. Edits here are overwritten; change builtin_rules() instead.                  CI regenerates this tree and fails if it differs (item 23).",
+  "generated_from": "kb/rules/safety.mg",
+  "note": "Generated. Edits here are overwritten; change kb/rules/safety.mg instead.                  CI regenerates this tree and fails if it differs (item 23).",
   "schema_version": 2,
   "total_rules": 255
 }

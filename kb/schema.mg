@@ -26,7 +26,10 @@ kb Schema {
     // `types` and `effects` sections can be checked against facts.
     // v7 (2026-10-30): `canonical_layer`, for the ontology's `layer_map`
     // section, and `abl_field` and `abl_media_type`, for its `abl` section.
-    fact schema_version(7);
+    // v8 (2026-10-31): `safety_rule`, `rule_fix`, `rule_tag`, `RuleDatabase`
+    // and `Severity`, for kb/rules/safety.mg. `unenforced_rule` exempts
+    // SafetyRule: those rules are knowledge, and nothing executes them.
+    fact schema_version(8);
 
     // ── Classes ─────────────────────────────────────────────────────────
     // Seven roots. The twelve domains of MAGE_ONTOLOGY.md group facts into
@@ -93,6 +96,22 @@ kb Schema {
     fact subclass_of(Contract, Rule);
     fact subclass_of(GrammarConstraint, Rule);
     fact subclass_of(Diagnostic, Rule);
+    fact class(RuleDatabase);
+    fact class(Severity);
+    fact subclass_of(RuleDatabase, Meaning);
+    fact subclass_of(Severity, Meaning);
+    fact instance_of("Ownership", RuleDatabase);
+    fact instance_of("Borrow", RuleDatabase);
+    fact instance_of("Lifetime", RuleDatabase);
+    fact instance_of("TypeSafety", RuleDatabase);
+    fact instance_of("Concurrency", RuleDatabase);
+    fact instance_of("FFI", RuleDatabase);
+    fact instance_of("AgentElision", RuleDatabase);
+    fact instance_of("SwarmSafety", RuleDatabase);
+    fact instance_of("Error", Severity);
+    fact instance_of("Warning", Severity);
+    fact instance_of("Info", Severity);
+    fact instance_of("Hint", Severity);
 
     fact class(NeuralComponent);
     fact class(SymbolicComponent);
@@ -159,6 +178,23 @@ kb Schema {
     fact relation(refused_by);
     fact arg_class(refused_by, 1, Refusal);
     fact arg_class(refused_by, 2, Rule);
+    // id, database, category, severity, description, rationale, confidence.
+    fact relation(safety_rule);
+    fact arg_class(safety_rule, 1, SafetyRule);
+    fact arg_class(safety_rule, 2, RuleDatabase);
+    fact arg_class(safety_rule, 3, Text);
+    fact arg_class(safety_rule, 4, Severity);
+    fact arg_class(safety_rule, 5, Text);
+    fact arg_class(safety_rule, 6, Text);
+    fact arg_class(safety_rule, 7, Text);
+    fact relation(rule_fix);
+    fact arg_class(rule_fix, 1, SafetyRule);
+    fact arg_class(rule_fix, 2, Text);
+    // rule, position, tag: a rule's tags are ordered.
+    fact relation(rule_tag);
+    fact arg_class(rule_tag, 1, SafetyRule);
+    fact arg_class(rule_tag, 2, Text);
+    fact arg_class(rule_tag, 3, Text);
     fact relation(in_profile);
     fact arg_class(in_profile, 1, Production);
     fact arg_class(in_profile, 2, Profile);
@@ -246,12 +282,16 @@ kb Schema {
     rule undeclared_class(c: str) { arg_class(_, _, c) && !class(c) }
     rule undeclared_class(c: str) { instance_of(_, c) && !class(c) }
 
-    fact invariant(unenforced_rule, "every Rule has an enforced_by");
+    fact invariant(unenforced_rule, "every Rule but a SafetyRule has an enforced_by");
     rule enforced(r: str) { enforced_by(r, _) }
-    rule unenforced_rule(r: str) { is_a(r, "Rule") && !enforced(r) }
+    rule unenforced_rule(r: str) { is_a(r, "Rule") && !is_a(r, "SafetyRule") && !enforced(r) }
 
     fact invariant(rule_enforced_twice, "no Rule has two enforced_by");
     rule rule_enforced_twice(r: str) { enforced_by(r, a) && enforced_by(r, b) && a != b }
+
+    fact invariant(rule_without_row, "every SafetyRule has a safety_rule row");
+    rule has_rule_row(r: str) { safety_rule(r, _, _, _, _, _, _) }
+    rule rule_without_row(r: str) { is_a(r, "SafetyRule") && !has_rule_row(r) }
 
     fact invariant(spelling_two_kinds, "a Token lexes as one TokenKind");
     rule spelling_two_kinds(t: str) { lexes_as(t, a) && lexes_as(t, b) && a != b }
