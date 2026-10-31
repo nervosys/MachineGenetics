@@ -59,5 +59,6 @@ kb Contracts {
 
     fact gap("invariant", "no @inv is checked at run time; on a struct it is not even typechecked");
     fact gap("requires", "@req and @ens on a struct are accepted and checked by nothing");
+    fact gap("requires", "in a spec with no function, @req is not typechecked: there is no signature");
     fact gap("ensures", "in a spec with no function, @ens is not typechecked and its old(x) not scoped: there is no signature");
 }
