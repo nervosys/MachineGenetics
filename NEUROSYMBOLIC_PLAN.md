@@ -224,7 +224,7 @@ facts are grouped into files and namespaces. They are not classes.
 
 ### Phase 0: Preconditions
 
-- [ ] Merge the stack #38–#121, this plan included, in order (needs the user). **S**
+- [ ] Merge the stack #38–#122, this plan included, in order (needs the user). **S**
 - [ ] Settle the open questions in section 8. **S**
 - [ ] Census every module in `prototype/src` (73 files) into neural, symbolic, knowledge base, interface, or outside the design (for example `crdt.rs`, `consensus.rs`, `hot_reload.rs`). Record it in `ARCHITECTURE.md`. Outside-the-design modules are kept but not extended. **S [H]**
 
@@ -262,9 +262,9 @@ facts are grouped into files and namespaces. They are not classes.
 ### Phase 3: Forms and lowerings
 
 - [x] `kb/forms.mg`: the seven form classes as instances, and a `lowers_to` fact for each lowering the compiler performs: sigil ↔ human (`fmt.rs`), source → AST → HIR, `net`/`block` → RMIL ops → ABL container, and ABL → source (decompile). **M** *Done:* 13 forms (one per class, six `Declarative`: net, kb, agent, swarm, train, evolve), 16 lowerings; 4 round-trip, the other 12 state 36 losses. Read from the code by a Haiku survey and checked. Decompile loses more than the plan assumed: besides regenerated layer names, `RES_ADD` is skipped unrecorded and a `Par` is flattened. HIR is not a tree here: types and effects are kept per name. `module_lowering_round_trips_through_codec` never decoded; it now compares the decoded expression.
-- [ ] `kb/meaning.mg`: IR ops generated from `rmi::lang::Op::ALL` and `OpMeta`, layers from `abl_bridge::layer_name_to_op`, types, effects. **M [H]**
+- [x] `kb/meaning.mg`: IR ops generated from `rmi::lang::Op::ALL` and `OpMeta`, layers from `abl_bridge::layer_name_to_op`, types, effects. **M [H]** *(Schema v6: 107 ops, 7 families, 108 layer spellings, 30 types, 24 effects. Generated once by a Haiku subagent's script. `LAYER_SURFACE_NAMES` lost 10 names that were never layers, which `layer_map_section` had been filtering out; the JSON does not change. The 12 names `op_to_layer_name` gives ops that `layer_name_to_op` refuses are pinned as an exact list.)*
 - [x] A round-trip test generated for every `lowers_to` fact, checking exactly the stated loss: layer names regenerated on decompile, and nothing else. **M** *Done, with a table rather than generated code:* `prototype/tests/lowerings.rs` holds a witness for each of the 38 `loses` facts and a check for each of the 4 `round_trips`, and a test requires the table and the facts to match both ways, so a claim with no check fails, and so does a check with no claim. "Nothing else" is checked for decompile only: all 34 nets in the repository re-lower to the same hash unless a stated loss applies. It is not checked for the other lowerings. The plan's wording was wrong: decompile loses more than layer names. The witnesses refuted one fact as first written (`non-neural ops: recorded in skipped`; `RESOLVE` and `SPAWN` have layer names, so a kb or agent decompiles to a net with that layer) and found two losses nobody had stated (a `composition` is discarded when `forward` reaches every layer; `IDENTITY` drops unrecorded, so an unknown layer vanishes). One gap remains: `AstTree -> HirTables` observes the resolver and effect maps, not types, since `TypeChecker` has no per-node query.
-- [ ] Conformance: every op in `rmi::lang::Op` has a fact and every fact an op. **S [H]**
+- [x] Conformance: every op in `rmi::lang::Op` has a fact and every fact an op. **S [H]** *(`every_op_has_a_fact_and_every_fact_an_op`, every field; also `every_op_family_is_stated`, `every_layer_spelling_is_stated`, `every_type_and_effect_is_stated`. The tables stay until the sections are generated.)*
 - [ ] Generate the `ir_ops`, `op_families`, `layer_map`, `types`, `effects` and `abl` sections of `ontology.rs`. **S [H]**
 
 **Done when:** the four-forms claim in the README is a set of facts, each with a passing round-trip test.
