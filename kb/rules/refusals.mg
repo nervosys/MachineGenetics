@@ -2,7 +2,7 @@
 //
 // `arena/src/substrate.rs` has ten classes and `arena/src/physics_task.rs` six,
 // of which five are the same classes under the same names. `refused_by` holds
-// both: a test in each file holds its enum to these facts, both ways.
+// both: a test in each file holds its enum to these facts.
 //
 // A class is coarser than a diagnostic. `type` is whatever the type checker
 // said first, so it is not E0308, and `effect` is also a candidate that is not
