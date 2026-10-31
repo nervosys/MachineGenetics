@@ -540,9 +540,10 @@ pub enum Applicability {
 /// Semantic category for a diagnostic.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DiagnosticCategory {
-    /// Borrow conflict (E0502, E0499, E0503).
+    /// Borrow conflict. No pass detects one: `heal::infer_category` assigns
+    /// this from message text (kb/rules/diagnostics.mg states the gap).
     BorrowConflict,
-    /// Use after move.
+    /// Use after move. As with `BorrowConflict`, no pass detects one.
     UseAfterMove,
     /// Type mismatch.
     TypeMismatch,
@@ -585,6 +586,27 @@ pub enum DiagnosticCategory {
 }
 
 impl DiagnosticCategory {
+    /// Every category. `tests/diagnostics.rs` holds this to the enum.
+    pub const ALL: [DiagnosticCategory; 17] = [
+        DiagnosticCategory::BorrowConflict,
+        DiagnosticCategory::UseAfterMove,
+        DiagnosticCategory::TypeMismatch,
+        DiagnosticCategory::UnresolvedName,
+        DiagnosticCategory::UnresolvedType,
+        DiagnosticCategory::UndeclaredEffect,
+        DiagnosticCategory::SyntaxError,
+        DiagnosticCategory::DuplicateDefinition,
+        DiagnosticCategory::SpecViolation,
+        DiagnosticCategory::ContractScope,
+        DiagnosticCategory::RoleViolation,
+        DiagnosticCategory::CoreViolation,
+        DiagnosticCategory::ParamDomain,
+        DiagnosticCategory::Deprecated,
+        DiagnosticCategory::UnitMismatch,
+        DiagnosticCategory::KbRule,
+        DiagnosticCategory::Other,
+    ];
+
     /// Stable error code for this category. Codes are part of the agent
     /// contract: machine-matchable, never reused, and (where the concept maps)
     /// chosen to echo the equivalent rustc code so Rust-trained agents
@@ -872,26 +894,8 @@ mod diagnostic_code_tests {
     /// the stable agent contract behind `--check --json`.
     #[test]
     fn codes_are_unique_and_nonempty() {
-        let cats = [
-            DiagnosticCategory::BorrowConflict,
-            DiagnosticCategory::UseAfterMove,
-            DiagnosticCategory::TypeMismatch,
-            DiagnosticCategory::UnresolvedName,
-            DiagnosticCategory::UnresolvedType,
-            DiagnosticCategory::UndeclaredEffect,
-            DiagnosticCategory::SyntaxError,
-            DiagnosticCategory::DuplicateDefinition,
-            DiagnosticCategory::SpecViolation,
-            DiagnosticCategory::ContractScope,
-            DiagnosticCategory::RoleViolation,
-            DiagnosticCategory::CoreViolation,
-            DiagnosticCategory::ParamDomain,
-            DiagnosticCategory::Deprecated,
-            DiagnosticCategory::UnitMismatch,
-            DiagnosticCategory::Other,
-        ];
         let mut seen = std::collections::HashSet::new();
-        for c in cats {
+        for c in DiagnosticCategory::ALL {
             assert!(!c.code().is_empty(), "{c:?} has empty code");
             assert!(!c.fix_hint().is_empty(), "{c:?} has empty fix hint");
             assert!(seen.insert(c.code()), "duplicate code for {c:?}: {}", c.code());
