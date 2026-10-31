@@ -10,7 +10,7 @@
 
 ## What the compiler actually serves
 
-`prototype/src/skb.rs` holds `builtin_rules()`, a `Vec<Rule>` compiled into
+The rules live in `kb/rules/safety.mg`, and `prototype/src/skb.rs` holds `builtin_rules()`, which reads them into a `Vec<Rule>` compiled into
 `mage-parse`. Counts below are from `skb::rule_counts_by_db()` and
 `skb::rule_count()`, and are pinned by `rule_counts_per_database` in
 `skb.rs` — so they cannot drift from this table without a test failing.
@@ -36,7 +36,7 @@ mention either.
 
 **Generated. Do not edit these files.** `mage-parse --emit-skb skb` writes them
 from `builtin_rules()`, and `scripts/check-skb-tree.sh` regenerates the tree in
-CI and fails if the committed one differs. To change a rule, change `skb.rs`
+CI and fails if the committed one differs. To change a rule, edit `kb/rules/safety.mg`
 and re-emit.
 
 ```

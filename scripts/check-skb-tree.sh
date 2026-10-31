@@ -73,7 +73,7 @@ done
 
 if [ "$drift" -ne 0 ]; then
     echo >&2
-    echo "     skb/ is generated from builtin_rules(). Edit prototype/src/skb.rs," >&2
+    echo "     skb/ is generated from builtin_rules(). Edit kb/rules/safety.mg," >&2
     echo "     then run: mage-parse --emit-skb skb" >&2
     exit 1
 fi

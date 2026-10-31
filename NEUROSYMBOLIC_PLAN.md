@@ -271,7 +271,7 @@ facts are grouped into files and namespaces. They are not classes.
 
 ### Phase 4: Rules
 
-- [ ] `kb/rules/safety.mg`: the 255 SKB rules as facts, generated once from `builtin_rules()` and then made canonical. `builtin_rules()` and `skb/` are generated from them. **M**
+- [x] `kb/rules/safety.mg`: the 255 SKB rules as facts, generated once from `builtin_rules()` and then made canonical. `builtin_rules()` and `skb/` are generated from them. **M** *(Schema v8: `safety_rule`, `rule_fix`, `rule_tag`, `RuleDatabase`, `Severity`. `skb.rs` loses 2,900 lines of tables; `builtin_rules()` reads the one file, not the whole knowledge base, so a compile that consults a rule does not pay for a full load. The rule files in `skb/` are byte-identical, so the policy digest is unchanged. `unenforced_rule` now exempts `SafetyRule`: no component executes these rules, and stating an enforcer would be false.)*
 - [ ] `kb/rules/diagnostics.mg`: every diagnostic code (22 `E0xxx` codes, and the warning classes), with its enforcer. **M [H]**
 - [ ] Conformance: every code the compiler emits is a fact; every fact has a test that triggers it. **M**
 - [ ] `kb/rules/contracts.mg` and `kb/rules/grammar.mg`: what `@req`, `@ens` and `@inv` mean and which component checks each; grammar constraints such as the depth limit. **S**
