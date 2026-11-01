@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,573** — rmi 1,384 · prototype 1,549 · ribosome 168 · germline 175 · forge 63 · arena 234 |
+| Tests | **3,575** — rmi 1,384 · prototype 1,550 · ribosome 168 · germline 175 · forge 63 · arena 235 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -2022,6 +2022,12 @@ every `within("…")` name from `parser.rs` and requires it to be a production
 of `kb/grammar.mg`, so the two cannot drift. Removing the stamping fails the
 two behaviour tests. Prototype +3 tests. The wrapping was done by a Haiku
 subagent from an exact brief.
+
+**The grammar mask.** `Grammar::mask(prefix)` reads the allowed next kinds and
+spellings, and whether the prefix can end, off the Earley chart, and takes the arena
+profile through `Grammar::restricted`. A test holds it exact against the recogniser at
+every prefix. Nothing calls it yet: no generator here is token-level. Prototype +1
+test, arena +1.
 
 **The prompt is facts.** `describe_grammar` is built from `form_example` and
 `profile_text` (schema v13), with `{name}` filled from the limits. `GOLDEN_OFF` holds,
@@ -4770,7 +4776,7 @@ changed before you commit.
 ---
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,549**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,550**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
   across six crates **3,140**; documented-count pins **101**, up from 46 — the
   two newest hold the `kb`/`net` overlap the tensor-product-binding decision

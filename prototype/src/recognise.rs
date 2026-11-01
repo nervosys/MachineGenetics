@@ -48,6 +48,28 @@ pub struct Stall {
     pub expected: BTreeSet<String>,
 }
 
+/// What may come next after a prefix. Because the grammar is a superset of the
+/// language at its `GAP`s, the mask never refuses a token the parser would take
+/// there, but can allow one it would not.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct Mask {
+    /// Token kinds that continue the prefix.
+    pub kinds: BTreeSet<String>,
+    /// Exact spellings that continue it, whatever their kind.
+    pub spellings: BTreeSet<String>,
+    /// The prefix is already a whole sentence.
+    pub can_end: bool,
+}
+
+impl Mask {
+    pub fn allows(&self, kind: &str, text: &str) -> bool {
+        self.kinds.contains(kind) || self.spellings.contains(text)
+    }
+}
+
+/// An Earley item: (rule, dot, origin).
+type Item = (usize, usize, usize);
+
 /// The names an EBNF right-hand side mentions, in order, or why it does not
 /// read. The knowledge base derives `derives` facts from these.
 pub fn names_in(rhs: &str) -> Result<Vec<String>, String> {
@@ -340,8 +362,40 @@ impl Grammar {
 
     /// Recognise a sequence of tokens, each (kind name, text), no `Eof`.
     pub fn recognise(&self, input: &[(String, String)]) -> Result<(), Stall> {
-        // An item: (rule, dot, origin).
-        type Item = (usize, usize, usize);
+        let sets = self.chart(input)?;
+        let n = input.len();
+        if self.accepted(&sets[n]) {
+            Ok(())
+        } else {
+            Err(self.stall(&sets[n], n))
+        }
+    }
+
+    /// What may follow `prefix`, or where `prefix` itself stops being viable.
+    pub fn mask(&self, prefix: &[(String, String)]) -> Result<Mask, Stall> {
+        let sets = self.chart(prefix)?;
+        let last = &sets[prefix.len()];
+        let mut mask = Mask { can_end: self.accepted(last), ..Mask::default() };
+        for &(r, dot, _) in last {
+            match self.rules[r].1.get(dot) {
+                Some(Sym::T(t)) => {
+                    mask.kinds.insert(t.clone());
+                }
+                Some(Sym::S(s)) => {
+                    mask.spellings.insert(s.clone());
+                }
+                _ => {}
+            }
+        }
+        Ok(mask)
+    }
+
+    fn accepted(&self, last: &[Item]) -> bool {
+        last.iter().any(|&(r, dot, origin)| origin == 0 && self.rules[r].0 == self.start && dot == self.rules[r].1.len())
+    }
+
+    /// The Earley sets of `input`, one per position.
+    fn chart(&self, input: &[(String, String)]) -> Result<Vec<Vec<Item>>, Stall> {
         let n = input.len();
         let mut sets: Vec<Vec<Item>> = vec![Vec::new(); n + 1];
         let mut seen: Vec<HashSet<Item>> = vec![HashSet::new(); n + 1];
@@ -396,17 +450,10 @@ impl Grammar {
                 return Err(self.stall(&sets[k], k));
             }
         }
-        let accepted = sets[n]
-            .iter()
-            .any(|&(r, dot, origin)| origin == 0 && self.rules[r].0 == self.start && dot == self.rules[r].1.len());
-        if accepted {
-            Ok(())
-        } else {
-            Err(self.stall(&sets[n], n))
-        }
+        Ok(sets)
     }
 
-    fn stall(&self, set: &[(usize, usize, usize)], at: usize) -> Stall {
+    fn stall(&self, set: &[Item], at: usize) -> Stall {
         let expected = set
             .iter()
             .filter_map(|&(r, dot, _)| match self.rules[r].1.get(dot) {
@@ -578,6 +625,25 @@ mod tests {
 
     fn words(s: &str) -> Vec<(String, String)> {
         s.split_whitespace().map(|w| (w.to_string(), w.to_string())).collect()
+    }
+
+    #[test]
+    fn a_mask_names_what_continues_a_prefix() {
+        let k = kb("fact instance_of(List, Production);\n\
+                    fact start_symbol(List);\n\
+                    fact rhs(List, \"LBrack (IntLiteral (Comma IntLiteral)*)? RBrack 'end'?\");");
+        let g = Grammar::from_kb(&k).unwrap_or_else(|e| panic!("{e:#?}"));
+        let set = |names: &[&str]| names.iter().map(|n| n.to_string()).collect::<BTreeSet<String>>();
+
+        let m = g.mask(&words("")).unwrap();
+        assert_eq!((m.kinds, m.can_end), (set(&["LBrack"]), false));
+        let m = g.mask(&words("LBrack")).unwrap();
+        assert_eq!(m.kinds, set(&["IntLiteral", "RBrack"]));
+        let m = g.mask(&words("LBrack IntLiteral")).unwrap();
+        assert_eq!(m.kinds, set(&["Comma", "RBrack"]));
+        let m = g.mask(&words("LBrack RBrack")).unwrap();
+        assert!(m.kinds.is_empty() && m.can_end && m.allows("Ident", "end") && !m.allows("Ident", "other"));
+        assert_eq!(g.mask(&words("RBrack")).unwrap_err().at, 0);
     }
 
     /// Left recursion, nullable helpers and groups, which a recursive-descent
