@@ -159,6 +159,10 @@ become attributes; fix templates carry through. The resulting ontology is
 queryable by RMI agents using the same `OntologyQuery` interface they use
 for `air.neural` and `air.symbolic` concepts.
 
+`kb_to_ontology` does the same for the whole knowledge base: every fact is a
+row in the `facts` attribute of the concept it is about, under `air.kb`, and
+safety rules keep their `air.skb.<database>` names.
+
 ### CLI
 
 ```sh

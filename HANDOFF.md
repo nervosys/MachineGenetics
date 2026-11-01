@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,563** — rmi 1,384 · prototype 1,545 · ribosome 168 · germline 175 · forge 63 · arena 228 |
+| Tests | **3,566** — rmi 1,384 · prototype 1,548 · ribosome 168 · germline 175 · forge 63 · arena 228 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -2022,6 +2022,14 @@ every `within("…")` name from `parser.rs` and requires it to be a production
 of `kb/grammar.mg`, so the two cannot drift. Removing the stamping fails the
 two behaviour tests. Prototype +3 tests. The wrapping was done by a Haiku
 subagent from an exact brief.
+
+**The knowledge base exports to RMI.** `rmi_ontology_adapter::kb_to_ontology` puts
+every fact on the concept it is about, in a `facts` attribute, and a test reads
+them all back. Safety rules keep their `air.skb` names. `subclass_of`, `instance_of`,
+`lowers_to`, `lowers_as`, `derives`, `op_family` and `in_profile` are also graph edges:
+RMI's relation types are closed, and the rest have no faithful one. `Module` and
+`TypeAlias` are both an `AstKind` and a `Production`, which is why `derives` has to
+choose. No command calls the export yet. Prototype +3 tests.
 
 **The arena gates name their rules.** `kb/rules/refusals.mg` (schema v11) gives
 each refusal class a `refused_by` fact, and a test in `substrate.rs` and
@@ -4742,7 +4750,7 @@ changed before you commit.
 ---
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,545**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,548**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
   across six crates **3,140**; documented-count pins **101**, up from 46 — the
   two newest hold the `kb`/`net` overlap the tensor-product-binding decision
