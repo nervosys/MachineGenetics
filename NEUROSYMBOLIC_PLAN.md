@@ -293,7 +293,7 @@ facts are grouped into files and namespaces. They are not classes.
 
 ### Phase 6: Neural engines consume the knowledge base
 
-- [ ] `kb/profiles/arena.mg`: the arena's program space as a profile of the full grammar (its productions, the `usize` list fragment, the depth limit). **M**
+- [x] `kb/profiles/arena.mg`: the arena's program space as a profile of the full grammar (its productions, the `usize` list fragment, the depth limit). **M** *(Schema v12, `Kb::profile`, `Grammar::restricted`. 41 of the 148 productions, measured, not mapped by hand: tests recognise the 19 forms and 60 sampled programs with those alone, and each production is needed. The 19 forms and 14 limits are held to `grammar.rs`. `grammar.rs` still has its own tables: the next item.)*
 - [ ] `arena/src/grammar.rs` builds its productions from `Kb::profile("arena")`; seeds reproduce byte-identically. **L**
 - [ ] `describe_grammar` text is generated from the profile; the `GOLDEN_OFF` test still holds. **M**
 - [ ] A grammar mask for any token-level generator: given a prefix, the allowed next tokens, computed from the grammar facts. **M**

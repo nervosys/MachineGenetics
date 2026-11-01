@@ -372,7 +372,7 @@ material; each becomes documentation of `kb/` as its facts move there
 | Root class | Subclasses |
 |---|---|
 | `Form` | `HumanSource`, `SigilSource`, `Declarative`, `Ast`, `Hir`, `IrOp`, `BinaryContainer` |
-| `Construct` | `Token` (`Keyword`, `Sigil`), `Production`, `AstKind`, `TokenKind` |
+| `Construct` | `Token` (`Keyword`, `Sigil`), `Production`, `AstKind`, `TokenKind`, `ProfileForm` |
 | `Meaning` | `Type`, `Effect`, `Op`, `Layer`, `OpFamily`, `RuleDatabase`, `Severity` |
 | `Rule` | `TypeRule`, `SafetyRule`, `Contract`, `GrammarConstraint`, `Diagnostic`, `GateRule` |
 | `Component` | `NeuralComponent`, `SymbolicComponent` |
@@ -453,6 +453,12 @@ words among its `lexes_as` facts, and the `AstKind` instances in the grammar.
 | `clause_checked` | `Contract` × `Text` × `SymbolicComponent` (placement, and the component that checks the clause there) |
 | `constraint_row` | `GrammarConstraint` × `Text` × `Text` (value, meaning) |
 | `gate_row` | `GateRule` × `Text` (what the gate requires) |
+| `form_row` | `ProfileForm` × `Profile` × `Text` × `Text` (nonterminal, position) |
+| `leaf_form` | `ProfileForm` (it may sit at the depth limit) |
+| `gated_form` | `ProfileForm` × `Text` (the option it needs) |
+| `profile_limit` | `Profile` × `Text` × `Text` × `Text` (name, lowest, highest) |
+| `profile_constraint` | `Profile` × `GrammarConstraint` |
+| `profile_signature` | `Profile` × `Text` |
 
 Each invariant is a rule whose results are violations; the knowledge base
 loads only when every one derives nothing.

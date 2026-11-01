@@ -32,11 +32,37 @@ pub const FILES: &[(&str, &str)] = &[
     ("kb/rules/contracts.mg", include_str!("../../kb/rules/contracts.mg")),
     ("kb/rules/grammar.mg", include_str!("../../kb/rules/grammar.mg")),
     ("kb/rules/refusals.mg", include_str!("../../kb/rules/refusals.mg")),
+    ("kb/profiles/arena.mg", include_str!("../../kb/profiles/arena.mg")),
 ];
 
 /// The schema's own predicates: a fact may use these without a `relation`.
 pub const META: &[&str] =
     &["schema_version", "class", "subclass_of", "relation", "arg_class", "invariant", "instance_of"];
+
+/// One choice of a profile's generator.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ProfileForm {
+    pub name: String,
+    /// It has no list below it, so it may sit at the depth limit.
+    pub leaf: bool,
+    /// The option a generator needs on to use it.
+    pub gate: Option<String>,
+}
+
+/// A named subset of the grammar: what a generator may write.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GrammarProfile {
+    /// The productions of the full grammar it uses, sorted.
+    pub productions: Vec<String>,
+    /// Its list forms and integer forms, in position order.
+    pub list_forms: Vec<ProfileForm>,
+    pub int_forms: Vec<ProfileForm>,
+    /// Each limit's name, lowest and highest.
+    pub limits: Vec<(String, u64, u64)>,
+    /// Each `GrammarConstraint` it is bound by, and its value.
+    pub constraints: Vec<(String, String)>,
+    pub signature: String,
+}
 
 /// A loaded knowledge base: every fact and every rule's consequences.
 pub struct Kb {
@@ -47,6 +73,59 @@ impl Kb {
     /// The facts matching `args`, where `"?"` matches anything.
     pub fn query(&mut self, predicate: &str, args: &[&str]) -> Vec<Vec<String>> {
         self.base.query(predicate, args)
+    }
+
+    /// The profile `name`, if the knowledge base states one.
+    pub fn profile(&self, name: &str) -> Option<GrammarProfile> {
+        let signature = self.facts("profile_signature").into_iter().find(|f| f[0] == name)?[1].clone();
+        let mut productions: Vec<String> =
+            self.facts("in_profile").into_iter().filter(|f| f[1] == name).map(|f| f[0].clone()).collect();
+        productions.sort();
+
+        let leaves = self.facts("leaf_form");
+        let gates = self.facts("gated_form");
+        let forms = |kind: &str| -> Vec<ProfileForm> {
+            let mut rows: Vec<(u64, String)> = self
+                .facts("form_row")
+                .into_iter()
+                .filter(|f| f[1] == name && f[2] == kind)
+                .map(|f| (f[3].parse().unwrap_or(u64::MAX), f[0].clone()))
+                .collect();
+            rows.sort();
+            rows.into_iter()
+                .map(|(_, form)| ProfileForm {
+                    leaf: leaves.iter().any(|l| l[0] == form),
+                    gate: gates.iter().find(|g| g[0] == form).map(|g| g[1].clone()),
+                    name: form,
+                })
+                .collect()
+        };
+
+        let mut limits: Vec<(String, u64, u64)> = self
+            .facts("profile_limit")
+            .into_iter()
+            .filter(|f| f[0] == name)
+            .map(|f| (f[1].clone(), f[2].parse().unwrap_or(0), f[3].parse().unwrap_or(0)))
+            .collect();
+        limits.sort();
+
+        let values = self.facts("constraint_row");
+        let mut constraints: Vec<(String, String)> = self
+            .facts("profile_constraint")
+            .into_iter()
+            .filter(|f| f[0] == name)
+            .filter_map(|f| values.iter().find(|v| v[0] == f[1]).map(|v| (v[0].clone(), v[1].clone())))
+            .collect();
+        constraints.sort();
+
+        Some(GrammarProfile {
+            productions,
+            list_forms: forms("list"),
+            int_forms: forms("int"),
+            limits,
+            constraints,
+            signature,
+        })
     }
 
     /// Every fact of `predicate`.
@@ -216,6 +295,14 @@ pub(crate) fn corpus_files() -> Vec<(String, String)> {
 mod tests {
     use super::*;
 
+    #[test]
+    fn a_profile_is_found_by_its_name() {
+        let kb = load().expect("the knowledge base loads");
+        assert!(kb.profile("nothing").is_none());
+        let arena = kb.profile("arena").expect("the arena's profile");
+        assert_eq!(arena.constraints[0], ("max_depth".to_string(), "5".to_string()));
+    }
+
     /// The schema plus `extra` facts, as a second file.
     fn with(extra: &str) -> Result<Kb, Vec<String>> {
         let bad = format!("kb Extra {{\n{extra}\n}}\n");
@@ -232,7 +319,7 @@ mod tests {
     #[test]
     fn the_schema_alone_loads() {
         let mut kb = load_files(&FILES[..1]).unwrap_or_else(|e| panic!("{e:#?}"));
-        assert_eq!(kb.facts("schema_version"), vec![vec!["11".to_string()]]);
+        assert_eq!(kb.facts("schema_version"), vec![vec!["12".to_string()]]);
         assert!(!kb.query("below", &["Keyword", "Construct"]).is_empty());
     }
 

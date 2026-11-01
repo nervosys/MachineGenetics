@@ -30,14 +30,14 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,566** — rmi 1,384 · prototype 1,548 · ribosome 168 · germline 175 · forge 63 · arena 228 |
+| Tests | **3,570** — rmi 1,384 · prototype 1,549 · ribosome 168 · germline 175 · forge 63 · arena 231 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
 | CI | 11 jobs defined, **10 of which ever run** — green on `master`. The eleventh, `prototype — cuda kernels (self-hosted GPU)`, has no runner and has never executed (open item 2) |
 | Reliability floors | file-oracle parse 99/100, perturbed pattern-heal 42, native-lexer ratio 0.997 |
 | Examples | 12 of 12 typecheck, run, and print their recorded answer |
-| `.mg` sources | **122 checked, 0 sketches** — every `.mg` file in the repository typechecks |
+| `.mg` sources | **123 checked, 0 sketches** — every `.mg` file in the repository typechecks |
 | Differentiability | **34 of 34 nets and 7 of 7 train blocks; 1 of 156 functions** (the arena's reward) — `scripts/measure-differentiability.sh`, re-derived in CI and compared against `DIFFERENTIABILITY.md` in both directions |
 | `grad` | An expression that typechecks and **runs**, for scalars: forward-mode duals, checked against central differences. The differentiability obligation is a premise of its typing rule, discharged by the call-graph pass. Tensors are refused, not deferred |
 | Documentation | 212 MAGE blocks typecheck; 59 documentation entry points run; 268 `rmi/docs` API items all exist — and "exist" now means **a definition exists**, not that the name appears somewhere in `src/`. It was 275 under the weaker criterion, 8 of them held up by English words in comments; the phantom entries are gone and a duplicate went with them |
@@ -339,7 +339,7 @@ the more useful half.** It said there was "no numerical MAGE code to build a
 binding construct for", on the evidence of 0 of 155 differentiable functions.
 There is: 34 nets, all of them differentiable — the pass had simply never been
 pointed at them. What is actually thin is the *overlap*, and **it was
-re-measured on 2026-09-08 rather than re-quoted**: **13** tracked sources
+re-measured on 2026-09-08 rather than re-quoted**: **14** tracked sources
 declare a `kb` at all, and **3** of them declare a `net` as well
 (`neurosymbolic_qa.mg`, `neurosymbolic.mg`, `unified.mg`) — the population a
 binding construct would serve. *(The first figure was 3 until 2026-10-29,
@@ -2022,6 +2022,13 @@ every `within("…")` name from `parser.rs` and requires it to be a production
 of `kb/grammar.mg`, so the two cannot drift. Removing the stamping fails the
 two behaviour tests. Prototype +3 tests. The wrapping was done by a Haiku
 subagent from an exact brief.
+
+**The arena is a profile.** `kb/profiles/arena.mg` (schema v12) states the arena's
+forms in logit order, its limits, its depth constraints, and the 41 productions of the
+full grammar it uses. `Grammar::restricted` recognises with those alone, and two
+tests hold that the arena's text fits and that no production is spare. A third holds
+`grammar.rs`'s tables to the facts; it still has those tables, and reading them from
+`Kb::profile` is the next item. Prototype +1 test, arena +3.
 
 **The knowledge base exports to RMI.** `rmi_ontology_adapter::kb_to_ontology` puts
 every fact on the concept it is about, in a `facts` attribute, and a test reads
@@ -4750,7 +4757,7 @@ changed before you commit.
 ---
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,548**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,549**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
   across six crates **3,140**; documented-count pins **101**, up from 46 — the
   two newest hold the `kb`/`net` overlap the tensor-product-binding decision

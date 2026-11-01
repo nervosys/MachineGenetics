@@ -405,8 +405,9 @@ mod tests {
             }
         }
         clashes.sort();
-        // `Module` and `TypeAlias` are both an `AstKind` and a `Production`.
-        assert_eq!(clashes, ["derives TypeAlias", "summary Module", "summary TypeAlias"]);
+        // `Module` and `TypeAlias` are both an `AstKind` and a `Production`, and
+        // `var` is a `Keyword` and a `ProfileForm`. Sort order gives `summary` the first of each.
+        assert_eq!(clashes, ["derives TypeAlias", "summary Module", "summary TypeAlias", "summary var"]);
     }
 
     #[test]
