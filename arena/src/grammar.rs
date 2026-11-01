@@ -53,6 +53,9 @@ struct Space {
     /// How many of `list_rules` every policy has; the rest are gated.
     ungated: usize,
     list_leaves: Vec<usize>,
+    /// Each form written out, and each piece of the prompt.
+    examples: HashMap<String, String>,
+    texts: HashMap<String, String>,
     max_depth: usize,
     max_nest: usize,
     int_extra_depth: usize,
@@ -75,6 +78,8 @@ fn space() -> &'static Space {
             max_depth: value("max_depth"),
             max_nest: value("max_nest"),
             int_extra_depth: limits["int_extra_depth"].0 as usize,
+            examples: p.list_forms.iter().chain(&p.int_forms).map(|f| (f.name.clone(), f.example.clone())).collect(),
+            texts: p.texts.iter().cloned().collect(),
             list_rules: p.list_forms.iter().map(|f| f.name.clone()).collect(),
             int_rules: p.int_forms.iter().map(|f| f.name.clone()).collect(),
             limits,
@@ -910,104 +915,48 @@ pub mod bounds {
     }
 }
 
-/// One example of each production, rendered by this module's own renderers, in
-/// [`list_rules`] and [`int_rules`] order. The arena's prompt is built from
-/// these, so what a proposer is told the grammar is cannot drift from what
-/// `render` writes, and a test checks every example parses back.
+/// One example of each production, in [`list_rules`] and [`int_rules`] order.
+/// The arena's prompt is built from these, and a test holds each to what `render`
+/// writes for it, so what a proposer is told cannot drift from the grammar.
 pub fn production_examples() -> (Vec<(&'static str, String)>, Vec<(&'static str, String)>) {
-    fn text_of_list(e: &ListExpr) -> String {
-        let mut s = String::new();
-        e.render(&mut s);
-        s
-    }
-    fn text_of_int(e: &IntExpr) -> String {
-        let mut s = String::new();
-        e.render(&mut s);
-        s
-    }
-    let range = |n: u64| Box::new(ListExpr::Range(n));
-    let var = |v: &str| IntExpr::Var(v.into());
-    let lists: [(&str, ListExpr); 12] = [
-        ("range", ListExpr::Range(8)),
-        ("repeat", ListExpr::Repeat(IntExpr::Lit(3), 4)),
-        ("map", ListExpr::Map(range(4), "x".into(), IntExpr::Mul(Box::new(var("x")), Box::new(IntExpr::Lit(3))))),
-        (
-            "scan",
-            ListExpr::Scan(
-                range(4),
-                var("s"),
-                "a".into(),
-                "x".into(),
-                IntExpr::Add(Box::new(var("a")), Box::new(var("x"))),
-            ),
-        ),
-        ("filter", ListExpr::Filter(range(8), "x".into(), 3, 1)),
-        ("reverse", ListExpr::Reverse(range(5))),
-        ("sort", ListExpr::Sort(range(5))),
-        ("take", ListExpr::Take(range(9), 4)),
-        ("concat", ListExpr::Concat(range(3), range(2))),
-        ("copy", ListExpr::Copy(range(3), 2)),
-        ("cycle", ListExpr::Cycle("v".into(), vec![IntExpr::Lit(1), var("s"), IntExpr::Lit(0)], 6)),
-        ("nest", ListExpr::Nest("v".into(), 4, 3)),
-    ];
-    let ints: [(&str, IntExpr); 6] = [
-        ("lit", IntExpr::Lit(7)),
-        ("var", var("s")),
-        ("add", IntExpr::Add(Box::new(var("s")), Box::new(IntExpr::Lit(3)))),
-        ("sub", IntExpr::Sub(Box::new(var("s")), Box::new(IntExpr::Lit(3)))),
-        ("mul", IntExpr::Mul(Box::new(var("s")), Box::new(IntExpr::Lit(3)))),
-        ("mod", IntExpr::Mod(Box::new(var("s")), 5)),
-    ];
-    (
-        lists.iter().map(|(n, e)| (*n, text_of_list(e))).collect(),
-        ints.iter().map(|(n, e)| (*n, text_of_int(e))).collect(),
-    )
+    let shown = |names: Vec<&'static str>| names.into_iter().map(|n| (n, space().examples[n].clone())).collect();
+    (shown(list_rules()), shown(int_rules()))
 }
 
-/// The second-order production's example (P5b), rendered by its own renderer.
-/// [`describe_grammar`] names it only when the policy has it on.
+/// The second-order production's example (P5b). [`describe_grammar`] names it
+/// only when the policy has it on.
 pub fn second_order_example() -> String {
-    let mut s = String::new();
-    ListExpr::Osc(Oscillator { n: 12, x1: 100, x0: 7, a: 64, b: 32, k: 6 }).render(&mut s);
-    s
+    space().examples[second_order_rule()].clone()
 }
 
-/// The grammar as a proposer is told it: every production as its rendered
-/// example, and the bounds. Generated from [`production_examples`] and
-/// [`bounds`], never written out by hand.
+/// A piece of the prompt, with each `{name}` filled in.
+fn prompt_text(key: &str) -> String {
+    let mut text = space().texts[key].replace("{max_depth}", &max_depth().to_string());
+    text = text.replace("{form}", second_order_rule());
+    for (name, (lo, hi)) in &space().limits {
+        text = text.replace(&format!("{{{name}}}"), &format!("{lo}..={hi}"));
+    }
+    text
+}
+
+/// The grammar as a proposer is told it: every production as its example, and
+/// the bounds. All of it comes from the profile.
 pub fn describe_grammar(second_order: bool) -> String {
     let (lists, ints) = production_examples();
-    let range = |(lo, hi): (u64, u64)| format!("{lo}..={hi}");
-    let mut s = String::from("A body is one list expression over the seed `s`. Its forms, one example each:\n");
+    let mut s = prompt_text("list_head") + "\n";
     for (name, text) in &lists {
         s.push_str(&format!("  {name:<8} {text}\n"));
     }
     if second_order {
         s.push_str(&format!("  {:<8} {}\n", second_order_rule(), second_order_example()));
     }
-    s.push_str("Integer expressions, inside any of them:\n");
+    s.push_str(&(prompt_text("int_head") + "\n"));
     for (name, text) in &ints {
         s.push_str(&format!("  {name:<8} {text}\n"));
     }
-    s.push_str(&format!(
-        "Bounds: range and take lengths {}; repeat lengths {}; literals {}; modulus {}; \
-         cycle templates have {} elements and length {}; copy counts {}; nest counts {} and moduli {}; \
-         filter moduli {}. Lists nest at most {} levels deep. Every variable must be \
-         `s` or a closure parameter in scope.\n",
-        range(bounds::range()),
-        range(bounds::repeat()),
-        range(bounds::literal()),
-        range(bounds::modulus()),
-        range(bounds::cycle_elems()),
-        range(bounds::cycle_len()),
-        range(bounds::copy()),
-        range(bounds::nest_count()),
-        range(bounds::nest_mod()),
-        range(bounds::filter_mod()),
-        max_depth(),
-    ));
+    s.push_str(&(prompt_text("bounds") + "\n"));
     if second_order {
-        s.push_str(&format!("The second-order form `{}` is the only one whose values can oscillate: it emits values in {}, its start values are literals {}, its shift is {}, and its coefficient a is at most 2^(k+1) and b below 2^k. Write it as its example, with the numbers changed within these bounds.\n", second_order_rule(), range(bounds::osc_len()), range(bounds::literal()), range(bounds::osc_shift())));
+        s.push_str(&(prompt_text("second_order") + "\n"));
     }
     s
 }
@@ -2190,6 +2139,16 @@ mod tests {
         "Bounds: range and take lengths 1..=48; repeat lengths 1..=12; literals 0..=255; modulus 2..=256; cycle templates have 2..=6 elements and length 4..=48; copy counts 2..=6; nest counts 2..=12 and moduli 2..=8; filter moduli 2..=7. Lists nest at most 5 levels deep. Every variable must be `s` or a closure parameter in scope.\n",
     );
 
+    fn digest_of_text(text: &str) -> u64 {
+        text.bytes().fold(0xcbf2_9ce4_8422_2325u64, |h, b| (h ^ b as u64).wrapping_mul(0x0100_0000_01b3))
+    }
+
+    /// The prompt with the second-order production on, as the old code wrote it.
+    #[test]
+    fn the_second_order_prompt_is_the_one_it_was() {
+        assert_eq!(digest_of_text(&describe_grammar(true)), 11567645790966410876);
+    }
+
     /// With the second-order production off, the prompt is the text it was before
     /// the production existed, byte for byte (captured from the pre-P5b-flag output).
     #[test]
@@ -2212,6 +2171,9 @@ mod tests {
         assert!(on.contains("second-order form `osc`"));
         let parsed = Program::parse_for_policy(&example, true).expect("the example parses");
         assert!(matches!(parsed.body, ListExpr::Osc(_)));
+        let mut rendered = String::new();
+        parsed.body.render(&mut rendered);
+        assert_eq!(rendered, example);
         let refused = Program::parse_for_policy(&example, false).expect_err("off refuses osc");
         assert!(refused.contains("not in this policy"), "{refused}");
     }
@@ -2251,8 +2213,8 @@ mod tests {
             assert_eq!(Program::parse(text).map(|p| { let mut s = String::new(); p.body.render(&mut s); s }), Ok(text.clone()));
         }
         for (_, text) in &ints {
-            let wrapped = format!("range(3).map(|x| {text})");
-            assert!(Program::parse(&wrapped).is_ok(), "{wrapped}");
+            let wrapped = format!("[{text}; 2]");
+            assert_eq!(Program::parse(&wrapped).map(|p| { let mut s = String::new(); p.body.render(&mut s); s }), Ok(wrapped.clone()));
         }
         let described = describe_grammar(false);
         for name in list_rules().iter().chain(int_rules().iter()) {

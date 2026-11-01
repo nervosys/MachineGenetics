@@ -39,7 +39,8 @@ kb Schema {
     // v12 (2026-10-31): `ProfileForm` and the `form_row`, `leaf_form`,
     // `gated_form`, `profile_limit`, `profile_constraint` and `profile_signature`
     // relations, for kb/profiles/arena.mg.
-    fact schema_version(12);
+    // v13 (2026-11-01): `form_example` and `profile_text`, the arena's prompt.
+    fact schema_version(13);
 
     // ── Classes ─────────────────────────────────────────────────────────
     // Seven roots. The twelve domains of MAGE_ONTOLOGY.md group facts into
@@ -251,6 +252,15 @@ kb Schema {
     fact arg_class(form_row, 2, Profile);
     fact arg_class(form_row, 3, Text);
     fact arg_class(form_row, 4, Text);
+    // A form written out, as the prompt shows it.
+    fact relation(form_example);
+    fact arg_class(form_example, 1, ProfileForm);
+    fact arg_class(form_example, 2, Text);
+    // profile, key, a piece of its prompt.
+    fact relation(profile_text);
+    fact arg_class(profile_text, 1, Profile);
+    fact arg_class(profile_text, 2, Text);
+    fact arg_class(profile_text, 3, Text);
     // A form with no list below it, so it may sit at the depth limit.
     fact relation(leaf_form);
     fact arg_class(leaf_form, 1, ProfileForm);
