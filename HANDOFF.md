@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,570** — rmi 1,384 · prototype 1,549 · ribosome 168 · germline 175 · forge 63 · arena 231 |
+| Tests | **3,572** — rmi 1,384 · prototype 1,549 · ribosome 168 · germline 175 · forge 63 · arena 233 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -2022,6 +2022,14 @@ every `within("…")` name from `parser.rs` and requires it to be a production
 of `kb/grammar.mg`, so the two cannot drift. Removing the stamping fails the
 two behaviour tests. Prototype +3 tests. The wrapping was done by a Haiku
 subagent from an exact brief.
+
+**The arena reads its grammar.** `grammar::space()` builds the rule lists, leaves,
+bounds and depth limits from `kb/profiles/arena.mg` at first use. `LIST_RULES`,
+`INT_RULES`, `MAX_DEPTH`, `MAX_LEN`, `MAX_NEST` and the `bounds` constants are gone;
+`Sampler` matches form names, not logit indices. `kb::load_profile_facts` reads only
+two files, unchecked, and a test holds it equal to the checked load. Seeds reproduce:
+digests pinned from the old code hold, and two seeded runs match the old binary
+except for measured joules, seconds and what derives from them. Arena +2 tests.
 
 **The arena is a profile.** `kb/profiles/arena.mg` (schema v12) states the arena's
 forms in logit order, its limits, its depth constraints, and the 41 productions of the

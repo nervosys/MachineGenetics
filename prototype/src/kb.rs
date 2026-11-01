@@ -134,6 +134,30 @@ impl Kb {
     }
 }
 
+/// The files [`load_profile_facts`] reads.
+pub const PROFILE_FILES: &[(&str, &str)] = &[
+    ("kb/rules/grammar.mg", include_str!("../../kb/rules/grammar.mg")),
+    ("kb/profiles/arena.mg", include_str!("../../kb/profiles/arena.mg")),
+];
+
+/// The facts of [`PROFILE_FILES`] alone, for what starts up often and cannot
+/// pay for [`load`]. No schema is applied: a test holds what this gives equal
+/// to the checked knowledge base's.
+pub fn load_profile_facts() -> Result<Kb, Vec<String>> {
+    let mut base = KnowledgeBase::new("mage");
+    for &(path, src) in PROFILE_FILES {
+        let module = crate::parser::parse(&crate::lexer::lex(src)).map_err(|e| vec![format!("{path}: does not parse: {e:?}")])?;
+        for item in &module.items {
+            let ast::ItemKind::Kb(def) = &item.kind else { continue };
+            for fact in &def.facts {
+                let args = logic::read_fact(fact).map_err(|n| vec![format!("{path}:{}: argument {n} is not a constant", fact.line)])?;
+                base.add_fact(&fact.name, args);
+            }
+        }
+    }
+    Ok(Kb { base })
+}
+
 /// Load the embedded knowledge base, or say every way it breaks its schema.
 pub fn load() -> Result<Kb, Vec<String>> {
     load_files(FILES)

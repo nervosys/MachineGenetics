@@ -340,7 +340,7 @@ impl Proposer for GrammarAgent {
         };
         serde_json::json!({
             "list": named(&crate::grammar::list_rule_names(self.policy.second_order()), l),
-            "int": named(&crate::grammar::INT_RULES, i),
+            "int": named(&crate::grammar::int_rules(), i),
         })
     }
 }
@@ -381,7 +381,7 @@ impl Proposer for UniformAgent {
 }
 
 impl MutatorAgent {
-    /// Count a variant, and whether it exceeds MAX_DEPTH (F1).
+    /// Count a variant, and whether it exceeds max_depth (F1).
     fn count_graft(&mut self, program: &Program) {
         self.grafts += 1;
         if crate::grammar::check_list_depth(&program.body, 0).is_err() {
@@ -399,7 +399,7 @@ pub struct MutatorAgent {
     /// Whether grafts are sampled at the depth they replace (plan F1).
     pub bound_grafts: bool,
     policy: Policy,
-    /// Variants made by mutation or crossover, and how many exceed MAX_DEPTH.
+    /// Variants made by mutation or crossover, and how many exceed max_depth.
     grafts: usize,
     over_depth: usize,
 }
@@ -414,7 +414,7 @@ impl MutatorAgent {
         MutatorAgent::with_options(id, second_order, false)
     }
 
-    /// The mutator, with its grafts bounded to MAX_DEPTH when asked (plan F1).
+    /// The mutator, with its grafts bounded to max_depth when asked (plan F1).
     pub fn with_options(id: impl Into<String>, second_order: bool, bound_grafts: bool) -> Self {
         MutatorAgent {
             id: id.into(),
@@ -650,7 +650,7 @@ mod tests {
 
     /// F1, the source of a bounded run's over-depth parents: an attacker
     /// rewrite adds one or two list levels around its parent, so a program
-    /// within MAX_DEPTH can yield a candidate past it. The gate admits that
+    /// within max_depth can yield a candidate past it. The gate admits that
     /// candidate, and a bounded graft keeps the wrapper it inherited.
     #[test]
     fn an_identity_rewrite_can_take_an_in_depth_program_past_max_depth() {
