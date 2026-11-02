@@ -8,8 +8,8 @@
 // said first, so it is not E0308, and `effect` is also a candidate that is not
 // pure, so it is not E0550. Those have a gate rule of their own, and the
 // refusal's message carries the detail. `depth` and `parse` are exact, so they
-// name the rule that decides them. `budget` is counted in `arena.rs` by name:
-// the variant is built only for its evidence entry.
+// name the rule that decides them. `budget` is decided in `arena.rs`, not
+// the substrate: the variant is built only for its evidence entry.
 
 kb Refusals {
     fact instance_of("substrate", SymbolicComponent);

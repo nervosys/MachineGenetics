@@ -47,6 +47,18 @@ pub struct Entry {
     pub record: Record,
 }
 
+/// The sum of `agent`'s rewards in `records`, in their order.
+pub fn rewards(records: &[Record], agent: &str) -> f64 {
+    records
+        .iter()
+        .filter(|r| r.agent == agent)
+        .filter_map(|r| match &r.what {
+            What::Measurement { name, value } if name == "reward" => Some(*value),
+            _ => None,
+        })
+        .fold(0.0, |a, v| a + v)
+}
+
 /// The address of a program's source.
 pub fn artifact(source: &str) -> String {
     format!("sha256:{:x}", Sha256::digest(source.as_bytes()))
@@ -143,6 +155,15 @@ mod tests {
         let cut = lines[1..].join("\n");
         assert!(verify(&cut).is_err());
         assert!(continue_log(&edited, &[record(3, refusal())]).is_err(), "nothing is appended to a broken log");
+    }
+
+    /// Only `agent`'s rewards count, and refusals are not rewards.
+    #[test]
+    fn rewards_sums_one_agents_rewards() {
+        let reward = |agent: &str, value| Record { agent: agent.into(), ..record(0, What::Measurement { name: "reward".into(), value }) };
+        let records = [reward("g0", 0.25), record(0, refusal()), reward("g1", 4.0), reward("g0", 0.5)];
+        assert_eq!(rewards(&records, "g0"), 0.75);
+        assert_eq!(rewards(&records, "g2"), 0.0);
     }
 
     #[test]

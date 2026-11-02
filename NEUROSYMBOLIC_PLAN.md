@@ -224,7 +224,7 @@ facts are grouped into files and namespaces. They are not classes.
 
 ### Phase 0: Preconditions
 
-- [ ] Merge the stack #38–#139, this plan included, in order (needs the user). **S**
+- [ ] Merge the stack #38–#140, this plan included, in order (needs the user). **S**
 - [ ] Settle the open questions in section 8. **S**
 - [ ] Census every module in `prototype/src` (73 files) into neural, symbolic, knowledge base, interface, or outside the design (for example `crdt.rs`, `consensus.rs`, `hot_reload.rs`). Record it in `ARCHITECTURE.md`. Outside-the-design modules are kept but not extended. **S [H]**
 
@@ -306,7 +306,7 @@ facts are grouped into files and namespaces. They are not classes.
 ### Phase 7: Evidence and the learning loop
 
 - [x] An append-only evidence log (refusals and measurements) whose entries refer to rule, artifact and component facts by id. **M** *(`arena/src/evidence.rs`, `arena --evidence <log.jsonl>`. Each refusal names its `refused_by` rule; each reward is a measurement. Components are the agent kinds, now `Component` facts in `kb/rules/refusals.mg`. Artifacts are the SHA-256 of a program's source: programs are not knowledge-base facts, and a refused one has no canonical hash. A hash chain makes "append-only" checkable: `verify` refuses an edited, reordered or front-cut log, and nothing is appended to one. A cut at the end is not detectable. Only the arena writes it; physics-task and checkpoint measurements are not logged yet.)*
-- [ ] The arena's reward and credit read verdicts from it, rather than re-deriving refusal classes. **M**
+- [x] The arena's reward and credit read verdicts from it, rather than re-deriving refusal classes. **M** *(Each reward is logged where it is assigned. A round's credit, and the report's refusals and each agent's credit, are read from the log; the second count of refusals, keyed by serialising the class, is gone. The log is in memory: a run reads its own entries, not the file. Measured: three seeded runs, alignment and compression reward, give bit-identical credit, scores, refusals, hypervolume added and best programs before and after. The reward is still computed in `arena.rs` before it is logged; what moved is where every later figure reads it from.)*
 - [ ] A report: refusals per rule per generator, over a standard arena run. This shows which rules the neural side keeps breaking. **S [H]**
 - [ ] Existing measurements in `MEASUREMENTS.md` keep their sources; new ones name the evidence entries they came from. **S**
 

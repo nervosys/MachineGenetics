@@ -824,6 +824,8 @@ pub fn run_with(
         // Every agent action is metered in its own span (plan 3.5), so each
         // agent is charged what it spent, and the kernel can stop one mid-round.
         let mut round_joules = vec![0.0f64; agents.len()];
+        // This round's evidence starts here; its credit is read from it.
+        let round_start = evidence.len();
         for (ai, agent) in agents.iter_mut().enumerate() {
             standing[ai].last_share = shares[ai];
             // 2. Propose.
@@ -835,15 +837,12 @@ pub fn run_with(
             round_joules[ai] += ledger.charge_agent(PROGRAMS, role, kind, &r).map_or(0.0, |(j, _)| j);
             let allowance = cfg.joules_per_program.map(|p| p * shares[ai] as f64);
             let scored = &mut round_scored[ai];
-            let mut credit = 0.0;
             let mut cost = 0.0;
             for c in cands {
                 standing[ai].proposed += 1;
                 // The kernel's limits, checked before any work is done: the
                 // run's budget, then this agent's allowance for the round.
                 if ledger.exhausted() || allowance.is_some_and(|a| round_joules[ai] >= a) {
-                    *standing[ai].refusals.entry("budget".into()).or_insert(0) += 1;
-                    *refusals.entry("budget".into()).or_insert(0) += 1;
                     evidence.push(refusal_record(round, &**agent, &c, &Refusal::Budget, "the energy budget or the allowance is spent"));
                     cost += 1.0;
                     scored.push((c, None));
@@ -926,8 +925,7 @@ pub fn run_with(
                                 let raw = learners.iter().map(|l| l.progress(&bytes)).sum::<f64>()
                                     / learners.len() as f64;
                                 let r = raw * mult;
-                                standing[ai].credit += r;
-                                credit += r;
+                                evidence.push(reward_record(round, &**agent, &c, r));
                                 pool.add_with(
                                     c.program.clone(),
                                     bytes.clone(),
@@ -958,12 +956,6 @@ pub fn run_with(
                     }
                     Outcome::Refused(why, message) => {
                         evidence.push(refusal_record(round, &**agent, &c, &why, &message));
-                        let key = serde_json::to_value(&why)
-                            .ok()
-                            .and_then(|v| v.as_str().map(str::to_string))
-                            .unwrap_or_else(|| format!("{why:?}"));
-                        *standing[ai].refusals.entry(key.clone()).or_insert(0) += 1;
-                        *refusals.entry(key).or_insert(0) += 1;
                         cost += if why == Refusal::Fuel { cfg.substrate.fuel as f64 } else { 1.0 };
                         scored.push((c, None));
                     }
@@ -985,7 +977,7 @@ pub fn run_with(
                     break;
                 }
             }
-            round_credit[ai] = credit;
+            round_credit[ai] = crate::evidence::rewards(&evidence[round_start..], agent.id());
             // Plan 7.1: charged the joules its own actions measured. Without
             // any reading (no meter produced a figure), fuel stands in.
             round_cost[ai] = match cfg.cost_unit {
@@ -1072,11 +1064,16 @@ pub fn run_with(
                     structure,
                 })
                 .map_err(|e| format!("round {round}: {e}"))?;
-            standing[ai].credit += r;
-            round_credit[ai] += r;
+            evidence.push(reward_record(round, &*agents[ai], &round_scored[ai][idx].0, r));
             let program = round_scored[ai][idx].0.program.clone();
             pool.add_with(program, probe, r, agents[ai].id(), round, round, &|r, age| retention_program.priority(r, age))?;
             round_scored[ai][idx].1 = Some(r);
+        }
+
+        if cfg.reward == Reward::Compression {
+            for (ai, agent) in agents.iter().enumerate() {
+                round_credit[ai] = crate::evidence::rewards(&evidence[round_start..], agent.id());
+            }
         }
 
         // Every program's point on (reward ↑, cost ↓), and what each agent's
@@ -1111,21 +1108,6 @@ pub fn run_with(
         } else if cfg.allocation == Allocation::Hypervolume {
             // Nothing produced yet, so nothing added.
             round_credit.iter_mut().for_each(|c| *c = 0.0);
-        }
-
-        // Every reward, now that each is known.
-        for (ai, agent) in agents.iter().enumerate() {
-            for (c, r) in &round_scored[ai] {
-                if let Some(r) = r {
-                    evidence.push(crate::evidence::Record {
-                        round,
-                        component: agent.kind().to_string(),
-                        agent: agent.id().to_string(),
-                        artifact: crate::evidence::artifact(&c.program.source()),
-                        what: crate::evidence::What::Measurement { name: "reward".into(), value: *r },
-                    });
-                }
-            }
         }
 
         // 6. Feed back, now that every credit is known.
@@ -1213,6 +1195,19 @@ pub fn run_with(
             }
         }
         rounds_completed = round + 1;
+    }
+
+    // Refusals and credit, read from the evidence rather than counted twice.
+    for e in &evidence {
+        let Some(s) = standing.iter_mut().find(|s| s.id == e.agent) else { continue };
+        match &e.what {
+            crate::evidence::What::Refusal { class, .. } => {
+                *s.refusals.entry(class.clone()).or_insert(0) += 1;
+                *refusals.entry(class.clone()).or_insert(0) += 1;
+            }
+            crate::evidence::What::Measurement { name, value } if name == "reward" => s.credit += value,
+            crate::evidence::What::Measurement { .. } => {}
+        }
     }
 
     for (ai, agent) in agents.iter().enumerate() {
@@ -1310,6 +1305,17 @@ pub fn run_with(
     })
 }
 
+/// The evidence of a reward.
+fn reward_record(round: usize, agent: &dyn Proposer, c: &Candidate, r: f64) -> crate::evidence::Record {
+    crate::evidence::Record {
+        round,
+        component: agent.kind().to_string(),
+        agent: agent.id().to_string(),
+        artifact: crate::evidence::artifact(&c.program.source()),
+        what: crate::evidence::What::Measurement { name: "reward".into(), value: r },
+    }
+}
+
 /// The evidence of a refusal: its rule from `kb/rules/refusals.mg`.
 fn refusal_record(round: usize, agent: &dyn Proposer, c: &Candidate, why: &Refusal, message: &str) -> crate::evidence::Record {
     crate::evidence::Record {
@@ -1350,9 +1356,10 @@ mod tests {
         (vec![Box::new(energy::WallClock::new("cpu-estimate", 65.0))], vec!["cpu".into()])
     }
 
-    /// The evidence is the run's refusals and rewards: an entry for each
-    /// refusal the report counts, under the rule its class names, and one for
-    /// each reward. Every rule and component an entry names is a fact.
+    /// The evidence is the run's refusals and rewards, each refusal under the
+    /// rule its class names, and every rule and component an entry names is a
+    /// fact. The report reads its refusals and credit from it: each agent's are
+    /// the entries naming that agent.
     #[test]
     fn the_evidence_names_a_rule_for_each_refusal_and_holds_each_reward() {
         use crate::evidence::What;
@@ -1381,6 +1388,17 @@ mod tests {
             }
         }
         assert_eq!(by_class, r.refusals);
+        for a in &r.agents {
+            let mine: Vec<_> = r.evidence.iter().filter(|e| e.agent == a.id).cloned().collect();
+            let mut refused: BTreeMap<String, usize> = BTreeMap::new();
+            for e in &mine {
+                if let What::Refusal { class, .. } = &e.what {
+                    *refused.entry(class.clone()).or_default() += 1;
+                }
+            }
+            assert_eq!(refused, a.refusals, "{}", a.id);
+            assert_eq!(crate::evidence::rewards(&mine, &a.id), a.credit, "{}", a.id);
+        }
         let proposed: usize = r.agents.iter().map(|a| a.proposed).sum();
         assert!(rewards > 0 && rewards + r.refusals.values().sum::<usize>() <= proposed);
     }

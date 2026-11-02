@@ -280,6 +280,15 @@ fn check_signature(module: &ast::Module) -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
+    /// A class's label is the name its refusals were counted under before the
+    /// evidence log, so reports keep their keys.
+    #[test]
+    fn a_label_is_the_name_a_refusal_serialises_to() {
+        for r in super::Refusal::ALL {
+            assert_eq!(serde_json::to_value(&r).unwrap(), r.label(), "{r:?}");
+        }
+    }
+
     use super::*;
 
     #[test]
