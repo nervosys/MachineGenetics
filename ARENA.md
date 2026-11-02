@@ -1282,6 +1282,8 @@ trajectory also changes, so the per-seed counts are not an exact tally of those
 refusals). The earlier reason for the default, that removing roughly a hundred
 credited exploits costs nothing measurable, now reads as removing about forty.
 
+**The evidence log (plan Phase 7).** `--evidence <log.jsonl>` appends one JSON line per refusal and per reward of the run (`arena/src/evidence.rs`). A refusal names its rule (`refused_by` in `kb/rules/refusals.mg`) and its class; a reward is a `measurement` named `reward`. Each entry names the agent's kind, a `Component` fact, and the program as the SHA-256 of its source, since a refused program has no canonical hash. Entries are numbered and each carries the hash of the line before it, so a log that was edited, reordered or cut at the front does not verify, and nothing is appended to one that does not. The report itself is unchanged: two seeded runs gave the same refusals, best programs and counts with and without the flag.
+
 **Bounded grafts (plan F1).** `--bound-grafts` makes `mutate` sample its fresh
 subtree at the depth of the node it replaces (`Policy::sample_at`), and makes
 `crossover` take only donors that fit at the site's depth. A graft is an

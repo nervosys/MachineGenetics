@@ -9,12 +9,21 @@
 // pure, so it is not E0550. Those have a gate rule of their own, and the
 // refusal's message carries the detail. `depth` and `parse` are exact, so they
 // name the rule that decides them. `budget` is counted in `arena.rs` by name:
-// the enum variant is never built.
+// the variant is built only for its evidence entry.
 
 kb Refusals {
     fact instance_of("substrate", SymbolicComponent);
     fact instance_of("arena", SymbolicComponent);
     fact instance_of("physics_task", SymbolicComponent);
+
+    // The arena's generators, under the kind each is named by in the evidence
+    // log (arena/src/evidence.rs). Only the grammar agent's policy is learned;
+    // `command` runs whatever program it is given.
+    fact instance_of("grammar", NeuralComponent);
+    fact instance_of("uniform", Component);
+    fact instance_of("mutator", Component);
+    fact instance_of("attacker", Component);
+    fact instance_of("command", Component);
 
     fact instance_of("gate_signature", GateRule);
     fact gate_row("gate_signature", "A candidate is exactly one function of the required shape and role, in MAGE-core");

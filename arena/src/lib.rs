@@ -32,6 +32,7 @@ pub mod arena;
 pub mod command;
 pub mod energy;
 pub mod entropy;
+pub mod evidence;
 pub mod ssm;
 pub mod grammar;
 pub mod harness;

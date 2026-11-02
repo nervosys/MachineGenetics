@@ -11,7 +11,7 @@
 //!       [--energy-budget J] [--joules-per-program J] [--definitions <forge registry dir>]
 //!       [--heldout-slices K] [--refresh-drift X]
 //!       [--proposer-command "<cmd> <args…>"] [--proposer-timeout S]
-//!       [--json <out.json>]
+//!       [--json <out.json>] [--evidence <log.jsonl>]
 //! arena physics-baseline [--system pendulum|spring|double_pendulum|nbody|bounce|none] [--steps N]
 //!       [--seed S] [--budget BYTES] [--learners SPEC,…] [--encoding i32|coarse|planes|diff2]
 //!       [--text-train <file> --text-heldout <file>] [--json OUT]
@@ -521,6 +521,7 @@ fn main() {
     let mut heldout_paths: Vec<String> = Vec::new();
     let mut physics_specs: Vec<String> = Vec::new();
     let mut json_out: Option<String> = None;
+    let mut evidence_out: Option<String> = None;
     let mut meter_gpus: Option<Vec<u32>> = None;
     let mut i = 0;
     let value = |i: usize| -> &str { args.get(i + 1).map(String::as_str).unwrap_or_else(|| fail(format!("{} needs a value", args[i]))) };
@@ -614,6 +615,7 @@ fn main() {
             "--eval-every" => cfg.eval_every = num(value(i), "--eval-every").max(1) as usize,
             "--cpu-watts" => cfg.cpu_watts = value(i).parse().unwrap_or_else(|_| fail("--cpu-watts: not a number")),
             "--json" => json_out = Some(value(i).to_string()),
+            "--evidence" => evidence_out = Some(value(i).to_string()),
             // The command's argv is the value split on whitespace, so it
             // cannot carry an argument with a space in it.
             "--proposer-command" => {
@@ -750,5 +752,9 @@ fn main() {
         let json = serde_json::to_string_pretty(&report).unwrap_or_else(|e| fail(e));
         std::fs::write(&path, json).unwrap_or_else(|e| fail(format!("{path}: {e}")));
         eprintln!("\nreport written to {path}");
+    }
+    if let Some(path) = evidence_out {
+        let n = arena::evidence::append(std::path::Path::new(&path), &report.evidence).unwrap_or_else(|e| fail(e));
+        eprintln!("{} evidence entries appended to {path}, which now holds {n}", report.evidence.len());
     }
 }
