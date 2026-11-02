@@ -14,7 +14,7 @@
     "keywords": 100,
     "op_families": 7,
     "project_layout": 22,
-    "rap_methods": 40,
+    "rap_methods": 41,
     "recovery_stages": 7,
     "sigils": 57,
     "types": 30,
@@ -4544,6 +4544,22 @@
           "error"
         ],
         "summary": "The knowledge base's schema: classes, relations, invariants."
+      },
+      {
+        "method": "kb/constrains",
+        "params": [
+          "construct"
+        ],
+        "returns": [
+          "ok",
+          "count",
+          "construct",
+          "classes",
+          "rules",
+          "nearest",
+          "error"
+        ],
+        "summary": "The rules that constrain a construct, with what each says, who checks it and its gaps; a near name gets the nearest constructs."
       },
       {
         "method": "kb/query",

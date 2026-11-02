@@ -489,6 +489,7 @@ version = "0.3.0"
 dependencies = [
  "async-trait",
  "ironaccelerator-cuda",
+ "ndarray",
  "proc-macro2",
  "rmi",
  "serde",

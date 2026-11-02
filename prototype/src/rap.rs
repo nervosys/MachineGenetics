@@ -1374,6 +1374,31 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
             }
         }
 
+        "kb/constrains" => {
+            // The rules that constrain a construct, by `constrained_by`, with
+            // what each says, who checks it and its known gaps. A name that is
+            // no construct gets the nearest that are, by embedding. `ok` is a
+            // claim that some rule matched, as `kb/query` reads it.
+            let construct = params.get("construct").and_then(|v| v.as_str()).unwrap_or("");
+            match crate::kb::load() {
+                Ok(mut kb) => {
+                    let found = crate::rmi_ontology_adapter::constrains(&mut kb, construct);
+                    serde_json::json!({
+                        "ok": !found.rules.is_empty(),
+                        "count": found.rules.len(),
+                        "construct": found.construct,
+                        "classes": found.classes,
+                        "rules": found.rules,
+                        "nearest": found.nearest.iter().map(|(n, s)| serde_json::json!({ "name": n, "similarity": s })).collect::<Vec<_>>(),
+                    })
+                }
+                Err(refused) => serde_json::json!({
+                    "ok": false,
+                    "error": format!("the knowledge base does not load: {}", refused.join("; ")),
+                }),
+            }
+        }
+
         "rap/methods" => serde_json::json!({
             "ok": true,
             "count": METHODS.len(),
@@ -1419,6 +1444,7 @@ pub const METHODS: &[&str] = &[
     "format/human",
     "grammar/list",
     "heal/graph",
+    "kb/constrains",
     "kb/query",
     "kb/schema",
     "language/parse",
@@ -1477,6 +1503,18 @@ mod tests {
         let none = call("kb/query", serde_json::json!({ "predicate": "no_such_predicate" }));
         assert_eq!(none["ok"], false);
         assert_eq!(none["count"], 0);
+    }
+
+    /// A construct gets its rules; a name near one gets the nearest.
+    #[test]
+    fn kb_constrains_names_the_rules_or_the_nearest_construct() {
+        let r = call("kb/constrains", serde_json::json!({ "construct": "@req" }));
+        assert_eq!(r["ok"], true, "{r}");
+        let rules: Vec<&str> = r["rules"].as_array().unwrap().iter().map(|x| x["rule"].as_str().unwrap()).collect();
+        assert_eq!(rules, ["requires"], "{r}");
+        let typo = call("kb/constrains", serde_json::json!({ "construct": "Functon" }));
+        assert_eq!(typo["ok"], false);
+        assert_eq!(typo["nearest"][0]["name"], "Function", "{typo}");
     }
 
     #[test]
@@ -1968,6 +2006,7 @@ mod tests {
             ("rap/methods", serde_json::json!({})),
             ("kb/schema", serde_json::json!({})),
             ("kb/query", serde_json::json!({ "predicate": "below", "args": ["Keyword", "?"] })),
+            ("kb/constrains", serde_json::json!({ "construct": "Function" })),
         ];
 
         let published = crate::ontology::section("rap_methods").expect("rap_methods");

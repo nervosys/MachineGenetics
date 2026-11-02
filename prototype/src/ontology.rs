@@ -343,6 +343,8 @@ const RAP_METHODS: &[(&str, &str, &[&str], &[&str])] = &[
         &[], &["ok", "count", "methods"]),
     ("kb/schema", "The knowledge base's schema: classes, relations, invariants.",
         &[], &["ok", "schema_version", "classes", "relations", "invariants", "error"]),
+    ("kb/constrains", "The rules that constrain a construct, with what each says, who checks it and its gaps; a near name gets the nearest constructs.",
+        &["construct"], &["ok", "count", "construct", "classes", "rules", "nearest", "error"]),
     ("kb/query", "Facts of a predicate in the knowledge base, stated or derived; \"?\" matches any.",
         &["predicate", "args"], &["ok", "count", "matches", "error"]),
     ("effects/infer", "Infer effects of each function.",
