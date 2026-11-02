@@ -2023,6 +2023,11 @@ of `kb/grammar.mg`, so the two cannot drift. Removing the stamping fails the
 two behaviour tests. Prototype +3 tests. The wrapping was done by a Haiku
 subagent from an exact brief.
 
+**Refusal counts as learner features: not built.** The byte learners never see a
+refused program, which has no output. The grammar policy does, as reward 0, and its
+refusals in two seeded runs were 1 to 3 of 22 to 30 programs, all `empty`. No learner
+here has a use for per-rule counts; the plan item records why and when to reopen it.
+
 **The grammar mask.** `Grammar::mask(prefix)` reads the allowed next kinds and
 spellings, and whether the prefix can end, off the Earley chart, and takes the arena
 profile through `Grammar::restricted`. A test holds it exact against the recogniser at
