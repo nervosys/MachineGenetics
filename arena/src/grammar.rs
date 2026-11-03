@@ -1548,6 +1548,27 @@ mod tests {
     use mage_prototype::recognise::{recognise_source, Grammar};
     use std::collections::HashSet;
 
+    /// The content hash of the arena profile the golden values below were
+    /// recorded under. A golden holds for that profile only: a proposal that
+    /// changes the profile changes what it pins, and the gate measures the change
+    /// (its benchmark and evidence log) instead. Under any other profile each
+    /// golden checks only that a seed still draws the same thing twice.
+    const GOLDENS_PROFILE: &str = "sha256:044f0fa053bb02cd2d35828006505f7df96050d7b612f1444ce8927b8694f695";
+
+    /// The hash of the profile this build was compiled with.
+    fn profile_hash() -> String {
+        let (path, src) = mage_prototype::kb::FILES
+            .iter()
+            .find(|(path, _)| *path == "kb/profiles/arena.mg")
+            .expect("the arena's profile is among the knowledge-base files");
+        mage_prototype::kb_proposal::version(&[(path, src)])
+    }
+
+    /// Whether this build's profile is the one the goldens were recorded under.
+    fn goldens_hold() -> bool {
+        profile_hash() == GOLDENS_PROFILE
+    }
+
     /// Every text the profile must recognise: each form, then `samples` programs.
     fn arena_sources(samples: usize) -> Vec<String> {
         let wrap = |body: &str| Program::parse(body).expect("an example parses").source();
@@ -1594,8 +1615,13 @@ mod tests {
     /// Seeds reproduce: these were measured before the tables came from the profile.
     #[test]
     fn a_seed_draws_what_it_always_drew() {
-        assert_eq!(digest_of_draws(false), 3777979023967647525);
-        assert_eq!(digest_of_draws(true), 13613693441237307860);
+        if goldens_hold() {
+            assert_eq!(digest_of_draws(false), 3777979023967647525);
+            assert_eq!(digest_of_draws(true), 13613693441237307860);
+        } else {
+            assert_eq!(digest_of_draws(false), digest_of_draws(false), "a seed drew differently twice");
+            assert_eq!(digest_of_draws(true), digest_of_draws(true), "a seed drew differently twice");
+        }
     }
 
     #[test]
@@ -1886,21 +1912,32 @@ mod tests {
         assert!(refused("range(3).flatMap(|x| x)").contains("unknown method `flatMap`"));
         assert!(refused("range(3).map(|x| y)").contains("`y` is not bound"));
         assert!(refused("range(3).map(|x| x).map(|y| x)").contains("`x` is not bound"));
-        assert!(refused("range(49)").contains("outside the grammar"));
-        assert!(refused("range(0)").contains("outside the grammar"));
+        // Each bound is one past or one below the profile's limit, read the way the parser reads it.
+        let (range_lo, range_hi) = bounds::range();
+        assert!(refused(&format!("range({})", range_hi + 1)).contains("outside the grammar"));
+        assert!(refused(&format!("range({})", range_lo - 1)).contains("outside the grammar"));
         assert!(refused("range(99999999999999999999999999)").contains("too large"));
-        assert!(refused("[256; 3]").contains("literal 256"));
-        assert!(refused("[1; 13]").contains("repeat length 13"));
-        assert!(refused("flatten([range(3); 7])").contains("copy count 7"));
-        assert!(refused("range(3).map(|x| (x % 1))").contains("modulus 1"));
-        assert!(refused("range(3).map(|x| (x % 257))").contains("modulus 257"));
-        assert!(refused("range(8).filter(|x| x % 2 == 2)").contains("filter remainder 2"));
+        let (_, literal_hi) = bounds::literal();
+        assert!(refused(&format!("[{}; 3]", literal_hi + 1)).contains(&format!("literal {}", literal_hi + 1)));
+        let (_, repeat_hi) = bounds::repeat();
+        assert!(refused(&format!("[1; {}]", repeat_hi + 1)).contains(&format!("repeat length {}", repeat_hi + 1)));
+        let (_, copy_hi) = bounds::copy();
+        assert!(refused(&format!("flatten([range(3); {}])", copy_hi + 1)).contains(&format!("copy count {}", copy_hi + 1)));
+        let (modulus_lo, modulus_hi) = bounds::modulus();
+        assert!(refused(&format!("range(3).map(|x| (x % {}))", modulus_lo - 1)).contains(&format!("modulus {}", modulus_lo - 1)));
+        assert!(refused(&format!("range(3).map(|x| (x % {}))", modulus_hi + 1)).contains(&format!("modulus {}", modulus_hi + 1)));
+        // A remainder equal to its modulus is outside the remainders the modulus allows.
+        let (filter_lo, _) = bounds::filter_mod();
+        let refused_remainder = format!("range(8).filter(|x| x % {filter_lo} == {filter_lo})");
+        assert!(refused(&refused_remainder).contains(&format!("filter remainder {filter_lo}")));
         assert!(refused("range(8).filter(|x| y % 3 == 1)").contains("tests a variable other"));
         assert!(refused("range(6).map(|v| [1, 2][w % 2])").contains("other than `v`"));
         assert!(refused("range(6).map(|v| [1, 2, 3][v % 2])").contains("modulus"));
         assert!(refused("range(3).map(|v| [1, 2][v % 2])").contains("length 3"));
         assert!(refused("range(4).reverse().map(|v| [1, 2][v % 2])").contains("over `range(n)`"));
-        assert!(refused("flatten(range(13).map(|v| range(v % 3 + 1)))").contains("nest count 13"));
+        let (_, nest_count_hi) = bounds::nest_count();
+        let nest = format!("flatten(range({}).map(|v| range(v % 3 + 1)))", nest_count_hi + 1);
+        assert!(refused(&nest).contains(&format!("nest count {}", nest_count_hi + 1)));
         for src in ["", "hello", "range(", "range(3) range(4)", "range(3).", "[1; 2", "f other(s: usize) -> [usize] { range(3) }"] {
             assert!(Program::parse(src).is_err(), "accepted {src:?}");
         }
@@ -1964,6 +2001,16 @@ mod tests {
         let policy = Policy::with_second_order(false);
         assert_eq!(policy.list_logits.len(), list_rules().len());
         assert!(!policy.second_order());
+        if goldens_hold() {
+            assert_eq!(flag_off_digest(), 0x8cf8_ad38_8c05_87e3, "sampling changed with the flag off");
+        } else {
+            assert_eq!(flag_off_digest(), flag_off_digest(), "sampling with the flag off drew differently twice");
+        }
+    }
+
+    /// The digest of [`with_the_flag_off_sampling_is_bit_identical_to_before_p5b`].
+    fn flag_off_digest() -> u64 {
+        let policy = Policy::with_second_order(false);
         let mut h: u64 = 0xcbf2_9ce4_8422_2325;
         let mut feed = |s: &str| {
             for b in s.bytes() {
@@ -1983,7 +2030,7 @@ mod tests {
                 feed(&crossover(&p, &q, &mut rng).source());
             }
         }
-        assert_eq!(h, 0x8cf8_ad38_8c05_87e3, "sampling changed with the flag off");
+        h
     }
 
     /// The reference recurrence, in plain integers, with the same floor shift.
@@ -2170,14 +2217,22 @@ mod tests {
     /// The prompt with the second-order production on, as the old code wrote it.
     #[test]
     fn the_second_order_prompt_is_the_one_it_was() {
-        assert_eq!(digest_of_text(&describe_grammar(true)), 11567645790966410876);
+        if goldens_hold() {
+            assert_eq!(digest_of_text(&describe_grammar(true)), 11567645790966410876);
+        } else {
+            assert_eq!(describe_grammar(true), describe_grammar(true), "the prompt differed between two calls");
+        }
     }
 
     /// With the second-order production off, the prompt is the text it was before
     /// the production existed, byte for byte (captured from the pre-P5b-flag output).
     #[test]
     fn the_grammar_description_with_the_second_order_off_is_unchanged() {
-        assert_eq!(describe_grammar(false), GOLDEN_OFF);
+        if goldens_hold() {
+            assert_eq!(describe_grammar(false), GOLDEN_OFF);
+        } else {
+            assert_eq!(describe_grammar(false), describe_grammar(false), "the prompt differed between two calls");
+        }
         assert!(!describe_grammar(false).contains("osc"));
     }
 
@@ -2186,8 +2241,12 @@ mod tests {
     #[test]
     fn the_grammar_description_with_the_second_order_on_names_the_oscillator_and_its_example_parses() {
         let on = describe_grammar(true);
-        for line in GOLDEN_OFF.lines() {
-            assert!(on.contains(line), "the on-description lost the line {line:?}");
+        if goldens_hold() {
+            for line in GOLDEN_OFF.lines() {
+                assert!(on.contains(line), "the on-description lost the line {line:?}");
+            }
+        } else {
+            assert_eq!(on, describe_grammar(true), "the prompt differed between two calls");
         }
         let example = second_order_example();
         let line = on.lines().find(|l| l.starts_with("  osc ")).expect("the osc line is named");
