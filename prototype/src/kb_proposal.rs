@@ -56,13 +56,21 @@ pub fn parse(json: &str) -> Result<Proposal, String> {
     serde_json::from_str(json).map_err(|e| format!("proposal: {e}"))
 }
 
+/// Why a proposal is refused: the rule, a `GateRule` in `kb/rules/refusals.mg`, and what broke it.
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+pub struct Refused {
+    pub rule: &'static str,
+    pub message: String,
+}
+
 /// Apply `p` to `files`, whose knowledge base is `kb`: the new (path, source)
 /// list, in the order of `files`, or every reason it cannot apply.
-pub fn apply(p: &Proposal, kb: &Kb, files: &[(&str, &str)]) -> Result<Vec<(String, String)>, Vec<String>> {
+pub fn apply(p: &Proposal, kb: &Kb, files: &[(&str, &str)]) -> Result<Vec<(String, String)>, Vec<Refused>> {
     let mut refused = Vec::new();
+    let r = |rule: &'static str, message: String| Refused { rule, message };
     let current = version(files);
     if p.base != current {
-        refused.push(format!("written against {}, but the knowledge base is {current}", p.base));
+        refused.push(r("kb_base", format!("written against {}, but the knowledge base is {current}", p.base)));
     }
     match &p.author {
         Author::Component(c) => {
@@ -71,20 +79,20 @@ pub fn apply(p: &Proposal, kb: &Kb, files: &[(&str, &str)]) -> Result<Vec<(Strin
                 .iter()
                 .any(|f| f[0] == *c && ["Component", "NeuralComponent", "SymbolicComponent"].contains(&f[1].as_str()));
             if !stated {
-                refused.push(format!("`{c}` is not a component the knowledge base states"));
+                refused.push(r("kb_author", format!("`{c}` is not a component the knowledge base states")));
             }
         }
         Author::Person(n) => {
             if n.trim().is_empty() {
-                refused.push("a person author needs a name".to_string());
+                refused.push(r("kb_author", "a person author needs a name".to_string()));
             }
         }
     }
     if p.summary.trim().is_empty() {
-        refused.push("a proposal says what it changes".to_string());
+        refused.push(r("kb_edit", "a proposal says what it changes".to_string()));
     }
     if p.edits.is_empty() {
-        refused.push("a proposal changes something".to_string());
+        refused.push(r("kb_edit", "a proposal changes something".to_string()));
     }
 
     let mut sources: Vec<(String, String)> =
@@ -92,11 +100,11 @@ pub fn apply(p: &Proposal, kb: &Kb, files: &[(&str, &str)]) -> Result<Vec<(Strin
     for (i, e) in p.edits.iter().enumerate() {
         let n = i + 1;
         let Some(at) = sources.iter().position(|(path, _)| path == &e.file) else {
-            refused.push(format!("edit {n}: `{}` is not a knowledge-base file", e.file));
+            refused.push(r("kb_edit", format!("edit {n}: `{}` is not a knowledge-base file", e.file)));
             continue;
         };
         if e.before == e.after {
-            refused.push(format!("edit {n}: changes nothing"));
+            refused.push(r("kb_edit", format!("edit {n}: changes nothing")));
             continue;
         }
         let src = &mut sources[at].1;
@@ -108,13 +116,25 @@ pub fn apply(p: &Proposal, kb: &Kb, files: &[(&str, &str)]) -> Result<Vec<(Strin
             continue;
         }
         match src.matches(&e.before).count() {
-            0 => refused.push(format!("edit {n}: its `before` text is not in {}", e.file)),
+            0 => refused.push(r("kb_edit", format!("edit {n}: its `before` text is not in {}", e.file))),
             1 => *src = src.replacen(&e.before, &e.after, 1),
-            k => refused.push(format!("edit {n}: its `before` text is in {} {k} times", e.file)),
+            k => refused.push(r("kb_edit", format!("edit {n}: its `before` text is in {} {k} times", e.file))),
         }
     }
 
     if refused.is_empty() { Ok(sources) } else { Err(refused) }
+}
+
+/// Admit `p` as far as the knowledge base itself can say: it applies, and the
+/// changed files load, which checks the schema and every invariant. The
+/// conformance suite and the benchmark are `scripts/kb-gate.sh`'s.
+pub fn admit(p: &Proposal, kb: &Kb, files: &[(&str, &str)]) -> Result<Vec<(String, String)>, Vec<Refused>> {
+    let new = apply(p, kb, files)?;
+    let borrowed: Vec<(&str, &str)> = new.iter().map(|(path, src)| (path.as_str(), src.as_str())).collect();
+    match crate::kb::load_files(&borrowed) {
+        Ok(_) => Ok(new),
+        Err(e) => Err(e.into_iter().map(|message| Refused { rule: "kb_schema", message }).collect()),
+    }
 }
 
 #[cfg(test)]
@@ -193,8 +213,57 @@ mod tests {
             "edit 2: its `before` text is not in kb/schema.mg",
             "edit 3: changes nothing",
         ] {
-            assert!(e.iter().any(|m| m.contains(want)), "no message says `{want}`: {e:#?}");
+            assert!(e.iter().any(|m| m.message.contains(want)), "no message says `{want}`: {e:#?}");
         }
+    }
+
+    /// The six reasons of the refusal above, each under its gate rule.
+    #[test]
+    fn every_refusal_names_a_gate_rule_of_the_knowledge_base() {
+        let kb = kb::load().expect("loads");
+        let p = Proposal {
+            author: Author::Component("nobody".into()),
+            summary: "  ".into(),
+            base: "sha256:0".into(),
+            edits: vec![
+                Edit { file: "kb/nothing.mg".into(), before: "x".into(), after: "y".into() },
+                Edit { file: "kb/schema.mg".into(), before: "no such text anywhere".into(), after: "y".into() },
+                Edit { file: "kb/schema.mg".into(), before: "fact class(Component);".into(), after: "fact class(Component);".into() },
+            ],
+        };
+        let e = apply(&p, &kb, FILES).expect_err("refused");
+        assert_eq!(e.len(), 6, "{e:#?}");
+        let instance_of = kb.facts("instance_of");
+        let enforced_by = kb.facts("enforced_by");
+        for want in ["kb_base", "kb_author", "kb_edit", "kb_schema", "kb_conformance", "kb_cost"] {
+            assert!(instance_of.contains(&vec![want.to_string(), "GateRule".to_string()]), "`{want}` is not a GateRule");
+        }
+        for r in &e {
+            assert!(instance_of.contains(&vec![r.rule.to_string(), "GateRule".to_string()]), "{r:?}");
+            assert!(enforced_by.contains(&vec![r.rule.to_string(), "kb_gate".to_string()]), "{r:?}");
+        }
+    }
+
+    #[test]
+    fn a_proposal_that_breaks_the_schema_is_refused_by_kb_schema() {
+        let kb = kb::load().expect("loads");
+        let p = proposal(
+            Author::Component("grammar".into()),
+            version(FILES),
+            vec![refusals_append("\nkb Bad {\n    fact frobnicates(a);\n}\n")],
+        );
+        apply(&p, &kb, FILES).unwrap_or_else(|e| panic!("{e:#?}"));
+        let e = admit(&p, &kb, FILES).expect_err("refused");
+        assert!(!e.is_empty() && e.iter().all(|r| r.rule == "kb_schema"), "{e:#?}");
+        assert!(e.iter().any(|r| r.message.contains("`frobnicates` uses a predicate the schema does not declare")), "{e:#?}");
+    }
+
+    #[test]
+    fn an_admitted_proposal_loads() {
+        let kb = kb::load().expect("loads");
+        let p = proposal(Author::Component("grammar".into()), version(FILES), vec![refusals_append(PROPOSER)]);
+        let new = admit(&p, &kb, FILES).unwrap_or_else(|e| panic!("{e:#?}"));
+        assert!(new.iter().any(|(path, src)| path == "kb/rules/refusals.mg" && src.contains("proposer")));
     }
 
     #[test]
@@ -206,7 +275,7 @@ mod tests {
             vec![Edit { file: "kb/schema.mg".into(), before: "fact ".into(), after: "fact x".into() }],
         );
         let e = apply(&p, &kb, FILES).expect_err("refused");
-        assert!(e.iter().any(|m| m.contains("times")), "{e:#?}");
+        assert!(e.iter().any(|m| m.message.contains("times")), "{e:#?}");
     }
 
     #[test]
