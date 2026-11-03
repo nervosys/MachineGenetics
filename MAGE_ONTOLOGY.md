@@ -1689,7 +1689,7 @@ Report TaskResult::Success
 
 | Category                 | Count |
 | ------------------------ | ----- |
-| Source modules           | 76    |
+| Source modules           | 77    |
 | TokenKind variants       | 181   |
 | AST ItemKind variants    | 20    |
 | AST ExprKind variants    | 35    |
@@ -1730,7 +1730,8 @@ Report TaskResult::Success
 > (`Expr` 36 → 35, `Type` 32 → 33, and the earlier part of the
 > `DiagnosticCategory` 12 → 17 and `Source modules` 69 → 74 moves) were older.
 > All seven are now the source's figures. (`Source modules` went to 75 with `recognise.rs`, the
-> grammar's recogniser.)
+> grammar's recogniser, and to 77 with `kb_proposal.rs`, the knowledge base's
+> proposal format.)
 >
 > **Three of these moved during the merge that landed them.** `Expr` gained
 > `Grad` (35 → 36) and `Source modules` gained `verdict.rs` and
