@@ -424,6 +424,8 @@ words among its `lexes_as` facts, and the `AstKind` instances in the grammar.
 | `constrained_by` | `Construct` × `Rule` |
 | `enforced_by` | `Rule` × `SymbolicComponent` |
 | `proposed_by` | `Artifact` × `NeuralComponent` |
+| `block_name` | `Block` × `Text` (the handle a forge block is published under) |
+| `block_signature` | `Block` × `Text` (its parameter signature, such as Name(p1, p2)) |
 | `refused_by` | `Refusal` × `Rule` |
 | `in_profile` | `Production` × `Profile` |
 | `tested_by` | `Diagnostic` × `Text` |
