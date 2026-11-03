@@ -95,6 +95,8 @@ kb Refusals {
 
 kb Admission {
     fact instance_of("kb_gate", SymbolicComponent);
+    // The extension registry in prototype/src/grammar.rs, which proposes promotions.
+    fact instance_of("grammar_extensions", SymbolicComponent);
 
     fact instance_of("kb_base", GateRule);
     fact gate_row("kb_base", "A proposal is written against the knowledge base it changes");
