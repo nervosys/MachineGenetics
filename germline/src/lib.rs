@@ -259,6 +259,13 @@ pub struct Generation {
     /// so earlier generations serialise and hash exactly as they did.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub definitions: Vec<String>,
+    /// The content address of the knowledge base the artifact was built
+    /// against (in MAGE, `kb_proposal::version` of the `kb/*.mg` files), so a
+    /// successor or a fallback says which knowledge base its behaviour was
+    /// trained under. `None` when the workload names none, and then skipped, so
+    /// earlier generations serialise and hash exactly as they did.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub knowledge_base: Option<String>,
 }
 
 impl Generation {
@@ -273,6 +280,7 @@ impl Generation {
             note: String::new(),
             genome: None,
             definitions: Vec::new(),
+            knowledge_base: None,
         }
     }
 

@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,601** — rmi 1,384 · prototype 1,564 · ribosome 168 · germline 175 · forge 63 · arena 247 |
+| Tests | **3,603** — rmi 1,384 · prototype 1,564 · ribosome 168 · germline 176 · forge 63 · arena 248 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -2027,6 +2027,12 @@ subagent from an exact brief.
 refused program, which has no output. The grammar policy does, as reward 0, and its
 refusals in two seeded runs were 1 to 3 of 22 to 30 programs, all `empty`. No learner
 here has a use for per-rule counts; the plan item records why and when to reopen it.
+
+**Germline hands on the knowledge base.** `Generation.knowledge_base` is the content
+address of the knowledge base a generation's artifact was built against, carried
+like `definitions`: workload, runner, journal, replay. The arena's succession
+workload supplies `kb_proposal::version`. Skipped when absent, so old journals hash
+as they did. Germline +1, arena +1 tests.
 
 **Knowledge-base versions in the evidence.** An arena run's first evidence entry is
 `knowledge_base` with the `kb_proposal::version` it ran under; `arena evidence`

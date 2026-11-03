@@ -183,6 +183,12 @@ impl Workload for ArenaWorkload {
     fn attribution(&self, artifact: &Digest) -> Vec<String> {
         self.built.get(&artifact.0).map(|b| b.definitions.clone()).unwrap_or_default()
     }
+
+    /// The knowledge base the session ran under: the one compiled into this
+    /// binary, which every session in it shares.
+    fn knowledge_base(&self, artifact: &Digest) -> Option<String> {
+        self.built.contains_key(&artifact.0).then(|| mage_prototype::kb_proposal::version(mage_prototype::kb::FILES))
+    }
 }
 
 #[cfg(test)]
@@ -233,6 +239,14 @@ mod tests {
         let right = w.suite();
         let f = w.evaluate(&d, &right).expect("scores on its registered suite");
         assert!(f.get("capability").is_some() && f.get("efficiency").is_some());
+    }
+
+    #[test]
+    fn a_session_is_handed_on_the_knowledge_base_it_ran_under() {
+        let mut w = ArenaWorkload::new(base(), corpora());
+        let d = w.materialize(&CandidateSpec::new("c", encode(&base()))).expect("materializes");
+        assert_eq!(w.knowledge_base(&d), Some(mage_prototype::kb_proposal::version(mage_prototype::kb::FILES)));
+        assert_eq!(w.knowledge_base(&Digest::of(b"never materialized")), None);
     }
 
     #[test]

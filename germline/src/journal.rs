@@ -46,6 +46,10 @@ pub enum Entry {
         /// Skipped when empty, so earlier entries hash as they did.
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
         definitions: Vec<String>,
+        /// The knowledge base it was built against, by content address. Skipped
+        /// when absent, so entries written before it hash exactly as they did.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        knowledge_base: Option<String>,
         /// What [`super::lineage::Lineage::replay`] needs to rebuild the
         /// generation from the journal alone (plan 8.3). Each is skipped when
         /// absent, so entries written before it hash exactly as they did.
@@ -287,6 +291,7 @@ pub fn proposed(g: &Generation, seed: u64, plan: &str) -> Entry {
         seed,
         plan: plan.to_string(),
         definitions: g.definitions.clone(),
+        knowledge_base: g.knowledge_base.clone(),
         parent: g.parent,
         genome: g.genome.clone(),
         note: g.note.clone(),

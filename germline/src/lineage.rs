@@ -451,7 +451,7 @@ impl Lineage {
         for r in &records {
             let bad = |detail: String| ReplayError::Inconsistent { index: r.index, detail };
             match &r.entry {
-                Entry::Proposed { generation, artifact, definitions, parent, genome, note, .. } => {
+                Entry::Proposed { generation, artifact, definitions, knowledge_base, parent, genome, note, .. } => {
                     if l.get(*generation).is_some() || pending.contains_key(generation) {
                         return Err(bad(format!("{generation} is proposed twice")));
                     }
@@ -459,6 +459,7 @@ impl Lineage {
                     g.parent = *parent;
                     g.genome = genome.clone();
                     g.definitions = definitions.clone();
+                    g.knowledge_base = knowledge_base.clone();
                     l.next_id = l.next_id.max(generation.0 + 1);
                     pending.insert(*generation, g);
                     proposals += 1;
