@@ -7,6 +7,7 @@
 //! rule that refused it (a `Rule` fact). Entries are numbered and each carries
 //! the hash of the line before it, so [`verify`] can tell a log that was only
 //! appended to from one that was edited, reordered or cut short at the front.
+//! A run's first entry names the knowledge base it ran under.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
@@ -22,6 +23,8 @@ pub enum What {
     Refusal { rule: String, class: String, message: String },
     /// A figure measured of the artifact.
     Measurement { name: String, value: f64 },
+    /// The knowledge base the run used, by its content address (`kb_proposal::version`).
+    KnowledgeBase { version: String },
 }
 
 /// An entry before it is numbered and chained.
@@ -146,6 +149,8 @@ pub struct Tally {
     pub refusals: BTreeMap<String, BTreeMap<String, usize>>,
     /// Component to rewards measured: its programs that were not refused.
     pub rewards: BTreeMap<String, usize>,
+    /// The knowledge bases named, by version.
+    pub knowledge_bases: BTreeSet<String>,
     pub entries: usize,
 }
 
@@ -159,6 +164,9 @@ pub fn tally(entries: &[Entry]) -> Tally {
             }
             What::Measurement { name, .. } if name == "reward" => {
                 *t.rewards.entry(e.record.component.clone()).or_default() += 1;
+            }
+            What::KnowledgeBase { version } => {
+                t.knowledge_bases.insert(version.clone());
             }
             _ => {}
         }
@@ -208,6 +216,9 @@ impl Tally {
         let mut out = render("rule", &header);
         for (label, cells) in &rows {
             out += &render(label, cells);
+        }
+        for version in &self.knowledge_bases {
+            out += &format!("knowledge base  {version}\n");
         }
         out
     }
@@ -344,6 +355,28 @@ mod tests {
         assert_eq!(t.rewards["grammar"], 1);
         assert_eq!(t.rewards.get("mutator"), None);
         assert_eq!(t.entries, 4);
+    }
+
+    /// A knowledge base is listed by version and is neither a refusal nor a reward.
+    #[test]
+    fn a_knowledge_base_is_listed_and_not_counted() {
+        let version = format!("sha256:{}", "ab".repeat(32));
+        let named = Record {
+            round: 0,
+            component: "arena".into(),
+            agent: "arena".into(),
+            artifact: version.clone(),
+            what: What::KnowledgeBase { version: version.clone() },
+        };
+        let records: Vec<Record> = std::iter::once(named).chain(mixed().into_iter().map(|e| e.record)).collect();
+        let t = tally(&verify(&continue_log("", &records).unwrap()).unwrap());
+        let plain = tally(&mixed());
+        assert_eq!(t.refusals, plain.refusals);
+        assert_eq!(t.rewards, plain.rewards);
+        assert_eq!(t.entries, plain.entries + 1);
+        assert_eq!(t.knowledge_bases, BTreeSet::from([version.clone()]));
+        assert!(t.table().ends_with(&format!("knowledge base  {version}\n")), "{}", t.table());
+        assert!(!plain.table().contains("knowledge base"));
     }
 
     #[test]

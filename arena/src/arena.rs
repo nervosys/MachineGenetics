@@ -460,7 +460,7 @@ pub struct Report {
     /// across runs.
     #[serde(default)]
     pub loss_fits: Vec<crate::transfer::LearnerFit>,
-    /// Every refusal and every reward of the run, for the evidence log
+    /// The knowledge base the run used, then every refusal and every reward, for the evidence log
     /// (`crate::evidence`). Not in the report: `--evidence` appends it.
     #[serde(skip)]
     pub evidence: Vec<crate::evidence::Record>,
@@ -765,7 +765,7 @@ pub fn run_with(
     let mut pool = Pool::new(cfg.pool_capacity);
     let mut rng = Rng(cfg.seed);
     let mut refusals: BTreeMap<String, usize> = BTreeMap::new();
-    let mut evidence: Vec<crate::evidence::Record> = Vec::new();
+    let mut evidence: Vec<crate::evidence::Record> = vec![knowledge_base_record()];
     let mut checkpoints = Vec::new();
     // Novelty is counted on a program's *shape* — its structure with
     // constants erased (`mage_prototype::canon`) — or, under
@@ -1207,6 +1207,7 @@ pub fn run_with(
             }
             crate::evidence::What::Measurement { name, value } if name == "reward" => s.credit += value,
             crate::evidence::What::Measurement { .. } => {}
+            crate::evidence::What::KnowledgeBase { .. } => {}
         }
     }
 
@@ -1305,6 +1306,18 @@ pub fn run_with(
     })
 }
 
+/// The evidence of the knowledge base a run uses, by its content address.
+fn knowledge_base_record() -> crate::evidence::Record {
+    let version = mage_prototype::kb_proposal::version(mage_prototype::kb::FILES);
+    crate::evidence::Record {
+        round: 0,
+        component: "arena".into(),
+        agent: "arena".into(),
+        artifact: version.clone(),
+        what: crate::evidence::What::KnowledgeBase { version },
+    }
+}
+
 /// The evidence of a reward.
 fn reward_record(round: usize, agent: &dyn Proposer, c: &Candidate, r: f64) -> crate::evidence::Record {
     crate::evidence::Record {
@@ -1385,6 +1398,7 @@ mod tests {
                     assert!(value.is_finite());
                     rewards += 1;
                 }
+                What::KnowledgeBase { .. } => {}
             }
         }
         assert_eq!(by_class, r.refusals);
@@ -1401,6 +1415,19 @@ mod tests {
         }
         let proposed: usize = r.agents.iter().map(|a| a.proposed).sum();
         assert!(rewards > 0 && rewards + r.refusals.values().sum::<usize>() <= proposed);
+    }
+
+    /// A run's first entry names the knowledge base it ran under, and no other does.
+    #[test]
+    fn a_run_names_the_knowledge_base_it_used() {
+        use crate::evidence::What;
+        let (m, n) = cpu_only();
+        let r = run(tiny_cfg(), heldout(), m, n).expect("runs");
+        let version = mage_prototype::kb_proposal::version(mage_prototype::kb::FILES);
+        assert_eq!(r.evidence[0].what, What::KnowledgeBase { version });
+        assert_eq!(r.evidence[0].component, "arena");
+        let named = r.evidence.iter().filter(|e| matches!(e.what, What::KnowledgeBase { .. })).count();
+        assert_eq!(named, 1);
     }
 
     #[test]
