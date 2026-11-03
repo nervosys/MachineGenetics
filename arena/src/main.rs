@@ -21,6 +21,8 @@
 //!       [--budget BYTES] [--steps N] [--seed S] [--trajectories K]
 //!       [--decode greedy|sample:T] [--samples K]
 //! arena measure-curves [--target T] [--json OUT] <curves.json | dir>…
+//! arena evidence <log.jsonl> [--json OUT]
+//!       refusals per rule per generator, from a verified evidence log
 //! ```
 //!
 //! Held-out files are read once, hashed, and never shown to an agent. A
@@ -499,6 +501,13 @@ fn main() {
     // `arena measure-curves …` reads physics-baseline curves and prints multipliers against the n-gram (plan L3).
     if args.first().map(String::as_str) == Some("measure-curves") {
         if let Err(e) = arena::transfer::measure_curves_cli(&args[1..]) {
+            fail(e);
+        }
+        return;
+    }
+    // `arena evidence …` tallies a verified evidence log: refusals per rule per generator (Phase 7).
+    if args.first().map(String::as_str) == Some("evidence") {
+        if let Err(e) = arena::evidence::report_cli(&args[1..]) {
             fail(e);
         }
         return;

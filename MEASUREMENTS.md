@@ -7,7 +7,7 @@ numbers are machine-dependent; the shapes (throughput, scaling) are not.
 Date: 2026-06-10. Build: `release` for perf, `cargo test` for functionality.
 
 > **Re-verified 2026-09-25** — all six crates tested: prototype **1,555**, rmi
-> **1,384**, ribosome **168**, germline **175**, forge **63**, arena **241** = **3,586 passing,
+> **1,384**, ribosome **168**, germline **175**, forge **63**, arena **243** = **3,588 passing,
 > 0 failing, 0 warnings**.
 >
 > *One figure below had not regressed — it had been superseded.* The ABL
@@ -80,7 +80,7 @@ Date: 2026-06-10. Build: `release` for perf, `cargo test` for functionality.
 | rmi (`cpu`) | **1384 pass** | `cargo test --no-default-features --features cpu` |
 | ribosome (build engine) | **168 pass** | `cargo test --manifest-path ribosome/Cargo.toml` |
 | germline (RSI control plane) | **175 pass** | `cargo test --manifest-path germline/Cargo.toml` |
-| arena (self-play arena) | **241 pass** | `cargo test --manifest-path arena/Cargo.toml` |
+| arena (self-play arena) | **243 pass** | `cargo test --manifest-path arena/Cargo.toml` |
 | forge (registry) | **63 pass** | `cargo test --manifest-path forge/Cargo.toml` |
 | agentic-eval (AetherShell) | **80 pass** | `cargo test -p agentic-eval` |
 | SPINE `spine-agentic` | **285 pass** | `cargo test -p spine-agentic` |
@@ -887,3 +887,28 @@ The arena now refuses a candidate nested deeper than `MAX_DEPTH` before it runs,
 | F1: bounded arm, mutator variants past `MAX_DEPTH` | 4% (127 of 3,215) | 0% (0 of 3,077) |
 
 No difference between the arms is significant at two standard errors, either before or after the gate. The default stays `behaviour` and bounded grafts stay off. The exploit counts are the change: the shape arm's credited exploits fell by about two-thirds, because over-depth attacker candidates are now refused rather than credited. Per-seed figures and the reasoning are in `ARENA.md`. The before figures are from the pre-gate commit `1cacaa8fd`, reproduced this session.
+
+## Refusals per rule per generator (plan Phase 7)
+
+From the evidence log of three runs of the standard arena configuration (`ARENA.md`, "Running it"), seeds 1, 2 and 3, appended to one log and read by `arena evidence std.jsonl`:
+
+```
+arena --heldout README.md,germline/src/gate.rs --rounds 40 --programs 48 --agents grammar:2,uniform:1,mutator:1 --learners 3:12:0.02,2:10:0.05,1:8:0.1 --cost fuel --meter-gpus none --seed N --evidence std.jsonl
+```
+
+One departure from the documented configuration: `--cost fuel --meter-gpus none`, so the runs are deterministic and reproduce. The log is 5,760 entries; it verifies, and its last entry (seq 5759) hashes to `e66bd3cc98759c81a81089d46d26721c9a2ece3f118a1ebac058d08805a2cc84`. The log is not committed (1.6 MB); the command regenerates it, and the hash says whether it did.
+
+| rule | grammar (×2) | mutator | uniform |
+|---|---|---|---|
+| `gate_empty` | 91 | 30 | 60 |
+| `gate_fuel` | 4 | 0 | 0 |
+| `max_depth` | 0 | 520 | 0 |
+| refused | 95 | 550 | 60 |
+| rewarded | 2,935 | 1,155 | 965 |
+| refused % | 3.1 | 32.3 | 5.9 |
+
+Each entry is a refusal or a reward, so refused + rewarded is every program each generator proposed that reached the verdict. Per seed, the reports' refusal counts are `depth` 187/171/162, `empty` 65/53/63 and `fuel` 3/1/0; they sum to the table's.
+
+- **Of the three generators, only `grammar` is neural** (a learned policy over the grammar's productions). `uniform` samples the same productions uniformly; `mutator` edits programs from the population. So "which rules the neural side keeps breaking" has one column here: `grammar` breaks `gate_empty` (a program with no output) and rarely `gate_fuel`, at 3.1% of its programs, about half `uniform`'s rate. It never breaks `max_depth`.
+- **`max_depth` is the mutator's.** All 520 depth refusals are its grafts, a third of what it proposes. `--bound-grafts` removes them (`ARENA.md`, "Bounded grafts"), at a held-out cost measured there.
+- **Limits.** One configuration, three seeds, no attacker and no LLM proposer. Rules that never fired (`E0001` for a parse failure, `gate_type`, `gate_runtime` and the rest of `refused_by`) have no row. All three generators build programs from the grammar's productions, so none failed to parse.
