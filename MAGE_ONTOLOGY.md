@@ -374,7 +374,7 @@ material; each becomes documentation of `kb/` as its facts move there
 | `Form` | `HumanSource`, `SigilSource`, `Declarative`, `Ast`, `Hir`, `IrOp`, `BinaryContainer` |
 | `Construct` | `Token` (`Keyword`, `Sigil`), `Production`, `AstKind`, `TokenKind`, `ProfileForm` |
 | `Meaning` | `Type`, `Effect`, `Op`, `Layer`, `OpFamily`, `RuleDatabase`, `Severity` |
-| `Rule` | `TypeRule`, `SafetyRule`, `Contract`, `GrammarConstraint`, `Diagnostic`, `GateRule` |
+| `Rule` | `TypeRule`, `SafetyRule`, `Contract`, `GrammarConstraint`, `Diagnostic`, `GateRule`, `BuildRule` |
 | `Component` | `NeuralComponent`, `SymbolicComponent` |
 | `Artifact` | `Program`, `Block`, `Container` |
 | `Evidence` | `Refusal`, `Measurement` |
@@ -455,6 +455,7 @@ words among its `lexes_as` facts, and the `AstKind` instances in the grammar.
 | `clause_checked` | `Contract` × `Text` × `SymbolicComponent` (placement, and the component that checks the clause there) |
 | `constraint_row` | `GrammarConstraint` × `Text` × `Text` (value, meaning) |
 | `gate_row` | `GateRule` × `Text` (what the gate requires) |
+| `build_rule_row` | `BuildRule` × `Text` × `Text` × `Text` (family, when, fix) |
 | `form_row` | `ProfileForm` × `Profile` × `Text` × `Text` (nonterminal, position) |
 | `form_example` | `ProfileForm` × `Text` (as the prompt shows it) |
 | `profile_text` | `Profile` × `Text` × `Text` (key, a piece of its prompt) |

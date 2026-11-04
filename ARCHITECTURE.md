@@ -7,7 +7,7 @@ text. It is the leverage the text-token floor denies the language track (see
 [IDEAL_AGENTIC_LANGUAGE.md](IDEAL_AGENTIC_LANGUAGE.md) for that analysis).
 
 > **Scope.** Everything below is implemented and test-covered in `prototype/`
-> (**1,570 tests** green) and scored in the sibling `agentic-eval` crate (80
+> (**1,572 tests** green) and scored in the sibling `agentic-eval` crate (80
 > tests, in the AetherShell repository and not verifiable from here). The one
 > deliberate non-feature is agent/swarm *execution* — see
 > [Honest boundaries](#honest-boundaries).
@@ -40,7 +40,7 @@ kb/rules/*.mg                  safety rules, diagnostics, contracts, grammar con
 kb/profiles/arena.mg           the subset of the grammar the arena samples, with its limits
 ```
 
-The schema is version 14, with 43 classes, 53 relations and 11 invariants, and the knowledge base states 1224 instances.
+The schema is version 15, with 44 classes, 54 relations and 11 invariants, and the knowledge base states 1251 instances.
 
 **Instances stated per class**
 
@@ -56,8 +56,9 @@ The schema is version 14, with 43 classes, 53 relations and 11 invariants, and t
 | `Sigil` | 36 |
 | `Type` | 30 |
 | `Diagnostic` | 26 |
+| `BuildRule` | 26 |
 | `Effect` | 24 |
-| `SymbolicComponent` | 24 |
+| `SymbolicComponent` | 25 |
 | `AstKind` | 20 |
 | `ProfileForm` | 19 |
 | `GateRule` | 15 |
@@ -171,7 +172,7 @@ structure through the serialized symbol table.
 | Kind | Spec (positional) | Validates (reject-by-construction) | Lowers to |
 |---|---|---|---|
 | **net** | `{"net":N,"layers":[[name,op,[dims]]]}` | B0001–B0006 (unknown op, arity, non-positive dim, **shape-chain mismatch**) | layer-op chain |
-| **kb** | `{"kb":N,"facts":[[pred,[args]]],"rules":[[name,[params],[body]]]}` | K0001–K0008 (ident, arity conflict, dangling body pred, **range safety**, logic-engine refusal) | `RESOLVE` facts + `UNIFY…MATCH*…INFER` rules |
+| **kb** | `{"kb":N,"facts":[[pred,[args]]],"rules":[[name,[params],[body]]]}` | K0001–K0004 and K0006–K0008 (ident, arity conflict, dangling body pred, **range safety**, logic-engine refusal; K0005 is unused) | `RESOLVE` facts + `UNIFY…MATCH*…INFER` rules |
 | **agent** | `{"agent":N,"capabilities":[…],"requires_approval":[…]}` | A0001–A0003 (identifiers) | `SPAWN(agent, caps…) [>> DELEGATE(approvals…)]` |
 | **swarm** | `{"swarm":N,"agent":T,"size":k,"topology":…,"consensus":…,"transport":…}` | S0001–S0006 (idents, size>0, known topology/consensus, `rmi_*` transport) | `SPAWN(agent,size,topology) >> comm[transport] >> REDUCE(consensus)` |
 | **unified** | `{"items":[ <any mix> ]}` | U0001–U0003 (empty, unknown kind, duplicate name); per-item errors index-prefixed | one multi-item container |
@@ -265,7 +266,7 @@ are **six independent Cargo workspaces**:
 | Path | Crate | Tests | Notes |
 |---|---|--:|---|
 | `RecursiveMachineIntelligence/` | `rmi` | 1,384 | The low-level neurosymbolic framework. Feature-gated (`cpu` / `gpu` / `cuda`); build with `--no-default-features --features cpu` for the portable set |
-| `prototype/` | `mage-prototype` | 1,570 | Compiler, evaluator, ABL, RAP server. Path-depends on `rmi` |
+| `prototype/` | `mage-prototype` | 1,572 | Compiler, evaluator, ABL, RAP server. Path-depends on `rmi` |
 | `ribosome/` | `ribosome` | 168 | The distributed build engine. Depends on nothing in this repository — see below |
 | `germline/` | `germline` | 176 | Model succession, handoff, fallback — the RSI control plane. Path-depends on `ribosome` |
 | `forge/` | `forge` | 65 | The package registry, and the content-addressed block and definition stores |
@@ -459,7 +460,7 @@ Much of that policy is already data, and one surface is now loadable:
 | cost model | `cost.rs` | which constructs search prefers | Rust |
 | CI floors | 6 | what counts as a regression | shell, hand-edited |
 | the 21 checkers | — | what "green" means | shell |
-| the pins | 137 | which claims must match measurement | shell + docs |
+| the pins | 138 | which claims must match measurement | shell + docs |
 
 **The harness is the part that moves under a fixed model.** With the weights
 held constant, improvement comes from scaffolding: a sharper legality check, a

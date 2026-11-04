@@ -42,7 +42,8 @@ kb Schema {
     // v13 (2026-11-01): `form_example` and `profile_text`, the arena's prompt.
     // v14 (2026-11-03): `block_name` and `block_signature`, for the forge block
     // store's facts (`BlockStore::facts` in forge/src/registry/blocks.rs).
-    fact schema_version(14);
+    // v15 (2026-11-04): `BuildRule` and `build_rule_row`, for kb/rules/builder.mg.
+    fact schema_version(15);
 
     // ── Classes ─────────────────────────────────────────────────────────
     // Seven roots. The twelve domains of MAGE_ONTOLOGY.md group facts into
@@ -114,6 +115,9 @@ kb Schema {
     fact subclass_of(Diagnostic, Rule);
     fact class(GateRule);
     fact subclass_of(GateRule, Rule);
+    // A builder's error code: refused before any artifact exists, so not a Diagnostic.
+    fact class(BuildRule);
+    fact subclass_of(BuildRule, Rule);
     fact class(RuleDatabase);
     fact class(Severity);
     fact subclass_of(RuleDatabase, Meaning);
@@ -247,6 +251,12 @@ kb Schema {
     fact relation(gate_row);
     fact arg_class(gate_row, 1, GateRule);
     fact arg_class(gate_row, 2, Text);
+    // id, family (the schema part that serves it), when, fix.
+    fact relation(build_rule_row);
+    fact arg_class(build_rule_row, 1, BuildRule);
+    fact arg_class(build_rule_row, 2, Text);
+    fact arg_class(build_rule_row, 3, Text);
+    fact arg_class(build_rule_row, 4, Text);
     // name, value, meaning.
     fact relation(constraint_row);
     fact arg_class(constraint_row, 1, GrammarConstraint);

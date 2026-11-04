@@ -30,14 +30,14 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,623** — rmi 1,384 · prototype 1,570 · ribosome 168 · germline 176 · forge 65 · arena 260 |
+| Tests | **3,625** — rmi 1,384 · prototype 1,572 · ribosome 168 · germline 176 · forge 65 · arena 260 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
 | CI | 11 jobs defined, **10 of which ever run** — green on `master`. The eleventh, `prototype — cuda kernels (self-hosted GPU)`, has no runner and has never executed (open item 2) |
 | Reliability floors | file-oracle parse 99/100, perturbed pattern-heal 42, native-lexer ratio 0.997 |
 | Examples | 12 of 12 typecheck, run, and print their recorded answer |
-| `.mg` sources | **123 checked, 0 sketches** — every `.mg` file in the repository typechecks |
+| `.mg` sources | **124 checked, 0 sketches** — every `.mg` file in the repository typechecks |
 | Differentiability | **34 of 34 nets and 7 of 7 train blocks; 1 of 156 functions** (the arena's reward) — `scripts/measure-differentiability.sh`, re-derived in CI and compared against `DIFFERENTIABILITY.md` in both directions |
 | `grad` | An expression that typechecks and **runs**, for scalars: forward-mode duals, checked against central differences. The differentiability obligation is a premise of its typing rule, discharged by the call-graph pass. Tensors are refused, not deferred |
 | Documentation | 212 MAGE blocks typecheck; 59 documentation entry points run; 268 `rmi/docs` API items all exist — and "exist" now means **a definition exists**, not that the name appears somewhere in `src/`. It was 275 under the weaker criterion, 8 of them held up by English words in comments; the phantom entries are gone and a duplicate went with them |
@@ -339,7 +339,7 @@ the more useful half.** It said there was "no numerical MAGE code to build a
 binding construct for", on the evidence of 0 of 155 differentiable functions.
 There is: 34 nets, all of them differentiable — the pass had simply never been
 pointed at them. What is actually thin is the *overlap*, and **it was
-re-measured on 2026-09-08 rather than re-quoted**: **14** tracked sources
+re-measured on 2026-09-08 rather than re-quoted**: **15** tracked sources
 declare a `kb` at all, and **3** of them declare a `net` as well
 (`neurosymbolic_qa.mg`, `neurosymbolic.mg`, `unified.mg`) — the population a
 binding construct would serve. *(The first figure was 3 until 2026-10-29,
@@ -2028,10 +2028,13 @@ refused program, which has no output. The grammar policy does, as reward 0, and 
 refusals in two seeded runs were 1 to 3 of 22 to 30 programs, all `empty`. No learner
 here has a use for per-rule counts; the plan item records why and when to reopen it.
 
+The builder's 26 error codes are facts: the `BuildRule` instances of `kb/rules/builder.mg`, schema v15.
+`--build=schema` serves each family's error table from those facts, and the output is byte-identical to before.
+Each code is triggered by a witness spec in `builder.rs`'s `every_build_rule_happens`, with no exceptions; 14 emit-site `fix` strings still differ from the served ones, and no test holds them to each other.
+
 **The definition of done is audited, and it is not met.** The plan's section 9 now says
 why, item by item, read from the code. Phase 9 is done and the plan is not: much language
-knowledge is still in code (`resolve::VOCABULARY`, `builder.rs`'s `OPS`), the builder's
-26 error codes are not facts, and several generators hold their own syntax. A second
+knowledge is still in code (`resolve::VOCABULARY`, `builder.rs`'s `OPS`), and several generators hold their own syntax. A second
 copy of the vocabulary's names in `types.rs` is gone, and `ROW_PREDICATES` is held both ways.
 
 **The knowledge base's counts are pinned.** `kb-gate counts` prints them (`Kb::counts`): the schema's version, its classes, relations, invariants and instances, and the instances stated per class. The pins in `ARCHITECTURE.md` and `scripts/check-doc-counts.sh` read them, and they are doc pins rather than tests so the gate's conformance stage does not refuse a proposal for changing a count.
@@ -4896,9 +4899,9 @@ changed before you commit.
 ---
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,570**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,572**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
-  across six crates **3,140**; documented-count pins **137**, up from 46 — the
+  across six crates **3,140**; documented-count pins **138**, up from 46 — the
   two newest hold the `kb`/`net` overlap the tensor-product-binding decision
   rests on, a figure that had lived in two sentences of prose with nothing
   re-deriving it.

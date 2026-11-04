@@ -476,7 +476,8 @@ pub fn constrains(kb: &mut Kb, construct: &str) -> Constrains {
 }
 
 /// The predicates whose row says what a rule is.
-const ROW_PREDICATES: &[&str] = &["constraint_row", "contract_row", "gate_row", "diagnostic_row", "safety_rule"];
+const ROW_PREDICATES: &[&str] =
+    &["constraint_row", "contract_row", "gate_row", "diagnostic_row", "build_rule_row", "safety_rule"];
 
 /// How many arguments `predicate` takes, by the schema.
 fn arity(kb: &Kb, predicate: &str) -> usize {
