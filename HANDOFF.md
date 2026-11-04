@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,611** — rmi 1,384 · prototype 1,567 · ribosome 168 · germline 176 · forge 65 · arena 251 |
+| Tests | **3,619** — rmi 1,384 · prototype 1,567 · ribosome 168 · germline 176 · forge 65 · arena 259 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -2027,6 +2027,18 @@ subagent from an exact brief.
 refused program, which has no output. The grammar policy does, as reward 0, and its
 refusals in two seeded runs were 1 to 3 of 22 to 30 programs, all `empty`. No learner
 here has a use for per-rule counts; the plan item records why and when to reopen it.
+
+**A generator's proposal is admitted, and shows no benefit.** `arena --propose-limit`
+(`arena/src/limit_proposer.rs`) proposes widening the profile limit whose top-quarter
+programs out-earn the rest. Four seeds gave `cycle_len`, `cycle_len`, `take` and
+`cycle_elems`. `take` 48→64 is admitted on seeds 1–8 and 9–16; the other two are refused
+by `kb_cost` on 1–8 and admitted on 9–16. Over seeds 5–12 at 40×48, `take` shows no
+detectable change in fuel, held-out bpb or hypervolume, so it is not applied. Phase 8's
+"Done when" stays open for the user: applying a limit redraws every seed. The signal is
+a correlation inside one run, and the strongest one (`take`, z = 5.34) predicted nothing.
+The gate also found a parser bug: a template's length was checked against `range`. Each
+gate run leaves about 4 GB in a shared `KB_GATE_TARGET`, since it builds from a new path:
+six runs took 24 GB. Clear it with `cargo clean --target-dir`.
 
 **A first profile change at the gate: refused, and the test behind it replaced twice.**
 Widening `range` to 64 passes the schema and both suites; `kb_cost` refuses it, fuel
