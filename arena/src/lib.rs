@@ -38,6 +38,7 @@ pub mod grammar;
 pub mod harness;
 pub mod kernel;
 pub mod learner;
+pub mod limit_proposer;
 pub mod measure;
 pub mod physics;
 pub mod physics_task;

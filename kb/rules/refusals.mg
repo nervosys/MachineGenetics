@@ -97,6 +97,8 @@ kb Admission {
     fact instance_of("kb_gate", SymbolicComponent);
     // The extension registry in prototype/src/grammar.rs, which proposes promotions.
     fact instance_of("grammar_extensions", SymbolicComponent);
+    // Widens a profile limit from a run's evidence (arena/src/limit_proposer.rs).
+    fact instance_of("limit_proposer", SymbolicComponent);
 
     fact instance_of("kb_base", GateRule);
     fact gate_row("kb_base", "A proposal is written against the knowledge base it changes");
