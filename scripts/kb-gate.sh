@@ -44,6 +44,9 @@ proposal=$(cd "$(dirname "$proposal")" && pwd)/$(basename "$proposal")
 root=$(git rev-parse --show-toplevel) || exit 1
 tree=${KB_GATE_TREE:-$(mktemp -d)/tree}
 export CARGO_TARGET_DIR=${KB_GATE_TARGET:-$tree-target}
+# Each run builds from a new path, so an incremental cache is never read again:
+# it took 14 GB of a shared build directory in six runs.
+export CARGO_INCREMENTAL=0
 logs=$tree-logs
 mkdir -p "$logs"
 
@@ -86,7 +89,8 @@ sys.exit(3 if p < 0.05 else 0)
 }
 
 say "worktree of $(git -C "$root" rev-parse --short HEAD) at $tree"
-git -C "$root" worktree add --detach "$tree" HEAD >/dev/null 2>&1 || fail "cannot make a worktree at $tree"
+git -C "$root" worktree add --detach "$tree" HEAD > "$logs/worktree.log" 2>&1 \
+    || fail "cannot make a worktree at $tree: $(tail -1 "$logs/worktree.log")"
 cd "$tree" || exit 1
 
 say "building kb-gate and arena at HEAD"
