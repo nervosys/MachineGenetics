@@ -60,7 +60,7 @@ Read these to understand the system as it exists.
 | --- | --- |
 | [HANDOFF.md](HANDOFF.md) | Session handoff: current verified state, the checks now in place, open items, and the traps worth not repeating. Start here if you are picking this up cold |
 | [README.md](README.md) | Entry point: the four forms, the composition algebra, measured benchmarks |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | ABL and tool-mediated construction — the current architecture, including a §6 "Honest boundaries" |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | ABL and tool-mediated construction, the three parts and the schema, and the module census — the current architecture, including a §6 "Honest boundaries" |
 | [MEASUREMENTS.md](MEASUREMENTS.md) | Every measured functionality and performance figure, with reproduction commands |
 | [NEUROSYMBOLIC_PLAN.md](NEUROSYMBOLIC_PLAN.md) | The top-level plan, with checklists: MAGE as three parts (neural, symbolic, knowledge base) joined by an ontology that is the knowledge base's schema, rethought from first principles. Nothing in it is built yet |
 | [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) | The arena research-track plan, under [NEUROSYMBOLIC_PLAN.md](NEUROSYMBOLIC_PLAN.md), with checklists: loss-to-loss measurement, physical simulation as a second domain, byte-level learners, re-measuring the token-cost thesis, and simulation programs in MAGE. Items are ticked in the PR that does them |

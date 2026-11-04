@@ -12,7 +12,7 @@
 //! - an `invariant` derives anything, or names no rule;
 //! - the logic engine refuses a fact or rule (E0570).
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use crate::ast;
 use crate::logic::{self, KnowledgeBase};
@@ -142,6 +142,27 @@ impl Kb {
     /// Every fact of `predicate`.
     pub fn facts(&self, predicate: &str) -> Vec<Vec<String>> {
         self.base.get_facts(predicate)
+    }
+
+    /// The knowledge base's counts, by key. `kb_schema_version` is 0 if no
+    /// `schema_version` fact is stated. `kb_class_<Class>` counts the
+    /// `instance_of` facts that name `Class` directly: no subclass is followed,
+    /// and a class with none is 0. `kb-gate counts` prints these.
+    pub fn counts(&self) -> BTreeMap<String, usize> {
+        let mut out = BTreeMap::new();
+        let version = self.facts("schema_version").first().and_then(|f| f[0].parse().ok()).unwrap_or(0);
+        out.insert("kb_schema_version".to_string(), version);
+        let classes = self.facts("class");
+        out.insert("kb_classes".to_string(), classes.len());
+        out.insert("kb_relations".to_string(), self.facts("relation").len());
+        out.insert("kb_invariants".to_string(), self.facts("invariant").len());
+        let instances = self.facts("instance_of");
+        out.insert("kb_instances".to_string(), instances.len());
+        for class in &classes {
+            let direct = instances.iter().filter(|f| f[1] == class[0]).count();
+            out.insert(format!("kb_class_{}", class[0]), direct);
+        }
+        out
     }
 }
 
@@ -452,6 +473,20 @@ mod tests {
     #[test]
     fn the_whole_knowledge_base_loads() {
         load().unwrap_or_else(|e| panic!("{e:#?}"));
+    }
+
+    /// The counts are read from the facts and not pinned: a test that pins a
+    /// count refuses every proposal that changes it at the gate. So this
+    /// checks their structure. Every class has a `kb_class_*` key, and each
+    /// stated instance is counted under exactly one class, which holds only
+    /// because `undeclared_class` refuses an instance of a class not declared.
+    #[test]
+    fn the_counts_are_read_from_the_facts() {
+        let counts = load().expect("loads").counts();
+        let per_class: Vec<usize> = counts.iter().filter(|(k, _)| k.starts_with("kb_class_")).map(|(_, n)| *n).collect();
+        assert_eq!(counts["kb_classes"], per_class.len());
+        assert_eq!(per_class.iter().sum::<usize>(), counts["kb_instances"]);
+        assert!(counts["kb_invariants"] > 0);
     }
 
     /// `TokenKind`'s variants, read from the lexer's source: the enum has no

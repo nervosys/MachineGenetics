@@ -7,7 +7,7 @@ text. It is the leverage the text-token floor denies the language track (see
 [IDEAL_AGENTIC_LANGUAGE.md](IDEAL_AGENTIC_LANGUAGE.md) for that analysis).
 
 > **Scope.** Everything below is implemented and test-covered in `prototype/`
-> (**1,569 tests** green) and scored in the sibling `agentic-eval` crate (80
+> (**1,570 tests** green) and scored in the sibling `agentic-eval` crate (80
 > tests, in the AetherShell repository and not verifiable from here). The one
 > deliberate non-feature is agent/swarm *execution* — see
 > [Honest boundaries](#honest-boundaries).
@@ -39,6 +39,46 @@ kb/forms.mg, kb/meaning.mg     forms and lowering; types, effects, IR ops, layer
 kb/rules/*.mg                  safety rules, diagnostics, contracts, grammar constraints, refusals
 kb/profiles/arena.mg           the subset of the grammar the arena samples, with its limits
 ```
+
+The schema is version 14, with 43 classes, 53 relations and 11 invariants, and the knowledge base states 1224 instances.
+
+**Instances stated per class**
+
+| Class | Instances |
+|---|---|
+| `SafetyRule` | 255 |
+| `TokenKind` | 181 |
+| `Production` | 148 |
+| `Token` | 129 |
+| `Layer` | 108 |
+| `Op` | 107 |
+| `Keyword` | 37 |
+| `Sigil` | 36 |
+| `Type` | 30 |
+| `Diagnostic` | 26 |
+| `Effect` | 24 |
+| `SymbolicComponent` | 24 |
+| `AstKind` | 20 |
+| `ProfileForm` | 19 |
+| `GateRule` | 15 |
+| `GrammarConstraint` | 14 |
+| `Refusal` | 11 |
+| `RuleDatabase` | 8 |
+| `OpFamily` | 7 |
+| `Declarative` | 6 |
+| `Component` | 4 |
+| `Severity` | 4 |
+| `Contract` | 3 |
+| `Ast` | 1 |
+| `BinaryContainer` | 1 |
+| `Hir` | 1 |
+| `HumanSource` | 1 |
+| `IrOp` | 1 |
+| `NeuralComponent` | 1 |
+| `Profile` | 1 |
+| `SigilSource` | 1 |
+
+The counts are of direct `instance_of` facts: a subclass's instances are not counted under its superclass.
 
 **How the parts use it.** The ontology's language sections, the safety rules, `skb/` and the arena's grammar and prompt are generated from these facts. The lexer and parser stay hand-written and are tested against the facts in both directions: sentences sampled from the grammar must parse, and the repository's `.mg` sources must be recognised by it. Each refusal names a rule fact, and each run's evidence log names the version of the knowledge base it ran under.
 
@@ -225,7 +265,7 @@ are **six independent Cargo workspaces**:
 | Path | Crate | Tests | Notes |
 |---|---|--:|---|
 | `RecursiveMachineIntelligence/` | `rmi` | 1,384 | The low-level neurosymbolic framework. Feature-gated (`cpu` / `gpu` / `cuda`); build with `--no-default-features --features cpu` for the portable set |
-| `prototype/` | `mage-prototype` | 1,569 | Compiler, evaluator, ABL, RAP server. Path-depends on `rmi` |
+| `prototype/` | `mage-prototype` | 1,570 | Compiler, evaluator, ABL, RAP server. Path-depends on `rmi` |
 | `ribosome/` | `ribosome` | 168 | The distributed build engine. Depends on nothing in this repository — see below |
 | `germline/` | `germline` | 176 | Model succession, handoff, fallback — the RSI control plane. Path-depends on `ribosome` |
 | `forge/` | `forge` | 65 | The package registry, and the content-addressed block and definition stores |
@@ -419,7 +459,7 @@ Much of that policy is already data, and one surface is now loadable:
 | cost model | `cost.rs` | which constructs search prefers | Rust |
 | CI floors | 6 | what counts as a regression | shell, hand-edited |
 | the 21 checkers | — | what "green" means | shell |
-| the pins | 94 | which claims must match measurement | shell + docs |
+| the pins | 137 | which claims must match measurement | shell + docs |
 
 **The harness is the part that moves under a fixed model.** With the weights
 held constant, improvement comes from scaffolding: a sharper legality check, a

@@ -394,6 +394,7 @@ framework/          Framewerx — neurosymbolic layer over `rmi`
 forge/              Project toolchain + content-addressed block registry
                     (`forge new/check/build/run/publish/block`, `Forge.toml`)
 stdlib/             Standard library (`.mg` source)
+kb/                 The knowledge base: the language as facts (schema: `kb/schema.mg`)
 skb/                Safety Knowledge Base seed corpus (56 rules; the compiler serves 255 of its own)
 benchmarks/         Evaluation corpus + cross-language executability harness
 examples/           Self-contained example projects (`Forge.toml` + `src/main.mg`)
@@ -459,6 +460,7 @@ Twelve self-contained projects in [`examples/`](examples/), each with a
 | [agent-guide/](agent-guide/)                               | AI agent SDK (prompts, patterns, RAP methods)      |
 | [cookbook/](cookbook/)                                     | Practical recipes (I/O, HTTP, agents, concurrency) |
 | [migration-guide/](migration-guide/)                       | Rust → MAGE migration                           |
+| [kb/](kb/)                                                 | The knowledge base: the language as facts (schema: `kb/schema.mg`) |
 | [skb/](skb/)                                               | Safety Knowledge Base seed corpus (56 rules, unread) |
 | [training/](training/)                                     | Training data and evaluation (100 samples)         |
 | [benchmarks/](benchmarks/)                                 | 100-task evaluation corpus with metrics            |
