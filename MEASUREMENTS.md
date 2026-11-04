@@ -926,3 +926,24 @@ Each entry is a refusal or a reward, so refused + rewarded is every program each
 - **Of the three generators, only `grammar` is neural** (a learned policy over the grammar's productions). `uniform` samples the same productions uniformly; `mutator` edits programs from the population. So "which rules the neural side keeps breaking" has one column here: `grammar` breaks `gate_empty` (a program with no output) and rarely `gate_fuel`, at 3.1% of its programs, about half `uniform`'s rate. It never breaks `max_depth`.
 - **`max_depth` is the mutator's.** All 520 depth refusals are its grafts, a third of what it proposes. `--bound-grafts` removes them (`ARENA.md`, "Bounded grafts"), at a held-out cost measured there.
 - **Limits.** One configuration, three seeds, no attacker and no LLM proposer. Rules that never fired (`E0001` for a parse failure, `gate_type`, `gate_runtime` and the rest of `refused_by`) have no row. All three generators build programs from the grammar's productions, so none failed to parse.
+
+## A profile change at the knowledge-base gate (plan Phase 8)
+
+The proposal widens the arena's `range` lengths from 1..48 to 1..64, one edit to `kb/profiles/arena.mg`, from knowledge-base version `sha256:d0613378…` to `sha256:19d804cd…`. A person wrote it: no generator chose it. It passes `kb_schema` and `kb_conformance`. The benchmark is `arena --heldout README.md,germline/src/gate.rs --rounds 4 --programs 16 --agents grammar:1,uniform:1,mutator:1 --cost fuel --meter-gpus none --seed N`, one run per seed on each side, and the figure is the fuel summed over a run's agents.
+
+| seeds | fuel rise, changed − HEAD, per seed | rose / fell | sign test p | gate |
+|---|---|---|---|---|
+| 1–8 (the gate's) | +9288, +4533, +229, +1199, +5544, +3622, +3324, −39642 | 7 / 1 | 0.035 | refused by `kb_cost` |
+| 9–16 (unseen) | +11788, +6128, +4454, −8248, +3692, +6077, −1250, −9796 | 5 / 3 | 0.363 | admitted |
+
+```
+evidence: range-default-logs/bench.jsonl seq 0–1039, head sha256:37e635ea597af24086ad4e926efa9f7a158e61c5465c6abf07a717f4e81747e1
+evidence: range-fresh-logs/bench.jsonl seq 0–1039, head sha256:1a844a91edef20935a88b44a74c90f017712b6c753db5e57d6040c8ccc65f336
+```
+
+Two gate runs on seeds 1–8 gave the first head exactly, so the benchmark reproduces byte for byte.
+
+- **The verdict is the default seeds': refused, and the change is not applied.** The unseen seeds do not confirm it at p < 0.05. Over all 16 the fuel rose on 12 (p = 0.038), with a median rise of about 3,700 against a median run of about 25,000. The likely reading is a real rise near 15% that eight seeds can only just detect.
+- **The test was chosen after seeing seeds 1–8,** which is why seeds 9–16 are reported. Three tests were tried on this one proposal. One seed with any rise refusing it (+59%) was a draw: with nothing changed, seeds 1–3 cost 15,629, 22,042 and 24,316. The mean paired rise over two standard errors admitted it (−1,488, se 5,537), because seed 8's baseline run spent 66,668. The sign test cannot be moved by one seed.
+- **Eight seeds have little power.** The test refuses only at seven rises of eight, so it will admit many real rises of this size, as seeds 9–16 show. A larger benchmark or more seeds would decide more; they cost time, about 10 seconds a run in a debug build.
+- **Held-out bits per byte cannot show a benefit here.** At 4 rounds of 16 programs the learners score about 8 bits per byte on these corpora, no better than uniform, so the only effect this measures is fuel.

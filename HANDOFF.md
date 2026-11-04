@@ -2028,6 +2028,15 @@ refused program, which has no output. The grammar policy does, as reward 0, and 
 refusals in two seeded runs were 1 to 3 of 22 to 30 programs, all `empty`. No learner
 here has a use for per-rule counts; the plan item records why and when to reopen it.
 
+**A first profile change at the gate: refused, and the test behind it replaced twice.**
+Widening `range` to 64 passes the schema and both suites; `kb_cost` refuses it, fuel
+rising on 7 of 8 seeds (5 of 8 on unseen seeds, which it would admit). One seed with
+any rise refusing was a draw, and the mean over two standard errors was flipped by one
+run at 66,668 fuel, so `kb_cost` is now a sign test at p < 0.05. Chosen after seeing
+the data, so read `MEASUREMENTS.md`'s unseen seeds beside it. The arena's golden tests
+are keyed to the profile's hash: they refused every profile change. No generator wrote
+this proposal and it is not applied, so item 7 and Phase 8's "Done when" stay open.
+
 **Forge blocks are artifact facts.** `BlockStore::facts` renders a store as a `kb`
 block: each block an `instance_of(sha256, Block)` with `block_name` and
 `block_signature` (schema v14). Loaded beside the knowledge base in
