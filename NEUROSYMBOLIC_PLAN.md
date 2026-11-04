@@ -224,9 +224,9 @@ facts are grouped into files and namespaces. They are not classes.
 
 ### Phase 0: Preconditions
 
-- [ ] Merge the stack #38–#150, this plan included, in order (needs the user). **S**
+- [ ] Merge the stack #38–#151, this plan included, in order (needs the user). **S**
 - [ ] Settle the open questions in section 8. **S**
-- [ ] Census every module in `prototype/src` (73 files) into neural, symbolic, knowledge base, interface, or outside the design (for example `crdt.rs`, `consensus.rs`, `hot_reload.rs`). Record it in `ARCHITECTURE.md`. Outside-the-design modules are kept but not extended. **S [H]**
+- [x] Census every module in `prototype/src` (77 files and `bin/`) into neural, symbolic, knowledge base, interface, or outside the design (for example `crdt.rs`, `consensus.rs`, `hot_reload.rs`). Record it in `ARCHITECTURE.md`. Outside-the-design modules are kept but not extended. **S [H]** *(In `ARCHITECTURE.md`, "Module census", held to the directory by `prototype/tests/census.rs`.)*
 
 ### Phase 1: The schema
 
@@ -326,7 +326,7 @@ facts are grouped into files and namespaces. They are not classes.
 
 ### Phase 9: Documentation and retirement
 
-- [ ] `ARCHITECTURE.md` describes the three parts and the schema, using the Phase 0 census. **M**
+- [x] `ARCHITECTURE.md` describes the three parts and the schema, using the Phase 0 census. **M**
 - [ ] Remove every hand table that a phase above made redundant, and every comment that says "keep in sync". **S [H]**
 - [ ] `DOCS.md`, `README.md` and the pin check cover the new documents and counts (facts per class, invariants). **S [H]**
 
