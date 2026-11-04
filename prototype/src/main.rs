@@ -1141,8 +1141,9 @@ fn main() {
 }
 
 /// Magic bytes for the per-module Agentic Binary Language-bytes container
-/// format. Distinct from the per-expression `MGPS` checkpoint magic.
-const ABL_MAGIC: &[u8; 4] = b"ABL1";
+/// format, which `abl` defines. Distinct from the per-expression `MGPS`
+/// checkpoint magic.
+const ABL_MAGIC: &[u8; 4] = abl::ABL_MAGIC;
 // Single source of truth — these private decoders share the container version
 // with the `abl` codec, so a bump (e.g. v3's REPEAT folding) can't drift.
 const ABL_VERSION: u16 = abl::ABL_VERSION;
@@ -3562,7 +3563,7 @@ fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool, to
 #[cfg(test)]
 mod cli_arg_tests {
     /// The positional-argument filter, extracted so it can be tested without
-    /// running the binary. Must stay in sync with `main`'s copy.
+    /// running the binary.
     /// The *production* filter, not a copy of it.
     fn positional(args: &[&str]) -> Vec<String> {
         args.iter()

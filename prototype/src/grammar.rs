@@ -13,7 +13,8 @@ use std::collections::HashMap;
 pub struct GrammarExtension {
     /// The shorthand sigil or keyword (e.g. "?=", "@w", "+af").
     pub sigil: String,
-    /// The Rust-equivalent expansion (e.g. "match", "while", "pub async fn").
+    /// What it expands to: for a built-in, the keyword it abbreviates (e.g.
+    /// "match", "while"), and empty if the knowledge base states none.
     pub rust_equiv: String,
     /// Namespace the extension belongs to (e.g. "core", "async", "user").
     pub namespace: String,
@@ -46,72 +47,31 @@ impl ExtensionRegistry {
         reg
     }
 
-    /// Register the built-in core sigils that ship with MAGE.
+    /// Register the built-in sigils. They are the knowledge base's: each
+    /// `sigil_row` fact is one, and its keyword is what `abbreviates` states
+    /// for it (`:` abbreviates both `in` and `else`, joined with "/"), or empty
+    /// when it states none. Read once: loading checks the whole schema, and
+    /// `grammar/list` over RAP builds a registry per call.
     fn register_builtins(&mut self) {
-        let builtins = vec![
-            // Core items
-            ("f",   "fn",           "core", "Function definition"),
-            ("+f",  "pub fn",       "core", "Public function definition"),
-            ("af",  "async fn",     "core", "Async function"),
-            ("+af", "pub async fn", "core", "Public async function"),
-            ("uf",  "unsafe fn",    "core", "Unsafe function"),
-            ("+uf", "pub unsafe fn","core", "Public unsafe function"),
-            ("S",   "struct",       "core", "Struct definition"),
-            ("+S",  "pub struct",   "core", "Public struct definition"),
-            ("E",   "enum",         "core", "Enum definition"),
-            ("+E",  "pub enum",     "core", "Public enum definition"),
-            ("T",   "trait",        "core", "Trait definition"),
-            ("+T",  "pub trait",    "core", "Public trait definition"),
-            ("I",   "impl",         "core", "Impl block"),
-            ("M",   "mod",          "core", "Module"),
-            ("+M",  "pub mod",      "core", "Public module"),
-            ("u",   "use",          "core", "Use import"),
-            ("+u",  "pub use",      "core", "Public use import"),
-            ("Y",   "type",         "core", "Type alias"),
-            ("+Y",  "pub type",     "core", "Public type alias"),
-            ("C",   "const",        "core", "Constant"),
-            ("+C",  "pub const",    "core", "Public constant"),
-            ("Z",   "static",       "core", "Static"),
-            ("+Z",  "pub static",   "core", "Public static"),
-            // Bindings
-            ("v",   "let",          "core", "Immutable binding"),
-            ("m",   "let mut",      "core", "Mutable binding"),
-            // Control flow
-            ("?",   "if",           "flow", "Conditional branch"),
-            ("?=",  "match",        "flow", "Pattern matching"),
-            ("@",   "for",          "flow", "For loop"),
-            ("@@",  "loop",         "flow", "Infinite loop"),
-            ("@w",  "while",        "flow", "While loop"),
-            ("!",   "break",        "flow", "Break loop"),
-            (">>",  "continue",     "flow", "Continue loop"),
-            // Smart pointers / types
-            ("^",   "Box<_>",       "ptr",  "Owned pointer"),
-            ("$",   "Rc<_>",        "ptr",  "Reference-counted pointer"),
-            ("@T",  "Arc<_>",       "ptr",  "Atomic reference-counted pointer"),
-            ("&~",  "Cow<_>",       "ptr",  "Copy-on-write"),
-            ("%",   "Cell<_>",      "ptr",  "Interior mutability (Cell)"),
-            ("%!",  "RefCell<_>",   "ptr",  "Interior mutability (RefCell)"),
-            ("#",   "Mutex<_>",     "ptr",  "Mutex lock"),
-            ("#~",  "RwLock<_>",    "ptr",  "Read-write lock"),
-            ("?T",  "Option<_>",    "ptr",  "Optional value"),
-            ("R[,]","Result<_,_>",  "ptr",  "Result type"),
-            // Annotations
-            ("@req","requires",     "contract", "Precondition contract"),
-            ("@ens","ensures",      "contract", "Postcondition contract"),
-            ("@inv","invariant",    "contract", "Invariant contract"),
-            ("@fx", "effects",      "contract", "Effect annotation"),
-            ("@perf","performance", "contract", "Performance annotation"),
-        ];
-
-        for (sigil, rust, ns, desc) in builtins {
-            self.extensions.push(GrammarExtension {
-                sigil: sigil.into(),
-                rust_equiv: rust.into(),
-                namespace: ns.into(),
-                usage_count: 0,
-                description: desc.into(),
-            });
-        }
+        static BUILTINS: std::sync::OnceLock<Vec<GrammarExtension>> = std::sync::OnceLock::new();
+        self.extensions.extend_from_slice(BUILTINS.get_or_init(|| {
+            let kb = crate::kb::load().expect("the compiled-in knowledge base loads");
+            let abbreviates = kb.facts("abbreviates");
+            kb.facts("sigil_row")
+                .iter()
+                .map(|row| {
+                    let keywords: Vec<&str> =
+                        abbreviates.iter().filter(|f| f[0] == row[0]).map(|f| f[1].as_str()).collect();
+                    GrammarExtension {
+                        sigil: row[0].clone(),
+                        rust_equiv: keywords.join("/"),
+                        namespace: "core".into(),
+                        usage_count: 0,
+                        description: row[2].clone(),
+                    }
+                })
+                .collect()
+        }));
     }
 
     /// Register a user-defined grammar extension.
@@ -274,6 +234,7 @@ pub fn apply_configs(registry: &mut ExtensionRegistry, configs: &[GrammarExtensi
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::BTreeSet;
 
     #[test]
     fn new_registry_has_builtins() {
@@ -290,36 +251,33 @@ mod tests {
     }
 
     #[test]
-    fn lookup_flow_match() {
+    fn lookup_match() {
         let reg = ExtensionRegistry::new();
         let ext = reg.lookup("?=").expect("should find '?='");
         assert_eq!(ext.rust_equiv, "match");
-        assert_eq!(ext.namespace, "flow");
+        assert_eq!(ext.namespace, "core");
     }
 
     #[test]
-    fn lookup_ptr_sigils() {
+    fn the_builtins_are_the_stated_sigils() {
+        let kb = crate::kb::load().expect("loads");
         let reg = ExtensionRegistry::new();
-        assert_eq!(reg.lookup("^").unwrap().rust_equiv, "Box<_>");
-        assert_eq!(reg.lookup("$").unwrap().rust_equiv, "Rc<_>");
-        assert_eq!(reg.lookup("#").unwrap().rust_equiv, "Mutex<_>");
-    }
-
-    #[test]
-    fn lookup_contract_sigils() {
-        let reg = ExtensionRegistry::new();
-        assert_eq!(reg.lookup("@req").unwrap().rust_equiv, "requires");
-        assert_eq!(reg.lookup("@ens").unwrap().rust_equiv, "ensures");
-        assert_eq!(reg.lookup("@inv").unwrap().rust_equiv, "invariant");
+        let stated: BTreeSet<String> = kb.facts("sigil_row").into_iter().map(|f| f[0].clone()).collect();
+        let registered: BTreeSet<String> = reg.extensions.iter().map(|e| e.sigil.clone()).collect();
+        assert_eq!(registered, stated);
+        assert_eq!(reg.lookup("v").expect("v").rust_equiv, "val");
+        assert_eq!(reg.lookup("f").expect("f").rust_equiv, "fn");
+        assert!(reg.lookup("^").is_none());
+        assert!(reg.lookup("@req").is_none());
     }
 
     #[test]
     fn register_custom_extension() {
         let mut reg = ExtensionRegistry::new();
         let before = reg.extensions.len();
-        reg.register("~>", "pipe", "user_flow", "Pipeline operator");
+        reg.register("~~>", "pipe", "user_flow", "Pipeline operator");
         assert_eq!(reg.extensions.len(), before + 1);
-        let ext = reg.lookup("~>").unwrap();
+        let ext = reg.lookup("~~>").unwrap();
         assert_eq!(ext.rust_equiv, "pipe");
         assert_eq!(ext.namespace, "user_flow");
     }
@@ -343,19 +301,15 @@ mod tests {
 
     #[test]
     fn list_namespace_flow() {
+        // The knowledge base files every built-in under `core`: none is in `flow`.
         let reg = ExtensionRegistry::new();
-        let flow = reg.list_namespace("flow");
-        assert!(flow.len() >= 5, "flow namespace has {} entries", flow.len());
+        assert!(reg.list_namespace("flow").is_empty());
     }
 
     #[test]
     fn namespaces_list() {
         let reg = ExtensionRegistry::new();
-        let ns = reg.namespaces();
-        assert!(ns.contains(&"core".into()));
-        assert!(ns.contains(&"flow".into()));
-        assert!(ns.contains(&"ptr".into()));
-        assert!(ns.contains(&"contract".into()));
+        assert_eq!(reg.namespaces(), vec!["core".to_string()]);
     }
 
     #[test]

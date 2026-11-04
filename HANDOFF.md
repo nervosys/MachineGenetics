@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,620** — rmi 1,384 · prototype 1,568 · ribosome 168 · germline 176 · forge 65 · arena 259 |
+| Tests | **3,622** — rmi 1,384 · prototype 1,569 · ribosome 168 · germline 176 · forge 65 · arena 260 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -2027,6 +2027,12 @@ subagent from an exact brief.
 refused program, which has no output. The grammar policy does, as reward 0, and its
 refusals in two seeded runs were 1 to 3 of 22 to 30 programs, all `empty`. No learner
 here has a use for per-rule counts; the plan item records why and when to reopen it.
+
+**The last redundant hand table is gone.** The sigils `grammar/list` serves are now
+the 62 `sigil_row` facts, read once per process. This changes that RAP method's output:
+see the plan's Phase 9 item. Tests now hold `RuleDatabase::ALL`, `TESTED` and
+`ROW_PREDICATES` to the knowledge base, `main.rs`'s `ABL_MAGIC` is `abl`'s, and four
+stale comments are gone. Prototype +1, arena +1 tests.
 
 **The three parts are in `ARCHITECTURE.md`, with a module census.** Every module in
 `prototype/src` is placed in a part, and `prototype/tests/census.rs` holds the list to
@@ -4882,7 +4888,7 @@ changed before you commit.
 ---
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,568**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,569**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
   across six crates **3,140**; documented-count pins **101**, up from 46 — the
   two newest hold the `kb`/`net` overlap the tensor-product-binding decision

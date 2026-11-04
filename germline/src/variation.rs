@@ -1,7 +1,7 @@
 //! Candidate production: the *propose* step.
 //!
 //! Mirrors the operator vocabulary the compiler already exposes behind the
-//! `evolve` keyword (`prototype/src/evolve_gen.rs`: tournament/rank/elitist
+//! `evolve` keyword (tournament/rank/elitist
 //! selection, single-point/uniform crossover, gaussian/swap mutation) so the two
 //! halves of the system name the same things the same way.
 //!

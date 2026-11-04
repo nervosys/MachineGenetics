@@ -512,6 +512,17 @@ mod tests {
         out
     }
 
+    /// Every row predicate is a relation the schema states: `relation(p)` is
+    /// one fact per predicate, with the predicate as its only argument.
+    #[test]
+    fn the_row_predicates_are_relations() {
+        let kb = crate::kb::load().expect("the knowledge base loads");
+        let relations: HashSet<String> = kb.facts("relation").into_iter().map(|f| f[0].clone()).collect();
+        for p in ROW_PREDICATES {
+            assert!(relations.contains(*p), "`{p}` is not a `relation` fact of the knowledge base");
+        }
+    }
+
     /// Every concept carries an embedding, and a name spelled a little wrong
     /// finds the concept spelled right.
     #[test]
