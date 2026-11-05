@@ -1129,6 +1129,33 @@ mod tests {
         );
     }
 
+    /// The rounding family keeps the unit, as `abs` does. The transcendental
+    /// additions need a dimensionless argument, in both spellings.
+    #[test]
+    fn the_new_math_functions_follow_their_unit_rules() {
+        let src = "f fl(x: f64[m]) -> f64[m] { floor(x) + ceil(x) + round(x) + trunc(x) }\n\
+                   f fl2(x: f64[m]) -> f64[m] { x.floor() }\n\
+                   f lg(x: f64) -> f64 { log2(x) + log10(x) + asin(x) + acos(x) + atan(x) }\n\
+                   f hy(x: f64) -> f64 { sinh(x) * cosh(x) }\n\
+                   f lg2(x: f64) -> f64 { x.log2() }\n";
+        assert!(errors(src).is_empty(), "{:?}", errors(src));
+        let bad = "f bad(x: f64[m]) -> f64 { log2(x) }";
+        assert_eq!(
+            unit_errors(bad),
+            ["`log2` needs a dimensionless argument, but was given m"]
+        );
+        let bad = "f bad(x: f64[m]) -> f64 { x.asin() }";
+        assert_eq!(
+            unit_errors(bad),
+            ["`asin` needs a dimensionless argument, but was given m"]
+        );
+        let bad = "f bad(x: f64[s]) -> f64 { cosh(x) }";
+        assert_eq!(
+            unit_errors(bad),
+            ["`cosh` needs a dimensionless argument, but was given s"]
+        );
+    }
+
     /// A literal adopts the other operand's unit under `+`, `-` and the
     /// comparisons, and is a plain scalar under `*` and `/`.
     #[test]

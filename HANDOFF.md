@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,633** — rmi 1,384 · prototype 1,580 · ribosome 168 · germline 176 · forge 65 · arena 260 |
+| Tests | **3,641** — rmi 1,384 · prototype 1,588 · ribosome 168 · germline 176 · forge 65 · arena 260 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -2027,6 +2027,8 @@ subagent from an exact brief.
 refused program, which has no output. The grammar policy does, as reward 0, and its
 refusals in two seeded runs were 1 to 3 of 22 to 30 programs, all `empty`. No learner
 here has a use for per-rule counts; the plan item records why and when to reopen it.
+
+The eleven functions `MAGE_SPEC.md` promises as `f(x)` or `x.f()` now work: `floor`, `ceil`, `round`, `trunc`, `log2`, `log10`, `asin`, `acos`, `atan`, `sinh` and `cosh` were refused as unresolved names (`floor(x)` at `--check`, `2.5.floor()` at `--eval`). A survey of the spec's names against the resolver, the evaluator and the differentiability tables found them, and each now has value and derivative tests, with the unit rules checked for a sample. Dead entries removed: `sign`, `argmax`, `argmin` and `index` from `differentiable.rs`, and `mse_loss` from `autograd.rs`; nothing in the repository called them. The gradient tape has no rule for these functions, nor for `sqrt` or `sin`. It used to warn and pass the adjoint through, which states a derivative of 1, and a `train` block's `body` reaches that under `--pipeline`. It now refuses with an error and no gradient passes through (`no_derivative_rule`, restated as `Error`); `grad` in the evaluator is the exact path.
 
 The vocabulary, the attribute abbreviations and the layer grades are stated as facts (schema v18: `vocabulary` and `layer_grade` in `kb/meaning.mg`, `attribute_abbreviation` in `kb/lexicon.mg`), and each table is held to its facts both ways (`every_vocabulary_word_is_stated`, `every_attribute_abbreviation_is_stated`, `every_layer_grade_is_stated`). The Rust tables stay as they are. Still only in code: `std_fns`, `eval.rs`'s builtin names, `check_builtin_effect`, and `differentiable.rs`'s `KINKED`, `SMOOTH_BUILTINS` and `DISCRETE_BUILTINS`; several of those name builtins that cannot be called.
 
@@ -4907,7 +4909,7 @@ changed before you commit.
 ---
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,580**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,588**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
   across six crates **3,140**; documented-count pins **138**, up from 46 — the
   two newest hold the `kb`/`net` overlap the tensor-product-binding decision

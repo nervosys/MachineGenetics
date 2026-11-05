@@ -66,7 +66,7 @@ removing figures that were green for want of a measurement.
 |---|---|---|
 | `+ - * /` on floats | `Smooth` | `/` is undefined at zero, not non-differentiable |
 | `abs`, `relu`, `max`, `min` | `AlmostEverywhere` | one kink, measure zero |
-| `floor`, `ceil`, `round` | `AlmostEverywhere` | derivative is 0 a.e. — *defined, and useless*; see below |
+| `floor`, `ceil`, `round`, `trunc` | `AlmostEverywhere` | derivative is 0 a.e. — *defined, and useless*; see below |
 | `< > == !=` | `NotDifferentiable` | the result is `bool`, a discrete type |
 | `?` (if) on a float condition | `AlmostEverywhere` | the branch boundary is measure zero |
 | `?` (if) on a `bool` variable | inherits the branch bodies | the discreteness is already accounted for where the `bool` was made |

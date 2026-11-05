@@ -214,7 +214,10 @@ fn no_derivative_rule() -> bool {
         backward(&tape, loss, &["x".into()])
             .diagnostics
             .iter()
-            .any(|d| d.message.contains("no derivative rule for call `zorp`"))
+            .any(|d| {
+                d.severity == mage_prototype::hir::Severity::Error
+                    && d.message.contains("no derivative rule for call `zorp`")
+            })
     };
     warned(GradOp::Call("zorp".into())) && !warned(GradOp::ReLU)
 }

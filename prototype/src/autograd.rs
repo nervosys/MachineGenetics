@@ -349,13 +349,16 @@ pub fn backward(tape: &GradTape, loss_id: usize, param_names: &[String]) -> Grad
                 accumulate(&mut adjoints, &mut ops, &mut ssa, node.inputs[0], &da);
             }
             GradOp::Call(name) => {
+                // Refused, and nothing propagates: passing the adjoint through
+                // would state a derivative of 1 for a function that has another.
+                // `eval.rs`'s `grad` has the exact derivatives of the scalar
+                // builtins; this tape has rules only for the ops above.
                 diagnostics.push(Diagnostic::categorized(
-                    Severity::Warning,
-                    format!("no derivative rule for call `{name}` — treating as identity"),
+                    Severity::Error,
+                    format!("no derivative rule for call `{name}`, so this tape has no gradient through it"),
                     DiagnosticCategory::TypeMismatch,
                     None,
                 ));
-                accumulate(&mut adjoints, &mut ops, &mut ssa, node.inputs[0], &adj);
             }
         }
     }
@@ -476,7 +479,7 @@ fn build_tape_expr(tape: &mut GradTape, expr: &ast::Expr) -> usize {
                 "log" => GradOp::Log,
                 "exp" => GradOp::Exp,
                 "cross_entropy" => GradOp::CrossEntropy,
-                "mse" | "mse_loss" => GradOp::MSE,
+                "mse" => GradOp::MSE,
                 _ => GradOp::Call(name),
             };
             match arg_ids.len() {
@@ -678,5 +681,35 @@ mod tests {
         let result = backward(&tape, loss, &["w".into()]);
         // First op should be the seed constant.
         assert!(result.mlir_ops[0].contains("1.0"));
+    }
+
+    /// The tape has a `GradOp` for a handful of functions. Any other call is
+    /// `GradOp::Call`, which `backward` refuses: no gradient reaches the input,
+    /// and `--pipeline` counts an error. A `train` block's `body` reaches this.
+    /// `eval.rs`'s `grad` is the path that differentiates these exactly.
+    #[test]
+    fn a_call_without_a_tape_rule_is_refused() {
+        for name in [
+            "log2", "log10", "asin", "acos", "atan", "sinh", "cosh", "floor", "ceil", "round",
+            "trunc",
+        ] {
+            let src = format!("f g(x: f64) -> f64 {{ {name}(x) }}");
+            let module = crate::parser::parse(&crate::lexer::lex(&src)).expect("parses");
+            let ast::ItemKind::Function(fd) = &module.items[0].kind else {
+                panic!("expected a function");
+            };
+            let expr = fd.body.tail_expr.as_deref().expect("tail expression");
+            let mut tape = GradTape::new();
+            let _x = tape.param("x");
+            let out = build_tape_expr(&mut tape, expr);
+            let result = backward(&tape, out, &["x".into()]);
+            let want = format!("no derivative rule for call `{name}`");
+            assert!(
+                result.diagnostics.iter().any(|d| d.severity == Severity::Error && d.message.contains(&want)),
+                "{name}: {:?}",
+                result.diagnostics
+            );
+            assert!(result.param_grads.is_empty(), "{name}: no gradient may reach `x`: {:?}", result.param_grads);
+        }
     }
 }
