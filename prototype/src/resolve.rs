@@ -1548,4 +1548,19 @@ f P(x: i32) -> i32 { x }"),
             bound_warnings("f k[T, U](x: T, y: U) -> T ~> T: Clone, U: Debug { x }");
         assert_eq!(warnings.len(), 2, "expected one per predicate: {warnings:?}");
     }
+
+    /// Every `VOCABULARY` word is stated as a `vocabulary` fact with its
+    /// signature and doc, and every stated word is in the table, both ways.
+    #[test]
+    fn every_vocabulary_word_is_stated() {
+        let kb = crate::kb::load().expect("the knowledge base loads");
+        let mut stated: Vec<Vec<String>> = kb.facts("vocabulary");
+        stated.sort();
+        let mut table: Vec<Vec<String>> = VOCABULARY
+            .iter()
+            .map(|(name, sig, doc)| vec![name.to_string(), sig.to_string(), doc.to_string()])
+            .collect();
+        table.sort();
+        assert_eq!(stated, table, "vocabulary facts vs VOCABULARY");
+    }
 }

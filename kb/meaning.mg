@@ -1110,6 +1110,159 @@ kb Meaning {
     fact role_grant("gate", "Heldout");
     fact role_grant("gate", "Promote");
 
+    // ── The standard vocabulary: the table of resolve.rs's VOCABULARY ──
+    // The combinators an agent names instead of hand-rolling: a name, its
+    // signature and its doc. The signature is display only and nothing parses
+    // it, so it is a `Text`. `every_vocabulary_word_is_stated` holds the table
+    // to these facts in both directions.
+    fact vocabulary("map", "([A], A->B) -> [B]", "apply a function to each element");
+    fact vocabulary("filter", "([A], A->bool) -> [A]", "keep elements matching a predicate");
+    fact vocabulary("fold", "([A], B, (B,A)->B) -> B", "reduce with an initial accumulator");
+    fact vocabulary("reduce", "([A], (A,A)->A) -> ?A", "reduce without an initial value");
+    fact vocabulary("sum", "[A] -> A", "sum of the elements");
+    fact vocabulary("len", "[A] -> usize", "number of elements");
+    fact vocabulary("count", "[A] -> usize", "number of elements");
+    fact vocabulary("sort", "[A] -> [A]", "sorted copy");
+    fact vocabulary("reverse", "[A] -> [A]", "reversed copy");
+    fact vocabulary("zip", "([A], [B]) -> [(A,B)]", "pair up two collections");
+    fact vocabulary("freq", "[A] -> {A: usize}", "frequency of each element");
+    fact vocabulary("first", "[A] -> ?A", "first element, if any");
+    fact vocabulary("last", "[A] -> ?A", "last element, if any");
+    fact vocabulary("any", "([A], A->bool) -> bool", "does any element match");
+    fact vocabulary("all", "([A], A->bool) -> bool", "do all elements match");
+    fact vocabulary("find", "([A], A->bool) -> ?A", "first matching element, if any");
+    fact vocabulary("take", "([A], usize) -> [A]", "the first n elements");
+    fact vocabulary("range", "(usize) -> [usize]", "0..n as a list");
+    fact vocabulary("keys", "{K: V} -> [K]", "the map's keys");
+    fact vocabulary("values", "{K: V} -> [V]", "the map's values");
+    fact vocabulary("flatten", "[[A]] -> [A]", "flatten one level of nesting");
+    fact vocabulary("group", "([A], A->K) -> {K: [A]}", "group elements by key");
+    fact vocabulary("scan", "([A], B, (B,A)->B) -> [B]", "running fold, seed first (len+1 results)");
+    fact vocabulary("contains", "([A], A) -> bool", "membership test");
+    fact vocabulary("split", "(str, str) -> [str]", "split a string on a separator");
+    fact vocabulary("join", "([str], str) -> str", "join strings with a separator");
+    fact vocabulary("chars", "str -> [str]", "the characters of a string");
+    fact vocabulary("words", "str -> [str]", "whitespace-separated words");
+    fact vocabulary("lines", "str -> [str]", "newline-separated lines");
+    fact vocabulary("upper", "str -> str", "uppercase");
+    fact vocabulary("lower", "str -> str", "lowercase");
+
+    // ── Layer grades: the lists of differentiable.rs ──
+    // Each surface layer type is `smooth` (SMOOTH_LAYERS) or `kinked`
+    // (KINKED_LAYERS). A layer in neither list is `Unknown` and has no fact.
+    // The reasons a layer is kinked are in the comments above KINKED_LAYERS.
+    // `every_layer_grade_is_stated` holds both lists to these facts in both
+    // directions, and the graded layers to the `instance_of(_, Layer)` facts of
+    // this file.
+    fact layer_grade("Linear", "smooth");
+    fact layer_grade("Dense", "smooth");
+    fact layer_grade("FullyConnected", "smooth");
+    fact layer_grade("MatMul", "smooth");
+    fact layer_grade("Conv2D", "smooth");
+    fact layer_grade("Conv", "smooth");
+    fact layer_grade("Embedding", "smooth");
+    fact layer_grade("Embed", "smooth");
+    fact layer_grade("SinusoidalPE", "smooth");
+    fact layer_grade("PositionalEncoding", "smooth");
+    fact layer_grade("PE", "smooth");
+    fact layer_grade("LearnedPE", "smooth");
+    fact layer_grade("LearnedPositionalEmbedding", "smooth");
+    fact layer_grade("PositionalEmbedding", "smooth");
+    fact layer_grade("RotaryEmbedding", "smooth");
+    fact layer_grade("RoPE", "smooth");
+    fact layer_grade("Attention", "smooth");
+    fact layer_grade("MultiHeadAttention", "smooth");
+    fact layer_grade("Attn", "smooth");
+    fact layer_grade("FlashAttention", "smooth");
+    fact layer_grade("SlidingWindowAttention", "smooth");
+    fact layer_grade("LongformerAttention", "smooth");
+    fact layer_grade("LinearAttention", "smooth");
+    fact layer_grade("PerformerAttention", "smooth");
+    fact layer_grade("GroupedQueryAttention", "smooth");
+    fact layer_grade("GQA", "smooth");
+    fact layer_grade("MultiQueryAttention", "smooth");
+    fact layer_grade("MQA", "smooth");
+    fact layer_grade("CrossAttention", "smooth");
+    fact layer_grade("Softmax", "smooth");
+    fact layer_grade("GELU", "smooth");
+    fact layer_grade("Gelu", "smooth");
+    fact layer_grade("SiLU", "smooth");
+    fact layer_grade("Silu", "smooth");
+    fact layer_grade("Swish", "smooth");
+    fact layer_grade("Sigmoid", "smooth");
+    fact layer_grade("Tanh", "smooth");
+    fact layer_grade("Mish", "smooth");
+    fact layer_grade("Softplus", "smooth");
+    fact layer_grade("SwiGLU", "smooth");
+    fact layer_grade("GeGLU", "smooth");
+    fact layer_grade("LayerNorm", "smooth");
+    fact layer_grade("BatchNorm", "smooth");
+    fact layer_grade("RMSNorm", "smooth");
+    fact layer_grade("RmsNorm", "smooth");
+    fact layer_grade("GroupNorm", "smooth");
+    fact layer_grade("InstanceNorm", "smooth");
+    fact layer_grade("AvgPool", "smooth");
+    fact layer_grade("AveragePool", "smooth");
+    fact layer_grade("GlobalPool", "smooth");
+    fact layer_grade("GlobalAvgPool", "smooth");
+    fact layer_grade("GlobalMeanPool", "smooth");
+    fact layer_grade("GlobalSumPool", "smooth");
+    fact layer_grade("LoRA", "smooth");
+    fact layer_grade("QLoRA", "smooth");
+    fact layer_grade("DoRA", "smooth");
+    fact layer_grade("IA3", "smooth");
+    fact layer_grade("Adapter", "smooth");
+    fact layer_grade("PrefixTuning", "smooth");
+    fact layer_grade("PromptTuning", "smooth");
+    fact layer_grade("RNNCell", "smooth");
+    fact layer_grade("LSTMCell", "smooth");
+    fact layer_grade("GRUCell", "smooth");
+    fact layer_grade("RNN", "smooth");
+    fact layer_grade("LSTM", "smooth");
+    fact layer_grade("GRU", "smooth");
+    fact layer_grade("S4Layer", "smooth");
+    fact layer_grade("S5Layer", "smooth");
+    fact layer_grade("MambaBlock", "smooth");
+    fact layer_grade("H3Layer", "smooth");
+    fact layer_grade("GCNLayer", "smooth");
+    fact layer_grade("GATLayer", "smooth");
+    fact layer_grade("GraphSAGELayer", "smooth");
+    fact layer_grade("EdgeConv", "smooth");
+    fact layer_grade("Expert", "smooth");
+    fact layer_grade("MSE", "smooth");
+    fact layer_grade("MseLoss", "smooth");
+    fact layer_grade("CrossEntropy", "smooth");
+    fact layer_grade("BCE", "smooth");
+    fact layer_grade("BceLoss", "smooth");
+    fact layer_grade("NLL", "smooth");
+    fact layer_grade("NllLoss", "smooth");
+    fact layer_grade("KLDiv", "smooth");
+    fact layer_grade("KlDiv", "smooth");
+    fact layer_grade("ReLU", "kinked");
+    fact layer_grade("Relu", "kinked");
+    fact layer_grade("LeakyReLU", "kinked");
+    fact layer_grade("ELU", "kinked");
+    fact layer_grade("SELU", "kinked");
+    fact layer_grade("HardSwish", "kinked");
+    fact layer_grade("HardSigmoid", "kinked");
+    fact layer_grade("MaxPool", "kinked");
+    fact layer_grade("GlobalMaxPool", "kinked");
+    fact layer_grade("AdaptivePool", "kinked");
+    fact layer_grade("Huber", "kinked");
+    fact layer_grade("SmoothL1", "kinked");
+    fact layer_grade("SparseMoE", "kinked");
+    fact layer_grade("TopKRouter", "kinked");
+    fact layer_grade("SwitchRouter", "kinked");
+    fact layer_grade("ExpertChoiceRouter", "kinked");
+    fact layer_grade("Int8Linear", "kinked");
+    fact layer_grade("Int4Linear", "kinked");
+    fact layer_grade("BitNetLinear", "kinked");
+    fact layer_grade("Dropout", "kinked");
+    fact layer_grade("Drop", "kinked");
+    fact layer_grade("Dropout2D", "kinked");
+    fact layer_grade("DropPath", "kinked");
+    fact layer_grade("StochasticDepth", "kinked");
+
     // ── The binary container: the ontology's `abl` section ───────────────
     // The format of the Agentic Binary Language container, one `abl_field` fact
     // per line, in position order: the two-digit position, then the line exactly

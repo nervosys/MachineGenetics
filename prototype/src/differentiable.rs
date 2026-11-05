@@ -1625,4 +1625,36 @@ mod tests {
         );
         assert!(d.inferred.contains_key("a") && d.inferred.contains_key("b"));
     }
+
+    /// Every layer of `SMOOTH_LAYERS` and `KINKED_LAYERS` is stated with its
+    /// grade, and every stated grade is in one of the lists, both ways. The two
+    /// lists share no layer, and the graded layers are exactly the layers the
+    /// knowledge base declares with `instance_of(_, Layer)`.
+    #[test]
+    fn every_layer_grade_is_stated() {
+        let kb = crate::kb::load().expect("the knowledge base loads");
+        let mut stated: Vec<Vec<String>> = kb.facts("layer_grade");
+        stated.sort();
+        let mut table: Vec<Vec<String>> = SMOOTH_LAYERS
+            .iter()
+            .map(|l| vec![l.to_string(), "smooth".to_string()])
+            .chain(KINKED_LAYERS.iter().map(|l| vec![l.to_string(), "kinked".to_string()]))
+            .collect();
+        table.sort();
+        assert_eq!(stated, table, "layer_grade facts vs SMOOTH_LAYERS and KINKED_LAYERS");
+
+        let mut graded: Vec<String> = table.iter().map(|row| row[0].clone()).collect();
+        graded.sort();
+        graded.dedup();
+        assert_eq!(graded.len(), table.len(), "a layer is in both lists");
+        let mut declared: Vec<String> = kb
+            .facts("instance_of")
+            .into_iter()
+            .filter(|f| f[1] == "Layer")
+            .map(|f| f[0].clone())
+            .collect();
+        declared.sort();
+        declared.dedup();
+        assert_eq!(graded, declared, "the graded layers vs instance_of(_, Layer)");
+    }
 }
