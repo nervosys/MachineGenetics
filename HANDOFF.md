@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,628** — rmi 1,384 · prototype 1,575 · ribosome 168 · germline 176 · forge 65 · arena 260 |
+| Tests | **3,630** — rmi 1,384 · prototype 1,577 · ribosome 168 · germline 176 · forge 65 · arena 260 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -2028,6 +2028,10 @@ refused program, which has no output. The grammar policy does, as reward 0, and 
 refusals in two seeded runs were 1 to 3 of 22 to 30 programs, all `empty`. No learner
 here has a use for per-rule counts; the plan item records why and when to reopen it.
 
+`ROLES` and `BASE_UNITS` are stated as facts (schema v17: `agent_role` and `role_grant` in `kb/meaning.mg`, and `base_unit`), and each table is held to its facts both ways.
+
+The timing test `a_command_past_its_timeout_is_killed_and_returns_early` now has a wider bound (30 s, against a 60 s sleep), since a 3 s bound failed under load.
+
 The builder's `OPS`, `TOPOLOGIES` and `CONSENSUS`, and `hir.rs`'s `CAPABILITY_NAMESPACES`, are stated as facts too (schema v16: `build_op`, `build_topology`, `build_consensus` in `kb/rules/builder.mg`, `capability_namespace` in `kb/meaning.mg`), and each table is held to its facts both ways. The Rust tables stay, since the code uses them as `'static`.
 
 The builder's 26 error codes are facts: the `BuildRule` instances of `kb/rules/builder.mg`, schema v15.
@@ -2036,7 +2040,7 @@ Each code is triggered by a witness spec in `builder.rs`'s `every_build_rule_hap
 
 **The definition of done is audited, and it is not met.** The plan's section 9 now says
 why, item by item, read from the code. Phase 9 is done and the plan is not: much language
-knowledge is still in code (`resolve::VOCABULARY`, `hir.rs`'s `ROLES`), and several generators hold their own syntax. A second
+knowledge is still in code (`resolve::VOCABULARY`, `differentiable.rs`'s lists), and several generators hold their own syntax. A second
 copy of the vocabulary's names in `types.rs` is gone, and `ROW_PREDICATES` is held both ways.
 
 **The knowledge base's counts are pinned.** `kb-gate counts` prints them (`Kb::counts`): the schema's version, its classes, relations, invariants and instances, and the instances stated per class. The pins in `ARCHITECTURE.md` and `scripts/check-doc-counts.sh` read them, and they are doc pins rather than tests so the gate's conformance stage does not refuse a proposal for changing a count.
@@ -4901,7 +4905,7 @@ changed before you commit.
 ---
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,575**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,577**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
   across six crates **3,140**; documented-count pins **138**, up from 46 — the
   two newest hold the `kb`/`net` overlap the tensor-product-binding decision

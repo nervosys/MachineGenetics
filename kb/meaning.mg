@@ -964,6 +964,19 @@ kb Meaning {
     fact instance_of("f(T)->R", Type);
     fact type_row("f(T)->R", "fn", "function pointer type; (T) -> R signature");
 
+    // ── Base units: the table of units.rs's BASE_UNITS ──
+    // The seven base units a `Dim` is an exponent vector over. A `Dim` is
+    // positional, so each unit's position is part of its fact: the index it has
+    // in BASE_UNITS, from "0". `every_base_unit_is_stated` holds the table to
+    // these facts in both directions, position included.
+    fact base_unit("kg", "0");
+    fact base_unit("m", "1");
+    fact base_unit("s", "2");
+    fact base_unit("A", "3");
+    fact base_unit("K", "4");
+    fact base_unit("mol", "5");
+    fact base_unit("cd", "6");
+
     // ── Effects: the ontology's `effects` section ───────────────────────
     // Effect annotations the language supports. Used in `spec` blocks and the
     // `verify/contracts` RAP method. Each `effect_row` is (annotation, slot,
@@ -1059,6 +1072,43 @@ kb Meaning {
     fact capability_namespace("json", "none");
     fact capability_namespace("kb", "none");
     fact capability_namespace("db", "none");
+
+    // ── Agent roles: the table of hir.rs's ROLES ──
+    // A `@role(…)` annotation names one of these. The effects a role is granted
+    // are its `role_grant` facts, each by the effect's name as `hir::Effect`
+    // displays it. A role granted nothing (`candidate`) has no `role_grant`
+    // fact: its absence is the statement. `every_role_and_grant_is_stated`
+    // holds the table to these facts, in both directions.
+    fact agent_role("candidate");
+    fact agent_role("proposer");
+    fact agent_role("mutator");
+    fact agent_role("attacker");
+    fact agent_role("learner");
+    fact agent_role("evaluator");
+    fact agent_role("gate");
+    fact role_grant("proposer", "Learn");
+    fact role_grant("proposer", "Alloc");
+    fact role_grant("proposer", "Rng");
+    fact role_grant("mutator", "Alloc");
+    fact role_grant("mutator", "Rng");
+    fact role_grant("attacker", "Learn");
+    fact role_grant("attacker", "Alloc");
+    fact role_grant("attacker", "Rng");
+    fact role_grant("learner", "Learn");
+    fact role_grant("learner", "Gpu");
+    fact role_grant("learner", "Alloc");
+    fact role_grant("learner", "Rng");
+    fact role_grant("evaluator", "Learn");
+    fact role_grant("evaluator", "Gpu");
+    fact role_grant("evaluator", "Alloc");
+    fact role_grant("evaluator", "Rng");
+    fact role_grant("evaluator", "Heldout");
+    fact role_grant("gate", "Learn");
+    fact role_grant("gate", "Gpu");
+    fact role_grant("gate", "Alloc");
+    fact role_grant("gate", "Rng");
+    fact role_grant("gate", "Heldout");
+    fact role_grant("gate", "Promote");
 
     // ── The binary container: the ontology's `abl` section ───────────────
     // The format of the Agentic Binary Language container, one `abl_field` fact

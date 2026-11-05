@@ -460,6 +460,9 @@ words among its `lexes_as` facts, and the `AstKind` instances in the grammar.
 | `build_topology` | `Text` (a swarm topology) |
 | `build_consensus` | `Text` (a swarm consensus strategy) |
 | `capability_namespace` | `Text` × `Text` (namespace, effect: its name, or none) |
+| `agent_role` | `Text` (the name of a role) |
+| `role_grant` | `Text` × `Text` (role, effect: its name as hir::Effect displays it) |
+| `base_unit` | `Text` × `Text` (name, position in a Dim) |
 | `form_row` | `ProfileForm` × `Profile` × `Text` × `Text` (nonterminal, position) |
 | `form_example` | `ProfileForm` × `Text` (as the prompt shows it) |
 | `profile_text` | `Profile` × `Text` × `Text` (key, a piece of its prompt) |

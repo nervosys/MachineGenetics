@@ -84,10 +84,12 @@ fn a_failing_command_is_an_error_carrying_its_stderr() {
 fn a_command_past_its_timeout_is_killed_and_returns_early() {
     let file = fixture("slow.txt", KNOWN);
     let started = Instant::now();
-    let err = backend(&[&file, "--sleep", "3000"], Duration::from_secs(1)).complete("p").expect_err("it times out");
+    let err = backend(&[&file, "--sleep", "60000"], Duration::from_secs(1)).complete("p").expect_err("it times out");
     let took = started.elapsed();
     assert!(err.contains("timeout"), "{err}");
-    assert!(took < Duration::from_secs(3), "returned after {took:?}");
+    // Far below the sleep and far above the timeout: on a loaded machine merely
+    // starting the command took over 3 s, which failed a tighter bound.
+    assert!(took < Duration::from_secs(30), "returned after {took:?}");
 }
 
 #[test]

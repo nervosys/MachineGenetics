@@ -45,7 +45,9 @@ kb Schema {
     // v15 (2026-11-04): `BuildRule` and `build_rule_row`, for kb/rules/builder.mg.
     // v16 (2026-11-04): `build_op`, `build_topology` and `build_consensus`, for
     // kb/rules/builder.mg, and `capability_namespace`, for kb/meaning.mg.
-    fact schema_version(16);
+    // v17 (2026-11-04): `agent_role`, `role_grant` and `base_unit`, for
+    // kb/meaning.mg: the agent roles of hir.rs and the base units of units.rs.
+    fact schema_version(17);
 
     // ── Classes ─────────────────────────────────────────────────────────
     // Seven roots. The twelve domains of MAGE_ONTOLOGY.md group facts into
@@ -275,6 +277,17 @@ kb Schema {
     fact relation(capability_namespace);
     fact arg_class(capability_namespace, 1, Text);
     fact arg_class(capability_namespace, 2, Text);
+    // The agent roles of prototype/src/hir.rs, and the effects each is granted:
+    // a role's name, and an effect's name as `hir::Effect` displays it.
+    fact relation(agent_role);
+    fact arg_class(agent_role, 1, Text);
+    fact relation(role_grant);
+    fact arg_class(role_grant, 1, Text);
+    fact arg_class(role_grant, 2, Text);
+    // The base units of prototype/src/units.rs: a name, and its position in a Dim.
+    fact relation(base_unit);
+    fact arg_class(base_unit, 1, Text);
+    fact arg_class(base_unit, 2, Text);
     // name, value, meaning.
     fact relation(constraint_row);
     fact arg_class(constraint_row, 1, GrammarConstraint);
