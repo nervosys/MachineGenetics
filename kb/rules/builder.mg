@@ -128,4 +128,30 @@ kb Builder {
     fact instance_of("U0003", BuildRule);
     fact build_rule_row("U0003", "unified", "two items share a name", "give each item a unique name");
     fact enforced_by("U0003", "builder");
+
+    // ── the tables of builder.rs: its ops, swarm topologies and consensus strategies ──
+    // `every_op_is_stated`, `every_topology_and_consensus_is_stated` hold each table
+    // to these facts, in both directions. Arity and transforms are text, as written.
+
+    fact build_op("Linear", "2", "true", "fully-connected (in, out) -> out");
+    fact build_op("Embedding", "2", "true", "lookup table (vocab, dim) -> dim");
+    fact build_op("Conv2d", "2", "true", "2D convolution (in_ch, out_ch) -> out_ch");
+    fact build_op("LayerNorm", "1", "false", "layer normalization (dim)");
+    fact build_op("ReLU", "0", "false", "rectified linear activation");
+    fact build_op("GELU", "0", "false", "Gaussian error linear activation");
+    fact build_op("Tanh", "0", "false", "hyperbolic tangent activation");
+    fact build_op("Sigmoid", "0", "false", "logistic activation");
+    fact build_op("Softmax", "0", "false", "softmax over the feature dim");
+    fact build_op("Dropout", "0", "false", "stochastic regularization (identity at inference)");
+
+    fact build_topology("star");
+    fact build_topology("ring");
+    fact build_topology("mesh");
+    fact build_topology("broadcast");
+    fact build_topology("tree");
+
+    fact build_consensus("majority");
+    fact build_consensus("unanimous");
+    fact build_consensus("weighted");
+    fact build_consensus("quorum");
 }

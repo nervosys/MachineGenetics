@@ -1031,6 +1031,35 @@ kb Meaning {
     fact instance_of("promote", Effect);
     fact effect_row("promote", "effect_name", "Changing authority: promotion and the journal (gate role only)");
 
+    // ── Capability namespaces: the table of hir.rs's CAPABILITY_NAMESPACES ──
+    // A program calls a namespace as `io.println(…)` or `net.connect(…)`, and the
+    // checker attributes that call to the effect given here, by the effect's name
+    // as `hir::Effect` displays it. `none` is a namespace with no built-in effect,
+    // a decision the Rust table's comments argue for. `every_capability_namespace_is_stated`
+    // holds the table to these facts, in both directions.
+    fact capability_namespace("io", "IO");
+    fact capability_namespace("fs", "FS");
+    fact capability_namespace("net", "Net");
+    fact capability_namespace("env", "Env");
+    fact capability_namespace("time", "Time");
+    fact capability_namespace("rng", "Rng");
+    fact capability_namespace("llm", "Llm");
+    fact capability_namespace("gpu", "Gpu");
+    fact capability_namespace("agent", "Agent");
+    fact capability_namespace("http", "Net");
+    fact capability_namespace("mem", "Alloc");
+    fact capability_namespace("log", "IO");
+    fact capability_namespace("swarm", "Agent");
+    fact capability_namespace("os", "Proc");
+    fact capability_namespace("sys", "Proc");
+    fact capability_namespace("process", "Proc");
+    fact capability_namespace("tools", "Proc");
+    fact capability_namespace("heldout", "Heldout");
+    fact capability_namespace("gate", "Promote");
+    fact capability_namespace("json", "none");
+    fact capability_namespace("kb", "none");
+    fact capability_namespace("db", "none");
+
     // ── The binary container: the ontology's `abl` section ───────────────
     // The format of the Agentic Binary Language container, one `abl_field` fact
     // per line, in position order: the two-digit position, then the line exactly
