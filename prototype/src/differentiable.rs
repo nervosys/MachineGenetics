@@ -1667,4 +1667,29 @@ mod tests {
         declared.dedup();
         assert_eq!(graded, declared, "the graded layers vs instance_of(_, Layer)");
     }
+
+    /// Every builtin of `KINKED`, `SMOOTH_BUILTINS` and `DISCRETE_BUILTINS` is
+    /// stated with its grade, and every stated grade is in one of the lists,
+    /// both ways. No builtin is in two lists.
+    #[test]
+    fn every_builtin_grade_is_stated() {
+        let kb = crate::kb::load().expect("the knowledge base loads");
+        let mut stated: Vec<Vec<String>> = kb.facts("builtin_grade");
+        stated.sort();
+        let grades: [(&[&str], &str); 3] = [
+            (KINKED, "kinked"),
+            (SMOOTH_BUILTINS, "smooth"),
+            (DISCRETE_BUILTINS, "discrete"),
+        ];
+        let mut table: Vec<Vec<String>> = grades
+            .iter()
+            .flat_map(|(names, grade)| names.iter().map(move |n| vec![n.to_string(), grade.to_string()]))
+            .collect();
+        table.sort();
+        assert_eq!(stated, table, "builtin_grade facts vs the three grade lists");
+        let mut names: Vec<String> = table.iter().map(|row| row[0].clone()).collect();
+        names.sort();
+        names.dedup();
+        assert_eq!(names.len(), table.len(), "a builtin is in two grade lists");
+    }
 }

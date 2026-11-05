@@ -48,7 +48,9 @@ kb Schema {
     // v17 (2026-11-04): `agent_role`, `role_grant` and `base_unit`, for
     // kb/meaning.mg: the agent roles of hir.rs and the base units of units.rs.
     // v18 (2026-11-04): `vocabulary`, `layer_grade` and `attribute_abbreviation`.
-    fact schema_version(18);
+    // v19 (2026-11-04): `builtin_function` and `builtin_grade`, for kb/meaning.mg:
+    // the builtins of resolve.rs's STD_FNS and differentiable.rs's grade lists.
+    fact schema_version(19);
 
     // ── Classes ─────────────────────────────────────────────────────────
     // Seven roots. The twelve domains of MAGE_ONTOLOGY.md group facts into
@@ -305,6 +307,14 @@ kb Schema {
     fact relation(layer_grade);
     fact arg_class(layer_grade, 1, Layer);
     fact arg_class(layer_grade, 2, Text);
+    // The builtin functions of prototype/src/resolve.rs's STD_FNS: a name each.
+    fact relation(builtin_function);
+    fact arg_class(builtin_function, 1, Text);
+    // The grade of each builtin in differentiable.rs's KINKED, SMOOTH_BUILTINS and
+    // DISCRETE_BUILTINS: `kinked`, `smooth` or `discrete`.
+    fact relation(builtin_grade);
+    fact arg_class(builtin_grade, 1, Text);
+    fact arg_class(builtin_grade, 2, Text);
     // name, value, meaning.
     fact relation(constraint_row);
     fact arg_class(constraint_row, 1, GrammarConstraint);

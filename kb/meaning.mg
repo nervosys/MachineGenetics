@@ -1263,6 +1263,106 @@ kb Meaning {
     fact layer_grade("DropPath", "kinked");
     fact layer_grade("StochasticDepth", "kinked");
 
+    // ── The builtin names: the tables of resolve.rs's STD_FNS and differentiable.rs's grade lists ──
+    // `builtin_function` names a builtin the resolver accepts as a bare call. `builtin_grade` gives
+    // its grade in the differentiability pass: `kinked`, `smooth` or `discrete`. A builtin
+    // with no grade is Unknown to the pass. `every_builtin_function_is_stated` and
+    // `every_builtin_grade_is_stated` hold each table to these facts in both directions.
+    fact builtin_function("println");
+    fact builtin_function("print");
+    fact builtin_function("eprintln");
+    fact builtin_function("eprint");
+    fact builtin_function("format");
+    fact builtin_function("write");
+    fact builtin_function("writeln");
+    fact builtin_function("vec");
+    fact builtin_function("panic");
+    fact builtin_function("assert");
+    fact builtin_function("assert_eq");
+    fact builtin_function("assert_ne");
+    fact builtin_function("dbg");
+    fact builtin_function("todo");
+    fact builtin_function("unimplemented");
+    fact builtin_function("unreachable");
+    fact builtin_function("matches");
+    fact builtin_function("min");
+    fact builtin_function("max");
+    fact builtin_function("abs");
+    fact builtin_function("drop");
+    fact builtin_function("swap");
+    fact builtin_function("replace");
+    fact builtin_function("default");
+    fact builtin_function("wrapping_add");
+    fact builtin_function("wrapping_sub");
+    fact builtin_function("wrapping_mul");
+    fact builtin_function("exp");
+    fact builtin_function("ln");
+    fact builtin_function("log");
+    fact builtin_function("sqrt");
+    fact builtin_function("sin");
+    fact builtin_function("cos");
+    fact builtin_function("tan");
+    fact builtin_function("tanh");
+    fact builtin_function("sigmoid");
+    fact builtin_function("silu");
+    fact builtin_function("gelu");
+    fact builtin_function("log2");
+    fact builtin_function("log10");
+    fact builtin_function("asin");
+    fact builtin_function("acos");
+    fact builtin_function("atan");
+    fact builtin_function("sinh");
+    fact builtin_function("cosh");
+    fact builtin_function("floor");
+    fact builtin_function("ceil");
+    fact builtin_function("round");
+    fact builtin_function("trunc");
+    fact builtin_function("mean");
+    fact builtin_function("dot");
+    fact builtin_function("Some");
+    fact builtin_function("None");
+    fact builtin_function("Ok");
+    fact builtin_function("Err");
+
+    fact builtin_grade("abs", "kinked");
+    fact builtin_grade("relu", "kinked");
+    fact builtin_grade("max", "kinked");
+    fact builtin_grade("min", "kinked");
+    fact builtin_grade("clamp", "kinked");
+    fact builtin_grade("floor", "kinked");
+    fact builtin_grade("ceil", "kinked");
+    fact builtin_grade("round", "kinked");
+    fact builtin_grade("trunc", "kinked");
+    fact builtin_grade("exp", "smooth");
+    fact builtin_grade("ln", "smooth");
+    fact builtin_grade("log", "smooth");
+    fact builtin_grade("log2", "smooth");
+    fact builtin_grade("log10", "smooth");
+    fact builtin_grade("sqrt", "smooth");
+    fact builtin_grade("sin", "smooth");
+    fact builtin_grade("cos", "smooth");
+    fact builtin_grade("tan", "smooth");
+    fact builtin_grade("asin", "smooth");
+    fact builtin_grade("acos", "smooth");
+    fact builtin_grade("atan", "smooth");
+    fact builtin_grade("sinh", "smooth");
+    fact builtin_grade("cosh", "smooth");
+    fact builtin_grade("tanh", "smooth");
+    fact builtin_grade("sigmoid", "smooth");
+    fact builtin_grade("softmax", "smooth");
+    fact builtin_grade("gelu", "smooth");
+    fact builtin_grade("silu", "smooth");
+    fact builtin_grade("sum", "smooth");
+    fact builtin_grade("mean", "smooth");
+    fact builtin_grade("dot", "smooth");
+    fact builtin_grade("matmul", "smooth");
+    fact builtin_grade("len", "discrete");
+    fact builtin_grade("count", "discrete");
+    fact builtin_grade("keys", "discrete");
+    fact builtin_grade("any", "discrete");
+    fact builtin_grade("all", "discrete");
+    fact builtin_grade("freq", "discrete");
+
     // ── The binary container: the ontology's `abl` section ───────────────
     // The format of the Agentic Binary Language container, one `abl_field` fact
     // per line, in position order: the two-digit position, then the line exactly
