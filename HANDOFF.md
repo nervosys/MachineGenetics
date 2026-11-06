@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,118** — rmi 1,384 · prototype 1,317 · ribosome 168 · germline 144 · forge 60 · arena 45 |
+| Tests | **3,123** — rmi 1,384 · prototype 1,317 · ribosome 168 · germline 146 · forge 60 · arena 48 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -639,6 +639,33 @@ arena) is stacked on #38 and retargets when #38 merges with `--delete-branch`.
 
 Counts: prototype 1,282 → **1,317**, germline 134 → **144**, arena **45** (new),
 total 3,028 → **3,118**. Pins 94 → **101**. CI jobs 10 → **11**.
+
+**Plan 3.1: the trusted kernel has a boundary, and drawing it found a hole.**
+`arena::kernel` is where the loop gets what it must not vary: the
+typechecker's gates, the metered evaluator, the meter, the held-out store, the
+gate and the journal. Two capabilities define it, each refused at two levels:
+
+- **Reading held-out data.** In MAGE, the `heldout` effect belongs only to
+  `evaluator` and `gate` (`E0551`). In Rust, `Corpus`'s bytes are now private,
+  and the only reader is `Corpus::score`, which passes them to a learner's
+  `&self` method.
+- **Moving authority.** In MAGE, `promote` belongs only to `gate`. In Rust,
+  **`Lineage::promote` was ungated.** It took an id, a digest and a name, and
+  "the caller must already hold an approving verdict" was a doc comment. It
+  now takes a `gate::Approval` that only `Episode::approve` mints. The
+  approval can't be cloned or deserialized, and it is refused if the champion
+  changed after it was earned (GERMLINE.md invariant 8). The first thing the
+  new type caught was an arena test that installed its seed champion without
+  the gate.
+
+A role-by-capability table test fails if the language widens either grant.
+Two `compile_fail` doctests fail if the Rust privacy is removed. All four
+guards were break-verified. Not covered, and written down in the module: a
+learner that sees held-out bytes could keep them through interior mutability,
+and `Lineage` is still `Deserialize`, so a forged lineage file is closed only
+by journal verification on resume (plan 8.3).
+
+Counts: germline 144 → **146**, arena 45 → **48**, total 3,118 → **3,123**.
 
 **Pre-existing, not from this change:** `cargo clippy` 0.1.98 (2026-09-01)
 reports 15 warnings in `prototype` — 14 `chunks_exact` with a constant size in
@@ -3180,7 +3207,7 @@ changed before you commit.
 
 - Prototype tests **1,066 → 1,317**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
-  across six crates **3,118**; documented-count pins **101**, up from 46 — the
+  across six crates **3,123**; documented-count pins **101**, up from 46 — the
   two newest hold the `kb`/`net` overlap the tensor-product-binding decision
   rests on, a figure that had lived in two sentences of prose with nothing
   re-deriving it.

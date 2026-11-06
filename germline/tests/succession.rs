@@ -8,7 +8,7 @@ use germline::directed::{
     CandidateSpec, DirectedSearch, FitnessPredictor, Prediction,
 };
 use germline::gate::{Episode, PromotionGate, RejectReason, Verdict};
-use germline::lineage::Lineage;
+use germline::lineage::{Lineage, LineageError};
 use germline::supervisor::{FailureMode, HealthSample, SupervisionPolicy, Supervisor};
 use germline::{
     EvalSuite, FitnessVector, Generation, GenerationId, Measurement, Status, SuiteKind,
@@ -68,13 +68,23 @@ impl Storage {
     }
 }
 
+/// Move authority to `id`, which must already be in the lineage, on the
+/// gate's approval: the only way `Lineage::promote` accepts.
+fn admit(l: &mut Lineage, store: &Storage, id: GenerationId) {
+    let g = l.get(id).expect("added first").clone();
+    let approval = episode(gate_no_canary())
+        .approve(&g, l, 0, &store.checker())
+        .unwrap_or_else(|v| panic!("{id} is refused: {:?}", v.reasons()));
+    l.promote(approval).unwrap();
+}
+
 /// Seeds a lineage with a promoted champion.
 fn seed(l: &mut Lineage, store: &mut Storage, m: Measurement) -> GenerationId {
     let id = l.next_id();
     let artifact = Digest::of(format!("model-{}", id.0).as_bytes());
     store.keep(&artifact);
     l.add(Generation::new(id, artifact).measured(m));
-    l.promote(id, gate_no_canary().digest(), EVALUATOR).unwrap();
+    admit(l, store, id);
     id
 }
 
@@ -103,12 +113,36 @@ fn a_successor_is_generated_promoted_and_takes_over() {
     let verdict = ep.adjudicate(&challenger, &l, 0, &store.checker());
     assert!(verdict.approved(), "{:?}", verdict.reasons());
 
-    let Verdict::Promote { generation, gate, evaluator } = verdict else { unreachable!() };
+    let approval = ep.approve(&challenger, &l, 0, &store.checker()).expect("the same decision");
+    let generation = approval.generation();
     l.add(challenger);
-    l.promote(generation, gate, &evaluator).unwrap();
+    l.promote(approval).unwrap();
 
     assert_eq!(l.champion().unwrap().id, generation, "authority transferred");
     assert_eq!(l.get(champ).unwrap().status, Status::Retired, "the predecessor stays available");
+}
+
+#[test]
+fn an_approval_earned_against_one_champion_does_not_move_authority_from_another() {
+    let mut l = Lineage::new();
+    let mut store = Storage::default();
+    let champ = seed(&mut l, &mut store, measurement(0.70, 0.95, 0.98));
+
+    // Two challengers, each approved against the same incumbent.
+    let a = challenge(&mut l, &mut store, champ, measurement(0.78, 0.95, 0.98));
+    let b = challenge(&mut l, &mut store, champ, measurement(0.80, 0.95, 0.98));
+    let ep = episode(gate_no_canary());
+    let for_a = ep.approve(&a, &l, 0, &store.checker()).expect("a beats the champion");
+    let for_b = ep.approve(&b, &l, 0, &store.checker()).expect("b beats the champion");
+    let b_id = b.id;
+    l.add(a);
+    l.add(b);
+
+    l.promote(for_b).unwrap();
+    // `a` was never judged against `b`, so its approval is spent evidence.
+    let e = l.promote(for_a).unwrap_err();
+    assert!(matches!(e, LineageError::StaleApproval { .. }), "{e}");
+    assert_eq!(l.champion().unwrap().id, b_id);
 }
 
 // ------------------------------------------------------- handoff then failure
@@ -124,7 +158,7 @@ fn a_malfunctioning_successor_is_demoted_and_authority_returns() {
     let ep = episode(gate_no_canary());
     assert!(ep.adjudicate(&challenger, &l, 0, &store.checker()).approved());
     l.add(challenger);
-    l.promote(cid, ep.gate_digest.clone(), EVALUATOR).unwrap();
+    admit(&mut l, &store, cid);
 
     // It takes over, and immediately starts failing real work.
     let mut sup = Supervisor::new(SupervisionPolicy::default(), 0.78);
@@ -152,7 +186,7 @@ fn a_declining_successor_is_demoted_even_though_nothing_crashes() {
     let challenger = challenge(&mut l, &mut store, champ, measurement(0.78, 0.95, 0.98));
     let cid = challenger.id;
     l.add(challenger);
-    l.promote(cid, gate_no_canary().digest(), EVALUATOR).unwrap();
+    admit(&mut l, &store, cid);
 
     let policy = SupervisionPolicy { window: 10, ..SupervisionPolicy::default() };
     let mut sup = Supervisor::new(policy, 0.78);
@@ -203,7 +237,7 @@ fn fallback_skips_generations_that_already_failed() {
         let c = challenge(&mut l, &mut store, prev, measurement(cap, 0.95, 0.98));
         let id = c.id;
         l.add(c);
-        l.promote(id, gate_no_canary().digest(), EVALUATOR).unwrap();
+        admit(&mut l, &store, id);
         ids.push(id);
         prev = id;
     }
@@ -225,7 +259,7 @@ fn authority_does_not_move_to_a_fallback_that_cannot_run() {
     let challenger = challenge(&mut l, &mut store, champ, measurement(0.78, 0.95, 0.98));
     let cid = challenger.id;
     l.add(challenger);
-    l.promote(cid, gate_no_canary().digest(), EVALUATOR).unwrap();
+    admit(&mut l, &store, cid);
 
     // Someone garbage-collected the predecessor's weights.
     store.lose(&champ_artifact);
@@ -296,7 +330,7 @@ fn drift_across_many_generations_is_stopped_at_the_high_water_mark() {
         let v = episode(gate_no_canary()).adjudicate(&c, &l, 0, &store.checker());
         assert!(v.approved(), "each individual step is within tolerance: {:?}", v.reasons());
         l.add(c);
-        l.promote(id, gate_no_canary().digest(), EVALUATOR).unwrap();
+        admit(&mut l, &store, id);
         prev = id;
     }
 
@@ -413,7 +447,7 @@ fn a_full_cycle_promotes_fails_falls_back_and_then_succeeds() {
     let id1 = c1.id;
     assert!(episode(gate_no_canary()).adjudicate(&c1, &l, 0, &store.checker()).approved());
     l.add(c1);
-    l.promote(id1, gate_no_canary().digest(), EVALUATOR).unwrap();
+    admit(&mut l, &store, id1);
 
     let mut sup = Supervisor::new(SupervisionPolicy::default(), 0.76);
     let mut failure = None;
@@ -438,7 +472,7 @@ fn a_full_cycle_promotes_fails_falls_back_and_then_succeeds() {
     let v2 = episode(gate_no_canary()).adjudicate(&c2, &l, 0, &store.checker());
     assert!(v2.approved(), "{:?}", v2.reasons());
     l.add(c2);
-    l.promote(id2, gate_no_canary().digest(), EVALUATOR).unwrap();
+    admit(&mut l, &store, id2);
 
     for _ in 0..30 {
         assert_eq!(

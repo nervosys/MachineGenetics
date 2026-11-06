@@ -89,8 +89,8 @@ pub fn encode(cfg: &Config) -> Genome {
 pub fn suite_digest(corpora: &[Corpus]) -> Digest {
     let mut h = Sha256::new();
     for c in corpora {
-        h.update(c.name.as_bytes());
-        h.update(c.sha256.as_bytes());
+        h.update(c.name().as_bytes());
+        h.update(c.sha256().as_bytes());
     }
     Digest(format!("{:x}", h.finalize()))
 }
@@ -253,7 +253,13 @@ mod tests {
             suite.digest.clone(),
             "arena-evaluator",
         );
-        lineage.promote(id, ep.gate_digest.clone(), "arena-evaluator").unwrap();
+        // The seed takes authority the way every successor must: on the gate's
+        // approval. With no incumbent, its measurement beats nothing.
+        let seed = lineage.get(id).unwrap().clone();
+        let approval = ep
+            .approve(&seed, &lineage, 1, &|d| w.materialized(d))
+            .unwrap_or_else(|v| panic!("the seed is refused: {:?}", v.reasons()));
+        lineage.promote(approval).unwrap();
         let at = Attestor::new("arena-evaluator", b"arena test key".to_vec());
         let dir = std::env::temp_dir().join(format!("arena-succession-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
