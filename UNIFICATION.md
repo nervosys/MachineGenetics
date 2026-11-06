@@ -229,6 +229,49 @@ NetTranslator, train_one_step) into a CLI flag, exercised by the new
 | Canonical runtime                 | Merge — MAGE keeps leases/CRDT/consensus/VCS; RMI keeps workspace/delegator/distributed/federated |
 | Bridge location                   | Modules inside `prototype/` (not a separate crate)  |
 | Workspace integration             | `exclude` (RecursiveMachineIntelligence stays standalone-buildable)    |
+| Elision rules as data (plan 5.3)  | Tables for the data-shaped part; the structural rewrites stay Rust (below) |
+
+### Can the elision rules be data? (plan 5.3, measured 2026-10-28)
+
+`prototype/src/elision.rs` applies 13 rules, and none of them depends on
+types, scope or other items:
+
+- **6 are lookups or set filters** (about 112 lines): the eliminated bounds
+  (`Send`, `Sync`, `Copy`, `Unpin`, `Sized`, `Freeze`), lifetime parameters
+  and predicates, the eliminated wrapper types (`PhantomData`, `Pin`), and
+  the attribute abbreviations in both directions.
+- **7 are structural rewrites with fixed templates** (about 26 lines):
+  `&mut` → `&`, `PhantomData<T>` → `()`, `Pin<T>` → `T`, unwrapping
+  `unsafe` blocks and `ref` patterns, clearing `unsafe` on functions, and
+  dropping a where-predicate left with no bounds.
+- **None needs real code.** The other 450 to 500 lines are the AST walker,
+  which is code under any design.
+
+**Decision.** The data-shaped part is data:
+- The bounds and the wrapper types were already `const` tables.
+- The 29 attribute abbreviations were two hand-mirrored `match` blocks of
+  35 lines each. They are now one `ATTRIBUTE_ABBREVIATIONS` table that both
+  directions read, and a test checks it is a bijection.
+
+The structural rewrites stay Rust. A pattern language able to express them,
+matching node kinds, projecting type arguments and recursing as
+`Pin<PhantomData<T>>` → `()` requires, would be larger than the 26 lines it
+replaces. The loop can therefore vary which bounds, types and abbreviations
+elision removes, and cannot vary how it rewrites structure without a code
+change.
+
+Three ordering constraints come with the tables:
+- Bounds are stripped before empty predicates are dropped.
+- The wrapper-type arm precedes the generic path arm.
+- `elide` is idempotent only because no rule's output matches another rule.
+
+The measurement also found the pass doing less than its comments said:
+- There is no `move` to strip, because the AST has no such flag.
+- Imports of eliminated types survive.
+- Attribute abbreviations are not applied by `elide()` at all; only RAP's
+  name lookups use them.
+
+The comments now say what the code does.
 
 ## Phase 2 additions
 
