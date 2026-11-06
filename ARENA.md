@@ -276,6 +276,35 @@ things to watch are output entropy, which is low (LZ 0.62) because repetition
 is cheap to learn, and energy (76 kJ against 25 kJ), because every program is
 now also run and scored on its probe.
 
+**Confirmed at 25M parameters (run 10).** Compression progress keeps held-out
+**code below uniform to the end of the run**: 7.84, 8.03, 7.83, 8.07 and 7.93
+from round 50 on. Under alignment, code drifted back above uniform (final
+8.29). Text also improves, best 8.41 → 8.21 and final 9.04 → 8.44, but never
+crosses 8, so plan 4.3 stays half met. The run took 11,041 training-seconds
+against 835: repetitive outputs run long and batches grow. Its energy figure
+(5.7 MJ) is unusable, because the run predates per-device metering and shared
+the machine with another GPU workload.
+
+## The harness in MAGE (plan 5.1)
+
+The compression reward is now `arena/harness/reward.mg`, a MAGE program
+under `@role(evaluator)`, loaded and gated at start-up. It must be one function
+`reward` of seven numbers, it must typecheck, it must carry the evaluator
+role, and it must raise no effect error. The compiler's fuel-bounded evaluator
+runs it for every program the agents write, and `--reward-program` swaps in
+another. Over 200 random inputs it computes what the Rust reward did, to
+1e-12. A reward that reaches outside is refused by the language; one without
+the role is refused by the loader. This is the first policy the loop could
+vary without a Rust change.
+
+It needed `exp`, which did not exist, and neither did 14 of the other 15
+builtins the differentiability pass classifies as smooth. `exp`, `ln`, `log`,
+`sqrt`, `sin`, `cos`, `tan`, `tanh`, `sigmoid`, `silu`, `gelu`, `mean` and
+`dot` now exist, each with an exact forward-mode derivative, checked against
+central differences. A guard test requires every smooth builtin the pass
+names to resolve and evaluate. The exceptions, `softmax` and `matmul`, need
+tensor values the evaluator deliberately lacks, and they are exempt by name.
+
 ## What surfaced in MAGE itself
 
 The arena runs the compiler thousands of times on programs no person wrote,

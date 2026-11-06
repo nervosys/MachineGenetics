@@ -105,8 +105,11 @@ so it can be argued with.
 ## The `net` DSL, which is where the derivative actually lives
 
 Everything above is about `f` functions, and measured against this repository
-that half of the pass reports **0 of 155 functions** differentiable — 125 of
-them for want of a floating-point parameter. That is not the analysis being
+that half of the pass reports **1 of 156 functions** differentiable — 125 of
+the rest for want of a floating-point parameter. The one is the arena's reward
+(`arena/harness/reward.mg`, added 2026-09-26), differentiable almost
+everywhere because of its `max`: the first `f` function in the corpus with a
+derivative, and a harness policy rather than application code. That is not the analysis being
 strict. It is the corpus: MAGE's `f` functions are agent and tooling code, and
 its numerical surface is `net` / `layer` / `train`. A pass over functions is
 looking in the wrong place for a subject, which is the same finding that
@@ -360,11 +363,11 @@ $ scripts/measure-differentiability.sh
 subject      total    diff  smooth    a.e. unknown     not
 nets            34      34      19      15       0       0
 trains           7       7       7       0       0       0
-functions      155       0       0       0       1     154
+functions      156       1       0       1       1     154
 ```
 
-**34 of 34 nets and 7 of 7 train blocks are differentiable; 0 of 155 functions
-are.** The two halves of that sentence are one finding, not two. The negative
+**34 of 34 nets and 7 of 7 train blocks are differentiable; 1 of 156 functions
+is** — the arena's reward, almost everywhere. The two halves of that sentence are one finding, not two. The negative
 half is dominated by a single reason:
 
 ```
@@ -375,7 +378,7 @@ half is dominated by a single reason:
    3  performs the `Net` effect
 ```
 
-125 of 155 functions take no floating-point argument at all. The `f` corpus is
+125 of 156 functions take no floating-point argument at all. The `f` corpus is
 agent and tooling code and always was; the numerical code is in the `net` DSL,
 where the analysis now reports on it. The 15 nets that are `AlmostEverywhere`
 rather than `Smooth` are almost all `ReLU`; the `Smooth` 19 are the transformer
@@ -392,7 +395,7 @@ and the pass disagree. The pinned form it compares against:
 
 ```
 $ scripts/measure-differentiability.sh --pins
-mg_files=101
+mg_files=102
 mg_unparsed=0
 nets_total=34
 nets_differentiable=34
@@ -406,10 +409,10 @@ trains_smooth=7
 trains_almost_everywhere=0
 trains_unknown=0
 trains_not=0
-functions_total=155
-functions_differentiable=0
+functions_total=156
+functions_differentiable=1
 functions_smooth=0
-functions_almost_everywhere=0
+functions_almost_everywhere=1
 functions_unknown=1
 functions_not=154
 ```

@@ -1688,6 +1688,37 @@ impl Interp {
                 }
                 best.ok_or(Control::Err(format!("`{name}` of empty input")))
             }
+            // Smooth scalar functions, each with its exact derivative for
+            // `grad`. `differentiable.rs` has listed these as smooth builtins
+            // all along; until 2026-09-25 none of them existed, so the pass
+            // reasoned about calls that failed name resolution. IEEE semantics
+            // at the edges (`ln(0)` is -inf), as for `/` on floats.
+            "exp" | "ln" | "log" | "sqrt" | "sin" | "cos" | "tan" | "tanh" | "sigmoid" | "silu" | "gelu" => {
+                smooth(name, arg(0))
+            }
+            "mean" => {
+                let xs = as_list(&arg(0))?;
+                if xs.is_empty() {
+                    return err("mean of an empty list");
+                }
+                let n = xs.len();
+                let mut acc = Value::Float(0.0);
+                for x in xs {
+                    acc = binop("+", acc, x)?;
+                }
+                binop("/", acc, Value::Float(n as f64))
+            }
+            "dot" => {
+                let (xs, ys) = (as_list(&arg(0))?, as_list(&arg(1))?);
+                if xs.len() != ys.len() {
+                    return err(format!("dot of lengths {} and {}", xs.len(), ys.len()));
+                }
+                let mut acc = Value::Float(0.0);
+                for (x, y) in xs.into_iter().zip(ys) {
+                    acc = binop("+", acc, binop("*", x, y)?)?;
+                }
+                Ok(acc)
+            }
             "abs" => match arg(0) {
                 Value::Int(n) => match n.checked_abs() {
                     Some(m) => Ok(Value::Int(m)),
@@ -2106,6 +2137,43 @@ fn cmp_value(a: &Value, b: &Value) -> std::cmp::Ordering {
     }
 }
 
+/// A smooth scalar function of a number: `(value, derivative)` at `x`.
+fn smooth_fn(name: &str, x: f64) -> (f64, f64) {
+    let sig = |x: f64| 1.0 / (1.0 + (-x).exp());
+    match name {
+        "exp" => (x.exp(), x.exp()),
+        "ln" | "log" => (x.ln(), 1.0 / x),
+        "sqrt" => (x.sqrt(), 0.5 / x.sqrt()),
+        "sin" => (x.sin(), x.cos()),
+        "cos" => (x.cos(), -x.sin()),
+        "tan" => (x.tan(), 1.0 / (x.cos() * x.cos())),
+        "tanh" => (x.tanh(), 1.0 - x.tanh() * x.tanh()),
+        "sigmoid" => (sig(x), sig(x) * (1.0 - sig(x))),
+        "silu" => (x * sig(x), sig(x) + x * sig(x) * (1.0 - sig(x))),
+        // The tanh approximation, the form most frameworks use.
+        _ => {
+            let c = (2.0 / std::f64::consts::PI).sqrt();
+            let u = c * (x + 0.044715 * x * x * x);
+            let du = c * (1.0 + 3.0 * 0.044715 * x * x);
+            let t = u.tanh();
+            (0.5 * x * (1.0 + t), 0.5 * (1.0 + t) + 0.5 * x * (1.0 - t * t) * du)
+        }
+    }
+}
+
+/// Apply a smooth builtin, carrying a `Dual`'s derivative by the chain rule.
+fn smooth(name: &str, v: Value) -> R {
+    match v {
+        Value::Float(x) => Ok(Value::Float(smooth_fn(name, x).0)),
+        Value::Int(n) => Ok(Value::Float(smooth_fn(name, n as f64).0)),
+        Value::Dual(x, d) => {
+            let (f, df) = smooth_fn(name, x);
+            Ok(Value::Dual(f, df * d))
+        }
+        other => err(format!("{name} expects a number, got `{other}`")),
+    }
+}
+
 /// Integer overflow is an error, in every build (`MAGE_SPEC.md` §4.10).
 ///
 /// These arms were plain `a + b` / `a * b` until 2026-09-25, which Rust
@@ -2492,6 +2560,54 @@ mod tests {
 
     fn run(src: &str, f: &str, args: &[i64]) -> Value {
         run_source(src, f, args).expect("run failed")
+    }
+
+    #[test]
+    fn smooth_builtins_have_exact_derivatives() {
+        for (body, w) in [
+            ("exp(w)", 0.7),
+            ("ln(w)", 1.3),
+            ("sqrt(w)", 2.0),
+            ("sin(w)", 0.4),
+            ("cos(w)", 0.4),
+            ("tan(w)", 0.3),
+            ("tanh(w)", 0.5),
+            ("sigmoid(w)", -0.8),
+            ("silu(w)", 0.9),
+            ("gelu(w)", 0.6),
+            ("exp(sin(w)) * w", 0.3),
+        ] {
+            let (g, fd) = grad_and_fd(body, w);
+            assert_close(g, fd, body);
+        }
+        assert!((eval_f64("f p() -> f64 { mean([1.0, 2.0, 6.0]) }") - 3.0).abs() < 1e-12);
+        assert!((eval_f64("f p() -> f64 { dot([1.0, 2.0], [3.0, 4.0]) }") - 11.0).abs() < 1e-12);
+    }
+
+    #[test]
+    fn every_smooth_builtin_the_differentiability_pass_names_exists() {
+        // The pass listed fifteen smooth builtins the language did not have.
+        // Each must now resolve and evaluate — except those that need tensor
+        // values, which the evaluator deliberately lacks (DIFFERENTIABILITY.md).
+        const TENSOR_ONLY: &[&str] = &["softmax", "matmul"];
+        for name in crate::differentiable::SMOOTH_BUILTINS {
+            if TENSOR_ONLY.contains(name) {
+                continue;
+            }
+            let call = match *name {
+                "sum" | "mean" => format!("{name}([0.5, 1.5])"),
+                "dot" => format!("{name}([0.5], [2.0])"),
+                _ => format!("{name}(0.5)"),
+            };
+            let src = format!("f p() -> f64 {{ {call} }}");
+            let module = crate::parser::parse(&crate::lexer::lex(&src)).expect("parses");
+            let resolved = crate::resolve::resolve(&module);
+            assert!(
+                resolved.diagnostics.iter().all(|d| !d.message.contains("unresolved")),
+                "`{name}` is a smooth builtin to the pass but does not resolve"
+            );
+            assert!(run_source(&src, "p", &[]).is_ok(), "`{name}` does not evaluate");
+        }
     }
 
     #[test]
