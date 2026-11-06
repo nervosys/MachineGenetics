@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,264** — rmi 1,384 · prototype 1,400 · ribosome 168 · germline 173 · forge 63 · arena 76 |
+| Tests | **3,266** — rmi 1,384 · prototype 1,400 · ribosome 168 · germline 175 · forge 63 · arena 76 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -982,6 +982,20 @@ direction, and by how much.
   not count them. Both are in GERMLINE.md §5a.
 Break-checked: accepting a missing manifest fails the refusal test. Germline
 +17 tests.
+
+**Plan 5.4 follow-up: a resumed run keeps its proposers' standing.** The two
+gaps 5.4 left are closed.
+- `Lineage::replay` rebuilds each proposer's `ProposerRecord` from the
+  journal's `Calibrated` entries, in order, into `Resumed::proposers`, and
+  `Runner::resume` restores them. Replay also checks that the trust each entry
+  recorded is the trust its scores give, so an edited calibration record is a
+  replay error.
+- A cycle whose candidates were all refused now writes `Entry::CycleRefused`,
+  which replay counts as a proposal and a refusal, as the live run did. A stall
+  that spans a restart is still a stall.
+No existing entry changed shape, so earlier journals hash as they did; those
+written before this undercount their all-refused cycles. Break-checked:
+ignoring `Calibrated` on replay fails the trust test. Germline +2 tests.
 
 **Pre-existing, not from this change:** `cargo clippy` 0.1.98 (2026-09-01)
 reports 15 warnings in `prototype` — 14 `chunks_exact` with a constant size in

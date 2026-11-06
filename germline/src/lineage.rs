@@ -39,6 +39,7 @@
 
 use super::gate::Approval;
 use super::journal::{Entry, Journal, JournalError};
+use super::manifest::ProposerRecord;
 use super::{EvalSuite, FitnessVector, Generation, GenerationId, Measurement, Status};
 use ribosome::Digest;
 use serde::{Deserialize, Serialize};
@@ -147,6 +148,10 @@ pub struct Resumed {
     /// Refusals since the last promotion, so a stall that spans a restart is
     /// still a stall.
     pub trailing_refusals: u32,
+    /// Each external proposer's standing, rebuilt from the journal's
+    /// `Calibrated` entries in order. A proposer with no scored prediction has
+    /// no entry here, which is zero trust.
+    pub proposers: BTreeMap<String, ProposerRecord>,
     /// The verified head the lineage was rebuilt from.
     pub head: Option<Digest>,
 }
@@ -426,6 +431,11 @@ impl Lineage {
     /// on a held-out suite, a demotion must fall back to a retired generation,
     /// and a rollback may not return to a quarantined one. Materialization
     /// can't be checked here; it belongs to the workload.
+    ///
+    /// Proposer records are rebuilt the same way: each `Calibrated` entry
+    /// scores its proposer, and the trust it carries must match the rebuilt
+    /// record. A cycle that proposed nothing (`CycleRefused`) counts as a
+    /// proposal and as a refusal, as the live run counted it.
     pub fn replay(genesis: Lineage, journal: &Journal, anchor: Option<&Digest>) -> Result<Resumed, ReplayError> {
         let records = journal.verified().map_err(ReplayError::Journal)?;
         let head = records.last().map(|r| r.link.clone());
@@ -437,6 +447,7 @@ impl Lineage {
         let mut l = genesis;
         let mut pending: BTreeMap<GenerationId, Generation> = BTreeMap::new();
         let (mut proposals, mut trailing_refusals) = (0u32, 0u32);
+        let mut proposers: BTreeMap<String, ProposerRecord> = BTreeMap::new();
         for r in &records {
             let bad = |detail: String| ReplayError::Inconsistent { index: r.index, detail };
             match &r.entry {
@@ -513,15 +524,29 @@ impl Lineage {
                         l.apply_rollback(*from, *to, reason);
                     }
                 },
-                // Calibration records describe a proposer's record, not the
-                // lineage, so replay has nothing to rebuild from them.
-                Entry::Adjudicated { .. }
-                | Entry::Calibrated { .. }
-                | Entry::Failure { .. }
-                | Entry::Note { .. } => {}
+                // Calibration describes a proposer's record, not the lineage.
+                // It is rebuilt into `proposers`, and the trust the live run
+                // journalled must be the trust that rebuild arrives at.
+                Entry::Calibrated { proposer, score, trust, .. } => {
+                    let record = proposers.entry(proposer.clone()).or_default();
+                    record.observe(*score);
+                    if record.trust() != *trust {
+                        return Err(bad(format!(
+                            "{proposer}'s recorded trust is {trust}, and its scores give {}",
+                            record.trust()
+                        )));
+                    }
+                }
+                // A cycle that proposed nothing: a proposal, and a refusal, as
+                // the live run counted it.
+                Entry::CycleRefused { .. } => {
+                    proposals += 1;
+                    trailing_refusals += 1;
+                }
+                Entry::Adjudicated { .. } | Entry::Failure { .. } | Entry::Note { .. } => {}
             }
         }
-        Ok(Resumed { lineage: l, proposals, trailing_refusals, head })
+        Ok(Resumed { lineage: l, proposals, trailing_refusals, proposers, head })
     }
 }
 

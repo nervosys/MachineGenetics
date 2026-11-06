@@ -267,11 +267,15 @@ impl<'a> Runner<'a> {
 
     /// Continue a run whose lineage was rebuilt by [`Lineage::replay`]. With
     /// no predictor attached, the resumed run makes the choices the
-    /// uninterrupted one would have; a predictor's calibration is not in the
-    /// journal and restarts at zero trust.
+    /// uninterrupted one would have, and each external proposer resumes with
+    /// the trust its journalled predictions earned. A predictor's calibration
+    /// is not in the journal and restarts at zero trust.
     pub fn resume(mut self, from: &super::lineage::Resumed) -> Self {
         self.first_cycle = from.proposals;
         self.carried_refusals = from.trailing_refusals;
+        for (name, record) in &from.proposers {
+            self.proposer_records.insert(name.clone(), record.clone());
+        }
         self
     }
 
@@ -304,11 +308,10 @@ impl<'a> Runner<'a> {
     /// are journalled as notes and never materialized. A cycle whose candidates
     /// are all refused counts as a refusal toward the stall limit.
     ///
-    /// Not resumable exactly. Trust is not rebuilt from the journal, so a
-    /// resumed run starts each proposer at zero trust. And a cycle whose
-    /// candidates were all refused writes no succession event, which
-    /// [`Lineage::replay`] counts toward neither the cycle index nor the
-    /// trailing-refusal count.
+    /// Resumable: [`Lineage::replay`] rebuilds each proposer's record from its
+    /// `Calibrated` entries and counts a cycle whose candidates were all
+    /// refused (a `CycleRefused` entry), so [`Runner::resume`] continues both
+    /// the cycle numbering and the stall.
     pub fn with_proposer(mut self, proposer: Box<dyn Proposer>) -> Self {
         self.proposer_records.entry(proposer.name().to_string()).or_default();
         self.proposer = Some(proposer);
@@ -496,6 +499,11 @@ impl<'a> Runner<'a> {
                     // Every candidate refused. That is a refusal, not a
                     // failure: the cycle makes no promotion, and the run counts
                     // it toward the stall limit like any other refused cycle.
+                    // Nothing was proposed to the journal, so this entry is
+                    // what lets replay count the cycle.
+                    journal
+                        .append(Entry::CycleRefused { proposer: name.clone(), refused: refusals.len() as u32 })
+                        .map_err(|e| e.to_string())?;
                     return Ok(CycleOutcome {
                         cycle: index,
                         candidate: None,
@@ -1690,6 +1698,67 @@ mod tests {
         assert!(d.report.cycles.len() < 50);
         assert_eq!(d.report.refusals as usize, d.report.cycles.len(), "every cycle was a refusal");
         assert_eq!(d.materialized, 0);
+    }
+
+    #[test]
+    fn a_resumed_proposer_keeps_the_trust_its_journal_earned() {
+        // The record is rebuilt from the journal alone, summing the same scores
+        // in the same order, so the resumed runner starts at exactly the trust
+        // the original reached.
+        let path = tmp("resume-proposer-trust");
+        let (ep, at) = (episode(), attestor());
+        let calibrated = Stepper { name: "stepper", step: 0.05, claim: Direction::Increase, manifests: true, calls: 0 };
+        let mut j = Journal::open(&path).unwrap();
+        let mut l = genesis();
+        let mut original = Runner::new(patient(6), &ep, &at, suite(), 2).with_proposer(Box::new(calibrated));
+        original.run(&mut l, &mut j, &mut ByGenome::default());
+        let original_trust = original.proposer_trust("stepper");
+        assert!(original_trust > 0.0, "the original run must earn trust for this to mean anything");
+
+        // A new process: nothing survives but the journal and its head.
+        let head = j.head().cloned();
+        let resumed = Lineage::replay(genesis(), &j, head.as_ref()).unwrap();
+        let scored = j.replay().unwrap().iter().filter(|r| matches!(r.entry, Entry::Calibrated { .. })).count();
+        assert_eq!(resumed.proposers["stepper"].samples() as usize, scored, "every scored prediction is rebuilt");
+
+        let fresh = Stepper { name: "stepper", step: 0.05, claim: Direction::Increase, manifests: true, calls: 0 };
+        let resumed_runner = Runner::new(patient(0), &ep, &at, suite(), 2)
+            .with_proposer(Box::new(fresh))
+            .resume(&resumed);
+        assert_eq!(resumed_runner.proposer_trust("stepper"), original_trust, "exactly the trust the original earned");
+        let _ = std::fs::remove_dir_all(path.parent().unwrap());
+    }
+
+    #[test]
+    fn a_stall_of_all_refused_cycles_is_counted_on_replay_and_continues() {
+        // A proposer that states no predictions refuses every candidate, so its
+        // cycles write no `Proposed` entry. Replay must still count them, and a
+        // resumed run must continue the stall rather than start a fresh count.
+        let path = tmp("resume-refused-cycles");
+        let (ep, at) = (episode(), attestor());
+        let silent = || Stepper { name: "silent", step: 0.05, claim: Direction::Increase, manifests: false, calls: 0 };
+        let mut j = Journal::open(&path).unwrap();
+        let mut l = genesis();
+        let first_policy = RunnerPolicy { max_cycles: 2, max_consecutive_refusals: 100, ..policy() };
+        let first = Runner::new(first_policy, &ep, &at, suite(), 2)
+            .with_proposer(Box::new(silent()))
+            .run(&mut l, &mut j, &mut ByGenome::default());
+        assert_eq!((first.refusals, first.promotions), (2, 0));
+
+        let head = j.head().cloned();
+        let mut resumed = Lineage::replay(genesis(), &j, head.as_ref()).unwrap();
+        assert_eq!((resumed.proposals, resumed.trailing_refusals), (2, 2), "both refused cycles are counted");
+
+        let stalling = RunnerPolicy { max_cycles: 10, max_consecutive_refusals: 3, ..policy() };
+        let report = Runner::new(stalling, &ep, &at, suite(), 2)
+            .with_proposer(Box::new(silent()))
+            .resume(&resumed)
+            .run(&mut resumed.lineage, &mut j, &mut ByGenome::default());
+        assert_eq!(report.halt, Halt::SearchStalled { consecutive_refusals: 3 });
+        assert_eq!(report.cycles.len(), 1, "the third refusal in a row, not the third since the restart");
+        assert_eq!(report.cycles[0].cycle, 2, "cycle numbering continues past the refused cycles");
+        assert!(j.verify().is_ok(), "the chain holds");
+        let _ = std::fs::remove_dir_all(path.parent().unwrap());
     }
 
     #[test]

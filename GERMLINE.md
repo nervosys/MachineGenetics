@@ -1,7 +1,7 @@
 # Germline — model succession, handoff, and fallback
 
 > **Status: control plane complete and runnable; workload not.**
-> `germline/` — its own crate, 173 tests. Variation, directed search, the gate,
+> `germline/` — its own crate, 175 tests. Variation, directed search, the gate,
 > attestation, lineage, the durable journal, the cycle state machine, and
 > supervision are built and tested ✅. Model training and inference are **not**
 > here and are not claimed ◻ — this decides *whether* a successor takes over, not
@@ -222,11 +222,17 @@ scale.
   and is not allowed to set the budget.
 - **An all-refused cycle is a refusal.** It promotes nothing and counts toward
   `max_consecutive_refusals`, so a proposer that never states a checkable
-  prediction stalls the search rather than consuming its budget.
+  prediction stalls the search rather than consuming its budget. It writes an
+  `Entry::CycleRefused` beside its refusal notes, because such a cycle proposes
+  nothing and would otherwise leave no trace in the journal.
 
-Not yet covered: a resumed run does not rebuild a proposer's trust, and an
-all-refused cycle writes no succession event, so replay does not count it toward
-the cycle index or the stall count. A proposer run is not resumable exactly.
+Resuming a proposer run is exact. `Lineage::replay` rebuilds each proposer's
+record from its `Calibrated` entries, in journal order, and fails with an
+inconsistency if a recorded trust does not match the rebuilt one. It counts each
+`CycleRefused` as a proposal and a refusal, as the live run did, so
+`Runner::resume` continues the cycle numbering, the cycle seeds, and the stall
+count. Entries written before `CycleRefused` existed do not carry that record,
+so an old journal undercounts its all-refused cycles.
 
 ## 6. Supervision and fallback
 
@@ -404,7 +410,7 @@ nobody chose, one individually-defensible promotion at a time.
 ## 10. Reproducing
 
 ```powershell
-cargo test --manifest-path germline/Cargo.toml                  # 173 tests
+cargo test --manifest-path germline/Cargo.toml                  # 175 tests
 cargo test --manifest-path germline/Cargo.toml --test rsi_loop  # 6 closed-loop scenarios
 cargo test --manifest-path germline/Cargo.toml --test succession # 13 succession scenarios
 ```
