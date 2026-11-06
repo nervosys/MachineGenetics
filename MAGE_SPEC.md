@@ -1758,6 +1758,34 @@ its value and its domain, for example "`LR` = 1.5 is outside its domain
 [0, 1]". The diagnostic is an ordinary type error, so an out-of-domain
 parameter stops the program at the typechecker.
 
+### 11.8 Convexity (plan 6.2)
+
+The convexity pass (`prototype/src/convexity.rs`) certifies the curvature of an
+expression with the disciplined convex programming (DCP) rules of Grant and
+Boyd. Verdicts are `Constant`, `Affine`, `Convex`, `Concave`, and `Unknown`.
+`Unknown` means DCP cannot certify the expression. It does not mean the
+expression is non-convex: `2 * x * x` is convex and is `Unknown`.
+
+- A literal is `Constant`. A variable or parameter is `Affine`.
+- Sums add curvatures, and negation swaps convex and concave.
+- A product or quotient with a constant operand scales the other operand, and a
+  negative constant flips its curvature. A product of two non-constant operands
+  is `Unknown`, except `x * x` for affine `x`, which is convex.
+- `exp` is convex and increasing. `ln`, `log` and `sqrt` are concave and
+  increasing. `abs` is convex. `max` of two or more arguments is convex and
+  `min` is concave, when every argument is.
+- Composition: `f(g)` is convex when `f` is convex and `g` is affine, or `f` is
+  nondecreasing and `g` convex, or `f` is nonincreasing and `g` concave.
+  Dually for concave.
+- Every other call, including `sin`, `cos` and a one-argument `max`, is `Unknown`.
+
+Each expression also has a sign (`Nonneg`, `Nonpos` or `Unknown`), because
+`abs` and the scaling rules depend on it.
+
+Domains are not checked, and constant sub-expressions are not evaluated:
+`ln(2) * exp(x)` is `Unknown`. Plan 6.3 reads a `Convex` or `Concave` verdict to
+choose an exact solver.
+
 ---
 
 ## 12. Contract System
