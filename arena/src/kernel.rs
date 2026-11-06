@@ -27,14 +27,86 @@
 //! could name a champion; that is closed by verifying the journal's hash chain
 //! on resume, which is plan 8.3.
 
+use crate::energy::{self, Reading};
 use crate::learner::ByteLearner;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
 pub use crate::energy::Meter;
 pub use crate::substrate::Substrate;
 pub use germline::gate::{Approval, Episode};
 pub use germline::journal::Journal;
 pub use mage_prototype::eval::run_bounded;
+
+/// Ledger accounts: what the loop spends energy on.
+pub const PROGRAMS: &str = "programs";
+pub const TRAINING: &str = "training";
+pub const PROBES: &str = "probes";
+
+/// Every metered joule the loop spends, against a fixed budget (plan 3.5).
+///
+/// The budget is decision D2's fixed unit of compute. Agents' proposing and
+/// programs, learner training and probe scoring are charged to it. Held-out
+/// evaluation is metered and reported but not charged: it is the kernel
+/// measuring the loop, not the loop's work, and charging it would make
+/// evaluating more often look like doing more.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct EnergyLedger {
+    pub budget_joules: Option<f64>,
+    /// Joules charged, by account.
+    pub charged: BTreeMap<String, f64>,
+    /// Joules spent on held-out evaluation, not charged.
+    pub evaluation_joules: f64,
+    /// False when any charged or evaluation reading was an estimate.
+    pub all_measured: bool,
+    /// Spans no meter produced a figure for, so their energy is missing
+    /// from the totals rather than counted as zero silently.
+    pub unmetered_spans: usize,
+    /// Why the run stopped early, if it did.
+    pub halted: Option<String>,
+}
+
+impl EnergyLedger {
+    pub fn new(budget_joules: Option<f64>) -> EnergyLedger {
+        EnergyLedger { budget_joules, all_measured: true, ..EnergyLedger::default() }
+    }
+
+    /// Charge a span's `readings` to `account`. Returns the joules and
+    /// whether they were measured, or `None` when no meter read anything.
+    pub fn charge(&mut self, account: &str, readings: &[Reading]) -> Option<(f64, bool)> {
+        let reading = energy::total(readings);
+        match reading {
+            Some((j, measured)) => {
+                *self.charged.entry(account.to_string()).or_insert(0.0) += j;
+                self.all_measured &= measured;
+            }
+            None => self.unmetered_spans += 1,
+        }
+        reading
+    }
+
+    /// Record held-out evaluation's energy, which is not charged.
+    pub fn evaluate(&mut self, readings: &[Reading]) {
+        if let Some((j, measured)) = energy::total(readings) {
+            self.evaluation_joules += j;
+            self.all_measured &= measured;
+        }
+    }
+
+    pub fn account(&self, account: &str) -> f64 {
+        self.charged.get(account).copied().unwrap_or(0.0)
+    }
+
+    /// Joules charged against the budget.
+    pub fn total(&self) -> f64 {
+        self.charged.values().sum()
+    }
+
+    /// Whether the budget is spent. Never, without one.
+    pub fn exhausted(&self) -> bool {
+        self.budget_joules.is_some_and(|b| self.total() >= b)
+    }
+}
 
 /// A held-out corpus: data no agent can reach, used only for scoring.
 ///
