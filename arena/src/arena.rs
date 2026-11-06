@@ -104,6 +104,13 @@ pub struct Config {
     /// What an agent is credited with when the budget is divided (plan 7.1b).
     #[serde(default)]
     pub allocation: Allocation,
+    /// A canary planted in every held-out corpus (plan 7.5). A program whose
+    /// output carries it is refused (`canary`) and the run halts, because an
+    /// agent has seen held-out bytes. `None` plants nothing, which keeps
+    /// held-out figures comparable with runs before canaries; planting adds
+    /// its length plus two bytes to each corpus.
+    #[serde(default)]
+    pub canary: Option<String>,
 }
 
 /// What an agent's credit is, in the credit-per-cost score that divides the
@@ -189,6 +196,7 @@ impl Default for Config {
             joules_per_program: None,
             definitions_dir: None,
             allocation: Allocation::Share,
+            canary: None,
         }
     }
 }
@@ -233,6 +241,14 @@ pub struct Checkpoint {
     pub joules_all_measured: bool,
     pub seconds: f64,
     pub bytes_seen: u64,
+    /// Bits per byte on the pool's own data, up to 64 KiB of it: the proxy
+    /// the loop optimises (plan 7.5).
+    #[serde(default)]
+    pub proxy_bpb: f64,
+    /// Held-out minus proxy bits per byte. A gap that widens while the proxy
+    /// improves is the loop fitting its own data rather than learning.
+    #[serde(default)]
+    pub gap: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -449,14 +465,36 @@ pub fn meters_for(cpu_watts: f64, gpus: Option<&[u32]>) -> (Vec<Box<dyn Meter>>,
 }
 
 /// Run the arena to completion.
-pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, meter_notes: Vec<String>) -> Result<Report, String> {
+pub fn run(cfg: Config, heldout: Vec<Corpus>, meters: Vec<Box<dyn Meter>>, meter_notes: Vec<String>) -> Result<Report, String> {
+    let agents = build_agents(&cfg.agents)?;
+    run_with(cfg, agents, heldout, meters, meter_notes)
+}
+
+/// [`run`], with the agents supplied rather than built from `cfg.agents`:
+/// for agents the arena does not construct itself.
+pub fn run_with(
+    cfg: Config,
+    mut agents: Vec<Box<dyn Proposer>>,
+    heldout: Vec<Corpus>,
+    mut meters: Vec<Box<dyn Meter>>,
+    meter_notes: Vec<String>,
+) -> Result<Report, String> {
+    if agents.is_empty() {
+        return Err("at least one agent is required".into());
+    }
     if heldout.is_empty() {
         return Err("at least one held-out corpus is required — without one there is nothing to measure intelligence against".into());
     }
     if cfg.learners.is_empty() {
         return Err("at least one learner is required".into());
     }
-    let mut agents = build_agents(&cfg.agents)?;
+    let canary: Option<Vec<u8>> = cfg.canary.as_ref().map(|c| c.as_bytes().to_vec());
+    let heldout: Vec<Corpus> = match &canary {
+        Some(c) => heldout.into_iter().map(|h| h.with_canary(c)).collect(),
+        None => heldout,
+    };
+    // Set when an agent's output carries the canary; the run halts.
+    let mut leaked: Option<String> = None;
     let mut standing: Vec<AgentStanding> = agents
         .iter()
         .map(|a| AgentStanding {
@@ -575,6 +613,18 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
                         (outcome, Some(prepared.shape.clone()), Some(prepared))
                     }
                 };
+                // The canary check comes before any credit or training: a
+                // leaked output must not teach the learners anything.
+                let outcome = match outcome {
+                    Outcome::Bytes { bytes, .. } if canary.as_ref().is_some_and(|k| crate::kernel::leaks(&bytes, k)) => {
+                        leaked = Some(format!(
+                            "{}'s program output carried the held-out canary in round {round}: an agent has seen held-out data",
+                            agent.id()
+                        ));
+                        Outcome::Refused(Refusal::Canary, "output carries the held-out canary".into())
+                    }
+                    other => other,
+                };
                 match outcome {
                     Outcome::Bytes { bytes, fuel_used } => {
                         // 4. Credit. Alignment is known now, before any
@@ -642,6 +692,9 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
                     (CostUnit::Joules, Some((j, _))) if j > 0.0 => j,
                     _ => cost - cost_at,
                 });
+                if leaked.is_some() {
+                    break;
+                }
             }
             round_credit[ai] = credit;
             // Plan 7.1: charged the joules its own actions measured. Without
@@ -653,6 +706,14 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
             if cfg.cost_unit == CostUnit::Joules {
                 standing[ai].joules += round_joules[ai];
             }
+            if leaked.is_some() {
+                break;
+            }
+        }
+        // A leak ends the run before the round trains on anything.
+        if let Some(why) = &leaked {
+            ledger.halted = Some(why.clone());
+            break;
         }
 
         // Replay: revisit what taught the most, so learners do not forget it.
@@ -771,19 +832,22 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
         }
 
         if (round + 1) % cfg.eval_every == 0 || round + 1 == cfg.rounds {
+            let proxy_bytes: Vec<u8> = pool.entries.iter().flat_map(|e| e.bytes.iter().cloned()).take(1 << 16).collect();
             for (li, learner) in learners.iter().enumerate() {
                 let span = Span::start(&mut meters);
                 let heldout_bpb: BTreeMap<String, f64> =
                     heldout.iter().map(|c| (c.name().to_string(), c.score(learner.as_ref()))).collect();
+                let proxy_bpb = learner.bits_per_byte(&proxy_bytes);
                 let (_, r) = span.stop(&mut meters);
                 ledger.evaluate(&r);
                 let mean_bpb = heldout_bpb.values().sum::<f64>() / heldout_bpb.len() as f64;
                 // Progress on stderr: a 25M-parameter run takes most of an
                 // hour, and the first one printed nothing until it finished.
                 eprintln!(
-                    "arena: round {:>4}/{} learner {li} held-out {mean_bpb:.3} bits/byte, {} J, {:.0} s",
+                    "arena: round {:>4}/{} learner {li} held-out {mean_bpb:.3} bits/byte (gap {:+.3} over the pool), {} J, {:.0} s",
                     round + 1,
                     cfg.rounds,
+                    mean_bpb - proxy_bpb,
                     joules[li].map(|j| format!("{j:.0}")).unwrap_or_else(|| "n/a".into()),
                     seconds[li]
                 );
@@ -796,6 +860,8 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
                     joules_all_measured: all_measured[li],
                     seconds: seconds[li],
                     bytes_seen: learner.bytes_seen(),
+                    proxy_bpb,
+                    gap: mean_bpb - proxy_bpb,
                 });
             }
         }
@@ -938,6 +1004,53 @@ mod tests {
         assert!(r.agents.iter().any(|a| a.credit > 0.0));
         assert!(r.learners.iter().any(|l| l.on_front));
         assert!(r.pool_size > 0);
+    }
+
+    /// Writes one program whose output is `bytes`: an agent that has seen
+    /// held-out data and repeats it.
+    struct Leaker(Vec<u8>);
+    impl Proposer for Leaker {
+        fn id(&self) -> &str {
+            "leaker"
+        }
+        fn kind(&self) -> &'static str {
+            "leaker"
+        }
+        fn propose(&mut self, n: usize, _: &Pool, _: &mut Rng) -> Vec<Candidate> {
+            use crate::grammar::{IntExpr, ListExpr, Program};
+            let body = ListExpr::Cycle("v".into(), self.0.iter().map(|b| IntExpr::Lit(*b as u64)).collect(), self.0.len() as u64);
+            (0..n).map(|_| Candidate { program: Program { body: body.clone() }, trace: None, parents: vec![] }).collect()
+        }
+        fn feedback(&mut self, _: &[Scored]) {}
+    }
+
+    #[test]
+    fn an_output_carrying_the_held_out_canary_halts_the_run_before_it_trains() {
+        const CANARY: &str = "MAGE-CANARY-7f3a";
+        let cfg = || Config { canary: Some(CANARY.into()), ..tiny_cfg() };
+        let (m, n) = cpu_only();
+        let r = run_with(cfg(), vec![Box::new(Leaker(CANARY.as_bytes().to_vec()))], heldout(), m, n).expect("runs");
+        assert!(r.energy.halted.as_deref().is_some_and(|h| h.contains("canary") && h.contains("leaker")), "{:?}", r.energy.halted);
+        assert_eq!(r.refusals.get("canary"), Some(&1), "the first leak stops the agent: {:?}", r.refusals);
+        assert_eq!(r.rounds_completed, 0);
+        assert_eq!(r.energy.account(TRAINING), 0.0, "nothing was trained on");
+        assert_eq!(r.pool_size, 0, "and nothing entered the pool");
+        // Without the canary planted, the same agent is just an agent.
+        let (m, n) = cpu_only();
+        let plain = run_with(tiny_cfg(), vec![Box::new(Leaker(CANARY.as_bytes().to_vec()))], heldout(), m, n).expect("runs");
+        assert_eq!(plain.energy.halted, None);
+        assert_eq!(plain.rounds_completed, tiny_cfg().rounds);
+    }
+
+    #[test]
+    fn every_checkpoint_records_the_gap_between_held_out_and_proxy() {
+        let (m, n) = cpu_only();
+        let r = run(tiny_cfg(), heldout(), m, n).expect("runs");
+        assert!(!r.checkpoints.is_empty());
+        for c in &r.checkpoints {
+            assert!(c.proxy_bpb.is_finite() && c.proxy_bpb >= 0.0, "{c:?}");
+            assert!((c.gap - (c.mean_bpb - c.proxy_bpb)).abs() < 1e-12);
+        }
     }
 
     #[test]

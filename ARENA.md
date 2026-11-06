@@ -467,6 +467,34 @@ Hypervolume allocation did concentrate the budget: by the end, grammar-1
 held 30 of 48 programs. It is not the default. Deciding needs the
 multi-seed run on a quiet machine, with hardware counters (plan 3.3).
 
+## Canaries and the proxy gap (plan 7.5)
+
+`--canary <string>` plants a string in every held-out corpus. Before any
+program's output is credited, pooled or trained on, the kernel checks it for
+the canary. If an output carries it, the program is refused (`canary`) and
+the run halts with the agent's name in `report.energy.halted`, because
+held-out bytes have reached an agent. The check comes first, so a leaked
+output teaches the learners nothing. A test agent that repeats the canary
+halts the run in round 0, with nothing trained and nothing pooled. The same
+agent without a canary planted runs to the end. Removing the check fails
+the test. Canaries are off by default: planting one adds its length plus
+two bytes to each corpus, which would make held-out figures incomparable
+with every earlier run.
+
+The canary covers any route by which held-out bytes reach an agent and come
+back out in a program's output. It doesn't cover a leak that changes what an
+agent proposes without reproducing the bytes. That is what the proxy gap is
+for. Every checkpoint now records `proxy_bpb`, the learner's bits per byte
+on the pool's own data (up to 64 KiB of it), and `gap`, which is held-out
+minus proxy. The progress line prints it. The proxy is what the loop
+optimises, so a gap that widens while the proxy improves is the loop fitting
+its own data rather than learning.
+
+**Not done: evaluator refresh.** The plan rotates the held-out slice when
+the gap drifts. With the held-out corpora used here (about 28 KB each), slices would be too
+small to score reliably, and switching slices mid-run makes checkpoints
+incomparable. Refresh needs a larger held-out store first.
+
 ## The harness in MAGE (plan 5.1)
 
 The compression reward is now `arena/harness/reward.mg`, a MAGE program

@@ -166,6 +166,17 @@ impl Corpus {
         self.len == 0
     }
 
+    /// This corpus with `canary` planted in it (plan 7.5): a string no agent
+    /// should be able to write unless held-out bytes reached it. The hash and
+    /// length are of the planted bytes, so a report states what was scored.
+    pub fn with_canary(self, canary: &[u8]) -> Corpus {
+        let mut bytes = self.bytes;
+        bytes.push(b'\n');
+        bytes.extend_from_slice(canary);
+        bytes.push(b'\n');
+        Corpus::new(self.name, bytes)
+    }
+
     /// `learner`'s bits per byte on this corpus: the one way held-out bytes
     /// leave the kernel, and only as far as a `&self` method.
     pub fn score(&self, learner: &dyn ByteLearner) -> f64 {
@@ -179,6 +190,11 @@ impl Corpus {
         let _ = learner.bits_per_byte(sample);
         t.elapsed().as_secs_f64() / (sample.len().max(1) as f64 / 1024.0)
     }
+}
+
+/// Whether `output` carries `canary`: held-out bytes reached an agent.
+pub fn leaks(output: &[u8], canary: &[u8]) -> bool {
+    !canary.is_empty() && output.windows(canary.len()).any(|w| w == canary)
 }
 
 #[cfg(test)]
@@ -231,6 +247,17 @@ mod tests {
         for role in crate::agents::Role::ALL {
             assert!(ROLES.iter().any(|(r, _)| *r == role.name()), "{} is not a language role", role.name());
         }
+    }
+
+    #[test]
+    fn a_canary_is_planted_in_the_corpus_and_found_in_any_output_that_carries_it() {
+        let plain = Corpus::new("text", b"held out".to_vec());
+        let planted = Corpus::new("text", b"held out".to_vec()).with_canary(b"CANARY-1");
+        assert_eq!(planted.len(), plain.len() + 10);
+        assert_ne!(planted.sha256(), plain.sha256(), "the report names the bytes actually scored");
+        assert!(leaks(b"xxCANARY-1yy", b"CANARY-1"));
+        assert!(!leaks(b"CANARY-", b"CANARY-1"));
+        assert!(!leaks(b"anything", b""), "an empty canary detects nothing");
     }
 
     #[test]
