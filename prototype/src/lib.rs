@@ -73,6 +73,7 @@ pub mod abl_shape;
 pub mod sandbox;
 pub mod semantic_vcs;
 pub mod shape;
+pub mod solve;
 pub mod spine_bridge;
 pub mod skb;
 pub mod stdlib_ext;
