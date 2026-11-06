@@ -166,9 +166,61 @@ pub struct Report {
     /// Distinct byte sequences produced over the run, against the total — the
     /// generator-diversity figure collapse shows up in first.
     pub distinct_outputs: usize,
+    /// Distinct program shapes that produced data — the figure novelty is
+    /// measured on, and the one a seed cannot inflate.
+    pub distinct_shapes: usize,
     pub total_outputs: usize,
+    /// Evaluations answered from the cache instead of run.
+    pub cache_hits: usize,
     pub best_programs: Vec<(String, f64, String)>,
     pub hypervolume: f64,
+}
+
+/// Count-based novelty over program shapes.
+#[derive(Debug, Default)]
+pub struct Novelty {
+    seen: std::collections::HashMap<String, u32>,
+}
+
+impl Novelty {
+    /// The factor a program of this shape earns: `1 / (1 + times seen)`,
+    /// counting this occurrence afterwards.
+    pub fn discount(&mut self, shape: &str) -> f64 {
+        let n = self.seen.entry(shape.to_string()).or_insert(0);
+        let f = 1.0 / (1.0 + *n as f64);
+        *n += 1;
+        f
+    }
+
+    pub fn distinct(&self) -> usize {
+        self.seen.len()
+    }
+}
+
+/// Evaluation results by (definition hash, seed mod 256 — the argument the
+/// substrate actually passes).
+#[derive(Debug, Default)]
+pub struct EvalCache {
+    results: std::collections::HashMap<(String, u64), Outcome>,
+    pub hits: usize,
+}
+
+impl EvalCache {
+    /// Run `prepared` for `seed`, or return the cached outcome with its fuel
+    /// reported as zero, since none was spent.
+    pub fn run(&mut self, sub: &Substrate, prepared: &crate::substrate::Prepared, seed: u64) -> Outcome {
+        let key = (prepared.exact.clone(), seed % 256);
+        if let Some(o) = self.results.get(&key) {
+            self.hits += 1;
+            return match o.clone() {
+                Outcome::Bytes { bytes, .. } => Outcome::Bytes { bytes, fuel_used: 0 },
+                refused => refused,
+            };
+        }
+        let o = sub.execute(prepared, seed);
+        self.results.insert(key, o.clone());
+        o
+    }
 }
 
 /// FNV-1a over a byte sequence.
@@ -239,12 +291,17 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
     let mut rng = Rng(cfg.seed);
     let mut refusals: BTreeMap<String, usize> = BTreeMap::new();
     let mut checkpoints = Vec::new();
-    // How often each exact output has been produced. A repeat earns
-    // progress / (1 + times seen): count-based novelty, so a generator cannot
-    // hold its budget by emitting the one sequence the learner is currently
-    // absorbing. The first run collapsed onto constant byte runs without it.
-    let mut seen: std::collections::HashMap<u64, u32> = std::collections::HashMap::new();
-    let mut distinct_outputs = 0usize;
+    // Novelty is counted on a program's *shape* — its structure with
+    // constants erased (`mage_prototype::canon`) — and a repeat earns
+    // progress / (1 + times seen). It was counted on output bytes first, and
+    // the generators found `[s; k]`: constant runs keyed on the seed, new bytes
+    // every seed, one idea. Distinct outputs are still reported beside it.
+    let mut novelty = Novelty::default();
+    let mut outputs_seen: std::collections::HashSet<u64> = std::collections::HashSet::new();
+    let mut total_outputs = 0usize;
+    // Results by (definition hash, seed): a program evaluated once for a seed
+    // is never evaluated for it again, so a repeat costs no fuel.
+    let mut cache = EvalCache::default();
     let mut run_credit = vec![0.0f64; agents.len()];
     let mut run_cost = vec![0.0f64; agents.len()];
 
@@ -265,18 +322,23 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
             let mut cost = 0.0;
             for c in cands {
                 standing[ai].proposed += 1;
-                // 3. Gate and run.
+                // 3. Gate, then run — or reuse what an identical program
+                // already produced for this seed.
                 let seed = rng.next_u64();
-                match cfg.substrate.run(&c.program.source(), seed) {
+                let (outcome, shape) = match cfg.substrate.prepare(&c.program.source()) {
+                    Err((why, msg)) => (Outcome::Refused(why, msg), None),
+                    Ok(prepared) => {
+                        let outcome = cache.run(&cfg.substrate, &prepared, seed);
+                        (outcome, Some(prepared.shape))
+                    }
+                };
+                match outcome {
                     Outcome::Bytes { bytes, fuel_used } => {
                         // 4. Credit, before any learner trains on it.
                         let raw = learners.iter().map(|l| l.progress(&bytes)).sum::<f64>() / learners.len() as f64;
-                        let times = seen.entry(fingerprint(&bytes)).or_insert(0);
-                        if *times == 0 {
-                            distinct_outputs += 1;
-                        }
-                        let r = raw / (1.0 + *times as f64);
-                        *times += 1;
+                        let r = raw * novelty.discount(shape.as_deref().unwrap_or_default());
+                        total_outputs += 1;
+                        outputs_seen.insert(fingerprint(&bytes));
                         standing[ai].produced += 1;
                         standing[ai].credit += r;
                         standing[ai].fuel += fuel_used;
@@ -414,8 +476,10 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
         learners: results,
         refusals,
         pool_size: pool.entries.len(),
-        distinct_outputs,
-        total_outputs: seen.values().map(|v| *v as usize).sum(),
+        distinct_outputs: outputs_seen.len(),
+        distinct_shapes: novelty.distinct(),
+        total_outputs,
+        cache_hits: cache.hits,
         best_programs,
         hypervolume: archive.hypervolume(),
     })
@@ -478,6 +542,53 @@ mod tests {
              r.learners.iter().map(|l| l.mean_bpb.to_bits()).collect::<Vec<_>>())
         };
         assert_eq!(key(&a), key(&b), "energy and time vary; what was learned must not");
+    }
+
+    #[test]
+    fn the_seed_keyed_family_earns_one_programs_credit() {
+        // The exploit the byte-level count missed: `[s; k]` for any k, run on
+        // any seed, is one shape. Its total novelty over many (k, seed) pairs
+        // is the harmonic sum of one program's repeats, not a fresh 1.0 each.
+        let sub = Substrate { fuel: 10_000, max_bytes: 64 };
+        let mut nov = Novelty::default();
+        let mut total = 0.0;
+        let mut outputs = std::collections::HashSet::new();
+        for k in 1..=5 {
+            for seed in 0..8u64 {
+                let src = format!("@role(candidate)\nf gen(s: usize) -> [usize] {{ [s; {k}] }}");
+                let p = sub.prepare(&src).expect("valid");
+                if let Outcome::Bytes { bytes, .. } = sub.execute(&p, seed) {
+                    outputs.insert(bytes);
+                }
+                total += nov.discount(&p.shape);
+            }
+        }
+        assert_eq!(outputs.len(), 40, "the bytes really were all different");
+        assert_eq!(nov.distinct(), 1, "and it was one shape");
+        let harmonic: f64 = (1..=40).map(|n| 1.0 / n as f64).sum();
+        assert!((total - harmonic).abs() < 1e-9, "{total} vs {harmonic}");
+        assert!(total < 5.0, "40 outputs earned {total}, not 40");
+    }
+
+    #[test]
+    fn a_repeated_program_costs_no_fuel_the_second_time() {
+        let sub = Substrate { fuel: 10_000, max_bytes: 64 };
+        let mut cache = EvalCache::default();
+        let a = sub.prepare("@role(candidate)\nf gen(s: usize) -> [usize] { range(8).map(|x| x + s) }").unwrap();
+        // Alpha-equivalent, so the same definition hash.
+        let b = sub.prepare("@role(candidate)\nf gen(t: usize) -> [usize] { range(8).map(|y| y + t) }").unwrap();
+        assert_eq!(a.exact, b.exact);
+        let first = cache.run(&sub, &a, 3);
+        let again = cache.run(&sub, &b, 3 + 256);
+        match (first, again) {
+            (Outcome::Bytes { bytes: x, fuel_used: f1 }, Outcome::Bytes { bytes: y, fuel_used: f2 }) => {
+                assert_eq!(x, y);
+                assert!(f1 > 0);
+                assert_eq!(f2, 0, "a cached result spends nothing");
+            }
+            other => panic!("{other:?}"),
+        }
+        assert_eq!(cache.hits, 1);
     }
 
     #[test]

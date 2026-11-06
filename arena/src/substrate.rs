@@ -22,7 +22,7 @@
 //! failure is free and throughput is what matters.
 
 use mage_prototype::eval::{run_metered, BoundedError, Value};
-use mage_prototype::{ast, effects, hir, lexer, parser, types};
+use mage_prototype::{ast, canon, effects, hir, lexer, parser, types};
 use serde::{Deserialize, Serialize};
 
 /// Why a program produced no data.
@@ -75,41 +75,69 @@ impl Default for Substrate {
 /// The entry point every generated program declares.
 pub const ENTRY: &str = "gen";
 
+/// A program that cleared every static gate, with its content addresses.
+#[derive(Debug, Clone)]
+pub struct Prepared {
+    module: ast::Module,
+    /// `canon::definition_hash` — the same program, whatever its names.
+    pub exact: String,
+    /// `canon::shape_hash` — the same program, whatever its constants.
+    pub shape: String,
+}
+
 impl Substrate {
-    /// Check `source` and run `gen(seed)`.
+    /// Check `source` and run `gen(seed)`: [`Substrate::prepare`] then
+    /// [`Substrate::execute`].
     pub fn run(&self, source: &str, seed: u64) -> Outcome {
+        match self.prepare(source) {
+            Ok(p) => self.execute(&p, seed),
+            Err((r, why)) => Outcome::Refused(r, why),
+        }
+    }
+
+    /// Every static gate, and the program's content addresses. Split from
+    /// execution so a caller can key novelty and caching on a program's
+    /// identity before spending any fuel on it.
+    pub fn prepare(&self, source: &str) -> Result<Prepared, (Refusal, String)> {
         let module = match parser::parse(&lexer::lex(source)) {
             Ok(m) => m,
-            Err(e) => return Outcome::Refused(Refusal::Parse, e.message),
+            Err(e) => return Err((Refusal::Parse, e.message)),
         };
         if let Err(why) = check_signature(&module) {
-            return Outcome::Refused(Refusal::Signature, why);
+            return Err((Refusal::Signature, why));
         }
         let typed = types::check(&module);
         if let Some(d) = typed.diagnostics.iter().find(|d| d.severity == hir::Severity::Error) {
-            return Outcome::Refused(Refusal::Type, d.message.clone());
+            return Err((Refusal::Type, d.message.clone()));
         }
         let fx = effects::infer_effects(&module);
         if let Some(d) = fx.diagnostics.iter().find(|d| d.severity == hir::Severity::Error) {
-            return Outcome::Refused(Refusal::Effect, d.message.clone());
+            return Err((Refusal::Effect, d.message.clone()));
         }
         match fx.inferred.get(ENTRY) {
             Some(set) if set.is_empty() => {}
             Some(set) => {
                 let names: Vec<String> = set.iter().map(|e| e.to_string()).collect();
-                return Outcome::Refused(
+                return Err((
                     Refusal::Effect,
                     format!("`{ENTRY}` performs {{ {} }}; generated data must be pure", names.join(", ")),
-                );
+                ));
             }
-            None => {
-                return Outcome::Refused(Refusal::Effect, format!("no effect verdict for `{ENTRY}`"));
-            }
+            None => return Err((Refusal::Effect, format!("no effect verdict for `{ENTRY}`"))),
         }
+        let ast::ItemKind::Function(fd) = &module.items[0].kind else {
+            return Err((Refusal::Signature, "the item is not a function".into()));
+        };
+        let (exact, shape) = (canon::definition_hash(fd), canon::shape_hash(fd));
+        Ok(Prepared { module, exact, shape })
+    }
+
+    /// Run a prepared program's `gen(seed)` within fuel.
+    pub fn execute(&self, prepared: &Prepared, seed: u64) -> Outcome {
         // Seeds are kept small so `s` stays in the byte-ish range a program's
         // arithmetic was written for; the seed's job is variety, not magnitude.
         let arg = Value::Int((seed % 256) as i64);
-        let (result, fuel_used) = run_metered(&module, ENTRY, vec![arg], self.fuel);
+        let (result, fuel_used) = run_metered(&prepared.module, ENTRY, vec![arg], self.fuel);
         match result {
             Ok(Value::List(xs)) => {
                 let mut bytes = Vec::with_capacity(xs.len().min(self.max_bytes));
