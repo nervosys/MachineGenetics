@@ -513,7 +513,12 @@ impl Lineage {
                         l.apply_rollback(*from, *to, reason);
                     }
                 },
-                Entry::Adjudicated { .. } | Entry::Failure { .. } | Entry::Note { .. } => {}
+                // Calibration records describe a proposer's record, not the
+                // lineage, so replay has nothing to rebuild from them.
+                Entry::Adjudicated { .. }
+                | Entry::Calibrated { .. }
+                | Entry::Failure { .. }
+                | Entry::Note { .. } => {}
             }
         }
         Ok(Resumed { lineage: l, proposals, trailing_refusals, head })

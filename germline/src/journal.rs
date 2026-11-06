@@ -69,6 +69,19 @@ pub enum Entry {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         suite_kind: Option<crate::SuiteKind>,
     },
+    /// A proposer's prediction was scored against the measurement it made
+    /// (see [`crate::manifest`]). `trust` is the proposer's standing after this
+    /// sample. Written only for candidates that carry a manifest, so the
+    /// undirected search never produces one.
+    Calibrated {
+        generation: GenerationId,
+        proposer: String,
+        metric: String,
+        predicted: f64,
+        measured: f64,
+        score: f64,
+        trust: f64,
+    },
     /// The gate ruled.
     Adjudicated { verdict: Verdict, attestation: Option<String> },
     /// Authority moved (or was refused).
