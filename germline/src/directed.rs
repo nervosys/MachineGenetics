@@ -40,7 +40,9 @@ pub struct CandidateSpec {
     /// Whatever the search varies — scalars, and the genes the organism is
     /// built from. Opaque here; the predictor and the workload interpret it.
     pub genome: crate::variation::Genome,
-    /// Which generation it was derived from.
+    /// Which member of the population it was derived from: from
+    /// [`crate::variation::propose`], an index into the population it was
+    /// given, which the runner maps back to a generation id.
     pub parent: Option<u64>,
 }
 

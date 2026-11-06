@@ -295,12 +295,17 @@ impl<'a> Runner<'a> {
 
                     if consecutive_refusals >= self.policy.max_consecutive_refusals {
                         report.halt = Halt::SearchStalled { consecutive_refusals };
-                        report.journal_head = journal.head().cloned();
                         let _ = journal.append(Entry::Note {
                             text: format!(
                                 "halting: {consecutive_refusals} consecutive refusals — the search is not finding candidates this gate accepts"
                             ),
                         });
+                        // After the note, not before. The head was recorded
+                        // first until 2026-09-25, so a stalled run's report
+                        // anchored the journal one entry short of its end.
+                        // No test had driven a run to a stall until heredity
+                        // changed the search path.
+                        report.journal_head = journal.head().cloned();
                         return report;
                     }
                 }
@@ -334,13 +339,21 @@ impl<'a> Runner<'a> {
         journal: &mut Journal,
         workload: &mut dyn Workload,
     ) -> Result<CycleOutcome, String> {
-        // Population = the lineage's measured generations.
-        let population: Vec<(crate::variation::Genome, f64)> = lineage
-            .generations()
+        // Population = the lineage's measured generations, each with the genome
+        // it was built from, weighted for selection by its clade's
+        // productivity rather than its own score. Until 2026-09-25 the
+        // "genome" here was the generation's fitness score wrapped as a
+        // parameter, so nothing heritable passed from parent to child; that
+        // remains the fallback only for generations recorded without one.
+        let measured: Vec<&Generation> =
+            lineage.generations().iter().filter(|g| g.heldout_fitness().is_some()).collect();
+        let pop_ids: Vec<GenerationId> = measured.iter().map(|g| g.id).collect();
+        let population: Vec<(crate::variation::Genome, f64)> = measured
             .iter()
-            .filter_map(|g| {
-                g.heldout_fitness()
-                    .map(|f| (vec![Locus::param(f.composite())], f.composite()))
+            .map(|g| {
+                let own = g.heldout_fitness().map(|f| f.composite()).unwrap_or(0.0);
+                let genome = g.genome.clone().unwrap_or_else(|| vec![Locus::param(own)]);
+                (genome, lineage.clade_score(g.id).unwrap_or(own))
             })
             .collect();
         let seedpop =
@@ -434,9 +447,15 @@ impl<'a> Runner<'a> {
         }
 
         let id = lineage.next_id();
-        let parent = lineage.champion().map(|g| g.id);
+        // The generation the candidate actually derived from; the champion
+        // only when the population had no real members to derive from.
+        let parent = spec
+            .parent
+            .and_then(|i| pop_ids.get(i as usize).copied())
+            .or_else(|| lineage.champion().map(|g| g.id));
         let mut generation = Generation::new(id, artifact.clone())
             .note(format!("cycle {index}, spec {}", spec.id));
+        generation.genome = Some(spec.genome.clone());
         if let Some(p) = parent {
             generation = generation.parent(p);
         }
@@ -725,6 +744,8 @@ mod tests {
         );
         assert!(report.cycles.len() < 50);
         assert_eq!(report.promotions, 0);
+        // The report anchors the journal's actual end, halting note included.
+        assert_eq!(report.journal_head, j.head().cloned(), "a stalled run's report must anchor its whole journal");
         let _ = std::fs::remove_dir_all(path.parent().unwrap());
     }
 
@@ -795,6 +816,28 @@ mod tests {
         let mut b = policy();
         b.max_cycles += 1;
         assert_ne!(a.digest(), b.digest(), "the audit anchor must track the rules");
+    }
+
+    #[test]
+    fn generations_carry_their_genome_and_their_real_parent() {
+        let path = tmp("heredity");
+        let mut j = Journal::open(&path).unwrap();
+        let mut w = Improving::new(0.05);
+        let mut l = seeded(&mut w);
+        let ep = episode();
+        let at = attestor();
+        let mut r = Runner::new(policy(), &ep, &at, suite(), 7);
+        let report = r.run(&mut l, &mut j, &mut w);
+        assert!(report.promotions > 0);
+        let added: Vec<&Generation> = l.generations().iter().skip(1).collect();
+        assert!(!added.is_empty());
+        for g in &added {
+            let genome = g.genome.as_ref().expect("a generation records its genome");
+            assert!(!genome.is_empty());
+            let p = g.parent.expect("and its parent");
+            assert!(l.get(p).is_some(), "the parent is a generation in this lineage");
+        }
+        let _ = std::fs::remove_dir_all(path.parent().unwrap());
     }
 
     #[test]

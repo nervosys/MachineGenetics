@@ -121,6 +121,30 @@ impl Lineage {
         &self.events
     }
 
+    /// Clade productivity: the mean held-out composite fitness of `id` and
+    /// every generation descended from it — the Huxley-Gödel Machine's
+    /// measure of how good a lineage is at producing good descendants, as
+    /// opposed to how good its founder happened to be. `None` if nothing in
+    /// the clade was measured.
+    pub fn clade_score(&self, id: GenerationId) -> Option<f64> {
+        let mut members = vec![id];
+        let mut i = 0;
+        while i < members.len() {
+            let here = members[i];
+            members.extend(self.generations.iter().filter(|g| g.parent == Some(here)).map(|g| g.id));
+            i += 1;
+        }
+        let scores: Vec<f64> = members
+            .iter()
+            .filter_map(|m| self.get(*m).and_then(|g| g.heldout_fitness()).map(|f| f.composite()))
+            .collect();
+        if scores.is_empty() {
+            None
+        } else {
+            Some(scores.iter().sum::<f64>() / scores.len() as f64)
+        }
+    }
+
     pub fn generations(&self) -> &[Generation] {
         &self.generations
     }
@@ -312,6 +336,25 @@ mod tests {
             evaluator: "harness".into(),
         });
         l.add(g)
+    }
+
+    #[test]
+    fn a_productive_clade_outranks_a_better_leaf() {
+        // A scores 0.5 but its child scores 0.9; C scores 0.6 and has no
+        // children. By its own score C is better; by its clade A is (0.7) —
+        // which is the Huxley-Gödel finding the runner now selects on.
+        let mut l = Lineage::new();
+        let a = gen(&mut l, None, 0.5);
+        gen(&mut l, Some(a), 0.9);
+        let c = gen(&mut l, None, 0.6);
+        let (ca, cc) = (l.clade_score(a).unwrap(), l.clade_score(c).unwrap());
+        assert!((ca - 0.7).abs() < 1e-12, "{ca}");
+        assert!((cc - 0.6).abs() < 1e-12, "{cc}");
+        assert!(ca > cc);
+        // Grandchildren count too.
+        let b2 = l.generations().iter().find(|g| g.parent == Some(a)).unwrap().id;
+        gen(&mut l, Some(b2), 0.2);
+        assert!((l.clade_score(a).unwrap() - (0.5 + 0.9 + 0.2) / 3.0).abs() < 1e-12);
     }
 
     #[test]

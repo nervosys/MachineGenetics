@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,102** — rmi 1,384 · prototype 1,310 · ribosome 168 · germline 142 · forge 60 · arena 38 |
+| Tests | **3,104** — rmi 1,384 · prototype 1,310 · ribosome 168 · germline 144 · forge 60 · arena 38 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -553,14 +553,31 @@ test now pins. It is the default reward, and a 25M run is confirming it.
   sample extremes, which was neither reproducible nor sane (16 bits/byte);
   the second scales by fan-in.
 
+**Plan 6.4 found that germline's runner had no heredity.** Each cycle
+rebuilt the population's "genomes" as the generations' fitness scores
+wrapped in a parameter, and `Generation` stored no genome, so offspring were
+perturbations of their parents' *scores* and nothing heritable passed down.
+Generations now record the genome they were built from (serialised only when
+present, so existing journals hash identically). Variation starts from real
+genomes. Parents are weighted by **clade productivity** (`Lineage::clade_score`,
+the mean held-out fitness of a generation and all its descendants, as in the
+Huxley-Gödel Machine), and the recorded parent is the one the candidate
+actually derived from, not always the champion.
+
+**That change exposed a latent bug in the audit trail.** On the
+`SearchStalled` path, the runner recorded the report's `journal_head`
+*before* appending its halting note, so a stalled run's report anchored the
+journal one entry short of its end. No test had driven a run to a stall and
+then checked the anchor. It is fixed and break-verified.
+
 **Merging needs a person.** Local `master` carried ten commits never pushed,
 the whole 2026-09-16 phase. PR #38 therefore holds 11 commits, all
 CI-green. The attempt to merge it was refused by the permission layer as a
 merge without review, which is the right outcome for an agent. #39 (the
 arena) is stacked on #38 and retargets when #38 merges with `--delete-branch`.
 
-Counts: prototype 1,282 → **1,310**, germline 134 → **142**, arena **38** (new),
-total 3,028 → **3,102**. Pins 94 → **101**. CI jobs 10 → **11**.
+Counts: prototype 1,282 → **1,310**, germline 134 → **144**, arena **38** (new),
+total 3,028 → **3,104**. Pins 94 → **101**. CI jobs 10 → **11**.
 
 **Pre-existing, not from this change:** `cargo clippy` 0.1.98 (2026-09-01)
 reports 15 warnings in `prototype` — 14 `chunks_exact` with a constant size in
@@ -3102,7 +3119,7 @@ changed before you commit.
 
 - Prototype tests **1,066 → 1,310**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
-  across six crates **3,102**; documented-count pins **101**, up from 46 — the
+  across six crates **3,104**; documented-count pins **101**, up from 46 — the
   two newest hold the `kb`/`net` overlap the tensor-product-binding decision
   rests on, a figure that had lived in two sentences of prose with nothing
   re-deriving it.
