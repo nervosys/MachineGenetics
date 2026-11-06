@@ -241,6 +241,41 @@ compared across machines. The run also held 24 GB of GPU memory and 9 GB of
 host memory, far above what 25M parameters need. That is worth profiling
 before scaling further.
 
+## Fixing the drift: one proxy that backfired, and a direct measure
+
+**Entropy floor (run 8): backfired.** It charged every agent for program
+length (the Solomonoff prior) and paid in full only for output above 1
+bit/byte (LZ76). Noise has the highest entropy of all, so the drift reversed,
+from constants to hash-like `wrapping_mul` scans. The learner's fit to its own
+data collapsed to 8.10 bits/byte (incompressible), and held-out got worse. It
+was the same Goodhart shape as every novelty key before it: a proxy for
+structure maximised by something that is not structure. The floor is now off
+by default and kept only for the record.
+
+**Compression progress on a probe (run 9): works.** Credit is the bits a
+round's training removes from a program's output, measured on a *probe*: the
+same program run with another seed, never trained on. The first version
+re-scored the trained output itself. That measures memorisation, and a
+learner with thousands of buckets memorised pseudo-random bytes as well as
+structure (74.6 bits vs 74.6). Probed, structure generalises across outputs
+and noise does not. A test pins the difference.
+
+| 900k params | alignment (run 6) | entropy floor (run 8) | **compression, probed (run 9)** |
+|---|---|---|---|
+| best held-out code | 8.69 | 8.82 | **8.49** |
+| final held-out code | 9.39 | 9.91 | **8.73** |
+| best held-out text | 9.42 | 9.62 | **9.11** |
+| final held-out text | 10.20 | 10.49 | **9.22** |
+| fit to own data | 4.67 | 8.10 | **2.69** |
+
+The late collapse is gone: held-out oscillates near its best instead of
+degrading after round 75. The best programs are nested copies of periodic
+templates and nested counting, the regularities the paper found to transfer.
+Compression is now the default reward, and alignment stays available. Two
+things to watch are output entropy, which is low (LZ 0.62) because repetition
+is cheap to learn, and energy (76 kJ against 25 kJ), because every program is
+now also run and scored on its probe.
+
 ## What surfaced in MAGE itself
 
 The arena runs the compiler thousands of times on programs no person wrote,

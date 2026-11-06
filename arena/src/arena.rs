@@ -77,6 +77,41 @@ pub struct Config {
     pub credit_decay: f64,
     /// Wattage assumed by the wall-clock estimate of CPU energy.
     pub cpu_watts: f64,
+    /// Description-length charge per MAGE token: credit is multiplied by
+    /// `exp(-length_charge · tokens)`. The Solomonoff prior self-play
+    /// pretraining regularises its generator toward, applied to every agent's
+    /// credit rather than one agent's policy, so padding costs whoever pads.
+    pub length_charge: f64,
+    /// Output entropy floor, bits/byte (LZ76): credit is multiplied by
+    /// `min(1, lz / entropy_floor)`. **Off by default, because it was measured
+    /// to backfire:** noise has the highest entropy of all, and with the floor
+    /// on, the generator drifted from constants to hash-like programs (fit to
+    /// its own data 4.67 → 8.10 bits/byte). Kept for the record and for
+    /// experiments; `0` disables it.
+    pub entropy_floor: f64,
+    /// What a program's output is credited with.
+    pub reward: Reward,
+}
+
+/// The learning signal a program earns.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Reward {
+    /// `|⟨∇L, P ⊙ δθ⟩|` before training (Cowsik et al.): how aligned the
+    /// output's gradient is with where the learner is moving.
+    Alignment,
+    /// Compression progress (Schmidhuber), measured on a **probe**: the same
+    /// program run with a different seed, never trained on. The probe's bits
+    /// per byte before the round's training minus after it.
+    ///
+    /// The probe is the point. Re-scoring the trained output itself measures
+    /// memorisation, and the first version did exactly that: a learner with
+    /// thousands of buckets memorised pseudo-random bytes as well as structure,
+    /// and the two earned the same credit (74.6 bits vs 74.6). What a program
+    /// is worth is whether learning its output teaches the learner to predict
+    /// *more* of it: a hash-like program's outputs for two seeds are unrelated,
+    /// and a structured program's share their structure.
+    Compression,
 }
 
 impl Default for Config {
@@ -96,6 +131,11 @@ impl Default for Config {
             temperature: 0.5,
             credit_decay: 0.8,
             cpu_watts: 65.0,
+            length_charge: 0.003,
+            entropy_floor: 0.0,
+            // Measured better than alignment on every held-out figure at 900k
+            // parameters, and without the late collapse (ARENA.md, run 9).
+            reward: Reward::Compression,
         }
     }
 }
@@ -181,6 +221,34 @@ pub struct Report {
     pub hypervolume: f64,
 }
 
+/// Mean bits per byte of each sequence across learners, batched per learner.
+fn mean_bpb_many(learners: &[Box<dyn ByteLearner>], seqs: &[&[u8]]) -> Vec<f64> {
+    let mut acc = vec![0.0f64; seqs.len()];
+    for l in learners {
+        for (a, v) in acc.iter_mut().zip(l.bits_per_byte_many(seqs)) {
+            *a += v;
+        }
+    }
+    acc.into_iter().map(|a| a / learners.len() as f64).collect()
+}
+
+/// The credit multiplier for a program's length and its output's structure.
+///
+/// Added after both model sizes peaked near round 75 and then degraded as the
+/// generator drifted toward low-entropy programs — constant maps wrapped in
+/// padding (`ARENA.md`). Learning progress alone pays for constants whenever
+/// the learner is still absorbing them; these two terms make constants and
+/// padding cheap to ignore rather than profitable to repeat.
+pub fn shaping(cfg: &Config, tokens: usize, bytes: &[u8]) -> f64 {
+    let length = (-cfg.length_charge * tokens as f64).exp();
+    let structure = if cfg.entropy_floor > 0.0 {
+        (crate::measure::lz_bits_per_byte(bytes) / cfg.entropy_floor).min(1.0)
+    } else {
+        1.0
+    };
+    length * structure
+}
+
 /// Count-based novelty over program shapes.
 #[derive(Debug, Default)]
 pub struct Novelty {
@@ -260,9 +328,15 @@ fn build_agents(spec: &[(String, usize)]) -> Result<Vec<Box<dyn Proposer>>, Stri
 /// The meters available on this machine: NVML if it opens, and always the
 /// CPU wall-clock estimate.
 pub fn default_meters(cpu_watts: f64) -> (Vec<Box<dyn Meter>>, Vec<String>) {
+    meters_for(cpu_watts, None)
+}
+
+/// Meters for the listed NVML GPUs (all of them for `None`), plus the CPU
+/// estimate.
+pub fn meters_for(cpu_watts: f64, gpus: Option<&[u32]>) -> (Vec<Box<dyn Meter>>, Vec<String>) {
     let mut meters: Vec<Box<dyn Meter>> = Vec::new();
     let mut notes = Vec::new();
-    match energy::Nvml::open() {
+    match energy::Nvml::open_devices(gpus) {
         Ok(n) => {
             notes.push(format!("nvml: {} device(s), measured", n.device_count()));
             meters.push(Box::new(n));
@@ -320,11 +394,20 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
         let shares = allocate(cfg.programs_per_round, &scores, cfg.floor, cfg.temperature);
 
         let mut round_data: Vec<Vec<u8>> = Vec::new();
+        // Per agent: its scored candidates, credit and cost this round.
+        // Feedback waits until after training, because compression progress
+        // cannot be known before it.
+        let mut round_scored: Vec<Vec<Scored>> = (0..agents.len()).map(|_| Vec::new()).collect();
+        let mut round_credit = vec![0.0f64; agents.len()];
+        let mut round_cost = vec![0.0f64; agents.len()];
+        // Compression mode: (agent, index into its scored list, bytes,
+        // multiplier, bits/byte before training).
+        let mut pending: Vec<(usize, usize, Vec<u8>, f64, f64)> = Vec::new();
         for (ai, agent) in agents.iter_mut().enumerate() {
             standing[ai].last_share = shares[ai];
             // 2. Propose.
             let cands: Vec<Candidate> = agent.propose(shares[ai], &pool, &mut rng);
-            let mut scored: Vec<Scored> = Vec::with_capacity(cands.len());
+            let scored = &mut round_scored[ai];
             let mut credit = 0.0;
             let mut cost = 0.0;
             for c in cands {
@@ -332,31 +415,53 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
                 // 3. Gate, then run — or reuse what an identical program
                 // already produced for this seed.
                 let seed = rng.next_u64();
-                let (outcome, shape) = match cfg.substrate.prepare(&c.program.source()) {
-                    Err((why, msg)) => (Outcome::Refused(why, msg), None),
+                let (outcome, shape, prepared) = match cfg.substrate.prepare(&c.program.source()) {
+                    Err((why, msg)) => (Outcome::Refused(why, msg), None, None),
                     Ok(prepared) => {
                         let outcome = cache.run(&cfg.substrate, &prepared, seed);
-                        (outcome, Some(prepared.shape))
+                        (outcome, Some(prepared.shape.clone()), Some(prepared))
                     }
                 };
                 match outcome {
                     Outcome::Bytes { bytes, fuel_used } => {
-                        // 4. Credit, before any learner trains on it.
-                        let raw = learners.iter().map(|l| l.progress(&bytes)).sum::<f64>() / learners.len() as f64;
-                        let r = raw * novelty.discount(shape.as_deref().unwrap_or_default());
+                        // 4. Credit. Alignment is known now, before any
+                        // learner trains on the output; compression progress
+                        // only after.
+                        let mult = novelty.discount(shape.as_deref().unwrap_or_default())
+                            * shaping(&cfg, c.program.token_len(), &bytes);
                         total_outputs += 1;
                         lz_sum += crate::measure::lz_bits_per_byte(&bytes);
                         outputs_seen.insert(fingerprint(&bytes));
                         standing[ai].produced += 1;
-                        standing[ai].credit += r;
                         standing[ai].fuel += fuel_used;
-                        credit += r;
                         // Every candidate costs at least one unit, so a stream
                         // of instant refusals is not free.
                         cost += fuel_used.max(1) as f64;
-                        pool.add(c.program.clone(), bytes.clone(), r, agent.id(), round);
+                        match cfg.reward {
+                            Reward::Alignment => {
+                                let raw = learners.iter().map(|l| l.progress(&bytes)).sum::<f64>()
+                                    / learners.len() as f64;
+                                let r = raw * mult;
+                                standing[ai].credit += r;
+                                credit += r;
+                                pool.add(c.program.clone(), bytes.clone(), r, agent.id(), round);
+                                scored.push((c, Some(r)));
+                            }
+                            Reward::Compression => {
+                                // The probe: this program, another seed.
+                                // (The substrate takes seeds mod 256, so a
+                                // different residue is a different input.)
+                                let probe = match prepared.as_ref().map(|p| cache.run(&cfg.substrate, p, seed + 1)) {
+                                    Some(Outcome::Bytes { bytes: pb, .. }) => pb,
+                                    _ => bytes.clone(),
+                                };
+                                // Scored in one batch per learner below,
+                                // before training.
+                                pending.push((ai, scored.len(), probe, mult, 0.0));
+                                scored.push((c, None));
+                            }
+                        }
                         round_data.push(bytes);
-                        scored.push((c, Some(r)));
                     }
                     Outcome::Refused(why, _) => {
                         let key = serde_json::to_value(&why)
@@ -370,16 +475,23 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
                     }
                 }
             }
-            // 6. Feed back.
-            agent.feedback(&scored);
-            run_credit[ai] = cfg.credit_decay * run_credit[ai] + credit;
-            run_cost[ai] = cfg.credit_decay * run_cost[ai] + cost;
+            round_credit[ai] = credit;
+            round_cost[ai] = cost;
         }
 
         // Replay: revisit what taught the most, so learners do not forget it.
         for _ in 0..cfg.replay_per_round {
             if let Some(e) = pool.sample(&mut rng) {
                 round_data.push(e.bytes.clone());
+            }
+        }
+
+        // Compression mode: every probe's bits/byte before training, batched.
+        if !pending.is_empty() {
+            let probes: Vec<&[u8]> = pending.iter().map(|p| p.2.as_slice()).collect();
+            let before = mean_bpb_many(&learners, &probes);
+            for (p, b) in pending.iter_mut().zip(before) {
+                p.4 = b;
             }
         }
 
@@ -400,6 +512,29 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
                 None => joules[li] = None,
             }
             last_readings = readings;
+        }
+
+        // Compression progress on each program's probe: what the round's
+        // training taught about output it never saw, in bits, discounted by
+        // novelty and shaping.
+        let after_all = {
+            let probes: Vec<&[u8]> = pending.iter().map(|p| p.2.as_slice()).collect();
+            mean_bpb_many(&learners, &probes)
+        };
+        for ((ai, idx, probe, mult, before), after) in pending.into_iter().zip(after_all) {
+            let r = (before - after).max(0.0) * probe.len() as f64 * mult;
+            standing[ai].credit += r;
+            round_credit[ai] += r;
+            let program = round_scored[ai][idx].0.program.clone();
+            pool.add(program, probe, r, agents[ai].id(), round);
+            round_scored[ai][idx].1 = Some(r);
+        }
+
+        // 6. Feed back, now that every credit is known.
+        for (ai, agent) in agents.iter_mut().enumerate() {
+            agent.feedback(&round_scored[ai]);
+            run_credit[ai] = cfg.credit_decay * run_credit[ai] + round_credit[ai];
+            run_cost[ai] = cfg.credit_decay * run_cost[ai] + round_cost[ai];
         }
 
         if (round + 1) % cfg.eval_every == 0 || round + 1 == cfg.rounds {
@@ -609,6 +744,51 @@ mod tests {
             other => panic!("{other:?}"),
         }
         assert_eq!(cache.hits, 1);
+    }
+
+    #[test]
+    fn shaping_discounts_constants_and_padding_and_nothing_else() {
+        let cfg = Config { entropy_floor: 1.0, ..Config::default() };
+        let constant = vec![42u8; 64];
+        let structured: Vec<u8> = (0u8..64).map(|i| i % 7 * 3 + i / 9).collect();
+        // Constants earn a fraction; structure earns in full.
+        assert!(shaping(&cfg, 20, &constant) < 0.5 * shaping(&cfg, 20, &structured));
+        // Padding: the same output from a longer program earns less.
+        assert!(shaping(&cfg, 200, &structured) < shaping(&cfg, 20, &structured));
+        // Disabled, both terms are 1.
+        let off = Config { length_charge: 0.0, entropy_floor: 0.0, ..Config::default() };
+        assert_eq!(shaping(&off, 500, &constant), 1.0);
+    }
+
+    #[test]
+    fn compression_progress_on_a_probe_pays_for_structure_and_not_for_noise() {
+        // Train on one output of each program, score a *second* output of the
+        // same program. Structure generalises across outputs; pseudo-random
+        // bytes are memorised and teach nothing about the next draw. Scoring
+        // the trained output itself could not tell these apart (74.6 vs 74.6).
+        let mut l = crate::learner::Learner::new(LearnerConfig { orders: 2, log2_buckets: 8, lr: 0.05 });
+        let structured_train: Vec<u8> = b"abcabcabcabcabcabcabcabc".to_vec();
+        let structured_probe: Vec<u8> = b"bcabcabcabcabcabcabcabca".to_vec();
+        let mut rng = Rng(5);
+        let noise_train: Vec<u8> = (0..24).map(|_| rng.next_u64() as u8).collect();
+        let noise_probe: Vec<u8> = (0..24).map(|_| rng.next_u64() as u8).collect();
+        let before = (l.bits_per_byte(&structured_probe), l.bits_per_byte(&noise_probe));
+        for _ in 0..8 {
+            l.train(&[&structured_train, &noise_train]);
+        }
+        let gain = |b: f64, a: f64, n: usize| (b - a).max(0.0) * n as f64;
+        let s = gain(before.0, l.bits_per_byte(&structured_probe), structured_probe.len());
+        let n = gain(before.1, l.bits_per_byte(&noise_probe), noise_probe.len());
+        assert!(s > 2.0 * n, "structured {s} vs noise {n}");
+    }
+
+    #[test]
+    fn a_compression_run_credits_agents_and_trains() {
+        let cfg = Config { reward: Reward::Compression, ..tiny_cfg() };
+        let (m, n) = cpu_only();
+        let r = run(cfg, heldout(), m, n).expect("runs");
+        assert!(r.agents.iter().any(|a| a.credit > 0.0));
+        assert!(r.learners.iter().all(|l| l.pool_bpb < 8.0));
     }
 
     #[test]

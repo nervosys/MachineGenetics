@@ -72,6 +72,13 @@ pub trait ByteLearner {
     fn parameters(&self) -> usize;
     fn bytes_seen(&self) -> u64;
     fn describe(&self) -> String;
+    /// [`ByteLearner::bits_per_byte`] of many sequences. The default loops;
+    /// a GPU learner overrides it to score them in a few batched passes,
+    /// because compression progress scores every program's probe twice a
+    /// round and one small pass each left the GPU mostly idle.
+    fn bits_per_byte_many(&self, seqs: &[&[u8]]) -> Vec<f64> {
+        seqs.iter().map(|s| self.bits_per_byte(s)).collect()
+    }
 }
 
 /// A causal byte transformer's shape and optimiser settings.
