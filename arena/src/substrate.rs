@@ -106,6 +106,11 @@ impl Substrate {
         if let Err(why) = check_signature(&module) {
             return Err((Refusal::Signature, why));
         }
+        // MAGE-core (§4.12): the subset the kernel runs. The signature check
+        // above is this consumer's own contract; this is the language's.
+        if let Some(d) = mage_prototype::core_subset::check(&module).into_iter().next() {
+            return Err((Refusal::Signature, d.message));
+        }
         let typed = types::check(&module);
         if let Some(d) = typed.diagnostics.iter().find(|d| d.severity == hir::Severity::Error) {
             return Err((Refusal::Type, d.message.clone()));

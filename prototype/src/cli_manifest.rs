@@ -100,7 +100,7 @@ pub const MODES: &[CliMode] = &[
     },
     CliMode {
         flag: "--check",
-        args: "<file.mg> [--json]",
+        args: "<file.mg> [--json] [--core]",
         summary: "parse + typecheck + effect-check; structured diagnostics; no output files",
         effect: "read_local",
         detail: "Full front-end pass (lex, parse, resolve, typecheck, effects) without\n\
@@ -108,7 +108,9 @@ pub const MODES: &[CliMode] = &[
                  With --json: emit a deterministic, machine-readable diagnostic stream\n\
                  on stdout — {code, severity, line, col, category, message, fix} per\n\
                  diagnostic, sorted (byte-stable). Parse structurally; don't scrape prose.\n\
-                 The cheapest way for an agent to validate generated MAGE.",
+                 The cheapest way for an agent to validate generated MAGE.\n\
+                 With --core: also require MAGE-core (MAGE_SPEC.md §4.12), the subset the\n\
+                 RSI kernel runs — every function roled, no `unsafe`, only core items.",
     },
     CliMode {
         flag: "--differentiable",

@@ -418,6 +418,7 @@ const CLI_FLAGS: &[(&str, &str, bool)] = &[
     // ── Modifiers, which stack with the commands above ────────────────
     ("--json", "Report diagnostics as structured JSON (code/span/category/fix) rather than text.", false),
     ("--fix", "With `--build=abl`: attempt deterministic auto-repair before rejecting a spec.", false),
+    ("--core", "With `--check`: also require MAGE-core (MAGE_SPEC.md §4.12), the subset the RSI kernel runs.", false),
     ("--input", "With `--run=abl`: the JSON input value for the run, as the next argument.", false),
     ("--no-elision", "Skip the elision pass, so the AST is checked exactly as written.", false),
     ("--syntax=legacy", "Translate legacy syntax before lexing.", false),

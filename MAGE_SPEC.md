@@ -692,6 +692,26 @@ Exhaustion is not a fault in the program, which may have been about to finish.
 A search should treat it as *too expensive*, not *wrong*. Without a budget,
 evaluation is unbounded, as it always was.
 
+### 4.12 MAGE-core
+
+**MAGE-core** is the checked subset the RSI kernel runs on the loop's behalf:
+generated candidates, the reward, and the harness policies after them.
+`mage-parse --check --core` requires it.
+
+1. **Every function and method declares a role** (§11.6). A missing role is
+   `E0551`: code with no stated ceiling on what it may do.
+2. **No `unsafe`**, whether an `unsafe` function or an `unsafe` block.
+3. **Only core items**: functions, `struct`/`data`/`enum`, type aliases,
+   constants, effect declarations, traits, `impl`/`extend` blocks, and `spec`
+   contracts. `use` and `mod` (there is no module system, §2.3), `static`, and
+   the domain constructs the kernel does not run (`net`, `train`, `evolve`,
+   `kb`, `agent`, `swarm`) are outside it, as `E0552`.
+
+What a role allows is the effect system's business (§11.6). MAGE-core is
+structural, so the two cannot disagree about the same fact. The subset is
+deliberately small and is expected to grow, one construct at a time, as the
+kernel comes to run it.
+
 ---
 
 ## 5. Neural Computation

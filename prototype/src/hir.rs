@@ -551,6 +551,8 @@ pub enum DiagnosticCategory {
     SpecViolation,
     /// A function performs an effect its declared `@role` does not allow.
     RoleViolation,
+    /// Code outside MAGE-core (§4.12) where MAGE-core is required.
+    CoreViolation,
     /// Other.
     Other,
 }
@@ -572,6 +574,7 @@ impl DiagnosticCategory {
             DiagnosticCategory::DuplicateDefinition => "E0428",
             DiagnosticCategory::SpecViolation => "E0560",
             DiagnosticCategory::RoleViolation => "E0551",
+            DiagnosticCategory::CoreViolation => "E0552",
             DiagnosticCategory::Other => "E9999",
         }
     }
@@ -604,6 +607,9 @@ impl DiagnosticCategory {
             }
             DiagnosticCategory::DuplicateDefinition => {
                 "rename or remove one of the duplicate definitions"
+            }
+            DiagnosticCategory::CoreViolation => {
+                "remove the construct, or keep this code out of what the kernel runs"
             }
             DiagnosticCategory::RoleViolation => {
                 "remove the operation, or move it to a function whose role allows it — never widen a candidate's role"
@@ -830,6 +836,7 @@ mod diagnostic_code_tests {
             DiagnosticCategory::DuplicateDefinition,
             DiagnosticCategory::SpecViolation,
             DiagnosticCategory::RoleViolation,
+            DiagnosticCategory::CoreViolation,
             DiagnosticCategory::Other,
         ];
         let mut seen = std::collections::HashSet::new();
