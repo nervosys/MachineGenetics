@@ -5,6 +5,7 @@
 //!       [--agents grammar:2,uniform:1,mutator:1]
 //!       [--learners ng:orders:log2buckets:lr | tf:d:layers:heads:ctx:lr[:gpu] [,…]]
 //!       [--fuel F] [--cpu-watts W] [--meter-gpus <i>[,<i>…] | none] [--cost joules|fuel]
+//!       [--allocate share|hypervolume]
 //!       [--energy-budget J] [--joules-per-program J] [--definitions <forge registry dir>]
 //!       [--json <out.json>]
 //! ```
@@ -102,6 +103,13 @@ fn main() {
                     "joules" => arena::arena::CostUnit::Joules,
                     "fuel" => arena::arena::CostUnit::Fuel,
                     other => fail(format!("--cost: `{other}` is neither joules nor fuel")),
+                }
+            }
+            "--allocate" => {
+                cfg.allocation = match value(i) {
+                    "share" => arena::arena::Allocation::Share,
+                    "hypervolume" => arena::arena::Allocation::Hypervolume,
+                    other => fail(format!("--allocate: `{other}` is neither share nor hypervolume")),
                 }
             }
             "--learner-steps" => cfg.learner_steps = num(value(i), "--learner-steps") as usize,

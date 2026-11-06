@@ -153,6 +153,33 @@ pub fn allocate(total: usize, score: &[f64], floor: usize, temperature: f64) -> 
     share.into_iter().map(|s| s + floor).collect()
 }
 
+/// Programs as points on (reward ↑, cost ↓): the objective plan 7.1b
+/// allocates the budget on.
+pub const PROGRAM_SENSES: [germline::pareto::Sense; 2] =
+    [germline::pareto::Sense::Maximize, germline::pareto::Sense::Minimize];
+
+/// The hypervolume `points` add to `front` on (reward ↑, cost ↓), against
+/// `reference` (reward, cost): how much of the run's trade-off between what a
+/// program teaches and what it costs would be missing without them.
+///
+/// Plan 7.1b's credit. Each agent's is taken against the front as it stood
+/// before the round, so agents are not credited by the order they ran in,
+/// and a program dominated by earlier work, anyone's, earns nothing however
+/// well it scores alone.
+pub fn marginal_hypervolume(front: &[Vec<f64>], points: &[Vec<f64>], reference: &[f64; 2]) -> f64 {
+    use germline::pareto::hypervolume;
+    let mut with = front.to_vec();
+    with.extend(points.iter().cloned());
+    (hypervolume(&with, reference, &PROGRAM_SENSES) - hypervolume(front, reference, &PROGRAM_SENSES)).max(0.0)
+}
+
+/// The non-dominated points of `points`: all a front needs to keep, since a
+/// dominated point adds no hypervolume.
+pub fn non_dominated(points: Vec<Vec<f64>>) -> Vec<Vec<f64>> {
+    let first = germline::pareto::fronts(&points, &PROGRAM_SENSES).into_iter().next().unwrap_or_default();
+    first.into_iter().map(|i| points[i].clone()).collect()
+}
+
 // ── Agents ───────────────────────────────────────────────────────────────
 
 /// Learns production probabilities by REINFORCE, with group-normalised
@@ -326,6 +353,36 @@ mod tests {
     fn allocation_is_monotone_in_score() {
         let s = allocate(100, &[0.1, 1.0, 0.5], 1, 0.3);
         assert!(s[1] > s[2] && s[2] > s[0], "{s:?}");
+    }
+
+    #[test]
+    fn marginal_hypervolume_credits_only_what_the_front_lacked() {
+        // Front: one program teaching 2 at cost 1, against reference (0, 4):
+        // a 2 × 3 rectangle, 6.
+        let front = vec![vec![2.0, 1.0]];
+        let r = [0.0, 4.0];
+        assert!((germline::pareto::hypervolume(&front, &r, &PROGRAM_SENSES) - 6.0).abs() < 1e-12);
+        // A cheaper, weaker program is a new trade-off: its 1 × 3.5
+        // rectangle overlaps the front's by 1 × 3, so it adds 0.5.
+        let added = marginal_hypervolume(&front, &[vec![1.0, 0.5]], &r);
+        assert!((added - 0.5).abs() < 1e-12, "{added}");
+        // Dominated, or a repeat of what is there, adds nothing.
+        assert_eq!(marginal_hypervolume(&front, &[vec![1.0, 2.0]], &r), 0.0);
+        assert_eq!(marginal_hypervolume(&front, &[vec![2.0, 1.0]], &r), 0.0);
+        // Worse than the reference on either axis: nothing.
+        assert_eq!(marginal_hypervolume(&[], &[vec![-1.0, 1.0]], &r), 0.0);
+        assert_eq!(marginal_hypervolume(&[], &[vec![5.0, 9.0]], &r), 0.0);
+        // A strictly better program adds its own area less the overlap:
+        // 3 × 3.5 − 2 × 3.
+        let better = marginal_hypervolume(&front, &[vec![3.0, 0.5]], &r);
+        assert!((better - (10.5 - 6.0)).abs() < 1e-12, "{better}");
+    }
+
+    #[test]
+    fn the_front_keeps_only_what_can_add_hypervolume() {
+        let kept = non_dominated(vec![vec![2.0, 1.0], vec![1.0, 2.0], vec![1.0, 0.5], vec![3.0, 3.0]]);
+        assert_eq!(kept.len(), 3, "{kept:?}");
+        assert!(!kept.contains(&vec![1.0, 2.0]));
     }
 
     #[test]

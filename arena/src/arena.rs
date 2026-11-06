@@ -27,7 +27,10 @@
 //! It is only as honest as the joule figure beneath it, so the report carries
 //! each meter's [`crate::energy::Basis`] beside it.
 
-use crate::agents::{allocate, Candidate, GrammarAgent, MutatorAgent, Pool, Proposer, Scored, UniformAgent};
+use crate::agents::{
+    allocate, marginal_hypervolume, non_dominated, Candidate, GrammarAgent, MutatorAgent, Pool, Proposer, Scored,
+    UniformAgent,
+};
 use crate::energy::{self, Meter, Reading, Span};
 use crate::grammar::Rng;
 use crate::learner::{self, ByteLearner, LearnerSpec};
@@ -98,6 +101,27 @@ pub struct Config {
     /// canonical hash (plan 2.4). `None` publishes nothing.
     #[serde(default)]
     pub definitions_dir: Option<String>,
+    /// What an agent is credited with when the budget is divided (plan 7.1b).
+    #[serde(default)]
+    pub allocation: Allocation,
+}
+
+/// What an agent's credit is, in the credit-per-cost score that divides the
+/// budget (plan 7.1b).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Allocation {
+    /// The reward its programs earned, summed. Two agents proposing the same
+    /// good program are each credited in full.
+    #[default]
+    Share,
+    /// The hypervolume its programs added to the run's front of programs on
+    /// (reward ↑, cost ↓): credit for trade-offs the run did not already
+    /// have, so a copy of earlier work earns nothing. The cost axis's
+    /// reference is fixed at four times the costliest program of the first
+    /// round that produced any, so a program costing more than that counts
+    /// as worse than nothing on cost.
+    Hypervolume,
 }
 
 /// The unit agents are charged in (plan 7.1).
@@ -164,6 +188,7 @@ impl Default for Config {
             energy_budget: None,
             joules_per_program: None,
             definitions_dir: None,
+            allocation: Allocation::Share,
         }
     }
 }
@@ -187,6 +212,11 @@ pub struct AgentStanding {
     pub score: f64,
     pub last_share: usize,
     pub state: serde_json::Value,
+    /// Hypervolume its programs added to the run's front of programs (plan
+    /// 7.1b). Reported under either allocation; it is the credit only under
+    /// [`Allocation::Hypervolume`].
+    #[serde(default)]
+    pub hypervolume_added: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -463,6 +493,10 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
     let mut calibration = CalibrationSuite::new();
     let mut ledger = EnergyLedger::new(cfg.energy_budget);
     let mut rounds_completed = 0usize;
+    // The run's front of programs on (reward ↑, cost ↓), and the cost axis's
+    // reference, fixed by the first round that produced any (plan 7.1b).
+    let mut program_front: Vec<Vec<f64>> = Vec::new();
+    let mut cost_reference: Option<f64> = None;
 
     for round in 0..cfg.rounds {
         if ledger.exhausted() {
@@ -486,6 +520,9 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
         let mut round_scored: Vec<Vec<Scored>> = (0..agents.len()).map(|_| Vec::new()).collect();
         let mut round_credit = vec![0.0f64; agents.len()];
         let mut round_cost = vec![0.0f64; agents.len()];
+        // Each scored candidate's own cost, in the cost unit, in step with
+        // `round_scored`.
+        let mut round_costs: Vec<Vec<f64>> = (0..agents.len()).map(|_| Vec::new()).collect();
         // Compression mode: (agent, index into its scored list, bytes,
         // multiplier, bits/byte before training).
         // (agent, index, probe, [seen, tokens, structure], before)
@@ -513,8 +550,10 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
                     *refusals.entry("budget".into()).or_insert(0) += 1;
                     cost += 1.0;
                     scored.push((c, None));
+                    round_costs[ai].push(1.0);
                     continue;
                 }
+                let cost_at = cost;
                 let span = Span::start(&mut meters);
                 let fuel_at = cache.fuel_spent;
                 // 3. Gate, then run — or reuse what an identical program
@@ -582,13 +621,18 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
                     }
                 }
                 let (_, r) = span.stop(&mut meters);
-                if let Some((j, measured)) = ledger.charge(PROGRAMS, &r) {
+                let charged = ledger.charge(PROGRAMS, &r);
+                if let Some((j, measured)) = charged {
                     round_joules[ai] += j;
                     calibration.add_energy_sample(
                         PROGRAM_TARGET,
                         EnergySample { fuel: cache.fuel_spent - fuel_at, joules: j, measured },
                     );
                 }
+                round_costs[ai].push(match (cfg.cost_unit, charged) {
+                    (CostUnit::Joules, Some((j, _))) if j > 0.0 => j,
+                    _ => cost - cost_at,
+                });
             }
             round_credit[ai] = credit;
             // Plan 7.1: charged the joules its own actions measured. Without
@@ -674,6 +718,40 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
             let program = round_scored[ai][idx].0.program.clone();
             pool.add(program, probe, r, agents[ai].id(), round);
             round_scored[ai][idx].1 = Some(r);
+        }
+
+        // Every program's point on (reward ↑, cost ↓), and what each agent's
+        // added to the front as it stood before the round (plan 7.1b).
+        let points: Vec<Vec<Vec<f64>>> = (0..agents.len())
+            .map(|ai| {
+                round_scored[ai]
+                    .iter()
+                    .zip(&round_costs[ai])
+                    .filter_map(|((_, r), c)| r.map(|r| vec![r, *c]))
+                    .collect()
+            })
+            .collect();
+        if cost_reference.is_none() {
+            let costliest = points.iter().flatten().map(|p| p[1]).fold(0.0f64, f64::max);
+            if costliest > 0.0 {
+                cost_reference = Some(4.0 * costliest);
+            }
+        }
+        if let Some(cost_ref) = cost_reference {
+            let reference = [0.0, cost_ref];
+            for ai in 0..agents.len() {
+                let added = marginal_hypervolume(&program_front, &points[ai], &reference);
+                standing[ai].hypervolume_added += added;
+                if cfg.allocation == Allocation::Hypervolume {
+                    round_credit[ai] = added;
+                }
+            }
+            let mut all = std::mem::take(&mut program_front);
+            all.extend(points.into_iter().flatten());
+            program_front = non_dominated(all);
+        } else if cfg.allocation == Allocation::Hypervolume {
+            // Nothing produced yet, so nothing added.
+            round_credit.iter_mut().for_each(|c| *c = 0.0);
         }
 
         // 6. Feed back, now that every credit is known.
@@ -851,6 +929,27 @@ mod tests {
         assert!(r.agents.iter().any(|a| a.credit > 0.0));
         assert!(r.learners.iter().any(|l| l.on_front));
         assert!(r.pool_size > 0);
+    }
+
+    #[test]
+    fn hypervolume_allocation_credits_new_trade_offs_and_still_spends_the_budget() {
+        let (m, n) = cpu_only();
+        let r = run(Config { allocation: Allocation::Hypervolume, ..tiny_cfg() }, heldout(), m, n).expect("runs");
+        let proposed: usize = r.agents.iter().map(|a| a.proposed).sum();
+        assert_eq!(proposed, 6 * 16, "the budget is spent exactly");
+        assert!(r.agents.iter().any(|a| a.hypervolume_added > 0.0), "{:?}", r.agents);
+        assert!(r.agents.iter().all(|a| a.hypervolume_added.is_finite() && a.hypervolume_added >= 0.0));
+        // The score that divided the budget is hypervolume per unit cost, so
+        // an agent that added none scores zero.
+        for a in &r.agents {
+            if a.hypervolume_added == 0.0 {
+                assert_eq!(a.score, 0.0, "{}", a.id);
+            }
+        }
+        // Reported under the default allocation too, without driving it.
+        let (m, n) = cpu_only();
+        let share = run(tiny_cfg(), heldout(), m, n).expect("runs");
+        assert!(share.agents.iter().any(|a| a.hypervolume_added > 0.0));
     }
 
     /// A hardware counter that reads exactly 1 J per span, so a run's
