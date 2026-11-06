@@ -562,6 +562,9 @@ pub enum DiagnosticCategory {
     RoleViolation,
     /// Code outside MAGE-core (§4.12) where MAGE-core is required.
     CoreViolation,
+    /// A tunable `@param` declaration whose domain is malformed, whose value
+    /// is not a literal, or whose value lies outside its domain.
+    ParamDomain,
     /// Other.
     Other,
 }
@@ -584,6 +587,7 @@ impl DiagnosticCategory {
             DiagnosticCategory::SpecViolation => "E0560",
             DiagnosticCategory::RoleViolation => "E0551",
             DiagnosticCategory::CoreViolation => "E0552",
+            DiagnosticCategory::ParamDomain => "E0553",
             DiagnosticCategory::Other => "E9999",
         }
     }
@@ -625,6 +629,9 @@ impl DiagnosticCategory {
             }
             DiagnosticCategory::SpecViolation => {
                 "satisfy the contract (@req/@ens/@inv) or correct the contract"
+            }
+            DiagnosticCategory::ParamDomain => {
+                "give the constant a literal value inside its @param domain, or correct the domain (`@param(lo, hi)` with lo <= hi, or `@param(in, a, b, ...)`)"
             }
             DiagnosticCategory::Other => "see the message for details",
         }
@@ -846,6 +853,7 @@ mod diagnostic_code_tests {
             DiagnosticCategory::SpecViolation,
             DiagnosticCategory::RoleViolation,
             DiagnosticCategory::CoreViolation,
+            DiagnosticCategory::ParamDomain,
             DiagnosticCategory::Other,
         ];
         let mut seen = std::collections::HashSet::new();
