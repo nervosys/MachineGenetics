@@ -197,6 +197,9 @@ impl Default for Config {
 pub struct AgentStanding {
     pub id: String,
     pub kind: String,
+    /// The role it acts in (plan 7.2).
+    #[serde(default)]
+    pub role: crate::agents::Role,
     pub proposed: usize,
     pub produced: usize,
     pub refusals: BTreeMap<String, usize>,
@@ -456,7 +459,12 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
     let mut agents = build_agents(&cfg.agents)?;
     let mut standing: Vec<AgentStanding> = agents
         .iter()
-        .map(|a| AgentStanding { id: a.id().to_string(), kind: a.kind().to_string(), ..Default::default() })
+        .map(|a| AgentStanding {
+            id: a.id().to_string(),
+            kind: a.kind().to_string(),
+            role: a.role(),
+            ..Default::default()
+        })
         .collect();
     // The compression reward is a MAGE program (plan 5.1), gated at load.
     let reward_program = match (cfg.reward, &cfg.reward_program) {
@@ -536,7 +544,8 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
             let span = Span::start(&mut meters);
             let cands: Vec<Candidate> = agent.propose(shares[ai], &pool, &mut rng);
             let (_, r) = span.stop(&mut meters);
-            round_joules[ai] += ledger.charge(PROGRAMS, &r).map_or(0.0, |(j, _)| j);
+            let role = agent.role().name();
+            round_joules[ai] += ledger.charge_role(PROGRAMS, role, &r).map_or(0.0, |(j, _)| j);
             let allowance = cfg.joules_per_program.map(|p| p * shares[ai] as f64);
             let scored = &mut round_scored[ai];
             let mut credit = 0.0;
@@ -621,7 +630,7 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
                     }
                 }
                 let (_, r) = span.stop(&mut meters);
-                let charged = ledger.charge(PROGRAMS, &r);
+                let charged = ledger.charge_role(PROGRAMS, role, &r);
                 if let Some((j, measured)) = charged {
                     round_joules[ai] += j;
                     calibration.add_energy_sample(
@@ -929,6 +938,22 @@ mod tests {
         assert!(r.agents.iter().any(|a| a.credit > 0.0));
         assert!(r.learners.iter().any(|l| l.on_front));
         assert!(r.pool_size > 0);
+    }
+
+    #[test]
+    fn agents_act_in_roles_and_the_ledger_accounts_their_energy_by_role() {
+        let (m, n) = cpu_only();
+        let r = run(tiny_cfg(), heldout(), m, n).expect("runs");
+        let role = |id: &str| r.agents.iter().find(|a| a.id.starts_with(id)).map(|a| a.role);
+        assert_eq!(role("grammar"), Some(crate::agents::Role::Proposer));
+        assert_eq!(role("uniform"), Some(crate::agents::Role::Proposer));
+        assert_eq!(role("mutator"), Some(crate::agents::Role::Mutator));
+        // Every agent joule is attributed to a role, and only agents' spans
+        // are: training and probes stay out of it.
+        let by_role: f64 = r.energy.by_role.values().sum();
+        assert!((by_role - r.energy.account(PROGRAMS)).abs() < 1e-6, "{by_role} vs {}", r.energy.account(PROGRAMS));
+        assert!(r.energy.by_role.keys().all(|k| k == "proposer" || k == "mutator"), "{:?}", r.energy.by_role);
+        assert!(r.energy.by_role.get("mutator").is_some_and(|j| *j > 0.0));
     }
 
     #[test]
