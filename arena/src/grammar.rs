@@ -69,6 +69,12 @@ pub enum ListExpr {
     Sort(Box<ListExpr>),
     Take(Box<ListExpr>, u64),
     Concat(Box<ListExpr>, Box<ListExpr>),
+    /// `flatten([xs; n])` — xs, n times over. Copying.
+    Copy(Box<ListExpr>, u64),
+    /// `range(len).map(|v| [e₀, …, eₖ₋₁][v % k])` — a periodic template.
+    Cycle(String, Vec<IntExpr>, u64),
+    /// `flatten(range(n).map(|v| range(v % k + 1)))` — nested counting.
+    Nest(String, u64, u64),
 }
 
 /// A whole generated program: `f gen(s: usize) -> [usize] { body }`.
@@ -160,6 +166,24 @@ impl ListExpr {
                 b.render(out);
                 out.push_str("])");
             }
+            ListExpr::Copy(xs, n) => {
+                out.push_str("flatten([");
+                xs.render(out);
+                out.push_str(&format!("; {n}])"));
+            }
+            ListExpr::Cycle(v, elems, len) => {
+                out.push_str(&format!("range({len}).map(|{v}| ["));
+                for (i, e) in elems.iter().enumerate() {
+                    if i > 0 {
+                        out.push_str(", ");
+                    }
+                    e.render(out);
+                }
+                out.push_str(&format!("][{v} % {}])", elems.len()));
+            }
+            ListExpr::Nest(v, n, k) => {
+                out.push_str(&format!("flatten(range({n}).map(|{v}| range({v} % {k} + 1)))"));
+            }
         }
     }
 
@@ -173,6 +197,9 @@ impl ListExpr {
                 1 + xs.size()
             }
             ListExpr::Concat(a, b) => 1 + a.size() + b.size(),
+            ListExpr::Copy(xs, _) => 1 + xs.size(),
+            ListExpr::Cycle(_, elems, _) => 1 + elems.iter().map(IntExpr::size).sum::<usize>(),
+            ListExpr::Nest(..) => 1,
         }
     }
 }
@@ -232,8 +259,19 @@ impl Rng {
 // ── The policy ───────────────────────────────────────────────────────────
 
 /// List productions, in logit order.
-pub const LIST_RULES: [&str; 9] =
-    ["range", "repeat", "map", "scan", "filter", "reverse", "sort", "take", "concat"];
+///
+/// `copy`, `cycle` and `nest` were added on 2026-09-25 after the transformer
+/// learner could fit the generated data only to 5.9 bits per byte: chained
+/// modular arithmetic hashes its inputs, so most programs emitted noise, and
+/// the only learnable structure was constant runs. These three produce the
+/// regularities self-play pretraining found to transfer — copying, periodic
+/// templates, and nested (recursive) counting.
+pub const LIST_RULES: [&str; 12] = [
+    "range", "repeat", "map", "scan", "filter", "reverse", "sort", "take", "concat", "copy", "cycle", "nest",
+];
+
+/// List productions allowed at the depth limit: the leaves.
+const LIST_LEAVES: [usize; 4] = [0, 1, 10, 11];
 /// Integer productions, in logit order.
 pub const INT_RULES: [&str; 6] = ["lit", "var", "add", "sub", "mul", "mod"];
 
@@ -297,7 +335,7 @@ impl Sampler<'_> {
         let probs = softmax(&self.policy.list_logits);
         // At the depth limit only leaves are allowed.
         let leaf = depth >= MAX_DEPTH;
-        let allowed: Vec<bool> = (0..LIST_RULES.len()).map(|i| !leaf || i <= 1).collect();
+        let allowed: Vec<bool> = (0..LIST_RULES.len()).map(|i| !leaf || LIST_LEAVES.contains(&i)).collect();
         let rule = pick(self.rng, &probs, &allowed);
         self.trace.push(Choice { list: true, rule });
         match rule {
@@ -326,10 +364,27 @@ impl Sampler<'_> {
             5 => ListExpr::Reverse(Box::new(self.list(depth + 1, scope))),
             6 => ListExpr::Sort(Box::new(self.list(depth + 1, scope))),
             7 => ListExpr::Take(Box::new(self.list(depth + 1, scope)), self.rng.range(1, MAX_LEN)),
-            _ => ListExpr::Concat(
+            8 => ListExpr::Concat(
                 Box::new(self.list(depth + 1, scope)),
                 Box::new(self.list(depth + 1, scope)),
             ),
+            9 => ListExpr::Copy(Box::new(self.list(depth + 1, scope)), self.rng.range(2, 6)),
+            10 => {
+                // Template elements are literals or `s` — never arithmetic,
+                // which is what hashed the output in the first place.
+                let k = self.rng.range(2, 6) as usize;
+                let elems = (0..k)
+                    .map(|_| {
+                        if self.rng.next_f64() < 0.25 {
+                            IntExpr::Var(scope[self.rng.below(scope.len())].clone())
+                        } else {
+                            IntExpr::Lit(self.rng.range(0, 255))
+                        }
+                    })
+                    .collect();
+                ListExpr::Cycle(self.var(), elems, self.rng.range(4, MAX_LEN))
+            }
+            _ => ListExpr::Nest(self.var(), self.rng.range(2, 12), self.rng.range(2, 8)),
         }
     }
 
@@ -402,7 +457,8 @@ fn list_paths(e: &ListExpr, here: Vec<usize>, out: &mut Vec<Vec<usize>>) {
         | ListExpr::Sort(xs)
         | ListExpr::Take(xs, _) => vec![xs],
         ListExpr::Concat(a, b) => vec![a, b],
-        ListExpr::Range(_) | ListExpr::Repeat(..) => vec![],
+        ListExpr::Copy(xs, _) => vec![xs],
+        ListExpr::Range(_) | ListExpr::Repeat(..) | ListExpr::Cycle(..) | ListExpr::Nest(..) => vec![],
     };
     for (i, k) in kids.into_iter().enumerate() {
         let mut p = here.clone();
@@ -419,7 +475,8 @@ fn at_mut<'a>(e: &'a mut ListExpr, path: &[usize]) -> &'a mut ListExpr {
         | ListExpr::Filter(xs, ..)
         | ListExpr::Reverse(xs)
         | ListExpr::Sort(xs)
-        | ListExpr::Take(xs, _) => xs,
+        | ListExpr::Take(xs, _)
+        | ListExpr::Copy(xs, _) => xs,
         ListExpr::Concat(a, b) => {
             if first == 0 {
                 a
@@ -440,7 +497,8 @@ fn at<'a>(e: &'a ListExpr, path: &[usize]) -> &'a ListExpr {
         | ListExpr::Filter(xs, ..)
         | ListExpr::Reverse(xs)
         | ListExpr::Sort(xs)
-        | ListExpr::Take(xs, _) => xs,
+        | ListExpr::Take(xs, _)
+        | ListExpr::Copy(xs, _) => xs,
         ListExpr::Concat(a, b) => {
             if first == 0 {
                 a
@@ -490,6 +548,9 @@ fn closed(e: &ListExpr, scope: &mut Vec<String>) -> bool {
             closed(xs, scope)
         }
         ListExpr::Concat(a, b) => closed(a, scope) && closed(b, scope),
+        ListExpr::Copy(xs, _) => closed(xs, scope),
+        ListExpr::Cycle(_, elems, _) => elems.iter().all(|e| int_closed(e, scope)),
+        ListExpr::Nest(..) => true,
     }
 }
 
@@ -531,6 +592,9 @@ fn freshen(e: &mut ListExpr, tag: &str) {
             freshen(a, tag);
             freshen(b, tag);
         }
+        ListExpr::Copy(xs, _) => freshen(xs, tag),
+        // The bound variable is used only in the rendering, never in `elems`.
+        ListExpr::Cycle(v, ..) | ListExpr::Nest(v, ..) => *v = format!("{v}{tag}"),
         ListExpr::Range(_) | ListExpr::Repeat(..) => {}
     }
 }
@@ -644,6 +708,26 @@ mod tests {
                         child.source()
                     );
                 }
+            }
+        }
+    }
+
+    #[test]
+    fn the_structural_productions_render_to_checked_mage_with_the_intended_output() {
+        let sub = Substrate { fuel: 50_000, max_bytes: 256 };
+        let cases = [
+            (ListExpr::Copy(Box::new(ListExpr::Range(3)), 3), vec![0, 1, 2, 0, 1, 2, 0, 1, 2]),
+            (
+                ListExpr::Cycle("v".into(), vec![IntExpr::Lit(9), IntExpr::Var("s".into())], 5),
+                vec![9, 4, 9, 4, 9],
+            ),
+            (ListExpr::Nest("v".into(), 4, 3), vec![0, 0, 1, 0, 1, 2, 0]),
+        ];
+        for (body, want) in cases {
+            let p = Program { body };
+            match sub.run(&p.source(), 4) {
+                Outcome::Bytes { bytes, .. } => assert_eq!(bytes, want, "{}", p.source()),
+                other => panic!("{other:?}\n{}", p.source()),
             }
         }
     }
