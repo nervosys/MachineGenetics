@@ -2465,39 +2465,119 @@ pub fn run_metered(
     (result.map(Portable::into_value), spent)
 }
 
+/// One fuel-bounded run, handed to a worker thread. Owned, because the worker
+/// outlives the call that sent it: the module is cloned (`Interp::new` clones
+/// every function definition anyway, so this costs no more than a run does).
+struct Job {
+    module: Module,
+    name: String,
+    args: Vec<Portable>,
+    fuel: u64,
+    reply: std::sync::mpsc::Sender<(Result<Portable, BoundedError>, u64)>,
+}
+
+/// A worker thread that runs jobs sent to it, one at a time.
+struct Worker {
+    jobs: std::sync::mpsc::Sender<Job>,
+    /// Which thread this is; read by the worker-reuse test.
+    #[allow(dead_code)]
+    thread: std::thread::ThreadId,
+}
+
+thread_local! {
+    /// The worker serving runs started from this thread, spawned on first use.
+    /// One per caller rather than one shared pool, so parallel callers never
+    /// queue behind each other.
+    static WORKER: std::cell::RefCell<Option<Worker>> = const { std::cell::RefCell::new(None) };
+}
+
+/// Where a run happens. Spawning a thread with a 256 MB stack costs milliseconds
+/// and dwarfs a small program's run (about 50-130 µs), so the thread is kept
+/// and reused. The stack is what matters: 256 MAGE calls are many Rust frames
+/// each, and on a caller's 2 MB test thread the process overflowed well before
+/// the depth bound fired.
 fn run_on_bounded_thread(
     module: &Module,
     name: &str,
     args: Vec<Portable>,
     fuel: u64,
 ) -> (Result<Portable, BoundedError>, u64) {
-    // On a thread of its own, with a stack sized for the depth bound. A depth
-    // limit means nothing without a known stack beneath it: 256 MAGE calls is
-    // many Rust frames each, and on a caller's 2 MB test thread the process
-    // overflowed well before the bound fired. `Value` holds `Rc`, so arguments
-    // and the result cross the thread boundary as plain integers and lists.
-    std::thread::scope(|scope| {
-        let spawned = std::thread::Builder::new()
-            .stack_size(BOUNDED_STACK_BYTES)
-            .spawn_scoped(scope, move || {
-                let interp = Interp::with_fuel(module, fuel);
-                let args = args.into_iter().map(Portable::into_value).collect();
-                let result = match interp.run(name, args) {
-                    Ok(v) => Portable::from_value(&v),
-                    Err(e) if e == FUEL_EXHAUSTED => Err(BoundedError::FuelExhausted),
-                    Err(e) => Err(BoundedError::Error(e)),
-                };
-                (result, fuel - interp.fuel_left().unwrap_or(0))
-            });
-        match spawned {
-            Err(e) => (Err(BoundedError::Error(format!("spawn evaluator thread: {e}"))), 0),
-            // A panic (integer overflow in a debug build, say) spent an unknown
-            // amount; report the whole budget rather than pretend it was free.
-            Ok(handle) => handle
-                .join()
-                .unwrap_or_else(|_| (Err(BoundedError::Error("evaluator thread panicked".into())), fuel)),
+    let (reply, outcome) = std::sync::mpsc::channel();
+    let mut job = Job { module: module.clone(), name: name.to_string(), args, fuel, reply };
+    // A worker whose thread has died is replaced, and the job retried once.
+    for _ in 0..2 {
+        let jobs = match WORKER.with(|slot| worker_jobs(&mut slot.borrow_mut())) {
+            Ok(jobs) => jobs,
+            Err(e) => return (Err(BoundedError::Error(format!("spawn evaluator thread: {e}"))), 0),
+        };
+        match jobs.send(job) {
+            Ok(()) => {
+                // The worker answers every job it accepts (a panic included), so
+                // this fails only if the thread is gone after taking the job.
+                return outcome.recv().unwrap_or_else(|_| {
+                    WORKER.with(|slot| *slot.borrow_mut() = None);
+                    (Err(BoundedError::Error("evaluator thread panicked".into())), fuel)
+                });
+            }
+            // The worker died while idle: the job came back, so send it again.
+            Err(std::sync::mpsc::SendError(back)) => {
+                WORKER.with(|slot| *slot.borrow_mut() = None);
+                job = back;
+            }
         }
-    })
+    }
+    (Err(BoundedError::Error("evaluator thread unavailable".into())), 0)
+}
+
+/// The sender to the caller's worker, spawning the worker if there is none.
+fn worker_jobs(slot: &mut Option<Worker>) -> std::io::Result<std::sync::mpsc::Sender<Job>> {
+    if let Some(worker) = slot {
+        return Ok(worker.jobs.clone());
+    }
+    let (jobs, inbox) = std::sync::mpsc::channel::<Job>();
+    let handle = std::thread::Builder::new()
+        .stack_size(BOUNDED_STACK_BYTES)
+        .spawn(move || {
+            // Ends when the caller's thread exits and drops the sender.
+            for job in inbox {
+                let Job { module, name, args, fuel, reply } = job;
+                let run = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    #[cfg(test)]
+                    if name == PANIC_TEST_ENTRY {
+                        panic!("deliberate panic for the worker test");
+                    }
+                    let interp = Interp::with_fuel(&module, fuel);
+                    let args = args.into_iter().map(Portable::into_value).collect();
+                    let result = match interp.run(&name, args) {
+                        Ok(v) => Portable::from_value(&v),
+                        Err(e) if e == FUEL_EXHAUSTED => Err(BoundedError::FuelExhausted),
+                        Err(e) => Err(BoundedError::Error(e)),
+                    };
+                    (result, fuel - interp.fuel_left().unwrap_or(0))
+                }));
+                // A panic (integer overflow in a debug build, say) spent an
+                // unknown amount; report the whole budget rather than pretend it
+                // was free. The panic is caught, so this worker serves the next run.
+                let outcome = run.unwrap_or_else(|_| {
+                    (Err(BoundedError::Error("evaluator thread panicked".into())), fuel)
+                });
+                // The caller may have stopped waiting; nothing to do then.
+                let _ = reply.send(outcome);
+            }
+        })?;
+    let worker = Worker { jobs: jobs.clone(), thread: handle.thread().id() };
+    *slot = Some(worker);
+    Ok(jobs)
+}
+
+/// The worker test's panic trigger: a run of this name panics inside the worker.
+#[cfg(test)]
+const PANIC_TEST_ENTRY: &str = "__worker_test_panic__";
+
+/// The id of the worker serving this thread, if it has one yet.
+#[cfg(test)]
+fn this_thread_worker() -> Option<std::thread::ThreadId> {
+    WORKER.with(|slot| slot.borrow().as_ref().map(|w| w.thread))
 }
 
 /// Stack for a fuel-bounded run. Reserved address space, not committed memory.
@@ -2740,6 +2820,54 @@ mod tests {
         let (r3, spent3) = run_metered(&module, "g", vec![], 5);
         assert_eq!(r3, Err(BoundedError::FuelExhausted));
         assert_eq!(spent3, 5);
+    }
+
+    #[test]
+    fn bounded_runs_on_one_thread_share_one_worker() {
+        let module = crate::parser::parse(&crate::lexer::lex("f g() -> i64 { 1 + 1 }")).expect("parses");
+        assert_eq!(run_bounded(&module, "g", vec![], 1000), Ok(Value::Int(2)));
+        let first = this_thread_worker().expect("the first run starts a worker");
+        assert_eq!(run_bounded(&module, "g", vec![], 1000), Ok(Value::Int(2)));
+        assert_eq!(this_thread_worker(), Some(first), "the second run reused the worker");
+    }
+
+    #[test]
+    fn a_run_that_panics_or_overflows_leaves_the_worker_able_to_run() {
+        let module = crate::parser::parse(&crate::lexer::lex("f g() -> i64 { 1 + 1 }")).expect("parses");
+        assert_eq!(run_bounded(&module, "g", vec![], 1000), Ok(Value::Int(2)));
+        let worker = this_thread_worker();
+
+        // A panic inside the evaluator thread is reported as an error, with the
+        // whole budget spent, as the scoped thread's `join` error was before.
+        let (r, spent) = run_metered(&module, PANIC_TEST_ENTRY, vec![], 1000);
+        assert_eq!(r, Err(BoundedError::Error("evaluator thread panicked".into())));
+        assert_eq!(spent, 1000);
+        assert_eq!(this_thread_worker(), worker, "a caught panic keeps the worker");
+        assert_eq!(run_bounded(&module, "g", vec![], 1000), Ok(Value::Int(2)));
+
+        // Integer overflow is an ordinary error, not a panic; the next run is fine.
+        let overflow = crate::parser::parse(&crate::lexer::lex(
+            "f g() -> i64 { 9223372036854775807 + 1 }",
+        ))
+        .expect("parses");
+        match run_bounded(&overflow, "g", vec![], 1000) {
+            Err(BoundedError::Error(e)) => assert!(e.contains("overflow"), "{e}"),
+            other => panic!("expected an overflow error, got {other:?}"),
+        }
+        assert_eq!(run_bounded(&module, "g", vec![], 1000), Ok(Value::Int(2)));
+    }
+
+    /// Wall-clock cost of 1,000 trivial bounded runs. Ignored: it measures, it
+    /// checks nothing. `cargo test bounded_run_cost -- --ignored --nocapture`.
+    #[test]
+    #[ignore]
+    fn bounded_run_cost() {
+        let module = crate::parser::parse(&crate::lexer::lex("f g() -> i64 { 1 + 1 }")).expect("parses");
+        let start = std::time::Instant::now();
+        for _ in 0..1000 {
+            assert_eq!(run_bounded(&module, "g", vec![], 1000), Ok(Value::Int(2)));
+        }
+        eprintln!("1000 bounded runs: {:?}", start.elapsed());
     }
 
     // ── `grad` — forward-mode automatic differentiation (§5.6) ───────────
