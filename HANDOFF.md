@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,134** — rmi 1,384 · prototype 1,322 · ribosome 168 · germline 146 · forge 60 · arena 54 |
+| Tests | **3,140** — rmi 1,384 · prototype 1,322 · ribosome 168 · germline 147 · forge 63 · arena 56 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -481,7 +481,7 @@ what the typechecker enforces**. D4, the LLM proposer, is still open.
 single-shot decision "§11.6", and that decision is a `####` inside §11.5.
 §11.6 is now Roles.
 
-**Phase 2, content addressing, is done except 2.4** (definitions in forge).
+**Phase 2, content addressing, is done**; 2.4 (definitions in forge) landed on 2026-09-29, below.
 `mage_prototype::canon` hashes a definition's normal form: bound names become
 `_0, _1, …` in binding order, with shadowing respected, and the function's own
 name is dropped. A second, shape hash also erases literal values. Both are
@@ -729,6 +729,30 @@ programs gives 1.55 J fixed + 3.8·10⁻⁵ J/fuel, so the fixed part is about 9
 of a program's energy. ARENA.md has the table.
 
 Counts: arena 53 → **54**, total 3,133 → **3,134**.
+
+**Plan 2.4: definitions live in forge by canonical hash, and the journal
+attributes by hash.** This completes phase 2.
+- **forge.** `registry::DefinitionStore` stores a definition under its
+  canonical hash, so alpha-equivalent definitions are one entry, counted per
+  publish, keeping the first source. forge parses no MAGE, so the hash comes
+  from a `Canonicalizer` supplied by the caller, the same seam `EffectOracle`
+  is for effects. The store asks it for the exact bytes being stored and never
+  accepts a hash from its caller: a caller that could name the hash could file
+  one definition under another's address. A hash that isn't plain
+  alphanumerics is refused (it becomes a file name), and a source edited after
+  publishing fails verification on read.
+- **arena.** `Substrate` is the canonicalizer, through every candidate gate,
+  so only admissible programs get an address. `best_programs` now carry their
+  canonical hash, and `--definitions <dir>` publishes them to a forge registry.
+- **germline.** `Generation.definitions` and the journal's `Proposed` entries
+  record the hashes a candidate was built from, supplied by a new
+  `Workload::attribution` (empty by default). Both fields are skipped when
+  empty, so journals written before them hash as they did. A test pins that.
+  `ArenaWorkload` attributes each session to its best programs, and the arena's
+  succession test checks every `Proposed` entry names them. Break-verified.
+
+Counts: germline 146 → **147**, forge 60 → **63**, arena 54 → **56**, total
+3,134 → **3,140**.
 
 **Pre-existing, not from this change:** `cargo clippy` 0.1.98 (2026-09-01)
 reports 15 warnings in `prototype` — 14 `chunks_exact` with a constant size in
@@ -3270,7 +3294,7 @@ changed before you commit.
 
 - Prototype tests **1,066 → 1,322**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
-  across six crates **3,134**; documented-count pins **101**, up from 46 — the
+  across six crates **3,140**; documented-count pins **101**, up from 46 — the
   two newest hold the `kb`/`net` overlap the tensor-product-binding decision
   rests on, a figure that had lived in two sentences of prose with nothing
   re-deriving it.

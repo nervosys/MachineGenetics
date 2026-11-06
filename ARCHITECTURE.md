@@ -184,9 +184,9 @@ are **six independent Cargo workspaces**:
 | `RecursiveMachineIntelligence/` | `rmi` | 1,384 | The low-level neurosymbolic framework. Feature-gated (`cpu` / `gpu` / `cuda`); build with `--no-default-features --features cpu` for the portable set |
 | `prototype/` | `mage-prototype` | 1,322 | Compiler, evaluator, ABL, RAP server. Path-depends on `rmi` |
 | `ribosome/` | `ribosome` | 168 | The distributed build engine. Depends on nothing in this repository — see below |
-| `germline/` | `germline` | 146 | Model succession, handoff, fallback — the RSI control plane. Path-depends on `ribosome` |
-| `forge/` | `forge` | 60 | The package registry, and only that |
-| `arena/` | `arena` | 54 | The self-driven loop: agents write MAGE, learners predict it, joules are counted. Path-depends on `prototype` and `germline` |
+| `germline/` | `germline` | 147 | Model succession, handoff, fallback — the RSI control plane. Path-depends on `ribosome` |
+| `forge/` | `forge` | 63 | The package registry, and the content-addressed block and definition stores |
+| `arena/` | `arena` | 56 | The self-driven loop: agents write MAGE, learners predict it, joules are counted. Path-depends on `prototype`, `germline` and `forge` |
 
 The dependency graph is a forest, not a web:
 

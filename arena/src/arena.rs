@@ -94,6 +94,10 @@ pub struct Config {
     /// refuses the rest of its programs for that round. `None` is no cap.
     #[serde(default)]
     pub joules_per_program: Option<f64>,
+    /// A forge registry root to publish the run's best programs into, by
+    /// canonical hash (plan 2.4). `None` publishes nothing.
+    #[serde(default)]
+    pub definitions_dir: Option<String>,
 }
 
 /// The unit agents are charged in (plan 7.1).
@@ -159,6 +163,7 @@ impl Default for Config {
             cost_unit: CostUnit::Joules,
             energy_budget: None,
             joules_per_program: None,
+            definitions_dir: None,
         }
     }
 }
@@ -244,7 +249,8 @@ pub struct Report {
     /// Mean LZ76 entropy-rate estimate of the outputs produced, bits/byte
     /// (`crate::measure`): near 0 for constants, near 8 for noise.
     pub mean_output_lz_bits: f64,
-    pub best_programs: Vec<(String, f64, String)>,
+    /// (agent, reward, source, canonical hash).
+    pub best_programs: Vec<(String, f64, String, String)>,
     pub hypervolume: f64,
     /// Fuel calibrated to joules (plan 3.2): one sample per program, the
     /// fuel its run and probe spent against the energy its span read,
@@ -758,8 +764,23 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
         r.hypervolume_contribution = contrib.get(&r.index).copied().unwrap_or(0.0);
     }
 
-    let best_programs =
-        pool.top(5).into_iter().map(|e| (e.agent.clone(), e.reward, e.program.source())).collect();
+    // Addressed by canonical hash, so a renamed copy of a program is the
+    // same definition here, in forge and in germline's journal.
+    let best_programs: Vec<(String, f64, String, String)> = pool
+        .top(5)
+        .into_iter()
+        .map(|e| {
+            let src = e.program.source();
+            let exact = cfg.substrate.prepare(&src).map(|p| p.exact).unwrap_or_default();
+            (e.agent.clone(), e.reward, src, exact)
+        })
+        .collect();
+    if let Some(dir) = &cfg.definitions_dir {
+        let store = forge::registry::DefinitionStore::new(dir);
+        for (_, _, src, _) in &best_programs {
+            store.publish(src, &cfg.substrate)?;
+        }
+    }
     Ok(Report {
         config: cfg,
         heldout,
@@ -911,6 +932,38 @@ mod tests {
         // overshoot is at most the tail of one round (probe scoring).
         assert!(r.energy.total() >= 40.0 && r.energy.total() < 44.0, "{}", r.energy.total());
         assert!(r.refusals.get("budget").copied().unwrap_or(0) > 0, "stopped mid-round");
+    }
+
+    #[test]
+    fn the_best_programs_are_published_to_forge_by_canonical_hash() {
+        let dir = std::env::temp_dir().join(format!("arena-defs-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let cfg = Config { definitions_dir: Some(dir.to_string_lossy().into()), ..tiny_cfg() };
+        let r = run(cfg, heldout(), vec![Box::new(OneJoule)], vec![]).unwrap();
+        let store = forge::registry::DefinitionStore::new(&dir);
+        assert!(!r.best_programs.is_empty());
+        for (_, _, src, exact) in &r.best_programs {
+            assert_eq!(exact.len(), 64, "{exact}");
+            // Stored under its address; an alpha-equivalent program may have
+            // been stored first, with its own source.
+            let stored = store.get(exact).expect("published and verified");
+            let sub = Substrate { fuel: 50_000, max_bytes: 128 };
+            assert_eq!(sub.prepare(&stored).unwrap().exact, sub.prepare(src).unwrap().exact);
+        }
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_renamed_program_is_the_same_definition_in_forge() {
+        use forge::registry::Canonicalizer;
+        let sub = Substrate { fuel: 10_000, max_bytes: 64 };
+        let a = sub.canonicalize("@role(candidate)\nf gen(s: usize) -> [usize] { range(s).map(|x| x + 1) }").unwrap();
+        let b = sub.canonicalize("@role(candidate)\nf gen(n: usize) -> [usize] { range(n).map(|y| y + 1) }").unwrap();
+        let c = sub.canonicalize("@role(candidate)\nf gen(n: usize) -> [usize] { range(n).map(|y| y + 2) }").unwrap();
+        assert_eq!(a, b);
+        assert_ne!(a.exact, c.exact);
+        assert_eq!(a.shape, c.shape);
+        assert!(sub.canonicalize("f gen(s: usize) -> [usize] { range(s) }").is_err(), "no role, no address");
     }
 
     #[test]

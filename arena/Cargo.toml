@@ -17,6 +17,9 @@ repository = "https://github.com/nervosys/MAGE"
 [dependencies]
 mage-prototype = { path = "../prototype" }
 germline = { path = "../germline" }
+# The content-addressed definition store (plan 2.4). forge parses no MAGE, so
+# the arena supplies the canonicalizer.
+forge = { path = "../forge" }
 # For `Digest`, the type germline's Workload speaks. A direct edge: the graph
 # stays acyclic, and ribosome still depends on no MAGE crate.
 ribosome = { path = "../ribosome" }

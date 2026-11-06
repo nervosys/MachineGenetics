@@ -168,6 +168,12 @@ pub trait Workload {
 
     /// Is this artifact present and runnable? Governs fallback validity.
     fn materialized(&self, artifact: &Digest) -> bool;
+
+    /// Content hashes of the definitions `artifact` was built from, for the
+    /// journal's attribution (plan 2.4). None by default.
+    fn attribution(&self, _artifact: &Digest) -> Vec<String> {
+        Vec::new()
+    }
 }
 
 /// Drives bounded succession cycles.
@@ -456,6 +462,7 @@ impl<'a> Runner<'a> {
         let mut generation = Generation::new(id, artifact.clone())
             .note(format!("cycle {index}, spec {}", spec.id));
         generation.genome = Some(spec.genome.clone());
+        generation.definitions = workload.attribution(&artifact);
         if let Some(p) = parent {
             generation = generation.parent(p);
         }
@@ -902,6 +909,63 @@ mod tests {
         fn materialized(&self, d: &Digest) -> bool {
             self.inner.materialized(d)
         }
+    }
+
+    /// A workload that attributes each artifact to a definition hash.
+    struct Attributing(Improving);
+
+    impl Workload for Attributing {
+        fn materialize(&mut self, spec: &CandidateSpec) -> Result<Digest, String> {
+            self.0.materialize(spec)
+        }
+        fn evaluate(&mut self, a: &Digest, s: &EvalSuite) -> Result<FitnessVector, String> {
+            self.0.evaluate(a, s)
+        }
+        fn shadow(&mut self, a: &Digest) -> HealthSample {
+            self.0.shadow(a)
+        }
+        fn observe_champion(&mut self, a: &Digest) -> HealthSample {
+            self.0.observe_champion(a)
+        }
+        fn materialized(&self, d: &Digest) -> bool {
+            self.0.materialized(d)
+        }
+        fn attribution(&self, a: &Digest) -> Vec<String> {
+            vec![format!("def-{}", a.short())]
+        }
+    }
+
+    #[test]
+    fn the_journal_attributes_each_candidate_to_its_definitions_by_hash() {
+        let path = tmp("attribution");
+        let mut j = Journal::open(&path).unwrap();
+        let mut w = Attributing(Improving::new(0.05));
+        let mut l = seeded(&mut w.0);
+        let ep = episode();
+        let at = attestor();
+        let mut r = Runner::new(policy(), &ep, &at, suite(), 3);
+        let _ = r.run(&mut l, &mut j, &mut w);
+        let proposed: Vec<(Digest, Vec<String>)> = j
+            .replay()
+            .unwrap()
+            .into_iter()
+            .filter_map(|r| match r.entry {
+                Entry::Proposed { artifact, definitions, .. } => Some((artifact, definitions)),
+                _ => None,
+            })
+            .collect();
+        assert!(!proposed.is_empty());
+        for (artifact, defs) in &proposed {
+            assert_eq!(defs, &vec![format!("def-{}", artifact.short())], "the journal names what it was built from");
+        }
+        assert!(l.generations().iter().skip(1).all(|g| g.definitions.len() == 1), "and so does the lineage");
+        let _ = std::fs::remove_dir_all(path.parent().unwrap());
+
+        // Without attribution the field is absent, so a journal written before
+        // it existed hashes exactly as it did.
+        let g = Generation::new(GenerationId(1), Digest::of(b"x"));
+        let entry = serde_json::to_string(&crate::journal::proposed(&g, 1, "p")).unwrap();
+        assert!(!entry.contains("definitions"), "{entry}");
     }
 
     fn ids_for(candidates_per_cycle: usize, seed: u64) -> Vec<String> {
