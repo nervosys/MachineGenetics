@@ -10,7 +10,7 @@ is worth its length: it is a catalogue of the specific ways claims in this
 repository have turned out to be false, kept because the shapes recur.
 
 Every number below is measured by a command named beside it, and most are pinned
-by `scripts/check-doc-counts.sh` — 94 of them — so a figure that drifts fails CI
+by `scripts/check-doc-counts.sh` — 101 of them — so a figure that drifts fails CI
 rather than surviving in prose. That mechanism exists because the figures did
 drift, repeatedly, and for months.
 
@@ -30,11 +30,11 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,034** — rmi 1,384 · prototype 1,288 · ribosome 168 · germline 134 · forge 60 |
+| Tests | **3,075** — rmi 1,384 · prototype 1,294 · ribosome 168 · germline 142 · forge 60 · arena 27 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
-| Vulnerabilities | 0 Rust across five lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
-| CI | 10 jobs defined, **9 of which ever run** — green on `master`. The tenth, `prototype — cuda kernels (self-hosted GPU)`, has no runner and has never executed (open item 2) |
+| Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
+| CI | 11 jobs defined, **10 of which ever run** — green on `master`. The eleventh, `prototype — cuda kernels (self-hosted GPU)`, has no runner and has never executed (open item 2) |
 | Reliability floors | file-oracle parse 99/100, perturbed pattern-heal 42, native-lexer ratio 0.997 |
 | Examples | 12 of 12 typecheck, run, and print their recorded answer |
 | `.mg` sources | **101 checked, 0 sketches** — every `.mg` file in the repository typechecks |
@@ -369,8 +369,11 @@ decision would have rested on it.
 ---
 ## Where this phase ended, 2026-09-25
 
-One item, and it was the only open one under **Small, sharp, cheap**: item 34,
-a refuted contract with no coded diagnostic. That section now reads **0 open**.
+Two pieces of work. The first was item 34, a refuted contract with no coded
+diagnostic, which was the only open row under **Small, sharp, cheap** when the
+phase began. The second was the arena, which added rows 38–40 as soon as it
+ran — so that section's count is whatever its heading says, and this paragraph
+deliberately does not repeat it.
 
 **The previous phase's question, asked one level further down.** Item 34 had
 asked whether `E0560` was reachable, found it was not, and explained why: the
@@ -396,8 +399,53 @@ Two things rode along that would otherwise have surfaced one at a time:
   this document records under items 28 and 30, caught here by reading §2.2
   before committing rather than after.
 
-Counts: prototype 1,282 → **1,288**, total 3,028 → **3,034**. Classifier-only
-diagnostic categories 3 → **2**, both waiting on item 35's borrow checker.
+Classifier-only diagnostic categories went from 3 to **2**, both waiting on
+item 35's borrow checker.
+
+### The arena: the objective became a crate
+
+The objective was restated on 2026-09-25: *a self-driven, agentic system for
+multi-objective convex and non-convex optimization of intelligence per second
+per watt at a fixed unit of compute, with one to many agents collaborating and
+competing.* **`ARENA.md` is the account** — design, measurements and next
+steps. This is the part worth carrying.
+
+**Three prerequisites were built and measured before the loop.** First,
+fuel-bounded evaluation (`eval::run_metered`), which precharges allocation
+wherever a scalar sets the size, because charging afterwards lets
+`range(10^12)` exhaust memory before the budget notices. Second,
+`germline::pareto`, because `FitnessVector::composite` is a weighted sum and a
+weighted sum cannot see a non-convex front. Third, NVML's hardware energy
+counter, loaded at run time, and never read as zero when absent.
+
+**The loop runs, and its first measurement is mostly bad news, recorded as
+such.** A learned grammar agent out-competes the fixed prior on learning
+progress per unit of fuel (score 9.56 against 2.13), which is self-play
+pretraining's central ablation at toy scale. The reward was then hacked twice
+in one session. First came constant byte runs, under a lookback that was too
+short. After the fix, it was constant runs keyed on the seed, which still
+passes the novelty count. The second hack is open. Transfer to held-out text
+and code is weak: only the largest n-gram learner beats uniform, and the
+smaller ones overfit. **The learner class is the bottleneck, not the loop**,
+which is what the paper's own result predicts.
+
+**Adding a crate is a population change, and one checker did not notice.**
+`check-orphan-sources.sh` lists crates by hand, so it printed `ok` over
+`arena/` without looking at it. It was the only one of the checkers that scan
+sources with that shape, and it now includes `arena` and is break-verified
+with a stray file. Every other integration point is updated with measured
+figures: `test-all.sh`/`.ps1`, CI, the audit's six lockfiles and the pins.
+**The pin count is itself checked now.** The opening of this document still
+says it cannot be, and the checker proved otherwise by failing on "94".
+
+**The compiler got three findings from programs no person wrote** — items
+38–40. Integer overflow depends on the build profile. Closure bodies are
+under-checked. `range`'s error recommends syntax that does not parse. This
+is the arena's other use: it runs the compiler thousands of times on
+programs no person wrote.
+
+Counts: prototype 1,282 → **1,294**, germline 134 → **142**, arena **27** (new),
+total 3,028 → **3,075**. Pins 94 → **101**. CI jobs 10 → **11**.
 
 **Pre-existing, not from this change:** `cargo clippy` 0.1.98 (2026-09-01)
 reports 15 warnings in `prototype` — 14 `chunks_exact` with a constant size in
@@ -1303,8 +1351,8 @@ baseline nobody is required to shrink is just a list.
 | `scripts/check-skb-tree.sh` | that `skb/` still matches what the compiler serves. The directory used to hold **56 rules nothing read** while `builtin_rules()` served **255** — and not the same corpus either: `BR-`/`LT-`/`TS-`/`CC-` on disk against `BOR-`/`LIF-`/`TYP-`/`CON-` in the binary, two stray `MEM-`/`TC-` rules, and two whole databases with no file. `check-orphan-sources.sh` could not see it, because that finds `.rs` files no `mod` reaches, not **data** nothing loads. The tree is now generated by `--emit-skb`; this regenerates it and diffs, in both directions — a hand-edited file, a missing file, an orphan the generator does not produce. All three verified by breaking them. |
 | `scripts/check-internals-doc.sh` | that every Rust item `internals/*.md` documents has a **definition** in `prototype/src`. `README.md` calls that set "Compiler-internals documentation" and it is written in the present tense; **15 of 36 documented items do not exist**, and its opening prose describes a Salsa-based, query-driven, multi-crate compiler where `prototype` is one crate with no query engine and no `salsa` dependency. Baseline **0** — was 15; the 12 blocks holding those items now carry a `**Not implemented.**` label and are skipped, MAGE_SPEC.md's precedent rather than a route to zero, with the skipped count printed on every run. Blind to prose, which is where the worst of it is. |
 | `scripts/check-crypto-inventory.sh` | that `SECURITY_AUDIT.md` §2 names every crypto dependency in every `Cargo.toml`, that its inventory *table* names only crates some lockfile contains, and that every **hand-rolled** primitive is mentioned. §2 concluded "no secret keying, no signatures, no KDF" while the repository held HMAC-SHA256 under a fleet key, Ed25519 provenance signatures and a TLS transport — all of it arriving with crates added after §2's scope was written. **An absence claim stays green by doing nothing**, which is why it needed a check that does something. |
-| `scripts/check-security-register.sh` | that `SECURITY_AUDIT.md` §1's accepted-risk register agrees with what `cargo audit` reports across all five surfaces, and that `video/` is at zero. Both directions: a reported advisory with no row, and an **Accepted** row nothing reports any more. The rows are read *out of* §1 rather than copied into the script, so adding a row is what tells the check the row exists. The `audit` job below finds advisories; this reads what was *decided* about the ones that stay — which nothing did, which is how §1 came to list `RUSTSEC-2026-0097` after it stopped firing while missing `RUSTSEC-2026-0190` for two months. No baseline: every row currently agrees, so green is the honest state. |
-| CI `audit` job | `cargo audit` over all five lockfiles separately, plus `npm audit` on `video/` — which nothing covered until a high-severity advisory was sitting in it |
+| `scripts/check-security-register.sh` | that `SECURITY_AUDIT.md` §1's accepted-risk register agrees with what `cargo audit` reports across all six surfaces, and that `video/` is at zero. Both directions: a reported advisory with no row, and an **Accepted** row nothing reports any more. The rows are read *out of* §1 rather than copied into the script, so adding a row is what tells the check the row exists. The `audit` job below finds advisories; this reads what was *decided* about the ones that stay — which nothing did, which is how §1 came to list `RUSTSEC-2026-0097` after it stopped firing while missing `RUSTSEC-2026-0190` for two months. No baseline: every row currently agrees, so green is the honest state. |
+| CI `audit` job | `cargo audit` over all six lockfiles separately, plus `npm audit` on `video/` — which nothing covered until a high-severity advisory was sitting in it |
 | CI ontology step | `MAGE_ONTOLOGY.json` matches a fresh `--emit-ontology` |
 | CI version step | `mage-parse --version` matches the tool id Ribosome keys on |
 | CI dependency guard | `ribosome` depends on no MAGE crate, no `germline`, and no TLS stack by default |
@@ -1610,10 +1658,11 @@ asked. Only "there was no call" belongs in `error`.
 
 ### Waiting on a decision, not on work
 
-**4 open, 5 closed.**
+**5 open, 5 closed.**
 
 | # | Item | The decision |
 |---|---|---|
+| 38 | **Integer overflow means two different things** | `eval::binop` computes `a * b`, `a + b` and `a - b` with plain Rust operators, which **panic in a debug build and wrap in release** — so one MAGE program returns a value from `mage-parse --release` and crashes under `cargo test`. Found 2026-09-25 by the arena, whose generated programs overflow routinely (`range(70).scan(s, \|a, x\| a * a + x)`). `MAGE_SPEC.md` says nothing about overflow. **Wrap or trap is a language decision** — wrap is what release does today and what a byte-producing generator wants; trap is what a language whose premise is *provable safety* would choose. Either is a one-line change per operator (`wrapping_*` or `checked_*` with an error); what is not acceptable is the current answer depending on the build profile. The arena works under both: a panicking candidate is caught, charged its whole fuel budget, and refused. |
 | 2 | GPU CI runner | Correctness **is** verified on the hardware here and recorded. What is missing is a self-hosted runner so `cuda-gpu` runs unattended — an account action, declined once already. |
 | 3 | TLS trust posture | The transport seam and a `rustls` implementation exist behind `--features tls`. Pinned self-signed / mutual TLS / public PKI is deliberately the operator's; `acceptor`/`connector` take your config. |
 | 19 | ~~**`Signer::new` accepts an empty HMAC key**~~ | **Closed 2026-09-02.** `Signer::new` now returns `Result<Signer, KeyError>` and refuses anything under 32 bytes (RFC 2104 §3: a key shorter than the hash output is "strongly discouraged"). **A breaking change, taken deliberately**: the whole failure is that nothing downstream can distinguish a MAC over an empty key from any other MAC, so a warning would have changed nothing — the only place the difference is knowable is at construction, and that is where it is refused. Four call sites updated; their 9-byte test keys were themselves rejected by the new rule, which is the rule earning its keep on its first run. `Signer` also gained a **hand-written, redacting `Debug`** — deriving it would print the fleet secret into any log line or panic message that formats a signer, and the tests need `unwrap_err()`, which requires `Debug`. Verified: `Signer { worker: "w", key_id: Some("k1"), key: <32 bytes redacted> }`. |
@@ -1874,7 +1923,7 @@ hand.
 
 ### Small, sharp, cheap
 
-**0 open, 14 closed.**
+**2 open, 14 closed.**
 
 This heading opened with "Two open, and one more added on 2026-09-01" while
 **every one of its nine rows was struck through** — three pieces of available
@@ -1889,6 +1938,8 @@ done, and the row explains the rest.
 
 | # | Item | Why it is here and not done |
 |---|---|---|
+| 39 | **Closure bodies are under-checked** | `range(3).map(\|x\| x + "a")` — a `usize` plus a string — typechecks with no error and fails only at run time. Found 2026-09-25 by the arena's substrate test, which had to switch to an unambiguous type error to test the type gate at all. Likely cause, not yet verified: closure parameters are untyped, so the body's arithmetic is checked against an unknown. Small because the fix is local to `types.rs`; measure first, since the arena's programs are all closures and any tightening changes which of them typecheck. |
+| 40 | **`range`'s error recommends a form that does not parse** | `range(1, 2)` is refused with *"`range(n)` is `0..n`; for a start and an end write `a..b`"*, in both the checker and the evaluator. `a..b` parses only as a `for` header or a slice — as an expression it is `expected expression, found DotDot`. A diagnostic whose suggested fix is itself a syntax error is the shape taxonomy §6 collects. Either make `a..b` an expression (the evaluator already has the `Expr::Range` arm, and fuel now precharges it) or change the message to `range(b).map(\|i\| i + a)`. |
 | 34 | ~~**A refuted contract produces no coded diagnostic**~~ | **Closed 2026-09-25, and the row's own diagnosis was wrong.** It said this "needs no new analysis: the verdict already exists and wants a `Diagnostic` beside the summary line", and blamed the corpus — 12 clauses, all `Unknown`. **`CheckResult::Violated` was never constructed anywhere in the crate.** Every branch of `check_condition` answered `Verified` or `Unknown`, so `VerifyStatus::Failed`, `Evidence::Refuted` and the `✗` row were unreachable from all five arms of `verify_item` — the agent arm's `else { Failed }` is dead too, since "not all verified" over a two-valued result means "some unknown". No corpus could have supplied a refutation. Found by `grep`ping for constructions of the variant rather than consumers: four mentions, all of them reading it. **And had one existed, `--check` printed `✗` and exited 0** — the verifier's verdicts were never counted as errors. Now: `verify::is_refuted` refutes the literal `false` in both surfaces (`false`, `0b` — the first draft had only the keyword) and a bare `<path>.len() < 0`, the negation of the unsigned-length fact the `Verified` branch already relied on. It refuses to refute under `=>`, `||` or a call, because an implication with a false consequent holds when its antecedent is false, and `Violated` is now a compile error — a false accusation is worse than `Unknown`. `verify::diagnostics` emits one `E0560` per refuted clause, counted as an error in `--check`, `--check --json` and the pipeline. `SpecViolation` left the classifier-only baseline, so `check-diagnostic-codes.sh` reports 8 produced / 2 classified; break-verified both ways (stale baseline → "remove them in this commit"; producer reverted → "not baselined"). Three unit tests and three CLI tests (`tests/refuted_contract_is_a_diagnostic.rs`). No corpus figure moved: 101 sources still typecheck, 12 examples still pass. **Left alone deliberately:** `1b`/`true` still verify as `Unknown` — proving them is the obvious symmetric move and would shift item 29's pinned contract figures, which is a separate change with its own measurements. |
 | 14 | ~~**`token-bench`'s exit status cannot gate anything**~~ | **Closed 2026-08-19.** The row said correcting the 150 disagreeing claims "is a decision about what the field means, not a fix" — still true, and still undecided. But the exit status did not need that decision; it needed to stop reporting the *size* of a known set and start reporting *movement* against it. The known set is now `benchmarks/token-claims-baseline.txt`, shrink-only, the same pattern as `scripts/doc-blocks-baseline.txt`. A 151st disagreement fails; so does a baseline entry that has stopped disagreeing and should have been deleted. `check-ci-floors.sh` honours the status again — and dropping its `|| true` turned out to matter twice, because `set -o errexit` means a bare command substitution that fails kills the script *at the assignment*: my first version gated correctly and printed no reason, which is a worse instrument than the one it replaced. Exit 2 (the bench could not run at all) was being swallowed by the same `|| true` and now fails. |
 | 15 | ~~**`rmi`'s `cuda` feature cannot build, and gates a stub if it could**~~ | **Partly closed 2026-08-19: the feature builds now.** `cuda = ["dep:cudarc"]` made cudarc 0.10 mandatory, and its build script wants `include/cuda.h` from an installed toolkit — so `cargo build --features cuda` failed before compiling a line of the crate. The only file using cudarc is `cuda_full.rs`, which no `mod` reaches, so the dependency was mandatory for a feature that gated nothing that could run. Verified no compiled file mentions cudarc, then changed it to `cuda = []`: the feature now builds, cudarc is out of the graph, and `--features cudarc` still reaches it for anyone wiring `cuda_full.rs` up. **What remains is genuinely the owner's call**: `cuda_full.rs` is still unreachable, with its 16 `unsafe` blocks and 6 `#[ignore]`d tests that have never run on any hardware, and deleting it or porting it to cudarc 0.19 is an upstream decision. It stays baselined in `scripts/orphan-sources-baseline.txt`. The **1,229 CUDA tests** verified on this hardware are all `prototype --features cuda`, the real path, and are unaffected. |
@@ -2934,9 +2985,9 @@ changed before you commit.
 ---
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,288**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,294**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
-  across five crates **3,034**; documented-count pins **94**, up from 46 — the
+  across six crates **3,075**; documented-count pins **101**, up from 46 — the
   two newest hold the `kb`/`net` overlap the tensor-product-binding decision
   rests on, a figure that had lived in two sentences of prose with nothing
   re-deriving it.

@@ -1,19 +1,20 @@
 <#
 .SYNOPSIS
-    Build and test all five MAGE crates.
+    Build and test all six MAGE crates.
 
 .DESCRIPTION
-    The repository is five separate Cargo workspaces on purpose (see
+    The repository is six separate Cargo workspaces on purpose (see
     ARCHITECTURE.md §"Repository layout"), so a root `cargo test` does nothing.
     This is the single entry point that covers everything CI covers:
 
         rmi (cpu)   1,384 tests
-        prototype   1,288 tests
+        prototype   1,294 tests
         ribosome      168 tests
-        germline      134 tests
+        germline      142 tests
         forge          60 tests
+        arena          27 tests
         -------------------------
-        total       3,034 tests, 0 warnings
+        total       3,075 tests, 0 warnings
 
 .PARAMETER Release
     Build and test in release mode (slower to build, much faster to run).
@@ -62,6 +63,7 @@ $crates = @(
     @{ Name = 'ribosome';  Manifest = 'ribosome/Cargo.toml';                     Features = @() }
     @{ Name = 'germline';  Manifest = 'germline/Cargo.toml';                     Features = @() }
     @{ Name = 'forge';     Manifest = 'forge/Cargo.toml';                        Features = @() }
+    @{ Name = 'arena';     Manifest = 'arena/Cargo.toml';                        Features = @() }
 )
 
 $failed = @()

@@ -1,0 +1,29 @@
+[workspace]
+
+[package]
+name = "arena"
+version = "0.1.0"
+edition = "2021"
+description = "The arena — agents that generate MAGE programs, learners that predict their output, and a shared multi-objective front measured in joules"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/nervosys/MAGE"
+
+# The arena is where the loop becomes self-driven, so it is the one crate that
+# needs both halves: the language (`prototype`, to check and run the programs
+# agents write) and the control plane (`germline`, for Pareto selection). Neither
+# of those learns about the other through this crate — the forest stays a forest:
+#
+#     rmi <- prototype <- arena -> germline -> ribosome
+[dependencies]
+mage-prototype = { path = "../prototype" }
+germline = { path = "../germline" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+# NVML is loaded at run time rather than linked, so the crate builds and runs on
+# machines with no NVIDIA driver and simply reports energy as unavailable there.
+libloading = "0.8"
+
+[[bin]]
+name = "arena"
+path = "src/main.rs"

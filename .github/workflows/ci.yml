@@ -23,6 +23,7 @@ on:
       - "forge/**"
       - "ribosome/**"
       - "germline/**"
+      - "arena/**"
       - "RecursiveMachineIntelligence/**"
       - ".github/workflows/ci.yml"
       # The docs job asserts these files agree with the suites.
@@ -67,6 +68,7 @@ on:
       - "forge/**"
       - "ribosome/**"
       - "germline/**"
+      - "arena/**"
       - "RecursiveMachineIntelligence/**"
       - ".github/workflows/ci.yml"
       # The docs job asserts these files agree with the suites.
@@ -494,6 +496,20 @@ jobs:
       - name: Test
         run: cargo test --manifest-path germline/Cargo.toml
 
+  # The arena path-depends on prototype and germline, both already in the
+  # path filters above, so a change to either re-runs it. Its NVML test
+  # passes on a runner with no GPU by asserting `open` explains why not.
+  arena:
+    name: arena — build + test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build
+        run: cargo build --release --manifest-path arena/Cargo.toml
+      - name: Test
+        run: cargo test --manifest-path arena/Cargo.toml
+
   forge:
     name: forge — build + test
     runs-on: ubuntu-latest
@@ -524,7 +540,7 @@ jobs:
         run: bash scripts/test-all.sh --check-docs
 
   audit:
-    name: RustSec advisories across all five lockfiles
+    name: RustSec advisories across all six lockfiles
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -549,7 +565,7 @@ jobs:
       # hit there a false alarm while the identical hit in `prototype` was real.
       - name: cargo audit
         run: |
-          for c in RecursiveMachineIntelligence prototype ribosome germline forge; do
+          for c in RecursiveMachineIntelligence prototype ribosome germline forge arena; do
             echo "::group::$c"
             ( cd "$c" \
               && { [ -f Cargo.lock ] || cargo generate-lockfile; } \

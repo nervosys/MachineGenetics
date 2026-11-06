@@ -1,6 +1,6 @@
 # Documentation index
 
-There are 24 Markdown documents at the repository root, written across five
+There are 25 Markdown documents at the repository root, written across five
 months. They are **not** all current, and several describe
 designs that were deliberately *not* built. This index says which is which, so
 nothing here has to be read to find out whether it is still true.
@@ -65,6 +65,7 @@ Read these to understand the system as it exists.
 | [ROADMAP.md](ROADMAP.md) | The implementation steps — numbered to 159, listed selectively rather than exhaustively — plus the open-items list. *This said "all 158 steps"; the numbering runs to 159 and has 67 gaps, so "all" was wrong in both directions* |
 | [ARCHITECTURE_DSL.md](ARCHITECTURE_DSL.md) | The composition algebra (`stack`/`residual`/`branch`/`wrap`) and its measured basis |
 | [RIBOSOME.md](RIBOSOME.md) | The distributed, agent-operated build engine — its own crate, `ribosome/`. **Mixed status, marked inline**: the core (graph, keys, CAS, executor seam, healing, scheduler, fitness), network distribution with authentication and signed provenance, sandboxed subprocess execution, multi-language support, and TLS (optional `tls` feature) are implemented and tested ✅; the evolutionary loop above the build is designed ◻. *This row said distribution was unbuilt through step 7 and was not updated when it landed — corrected 2026-08-04.* |
+| [ARENA.md](ARENA.md) | The self-driven improvement loop, its own crate `arena/`: agents write MAGE, learners predict it, joules are measured. **Built and measured once** ✅ — the first runs show reward hacking twice and weak transfer, both recorded as measured ◻ |
 | [GERMLINE.md](GERMLINE.md) | Model succession, handoff, and fallback — the RSI control plane, its own crate `germline/`. **Mixed status, marked inline**: the control plane is complete and tested end to end ✅ (variation, directed search, gate, attestation, lineage, hash-chained journal, cycle, supervision); model training/inference and any unattended daemon are not ◻ |
 | [AGENT_PROTOCOL.md](AGENT_PROTOCOL.md) | How an agent should target ABL bytes rather than text |
 | [UNIFICATION.md](UNIFICATION.md) | MAGE ↔ RMI unification: the bridge, adapters, and the 22-section ontology |

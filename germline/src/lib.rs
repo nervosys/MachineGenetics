@@ -96,6 +96,7 @@ pub mod directed;
 pub mod gate;
 pub mod journal;
 pub mod lineage;
+pub mod pareto;
 pub mod runner;
 pub mod supervisor;
 pub mod variation;
