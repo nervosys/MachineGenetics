@@ -52,7 +52,9 @@ kb Schema {
     // the builtins of resolve.rs's STD_FNS and differentiable.rs's grade lists.
     // v20 (2026-11-06): `scalar_math`, for kb/meaning.mg: the scalar math functions of
     // resolve.rs's SCALAR_MATH.
-    fact schema_version(20);
+    // v21 (2026-11-06): `builtin_effect`, for kb/meaning.mg: the builtin names that
+    // effects.rs's BUILTIN_EFFECTS attributes an effect on call.
+    fact schema_version(21);
 
     // ── Classes ─────────────────────────────────────────────────────────
     // Seven roots. The twelve domains of MAGE_ONTOLOGY.md group facts into
@@ -320,6 +322,12 @@ kb Schema {
     // The scalar math functions of prototype/src/resolve.rs's SCALAR_MATH: a name each.
     fact relation(scalar_math);
     fact arg_class(scalar_math, 1, Text);
+    // The builtin names of prototype/src/effects.rs's BUILTIN_EFFECTS, each with the effect
+    // it is attributed on call, spelled as MAGE_SPEC.md's table spells it: io, fs, net,
+    // async, alloc, panic, env or time.
+    fact relation(builtin_effect);
+    fact arg_class(builtin_effect, 1, Text);
+    fact arg_class(builtin_effect, 2, Text);
     // name, value, meaning.
     fact relation(constraint_row);
     fact arg_class(constraint_row, 1, GrammarConstraint);

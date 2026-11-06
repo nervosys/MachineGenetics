@@ -469,6 +469,7 @@ words among its `lexes_as` facts, and the `AstKind` instances in the grammar.
 | `builtin_function` | `Text` (the name of a builtin the resolver accepts as a bare call) |
 | `builtin_grade` | `Text` × `Text` (name, grade: kinked, smooth or discrete) |
 | `scalar_math` | `Text` (the name of a scalar math function that takes exactly one number) |
+| `builtin_effect` | `Text` × `Text` (name, the effect it is attributed on call: io, fs, net, async, alloc, panic, env or time) |
 | `form_row` | `ProfileForm` × `Profile` × `Text` × `Text` (nonterminal, position) |
 | `form_example` | `ProfileForm` × `Text` (as the prompt shows it) |
 | `profile_text` | `Profile` × `Text` × `Text` (key, a piece of its prompt) |
