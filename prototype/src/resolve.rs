@@ -1084,9 +1084,6 @@ impl Resolver {
             }
             ast::Expr::Continue => {}
             ast::Expr::Todo | ast::Expr::Unimplemented => {}
-            ast::Expr::UnsafeBlock { block } => {
-                self.resolve_block(block);
-            }
             ast::Expr::Try { expr } | ast::Expr::Await { expr } => {
                 self.resolve_expr(expr);
             }

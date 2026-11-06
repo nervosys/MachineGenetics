@@ -674,9 +674,6 @@ impl<'a> EmitCtx<'a> {
             }
             ast::Expr::Todo => "MAGE.todo".to_string(),
             ast::Expr::Unimplemented => "MAGE.unimplemented".to_string(),
-            ast::Expr::UnsafeBlock { block } => {
-                format!("MAGE.unsafe({} stmts)", block.stmts.len())
-            }
             ast::Expr::Error { message } => format!("MAGE.error \"{message}\""),
             ast::Expr::Pipeline { .. } => {
                 let l = self.fresh();

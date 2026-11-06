@@ -565,6 +565,9 @@ pub enum DiagnosticCategory {
     /// A tunable `@param` declaration whose domain is malformed, whose value
     /// is not a literal, or whose value lies outside its domain.
     ParamDomain,
+    /// A construct that was retired (plan 9.2) and is no longer compiled: its
+    /// message names the replacement.
+    Deprecated,
     /// Other.
     Other,
 }
@@ -588,6 +591,7 @@ impl DiagnosticCategory {
             DiagnosticCategory::RoleViolation => "E0551",
             DiagnosticCategory::CoreViolation => "E0552",
             DiagnosticCategory::ParamDomain => "E0553",
+            DiagnosticCategory::Deprecated => "E0554",
             DiagnosticCategory::Other => "E9999",
         }
     }
@@ -632,6 +636,9 @@ impl DiagnosticCategory {
             }
             DiagnosticCategory::ParamDomain => {
                 "give the constant a literal value inside its @param domain, or correct the domain (`@param(lo, hi)` with lo <= hi, or `@param(in, a, b, ...)`)"
+            }
+            DiagnosticCategory::Deprecated => {
+                "replace the retired construct with the one named in the message; retired constructs are not compiled"
             }
             DiagnosticCategory::Other => "see the message for details",
         }
@@ -854,6 +861,7 @@ mod diagnostic_code_tests {
             DiagnosticCategory::RoleViolation,
             DiagnosticCategory::CoreViolation,
             DiagnosticCategory::ParamDomain,
+            DiagnosticCategory::Deprecated,
             DiagnosticCategory::Other,
         ];
         let mut seen = std::collections::HashSet::new();

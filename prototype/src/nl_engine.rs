@@ -712,8 +712,13 @@ impl NlEngine {
         let code_human = fmt::format_human(&module);
         let code_agent = fmt::format_agent(&module);
 
+        // `evolve` was retired in plan 9.2 (E0554), so the item is still
+        // built, and the checker refuses it; the explanation says so rather
+        // than claiming a usable program.
         let explanation = format!(
-            "Generated evolutionary computation `{name}` with population={pop_size}, generations={gens}."
+            "`evolve` was retired in plan 9.2 (E0554), so `{name}` (population={pop_size}, \
+             generations={gens}) does not compile. Write an evolutionary search as an ordinary \
+             function, or as an arena agent."
         );
 
         NlResponse {
@@ -3081,6 +3086,7 @@ mod tests {
         let mut engine = NlEngine::new();
         let response = engine
             .process("create an evolutionary optimization with population 200 generations 100");
-        assert!(!response.explanation.is_empty());
+        assert!(!response.ok, "an evolve item is retired, so it must not validate");
+        assert!(response.explanation.contains("retired"), "{}", response.explanation);
     }
 }

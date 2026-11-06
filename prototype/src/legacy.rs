@@ -91,11 +91,14 @@ fn translate_line(line: &str) -> String {
     if !r.contains("+C ") {
         r = boundary_replace(&r, "const ", "C ");
     }
+    // `Z` (static) was retired in plan 9.2 (E0554), so an immutable static
+    // becomes a const. `static mut` has no replacement: it still translates
+    // to `Z m`, and the checker refuses it with the pointer.
     r = r.replace("pub static mut ", "+Z m ");
-    r = r.replace("pub static ", "+Z ");
     r = r.replace("static mut ", "Z m ");
-    if !r.contains("+Z ") && !r.contains("Z m ") {
-        r = boundary_replace(&r, "static ", "Z ");
+    r = r.replace("pub static ", "+C ");
+    if !r.contains("+C ") && !r.contains("Z m ") {
+        r = boundary_replace(&r, "static ", "C ");
     }
     r = r.replace("pub type ", "+Y ");
     if !r.contains("+Y ") {
@@ -445,6 +448,13 @@ mod tests {
             translate_line("pub fn add(a: i32, b: i32) -> i32 {"),
             "+f add(a: i32, b: i32) -> i32 {"
         );
+    }
+
+    #[test]
+    fn an_immutable_static_translates_to_a_const_now_that_z_is_retired() {
+        assert_eq!(translate_line("static LIMIT: i32 = 8;"), "C LIMIT: i32 = 8;");
+        assert_eq!(translate_line("pub static LIMIT: i32 = 8;"), "+C LIMIT: i32 = 8;");
+        assert_eq!(translate_line("static mut COUNT: i32 = 0;"), "Z m COUNT: i32 = 0;");
     }
 
     #[test]

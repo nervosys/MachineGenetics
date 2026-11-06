@@ -3407,32 +3407,6 @@ fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool, to
         }
     }
 
-    // Evolve codegen on evolve blocks.
-    for item in &module.items {
-        if let ast::ItemKind::Evolve(evolve_def) = &item.kind {
-            match evolve_gen::build_evolve_plan(evolve_def) {
-                Ok(plan) => {
-                    let mlir_ops = plan.emit_mlir();
-                    ai_info.push(format!(
-                        "evolve {}: pop={}, gen={}, {} MLIR ops",
-                        plan.name,
-                        plan.population_size,
-                        plan.generations,
-                        mlir_ops.len()
-                    ));
-                }
-                Err(diags) => {
-                    for diag in &diags {
-                        eprintln!("  {filename}: {diag}");
-                        if diag.severity == hir::Severity::Error {
-                            ai_errors += 1;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     // A leading `!` marks a line that is *not* a success. Every entry used
     // to print with a tick, including "autograd tape covers nothing" — the
     // tick is the whole reason that line read as progress for as long as it

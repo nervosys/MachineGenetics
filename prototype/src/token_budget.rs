@@ -612,7 +612,6 @@ fn count_expr_agent(expr: &Expr) -> u32 {
         }
         Expr::Todo => 1,          // ??
         Expr::Unimplemented => 1, // ???
-        Expr::UnsafeBlock { block } => 1 + count_block_agent(block),
         Expr::Pipeline { left, right } => {
             count_expr_agent(left) + 1 + count_expr_agent(right) // |>
         }
@@ -1056,7 +1055,6 @@ fn count_expr_human(expr: &Expr) -> u32 {
         Expr::Range { start, end, .. } => count_expr_human(start) + 1 + count_expr_human(end),
         Expr::Todo => 2,                                             // todo!()
         Expr::Unimplemented => 2,                                    // unimplemented!()
-        Expr::UnsafeBlock { block } => 1 + count_block_human(block), // raw
         Expr::Pipeline { left, right } => {
             count_expr_human(left) + 1 + count_expr_human(right) // |>
         }

@@ -443,11 +443,6 @@ fn elide_stmt(stmt: &Stmt) -> Stmt {
 
 fn elide_expr(expr: &Expr) -> Expr {
     match expr {
-        // UnsafeBlock → plain Block (strip unsafe wrapper)
-        Expr::UnsafeBlock { block } => Expr::Block {
-            block: elide_block(block),
-        },
-
         // Recurse into all expression forms
         Expr::Literal { .. }
         | Expr::Ident { .. }

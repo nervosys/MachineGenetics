@@ -32,7 +32,7 @@ net Name { layer …; forward }   neural net
 val x = expr                    immutable binding             v
 var x = expr                    mutable binding               m
 pub const NAME: T = expr;       constant (`;` required)       C
-Z NAME: T = expr;               static — agent mode only      Z
+Z NAME: T = expr;               retired (E0554): use `C`      Z
 type Id = i32;                  type alias
 ```
 
