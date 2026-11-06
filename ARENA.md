@@ -549,6 +549,28 @@ central differences. A guard test requires every smooth builtin the pass
 names to resolve and evaluate. The exceptions, `softmax` and `matmul`, need
 tensor values the evaluator deliberately lacks, and they are exempt by name.
 
+**The budget allocation is the second policy (plan 5.2).** How an agent's
+score becomes its claim on the next round is `arena/harness/allocation.mg`, a
+function `weight(score, best, temperature)` under `@role(candidate)`, which
+allows no effects at all; `--allocation-program` swaps in another. The kernel
+keeps the part that must not vary: every agent's floor, and rounding the
+weights to whole programs by largest remainder, so the shares always sum to
+the budget whatever the policy says. It refuses a weight that is negative or
+not finite. Over 400 random cases, including ties, zero, NaN and infinite
+scores and temperatures down to 0, the MAGE policy gives exactly the shares
+the Rust `allocate` does; a policy changed by one term fails that test.
+
+Writing the test found a defect in the Rust allocation. The softmax was
+unshifted, so below a temperature of about 0.0014 every weight was infinite
+and the shares were NaN rounded to garbage. Both versions now shift by the
+best agent's term, which gives the same proportions with no overflow. The
+default temperature is 0.5 and no flag changes it, so no recorded run was
+affected.
+
+Curriculum and replay, the rest of plan 5.2, are not moved yet. Neither
+has a policy separable from its mechanism the way allocation's weight is:
+replay samples the pool by reward, and the curriculum is the reward itself.
+
 ## Succession: authority through the gate (plan 8.1–8.2)
 
 `arena::succession::ArenaWorkload` makes an arena session a germline

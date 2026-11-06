@@ -76,7 +76,7 @@ probe = os.path.join('prototype', 'target', '.docblock.mg')
 counts = collections.Counter()
 considered = 0
 for dirpath, dirnames, filenames in os.walk('.'):
-    dirnames[:] = [d for d in dirnames if d not in ('.git', 'target', 'node_modules')]
+    dirnames[:] = [d for d in dirnames if d not in ('.git', 'target', 'node_modules', '.claude')]
     for fn in sorted(filenames):
         if not fn.endswith('.md'):
             continue

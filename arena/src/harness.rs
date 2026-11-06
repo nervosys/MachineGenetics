@@ -5,13 +5,102 @@
 //! Rust it is compiled into. The compression reward is the first policy moved:
 //! [`RewardProgram`] loads `harness/reward.mg` (or a replacement), checks it
 //! through every gate a MAGE program passes plus the `evaluator` role, and
-//! runs it under fuel for every program the agents write.
+//! runs it under fuel for every program the agents write. The budget
+//! allocation is the second (plan 5.2): [`AllocationProgram`] loads
+//! `harness/allocation.mg` under the `candidate` role, which allows no
+//! effects, and the kernel rounds its weights to shares.
 
 use mage_prototype::eval::{run_bounded, BoundedError, Value};
 use mage_prototype::{ast, effects, hir, lexer, parser, types};
 
 /// The reward shipped with the arena.
 pub const DEFAULT_REWARD: &str = include_str!("../harness/reward.mg");
+
+/// The allocation policy shipped with the arena (plan 5.2).
+pub const DEFAULT_ALLOCATION: &str = include_str!("../harness/allocation.mg");
+
+/// Parse and gate a harness policy: `source` defines a function `name` of
+/// `arity` parameters with `@role(role)`, which is MAGE-core, typechecks and
+/// raises no effect error. `what` prefixes every error.
+fn load_policy(what: &str, source: &str, name: &str, arity: usize, role: &str) -> Result<ast::Module, String> {
+    let module = parser::parse(&lexer::lex(source)).map_err(|e| format!("{what}: parse: {}", e.message))?;
+    let item = module
+        .items
+        .iter()
+        .find(|i| matches!(&i.kind, ast::ItemKind::Function(f) if f.name == name))
+        .ok_or(format!("{what}: no function `{name}`"))?;
+    let ast::ItemKind::Function(f) = &item.kind else { unreachable!() };
+    if f.params.len() != arity {
+        return Err(format!("{what}: `{name}` takes {arity} parameters, not {}", f.params.len()));
+    }
+    match item.attributes.iter().find(|a| a.name == "role").and_then(|a| a.args.first()) {
+        Some(r) if r == role => {}
+        other => return Err(format!("{what}: `{name}` must have @role({role}), found {other:?}")),
+    }
+    let errors = |ds: &[hir::Diagnostic]| {
+        ds.iter().find(|d| d.severity == hir::Severity::Error).map(|d| d.message.clone())
+    };
+    if let Some(e) = errors(&mage_prototype::core_subset::check(&module)) {
+        return Err(format!("{what}: not MAGE-core: {e}"));
+    }
+    if let Some(e) = errors(&types::check(&module).diagnostics) {
+        return Err(format!("{what}: type: {e}"));
+    }
+    if let Some(e) = errors(&effects::infer_effects(&module).diagnostics) {
+        return Err(format!("{what}: effect: {e}"));
+    }
+    Ok(module)
+}
+
+/// Run `name` on `args` under `fuel`, as a number.
+fn run_number(what: &str, module: &ast::Module, name: &str, args: Vec<Value>, fuel: u64) -> Result<f64, String> {
+    match run_bounded(module, name, args, fuel) {
+        Ok(Value::Float(r)) => Ok(r),
+        Ok(Value::Int(n)) => Ok(n as f64),
+        Ok(other) => Err(format!("{what} returned `{other}`, not a number")),
+        Err(BoundedError::FuelExhausted) => Err(format!("{what} exhausted its fuel")),
+        Err(BoundedError::Error(e)) => Err(format!("{what}: {e}")),
+    }
+}
+
+/// A checked, loaded allocation policy (plan 5.2).
+pub struct AllocationProgram {
+    module: ast::Module,
+    pub fuel: u64,
+}
+
+impl AllocationProgram {
+    /// Parse and gate `source`: one function `weight(score, best,
+    /// temperature)` with `@role(candidate)`.
+    pub fn load(source: &str) -> Result<AllocationProgram, String> {
+        Ok(AllocationProgram { module: load_policy("allocation", source, "weight", 3, "candidate")?, fuel: 10_000 })
+    }
+
+    /// One agent's weight. The kernel refuses one that is negative or not
+    /// finite, since rounding could not honour it.
+    pub fn weight(&self, score: f64, best: f64, temperature: f64) -> Result<f64, String> {
+        let args = vec![Value::Float(score), Value::Float(best), Value::Float(temperature)];
+        let w = run_number("allocation", &self.module, "weight", args, self.fuel)?;
+        if w.is_finite() && w >= 0.0 {
+            Ok(w)
+        } else {
+            Err(format!("allocation: weight {w} for score {score} is negative or not finite"))
+        }
+    }
+
+    /// Divide `total` evaluations among agents by `score`: the program's
+    /// weights, then the kernel's floor and rounding
+    /// ([`crate::agents::allocate_weights`]). A score that is not finite is
+    /// passed as 0, and `best` is the highest score, or 0.
+    pub fn allocate(&self, total: usize, score: &[f64], floor: usize, temperature: f64) -> Result<Vec<usize>, String> {
+        let best = score.iter().cloned().fold(0.0f64, f64::max);
+        let weights = score
+            .iter()
+            .map(|&s| self.weight(if s.is_finite() { s } else { 0.0 }, best, temperature))
+            .collect::<Result<Vec<f64>, String>>()?;
+        Ok(crate::agents::allocate_weights(total, &weights, floor))
+    }
+}
 
 /// What the reward is computed from.
 #[derive(Debug, Clone, Copy)]
@@ -41,33 +130,7 @@ impl RewardProgram {
     /// Parse and gate `source`: one function `reward` of seven `f64`s, which
     /// typechecks, has role `evaluator`, and raises no effect error.
     pub fn load(source: &str) -> Result<RewardProgram, String> {
-        let module = parser::parse(&lexer::lex(source)).map_err(|e| format!("reward: parse: {}", e.message))?;
-        let item = module
-            .items
-            .iter()
-            .find(|i| matches!(&i.kind, ast::ItemKind::Function(f) if f.name == "reward"))
-            .ok_or("reward: no function `reward`")?;
-        let ast::ItemKind::Function(f) = &item.kind else { unreachable!() };
-        if f.params.len() != 7 {
-            return Err(format!("reward: `reward` takes 7 parameters, not {}", f.params.len()));
-        }
-        match item.attributes.iter().find(|a| a.name == "role").and_then(|a| a.args.first()) {
-            Some(r) if r == "evaluator" => {}
-            other => return Err(format!("reward: `reward` must have @role(evaluator), found {other:?}")),
-        }
-        let errors = |ds: &[hir::Diagnostic]| {
-            ds.iter().find(|d| d.severity == hir::Severity::Error).map(|d| d.message.clone())
-        };
-        if let Some(e) = errors(&mage_prototype::core_subset::check(&module)) {
-            return Err(format!("reward: not MAGE-core: {e}"));
-        }
-        if let Some(e) = errors(&types::check(&module).diagnostics) {
-            return Err(format!("reward: type: {e}"));
-        }
-        if let Some(e) = errors(&effects::infer_effects(&module).diagnostics) {
-            return Err(format!("reward: effect: {e}"));
-        }
-        Ok(RewardProgram { module, fuel: 10_000 })
+        Ok(RewardProgram { module: load_policy("reward", source, "reward", 7, "evaluator")?, fuel: 10_000 })
     }
 
     /// The reward for `x`, or why the program could not produce one.
@@ -76,13 +139,7 @@ impl RewardProgram {
             .into_iter()
             .map(Value::Float)
             .collect();
-        match run_bounded(&self.module, "reward", args, self.fuel) {
-            Ok(Value::Float(r)) => Ok(r),
-            Ok(Value::Int(n)) => Ok(n as f64),
-            Ok(other) => Err(format!("reward returned `{other}`, not a number")),
-            Err(BoundedError::FuelExhausted) => Err("reward exhausted its fuel".into()),
-            Err(BoundedError::Error(e)) => Err(format!("reward: {e}")),
-        }
+        run_number("reward", &self.module, "reward", args, self.fuel)
     }
 }
 
@@ -126,6 +183,54 @@ mod tests {
     fn a_reward_without_the_evaluator_role_is_refused() {
         let src = "f reward(a: f64, b: f64, c: f64, d: f64, e: f64, g: f64, h: f64) -> f64 {\n    a\n}\n";
         assert!(RewardProgram::load(src).is_err());
+    }
+
+    #[test]
+    fn the_mage_allocation_gives_the_shares_the_rust_allocation_did() {
+        let p = AllocationProgram::load(DEFAULT_ALLOCATION).expect("the shipped allocation loads");
+        let mut rng = crate::grammar::Rng(23);
+        for case in 0..400 {
+            let n = 1 + rng.below(6);
+            let score: Vec<f64> = (0..n)
+                .map(|_| match rng.below(8) {
+                    0 => 0.0,
+                    1 => f64::NAN,
+                    2 => f64::INFINITY,
+                    3 => 1.0, // ties
+                    _ => 10.0 * rng.next_f64(),
+                })
+                .collect();
+            let total = rng.below(120);
+            let floor = rng.below(5);
+            let temperature = [0.0, 0.05, 0.5, 1.0, 3.0][rng.below(5)];
+            assert_eq!(
+                p.allocate(total, &score, floor, temperature).expect("allocates"),
+                crate::agents::allocate(total, &score, floor, temperature),
+                "case {case}: {score:?}, total {total}, floor {floor}, t {temperature}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_replacement_allocation_changes_the_shares_and_the_kernel_keeps_the_sum() {
+        let flat = "@role(candidate)\nf weight(s: f64, b: f64, t: f64) -> f64 {\n    1.0\n}\n";
+        let p = AllocationProgram::load(flat).unwrap();
+        assert_eq!(p.allocate(12, &[9.0, 0.0, 3.0], 0, 0.5).unwrap(), vec![4, 4, 4]);
+        // A policy that gives everything to the best agent still leaves every
+        // agent its floor.
+        let greedy = "@role(candidate)\nf weight(s: f64, b: f64, t: f64) -> f64 {\n    if s == b { 1.0 } else { 0.0 }\n}\n";
+        let p = AllocationProgram::load(greedy).unwrap();
+        assert_eq!(p.allocate(12, &[9.0, 0.0, 3.0], 2, 0.5).unwrap(), vec![8, 2, 2]);
+    }
+
+    #[test]
+    fn the_kernel_refuses_a_negative_weight_and_the_language_refuses_a_role() {
+        let negative = "@role(candidate)\nf weight(s: f64, b: f64, t: f64) -> f64 {\n    0.0 - 1.0\n}\n";
+        let e = AllocationProgram::load(negative).unwrap().allocate(10, &[1.0], 0, 1.0).unwrap_err();
+        assert!(e.contains("negative"), "{e}");
+        // An allocation that may read held-out data is refused at load.
+        let evaluator = "@role(evaluator)\nf weight(s: f64, b: f64, t: f64) -> f64 {\n    1.0\n}\n";
+        assert!(AllocationProgram::load(evaluator).err().expect("refused").contains("@role(candidate)"));
     }
 
     #[test]

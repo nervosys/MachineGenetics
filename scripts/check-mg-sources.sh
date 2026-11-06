@@ -118,7 +118,7 @@ while IFS= read -r f; do
       ${first}
 "
     fi
-done < <(find . -name '*.mg' -not -path './prototype/target/*' | sed 's|^\./||' | sort)
+done < <(find . -name '*.mg' -not -path './prototype/target/*' -not -path './.claude/*' | sed 's|^\./||' | sort)
 
 echo "Checked $checked .mg files; $skipped skipped as known sketches."
 

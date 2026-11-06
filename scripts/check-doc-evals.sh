@@ -108,7 +108,7 @@ TEST = re.compile(r'@test\s*\n\s*(?:\+f|f|pub\s+fn|fn)\s+(\w+)\s*\(', re.M)
 ran = 0
 failed = 0
 for dirpath, dirnames, filenames in os.walk('.'):
-    dirnames[:] = [d for d in dirnames if d not in ('.git', 'target', 'node_modules')]
+    dirnames[:] = [d for d in dirnames if d not in ('.git', 'target', 'node_modules', '.claude')]
     for fn in sorted(filenames):
         if not fn.endswith('.md'):
             continue
