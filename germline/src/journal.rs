@@ -46,9 +46,29 @@ pub enum Entry {
         /// Skipped when empty, so earlier entries hash as they did.
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
         definitions: Vec<String>,
+        /// What [`super::lineage::Lineage::replay`] needs to rebuild the
+        /// generation from the journal alone (plan 8.3). Each is skipped when
+        /// absent, so entries written before it hash exactly as they did.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        parent: Option<GenerationId>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        genome: Option<crate::variation::Genome>,
+        #[serde(default, skip_serializing_if = "String::is_empty")]
+        note: String,
     },
     /// A candidate was measured.
-    Evaluated { generation: GenerationId, fitness: String, suite: Digest, evaluator: String },
+    Evaluated {
+        generation: GenerationId,
+        fitness: String,
+        suite: Digest,
+        evaluator: String,
+        /// The suite's name and kind, so replay can rebuild the measurement.
+        /// Skipped when absent, as above.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        suite_id: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        suite_kind: Option<crate::SuiteKind>,
+    },
     /// The gate ruled.
     Adjudicated { verdict: Verdict, attestation: Option<String> },
     /// Authority moved (or was refused).
@@ -205,6 +225,13 @@ impl Journal {
 
     /// Walk the chain and confirm it is intact.
     pub fn verify(&self) -> Result<u64, JournalError> {
+        self.verified().map(|records| records.len() as u64)
+    }
+
+    /// Every record, oldest first, after confirming the chain over exactly
+    /// these records: one read, so nothing can change between the check and
+    /// the use.
+    pub fn verified(&self) -> Result<Vec<Record>, JournalError> {
         let records = self.replay()?;
         let mut prev: Option<Digest> = None;
         for (i, r) in records.iter().enumerate() {
@@ -229,7 +256,7 @@ impl Journal {
             }
             prev = Some(r.link.clone());
         }
-        Ok(records.len() as u64)
+        Ok(records)
     }
 }
 
@@ -241,6 +268,9 @@ pub fn proposed(g: &Generation, seed: u64, plan: &str) -> Entry {
         seed,
         plan: plan.to_string(),
         definitions: g.definitions.clone(),
+        parent: g.parent,
+        genome: g.genome.clone(),
+        note: g.note.clone(),
     }
 }
 
@@ -384,6 +414,39 @@ mod tests {
             })
             .collect();
         assert_eq!(entries, vec!["one", "two"]);
+        let _ = std::fs::remove_dir_all(path.parent().unwrap());
+    }
+
+    #[test]
+    fn records_carrying_floats_still_verify_when_read_back() {
+        // A link is checked by re-serialising the entry as parsed, so every
+        // float in an entry must parse back to the same bits. serde_json does
+        // not guarantee that without its `float_roundtrip` feature, and
+        // without it a verdict's reasons, which carry scores, broke the chain
+        // of a journal no one had touched (found by plan 8.3's resume test).
+        let path = tmp("floats");
+        let mut j = Journal::open(&path).unwrap();
+        let mut x: u64 = 0x9E37_79B9_7F4A_7C15;
+        for i in 0..400u64 {
+            x ^= x << 13;
+            x ^= x >> 7;
+            x ^= x << 17;
+            let v = (x >> 11) as f64 / (1u64 << 53) as f64;
+            j.append(Entry::Adjudicated {
+                verdict: Verdict::Reject {
+                    generation: GenerationId(i),
+                    reasons: vec![super::super::gate::RejectReason::InsufficientImprovement {
+                        axis: "capability".into(),
+                        champion: v,
+                        challenger: v * 0.97,
+                        required: 0.01,
+                    }],
+                },
+                attestation: None,
+            })
+            .unwrap();
+        }
+        assert_eq!(j.verify(), Ok(400));
         let _ = std::fs::remove_dir_all(path.parent().unwrap());
     }
 

@@ -202,6 +202,11 @@ pub struct Runner<'a> {
     predictor: Option<Box<dyn FitnessPredictor>>,
     /// Trust in that predictor — moved only by measurements, never asserted.
     calibration: Calibration,
+    /// The cycle this invocation starts at, and the refusals carried into it:
+    /// zero for a fresh run, and what [`Lineage::replay`] found for a resumed
+    /// one, so the cycle seeds and the stall count continue where they were.
+    first_cycle: u32,
+    carried_refusals: u32,
 }
 
 impl<'a> Runner<'a> {
@@ -220,7 +225,19 @@ impl<'a> Runner<'a> {
             seed,
             predictor: None,
             calibration: Calibration::new(),
+            first_cycle: 0,
+            carried_refusals: 0,
         }
+    }
+
+    /// Continue a run whose lineage was rebuilt by [`Lineage::replay`]. With
+    /// no predictor attached, the resumed run makes the choices the
+    /// uninterrupted one would have; a predictor's calibration is not in the
+    /// journal and restarts at zero trust.
+    pub fn resume(mut self, from: &super::lineage::Resumed) -> Self {
+        self.first_cycle = from.proposals;
+        self.carried_refusals = from.trailing_refusals;
+        self
     }
 
     /// Run with a surrogate ranking the proposals.
@@ -252,9 +269,10 @@ impl<'a> Runner<'a> {
         workload: &mut dyn Workload,
     ) -> RunReport {
         let policy_digest = self.policy.digest();
+        let opened = if self.first_cycle == 0 { "opened".to_string() } else { format!("resumed at cycle {}", self.first_cycle) };
         let _ = journal.append(Entry::Note {
             text: format!(
-                "unattended run opened under policy `{}`@{} for at most {} cycles",
+                "unattended run {opened} under policy `{}`@{} for at most {} cycles",
                 self.policy.name,
                 policy_digest.short(),
                 self.policy.max_cycles
@@ -271,9 +289,9 @@ impl<'a> Runner<'a> {
             journal_head: None,
         };
 
-        let mut consecutive_refusals = 0u32;
+        let mut consecutive_refusals = self.carried_refusals;
 
-        for cycle_index in 0..self.policy.max_cycles {
+        for cycle_index in self.first_cycle..self.first_cycle.saturating_add(self.policy.max_cycles) {
             let seed = self.seed.wrapping_add(cycle_index as u64).wrapping_mul(0x9E37_79B9);
 
             match self.one_cycle(cycle_index, seed, lineage, journal, workload) {
@@ -580,6 +598,8 @@ mod tests {
     use super::*;
     use crate::attest::Attestor;
     use crate::gate::PromotionGate;
+    use crate::lineage::ReplayError;
+    use crate::journal::JournalError;
     use crate::{SuiteKind};
     use std::collections::HashSet;
     use std::path::PathBuf;
@@ -872,7 +892,7 @@ mod tests {
         let mut l = seeded(&mut w);
         let ep = episode();
         let at = attestor();
-        let mut r = Runner::new(policy(), &ep, &at, suite(), 5);
+        let mut r = Runner::new(policy(), &ep, &at, suite(), 11);
 
         let report = r.run(&mut l, &mut j, &mut w);
         assert!(j.verify().is_ok(), "the record of an unattended run must be intact");
@@ -1068,6 +1088,252 @@ mod tests {
             "a predictor does not buy extra cycles"
         );
         assert!(j.verify().is_ok(), "and the chain still holds");
+        let _ = std::fs::remove_dir_all(path.parent().unwrap());
+    }
+
+    // ---- resuming from the journal (plan 8.3) ----
+
+    /// A workload whose result is a pure function of the genome, so a fresh
+    /// instance after a restart behaves as the old one would have: capability
+    /// is the mean of the genome's parameters.
+    #[derive(Default)]
+    struct ByGenome {
+        capability: std::collections::HashMap<String, f64>,
+    }
+
+    impl Workload for ByGenome {
+        fn materialize(&mut self, spec: &CandidateSpec) -> Result<Digest, String> {
+            let ps = crate::variation::params_of(&spec.genome);
+            let cap = if ps.is_empty() { 0.0 } else { ps.iter().sum::<f64>() / ps.len() as f64 };
+            let d = Digest::of(serde_json::to_string(&spec.genome).unwrap().as_bytes());
+            self.capability.insert(d.0.clone(), cap);
+            Ok(d)
+        }
+        fn evaluate(&mut self, artifact: &Digest, _: &EvalSuite) -> Result<FitnessVector, String> {
+            let cap = self.capability.get(&artifact.0).copied().ok_or("not materialized")?;
+            Ok(FitnessVector::new().with("capability", cap).with("safety", 0.95))
+        }
+        fn shadow(&mut self, _: &Digest) -> HealthSample {
+            HealthSample::ok()
+        }
+        fn observe_champion(&mut self, _: &Digest) -> HealthSample {
+            HealthSample::ok()
+        }
+        fn materialized(&self, _: &Digest) -> bool {
+            true
+        }
+    }
+
+    /// What the caller sets up in code before the journal starts.
+    fn genesis() -> Lineage {
+        let mut l = Lineage::new();
+        let id = l.next_id();
+        let mut g = Generation::new(id, Digest::of(b"seed-champion")).measured(Measurement {
+            suite: suite(),
+            fitness: FitnessVector::new().with("capability", 0.5).with("safety", 0.95),
+            evaluator: EVALUATOR.into(),
+        });
+        g.genome = Some(vec![Locus::param(0.5), Locus::param(0.5)]);
+        l.add(g);
+        l.grant(id, episode().gate_digest, EVALUATOR).unwrap();
+        l
+    }
+
+    fn patient(max_cycles: u32) -> RunnerPolicy {
+        RunnerPolicy { max_cycles, max_consecutive_refusals: 100, ..policy() }
+    }
+
+    /// The journal's entries other than notes, which say when a run opened
+    /// or resumed and so differ by design.
+    fn events(j: &Journal) -> Vec<Entry> {
+        j.replay().unwrap().into_iter().map(|r| r.entry).filter(|e| !matches!(e, Entry::Note { .. })).collect()
+    }
+
+    #[test]
+    fn a_run_killed_at_any_cycle_boundary_resumes_into_the_same_run() {
+        // Seed 11 promotes at cycle 3 and refuses the rest, so the kill
+        // points fall before, at and after a promotion.
+        const CYCLES: u32 = 8;
+        let (ep, at) = (episode(), attestor());
+        let whole_path = tmp("resume-whole");
+        let mut whole_j = Journal::open(&whole_path).unwrap();
+        let mut whole = genesis();
+        let whole_report = Runner::new(patient(CYCLES), &ep, &at, suite(), 11).run(&mut whole, &mut whole_j, &mut ByGenome::default());
+        assert!(
+            whole_report.promotions > 0 && whole_report.refusals > 0,
+            "the run should both promote and refuse, so both are replayed: {whole_report:?}"
+        );
+
+        for kill_at in 1..CYCLES {
+            let path = tmp(&format!("resume-{kill_at}"));
+            {
+                let mut j = Journal::open(&path).unwrap();
+                let mut l = genesis();
+                Runner::new(patient(kill_at), &ep, &at, suite(), 11).run(&mut l, &mut j, &mut ByGenome::default());
+            }
+            // A new process: nothing survives but the journal and its head.
+            let mut j = Journal::open(&path).unwrap();
+            let head = j.head().cloned();
+            let mut resumed = Lineage::replay(genesis(), &j, head.as_ref()).unwrap();
+            assert_eq!(resumed.proposals, kill_at);
+            let report = Runner::new(patient(CYCLES - kill_at), &ep, &at, suite(), 11)
+                .resume(&resumed)
+                .run(&mut resumed.lineage, &mut j, &mut ByGenome::default());
+            assert_eq!(report.cycles.first().map(|c| c.cycle), Some(kill_at), "cycle numbering continues");
+            assert_eq!(resumed.lineage.to_json(), whole.to_json(), "killed after cycle {kill_at}");
+            assert_eq!(events(&j), events(&whole_j), "killed after cycle {kill_at}");
+            assert_eq!(j.verify().err(), None, "killed after cycle {kill_at}");
+            let _ = std::fs::remove_dir_all(path.parent().unwrap());
+        }
+        let _ = std::fs::remove_dir_all(whole_path.parent().unwrap());
+    }
+
+    #[test]
+    fn replay_rebuilds_a_demotion_exactly() {
+        let path = tmp("resume-demoted");
+        let mut j = Journal::open(&path).unwrap();
+        let mut w = Improving::new(0.05);
+        w.champion_healthy = false;
+        let mut live = seeded(&mut w);
+        let (ep, at) = (episode(), attestor());
+        let report = Runner::new(policy(), &ep, &at, suite(), 3).run(&mut live, &mut j, &mut w);
+        assert!(matches!(report.halt, Halt::Demoted { .. }), "{:?}", report.halt);
+        let replayed = Lineage::replay(seeded(&mut Improving::new(0.05)), &j, None).unwrap();
+        assert_eq!(replayed.lineage.to_json(), live.to_json());
+        assert!(replayed.lineage.generations().iter().any(|g| g.status == crate::Status::Quarantined));
+        let _ = std::fs::remove_dir_all(path.parent().unwrap());
+    }
+
+    #[test]
+    fn a_stall_that_spans_a_restart_is_still_a_stall() {
+        let path = tmp("resume-stall");
+        let (ep, at) = (episode(), attestor());
+        let stalling = |max_cycles| RunnerPolicy { max_cycles, max_consecutive_refusals: 3, ..policy() };
+        let mut j = Journal::open(&path).unwrap();
+        let mut w = Improving::new(0.0);
+        let mut l = seeded(&mut w);
+        let first = Runner::new(stalling(2), &ep, &at, suite(), 2).run(&mut l, &mut j, &mut w);
+        assert_eq!((first.refusals, first.promotions), (2, 0));
+
+        let mut resumed = Lineage::replay(seeded(&mut Improving::new(0.0)), &j, None).unwrap();
+        assert_eq!(resumed.trailing_refusals, 2);
+        let mut w = Improving::new(0.0);
+        seeded(&mut w);
+        let report = Runner::new(stalling(10), &ep, &at, suite(), 2).resume(&resumed).run(&mut resumed.lineage, &mut j, &mut w);
+        assert_eq!(report.halt, Halt::SearchStalled { consecutive_refusals: 3 });
+        assert_eq!(report.cycles.len(), 1, "the third refusal in a row, not the third since the restart");
+        let _ = std::fs::remove_dir_all(path.parent().unwrap());
+    }
+
+    #[test]
+    fn a_journal_changed_in_one_byte_does_not_resume() {
+        let path = tmp("resume-tamper");
+        let mut j = Journal::open(&path).unwrap();
+        let mut l = genesis();
+        Runner::new(patient(3), &ep_static(), &attestor(), suite(), 11).run(&mut l, &mut j, &mut ByGenome::default());
+        let raw = std::fs::read_to_string(&path).unwrap();
+        let at = raw.find("\"capability\\\":").expect("a recorded fitness") + "\"capability\\\":".len();
+        let mut bytes = raw.into_bytes();
+        bytes[at] = if bytes[at] == b'0' { b'1' } else { b'0' };
+        std::fs::write(&path, bytes).unwrap();
+        let err = Lineage::replay(genesis(), &Journal::open(&path).unwrap(), None).unwrap_err();
+        assert!(matches!(err, ReplayError::Journal(JournalError::Broken { .. })), "{err:?}");
+        let _ = std::fs::remove_dir_all(path.parent().unwrap());
+    }
+
+    fn ep_static() -> Episode {
+        episode()
+    }
+
+    #[test]
+    fn a_truncated_journal_does_not_match_its_published_head() {
+        let path = tmp("resume-truncate");
+        let mut j = Journal::open(&path).unwrap();
+        let mut l = genesis();
+        let report = Runner::new(patient(3), &episode(), &attestor(), suite(), 11).run(&mut l, &mut j, &mut ByGenome::default());
+        let lines: Vec<String> = std::fs::read_to_string(&path).unwrap().lines().map(String::from).collect();
+        std::fs::write(&path, lines[..lines.len() - 3].join("\n") + "\n").unwrap();
+        let j = Journal::open(&path).unwrap();
+        assert_eq!(Lineage::replay(genesis(), &j, None).err(), None, "the prefix is a valid chain on its own");
+        let err = Lineage::replay(genesis(), &j, report.journal_head.as_ref()).unwrap_err();
+        assert!(matches!(err, ReplayError::Anchor { .. }), "{err:?}");
+        let _ = std::fs::remove_dir_all(path.parent().unwrap());
+    }
+
+    #[test]
+    fn a_well_chained_journal_still_cannot_name_a_champion_the_gate_did_not() {
+        // Anyone who can write the file can append records with valid links.
+        // What they append is still replayed through the succession rules.
+        let (ep, at) = (episode(), attestor());
+        let promote = |generation: u64, from: Option<u64>| Entry::Succession {
+            event: crate::lineage::SuccessionEvent::Promoted {
+                generation: GenerationId(generation),
+                from: from.map(GenerationId),
+                gate: ep.gate_digest.clone(),
+                evaluator: EVALUATOR.into(),
+            },
+        };
+        let forged = |name: &str, entries: Vec<Entry>| {
+            let path = tmp(name);
+            let mut j = Journal::open(&path).unwrap();
+            let mut l = genesis();
+            Runner::new(patient(2), &ep, &at, suite(), 11).run(&mut l, &mut j, &mut ByGenome::default());
+            for e in entries {
+                j.append(e).unwrap();
+            }
+            let out = Lineage::replay(genesis(), &j, None);
+            let _ = std::fs::remove_dir_all(path.parent().unwrap());
+            out
+        };
+        let champion = |name| {
+            let path = tmp(name);
+            let mut j = Journal::open(&path).unwrap();
+            let mut l = genesis();
+            Runner::new(patient(2), &ep, &at, suite(), 11).run(&mut l, &mut j, &mut ByGenome::default());
+            let _ = std::fs::remove_dir_all(path.parent().unwrap());
+            l.champion().map(|g| g.id.0)
+        };
+        let current = champion("forge-champion");
+
+        // A generation nobody proposed.
+        let e = forged("forge-unproposed", vec![promote(99, current)]).unwrap_err();
+        assert!(matches!(&e, ReplayError::Inconsistent { detail, .. } if detail.contains("without being proposed")), "{e:?}");
+
+        // A proposed generation promoted over a champion that is not the one
+        // in office.
+        let proposal = Entry::Proposed {
+            generation: GenerationId(50),
+            artifact: Digest::of(b"forged"),
+            seed: 0,
+            plan: "forger".into(),
+            definitions: vec![],
+            parent: None,
+            genome: None,
+            note: String::new(),
+        };
+        let e = forged("forge-stale", vec![proposal.clone(), promote(50, Some(777))]).unwrap_err();
+        assert!(matches!(&e, ReplayError::Inconsistent { detail, .. } if detail.contains("the champion was")), "{e:?}");
+
+        // Proposed, and over the right champion, but never measured on a
+        // held-out suite.
+        let e = forged("forge-unmeasured", vec![proposal, promote(50, current)]).unwrap_err();
+        assert!(matches!(&e, ReplayError::Inconsistent { detail, .. } if detail.contains("no held-out measurement")), "{e:?}");
+    }
+
+    #[test]
+    fn a_journal_from_before_replay_says_so() {
+        let path = tmp("resume-predates");
+        let mut j = Journal::open(&path).unwrap();
+        j.append(Entry::Evaluated {
+            generation: GenerationId(1),
+            fitness: "{}".into(),
+            suite: Digest::of(SUITE),
+            evaluator: EVALUATOR.into(),
+            suite_id: None,
+            suite_kind: None,
+        })
+        .unwrap();
+        assert!(matches!(Lineage::replay(Lineage::new(), &j, None), Err(ReplayError::Predates { index: 0, .. })));
         let _ = std::fs::remove_dir_all(path.parent().unwrap());
     }
 }

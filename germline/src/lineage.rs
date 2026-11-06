@@ -21,11 +21,28 @@
 //!
 //! Comparing only to the incumbent makes every one of those promotions look
 //! reasonable in isolation, which is exactly how the capability disappears.
+//!
+//! ## A lineage is rebuilt, never loaded
+//!
+//! A lineage names the champion, so a lineage read from a file would be a way
+//! to grant authority without the gate. `Lineage` is therefore not
+//! `Deserialize`:
+//!
+//! ```compile_fail
+//! let forged: germline::lineage::Lineage = serde_json::from_str("{}").unwrap();
+//! ```
+//!
+//! A restarted process gets its lineage from [`Lineage::replay`] (plan 8.3),
+//! which verifies the journal's hash chain and then re-applies every
+//! succession event through the same transitions the live methods use,
+//! refusing any the lineage at that point would not have allowed.
 
 use super::gate::Approval;
-use super::{Generation, GenerationId, Status};
+use super::journal::{Entry, Journal, JournalError};
+use super::{EvalSuite, FitnessVector, Generation, GenerationId, Measurement, Status};
 use ribosome::Digest;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
 /// A transfer of authority, or a refused one.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -86,8 +103,56 @@ impl std::fmt::Display for LineageError {
 
 impl std::error::Error for LineageError {}
 
+/// Why a journal could not be replayed into a lineage.
+#[derive(Debug, Clone, PartialEq)]
+pub enum ReplayError {
+    /// The hash chain does not verify.
+    Journal(JournalError),
+    /// The chain verifies but ends somewhere other than the head published
+    /// for it: the journal was truncated, or rewritten from some point on.
+    Anchor { expected: Digest, found: Option<Digest> },
+    /// A record asks for a transition the lineage did not allow at that point.
+    Inconsistent { index: u64, detail: String },
+    /// A record was written before the journal carried what replay needs.
+    Predates { index: u64, missing: &'static str },
+}
+
+impl std::fmt::Display for ReplayError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ReplayError::Journal(e) => write!(f, "{e}"),
+            ReplayError::Anchor { expected, found } => write!(
+                f,
+                "the journal ends at {} and its published head is {}",
+                found.as_ref().map(|d| d.short()).unwrap_or_else(|| "nothing".into()),
+                expected.short()
+            ),
+            ReplayError::Inconsistent { index, detail } => write!(f, "journal record {index}: {detail}"),
+            ReplayError::Predates { index, missing } => {
+                write!(f, "journal record {index} predates replay: it does not record {missing}")
+            }
+        }
+    }
+}
+
+impl std::error::Error for ReplayError {}
+
+/// A lineage rebuilt from a journal, and where the run that wrote it stopped.
+#[derive(Debug, Clone)]
+pub struct Resumed {
+    pub lineage: Lineage,
+    /// Candidates proposed. A resumed runner continues from this cycle, so a
+    /// cycle cut off part-way is counted as spent rather than run twice.
+    pub proposals: u32,
+    /// Refusals since the last promotion, so a stall that spans a restart is
+    /// still a stall.
+    pub trailing_refusals: u32,
+    /// The verified head the lineage was rebuilt from.
+    pub head: Option<Digest>,
+}
+
 /// The generation log plus the current champion.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize)]
 pub struct Lineage {
     generations: Vec<Generation>,
     events: Vec<SuccessionEvent>,
@@ -204,7 +269,12 @@ impl Lineage {
             });
         }
         let gate = approval.gate().clone();
-        let evaluator = approval.evaluator();
+        self.install(id, gate, approval.evaluator().to_string());
+        Ok(())
+    }
+
+    /// The promotion transition, shared by [`Lineage::promote`] and replay.
+    fn install(&mut self, id: GenerationId, gate: Digest, evaluator: String) {
         let from = self.champion;
         if let Some(prev) = from {
             if let Some(g) = self.get_mut(prev) {
@@ -216,13 +286,7 @@ impl Lineage {
             g.promoted_under = Some(gate.clone());
         }
         self.champion = Some(id);
-        self.events.push(SuccessionEvent::Promoted {
-            generation: id,
-            from,
-            gate,
-            evaluator: evaluator.to_string(),
-        });
-        Ok(())
+        self.events.push(SuccessionEvent::Promoted { generation: id, from, gate, evaluator });
     }
 
     /// Promote without the gate, for this crate's unit tests only.
@@ -275,6 +339,13 @@ impl Lineage {
             });
         }
 
+        self.apply_demotion(current, target, reason);
+        Ok(target)
+    }
+
+    /// The demotion transition, shared by [`Lineage::demote_champion`] and
+    /// replay.
+    fn apply_demotion(&mut self, current: GenerationId, target: GenerationId, reason: &str) {
         if let Some(g) = self.get_mut(current) {
             g.status = Status::Quarantined;
             g.note = reason.to_string();
@@ -288,7 +359,6 @@ impl Lineage {
             to: target,
             reason: reason.to_string(),
         });
-        Ok(target)
     }
 
     /// Deliberate return to a specific earlier generation.
@@ -309,6 +379,12 @@ impl Lineage {
             });
         }
         let from = self.champion.ok_or(LineageError::NoFallback)?;
+        self.apply_rollback(from, target, reason);
+        Ok(())
+    }
+
+    /// The rollback transition, shared by [`Lineage::roll_back_to`] and replay.
+    fn apply_rollback(&mut self, from: GenerationId, target: GenerationId, reason: &str) {
         if let Some(g) = self.get_mut(from) {
             g.status = Status::Retired;
         }
@@ -321,7 +397,6 @@ impl Lineage {
             to: target,
             reason: reason.to_string(),
         });
-        Ok(())
     }
 
     /// Has this generation been demoted before, and with what held-out
@@ -334,6 +409,114 @@ impl Lineage {
 
     pub fn to_json(&self) -> String {
         serde_json::to_string_pretty(self).unwrap_or_else(|e| format!("{{\"error\":\"{e}\"}}"))
+    }
+
+    /// Rebuild a lineage from `journal`, starting from `genesis`.
+    ///
+    /// `genesis` is what the caller set up in code before the journal began,
+    /// such as a seed champion it approved itself; pass [`Lineage::new`] when
+    /// the journal records that too. `anchor` is the journal head published
+    /// somewhere the writer does not control, when there is one; it is what
+    /// catches truncation, which the chain alone cannot (see
+    /// [`super::journal`]).
+    ///
+    /// The chain is verified first, then every succession event is re-applied
+    /// with the checks the live transition made: a promotion must name the
+    /// champion it displaced and a generation that was proposed and measured
+    /// on a held-out suite, a demotion must fall back to a retired generation,
+    /// and a rollback may not return to a quarantined one. Materialization
+    /// can't be checked here; it belongs to the workload.
+    pub fn replay(genesis: Lineage, journal: &Journal, anchor: Option<&Digest>) -> Result<Resumed, ReplayError> {
+        let records = journal.verified().map_err(ReplayError::Journal)?;
+        let head = records.last().map(|r| r.link.clone());
+        if let Some(expected) = anchor {
+            if head.as_ref() != Some(expected) {
+                return Err(ReplayError::Anchor { expected: expected.clone(), found: head });
+            }
+        }
+        let mut l = genesis;
+        let mut pending: BTreeMap<GenerationId, Generation> = BTreeMap::new();
+        let (mut proposals, mut trailing_refusals) = (0u32, 0u32);
+        for r in &records {
+            let bad = |detail: String| ReplayError::Inconsistent { index: r.index, detail };
+            match &r.entry {
+                Entry::Proposed { generation, artifact, definitions, parent, genome, note, .. } => {
+                    if l.get(*generation).is_some() || pending.contains_key(generation) {
+                        return Err(bad(format!("{generation} is proposed twice")));
+                    }
+                    let mut g = Generation::new(*generation, artifact.clone()).note(note.clone());
+                    g.parent = *parent;
+                    g.genome = genome.clone();
+                    g.definitions = definitions.clone();
+                    l.next_id = l.next_id.max(generation.0 + 1);
+                    pending.insert(*generation, g);
+                    proposals += 1;
+                }
+                Entry::Evaluated { generation, fitness, suite, evaluator, suite_id, suite_kind: kind } => {
+                    let (Some(id), Some(kind)) = (suite_id, kind) else {
+                        return Err(ReplayError::Predates { index: r.index, missing: "the evaluated suite's name and kind" });
+                    };
+                    let g = pending
+                        .get_mut(generation)
+                        .ok_or_else(|| bad(format!("{generation} is evaluated without being proposed")))?;
+                    let fitness: FitnessVector =
+                        serde_json::from_str(fitness).map_err(|e| bad(format!("{generation}'s fitness: {e}")))?;
+                    g.measured = Some(Measurement {
+                        suite: EvalSuite::new(id.clone(), *kind, suite.clone()),
+                        fitness,
+                        evaluator: evaluator.clone(),
+                    });
+                }
+                Entry::Succession { event } => match event {
+                    SuccessionEvent::Promoted { generation, from, gate, evaluator } => {
+                        if *from != l.champion {
+                            return Err(bad(format!(
+                                "{generation} is promoted over {from:?}, and the champion was {:?}",
+                                l.champion
+                            )));
+                        }
+                        let g = pending
+                            .remove(generation)
+                            .ok_or_else(|| bad(format!("{generation} is promoted without being proposed")))?;
+                        if g.heldout_fitness().is_none() {
+                            return Err(bad(format!("{generation} is promoted with no held-out measurement")));
+                        }
+                        l.add(g);
+                        l.install(*generation, gate.clone(), evaluator.clone());
+                        trailing_refusals = 0;
+                    }
+                    SuccessionEvent::Refused { generation, reasons } => {
+                        pending.remove(generation);
+                        l.refuse(*generation, reasons.clone());
+                        trailing_refusals += 1;
+                    }
+                    SuccessionEvent::Demoted { generation, to, reason } => {
+                        if l.champion != Some(*generation) {
+                            return Err(bad(format!("{generation} is demoted and was not the champion")));
+                        }
+                        if l.get(*to).map(|g| g.status) != Some(Status::Retired) {
+                            return Err(bad(format!("{generation} falls back to {to}, which is not a retired generation")));
+                        }
+                        l.apply_demotion(*generation, *to, reason);
+                    }
+                    SuccessionEvent::RolledBack { from, to, reason } => {
+                        if l.champion != Some(*from) {
+                            return Err(bad(format!("a rollback from {from}, which was not the champion")));
+                        }
+                        match l.get(*to).map(|g| g.status) {
+                            None => return Err(bad(format!("a rollback to unknown {to}"))),
+                            Some(Status::Quarantined) => {
+                                return Err(bad(format!("a rollback to {to}, which is quarantined")))
+                            }
+                            Some(_) => {}
+                        }
+                        l.apply_rollback(*from, *to, reason);
+                    }
+                },
+                Entry::Adjudicated { .. } | Entry::Failure { .. } | Entry::Note { .. } => {}
+            }
+        }
+        Ok(Resumed { lineage: l, proposals, trailing_refusals, head })
     }
 }
 

@@ -186,6 +186,8 @@ impl Cycle {
                 fitness: serde_json::to_string(&measurement.fitness).unwrap_or_default(),
                 suite: measurement.suite.digest.clone(),
                 evaluator: measurement.evaluator.clone(),
+                suite_id: Some(measurement.suite.id.clone()),
+                suite_kind: Some(measurement.suite.kind),
             })
             .map_err(|e| CycleError::Journal(e.to_string()))?;
         self.candidate.measured = Some(measurement);
@@ -274,6 +276,13 @@ impl Cycle {
             let reasons = self.verdict.as_ref().map(|v| v.reasons()).unwrap_or_default();
             lineage.refuse(self.candidate.id, reasons.clone());
             self.phase = Phase::Refused;
+            // The event as the lineage recorded it, so replay rebuilds the
+            // same lineage (plan 8.3); the note is for people.
+            if let Some(event) = lineage.events().last().cloned() {
+                journal
+                    .append(Entry::Succession { event })
+                    .map_err(|e| CycleError::Journal(e.to_string()))?;
+            }
             journal
                 .append(Entry::Note {
                     text: format!("refused {}: {}", self.candidate.id, reasons.join("; ")),

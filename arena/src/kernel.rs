@@ -22,10 +22,13 @@
 //! **What the boundary does not cover.** A learner sees held-out bytes when it
 //! is scored, as any model must. It sees them through `&self`, so it cannot
 //! train on them without interior mutability, which no learner here has; a
-//! learner proposed by the loop would need that checked. And
-//! `germline::lineage::Lineage` is `Deserialize`, so a forged lineage file
-//! could name a champion; that is closed by verifying the journal's hash chain
-//! on resume, which is plan 8.3.
+//! learner proposed by the loop would need that checked.
+//!
+//! A lineage names the champion, so it is part of the boundary too. It is not
+//! `Deserialize`: a restarted run rebuilds it with
+//! `germline::lineage::Lineage::replay`, which verifies the journal's hash
+//! chain and re-applies each succession event under the rules the live
+//! transition enforced (plan 8.3).
 
 use crate::energy::{self, Reading};
 use crate::learner::ByteLearner;
