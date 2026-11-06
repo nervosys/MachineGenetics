@@ -10,7 +10,15 @@
 //   3. AccuracyMetric — mean absolute error, mean relative error, etc.
 //   4. CalibrationSuite — run comparisons between estimated and measured
 //   5. CalibrationReport — summary with accuracy grades
+//   6. EnergySample / FuelCalibration — fuel against measured joules
+//
+// Fuel (MAGE_SPEC.md §4.11) is the unit a search compares candidates' cost
+// in, and joules are the fixed unit of compute (decision D2). The fit below
+// is what makes fuel a *calibrated* proxy: samples come from meters reading
+// hardware while the evaluator spends fuel, never from a table. The arena
+// feeds one sample per round (`arena::arena::run`).
 
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 // ── Calibration sample ─────────────────────────────────────────────
@@ -180,6 +188,7 @@ impl CalibrationTarget {
 /// Runs calibration tests across targets and produces reports.
 pub struct CalibrationSuite {
     targets: BTreeMap<String, CalibrationTarget>,
+    energy: BTreeMap<String, Vec<EnergySample>>,
 }
 
 impl Default for CalibrationSuite {
@@ -192,7 +201,18 @@ impl CalibrationSuite {
     pub fn new() -> Self {
         Self {
             targets: BTreeMap::new(),
+            energy: BTreeMap::new(),
         }
+    }
+
+    /// Record a measured fuel/energy sample for `target`.
+    pub fn add_energy_sample(&mut self, target: &str, sample: EnergySample) {
+        self.energy.entry(target.to_string()).or_default().push(sample);
+    }
+
+    /// Fuel calibrated to joules on `target`, from its energy samples.
+    pub fn fuel_calibration(&self, target: &str) -> Option<FuelCalibration> {
+        self.energy.get(target).and_then(|s| fit_fuel_to_joules(s))
     }
 
     pub fn add_sample(&mut self, sample: CostCalibrationSample) {
@@ -226,8 +246,14 @@ impl CalibrationSuite {
                 latency_accuracy: latency_acc,
             });
         }
+        let fuel = self
+            .energy
+            .keys()
+            .filter_map(|t| self.fuel_calibration(t).map(|c| (t.clone(), c)))
+            .collect();
         CalibrationReport {
             target_reports,
+            fuel,
         }
     }
 
@@ -286,6 +312,73 @@ impl CalibrationSuite {
     }
 }
 
+// ── Fuel against joules ────────────────────────────────────────────
+
+/// One measurement: the fuel a phase of work spent, and the joules the
+/// meters recorded over the same phase.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct EnergySample {
+    pub fuel: u64,
+    pub joules: f64,
+    /// False when any meter behind `joules` was an estimate (a wall-clock
+    /// power figure, say) rather than a hardware counter.
+    pub measured: bool,
+}
+
+/// The least-squares line `joules = overhead_joules + joules_per_fuel * fuel`.
+///
+/// The intercept matters. A meter reads everything its device did over the
+/// phase, including idle draw and work that spends no fuel (parsing,
+/// typechecking), so a ratio of totals would charge all of that to fuel.
+/// The slope is the marginal cost of fuel; `r_squared` says how much of the
+/// variation in energy fuel explains, which is how good a proxy it is.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct FuelCalibration {
+    pub joules_per_fuel: f64,
+    pub overhead_joules: f64,
+    pub r_squared: f64,
+    pub samples: usize,
+    /// True only if every sample was measured; otherwise the fit inherits the
+    /// estimate's label.
+    pub all_measured: bool,
+}
+
+impl FuelCalibration {
+    /// Predicted joules for `fuel`.
+    pub fn joules(&self, fuel: u64) -> f64 {
+        self.overhead_joules + self.joules_per_fuel * fuel as f64
+    }
+}
+
+/// Fit fuel to joules. `None` with fewer than three samples, with fuel that
+/// never varied (the slope is then undetermined, not zero), or with a
+/// non-finite reading.
+pub fn fit_fuel_to_joules(samples: &[EnergySample]) -> Option<FuelCalibration> {
+    if samples.len() < 3 || samples.iter().any(|s| !s.joules.is_finite()) {
+        return None;
+    }
+    let n = samples.len() as f64;
+    let mx = samples.iter().map(|s| s.fuel as f64).sum::<f64>() / n;
+    let my = samples.iter().map(|s| s.joules).sum::<f64>() / n;
+    let sxx: f64 = samples.iter().map(|s| (s.fuel as f64 - mx).powi(2)).sum();
+    if sxx == 0.0 {
+        return None;
+    }
+    let sxy: f64 = samples.iter().map(|s| (s.fuel as f64 - mx) * (s.joules - my)).sum();
+    let syy: f64 = samples.iter().map(|s| (s.joules - my).powi(2)).sum();
+    let slope = sxy / sxx;
+    // Energy that never varied leaves nothing for fuel to explain: 0, not
+    // the 1 a flat line's zero residuals would suggest.
+    let r_squared = if syy == 0.0 { 0.0 } else { (sxy * sxy) / (sxx * syy) };
+    Some(FuelCalibration {
+        joules_per_fuel: slope,
+        overhead_joules: my - slope * mx,
+        r_squared,
+        samples: samples.len(),
+        all_measured: samples.iter().all(|s| s.measured),
+    })
+}
+
 // ── Calibration report ─────────────────────────────────────────────
 
 #[derive(Debug, Clone)]
@@ -301,6 +394,8 @@ pub struct TargetReport {
 #[derive(Debug, Clone)]
 pub struct CalibrationReport {
     pub target_reports: Vec<TargetReport>,
+    /// Fuel calibrated to joules, per target with enough energy samples.
+    pub fuel: Vec<(String, FuelCalibration)>,
 }
 
 impl CalibrationReport {
@@ -338,6 +433,16 @@ impl CalibrationReport {
                 tr.latency_grade.label(),
             ));
             out.push('\n');
+        }
+        for (target, c) in &self.fuel {
+            out.push_str(&format!(
+                "Fuel on {target}: {:.3e} J/fuel + {:.3} J overhead, r²={:.2}, {} samples, {}\n",
+                c.joules_per_fuel,
+                c.overhead_joules,
+                c.r_squared,
+                c.samples,
+                if c.all_measured { "measured" } else { "includes estimates" },
+            ));
         }
         out.push_str(&format!("Overall: {}\n", self.overall_grade().label()));
         out
@@ -443,6 +548,58 @@ mod tests {
         let acc = target.cycles_accuracy();
         assert_eq!(acc.sample_count, 0);
         assert_eq!(acc.mae, 0.0);
+    }
+
+    // ── Fuel against joules ───────────────────────────────────────
+
+    fn es(fuel: u64, joules: f64, measured: bool) -> EnergySample {
+        EnergySample { fuel, joules, measured }
+    }
+
+    #[test]
+    fn a_linear_cost_is_recovered_with_its_overhead() {
+        // 2 J of idle draw per phase, 0.001 J per unit of fuel.
+        let s: Vec<_> = [100u64, 5_000, 20_000, 80_000].iter().map(|&f| es(f, 2.0 + 0.001 * f as f64, true)).collect();
+        let c = fit_fuel_to_joules(&s).unwrap();
+        assert!((c.joules_per_fuel - 0.001).abs() < 1e-12, "{c:?}");
+        assert!((c.overhead_joules - 2.0).abs() < 1e-9, "{c:?}");
+        assert!((c.r_squared - 1.0).abs() < 1e-12);
+        assert!((c.joules(10_000) - 12.0).abs() < 1e-9);
+        assert!(c.all_measured);
+    }
+
+    #[test]
+    fn energy_unrelated_to_fuel_has_no_explanatory_power() {
+        let s = vec![es(10, 5.0, true), es(20, 1.0, true), es(30, 5.0, true), es(40, 1.0, true)];
+        let c = fit_fuel_to_joules(&s).unwrap();
+        assert!(c.r_squared < 0.25, "{c:?}");
+    }
+
+    #[test]
+    fn an_estimate_anywhere_labels_the_fit() {
+        let s = vec![es(1, 1.0, true), es(2, 2.0, false), es(3, 3.0, true)];
+        assert!(!fit_fuel_to_joules(&s).unwrap().all_measured);
+    }
+
+    #[test]
+    fn an_undetermined_fit_is_refused_rather_than_guessed() {
+        assert!(fit_fuel_to_joules(&[es(1, 1.0, true), es(2, 2.0, true)]).is_none(), "two points");
+        assert!(fit_fuel_to_joules(&[es(5, 1.0, true), es(5, 2.0, true), es(5, 3.0, true)]).is_none(), "constant fuel");
+        assert!(fit_fuel_to_joules(&[es(1, 1.0, true), es(2, f64::NAN, true), es(3, 3.0, true)]).is_none(), "NaN");
+    }
+
+    #[test]
+    fn the_suite_reports_fuel_per_target_from_samples_fed_in() {
+        let mut suite = CalibrationSuite::new();
+        for f in [1_000u64, 2_000, 4_000] {
+            suite.add_energy_sample("arena-cpu", es(f, 0.5 + 0.002 * f as f64, false));
+        }
+        suite.add_energy_sample("thin", es(1, 1.0, true));
+        let r = suite.report();
+        assert_eq!(r.fuel.len(), 1, "a target without enough samples has no calibration");
+        assert_eq!(r.fuel[0].0, "arena-cpu");
+        assert!(r.to_text().contains("J/fuel"));
+        assert!(r.to_text().contains("includes estimates"));
     }
 
     // ── CalibrationSuite ──────────────────────────────────────────

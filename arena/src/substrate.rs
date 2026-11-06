@@ -139,10 +139,22 @@ impl Substrate {
 
     /// Run a prepared program's `gen(seed)` within fuel.
     pub fn execute(&self, prepared: &Prepared, seed: u64) -> Outcome {
+        self.execute_metered(prepared, seed).0
+    }
+
+    /// [`Substrate::execute`], also returning the fuel spent, *refusals
+    /// included*: a program that exhausts its budget spent all of it, and a
+    /// calibration that counted only successes would charge that energy to
+    /// nothing.
+    pub fn execute_metered(&self, prepared: &Prepared, seed: u64) -> (Outcome, u64) {
         // Seeds are kept small so `s` stays in the byte-ish range a program's
         // arithmetic was written for; the seed's job is variety, not magnitude.
         let arg = Value::Int((seed % 256) as i64);
         let (result, fuel_used) = run_metered(&prepared.module, ENTRY, vec![arg], self.fuel);
+        (self.outcome(result, fuel_used), fuel_used)
+    }
+
+    fn outcome(&self, result: Result<Value, BoundedError>, fuel_used: u64) -> Outcome {
         match result {
             Ok(Value::List(xs)) => {
                 let mut bytes = Vec::with_capacity(xs.len().min(self.max_bytes));
