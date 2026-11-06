@@ -3,7 +3,8 @@
 //! ```text
 //! arena --heldout <file>[,<file>…] [--rounds N] [--programs N] [--seed S]
 //!       [--agents grammar:2,uniform:1,mutator:1]
-//!       [--learners orders:log2buckets:lr[,…]] [--fuel F] [--cpu-watts W]
+//!       [--learners ng:orders:log2buckets:lr | tf:d:layers:heads:ctx:lr[:gpu] [,…]]
+//!       [--fuel F] [--cpu-watts W]
 //!       [--json <out.json>]
 //! ```
 //!
@@ -11,7 +12,7 @@
 //! summary goes to stderr; `--json` writes the full report.
 
 use arena::arena::{default_meters, run, Config, Corpus};
-use arena::learner::LearnerConfig;
+use arena::learner::{LearnerConfig, LearnerSpec, TransformerConfig};
 
 fn fail(msg: impl std::fmt::Display) -> ! {
     eprintln!("arena: {msg}");
@@ -33,6 +34,8 @@ fn main() {
             "--programs" => cfg.programs_per_round = num(value(i), "--programs") as usize,
             "--seed" => cfg.seed = num(value(i), "--seed"),
             "--fuel" => cfg.substrate.fuel = num(value(i), "--fuel"),
+            "--learner-steps" => cfg.learner_steps = num(value(i), "--learner-steps") as usize,
+            "--eval-every" => cfg.eval_every = num(value(i), "--eval-every").max(1) as usize,
             "--cpu-watts" => cfg.cpu_watts = value(i).parse().unwrap_or_else(|_| fail("--cpu-watts: not a number")),
             "--json" => json_out = Some(value(i).to_string()),
             "--agents" => {
@@ -45,18 +48,28 @@ fn main() {
                     .collect();
             }
             "--learners" => {
+                let float = |s: &str| -> f64 { s.parse().unwrap_or_else(|_| fail(format!("`{s}` is not a number"))) };
                 cfg.learners = value(i)
                     .split(',')
                     .map(|p| {
                         let f: Vec<&str> = p.split(':').collect();
-                        if f.len() != 3 {
-                            fail(format!("--learners: `{p}` is not orders:log2buckets:lr"));
-                        }
-                        LearnerConfig {
-                            orders: num(f[0], "orders") as usize,
-                            log2_buckets: num(f[1], "log2buckets") as u32,
-                            lr: f[2].parse().unwrap_or_else(|_| fail(format!("lr `{}`", f[2]))),
-                            ..LearnerConfig::default()
+                        match f.as_slice() {
+                            ["tf", d, l, h, ctx, lr, rest @ ..] => LearnerSpec::Transformer(TransformerConfig {
+                                d: num(d, "d") as usize,
+                                layers: num(l, "layers") as usize,
+                                heads: num(h, "heads") as usize,
+                                ctx: num(ctx, "ctx") as usize,
+                                lr: float(lr),
+                                gpu: rest.first() == Some(&"gpu"),
+                            }),
+                            ["ng", o, b, lr] | [o, b, lr] => LearnerSpec::Ngram(LearnerConfig {
+                                orders: num(o, "orders") as usize,
+                                log2_buckets: num(b, "log2buckets") as u32,
+                                lr: float(lr),
+                            }),
+                            _ => fail(format!(
+                                "--learners: `{p}` is neither ng:orders:log2buckets:lr nor tf:d:layers:heads:ctx:lr[:gpu]"
+                            )),
                         }
                     })
                     .collect();
@@ -108,12 +121,12 @@ fn main() {
     eprintln!("\n=== learners (front: bits/byte, joules, latency — all minimised) ===");
     for l in &report.learners {
         eprintln!(
-            "  #{} {:>2}×2^{:<2} lr {:<5} bpb {:.3}  joules {}  s/KB {:.2e}  bits/byte/J {}  {}",
+            "  #{} {:<40} params {:>9}  bpb {:.3} (pool {:.3})  joules {}  s/KB {:.2e}  bits/byte/J {}  {}",
             l.index,
-            l.config.orders,
-            l.config.log2_buckets,
-            l.config.lr,
+            l.describe,
+            l.parameters,
             l.mean_bpb,
+            l.pool_bpb,
             l.train_joules.map(|j| format!("{j:.2}")).unwrap_or_else(|| "n/a".into()),
             l.latency_s_per_kb,
             l.intelligence_per_joule.map(|x| format!("{x:.4}")).unwrap_or_else(|| "n/a".into()),

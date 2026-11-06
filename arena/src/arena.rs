@@ -30,7 +30,7 @@
 use crate::agents::{allocate, Candidate, GrammarAgent, MutatorAgent, Pool, Proposer, Scored, UniformAgent};
 use crate::energy::{self, Meter, Reading, Span};
 use crate::grammar::Rng;
-use crate::learner::{Learner, LearnerConfig};
+use crate::learner::{self, ByteLearner, LearnerSpec};
 use crate::substrate::{Outcome, Refusal, Substrate};
 use germline::pareto::{Archive, Objective};
 use serde::{Deserialize, Serialize};
@@ -60,7 +60,7 @@ pub struct Config {
     pub rounds: usize,
     pub programs_per_round: usize,
     pub substrate: Substrate,
-    pub learners: Vec<LearnerConfig>,
+    pub learners: Vec<LearnerSpec>,
     /// Agents as `(kind, count)`: `grammar`, `uniform`, `mutator`.
     pub agents: Vec<(String, usize)>,
     pub seed: u64,
@@ -85,7 +85,7 @@ impl Default for Config {
             rounds: 30,
             programs_per_round: 48,
             substrate: Substrate::default(),
-            learners: vec![LearnerConfig::default()],
+            learners: vec![LearnerSpec::default()],
             agents: vec![("grammar".into(), 2), ("uniform".into(), 1), ("mutator".into(), 1)],
             seed: 1,
             replay_per_round: 16,
@@ -133,7 +133,9 @@ pub struct Checkpoint {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LearnerResult {
     pub index: usize,
-    pub config: LearnerConfig,
+    pub config: LearnerSpec,
+    /// The learner in words, e.g. `transformer d64 L2 h4 ctx128 lr0.001 on cuda:0`.
+    pub describe: String,
     pub parameters: usize,
     /// Bits per byte on the pool's own data — what the learner was trained on.
     /// Beside `mean_bpb` it separates *learned something* from *learned
@@ -282,7 +284,8 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
         .iter()
         .map(|a| AgentStanding { id: a.id().to_string(), kind: a.kind().to_string(), ..Default::default() })
         .collect();
-    let mut learners: Vec<Learner> = cfg.learners.iter().map(|c| Learner::new(*c)).collect();
+    let mut learners: Vec<Box<dyn ByteLearner>> =
+        cfg.learners.iter().map(|s| learner::build(*s)).collect::<Result<_, _>>()?;
     let mut joules: Vec<Option<f64>> = vec![Some(0.0); learners.len()];
     let mut all_measured = vec![true; learners.len()];
     let mut seconds = vec![0.0f64; learners.len()];
@@ -407,7 +410,7 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
                     joules: joules[li],
                     joules_all_measured: all_measured[li],
                     seconds: seconds[li],
-                    bytes_seen: learner.bytes_seen,
+                    bytes_seen: learner.bytes_seen(),
                 });
             }
         }
@@ -430,6 +433,7 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
         results.push(LearnerResult {
             index: li,
             config: cfg.learners[li],
+            describe: learner.describe(),
             parameters: learner.parameters(),
             pool_bpb: learner.bits_per_byte(&pool_bytes),
             mean_bpb,
@@ -488,6 +492,7 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, mut meters: Vec<Box<dyn Meter>>, m
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::learner::LearnerConfig;
 
     fn tiny_cfg() -> Config {
         Config {
@@ -495,8 +500,8 @@ mod tests {
             programs_per_round: 16,
             substrate: Substrate { fuel: 50_000, max_bytes: 128 },
             learners: vec![
-                LearnerConfig { orders: 2, log2_buckets: 8, lr: 0.05 },
-                LearnerConfig { orders: 1, log2_buckets: 6, lr: 0.05 },
+                LearnerSpec::Ngram(LearnerConfig { orders: 2, log2_buckets: 8, lr: 0.05 }),
+                LearnerSpec::Ngram(LearnerConfig { orders: 1, log2_buckets: 6, lr: 0.05 }),
             ],
             agents: vec![("grammar".into(), 1), ("uniform".into(), 1), ("mutator".into(), 1)],
             eval_every: 3,

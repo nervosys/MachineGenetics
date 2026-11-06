@@ -58,6 +58,82 @@ impl Default for LearnerConfig {
     }
 }
 
+/// What the arena needs of any learner: an exact score, the learning-progress
+/// reward, and a training step. The n-gram [`Learner`] and the transformer
+/// (`crate::transformer`, behind the `transformer` feature) both implement it,
+/// so they compete on one front.
+pub trait ByteLearner {
+    /// Mean negative log-likelihood of `bytes`, in bits per byte.
+    fn bits_per_byte(&self, bytes: &[u8]) -> f64;
+    /// `|⟨∇L(bytes), P ⊙ δθ⟩| / |bytes|` — see the module docs.
+    fn progress(&self, bytes: &[u8]) -> f64;
+    /// One optimiser step over `batch`.
+    fn train(&mut self, batch: &[&[u8]]);
+    fn parameters(&self) -> usize;
+    fn bytes_seen(&self) -> u64;
+    fn describe(&self) -> String;
+}
+
+/// A causal byte transformer's shape and optimiser settings.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct TransformerConfig {
+    pub d: usize,
+    pub layers: usize,
+    pub heads: usize,
+    pub ctx: usize,
+    pub lr: f64,
+    /// Run on CUDA device 0 (needs `--features gpu`) rather than the CPU.
+    pub gpu: bool,
+}
+
+/// Which learner to build.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum LearnerSpec {
+    Ngram(LearnerConfig),
+    Transformer(TransformerConfig),
+}
+
+impl Default for LearnerSpec {
+    fn default() -> Self {
+        LearnerSpec::Ngram(LearnerConfig::default())
+    }
+}
+
+/// Build a learner, or say why this binary cannot.
+pub fn build(spec: LearnerSpec) -> Result<Box<dyn ByteLearner>, String> {
+    match spec {
+        LearnerSpec::Ngram(c) => Ok(Box::new(Learner::new(c))),
+        #[cfg(feature = "transformer")]
+        LearnerSpec::Transformer(c) => Ok(Box::new(crate::transformer::TransformerLearner::new(c)?)),
+        #[cfg(not(feature = "transformer"))]
+        LearnerSpec::Transformer(_) => {
+            Err("this arena was built without the `transformer` feature (add --features transformer, or gpu)".into())
+        }
+    }
+}
+
+impl ByteLearner for Learner {
+    fn bits_per_byte(&self, bytes: &[u8]) -> f64 {
+        Learner::bits_per_byte(self, bytes)
+    }
+    fn progress(&self, bytes: &[u8]) -> f64 {
+        Learner::progress(self, bytes)
+    }
+    fn train(&mut self, batch: &[&[u8]]) {
+        Learner::train(self, batch)
+    }
+    fn parameters(&self) -> usize {
+        Learner::parameters(self)
+    }
+    fn bytes_seen(&self) -> u64 {
+        self.bytes_seen
+    }
+    fn describe(&self) -> String {
+        format!("ngram {}×2^{} lr{}", self.cfg.orders, self.cfg.log2_buckets, self.cfg.lr)
+    }
+}
+
 const V: usize = 256;
 const BETA1: f64 = 0.9;
 const BETA2: f64 = 0.999;

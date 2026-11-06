@@ -499,6 +499,19 @@ measurement that makes the GPU learner (plan 4.2) the critical-path item it
 was planned as. The novelty keys will keep losing to a reward whose optimum
 is degenerate.
 
+**Phase 4 began, and its first result is negative.** Task 4.1 chose candle
+on measurement: the repository's own training path runs attention in host
+loops and has never trained an attention net, while candle does 408k tokens/s
+on a 3090 Ti. Task 4.2 built the transformer learner behind a feature, with the
+exact preconditioner. Task 4.3's bar is **not met**: over 150 rounds, held-out
+bits per byte got *worse* on both text and code (9.5 → 10.5 on code), and the
+model fit its own data only to 5.9 bits per byte. The diagnosis is in
+`ARENA.md`. The generated data is mostly pseudo-random, because the
+vocabulary's modular arithmetic hashes its inputs, so the only learnable
+structure is constant runs. **This reorders the plan:** the program vocabulary
+is a bottleneck alongside the learner, and structure-producing combinators
+come next.
+
 **Merging needs a person.** Local `master` carried ten commits never pushed,
 the whole 2026-09-16 phase. PR #38 therefore holds 11 commits, all
 CI-green. The attempt to merge it was refused by the permission layer as a
