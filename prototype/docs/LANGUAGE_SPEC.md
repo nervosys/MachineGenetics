@@ -74,7 +74,6 @@ Source files are UTF-8 encoded. Identifiers use `[a-zA-Z_][a-zA-Z0-9_]*`.
 | `@@`  | Infinite loop | `loop`           |
 | `@w`  | While loop    | `while`          |
 | `@wl` | While-let     | `while let`      |
-| `!`   | Break         | `break`          |
 | `>>`  | Continue      | `continue`       |
 | `ret` | Return        | `return`         |
 
@@ -124,7 +123,7 @@ Source files are UTF-8 encoded. Identifiers use `[a-zA-Z_][a-zA-Z0-9_]*`.
 | `$T`     | `Rc<T>`         | Reference count        |
 | `@T`     | `Arc<T>`        | Atomic reference count |
 | `&T`     | `&T`            | Shared reference       |
-| `&m T`   | `&mut T`        | Mutable reference      |
+| `&!T`    | `&!T`           | Mutable reference      |
 | `T?`     | `Option<T>`     | Optional               |
 | `T!E`    | `Result<T, E>`  | Result                 |
 | `s`      | `String`        | Owned string           |
@@ -245,7 +244,7 @@ M internal {
 - **Tuples**: `(A, B, C)`
 - **Arrays**: `[T; N]`
 - **Slices**: `[T]`
-- **References**: `&T`, `&m T`
+- **References**: `&T`, `&!T`
 - **Pointers**: `^T` (Box), `$T` (Rc), `@T` (Arc)
 
 ### 4.3 Generic Types

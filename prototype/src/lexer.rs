@@ -651,8 +651,19 @@ impl<'a> Lexer<'a> {
             0xCF => self.lex_greek_cf(start, start_line, start_col),
             0xE2 => self.lex_utf8_e2(start, start_line, start_col),
 
-            _ => self.make_token(TokenKind::Error, start, start_line, start_col),
+            _ => self.error_token(start, start_line, start_col),
         }
+    }
+
+    /// An error token covering the rest of the current character. A
+    /// multi-byte character the lexer has no token for must be consumed whole:
+    /// stopping inside it leaves `pos` off a char boundary, and slicing the
+    /// token's text there panics.
+    fn error_token(&mut self, start: usize, start_line: usize, start_col: usize) -> Token {
+        while self.peek().is_some_and(|b| (0x80..0xC0).contains(&b)) {
+            self.advance();
+        }
+        self.make_token(TokenKind::Error, start, start_line, start_col)
     }
 
     /// Lex Greek symbols starting with UTF-8 lead byte 0xCE.
@@ -708,6 +719,9 @@ impl<'a> Lexer<'a> {
             } // μ
             _ => TokenKind::Error,
         };
+        if kind == TokenKind::Error {
+            return self.error_token(start, start_line, start_col);
+        }
         self.make_token(kind, start, start_line, start_col)
     }
 
@@ -728,6 +742,9 @@ impl<'a> Lexer<'a> {
             } // χ
             _ => TokenKind::Error,
         };
+        if kind == TokenKind::Error {
+            return self.error_token(start, start_line, start_col);
+        }
         self.make_token(kind, start, start_line, start_col)
     }
 
@@ -778,6 +795,9 @@ impl<'a> Lexer<'a> {
             }
             _ => TokenKind::Error,
         };
+        if kind == TokenKind::Error {
+            return self.error_token(start, start_line, start_col);
+        }
         self.make_token(kind, start, start_line, start_col)
     }
 
@@ -1134,6 +1154,18 @@ mod tests {
         assert_eq!(kinds[6], TokenKind::Shr);
         assert_eq!(kinds[7], TokenKind::FatArrow);
         assert_eq!(kinds[8], TokenKind::Arrow);
+    }
+
+    #[test]
+    fn unknown_multibyte_character_is_one_error_token_not_a_panic() {
+        // ⊢ is E2 8A A2: the E2 8A prefix is shared with ⊗, so the lexer used
+        // to stop after two bytes and panic slicing the token's text.
+        for src in ["\u{22A2} x", "\u{2200} x", "\u{00E9} x", "\u{0394} x", "\u{03C0} x"] {
+            let tokens = lex(src);
+            assert_eq!(tokens[0].kind, TokenKind::Error, "{src}");
+            assert_eq!(tokens[0].text, src.split(' ').next().unwrap(), "{src}");
+            assert_eq!(tokens[1].text, "x", "{src}");
+        }
     }
 
     #[test]

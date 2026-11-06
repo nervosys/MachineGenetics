@@ -370,7 +370,7 @@ cargo run --bin token-bench --manifest-path prototype/Cargo.toml
 | `+T`    | `pub trait`            | `@`      | `for .. in`           |
 | `I`     | `impl`                 | `@@`     | `loop`                |
 | `u`     | `use`                  | `@w`     | `while`               |
-| `.`     | `::` (path)            | `!`      | `break`               |
+| `.`     | `::` (path)            | `break`  | `break` (no sigil)    |
 | `@d()`  | `#[derive()]`          | `>>`     | `continue`            |
 | `p""`   | `println!()`           | `1b`     | `true`                |
 | `[T]~`  | `Vec<T>`               | `0b`     | `false`               |

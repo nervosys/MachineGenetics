@@ -325,7 +325,6 @@ token_budget = 8192
 | `?`    | `match`    | Pattern match     |
 | `@`    | `for`      | For loop          |
 | `@@`   | `loop`     | Infinite loop     |
-| `!`    | `break`    | Break             |
 | `>>`   | `continue` | Continue          |
 | `[T]~` | `Vec<T>`   | Dynamic array     |
 | `^T`   | `Box<T>`   | Box pointer       |

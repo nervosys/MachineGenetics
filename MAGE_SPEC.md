@@ -202,11 +202,11 @@ Agent mode maps every concept to 1-2 characters. Like hexadecimal compresses 4 b
 | Handle         | `handle`       | `hx`       | Effects        |
 | Spec           | `spec`         | `sp`       | Contracts      |
 | Extern         | `extern`       | `xn`       | FFI            |
-| Await          | `.await`       | `.w`       | Async          |
+| Await          | `.await`       | `.await`   | Async          |
 | Async          | `async`        | `af`       | Async          |
 | Unsafe         | `unsafe`       | *(elided)* | Safety→SKB     |
 | Where          | `where`        | `~>`       | Clause         |
-| Mutable ref    | `&mut`         | `&m`       | Type           |
+| Mutable ref    | `&!`           | `&!`       | Type           |
 | True / False   | `true`/`false` | `1b`/`0b`  | Literal        |
 | Matmul         | `@`            | `⊗`        | Tensor op      |
 | Hadamard       | `.*`           | `⊙`        | Tensor op      |
@@ -2376,7 +2376,6 @@ A complete lexicon of Agent mode symbols, organized by category. This is the "ge
 | `:`      | `else`           | Else               |
 | `@`      | `for`            | For loop           |
 | `ret`    | `return`         | Return             |
-| `!`      | `break`          | Break              |
 | `>>`     | `continue`       | Continue           |
 | `1b`     | `true`         | Boolean true       |
 | `0b`     | `false`        | Boolean false      |
@@ -2404,7 +2403,6 @@ A complete lexicon of Agent mode symbols, organized by category. This is the "ge
 | ------ | --------- | -------------------- |
 | `@@`   | `loop`      | Infinite loop        |
 | `@w`   | `while`     | While loop           |
-| `!`    | `break`     | Break from loop      |
 | `>>`   | `continue`  | Continue loop        |
 | `ret`  | `return`    | Return value         |
 | `yl`   | `yield`     | Yield from generator |
@@ -2412,7 +2410,6 @@ A complete lexicon of Agent mode symbols, organized by category. This is the "ge
 | `hx`   | `handle`    | Effect handler       |
 | `sp`   | `spec`      | Spec/contract block  |
 | `xn`   | `extern`    | FFI extern block     |
-| `.w`   | `.await`    | Async await          |
 | `?=`   | `match`     | Pattern match        |
 | `:?`   | `else if`   | Else-if chain        |
 | `sw`   | `swarm`     | Multi-agent swarm    |
