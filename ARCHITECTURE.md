@@ -7,7 +7,7 @@ text. It is the leverage the text-token floor denies the language track (see
 [IDEAL_AGENTIC_LANGUAGE.md](IDEAL_AGENTIC_LANGUAGE.md) for that analysis).
 
 > **Scope.** Everything below is implemented and test-covered in `prototype/`
-> (**1,268 tests** green) and scored in the sibling `agentic-eval` crate (80
+> (**1,288 tests** green) and scored in the sibling `agentic-eval` crate (80
 > tests, in the AetherShell repository and not verifiable from here). The one
 > deliberate non-feature is agent/swarm *execution* — see
 > [Honest boundaries](#honest-boundaries).
@@ -182,10 +182,10 @@ are **five independent Cargo workspaces**:
 | Path | Crate | Tests | Notes |
 |---|---|--:|---|
 | `RecursiveMachineIntelligence/` | `rmi` | 1,384 | The low-level neurosymbolic framework. Feature-gated (`cpu` / `gpu` / `cuda`); build with `--no-default-features --features cpu` for the portable set |
-| `prototype/` | `mage-prototype` | 1,268 | Compiler, evaluator, ABL, RAP server. Path-depends on `rmi` |
+| `prototype/` | `mage-prototype` | 1,288 | Compiler, evaluator, ABL, RAP server. Path-depends on `rmi` |
 | `ribosome/` | `ribosome` | 168 | The distributed build engine. Depends on nothing in this repository — see below |
-| `germline/` | `germline` | 125 | Model succession, handoff, fallback — the RSI control plane. Path-depends on `ribosome` |
-| `forge/` | `forge` | 54 | The package registry, and only that |
+| `germline/` | `germline` | 134 | Model succession, handoff, fallback — the RSI control plane. Path-depends on `ribosome` |
+| `forge/` | `forge` | 60 | The package registry, and only that |
 
 The dependency graph is a forest, not a web:
 
@@ -196,12 +196,18 @@ rmi ←── prototype          ribosome ←── germline          forge
 `forge`'s count is not a regression. `ribosome` and `germline` were developed
 inside it and moved out on 2026-08-04; **52** is what the registry alone was
 before they arrived, and this table said exactly that until they did. It reads
-54 now for two unrelated reasons: 2026-08-18 added a test comparing `forge
+60 now for three unrelated reasons. 2026-08-18 added a test comparing `forge
 manifest` against the binary's dispatcher, which nothing had ever done, and
-removed one that checked three command names by hand; 2026-09-15 added
+removed one that checked three command names by hand. 2026-09-15 added
 `a_block_that_does_not_hash_to_its_name_is_refused`, after `get_by_sha` was
 found serving a block whose bytes no longer matched the content address naming
-its file.
+its file. Later the same day, six tests arrived with `Effects` and
+`EffectOracle` — and the count moved by six rather than seven, because that
+same commit fixed a duplicated `#[test]` attribute. The duplicate had been
+generating a phantom second copy of the tampering test while swallowing the
+attribute on `identical_block_is_deduplicated`, so the registry's dedup
+property had never once been exercised and the total had been inflated by one
+to hide it.
 
 A root workspace *did* exist, but it listed only `compiler/*` — the forked-rustc
 compiler — and was removed with it on 2026-06-11 (`b1b910f`). The surviving
@@ -303,6 +309,41 @@ candidate refused there has already cost a build, an evaluation and a canary.
 produces eight candidates and refuses all eight is pushing against a capability
 boundary, which is a different fact from finding nothing.
 
+### What the boundary can and cannot read
+
+`propose` refuses a child that declares an effect no parent did. That is only a
+check if the effects it compares are *known*, and for most of this session they
+were not: the registry recorded no effects at all, genes arrived carrying an
+empty list, and an empty list read as a purity claim. Every candidate passed —
+not because nothing escalated, but because there was nothing to compare. **A
+check that cannot fail is not a check**, and this one could not, which is the
+same shape as the absence-claim problem `check-crypto-inventory.sh` names.
+
+The fix is a type rather than a rule. `forge::models::Effects` and
+`germline::variation::Effects` both distinguish `Checked { declared }` from
+`Unchecked`, so "found to have no effects" and "nobody looked" stop being the
+same value. The error then runs the safe way:
+
+| gene state | `legality` | why |
+|---|---|---|
+| checked, effects ⊆ parents' | `Inherited` | proposable |
+| checked, effects ⊄ parents' | `Acquired` | the escalation signal the boundary exists to produce |
+| unchecked | `Unknowable` | reading it as pure would admit exactly what is being checked for |
+
+Refusing the unchecked case costs one candidate and names the block that needs
+checking; admitting it costs the property. An unchecked gene is refused even
+when a parent carries the same one — inheritance legitimately launders a
+*declared* effect, but two unknowns do not make a known.
+
+`forge` cannot populate `Checked` itself: it hashes and stores bytes, and
+deciding what bytes do is a front-end pass it does not contain. `EffectOracle`
+is that seam, mirroring `GeneResolver` on the germline side and separate for
+the same reason. The compiler already computes per-function effects
+(`mage-parse --check` reports them); the oracle is how that answer reaches the
+registry without the registry depending on a compiler. Checking a block later
+**upgrades** its index entry, so the remedy for a refusal is checking the block
+rather than weakening the check.
+
 A consequence worth stating plainly: **a candidate that cannot be evaluated
 cheaply will not be tried.** If proxy fitness requires a full build, the search
 is authority-regime whatever it is called, and its throughput will be the
@@ -324,16 +365,16 @@ the heritable material `germline`. What makes a loop recursive is not that the
 compiler is written in the language. It is that **the policy the compiler
 applies is data the loop can change.**
 
-Much of that policy is already data, and none of it is yet evolvable:
+Much of that policy is already data, and one surface is now loadable:
 
 | surface | size | governs | today |
 |---|---|---|---|
-| SKB safety rules | 255, 8 databases | what variation may legally produce | Rust `const` |
+| SKB safety rules | 255, 8 databases | what agents and codegen are *told* is unsafe | **loaded overlay over a Rust floor** |
 | heal patterns | 34 | what a broken candidate recovers to | Rust |
 | elision rules | — | the agent-mode surface itself | Rust |
 | cost model | `cost.rs` | which constructs search prefers | Rust |
 | CI floors | 6 | what counts as a regression | shell, hand-edited |
-| the 20 checkers | — | what "green" means | shell |
+| the 21 checkers | — | what "green" means | shell |
 | the pins | 94 | which claims must match measurement | shell + docs |
 
 **The harness is the part that moves under a fixed model.** With the weights
@@ -359,12 +400,119 @@ machinery for each:
    "generation 47 was produced from 46 under seed 0x…" stays checkable.
 
 What is missing is not mechanism but *representation*: these surfaces are Rust
-literals rather than artifacts. The smallest real step is to move one of them —
-the SKB is the obvious candidate, since `skb/` is already a generated tree and
-`check-skb-tree.sh` already compares it against the compiler — from `const` to
-a loaded artifact, and let the gate govern changes to it. Nothing about that
-requires self-hosting, and it is the difference between a loop that improves
-what it writes and one that improves how it judges.
+literals rather than artifacts. The smallest real step was to move one of them,
+and the SKB was the obvious candidate — `skb/` is already a generated tree and
+`check-skb-tree.sh` already compares it against the compiler. That step is
+taken.
+
+### What the SKB is, and is not
+
+**No SKB rule is executed.** The 255 rules are knowledge, not a compiler pass:
+`codegen_bridge` reads `query_rules_by_tag("safety")` and keeps the
+*descriptions* as strings, and `rmi_ontology_adapter` substring-matches over
+category, description, rationale and tags so agents can find them. Nothing
+matches a rule id against an AST, and the effect checker, the type checker and
+the contract verifier are separate machinery that does not consult the SKB at
+all.
+
+This row of the table said the SKB governs "what variation may legally
+produce". It does not, and did not — that is `propose`'s legality check and the
+front-end passes. What the SKB governs is what an agent is *told*, which is a
+real thing to protect and a smaller one than enforcement.
+
+**And a large part of it describes conditions no pass can detect.** The
+pipeline is lex, parse, resolve, typecheck, effect inference, MLIR lowering,
+heal — there is no ownership or borrow-checking phase. So of the 255 rules,
+the 40 ownership and 40 borrow rules are knowledge about a language rule the
+checker does not implement, and the 35 lifetime rules sit behind
+`AEL-0003`'s claim that lifetimes are inferred rather than checked. That is not
+a defect to fix by deleting rules — the knowledge is what agents search — but a
+reader who assumed `mage-parse --check` enforces the ownership database would
+be wrong, and this paragraph exists because I assumed it.
+
+`DiagnosticCategory` divides the same way, and `check-diagnostic-codes.sh`
+now records the split. Seven variants are constructed by a pass on finding the
+condition — `TypeMismatch` (types.rs), `UnresolvedName`, `UnresolvedType`,
+`DuplicateDefinition` (resolve.rs), `UndeclaredEffect` (effects.rs),
+`SyntaxError`, `Other`. Three — `BorrowConflict`, `UseAfterMove`,
+`SpecViolation` — have exactly one non-test mention each, all inside
+`heal::infer_category`, the function that guesses a category from a message
+someone else already wrote. Those three say the compiler can *relay* such an
+error, not that it can *find* one, and for the first two that is precisely
+because no ownership or borrow-checking phase exists. `SpecViolation` is the
+third for a different reason: the contract verifier runs and prints its own
+summary rather than emitting diagnostics, so a refuted contract produces no
+coded diagnostic at all.
+
+`DiagnosticCategory` tells the same story from the other side. Ten variants,
+each with a stable code that hir.rs calls "machine-matchable" and part of the
+agent contract; measured against the crate, **`UseAfterMove` had no producer at
+all** and `BorrowConflict`'s only one is the healer classifying a message it was
+handed. `E0382` was unreachable: `heal::infer_category` folded "move" into the
+borrow branch, so *use of moved value `x`* came back coded `E0502` while the
+code that names it could not be emitted — and the fix table three hundred lines
+above recognised the same message as a move and offered move fixes for it. Two
+predicates, disagreeing. They are one function now.
+
+It matters here because it sets what the floor below is worth. An overlay that
+could lower severities would change the advice a synthesising agent receives,
+silently and with no diagnostic anywhere; it would not turn off a check,
+because there is no check to turn off. Making these rules executable is a
+separate step that nothing in this section has taken.
+
+### The builtin rules are a floor, not a default
+
+`$MAGE_SKB_OVERLAY` names a directory of rule arrays merged onto
+`builtin_rules()` at startup. The merge **starts from** the builtins and an
+overlay may only introduce a new id or raise a severity, so removing a rule is
+not something the format can express. The guarantee is structural rather than
+checked, which is the difference between a property and a test of one.
+
+That is what makes the fail-open/fail-closed question dissolve rather than get
+decided. The obvious framing is a dilemma — halting on an unreadable policy
+store stops the loop, while continuing evaporates the safety check exactly when
+something is wrong — and it is a dilemma only because it assumes the fallback
+might be weaker than what was lost. Under a floor it cannot be, so the two
+cases separate cleanly:
+
+| state | result | why |
+|---|---|---|
+| no overlay directory | the builtins | nobody wrote a policy, and no expressible policy is weaker |
+| overlay adds ids / raises severities | applied, reported on stderr | the loop improving how it judges |
+| overlay would lower a severity | **halt** | the floor is the point |
+| overlay unreadable, malformed, or self-contradictory | **halt** | something *was* written and cannot be honoured |
+
+The last row is the one worth stating separately. Reading a corrupt overlay as
+an absent one would mean truncating a policy file silently restores different
+rules — an absence claim that cannot fail loudly, the same shape as `get_by_sha`
+serving a block whose bytes no longer matched its name, and as an unchecked gene
+reading as a pure one. Three occurrences in one subsystem is a house style, not
+a coincidence.
+
+`--emit-skb` deliberately still emits the builtins rather than the installed
+set. The committed `skb/` tree is a projection of the floor and its manifest
+says so; if it tracked the active policy, `check-skb-tree.sh` would be testing
+whether `$MAGE_SKB_OVERLAY` happened to be set in CI's shell.
+
+### A policy has a name
+
+`RuleSet::digest()` is SHA-256 over the rules in force, and the startup line
+reports it. It hashes the **merged set**, not the overlay files: what a run
+needs to be able to state afterwards is which policy it enforced, and that is
+the rules, not the spelling of the directory that produced them. Two overlays
+that differ in filenames, formatting or how rules are split across files are the
+same policy and hash the same; moving one severity does not. The builtins have a
+digest too, so "which rules ran" has an answer on every run rather than only on
+configured ones.
+
+That is the fourth of the four properties above — attributable — and it is what
+makes the third worth having. A gate can only adjudicate a policy change if the
+policy before and after have names.
+
+What is *not* yet done: no CLI flag surfaces the rule set, and changes to it do
+not pass through `Episode::adjudicate`, so this is policy as named data rather
+than policy as a gated succession. The remaining six surfaces in the table above
+are untouched.
 
 ## 8. Why this is the agentic frontier
 

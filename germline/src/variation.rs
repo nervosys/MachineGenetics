@@ -80,8 +80,8 @@ impl Rng {
 ///   parents. Typed subtree crossover is hard; block substitution is not, and
 ///   blocks are already content-addressed and signature-typed.
 /// * **A legality check with something to read.** `effects` travels with the
-///   gene, so [`acquired_effects`] can ask what a child carries that no parent
-///   did, before the candidate costs anything to evaluate.
+///   gene, so [`legality`] can ask what a child carries that no parent did,
+///   before the candidate costs anything to evaluate.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "locus", rename_all = "snake_case")]
 pub enum Locus {
@@ -93,9 +93,58 @@ pub enum Locus {
         sha256: String,
         /// `Name(p1, p2)` — what makes two genes substitutable for each other.
         signature: String,
-        /// Effects the gene declares. The unit [`acquired_effects`] compares.
-        effects: Vec<String>,
+        /// What is known about the effects this gene performs — which is not
+        /// the same as a list of them. See [`Effects`].
+        effects: Effects,
     },
+}
+
+/// What is known about the effects a gene performs.
+///
+/// **This was `Vec<String>`, and the empty vector was doing two jobs.** A gene
+/// drawn from a registry that records no effects arrived with `vec![]`, which
+/// the legality check read as "declares nothing" — so every such gene passed,
+/// and the safety property held because there was nothing to compare rather
+/// than because nothing escalated. A check that cannot fail is not a check.
+///
+/// The two facts are now distinct, and the error runs the safe way: unchecked
+/// genes are refused by [`legality`], so an unverified block costs a candidate
+/// instead of admitting the escalation the check exists to catch. This mirrors
+/// `forge::models::Effects` deliberately and is a separate type deliberately —
+/// `germline` carries heritable material and does not depend on a registry.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "state", rename_all = "snake_case")]
+pub enum Effects {
+    /// Nobody has checked this gene. **Not** a claim that it has none.
+    #[default]
+    Unchecked,
+    /// Something read this gene's source and reported these effects.
+    Checked { declared: Vec<String> },
+}
+
+impl Effects {
+    /// A checked gene declaring exactly these effects.
+    pub fn checked<I: IntoIterator<Item = S>, S: Into<String>>(declared: I) -> Self {
+        Effects::Checked {
+            declared: declared.into_iter().map(Into::into).collect(),
+        }
+    }
+
+    /// A checked gene declaring nothing — a purity claim someone stands behind.
+    pub fn pure() -> Self {
+        Effects::Checked {
+            declared: Vec::new(),
+        }
+    }
+
+    /// The effects, or `None` if nobody has checked. A caller that reads `None`
+    /// as an empty list has undone the reason this is not a `Vec`.
+    pub fn declared(&self) -> Option<&[String]> {
+        match self {
+            Effects::Unchecked => None,
+            Effects::Checked { declared } => Some(declared),
+        }
+    }
 }
 
 impl Locus {
@@ -107,7 +156,7 @@ impl Locus {
         name: impl Into<String>,
         sha256: impl Into<String>,
         signature: impl Into<String>,
-        effects: Vec<String>,
+        effects: Effects,
     ) -> Self {
         Locus::Gene {
             name: name.into(),
@@ -171,30 +220,92 @@ pub fn params_of(g: &Genome) -> Vec<f64> {
     g.iter().filter_map(Locus::as_param).collect()
 }
 
-/// Every effect declared by the genes in a genome.
+/// Every effect declared by the *checked* genes in a genome.
+///
+/// Unchecked genes contribute nothing here, which is exactly why [`legality`]
+/// has to ask about them separately instead of trusting this set to be whole.
 fn declared_effects(g: &Genome) -> std::collections::BTreeSet<String> {
     g.iter()
         .flat_map(|l| match l {
-            Locus::Gene { effects, .. } => effects.clone(),
+            Locus::Gene { effects, .. } => effects.declared().unwrap_or(&[]).to_vec(),
             Locus::Param { .. } => Vec::new(),
         })
         .collect()
 }
 
-/// Effects a child carries that no parent did.
+/// Genes in a genome that nobody has checked, by name.
+fn unchecked_genes(g: &Genome) -> Vec<String> {
+    g.iter()
+        .filter_map(|l| match l {
+            Locus::Gene {
+                name,
+                effects: Effects::Unchecked,
+                ..
+            } => Some(name.clone()),
+            _ => None,
+        })
+        .collect()
+}
+
+/// Whether a child may be evaluated, given what its parents were allowed to do.
 ///
-/// This is the cheap half of the safety argument, and it runs at *propose*
-/// time. A candidate that acquires `io` from a parent pair that had none is a
-/// capability escalation, and finding that out before evaluation costs a set
-/// difference rather than a sandbox, a canary phase and a held-out suite.
+/// Three outcomes rather than a bool, because the two ways of failing want
+/// different responses. `Acquired` means the search found a capability its
+/// parents did not have — the signal this boundary exists to produce.
+/// `Unknowable` means a gene arrived carrying no effect information at all,
+/// which is a gap in the registry rather than a discovery about the search.
 ///
-/// It is deliberately not the whole argument. The declaration is what is
-/// compared here; whether the gene's body matches its declaration is the
-/// compiler's question and the gate's, and neither is replaced by this.
-pub fn acquired_effects(parents: &[&Genome], child: &Genome) -> Vec<String> {
+/// Both refuse, and the asymmetry is the point: reading an unchecked gene as
+/// pure admits precisely the escalation being checked for, while refusing it
+/// costs one candidate and names the block that needs checking.
+///
+/// This is deliberately not the whole safety argument. What is compared here is
+/// the *declaration*; whether a gene's body matches it is the compiler's
+/// question and the gate's, and neither is replaced by this.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "legality", rename_all = "snake_case")]
+pub enum Legality {
+    /// Every effect the child declares, some parent declared too.
+    Inherited,
+    /// The child declares effects no parent did.
+    Acquired { effects: Vec<String> },
+    /// The child carries genes nobody has checked, so the question cannot be
+    /// answered. They are named, so that the answer is obtainable.
+    Unknowable { genes: Vec<String> },
+}
+
+impl Legality {
+    pub fn is_inherited(&self) -> bool {
+        matches!(self, Legality::Inherited)
+    }
+}
+
+/// Decide a child's [`Legality`] against its parents.
+///
+/// Runs at *propose* time. A candidate that acquires `io` from a parent pair
+/// that had none is a capability escalation, and finding that out before
+/// evaluation costs a set difference rather than a sandbox, a canary phase and
+/// a held-out suite.
+///
+/// An unchecked gene is reported even when a parent carries the same one: a
+/// pair of unknowns does not make a known, and inheritance cannot launder the
+/// absence of an answer the way it legitimately launders a declared effect.
+pub fn legality(parents: &[&Genome], child: &Genome) -> Legality {
+    let unknown = unchecked_genes(child);
+    if !unknown.is_empty() {
+        return Legality::Unknowable { genes: unknown };
+    }
     let inherited: std::collections::BTreeSet<String> =
         parents.iter().flat_map(|p| declared_effects(p)).collect();
-    declared_effects(child).difference(&inherited).cloned().collect()
+    let acquired: Vec<String> = declared_effects(child)
+        .difference(&inherited)
+        .cloned()
+        .collect();
+    if acquired.is_empty() {
+        Legality::Inherited
+    } else {
+        Legality::Acquired { effects: acquired }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -352,8 +463,8 @@ impl Default for VariationPlan {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Refusal {
     pub id: String,
-    /// Effects the child carried that no parent did.
-    pub acquired: Vec<String>,
+    /// Why — an escalation found, or a gene nobody could vouch for.
+    pub because: Legality,
 }
 
 /// What one proposal step produced.
@@ -389,11 +500,9 @@ pub fn propose(
         // Checked here, before the candidate costs anything. A child that
         // acquires an effect neither parent held is a capability escalation,
         // and the cheapest moment to notice is the one before evaluation.
-        let acquired = acquired_effects(&[a, b], &child);
-        if acquired.is_empty() {
-            candidates.push(CandidateSpec::new(id, child));
-        } else {
-            refused.push(Refusal { id, acquired });
+        match legality(&[a, b], &child) {
+            Legality::Inherited => candidates.push(CandidateSpec::new(id, child)),
+            because => refused.push(Refusal { id, because }),
         }
     }
     Proposal { candidates, refused }
@@ -503,14 +612,14 @@ mod tests {
         assert!(best > chosen.len() / 4, "and must still favour the fit: {best}/200");
     }
 
-    /// A gene for tests: `name(sig)` carrying `effects`.
+    /// A gene for tests: `name(sig)` **checked** as carrying `effects`.
     fn gene(name: &str, sig: &str, effects: &[&str]) -> Locus {
-        Locus::gene(
-            name,
-            format!("{name}-sha"),
-            sig,
-            effects.iter().map(|e| e.to_string()).collect(),
-        )
+        Locus::gene(name, format!("{name}-sha"), sig, Effects::checked(effects.iter().copied()))
+    }
+
+    /// The same gene, with nobody having checked it.
+    fn unchecked_gene(name: &str, sig: &str) -> Locus {
+        Locus::gene(name, format!("{name}-sha"), sig, Effects::Unchecked)
     }
 
     #[test]
@@ -586,7 +695,11 @@ mod tests {
         );
         assert_eq!(out.refused.len(), 4, "and each refusal is reported, not dropped");
         for r in &out.refused {
-            assert_eq!(r.acquired, vec!["io".to_string()], "the refusal names what was acquired");
+            assert_eq!(
+                r.because,
+                Legality::Acquired { effects: vec!["io".to_string()] },
+                "the refusal names what was acquired"
+            );
         }
     }
 
@@ -595,10 +708,66 @@ mod tests {
         // A parent already had `io`, so a child carrying it acquired nothing.
         let parent = vec![gene("writer", "Cfg()", &["io"])];
         let child = vec![gene("other_writer", "Cfg()", &["io"])];
-        assert!(acquired_effects(&[&parent], &child).is_empty());
-        // And a parent with no effects makes the same child an acquisition.
+        assert_eq!(legality(&[&parent], &child), Legality::Inherited);
+        // And a parent checked as pure makes the same child an acquisition.
         let pure = vec![gene("reader", "Cfg()", &[])];
-        assert_eq!(acquired_effects(&[&pure], &child), vec!["io".to_string()]);
+        assert_eq!(
+            legality(&[&pure], &child),
+            Legality::Acquired { effects: vec!["io".to_string()] }
+        );
+    }
+
+    #[test]
+    fn a_gene_nobody_checked_is_refused_rather_than_assumed_pure() {
+        // The bug this type exists to prevent. When `effects` was a `Vec`, a
+        // gene from a registry that records no effects arrived as `vec![]` and
+        // was indistinguishable from one checked and found pure — so it passed,
+        // and the safety property held vacuously.
+        let parents = vec![gene("reader", "Cfg()", &[])];
+        let child = vec![unchecked_gene("mystery", "Cfg()")];
+        assert_eq!(
+            legality(&[&parents], &child),
+            Legality::Unknowable { genes: vec!["mystery".to_string()] },
+            "an unanswered question is not a negative answer"
+        );
+    }
+
+    #[test]
+    fn an_unchecked_gene_is_not_laundered_by_inheritance() {
+        // A declared effect a parent already holds is legitimately inherited.
+        // An *absence of information* is not: two unknowns do not make a known,
+        // so the child is still refused even though the parent carries it too.
+        let parent = vec![unchecked_gene("mystery", "Cfg()")];
+        let child = vec![unchecked_gene("mystery", "Cfg()")];
+        assert_eq!(
+            legality(&[&parent], &child),
+            Legality::Unknowable { genes: vec!["mystery".to_string()] }
+        );
+    }
+
+    #[test]
+    fn a_substitution_that_pulls_in_an_unchecked_gene_is_refused_and_named() {
+        let pure_a = vec![gene("step_a", "Step()", &[]), Locus::param(0.4)];
+        let pure_b = vec![gene("step_b", "Step()", &[]), Locus::param(0.6)];
+        // A pool whose only substitute is a block nobody has checked.
+        let pool = GenePool::new(vec![unchecked_gene("opaque", "Step()")]);
+
+        let plan = VariationPlan {
+            mutation: Mutation::Substitute { rate: 1.0 },
+            offspring: 3,
+            ..VariationPlan::default()
+        };
+        let out = propose(&[(pure_a, 0.5), (pure_b, 0.6)], plan, &pool, 0xB10C);
+
+        assert!(out.candidates.is_empty(), "nothing unchecked may be evaluated");
+        assert_eq!(out.refused.len(), 3);
+        for r in &out.refused {
+            assert_eq!(
+                r.because,
+                Legality::Unknowable { genes: vec!["opaque".to_string()] },
+                "the refusal names the block that needs checking"
+            );
+        }
     }
 
     #[test]

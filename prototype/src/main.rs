@@ -81,6 +81,39 @@ fn write_formatted(text: &str, out_path: Option<&str>) {
 }
 
 fn main() {
+    // Policy first, before anything consults it.
+    //
+    // $MAGE_SKB_OVERLAY may add safety rules or raise their severity; it can
+    // never lower one, because the merge starts from the compiled-in rules and
+    // removal is not something the format expresses. That is what makes an
+    // unset variable safe to accept — the builtins are a floor, not a default.
+    //
+    // An overlay that exists and cannot be honoured halts here instead. Falling
+    // back to the floor would mean corrupting or truncating a policy file
+    // silently changes which rules are enforced, and a policy change that
+    // disappears quietly is worse than one that never happened.
+    match mage_prototype::skb::RuleSet::from_env() {
+        Ok(set) => {
+            if let mage_prototype::skb::PolicySource::Overlay { dir, added, strengthened } =
+                set.source()
+            {
+                // The digest names the rules in force, so a run that behaved
+                // oddly can be matched to the policy it was enforcing rather
+                // than to a directory whose contents have since moved.
+                eprintln!(
+                    "mage: SKB overlay {} — {added} rule(s) added, {strengthened} strengthened, policy {}",
+                    dir.display(),
+                    &set.digest()[..12]
+                );
+            }
+            mage_prototype::skb::install(set);
+        }
+        Err(e) => {
+            eprintln!("mage: {e}");
+            std::process::exit(1);
+        }
+    }
+
     let args: Vec<String> = std::env::args().collect();
     let no_elision = args.iter().any(|a| a == "--no-elision");
     let syntax_legacy = args.iter().any(|a| a == "--syntax=legacy");
@@ -2888,6 +2921,9 @@ fn run_check_json(source: &str, filename: &str, do_elision: bool, legacy: bool) 
             &module,
             &differentiable::infer(&module, &effect_infer),
         ));
+        // Refuted contracts (E0560), for the same reason: the human path
+        // counts them as errors, so this stream must carry them.
+        all.extend(verify::diagnostics(&verify::verify_module(&module)));
         for (func, declared, inferred) in effect_infer.effect_surface() {
             effect_surface.push(serde_json::json!({
                 "function": func,
@@ -3053,6 +3089,14 @@ fn run_check(source: &str, filename: &str, do_elision: bool, legacy: bool, token
     for v in &verifications {
         verdicts.add(&v.status.evidence(&v.fqn));
     }
+    // A refuted contract is an error, not a row in a summary. It printed `✗`
+    // and exited 0 until 2026-09-25 — unobservable only because nothing could
+    // refute one.
+    let spec_diags = verify::diagnostics(&verifications);
+    for diag in &spec_diags {
+        eprintln!("{filename}: {diag}");
+        total_errors += 1;
+    }
 
     // Phase 5.6: Typed-composition gate — a shape-mismatched `net` composition
     // (`stack`/`residual`/`branch`/`wrap` whose layer dims don't line up) is
@@ -3069,6 +3113,7 @@ fn run_check(source: &str, filename: &str, do_elision: bool, legacy: bool, token
     all_diagnostics.extend(checker.diagnostics.iter().cloned());
     all_diagnostics.extend(effect_infer.diagnostics.iter().cloned());
     all_diagnostics.extend(grad_diags.iter().cloned());
+    all_diagnostics.extend(spec_diags.iter().cloned());
 
     let healed = heal::heal(&all_diagnostics);
     let fix_count: usize = healed.iter().map(|h| h.fixes.len()).sum();
@@ -3417,6 +3462,10 @@ fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool, to
     let mut verdicts = verdict::Tally::default();
     for v in &verifications {
         verdicts.add(&v.status.evidence(&v.fqn));
+    }
+    for diag in &verify::diagnostics(&verifications) {
+        eprintln!("  {filename}: {diag}");
+        total_errors += 1;
     }
     if subject_total > 0 {
         // No leading `✓`. The tick belonged to the phase completing, and

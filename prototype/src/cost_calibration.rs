@@ -231,7 +231,17 @@ impl CalibrationSuite {
         }
     }
 
-    /// Load standardized benchmark samples for built-in constructs.
+    /// Load the built-in sample set — **simulated, not measured**.
+    ///
+    /// Both halves of every sample are literals typed into this file: the
+    /// `measured_*` fields as much as the `estimated_*` ones. Running a report
+    /// over them grades how well one table of guesses agrees with another, and
+    /// a grade of `Excellent` means the two tables were written to match.
+    ///
+    /// The name said "benchmark samples", which is what these will be once
+    /// something profiles hardware and feeds the result in. Until then a caller
+    /// that treats a report built from this as calibration has measured
+    /// nothing, and `MAGE_ONTOLOGY.md` said exactly that until it was checked.
     pub fn load_standard_benchmarks(&mut self) {
         // Simulated measured costs for x86_64 target.
         // In a real implementation, these come from hardware profiling data.

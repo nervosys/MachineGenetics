@@ -1,8 +1,14 @@
 //! # Germline — model succession, handoff, and fallback
 //!
 //! The operating mode this implements: a model proposes a higher-fitness
-//! successor by *directed* evolution, hands subsequent RSI work to it, and falls
-//! back to its predecessor if the successor malfunctions or declines.
+//! successor by evolution, hands subsequent RSI work to it, and falls back to
+//! its predecessor if the successor malfunctions or declines.
+//!
+//! Search is *directed* only when a predictor is attached — [`runner::Runner`]
+//! takes one optionally, and with none the loop samples uniformly from the
+//! proposals, which is undirected search. This sentence said "by *directed*
+//! evolution" while the runner used none of [`directed`] but `CandidateSpec`,
+//! and the machinery had no caller outside its own tests.
 //!
 //! The name is the load-bearing part of the design. In biology the **germline**
 //! is the heritable lineage, and the **Weismann barrier** is the one-way wall

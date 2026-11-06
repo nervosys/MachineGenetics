@@ -44,12 +44,12 @@
 //! the first question anyone will ask.
 
 use super::cycle::{Authority, Cycle, CycleError};
-use super::directed::CandidateSpec;
+use super::directed::{Calibration, CandidateSpec, DirectedSearch, FitnessPredictor};
 use super::gate::Episode;
 use super::journal::{Entry, Journal};
 use super::lineage::Lineage;
 use super::supervisor::{FailureMode, HealthSample, SupervisionPolicy, Supervisor};
-use crate::variation::{propose, GenePool, Locus, Proposal, VariationPlan};
+use crate::variation::{propose, GenePool, Legality, Locus, Proposal, VariationPlan};
 use super::{EvalSuite, FitnessVector, Generation, GenerationId, Measurement};
 use ribosome::mac::absorb;
 use ribosome::Digest;
@@ -179,6 +179,23 @@ pub struct Runner<'a> {
     /// Seed for the first cycle; each subsequent cycle derives from it, so a
     /// whole run is reproducible from one number.
     pub seed: u64,
+    /// The surrogate, if there is one.
+    ///
+    /// **`None` is the honest default and was the only behaviour.** `directed`
+    /// defines `FitnessPredictor`, `DirectedSearch` and the calibration that
+    /// earns trust, and this module imported exactly one name from it —
+    /// `CandidateSpec`. The loop proposed eight offspring and ran
+    /// `.take(candidates_per_cycle).next()`, which is element 0 for any
+    /// non-zero policy: seven proposals computed and dropped, a policy field
+    /// that changed nothing, and lib.rs describing the crate as proposing "a
+    /// higher-fitness successor by *directed* evolution".
+    ///
+    /// With `None` the loop samples uniformly from the proposals, which is
+    /// undirected search and says so. With a predictor it ranks them and
+    /// narrows as trust is earned.
+    predictor: Option<Box<dyn FitnessPredictor>>,
+    /// Trust in that predictor — moved only by measurements, never asserted.
+    calibration: Calibration,
 }
 
 impl<'a> Runner<'a> {
@@ -189,7 +206,36 @@ impl<'a> Runner<'a> {
         suite: EvalSuite,
         seed: u64,
     ) -> Self {
-        Runner { policy, episode, attestor, suite, seed }
+        Runner {
+            policy,
+            episode,
+            attestor,
+            suite,
+            seed,
+            predictor: None,
+            calibration: Calibration::new(),
+        }
+    }
+
+    /// Run with a surrogate ranking the proposals.
+    ///
+    /// The predictor starts at zero trust and earns it by being right about
+    /// candidates that were subsequently measured, so attaching one does not
+    /// immediately narrow the search — which is the point. A surrogate
+    /// concentrates the budget, and a confidently wrong one concentrates it on
+    /// the wrong candidates while returning an answer either way.
+    pub fn with_predictor(mut self, predictor: Box<dyn FitnessPredictor>) -> Self {
+        self.predictor = Some(predictor);
+        self
+    }
+
+    /// Trust the attached predictor has earned so far. `0.0` with none attached.
+    pub fn predictor_trust(&self) -> f64 {
+        if self.predictor.is_some() {
+            self.calibration.trust()
+        } else {
+            0.0
+        }
     }
 
     /// Run until a halt condition. Never runs unbounded.
@@ -304,10 +350,43 @@ impl<'a> Runner<'a> {
         // no-op and the run behaves exactly as it did before genes existed.
         let Proposal { candidates, refused } =
             propose(&seedpop, self.policy.variation, &GenePool::default(), seed);
-        let spec = candidates
+        let pool: Vec<CandidateSpec> = candidates
             .into_iter()
             .take(self.policy.candidates_per_cycle)
-            .next()
+            .collect();
+        // Rank if there is a surrogate, then *sample* within the width trust has
+        // earned. Taking the top-ranked candidate outright would follow an
+        // uncalibrated predictor from the first cycle, which is the failure
+        // GERMLINE.md names: random sampling at least explores, while a
+        // confidently wrong predictor steers the budget away from the good
+        // candidates and is equally confident about it. At zero trust the width
+        // is the whole pool, so sampling makes this undirected search exactly.
+        let ranked = match &self.predictor {
+            Some(p) => DirectedSearch { predictor: p.as_ref(), calibration: self.calibration.clone(), budget: 1 }
+                .select(pool),
+            None => pool
+                .into_iter()
+                .enumerate()
+                .map(|(rank, candidate)| super::directed::Ranked {
+                    prediction: super::directed::Prediction {
+                        predicted: FitnessVector::new(),
+                        self_reported_confidence: 0.0,
+                    },
+                    candidate,
+                    rank,
+                })
+                .collect(),
+        };
+        let chosen = if ranked.is_empty() {
+            None
+        } else {
+            // Derived from the cycle seed, so the run stays reproducible.
+            let mut rng = crate::variation::Rng::seed(seed ^ 0x5EED_5E1E);
+            Some(rng.below(ranked.len()))
+        };
+        let predicted = chosen.map(|i| ranked[i].prediction.predicted.clone());
+        let spec = chosen
+            .map(|i| ranked[i].candidate.clone())
             .ok_or_else(|| {
                 // "produced no candidates" and "produced candidates and refused
                 // all of them" are different facts, and the second is the one
@@ -318,11 +397,24 @@ impl<'a> Runner<'a> {
                 } else {
                     let why: Vec<String> = refused
                         .iter()
-                        .map(|r| format!("{} acquired {}", r.id, r.acquired.join(", ")))
+                        .map(|r| match &r.because {
+                            Legality::Acquired { effects } => {
+                                format!("{} acquired {}", r.id, effects.join(", "))
+                            }
+                            Legality::Unknowable { genes } => format!(
+                                "{} carries unchecked gene(s) {}",
+                                r.id,
+                                genes.join(", ")
+                            ),
+                            Legality::Inherited => format!("{} (refused with no reason)", r.id),
+                        })
                         .collect();
+                    // The two reasons are different problems and want different
+                    // fixes. An escalation means the search found a capability;
+                    // an unchecked gene means the registry never recorded what a
+                    // block does, and no amount of further search will help.
                     format!(
-                        "variation produced {} candidate(s) and refused every one \
-                         for acquiring effects no parent declared: {}",
+                        "variation produced {} candidate(s) and refused every one: {}",
                         refused.len(),
                         why.join("; ")
                     )
@@ -331,6 +423,15 @@ impl<'a> Runner<'a> {
 
         let artifact = workload.materialize(&spec)?;
         let fitness = workload.evaluate(&artifact, &self.suite)?;
+
+        // The only thing that moves trust. A prediction that is never followed
+        // by a measurement teaches the calibration nothing, which is why this
+        // sits next to the evaluation rather than anywhere more convenient.
+        if self.predictor.is_some() {
+            if let Some(p) = &predicted {
+                self.calibration.observe(p, &fitness);
+            }
+        }
 
         let id = lineage.next_id();
         let parent = lineage.champion().map(|g| g.id);
@@ -732,6 +833,134 @@ mod tests {
             &r.entry,
             Entry::Note { text } if text.contains("unattended run opened under policy")
         )));
+        let _ = std::fs::remove_dir_all(path.parent().unwrap());
+    }
+
+    /// A workload that records every candidate id it was asked to materialize.
+    struct Recording {
+        inner: Improving,
+        seen: std::rc::Rc<std::cell::RefCell<Vec<String>>>,
+    }
+
+    impl Workload for Recording {
+        fn materialize(&mut self, spec: &CandidateSpec) -> Result<Digest, String> {
+            self.seen.borrow_mut().push(spec.id.clone());
+            self.inner.materialize(spec)
+        }
+        fn evaluate(&mut self, a: &Digest, s: &EvalSuite) -> Result<FitnessVector, String> {
+            self.inner.evaluate(a, s)
+        }
+        fn shadow(&mut self, a: &Digest) -> HealthSample {
+            self.inner.shadow(a)
+        }
+        fn observe_champion(&mut self, a: &Digest) -> HealthSample {
+            self.inner.observe_champion(a)
+        }
+        fn materialized(&self, d: &Digest) -> bool {
+            self.inner.materialized(d)
+        }
+    }
+
+    fn ids_for(candidates_per_cycle: usize, seed: u64) -> Vec<String> {
+        let path = tmp(&format!("cpc{candidates_per_cycle}-{seed}"));
+        let mut j = Journal::open(&path).unwrap();
+        let seen = std::rc::Rc::new(std::cell::RefCell::new(Vec::new()));
+        let mut w = Recording { inner: Improving::new(0.05), seen: seen.clone() };
+        let mut l = seeded(&mut w.inner);
+        let ep = episode();
+        let at = attestor();
+        let mut r = Runner::new(
+            RunnerPolicy { candidates_per_cycle, ..policy() },
+            &ep,
+            &at,
+            suite(),
+            seed,
+        );
+        let _ = r.run(&mut l, &mut j, &mut w);
+        let _ = std::fs::remove_dir_all(path.parent().unwrap());
+        let out = seen.borrow().clone();
+        out
+    }
+
+    #[test]
+    fn candidates_per_cycle_decides_what_the_search_may_choose_from() {
+        // It did not. `.take(n).next()` is element 0 for every non-zero `n`, so
+        // the loop proposed eight offspring, evaluated the first, discarded
+        // seven, and the policy field changed nothing — while lib.rs described
+        // the crate as proposing a successor by *directed* evolution and
+        // `directed`'s ranking machinery had no caller outside its own tests.
+        let narrow = ids_for(1, 0x5A1D);
+        let wide = ids_for(8, 0x5A1D);
+
+        assert!(!narrow.is_empty(), "the run must materialize something");
+        for id in &narrow {
+            assert!(
+                id.ends_with("-0"),
+                "with a pool of one there is nothing else to pick: {id}"
+            );
+        }
+        assert_ne!(
+            narrow, wide,
+            "a wider pool must be able to reach a candidate a pool of one cannot"
+        );
+    }
+
+    #[test]
+    fn a_run_with_a_pool_is_still_reproducible_from_its_seed() {
+        // Sampling is what keeps an uncalibrated predictor from steering, and a
+        // sampler seeded from anything but the run seed would buy that at the
+        // cost of the property the whole journal rests on.
+        assert_eq!(ids_for(8, 0xD11), ids_for(8, 0xD11), "same seed, same choices");
+        assert_ne!(
+            ids_for(8, 0xD11),
+            ids_for(8, 0xD12),
+            "and different seeds explore differently"
+        );
+    }
+
+    /// Predicts the candidate's own scalar mean — right, for `Improving`.
+    struct Oracle;
+    impl crate::directed::FitnessPredictor for Oracle {
+        fn predict(&self, c: &CandidateSpec) -> crate::directed::Prediction {
+            let p = crate::variation::params_of(&c.genome);
+            let m = p.iter().sum::<f64>() / p.len().max(1) as f64;
+            crate::directed::Prediction {
+                predicted: FitnessVector::new().with("capability", m),
+                self_reported_confidence: 0.99,
+            }
+        }
+    }
+
+    #[test]
+    fn an_attached_predictor_starts_untrusted() {
+        // Trust is earned by being right about things that were subsequently
+        // measured, not by attaching a predictor that says it is confident.
+        // `Oracle` self-reports 0.99 and that number buys nothing.
+        let ep = episode();
+        let at = attestor();
+        let r = Runner::new(policy(), &ep, &at, suite(), 1).with_predictor(Box::new(Oracle));
+        assert_eq!(r.predictor_trust(), 0.0, "an untested predictor is not trusted");
+    }
+
+    #[test]
+    fn a_run_with_a_predictor_still_completes_and_stays_bounded() {
+        // The wiring must not change what the loop is allowed to do. Budget,
+        // halting and the journal are unaffected by whether a surrogate ranked
+        // the proposals.
+        let path = tmp("predicted");
+        let mut j = Journal::open(&path).unwrap();
+        let mut w = Improving::new(0.05);
+        let mut l = seeded(&mut w);
+        let ep = episode();
+        let at = attestor();
+        let mut r = Runner::new(policy(), &ep, &at, suite(), 0x9001)
+            .with_predictor(Box::new(Oracle));
+        let report = r.run(&mut l, &mut j, &mut w);
+        assert!(
+            report.cycles.len() <= policy().max_cycles as usize,
+            "a predictor does not buy extra cycles"
+        );
+        assert!(j.verify().is_ok(), "and the chain still holds");
         let _ = std::fs::remove_dir_all(path.parent().unwrap());
     }
 }

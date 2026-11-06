@@ -23,6 +23,10 @@ cuda = ["dep:ironaccelerator-cuda", "dep:async-trait"]
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+# Already in the lockfile via rmi; the direct edge is for the SKB policy
+# digest, which names the rules in force so a run can state which policy it
+# enforced.
+sha2 = "0.10"
 rmi = { path = "../RecursiveMachineIntelligence", default-features = false, features = ["cpu"] }
 uuid = { version = "1.6", features = ["v4", "v5"] }
 proc-macro2 = "1"

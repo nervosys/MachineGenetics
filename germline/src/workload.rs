@@ -220,12 +220,14 @@ impl BuildWorkload {
         r
     }
 
-    /// Build one architecture, returning its report and artifact digest.
-    fn build(&self, arch: &Architecture) -> Result<(ribosome::sched::BuildReport, Digest), String> {
-        self.build_source(arch, &arch.to_source())
-    }
-
     /// Build a specific source. `arch` still names the action and its cost.
+    ///
+    /// There is deliberately no `build(&arch)` convenience that derives the
+    /// source from the architecture alone. That form existed briefly and its
+    /// only effect was to drop every gene while still producing a net that
+    /// compiled and scored — a different organism under the same name, with no
+    /// error anywhere. The source has to be passed in, because deriving it is
+    /// exactly the mistake.
     fn build_source(
         &self,
         arch: &Architecture,
@@ -341,7 +343,12 @@ mod tests {
     }
 
     fn gene(name: &str, sha: &str) -> crate::variation::Locus {
-        crate::variation::Locus::gene(name, sha, format!("{name}()"), vec![])
+        crate::variation::Locus::gene(
+            name,
+            sha,
+            format!("{name}()"),
+            crate::variation::Effects::pure(),
+        )
     }
 
     #[test]
@@ -411,7 +418,12 @@ mod tests {
         let mut w = BuildWorkload::new(Store::open(&root)).with_resolver(Box::new(Stub(m)));
 
         let genome = vec![
-            crate::variation::Locus::gene("Attn", "sha-attn", "Attn(d)", vec![]),
+            crate::variation::Locus::gene(
+                "Attn",
+                "sha-attn",
+                "Attn(d)",
+                crate::variation::Effects::pure(),
+            ),
             crate::variation::Locus::param(0.5),
             crate::variation::Locus::param(0.5),
             crate::variation::Locus::param(1.0),
@@ -449,7 +461,12 @@ mod tests {
     fn without_a_registry_a_gene_carrying_genome_does_not_materialize() {
         let (mut w, _root) = workload("gene-unresolvable");
         let genome = vec![
-            crate::variation::Locus::gene("Missing", "sha-nope", "Missing()", vec![]),
+            crate::variation::Locus::gene(
+                "Missing",
+                "sha-nope",
+                "Missing()",
+                crate::variation::Effects::pure(),
+            ),
             crate::variation::Locus::param(0.5),
         ];
         let err = w
@@ -499,7 +516,8 @@ mod tests {
         assert_eq!(a, b, "identical architectures must produce identical artifacts");
 
         let arch = Architecture::decode(&crate::variation::params_of(&spec.genome));
-        let (report, _) = w.build(&arch).unwrap();
+        let src = express(&spec.genome, &NoRegistry).unwrap();
+        let (report, _) = w.build_source(&arch, &src).unwrap();
         assert_eq!(report.cache_hits, 1, "a rebuilt architecture must not re-synthesize");
         let _ = std::fs::remove_dir_all(&root);
     }

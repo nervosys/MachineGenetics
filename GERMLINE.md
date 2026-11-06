@@ -1,7 +1,7 @@
 # Germline — model succession, handoff, and fallback
 
 > **Status: control plane complete and runnable; workload not.**
-> `germline/` — its own crate, 125 tests. Variation, directed search, the gate,
+> `germline/` — its own crate, 134 tests. Variation, directed search, the gate,
 > attestation, lineage, the durable journal, the cycle state machine, and
 > supervision are built and tested ✅. Model training and inference are **not**
 > here and are not claimed ◻ — this decides *whether* a successor takes over, not
@@ -14,7 +14,17 @@
 > the extraction removed nothing — 112 both before and after, across four
 > commits.*
 >
-> *Since 2026-09-15 it is 125: the genome became a sequence of loci — each a tunable scalar or a gene carried by content hash — rather than a vector of scalars (five tests), and expression gained a resolver seam that refuses a genome naming a gene the registry lacks (three more), and wiring it through `materialize` so the artifact built is the genome expressed added two, and connecting `forge`'s registry as the gene pool added three. The figures above are left as written because they record what was counted when the 141 was investigated, and a record rewritten to match today's number stops being evidence of anything.*
+> *The figures above are left as written. They record what was counted when the
+> 141 was investigated, and a record rewritten to match today's number stops
+> being evidence of anything.*
+>
+> *The count has moved since, and is pinned rather than narrated: see
+> `germline_tests` in [MEASUREMENTS.md](MEASUREMENTS.md). The growth is one line
+> of work, begun 2026-09-15 — the genome becoming a sequence of loci rather than
+> a vector of scalars, and everything that had to follow from that: expression
+> that refuses a genome naming a gene the registry lacks, a `materialize` that
+> builds the source it expressed, `forge`'s registry as the gene pool, and
+> blocks carrying the effects that make the legality check able to fail.*
 
 It depends on `ribosome` and nothing else in this repository, and the direction
 is load-bearing rather than incidental: the barrier described below is one-way,
@@ -116,6 +126,20 @@ at least explores, while a confidently wrong predictor systematically steers the
 budget away from the good candidates and returns a confident answer either way.
 And a surrogate fitted to the lineage's own history gets miscalibrated exactly
 when the search enters new territory, which is when it is trusted most.
+
+**Until 2026-09-16 none of this was wired into the loop.** `runner.rs` imported
+one name from `directed` — `CandidateSpec` — and chose its candidate with
+`.take(candidates_per_cycle).next()`, which is element 0 for every non-zero
+policy. So the loop proposed eight offspring, evaluated the first, discarded
+seven, and `candidates_per_cycle` changed nothing. Every test below passed,
+because every one of them exercises `DirectedSearch` directly; none asked
+whether the runner used it.
+
+The runner now takes an optional predictor and *samples* within the width trust
+has earned, rather than taking the top-ranked candidate outright. Sampling is
+the part that matters: at zero trust the width is the whole pool, so a loop with
+no predictor is undirected search exactly, and a loop with a fresh one does not
+begin following it on the first cycle.
 
 So the predictor is never trusted on its own account:
 
@@ -306,7 +330,7 @@ nobody chose, one individually-defensible promotion at a time.
 ## 10. Reproducing
 
 ```powershell
-cargo test --manifest-path germline/Cargo.toml                  # 125 tests
+cargo test --manifest-path germline/Cargo.toml                  # 134 tests
 cargo test --manifest-path germline/Cargo.toml --test rsi_loop  # 6 closed-loop scenarios
 cargo test --manifest-path germline/Cargo.toml --test succession # 13 succession scenarios
 ```
@@ -345,4 +369,7 @@ supervision → fallback and assert the seams line up:
 | `a_predictor_that_stops_being_right_loses_its_selectivity` | miscalibration widens search |
 | `an_unproven_predictor_does_not_get_to_narrow_the_search` | trust is earned |
 | `directed_search_spends_budget_on_the_best_predicted_candidates` | the win, when calibrated |
+| `candidates_per_cycle_decides_what_the_search_may_choose_from` | the policy field does something |
+| `a_run_with_a_pool_is_still_reproducible_from_its_seed` | sampling did not cost reproducibility |
+| `an_attached_predictor_starts_untrusted` | attaching a surrogate does not narrow anything |
 | `a_full_cycle_promotes_fails_falls_back_and_then_succeeds` | the whole loop |
