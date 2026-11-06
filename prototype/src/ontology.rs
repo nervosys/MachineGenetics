@@ -481,6 +481,8 @@ const EFFECTS: &[(&str, &str, &str)] = &[
     ("rng",    "effect_name", "Random number generation"),
     ("agent",  "effect_name", "Agent coordination"),
     ("proc",   "effect_name", "Process and system access"),
+    ("heldout", "effect_name", "Reading held-out evaluation data (evaluator and gate roles only)"),
+    ("promote", "effect_name", "Changing authority: promotion and the journal (gate role only)"),
 ];
 
 /// Subprocess agent protocol contract. Environment variables and
@@ -2657,10 +2659,7 @@ mod tests {
 
         // The other direction: a built-in kind the ontology does not publish is
         // a capability an agent cannot discover.
-        for name in [
-            "io", "net", "fs", "async", "alloc", "panic", "ffi", "env", "time", "gpu", "npu",
-            "llm", "evolve", "learn", "rng", "agent", "proc",
-        ] {
+        for (name, _) in crate::hir::BUILTIN_EFFECTS {
             assert!(
                 published.contains(&name),
                 "`{name}` is a built-in effect kind but the ontology does not publish it"

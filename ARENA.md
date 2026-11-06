@@ -126,18 +126,20 @@ the measured joules the ones doing the work.
 ## What surfaced in MAGE itself
 
 The arena runs the compiler thousands of times on programs no person wrote,
-and in its first hour it found three things about the language:
+and in its first hour it found three defects in the language. All three were
+fixed on 2026-09-25, and the account is in `HANDOFF.md` items 38–40:
 
-- **Closure bodies are under-checked.** `range(3).map(|x| x + "a")` typechecks
-  and fails only at run time.
-- **Integer overflow depends on the build profile.** `binop` uses plain `a * b`,
-  which panics in a debug build and wraps in release, so one MAGE program has
-  two meanings. `MAGE_SPEC.md` says nothing about overflow. **This is a language
-  decision — wrap or trap — and it is not made here.** The arena works under
-  either: a panicking candidate is caught, charged its full fuel, and refused.
-- **`range`'s own error message recommends a form that does not parse.** It
-  says "for a start and an end write `a..b`", and `a..b` parses only in `for`
-  headers and slices.
+- **Integer overflow depended on the build profile** (a panic in debug, a
+  wrap in release). It now traps in every build, and modular arithmetic is
+  asked for by name (`MAGE_SPEC.md` §4.10). The generator renders its
+  arithmetic as `wrapping_add` and friends.
+- **The method-call spelling was not typed at all.** `xs.filter(p).map(f)`
+  returned a fresh type variable, so the arena's type gate had been checking
+  almost nothing in its own programs. Method calls to vocabulary names are now
+  typed as the call, and closures are checked against what their combinator
+  expects.
+- **`range`'s error recommended syntax that does not parse.** It now
+  recommends a form a test evaluates.
 
 ## Next, in order
 

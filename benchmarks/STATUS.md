@@ -105,7 +105,7 @@ ontology/full
   ├─ framewerx_modules (256) — RecursiveMachineIntelligence-MG framework (FLAX-equivalent)
   ├─ cli_flags (39)          — every mage-parse flag
   ├─ bench_backends (4)      — reliability-bench backends
-  ├─ effects (22)            — @fx/@req/@ens + canonical effect names
+  ├─ effects (24)            — @fx/@req/@ens + canonical effect names
   ├─ wrapper_protocol (9)    — subprocess agent contract
   ├─ project_layout (22)     — top-level directory map
   ├─ docs (7)                — canonical doc pointers + IronAccelerator

@@ -82,9 +82,12 @@ impl IntExpr {
         match self {
             IntExpr::Lit(n) => out.push_str(&n.to_string()),
             IntExpr::Var(v) => out.push_str(v),
-            IntExpr::Add(a, b) => bin(out, a, " + ", b),
-            IntExpr::Sub(a, b) => bin(out, a, " - ", b),
-            IntExpr::Mul(a, b) => bin(out, a, " * ", b),
+            // Wrapping by name: MAGE's operators trap on overflow (§4.10), and
+            // a generator of byte streams wants modular arithmetic, so it asks
+            // for it where a reader can see it.
+            IntExpr::Add(a, b) => call(out, "wrapping_add", a, b),
+            IntExpr::Sub(a, b) => call(out, "wrapping_sub", a, b),
+            IntExpr::Mul(a, b) => call(out, "wrapping_mul", a, b),
             IntExpr::Mod(a, k) => {
                 out.push('(');
                 a.render(out);
@@ -102,10 +105,11 @@ impl IntExpr {
     }
 }
 
-fn bin(out: &mut String, a: &IntExpr, op: &str, b: &IntExpr) {
+fn call(out: &mut String, f: &str, a: &IntExpr, b: &IntExpr) {
+    out.push_str(f);
     out.push('(');
     a.render(out);
-    out.push_str(op);
+    out.push_str(", ");
     b.render(out);
     out.push(')');
 }
@@ -178,7 +182,9 @@ impl Program {
     pub fn source(&self) -> String {
         let mut body = String::new();
         self.body.render(&mut body);
-        format!("f gen(s: usize) -> [usize] {{\n    {body}\n}}\n")
+        // `@role(candidate)`: the language, not this crate, is what forbids a
+        // generated program from reading held-out data or acting (§11.6).
+        format!("@role(candidate)\nf gen(s: usize) -> [usize] {{\n    {body}\n}}\n")
     }
 
     /// Length in MAGE tokens — the description length the Solomonoff prior
@@ -583,7 +589,11 @@ mod tests {
                 ),
             ),
         };
-        assert!(p.source().contains("range(4).scan(s, |a, x| (((a * 3) + x) % 256))"), "{}", p.source());
+        assert!(
+            p.source().contains("range(4).scan(s, |a, x| (wrapping_add(wrapping_mul(a, 3), x) % 256))"),
+            "{}",
+            p.source()
+        );
         match Substrate::default().run(&p.source(), 7) {
             Outcome::Bytes { bytes, .. } => assert_eq!(bytes, vec![7, 21, 64, 194, 73]),
             other => panic!("{other:?}"),
