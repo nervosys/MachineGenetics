@@ -30,14 +30,14 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,242** — rmi 1,384 · prototype 1,400 · ribosome 168 · germline 156 · forge 63 · arena 71 |
+| Tests | **3,247** — rmi 1,384 · prototype 1,400 · ribosome 168 · germline 156 · forge 63 · arena 76 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
 | CI | 11 jobs defined, **10 of which ever run** — green on `master`. The eleventh, `prototype — cuda kernels (self-hosted GPU)`, has no runner and has never executed (open item 2) |
 | Reliability floors | file-oracle parse 99/100, perturbed pattern-heal 42, native-lexer ratio 0.997 |
 | Examples | 12 of 12 typecheck, run, and print their recorded answer |
-| `.mg` sources | **103 checked, 0 sketches** — every `.mg` file in the repository typechecks |
+| `.mg` sources | **104 checked, 0 sketches** — every `.mg` file in the repository typechecks |
 | Differentiability | **34 of 34 nets and 7 of 7 train blocks; 1 of 156 functions** (the arena's reward) — `scripts/measure-differentiability.sh`, re-derived in CI and compared against `DIFFERENTIABILITY.md` in both directions |
 | `grad` | An expression that typechecks and **runs**, for scalars: forward-mode duals, checked against central differences. The differentiability obligation is a premise of its typing rule, discharged by the call-graph pass. Tensors are refused, not deferred |
 | Documentation | 205 MAGE blocks typecheck; 59 documentation entry points run; 268 `rmi/docs` API items all exist — and "exist" now means **a definition exists**, not that the name appears somewhere in `src/`. It was 275 under the weaker criterion, 8 of them held up by English words in comments; the phantom entries are gone and a duplicate went with them |
@@ -939,6 +939,23 @@ reaches the optimum within 1e-4 on 195 fuel (13 evaluations); ES needs 3,855
 fuel (257 evaluations) to get as close. Fuel is the stand-in for joules here.
 Break-checked: always choosing projected gradient fails the never-the-convex-
 route test. MAGE_SPEC §11.9. Prototype +11 tests.
+
+**Plan 5.2 finished: replay's retention is a MAGE program.** ARENA.md had
+said replay has no policy separable from its mechanism. It has one: which
+entry a full pool forgets. `arena/harness/retention.mg` defines
+`priority(reward, age)` under `@role(candidate)`; the shipped program returns
+the reward, which is the rule the pool always used. The kernel keeps the
+eviction (lowest priority, oldest first among ties) and uniform sampling, and
+refuses a non-finite priority. `--retention-program` swaps it. Over 300 random
+insertion sequences with ties, the MAGE and Rust pools keep identical entries
+after every insertion; changing the shipped program to `-reward` fails that.
+The curriculum is the reward itself, already moved in 5.1, so 5.2 has nothing
+left.
+- A full pool scores every entry on each insertion, about 12,000 runs a round
+  at capacity 256, and a 20-round run went from 103 s to 130 s. The candidate
+  role allows no effects, so the priority is memoised on `(reward, age)`,
+  exactly; the run is back to 80-95 s.
+Arena +5 tests; `.mg` sources 104.
 
 **Pre-existing, not from this change:** `cargo clippy` 0.1.98 (2026-09-01)
 reports 15 warnings in `prototype` — 14 `chunks_exact` with a constant size in

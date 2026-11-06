@@ -567,9 +567,18 @@ best agent's term, which gives the same proportions with no overflow. The
 default temperature is 0.5 and no flag changes it, so no recorded run was
 affected.
 
-Curriculum and replay, the rest of plan 5.2, are not moved yet. Neither
-has a policy separable from its mechanism the way allocation's weight is:
-replay samples the pool by reward, and the curriculum is the reward itself.
+**Replay's retention is the third (plan 5.2).** Which entry the pool forgets
+when it is over capacity is `arena/harness/retention.mg`, a function
+`priority(reward, age)` under `@role(candidate)`, where `age` is the rounds
+since the entry was added. The shipped program returns the reward, which is
+the rule the pool has always used; `--retention-program` swaps in another. The
+kernel keeps the eviction, which removes the lowest-priority entry, oldest
+first among ties, and it refuses a priority that is not finite. Sampling
+stays uniform. The curriculum is the reward, which was already moved in
+plan 5.1: what the agents are paid for is what they are taught next, so
+nothing separate remains. The equivalence test holds the shipped retention to
+the Rust pool's surviving entries after every insertion, over 300 random
+sequences with ties and repeated rewards at capacities of 3 to 8.
 
 ## Succession: authority through the gate (plan 8.1–8.2)
 
