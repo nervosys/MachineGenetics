@@ -33,5 +33,6 @@ pub mod harness;
 pub mod learner;
 pub mod measure;
 pub mod substrate;
+pub mod succession;
 #[cfg(feature = "transformer")]
 pub mod transformer;

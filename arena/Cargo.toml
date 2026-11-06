@@ -17,6 +17,9 @@ repository = "https://github.com/nervosys/MAGE"
 [dependencies]
 mage-prototype = { path = "../prototype" }
 germline = { path = "../germline" }
+# For `Digest`, the type germline's Workload speaks. A direct edge: the graph
+# stays acyclic, and ribosome still depends on no MAGE crate.
+ribosome = { path = "../ribosome" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.10"
@@ -37,3 +40,10 @@ gpu = ["transformer", "candle-core/cuda", "candle-nn/cuda"]
 [[bin]]
 name = "arena"
 path = "src/main.rs"
+
+# Line tables only in debug builds. The arena's test binary links prototype,
+# rmi, germline, ribosome and ed25519, and with full debug info it exceeded the
+# MSVC linker's program-database limit (LNK1140) once the succession tests
+# arrived. Backtraces keep file and line; locals are what is given up.
+[profile.dev]
+debug = "line-tables-only"
