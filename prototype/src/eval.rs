@@ -2062,9 +2062,10 @@ impl Interp {
             //
             // Arguments are joined with a space, like Rust's `println!` with
             // multiple `{}` — and unlike it, no format string is required.
-            "println" | "print" | "eprintln" | "eprint" => {
+            "println" | "print" | "eprintln" | "eprint" | "write" | "writeln" => {
                 let rendered: Vec<String> = a.iter().map(render_for_print).collect();
                 let line = rendered.join(" ");
+                // `write` is `print` and `writeln` is `println`.
                 let to_stderr = name.starts_with('e');
                 let newline = name.ends_with("ln");
                 if to_stderr {
@@ -3717,12 +3718,23 @@ f s() { Rect(3.0) }", "s", &[])
     /// only what it exercises.
     #[test]
     fn output_builtins_evaluate() {
-        for name in ["println", "print", "eprintln", "eprint"] {
+        for name in ["println", "print", "eprintln", "eprint", "write", "writeln"] {
             let src = format!("f s() {{ {name}(\"hi\"); 0 }}");
             assert_eq!(run(&src, "s", &[]), Value::Int(0), "`{name}` should evaluate");
         }
         // Multiple arguments are joined, and a string prints unquoted.
         assert_eq!(run("f s() { println(\"a\", 1); 0 }", "s", &[]), Value::Int(0));
+    }
+
+    /// Every scalar math name evaluates on a float, in both spellings.
+    #[test]
+    fn every_scalar_math_name_evaluates() {
+        for name in crate::resolve::SCALAR_MATH {
+            let free = format!("f s() {{ {name}(0.5) }}");
+            let method = format!("f s() {{ 0.5.{name}() }}");
+            assert!(matches!(run(&free, "s", &[]), Value::Float(_)), "`{name}(0.5)` should evaluate");
+            assert!(matches!(run(&method, "s", &[]), Value::Float(_)), "`0.5.{name}()` should evaluate");
+        }
     }
 
     /// A trailing parameter's default is used when the caller omits it.

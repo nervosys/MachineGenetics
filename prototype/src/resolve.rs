@@ -10,8 +10,7 @@ use crate::hir::{Diagnostic, DiagnosticCategory, Severity, SymbolId, Ty};
 use std::collections::HashMap;
 
 /// The builtin functions and macros `register_builtins` registers: names the resolver
-/// accepts as a bare call. `write` and `writeln` resolve and have no arm in the evaluator.
-/// `every_builtin_function_is_stated` holds this table to the `builtin_function` facts in
+/// accepts as a bare call. `every_builtin_function_is_stated` holds this table to the `builtin_function` facts in
 /// both directions.
 pub(crate) const STD_FNS: &[&str] = &[
     // I/O
@@ -33,6 +32,16 @@ pub(crate) const STD_FNS: &[&str] = &[
     "mean", "dot",
     // bare enum-value constructors agents call positionally
     "Some", "None", "Ok", "Err",
+];
+
+/// The scalar math functions: each takes exactly one number, as `f(x)` or `x.f()`. The
+/// evaluator's arm for them and `types.rs`'s arity and argument check use this table.
+/// `every_scalar_math_name_is_stated` holds it to the `scalar_math` facts in both
+/// directions.
+pub(crate) const SCALAR_MATH: &[&str] = &[
+    "exp", "ln", "log", "sqrt", "sin", "cos", "tan", "tanh", "sigmoid", "silu", "gelu",
+    "log2", "log10", "asin", "acos", "atan", "sinh", "cosh",
+    "floor", "ceil", "round", "trunc",
 ];
 
 /// The standard SWE vocabulary (AB_INITIO_DESIGN §8 — the vocabulary frontier):
@@ -1602,5 +1611,20 @@ f P(x: i32) -> i32 { x }"),
         let mut table: Vec<Vec<String>> = STD_FNS.iter().map(|n| vec![n.to_string()]).collect();
         table.sort();
         assert_eq!(stated, table, "builtin_function facts vs STD_FNS");
+    }
+
+    /// Every `SCALAR_MATH` name is stated as a `scalar_math` fact, and every stated
+    /// name is in the table, both ways. Each is also a name the resolver accepts.
+    #[test]
+    fn every_scalar_math_name_is_stated() {
+        let kb = crate::kb::load().expect("the knowledge base loads");
+        let mut stated: Vec<Vec<String>> = kb.facts("scalar_math");
+        stated.sort();
+        let mut table: Vec<Vec<String>> = SCALAR_MATH.iter().map(|n| vec![n.to_string()]).collect();
+        table.sort();
+        assert_eq!(stated, table, "scalar_math facts vs SCALAR_MATH");
+        for name in SCALAR_MATH {
+            assert!(STD_FNS.contains(name), "`{name}` is scalar math and not in STD_FNS");
+        }
     }
 }
