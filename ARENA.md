@@ -495,6 +495,40 @@ the gap drifts. With the held-out corpora used here (about 28 KB each), slices w
 small to score reliably, and switching slices mid-run makes checkpoints
 incomparable. Refresh needs a larger held-out store first.
 
+## An attacker, and the exploit it found (plan 7.4)
+
+`--agents attacker:1` adds an agent in the `attacker` role. It takes the
+pool's best entries and wraps each in a rewrite that is the identity on
+every list: `xs.reverse().reverse()`, `xs ++ xs.take(0)` or
+`xs.map(|v| v + 0)`. Each candidate therefore claims to behave exactly as its
+parent. The kernel checks the claim (`kernel::verify_preserving`): the
+candidate and its parent must produce the same bytes on three seeds besides
+the scoring seed, and the candidate must produce the same bytes twice. Both
+run directly rather than from the evaluation cache, under the substrate's
+fuel and output bounds. A claim that holds, for a candidate the novelty count
+still treated as new, is a confirmed exploit and goes in `Report.attacks`.
+
+**What it found.** Novelty has been keyed on a program's shape since the
+seed-keyed exploit was closed. Shape is structure with constants erased, so
+a rewrite that changes structure without changing output is a new shape and
+earns full novelty credit. On seed 7, 20 rounds of 48 programs, agents
+`grammar:1,mutator:1,attacker:1`, CPU only:
+
+| `--novelty` | claims checked | credited as novel | distinct shapes | cache hits |
+|---|---|---|---|---|
+| `shape` (default) | 135 | **70** | 662 | 3 |
+| `behaviour` | 180 | **0** | 596 | 392 |
+
+**The fix, behind a flag.** `--novelty behaviour` keys novelty on a
+fingerprint of a program's outputs on three fixed seeds, so an
+output-preserving rewrite has its parent's key. The fingerprint costs up to
+three evaluations per new program, cached, which is where the extra cache
+hits come from. It has a hole of its own: two programs that agree on those
+three seeds share a key whatever they do elsewhere. It is not the default
+yet, because the held-out effect of switching has not been measured. A test
+runs the attacker under both keys, and fails if behaviour keying falls back
+to shape (break-checked).
+
 ## The harness in MAGE (plan 5.1)
 
 The compression reward is now `arena/harness/reward.mg`, a MAGE program

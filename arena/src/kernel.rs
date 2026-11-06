@@ -37,6 +37,7 @@ use std::collections::BTreeMap;
 
 pub use crate::energy::Meter;
 pub use crate::substrate::Substrate;
+use crate::substrate::{Outcome, Prepared};
 pub use germline::gate::{Approval, Episode};
 pub use germline::journal::Journal;
 pub use mage_prototype::eval::run_bounded;
@@ -195,6 +196,31 @@ impl Corpus {
 /// Whether `output` carries `canary`: held-out bytes reached an agent.
 pub fn leaks(output: &[u8], canary: &[u8]) -> bool {
     !canary.is_empty() && output.windows(canary.len()).any(|w| w == canary)
+}
+
+/// Check an attacker's claim that `variant` behaves exactly as `parent`
+/// (plan 7.4): both produce bytes, the same bytes, on every seed in `seeds`,
+/// and the variant produces the same bytes twice on the first. Both run
+/// directly, never from a cache, since a cache would answer the second run
+/// from the first. Every run is under the substrate's fuel and output bounds.
+pub fn verify_preserving(sub: &Substrate, parent: &Prepared, variant: &Prepared, seeds: &[u64]) -> Result<(), String> {
+    let bytes = |p: &Prepared, s: u64| match sub.execute(p, s) {
+        Outcome::Bytes { bytes, .. } => Some(bytes),
+        Outcome::Refused(..) => None,
+    };
+    for &s in seeds {
+        match (bytes(parent, s), bytes(variant, s)) {
+            (Some(a), Some(b)) if a == b => {}
+            (Some(_), Some(_)) => return Err(format!("seed {s}: the variant's output differs from its parent's")),
+            _ => return Err(format!("seed {s}: a refusal, so nothing to compare")),
+        }
+    }
+    if let Some(&s) = seeds.first() {
+        if bytes(variant, s) != bytes(variant, s) {
+            return Err(format!("seed {s}: the variant is not deterministic"));
+        }
+    }
+    Ok(())
 }
 
 #[cfg(test)]

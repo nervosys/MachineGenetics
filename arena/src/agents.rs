@@ -30,7 +30,7 @@
 //!
 //! An LLM writing MAGE is a fourth kind, and nothing here would change for it.
 
-use crate::grammar::{crossover, mutate, Choice, Policy, Program, Rng};
+use crate::grammar::{crossover, mutate, Choice, IntExpr, ListExpr, Policy, Program, Rng};
 use serde::{Deserialize, Serialize};
 
 /// A proposed program, and what is needed to credit it.
@@ -375,9 +375,105 @@ impl Proposer for MutatorAgent {
     fn feedback(&mut self, _scored: &[Scored]) {}
 }
 
+/// Searches the reward for exploits (plan 7.4). It wraps the pool's best
+/// entries in rewrites that leave every output unchanged, so each of its
+/// candidates claims to behave exactly as its parent. The kernel checks the
+/// claim, and a candidate that passes and is still counted as novel is a
+/// confirmed exploit (`Report::attacks`).
+pub struct AttackerAgent {
+    pub id: String,
+    /// How many of the pool's best entries to draw parents from.
+    pub elite: usize,
+}
+
+impl AttackerAgent {
+    pub fn new(id: impl Into<String>) -> Self {
+        AttackerAgent { id: id.into(), elite: 16 }
+    }
+}
+
+/// How many rewrites [`identity_rewrite`] knows.
+pub const IDENTITY_REWRITES: usize = 3;
+
+/// `xs.reverse().reverse()`, `xs ++ xs.take(0)` or `xs.map(|v| v + 0)`:
+/// each the identity on every list, and each a different structure.
+pub fn identity_rewrite(xs: &ListExpr, which: usize) -> ListExpr {
+    let inner = || Box::new(xs.clone());
+    match which % IDENTITY_REWRITES {
+        0 => ListExpr::Reverse(Box::new(ListExpr::Reverse(inner()))),
+        1 => ListExpr::Concat(inner(), Box::new(ListExpr::Take(inner(), 0))),
+        _ => ListExpr::Map(
+            inner(),
+            "v".into(),
+            IntExpr::Add(Box::new(IntExpr::Var("v".into())), Box::new(IntExpr::Lit(0))),
+        ),
+    }
+}
+
+impl Proposer for AttackerAgent {
+    fn id(&self) -> &str {
+        &self.id
+    }
+
+    fn kind(&self) -> &'static str {
+        "attacker"
+    }
+
+    fn role(&self) -> Role {
+        Role::Attacker
+    }
+
+    fn propose(&mut self, n: usize, pool: &Pool, rng: &mut Rng) -> Vec<Candidate> {
+        // Nothing to attack until the pool holds something.
+        let elite = pool.top(self.elite);
+        if elite.is_empty() {
+            return Vec::new();
+        }
+        (0..n)
+            .map(|_| {
+                let a = elite[rng.below(elite.len())];
+                let body = identity_rewrite(&a.program.body, rng.below(IDENTITY_REWRITES));
+                Candidate { program: Program { body }, trace: None, parents: vec![a.id] }
+            })
+            .collect()
+    }
+
+    fn feedback(&mut self, _scored: &[Scored]) {}
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn every_identity_rewrite_preserves_output_and_changes_shape() {
+        // Fuel enough for `xs ++ xs.take(0)`, which evaluates `xs` twice.
+        let sub = crate::substrate::Substrate { fuel: 1_000_000, max_bytes: 4096 };
+        let bytes = |o: crate::substrate::Outcome| match o {
+            crate::substrate::Outcome::Bytes { bytes, .. } => Some(bytes),
+            crate::substrate::Outcome::Refused(..) => None,
+        };
+        let mut rng = Rng(11);
+        let policy = Policy::default();
+        let mut checked = 0;
+        for _ in 0..40 {
+            let parent = policy.sample(&mut rng).0;
+            let Ok(p) = sub.prepare(&parent.source()) else { continue };
+            if !matches!(sub.execute(&p, 3), crate::substrate::Outcome::Bytes { .. }) {
+                continue;
+            }
+            for which in 0..IDENTITY_REWRITES {
+                let variant = Program { body: identity_rewrite(&parent.body, which) };
+                let v = sub.prepare(&variant.source()).expect("a rewrite of a valid program is valid");
+                assert_ne!(v.shape, p.shape, "rewrite {which} kept the shape of {}", parent.source());
+                for seed in [3, 40, 200] {
+                    assert_eq!(bytes(sub.execute(&p, seed)), bytes(sub.execute(&v, seed)), "{}", variant.source());
+                }
+                checked += 1;
+            }
+        }
+        assert!(checked >= 30, "only {checked} rewrites checked");
+    }
 
     #[test]
     fn allocation_sums_to_total_and_respects_the_floor() {
