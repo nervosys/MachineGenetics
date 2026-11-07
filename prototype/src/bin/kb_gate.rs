@@ -1,11 +1,13 @@
 //! `kb-gate`: the knowledge base's share of the gate (NEUROSYMBOLIC_PLAN.md, Phase 8).
 //! `version` prints the knowledge base's version. `admit` applies a proposal and,
-//! if the knowledge base admits it, writes the files it changes.
+//! if the knowledge base admits it, writes the files it changes. `promotion`
+//! prints the proposal that promotes a grammar extension to built-in.
 
 use std::fs;
 use std::path::Path;
 use std::process::ExitCode;
 
+use mage_prototype::grammar::{self, GrammarExtension};
 use mage_prototype::{kb, kb_proposal};
 
 fn main() -> ExitCode {
@@ -17,9 +19,47 @@ fn main() -> ExitCode {
             ExitCode::SUCCESS
         }
         ["admit", proposal, dir] => admit(proposal, Path::new(dir)),
+        ["promotion", sigil, keyword, uses, description] => promotion(sigil, keyword, uses, description),
         _ => {
-            eprintln!("usage: kb-gate version | kb-gate admit <proposal.json> <dir>");
+            eprintln!(
+                "usage: kb-gate version | kb-gate admit <proposal.json> <dir> | \
+                 kb-gate promotion <sigil> <keyword> <uses> <description>"
+            );
             ExitCode::from(1)
+        }
+    }
+}
+
+/// The proposal that promotes `sigil`, a grammar extension used `uses` times.
+fn promotion(sigil: &str, keyword: &str, uses: &str, description: &str) -> ExitCode {
+    let Ok(uses) = uses.parse::<u64>() else {
+        eprintln!("kb-gate: <uses> is not a count: {uses}");
+        return ExitCode::from(1);
+    };
+    let ext = GrammarExtension {
+        sigil: sigil.into(),
+        rust_equiv: keyword.into(),
+        namespace: "user".into(),
+        usage_count: uses,
+        description: description.into(),
+    };
+    let kb = match kb::load() {
+        Ok(kb) => kb,
+        Err(es) => {
+            for e in es {
+                eprintln!("refused kb_schema: {e}");
+            }
+            return ExitCode::from(2);
+        }
+    };
+    match grammar::promotion_proposal(&ext, &kb) {
+        Ok(p) => {
+            println!("{}", serde_json::to_string_pretty(&p).expect("a proposal serializes"));
+            ExitCode::SUCCESS
+        }
+        Err(e) => {
+            eprintln!("refused: {e}");
+            ExitCode::from(2)
         }
     }
 }

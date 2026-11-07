@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,603** — rmi 1,384 · prototype 1,564 · ribosome 168 · germline 176 · forge 63 · arena 248 |
+| Tests | **3,606** — rmi 1,384 · prototype 1,567 · ribosome 168 · germline 176 · forge 63 · arena 248 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -2027,6 +2027,14 @@ subagent from an exact brief.
 refused program, which has no output. The grammar policy does, as reward 0, and its
 refusals in two seeded runs were 1 to 3 of 22 to 30 programs, all `empty`. No learner
 here has a use for per-rule counts; the plan item records why and when to reopen it.
+
+**Grammar-extension promotion is admission.** `grammar::promotion_proposal` turns an
+extension used more than 100 times into a proposal to state its sigil;
+`ExtensionRegistry::promote` needs a knowledge base that states it. Nothing can be
+admitted today: every one of the 37 keywords already has a sigil, and
+`keyword_two_sigils` allows one, so `kb_schema` refuses each promotion. A new
+keyword needs a lexer change, which no proposal can make. Item 7's first admitted
+change must be something read from the knowledge base at run time. Prototype +3.
 
 **Germline hands on the knowledge base.** `Generation.knowledge_base` is the content
 address of the knowledge base a generation's artifact was built against, carried
@@ -4840,7 +4848,7 @@ changed before you commit.
 ---
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,564**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,567**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
   across six crates **3,140**; documented-count pins **101**, up from 46 — the
   two newest hold the `kb`/`net` overlap the tensor-product-binding decision

@@ -158,6 +158,20 @@ impl ExtensionRegistry {
             .collect()
     }
 
+    /// Promote `sigil` to built-in when `kb` states it as abbreviating its
+    /// expansion, as an admitted promotion proposal does; refuse otherwise.
+    pub fn promote(&mut self, sigil: &str, kb: &crate::kb::Kb) -> Result<(), String> {
+        let Some(at) = self.extensions.iter().position(|e| e.sigil == sigil) else {
+            return Err(format!("`{sigil}` is not a registered extension"));
+        };
+        let kw = self.extensions[at].rust_equiv.clone();
+        if !kb.facts("abbreviates").iter().any(|f| f[0] == sigil && f[1] == kw) {
+            return Err(format!("the knowledge base does not state `abbreviates({sigil}, {kw})`"));
+        }
+        self.extensions[at].namespace = "core".into();
+        Ok(())
+    }
+
     /// Return all extensions as a JSON-serializable list.
     pub fn to_json(&self) -> serde_json::Value {
         serde_json::json!(self.extensions.iter().map(|e| {
@@ -169,6 +183,52 @@ impl ExtensionRegistry {
                 "description": e.description,
             })
         }).collect::<Vec<_>>())
+    }
+}
+
+// ── Promotion ──────────────────────────────────────────────────────
+
+/// The proposal that promotes `ext`: state its sigil in `kb/lexicon.mg` as
+/// abbreviating its keyword. Promotion is admission: the gate decides it.
+/// It states no `lexes_as` fact: the lexer has no token kind for an
+/// extension's sigil, and a proposal cannot add one, so the gate must find that.
+pub fn promotion_proposal(ext: &GrammarExtension, kb: &crate::kb::Kb) -> Result<crate::kb_proposal::Proposal, String> {
+    if ext.usage_count <= PROMOTION_THRESHOLD {
+        return Err(format!("`{}` is used {} times, not more than {PROMOTION_THRESHOLD}: not a candidate", ext.sigil, ext.usage_count));
+    }
+    if ext.namespace == "core" {
+        return Err(format!("`{}` is core: already built in", ext.sigil));
+    }
+    let kw = ext.rust_equiv.as_str();
+    if !kb.facts("instance_of").iter().any(|f| f[0] == kw && f[1] == "Keyword") {
+        return Err(format!("`{kw}` is not a keyword the knowledge base states: only a keyword can be abbreviated"));
+    }
+    let s = lit(&ext.sigil);
+    let name = lit(&capitalise(kw));
+    let block = format!(
+        "\nkb Promoted {{\n    fact instance_of(\"{s}\", Sigil);\n    fact abbreviates(\"{s}\", \"{}\");\n    fact sigil_row(\"{s}\", \"{name}\", \"{}\");\n}}\n",
+        lit(kw),
+        lit(&ext.description),
+    );
+    Ok(crate::kb_proposal::Proposal {
+        author: crate::kb_proposal::Author::Component("grammar_extensions".into()),
+        summary: format!("promote `{}` to built-in: it abbreviates `{kw}`, used {} times", ext.sigil, ext.usage_count),
+        base: crate::kb_proposal::version(crate::kb::FILES),
+        edits: vec![crate::kb_proposal::Edit { file: "kb/lexicon.mg".into(), before: String::new(), after: block }],
+    })
+}
+
+/// Escape a string for a `kb` fact's quotes.
+fn lit(s: &str) -> String {
+    s.replace('\\', "\\\\").replace('"', "\\\"")
+}
+
+/// `while` to `While`.
+fn capitalise(s: &str) -> String {
+    let mut cs = s.chars();
+    match cs.next() {
+        Some(c) => c.to_uppercase().collect::<String>() + cs.as_str(),
+        None => String::new(),
     }
 }
 
@@ -365,5 +425,70 @@ mod tests {
         let mut reg = ExtensionRegistry::new();
         reg.record_usage("zzz_nonexistent");
         // Should not panic, just no-op
+    }
+
+    /// A registry with `sigil` abbreviating `keyword`, used `uses` times.
+    fn used(sigil: &str, keyword: &str, uses: u64) -> ExtensionRegistry {
+        let mut reg = ExtensionRegistry::new();
+        reg.register(sigil, keyword, "user", "Test");
+        for _ in 0..uses {
+            reg.record_usage(sigil);
+        }
+        reg
+    }
+
+    #[test]
+    fn a_candidate_becomes_a_proposal_that_states_its_sigil() {
+        let kb = crate::kb::load().expect("loads");
+        // Every keyword the kb states already has a sigil, so `while` (sigil `@w`)
+        // stands in for one that does not. Admission refuses it: see below.
+        let reg = used("@zz", "while", PROMOTION_THRESHOLD + 1);
+        let p = promotion_proposal(reg.lookup("@zz").expect("registered"), &kb).expect("a candidate");
+        assert_eq!(p.author, crate::kb_proposal::Author::Component("grammar_extensions".into()));
+        assert_eq!(p.base, crate::kb_proposal::version(crate::kb::FILES));
+        assert_eq!(p.summary, "promote `@zz` to built-in: it abbreviates `while`, used 101 times");
+        let applied = crate::kb_proposal::apply(&p, &kb, crate::kb::FILES).expect("applies");
+        let lexicon = &applied.iter().find(|(path, _)| path == "kb/lexicon.mg").expect("lexicon").1;
+        assert!(lexicon.contains("fact abbreviates(\"@zz\", \"while\");"), "{lexicon}");
+        assert!(lexicon.contains("fact sigil_row(\"@zz\", \"While\", \"Test\");"), "{lexicon}");
+        // Observed: admit refuses it, since `while` already has the sigil `@w`.
+        let refused = crate::kb_proposal::admit(&p, &kb, crate::kb::FILES).expect_err("refused");
+        assert!(refused.iter().all(|r| r.rule == "kb_schema"), "{refused:#?}");
+        assert!(refused.iter().any(|r| r.message.contains("keyword_two_sigils")), "{refused:#?}");
+    }
+
+    #[test]
+    fn a_promotion_needs_a_candidate_a_keyword_and_not_core() {
+        let kb = crate::kb::load().expect("loads");
+        let cold = used("@zz", "while", PROMOTION_THRESHOLD);
+        let e = promotion_proposal(cold.lookup("@zz").expect("registered"), &kb).expect_err("not a candidate");
+        assert!(e.contains("not a candidate"), "{e}");
+        let not_keyword = used("^^", "Box<_>", PROMOTION_THRESHOLD + 1);
+        let e = promotion_proposal(not_keyword.lookup("^^").expect("registered"), &kb).expect_err("not a keyword");
+        assert!(e.contains("not a keyword"), "{e}");
+        let mut core = ExtensionRegistry::new();
+        for _ in 0..=PROMOTION_THRESHOLD {
+            core.record_usage("f");
+        }
+        let e = promotion_proposal(core.lookup("f").expect("builtin"), &kb).expect_err("core");
+        assert!(e.contains("already built in"), "{e}");
+    }
+
+    #[test]
+    fn promotion_is_admission() {
+        let kb = crate::kb::load().expect("loads");
+        let mut reg = used("@zz", "unless", PROMOTION_THRESHOLD + 1);
+        // The kb states no `abbreviates` for it, so it is not promoted.
+        assert!(reg.promote("@zz", &kb).is_err());
+        assert_eq!(reg.lookup("@zz").expect("registered").namespace, "user");
+        // A kb that states the sigil as abbreviating a keyword nothing else abbreviates.
+        // The applied `while` proposal does not load, so this stands in for it.
+        let extra = "\nkb Extra {\n    fact instance_of(\"unless\", Keyword);\n    fact instance_of(\"@zz\", Sigil);\n    fact abbreviates(\"@zz\", \"unless\");\n}\n";
+        let mut files: Vec<(&str, &str)> = crate::kb::FILES.to_vec();
+        files.push(("kb/extra.mg", extra));
+        let stated = crate::kb::load_files(&files).unwrap_or_else(|e| panic!("{e:#?}"));
+        reg.promote("@zz", &stated).expect("promoted");
+        assert_eq!(reg.lookup("@zz").expect("registered").namespace, "core");
+        assert!(reg.promotion_candidates().iter().all(|e| e.sigil != "@zz"));
     }
 }
