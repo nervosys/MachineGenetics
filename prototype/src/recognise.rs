@@ -212,6 +212,15 @@ impl Grammar {
     /// `Production` instances, terminals the `TokenKind` instances, the
     /// alternatives the `rhs` facts, and the start the `start_symbol`.
     pub fn from_kb(kb: &crate::kb::Kb) -> Result<Grammar, Vec<String>> {
+        Grammar::build(kb, None)
+    }
+
+    /// The grammar with only `productions`: any other derives nothing.
+    pub fn restricted(kb: &crate::kb::Kb, productions: &[String]) -> Result<Grammar, Vec<String>> {
+        Grammar::build(kb, Some(productions))
+    }
+
+    fn build(kb: &crate::kb::Kb, only: Option<&[String]>) -> Result<Grammar, Vec<String>> {
         let class = |c: &str| -> BTreeSet<String> {
             kb.facts("instance_of").into_iter().filter(|f| f[1] == c).map(|f| f[0].clone()).collect()
         };
@@ -224,6 +233,9 @@ impl Grammar {
 
         for f in kb.facts("rhs") {
             let (lhs, text) = (&f[0], &f[1]);
+            if only.is_some_and(|keep| !keep.contains(lhs)) {
+                continue;
+            }
             let Some(&l) = index.get(lhs) else {
                 errors.push(format!("`rhs({lhs}, …)`: `{lhs}` is not a Production"));
                 continue;

@@ -36,7 +36,10 @@ kb Schema {
     // for kb/rules/contracts.mg and kb/rules/grammar.mg. A clause_checked
     // counts as enforcing its Contract.
     // v11 (2026-10-31): `GateRule` and `gate_row`, for kb/rules/refusals.mg.
-    fact schema_version(11);
+    // v12 (2026-10-31): `ProfileForm` and the `form_row`, `leaf_form`,
+    // `gated_form`, `profile_limit`, `profile_constraint` and `profile_signature`
+    // relations, for kb/profiles/arena.mg.
+    fact schema_version(12);
 
     // ── Classes ─────────────────────────────────────────────────────────
     // Seven roots. The twelve domains of MAGE_ONTOLOGY.md group facts into
@@ -79,6 +82,9 @@ kb Schema {
     fact subclass_of(Sigil, Token);
     fact subclass_of(Production, Construct);
     fact subclass_of(AstKind, Construct);
+    // One choice of a profile's generator. Coarser than a `Production`.
+    fact class(ProfileForm);
+    fact subclass_of(ProfileForm, Construct);
     // What the lexer produces; a `Token` is a spelling that lexes as one.
     fact subclass_of(TokenKind, Construct);
 
@@ -239,6 +245,32 @@ kb Schema {
     fact relation(in_profile);
     fact arg_class(in_profile, 1, Production);
     fact arg_class(in_profile, 2, Profile);
+    // form, profile, its nonterminal, its position there.
+    fact relation(form_row);
+    fact arg_class(form_row, 1, ProfileForm);
+    fact arg_class(form_row, 2, Profile);
+    fact arg_class(form_row, 3, Text);
+    fact arg_class(form_row, 4, Text);
+    // A form with no list below it, so it may sit at the depth limit.
+    fact relation(leaf_form);
+    fact arg_class(leaf_form, 1, ProfileForm);
+    // A form only a generator with this option on may use.
+    fact relation(gated_form);
+    fact arg_class(gated_form, 1, ProfileForm);
+    fact arg_class(gated_form, 2, Text);
+    // profile, name, lowest, highest, inclusive.
+    fact relation(profile_limit);
+    fact arg_class(profile_limit, 1, Profile);
+    fact arg_class(profile_limit, 2, Text);
+    fact arg_class(profile_limit, 3, Text);
+    fact arg_class(profile_limit, 4, Text);
+    fact relation(profile_constraint);
+    fact arg_class(profile_constraint, 1, Profile);
+    fact arg_class(profile_constraint, 2, GrammarConstraint);
+    // The one function a profile's programs are, as the source writes it.
+    fact relation(profile_signature);
+    fact arg_class(profile_signature, 1, Profile);
+    fact arg_class(profile_signature, 2, Text);
     // A one-line description of a construct, as the ontology publishes it.
     fact relation(summary);
     fact arg_class(summary, 1, Construct);

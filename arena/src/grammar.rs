@@ -1490,6 +1490,82 @@ impl<'a> Parser<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use mage_prototype::recognise::{recognise_source, Grammar};
+
+    /// Every text the profile must recognise: each form, then `samples` programs.
+    fn arena_sources(samples: usize) -> Vec<String> {
+        let wrap = |body: &str| Program::parse(body).expect("an example parses").source();
+        let (lists, ints) = production_examples();
+        let mut out: Vec<String> = lists.iter().map(|(_, t)| wrap(t)).collect();
+        // An integer form is written inside a list form.
+        out.extend(ints.iter().map(|(_, t)| wrap(&format!("[{t}; 2]"))));
+        out.push(wrap(&second_order_example()));
+        let policy = Policy::with_second_order(true);
+        let mut rng = Rng(7);
+        out.extend((0..samples).map(|_| policy.sample(&mut rng).0.source()));
+        out
+    }
+
+    fn arena_profile(kb: &mage_prototype::kb::Kb) -> mage_prototype::kb::GrammarProfile {
+        kb.profile("arena").expect("the arena's profile")
+    }
+
+    #[test]
+    fn the_tables_here_are_the_profile() {
+        let kb = mage_prototype::kb::load().expect("the knowledge base loads");
+        let p = arena_profile(&kb);
+        let names = |fs: &[mage_prototype::kb::ProfileForm]| fs.iter().map(|f| f.name.clone()).collect::<Vec<_>>();
+        assert_eq!(names(&p.list_forms), list_rule_names(true));
+        assert_eq!(names(&p.int_forms), INT_RULES);
+        let leaves: Vec<usize> = (0..p.list_forms.len()).filter(|&i| p.list_forms[i].leaf).collect();
+        assert_eq!(leaves, LIST_LEAVES);
+        assert!(p.int_forms.iter().all(|f| f.gate.is_none()));
+        let gated: Vec<&str> = p.list_forms.iter().filter(|f| f.gate.is_some()).map(|f| f.name.as_str()).collect();
+        assert_eq!(gated, [SECOND_ORDER_RULE]);
+
+        let stated = [
+            ("copy", bounds::COPY),
+            ("cycle_elems", bounds::CYCLE_ELEMS),
+            ("cycle_len", bounds::CYCLE_LEN),
+            ("filter_mod", bounds::FILTER_MOD),
+            ("int_extra_depth", (2, 2)),
+            ("literal", bounds::LITERAL),
+            ("mod", bounds::MOD),
+            ("nest_count", bounds::NEST_COUNT),
+            ("nest_mod", bounds::NEST_MOD),
+            ("osc_len", bounds::OSC_LEN),
+            ("osc_shift", bounds::OSC_SHIFT),
+            ("range", bounds::RANGE),
+            ("repeat", bounds::REPEAT),
+            ("take", bounds::TAKE),
+        ];
+        let want: Vec<(String, u64, u64)> = stated.iter().map(|(n, (lo, hi))| (n.to_string(), *lo, *hi)).collect();
+        assert_eq!(p.limits, want);
+        let want = [("max_depth".to_string(), MAX_DEPTH.to_string()), ("max_nest".to_string(), MAX_NEST.to_string())];
+        assert_eq!(p.constraints, want);
+        assert!(Program { body: ListExpr::Range(1) }.source().contains(&p.signature));
+    }
+
+    #[test]
+    fn the_profile_recognises_what_the_arena_writes() {
+        let kb = mage_prototype::kb::load().expect("the knowledge base loads");
+        let g = Grammar::restricted(&kb, &arena_profile(&kb).productions).expect("the profile builds");
+        for s in arena_sources(60) {
+            recognise_source(&g, &s).unwrap_or_else(|e| panic!("{e}: {s}"));
+        }
+    }
+
+    #[test]
+    fn the_profile_has_no_production_to_spare() {
+        let kb = mage_prototype::kb::load().expect("the knowledge base loads");
+        let sources = arena_sources(20);
+        let all = arena_profile(&kb).productions;
+        for p in &all {
+            let less: Vec<String> = all.iter().filter(|q| *q != p).cloned().collect();
+            let g = Grammar::restricted(&kb, &less).expect("the rest builds");
+            assert!(sources.iter().any(|s| recognise_source(&g, s).is_err()), "`{p}` is not needed");
+        }
+    }
     use crate::substrate::{Outcome, Refusal, Substrate};
 
     #[test]
