@@ -84,7 +84,7 @@ The counts are of direct `instance_of` facts: a subclass's instances are not cou
 
 **How it changes.** A change to `kb/` is a proposal, which `scripts/kb-gate.sh` admits or refuses by rule id: it must apply to HEAD, load under the schema, pass the prototype and arena suites, and not raise a fixed benchmark's fuel. Nothing is committed automatically.
 
-**Where this falls short.**
+**Where this falls short.** The plan's section 9 lists all of it; the largest are:
 - The 255 safety rules are facts, but nothing executes them, so `unenforced_rule` exempts them.
 - The system has not yet changed its own knowledge base. A generated proposal has been admitted and measured, showed no benefit, and was not applied (`MEASUREMENTS.md`, "A generator's proposals at the knowledge-base gate").
 

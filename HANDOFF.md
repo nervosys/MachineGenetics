@@ -2028,6 +2028,12 @@ refused program, which has no output. The grammar policy does, as reward 0, and 
 refusals in two seeded runs were 1 to 3 of 22 to 30 programs, all `empty`. No learner
 here has a use for per-rule counts; the plan item records why and when to reopen it.
 
+**The definition of done is audited, and it is not met.** The plan's section 9 now says
+why, item by item, read from the code. Phase 9 is done and the plan is not: much language
+knowledge is still in code (`resolve::VOCABULARY`, `builder.rs`'s `OPS`), the builder's
+26 error codes are not facts, and several generators hold their own syntax. A second
+copy of the vocabulary's names in `types.rs` is gone, and `ROW_PREDICATES` is held both ways.
+
 **The knowledge base's counts are pinned.** `kb-gate counts` prints them (`Kb::counts`): the schema's version, its classes, relations, invariants and instances, and the instances stated per class. The pins in `ARCHITECTURE.md` and `scripts/check-doc-counts.sh` read them, and they are doc pins rather than tests so the gate's conformance stage does not refuse a proposal for changing a count.
 
 **The last redundant hand table is gone.** The sigils `grammar/list` serves are now

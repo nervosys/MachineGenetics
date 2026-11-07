@@ -512,15 +512,21 @@ mod tests {
         out
     }
 
-    /// Every row predicate is a relation the schema states: `relation(p)` is
-    /// one fact per predicate, with the predicate as its only argument.
+    /// The row predicates are the relations that say what a rule is: `safety_rule`,
+    /// and each `*_row` whose first argument is a class of rule.
     #[test]
-    fn the_row_predicates_are_relations() {
+    fn the_row_predicates_are_the_stated_ones() {
         let kb = crate::kb::load().expect("the knowledge base loads");
-        let relations: HashSet<String> = kb.facts("relation").into_iter().map(|f| f[0].clone()).collect();
-        for p in ROW_PREDICATES {
-            assert!(relations.contains(*p), "`{p}` is not a `relation` fact of the knowledge base");
-        }
+        let rules: HashSet<String> =
+            kb.facts("subclass_of").into_iter().filter(|f| f[1] == "Rule").map(|f| f[0].clone()).collect();
+        let stated: HashSet<String> = kb
+            .facts("arg_class")
+            .into_iter()
+            .filter(|f| f[1] == "1" && rules.contains(&f[2]) && (f[0].ends_with("_row") || f[0] == "safety_rule"))
+            .map(|f| f[0].clone())
+            .collect();
+        let listed: HashSet<String> = ROW_PREDICATES.iter().map(|p| p.to_string()).collect();
+        assert_eq!(listed, stated);
     }
 
     /// Every concept carries an embedding, and a name spelled a little wrong

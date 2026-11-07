@@ -1053,20 +1053,11 @@ impl TypeChecker {
     /// user functions are handled before this is reached). No args are inferred
     /// for names it does not type, so there is no double inference.
     fn infer_vocab_call(&mut self, name: &str, args: &[ast::Expr]) -> Option<Ty> {
-        const TYPED: &[&str] = &[
-            "len", "count", "sum", "first", "last", "sort", "reverse", "take",
-            "flatten", "contains", "zip", "freq", "keys", "values", "range", "map",
-            "filter", "any", "all", "find", "fold", "reduce", "split", "join",
-            "chars", "words", "lines", "upper", "lower", "scan", "group",
-        ];
         // This gate exists so arguments are not inferred twice for names with
-        // no arm (the caller infers them again after a `None`). It is a second
-        // copy of the arm list and drifts from it silently — `scan` and `group`
-        // were published vocabulary, absent here, and therefore accepted any
-        // number of arguments. `every_typed_vocabulary_name_checks_its_arity`
-        // is what holds the two together: it iterates `VOCABULARY`, and a name
-        // missing from this list produces no arity error and fails there.
-        if !TYPED.contains(&name) {
+        // no arm (the caller infers them again after a `None`).
+        // `every_typed_vocabulary_name_checks_its_arity` requires an arm for
+        // each word of `VOCABULARY`.
+        if !crate::resolve::VOCABULARY.iter().any(|(word, _, _)| *word == name) {
             return None;
         }
         let usize_ty = Ty::Uint(crate::hir::UintTy::Usize);
