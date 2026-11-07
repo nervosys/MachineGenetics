@@ -3580,6 +3580,14 @@ mod retired_construct_tests {
         assert!(msgs[0].contains("`C COUNT: T = value;`"), "{msgs:?}");
     }
 
+    /// The human spelling `static` reaches the same retirement.
+    #[test]
+    fn human_static_is_retired_too() {
+        let msgs = retired("static COUNT: i32 = 0;");
+        assert_eq!(msgs.len(), 1, "{msgs:?}");
+        assert!(msgs[0].contains("E0554"), "{msgs:?}");
+    }
+
     #[test]
     fn const_is_not_retired() {
         assert!(retired("C COUNT: i32 = 0;").is_empty());

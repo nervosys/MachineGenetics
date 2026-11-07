@@ -106,7 +106,7 @@ Human mode uses clear, modern keywords that improve on Rust's conventions. Core 
 
 **Control flow (Rust-compatible):**
 `if`, `else`, `for`, `in`, `match`, `loop`, `while`, `break`, `continue`,
-`return`, `yield`
+`return`
 
 **Shared with Rust (unchanged):**
 `true`, `false`, `as`, `self`, `Self`, `crate`, `super`, `extern`
@@ -138,8 +138,8 @@ Human mode preserves Rust keywords 1:1. The only additions are MAGE's AI and eff
 | `mod`          | `mod`          | Identical |
 | `use`          | `use`          | Identical |
 | `type`         | `type`         | Identical |
-| `static`       | `static`       | Identical |
-| `unsafe`       | `unsafe`       | Identical |
+| `static`       | `static`       | Retired (E0554): write `const` |
+| `unsafe`       | `unsafe`       | Reserved, not yet supported |
 | `async`        | `async`        | Identical |
 | `.await`       | `.await`       | Identical |
 | `if`           | `if`           | Identical |
@@ -201,14 +201,13 @@ Agent mode maps every concept to 1-2 characters. Like hexadecimal compresses 4 b
 | Break          | `break`        | `!`        | Control        |
 | Continue       | `continue`     | `>>`       | Control        |
 | Return         | `return`       | `ret`      | Control        |
-| Yield          | `yield`        | `yl`       | Control        |
 | Effect         | `effect`       | `fx`       | Effects        |
 | Handle         | `handle`       | `hx`       | Effects        |
 | Spec           | `spec`         | `sp`       | Contracts      |
-| Extern         | `extern`       | `xn`       | FFI            |
+| Extern (reserved, not yet supported) | `extern` | `xn` | FFI |
 | Await          | `.await`       | `.await`   | Async          |
 | Async          | `async`        | `af`       | Async          |
-| Unsafe         | `unsafe`       | *(elided)* | Safety→SKB     |
+| Unsafe (reserved, not yet supported) | `unsafe` | *(elided)* | Safety→SKB |
 | Where          | `where`        | `~>`       | Clause         |
 | Mutable ref    | `&!`           | `&!`       | Type           |
 | True / False   | `true`/`false` | `1b`/`0b`  | Literal        |
@@ -348,7 +347,7 @@ keyword =
     | 'pub'
     /* Control flow */
     | 'if' | 'else' | 'for' | 'in' | 'match' | 'loop' | 'while'
-    | 'break' | 'continue' | 'return' | 'yield'
+    | 'break' | 'continue' | 'return'
     /* Boolean */
     | 'true' | 'false'
     /* Async */
@@ -394,7 +393,7 @@ agent_keyword =
     /* Control flow */
     | '?' | '@' | '@@' | '@w' | ':' | ':?' | 'ret' | '1b' | '0b'
     /* Control flow — compressed */
-    | '!' /* break */ | '>>' /* continue */ | 'yl' /* yield */
+    | '!' /* break */ | '>>' /* continue */
     /* Tensor ops */
     | '⊗' | '⊙' | '⊤' | '⊥'
     /* Effects & contracts — compressed */
@@ -2716,7 +2715,7 @@ From highest to lowest. Left-associative unless noted.
 | 1    | `\|\|`                        | Logical OR       | Left    |
 | 0    | `\|>`                         | Pipeline         | Left    |
 | -1   | `=` `+=` `-=` `*=` etc.       | Assignment       | Right   |
-| -2   | `return` `break` `yield`      | Control flow     | —       |
+| -2   | `return` `break`              | Control flow     | —       |
 
 ---
 
@@ -2834,7 +2833,6 @@ A complete lexicon of Agent mode symbols, organized by category. This is the "ge
 | `@w`   | `while`     | While loop           |
 | `>>`   | `continue`  | Continue loop        |
 | `ret`  | `return`    | Return value         |
-| `yl`   | `yield`     | Yield from generator |
 | `fx`   | `effect`    | Effect declaration   |
 | `hx`   | `handle`    | Effect handler       |
 | `sp`   | `spec`      | Spec/contract block  |

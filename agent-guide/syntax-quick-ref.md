@@ -37,10 +37,11 @@ type Id = i32;                  type alias
 ```
 
 **Not in the language:** `let` (the parser rejects it by name), `mut x`,
-`pub(crate)`, `const fn`, `extern`, `unsafe`, `mod`/`use` as anything that
-imports — see *One namespace* below. The human spelling `static N: T = v;`
-does not parse either, but the agent-mode `Z` above does — the only
-declaration in this table with no human form.
+`pub(crate)`, `const fn`, `mod`/`use` as anything that imports — see *One
+namespace* below. `static N: T = v;` is `Z`'s human spelling and is retired
+the same way (E0554). `extern`/`xn`, `U` and `unsafe` are reserved: the parser
+says "reserved, not yet supported". `yield` is an ordinary identifier, and `^`
+is XOR (or `^T`, Box), never return.
 
 ## Control Flow
 

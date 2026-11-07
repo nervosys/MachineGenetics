@@ -383,8 +383,8 @@ material; each becomes documentation of `kb/` as its facts move there
 
 A fact `instance_of(x, C)` puts `x` in class `C`, and in every class above it.
 A `Token` is a spelling (`"fn"`); a `TokenKind` is what the lexer produces
-for it (`KwF`). [`kb/lexicon.mg`](kb/lexicon.mg) states all 182 token kinds
-and the 102 reserved spellings, and a test holds `lexer.rs` to it both ways.
+for it (`KwF`). [`kb/lexicon.mg`](kb/lexicon.mg) states all 181 token kinds
+and the 100 reserved spellings, and a test holds `lexer.rs` to it both ways.
 
 | Relation | Arguments |
 |---|---|
@@ -1483,7 +1483,7 @@ Complete alphabetical index of all ontological concepts:
 | TextEdit                | Tooling      | `TextEdit`               | §22     |
 | ThreeWayMerge           | Package      | `ThreeWayMerge`          | §23.3   |
 | Token                   | Lexical      | `Token`                  | §12.1   |
-| TokenKind               | Lexical      | enum (182 @ prototype/src/lexer.rs)               | §12.1   |
+| TokenKind               | Lexical      | enum (181 @ prototype/src/lexer.rs)               | §12.1   |
 | TokenMetrics            | Tooling      | `TokenMetrics`           | §22.2   |
 | TokenReport             | Tooling      | `TokenReport`            | §22.2   |
 | Topic                   | Agent        | enum (10)                | §3.1    |
@@ -1634,7 +1634,7 @@ Report TaskResult::Success
 | Category                 | Count |
 | ------------------------ | ----- |
 | Source modules           | 74    |
-| TokenKind variants       | 182   |
+| TokenKind variants       | 181   |
 | AST ItemKind variants    | 20    |
 | AST ExprKind variants    | 35    |
 | AST Type variants        | 33    |

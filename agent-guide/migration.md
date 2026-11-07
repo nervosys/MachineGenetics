@@ -23,7 +23,8 @@ and MAGE". Every row was re-checked against the compiler for this rewrite.
 | `std::io::File`, `foo::<i32>()` | — | `::` does not parse, in paths or in a turbofish. |
 | `mod name`, `use std::io` | — | There is no module system. `use` parses and imports nothing; the checker warns. |
 | `async fn f()` | `async f()` | `async` *is* the declaration keyword. |
-| `unsafe`, `static`, `extern`, `const fn`, `pub(crate)` | — | None of these parse. |
+| `unsafe`, `extern`, `const fn`, `pub(crate)` | — | None of these parse (`unsafe` and `extern` are reserved). |
+| `static N: T = v;` | `C N: T = v;` | `static` parses and is retired (E0554), as `Z` is. |
 | `String`, `&str` | `str` | One string type. `&mut T` does not parse either. |
 | `fn f<T>()` | `fn f[T]()` | `<T>` also parses; `[T]` is canonical. |
 | `impl Type { }` | `extend Type { }` | `impl Trait for Type` stays, for trait implementations. |

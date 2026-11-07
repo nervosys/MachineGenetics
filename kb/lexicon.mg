@@ -37,7 +37,6 @@ kb Lexicon {
     fact instance_of(AtAt, TokenKind);
     fact instance_of(AtW, TokenKind);
     fact instance_of(KwRet, TokenKind);
-    fact instance_of(KwYield, TokenKind);
     fact instance_of(DoubleArrowR, TokenKind);
     fact instance_of(Bang, TokenKind);
     // Boolean
@@ -295,10 +294,6 @@ kb Lexicon {
     fact lexes_as("return", KwRet);
     fact instance_of("ret", Token);
     fact lexes_as("ret", KwRet);
-    fact instance_of("yield", Token);
-    fact lexes_as("yield", KwYield);
-    fact instance_of("yl", Token);
-    fact lexes_as("yl", KwYield);
     fact instance_of("effect", Token);
     fact lexes_as("effect", KwEffect);
     fact instance_of("fx", Token);

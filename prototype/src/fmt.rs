@@ -73,23 +73,43 @@ fn emit_item(buf: &mut String, item: &Item, mode: Mode, depth: usize) {
         ItemKind::Struct(s) => emit_struct(buf, s, item.visibility, mode, depth),
         ItemKind::Enum(e) => emit_enum(buf, e, item.visibility, mode, depth),
         ItemKind::Trait(t) => emit_trait(buf, t, item.visibility, mode, depth),
-        ItemKind::Impl(i) => emit_impl(buf, i, mode, depth),
+        ItemKind::Impl(i) => with_vis(buf, item.visibility, mode, depth, |b| emit_impl(b, i, mode, depth)),
         ItemKind::Module(m) => emit_module(buf, m, item.visibility, mode, depth),
         ItemKind::Use(u) => emit_use(buf, u, item.visibility, mode, depth),
         ItemKind::TypeAlias(ta) => emit_type_alias(buf, ta, item.visibility, mode, depth),
         ItemKind::Const(c) => emit_const(buf, c, item.visibility, mode, depth),
         ItemKind::Static(s) => emit_static(buf, s, item.visibility, mode, depth),
-        ItemKind::Effect(e) => emit_effect(buf, e, mode, depth),
-        ItemKind::Spec(s) => emit_spec(buf, s, mode, depth),
-        ItemKind::Agent(a) => emit_agent(buf, a, depth),
-        ItemKind::Net(n) => emit_net(buf, n, mode, depth),
-        ItemKind::Kb(k) => emit_kb(buf, k, mode, depth),
-        ItemKind::Evolve(e) => emit_evolve(buf, e, mode, depth),
-        ItemKind::Train(t) => emit_train(buf, t, mode, depth),
-        ItemKind::Swarm(s) => emit_swarm(buf, s, mode, depth),
+        ItemKind::Effect(e) => with_vis(buf, item.visibility, mode, depth, |b| emit_effect(b, e, mode, depth)),
+        ItemKind::Spec(s) => with_vis(buf, item.visibility, mode, depth, |b| emit_spec(b, s, mode, depth)),
+        ItemKind::Agent(a) => with_vis(buf, item.visibility, mode, depth, |b| emit_agent(b, a, depth)),
+        ItemKind::Net(n) => with_vis(buf, item.visibility, mode, depth, |b| emit_net(b, n, mode, depth)),
+        ItemKind::Kb(k) => with_vis(buf, item.visibility, mode, depth, |b| emit_kb(b, k, mode, depth)),
+        ItemKind::Evolve(e) => with_vis(buf, item.visibility, mode, depth, |b| emit_evolve(b, e, mode, depth)),
+        ItemKind::Train(t) => with_vis(buf, item.visibility, mode, depth, |b| emit_train(b, t, mode, depth)),
+        ItemKind::Swarm(s) => with_vis(buf, item.visibility, mode, depth, |b| emit_swarm(b, s, mode, depth)),
         ItemKind::Data(d) => emit_data(buf, d, item.visibility, mode, depth),
-        ItemKind::Extend(e) => emit_extend(buf, e, mode, depth),
+        ItemKind::Extend(e) => with_vis(buf, item.visibility, mode, depth, |b| emit_extend(b, e, mode, depth)),
     }
+}
+
+/// Emit an item whose emitter has no visibility parameter, putting `+` /
+/// `pub ` after its indentation when the item is public. The parser accepts
+/// the prefix before any item, so dropping it lost the visibility on a
+/// round trip.
+fn with_vis(buf: &mut String, vis: Visibility, mode: Mode, depth: usize, emit: impl FnOnce(&mut String)) {
+    if vis != Visibility::Public {
+        return emit(buf);
+    }
+    let mut item = String::new();
+    emit(&mut item);
+    let at = 4 * depth;
+    let prefix = match mode {
+        Mode::Agent => "+",
+        Mode::Human => "pub ",
+    };
+    buf.push_str(&item[..at]);
+    buf.push_str(prefix);
+    buf.push_str(&item[at..]);
 }
 
 // ── Functions ────────────────────────────────────────────────────────
@@ -608,8 +628,10 @@ fn emit_spec(buf: &mut String, s: &SpecDef, mode: Mode, depth: usize) {
             SpecItem::Performance(m, b) => {
                 buf.push_str("@perf(");
                 buf.push_str(m);
-                buf.push_str(", ");
-                buf.push_str(b);
+                if !b.is_empty() {
+                    buf.push_str(", ");
+                    buf.push_str(b);
+                }
                 buf.push(')');
             }
         }
@@ -938,8 +960,10 @@ fn emit_train(buf: &mut String, t: &TrainDef, mode: Mode, depth: usize) {
 
 fn emit_swarm(buf: &mut String, s: &SwarmDef, mode: Mode, depth: usize) {
     indent(buf, depth);
-    // `swarm` in both modes: the parser has no rule for the `Σ` sigil.
-    buf.push_str("swarm ");
+    match mode {
+        Mode::Agent => buf.push_str("sw "),
+        Mode::Human => buf.push_str("swarm "),
+    }
     buf.push_str(&s.name);
     buf.push_str(" {\n");
     // agent type: `agent:` in both modes, since the parser has no `α` sigil.
@@ -2207,6 +2231,23 @@ mod tests {
         assert_round_trips(
             "swarm Crew {\n    agent: Bot;\n    size: 4;\n    topology: ring;\n    consensus: majority;\n    transport: local;\n}\n",
         );
+    }
+
+    /// Agent mode prints `sw`, the token the lexer reads as `swarm`.
+    #[test]
+    fn swarm_prints_sw_in_agent_mode() {
+        let m = parse_source("swarm Crew {\n    agent: Bot;\n}\n");
+        assert!(format_agent(&m).starts_with("sw Crew {"), "{}", format_agent(&m));
+        assert!(format_human(&m).starts_with("swarm Crew {"));
+    }
+
+    /// `+` survives on items whose emitters had no visibility parameter.
+    #[test]
+    fn round_trip_public_items() {
+        assert_round_trips("+effect Audit {\n    f record(entry: i32) -> i32;\n}\n");
+        assert_round_trips("+swarm Crew {\n    agent: Bot;\n}\n");
+        assert_round_trips("+sp Fast {\n    @perf(O(n))\n}\n");
+        assert_round_trips("S P {\n    x: i32,\n}\n+I P {\n    f get(self) -> i32 {\n        self.x\n    }\n}\n");
     }
 
     #[test]

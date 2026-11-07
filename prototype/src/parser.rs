@@ -44,6 +44,7 @@ fn canonical_wrapper(name: &str, args: &[Type]) -> Option<Type> {
         ("Box", 1) => Some(Type::OwnedPtr { inner: one(args)? }),
         ("Rc", 1) => Some(Type::Rc { inner: one(args)? }),
         ("Arc", 1) => Some(Type::Arc { inner: one(args)? }),
+        ("Cow", 1) => Some(Type::Cow { inner: one(args)? }),
         ("Vec", 1) => Some(Type::Vec { inner: one(args)? }),
         ("Cell", 1) => Some(Type::Cell { inner: one(args)? }),
         ("RefCell", 1) => Some(Type::RefCell { inner: one(args)? }),
@@ -302,7 +303,6 @@ impl<'a> Parser<'a> {
             // Additional keywords the corpus uses as plain identifiers
             // (effect-handler methods, struct field names, etc.). KwNet / KwVal /
             // KwVar / KwRule / KwQuery / KwSelect are already covered above.
-            | TokenKind::KwYield
             // `agent` and `swarm` introduce items *and* name things: they are
             // registered capability namespaces (`agent.spawn(…)`), `agent` is
             // a documented effect, and a module or use-path may be called
@@ -501,7 +501,15 @@ impl<'a> Parser<'a> {
             TokenKind::KwUse => self.parse_use_decl().map(ItemKind::Use),
             TokenKind::KwType | TokenKind::KwY => self.parse_type_alias().map(ItemKind::TypeAlias),
             TokenKind::KwC => self.parse_const_def().map(ItemKind::Const),
-            TokenKind::KwZ => self.parse_static_def().map(ItemKind::Static),
+            // `static` is `Z`'s human spelling. Both are retired (E0554),
+            // and both parse so the checker can say so with the replacement.
+            TokenKind::KwZ | TokenKind::KwStatic => self.parse_static_def().map(ItemKind::Static),
+            // Reserved: lexed as keywords so they cannot be identifiers, and
+            // given no meaning yet.
+            TokenKind::KwExtern | TokenKind::KwU | TokenKind::KwUnsafe => Err(self.error(&format!(
+                "`{}` is reserved, not yet supported",
+                self.current().text
+            ))),
             TokenKind::KwEffect => self.parse_effect_def().map(ItemKind::Effect),
             TokenKind::KwSpec => self.parse_spec_def().map(ItemKind::Spec),
             TokenKind::KwAgent => self.parse_agent_def().map(ItemKind::Agent),
@@ -1159,7 +1167,11 @@ impl<'a> Parser<'a> {
     // ── Static ──────────────────────────────────────────────
 
     fn parse_static_def(&mut self) -> Result<StaticDef, ParseError> {
-        self.expect(TokenKind::KwZ)?;
+        if self.peek() == TokenKind::KwStatic {
+            self.advance();
+        } else {
+            self.expect(TokenKind::KwZ)?;
+        }
         let mutable = if self.peek() == TokenKind::KwM {
             self.advance();
             true
@@ -1364,10 +1376,17 @@ impl<'a> Parser<'a> {
                     // Collect metric (tokens up to first comma)
                     let mut metric = String::new();
                     let mut metric_end: Option<usize> = None;
-                    while self.peek() != TokenKind::Comma
-                        && self.peek() != TokenKind::RParen
+                    // `@perf(O(n))`: the metric's own parentheses nest.
+                    let mut mdepth: usize = 0;
+                    while (mdepth > 0
+                        || (self.peek() != TokenKind::Comma && self.peek() != TokenKind::RParen))
                         && self.peek() != TokenKind::Eof
                     {
+                        match self.peek() {
+                            TokenKind::LParen => mdepth += 1,
+                            TokenKind::RParen => mdepth -= 1,
+                            _ => {}
+                        }
                         let tok = self.advance();
                         push_token_text(&mut metric, &mut metric_end, tok);
                     }
@@ -3252,7 +3271,6 @@ impl<'a> Parser<'a> {
                 | TokenKind::KwGuard
                 | TokenKind::KwDefer
                 | TokenKind::KwRet
-                | TokenKind::KwYield
         ) {
             return false;
         }
@@ -3344,7 +3362,6 @@ impl<'a> Parser<'a> {
                 | TokenKind::KwRule
                 | TokenKind::KwFact
                 | TokenKind::KwSelect
-                | TokenKind::KwYield
                 | TokenKind::KwOk
                 | TokenKind::KwErr
                 | TokenKind::KwSome
@@ -3772,6 +3789,7 @@ impl<'a> Parser<'a> {
                         | TokenKind::KwMod
                         | TokenKind::KwC
                         | TokenKind::KwZ
+                        | TokenKind::KwStatic
                         | TokenKind::KwY
                         | TokenKind::KwUse
                         | TokenKind::KwEffect
@@ -4016,34 +4034,9 @@ impl<'a> Parser<'a> {
                 })
             }
 
-            // `^ x` is `return x` — the Return sigil the ontology publishes,
-            // and the one-character form an agent optimising for tokens
-            // reaches for first. It did not parse: `^` lexes as `BitXor`, and
-            // nothing accepted it in prefix position, so only `ret` / `return`
-            // worked.
-            //
-            // Prefix position is unambiguous: binary `^` needs a left operand
-            // and never starts an expression, and the `^T` Box type is parsed
-            // by `parse_type` on a different path entirely.
-            TokenKind::BitXor => {
-                self.advance();
-                if matches!(
-                    self.peek(),
-                    TokenKind::Semi
-                        | TokenKind::RBrace
-                        | TokenKind::Comma
-                        | TokenKind::RParen
-                        | TokenKind::RBrack
-                        | TokenKind::Eof
-                ) {
-                    Ok(Expr::Return { value: None })
-                } else {
-                    let val = self.parse_expr()?;
-                    Ok(Expr::Return {
-                        value: Some(Box::new(val)),
-                    })
-                }
-            }
+            // `^` does not start an expression: it is binary XOR, and `^T`
+            // (Box) in types. A prefix `^ x` as return was tried and removed;
+            // the return spellings are `ret` and `return`.
             TokenKind::BitAnd => {
                 let tok = self.advance();
                 let op = tok.text.clone();
@@ -4427,7 +4420,6 @@ impl<'a> Parser<'a> {
             | TokenKind::KwRule
             | TokenKind::KwFact
             | TokenKind::KwSelect
-            | TokenKind::KwYield
             | TokenKind::KwData
             | TokenKind::KwLayer
             | TokenKind::KwTensor
@@ -4679,7 +4671,7 @@ impl<'a> Parser<'a> {
             TokenKind::Ident
             | TokenKind::KwAf
             | TokenKind::KwUf => {
-                // (KwVal/KwVar/KwData/KwYield/KwRule/KwQuery/KwSelect as
+                // (KwVal/KwVar/KwData/KwRule/KwQuery/KwSelect as
                 // identifiers are already handled by earlier arms.)
                 let tok = self.advance();
                 Ok(Expr::Ident {
@@ -5283,6 +5275,63 @@ mod tests {
             assert!(s.mutable);
         } else {
             panic!("expected mutable static");
+        }
+    }
+
+    /// `static` is `Z`'s human spelling: it parses to the same item, which
+    /// the checker retires (E0554), so a human-mode print of one re-parses.
+    #[test]
+    fn static_parses_as_z_does() {
+        let module = parse_source("static mut COUNTER: i32 = 0;");
+        match &module.items[0].kind {
+            ItemKind::Static(s) => assert!(s.name == "COUNTER" && s.mutable),
+            other => panic!("expected static, got {other:?}"),
+        }
+    }
+
+    /// `extern`, `U` and `unsafe` are reserved: the error says so rather than
+    /// "expected item".
+    #[test]
+    fn reserved_keywords_say_reserved() {
+        for (src, word) in [("extern f g() {}", "extern"), ("U Bits { a: i32 }", "U"), ("unsafe f g() {}", "unsafe")] {
+            let e = try_parse(src).expect_err(src);
+            assert!(e.message.contains(&format!("`{word}` is reserved, not yet supported")), "{src}: {e:?}");
+        }
+    }
+
+    /// `yield` and `yl` are not keywords: both are identifiers.
+    #[test]
+    fn yield_and_yl_are_identifiers() {
+        parse_source("f g(yl: i32) -> i32 {\n    v yield = yl;\n    yield\n}\n");
+    }
+
+    /// `^` does not return: in prefix position it is a parse error.
+    #[test]
+    fn caret_is_not_return() {
+        assert!(try_parse("f g() -> i32 {\n    ^ 1\n}\n").is_err());
+        parse_source("f g(a: i32, b: i32) -> i32 {\n    ret a ^ b\n}\n");
+    }
+
+    /// `Cow[T]` canonicalises to the `&~T` sigil, as the other wrappers do.
+    #[test]
+    fn cow_canonicalises() {
+        let module = parse_source("Y Name = Cow[str];");
+        match &module.items[0].kind {
+            ItemKind::TypeAlias(t) => assert!(matches!(t.ty, Type::Cow { .. }), "{:?}", t.ty),
+            other => panic!("expected alias, got {other:?}"),
+        }
+    }
+
+    /// The metric of `@perf` may carry its own parentheses.
+    #[test]
+    fn perf_metric_with_parentheses() {
+        let module = parse_source("spec Fast { @perf(O(n)) }");
+        match &module.items[0].kind {
+            ItemKind::Spec(s) => match &s.items[0] {
+                SpecItem::Performance(m, b) => assert_eq!((m.as_str(), b.as_str()), ("O(n)", "")),
+                other => panic!("{other:?}"),
+            },
+            other => panic!("expected spec, got {other:?}"),
         }
     }
 

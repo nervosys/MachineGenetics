@@ -62,7 +62,6 @@ const SIGILS: &[(&str, &str, &str)] = &[
     ("af", "Function", "async fn — note `async fn` is not the spelling"),
     ("gd", "Guard", "guard cond else { … } — the else must diverge"),
     ("df", "Defer", "defer expr — run at scope exit"),
-    ("yl", "Yield", "yield expression"),
     ("M", "Mod", "module declaration"),
     ("u", "Use", "use import"),
     ("Y", "TypeAlias", "type alias"),
