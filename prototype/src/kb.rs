@@ -224,7 +224,7 @@ mod tests {
     #[test]
     fn the_schema_alone_loads() {
         let mut kb = load_files(&FILES[..1]).unwrap_or_else(|e| panic!("{e:#?}"));
-        assert_eq!(kb.facts("schema_version"), vec![vec!["6".to_string()]]);
+        assert_eq!(kb.facts("schema_version"), vec![vec!["7".to_string()]]);
         assert!(!kb.query("below", &["Keyword", "Construct"]).is_empty());
     }
 

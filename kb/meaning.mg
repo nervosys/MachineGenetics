@@ -14,6 +14,7 @@
 
 kb Meaning {
     // ── Op families ─────────────────────────────────────────────────────
+    // The 7 op-family buckets. Aligned with `rmi::lang::OpFamily`.
     fact instance_of("Neural", OpFamily);
     fact instance_of("Symbolic", OpFamily);
     fact instance_of("Control", OpFamily);
@@ -638,6 +639,39 @@ kb Meaning {
     fact op_summary("cos", "");
     fact differentiable("cos");
 
+    // ── Canonical layer names: the spellings the ontology's `layer_map` publishes ──
+    // The 21 names an agent types when it writes a network, each lowering to an
+    // op below. Pulled from the authoritative mapping in
+    // `abl_bridge::layer_name_to_op`. `every_layer_surface_name_is_usable_in_a_net`
+    // holds each one to the parser in layer position.
+    // This list was once `LAYER_SURFACE_NAMES` in ontology.rs, which also held
+    // ten names that `layer_name_to_op` refuses (`Unify`, `Resolve`, `Spawn`, and
+    // others): symbolic and agent ops, not layers. They were filtered out of
+    // `layer_map` all along, so they are not stated here. The twelve names that
+    // `op_to_layer_name` gives such ops, for decompile, are pinned as an exact
+    // list (`DECOMPILE_ONLY`) in the ontology tests.
+    fact canonical_layer("Linear");
+    fact canonical_layer("Conv2D");
+    fact canonical_layer("Attention");
+    fact canonical_layer("Embed");
+    fact canonical_layer("Dropout");
+    fact canonical_layer("Softmax");
+    fact canonical_layer("ReLU");
+    fact canonical_layer("GELU");
+    fact canonical_layer("SiLU");
+    fact canonical_layer("Sigmoid");
+    fact canonical_layer("Tanh");
+    fact canonical_layer("Mish");
+    fact canonical_layer("Softplus");
+    fact canonical_layer("LayerNorm");
+    fact canonical_layer("BatchNorm");
+    fact canonical_layer("RMSNorm");
+    fact canonical_layer("GroupNorm");
+    fact canonical_layer("InstanceNorm");
+    fact canonical_layer("MaxPool");
+    fact canonical_layer("AvgPool");
+    fact canonical_layer("GlobalAvgPool");
+
     // ── Layer names: each spelling of `layer_name_to_op`, and the op it lowers to ──
     fact instance_of("Linear", Layer);
     fact lowers_as("Linear", "linear");
@@ -857,6 +891,13 @@ kb Meaning {
     fact lowers_as("KlDiv", "kl_div");
 
     // ── Types: the ontology's `types` section ───────────────────────────
+    // Built-in type catalog. Covers scalar types, the composite type
+    // constructors, and the standard sigil shorthand. An agent reading this
+    // knows the full set of type names it can write without importing anything.
+    // `every_documented_type_can_be_written` holds each name to a program that
+    // compiles, with the metavariables substituted. Each `type_row` is
+    // (name, category, summary).
+    // ── scalar integers ──
     fact instance_of("i8", Type);
     fact type_row("i8", "scalar", "signed 8-bit integer");
     fact instance_of("i16", Type);
@@ -877,6 +918,7 @@ kb Meaning {
     fact type_row("u64", "scalar", "unsigned 64-bit integer");
     fact instance_of("usize", Type);
     fact type_row("usize", "scalar", "pointer-sized unsigned integer");
+    // ── scalar floats, boolean, char ──
     fact instance_of("f32", Type);
     fact type_row("f32", "scalar", "32-bit IEEE-754 float");
     fact instance_of("f64", Type);
@@ -885,18 +927,21 @@ kb Meaning {
     fact type_row("bool", "scalar", "boolean; literals `1b` (true) / `0b` (false)");
     fact instance_of("char", Type);
     fact type_row("char", "scalar", "Unicode scalar value");
+    // ── string, unit ──
     fact instance_of("s", Type);
     fact type_row("s", "string", "string slice (Rust `&str`); sigil shorthand");
     fact instance_of("String", Type);
     fact type_row("String", "string", "owned string (Rust `String`). `S` is *not* a spelling of it — `S` is the `struct` keyword.");
     fact instance_of("()", Type);
     fact type_row("()", "unit", "unit type; sole value `()`; implicit fn return");
+    // ── reference and pointer sigils ──
     fact instance_of("&T", Type);
     fact type_row("&T", "ref", "shared reference (Rust `&T`)");
     fact instance_of("&!T", Type);
     fact type_row("&!T", "ref", "mutable reference (Rust `&mut T`)");
     fact instance_of("@T", Type);
     fact type_row("@T", "smart", "Arc<T>; shared atomic ownership");
+    // ── composite type constructors ──
     fact instance_of("?T", Type);
     fact type_row("?T", "option", "Option<T>; sigil shorthand");
     fact instance_of("R[T,E]", Type);
@@ -915,10 +960,28 @@ kb Meaning {
     fact type_row("{T}", "set", "HashSet<T>; standard set type. Written with braces, not `Set[T]`.");
     fact instance_of("Box[T]", Type);
     fact type_row("Box[T]", "smart", "Box<T>; heap-owned single value");
+    // ── function type ──
     fact instance_of("f(T)->R", Type);
     fact type_row("f(T)->R", "fn", "function pointer type; (T) -> R signature");
 
     // ── Effects: the ontology's `effects` section ───────────────────────
+    // Effect annotations the language supports. Used in `spec` blocks and the
+    // `verify/contracts` RAP method. Each `effect_row` is (annotation, slot,
+    // purpose). The first five are spec annotations. The rest are the built-in
+    // effect kinds: every name writable in a `/ …` annotation with no
+    // declaration. This is the set `hir::Effect::from_name` folds and
+    // `MAGE_SPEC.md` §11.2 documents; `builtin_effect_names_are_the_writable_ones`
+    // holds the three in agreement.
+    //
+    // This list used to be "canonical effect names used in the corpus and
+    // stdlib", which is a different question from the one an agent reading
+    // `effect_name` is asking. Four of its ten, `db`, `log`, `tools` and `rand`,
+    // were rejected by the compiler as unknown effects. Three of those are
+    // capability *namespaces* (`resolve.rs`, `db.query(…)`), which is a separate
+    // list that had been folded into this one; `rand` was `rng` under a name
+    // nothing has ever accepted. `rng`, `gpu`, `npu`, `evolve`, `learn`, `alloc`,
+    // `panic`, `ffi`, `env` and `agent` were missing. Anything not here needs an
+    // `effect Name { … }` block (§11.5).
     fact instance_of("@fx", Effect);
     fact effect_row("@fx", "spec/fn", "Effect list: enumerate side effects the body may produce. `@fx()` = pure.");
     fact instance_of("@req", Effect);
@@ -967,4 +1030,28 @@ kb Meaning {
     fact effect_row("heldout", "effect_name", "Reading held-out evaluation data (evaluator and gate roles only)");
     fact instance_of("promote", Effect);
     fact effect_row("promote", "effect_name", "Changing authority: promotion and the journal (gate role only)");
+
+    // ── The binary container: the ontology's `abl` section ───────────────
+    // The format of the Agentic Binary Language container, one `abl_field` fact
+    // per line, in position order: the two-digit position, then the line exactly
+    // as the section publishes it. The magic and the version are not stated here:
+    // the ontology reads them from `abl::ABL_MAGIC` and `abl::ABL_VERSION`, the
+    // code's constants. `abl_media_type` is the container's media type.
+    //
+    // A global rename of `ABL` to the language's full name caught every literal
+    // spelling of the four magic bytes: the fallback, this format line, the
+    // decoder's error message, the `--manifest` entry and two module docs.
+    // `"magic"` itself was right because it is read from the constant, which is
+    // why the section looked fine and its own description of the section did not.
+    fact abl_field("01", "magic    : 4 bytes (\"ABL1\")");
+    fact abl_field("02", "version  : u16 LE");
+    fact abl_field("03", "count    : u32 LE");
+    fact abl_field("04", "per item : { name_len:u32, name:utf8, expr_len:u32, expr:bytes }");
+    // The symbol table was added in v2 and never published. A decoder written
+    // from this list parsed the items and stopped: on `prototype/examples/unified.mg`
+    // that leaves 100 of 420 bytes unread, and loses every interned name, which
+    // is the whole reason a `kb` artifact is self-describing rather than a pile
+    // of arities.
+    fact abl_field("05", "symbols  : u32 LE count, then { name_len:u32, name:utf8 } in id order");
+    fact abl_media_type("application/abl");
 }

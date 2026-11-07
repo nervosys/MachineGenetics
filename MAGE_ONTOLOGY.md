@@ -440,6 +440,9 @@ words among its `lexes_as` facts, and the `AstKind` instances in the grammar.
 | `lowers_as` | `Layer` × `Op` (a layer spelling, and the op it lowers to) |
 | `type_row` | `Type` × `Text` × `Text` (category, summary) |
 | `effect_row` | `Effect` × `Text` × `Text` (slot, purpose) |
+| `canonical_layer` | `Layer` (a spelling the layer map publishes; each has a lowers_as fact) |
+| `abl_field` | `Text` × `Text` (a two-digit position, then one format line of the abl section) |
+| `abl_media_type` | `Text` (the container's media type) |
 
 Each invariant is a rule whose results are violations; the knowledge base
 loads only when every one derives nothing.

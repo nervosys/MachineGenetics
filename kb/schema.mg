@@ -24,7 +24,9 @@ kb Schema {
     // v6 (2026-10-30): `OpFamily` and the op, layer, type and effect rows of
     // kb/meaning.mg, so the ontology's `ir_ops`, `op_families`, `layer_map`,
     // `types` and `effects` sections can be checked against facts.
-    fact schema_version(6);
+    // v7 (2026-10-30): `canonical_layer`, for the ontology's `layer_map`
+    // section, and `abl_field` and `abl_media_type`, for its `abl` section.
+    fact schema_version(7);
 
     // ── Classes ─────────────────────────────────────────────────────────
     // Seven roots. The twelve domains of MAGE_ONTOLOGY.md group facts into
@@ -213,6 +215,17 @@ kb Schema {
     fact arg_class(effect_row, 1, Effect);
     fact arg_class(effect_row, 2, Text);
     fact arg_class(effect_row, 3, Text);
+    // The layer spellings the ontology's `layer_map` publishes: each has a
+    // `lowers_as` fact, and `layer_map` takes its op from there.
+    fact relation(canonical_layer);
+    fact arg_class(canonical_layer, 1, Layer);
+    // The binary container's format, for the ontology's `abl` section: one
+    // `abl_field` fact per format line, its two-digit position and its text.
+    fact relation(abl_field);
+    fact arg_class(abl_field, 1, Text);
+    fact arg_class(abl_field, 2, Text);
+    fact relation(abl_media_type);
+    fact arg_class(abl_media_type, 1, Text);
     fact relation(tested_by);
     fact arg_class(tested_by, 1, Diagnostic);
     fact arg_class(tested_by, 2, Text);

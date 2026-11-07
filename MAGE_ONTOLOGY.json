@@ -440,18 +440,13 @@
     ],
     "effects": [
       {
-        "name": "@fx",
-        "purpose": "Effect list: enumerate side effects the body may produce. `@fx()` = pure.",
-        "slot": "spec/fn"
-      },
-      {
-        "name": "@req",
-        "purpose": "Precondition: predicate over parameters; checked at entry",
-        "slot": "spec/fn"
-      },
-      {
         "name": "@ens",
         "purpose": "Postcondition: predicate over result; checked at exit",
+        "slot": "spec/fn"
+      },
+      {
+        "name": "@fx",
+        "purpose": "Effect list: enumerate side effects the body may produce. `@fx()` = pure.",
         "slot": "spec/fn"
       },
       {
@@ -465,23 +460,13 @@
         "slot": "spec/fn"
       },
       {
-        "name": "io",
-        "purpose": "File and stream I/O",
-        "slot": "effect_name"
+        "name": "@req",
+        "purpose": "Precondition: predicate over parameters; checked at entry",
+        "slot": "spec/fn"
       },
       {
-        "name": "net",
-        "purpose": "Network I/O",
-        "slot": "effect_name"
-      },
-      {
-        "name": "fs",
-        "purpose": "Filesystem operations",
-        "slot": "effect_name"
-      },
-      {
-        "name": "async",
-        "purpose": "Asynchronous task management",
+        "name": "agent",
+        "purpose": "Agent coordination",
         "slot": "effect_name"
       },
       {
@@ -490,13 +475,8 @@
         "slot": "effect_name"
       },
       {
-        "name": "panic",
-        "purpose": "Unwinding / structured panics",
-        "slot": "effect_name"
-      },
-      {
-        "name": "ffi",
-        "purpose": "Foreign function invocation",
+        "name": "async",
+        "purpose": "Asynchronous task management",
         "slot": "effect_name"
       },
       {
@@ -505,8 +485,18 @@
         "slot": "effect_name"
       },
       {
-        "name": "time",
-        "purpose": "Clock and timer access",
+        "name": "evolve",
+        "purpose": "Evolutionary computation",
+        "slot": "effect_name"
+      },
+      {
+        "name": "ffi",
+        "purpose": "Foreign function invocation",
+        "slot": "effect_name"
+      },
+      {
+        "name": "fs",
+        "purpose": "Filesystem operations",
         "slot": "effect_name"
       },
       {
@@ -515,18 +505,13 @@
         "slot": "effect_name"
       },
       {
-        "name": "npu",
-        "purpose": "Neural processing unit",
+        "name": "heldout",
+        "purpose": "Reading held-out evaluation data (evaluator and gate roles only)",
         "slot": "effect_name"
       },
       {
-        "name": "llm",
-        "purpose": "Language model invocation",
-        "slot": "effect_name"
-      },
-      {
-        "name": "evolve",
-        "purpose": "Evolutionary computation",
+        "name": "io",
+        "purpose": "File and stream I/O",
         "slot": "effect_name"
       },
       {
@@ -535,13 +520,23 @@
         "slot": "effect_name"
       },
       {
-        "name": "rng",
-        "purpose": "Random number generation",
+        "name": "llm",
+        "purpose": "Language model invocation",
         "slot": "effect_name"
       },
       {
-        "name": "agent",
-        "purpose": "Agent coordination",
+        "name": "net",
+        "purpose": "Network I/O",
+        "slot": "effect_name"
+      },
+      {
+        "name": "npu",
+        "purpose": "Neural processing unit",
+        "slot": "effect_name"
+      },
+      {
+        "name": "panic",
+        "purpose": "Unwinding / structured panics",
         "slot": "effect_name"
       },
       {
@@ -550,13 +545,18 @@
         "slot": "effect_name"
       },
       {
-        "name": "heldout",
-        "purpose": "Reading held-out evaluation data (evaluator and gate roles only)",
+        "name": "promote",
+        "purpose": "Changing authority: promotion and the journal (gate role only)",
         "slot": "effect_name"
       },
       {
-        "name": "promote",
-        "purpose": "Changing authority: promotion and the journal (gate role only)",
+        "name": "rng",
+        "purpose": "Random number generation",
+        "slot": "effect_name"
+      },
+      {
+        "name": "time",
+        "purpose": "Clock and timer access",
         "slot": "effect_name"
       }
     ],
@@ -4008,87 +4008,15 @@
     "layer_map": [
       {
         "family": 0,
-        "op_name": "linear",
-        "opcode": "0x0002",
-        "surface_name": "Linear"
-      },
-      {
-        "family": 0,
-        "op_name": "conv2d",
-        "opcode": "0x0003",
-        "surface_name": "Conv2D"
-      },
-      {
-        "family": 0,
         "op_name": "attn",
         "opcode": "0x0004",
         "surface_name": "Attention"
       },
       {
         "family": 0,
-        "op_name": "embed",
-        "opcode": "0x0005",
-        "surface_name": "Embed"
-      },
-      {
-        "family": 0,
-        "op_name": "drop",
-        "opcode": "0x0006",
-        "surface_name": "Dropout"
-      },
-      {
-        "family": 0,
-        "op_name": "softmax",
-        "opcode": "0x0007",
-        "surface_name": "Softmax"
-      },
-      {
-        "family": 0,
-        "op_name": "relu",
-        "opcode": "0x0010",
-        "surface_name": "ReLU"
-      },
-      {
-        "family": 0,
-        "op_name": "gelu",
-        "opcode": "0x0011",
-        "surface_name": "GELU"
-      },
-      {
-        "family": 0,
-        "op_name": "silu",
-        "opcode": "0x0012",
-        "surface_name": "SiLU"
-      },
-      {
-        "family": 0,
-        "op_name": "sigmoid",
-        "opcode": "0x0013",
-        "surface_name": "Sigmoid"
-      },
-      {
-        "family": 0,
-        "op_name": "tanh",
-        "opcode": "0x0014",
-        "surface_name": "Tanh"
-      },
-      {
-        "family": 0,
-        "op_name": "mish",
-        "opcode": "0x0015",
-        "surface_name": "Mish"
-      },
-      {
-        "family": 0,
-        "op_name": "softplus",
-        "opcode": "0x0016",
-        "surface_name": "Softplus"
-      },
-      {
-        "family": 0,
-        "op_name": "layer_norm",
-        "opcode": "0x0020",
-        "surface_name": "LayerNorm"
+        "op_name": "avg_pool",
+        "opcode": "0x0031",
+        "surface_name": "AvgPool"
       },
       {
         "family": 0,
@@ -4098,9 +4026,33 @@
       },
       {
         "family": 0,
-        "op_name": "rms_norm",
-        "opcode": "0x0022",
-        "surface_name": "RMSNorm"
+        "op_name": "conv2d",
+        "opcode": "0x0003",
+        "surface_name": "Conv2D"
+      },
+      {
+        "family": 0,
+        "op_name": "drop",
+        "opcode": "0x0006",
+        "surface_name": "Dropout"
+      },
+      {
+        "family": 0,
+        "op_name": "embed",
+        "opcode": "0x0005",
+        "surface_name": "Embed"
+      },
+      {
+        "family": 0,
+        "op_name": "gelu",
+        "opcode": "0x0011",
+        "surface_name": "GELU"
+      },
+      {
+        "family": 0,
+        "op_name": "global_pool",
+        "opcode": "0x0033",
+        "surface_name": "GlobalAvgPool"
       },
       {
         "family": 0,
@@ -4116,21 +4068,69 @@
       },
       {
         "family": 0,
+        "op_name": "layer_norm",
+        "opcode": "0x0020",
+        "surface_name": "LayerNorm"
+      },
+      {
+        "family": 0,
+        "op_name": "linear",
+        "opcode": "0x0002",
+        "surface_name": "Linear"
+      },
+      {
+        "family": 0,
         "op_name": "max_pool",
         "opcode": "0x0030",
         "surface_name": "MaxPool"
       },
       {
         "family": 0,
-        "op_name": "avg_pool",
-        "opcode": "0x0031",
-        "surface_name": "AvgPool"
+        "op_name": "mish",
+        "opcode": "0x0015",
+        "surface_name": "Mish"
       },
       {
         "family": 0,
-        "op_name": "global_pool",
-        "opcode": "0x0033",
-        "surface_name": "GlobalAvgPool"
+        "op_name": "rms_norm",
+        "opcode": "0x0022",
+        "surface_name": "RMSNorm"
+      },
+      {
+        "family": 0,
+        "op_name": "relu",
+        "opcode": "0x0010",
+        "surface_name": "ReLU"
+      },
+      {
+        "family": 0,
+        "op_name": "silu",
+        "opcode": "0x0012",
+        "surface_name": "SiLU"
+      },
+      {
+        "family": 0,
+        "op_name": "sigmoid",
+        "opcode": "0x0013",
+        "surface_name": "Sigmoid"
+      },
+      {
+        "family": 0,
+        "op_name": "softmax",
+        "opcode": "0x0007",
+        "surface_name": "Softmax"
+      },
+      {
+        "family": 0,
+        "op_name": "softplus",
+        "opcode": "0x0016",
+        "surface_name": "Softplus"
+      },
+      {
+        "family": 0,
+        "op_name": "tanh",
+        "opcode": "0x0014",
+        "surface_name": "Tanh"
       }
     ],
     "op_families": [
@@ -5099,9 +5099,89 @@
     ],
     "types": [
       {
+        "category": "ref",
+        "name": "&!T",
+        "summary": "mutable reference (Rust `&mut T`)"
+      },
+      {
+        "category": "ref",
+        "name": "&T",
+        "summary": "shared reference (Rust `&T`)"
+      },
+      {
+        "category": "unit",
+        "name": "()",
+        "summary": "unit type; sole value `()`; implicit fn return"
+      },
+      {
+        "category": "tuple",
+        "name": "(T1,T2,...)",
+        "summary": "tuple type; positional fields"
+      },
+      {
+        "category": "option",
+        "name": "?T",
+        "summary": "Option<T>; sigil shorthand"
+      },
+      {
+        "category": "smart",
+        "name": "@T",
+        "summary": "Arc<T>; shared atomic ownership"
+      },
+      {
+        "category": "smart",
+        "name": "Box[T]",
+        "summary": "Box<T>; heap-owned single value"
+      },
+      {
+        "category": "result",
+        "name": "R[T,E]",
+        "summary": "Result<T, E>; sigil shorthand"
+      },
+      {
+        "category": "string",
+        "name": "String",
+        "summary": "owned string (Rust `String`). `S` is *not* a spelling of it — `S` is the `struct` keyword."
+      },
+      {
+        "category": "array",
+        "name": "[T; N]",
+        "summary": "fixed-size array (length N at compile time)"
+      },
+      {
+        "category": "slice",
+        "name": "[T]",
+        "summary": "slice type (fixed-view, Rust `&[T]`)"
+      },
+      {
+        "category": "vec",
+        "name": "[T]~",
+        "summary": "Vec<T>; owned dynamic array; sigil shorthand"
+      },
+      {
         "category": "scalar",
-        "name": "i8",
-        "summary": "signed 8-bit integer"
+        "name": "bool",
+        "summary": "boolean; literals `1b` (true) / `0b` (false)"
+      },
+      {
+        "category": "scalar",
+        "name": "char",
+        "summary": "Unicode scalar value"
+      },
+      {
+        "category": "fn",
+        "name": "f(T)->R",
+        "summary": "function pointer type; (T) -> R signature"
+      },
+      {
+        "category": "scalar",
+        "name": "f32",
+        "summary": "32-bit IEEE-754 float"
+      },
+      {
+        "category": "scalar",
+        "name": "f64",
+        "summary": "64-bit IEEE-754 float (default float)"
       },
       {
         "category": "scalar",
@@ -5120,13 +5200,18 @@
       },
       {
         "category": "scalar",
+        "name": "i8",
+        "summary": "signed 8-bit integer"
+      },
+      {
+        "category": "scalar",
         "name": "isize",
         "summary": "pointer-sized signed integer"
       },
       {
-        "category": "scalar",
-        "name": "u8",
-        "summary": "unsigned 8-bit (also: byte)"
+        "category": "string",
+        "name": "s",
+        "summary": "string slice (Rust `&str`); sigil shorthand"
       },
       {
         "category": "scalar",
@@ -5145,88 +5230,13 @@
       },
       {
         "category": "scalar",
+        "name": "u8",
+        "summary": "unsigned 8-bit (also: byte)"
+      },
+      {
+        "category": "scalar",
         "name": "usize",
         "summary": "pointer-sized unsigned integer"
-      },
-      {
-        "category": "scalar",
-        "name": "f32",
-        "summary": "32-bit IEEE-754 float"
-      },
-      {
-        "category": "scalar",
-        "name": "f64",
-        "summary": "64-bit IEEE-754 float (default float)"
-      },
-      {
-        "category": "scalar",
-        "name": "bool",
-        "summary": "boolean; literals `1b` (true) / `0b` (false)"
-      },
-      {
-        "category": "scalar",
-        "name": "char",
-        "summary": "Unicode scalar value"
-      },
-      {
-        "category": "string",
-        "name": "s",
-        "summary": "string slice (Rust `&str`); sigil shorthand"
-      },
-      {
-        "category": "string",
-        "name": "String",
-        "summary": "owned string (Rust `String`). `S` is *not* a spelling of it — `S` is the `struct` keyword."
-      },
-      {
-        "category": "unit",
-        "name": "()",
-        "summary": "unit type; sole value `()`; implicit fn return"
-      },
-      {
-        "category": "ref",
-        "name": "&T",
-        "summary": "shared reference (Rust `&T`)"
-      },
-      {
-        "category": "ref",
-        "name": "&!T",
-        "summary": "mutable reference (Rust `&mut T`)"
-      },
-      {
-        "category": "smart",
-        "name": "@T",
-        "summary": "Arc<T>; shared atomic ownership"
-      },
-      {
-        "category": "option",
-        "name": "?T",
-        "summary": "Option<T>; sigil shorthand"
-      },
-      {
-        "category": "result",
-        "name": "R[T,E]",
-        "summary": "Result<T, E>; sigil shorthand"
-      },
-      {
-        "category": "slice",
-        "name": "[T]",
-        "summary": "slice type (fixed-view, Rust `&[T]`)"
-      },
-      {
-        "category": "array",
-        "name": "[T; N]",
-        "summary": "fixed-size array (length N at compile time)"
-      },
-      {
-        "category": "vec",
-        "name": "[T]~",
-        "summary": "Vec<T>; owned dynamic array; sigil shorthand"
-      },
-      {
-        "category": "tuple",
-        "name": "(T1,T2,...)",
-        "summary": "tuple type; positional fields"
       },
       {
         "category": "map",
@@ -5237,16 +5247,6 @@
         "category": "set",
         "name": "{T}",
         "summary": "HashSet<T>; standard set type. Written with braces, not `Set[T]`."
-      },
-      {
-        "category": "smart",
-        "name": "Box[T]",
-        "summary": "Box<T>; heap-owned single value"
-      },
-      {
-        "category": "fn",
-        "name": "f(T)->R",
-        "summary": "function pointer type; (T) -> R signature"
       }
     ],
     "vocabulary": [

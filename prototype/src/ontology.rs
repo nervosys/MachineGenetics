@@ -8,25 +8,28 @@
 //!   next to `lexer.rs` comments which are authoritative)
 //! - **`keywords`**   — Reserved words and what they introduce
 //! - **`ast_kinds`**  — Top-level AST node families an agent will encounter
-//! - **`ir_ops`**     — Every `rmi::lang::Op` (programmatically from
-//!   `Op::ALL` + `OpMeta`)
-//! - **`op_families`** — The 7 `OpFamily` buckets and their semantics
-//! - **`layer_map`**  — Surface layer name → opcode (from
-//!   `abl_bridge::layer_name_to_op`)
+//! - **`ir_ops`**     — Every `rmi::lang::Op`: opcode, family, arity, flags
+//!   and summary (the `op` facts of `kb/meaning.mg`)
+//! - **`op_families`** — The `OpFamily` buckets and their semantics
+//!   (`family_row` facts)
+//! - **`layer_map`**  — Surface layer name → opcode (the `canonical_layer`
+//!   and `lowers_as` facts)
+//! - **`types`** and **`effects`** — Built-in types and effect annotations
+//!   (`type_row` and `effect_row` facts)
 //! - **`rap_methods`** — Protocol method catalog with input / output keys
 //! - **`heal_patterns`** — Mechanical heal patterns (from
 //!   `heal::pattern_names`)
 //! - **`recovery_stages`** — The 4-stage recovery pipeline + agent.refine
-//! - **`abl`**       — Binary IR container format constants
+//! - **`abl`**       — Binary IR container format (`abl_field` facts; the
+//!   magic and version are the constants in `abl`)
 //!
 //! Single entry point: [`build`] returns a `serde_json::Value`. The RAP
 //! method `ontology/full` calls it; `ontology/section` returns just one
 //! key from the same object.
 
-use rmi::lang::Op;
-
-/// The `sigils`, `keywords` and `ast_kinds` sections, as `kb/` states them.
-/// Read once per process: loading the knowledge base checks every invariant.
+/// The `sigils`, `keywords`, `ast_kinds`, `ir_ops`, `op_families`, `layer_map`,
+/// `types`, `effects` and `abl` sections, as `kb/` states them. Read once per
+/// process: loading the knowledge base checks every invariant.
 struct Stated {
     /// `(notation, what it builds, summary)`: the `sigil_row` facts of
     /// `kb/lexicon.mg`, in notation order. The lexicon is where a sigil is
@@ -36,6 +39,50 @@ struct Stated {
     keywords: Vec<(String, String, String)>,
     /// `(kind, summary)`; see `ast_kind_rows`.
     ast_kinds: Vec<(String, String)>,
+    /// `(name, code, summary)`: the `family_row` facts, by code; see
+    /// `op_family_rows`.
+    op_families: Vec<(String, u8, String)>,
+    /// One row per op, by opcode; see `ir_op_rows`.
+    ir_ops: Vec<IrOpRow>,
+    /// One row per `canonical_layer`, by surface name; see `layer_rows`.
+    layers: Vec<LayerRow>,
+    /// `(name, category, summary)`: the `type_row` facts, by name.
+    types: Vec<(String, String, String)>,
+    /// `(name, slot, purpose)`: the `effect_row` facts, by name.
+    effects: Vec<(String, String, String)>,
+    /// `(position, format line)`: the `abl_field` facts, by position.
+    abl_fields: Vec<(String, String)>,
+    /// The `abl_media_type` fact.
+    abl_media_type: String,
+}
+
+/// One op's row of the `ir_ops` section.
+struct IrOpRow {
+    name: String,
+    /// Zero-prefixed four-digit hex, as the section writes it.
+    opcode: String,
+    /// The high byte of the opcode: the code of the op's family.
+    family: u8,
+    arity: u64,
+    differentiable: bool,
+    has_params: bool,
+    stateful: bool,
+    summary: String,
+}
+
+/// One row of the `layer_map` section: a surface spelling, the op it lowers
+/// to, and that op's opcode and family.
+struct LayerRow {
+    surface: String,
+    op_name: String,
+    opcode: String,
+    family: u8,
+}
+
+/// A code written `0x…`, as the facts write opcodes and family codes.
+fn hex_code(s: &str) -> u64 {
+    let digits = s.strip_prefix("0x").unwrap_or_else(|| panic!("`{s}` is not a `0x` code"));
+    u64::from_str_radix(digits, 16).unwrap_or_else(|_| panic!("`{s}` is not hex"))
 }
 
 fn stated() -> &'static Stated {
@@ -60,6 +107,96 @@ fn stated() -> &'static Stated {
             })
             .collect();
         keywords.sort();
+
+        // The op families. The code is the high byte of each op's opcode.
+        let mut op_families: Vec<(String, u8, String)> = kb
+            .facts("family_row")
+            .into_iter()
+            .map(|f| (f[0].clone(), u8::try_from(hex_code(&f[1])).expect("a family code is a byte"), f[2].clone()))
+            .collect();
+        op_families.sort_by_key(|r| r.1);
+        let family_code: std::collections::HashMap<String, u8> =
+            op_families.iter().map(|(n, c, _)| (n.clone(), *c)).collect();
+
+        // The ops: each name's facts, by name. A flag is stated only when true.
+        let by_op = |predicate: &str| -> std::collections::HashMap<String, String> {
+            kb.facts(predicate).into_iter().map(|f| (f[0].clone(), f[1].clone())).collect()
+        };
+        let flagged = |predicate: &str| -> std::collections::HashSet<String> {
+            kb.facts(predicate).into_iter().map(|f| f[0].clone()).collect()
+        };
+        let need = |m: &std::collections::HashMap<String, String>, op: &str, what: &str| -> String {
+            m.get(op).cloned().unwrap_or_else(|| panic!("kb/meaning.mg states no {what} for `{op}`"))
+        };
+        let (opcode_of, family_of, arity_of, summary_of) =
+            (by_op("opcode"), by_op("op_family"), by_op("op_arity"), by_op("op_summary"));
+        let (differentiable, has_params, stateful) =
+            (flagged("differentiable"), flagged("has_params"), flagged("stateful"));
+        let mut ir_ops: Vec<(u64, IrOpRow)> = kb
+            .facts("instance_of")
+            .into_iter()
+            .filter(|f| f[1] == "Op")
+            .map(|f| {
+                let name = f[0].clone();
+                let opcode = need(&opcode_of, &name, "opcode");
+                let fam = need(&family_of, &name, "family");
+                let family = *family_code
+                    .get(&fam)
+                    .unwrap_or_else(|| panic!("`{name}` is in family `{fam}`, which has no family_row"));
+                let row = IrOpRow {
+                    arity: need(&arity_of, &name, "arity").parse().expect("an arity is a number"),
+                    differentiable: differentiable.contains(&name),
+                    has_params: has_params.contains(&name),
+                    stateful: stateful.contains(&name),
+                    summary: need(&summary_of, &name, "summary"),
+                    opcode: opcode.clone(),
+                    family,
+                    name,
+                };
+                (hex_code(&opcode), row)
+            })
+            .collect();
+        ir_ops.sort_by_key(|(code, _)| *code);
+        let ir_ops: Vec<IrOpRow> = ir_ops.into_iter().map(|(_, row)| row).collect();
+
+        // The layer spellings `layer_map` publishes, each with the op it lowers to.
+        let lowers: std::collections::HashMap<String, String> =
+            kb.facts("lowers_as").into_iter().map(|f| (f[0].clone(), f[1].clone())).collect();
+        let mut layers: Vec<LayerRow> = kb
+            .facts("canonical_layer")
+            .into_iter()
+            .map(|f| {
+                let surface = f[0].clone();
+                let op_name = lowers
+                    .get(&surface)
+                    .cloned()
+                    .unwrap_or_else(|| panic!("canonical layer `{surface}` lowers as no op"));
+                let op = ir_ops
+                    .iter()
+                    .find(|o| o.name == op_name)
+                    .unwrap_or_else(|| panic!("`{surface}` lowers as `{op_name}`, which is no op"));
+                LayerRow { surface, opcode: op.opcode.clone(), family: op.family, op_name }
+            })
+            .collect();
+        layers.sort_by(|a, b| a.surface.cmp(&b.surface));
+
+        let mut types: Vec<(String, String, String)> =
+            kb.facts("type_row").into_iter().map(|f| (f[0].clone(), f[1].clone(), f[2].clone())).collect();
+        types.sort();
+        let mut effects: Vec<(String, String, String)> =
+            kb.facts("effect_row").into_iter().map(|f| (f[0].clone(), f[1].clone(), f[2].clone())).collect();
+        effects.sort();
+
+        let mut abl_fields: Vec<(String, String)> =
+            kb.facts("abl_field").into_iter().map(|f| (f[0].clone(), f[1].clone())).collect();
+        abl_fields.sort();
+        let abl_media_type = kb
+            .facts("abl_media_type")
+            .into_iter()
+            .next()
+            .map(|f| f[0].clone())
+            .expect("kb/meaning.mg states the container's media type");
+
         Stated {
             sigils: kb.facts("sigil_row").into_iter().map(|f| (f[0].clone(), f[1].clone(), f[2].clone())).collect(),
             keywords,
@@ -69,12 +206,49 @@ fn stated() -> &'static Stated {
                 .filter(|f| f[1] == "AstKind")
                 .map(|f| (f[0].clone(), summary.get(&f[0]).cloned().unwrap_or_default()))
                 .collect(),
+            op_families,
+            ir_ops,
+            layers,
+            types,
+            effects,
+            abl_fields,
+            abl_media_type,
         }
     })
 }
 
 fn sigil_rows() -> &'static [(String, String, String)] {
     &stated().sigils
+}
+
+/// The `op_families` section's rows, `(name, code, summary)`, by code: the
+/// `family_row` facts of `kb/meaning.mg`. `every_op_family_is_stated` holds
+/// them to the ops.
+fn op_family_rows() -> &'static [(String, u8, String)] {
+    &stated().op_families
+}
+
+/// The `ir_ops` section's rows, by opcode: every op, from the `opcode`,
+/// `op_family`, `op_arity`, `op_summary` and flag facts of `kb/meaning.mg`.
+/// `every_op_has_a_fact_and_every_fact_an_op` holds them to `Op`.
+fn ir_op_rows() -> &'static [IrOpRow] {
+    &stated().ir_ops
+}
+
+/// The `layer_map` section's rows, by surface name: each `canonical_layer`,
+/// with the op its `lowers_as` fact names.
+fn layer_rows() -> &'static [LayerRow] {
+    &stated().layers
+}
+
+/// The `types` section's rows, by name: the `type_row` facts.
+fn type_rows() -> &'static [(String, String, String)] {
+    &stated().types
+}
+
+/// The `effects` section's rows, by name: the `effect_row` facts.
+fn effect_rows() -> &'static [(String, String, String)] {
+    &stated().effects
 }
 
 /// The `keywords` section's rows, `(spelling, token kind, summary)`: every word the
@@ -94,51 +268,6 @@ fn keyword_rows() -> &'static [(String, String, String)] {
     &stated().keywords
 }
 
-/// Built-in type catalog. Covers scalar types, the composite type
-/// constructors, and the standard sigil shorthand. An agent reading
-/// this knows the full set of type names it can write without
-/// importing anything.
-///
-/// Columns: `(name, category, summary)`.
-const TYPES: &[(&str, &str, &str)] = &[
-    // ── scalar integers ─────────────────────────────────────────────
-    ("i8",   "scalar", "signed 8-bit integer"),
-    ("i16",  "scalar", "signed 16-bit integer"),
-    ("i32",  "scalar", "signed 32-bit integer (default int)"),
-    ("i64",  "scalar", "signed 64-bit integer"),
-    ("isize","scalar", "pointer-sized signed integer"),
-    ("u8",   "scalar", "unsigned 8-bit (also: byte)"),
-    ("u16",  "scalar", "unsigned 16-bit integer"),
-    ("u32",  "scalar", "unsigned 32-bit integer"),
-    ("u64",  "scalar", "unsigned 64-bit integer"),
-    ("usize","scalar", "pointer-sized unsigned integer"),
-    // ── scalar floats / boolean / char ─────────────────────────────
-    ("f32",  "scalar", "32-bit IEEE-754 float"),
-    ("f64",  "scalar", "64-bit IEEE-754 float (default float)"),
-    ("bool", "scalar", "boolean; literals `1b` (true) / `0b` (false)"),
-    ("char", "scalar", "Unicode scalar value"),
-    // ── string / unit ──────────────────────────────────────────────
-    ("s",    "string", "string slice (Rust `&str`); sigil shorthand"),
-    ("String","string", "owned string (Rust `String`). `S` is *not* a spelling of it — `S` is the `struct` keyword."),
-    ("()",   "unit",   "unit type; sole value `()`; implicit fn return"),
-    // ── reference / pointer sigils ─────────────────────────────────
-    ("&T",   "ref",    "shared reference (Rust `&T`)"),
-    ("&!T",  "ref",    "mutable reference (Rust `&mut T`)"),
-    ("@T",   "smart",  "Arc<T>; shared atomic ownership"),
-    // ── composite type constructors ────────────────────────────────
-    ("?T",      "option", "Option<T>; sigil shorthand"),
-    ("R[T,E]",  "result", "Result<T, E>; sigil shorthand"),
-    ("[T]",     "slice",  "slice type (fixed-view, Rust `&[T]`)"),
-    ("[T; N]",  "array",  "fixed-size array (length N at compile time)"),
-    ("[T]~",    "vec",    "Vec<T>; owned dynamic array; sigil shorthand"),
-    ("(T1,T2,...)", "tuple", "tuple type; positional fields"),
-    ("{K: V}",  "map",    "HashMap<K, V>; standard map type. Written with braces, not `Map[K,V]`."),
-    ("{T}",     "set",    "HashSet<T>; standard set type. Written with braces, not `Set[T]`."),
-    ("Box[T]",  "smart",  "Box<T>; heap-owned single value"),
-    // ── function type ──────────────────────────────────────────────
-    ("f(T)->R", "fn",     "function pointer type; (T) -> R signature"),
-];
-
 /// AST top-level item kinds an agent should know it can find in a module,
 /// `(kind, summary)`: the `AstKind` instances of `kb/grammar.mg`, each built
 /// by the item production its `parses_as` fact names. Named exactly as
@@ -157,26 +286,6 @@ const TYPES: &[(&str, &str, &str)] = &[
 fn ast_kind_rows() -> &'static [(String, String)] {
     &stated().ast_kinds
 }
-
-/// The 7 op-family buckets. Aligned with `rmi::lang::OpFamily`.
-const OP_FAMILIES: &[(&str, u8, &str)] = &[
-    ("Neural", 0x00, "Differentiable neural-network operations"),
-    ("Symbolic", 0x01, "Symbolic reasoning: unification, inference, planning"),
-    ("Control", 0x02, "Control flow: seq, par, cond, loop"),
-    ("Memory", 0x03, "Memory management: alloc, reshape, transpose"),
-    ("Agent", 0x04, "Agent communication: send, recv, spawn, delegate"),
-    ("Meta", 0x05, "Meta / introspection: hash, typeof, mutate, decompose"),
-    ("Math", 0x06, "Elementwise math: add, mul, exp, log, sin, ..."),
-];
-
-/// Canonical layer surface names that lower to an `Op`. Pulled from the
-/// authoritative mapping in `abl_bridge::layer_name_to_op`.
-const LAYER_SURFACE_NAMES: &[&str] = &[
-    "Linear", "Conv2D", "Attention", "Embed", "Dropout", "Softmax",
-    "ReLU", "GELU", "SiLU", "Sigmoid", "Tanh", "Mish", "Softplus",
-    "LayerNorm", "BatchNorm", "RMSNorm", "GroupNorm", "InstanceNorm",
-    "MaxPool", "AvgPool", "GlobalAvgPool",
-];
 
 /// Catalog of RAP methods. Pairs each method name with a short summary
 /// and the input / output JSON keys an agent should expect. The truth
@@ -390,51 +499,6 @@ const BENCH_BACKENDS: &[(&str, &str, &str)] = &[
         "Spawn external process per task. stdin=task description, stdout=MAGE source. Plug in a real LLM here."),
     ("perturbed+refine:<cmd>", "hybrid",
         "perturbed for propose, subprocess for refine. Measures Stage-3 contribution layered on the perturbed baseline."),
-];
-
-/// Effect annotations the language supports. Used in `spec` blocks
-/// and the `verify/contracts` RAP method.
-///
-/// Columns: `(annotation, slot, purpose)`.
-const EFFECTS: &[(&str, &str, &str)] = &[
-    ("@fx",   "spec/fn", "Effect list: enumerate side effects the body may produce. `@fx()` = pure."),
-    ("@req",  "spec/fn", "Precondition: predicate over parameters; checked at entry"),
-    ("@ens",  "spec/fn", "Postcondition: predicate over result; checked at exit"),
-    ("@inv",  "spec/struct", "Invariant: predicate that must hold across all methods"),
-    ("@perf", "spec/fn", "Performance contract: latency / throughput target"),
-    // The built-in effect kinds — every name writable in a `/ …` annotation
-    // with no declaration. This is the set `hir::Effect::from_name` folds and
-    // `MAGE_SPEC.md` §11.2 documents; `builtin_effect_names_are_the_writable_ones`
-    // holds the three in agreement.
-    //
-    // This list used to be "canonical effect names used in the corpus and
-    // stdlib", which is a different question from the one an agent reading
-    // `effect_name` is asking. Four of its ten — `db`, `log`, `tools`, `rand` —
-    // were rejected by the compiler as unknown effects. Three of those are
-    // capability *namespaces* (`resolve.rs`, `db.query(…)`), which is a
-    // separate list that had been folded into this one; `rand` was `rng`
-    // under a name nothing has ever accepted. `rng`, `gpu`,
-    // `npu`, `evolve`, `learn`, `alloc`, `panic`, `ffi`, `env` and `agent` were
-    // missing. Anything not here needs an `effect Name { … }` block (§11.5).
-    ("io",     "effect_name", "File and stream I/O"),
-    ("net",    "effect_name", "Network I/O"),
-    ("fs",     "effect_name", "Filesystem operations"),
-    ("async",  "effect_name", "Asynchronous task management"),
-    ("alloc",  "effect_name", "Heap memory allocation"),
-    ("panic",  "effect_name", "Unwinding / structured panics"),
-    ("ffi",    "effect_name", "Foreign function invocation"),
-    ("env",    "effect_name", "Environment variable access"),
-    ("time",   "effect_name", "Clock and timer access"),
-    ("gpu",    "effect_name", "GPU computation"),
-    ("npu",    "effect_name", "Neural processing unit"),
-    ("llm",    "effect_name", "Language model invocation"),
-    ("evolve", "effect_name", "Evolutionary computation"),
-    ("learn",  "effect_name", "Training / gradient descent"),
-    ("rng",    "effect_name", "Random number generation"),
-    ("agent",  "effect_name", "Agent coordination"),
-    ("proc",   "effect_name", "Process and system access"),
-    ("heldout", "effect_name", "Reading held-out evaluation data (evaluator and gate roles only)"),
-    ("promote", "effect_name", "Changing authority: promotion and the journal (gate role only)"),
 ];
 
 /// Subprocess agent protocol contract. Environment variables and
@@ -1260,17 +1324,17 @@ pub fn build() -> serde_json::Value {
         "counts": {
             "sigils": sigil_rows().len(),
             "keywords": keyword_rows().len(),
-            "types": TYPES.len(),
+            "types": type_rows().len(),
             "ast_kinds": ast_kind_rows().len(),
-            "ir_ops": Op::ALL.len(),
-            "op_families": OP_FAMILIES.len(),
+            "ir_ops": ir_op_rows().len(),
+            "op_families": op_family_rows().len(),
             "rap_methods": RAP_METHODS.len(),
             "recovery_stages": RECOVERY_STAGES.len(),
             "examples": EXAMPLES.len(),
             "framewerx_modules": FRAMEWERX_MODULES.len(),
             "cli_flags": CLI_FLAGS.len(),
             "bench_backends": BENCH_BACKENDS.len(),
-            "effects": EFFECTS.len(),
+            "effects": effect_rows().len(),
             "vocabulary": crate::resolve::VOCABULARY.len(),
             "wrapper_protocol": WRAPPER_PROTOCOL.len(),
             "project_layout": PROJECT_LAYOUT.len(),
@@ -1327,7 +1391,7 @@ fn keywords_section() -> serde_json::Value {
 }
 
 fn types_section() -> serde_json::Value {
-    let items: Vec<_> = TYPES
+    let items: Vec<_> = type_rows()
         .iter()
         .map(|(n, c, d)| serde_json::json!({ "name": n, "category": c, "summary": d }))
         .collect();
@@ -1355,19 +1419,18 @@ fn ast_kinds_section() -> serde_json::Value {
 }
 
 fn ir_ops_section() -> serde_json::Value {
-    let items: Vec<_> = Op::ALL
+    let items: Vec<_> = ir_op_rows()
         .iter()
-        .map(|op| {
-            let meta = op.meta();
+        .map(|o| {
             serde_json::json!({
-                "name": meta.name,
-                "opcode": format!("0x{:04x}", op.0),
-                "family": op.family(),
-                "arity": meta.arity,
-                "differentiable": meta.differentiable,
-                "has_params": meta.has_params,
-                "stateful": meta.stateful,
-                "summary": meta.desc,
+                "name": o.name,
+                "opcode": o.opcode,
+                "family": o.family,
+                "arity": o.arity,
+                "differentiable": o.differentiable,
+                "has_params": o.has_params,
+                "stateful": o.stateful,
+                "summary": o.summary,
             })
         })
         .collect();
@@ -1375,7 +1438,7 @@ fn ir_ops_section() -> serde_json::Value {
 }
 
 fn op_families_section() -> serde_json::Value {
-    let items: Vec<_> = OP_FAMILIES
+    let items: Vec<_> = op_family_rows()
         .iter()
         .map(|(name, code, desc)| {
             serde_json::json!({ "name": name, "code": code, "summary": desc })
@@ -1385,16 +1448,14 @@ fn op_families_section() -> serde_json::Value {
 }
 
 fn layer_map_section() -> serde_json::Value {
-    let items: Vec<_> = LAYER_SURFACE_NAMES
+    let items: Vec<_> = layer_rows()
         .iter()
-        .filter_map(|name| {
-            crate::abl_bridge::layer_name_to_op(name).map(|op| {
-                serde_json::json!({
-                    "surface_name": name,
-                    "opcode": format!("0x{:04x}", op.0),
-                    "op_name": op.name(),
-                    "family": op.family(),
-                })
+        .map(|l| {
+            serde_json::json!({
+                "surface_name": l.surface,
+                "opcode": l.opcode,
+                "op_name": l.op_name,
+                "family": l.family,
             })
         })
         .collect();
@@ -1466,7 +1527,7 @@ fn bench_backends_section() -> serde_json::Value {
 }
 
 fn effects_section() -> serde_json::Value {
-    let items: Vec<_> = EFFECTS
+    let items: Vec<_> = effect_rows()
         .iter()
         .map(|(name, slot, purpose)| {
             serde_json::json!({
@@ -1566,35 +1627,19 @@ fn examples_section() -> serde_json::Value {
 }
 
 fn abl_section() -> serde_json::Value {
+    let s = stated();
     serde_json::json!({
-        // A global rename of `ABL` to the language's full name caught every
-        // literal spelling of the four magic bytes: this fallback, the format
-        // line below, the decoder's error message, the `--manifest` entry and
-        // two module docs. `"magic"` itself was right because it is read from
-        // the constant — which is why the section looked fine and its own
-        // description of the section did not.
         "magic": std::str::from_utf8(crate::abl::ABL_MAGIC).unwrap_or("ABL1"),
         "version": crate::abl::ABL_VERSION,
-        "format": [
-            "magic    : 4 bytes (\"ABL1\")",
-            "version  : u16 LE",
-            "count    : u32 LE",
-            "per item : { name_len:u32, name:utf8, expr_len:u32, expr:bytes }",
-            // The symbol table was added in v2 and never published. A decoder
-            // written from this list parsed the items and stopped — on
-            // `prototype/examples/unified.mg` that leaves 100 of 420 bytes
-            // unread, and loses every interned name, which is the whole reason
-            // a `kb` artifact is self-describing rather than a pile of
-            // arities.
-            "symbols  : u32 LE count, then { name_len:u32, name:utf8 } in id order",
-        ],
-        "media_type": "application/abl",
+        "format": s.abl_fields.iter().map(|(_, line)| line.as_str()).collect::<Vec<&str>>(),
+        "media_type": s.abl_media_type,
     })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rmi::lang::Op;
 
     #[test]
     fn ontology_vocabulary_covers_every_registered_combinator() {
@@ -1746,8 +1791,8 @@ mod tests {
         // checked against every section that names a spelling.
         let rows = sigil_rows();
         let mut published: Vec<String> = rows.iter().map(|(s, _, _)| s.clone()).collect();
-        published.extend(EFFECTS.iter().map(|(n, _, _)| (*n).to_string()));
-        published.extend(TYPES.iter().map(|(n, _, _)| (*n).to_string()));
+        published.extend(effect_rows().iter().map(|(n, _, _)| n.clone()));
+        published.extend(type_rows().iter().map(|(n, _, _)| n.clone()));
         published.extend(crate::lexer::KEYWORDS.iter().map(|(n, _)| (*n).to_string()));
         published.extend(crate::resolve::VOCABULARY.iter().map(|(n, _, _)| (*n).to_string()));
         published.extend(
@@ -2574,10 +2619,10 @@ mod tests {
     /// standing in under a name the compiler has never known.
     #[test]
     fn builtin_effect_names_are_the_writable_ones() {
-        let published: Vec<&str> = EFFECTS
+        let published: Vec<&str> = effect_rows()
             .iter()
-            .filter(|(_, slot, _)| *slot == "effect_name")
-            .map(|(name, _, _)| *name)
+            .filter(|(_, slot, _)| slot.as_str() == "effect_name")
+            .map(|(name, _, _)| name.as_str())
             .collect();
 
         for name in &published {
@@ -2601,6 +2646,26 @@ mod tests {
                 "`{name}` is a built-in effect kind but the ontology does not publish it"
             );
         }
+    }
+
+    /// The `abl` section's format is the `abl_field` facts, and they are
+    /// numbered: the positions run `01`, `02`, … with no gap, and the section
+    /// has one format line for each.
+    #[test]
+    fn the_abl_section_is_stated() {
+        let kb = crate::kb::load().expect("the knowledge base loads");
+        let mut positions: Vec<String> = kb.facts("abl_field").into_iter().map(|f| f[0].clone()).collect();
+        positions.sort();
+        for (i, p) in positions.iter().enumerate() {
+            assert_eq!(p.as_str(), format!("{:02}", i + 1), "the abl_field positions are not 01, 02, … in order");
+        }
+        let lines = abl_section()["format"].as_array().expect("format").len();
+        assert_eq!(
+            lines,
+            positions.len(),
+            "the abl section has {lines} format lines for {} abl_field facts",
+            positions.len()
+        );
     }
 
     /// Every keyword introduces the token the ontology says it does.
@@ -2671,7 +2736,7 @@ mod tests {
     /// field. An op with no fact, a fact for a name that is not an op, and a
     /// flag set on one side only are each named. The opcode is held to
     /// `format!("0x{:04x}", op.0)`, the spelling `ir_ops_section` writes. The
-    /// family is the name of the `OP_FAMILIES` row whose code is `op.family()`,
+    /// family is the name of the `family_row` whose code is `op.family()`,
     /// because `ir_ops_section` writes only that code and the JSON names the
     /// family through `op_families`.
     #[test]
@@ -2683,6 +2748,7 @@ mod tests {
         let flag = |p: &str| -> std::collections::BTreeSet<String> {
             kb.facts(p).into_iter().map(|f| f[0].clone()).collect()
         };
+        let family_rows = kb.facts("family_row");
         let (mut class, mut opcode, mut family, mut arity, mut summary) =
             (Vec::new(), Vec::new(), Vec::new(), Vec::new(), Vec::new());
         let (mut differentiable, mut has_params, mut stateful) = (Vec::new(), Vec::new(), Vec::new());
@@ -2691,10 +2757,10 @@ mod tests {
             let name = meta.name.to_string();
             class.push(name.clone());
             opcode.push((name.clone(), format!("0x{:04x}", op.0)));
-            let fam = OP_FAMILIES
+            let fam = family_rows
                 .iter()
-                .find(|(_, code, _)| *code == op.family())
-                .map(|(n, _, _)| n.to_string())
+                .find(|f| f[1] == format!("0x{:02x}", op.family()))
+                .map(|f| f[0].clone())
                 .unwrap_or_else(|| format!("<no family with code {:#04x}>", op.family()));
             family.push((name.clone(), fam));
             arity.push((name.clone(), meta.arity.to_string()));
@@ -2721,26 +2787,48 @@ mod tests {
         assert!(problems.is_empty(), "kb/meaning.mg and Op disagree:\n{}", problems.join("\n"));
     }
 
-    /// Every op family is stated, and every stated family is one.
+    /// Every op family is stated, and every stated family is one, and the rows
+    /// agree with the ops.
     ///
-    /// `OP_FAMILIES` is the table behind the JSON's `op_families` section, and
-    /// `kb/meaning.mg` states each row as `family_row`: the family's name, its
-    /// code as two-digit hex, and its summary. Both sides are compared as
-    /// triples, both ways, and the `OpFamily` instances are compared too, since
-    /// every `op_family` fact names one.
+    /// The `op_families` section is the `family_row` facts of `kb/meaning.mg`:
+    /// each family's name, its code as two-digit hex, and its summary. Nothing
+    /// on the code side is a table to compare with, so the rows are held to the
+    /// ops. Each family's code is the high byte of some op, and each op's code
+    /// has a row. Each op's `op_family` fact names a row whose code is
+    /// `op.family()`, and whose name is the `OpFamily` that `Op::family_enum`
+    /// decodes that code to. The `OpFamily` instances are compared with the
+    /// family names, both ways.
     #[test]
     fn every_op_family_is_stated() {
         let kb = crate::kb::load().expect("the knowledge base loads");
-        let code: std::collections::BTreeSet<(String, String, String)> = OP_FAMILIES
-            .iter()
-            .map(|(n, c, d)| (n.to_string(), format!("0x{c:02x}"), d.to_string()))
-            .collect();
-        let stated: std::collections::BTreeSet<(String, String, String)> =
-            kb.facts("family_row").into_iter().map(|f| (f[0].clone(), f[1].clone(), f[2].clone())).collect();
-        let mut problems = both_ways("family_row", &code, &stated);
-        let names: std::collections::BTreeSet<String> = OP_FAMILIES.iter().map(|(n, _, _)| n.to_string()).collect();
+        let rows = kb.facts("family_row");
+        let row_codes: std::collections::BTreeSet<String> = rows.iter().map(|f| f[1].clone()).collect();
+        let op_codes: std::collections::BTreeSet<String> =
+            Op::ALL.iter().map(|op| format!("0x{:02x}", op.family())).collect();
+        let mut problems = both_ways("family_row codes", &op_codes, &row_codes);
+        let names: std::collections::BTreeSet<String> = rows.iter().map(|f| f[0].clone()).collect();
         problems.extend(both_ways("instance_of(_, OpFamily)", &names, &instances_of(&kb, "OpFamily")));
-        assert!(problems.is_empty(), "kb/meaning.mg and OP_FAMILIES disagree:\n{}", problems.join("\n"));
+        let op_family: std::collections::HashMap<String, String> =
+            kb.facts("op_family").into_iter().map(|f| (f[0].clone(), f[1].clone())).collect();
+        for &op in Op::ALL {
+            let name = op.meta().name;
+            let code = format!("0x{:02x}", op.family());
+            let stated = op_family.get(name).cloned().unwrap_or_default();
+            match rows.iter().find(|f| f[0] == stated) {
+                Some(row) if row[1] == code => {}
+                Some(row) => problems.push(format!(
+                    "`{name}` is in family {code}, and its family_row `{}` says {}",
+                    row[0], row[1]
+                )),
+                None => problems.push(format!("`{name}` is in family `{stated}`, which has no family_row")),
+            }
+            match op.family_enum() {
+                Some(fam) if format!("{fam:?}") == stated => {}
+                Some(fam) => problems.push(format!("`{name}` decodes to {fam:?}, and kb/meaning.mg says `{stated}`")),
+                None => problems.push(format!("`{name}` has family code {code}, which OpFamily does not decode")),
+            }
+        }
+        assert!(problems.is_empty(), "kb/meaning.mg and the op families disagree:\n{}", problems.join("\n"));
     }
 
     /// Every layer spelling is stated, lowers to the op it names, and every op
@@ -2752,12 +2840,11 @@ mod tests {
     /// fallback arm, comments removed. Four things must hold. Each scraped
     /// spelling is a `Layer`, and each `Layer` is one of them. Each stated
     /// `lowers_as(layer, op)` is what `layer_name_to_op(layer)` returns. Each op
-    /// with `op_to_layer_name(op) == Some(n)` has `lowers_as(n, op)`. Each entry
-    /// of `LAYER_SURFACE_NAMES` is a `Layer`. The third and fourth are where the
-    /// code and the list disagree: `op_to_layer_name` names some ops by names
-    /// `layer_name_to_op` does not accept (`Unify`, `Match`, `Map` and others),
-    /// and `LAYER_SURFACE_NAMES` lists the same symbolic names. Those are
-    /// reported, not excluded.
+    /// with `op_to_layer_name(op) == Some(n)` has `lowers_as(n, op)`, unless `n`
+    /// is one of the twelve `DECOMPILE_ONLY` names: `op_to_layer_name` names some
+    /// ops by names `layer_name_to_op` does not accept (`Unify`, `Match`, `Map`
+    /// and others), and those are reported, not excluded. Each `canonical_layer`,
+    /// a spelling `layer_map` publishes, has a `lowers_as`.
     #[test]
     fn every_layer_spelling_is_stated() {
         let kb = crate::kb::load().expect("the knowledge base loads");
@@ -2807,43 +2894,46 @@ mod tests {
         let listed: std::collections::BTreeSet<String> =
             DECOMPILE_ONLY.iter().map(|n| n.to_string()).collect();
         problems.extend(both_ways("named for decompile only", &listed, &refused));
-        for &n in LAYER_SURFACE_NAMES {
-            if !stated_layers.contains(n) {
-                problems.push(format!(
-                    "LAYER_SURFACE_NAMES lists {n:?}, which kb/meaning.mg does not state as a Layer; layer_name_to_op({n:?}) is {}",
-                    accepted(n)
-                ));
+        let canonical: Vec<String> = kb.facts("canonical_layer").into_iter().map(|f| f[0].clone()).collect();
+        for n in &canonical {
+            if !lowers.iter().any(|(layer, _)| layer == n) {
+                problems.push(format!("canonical_layer({n:?}) has no lowers_as fact"));
             }
         }
+        assert!(canonical.len() >= 21, "kb/meaning.mg states {} canonical layers; there are 21", canonical.len());
         assert!(problems.is_empty(), "layer names disagree:\n{}", problems.join("\n"));
     }
 
-    /// Every type and every effect is stated, with its category or slot and
-    /// its summary or purpose.
+    /// Every type and every effect is stated, once, and every row is one.
     ///
-    /// `TYPES` and `EFFECTS` are the tables behind the JSON's `types` and
-    /// `effects` sections. `kb/meaning.mg` states each row twice over: an
-    /// instance of its class (`Type` or `Effect`), and a `type_row` or
-    /// `effect_row` carrying the three columns. Both are compared, both ways,
-    /// as sets of triples or names.
+    /// The `types` and `effects` sections are the `type_row` and `effect_row`
+    /// facts of `kb/meaning.mg`. Each `Type` (or `Effect`) instance has exactly
+    /// one row, and each row names an instance; both directions are checked by
+    /// name. The counts are held to the floors the sections were stated at: 30
+    /// types and 24 effects.
     #[test]
     fn every_type_and_effect_is_stated() {
         let kb = crate::kb::load().expect("the knowledge base loads");
-        let triples = |p: &str| -> std::collections::BTreeSet<(String, String, String)> {
-            kb.facts(p).into_iter().map(|f| (f[0].clone(), f[1].clone(), f[2].clone())).collect()
-        };
-        let type_rows: std::collections::BTreeSet<_> =
-            TYPES.iter().map(|(n, c, s)| (n.to_string(), c.to_string(), s.to_string())).collect();
-        let effect_rows: std::collections::BTreeSet<_> =
-            EFFECTS.iter().map(|(n, s, p)| (n.to_string(), s.to_string(), p.to_string())).collect();
-        let type_names: std::collections::BTreeSet<String> = TYPES.iter().map(|(n, _, _)| n.to_string()).collect();
-        let effect_names: std::collections::BTreeSet<String> = EFFECTS.iter().map(|(n, _, _)| n.to_string()).collect();
-
-        let mut problems = both_ways("type_row", &type_rows, &triples("type_row"));
-        problems.extend(both_ways("instance_of(_, Type)", &type_names, &instances_of(&kb, "Type")));
-        problems.extend(both_ways("effect_row", &effect_rows, &triples("effect_row")));
-        problems.extend(both_ways("instance_of(_, Effect)", &effect_names, &instances_of(&kb, "Effect")));
-        assert!(problems.is_empty(), "kb/meaning.mg, TYPES and EFFECTS disagree:\n{}", problems.join("\n"));
+        let mut problems = Vec::new();
+        for (row, class) in [("type_row", "Type"), ("effect_row", "Effect")] {
+            let instances = instances_of(&kb, class);
+            let rows: Vec<String> = kb.facts(row).into_iter().map(|f| f[0].clone()).collect();
+            for name in &instances {
+                let n = rows.iter().filter(|r| *r == name).count();
+                if n != 1 {
+                    problems.push(format!("{class} `{name}` has {n} {row} facts, not one"));
+                }
+            }
+            for name in &rows {
+                if !instances.contains(name) {
+                    problems.push(format!("{row}({name:?}) names no {class}"));
+                }
+            }
+        }
+        assert!(problems.is_empty(), "kb/meaning.mg disagrees with itself:\n{}", problems.join("\n"));
+        let (types, effects) = (kb.facts("type_row").len(), kb.facts("effect_row").len());
+        assert!(types >= 30, "kb/meaning.mg states {types} types; at least 30 were stated");
+        assert!(effects >= 24, "kb/meaning.mg states {effects} effects; at least 24 were stated");
     }
 
     /// Every documented type can be written in a signature.
@@ -2858,7 +2948,7 @@ mod tests {
     /// documents a shape, and only `&i32` can be compiled.
     #[test]
     fn every_documented_type_can_be_written() {
-        for (name, _, _) in TYPES {
+        for (name, _, _) in type_rows() {
             let concrete = name
                 .replace("(T1,T2,...)", "(i32, i64)")
                 .replace("[T; N]", "[i32; 4]")
@@ -2976,11 +3066,9 @@ mod tests {
     /// `abl_shape::tests::an_unknown_layer_type_is_rejected`.
     #[test]
     fn every_layer_surface_name_is_usable_in_a_net() {
-        // Iterate what is *published*. `LAYER_SURFACE_NAMES` held 10 more names
-        // (`Unify`, `Resolve`, `Spawn`, ...), symbolic and agent ops that
-        // `layer_name_to_op` refuses and `layer_map_section` filtered out. They
-        // are not layers, so they are gone from the list, and
-        // `every_layer_spelling_is_stated` requires each name left to be one.
+        // Iterate what is *published*: `layer_map`, whose names are the
+        // `canonical_layer` facts. `every_layer_spelling_is_stated` requires
+        // each of them to be a layer.
         let published = layer_map_section();
         let rows = published.as_array().unwrap();
         // A loop over an empty list passes silently, which is the failure mode
