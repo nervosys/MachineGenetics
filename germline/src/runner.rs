@@ -176,6 +176,13 @@ pub trait Workload {
     fn attribution(&self, _artifact: &Digest) -> Vec<String> {
         Vec::new()
     }
+
+    /// The content address of the knowledge base `artifact` was built against,
+    /// handed on with the generation (see [`Generation::knowledge_base`]). None
+    /// by default.
+    fn knowledge_base(&self, _artifact: &Digest) -> Option<String> {
+        None
+    }
 }
 
 /// An external source of candidate edits: an agent, not the built-in search.
@@ -635,6 +642,7 @@ impl<'a> Runner<'a> {
             .note(format!("cycle {index}, spec {}", spec.id));
         generation.genome = Some(spec.genome.clone());
         generation.definitions = workload.attribution(&artifact);
+        generation.knowledge_base = workload.knowledge_base(&artifact);
         if let Some(p) = parent {
             generation = generation.parent(p);
         }
@@ -1160,6 +1168,68 @@ mod tests {
         assert!(!entry.contains("definitions"), "{entry}");
     }
 
+    /// A workload that names the knowledge base each artifact was built against.
+    struct KnowledgeBased(Improving);
+
+    impl Workload for KnowledgeBased {
+        fn materialize(&mut self, spec: &CandidateSpec) -> Result<Digest, String> {
+            self.0.materialize(spec)
+        }
+        fn evaluate(&mut self, a: &Digest, s: &EvalSuite) -> Result<FitnessVector, String> {
+            self.0.evaluate(a, s)
+        }
+        fn shadow(&mut self, a: &Digest) -> HealthSample {
+            self.0.shadow(a)
+        }
+        fn observe_champion(&mut self, a: &Digest) -> HealthSample {
+            self.0.observe_champion(a)
+        }
+        fn materialized(&self, d: &Digest) -> bool {
+            self.0.materialized(d)
+        }
+        fn knowledge_base(&self, _a: &Digest) -> Option<String> {
+            Some("sha256:kb-test".into())
+        }
+    }
+
+    #[test]
+    fn the_journal_hands_on_the_knowledge_base_each_candidate_was_built_against() {
+        let path = tmp("knowledge-base");
+        let mut j = Journal::open(&path).unwrap();
+        let mut w = KnowledgeBased(Improving::new(0.05));
+        let mut l = seeded(&mut w.0);
+        let ep = episode();
+        let at = attestor();
+        let mut r = Runner::new(policy(), &ep, &at, suite(), 3);
+        let _ = r.run(&mut l, &mut j, &mut w);
+        let proposed: Vec<Option<String>> = j
+            .replay()
+            .unwrap()
+            .into_iter()
+            .filter_map(|r| match r.entry {
+                Entry::Proposed { knowledge_base, .. } => Some(knowledge_base),
+                _ => None,
+            })
+            .collect();
+        assert!(!proposed.is_empty());
+        assert!(proposed.iter().all(|k| k.as_deref() == Some("sha256:kb-test")), "the journal names it: {proposed:?}");
+        assert!(l.generations().iter().skip(1).all(|g| g.knowledge_base.as_deref() == Some("sha256:kb-test")), "and so does the lineage");
+
+        // Replay restores it onto each generation, from the journal alone.
+        let replayed = Lineage::replay(seeded(&mut Improving::new(0.05)), &j, None).unwrap();
+        assert!(
+            replayed.lineage.generations().iter().skip(1).all(|g| g.knowledge_base.as_deref() == Some("sha256:kb-test")),
+            "replay restores it"
+        );
+        let _ = std::fs::remove_dir_all(path.parent().unwrap());
+
+        // Without a knowledge base the field is absent, so a journal written
+        // before it existed hashes exactly as it did.
+        let g = Generation::new(GenerationId(1), Digest::of(b"x"));
+        let entry = serde_json::to_string(&crate::journal::proposed(&g, 1, "p")).unwrap();
+        assert!(!entry.contains("knowledge_base"), "{entry}");
+    }
+
     fn ids_for(candidates_per_cycle: usize, seed: u64) -> Vec<String> {
         let path = tmp(&format!("cpc{candidates_per_cycle}-{seed}"));
         let mut j = Journal::open(&path).unwrap();
@@ -1479,6 +1549,7 @@ mod tests {
             seed: 0,
             plan: "forger".into(),
             definitions: vec![],
+            knowledge_base: None,
             parent: None,
             genome: None,
             note: String::new(),
