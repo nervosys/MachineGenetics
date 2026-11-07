@@ -40,7 +40,9 @@ kb Schema {
     // `gated_form`, `profile_limit`, `profile_constraint` and `profile_signature`
     // relations, for kb/profiles/arena.mg.
     // v13 (2026-11-01): `form_example` and `profile_text`, the arena's prompt.
-    fact schema_version(13);
+    // v14 (2026-11-03): `block_name` and `block_signature`, for the forge block
+    // store's facts (`BlockStore::facts` in forge/src/registry/blocks.rs).
+    fact schema_version(14);
 
     // ── Classes ─────────────────────────────────────────────────────────
     // Seven roots. The twelve domains of MAGE_ONTOLOGY.md group facts into
@@ -191,6 +193,13 @@ kb Schema {
     fact relation(proposed_by);
     fact arg_class(proposed_by, 1, Artifact);
     fact arg_class(proposed_by, 2, NeuralComponent);
+    // A forge block, by its content address: its handle and its parameter signature.
+    fact relation(block_name);
+    fact arg_class(block_name, 1, Block);
+    fact arg_class(block_name, 2, Text);
+    fact relation(block_signature);
+    fact arg_class(block_signature, 1, Block);
+    fact arg_class(block_signature, 2, Text);
     fact relation(refused_by);
     fact arg_class(refused_by, 1, Refusal);
     fact arg_class(refused_by, 2, Rule);

@@ -191,6 +191,32 @@ impl BlockStore {
             .find(|h| h.name == name)
             .and_then(|h| self.get_by_sha(&h.sha256))
     }
+
+    /// The store's blocks as knowledge-base facts: each is a `Block` by its
+    /// content address, with its handle and signature. Effects are not stated:
+    /// forge does not check them, and `Unchecked` is not a fact about the block.
+    ///
+    /// Sorted by address, so the same store always gives the same text and a
+    /// regenerated file is not a diff. The text is the body of a `kb` block,
+    /// read by `prototype/src/kb.rs`, which checks it against `kb/schema.mg`.
+    pub fn facts(&self) -> String {
+        let mut idx = self.list();
+        idx.sort_by(|a, b| a.sha256.cmp(&b.sha256));
+        let mut out = String::from("kb ForgeBlocks {\n");
+        for h in &idx {
+            let id = format!("sha256:{}", h.sha256.strip_prefix("sha256:").unwrap_or(&h.sha256));
+            out.push_str(&format!("    fact instance_of({}, Block);\n", kb_string(&id)));
+            out.push_str(&format!("    fact block_name({}, {});\n", kb_string(&id), kb_string(&h.name)));
+            out.push_str(&format!("    fact block_signature({}, {});\n", kb_string(&id), kb_string(&h.signature)));
+        }
+        out.push_str("}\n");
+        out
+    }
+}
+
+/// A string constant in `kb` syntax: `\` and `"` escaped, as `logic.rs` reads them.
+fn kb_string(s: &str) -> String {
+    format!("\"{}\"", s.replace('\\', "\\\\").replace('"', "\\\""))
 }
 
 /// Something that can say what a block's source does.
@@ -413,6 +439,29 @@ mod tests {
             store.get_by_name("TransformerBlock").is_none(),
             "get_by_name must not return content get_by_sha refused"
         );
+    }
+
+    /// Each published block is stated as a `Block` by its address, with its
+    /// name and signature, and the text is the same on every call.
+    #[test]
+    fn a_store_states_each_block_as_a_block_fact() {
+        let store = temp_store("facts");
+        let two = format!("{SRC}\nblock Tiny(d) {{ layer fc: Linear(d, d); }}\n");
+        let handles = store.publish_source(&two).unwrap();
+        let facts = store.facts();
+        assert!(facts.starts_with("kb ForgeBlocks {\n"), "{facts}");
+        for h in &handles {
+            let id = format!("sha256:{}", h.sha256);
+            assert!(facts.contains(&format!("    fact instance_of(\"{id}\", Block);\n")), "{facts}");
+            assert!(facts.contains(&format!("    fact block_name(\"{id}\", \"{}\");\n", h.name)), "{facts}");
+            assert!(facts.contains(&format!("    fact block_signature(\"{id}\", \"{}\");\n", h.signature)), "{facts}");
+        }
+        assert_eq!(facts, store.facts(), "the same store, the same text");
+    }
+
+    #[test]
+    fn a_string_in_kb_syntax_escapes_quotes_and_backslashes() {
+        assert_eq!(kb_string(r#"a"b\c"#), r#""a\"b\\c""#);
     }
 
     #[test]
