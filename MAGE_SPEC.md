@@ -1094,7 +1094,8 @@ kb_item = 'fact' IDENT '(' arg_list ')' ';'
 arg_list = ( IDENT | STRING | NUMBER ) { ',' ( IDENT | STRING | NUMBER ) }* ;
 
 block    = '{' literal { '&&' literal }* '}' ;
-literal  = [ '!' ] IDENT '(' term { ',' term }* ')' ;
+literal  = [ '!' ] IDENT '(' term { ',' term }* ')'
+         | term ( '==' | '!=' ) term ;
 term     = IDENT | STRING | NUMBER ;
 ```
 
@@ -1110,8 +1111,11 @@ its body.
 - **`!p(..)` is negation**: true when no fact matches. It is stratified: a
   predicate is computed only after everything it negates is complete, and a
   predicate that depends on its own negation is an error.
-- **A rule must be safe.** Every head parameter, and every named variable in
-  a negated literal, must appear in a positive literal of the body. `_` in a
+- **`a == b` and `a != b` compare** two variables or constants. They filter
+  bindings and match no stored fact.
+- **A rule must be safe.** Every head parameter, every named variable in a
+  negated literal and every variable in a comparison must appear in a
+  positive literal of the body. `_` in a
   negated literal is a wildcard local to it: `!parent(_, x)` holds when no
   fact `parent(y, x)` exists for any `y`.
 
@@ -2444,8 +2448,13 @@ val dot = (a * b).sum();
 <kb_def>     ::= "kb" IDENT "{" <kb_items> "}"
 <kb_items>   ::= <kb_item> <kb_items> | ε
 <kb_item>    ::= "fact" IDENT "(" <arg_list> ")" ";"
-               | "rule" IDENT "(" <param_list> ")" ":-" <rule_body> ";"
-               | "query" IDENT "(" <param_list> ")" ":-" <rule_body> ";"
+               | "rule" IDENT "(" <param_list> ")" <opt_where> "{" <kb_body> "}"
+<opt_where>  ::= "where" <kb_literal> <where_rest> | ε
+<where_rest> ::= "," <kb_literal> <where_rest> | ε
+<kb_body>    ::= <kb_literal> | <kb_literal> "&&" <kb_body>
+<kb_literal> ::= IDENT "(" <arg_list> ")" | "!" IDENT "(" <arg_list> ")"
+               | <kb_term> "==" <kb_term> | <kb_term> "!=" <kb_term>
+<kb_term>    ::= IDENT | STRING | NUMBER
 
 <evolve_def> ::= "evolve" IDENT "{" <evolve_fields> "}"
 <evolve_fields> ::= <evolve_field> <evolve_fields> | ε

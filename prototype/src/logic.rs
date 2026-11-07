@@ -83,10 +83,29 @@ impl Literal {
     pub fn neg(atom: Atom) -> Self {
         Literal { atom, negated: true }
     }
+
+    /// A comparison `a == b` or `a != b`, written as a literal whose
+    /// predicate is the operator. No identifier can be named `==` or `!=`, so
+    /// it never meets a stored relation: it filters bindings, it does not
+    /// join.
+    pub fn is_comparison(&self) -> bool {
+        is_comparison_op(&self.atom.predicate)
+    }
+}
+
+fn is_comparison_op(op: &str) -> bool {
+    op == "==" || op == "!="
 }
 
 impl std::fmt::Display for Literal {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.is_comparison() {
+            let side = |t: &Term| match t {
+                Term::Const(c) => format!("\"{c}\""),
+                Term::Var(v) => v.clone(),
+            };
+            return write!(f, "{} {} {}", side(&self.atom.args[0]), self.atom.predicate, side(&self.atom.args[1]));
+        }
         if self.negated {
             write!(f, "!{}", self.atom)
         } else {
@@ -229,14 +248,15 @@ impl KnowledgeBase {
         ));
     }
 
-    /// The reason a rule cannot be evaluated, if any: a head variable or a
-    /// negated variable that no positive literal binds. Without that, the
-    /// rule's results would depend on the whole universe of constants.
+    /// The reason a rule cannot be evaluated, if any: a head variable, a
+    /// negated variable or a compared variable that no positive literal
+    /// binds. Without that, the rule's results would depend on the whole
+    /// universe of constants.
     fn unsafe_reason(rule: &Rule) -> Option<String> {
         let bound: HashSet<&str> = rule
             .body
             .iter()
-            .filter(|l| !l.negated)
+            .filter(|l| !l.negated && !l.is_comparison())
             .flat_map(|l| vars_of(&l.atom))
             .collect();
         if let Some(v) = vars_of(&rule.head).find(|v| !bound.contains(v)) {
@@ -253,6 +273,13 @@ impl KnowledgeBase {
                 ));
             }
         }
+        for lit in rule.body.iter().filter(|l| l.is_comparison()) {
+            if let Some(v) = vars_of(&lit.atom).find(|v| !bound.contains(v)) {
+                return Some(format!(
+                    "`{v}` in `{lit}` is not bound by any positive literal, so the comparison has no meaning"
+                ));
+            }
+        }
         None
     }
 
@@ -266,7 +293,7 @@ impl KnowledgeBase {
         loop {
             let mut changed = false;
             for rule in rules {
-                for lit in &rule.body {
+                for lit in rule.body.iter().filter(|l| !l.is_comparison()) {
                     let below = stratum.get(&lit.atom.predicate).copied().unwrap_or(0);
                     let need = if lit.negated { below + 1 } else { below };
                     let head = stratum.get_mut(&rule.head.predicate).expect("every head has a stratum");
@@ -365,8 +392,14 @@ impl KnowledgeBase {
     /// Evaluate a single rule against current facts. With `delta`, only
     /// derivations that use at least one fact from it are produced.
     fn evaluate_rule(&self, rule: &Rule, delta: Option<&HashMap<String, Relation>>) -> Vec<Vec<String>> {
-        let positive: Vec<&Atom> = rule.body.iter().filter(|l| !l.negated).map(|l| &l.atom).collect();
+        let positive: Vec<&Atom> = rule
+            .body
+            .iter()
+            .filter(|l| !l.negated && !l.is_comparison())
+            .map(|l| &l.atom)
+            .collect();
         let negative: Vec<&Atom> = rule.body.iter().filter(|l| l.negated).map(|l| &l.atom).collect();
+        let compared: Vec<&Atom> = rule.body.iter().filter(|l| l.is_comparison()).map(|l| &l.atom).collect();
         let empty = Relation::new();
         let full = |p: &str| self.facts.get(p).unwrap_or(&empty);
 
@@ -402,6 +435,14 @@ impl KnowledgeBase {
                 }
             }
             for binding in &bindings {
+                // A safe rule has bound both sides of every comparison.
+                let holds = compared.iter().all(|atom| {
+                    let ground = apply_binding_atom(atom, binding);
+                    (ground.args[0] == ground.args[1]) == (atom.predicate == "==")
+                });
+                if !holds {
+                    continue;
+                }
                 // Blocked when any fact matches; a safe rule leaves only
                 // wildcards unbound here, and they match anything.
                 let blocked = negative.iter().any(|atom| {
@@ -592,18 +633,30 @@ pub fn read_rule(rule: &ast::RuleDef) -> Result<Rule, String> {
     let mut body = Vec::new();
     let mut fresh = 0usize;
     for e in rule_body_exprs(rule) {
+        if let ast::Expr::Binary { op, left, right } = e
+            && is_comparison_op(op)
+        {
+            let side = |x: &ast::Expr, fresh: &mut usize| term_of(x, fresh);
+            let (Some(l), Some(r)) = (side(left, &mut fresh), side(right, &mut fresh)) else {
+                return Err(format!(
+                    "a side of `{op}` is not a variable or a constant"
+                ));
+            };
+            body.push(Literal::pos(Atom { predicate: op.clone(), args: vec![l, r] }));
+            continue;
+        }
         let (call, negated) = match e {
             ast::Expr::Unary { op, operand } if op == "!" => (operand.as_ref(), true),
             _ => (e, false),
         };
         let atom = atom_of(call, &mut fresh).ok_or_else(|| {
             "its body holds something that is not a predicate call; write each condition as \
-             `p(x, ..)` or `!p(x, ..)`, joined by `&&`"
+             `p(x, ..)`, `!p(x, ..)` or `x != y`, joined by `&&`"
                 .to_string()
         })?;
         body.push(Literal { atom, negated });
     }
-    if body.is_empty() {
+    if body.iter().all(|l| l.is_comparison()) {
         return Err("its body has no predicate calls".into());
     }
     Ok(Rule { head, body })
@@ -616,16 +669,22 @@ fn atom_of(expr: &ast::Expr, fresh: &mut usize) -> Option<Atom> {
     let ast::Expr::Ident { name: predicate } = func.as_ref() else { return None };
     let mut terms = Vec::with_capacity(args.len());
     for a in args {
-        terms.push(match a {
-            ast::Expr::Ident { name } if name == "_" => {
-                *fresh += 1;
-                Term::Var(format!("_{fresh}"))
-            }
-            ast::Expr::Ident { name } => Term::Var(name.clone()),
-            _ => Term::Const(literal_constant(a)?),
-        });
+        terms.push(term_of(a, fresh)?);
     }
     Some(Atom { predicate: predicate.clone(), args: terms })
+}
+
+/// Read one argument: an identifier is a variable (`_` a fresh one), a
+/// literal is a constant.
+fn term_of(a: &ast::Expr, fresh: &mut usize) -> Option<Term> {
+    Some(match a {
+        ast::Expr::Ident { name } if name == "_" => {
+            *fresh += 1;
+            Term::Var(format!("_{fresh}"))
+        }
+        ast::Expr::Ident { name } => Term::Var(name.clone()),
+        _ => Term::Const(literal_constant(a)?),
+    })
 }
 
 // ── Tests ───────────────────────────────────────────────────────────
@@ -871,6 +930,31 @@ mod tests {
         let mut kb = kb_of("kb F {\n    fact p(a);\n    rule r(x: str) { p(x) && !q(x, y) }\n}\n");
         kb.materialize();
         assert!(errors(&kb).iter().any(|e| e.contains("`y` in `!q(x, y)`")), "{:?}", errors(&kb));
+    }
+
+    /// `a != b` filters bindings: two distinct enforcers of one rule.
+    #[test]
+    fn a_comparison_filters_bindings() {
+        let mut kb = kb_of(concat!(
+            "kb S {\n",
+            "    fact enforced_by(e1, parser);\n",
+            "    fact enforced_by(e2, parser);\n",
+            "    fact enforced_by(e2, checker);\n",
+            "    rule twice(r: str) { enforced_by(r, a) && enforced_by(r, b) && a != b }\n",
+            "    rule self_paired(r: str) { enforced_by(r, a) && enforced_by(r, b) && a == b }\n",
+            "}\n",
+        ));
+        kb.materialize();
+        assert!(errors(&kb).is_empty(), "{:?}", errors(&kb));
+        assert_eq!(kb.query("twice", &["?"]), vec![vec!["e2".to_string()]]);
+        assert_eq!(kb.query("self_paired", &["?"]).len(), 2);
+    }
+
+    #[test]
+    fn an_unbound_compared_variable_is_refused() {
+        let mut kb = kb_of("kb S {\n    fact p(a);\n    rule r(x: str) { p(x) && x != y }\n}\n");
+        kb.materialize();
+        assert!(errors(&kb).iter().any(|e| e.contains("`y` in `x != y`")), "{:?}", errors(&kb));
     }
 
     /// MAGE_SPEC §7.1's example. `_` in a negation is a wildcard, so
