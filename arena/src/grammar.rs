@@ -631,6 +631,558 @@ pub fn crossover(a: &Program, b: &Program, rng: &mut Rng) -> Program {
     out
 }
 
+// ── Reading programs back ────────────────────────────────────────────────
+
+/// Literal and length bounds, inclusive. The parser refuses outside them and
+/// the prompt states them. Sampling draws within the same ranges (see
+/// [`Sampler`]); the round-trip test holds the two together.
+pub mod bounds {
+    use super::MAX_LEN;
+    pub const LITERAL: (u64, u64) = (0, 255);
+    pub const MOD: (u64, u64) = (2, 256);
+    pub const RANGE: (u64, u64) = (1, MAX_LEN);
+    pub const TAKE: (u64, u64) = (1, MAX_LEN);
+    pub const REPEAT: (u64, u64) = (1, MAX_LEN / 4);
+    pub const CYCLE_LEN: (u64, u64) = (4, MAX_LEN);
+    pub const CYCLE_ELEMS: (u64, u64) = (2, 6);
+    pub const COPY: (u64, u64) = (2, 6);
+    pub const NEST_COUNT: (u64, u64) = (2, 12);
+    pub const NEST_MOD: (u64, u64) = (2, 8);
+    pub const FILTER_MOD: (u64, u64) = (2, 7);
+}
+
+/// One example of each production, rendered by this module's own renderers, in
+/// [`LIST_RULES`] and [`INT_RULES`] order. The arena's prompt is built from
+/// these, so what a proposer is told the grammar is cannot drift from what
+/// `render` writes, and a test checks every example parses back.
+pub fn production_examples() -> (Vec<(&'static str, String)>, Vec<(&'static str, String)>) {
+    fn text_of_list(e: &ListExpr) -> String {
+        let mut s = String::new();
+        e.render(&mut s);
+        s
+    }
+    fn text_of_int(e: &IntExpr) -> String {
+        let mut s = String::new();
+        e.render(&mut s);
+        s
+    }
+    let range = |n: u64| Box::new(ListExpr::Range(n));
+    let var = |v: &str| IntExpr::Var(v.into());
+    let lists: [(&str, ListExpr); 12] = [
+        ("range", ListExpr::Range(8)),
+        ("repeat", ListExpr::Repeat(IntExpr::Lit(3), 4)),
+        ("map", ListExpr::Map(range(4), "x".into(), IntExpr::Mul(Box::new(var("x")), Box::new(IntExpr::Lit(3))))),
+        (
+            "scan",
+            ListExpr::Scan(
+                range(4),
+                var("s"),
+                "a".into(),
+                "x".into(),
+                IntExpr::Add(Box::new(var("a")), Box::new(var("x"))),
+            ),
+        ),
+        ("filter", ListExpr::Filter(range(8), "x".into(), 3, 1)),
+        ("reverse", ListExpr::Reverse(range(5))),
+        ("sort", ListExpr::Sort(range(5))),
+        ("take", ListExpr::Take(range(9), 4)),
+        ("concat", ListExpr::Concat(range(3), range(2))),
+        ("copy", ListExpr::Copy(range(3), 2)),
+        ("cycle", ListExpr::Cycle("v".into(), vec![IntExpr::Lit(1), var("s"), IntExpr::Lit(0)], 6)),
+        ("nest", ListExpr::Nest("v".into(), 4, 3)),
+    ];
+    let ints: [(&str, IntExpr); 6] = [
+        ("lit", IntExpr::Lit(7)),
+        ("var", var("s")),
+        ("add", IntExpr::Add(Box::new(var("s")), Box::new(IntExpr::Lit(3)))),
+        ("sub", IntExpr::Sub(Box::new(var("s")), Box::new(IntExpr::Lit(3)))),
+        ("mul", IntExpr::Mul(Box::new(var("s")), Box::new(IntExpr::Lit(3)))),
+        ("mod", IntExpr::Mod(Box::new(var("s")), 5)),
+    ];
+    (
+        lists.iter().map(|(n, e)| (*n, text_of_list(e))).collect(),
+        ints.iter().map(|(n, e)| (*n, text_of_int(e))).collect(),
+    )
+}
+
+/// The grammar as a proposer is told it: every production as its rendered
+/// example, and the bounds. Generated from [`production_examples`] and
+/// [`bounds`], never written out by hand.
+pub fn describe_grammar() -> String {
+    let (lists, ints) = production_examples();
+    let range = |(lo, hi): (u64, u64)| format!("{lo}..={hi}");
+    let mut s = String::from("A body is one list expression over the seed `s`. Its forms, one example each:\n");
+    for (name, text) in &lists {
+        s.push_str(&format!("  {name:<8} {text}\n"));
+    }
+    s.push_str("Integer expressions, inside any of them:\n");
+    for (name, text) in &ints {
+        s.push_str(&format!("  {name:<8} {text}\n"));
+    }
+    s.push_str(&format!(
+        "Bounds: range and take lengths {}; repeat lengths {}; literals {}; modulus {}; \
+         cycle templates have {} elements and length {}; copy counts {}; nest counts {} and moduli {}; \
+         filter moduli {}. Lists nest at most {MAX_DEPTH} levels deep. Every variable must be \
+         `s` or a closure parameter in scope.\n",
+        range(bounds::RANGE),
+        range(bounds::REPEAT),
+        range(bounds::LITERAL),
+        range(bounds::MOD),
+        range(bounds::CYCLE_ELEMS),
+        range(bounds::CYCLE_LEN),
+        range(bounds::COPY),
+        range(bounds::NEST_COUNT),
+        range(bounds::NEST_MOD),
+        range(bounds::FILTER_MOD),
+    ));
+    s
+}
+
+/// How many method calls in a row, and how deeply nested, the parser follows
+/// before it refuses. Every grammar tree is far shallower; this bounds the
+/// stack, so no input can exhaust it.
+const MAX_NEST: usize = 64;
+
+impl Program {
+    /// The inverse of [`Program::source`]. Accepts the whole `source()` text, or
+    /// just the body expression. Whitespace between tokens, and around the text,
+    /// is not significant. Anything outside the grammar is refused with a reason
+    /// and a byte offset: an unknown method, a literal or length outside
+    /// [`bounds`], a variable not in scope, a modulus or nesting the sampler
+    /// never writes (nesting is limited by [`MAX_DEPTH`]).
+    ///
+    /// It does not judge meaning. A text that parses here can still be refused
+    /// by the substrate, for fuel or types. That is the gate's job.
+    pub fn parse(src: &str) -> Result<Program, String> {
+        let mut p = Parser { src, pos: 0, nest: 0 };
+        let scope = ["s".to_string()];
+        let body = if src.trim_start().starts_with('@') {
+            for tok in ["@role", "(", "candidate", ")", "f", "gen", "(", "s", ":", "usize", ")", "->", "[", "usize", "]", "{"] {
+                p.expect(tok)?;
+            }
+            let body = p.list(&scope)?;
+            p.expect("}")?;
+            body
+        } else {
+            p.list(&scope)?
+        };
+        p.end()?;
+        check_list_depth(&body, 0)?;
+        Ok(Program { body })
+    }
+}
+
+/// The depth limit, as [`Sampler`] applies it. A list node at [`MAX_DEPTH`] is
+/// a leaf; at deeper levels there are none. Integer operators stop two levels
+/// below the list depth limit.
+fn check_list_depth(e: &ListExpr, d: usize) -> Result<(), String> {
+    let leaf = matches!(e, ListExpr::Range(_) | ListExpr::Repeat(..) | ListExpr::Cycle(..) | ListExpr::Nest(..));
+    if d > MAX_DEPTH || (d == MAX_DEPTH && !leaf) {
+        return Err(format!("nested deeper than MAX_DEPTH = {MAX_DEPTH}"));
+    }
+    match e {
+        ListExpr::Range(_) | ListExpr::Cycle(..) | ListExpr::Nest(..) => Ok(()),
+        ListExpr::Repeat(i, _) => check_int_depth(i, d + 1),
+        ListExpr::Map(xs, _, b) => {
+            check_list_depth(xs, d + 1)?;
+            check_int_depth(b, d + 1)
+        }
+        ListExpr::Scan(xs, init, _, _, b) => {
+            check_list_depth(xs, d + 1)?;
+            check_int_depth(init, d + 1)?;
+            check_int_depth(b, d + 1)
+        }
+        ListExpr::Filter(xs, ..) | ListExpr::Reverse(xs) | ListExpr::Sort(xs) | ListExpr::Take(xs, _) => {
+            check_list_depth(xs, d + 1)
+        }
+        ListExpr::Concat(a, b) => {
+            check_list_depth(a, d + 1)?;
+            check_list_depth(b, d + 1)
+        }
+        ListExpr::Copy(xs, _) => check_list_depth(xs, d + 1),
+    }
+}
+
+fn check_int_depth(e: &IntExpr, d: usize) -> Result<(), String> {
+    let leaf = matches!(e, IntExpr::Lit(_) | IntExpr::Var(_));
+    if d > MAX_DEPTH + 2 || (d == MAX_DEPTH + 2 && !leaf) {
+        return Err(format!("integer expression nested deeper than MAX_DEPTH = {MAX_DEPTH}"));
+    }
+    match e {
+        IntExpr::Lit(_) | IntExpr::Var(_) => Ok(()),
+        IntExpr::Add(a, b) | IntExpr::Sub(a, b) | IntExpr::Mul(a, b) => {
+            check_int_depth(a, d + 1)?;
+            check_int_depth(b, d + 1)
+        }
+        IntExpr::Mod(a, _) => check_int_depth(a, d + 1),
+    }
+}
+
+fn word_char(c: char) -> bool {
+    c.is_ascii_alphanumeric() || c == '_'
+}
+
+/// A hand-written recursive-descent parser over the surface [`render`] writes.
+struct Parser<'a> {
+    src: &'a str,
+    pos: usize,
+    nest: usize,
+}
+
+impl<'a> Parser<'a> {
+    fn rest(&self) -> &'a str {
+        &self.src[self.pos..]
+    }
+
+    fn skip_ws(&mut self) {
+        let rest = self.rest();
+        self.pos += rest.len() - rest.trim_start().len();
+    }
+
+    fn peek(&mut self) -> Option<char> {
+        self.skip_ws();
+        self.rest().chars().next()
+    }
+
+    fn starts_name(&mut self) -> bool {
+        self.peek().is_some_and(|c| c.is_ascii_alphabetic() || c == '_')
+    }
+
+    /// Consume `tok` if the text says it next. A token that ends in a word
+    /// character must not run on into one, so `range` is not `ranges`.
+    fn eat(&mut self, tok: &str) -> bool {
+        self.skip_ws();
+        let rest = self.rest();
+        if !rest.starts_with(tok) {
+            return false;
+        }
+        let word_ends = tok.chars().last().is_some_and(word_char);
+        if word_ends && rest[tok.len()..].chars().next().is_some_and(word_char) {
+            return false;
+        }
+        self.pos += tok.len();
+        true
+    }
+
+    fn expect(&mut self, tok: &str) -> Result<(), String> {
+        if self.eat(tok) {
+            Ok(())
+        } else {
+            Err(self.error(&format!("expected `{tok}`")))
+        }
+    }
+
+    fn error(&mut self, what: &str) -> String {
+        self.skip_ws();
+        let found: String = self.rest().chars().take(16).collect();
+        let found = if found.is_empty() { "the end of the text".to_string() } else { format!("`{found}`") };
+        format!("{what} at byte {}, found {found}", self.pos)
+    }
+
+    fn end(&mut self) -> Result<(), String> {
+        self.skip_ws();
+        if self.rest().is_empty() {
+            Ok(())
+        } else {
+            Err(self.error("unexpected text after the program"))
+        }
+    }
+
+    fn ident(&mut self) -> Result<String, String> {
+        if !self.starts_name() {
+            return Err(self.error("expected a name"));
+        }
+        let rest = self.rest();
+        let n = rest.find(|c: char| !word_char(c)).unwrap_or(rest.len());
+        self.pos += n;
+        Ok(rest[..n].to_string())
+    }
+
+    /// A decimal literal in `lo..=hi`: no sign, and no leading zero.
+    fn number(&mut self, (lo, hi): (u64, u64), what: &str) -> Result<u64, String> {
+        self.skip_ws();
+        let rest = self.rest();
+        let n = rest.find(|c: char| !c.is_ascii_digit()).unwrap_or(rest.len());
+        if n == 0 || (n > 1 && rest.starts_with('0')) {
+            return Err(self.error(&format!("expected {what}")));
+        }
+        let at = self.pos;
+        self.pos += n;
+        match rest[..n].parse::<u64>() {
+            Ok(v) if (lo..=hi).contains(&v) => Ok(v),
+            Ok(v) => Err(format!("{what} {v} at byte {at} is outside the grammar's {lo}..={hi}")),
+            Err(_) => Err(format!("{what} at byte {at} is too large for the grammar's {lo}..={hi}")),
+        }
+    }
+
+    fn enter(&mut self) -> Result<(), String> {
+        self.nest += 1;
+        if self.nest > MAX_NEST {
+            Err(format!("nested more than {MAX_NEST} levels deep"))
+        } else {
+            Ok(())
+        }
+    }
+
+    fn list(&mut self, scope: &[String]) -> Result<ListExpr, String> {
+        self.enter()?;
+        let e = self.list_chain(scope)?;
+        self.nest -= 1;
+        Ok(e)
+    }
+
+    fn int(&mut self, scope: &[String]) -> Result<IntExpr, String> {
+        self.enter()?;
+        let e = self.int_expr(scope)?;
+        self.nest -= 1;
+        Ok(e)
+    }
+
+    /// An atom, then any `.method(…)` calls on it, left to right.
+    fn list_chain(&mut self, scope: &[String]) -> Result<ListExpr, String> {
+        let mut e = self.list_atom(scope)?;
+        let mut calls = 0;
+        while self.eat(".") {
+            calls += 1;
+            if calls > MAX_NEST {
+                return Err(format!("more than {MAX_NEST} method calls in a row"));
+            }
+            e = self.method(e, scope)?;
+        }
+        Ok(e)
+    }
+
+    fn list_atom(&mut self, scope: &[String]) -> Result<ListExpr, String> {
+        if self.eat("[") {
+            let e = self.int(scope)?;
+            self.expect(";")?;
+            let n = self.number(bounds::REPEAT, "repeat length")?;
+            self.expect("]")?;
+            return Ok(ListExpr::Repeat(e, n));
+        }
+        if !self.starts_name() {
+            return Err(self.error("expected a list expression"));
+        }
+        self.skip_ws();
+        let at = self.pos;
+        match self.ident()?.as_str() {
+            "range" => {
+                self.expect("(")?;
+                let n = self.number(bounds::RANGE, "range length")?;
+                self.expect(")")?;
+                Ok(ListExpr::Range(n))
+            }
+            "flatten" => self.flatten(scope),
+            other => Err(format!("unknown list expression `{other}` at byte {at}")),
+        }
+    }
+
+    /// `flatten(…)` is nested counting, concatenation or copying.
+    fn flatten(&mut self, scope: &[String]) -> Result<ListExpr, String> {
+        self.expect("(")?;
+        if self.eat("range") {
+            // flatten(range(n).map(|v| range(v % k + 1)))
+            self.expect("(")?;
+            let n = self.number(bounds::NEST_COUNT, "nest count")?;
+            self.expect(")")?;
+            self.expect(".")?;
+            self.expect("map")?;
+            self.expect("(")?;
+            self.expect("|")?;
+            let v = self.ident()?;
+            self.expect("|")?;
+            self.expect("range")?;
+            self.expect("(")?;
+            if self.ident()? != v {
+                return Err(self.error(&format!("the nest counts by `{v}`, which is not the variable used")));
+            }
+            self.expect("%")?;
+            let k = self.number(bounds::NEST_MOD, "nest modulus")?;
+            self.expect("+")?;
+            self.expect("1")?;
+            self.expect(")")?; // range
+            self.expect(")")?; // map
+            self.expect(")")?; // flatten
+            Ok(ListExpr::Nest(v, n, k))
+        } else {
+            // flatten([a, b]) or flatten([a; n])
+            self.expect("[")?;
+            let a = self.list(scope)?;
+            if self.eat(",") {
+                let b = self.list(scope)?;
+                self.expect("]")?;
+                self.expect(")")?;
+                Ok(ListExpr::Concat(Box::new(a), Box::new(b)))
+            } else {
+                self.expect(";")?;
+                let n = self.number(bounds::COPY, "copy count")?;
+                self.expect("]")?;
+                self.expect(")")?;
+                Ok(ListExpr::Copy(Box::new(a), n))
+            }
+        }
+    }
+
+    fn method(&mut self, xs: ListExpr, scope: &[String]) -> Result<ListExpr, String> {
+        self.skip_ws();
+        let at = self.pos;
+        let xs = Box::new(xs);
+        Ok(match self.ident()?.as_str() {
+            "reverse" => {
+                self.expect("(")?;
+                self.expect(")")?;
+                ListExpr::Reverse(xs)
+            }
+            "sort" => {
+                self.expect("(")?;
+                self.expect(")")?;
+                ListExpr::Sort(xs)
+            }
+            "take" => {
+                self.expect("(")?;
+                let n = self.number(bounds::TAKE, "take count")?;
+                self.expect(")")?;
+                ListExpr::Take(xs, n)
+            }
+            "filter" => {
+                self.expect("(")?;
+                self.expect("|")?;
+                let v = self.ident()?;
+                self.expect("|")?;
+                if self.ident()? != v {
+                    return Err(self.error(&format!("the filter tests a variable other than `{v}`")));
+                }
+                self.expect("%")?;
+                let k = self.number(bounds::FILTER_MOD, "filter modulus")?;
+                self.expect("==")?;
+                let r = self.number((0, k - 1), "filter remainder")?;
+                self.expect(")")?;
+                ListExpr::Filter(xs, v, k, r)
+            }
+            "scan" => {
+                self.expect("(")?;
+                let init = self.int(scope)?;
+                self.expect(",")?;
+                self.expect("|")?;
+                let a = self.ident()?;
+                self.expect(",")?;
+                let x = self.ident()?;
+                self.expect("|")?;
+                let inner = [scope, &[a.clone(), x.clone()]].concat();
+                let body = self.int(&inner)?;
+                self.expect(")")?;
+                ListExpr::Scan(xs, init, a, x, body)
+            }
+            "map" => {
+                self.expect("(")?;
+                self.expect("|")?;
+                let v = self.ident()?;
+                self.expect("|")?;
+                if self.peek() == Some('[') {
+                    self.template(*xs, v, scope)?
+                } else {
+                    let inner = [scope, std::slice::from_ref(&v)].concat();
+                    let body = self.int(&inner)?;
+                    self.expect(")")?;
+                    ListExpr::Map(xs, v, body)
+                }
+            }
+            other => return Err(format!("unknown method `{other}` at byte {at}")),
+        })
+    }
+
+    /// `range(len).map(|v| [e, …][v % k])`: a periodic template over `range`.
+    fn template(&mut self, xs: ListExpr, v: String, scope: &[String]) -> Result<ListExpr, String> {
+        let ListExpr::Range(len) = xs else {
+            return Err(self.error("a literal template is written over `range(n)` and nothing else"));
+        };
+        if !(bounds::CYCLE_LEN.0..=bounds::CYCLE_LEN.1).contains(&len) {
+            return Err(format!("template length {len} is outside the grammar's {:?}", bounds::CYCLE_LEN));
+        }
+        self.expect("[")?;
+        let mut elems = Vec::new();
+        loop {
+            elems.push(self.template_elem(scope)?);
+            if !self.eat(",") {
+                break;
+            }
+        }
+        self.expect("]")?;
+        let k = elems.len() as u64;
+        if !(bounds::CYCLE_ELEMS.0..=bounds::CYCLE_ELEMS.1).contains(&k) {
+            return Err(format!("template has {k} elements, outside the grammar's {:?}", bounds::CYCLE_ELEMS));
+        }
+        self.expect("[")?;
+        if self.ident()? != v {
+            return Err(self.error(&format!("the template indexes by a variable other than `{v}`")));
+        }
+        self.expect("%")?;
+        self.number((k, k), "template index modulus")?;
+        self.expect("]")?;
+        self.expect(")")?;
+        Ok(ListExpr::Cycle(v, elems, len))
+    }
+
+    /// A template element is a literal or a variable in scope, never arithmetic.
+    fn template_elem(&mut self, scope: &[String]) -> Result<IntExpr, String> {
+        match self.peek() {
+            Some(c) if c.is_ascii_digit() => Ok(IntExpr::Lit(self.number(bounds::LITERAL, "literal")?)),
+            Some(_) if self.starts_name() => self.bound_var(scope).map(IntExpr::Var),
+            _ => Err(self.error("expected a literal or a bound variable in a template")),
+        }
+    }
+
+    fn bound_var(&mut self, scope: &[String]) -> Result<String, String> {
+        self.skip_ws();
+        let at = self.pos;
+        let name = self.ident()?;
+        if scope.contains(&name) {
+            Ok(name)
+        } else {
+            Err(format!("`{name}` is not bound here (byte {at})"))
+        }
+    }
+
+    fn int_expr(&mut self, scope: &[String]) -> Result<IntExpr, String> {
+        match self.peek() {
+            Some(c) if c.is_ascii_digit() => Ok(IntExpr::Lit(self.number(bounds::LITERAL, "literal")?)),
+            Some('(') => {
+                // (a % k)
+                self.expect("(")?;
+                let a = self.int(scope)?;
+                self.expect("%")?;
+                let k = self.number(bounds::MOD, "modulus")?;
+                self.expect(")")?;
+                Ok(IntExpr::Mod(Box::new(a), k))
+            }
+            Some(_) if self.starts_name() => {
+                self.skip_ws();
+                let at = self.pos;
+                let name = self.ident()?;
+                let op: Option<fn(Box<IntExpr>, Box<IntExpr>) -> IntExpr> = match name.as_str() {
+                    "wrapping_add" => Some(IntExpr::Add),
+                    "wrapping_sub" => Some(IntExpr::Sub),
+                    "wrapping_mul" => Some(IntExpr::Mul),
+                    _ => None,
+                };
+                match op {
+                    Some(build) => {
+                        self.expect("(")?;
+                        let a = self.int(scope)?;
+                        self.expect(",")?;
+                        let b = self.int(scope)?;
+                        self.expect(")")?;
+                        Ok(build(Box::new(a), Box::new(b)))
+                    }
+                    None if scope.contains(&name) => Ok(IntExpr::Var(name)),
+                    None => Err(format!("`{name}` is not bound here (byte {at})")),
+                }
+            }
+            _ => Err(self.error("expected an integer expression")),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -750,5 +1302,110 @@ mod tests {
             body: ListExpr::Concat(Box::new(ListExpr::Range(3)), Box::new(ListExpr::Range(4))),
         };
         assert!(long.token_len() > short.token_len());
+    }
+
+    fn assert_round_trips(p: &Program) {
+        let mut body = String::new();
+        p.body.render(&mut body);
+        assert_eq!(Program::parse(&p.source()), Ok(p.clone()), "{}", p.source());
+        assert_eq!(Program::parse(&body), Ok(p.clone()), "{body}");
+    }
+
+    /// The property the proposer's replies rely on: `parse` inverts `render`.
+    /// Sampled programs, and their mutations and crossovers, under a fixed seed.
+    /// Mutation and crossover graft subtrees sampled from depth 0, so a graft
+    /// can sit deeper than MAX_DEPTH. Those variants are refused, not misread,
+    /// and only the ones that fit are required to round-trip.
+    #[test]
+    fn parse_inverts_render_on_sampled_mutated_and_crossed_programs() {
+        let policy = Policy::default();
+        let mut rng = Rng(2026);
+        let (mut too_deep, mut checked) = (0, 0);
+        for _ in 0..2000 {
+            let (p, _) = policy.sample(&mut rng);
+            assert_round_trips(&p);
+            checked += 1;
+            let (q, _) = policy.sample(&mut rng);
+            for v in [mutate(&p, &policy, &mut rng), crossover(&p, &q, &mut rng)] {
+                if check_list_depth(&v.body, 0).is_ok() {
+                    assert_round_trips(&v);
+                    checked += 1;
+                } else {
+                    too_deep += 1;
+                    assert!(Program::parse(&v.source()).is_err(), "{}", v.source());
+                }
+            }
+        }
+        assert!(checked >= 2000, "only {checked} programs checked");
+        assert!(too_deep < checked, "every variant was too deep to check");
+    }
+
+    #[test]
+    fn parse_takes_the_whole_source_and_tolerates_whitespace() {
+        let want = Program { body: ListExpr::Copy(Box::new(ListExpr::Range(3)), 2) };
+        let whole = "@role(candidate)\nf gen(s: usize) -> [usize] {\n    flatten([range(3); 2])\n}\n";
+        assert_eq!(Program::parse(whole), Ok(want.clone()));
+        assert_eq!(Program::parse("  \n flatten( [ range( 3 ) ;2 ] )  \n"), Ok(want));
+    }
+
+    #[test]
+    fn parse_refuses_what_the_grammar_does_not_write() {
+        let refused = |src: &str| Program::parse(src).expect_err(src);
+        assert!(refused("range(3).flatMap(|x| x)").contains("unknown method `flatMap`"));
+        assert!(refused("range(3).map(|x| y)").contains("`y` is not bound"));
+        assert!(refused("range(3).map(|x| x).map(|y| x)").contains("`x` is not bound"));
+        assert!(refused("range(49)").contains("outside the grammar"));
+        assert!(refused("range(0)").contains("outside the grammar"));
+        assert!(refused("range(99999999999999999999999999)").contains("too large"));
+        assert!(refused("[256; 3]").contains("literal 256"));
+        assert!(refused("[1; 13]").contains("repeat length 13"));
+        assert!(refused("flatten([range(3); 7])").contains("copy count 7"));
+        assert!(refused("range(3).map(|x| (x % 1))").contains("modulus 1"));
+        assert!(refused("range(3).map(|x| (x % 257))").contains("modulus 257"));
+        assert!(refused("range(8).filter(|x| x % 2 == 2)").contains("filter remainder 2"));
+        assert!(refused("range(8).filter(|x| y % 3 == 1)").contains("tests a variable other"));
+        assert!(refused("range(6).map(|v| [1, 2][w % 2])").contains("other than `v`"));
+        assert!(refused("range(6).map(|v| [1, 2, 3][v % 2])").contains("modulus"));
+        assert!(refused("range(3).map(|v| [1, 2][v % 2])").contains("length 3"));
+        assert!(refused("range(4).reverse().map(|v| [1, 2][v % 2])").contains("over `range(n)`"));
+        assert!(refused("flatten(range(13).map(|v| range(v % 3 + 1)))").contains("nest count 13"));
+        for src in ["", "hello", "range(", "range(3) range(4)", "range(3).", "[1; 2", "f other(s: usize) -> [usize] { range(3) }"] {
+            assert!(Program::parse(src).is_err(), "accepted {src:?}");
+        }
+    }
+
+    #[test]
+    fn parse_refuses_nesting_past_max_depth() {
+        // Five reverses over a range: the range sits at the last level, a leaf.
+        let chain = |n: usize| format!("range(3){}", ".reverse()".repeat(n));
+        assert!(Program::parse(&chain(MAX_DEPTH)).is_ok());
+        let deep = Program::parse(&chain(MAX_DEPTH + 1)).expect_err("six levels");
+        assert!(deep.contains("MAX_DEPTH"), "{deep}");
+        // Integer nesting: a map's body sits one level down, and operators stop
+        // two levels below the list limit, so six nested adds fit and seven do not.
+        let adds = |n: usize| (0..n).fold("s".to_string(), |e, _| format!("wrapping_add({e}, 1)"));
+        assert!(Program::parse(&format!("range(3).map(|x| {})", adds(6))).is_ok());
+        let deep = Program::parse(&format!("range(3).map(|x| {})", adds(7))).expect_err("seven adds");
+        assert!(deep.contains("integer expression nested deeper"), "{deep}");
+    }
+
+    #[test]
+    fn the_prompt_grammar_names_every_production_and_its_examples_parse() {
+        let (lists, ints) = production_examples();
+        let names: Vec<&str> = lists.iter().map(|(n, _)| *n).collect();
+        assert_eq!(names, LIST_RULES.to_vec());
+        let names: Vec<&str> = ints.iter().map(|(n, _)| *n).collect();
+        assert_eq!(names, INT_RULES.to_vec());
+        for (_, text) in &lists {
+            assert_eq!(Program::parse(text).map(|p| { let mut s = String::new(); p.body.render(&mut s); s }), Ok(text.clone()));
+        }
+        for (_, text) in &ints {
+            let wrapped = format!("range(3).map(|x| {text})");
+            assert!(Program::parse(&wrapped).is_ok(), "{wrapped}");
+        }
+        let described = describe_grammar();
+        for name in LIST_RULES.iter().chain(INT_RULES.iter()) {
+            assert!(described.contains(name), "{name} missing from the description");
+        }
     }
 }

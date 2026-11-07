@@ -634,6 +634,72 @@ nothing separate remains. The equivalence test holds the shipped retention to
 the Rust pool's surviving entries after every insertion, over 300 random
 sequences with ties and repeated rewards at capacities of 3 to 8.
 
+## A command-backed proposer (plans 7.3, 3.4)
+
+`--agents command:N` adds N proposers whose programs come from a command.
+The command is given with two flags:
+
+- `--proposer-command "<cmd> <args...>"`: split on whitespace, so an argument
+  cannot contain a space. Required when a `command` agent is named; a run
+  without it is refused, naming the flag.
+- `--proposer-timeout S`: seconds, at least 1, default 60. A call that runs
+  longer is killed, and proposes nothing.
+
+**The protocol.** Each round the agent calls the command once, with its share
+`n`. The prompt arrives on the command's stdin. It holds the grammar, with each
+production shown as an example rendered by the arena's own renderer, and its
+bounds. It also holds the pool's eight best programs as full source with their
+rewards, and the request for up to `n` new programs. The reply is on stdout:
+one program body per block, with blocks separated by lines that contain only
+`---`. A block may also be a whole source text. The arena parses each block
+with the grammar the sampler writes (`Program::parse`), keeps at most `n`,
+and drops the rest.
+
+```text
+range(8)
+---
+flatten([range(3); 2])
+---
+range(16).map(|x| wrapping_mul(x, 3))
+```
+
+- **It competes on the same terms as every agent.** Its output is ordinary
+  candidates and nothing else. Each is gated, fuelled, canary-checked,
+  credited and pooled as a grammar agent's would be. It has no path to the
+  pool, the learners or the ledger, and a refused program is a refusal in its
+  standing. The share and the budget apply as they do to any agent.
+- **Its energy is metered by the agent's own span.** `propose` runs inside the
+  span the loop opens for every agent, so the command's wall time, and whatever
+  the meter reads over it, is charged to the agent's `joules` and to the
+  `proposer` role. A local model behind the command is therefore measured,
+  to the extent the run's meters measure the machine: that is the local-model
+  half of plan 3.4. Under the CPU estimate it is an estimate, and the report
+  says so. Test: `a_command_agent_runs_in_a_full_run_and_its_proposals_are_metered`.
+- **Failures are counted, not retried.** A nonzero exit, a timeout, or a
+  command that cannot start proposes nothing, and counts a `failed_calls`.
+  Its message is in `last_error`.
+- **Its standing reports** `calls`, `failed_calls`, `blocks`, `parsed`,
+  `unparsed` and `truncated`, with `last_batch_mean_reward`, `last_error` and
+  `last_parse_error`. `truncated` counts parsed programs dropped to keep a
+  round within its share.
+
+**Not built: the API path.** Plan 3.4's other half is an API model, whose
+joules are an estimate from its token counts, labelled as one. That needs a
+chosen model and an API key, which is decision D4. No provider client, token
+counter or provider-specific code is in the arena. Until D4 is settled, a
+command that calls an API would be metered by its wall time on the CPU
+estimate. That is a wall-clock figure, not the token-count estimate the plan
+asks for.
+
+**A finding about the grammar.** The parser refuses any program nested deeper
+than `MAX_DEPTH`. The search's own `mutate` and `crossover` graft subtrees
+sampled from depth 0, so they can sit deeper than that. In the property test
+(seed 2026, 2,000 sampled programs with one mutation and one crossover each),
+637 of 4,000 variants were too deep, about 16%. The search still keeps them,
+since it was measured with them. The proposer's parser refuses them, and the
+test requires that it does. Making the grafts respect the depth would change
+what the search explores, so it is left as a separate decision.
+
 ## Succession: authority through the gate (plan 8.1–8.2)
 
 `arena::succession::ArenaWorkload` makes an arena session a germline

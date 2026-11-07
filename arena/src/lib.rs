@@ -29,6 +29,7 @@
 
 pub mod agents;
 pub mod arena;
+pub mod command;
 pub mod energy;
 pub mod grammar;
 pub mod harness;

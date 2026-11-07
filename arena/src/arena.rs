@@ -35,6 +35,8 @@ use crate::agents::{
     marginal_hypervolume, non_dominated, AttackerAgent, Candidate, GrammarAgent, MutatorAgent, Pool,
     Proposer, Role, Scored, UniformAgent,
 };
+use crate::command::{CommandAgent, CommandBackend};
+use std::time::Duration;
 use crate::energy::{self, Meter, Reading, Span};
 use crate::grammar::Rng;
 use crate::learner::{self, ByteLearner, LearnerSpec};
@@ -54,7 +56,9 @@ pub struct Config {
     pub programs_per_round: usize,
     pub substrate: Substrate,
     pub learners: Vec<LearnerSpec>,
-    /// Agents as `(kind, count)`: `grammar`, `uniform`, `mutator`.
+    /// Agents as `(kind, count)`: `grammar`, `uniform`, `mutator`, `attacker`,
+    /// and `command` (a [`crate::command::CommandAgent`] running
+    /// `proposer_command`).
     pub agents: Vec<(String, usize)>,
     pub seed: u64,
     pub replay_per_round: usize,
@@ -137,10 +141,23 @@ pub struct Config {
     /// checkpoint (plan 7.5): see [`Refresh`]. Only used when `heldout_slices > 1`.
     #[serde(default = "default_refresh_drift")]
     pub refresh_drift: f64,
+    /// The command a `command` agent runs for its programs (plan 7.3): argv,
+    /// with the prompt on its stdin and program bodies on its stdout. `None`
+    /// means no command, and a run that names a `command` agent is refused.
+    #[serde(default)]
+    pub proposer_command: Option<Vec<String>>,
+    /// How long one proposer call may run before it is killed, in seconds. A
+    /// call that times out proposes nothing.
+    #[serde(default = "default_proposer_timeout_s")]
+    pub proposer_timeout_s: u64,
 }
 
 fn default_heldout_slices() -> usize {
     1
+}
+
+fn default_proposer_timeout_s() -> u64 {
+    60
 }
 
 fn default_refresh_drift() -> f64 {
@@ -267,6 +284,8 @@ impl Default for Config {
             novelty: NoveltyKey::Behaviour,
             heldout_slices: default_heldout_slices(),
             refresh_drift: default_refresh_drift(),
+            proposer_command: None,
+            proposer_timeout_s: default_proposer_timeout_s(),
         }
     }
 }
@@ -543,9 +562,20 @@ fn fingerprint(bytes: &[u8]) -> u64 {
     h ^ bytes.len() as u64
 }
 
-fn build_agents(spec: &[(String, usize)]) -> Result<Vec<Box<dyn Proposer>>, String> {
+/// A `command` agent, running the command in `cfg.proposer_command`.
+fn command_agent(id: String, cfg: &Config) -> Result<CommandAgent, String> {
+    let argv = cfg
+        .proposer_command
+        .clone()
+        .filter(|argv| !argv.is_empty())
+        .ok_or_else(|| "agent kind `command` needs --proposer-command \"<cmd> <args...>\"".to_string())?;
+    let timeout = Duration::from_secs(cfg.proposer_timeout_s);
+    Ok(CommandAgent::new(id, Box::new(CommandBackend { argv, timeout })))
+}
+
+fn build_agents(cfg: &Config) -> Result<Vec<Box<dyn Proposer>>, String> {
     let mut out: Vec<Box<dyn Proposer>> = Vec::new();
-    for (kind, n) in spec {
+    for (kind, n) in &cfg.agents {
         for i in 0..*n {
             let id = format!("{kind}-{i}");
             out.push(match kind.as_str() {
@@ -553,7 +583,10 @@ fn build_agents(spec: &[(String, usize)]) -> Result<Vec<Box<dyn Proposer>>, Stri
                 "uniform" => Box::new(UniformAgent::new(id)),
                 "mutator" => Box::new(MutatorAgent::new(id)),
                 "attacker" => Box::new(AttackerAgent::new(id)),
-                other => return Err(format!("unknown agent kind `{other}` (grammar, uniform, mutator, attacker)")),
+                "command" => Box::new(command_agent(id, cfg)?),
+                other => {
+                    return Err(format!("unknown agent kind `{other}` (grammar, uniform, mutator, attacker, command)"))
+                }
             });
         }
     }
@@ -594,7 +627,7 @@ pub fn meters_for(cpu_watts: f64, gpus: Option<&[u32]>) -> (Vec<Box<dyn Meter>>,
 
 /// Run the arena to completion.
 pub fn run(cfg: Config, heldout: Vec<Corpus>, meters: Vec<Box<dyn Meter>>, meter_notes: Vec<String>) -> Result<Report, String> {
-    let agents = build_agents(&cfg.agents)?;
+    let agents = build_agents(&cfg)?;
     run_with(cfg, agents, heldout, meters, meter_notes)
 }
 

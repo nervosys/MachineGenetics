@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,278** — rmi 1,384 · prototype 1,405 · ribosome 168 · germline 175 · forge 63 · arena 83 |
+| Tests | **3,297** — rmi 1,384 · prototype 1,405 · ribosome 168 · germline 175 · forge 63 · arena 102 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -1038,6 +1038,28 @@ into four give 7 KB slices, enough to score.
   artifact digests change, as they did when canaries were added.
 Break-checked: a rotation that never fires fails the drift test. Arena +6
 tests.
+
+**Plans 7.3 and 3.4, the half that needs no model choice: a command-backed
+proposer.** `--agents command:1 --proposer-command "<cmd> <args>"` runs any
+local command as an agent: the prompt (the grammar, generated from its own
+productions, and the pool's eight best programs) goes on stdin, and up to `n`
+program bodies separated by `---` lines come back on stdout.
+- `Program::parse` is the exact inverse of the renderer: 2,000 sampled
+  programs and their mutations and crossovers round-trip, and anything the
+  grammar cannot write is refused.
+- It never returns more than its share `n` (break-checked), and returns
+  ordinary candidates: the same allowance, budget, substrate and refusals
+  apply. A test has the command print a cheap and an expensive program with
+  the fuel limit between them; the expensive one is refused as `fuel` in the
+  command agent's standing, as any agent's would be.
+- The command runs inside the agent's energy span, so a local model behind it
+  is metered and charged to the agent and to the `proposer` role: the local
+  half of 3.4. The API half (a token-count joules estimate, a model and a key)
+  is not built and waits on D4.
+- Found, not changed: `mutate` and `crossover` graft subtrees sampled from
+  depth 0, so about 16% of variants exceed `MAX_DEPTH`. The search has always
+  done this; bounding it would change what it explores.
+A test helper binary, `fixed-proposer`, stands in for a model. Arena +19 tests.
 
 **Pre-existing, not from this change:** `cargo clippy` 0.1.98 (2026-09-01)
 reports 15 warnings in `prototype` — 14 `chunks_exact` with a constant size in
