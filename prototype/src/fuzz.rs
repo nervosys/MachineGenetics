@@ -133,12 +133,12 @@ mod fuzz_tests {
     /// false-flagged. (Private functions infer silently; their effects surface at
     /// the public callers that reach them — see `effect_soundness_is_transitive`.)
     /// This is the empirical evidence behind the capability-gate safety claim.
-    /// (println→IO, open→FS, connect→Net, spawn→Async per check_builtin_effect.)
+    /// (println→IO by bare name; fs.open→FS, net.connect→Net, time.now→Time by capability handle.)
     #[test]
     fn effect_checking_is_sound_over_generated_programs() {
         // (builtin call, source effect name, diagnostic Display name)
-        let table = [("println(\"x\")", "io", "IO"), ("open()", "fs", "FS"),
-                     ("connect()", "net", "Net"), ("spawn()", "async", "Async")];
+        let table = [("println(\"x\")", "io", "IO"), ("fs.open(\"p\")", "fs", "FS"),
+                     ("net.connect(\"h\")", "net", "Net"), ("time.now()", "time", "Time")];
         let mut rng = Rng(0xA5A5_5A5A_1234_9876);
         let mut checked = 0usize;
         for _ in 0..6000 {
@@ -206,8 +206,8 @@ mod fuzz_tests {
     /// is exactly what makes "infer inside, declare at the boundary" sound.
     #[test]
     fn effect_soundness_is_transitive() {
-        let eff = [("println(\"x\")", "io", "IO"), ("open()", "fs", "FS"),
-                   ("connect()", "net", "Net"), ("spawn()", "async", "Async")];
+        let eff = [("println(\"x\")", "io", "IO"), ("fs.open(\"p\")", "fs", "FS"),
+                   ("net.connect(\"h\")", "net", "Net"), ("time.now()", "time", "Time")];
         let mut rng = Rng(0x51ED_C0DE_F00D_1111);
         for _ in 0..4000 {
             let i = rng.upto(4);
