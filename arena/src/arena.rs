@@ -163,7 +163,7 @@ pub struct Config {
     #[serde(default)]
     pub second_order: bool,
     /// Whether `mutate` and `crossover` graft subtrees at the depth they
-    /// replace (plan F1), so every variant stays within `MAX_DEPTH`. Off by
+    /// replace (plan F1), so every variant stays within `max_depth`. Off by
     /// default: grafts are sampled from depth 0, and about 16% of variants
     /// then exceed the limit and are refused by the parser. A config without
     /// the field reads as off, so every earlier run grafts as it did.
@@ -849,7 +849,7 @@ pub fn run_with(
                 let fuel_at = cache.fuel_spent;
                 // 3. Gate, then run — or reuse what an identical program
                 // already produced for this seed. The grammar's depth limit
-                // comes first: a tree past MAX_DEPTH is refused whoever
+                // comes first: a tree past max_depth is refused whoever
                 // wrote it, before any front end parses it.
                 let seed = rng.next_u64();
                 let gated = match crate::grammar::check_list_depth(&c.program.body, 0) {
@@ -1791,13 +1791,13 @@ mod tests {
     }
 
     /// F1, end to end: the mutator counts its own variants and those past
-    /// MAX_DEPTH. Grafted from depth 0 they exceed the limit; with
+    /// max_depth. Grafted from depth 0 they exceed the limit; with
     /// `bound_grafts`, none do. The unbounded run is checked to exceed it, so
     /// the bounded zero means something.
     ///
     /// Scope: this run has a mutator only, so every parent is in-depth and
     /// the zero is what the sampler guarantees. With an attacker, its identity
-    /// rewrites can take a parent past MAX_DEPTH. The gate refuses that
+    /// rewrites can take a parent past max_depth. The gate refuses that
     /// candidate as `depth`, so it never reaches the pool to be grafted; see
     /// `with_an_attacker_the_pool_never_holds_a_program_past_max_depth`.
     #[test]
@@ -1841,8 +1841,8 @@ mod tests {
     }
 
     /// `range(3)` under `levels` reversals: a list nested `levels` deep, with
-    /// the range at depth `levels`. Leaves may sit at MAX_DEPTH, so this is
-    /// within the limit at `levels = MAX_DEPTH` and past it one level later.
+    /// the range at depth `levels`. Leaves may sit at max_depth, so this is
+    /// within the limit at `levels = max_depth` and past it one level later.
     fn reversed(levels: usize) -> crate::grammar::ListExpr {
         use crate::grammar::ListExpr;
         (0..levels).fold(ListExpr::Range(3), |xs, _| ListExpr::Reverse(Box::new(xs)))
@@ -1850,8 +1850,8 @@ mod tests {
 
     #[test]
     fn a_candidate_past_max_depth_is_refused_as_depth_and_never_run() {
-        use crate::grammar::{check_list_depth, MAX_DEPTH};
-        let deep = reversed(MAX_DEPTH + 1);
+        use crate::grammar::{check_list_depth, max_depth};
+        let deep = reversed(max_depth() + 1);
         assert!(check_list_depth(&deep, 0).is_err(), "the fixture must be past the limit");
         let (m, n) = cpu_only();
         let r = run_with(tiny_cfg(), vec![Box::new(Fixed(deep))], heldout(), m, n).expect("runs");
@@ -1864,8 +1864,8 @@ mod tests {
 
     #[test]
     fn a_candidate_within_max_depth_is_not_refused_for_depth() {
-        use crate::grammar::{check_list_depth, MAX_DEPTH};
-        let fits = reversed(MAX_DEPTH);
+        use crate::grammar::{check_list_depth, max_depth};
+        let fits = reversed(max_depth());
         assert!(check_list_depth(&fits, 0).is_ok(), "the fixture must be within the limit");
         let (m, n) = cpu_only();
         let r = run_with(tiny_cfg(), vec![Box::new(Fixed(fits))], heldout(), m, n).expect("runs");
@@ -1875,7 +1875,7 @@ mod tests {
     }
 
     /// Wraps a proposer and checks, every time it is asked to propose, every
-    /// pool entry against MAX_DEPTH. Counts are shared so the test can read
+    /// pool entry against max_depth. Counts are shared so the test can read
     /// them after the run.
     struct PoolWatch {
         inner: Box<dyn Proposer>,
@@ -1909,7 +1909,7 @@ mod tests {
         }
     }
 
-    /// With an attacker, the gate keeps every program past MAX_DEPTH out of
+    /// With an attacker, the gate keeps every program past max_depth out of
     /// the pool. Its identity rewrites take in-depth parents past the limit,
     /// so over-depth candidates do reach the gate (checked below), and the
     /// pool must hold none of them, bounded grafts or not.

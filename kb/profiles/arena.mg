@@ -2,8 +2,8 @@
 //
 // `in_profile` names the productions of kb/grammar.mg that the arena's programs
 // use, and a test recognises them with those productions alone: every form
-// here, and sampled programs. `arena/src/grammar.rs` holds its tables to the
-// form and limit facts both ways.
+// here, and sampled programs. `arena/src/grammar.rs` reads the form and limit
+// facts at start-up, and has no tables of its own.
 //
 // A form is one choice of the arena's policy, and its position is its logit
 // index, so reordering these changes what every seed draws. A form is coarser

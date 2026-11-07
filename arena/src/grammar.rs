@@ -24,7 +24,7 @@
 //!
 //! ## Sizes are bounded by construction
 //!
-//! `range` and `[e; n]` take literals in `1..=MAX_LEN`, and trees are depth
+//! `range` and `[e; n]` take literals in their [`bounds`], and trees are depth
 //! limited, so no program here can ask for a list the substrate would refuse
 //! for size. Fuel still bounds everything — a mutation or an agent from outside
 //! this module can write anything — but a policy should not spend its budget
@@ -39,10 +39,65 @@
 //! that a learned generator beats a fixed prior at equal cost. An LLM agent is
 //! a [`crate::agents::Proposer`] like any other; nothing here assumes this one.
 
+use std::collections::HashMap;
+use std::sync::OnceLock;
+
 use serde::{Deserialize, Serialize};
 
-pub const MAX_LEN: u64 = 48;
-pub const MAX_DEPTH: usize = 5;
+/// The arena's program space, read once from `kb/profiles/arena.mg`. Only a
+/// profile's own files are read, since a full load costs seconds at start-up;
+/// `tests::the_profile_read_here_is_the_checked_one` holds the two equal.
+struct Space {
+    list_rules: Vec<String>,
+    int_rules: Vec<String>,
+    /// How many of `list_rules` every policy has; the rest are gated.
+    ungated: usize,
+    list_leaves: Vec<usize>,
+    max_depth: usize,
+    max_nest: usize,
+    int_extra_depth: usize,
+    limits: HashMap<String, (u64, u64)>,
+}
+
+fn space() -> &'static Space {
+    static SPACE: OnceLock<Space> = OnceLock::new();
+    SPACE.get_or_init(|| {
+        let kb = mage_prototype::kb::load_profile_facts().expect("the arena's profile reads");
+        let p = kb.profile("arena").expect("the arena's profile");
+        let value = |name: &str| -> usize {
+            let found = p.constraints.iter().find(|(n, _)| n == name);
+            found.and_then(|(_, v)| v.parse().ok()).expect("a stated constraint")
+        };
+        let limits: HashMap<String, (u64, u64)> = p.limits.iter().map(|(n, lo, hi)| (n.clone(), (*lo, *hi))).collect();
+        Space {
+            ungated: p.list_forms.iter().filter(|f| f.gate.is_none()).count(),
+            list_leaves: (0..p.list_forms.len()).filter(|&i| p.list_forms[i].leaf).collect(),
+            max_depth: value("max_depth"),
+            max_nest: value("max_nest"),
+            int_extra_depth: limits["int_extra_depth"].0 as usize,
+            list_rules: p.list_forms.iter().map(|f| f.name.clone()).collect(),
+            int_rules: p.int_forms.iter().map(|f| f.name.clone()).collect(),
+            limits,
+        }
+    })
+}
+
+/// How deep a list node may nest; a node here must be a leaf.
+pub fn max_depth() -> usize {
+    space().max_depth
+}
+
+/// How deep an integer node may nest.
+fn max_int_depth() -> usize {
+    space().max_depth + space().int_extra_depth
+}
+
+/// How many method calls in a row, and how deeply nested, the parser follows
+/// before it refuses. Every grammar tree is far shallower; this bounds the
+/// stack, so no input can exhaust it.
+fn max_nest() -> usize {
+    space().max_nest
+}
 
 /// An integer-valued expression.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -90,7 +145,7 @@ pub enum ListExpr {
 /// and projected by a `map`. Its surface is fixed; see [`Oscillator::render`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Oscillator {
-    /// Values emitted, `2..=MAX_LEN + 1`. The scan takes `n − 1` steps.
+    /// Values emitted, in [`bounds::osc_len`]. The scan takes `n − 1` steps.
     pub n: u64,
     pub x1: u64,
     pub x0: u64,
@@ -98,7 +153,7 @@ pub struct Oscillator {
     pub a: u64,
     /// Coefficient of `x_{t−1}`, in `0..2^k`, so the roots lie inside the unit circle.
     pub b: u64,
-    /// Shift, in [`bounds::OSC_SHIFT`].
+    /// Shift, in [`bounds::osc_shift`].
     pub k: u64,
 }
 
@@ -319,29 +374,29 @@ impl Rng {
 /// the only learnable structure was constant runs. These three produce the
 /// regularities self-play pretraining found to transfer — copying, periodic
 /// templates, and nested (recursive) counting.
-pub const LIST_RULES: [&str; 12] = [
-    "range", "repeat", "map", "scan", "filter", "reverse", "sort", "take", "concat", "copy", "cycle", "nest",
-];
+pub fn list_rules() -> Vec<&'static str> {
+    list_rule_names(false)
+}
 
-/// The second-order production (plan P5b). It is not in [`LIST_RULES`]: a
-/// policy has it only when built with [`Policy::with_second_order`], so the
-/// default policy's logits, and every program it samples, are unchanged.
-pub const SECOND_ORDER_RULE: &str = "osc";
+/// The second-order production (plan P5b), the profile's one gated form. It
+/// is not in [`list_rules`]: a policy has it only when built with
+/// [`Policy::with_second_order`], so the default policy's logits, and every
+/// program it samples, are unchanged.
+pub fn second_order_rule() -> &'static str {
+    &space().list_rules[space().ungated]
+}
 
 /// The list productions a policy draws from, in logit order.
 pub fn list_rule_names(second_order: bool) -> Vec<&'static str> {
-    let mut names = LIST_RULES.to_vec();
-    if second_order {
-        names.push(SECOND_ORDER_RULE);
-    }
-    names
+    let names = &space().list_rules;
+    let n = if second_order { names.len() } else { space().ungated };
+    names[..n].iter().map(String::as_str).collect()
 }
 
-/// List productions allowed at the depth limit: the leaves. `osc` (index 12)
-/// is a leaf, and is only ever a choice when the policy has it.
-const LIST_LEAVES: [usize; 5] = [0, 1, 10, 11, 12];
 /// Integer productions, in logit order.
-pub const INT_RULES: [&str; 6] = ["lit", "var", "add", "sub", "mul", "mod"];
+pub fn int_rules() -> Vec<&'static str> {
+    space().int_rules.iter().map(String::as_str).collect()
+}
 
 /// One choice made while sampling: which nonterminal, which production.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -370,12 +425,12 @@ impl Policy {
     /// same draws from the same seed.
     pub fn with_second_order(second_order: bool) -> Self {
         let n = list_rule_names(second_order).len();
-        Policy { list_logits: vec![0.0; n], int_logits: vec![0.0; INT_RULES.len()] }
+        Policy { list_logits: vec![0.0; n], int_logits: vec![0.0; space().int_rules.len()] }
     }
 
     /// Whether this policy can write the second-order production.
     pub fn second_order(&self) -> bool {
-        self.list_logits.len() > LIST_RULES.len()
+        self.list_logits.len() > space().ungated
     }
 }
 
@@ -409,6 +464,10 @@ struct Sampler<'a> {
 }
 
 impl Sampler<'_> {
+    fn draw(&mut self, (lo, hi): (u64, u64)) -> u64 {
+        self.rng.range(lo, hi)
+    }
+
     fn var(&mut self) -> String {
         self.fresh += 1;
         format!("v{}", self.fresh)
@@ -417,20 +476,20 @@ impl Sampler<'_> {
     fn list(&mut self, depth: usize, scope: &[String]) -> ListExpr {
         let probs = softmax(&self.policy.list_logits);
         // At the depth limit only leaves are allowed.
-        let leaf = depth >= MAX_DEPTH;
-        let allowed: Vec<bool> = (0..probs.len()).map(|i| !leaf || LIST_LEAVES.contains(&i)).collect();
+        let leaf = depth >= max_depth();
+        let allowed: Vec<bool> = (0..probs.len()).map(|i| !leaf || space().list_leaves.contains(&i)).collect();
         let rule = pick(self.rng, &probs, &allowed);
         self.trace.push(Choice { list: true, rule });
-        match rule {
-            0 => ListExpr::Range(self.rng.range(1, MAX_LEN)),
-            1 => ListExpr::Repeat(self.int(depth + 1, scope), self.rng.range(1, MAX_LEN / 4)),
-            2 => {
+        match space().list_rules[rule].as_str() {
+            "range" => ListExpr::Range(self.draw(bounds::range())),
+            "repeat" => ListExpr::Repeat(self.int(depth + 1, scope), self.draw(bounds::repeat())),
+            "map" => {
                 let xs = self.list(depth + 1, scope);
                 let v = self.var();
                 let inner = [scope, std::slice::from_ref(&v)].concat();
                 ListExpr::Map(Box::new(xs), v, self.int(depth + 1, &inner))
             }
-            3 => {
+            "scan" => {
                 let xs = self.list(depth + 1, scope);
                 let init = self.int(depth + 1, scope);
                 let (a, x) = (self.var(), self.var());
@@ -438,64 +497,72 @@ impl Sampler<'_> {
                 let body = self.int(depth + 1, &inner);
                 ListExpr::Scan(Box::new(xs), init, a, x, body)
             }
-            4 => {
+            "filter" => {
                 let xs = self.list(depth + 1, scope);
-                let k = self.rng.range(2, 7);
+                let k = self.draw(bounds::filter_mod());
                 let r = self.rng.range(0, k - 1);
                 ListExpr::Filter(Box::new(xs), self.var(), k, r)
             }
-            5 => ListExpr::Reverse(Box::new(self.list(depth + 1, scope))),
-            6 => ListExpr::Sort(Box::new(self.list(depth + 1, scope))),
-            7 => ListExpr::Take(Box::new(self.list(depth + 1, scope)), self.rng.range(1, MAX_LEN)),
-            8 => ListExpr::Concat(
+            "reverse" => ListExpr::Reverse(Box::new(self.list(depth + 1, scope))),
+            "sort" => ListExpr::Sort(Box::new(self.list(depth + 1, scope))),
+            "take" => ListExpr::Take(Box::new(self.list(depth + 1, scope)), self.draw(bounds::take())),
+            "concat" => ListExpr::Concat(
                 Box::new(self.list(depth + 1, scope)),
                 Box::new(self.list(depth + 1, scope)),
             ),
-            9 => ListExpr::Copy(Box::new(self.list(depth + 1, scope)), self.rng.range(2, 6)),
-            10 => {
+            "copy" => ListExpr::Copy(Box::new(self.list(depth + 1, scope)), self.draw(bounds::copy())),
+            "cycle" => {
                 // Template elements are literals or `s` — never arithmetic,
                 // which is what hashed the output in the first place.
-                let k = self.rng.range(2, 6) as usize;
+                let k = self.draw(bounds::cycle_elems()) as usize;
                 let elems = (0..k)
                     .map(|_| {
                         if self.rng.next_f64() < 0.25 {
                             IntExpr::Var(scope[self.rng.below(scope.len())].clone())
                         } else {
-                            IntExpr::Lit(self.rng.range(0, 255))
+                            IntExpr::Lit(self.draw(bounds::literal()))
                         }
                     })
                     .collect();
-                ListExpr::Cycle(self.var(), elems, self.rng.range(4, MAX_LEN))
+                ListExpr::Cycle(self.var(), elems, self.draw(bounds::cycle_len()))
             }
-            12 => {
+            "osc" => {
                 // Shift first: the coefficient ranges depend on it. b < 2^k keeps
                 // the roots inside the unit circle; a <= 2^(k+1) bounds a / 2^k.
-                let k = self.rng.range(bounds::OSC_SHIFT.0, bounds::OSC_SHIFT.1);
+                let k = self.draw(bounds::osc_shift());
                 let b = self.rng.range(1, (1 << k) - 1);
                 let a = self.rng.range(0, 1 << (k + 1));
-                let n = self.rng.range(bounds::OSC_LEN.0, bounds::OSC_LEN.1);
-                let x1 = self.rng.range(bounds::LITERAL.0, bounds::LITERAL.1);
-                let x0 = self.rng.range(bounds::LITERAL.0, bounds::LITERAL.1);
+                let n = self.draw(bounds::osc_len());
+                let x1 = self.draw(bounds::literal());
+                let x0 = self.draw(bounds::literal());
                 ListExpr::Osc(Oscillator { n, x1, x0, a, b, k })
             }
-            _ => ListExpr::Nest(self.var(), self.rng.range(2, 12), self.rng.range(2, 8)),
+            "nest" => ListExpr::Nest(self.var(), self.draw(bounds::nest_count()), self.draw(bounds::nest_mod())),
+            other => unreachable!("no list form `{other}`"),
         }
     }
 
     fn int(&mut self, depth: usize, scope: &[String]) -> IntExpr {
         let probs = softmax(&self.policy.int_logits);
-        let leaf = depth >= MAX_DEPTH + 2;
-        let allowed: Vec<bool> =
-            (0..INT_RULES.len()).map(|i| (!leaf || i <= 1) && (i != 1 || !scope.is_empty())).collect();
+        let leaf = depth >= max_int_depth();
+        let names = &space().int_rules;
+        let allowed: Vec<bool> = (0..names.len())
+            .map(|i| match names[i].as_str() {
+                "lit" => true,
+                "var" => !scope.is_empty(),
+                _ => !leaf,
+            })
+            .collect();
         let rule = pick(self.rng, &probs, &allowed);
         self.trace.push(Choice { list: false, rule });
-        match rule {
-            0 => IntExpr::Lit(self.rng.range(0, 255)),
-            1 => IntExpr::Var(scope[self.rng.below(scope.len())].clone()),
-            2 => IntExpr::Add(Box::new(self.int(depth + 1, scope)), Box::new(self.int(depth + 1, scope))),
-            3 => IntExpr::Sub(Box::new(self.int(depth + 1, scope)), Box::new(self.int(depth + 1, scope))),
-            4 => IntExpr::Mul(Box::new(self.int(depth + 1, scope)), Box::new(self.int(depth + 1, scope))),
-            _ => IntExpr::Mod(Box::new(self.int(depth + 1, scope)), self.rng.range(2, 256)),
+        match names[rule].as_str() {
+            "lit" => IntExpr::Lit(self.draw(bounds::literal())),
+            "var" => IntExpr::Var(scope[self.rng.below(scope.len())].clone()),
+            "add" => IntExpr::Add(Box::new(self.int(depth + 1, scope)), Box::new(self.int(depth + 1, scope))),
+            "sub" => IntExpr::Sub(Box::new(self.int(depth + 1, scope)), Box::new(self.int(depth + 1, scope))),
+            "mul" => IntExpr::Mul(Box::new(self.int(depth + 1, scope)), Box::new(self.int(depth + 1, scope))),
+            "mod" => IntExpr::Mod(Box::new(self.int(depth + 1, scope)), self.draw(bounds::modulus())),
+            other => unreachable!("no integer form `{other}`"),
         }
     }
 }
@@ -703,7 +770,7 @@ fn freshen(e: &mut ListExpr, tag: &str) {
 }
 
 /// Replace one random list subtree with a fresh sample from `policy`. The
-/// grafts are sampled from depth 0, so a variant can exceed [`MAX_DEPTH`]; see
+/// grafts are sampled from depth 0, so a variant can exceed [`max_depth`]; see
 /// [`mutate_bounded`] for the bounded form.
 pub fn mutate(p: &Program, policy: &Policy, rng: &mut Rng) -> Program {
     mutate_bounded(p, policy, rng, false)
@@ -711,7 +778,7 @@ pub fn mutate(p: &Program, policy: &Policy, rng: &mut Rng) -> Program {
 
 /// [`mutate`], with the fresh subtree sampled at the depth of the node it
 /// replaces when `bounded` (F1). A subtree at depth `d` is drawn under the
-/// limits that apply at `d`, so a variant of a program within [`MAX_DEPTH`]
+/// limits that apply at `d`, so a variant of a program within [`max_depth`]
 /// stays within it. Off, it is [`mutate`], draw for draw.
 pub fn mutate_bounded(p: &Program, policy: &Policy, rng: &mut Rng, bounded: bool) -> Program {
     let mut paths = Vec::new();
@@ -729,7 +796,7 @@ pub fn mutate_bounded(p: &Program, policy: &Policy, rng: &mut Rng, bounded: bool
 /// Graft a list subtree of `b` into `a` — cross-lineage hybridisation when the
 /// two parents come from different agents. Only subtrees that are closed over
 /// the top-level scope (`s`) are grafted, so no variable can dangle. The graft
-/// can exceed [`MAX_DEPTH`]; see [`crossover_bounded`].
+/// can exceed [`max_depth`]; see [`crossover_bounded`].
 pub fn crossover(a: &Program, b: &Program, rng: &mut Rng) -> Program {
     crossover_bounded(a, b, rng, false)
 }
@@ -781,27 +848,70 @@ pub fn crossover_bounded(a: &Program, b: &Program, rng: &mut Rng, bounded: bool)
 /// the prompt states them. Sampling draws within the same ranges (see
 /// [`Sampler`]); the round-trip test holds the two together.
 pub mod bounds {
-    use super::MAX_LEN;
-    pub const LITERAL: (u64, u64) = (0, 255);
-    pub const MOD: (u64, u64) = (2, 256);
-    pub const RANGE: (u64, u64) = (1, MAX_LEN);
-    pub const TAKE: (u64, u64) = (1, MAX_LEN);
-    pub const REPEAT: (u64, u64) = (1, MAX_LEN / 4);
-    pub const CYCLE_LEN: (u64, u64) = (4, MAX_LEN);
-    pub const CYCLE_ELEMS: (u64, u64) = (2, 6);
-    pub const COPY: (u64, u64) = (2, 6);
-    pub const NEST_COUNT: (u64, u64) = (2, 12);
-    pub const NEST_MOD: (u64, u64) = (2, 8);
-    pub const FILTER_MOD: (u64, u64) = (2, 7);
+    use super::space;
+
+    fn limit(name: &str) -> (u64, u64) {
+        space().limits[name]
+    }
+
+    pub fn literal() -> (u64, u64) {
+        limit("literal")
+    }
+
+    pub fn modulus() -> (u64, u64) {
+        limit("mod")
+    }
+
+    pub fn range() -> (u64, u64) {
+        limit("range")
+    }
+
+    pub fn take() -> (u64, u64) {
+        limit("take")
+    }
+
+    pub fn repeat() -> (u64, u64) {
+        limit("repeat")
+    }
+
+    pub fn cycle_len() -> (u64, u64) {
+        limit("cycle_len")
+    }
+
+    pub fn cycle_elems() -> (u64, u64) {
+        limit("cycle_elems")
+    }
+
+    pub fn copy() -> (u64, u64) {
+        limit("copy")
+    }
+
+    pub fn nest_count() -> (u64, u64) {
+        limit("nest_count")
+    }
+
+    pub fn nest_mod() -> (u64, u64) {
+        limit("nest_mod")
+    }
+
+    pub fn filter_mod() -> (u64, u64) {
+        limit("filter_mod")
+    }
+
     /// Values an oscillator emits (plan P5b): the scan runs `n − 1` steps over `range(n − 1)`.
-    pub const OSC_LEN: (u64, u64) = (2, MAX_LEN + 1);
+    pub fn osc_len() -> (u64, u64) {
+        limit("osc_len")
+    }
+
     /// Shift of the oscillator's `>>`. Coefficients are checked against it:
     /// `a <= 2^(k+1)` and `b < 2^k`.
-    pub const OSC_SHIFT: (u64, u64) = (1, 6);
+    pub fn osc_shift() -> (u64, u64) {
+        limit("osc_shift")
+    }
 }
 
 /// One example of each production, rendered by this module's own renderers, in
-/// [`LIST_RULES`] and [`INT_RULES`] order. The arena's prompt is built from
+/// [`list_rules`] and [`int_rules`] order. The arena's prompt is built from
 /// these, so what a proposer is told the grammar is cannot drift from what
 /// `render` writes, and a test checks every example parses back.
 pub fn production_examples() -> (Vec<(&'static str, String)>, Vec<(&'static str, String)>) {
@@ -873,7 +983,7 @@ pub fn describe_grammar(second_order: bool) -> String {
         s.push_str(&format!("  {name:<8} {text}\n"));
     }
     if second_order {
-        s.push_str(&format!("  {SECOND_ORDER_RULE:<8} {}\n", second_order_example()));
+        s.push_str(&format!("  {:<8} {}\n", second_order_rule(), second_order_example()));
     }
     s.push_str("Integer expressions, inside any of them:\n");
     for (name, text) in &ints {
@@ -882,29 +992,25 @@ pub fn describe_grammar(second_order: bool) -> String {
     s.push_str(&format!(
         "Bounds: range and take lengths {}; repeat lengths {}; literals {}; modulus {}; \
          cycle templates have {} elements and length {}; copy counts {}; nest counts {} and moduli {}; \
-         filter moduli {}. Lists nest at most {MAX_DEPTH} levels deep. Every variable must be \
+         filter moduli {}. Lists nest at most {} levels deep. Every variable must be \
          `s` or a closure parameter in scope.\n",
-        range(bounds::RANGE),
-        range(bounds::REPEAT),
-        range(bounds::LITERAL),
-        range(bounds::MOD),
-        range(bounds::CYCLE_ELEMS),
-        range(bounds::CYCLE_LEN),
-        range(bounds::COPY),
-        range(bounds::NEST_COUNT),
-        range(bounds::NEST_MOD),
-        range(bounds::FILTER_MOD),
+        range(bounds::range()),
+        range(bounds::repeat()),
+        range(bounds::literal()),
+        range(bounds::modulus()),
+        range(bounds::cycle_elems()),
+        range(bounds::cycle_len()),
+        range(bounds::copy()),
+        range(bounds::nest_count()),
+        range(bounds::nest_mod()),
+        range(bounds::filter_mod()),
+        max_depth(),
     ));
     if second_order {
-        s.push_str(&format!("The second-order form `{SECOND_ORDER_RULE}` is the only one whose values can oscillate: it emits values in {}, its start values are literals {}, its shift is {}, and its coefficient a is at most 2^(k+1) and b below 2^k. Write it as its example, with the numbers changed within these bounds.\n", range(bounds::OSC_LEN), range(bounds::LITERAL), range(bounds::OSC_SHIFT)));
+        s.push_str(&format!("The second-order form `{}` is the only one whose values can oscillate: it emits values in {}, its start values are literals {}, its shift is {}, and its coefficient a is at most 2^(k+1) and b below 2^k. Write it as its example, with the numbers changed within these bounds.\n", second_order_rule(), range(bounds::osc_len()), range(bounds::literal()), range(bounds::osc_shift())));
     }
     s
 }
-
-/// How many method calls in a row, and how deeply nested, the parser follows
-/// before it refuses. Every grammar tree is far shallower; this bounds the
-/// stack, so no input can exhaust it.
-const MAX_NEST: usize = 64;
 
 impl Program {
     /// The inverse of [`Program::source`]. Accepts the whole `source()` text, or
@@ -912,7 +1018,7 @@ impl Program {
     /// is not significant. Anything outside the grammar is refused with a reason
     /// and a byte offset: an unknown method, a literal or length outside
     /// [`bounds`], a variable not in scope, a modulus or nesting the sampler
-    /// never writes (nesting is limited by [`MAX_DEPTH`]).
+    /// never writes (nesting is limited by [`max_depth`]).
     ///
     /// It does not judge meaning. A text that parses here can still be refused
     /// by the substrate, for fuel or types. That is the gate's job.
@@ -945,13 +1051,13 @@ impl Program {
     }
 }
 
-/// The depth limit, as [`Sampler`] applies it. A list node at [`MAX_DEPTH`] is
+/// The depth limit, as [`Sampler`] applies it. A list node at [`max_depth`] is
 /// a leaf; at deeper levels there are none. Integer operators stop two levels
 /// below the list depth limit.
 pub fn check_list_depth(e: &ListExpr, d: usize) -> Result<(), String> {
     let leaf = matches!(e, ListExpr::Range(_) | ListExpr::Repeat(..) | ListExpr::Cycle(..) | ListExpr::Nest(..) | ListExpr::Osc(_));
-    if d > MAX_DEPTH || (d == MAX_DEPTH && !leaf) {
-        return Err(format!("nested deeper than MAX_DEPTH = {MAX_DEPTH}"));
+    if d > max_depth() || (d == max_depth() && !leaf) {
+        return Err(format!("nested deeper than MAX_DEPTH = {}", max_depth()));
     }
     match e {
         ListExpr::Range(_) | ListExpr::Cycle(..) | ListExpr::Nest(..) | ListExpr::Osc(_) => Ok(()),
@@ -978,8 +1084,8 @@ pub fn check_list_depth(e: &ListExpr, d: usize) -> Result<(), String> {
 
 fn check_int_depth(e: &IntExpr, d: usize) -> Result<(), String> {
     let leaf = matches!(e, IntExpr::Lit(_) | IntExpr::Var(_));
-    if d > MAX_DEPTH + 2 || (d == MAX_DEPTH + 2 && !leaf) {
-        return Err(format!("integer expression nested deeper than MAX_DEPTH = {MAX_DEPTH}"));
+    if d > max_int_depth() || (d == max_int_depth() && !leaf) {
+        return Err(format!("integer expression nested deeper than MAX_DEPTH = {}", max_depth()));
     }
     match e {
         IntExpr::Lit(_) | IntExpr::Var(_) => Ok(()),
@@ -1092,8 +1198,8 @@ impl<'a> Parser<'a> {
 
     fn enter(&mut self) -> Result<(), String> {
         self.nest += 1;
-        if self.nest > MAX_NEST {
-            Err(format!("nested more than {MAX_NEST} levels deep"))
+        if self.nest > max_nest() {
+            Err(format!("nested more than {} levels deep", max_nest()))
         } else {
             Ok(())
         }
@@ -1119,8 +1225,8 @@ impl<'a> Parser<'a> {
         let mut calls = 0;
         while self.eat(".") {
             calls += 1;
-            if calls > MAX_NEST {
-                return Err(format!("more than {MAX_NEST} method calls in a row"));
+            if calls > max_nest() {
+                return Err(format!("more than {} method calls in a row", max_nest()));
             }
             e = self.method(e, scope)?;
         }
@@ -1134,7 +1240,7 @@ impl<'a> Parser<'a> {
         if self.eat("[") {
             let e = self.int(scope)?;
             self.expect(";")?;
-            let n = self.number(bounds::REPEAT, "repeat length")?;
+            let n = self.number(bounds::repeat(), "repeat length")?;
             self.expect("]")?;
             return Ok(ListExpr::Repeat(e, n));
         }
@@ -1146,7 +1252,7 @@ impl<'a> Parser<'a> {
         match self.ident()?.as_str() {
             "range" => {
                 self.expect("(")?;
-                let n = self.number(bounds::RANGE, "range length")?;
+                let n = self.number(bounds::range(), "range length")?;
                 self.expect(")")?;
                 Ok(ListExpr::Range(n))
             }
@@ -1202,12 +1308,12 @@ impl<'a> Parser<'a> {
     /// [`Oscillator::render`]; the literals are bounded, and so are the
     /// coefficients against the shift.
     fn oscillator_body(&mut self, m: u64) -> Result<Oscillator, String> {
-        if !(bounds::RANGE.0..=bounds::RANGE.1).contains(&m) {
-            return Err(format!("range length {m} is outside the grammar's {:?}", bounds::RANGE));
+        if !(bounds::range().0..=bounds::range().1).contains(&m) {
+            return Err(format!("range length {m} is outside the grammar's {:?}", bounds::range()));
         }
-        let x1 = self.number(bounds::LITERAL, "oscillator start")?;
+        let x1 = self.number(bounds::literal(), "oscillator start")?;
         self.expect(",")?;
-        let x0 = self.number(bounds::LITERAL, "oscillator start")?;
+        let x0 = self.number(bounds::literal(), "oscillator start")?;
         self.expect(")")?;
         self.expect(",")?;
         self.expect("|")?;
@@ -1231,20 +1337,20 @@ impl<'a> Parser<'a> {
         self.expect("(")?;
         self.expect("wrapping_mul")?;
         self.expect("(")?;
-        let a = self.number(bounds::LITERAL, "oscillator coefficient")?;
+        let a = self.number(bounds::literal(), "oscillator coefficient")?;
         self.expect(",")?;
         self.expect("c")?;
         self.expect(")")?;
         self.expect(",")?;
         self.expect("wrapping_mul")?;
         self.expect("(")?;
-        let b = self.number(bounds::LITERAL, "oscillator coefficient")?;
+        let b = self.number(bounds::literal(), "oscillator coefficient")?;
         self.expect(",")?;
         self.expect("q")?;
         self.expect(")")?;
         self.expect(")")?;
         self.expect(">>")?;
-        let k = self.number(bounds::OSC_SHIFT, "oscillator shift")?;
+        let k = self.number(bounds::osc_shift(), "oscillator shift")?;
         self.expect(")")?;
         self.expect(",")?;
         self.expect("c")?;
@@ -1287,7 +1393,7 @@ impl<'a> Parser<'a> {
         if self.eat("range") {
             // flatten(range(n).map(|v| range(v % k + 1)))
             self.expect("(")?;
-            let n = self.number(bounds::NEST_COUNT, "nest count")?;
+            let n = self.number(bounds::nest_count(), "nest count")?;
             self.expect(")")?;
             self.expect(".")?;
             self.expect("map")?;
@@ -1301,7 +1407,7 @@ impl<'a> Parser<'a> {
                 return Err(self.error(&format!("the nest counts by `{v}`, which is not the variable used")));
             }
             self.expect("%")?;
-            let k = self.number(bounds::NEST_MOD, "nest modulus")?;
+            let k = self.number(bounds::nest_mod(), "nest modulus")?;
             self.expect("+")?;
             self.expect("1")?;
             self.expect(")")?; // range
@@ -1319,7 +1425,7 @@ impl<'a> Parser<'a> {
                 Ok(ListExpr::Concat(Box::new(a), Box::new(b)))
             } else {
                 self.expect(";")?;
-                let n = self.number(bounds::COPY, "copy count")?;
+                let n = self.number(bounds::copy(), "copy count")?;
                 self.expect("]")?;
                 self.expect(")")?;
                 Ok(ListExpr::Copy(Box::new(a), n))
@@ -1344,7 +1450,7 @@ impl<'a> Parser<'a> {
             }
             "take" => {
                 self.expect("(")?;
-                let n = self.number(bounds::TAKE, "take count")?;
+                let n = self.number(bounds::take(), "take count")?;
                 self.expect(")")?;
                 ListExpr::Take(xs, n)
             }
@@ -1357,7 +1463,7 @@ impl<'a> Parser<'a> {
                     return Err(self.error(&format!("the filter tests a variable other than `{v}`")));
                 }
                 self.expect("%")?;
-                let k = self.number(bounds::FILTER_MOD, "filter modulus")?;
+                let k = self.number(bounds::filter_mod(), "filter modulus")?;
                 self.expect("==")?;
                 let r = self.number((0, k - 1), "filter remainder")?;
                 self.expect(")")?;
@@ -1400,8 +1506,8 @@ impl<'a> Parser<'a> {
         let ListExpr::Range(len) = xs else {
             return Err(self.error("a literal template is written over `range(n)` and nothing else"));
         };
-        if !(bounds::CYCLE_LEN.0..=bounds::CYCLE_LEN.1).contains(&len) {
-            return Err(format!("template length {len} is outside the grammar's {:?}", bounds::CYCLE_LEN));
+        if !(bounds::cycle_len().0..=bounds::cycle_len().1).contains(&len) {
+            return Err(format!("template length {len} is outside the grammar's {:?}", bounds::cycle_len()));
         }
         self.expect("[")?;
         let mut elems = Vec::new();
@@ -1413,8 +1519,8 @@ impl<'a> Parser<'a> {
         }
         self.expect("]")?;
         let k = elems.len() as u64;
-        if !(bounds::CYCLE_ELEMS.0..=bounds::CYCLE_ELEMS.1).contains(&k) {
-            return Err(format!("template has {k} elements, outside the grammar's {:?}", bounds::CYCLE_ELEMS));
+        if !(bounds::cycle_elems().0..=bounds::cycle_elems().1).contains(&k) {
+            return Err(format!("template has {k} elements, outside the grammar's {:?}", bounds::cycle_elems()));
         }
         self.expect("[")?;
         if self.ident()? != v {
@@ -1430,7 +1536,7 @@ impl<'a> Parser<'a> {
     /// A template element is a literal or a variable in scope, never arithmetic.
     fn template_elem(&mut self, scope: &[String]) -> Result<IntExpr, String> {
         match self.peek() {
-            Some(c) if c.is_ascii_digit() => Ok(IntExpr::Lit(self.number(bounds::LITERAL, "literal")?)),
+            Some(c) if c.is_ascii_digit() => Ok(IntExpr::Lit(self.number(bounds::literal(), "literal")?)),
             Some(_) if self.starts_name() => self.bound_var(scope).map(IntExpr::Var),
             _ => Err(self.error("expected a literal or a bound variable in a template")),
         }
@@ -1449,13 +1555,13 @@ impl<'a> Parser<'a> {
 
     fn int_expr(&mut self, scope: &[String]) -> Result<IntExpr, String> {
         match self.peek() {
-            Some(c) if c.is_ascii_digit() => Ok(IntExpr::Lit(self.number(bounds::LITERAL, "literal")?)),
+            Some(c) if c.is_ascii_digit() => Ok(IntExpr::Lit(self.number(bounds::literal(), "literal")?)),
             Some('(') => {
                 // (a % k)
                 self.expect("(")?;
                 let a = self.int(scope)?;
                 self.expect("%")?;
-                let k = self.number(bounds::MOD, "modulus")?;
+                let k = self.number(bounds::modulus(), "modulus")?;
                 self.expect(")")?;
                 Ok(IntExpr::Mod(Box::new(a), k))
             }
@@ -1491,6 +1597,7 @@ impl<'a> Parser<'a> {
 mod tests {
     use super::*;
     use mage_prototype::recognise::{recognise_source, Grammar};
+    use std::collections::HashSet;
 
     /// Every text the profile must recognise: each form, then `samples` programs.
     fn arena_sources(samples: usize) -> Vec<String> {
@@ -1510,40 +1617,57 @@ mod tests {
         kb.profile("arena").expect("the arena's profile")
     }
 
-    #[test]
-    fn the_tables_here_are_the_profile() {
-        let kb = mage_prototype::kb::load().expect("the knowledge base loads");
-        let p = arena_profile(&kb);
-        let names = |fs: &[mage_prototype::kb::ProfileForm]| fs.iter().map(|f| f.name.clone()).collect::<Vec<_>>();
-        assert_eq!(names(&p.list_forms), list_rule_names(true));
-        assert_eq!(names(&p.int_forms), INT_RULES);
-        let leaves: Vec<usize> = (0..p.list_forms.len()).filter(|&i| p.list_forms[i].leaf).collect();
-        assert_eq!(leaves, LIST_LEAVES);
-        assert!(p.int_forms.iter().all(|f| f.gate.is_none()));
-        let gated: Vec<&str> = p.list_forms.iter().filter(|f| f.gate.is_some()).map(|f| f.name.as_str()).collect();
-        assert_eq!(gated, [SECOND_ORDER_RULE]);
+    /// FNV-1a over what a seed draws: programs, mutants, crossovers, and traces.
+    fn digest_of_draws(second_order: bool) -> u64 {
+        let mut h = 0xcbf2_9ce4_8422_2325u64;
+        let mut mix = |text: &str| {
+            for b in text.bytes() {
+                h = (h ^ b as u64).wrapping_mul(0x0100_0000_01b3);
+            }
+        };
+        let policy = Policy::with_second_order(second_order);
+        let mut rng = Rng(2026);
+        let mut last = policy.sample(&mut rng).0;
+        for i in 0..400 {
+            let (p, trace) = policy.sample(&mut rng);
+            let bounded = i % 2 == 0;
+            let m = mutate_bounded(&p, &policy, &mut rng, bounded);
+            let c = crossover_bounded(&p, &last, &mut rng, bounded);
+            mix(&p.source());
+            mix(&m.source());
+            mix(&c.source());
+            mix(&format!("{trace:?}"));
+            last = p;
+        }
+        h
+    }
 
-        let stated = [
-            ("copy", bounds::COPY),
-            ("cycle_elems", bounds::CYCLE_ELEMS),
-            ("cycle_len", bounds::CYCLE_LEN),
-            ("filter_mod", bounds::FILTER_MOD),
-            ("int_extra_depth", (2, 2)),
-            ("literal", bounds::LITERAL),
-            ("mod", bounds::MOD),
-            ("nest_count", bounds::NEST_COUNT),
-            ("nest_mod", bounds::NEST_MOD),
-            ("osc_len", bounds::OSC_LEN),
-            ("osc_shift", bounds::OSC_SHIFT),
-            ("range", bounds::RANGE),
-            ("repeat", bounds::REPEAT),
-            ("take", bounds::TAKE),
-        ];
-        let want: Vec<(String, u64, u64)> = stated.iter().map(|(n, (lo, hi))| (n.to_string(), *lo, *hi)).collect();
-        assert_eq!(p.limits, want);
-        let want = [("max_depth".to_string(), MAX_DEPTH.to_string()), ("max_nest".to_string(), MAX_NEST.to_string())];
-        assert_eq!(p.constraints, want);
-        assert!(Program { body: ListExpr::Range(1) }.source().contains(&p.signature));
+    /// Seeds reproduce: these were measured before the tables came from the profile.
+    #[test]
+    fn a_seed_draws_what_it_always_drew() {
+        assert_eq!(digest_of_draws(false), 3777979023967647525);
+        assert_eq!(digest_of_draws(true), 13613693441237307860);
+    }
+
+    #[test]
+    fn the_profile_read_here_is_the_checked_one() {
+        let kb = mage_prototype::kb::load().expect("the knowledge base loads");
+        let read = mage_prototype::kb::load_profile_facts().expect("the profile's files read");
+        assert_eq!(read.profile("arena"), kb.profile("arena"));
+    }
+
+    #[test]
+    fn every_form_is_sampled() {
+        let policy = Policy::with_second_order(true);
+        let mut rng = Rng(1);
+        let (mut lists, mut ints) = (HashSet::new(), HashSet::new());
+        for _ in 0..500 {
+            for c in policy.sample(&mut rng).1 {
+                if c.list { lists.insert(c.rule) } else { ints.insert(c.rule) };
+            }
+        }
+        assert_eq!(lists.len(), list_rule_names(true).len());
+        assert_eq!(ints.len(), int_rules().len());
     }
 
     #[test]
@@ -1704,7 +1828,7 @@ mod tests {
     /// The property the proposer's replies rely on: `parse` inverts `render`.
     /// Sampled programs, and their mutations and crossovers, under a fixed seed.
     /// Mutation and crossover graft subtrees sampled from depth 0, so a graft
-    /// can sit deeper than MAX_DEPTH. Those variants are refused, not misread,
+    /// can sit deeper than max_depth. Those variants are refused, not misread,
     /// and only the ones that fit are required to round-trip.
     #[test]
     fn parse_inverts_render_on_sampled_mutated_and_crossed_programs() {
@@ -1735,7 +1859,7 @@ mod tests {
     fn a_subtree_sampled_at_depth_fits_there() {
         let policy = Policy::default();
         let mut rng = Rng(2029);
-        for d in 0..=MAX_DEPTH {
+        for d in 0..=max_depth() {
             for _ in 0..300 {
                 let (sub, _) = policy.sample_at(&mut rng, d);
                 assert!(check_list_depth(&sub.body, d).is_ok(), "depth {d}: {}", sub.source());
@@ -1743,8 +1867,8 @@ mod tests {
         }
     }
 
-    /// F1: with `bounded` on, every variant of a program within MAX_DEPTH is
-    /// within MAX_DEPTH, over chains of variants as a pool would produce them.
+    /// F1: with `bounded` on, every variant of a program within max_depth is
+    /// within max_depth, over chains of variants as a pool would produce them.
     /// Unbounded grafts do exceed the limit, which the test checks too, so it
     /// has something to catch. Break-checked: a bounded branch that samples at
     /// depth 0, or that skips the donor fit, fails it.
@@ -1813,8 +1937,8 @@ mod tests {
     fn parse_refuses_nesting_past_max_depth() {
         // Five reverses over a range: the range sits at the last level, a leaf.
         let chain = |n: usize| format!("range(3){}", ".reverse()".repeat(n));
-        assert!(Program::parse(&chain(MAX_DEPTH)).is_ok());
-        let deep = Program::parse(&chain(MAX_DEPTH + 1)).expect_err("six levels");
+        assert!(Program::parse(&chain(max_depth())).is_ok());
+        let deep = Program::parse(&chain(max_depth() + 1)).expect_err("six levels");
         assert!(deep.contains("MAX_DEPTH"), "{deep}");
         // Integer nesting: a map's body sits one level down, and operators stop
         // two levels below the list limit, so six nested adds fit and seven do not.
@@ -1836,24 +1960,24 @@ mod tests {
                 .unwrap_or_else(|| panic!("no constraint_row fact for `{name}`"))[1]
                 .clone()
         };
-        assert_eq!(value("max_depth").parse::<usize>(), Ok(MAX_DEPTH));
-        assert_eq!(value("max_nest").parse::<usize>(), Ok(MAX_NEST));
+        assert_eq!(value("max_depth").parse::<usize>(), Ok(max_depth()));
+        assert_eq!(value("max_nest").parse::<usize>(), Ok(max_nest()));
     }
 
-    /// `Parser::enter` refuses the (MAX_NEST + 1)th level of nesting, and
+    /// `Parser::enter` refuses the (max_nest + 1)th level of nesting, and
     /// nothing else in the parser refuses for nesting at that depth.
     #[test]
     fn a_program_nested_past_max_nest_is_refused() {
         // Levels counted by `enter`: the outer list is level 1, the map body
         // level 2, and each operand of a `wrapping_add` one more. So the
-        // innermost `s` of `adds(n)` is at level `n + 2`, and `adds(MAX_NEST - 1)`
+        // innermost `s` of `adds(n)` is at level `n + 2`, and `adds(max_nest() - 1)`
         // is the first program nested past the limit.
         let adds = |n: usize| (0..n).fold("s".to_string(), |e, _| format!("wrapping_add({e}, 1)"));
         let program = |n: usize| format!("range(3).map(|x| {})", adds(n));
-        let deep = Program::parse(&program(MAX_NEST - 1)).expect_err("nested past MAX_NEST");
-        assert!(deep.contains(&format!("nested more than {MAX_NEST} levels deep")), "{deep}");
+        let deep = Program::parse(&program(max_nest() - 1)).expect_err("nested past MAX_NEST");
+        assert!(deep.contains(&format!("nested more than {} levels deep", max_nest())), "{deep}");
         // At the limit: refused, if at all, for the integer depth limit, not for nesting.
-        let at_limit = Program::parse(&program(MAX_NEST - 2)).expect_err("refused for MAX_DEPTH");
+        let at_limit = Program::parse(&program(max_nest() - 2)).expect_err("refused for MAX_DEPTH");
         assert!(!at_limit.contains("levels deep"), "{at_limit}");
         assert!(at_limit.contains("MAX_DEPTH"), "{at_limit}");
     }
@@ -1865,7 +1989,7 @@ mod tests {
     #[test]
     fn with_the_flag_off_sampling_is_bit_identical_to_before_p5b() {
         let policy = Policy::with_second_order(false);
-        assert_eq!(policy.list_logits.len(), LIST_RULES.len());
+        assert_eq!(policy.list_logits.len(), list_rules().len());
         assert!(!policy.second_order());
         let mut h: u64 = 0xcbf2_9ce4_8422_2325;
         let mut feed = |s: &str| {
@@ -1994,8 +2118,8 @@ mod tests {
             oscillators_in(&p.body, &mut found);
             for o in found {
                 osc += 1;
-                assert!((bounds::OSC_LEN.0..=bounds::OSC_LEN.1).contains(&o.n));
-                assert!((bounds::OSC_SHIFT.0..=bounds::OSC_SHIFT.1).contains(&o.k));
+                assert!((bounds::osc_len().0..=bounds::osc_len().1).contains(&o.n));
+                assert!((bounds::osc_shift().0..=bounds::osc_shift().1).contains(&o.k));
                 assert!(o.a <= 1 << (o.k + 1) && o.b < 1 << o.k, "{o:?}");
                 // Complex roots: (a/2^k)^2 < 4 b/2^k, written without division.
                 if o.a * o.a < (4 * o.b) << o.k {
@@ -2084,7 +2208,7 @@ mod tests {
         }
         let example = second_order_example();
         let line = on.lines().find(|l| l.starts_with("  osc ")).expect("the osc line is named");
-        assert_eq!(line, format!("  {SECOND_ORDER_RULE:<8} {example}"));
+        assert_eq!(line, format!("  {:<8} {example}", second_order_rule()));
         assert!(on.contains("second-order form `osc`"));
         let parsed = Program::parse_for_policy(&example, true).expect("the example parses");
         assert!(matches!(parsed.body, ListExpr::Osc(_)));
@@ -2120,9 +2244,9 @@ mod tests {
     fn the_prompt_grammar_names_every_production_and_its_examples_parse() {
         let (lists, ints) = production_examples();
         let names: Vec<&str> = lists.iter().map(|(n, _)| *n).collect();
-        assert_eq!(names, LIST_RULES.to_vec());
+        assert_eq!(names, list_rules());
         let names: Vec<&str> = ints.iter().map(|(n, _)| *n).collect();
-        assert_eq!(names, INT_RULES.to_vec());
+        assert_eq!(names, int_rules());
         for (_, text) in &lists {
             assert_eq!(Program::parse(text).map(|p| { let mut s = String::new(); p.body.render(&mut s); s }), Ok(text.clone()));
         }
@@ -2131,7 +2255,7 @@ mod tests {
             assert!(Program::parse(&wrapped).is_ok(), "{wrapped}");
         }
         let described = describe_grammar(false);
-        for name in LIST_RULES.iter().chain(INT_RULES.iter()) {
+        for name in list_rules().iter().chain(int_rules().iter()) {
             assert!(described.contains(name), "{name} missing from the description");
         }
     }

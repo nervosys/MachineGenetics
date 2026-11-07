@@ -224,7 +224,7 @@ facts are grouped into files and namespaces. They are not classes.
 
 ### Phase 0: Preconditions
 
-- [ ] Merge the stack #38–#133, this plan included, in order (needs the user). **S**
+- [ ] Merge the stack #38–#134, this plan included, in order (needs the user). **S**
 - [ ] Settle the open questions in section 8. **S**
 - [ ] Census every module in `prototype/src` (73 files) into neural, symbolic, knowledge base, interface, or outside the design (for example `crdt.rs`, `consensus.rs`, `hot_reload.rs`). Record it in `ARCHITECTURE.md`. Outside-the-design modules are kept but not extended. **S [H]**
 
@@ -294,7 +294,7 @@ facts are grouped into files and namespaces. They are not classes.
 ### Phase 6: Neural engines consume the knowledge base
 
 - [x] `kb/profiles/arena.mg`: the arena's program space as a profile of the full grammar (its productions, the `usize` list fragment, the depth limit). **M** *(Schema v12, `Kb::profile`, `Grammar::restricted`. 41 of the 148 productions, measured, not mapped by hand: tests recognise the 19 forms and 60 sampled programs with those alone, and each production is needed. The 19 forms and 14 limits are held to `grammar.rs`. `grammar.rs` still has its own tables: the next item.)*
-- [ ] `arena/src/grammar.rs` builds its productions from `Kb::profile("arena")`; seeds reproduce byte-identically. **L**
+- [x] `arena/src/grammar.rs` builds its productions from `Kb::profile("arena")`; seeds reproduce byte-identically. **L** *(`grammar::space()`. It reads only `kb::PROFILE_FILES`, since a full load took 15 s in a debug build, and a test holds that read equal to the checked load. This replaces #131's departure: `max_depth` is now read. Measured: `a_seed_draws_what_it_always_drew` pins digests taken from the old code, and two seeded runs differ from the old binary only in measured joules and seconds and what derives from them. `Sampler` still holds the meaning of each form by name, which is code, not a table.)*
 - [ ] `describe_grammar` text is generated from the profile; the `GOLDEN_OFF` test still holds. **M**
 - [ ] A grammar mask for any token-level generator: given a prefix, the allowed next tokens, computed from the grammar facts. **M**
 - [ ] The LLM proposer (X1, blocked on an API model and key) is prompted from `Kb::profile` and the rule facts, and its output is decided by the shared verdict. **M**

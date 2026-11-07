@@ -455,7 +455,7 @@ fn checkpoints_of(curve: &physics::Curve) -> Vec<transfer::CurveCheckpoint> {
 }
 
 fn prior_lz(n: usize, sub: arena::substrate::Substrate) {
-    use arena::grammar::{Policy, Rng, LIST_RULES};
+    use arena::grammar::{list_rules, Policy, Rng};
     use arena::substrate::Outcome;
     let base = Policy::default();
     let mut old = Policy::default();
@@ -463,7 +463,7 @@ fn prior_lz(n: usize, sub: arena::substrate::Substrate) {
     for l in old.list_logits.iter_mut().skip(9) {
         *l = -1e9;
     }
-    for (name, policy) in [("original 9 productions", &old), (&*format!("all {}", LIST_RULES.len()), &base)] {
+    for (name, policy) in [("original 9 productions", &old), (&*format!("all {}", list_rules().len()), &base)] {
         let mut rng = Rng(2026);
         let (mut lz, mut len, mut ok) = (0.0, 0usize, 0usize);
         for _ in 0..n {
@@ -594,7 +594,7 @@ fn main() {
             }
             // A flag with no value: the second-order list production (plan P5b).
             "--second-order" => cfg.second_order = true,
-            // A flag with no value: mutation and crossover respect MAX_DEPTH (plan F1).
+            // A flag with no value: mutation and crossover respect max_depth (plan F1).
             "--bound-grafts" => cfg.bound_grafts = true,
             "--novelty" => {
                 cfg.novelty = match value(i) {
