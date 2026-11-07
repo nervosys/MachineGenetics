@@ -224,7 +224,7 @@ facts are grouped into files and namespaces. They are not classes.
 
 ### Phase 0: Preconditions
 
-- [ ] Merge the stack #38–#142, this plan included, in order (needs the user). **S**
+- [ ] Merge the stack #38–#143, this plan included, in order (needs the user). **S**
 - [ ] Settle the open questions in section 8. **S**
 - [ ] Census every module in `prototype/src` (73 files) into neural, symbolic, knowledge base, interface, or outside the design (for example `crdt.rs`, `consensus.rs`, `hot_reload.rs`). Record it in `ARCHITECTURE.md`. Outside-the-design modules are kept but not extended. **S [H]**
 
@@ -314,7 +314,7 @@ facts are grouped into files and namespaces. They are not classes.
 
 ### Phase 8: The knowledge base grows through the gate
 
-- [ ] A proposal format: a diff to `kb/*.mg` with its author (a component or a person). **M**
+- [x] A proposal format: a diff to `kb/*.mg` with its author (a component or a person). **M** *(`prototype/src/kb_proposal.rs`. A proposal is JSON: an author (`{"component": …}`, which the knowledge base must state as a `Component`, `NeuralComponent` or `SymbolicComponent`, or `{"person": …}`), a summary, `base` (the version it was written against) and edits. An edit replaces text that occurs exactly once in a `kb/*.mg` file, or appends when `before` is empty, which is the diff: exact, and refused rather than fuzzily applied when the file has moved. `version` is the SHA-256 of the files in load order, line endings normalised; item 3 records it. `apply` gives the new files or every reason it cannot. It cannot add a file, since the file list is compiled in. Nothing calls it yet: admission is the gate's, the next item.)*
 - [ ] The knowledge-base gate: schema fit, every invariant, the conformance suite from Phases 2–5, and no rise in measured cost on a fixed benchmark. **L**
 - [ ] Content-addressed versions of the knowledge base, recorded in the evidence log. **M**
 - [ ] `germline` hands a knowledge-base version on with the model that was trained against it. **M**
