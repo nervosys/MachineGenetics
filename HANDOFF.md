@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,406** — rmi 1,384 · prototype 1,428 · ribosome 168 · germline 175 · forge 63 · arena 188 |
+| Tests | **3,410** — rmi 1,384 · prototype 1,428 · ribosome 168 · germline 175 · forge 63 · arena 192 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -1393,6 +1393,37 @@ and by 0.2% or less in MAGE tokens, BPE or learner bits.
 flags, missing since #70. `cli_flags` goes from 40 to 45.
 
 No tests added; an existing stdin test covers `--count-tokens`.
+
+**Implementation plan M3 and F1: PR #71 reproduces exactly, and bounded grafts
+stay off.**
+
+**M3.** `scripts/arena-seeds.sh` re-ran #71's six-seed table. Exploit counts
+match exactly. Held-out bpb matches to three decimals on 10 of 12 runs. The
+other two (seed 6, both arms) differ by 0.001 because the table was rounded
+twice. So the arena changes since #71 (about 6,700 lines across 14 source
+files) left default runs exactly
+where they were.
+
+**F1.** `--bound-grafts` (default off) samples a mutation's fresh subtree at the
+replaced node's depth, and restricts crossover donors to those that fit at the
+site. The unbounded paths draw for draw as before, and P5b's golden hash
+still holds. Break-checked.
+
+Six seeds, comparing bounded against unbounded:
+- Bounded is worse on 5 of 6 seeds. The mean difference is +0.119 bpb (sd
+  0.25, about 1.2 standard errors), so it is not significant.
+- Variants over `MAX_DEPTH` fall from 52% to 4%. The mutator now reports these
+  as `over_depth`.
+
+Two findings:
+- **The arena gate does not enforce `MAX_DEPTH`.** Candidates are parsed by the
+  MAGE front end, so too-deep variants are evaluated, not refused. Only
+  `Program::parse`, which the command proposer uses, refuses them. That is
+  where #73's "16%" came from.
+- The bounded arm's remaining 4% is unexplained. Over-deep parents from the
+  attacker's wrappers are a guess, not verified.
+
+Arena +4 tests.
 
 **Pre-existing, not from this change:** `cargo clippy` 0.1.98 (2026-09-01)
 reports 15 warnings in `prototype` — 14 `chunks_exact` with a constant size in

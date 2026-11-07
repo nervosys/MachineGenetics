@@ -503,8 +503,15 @@ impl Sampler<'_> {
 impl Policy {
     /// Sample a program and the trace of choices that produced it.
     pub fn sample(&self, rng: &mut Rng) -> (Program, Vec<Choice>) {
+        self.sample_at(rng, 0)
+    }
+
+    /// Sample a subtree whose root sits at list depth `depth`, so it is drawn
+    /// under the same limits as a subtree at that depth of a program (F1). At
+    /// depth 0 this is [`Policy::sample`], draw for draw.
+    pub fn sample_at(&self, rng: &mut Rng, depth: usize) -> (Program, Vec<Choice>) {
         let mut s = Sampler { policy: self, rng, trace: Vec::new(), fresh: 0 };
-        let body = s.list(0, &["s".to_string()]);
+        let body = s.list(depth, &["s".to_string()]);
         (Program { body }, s.trace)
     }
 
@@ -695,13 +702,25 @@ fn freshen(e: &mut ListExpr, tag: &str) {
     }
 }
 
-/// Replace one random list subtree with a fresh sample from `policy`.
+/// Replace one random list subtree with a fresh sample from `policy`. The
+/// grafts are sampled from depth 0, so a variant can exceed [`MAX_DEPTH`]; see
+/// [`mutate_bounded`] for the bounded form.
 pub fn mutate(p: &Program, policy: &Policy, rng: &mut Rng) -> Program {
+    mutate_bounded(p, policy, rng, false)
+}
+
+/// [`mutate`], with the fresh subtree sampled at the depth of the node it
+/// replaces when `bounded` (F1). A subtree at depth `d` is drawn under the
+/// limits that apply at `d`, so a variant of a program within [`MAX_DEPTH`]
+/// stays within it. Off, it is [`mutate`], draw for draw.
+pub fn mutate_bounded(p: &Program, policy: &Policy, rng: &mut Rng, bounded: bool) -> Program {
     let mut paths = Vec::new();
     list_paths(&p.body, vec![], &mut paths);
     let path = &paths[rng.below(paths.len())];
     let mut out = p.clone();
-    let (mut fresh, _) = policy.sample(rng);
+    // A list node's path length is its list depth: integer subtrees hold no lists.
+    let depth = if bounded { path.len() } else { 0 };
+    let (mut fresh, _) = policy.sample_at(rng, depth);
     freshen(&mut fresh.body, &format!("m{}", rng.next_u64() % 10_000));
     *at_mut(&mut out.body, path) = fresh.body;
     out
@@ -709,13 +728,42 @@ pub fn mutate(p: &Program, policy: &Policy, rng: &mut Rng) -> Program {
 
 /// Graft a list subtree of `b` into `a` — cross-lineage hybridisation when the
 /// two parents come from different agents. Only subtrees that are closed over
-/// the top-level scope (`s`) are grafted, so no variable can dangle.
+/// the top-level scope (`s`) are grafted, so no variable can dangle. The graft
+/// can exceed [`MAX_DEPTH`]; see [`crossover_bounded`].
 pub fn crossover(a: &Program, b: &Program, rng: &mut Rng) -> Program {
+    crossover_bounded(a, b, rng, false)
+}
+
+/// [`crossover`], with the graft restricted to donors that fit at the depth of
+/// the site they replace when `bounded` (F1). A graft is an existing subtree,
+/// not a fresh sample, so it cannot be re-drawn at depth; the bounded form
+/// picks uniformly among the (site, donor) pairs where the donor fits, and
+/// returns `a` unchanged when no pair fits. Off, it is [`crossover`], draw for draw.
+pub fn crossover_bounded(a: &Program, b: &Program, rng: &mut Rng, bounded: bool) -> Program {
     let mut donors = Vec::new();
     list_paths(&b.body, vec![], &mut donors);
     donors.retain(|path| closed(at(&b.body, path), &mut vec!["s".to_string()]));
     let mut sites = Vec::new();
     list_paths(&a.body, vec![], &mut sites);
+    if bounded {
+        let mut pairs = Vec::new();
+        for (si, site) in sites.iter().enumerate() {
+            for (di, donor) in donors.iter().enumerate() {
+                if check_list_depth(at(&b.body, donor), site.len()).is_ok() {
+                    pairs.push((si, di));
+                }
+            }
+        }
+        if pairs.is_empty() {
+            return a.clone();
+        }
+        let (si, di) = pairs[rng.below(pairs.len())];
+        let mut graft = at(&b.body, &donors[di]).clone();
+        freshen(&mut graft, &format!("c{}", rng.next_u64() % 10_000));
+        let mut out = a.clone();
+        *at_mut(&mut out.body, &sites[si]) = graft;
+        return out;
+    }
     if donors.is_empty() {
         return a.clone();
     }
@@ -876,7 +924,7 @@ impl Program {
 /// The depth limit, as [`Sampler`] applies it. A list node at [`MAX_DEPTH`] is
 /// a leaf; at deeper levels there are none. Integer operators stop two levels
 /// below the list depth limit.
-fn check_list_depth(e: &ListExpr, d: usize) -> Result<(), String> {
+pub fn check_list_depth(e: &ListExpr, d: usize) -> Result<(), String> {
     let leaf = matches!(e, ListExpr::Range(_) | ListExpr::Repeat(..) | ListExpr::Cycle(..) | ListExpr::Nest(..) | ListExpr::Osc(_));
     if d > MAX_DEPTH || (d == MAX_DEPTH && !leaf) {
         return Err(format!("nested deeper than MAX_DEPTH = {MAX_DEPTH}"));
@@ -1577,6 +1625,51 @@ mod tests {
         }
         assert!(checked >= 2000, "only {checked} programs checked");
         assert!(too_deep < checked, "every variant was too deep to check");
+    }
+
+    /// F1: a subtree sampled at depth `d` fits at depth `d`, for every `d`.
+    #[test]
+    fn a_subtree_sampled_at_depth_fits_there() {
+        let policy = Policy::default();
+        let mut rng = Rng(2029);
+        for d in 0..=MAX_DEPTH {
+            for _ in 0..300 {
+                let (sub, _) = policy.sample_at(&mut rng, d);
+                assert!(check_list_depth(&sub.body, d).is_ok(), "depth {d}: {}", sub.source());
+            }
+        }
+    }
+
+    /// F1: with `bounded` on, every variant of a program within MAX_DEPTH is
+    /// within MAX_DEPTH, over chains of variants as a pool would produce them.
+    /// Unbounded grafts do exceed the limit, which the test checks too, so it
+    /// has something to catch. Break-checked: a bounded branch that samples at
+    /// depth 0, or that skips the donor fit, fails it.
+    #[test]
+    fn bounded_grafts_keep_every_variant_within_max_depth() {
+        let policy = Policy::default();
+        let mut rng = Rng(2028);
+        let (mut checked, mut unbounded_too_deep) = (0usize, 0usize);
+        for _ in 0..1000 {
+            let (mut p, _) = policy.sample(&mut rng);
+            let (q, _) = policy.sample(&mut rng);
+            for generation in 0..4 {
+                let v = if generation % 2 == 0 {
+                    mutate_bounded(&p, &policy, &mut rng, true)
+                } else {
+                    crossover_bounded(&p, &q, &mut rng, true)
+                };
+                assert!(check_list_depth(&v.body, 0).is_ok(), "too deep: {}", v.source());
+                assert_round_trips(&v);
+                checked += 1;
+                if check_list_depth(&mutate(&p, &policy, &mut rng).body, 0).is_err() {
+                    unbounded_too_deep += 1;
+                }
+                p = v;
+            }
+        }
+        assert!(checked >= 4000, "only {checked} variants checked");
+        assert!(unbounded_too_deep > 0, "unbounded grafts never exceeded MAX_DEPTH");
     }
 
     #[test]

@@ -30,7 +30,7 @@
 //!
 //! An LLM writing MAGE is a fourth kind, and nothing here would change for it.
 
-use crate::grammar::{crossover, mutate, Choice, IntExpr, ListExpr, Policy, Program, Rng};
+use crate::grammar::{crossover_bounded, mutate_bounded, Choice, IntExpr, ListExpr, Policy, Program, Rng};
 use serde::{Deserialize, Serialize};
 
 /// A proposed program, and what is needed to credit it.
@@ -380,13 +380,28 @@ impl Proposer for UniformAgent {
     fn feedback(&mut self, _scored: &[Scored]) {}
 }
 
+impl MutatorAgent {
+    /// Count a variant, and whether it exceeds MAX_DEPTH (F1).
+    fn count_graft(&mut self, program: &Program) {
+        self.grafts += 1;
+        if crate::grammar::check_list_depth(&program.body, 0).is_err() {
+            self.over_depth += 1;
+        }
+    }
+}
+
 /// Varies the pool's best entries — whoever wrote them — by mutation and
 /// crossover. Falls back to the prior while the pool is empty.
 pub struct MutatorAgent {
     pub id: String,
     /// How many of the pool's best entries to draw parents from.
     pub elite: usize,
+    /// Whether grafts are sampled at the depth they replace (plan F1).
+    pub bound_grafts: bool,
     policy: Policy,
+    /// Variants made by mutation or crossover, and how many exceed MAX_DEPTH.
+    grafts: usize,
+    over_depth: usize,
 }
 
 impl MutatorAgent {
@@ -396,7 +411,19 @@ impl MutatorAgent {
 
     /// The mutator, with the second-order production in its fresh subtrees when asked (P5b).
     pub fn with_second_order(id: impl Into<String>, second_order: bool) -> Self {
-        MutatorAgent { id: id.into(), elite: 16, policy: Policy::with_second_order(second_order) }
+        MutatorAgent::with_options(id, second_order, false)
+    }
+
+    /// The mutator, with its grafts bounded to MAX_DEPTH when asked (plan F1).
+    pub fn with_options(id: impl Into<String>, second_order: bool, bound_grafts: bool) -> Self {
+        MutatorAgent {
+            id: id.into(),
+            elite: 16,
+            bound_grafts,
+            policy: Policy::with_second_order(second_order),
+            grafts: 0,
+            over_depth: 0,
+        }
     }
 }
 
@@ -422,20 +449,24 @@ impl Proposer for MutatorAgent {
                 }
                 let a = elite[rng.below(elite.len())];
                 if rng.next_f64() < 0.5 {
-                    Candidate { program: mutate(&a.program, &self.policy, rng), trace: None, parents: vec![a.id] }
+                    let program = mutate_bounded(&a.program, &self.policy, rng, self.bound_grafts);
+                    self.count_graft(&program);
+                    Candidate { program, trace: None, parents: vec![a.id] }
                 } else {
                     let b = elite[rng.below(elite.len())];
-                    Candidate {
-                        program: crossover(&a.program, &b.program, rng),
-                        trace: None,
-                        parents: vec![a.id, b.id],
-                    }
+                    let program = crossover_bounded(&a.program, &b.program, rng, self.bound_grafts);
+                    self.count_graft(&program);
+                    Candidate { program, trace: None, parents: vec![a.id, b.id] }
                 }
             })
             .collect()
     }
 
     fn feedback(&mut self, _scored: &[Scored]) {}
+
+    fn describe(&self) -> serde_json::Value {
+        serde_json::json!({ "grafts": self.grafts, "over_depth": self.over_depth })
+    }
 }
 
 /// Searches the reward for exploits (plan 7.4). It wraps the pool's best

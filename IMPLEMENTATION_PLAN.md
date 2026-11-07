@@ -50,8 +50,10 @@ The yardstick everything later is judged by, so it goes first.
   - This is Cartesia's compute multiplier with joules as the unit.
   - Done when a `measure` subcommand prints multipliers with seed spread, from
     a directory of run JSONs.
-- [ ] **M3** A multi-seed runner. **S [H]** *Runner built (`scripts/arena-seeds.sh`);
-  reproducing PR #71's 20-round table with it is still to do.*
+- [x] **M3** A multi-seed runner. **S [H]** *Reproduced exactly (2026-10-29, at `6dbe2a47a`):
+  all 12 runs match PR #71's table, with exploit counts identical and held-out
+  bits/byte equal to three decimals on 10 of 12; seed 6 differs by 0.001 from
+  double rounding. See ARENA.md, "Multi-seed held-out, and bounded grafts".*
   - Generalise the `scratchpad/ab.py` used for PR #71 into
     `scripts/arena-seeds.sh`: N seeds by M configs, run in parallel under
     `--cost fuel`, which is deterministic.
@@ -235,11 +237,15 @@ Physics as programs agents write, checked by the language, not only as data.
 
 ## Phase F: Follow-ups found along the way
 
-- [ ] **F1** Grammar depth. **S**
+- [x] **F1** Grammar depth. **S**
   - `mutate` and `crossover` exceed `MAX_DEPTH` about 16% of the time (found
     by PR #73's round-trip test).
   - Measure whether bounding the grafts changes held-out results (M3 under
     `--cost fuel`), then bound them or record why not.
+  - Result: `--bound-grafts` added, off by default. Bounded is worse by +0.119
+    bpb (sd 0.251, six seeds, behaviour novelty), so the default stays off. Over
+    depth in the arena is 52% unbounded and 4% bounded. The arena gate does not
+    enforce `MAX_DEPTH`, so the 16% figure is for `Program::parse`.
 - [x] **F2** A separate ledger account for command proposers. **S [H]**
   - Command proposers currently share the `proposer` role's account with
     grammar agents.

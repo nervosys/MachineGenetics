@@ -743,7 +743,8 @@ sampled from depth 0, so they can sit deeper than that. In the property test
 637 of 4,000 variants were too deep, about 16%. The search still keeps them,
 since it was measured with them. The proposer's parser refuses them, and the
 test requires that it does. Making the grafts respect the depth would change
-what the search explores, so it is left as a separate decision.
+what the search explores, so it was measured as a separate choice (plan F1,
+below), and it is off by default.
 
 ## Succession: authority through the gate (plan 8.1–8.2)
 
@@ -1180,6 +1181,71 @@ other learners. Two points remain unchecked:
   about the production, so this grid does not test that case.
 - The bits-per-byte effect is shown only on three physics systems and one
   learner, with three seeds.
+
+## Multi-seed held-out, and bounded grafts (plans M3, F1)
+
+**Reproducing the six-seed table (M3).** `scripts/arena-seeds.sh` reran the
+table in "The held-out comparison, and the default" at commit `6dbe2a47a`, with
+the same arguments: seeds 1–6, `--novelty shape` and `--novelty behaviour`,
+20 rounds of 48 programs, `--agents grammar:1,mutator:1,attacker:1`,
+`--cost fuel`, held-out `README.md,germline/src/gate.rs`. All twelve runs
+reproduce it. The credited exploit counts match exactly, 115/95/119/120/97/118
+for shape and 0 for behaviour. Held-out bits/byte match to the table's three
+decimals on ten of twelve runs. On seed 6 the two arms differ from the table by
+0.001. The unrounded means are 7.56050 and 7.33248, and the table's 7.561 and
+7.333 come from rounding to four places and then to three (7.5605 → 7.561,
+7.3325 → 7.333). The table is right to within
+that rounding, so the numbers did not drift. The code has changed since the
+table was written, with new learners and the oscillator behind a default-off
+flag, and `Config` has new keys. The defaults keep behaviour, and the exact
+match is the check on that. I did not bisect, since nothing differs.
+
+**Bounded grafts (plan F1).** `--bound-grafts` makes `mutate` sample its fresh
+subtree at the depth of the node it replaces (`Policy::sample_at`), and makes
+`crossover` take only donors that fit at the site's depth. A graft is an
+existing subtree, so it cannot be redrawn, and when no donor fits the variant
+is the parent unchanged. Off, both are the old functions, draw for draw: the
+P5b golden-hash test passes. A config without the field reads as off. Tests:
+`bounded_grafts_keep_every_variant_within_max_depth` (chains of variants, each
+checked against `check_list_depth`, with the unbounded case checked to exceed
+the limit), `bounded_grafts_put_no_mutant_past_max_depth_into_a_run`, and
+`a_subtree_sampled_at_depth_fits_there`. The first was break-checked, with both
+bounded branches made to ignore the flag: it fails with "too deep".
+
+One correction to the section above. The arena's gate does not enforce
+`MAX_DEPTH`: it parses candidates with the MAGE front end, so a too-deep graft
+is evaluated, not refused. The refusal the section describes is for
+`Program::parse`, which the command proposer uses. The mutator therefore counts
+its own variants and those past the limit, reported as `over_depth` under its
+`state`.
+
+**The measurement.** Six seeds, 20 rounds, 48 programs, `--novelty behaviour`,
+`--cost fuel`, the same agents as above. The unbounded arm is the default
+(`unbounded`), and the bounded arm adds `--bound-grafts`.
+
+| seed | unbounded bpb | bounded bpb | bounded − unbounded |
+|---|---|---|---|
+| 1 | 7.4960 | 7.5514 | +0.0554 |
+| 2 | 7.6623 | 7.7183 | +0.0559 |
+| 3 | 7.5717 | 7.6689 | +0.0972 |
+| 4 | 7.9053 | 7.7319 | −0.1733 |
+| 5 | 7.4995 | 8.0887 | +0.5892 |
+| 6 | 7.3325 | 7.4220 | +0.0895 |
+
+The difference is +0.119 bits/byte on average, sd 0.251, standard error 0.103,
+so about 1.2 standard errors. Bounding is worse on five seeds of six, and not
+significant on this sample. Over depth, the mutator's variants (summed over
+seeds) are 52% of the unbounded arm's, 1,145 of 2,190, and 4% of the bounded
+arm's, 127 of 3,215. The bounded arm's remaining 4% is not explained by grafts.
+I have not checked it, but the likely cause is parents: the attacker's wrappers
+add two list levels, and the gate admits them to the pool, so a bounded graft
+can keep an over-deep ancestor. Counting over-deep parents would confirm it.
+
+**Decision: off by default.** The measurement does not support a flip. Bounding
+removes the over-deep variants as intended, but on this sample the held-out
+result is slightly worse, and the seed spread is wide. The flag stays, as an
+experiment, and the default stays where it was. A longer grid or a held-out
+test with more power would be needed before the default could change.
 
 ## Next, in order
 
