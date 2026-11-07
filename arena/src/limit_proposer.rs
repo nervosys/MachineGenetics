@@ -89,7 +89,8 @@ fn int_parameters(e: &IntExpr, out: &mut Vec<(&'static str, u64)>) {
 }
 
 /// The limits tested, each with a `profile_limit`. `osc_len` and `osc_shift` are
-/// not among them, as `Osc` is skipped.
+/// not among them, as `Osc` is skipped; nor is `int_extra_depth`, which bounds the
+/// generator's depth and is no parameter a program writes.
 const TESTED: [&str; 11] =
     ["literal", "mod", "range", "take", "repeat", "cycle_len", "cycle_elems", "copy", "nest_count", "nest_mod", "filter_mod"];
 
@@ -226,6 +227,22 @@ pub fn propose(signals: &[Signal], run: &str) -> Option<Proposal> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// `TESTED` is the arena's `profile_limit` names, less the two `Osc` limits.
+    /// `grammar::limit()` reads the same facts, through `GrammarProfile::limits`.
+    #[test]
+    fn the_tested_limits_are_the_stated_ones() {
+        let kb = kb::load().expect("the knowledge base loads");
+        let stated: std::collections::BTreeSet<String> = kb
+            .facts("profile_limit")
+            .into_iter()
+            .filter(|f| f[0] == "arena")
+            .map(|f| f[1].clone())
+            .filter(|n| !["osc_len", "osc_shift", "int_extra_depth"].contains(&n.as_str()))
+            .collect();
+        let tested: std::collections::BTreeSet<String> = TESTED.iter().map(|s| s.to_string()).collect();
+        assert_eq!(tested, stated);
+    }
 
     /// Every form and bound the parameters name, nested at depths up to the limit.
     // The sources are bodies alone, which `Program::parse` takes as well as a whole `source()`.

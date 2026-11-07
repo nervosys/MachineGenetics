@@ -1193,7 +1193,7 @@ mod handler_tests {
         assert_eq!(
             names.len(),
             crate::hir::BUILTIN_EFFECTS.len(),
-            "§11.2's effect rows no longer match hir::BUILTIN_EFFECTS ({names:?}) — if the table grew or              shrank, the sentence above it and `ontology::EFFECT_NAMES` both need              the same change"
+            "§11.2's effect rows no longer match hir::BUILTIN_EFFECTS ({names:?}) — if the table grew or              shrank, the sentence above it needs the same change"
         );
         for effect in names {
             let msgs = errors(&format!("+f a() -> i32 / {effect} {{ 1 }}"));

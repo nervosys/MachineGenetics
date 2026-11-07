@@ -1031,6 +1031,23 @@ mod tests {
         );
     }
 
+    /// `RuleDatabase::ALL` and the knowledge base's `instance_of(x, RuleDatabase)`
+    /// facts name the same eight databases. The names are the `Debug` names, which
+    /// `RuleDatabase::named` also reads.
+    #[test]
+    fn every_rule_database_is_stated() {
+        let kb = crate::kb::load().expect("loads");
+        let stated: std::collections::BTreeSet<String> = kb
+            .facts("instance_of")
+            .into_iter()
+            .filter(|f| f[1] == "RuleDatabase")
+            .map(|f| f[0].clone())
+            .collect();
+        let listed: std::collections::BTreeSet<String> =
+            RuleDatabase::ALL.iter().map(|d| format!("{d:?}")).collect();
+        assert_eq!(listed, stated);
+    }
+
     #[test]
     fn rule_counts_per_database() {
         let counts = rule_counts_by_db();

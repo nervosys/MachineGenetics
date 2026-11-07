@@ -166,12 +166,6 @@ impl<'a> EmitCtx<'a> {
         if let Some(fx) = self.effects.get(name) {
             for e in fx.iter() {
                 let label = e.to_string();
-                // `strip_prefix` rather than `&label[5..]`: the hardcoded index
-                // has to stay in sync with the literal above it by hand, and
-                // byte-indexing a `&str` is the same shape of latent panic that
-                // was found in `ribosome`'s hex decoder. Here the prefix is
-                // ASCII so it happened to be safe; being safe by construction
-                // costs nothing.
                 if let Some(rest) = label.strip_prefix("perf:") {
                     self.line(&format!("MAGE.perf \"{rest}\""));
                 }
