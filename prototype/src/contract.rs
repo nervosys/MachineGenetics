@@ -40,6 +40,9 @@ pub struct Clause {
     /// Where it was written: `sp withdraw`, or `f withdraw` for a clause
     /// above the function.
     pub origin: String,
+    /// Where the clause is written in the source, from its keyword to its
+    /// closing paren; `None` when there is no source to point at.
+    pub span: Option<lexer::Span>,
 }
 
 impl Clause {
@@ -54,6 +57,11 @@ impl Clause {
             Some(m) => format!("{tag}({}, \"{m}\")", self.condition),
             None => format!("{tag}({})", self.condition),
         }
+    }
+
+    /// Where the clause is written, as the line and column a diagnostic reports.
+    pub fn diag_span(&self) -> Option<crate::hir::Span> {
+        self.span.as_ref().map(|s| crate::hir::Span { line: s.line as u32, col: s.col as u32 })
     }
 }
 
@@ -87,6 +95,7 @@ pub fn collect(module: &ast::Module) -> Vec<(Clause, Option<&FunctionDef>)> {
                             kind: c.kind,
                             condition: c.condition.clone(),
                             message: c.message.clone(),
+                            span: c.span.clone(),
                             function: fd.name.clone(),
                             origin: format!("f {}", fd.name),
                         },
@@ -97,10 +106,10 @@ pub fn collect(module: &ast::Module) -> Vec<(Clause, Option<&FunctionDef>)> {
             ItemKind::Spec(sp) => {
                 let fd = functions.get(sp.name.as_str()).copied();
                 for si in &sp.items {
-                    let (kind, text) = match si {
-                        ast::SpecItem::Require(t) => (ContractClauseKind::Requires, t),
-                        ast::SpecItem::Ensure(t) => (ContractClauseKind::Ensures, t),
-                        ast::SpecItem::Invariant(t) => (ContractClauseKind::Invariant, t),
+                    let (kind, text, span) = match si {
+                        ast::SpecItem::Require(t, s) => (ContractClauseKind::Requires, t, s),
+                        ast::SpecItem::Ensure(t, s) => (ContractClauseKind::Ensures, t, s),
+                        ast::SpecItem::Invariant(t, s) => (ContractClauseKind::Invariant, t, s),
                         _ => continue,
                     };
                     let (condition, message) = split_message(text);
@@ -109,6 +118,7 @@ pub fn collect(module: &ast::Module) -> Vec<(Clause, Option<&FunctionDef>)> {
                             kind,
                             condition,
                             message,
+                            span: Some(span.clone()),
                             function: sp.name.clone(),
                             origin: format!("sp {}", sp.name),
                         },
@@ -256,6 +266,7 @@ mod tests {
             message: None,
             function: "add".into(),
             origin: "sp add".into(),
+            span: None,
         };
         let e = prepare(&c, Some(&params(&["a", "b"]))).expect("prepares");
         // `old(a)` is the argument as passed, so it is rewritten to `a`.
@@ -273,6 +284,7 @@ mod tests {
             message: None,
             function: "g".into(),
             origin: "sp g".into(),
+            span: None,
         };
         let p = params(&["x"]);
         assert!(matches!(prepare(&c, Some(&p)), Err(PrepareError::Scope(m)) if m.contains("only in scope inside `@ens`")));
@@ -291,6 +303,7 @@ mod tests {
             message: None,
             function: "g".into(),
             origin: "sp g".into(),
+            span: None,
         };
         let p = params(&["x"]);
         assert!(matches!(prepare(&c, Some(&p)), Err(PrepareError::Scope(m)) if m.contains("`y` is not a parameter of `g`")));
@@ -303,16 +316,30 @@ mod tests {
 
     // ── Typechecking ─────────────────────────────────────────────
 
-    /// `(code, message)` of every error `resolve` and `types::check` report.
-    fn errors(src: &str) -> Vec<(String, String)> {
+    /// Every error `resolve` and `types::check` report, with its span.
+    fn diagnostics(src: &str) -> Vec<crate::hir::Diagnostic> {
         let m = module(src);
         let mut diags = crate::resolve::resolve(&m).diagnostics;
         diags.extend(crate::types::check(&m).diagnostics);
-        diags
+        diags.into_iter().filter(|d| d.severity == crate::hir::Severity::Error).collect()
+    }
+
+    /// `(code, message)` of every error `resolve` and `types::check` report.
+    fn errors(src: &str) -> Vec<(String, String)> {
+        diagnostics(src)
             .into_iter()
-            .filter(|d| d.severity == crate::hir::Severity::Error)
             .map(|d| (d.category.map_or("", |c| c.code()).to_string(), d.message))
             .collect()
+    }
+
+    /// Where a diagnostic points, as `(line, col)`.
+    fn at(d: &crate::hir::Diagnostic) -> Option<(u32, u32)> {
+        d.span.map(|s| (s.line, s.col))
+    }
+
+    /// The diagnostics whose category has code `code`.
+    fn with_code<'a>(ds: &'a [crate::hir::Diagnostic], code: &str) -> Vec<&'a crate::hir::Diagnostic> {
+        ds.iter().filter(|d| d.category.map(|c| c.code()) == Some(code)).collect()
     }
 
     const ADD: &str = "f add(a: i64, b: i64) -> i64 { a + b }\n";
@@ -390,6 +417,51 @@ mod tests {
         assert_eq!(errors("spec S {\n    @ens(|result| result >= 0.0);\n}\n"), Vec::<(String, String)>::new());
         let errs = errors("spec S {\n    @req(result >= 0.0);\n}\n");
         assert_eq!(errs.iter().map(|(c, _)| c.as_str()).collect::<Vec<_>>(), ["E0561"]);
+    }
+
+    #[test]
+    fn a_scope_error_points_at_its_clause_line() {
+        // The `@req` is on line 2, at column 5: the spec block opens on line 1.
+        let ds = diagnostics(&format!("sp add {{\n    @req(result > 0)\n}}\n{ADD}"));
+        let e = with_code(&ds, "E0561");
+        assert_eq!(e.len(), 1, "{ds:?}");
+        assert_eq!(at(e[0]), Some((2, 5)));
+    }
+
+    #[test]
+    fn a_clause_above_its_function_points_at_its_own_line() {
+        let ds = diagnostics(&format!("\n\n@req(result > 0)\n{ADD}"));
+        let e = with_code(&ds, "E0561");
+        assert_eq!(e.len(), 1, "{ds:?}");
+        assert_eq!(at(e[0]), Some((3, 1)));
+    }
+
+    #[test]
+    fn a_spec_with_no_function_points_at_its_clause_line() {
+        let ds = diagnostics("spec S {\n    @req(result >= 0.0);\n}\n");
+        let e = with_code(&ds, "E0561");
+        assert_eq!(e.len(), 1, "{ds:?}");
+        assert_eq!(at(e[0]), Some((2, 5)));
+    }
+
+    #[test]
+    fn a_clause_type_error_points_at_its_clause_line() {
+        let ds = diagnostics(&format!("sp add {{\n    @req(a > 0)\n    @ens(result == \"five\")\n}}\n{ADD}"));
+        let e = with_code(&ds, "E0308");
+        assert!(!e.is_empty(), "{ds:?}");
+        for d in &e {
+            assert_eq!(at(d), Some((3, 5)), "{d:?}");
+        }
+    }
+
+    #[test]
+    fn an_unresolved_name_in_a_clause_points_at_its_clause_line() {
+        let ds = diagnostics(&format!("sp add {{\n    @req(a > 0)\n    @ens(result == a + zz)\n}}\n{ADD}"));
+        let e = with_code(&ds, "E0425");
+        assert!(!e.is_empty(), "{ds:?}");
+        for d in &e {
+            assert_eq!(at(d), Some((3, 5)), "{d:?}");
+        }
     }
 
     // ── Evaluation ───────────────────────────────────────────────

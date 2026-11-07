@@ -585,17 +585,17 @@ fn emit_spec(buf: &mut String, s: &SpecDef, mode: Mode, depth: usize) {
     for item in &s.items {
         indent(buf, depth + 1);
         match item {
-            SpecItem::Require(c) => {
+            SpecItem::Require(c, _) => {
                 buf.push_str("@req(");
                 buf.push_str(c);
                 buf.push(')');
             }
-            SpecItem::Ensure(c) => {
+            SpecItem::Ensure(c, _) => {
                 buf.push_str("@ens(");
                 buf.push_str(c);
                 buf.push(')');
             }
-            SpecItem::Invariant(c) => {
+            SpecItem::Invariant(c, _) => {
                 buf.push_str("@inv(");
                 buf.push_str(c);
                 buf.push(')');
@@ -2118,9 +2118,30 @@ mod tests {
 
     /// Parse `src`, print it in both modes, reparse each print, and check that
     /// the AST is unchanged and that printing the reparsed AST is a fixpoint.
+    /// Replace every source span with `null`. A span is where a node sits in
+    /// the text, so a reprint that moves it changes the JSON without changing
+    /// the AST; the round trip compares the tree, not the positions.
+    fn without_spans(v: &mut serde_json::Value) {
+        use serde_json::Value;
+        match v {
+            Value::Object(map) => {
+                let is_span = map.len() == 4
+                    && ["col", "len", "line", "offset"].iter().all(|k| map.contains_key(*k));
+                if is_span {
+                    *v = Value::Null;
+                } else {
+                    map.values_mut().for_each(without_spans);
+                }
+            }
+            Value::Array(items) => items.iter_mut().for_each(without_spans),
+            _ => {}
+        }
+    }
+
     fn assert_round_trips(src: &str) {
         let original = parse_source(src);
-        let before = serde_json::to_value(&original).expect("the AST serialises");
+        let mut before = serde_json::to_value(&original).expect("the AST serialises");
+        without_spans(&mut before);
         for (mode, printed) in [
             ("agent", format_agent(&original)),
             ("human", format_human(&original)),
@@ -2129,7 +2150,8 @@ mod tests {
             let reparsed = parser::parse(&tokens).unwrap_or_else(|e| {
                 panic!("{mode} print does not reparse: {e:?}\n{printed}")
             });
-            let after = serde_json::to_value(&reparsed).expect("the AST serialises");
+            let mut after = serde_json::to_value(&reparsed).expect("the AST serialises");
+            without_spans(&mut after);
             assert_eq!(before, after, "{mode} print changed the AST:\n{printed}");
             let again = match mode {
                 "agent" => format_agent(&reparsed),

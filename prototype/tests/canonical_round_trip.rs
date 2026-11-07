@@ -87,6 +87,26 @@ fn line_of(s: &str, err: &str) -> String {
     s.lines().nth(n.saturating_sub(1)).unwrap_or("").chars().take(120).collect()
 }
 
+/// Replace every source span with `null`. A span is where a node sits in the
+/// text, so a reprint that moves it changes the JSON without changing the AST;
+/// the round trip compares the tree, not the positions.
+fn without_spans(v: &mut serde_json::Value) {
+    use serde_json::Value;
+    match v {
+        Value::Object(map) => {
+            let is_span = map.len() == 4
+                && ["col", "len", "line", "offset"].iter().all(|k| map.contains_key(*k));
+            if is_span {
+                *v = Value::Null;
+            } else {
+                map.values_mut().for_each(without_spans);
+            }
+        }
+        Value::Array(items) => items.iter_mut().for_each(without_spans),
+        _ => {}
+    }
+}
+
 #[test]
 fn every_source_round_trips_through_both_surfaces() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
@@ -106,7 +126,8 @@ fn every_source_round_trips_through_both_surfaces() {
                 continue;
             }
         };
-        let a0 = serde_json::to_value(&m).unwrap();
+        let mut a0 = serde_json::to_value(&m).unwrap();
+        without_spans(&mut a0);
         let mut errs = Vec::new();
         for (mode, print) in [
             ("agent", fmt::format_agent as fn(&_) -> String),
@@ -119,7 +140,8 @@ fn every_source_round_trips_through_both_surfaces() {
                     line_of(&s1, &e)
                 )),
                 Ok(m1) => {
-                    let a1 = serde_json::to_value(&m1).unwrap();
+                    let mut a1 = serde_json::to_value(&m1).unwrap();
+                    without_spans(&mut a1);
                     if let Some(d) = first_diff(&a0, &a1, String::new()) {
                         errs.push(format!("  {mode}: AST {d}"));
                     }

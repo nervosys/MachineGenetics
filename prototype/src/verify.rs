@@ -61,7 +61,7 @@ impl VerifyStatus {
             // adjudicated, not a weak pass. It rendered as `~` beside `✓` —
             // one character away from looking like success.
             VerifyStatus::Partial => Evidence::Unreached {
-                why: "some conditions need a runtime check that nothing performs".into(),
+                why: "some conditions are not decided statically; `--eval` checks a function's @req and @ens at run time, but no run-time check covers a struct's @inv, a spec with no function, or an undeclared effect".into(),
             },
             VerifyStatus::Failed => Evidence::Refuted { at: fqn.to_string() },
             VerifyStatus::Unspecified => Evidence::Unspecified,
@@ -442,7 +442,7 @@ fn verify_item(kind: &ast::ItemKind, prefix: &str, results: &mut Vec<Verificatio
                 .items
                 .iter()
                 .filter_map(|item| match item {
-                    ast::SpecItem::Require(s) => Some(s.clone()),
+                    ast::SpecItem::Require(s, _) => Some(s.clone()),
                     _ => None,
                 })
                 .collect();
@@ -450,7 +450,7 @@ fn verify_item(kind: &ast::ItemKind, prefix: &str, results: &mut Vec<Verificatio
                 .items
                 .iter()
                 .filter_map(|item| match item {
-                    ast::SpecItem::Ensure(s) => Some(s.clone()),
+                    ast::SpecItem::Ensure(s, _) => Some(s.clone()),
                     _ => None,
                 })
                 .collect();

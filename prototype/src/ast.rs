@@ -574,11 +574,14 @@ pub struct SpecDef {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum SpecItem {
-    Require(String),
-    Ensure(String),
+    /// `@req(text)`, and the source span of the whole clause.
+    Require(String, crate::lexer::Span),
+    /// `@ens(text)`, and the source span of the whole clause.
+    Ensure(String, crate::lexer::Span),
     Performance(String, String),
     Effect(Vec<String>),
-    Invariant(String),
+    /// `@inv(text)`, and the source span of the whole clause.
+    Invariant(String, crate::lexer::Span),
 }
 
 /// An agent capability definition: `agent Name { capabilities: [...], ... }`
@@ -613,6 +616,10 @@ pub struct ContractClause {
     pub condition: String,
     /// Optional human-readable message.
     pub message: Option<String>,
+    /// Where the clause was written, from its keyword to its closing paren.
+    /// `None` for a clause with no source, such as one an agent adds.
+    #[serde(default)]
+    pub span: Option<crate::lexer::Span>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

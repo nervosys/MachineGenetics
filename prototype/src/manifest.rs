@@ -134,9 +134,9 @@ pub fn generate(module: &Module, crate_name: &str, version: &str) -> CrateManife
             }
             ItemKind::Spec(sp) => {
                 let num_requires =
-                    sp.items.iter().filter(|i| matches!(i, ast::SpecItem::Require(_))).count();
+                    sp.items.iter().filter(|i| matches!(i, ast::SpecItem::Require(..))).count();
                 let num_ensures =
-                    sp.items.iter().filter(|i| matches!(i, ast::SpecItem::Ensure(_))).count();
+                    sp.items.iter().filter(|i| matches!(i, ast::SpecItem::Ensure(..))).count();
                 manifest.specs.push(SpecEntry { name: sp.name.clone(), num_requires, num_ensures });
             }
             _ => {}
@@ -217,6 +217,7 @@ mod tests {
                             kind: ContractClauseKind::Requires,
                             condition: "x > 0".into(),
                             message: None,
+                            span: None,
                         }],
                         is_async: false,
                         is_unsafe: false,
@@ -233,6 +234,7 @@ mod tests {
                             kind: ContractClauseKind::Invariant,
                             condition: "self.valid()".into(),
                             message: None,
+                            span: None,
                         }],
                     }),
                     visibility: Visibility::Public,
@@ -277,8 +279,8 @@ mod tests {
                         params: vec![],
                         return_type: None,
                         items: vec![
-                            SpecItem::Require("a > 0".into()),
-                            SpecItem::Ensure("result > a".into()),
+                            SpecItem::Require("a > 0".into(), crate::lexer::Span { offset: 0, len: 0, line: 1, col: 1 }),
+                            SpecItem::Ensure("result > a".into(), crate::lexer::Span { offset: 0, len: 0, line: 1, col: 1 }),
                         ],
                     }),
                     visibility: Visibility::Private,

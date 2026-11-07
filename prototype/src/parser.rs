@@ -518,7 +518,20 @@ impl<'a> Parser<'a> {
 
     // ── Contracts ───────────────────────────────────────────
 
+    /// The source span from `start` to the end of the last token consumed, so
+    /// a whole `@req(...)` clause carries the line and column of its `@`.
+    fn span_since(&self, start: &crate::lexer::Span) -> crate::lexer::Span {
+        let last = &self.tokens[self.pos.saturating_sub(1).min(self.tokens.len() - 1)].span;
+        crate::lexer::Span {
+            offset: start.offset,
+            len: (last.offset + last.len).saturating_sub(start.offset),
+            line: start.line,
+            col: start.col,
+        }
+    }
+
     fn parse_contract_clause(&mut self) -> Result<ContractClause, ParseError> {
+        let start = self.current().span.clone();
         let kind = match self.peek() {
             TokenKind::KwReq => {
                 self.advance();
@@ -596,10 +609,12 @@ impl<'a> Parser<'a> {
         }
 
         self.expect(TokenKind::RParen)?;
+        let span = Some(self.span_since(&start));
         Ok(ContractClause {
             kind,
             condition,
             message,
+            span,
         })
     }
 
@@ -1310,19 +1325,25 @@ impl<'a> Parser<'a> {
         while self.peek() != TokenKind::RBrace && self.peek() != TokenKind::Eof {
             match self.peek() {
                 TokenKind::KwReq => {
+                    let start = self.current().span.clone();
                     self.advance();
                     let text = self.collect_paren_text()?;
-                    items.push(SpecItem::Require(text));
+                    let span = self.span_since(&start);
+                    items.push(SpecItem::Require(text, span));
                 }
                 TokenKind::KwEns => {
+                    let start = self.current().span.clone();
                     self.advance();
                     let text = self.collect_paren_text()?;
-                    items.push(SpecItem::Ensure(text));
+                    let span = self.span_since(&start);
+                    items.push(SpecItem::Ensure(text, span));
                 }
                 TokenKind::KwInv => {
+                    let start = self.current().span.clone();
                     self.advance();
                     let text = self.collect_paren_text()?;
-                    items.push(SpecItem::Invariant(text));
+                    let span = self.span_since(&start);
+                    items.push(SpecItem::Invariant(text, span));
                 }
                 TokenKind::KwFx => {
                     self.advance();
@@ -5489,7 +5510,7 @@ mod tests {
             let req_count = s
                 .items
                 .iter()
-                .filter(|i| matches!(i, SpecItem::Require(_)))
+                .filter(|i| matches!(i, SpecItem::Require(..)))
                 .count();
             assert_eq!(req_count, 2);
         } else {

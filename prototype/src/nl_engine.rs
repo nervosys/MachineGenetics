@@ -1153,6 +1153,7 @@ impl NlEngine {
                                         "{} must not be minimum value",
                                         param.name
                                     )),
+                                    span: None,
                                 });
                                 added += 1;
                             }
@@ -1171,6 +1172,7 @@ impl NlEngine {
                             kind: ContractClauseKind::Ensures,
                             condition: "true".into(),
                             message: Some("postcondition placeholder".into()),
+                            span: None,
                         });
                         added += 1;
                     }
@@ -2780,6 +2782,7 @@ fn build_contracts(
             kind: ContractClauseKind::Requires,
             condition: pre.clone(),
             message: None,
+            span: None,
         });
     }
     for post in postconds {
@@ -2787,6 +2790,7 @@ fn build_contracts(
             kind: ContractClauseKind::Ensures,
             condition: post.clone(),
             message: None,
+            span: None,
         });
     }
     for inv in invariants {
@@ -2794,6 +2798,7 @@ fn build_contracts(
             kind: ContractClauseKind::Invariant,
             condition: inv.clone(),
             message: None,
+            span: None,
         });
     }
     contracts
