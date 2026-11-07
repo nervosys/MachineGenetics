@@ -1,7 +1,8 @@
 //! `kb-gate`: the knowledge base's share of the gate (NEUROSYMBOLIC_PLAN.md, Phase 8).
 //! `version` prints the knowledge base's version. `admit` applies a proposal and,
 //! if the knowledge base admits it, writes the files it changes. `promotion`
-//! prints the proposal that promotes a grammar extension to built-in.
+//! prints the proposal that promotes a grammar extension to built-in. `counts`
+//! prints the knowledge base's counts, one `key=value` line each, in key order.
 
 use std::fs;
 use std::path::Path;
@@ -18,16 +19,34 @@ fn main() -> ExitCode {
             println!("{}", kb_proposal::version(kb::FILES));
             ExitCode::SUCCESS
         }
+        ["counts"] => counts(),
         ["admit", proposal, dir] => admit(proposal, Path::new(dir)),
         ["promotion", sigil, keyword, uses, description] => promotion(sigil, keyword, uses, description),
         _ => {
             eprintln!(
-                "usage: kb-gate version | kb-gate admit <proposal.json> <dir> | \
+                "usage: kb-gate version | kb-gate counts | kb-gate admit <proposal.json> <dir> | \
                  kb-gate promotion <sigil> <keyword> <uses> <description>"
             );
             ExitCode::from(1)
         }
     }
+}
+
+/// The knowledge base's counts. `kb::Kb::counts` says what each key counts.
+fn counts() -> ExitCode {
+    let kb = match kb::load() {
+        Ok(kb) => kb,
+        Err(es) => {
+            for e in es {
+                eprintln!("refused kb_schema: {e}");
+            }
+            return ExitCode::from(2);
+        }
+    };
+    for (key, n) in kb.counts() {
+        println!("{key}={n}");
+    }
+    ExitCode::SUCCESS
 }
 
 /// The proposal that promotes `sigil`, a grammar extension used `uses` times.

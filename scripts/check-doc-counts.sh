@@ -173,6 +173,42 @@ SECURITY_AUDIT.md	[0-9,]+ in the never-compiled	unsafe_cuda_full
 SECURITY_AUDIT.md	\*\* [0-9,]+ blocks in a file no	unsafe_cuda_full
 SECURITY_AUDIT.md	cuda_backend\.rs`\*\* \([0-9]+ blocks	unsafe_cuda_backend
 HANDOFF.md	[0-9,]+ `rmi/docs` API items	rmi_api_items
+ARCHITECTURE.md	The schema is version [0-9]+,	kb_schema_version
+ARCHITECTURE.md	with [0-9]+ classes,	kb_classes
+ARCHITECTURE.md	[0-9]+ relations and	kb_relations
+ARCHITECTURE.md	[0-9]+ invariants,	kb_invariants
+ARCHITECTURE.md	states [0-9]+ instances	kb_instances
+ARCHITECTURE.md	`SafetyRule` \| [0-9]+ \|	kb_class_SafetyRule
+ARCHITECTURE.md	`TokenKind` \| [0-9]+ \|	kb_class_TokenKind
+ARCHITECTURE.md	`Production` \| [0-9]+ \|	kb_class_Production
+ARCHITECTURE.md	`Token` \| [0-9]+ \|	kb_class_Token
+ARCHITECTURE.md	`Layer` \| [0-9]+ \|	kb_class_Layer
+ARCHITECTURE.md	`Op` \| [0-9]+ \|	kb_class_Op
+ARCHITECTURE.md	`Keyword` \| [0-9]+ \|	kb_class_Keyword
+ARCHITECTURE.md	`Sigil` \| [0-9]+ \|	kb_class_Sigil
+ARCHITECTURE.md	`Type` \| [0-9]+ \|	kb_class_Type
+ARCHITECTURE.md	`Diagnostic` \| [0-9]+ \|	kb_class_Diagnostic
+ARCHITECTURE.md	`Effect` \| [0-9]+ \|	kb_class_Effect
+ARCHITECTURE.md	`SymbolicComponent` \| [0-9]+ \|	kb_class_SymbolicComponent
+ARCHITECTURE.md	`AstKind` \| [0-9]+ \|	kb_class_AstKind
+ARCHITECTURE.md	`ProfileForm` \| [0-9]+ \|	kb_class_ProfileForm
+ARCHITECTURE.md	`GateRule` \| [0-9]+ \|	kb_class_GateRule
+ARCHITECTURE.md	`GrammarConstraint` \| [0-9]+ \|	kb_class_GrammarConstraint
+ARCHITECTURE.md	`Refusal` \| [0-9]+ \|	kb_class_Refusal
+ARCHITECTURE.md	`RuleDatabase` \| [0-9]+ \|	kb_class_RuleDatabase
+ARCHITECTURE.md	`OpFamily` \| [0-9]+ \|	kb_class_OpFamily
+ARCHITECTURE.md	`Declarative` \| [0-9]+ \|	kb_class_Declarative
+ARCHITECTURE.md	`Component` \| [0-9]+ \|	kb_class_Component
+ARCHITECTURE.md	`Severity` \| [0-9]+ \|	kb_class_Severity
+ARCHITECTURE.md	`Contract` \| [0-9]+ \|	kb_class_Contract
+ARCHITECTURE.md	`Ast` \| [0-9]+ \|	kb_class_Ast
+ARCHITECTURE.md	`BinaryContainer` \| [0-9]+ \|	kb_class_BinaryContainer
+ARCHITECTURE.md	`Hir` \| [0-9]+ \|	kb_class_Hir
+ARCHITECTURE.md	`HumanSource` \| [0-9]+ \|	kb_class_HumanSource
+ARCHITECTURE.md	`IrOp` \| [0-9]+ \|	kb_class_IrOp
+ARCHITECTURE.md	`NeuralComponent` \| [0-9]+ \|	kb_class_NeuralComponent
+ARCHITECTURE.md	`Profile` \| [0-9]+ \|	kb_class_Profile
+ARCHITECTURE.md	`SigilSource` \| [0-9]+ \|	kb_class_SigilSource
 EOF
 )
 

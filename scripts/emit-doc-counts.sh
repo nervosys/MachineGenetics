@@ -147,6 +147,13 @@ echo "mg_net_kb=$mg_net_kb"
 # evaluator.
 echo "$(bash "$REPO/scripts/check-doc-evals.sh" 2>/dev/null | grep -E '^doc_evals=')"
 echo "$(bash "$REPO/scripts/check-doc-blocks.sh" 2>&1 >/dev/null | grep -E '^doc_blocks=')"
+# The knowledge base's counts, from `kb-gate counts`: the schema's version,
+# its classes, relations, invariants and instances, and each class's direct
+# instances. Resolved as `mage-parse` is, so the binary is the one cargo built.
+. "$REPO/scripts/find-mage-parse.sh"
+cargo build --release --quiet --manifest-path "$REPO/prototype/Cargo.toml" --bin kb-gate
+KB_GATE="$(find_crate_bin prototype kb-gate release)"
+"$KB_GATE" counts
 # Ontology section sizes, straight from the committed dump (CI proves
 # it matches a fresh generation). Two documents quote these counts and
 # five of them were stale — `cli_flags (17)` when the binary accepts

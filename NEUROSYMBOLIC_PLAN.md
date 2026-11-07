@@ -224,7 +224,7 @@ facts are grouped into files and namespaces. They are not classes.
 
 ### Phase 0: Preconditions
 
-- [ ] Merge the stack #38–#152, this plan included, in order (needs the user). **S**
+- [ ] Merge the stack #38–#153, this plan included, in order (needs the user). **S**
 - [ ] Settle the open questions in section 8. **S**
 - [x] Census every module in `prototype/src` (77 files and `bin/`) into neural, symbolic, knowledge base, interface, or outside the design (for example `crdt.rs`, `consensus.rs`, `hot_reload.rs`). Record it in `ARCHITECTURE.md`. Outside-the-design modules are kept but not extended. **S [H]** *(In `ARCHITECTURE.md`, "Module census", held to the directory by `prototype/tests/census.rs`.)*
 
@@ -328,7 +328,7 @@ facts are grouped into files and namespaces. They are not classes.
 
 - [x] `ARCHITECTURE.md` describes the three parts and the schema, using the Phase 0 census. **M**
 - [x] Remove every hand table that a phase above made redundant, and every comment that says "keep in sync". **S [H]** *(The one still redundant was `ExtensionRegistry::register_builtins`, 47 sigils by hand, of which 19 had no `sigil_row` and `v` was `let` against the facts' `val`. So Phase 2's "Done when" was not met until now. `grammar/list` now serves the 62 `sigil_row` facts, which changes what RAP returns: `^`, `$`, `@req` and the like are gone, every built-in's namespace is `core`, and a sigil with no `abbreviates` has an empty `rust`. `RuleDatabase::ALL`, the limit proposer's `TESTED` and `ROW_PREDICATES` are now held by tests. Kept: the kernel's tables, held both ways; the tables `ontology.rs` serves for the project namespace, which are not language facts; the refusal labels and rules, held by tests; and `builder.rs`'s `OPS`, only partly stated in `kb/`.)*
-- [ ] `DOCS.md`, `README.md` and the pin check cover the new documents and counts (facts per class, invariants). **S [H]**
+- [x] `DOCS.md`, `README.md` and the pin check cover the new documents and counts (facts per class, invariants). **S [H]**
 
 ---
 
