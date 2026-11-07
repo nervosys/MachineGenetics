@@ -2608,10 +2608,12 @@ mod tests {
         };
         let lowered = lower_module(&module);
         assert_eq!(lowered.items.len(), 1);
-        // Round-trip first expr through codec.
-        let (_, expr) = &lowered.items[0];
-        let bytes = codec::Encoder::encode_expr_only(expr);
-        assert!(!bytes.is_empty());
+        // Through the container and back: the same name, the same expr.
+        let (blob, _) = crate::abl::encode_module(&module);
+        let items = crate::abl::decode_container(&blob).expect("decodes");
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].name, lowered.items[0].0);
+        assert_eq!(items[0].expr, lowered.items[0].1);
     }
 
     /// **Load-bearing invariant** for P78: every new RecursiveMachineIntelligence-MG layer

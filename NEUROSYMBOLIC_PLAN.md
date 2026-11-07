@@ -224,7 +224,7 @@ facts are grouped into files and namespaces. They are not classes.
 
 ### Phase 0: Preconditions
 
-- [ ] Merge the stack #38–#119, this plan included, in order (needs the user). **S**
+- [ ] Merge the stack #38–#120, this plan included, in order (needs the user). **S**
 - [ ] Settle the open questions in section 8. **S**
 - [ ] Census every module in `prototype/src` (73 files) into neural, symbolic, knowledge base, interface, or outside the design (for example `crdt.rs`, `consensus.rs`, `hot_reload.rs`). Record it in `ARCHITECTURE.md`. Outside-the-design modules are kept but not extended. **S [H]**
 
@@ -261,7 +261,7 @@ facts are grouped into files and namespaces. They are not classes.
 
 ### Phase 3: Forms and lowerings
 
-- [ ] `kb/forms.mg`: the seven form classes as instances, and a `lowers_to` fact for each lowering the compiler performs: sigil ↔ human (`fmt.rs`), source → AST → HIR, `net`/`block` → RMIL ops → ABL container, and ABL → source (decompile). **M**
+- [x] `kb/forms.mg`: the seven form classes as instances, and a `lowers_to` fact for each lowering the compiler performs: sigil ↔ human (`fmt.rs`), source → AST → HIR, `net`/`block` → RMIL ops → ABL container, and ABL → source (decompile). **M** *Done:* 13 forms (one per class, six `Declarative`: net, kb, agent, swarm, train, evolve), 16 lowerings; 4 round-trip, the other 12 state 36 losses. Read from the code by a Haiku survey and checked. Decompile loses more than the plan assumed: besides regenerated layer names, `RES_ADD` is skipped unrecorded and a `Par` is flattened. HIR is not a tree here: types and effects are kept per name. `module_lowering_round_trips_through_codec` never decoded; it now compares the decoded expression.
 - [ ] `kb/meaning.mg`: IR ops generated from `rmi::lang::Op::ALL` and `OpMeta`, layers from `abl_bridge::layer_name_to_op`, types, effects. **M [H]**
 - [ ] A round-trip test generated for every `lowers_to` fact, checking exactly the stated loss: layer names regenerated on decompile, and nothing else. **M**
 - [ ] Conformance: every op in `rmi::lang::Op` has a fact and every fact an op. **S [H]**
