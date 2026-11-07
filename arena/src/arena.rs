@@ -460,6 +460,10 @@ pub struct Report {
     /// across runs.
     #[serde(default)]
     pub loss_fits: Vec<crate::transfer::LearnerFit>,
+    /// Every refusal and every reward of the run, for the evidence log
+    /// (`crate::evidence`). Not in the report: `--evidence` appends it.
+    #[serde(skip)]
+    pub evidence: Vec<crate::evidence::Record>,
 }
 
 /// A held-out slice rotation (plan 7.5). Rotations happen only at checkpoints,
@@ -761,6 +765,7 @@ pub fn run_with(
     let mut pool = Pool::new(cfg.pool_capacity);
     let mut rng = Rng(cfg.seed);
     let mut refusals: BTreeMap<String, usize> = BTreeMap::new();
+    let mut evidence: Vec<crate::evidence::Record> = Vec::new();
     let mut checkpoints = Vec::new();
     // Novelty is counted on a program's *shape* — its structure with
     // constants erased (`mage_prototype::canon`) — or, under
@@ -839,6 +844,7 @@ pub fn run_with(
                 if ledger.exhausted() || allowance.is_some_and(|a| round_joules[ai] >= a) {
                     *standing[ai].refusals.entry("budget".into()).or_insert(0) += 1;
                     *refusals.entry("budget".into()).or_insert(0) += 1;
+                    evidence.push(refusal_record(round, &**agent, &c, &Refusal::Budget, "the energy budget or the allowance is spent"));
                     cost += 1.0;
                     scored.push((c, None));
                     round_costs[ai].push(1.0);
@@ -950,7 +956,8 @@ pub fn run_with(
                         }
                         round_data.push(bytes);
                     }
-                    Outcome::Refused(why, _) => {
+                    Outcome::Refused(why, message) => {
+                        evidence.push(refusal_record(round, &**agent, &c, &why, &message));
                         let key = serde_json::to_value(&why)
                             .ok()
                             .and_then(|v| v.as_str().map(str::to_string))
@@ -1104,6 +1111,21 @@ pub fn run_with(
         } else if cfg.allocation == Allocation::Hypervolume {
             // Nothing produced yet, so nothing added.
             round_credit.iter_mut().for_each(|c| *c = 0.0);
+        }
+
+        // Every reward, now that each is known.
+        for (ai, agent) in agents.iter().enumerate() {
+            for (c, r) in &round_scored[ai] {
+                if let Some(r) = r {
+                    evidence.push(crate::evidence::Record {
+                        round,
+                        component: agent.kind().to_string(),
+                        agent: agent.id().to_string(),
+                        artifact: crate::evidence::artifact(&c.program.source()),
+                        what: crate::evidence::What::Measurement { name: "reward".into(), value: *r },
+                    });
+                }
+            }
         }
 
         // 6. Feed back, now that every credit is known.
@@ -1284,7 +1306,19 @@ pub fn run_with(
         attack_claims,
         refreshes,
         loss_fits,
+        evidence,
     })
+}
+
+/// The evidence of a refusal: its rule from `kb/rules/refusals.mg`.
+fn refusal_record(round: usize, agent: &dyn Proposer, c: &Candidate, why: &Refusal, message: &str) -> crate::evidence::Record {
+    crate::evidence::Record {
+        round,
+        component: agent.kind().to_string(),
+        agent: agent.id().to_string(),
+        artifact: crate::evidence::artifact(&c.program.source()),
+        what: crate::evidence::What::Refusal { rule: why.rule().into(), class: why.label().into(), message: message.into() },
+    }
 }
 
 #[cfg(test)]
@@ -1314,6 +1348,41 @@ mod tests {
 
     fn cpu_only() -> (Vec<Box<dyn Meter>>, Vec<String>) {
         (vec![Box::new(energy::WallClock::new("cpu-estimate", 65.0))], vec!["cpu".into()])
+    }
+
+    /// The evidence is the run's refusals and rewards: an entry for each
+    /// refusal the report counts, under the rule its class names, and one for
+    /// each reward. Every rule and component an entry names is a fact.
+    #[test]
+    fn the_evidence_names_a_rule_for_each_refusal_and_holds_each_reward() {
+        use crate::evidence::What;
+        let (m, n) = cpu_only();
+        let r = run(tiny_cfg(), heldout(), m, n).expect("runs");
+        let kb = mage_prototype::kb::load().expect("the knowledge base loads");
+        let is_a: std::collections::HashSet<(String, String)> =
+            kb.facts("is_a").into_iter().map(|f| (f[0].clone(), f[1].clone())).collect();
+        let refused_by = kb.facts("refused_by");
+        let mut by_class: BTreeMap<String, usize> = BTreeMap::new();
+        let mut rewards = 0;
+        for e in &r.evidence {
+            assert!(is_a.contains(&(e.component.clone(), "Component".into())), "{}", e.component);
+            assert!(e.artifact.starts_with("sha256:") && e.artifact.len() == 71, "{}", e.artifact);
+            match &e.what {
+                What::Refusal { rule, class, .. } => {
+                    assert!(refused_by.iter().any(|f| &f[0] == class && &f[1] == rule), "{class} {rule}");
+                    assert!(is_a.contains(&(rule.clone(), "Rule".into())), "{rule}");
+                    *by_class.entry(class.clone()).or_default() += 1;
+                }
+                What::Measurement { name, value } => {
+                    assert_eq!(name, "reward");
+                    assert!(value.is_finite());
+                    rewards += 1;
+                }
+            }
+        }
+        assert_eq!(by_class, r.refusals);
+        let proposed: usize = r.agents.iter().map(|a| a.proposed).sum();
+        assert!(rewards > 0 && rewards + r.refusals.values().sum::<usize>() <= proposed);
     }
 
     #[test]
