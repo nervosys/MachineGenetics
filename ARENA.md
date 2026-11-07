@@ -490,10 +490,40 @@ minus proxy. The progress line prints it. The proxy is what the loop
 optimises, so a gap that widens while the proxy improves is the loop fitting
 its own data rather than learning.
 
-**Not done: evaluator refresh.** The plan rotates the held-out slice when
-the gap drifts. With the held-out corpora used here (about 28 KB each), slices would be too
-small to score reliably, and switching slices mid-run makes checkpoints
-incomparable. Refresh needs a larger held-out store first.
+**Evaluator refresh (done).** The held-out slice rotates when the gap drifts.
+Two flags control it:
+
+- `--heldout-slices K` (default `1`) cuts each held-out corpus into `K`
+  contiguous, disjoint slices that cover all of its bytes. The last slice takes
+  the remainder. Slices are named `<corpus>#i/K`, numbered from 1. Checkpoints
+  score each learner on the active slice of every corpus, so `heldout_bpb` is
+  keyed by slice name. `K = 0` is refused.
+- `--refresh-drift X` (default `0.5` bits/byte; finite and `>= 0`). The first
+  checkpoint on a slice sets a baseline, the mean gap across learners. A later
+  checkpoint whose mean gap is more than `X` from that baseline rotates to slice
+  `(active + 1) % K` and clears the baseline, so the next checkpoint sets a new
+  one. Each rotation is recorded in `report.refreshes` as `{round, from_slice,
+  to_slice, gap, baseline}`, with slices numbered from 1.
+
+Rotation happens only at checkpoints, which are the epoch boundaries: the
+slice is fixed between two of them, and a rotation takes effect from the next
+checkpoint. The checkpoint at which it fires is still scored on the old slice.
+
+Every slice must be at least **1 KiB** (`MIN_SLICE_BYTES`). A run whose
+slices would be smaller is refused at start-up, before any round runs. With
+two held-out files of about 28 KB each, `K = 4` gives 7 KB slices, which
+clears the minimum.
+
+With the default `K = 1` nothing is sliced and nothing rotates, so every
+earlier result stays comparable: the checkpoints score the same corpora under
+the same names. Final learner figures (`learners[].mean_bpb`) score the whole
+held-out data, as they always did, and are not affected by rotation.
+
+The succession suite is not sliced. Its digest, and the registered suite, cover
+the full corpora. The gate's held-out suite is registered and frozen, while
+refresh is this evaluator's own mechanism for judging the loop. Slicing sits
+inside `run`, so a succession session that runs with `K > 1` would slice its
+own checkpoints, but the registered suite itself is unchanged.
 
 ## An attacker, and the exploit it found (plan 7.4)
 

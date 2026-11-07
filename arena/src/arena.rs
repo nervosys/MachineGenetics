@@ -16,6 +16,10 @@
 //!
 //! Every `eval_every` rounds each learner is scored on held-out natural data
 //! that no agent can read — bits per byte, an exact likelihood, not a judge.
+//! With `heldout_slices > 1` the held-out data is cut into slices, checkpoints
+//! score the active slice only, and the slice rotates when the proxy gap drifts
+//! (plan 7.5). Rotation happens only at checkpoints, so each epoch between two
+//! of them sees one slice.
 //! At the end the learners form a Pareto archive over
 //! (held-out bits/byte ↓, training joules ↓, prediction latency ↓), and each
 //! agent's standing is its credit per unit cost.
@@ -124,6 +128,23 @@ pub struct Config {
     /// still reads as shape; a new config defaults to behaviour.
     #[serde(default = "NoveltyKey::recorded_before_the_choice")]
     pub novelty: NoveltyKey,
+    /// How many contiguous, disjoint slices each held-out corpus is cut into
+    /// (plan 7.5). Checkpoints score the active slice only. `1` is no slicing
+    /// and no rotation, so a config without the field reads as it always did.
+    #[serde(default = "default_heldout_slices")]
+    pub heldout_slices: usize,
+    /// The gap drift, in bits/byte, that rotates the active slice at a
+    /// checkpoint (plan 7.5): see [`Refresh`]. Only used when `heldout_slices > 1`.
+    #[serde(default = "default_refresh_drift")]
+    pub refresh_drift: f64,
+}
+
+fn default_heldout_slices() -> usize {
+    1
+}
+
+fn default_refresh_drift() -> f64 {
+    0.5
 }
 
 /// What a program's novelty is counted on (plan 7.4).
@@ -244,6 +265,8 @@ impl Default for Config {
             allocation: Allocation::Share,
             canary: None,
             novelty: NoveltyKey::Behaviour,
+            heldout_slices: default_heldout_slices(),
+            refresh_drift: default_refresh_drift(),
         }
     }
 }
@@ -368,6 +391,28 @@ pub struct Report {
     /// Attacker claims the kernel checked, confirmed or not.
     #[serde(default)]
     pub attack_claims: usize,
+    /// Held-out slice rotations (plan 7.5), in the order they happened. Empty
+    /// unless `heldout_slices > 1` and the gap drifted.
+    #[serde(default)]
+    pub refreshes: Vec<Refresh>,
+}
+
+/// A held-out slice rotation (plan 7.5). Rotations happen only at checkpoints,
+/// which are the epoch boundaries of the run: an epoch is the stretch of rounds
+/// between two checkpoints, and the slice is fixed within one.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Refresh {
+    /// The checkpoint round at which the rotation was decided. The checkpoint
+    /// at that round was still scored on `from_slice`.
+    pub round: usize,
+    /// The slice that was active, numbered from 1 as in the slice's name.
+    pub from_slice: usize,
+    /// The slice active from the next checkpoint, numbered from 1.
+    pub to_slice: usize,
+    /// The mean gap across learners at that checkpoint.
+    pub gap: f64,
+    /// The mean gap the slice's first checkpoint set, which `gap` drifted from.
+    pub baseline: f64,
 }
 
 /// A confirmed exploit of the novelty count (plan 7.4).
@@ -571,11 +616,32 @@ pub fn run_with(
     if cfg.learners.is_empty() {
         return Err("at least one learner is required".into());
     }
+    if cfg.heldout_slices == 0 {
+        return Err("heldout_slices must be at least 1 (1 means no slicing)".into());
+    }
+    if !cfg.refresh_drift.is_finite() || cfg.refresh_drift < 0.0 {
+        return Err(format!("refresh_drift must be finite and at least 0, not {}", cfg.refresh_drift));
+    }
     let canary: Option<Vec<u8>> = cfg.canary.as_ref().map(|c| c.as_bytes().to_vec());
     let heldout: Vec<Corpus> = match &canary {
         Some(c) => heldout.into_iter().map(|h| h.with_canary(c)).collect(),
         None => heldout,
     };
+    // Cut after the canary is planted, so a canary-bearing corpus is sliced like
+    // any other. The canary check reads agents' outputs, never these slices.
+    // `by_slice[k]` holds every corpus's slice `k`; with one slice it is the
+    // corpora themselves. Too-small slices are refused here, before any work.
+    let mut by_slice: Vec<Vec<Corpus>> = (0..cfg.heldout_slices).map(|_| Vec::new()).collect();
+    for c in &heldout {
+        for (k, s) in c.slices(cfg.heldout_slices)?.into_iter().enumerate() {
+            by_slice[k].push(s);
+        }
+    }
+    // The slice checkpoints score on, and the gap baseline it is judged against
+    // (plan 7.5). Only used when there is more than one slice.
+    let mut active = 0usize;
+    let mut baseline: Option<f64> = None;
+    let mut refreshes: Vec<Refresh> = Vec::new();
     // Set when an agent's output carries the canary; the run halts.
     let mut leaked: Option<String> = None;
     let mut standing: Vec<AgentStanding> = agents
@@ -958,15 +1024,58 @@ pub fn run_with(
         }
 
         if (round + 1) % cfg.eval_every == 0 || round + 1 == cfg.rounds {
+            // Checkpoints are the epoch boundaries (plan 7.5): the active slice
+            // is fixed between two of them, and a rotation decided here takes
+            // effect from the next checkpoint on.
             let proxy_bytes: Vec<u8> = pool.entries.iter().flat_map(|e| e.bytes.iter().cloned()).take(1 << 16).collect();
-            for (li, learner) in learners.iter().enumerate() {
+            // Every learner is scored on the active slice of every corpus.
+            let active_set = &by_slice[active];
+            let mut measured: Vec<(BTreeMap<String, f64>, f64, f64)> = Vec::with_capacity(learners.len());
+            for learner in learners.iter() {
                 let span = Span::start(&mut meters);
                 let heldout_bpb: BTreeMap<String, f64> =
-                    heldout.iter().map(|c| (c.name().to_string(), c.score(learner.as_ref()))).collect();
+                    active_set.iter().map(|c| (c.name().to_string(), c.score(learner.as_ref()))).collect();
                 let proxy_bpb = learner.bits_per_byte(&proxy_bytes);
                 let (_, r) = span.stop(&mut meters);
                 ledger.evaluate(&r);
                 let mean_bpb = heldout_bpb.values().sum::<f64>() / heldout_bpb.len() as f64;
+                measured.push((heldout_bpb, mean_bpb, proxy_bpb));
+            }
+            // Refresh (plan 7.5): the first checkpoint on a slice sets the gap
+            // baseline; a later one whose mean gap drifted past the threshold
+            // rotates to the next slice and clears the baseline.
+            if cfg.heldout_slices > 1 {
+                let mean_gap = measured.iter().map(|(_, m, p)| m - p).sum::<f64>() / measured.len() as f64;
+                match baseline {
+                    None => baseline = Some(mean_gap),
+                    Some(base) if (mean_gap - base).abs() > cfg.refresh_drift => {
+                        let to = (active + 1) % cfg.heldout_slices;
+                        eprintln!(
+                            "arena: round {:>4}/{} held-out slice {}/{} -> {}/{}: gap {:+.3} drifted {:.3} from its baseline {:+.3}",
+                            round + 1,
+                            cfg.rounds,
+                            active + 1,
+                            cfg.heldout_slices,
+                            to + 1,
+                            cfg.heldout_slices,
+                            mean_gap,
+                            (mean_gap - base).abs(),
+                            base
+                        );
+                        refreshes.push(Refresh {
+                            round: round + 1,
+                            from_slice: active + 1,
+                            to_slice: to + 1,
+                            gap: mean_gap,
+                            baseline: base,
+                        });
+                        active = to;
+                        baseline = None;
+                    }
+                    Some(_) => {}
+                }
+            }
+            for (li, (heldout_bpb, mean_bpb, proxy_bpb)) in measured.into_iter().enumerate() {
                 // Progress on stderr: a 25M-parameter run takes most of an
                 // hour, and the first one printed nothing until it finished.
                 eprintln!(
@@ -985,7 +1094,7 @@ pub fn run_with(
                     joules: joules[li],
                     joules_all_measured: all_measured[li],
                     seconds: seconds[li],
-                    bytes_seen: learner.bytes_seen(),
+                    bytes_seen: learners[li].bytes_seen(),
                     proxy_bpb,
                     gap: mean_bpb - proxy_bpb,
                 });
@@ -1082,6 +1191,7 @@ pub fn run_with(
         rounds_completed,
         attacks,
         attack_claims,
+        refreshes,
     })
 }
 
@@ -1505,5 +1615,97 @@ mod tests {
         recorded.as_object_mut().expect("an object").remove("novelty");
         let read: Config = serde_json::from_value(recorded).expect("deserialises");
         assert_eq!(read.novelty, NoveltyKey::Shape);
+    }
+
+    /// Held-out text large enough for two slices of at least 1 KiB (plan 7.5).
+    fn sliceable() -> Vec<Corpus> {
+        vec![Corpus::new("text", b"the quick brown fox jumps over the lazy dog. ".repeat(60))]
+    }
+
+    /// A slice's name as the checkpoints key it, with `k` slices in all.
+    fn slice_key(k: usize, slice: usize) -> String {
+        format!("text#{slice}/{k}")
+    }
+
+    /// The corpus names a checkpoint scored on.
+    fn keys(c: &Checkpoint) -> Vec<String> {
+        c.heldout_bpb.keys().cloned().collect()
+    }
+
+    #[test]
+    fn one_slice_keeps_the_plain_names_and_never_rotates() {
+        let (m, n) = cpu_only();
+        let r0 = run(tiny_cfg(), heldout(), m, n).expect("runs");
+        assert!(r0.refreshes.is_empty());
+        assert!(!r0.checkpoints.is_empty());
+        for c in &r0.checkpoints {
+            assert_eq!(keys(c), vec!["text".to_string()], "{c:?}");
+        }
+        // Explicit one-slice and zero-drift settings are the same run: the
+        // rotation rule is off without a second slice, whatever the drift.
+        // Both runs use a constant meter, so cost-driven allocation (and with
+        // it, the programs) is deterministic and the figures can be compared.
+        let fixed = || vec![Box::new(OneJoule) as Box<dyn Meter>];
+        let r = run(tiny_cfg(), heldout(), fixed(), vec![]).expect("runs");
+        let one = Config { heldout_slices: 1, refresh_drift: 0.0, ..tiny_cfg() };
+        let s = run(one, heldout(), fixed(), vec![]).expect("runs");
+        assert!(s.refreshes.is_empty());
+        assert_eq!(s.checkpoints.len(), r.checkpoints.len());
+        for (a, b) in r.checkpoints.iter().zip(&s.checkpoints) {
+            assert_eq!((a.round, a.learner), (b.round, b.learner));
+            assert_eq!(a.heldout_bpb, b.heldout_bpb, "identical held-out figures");
+            assert_eq!(a.proxy_bpb, b.proxy_bpb);
+        }
+        // A config recorded before the fields existed reads as one slice.
+        let mut recorded = serde_json::to_value(Config::default()).expect("serialises");
+        let obj = recorded.as_object_mut().expect("an object");
+        obj.remove("heldout_slices");
+        obj.remove("refresh_drift");
+        let read: Config = serde_json::from_value(recorded).expect("deserialises");
+        assert_eq!((read.heldout_slices, read.refresh_drift), (1, 0.5));
+    }
+
+    #[test]
+    fn checkpoints_score_the_active_slice_and_rotate_on_any_drift() {
+        let (m, n) = cpu_only();
+        let cfg = Config { heldout_slices: 2, refresh_drift: 0.0, rounds: 9, eval_every: 3, ..tiny_cfg() };
+        let r = run(cfg, sliceable(), m, n).expect("runs");
+        assert!(!r.refreshes.is_empty(), "a zero drift rotates once the gap has moved: {:?}", r.checkpoints);
+        let first = &r.refreshes[0];
+        assert_eq!((first.from_slice, first.to_slice), (1, 2), "{first:?}");
+        assert!((first.gap - first.baseline).abs() > 0.0, "{first:?}");
+        // The slice a checkpoint is scored on: the one active before any
+        // rotation decided at an earlier checkpoint.
+        let active_at = |round: usize| r.refreshes.iter().filter(|f| f.round < round).last().map_or(1, |f| f.to_slice);
+        for c in &r.checkpoints {
+            let want = slice_key(2, active_at(c.round));
+            assert_eq!(keys(c), vec![want.clone()], "round {}", c.round);
+            assert!(c.mean_bpb.is_finite());
+        }
+        assert!(r.checkpoints.iter().any(|c| c.round > first.round && c.heldout_bpb.contains_key(&slice_key(2, 2))));
+        // Rotations are recorded at checkpoint rounds, the epoch boundaries.
+        assert!(r.refreshes.iter().all(|f| f.round % 3 == 0));
+    }
+
+    #[test]
+    fn a_large_drift_threshold_never_rotates() {
+        let (m, n) = cpu_only();
+        let cfg = Config { heldout_slices: 2, refresh_drift: 1e9, rounds: 9, eval_every: 3, ..tiny_cfg() };
+        let r = run(cfg, sliceable(), m, n).expect("runs");
+        assert!(r.refreshes.is_empty());
+        assert!(r.checkpoints.iter().all(|c| keys(c) == vec![slice_key(2, 1)]));
+    }
+
+    #[test]
+    fn a_slice_under_the_minimum_is_refused_before_any_run() {
+        let (m, n) = cpu_only();
+        // 900 bytes into two slices is 450 bytes each.
+        let err = run(Config { heldout_slices: 2, ..tiny_cfg() }, heldout(), m, n).expect_err("refused");
+        assert!(err.contains("1024"), "{err}");
+        let (m, n) = cpu_only();
+        assert!(run(Config { heldout_slices: 0, ..tiny_cfg() }, heldout(), m, n).is_err(), "zero slices");
+        let (m, n) = cpu_only();
+        let bad = Config { heldout_slices: 2, refresh_drift: f64::NAN, ..tiny_cfg() };
+        assert!(run(bad, sliceable(), m, n).is_err(), "a NaN drift is refused");
     }
 }

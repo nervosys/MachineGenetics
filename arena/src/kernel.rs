@@ -178,6 +178,38 @@ impl Corpus {
         Corpus::new(self.name, bytes)
     }
 
+    /// This corpus cut into `k` contiguous, disjoint slices that together cover
+    /// every byte of it (plan 7.5). Slice `i` (numbered from 1) is named
+    /// `<name>#i/k`. Each slice but the last is `len / k` bytes, and the last
+    /// takes the remainder. `k = 1` returns the corpus unchanged, under its
+    /// plain name, whatever its size.
+    ///
+    /// Refused when any slice would be under [`MIN_SLICE_BYTES`], so a slice
+    /// too small to score reliably is an error at start-up rather than noise
+    /// in a report. The slices are the kernel's to make, because only the
+    /// kernel reads held-out bytes.
+    pub fn slices(&self, k: usize) -> Result<Vec<Corpus>, String> {
+        if k <= 1 {
+            return Ok(vec![self.clone()]);
+        }
+        let width = self.bytes.len() / k;
+        if width < MIN_SLICE_BYTES {
+            return Err(format!(
+                "held-out corpus `{}` is {} bytes, which cut into {k} slices gives slices of {width} bytes; \
+                 the minimum slice is {MIN_SLICE_BYTES} bytes (use fewer slices or larger held-out data)",
+                self.name,
+                self.bytes.len()
+            ));
+        }
+        Ok((0..k)
+            .map(|i| {
+                let start = i * width;
+                let end = if i + 1 == k { self.bytes.len() } else { start + width };
+                Corpus::new(format!("{}#{}/{k}", self.name, i + 1), self.bytes[start..end].to_vec())
+            })
+            .collect())
+    }
+
     /// `learner`'s bits per byte on this corpus: the one way held-out bytes
     /// leave the kernel, and only as far as a `&self` method.
     pub fn score(&self, learner: &dyn ByteLearner) -> f64 {
@@ -192,6 +224,9 @@ impl Corpus {
         t.elapsed().as_secs_f64() / (sample.len().max(1) as f64 / 1024.0)
     }
 }
+
+/// The smallest held-out slice the arena will score on (plan 7.5).
+pub const MIN_SLICE_BYTES: usize = 1024;
 
 /// Whether `output` carries `canary`: held-out bytes reached an agent.
 pub fn leaks(output: &[u8], canary: &[u8]) -> bool {
@@ -292,5 +327,35 @@ mod tests {
         let l = crate::learner::Learner::new(crate::learner::LearnerConfig::default());
         assert_eq!(c.score(&l), l.bits_per_byte(b"abcabcabc"));
         assert_eq!((c.name(), c.len()), ("text", 9));
+    }
+
+    #[test]
+    fn slices_cover_the_corpus_exactly_disjoint_and_named_by_index() {
+        // 3 KiB + 7 bytes: thirds of 1026 bytes, so the remainder lands in the
+        // last slice and every slice clears the minimum.
+        let bytes: Vec<u8> = (0..3 * 1024 + 7).map(|i| (i % 251) as u8).collect();
+        let c = Corpus::new("text", bytes.clone());
+        for k in [2usize, 3] {
+            let slices = c.slices(k).expect("slices are at least 1 KiB");
+            assert_eq!(slices.len(), k);
+            let joined: Vec<u8> = slices.iter().flat_map(|s| s.bytes.iter().copied()).collect();
+            assert_eq!(joined, bytes, "k = {k}: the slices' concatenation is the corpus");
+            for (i, s) in slices.iter().enumerate() {
+                assert_eq!(s.name(), format!("text#{}/{k}", i + 1));
+            }
+            let widths: Vec<usize> = slices.iter().map(Corpus::len).collect();
+            assert_eq!(widths[..k - 1].iter().min(), widths[..k - 1].iter().max(), "all but the last are equal");
+            assert!(widths[k - 1] >= widths[0], "the last takes the remainder");
+        }
+        let one = c.slices(1).expect("one slice is the corpus");
+        assert_eq!((one.len(), one[0].name(), one[0].len()), (1, "text", bytes.len()));
+    }
+
+    #[test]
+    fn a_slice_under_the_minimum_is_refused_and_one_slice_is_never_refused() {
+        let small = Corpus::new("text", vec![b'a'; 1500]);
+        assert!(small.slices(2).is_err(), "750-byte slices are under the 1 KiB minimum");
+        assert_eq!(small.slices(1).expect("no slicing, no minimum").len(), 1);
+        assert!(Corpus::new("text", vec![b'a'; 2048]).slices(2).is_ok(), "exactly 1 KiB each is allowed");
     }
 }
