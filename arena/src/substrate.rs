@@ -7,6 +7,8 @@
 //! same gates any MAGE program does, in order, and the first it fails is the
 //! reason it is refused:
 //!
+//! 0. its grammar tree is within `MAX_DEPTH` (refused as `depth`, before any
+//!    front end sees it; the arena applies this, not [`Substrate::prepare`]);
 //! 1. it **parses**, and declares exactly `@role(candidate) f gen(s: usize) -> [usize]`;
 //! 2. it **typechecks** with no errors;
 //! 3. its effects are **pure** — inferred, not declared, so a program cannot
@@ -29,6 +31,10 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Refusal {
+    /// Nested deeper than the grammar's `MAX_DEPTH`. Checked by the arena
+    /// before any MAGE front end runs, so a too-deep tree is never parsed,
+    /// evaluated or credited.
+    Depth,
     Parse,
     Signature,
     Type,
@@ -45,7 +51,8 @@ pub enum Refusal {
 }
 
 impl Refusal {
-    pub const ALL: [Refusal; 9] = [
+    pub const ALL: [Refusal; 10] = [
+        Refusal::Depth,
         Refusal::Parse,
         Refusal::Signature,
         Refusal::Type,

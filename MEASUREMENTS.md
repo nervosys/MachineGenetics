@@ -7,7 +7,7 @@ numbers are machine-dependent; the shapes (throughput, scaling) are not.
 Date: 2026-06-10. Build: `release` for perf, `cargo test` for functionality.
 
 > **Re-verified 2026-09-25** — all six crates tested: prototype **1,459**, rmi
-> **1,384**, ribosome **168**, germline **175**, forge **63**, arena **219** = **3,468 passing,
+> **1,384**, ribosome **168**, germline **175**, forge **63**, arena **222** = **3,471 passing,
 > 0 failing, 0 warnings**.
 >
 > *One figure below had not regressed — it had been superseded.* The ABL
@@ -80,7 +80,7 @@ Date: 2026-06-10. Build: `release` for perf, `cargo test` for functionality.
 | rmi (`cpu`) | **1384 pass** | `cargo test --no-default-features --features cpu` |
 | ribosome (build engine) | **168 pass** | `cargo test --manifest-path ribosome/Cargo.toml` |
 | germline (RSI control plane) | **175 pass** | `cargo test --manifest-path germline/Cargo.toml` |
-| arena (self-play arena) | **219 pass** | `cargo test --manifest-path arena/Cargo.toml` |
+| arena (self-play arena) | **222 pass** | `cargo test --manifest-path arena/Cargo.toml` |
 | forge (registry) | **63 pass** | `cargo test --manifest-path forge/Cargo.toml` |
 | agentic-eval (AetherShell) | **80 pass** | `cargo test -p agentic-eval` |
 | SPINE `spine-agentic` | **285 pass** | `cargo test -p spine-agentic` |
@@ -869,3 +869,21 @@ What it says:
 - Trajectory length 110 steps, so horizon 100 is the longest measured.
 - The zero-state baseline is described above but not in the table, and it is not part of `physics-rollout`. The spring "beats" are therefore explained by the zero-state check, not measured against it in the command.
 - The energy drift of the entropy learner on the n-body system (6.61 × 10⁹) (6.61 × 10⁹ before the fix, 4.18 × 10⁹ after) is a figure from garbage predictions, not a physical drift.
+
+## Multi-seed held-out after the depth gate (plans M3, F1)
+
+The arena now refuses a candidate nested deeper than `MAX_DEPTH` before it runs, counted as `depth` (`ARENA.md`, "Multi-seed held-out, and bounded grafts"). These are the six-seed runs (seeds 1–6, 20 rounds of 48 programs, `--cost fuel`, held-out `README.md,germline/src/gate.rs`, agents `grammar:1,mutator:1,attacker:1`), before and after the gate, from the same arguments.
+
+| | before the gate | after the gate |
+|---|---|---|
+| shape arm, mean held-out bpb (sd) | 7.654 (0.120) | 7.663 (0.236) |
+| behaviour arm, mean held-out bpb (sd) | 7.578 (0.194) | 7.557 (0.236) |
+| behaviour − shape, paired (se) | −0.076 (0.072) | −0.106 (0.122) |
+| shape arm, credited exploits per run (mean) | 110.7 | 41.0 |
+| behaviour arm, credited exploits | 0 | 0 |
+| F1: unbounded mean bpb | 7.578 | 7.557 |
+| F1: bounded mean bpb | 7.697 | 7.735 |
+| F1: bounded − unbounded, paired (se) | +0.119 (0.103), worse on 5 of 6 | +0.178 (0.116), worse on 6 of 6 |
+| F1: bounded arm, mutator variants past `MAX_DEPTH` | 4% (127 of 3,215) | 0% (0 of 3,077) |
+
+No difference between the arms is significant at two standard errors, either before or after the gate. The default stays `behaviour` and bounded grafts stay off. The exploit counts are the change: the shape arm's credited exploits fell by about two-thirds, because over-depth attacker candidates are now refused rather than credited. Per-seed figures and the reasoning are in `ARENA.md`. The before figures are from the pre-gate commit `1cacaa8fd`, reproduced this session.

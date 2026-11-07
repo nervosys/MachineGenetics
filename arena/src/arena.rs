@@ -848,9 +848,15 @@ pub fn run_with(
                 let span = Span::start(&mut meters);
                 let fuel_at = cache.fuel_spent;
                 // 3. Gate, then run — or reuse what an identical program
-                // already produced for this seed.
+                // already produced for this seed. The grammar's depth limit
+                // comes first: a tree past MAX_DEPTH is refused whoever
+                // wrote it, before any front end parses it.
                 let seed = rng.next_u64();
-                let (outcome, prepared) = match cfg.substrate.prepare(&c.program.source()) {
+                let gated = match crate::grammar::check_list_depth(&c.program.body, 0) {
+                    Err(why) => Err((Refusal::Depth, why)),
+                    Ok(()) => cfg.substrate.prepare(&c.program.source()),
+                };
+                let (outcome, prepared) = match gated {
                     Err((why, msg)) => (Outcome::Refused(why, msg), None),
                     Ok(prepared) => {
                         let outcome = cache.run(&cfg.substrate, &prepared, seed);
@@ -1787,16 +1793,13 @@ mod tests {
     /// F1, end to end: the mutator counts its own variants and those past
     /// MAX_DEPTH. Grafted from depth 0 they exceed the limit; with
     /// `bound_grafts`, none do. The unbounded run is checked to exceed it, so
-    /// the bounded zero means something. (The arena's gate does not enforce
-    /// the limit, so such variants are evaluated, not refused.)
+    /// the bounded zero means something.
     ///
     /// Scope: this run has a mutator only, so every parent is in-depth and
-    /// the zero is what the sampler guarantees. It does not cover a run with
-    /// an attacker. There, the attacker's identity rewrites can take an
-    /// in-depth parent past MAX_DEPTH, the gate admits that candidate to the
-    /// pool, and a bounded graft keeps the wrapper it inherited, so the
-    /// mutator can report over-depth variants (seed 1 of the F1 six-seed run:
-    /// 100 of 506 grafts, every one descended from an over-deep attacker entry).
+    /// the zero is what the sampler guarantees. With an attacker, its identity
+    /// rewrites can take a parent past MAX_DEPTH. The gate refuses that
+    /// candidate as `depth`, so it never reaches the pool to be grafted; see
+    /// `with_an_attacker_the_pool_never_holds_a_program_past_max_depth`.
     #[test]
     fn bounded_grafts_put_no_mutant_past_max_depth_into_a_run() {
         let over_depth = |bound: bool| {
@@ -1818,6 +1821,124 @@ mod tests {
         };
         assert_eq!(over_depth(true), 0);
         assert!(over_depth(false) > 0, "unbounded grafts never exceeded MAX_DEPTH in this run");
+    }
+
+    /// A proposer that writes the same grammar tree every round, for the depth
+    /// gate's tests, which need a candidate of a chosen depth.
+    struct Fixed(crate::grammar::ListExpr);
+    impl Proposer for Fixed {
+        fn id(&self) -> &str {
+            "fixed"
+        }
+        fn kind(&self) -> &'static str {
+            "fixed"
+        }
+        fn propose(&mut self, n: usize, _: &Pool, _: &mut Rng) -> Vec<Candidate> {
+            use crate::grammar::Program;
+            (0..n).map(|_| Candidate { program: Program { body: self.0.clone() }, trace: None, parents: vec![] }).collect()
+        }
+        fn feedback(&mut self, _: &[Scored]) {}
+    }
+
+    /// `range(3)` under `levels` reversals: a list nested `levels` deep, with
+    /// the range at depth `levels`. Leaves may sit at MAX_DEPTH, so this is
+    /// within the limit at `levels = MAX_DEPTH` and past it one level later.
+    fn reversed(levels: usize) -> crate::grammar::ListExpr {
+        use crate::grammar::ListExpr;
+        (0..levels).fold(ListExpr::Range(3), |xs, _| ListExpr::Reverse(Box::new(xs)))
+    }
+
+    #[test]
+    fn a_candidate_past_max_depth_is_refused_as_depth_and_never_run() {
+        use crate::grammar::{check_list_depth, MAX_DEPTH};
+        let deep = reversed(MAX_DEPTH + 1);
+        assert!(check_list_depth(&deep, 0).is_err(), "the fixture must be past the limit");
+        let (m, n) = cpu_only();
+        let r = run_with(tiny_cfg(), vec![Box::new(Fixed(deep))], heldout(), m, n).expect("runs");
+        let proposed: usize = r.agents.iter().map(|a| a.proposed).sum();
+        assert!(proposed > 0);
+        assert_eq!(r.refusals.get("depth"), Some(&proposed), "every candidate is refused as depth: {:?}", r.refusals);
+        assert_eq!(r.total_outputs, 0, "nothing past the limit was run");
+        assert_eq!(r.pool_size, 0, "and nothing entered the pool");
+    }
+
+    #[test]
+    fn a_candidate_within_max_depth_is_not_refused_for_depth() {
+        use crate::grammar::{check_list_depth, MAX_DEPTH};
+        let fits = reversed(MAX_DEPTH);
+        assert!(check_list_depth(&fits, 0).is_ok(), "the fixture must be within the limit");
+        let (m, n) = cpu_only();
+        let r = run_with(tiny_cfg(), vec![Box::new(Fixed(fits))], heldout(), m, n).expect("runs");
+        assert_eq!(r.refusals.get("depth"), None, "an in-depth program is not refused for depth: {:?}", r.refusals);
+        let produced: usize = r.agents.iter().map(|a| a.produced).sum();
+        assert!(produced > 0, "and it runs: {:?}", r.refusals);
+    }
+
+    /// Wraps a proposer and checks, every time it is asked to propose, every
+    /// pool entry against MAX_DEPTH. Counts are shared so the test can read
+    /// them after the run.
+    struct PoolWatch {
+        inner: Box<dyn Proposer>,
+        read: std::rc::Rc<std::cell::Cell<usize>>,
+        past_max_depth: std::rc::Rc<std::cell::Cell<usize>>,
+    }
+    impl Proposer for PoolWatch {
+        fn id(&self) -> &str {
+            self.inner.id()
+        }
+        fn kind(&self) -> &'static str {
+            self.inner.kind()
+        }
+        fn role(&self) -> Role {
+            self.inner.role()
+        }
+        fn propose(&mut self, n: usize, pool: &Pool, rng: &mut Rng) -> Vec<Candidate> {
+            for e in &pool.entries {
+                self.read.set(self.read.get() + 1);
+                if crate::grammar::check_list_depth(&e.program.body, 0).is_err() {
+                    self.past_max_depth.set(self.past_max_depth.get() + 1);
+                }
+            }
+            self.inner.propose(n, pool, rng)
+        }
+        fn feedback(&mut self, scored: &[Scored]) {
+            self.inner.feedback(scored)
+        }
+        fn describe(&self) -> serde_json::Value {
+            self.inner.describe()
+        }
+    }
+
+    /// With an attacker, the gate keeps every program past MAX_DEPTH out of
+    /// the pool. Its identity rewrites take in-depth parents past the limit,
+    /// so over-depth candidates do reach the gate (checked below), and the
+    /// pool must hold none of them, bounded grafts or not.
+    #[test]
+    fn with_an_attacker_the_pool_never_holds_a_program_past_max_depth() {
+        use std::cell::Cell;
+        use std::rc::Rc;
+        for bound in [false, true] {
+            let read = Rc::new(Cell::new(0));
+            let past = Rc::new(Cell::new(0));
+            let cfg = Config {
+                rounds: 12,
+                programs_per_round: 48,
+                bound_grafts: bound,
+                agents: vec![("grammar".into(), 1), ("mutator".into(), 1), ("attacker".into(), 1)],
+                ..tiny_cfg()
+            };
+            let agents: Vec<Box<dyn Proposer>> = build_agents(&cfg)
+                .expect("agents")
+                .into_iter()
+                .map(|a| Box::new(PoolWatch { inner: a, read: read.clone(), past_max_depth: past.clone() }) as Box<dyn Proposer>)
+                .collect();
+            let (m, n) = cpu_only();
+            let r = run_with(cfg, agents, heldout(), m, n).expect("runs");
+            assert!(read.get() > 0, "bound={bound}: the pool was never read");
+            assert_eq!(past.get(), 0, "bound={bound}: the pool held a program past MAX_DEPTH");
+            let depth = r.refusals.get("depth").copied().unwrap_or(0);
+            assert!(depth > 0, "bound={bound}: no over-depth candidate reached the gate, so the test shows nothing: {:?}", r.refusals);
+        }
     }
 
     /// Held-out text large enough for two slices of at least 1 KiB (plan 7.5).

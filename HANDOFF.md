@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,468** — rmi 1,384 · prototype 1,459 · ribosome 168 · germline 175 · forge 63 · arena 219 |
+| Tests | **3,471** — rmi 1,384 · prototype 1,459 · ribosome 168 · germline 175 · forge 63 · arena 222 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -1764,6 +1764,42 @@ because `categorized()` sets no id. The code appears only in `--json`.
 
 Break-checked: dropping the span assignment in `verify::diagnostics` fails both
 new tests. Prototype +2 tests.
+
+**The arena gate refuses programs past `MAX_DEPTH`.** Decided by the lead,
+when the user handed the question back: the limit is the grammar's own, and
+`Program::parse` already refused such programs. A candidate whose tree is too
+deep is now refused as `depth` (`Refusal::Depth`, step 0 of the gate), before
+it is parsed, run, credited or pooled. It is on by default, with no flag.
+Earlier entries that say "the gate does not enforce `MAX_DEPTH`" describe the
+arena before this change.
+
+The default run changed, so PR #71's six-seed table no longer reproduces.
+Before and after, over seeds 1-6 (ARENA.md, "Multi-seed held-out, and bounded
+grafts", has the per-seed table):
+
+| | before | after |
+|---|---|---|
+| shape novelty, held-out bpb | 7.654 | 7.663 |
+| shape novelty, credited exploits | 110.7 | 41.0 |
+| behaviour novelty, held-out bpb | 7.578 | 7.557 |
+| behaviour minus shape | -0.076 (se 0.072) | -0.106 (se 0.122) |
+| F1, bounded minus unbounded | +0.119 (se 0.103) | +0.178 (se 0.116) |
+| F1, bounded mutator variants past the limit | 4% | 0% |
+
+Depth refusals over the six seeds:
+- 1,594 under shape novelty and 1,393 under behaviour novelty.
+- Under bounded grafts, 646. Those can come only from the attacker.
+
+That 0% confirms the earlier explanation for the 4%.
+
+Neither default changes. Behaviour novelty stays the default, `--bound-grafts`
+stays off, and neither difference reaches two standard errors. The case for
+behaviour novelty now rests on removing about 40 exploits at no cost, not
+about 100. The bounded arm is worse on all six seeds, but seed 2 contributes
++0.754, and without it the mean difference is +0.063.
+
+Break-checked: a gate that admits everything fails all 3 new tests. Arena +3
+tests.
 
 ## Where this phase ended, 2026-09-16
 
