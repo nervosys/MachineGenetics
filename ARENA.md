@@ -583,6 +583,25 @@ measurable, so `behaviour` is now the default. A config recorded without the
 field still reads as `shape`, which is how it ran; a test holds both
 (break-checked). `--novelty shape` keeps the old key.
 
+## The description-length unit (plan S1)
+
+The description-length charge (`--length-charge`, per unit) is counted in
+`--length-unit`:
+
+- `tokens` (the default): MAGE lexer tokens, `Program::token_len`. Every run
+  before this flag was charged in tokens, and that is unchanged.
+- `bytes`: the UTF-8 length of the rendered source, the text the token count
+  lexes.
+
+A config recorded without the `length_unit` key reads as `tokens`, and a test
+holds that (break-checked). The unit is recorded in the report's config.
+
+Per unit, the same `--length-charge` is a different price: a byte is shorter
+than a token, so a charge tuned in tokens is too weak in bytes. The choice of
+unit is measured in S2 and S3, not made here. Two units are deferred to S2: a
+BPE token count under a named tokenizer, and measured bits per byte under an
+arena learner. Neither is implemented.
+
 ## The harness in MAGE (plan 5.1)
 
 The compression reward is now `arena/harness/reward.mg`, a MAGE program

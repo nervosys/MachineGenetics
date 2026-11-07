@@ -271,11 +271,19 @@ pub struct GrammarAgent {
     pub lr: f64,
     /// Weight of the description-length penalty, in standard deviations.
     pub beta: f64,
+    /// The unit the penalty's length is measured in (plan S1).
+    pub length_unit: crate::arena::LengthUnit,
 }
 
 impl GrammarAgent {
     pub fn new(id: impl Into<String>) -> Self {
-        GrammarAgent { id: id.into(), policy: Policy::default(), lr: 0.1, beta: 0.1 }
+        GrammarAgent {
+            id: id.into(),
+            policy: Policy::default(),
+            lr: 0.1,
+            beta: 0.1,
+            length_unit: crate::arena::LengthUnit::Tokens,
+        }
     }
 }
 
@@ -315,7 +323,7 @@ impl Proposer for GrammarAgent {
         // A refused program earns nothing, which is below any program that ran:
         // the policy learns to stop writing what the compiler rejects.
         let rewards: Vec<f64> = scored.iter().map(|(_, r)| r.unwrap_or(0.0)).collect();
-        let lens: Vec<f64> = scored.iter().map(|(c, _)| c.program.token_len() as f64).collect();
+        let lens: Vec<f64> = scored.iter().map(|(c, _)| c.program.length(self.length_unit) as f64).collect();
         let (zr, zl) = (zscores(&rewards), zscores(&lens));
         for (i, (c, _)) in scored.iter().enumerate() {
             if let Some(trace) = &c.trace {

@@ -132,7 +132,8 @@ MAGE's sigil surface and the description-length charge (`token_len`, counted in
 MAGE lexer tokens) assume cost scales with BPE tokens. Learned chunking can
 erase that advantage.
 
-- [ ] **S1** Pluggable cost unit. **S [H]**
+- [x] **S1** Pluggable cost unit. **S [H]** *Done: `--length-unit tokens|bytes`
+  (default tokens, `Program::length`). The BPE and bpb units are deferred to S2.*
   - `token_len` becomes `cost(program, unit)` with units:
     - bytes;
     - MAGE lexer tokens (today's unit);

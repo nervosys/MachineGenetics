@@ -6,7 +6,8 @@
 //!       [--agents grammar:2,uniform:1,mutator:1,attacker:1]
 //!       [--learners ng:orders:log2buckets:lr | tf:d:layers:heads:ctx:lr[:gpu] [,…]]
 //!       [--fuel F] [--cpu-watts W] [--meter-gpus <i>[,<i>…] | none] [--cost joules|fuel]
-//!       [--allocate share|hypervolume] [--novelty behaviour|shape] [--canary <string>]
+//!       [--allocate share|hypervolume] [--novelty behaviour|shape]
+//!       [--length-unit tokens|bytes] [--canary <string>]
 //!       [--energy-budget J] [--joules-per-program J] [--definitions <forge registry dir>]
 //!       [--heldout-slices K] [--refresh-drift X]
 //!       [--proposer-command "<cmd> <args…>"] [--proposer-timeout S]
@@ -131,6 +132,13 @@ fn main() {
                     fail("--refresh-drift: must be finite and at least 0");
                 }
                 cfg.refresh_drift = x;
+            }
+            "--length-unit" => {
+                cfg.length_unit = match value(i) {
+                    "tokens" => arena::arena::LengthUnit::Tokens,
+                    "bytes" => arena::arena::LengthUnit::Bytes,
+                    other => fail(format!("--length-unit: `{other}` is neither tokens nor bytes")),
+                }
             }
             "--novelty" => {
                 cfg.novelty = match value(i) {
