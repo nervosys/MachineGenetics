@@ -456,6 +456,10 @@ words among its `lexes_as` facts, and the `AstKind` instances in the grammar.
 | `constraint_row` | `GrammarConstraint` × `Text` × `Text` (value, meaning) |
 | `gate_row` | `GateRule` × `Text` (what the gate requires) |
 | `build_rule_row` | `BuildRule` × `Text` × `Text` × `Text` (family, when, fix) |
+| `build_op` | `Text` × `Text` × `Text` × `Text` (name, arity, transforms, doc) |
+| `build_topology` | `Text` (a swarm topology) |
+| `build_consensus` | `Text` (a swarm consensus strategy) |
+| `capability_namespace` | `Text` × `Text` (namespace, effect: its name, or none) |
 | `form_row` | `ProfileForm` × `Profile` × `Text` × `Text` (nonterminal, position) |
 | `form_example` | `ProfileForm` × `Text` (as the prompt shows it) |
 | `profile_text` | `Profile` × `Text` × `Text` (key, a piece of its prompt) |

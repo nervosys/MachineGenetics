@@ -904,4 +904,22 @@ mod diagnostic_code_tests {
             assert!(seen.insert(c.code()), "duplicate code for {c:?}: {}", c.code());
         }
     }
+
+    /// Every namespace of `CAPABILITY_NAMESPACES` is stated with its effect
+    /// (`none` for `None`), and every stated namespace is in the table, both
+    /// ways. `Effect` displays as the name the fact spells it with.
+    #[test]
+    fn every_capability_namespace_is_stated() {
+        let kb = crate::kb::load().expect("the knowledge base loads");
+        let mut stated: Vec<Vec<String>> = kb.facts("capability_namespace");
+        stated.sort();
+        let mut table: Vec<Vec<String>> = CAPABILITY_NAMESPACES
+            .iter()
+            .map(|(ns, effect)| {
+                vec![ns.to_string(), effect.as_ref().map_or_else(|| "none".to_string(), |e| e.to_string())]
+            })
+            .collect();
+        table.sort();
+        assert_eq!(stated, table, "capability_namespace facts vs CAPABILITY_NAMESPACES");
+    }
 }

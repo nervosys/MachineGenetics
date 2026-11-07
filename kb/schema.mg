@@ -43,7 +43,9 @@ kb Schema {
     // v14 (2026-11-03): `block_name` and `block_signature`, for the forge block
     // store's facts (`BlockStore::facts` in forge/src/registry/blocks.rs).
     // v15 (2026-11-04): `BuildRule` and `build_rule_row`, for kb/rules/builder.mg.
-    fact schema_version(15);
+    // v16 (2026-11-04): `build_op`, `build_topology` and `build_consensus`, for
+    // kb/rules/builder.mg, and `capability_namespace`, for kb/meaning.mg.
+    fact schema_version(16);
 
     // ── Classes ─────────────────────────────────────────────────────────
     // Seven roots. The twelve domains of MAGE_ONTOLOGY.md group facts into
@@ -257,6 +259,22 @@ kb Schema {
     fact arg_class(build_rule_row, 2, Text);
     fact arg_class(build_rule_row, 3, Text);
     fact arg_class(build_rule_row, 4, Text);
+    // The constructible ops of prototype/src/builder.rs: a name, its arity, whether
+    // it transforms the running dim, and its doc. Arity and transforms are Text.
+    fact relation(build_op);
+    fact arg_class(build_op, 1, Text);
+    fact arg_class(build_op, 2, Text);
+    fact arg_class(build_op, 3, Text);
+    fact arg_class(build_op, 4, Text);
+    fact relation(build_topology);
+    fact arg_class(build_topology, 1, Text);
+    fact relation(build_consensus);
+    fact arg_class(build_consensus, 1, Text);
+    // The capability namespaces of prototype/src/hir.rs, and the effect each is
+    // attributed to: its Effect's name, or `none` for a namespace with no effect.
+    fact relation(capability_namespace);
+    fact arg_class(capability_namespace, 1, Text);
+    fact arg_class(capability_namespace, 2, Text);
     // name, value, meaning.
     fact relation(constraint_row);
     fact arg_class(constraint_row, 1, GrammarConstraint);

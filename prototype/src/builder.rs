@@ -1443,6 +1443,41 @@ mod tests {
         }
     }
 
+    /// Every op of `OPS` is stated, and every stated op is in `OPS`: the
+    /// `(name, arity, transforms, doc)` of each side, as multisets. Arity and
+    /// transforms are text in the fact, spelled as `OPS` writes them.
+    #[test]
+    fn every_op_is_stated() {
+        let kb = crate::kb::load().expect("the knowledge base loads");
+        let mut stated: Vec<Vec<String>> = kb.facts("build_op");
+        stated.sort();
+        let mut table: Vec<Vec<String>> = OPS
+            .iter()
+            .map(|o| vec![o.name.to_string(), o.arity.to_string(), o.transforms.to_string(), o.doc.to_string()])
+            .collect();
+        table.sort();
+        assert_eq!(stated, table, "build_op facts vs OPS");
+    }
+
+    /// `TOPOLOGIES` and `CONSENSUS` are each stated, and each stated name is
+    /// in its table, both ways.
+    #[test]
+    fn every_topology_and_consensus_is_stated() {
+        let kb = crate::kb::load().expect("the knowledge base loads");
+        let names = |predicate: &str| -> Vec<String> {
+            let mut v: Vec<String> = kb.facts(predicate).into_iter().map(|f| f[0].clone()).collect();
+            v.sort();
+            v
+        };
+        let sorted = |table: &[&str]| -> Vec<String> {
+            let mut v: Vec<String> = table.iter().map(|t| t.to_string()).collect();
+            v.sort();
+            v
+        };
+        assert_eq!(names("build_topology"), sorted(TOPOLOGIES), "build_topology facts vs TOPOLOGIES");
+        assert_eq!(names("build_consensus"), sorted(CONSENSUS), "build_consensus facts vs CONSENSUS");
+    }
+
     // ── Property tests: the reliability surface of tool-mediated construction ──
     //
     // These verify the two guarantees the framework profile rests its
