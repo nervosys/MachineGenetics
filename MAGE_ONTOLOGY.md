@@ -454,6 +454,8 @@ words among its `lexes_as` facts, and the `AstKind` instances in the grammar.
 | `constraint_row` | `GrammarConstraint` × `Text` × `Text` (value, meaning) |
 | `gate_row` | `GateRule` × `Text` (what the gate requires) |
 | `form_row` | `ProfileForm` × `Profile` × `Text` × `Text` (nonterminal, position) |
+| `form_example` | `ProfileForm` × `Text` (as the prompt shows it) |
+| `profile_text` | `Profile` × `Text` × `Text` (key, a piece of its prompt) |
 | `leaf_form` | `ProfileForm` (it may sit at the depth limit) |
 | `gated_form` | `ProfileForm` × `Text` (the option it needs) |
 | `profile_limit` | `Profile` × `Text` × `Text` × `Text` (name, lowest, highest) |

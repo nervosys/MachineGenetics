@@ -47,6 +47,8 @@ pub struct ProfileForm {
     pub leaf: bool,
     /// The option a generator needs on to use it.
     pub gate: Option<String>,
+    /// It written out, as the prompt shows it.
+    pub example: String,
 }
 
 /// A named subset of the grammar: what a generator may write.
@@ -62,6 +64,8 @@ pub struct GrammarProfile {
     /// Each `GrammarConstraint` it is bound by, and its value.
     pub constraints: Vec<(String, String)>,
     pub signature: String,
+    /// Each piece of its prompt, by key.
+    pub texts: Vec<(String, String)>,
 }
 
 /// A loaded knowledge base: every fact and every rule's consequences.
@@ -84,6 +88,7 @@ impl Kb {
 
         let leaves = self.facts("leaf_form");
         let gates = self.facts("gated_form");
+        let examples = self.facts("form_example");
         let forms = |kind: &str| -> Vec<ProfileForm> {
             let mut rows: Vec<(u64, String)> = self
                 .facts("form_row")
@@ -96,6 +101,7 @@ impl Kb {
                 .map(|(_, form)| ProfileForm {
                     leaf: leaves.iter().any(|l| l[0] == form),
                     gate: gates.iter().find(|g| g[0] == form).map(|g| g[1].clone()),
+                    example: examples.iter().find(|e| e[0] == form).map_or(String::new(), |e| e[1].clone()),
                     name: form,
                 })
                 .collect()
@@ -118,6 +124,10 @@ impl Kb {
             .collect();
         constraints.sort();
 
+        let mut texts: Vec<(String, String)> =
+            self.facts("profile_text").into_iter().filter(|f| f[0] == name).map(|f| (f[1].clone(), f[2].clone())).collect();
+        texts.sort();
+
         Some(GrammarProfile {
             productions,
             list_forms: forms("list"),
@@ -125,6 +135,7 @@ impl Kb {
             limits,
             constraints,
             signature,
+            texts,
         })
     }
 
@@ -343,7 +354,7 @@ mod tests {
     #[test]
     fn the_schema_alone_loads() {
         let mut kb = load_files(&FILES[..1]).unwrap_or_else(|e| panic!("{e:#?}"));
-        assert_eq!(kb.facts("schema_version"), vec![vec!["12".to_string()]]);
+        assert_eq!(kb.facts("schema_version"), vec![vec!["13".to_string()]]);
         assert!(!kb.query("below", &["Keyword", "Construct"]).is_empty());
     }
 

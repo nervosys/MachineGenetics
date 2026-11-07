@@ -9,6 +9,9 @@
 // index, so reordering these changes what every seed draws. A form is coarser
 // than a production: `map` is a method call, which is many productions.
 // `second_order` forms are drawn only by a policy that has them on.
+//
+// `describe_grammar` builds the prompt from `form_example` and `profile_text`;
+// `{name}` in a text is the limit of that name, or `max_depth`, or the gated form.
 
 kb ArenaProfile {
     fact instance_of("arena", Profile);
@@ -41,6 +44,29 @@ kb ArenaProfile {
     fact form_row("nest", "arena", "list", "11");
     fact instance_of("osc", ProfileForm);
     fact form_row("osc", "arena", "list", "12");
+    fact form_example("range", "range(8)");
+    fact form_example("repeat", "[3; 4]");
+    fact form_example("map", "range(4).map(|x| wrapping_mul(x, 3))");
+    fact form_example("scan", "range(4).scan(s, |a, x| wrapping_add(a, x))");
+    fact form_example("filter", "range(8).filter(|x| x % 3 == 1)");
+    fact form_example("reverse", "range(5).reverse()");
+    fact form_example("sort", "range(5).sort()");
+    fact form_example("take", "range(9).take(4)");
+    fact form_example("concat", "flatten([range(3), range(2)])");
+    fact form_example("copy", "flatten([range(3); 2])");
+    fact form_example("cycle", "range(6).map(|v| [1, s, 0][v % 3])");
+    fact form_example("nest", "flatten(range(4).map(|v| range(v % 3 + 1)))");
+    fact form_example("osc", "range(11).scan((100, 7), |p, v| { val (c, q) = p; ((wrapping_sub(wrapping_mul(64, c), wrapping_mul(32, q)) >> 6), c) }).map(|p| { val (c, q) = p; c })");
+    fact form_example("lit", "7");
+    fact form_example("var", "s");
+    fact form_example("add", "wrapping_add(s, 3)");
+    fact form_example("sub", "wrapping_sub(s, 3)");
+    fact form_example("mul", "wrapping_mul(s, 3)");
+    fact form_example("mod", "(s % 5)");
+    fact profile_text("arena", "list_head", "A body is one list expression over the seed `s`. Its forms, one example each:");
+    fact profile_text("arena", "int_head", "Integer expressions, inside any of them:");
+    fact profile_text("arena", "bounds", "Bounds: range and take lengths {range}; repeat lengths {repeat}; literals {literal}; modulus {mod}; cycle templates have {cycle_elems} elements and length {cycle_len}; copy counts {copy}; nest counts {nest_count} and moduli {nest_mod}; filter moduli {filter_mod}. Lists nest at most {max_depth} levels deep. Every variable must be `s` or a closure parameter in scope.");
+    fact profile_text("arena", "second_order", "The second-order form `{form}` is the only one whose values can oscillate: it emits values in {osc_len}, its start values are literals {literal}, its shift is {osc_shift}, and its coefficient a is at most 2^(k+1) and b below 2^k. Write it as its example, with the numbers changed within these bounds.");
     fact leaf_form("range");
     fact leaf_form("repeat");
     fact leaf_form("cycle");
