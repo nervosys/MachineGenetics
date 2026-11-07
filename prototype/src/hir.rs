@@ -464,7 +464,8 @@ pub struct Diagnostic {
     pub severity: Severity,
     pub message: String,
     pub span: Option<Span>,
-    /// Unique error code (e.g. "E0502"). None for ad-hoc diagnostics.
+    /// Its code, a fact in kb/rules/diagnostics.mg (e.g. "E0308"). `None` only
+    /// until `heal` classifies a diagnostic built from bare text.
     pub id: Option<String>,
     /// Semantic category for the error.
     pub category: Option<DiagnosticCategory>,
@@ -724,7 +725,9 @@ impl Diagnostic {
             category: None,
         }
     }
-    /// Create an error with a category and optional error code.
+    /// Create a diagnostic with a category. It carries its category's code
+    /// unless `id` names another, so it traces to a fact in
+    /// kb/rules/diagnostics.mg.
     pub fn categorized(
         severity: Severity,
         msg: impl Into<String>,
@@ -735,7 +738,7 @@ impl Diagnostic {
             severity,
             message: msg.into(),
             span: None,
-            id: id.map(|s| s.to_string()),
+            id: Some(id.unwrap_or(category.code()).to_string()),
             category: Some(category),
         }
     }

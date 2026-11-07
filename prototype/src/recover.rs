@@ -160,7 +160,7 @@ fn try_pattern_heal(source: &str) -> (Option<String>, usize) {
             line: parse_err.line as u32,
             col: parse_err.col as u32,
         }),
-        id: None,
+        id: Some("E0001".into()),
         category: Some(hir::DiagnosticCategory::SyntaxError),
     };
     let healed = heal::heal_one(&diag);

@@ -269,6 +269,37 @@ fn kb_rule_left_out() -> bool {
 
 // ── The tests ───────────────────────────────────────────────────────
 
+/// The human `--check` names the rule too. One source for each way it prints.
+#[test]
+fn the_human_check_prints_the_code() {
+    let cases = [
+        ("E0000", "f g() -> i32 { 1 } `"),
+        ("E0001", "f g( -> i32 { 1 }"),
+        ("E0425", "f g() -> i32 { zz }"),
+        ("E0550", "f x() / io { connect(); }\n"),
+        ("E0560", "@req(0b)\nf add(a: i64, b: i64) -> i64 { a + b }\n"),
+        ("E0570", "kb K {\n    fact p(a);\n    rule r(x: i32) { x }\n}\n"),
+        ("E0710", "net Chain { layer a: Linear(256, 512); layer b: Linear(256, 128); }"),
+        ("E9999", "f p(w: f64) -> f64 { grad(w |> abs, w) }"),
+    ];
+    for (code, src) in cases {
+        let path = std::env::temp_dir().join(format!("mage-human-{}-{code}.mg", std::process::id()));
+        std::fs::write(&path, src).unwrap();
+        let out = Command::new(env!("CARGO_BIN_EXE_mage-parse")).arg("--check").arg(&path).output().unwrap();
+        let _ = std::fs::remove_file(&path);
+        let text = format!("{}{}", String::from_utf8_lossy(&out.stdout), String::from_utf8_lossy(&out.stderr));
+        assert!(text.contains(&format!("[{code}]")), "{code} is not printed:\n{text}");
+    }
+}
+
+/// `heal` gives a bare-text diagnostic its id as well as its category.
+#[test]
+fn a_classified_diagnostic_carries_its_code() {
+    let d = mage_prototype::hir::Diagnostic::error("use of moved value `x`");
+    let graph = &mage_prototype::heal::heal_to_graphs(&[d])[0];
+    assert_eq!(graph.root.id.as_deref(), Some("E0382"));
+}
+
 #[test]
 fn every_tested_by_has_a_witness_and_every_witness_a_tested_by() {
     let kb = kb::load().expect("the knowledge base loads");

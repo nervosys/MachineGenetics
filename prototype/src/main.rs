@@ -265,7 +265,7 @@ fn main() {
                     write_formatted(&fmt::format_agent(&module), out_path);
                 }
                 Err(e) => {
-                    eprintln!("{path}:{}:{}: parse error: {}", e.line, e.col, e.describe());
+                    eprintln!("{path}:{}:{}: [E0001] parse error: {}", e.line, e.col, e.describe());
                     std::process::exit(1);
                 }
             }
@@ -293,7 +293,7 @@ fn main() {
                     write_formatted(&fmt::format_human(&module), out_path);
                 }
                 Err(e) => {
-                    eprintln!("{path}:{}:{}: parse error: {}", e.line, e.col, e.describe());
+                    eprintln!("{path}:{}:{}: [E0001] parse error: {}", e.line, e.col, e.describe());
                     std::process::exit(1);
                 }
             }
@@ -427,7 +427,7 @@ fn main() {
                     run_emit_abl_bytes(&module, path, out_path.as_deref());
                 }
                 Err(e) => {
-                    eprintln!("{path}:{}:{}: parse error: {}", e.line, e.col, e.describe());
+                    eprintln!("{path}:{}:{}: [E0001] parse error: {}", e.line, e.col, e.describe());
                     std::process::exit(1);
                 }
             }
@@ -827,7 +827,7 @@ fn main() {
                     run_generate(&module, path, &selected_backend);
                 }
                 Err(e) => {
-                    eprintln!("{path}:{}:{}: parse error: {}", e.line, e.col, e.describe());
+                    eprintln!("{path}:{}:{}: [E0001] parse error: {}", e.line, e.col, e.describe());
                     std::process::exit(1);
                 }
             }
@@ -857,7 +857,7 @@ fn main() {
                     run_infer(&module, path, &selected_backend);
                 }
                 Err(e) => {
-                    eprintln!("{path}:{}:{}: parse error: {}", e.line, e.col, e.describe());
+                    eprintln!("{path}:{}:{}: [E0001] parse error: {}", e.line, e.col, e.describe());
                     std::process::exit(1);
                 }
             }
@@ -901,7 +901,7 @@ fn main() {
                     run_train(&module, path, &selected_backend);
                 }
                 Err(e) => {
-                    eprintln!("{path}:{}:{}: parse error: {}", e.line, e.col, e.describe());
+                    eprintln!("{path}:{}:{}: [E0001] parse error: {}", e.line, e.col, e.describe());
                     std::process::exit(1);
                 }
             }
@@ -960,7 +960,7 @@ fn main() {
                     }
                 }
                 Err(e) => {
-                    eprintln!("{path}:{}:{}: parse error: {}", e.line, e.col, e.describe());
+                    eprintln!("{path}:{}:{}: [E0001] parse error: {}", e.line, e.col, e.describe());
                     std::process::exit(1);
                 }
             }
@@ -1022,7 +1022,7 @@ fn main() {
                     }
                 }
                 Err(e) => {
-                    eprintln!("{path}:{}:{}: parse error: {}", e.line, e.col, e.describe());
+                    eprintln!("{path}:{}:{}: [E0001] parse error: {}", e.line, e.col, e.describe());
                     std::process::exit(1);
                 }
             }
@@ -1069,7 +1069,7 @@ fn main() {
                     }
                 }
                 Err(e) => {
-                    eprintln!("{path}:{}:{}: parse error: {}", e.line, e.col, e.describe());
+                    eprintln!("{path}:{}:{}: [E0001] parse error: {}", e.line, e.col, e.describe());
                     std::process::exit(1);
                 }
             }
@@ -2910,7 +2910,7 @@ fn run_parse(source: &str, filename: &str, do_elision: bool, legacy: bool, token
     for tok in &tokens {
         if tok.kind == lexer::TokenKind::Error {
             eprintln!(
-                "{filename}:{}:{}: lexer error: unexpected character",
+                "{filename}:{}:{}: [E0000] lexer error: unexpected character",
                 tok.span.line, tok.span.col
             );
             error_count += 1;
@@ -2934,7 +2934,7 @@ fn run_parse(source: &str, filename: &str, do_elision: bool, legacy: bool, token
         }
         Err(e) => {
             eprintln!(
-                "{filename}:{}:{}: parse error: {}",
+                "{filename}:{}:{}: [E0001] parse error: {}",
                 e.line, e.col, e.describe()
             );
             std::process::exit(1);
@@ -3107,7 +3107,7 @@ fn run_check(source: &str, filename: &str, do_elision: bool, legacy: bool, token
     for tok in &tokens {
         if tok.kind == lexer::TokenKind::Error {
             eprintln!(
-                "{filename}:{}:{}: lexer error: unexpected character",
+                "{filename}:{}:{}: [E0000] lexer error: unexpected character",
                 tok.span.line, tok.span.col
             );
             total_errors += 1;
@@ -3119,7 +3119,7 @@ fn run_check(source: &str, filename: &str, do_elision: bool, legacy: bool, token
         Ok(m) => m,
         Err(e) => {
             eprintln!(
-                "{filename}:{}:{}: parse error: {}",
+                "{filename}:{}:{}: [E0001] parse error: {}",
                 e.line, e.col, e.describe()
             );
             std::process::exit(1);
@@ -3217,7 +3217,7 @@ fn run_check(source: &str, filename: &str, do_elision: bool, legacy: bool, token
     // rejected here with an actionable diagnostic (§4.5).
     let shape_diags = abl_shape::check_module_shapes(&module);
     for d in &shape_diags {
-        eprintln!("{filename}: error: {}", d.message);
+        eprintln!("{filename}: [E0710] error: {}", d.message);
         total_errors += 1;
     }
     if core {
