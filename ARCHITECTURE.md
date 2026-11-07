@@ -7,7 +7,7 @@ text. It is the leverage the text-token floor denies the language track (see
 [IDEAL_AGENTIC_LANGUAGE.md](IDEAL_AGENTIC_LANGUAGE.md) for that analysis).
 
 > **Scope.** Everything below is implemented and test-covered in `prototype/`
-> (**1,567 tests** green) and scored in the sibling `agentic-eval` crate (80
+> (**1,568 tests** green) and scored in the sibling `agentic-eval` crate (80
 > tests, in the AetherShell repository and not verifiable from here). The one
 > deliberate non-feature is agent/swarm *execution* — see
 > [Honest boundaries](#honest-boundaries).
@@ -16,6 +16,50 @@ text. It is the leverage the text-token floor denies the language track (see
 > It is the fifth stale count found this session, and the first one
 > `scripts/check-doc-counts.sh` did not catch: the checker read the
 > repository-layout table below and never this banner. Now covered.*
+
+---
+
+## The three parts and the schema
+
+MAGE is three parts joined by one schema. The design and its reasons are in [NEUROSYMBOLIC_PLAN.md](NEUROSYMBOLIC_PLAN.md).
+
+| Part | Its job | Where it lives |
+|---|---|---|
+| **Neural** | Inference and generation | Generators that propose programs and learners that predict their output (`arena/`); networks declared in `net` and run on `rmi` |
+| **Symbolic** | Correctness, safety and compilation | The lexer and parser (the hand-written kernel), type checker, contract verifier, lowering to the binary IR, and the arena's gate |
+| **Knowledge base** | What the language is | `kb/*.mg`: facts about syntax, grammar, forms, meaning, rules and profiles, compiled in by `prototype/src/kb.rs` |
+
+**The schema** is `kb/schema.mg`, the ontology at the top of the knowledge base. It says which classes exist, which relations may hold between them, and which invariants must hold. `kb::load` refuses a knowledge base with a fact outside a declared relation, an argument of the wrong class, or an invariant that derives a violation.
+
+```text
+kb/schema.mg                   classes, relations, invariants
+kb/lexicon.mg                  tokens, keywords, sigils and their pairs
+kb/grammar.mg                  productions
+kb/forms.mg, kb/meaning.mg     forms and lowering; types, effects, IR ops, layers
+kb/rules/*.mg                  safety rules, diagnostics, contracts, grammar constraints, refusals
+kb/profiles/arena.mg           the subset of the grammar the arena samples, with its limits
+```
+
+**How the parts use it.** The ontology's language sections, the safety rules, `skb/` and the arena's grammar and prompt are generated from these facts. The lexer and parser stay hand-written and are tested against the facts in both directions: sentences sampled from the grammar must parse, and the repository's `.mg` sources must be recognised by it. Each refusal names a rule fact, and each run's evidence log names the version of the knowledge base it ran under.
+
+**How it changes.** A change to `kb/` is a proposal, which `scripts/kb-gate.sh` admits or refuses by rule id: it must apply to HEAD, load under the schema, pass the prototype and arena suites, and not raise a fixed benchmark's fuel. Nothing is committed automatically.
+
+**Where this falls short.**
+- The 255 safety rules are facts, but nothing executes them, so `unenforced_rule` exempts them.
+- The system has not yet changed its own knowledge base. A generated proposal has been admitted and measured, showed no benefit, and was not applied (`MEASUREMENTS.md`, "A generator's proposals at the knowledge-base gate").
+- `grammar/list` over RAP still serves a hand table of sigils from `prototype/src/grammar.rs` that disagrees with `kb/lexicon.mg`.
+
+### Module census
+
+Every module in `prototype/src`, by the part it serves. A test (`prototype/tests/census.rs`) holds this list to the directory, so a new module must be placed here. Placement is a judgment, and several are close calls: `eval.rs` and `solve.rs` could each sit elsewhere. A module outside the design is kept but not extended.
+
+| Part | Modules |
+|---|---|
+| Neural | `abl_compute.rs`, `agent_runtime.rs`, `autograd.rs`, `backends.rs`, `codegen_bridge.rs`, `cuda_backend.rs`, `gradcheck.rs`, `nl_engine.rs`, `solve.rs`, `synthesis.rs` |
+| Symbolic | `abl.rs`, `abl_bridge.rs`, `abl_shape.rs`, `ast.rs`, `canon.rs`, `certs.rs`, `check.rs`, `contract.rs`, `convexity.rs`, `core_subset.rs`, `cost.rs`, `cost_calibration.rs`, `differentiable.rs`, `effects.rs`, `elision.rs`, `eval.rs`, `fuzz.rs`, `heal.rs`, `hir.rs`, `lexer.rs`, `logic.rs`, `mlir.rs`, `params.rs`, `parser.rs`, `perf_annot.rs`, `recognise.rs`, `recover.rs`, `resolve.rs`, `sandbox.rs`, `shape.rs`, `skb.rs`, `stdlib_ext.rs`, `types.rs`, `units.rs`, `verdict.rs`, `verify.rs` |
+| Knowledge base | `grammar.rs`, `kb.rs`, `kb_proposal.rs`, `ontology.rs` |
+| Interface | `aci.rs`, `bin/`, `builder.rs`, `cli_manifest.rs`, `ffi_gen.rs`, `fmt.rs`, `legacy.rs`, `lib.rs`, `main.rs`, `manifest.rs`, `rap.rs`, `rmi_ontology_adapter.rs`, `rmi_runtime_adapter.rs`, `spine_bridge.rs`, `token_budget.rs` |
+| Outside the design | `bench.rs`, `consensus.rs`, `crdt.rs`, `decompose.rs`, `forge.rs`, `hot_reload.rs`, `lease.rs`, `perf_measure.rs`, `rain.rs`, `semantic_vcs.rs`, `swarm_bus.rs`, `swarm_sdk.rs`, `token_canonical.rs` |
 
 ---
 
@@ -182,7 +226,7 @@ are **six independent Cargo workspaces**:
 | Path | Crate | Tests | Notes |
 |---|---|--:|---|
 | `RecursiveMachineIntelligence/` | `rmi` | 1,384 | The low-level neurosymbolic framework. Feature-gated (`cpu` / `gpu` / `cuda`); build with `--no-default-features --features cpu` for the portable set |
-| `prototype/` | `mage-prototype` | 1,567 | Compiler, evaluator, ABL, RAP server. Path-depends on `rmi` |
+| `prototype/` | `mage-prototype` | 1,568 | Compiler, evaluator, ABL, RAP server. Path-depends on `rmi` |
 | `ribosome/` | `ribosome` | 168 | The distributed build engine. Depends on nothing in this repository — see below |
 | `germline/` | `germline` | 176 | Model succession, handoff, fallback — the RSI control plane. Path-depends on `ribosome` |
 | `forge/` | `forge` | 65 | The package registry, and the content-addressed block and definition stores |
