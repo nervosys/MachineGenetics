@@ -37,7 +37,7 @@ each claim has a command beside it.
 | CI | 11 jobs defined, **10 of which ever run** — green on `master`. The eleventh, `prototype — cuda kernels (self-hosted GPU)`, has no runner and has never executed (open item 2) |
 | Reliability floors | file-oracle parse 99/100, perturbed pattern-heal 42, native-lexer ratio 0.997 |
 | Examples | 12 of 12 typecheck, run, and print their recorded answer |
-| `.mg` sources | **117 checked, 0 sketches** — every `.mg` file in the repository typechecks |
+| `.mg` sources | **118 checked, 0 sketches** — every `.mg` file in the repository typechecks |
 | Differentiability | **34 of 34 nets and 7 of 7 train blocks; 1 of 156 functions** (the arena's reward) — `scripts/measure-differentiability.sh`, re-derived in CI and compared against `DIFFERENTIABILITY.md` in both directions |
 | `grad` | An expression that typechecks and **runs**, for scalars: forward-mode duals, checked against central differences. The differentiability obligation is a premise of its typing rule, discharged by the call-graph pass. Tensors are refused, not deferred |
 | Documentation | 212 MAGE blocks typecheck; 59 documentation entry points run; 268 `rmi/docs` API items all exist — and "exist" now means **a definition exists**, not that the name appears somewhere in `src/`. It was 275 under the weaker criterion, 8 of them held up by English words in comments; the phantom entries are gone and a duplicate went with them |
@@ -339,7 +339,7 @@ the more useful half.** It said there was "no numerical MAGE code to build a
 binding construct for", on the evidence of 0 of 155 differentiable functions.
 There is: 34 nets, all of them differentiable — the pass had simply never been
 pointed at them. What is actually thin is the *overlap*, and **it was
-re-measured on 2026-09-08 rather than re-quoted**: **8** tracked sources
+re-measured on 2026-09-08 rather than re-quoted**: **9** tracked sources
 declare a `kb` at all, and **3** of them declare a `net` as well
 (`neurosymbolic_qa.mg`, `neurosymbolic.mg`, `unified.mg`) — the population a
 binding construct would serve. *(The first figure was 3 until 2026-10-29,
@@ -2022,6 +2022,16 @@ every `within("…")` name from `parser.rs` and requires it to be a production
 of `kb/grammar.mg`, so the two cannot drift. Removing the stamping fails the
 two behaviour tests. Prototype +3 tests. The wrapping was done by a Haiku
 subagent from an exact brief.
+
+**The safety rules are facts.** `kb/rules/safety.mg` states all 255 (schema v8),
+and `builtin_rules()` reads it; `skb.rs` lost 2,900 lines of tables. The file was
+generated once from `skb/rules/*.json`, and the tree re-emitted from the facts is
+byte-identical apart from two manifest lines naming the source, so the digest
+cannot have moved. `builtin_rules()` parses that one file behind a `OnceLock`
+instead of calling `kb::load`, which costs seconds in a debug build; the schema
+check on the file is `kb::tests`'s. `unenforced_rule` exempts `SafetyRule`: no
+SKB rule is executed, so an `enforced_by` would be false. New invariant
+`rule_without_row`. A Haiku subagent updated the docs naming the rules' source.
 
 **The meaning sections come from `kb/`.** `ontology.rs`'s `TYPES`,
 `OP_FAMILIES`, `LAYER_SURFACE_NAMES` and `EFFECTS` are deleted; `ir_ops`,

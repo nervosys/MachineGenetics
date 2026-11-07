@@ -17,6 +17,9 @@ use std::collections::{HashMap, HashSet};
 use crate::ast;
 use crate::logic::{self, KnowledgeBase};
 
+/// The safety rules: `skb::builtin_rules` reads this file by itself.
+pub const SAFETY: &str = include_str!("../../kb/rules/safety.mg");
+
 /// The knowledge-base files, in load order: the schema first.
 pub const FILES: &[(&str, &str)] = &[
     ("kb/schema.mg", include_str!("../../kb/schema.mg")),
@@ -24,6 +27,7 @@ pub const FILES: &[(&str, &str)] = &[
     ("kb/grammar.mg", include_str!("../../kb/grammar.mg")),
     ("kb/forms.mg", include_str!("../../kb/forms.mg")),
     ("kb/meaning.mg", include_str!("../../kb/meaning.mg")),
+    ("kb/rules/safety.mg", SAFETY),
 ];
 
 /// The schema's own predicates: a fact may use these without a `relation`.
@@ -224,7 +228,7 @@ mod tests {
     #[test]
     fn the_schema_alone_loads() {
         let mut kb = load_files(&FILES[..1]).unwrap_or_else(|e| panic!("{e:#?}"));
-        assert_eq!(kb.facts("schema_version"), vec![vec!["7".to_string()]]);
+        assert_eq!(kb.facts("schema_version"), vec![vec!["8".to_string()]]);
         assert!(!kb.query("below", &["Keyword", "Construct"]).is_empty());
     }
 
@@ -233,7 +237,8 @@ mod tests {
     const BREAKS: &[(&str, &str)] = &[
         ("class_cycle", "fact subclass_of(Form, Hir);"),
         ("undeclared_class", "fact instance_of(x, Nonesuch);"),
-        ("unenforced_rule", "fact instance_of(no_alias, SafetyRule);"),
+        ("unenforced_rule", "fact instance_of(no_alias, Contract);"),
+        ("rule_without_row", "fact instance_of(no_alias, SafetyRule);"),
         (
             "rule_enforced_twice",
             "fact instance_of(no_alias, SafetyRule);\n\

@@ -34,7 +34,7 @@ warnings, intelligent debugging, and performance advice.
 
 **Corrected 2026-08-25.** This section said "Rules live in `skb/rules/` as JSON
 files organised by category" and listed six files. **Nothing reads those
-files.** The rules the compiler serves are compiled in, from `builtin_rules()`
+files.** The rules the compiler serves are compiled in from `kb/rules/safety.mg`, read by `builtin_rules()`
 in `prototype/src/skb.rs`.
 
 | | Rules | Databases |

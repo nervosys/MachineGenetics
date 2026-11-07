@@ -1177,7 +1177,7 @@ named categories — Ownership and borrowing 2,100, Type safety 1,800,
 Concurrency 1,500, FFI safety 1,200, Memory layout 1,300, API contracts 1,257.
 That figure appears in four documents with **three mutually inconsistent
 decompositions**, and none of them matches the compiler, which serves the
-counts above from `builtin_rules()` in `prototype/src/skb.rs`, pinned by a
+counts above from the rules in `kb/rules/safety.mg`, read by `builtin_rules()` in `prototype/src/skb.rs`, pinned by a
 test. `skb/README.md` records where the number came from and what is designed
 rather than built.
 
