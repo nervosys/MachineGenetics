@@ -904,4 +904,67 @@ kb Grammar {
     // DoTrainExprField: parser.rs parse_train_def, the common `label: expr;` arm (2084-2254)
     fact instance_of(DoTrainExprField, Production);
     fact rhs(DoTrainExprField, "Colon Expr Semi?");
+
+    // ── AST kinds: what each item production builds (ast.rs ItemKind) ──
+    // The ontology's `ast_kinds` section is these facts.
+    fact instance_of(Function, AstKind);
+    fact parses_as(FunctionDef, Function);
+    fact summary(Function, "Function definition (incl. async / unsafe variants)");
+    fact instance_of(Struct, AstKind);
+    fact parses_as(StructDef, Struct);
+    fact summary(Struct, "Struct definition (`struct` / `S`)");
+    fact instance_of(Enum, AstKind);
+    fact parses_as(EnumDef, Enum);
+    fact summary(Enum, "Enum definition (`enum` / `E`)");
+    fact instance_of(Data, AstKind);
+    fact parses_as(DataDef, Data);
+    fact summary(Data, "Record or sum: `data Point(x: f64)` / `data Shape = A | B`");
+    fact instance_of(Trait, AstKind);
+    fact parses_as(TraitDef, Trait);
+    fact summary(Trait, "Trait definition");
+    fact instance_of(Impl, AstKind);
+    fact parses_as(ImplBlock, Impl);
+    fact summary(Impl, "impl block: `impl Trait for Type` or `impl Type`");
+    fact instance_of(Extend, AstKind);
+    fact parses_as(ExtendBlock, Extend);
+    fact summary(Extend, "Methods on a type: `extend Type { … }` (`xd`)");
+    fact instance_of(Module, AstKind);
+    fact parses_as(ModuleDef, Module);
+    fact summary(Module, "Module declaration. Parses; resolves nothing — there is no module system");
+    fact instance_of(Use, AstKind);
+    fact parses_as(UseDecl, Use);
+    fact summary(Use, "use import. Parses and is an ERROR — MAGE has one flat namespace (spec §2.3)");
+    fact instance_of(Const, AstKind);
+    fact parses_as(ConstDef, Const);
+    fact summary(Const, "const declaration");
+    fact instance_of(Static, AstKind);
+    fact parses_as(StaticDef, Static);
+    fact summary(Static, "static declaration");
+    fact instance_of(TypeAlias, AstKind);
+    fact parses_as(TypeAlias, TypeAlias);
+    fact summary(TypeAlias, "type alias");
+    fact instance_of(Net, AstKind);
+    fact parses_as(NetDef, Net);
+    fact summary(Net, "AI: neural network (Agentic Binary Language-routed)");
+    fact instance_of(Kb, AstKind);
+    fact parses_as(KbDef, Kb);
+    fact summary(Kb, "AI: symbolic knowledge base (Agentic Binary Language-routed)");
+    fact instance_of(Agent, AstKind);
+    fact parses_as(AgentDef, Agent);
+    fact summary(Agent, "AI: agent role (Agentic Binary Language-routed)");
+    fact instance_of(Swarm, AstKind);
+    fact parses_as(SwarmDef, Swarm);
+    fact summary(Swarm, "AI: swarm topology (Agentic Binary Language-routed)");
+    fact instance_of(Train, AstKind);
+    fact parses_as(TrainDef, Train);
+    fact summary(Train, "AI: training pipeline (Agentic Binary Language-routed)");
+    fact instance_of(Evolve, AstKind);
+    fact parses_as(EvolveDef, Evolve);
+    fact summary(Evolve, "AI: evolutionary search (Agentic Binary Language-routed)");
+    fact instance_of(Effect, AstKind);
+    fact parses_as(EffectDef, Effect);
+    fact summary(Effect, "Effect declaration: `effect Name { … }` (`fx`)");
+    fact instance_of(Spec, AstKind);
+    fact parses_as(SpecDef, Spec);
+    fact summary(Spec, "Spec / contract block: `spec name { @req … }` (`sp`)");
 }

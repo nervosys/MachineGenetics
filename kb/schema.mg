@@ -19,7 +19,9 @@ kb Schema {
     // `in` and `else`, and the grammar, not the spelling, says which.
     // v4 (2026-10-29): `rhs`, for kb/grammar.mg. `derives` is now read off
     // the `rhs` facts by the loader, not stated.
-    fact schema_version(4);
+    // v5 (2026-10-30): `summary` and `sigil_row`, so the ontology's `sigils`,
+    // `keywords` and `ast_kinds` sections are generated from facts.
+    fact schema_version(5);
 
     // ── Classes ─────────────────────────────────────────────────────────
     // Seven roots. The twelve domains of MAGE_ONTOLOGY.md group facts into
@@ -153,6 +155,17 @@ kb Schema {
     fact relation(in_profile);
     fact arg_class(in_profile, 1, Production);
     fact arg_class(in_profile, 2, Profile);
+    // A one-line description of a construct, as the ontology publishes it.
+    fact relation(summary);
+    fact arg_class(summary, 1, Construct);
+    fact arg_class(summary, 2, Text);
+    // A row of the ontology's `sigils` section: a notation (a sigil, `+`
+    // before an item sigil, or a type shape such as `[T]~`), what it builds,
+    // and a summary. A notation is several tokens, so all three are Text.
+    fact relation(sigil_row);
+    fact arg_class(sigil_row, 1, Text);
+    fact arg_class(sigil_row, 2, Text);
+    fact arg_class(sigil_row, 3, Text);
     fact relation(tested_by);
     fact arg_class(tested_by, 1, Diagnostic);
     fact arg_class(tested_by, 2, Text);

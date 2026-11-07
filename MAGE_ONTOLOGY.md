@@ -390,7 +390,12 @@ abbreviates (`fn`) in human mode, and a plain `Token` in both. The 37
 `abbreviates` pairs are held to `fmt.rs` over every `.mg` source in the repo.
 [`kb/grammar.mg`](kb/grammar.mg) states the productions as `rhs` facts (one
 alternative each, in EBNF); `recognise.rs` runs them, and every `.mg` source
-in the repo, the grammar included, is recognised by them.
+in the repo, the grammar included, is recognised by them. It also states the
+20 `AstKind`s, each with the item production that `parses_as` it.
+
+The JSON's `sigils`, `keywords` and `ast_kinds` sections are generated from
+these facts: `sigil_row` and `summary` facts in the lexicon, the reserved
+words among its `lexes_as` facts, and the `AstKind` instances in the grammar.
 
 | Relation | Arguments |
 |---|---|
@@ -411,6 +416,8 @@ in the repo, the grammar included, is recognised by them.
 | `refused_by` | `Refusal` × `Rule` |
 | `in_profile` | `Production` × `Profile` |
 | `tested_by` | `Diagnostic` × `Text` |
+| `summary` | `Construct` × `Text` (the ontology's one-line description) |
+| `sigil_row` | `Text` × `Text` × `Text` (notation, what it builds, summary) |
 
 Each invariant is a rule whose results are violations; the knowledge base
 loads only when every one derives nothing.

@@ -25,121 +25,74 @@
 
 use rmi::lang::Op;
 
-/// Static sigil table. Keep in sync with `lexer.rs` token-kind comments.
-/// Format: `(sigil, ast_kind, summary)`.
-const SIGILS: &[(&str, &str, &str)] = &[
-    ("+f", "Function", "pub fn — public function declaration"),
-    ("+af", "Function", "pub async fn"),
-    ("+uf", "Function", "pub unsafe fn"),
-    ("f", "Function", "fn — private function"),
-    ("v", "Let", "val — immutable binding (Rust `let`)"),
-    ("m", "Let", "var — mutable binding (Rust `let mut`)"),
-    ("C", "Const", "const declaration"),
-    ("Z", "Static", "static — retired (E0554): write `C NAME: T = value;`"),
-    ("S", "Struct", "struct declaration"),
-    ("E", "Enum", "enum declaration"),
-    ("T", "Trait", "trait declaration"),
-    ("I", "Impl", "impl block"),
-    // Nine sigils below this line parse and were published nowhere. An agent
-    // discovers the language from this file, and `D`, `xd`, `fx` and `sp` are
-    // whole features — records, inherent methods, effect declarations and
-    // contracts — that it had no way to find. `agent-guide/syntax-quick-ref.md`
-    // taught all nine; nothing compared the guide with the ontology, so the
-    // two disagreed about what the language contains.
-    // `+` is the `pub` prefix and composes with every item sigil. Only `+f`
-    // was published, so an agent could discover public *functions* and not
-    // public types, and `+S` looked like a syntax error to anything reading
-    // the JSON. The guide taught all of these.
-    ("+S", "Struct", "pub struct declaration"),
-    ("+E", "Enum", "pub enum declaration"),
-    ("+T", "Trait", "pub trait declaration"),
-    ("+D", "Data", "pub data record or sum type"),
-    ("D", "Data", "data record or sum type"),
-    ("xd", "Extend", "extend Type — inherent methods"),
-    ("fx", "Effect", "effect declaration"),
-    ("sp", "Spec", "spec block — contracts on a function"),
-    ("sw", "Swarm", "swarm declaration"),
-    ("af", "Function", "async — async function, written `async name(`; `async fn` is not the spelling"),
-    ("gd", "Guard", "guard cond else { … } — the else must diverge"),
-    ("df", "Defer", "defer expr — run at scope exit"),
-    ("M", "Mod", "mod — module declaration"),
-    ("u", "Use", "use import"),
-    ("Y", "TypeAlias", "type alias"),
-    ("?", "If/Option/Try", "if expression, or Option type prefix, or try operator"),
-    ("?=", "Match", "match expression"),
-    ("@", "For/Attr/Arc", "for loop, attribute, struct literal, or Arc type"),
-    ("@@", "Loop", "infinite loop"),
-    ("@w", "While", "while loop"),
-    ("&T", "RefType", "shared reference type"),
-    ("&!T", "MutRefType", "mutable reference type"),
-    ("@T", "ArcType", "Arc<T> shared ownership"),
-    ("?T", "OptionType", "Option<T> sugar"),
-    ("R[T,E]", "ResultType", "Result<T, E>"),
-    ("[T]", "Slice", "slice type"),
-    ("[T]~", "Vec", "Vec<T>"),
-    ("s", "Str", "string type"),
-    ("1b", "Bool", "true"),
-    ("0b", "Bool", "false"),
-    ("_", "SelfVal", "self value"),
-    ("_T", "SelfType", "Self type"),
-    // Rows for the remaining `abbreviates` pairs in kb/lexicon.mg; the test
-    // `every_abbreviation_has_a_sigil_row` holds this table to them.
-    ("+", "Visibility", "pub — public; prefixes any item (`+f`, `+S`, ...)"),
-    ("hx", "Handle", "handle — effect handler"),
-    ("xn", "Extern", "extern — reserved, not yet supported"),
-    (":", "In/Else", "in after a for pattern, else after an if block; also a type annotation"),
-    ("~>", "Where", "where clause"),
-    ("R", "ResultType", "`R[T, E]` is `T or E` (Rust `Result<T, E>`)"),
-    ("cons", "SwarmField", "consensus — swarm field"),
-    ("topo", "SwarmField", "topology — swarm field"),
-    // `ret`, not `^`. This entry said `^` and it was wrong: `MAGE_SPEC.md`
-    // names `ret` as the Return sigil in both of its sigil tables, and
-    // mentions `^` exactly once — as bitwise XOR. `^` is also the `^T` Box
-    // type prefix, so it was double-booked before anyone proposed a third
-    // meaning. Nothing but this line ever claimed `^` returns.
-    ("ret", "Return", "return expression"),
-    ("!", "Break/Not", "break, or logical not, or assert"),
-    (">>", "Continue", "continue"),
-    ("??", "Todo", "todo!()"),
-    ("???", "Unimplemented", "unimplemented!()"),
-];
+/// The `sigils`, `keywords` and `ast_kinds` sections, as `kb/` states them.
+/// Read once per process: loading the knowledge base checks every invariant.
+struct Stated {
+    /// `(notation, what it builds, summary)`: the `sigil_row` facts of
+    /// `kb/lexicon.mg`, in notation order. The lexicon is where a sigil is
+    /// stated; the table that was here is those facts now.
+    sigils: Vec<(String, String, String)>,
+    /// `(spelling, token kind, summary)`; see `keyword_rows`.
+    keywords: Vec<(String, String, String)>,
+    /// `(kind, summary)`; see `ast_kind_rows`.
+    ast_kinds: Vec<(String, String)>,
+}
 
-/// Curated summaries for notable keywords. NOT the keyword list itself — the
-/// authoritative spelling set is `crate::lexer::KEYWORDS` (the same table the
-/// lexer uses), which `keywords_section` enumerates in full so the ontology is
-/// complete and can never drift. This map only adds prose where it helps; any
-/// keyword without an entry still appears, with a generated summary.
+fn stated() -> &'static Stated {
+    static STATED: std::sync::OnceLock<Stated> = std::sync::OnceLock::new();
+    STATED.get_or_init(|| {
+        // Compiled in (`kb::FILES`) and held loadable by `kb::tests`, so
+        // failing here is a build that broke `kb/`.
+        let kb = crate::kb::load().unwrap_or_else(|e| panic!("kb/ does not load: {e:#?}"));
+        let summary: std::collections::HashMap<String, String> =
+            kb.facts("summary").into_iter().map(|f| (f[0].clone(), f[1].clone())).collect();
+        let word = |s: &str| {
+            s.starts_with(|c: char| c.is_ascii_alphabetic() || c == '_')
+                && s.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
+        };
+        let mut keywords: Vec<(String, String, String)> = kb
+            .facts("lexes_as")
+            .into_iter()
+            .filter(|f| word(&f[0]) && f[1] != "Ident")
+            .map(|f| {
+                let d = summary.get(&f[0]).cloned().unwrap_or_else(|| format!("reserved word → {} token", f[1]));
+                (f[0].clone(), f[1].clone(), d)
+            })
+            .collect();
+        keywords.sort();
+        Stated {
+            sigils: kb.facts("sigil_row").into_iter().map(|f| (f[0].clone(), f[1].clone(), f[2].clone())).collect(),
+            keywords,
+            ast_kinds: kb
+                .facts("instance_of")
+                .into_iter()
+                .filter(|f| f[1] == "AstKind")
+                .map(|f| (f[0].clone(), summary.get(&f[0]).cloned().unwrap_or_default()))
+                .collect(),
+        }
+    })
+}
+
+fn sigil_rows() -> &'static [(String, String, String)] {
+    &stated().sigils
+}
+
+/// The `keywords` section's rows, `(spelling, token kind, summary)`: every word the
+/// lexer reserves, read from `kb/lexicon.mg` as the `lexes_as` facts whose
+/// spelling is a word and whose kind is not `Ident` (`cons` and `topology`
+/// are words that lex as identifiers). `lexer::KEYWORDS` is the same set,
+/// and `the_keywords_section_is_the_lexer_table` holds it to that. Sorted by
+/// spelling.
 ///
-/// The middle column is **not** published. It used to overwrite the emitted
-/// `introduces` field, which made that field mean two different things: the
-/// real token kind for the 83 keywords with no entry here, and a hand-written
-/// name for the 19 with one — `agent` claimed `AgentDef`, `match` claimed
-/// `Match` (it is `QuestionEq`), and `val`/`var` claimed `Let`, a token this
-/// language removed and now rejects on sight. An agent could not tell which
-/// kind of answer it was reading, and could not join the field against
-/// anything. `introduces` is now always the token the spelling produces, and
-/// `keywords_introduce_the_token_they_claim` holds it to that.
-const KEYWORD_DOCS: &[(&str, &str, &str)] = &[
-    ("net", "NetDef", "neural network definition; lowers to Agentic Binary Language"),
-    ("kb", "KbDef", "symbolic knowledge base; lowers to Agentic Binary Language"),
-    ("agent", "AgentDef", "agent role; lowers to Agentic Binary Language agent ops"),
-    ("swarm", "SwarmDef", "agent swarm topology; lowers to Agentic Binary Language"),
-    ("train", "TrainDef", "training pipeline; lowers to Agentic Binary Language compute"),
-    ("evolve", "EvolveDef", "evolutionary search; lowers to Agentic Binary Language meta"),
-    ("layer", "Layer", "neural-net layer inside a net block"),
-    ("forward", "Forward", "forward pass inside a net block"),
-    ("effect", "Effect", "effect declaration"),
-    ("handle", "Handle", "effect handler"),
-    ("spec", "Spec", "spec/contract block"),
-    ("extern", "Extern", "FFI block"),
-    ("val", "Let", "immutable binding (also `v`)"),
-    ("var", "Let", "mutable binding (also `m`)"),
-    ("data", "Data", "record or sum type (also `D`)"),
-    ("extend", "Extend", "inherent/trait methods on a type (also `xd`)"),
-    ("match", "Match", "pattern match (sigil `?`)"),
-    ("guard", "Guard", "early-exit guard (also `gd`)"),
-    ("defer", "Defer", "run expression on scope exit (also `df`)"),
-];
+/// `introduces` is always the token the spelling produces. It once took a
+/// hand-written name instead for the 19 keywords with curated prose (`agent`
+/// claimed `AgentDef`, `match` claimed `Match`; it is `QuestionEq`), so the
+/// field meant two things and could be joined against nothing.
+/// `keywords_introduce_the_token_they_claim` holds it. The prose is
+/// `summary` facts; a keyword without one gets a generated summary.
+fn keyword_rows() -> &'static [(String, String, String)] {
+    &stated().keywords
+}
 
 /// Built-in type catalog. Covers scalar types, the composite type
 /// constructors, and the standard sigil shorthand. An agent reading
@@ -186,8 +139,10 @@ const TYPES: &[(&str, &str, &str)] = &[
     ("f(T)->R", "fn",     "function pointer type; (T) -> R signature"),
 ];
 
-/// AST top-level item kinds an agent should know it can find in a module.
-/// Top-level item families, named exactly as `ast::ItemKind` names them.
+/// AST top-level item kinds an agent should know it can find in a module,
+/// `(kind, summary)`: the `AstKind` instances of `kb/grammar.mg`, each built
+/// by the item production its `parses_as` fact names. Named exactly as
+/// `ast::ItemKind` names them.
 ///
 /// The published names used to be a parallel vocabulary — `Mod` for `Module`,
 /// `EffectDef` for `Effect`, `SpecBlock` for `Spec` — which made the list
@@ -197,30 +152,11 @@ const TYPES: &[(&str, &str, &str)] = &[
 /// Point(…)` (records and sums) or `extend Type { … }` (methods) are item
 /// kinds at all, and those are the two the human-mode guides lead with.
 ///
-/// The test below compares this table against `ItemKind`'s variants by
-/// scraping `ast.rs`, in both directions.
-const AST_KINDS: &[(&str, &str)] = &[
-    ("Function", "Function definition (incl. async / unsafe variants)"),
-    ("Struct", "Struct definition (`struct` / `S`)"),
-    ("Enum", "Enum definition (`enum` / `E`)"),
-    ("Data", "Record or sum: `data Point(x: f64)` / `data Shape = A | B`"),
-    ("Trait", "Trait definition"),
-    ("Impl", "impl block: `impl Trait for Type` or `impl Type`"),
-    ("Extend", "Methods on a type: `extend Type { … }` (`xd`)"),
-    ("Module", "Module declaration. Parses; resolves nothing — there is no module system"),
-    ("Use", "use import. Parses and is an ERROR — MAGE has one flat namespace (spec §2.3)"),
-    ("Const", "const declaration"),
-    ("Static", "static declaration"),
-    ("TypeAlias", "type alias"),
-    ("Net", "AI: neural network (Agentic Binary Language-routed)"),
-    ("Kb", "AI: symbolic knowledge base (Agentic Binary Language-routed)"),
-    ("Agent", "AI: agent role (Agentic Binary Language-routed)"),
-    ("Swarm", "AI: swarm topology (Agentic Binary Language-routed)"),
-    ("Train", "AI: training pipeline (Agentic Binary Language-routed)"),
-    ("Evolve", "AI: evolutionary search (Agentic Binary Language-routed)"),
-    ("Effect", "Effect declaration: `effect Name { … }` (`fx`)"),
-    ("Spec", "Spec / contract block: `spec name { @req … }` (`sp`)"),
-];
+/// `every_item_kind_is_published_and_vice_versa` compares these against
+/// `ItemKind`'s variants by scraping `ast.rs`, in both directions.
+fn ast_kind_rows() -> &'static [(String, String)] {
+    &stated().ast_kinds
+}
 
 /// The 7 op-family buckets. Aligned with `rmi::lang::OpFamily`.
 const OP_FAMILIES: &[(&str, u8, &str)] = &[
@@ -1325,10 +1261,10 @@ pub fn build() -> serde_json::Value {
             "hardware_accelerators": hardware_accelerators_section(),
         },
         "counts": {
-            "sigils": SIGILS.len(),
-            "keywords": crate::lexer::KEYWORDS.len(),
+            "sigils": sigil_rows().len(),
+            "keywords": keyword_rows().len(),
             "types": TYPES.len(),
-            "ast_kinds": AST_KINDS.len(),
+            "ast_kinds": ast_kind_rows().len(),
             "ir_ops": Op::ALL.len(),
             "op_families": OP_FAMILIES.len(),
             "rap_methods": RAP_METHODS.len(),
@@ -1378,7 +1314,7 @@ pub fn section(name: &str) -> Option<serde_json::Value> {
 }
 
 fn sigils_section() -> serde_json::Value {
-    let items: Vec<_> = SIGILS
+    let items: Vec<_> = sigil_rows()
         .iter()
         .map(|(s, k, d)| serde_json::json!({ "sigil": s, "ast_kind": k, "summary": d }))
         .collect();
@@ -1386,24 +1322,7 @@ fn sigils_section() -> serde_json::Value {
 }
 
 fn keywords_section() -> serde_json::Value {
-    // Enumerate the AUTHORITATIVE keyword table the lexer uses, so the ontology
-    // covers every reserved word the compiler accepts (no drift, no gaps).
-    // Sorted by spelling for deterministic output. Curated prose is merged from
-    // KEYWORD_DOCS where available; otherwise a summary is generated from the
-    // token the spelling produces.
-    let mut rows: Vec<(&str, String, String)> = crate::lexer::KEYWORDS
-        .iter()
-        .map(|(spelling, kind)| {
-            let summary = KEYWORD_DOCS
-                .iter()
-                .find(|(w, _, _)| w == spelling)
-                .map(|(_, _, summary)| summary.to_string())
-                .unwrap_or_else(|| format!("reserved word → {kind:?} token"));
-            (*spelling, format!("{kind:?}"), summary)
-        })
-        .collect();
-    rows.sort_by(|a, b| a.0.cmp(b.0));
-    let items: Vec<_> = rows
+    let items: Vec<_> = keyword_rows()
         .iter()
         .map(|(w, k, d)| serde_json::json!({ "keyword": w, "introduces": k, "summary": d }))
         .collect();
@@ -1431,7 +1350,7 @@ fn vocabulary_section() -> serde_json::Value {
 }
 
 fn ast_kinds_section() -> serde_json::Value {
-    let items: Vec<_> = AST_KINDS
+    let items: Vec<_> = ast_kind_rows()
         .iter()
         .map(|(k, d)| serde_json::json!({ "kind": k, "summary": d }))
         .collect();
@@ -1828,10 +1747,9 @@ mod tests {
         // under `effects` has discovered it. So the claim is the general one —
         // nothing the guide teaches is invisible to a reader of the JSON —
         // checked against every section that names a spelling.
-        let mut published: Vec<String> =
-            SIGILS.iter().map(|(s, _, _)| (*s).to_string()).collect();
+        let rows = sigil_rows();
+        let mut published: Vec<String> = rows.iter().map(|(s, _, _)| s.clone()).collect();
         published.extend(EFFECTS.iter().map(|(n, _, _)| (*n).to_string()));
-        published.extend(KEYWORD_DOCS.iter().map(|(n, _, _)| (*n).to_string()));
         published.extend(TYPES.iter().map(|(n, _, _)| (*n).to_string()));
         published.extend(crate::lexer::KEYWORDS.iter().map(|(n, _)| (*n).to_string()));
         published.extend(crate::resolve::VOCABULARY.iter().map(|(n, _, _)| (*n).to_string()));
@@ -1846,7 +1764,7 @@ mod tests {
             );
         }
 
-        let sigils: Vec<&str> = SIGILS.iter().map(|(s, _, _)| *s).collect();
+        let sigils: Vec<&str> = rows.iter().map(|(s, _, _)| s.as_str()).collect();
         assert!(
             declarations.len() >= 10,
             "the Declarations fence yielded {} sigils — the scrape is broken",
@@ -1887,7 +1805,8 @@ mod tests {
             .collect();
         assert!(variants.len() >= 18, "scrape looks wrong: {variants:?}");
 
-        let published: Vec<&str> = AST_KINDS.iter().map(|(k, _)| *k).collect();
+        let kinds = ast_kind_rows();
+        let published: Vec<&str> = kinds.iter().map(|(k, _)| k.as_str()).collect();
         for v in &variants {
             assert!(
                 published.contains(v),
@@ -2068,7 +1987,8 @@ mod tests {
     fn counts_match_data() {
         let o = build();
         let counts = &o["counts"];
-        assert_eq!(counts["sigils"].as_u64().unwrap(), SIGILS.len() as u64);
+        assert_eq!(counts["sigils"].as_u64().unwrap(), sigil_rows().len() as u64);
+        assert_eq!(counts["keywords"].as_u64().unwrap(), crate::lexer::KEYWORDS.len() as u64);
         assert!(counts["ir_ops"].as_u64().unwrap() > 50, "expected many ops");
         assert_eq!(counts["op_families"], 7);
     }
@@ -2688,7 +2608,7 @@ mod tests {
 
     /// Every keyword introduces the token the ontology says it does.
     ///
-    /// `introduces` was two fields wearing one name — see `KEYWORD_DOCS`.
+    /// `introduces` was two fields wearing one name — see `keyword_rows`.
     /// This joins it back against `lexer::KEYWORDS`, which is the only thing
     /// that makes the field usable to a reader who is not this compiler.
     #[test]
@@ -2707,6 +2627,19 @@ mod tests {
                 "`{spelling}` is published as introducing {claimed}"
             );
         }
+    }
+
+    /// The `keywords` section, read from `kb/lexicon.mg`, is exactly
+    /// `lexer::KEYWORDS`: the same spellings, each with the same kind.
+    #[test]
+    fn the_keywords_section_is_the_lexer_table() {
+        let published: std::collections::BTreeSet<(String, String)> =
+            keyword_rows().iter().map(|(w, k, _)| (w.clone(), k.clone())).collect();
+        let lexer: std::collections::BTreeSet<(String, String)> = crate::lexer::KEYWORDS
+            .iter()
+            .map(|(w, k)| (w.to_string(), format!("{k:?}")))
+            .collect();
+        assert_eq!(published, lexer);
     }
 
     /// Every documented type can be written in a signature.
@@ -2753,7 +2686,7 @@ mod tests {
     }
 
     /// Every `abbreviates(sigil, keyword)` pair in `kb/lexicon.mg` has a
-    /// `SIGILS` row for its sigil whose summary names the keyword as a word,
+    /// `sigil_row` fact for its sigil whose summary names the keyword as a word,
     /// so an agent reading the ontology learns the same pairs the formatter
     /// prints.
     #[test]
@@ -2761,13 +2694,13 @@ mod tests {
         let kb = crate::kb::load().expect("the knowledge base loads");
         for f in kb.facts("abbreviates") {
             let (sigil, keyword) = (&f[0], &f[1]);
-            let named = SIGILS.iter().any(|(s, _, summary)| {
+            let named = sigil_rows().iter().any(|(s, _, summary)| {
                 s == sigil
                     && summary
                         .split(|c: char| !c.is_ascii_alphanumeric())
                         .any(|w| w == keyword)
             });
-            assert!(named, "no SIGILS row for `{sigil}` names `{keyword}`");
+            assert!(named, "no sigil_row for `{sigil}` names `{keyword}`");
         }
     }
 
@@ -2798,8 +2731,10 @@ mod tests {
             ("1b", "f a() -> bool { 1b }"),
             ("0b", "f a() -> bool { 0b }"),
         ];
+        let rows = sigil_rows();
+        let published = |sigil: &str| rows.iter().any(|(s, _, _)| s == sigil);
         for (sigil, src) in cases {
-            let published = SIGILS.iter().any(|(s, _, _)| s == sigil);
+            let published = published(sigil);
             assert!(published, "`{sigil}` is exercised here but no longer published");
             assert!(
                 crate::parser::parse(&crate::lexer::lex(src)).is_ok(),
@@ -2808,11 +2743,11 @@ mod tests {
         }
         // The two that were wrong, held in both directions.
         assert!(
-            !SIGILS.iter().any(|(s, _, _)| *s == "^"),
+            !published("^"),
             "`^` is bitwise XOR and the `^T` Box prefix — it does not return"
         );
         assert!(
-            !SIGILS.iter().any(|(s, _, _)| *s == "?:"),
+            !published("?:"),
             "`?:` is not a token: the lexer has no such sigil, `else if` is              `: ?` with a space, and MAGE_SPEC.md B.2 published `?:` for a KB              query — two documents disagreeing with each other and with the              compiler"
         );
     }

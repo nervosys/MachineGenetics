@@ -678,4 +678,87 @@ kb Lexicon {
     fact abbreviates("R", "or");
     fact abbreviates("cons", "consensus");
     fact abbreviates("topo", "topology");
+
+    // ── Published sigils (the ontology's `sigils` section) ─────────────
+    // One row per notation an agent writes: a sigil, a `+` prefix on an item
+    // sigil, or a type shape. (notation, what it builds, summary).
+    fact sigil_row("+f", "Function", "pub fn — public function declaration");
+    fact sigil_row("+af", "Function", "pub async fn");
+    fact sigil_row("+uf", "Function", "pub unsafe fn");
+    fact sigil_row("f", "Function", "fn — private function");
+    fact sigil_row("v", "Let", "val — immutable binding (Rust `let`)");
+    fact sigil_row("m", "Let", "var — mutable binding (Rust `let mut`)");
+    fact sigil_row("C", "Const", "const declaration");
+    fact sigil_row("Z", "Static", "static — retired (E0554): write `C NAME: T = value;`");
+    fact sigil_row("S", "Struct", "struct declaration");
+    fact sigil_row("E", "Enum", "enum declaration");
+    fact sigil_row("T", "Trait", "trait declaration");
+    fact sigil_row("I", "Impl", "impl block");
+    fact sigil_row("+S", "Struct", "pub struct declaration");
+    fact sigil_row("+E", "Enum", "pub enum declaration");
+    fact sigil_row("+T", "Trait", "pub trait declaration");
+    fact sigil_row("+D", "Data", "pub data record or sum type");
+    fact sigil_row("D", "Data", "data record or sum type");
+    fact sigil_row("xd", "Extend", "extend Type — inherent methods");
+    fact sigil_row("fx", "Effect", "effect declaration");
+    fact sigil_row("sp", "Spec", "spec block — contracts on a function");
+    fact sigil_row("sw", "Swarm", "swarm declaration");
+    fact sigil_row("af", "Function", "async — async function, written `async name(`; `async fn` is not the spelling");
+    fact sigil_row("gd", "Guard", "guard cond else { … } — the else must diverge");
+    fact sigil_row("df", "Defer", "defer expr — run at scope exit");
+    fact sigil_row("M", "Mod", "mod — module declaration");
+    fact sigil_row("u", "Use", "use import");
+    fact sigil_row("Y", "TypeAlias", "type alias");
+    fact sigil_row("?", "If/Option/Try", "if expression, or Option type prefix, or try operator");
+    fact sigil_row("?=", "Match", "match expression");
+    fact sigil_row("@", "For/Attr/Arc", "for loop, attribute, struct literal, or Arc type");
+    fact sigil_row("@@", "Loop", "infinite loop");
+    fact sigil_row("@w", "While", "while loop");
+    fact sigil_row("&T", "RefType", "shared reference type");
+    fact sigil_row("&!T", "MutRefType", "mutable reference type");
+    fact sigil_row("@T", "ArcType", "Arc<T> shared ownership");
+    fact sigil_row("?T", "OptionType", "Option<T> sugar");
+    fact sigil_row("R[T,E]", "ResultType", "Result<T, E>");
+    fact sigil_row("[T]", "Slice", "slice type");
+    fact sigil_row("[T]~", "Vec", "Vec<T>");
+    fact sigil_row("s", "Str", "string type");
+    fact sigil_row("1b", "Bool", "true");
+    fact sigil_row("0b", "Bool", "false");
+    fact sigil_row("_", "SelfVal", "self value");
+    fact sigil_row("_T", "SelfType", "Self type");
+    fact sigil_row("+", "Visibility", "pub — public; prefixes any item (`+f`, `+S`, ...)");
+    fact sigil_row("hx", "Handle", "handle — effect handler");
+    fact sigil_row("xn", "Extern", "extern — reserved, not yet supported");
+    fact sigil_row(":", "In/Else", "in after a for pattern, else after an if block; also a type annotation");
+    fact sigil_row("~>", "Where", "where clause");
+    fact sigil_row("R", "ResultType", "`R[T, E]` is `T or E` (Rust `Result<T, E>`)");
+    fact sigil_row("cons", "SwarmField", "consensus — swarm field");
+    fact sigil_row("topo", "SwarmField", "topology — swarm field");
+    fact sigil_row("ret", "Return", "return expression");
+    fact sigil_row("!", "Break/Not", "break, or logical not, or assert");
+    fact sigil_row(">>", "Continue", "continue");
+    fact sigil_row("??", "Todo", "todo!()");
+    fact sigil_row("???", "Unimplemented", "unimplemented!()");
+
+    // ── Keyword summaries (the ontology's `keywords` section) ──────────
+    // A reserved word without one is published with a generated summary.
+    fact summary("net", "neural network definition; lowers to Agentic Binary Language");
+    fact summary("kb", "symbolic knowledge base; lowers to Agentic Binary Language");
+    fact summary("agent", "agent role; lowers to Agentic Binary Language agent ops");
+    fact summary("swarm", "agent swarm topology; lowers to Agentic Binary Language");
+    fact summary("train", "training pipeline; lowers to Agentic Binary Language compute");
+    fact summary("evolve", "evolutionary search; lowers to Agentic Binary Language meta");
+    fact summary("layer", "neural-net layer inside a net block");
+    fact summary("forward", "forward pass inside a net block");
+    fact summary("effect", "effect declaration");
+    fact summary("handle", "effect handler");
+    fact summary("spec", "spec/contract block");
+    fact summary("extern", "FFI block");
+    fact summary("val", "immutable binding (also `v`)");
+    fact summary("var", "mutable binding (also `m`)");
+    fact summary("data", "record or sum type (also `D`)");
+    fact summary("extend", "inherent/trait methods on a type (also `xd`)");
+    fact summary("match", "pattern match (sigil `?`)");
+    fact summary("guard", "early-exit guard (also `gd`)");
+    fact summary("defer", "run expression on scope exit (also `df`)");
 }
