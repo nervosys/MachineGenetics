@@ -88,3 +88,35 @@ kb Refusals {
     fact instance_of("contract", Refusal);
     fact refused_by("contract", "gate_contract");
 }
+
+// Why the knowledge-base gate refuses a proposal (NEUROSYMBOLIC_PLAN.md, Phase 8).
+// `prototype/src/kb_proposal.rs` decides the first four; `scripts/kb-gate.sh`
+// runs the conformance suite and the benchmark against the changed files.
+
+kb Admission {
+    fact instance_of("kb_gate", SymbolicComponent);
+
+    fact instance_of("kb_base", GateRule);
+    fact gate_row("kb_base", "A proposal is written against the knowledge base it changes");
+    fact enforced_by("kb_base", "kb_gate");
+
+    fact instance_of("kb_author", GateRule);
+    fact gate_row("kb_author", "A proposal's author is a stated component or a named person");
+    fact enforced_by("kb_author", "kb_gate");
+
+    fact instance_of("kb_edit", GateRule);
+    fact gate_row("kb_edit", "A proposal says what it changes, and each edit applies exactly once to a knowledge-base file");
+    fact enforced_by("kb_edit", "kb_gate");
+
+    fact instance_of("kb_schema", GateRule);
+    fact gate_row("kb_schema", "The changed knowledge base fits its schema and keeps every invariant");
+    fact enforced_by("kb_schema", "kb_gate");
+
+    fact instance_of("kb_conformance", GateRule);
+    fact gate_row("kb_conformance", "The conformance suite passes against the changed knowledge base");
+    fact enforced_by("kb_conformance", "kb_gate");
+
+    fact instance_of("kb_cost", GateRule);
+    fact gate_row("kb_cost", "A fixed benchmark costs no more under the changed knowledge base");
+    fact enforced_by("kb_cost", "kb_gate");
+}

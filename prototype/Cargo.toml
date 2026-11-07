@@ -78,6 +78,10 @@ path = "src/bin/reliability_bench.rs"
 name = "cuda-bench"
 path = "src/bin/cuda_bench.rs"
 
+[[bin]]
+name = "kb-gate"
+path = "src/bin/kb_gate.rs"
+
 # Local IronAccelerator development. Uncomment to build `--features cuda`
 # against a sibling checkout instead of the pinned tag; `cargo` will redirect
 # every ironaccelerator-* crate at once. Re-comment (and `cargo update -p
