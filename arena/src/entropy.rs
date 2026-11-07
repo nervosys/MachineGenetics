@@ -51,7 +51,7 @@
 //! mixture, with each position's chunk state built from the bytes before it, so
 //! it is the cost a causal coder with the same model would pay.
 
-use crate::learner::{ByteLearner, EntropyConfig, Learner, LearnerConfig};
+use crate::learner::{ByteLearner, EntropyConfig, Learner, LearnerConfig, Predictor};
 
 const V: usize = 256;
 /// The fixed-share rate: each weight is mixed toward uniform by this much, so
@@ -267,6 +267,43 @@ impl ByteLearner for EntropyLearner {
             "entropy {}×2^{} L{} lr{}",
             self.cfg.orders, self.cfg.log2_buckets, self.cfg.target_len, self.cfg.lr
         )
+    }
+    fn predictor(&self) -> Option<Box<dyn Predictor + '_>> {
+        Some(Box::new(EntropyPredictor::new(self)))
+    }
+}
+
+/// The entropy learner's predictor (plan P6). It keeps the chunk segmentation
+/// as it goes, so each byte costs one step, and it reads the same mixture
+/// [`EntropyLearner::bits_per_byte`] does.
+struct EntropyPredictor<'a> {
+    learner: &'a EntropyLearner,
+    history: Vec<u8>,
+    seg: Segmenter,
+    /// The step at the current position, `history.len()`.
+    cur: Step,
+}
+
+impl<'a> EntropyPredictor<'a> {
+    fn new(learner: &'a EntropyLearner) -> EntropyPredictor<'a> {
+        let mut seg = Segmenter::default();
+        let cur = learner.step(&mut seg, &[], 0, learner.threshold);
+        EntropyPredictor { learner, history: Vec::new(), seg, cur }
+    }
+}
+
+impl Predictor for EntropyPredictor<'_> {
+    fn distribution(&self) -> [f64; 256] {
+        let mut out = [0.0; V];
+        for (y, o) in out.iter_mut().enumerate() {
+            *o = self.learner.mix(&self.cur, y);
+        }
+        out
+    }
+    fn push(&mut self, byte: u8) {
+        self.history.push(byte);
+        let t = self.history.len();
+        self.cur = self.learner.step(&mut self.seg, &self.history, t, self.learner.threshold);
     }
 }
 

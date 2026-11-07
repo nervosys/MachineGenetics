@@ -55,7 +55,7 @@
 //! between step/4 and step/2.
 
 use crate::grammar::Rng;
-use crate::learner::{ByteLearner, SsmConfig};
+use crate::learner::{ByteLearner, Predictor, SsmConfig};
 
 const V: usize = 256;
 const BETA1: f64 = 0.9;
@@ -434,6 +434,65 @@ impl ByteLearner for SsmLearner {
     }
     fn describe(&self) -> String {
         format!("ssm d{} bptt{} lr{}", self.cfg.d, self.cfg.bptt, self.cfg.lr)
+    }
+    fn predictor(&self) -> Option<Box<dyn Predictor + '_>> {
+        Some(Box::new(SsmPredictor::new(self)))
+    }
+}
+
+/// The state-space learner's predictor (plan P6): the recurrence run one byte at
+/// a time. Its state after `t` bytes is the same `h_t` that [`SsmLearner::forward`]
+/// computes, so the distribution matches `bits_per_byte` at every position.
+struct SsmPredictor<'a> {
+    model: &'a SsmLearner,
+    /// The decay of each channel, `a`.
+    decay: Vec<f64>,
+    /// The state after the bytes so far.
+    h: Vec<f64>,
+    /// The last byte, which the gate reads; `None` before the first byte.
+    prev: Option<u8>,
+}
+
+impl<'a> SsmPredictor<'a> {
+    fn new(model: &'a SsmLearner) -> SsmPredictor<'a> {
+        SsmPredictor { model, decay: model.decay(), h: vec![0.0; model.cfg.d], prev: None }
+    }
+}
+
+impl Predictor for SsmPredictor<'_> {
+    fn distribution(&self) -> [f64; 256] {
+        let d = self.model.cfg.d;
+        let lay = Layout { d };
+        let th = &self.model.theta;
+        // Byte 0 has no gate input, so its output is the bias alone.
+        let mut y = vec![0.0; d];
+        if let Some(p) = self.prev {
+            let x = self.model.embed(p);
+            for (i, yi) in y.iter_mut().enumerate() {
+                let v = dot(&th[lay.w_out() + i * d..][..d], &self.h);
+                let g = sigmoid(dot(&th[lay.w_g() + i * d..][..d], x));
+                *yi = v * g;
+            }
+        }
+        let z: Vec<f64> = (0..V).map(|k| th[lay.bias() + k] + dot(&th[lay.w_head() + k * d..][..d], &y)).collect();
+        let m = z.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+        let lse = m + z.iter().map(|&q| (q - m).exp()).sum::<f64>().ln();
+        let mut out = [0.0; V];
+        for (o, &q) in out.iter_mut().zip(&z) {
+            *o = (q - lse).exp();
+        }
+        out
+    }
+    fn push(&mut self, byte: u8) {
+        let d = self.model.cfg.d;
+        let lay = Layout { d };
+        let th = &self.model.theta;
+        let x = self.model.embed(byte);
+        for i in 0..d {
+            let u = dot(&th[lay.w_in() + i * d..][..d], x);
+            self.h[i] = self.decay[i] * self.h[i] + th[lay.b() + i] * u;
+        }
+        self.prev = Some(byte);
     }
 }
 

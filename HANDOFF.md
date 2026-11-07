@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,414** — rmi 1,384 · prototype 1,432 · ribosome 168 · germline 175 · forge 63 · arena 192 |
+| Tests | **3,422** — rmi 1,384 · prototype 1,432 · ribosome 168 · germline 175 · forge 63 · arena 200 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -1479,6 +1479,35 @@ Deferred:
 
 `.mg` sources go from 106 to 111, and documentation blocks from 208 to 209.
 Prototype +4 tests.
+
+**Implementation plan P6: rollouts. Learners code physics but cannot predict
+it.**
+- The learners now expose a `Predictor` (a next-byte distribution and a
+  push). `ng`, `ent` and `ssm` implement it incrementally, and a test checks
+  that a predictor's negative log-likelihood equals its `bits_per_byte`.
+- `arena physics-rollout` trains as `physics-baseline` does. It conditions on
+  10 held-out steps in the `i32` encoding, then greedily generates 100 more
+  and decodes them.
+- It reports state error at horizons 1, 10 and 100, and energy drift, against
+  hold-last-state and constant-velocity baselines. `planes` cannot be
+  generated step by step, because it is plane-major over the whole
+  trajectory.
+
+The result: no learner beats either baseline at any horizon on pendulum,
+double pendulum, n-body or bounce.
+- Greedy decoding collapses to one constant byte, an effectively zero state.
+- On the damped spring that zero "beats" hold at horizons 10 and 100, only
+  because the true state decays toward zero.
+- The entropy learner's n-body rollout diverges to values near 2e5, the same
+  instability as in L1 and L2.
+
+So bits per byte and rollout answer different questions. The learners code
+held-out physics 0.5-1.1 bits below order-0 (P4b), but the mode of their
+distribution carries no dynamics. Untested: sampling instead of argmax, a
+learned read-out, and more training.
+
+Break-checked: an off-by-one horizon index fails the horizon test. Arena +8
+tests.
 
 **Pre-existing, not from this change:** `cargo clippy` 0.1.98 (2026-09-01)
 reports 15 warnings in `prototype` — 14 `chunks_exact` with a constant size in
