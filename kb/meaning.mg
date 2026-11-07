@@ -1324,6 +1324,31 @@ kb Meaning {
     fact builtin_function("Ok");
     fact builtin_function("Err");
 
+    // `scalar_math` names the scalar functions of resolve.rs's SCALAR_MATH: each takes exactly one
+    // number, as `f(x)` or `x.f()`. `every_scalar_math_name_is_stated` holds the table to these facts.
+    fact scalar_math("exp");
+    fact scalar_math("ln");
+    fact scalar_math("log");
+    fact scalar_math("sqrt");
+    fact scalar_math("sin");
+    fact scalar_math("cos");
+    fact scalar_math("tan");
+    fact scalar_math("tanh");
+    fact scalar_math("sigmoid");
+    fact scalar_math("silu");
+    fact scalar_math("gelu");
+    fact scalar_math("log2");
+    fact scalar_math("log10");
+    fact scalar_math("asin");
+    fact scalar_math("acos");
+    fact scalar_math("atan");
+    fact scalar_math("sinh");
+    fact scalar_math("cosh");
+    fact scalar_math("floor");
+    fact scalar_math("ceil");
+    fact scalar_math("round");
+    fact scalar_math("trunc");
+
     fact builtin_grade("abs", "kinked");
     fact builtin_grade("relu", "kinked");
     fact builtin_grade("max", "kinked");

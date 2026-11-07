@@ -1598,7 +1598,8 @@ dimensionless.
   the unit. `exp`, `ln`, `log`, `log2`, `log10`, `sin`, `cos`, `tan`, `asin`,
   `acos`, `atan`, `sinh`, `cosh`, `tanh` and `sigmoid` need a dimensionless
   argument and return a dimensionless value. Each may be written `f(x)` or
-  `x.f()`.
+  `x.f()`. Each takes exactly one number, and a wrong count or a non-number is
+  refused at `--check`.
 - `x as f64` drops a unit and `x as f64[m]` asserts one. This is the deliberate
   escape hatch.
 

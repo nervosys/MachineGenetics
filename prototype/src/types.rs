@@ -1046,6 +1046,34 @@ impl TypeChecker {
         }
     }
 
+    /// A call of a `SCALAR_MATH` name, as `f(x)` or, with the receiver first in
+    /// `operands`, as `x.f()`. It takes exactly one number. Every operand is inferred.
+    /// Only a type that is certainly not a number is refused: a string, a collection,
+    /// a unit. A float, tensor or parameter argument gives its own type back, so
+    /// `floor(x)` of an `f32` is an `f32`; anything else gives a fresh variable,
+    /// since an integer argument evaluates to a float.
+    fn infer_scalar_math(&mut self, name: &str, operands: &[ast::Expr]) -> Ty {
+        let tys: Vec<Ty> = operands.iter().map(|a| self.infer_expr(a)).collect();
+        if tys.len() != 1 {
+            self.vocab_arity(name, tys.len(), 1);
+            return self.fresh();
+        }
+        let mut ty = self.subst.apply(&tys[0]);
+        while let Ty::Ref(_, inner) = ty {
+            ty = *inner;
+        }
+        match ty {
+            Ty::Str | Ty::Bool | Ty::Char | Ty::Unit | Ty::Array(..) | Ty::Slice(_) | Ty::Vec(_)
+            | Ty::Map(..) | Ty::Tuple(_) | Ty::Option(_) | Ty::Result(..) | Ty::Ptr(_)
+            | Ty::Genome(_) | Ty::Policy(..) | Ty::KnowledgeBase | Ty::LlmType | Ty::Fn(..) => {
+                self.emit_error(format!("`{name}` expects a number, found {ty}"));
+                self.fresh()
+            }
+            Ty::Float(_) | Ty::Tensor(..) | Ty::Param(..) => ty,
+            _ => self.fresh(),
+        }
+    }
+
     /// Precise, fresh-per-call types for the §8 standard vocabulary, so misuse is
     /// caught (the reliability win) rather than inferred loosely. Returns `Some`
     /// for a typed combinator; `None` lets the call fall through to generic
@@ -1837,6 +1865,15 @@ impl TypeChecker {
                         return t;
                     }
 
+                // The scalar math functions take exactly one number. A user
+                // function (above) or a local of that name wins.
+                if let ast::Expr::Ident { name } = func.as_ref()
+                    && crate::resolve::SCALAR_MATH.contains(&name.as_str())
+                    && self.env.lookup(name).is_none()
+                {
+                    return self.infer_scalar_math(name, args);
+                }
+
                 let func_ty = self.infer_expr(func);
                 let arg_tys: Vec<Ty> = args.iter().map(|a| self.infer_expr(a)).collect();
 
@@ -1913,6 +1950,9 @@ impl TypeChecker {
                     desugared.extend(args.iter().cloned());
                     if let Some(t) = self.infer_vocab_call(method, &desugared) {
                         return t;
+                    }
+                    if crate::resolve::SCALAR_MATH.contains(&method.as_str()) {
+                        return self.infer_scalar_math(method, &desugared);
                     }
                 }
                 self.infer_expr(receiver);
@@ -2934,6 +2974,75 @@ f s() -> i32 { g(1) }");
     fn vocab_arity_is_checked() {
         assert!(!check_source("f t() { sum() }").diagnostics.is_empty());
         assert!(!check_source("f t() { map([1, 2, 3]) }").diagnostics.is_empty());
+    }
+
+    /// Every scalar math name takes exactly one number, and a wrong count is
+    /// refused at `--check`. These arms were `smooth(name, arg(0))`: `floor()`
+    /// failed only at `--eval`, and `floor(1.0, 2.0)` ignored its second argument.
+    #[test]
+    fn every_scalar_math_call_checks_its_arity() {
+        for name in crate::resolve::SCALAR_MATH {
+            let want = format!("`{name}` expects 1 argument(s), found");
+            for src in [
+                format!("f t() {{ {name}() }}"),
+                format!("f t() {{ {name}(1.0, 2.0) }}"),
+                format!("f t() {{ 1.0.{name}(2.0) }}"),
+            ] {
+                let errs = error_messages(&src);
+                assert!(errs.iter().any(|e| e.contains(&want)), "`{src}`: {errs:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn every_scalar_math_call_refuses_a_non_number() {
+        for name in crate::resolve::SCALAR_MATH {
+            let want = format!("`{name}` expects a number, found");
+            for arg in ["\"a\"", "1b", "[1.0, 2.0]"] {
+                for src in [format!("f t() {{ {name}({arg}) }}"), format!("f t() {{ {arg}.{name}() }}")] {
+                    let errs = error_messages(&src);
+                    assert!(errs.iter().any(|e| e.contains(&want)), "`{src}`: {errs:?}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn every_scalar_math_call_accepts_a_number() {
+        for name in crate::resolve::SCALAR_MATH {
+            for src in [
+                format!("f t() {{ {name}(1.0) }}"),
+                format!("f t() {{ {name}(1) }}"),
+                format!("f t() {{ 1.0.{name}() }}"),
+                format!("f t(x: f32) -> f32 {{ {name}(x) }}"),
+                format!("f t(x: f32) -> f32 {{ x.{name}() }}"),
+            ] {
+                let diags = check_source(&src).diagnostics;
+                assert!(diags.is_empty(), "`{src}`: {diags:?}");
+            }
+        }
+    }
+
+    /// A user function, a local closure or a method named like a scalar math
+    /// function wins over it.
+    #[test]
+    fn a_user_definition_shadows_scalar_math() {
+        for src in [
+            "f floor(x: str) -> str { x }\nf t() -> str { floor(\"a\") }",
+            "f t() { val sqrt = |x| x; sqrt(\"a\") }",
+            "S P { v: f64 }\nI P { f round(self) -> f64 { 7.0 } }\n\
+             f t() -> f64 { val p = @P { v: 1.0 }; p.round() }",
+        ] {
+            let diags = check_source(src).diagnostics;
+            assert!(diags.is_empty(), "`{src}`: {diags:?}");
+        }
+    }
+
+    /// A float argument gives its own type back.
+    #[test]
+    fn scalar_math_returns_its_float_argument() {
+        assert!(!error_messages("f g(x: f32) -> f64 { floor(x) }").is_empty());
+        assert!(error_messages("f g(x: f32) -> f32 { floor(x) }").is_empty());
     }
 
     /// An unsuffixed integer literal adopts the width the context demands —

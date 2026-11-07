@@ -468,6 +468,7 @@ words among its `lexes_as` facts, and the `AstKind` instances in the grammar.
 | `layer_grade` | `Layer` × `Text` (a layer type, its grade: smooth or kinked) |
 | `builtin_function` | `Text` (the name of a builtin the resolver accepts as a bare call) |
 | `builtin_grade` | `Text` × `Text` (name, grade: kinked, smooth or discrete) |
+| `scalar_math` | `Text` (the name of a scalar math function that takes exactly one number) |
 | `form_row` | `ProfileForm` × `Profile` × `Text` × `Text` (nonterminal, position) |
 | `form_example` | `ProfileForm` × `Text` (as the prompt shows it) |
 | `profile_text` | `Profile` × `Text` × `Text` (key, a piece of its prompt) |

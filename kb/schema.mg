@@ -50,7 +50,9 @@ kb Schema {
     // v18 (2026-11-04): `vocabulary`, `layer_grade` and `attribute_abbreviation`.
     // v19 (2026-11-04): `builtin_function` and `builtin_grade`, for kb/meaning.mg:
     // the builtins of resolve.rs's STD_FNS and differentiable.rs's grade lists.
-    fact schema_version(19);
+    // v20 (2026-11-06): `scalar_math`, for kb/meaning.mg: the scalar math functions of
+    // resolve.rs's SCALAR_MATH.
+    fact schema_version(20);
 
     // ── Classes ─────────────────────────────────────────────────────────
     // Seven roots. The twelve domains of MAGE_ONTOLOGY.md group facts into
@@ -315,6 +317,9 @@ kb Schema {
     fact relation(builtin_grade);
     fact arg_class(builtin_grade, 1, Text);
     fact arg_class(builtin_grade, 2, Text);
+    // The scalar math functions of prototype/src/resolve.rs's SCALAR_MATH: a name each.
+    fact relation(scalar_math);
+    fact arg_class(scalar_math, 1, Text);
     // name, value, meaning.
     fact relation(constraint_row);
     fact arg_class(constraint_row, 1, GrammarConstraint);
