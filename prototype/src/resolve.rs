@@ -19,7 +19,7 @@ pub(crate) const STD_FNS: &[&str] = &[
     "vec", "panic", "assert", "assert_eq", "assert_ne", "dbg", "todo", "unimplemented",
     "unreachable", "matches",
     // common free functions
-    "min", "max", "abs", "drop", "swap", "replace", "default",
+    "min", "max", "abs", "relu", "clamp", "drop", "swap", "replace", "default",
     // modular arithmetic by name; the operators trap (§4.10)
     "wrapping_add", "wrapping_sub", "wrapping_mul",
     // smooth scalar functions (and list reductions), each with an
@@ -41,7 +41,7 @@ pub(crate) const STD_FNS: &[&str] = &[
 pub(crate) const SCALAR_MATH: &[&str] = &[
     "exp", "ln", "log", "sqrt", "sin", "cos", "tan", "tanh", "sigmoid", "silu", "gelu",
     "log2", "log10", "asin", "acos", "atan", "sinh", "cosh",
-    "floor", "ceil", "round", "trunc",
+    "floor", "ceil", "round", "trunc", "relu",
 ];
 
 /// The standard SWE vocabulary (AB_INITIO_DESIGN §8 — the vocabulary frontier):
@@ -1216,7 +1216,7 @@ mod tests {
         // `unresolved name` until they were registered beside `sqrt`.
         for name in [
             "floor", "ceil", "round", "trunc", "log2", "log10", "asin", "acos", "atan", "sinh",
-            "cosh",
+            "cosh", "relu",
         ] {
             let r = resolve_source(&format!("f g(x: f64) -> f64 {{ {name}(x) }}"));
             assert!(
