@@ -149,6 +149,9 @@ pub enum Axis {
     Bytes,
     /// The checkpoint's measured joules. Checkpoints without them are skipped.
     Joules,
+    /// Wall-clock seconds of training so far (plan L3). Noisy, like joules, and
+    /// only carried by the physics-baseline curves; arena checkpoints lack it.
+    Seconds,
 }
 
 impl Axis {
@@ -156,6 +159,7 @@ impl Axis {
         match self {
             Axis::Bytes => Some(s.bytes as f64),
             Axis::Joules => s.joules,
+            Axis::Seconds => s.seconds,
         }
     }
 }
@@ -169,6 +173,8 @@ pub struct Sample {
     pub heldout_bpb: f64,
     pub joules: Option<f64>,
     pub bytes: u64,
+    /// Cumulative training seconds, where the run recorded them.
+    pub seconds: Option<f64>,
 }
 
 /// A learner's family name: its kind (`ngram`, `transformer`) and its describe
@@ -234,6 +240,7 @@ pub fn parse_run(json: &str) -> Result<Vec<Sample>, String> {
                 heldout_bpb: c.mean_bpb,
                 joules: c.joules,
                 bytes: c.bytes_seen,
+                seconds: None,
             })
         })
         .collect()
@@ -394,6 +401,7 @@ pub fn render(m: &Measurement) -> String {
     let axis_note = match m.axis {
         Axis::Bytes => "bytes seen (deterministic)",
         Axis::Joules => "measured joules (noisy)",
+        Axis::Seconds => "wall-clock seconds (noisy)",
     };
     out.push_str(&format!(
         "measure: {} runs, {} checkpoints, {} families; axis {axis_note}; target {:.4} bits/byte\n",
@@ -432,6 +440,33 @@ pub fn render(m: &Measurement) -> String {
 
 const USAGE: &str = "usage: arena measure [--axis bytes|joules] [--target T] [--json OUT] <run.json | dir>...\n\
     A directory stands for the *.json files in it. Default axis: bytes (see the module docs).";
+
+/// The files a command reads: each path as given, and each `*.json` in a
+/// directory. The flag is true for files found in a directory. Those may not be
+/// the kind a command reads: a `--json` written beside the runs is one of them,
+/// so callers skip them with a note rather than failing. Files named on the
+/// command line must be what the command reads.
+fn expand_inputs(inputs: &[String]) -> Result<Vec<(std::path::PathBuf, bool)>, String> {
+    let mut files: Vec<(std::path::PathBuf, bool)> = Vec::new();
+    for input in inputs {
+        let p = std::path::Path::new(input);
+        if p.is_dir() {
+            let mut found: Vec<std::path::PathBuf> = std::fs::read_dir(p)
+                .map_err(|e| format!("{input}: {e}"))?
+                .filter_map(|e| e.ok().map(|e| e.path()))
+                .filter(|q| q.extension().is_some_and(|x| x == "json") && q.is_file())
+                .collect();
+            found.sort();
+            files.extend(found.into_iter().map(|f| (f, true)));
+        } else {
+            files.push((p.to_path_buf(), false));
+        }
+    }
+    if files.is_empty() {
+        return Err(format!("no *.json files found in {}", inputs.join(", ")));
+    }
+    Ok(files)
+}
 
 /// `arena measure …`: read run reports, print fits and multipliers. Writes the
 /// measurement as JSON too when `--json` is given.
@@ -481,28 +516,7 @@ pub fn measure_cli(args: &[String]) -> Result<(), String> {
         return Err(format!("no run reports given\n{USAGE}"));
     }
 
-    // Files named on the command line must be run reports. Files found in a
-    // directory may not be: a `--json` written beside the runs is one of them,
-    // so those are skipped with a note rather than failing the measurement.
-    let mut files: Vec<(std::path::PathBuf, bool)> = Vec::new();
-    for input in &inputs {
-        let p = std::path::Path::new(input);
-        if p.is_dir() {
-            let mut found: Vec<std::path::PathBuf> = std::fs::read_dir(p)
-                .map_err(|e| format!("{input}: {e}"))?
-                .filter_map(|e| e.ok().map(|e| e.path()))
-                .filter(|q| q.extension().is_some_and(|x| x == "json") && q.is_file())
-                .collect();
-            found.sort();
-            files.extend(found.into_iter().map(|f| (f, true)));
-        } else {
-            files.push((p.to_path_buf(), false));
-        }
-    }
-    if files.is_empty() {
-        return Err(format!("no *.json run reports found in {}", inputs.join(", ")));
-    }
-
+    let files = expand_inputs(&inputs)?;
     let mut samples = Vec::new();
     let mut runs = 0;
     for (f, from_dir) in &files {
@@ -527,6 +541,386 @@ pub fn measure_cli(args: &[String]) -> Result<(), String> {
         let json = serde_json::to_string_pretty(&m).map_err(|e| e.to_string())?;
         std::fs::write(&path, json).map_err(|e| format!("{path}: {e}"))?;
         println!("measurement written to {path}");
+    }
+    Ok(())
+}
+
+// ---- Learner comparison (plan L3) ----
+//
+// The learning curves of `physics-baseline --json`, grouped by corpus. Each
+// learner's multiplier is taken against the corpus's reference, the n-gram, on
+// the same two frontier functions as above: its cost to reach the target over
+// the reference's cost. The target is shared by every learner on a corpus, so
+// no frontier is asked for a loss it cannot reach unless the target is given
+// explicitly.
+
+/// One checkpoint of a learning curve, as `physics-baseline --json` writes it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CurveCheckpoint {
+    pub bytes_trained: u64,
+    pub train_bpb: f64,
+    pub heldout_bpb: f64,
+    /// Cumulative wall-clock seconds of train steps, evaluation excluded.
+    pub seconds: f64,
+}
+
+/// One learner trained on one corpus under one seed. `seed` and `encoding` are
+/// `None` for a corpus no seed reaches (the text corpora): the same curve comes
+/// back under every seed, so it is one run, not several.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CurveRun {
+    pub corpus: String,
+    pub seed: Option<u64>,
+    pub encoding: Option<String>,
+    /// The learner's describe string, which names its kind and configuration.
+    pub describe: String,
+    /// The learner's config. Its `kind` field says which family it belongs to.
+    pub config: serde_json::Value,
+    pub checkpoints: Vec<CurveCheckpoint>,
+}
+
+/// A curve file: the runs `physics-baseline --json` writes.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CurveFile {
+    pub runs: Vec<CurveRun>,
+}
+
+/// The runs of one curve file. Unknown fields are ignored.
+pub fn parse_curves(json: &str) -> Result<Vec<CurveRun>, String> {
+    let f: CurveFile = serde_json::from_str(json).map_err(|e| e.to_string())?;
+    Ok(f.runs)
+}
+
+/// The reference learner kind: the n-gram, which every multiplier is against.
+const REFERENCE_KIND: &str = "ngram";
+
+/// The samples of one curve, one per trained checkpoint. The untrained start is
+/// not a point on a cost axis, so it is dropped. A seed-independent curve is
+/// filed under seed 0.
+fn curve_samples(run: &CurveRun) -> Vec<Sample> {
+    run.checkpoints
+        .iter()
+        .filter(|c| c.bytes_trained > 0)
+        .map(|c| Sample {
+            family: run.describe.clone(),
+            seed: run.seed.unwrap_or(0),
+            proxy_bpb: c.train_bpb,
+            heldout_bpb: c.heldout_bpb,
+            joules: None,
+            bytes: c.bytes_trained,
+            seconds: Some(c.seconds),
+        })
+        .collect()
+}
+
+/// A learner's multiplier against the reference, on one cost axis.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Relative {
+    /// On the pooled frontiers. `None` when the target is outside one of them.
+    pub pooled: Option<f64>,
+    /// `(seed, multiplier)`, for each seed whose own frontiers reach the target.
+    pub per_seed: Vec<(u64, f64)>,
+    pub mean: Option<f64>,
+    /// Sample standard deviation over `per_seed`; `None` with fewer than two.
+    pub sd: Option<f64>,
+}
+
+/// One learner in a corpus: M1's fit, and its multipliers against the reference.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CurveRow {
+    pub family: String,
+    /// Checkpoints fitted, pooled over seeds.
+    pub n: usize,
+    /// The loss-to-loss fit, with train bits per byte as the proxy and held-out
+    /// bits per byte as the target.
+    pub fit: Fit,
+    /// `None` for the reference itself.
+    pub bytes: Option<Relative>,
+    pub seconds: Option<Relative>,
+}
+
+/// One corpus: its learners, and the target every multiplier is read at.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CorpusReport {
+    pub corpus: String,
+    /// True when no seed reaches the corpus, so there is one run per learner.
+    pub seed_independent: bool,
+    pub seeds: Vec<u64>,
+    pub reference: String,
+    pub target: f64,
+    /// True when `target` is the default: the worst final held-out bits per byte
+    /// among this corpus's learners, so that every frontier reaches it.
+    pub target_is_default: bool,
+    pub rows: Vec<CurveRow>,
+}
+
+/// The whole curve measurement, for the text report and for `--json`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CurveMeasurement {
+    pub curves: usize,
+    pub corpora: Vec<CorpusReport>,
+}
+
+/// The multipliers of `fam` against `reference` on one axis, at `target`: pooled
+/// over `seeds`, and for each seed on its own.
+fn relative(fam: &[&Sample], reference: &[&Sample], axis: Axis, target: f64, seeds: &[u64]) -> Relative {
+    let pooled = multiplier(&frontier_of(fam, axis), &frontier_of(reference, axis), target);
+    let mut per_seed = Vec::new();
+    for &seed in seeds {
+        let (f, r) = (of_seed(fam, seed), of_seed(reference, seed));
+        if let Some(m) = multiplier(&frontier_of(&f, axis), &frontier_of(&r, axis), target) {
+            per_seed.push((seed, m));
+        }
+    }
+    let values: Vec<f64> = per_seed.iter().map(|(_, m)| *m).collect();
+    let (mean, sd) = mean_sd(&values);
+    Relative { pooled, per_seed, mean, sd }
+}
+
+/// A seed-independent corpus is run once per learner, whatever seeds the sweep
+/// used. Its repeated runs must agree on every bits-per-byte figure, or the
+/// claim that no seed reaches it is wrong, and this says so. Timings are not
+/// compared. The first run is kept.
+fn dedupe_seed_independent<'a>(corpus: &str, runs: &[&'a CurveRun]) -> Result<Vec<&'a CurveRun>, String> {
+    let mut kept: Vec<&CurveRun> = Vec::new();
+    for &r in runs {
+        if r.seed.is_some() {
+            kept.push(r);
+            continue;
+        }
+        match kept.iter().find(|k| k.seed.is_none() && k.describe == r.describe) {
+            Some(first) => {
+                let same = first.checkpoints.len() == r.checkpoints.len()
+                    && first.checkpoints.iter().zip(&r.checkpoints).all(|(a, b)| {
+                        a.bytes_trained == b.bytes_trained && a.train_bpb == b.train_bpb && a.heldout_bpb == b.heldout_bpb
+                    });
+                if !same {
+                    return Err(format!(
+                        "corpus `{corpus}`: two runs of `{}` with no seed disagree on bits per byte, so the corpus is not seed-independent",
+                        r.describe
+                    ));
+                }
+            }
+            None => kept.push(r),
+        }
+    }
+    Ok(kept)
+}
+
+/// Measure every corpus in the runs. The target is `target` when given, else the
+/// worst final held-out bits per byte among the corpus's learners and seeds.
+/// Each corpus needs exactly one n-gram learner, which is its reference.
+pub fn measure_curves(runs: &[CurveRun], target: Option<f64>) -> Result<CurveMeasurement, String> {
+    let mut corpora: Vec<&str> = Vec::new();
+    for r in runs {
+        if !corpora.contains(&r.corpus.as_str()) {
+            corpora.push(r.corpus.as_str());
+        }
+    }
+    let mut reports = Vec::new();
+    for corpus in corpora {
+        let mine: Vec<&CurveRun> = runs.iter().filter(|r| r.corpus == corpus).collect();
+        let kept = dedupe_seed_independent(corpus, &mine)?;
+        let seed_independent = kept.iter().all(|r| r.seed.is_none());
+        if !seed_independent && kept.iter().any(|r| r.seed.is_none()) {
+            return Err(format!("corpus `{corpus}`: some runs have a seed and some do not"));
+        }
+        let mut seen: BTreeSet<(&str, u64)> = BTreeSet::new();
+        for r in &kept {
+            if let Some(s) = r.seed {
+                if !seen.insert((r.describe.as_str(), s)) {
+                    return Err(format!("corpus `{corpus}`: `{}` appears twice under seed {s}", r.describe));
+                }
+            }
+        }
+
+        let (target_value, target_is_default) = match target {
+            Some(t) => (t, false),
+            None => {
+                let finals: Vec<f64> = kept
+                    .iter()
+                    .map(|r| {
+                        r.checkpoints
+                            .last()
+                            .map(|c| c.heldout_bpb)
+                            .ok_or_else(|| format!("corpus `{corpus}`: `{}` has no checkpoints", r.describe))
+                    })
+                    .collect::<Result<_, _>>()?;
+                (finals.into_iter().fold(f64::NEG_INFINITY, f64::max), true)
+            }
+        };
+
+        let samples: Vec<Sample> = kept.iter().flat_map(|r| curve_samples(r)).collect();
+        let seeds: Vec<u64> = samples.iter().map(|s| s.seed).collect::<BTreeSet<_>>().into_iter().collect();
+        let mut by_family: BTreeMap<&str, Vec<&Sample>> = BTreeMap::new();
+        for s in &samples {
+            by_family.entry(s.family.as_str()).or_default().push(s);
+        }
+
+        let references: BTreeSet<&str> = kept
+            .iter()
+            .filter(|r| r.config.get("kind").and_then(|k| k.as_str()) == Some(REFERENCE_KIND))
+            .map(|r| r.describe.as_str())
+            .collect();
+        let reference = match references.len() {
+            1 => *references.iter().next().expect("one reference"),
+            0 => return Err(format!("corpus `{corpus}`: no {REFERENCE_KIND} learner, so there is nothing to measure against")),
+            n => return Err(format!("corpus `{corpus}`: {n} {REFERENCE_KIND} learners, and the reference must be one")),
+        };
+        let ref_samples = by_family.get(reference).cloned().unwrap_or_default();
+
+        let rows = by_family
+            .iter()
+            .map(|(&fam, ss)| {
+                let points: Vec<(f64, f64)> = ss.iter().map(|s| (s.proxy_bpb, s.heldout_bpb)).collect();
+                let is_ref = fam == reference;
+                CurveRow {
+                    family: fam.to_string(),
+                    n: ss.len(),
+                    fit: fit_loss_to_loss(&points),
+                    bytes: (!is_ref).then(|| relative(ss, &ref_samples, Axis::Bytes, target_value, &seeds)),
+                    seconds: (!is_ref).then(|| relative(ss, &ref_samples, Axis::Seconds, target_value, &seeds)),
+                }
+            })
+            .collect();
+        reports.push(CorpusReport {
+            corpus: corpus.to_string(),
+            seed_independent,
+            seeds,
+            reference: reference.to_string(),
+            target: target_value,
+            target_is_default,
+            rows,
+        });
+    }
+    Ok(CurveMeasurement { curves: runs.len(), corpora: reports })
+}
+
+/// `x` to three places, or `n/a`.
+fn opt3(x: Option<f64>) -> String {
+    x.map(|v| format!("{v:.3}")).unwrap_or_else(|| "n/a".into())
+}
+
+/// One multiplier's line: the pooled figure, then the per-seed mean ± sd.
+fn relative_line(r: &Relative, seed_independent: bool) -> String {
+    let pooled = format!("pooled {}", opt3(r.pooled));
+    if seed_independent {
+        return format!("{pooled}  (one run: no seed reaches this corpus)");
+    }
+    let spread = match (r.mean, r.sd) {
+        (None, _) => "per seed n/a".to_string(),
+        (Some(m), Some(sd)) => format!("per seed {m:.3} ± {sd:.3} (n {})", r.per_seed.len()),
+        (Some(m), None) => format!("per seed {m:.3} (n {}, no sd)", r.per_seed.len()),
+    };
+    let each: Vec<String> = r.per_seed.iter().map(|(s, v)| format!("seed {s} {v:.3}")).collect();
+    format!("{pooled}  |  {spread}  [{}]", each.join(", "))
+}
+
+/// The curve measurement as the lines `arena measure-curves` prints.
+pub fn render_curves(m: &CurveMeasurement) -> String {
+    let mut out = format!(
+        "measure-curves: {} learning curves, {} corpora\n\
+         multiplier = cost of the learner / cost of the reference (its n-gram) to reach the target held-out\n\
+         bits per byte; above 1 means the learner needs more. Bytes trained is deterministic; seconds are\n\
+         wall-clock and noisy. A multiplier of n/a means a frontier does not reach the target.\n",
+        m.curves,
+        m.corpora.len()
+    );
+    for c in &m.corpora {
+        let seeds = if c.seed_independent {
+            "one run per learner (seed-independent)".to_string()
+        } else {
+            format!("seeds {}", c.seeds.iter().map(u64::to_string).collect::<Vec<_>>().join(", "))
+        };
+        let target_note = if c.target_is_default { "default: worst final held-out of its learners" } else { "--target" };
+        out.push_str(&format!(
+            "\ncorpus: {}  [{seeds}]\n  reference {}; target {:.4} bits/byte ({target_note})\n",
+            c.corpus, c.reference, c.target
+        ));
+        for r in &c.rows {
+            out.push_str(&format!(
+                "  {}\n    M1 fit (train bpb → held-out bpb): a {:.4}  b {:.4}  c {:.2}  rmse {:.4}  (n {})\n",
+                r.family, r.fit.a, r.fit.b, r.fit.c, r.fit.rmse, r.n
+            ));
+            match (&r.bytes, &r.seconds) {
+                (Some(b), Some(s)) => out.push_str(&format!(
+                    "    bytes   {}\n    seconds {}\n",
+                    relative_line(b, c.seed_independent),
+                    relative_line(s, c.seed_independent)
+                )),
+                _ => out.push_str("    (reference)\n"),
+            }
+        }
+    }
+    out
+}
+
+const CURVE_USAGE: &str = "usage: arena measure-curves [--target T] [--json OUT] <curves.json | dir>...\n\
+    Reads the curve files `arena physics-baseline --json` writes. A directory stands for the *.json files in it,\n\
+    and files there that are not curve files are skipped with a note. The reference is each corpus's n-gram.";
+
+/// `arena measure-curves …` (plan L3): read learning curves, print each learner's
+/// multiplier against the n-gram on each corpus, on bytes and on seconds.
+pub fn measure_curves_cli(args: &[String]) -> Result<(), String> {
+    let mut target: Option<f64> = None;
+    let mut json_out: Option<String> = None;
+    let mut inputs: Vec<String> = Vec::new();
+    let mut i = 0;
+    let value = |i: usize| -> Result<&str, String> {
+        args.get(i + 1).map(String::as_str).ok_or_else(|| format!("{} needs a value\n{CURVE_USAGE}", args[i]))
+    };
+    while i < args.len() {
+        match args[i].as_str() {
+            "--target" => {
+                let t: f64 = value(i)?.parse().map_err(|_| "--target: not a number".to_string())?;
+                if !t.is_finite() {
+                    return Err("--target: must be finite".into());
+                }
+                target = Some(t);
+                i += 2;
+            }
+            "--json" => {
+                json_out = Some(value(i)?.to_string());
+                i += 2;
+            }
+            "-h" | "--help" => {
+                println!("{CURVE_USAGE}");
+                return Ok(());
+            }
+            other if other.starts_with("--") => return Err(format!("unknown argument `{other}`\n{CURVE_USAGE}")),
+            path => {
+                inputs.push(path.to_string());
+                i += 1;
+            }
+        }
+    }
+    if inputs.is_empty() {
+        return Err(format!("no curve files given\n{CURVE_USAGE}"));
+    }
+    let mut runs: Vec<CurveRun> = Vec::new();
+    let mut files_read = 0;
+    for (f, from_dir) in expand_inputs(&inputs)? {
+        let parsed = std::fs::read_to_string(&f)
+            .map_err(|e| format!("{}: {e}", f.display()))
+            .and_then(|text| parse_curves(&text).map_err(|e| format!("{}: {e}", f.display())));
+        match (parsed, from_dir) {
+            (Ok(r), _) => {
+                runs.extend(r);
+                files_read += 1;
+            }
+            (Err(e), true) => eprintln!("measure-curves: skipped {} (not a curve file: {e})", f.display()),
+            (Err(e), false) => return Err(e),
+        }
+    }
+    if files_read == 0 {
+        return Err("no curve files among the files given".into());
+    }
+    let m = measure_curves(&runs, target)?;
+    print!("{}", render_curves(&m));
+    if let Some(path) = json_out {
+        let json = serde_json::to_string_pretty(&m).map_err(|e| e.to_string())?;
+        std::fs::write(&path, json).map_err(|e| format!("{path}: {e}"))?;
+        println!("curve measurement written to {path}");
     }
     Ok(())
 }
@@ -693,8 +1087,8 @@ mod tests {
         for seed in [1u64, 2] {
             for (k, (proxy, bpb)) in [(7.0, 4.0), (6.0, 3.0), (5.0, 2.0)].into_iter().enumerate() {
                 let bytes = 100 * 10u64.pow(k as u32);
-                samples.push(Sample { family: "a".into(), seed, proxy_bpb: proxy, heldout_bpb: bpb, joules: None, bytes: 2 * bytes });
-                samples.push(Sample { family: "b".into(), seed, proxy_bpb: proxy, heldout_bpb: bpb, joules: Some(1.0), bytes });
+                samples.push(Sample { family: "a".into(), seed, proxy_bpb: proxy, heldout_bpb: bpb, joules: None, bytes: 2 * bytes, seconds: None });
+                samples.push(Sample { family: "b".into(), seed, proxy_bpb: proxy, heldout_bpb: bpb, joules: Some(1.0), bytes, seconds: None });
             }
         }
         let m = measure(&samples, Axis::Bytes, Some(3.0), 2);
@@ -713,8 +1107,177 @@ mod tests {
 
     #[test]
     fn the_default_target_is_the_median_of_the_pooled_held_out_loss() {
-        let mk = |b: f64| Sample { family: "f".into(), seed: 1, proxy_bpb: 1.0, heldout_bpb: b, joules: None, bytes: 1 };
+        let mk = |b: f64| Sample { family: "f".into(), seed: 1, proxy_bpb: 1.0, heldout_bpb: b, joules: None, bytes: 1, seconds: None };
         let m = measure(&[mk(1.0), mk(4.0), mk(2.0), mk(9.0)], Axis::Bytes, None, 1);
         assert!((m.target - 3.0).abs() < 1e-12);
+    }
+}
+
+#[cfg(test)]
+mod curve_tests {
+    use super::*;
+
+    /// A curve: the untrained start (8 bits, no bytes) then `pts` of
+    /// `(bytes, train bpb, held-out bpb, seconds)`.
+    fn curve(corpus: &str, seed: Option<u64>, describe: &str, kind: &str, pts: &[(u64, f64, f64, f64)]) -> CurveRun {
+        let start = CurveCheckpoint { bytes_trained: 0, train_bpb: 8.0, heldout_bpb: 8.0, seconds: 0.0 };
+        CurveRun {
+            corpus: corpus.into(),
+            seed,
+            encoding: seed.map(|_| "planes".to_string()),
+            describe: describe.into(),
+            config: serde_json::json!({ "kind": kind }),
+            checkpoints: std::iter::once(start)
+                .chain(pts.iter().map(|&(bytes_trained, train_bpb, heldout_bpb, seconds)| CurveCheckpoint {
+                    bytes_trained,
+                    train_bpb,
+                    heldout_bpb,
+                    seconds,
+                }))
+                .collect(),
+        }
+    }
+
+    // The reference reaches 4.0, 3.5, 3.0, 2.5 at 1,000, 2,000, 3,000, 4,000 bytes
+    // and 10, 20, 30, 40 seconds. The learner reaches the same losses at twice the
+    // bytes and three times the seconds, so its multipliers are exactly 2 and 3.
+    const REF: [(u64, f64, f64, f64); 4] = [(1000, 4.0, 4.0, 10.0), (2000, 3.5, 3.5, 20.0), (3000, 3.0, 3.0, 30.0), (4000, 2.5, 2.5, 40.0)];
+    const LEARNER: [(u64, f64, f64, f64); 4] = [(2000, 4.0, 4.0, 30.0), (4000, 3.5, 3.5, 60.0), (6000, 3.0, 3.0, 90.0), (8000, 2.5, 2.5, 120.0)];
+
+    fn synthetic(seeds: &[u64]) -> Vec<CurveRun> {
+        let mut runs = Vec::new();
+        for &s in seeds {
+            runs.push(curve("synthetic", Some(s), "ngram 4×2^14 lr0.02", "ngram", &REF));
+            runs.push(curve("synthetic", Some(s), "ssm d16 bptt64 lr0.01", "ssm", &LEARNER));
+        }
+        runs
+    }
+
+    fn row<'a>(c: &'a CorpusReport, family: &str) -> &'a CurveRow {
+        c.rows.iter().find(|r| r.family == family).unwrap_or_else(|| panic!("no row for {family}"))
+    }
+
+    #[test]
+    fn a_known_multiplier_is_recovered_on_the_bytes_and_seconds_axes() {
+        let m = measure_curves(&synthetic(&[1, 2]), Some(3.2)).unwrap();
+        let c = &m.corpora[0];
+        assert_eq!(c.reference, "ngram 4×2^14 lr0.02");
+        assert!(!c.target_is_default);
+        assert_eq!(c.seeds, vec![1, 2]);
+        assert!(row(c, "ngram 4×2^14 lr0.02").bytes.is_none(), "the reference has no multiplier against itself");
+        let r = row(c, "ssm d16 bptt64 lr0.01");
+        let b = r.bytes.as_ref().unwrap();
+        assert!((b.pooled.unwrap() - 2.0).abs() < 1e-9, "{b:?}");
+        assert_eq!(b.per_seed.len(), 2);
+        assert!(b.per_seed.iter().all(|(_, m)| (m - 2.0).abs() < 1e-9), "{b:?}");
+        assert!((b.mean.unwrap() - 2.0).abs() < 1e-9);
+        assert!(b.sd.unwrap().abs() < 1e-9, "identical seeds have no spread");
+        let s = r.seconds.as_ref().unwrap();
+        assert!((s.pooled.unwrap() - 3.0).abs() < 1e-9, "{s:?}");
+        let text = render_curves(&m);
+        assert!(text.contains("pooled 2.000"), "{text}");
+        assert!(text.contains("pooled 3.000"), "{text}");
+    }
+
+    #[test]
+    fn the_default_target_is_the_worst_final_held_out_loss() {
+        // Both curves end at 2.5, so the default is 2.5, and the reference's last
+        // point is then exactly on its frontier.
+        let m = measure_curves(&synthetic(&[1]), None).unwrap();
+        let c = &m.corpora[0];
+        assert!(c.target_is_default);
+        assert!((c.target - 2.5).abs() < 1e-12);
+        let b = row(c, "ssm d16 bptt64 lr0.01").bytes.as_ref().unwrap();
+        assert!((b.pooled.unwrap() - 2.0).abs() < 1e-9, "{b:?}");
+    }
+
+    #[test]
+    fn a_target_outside_a_frontier_gives_no_multiplier() {
+        // 1.0 is below both frontiers' lowest loss, so neither reaches it.
+        let m = measure_curves(&synthetic(&[1, 2]), Some(1.0)).unwrap();
+        let b = row(&m.corpora[0], "ssm d16 bptt64 lr0.01").bytes.as_ref().unwrap().clone();
+        assert!(b.pooled.is_none() && b.mean.is_none() && b.per_seed.is_empty(), "{b:?}");
+        let text = render_curves(&m);
+        assert!(text.contains("pooled n/a"), "{text}");
+        assert!(text.contains("per seed n/a"), "{text}");
+    }
+
+    #[test]
+    fn the_untrained_start_is_not_a_point_on_the_curve() {
+        let m = measure_curves(&synthetic(&[1, 2]), Some(3.2)).unwrap();
+        // Four trained checkpoints per curve, two curves per seed, two seeds.
+        assert_eq!(row(&m.corpora[0], "ngram 4×2^14 lr0.02").n, 8);
+    }
+
+    #[test]
+    fn the_m1_fit_of_a_curve_recovers_a_known_loss_to_loss_curve() {
+        // Held-out = 1 + 2 · train^1.5 at each checkpoint, so the fit must return it.
+        let pts: Vec<(u64, f64, f64, f64)> = (1..=8u64)
+            .map(|k| {
+                let x = 1.0 + 0.25 * k as f64;
+                (1000 * k, x, 1.0 + 2.0 * x.powf(1.5), k as f64)
+            })
+            .collect();
+        let runs = vec![
+            curve("known", Some(1), "ngram 4×2^14 lr0.02", "ngram", &REF),
+            curve("known", Some(1), "ssm d16 bptt64 lr0.01", "ssm", &pts),
+        ];
+        let m = measure_curves(&runs, Some(3.2)).unwrap();
+        let f = row(&m.corpora[0], "ssm d16 bptt64 lr0.01").fit;
+        assert!((f.a - 1.0).abs() < 1e-3 && (f.b - 2.0).abs() < 1e-3 && (f.c - 1.5).abs() < 1e-6, "{f:?}");
+        assert!(f.rmse < 1e-6, "{f:?}");
+    }
+
+    #[test]
+    fn a_seed_independent_corpus_is_one_run_and_its_repeats_must_agree() {
+        let text = |heldout_last: f64| {
+            curve("text", None, "ngram 4×2^14 lr0.02", "ngram", &[(1000, 4.0, 4.0, 1.0), (2000, 3.5, heldout_last, 2.0)])
+        };
+        // Six seeds' sweeps each carry the same text curve.
+        let mut runs: Vec<CurveRun> = (1..=6).map(|_| text(3.0)).collect();
+        runs.push(curve("text", None, "ssm d16 bptt64 lr0.01", "ssm", &[(1000, 4.0, 4.0, 1.5), (2000, 3.0, 3.0, 2.5)]));
+        let m = measure_curves(&runs, Some(3.2)).unwrap();
+        let c = &m.corpora[0];
+        assert!(c.seed_independent);
+        assert_eq!(c.seeds, vec![0]);
+        let r = row(c, "ssm d16 bptt64 lr0.01").bytes.as_ref().unwrap();
+        assert_eq!(r.per_seed.len(), 1);
+        assert!(r.sd.is_none(), "one run has no spread");
+        assert!(render_curves(&m).contains("seed-independent"));
+        // A repeat that disagrees on bits per byte is an error, not a silent pick.
+        let mut bad = runs.clone();
+        bad.push(text(3.4));
+        assert!(measure_curves(&bad, Some(3.2)).unwrap_err().contains("not seed-independent"));
+    }
+
+    #[test]
+    fn a_reference_must_be_exactly_one_ngram_learner() {
+        let none = vec![curve("c", Some(1), "ssm d16 bptt64 lr0.01", "ssm", &LEARNER)];
+        assert!(measure_curves(&none, None).unwrap_err().contains("no ngram learner"));
+        let two = vec![
+            curve("c", Some(1), "ngram 4×2^14 lr0.02", "ngram", &REF),
+            curve("c", Some(1), "ngram 3×2^16 lr0.01", "ngram", &REF),
+        ];
+        assert!(measure_curves(&two, None).unwrap_err().contains("2 ngram learners"));
+    }
+
+    #[test]
+    fn a_seed_appearing_twice_for_one_learner_is_an_error() {
+        let mut runs = synthetic(&[1]);
+        runs.extend(synthetic(&[1]));
+        assert!(measure_curves(&runs, Some(3.2)).unwrap_err().contains("appears twice under seed 1"));
+    }
+
+    #[test]
+    fn a_curve_file_round_trips_and_unknown_fields_are_ignored() {
+        let runs = synthetic(&[1]);
+        let json = serde_json::to_string(&CurveFile { runs: runs.clone() }).unwrap();
+        assert_eq!(parse_curves(&json).unwrap(), runs);
+        let extra = r#"{"budget": 1, "runs": [{"corpus": "c", "seed": null, "encoding": null, "describe": "d",
+            "config": {"kind": "ngram"}, "extra": true,
+            "checkpoints": [{"bytes_trained": 10, "train_bpb": 1.0, "heldout_bpb": 1.5, "seconds": 0.1}]}]}"#;
+        let parsed = parse_curves(extra).unwrap();
+        assert_eq!(parsed[0].checkpoints[0].heldout_bpb, 1.5);
+        assert!(parse_curves("{\"checkpoints\": []}").is_err(), "a run report is not a curve file");
     }
 }
