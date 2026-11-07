@@ -323,8 +323,7 @@ kb Schema {
     fact relation(scalar_math);
     fact arg_class(scalar_math, 1, Text);
     // The builtin names of prototype/src/effects.rs's BUILTIN_EFFECTS, each with the effect
-    // it is attributed on call, spelled as MAGE_SPEC.md's table spells it: io, fs, net,
-    // async, alloc, panic, env or time.
+    // it is attributed on call, spelled as MAGE_SPEC.md's table spells it: io or panic.
     fact relation(builtin_effect);
     fact arg_class(builtin_effect, 1, Text);
     fact arg_class(builtin_effect, 2, Text);

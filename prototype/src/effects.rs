@@ -132,11 +132,15 @@ fn collect_methods(module: &ast::Module) -> Vec<(String, ast::FunctionDef, bool)
     out
 }
 
-/// The builtin names attributed an effect on call, by name alone. SINGLE SOURCE OF
-/// TRUTH for them: `every_builtin_effect_is_stated` holds this table to the
-/// `builtin_effect` facts in both directions, and
+/// The builtin names attributed an effect on call, by name alone: the seven that are
+/// callable bare (`print`, `println`, `eprint`, `eprintln`, `write`, `writeln`, `panic`).
+/// SINGLE SOURCE OF TRUTH for them: `every_builtin_effect_is_stated` holds this table to
+/// the `builtin_effect` facts in both directions, and
 /// `the_spec_table_of_attributed_names_is_the_stated_one` holds `MAGE_SPEC.md`'s table to
-/// the same facts. `join` is not here: the vocabulary's `join` wins, so it never fired.
+/// the same facts. Every other effect is reached by annotation or by a capability handle
+/// (`fs.read(..)`, `time.now()`, `net.connect(..)`): a bare `now` or `open` names no
+/// callable function, so attributing an effect to it described a call that cannot be
+/// written. `join` is not here either: the vocabulary's `join` wins, so it never fired.
 pub(crate) const BUILTIN_EFFECTS: &[(&str, Effect)] = &[
     ("print", Effect::IO),
     ("println", Effect::IO),
@@ -144,32 +148,7 @@ pub(crate) const BUILTIN_EFFECTS: &[(&str, Effect)] = &[
     ("eprintln", Effect::IO),
     ("write", Effect::IO),
     ("writeln", Effect::IO),
-    ("read", Effect::IO),
-    ("read_line", Effect::IO),
-    ("read_to_string", Effect::IO),
-    ("open", Effect::FS),
-    ("create", Effect::FS),
-    ("remove", Effect::FS),
-    ("rename", Effect::FS),
-    ("mkdir", Effect::FS),
-    ("stat", Effect::FS),
-    ("connect", Effect::Net),
-    ("listen", Effect::Net),
-    ("bind", Effect::Net),
-    ("send", Effect::Net),
-    ("recv", Effect::Net),
-    ("spawn", Effect::Async),
-    ("select", Effect::Async),
-    ("alloc", Effect::Alloc),
-    ("dealloc", Effect::Alloc),
-    ("realloc", Effect::Alloc),
     ("panic", Effect::Panic),
-    ("env", Effect::Env),
-    ("get_env", Effect::Env),
-    ("set_env", Effect::Env),
-    ("now", Effect::Time),
-    ("sleep", Effect::Time),
-    ("timeout", Effect::Time),
 ];
 
 impl EffectInfer {
@@ -858,8 +837,9 @@ mod tests {
     #[test]
     fn effectful_builtins_are_still_effectful() {
         // The vocabulary deference must not blanket-silence the builtin table:
-        // names outside the vocabulary keep their effects.
-        assert!(infer_source("f t() { spawn(1) }").effects_of("t").contains(&Effect::Async));
+        // names outside the vocabulary keep their effects, and so does a
+        // capability handle (`time.sleep` performs `time`).
+        assert!(infer_source("f t() { time.sleep(1) }").effects_of("t").contains(&Effect::Time));
         assert!(infer_source("f t() { println(1) }").effects_of("t").contains(&Effect::IO));
     }
 
@@ -882,14 +862,14 @@ mod tests {
     fn test_transitive_effects() {
         let src = r#"
             f write_file() -> () {
-                open()
+                fs.open("p")
             }
             f main_fn() -> () {
                 write_file()
             }
         "#;
         let ei = infer_source(src);
-        // write_file calls open → FS effect. main_fn calls write_file → also FS.
+        // write_file calls fs.open → FS effect. main_fn calls write_file → also FS.
         assert!(ei.effects_of("write_file").contains(&Effect::FS));
         assert!(ei.effects_of("main_fn").contains(&Effect::FS));
     }
@@ -899,15 +879,15 @@ mod tests {
         let src = r#"
             f complex() -> () {
                 println("start");
-                connect();
-                spawn()
+                net.connect("h");
+                time.sleep(1)
             }
         "#;
         let ei = infer_source(src);
         let effects = ei.effects_of("complex");
         assert!(effects.contains(&Effect::IO), "missing IO");
         assert!(effects.contains(&Effect::Net), "missing Net");
-        assert!(effects.contains(&Effect::Async), "missing Async");
+        assert!(effects.contains(&Effect::Time), "missing Time");
     }
 
     #[test]
@@ -926,7 +906,7 @@ mod tests {
         // A function declaring `/ io` that performs a `net` effect must be
         // flagged — the capability gate. (Regression: the block-body parser
         // path used to drop declared effects, silently disabling this.)
-        let ei = infer_source("f x() / io { connect(); }\n");
+        let ei = infer_source("f x() / io { net.connect(\"h\"); }\n");
         assert!(
             ei.diagnostics.iter().any(|d| d.message.contains("undeclared effect")),
             "expected an undeclared-effect error, got {:?}",
@@ -980,7 +960,7 @@ mod tests {
         // A private function that DECLARES `/ io` but performs `net` is still
         // flagged — an explicit declaration is a contract the body cannot
         // exceed, regardless of visibility.
-        let ei = infer_source("f x() / io { connect(); }\n");
+        let ei = infer_source("f x() / io { net.connect(\"h\"); }\n");
         assert!(
             ei.diagnostics.iter().any(|d| d.message.contains("undeclared effect")),
             "a declared bound must be enforced for private fns too, got {:?}",
@@ -1004,7 +984,7 @@ mod tests {
         // The capability surface lists every function (sorted) with declared
         // vs inferred effects — the data an agent gates generated code on.
         let ei = infer_source(
-            "f pure_calc(a: i32, b: i32) -> i32 { a + b }\nf worker() / io { connect(); }\n",
+            "f pure_calc(a: i32, b: i32) -> i32 { a + b }\nf worker() / io { net.connect(\"h\"); }\n",
         );
         let surface = ei.effect_surface();
         // Sorted by name → pure_calc before worker.
@@ -1018,7 +998,7 @@ mod tests {
     #[test]
     fn declared_effect_satisfied_is_clean() {
         // Declaring the effect you actually perform must NOT error.
-        let ei = infer_source("f x() / net { connect(); }\n");
+        let ei = infer_source("f x() / net { net.connect(\"h\"); }\n");
         assert!(
             !ei.diagnostics.iter().any(|d| d.message.contains("undeclared effect")),
             "correctly-declared effect should be clean, got {:?}",
@@ -1290,20 +1270,13 @@ mod handler_tests {
     /// names that really are attributed — this is what holds it to that.
     #[test]
     fn the_builtin_names_attributed_on_call_are_the_documented_ones() {
+        // Only the seven callable bare names are attributed by name alone. The
+        // other effects of §11.2's domain column are reached through a
+        // capability handle, and `a_dropped_bare_name_is_attributed_through_its_capability_handle` below holds both
+        // halves of that.
         let attributed: &[(&str, &str)] = &[
-            ("println", "IO"), ("read_to_string", "IO"), ("write", "IO"),
-            ("mkdir", "FS"), ("stat", "FS"), ("rename", "FS"),
-            ("connect", "Net"), ("recv", "Net"), ("bind", "Net"),
-            ("spawn", "Async"), ("select", "Async"),
-            ("realloc", "Alloc"), ("panic", "Panic"),
-            ("set_env", "Env"), ("timeout", "Time"),
-            // Added when the coverage assertion below went in: every one of
-            // these is in §11.2's domain column, attributes an effect, and had
-            // never been checked.
-            ("read", "IO"), ("listen", "Net"), ("send", "Net"),
-            ("open", "FS"), ("remove", "FS"),
-            ("alloc", "Alloc"), ("dealloc", "Alloc"),
-            ("now", "Time"), ("sleep", "Time"),
+            ("println", "IO"), ("print", "IO"), ("eprint", "IO"), ("eprintln", "IO"),
+            ("write", "IO"), ("writeln", "IO"), ("panic", "Panic"),
         ];
         for (name, effect) in attributed {
             let inferred = infer_source(&format!("f a() -> i32 {{ {name}(); 0 }}"))
@@ -1331,6 +1304,14 @@ mod handler_tests {
             "dispatch", "synchronize", "generate", "embed", "analyze", "evaluate", "mutate",
             "forward", "backward", "step", "random", "seed", "sample", "lifecycle", "message",
             "lease", "exec",
+            // Bare names that once attributed an effect and no longer do: none
+            // names a callable function. The effect is reached through the
+            // capability handle (`fs.read(..)`, `time.now()`, ...), pinned by
+            // `a_dropped_bare_name_is_attributed_through_its_capability_handle`.
+            "read", "read_line", "read_to_string", "open", "create", "remove", "rename",
+            "mkdir", "stat", "connect", "listen", "bind", "send", "recv", "spawn", "select",
+            "alloc", "dealloc", "realloc", "env", "get_env", "set_env", "now", "sleep",
+            "timeout",
             // `promote`/`journal` as bare calls perform nothing; the
             // authority is reached only through the `gate.` handle (§11.6).
             "promote", "journal",
@@ -1347,10 +1328,8 @@ mod handler_tests {
             );
         }
 
-        // Both lists are written by hand, and between them they left eleven of
-        // §11.2's domain names in neither — `read`, `listen`, `send`, `open`,
-        // `remove`, `alloc`, `dealloc`, `now`, `sleep` all attribute an effect
-        // and none of them was checked. So the domain column is read back out
+        // Both lists are written by hand, and between them they once left
+        // eleven of §11.2's domain names in neither, unchecked. So the domain column is read back out
         // of the spec, and every name in it has to appear in one bucket or the
         // other. A name added to a domain is then a failure here until someone
         // decides which it is.
@@ -1380,6 +1359,34 @@ mod handler_tests {
                      nothing checks whether calling it performs an effect"
                 );
             }
+        }
+    }
+
+    /// The names `BUILTIN_EFFECTS` dropped are reached through their handle: the
+    /// bare call is pure, and the same operation on the capability namespace
+    /// performs the effect.
+    #[test]
+    fn a_dropped_bare_name_is_attributed_through_its_capability_handle() {
+        let via_handle: &[(&str, &str, &str)] = &[
+            ("read_line", "io", "IO"), ("read", "fs", "FS"), ("create", "fs", "FS"),
+            ("get_env", "env", "Env"), ("now", "time", "Time"), ("sleep", "time", "Time"),
+            ("connect", "net", "Net"),
+        ];
+        for (name, ns, effect) in via_handle {
+            let inferred = |call: String| {
+                infer_source(&format!("f a() -> i32 {{ {call}; 0 }}"))
+                    .inferred
+                    .get("a")
+                    .cloned()
+                    .unwrap_or_else(pure)
+            };
+            let bare = inferred(format!("{name}()"));
+            assert!(bare.is_empty(), "bare `{name}()` should attribute nothing, got {bare:?}");
+            let handled = inferred(format!("{ns}.{name}()"));
+            assert!(
+                handled.iter().any(|e| e.to_string() == *effect),
+                "`{ns}.{name}()` should perform {effect}, got {handled:?}"
+            );
         }
     }
 
