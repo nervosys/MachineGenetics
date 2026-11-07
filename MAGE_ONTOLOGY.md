@@ -372,7 +372,7 @@ material; each becomes documentation of `kb/` as its facts move there
 | Root class | Subclasses |
 |---|---|
 | `Form` | `HumanSource`, `SigilSource`, `Declarative`, `Ast`, `Hir`, `IrOp`, `BinaryContainer` |
-| `Construct` | `Token` (`Keyword`, `Sigil`), `Production`, `AstKind` |
+| `Construct` | `Token` (`Keyword`, `Sigil`), `Production`, `AstKind`, `TokenKind` |
 | `Meaning` | `Type`, `Effect`, `Op`, `Layer` |
 | `Rule` | `TypeRule`, `SafetyRule`, `Contract`, `GrammarConstraint`, `Diagnostic` |
 | `Component` | `NeuralComponent`, `SymbolicComponent` |
@@ -382,9 +382,13 @@ material; each becomes documentation of `kb/` as its facts move there
 | `Text` | — (any constant) |
 
 A fact `instance_of(x, C)` puts `x` in class `C`, and in every class above it.
+A `Token` is a spelling (`"fn"`); a `TokenKind` is what the lexer produces
+for it (`KwF`). [`kb/lexicon.mg`](kb/lexicon.mg) states all 182 token kinds
+and the 102 reserved spellings, and a test holds `lexer.rs` to it both ways.
 
 | Relation | Arguments |
 |---|---|
+| `lexes_as` | `Token` × `TokenKind` |
 | `abbreviates` | `Sigil` × `Keyword` |
 | `derives` | `Production` × `Construct` |
 | `start_symbol` | `Production` |
@@ -410,6 +414,7 @@ loads only when every one derives nothing.
 | `undeclared_class` | Every class named by `subclass_of`, `arg_class` or `instance_of` is declared |
 | `unenforced_rule` | Every `Rule` has an `enforced_by` |
 | `rule_enforced_twice` | No `Rule` has two `enforced_by` |
+| `spelling_two_kinds` | A `Token` lexes as one `TokenKind` |
 | `sigil_two_keywords` | A `Sigil` abbreviates one `Keyword` |
 | `keyword_two_sigils` | A `Keyword` has at most one `Sigil` |
 | `unaccounted_lowering` | Every `lowers_to` round-trips or states what it `loses` |

@@ -14,7 +14,8 @@
 // Changing this file changes the schema: bump `schema_version` with it.
 
 kb Schema {
-    fact schema_version(1);
+    // v2 (2026-10-29): `TokenKind` and `lexes_as`, for kb/lexicon.mg.
+    fact schema_version(2);
 
     // ── Classes ─────────────────────────────────────────────────────────
     // Seven roots. The twelve domains of MAGE_ONTOLOGY.md group facts into
@@ -51,11 +52,14 @@ kb Schema {
     fact class(Sigil);
     fact class(Production);
     fact class(AstKind);
+    fact class(TokenKind);
     fact subclass_of(Token, Construct);
     fact subclass_of(Keyword, Token);
     fact subclass_of(Sigil, Token);
     fact subclass_of(Production, Construct);
     fact subclass_of(AstKind, Construct);
+    // What the lexer produces; a `Token` is a spelling that lexes as one.
+    fact subclass_of(TokenKind, Construct);
 
     fact class(Type);
     fact class(Effect);
@@ -95,6 +99,9 @@ kb Schema {
     fact subclass_of(Measurement, Evidence);
 
     // ── Relations: name, then the class of each argument by position ────
+    fact relation(lexes_as);
+    fact arg_class(lexes_as, 1, Token);
+    fact arg_class(lexes_as, 2, TokenKind);
     fact relation(abbreviates);
     fact arg_class(abbreviates, 1, Sigil);
     fact arg_class(abbreviates, 2, Keyword);
@@ -163,6 +170,9 @@ kb Schema {
 
     fact invariant(rule_enforced_twice, "no Rule has two enforced_by");
     rule rule_enforced_twice(r: str) { enforced_by(r, a) && enforced_by(r, b) && a != b }
+
+    fact invariant(spelling_two_kinds, "a Token lexes as one TokenKind");
+    rule spelling_two_kinds(t: str) { lexes_as(t, a) && lexes_as(t, b) && a != b }
 
     fact invariant(sigil_two_keywords, "a Sigil abbreviates one Keyword");
     rule sigil_two_keywords(s: str) { abbreviates(s, a) && abbreviates(s, b) && a != b }

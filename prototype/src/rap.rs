@@ -1454,7 +1454,8 @@ mod tests {
     fn kb_schema_lists_classes_relations_and_invariants() {
         let r = call("kb/schema", serde_json::json!({}));
         assert_eq!(r["ok"], true, "{r}");
-        assert_eq!(r["schema_version"], "1");
+        let version = crate::kb::load().expect("loads").facts("schema_version")[0][0].clone();
+        assert_eq!(r["schema_version"], version.as_str());
         let classes = r["classes"].as_array().unwrap();
         assert!(classes.iter().any(|c| c["name"] == "Keyword" && c["subclass_of"] == "Token"));
         assert!(classes.iter().any(|c| c["name"] == "Form" && c["subclass_of"].is_null()));
