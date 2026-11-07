@@ -9,6 +9,32 @@ use crate::ast;
 use crate::hir::{Diagnostic, DiagnosticCategory, Severity, SymbolId, Ty};
 use std::collections::HashMap;
 
+/// The builtin functions and macros `register_builtins` registers: names the resolver
+/// accepts as a bare call. `write` and `writeln` resolve and have no arm in the evaluator.
+/// `every_builtin_function_is_stated` holds this table to the `builtin_function` facts in
+/// both directions.
+pub(crate) const STD_FNS: &[&str] = &[
+    // I/O
+    "println", "print", "eprintln", "eprint", "format", "write", "writeln",
+    // construction / diagnostics
+    "vec", "panic", "assert", "assert_eq", "assert_ne", "dbg", "todo", "unimplemented",
+    "unreachable", "matches",
+    // common free functions
+    "min", "max", "abs", "drop", "swap", "replace", "default",
+    // modular arithmetic by name; the operators trap (§4.10)
+    "wrapping_add", "wrapping_sub", "wrapping_mul",
+    // smooth scalar functions (and list reductions), each with an
+    // exact derivative for `grad`
+    "exp", "ln", "log", "sqrt", "sin", "cos", "tan", "tanh", "sigmoid", "silu", "gelu",
+    "log2", "log10", "asin", "acos", "atan", "sinh", "cosh",
+    // rounding: piecewise constant, so the derivative is zero almost
+    // everywhere (DIFFERENTIABILITY.md)
+    "floor", "ceil", "round", "trunc",
+    "mean", "dot",
+    // bare enum-value constructors agents call positionally
+    "Some", "None", "Ok", "Err",
+];
+
 /// The standard SWE vocabulary (AB_INITIO_DESIGN §8 — the vocabulary frontier):
 /// `(name, signature, summary)`. SINGLE SOURCE OF TRUTH — `register_builtins`
 /// registers each name, `types::infer_vocab_call` types them, and the ontology's
@@ -346,28 +372,7 @@ impl Resolver {
         // ordinary calls (`println(...)`); without these registered, the most
         // basic agent-written program fails name resolution. This is the floor
         // for general-purpose (non-net) code to type-check.
-        let std_fns = [
-            // I/O
-            "println", "print", "eprintln", "eprint", "format", "write", "writeln",
-            // construction / diagnostics
-            "vec", "panic", "assert", "assert_eq", "assert_ne", "dbg", "todo", "unimplemented",
-            "unreachable", "matches",
-            // common free functions
-            "min", "max", "abs", "drop", "swap", "replace", "default",
-            // modular arithmetic by name; the operators trap (§4.10)
-            "wrapping_add", "wrapping_sub", "wrapping_mul",
-            // smooth scalar functions (and list reductions), each with an
-            // exact derivative for `grad`
-            "exp", "ln", "log", "sqrt", "sin", "cos", "tan", "tanh", "sigmoid", "silu", "gelu",
-            "log2", "log10", "asin", "acos", "atan", "sinh", "cosh",
-            // rounding: piecewise constant, so the derivative is zero almost
-            // everywhere (DIFFERENTIABILITY.md)
-            "floor", "ceil", "round", "trunc",
-            "mean", "dot",
-            // bare enum-value constructors agents call positionally
-            "Some", "None", "Ok", "Err",
-        ];
-        for name in std_fns {
+        for name in STD_FNS {
             self.define_builtin(name, SymbolKind::Function);
         }
         // Standard SWE vocabulary (AB_INITIO_DESIGN §8) — registered from the
@@ -1585,5 +1590,17 @@ f P(x: i32) -> i32 { x }"),
             .collect();
         table.sort();
         assert_eq!(stated, table, "vocabulary facts vs VOCABULARY");
+    }
+
+    /// Every `STD_FNS` name is stated as a `builtin_function` fact, and every
+    /// stated name is in the table, both ways.
+    #[test]
+    fn every_builtin_function_is_stated() {
+        let kb = crate::kb::load().expect("the knowledge base loads");
+        let mut stated: Vec<Vec<String>> = kb.facts("builtin_function");
+        stated.sort();
+        let mut table: Vec<Vec<String>> = STD_FNS.iter().map(|n| vec![n.to_string()]).collect();
+        table.sort();
+        assert_eq!(stated, table, "builtin_function facts vs STD_FNS");
     }
 }
