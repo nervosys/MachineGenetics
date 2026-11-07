@@ -7,7 +7,7 @@ numbers are machine-dependent; the shapes (throughput, scaling) are not.
 Date: 2026-06-10. Build: `release` for perf, `cargo test` for functionality.
 
 > **Re-verified 2026-09-25** — all six crates tested: prototype **1,408**, rmi
-> **1,384**, ribosome **168**, germline **175**, forge **63**, arena **144** = **3,342 passing,
+> **1,384**, ribosome **168**, germline **175**, forge **63**, arena **153** = **3,351 passing,
 > 0 failing, 0 warnings**.
 >
 > *One figure below had not regressed — it had been superseded.* The ABL
@@ -80,7 +80,7 @@ Date: 2026-06-10. Build: `release` for perf, `cargo test` for functionality.
 | rmi (`cpu`) | **1384 pass** | `cargo test --no-default-features --features cpu` |
 | ribosome (build engine) | **168 pass** | `cargo test --manifest-path ribosome/Cargo.toml` |
 | germline (RSI control plane) | **175 pass** | `cargo test --manifest-path germline/Cargo.toml` |
-| arena (self-play arena) | **144 pass** | `cargo test --manifest-path arena/Cargo.toml` |
+| arena (self-play arena) | **153 pass** | `cargo test --manifest-path arena/Cargo.toml` |
 | forge (registry) | **63 pass** | `cargo test --manifest-path forge/Cargo.toml` |
 | agentic-eval (AetherShell) | **80 pass** | `cargo test -p agentic-eval` |
 | SPINE `spine-agentic` | **285 pass** | `cargo test -p spine-agentic` |
@@ -366,3 +366,88 @@ is shown to be learned beyond byte frequencies. The plan's premise fails at this
 budget, so per plan P4 the next step is to re-plan. A longer budget might change
 this, because the curves had not flattened, but that is a larger run than the
 10-minute baseline allows.
+
+## Entropy-chunked learner (plan L1)
+
+Question: does an entropy-chunked learner (`ent:`, `arena::entropy`) code text
+and code better than the hashed n-gram it is built on, at the same orders and
+buckets? The learner marks a chunk boundary before byte `t` when the n-gram's
+next-byte entropy there exceeds a threshold, set so the mean chunk length is
+`L = 4` on the training data. It mixes two experts linearly, with weights learned
+online: the n-gram, and a count table keyed by (previous chunk, bytes so far in
+this chunk) that backs off to the n-gram. `bits_per_byte` is the honest coding
+cost, `−log2 P(byte)` under that mixture. Design and choices are in the module
+docs of `arena/src/entropy.rs`.
+
+Commands, from the `arena` directory with a release build. Both use the same
+learners, and both train for one budget of whole 1 KiB steps (4 chunks of 256
+bytes each, the baseline's setting for text) and score the first 64 KiB of the
+held-out file:
+
+```sh
+cargo run --release --bin arena -- physics-baseline --system none \
+    --learners ng:3:12:0.02,ng:4:14:0.02,ent:3:12:4:0.02,ent:4:14:4:0.02
+cargo run --release --bin arena -- physics-baseline --system none \
+    --learners ng:3:12:0.02,ng:4:14:0.02,ent:3:12:4:0.02,ent:4:14:4:0.02 \
+    --text-train ../germline/src/gate.rs --text-heldout src/transformer.rs
+```
+
+`--system none` skips the physics rows, which wait for P4b. The first command is
+text: `README.md` trained, `germline/src/gate.rs` held out, as in the P4 text
+row. The second is code: `germline/src/gate.rs` trained, `arena/src/transformer.rs`
+held out. The table's last column is the entropy learner's held-out bits per byte
+minus the n-gram's at the same orders and buckets (negative is better).
+
+| corpus | learner | bytes trained | train bpb | held-out bpb | ent − ng, held-out |
+|---|---|---|---|---|---|
+| text, README → gate.rs | ngram 3×2¹² | 28,672 | 5.102 | 5.498 | |
+| text, README → gate.rs | ngram 4×2¹⁴ | 28,672 | 4.930 | 5.400 | |
+| text, README → gate.rs | entropy 3×2¹² L4 | 28,672 | 4.092 | 6.294 | +0.796 |
+| text, README → gate.rs | entropy 4×2¹⁴ L4 | 28,672 | 3.258 | 5.151 | −0.249 |
+| code, gate.rs → transformer.rs | ngram 3×2¹² | 27,648 | 4.682 | 5.400 | |
+| code, gate.rs → transformer.rs | ngram 4×2¹⁴ | 27,648 | 4.332 | 5.223 | |
+| code, gate.rs → transformer.rs | entropy 3×2¹² L4 | 27,648 | 3.364 | 5.558 | +0.158 |
+| code, gate.rs → transformer.rs | entropy 4×2¹⁴ L4 | 27,648 | 2.886 | 4.605 | −0.618 |
+
+Held-out bits per byte at 0%, 10%, … 100% of the budget, for the same runs:
+
+```
+text, README → gate.rs
+  ngram 3×2^12:     8.000 7.839 7.512 7.202 6.920 6.660 6.495 6.227 5.970 5.723 5.498
+  ngram 4×2^14:     8.000 7.837 7.489 7.171 6.886 6.623 6.456 6.178 5.902 5.639 5.400
+  entropy 3×2^12 L4: 8.000 7.643 6.518 6.512 6.646 6.334 6.014 5.822 5.792 5.629 6.294
+  entropy 4×2^14 L4: 8.000 7.665 6.245 6.075 5.859 5.634 5.621 5.320 5.742 5.048 5.151
+code, gate.rs → transformer.rs
+  ngram 3×2^12:     8.000 7.808 7.499 7.203 7.003 6.706 6.409 6.212 5.926 5.653 5.400
+  ngram 4×2^14:     8.000 7.805 7.477 7.162 6.948 6.629 6.307 6.094 5.784 5.491 5.223
+  entropy 3×2^12 L4: 8.000 7.473 6.139 6.266 6.132 5.816 5.464 5.235 5.813 5.426 5.558
+  entropy 4×2^14 L4: 8.000 7.597 6.024 5.971 5.750 5.431 5.406 5.113 5.356 4.835 4.605
+```
+
+What the table says, and what it does not:
+
+- **Matched on bytes, the entropy learner wins at 4×2¹⁴ on both corpora** (−0.25
+  on text, −0.62 on code). It loses at 3×2¹², by 0.80 on text and by 0.16 on
+  code. The sign depends on the size, so one configuration does not settle it.
+- **The curves are noisy, and the last point is one sample.** The 3×2¹² text
+  curve falls from 5.63 at 90% to 6.29 at 100%. The figures here are single
+  runs with one seed, so differences under about 0.3 bits are not established.
+- **Train bits per byte are in-sample, and the entropy learner's gap is large.**
+  Its train figure is 1.7 to 2.2 bits below its held-out figure, against 0.4 to
+  0.9 for the n-gram. The chunk table memorises the chunks it has seen, which is
+  the cost of a count table on its own training data.
+- **Unit-test figures** (debug build, `cargo test`): on the first 512 bytes of
+  the README repeated eight times, trained four epochs at 3×2¹⁰, the entropy
+  learner scores 0.303 bits per byte against the n-gram's 0.280. The test asserts
+  it is within 0.05 of the n-gram. On the README's first 4 KiB, after training,
+  the mean chunk length is 4.66 against the target of 4.
+- **Out of distribution it can be confidently wrong.** A three-round arena run
+  on the self-play pool, scored on `README.md`, with
+  `arena --heldout ../README.md --rounds 3 --programs 16 --learners ent:3:12:4:0.02,ng:3:12:0.02 --cost fuel`,
+  gave the entropy learner 9.52 bits per byte against the n-gram's 7.96. The
+  mixture is proper, and the tests check it sums to one, so this is not a
+  normalisation fault. The chunk table had memorised the pool's repeated
+  structure, and the mixture weight learned on that data stayed on it. Above 8
+  bits per byte is worse than a uniform model. This is open.
+
+Not measured: physics rows, which wait for P4b, and the joule and latency axes.

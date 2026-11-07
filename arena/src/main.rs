@@ -4,7 +4,7 @@
 //! arena measure [--axis bytes|joules] [--target T] [--json OUT] <run.json | dir>…
 //! arena [--heldout <file>[,<file>…]] [--heldout-physics <system>:<trajectories>:<steps>:<seed>]… [--rounds N] [--programs N] [--seed S]
 //!       [--agents grammar:2,uniform:1,mutator:1,attacker:1]
-//!       [--learners ng:orders:log2buckets:lr | tf:d:layers:heads:ctx:lr[:gpu] [,…]]
+//!       [--learners ng:orders:log2buckets:lr | tf:d:layers:heads:ctx:lr[:gpu] | ent:orders:log2buckets:target_len:lr [,…]]
 //!       [--fuel F] [--cpu-watts W] [--meter-gpus <i>[,<i>…] | none] [--cost joules|fuel]
 //!       [--allocate share|hypervolume] [--novelty behaviour|shape]
 //!       [--length-unit tokens|bytes] [--canary <string>]
@@ -12,8 +12,9 @@
 //!       [--heldout-slices K] [--refresh-drift X]
 //!       [--proposer-command "<cmd> <args…>"] [--proposer-timeout S]
 //!       [--json <out.json>]
-//! arena physics-baseline [--system pendulum|spring|double_pendulum|nbody|bounce] [--steps N]
+//! arena physics-baseline [--system pendulum|spring|double_pendulum|nbody|bounce|none] [--steps N]
 //!       [--seed S] [--budget BYTES] [--learners SPEC,…]
+//!       [--text-train <file> --text-heldout <file>]
 //! ```
 //!
 //! Held-out files are read once, hashed, and never shown to an agent. A
@@ -26,7 +27,7 @@
 //! outside the loop, and prints its learning curve (plan P4).
 
 use arena::arena::{meters_for, run, Config, Corpus};
-use arena::learner::{LearnerConfig, LearnerSpec, TransformerConfig};
+use arena::learner::{EntropyConfig, LearnerConfig, LearnerSpec, TransformerConfig};
 use arena::physics::{self, System, SYSTEMS};
 
 fn fail(msg: impl std::fmt::Display) -> ! {
@@ -50,15 +51,51 @@ fn parse_learners(list: &str) -> Result<Vec<LearnerSpec>, String> {
                     lr: float(lr)?,
                     gpu: rest.first() == Some(&"gpu"),
                 })),
+                ["ent", o, b, len, lr] => {
+                    let target_len = float(len)?;
+                    if !(target_len.is_finite() && target_len >= 1.0) {
+                        return Err(format!("--learners: `{p}`: target_len must be a number of bytes, at least 1"));
+                    }
+                    Ok(LearnerSpec::Entropy(EntropyConfig {
+                        orders: int(o, "orders")? as usize,
+                        log2_buckets: int(b, "log2buckets")? as u32,
+                        target_len,
+                        lr: float(lr)?,
+                    }))
+                }
                 ["ng", o, b, lr] | [o, b, lr] => Ok(LearnerSpec::Ngram(LearnerConfig {
                     orders: int(o, "orders")? as usize,
                     log2_buckets: int(b, "log2buckets")? as u32,
                     lr: float(lr)?,
                 })),
-                _ => Err(format!("--learners: `{p}` is neither ng:orders:log2buckets:lr nor tf:d:layers:heads:ctx:lr[:gpu]")),
+                _ => Err(format!(
+                    "--learners: `{p}` is none of ng:orders:log2buckets:lr, tf:d:layers:heads:ctx:lr[:gpu], ent:orders:log2buckets:target_len:lr"
+                )),
             }
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ent_parses_to_an_entropy_learner_and_rejects_a_bad_target() {
+        let spec = parse_learners("ent:3:12:4:0.02").expect("parses");
+        assert_eq!(
+            spec,
+            vec![LearnerSpec::Entropy(EntropyConfig { orders: 3, log2_buckets: 12, target_len: 4.0, lr: 0.02 })]
+        );
+        assert!(parse_learners("ent:3:12:0.5:0.02").is_err());
+        assert!(parse_learners("ent:3:12:nan:0.02").is_err());
+        assert!(parse_learners("ent:3:12:4").is_err());
+        // The older forms still parse as before.
+        assert_eq!(
+            parse_learners("ng:3:12:0.02").expect("parses"),
+            vec![LearnerSpec::Ngram(LearnerConfig { orders: 3, log2_buckets: 12, lr: 0.02 })]
+        );
+    }
 }
 
 /// `arena physics-baseline`: train each learner on each system's physics
@@ -71,10 +108,17 @@ fn physics_baseline_cmd(args: &[String]) {
     let mut seed = 1u64;
     let mut budget = 192usize << 10;
     let mut learners: Option<Vec<LearnerSpec>> = None;
+    // Text comparison files, read at run time; default is the README and gate.rs.
+    let mut text_files: Option<(String, String)> = None;
+    let mut text_train: Option<String> = None;
+    let mut text_heldout: Option<String> = None;
     let mut i = 0;
     while i < args.len() {
         let v = args.get(i + 1).map(String::as_str).unwrap_or_else(|| fail(format!("{} needs a value", args[i])));
         match args[i].as_str() {
+            "--system" if v == "none" => systems = Vec::new(),
+            "--text-train" => text_train = Some(v.to_string()),
+            "--text-heldout" => text_heldout = Some(v.to_string()),
             "--system" => {
                 systems = vec![System::from_spec_name(v).unwrap_or_else(|| {
                     let names: Vec<&str> = SYSTEMS.iter().map(|s| s.spec_name()).collect();
@@ -92,6 +136,11 @@ fn physics_baseline_cmd(args: &[String]) {
     if steps == 0 {
         fail("--steps: must be at least 1");
     }
+    match (text_train, text_heldout) {
+        (None, None) => {}
+        (Some(a), Some(b)) => text_files = Some((a, b)),
+        _ => fail("--text-train and --text-heldout must be given together"),
+    }
     let learners = learners.unwrap_or_else(|| {
         // The arena's default learner, and one larger n-gram, since the default is tiny.
         let mut l = Config::default().learners;
@@ -101,6 +150,7 @@ fn physics_baseline_cmd(args: &[String]) {
     let describe = |s: &LearnerSpec| match s {
         LearnerSpec::Ngram(c) => format!("ngram {}×2^{} lr{}", c.orders, c.log2_buckets, c.lr),
         LearnerSpec::Transformer(c) => format!("transformer d{} L{} H{} ctx{} lr{}", c.d, c.layers, c.heads, c.ctx, c.lr),
+        LearnerSpec::Entropy(c) => format!("entropy {}×2^{} L{} lr{}", c.orders, c.log2_buckets, c.target_len, c.lr),
     };
     println!(
         "physics-baseline: budget {budget} bytes per learner, trajectories of {steps} steps, seed {seed}, \
@@ -142,14 +192,23 @@ fn physics_baseline_cmd(args: &[String]) {
     }
     // Text comparison: the README as raw training text, gate.rs as held-out text.
     // Both are small, so the budget is what the README holds, in whole steps.
-    let readme = include_bytes!("../../README.md");
-    let gate = include_bytes!("../../germline/src/gate.rs");
+    let (readme, gate, label) = match &text_files {
+        None => (
+            include_bytes!("../../README.md").to_vec(),
+            include_bytes!("../../germline/src/gate.rs").to_vec(),
+            "text (README → gate.rs)".to_string(),
+        ),
+        Some((train, heldout)) => {
+            let read = |p: &str| std::fs::read(p).unwrap_or_else(|e| fail(format!("{p}: {e}")));
+            (read(train), read(heldout), format!("{train} → {heldout}"))
+        }
+    };
     let text_budget = readme.len() / 1024 * 1024;
     for spec in &learners {
-        let curve = physics::learning_curve(*spec, readme, gate, text_budget, 256, 4).unwrap_or_else(|e| fail(e));
-        row("text (README → gate.rs)", &describe(spec), &curve);
+        let curve = physics::learning_curve(*spec, &readme, &gate, text_budget, 256, 4).unwrap_or_else(|e| fail(e));
+        row(&label, &describe(spec), &curve);
         curves.push(format!(
-            "text / {}: held-out {}",
+            "{label} / {}: held-out {}",
             describe(spec),
             curve.points.iter().map(|p| format!("{:.3}", p.heldout_bpb)).collect::<Vec<_>>().join(" ")
         ));

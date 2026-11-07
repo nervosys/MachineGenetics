@@ -1704,6 +1704,24 @@ mod tests {
     }
 
     #[test]
+    fn a_short_run_with_an_entropy_learner_completes_and_reports_it() {
+        let (m, n) = cpu_only();
+        let entropy = LearnerSpec::Entropy(crate::learner::EntropyConfig {
+            orders: 2,
+            log2_buckets: 8,
+            target_len: 4.0,
+            lr: 0.05,
+        });
+        let cfg = Config { learners: vec![LearnerSpec::default(), entropy], ..tiny_cfg() };
+        let r = run(cfg, heldout(), m, n).expect("runs");
+        assert_eq!(r.rounds_completed, tiny_cfg().rounds);
+        assert_eq!(r.learners.len(), 2);
+        assert!(r.learners[1].describe.starts_with("entropy 2×2^8 L4"), "{}", r.learners[1].describe);
+        assert!(matches!(r.learners[1].config, LearnerSpec::Entropy(_)));
+        assert!(r.learners[1].mean_bpb.is_finite());
+    }
+
+    #[test]
     fn a_short_run_charged_in_bytes_completes_and_records_bytes() {
         let (m, n) = cpu_only();
         let cfg = Config { length_unit: LengthUnit::Bytes, ..tiny_cfg() };

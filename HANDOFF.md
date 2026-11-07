@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,342** — rmi 1,384 · prototype 1,408 · ribosome 168 · germline 175 · forge 63 · arena 144 |
+| Tests | **3,351** — rmi 1,384 · prototype 1,408 · ribosome 168 · germline 175 · forge 63 · arena 153 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -1157,6 +1157,31 @@ baseline.**
 - The agent's order-0 control columns are what exposed the failure. Without
   them, the "below 6 bits" criterion would have passed.
 Arena +6 tests.
+
+**Implementation plan L1: an entropy-chunked learner (`ent:`), with mixed
+results.** `arena/src/entropy.rs` follows BLT in spirit.
+- A chunk boundary falls before a byte whose next-byte entropy, under the
+  hashed n-gram, exceeds a threshold. The threshold is the (1 - 1/L) quantile,
+  so the mean chunk length tracks the target L (4.66 against 4 on a sample).
+- Prediction is a proper two-expert mixture of the n-gram and a chunk-keyed
+  table, with Bayes weights that back off to the n-gram on unseen keys.
+- `--learners ent:orders:log2buckets:target_len:lr` selects it.
+  `physics-baseline` gains `--system none` and `--text-train/--text-heldout`.
+
+Held-out bpb against `ng` at matched size (single seed):
+
+| | text | code |
+|---|---|---|
+| 4x2^14 | 5.15 against 5.40 (better) | 4.61 against 5.22 (better) |
+| 3x2^12 | 6.29 against 5.50 (worse) | 5.56 against 5.40 (worse) |
+
+- **Not fixed:** out of distribution it can be confidently wrong. Trained on
+  the self-play pool and scored on README, it gave 9.52 bits/byte, above
+  uniform, because the chunk table memorised the pool and the mixture weight
+  is global. Confidence-dependent weights or capped counts would address it.
+  Until then, do not quote `ent` from arena runs without the `ng` row beside
+  it.
+Arena +9 tests.
 
 **Pre-existing, not from this change:** `cargo clippy` 0.1.98 (2026-09-01)
 reports 15 warnings in `prototype` — 14 `chunks_exact` with a constant size in

@@ -81,6 +81,18 @@ pub trait ByteLearner {
     }
 }
 
+/// The entropy-chunked learner's shape: an n-gram, plus a chunk table (`crate::entropy`).
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct EntropyConfig {
+    /// Context orders of the n-gram, as in [`LearnerConfig::orders`].
+    pub orders: usize,
+    /// Rows per order of the n-gram, and buckets of the chunk table, as a power of two.
+    pub log2_buckets: u32,
+    /// Target mean chunk length in bytes, at least 1.
+    pub target_len: f64,
+    pub lr: f64,
+}
+
 /// A causal byte transformer's shape and optimiser settings.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct TransformerConfig {
@@ -99,6 +111,7 @@ pub struct TransformerConfig {
 pub enum LearnerSpec {
     Ngram(LearnerConfig),
     Transformer(TransformerConfig),
+    Entropy(EntropyConfig),
 }
 
 impl Default for LearnerSpec {
@@ -111,6 +124,7 @@ impl Default for LearnerSpec {
 pub fn build(spec: LearnerSpec) -> Result<Box<dyn ByteLearner>, String> {
     match spec {
         LearnerSpec::Ngram(c) => Ok(Box::new(Learner::new(c))),
+        LearnerSpec::Entropy(c) => Ok(Box::new(crate::entropy::EntropyLearner::new(c))),
         #[cfg(feature = "transformer")]
         LearnerSpec::Transformer(c) => Ok(Box::new(crate::transformer::TransformerLearner::new(c)?)),
         #[cfg(not(feature = "transformer"))]
@@ -233,6 +247,11 @@ impl Learner {
             *l /= z;
         }
         logits
+    }
+
+    /// The next-byte distribution after `bytes[..t]`, for `crate::entropy`.
+    pub(crate) fn distribution(&self, bytes: &[u8], t: usize) -> [f64; V] {
+        self.probs(&self.rows(bytes, t))
     }
 
     /// Mean negative log-likelihood of `bytes`, in bits per byte.

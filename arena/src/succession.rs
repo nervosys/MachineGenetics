@@ -51,6 +51,7 @@ pub fn decode(base: &Config, genome: &Genome) -> Config {
             .map(|s| match *s {
                 LearnerSpec::Ngram(c) => LearnerSpec::Ngram(LearnerConfig { lr, ..c }),
                 LearnerSpec::Transformer(c) => LearnerSpec::Transformer(crate::learner::TransformerConfig { lr, ..c }),
+                LearnerSpec::Entropy(c) => LearnerSpec::Entropy(crate::learner::EntropyConfig { lr, ..c }),
             })
             .collect();
     }
@@ -75,6 +76,7 @@ pub fn encode(cfg: &Config) -> Genome {
         .map(|s| match s {
             LearnerSpec::Ngram(c) => c.lr,
             LearnerSpec::Transformer(c) => c.lr,
+            LearnerSpec::Entropy(c) => c.lr,
         })
         .unwrap_or(0.02);
     vec![
