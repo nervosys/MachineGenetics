@@ -47,7 +47,8 @@ kb Schema {
     // kb/rules/builder.mg, and `capability_namespace`, for kb/meaning.mg.
     // v17 (2026-11-04): `agent_role`, `role_grant` and `base_unit`, for
     // kb/meaning.mg: the agent roles of hir.rs and the base units of units.rs.
-    fact schema_version(17);
+    // v18 (2026-11-04): `vocabulary`, `layer_grade` and `attribute_abbreviation`.
+    fact schema_version(18);
 
     // ── Classes ─────────────────────────────────────────────────────────
     // Seven roots. The twelve domains of MAGE_ONTOLOGY.md group facts into
@@ -288,6 +289,22 @@ kb Schema {
     fact relation(base_unit);
     fact arg_class(base_unit, 1, Text);
     fact arg_class(base_unit, 2, Text);
+    // The standard vocabulary of prototype/src/resolve.rs: a name, its signature
+    // (display only; nothing parses it) and its doc.
+    fact relation(vocabulary);
+    fact arg_class(vocabulary, 1, Text);
+    fact arg_class(vocabulary, 2, Text);
+    fact arg_class(vocabulary, 3, Text);
+    // The attribute abbreviations of prototype/src/elision.rs: a short name and
+    // the full name it expands to.
+    fact relation(attribute_abbreviation);
+    fact arg_class(attribute_abbreviation, 1, Text);
+    fact arg_class(attribute_abbreviation, 2, Text);
+    // The grade of each surface layer type in prototype/src/differentiable.rs:
+    // `smooth` or `kinked`. A layer with no grade is Unknown.
+    fact relation(layer_grade);
+    fact arg_class(layer_grade, 1, Layer);
+    fact arg_class(layer_grade, 2, Text);
     // name, value, meaning.
     fact relation(constraint_row);
     fact arg_class(constraint_row, 1, GrammarConstraint);

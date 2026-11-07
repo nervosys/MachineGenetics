@@ -1109,4 +1109,20 @@ mod tests {
         assert_eq!(attr.name, "ae");
         assert_eq!(attr.args, vec!["io", "network"]);
     }
+
+    /// Every `ATTRIBUTE_ABBREVIATIONS` pair is stated as an
+    /// `attribute_abbreviation` fact, and every stated pair is in the table,
+    /// both ways.
+    #[test]
+    fn every_attribute_abbreviation_is_stated() {
+        let kb = crate::kb::load().expect("the knowledge base loads");
+        let mut stated: Vec<Vec<String>> = kb.facts("attribute_abbreviation");
+        stated.sort();
+        let mut table: Vec<Vec<String>> = ATTRIBUTE_ABBREVIATIONS
+            .iter()
+            .map(|(short, full)| vec![short.to_string(), full.to_string()])
+            .collect();
+        table.sort();
+        assert_eq!(stated, table, "attribute_abbreviation facts vs ATTRIBUTE_ABBREVIATIONS");
+    }
 }

@@ -679,6 +679,43 @@ kb Lexicon {
     fact abbreviates("cons", "consensus");
     fact abbreviates("topo", "topology");
 
+    // ── Attribute abbreviations: the table of elision.rs's ATTRIBUTE_ABBREVIATIONS ──
+    // A short attribute name and the full name it expands to (`d` is `derive`).
+    // They are spellings, as the `abbreviates` pairs above are spellings of
+    // keywords, so they sit here. `cfg` maps to itself. `as`, `ac`, `ax`, `ao`
+    // and `ae` are MAGE's own agent attributes, with no Rust meaning.
+    // `every_attribute_abbreviation_is_stated` holds the table to these facts in
+    // both directions.
+    fact attribute_abbreviation("d", "derive");
+    fact attribute_abbreviation("r", "repr");
+    fact attribute_abbreviation("mu", "must_use");
+    fact attribute_abbreviation("a", "allow");
+    fact attribute_abbreviation("x", "deny");
+    fact attribute_abbreviation("cfg", "cfg");
+    fact attribute_abbreviation("t", "test");
+    fact attribute_abbreviation("b", "bench");
+    fact attribute_abbreviation("se", "serde");
+    fact attribute_abbreviation("pi", "proc_macro");
+    fact attribute_abbreviation("pnb", "non_blocking");
+    fact attribute_abbreviation("pv", "visibility");
+    fact attribute_abbreviation("pt", "target_feature");
+    fact attribute_abbreviation("pa", "align");
+    fact attribute_abbreviation("pp", "packed");
+    fact attribute_abbreviation("at", "async_trait");
+    fact attribute_abbreviation("co", "cold");
+    fact attribute_abbreviation("il", "inline");
+    fact attribute_abbreviation("ila", "inline_always");
+    fact attribute_abbreviation("na", "no_alloc");
+    fact attribute_abbreviation("nm", "no_mangle");
+    fact attribute_abbreviation("dp", "deprecated");
+    fact attribute_abbreviation("dc", "doc");
+    fact attribute_abbreviation("gl", "global_allocator");
+    fact attribute_abbreviation("as", "agent_skill");
+    fact attribute_abbreviation("ac", "agent_capability");
+    fact attribute_abbreviation("ax", "agent_export");
+    fact attribute_abbreviation("ao", "agent_observable");
+    fact attribute_abbreviation("ae", "agent_effect");
+
     // ── Published sigils (the ontology's `sigils` section) ─────────────
     // One row per notation an agent writes: a sigil, a `+` prefix on an item
     // sigil, or a type shape. (notation, what it builds, summary).
