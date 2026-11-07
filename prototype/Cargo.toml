@@ -27,6 +27,9 @@ serde_json = "1"
 # digest, which names the rules in force so a run can state which policy it
 # enforced.
 sha2 = "0.10"
+# Already in the lockfile via rmi; the direct edge is for the embeddings
+# rmi_ontology_adapter.rs attaches to the knowledge-base export.
+ndarray = "0.15"
 rmi = { path = "../RecursiveMachineIntelligence", default-features = false, features = ["cpu"] }
 uuid = { version = "1.6", features = ["v4", "v5"] }
 proc-macro2 = "1"

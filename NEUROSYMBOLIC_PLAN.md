@@ -224,7 +224,7 @@ facts are grouped into files and namespaces. They are not classes.
 
 ### Phase 0: Preconditions
 
-- [ ] Merge the stack #38–#137, this plan included, in order (needs the user). **S**
+- [ ] Merge the stack #38–#138, this plan included, in order (needs the user). **S**
 - [ ] Settle the open questions in section 8. **S**
 - [ ] Census every module in `prototype/src` (73 files) into neural, symbolic, knowledge base, interface, or outside the design (for example `crdt.rs`, `consensus.rs`, `hot_reload.rs`). Record it in `ARCHITECTURE.md`. Outside-the-design modules are kept but not extended. **S [H]**
 
@@ -299,7 +299,7 @@ facts are grouped into files and namespaces. They are not classes.
 - [x] A grammar mask for any token-level generator: given a prefix, the allowed next tokens, computed from the grammar facts. **M** *(`Grammar::mask`, over the Earley chart; with `Grammar::restricted` it masks to a profile. A test holds it exact against the recogniser. No token-level generator exists yet, so nothing calls it. At the grammar's `GAP`s it can allow a token the parser would refuse. It recomputes the chart from the prefix on each call.)*
 - [ ] The LLM proposer (X1, blocked on an API model and key) is prompted from `Kb::profile` and the rule facts, and its output is decided by the shared verdict. **M**
 - [ ] Learners get per-rule refusal counts as features where they help, measured against the current learners. **M** *(Not built, 2026-11-02: no place found where it helps. The learners are `ByteLearner`s over program output, and a refused program has none, so they never see a refusal. The one learner that does, the grammar policy, gets a refusal as reward 0, and `Scored` carries no class. In two seeded runs the grammar agents' refusals were 1 to 3 of 22 to 30 programs, all `empty`; `depth` refusals came only from the mutator and attacker, which `--bound-grafts` already removes. Reopen if a learner that sees refusals appears, or the policy's refusal rate is shown to matter.)*
-- [ ] Concept embeddings attach to the `rmi` export for retrieval; an agent can ask "which rules constrain this construct" over RAP. **M**
+- [x] Concept embeddings attach to the `rmi` export for retrieval; an agent can ask "which rules constrain this construct" over RAP. **M** *(RAP `kb/constrains`. `constrained_by` was declared but held no facts: it now has them for the grammar constraints and contracts, by a test exactly those something enforces; a constraint that is only a `gap` refuses nothing. Gate rules, diagnostics and safety rules constrain nothing yet: no fact ties them to a construct. The embedding is a hash of character trigrams and words, not a learned model, so it finds near spellings, not near meanings; RAP uses it only to suggest constructs for a name it does not know. `mod` and `var` are each a keyword and an arena form, and the export puts both sets of rules on the keyword.)*
 
 **Done when:** no generator, prompt or learner holds its own copy of the grammar.
 

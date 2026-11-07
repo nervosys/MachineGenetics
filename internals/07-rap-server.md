@@ -168,7 +168,7 @@ errors combined).
 ## 7.4 The method surface
 
 **Corrected 2026-08-25.** This section was a "Planned Methods" table listing
-three implemented methods and eleven planned ones. **40 methods are published
+three implemented methods and eleven planned ones. **41 methods are published
 and dispatch** — the count is pinned, and a test exercises every one against
 its published parameter list. None of the eleven exists under the name given,
 and most of the capabilities they described shipped under a different one:
@@ -211,6 +211,7 @@ this table cannot drift from the binary without the ontology drifting first:
 | `format/human` | `source` | Format source in human-readable keyword mode |
 | `grammar/list` | — | List grammar extensions |
 | `heal/graph` | `source` | Heal-pipeline diagnostic graph |
+| `kb/constrains` | `construct` | The rules that constrain a construct, with what each says, who checks it and its gaps; a near name gets the nearest constructs |
 | `kb/query` | `predicate`, `args` | Facts of a predicate in the knowledge base, stated or derived; "?" matches any |
 | `kb/schema` | — | The knowledge base's schema: classes, relations, invariants |
 | `language/parse` | `source` | Parse source to AST (JSON) |

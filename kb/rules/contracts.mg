@@ -57,6 +57,19 @@ kb Contracts {
     fact clause_checked("invariant", "orphan_spec", "contract");
     fact clause_checked("invariant", "struct", "verify");
 
+    // What each clause constrains: the items it can stand on, and its own
+    // token. A test holds this to `clause_checked` and `contract_row`.
+    fact constrained_by(Function, "requires");
+    fact constrained_by(Spec, "requires");
+    fact constrained_by("@req", "requires");
+    fact constrained_by(Function, "ensures");
+    fact constrained_by(Spec, "ensures");
+    fact constrained_by("@ens", "ensures");
+    fact constrained_by(Function, "invariant");
+    fact constrained_by(Spec, "invariant");
+    fact constrained_by(Struct, "invariant");
+    fact constrained_by("@inv", "invariant");
+
     fact gap("invariant", "no @inv is checked at run time; on a struct it is not even typechecked");
     fact gap("requires", "@req and @ens on a struct are accepted and checked by nothing");
     fact gap("requires", "in a spec with no function, @req is not typechecked: there is no signature");

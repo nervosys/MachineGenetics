@@ -33,6 +33,10 @@
 //! | instance of class `C`     | concept in `air.kb.C`, or `air.skb.<database>` for a safety rule |
 //! | a fact about free text    | `Entity` concept in `air.kb.fact.<predicate>` |
 //!
+//! Every exported concept carries an [`embed`]ding of its name and text, so
+//! [`Ontology::find_similar`] finds a concept from a name near its own.
+//! [`constrains`] answers which rules constrain a construct.
+//!
 //! [`RelationType`]: rmi::core::ontology::RelationType
 //! [`Rule`]: crate::skb::Rule
 //! [`RuleDatabase`]: crate::skb::RuleDatabase
@@ -42,6 +46,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 
 use crate::kb::{Kb, META};
 use crate::skb::{Rule, RuleDatabase, RuleSeverity};
+use ndarray::Array1;
 use rmi::core::ontology::{
     AttributeValue, Concept, ConceptId, ConceptType, Ontology, Relation, RelationType,
 };
@@ -339,10 +344,143 @@ pub fn kb_to_ontology(kb: &Kb) -> Ontology {
         }
         let facts = rows.remove(&uri).unwrap_or_default();
         let facts = facts.into_iter().map(|(p, r)| (p, AttributeValue::List(r))).collect();
-        ontology.add_concept(concept.with_attribute("facts", AttributeValue::Map(facts)));
+        let embedding = embed(&concept.id.local_name, &concept.formal_definition);
+        let concept = concept.with_attribute("facts", AttributeValue::Map(facts)).with_embedding(embedding, EMBEDDING_MODEL);
+        ontology.add_concept(concept);
     }
     edges.into_iter().for_each(|e| ontology.add_relation(e));
     ontology
+}
+
+/// The model an exported concept's embedding names.
+pub const EMBEDDING_MODEL: &str = "mage-kb-trigram-hash-v1";
+
+/// The length of an embedding.
+pub const EMBEDDING_DIM: usize = 256;
+
+/// The embedding of a concept named `name` with text `text`: the character
+/// trigrams of the name's words, and at half weight the words of the text, each
+/// hashed to one of [`EMBEDDING_DIM`] buckets. It is not learned: two concepts
+/// are near when they are spelled alike or described in the same words. A
+/// misspelling after a first word that is a concept itself finds that concept:
+/// `agent_feilds` is nearer `agent` than `agent_fields`.
+pub fn embed(name: &str, text: &str) -> Array1<f32> {
+    fn bucket(feature: &str) -> usize {
+        let h = feature.bytes().fold(0xcbf2_9ce4_8422_2325u64, |h, b| (h ^ b as u64).wrapping_mul(0x0100_0000_01b3));
+        (h % EMBEDDING_DIM as u64) as usize
+    }
+    fn words(s: &str) -> Vec<String> {
+        let lower = s.to_lowercase();
+        let w: Vec<String> = lower.split(|c: char| !c.is_alphanumeric()).filter(|w| !w.is_empty()).map(String::from).collect();
+        // A name of symbols alone, such as `!`, is its own word.
+        if w.is_empty() && !lower.trim().is_empty() {
+            vec![lower.trim().to_string()]
+        } else {
+            w
+        }
+    }
+    let mut v = Array1::<f32>::zeros(EMBEDDING_DIM);
+    for w in words(name) {
+        let padded: Vec<char> = format!(" {w} ").chars().collect();
+        for t in padded.windows(3) {
+            v[bucket(&t.iter().collect::<String>())] += 1.0;
+        }
+    }
+    for w in words(text) {
+        v[bucket(&w)] += 0.5;
+    }
+    v
+}
+
+/// A rule that constrains a construct.
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+pub struct ConstrainingRule {
+    pub rule: String,
+    /// Its classes, each a kind of `Rule`.
+    pub classes: Vec<String>,
+    /// What it says, from its row.
+    pub says: String,
+    /// The components that check it.
+    pub enforced_by: Vec<String>,
+    /// Where it is known not to hold: its `gap` facts.
+    pub gaps: Vec<String>,
+}
+
+/// What [`constrains`] finds.
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+pub struct Constrains {
+    pub construct: String,
+    /// Its classes; empty when the knowledge base names no such construct.
+    pub classes: Vec<String>,
+    pub rules: Vec<ConstrainingRule>,
+    /// When it names no construct, the constructs whose embeddings are
+    /// nearest the name's, with their cosine similarity.
+    pub nearest: Vec<(String, f64)>,
+}
+
+/// The rules that constrain `construct`, by the knowledge base's
+/// `constrained_by` facts. A name that is no construct gets the nearest names
+/// that are, by [`embed`].
+pub fn constrains(kb: &mut Kb, construct: &str) -> Constrains {
+    let classes_of = |kb: &mut Kb, name: &str, class: &str| -> Vec<String> {
+        let mut cs: Vec<String> = kb
+            .query("instance_of", &[name, "?"])
+            .into_iter()
+            .map(|f| f[1].clone())
+            .filter(|c| c == class || !kb.query("below", &[c, class]).is_empty())
+            .collect();
+        cs.sort();
+        cs
+    };
+    let column = |kb: &mut Kb, predicate: &str, name: &str, pos: usize| -> Vec<String> {
+        let mut out: Vec<String> = kb.query(predicate, &[name, "?", "?"][..arity(kb, predicate)]).into_iter().map(|f| f[pos].clone()).collect();
+        out.sort();
+        out.dedup();
+        out
+    };
+    let classes = classes_of(kb, construct, "Construct");
+    if classes.is_empty() {
+        let ontology = kb_to_ontology(kb);
+        let mut nearest = Vec::new();
+        for (c, sim) in ontology.find_similar(&embed(construct, ""), usize::MAX, 0.0) {
+            let name = c.id.local_name.clone();
+            if nearest.len() < 5 && !nearest.iter().any(|(n, _)| n == &name) && !classes_of(kb, &name, "Construct").is_empty() {
+                nearest.push((name, sim));
+            }
+        }
+        return Constrains { construct: construct.to_string(), classes, rules: Vec::new(), nearest };
+    }
+    let names = Names::read(kb);
+    let rules = column(kb, "constrained_by", construct, 1)
+        .into_iter()
+        .map(|rule| {
+            let says = ROW_PREDICATES
+                .iter()
+                .flat_map(|p| kb.facts(p).into_iter().filter(|f| f[0] == rule).flat_map(|f| names.text(p, &f)).collect::<Vec<_>>())
+                .collect::<Vec<_>>()
+                .join("; ");
+            let mut enforced_by = column(kb, "enforced_by", &rule, 1);
+            enforced_by.extend(column(kb, "clause_checked", &rule, 2));
+            enforced_by.sort();
+            enforced_by.dedup();
+            ConstrainingRule {
+                classes: classes_of(kb, &rule, "Rule"),
+                says,
+                enforced_by,
+                gaps: column(kb, "gap", &rule, 1),
+                rule,
+            }
+        })
+        .collect();
+    Constrains { construct: construct.to_string(), classes, rules, nearest: Vec::new() }
+}
+
+/// The predicates whose row says what a rule is.
+const ROW_PREDICATES: &[&str] = &["constraint_row", "contract_row", "gate_row", "diagnostic_row", "safety_rule"];
+
+/// How many arguments `predicate` takes, by the schema.
+fn arity(kb: &Kb, predicate: &str) -> usize {
+    kb.facts("arg_class").iter().filter(|f| f[0] == predicate).count().max(1)
 }
 
 #[cfg(test)]
@@ -372,6 +510,96 @@ mod tests {
         }
         out.values_mut().for_each(|r| r.sort());
         out
+    }
+
+    /// Every concept carries an embedding, and a name spelled a little wrong
+    /// finds the concept spelled right.
+    #[test]
+    fn every_concept_is_embedded_and_a_near_name_finds_it() {
+        let kb = crate::kb::load().expect("the knowledge base loads");
+        let ont = kb_to_ontology(&kb);
+        for c in ont.query(&OntologyQuery::new()) {
+            assert_eq!(c.embedding_model.as_deref(), Some(EMBEDDING_MODEL), "{}", c.id);
+            assert_eq!(c.embedding.as_ref().map(|e| e.len()), Some(EMBEDDING_DIM), "{}", c.id);
+        }
+        for (typo, want) in [("keyword_bindng", "keyword_binding"), ("max_dept", "max_depth"), ("agnet_fields", "agent_fields")] {
+            let top = ont.find_similar(&embed(typo, ""), 1, 0.0);
+            assert_eq!(top.first().map(|(c, _)| c.id.local_name.as_str()), Some(want), "{typo}");
+        }
+    }
+
+    /// Each contract constrains the items its clauses can stand on, by
+    /// `clause_checked`, and its own token, by `contract_row`; nothing else.
+    #[test]
+    fn a_contract_constrains_where_its_clause_stands() {
+        let kb = crate::kb::load().expect("the knowledge base loads");
+        let item = |place: &str| match place {
+            "function" => "Function",
+            "spec" | "orphan_spec" => "Spec",
+            "struct" => "Struct",
+            other => panic!("no item for the place {other}"),
+        };
+        for row in kb.facts("contract_row") {
+            let mut want: Vec<String> =
+                kb.facts("clause_checked").iter().filter(|f| f[0] == row[0]).map(|f| item(&f[1]).to_string()).collect();
+            want.push(row[1].clone());
+            want.sort();
+            want.dedup();
+            let mut got: Vec<String> = kb.facts("constrained_by").into_iter().filter(|f| f[1] == row[0]).map(|f| f[0].clone()).collect();
+            got.sort();
+            assert_eq!(got, want, "{}", row[0]);
+        }
+    }
+
+    /// A grammar constraint or contract constrains some construct exactly when
+    /// something enforces it: one that is only a `gap` refuses nothing.
+    #[test]
+    fn a_constraint_constrains_something_when_something_enforces_it() {
+        let kb = crate::kb::load().expect("the knowledge base loads");
+        let constraining: HashSet<String> = kb.facts("constrained_by").into_iter().map(|f| f[1].clone()).collect();
+        let enforced: HashSet<String> = kb.facts("enforced").into_iter().map(|f| f[0].clone()).collect();
+        let checked: HashSet<String> = kb.facts("enforced_by").into_iter().chain(kb.facts("clause_checked")).map(|f| f[0].clone()).collect();
+        let mut gaps_only = Vec::new();
+        for f in kb.facts("instance_of").into_iter().filter(|f| f[1] == "GrammarConstraint" || f[1] == "Contract") {
+            assert!(enforced.contains(&f[0]), "{} is neither checked nor a gap", f[0]);
+            assert_eq!(constraining.contains(&f[0]), checked.contains(&f[0]), "{}", f[0]);
+            if !checked.contains(&f[0]) {
+                gaps_only.push(f[0].clone());
+            }
+        }
+        gaps_only.sort();
+        assert_eq!(gaps_only, ["clause_on_other_item", "layout_blocks", "overflowing_dimension"]);
+        let constructs: HashSet<String> = kb.facts("is_a").into_iter().filter(|i| i[1] == "Construct").map(|i| i[0].clone()).collect();
+        for f in kb.facts("constrained_by") {
+            assert!(constructs.contains(&f[0]), "{f:?} constrains no construct");
+        }
+    }
+
+    #[test]
+    fn constrains_answers_for_a_construct_and_suggests_for_a_near_name() {
+        let mut kb = crate::kb::load().expect("the knowledge base loads");
+        let names = |c: &Constrains| c.rules.iter().map(|r| r.rule.clone()).collect::<Vec<_>>();
+
+        let f = constrains(&mut kb, "Function");
+        assert_eq!(names(&f), ["ensures", "invariant", "requires"]);
+        let inv = f.rules.iter().find(|r| r.rule == "invariant").unwrap();
+        assert_eq!(inv.classes, ["Contract"]);
+        assert!(inv.says.contains("Must always hold"), "{}", inv.says);
+        assert!(inv.enforced_by.contains(&"verify".to_string()) && !inv.gaps.is_empty(), "{inv:?}");
+
+        assert!(names(&constrains(&mut kb, "fn")).contains(&"keyword_binding".to_string()));
+        assert_eq!(names(&constrains(&mut kb, "@inv")), ["invariant"]);
+
+        let leaf = kb.facts("leaf_form")[0][0].clone();
+        assert!(constrains(&mut kb, &leaf).rules.is_empty(), "{leaf}");
+        let nested = kb.facts("form_row").into_iter().map(|f| f[0].clone()).find(|f| !kb.facts("leaf_form").iter().any(|l| &l[0] == f)).unwrap();
+        let depth = constrains(&mut kb, &nested);
+        assert_eq!(names(&depth), ["max_depth", "max_nest"], "{nested}");
+        assert_eq!(depth.rules[0].enforced_by, ["arena_grammar"]);
+
+        let typo = constrains(&mut kb, "Functon");
+        assert!(typo.classes.is_empty() && typo.rules.is_empty());
+        assert_eq!(typo.nearest.first().map(|(n, _)| n.as_str()), Some("Function"), "{:?}", typo.nearest);
     }
 
     #[test]
@@ -406,8 +634,16 @@ mod tests {
         }
         clashes.sort();
         // `Module` and `TypeAlias` are both an `AstKind` and a `Production`, and
-        // `var` is a `Keyword` and a `ProfileForm`. Sort order gives `summary` the first of each.
-        assert_eq!(clashes, ["derives TypeAlias", "summary Module", "summary TypeAlias", "summary var"]);
+        // `mod` and `var` are each a `Keyword` and a `ProfileForm`. Sort order
+        // gives each fact the first: so the arena's limits on the forms `mod` and
+        // `var` land on the keywords' concepts, beside `keyword_binding`.
+        let clashes: Vec<&str> = clashes.iter().map(String::as_str).collect();
+        let constrained = |n| std::iter::repeat_n(n, 3);
+        let want: Vec<&str> = constrained("constrained_by mod")
+            .chain(constrained("constrained_by var"))
+            .chain(["derives TypeAlias", "summary Module", "summary TypeAlias", "summary var"])
+            .collect();
+        assert_eq!(clashes, want);
     }
 
     #[test]
