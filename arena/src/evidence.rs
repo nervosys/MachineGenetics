@@ -8,6 +8,7 @@
 //! the hash of the line before it, so [`verify`] can tell a log that was only
 //! appended to from one that was edited, reordered or cut short at the front.
 
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
 use serde::{Deserialize, Serialize};
@@ -121,6 +122,105 @@ pub fn append(path: &Path, records: &[Record]) -> Result<usize, String> {
     Ok(log.lines().count() + records.len())
 }
 
+/// Refusals per rule per component, and what each component was measured on.
+#[derive(Debug, Clone, Default, PartialEq, Serialize)]
+pub struct Tally {
+    /// Rule, then component, to refusals.
+    pub refusals: BTreeMap<String, BTreeMap<String, usize>>,
+    /// Component to rewards measured: its programs that were not refused.
+    pub rewards: BTreeMap<String, usize>,
+    pub entries: usize,
+}
+
+/// The tally of `entries`.
+pub fn tally(entries: &[Entry]) -> Tally {
+    let mut t = Tally { entries: entries.len(), ..Tally::default() };
+    for e in entries {
+        match &e.record.what {
+            What::Refusal { rule, .. } => {
+                *t.refusals.entry(rule.clone()).or_default().entry(e.record.component.clone()).or_default() += 1;
+            }
+            What::Measurement { name, .. } if name == "reward" => {
+                *t.rewards.entry(e.record.component.clone()).or_default() += 1;
+            }
+            _ => {}
+        }
+    }
+    t
+}
+
+impl Tally {
+    /// The tally as a plain-text table: one row per rule, then the totals.
+    pub fn table(&self) -> String {
+        let components: BTreeSet<&str> = self
+            .refusals
+            .values()
+            .flat_map(|by| by.keys().map(String::as_str))
+            .chain(self.rewards.keys().map(String::as_str))
+            .collect();
+        let refused = |c: &str| -> usize { self.refusals.values().filter_map(|by| by.get(c)).sum() };
+        let rewarded = |c: &str| self.rewards.get(c).copied().unwrap_or(0);
+        let mut rows: Vec<(String, Vec<String>)> = self
+            .refusals
+            .iter()
+            .map(|(rule, by)| (rule.clone(), components.iter().copied().map(|c| by.get(c).copied().unwrap_or(0).to_string()).collect()))
+            .collect();
+        rows.push(("refused".into(), components.iter().copied().map(|c| refused(c).to_string()).collect()));
+        rows.push(("rewarded".into(), components.iter().copied().map(|c| rewarded(c).to_string()).collect()));
+        rows.push((
+            "refused %".into(),
+            components
+                .iter()
+                .copied()
+                .map(|c| match (refused(c), rewarded(c)) {
+                    (0, 0) => "-".to_string(),
+                    (r, w) => format!("{:.1}", 100.0 * r as f64 / (r + w) as f64),
+                })
+                .collect(),
+        ));
+        let label_w = rows.iter().map(|(l, _)| l.len()).chain(["rule".len()]).max().unwrap_or(0);
+        let widths: Vec<usize> = components.iter().map(|c| c.len().max(6)).collect();
+        let render = |label: &str, cells: &[String]| -> String {
+            let mut s = format!("{label:<label_w$}");
+            for (cell, &w) in cells.iter().zip(&widths) {
+                s += &format!("  {cell:>w$}");
+            }
+            s + "\n"
+        };
+        let header: Vec<String> = components.iter().map(|c| c.to_string()).collect();
+        let mut out = render("rule", &header);
+        for (label, cells) in &rows {
+            out += &render(label, cells);
+        }
+        out
+    }
+}
+
+/// `arena evidence <log.jsonl> [--json OUT]`: verify a log, then print its tally.
+pub fn report_cli(args: &[String]) -> Result<(), String> {
+    const USAGE: &str = "usage: arena evidence <log.jsonl> [--json OUT]";
+    let mut positional: Vec<&str> = Vec::new();
+    let mut json_out: Option<&str> = None;
+    let mut rest = args.iter().map(String::as_str);
+    while let Some(a) = rest.next() {
+        if a == "--json" {
+            json_out = Some(rest.next().ok_or(USAGE)?);
+        } else {
+            positional.push(a);
+        }
+    }
+    let &[path] = positional.as_slice() else { return Err(USAGE.into()) };
+    let log = std::fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?;
+    let entries = verify(&log).map_err(|e| format!("{path}: {e}"))?;
+    let report = tally(&entries);
+    if let Some(out) = json_out {
+        let json = serde_json::to_string_pretty(&report).map_err(|e| e.to_string())?;
+        std::fs::write(out, json).map_err(|e| format!("{out}: {e}"))?;
+    }
+    print!("{path}: {} entries, verified\n{}", entries.len(), report.table());
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -175,5 +275,38 @@ mod tests {
         let entries = verify(&std::fs::read_to_string(&path).unwrap()).unwrap();
         assert_eq!(entries.len(), 3);
         std::fs::remove_file(&path).unwrap();
+    }
+
+    /// Two grammar refusals, a mutator refusal and a grammar reward.
+    fn mixed() -> Vec<Entry> {
+        let max_depth = What::Refusal { rule: "max_depth".into(), class: "depth".into(), message: "too deep".into() };
+        let records = [
+            record(0, refusal()),
+            record(1, refusal()),
+            Record { component: "mutator".into(), ..record(0, max_depth) },
+            record(1, What::Measurement { name: "reward".into(), value: 0.5 }),
+        ];
+        verify(&continue_log("", &records).unwrap()).unwrap()
+    }
+
+    #[test]
+    fn tally_counts_refusals_by_rule_and_component() {
+        let t = tally(&mixed());
+        assert_eq!(t.refusals["gate_empty"]["grammar"], 2);
+        assert_eq!(t.refusals["max_depth"]["mutator"], 1);
+        assert_eq!(t.rewards["grammar"], 1);
+        assert_eq!(t.rewards.get("mutator"), None);
+        assert_eq!(t.entries, 4);
+    }
+
+    #[test]
+    fn the_table_has_a_row_per_rule_and_the_totals() {
+        let table = tally(&mixed()).table();
+        let lines: Vec<&str> = table.lines().collect();
+        assert!(lines[0].starts_with("rule") && lines[0].contains("grammar") && lines[0].contains("mutator"), "{table}");
+        assert!(lines.iter().any(|l| l.starts_with("gate_empty")), "{table}");
+        assert!(lines.iter().any(|l| l.starts_with("max_depth")), "{table}");
+        let pct = lines.iter().find(|l| l.starts_with("refused %")).expect("a refused % row");
+        assert!(pct.contains("66.7") && pct.contains("100.0"), "{table}");
     }
 }
