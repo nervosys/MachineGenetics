@@ -64,6 +64,7 @@ pub mod perf_annot;
 pub mod perf_measure;
 pub mod rain;
 pub mod rap;
+pub mod recognise;
 pub mod recover;
 pub mod resolve;
 pub mod rmi_ontology_adapter;

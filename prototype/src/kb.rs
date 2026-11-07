@@ -21,6 +21,7 @@ use crate::logic::{self, KnowledgeBase};
 pub const FILES: &[(&str, &str)] = &[
     ("kb/schema.mg", include_str!("../../kb/schema.mg")),
     ("kb/lexicon.mg", include_str!("../../kb/lexicon.mg")),
+    ("kb/grammar.mg", include_str!("../../kb/grammar.mg")),
 ];
 
 /// The schema's own predicates: a fact may use these without a `relation`.
@@ -95,6 +96,22 @@ pub fn load_files(files: &[(&str, &str)]) -> Result<Kb, Vec<String>> {
         }
     }
 
+    // `derives` is read off the grammar's `rhs` facts: every name an
+    // alternative mentions is derived by its production.
+    for (path, pred, args) in &stated {
+        if pred != "rhs" || args.len() != 2 {
+            continue;
+        }
+        match crate::recognise::names_in(&args[1]) {
+            Ok(names) => {
+                for n in names {
+                    base.add_fact("derives", vec![args[0].clone(), n]);
+                }
+            }
+            Err(e) => refused.push(format!("{path}: the rhs `{}` of `{}` does not read: {e}", args[1], args[0])),
+        }
+    }
+
     base.materialize();
     refused.extend(base.diagnostics.iter().map(|d| d.message.clone()));
 
@@ -155,6 +172,36 @@ pub fn load_files(files: &[(&str, &str)]) -> Result<Kb, Vec<String>> {
     if refused.is_empty() { Ok(Kb { base }) } else { Err(refused) }
 }
 
+/// Every `.mg` source in the repository, as (path from the repo root, text),
+/// sorted by path. The corpus the conformance tests hold the kernel and the
+/// knowledge base to.
+#[cfg(test)]
+pub(crate) fn corpus_files() -> Vec<(String, String)> {
+    fn walk(root: &std::path::Path, dir: &std::path::Path, out: &mut Vec<(String, String)>) {
+        let Ok(entries) = std::fs::read_dir(dir) else { return };
+        for e in entries.flatten() {
+            let p = e.path();
+            let name = e.file_name().to_string_lossy().to_string();
+            if p.is_dir() {
+                if !matches!(name.as_str(), "target" | "node_modules" | ".git" | ".claude") {
+                    walk(root, &p, out);
+                }
+            } else if name.ends_with(".mg") {
+                let rel = p.strip_prefix(root).unwrap_or(&p).to_string_lossy().replace('\\', "/");
+                out.push((rel, std::fs::read_to_string(&p).expect("readable")));
+            }
+        }
+    }
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
+    let mut out = Vec::new();
+    for d in ["arena", "benchmarks", "examples", "framework", "kb", "prototype/examples"] {
+        walk(&root, &root.join(d), &mut out);
+    }
+    out.sort();
+    assert!(out.len() >= 114, "the corpus walk found {} sources", out.len());
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -175,7 +222,7 @@ mod tests {
     #[test]
     fn the_schema_alone_loads() {
         let mut kb = load_files(&FILES[..1]).unwrap_or_else(|e| panic!("{e:#?}"));
-        assert_eq!(kb.facts("schema_version"), vec![vec!["3".to_string()]]);
+        assert_eq!(kb.facts("schema_version"), vec![vec!["4".to_string()]]);
         assert!(!kb.query("below", &["Keyword", "Construct"]).is_empty());
     }
 
@@ -347,26 +394,7 @@ mod tests {
     /// Every `.mg` source in the repository, and a supplement for the pairs
     /// the corpus does not use.
     fn corpus() -> Vec<String> {
-        fn walk(dir: &std::path::Path, out: &mut Vec<String>) {
-            let Ok(entries) = std::fs::read_dir(dir) else { return };
-            for e in entries.flatten() {
-                let p = e.path();
-                let name = e.file_name().to_string_lossy().to_string();
-                if p.is_dir() {
-                    if !matches!(name.as_str(), "target" | "node_modules" | ".git" | ".claude") {
-                        walk(&p, out);
-                    }
-                } else if name.ends_with(".mg") {
-                    out.push(std::fs::read_to_string(&p).expect("readable"));
-                }
-            }
-        }
-        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
-        let mut out = Vec::new();
-        for d in ["arena", "benchmarks", "examples", "framework", "kb", "prototype/examples"] {
-            walk(&root.join(d), &mut out);
-        }
-        assert!(out.len() >= 114, "the corpus walk found {} sources", out.len());
+        let mut out: Vec<String> = corpus_files().into_iter().map(|(_, src)| src).collect();
         out.push(
             "Y Id = i32;\nZ N: i32 = 1;\nM inner {\n    f g() {}\n}\nu std.io;\n\
              f h[T](x: T) -> i32 ~> T: Ord {\n    @@ {\n        v a = 1;\n        >>;\n    }\n    \
