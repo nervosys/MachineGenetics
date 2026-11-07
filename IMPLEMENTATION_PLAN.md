@@ -19,6 +19,9 @@ in order). Two sources drive the new work:
   functions, `@param` domains, the convexity pass, `--solve`, and forward-mode
   `grad`.
 
+**Under [`NEUROSYMBOLIC_PLAN.md`](NEUROSYMBOLIC_PLAN.md) since 2026-10-29.** That
+plan is the top-level one; this one is its arena research track.
+
 Sizes: **S** is under a day, **M** is a few days, **L** is a week or more.
 **[H]** marks an item a Haiku subagent can take from a precise brief. Every
 item ends the way plans 5–9 did: tests (break-checked where a test guards a
@@ -28,7 +31,7 @@ fix), pins updated, a HANDOFF entry, and a stacked PR.
 
 ## Phase 0: Housekeeping
 
-- [ ] **0.1** Merge PRs #38–#102 in order (the stack grew as the plan was worked). This needs the user. **S**
+- [ ] **0.1** Merge PRs #38–#103 in order (the stack grew as the plan was worked). This needs the user. **S**
 - [ ] **0.2** Keep this file current. Tick items in the PR that does them, so
   the plan never lives only in a session transcript. **S**
 

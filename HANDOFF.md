@@ -1798,6 +1798,17 @@ behaviour novelty now rests on removing about 40 exploits at no cost, not
 about 100. The bounded arm is worse on all six seeds, but seed 2 contributes
 +0.754, and without it the mean difference is +0.063.
 
+**A top-level plan: MAGE as a neurosymbolic system.** Written at the user's
+direction: MAGE is neural parts (inference, generation), symbolic parts
+(correctness, safety, compilation) and a central knowledge base (syntax,
+grammar, low- and high-level forms), with an ontology as the knowledge base's
+top-level schema. [`NEUROSYMBOLIC_PLAN.md`](NEUROSYMBOLIC_PLAN.md) rethinks the
+project from that outline: eight principles, a draft schema, and phases 0-9
+with checklists. Its central choice is to write the knowledge base in MAGE's
+own `kb` blocks, checked by `prototype/src/logic.rs`, which first needs
+stratified negation. `IMPLEMENTATION_PLAN.md` is now its arena research track.
+Documentation only; root documents 26 -> 27.
+
 Break-checked: a gate that admits everything fails all 3 new tests. Arena +3
 tests.
 
