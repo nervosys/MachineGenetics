@@ -275,10 +275,10 @@ pub fn divide(a: f64, b: f64) -> f64 {
 ### MAGE
 ```MAGE
 // Contracts live in a `sp` block that shares the function's name — they are
-// not attributes above the signature, and `result` is not in scope.
+// not attributes above the signature. In `@ens`, `result` is the return value.
 sp divide {
     @req(1b)
-    @ens(1b)
+    @ens(result == Ok(a / b) || b == 0.0)
     @fx()
 }
 
@@ -291,7 +291,7 @@ pub fn divide(a: f64, b: f64) -> R[f64, str] {
 **What changed:**
 
 1. Contracts live in a **`sp` block that shares the function name** — not as attributes above the signature.
-2. `result` is not in scope inside `@ens`. Express the postcondition over the arguments, or check it in the body.
+2. Inside `@ens`, `result` names the return value and `old(x)` a parameter as passed (MAGE_SPEC §12.1). `--eval` checks every `@ens` when the function returns; a false one fails the run and names the clause.
 3. A partial function is better expressed with `R[T, E]` and a `guard`: the contract records the intent, the guard enforces it.
 
 ---

@@ -29,6 +29,7 @@ pub mod certs;
 pub mod cli_manifest;
 pub mod codegen_bridge;
 pub mod consensus;
+pub mod contract;
 pub mod convexity;
 pub mod cost;
 pub mod cost_calibration;

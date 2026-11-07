@@ -1865,26 +1865,57 @@ pub fn withdraw(balance: u64, amount: u64) -> u64 or str {
 }
 ```
 
-`result` and `old` are **not in scope** inside `@ens`: express the
-postcondition over the arguments, or enforce it in the body with a `guard`,
-which is what the example above does. The older attribute form is recorded
-here as intent and does not parse:
+Inside an `@ens` postcondition two more names are in scope:
+
+- `result` is the function's return value, typed as its return type;
+- `old(x)` is parameter `x` as it was on entry. MAGE values are immutable, so
+  that is the argument as passed; `old` still says which side of the call a
+  clause is about. It takes a parameter name and nothing else: `old(x).field`,
+  not `old(x.field)`.
+
+Outside `@ens` neither means anything special. `result` or `old` in an `@req` or `@inv`, or
+`old` of something other than a parameter, is **E0561** (`ContractScope`); in a
+function body, `result` and `old` are ordinary names, and an unbound one is an
+unresolved name (E0425) whose message says they belong in `@ens`. Neither is a
+keyword, so `v result = …` in a body is still an ordinary variable.
+
+`--check` typechecks every clause of a spec that shares a function's name,
+in that function's parameter scope: the condition must be a `bool`.
+`--eval` (and the fuel-bounded evaluator the arena runs, §4.11) checks every
+`@ens` each time the function returns. A clause that is false fails the run
+with an error naming the clause, the function and where it was written:
+
+```text
+contract violated: `@ens(result.balance == old(account).balance - amount, "correct deduction")` of `withdraw` (sp withdraw) is false: `withdraw` returned Account { balance: 6 }
+```
+
+`@req` is not evaluated at run time; express it with a `guard` where the call
+must be refused. The two examples below parse, typecheck and run.
 
 ```mg
-@req(balance >= amount, "sufficient funds")
-@ens(result.balance == old.balance - amount, "correct deduction")
-@perf(time: O(1))
-@fx(pure)
-pub fn withdraw(account: &mut Account, amount: u64) -> Receipt or Error {
-    // ...
+struct Account { balance: u64 }
+
+sp withdraw {
+    @req(account.balance >= amount, "sufficient funds")
+    @ens(result.balance == old(account).balance - amount, "correct deduction")
+    @fx()
 }
 
-spec Sortable<T: Ord> {
-    @req(items.len() > 0, "non-empty input");
-    @ens(result.is_sorted(), "output is sorted");
-    @ens(result.len() == items.len(), "preserves length");
-    @perf(time: O(n * log(n)));
-    @fx(pure);
+pub fn withdraw(account: Account, amount: u64) -> Account {
+    @Account { balance: account.balance - amount }
+}
+```
+
+```mg
+sp sorted {
+    @req(len(items) > 0, "non-empty input")
+    @ens(all(range(len(result) - 1), |i| result[i] <= result[i + 1]), "output is sorted")
+    @ens(len(result) == len(old(items)), "preserves length")
+    @fx()
+}
+
+pub fn sorted(items: [i64]~) -> [i64]~ {
+    sort(items)
 }
 ```
 

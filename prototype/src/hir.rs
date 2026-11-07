@@ -558,6 +558,10 @@ pub enum DiagnosticCategory {
     DuplicateDefinition,
     /// Contract/spec violation.
     SpecViolation,
+    /// A contract names `result` or `old(..)` where it is not in scope:
+    /// outside an `@ens` postcondition, or `old` of something other than a
+    /// parameter of the function (plan C1).
+    ContractScope,
     /// A function performs an effect its declared `@role` does not allow.
     RoleViolation,
     /// Code outside MAGE-core (§4.12) where MAGE-core is required.
@@ -588,6 +592,7 @@ impl DiagnosticCategory {
             DiagnosticCategory::SyntaxError => "E0001",
             DiagnosticCategory::DuplicateDefinition => "E0428",
             DiagnosticCategory::SpecViolation => "E0560",
+            DiagnosticCategory::ContractScope => "E0561",
             DiagnosticCategory::RoleViolation => "E0551",
             DiagnosticCategory::CoreViolation => "E0552",
             DiagnosticCategory::ParamDomain => "E0553",
@@ -633,6 +638,9 @@ impl DiagnosticCategory {
             }
             DiagnosticCategory::SpecViolation => {
                 "satisfy the contract (@req/@ens/@inv) or correct the contract"
+            }
+            DiagnosticCategory::ContractScope => {
+                "use `result` and `old(param)` only inside `@ens`, and give `old` a parameter name of the function"
             }
             DiagnosticCategory::ParamDomain => {
                 "give the constant a literal value inside its @param domain, or correct the domain (`@param(lo, hi)` with lo <= hi, or `@param(in, a, b, ...)`)"
@@ -858,6 +866,7 @@ mod diagnostic_code_tests {
             DiagnosticCategory::SyntaxError,
             DiagnosticCategory::DuplicateDefinition,
             DiagnosticCategory::SpecViolation,
+            DiagnosticCategory::ContractScope,
             DiagnosticCategory::RoleViolation,
             DiagnosticCategory::CoreViolation,
             DiagnosticCategory::ParamDomain,

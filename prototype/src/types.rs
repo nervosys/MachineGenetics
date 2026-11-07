@@ -736,6 +736,107 @@ impl TypeChecker {
         for item in &module.items {
             self.check_item(item);
         }
+
+        // Third: contract clauses, in the scope of the function each belongs
+        // to, with `result` bound in a postcondition (plan C1).
+        for (clause, fd) in crate::contract::collect(module) {
+            self.check_contract(&clause, fd);
+        }
+    }
+
+    /// Typecheck one contract clause: `result` and `old` only in `@ens`, and
+    /// `old` only of a parameter (`E0561`); then, when the clause belongs to a
+    /// function, the condition must be a `bool` over its parameters, with
+    /// `result` typed as its return type.
+    fn check_contract(&mut self, clause: &crate::contract::Clause, fd: Option<&ast::FunctionDef>) {
+        use crate::contract::PrepareError;
+        let params: Option<Vec<String>> =
+            fd.map(|f| f.params.iter().map(|p| p.name.clone()).collect());
+        let expr = match crate::contract::prepare(clause, params.as_deref()) {
+            Ok(e) => e,
+            Err(PrepareError::Scope(m)) => {
+                self.diagnostics.push(Diagnostic::categorized(
+                    Severity::Error,
+                    m,
+                    DiagnosticCategory::ContractScope,
+                    None,
+                ));
+                return;
+            }
+            // A spec with no function has never been held to parsing as an
+            // expression (`@ens(|result| …)` in framewerx is a closure, and
+            // several are prose-like); only one that names a function is.
+            Err(PrepareError::Syntax(m)) => {
+                if fd.is_some() {
+                    self.diagnostics.push(Diagnostic::categorized(
+                        Severity::Error,
+                        m,
+                        DiagnosticCategory::SyntaxError,
+                        None,
+                    ));
+                }
+                return;
+            }
+        };
+        let Some(fd) = fd else { return };
+        self.env.push();
+        let ret_ty = self.bind_signature(fd);
+        if clause.kind == ast::ContractClauseKind::Ensures {
+            self.env.insert("result".to_string(), ret_ty);
+        }
+        let before = self.diagnostics.len();
+        let ty = self.infer_expr(&expr);
+        // An error inside the condition names the clause it came from.
+        for d in &mut self.diagnostics[before..] {
+            d.message =
+                format!("{} in contract `{}` of `{}`", d.message, clause.display(), clause.function);
+        }
+        if let Err(e) = unify(&mut self.subst, &ty, &Ty::Bool) {
+            self.emit_error(format!(
+                "contract `{}` of `{}` must be a `bool`: {e}",
+                clause.display(),
+                clause.function
+            ));
+        }
+        self.default_int_literals();
+        self.env.pop();
+    }
+
+    /// Bind `fd`'s generic and value parameters in the current scope, and
+    /// return its return type. Shared by the body and its contract clauses,
+    /// so both see the same parameter types.
+    fn bind_signature(&mut self, fd: &ast::FunctionDef) -> Ty {
+        // Bind generic params as fresh type vars.
+        for gp in &fd.generics {
+            let tv = self.fresh();
+            self.env.insert(gp.name.clone(), tv);
+        }
+
+        // Bind parameters. An un-annotated param (`Type::Inferred`) reuses the
+        // fresh var registered in the signature, so the body's use *and* callers
+        // constrain the same type — sound inference. Annotated params (including
+        // generics, which need the generic env bound above) keep the exact
+        // existing path, so no existing program changes.
+        for (i, param) in fd.params.iter().enumerate() {
+            let ty = if matches!(param.ty, ast::Type::Inferred) {
+                self.fn_sigs
+                    .get(&fd.name)
+                    .and_then(|s| s.0.get(i).cloned())
+                    .unwrap_or_else(|| self.fresh())
+            } else {
+                self.lower_type(&param.ty)
+            };
+            self.env.insert(param.name.clone(), ty);
+        }
+
+        // Resolve the return type *before* the body, so `return` statements
+        // inside it can be checked against it. When unannotated, reuse the fresh
+        // var registered in the signature so the body *infers* the return type
+        // (and recursive calls resolve to the same one).
+        match &fd.return_type {
+            Some(t) => self.lower_type(t),
+            None => self.fn_sigs.get(&fd.name).map(|s| s.1.clone()).unwrap_or(Ty::Unit),
+        }
     }
 
     fn collect_item_sig(&mut self, item: &ast::Item) {
@@ -829,38 +930,7 @@ impl TypeChecker {
 
     fn check_function(&mut self, fd: &ast::FunctionDef) {
         self.env.push();
-
-        // Bind generic params as fresh type vars.
-        for gp in &fd.generics {
-            let tv = self.fresh();
-            self.env.insert(gp.name.clone(), tv);
-        }
-
-        // Bind parameters. An un-annotated param (`Type::Inferred`) reuses the
-        // fresh var registered in the signature, so the body's use *and* callers
-        // constrain the same type — sound inference. Annotated params (including
-        // generics, which need the generic env bound above) keep the exact
-        // existing path, so no existing program changes.
-        for (i, param) in fd.params.iter().enumerate() {
-            let ty = if matches!(param.ty, ast::Type::Inferred) {
-                self.fn_sigs
-                    .get(&fd.name)
-                    .and_then(|s| s.0.get(i).cloned())
-                    .unwrap_or_else(|| self.fresh())
-            } else {
-                self.lower_type(&param.ty)
-            };
-            self.env.insert(param.name.clone(), ty);
-        }
-
-        // Resolve the return type *before* the body, so `return` statements
-        // inside it can be checked against it. When unannotated, reuse the fresh
-        // var registered in the signature so the body *infers* the return type
-        // (and recursive calls resolve to the same one).
-        let ret_ty = match &fd.return_type {
-            Some(t) => self.lower_type(t),
-            None => self.fn_sigs.get(&fd.name).map(|s| s.1.clone()).unwrap_or(Ty::Unit),
-        };
+        let ret_ty = self.bind_signature(fd);
 
         // Infer body type.
         self.ret_stack.push(ret_ty.clone());

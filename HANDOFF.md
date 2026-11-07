@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,379** — rmi 1,384 · prototype 1,408 · ribosome 168 · germline 175 · forge 63 · arena 181 |
+| Tests | **3,399** — rmi 1,384 · prototype 1,428 · ribosome 168 · germline 175 · forge 63 · arena 181 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -40,7 +40,7 @@ each claim has a command beside it.
 | `.mg` sources | **106 checked, 0 sketches** — every `.mg` file in the repository typechecks |
 | Differentiability | **34 of 34 nets and 7 of 7 train blocks; 1 of 156 functions** (the arena's reward) — `scripts/measure-differentiability.sh`, re-derived in CI and compared against `DIFFERENTIABILITY.md` in both directions |
 | `grad` | An expression that typechecks and **runs**, for scalars: forward-mode duals, checked against central differences. The differentiability obligation is a premise of its typing rule, discharged by the call-graph pass. Tensors are refused, not deferred |
-| Documentation | 206 MAGE blocks typecheck; 59 documentation entry points run; 268 `rmi/docs` API items all exist — and "exist" now means **a definition exists**, not that the name appears somewhere in `src/`. It was 275 under the weaker criterion, 8 of them held up by English words in comments; the phantom entries are gone and a duplicate went with them |
+| Documentation | 208 MAGE blocks typecheck; 59 documentation entry points run; 268 `rmi/docs` API items all exist — and "exist" now means **a definition exists**, not that the name appears somewhere in `src/`. It was 275 under the weaker criterion, 8 of them held up by English words in comments; the phantom entries are gone and a duplicate went with them |
 | Release | `v0.3.0`, with the promo video attached as a release asset |
 
 Reproduce all of it:
@@ -1301,6 +1301,37 @@ re-runs this grid; that is the next test of whether the loop can learn
 physics from its own programs.
 
 No code changed.
+
+**Implementation plan C1: `result` and `old` in `@ens`, checked at run time.**
+MAGE_SPEC section 12.1 said neither was in scope, so no postcondition could
+relate a function's output to its input.
+- `prototype/src/contract.rs` collects each top-level function's clauses,
+  written above it or in a same-named `sp` block, and re-parses them through
+  `parser::parse_expression`.
+- `result` is bound to the return type. `old(x)` must name a parameter; values
+  are immutable, so it is the argument as passed. Neither is a keyword, so a
+  body variable named `result` still works.
+- New error code E0561 (`ContractScope`) covers `result` or `old` in
+  `@req`/`@inv`, `old` of a non-parameter, and a parameter named `result`
+  under `@ens`.
+- The evaluator, bounded or not, checks every `@ens` at every return,
+  including early ones, and charges fuel for it. A violation is an evaluation
+  error that names the clause, the function and the spec block:
+  `contract violated: `@ens(result == old(balance) - amount, "correct deduction")` of `withdraw` (sp withdraw) is false: `withdraw` returned 4`.
+- The two section 12.1 examples now parse, typecheck, run and round-trip, so
+  documentation blocks go from 206 to 208.
+
+Not done:
+- `@req` is still not evaluated, and clauses carry no source span.
+- The verifier's "needs a runtime check that nothing performs" wording is now
+  partly untrue for `@ens` under `--eval`.
+
+Fixed while stacking: the new scope rule refused framewerx's `specs.mg`
+(`old(state.step)`), which the `.mg` source check caught. It and
+`prototype/docs/AGENT_GUIDE.md` section 6.1 now use the `old(x).field` form.
+
+Break-checked: disabling the check fails two unit tests and the CLI test.
+Prototype +20 tests.
 
 **Pre-existing, not from this change:** `cargo clippy` 0.1.98 (2026-09-01)
 reports 15 warnings in `prototype` — 14 `chunks_exact` with a constant size in
@@ -3840,7 +3871,7 @@ changed before you commit.
 ---
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,408**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,428**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
   across six crates **3,140**; documented-count pins **101**, up from 46 — the
   two newest hold the `kb`/`net` overlap the tensor-product-binding decision

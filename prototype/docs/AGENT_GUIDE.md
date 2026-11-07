@@ -181,8 +181,8 @@ summarising large code blocks to fit within the budget.
 f transfer(from: &mut Account, to: &mut Account, amount: u64)
     @req from.balance >= amount "insufficient funds"
     @req amount > 0 "amount must be positive"
-    @ens from.balance == old(from.balance) - amount
-    @ens to.balance == old(to.balance) + amount
+    @ens from.balance == old(from).balance - amount
+    @ens to.balance == old(to).balance + amount
     @fx pure
 {
     from.balance -= amount;
@@ -208,7 +208,7 @@ The synthesis oracle generates implementations from specifications:
 f sort(arr: &mut [i32])
     @req arr.len() > 0
     @ens arr.windows(2).all(|w| w[0] <= w[1])
-    @ens arr.len() == old(arr.len())
+    @ens arr.len() == old(arr).len()
     @fx pure;
 
 // Agent synthesises an implementation that satisfies the contracts

@@ -43,5 +43,5 @@ spec HybridVerification {
 // Allows the io effect for logging metrics, nothing else.
 spec TrainStep {
     @fx(io);
-    @ens(|result| result.step == old(state.step) + 1);
+    @ens(|result| result.step == old(state).step + 1);
 }

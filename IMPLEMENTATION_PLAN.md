@@ -189,7 +189,7 @@ erase that advantage.
 
 Physics as programs agents write, checked by the language, not only as data.
 
-- [ ] **C1** `result` and `old` in `@ens`. **M**
+- [x] **C1** `result` and `old` in `@ens`. **M**
   - MAGE_SPEC §12.1 says neither is in scope, so a postcondition relating a
     step's output to its input cannot be written.
   - Add `result` (and `old` for arguments), and check postconditions at run
@@ -197,6 +197,14 @@ Physics as programs agents write, checked by the language, not only as data.
   - Done when a postcondition naming `result` is checked, a violating program
     fails with the contract named, and two MAGE_SPEC examples stop being
     labelled "does not parse".
+  - Result: `result` (typed as the return type) and `old(param)` are in scope
+    in `@ens`; elsewhere in a contract they are E0561 (`ContractScope`).
+    `--check` typechecks each clause of a spec sharing a function's name, and
+    the evaluator, bounded or not, checks every `@ens` at each return. A
+    violation is an evaluation error naming the clause, the function and
+    where it was written, and the value returned. `@req` is still not
+    evaluated. Code: `prototype/src/contract.rs`; tests there and in
+    `prototype/tests/ens_result_is_checked.rs`.
 - [ ] **C2** Units of measure. **L**
   - Dimension annotations on numeric types, for example `f64<m/s>`, inferred
     through arithmetic. Adding mismatched units is a type error with a new
