@@ -201,13 +201,18 @@ Relations:
 
 Invariants (each a Datalog rule whose results are violations):
 
-- [ ] Every fact's predicate is a declared class or relation, with arguments of the declared classes.
-- [ ] Every `Rule` has exactly one `enforced_by`.
-- [ ] `abbreviates` is a bijection within each mode.
-- [ ] Every `lowers_to` either round-trips or states what it `loses`.
-- [ ] Every `Production` is reachable from the start symbol, and every `AstKind` is built by some production.
-- [ ] Every `Diagnostic` code the compiler can emit is a fact, and every `Diagnostic` fact is emitted by some test.
-- [ ] Every `Refusal` names a `Rule`.
+- [x] Every fact's predicate is a declared class or relation, with arguments of the declared classes. *(Checked by `kb.rs`, not a Datalog rule: it is about predicates, not facts.)*
+- [x] Every `Rule` has exactly one `enforced_by`. *(`unenforced_rule`, `rule_enforced_twice`.)*
+- [x] `abbreviates` is a bijection within each mode. *(`sigil_two_keywords`, `keyword_two_sigils`. Sigils exist only in Agent mode, so "within a mode" is global for now.)*
+- [x] Every `lowers_to` either round-trips or states what it `loses`. *(`unaccounted_lowering`; `round_trips` and the ternary `loses(from, to, what)` are relations.)*
+- [x] Every `Production` is reachable from the start symbol, and every `AstKind` is built by some production. *(`unreachable_production` from `start_symbol`, `unbuilt_ast_kind`.)*
+- [ ] Every `Diagnostic` code the compiler can emit is a fact, and every `Diagnostic` fact is emitted by some test. *(Second half only: `untested_diagnostic` over `tested_by`. The first half needs the compiler's codes as facts, Phase 3.)*
+- [x] Every `Refusal` names a `Rule`. *(`unnamed_refusal`.)*
+- [x] The class hierarchy has no cycle, and every class named anywhere is declared. *(`class_cycle`, `undeclared_class`; added in `kb/schema.mg`.)*
+
+`kb/schema.mg` (v1) adds to this draft: the class `Profile` (the range of
+`in_profile`) and `Text` (any constant); the relations `start_symbol`,
+`round_trips`, `loses` and `tested_by`; and `schema_version`.
 
 The twelve domains of `MAGE_ONTOLOGY.md` (Lexical, Syntactic, Semantic, Type,
 Effect, Safety, AI, Agent, Codegen, Verify, Tooling, Package) stay as the way
@@ -219,7 +224,7 @@ facts are grouped into files and namespaces. They are not classes.
 
 ### Phase 0: Preconditions
 
-- [ ] Merge the stack #38–#106, this plan included, in order (needs the user). **S**
+- [ ] Merge the stack #38–#107, this plan included, in order (needs the user). **S**
 - [ ] Settle the open questions in section 8. **S**
 - [ ] Census every module in `prototype/src` (73 files) into neural, symbolic, knowledge base, interface, or outside the design (for example `crdt.rs`, `consensus.rs`, `hot_reload.rs`). Record it in `ARCHITECTURE.md`. Outside-the-design modules are kept but not extended. **S [H]**
 
@@ -230,10 +235,10 @@ facts are grouped into files and namespaces. They are not classes.
 - [x] Add stratified negation to `logic.rs`, with tests for stratification errors. Rules now mean what §7.1 says; anything unevaluable is E0570. **M**
 - [x] **One engine.** `KbTranslator` lowers the same body `logic.rs` reads (block and `where`), and `builder.rs`'s checks call it (K0008). A rule the binary form cannot carry (negation, constants) is left out at lowering, naming the loss, not lowered wrongly. `evaluate_kb` stays as the container's indexed interpreter; a test requires it to derive what `logic.rs` derives on every `kb` block in the repo. *Found:* the lowering had dropped every rule body, so `unified.mg`'s container derived nothing; it is now 467 bytes, not 420, and derives `grandparent(a, c)`. **M**
 - [x] Comparisons `a == b`, `a != b` in rule bodies: "exactly one" and "bijection" need inequality. Safe only when both sides are bound; not carried by the binary IR. **S**
-- [ ] Write `kb/schema.mg`: the classes, relations and invariants of section 5. **M**
-- [ ] Write `prototype/src/kb.rs`: embed `kb/*.mg` with `include_str!`, parse with the kernel parser, materialise, validate every fact against the schema, run the invariants, and refuse to load on any violation. **M**
-- [ ] Error messages for schema violations name the file, line and the invariant broken. **S**
-- [ ] A test that each invariant catches a deliberately bad fact (break-check). **S [H]**
+- [x] Write `kb/schema.mg`: the classes, relations and invariants of section 5. **M**
+- [x] Write `prototype/src/kb.rs`: embed `kb/*.mg` with `include_str!`, parse with the kernel parser, materialise, validate every fact against the schema, run the invariants, and refuse to load on any violation. **M**
+- [ ] Error messages for schema violations name the file, line and the invariant broken. *(File and invariant now; the line needs spans on `ast::FactDef`, which has none.)* **S**
+- [x] A test that each invariant catches a deliberately bad fact (break-check). A second test requires a breaking example for every `invariant` fact; making `unenforced_rule` unable to fire fails the first. **S [H]**
 - [ ] RAP methods `kb/schema` and `kb/query`. **S**
 - [ ] Rewrite `MAGE_ONTOLOGY.md` Part II as documentation of `kb/schema.mg`, plus a test that every class it names exists in the schema. **M**
 

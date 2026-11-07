@@ -1,0 +1,273 @@
+//! The knowledge base (NEUROSYMBOLIC_PLAN.md, P3): the `kb/*.mg` files,
+//! embedded at build time, parsed by the kernel parser, materialised by
+//! [`crate::logic`], and checked against `kb/schema.mg` before anything may
+//! read it. A knowledge base that breaks its schema does not load.
+//!
+//! What "breaks its schema" means:
+//! - a fact's predicate is neither one of the schema's own ([`META`]) nor a
+//!   declared `relation`;
+//! - a relation fact has a different number of arguments than its
+//!   `arg_class` facts, or an argument that is not an instance of the class
+//!   its `arg_class` names (`Text` takes any constant);
+//! - an `invariant` derives anything, or names no rule;
+//! - the logic engine refuses a fact or rule (E0570).
+
+use std::collections::{HashMap, HashSet};
+
+use crate::ast;
+use crate::logic::{self, KnowledgeBase};
+
+/// The knowledge-base files, in load order: the schema first.
+pub const FILES: &[(&str, &str)] = &[("kb/schema.mg", include_str!("../../kb/schema.mg"))];
+
+/// The schema's own predicates: a fact may use these without a `relation`.
+pub const META: &[&str] =
+    &["schema_version", "class", "subclass_of", "relation", "arg_class", "invariant", "instance_of"];
+
+/// A loaded knowledge base: every fact and every rule's consequences.
+pub struct Kb {
+    base: KnowledgeBase,
+}
+
+impl Kb {
+    /// The facts matching `args`, where `"?"` matches anything.
+    pub fn query(&mut self, predicate: &str, args: &[&str]) -> Vec<Vec<String>> {
+        self.base.query(predicate, args)
+    }
+
+    /// Every fact of `predicate`.
+    pub fn facts(&self, predicate: &str) -> Vec<Vec<String>> {
+        self.base.get_facts(predicate)
+    }
+}
+
+/// Load the embedded knowledge base, or say every way it breaks its schema.
+pub fn load() -> Result<Kb, Vec<String>> {
+    load_files(FILES)
+}
+
+/// Load `files` (path, source) as one knowledge base. Each message names the
+/// file it comes from, or the invariant it breaks.
+pub fn load_files(files: &[(&str, &str)]) -> Result<Kb, Vec<String>> {
+    let mut base = KnowledgeBase::new("mage");
+    let mut refused = Vec::new();
+    // Every stated fact, with the file it came from, for the schema checks.
+    let mut stated: Vec<(&str, String, Vec<String>)> = Vec::new();
+    let mut rule_heads: HashSet<String> = HashSet::new();
+
+    for &(path, src) in files {
+        let module = match crate::parser::parse(&crate::lexer::lex(src)) {
+            Ok(m) => m,
+            Err(e) => {
+                refused.push(format!("{path}: does not parse: {e:?}"));
+                continue;
+            }
+        };
+        for item in &module.items {
+            let ast::ItemKind::Kb(def) = &item.kind else {
+                refused.push(format!("{path}: holds an item that is not a `kb` block"));
+                continue;
+            };
+            for fact in &def.facts {
+                match logic::read_fact(fact) {
+                    Ok(args) => {
+                        stated.push((path, fact.name.clone(), args.clone()));
+                        base.add_fact(&fact.name, args);
+                    }
+                    Err(n) => refused.push(format!(
+                        "{path}: argument {n} of fact `{}` is not a constant",
+                        fact.name
+                    )),
+                }
+            }
+            for rule in &def.rules {
+                match logic::read_rule(rule) {
+                    Ok(r) => {
+                        rule_heads.insert(r.head.predicate.clone());
+                        base.add_rule(r);
+                    }
+                    Err(why) => refused.push(format!("{path}: rule `{}` cannot be read: {why}", rule.name)),
+                }
+            }
+        }
+    }
+
+    base.materialize();
+    refused.extend(base.diagnostics.iter().map(|d| d.message.clone()));
+
+    // Relations and the class of each argument, by position.
+    let mut arg_classes: HashMap<String, Vec<(usize, String)>> = HashMap::new();
+    for r in base.get_facts("relation") {
+        arg_classes.entry(r[0].clone()).or_default();
+    }
+    for a in base.get_facts("arg_class") {
+        let pos = a[1].parse::<usize>().unwrap_or(0);
+        arg_classes.entry(a[0].clone()).or_default().push((pos, a[2].clone()));
+    }
+
+    for (path, pred, args) in &stated {
+        if META.contains(&pred.as_str()) {
+            continue;
+        }
+        let Some(classes) = arg_classes.get(pred) else {
+            refused.push(format!("{path}: fact `{pred}` uses a predicate the schema does not declare"));
+            continue;
+        };
+        if classes.len() != args.len() {
+            refused.push(format!(
+                "{path}: fact `{pred}` has {} argument(s); the schema gives it {}",
+                args.len(),
+                classes.len()
+            ));
+            continue;
+        }
+        for (pos, class) in classes {
+            let Some(arg) = args.get(pos.wrapping_sub(1)) else { continue };
+            if class != "Text" && base.query("is_a", &[arg, class]).is_empty() {
+                refused.push(format!(
+                    "{path}: argument {pos} of `{pred}`, `{arg}`, is not a `{class}`"
+                ));
+            }
+        }
+    }
+
+    for inv in base.get_facts("invariant") {
+        let (name, says) = (&inv[0], &inv[1]);
+        if !rule_heads.contains(name) {
+            refused.push(format!("invariant `{name}` names no rule"));
+            continue;
+        }
+        for v in base.get_facts(name) {
+            refused.push(format!("invariant `{name}` ({says}) is broken by ({})", v.join(", ")));
+        }
+    }
+
+    if refused.is_empty() { Ok(Kb { base }) } else { Err(refused) }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The schema plus `extra` facts, as a second file.
+    fn with(extra: &str) -> Result<Kb, Vec<String>> {
+        let bad = format!("kb Extra {{\n{extra}\n}}\n");
+        load_files(&[FILES[0], ("kb/extra.mg", &bad)])
+    }
+
+    fn refused(extra: &str) -> Vec<String> {
+        match with(extra) {
+            Ok(_) => Vec::new(),
+            Err(e) => e,
+        }
+    }
+
+    #[test]
+    fn the_schema_alone_loads() {
+        let mut kb = load().unwrap_or_else(|e| panic!("{e:#?}"));
+        assert_eq!(kb.facts("schema_version"), vec![vec!["1".to_string()]]);
+        assert!(!kb.query("below", &["Keyword", "Construct"]).is_empty());
+    }
+
+    /// One fact set per invariant that breaks it and nothing it does not
+    /// need to. The test below requires an entry for every invariant.
+    const BREAKS: &[(&str, &str)] = &[
+        ("class_cycle", "fact subclass_of(Form, Hir);"),
+        ("undeclared_class", "fact instance_of(x, Nonesuch);"),
+        ("unenforced_rule", "fact instance_of(no_alias, SafetyRule);"),
+        (
+            "rule_enforced_twice",
+            "fact instance_of(no_alias, SafetyRule);\n\
+             fact instance_of(parser, SymbolicComponent);\n\
+             fact instance_of(checker, SymbolicComponent);\n\
+             fact enforced_by(no_alias, parser);\n\
+             fact enforced_by(no_alias, checker);",
+        ),
+        (
+            "sigil_two_keywords",
+            "fact instance_of(plus_f, Sigil);\n\
+             fact instance_of(pub_kw, Keyword);\n\
+             fact instance_of(fn_kw, Keyword);\n\
+             fact abbreviates(plus_f, pub_kw);\n\
+             fact abbreviates(plus_f, fn_kw);",
+        ),
+        (
+            "keyword_two_sigils",
+            "fact instance_of(plus_f, Sigil);\n\
+             fact instance_of(at_f, Sigil);\n\
+             fact instance_of(fn_kw, Keyword);\n\
+             fact abbreviates(plus_f, fn_kw);\n\
+             fact abbreviates(at_f, fn_kw);",
+        ),
+        (
+            "unaccounted_lowering",
+            "fact instance_of(ast, Ast);\n\
+             fact instance_of(hir, Hir);\n\
+             fact lowers_to(ast, hir);",
+        ),
+        ("unreachable_production", "fact instance_of(item_fn, Production);"),
+        ("unbuilt_ast_kind", "fact instance_of(FnItem, AstKind);"),
+        (
+            "untested_diagnostic",
+            "fact instance_of(E0570, Diagnostic);\n\
+             fact instance_of(logic, SymbolicComponent);\n\
+             fact enforced_by(E0570, logic);",
+        ),
+        ("unnamed_refusal", "fact instance_of(r1, Refusal);"),
+    ];
+
+    #[test]
+    fn each_invariant_refuses_a_fact_that_breaks_it() {
+        for (inv, facts) in BREAKS {
+            let e = refused(facts);
+            assert!(
+                e.iter().any(|m| m.starts_with(&format!("invariant `{inv}`"))),
+                "`{inv}` did not fire on:\n{facts}\ngot: {e:#?}"
+            );
+        }
+    }
+
+    #[test]
+    fn every_invariant_has_a_breaking_example() {
+        let kb = load().expect("loads");
+        for inv in kb.facts("invariant") {
+            assert!(BREAKS.iter().any(|(n, _)| *n == inv[0]), "no breaking example for `{}`", inv[0]);
+        }
+        assert_eq!(kb.facts("invariant").len(), BREAKS.len());
+    }
+
+    #[test]
+    fn an_undeclared_predicate_is_refused() {
+        let e = refused("fact frobnicates(a);");
+        assert!(e.iter().any(|m| m == "kb/extra.mg: fact `frobnicates` uses a predicate the schema does not declare"), "{e:#?}");
+    }
+
+    #[test]
+    fn a_relation_fact_at_the_wrong_arity_is_refused() {
+        let e = refused("fact instance_of(plus_f, Sigil);\nfact abbreviates(plus_f);");
+        assert!(e.iter().any(|m| m.contains("`abbreviates` has 1 argument(s); the schema gives it 2")), "{e:#?}");
+    }
+
+    #[test]
+    fn an_argument_of_the_wrong_class_is_refused() {
+        let e = refused(
+            "fact instance_of(parser, SymbolicComponent);\n\
+             fact instance_of(Linear, Layer);\n\
+             fact enforced_by(Linear, parser);",
+        );
+        assert!(e.iter().any(|m| m.contains("argument 1 of `enforced_by`, `Linear`, is not a `Rule`")), "{e:#?}");
+    }
+
+    /// A subclass instance satisfies its superclass: a `Diagnostic` is a
+    /// `Rule`, so it may be `enforced_by` something.
+    #[test]
+    fn a_subclass_instance_is_accepted_where_its_superclass_is_named() {
+        let r = with(
+            "fact instance_of(E0570, Diagnostic);\n\
+             fact instance_of(logic, SymbolicComponent);\n\
+             fact enforced_by(E0570, logic);\n\
+             fact tested_by(E0570, \"logic::tests\");",
+        );
+        assert!(r.is_ok(), "{:#?}", r.err());
+    }
+}
