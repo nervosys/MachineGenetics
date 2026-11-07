@@ -7,7 +7,7 @@
 //!       [--learners ng:orders:log2buckets:lr | tf:d:layers:heads:ctx:lr[:gpu] | ent:orders:log2buckets:target_len:lr | ssm:d:lr[:bptt] [,…]]
 //!       [--fuel F] [--cpu-watts W] [--meter-gpus <i>[,<i>…] | none] [--cost joules|fuel]
 //!       [--allocate share|hypervolume] [--novelty behaviour|shape]
-//!       [--length-unit tokens|bytes] [--canary <string>]
+//!       [--length-unit tokens|bytes] [--canary <string>] [--second-order]
 //!       [--energy-budget J] [--joules-per-program J] [--definitions <forge registry dir>]
 //!       [--heldout-slices K] [--refresh-drift X]
 //!       [--proposer-command "<cmd> <args…>"] [--proposer-timeout S]
@@ -431,6 +431,8 @@ fn main() {
                     other => fail(format!("--length-unit: `{other}` is neither tokens nor bytes")),
                 }
             }
+            // A flag with no value: the second-order list production (plan P5b).
+            "--second-order" => cfg.second_order = true,
             "--novelty" => {
                 cfg.novelty = match value(i) {
                     "shape" => arena::arena::NoveltyKey::Shape,
@@ -485,7 +487,7 @@ fn main() {
             }
             other => fail(format!("unknown argument `{other}`")),
         }
-        i += if matches!(args[i].as_str(), "-h" | "--help") { 1 } else { 2 };
+        i += if matches!(args[i].as_str(), "-h" | "--help" | "--second-order") { 1 } else { 2 };
     }
     if heldout_paths.is_empty() && physics_specs.is_empty() {
         fail("--heldout or --heldout-physics is required: without held-out data there is nothing to measure intelligence against");

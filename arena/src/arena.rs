@@ -38,7 +38,7 @@ use crate::agents::{
 use crate::command::{CommandAgent, CommandBackend};
 use std::time::Duration;
 use crate::energy::{self, Meter, Reading, Span};
-use crate::grammar::Rng;
+use crate::grammar::{Policy, Rng};
 use crate::learner::{self, ByteLearner, LearnerSpec};
 use crate::kernel::{EnergyLedger, PROBES, PROGRAMS, TRAINING};
 use crate::substrate::{Outcome, Refusal, Substrate};
@@ -156,6 +156,12 @@ pub struct Config {
     /// rendered source. A config without the field was charged in tokens.
     #[serde(default)]
     pub length_unit: LengthUnit,
+    /// Whether the grammar's list vocabulary includes the second-order
+    /// production (plan P5b): a two-state linear recurrence, which `scan`
+    /// cannot write. Off by default, and a config without the field reads as
+    /// off, so every earlier run samples the same programs.
+    #[serde(default)]
+    pub second_order: bool,
 }
 
 fn default_heldout_slices() -> usize {
@@ -312,6 +318,7 @@ impl Default for Config {
             proposer_command: None,
             proposer_timeout_s: default_proposer_timeout_s(),
             length_unit: LengthUnit::Tokens,
+            second_order: false,
         }
     }
 }
@@ -610,9 +617,13 @@ fn build_agents(cfg: &Config) -> Result<Vec<Box<dyn Proposer>>, String> {
         for i in 0..*n {
             let id = format!("{kind}-{i}");
             out.push(match kind.as_str() {
-                "grammar" => Box::new(GrammarAgent { length_unit: cfg.length_unit, ..GrammarAgent::new(id) }),
-                "uniform" => Box::new(UniformAgent::new(id)),
-                "mutator" => Box::new(MutatorAgent::new(id)),
+                "grammar" => Box::new(GrammarAgent {
+                    length_unit: cfg.length_unit,
+                    policy: Policy::with_second_order(cfg.second_order),
+                    ..GrammarAgent::new(id)
+                }),
+                "uniform" => Box::new(UniformAgent::with_second_order(id, cfg.second_order)),
+                "mutator" => Box::new(MutatorAgent::with_second_order(id, cfg.second_order)),
                 "attacker" => Box::new(AttackerAgent::new(id)),
                 "command" => Box::new(command_agent(id, cfg)?),
                 other => {
@@ -1701,6 +1712,16 @@ mod tests {
         recorded.as_object_mut().expect("an object").remove("length_unit");
         let read: Config = serde_json::from_value(recorded).expect("deserialises");
         assert_eq!(read.length_unit, LengthUnit::Tokens);
+    }
+
+    #[test]
+    fn second_order_is_off_by_default_and_old_configs_read_as_off() {
+        assert!(!Config::default().second_order);
+        // A config recorded before P5b has no field, and sampled first-order programs only.
+        let mut recorded = serde_json::to_value(Config::default()).expect("serialises");
+        recorded.as_object_mut().expect("an object").remove("second_order");
+        let read: Config = serde_json::from_value(recorded).expect("deserialises");
+        assert!(!read.second_order);
     }
 
     #[test]

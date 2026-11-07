@@ -122,7 +122,8 @@ The yardstick everything later is judged by, so it goes first.
   predictor into the bytes.*
 - [x] **P5** Can agents write physics-like data? **M**
   - Result: no, not measurably. Over 3 seeds at 20 rounds, the grammar closes 10% (pendulum), 13% (double pendulum) and 33% (spring) of the gap to the physics baseline, the same as a uniform-program control within seed spread. No production added; default unchanged. See ARENA.md, "Physics from programs (plan P5)".
-- [ ] **P5b** A second-order production. **M**
+- [x] **P5b** A second-order production. **M**
+  - Result: the production works (`--second-order`, default off), and it lowers held-out bits per byte, but grammar agents do not beat their uniform control. At round 20 `second` is 0.6 to 1.4 bits below uniform, and uniform with the production matches it, so the gain is the production's, not the search's. Fraction closed is negative for `second`, because its round-5 start is already low. Kept off. See ARENA.md, "A second-order production (plan P5b)".
   - `scan` carries one accumulator, so the grammar can only write cascades of
     first-order recurrences, which have real poles and cannot oscillate.
     Pendulum and spring need a complex pole pair.

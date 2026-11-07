@@ -1066,6 +1066,121 @@ standard deviation is 4 to 12 points) and the three-seed standard error is
 still a few points, so margins under about 10 points on pendulum and double
 pendulum are not resolved by this grid.
 
+## A second-order production (plan P5b)
+
+Question: with a production that can write a complex pole pair, do grammar
+agents beat the uniform control on the oscillators?
+
+The production is `Oscillator` in `arena/src/grammar.rs`: `x_{t+1} = (a·x_t −
+b·x_{t−1}) >> k`, emitting `n` values. Its MAGE is a `scan` over pair state,
+projected by a `map`, with no new builtin. The pair is a tuple destructured with
+`val (c, q) = p;`; MAGE's `.0` tuple indexing does not parse, so this is the
+only form that does. For `n = 12`, `a = 64`, `b = 32`, `k = 6`, `x1 = 100`,
+`x0 = 0`, the source is:
+
+```
+range(11).scan((100, 0), |p, v| { val (c, q) = p; ((wrapping_sub(wrapping_mul(64, c), wrapping_mul(32, q)) >> 6), c) }).map(|p| { val (c, q) = p; c })
+```
+
+The scan emits its seed `x_1` and then the steps, so `n` values come out. The
+parameters are bounded: `k` in 1..=6, `b < 2^k` (roots inside the unit circle),
+`a <= 2^(k+1)` (so `|a/2^k| <= 2`), and literals in 0..=255. Oscillation is
+reachable: `a²/4 < b·2^k` holds for a sizeable share of draws. A test asserts
+that at least a tenth of sampled oscillators can oscillate. The production is off unless
+`--second-order` is given, and with it off the default policy samples the same
+programs from the same seed (a golden hash test holds this).
+
+Verification: the hand-written instance `x_{t+1} = (64·x_t − 32·x_{t−1}) >> 6`
+(roots `0.5 ± 0.5i`) matches the reference recurrence and changes sign at least
+twice in its first 24 values. Break-check: flipping the `b` term to `wrapping_add`
+fails that test. Fuel is charged and grows with `n`. Round-trip, depth ≤
+`MAX_DEPTH` and the static gates hold for sampled oscillators.
+
+Commands, as P5 with one more variant:
+
+```sh
+bash scripts/arena-seeds.sh --out DIR --seeds 1-3 --jobs 3 \
+    --variant grammar="" --variant uniform="--agents uniform:1" \
+    --variant second="--second-order" \
+    -- --heldout-physics pendulum:8:1100:1 \
+       --heldout-physics double_pendulum:8:1100:1 \
+       --heldout-physics spring:8:1100:1 --rounds 20
+```
+
+A supplementary control was also run, to separate the production from the
+search: `--variant uniform2="--agents uniform:1 --second-order"`, the uniform
+control with the production on.
+
+Fraction closed, as P5: (start − end) / (start − baseline), start at round 5,
+end at round 20, baselines 5.822, 4.959 and 2.386. Mean ± sample sd over seeds 1–3.
+
+| system | agents | held-out bpb at round 5 (seeds 1, 2, 3) | at round 20 | fraction closed, % | mean ± sd |
+|---|---|---|---|---|---|
+| pendulum | grammar | 7.600, 7.268, 7.534 | 7.643, 6.947, 7.345 | −2.4, 22.2, 11.0 | 10.3 ± 12.3 |
+| pendulum | uniform | 7.565, 7.605, 7.558 | 7.217, 7.593, 7.218 | 19.9, 0.6, 19.6 | 13.4 ± 11.0 |
+| pendulum | second | 6.642, 6.798, 6.745 | 6.707, 6.867, 6.720 | −8.0, −7.2, 2.8 | −4.1 ± 6.0 |
+| pendulum | uniform2 | 6.688, 7.016, 6.834 | 6.619, 6.806, 6.736 | 8.0, 17.6, 9.7 | 11.8 ± 5.1 |
+| double pendulum | grammar | 7.657, 7.431, 7.646 | 7.494, 6.906, 7.301 | 6.1, 21.2, 12.8 | 13.4 ± 7.6 |
+| double pendulum | uniform | 7.663, 7.594, 7.670 | 7.335, 7.572, 7.388 | 12.1, 0.8, 10.4 | 7.8 ± 6.1 |
+| double pendulum | second | 5.777, 6.066, 6.441 | 5.975, 6.108, 6.062 | −24.2, −3.8, 25.6 | −0.8 ± 25.0 |
+| double pendulum | uniform2 | 6.240, 6.710, 5.986 | 5.874, 6.084, 6.063 | 28.6, 35.7, −7.5 | 18.9 ± 23.2 |
+| spring | grammar | 5.661, 4.621, 5.272 | 4.499, 3.988, 4.279 | 35.5, 28.3, 34.4 | 32.7 ± 3.9 |
+| spring | uniform | 5.112, 5.202, 5.300 | 4.121, 4.518, 4.261 | 36.4, 24.3, 35.7 | 32.1 ± 6.8 |
+| spring | second | 3.797, 4.395, 4.033 | 3.474, 3.768, 3.610 | 22.9, 31.2, 25.7 | 26.6 ± 4.3 |
+| spring | uniform2 | 4.021, 5.071, 3.932 | 3.499, 3.744, 3.534 | 32.0, 49.4, 25.7 | 35.7 ± 12.3 |
+
+The grammar and uniform rows reproduce P5's held-out figures to three decimals.
+Their fraction-closed values differ from P5's printed ones by up to 0.3 points,
+because this table is computed from the unrounded JSON.
+
+**Margins, against the seed spread.** Standard error of a difference of two
+three-seed means is `√(2/3)` times the pooled sample sd.
+
+- *Fraction closed, `second` − `uniform`:* pendulum −17.5 points (SE 7.3, z −2.4);
+  double pendulum −8.6 (SE 14.9, z −0.6); spring −5.5 (SE 4.6, z −1.2).
+- *Round-20 held-out bpb, `second` − `uniform` (lower is better):* pendulum
+  −0.58 (SE 0.14, z −4.3); double pendulum −1.38 (SE 0.08, z −16.9); spring −0.68
+  (SE 0.14, z −4.7).
+- *Round-20 held-out bpb, `uniform2` − `uniform`:* pendulum −0.62 (z −4.6);
+  double pendulum −1.43 (z −14.5); spring −0.71 (z −5.1).
+- *Round-20 held-out bpb, `second` − `uniform2`:* pendulum +0.04 (SE 0.08, z +0.6);
+  double pendulum +0.04 (SE 0.08, z +0.5); spring +0.03 (SE 0.11, z +0.2).
+
+**Reading.** The fraction-closed metric is misleading for `second`. Its round-5
+checkpoint is already far lower than the others, so the defined start point
+credits it with nothing and penalises it for the lower start. On the
+absolute held-out figure it is much better: at round 20 it sits 0.6 to 1.4 bits
+per byte below the uniform control on each system, far outside the seed spread.
+
+The control settles the cause. Uniform programs with the production on match the
+grammar-with-production runs at round 20 (z within ±0.6 on all three systems). So
+the gain comes from the production, which lets a learner fit the physics bytes
+better, not from the grammar's search. Grammar agents add nothing measurable
+over their own uniform control on any system: the grammar against uniform is
+−3.1 points (z −0.3) on pendulum, +5.6 (z +1.0) on double pendulum and +0.7 (z
++0.1) on spring, as in P5.
+
+Caveat: the arena's held-out measure is the learner's bits per byte on its own
+held-out corpus. This does not show that the oscillator programs teach physics
+in a learner-independent sense. It shows that the production's bytes are easier
+for the arena's learner to fit on these corpora. The experiment that would test
+the claim is a learner other than `ng`, or a learner-independent physics check.
+The fraction-closed figures above use the stated P5 definition, and the
+round-20 bits-per-byte figures are the absolute comparison.
+
+**Decision: keep it off.** It is not the default and is not removed. The
+production is the lever, and the grammar search adds nothing on top of it, so
+making it the default would change every program distribution for a measured
+gain that the defined metric does not show, and that the current learner alone
+can account for. The flag stays so that the production can be tested again with
+other learners. Two points remain unchecked:
+
+- The command agent's prompt is built from `describe_grammar()`, which does not
+  mention the oscillator. A command agent under `--second-order` is not told
+  about the production, so this grid does not test that case.
+- The bits-per-byte effect is shown only on three physics systems and one
+  learner, with three seeds.
+
 ## Next, in order
 
 1. **A GPU learner** — a small byte-level transformer behind the same `Learner`
