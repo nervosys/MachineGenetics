@@ -17,7 +17,9 @@
 #       tested is what would be committed.
 #   kb_cost
 #       A fixed arena run (`--cost fuel`, so it is deterministic) spends no
-#       more fuel under the changed knowledge base than under HEAD's.
+#       more fuel under the changed knowledge base than under HEAD's. Both
+#       runs append to one evidence log, each opening with the version of the
+#       knowledge base it ran under.
 #
 # Each refusal is a line `refused <rule>: <why>`, the rule a `GateRule` in
 # kb/rules/refusals.mg. Exit 0 admitted, 2 refused, 1 the gate itself failed.
@@ -47,7 +49,7 @@ fail() { say "$*"; exit 1; }
 bench() {
     "$CARGO_TARGET_DIR/debug/arena" --heldout README.md,germline/src/gate.rs \
         --rounds 4 --programs 16 --agents grammar:1,uniform:1,mutator:1 \
-        --cost fuel --meter-gpus none --seed 1 --json "$logs/bench-$1.json" \
+        --cost fuel --meter-gpus none --seed 1 --json "$logs/bench-$1.json" --evidence "$logs/bench.jsonl" \
         > "$logs/bench-$1.log" 2>&1 || fail "the benchmark did not run ($logs/bench-$1.log)"
     local report=$logs/bench-$1.json
     command -v cygpath >/dev/null && report=$(cygpath -m "$report")
@@ -97,4 +99,4 @@ if [ "$new_fuel" -gt "$base_fuel" ]; then
     exit 2
 fi
 echo "admitted: $(git -C "$tree" diff --stat -- kb | tail -1)"
-say "logs in $logs"
+say "logs in $logs; evidence in $logs/bench.jsonl"
