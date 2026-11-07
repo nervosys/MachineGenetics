@@ -154,22 +154,22 @@ pub fn split_blocks(reply: &str) -> Vec<String> {
 /// mid-token, so the last line is always the whole instruction. See Cartesia,
 /// *From Tokens to Bytes, Part II*: https://www.cartesia.ai/blog/from-tokens-to-bytes-part-2
 /// (plan F3).
-pub fn build_prompt(n: usize, top: &[&PoolEntry]) -> String {
+pub fn build_prompt(n: usize, top: &[&PoolEntry], second_order: bool) -> String {
     let sources: Vec<(f64, String)> = top.iter().map(|e| (e.reward, e.program.source())).collect();
     let shown: Vec<(f64, &str)> = sources.iter().map(|(r, s)| (*r, s.as_str())).collect();
-    render_prompt(n, &shown)
+    render_prompt(n, &shown, second_order)
 }
 
 /// The prompt text for [`build_prompt`], from entries given as reward and
 /// source text. Each source is written without its trailing whitespace, so no
 /// line of the prompt ends in a space, whatever the source held.
-fn render_prompt(n: usize, top: &[(f64, &str)]) -> String {
+fn render_prompt(n: usize, top: &[(f64, &str)], second_order: bool) -> String {
     let mut p = String::from(
         "You write programs for the arena, a search over small typed MAGE programs. \
          A body is one list expression over the seed `s`. Write bodies only: no `f gen`, \
          no braces, no comments.\n\n",
     );
-    p.push_str(&describe_grammar());
+    p.push_str(&describe_grammar(second_order));
     p.push_str("\nThe best programs found so far, as written, with the learning progress each earned (higher is better):\n\n");
     if top.is_empty() {
         p.push_str("(none yet)\n\n");
@@ -205,6 +205,9 @@ pub struct Counts {
 pub struct CommandAgent {
     pub id: String,
     backend: Box<dyn Backend>,
+    /// Whether the policy has the second-order production on: the prompt names
+    /// it, and a reply that writes it is refused otherwise (P5b).
+    second_order: bool,
     counts: Counts,
     last_error: Option<String>,
     last_parse_error: Option<String>,
@@ -216,11 +219,17 @@ impl CommandAgent {
         CommandAgent {
             id: id.into(),
             backend,
+            second_order: false,
             counts: Counts::default(),
             last_error: None,
             last_parse_error: None,
             last_batch_reward: None,
         }
+    }
+
+    /// A proposer for a policy with the second-order production on or off (P5b).
+    pub fn with_second_order(id: impl Into<String>, backend: Box<dyn Backend>, second_order: bool) -> Self {
+        CommandAgent { second_order, ..CommandAgent::new(id, backend) }
     }
 
     pub fn counts(&self) -> &Counts {
@@ -243,7 +252,7 @@ impl Proposer for CommandAgent {
             return Vec::new();
         }
         let top = pool.top(PROMPT_EXAMPLES);
-        let prompt = build_prompt(n, &top);
+        let prompt = build_prompt(n, &top, self.second_order);
         self.counts.calls += 1;
         let reply = match self.backend.complete(&prompt) {
             Ok(reply) => reply,
@@ -256,7 +265,7 @@ impl Proposer for CommandAgent {
         let mut out = Vec::new();
         for block in split_blocks(&reply) {
             self.counts.blocks += 1;
-            match Program::parse(&block) {
+            match Program::parse_for_policy(&block, self.second_order) {
                 Ok(program) => {
                     self.counts.parsed += 1;
                     if out.len() < n {
@@ -407,6 +416,30 @@ mod tests {
     }
 
     #[test]
+    fn the_second_order_proposer_is_told_the_oscillator_and_its_example_is_accepted() {
+        let prompts = Rc::new(RefCell::new(Vec::new()));
+        let fake = Fake { reply: Ok(crate::grammar::second_order_example()), prompts: prompts.clone() };
+        let mut a = CommandAgent::with_second_order("cmd-0", Box::new(fake), true);
+        let out = propose(&mut a, 2);
+        assert_eq!(out.len(), 1, "the oscillator parses under the policy");
+        assert!(matches!(out[0].program.body, ListExpr::Osc(_)));
+        assert_eq!(a.counts().unparsed, 0);
+        let prompt = prompts.borrow()[0].clone();
+        assert!(prompt.contains(&format!("  osc      {}\n", crate::grammar::second_order_example())));
+    }
+
+    #[test]
+    fn with_the_second_order_off_the_oscillator_is_not_named_and_is_refused() {
+        let prompts = Rc::new(RefCell::new(Vec::new()));
+        let fake = Fake { reply: Ok(crate::grammar::second_order_example()), prompts: prompts.clone() };
+        let mut a = CommandAgent::with_second_order("cmd-0", Box::new(fake), false);
+        assert!(propose(&mut a, 2).is_empty());
+        assert_eq!((a.counts().parsed, a.counts().unparsed), (0, 1));
+        let prompt = prompts.borrow()[0].clone();
+        assert!(!prompt.contains("osc"), "the off prompt names the oscillator");
+    }
+
+    #[test]
     fn feedback_records_the_mean_reward_of_the_last_batch() {
         let (mut a, _) = agent(Ok(""));
         let p = Program { body: ListExpr::Range(2) };
@@ -462,7 +495,7 @@ mod tests {
             vec![(0.5, "range(2)\t"), (0.2, "range(3) \n")],
             vec![],
         ] {
-            let prompt = render_prompt(2, &shown);
+            let prompt = render_prompt(2, &shown, false);
             assert_clean_boundary(&prompt);
             for (_, source) in &shown {
                 assert!(prompt.contains(&format!("{}\n", source.trim_end())), "{source:?} is not shown trimmed");
