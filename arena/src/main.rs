@@ -15,6 +15,8 @@
 //! arena physics-baseline [--system pendulum|spring|double_pendulum|nbody|bounce|none] [--steps N]
 //!       [--seed S] [--budget BYTES] [--learners SPEC,…] [--encoding i32|coarse|planes|diff2]
 //!       [--text-train <file> --text-heldout <file>] [--json OUT]
+//! arena physics-task [--fuel N] [FILE...]
+//!       the physics program task (plan C3): rank candidate integrators, or the five shipped ones
 //! arena physics-rollout [--system pendulum|spring|double_pendulum|nbody|bounce|all] [--learners SPEC,…]
 //!       [--budget BYTES] [--steps N] [--seed S] [--trajectories K]
 //!       [--decode greedy|sample:T] [--samples K]
@@ -503,6 +505,12 @@ fn main() {
     }
     if args.first().map(String::as_str) == Some("physics-baseline") {
         physics_baseline_cmd(&args[1..]);
+        return;
+    }
+    if args.first().map(String::as_str) == Some("physics-task") {
+        if let Err(e) = arena::physics_task::run_cli(&args[1..]) {
+            fail(e);
+        }
         return;
     }
     if args.first().map(String::as_str) == Some("physics-rollout") {

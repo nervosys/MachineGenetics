@@ -39,6 +39,7 @@ pub mod kernel;
 pub mod learner;
 pub mod measure;
 pub mod physics;
+pub mod physics_task;
 pub mod rollout;
 pub mod substrate;
 pub mod succession;

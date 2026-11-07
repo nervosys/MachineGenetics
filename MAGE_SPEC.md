@@ -2072,11 +2072,12 @@ if the candidate is a single `@role(candidate) f step` that passes
 scores it. Its break-check deletes `sp advance`, and explicit Euler then
 scores 0.21 instead of being refused.
 
-The arena does not run this task yet. Its tasks score byte predictors and
-generated programs against a corpus. Two things are missing: a task kind
-whose program is appended to a fixed MAGE harness, and a verdict that treats
-a contract violation as a refusal rather than as a crash. Those are a design
-change to the arena, not a test, so C3 stops at a ranked fixed population.
+The arena runs this task as `arena physics-task [--fuel N] [FILE…]`
+(`arena/src/physics_task.rs`). It is the fixed-harness task kind the arena
+lacked: each candidate is admitted, spliced into `task.mg.in`, and run under
+fuel, and the verdict is a score or a refusal. A contract violation is a
+refusal of class `contract`, distinct from `fuel`, which is a refusal of
+class `fuel`.
 
 ### 11.12 Contact as a convex step (plan C5)
 

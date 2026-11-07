@@ -886,6 +886,46 @@ constant-velocity predictor into the bytes, which does part of the physics for
 the learner. Corpus names end in the encoding, so figures from different
 encodings are never mixed.
 
+## A physics program task as an arena task (plan C3)
+
+The physics program task (`prototype/examples/physics_task/`) is an arena task
+kind. `arena physics-task [--fuel N] [FILE…]` admits each candidate, splices it
+into the fixed harness `task.mg.in`, runs `score()` under fuel, and ranks the
+result. The default population is the five shipped candidates; file arguments
+replace it. The code is `arena/src/physics_task.rs`.
+
+Every candidate gets one verdict, a score or a refusal, and a refusal names its
+class: `parse`, `signature` (not one `@role(candidate) f step`), `type` (the
+`--check` gate, including `--core`), `contract` (the harness's `@ens` was
+violated at run time), `fuel` (the budget ran out before `score` returned), or
+`runtime`. Contract and fuel are separate on purpose: fuel says a candidate is
+too expensive, and a contract says it is wrong.
+
+```sh
+cargo run --release --manifest-path arena/Cargo.toml -- physics-task
+```
+
+Output, release build, 2026-10-29:
+
+```text
+physics task (plan C3): spring, two held-out cases of 100 steps, fuel 1000000 per candidate
+rank  candidate                verdict
+1     velocity_verlet.mg       scored 0.001303  (fuel 22394)
+2     symplectic_euler.mg      scored 0.025484  (fuel 18394)
+3     frozen.mg                scored 1.032263  (fuel 14594)
+-     explicit_euler.mg        refused [contract] contract violated: `@ens(abs(energy(result, k) - e0) <= DRIFT * e0, "energy stays within DRIFT of its initial value")` of `advance` (sp advance) is false: `advance` returned [0.5707904498999999, -1.7650160200000002]  (fuel 1154)
+-     verlet_missing_half.mg   refused [contract] contract violated: `@ens(abs(energy(result, k) - e0) <= DRIFT * e0, "energy stays within DRIFT of its initial value")` of `advance` (sp advance) is false: `advance` returned [-0.8165700562268287, -0.9581814648563448]  (fuel 2588)
+```
+
+The ranking and the refusals are the ones `prototype/tests/physics_task.rs` and
+`scripts/physics-task-reference.py` describe. The arena does not change the
+harness: `prototype/tests/physics_task.rs` keeps its own copy of the admission
+and splice, because `mage-prototype` cannot depend on the arena. The four
+`physics_task` unit tests check the ranking, the contract refusal's clause and
+step, the fuel-versus-contract split (a 100-unit budget is `fuel` for both
+candidates), and admission. Breaking the classifier, so a contract violation is
+no longer recognised, fails the two contract tests.
+
 ## What surfaced in MAGE itself
 
 The arena runs the compiler thousands of times on programs no person wrote,
