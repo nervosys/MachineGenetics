@@ -36,10 +36,18 @@
 //! because the log-domain mixture would need a renormalising sum over the 256
 //! symbols at every byte anyway, and the linear form keeps each expert's
 //! probability for the actual byte in view. The weights are a Bayesian posterior
-//! over the two experts, updated once per trained byte by `w_i ← w_i·P_i(y)`,
+//! over the two experts, updated once per byte by `w_i ← w_i·P_i(y)`,
 //! renormalised, then mixed 2% toward uniform (a fixed share), so an expert that
-//! loses early keeps at least 1% and can recover. Weights move only in
-//! [`EntropyLearner::train`]; scoring is pure.
+//! loses early keeps at least 1% and can recover.
+//!
+//! The weights start from their value at the end of training, and keep moving
+//! on the bytes they are scored on, in [`EntropyLearner::bits_per_byte`] and in
+//! the predictor. Each update uses only the bytes before it, so a decoder can
+//! replay it, and the coding cost stays honest. Frozen weights were measured to
+//! fail out of distribution: trained on the self-play pool, the chunk table
+//! held 99% of the weight and scored README at 9.52 bits per byte, above uniform.
+//! With the weights moving, the same run scores README at 8.00, against the
+//! n-gram's 7.99.
 //!
 //! The n-gram's rows are trained by Adam as in [`Learner`]. The chunk counts are
 //! not gradient-trained, so [`ByteLearner::progress`] reports the n-gram's
@@ -154,8 +162,21 @@ impl EntropyLearner {
         Step { ngram, bucket }
     }
 
-    fn mix(&self, s: &Step, y: usize) -> f64 {
-        self.weight[0] * s.ngram[y] + self.weight[1] * self.chunk_prob(s.bucket, y, s.ngram[y])
+    /// The mixture at byte `y` under weights `w`.
+    fn mix(&self, w: [f64; 2], s: &Step, y: usize) -> f64 {
+        w[0] * s.ngram[y] + w[1] * self.chunk_prob(s.bucket, y, s.ngram[y])
+    }
+
+    /// The weights after byte `y`, which `s` predicted: the Bayes posterior
+    /// `w_i ← w_i·P_i(y)`, renormalised, then mixed toward uniform by the fixed share.
+    fn posterior(&self, w: [f64; 2], s: &Step, y: usize) -> [f64; 2] {
+        let a = w[0] * s.ngram[y];
+        let b = w[1] * self.chunk_prob(s.bucket, y, s.ngram[y]);
+        let z = a + b;
+        if !(z > 0.0) {
+            return w;
+        }
+        [(1.0 - SHARE) * a / z + SHARE / 2.0, (1.0 - SHARE) * b / z + SHARE / 2.0]
     }
 
     /// The `θ` that puts a fraction `1/L` of positions above it, over `batch`.
@@ -180,10 +201,13 @@ impl EntropyLearner {
             return f64::NAN;
         }
         let mut seg = Segmenter::default();
+        let mut w = self.weight;
         let mut nll = 0.0;
         for t in 0..bytes.len() {
             let s = self.step(&mut seg, bytes, t, self.threshold);
-            nll -= self.mix(&s, bytes[t] as usize).max(1e-300).log2();
+            let y = bytes[t] as usize;
+            nll -= self.mix(w, &s, y).max(1e-300).log2();
+            w = self.posterior(w, &s, y);
         }
         nll / bytes.len() as f64
     }
@@ -199,11 +223,7 @@ impl EntropyLearner {
             for t in 0..seq.len() {
                 let s = self.step(&mut seg, seq, t, theta);
                 let y = seq[t] as usize;
-                let a = self.weight[0] * s.ngram[y];
-                let b = self.weight[1] * self.chunk_prob(s.bucket, y, s.ngram[y]);
-                let z = a + b;
-                let (pa, pb) = (a / z, b / z);
-                self.weight = [(1.0 - SHARE) * pa + SHARE / 2.0, (1.0 - SHARE) * pb + SHARE / 2.0];
+                self.weight = self.posterior(self.weight, &s, y);
                 let i = s.bucket * V + y;
                 self.counts[i] += 1;
                 self.totals[s.bucket] += 1;
@@ -218,14 +238,19 @@ impl EntropyLearner {
     #[cfg(test)]
     fn prediction(&self, bytes: &[u8], t: usize) -> [f64; V] {
         let mut seg = Segmenter::default();
+        let mut w = self.weight;
         let mut last = None;
         for u in 0..=t {
-            last = Some(self.step(&mut seg, bytes, u, self.threshold));
+            let s = self.step(&mut seg, bytes, u, self.threshold);
+            if u < t {
+                w = self.posterior(w, &s, bytes[u] as usize);
+            }
+            last = Some(s);
         }
         let s = last.expect("t is a position of bytes");
         let mut out = [0.0; V];
         for (y, o) in out.iter_mut().enumerate() {
-            *o = self.mix(&s, y);
+            *o = self.mix(w, &s, y);
         }
         out
     }
@@ -282,13 +307,15 @@ struct EntropyPredictor<'a> {
     seg: Segmenter,
     /// The step at the current position, `history.len()`.
     cur: Step,
+    /// The mixture weights after the bytes so far, as [`EntropyLearner::bits_per_byte`] has them.
+    weight: [f64; 2],
 }
 
 impl<'a> EntropyPredictor<'a> {
     fn new(learner: &'a EntropyLearner) -> EntropyPredictor<'a> {
         let mut seg = Segmenter::default();
         let cur = learner.step(&mut seg, &[], 0, learner.threshold);
-        EntropyPredictor { learner, history: Vec::new(), seg, cur }
+        EntropyPredictor { learner, history: Vec::new(), seg, cur, weight: learner.weight }
     }
 }
 
@@ -296,11 +323,12 @@ impl Predictor for EntropyPredictor<'_> {
     fn distribution(&self) -> [f64; 256] {
         let mut out = [0.0; V];
         for (y, o) in out.iter_mut().enumerate() {
-            *o = self.learner.mix(&self.cur, y);
+            *o = self.learner.mix(self.weight, &self.cur, y);
         }
         out
     }
     fn push(&mut self, byte: u8) {
+        self.weight = self.learner.posterior(self.weight, &self.cur, byte as usize);
         self.history.push(byte);
         let t = self.history.len();
         self.cur = self.learner.step(&mut self.seg, &self.history, t, self.learner.threshold);
@@ -430,6 +458,74 @@ mod tests {
         let (e, n) = (ent.bits_per_byte(&repeated), ng.bits_per_byte(&repeated));
         eprintln!("repeated excerpt: entropy {e:.4} bits/byte, ngram {n:.4} bits/byte");
         assert!(e <= n + 0.05, "entropy {e} worse than ngram {n} by more than 0.05");
+    }
+
+    #[test]
+    fn the_chunk_expert_is_a_distribution_for_every_key() {
+        // P_b(y) = (n_y + β·P_a(y)) / (N + β) sums to one over y, but only if the
+        // back-off is normalised too. Checked for keys the pool has seen often
+        // and for text it never contains, at every position.
+        let mut l = tiny(4.0);
+        for _ in 0..8 {
+            l.train(&[&README[..256], &README[256..512]]);
+        }
+        let pool_key = &README[..512];
+        let unseen = b"zq#~ zq#~ zq#~ zq#~ zq#~ zq#~ zq#~ zq#~".as_slice();
+        let mut keys = 0usize;
+        for text in [pool_key, unseen] {
+            let mut seg = Segmenter::default();
+            for t in 0..text.len() {
+                let s = l.step(&mut seg, text, t, l.threshold);
+                let sum_a: f64 = s.ngram.iter().sum();
+                let sum_b: f64 = (0..V).map(|y| l.chunk_prob(s.bucket, y, s.ngram[y])).sum();
+                assert!((sum_a - 1.0).abs() < 1e-9, "n-gram sums to {sum_a} at {t}");
+                assert!((sum_b - 1.0).abs() < 1e-9, "chunk expert sums to {sum_b} at {t}");
+                keys += 1;
+            }
+        }
+        assert_eq!(keys, pool_key.len() + unseen.len());
+    }
+
+    #[test]
+    fn out_of_distribution_the_mixture_follows_the_ngram() {
+        // A chunk table that has memorised a pool gives each of its keys a large
+        // count N, and an unseen byte in such a key costs log2(N + 1) bits over
+        // the n-gram. Scored on text the pool never contains, a mixture whose
+        // weights stayed frozen would pay that on every byte. The weights keep
+        // moving on the bytes they score, so the mixture should cost what the
+        // n-gram costs, and not more.
+        let pool: Vec<u8> = b"0123456789".repeat(40);
+        let mut ent = EntropyLearner::new(EntropyConfig { orders: 2, log2_buckets: 8, target_len: 4.0, lr: 0.05 });
+        let mut ng = Learner::new(LearnerConfig { orders: 2, log2_buckets: 8, lr: 0.05 });
+        for _ in 0..4 {
+            for c in pool.chunks(64) {
+                ent.train(&[c]);
+                ng.train(&[c]);
+            }
+        }
+        let text = b"the quick brown fox jumps over the lazy dog. ".repeat(4);
+        let (e, n) = (ent.bits_per_byte(&text), ng.bits_per_byte(&text));
+        eprintln!("out of distribution: entropy {e:.4} bits/byte, ngram {n:.4} bits/byte");
+        assert!(e <= n + 0.1, "entropy {e} above the ngram {n} by more than 0.1 out of distribution");
+    }
+
+    #[test]
+    fn the_predictor_scores_what_bits_per_byte_scores_as_the_weights_move() {
+        // Generation runs the predictor one byte at a time; its weights must move
+        // on each pushed byte exactly as `bits_per_byte` moves them while scoring.
+        let mut l = tiny(4.0);
+        for _ in 0..4 {
+            l.train(&[&README[..256], &README[256..512]]);
+        }
+        let text = b"0123456789 zyx 0123456789 zyx";
+        let mut p = ByteLearner::predictor(&l).expect("the entropy learner has a predictor");
+        let mut nll = 0.0;
+        for &y in text.iter() {
+            nll -= p.distribution()[y as usize].log2();
+            p.push(y);
+        }
+        let mean = nll / text.len() as f64;
+        assert!((mean - l.bits_per_byte(text)).abs() < 1e-9, "predictor {mean} vs scored {}", l.bits_per_byte(text));
     }
 
     #[test]

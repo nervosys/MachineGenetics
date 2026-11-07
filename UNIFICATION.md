@@ -731,8 +731,10 @@ tokens, a tokenizer's prior, are the right unit. S1 made the unit selectable
   depend on a formatting choice.
 - **Learner bits is the principled unit, but not a usable one yet.** Charging
   `-log2 P(program)` under a learner is minimum description length proper. L3
-  showed learners disagree by more than 2x in data cost on the same corpus, and the
-  entropy learner can exceed 8 bits/byte out of distribution (L1). Making the
+  showed learners disagree by more than 2x in data cost on the same corpus. The
+  entropy learner exceeded 8 bits/byte out of distribution (L1) until its
+  mixture weights were made to adapt while scoring, a reminder that a learner's
+  figures move with its implementation. Making the
   objective depend on the learner under study would couple what is measured
   to what is optimised.
 

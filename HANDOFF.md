@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,459** — rmi 1,384 · prototype 1,457 · ribosome 168 · germline 175 · forge 63 · arena 212 |
+| Tests | **3,462** — rmi 1,384 · prototype 1,457 · ribosome 168 · germline 175 · forge 63 · arena 215 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -1662,6 +1662,51 @@ function bodies only.
 
 Break-checked: dropping the type checker's span stamp fails 4 of the 5 new
 tests. Prototype +5 tests.
+
+**Follow-up to L1: the entropy learner's mixture weights keep adapting while it
+scores, and the out-of-distribution overshoot is gone.**
+
+The cause of the 9.52 bits/byte on README after training on the pool:
+- The chunk table backs off to the n-gram with pseudo-count 1. An unseen byte
+  under a key seen N times therefore costs log2(N+1) bits more than the n-gram
+  would charge.
+- 99.2% of README bytes were unseen under their key.
+- The mixture weight was learned in training, at 0.99 on the chunk table, and
+  frozen while scoring. So the learner paid that cost on nearly every byte.
+
+The mixture was a proper distribution all along, and a new test checks this at
+every position.
+
+The fix: the weights take the same Bayes-plus-fixed-share step per byte in
+`bits_per_byte` and in the predictor, starting from their trained value. Each
+step uses only bytes already coded, so the cost stays causal. It is the default
+now. Confidence-bucketed weights were not needed.
+
+Re-measured. The full before/after figures are in MEASUREMENTS.md, in the L1,
+L2, L3 and P6 sections.
+- Out of distribution: 9.52 -> 8.00, against the n-gram's 7.99.
+- L1: entropy now beats the n-gram at both sizes, on text and on code. Of the
+  four cells, only code at 4x2^14 got worse (4.605 -> 4.674), and it is still
+  0.55 below the n-gram.
+- L2: under planes, entropy passes the physics gate on all five systems. n-body
+  went 7.84 -> 5.40.
+- L3: on n-body only, "entropy is no cheaper on physics" is overturned. Its
+  bytes multiplier is 0.59 +/- 0.29 per seed. The other four systems stand.
+  The critical-path answer is unchanged: no learner is advantaged on physics
+  but not on text.
+- P6 with sampling (T = 0.5): entropy's spring error at horizon 100 is now
+  0.52. That equals the greedy zero-state error, so it is the same artefact.
+  The sampled-rollouts entry above said those spring wins disappear; that held
+  for entropy only before this fix. The n-body divergence persists under
+  sampling, for the n-gram as well.
+
+Caveats:
+- After-fix seconds were not re-timed, because the grid ran in parallel.
+- The committed `grid/` outputs are from before the fix.
+- Text and code are single runs.
+
+Break-checked: freezing the weights again fails the out-of-distribution test
+(8.92 against 8.55). Arena +3 tests.
 
 ## Where this phase ended, 2026-09-16
 
