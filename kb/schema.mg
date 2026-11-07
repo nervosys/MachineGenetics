@@ -32,7 +32,10 @@ kb Schema {
     // v9 (2026-10-31): `diagnostic_row`, `warning_carries` and `gap`, for
     // kb/rules/diagnostics.mg. `rule_enforced_twice` dropped: E0308 has three
     // emitters, and a code with several still traces to one rule.
-    fact schema_version(9);
+    // v10 (2026-10-31): `contract_row`, `clause_checked` and `constraint_row`,
+    // for kb/rules/contracts.mg and kb/rules/grammar.mg. A clause_checked
+    // counts as enforcing its Contract.
+    fact schema_version(10);
 
     // ── Classes ─────────────────────────────────────────────────────────
     // Seven roots. The twelve domains of MAGE_ONTOLOGY.md group facts into
@@ -212,6 +215,21 @@ kb Schema {
     fact relation(gap);
     fact arg_class(gap, 1, Rule);
     fact arg_class(gap, 2, Text);
+    // name, spelling, meaning.
+    fact relation(contract_row);
+    fact arg_class(contract_row, 1, Contract);
+    fact arg_class(contract_row, 2, Text);
+    fact arg_class(contract_row, 3, Text);
+    // clause, placement, the component that checks it there.
+    fact relation(clause_checked);
+    fact arg_class(clause_checked, 1, Contract);
+    fact arg_class(clause_checked, 2, Text);
+    fact arg_class(clause_checked, 3, SymbolicComponent);
+    // name, value, meaning.
+    fact relation(constraint_row);
+    fact arg_class(constraint_row, 1, GrammarConstraint);
+    fact arg_class(constraint_row, 2, Text);
+    fact arg_class(constraint_row, 3, Text);
     fact relation(in_profile);
     fact arg_class(in_profile, 1, Production);
     fact arg_class(in_profile, 2, Profile);
@@ -302,6 +320,7 @@ kb Schema {
     fact invariant(unenforced_rule, "every Rule but a SafetyRule has an enforced_by or a gap");
     rule enforced(r: str) { enforced_by(r, _) }
     rule enforced(r: str) { gap(r, _) }
+    rule enforced(r: str) { clause_checked(r, _, _) }
     rule unenforced_rule(r: str) { is_a(r, "Rule") && !is_a(r, "SafetyRule") && !enforced(r) }
 
     fact invariant(rule_without_row, "every SafetyRule has a safety_rule row");

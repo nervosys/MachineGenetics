@@ -29,6 +29,8 @@ pub const FILES: &[(&str, &str)] = &[
     ("kb/meaning.mg", include_str!("../../kb/meaning.mg")),
     ("kb/rules/safety.mg", SAFETY),
     ("kb/rules/diagnostics.mg", include_str!("../../kb/rules/diagnostics.mg")),
+    ("kb/rules/contracts.mg", include_str!("../../kb/rules/contracts.mg")),
+    ("kb/rules/grammar.mg", include_str!("../../kb/rules/grammar.mg")),
 ];
 
 /// The schema's own predicates: a fact may use these without a `relation`.
@@ -229,7 +231,7 @@ mod tests {
     #[test]
     fn the_schema_alone_loads() {
         let mut kb = load_files(&FILES[..1]).unwrap_or_else(|e| panic!("{e:#?}"));
-        assert_eq!(kb.facts("schema_version"), vec![vec!["9".to_string()]]);
+        assert_eq!(kb.facts("schema_version"), vec![vec!["10".to_string()]]);
         assert!(!kb.query("below", &["Keyword", "Construct"]).is_empty());
     }
 

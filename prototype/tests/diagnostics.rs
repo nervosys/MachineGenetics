@@ -170,7 +170,7 @@ fn deprecated() -> bool {
     emits("evolve Opt { genome: i32 }", "E0554") && absent("f opt() -> i32 { 1 }", "E0554")
 }
 
-/// A refuted contract: `false` is refuted on every execution.
+/// A refuted contract: `0b` is false on every execution.
 fn spec_violation() -> bool {
     emits("@req(false)\nf add(a: i64, b: i64) -> i64 { a + b }\n", "E0560")
         && absent("@req(a >= 0)\nf add(a: i64, b: i64) -> i64 { a + b }\n", "E0560")
