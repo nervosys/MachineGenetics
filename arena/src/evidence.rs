@@ -122,6 +122,23 @@ pub fn append(path: &Path, records: &[Record]) -> Result<usize, String> {
     Ok(log.lines().count() + records.len())
 }
 
+/// Which entries of a log a figure came from: a range of `seq`, and the hash of
+/// the log's last line, which pins every entry before it.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct Citation { pub path: String, pub first: u64, pub last: u64, pub head: String }
+
+impl std::fmt::Display for Citation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "evidence: {} seq {}–{}, head sha256:{}", self.path, self.first, self.last, self.head)
+    }
+}
+
+/// The citation of entries `first` to `last` of `log`, which is at `path`.
+pub fn cite(path: &str, log: &str, first: u64, last: u64) -> Citation {
+    let head = log.lines().last().map(line_hash).unwrap_or_default();
+    Citation { path: path.into(), first, last, head }
+}
+
 /// Refusals per rule per component, and what each component was measured on.
 #[derive(Debug, Clone, Default, PartialEq, Serialize)]
 pub struct Tally {
@@ -196,15 +213,26 @@ impl Tally {
     }
 }
 
-/// `arena evidence <log.jsonl> [--json OUT]`: verify a log, then print its tally.
+/// The entries numbered `first` to `last`, clamped to those `entries` holds.
+pub fn in_range(entries: &[Entry], first: u64, last: u64) -> &[Entry] {
+    let lo = (first as usize).min(entries.len());
+    let hi = (last as usize).saturating_add(1).min(entries.len()).max(lo);
+    &entries[lo..hi]
+}
+
+/// `arena evidence <log.jsonl> [--seq A..B] [--json OUT]`: verify a log, then tally
+/// its entries `A..=B` (default: all) and cite them.
 pub fn report_cli(args: &[String]) -> Result<(), String> {
-    const USAGE: &str = "usage: arena evidence <log.jsonl> [--json OUT]";
+    const USAGE: &str = "usage: arena evidence <log.jsonl> [--seq A..B] [--json OUT]";
     let mut positional: Vec<&str> = Vec::new();
     let mut json_out: Option<&str> = None;
+    let mut seq: Option<&str> = None;
     let mut rest = args.iter().map(String::as_str);
     while let Some(a) = rest.next() {
         if a == "--json" {
             json_out = Some(rest.next().ok_or(USAGE)?);
+        } else if a == "--seq" {
+            seq = Some(rest.next().ok_or(USAGE)?);
         } else {
             positional.push(a);
         }
@@ -212,12 +240,31 @@ pub fn report_cli(args: &[String]) -> Result<(), String> {
     let &[path] = positional.as_slice() else { return Err(USAGE.into()) };
     let log = std::fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?;
     let entries = verify(&log).map_err(|e| format!("{path}: {e}"))?;
-    let report = tally(&entries);
+    let n = entries.len() as u64;
+    let (first, last) = match seq {
+        None => (0, n.saturating_sub(1)),
+        Some(s) => {
+            let bad = || format!("{path}: --seq {s}: want A..B with A <= B < {n}");
+            let (a, b) = s.split_once("..").ok_or_else(bad)?;
+            let a = a.parse::<u64>().map_err(|_| bad())?;
+            let b = b.parse::<u64>().map_err(|_| bad())?;
+            if a > b || b >= n {
+                return Err(bad());
+            }
+            (a, b)
+        }
+    };
+    let tallied = in_range(&entries, first, last);
+    let report = tally(tallied);
+    let citation = cite(path, &log, first, last);
     if let Some(out) = json_out {
-        let json = serde_json::to_string_pretty(&report).map_err(|e| e.to_string())?;
+        let json = serde_json::to_string_pretty(&serde_json::json!({ "citation": citation, "tally": report })).map_err(|e| e.to_string())?;
         std::fs::write(out, json).map_err(|e| format!("{out}: {e}"))?;
     }
-    print!("{path}: {} entries, verified\n{}", entries.len(), report.table());
+    print!("{path}: {} entries, verified\n{}", tallied.len(), report.table());
+    if !log.is_empty() {
+        println!("{citation}");
+    }
     Ok(())
 }
 
@@ -308,5 +355,32 @@ mod tests {
         assert!(lines.iter().any(|l| l.starts_with("max_depth")), "{table}");
         let pct = lines.iter().find(|l| l.starts_with("refused %")).expect("a refused % row");
         assert!(pct.contains("66.7") && pct.contains("100.0"), "{table}");
+    }
+
+    #[test]
+    fn a_citation_names_the_range_and_the_head() {
+        let records: Vec<Record> = mixed().into_iter().map(|e| e.record).collect();
+        let n = records.len() as u64;
+        let log = continue_log("", &records).unwrap();
+        let c = cite("x.jsonl", &log, 0, n - 1);
+        assert_eq!((c.first, c.last), (0, n - 1));
+        assert_eq!(c.head, line_hash(log.lines().last().unwrap()));
+        assert!(c.to_string().starts_with("evidence: x.jsonl seq 0–"), "{c}");
+        let longer = log.clone() + &continue_log(&log, &[record(2, refusal())]).unwrap();
+        assert_ne!(cite("x.jsonl", &longer, 0, n).head, c.head);
+    }
+
+    #[test]
+    fn a_range_tallies_only_its_entries() {
+        let entries = mixed();
+        let part = in_range(&entries, 1, 2);
+        assert_eq!(part.iter().map(|e| e.seq).collect::<Vec<_>>(), [1, 2]);
+        assert_eq!(in_range(&entries, 0, 99).len(), entries.len());
+        let t = tally(part);
+        assert_eq!(t.entries, 2);
+        assert!(t.entries < tally(&entries).entries);
+        assert_eq!(t.refusals["gate_empty"]["grammar"], 1);
+        assert_eq!(t.refusals["max_depth"]["mutator"], 1);
+        assert!(t.rewards.is_empty());
     }
 }

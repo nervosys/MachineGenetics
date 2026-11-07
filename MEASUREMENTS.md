@@ -6,8 +6,16 @@ numbers are machine-dependent; the shapes (throughput, scaling) are not.
 
 Date: 2026-06-10. Build: `release` for perf, `cargo test` for functionality.
 
+**Sources.** Each section names where its numbers came from: the command, and a
+commit where it matters. Sections written before the evidence log (plan Phase 7)
+keep those sources. A figure read from an evidence log also cites the entries it
+came from, as `arena evidence <log> [--seq A..B]` prints them:
+`evidence: <log> seq A–B, head sha256:<hash>`. The head is the hash of the log's
+last line, which pins every entry before it, so a log regenerated from the command
+is the one cited exactly when its head matches. Logs are not committed.
+
 > **Re-verified 2026-09-25** — all six crates tested: prototype **1,555**, rmi
-> **1,384**, ribosome **168**, germline **175**, forge **63**, arena **243** = **3,588 passing,
+> **1,384**, ribosome **168**, germline **175**, forge **63**, arena **245** = **3,590 passing,
 > 0 failing, 0 warnings**.
 >
 > *One figure below had not regressed — it had been superseded.* The ABL
@@ -80,7 +88,7 @@ Date: 2026-06-10. Build: `release` for perf, `cargo test` for functionality.
 | rmi (`cpu`) | **1384 pass** | `cargo test --no-default-features --features cpu` |
 | ribosome (build engine) | **168 pass** | `cargo test --manifest-path ribosome/Cargo.toml` |
 | germline (RSI control plane) | **175 pass** | `cargo test --manifest-path germline/Cargo.toml` |
-| arena (self-play arena) | **243 pass** | `cargo test --manifest-path arena/Cargo.toml` |
+| arena (self-play arena) | **245 pass** | `cargo test --manifest-path arena/Cargo.toml` |
 | forge (registry) | **63 pass** | `cargo test --manifest-path forge/Cargo.toml` |
 | agentic-eval (AetherShell) | **80 pass** | `cargo test -p agentic-eval` |
 | SPINE `spine-agentic` | **285 pass** | `cargo test -p spine-agentic` |
@@ -896,7 +904,13 @@ From the evidence log of three runs of the standard arena configuration (`ARENA.
 arena --heldout README.md,germline/src/gate.rs --rounds 40 --programs 48 --agents grammar:2,uniform:1,mutator:1 --learners 3:12:0.02,2:10:0.05,1:8:0.1 --cost fuel --meter-gpus none --seed N --evidence std.jsonl
 ```
 
-One departure from the documented configuration: `--cost fuel --meter-gpus none`, so the runs are deterministic and reproduce. The log is 5,760 entries; it verifies, and its last entry (seq 5759) hashes to `e66bd3cc98759c81a81089d46d26721c9a2ece3f118a1ebac058d08805a2cc84`. The log is not committed (1.6 MB); the command regenerates it, and the hash says whether it did.
+One departure from the documented configuration: `--cost fuel --meter-gpus none`, so the runs are deterministic and reproduce. The log is 5,760 entries, 1,920 a seed (40 rounds of 48 programs), and verifies. The table is
+
+```
+evidence: std.jsonl seq 0–5759, head sha256:e66bd3cc98759c81a81089d46d26721c9a2ece3f118a1ebac058d08805a2cc84
+```
+
+and each seed is `--seq 0..1919`, `1920..3839` and `3840..5759` of the same log.
 
 | rule | grammar (×2) | mutator | uniform |
 |---|---|---|---|
@@ -907,7 +921,7 @@ One departure from the documented configuration: `--cost fuel --meter-gpus none`
 | rewarded | 2,935 | 1,155 | 965 |
 | refused % | 3.1 | 32.3 | 5.9 |
 
-Each entry is a refusal or a reward, so refused + rewarded is every program each generator proposed that reached the verdict. Per seed, the reports' refusal counts are `depth` 187/171/162, `empty` 65/53/63 and `fuel` 3/1/0; they sum to the table's.
+Each entry is a refusal or a reward, so refused + rewarded is every program each generator proposed that reached the verdict. Per seed (the three ranges above), the reports' refusal counts are `depth` 187/171/162, `empty` 65/53/63 and `fuel` 3/1/0; they sum to the table's.
 
 - **Of the three generators, only `grammar` is neural** (a learned policy over the grammar's productions). `uniform` samples the same productions uniformly; `mutator` edits programs from the population. So "which rules the neural side keeps breaking" has one column here: `grammar` breaks `gate_empty` (a program with no output) and rarely `gate_fuel`, at 3.1% of its programs, about half `uniform`'s rate. It never breaks `max_depth`.
 - **`max_depth` is the mutator's.** All 520 depth refusals are its grafts, a third of what it proposes. `--bound-grafts` removes them (`ARENA.md`, "Bounded grafts"), at a held-out cost measured there.
