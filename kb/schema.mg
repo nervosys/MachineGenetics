@@ -15,7 +15,9 @@
 
 kb Schema {
     // v2 (2026-10-29): `TokenKind` and `lexes_as`, for kb/lexicon.mg.
-    fact schema_version(2);
+    // v3 (2026-10-29): `sigil_two_keywords` dropped: `:` abbreviates both
+    // `in` and `else`, and the grammar, not the spelling, says which.
+    fact schema_version(3);
 
     // ── Classes ─────────────────────────────────────────────────────────
     // Seven roots. The twelve domains of MAGE_ONTOLOGY.md group facts into
@@ -173,9 +175,6 @@ kb Schema {
 
     fact invariant(spelling_two_kinds, "a Token lexes as one TokenKind");
     rule spelling_two_kinds(t: str) { lexes_as(t, a) && lexes_as(t, b) && a != b }
-
-    fact invariant(sigil_two_keywords, "a Sigil abbreviates one Keyword");
-    rule sigil_two_keywords(s: str) { abbreviates(s, a) && abbreviates(s, b) && a != b }
 
     fact invariant(keyword_two_sigils, "a Keyword has at most one Sigil");
     rule keyword_two_sigils(k: str) { abbreviates(a, k) && abbreviates(b, k) && a != b }

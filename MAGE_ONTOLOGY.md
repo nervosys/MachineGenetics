@@ -385,6 +385,9 @@ A fact `instance_of(x, C)` puts `x` in class `C`, and in every class above it.
 A `Token` is a spelling (`"fn"`); a `TokenKind` is what the lexer produces
 for it (`KwF`). [`kb/lexicon.mg`](kb/lexicon.mg) states all 181 token kinds
 and the 100 reserved spellings, and a test holds `lexer.rs` to it both ways.
+The mode is the class: a `Sigil` (`f`) prints in agent mode, the `Keyword` it
+abbreviates (`fn`) in human mode, and a plain `Token` in both. The 37
+`abbreviates` pairs are held to `fmt.rs` over every `.mg` source in the repo.
 
 | Relation | Arguments |
 |---|---|
@@ -415,7 +418,6 @@ loads only when every one derives nothing.
 | `unenforced_rule` | Every `Rule` has an `enforced_by` |
 | `rule_enforced_twice` | No `Rule` has two `enforced_by` |
 | `spelling_two_kinds` | A `Token` lexes as one `TokenKind` |
-| `sigil_two_keywords` | A `Sigil` abbreviates one `Keyword` |
 | `keyword_two_sigils` | A `Keyword` has at most one `Sigil` |
 | `unaccounted_lowering` | Every `lowers_to` round-trips or states what it `loses` |
 | `unreachable_production` | Every `Production` is reachable from a `start_symbol` |
