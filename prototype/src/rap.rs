@@ -282,7 +282,8 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
                     "error": {
                         "line": e.line,
                         "col": e.col,
-                        "message": e.message
+                        "message": e.message,
+                        "production": e.production
                     }
                 }),
             }
@@ -307,7 +308,8 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
                 Err(e) => Some(serde_json::json!({
                     "line": e.line,
                     "col": e.col,
-                    "message": e.message
+                    "message": e.message,
+                    "production": e.production
                 })),
             };
 
@@ -345,7 +347,7 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
             if let Err(e) = parser::parse(&tokens) {
                 diagnostics.push(hir::Diagnostic {
                     severity: hir::Severity::Error,
-                    message: e.message.clone(),
+                    message: e.describe(),
                     span: Some(hir::Span {
                         line: e.line as u32,
                         col: e.col as u32,
@@ -606,7 +608,7 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
                 }
                 Err(e) => serde_json::json!({
                     "ok": false,
-                    "error": { "line": e.line, "col": e.col, "message": e.message }
+                    "error": { "line": e.line, "col": e.col, "message": e.message, "production": e.production }
                 }),
             }
         }
@@ -631,7 +633,7 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
                 }
                 Err(e) => serde_json::json!({
                     "ok": false,
-                    "error": { "line": e.line, "col": e.col, "message": e.message }
+                    "error": { "line": e.line, "col": e.col, "message": e.message, "production": e.production }
                 }),
             }
         }
@@ -648,7 +650,7 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
                 }),
                 Err(e) => serde_json::json!({
                     "ok": false,
-                    "error": { "line": e.line, "col": e.col, "message": e.message }
+                    "error": { "line": e.line, "col": e.col, "message": e.message, "production": e.production }
                 }),
             }
         }
@@ -668,7 +670,7 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
                 }
                 Err(e) => serde_json::json!({
                     "ok": false,
-                    "error": { "line": e.line, "col": e.col, "message": e.message }
+                    "error": { "line": e.line, "col": e.col, "message": e.message, "production": e.production }
                 }),
             }
         }
@@ -691,7 +693,7 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
                 }
                 Err(e) => serde_json::json!({
                     "ok": false,
-                    "error": { "line": e.line, "col": e.col, "message": e.message }
+                    "error": { "line": e.line, "col": e.col, "message": e.message, "production": e.production }
                 }),
             }
         }
@@ -720,7 +722,7 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
                 }
                 Err(e) => serde_json::json!({
                     "ok": false,
-                    "error": { "line": e.line, "col": e.col, "message": e.message }
+                    "error": { "line": e.line, "col": e.col, "message": e.message, "production": e.production }
                 }),
             }
         }
@@ -738,7 +740,7 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
                 }
                 Err(e) => serde_json::json!({
                     "ok": false,
-                    "error": { "line": e.line, "col": e.col, "message": e.message }
+                    "error": { "line": e.line, "col": e.col, "message": e.message, "production": e.production }
                 }),
             }
         }
@@ -756,7 +758,7 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
                 }
                 Err(e) => serde_json::json!({
                     "ok": false,
-                    "error": { "line": e.line, "col": e.col, "message": e.message }
+                    "error": { "line": e.line, "col": e.col, "message": e.message, "production": e.production }
                 }),
             }
         }
@@ -837,7 +839,7 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
                 }
                 Err(e) => serde_json::json!({
                     "ok": false,
-                    "error": { "line": e.line, "col": e.col, "message": e.message }
+                    "error": { "line": e.line, "col": e.col, "message": e.message, "production": e.production }
                 }),
             }
         }
@@ -863,7 +865,7 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
             if let Err(e) = parser::parse(&tokens) {
                 diagnostics.push(hir::Diagnostic {
                     severity: hir::Severity::Error,
-                    message: e.message.clone(),
+                    message: e.describe(),
                     span: Some(hir::Span {
                         line: e.line as u32,
                         col: e.col as u32,
@@ -905,7 +907,7 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
                 }
                 Err(e) => serde_json::json!({
                     "ok": false,
-                    "error": { "line": e.line, "col": e.col, "message": e.message }
+                    "error": { "line": e.line, "col": e.col, "message": e.message, "production": e.production }
                 }),
             }
         }
@@ -960,7 +962,7 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
                 }
                 Err(e) => serde_json::json!({
                     "ok": false,
-                    "error": { "line": e.line, "col": e.col, "message": e.message }
+                    "error": { "line": e.line, "col": e.col, "message": e.message, "production": e.production }
                 }),
             }
         }
@@ -1098,7 +1100,7 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
                     return serde_json::json!({
                         "ok": false,
                         "stage": r.stage.as_str(),
-                        "error": format!("recovered source still failed to parse: {}:{}: {}", e.line, e.col, e.message),
+                        "error": format!("recovered source still failed to parse: {}:{}: {}", e.line, e.col, e.describe()),
                     });
                 }
             };
@@ -1150,7 +1152,7 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
                 }
                 Err(e) => serde_json::json!({
                     "ok": false,
-                    "error": { "line": e.line, "col": e.col, "message": e.message },
+                    "error": { "line": e.line, "col": e.col, "message": e.message, "production": e.production },
                 }),
             }
         }
@@ -1215,7 +1217,7 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
                     return serde_json::json!({
                         "ok": false,
                         "stage": "parse",
-                        "error": { "line": e.line, "col": e.col, "message": e.message },
+                        "error": { "line": e.line, "col": e.col, "message": e.message, "production": e.production },
                     });
                 }
             };
@@ -1531,6 +1533,18 @@ mod tests {
     fn test_build_check_ok() {
         let r = call("build/check", src_params("f main() {}"));
         assert_eq!(r["ok"], true);
+    }
+
+    /// A parse error names the grammar production it arose in, so an agent
+    /// can look the production up in `kb/grammar.mg`.
+    #[test]
+    fn a_parse_error_reports_its_production() {
+        let r = call("build/check", src_params("S P {
+    x i32,
+}
+"));
+        assert_eq!(r["ok"], false);
+        assert_eq!(r["errors"][0]["production"], "StructDef", "{r}");
     }
 
     #[test]

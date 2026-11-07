@@ -265,7 +265,7 @@ fn main() {
                     write_formatted(&fmt::format_agent(&module), out_path);
                 }
                 Err(e) => {
-                    eprintln!("{path}:{}:{}: parse error: {}", e.line, e.col, e.message);
+                    eprintln!("{path}:{}:{}: parse error: {}", e.line, e.col, e.describe());
                     std::process::exit(1);
                 }
             }
@@ -293,7 +293,7 @@ fn main() {
                     write_formatted(&fmt::format_human(&module), out_path);
                 }
                 Err(e) => {
-                    eprintln!("{path}:{}:{}: parse error: {}", e.line, e.col, e.message);
+                    eprintln!("{path}:{}:{}: parse error: {}", e.line, e.col, e.describe());
                     std::process::exit(1);
                 }
             }
@@ -427,7 +427,7 @@ fn main() {
                     run_emit_abl_bytes(&module, path, out_path.as_deref());
                 }
                 Err(e) => {
-                    eprintln!("{path}:{}:{}: parse error: {}", e.line, e.col, e.message);
+                    eprintln!("{path}:{}:{}: parse error: {}", e.line, e.col, e.describe());
                     std::process::exit(1);
                 }
             }
@@ -527,7 +527,7 @@ fn main() {
                     eprintln!("// built `{name}` from {kind} spec ({count} items) → Agentic Binary Language");
                 }
                 Err(e) => {
-                    eprintln!("internal: generated {kind} failed to parse: {}:{} {}", e.line, e.col, e.message);
+                    eprintln!("internal: generated {kind} failed to parse: {}:{} {}", e.line, e.col, e.describe());
                     std::process::exit(1);
                 }
             }
@@ -619,7 +619,7 @@ fn main() {
                 let module = match parser::parse(&lexer::lex(&src)) {
                     Ok(m) => m,
                     Err(e) => {
-                        eprintln!("eval error: parse error at {}:{}: {}", e.line, e.col, e.message);
+                        eprintln!("eval error: parse error at {}:{}: {}", e.line, e.col, e.describe());
                         std::process::exit(1);
                     }
                 };
@@ -690,7 +690,7 @@ fn main() {
             let module = match parser::parse(&lexer::lex(&source)) {
                 Ok(m) => m,
                 Err(e) => {
-                    eprintln!("{path}: parse error at {}:{}: {}", e.line, e.col, e.message);
+                    eprintln!("{path}: parse error at {}:{}: {}", e.line, e.col, e.describe());
                     std::process::exit(1);
                 }
             };
@@ -827,7 +827,7 @@ fn main() {
                     run_generate(&module, path, &selected_backend);
                 }
                 Err(e) => {
-                    eprintln!("{path}:{}:{}: parse error: {}", e.line, e.col, e.message);
+                    eprintln!("{path}:{}:{}: parse error: {}", e.line, e.col, e.describe());
                     std::process::exit(1);
                 }
             }
@@ -857,7 +857,7 @@ fn main() {
                     run_infer(&module, path, &selected_backend);
                 }
                 Err(e) => {
-                    eprintln!("{path}:{}:{}: parse error: {}", e.line, e.col, e.message);
+                    eprintln!("{path}:{}:{}: parse error: {}", e.line, e.col, e.describe());
                     std::process::exit(1);
                 }
             }
@@ -901,7 +901,7 @@ fn main() {
                     run_train(&module, path, &selected_backend);
                 }
                 Err(e) => {
-                    eprintln!("{path}:{}:{}: parse error: {}", e.line, e.col, e.message);
+                    eprintln!("{path}:{}:{}: parse error: {}", e.line, e.col, e.describe());
                     std::process::exit(1);
                 }
             }
@@ -960,7 +960,7 @@ fn main() {
                     }
                 }
                 Err(e) => {
-                    eprintln!("{path}:{}:{}: parse error: {}", e.line, e.col, e.message);
+                    eprintln!("{path}:{}:{}: parse error: {}", e.line, e.col, e.describe());
                     std::process::exit(1);
                 }
             }
@@ -1022,7 +1022,7 @@ fn main() {
                     }
                 }
                 Err(e) => {
-                    eprintln!("{path}:{}:{}: parse error: {}", e.line, e.col, e.message);
+                    eprintln!("{path}:{}:{}: parse error: {}", e.line, e.col, e.describe());
                     std::process::exit(1);
                 }
             }
@@ -1069,7 +1069,7 @@ fn main() {
                     }
                 }
                 Err(e) => {
-                    eprintln!("{path}:{}:{}: parse error: {}", e.line, e.col, e.message);
+                    eprintln!("{path}:{}:{}: parse error: {}", e.line, e.col, e.describe());
                     std::process::exit(1);
                 }
             }
@@ -2935,7 +2935,7 @@ fn run_parse(source: &str, filename: &str, do_elision: bool, legacy: bool, token
         Err(e) => {
             eprintln!(
                 "{filename}:{}:{}: parse error: {}",
-                e.line, e.col, e.message
+                e.line, e.col, e.describe()
             );
             std::process::exit(1);
         }
@@ -3120,7 +3120,7 @@ fn run_check(source: &str, filename: &str, do_elision: bool, legacy: bool, token
         Err(e) => {
             eprintln!(
                 "{filename}:{}:{}: parse error: {}",
-                e.line, e.col, e.message
+                e.line, e.col, e.describe()
             );
             std::process::exit(1);
         }
@@ -3351,7 +3351,7 @@ fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool, to
             m
         }
         Err(e) => {
-            eprintln!("  ✗ parse error at {}:{}: {}", e.line, e.col, e.message);
+            eprintln!("  ✗ parse error at {}:{}: {}", e.line, e.col, e.describe());
             std::process::exit(1);
         }
     };
