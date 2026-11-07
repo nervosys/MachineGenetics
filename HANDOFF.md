@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,650** — rmi 1,384 · prototype 1,597 · ribosome 168 · germline 176 · forge 65 · arena 260 |
+| Tests | **3,652** — rmi 1,384 · prototype 1,599 · ribosome 168 · germline 176 · forge 65 · arena 260 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -2027,6 +2027,8 @@ subagent from an exact brief.
 refused program, which has no output. The grammar policy does, as reward 0, and its
 refusals in two seeded runs were 1 to 3 of 22 to 30 programs, all `empty`. No learner
 here has a use for per-rule counts; the plan item records why and when to reopen it.
+
+The builtin names attributed an effect on call are stated as facts (schema v21: `builtin_effect` in `kb/meaning.mg`). The `match` in `check_builtin_effect` is now the table `BUILTIN_EFFECTS` in `effects.rs`, looked up by name, and `every_builtin_effect_is_stated` holds it to the facts both ways. `the_spec_table_of_attributed_names_is_the_stated_one` reads the table headed `Names attributed on call` in `MAGE_SPEC.md` and holds it to the same facts both ways. Neither pins a count. `join` is left out of the table: it was in the Async arm but the vocabulary check above the match returns first, so it never fired, and the focused `effects` tests pass without it. Of the 32 names, 7 are callable (`print`, `println`, `eprint`, `eprintln`, `write`, `writeln`, `panic`, in `STD_FNS`) and 25 are in neither `STD_FNS` nor `VOCABULARY`. For two of those, `open` and `now`, `--check` reports `E0425 unresolved name` and also infers `FS` or `Time` from the same call, and `--eval` fails with `unknown function`. Nothing else changed.
 
 `write` and `writeln` now evaluate, as `print` and `println`: they share the print arm of `call_builtin_inner` in `eval.rs`. `call_capability` is unchanged, and still routes `io.print` and `io.write` to `println`, which adds a newline. The 22 scalar math functions (`exp`, `ln`, `log`, `sqrt`, `sin`, `cos`, `tan`, `tanh`, `sigmoid`, `silu`, `gelu`, `log2`, `log10`, `asin`, `acos`, `atan`, `sinh`, `cosh`, `floor`, `ceil`, `round`, `trunc`) are now held to one number at `--check`, in both spellings: `floor()` and `floor(1.0, 2.0)` are refused with an arity error, and `floor("a")` and `"a".floor()` with `` `floor` expects a number, found str ``. Before, they failed only at `--eval`, or ignored a second argument. A user function, a local of that name, or a user method named like one still wins. An `f32`, `f64`, tensor or parameter argument gives its own type back; anything else gives a fresh variable. The names are `resolve.rs`'s `SCALAR_MATH`, stated as `scalar_math` facts (schema v20) and held to them by `every_scalar_math_name_is_stated`. No `.mg` source in the repository calls one of them with another arity.
 
@@ -4913,7 +4915,7 @@ changed before you commit.
 ---
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,597**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,599**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
   across six crates **3,140**; documented-count pins **138**, up from 46 — the
   two newest hold the `kb`/`net` overlap the tensor-product-binding decision

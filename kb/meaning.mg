@@ -1349,6 +1349,42 @@ kb Meaning {
     fact scalar_math("round");
     fact scalar_math("trunc");
 
+    // `builtin_effect` gives the effect a bare call to the name is attributed, as MAGE_SPEC.md's table
+    // spells it. `every_builtin_effect_is_stated` holds effects.rs's BUILTIN_EFFECTS to these facts,
+    // and `the_spec_table_of_attributed_names_is_the_stated_one` holds the spec's table to them.
+    fact builtin_effect("print", "io");
+    fact builtin_effect("println", "io");
+    fact builtin_effect("eprint", "io");
+    fact builtin_effect("eprintln", "io");
+    fact builtin_effect("write", "io");
+    fact builtin_effect("writeln", "io");
+    fact builtin_effect("read", "io");
+    fact builtin_effect("read_line", "io");
+    fact builtin_effect("read_to_string", "io");
+    fact builtin_effect("open", "fs");
+    fact builtin_effect("create", "fs");
+    fact builtin_effect("remove", "fs");
+    fact builtin_effect("rename", "fs");
+    fact builtin_effect("mkdir", "fs");
+    fact builtin_effect("stat", "fs");
+    fact builtin_effect("connect", "net");
+    fact builtin_effect("listen", "net");
+    fact builtin_effect("bind", "net");
+    fact builtin_effect("send", "net");
+    fact builtin_effect("recv", "net");
+    fact builtin_effect("spawn", "async");
+    fact builtin_effect("select", "async");
+    fact builtin_effect("alloc", "alloc");
+    fact builtin_effect("dealloc", "alloc");
+    fact builtin_effect("realloc", "alloc");
+    fact builtin_effect("panic", "panic");
+    fact builtin_effect("env", "env");
+    fact builtin_effect("get_env", "env");
+    fact builtin_effect("set_env", "env");
+    fact builtin_effect("now", "time");
+    fact builtin_effect("sleep", "time");
+    fact builtin_effect("timeout", "time");
+
     fact builtin_grade("abs", "kinked");
     fact builtin_grade("relu", "kinked");
     fact builtin_grade("max", "kinked");

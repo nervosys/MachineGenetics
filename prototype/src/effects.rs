@@ -132,6 +132,46 @@ fn collect_methods(module: &ast::Module) -> Vec<(String, ast::FunctionDef, bool)
     out
 }
 
+/// The builtin names attributed an effect on call, by name alone. SINGLE SOURCE OF
+/// TRUTH for them: `every_builtin_effect_is_stated` holds this table to the
+/// `builtin_effect` facts in both directions, and
+/// `the_spec_table_of_attributed_names_is_the_stated_one` holds `MAGE_SPEC.md`'s table to
+/// the same facts. `join` is not here: the vocabulary's `join` wins, so it never fired.
+pub(crate) const BUILTIN_EFFECTS: &[(&str, Effect)] = &[
+    ("print", Effect::IO),
+    ("println", Effect::IO),
+    ("eprint", Effect::IO),
+    ("eprintln", Effect::IO),
+    ("write", Effect::IO),
+    ("writeln", Effect::IO),
+    ("read", Effect::IO),
+    ("read_line", Effect::IO),
+    ("read_to_string", Effect::IO),
+    ("open", Effect::FS),
+    ("create", Effect::FS),
+    ("remove", Effect::FS),
+    ("rename", Effect::FS),
+    ("mkdir", Effect::FS),
+    ("stat", Effect::FS),
+    ("connect", Effect::Net),
+    ("listen", Effect::Net),
+    ("bind", Effect::Net),
+    ("send", Effect::Net),
+    ("recv", Effect::Net),
+    ("spawn", Effect::Async),
+    ("select", Effect::Async),
+    ("alloc", Effect::Alloc),
+    ("dealloc", Effect::Alloc),
+    ("realloc", Effect::Alloc),
+    ("panic", Effect::Panic),
+    ("env", Effect::Env),
+    ("get_env", Effect::Env),
+    ("set_env", Effect::Env),
+    ("now", Effect::Time),
+    ("sleep", Effect::Time),
+    ("timeout", Effect::Time),
+];
+
 impl EffectInfer {
     pub fn new() -> Self {
         EffectInfer {
@@ -603,35 +643,8 @@ impl EffectInfer {
         if crate::resolve::VOCABULARY.iter().any(|(v, _, _)| *v == name) {
             return;
         }
-        match name {
-            "print" | "println" | "eprint" | "eprintln" | "write" | "writeln" => {
-                effects.insert(Effect::IO);
-            }
-            "read" | "read_line" | "read_to_string" => {
-                effects.insert(Effect::IO);
-            }
-            "open" | "create" | "remove" | "rename" | "mkdir" | "stat" => {
-                effects.insert(Effect::FS);
-            }
-            "connect" | "listen" | "bind" | "send" | "recv" => {
-                effects.insert(Effect::Net);
-            }
-            "spawn" | "join" | "select" => {
-                effects.insert(Effect::Async);
-            }
-            "alloc" | "dealloc" | "realloc" => {
-                effects.insert(Effect::Alloc);
-            }
-            "panic" => {
-                effects.insert(Effect::Panic);
-            }
-            "env" | "get_env" | "set_env" => {
-                effects.insert(Effect::Env);
-            }
-            "now" | "sleep" | "timeout" => {
-                effects.insert(Effect::Time);
-            }
-            _ => {}
+        if let Some((_, effect)) = BUILTIN_EFFECTS.iter().find(|(n, _)| *n == name) {
+            effects.insert(effect.clone());
         }
     }
 
@@ -1202,6 +1215,68 @@ mod handler_tests {
                 "`/ {effect}` is documented in MAGE_SPEC.md §11.2 but rejected: {msgs:?}"
             );
         }
+    }
+
+    /// The `(name, effect)` pairs stated as `builtin_effect` facts, sorted.
+    fn stated_builtin_effects() -> Vec<(String, String)> {
+        let kb = crate::kb::load().expect("the knowledge base loads");
+        let mut stated: Vec<(String, String)> = kb
+            .facts("builtin_effect")
+            .into_iter()
+            .map(|f| (f[0].clone(), f[1].clone()))
+            .collect();
+        stated.sort();
+        stated
+    }
+
+    /// Every `BUILTIN_EFFECTS` entry is stated as a `builtin_effect` fact, and
+    /// every stated fact is in the table, both ways.
+    #[test]
+    fn every_builtin_effect_is_stated() {
+        let mut table: Vec<(String, String)> = BUILTIN_EFFECTS
+            .iter()
+            .map(|(n, e)| (n.to_string(), e.to_string().to_lowercase()))
+            .collect();
+        table.sort();
+        assert_eq!(stated_builtin_effects(), table, "builtin_effect facts vs BUILTIN_EFFECTS");
+    }
+
+    /// The table headed `Names attributed on call` in `MAGE_SPEC.md` says the same
+    /// as the facts, both ways.
+    #[test]
+    fn the_spec_table_of_attributed_names_is_the_stated_one() {
+        let spec = std::fs::read_to_string(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../MAGE_SPEC.md"),
+        )
+        .expect("MAGE_SPEC.md is beside the prototype")
+        .replace("\r\n", "\n");
+        let after = spec
+            .split("Names attributed on call")
+            .nth(1)
+            .expect("the spec has a table headed `Names attributed on call`");
+        let mut in_table = false;
+        let mut from_spec: Vec<(String, String)> = Vec::new();
+        for line in after.lines().skip(1) {
+            let line = line.trim_start();
+            if !line.starts_with('|') {
+                if in_table {
+                    break;
+                }
+                continue;
+            }
+            in_table = true;
+            let cells: Vec<&str> = line.split('|').map(str::trim).collect();
+            let effect = cells[1].trim_matches('`');
+            if effect.is_empty() || effect.starts_with('-') {
+                continue; // the separator row
+            }
+            for name in cells[2].split('`').skip(1).step_by(2) {
+                from_spec.push((name.to_string(), effect.to_string()));
+            }
+        }
+        from_spec.sort();
+        assert!(!from_spec.is_empty(), "no rows parsed from the spec table");
+        assert_eq!(stated_builtin_effects(), from_spec, "builtin_effect facts vs MAGE_SPEC.md");
     }
 
     /// The builtin names `MAGE_SPEC.md` §11.2 says are attributed on call, and
