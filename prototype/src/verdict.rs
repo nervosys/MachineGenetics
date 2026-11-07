@@ -214,9 +214,68 @@ impl Tally {
     }
 }
 
+// ══════════════════════════════════════════════════════════════════════
+//  The decision: accepted, or refused with the rule behind each refusal
+// ══════════════════════════════════════════════════════════════════════
+
+// `Evidence` says what stands behind a claim. A `Verdict` is what a gate decided
+// (NEUROSYMBOLIC_PLAN.md §5): `rule` names a fact in `kb/rules/`, which is what
+// makes a refusal traceable. `accepted` is not stored: it is whether there are
+// refusals, so the two cannot disagree.
+
+/// One refusal: the rule, where, and why.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Refusal {
+    pub rule: String,
+    /// Line and column, when the rule has a place to point at.
+    pub span: Option<(u32, u32)>,
+    pub message: String,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Verdict {
+    pub refusals: Vec<Refusal>,
+}
+
+impl Verdict {
+    pub fn accepted(&self) -> bool {
+        self.refusals.is_empty()
+    }
+
+    pub fn refused(rule: impl Into<String>, message: impl Into<String>) -> Self {
+        Verdict { refusals: vec![Refusal { rule: rule.into(), span: None, message: message.into() }] }
+    }
+
+    /// The verdict `--check --json` prints.
+    pub fn to_json(&self) -> serde_json::Value {
+        serde_json::json!({ "accepted": self.accepted(), "refusals": self.refusals })
+    }
+
+    /// The verdict on an `eval` error, if it is a contract failing at run time.
+    /// `rule` is the clause's kind in `kb/rules/contracts.mg`.
+    pub fn of_eval_error(error: &str) -> Option<Self> {
+        let rest = error.strip_prefix("contract violated: `")?;
+        let rule = match rest.get(..4)? {
+            "@req" => "requires",
+            "@ens" => "ensures",
+            _ => return None,
+        };
+        Some(Verdict::refused(rule, error))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_contract_failing_at_run_time_names_its_kind() {
+        let msg = "contract violated: `@req(b < 0)` of `add` (f add) is false";
+        assert_eq!(Verdict::of_eval_error(msg).unwrap().refusals[0].rule, "requires");
+        let msg = msg.replace("@req", "@ens");
+        assert_eq!(Verdict::of_eval_error(&msg).unwrap().refusals[0].rule, "ensures");
+        assert!(Verdict::of_eval_error("index out of bounds").is_none());
+    }
 
     /// **The property this module exists for.** Neither absence counts as a
     /// hold, so a caller tallying "how many are fine" cannot sweep up the ones

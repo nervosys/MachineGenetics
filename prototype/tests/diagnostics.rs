@@ -292,6 +292,31 @@ fn the_human_check_prints_the_code() {
     }
 }
 
+/// The human `--check`, which prints as it goes, decides what the verdict does.
+#[test]
+fn the_human_check_agrees_with_the_verdict() {
+    let sources = [
+        "f g() -> i32 { 1 }",
+        "f g() -> i32 { 1 } `",
+        "f g( -> i32 { 1 }",
+        "f g() -> i32 { zz }",
+        "f bad() -> i32 { 1b }",
+        "f x() / io { connect(); }\n",
+        "@req(0b)\nf add(a: i64, b: i64) -> i64 { a + b }\n",
+        "kb K {\n    fact p(a);\n    rule r(x: i32) { x }\n}\n",
+        "net Chain { layer a: Linear(256, 512); layer b: Linear(256, 128); }",
+        "f p(w: f64) -> f64 { grad(w |> abs, w) }",
+    ];
+    for (n, src) in sources.iter().enumerate() {
+        let path = std::env::temp_dir().join(format!("mage-agree-{}-{n}.mg", std::process::id()));
+        std::fs::write(&path, src).unwrap();
+        let out = Command::new(env!("CARGO_BIN_EXE_mage-parse")).arg("--check").arg(&path).output().unwrap();
+        let _ = std::fs::remove_file(&path);
+        let accepted = mage_prototype::check::check_source(src, false, false).verdict().accepted();
+        assert_eq!(out.status.success(), accepted, "they disagree on {src:?}");
+    }
+}
+
 /// `heal` gives a bare-text diagnostic its id as well as its category.
 #[test]
 fn a_classified_diagnostic_carries_its_code() {

@@ -2954,127 +2954,24 @@ fn run_parse(source: &str, filename: &str, do_elision: bool, legacy: bool, token
 /// col, category, message, fix}` — instead of scraping human prose. Every
 /// diagnostic carries a stable error code and an actionable `fix` hint.
 fn run_check_json(source: &str, filename: &str, do_elision: bool, legacy: bool, core: bool) {
-    use hir::Severity;
-
     let source = if legacy { legacy::translate(source) } else { source.to_string() };
 
-    let mut diags: Vec<serde_json::Value> = Vec::new();
-    let mut push = |sev: &str, line: u32, col: u32, code: &str, cat: &str, msg: String, fix: &str| {
-        diags.push(serde_json::json!({
-            "severity": sev,
-            "line": line,
-            "col": col,
-            "code": code,
-            "category": cat,
-            "message": msg,
-            "fix": fix,
-        }));
-    };
-
-    let tokens = lexer::lex(&source);
-    for tok in &tokens {
-        if tok.kind == lexer::TokenKind::Error {
-            push(
-                "error",
-                tok.span.line as u32,
-                tok.span.col as u32,
-                "E0000",
-                "LexError",
-                "unexpected character".to_string(),
-                "remove or correct the invalid token",
-            );
-        }
-    }
-
-    let parsed = parser::parse(&tokens);
-    let module = match parsed {
-        Ok(m) => Some(m),
-        Err(e) => {
-            let cat = hir::DiagnosticCategory::SyntaxError;
-            push(
-                "error",
-                e.line as u32,
-                e.col as u32,
-                cat.code(),
-                "SyntaxError",
-                e.message.clone(),
-                cat.fix_hint(),
-            );
-            None
-        }
-    };
-
-    // Effect (capability) surface, populated when the module parses.
-    let mut effect_surface: Vec<serde_json::Value> = Vec::new();
-    if let Some(module) = module {
-        let module = if do_elision { elision::elide(&module) } else { module };
-        let mut all: Vec<hir::Diagnostic> = Vec::new();
-        all.extend(resolve::resolve(&module).diagnostics);
-        all.extend(types::check(&module).diagnostics);
-        let effect_infer = effects::infer_effects(&module);
-        all.extend(effect_infer.diagnostics.clone());
-        // The `grad` obligation (§5.6): `grad(e, w)` needs an `e` with a
-        // derivative. Reported here as well as in the human path — an
-        // agent that validates generated MAGE with `--check --json` must
-        // see the same errors a person does, or the two oracles disagree
-        // about what the program means.
-        all.extend(differentiable::check_grad_obligations(
-            &module,
-            &differentiable::infer(&module, &effect_infer),
-        ));
-        // Refuted contracts (E0560), for the same reason: the human path
-        // counts them as errors, so this stream must carry them.
-        all.extend(verify::diagnostics(&verify::verify_module(&module)));
-        // `kb` facts and rules the logic engine cannot evaluate (E0570).
-        all.extend(logic::module_diagnostics(&module));
-        for (func, declared, inferred) in effect_infer.effect_surface() {
-            effect_surface.push(serde_json::json!({
-                "function": func,
-                "declared": declared,
-                "inferred": inferred,
-            }));
-        }
-        if core {
-            all.extend(core_subset::check(&module));
-        }
-        for d in &all {
-            let cat = d.category.unwrap_or(hir::DiagnosticCategory::Other);
-            let (line, col) = d.span.map(|s| (s.line, s.col)).unwrap_or((0, 0));
-            let sev = match d.severity {
-                Severity::Error => "error",
-                Severity::Warning => "warning",
-                Severity::Info => "note",
-            };
-            let code = d.id.clone().unwrap_or_else(|| cat.code().to_string());
-            push(sev, line, col, &code, &format!("{cat:?}"), d.message.clone(), cat.fix_hint());
-        }
-
-        // Typed-composition gate (§4.5): reject shape-mismatched net compositions.
-        for d in &abl_shape::check_module_shapes(&module) {
-            push(
-                "error",
-                0,
-                0,
-                "E0710",
-                "ShapeError",
-                d.message.clone(),
-                "align the layer dims so each layer's output dim matches the next layer's input dim",
-            );
-        }
-    }
-
-    // Deterministic order so output is cacheable/diffable across runs.
-    diags.sort_by(|a, b| {
-        let key = |v: &serde_json::Value| {
-            (
-                v["line"].as_u64().unwrap_or(0),
-                v["col"].as_u64().unwrap_or(0),
-                v["code"].as_str().unwrap_or("").to_string(),
-                v["message"].as_str().unwrap_or("").to_string(),
-            )
-        };
-        key(a).cmp(&key(b))
-    });
+    let checked = check::check_source(&source, do_elision, core);
+    let diags: Vec<serde_json::Value> = checked
+        .findings
+        .iter()
+        .map(|f| {
+            serde_json::json!({
+                "severity": f.severity,
+                "line": f.line,
+                "col": f.col,
+                "code": f.code,
+                "category": f.category,
+                "message": f.message,
+                "fix": f.fix,
+            })
+        })
+        .collect();
 
     let error_count = diags.iter().filter(|d| d["severity"] == "error").count();
     let out = serde_json::json!({
@@ -3084,7 +2981,8 @@ fn run_check_json(source: &str, filename: &str, do_elision: bool, legacy: bool, 
         "diagnostics": diags,
         // Capability surface: per-function declared vs inferred effects, so an
         // agent runtime can gate/sandbox generated code before running it.
-        "effects": effect_surface,
+        "effects": checked.effects,
+        "verdict": checked.verdict().to_json(),
     });
     println!("{}", serde_json::to_string_pretty(&out).unwrap());
     if error_count > 0 {

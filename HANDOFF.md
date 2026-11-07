@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,554** — rmi 1,384 · prototype 1,540 · ribosome 168 · germline 175 · forge 63 · arena 224 |
+| Tests | **3,559** — rmi 1,384 · prototype 1,545 · ribosome 168 · germline 175 · forge 63 · arena 224 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -2022,6 +2022,13 @@ every `within("…")` name from `parser.rs` and requires it to be a production
 of `kb/grammar.mg`, so the two cannot drift. Removing the stamping fails the
 two behaviour tests. Prototype +3 tests. The wrapping was done by a Haiku
 subagent from an exact brief.
+
+**One verdict.** `verdict.rs` already held the `Evidence` vocabulary, so `Verdict`
+and `Refusal` sit beside it: evidence is what stands behind a claim, a verdict what
+a gate decided. `check.rs` takes the pass list out of `main.rs` as `check_source`,
+and `--check --json` gains a `verdict` field with its records unchanged. The human
+`--check` still prints as it goes, held to the verdict by a test. A contract failing
+in `eval` is a string, so `Verdict::of_eval_error` reads it. Prototype +5 tests.
 
 **Phase 4 closed: gaps as facts.** `gap` facts now cover 10 subjects, and
 `every_gap_has_a_check` keeps that list exact. An undeclared effect turned out to
@@ -4726,7 +4733,7 @@ changed before you commit.
 ---
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,540**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,545**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
   across six crates **3,140**; documented-count pins **101**, up from 46 — the
   two newest hold the `kb`/`net` overlap the tensor-product-binding decision

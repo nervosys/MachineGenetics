@@ -88,5 +88,6 @@ pub mod token_canonical;
 pub mod types;
 pub mod units;
 pub mod verdict;
+pub mod check;
 pub mod verify;
 
