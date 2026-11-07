@@ -1628,6 +1628,30 @@ mod tests {
         }
     }
 
+    /// A mask is exact: over a program's tokens, at every prefix, it admits a
+    /// token exactly when the recogniser gets past that token.
+    #[test]
+    fn the_mask_admits_exactly_what_the_recogniser_continues() {
+        use mage_prototype::recognise::kinds_of;
+        let kb = mage_prototype::kb::load().expect("the knowledge base loads");
+        let g = Grammar::restricted(&kb, &arena_profile(&kb).productions).expect("the profile builds");
+        let pair = |t: (String, String, usize)| (t.0, t.1);
+        for src in arena_sources(0).iter().step_by(3) {
+            let tokens: Vec<(String, String)> = kinds_of(src).into_iter().map(pair).collect();
+            let vocabulary: HashSet<(String, String)> = tokens.iter().cloned().collect();
+            for n in 0..=tokens.len() {
+                let prefix = &tokens[..n];
+                let mask = g.mask(prefix).expect("a prefix of a program is viable");
+                assert_eq!(mask.can_end, g.recognise(prefix).is_ok(), "{src} at {n}");
+                for (kind, text) in &vocabulary {
+                    let longer = [prefix, &[(kind.clone(), text.clone())]].concat();
+                    let passed = g.recognise(&longer).map_or_else(|stall| stall.at > n, |_| true);
+                    assert_eq!(mask.allows(kind, text), passed, "{text} after {n} of {src}");
+                }
+            }
+        }
+    }
+
     #[test]
     fn the_profile_has_no_production_to_spare() {
         let kb = mage_prototype::kb::load().expect("the knowledge base loads");
