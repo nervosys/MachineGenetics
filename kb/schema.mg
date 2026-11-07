@@ -29,7 +29,10 @@ kb Schema {
     // v8 (2026-10-31): `safety_rule`, `rule_fix`, `rule_tag`, `RuleDatabase`
     // and `Severity`, for kb/rules/safety.mg. `unenforced_rule` exempts
     // SafetyRule: those rules are knowledge, and nothing executes them.
-    fact schema_version(8);
+    // v9 (2026-10-31): `diagnostic_row`, `warning_carries` and `gap`, for
+    // kb/rules/diagnostics.mg. `rule_enforced_twice` dropped: E0308 has three
+    // emitters, and a code with several still traces to one rule.
+    fact schema_version(9);
 
     // ── Classes ─────────────────────────────────────────────────────────
     // Seven roots. The twelve domains of MAGE_ONTOLOGY.md group facts into
@@ -195,6 +198,20 @@ kb Schema {
     fact arg_class(rule_tag, 1, SafetyRule);
     fact arg_class(rule_tag, 2, Text);
     fact arg_class(rule_tag, 3, Text);
+    // id, severity, category, summary.
+    fact relation(diagnostic_row);
+    fact arg_class(diagnostic_row, 1, Diagnostic);
+    fact arg_class(diagnostic_row, 2, Severity);
+    fact arg_class(diagnostic_row, 3, Text);
+    fact arg_class(diagnostic_row, 4, Text);
+    // A warning class, and the code it goes out under.
+    fact relation(warning_carries);
+    fact arg_class(warning_carries, 1, Diagnostic);
+    fact arg_class(warning_carries, 2, Diagnostic);
+    // A rule nothing checks, and why, in place of an `enforced_by`.
+    fact relation(gap);
+    fact arg_class(gap, 1, Rule);
+    fact arg_class(gap, 2, Text);
     fact relation(in_profile);
     fact arg_class(in_profile, 1, Production);
     fact arg_class(in_profile, 2, Profile);
@@ -282,12 +299,10 @@ kb Schema {
     rule undeclared_class(c: str) { arg_class(_, _, c) && !class(c) }
     rule undeclared_class(c: str) { instance_of(_, c) && !class(c) }
 
-    fact invariant(unenforced_rule, "every Rule but a SafetyRule has an enforced_by");
+    fact invariant(unenforced_rule, "every Rule but a SafetyRule has an enforced_by or a gap");
     rule enforced(r: str) { enforced_by(r, _) }
+    rule enforced(r: str) { gap(r, _) }
     rule unenforced_rule(r: str) { is_a(r, "Rule") && !is_a(r, "SafetyRule") && !enforced(r) }
-
-    fact invariant(rule_enforced_twice, "no Rule has two enforced_by");
-    rule rule_enforced_twice(r: str) { enforced_by(r, a) && enforced_by(r, b) && a != b }
 
     fact invariant(rule_without_row, "every SafetyRule has a safety_rule row");
     rule has_rule_row(r: str) { safety_rule(r, _, _, _, _, _, _) }

@@ -30,14 +30,14 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,538** — rmi 1,384 · prototype 1,526 · ribosome 168 · germline 175 · forge 63 · arena 222 |
+| Tests | **3,543** — rmi 1,384 · prototype 1,531 · ribosome 168 · germline 175 · forge 63 · arena 222 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
 | CI | 11 jobs defined, **10 of which ever run** — green on `master`. The eleventh, `prototype — cuda kernels (self-hosted GPU)`, has no runner and has never executed (open item 2) |
 | Reliability floors | file-oracle parse 99/100, perturbed pattern-heal 42, native-lexer ratio 0.997 |
 | Examples | 12 of 12 typecheck, run, and print their recorded answer |
-| `.mg` sources | **118 checked, 0 sketches** — every `.mg` file in the repository typechecks |
+| `.mg` sources | **119 checked, 0 sketches** — every `.mg` file in the repository typechecks |
 | Differentiability | **34 of 34 nets and 7 of 7 train blocks; 1 of 156 functions** (the arena's reward) — `scripts/measure-differentiability.sh`, re-derived in CI and compared against `DIFFERENTIABILITY.md` in both directions |
 | `grad` | An expression that typechecks and **runs**, for scalars: forward-mode duals, checked against central differences. The differentiability obligation is a premise of its typing rule, discharged by the call-graph pass. Tensors are refused, not deferred |
 | Documentation | 212 MAGE blocks typecheck; 59 documentation entry points run; 268 `rmi/docs` API items all exist — and "exist" now means **a definition exists**, not that the name appears somewhere in `src/`. It was 275 under the weaker criterion, 8 of them held up by English words in comments; the phantom entries are gone and a duplicate went with them |
@@ -339,7 +339,7 @@ the more useful half.** It said there was "no numerical MAGE code to build a
 binding construct for", on the evidence of 0 of 155 differentiable functions.
 There is: 34 nets, all of them differentiable — the pass had simply never been
 pointed at them. What is actually thin is the *overlap*, and **it was
-re-measured on 2026-09-08 rather than re-quoted**: **9** tracked sources
+re-measured on 2026-09-08 rather than re-quoted**: **10** tracked sources
 declare a `kb` at all, and **3** of them declare a `net` as well
 (`neurosymbolic_qa.mg`, `neurosymbolic.mg`, `unified.mg`) — the population a
 binding construct would serve. *(The first figure was 3 until 2026-10-29,
@@ -2022,6 +2022,21 @@ every `within("…")` name from `parser.rs` and requires it to be a production
 of `kb/grammar.mg`, so the two cannot drift. Removing the stamping fails the
 two behaviour tests. Prototype +3 tests. The wrapping was done by a Haiku
 subagent from an exact brief.
+
+**Every diagnostic is a fact.** `kb/rules/diagnostics.mg` states 19 codes and 7
+warning classes (schema v9), and `prototype/tests/diagnostics.rs` holds the code
+to them: 26 witnesses, each with a control, plus scans of the category enum, the
+emitting modules and the quoted codes in production source. The plan's "22 codes"
+was wrong: E0499 and E0503 were only in comments, and E0505, E0277 and E0599 are
+in `aci.rs`'s unreachable table. What the inventory found: `Diagnostic.id` is
+never set, so the human `--check` prints no code for anything; no pass detects a
+use after move or a borrow conflict, so E0382 and E0502 state a `gap`, and only
+`heal`'s message classifier assigns them; two autograd warnings carry E0308
+though nothing mismatched; `Severity::Info` has no producer; the abl lowering's
+warnings are strings. `rule_enforced_twice` is dropped, since E0308 has three
+emitters. Haiku subagents took the inventory and wrote the witnesses; both were
+reviewed, and a wrong code plus a deleted fact fail 4 of the 5 tests. Prototype
++5 tests.
 
 **The safety rules are facts.** `kb/rules/safety.mg` states all 255 (schema v8),
 and `builtin_rules()` reads it; `skb.rs` lost 2,900 lines of tables. The file was
@@ -4671,7 +4686,7 @@ changed before you commit.
 ---
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,526**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,531**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
   across six crates **3,140**; documented-count pins **101**, up from 46 — the
   two newest hold the `kb`/`net` overlap the tensor-product-binding decision

@@ -28,6 +28,7 @@ pub const FILES: &[(&str, &str)] = &[
     ("kb/forms.mg", include_str!("../../kb/forms.mg")),
     ("kb/meaning.mg", include_str!("../../kb/meaning.mg")),
     ("kb/rules/safety.mg", SAFETY),
+    ("kb/rules/diagnostics.mg", include_str!("../../kb/rules/diagnostics.mg")),
 ];
 
 /// The schema's own predicates: a fact may use these without a `relation`.
@@ -228,7 +229,7 @@ mod tests {
     #[test]
     fn the_schema_alone_loads() {
         let mut kb = load_files(&FILES[..1]).unwrap_or_else(|e| panic!("{e:#?}"));
-        assert_eq!(kb.facts("schema_version"), vec![vec!["8".to_string()]]);
+        assert_eq!(kb.facts("schema_version"), vec![vec!["9".to_string()]]);
         assert!(!kb.query("below", &["Keyword", "Construct"]).is_empty());
     }
 
@@ -239,14 +240,6 @@ mod tests {
         ("undeclared_class", "fact instance_of(x, Nonesuch);"),
         ("unenforced_rule", "fact instance_of(no_alias, Contract);"),
         ("rule_without_row", "fact instance_of(no_alias, SafetyRule);"),
-        (
-            "rule_enforced_twice",
-            "fact instance_of(no_alias, SafetyRule);\n\
-             fact instance_of(parser, SymbolicComponent);\n\
-             fact instance_of(checker, SymbolicComponent);\n\
-             fact enforced_by(no_alias, parser);\n\
-             fact enforced_by(no_alias, checker);",
-        ),
         (
             "keyword_two_sigils",
             "fact instance_of(plus_f, Sigil);\n\

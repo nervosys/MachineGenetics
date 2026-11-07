@@ -446,6 +446,9 @@ words among its `lexes_as` facts, and the `AstKind` instances in the grammar.
 | `safety_rule` | `SafetyRule` × `RuleDatabase` × `Text` × `Severity` × `Text` × `Text` × `Text` (category, description, rationale, fix confidence) |
 | `rule_fix` | `SafetyRule` × `Text` (its auto-fix template) |
 | `rule_tag` | `SafetyRule` × `Text` × `Text` (position, tag: a rule's tags are ordered) |
+| `diagnostic_row` | `Diagnostic` × `Severity` × `Text` × `Text` (category, summary) |
+| `warning_carries` | `Diagnostic` × `Diagnostic` (a warning class, and the code it goes out under) |
+| `gap` | `Rule` × `Text` (a rule nothing checks, and why) |
 
 Each invariant is a rule whose results are violations; the knowledge base
 loads only when every one derives nothing.
@@ -454,9 +457,8 @@ loads only when every one derives nothing.
 |---|---|
 | `class_cycle` | The class hierarchy has no cycle |
 | `undeclared_class` | Every class named by `subclass_of`, `arg_class` or `instance_of` is declared |
-| `unenforced_rule` | Every `Rule` but a `SafetyRule` has an `enforced_by` (those are knowledge; nothing executes them) |
+| `unenforced_rule` | Every `Rule` but a `SafetyRule` has an `enforced_by` or a `gap` (safety rules are knowledge; nothing executes them) |
 | `rule_without_row` | Every `SafetyRule` has a `safety_rule` row |
-| `rule_enforced_twice` | No `Rule` has two `enforced_by` |
 | `spelling_two_kinds` | A `Token` lexes as one `TokenKind` |
 | `keyword_two_sigils` | A `Keyword` has at most one `Sigil` |
 | `unaccounted_lowering` | Every `lowers_to` round-trips or states what it `loses` |
