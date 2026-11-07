@@ -8,7 +8,7 @@
 //!   exists;
 //! - each module that names a category in production code has that stated, as
 //!   an `enforced_by` on the code or on a warning class carrying it;
-//! - each quoted code in the production source is a fact, or is on `TABLE_ONLY`.
+//! - each quoted code in the production source is a fact.
 
 use mage_prototype::hir::DiagnosticCategory;
 use mage_prototype::{abl_bridge, kb, lexer, parser};
@@ -408,10 +408,6 @@ fn every_emit_site_is_stated() {
     assert_eq!(stated, found);
 }
 
-/// Codes in the source that nothing emits: `aci.rs`'s pattern table, which no
-/// production path reaches. The list is exact.
-const TABLE_ONLY: &[&str] = &["E0277", "E0505", "E0599"];
-
 fn rust_files(dir: &Path, out: &mut Vec<PathBuf>) {
     for e in std::fs::read_dir(dir).unwrap().flatten() {
         let p = e.path();
@@ -450,6 +446,5 @@ fn every_code_in_the_source_is_stated() {
         .map(|f| f[0].clone())
         .filter(|i| i.starts_with('E'))
         .collect();
-    expected.extend(TABLE_ONLY.iter().map(|c| c.to_string()));
     assert_eq!(found, expected);
 }
