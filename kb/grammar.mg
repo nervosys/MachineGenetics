@@ -8,15 +8,19 @@
 // production names its function and lines). Held to the parser both ways:
 // every `.mg` source in the repo is recognised, this file included, and the
 // grammar rejects at least 95% of the one-token deletions the parser rejects.
+// And the other way: sentences sampled from these facts, written out with the
+// lexicon's spellings, parse (98% at least; the rest stop in a GAP below).
+//
+// A quoted spelling (`'block'`) is a terminal matched by its text, whatever its
+// kind: where the parser tests an identifier's spelling, the grammar says which.
 //
 // It is a superset of the language, never a subset, where the parser decides
 // by something token kinds do not carry. Each such place is marked `GAP`:
 // - layout and statement ends: the parser reads an indented body with no
 //   braces, and a newline in place of `;`, from line and column;
-// - spelling tests on identifiers: `with`, `as`, `dyn`, `self`, `block`,
-//   field labels (`capabilities`, `size`, `lr`...), `R`/`Ptr`/`Simd`;
 // - lookahead the parser uses to choose (a map literal or a block, a binding
-//   or an assignment, `!` as break or as not).
+//   or an assignment, `!` as break or as not);
+// - a block reference, which must name a block declared earlier.
 
 kb Grammar {
     fact start_symbol(Module);
@@ -24,9 +28,10 @@ kb Grammar {
     // Module: parse_module 371-387 (block-defs are ItBlockDef, recorded not emitted)
     fact instance_of(Module, Production);
     fact rhs(Module, "(ItBlockDef | Item)*");
-    // ItBlockDef: parse_block_def 390-412; lookahead is text 'block' then Ident, written as Ident Ident (superset of the text check)
+    // ItBlockDef: parse_block_def 390-412; the lookahead is the text 'block' then an Ident.
+    // 'block' is a quoted spelling (parser.rs 412: the text test), so the rule is exact.
     fact instance_of(ItBlockDef, Production);
-    fact rhs(ItBlockDef, "Ident Ident (LParen (Name Comma?)* RParen)? DoComposeBody");
+    fact rhs(ItBlockDef, "'block' Ident (LParen (Name Comma?)* RParen)? DoComposeBody");
     // ItBlockRef: expand_block_ref 418-453 (used by net/stack bodies, owned elsewhere); only matches when the name is a defined block, written as Ident
     fact instance_of(ItBlockRef, Production);
     fact rhs(ItBlockRef, "Ident (LParen (Expr Comma?)* RParen)? Semi?");
@@ -54,9 +59,11 @@ kb Grammar {
     // Name: expect_ident 245-330 (Ident plus the keywords expect_ident accepts as names)
     fact instance_of(Name, Production);
     fact rhs(Name, "Ident | KwF | KwM | KwV | KwC | KwS | KwE | KwT | KwI | KwMod | KwU | KwUse | KwNet | KwLayer | KwTensor | KwParam | KwTrain | KwGrad | KwForward | KwKb | KwFact | KwRule | KwQuery | KwEvolve | KwGenome | KwMutate | KwFitness | KwSelect | KwCrossover | KwPopulation | KwGenerations | KwRl | KwPolicy | KwReward | KwData | KwVal | KwVar | KwGuard | KwDefer | KwExtend | KwIs | KwHandle | KwOk | KwErr | KwSome | KwNone | KwAf | KwUf | KwAgent | KwSwarm");
-    // EffectName: expect_effect_name 343-358: Ident, or any identifier-shaped token. GAP: the parser tests spelling, not kind; this over-accepts Question, QuestionEq, At, TildeArrow (symbol-or-keyword spellings) and cannot express `pub` (Plus), which is left out
+    // EffectName: expect_effect_name 343-358 (parser.rs 358): an Ident, or a token whose text is
+    // identifier-shaped. Keywords are listed by kind. if, match, for, while and where (kinds that also
+    // have symbol spellings) and pub (Plus) are quoted spellings, so the rule is exact.
     fact instance_of(EffectName, Production);
-    fact rhs(EffectName, "Name | KwY | KwZ | Question | QuestionEq | At | KwOf | AtW | KwElse | TildeArrow | KwRet | KwLoop | KwBreak | KwContinue | KwEffect | KwSpec | KwExtern | KwUnsafe | KwType | KwStatic | KwOr | KwSwarmMapReduce | KwSwarmPipeline | KwSwarmSaga | KwSwarmFanOut | KwSwarmRace | KwPipeline | KwGrammarExt | KwLet | Underscore | UnderscoreT");
+    fact rhs(EffectName, "Name | KwY | KwZ | 'if' | 'match' | 'for' | KwOf | 'while' | KwElse | 'where' | KwRet | KwLoop | KwBreak | KwContinue | KwEffect | KwSpec | KwExtern | KwUnsafe | KwType | KwStatic | KwOr | KwSwarmMapReduce | KwSwarmPipeline | KwSwarmSaga | KwSwarmFanOut | KwSwarmRace | KwPipeline | KwGrammarExt | KwLet | Underscore | UnderscoreT | 'pub'");
     // Path: not a parser function: a dotted name as items/types use it (use-paths themselves are UseDecl, parse_use_decl 1037-1100)
     // FunctionDef: parse_function_def 658-806 (keyword consumed inside; Params includes its parentheses, per table convention)
     fact instance_of(FunctionDef, Production);
@@ -87,15 +94,18 @@ kb Grammar {
     fact rhs(TraitDef, "KwT Name Generics? (Colon Name (Plus Name)*)? LBrace Item* RBrace");
     // ImplBlock: parse_impl_block 963-1010: `impl Trait for Type`; the for token is KwFor or At
     fact instance_of(ImplBlock, Production);
+    // GAP: the parser commits to Generics on `[` or `<` after `I`; the grammar may
+    // also read that bracket as the start of the Type (`I [!] ...`). Superset.
     fact rhs(ImplBlock, "KwI Generics? Type ((KwFor | At) Type)? LBrace Item* RBrace");
     // ModuleDef: parse_module_def 1014-1033
     fact instance_of(ModuleDef, Production);
     fact rhs(ModuleDef, "KwMod Name (Semi | LBrace Item* RBrace)");
-    // UseDecl: parse_use_decl 1037-1100. Group entries may carry `as`, matched by text and written as Ident (superset)
+    // UseDecl: parse_use_decl 1037-1100. A group entry may carry `as`, matched by text (peek_text),
+    // written as the quoted spelling 'as'.
     fact instance_of(UseDecl, Production);
     fact rhs(UseDecl, "KwUse Name (Dot Name)* Semi?");
     fact rhs(UseDecl, "KwUse Name (Dot Name)* Dot Star Semi?");
-    fact rhs(UseDecl, "KwUse Name (Dot Name)* Dot LBrace (Name (Ident Name)? Comma?)* RBrace Semi?");
+    fact rhs(UseDecl, "KwUse Name (Dot Name)* Dot LBrace (Name ('as' Name)? Comma?)* RBrace Semi?");
     // TypeAlias: parse_type_alias 1104-1151. First token is consumed without a check; dispatch restricts it to KwType or KwY
     fact instance_of(TypeAlias, Production);
     fact rhs(TypeAlias, "(KwType | KwY) Name Generics? (Assign Type)? (TildeArrow ItRefineTok*)? Semi");
@@ -157,12 +167,11 @@ kb Grammar {
     // is the same token shape as the plain form, so the plain alternative covers
     // it (the parser maps it to Self; that is a type-checker concern).
     fact instance_of(PaParamHead, Production);
-    // GAP: parser.rs 2512-2600: the three receiver arms require the Ident text to
-    // be "self". That text test is not expressible over token kinds, so `&x`,
-    // `&!x` and `!x` are accepted too. Superset; the Ident must still be present.
-    fact rhs(PaParamHead, "BitAnd Ident");
-    fact rhs(PaParamHead, "AndNot Ident");
-    fact rhs(PaParamHead, "Bang Ident");
+    // The receiver arms test the text `self` (parser.rs 2698-2760): `&self`, `&!self` and `!self`
+    // are written with the quoted spelling 'self', so they are exact. Bare `self` is the plain form.
+    fact rhs(PaParamHead, "BitAnd 'self'");
+    fact rhs(PaParamHead, "AndNot 'self'");
+    fact rhs(PaParamHead, "Bang 'self'");
     // Plain parameter: name, optional `: Type`. No annotation means Type::Inferred.
     fact rhs(PaParamHead, "Name (Colon Type)?");
     // ClosureParams: parser.rs parse_closure_params_until_pipe (starts 2626), and
@@ -190,9 +199,9 @@ kb Grammar {
     // PaUnitTerm: a bare `1`, or a unit name with an optional `^exp` where exp is
     // an optional minus followed by an integer.
     // PaUnitOne: the literal `1`. The parser checks that the IntLiteral text is "1".
-    // GAP: parser.rs 2670-2700: the text "1" check is not expressible over token
-    // kinds. The superset is any IntLiteral. The exponent is not allowed on `1`,
-    // and that is enforced by PaUnitTerm (the exponent is only on PaUnitName).
+    // The literal `1` is the quoted spelling '1' (parser.rs 2865: IntLiteral with text "1"). A token's
+    // text is its source slice, so only an IntLiteral can have text 1: the rule is exact.
+    // The exponent is not allowed on `1`: PaUnitTerm puts the exponent only on units.
     // PaUnitName: the parser accepts any token whose text is all ASCII letters.
     // That is Ident plus every keyword whose spelling is alphabetic (the KEYWORDS
     // table in lexer.rs). Enumerated here from that table, so `m`, `v`, `C`, `S`,
@@ -336,11 +345,8 @@ kb Grammar {
     //   LBrack ...      index or range slice (3622-3670)
     //   StArgs          call on the left (3671-3706)
     //   KwIs Pattern    pattern test (3707-3715)
-    //   Ident Type      `expr as Type` (3718-3726)
-    // GAP: `as` is an Ident whose text is `as` (lexer leaves it as Ident; the
-    // parser checks `self.current().text == "as"`, line 3718). The grammar cannot
-    // test text. The rule `Ident Type` is a superset: any identifier followed by a
-    // type is accepted after an expression. A KwAs token in the lexer would fix it.
+    //   'as' Type       `expr as Type` (3718-3726, 3930-3938)
+    // `as` is an Ident whose text is `as` (parser.rs 3930, a text test), so the quoted spelling 'as' is exact.
     fact instance_of(StPostfixOp, Production);
     fact rhs(StPostfixOp, "Question");
     fact rhs(StPostfixOp, "TensorTranspose");
@@ -349,7 +355,7 @@ kb Grammar {
     fact rhs(StPostfixOp, "LBrack StIndex RBrack");
     fact rhs(StPostfixOp, "StArgs");
     fact rhs(StPostfixOp, "KwIs Pattern");
-    fact rhs(StPostfixOp, "Ident Type");
+    fact rhs(StPostfixOp, "'as' Type");
     // StTurbofish: parser.rs 3575-3589 (`::<` Type, … `>`; the parser checks Colon Colon Lt)
     fact instance_of(StTurbofish, Production);
     fact rhs(StTurbofish, "Colon Colon Lt (Type Comma?)* Gt");
@@ -646,39 +652,38 @@ kb Grammar {
     // R[T, E] (2935-2945). Text-gated on "R"; generic Ident-with-args already
     // covers the shape, this is the exact-arity form.
     fact instance_of(TyResult, Production);
-    fact rhs(TyResult, "Ident LBrack Type Comma Type RBrack");
+    fact rhs(TyResult, "'R' LBrack Type Comma Type RBrack");
     // Ptr[T] (2946-2953). Text-gated on "Ptr".
     fact instance_of(TyPtr, Production);
-    fact rhs(TyPtr, "Ident LBrack Type RBrack");
+    fact rhs(TyPtr, "'Ptr' LBrack Type RBrack");
     // Simd[T, N] (2954-2965). Text-gated on "Simd"; width must be an IntLiteral.
     fact instance_of(TySimd, Production);
-    fact rhs(TySimd, "Ident LBrack Type Comma IntLiteral RBrack");
+    fact rhs(TySimd, "'Simd' LBrack Type Comma IntLiteral RBrack");
     // dyn Trait (2928-2930): text-gated on the Ident "dyn", then parse_type.
-    // GAP: the grammar cannot test token text. `Ident Type` is the closest
-    // superset; it also accepts `Name Type` for any Name. Lexer has no "dyn" keyword.
+    // `dyn` is an Ident whose text is `dyn` (parser.rs 3121), so the quoted spelling 'dyn' is exact.
+    // The lexer has no "dyn" keyword.
     fact instance_of(TyDyn, Production);
-    fact rhs(TyDyn, "Ident Type");
+    fact rhs(TyDyn, "'dyn' Type");
     // f32[unit] / f64[unit] (2986-2998): the parser only takes this branch when
     // the single segment text is f32 or f64 and the next token is `[`.
-    // GAP: the text gate on f32/f64 cannot be expressed; `Ident TyUnit` is the
-    // closest superset and also accepts any other Ident followed by a unit.
+    // f32 and f64 are text-gated (parser.rs 3180): the quoted spellings are exact.
     fact instance_of(TyDimensioned, Production);
-    fact rhs(TyDimensioned, "Ident TyUnit");
+    fact rhs(TyDimensioned, "('f32' | 'f64') TyUnit");
     // parse_unit (parser.rs 2670-2711), used only by TyDimensioned.
     // Loop: one factor, then `*` or `/` continues, anything else ends. Then `]`.
     fact instance_of(TyUnit, Production);
     fact rhs(TyUnit, "LBrack TyUnitFactor ((Star | Slash) TyUnitFactor)* RBrack");
-    // A factor is the IntLiteral `1` (dimensionless), or a token whose text is
-    // all ASCII letters, optionally with `^` [-] IntLiteral exponent.
-    // The lexer maps single letters to keyword kinds (m->KwM, v->KwV, u->KwUse,
-    // M->KwMod, ...), so the alpha branch lists those kinds plus Ident.
-    // GAP: the parser accepts ANY alphabetic-spelled token (including multi-letter
-    // keyword kinds such as KwType, KwIs); the grammar cannot express text
-    // gating, so only the single-letter keyword kinds are listed here.
+    // A factor is the quoted spelling '1' (dimensionless; parser.rs 2865 checks IntLiteral text "1"),
+    // or a token whose text is all ASCII letters, optionally with `^` [-] IntLiteral exponent.
+    // The lexer maps single letters to keyword kinds (m->KwM, v->KwV, u->KwUse, M->KwMod, ...). The
+    // kinds are listed, and every other alphabetic keyword is a quoted spelling, so each one is accepted
+    // as the parser accepts it.
+    // GAP: an Ident is accepted whatever its text; the parser requires letters only, so an Ident with a
+    // digit or underscore (`m2`, `k_b`) is over-accepted.
     fact instance_of(TyUnitFactor, Production);
-    fact rhs(TyUnitFactor, "IntLiteral | TyUnitAtom (BitXor Minus? IntLiteral)?");
+    fact rhs(TyUnitFactor, "'1' | TyUnitAtom (BitXor Minus? IntLiteral)?");
     fact instance_of(TyUnitAtom, Production);
-    fact rhs(TyUnitAtom, "Ident | KwF | KwAf | KwUf | KwM | KwV | KwC | KwS | KwE | KwT | KwI | KwMod | KwU | KwUse | KwY | KwZ");
+    fact rhs(TyUnitAtom, "Ident | KwF | KwAf | KwUf | KwM | KwV | KwC | KwS | KwE | KwT | KwI | KwMod | KwU | KwUse | KwY | KwZ | 'D' | 'Ok' | 'df' | 'fx' | 'gd' | 'hx' | 'if' | 'in' | 'is' | 'kb' | 'or' | 'rl' | 'sp' | 'sw' | 'xd' | 'xn' | 'Err' | 'for' | 'let' | 'net' | 'pub' | 'ret' | 'val' | 'var' | 'None' | 'Some' | 'data' | 'else' | 'fact' | 'grad' | 'loop' | 'rule' | 'spec' | 'type' | 'agent' | 'break' | 'defer' | 'guard' | 'layer' | 'match' | 'param' | 'query' | 'swarm' | 'train' | 'where' | 'while' | 'effect' | 'evolve' | 'extend' | 'extern' | 'genome' | 'handle' | 'mutate' | 'policy' | 'return' | 'reward' | 'select' | 'static' | 'tensor' | 'unsafe' | 'fitness' | 'forward' | 'continue' | 'pipeline' | 'crossover' | 'population' | 'generations'");
     // Tensor / Param shape (3047-3096): `[T` then `, dim` repeated; dim is an
     // IntLiteral or an identifier (expect_ident, so Name).
     fact instance_of(TyDim, Production);
@@ -718,10 +723,10 @@ kb Grammar {
 
     // ── effects ─────────────────────────────────────────────────────
     // HandleExpr: parser.rs parse_handle_expr (1230-1266)
-    // GAP: the `with` after the body is an Ident whose text must be "with" (1236); a token kind cannot check text, so any Ident is accepted here.
+    // `with` is an Ident whose text is `with` (parser.rs 1342), so the quoted spelling 'with' is exact.
     // `handle` and `hx` both lex as KwHandle (lexer.rs 1069).
     fact instance_of(HandleExpr, Production);
-    fact rhs(HandleExpr, "KwHandle Block Ident Name LBrace EfHandlerArm* RBrace");
+    fact rhs(HandleExpr, "KwHandle Block 'with' Name LBrace EfHandlerArm* RBrace");
     // EfHandlerArm: parser.rs parse_handle_expr arm loop (1244-1262)
     // Parameters are `Name Comma?` repeated: the parser does not require commas between them (1249-1253).
     fact instance_of(EfHandlerArm, Production);
@@ -768,9 +773,13 @@ kb Grammar {
     fact instance_of(AgentDef, Production);
     fact rhs(AgentDef, "KwAgent Name LBrace EfAgentField* RBrace");
     // EfAgentField: parser.rs parse_agent_def body loop (1468-1507)
-    // GAP: the Ident must have text `capabilities` or `requires_approval` (1473-1484); any other Ident is a parse error and is over-accepted here.
+    // The label is the quoted spelling 'capabilities' or 'requires_approval' (parser.rs 1591-1600 text
+    // test); the value is a bracket list of names (2610). Exact.
     fact instance_of(EfAgentField, Production);
-    fact rhs(EfAgentField, "Ident Colon EfNameList | Comma | Semi");
+    fact rhs(EfAgentField, "'capabilities' Colon EfNameList");
+    fact rhs(EfAgentField, "'requires_approval' Colon EfNameList");
+    fact rhs(EfAgentField, "Comma");
+    fact rhs(EfAgentField, "Semi");
     // EfNameList: parser.rs parse_bracket_string_list (2445-2457), which the agent fields call. Names, optional commas.
     fact instance_of(EfNameList, Production);
     fact rhs(EfNameList, "LBrack (Name Comma?)* RBrack");
@@ -778,26 +787,35 @@ kb Grammar {
     fact instance_of(SwarmDef, Production);
     fact rhs(SwarmDef, "KwSwarm Name LBrace EfSwarmField* RBrace");
     // EfSwarmField: parser.rs parse_swarm_def body loop (1541-1630)
-    // GAP: the Ident must be one of size, topology, topo, consensus, cons, transport (1556-1602). `dispatch`, `aggregate` and `on_failure` are rejected (1591-1599), and any other Ident is an error. This rule over-accepts any Ident in those positions.
-    // GAP: `size` takes an Expr and the other labels take a Name; the rule accepts Expr or Name for every label (over-accept).
+    // One alternative per label, each with the value form the parser reads for it (parser.rs 1646-1700):
+    // size takes an Expr; topology, topo, consensus, cons and transport take a Name. dispatch, aggregate
+    // and on_failure are rejected by the parser, so they are not written.
     fact instance_of(EfSwarmField, Production);
-    fact rhs(EfSwarmField, "KwAgent Colon Name Semi? | Ident Colon (Expr | Name) Semi? | Comma | Semi");
+    fact rhs(EfSwarmField, "KwAgent Colon Name Semi?");
+    fact rhs(EfSwarmField, "'size' Colon Expr Semi?");
+    fact rhs(EfSwarmField, "'topology' Colon Name Semi?");
+    fact rhs(EfSwarmField, "'topo' Colon Name Semi?");
+    fact rhs(EfSwarmField, "'consensus' Colon Name Semi?");
+    fact rhs(EfSwarmField, "'cons' Colon Name Semi?");
+    fact rhs(EfSwarmField, "'transport' Colon Name Semi?");
+    fact rhs(EfSwarmField, "Comma");
+    fact rhs(EfSwarmField, "Semi");
 
     // ── domain ──────────────────────────────────────────────────────
     // NetDef: parser.rs parse_net_def (1648-1770)
     fact instance_of(NetDef, Production);
     fact rhs(NetDef, "KwNet Name Generics? LBrace DoNetItem* RBrace");
     // DoNetItem: parser.rs parse_net_def body loop (1670-1756)
-    // GAP: parser.rs 1682, 1705, 1712, 1720, 1740 dispatch on identifier text
-    // (`stack`, `residual`, `wrap`, `branch`) and on whether the identifier is a
-    // declared block (`self.blocks.contains_key`). Token kinds cannot express
-    // that, so each Ident alternative is a token-shape superset: `Ident` alone
-    // accepts any identifier as a block reference.
+    // The keyword items are quoted spellings (parser.rs 1808-1849): 'stack' takes an IntLiteral count,
+    // 'wrap' a Name and a body, 'residual' and 'branch' bodies.
+    // GAP: a block reference (ItBlockRef) is taken on any Ident. The parser requires a declared block
+    // (self.blocks.contains_key), which token kinds cannot express.
     fact instance_of(DoNetItem, Production);
     fact rhs(DoNetItem, "KwLayer DoLayerBody");
-    fact rhs(DoNetItem, "Ident IntLiteral DoComposeBody");
-    fact rhs(DoNetItem, "Ident Name DoComposeBody");
-    fact rhs(DoNetItem, "Ident DoComposeBody+");
+    fact rhs(DoNetItem, "'stack' IntLiteral DoComposeBody");
+    fact rhs(DoNetItem, "'wrap' Name DoComposeBody");
+    fact rhs(DoNetItem, "'residual' DoComposeBody");
+    fact rhs(DoNetItem, "'branch' DoComposeBody+");
     fact rhs(DoNetItem, "ItBlockRef");
     fact rhs(DoNetItem, "KwForward Block");
     fact rhs(DoNetItem, "Semi");
@@ -806,16 +824,16 @@ kb Grammar {
     fact instance_of(DoComposeBody, Production);
     fact rhs(DoComposeBody, "LBrace DoComposeItem* RBrace");
     // DoComposeItem: parser.rs parse_compose_body item loop (1783-1825)
-    // GAP: parser.rs 1793, 1797, 1802, 1813 dispatch on identifier text
-    // (`residual`, `wrap`, `branch`) and on declared-block membership. Same
-    // token-shape superset as DoNetItem; `residual` takes one body, `branch`
-    // one or more, written together as `Ident DoComposeBody+`.
+    // The keyword items are quoted spellings (parser.rs 1926-1937): 'residual' and 'branch' take bodies,
+    // 'wrap' a Name and a body.
+    // GAP: a block reference (ItBlockRef) is taken on any Ident; the parser requires a declared block.
     fact instance_of(DoComposeItem, Production);
     fact rhs(DoComposeItem, "KwLayer DoLayerBody");
     fact rhs(DoComposeItem, "Semi");
     fact rhs(DoComposeItem, "Comma");
-    fact rhs(DoComposeItem, "Ident DoComposeBody+");
-    fact rhs(DoComposeItem, "Ident Name DoComposeBody");
+    fact rhs(DoComposeItem, "'residual' DoComposeBody");
+    fact rhs(DoComposeItem, "'branch' DoComposeBody+");
+    fact rhs(DoComposeItem, "'wrap' Name DoComposeBody");
     fact rhs(DoComposeItem, "ItBlockRef");
     // DoLayerBody: parser.rs parse_layer_body (1833-1852); `layer` keyword is consumed by the caller
     // Arguments are parse_expr in a loop with an optional comma after each, so no comma is required between them.
@@ -852,16 +870,35 @@ kb Grammar {
     fact instance_of(TrainDef, Production);
     fact rhs(TrainDef, "KwTrain Name LBrace DoTrainItem* RBrace");
     // DoTrainItem: parser.rs parse_train_def field loop (2077-2270)
-    // GAP: parser.rs 2083-2256 dispatch on the label's text. Each label is an
-    // Ident (`net` is KwNet, since `net` lexes as a keyword). Token kinds
-    // cannot express the label set, so `Ident DoTrainExprField` accepts any
-    // identifier label with an expression value, and `Ident Block` accepts any
-    // identifier label followed by a block. Those are supersets of the parser's
-    // labels (`body` is the only block label; the parser rejects unknown labels).
+    // Each label is a quoted spelling (parser.rs 2195-2457 dispatches on the label's text). The Expr fields
+    // share one shape, one alternative per label. body takes a Block, and net is the KwNet keyword with a
+    // Name value. The parser rejects any other label, so none is written. Exact.
     fact instance_of(DoTrainItem, Production);
     fact rhs(DoTrainItem, "KwNet Colon Name Semi?");
-    fact rhs(DoTrainItem, "Ident DoTrainExprField");
-    fact rhs(DoTrainItem, "Ident Block");
+    fact rhs(DoTrainItem, "'optimizer' DoTrainExprField");
+    fact rhs(DoTrainItem, "'loss' DoTrainExprField");
+    fact rhs(DoTrainItem, "'epochs' DoTrainExprField");
+    fact rhs(DoTrainItem, "'inputs' DoTrainExprField");
+    fact rhs(DoTrainItem, "'targets' DoTrainExprField");
+    fact rhs(DoTrainItem, "'dataset' DoTrainExprField");
+    fact rhs(DoTrainItem, "'val_split' DoTrainExprField");
+    fact rhs(DoTrainItem, "'checkpoint' DoTrainExprField");
+    fact rhs(DoTrainItem, "'batch_size' DoTrainExprField");
+    fact rhs(DoTrainItem, "'patience' DoTrainExprField");
+    fact rhs(DoTrainItem, "'prompt' DoTrainExprField");
+    fact rhs(DoTrainItem, "'max_tokens' DoTrainExprField");
+    fact rhs(DoTrainItem, "'temperature' DoTrainExprField");
+    fact rhs(DoTrainItem, "'top_k' DoTrainExprField");
+    fact rhs(DoTrainItem, "'top_p' DoTrainExprField");
+    fact rhs(DoTrainItem, "'seed' DoTrainExprField");
+    fact rhs(DoTrainItem, "'clip_grad' DoTrainExprField");
+    fact rhs(DoTrainItem, "'warmup_steps' DoTrainExprField");
+    fact rhs(DoTrainItem, "'lr_schedule' DoTrainExprField");
+    fact rhs(DoTrainItem, "'weight_decay' DoTrainExprField");
+    fact rhs(DoTrainItem, "'tied_embeddings' DoTrainExprField");
+    fact rhs(DoTrainItem, "'plateau_patience' DoTrainExprField");
+    fact rhs(DoTrainItem, "'lr_factor' DoTrainExprField");
+    fact rhs(DoTrainItem, "'body' Block");
     fact rhs(DoTrainItem, "Semi");
     fact rhs(DoTrainItem, "Comma");
     // DoTrainExprField: parser.rs parse_train_def, the common `label: expr;` arm (2084-2254)
