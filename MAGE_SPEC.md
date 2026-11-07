@@ -2063,7 +2063,7 @@ The fixed population and what happens to each:
 A refusal names the clause:
 
 ```text
-contract violated: `@ens(abs(energy(result, k) - e0) <= DRIFT * e0, "energy stays within DRIFT of its initial value")` of `advance` (sp advance) is false: `advance` returned [0.5707904498999999, -1.7650160200000002]
+contract violated: `@ens(abs(energy(result, k) - e0) <= DRIFT * e0, "energy stays within DRIFT of its initial value")` of `advance` (sp advance, line 42:5) is false: `advance` returned [0.5707904498999999, -1.7650160200000002]
 ```
 
 The harness is `prototype/tests/physics_task.rs`. It admits a candidate only
@@ -2171,14 +2171,14 @@ every `@ens` each time the function returns. A clause that is false fails the ru
 with an error naming the clause, the function and where it was written:
 
 ```text
-contract violated: `@ens(result.balance == old(account).balance - amount, "correct deduction")` of `withdraw` (sp withdraw) is false: `withdraw` returned Account { balance: 6 }
+contract violated: `@ens(result.balance == old(account).balance - amount, "correct deduction")` of `withdraw` (sp withdraw, line 3:5) is false: `withdraw` returned Account { balance: 6 }
 ```
 
 A call that breaks a `@req` never runs its body. The run fails with the clause
 named, and the arguments it was called with:
 
 ```text
-contract violated: `@req(b != 0)` of `div` (sp div) is false: `div` called with a = 1, b = 0
+contract violated: `@req(b != 0)` of `div` (sp div, line 2:5) is false: `div` called with a = 1, b = 0
 ```
 
 Where such a call should instead be refused with a value, use a `guard`.

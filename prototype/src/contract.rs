@@ -63,6 +63,15 @@ impl Clause {
     pub fn diag_span(&self) -> Option<crate::hir::Span> {
         self.span.as_ref().map(|s| crate::hir::Span { line: s.line as u32, col: s.col as u32 })
     }
+
+    /// `origin`, with the clause's line and column when it has source:
+    /// `sp div, line 3:5`, or just `sp div` for a clause with no source.
+    pub fn located_origin(&self) -> String {
+        match self.diag_span() {
+            Some(s) => format!("{}, line {}:{}", self.origin, s.line, s.col),
+            None => self.origin.clone(),
+        }
+    }
 }
 
 /// Why a clause could not be turned into an expression.
@@ -488,7 +497,7 @@ mod tests {
         };
         assert_eq!(
             e,
-            "contract violated: `@ens(result == a + b, \"sum\")` of `add` (sp add) is false: `add` returned -1"
+            "contract violated: `@ens(result == a + b, \"sum\")` of `add` (sp add, line 2:5) is false: `add` returned -1"
         );
     }
 
@@ -526,7 +535,7 @@ mod tests {
         };
         assert_eq!(
             e,
-            "contract violated: `@req(b != 0, \"nonzero divisor\")` of `div` (sp div) is false: `div` called with a = 1, b = 0"
+            "contract violated: `@req(b != 0, \"nonzero divisor\")` of `div` (sp div, line 2:5) is false: `div` called with a = 1, b = 0"
         );
     }
 
@@ -542,7 +551,7 @@ mod tests {
         };
         assert_eq!(
             e,
-            "contract violated: `@req(b != 0)` of `div` (sp div) is false: `div` called with a = 1, b = 0"
+            "contract violated: `@req(b != 0)` of `div` (sp div, line 2:5) is false: `div` called with a = 1, b = 0"
         );
     }
 
@@ -554,7 +563,7 @@ mod tests {
         };
         assert_eq!(
             e,
-            "contract violated: `@req(b != 0)` of `div` (f div) is false: `div` called with a = 1, b = 0"
+            "contract violated: `@req(b != 0)` of `div` (f div, line 1:1) is false: `div` called with a = 1, b = 0"
         );
     }
 }

@@ -508,7 +508,10 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
             let spec_input = if requires.is_empty() && ensures.is_empty() {
                 None
             } else {
-                Some(verify::SpecInput { requires, ensures })
+                Some(verify::SpecInput {
+                    requires: requires.into_iter().map(verify::SpecClause::from).collect(),
+                    ensures: ensures.into_iter().map(verify::SpecClause::from).collect(),
+                })
             };
 
             let effects = verify::EffectAnalysis {

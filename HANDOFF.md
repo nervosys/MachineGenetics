@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,466** — rmi 1,384 · prototype 1,457 · ribosome 168 · germline 175 · forge 63 · arena 219 |
+| Tests | **3,468** — rmi 1,384 · prototype 1,459 · ribosome 168 · germline 175 · forge 63 · arena 219 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -1746,6 +1746,24 @@ integrators yet.
 
 Break-checked: a contract classifier that never matches fails 2 of the 4 new
 tests. Arena +4 tests.
+
+**Follow-up to the clause spans: E0560 and the run-time contract errors give
+the clause's location.**
+- The verifier's refuted-clause diagnostic (E0560) now carries the clause's
+  span. `verify.rs` threads it through `SpecClause`, `SpecInput` and
+  `ContractCheck`. `--check` and `--json` show its line and column.
+- The run-time `contract violated` errors add it to the origin:
+  ``contract violated: `@req(b != 0)` of `div` (sp div, line 2:5) is false:
+  ...``. A clause with no span, such as one from `rap.rs`, keeps the old form.
+- MAGE_SPEC section 12.1's example messages are updated. So is the expected
+  message in `prototype/tests/physics_task.rs` and in the arena's
+  `physics_task.rs`.
+
+Pre-existing and left alone: the human `--check` line prints no E0560 code,
+because `categorized()` sets no id. The code appears only in `--json`.
+
+Break-checked: dropping the span assignment in `verify::diagnostics` fails both
+new tests. Prototype +2 tests.
 
 ## Where this phase ended, 2026-09-16
 
@@ -4278,7 +4296,7 @@ changed before you commit.
 ---
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,457**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,459**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
   across six crates **3,140**; documented-count pins **101**, up from 46 — the
   two newest hold the `kb`/`net` overlap the tensor-product-binding decision
