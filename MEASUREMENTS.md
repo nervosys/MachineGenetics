@@ -7,7 +7,7 @@ numbers are machine-dependent; the shapes (throughput, scaling) are not.
 Date: 2026-06-10. Build: `release` for perf, `cargo test` for functionality.
 
 > **Re-verified 2026-09-25** — all six crates tested: prototype **1,408**, rmi
-> **1,384**, ribosome **168**, germline **175**, forge **63**, arena **161** = **3,359 passing,
+> **1,384**, ribosome **168**, germline **175**, forge **63**, arena **171** = **3,369 passing,
 > 0 failing, 0 warnings**.
 >
 > *One figure below had not regressed — it had been superseded.* The ABL
@@ -80,7 +80,7 @@ Date: 2026-06-10. Build: `release` for perf, `cargo test` for functionality.
 | rmi (`cpu`) | **1384 pass** | `cargo test --no-default-features --features cpu` |
 | ribosome (build engine) | **168 pass** | `cargo test --manifest-path ribosome/Cargo.toml` |
 | germline (RSI control plane) | **175 pass** | `cargo test --manifest-path germline/Cargo.toml` |
-| arena (self-play arena) | **161 pass** | `cargo test --manifest-path arena/Cargo.toml` |
+| arena (self-play arena) | **171 pass** | `cargo test --manifest-path arena/Cargo.toml` |
 | forge (registry) | **63 pass** | `cargo test --manifest-path forge/Cargo.toml` |
 | agentic-eval (AetherShell) | **80 pass** | `cargo test -p agentic-eval` |
 | SPINE `spine-agentic` | **285 pass** | `cargo test -p spine-agentic` |
@@ -574,3 +574,142 @@ Cautions, which the gate does not capture:
   gives no reason to prefer it.
 - Every curve is still falling at 100% of the budget, as in P4. No run here is
   converged.
+
+## State-space learner (plan L2)
+
+Question: does a small diagonal state-space learner (`ssm:`, `arena::ssm`) code
+text, code and physics better than the hashed n-gram and the entropy-chunked
+learner, at what cost? Design, the gradient check and the choices are in the
+module docs of `arena/src/ssm.rs`.
+
+The configuration is `ssm:16:0.01`: 16 channels, Adam at lr 0.01, and truncated
+backpropagation through the recurrence every 64 bytes (the default). It has
+**9,248 parameters**. The n-gram `ng:4:14` has 16.8 M and the entropy learner
+`ent:4:14` has 21.0 M (its n-gram plus a 4.2 M-entry chunk table). The SSM was
+fixed before any measurement and was not tuned: one probe run on the default
+text row, with this configuration, was made to check run time. No other setting
+was tried, so these figures are for one untuned configuration and one seed.
+
+Commands, from the `arena` directory with a release build. Each learner is run
+in its own invocation, so the wall time below is per learner. The text rows are
+the default README → `gate.rs` and the code rows are `gate.rs` → `transformer.rs`.
+The physics rows use `--encoding planes`, the encoding that passed the P4b gate,
+and cover all five systems in one invocation, with the text row included in it.
+The default budget of 192 KiB was used for every learner, since none was too slow
+for it, so no smaller budget was needed. The text rows train on the README-size
+budget regardless of `--budget`.
+
+```sh
+cargo run --release --bin arena -- physics-baseline --system none --learners ng:4:14:0.02
+cargo run --release --bin arena -- physics-baseline --system none --learners ent:4:14:4:0.02
+cargo run --release --bin arena -- physics-baseline --system none --learners ssm:16:0.01
+# code: the same three, with --text-train ../germline/src/gate.rs --text-heldout src/transformer.rs
+cargo run --release --bin arena -- physics-baseline --encoding planes --learners ng:4:14:0.02
+cargo run --release --bin arena -- physics-baseline --encoding planes --learners ent:4:14:4:0.02
+cargo run --release --bin arena -- physics-baseline --encoding planes --learners ssm:16:0.01
+```
+
+Held-out bits per byte is measured on the first 64 KiB of the held-out window
+(the text rows use the whole held-out file, which is smaller). Held-out order-0
+is the byte-frequency entropy of that window, an oracle. The last two columns
+are the gate's comparison (the plan's rule: the larger learner, held-out bpb at
+least 0.3 below held-out order-0) and the train-side comparison (held-out bpb
+below the order-0 of the training window).
+
+| corpus | system | learner | params | held-out bpb | held-out order-0 | held-out − order-0 | ≤ −0.3? | held-out < train order-0? | wall (s) |
+|---|---|---|---|---|---|---|---|---|---|
+| text, README → gate.rs | — | ng 4×2¹⁴ | 16.8 M | 5.400 | 4.666 | +0.734 | no | no | 5.1 |
+| text, README → gate.rs | — | ent 4×2¹⁴ L4 | 21.0 M | 5.151 | 4.666 | +0.485 | no | no | 12.3 |
+| text, README → gate.rs | — | ssm d16 | 9,248 | **5.075** | 4.666 | +0.409 | no | yes (5.117) | 4.8 |
+| code, gate.rs → transformer.rs | — | ng 4×2¹⁴ | 16.8 M | 5.223 | 4.907 | +0.316 | no | no (4.666) | 7.2 |
+| code, gate.rs → transformer.rs | — | ent 4×2¹⁴ L4 | 21.0 M | **4.605** | 4.907 | −0.302 | yes | yes (4.666) | 9.7 |
+| code, gate.rs → transformer.rs | — | ssm d16 | 9,248 | 5.043 | 4.907 | +0.136 | no | no | 2.3 |
+| physics, planes | pendulum | ng 4×2¹⁴ | 16.8 M | 5.822 | 6.498 | −0.676 | yes | yes | |
+| physics, planes | pendulum | ent 4×2¹⁴ L4 | 21.0 M | 5.822 | 6.498 | −0.676 | yes | yes | |
+| physics, planes | pendulum | ssm d16 | 9,248 | 5.679 | 6.498 | −0.819 | yes | yes | |
+| physics, planes | spring | ng 4×2¹⁴ | 16.8 M | 2.386 | 3.505 | −1.119 | yes | yes | |
+| physics, planes | spring | ent 4×2¹⁴ L4 | 21.0 M | 2.390 | 3.505 | −1.115 | yes | yes | |
+| physics, planes | spring | ssm d16 | 9,248 | 2.500 | 3.505 | −1.005 | yes | yes | |
+| physics, planes | double pendulum | ng 4×2¹⁴ | 16.8 M | 4.959 | 5.739 | −0.780 | yes | yes | |
+| physics, planes | double pendulum | ent 4×2¹⁴ L4 | 21.0 M | 4.968 | 5.739 | −0.771 | yes | yes | |
+| physics, planes | double pendulum | ssm d16 | 9,248 | 4.904 | 5.739 | −0.835 | yes | yes | |
+| physics, planes | n-body | ng 4×2¹⁴ | 16.8 M | 5.388 | 5.972 | −0.584 | yes | yes | |
+| physics, planes | n-body | ent 4×2¹⁴ L4 | 21.0 M | **7.836** | 5.972 | +1.864 | no | no | |
+| physics, planes | n-body | ssm d16 | 9,248 | 5.160 | 5.972 | −0.812 | yes | yes | |
+| physics, planes | bounce | ng 4×2¹⁴ | 16.8 M | 6.095 | 6.655 | −0.560 | yes | yes | |
+| physics, planes | bounce | ent 4×2¹⁴ L4 | 21.0 M | 6.098 | 6.655 | −0.557 | yes | yes | |
+| physics, planes | bounce | ssm d16 | 9,248 | 6.153 | 6.655 | −0.502 | yes | yes | |
+
+Wall time per learner. The physics wall time covers all five systems and the
+text row. ng: text 5.1 s, code 7.2 s, physics 101.8 s. ent: text 12.3 s, code 9.7
+s, physics 260.3 s. ssm: text 4.8 s, code 2.3 s, physics 59.5 s. One run each, on
+this machine, release build.
+
+Gate counts, the plan's rule, on the five planes systems: **ng 5 of 5** (the
+P4b result again, which this run reproduces to the third decimal on all five),
+**ent 4 of 5** (it fails n-body), **ssm 5 of 5**. Against the train-side
+order-0, ssm is below it on all five; ng is below on all five; ent is above it on
+n-body (7.836 against 5.951).
+
+Held-out bits per byte at 0%, 10%, … 100% of the budget, for the rows whose
+curves change the reading:
+
+```
+n-body
+  ng:   8.000 7.977 7.730 7.288 7.114 6.639 6.350 6.177 5.734 5.582 5.388
+  ent:  8.000 8.653 9.798 7.257 8.615 7.103 6.344 6.172 7.117 7.590 7.836
+  ssm:  8.000 7.994 7.940 7.692 7.144 5.362 5.172 5.167 5.202 6.116 5.160
+bounce
+  ng:   8.000 7.825 7.520 7.311 7.020 6.771 6.572 6.371 6.248 6.155 6.095
+  ent:  8.000 9.430 7.495 7.269 8.441 6.769 6.585 6.368 6.245 6.162 6.098
+  ssm:  8.000 7.963 7.801 7.327 6.361 6.422 6.443 6.369 6.329 6.249 6.153
+text (README → gate.rs)
+  ng:   8.000 7.837 7.489 7.171 6.886 6.623 6.456 6.178 5.902 5.639 5.400
+  ent:  8.000 7.665 6.245 6.075 5.859 5.634 5.621 5.320 5.742 5.048 5.151
+  ssm:  8.000 7.950 7.816 7.460 6.589 5.522 5.524 5.749 5.487 5.113 5.075
+```
+
+What the table says, and what it does not:
+
+- **Text: the SSM is lowest, but only the n-gram margin clears the 0.3 bar, and
+  that is one seed.** At 9,248 parameters it reaches 5.075, against 5.151 for the
+  entropy learner (0.08 lower) and 5.400 for the n-gram (0.33 lower). The 0.33 is
+  above 0.3, but it is one seed, so it is suggestive rather than established; the
+  0.08 is a tie. Its training figure is 5.22, above its held-out figure, so it
+  underfits the README at 28 steps. Its curve is still falling at the end.
+- **Code: the entropy learner is lowest.** Its 4.605 is 0.44 below the SSM and 0.62
+  below the n-gram. The SSM beats the n-gram by 0.18, which is under 0.3 and not
+  established. Here the entropy learner's train figure (2.886) is 1.7 bits under
+  its held-out figure, the memorisation gap from L1, and the SSM's gap is small.
+- **Physics: on the gate, the SSM and the n-gram pass all five, the entropy
+  learner four.** Its n-body result is the failure. The entropy learner's
+  held-out curve is above 8 bits at 10% and 20% of the budget (8.65 and 9.80),
+  and it ends at 7.84, against 5.39 for the n-gram at the same bytes. The points
+  above 8 bits are worse than uniform, a failure of the kind L1 recorded out of
+  distribution. L1 blamed the mixture's global weight; this run is consistent with
+  that, but did not test it. Bounce shows the same spike at 10% (9.43), though it
+  recovers.
+- **Physics: the SSM is level with the n-gram, and the differences are small.**
+  Against the n-gram it is lower on pendulum (0.14), double pendulum (0.06) and
+  n-body (0.23), and higher on spring (0.11) and bounce (0.06). None of these is
+  over 0.3, so none is established. The n-gram and the entropy learner agree on
+  pendulum to the third decimal (5.822 both), so the chunk table adds nothing there.
+- **Size.** The SSM has about 0.05% of the n-gram's parameters, and its state is
+  16 numbers per position. That it matches or beats the n-gram on text and on
+  four of five physics systems says that the recurrence is a useful bias for
+  these streams. It does not say the SSM is the better learner at equal size, and
+  no size-matched run was made.
+- **Cost.** The SSM was the cheapest of the three on every corpus here: 59.5 s
+  for the physics invocation, against 101.8 s for the n-gram and 260.3 s for the
+  entropy learner. The cause of the n-gram's and the entropy learner's extra time
+  was not isolated.
+- **Optimisation is not smooth.** The SSM's n-body curve goes from 5.17 at 60%
+  of the budget up to 6.12 at 90%, then back to 5.16. The learning rate was not
+  tuned; a smaller rate or a schedule may remove the spike, and this was not tested.
+- **Cross-check.** The n-gram's planes rows reproduce the P4b table exactly
+  (pendulum 5.822, spring 2.386, double pendulum 4.959, n-body 5.388, bounce
+  6.095), so the harness and the seed are the same as in P4b.
+- **What is not measured.** Seeds beyond one, learning-rate and width sweeps,
+  size-matched comparisons, and the joule and latency axes. Every difference
+  under about 0.3 bits in this table is one seed's difference, and should be read
+  as a tie.

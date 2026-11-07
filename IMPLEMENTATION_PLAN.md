@@ -136,14 +136,14 @@ The yardstick everything later is judged by, so it goes first.
 
 ## Phase L: Learners from the byte-level literature
 
-- [x] **L1** Entropy-chunked learner (BLT-like). **M [H]** *Done: `ent:` learner, `arena/src/entropy.rs`. At 4×2¹⁴ it beats `ng` on text (5.15 vs 5.40 bpb) and code (4.61 vs 5.22); at 3×2¹² it is worse (6.29 vs 5.50 text). Single seed. Out of distribution it can score above uniform (9.52 on README after training on the pool) because the chunk table's weight is global; confidence-dependent weights are the fix, not yet done. Physics rows wait on P4b.*
+- [x] **L1** Entropy-chunked learner (BLT-like). **M [H]** *Done: `ent:` learner, `arena/src/entropy.rs`. At 4×2¹⁴ it beats `ng` on text (5.15 vs 5.40 bpb) and code (4.61 vs 5.22); at 3×2¹² it is worse (6.29 vs 5.50 text). Single seed. Out of distribution it can score above uniform (9.52 on README after training on the pool) because the chunk table's weight is global; confidence-dependent weights are the fix, not yet done. Physics rows, which waited on P4b, are in the L2 section of MEASUREMENTS.md: under planes, ent passes the gate on four of five systems and fails n-body (7.84 bpb).*
   - The existing n-gram model's next-byte entropy marks chunk boundaries,
     tuned to a target compression.
   - A chunk-level model predicts over chunks, and a byte decoder predicts
     within them.
   - Done when `--learners ent:...` runs, and its bpb on text, code and physics
     is in MEASUREMENTS.md.
-- [ ] **L2** Diagonal state-space learner. **M [H]**
+- [x] **L2** Diagonal state-space learner. **M [H]** *Done: `ssm:` learner, `arena/src/ssm.rs`, gradient-checked (worst relative error 7.5e-6 against a 1e-4 bar). At 9,248 parameters it is lowest on text (5.08 bpb, against 5.40 for ng and 5.15 for ent), and passes the planes gate on all five systems, level with ng. Single seed, untuned; see the L2 section of MEASUREMENTS.md.*
   - A small linear-recurrent byte model (diagonal SSM with gated output),
     trained with the existing autograd or a hand-written backward pass.
   - SSMs are discretised ODEs, a natural fit for physics.

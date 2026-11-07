@@ -105,6 +105,16 @@ pub struct TransformerConfig {
     pub gpu: bool,
 }
 
+/// The diagonal state-space learner's shape and optimiser settings (plan L2, `crate::ssm`).
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct SsmConfig {
+    /// Channels of the recurrence, and width of the byte embedding.
+    pub d: usize,
+    pub lr: f64,
+    /// Bytes of recurrence the gradient may cross before it is cut; 0 for no cut.
+    pub bptt: usize,
+}
+
 /// Which learner to build.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
@@ -112,6 +122,7 @@ pub enum LearnerSpec {
     Ngram(LearnerConfig),
     Transformer(TransformerConfig),
     Entropy(EntropyConfig),
+    Ssm(SsmConfig),
 }
 
 impl Default for LearnerSpec {
@@ -125,6 +136,7 @@ pub fn build(spec: LearnerSpec) -> Result<Box<dyn ByteLearner>, String> {
     match spec {
         LearnerSpec::Ngram(c) => Ok(Box::new(Learner::new(c))),
         LearnerSpec::Entropy(c) => Ok(Box::new(crate::entropy::EntropyLearner::new(c))),
+        LearnerSpec::Ssm(c) => Ok(Box::new(crate::ssm::SsmLearner::new(c))),
         #[cfg(feature = "transformer")]
         LearnerSpec::Transformer(c) => Ok(Box::new(crate::transformer::TransformerLearner::new(c)?)),
         #[cfg(not(feature = "transformer"))]

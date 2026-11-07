@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,359** — rmi 1,384 · prototype 1,408 · ribosome 168 · germline 175 · forge 63 · arena 161 |
+| Tests | **3,369** — rmi 1,384 · prototype 1,408 · ribosome 168 · germline 175 · forge 63 · arena 171 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -1208,6 +1208,39 @@ Against the train-side order-0, both pass 4 of 5.
 
 Physics is back on the plan as data: P5, P6, and the physics rows of L1-L3.
 Arena +8 tests.
+
+**Implementation plan L2: a diagonal state-space learner (`ssm:d:lr[:bptt]`).**
+`arena/src/ssm.rs` is a discretised ODE:
+- the recurrence is `h = a*h + b*(W_in x)` with `a = exp(-exp(log_lambda))`;
+- the output is gated;
+- the backward pass is hand-written truncated BPTT.
+
+Gradient-checked against central differences in f64, with a worst relative
+error of 7.5e-6 against a tolerance of 1e-4. Break-checked: dropping the
+recurrence carry fails the check.
+
+Held-out bpb, single seed. `ng` and `ent` are 4x2^14, `ssm` is d16 with 9,248
+parameters, about 0.05% of the n-gram's:
+
+| corpus | ng | ent | ssm |
+|---|---|---|---|
+| text | 5.40 | 5.15 | 5.08 |
+| code | 5.22 | 4.61 | 5.04 |
+| physics (planes), five systems | level with ssm, every difference under 0.3 bits | | |
+
+`ssm` passes the P4b gate on 5 of 5 systems and is the fastest. The entropy
+learner's n-body row is 7.84, above its order-0 and briefly above 8 during
+training. That is the same instability as its out-of-distribution failure in
+L1. On pendulum it ties `ng` to three decimals, so its mixture probably
+collapsed onto the n-gram there. This completes L1's physics rows.
+
+Open:
+- `ssm` underfits text, and its curve is still falling at the end of the
+  budget.
+- Its n-body curve spikes at 90%, so the learning rate may be too high.
+- One seed. L3 is the multi-seed comparison.
+
+Arena +10 tests.
 
 **Pre-existing, not from this change:** `cargo clippy` 0.1.98 (2026-09-01)
 reports 15 warnings in `prototype` — 14 `chunks_exact` with a constant size in
