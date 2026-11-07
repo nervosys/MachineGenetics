@@ -922,4 +922,26 @@ mod diagnostic_code_tests {
         table.sort();
         assert_eq!(stated, table, "capability_namespace facts vs CAPABILITY_NAMESPACES");
     }
+
+    /// Every role of `ROLES` is stated as an `agent_role` fact, and every
+    /// (role, effect) grant as a `role_grant` fact, both ways. A role granted
+    /// nothing has no `role_grant`. `Effect` displays as the name the fact
+    /// spells it with.
+    #[test]
+    fn every_role_and_grant_is_stated() {
+        let kb = crate::kb::load().expect("the knowledge base loads");
+        let mut roles: Vec<Vec<String>> = kb.facts("agent_role");
+        roles.sort();
+        let mut table: Vec<Vec<String>> = ROLES.iter().map(|(r, _)| vec![r.to_string()]).collect();
+        table.sort();
+        assert_eq!(roles, table, "agent_role facts vs ROLES");
+        let mut grants: Vec<Vec<String>> = kb.facts("role_grant");
+        grants.sort();
+        let mut table: Vec<Vec<String>> = ROLES
+            .iter()
+            .flat_map(|(r, effects)| effects.iter().map(move |e| vec![r.to_string(), e.to_string()]))
+            .collect();
+        table.sort();
+        assert_eq!(grants, table, "role_grant facts vs ROLES");
+    }
 }

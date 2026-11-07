@@ -1234,4 +1234,21 @@ mod tests {
         let v = crate::eval::run_source(src, "main", &[]).expect("runs");
         assert!(matches!(v, crate::eval::Value::Float(x) if x == 2.5), "{v:?}");
     }
+
+    /// Every base unit of `BASE_UNITS` is stated as a `base_unit` fact, with
+    /// its index as its position, both ways. The position is part of the fact,
+    /// so the order is held too: a `Dim` is positional.
+    #[test]
+    fn every_base_unit_is_stated() {
+        let kb = crate::kb::load().expect("the knowledge base loads");
+        let mut stated: Vec<Vec<String>> = kb.facts("base_unit");
+        stated.sort();
+        let mut table: Vec<Vec<String>> = BASE_UNITS
+            .iter()
+            .enumerate()
+            .map(|(i, u)| vec![u.to_string(), i.to_string()])
+            .collect();
+        table.sort();
+        assert_eq!(stated, table, "base_unit facts vs BASE_UNITS");
+    }
 }
