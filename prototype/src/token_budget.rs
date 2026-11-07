@@ -432,6 +432,8 @@ fn count_type_agent(ty: &Type) -> u32 {
         Type::Genome { inner } => 2 + count_type_agent(inner),
         Type::Policy { state, action } => 2 + count_type_agent(state) + count_type_agent(action),
         Type::Refined { base, .. } => count_type_agent(base) + 4,
+        // `[`, `]`, and one per unit name or operator.
+        Type::Dimensioned { base, unit } => count_type_agent(base) + 2 + unit_tokens(unit),
     }
 }
 
@@ -891,7 +893,15 @@ fn count_type_human(ty: &Type) -> u32 {
         Type::Genome { inner } => 3 + count_type_human(inner),
         Type::Policy { state, action } => 3 + count_type_human(state) + count_type_human(action),
         Type::Refined { base, .. } => count_type_human(base) + 6,
+        Type::Dimensioned { base, unit } => count_type_human(base) + 2 + unit_tokens(unit),
     }
+}
+
+/// Tokens in a unit's canonical spelling: names, numbers and operators.
+fn unit_tokens(unit: &str) -> u32 {
+    let ops = unit.chars().filter(|c| !c.is_ascii_alphanumeric()).count();
+    let words = unit.split(|c: char| !c.is_ascii_alphanumeric()).filter(|w| !w.is_empty()).count();
+    (ops + words) as u32
 }
 
 fn count_block_human(block: &Block) -> u32 {

@@ -2619,6 +2619,54 @@ impl<'a> Parser<'a> {
 
     // ── Type ────────────────────────────────────────────────
 
+    /// The `[unit]` of a dimensioned float, returned in its canonical
+    /// spelling. A unit is factors joined by `*` and `/`, each a unit name
+    /// with an optional integer exponent (`s^2`, `s^-1`), or `1`:
+    /// `[m/s]`, `[kg*m/s^2]`, `[1/s]`. Each `/` divides by the one factor
+    /// after it. Whether a name is a unit is the unit checker's question.
+    fn parse_unit(&mut self) -> Result<String, ParseError> {
+        self.expect(TokenKind::LBrack)?;
+        let mut factors: Vec<(String, i32)> = Vec::new();
+        let mut sign = 1;
+        loop {
+            let tok = self.current().clone();
+            if tok.kind == TokenKind::IntLiteral && tok.text == "1" {
+                self.advance();
+            } else if !tok.text.is_empty() && tok.text.chars().all(|c| c.is_ascii_alphabetic()) {
+                self.advance();
+                let mut exp = 1;
+                if self.peek() == TokenKind::BitXor {
+                    self.advance();
+                    let neg = if self.peek() == TokenKind::Minus {
+                        self.advance();
+                        true
+                    } else {
+                        false
+                    };
+                    let e = self.expect(TokenKind::IntLiteral)?.text.clone();
+                    let e: i32 = e
+                        .parse()
+                        .map_err(|_| self.error(&format!("`{e}` is not a unit exponent")))?;
+                    exp = if neg { -e } else { e };
+                }
+                factors.push((tok.text.clone(), sign * exp));
+            } else {
+                return Err(self.error(&format!(
+                    "expected a unit such as `m`, `s` or `kg`, found '{}'",
+                    tok.text
+                )));
+            }
+            match self.peek() {
+                TokenKind::Star => sign = 1,
+                TokenKind::Slash => sign = -1,
+                _ => break,
+            }
+            self.advance();
+        }
+        self.expect(TokenKind::RBrack)?;
+        Ok(crate::units::canonical(&factors))
+    }
+
     fn parse_type(&mut self) -> Result<Type, ParseError> {
         match self.peek() {
             // &T or &!T
@@ -2887,6 +2935,23 @@ impl<'a> Parser<'a> {
                             } else {
                                 break;
                             }
+                        }
+
+                        // `f64[m/s]`: a float with a unit of measure (plan
+                        // C2). A float takes no type arguments, so on `f32`
+                        // and `f64` the brackets hold a unit instead.
+                        if segments.len() == 1
+                            && (segments[0] == "f32" || segments[0] == "f64")
+                            && self.peek() == TokenKind::LBrack
+                        {
+                            let unit = self.parse_unit()?;
+                            return Ok(Type::Dimensioned {
+                                base: Box::new(Type::Path {
+                                    segments,
+                                    type_args: Vec::new(),
+                                }),
+                                unit,
+                            });
                         }
 
                         // Accept either `Path[T, ...]` (MAGE) or

@@ -613,6 +613,7 @@ type = type_path | '&' type | '&' 'mut' type
      | 'fn' '(' [ type_list ] ')' [ '->' type ]
      | '*const' type | '*mut' type
      | '!' | '_' | 'String' | 'str'
+     | ('f32' | 'f64') '[' unit ']'        /* float with a unit, §10.6 */
      ;
 
 shape = '[' int_literal { ',' int_literal }* ']' | '_' ;
@@ -1500,6 +1501,106 @@ Bidirectional type checking with Hindley-Milner unification, extended for:
 - **Shape unification**: tensor dimension variables solved via arithmetic constraints
 - **Effect unification**: effect variables solved via set-union constraints
 - **Genome type derivation**: crossover/mutate signatures inferred from data fields
+
+### 10.6 Units of Measure
+
+A float type may carry a unit of measure in square brackets: `f64[m/s]`,
+`f32[kg*m/s^2]`, `[f64[N]]~`. A float takes no type arguments, so on `f32`
+and `f64` the brackets hold a unit. `<...>` was not used: after a type name it
+is already a generic argument list (`Path<T>`), in an expression it is
+less-than (`x as f64 < y`), and a nested `>>` lexes as a shift. An undelimited
+form such as `f64 @ m/s` was not used either: a unit's `/` would run on into a
+return type's `/ effect` annotation.
+
+```
+dimensioned = ('f32' | 'f64') '[' unit ']' ;
+unit        = factor { ('*' | '/') factor } ;
+factor      = UNIT_NAME [ '^' [ '-' ] INT ] | '1' ;
+```
+
+Each `/` divides by the one factor after it, so `J/kg/K` is J·kg⁻¹·K⁻¹. The
+parser stores a unit in one canonical spelling (repeated names merged,
+numerator first, then each denominator after a `/`, `1` when nothing is
+left), and both surfaces print that spelling: `f64[s^-1*m]` prints as
+`f64[m/s]` under `--fmt-compact` and `--fmt-expand` alike.
+
+**Dimensions.** A dimension is a vector of integer exponents over the seven SI
+base units `kg`, `m`, `s`, `A`, `K`, `mol` and `cd`. The derived names `N`,
+`J`, `W`, `Pa` and `Hz` expand to base exponents, so `f64[N]` and
+`f64[kg*m/s^2]` are the same type. A bare `f64`, and every integer type, is
+dimensionless.
+
+**Rules.**
+
+- `+`, `-`, `%`, the comparisons, `min`/`max`, `=`, `+=` and `-=` need equal
+  dimensions on both sides; the result keeps the dimension.
+- `*` adds exponents and `/` subtracts them. `*=` and `/=` need a
+  dimensionless right-hand side, since they cannot change their target's unit.
+- A numeric literal is **polymorphic**. Under `+`, `-` and the comparisons it
+  takes the other operand's unit (`x + 1.0`, `x > 0.0`); under `*` and `/` it
+  is a pure number (`2.0 * x` has the unit of `x`, `1.0 / t` has the inverse of
+  the unit of `t`). A `val` bound to a literal without an annotation stays
+  polymorphic; write `val g: f64[m/s^2] = 9.81` to fix its unit.
+- Parameters, returns, struct fields, consts and annotated bindings carry their
+  declared dimension. A call checks every argument against its parameter, and
+  a function's body and each `ret` are checked against its declared return.
+  `if` and `match` branches must agree.
+- `sqrt` halves every exponent and needs them all even (`sqrt` of `m^2` is
+  `m`; of `m` it is refused). `abs`, `floor`, `ceil`, `round` and `trunc` keep
+  the unit. `exp`, `ln`, `log`, `log2`, `log10`, `sin`, `cos`, `tan`, `asin`,
+  `acos`, `atan`, `sinh`, `cosh`, `tanh` and `sigmoid` need a dimensionless
+  argument and return a dimensionless value. Each may be written `f(x)` or
+  `x.f()`.
+- `x as f64` drops a unit and `x as f64[m]` asserts one. This is the deliberate
+  escape hatch.
+
+Where the checker cannot tell a dimension (a method of a user type, an
+unannotated closure parameter, an index into an untyped collection) it says
+nothing: a mismatch is reported only between two dimensions it knows. Code
+with no unit annotations, where every known dimension is dimensionless,
+cannot fail the check, so the corpus typechecks unchanged.
+
+**Errors.** A mismatch is **E0562** (`UnitMismatch`), and the message names
+both dimensions:
+
+```text
+cannot add m and s
+cannot compare m and s
+`speed` returns m/s, but is declared to return m
+argument 1 of `speed` is s, but the parameter is m
+cannot take the square root of m: its exponents are not all even
+`exp` needs a dimensionless argument, but was given m
+```
+
+An unknown unit name (`f64[ft]`) is E0412 (`UnresolvedType`), and its message
+lists the units that exist.
+
+**Runtime.** Units are erased once checked. The evaluator, convexity,
+differentiability and refutation all see the base float type, so an annotated
+program runs exactly as the unannotated one does.
+
+**Not covered.** Unit conversion and prefixes (`km`, `ms`, `g`: a value is
+in base SI units or it is unannotated), affine units such as °C (`K` is a
+difference of temperatures only), generics over units (a function cannot be
+polymorphic in the unit of its argument; `f sq(x: f64) -> f64` takes only a
+dimensionless value), units on integer types, and units inside `tensor[...]`
+element types.
+
+The program below typechecks. Changing `b.x + vel * dt` to `b.x + vel` makes
+it **E0562** (`cannot add m and m/s`).
+
+```mg
+S Body { x: f64[m], vel: f64[m/s] }
+
+f step(b: Body, a: f64[m/s^2], dt: f64[s]) -> Body {
+    val vel = b.vel + a * dt;
+    @Body { x: b.x + vel * dt, vel: vel }
+}
+
+f kinetic(mass: f64[kg], vel: f64[m/s]) -> f64[J] {
+    0.5 * mass * vel * vel
+}
+```
 
 ---
 
@@ -2439,6 +2540,7 @@ first thing an agent reads to learn the compressed surface.
 | `&mut T`        | `&!T`     | Exclusive reference |
 | `fn(T)->U`      | `f(T)->U` | Function pointer    |
 | `T<A>` (generics) | `T[A]`    | Generic parameters  |
+| `f64[m/s]`        | `f64[m/s]` | Float with a unit (§10.6) |
 
 ### B.5 Tensor Operations
 

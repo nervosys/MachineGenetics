@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,425** — rmi 1,384 · prototype 1,435 · ribosome 168 · germline 175 · forge 63 · arena 200 |
+| Tests | **3,438** — rmi 1,384 · prototype 1,448 · ribosome 168 · germline 175 · forge 63 · arena 200 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -40,7 +40,7 @@ each claim has a command beside it.
 | `.mg` sources | **112 checked, 0 sketches** — every `.mg` file in the repository typechecks |
 | Differentiability | **34 of 34 nets and 7 of 7 train blocks; 1 of 156 functions** (the arena's reward) — `scripts/measure-differentiability.sh`, re-derived in CI and compared against `DIFFERENTIABILITY.md` in both directions |
 | `grad` | An expression that typechecks and **runs**, for scalars: forward-mode duals, checked against central differences. The differentiability obligation is a premise of its typing rule, discharged by the call-graph pass. Tensors are refused, not deferred |
-| Documentation | 210 MAGE blocks typecheck; 59 documentation entry points run; 268 `rmi/docs` API items all exist — and "exist" now means **a definition exists**, not that the name appears somewhere in `src/`. It was 275 under the weaker criterion, 8 of them held up by English words in comments; the phantom entries are gone and a duplicate went with them |
+| Documentation | 211 MAGE blocks typecheck; 59 documentation entry points run; 268 `rmi/docs` API items all exist — and "exist" now means **a definition exists**, not that the name appears somewhere in `src/`. It was 275 under the weaker criterion, 8 of them held up by English words in comments; the phantom entries are gone and a duplicate went with them |
 | Release | `v0.3.0`, with the promo video attached as a release asset |
 
 Reproduce all of it:
@@ -1534,6 +1534,32 @@ rebounds above the floor, which the QP cannot represent.
 
 `.mg` sources go from 111 to 112, and documentation blocks from 209 to 210.
 Prototype +3 tests.
+
+**Implementation plan C2: units of measure.** Float types can carry a
+dimension, as in `f64[m/s]`, `f32[kg*m/s^2]` and `f64[1/s]`.
+- Why brackets: `<...>` is already generics, and it clashes with `<` and `>>`.
+  A bare `/` would run into a return type's `/ effect`. Floats take no type
+  arguments, so `[...]` after them is free.
+- One canonical spelling prints in both surfaces.
+- `prototype/src/units.rs` checks exponent vectors over the seven SI base
+  units, and N, J, W, Pa and Hz expand to them.
+
+The rules:
+- `+`, `-`, comparisons, `min`/`max` and assignment need equal units. `*` and
+  `/` add or subtract exponents.
+- Literals are polymorphic under `+` and `-`, and plain numbers under `*`.
+- `sqrt` halves exponents. Transcendentals need dimensionless arguments.
+- `x as f64` drops a unit.
+
+A mismatch is E0562 (`UnitMismatch`), for example `cannot add m and s`. An
+unknown unit reuses E0412. Code without annotations cannot fail, so all 112
+`.mg` sources typecheck unchanged. Units are erased before evaluation.
+
+Not covered: conversion and prefixes, affine units such as degrees C,
+generics over units, and units on integers or inside tensors.
+
+Break-checked: disabling the equality check fails 6 of the 13 new tests.
+Documentation blocks go from 210 to 211. Prototype +13 tests.
 
 **Pre-existing, not from this change:** `cargo clippy` 0.1.98 (2026-09-01)
 reports 15 warnings in `prototype` — 14 `chunks_exact` with a constant size in
@@ -4073,7 +4099,7 @@ changed before you commit.
 ---
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,435**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,448**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
   across six crates **3,140**; documented-count pins **101**, up from 46 — the
   two newest hold the `kb`/`net` overlap the tensor-product-binding decision

@@ -197,7 +197,7 @@ impl DiffInfer {
 /// Floats and tensors of floats. Integers, `bool`, `str` and `char` are
 /// discrete: there is no limit to take. A reference or a box is transparent.
 fn type_is_continuous(ty: &ast::Type) -> bool {
-    match ty {
+    match ty.strip_units() {
         ast::Type::Path { segments, type_args } => {
             let name = segments.last().map(String::as_str).unwrap_or("");
             match name {

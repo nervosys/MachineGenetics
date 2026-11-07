@@ -184,7 +184,7 @@ fn check_param(item: &ast::Item, attr: &ast::Attribute) -> Result<ParamDecl, Str
 
 /// Integer or float kind of a type, if it is one.
 fn num_kind(ty: &Type) -> Option<NumKind> {
-    let Type::Path { segments, type_args } = ty else {
+    let Type::Path { segments, type_args } = ty.strip_units() else {
         return None;
     };
     if !type_args.is_empty() || segments.len() != 1 {
