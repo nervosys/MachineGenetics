@@ -1201,7 +1201,18 @@ impl<'a> Parser<'a> {
         match self.ident()?.as_str() {
             "range" => {
                 self.expect("(")?;
-                let n = self.number(bounds::range(), "range length")?;
+                // A template's length has its own limit, `cycle_len`, checked in `template`.
+                let start = self.pos;
+                let n = match self.number(bounds::range(), "range length") {
+                    Ok(n) => n,
+                    Err(refused) => {
+                        self.pos = start;
+                        match self.number(bounds::cycle_len(), "range length") {
+                            Ok(n) if self.template_follows() => n,
+                            _ => return Err(refused),
+                        }
+                    }
+                };
                 self.expect(")")?;
                 Ok(ListExpr::Range(n))
             }
@@ -1448,6 +1459,17 @@ impl<'a> Parser<'a> {
             }
             other => return Err(format!("unknown method `{other}` at byte {at}")),
         })
+    }
+
+    /// Whether the text after a range's length says `).map(|v| [`. Consumes nothing.
+    fn template_follows(&mut self) -> bool {
+        let start = self.pos;
+        let follows = [")", ".", "map", "(", "|"].iter().all(|tok| self.eat(tok))
+            && self.ident().is_ok()
+            && self.eat("|")
+            && self.peek() == Some('[');
+        self.pos = start;
+        follows
     }
 
     /// `range(len).map(|v| [e, …][v % k])`: a periodic template over `range`.
@@ -1940,6 +1962,19 @@ mod tests {
         assert!(refused(&nest).contains(&format!("nest count {}", nest_count_hi + 1)));
         for src in ["", "hello", "range(", "range(3) range(4)", "range(3).", "[1; 2", "f other(s: usize) -> [usize] { range(3) }"] {
             assert!(Program::parse(src).is_err(), "accepted {src:?}");
+        }
+    }
+
+    /// Past `range`'s limit a length is refused as a range, whatever `cycle_len`
+    /// allows, unless a template follows. The two limits are equal in the shipped
+    /// profile, so the template's own branch runs only under a wider `cycle_len`,
+    /// which the sampling tests exercise when the gate tries one.
+    #[test]
+    fn a_length_past_the_range_limit_is_refused_as_a_range() {
+        let over = bounds::range().1.max(bounds::cycle_len().1) + 1;
+        for src in [format!("range({over})"), format!("range({over}).map(|v| v)"), format!("range({over}).map(|v| [1, 2][v % 2])")] {
+            let e = Program::parse(&src).expect_err(&src);
+            assert!(e.contains("range length"), "{src}: {e}");
         }
     }
 

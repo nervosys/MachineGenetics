@@ -464,6 +464,10 @@ pub struct Report {
     /// (`crate::evidence`). Not in the report: `--evidence` appends it.
     #[serde(skip)]
     pub evidence: Vec<crate::evidence::Record>,
+    /// The program behind each artifact in `evidence`, so a reward can be read
+    /// against what the program was. Not in the report.
+    #[serde(skip)]
+    pub programs: BTreeMap<String, crate::grammar::Program>,
 }
 
 /// A held-out slice rotation (plan 7.5). Rotations happen only at checkpoints,
@@ -766,6 +770,7 @@ pub fn run_with(
     let mut rng = Rng(cfg.seed);
     let mut refusals: BTreeMap<String, usize> = BTreeMap::new();
     let mut evidence: Vec<crate::evidence::Record> = vec![knowledge_base_record()];
+    let mut programs: BTreeMap<String, crate::grammar::Program> = BTreeMap::new();
     let mut checkpoints = Vec::new();
     // Novelty is counted on a program's *shape* — its structure with
     // constants erased (`mage_prototype::canon`) — or, under
@@ -925,6 +930,7 @@ pub fn run_with(
                                 let raw = learners.iter().map(|l| l.progress(&bytes)).sum::<f64>()
                                     / learners.len() as f64;
                                 let r = raw * mult;
+                                programs.entry(crate::evidence::artifact(&c.program.source())).or_insert_with(|| c.program.clone());
                                 evidence.push(reward_record(round, &**agent, &c, r));
                                 pool.add_with(
                                     c.program.clone(),
@@ -1064,7 +1070,9 @@ pub fn run_with(
                     structure,
                 })
                 .map_err(|e| format!("round {round}: {e}"))?;
-            evidence.push(reward_record(round, &*agents[ai], &round_scored[ai][idx].0, r));
+            let scored = &round_scored[ai][idx].0;
+            programs.entry(crate::evidence::artifact(&scored.program.source())).or_insert_with(|| scored.program.clone());
+            evidence.push(reward_record(round, &*agents[ai], scored, r));
             let program = round_scored[ai][idx].0.program.clone();
             pool.add_with(program, probe, r, agents[ai].id(), round, round, &|r, age| retention_program.priority(r, age))?;
             round_scored[ai][idx].1 = Some(r);
@@ -1303,6 +1311,7 @@ pub fn run_with(
         refreshes,
         loss_fits,
         evidence,
+        programs,
     })
 }
 
@@ -1415,6 +1424,20 @@ mod tests {
         }
         let proposed: usize = r.agents.iter().map(|a| a.proposed).sum();
         assert!(rewards > 0 && rewards + r.refusals.values().sum::<usize>() <= proposed);
+    }
+
+    /// Every reward names a program the report holds, and that program is the one it names.
+    #[test]
+    fn every_reward_has_its_program() {
+        use crate::evidence::What;
+        let (m, n) = cpu_only();
+        let r = run(tiny_cfg(), heldout(), m, n).expect("runs");
+        let rewards: Vec<_> = r.evidence.iter().filter(|e| matches!(e.what, What::Measurement { .. })).collect();
+        assert!(!rewards.is_empty());
+        for e in rewards {
+            let program = r.programs.get(&e.artifact).unwrap_or_else(|| panic!("no program for {}", e.artifact));
+            assert_eq!(crate::evidence::artifact(&program.source()), e.artifact);
+        }
     }
 
     /// A run's first entry names the knowledge base it ran under, and no other does.

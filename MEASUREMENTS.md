@@ -15,7 +15,7 @@ last line, which pins every entry before it, so a log regenerated from the comma
 is the one cited exactly when its head matches. Logs are not committed.
 
 > **Re-verified 2026-09-25** — all six crates tested: prototype **1,567**, rmi
-> **1,384**, ribosome **168**, germline **176**, forge **65**, arena **251** = **3,611 passing,
+> **1,384**, ribosome **168**, germline **176**, forge **65**, arena **259** = **3,619 passing,
 > 0 failing, 0 warnings**.
 >
 > *One figure below had not regressed — it had been superseded.* The ABL
@@ -88,7 +88,7 @@ is the one cited exactly when its head matches. Logs are not committed.
 | rmi (`cpu`) | **1384 pass** | `cargo test --no-default-features --features cpu` |
 | ribosome (build engine) | **168 pass** | `cargo test --manifest-path ribosome/Cargo.toml` |
 | germline (RSI control plane) | **176 pass** | `cargo test --manifest-path germline/Cargo.toml` |
-| arena (self-play arena) | **251 pass** | `cargo test --manifest-path arena/Cargo.toml` |
+| arena (self-play arena) | **259 pass** | `cargo test --manifest-path arena/Cargo.toml` |
 | forge (registry) | **65 pass** | `cargo test --manifest-path forge/Cargo.toml` |
 | agentic-eval (AetherShell) | **80 pass** | `cargo test -p agentic-eval` |
 | SPINE `spine-agentic` | **285 pass** | `cargo test -p spine-agentic` |
@@ -947,3 +947,87 @@ Two gate runs on seeds 1–8 gave the first head exactly, so the benchmark repro
 - **The test was chosen after seeing seeds 1–8,** which is why seeds 9–16 are reported. Three tests were tried on this one proposal. One seed with any rise refusing it (+59%) was a draw: with nothing changed, seeds 1–3 cost 15,629, 22,042 and 24,316. The mean paired rise over two standard errors admitted it (−1,488, se 5,537), because seed 8's baseline run spent 66,668. The sign test cannot be moved by one seed.
 - **Eight seeds have little power.** The test refuses only at seven rises of eight, so it will admit many real rises of this size, as seeds 9–16 show. A larger benchmark or more seeds would decide more; they cost time, about 10 seconds a run in a debug build.
 - **Held-out bits per byte cannot show a benefit here.** At 4 rounds of 16 programs the learners score about 8 bits per byte on these corpora, no better than uniform, so the only effect this measures is fuel.
+
+## A generator's proposals at the knowledge-base gate (plan Phase 8)
+
+`arena --propose-limit <out.json>` reads a run's rewards. For each of 11 profile limits it compares the programs with one parameter of that limit in its top quarter against those with one below it, by a Mann–Whitney rank test, and proposes widening the strongest limit by a third if z > 2.61 (p < 0.05, Bonferroni over the 11). Programs with two or more parameters of a limit are left out, because a larger program is likelier to have one in the top quarter. Repeated programs count more than once, so these z values are overstated by an amount not measured.
+
+The runs are `arena --heldout README.md,germline/src/gate.rs --rounds 40 --programs 48 --agents grammar:2,uniform:1,mutator:1 --learners 3:12:0.02,2:10:0.05,1:8:0.1 --cost fuel --meter-gpus none --seed N`.
+
+| run seed | proposed | z | `cycle_len` z | next strongest |
+|---|---|---|---|---|
+| 1 | `cycle_len` 48→63 | 2.76 | 2.76 | `copy` 2.56 |
+| 2 | `cycle_len` 48→63 | 2.98 | 2.98 | `take` 2.24 |
+| 3 | `take` 48→64 | 5.34 | 4.60 | `copy` 3.17 |
+| 4 | `cycle_elems` 6→7 | 3.02 | 2.94 | `copy` 2.55 |
+
+```
+evidence: limit-proposer/run-1.jsonl seq 0–1920, head sha256:4d6c79c85d45be0b0622f60e8cc12409d0e6eccaca16fc03250937861f8dcde5
+evidence: limit-proposer/run-2.jsonl seq 0–1920, head sha256:d6be82dac42c91ccedb84a9006f912a656b48956e899fd13acb2346ad79e50ff
+evidence: limit-proposer/run-3.jsonl seq 0–1920, head sha256:fc58530c2e48819b781f35475854b272c42dc13029779450c06c01531bc17ab5
+evidence: limit-proposer/run-4.jsonl seq 0–1920, head sha256:7ae094beac1d68dd0c1c9cd4a518e744c3488126f322783cccd9eb506f5c18d7
+```
+
+**The gate.** The three proposals, with the benchmark of "A profile change at the knowledge-base gate":
+
+| proposal | seeds 1–8: rose / fell, p | gate | seeds 9–16: rose / fell, p | gate |
+|---|---|---|---|---|
+| `take` 48→64 | 3 / 5, 0.855 | admitted | 3 / 4 and a tie, 0.773 | admitted |
+| `cycle_len` 48→63 | 7 / 1, 0.035 | refused by `kb_cost` | 4 / 4, 0.637 | admitted |
+| `cycle_elems` 6→7 | 7 / 1, 0.035 | refused by `kb_cost` | 4 / 4, 0.637 | admitted |
+
+```
+evidence: cyc2-default-logs/bench.jsonl seq 0–1039, head sha256:08f63095a785f3783cbd22df34a9a71b1e9dc168b37af37d29aeaec9d6a54abe
+evidence: cyc2-fresh-logs/bench.jsonl seq 0–1039, head sha256:563564d8199ac2310f32bfad29b2d886a3dab9c562b318d0436f6c45a4dc1029
+evidence: take-default-logs/bench.jsonl seq 0–1039, head sha256:5275ccea8332ac5eec70d232a345db7246f71fc77dcffd0ca198e6905f6fb643
+evidence: take-fresh-logs/bench.jsonl seq 0–1039, head sha256:9b00caa654880016eec5285352da871ddbe7d1516a6faeb114848caa1a0cd6cc
+evidence: elems-default-logs/bench.jsonl seq 0–1039, head sha256:68230c8a84a98c38b5b96979a97d284e660ee57fb71f7bc789b8723a7b838b83
+evidence: elems-fresh-logs/bench.jsonl seq 0–1039, head sha256:8eea4042d87e74b511a2309897e90352c8261161ddf83c6be15a3488bd1ae4c1
+```
+
+**The measured effect of the admitted change.** `take` 48→64 against HEAD at the configuration above, on seeds 5–12, none of which chose it. Differences are changed − HEAD. Lower is better for bits per byte; higher is better for hypervolume.
+
+| seed | fuel, HEAD | fuel, changed | held-out bpb (learner 0), HEAD | changed | hypervolume, HEAD | changed |
+|---|---|---|---|---|---|---|
+| 5 | 2,914,451 | 7,468,615 | 7.8165 | 7.8869 | 2.160 | 1.528 |
+| 6 | 6,053,882 | 4,470,613 | 7.7475 | 7.5358 | 3.281 | 5.799 |
+| 7 | 6,946,069 | 6,524,087 | 7.7338 | 7.8931 | 3.784 | 1.053 |
+| 8 | 4,318,194 | 7,567,361 | 7.6232 | 7.8490 | 7.732 | 2.042 |
+| 9 | 5,605,706 | 8,828,316 | 7.8064 | 7.7906 | 1.886 | 4.243 |
+| 10 | 4,895,071 | 5,048,941 | 7.5349 | 7.7460 | 5.371 | 3.599 |
+| 11 | 3,285,035 | 1,656,127 | 7.8543 | 7.6766 | 1.818 | 2.390 |
+| 12 | 7,657,156 | 7,851,275 | 7.4000 | 7.6196 | 8.192 | 5.298 |
+
+| measure, changed − HEAD | median | rose / fell | two-sided sign test p |
+|---|---|---|---|
+| fuel | +173,995 | 5 / 3 | 0.727 |
+| held-out bpb, learner 0 (3×2^12) | +0.115 | 5 / 3 | 0.727 |
+| held-out bpb, learner 1 (2×2^10) | −0.059 | 4 / 4 | 1.000 |
+| held-out bpb, learner 2 (1×2^8) | −0.084 | 4 / 4 | 1.000 |
+| hypervolume | −1.202 | 3 / 5 | 0.727 |
+
+```
+evidence: take-measure/base-5.jsonl seq 0–1920, head sha256:a447122f3a75dc5b6325ca5688ac8fe4277d5c72ed3b753f89f873f7fd0e6af1
+evidence: take-measure/base-6.jsonl seq 0–1920, head sha256:b7aaa538d695b261e673da196340e5605c66e46a3516d97c575fa4e655e73ff8
+evidence: take-measure/base-7.jsonl seq 0–1920, head sha256:01872ac254145a674d2bbb8ff6dbe3637d1247ee4ca247546a70a2c11e5fec9d
+evidence: take-measure/base-8.jsonl seq 0–1920, head sha256:3e1baf82090f4efc0527f893159f9d4399667b92636689839b48246d2a8d2872
+evidence: take-measure/base-9.jsonl seq 0–1920, head sha256:19c3771b9a7d1720cc6570564562cc349224b76a6eb2b1dc7e800b6c97869543
+evidence: take-measure/base-10.jsonl seq 0–1920, head sha256:ac540c38f362a8d5e7794c2009737e6ed78a2e69acb88c0bc8759c12c9b4a5f0
+evidence: take-measure/base-11.jsonl seq 0–1920, head sha256:d4ddb4c89a5c56248bcba9382d48b14e8c6b49b30a8a1820b6af0ea15a126087
+evidence: take-measure/base-12.jsonl seq 0–1920, head sha256:95215b165346fb22d2d856a66b1e8de7daaac9f46c24380dcd80169978662d64
+evidence: take-measure/new-5.jsonl seq 0–1920, head sha256:967da0bee4c4c7af148fe4200b48c7c74a80f8f69a6936622dc2aaa500d52d43
+evidence: take-measure/new-6.jsonl seq 0–1920, head sha256:20ca7886dea35544651940052b735cb3e94a2b01a3814195bf3245cb13e22260
+evidence: take-measure/new-7.jsonl seq 0–1920, head sha256:cfec844f6d558282132910e9852a506da7a69fabf80ecf8fc72b88a6553b19e6
+evidence: take-measure/new-8.jsonl seq 0–1920, head sha256:27524434c63bbf224c561a7918a5456e49eb944403f98e40f1445a7303b20f99
+evidence: take-measure/new-9.jsonl seq 0–1920, head sha256:15cfe035fb199d06bc318f7229115c87675fa720e5685f293961d8607f560297
+evidence: take-measure/new-10.jsonl seq 0–1920, head sha256:6acf29ea075aff8033150de2e1d5b7169be596d2c8919621f6d52ec78e74470b
+evidence: take-measure/new-11.jsonl seq 0–1920, head sha256:43ea21564b83501783941826e308098c8d898c7420cdf3c2d2845cbd27ec7136
+evidence: take-measure/new-12.jsonl seq 0–1920, head sha256:167ae40eaebcb39482c4d5e9fa32452673c67f5506825ec0354f3a6fc47ad729
+```
+
+- **No benefit shows, so the change is not applied.** Nothing differs detectably from HEAD on any of the five measures. Eight seeds would miss a small effect, so this does not show the change is harmless either. The configuration may be part of the reason: at these sizes the first learner still scores about 7.4 to 7.9 bits per byte, little better than uniform.
+- **The signal does not predict the effect.** `take` had the strongest signal of the study (z = 5.34), and widening it did nothing measurable. The test compares programs inside one run under the old limit, so it cannot say what programs past the limit would earn.
+- **The proposer is not stable.** Four seeds gave three different limits, since it takes the strongest limit of one run. `cycle_len` passes the threshold on all four and is proposed on two. Pooling runs before proposing would be sounder.
+- **The two `kb_cost` refusals are weak.** Seeds 1–8 refused `range`, `cycle_len` and `cycle_elems` at the same 7 of 8, and seeds 9–16 repeated none of them. Pooled over 16 seeds, `cycle_len` and `cycle_elems` each rise on 11 (p ≈ 0.105). The comparisons share one baseline for each seed set, and the test was chosen after seeing seeds 1–8, so those seeds may lean towards refusing.
+- **Fuel varies widely between seeds at this size,** with HEAD alone ranging from 2.9M to 7.7M, so a change can reshuffle a seed's fuel by more than the median difference.
+- **The gate found a real bug on the way.** It first refused `cycle_len` by `kb_conformance`: the parser checked a template's length against `range` before it knew it was a template, so the grammar sampled programs it then refused. That is fixed in code, and the table above is after the fix.

@@ -11,7 +11,7 @@
 //!       [--energy-budget J] [--joules-per-program J] [--definitions <forge registry dir>]
 //!       [--heldout-slices K] [--refresh-drift X]
 //!       [--proposer-command "<cmd> <args…>"] [--proposer-timeout S]
-//!       [--json <out.json>] [--evidence <log.jsonl>]
+//!       [--json <out.json>] [--evidence <log.jsonl>] [--propose-limit <out.json>]
 //! arena physics-baseline [--system pendulum|spring|double_pendulum|nbody|bounce|none] [--steps N]
 //!       [--seed S] [--budget BYTES] [--learners SPEC,…] [--encoding i32|coarse|planes|diff2]
 //!       [--text-train <file> --text-heldout <file>] [--json OUT]
@@ -531,6 +531,7 @@ fn main() {
     let mut physics_specs: Vec<String> = Vec::new();
     let mut json_out: Option<String> = None;
     let mut evidence_out: Option<String> = None;
+    let mut propose_out: Option<String> = None;
     let mut meter_gpus: Option<Vec<u32>> = None;
     let mut i = 0;
     let value = |i: usize| -> &str { args.get(i + 1).map(String::as_str).unwrap_or_else(|| fail(format!("{} needs a value", args[i]))) };
@@ -625,6 +626,7 @@ fn main() {
             "--cpu-watts" => cfg.cpu_watts = value(i).parse().unwrap_or_else(|_| fail("--cpu-watts: not a number")),
             "--json" => json_out = Some(value(i).to_string()),
             "--evidence" => evidence_out = Some(value(i).to_string()),
+            "--propose-limit" => propose_out = Some(value(i).to_string()),
             // The command's argv is the value split on whitespace, so it
             // cannot carry an argument with a space in it.
             "--proposer-command" => {
@@ -681,6 +683,14 @@ fn main() {
     for n in &notes {
         eprintln!("meter: {n}");
     }
+    // The run's description, for a proposal to cite. Read before `cfg` is moved.
+    let run_text = format!(
+        "seed {}, {} rounds, {} programs per round, agents {}",
+        cfg.seed,
+        cfg.rounds,
+        cfg.programs_per_round,
+        cfg.agents.iter().map(|(k, n)| format!("{k}:{n}")).collect::<Vec<_>>().join(",")
+    );
     let report = run(cfg, heldout, meters, notes).unwrap_or_else(|e| fail(e));
 
     eprintln!("\n=== agents (credit per unit cost drives the budget) ===");
@@ -765,5 +775,19 @@ fn main() {
     if let Some(path) = evidence_out {
         let n = arena::evidence::append(std::path::Path::new(&path), &report.evidence).unwrap_or_else(|e| fail(e));
         eprintln!("{} evidence entries appended to {path}, which now holds {n}", report.evidence.len());
+    }
+    if let Some(path) = propose_out {
+        let signals = arena::limit_proposer::signals(&report.evidence, &report.programs);
+        for s in &signals {
+            eprintln!("{:<12} top {:>5}  rest {:>5}  z {:>6.2}", s.limit, s.top, s.rest, s.z);
+        }
+        match arena::limit_proposer::propose(&signals, &run_text) {
+            Some(p) => {
+                let json = serde_json::to_string_pretty(&p).unwrap_or_else(|e| fail(e));
+                std::fs::write(&path, json).unwrap_or_else(|e| fail(format!("{path}: {e}")));
+                eprintln!("proposal written to {path}");
+            }
+            None => eprintln!("no limit shows a signal past z = {}", arena::limit_proposer::THRESHOLD),
+        }
     }
 }
