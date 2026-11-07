@@ -254,6 +254,7 @@ pub fn build_schema() -> serde_json::Value {
             })
         })
         .collect();
+    let knowledge = crate::kb::load().expect("the knowledge base loads");
     serde_json::json!({
         "schema": "mage.abl.net-spec",
         "version": 1,
@@ -269,15 +270,7 @@ pub fn build_schema() -> serde_json::Value {
         "shape_rule":
             "a Linear layer's first (input) dim must equal the running feature dim — \
              the last dim of the most recent dim-transforming layer",
-        "errors": [
-            {"code": "B0000", "when": "spec JSON is malformed",                "fix": "emit valid JSON matching spec_format"},
-            {"code": "B0001", "when": "net name is empty",                     "fix": "set a non-empty \"net\" field"},
-            {"code": "B0002", "when": "net has no layers",                     "fix": "add at least one layer"},
-            {"code": "B0003", "when": "unknown op",                            "fix": "use an op listed in `ops`"},
-            {"code": "B0004", "when": "wrong dim count for the op",            "fix": "match the op's `dims` arity"},
-            {"code": "B0005", "when": "a dim is not a positive integer",       "fix": "use positive integers for dims"},
-            {"code": "B0006", "when": "shape mismatch in the layer chain",     "fix": "make each Linear's input dim equal the previous output dim"}
-        ],
+        "errors": error_table(&knowledge, "net"),
         "kb": {
             "spec_format": {
                 "kb": "string, non-empty — the knowledge base's name",
@@ -293,15 +286,7 @@ pub fn build_schema() -> serde_json::Value {
                 "the lowered Agentic Binary Language kb artifact stores predicate names, ground term \
                  names, and rule parameter names (the symbol table is serialized) — the full \
                  facts and rule signatures round-trip; --describe=abl reports them.",
-            "errors": [
-                {"code": "K0001", "when": "kb name is empty",                       "fix": "set a non-empty \"kb\" field"},
-                {"code": "K0002", "when": "kb has no facts and no rules",           "fix": "add at least one fact or rule"},
-                {"code": "K0003", "when": "an identifier is invalid",               "fix": "use [A-Za-z_][A-Za-z0-9_]* for predicates, rules, params, terms"},
-                {"code": "K0004", "when": "a predicate is used at two arities",     "fix": "use a consistent arity for each predicate"},
-                {"code": "K0006", "when": "a rule body references an unknown predicate", "fix": "reference a declared fact-predicate or rule"},
-                {"code": "K0007", "when": "a head param is not bound by the body",  "fix": "use each head param as an argument in some body literal"},
-                {"code": "K0008", "when": "the logic engine refuses the kb (E0570)", "fix": "give every rule at least one body literal; the message says what else"}
-            ]
+            "errors": error_table(&knowledge, "kb")
         },
         "agent": {
             "spec_format": {
@@ -310,11 +295,7 @@ pub fn build_schema() -> serde_json::Value {
                 "requires_approval": "array of operation identifier strings requiring approval (optional, recoverable)"
             },
             "example": {"agent": "Worker", "capabilities": ["read_source", "query_types"], "requires_approval": ["write_files"]},
-            "errors": [
-                {"code": "A0001", "when": "agent name is not a valid identifier", "fix": "use [A-Za-z_][A-Za-z0-9_]*"},
-                {"code": "A0002", "when": "a capability is not an identifier",     "fix": "use identifier capability names"},
-                {"code": "A0003", "when": "a requires_approval is not an identifier", "fix": "use identifier operation names"}
-            ]
+            "errors": error_table(&knowledge, "agent")
         },
         "swarm": {
             "spec_format": {
@@ -329,14 +310,7 @@ pub fn build_schema() -> serde_json::Value {
             "artifact_note":
                 "the artifact carries the agent type, size, exact topology, consensus, and \
                  transport — all round-trip via the serialized symbol table.",
-            "errors": [
-                {"code": "S0001", "when": "swarm name is not a valid identifier", "fix": "use [A-Za-z_][A-Za-z0-9_]*"},
-                {"code": "S0002", "when": "agent type is not a valid identifier", "fix": "use [A-Za-z_][A-Za-z0-9_]*"},
-                {"code": "S0003", "when": "size is not positive",                 "fix": "use a positive integer size"},
-                {"code": "S0004", "when": "unknown topology",                     "fix": "use star, ring, mesh, broadcast, or tree"},
-                {"code": "S0005", "when": "unknown consensus",                    "fix": "use majority, unanimous, weighted, or quorum"},
-                {"code": "S0006", "when": "transport is not an encodable rmi_* identifier", "fix": "use rmi_quic, rmi_tcp, or rmi_grpc"}
-            ]
+            "errors": error_table(&knowledge, "swarm")
         },
         "unified": {
             "spec_format": {
@@ -348,13 +322,25 @@ pub fn build_schema() -> serde_json::Value {
                     {"kb": "Rules", "facts": [["valid", ["x"]]], "rules": []}
                 ]
             },
-            "errors": [
-                {"code": "U0001", "when": "no items",                          "fix": "add at least one net or kb item"},
-                {"code": "U0002", "when": "an item is neither a net nor a kb", "fix": "each item must carry a \"net\" or \"kb\" key"},
-                {"code": "U0003", "when": "two items share a name",            "fix": "give each item a unique name"}
-            ]
+            "errors": error_table(&knowledge, "unified")
         }
     })
+}
+
+/// The `errors` table of one schema family: its `build_rule_row` facts as
+/// `{code, when, fix}` objects, in code order. The codes, their text and their
+/// fixes are stated once, in kb/rules/builder.mg, and served from there.
+fn error_table(knowledge: &crate::kb::Kb, family: &str) -> serde_json::Value {
+    let mut rows: Vec<(String, String, String)> = knowledge
+        .facts("build_rule_row")
+        .into_iter()
+        .filter(|f| f[1] == family)
+        .map(|f| (f[0].clone(), f[2].clone(), f[3].clone()))
+        .collect();
+    rows.sort();
+    rows.into_iter()
+        .map(|(code, when, fix)| serde_json::json!({"code": code, "when": when, "fix": fix}))
+        .collect()
 }
 
 /// Validate a spec fully (collect ALL errors, not just the first — an agent
@@ -1344,6 +1330,116 @@ mod tests {
             .collect();
         for code in ["B0000", "B0001", "B0002", "B0003", "B0004", "B0005", "B0006"] {
             assert!(codes.contains(code), "schema is missing error {code}");
+        }
+    }
+
+    /// The build codes quoted in `src`: a letter of B, K, A, S or U and four
+    /// digits, between double quotes. Comments are read too.
+    fn quoted_build_codes(src: &str) -> std::collections::BTreeSet<String> {
+        src.split('"')
+            .skip(1)
+            .step_by(2)
+            .filter(|s| {
+                let c: Vec<char> = s.chars().collect();
+                c.len() == 5 && "BKASU".contains(c[0]) && c[1..].iter().all(|d| d.is_ascii_digit())
+            })
+            .map(str::to_string)
+            .collect()
+    }
+
+    /// The codes the knowledge base states: each `BuildRule` instance, and each
+    /// `build_rule_row` (its first argument).
+    fn stated_build_codes() -> (std::collections::BTreeSet<String>, std::collections::BTreeSet<String>) {
+        let kb = crate::kb::load().expect("the knowledge base loads");
+        let classed = kb
+            .facts("instance_of")
+            .into_iter()
+            .filter(|f| f[1] == "BuildRule")
+            .map(|f| f[0].clone())
+            .collect();
+        let rowed = kb.facts("build_rule_row").into_iter().map(|f| f[0].clone()).collect();
+        (classed, rowed)
+    }
+
+    /// Every build code is stated both ways. The codes this file quotes outside
+    /// its tests are the `BuildRule` instances of kb/rules/builder.mg, and each
+    /// has a `build_rule_row`; the codes main.rs quotes are among them.
+    #[test]
+    fn every_build_code_is_stated() {
+        let source = include_str!("builder.rs");
+        let production = source.split_once("#[cfg(test)]").map_or(source, |(p, _)| p);
+        let quoted = quoted_build_codes(production);
+        let (classed, rowed) = stated_build_codes();
+        assert_eq!(classed, quoted, "BuildRule instances vs codes quoted in builder.rs");
+        assert_eq!(rowed, quoted, "build_rule_row codes vs codes quoted in builder.rs");
+        let cli = quoted_build_codes(include_str!("main.rs"));
+        assert!(cli.is_subset(&quoted), "main.rs quotes codes not stated: {:?}", cli.difference(&quoted));
+    }
+
+    /// The errors `--build=abl` gives a spec: the kind is read from its key, as
+    /// in main.rs; a spec that is not JSON, or does not fit its kind, is `B0000`.
+    fn build_errors(json: &str) -> Vec<BuildError> {
+        let value: serde_json::Value = match serde_json::from_str(json) {
+            Ok(v) => v,
+            Err(e) => return vec![BuildError::malformed(format!("malformed spec JSON: {e}"))],
+        };
+        let bad = |kind: &str, e: serde_json::Error| vec![BuildError::malformed(format!("bad {kind} spec: {e}"))];
+        if value.get("items").is_some() {
+            serde_json::from_value::<UnifiedSpec>(value).map_or_else(|e| bad("unified", e), |s| validate_unified(&s))
+        } else if value.get("kb").is_some() {
+            serde_json::from_value::<KbSpec>(value).map_or_else(|e| bad("kb", e), |s| validate_kb(&s))
+        } else if value.get("swarm").is_some() {
+            serde_json::from_value::<SwarmSpec>(value).map_or_else(|e| bad("swarm", e), |s| validate_swarm(&s))
+        } else if value.get("agent").is_some() {
+            serde_json::from_value::<AgentSpec>(value).map_or_else(|e| bad("agent", e), |s| validate_agent(&s))
+        } else {
+            serde_json::from_value::<NetSpec>(value).map_or_else(|e| bad("net", e), |s| validate(&s))
+        }
+    }
+
+    /// One spec per build code, each of which must be refused with that code.
+    const BUILD_WITNESSES: &[(&str, &str)] = &[
+        ("B0000", "{"),
+        ("B0001", r#"{"net":"","layers":[["a","Linear",[1,1]]]}"#),
+        ("B0002", r#"{"net":"M","layers":[]}"#),
+        ("B0003", r#"{"net":"M","layers":[["x","Frobnicate",[3]]]}"#),
+        ("B0004", r#"{"net":"M","layers":[["x","Linear",[3]]]}"#),
+        ("B0005", r#"{"net":"M","layers":[["x","Linear",[0,8]]]}"#),
+        ("B0006", r#"{"net":"M","layers":[["fc1","Linear",[3,8]],["fc2","Linear",[4,1]]]}"#),
+        ("K0001", r#"{"kb":"","facts":[["p",["a"]]]}"#),
+        ("K0002", r#"{"kb":"K"}"#),
+        ("K0003", r#"{"kb":"K","facts":[["bad name",["a"]]]}"#),
+        ("K0004", r#"{"kb":"K","facts":[["p",["a"]],["p",["a","b"]]]}"#),
+        ("K0006", r#"{"kb":"K","facts":[["p",["a"]]],"rules":[["q",["x"],[["nope",["x"]]]]]}"#),
+        ("K0007", r#"{"kb":"K","facts":[["p",["a"]]],"rules":[["q",["x","y"],[["p",["x"]]]]]}"#),
+        ("K0008", r#"{"kb":"K","facts":[["p",["a"]]],"rules":[["q",[],[]]]}"#),
+        ("A0001", r#"{"agent":"bad name"}"#),
+        ("A0002", r#"{"agent":"Worker","capabilities":["bad cap"]}"#),
+        ("A0003", r#"{"agent":"Worker","requires_approval":["bad op"]}"#),
+        ("S0001", r#"{"swarm":"bad name","agent":"Worker"}"#),
+        ("S0002", r#"{"swarm":"Workers","agent":"bad type"}"#),
+        ("S0003", r#"{"swarm":"Workers","agent":"Worker","size":0}"#),
+        ("S0004", r#"{"swarm":"Workers","agent":"Worker","topology":"blob"}"#),
+        ("S0005", r#"{"swarm":"Workers","agent":"Worker","consensus":"vote"}"#),
+        ("S0006", r#"{"swarm":"Workers","agent":"Worker","transport":"tcp"}"#),
+        ("U0001", r#"{"items":[]}"#),
+        ("U0002", r#"{"items":[{"foo":1}]}"#),
+        ("U0003", r#"{"items":[{"agent":"W"},{"agent":"W"}]}"#),
+    ];
+
+    /// Every stated build code happens: each has a witness spec that the
+    /// `--build=abl` steps refuse with that code, and the witnesses are the
+    /// stated codes, no more and no fewer. No code is left out.
+    #[test]
+    fn every_build_rule_happens() {
+        let (classed, rowed) = stated_build_codes();
+        assert_eq!(classed, rowed, "BuildRule instances vs build_rule_row");
+        let witnessed: std::collections::BTreeSet<String> = BUILD_WITNESSES.iter().map(|(c, _)| c.to_string()).collect();
+        assert_eq!(witnessed.len(), BUILD_WITNESSES.len(), "a code has two witnesses");
+        assert_eq!(witnessed, rowed, "witness codes vs stated codes");
+        for (code, json) in BUILD_WITNESSES {
+            let errs = build_errors(json);
+            assert!(errs.iter().any(|e| e.code == *code), "{code} from {json} gives {errs:?}");
         }
     }
 

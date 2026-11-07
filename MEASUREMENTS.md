@@ -14,8 +14,8 @@ came from, as `arena evidence <log> [--seq A..B]` prints them:
 last line, which pins every entry before it, so a log regenerated from the command
 is the one cited exactly when its head matches. Logs are not committed.
 
-> **Re-verified 2026-09-25** — all six crates tested: prototype **1,570**, rmi
-> **1,384**, ribosome **168**, germline **176**, forge **65**, arena **260** = **3,623 passing,
+> **Re-verified 2026-09-25** — all six crates tested: prototype **1,572**, rmi
+> **1,384**, ribosome **168**, germline **176**, forge **65**, arena **260** = **3,625 passing,
 > 0 failing, 0 warnings**.
 >
 > *One figure below had not regressed — it had been superseded.* The ABL
@@ -84,7 +84,7 @@ is the one cited exactly when its head matches. Logs are not committed.
 ### Test suites (all green)
 | Suite | Tests | Cmd |
 |---|---|---|
-| MAGE prototype | **1570 pass** (+2 ignored perf harnesses) | `cargo test` |
+| MAGE prototype | **1572 pass** (+2 ignored perf harnesses) | `cargo test` |
 | rmi (`cpu`) | **1384 pass** | `cargo test --no-default-features --features cpu` |
 | ribosome (build engine) | **168 pass** | `cargo test --manifest-path ribosome/Cargo.toml` |
 | germline (RSI control plane) | **176 pass** | `cargo test --manifest-path germline/Cargo.toml` |
@@ -105,7 +105,7 @@ Every item kind builds → describes (no-exec) correctly (`--build=abl` / `--des
 | swarm | ✓ | `kind:swarm` (size/topology/consensus) | consensus over proposals |
 | unified | ✓ | per-item kinds | per-item |
 
-Reject-by-construction error coverage: **B0000–B0006** (net), **K0001–K0008** (kb),
+Reject-by-construction error coverage: **B0000–B0006** (net), **K0001–K0004, K0006–K0008** (kb; K0005 is unused),
 **A0001–A0003** (agent), **S0001–S0006** (swarm), **U0001–U0003** (unified) — all
 machine-readable `{code, message, fix}`.
 
@@ -199,7 +199,7 @@ Recursive transitive closure / fixpoint (now ≈ output-size, was cubic):
 **Complexity:** join went from ~O(N²) → ~O(N) (the `arg0` index makes a chain
 join an O(matches) lookup); the fixpoint went from ~O(N³) → ~O(output) (semi-naive
 derives each fact ~once). Correctness unchanged (the suite was 984 tests green when this
-was measured, and 1,570 today; the evaluator still terminates at the least
+was measured, and 1,572 today; the evaluator still terminates at the least
 fixpoint). This was the one perf gap the prior report flagged — now fixed.
 
 ### CUDA backend — CPU vs GPU (measured 2026-08-05)
@@ -287,7 +287,7 @@ run-to-run identical. → content-hashable cache keys, meaningful diffs.
 - **The kb Datalog evaluator was the one perf gap — now FIXED:** rewritten as
   indexed semi-naive (interning + `(pred,arg0)` index + delta evaluation), giving
   up to **~1430×** on transitive closure and ~O(N)/~O(N²) instead of ~O(N²)/~O(N³),
-  with identical results (984 tests green at the time; 1,570 now).
+  with identical results (984 tests green at the time; 1,572 now).
 - **Per-invocation latency is startup-bound (~30 ms)**, not compute-bound — use
   the RAP server for high-frequency agent loops.
 - **Tokens are at the irreducible text floor**; the leverage is the binary IR +

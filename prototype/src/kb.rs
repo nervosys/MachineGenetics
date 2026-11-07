@@ -32,6 +32,7 @@ pub const FILES: &[(&str, &str)] = &[
     ("kb/rules/contracts.mg", include_str!("../../kb/rules/contracts.mg")),
     ("kb/rules/grammar.mg", include_str!("../../kb/rules/grammar.mg")),
     ("kb/rules/refusals.mg", include_str!("../../kb/rules/refusals.mg")),
+    ("kb/rules/builder.mg", include_str!("../../kb/rules/builder.mg")),
     ("kb/profiles/arena.mg", include_str!("../../kb/profiles/arena.mg")),
 ];
 
@@ -375,7 +376,7 @@ mod tests {
     #[test]
     fn the_schema_alone_loads() {
         let mut kb = load_files(&FILES[..1]).unwrap_or_else(|e| panic!("{e:#?}"));
-        assert_eq!(kb.facts("schema_version"), vec![vec!["14".to_string()]]);
+        assert_eq!(kb.facts("schema_version"), vec![vec!["15".to_string()]]);
         assert!(!kb.query("below", &["Keyword", "Construct"]).is_empty());
     }
 

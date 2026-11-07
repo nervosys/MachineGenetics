@@ -188,6 +188,7 @@ ARCHITECTURE.md	`Keyword` \| [0-9]+ \|	kb_class_Keyword
 ARCHITECTURE.md	`Sigil` \| [0-9]+ \|	kb_class_Sigil
 ARCHITECTURE.md	`Type` \| [0-9]+ \|	kb_class_Type
 ARCHITECTURE.md	`Diagnostic` \| [0-9]+ \|	kb_class_Diagnostic
+ARCHITECTURE.md	`BuildRule` \| [0-9]+ \|	kb_class_BuildRule
 ARCHITECTURE.md	`Effect` \| [0-9]+ \|	kb_class_Effect
 ARCHITECTURE.md	`SymbolicComponent` \| [0-9]+ \|	kb_class_SymbolicComponent
 ARCHITECTURE.md	`AstKind` \| [0-9]+ \|	kb_class_AstKind
