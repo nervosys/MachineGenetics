@@ -1846,6 +1846,7 @@ impl<'a> Parser<'a> {
         while self.peek() != TokenKind::RBrace && self.peek() != TokenKind::Eof {
             match self.peek() {
                 TokenKind::KwFact => {
+                    let line = self.current().span.line;
                     self.advance();
                     let fname = self.expect_ident()?;
                     self.expect(TokenKind::LParen)?;
@@ -1860,9 +1861,10 @@ impl<'a> Parser<'a> {
                     if self.peek() == TokenKind::Semi {
                         self.advance();
                     }
-                    facts.push(FactDef { name: fname, args });
+                    facts.push(FactDef { name: fname, args, line });
                 }
                 TokenKind::KwRule => {
+                    let line = self.current().span.line;
                     self.advance();
                     let rname = self.expect_ident()?;
                     self.expect(TokenKind::LParen)?;
@@ -1890,6 +1892,7 @@ impl<'a> Parser<'a> {
                         params,
                         conditions,
                         body,
+                        line,
                     });
                 }
                 TokenKind::Semi | TokenKind::Comma => {
