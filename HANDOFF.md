@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,351** — rmi 1,384 · prototype 1,408 · ribosome 168 · germline 175 · forge 63 · arena 153 |
+| Tests | **3,359** — rmi 1,384 · prototype 1,408 · ribosome 168 · germline 175 · forge 63 · arena 161 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -1182,6 +1182,32 @@ Held-out bpb against `ng` at matched size (single seed):
   Until then, do not quote `ent` from arena runs without the `ng` row beside
   it.
 Arena +9 tests.
+
+**Implementation plan P4b and P4c: P4's negative verdict was the encoding.**
+`arena physics-baseline --encoding i32|coarse|planes|diff2` re-ran P4's grid,
+and `i32` reproduced P4 exactly. The gate: the larger n-gram at least 0.3 bits
+below the held-out order-0 entropy, on three of five systems.
+
+| encoding | systems passing | gap range (larger n-gram) |
+|---|---|---|
+| `i32` | 1 of 5 | |
+| `coarse` (i16, 100x quantum) | 0 of 5 | |
+| `planes` (Blosc-style byte planes) | 5 of 5 | -0.56 to -1.12 bits |
+| `diff2` (second differences) | 5 of 5 | -0.34 to -0.89 bits |
+
+Against the train-side order-0, both pass 4 of 5.
+- **`--heldout-physics` now uses `planes`** (`physics::HELDOUT_ENCODING`). It
+  holds the same values as `i32`, only reordered, so its gain is the learner's.
+  `diff2` builds a constant-velocity predictor into the bytes.
+- Corpus names now end in the encoding (`...:seed1:planes`), so physics
+  figures from different encodings cannot be mixed. Two tests assert the name,
+  so they guard the default.
+- Caveats: spring's held-out range is heavily damped, so its pass is partly
+  quiet tails. bpb is comparable only within an encoding. Every curve is still
+  falling at the end of the budget.
+
+Physics is back on the plan as data: P5, P6, and the physics rows of L1-L3.
+Arena +8 tests.
 
 **Pre-existing, not from this change:** `cargo clippy` 0.1.98 (2026-09-01)
 reports 15 warnings in `prototype` — 14 `chunks_exact` with a constant size in

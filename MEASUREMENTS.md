@@ -7,7 +7,7 @@ numbers are machine-dependent; the shapes (throughput, scaling) are not.
 Date: 2026-06-10. Build: `release` for perf, `cargo test` for functionality.
 
 > **Re-verified 2026-09-25** — all six crates tested: prototype **1,408**, rmi
-> **1,384**, ribosome **168**, germline **175**, forge **63**, arena **153** = **3,351 passing,
+> **1,384**, ribosome **168**, germline **175**, forge **63**, arena **161** = **3,359 passing,
 > 0 failing, 0 warnings**.
 >
 > *One figure below had not regressed — it had been superseded.* The ABL
@@ -80,7 +80,7 @@ Date: 2026-06-10. Build: `release` for perf, `cargo test` for functionality.
 | rmi (`cpu`) | **1384 pass** | `cargo test --no-default-features --features cpu` |
 | ribosome (build engine) | **168 pass** | `cargo test --manifest-path ribosome/Cargo.toml` |
 | germline (RSI control plane) | **175 pass** | `cargo test --manifest-path germline/Cargo.toml` |
-| arena (self-play arena) | **153 pass** | `cargo test --manifest-path arena/Cargo.toml` |
+| arena (self-play arena) | **161 pass** | `cargo test --manifest-path arena/Cargo.toml` |
 | forge (registry) | **63 pass** | `cargo test --manifest-path forge/Cargo.toml` |
 | agentic-eval (AetherShell) | **80 pass** | `cargo test -p agentic-eval` |
 | SPINE `spine-agentic` | **285 pass** | `cargo test -p spine-agentic` |
@@ -450,4 +450,127 @@ What the table says, and what it does not:
   structure, and the mixture weight learned on that data stayed on it. Above 8
   bits per byte is worse than a uniform model. This is open.
 
-Not measured: physics rows, which wait for P4b, and the joule and latency axes.
+Not measured: physics rows (P4b, below, now chooses an encoding for them), and the joule and latency axes.
+
+## Physics encodings (plan P4b)
+
+Question: is the P4 negative verdict the encoding? P4 wrote each sample as `i32`
+little-endian at the system's quantum, so the low byte moves by hundreds of
+quanta per step. P4b re-runs the same grid under four encodings
+(`arena physics-baseline --encoding`, see `ARENA.md`):
+
+- `i32`: the P2 layout, unchanged. Its output reproduces the P4 table exactly.
+- `coarse`: 100 times the default quantum, stored as `i16` little-endian, saturating.
+- `planes`: the same `i32` values, byte-plane-major within each trajectory (byte 0
+  of every value in time order, then byte 1, and so on, as Blosc's shuffle).
+- `diff2`: per channel, the `i32` second difference `q[t] − 2q[t−1] + q[t−2]`
+  (wrapping) for `t ≥ 2`, with the first two samples raw.
+
+Command, one run per encoding (release build, from the `arena` directory):
+
+```sh
+CARGO_TARGET_DIR=<scratchpad>/tgt-p4b cargo run --release --bin arena -- physics-baseline --encoding i32
+CARGO_TARGET_DIR=<scratchpad>/tgt-p4b cargo run --release --bin arena -- physics-baseline --encoding coarse
+CARGO_TARGET_DIR=<scratchpad>/tgt-p4b cargo run --release --bin arena -- physics-baseline --encoding planes
+CARGO_TARGET_DIR=<scratchpad>/tgt-p4b cargo run --release --bin arena -- physics-baseline --encoding diff2
+```
+
+The learners, budget (192 KiB), trajectory length (1,100 steps) and seed (1) are
+those of P4. Only the encoding changes. The text row is encoding-independent, and
+is repeated in each run. Each run took 3 to 9 minutes.
+
+Gate (from `IMPLEMENTATION_PLAN.md`): an encoding passes if, on at least three of
+the five systems, the larger learner's (`ng 4×2¹⁴`) held-out bpb is at least 0.3
+bits below that corpus's held-out order-0 entropy, in the same encoding. Gap
+below is the larger learner's held-out bpb minus held-out order-0 bpb.
+
+| encoding | system | learner | held-out bpb | held-out order-0 bpb | gap (held-out − order-0) | gap ≤ −0.3? | train order-0 bpb | held-out − train order-0 |
+|---|---|---|---|---|---|---|---|---|
+| i32 | pendulum | ng 3×2¹² | 6.257 | 6.368 | −0.111 | no | 6.027 | +0.230 |
+| i32 | pendulum | ng 4×2¹⁴ | 6.288 | 6.368 | −0.080 | no | 6.027 | +0.261 |
+| i32 | spring | ng 3×2¹² | 3.794 | 3.506 | +0.288 | no | 5.267 | −1.473 |
+| i32 | spring | ng 4×2¹⁴ | 3.469 | 3.506 | −0.037 | no | 5.267 | −1.798 |
+| i32 | double pendulum | ng 3×2¹² | 5.556 | 5.469 | +0.087 | no | 5.339 | +0.217 |
+| i32 | double pendulum | ng 4×2¹⁴ | 5.753 | 5.469 | +0.284 | no | 5.339 | +0.414 |
+| i32 | n-body | ng 3×2¹² | 5.560 | 5.239 | +0.321 | no | 5.220 | +0.340 |
+| i32 | n-body | ng 4×2¹⁴ | 5.742 | 5.239 | +0.503 | no | 5.220 | +0.522 |
+| i32 | bounce | ng 3×2¹² | 6.218 | 6.537 | −0.319 | yes | 6.053 | +0.165 |
+| i32 | bounce | ng 4×2¹⁴ | 6.194 | 6.537 | −0.343 | yes | 6.053 | +0.141 |
+| coarse | pendulum | ng 3×2¹² | 7.430 | 7.219 | +0.211 | no | 6.859 | +0.571 |
+| coarse | pendulum | ng 4×2¹⁴ | 7.309 | 7.219 | +0.090 | no | 6.859 | +0.450 |
+| coarse | spring | ng 3×2¹² | 3.462 | 2.915 | +0.547 | no | 5.328 | −1.866 |
+| coarse | spring | ng 4×2¹⁴ | 2.784 | 2.915 | −0.131 | no | 5.328 | −2.544 |
+| coarse | double pendulum | ng 3×2¹² | 5.943 | 5.878 | +0.065 | no | 5.490 | +0.453 |
+| coarse | double pendulum | ng 4×2¹⁴ | 5.988 | 5.878 | +0.110 | no | 5.490 | +0.498 |
+| coarse | n-body | ng 3×2¹² | 6.627 | 5.343 | +1.284 | no | 5.293 | +1.334 |
+| coarse | n-body | ng 4×2¹⁴ | 6.642 | 5.343 | +1.299 | no | 5.293 | +1.349 |
+| coarse | bounce | ng 3×2¹² | 7.823 | 7.498 | +0.325 | no | 6.838 | +0.985 |
+| coarse | bounce | ng 4×2¹⁴ | 7.690 | 7.498 | +0.192 | no | 6.838 | +0.852 |
+| planes | pendulum | ng 3×2¹² | 5.976 | 6.498 | −0.522 | yes | 6.182 | −0.206 |
+| planes | pendulum | ng 4×2¹⁴ | 5.822 | 6.498 | −0.676 | yes | 6.182 | −0.360 |
+| planes | spring | ng 3×2¹² | 2.720 | 3.505 | −0.785 | yes | 5.437 | −2.717 |
+| planes | spring | ng 4×2¹⁴ | 2.386 | 3.505 | −1.119 | yes | 5.437 | −3.051 |
+| planes | double pendulum | ng 3×2¹² | 5.321 | 5.739 | −0.418 | yes | 5.591 | −0.270 |
+| planes | double pendulum | ng 4×2¹⁴ | 4.959 | 5.739 | −0.780 | yes | 5.591 | −0.632 |
+| planes | n-body | ng 3×2¹² | 5.664 | 5.972 | −0.308 | yes | 5.951 | −0.287 |
+| planes | n-body | ng 4×2¹⁴ | 5.388 | 5.972 | −0.584 | yes | 5.951 | −0.563 |
+| planes | bounce | ng 3×2¹² | 6.214 | 6.655 | −0.441 | yes | 6.204 | +0.010 |
+| planes | bounce | ng 4×2¹⁴ | 6.095 | 6.655 | −0.560 | yes | 6.204 | −0.109 |
+| diff2 | pendulum | ng 3×2¹² | 2.776 | 3.398 | −0.622 | yes | 3.734 | −0.958 |
+| diff2 | pendulum | ng 4×2¹⁴ | 2.513 | 3.398 | −0.885 | yes | 3.734 | −1.221 |
+| diff2 | spring | ng 3×2¹² | 2.427 | 2.423 | +0.004 | no | 3.429 | −1.002 |
+| diff2 | spring | ng 4×2¹⁴ | 2.066 | 2.423 | −0.357 | yes | 3.429 | −1.363 |
+| diff2 | double pendulum | ng 3×2¹² | 1.345 | 1.467 | −0.122 | no | 1.297 | +0.048 |
+| diff2 | double pendulum | ng 4×2¹⁴ | 1.124 | 1.467 | −0.343 | yes | 1.297 | −0.173 |
+| diff2 | n-body | ng 3×2¹² | 0.986 | 1.171 | −0.185 | no | 1.181 | −0.195 |
+| diff2 | n-body | ng 4×2¹⁴ | 0.740 | 1.171 | −0.431 | yes | 1.181 | −0.441 |
+| diff2 | bounce | ng 3×2¹² | 0.939 | 1.182 | −0.243 | no | 1.187 | −0.248 |
+| diff2 | bounce | ng 4×2¹⁴ | 0.595 | 1.182 | −0.587 | yes | 1.187 | −0.592 |
+
+The text row is unchanged across encodings (larger learner: held-out 5.400,
+order-0 4.666, gap +0.734), and is not part of the gate.
+
+Gate counts, larger learner, held-out order-0 (the plan's rule):
+
+| encoding | systems passing (of 5) | verdict |
+|---|---|---|
+| i32 | 1 (bounce) | fails |
+| coarse | 0 | fails |
+| planes | 5 | passes |
+| diff2 | 5 | passes |
+
+Against the train-side order-0 instead (the fair reference that P4 used for its
+headline), the larger learner's count is planes 4 of 5 (all but bounce) and
+diff2 4 of 5 (all but double pendulum). Both still pass the 3-of-5 gate.
+
+**Decision: the gate passes for `planes` and for `diff2`.** Both are recorded
+here, and neither is made the default. `--heldout-physics` is unchanged, and the
+choice of default is left to the next step. The P4b plan says "if one passes,
+make it the default", and two pass, so the choice between them needs a decision
+the numbers alone do not settle.
+
+Cautions, which the gate does not capture:
+
+- Held-out order-0 is an oracle, computed on the same window the learner is
+  scored on, and each encoding has its own order-0 (the planes and diff2 streams
+  are different byte sequences from i32). So the comparisons are within an
+  encoding. Across encodings, bpb is not comparable, since each measures a
+  different stream.
+- Spring's held-out range is heavily damped (c in [0.5, 0.9], against [0, 0.3] for
+  training). A rough envelope estimate, which ignores the oscillation, puts about a
+  third of held-out spring samples at zero after quantization (`exp(−ct/2)` at the
+  1e-5 quantum, dt 0.05, 1,100 steps). Those quiet tails are cheap for any learner,
+  and they lower the held-out order-0 more than the train order-0. The spring
+  passes are therefore partly a distribution shift, the same caveat as P4. The
+  estimate is not a measurement; the exact count was not taken.
+- `diff2` passes on the residual stream, where most bytes are near zero for smooth
+  motion. Its order-0 is low for the same reason, so the gap is measured against a
+  stream that is already close to zero. The pass says the learner beats byte
+  frequencies of the residuals. It does not say physics was learned beyond that.
+  Its train-side pass count is 4 of 5, which is the stronger check.
+- `coarse` is worse than `i32` on every system except spring. Its saturation was
+  not measured, so the cause is not isolated: a 1e-3 quantum on pendulum is
+  coarse for the byte statistics, and the i16 low byte is still noise. The table
+  gives no reason to prefer it.
+- Every curve is still falling at 100% of the budget, as in P4. No run here is
+  converged.
