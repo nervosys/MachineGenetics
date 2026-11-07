@@ -179,6 +179,38 @@ fn every_cell_of_the_contract_grid_is_as_stated() {
     );
 }
 
+// ── Gaps ────────────────────────────────────────────────────────────
+
+/// `--check` refuses an undeclared effect, and `--eval` performs it.
+fn undeclared_effect_runs() -> bool {
+    let src = "f main() -> i64 {\n    print(1);\n    3\n}\n";
+    let declared = "f main() -> i64 / io {\n    print(1);\n    3\n}\n";
+    let (ok, out, _) = eval_main(src);
+    emits(src, "E0550") && absent(declared, "E0550") && ok && out == "13"
+}
+
+#[test]
+fn an_undeclared_effect_runs() {
+    assert!(undeclared_effect_runs());
+}
+
+/// Each subject of a `gap` fact is checked somewhere. Those here have one in
+/// this file: the contract grid, a grammar witness, or the test above.
+/// `E0382`, `E0502` and `E9999` are in `tests/diagnostics.rs`.
+const GAPS: &[&str] = &[
+    "requires", "ensures", "invariant", "E0550",
+    "E0382", "E0502", "E9999",
+    "clause_on_other_item", "layout_blocks", "overflowing_dimension",
+];
+
+#[test]
+fn every_gap_has_a_check() {
+    let kb = kb::load().expect("the knowledge base loads");
+    let stated: BTreeSet<String> = kb.facts("gap").into_iter().map(|f| f[0].clone()).collect();
+    let have: BTreeSet<String> = GAPS.iter().map(|g| g.to_string()).collect();
+    assert_eq!(stated, have);
+}
+
 // ── Grammar constraints ─────────────────────────────────────────────
 
 /// Those with a witness in `arena/src/grammar.rs`.

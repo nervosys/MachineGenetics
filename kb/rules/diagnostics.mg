@@ -83,6 +83,7 @@ kb Diagnostics {
     fact instance_of("E0550", Diagnostic);
     fact diagnostic_row("E0550", "Error", "UndeclaredEffect", "An effect a function performs and does not declare, or declares and does not know");
     fact enforced_by("E0550", "effects");
+    fact gap("E0550", "only --check enforces it: --eval runs a program with an undeclared effect, and nothing checks an effect at run time");
     fact tested_by("E0550", "undeclared_effect");
 
     fact instance_of("E0551", Diagnostic);
