@@ -16,7 +16,7 @@
     "project_layout": 22,
     "rap_methods": 40,
     "recovery_stages": 7,
-    "sigils": 49,
+    "sigils": 57,
     "types": 30,
     "vocabulary": 31,
     "wrapper_protocol": 9
@@ -4834,12 +4834,12 @@
       {
         "ast_kind": "Let",
         "sigil": "v",
-        "summary": "let — immutable binding"
+        "summary": "val — immutable binding (Rust `let`)"
       },
       {
         "ast_kind": "Let",
         "sigil": "m",
-        "summary": "let mut — mutable binding"
+        "summary": "var — mutable binding (Rust `let mut`)"
       },
       {
         "ast_kind": "Const",
@@ -4849,7 +4849,7 @@
       {
         "ast_kind": "Static",
         "sigil": "Z",
-        "summary": "static declaration"
+        "summary": "static — retired (E0554): write `C NAME: T = value;`"
       },
       {
         "ast_kind": "Struct",
@@ -4919,7 +4919,7 @@
       {
         "ast_kind": "Function",
         "sigil": "af",
-        "summary": "async fn — note `async fn` is not the spelling"
+        "summary": "async — async function, written `async name(`; `async fn` is not the spelling"
       },
       {
         "ast_kind": "Guard",
@@ -4934,7 +4934,7 @@
       {
         "ast_kind": "Mod",
         "sigil": "M",
-        "summary": "module declaration"
+        "summary": "mod — module declaration"
       },
       {
         "ast_kind": "Use",
@@ -5030,6 +5030,46 @@
         "ast_kind": "SelfType",
         "sigil": "_T",
         "summary": "Self type"
+      },
+      {
+        "ast_kind": "Visibility",
+        "sigil": "+",
+        "summary": "pub — public; prefixes any item (`+f`, `+S`, ...)"
+      },
+      {
+        "ast_kind": "Handle",
+        "sigil": "hx",
+        "summary": "handle — effect handler"
+      },
+      {
+        "ast_kind": "Extern",
+        "sigil": "xn",
+        "summary": "extern — reserved, not yet supported"
+      },
+      {
+        "ast_kind": "In/Else",
+        "sigil": ":",
+        "summary": "in after a for pattern, else after an if block; also a type annotation"
+      },
+      {
+        "ast_kind": "Where",
+        "sigil": "~>",
+        "summary": "where clause"
+      },
+      {
+        "ast_kind": "ResultType",
+        "sigil": "R",
+        "summary": "`R[T, E]` is `T or E` (Rust `Result<T, E>`)"
+      },
+      {
+        "ast_kind": "SwarmField",
+        "sigil": "cons",
+        "summary": "consensus — swarm field"
+      },
+      {
+        "ast_kind": "SwarmField",
+        "sigil": "topo",
+        "summary": "topology — swarm field"
       },
       {
         "ast_kind": "Return",

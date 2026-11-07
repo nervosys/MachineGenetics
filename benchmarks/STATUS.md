@@ -90,7 +90,7 @@ ratchet upward.
 
 ```
 ontology/full
-  ├─ sigils (49)             — surface tokens + meaning
+  ├─ sigils (57)             — surface tokens + meaning
   ├─ keywords (100)           — AI constructs (net/kb/agent/swarm/...)
   ├─ types (30)              — built-in scalars + composites
   ├─ ast_kinds (20)          — top-level item families
