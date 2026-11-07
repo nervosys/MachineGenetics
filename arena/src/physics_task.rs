@@ -64,6 +64,18 @@ pub enum Refusal {
 }
 
 impl Refusal {
+    /// The rule behind this class: its `refused_by` fact.
+    pub fn rule(self) -> &'static str {
+        match self {
+            Refusal::Parse => "E0001",
+            Refusal::Signature => "gate_signature",
+            Refusal::Type => "gate_type",
+            Refusal::Contract => "gate_contract",
+            Refusal::Fuel => "gate_fuel",
+            Refusal::Runtime => "gate_runtime",
+        }
+    }
+
     pub fn label(self) -> &'static str {
         match self {
             Refusal::Parse => "parse",
@@ -181,6 +193,19 @@ pub fn judge(task: &str, candidate: &str, fuel: u64) -> Verdict {
     }
 }
 
+impl Verdict {
+    /// The shared verdict on a judgement. A contract failure names the clause's
+    /// kind, not the gate, when its message says which.
+    pub fn shared(&self) -> mage_prototype::verdict::Verdict {
+        use mage_prototype::verdict::Verdict as Shared;
+        match self {
+            Verdict::Scored { .. } => Shared::default(),
+            Verdict::Refused { reason, message, .. } => Shared::of_eval_error(message)
+                .unwrap_or_else(|| Shared::refused(reason.rule(), message.clone())),
+        }
+    }
+}
+
 /// Judge every candidate, then rank: scored ones by score, lowest first, then
 /// the refused ones in the order they were given.
 pub fn rank(task: &str, candidates: &[(String, String)], fuel: u64) -> Vec<Entry> {
@@ -269,6 +294,33 @@ pub fn run_cli(args: &[String]) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn every_class_names_its_stated_rule() {
+        let kb = mage_prototype::kb::load().expect("the knowledge base loads");
+        let stated = kb.facts("refused_by");
+        let all = [
+            Refusal::Parse,
+            Refusal::Signature,
+            Refusal::Type,
+            Refusal::Contract,
+            Refusal::Fuel,
+            Refusal::Runtime,
+        ];
+        for r in all {
+            let fact = vec![r.label().to_string(), r.rule().to_string()];
+            assert!(stated.contains(&fact), "no fact for {fact:?}");
+        }
+    }
+
+    #[test]
+    fn a_refused_contract_names_its_clause_kind() {
+        let refused = |message: &str, reason| Verdict::Refused { reason, message: message.into(), fuel_spent: 0 };
+        let v = refused("contract violated: `@ens(result > 0)` of `f` (f f) is false", Refusal::Contract);
+        assert_eq!(v.shared().refusals[0].rule, "ensures");
+        assert_eq!(refused("fuel exhausted", Refusal::Fuel).shared().refusals[0].rule, "gate_fuel");
+        assert!(Verdict::Scored { score: 1.0, fuel_spent: 1 }.shared().accepted());
+    }
 
     fn task() -> String {
         TEMPLATE.replace("\r\n", "\n")

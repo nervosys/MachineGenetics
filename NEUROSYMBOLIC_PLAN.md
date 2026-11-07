@@ -224,7 +224,7 @@ facts are grouped into files and namespaces. They are not classes.
 
 ### Phase 0: Preconditions
 
-- [ ] Merge the stack #38–#130, this plan included, in order (needs the user). **S**
+- [ ] Merge the stack #38–#131, this plan included, in order (needs the user). **S**
 - [ ] Settle the open questions in section 8. **S**
 - [ ] Census every module in `prototype/src` (73 files) into neural, symbolic, knowledge base, interface, or outside the design (for example `crdt.rs`, `consensus.rs`, `hot_reload.rs`). Record it in `ARCHITECTURE.md`. Outside-the-design modules are kept but not extended. **S [H]**
 
@@ -285,8 +285,8 @@ facts are grouped into files and namespaces. They are not classes.
 
 - [x] `prototype/src/verdict.rs`: the shared verdict type. **S** *(Beside the existing `Evidence` vocabulary: `Evidence` says what stands behind a claim, a `Verdict` what a gate decided. `accepted` is derived from `refusals` rather than stored as §5 drew it, so the two cannot disagree.)*
 - [x] `--check`, `--eval` contract checks and `--json` output return it. **M** *(`check::check_source` takes the pass list out of `main.rs` and returns findings and a `Verdict`; `--check --json` prints the same records plus a `verdict` field. The human `--check` still prints as it goes and is held to the verdict by `the_human_check_agrees_with_the_verdict`. `Verdict::of_eval_error` reads a contract failure from `eval`'s error string, because `eval` errors are strings: it names the clause kind, so it does not know the clause.)*
-- [ ] The arena gate (`arena/src/substrate.rs`) returns it; the 10 `Refusal` classes become rule facts; `MAX_DEPTH` is read from `kb/rules/grammar.mg`. Arena results are byte-identical. **M**
-- [ ] `arena physics-task` refusal classes map to the same rule facts. **S [H]**
+- [x] The arena gate (`arena/src/substrate.rs`) returns it; the 10 `Refusal` classes become rule facts; `MAX_DEPTH` is read from `kb/rules/grammar.mg`. Arena results are byte-identical. **M** *(`kb/rules/refusals.mg`, schema v11. `Outcome::verdict` gives the shared verdict; `prepare` and the credit code keep the `Refusal` class, so no run changes. `type` and `effect` have gate rules of their own: a class is coarser than a code, so naming E0308 or E0550 would be false. Departure: `MAX_DEPTH` stays a constant, held to its fact by `the_limits_are_the_stated_ones`, because the arena uses it as one and reading it would add a knowledge-base parse to start-up.)*
+- [x] `arena physics-task` refusal classes map to the same rule facts. **S [H]** *(`Verdict::shared`. A contract failure names `requires` or `ensures` from its message.)*
 - [ ] The knowledge-base export to `rmi::core::ontology::Ontology` generalises `rmi_ontology_adapter.rs` from safety rules to every fact. **M**
 
 **Done when:** there is one verdict type and every component that accepts or refuses returns it.

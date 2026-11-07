@@ -35,7 +35,8 @@ kb Schema {
     // v10 (2026-10-31): `contract_row`, `clause_checked` and `constraint_row`,
     // for kb/rules/contracts.mg and kb/rules/grammar.mg. A clause_checked
     // counts as enforcing its Contract.
-    fact schema_version(10);
+    // v11 (2026-10-31): `GateRule` and `gate_row`, for kb/rules/refusals.mg.
+    fact schema_version(11);
 
     // ── Classes ─────────────────────────────────────────────────────────
     // Seven roots. The twelve domains of MAGE_ONTOLOGY.md group facts into
@@ -102,6 +103,8 @@ kb Schema {
     fact subclass_of(Contract, Rule);
     fact subclass_of(GrammarConstraint, Rule);
     fact subclass_of(Diagnostic, Rule);
+    fact class(GateRule);
+    fact subclass_of(GateRule, Rule);
     fact class(RuleDatabase);
     fact class(Severity);
     fact subclass_of(RuleDatabase, Meaning);
@@ -225,6 +228,9 @@ kb Schema {
     fact arg_class(clause_checked, 1, Contract);
     fact arg_class(clause_checked, 2, Text);
     fact arg_class(clause_checked, 3, SymbolicComponent);
+    fact relation(gate_row);
+    fact arg_class(gate_row, 1, GateRule);
+    fact arg_class(gate_row, 2, Text);
     // name, value, meaning.
     fact relation(constraint_row);
     fact arg_class(constraint_row, 1, GrammarConstraint);
