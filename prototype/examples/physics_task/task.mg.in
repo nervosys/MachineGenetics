@@ -1,0 +1,66 @@
+// physics_task/task.mg.in — the physics program task (plan C3).
+//
+// Not a `.mg` file on its own: it calls `step`, which a candidate supplies.
+// The harness appends one candidate file to this one and runs `score` under
+// the fuel-bounded evaluator:
+//
+//   cat task.mg.in symplectic_euler.mg | mage-parse --eval - score --fuel 1000000
+//
+// The system is an undamped unit-mass spring, x'' = -k x. A state is
+// `[x, v]`, the only parameter is the stiffness `k`, and a candidate is
+//
+//   @role(candidate)
+//   f step(s: [f64], k: f64, dt: f64) -> [f64]
+//
+// The task owns everything else: the energy, the contract, the rollout, the
+// held-out reference trajectories and the score. A candidate is pure (its
+// role says so), so it cannot read them.
+//
+// Conservation is a postcondition on `advance`, through which every step
+// passes: the energy after the step stays within DRIFT of the trajectory's
+// initial energy `e0`. A symplectic integrator keeps its energy error bounded
+// (about w dt / 2 for symplectic Euler, (w dt)^2 / 4 for velocity Verlet);
+// explicit Euler multiplies the energy by exactly 1 + (w dt)^2 every step, so
+// it crosses the bound within 20 steps at w dt = 0.1 and the run fails there,
+// with the clause named.
+//
+// The bound is on drift from e0, not on the change across one step, because
+// no per-step bound separates the two: at w dt = 0.1 symplectic Euler's
+// largest one-step energy gain is 1.0049% and explicit Euler's is 1.0000%.
+//
+// The reference is the exact solution, from scripts/physics-task-reference.py.
+// The score is the RMS position error over both held-out cases; lower is
+// better.
+
+const DRIFT: f64 = 0.1;
+
+f energy(s: [f64], k: f64) -> f64 {
+    0.5 * s[1] * s[1] + 0.5 * k * s[0] * s[0]
+}
+
+sp advance {
+    @ens(abs(energy(result, k) - e0) <= DRIFT * e0, "energy stays within DRIFT of its initial value")
+}
+
+f advance(s: [f64], e0: f64, k: f64, dt: f64) -> [f64] {
+    step(s, k, dt)
+}
+
+f rollout(s0: [f64], k: f64, dt: f64, n: usize) -> [[f64]] {
+    val e0 = energy(s0, k);
+    scan(range(n), s0, |s, i| advance(s, e0, k, dt))
+}
+
+f sq_err(traj: [[f64]], reference: [f64]) -> f64 {
+    sum(range(len(reference)).map(|i| (traj[i + 1][0] - reference[i]) * (traj[i + 1][0] - reference[i])))
+}
+
+f score() -> f64 {
+    // k = 4.0, x0 = 1.0, v0 = 0.0, dt = 0.05, 100 samples
+    val ref_a = [0.995004165, 0.980066578, 0.955336489, 0.921060994, 0.877582562, 0.825335615, 0.764842187, 0.696706709, 0.621609968, 0.540302306, 0.453596121, 0.362357754, 0.267498829, 0.169967143, 0.070737202, -0.029199522, -0.128844494, -0.227202095, -0.323289567, -0.416146837, -0.504846105, -0.588501117, -0.666276021, -0.737393716, -0.801143616, -0.856888753, -0.904072142, -0.942222341, -0.970958165, -0.989992497, -0.999135150, -0.998294776, -0.987479770, -0.966798193, -0.936456687, -0.896758416, -0.848100032, -0.790967712, -0.725932304, -0.653643621, -0.574823947, -0.490260821, -0.400799172, -0.307332870, -0.210795799, -0.112152527, -0.012388663, 0.087498983, 0.186512369, 0.283662185, 0.377977743, 0.468516671, 0.554374336, 0.634692876, 0.708669774, 0.775565879, 0.834712785, 0.885519517, 0.927478431, 0.960170287, 0.983268438, 0.996542097, 0.999858636, 0.993184919, 0.976587626, 0.950232592, 0.914383148, 0.869397490, 0.815725100, 0.753902254, 0.684546666, 0.608351315, 0.526077517, 0.438547328, 0.346635318, 0.251259843, 0.153373862, 0.053955421, -0.046002126, -0.145500034, -0.243544154, -0.339154861, -0.431376845, -0.519288654, -0.602011903, -0.678720047, -0.748646646, -0.811093014, -0.865435209, -0.911130262, -0.947721602, -0.974843621, -0.992225325, -0.999693042, -0.997172156, -0.984687856, -0.962364880, -0.930426272, -0.889191153, -0.839071529];
+    // k = 2.25, x0 = 0.0, v0 = 1.5, dt = 0.05, 100 samples
+    val ref_b = [0.074929707, 0.149438132, 0.223106362, 0.295520207, 0.366272529, 0.434965534, 0.501213005, 0.564642473, 0.624897317, 0.681638760, 0.734547782, 0.783326910, 0.827701888, 0.867423226, 0.902267594, 0.932039086, 0.956570315, 0.975723358, 0.989390529, 0.997494987, 0.999991165, 0.996865028, 0.988134155, 0.973847631, 0.954085782, 0.928959715, 0.898610699, 0.863209367, 0.822954757, 0.778073197, 0.728817026, 0.675463181, 0.618311635, 0.557683717, 0.493920299, 0.427379880, 0.358436577, 0.287478012, 0.214903142, 0.141120008, 0.066543446, -0.008407247, -0.083310672, -0.157745694, -0.231293812, -0.303541513, -0.374082592, -0.442520443, -0.508470283, -0.571561319, -0.631438828, -0.687766159, -0.740226618, -0.788525254, -0.832390515, -0.871575772, -0.905860714, -0.935052578, -0.958987235, -0.977530118, -0.990576970, -0.998054439, -0.999920482, -0.996164609, -0.986807936, -0.971903069, -0.951533810, -0.925814682, -0.894890287, -0.858934493, -0.818149457, -0.772764488, -0.723034755, -0.669239857, -0.611682250, -0.550685543, -0.486592681, -0.419764018, -0.350575289, -0.279415498, -0.206684732, -0.132791909, -0.058152481, 0.016813900, 0.091685748, 0.166042106, 0.239464914, 0.311541364, 0.381866214, 0.450044074, 0.515691622, 0.578439764, 0.637935708, 0.693844945, 0.745853133, 0.793667864, 0.837020305, 0.875666714, 0.909389805, 0.937999977];
+    val a = rollout([1.0, 0.0], 4.0, 0.05, 100);
+    val b = rollout([0.0, 1.5], 2.25, 0.05, 100);
+    sqrt((sq_err(a, ref_a) + sq_err(b, ref_b)) / 200.0)
+}

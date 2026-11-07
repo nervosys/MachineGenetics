@@ -135,10 +135,12 @@ pub const MODES: &[CliMode] = &[
     // validating generated code here.
     CliMode {
         flag: "--eval",
-        args: "<file.mg> [<function>]",
+        args: "<file.mg|-> [<function>] [--fuel N]",
         summary: "run the module and print a value — the second oracle",
         effect: "read_local",
         detail: "Evaluates `main` by default, or the named function. Prints the value.
+                 With --fuel N it runs under the fuel-bounded evaluator the arena uses,
+                 and prints the fuel spent on stderr.
                  A program can typecheck and fail to run, and the reverse: this
                  repository has found five bugs of each shape. `--check` alone is
                  half a verdict. Effects that reach the host (io, fs, env, time)

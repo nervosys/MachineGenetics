@@ -218,6 +218,12 @@ pub struct Interp {
     /// same (`Left { X }` and `Right { X }`), and keying by variant alone let the
     /// second registration evict the first, so one of the two stopped resolving.
     enum_variants: HashMap<(String, String), usize>,
+    /// Top-level `const` items, name -> value expression, evaluated where
+    /// they are named. Until plan C3 none were collected: a `const` typechecked
+    /// and then evaluated to `Value::Func` of its own name, so `X * 2.0`
+    /// failed with "unsupported binary `*`", and a contract naming a tolerance
+    /// const could not run.
+    consts: HashMap<String, Expr>,
     /// Effect handlers currently installed, innermost last.
     ///
     /// A dynamic stack, because that is what an effect handler is: the call
@@ -281,10 +287,14 @@ impl Interp {
         let mut funcs = HashMap::new();
         let mut methods = HashMap::new();
         let mut enum_variants = HashMap::new();
+        let mut consts = HashMap::new();
         for item in &module.items {
             match &item.kind {
                 ItemKind::Function(fd) => {
                     funcs.insert(fd.name.clone(), fd.clone());
+                }
+                ItemKind::Const(cd) => {
+                    consts.insert(cd.name.clone(), cd.value.clone());
                 }
                 ItemKind::Impl(ib) => {
                     collect_methods(&mut methods, &ib.self_type, &ib.items);
@@ -340,6 +350,7 @@ impl Interp {
             funcs,
             methods,
             enum_variants,
+            consts,
             handlers: RefCell::new(Vec::new()),
             fuel: Cell::new(None),
             depth: Cell::new(0),
@@ -641,6 +652,16 @@ impl Interp {
                 // literals are `1b`/`0b`); map the words so both forms work.
                 None if name == "true" => Ok(Value::Bool(true)),
                 None if name == "false" => Ok(Value::Bool(false)),
+                // A top-level `const`, evaluated in an empty scope: its value
+                // may name other consts and functions, never a local. Counted
+                // as a call, so a const defined in terms of itself hits the
+                // depth bound rather than the Rust stack.
+                None if self.consts.contains_key(name) => {
+                    self.enter()?;
+                    let r = self.eval(&self.consts[name], &mut Env::new());
+                    self.leave();
+                    r
+                }
                 // A bare *unit* variant: `Square`, not `Square()` and not
                 // `Shape.Square`. It has no arguments, so it arrives here as an
                 // identifier rather than a call, and fell through to
@@ -2698,6 +2719,13 @@ mod tests {
 
     fn run(src: &str, f: &str, args: &[i64]) -> Value {
         run_source(src, f, args).expect("run failed")
+    }
+
+    #[test]
+    fn a_top_level_const_evaluates_to_its_value() {
+        // It typechecked and then evaluated to a function name (plan C3).
+        let src = "const X: f64 = 1.5;\nconst TWICE: f64 = X * 2.0;\nf main() -> f64 { TWICE + X }\n";
+        assert_eq!(run(src, "main", &[]), Value::Float(4.5));
     }
 
     #[test]
