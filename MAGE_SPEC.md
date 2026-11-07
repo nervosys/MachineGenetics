@@ -1977,6 +1977,54 @@ whose program is appended to a fixed MAGE harness, and a verdict that treats
 a contract violation as a refusal rather than as a crash. Those are a design
 change to the arena, not a test, so C3 stops at a ranked fixed population.
 
+### 11.12 Contact as a convex step (plan C5)
+
+One time step of a ball on a floor is a box-constrained quadratic program. The
+unconstrained step is `y_free = y + v dt - g dt^2 / 2` and `v_free = v - g dt`.
+The contact step is the `(yp, vp)` that minimises the squared distance to it,
+with `yp` in the box `[0, 100]`, the floor:
+
+```mg
+@param(0.0, 100.0)
+const YP: f64 = 1.0;
+
+@param(-50.0, 50.0)
+const VP: f64 = 0.0;
+
+f contact_floor(yp: f64, vp: f64) -> f64 {
+    val y0 = 0.001;
+    val v0 = -1.0;
+    val dt = 0.01;
+    val g = 9.81;
+    val y_free = y0 + v0 * dt - 0.5 * g * dt * dt;
+    val v_free = v0 - g * dt;
+    (yp - y_free) * (yp - y_free) + (vp - v_free) * (vp - v_free)
+}
+```
+
+The convexity pass certifies this form, and the state is fixed in the body
+rather than passed in, so the decision variables are only `yp` and `vp`. Each
+square is `e * e` for one affine term `e` written identically twice, which
+`convexity.rs` certifies (the `x * x` exception). A sum of convex terms is
+convex. Writing `2 * x * x` instead is `Unknown`, because the rules do not
+reassociate products. The form needed is therefore a sum of squares of
+affine terms, each factor written out.
+
+`mage-parse --solve prototype/examples/contact_step.mg contact_floor` takes the
+projected-gradient path (`solver` is `ProjectedGradient`) and returns
+`yp = 0`, the floor, with `vp = v_free`. The file also holds `contact_free`,
+a step that stays above the floor, which returns `yp = y_free` and
+`vp = v_free`. Both match `sim_bounce` in `arena/src/physics.rs`: the free step
+for any restitution, and the penetrating step at restitution `e = 0`, where
+bounce also ends at `y = 0`. The test is `prototype/tests/contact_step.rs`.
+
+The QP does not cover restitution or the velocity update at contact. Bounce
+sets `v = -e (v - g tau)` on impact, which is not a projection, so the QP's
+`vp` is the unconstrained `v_free` even when the floor is hit. With `e > 0` the
+bounce step rebounds above the floor (`y = 0.00688` at `e = 0.8`), so the QP
+matches only the instant of contact, not the full step. It is one step, with
+no friction and no multi-step rollout.
+
 ---
 
 ## 12. Contract System
