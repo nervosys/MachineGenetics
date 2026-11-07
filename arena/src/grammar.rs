@@ -58,6 +58,8 @@ struct Space {
     texts: HashMap<String, String>,
     /// The profile's signature up to its parameters: `f gen`.
     fn_head: String,
+    /// The whole signature the profile states: `f gen(s: usize) -> [usize]`.
+    signature: String,
     max_depth: usize,
     max_nest: usize,
     int_extra_depth: usize,
@@ -82,6 +84,7 @@ fn space() -> &'static Space {
             int_extra_depth: limits["int_extra_depth"].0 as usize,
             examples: p.list_forms.iter().chain(&p.int_forms).map(|f| (f.name.clone(), f.example.clone())).collect(),
             texts: p.texts.iter().cloned().collect(),
+            signature: p.signature.clone(),
             fn_head: p.signature.split('(').next().expect("a signature").trim().to_string(),
             list_rules: p.list_forms.iter().map(|f| f.name.clone()).collect(),
             int_rules: p.int_forms.iter().map(|f| f.name.clone()).collect(),
@@ -318,7 +321,7 @@ impl Program {
         self.body.render(&mut body);
         // `@role(candidate)`: the language, not this crate, is what forbids a
         // generated program from reading held-out data or acting (§11.6).
-        format!("@role(candidate)\nf gen(s: usize) -> [usize] {{\n    {body}\n}}\n")
+        format!("@role(candidate)\n{} {{\n    {body}\n}}\n", space().signature)
     }
 
     /// Length in MAGE tokens — the description length the Solomonoff prior
@@ -995,8 +998,9 @@ impl Program {
         let mut p = Parser { src, pos: 0, nest: 0, second_order };
         let scope = ["s".to_string()];
         let body = if src.trim_start().starts_with('@') {
-            for tok in ["@role", "(", "candidate", ")", "f", "gen", "(", "s", ":", "usize", ")", "->", "[", "usize", "]", "{"] {
-                p.expect(tok)?;
+            let header = ["@role", "(", "candidate", ")"].into_iter().map(String::from);
+            for tok in header.chain(signature_tokens(&space().signature)).chain(["{".to_string()]) {
+                p.expect(&tok)?;
             }
             let body = p.list(&scope)?;
             p.expect("}")?;
@@ -1054,6 +1058,30 @@ fn check_int_depth(e: &IntExpr, d: usize) -> Result<(), String> {
         }
         IntExpr::Mod(a, _) => check_int_depth(a, d + 1),
     }
+}
+
+/// A signature as the tokens [`Parser::expect`] takes: runs of word
+/// characters, `->`, and any other single character; whitespace separates.
+fn signature_tokens(sig: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut chars = sig.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c.is_whitespace() {
+            continue;
+        }
+        let mut tok = c.to_string();
+        if word_char(c) {
+            while let Some(&n) = chars.peek().filter(|&&n| word_char(n)) {
+                tok.push(n);
+                chars.next();
+            }
+        } else if c == '-' && chars.peek() == Some(&'>') {
+            tok.push('>');
+            chars.next();
+        }
+        out.push(tok);
+    }
+    out
 }
 
 fn word_char(c: char) -> bool {
@@ -2348,5 +2376,28 @@ mod tests {
         for name in list_rules().iter().chain(int_rules().iter()) {
             assert!(described.contains(name), "{name} missing from the description");
         }
+    }
+
+    #[test]
+    fn the_source_header_is_the_profiles_signature() {
+        let kb = mage_prototype::kb::load().expect("the knowledge base loads");
+        let stated = kb
+            .facts("profile_signature")
+            .into_iter()
+            .find(|f| f[0] == "arena")
+            .expect("the arena states a signature")[1]
+            .clone();
+        let source = Program::parse("range(3)").unwrap().source();
+        assert!(source.starts_with(&format!("@role(candidate)
+{stated} {{")), "{source}");
+    }
+
+    #[test]
+    fn the_parser_reads_the_header_the_source_writes() {
+        let program = Program::parse("range(3)").unwrap();
+        assert_eq!(Program::parse(&program.source()).unwrap().source(), program.source());
+        let other = program.source().replace("s: usize", "s: u32");
+        assert_ne!(other, program.source());
+        assert!(Program::parse(&other).is_err());
     }
 }
