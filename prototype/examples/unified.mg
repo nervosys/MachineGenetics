@@ -64,7 +64,7 @@ swarm Workers {
 kb FamilyKb {
     fact parent(a, b);
     fact parent(b, c);
-    rule grandparent(x: i32, y: i32) {
-        x
+    rule grandparent(x: i32, z: i32) {
+        parent(x, y) && parent(y, z)
     }
 }

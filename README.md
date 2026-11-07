@@ -233,8 +233,8 @@ prototype). Reproduce with `agentic-eval --example swe_languages`.
 > (1) a structurally reliable, executable text surface — LL(1) grammar, tracked
 > effects, machine-readable diagnostics, a self-describing ontology, and an
 > evaluator that runs it — and (2) the **Agentic Binary Language binary IR**,
-> where a five-item neural module fits in **420 bytes** — 0.225 of its
-> 1866 bytes of text, and 47 bytes for the transformer block inside it,
+> where a five-item neural module fits in **420 bytes** — 0.222 of its
+> 1893 bytes of text, and 47 bytes for the transformer block inside it,
 > down from 243 (`benchmarks/FINDINGS.md` §1).
 >
 > The text surface itself is roughly **byte-tied** with idiomatic Rust
@@ -252,7 +252,7 @@ prototype). Reproduce with `agentic-eval --example swe_languages`.
 
 - ✅ **Zero-Ambiguity Syntax** — Deterministic LL(1) grammar eliminates parsing failures for both humans and AI agents. No backtracking, no ambiguity.
 
-- ✅ **Binary IR for Agents (Agentic Binary Language)** — A transformer block encodes to **47 bytes** of Agentic Binary Language, the 5-item `prototype/examples/unified.mg` to 420 bytes (vs 1866 of text). Agents target the IR directly via `--target=abl-bytes`; the text surface is a human-readable view via the round-trip decompiler.
+- ✅ **Binary IR for Agents (Agentic Binary Language)** — A transformer block encodes to **47 bytes** of Agentic Binary Language, the 5-item `prototype/examples/unified.mg` to 420 bytes (vs 1893 of text). Agents target the IR directly via `--target=abl-bytes`; the text surface is a human-readable view via the round-trip decompiler.
 
 - ✅ **Neural architecture DSL + composition algebra** — declarative `net`s composed from a few orthogonal operators (`stack`/`residual`/`branch`/`wrap`) over reusable `block`s, shared across projects via a content-addressed registry (`forge publish` + name handles). Shape-mismatched compositions are rejected at `--check`; repeated depth folds to an `O(1)` binary (`REPEAT`); and the operators **execute** on the CPU backend. See [Composing architectures](#composing-architectures--a-small-algebra-over-a-shared-block-library).
 
