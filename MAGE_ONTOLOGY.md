@@ -357,6 +357,72 @@ The MAGE ontology is organized into 12 interconnected domains. Each domain defin
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
+#### 11.1 The top-level schema (`kb/schema.mg`)
+
+**Added 2026-10-29.** The schema is no longer this prose: it is
+[`kb/schema.mg`](kb/schema.mg), a MAGE `kb` block the compiler checks, and
+`prototype/src/kb.rs` refuses to load a knowledge base that breaks it. The
+twelve domains above group facts into files; **they are not classes.** The
+classes are these, and a test (`kb::tests::the_ontology_names_exactly_the_schema`)
+requires this section to name every class, relation and invariant in the
+schema and nothing else. The domain sections that follow are reference
+material; each becomes documentation of `kb/` as its facts move there
+(NEUROSYMBOLIC_PLAN.md Phases 2-3).
+
+| Root class | Subclasses |
+|---|---|
+| `Form` | `HumanSource`, `SigilSource`, `Declarative`, `Ast`, `Hir`, `IrOp`, `BinaryContainer` |
+| `Construct` | `Token` (`Keyword`, `Sigil`), `Production`, `AstKind` |
+| `Meaning` | `Type`, `Effect`, `Op`, `Layer` |
+| `Rule` | `TypeRule`, `SafetyRule`, `Contract`, `GrammarConstraint`, `Diagnostic` |
+| `Component` | `NeuralComponent`, `SymbolicComponent` |
+| `Artifact` | `Program`, `Block`, `Container` |
+| `Evidence` | `Refusal`, `Measurement` |
+| `Profile` | — |
+| `Text` | — (any constant) |
+
+A fact `instance_of(x, C)` puts `x` in class `C`, and in every class above it.
+
+| Relation | Arguments |
+|---|---|
+| `abbreviates` | `Sigil` × `Keyword` |
+| `derives` | `Production` × `Construct` |
+| `start_symbol` | `Production` |
+| `parses_as` | `Production` × `AstKind` |
+| `lowers_to` | `Form` × `Form` |
+| `round_trips` | `Form` × `Form` |
+| `loses` | `Form` × `Form` × `Text` |
+| `has_type` | `Construct` × `Type` |
+| `has_effect` | `Construct` × `Effect` |
+| `constrained_by` | `Construct` × `Rule` |
+| `enforced_by` | `Rule` × `SymbolicComponent` |
+| `proposed_by` | `Artifact` × `NeuralComponent` |
+| `refused_by` | `Refusal` × `Rule` |
+| `in_profile` | `Production` × `Profile` |
+| `tested_by` | `Diagnostic` × `Text` |
+
+Each invariant is a rule whose results are violations; the knowledge base
+loads only when every one derives nothing.
+
+| Invariant | What it requires |
+|---|---|
+| `class_cycle` | The class hierarchy has no cycle |
+| `undeclared_class` | Every class named by `subclass_of`, `arg_class` or `instance_of` is declared |
+| `unenforced_rule` | Every `Rule` has an `enforced_by` |
+| `rule_enforced_twice` | No `Rule` has two `enforced_by` |
+| `sigil_two_keywords` | A `Sigil` abbreviates one `Keyword` |
+| `keyword_two_sigils` | A `Keyword` has at most one `Sigil` |
+| `unaccounted_lowering` | Every `lowers_to` round-trips or states what it `loses` |
+| `unreachable_production` | Every `Production` is reachable from a `start_symbol` |
+| `unbuilt_ast_kind` | Every `AstKind` is built by some `Production` |
+| `untested_diagnostic` | Every `Diagnostic` is emitted by some test |
+| `unnamed_refusal` | Every `Refusal` names a `Rule` |
+
+The loader also refuses a fact whose predicate is not declared, whose arity
+differs from its relation's, or whose argument is not of the declared class.
+RAP `kb/schema` returns all of this from the loaded base, and `kb/query`
+answers any predicate.
+
 ### 12. Domain 1: Lexical
 
 The lexical domain defines all tokens, their classification, and how source text maps to token streams under two modes.
@@ -501,7 +567,7 @@ Attribute { name: String, args: Vec<String>, bang: bool }
 
 **Pattern** — 9 forms: `Ident`, `Literal`, `Wildcard`, `Tuple`, `Struct`, `Enum`, `Slice`, `Or`, `Ref`.
 
-**Type (AST)** — 32 surface-level type expressions:
+**Type (AST)** — 33 surface-level type expressions:
 
 | Category            | Variants                                                            |
 | ------------------- | ------------------------------------------------------------------- |
@@ -1279,7 +1345,7 @@ Complete alphabetical index of all ontological concepts:
 | Decision                | Agent        | enum (3)                 | §6.3    |
 | DecompError             | Agent        | enum (4)                 | §7      |
 | Diagnostic              | Cross-domain | `Diagnostic`             | §8      |
-| DiagnosticCategory      | Cross-domain | enum (12)                | §8      |
+| DiagnosticCategory      | Cross-domain | enum (17)                | §8      |
 | DiagnosticGraph         | Cross-domain | `DiagnosticGraph`        | §8      |
 | DiagnosticNode          | Cross-domain | `DiagnosticNode`         | §8      |
 | DiagnosticNodeKind      | Cross-domain | enum (3)                 | §8      |
@@ -1298,7 +1364,7 @@ Complete alphabetical index of all ontological concepts:
 | Envelope                | Agent        | `Envelope`               | §3      |
 | EvolveDef               | Syntactic    | `EvolveDef`              | §13.2   |
 | EvolutionConfig         | AI/Evolution | `EvolutionConfig`        | §18.4   |
-| Expr (ExprKind)         | Syntactic    | enum (36 @ prototype/src/ast.rs)                | §13.1   |
+| Expr (ExprKind)         | Syntactic    | enum (35 @ prototype/src/ast.rs)                | §13.1   |
 | FactDef                 | Syntactic    | `FactDef`                | §13.2   |
 | FieldInit               | Syntactic    | `FieldInit`              | §13.1   |
 | FieldPattern            | Syntactic    | `FieldPattern`           | §13.1   |
@@ -1419,7 +1485,7 @@ Complete alphabetical index of all ontological concepts:
 | TrainDef                | Syntactic    | `TrainDef`               | §13.2   |
 | TraitDef                | Syntactic    | `TraitDef`               | §13.1   |
 | Ty (HIR)                | Type         | enum (31 @ prototype/src/hir.rs)                | §15     |
-| Type (AST)              | Syntactic    | enum (32)                | §13.1   |
+| Type (AST)              | Syntactic    | enum (33)                | §13.1   |
 | TypeAlias               | Syntactic    | `TypeAlias`              | §13.1   |
 | TypeChecker             | Type         | `TypeChecker`            | §15     |
 | TypeEnv                 | Type         | `TypeEnv`                | §15     |
@@ -1562,16 +1628,16 @@ Report TaskResult::Success
 
 | Category                 | Count |
 | ------------------------ | ----- |
-| Source modules           | 69    |
+| Source modules           | 74    |
 | TokenKind variants       | 182   |
 | AST ItemKind variants    | 20    |
-| AST ExprKind variants    | 36    |
-| AST Type variants        | 32    |
+| AST ExprKind variants    | 35    |
+| AST Type variants        | 33    |
 | HIR Ty variants          | 31    |
 | Effect kinds             | 19    |
 | SKB rule databases       | 8     |
 | SKB rules total          | 255   |
-| RAP endpoints            | 38    |
+| RAP endpoints            | 40    |
 | Agent roles              | 8     |
 | Message topics           | 10    |
 | CRDT operations          | 6     |
@@ -1595,6 +1661,14 @@ Report TaskResult::Success
 > own `effects` ontology section lists those nineteen beside five
 > annotations, which is where the JSON's `effects: 24` comes from. Three
 > numbers, one subject, and each is right about a different question.
+>
+> **Seven had drifted by 2026-10-29**, and `check-ontology-types.sh` — which
+> CI runs — had been failing on this stack for it. Three were this week's:
+> RAP endpoints 38 → 40 (`kb/schema`, `kb/query`), `DiagnosticCategory`
+> gained `KbRule` (E0570), and `Source modules` gained `kb.rs`. The other four
+> (`Expr` 36 → 35, `Type` 32 → 33, and the earlier part of the
+> `DiagnosticCategory` 12 → 17 and `Source modules` 69 → 74 moves) were older.
+> All seven are now the source's figures.
 >
 > **Three of these moved during the merge that landed them.** `Expr` gained
 > `Grad` (35 → 36) and `Source modules` gained `verdict.rs` and
