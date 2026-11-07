@@ -23,7 +23,7 @@ fn is_modifier_flag(a: &str) -> bool {
     matches!(
         a,
         "--no-elision" | "--syntax=legacy" | "--syntax=canonical" | "--token-report"
-            | "--json" | "--fix" | "--core"
+            | "--json" | "--fix" | "--core" | "--max" | "--fuel" | "--seed"
     ) || a.starts_with("--backend=")
         || a.starts_with("--backends-file=")
 }
@@ -588,6 +588,68 @@ fn main() {
                 Ok(v) => println!("{v}"),
                 Err(e) => {
                     eprintln!("eval error: {e}");
+                    std::process::exit(1);
+                }
+            }
+        }
+        Some("--solve") => {
+            // Solver choice from the convexity certificate (plan 6.3). The
+            // domains come from the `@param` consts named like the function's
+            // parameters. `--max`, `--fuel` and `--seed` are read from `args`
+            // here: `filtered` would leave their values behind as positionals.
+            let after = args.iter().position(|a| a == "--solve").map_or(0, |i| i + 1);
+            let mut positional: Vec<&str> = Vec::new();
+            let mut maximise = false;
+            let mut fuel: u64 = 1_000_000;
+            let mut seed: u64 = 0;
+            let mut rest = args[after..].iter();
+            while let Some(a) = rest.next() {
+                match a.as_str() {
+                    "--max" => maximise = true,
+                    "--fuel" | "--seed" => {
+                        let value = rest.next().and_then(|v| v.parse::<u64>().ok());
+                        let Some(n) = value else {
+                            eprintln!("{a} needs a whole number");
+                            std::process::exit(1);
+                        };
+                        if a == "--fuel" {
+                            fuel = n;
+                        } else {
+                            seed = n;
+                        }
+                    }
+                    other if is_modifier_flag(other) => {}
+                    other => positional.push(other),
+                }
+            }
+            let (path, name) = match positional.as_slice() {
+                [path, name] => (*path, *name),
+                _ => {
+                    eprintln!(
+                        "Usage: mage-parse --solve <file.mg|-> <fn> [--max] [--fuel N] [--seed S]"
+                    );
+                    std::process::exit(1);
+                }
+            };
+            let source = read_source(path);
+            let module = match parser::parse(&lexer::lex(&source)) {
+                Ok(m) => m,
+                Err(e) => {
+                    eprintln!("{path}: parse error at {}:{}: {}", e.line, e.col, e.message);
+                    std::process::exit(1);
+                }
+            };
+            let sense = if maximise { solve::Sense::Maximise } else { solve::Sense::Minimise };
+            match solve::solve_params(&module, name, sense, fuel, seed) {
+                Ok(solution) => match serde_json::to_string(&solution) {
+                    Ok(json) => println!("{json}"),
+                    Err(e) => {
+                        eprintln!("{path}: serialize: {e}");
+                        std::process::exit(1);
+                    }
+                },
+                Err(e) => {
+                    eprintln!("{path}: {e}");
                     std::process::exit(1);
                 }
             }
@@ -3608,7 +3670,7 @@ mod cli_arg_tests {
                     || f.starts_with("--describe")
                     || f.starts_with("--spine=")
                     || matches!(f, "--check" | "--eval" | "--pipeline" | "--rap" | "--differentiable"
-                                | "--gradcheck"
+                                | "--gradcheck" | "--solve"
                                 | "--fmt-compact" | "--fmt-expand" | "--emit-ontology" | "--emit-skb"
                                 | "--manifest" | "--rain" | "--version" | "--input") =>
                 {
