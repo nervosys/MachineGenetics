@@ -776,7 +776,8 @@ pub fn run_with(
             let cands: Vec<Candidate> = agent.propose(shares[ai], &pool, &mut rng);
             let (_, r) = span.stop(&mut meters);
             let role = agent.role().name();
-            round_joules[ai] += ledger.charge_role(PROGRAMS, role, &r).map_or(0.0, |(j, _)| j);
+            let kind = agent.kind();
+            round_joules[ai] += ledger.charge_agent(PROGRAMS, role, kind, &r).map_or(0.0, |(j, _)| j);
             let allowance = cfg.joules_per_program.map(|p| p * shares[ai] as f64);
             let scored = &mut round_scored[ai];
             let mut credit = 0.0;
@@ -905,7 +906,7 @@ pub fn run_with(
                     }
                 }
                 let (_, r) = span.stop(&mut meters);
-                let charged = ledger.charge_role(PROGRAMS, role, &r);
+                let charged = ledger.charge_agent(PROGRAMS, role, kind, &r);
                 if let Some((j, measured)) = charged {
                     round_joules[ai] += j;
                     calibration.add_energy_sample(
@@ -1370,8 +1371,12 @@ mod tests {
         // are: training and probes stay out of it.
         let by_role: f64 = r.energy.by_role.values().sum();
         assert!((by_role - r.energy.account(PROGRAMS)).abs() < 1e-6, "{by_role} vs {}", r.energy.account(PROGRAMS));
+        // The per-kind breakdown is the same joules cut another way (plan F2).
+        let by_kind: f64 = r.energy.by_kind.values().sum();
+        assert!((by_kind - by_role).abs() < 1e-6, "by_kind {by_kind} vs by_role {by_role}");
         assert!(r.energy.by_role.keys().all(|k| k == "proposer" || k == "mutator"), "{:?}", r.energy.by_role);
         assert!(r.energy.by_role.get("mutator").is_some_and(|j| *j > 0.0));
+        assert!(r.energy.by_kind.get("mutator").is_some_and(|j| *j > 0.0), "{:?}", r.energy.by_kind);
     }
 
     #[test]

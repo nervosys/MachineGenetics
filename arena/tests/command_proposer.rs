@@ -7,6 +7,7 @@ use arena::arena::{run, Config, Corpus};
 use arena::command::{Backend, CommandBackend};
 use arena::energy::{Basis, Meter, Reading};
 use arena::grammar::Program;
+use arena::kernel::PROGRAMS;
 use arena::learner::{LearnerConfig, LearnerSpec};
 use arena::substrate::Substrate;
 use std::time::{Duration, Instant};
@@ -104,6 +105,7 @@ fn a_command_agent_runs_in_a_full_run_and_its_proposals_are_metered() {
     // own span: the proposal is charged to the agent that made it.
     assert_eq!(a.joules, (r.rounds_completed + a.proposed) as f64, "{a:?}");
     assert_eq!(r.energy.by_role.get("proposer").copied(), Some(a.joules));
+    assert_eq!(r.energy.by_kind.get("command").copied(), Some(a.joules));
 }
 
 #[test]
@@ -113,6 +115,17 @@ fn a_command_agent_competes_with_a_grammar_agent_on_the_same_run() {
     let r = run(cfg, heldout(), vec![Box::new(OneJoule)], vec![]).expect("the run completes");
     assert_eq!(r.agents.len(), 2);
     assert!(r.agents.iter().all(|a| a.proposed > 0 && a.joules > 0.0), "{:?}", r.agents);
+    // F2: the command and the grammar agent are separate accounts by kind, and
+    // both still sit in the one `proposer` role.
+    let by_kind = &r.energy.by_kind;
+    let (command, grammar) = (by_kind.get("command").copied(), by_kind.get("grammar").copied());
+    assert!(command.is_some_and(|j| j > 0.0), "{by_kind:?}");
+    assert!(grammar.is_some_and(|j| j > 0.0), "{by_kind:?}");
+    assert_eq!(by_kind.len(), 2, "{by_kind:?}");
+    let kind_sum: f64 = by_kind.values().sum();
+    assert!((kind_sum - r.energy.account(PROGRAMS)).abs() < 1e-6, "{kind_sum} vs the PROGRAMS account");
+    let proposer = r.energy.by_role.get("proposer").copied().unwrap_or(0.0);
+    assert!((proposer - kind_sum).abs() < 1e-6, "proposer {proposer} vs by_kind {kind_sum}");
 }
 
 /// No bypass: a program the substrate refuses is refused the same way when a

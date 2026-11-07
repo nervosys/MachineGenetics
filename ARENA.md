@@ -655,6 +655,14 @@ one program body per block, with blocks separated by lines that contain only
 with the grammar the sampler writes (`Program::parse`), keeps at most `n`,
 and drops the rest.
 
+The prompt ends on a clean boundary (plan F3): exactly one newline after the
+final instruction line, with no trailing space and never a partial line. A
+tokenized model's next-token distribution is skewed by a prompt that ends
+mid-token, after Cartesia's *From Tokens to Bytes, Part II*. Each shown
+source is written without trailing whitespace. Tests:
+`the_prompt_ends_on_a_clean_boundary_for_every_pool_size` and
+`an_entry_with_trailing_whitespace_does_not_move_the_boundary`.
+
 ```text
 range(8)
 ---
@@ -671,7 +679,10 @@ range(16).map(|x| wrapping_mul(x, 3))
 - **Its energy is metered by the agent's own span.** `propose` runs inside the
   span the loop opens for every agent, so the command's wall time, and whatever
   the meter reads over it, is charged to the agent's `joules` and to the
-  `proposer` role. A local model behind the command is therefore measured,
+  `proposer` role, and to the ledger's `by_kind["command"]` account (plan F2),
+  so a command's joules are not mixed with the grammar agents'. The three
+  breakdowns sum to the same total. A local model behind the command is
+  therefore measured,
   to the extent the run's meters measure the machine: that is the local-model
   half of plan 3.4. Under the CPU estimate it is an estimate, and the report
   says so. Test: `a_command_agent_runs_in_a_full_run_and_its_proposals_are_metered`.

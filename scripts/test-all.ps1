@@ -12,9 +12,9 @@
         ribosome      168 tests
         germline      175 tests
         forge          63 tests
-        arena          102 tests
+        arena          104 tests
         -------------------------
-        total       3,297 tests, 0 warnings
+        total       3,299 tests, 0 warnings
 
 .PARAMETER Release
     Build and test in release mode (slower to build, much faster to run).
