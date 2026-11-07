@@ -10,9 +10,9 @@
 #     ribosome      168 tests
 #     germline      175 tests
 #     forge          63 tests
-#     arena          76 tests
+#     arena          77 tests
 #     -------------------------
-#     total       3,271 tests, 0 warnings
+#     total       3,272 tests, 0 warnings
 #
 # Usage:
 #   scripts/test-all.sh            # debug

@@ -516,7 +516,7 @@ earns full novelty credit. On seed 7, 20 rounds of 48 programs, agents
 
 | `--novelty` | claims checked | credited as novel | distinct shapes | cache hits |
 |---|---|---|---|---|
-| `shape` (default) | 135 | **70** | 662 | 3 |
+| `shape` (then the default) | 135 | **70** | 662 | 3 |
 | `behaviour` | 180 | **0** | 596 | 392 |
 
 **The fix, behind a flag.** `--novelty behaviour` keys novelty on a
@@ -524,10 +524,34 @@ fingerprint of a program's outputs on three fixed seeds, so an
 output-preserving rewrite has its parent's key. The fingerprint costs up to
 three evaluations per new program, cached, which is where the extra cache
 hits come from. It has a hole of its own: two programs that agree on those
-three seeds share a key whatever they do elsewhere. It is not the default
-yet, because the held-out effect of switching has not been measured. A test
-runs the attacker under both keys, and fails if behaviour keying falls back
-to shape (break-checked).
+three seeds share a key whatever they do elsewhere. A test runs the attacker
+under both keys, and fails if behaviour keying falls back to shape
+(break-checked).
+
+**The held-out comparison, and the default.** It waited on a quiet machine,
+because allocation follows measured joules. It did not need one: with `--cost
+fuel`, two runs of one seed differ only in their energy and time fields, so
+held-out results are exact and runs can share the machine. Six seeds, 20
+rounds of 48 programs, agents `grammar:1,mutator:1,attacker:1`, `--cost fuel`,
+held-out `README.md,germline/src/gate.rs`:
+
+| seed | shape: held-out bits/byte | behaviour: held-out bits/byte | shape: credited exploits | behaviour: credited exploits |
+|---|---|---|---|---|
+| 1 | 7.675 | 7.496 | 115 | 0 |
+| 2 | 7.477 | 7.662 | 95 | 0 |
+| 3 | 7.756 | 7.572 | 119 | 0 |
+| 4 | 7.800 | 7.905 | 120 | 0 |
+| 5 | 7.656 | 7.500 | 97 | 0 |
+| 6 | 7.561 | 7.333 | 118 | 0 |
+
+Behaviour minus shape is −0.076 bits/byte on average (sd 0.175; lower on 4 of
+6 seeds), about one standard error: no detectable held-out effect either way.
+The comparison has little power, because at this scale the learner transfers
+little to the held-out text (8 bits/byte is uniform). What it does settle is
+that removing roughly a hundred credited exploits a run costs nothing
+measurable, so `behaviour` is now the default. A config recorded without the
+field still reads as `shape`, which is how it ran; a test holds both
+(break-checked). `--novelty shape` keeps the old key.
 
 ## The harness in MAGE (plan 5.1)
 
