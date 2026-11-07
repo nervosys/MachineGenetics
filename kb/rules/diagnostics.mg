@@ -139,9 +139,11 @@ kb Diagnostics {
     fact tested_by("E9999", "grad_unchecked");
 
     // ── Warning classes ─────────────────────────────────────────────────
-    // The first two carry E0308 though nothing mismatched.
+    // The first two carry E0308 though nothing mismatched. The first is an
+    // error, so "warning classes" is one short of exact: `warning_carries`
+    // gives the code either way.
     fact instance_of("no_derivative_rule", Diagnostic);
-    fact diagnostic_row("no_derivative_rule", "Warning", "TypeMismatch", "A call with no derivative rule is treated as the identity");
+    fact diagnostic_row("no_derivative_rule", "Error", "TypeMismatch", "A call with no derivative rule is refused, and no gradient passes through it");
     fact warning_carries("no_derivative_rule", "E0308");
     fact enforced_by("no_derivative_rule", "autograd");
     fact tested_by("no_derivative_rule", "no_derivative_rule");

@@ -244,19 +244,17 @@ fn is_smooth_arith(op: &str) -> bool {
 
 /// Builtins with a kink: differentiable off a measure-zero set.
 const KINKED: &[&str] = &[
-    "abs", "relu", "max", "min", "clamp", "sign", "floor", "ceil", "round", "trunc",
+    "abs", "relu", "max", "min", "clamp", "floor", "ceil", "round", "trunc",
 ];
 
 /// Builtins that are smooth wherever they are defined.
 pub(crate) const SMOOTH_BUILTINS: &[&str] = &[
-    "exp", "ln", "log", "sqrt", "sin", "cos", "tan", "tanh", "sigmoid", "softmax", "gelu", "silu",
-    "sum", "mean", "dot", "matmul",
+    "exp", "ln", "log", "log2", "log10", "sqrt", "sin", "cos", "tan", "asin", "acos", "atan",
+    "sinh", "cosh", "tanh", "sigmoid", "softmax", "gelu", "silu", "sum", "mean", "dot", "matmul",
 ];
 
 /// Builtins that produce a discrete result.
-const DISCRETE_BUILTINS: &[&str] = &[
-    "len", "count", "keys", "argmax", "argmin", "index", "any", "all", "freq",
-];
+const DISCRETE_BUILTINS: &[&str] = &["len", "count", "keys", "any", "all", "freq"];
 
 // ── The pass ─────────────────────────────────────────────────────────
 
@@ -1250,6 +1248,18 @@ mod tests {
         let module = parser::parse(&tokens).expect("parse failed");
         let eff = effects::infer_effects(&module);
         infer(&module, &eff)
+    }
+
+    #[test]
+    fn the_new_math_functions_are_graded_as_the_tables_say() {
+        for name in ["log2", "log10", "asin", "acos", "atan", "sinh", "cosh"] {
+            let d = infer_src(&format!("f h(x: f64) -> f64 {{ {name}(x) }}"));
+            assert_eq!(d.diff_of("h"), Diff::Smooth, "{name}: {:?}", d.diff_of("h"));
+        }
+        for name in ["floor", "ceil", "round", "trunc"] {
+            let d = infer_src(&format!("f h(x: f64) -> f64 {{ {name}(x) }}"));
+            assert_eq!(d.diff_of("h"), Diff::AlmostEverywhere, "{name}: {:?}", d.diff_of("h"));
+        }
     }
 
     #[test]

@@ -359,6 +359,10 @@ impl Resolver {
             // smooth scalar functions (and list reductions), each with an
             // exact derivative for `grad`
             "exp", "ln", "log", "sqrt", "sin", "cos", "tan", "tanh", "sigmoid", "silu", "gelu",
+            "log2", "log10", "asin", "acos", "atan", "sinh", "cosh",
+            // rounding: piecewise constant, so the derivative is zero almost
+            // everywhere (DIFFERENTIABILITY.md)
+            "floor", "ceil", "round", "trunc",
             "mean", "dot",
             // bare enum-value constructors agents call positionally
             "Some", "None", "Ok", "Err",
@@ -1190,6 +1194,25 @@ mod tests {
         let r = resolve_source("f foo() -> i32 { unknown_var }");
         assert!(!r.diagnostics.is_empty());
         assert!(r.diagnostics.iter().any(|d| d.message.contains("unresolved name: `unknown_var`")));
+    }
+
+    #[test]
+    fn the_eleven_math_functions_resolve_as_free_calls() {
+        // `MAGE_SPEC.md` promises `f(x)` for these. Each was refused as
+        // `unresolved name` until they were registered beside `sqrt`.
+        for name in [
+            "floor", "ceil", "round", "trunc", "log2", "log10", "asin", "acos", "atan", "sinh",
+            "cosh",
+        ] {
+            let r = resolve_source(&format!("f g(x: f64) -> f64 {{ {name}(x) }}"));
+            assert!(
+                r.diagnostics.is_empty(),
+                "`{name}(x)` should resolve: {:?}",
+                r.diagnostics
+            );
+        }
+        let r = resolve_source("f g(x: f64) -> f64 { floor(x) }");
+        assert!(r.diagnostics.is_empty(), "{:?}", r.diagnostics);
     }
 
     #[test]

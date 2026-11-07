@@ -1815,7 +1815,9 @@ impl Interp {
             // all along; until 2026-09-25 none of them existed, so the pass
             // reasoned about calls that failed name resolution. IEEE semantics
             // at the edges (`ln(0)` is -inf), as for `/` on floats.
-            "exp" | "ln" | "log" | "sqrt" | "sin" | "cos" | "tan" | "tanh" | "sigmoid" | "silu" | "gelu" => {
+            "exp" | "ln" | "log" | "sqrt" | "sin" | "cos" | "tan" | "tanh" | "sigmoid" | "silu" | "gelu"
+            | "log2" | "log10" | "asin" | "acos" | "atan" | "sinh" | "cosh"
+            | "floor" | "ceil" | "round" | "trunc" => {
                 smooth(name, arg(0))
             }
             "mean" => {
@@ -2272,14 +2274,33 @@ fn smooth_fn(name: &str, x: f64) -> (f64, f64) {
         "tanh" => (x.tanh(), 1.0 - x.tanh() * x.tanh()),
         "sigmoid" => (sig(x), sig(x) * (1.0 - sig(x))),
         "silu" => (x * sig(x), sig(x) + x * sig(x) * (1.0 - sig(x))),
+        "log2" => (x.log2(), 1.0 / (x * std::f64::consts::LN_2)),
+        "log10" => (x.log10(), 1.0 / (x * std::f64::consts::LN_10)),
+        "asin" => (x.asin(), 1.0 / (1.0 - x * x).sqrt()),
+        "acos" => (x.acos(), -1.0 / (1.0 - x * x).sqrt()),
+        "atan" => (x.atan(), 1.0 / (1.0 + x * x)),
+        "sinh" => (x.sinh(), x.cosh()),
+        "cosh" => (x.cosh(), x.sinh()),
+        // Piecewise constant: the derivative is zero wherever it exists, and
+        // it does not exist at the jumps. `DIFFERENTIABILITY.md` grades these
+        // `AlmostEverywhere`. `round` is `f64::round`: halfway cases go away
+        // from zero (`round(2.5)` is 3, `round(-2.5)` is -3). The spec does not
+        // say which way ties go, so this is Rust's rule, stated here.
+        "floor" => (x.floor(), 0.0),
+        "ceil" => (x.ceil(), 0.0),
+        "round" => (x.round(), 0.0),
+        "trunc" => (x.trunc(), 0.0),
         // The tanh approximation, the form most frameworks use.
-        _ => {
+        "gelu" => {
             let c = (2.0 / std::f64::consts::PI).sqrt();
             let u = c * (x + 0.044715 * x * x * x);
             let du = c * (1.0 + 3.0 * 0.044715 * x * x);
             let t = u.tanh();
             (0.5 * x * (1.0 + t), 0.5 * (1.0 + t) + 0.5 * x * (1.0 - t * t) * du)
         }
+        // Only `call_builtin_inner`'s arm calls this, and it passes only the
+        // names listed there. A new name needs an arm here too.
+        _ => unreachable!("smooth_fn has no derivative for `{name}`"),
     }
 }
 
@@ -2791,6 +2812,82 @@ mod tests {
         }
         assert!((eval_f64("f p() -> f64 { mean([1.0, 2.0, 6.0]) }") - 3.0).abs() < 1e-12);
         assert!((eval_f64("f p() -> f64 { dot([1.0, 2.0], [3.0, 4.0]) }") - 11.0).abs() < 1e-12);
+    }
+
+    #[test]
+    fn the_eleven_functions_evaluate_in_both_forms() {
+        // `MAGE_SPEC.md` says each may be written `f(x)` or `x.f()`. The
+        // method form has its own route (the receiver is passed as the first
+        // argument), so both are checked, on the same concrete values.
+        let pi = std::f64::consts::PI;
+        let cases: &[(&str, f64, f64)] = &[
+            ("floor", 2.5, 2.0),
+            ("floor", -2.5, -3.0),
+            ("ceil", 2.5, 3.0),
+            ("ceil", -2.5, -2.0),
+            ("round", 2.4, 2.0),
+            ("round", 2.5, 3.0),
+            ("round", -2.5, -3.0),
+            ("trunc", 2.7, 2.0),
+            ("trunc", -2.7, -2.0),
+            ("log2", 8.0, 3.0),
+            ("log10", 1000.0, 3.0),
+            ("asin", 1.0, pi / 2.0),
+            ("acos", 1.0, 0.0),
+            ("atan", 1.0, pi / 4.0),
+            ("sinh", 1.0, 1.1752011936438014),
+            ("cosh", 1.0, 1.5430806348152437),
+        ];
+        for &(name, x, want) in cases {
+            let free = eval_f64(&format!("f p() -> f64 {{ {name}({x:?}) }}"));
+            let method = eval_f64(&format!("f p() -> f64 {{ val x = {x:?}; x.{name}() }}"));
+            assert!((free - want).abs() < 1e-12, "{name}({x}) = {free}, want {want}");
+            assert!((method - want).abs() < 1e-12, "{x}.{name}() = {method}, want {want}");
+        }
+    }
+
+    #[test]
+    fn a_literal_receiver_takes_the_method_form() {
+        // The spelling the spec uses, with no binding in between.
+        assert_eq!(eval_f64("f p() -> f64 { 2.5.floor() }"), 2.0);
+        assert_eq!(eval_f64("f p() -> f64 { 8.0.log2() }"), 3.0);
+    }
+
+    #[test]
+    fn the_eleven_fail_on_their_domain_the_way_sqrt_and_ln_do() {
+        // No error is raised, as for `sqrt(-1)` and `ln(0)`: IEEE values.
+        assert!(eval_f64("f p() -> f64 { sqrt(-1.0) }").is_nan());
+        assert_eq!(eval_f64("f p() -> f64 { ln(0.0) }"), f64::NEG_INFINITY);
+        assert!(eval_f64("f p() -> f64 { asin(2.0) }").is_nan());
+        assert!(eval_f64("f p() -> f64 { acos(-2.0) }").is_nan());
+        assert_eq!(eval_f64("f p() -> f64 { log2(0.0) }"), f64::NEG_INFINITY);
+        assert_eq!(eval_f64("f p() -> f64 { log10(0.0) }"), f64::NEG_INFINITY);
+    }
+
+    #[test]
+    fn the_eleven_have_exact_derivatives() {
+        // Smooth ones are checked against a central difference, as above. The
+        // rounding family is piecewise constant, so its derivative is zero and
+        // a central difference away from a jump is zero too.
+        for (body, w) in [
+            ("log2(w)", 2.0),
+            ("log10(w)", 3.0),
+            ("asin(w)", 0.4),
+            ("acos(w)", -0.3),
+            ("atan(w)", 0.8),
+            ("sinh(w)", 0.6),
+            ("cosh(w)", -0.6),
+            ("floor(w)", 2.3),
+            ("ceil(w)", 2.3),
+            ("round(w)", 2.3),
+            ("trunc(w)", -2.3),
+        ] {
+            let (g, fd) = grad_and_fd(body, w);
+            assert_close(g, fd, body);
+        }
+        // The rounding family's exact derivative is 0, not merely close to it.
+        assert_eq!(grad_and_fd("floor(w)", 2.3).0, 0.0);
+        assert_eq!(grad_and_fd("round(w)", 2.3).0, 0.0);
     }
 
     #[test]
