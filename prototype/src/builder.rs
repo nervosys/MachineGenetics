@@ -155,7 +155,7 @@ pub fn classify_item(v: &serde_json::Value) -> Result<ItemSpec, BuildError> {
             "swarm" => serde_json::from_value(v.clone()).map(ItemSpec::Swarm),
             _ => serde_json::from_value(v.clone()).map(ItemSpec::Agent),
         }
-        .map_err(|e| BuildError::new("U0002", format!("bad {kind} item: {e}"), "match the spec format (see --build=schema)"))
+        .map_err(|e| BuildError::new("U0002", format!("bad {kind} item: {e}"), "each item must be a net, kb, agent, or swarm spec; see `--build=schema`"))
     };
     if v.get("net").is_some() {
         de("net")
@@ -169,7 +169,7 @@ pub fn classify_item(v: &serde_json::Value) -> Result<ItemSpec, BuildError> {
         Err(BuildError::new(
             "U0002",
             "item has no \"net\"/\"kb\"/\"agent\"/\"swarm\" key".into(),
-            "each item must be a net, kb, agent, or swarm spec",
+            "each item must be a net, kb, agent, or swarm spec; see `--build=schema`",
         ))
     }
 }
@@ -188,7 +188,7 @@ impl BuildError {
     }
     /// A malformed-spec (`B0000`) error — for JSON that doesn't match a spec shape.
     pub fn malformed(message: String) -> Self {
-        BuildError::new("B0000", message, "emit a valid spec; see `--build=schema`")
+        BuildError::new("B0000", message, "emit valid JSON matching a spec format; see `--build=schema`")
     }
     /// Machine-parseable one-line form (matches the --check --json spirit).
     pub fn as_json(&self) -> serde_json::Value {
@@ -361,7 +361,7 @@ pub fn validate(spec: &NetSpec) -> Vec<BuildError> {
             errs.push(BuildError::new(
                 "B0003",
                 format!("layer `{name}` (#{i}): unknown op `{op}`"),
-                "use a known op (see `mage-parse --build=schema` for the catalog)",
+                "use an op listed in `ops` (see `mage-parse --build=schema`)",
             ));
             continue;
         };
@@ -369,7 +369,7 @@ pub fn validate(spec: &NetSpec) -> Vec<BuildError> {
             errs.push(BuildError::new(
                 "B0004",
                 format!("layer `{name}` (#{i}): op `{op}` takes {arity} dim(s), got {}", dims.len()),
-                "match the op's dimension count",
+                "match the op's `dims` arity",
             ));
             continue;
         }
@@ -377,7 +377,7 @@ pub fn validate(spec: &NetSpec) -> Vec<BuildError> {
             errs.push(BuildError::new(
                 "B0005",
                 format!("layer `{name}` (#{i}): dims must be positive, got {dims:?}"),
-                "use positive integers for dimensions",
+                "use positive integers for dims",
             ));
             continue;
         }
@@ -391,7 +391,7 @@ pub fn validate(spec: &NetSpec) -> Vec<BuildError> {
                         format!(
                             "shape mismatch at `{name}` (#{i}): previous output is {prev}, `Linear` expects input {in_dim}"
                         ),
-                        "make this layer's input dim equal the previous layer's output dim",
+                        "make each Linear's input dim equal the previous layer's output dim",
                     ));
                 }
         }
@@ -452,33 +452,33 @@ pub fn validate_kb(spec: &KbSpec) -> Vec<BuildError> {
     let mut decls: Vec<(&str, usize, &str)> = Vec::new(); // (name, arity, kind)
     for FactSpec(name, args) in &spec.facts {
         if !is_ident(name) {
-            errs.push(BuildError::new("K0003", format!("fact predicate `{name}` is not a valid identifier"), "use [A-Za-z_][A-Za-z0-9_]*"));
+            errs.push(BuildError::new("K0003", format!("fact predicate `{name}` is not a valid identifier"), "use [A-Za-z_][A-Za-z0-9_]* for predicates, rules, params, terms"));
             continue;
         }
         for arg in args {
             if !is_ident(arg) {
-                errs.push(BuildError::new("K0003", format!("fact `{name}` arg `{arg}` is not a valid term identifier"), "use [A-Za-z_][A-Za-z0-9_]* for terms"));
+                errs.push(BuildError::new("K0003", format!("fact `{name}` arg `{arg}` is not a valid term identifier"), "use [A-Za-z_][A-Za-z0-9_]* for predicates, rules, params, terms"));
             }
         }
         decls.push((name, args.len(), "fact"));
     }
     for RuleSpec(name, params, body) in &spec.rules {
         if !is_ident(name) {
-            errs.push(BuildError::new("K0003", format!("rule `{name}` is not a valid identifier"), "use [A-Za-z_][A-Za-z0-9_]*"));
+            errs.push(BuildError::new("K0003", format!("rule `{name}` is not a valid identifier"), "use [A-Za-z_][A-Za-z0-9_]* for predicates, rules, params, terms"));
             continue;
         }
         for p in params {
             if !is_ident(p) {
-                errs.push(BuildError::new("K0003", format!("rule `{name}` param `{p}` is not a valid identifier"), "use [A-Za-z_][A-Za-z0-9_]* for params"));
+                errs.push(BuildError::new("K0003", format!("rule `{name}` param `{p}` is not a valid identifier"), "use [A-Za-z_][A-Za-z0-9_]* for predicates, rules, params, terms"));
             }
         }
         for FactSpec(bp, bargs) in body {
             if !is_ident(bp) {
-                errs.push(BuildError::new("K0003", format!("rule `{name}` body predicate `{bp}` is not a valid identifier"), "use [A-Za-z_][A-Za-z0-9_]*"));
+                errs.push(BuildError::new("K0003", format!("rule `{name}` body predicate `{bp}` is not a valid identifier"), "use [A-Za-z_][A-Za-z0-9_]* for predicates, rules, params, terms"));
             }
             for a in bargs {
                 if !is_ident(a) {
-                    errs.push(BuildError::new("K0003", format!("rule `{name}` body arg `{a}` is not a valid identifier"), "use [A-Za-z_][A-Za-z0-9_]* for variables"));
+                    errs.push(BuildError::new("K0003", format!("rule `{name}` body arg `{a}` is not a valid identifier"), "use [A-Za-z_][A-Za-z0-9_]* for predicates, rules, params, terms"));
                 }
             }
         }
@@ -508,7 +508,7 @@ pub fn validate_kb(spec: &KbSpec) -> Vec<BuildError> {
                 errs.push(BuildError::new(
                     "K0006",
                     format!("rule `{name}` body references unknown predicate `{bp}`"),
-                    "reference a declared fact-predicate or rule (or add it)",
+                    "reference a declared fact-predicate or rule, or add it",
                 ));
             }
         }
@@ -531,10 +531,10 @@ pub fn validate_kb(spec: &KbSpec) -> Vec<BuildError> {
         match crate::parser::parse(&crate::lexer::lex(&src)) {
             Ok(module) => {
                 for d in crate::logic::module_diagnostics(&module) {
-                    errs.push(BuildError::new("K0008", d.message, "give every rule at least one body literal"));
+                    errs.push(BuildError::new("K0008", d.message, "give every rule at least one body literal; the message says what else"));
                 }
             }
-            Err(e) => errs.push(BuildError::new("K0008", format!("rendered kb does not parse: {e:?}"), "check identifiers")),
+            Err(e) => errs.push(BuildError::new("K0008", format!("rendered kb does not parse: {e:?}"), "give every rule at least one body literal; the message says what else")),
         }
     }
     errs
@@ -605,11 +605,11 @@ pub fn validate_swarm(spec: &SwarmSpec) -> Vec<BuildError> {
         }
     if let Some(t) = &spec.topology
         && !TOPOLOGIES.contains(&t.as_str()) {
-            errs.push(BuildError::new("S0004", format!("unknown topology `{t}`"), "use one of: star, ring, mesh, broadcast, tree"));
+            errs.push(BuildError::new("S0004", format!("unknown topology `{t}`"), "use star, ring, mesh, broadcast, or tree"));
         }
     if let Some(c) = &spec.consensus
         && !CONSENSUS.contains(&c.as_str()) {
-            errs.push(BuildError::new("S0005", format!("unknown consensus `{c}`"), "use one of: majority, unanimous, weighted, quorum"));
+            errs.push(BuildError::new("S0005", format!("unknown consensus `{c}`"), "use majority, unanimous, weighted, or quorum"));
         }
     if let Some(t) = &spec.transport {
         // Only `rmi_*` transports are encoded into the artifact; reject anything
@@ -1441,6 +1441,69 @@ mod tests {
             let errs = build_errors(json);
             assert!(errs.iter().any(|e| e.code == *code), "{code} from {json} gives {errs:?}");
         }
+    }
+
+    /// The `fix` the knowledge base states for each build code.
+    fn stated_fixes() -> std::collections::BTreeMap<String, String> {
+        let kb = crate::kb::load().expect("the knowledge base loads");
+        kb.facts("build_rule_row").into_iter().map(|f| (f[0].clone(), f[3].clone())).collect()
+    }
+
+    /// Every fix an error emits is the stated one, so what an agent reads in
+    /// `--build=schema` is what it is told when refused. Each witness's emitted
+    /// error with that code is checked, and so is every `BuildError::new` call
+    /// site in this file's production code (its code and its last argument, a
+    /// string literal), which covers codes emitted from more than one place.
+    #[test]
+    fn every_emitted_fix_is_the_stated_one() {
+        let stated = stated_fixes();
+        for (code, json) in BUILD_WITNESSES {
+            let want = stated.get(*code).unwrap_or_else(|| panic!("{code} has no stated fix"));
+            for e in build_errors(json).iter().filter(|e| e.code == *code) {
+                assert_eq!(e.fix, want, "{code} from {json}: emitted fix vs stated fix");
+            }
+        }
+        let source = include_str!("builder.rs");
+        let production = source.split_once("#[cfg(test)]").map_or(source, |(p, _)| p);
+        let mut sites = 0;
+        for (at, _) in production.match_indices("BuildError::new(") {
+            // The call's text, to its matching paren, with its string literals.
+            let (mut depth, mut lits, mut end_of_last) = (0usize, Vec::<String>::new(), false);
+            let mut chars = production[at + "BuildError::new".len()..].chars();
+            while let Some(c) = chars.next() {
+                match c {
+                    '(' => depth += 1,
+                    ')' => {
+                        depth -= 1;
+                        if depth == 0 {
+                            break;
+                        }
+                    }
+                    '"' => {
+                        let mut lit = String::new();
+                        while let Some(d) = chars.next() {
+                            match d {
+                                '\\' => lit.push(chars.next().expect("an escape has a character")),
+                                '"' => break,
+                                _ => lit.push(d),
+                            }
+                        }
+                        lits.push(lit);
+                        end_of_last = true;
+                        continue;
+                    }
+                    c if c.is_whitespace() || c == ',' => continue,
+                    _ => {}
+                }
+                end_of_last = false;
+            }
+            assert!(end_of_last, "a BuildError::new call does not end in a fix literal: {}", &production[at..at + 80]);
+            let (code, fix) = (&lits[0], lits.last().unwrap());
+            let want = stated.get(code).unwrap_or_else(|| panic!("{code} has no stated fix"));
+            assert_eq!(fix, want, "{code}: a BuildError::new call site's fix vs the stated fix");
+            sites += 1;
+        }
+        assert!(sites >= stated.len(), "found only {sites} BuildError::new call sites");
     }
 
     /// Every op of `OPS` is stated, and every stated op is in `OPS`: the

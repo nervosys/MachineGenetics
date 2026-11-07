@@ -18,7 +18,7 @@ kb Builder {
     // ── net: the net spec, at the root of the schema ──
 
     fact instance_of("B0000", BuildRule);
-    fact build_rule_row("B0000", "net", "spec JSON is malformed", "emit valid JSON matching spec_format");
+    fact build_rule_row("B0000", "net", "spec JSON is malformed", "emit valid JSON matching a spec format; see `--build=schema`");
     fact enforced_by("B0000", "builder");
 
     fact instance_of("B0001", BuildRule);
@@ -30,7 +30,7 @@ kb Builder {
     fact enforced_by("B0002", "builder");
 
     fact instance_of("B0003", BuildRule);
-    fact build_rule_row("B0003", "net", "unknown op", "use an op listed in `ops`");
+    fact build_rule_row("B0003", "net", "unknown op", "use an op listed in `ops` (see `mage-parse --build=schema`)");
     fact enforced_by("B0003", "builder");
 
     fact instance_of("B0004", BuildRule);
@@ -42,7 +42,7 @@ kb Builder {
     fact enforced_by("B0005", "builder");
 
     fact instance_of("B0006", BuildRule);
-    fact build_rule_row("B0006", "net", "shape mismatch in the layer chain", "make each Linear's input dim equal the previous output dim");
+    fact build_rule_row("B0006", "net", "shape mismatch in the layer chain", "make each Linear's input dim equal the previous layer's output dim");
     fact enforced_by("B0006", "builder");
 
     // ── kb: the knowledge-base spec ──
@@ -64,7 +64,7 @@ kb Builder {
     fact enforced_by("K0004", "builder");
 
     fact instance_of("K0006", BuildRule);
-    fact build_rule_row("K0006", "kb", "a rule body references an unknown predicate", "reference a declared fact-predicate or rule");
+    fact build_rule_row("K0006", "kb", "a rule body references an unknown predicate", "reference a declared fact-predicate or rule, or add it");
     fact enforced_by("K0006", "builder");
 
     fact instance_of("K0007", BuildRule);
@@ -82,11 +82,11 @@ kb Builder {
     fact enforced_by("A0001", "builder");
 
     fact instance_of("A0002", BuildRule);
-    fact build_rule_row("A0002", "agent", "a capability is not an identifier", "use identifier capability names");
+    fact build_rule_row("A0002", "agent", "a capability is not an identifier", "use [A-Za-z_][A-Za-z0-9_]* capability names");
     fact enforced_by("A0002", "builder");
 
     fact instance_of("A0003", BuildRule);
-    fact build_rule_row("A0003", "agent", "a requires_approval is not an identifier", "use identifier operation names");
+    fact build_rule_row("A0003", "agent", "a requires_approval is not an identifier", "use [A-Za-z_][A-Za-z0-9_]* operation names");
     fact enforced_by("A0003", "builder");
 
     // ── swarm: the swarm spec ──
@@ -112,7 +112,7 @@ kb Builder {
     fact enforced_by("S0005", "builder");
 
     fact instance_of("S0006", BuildRule);
-    fact build_rule_row("S0006", "swarm", "transport is not an encodable rmi_* identifier", "use rmi_quic, rmi_tcp, or rmi_grpc");
+    fact build_rule_row("S0006", "swarm", "transport is not an encodable rmi_* identifier", "use an rmi_* identifier (e.g. rmi_quic, rmi_tcp, rmi_grpc)");
     fact enforced_by("S0006", "builder");
 
     // ── unified: the unified spec, which holds net and kb items ──
@@ -122,7 +122,7 @@ kb Builder {
     fact enforced_by("U0001", "builder");
 
     fact instance_of("U0002", BuildRule);
-    fact build_rule_row("U0002", "unified", "an item is neither a net nor a kb", "each item must carry a \"net\" or \"kb\" key");
+    fact build_rule_row("U0002", "unified", "an item is neither a net nor a kb", "each item must be a net, kb, agent, or swarm spec; see `--build=schema`");
     fact enforced_by("U0002", "builder");
 
     fact instance_of("U0003", BuildRule);
