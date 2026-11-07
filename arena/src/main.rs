@@ -1,6 +1,7 @@
 //! `arena` — run the self-play arena and report its front.
 //!
 //! ```text
+//! arena measure [--axis bytes|joules] [--target T] [--json OUT] <run.json | dir>…
 //! arena --heldout <file>[,<file>…] [--rounds N] [--programs N] [--seed S]
 //!       [--agents grammar:2,uniform:1,mutator:1,attacker:1]
 //!       [--learners ng:orders:log2buckets:lr | tf:d:layers:heads:ctx:lr[:gpu] [,…]]
@@ -58,6 +59,13 @@ fn prior_lz(n: usize, sub: arena::substrate::Substrate) {
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    // `arena measure …` reads run reports and prints fits and multipliers (plan M1–M2).
+    if args.first().map(String::as_str) == Some("measure") {
+        if let Err(e) = arena::transfer::measure_cli(&args[1..]) {
+            fail(e);
+        }
+        return;
+    }
     let mut cfg = Config::default();
     let mut heldout_paths: Vec<String> = Vec::new();
     let mut json_out: Option<String> = None;

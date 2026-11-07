@@ -739,6 +739,80 @@ fixed on 2026-09-25, and the account is in `HANDOFF.md` items 38–40:
 - **`range`'s error recommended syntax that does not parse.** It now
   recommends a form a test evaluates.
 
+## Loss-to-loss and compute multipliers (plan M1–M3)
+
+Cartesia's *From Tokens to Bytes II* (<https://www.cartesia.ai/blog/from-tokens-to-bytes-part-2>)
+finds that runs of one architecture family fall on one smooth loss-to-loss
+curve, and that families differ in where the curve sits. Two consequences are
+measured here. A family is characterised by its curve, fitted over every
+checkpoint it produced across seeds and rounds. And two families are compared
+by the compute each needs to reach the same held-out loss, which is a compute
+multiplier, read off the frontiers instead of from one run.
+
+Each checkpoint gives two bits-per-byte figures: `proxy_bpb`, the loss on the
+pool the loop trains on, and `mean_bpb`, the held-out loss. A family's curve is
+the fit `heldout = a + b · proxy^c`, least squares over a grid of `c` from 0.25
+to 3.0 in steps of 0.05, with `a` and `b` solved linearly at each `c`. The form
+is monotone in the proxy for either sign of `b`. The fit's `rmse` is its
+residual, in bits per byte, so a curve that describes its family well has an
+rmse near the run-to-run noise.
+
+**Usage.** Run a multi-seed grid with `scripts/arena-seeds.sh`, then measure
+the directory it wrote:
+
+```sh
+scripts/arena-seeds.sh --out DIR --seeds 1-6 --jobs 4 \
+    --variant shape="--novelty shape" --variant behaviour="--novelty behaviour" \
+    -- --heldout README.md,germline/src/gate.rs --rounds 6 --agents grammar:1,mutator:1,attacker:1
+arena measure DIR --json DIR/measure.json
+```
+
+`arena measure` takes run reports or directories, and reads the `*.json` in a
+directory. A file in a directory that is not a run report, such as a
+`measure.json` written beside the runs, is skipped with a note. A file named
+on the command line must be one. `--axis bytes|joules` picks the cost axis, `--target T` the held-out
+loss at which multipliers are read. The default target is the median held-out
+loss of all checkpoints. `--json OUT` also writes the measurement. Running
+`arena --json` writes each learner's fit into the report too (`loss_fits`), so
+a single run carries its own curve.
+
+The output has three parts. The first is one line per family, with its fit and
+how many checkpoints (`n`) and seeds it pools. The second is the multiplier
+`cost_A / cost_B` for every pair of families at the target. The third is the
+seed spread: the same multiplier computed on each seed's own frontiers, with
+their mean and sample standard deviation. The pooled figure is the one to
+quote, and the spread is the uncertainty to quote with it.
+
+**The cost axis.** A family's frontier is its lower envelope of
+(cost, held-out loss) points, the checkpoints no other checkpoint beats on both
+axes. Between two envelope points, cost is interpolated linearly in log cost as
+held-out loss moves. The multiplier is undefined, and printed as `n/a`, when the
+target lies outside either frontier's range, so a target must be reachable by
+both families.
+
+The default axis is `bytes`, the bytes each learner was trained on. Two reasons.
+It is deterministic under `--cost fuel`: two runs of one seed agree exactly, so
+the default figure reproduces, while measured joules move with the machine
+(`--cost fuel` is what `arena-seeds.sh` forces unless the arguments set it).
+And it is a data-efficiency axis, which is what the loss-to-loss curve is drawn
+against. Its limit is that it does not charge a larger model for its larger
+cost per byte. A bytes multiplier of 1 between two families can still hide a
+large joule difference. Use `--axis joules` when the question is compute, and
+read its seed spread as the noise it is.
+
+**Caveats.** A multiplier needs two families. The default run has one learner,
+so `arena measure` prints fits but no pairs; give two configurations, as in
+`--learners ng:3:16:0.01,ng:5:18:0.01`, to get one. Families are named by kind
+and describe string, so a transformer on `cuda:0` and on `cpu` are two families.
+Checkpoints without joules are skipped on the joules axis. A seed's runs from
+every variant that shares its number pool together in its per-seed frontier.
+A fit or a multiplier from a few checkpoints is a sketch, which `n` shows. The
+seed spread counts only seeds whose own frontiers both reach the target, so a
+short run can have none: at six rounds with `README.md,germline/src/gate.rs`,
+held-out loss sits between 7.8 and 8.1 bits/byte, and each seed's frontiers
+span a few hundredths of a bit, so a target from the pooled median often falls
+outside them. Choose `--target` inside the range the runs covered.
+
 ## Next, in order
 
 1. **A GPU learner** — a small byte-level transformer behind the same `Learner`
