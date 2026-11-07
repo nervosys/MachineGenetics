@@ -183,7 +183,7 @@ erase that advantage.
     surface in all four S1 units.
   - Done when MAGE_SPEC records which surface is cheaper in which unit, and
     by how much.
-- [ ] **S3** Decide the charge. **S**
+- [x] **S3** Decide the charge. **S** *Kept MAGE lexer tokens, which track cl100k BPE to 0.2% (S2). Bytes would add only a 4% surface bias. Learner bits is principled, but it couples the objective to an unstable learner (L1, L3). See UNIFICATION.md, "The description-length unit".*
   - Choose the description-length unit from S2 and L3, or keep tokens with
     the evidence recorded.
   - Done when the decision is in UNIFICATION.md.
