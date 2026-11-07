@@ -4,8 +4,8 @@
 > Each step is a concrete, testable increment.
 >
 > **Last verified: 2026-09-25** — all six crates built and tested: prototype
-> **1,472**, rmi **1,384**, ribosome **168**, germline **175**, forge **63**, arena **222** —
-> **3,484 tests, 0 failures, 0 warnings**. The crate count went from three to
+> **1,476**, rmi **1,384**, ribosome **168**, germline **175**, forge **63**, arena **222** —
+> **3,488 tests, 0 failures, 0 warnings**. The crate count went from three to
 > five when the build engine (step 148) and the RSI control plane (step 149)
 > were extracted from `forge`; the total is unchanged by those moves, and
 > `forge`'s count is the registry alone, as it measured before they were parked in
@@ -184,7 +184,7 @@
 | ---- | ----- | ------ | ----------- |
 | 79 | Tool-mediated construction paradigm | ✅ | `--build=abl spec.json out.abl` — agent emits a *spec*, the compiler constructs the artifact; ARCHITECTURE.md documents the paradigm |
 | 80 | Self-describing schema | ✅ | `--build=schema` emits the full JSON contract: `ops` catalogue, `spec_format` per kind, and the complete error taxonomy with `fix` strings — an agent needs no docs |
-| 81 | Reject-by-construction errors | ✅ | Machine-readable `{code, message, fix}`: **B0000–B0006** (net), **K0001–K0007** (kb), **A0001–A0003** (agent), **S0001–S0006** (swarm), **U0001–U0003** (unified) |
+| 81 | Reject-by-construction errors | ✅ | Machine-readable `{code, message, fix}`: **B0000–B0006** (net), **K0001–K0008** (kb), **A0001–A0003** (agent), **S0001–S0006** (swarm), **U0001–U0003** (unified) |
 | 82 | kb construction + execution | ✅ | Horn-clause knowledge bases build to ABL and **execute** as forward-chaining Datalog; auto-fix repair (`--build=abl --fix`) |
 | 83 | Container v2 — serialized symbol table | ✅ | kb artifacts fully self-describing; predicate/term/param names round-trip |
 | 84 | Unified multi-item containers | ✅ | One ABL container holds net + kb (+ agent + swarm) — a whole neurosymbolic application in a single artifact |

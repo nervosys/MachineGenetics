@@ -1234,26 +1234,7 @@ fn run_eval_abl_bytes(blob: &[u8], input: &serde_json::Value) {
         let sym = abl_bridge::decompile_symbolic(&item.expr);
         let is_kb = !sym.fact_syms.is_empty() || !sym.rule_syms.is_empty();
         if is_kb {
-            let facts: Vec<abl_bridge::GroundFact> = sym
-                .fact_syms
-                .iter()
-                .zip(&sym.fact_arg_syms)
-                .map(|(&p, terms)| (name(p), terms.iter().map(|&t| name(t)).collect()))
-                .collect();
-            let rules: Vec<abl_bridge::KbRule> = sym
-                .rule_syms
-                .iter()
-                .zip(&sym.rule_param_syms)
-                .zip(&sym.rule_body_syms)
-                .map(|((&r, params), body)| abl_bridge::KbRule {
-                    head: name(r),
-                    params: params.iter().map(|&p| name(p)).collect(),
-                    body: body
-                        .iter()
-                        .map(|(p, a)| (name(*p), a.iter().map(|&x| name(x)).collect()))
-                        .collect(),
-                })
-                .collect();
+            let (facts, rules) = abl_bridge::kb_program(&sym, name);
             let derived = abl_bridge::evaluate_kb(&facts, &rules);
             let derived_json: Vec<serde_json::Value> = derived
                 .iter()

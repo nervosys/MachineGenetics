@@ -6,7 +6,7 @@
 >
 > The efficiency win lives in the **Agentic Binary Language binary IR** —
 > a transformer block fits in 47 bytes, and the five-item
-> `prototype/examples/unified.mg` in 420. This document describes how
+> `prototype/examples/unified.mg` in 467. This document describes how
 > agents should target Agentic Binary Language directly rather than
 > emitting text.
 >
@@ -27,7 +27,7 @@ block costs ~250-400 bytes as MAGE text and 47 as bytes — so the block
 count per response rises by roughly **5-8×**, not the three orders of
 magnitude this paragraph used to claim. The larger win is at the whole-module
 level only when the module is mostly `net` declarations: `unified.mg`, which
-is, still lands at 0.222 of its text.
+is, still lands at 0.247 of its text.
 
 ## The flow
 
@@ -73,13 +73,16 @@ The trailing symbol table is what makes a `kb` artifact self-describing —
 predicate and rule *names* are recoverable on decode, not just arities. It
 has been in the format since v2 and was missing from this block, from the
 module docs and from `MAGE_ONTOLOGY.json` until someone counted the bytes:
-it is 100 of `unified.mg`'s 420.
+it is 105 of `unified.mg`'s 467.
 
 A complete `unified.mg` example with 5 items (Transformer block, MLP,
-ResNet stage, swarm, KB) lands in **420 bytes**: 225 of item payload and
-195 of framing — 10 bytes of header, 45 of item names, 40 of length
-fields, and 100 for the symbol table. The framing is not "~50 bytes" as
-this said; on a module this small it is nearly half the container.
+ResNet stage, swarm, KB) lands in **467 bytes**: 267 of item payload and
+200 of framing — 10 bytes of header, 45 of item names, 40 of length
+fields, and 105 for the symbol table. The framing is not "~50 bytes" as
+this said; on a module this small it is over two-fifths of the container.
+(It was 420 bytes until 2026-10-29, when the `kb` lowering began carrying
+rule bodies: `FamilyKb` went from 68 to 110 bytes, and its container now
+derives `grandparent(a, c)` under `--run=abl`, where it derived nothing.)
 
 ## CLI
 
@@ -101,18 +104,18 @@ End-to-end demo on `prototype/examples/unified.mg`:
 ```
 $ mage-parse --target=abl-bytes unified.mg unified.abl
 // MAGE → Agentic Binary Language bytes for unified.mg
-// text source: 1893 bytes    Agentic Binary Language container: 420 bytes    ratio: 0.222 (77.8% reduction)
+// text source: 1893 bytes    Agentic Binary Language container: 467 bytes    ratio: 0.247 (75.3% reduction)
 //   TransformerBlock: 47B  hash=7def99cdb73a14e2
 //   MLP: 17B  hash=bc5d35ff371e638c
 //   ResNetStage: 35B  hash=87e783b56ef29d60
 //   Workers: 58B  hash=713954a39ed194a9
-//   FamilyKb: 68B  hash=3bf2a26121654af9
+//   FamilyKb: 110B  hash=68e12e1998172e84
 ```
 
 ```
 $ mage-parse --from=abl-bytes unified.abl
 // Agentic Binary Language → MAGE decompiled view
-// container: 420 bytes, 5 item(s)
+// container: 467 bytes, 5 item(s)
 
 // item 0: TransformerBlock (47 bytes expr)
 net TransformerBlock {
@@ -134,7 +137,7 @@ net TransformerBlock {
 **Gains**
 - Smaller output → more programs per response, lower inference cost. This
   line read "~50× smaller", which the measurement two sections above it
-  contradicts: `unified.mg` goes 1893 B → 420 B, a ratio of 0.222, and the
+  contradicts: `unified.mg` goes 1893 B → 467 B, a ratio of 0.247, and the
   smaller `benchmarks/constructs/mlp_mage.mg` only manages 139 B → 92 B. The
   win is real and it is roughly **1.5–4.5×** on the modules in this
   repository, not an order of magnitude. Reproduce with

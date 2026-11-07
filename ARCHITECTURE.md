@@ -7,7 +7,7 @@ text. It is the leverage the text-token floor denies the language track (see
 [IDEAL_AGENTIC_LANGUAGE.md](IDEAL_AGENTIC_LANGUAGE.md) for that analysis).
 
 > **Scope.** Everything below is implemented and test-covered in `prototype/`
-> (**1,472 tests** green) and scored in the sibling `agentic-eval` crate (80
+> (**1,476 tests** green) and scored in the sibling `agentic-eval` crate (80
 > tests, in the AetherShell repository and not verifiable from here). The one
 > deliberate non-feature is agent/swarm *execution* — see
 > [Honest boundaries](#honest-boundaries).
@@ -88,7 +88,7 @@ structure through the serialized symbol table.
 | Kind | Spec (positional) | Validates (reject-by-construction) | Lowers to |
 |---|---|---|---|
 | **net** | `{"net":N,"layers":[[name,op,[dims]]]}` | B0001–B0006 (unknown op, arity, non-positive dim, **shape-chain mismatch**) | layer-op chain |
-| **kb** | `{"kb":N,"facts":[[pred,[args]]],"rules":[[name,[params],[body]]]}` | K0001–K0007 (ident, arity conflict, dangling body pred, **range safety**) | `RESOLVE` facts + `UNIFY…MATCH*…INFER` rules |
+| **kb** | `{"kb":N,"facts":[[pred,[args]]],"rules":[[name,[params],[body]]]}` | K0001–K0008 (ident, arity conflict, dangling body pred, **range safety**, logic-engine refusal) | `RESOLVE` facts + `UNIFY…MATCH*…INFER` rules |
 | **agent** | `{"agent":N,"capabilities":[…],"requires_approval":[…]}` | A0001–A0003 (identifiers) | `SPAWN(agent, caps…) [>> DELEGATE(approvals…)]` |
 | **swarm** | `{"swarm":N,"agent":T,"size":k,"topology":…,"consensus":…,"transport":…}` | S0001–S0006 (idents, size>0, known topology/consensus, `rmi_*` transport) | `SPAWN(agent,size,topology) >> comm[transport] >> REDUCE(consensus)` |
 | **unified** | `{"items":[ <any mix> ]}` | U0001–U0003 (empty, unknown kind, duplicate name); per-item errors index-prefixed | one multi-item container |
@@ -182,7 +182,7 @@ are **six independent Cargo workspaces**:
 | Path | Crate | Tests | Notes |
 |---|---|--:|---|
 | `RecursiveMachineIntelligence/` | `rmi` | 1,384 | The low-level neurosymbolic framework. Feature-gated (`cpu` / `gpu` / `cuda`); build with `--no-default-features --features cpu` for the portable set |
-| `prototype/` | `mage-prototype` | 1,472 | Compiler, evaluator, ABL, RAP server. Path-depends on `rmi` |
+| `prototype/` | `mage-prototype` | 1,476 | Compiler, evaluator, ABL, RAP server. Path-depends on `rmi` |
 | `ribosome/` | `ribosome` | 168 | The distributed build engine. Depends on nothing in this repository — see below |
 | `germline/` | `germline` | 175 | Model succession, handoff, fallback — the RSI control plane. Path-depends on `ribosome` |
 | `forge/` | `forge` | 63 | The package registry, and the content-addressed block and definition stores |

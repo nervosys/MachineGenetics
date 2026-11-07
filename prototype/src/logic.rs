@@ -499,23 +499,9 @@ pub fn build_kb(def: &ast::KbDef) -> KnowledgeBase {
     let mut kb = KnowledgeBase::new(&def.name);
 
     for fact in &def.facts {
-        let mut args = Vec::with_capacity(fact.args.len());
-        let mut bad = None;
-        for (i, e) in fact.args.iter().enumerate() {
-            match e {
-                ast::Expr::Ident { name } => args.push(name.clone()),
-                _ => match literal_constant(e) {
-                    Some(c) => args.push(c),
-                    None => {
-                        bad = Some(i + 1);
-                        break;
-                    }
-                },
-            }
-        }
-        match bad {
-            None => kb.add_fact(&fact.name, args),
-            Some(n) => kb.error(format!(
+        match read_fact(fact) {
+            Ok(args) => kb.add_fact(&fact.name, args),
+            Err(n) => kb.error(format!(
                 "kb `{}`: argument {n} of fact `{}` is not a constant; a fact's arguments are \
                  names, strings or numbers",
                 def.name, fact.name
@@ -524,7 +510,7 @@ pub fn build_kb(def: &ast::KbDef) -> KnowledgeBase {
     }
 
     for rule in &def.rules {
-        match rule_of(rule) {
+        match read_rule(rule) {
             Ok(r) => kb.add_rule(r),
             Err(why) => kb.error(format!(
                 "kb `{}`: rule `{}` cannot be read: {why}",
@@ -579,8 +565,23 @@ fn rule_body_exprs(rule: &ast::RuleDef) -> Vec<&ast::Expr> {
     out
 }
 
+/// Read a fact's arguments: names, strings or numbers. `Err` is the 1-based
+/// position of the first argument that is none of those.
+pub fn read_fact(fact: &ast::FactDef) -> Result<Vec<String>, usize> {
+    fact.args
+        .iter()
+        .enumerate()
+        .map(|(i, e)| match e {
+            ast::Expr::Ident { name } => Ok(name.clone()),
+            _ => literal_constant(e).ok_or(i + 1),
+        })
+        .collect()
+}
+
 /// Read a rule's head and body literals. Every identifier is a variable.
-fn rule_of(rule: &ast::RuleDef) -> Result<Rule, String> {
+/// This is the one reading of a rule: `build_kb`, the binary-IR lowering
+/// (`abl_bridge::KbTranslator`) and `builder::validate_kb` all go through it.
+pub fn read_rule(rule: &ast::RuleDef) -> Result<Rule, String> {
     if rule.body.stmts.iter().any(|s| !matches!(s, ast::Stmt::Expr { .. })) {
         return Err("its body holds a statement; a rule body is predicate calls joined by `&&`".into());
     }

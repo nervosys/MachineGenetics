@@ -299,7 +299,8 @@ pub fn build_schema() -> serde_json::Value {
                 {"code": "K0003", "when": "an identifier is invalid",               "fix": "use [A-Za-z_][A-Za-z0-9_]* for predicates, rules, params, terms"},
                 {"code": "K0004", "when": "a predicate is used at two arities",     "fix": "use a consistent arity for each predicate"},
                 {"code": "K0006", "when": "a rule body references an unknown predicate", "fix": "reference a declared fact-predicate or rule"},
-                {"code": "K0007", "when": "a head param is not bound by the body",  "fix": "use each head param as an argument in some body literal"}
+                {"code": "K0007", "when": "a head param is not bound by the body",  "fix": "use each head param as an argument in some body literal"},
+                {"code": "K0008", "when": "the logic engine refuses the kb (E0570)", "fix": "give every rule at least one body literal; the message says what else"}
             ]
         },
         "agent": {
@@ -447,6 +448,9 @@ fn is_ident(s: &str) -> bool {
 /// - K0003 invalid predicate/rule/arg identifier
 /// - K0004 arity conflict (a predicate used at two different arities)
 /// - K0006 dangling reference (a rule ref that resolves to no declared predicate)
+/// - K0007 unsafe rule (a head param no body literal binds)
+/// - K0008 anything else the logic engine refuses in the rendered source: the
+///   same check `--check` runs, so a built kb is one `--check` accepts
 pub fn validate_kb(spec: &KbSpec) -> Vec<BuildError> {
     use std::collections::HashMap;
     let mut errs = Vec::new();
@@ -536,14 +540,26 @@ pub fn validate_kb(spec: &KbSpec) -> Vec<BuildError> {
             }
         }
     }
+    if errs.is_empty() {
+        let src = to_mg_source_kb(spec);
+        match crate::parser::parse(&crate::lexer::lex(&src)) {
+            Ok(module) => {
+                for d in crate::logic::module_diagnostics(&module) {
+                    errs.push(BuildError::new("K0008", d.message, "give every rule at least one body literal"));
+                }
+            }
+            Err(e) => errs.push(BuildError::new("K0008", format!("rendered kb does not parse: {e:?}"), "check identifiers")),
+        }
+    }
     errs
 }
 
 /// Render a validated kb spec as canonical MAGE `kb` source. Internal bridge
 /// to the tested lexer→parser→Agentic Binary Language pipeline. Deterministic.
 ///
-/// The rule body does not affect the lowered artifact (only the param count is
-/// encoded, as `UNIFY(sym, params)`), so a canonical placeholder body is used.
+/// A rule's body literals become its block, joined by `&&`: the form
+/// MAGE_SPEC §7.1 gives and `logic::read_rule` reads. Until 2026-10-29 they
+/// went in `where` with a placeholder block `{ x }`, which `--check` refuses.
 pub fn to_mg_source_kb(spec: &KbSpec) -> String {
     let mut s = format!("kb {} {{\n", spec.kb);
     for FactSpec(name, args) in &spec.facts {
@@ -551,17 +567,11 @@ pub fn to_mg_source_kb(spec: &KbSpec) -> String {
     }
     for RuleSpec(name, params, body) in &spec.rules {
         let typed: Vec<String> = params.iter().map(|p| format!("{p}: i32")).collect();
-        let mut head = format!("    rule {name}({})", typed.join(", "));
-        // Body literals lower through the rule's `where` conditions.
-        if !body.is_empty() {
-            let lits: Vec<String> = body
-                .iter()
-                .map(|FactSpec(p, a)| format!("{p}({})", a.join(", ")))
-                .collect();
-            head.push_str(&format!(" where {}", lits.join(", ")));
-        }
-        let bodyexpr = params.first().cloned().unwrap_or_else(|| "0".to_string());
-        s.push_str(&format!("{head} {{\n        {bodyexpr}\n    }}\n"));
+        let lits: Vec<String> = body
+            .iter()
+            .map(|FactSpec(p, a)| format!("{p}({})", a.join(", ")))
+            .collect();
+        s.push_str(&format!("    rule {name}({}) {{ {} }}\n", typed.join(", "), lits.join(" && ")));
     }
     s.push_str("}\n");
     s
@@ -1142,20 +1152,32 @@ mod tests {
         let syms = crate::abl::decode_symbols(&blob).unwrap();
         let name = |id: u32| syms[id as usize].clone();
         let v = crate::abl_bridge::decompile_symbolic(&items[0].expr);
-        let facts: Vec<_> = v.fact_syms.iter().zip(&v.fact_arg_syms)
-            .map(|(&p, t)| (name(p), t.iter().map(|&x| name(x)).collect::<Vec<_>>())).collect();
-        let rules: Vec<_> = v.rule_syms.iter().zip(&v.rule_param_syms).zip(&v.rule_body_syms)
-            .map(|((&r, params), body)| crate::abl_bridge::KbRule {
-                head: name(r),
-                params: params.iter().map(|&p| name(p)).collect(),
-                body: body.iter().map(|(p, a)| (name(*p), a.iter().map(|&x| name(x)).collect())).collect(),
-            }).collect();
+        let (facts, rules) = crate::abl_bridge::kb_program(&v, name);
         assert_eq!(rules[0].body.len(), 2, "rule body round-trips two literals");
         let derived = crate::abl_bridge::evaluate_kb(&facts, &rules);
         assert!(
             derived.iter().any(|(p, a)| p == "grandparent" && a == &vec!["alice".to_string(), "carol".to_string()]),
             "must derive grandparent(alice, carol): {derived:?}"
         );
+    }
+
+    /// A rule with no body literals rendered to `{  }`, which the engine
+    /// refuses; the builder now asks the engine before building.
+    #[test]
+    fn kb_rejects_a_rule_the_logic_engine_refuses() {
+        let s = kbspec(r#"{"kb":"K","facts":[["p",["a"]]],"rules":[["q",[],[]]]}"#);
+        let e = validate_kb(&s);
+        assert!(e.iter().any(|x| x.code == "K0008" && x.message.contains("rule `q`")), "{e:?}");
+    }
+
+    /// What the builder renders is what `--check` accepts.
+    #[test]
+    fn a_built_kb_passes_check() {
+        let s = kbspec(r#"{"kb":"F","facts":[["parent",["alice","bob"]]],"rules":[["grandparent",["x","z"],[["parent",["x","y"]],["parent",["y","z"]]]]]}"#);
+        let src = to_mg_source_kb(&s);
+        assert!(src.contains("rule grandparent(x: i32, z: i32) { parent(x, y) && parent(y, z) }"), "{src}");
+        let module = crate::parser::parse(&crate::lexer::lex(&src)).expect("parses");
+        assert!(crate::logic::module_diagnostics(&module).is_empty());
     }
 
     #[test]
