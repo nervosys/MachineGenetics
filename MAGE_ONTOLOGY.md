@@ -373,7 +373,7 @@ material; each becomes documentation of `kb/` as its facts move there
 |---|---|
 | `Form` | `HumanSource`, `SigilSource`, `Declarative`, `Ast`, `Hir`, `IrOp`, `BinaryContainer` |
 | `Construct` | `Token` (`Keyword`, `Sigil`), `Production`, `AstKind`, `TokenKind` |
-| `Meaning` | `Type`, `Effect`, `Op`, `Layer` |
+| `Meaning` | `Type`, `Effect`, `Op`, `Layer`, `OpFamily` |
 | `Rule` | `TypeRule`, `SafetyRule`, `Contract`, `GrammarConstraint`, `Diagnostic` |
 | `Component` | `NeuralComponent`, `SymbolicComponent` |
 | `Artifact` | `Program`, `Block`, `Container` |
@@ -397,6 +397,12 @@ in the repo, the grammar included, is recognised by them. It also states the
 of each form class; six `Declarative` ones, for the AI items) and every
 lowering between them, each with `round_trips` or the `loses` facts that say
 exactly what it drops.
+
+[`kb/meaning.mg`](kb/meaning.mg) states the meaning of the IR ops: each of the
+107 `Op`s with its opcode, family, arity and flags, the 7 `OpFamily`s, the
+layer spellings that `lowers_as` an op, and the types and effects, generated
+once from the ontology's sections and the op table and held to the code in
+both directions by `ontology::tests`.
 
 The JSON's `sigils`, `keywords` and `ast_kinds` sections are generated from
 these facts: `sigil_row` and `summary` facts in the lexicon, the reserved
@@ -423,6 +429,17 @@ words among its `lexes_as` facts, and the `AstKind` instances in the grammar.
 | `tested_by` | `Diagnostic` × `Text` |
 | `summary` | `Construct` × `Text` (the ontology's one-line description) |
 | `sigil_row` | `Text` × `Text` × `Text` (notation, what it builds, summary) |
+| `family_row` | `OpFamily` × `Text` × `Text` (code as two-digit hex, summary) |
+| `opcode` | `Op` × `Text` (the opcode: a zero-prefixed four-digit hex code) |
+| `op_family` | `Op` × `OpFamily` |
+| `op_arity` | `Op` × `Text` |
+| `op_summary` | `Op` × `Text` |
+| `differentiable` | `Op` |
+| `has_params` | `Op` |
+| `stateful` | `Op` |
+| `lowers_as` | `Layer` × `Op` (a layer spelling, and the op it lowers to) |
+| `type_row` | `Type` × `Text` × `Text` (category, summary) |
+| `effect_row` | `Effect` × `Text` × `Text` (slot, purpose) |
 
 Each invariant is a rule whose results are violations; the knowledge base
 loads only when every one derives nothing.

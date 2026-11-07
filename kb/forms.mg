@@ -133,6 +133,7 @@ kb Forms {
     fact loses(AblBytes, NetDecl, "layer names: regenerated as l_<type>_<n>");
     fact loses(AblBytes, NetDecl, "the forward block, generics and composition: left empty");
     fact loses(AblBytes, NetDecl, "RES_ADD: skipped without being recorded");
+    fact loses(AblBytes, NetDecl, "a symbolic or agent op: it becomes a layer of a type the compiler refuses");
     fact loses(AblBytes, NetDecl, "IDENTITY: skipped without being recorded, so an unknown layer vanishes");
     fact loses(AblBytes, NetDecl, "branches: a Par is flattened into one layer list");
     fact loses(AblBytes, NetDecl, "layer arguments that are not literals");

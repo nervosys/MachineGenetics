@@ -176,9 +176,6 @@ const LAYER_SURFACE_NAMES: &[&str] = &[
     "ReLU", "GELU", "SiLU", "Sigmoid", "Tanh", "Mish", "Softplus",
     "LayerNorm", "BatchNorm", "RMSNorm", "GroupNorm", "InstanceNorm",
     "MaxPool", "AvgPool", "GlobalAvgPool",
-    "Unify", "Resolve", "Infer", "Plan",
-    "Send", "Recv", "Spawn", "Delegate",
-    "Hash", "Typeof",
 ];
 
 /// Catalog of RAP methods. Pairs each method name with a short summary
@@ -2642,6 +2639,213 @@ mod tests {
         assert_eq!(published, lexer);
     }
 
+    /// The problems with a stated set against the code's, both ways: an entry
+    /// the code has and the knowledge base does not state, and one it states
+    /// that the code does not have. Empty when they agree.
+    fn both_ways<T: Ord + std::fmt::Debug>(
+        what: &str,
+        code: &std::collections::BTreeSet<T>,
+        stated: &std::collections::BTreeSet<T>,
+    ) -> Vec<String> {
+        let mut out = Vec::new();
+        for x in code.difference(stated) {
+            out.push(format!("{what}: the code has {x:?}, and kb/meaning.mg does not state it"));
+        }
+        for x in stated.difference(code) {
+            out.push(format!("{what}: kb/meaning.mg states {x:?}, and the code does not have it"));
+        }
+        out
+    }
+
+    /// The names `kb/meaning.mg` states as instances of `class`.
+    fn instances_of(kb: &crate::kb::Kb, class: &str) -> std::collections::BTreeSet<String> {
+        kb.facts("instance_of").into_iter().filter(|f| f[1] == class).map(|f| f[0].clone()).collect()
+    }
+
+    /// Every op of `Op::ALL` has a fact of every field, and every fact is an op.
+    ///
+    /// `kb/meaning.mg` states each op as seven facts: its `Op` class, its
+    /// opcode, its family, its arity, its summary, and the three flags, which
+    /// are stated only when true. The code side is `Op::meta()` and
+    /// `Op::family()`, and the comparison is over sets, both ways, field by
+    /// field. An op with no fact, a fact for a name that is not an op, and a
+    /// flag set on one side only are each named. The opcode is held to
+    /// `format!("0x{:04x}", op.0)`, the spelling `ir_ops_section` writes. The
+    /// family is the name of the `OP_FAMILIES` row whose code is `op.family()`,
+    /// because `ir_ops_section` writes only that code and the JSON names the
+    /// family through `op_families`.
+    #[test]
+    fn every_op_has_a_fact_and_every_fact_an_op() {
+        let kb = crate::kb::load().expect("the knowledge base loads");
+        let pairs = |p: &str| -> std::collections::BTreeSet<(String, String)> {
+            kb.facts(p).into_iter().map(|f| (f[0].clone(), f[1].clone())).collect()
+        };
+        let flag = |p: &str| -> std::collections::BTreeSet<String> {
+            kb.facts(p).into_iter().map(|f| f[0].clone()).collect()
+        };
+        let (mut class, mut opcode, mut family, mut arity, mut summary) =
+            (Vec::new(), Vec::new(), Vec::new(), Vec::new(), Vec::new());
+        let (mut differentiable, mut has_params, mut stateful) = (Vec::new(), Vec::new(), Vec::new());
+        for &op in Op::ALL {
+            let meta = op.meta();
+            let name = meta.name.to_string();
+            class.push(name.clone());
+            opcode.push((name.clone(), format!("0x{:04x}", op.0)));
+            let fam = OP_FAMILIES
+                .iter()
+                .find(|(_, code, _)| *code == op.family())
+                .map(|(n, _, _)| n.to_string())
+                .unwrap_or_else(|| format!("<no family with code {:#04x}>", op.family()));
+            family.push((name.clone(), fam));
+            arity.push((name.clone(), meta.arity.to_string()));
+            summary.push((name.clone(), meta.desc.to_string()));
+            if meta.differentiable {
+                differentiable.push(name.clone());
+            }
+            if meta.has_params {
+                has_params.push(name.clone());
+            }
+            if meta.stateful {
+                stateful.push(name);
+            }
+        }
+        let mut problems = Vec::new();
+        problems.extend(both_ways("instance_of(_, Op)", &class.into_iter().collect(), &instances_of(&kb, "Op")));
+        problems.extend(both_ways("opcode", &opcode.into_iter().collect(), &pairs("opcode")));
+        problems.extend(both_ways("op_family", &family.into_iter().collect(), &pairs("op_family")));
+        problems.extend(both_ways("op_arity", &arity.into_iter().collect(), &pairs("op_arity")));
+        problems.extend(both_ways("op_summary", &summary.into_iter().collect(), &pairs("op_summary")));
+        problems.extend(both_ways("differentiable", &differentiable.into_iter().collect(), &flag("differentiable")));
+        problems.extend(both_ways("has_params", &has_params.into_iter().collect(), &flag("has_params")));
+        problems.extend(both_ways("stateful", &stateful.into_iter().collect(), &flag("stateful")));
+        assert!(problems.is_empty(), "kb/meaning.mg and Op disagree:\n{}", problems.join("\n"));
+    }
+
+    /// Every op family is stated, and every stated family is one.
+    ///
+    /// `OP_FAMILIES` is the table behind the JSON's `op_families` section, and
+    /// `kb/meaning.mg` states each row as `family_row`: the family's name, its
+    /// code as two-digit hex, and its summary. Both sides are compared as
+    /// triples, both ways, and the `OpFamily` instances are compared too, since
+    /// every `op_family` fact names one.
+    #[test]
+    fn every_op_family_is_stated() {
+        let kb = crate::kb::load().expect("the knowledge base loads");
+        let code: std::collections::BTreeSet<(String, String, String)> = OP_FAMILIES
+            .iter()
+            .map(|(n, c, d)| (n.to_string(), format!("0x{c:02x}"), d.to_string()))
+            .collect();
+        let stated: std::collections::BTreeSet<(String, String, String)> =
+            kb.facts("family_row").into_iter().map(|f| (f[0].clone(), f[1].clone(), f[2].clone())).collect();
+        let mut problems = both_ways("family_row", &code, &stated);
+        let names: std::collections::BTreeSet<String> = OP_FAMILIES.iter().map(|(n, _, _)| n.to_string()).collect();
+        problems.extend(both_ways("instance_of(_, OpFamily)", &names, &instances_of(&kb, "OpFamily")));
+        assert!(problems.is_empty(), "kb/meaning.mg and OP_FAMILIES disagree:\n{}", problems.join("\n"));
+    }
+
+    /// Every layer spelling is stated, lowers to the op it names, and every op
+    /// that has a canonical layer name is stated under it.
+    ///
+    /// The spellings are scraped from the match arms of
+    /// `abl_bridge::layer_name_to_op`, the way `every_item_kind_is_published_and_vice_versa`
+    /// scrapes `ast.rs`: every quoted string between `match name {` and the
+    /// fallback arm, comments removed. Four things must hold. Each scraped
+    /// spelling is a `Layer`, and each `Layer` is one of them. Each stated
+    /// `lowers_as(layer, op)` is what `layer_name_to_op(layer)` returns. Each op
+    /// with `op_to_layer_name(op) == Some(n)` has `lowers_as(n, op)`. Each entry
+    /// of `LAYER_SURFACE_NAMES` is a `Layer`. The third and fourth are where the
+    /// code and the list disagree: `op_to_layer_name` names some ops by names
+    /// `layer_name_to_op` does not accept (`Unify`, `Match`, `Map` and others),
+    /// and `LAYER_SURFACE_NAMES` lists the same symbolic names. Those are
+    /// reported, not excluded.
+    #[test]
+    fn every_layer_spelling_is_stated() {
+        let kb = crate::kb::load().expect("the knowledge base loads");
+        let bridge = include_str!("abl_bridge.rs");
+        let start = bridge.find("pub fn layer_name_to_op(").expect("layer_name_to_op");
+        let arms = &bridge[start..];
+        let arms = &arms[..arms.find("_ => None").expect("the fallback arm")];
+        let code_only: String = arms
+            .lines()
+            .map(|l| l.find("//").map_or(l, |i| &l[..i]))
+            .collect::<Vec<_>>()
+            .join("\n");
+        let scraped: std::collections::BTreeSet<String> =
+            code_only.split('"').skip(1).step_by(2).map(String::from).collect();
+        assert!(scraped.len() >= 60, "scrape looks wrong: {} spellings", scraped.len());
+
+        let stated_layers = instances_of(&kb, "Layer");
+        let lowers: std::collections::BTreeSet<(String, String)> =
+            kb.facts("lowers_as").into_iter().map(|f| (f[0].clone(), f[1].clone())).collect();
+        let accepted = |n: &str| crate::abl_bridge::layer_name_to_op(n).map_or("None".to_string(), |o| o.name().to_string());
+
+        let mut problems = Vec::new();
+        for (layer, op) in &lowers {
+            if accepted(layer.as_str()) != *op {
+                problems.push(format!(
+                    "lowers_as({layer:?}, {op:?}), but layer_name_to_op({layer:?}) is {}",
+                    accepted(layer.as_str())
+                ));
+            }
+        }
+        problems.extend(both_ways("instance_of(_, Layer)", &scraped, &stated_layers));
+        // `op_to_layer_name` names these for decompile, and `layer_name_to_op`
+        // refuses them: they are not layers (kb/forms.mg states the loss). The
+        // list is exact, so a name that becomes a layer has to come off it.
+        const DECOMPILE_ONLY: &[&str] = &[
+            "Unify", "Resolve", "Infer", "Match", "Rewrite", "Plan",
+            "Map", "Reduce", "Send", "Recv", "Spawn", "Delegate",
+        ];
+        let mut refused = std::collections::BTreeSet::new();
+        for &op in Op::ALL {
+            if let Some(n) = crate::abl_bridge::op_to_layer_name(op) {
+                if !lowers.contains(&(n.to_string(), op.name().to_string())) {
+                    refused.insert(n.to_string());
+                }
+            }
+        }
+        let listed: std::collections::BTreeSet<String> =
+            DECOMPILE_ONLY.iter().map(|n| n.to_string()).collect();
+        problems.extend(both_ways("named for decompile only", &listed, &refused));
+        for &n in LAYER_SURFACE_NAMES {
+            if !stated_layers.contains(n) {
+                problems.push(format!(
+                    "LAYER_SURFACE_NAMES lists {n:?}, which kb/meaning.mg does not state as a Layer; layer_name_to_op({n:?}) is {}",
+                    accepted(n)
+                ));
+            }
+        }
+        assert!(problems.is_empty(), "layer names disagree:\n{}", problems.join("\n"));
+    }
+
+    /// Every type and every effect is stated, with its category or slot and
+    /// its summary or purpose.
+    ///
+    /// `TYPES` and `EFFECTS` are the tables behind the JSON's `types` and
+    /// `effects` sections. `kb/meaning.mg` states each row twice over: an
+    /// instance of its class (`Type` or `Effect`), and a `type_row` or
+    /// `effect_row` carrying the three columns. Both are compared, both ways,
+    /// as sets of triples or names.
+    #[test]
+    fn every_type_and_effect_is_stated() {
+        let kb = crate::kb::load().expect("the knowledge base loads");
+        let triples = |p: &str| -> std::collections::BTreeSet<(String, String, String)> {
+            kb.facts(p).into_iter().map(|f| (f[0].clone(), f[1].clone(), f[2].clone())).collect()
+        };
+        let type_rows: std::collections::BTreeSet<_> =
+            TYPES.iter().map(|(n, c, s)| (n.to_string(), c.to_string(), s.to_string())).collect();
+        let effect_rows: std::collections::BTreeSet<_> =
+            EFFECTS.iter().map(|(n, s, p)| (n.to_string(), s.to_string(), p.to_string())).collect();
+        let type_names: std::collections::BTreeSet<String> = TYPES.iter().map(|(n, _, _)| n.to_string()).collect();
+        let effect_names: std::collections::BTreeSet<String> = EFFECTS.iter().map(|(n, _, _)| n.to_string()).collect();
+
+        let mut problems = both_ways("type_row", &type_rows, &triples("type_row"));
+        problems.extend(both_ways("instance_of(_, Type)", &type_names, &instances_of(&kb, "Type")));
+        problems.extend(both_ways("effect_row", &effect_rows, &triples("effect_row")));
+        problems.extend(both_ways("instance_of(_, Effect)", &effect_names, &instances_of(&kb, "Effect")));
+        assert!(problems.is_empty(), "kb/meaning.mg, TYPES and EFFECTS disagree:\n{}", problems.join("\n"));
+    }
+
     /// Every documented type can be written in a signature.
     ///
     /// Three could not: `S` (published as a shorthand for `String`, but `S` is
@@ -2772,13 +2976,11 @@ mod tests {
     /// `abl_shape::tests::an_unknown_layer_type_is_rejected`.
     #[test]
     fn every_layer_surface_name_is_usable_in_a_net() {
-        // Iterate what is *published*, not `LAYER_SURFACE_NAMES`. That list
-        // holds 31 names, of which 10 — `Unify`, `Resolve`, `Infer`, `Plan`,
-        // `Send`, `Recv`, `Spawn`, `Delegate`, `Hash`, `Typeof` — are symbolic
-        // and agent ops rather than neural layers, and `layer_map_section`
-        // filters them out because `layer_name_to_op` returns `None`. They are
-        // correctly not layers; asserting they compile as one would be
-        // asserting the wrong thing.
+        // Iterate what is *published*. `LAYER_SURFACE_NAMES` held 10 more names
+        // (`Unify`, `Resolve`, `Spawn`, ...), symbolic and agent ops that
+        // `layer_name_to_op` refuses and `layer_map_section` filtered out. They
+        // are not layers, so they are gone from the list, and
+        // `every_layer_spelling_is_stated` requires each name left to be one.
         let published = layer_map_section();
         let rows = published.as_array().unwrap();
         // A loop over an empty list passes silently, which is the failure mode

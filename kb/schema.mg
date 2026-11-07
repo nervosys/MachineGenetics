@@ -21,7 +21,10 @@ kb Schema {
     // the `rhs` facts by the loader, not stated.
     // v5 (2026-10-30): `summary` and `sigil_row`, so the ontology's `sigils`,
     // `keywords` and `ast_kinds` sections are generated from facts.
-    fact schema_version(5);
+    // v6 (2026-10-30): `OpFamily` and the op, layer, type and effect rows of
+    // kb/meaning.mg, so the ontology's `ir_ops`, `op_families`, `layer_map`,
+    // `types` and `effects` sections can be checked against facts.
+    fact schema_version(6);
 
     // ── Classes ─────────────────────────────────────────────────────────
     // Seven roots. The twelve domains of MAGE_ONTOLOGY.md group facts into
@@ -71,10 +74,12 @@ kb Schema {
     fact class(Effect);
     fact class(Op);
     fact class(Layer);
+    fact class(OpFamily);
     fact subclass_of(Type, Meaning);
     fact subclass_of(Effect, Meaning);
     fact subclass_of(Op, Meaning);
     fact subclass_of(Layer, Meaning);
+    fact subclass_of(OpFamily, Meaning);
 
     fact class(TypeRule);
     fact class(SafetyRule);
@@ -166,6 +171,48 @@ kb Schema {
     fact arg_class(sigil_row, 1, Text);
     fact arg_class(sigil_row, 2, Text);
     fact arg_class(sigil_row, 3, Text);
+    // kb/meaning.mg: an op family's row of the ontology's `op_families`
+    // section (its code as two-digit hex, and its summary).
+    fact relation(family_row);
+    fact arg_class(family_row, 1, OpFamily);
+    fact arg_class(family_row, 2, Text);
+    fact arg_class(family_row, 3, Text);
+    // An op's facts, as the ontology's `ir_ops` section states them.
+    fact relation(opcode);
+    fact arg_class(opcode, 1, Op);
+    fact arg_class(opcode, 2, Text);
+    fact relation(op_family);
+    fact arg_class(op_family, 1, Op);
+    fact arg_class(op_family, 2, OpFamily);
+    fact relation(op_arity);
+    fact arg_class(op_arity, 1, Op);
+    fact arg_class(op_arity, 2, Text);
+    fact relation(op_summary);
+    fact arg_class(op_summary, 1, Op);
+    fact arg_class(op_summary, 2, Text);
+    // Flags: an op that is differentiable, has learnable parameters, or is
+    // stateful. Stated only when true.
+    fact relation(differentiable);
+    fact arg_class(differentiable, 1, Op);
+    fact relation(has_params);
+    fact arg_class(has_params, 1, Op);
+    fact relation(stateful);
+    fact arg_class(stateful, 1, Op);
+    // A layer name that `abl_bridge::layer_name_to_op` accepts, and the op
+    // it lowers to.
+    fact relation(lowers_as);
+    fact arg_class(lowers_as, 1, Layer);
+    fact arg_class(lowers_as, 2, Op);
+    // A row of the ontology's `types` and `effects` sections: the category
+    // (or slot) and the summary (or purpose).
+    fact relation(type_row);
+    fact arg_class(type_row, 1, Type);
+    fact arg_class(type_row, 2, Text);
+    fact arg_class(type_row, 3, Text);
+    fact relation(effect_row);
+    fact arg_class(effect_row, 1, Effect);
+    fact arg_class(effect_row, 2, Text);
+    fact arg_class(effect_row, 3, Text);
     fact relation(tested_by);
     fact arg_class(tested_by, 1, Diagnostic);
     fact arg_class(tested_by, 2, Text);
