@@ -14,7 +14,7 @@
     "keywords": 102,
     "op_families": 7,
     "project_layout": 22,
-    "rap_methods": 38,
+    "rap_methods": 40,
     "recovery_stages": 7,
     "sigils": 50,
     "types": 30,
@@ -4541,6 +4541,33 @@
           "methods"
         ],
         "summary": "List every method this server serves, with its count."
+      },
+      {
+        "method": "kb/schema",
+        "params": [],
+        "returns": [
+          "ok",
+          "schema_version",
+          "classes",
+          "relations",
+          "invariants",
+          "error"
+        ],
+        "summary": "The knowledge base's schema: classes, relations, invariants."
+      },
+      {
+        "method": "kb/query",
+        "params": [
+          "predicate",
+          "args"
+        ],
+        "returns": [
+          "ok",
+          "count",
+          "matches",
+          "error"
+        ],
+        "summary": "Facts of a predicate in the knowledge base, stated or derived; \"?\" matches any."
       },
       {
         "method": "effects/infer",
