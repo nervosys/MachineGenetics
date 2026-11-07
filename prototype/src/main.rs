@@ -298,6 +298,16 @@ fn main() {
                 }
             }
         }
+        Some("--count-tokens") => {
+            let path = filtered.get(1).unwrap_or_else(|| {
+                eprintln!("Usage: mage-parse --count-tokens <file.mg|->");
+                std::process::exit(1);
+            });
+            // The count `arena`'s `Program::token_len` charges: the lexer's
+            // output, Eof included, whitespace and comments excluded. Plan S2
+            // counts both printed surfaces with it, so the number is the same.
+            println!("{}", lexer::lex(&read_source(path)).len());
+        }
         Some("--check") => {
             let path = filtered.get(1).unwrap_or_else(|| {
                 eprintln!("Usage: mage-parse --check <file> [--no-elision] [--token-report]");
@@ -3671,7 +3681,7 @@ mod cli_arg_tests {
                     || f.starts_with("--spine=")
                     || matches!(f, "--check" | "--eval" | "--pipeline" | "--rap" | "--differentiable"
                                 | "--gradcheck" | "--solve"
-                                | "--fmt-compact" | "--fmt-expand" | "--emit-ontology" | "--emit-skb"
+                                | "--fmt-compact" | "--fmt-expand" | "--count-tokens" | "--emit-ontology" | "--emit-skb"
                                 | "--manifest" | "--rain" | "--version" | "--input") =>
                 {
                     continue

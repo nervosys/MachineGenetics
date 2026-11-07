@@ -4,7 +4,7 @@
     "ast_kinds": 20,
     "bench_backends": 4,
     "ci_floors": 6,
-    "cli_flags": 40,
+    "cli_flags": 45,
     "docs": 7,
     "effects": 24,
     "examples": 10,
@@ -216,6 +216,11 @@
         "takes_path": true
       },
       {
+        "flag": "--count-tokens",
+        "purpose": "Print the MAGE lexer token count of a file (the arena's description-length unit)",
+        "takes_path": true
+      },
+      {
         "flag": "--target=abl",
         "purpose": "Print per-item Agentic Binary Language stats (nodes/depth/hash/bytes)",
         "takes_path": true
@@ -279,6 +284,26 @@
         "flag": "--eval",
         "purpose": "Evaluate the module and print the value of `main` (or of the named function). The second oracle: a program can typecheck and fail to run, and the reverse.",
         "takes_path": true
+      },
+      {
+        "flag": "--solve",
+        "purpose": "Minimise (or with --max, maximise) a function over the box given by its @param consts; prints the Solution JSON naming the solver (ProjectedGradient when certified convex or concave, else Es) and why. Takes [--fuel N] [--seed S].",
+        "takes_path": true
+      },
+      {
+        "flag": "--max",
+        "purpose": "With `--solve`: maximise the objective instead of minimising it.",
+        "takes_path": false
+      },
+      {
+        "flag": "--fuel",
+        "purpose": "With `--solve`: the fuel budget for the search (default 1000000). Takes a whole number after it.",
+        "takes_path": false
+      },
+      {
+        "flag": "--seed",
+        "purpose": "With `--solve`: the seed for the evolution strategy (default 0). Takes a whole number after it.",
+        "takes_path": false
       },
       {
         "flag": "--version",

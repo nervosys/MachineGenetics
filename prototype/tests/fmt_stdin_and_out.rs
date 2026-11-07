@@ -66,6 +66,19 @@ fn a_buffer_can_be_formatted_through_stdin() {
             "{mode} produced no formatted source: {stdout:?}"
         );
     }
+    // `--count-tokens -` reads stdin too, and reports the count the arena
+    // charges (plan S2): the lexer's output, Eof included.
+    let mut child = Command::new(bin())
+        .args(["--count-tokens", "-"])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .expect("spawn mage-parse");
+    child.stdin.as_mut().expect("stdin").write_all(SRC.as_bytes()).expect("write stdin");
+    let o = child.wait_with_output().expect("wait");
+    assert!(o.status.success(), "--count-tokens - failed on stdin");
+    let counted: usize = String::from_utf8_lossy(&o.stdout).trim().parse().expect("a count");
+    assert_eq!(counted, mage_prototype::lexer::lex(SRC).len(), "--count-tokens disagrees with the lexer");
 }
 
 /// The determinism the manifest promises, over the transport an editor uses.
