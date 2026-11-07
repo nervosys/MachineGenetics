@@ -391,6 +391,25 @@ mod tests {
         }
     }
 
+    /// Every token kind has a spelling in the lexicon, except the ones it
+    /// says no spelling produces (a variant nothing scans, one `lex` drops,
+    /// or `Eof`/`Error`). Those are listed here as well as in the file; one
+    /// that gains a spelling must come off the list.
+    #[test]
+    fn every_token_kind_has_a_spelling() {
+        let kb = load().expect("loads");
+        let spelled: std::collections::BTreeSet<String> =
+            kb.facts("lexes_as").into_iter().map(|f| f[1].clone()).collect();
+        const UNSPELLED: &[&str] = &["TildePre", "DoubleArrowR", "KwFor", "Not", "ByteLiteral", "ByteStringLiteral", "Eof", "Error", "Whitespace", "Comment"];
+        for k in token_kind_variants() {
+            if UNSPELLED.contains(&k.as_str()) {
+                assert!(!spelled.contains(&k), "`{k}` has a spelling now: take it off UNSPELLED");
+            } else {
+                assert!(spelled.contains(&k), "TokenKind::{k} has no spelling in kb/lexicon.mg");
+            }
+        }
+    }
+
     /// Every `.mg` source in the repository, and a supplement for the pairs
     /// the corpus does not use.
     fn corpus() -> Vec<String> {
@@ -457,8 +476,16 @@ mod tests {
             assert!(d(k) < 0, "the formatter never prints `{k}` in human mode for `{s}` (d = {})", d(k));
         }
         let paired: BTreeSet<&String> = pairs.iter().flat_map(|(s, k)| [s, k]).collect();
+        // `R[T, E]` prints as `T or E`: the pair is `R`/`or`, and its
+        // brackets and comma have no human-mode counterpart, so each moves
+        // exactly as often as `R` does.
+        const RESULT_SUGAR: &[&str] = &["[", "]", ","];
         for s in spellings.iter().filter(|s| !paired.contains(s)) {
-            assert_eq!(d(s), 0, "`{s}` prints differently in the two modes, and no `abbreviates` pair says so");
+            if RESULT_SUGAR.contains(&s.as_str()) {
+                assert_eq!(d(s), d("R"), "`{s}` moves other than with `R[T, E]`");
+            } else {
+                assert_eq!(d(s), 0, "`{s}` prints differently in the two modes, and no `abbreviates` pair says so");
+            }
         }
     }
 
