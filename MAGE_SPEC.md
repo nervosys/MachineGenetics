@@ -1813,6 +1813,36 @@ entry for the run. Fuel, from `eval::run_metered`, is the cost measure for both
 solvers. `mage-parse --solve <file.mg|-> <fn> [--max] [--fuel N] [--seed S]`
 solves a function over its `@param` box and prints that JSON record.
 
+### 11.10 System identification with `--solve` (plan C4)
+
+A physical parameter can be recovered from a trajectory. Write the objective as
+the squared error between a simulation with the candidate parameters and a
+reference trajectory, then solve it. Each parameter's domain comes from the
+`@param` const with the same name, and the simulation is an ordinary loop.
+
+```mg
+@param(0.5, 10.0)
+const K: f64 = 1.0;
+
+f sse(k: f64) -> f64 {
+    val reference = [0.96, 0.88, 0.78];   // literal samples from a known run
+    var x = 1.0;
+    var err = 0.0;
+    for i in 0..3 {
+        x = x + 0.1 * (0.0 - k) * x;
+        err = err + (x - reference[i]) * (x - reference[i]);
+    }
+    err
+}
+```
+
+`mage-parse --solve system_id_spring.mg sse --seed 7` prints the record. The two
+examples are `prototype/examples/system_id_spring.mg` (stiffness `k` and damping
+`c`, fitted together) and `prototype/examples/system_id_pendulum.mg` (length
+`L`). A loop over an integrator is not certified by the convexity pass, so both
+run the (1+1) evolution strategy. Each recovers its known value within 0.01. The
+test is `prototype/tests/system_id.rs`.
+
 ---
 
 ## 12. Contract System
