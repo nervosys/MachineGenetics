@@ -2,7 +2,7 @@
 //!
 //! ```text
 //! arena measure [--axis bytes|joules] [--target T] [--json OUT] <run.json | dir>…
-//! arena --heldout <file>[,<file>…] [--rounds N] [--programs N] [--seed S]
+//! arena [--heldout <file>[,<file>…]] [--heldout-physics <system>:<trajectories>:<steps>:<seed>]… [--rounds N] [--programs N] [--seed S]
 //!       [--agents grammar:2,uniform:1,mutator:1,attacker:1]
 //!       [--learners ng:orders:log2buckets:lr | tf:d:layers:heads:ctx:lr[:gpu] [,…]]
 //!       [--fuel F] [--cpu-watts W] [--meter-gpus <i>[,<i>…] | none] [--cost joules|fuel]
@@ -12,17 +12,152 @@
 //!       [--heldout-slices K] [--refresh-drift X]
 //!       [--proposer-command "<cmd> <args…>"] [--proposer-timeout S]
 //!       [--json <out.json>]
+//! arena physics-baseline [--system pendulum|spring|double_pendulum|nbody|bounce] [--steps N]
+//!       [--seed S] [--budget BYTES] [--learners SPEC,…]
 //! ```
 //!
-//! Held-out files are read once, hashed, and never shown to an agent. The
-//! summary goes to stderr; `--json` writes the full report.
+//! Held-out files are read once, hashed, and never shown to an agent. A
+//! `--heldout-physics` spec generates a held-out corpus of physical trajectories
+//! from parameter ranges disjoint from training (`arena::physics`); the flag
+//! repeats, and combines with `--heldout`. At least one of the two is required.
+//! The summary goes to stderr; `--json` writes the full report.
+//!
+//! `physics-baseline` trains each learner directly on physics trajectories,
+//! outside the loop, and prints its learning curve (plan P4).
 
 use arena::arena::{meters_for, run, Config, Corpus};
 use arena::learner::{LearnerConfig, LearnerSpec, TransformerConfig};
+use arena::physics::{self, System, SYSTEMS};
 
 fn fail(msg: impl std::fmt::Display) -> ! {
     eprintln!("arena: {msg}");
     std::process::exit(2);
+}
+
+/// Parse a `--learners` value: a comma-separated list of learner specs.
+fn parse_learners(list: &str) -> Result<Vec<LearnerSpec>, String> {
+    let float = |s: &str| -> Result<f64, String> { s.parse().map_err(|_| format!("`{s}` is not a number")) };
+    let int = |s: &str, what: &str| -> Result<u64, String> { s.parse().map_err(|_| format!("{what}: `{s}` is not a number")) };
+    list.split(',')
+        .map(|p| {
+            let f: Vec<&str> = p.split(':').collect();
+            match f.as_slice() {
+                ["tf", d, l, h, ctx, lr, rest @ ..] => Ok(LearnerSpec::Transformer(TransformerConfig {
+                    d: int(d, "d")? as usize,
+                    layers: int(l, "layers")? as usize,
+                    heads: int(h, "heads")? as usize,
+                    ctx: int(ctx, "ctx")? as usize,
+                    lr: float(lr)?,
+                    gpu: rest.first() == Some(&"gpu"),
+                })),
+                ["ng", o, b, lr] | [o, b, lr] => Ok(LearnerSpec::Ngram(LearnerConfig {
+                    orders: int(o, "orders")? as usize,
+                    log2_buckets: int(b, "log2buckets")? as u32,
+                    lr: float(lr)?,
+                })),
+                _ => Err(format!("--learners: `{p}` is neither ng:orders:log2buckets:lr nor tf:d:layers:heads:ctx:lr[:gpu]")),
+            }
+        })
+        .collect()
+}
+
+/// `arena physics-baseline`: train each learner on each system's physics
+/// trajectories, outside the loop, and report its learning curve (plan P4).
+/// The same learner is also trained on the README and scored on
+/// `germline/src/gate.rs`, as raw text, for comparison.
+fn physics_baseline_cmd(args: &[String]) {
+    let mut systems: Vec<System> = SYSTEMS.to_vec();
+    let mut steps = 1100usize;
+    let mut seed = 1u64;
+    let mut budget = 192usize << 10;
+    let mut learners: Option<Vec<LearnerSpec>> = None;
+    let mut i = 0;
+    while i < args.len() {
+        let v = args.get(i + 1).map(String::as_str).unwrap_or_else(|| fail(format!("{} needs a value", args[i])));
+        match args[i].as_str() {
+            "--system" => {
+                systems = vec![System::from_spec_name(v).unwrap_or_else(|| {
+                    let names: Vec<&str> = SYSTEMS.iter().map(|s| s.spec_name()).collect();
+                    fail(format!("--system: `{v}` is not one of {}", names.join(", ")))
+                })]
+            }
+            "--steps" => steps = v.parse().unwrap_or_else(|_| fail("--steps: not a number")),
+            "--seed" => seed = v.parse().unwrap_or_else(|_| fail("--seed: not a number")),
+            "--budget" => budget = v.parse().unwrap_or_else(|_| fail("--budget: not a number of bytes")),
+            "--learners" => learners = Some(parse_learners(v).unwrap_or_else(|e| fail(e))),
+            other => fail(format!("physics-baseline: unknown argument `{other}`")),
+        }
+        i += 2;
+    }
+    if steps == 0 {
+        fail("--steps: must be at least 1");
+    }
+    let learners = learners.unwrap_or_else(|| {
+        // The arena's default learner, and one larger n-gram, since the default is tiny.
+        let mut l = Config::default().learners;
+        l.push(LearnerSpec::Ngram(LearnerConfig { orders: 4, log2_buckets: 14, lr: 0.02 }));
+        l
+    });
+    let describe = |s: &LearnerSpec| match s {
+        LearnerSpec::Ngram(c) => format!("ngram {}×2^{} lr{}", c.orders, c.log2_buckets, c.lr),
+        LearnerSpec::Transformer(c) => format!("transformer d{} L{} H{} ctx{} lr{}", c.d, c.layers, c.heads, c.ctx, c.lr),
+    };
+    println!(
+        "physics-baseline: budget {budget} bytes per learner, trajectories of {steps} steps, seed {seed}, \
+         chunks of {} bytes x {} per train step, measured on the first {} bytes of each corpus",
+        physics::BASELINE_CHUNK,
+        physics::BASELINE_BATCH,
+        physics::BASELINE_EVAL_BYTES
+    );
+    println!(
+        "| system | learner | bytes trained | train bpb | held-out bpb | gap (held-out − train) | train order-0 bpb | held-out order-0 bpb | held-out < 6? | held-out < train order-0? |"
+    );
+    println!("|---|---|---|---|---|---|---|---|---|---|");
+    let row = |name: &str, learner: &str, curve: &physics::Curve| {
+        let last = *curve.points.last().expect("a curve has points");
+        println!(
+            "| {name} | {learner} | {} | {:.3} | {:.3} | {:+.3} | {:.3} | {:.3} | {} | {} |",
+            last.bytes_trained,
+            last.train_bpb,
+            last.heldout_bpb,
+            last.heldout_bpb - last.train_bpb,
+            curve.train_order0_bpb,
+            curve.heldout_order0_bpb,
+            if last.heldout_bpb < 6.0 { "yes" } else { "no" },
+            if last.heldout_bpb < curve.train_order0_bpb { "yes" } else { "no" }
+        );
+    };
+    let mut curves: Vec<String> = Vec::new();
+    for spec in &learners {
+        for &system in &systems {
+            let curve = physics::physics_baseline(system, *spec, budget, steps, seed).unwrap_or_else(|e| fail(e));
+            row(system.spec_name(), &describe(spec), &curve);
+            curves.push(format!(
+                "{} / {}: held-out {}",
+                system.spec_name(),
+                describe(spec),
+                curve.points.iter().map(|p| format!("{:.3}", p.heldout_bpb)).collect::<Vec<_>>().join(" ")
+            ));
+        }
+    }
+    // Text comparison: the README as raw training text, gate.rs as held-out text.
+    // Both are small, so the budget is what the README holds, in whole steps.
+    let readme = include_bytes!("../../README.md");
+    let gate = include_bytes!("../../germline/src/gate.rs");
+    let text_budget = readme.len() / 1024 * 1024;
+    for spec in &learners {
+        let curve = physics::learning_curve(*spec, readme, gate, text_budget, 256, 4).unwrap_or_else(|e| fail(e));
+        row("text (README → gate.rs)", &describe(spec), &curve);
+        curves.push(format!(
+            "text / {}: held-out {}",
+            describe(spec),
+            curve.points.iter().map(|p| format!("{:.3}", p.heldout_bpb)).collect::<Vec<_>>().join(" ")
+        ));
+    }
+    println!("\nlearning curves, held-out bits per byte at 0%, 10%, … 100% of the budget:");
+    for c in curves {
+        println!("  {c}");
+    }
 }
 
 fn prior_lz(n: usize, sub: arena::substrate::Substrate) {
@@ -67,8 +202,13 @@ fn main() {
         }
         return;
     }
+    if args.first().map(String::as_str) == Some("physics-baseline") {
+        physics_baseline_cmd(&args[1..]);
+        return;
+    }
     let mut cfg = Config::default();
     let mut heldout_paths: Vec<String> = Vec::new();
+    let mut physics_specs: Vec<String> = Vec::new();
     let mut json_out: Option<String> = None;
     let mut meter_gpus: Option<Vec<u32>> = None;
     let mut i = 0;
@@ -77,6 +217,7 @@ fn main() {
     while i < args.len() {
         match args[i].as_str() {
             "--heldout" => heldout_paths.extend(value(i).split(',').map(str::to_string)),
+            "--heldout-physics" => physics_specs.push(value(i).to_string()),
             "--rounds" => cfg.rounds = num(value(i), "--rounds") as usize,
             "--programs" => cfg.programs_per_round = num(value(i), "--programs") as usize,
             "--seed" => cfg.seed = num(value(i), "--seed"),
@@ -179,33 +320,7 @@ fn main() {
                     })
                     .collect();
             }
-            "--learners" => {
-                let float = |s: &str| -> f64 { s.parse().unwrap_or_else(|_| fail(format!("`{s}` is not a number"))) };
-                cfg.learners = value(i)
-                    .split(',')
-                    .map(|p| {
-                        let f: Vec<&str> = p.split(':').collect();
-                        match f.as_slice() {
-                            ["tf", d, l, h, ctx, lr, rest @ ..] => LearnerSpec::Transformer(TransformerConfig {
-                                d: num(d, "d") as usize,
-                                layers: num(l, "layers") as usize,
-                                heads: num(h, "heads") as usize,
-                                ctx: num(ctx, "ctx") as usize,
-                                lr: float(lr),
-                                gpu: rest.first() == Some(&"gpu"),
-                            }),
-                            ["ng", o, b, lr] | [o, b, lr] => LearnerSpec::Ngram(LearnerConfig {
-                                orders: num(o, "orders") as usize,
-                                log2_buckets: num(b, "log2buckets") as u32,
-                                lr: float(lr),
-                            }),
-                            _ => fail(format!(
-                                "--learners: `{p}` is neither ng:orders:log2buckets:lr nor tf:d:layers:heads:ctx:lr[:gpu]"
-                            )),
-                        }
-                    })
-                    .collect();
-            }
+            "--learners" => cfg.learners = parse_learners(value(i)).unwrap_or_else(|e| fail(e)),
             // Vocabulary diagnostic: the structure of what the uniform prior
             // writes, with and without the structural productions. No run.
             "--prior-lz" => {
@@ -213,23 +328,28 @@ fn main() {
                 std::process::exit(0);
             }
             "-h" | "--help" => {
-                eprintln!("{}", include_str!("main.rs").lines().skip(2).take(10).map(|l| l.trim_start_matches("//! ")).collect::<Vec<_>>().join("\n"));
+                // The usage block: from after its opening fence to its closing one.
+                let usage = include_str!("main.rs").lines().skip(3).take_while(|l| *l != "//! ```").map(|l| l.trim_start_matches("//! "));
+                eprintln!("{}", usage.collect::<Vec<_>>().join("\n"));
                 std::process::exit(0);
             }
             other => fail(format!("unknown argument `{other}`")),
         }
         i += if matches!(args[i].as_str(), "-h" | "--help") { 1 } else { 2 };
     }
-    if heldout_paths.is_empty() {
-        fail("--heldout is required: without held-out data there is nothing to measure intelligence against");
+    if heldout_paths.is_empty() && physics_specs.is_empty() {
+        fail("--heldout or --heldout-physics is required: without held-out data there is nothing to measure intelligence against");
     }
-    let heldout: Vec<Corpus> = heldout_paths
+    let mut heldout: Vec<Corpus> = heldout_paths
         .iter()
         .map(|p| {
             let bytes = std::fs::read(p).unwrap_or_else(|e| fail(format!("{p}: {e}")));
             Corpus::new(p.clone(), bytes)
         })
         .collect();
+    for spec in &physics_specs {
+        heldout.push(physics::physics_corpus(spec).unwrap_or_else(|e| fail(e)));
+    }
 
     let (meters, notes) = meters_for(cfg.cpu_watts, meter_gpus.as_deref());
     for n in &notes {

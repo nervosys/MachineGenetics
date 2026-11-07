@@ -76,19 +76,44 @@ The yardstick everything later is judged by, so it goes first.
     and scale.
   - Done when encode→decode round-trips within the quantum, and the encoding
     is documented in ARENA.md.
-- [ ] **P3** Physics as a held-out suite. **M [H]**
+- [x] **P3** Physics as a held-out suite. **M [H]**
   - `--heldout-physics <system>:<n>:<seed>` generates held-out corpora from
     parameter ranges disjoint from any training range.
   - The corpora are registered like files: digest, canary planting, and
     slicing all apply.
   - Done when a run reports physics held-out bpb, and the succession suite
     digest covers it.
-- [ ] **P4** Baseline signal check. **S**
+- [x] **P4** Baseline signal check. **S**
   - Train the existing learners on physics trajectories directly, outside the
     agent loop, and record bpb against uniform.
   - Done when MEASUREMENTS.md records whether physics is learnable at CPU
     scale. This is the premise of the whole phase, so if it fails, stop and
     re-plan here.
+  - Verdict (negative): the sub-8 held-out figures are mostly byte statistics;
+    the learners do not clearly beat held-out order-0 except spring. Stop and
+    re-plan; see MEASUREMENTS.md, "Physics baseline (plan P4)".
+- [ ] **P4b** Re-plan after P4's negative verdict: is it the encoding? **S [H]**
+  - P4 found the learners do not beat each held-out corpus's own order-0
+    entropy. The likely cause is the encoding, not the physics. At a 1e-5
+    quantum a sample is about 17 bits, and its low byte moves by hundreds of
+    quanta per step, so a byte-counting learner sees noise where only an
+    arithmetic predictor could see structure.
+  - Re-run P4 under four encodings, each a `physics-baseline --encoding` option:
+    - `i32` (today's);
+    - a coarse quantum (1e-3, so values fit in 2 bytes);
+    - byte-planes (byte k of every value grouped together, as in Blosc's
+      shuffle);
+    - second differences (the residual against constant-velocity
+      extrapolation).
+  - **Gate:** an encoding passes if, on at least three of the five systems,
+    the larger n-gram's held-out bpb is at least 0.3 bits below that corpus's
+    held-out order-0 entropy.
+    - If one passes, make it the default and carry on with P5, P6 and the L
+      items on it.
+    - If none passes, drop physics as arena *data* (P5, P6, and physics in
+      L3), and keep physics as *programs* (C1, C3-C5). C4 already shows that
+      track working.
+  - Done when MEASUREMENTS.md has the four-encoding table and the decision.
 - [ ] **P5** Can agents write physics-like data? **M**
   - Arena programs are `gen(s) -> [usize]`, built from integer
     `scan`/`map`/`mod` combinators.
@@ -225,8 +250,10 @@ Physics as programs agents write, checked by the language, not only as data.
 ## Order
 
 1. M3 → M1 → M2. Measure first.
-2. P1 → P2 → P4. Stop if physics isn't learnable at CPU scale.
-3. P3, then L1 and L2 in parallel, then L3.
+2. P1 → P2 → P4. Stop if physics isn't learnable at CPU scale. *P4 was
+   negative, so P4b gates everything that uses physics as data.*
+3. P3, then L1 and L2 in parallel, then L3. *L1 and L2 on text and code can
+   start; their physics rows wait on P4b.*
 4. S1 → S2 → S3. Independent of P, so it can run alongside.
 5. C1 → C4 → C3, then C2 and C5.
 6. F1–F3 whenever convenient.
