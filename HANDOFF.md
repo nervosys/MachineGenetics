@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,529** — rmi 1,384 · prototype 1,517 · ribosome 168 · germline 175 · forge 63 · arena 222 |
+| Tests | **3,533** — rmi 1,384 · prototype 1,521 · ribosome 168 · germline 175 · forge 63 · arena 222 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -2022,6 +2022,25 @@ every `within("…")` name from `parser.rs` and requires it to be a production
 of `kb/grammar.mg`, so the two cannot drift. Removing the stamping fails the
 two behaviour tests. Prototype +3 tests. The wrapping was done by a Haiku
 subagent from an exact brief.
+
+**Every lowering checked against what it claims.** `prototype/tests/lowerings.rs`
+gives each of the 38 `loses` facts a witness (a small source run through the
+real lowering, true only if the thing is gone and a control survives) and each
+of the 4 `round_trips` a real equality, and requires the table and the facts to
+match both ways. `decompile_loses_nothing_it_does_not_state` re-lowers all 34
+nets in the repository. That checks "nothing else" for decompile only.
+A Haiku subagent wrote the witnesses; they were then reviewed. The check paid
+for itself at once. `non-neural ops: recorded in skipped` was false: `RESOLVE`
+and `SPAWN` have layer names, so a kb or an agent decompiles to a net with a
+`Resolve` or `Spawn` layer, and the fact now says `ops with no layer name`. No
+lowering emits such an op, so that witness builds its expressions by hand. Two
+losses nobody had stated are now facts: a `composition` is discarded when
+`forward` reaches every declared layer, so `residual` around one layer emits no
+`RES_ADD`; and `IDENTITY` drops with no record, so an unknown layer vanishes on
+decompile. Both look like bugs and are recorded, not fixed. `kb/forms.mg` now
+has 38 losses. Not observed: the types half of `AstTree -> HirTables`, since
+`TypeChecker` has no per-node query. Making decompile drop layer arguments
+changes 31 of 34 nets; deleting a fact fails the table test. Prototype +4 tests.
 
 **`kb/forms.mg`: the forms and the lowerings between them.** 13 forms (one
 per form class, and six `Declarative`: net, kb, agent, swarm, train, evolve)
@@ -4619,7 +4638,7 @@ changed before you commit.
 ---
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,517**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,521**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
   across six crates **3,140**; documented-count pins **101**, up from 46 — the
   two newest hold the `kb`/`net` overlap the tensor-product-binding decision

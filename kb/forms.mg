@@ -86,6 +86,7 @@ kb Forms {
     fact loses(NetDecl, RmilExpr, "layer names: each layer becomes its op");
     fact loses(NetDecl, RmilExpr, "generics");
     fact loses(NetDecl, RmilExpr, "the forward block: only the walked result is kept");
+    fact loses(NetDecl, RmilExpr, "a composition, when the forward block reaches every declared layer: the walked result wins");
     fact loses(NetDecl, RmilExpr, "layer arguments that are not literals, silently");
     fact loses(NetDecl, RmilExpr, "an unknown layer type: it lowers to IDENTITY, with a diagnostic");
 
@@ -124,12 +125,16 @@ kb Forms {
 
     // abl_bridge.rs `decompile`: a NetDef whose lowering has the same
     // content hash (`decompile_round_trips_through_lowering_with_stable_hash`)
-    // when every layer is canonical and nothing below is lost.
+    // when every layer is canonical and nothing below is lost. Whether an op
+    // is neural is not the test: RESOLVE and SPAWN have layer names, so a kb
+    // or an agent decompiles to a net with a `Resolve` or `Spawn` layer and
+    // nothing skipped.
     fact lowers_to(AblBytes, NetDecl);
     fact loses(AblBytes, NetDecl, "layer names: regenerated as l_<type>_<n>");
     fact loses(AblBytes, NetDecl, "the forward block, generics and composition: left empty");
     fact loses(AblBytes, NetDecl, "RES_ADD: skipped without being recorded");
+    fact loses(AblBytes, NetDecl, "IDENTITY: skipped without being recorded, so an unknown layer vanishes");
     fact loses(AblBytes, NetDecl, "branches: a Par is flattened into one layer list");
     fact loses(AblBytes, NetDecl, "layer arguments that are not literals");
-    fact loses(AblBytes, NetDecl, "non-neural ops: recorded in DecompileResult::skipped");
+    fact loses(AblBytes, NetDecl, "ops with no layer name: recorded in DecompileResult::skipped");
 }
