@@ -1581,7 +1581,8 @@ dimensionless.
 **Rules.**
 
 - `+`, `-`, `%`, the comparisons, `min`/`max`, `=`, `+=` and `-=` need equal
-  dimensions on both sides; the result keeps the dimension.
+  dimensions on both sides; the result keeps the dimension. `clamp(x, lo, hi)`
+  needs all three in one dimension, and keeps it.
 - `*` adds exponents and `/` subtracts them. `*=` and `/=` need a
   dimensionless right-hand side, since they cannot change their target's unit.
 - A numeric literal is **polymorphic**. Under `+`, `-` and the comparisons it
