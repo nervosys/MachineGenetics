@@ -83,16 +83,16 @@ UPPER_CASE        Non-terminal
 
 MAGE supports two interchangeable surface syntaxes that parse to the same AST:
 
-| Mode      | Pragma              | Purpose                              | Measured cost, relative to Human (§2.4) |
-| --------- | ------------------- | ------------------------------------ | ------- |
-| **Human** | (default)           | Human-readable, terse keywords       | 1       |
-| **Agent** | `#![syntax(agent)]` | Symbol-compressed                    | 0.96 in bytes; 1.00 in MAGE tokens, cl100k tokens and learner bits |
+| Mode      | Purpose                              | Measured cost, relative to Human (§2.4) |
+| --------- | ------------------------------------ | ------- |
+| **Human** | Human-readable, terse keywords       | 1       |
+| **Agent** | Symbol-compressed                    | 0.96 in bytes; 1.00 in MAGE tokens, cl100k tokens and learner bits |
 
 *This column said "~3×" density for Agent mode. Measured over the 106-file
 corpus (plan S2, §2.4), the sigil surface saves 3.8% of bytes and nothing in any
 token unit, so the figure was wrong and is replaced by the measurement.*
 
-A `#![syntax(agent)]` pragma at the top of a `.mg` file selects Agent mode. Human is the default.
+No pragma selects a mode. The lexer has one keyword table, so every file may use the spellings of either mode, or both (§3.1); the formatter decides which one it prints.
 
 Both modes print the same AST, so converting between them (`mage-parse --fmt-expand` and `--fmt-compact`) loses nothing the compiler sees, and every `.mg` file in the tree round-trips through both. It is not byte-for-byte: comments are dropped by the lexer, so neither printer keeps them. The compiler accepts both in the same project.
 
@@ -109,7 +109,7 @@ Human mode uses clear, modern keywords that improve on Rust's conventions. Core 
 `return`
 
 **Shared with Rust (unchanged):**
-`true`, `false`, `as`, `self`, `Self`, `crate`, `super`, `extern`
+`extern`
 
 **Clauses:** `where`
 
@@ -210,10 +210,10 @@ Agent mode maps every concept to 1-2 characters. Like hexadecimal compresses 4 b
 | Unsafe (reserved, not yet supported) | `unsafe` | *(elided)* | Safety→SKB |
 | Where          | `where`        | `~>`       | Clause         |
 | Mutable ref    | `&!`           | `&!`       | Type           |
-| True / False   | `true`/`false` | `1b`/`0b`  | Literal        |
-| Matmul         | `@`            | `⊗`        | Tensor op      |
-| Hadamard       | `.*`           | `⊙`        | Tensor op      |
-| Transpose      | `.T`           | `⊤`        | Tensor op      |
+| True / False   | `1b`/`0b`      | `1b`/`0b`  | Literal        |
+| Matmul         | `⊗`            | `⊗`        | Tensor op      |
+| Hadamard       | `⊙`            | `⊙`        | Tensor op      |
+| Transpose      | `⊤`            | `⊤`        | Tensor op      |
 | Flatten        | `.flatten()`   | `⊥`        | Tensor op      |
 | String         | `String`       | `s`        | Type           |
 | `&str`         | `&str`         | `&s`       | Type           |
@@ -317,191 +317,241 @@ corpus, the saving is in bytes only.
 
 ## 3. Lexical Grammar
 
+This section states what `prototype/src/lexer.rs` does. The lexer is lax: it
+produces a token for whatever it scans and leaves checking to the parser and
+the checker, so where a form below is described as accepted, nothing here
+promises it is meaningful. `kb/lexicon.mg` is the machine-readable statement of
+the reserved spellings; tests hold both it and §3.3 and §3.6 of this document to
+`lexer::KEYWORDS` and to the lexer.
+
 ### 3.1 Source Encoding
 
 ```
-source_file = BOM? PRAGMA? { token | whitespace | comment }* EOF ;
-BOM         = '\u{FEFF}' ;
-PRAGMA      = '#![syntax(agent)]' ;
+source_file = { token | whitespace | comment }* EOF ;
 ```
+
+A source file is UTF-8 text. The lexer scans bytes. Any character that no rule
+below takes becomes an `Error` token covering that whole character; the lexer
+does not stop. A byte-order mark is not recognised, so it lexes as an `Error`
+token. The lexer reads no pragma: it has one keyword table, so Human and Agent
+spellings (§2) lex alike and may be mixed in one file.
 
 ### 3.2 Whitespace and Comments
 
 ```
 whitespace    = ( ' ' | '\t' | '\n' | '\r' )+ ;
 comment       = line_comment | block_comment ;
-line_comment  = '//' { any_char - '\n' }* '\n' ;
-block_comment = '/*' { any_char | block_comment }* '*/' ;  /* nestable */
+line_comment  = '//' { any_char - '\n' }* ;
+block_comment = '/*' { any_char | block_comment }* [ '*/' ] ;  /* nestable */
 ```
+
+Whitespace and comments are dropped before parsing. A line comment ends before
+the newline. A block comment that is never closed runs to the end of the file.
 
 ### 3.3 Keywords
 
-**Human mode keywords:**
+A spelling is listed here when it is reserved by `lexer::KEYWORDS`, or is half
+of an `abbreviates` pair in `kb/lexicon.mg`, or lexes as one of the `Kw*` tokens
+(the Greek sigils and the `@` contracts). Every other spelling the lexer
+produces is a literal (§3.5) or an operator or punctuation mark (§3.6). Quoted
+spellings in the blocks of this subsection are exactly that set.
+
+A reserved word is a whole identifier: `fnord` is an identifier, not `fn`
+followed by `ord`. Both modes' spellings are keywords in every file.
+
+**Abbreviation pairs.** Each production is named for the Human spelling; its
+first alternative is the Agent sigil the formatter prints in Agent mode, its
+second the Human spelling. `:` abbreviates both `in` (after a `for` pattern) and
+`else` (after an `if` block); which is read depends on the grammar. `R`, `cons`, `topo`, `consensus` and `topology` are not reserved: they lex as
+identifiers, and the formatter prints the first three for `or`, `consensus` and
+`topology`. (`or` is reserved.)
 
 ```
-keyword =
-    /* Core declarations */
-    | 'fn' | 'val' | 'var' | 'const' | 'data' | 'trait'
-    | 'extend' | 'mod' | 'use' | 'type' | 'static'
-    /* Visibility */
-    | 'pub'
-    /* Control flow */
-    | 'if' | 'else' | 'for' | 'in' | 'match' | 'loop' | 'while'
-    | 'break' | 'continue' | 'return'
-    /* Boolean */
-    | 'true' | 'false'
-    /* Async */
-    | 'async'   /* async */
-    /* Special */
-    | 'as' | 'where' | 'self' | 'Self' | 'crate' | 'super'
-    /* Neural AI */
-    | 'net' | 'layer' | 'tensor' | 'param' | 'train' | 'grad'
-    /* Symbolic AI */
-    | 'kb' | 'fact' | 'rule' | 'query'
-    /* Evolutionary AI */
-    | 'evolve' | 'genome' | 'mutate' | 'fitness' | 'select' | 'crossover'
-    /* Reinforcement learning */
-    | 'rl' | 'policy' | 'reward'
-    /* Effects & contracts */
-    | 'effect' | 'handle' | 'spec'
-    /* Agents & swarms */
-    | 'agent' | 'swarm'
-    /* FFI & safety */
-    | 'extern' | 'unsafe'
-    ;
+fn       = 'f'    | 'fn' ;
+pub      = '+'    | 'pub' ;
+struct   = 'S'    | 'struct' ;
+enum     = 'E'    | 'enum' ;
+trait    = 'T'    | 'trait' ;
+impl     = 'I'    | 'impl' ;
+const    = 'C'    | 'const' ;
+data     = 'D'    | 'data' ;
+val      = 'v'    | 'val' ;
+var      = 'm'    | 'var' ;
+async    = 'af'   | 'async' ;
+return   = 'ret'  | 'return' ;
+effect   = 'fx'   | 'effect' ;
+handle   = 'hx'   | 'handle' ;
+spec     = 'sp'   | 'spec' ;
+guard    = 'gd'   | 'guard' ;
+defer    = 'df'   | 'defer' ;
+swarm    = 'sw'   | 'swarm' ;
+extend   = 'xd'   | 'extend' ;
+mod      = 'M'    | 'mod' ;
+use      = 'u'    | 'use' ;
+type     = 'Y'    | 'type' ;
+static   = 'Z'    | 'static' ;
+extern   = 'xn'   | 'extern' ;
+if       = '?'    | 'if' ;
+match    = '?='   | 'match' ;
+for      = '@'    | 'for' ;
+in       = ':'    | 'in' ;
+else     = ':'    | 'else' ;
+while    = '@w'   | 'while' ;
+loop     = '@@'   | 'loop' ;
+break    = '!'    | 'break' ;
+continue = '>>'   | 'continue' ;
+where    = '~>'   | 'where' ;
+or       = 'R'    | 'or' ;
+consensus = 'cons' | 'consensus' ;
+topology  = 'topo' | 'topology' ;
 ```
 
-**Agent mode keywords** (mapped to human — see Appendix B):
+**Keywords with no abbreviation.** These have one spelling, used in both modes.
+`mut` lexes as the same token as `m`, and `let` is its own token.
 
 ```
-agent_keyword =
-    /* Core declarations */
-    | 'f' | 'v' | 'm' | 'c' | 'D' | 'T' | 'xd' | 'M' | 'U' | 'u'
-    | '+' | '~'
-    /* Neural AI */
-    | 'Ψ' | 'λ' | 'Φ' | 'Π' | 'Θ' | '∇'
-    /* Agent */
-    | 'α'
-    /* Swarm */
-    | 'Σ' | 'sw' /* swarm */
-    /* Symbolic AI */
-    | 'κ' | 'ρ'
-    /* Evolution */
-    | 'Ω' | 'Γ' | 'φ'
-    /* RL */
-    | 'Ξ' | 'ψ'
-    /* Control flow */
-    | '?' | '@' | '@@' | '@w' | ':' | ':?' | 'ret' | '1b' | '0b'
-    /* Control flow — compressed */
-    | '!' /* break */ | '>>' /* continue */
-    /* Tensor ops */
-    | '⊗' | '⊙' | '⊤' | '⊥'
-    /* Effects & contracts — compressed */
-    | 'fx' /* effect */ | 'hx' /* handle */ | 'sp' /* spec */
-    /* FFI */
-    | 'xn' /* extern */
-    /* Async */
-    | '.w' /* .await */
-    /* Safety — elided (handled by compiler SKB) */
-    /* 'raw' is NEVER needed in agent mode */
-    ;
+binding_keyword = 'let' | 'mut' | 'uf' | 'U' ;
+agent_keyword   = 'agent' | 'unsafe' ;
+value_keyword   = 'is' | 'Ok' | 'Err' | 'Some' | 'None' | '_' | '_T' ;
+swarm_keyword   = 'swarm_map_reduce' | 'swarm_pipeline' | 'swarm_saga'
+                | 'swarm_fan_out' | 'swarm_race' | 'pipeline'
+                | 'grammar_extension' ;
+neural_keyword  = 'net' | 'layer' | 'tensor' | 'param' | 'train' | 'grad'
+                | 'forward' ;
+symbolic_keyword = 'kb' | 'fact' | 'rule' | 'query' ;
+evolution_keyword = 'evolve' | 'genome' | 'mutate' | 'fitness' | 'select'
+                | 'crossover' | 'population' | 'generations' ;
+rl_keyword      = 'rl' | 'policy' | 'reward' ;
 ```
+
+**Sigils with no Human spelling.** The Greek letters are single tokens, each its
+own kind, and the five `@` contracts are single tokens that must not be followed
+by a letter, digit or `_` (`@require` is `@` then an identifier).
+
+```
+greek_sigil = 'Ψ' | 'λ' | 'Φ' | 'Π' | 'Θ' | '∇' | 'α' | 'Σ' | 'κ' | 'ρ'
+            | 'Ω' | 'Γ' | 'φ' | 'Ξ' | 'μ' | 'χ' ;
+contract    = '@req' | '@ens' | '@inv' | '@fx' | '@perf' ;
+```
+
+The lexer has no keyword `true`, `false`, `as`, `self`, `Self`, `crate` or
+`super`; they are identifiers, and `1b` and `0b` are the booleans (§3.5).
 
 ### 3.4 Identifiers
 
 ```
-identifier     = XID_START { XID_CONTINUE }* ;
-raw_identifier = 'r#' identifier ;
-XID_START      = /* Unicode XID_Start */ | '_' ;
-XID_CONTINUE   = /* Unicode XID_Continue */ | '_' ;
+identifier = ID_START { ID_CONTINUE }* ;
+ID_START   = 'A'..'Z' | 'a'..'z' | '_' ;
+ID_CONTINUE = ID_START | '0'..'9' ;
 ```
+
+Identifiers are ASCII. A word that is in §3.3 is a keyword, not an identifier;
+the prefixes `f"`, `p"` and `ep"` begin a string (§3.5). There are no raw
+identifiers.
 
 ### 3.5 Literals
 
 ```
-literal = int_literal | float_literal | string_literal | char_literal
-        | bool_literal | byte_literal | byte_string_literal
-        | tensor_literal ;
+literal = int_literal | float_literal | bool_literal | string_literal
+        | format_string | print_string | eprint_string | char_literal ;
 
 /* Integer literals */
 int_literal   = dec_literal | hex_literal | oct_literal | bin_literal ;
 dec_literal   = DEC_DIGIT { DEC_DIGIT | '_' }* [ int_suffix ] ;
-hex_literal   = '0x' HEX_DIGIT { HEX_DIGIT | '_' }* [ int_suffix ] ;
-oct_literal   = '0o' OCT_DIGIT { OCT_DIGIT | '_' }* [ int_suffix ] ;
-bin_literal   = '0b' BIN_DIGIT { BIN_DIGIT | '_' }* [ int_suffix ] ;
+hex_literal   = ( '0x' | '0X' ) { HEX_DIGIT | '_' }* [ int_suffix ] ;
+oct_literal   = '0o' { OCT_DIGIT | '_' }* [ int_suffix ] ;
+bin_literal   = '0b' ( BIN_DIGIT | '_' ) { BIN_DIGIT | '_' }* [ int_suffix ] ;
 int_suffix    = 'i8' | 'i16' | 'i32' | 'i64' | 'i128' | 'isize'
               | 'u8' | 'u16' | 'u32' | 'u64' | 'u128' | 'usize' ;
 
 /* Float literals */
-float_literal = DEC_DIGIT { DEC_DIGIT | '_' }* '.' DEC_DIGIT { DEC_DIGIT | '_' }*
-                [ exponent ] [ float_suffix ] ;
-exponent      = ( 'e' | 'E' ) [ '+' | '-' ] DEC_DIGIT { DEC_DIGIT | '_' }* ;
+float_literal = DEC_DIGIT { DEC_DIGIT | '_' }* [ '.' DEC_DIGIT { DEC_DIGIT | '_' }* ]
+                [ exponent ] [ float_suffix ] ;   /* a fraction or an exponent is required */
+exponent      = ( 'e' | 'E' ) [ '+' | '-' ] { DEC_DIGIT | '_' }* ;
 float_suffix  = 'f32' | 'f64' ;
 
+/* Boolean literals: the same in both modes */
+bool_literal  = '1b' | '0b' ;
+
 /* String literals */
-string_literal = '"' { string_char }* '"' ;
-format_string  = 'format!' '(' '"' { string_char | '{' expression '}' }* '"' ')' ;
-print_string   = 'println!' '(' '"' { string_char | '{' expression '}' }* '"' ')' ;
-raw_string     = 'r"' { any_char - '"' }* '"'
-               | 'r#"' { any_char }* '"#' ;
-string_char    = any_char - ( '"' | '\\' ) | escape_sequence ;
-escape_sequence = '\\' ( 'n' | 'r' | 't' | '\\' | '\'' | '"' | '0'
-                | 'x' HEX_DIGIT HEX_DIGIT
-                | 'u{' HEX_DIGIT{1,6} '}' ) ;
+string_literal = '"' { any_char | '\\' any_char }* '"' ;
+format_string  = 'f"'  { any_char | '\\' any_char | interpolation }* '"' ;
+print_string   = 'p"'  { any_char | '\\' any_char | interpolation }* '"' ;
+eprint_string  = 'ep"' { any_char | '\\' any_char | interpolation }* '"' ;
+interpolation  = '{' { any_char }* '}' ;          /* nesting braces; '{{' is a literal brace */
 
-/* Character and byte literals */
-char_literal         = '\'' ( any_char - ( '\'' | '\\' ) | escape_sequence ) '\'' ;
-bool_literal         = 'true' | 'false' ;
-byte_literal         = "b'" ( BYTE_CHAR | byte_escape ) "'" ;
-byte_string_literal  = 'b"' { BYTE_CHAR | byte_escape }* '"' ;
-
-/* Tensor literal — inline matrix/vector data */
-tensor_literal = 'tensor!' '[' tensor_data ']' ;
-tensor_data    = expression { ',' expression }*
-               | '[' tensor_data ']' { ',' '[' tensor_data ']' }* ;
+/* Character literals */
+char_literal   = "'" ( any_char | '\\' any_char ) [ "'" ] ;
 ```
+
+Integer notes. A suffix is taken only when the next character is not a letter,
+digit or `_`. `0b` followed by `0`, `1` or `_` is a binary integer; `0b` and
+`1b` with no such digit are the booleans (`0b1` is the integer 1, `0b` is
+false). A decimal number is a float as soon as it has a fractional part (a `.`
+followed by a digit, so `1.` is an integer and then a `.`) or an exponent (`1e5`
+is a float). A float suffix is accepted only on a float, so `1f32` is the integer
+`1` and then the identifier `f32`. The lexer does not check the range of the value, that a prefix is followed by
+digits, or that an exponent has digits.
+
+String notes. A backslash makes the next character part of the literal, so
+`\"` does not end it; the lexer checks nothing else about escapes, a string may
+contain newlines, and one that is never closed runs to the end of the file. In
+`f"…"`, `p"…"` and `ep"…"` a `"` inside a `{…}` group does not end the string.
+The evaluator decodes the escapes `\n`, `\t`, `\r`, `\0`, `\\`, `\"` and `\'`
+in string and character literals; any other backslash pair is kept as written,
+backslash included. There are no raw strings, byte literals or byte strings, and
+no `\x` or `\u{…}` escapes. A character literal's closing quote is not required
+by the lexer.
 
 A literal without a suffix takes its width from where it is used: `1` is any
 integer or float type and `1.5` either float type (`val a: f32 = 1.5`). Left open by its
 uses, an integer literal is `i32` and a float literal `f64`. A suffix fixes the
 type, so `val x: f64 = 1.5f32` is refused.
 
+There is no tensor literal token. `tensor` is a keyword (§3.3) and a tensor
+value is written as a list (§6.5).
+
 ### 3.6 Operators and Punctuation
+
+A listed spelling is one token; where several listed spellings begin alike the
+longest one is taken. The spellings that are also keywords (`+`, `?`, `?=`, `@`,
+`@@`, `@w`, `:`, `!`, `>>`, `~>`) are in §3.3 and are not repeated here.
 
 ```
 /* Arithmetic */
-PLUS = '+' ;  MINUS = '-' ;  STAR = '*' ;  SLASH = '/' ;  PERCENT = '%' ;
+MINUS = '-' ;  STAR = '*' ;  SLASH = '/' ;  PERCENT = '%' ;
 
 /* Comparison */
 EQ = '==' ;  NEQ = '!=' ;  LT = '<' ;  GT = '>' ;  LE = '<=' ;  GE = '>=' ;
 
-/* Logical */
-AND = '&&' ;  OR = '||' ;  NOT = '!' ;
-
-/* Bitwise */
-BIT_AND = '&' ;  BIT_OR = '|' ;  BIT_XOR = '^' ;  SHL = '<<' ;  SHR = '>>' ;
-
-/* Tensor / linear algebra (Human mode) */
-MATMUL    = '@' ;    /* matrix multiplication: A @ B */
-HADAMARD  = '.*' ;   /* element-wise multiply: A .* B */
-TRANSPOSE = '.T' ;   /* transpose: A.T */
-PIPE      = '|>' ;   /* pipeline operator: x |> f |> g */
-IS        = 'is' ;   /* pattern check: x is Some(v) */
+/* Logical and bitwise */
+AND = '&&' ;  OR = '||' ;  BIT_AND = '&' ;  BIT_OR = '|' ;  BIT_XOR = '^' ;
+SHL = '<<' ;
 
 /* Assignment */
 ASSIGN = '=' ;  PLUS_EQ = '+=' ;  MINUS_EQ = '-=' ;  STAR_EQ = '*=' ;
-SLASH_EQ = '/=' ;  PERCENT_EQ = '%=' ;
+SLASH_EQ = '/=' ;  PERCENT_EQ = '%=' ;  AND_EQ = '&=' ;  OR_EQ = '|=' ;
+XOR_EQ = '^=' ;  SHL_EQ = '<<=' ;  SHR_EQ = '>>=' ;
+
+/* Other multi-character operators */
+AND_NOT = '&!' ;  AND_TILDE = '&~' ;  PERCENT_NOT = '%!' ;  HASH_TILDE = '#~' ;
+PIPE = '|>' ;  TODO = '??' ;  UNIMPLEMENTED = '???' ;  COLON_QUESTION = ':?' ;
+
+/* Tensor symbols */
+MATMUL = '⊗' ;  HADAMARD = '⊙' ;  TRANSPOSE = '⊤' ;  FLATTEN = '⊥' ;
+TENSOR_PIPELINE = '▸' ;
 
 /* Delimiters */
 LPAREN = '(' ;  RPAREN = ')' ;  LBRACE = '{' ;  RBRACE = '}' ;
 LBRACK = '[' ;  RBRACK = ']' ;
 
 /* Punctuation */
-SEMI = ';' ;  COMMA = ',' ;  DOT = '.' ;  COLON = ':' ;
-ARROW = '->' ;  FAT_ARROW = '=>' ;  QUESTION = '?' ;
-HASH = '#' ;  AT = '@' ;  DOTDOT = '..' ;  DOTDOTEQ = '..=' ;
-SCOPE = '::' ;  LT_ANGLE = '<' ;  GT_ANGLE = '>' ;
+SEMI = ';' ;  COMMA = ',' ;  DOT = '.' ;  ARROW = '->' ;  FAT_ARROW = '=>' ;
+HASH = '#' ;  DOTDOT = '..' ;  DOTDOTEQ = '..=' ;  TILDE = '~' ;  DOLLAR = '$' ;
 ```
+
+`::`, `.*`, `.T` and `.w` are not tokens: `::` is two `:` tokens, and the others
+are a `.` followed by `*`, or by an identifier. `>>` is always one token; the lexer does not split it.
 
 ---
 
@@ -639,8 +689,8 @@ expression = literal | IDENT | prefix_expr | infix_expr | postfix_expr
 /* Pipeline: x |> f(_, y) |> g */
 pipe_expr    = expression '|>' expression ;
 
-/* Tensor matmul: A @ B */
-matmul_expr  = expression '@' expression ;
+/* Tensor matmul: A ⊗ B (`@` is the `for` keyword, not matmul) */
+matmul_expr  = expression '⊗' expression ;
 
 /* Gradient: grad(loss, params) */
 grad_expr    = 'grad' '(' expression ',' expression ')' ;
@@ -2601,7 +2651,7 @@ first thing an agent reads to learn the compressed surface.
 | `break`        | `!`        | Break         |
 | `continue`     | `>>`       | Continue      |
 | `continue`     | `>>`       | Continue      |
-| `true`/`false` | `1b`/`0b`  | Booleans      |
+| `1b`/`0b`      | `1b`/`0b`  | Booleans (both modes) |
 
 ### B.4 Type Syntax
 
@@ -2786,9 +2836,9 @@ A complete lexicon of Agent mode symbols, organized by category. This is the "ge
 
 | Symbol | Unicode | Human        | Meaning          |
 | ------ | ------- | ------------ | ---------------- |
-| `⊗`    | U+2297  | `@`          | Matrix multiply  |
-| `⊙`    | U+2299  | `.*`         | Hadamard product |
-| `⊤`    | U+22A4  | `.T`         | Transpose        |
+| `⊗`    | U+2297  | `⊗`          | Matrix multiply  |
+| `⊙`    | U+2299  | `⊙`          | Hadamard product |
+| `⊤`    | U+22A4  | `⊤`          | Transpose        |
 | `⊥`    | U+22A5  | `.flatten()` | Flatten          |
 | `⊢`    | U+22A2  | `fact`       | Fact assertion   |
 | `⊞`    | U+229E  | `conv2d`     | Convolution      |
