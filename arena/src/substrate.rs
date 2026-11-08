@@ -120,8 +120,11 @@ impl Default for Substrate {
     }
 }
 
-/// The entry point every generated program declares.
-pub const ENTRY: &str = "gen";
+/// The entry point every generated program declares: the function the
+/// profile's signature names, `gen` in `f gen(s: usize) -> [usize]`.
+pub fn entry() -> &'static str {
+    crate::grammar::entry()
+}
 
 /// A program that cleared every static gate, with its content addresses.
 #[derive(Debug, Clone)]
@@ -177,16 +180,17 @@ impl Substrate {
         if let Some(d) = fx.diagnostics.iter().find(|d| d.severity == hir::Severity::Error) {
             return Err((Refusal::Effect, d.message.clone()));
         }
-        match fx.inferred.get(ENTRY) {
+        let entry = entry();
+        match fx.inferred.get(entry) {
             Some(set) if set.is_empty() => {}
             Some(set) => {
                 let names: Vec<String> = set.iter().map(|e| e.to_string()).collect();
                 return Err((
                     Refusal::Effect,
-                    format!("`{ENTRY}` performs {{ {} }}; generated data must be pure", names.join(", ")),
+                    format!("`{entry}` performs {{ {} }}; generated data must be pure", names.join(", ")),
                 ));
             }
-            None => return Err((Refusal::Effect, format!("no effect verdict for `{ENTRY}`"))),
+            None => return Err((Refusal::Effect, format!("no effect verdict for `{entry}`"))),
         }
         let ast::ItemKind::Function(fd) = &module.items[0].kind else {
             return Err((Refusal::Signature, "the item is not a function".into()));
@@ -208,7 +212,7 @@ impl Substrate {
         // Seeds are kept small so `s` stays in the byte-ish range a program's
         // arithmetic was written for; the seed's job is variety, not magnitude.
         let arg = Value::Int((seed % 256) as i64);
-        let (result, fuel_used) = run_metered(&prepared.module, ENTRY, vec![arg], self.fuel);
+        let (result, fuel_used) = run_metered(&prepared.module, entry(), vec![arg], self.fuel);
         (self.outcome(result, fuel_used), fuel_used)
     }
 
@@ -251,6 +255,7 @@ impl forge::registry::Canonicalizer for Substrate {
 
 /// Exactly one item, `f gen(s: usize) -> [usize]`.
 fn check_signature(module: &ast::Module) -> Result<(), String> {
+    let entry = entry();
     let fns: Vec<&ast::FunctionDef> = module
         .items
         .iter()
@@ -260,20 +265,20 @@ fn check_signature(module: &ast::Module) -> Result<(), String> {
         })
         .collect();
     if module.items.len() != 1 || fns.len() != 1 {
-        return Err(format!("expected exactly one item, `f {ENTRY}`; found {}", module.items.len()));
+        return Err(format!("expected exactly one item, `f {entry}`; found {}", module.items.len()));
     }
     let f = fns[0];
     let role = module.items[0].attributes.iter().find(|a| a.name == "role");
     match role.and_then(|a| a.args.first()) {
         Some(r) if r == "candidate" => {}
-        Some(r) => return Err(format!("`{ENTRY}` must have role `candidate`, not `{r}`")),
-        None => return Err(format!("`{ENTRY}` must declare `@role(candidate)`")),
+        Some(r) => return Err(format!("`{entry}` must have role `candidate`, not `{r}`")),
+        None => return Err(format!("`{entry}` must declare `@role(candidate)`")),
     }
-    if f.name != ENTRY {
-        return Err(format!("the function must be named `{ENTRY}`, not `{}`", f.name));
+    if f.name != entry {
+        return Err(format!("the function must be named `{entry}`, not `{}`", f.name));
     }
     if f.params.len() != 1 {
-        return Err(format!("`{ENTRY}` takes exactly one parameter"));
+        return Err(format!("`{entry}` takes exactly one parameter"));
     }
     Ok(())
 }
