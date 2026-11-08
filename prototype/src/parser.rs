@@ -3947,6 +3947,13 @@ impl<'a> Parser<'a> {
                 TokenKind::StarEq => ("*=", 1, 2),
                 TokenKind::SlashEq => ("/=", 1, 2),
                 TokenKind::PercentEq => ("%=", 1, 2),
+                // The lexer has always produced these; without them here
+                // `x &= 3` failed as "expected expression, found `&=`".
+                TokenKind::BitAndEq => ("&=", 1, 2),
+                TokenKind::BitOrEq => ("|=", 1, 2),
+                TokenKind::BitXorEq => ("^=", 1, 2),
+                TokenKind::ShlEq => ("<<=", 1, 2),
+                TokenKind::ShrEq => (">>=", 1, 2),
                 TokenKind::Or => ("||", 3, 4),
                 TokenKind::And => ("&&", 5, 6),
                 TokenKind::Eq => ("==", 7, 8),

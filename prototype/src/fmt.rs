@@ -1398,7 +1398,7 @@ fn emit_type(buf: &mut String, ty: &Type, mode: Mode) {
 /// Left binding power of an infix operator spelling, as the parser has it.
 fn infix_bp(op: &str) -> u8 {
     match op {
-        "=" | "+=" | "-=" | "*=" | "/=" | "%=" => 1,
+        "=" | "+=" | "-=" | "*=" | "/=" | "%=" | "&=" | "|=" | "^=" | "<<=" | ">>=" => 1,
         "||" | "|>" | "▸" => 3,
         "&&" => 5,
         "==" | "!=" => 7,
