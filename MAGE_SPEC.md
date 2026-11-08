@@ -175,22 +175,22 @@ Agent mode maps every concept to 1-2 characters. Like hexadecimal compresses 4 b
 | Import         | `use`          | `u`        | Declaration    |
 | Type alias     | `type`         | `Y`        | Declaration    |
 | Static (retired in plan 9.2, E0554: write `C NAME: T = value;`) | `static` | `Z` | Declaration |
-| Neural net     | `net`          | `Ψ`        | AI — Neural    |
-| Layer          | `layer`        | `λ`        | AI — Neural    |
-| Tensor         | `Tensor`       | `Φ`        | AI — Algebra   |
-| Parameter      | `Param`        | `Π`        | AI — Algebra   |
-| Train          | `train`        | `Θ`        | AI — Learning  |
+| Neural net     | `net`          | `Ψ` lexed only (D.1) | AI — Neural    |
+| Layer          | `layer`        | `λ` lexed only (D.1) | AI — Neural    |
+| Tensor         | `tensor`       | `Φ` lexed only (D.1) | AI — Algebra   |
+| Parameter      | `param`        | `Π` lexed only (D.1) | AI — Algebra   |
+| Train          | `train`        | `Θ` lexed only (D.1) | AI — Learning  |
 | Gradient       | `grad`         | `∇`        | AI — Algebra   |
-| Agent          | `agent`        | `α`        | AI — Agent     |
-| Swarm          | `swarm`        | `Σ`        | AI — Agent     |
-| Knowledge base | `kb`           | `κ`        | AI — Symbolic  |
-| Rule           | `rule`         | `ρ`        | AI — Symbolic  |
-| Fact           | `fact`         | `⊢`        | AI — Symbolic  |
-| Evolve         | `evolve`       | `Ω`        | AI — Evolution |
-| Genome         | `Genome`       | `Γ`        | AI — Evolution |
-| Fitness        | `fitness`      | `φ`        | AI — Evolution |
-| Policy         | `Policy`       | `Ξ`        | AI — RL        |
-| Reward         | `reward`       | `ψ`        | AI — RL        |
+| Agent          | `agent`        | `α` lexed only (D.1) | AI — Agent     |
+| Swarm          | `swarm`        | `sw`       | AI — Agent     |
+| Knowledge base | `kb`           | `κ` lexed only (D.1) | AI — Symbolic  |
+| Rule           | `rule`         | `ρ` lexed only (D.1) | AI — Symbolic  |
+| Fact           | `fact`         | `fact`     | AI — Symbolic  |
+| Evolve         | `evolve`       | `Ω` lexed only (D.1) | AI — Evolution |
+| Genome         | `genome`       | `Γ` lexed only (D.1) | AI — Evolution |
+| Fitness        | `fitness`      | `φ` lexed only (D.1) | AI — Evolution |
+| Policy         | `policy`       | `Ξ` lexed only (D.1) | AI — RL        |
+| Reward         | `reward`       | `reward`   | AI — RL        |
 | If             | `if`           | `?`        | Control        |
 | Else           | `else`         | `:`        | Control        |
 | Match          | `match`        | `?=`       | Control        |
@@ -741,10 +741,9 @@ pattern = literal | IDENT | '_'
 ### 4.9 Attributes
 
 ```
-attribute = '#' '[' attr_path [ '(' attr_args ')' ] ']'
-          | '@' attr_name [ '(' attr_args ')' ] ;
+attribute = '@' attr_name [ '(' attr_args ')' ] ;   /* `#[...]` does not parse */
 
-/* Standard attributes: #[derive(...)], #[test], #[cfg(...)], #[inline] */
+/* Standard attributes: @derive(...), @test, @cfg(...), @inline */
 /* MAGE-specific: @req, @ens, @inv, @perf, @fx, @spec */
 /* Neural: @target(gpu), @precision(f16), @batch(32) */
 /* Evolution: @population(1000), @generations(500) */
@@ -2346,7 +2345,7 @@ MAGE preserves Rust's ownership and borrowing semantics with full inference:
 1. Every value has exactly one owner.
 2. When the owner goes out of scope, the value is dropped.
 3. Values can be moved or, if `Copy`, duplicated.
-4. Borrows: any number of `&T` (shared) XOR one `&mut T` (exclusive).
+4. Borrows: any number of `&T` (shared) XOR one `&!T` (exclusive).
 5. Borrows must not outlive the referent.
 6. The compiler infers borrow mode from usage context.
 7. No lifetime annotations in source code — the SKB encodes lifetime rules.
@@ -2573,145 +2572,168 @@ val dot = (a * b).sum();
 
 ## Appendix B: Dual Syntax Mapping Table
 
-Every Human-mode construct has an Agent-mode equivalent, and both parse to the
-same AST — where both exist. **Every row below was checked against the
-compiler**; the ones that do not parse are marked, because this table is the
-first thing an agent reads to learn the compressed surface.
+The two modes are one language with two spellings of some words. Both modes lex
+every spelling (§3.3), so a file may mix them. The agent spelling is the one the
+formatter prints in Agent mode. **Every row below was checked against the
+compiler**, and a test holds the table in B.1 to the keyword pairs of
+`kb/lexicon.mg`, both ways.
 
-### B.1 Declaration Keywords
+### B.1 Keyword Pairs
 
-| Human          | Agent | Meaning           |
-| -------------- | ----- | ----------------- |
-| `fn`           | `f`   | Function          |
-| `val`          | `v`   | Immutable binding |
-| `var`          | `m`   | Mutable binding   |
-| `const`        | `C`   | Constant (uppercase; lowercase `c` is an identifier) |
-| `data`         | `D`   | Data declaration  |
-| `data (sum)`   | `D`   | Sum type          |
-| `trait`        | `T`   | Trait             |
-| `extend`       | `xd`  | Extend block      |
-| `mod`          | `M`   | Module            |
-| `use`          | `u`   | Import            |
-| `pub`          | `+`   | Public prefix     |
-| `async fn`     | `af`  | Async function    |
-| ~~`const fn`~~ | ~~`c f`~~ | **Neither parses.** There are no const functions |
-| ~~`pub(crate)`~~ | ~~`~`~~ | **Neither parses.** Visibility is `pub`/`+` or private |
+Every Agent sigil and the Human keyword it abbreviates, and no others. A
+construct with no row here has one spelling, used in both modes (B.2–B.8).
+`:` appears twice: after a `for` pattern it is `in`, after an `if` block it is
+`else`. `R`, `cons` and `topo` are not reserved words; they lex as identifiers
+(§3.3).
+
+| Agent  | Human       | Meaning                       |
+| ------ | ----------- | ----------------------------- |
+| `f`    | `fn`        | Function                      |
+| `+`    | `pub`       | Public prefix                 |
+| `S`    | `struct`    | Struct                        |
+| `E`    | `enum`      | Enum                          |
+| `T`    | `trait`     | Trait                         |
+| `I`    | `impl`      | Impl block                    |
+| `C`    | `const`     | Constant (uppercase; lowercase `c` is an identifier) |
+| `D`    | `data`      | Data declaration, including a sum type |
+| `v`    | `val`       | Immutable binding             |
+| `m`    | `var`       | Mutable binding               |
+| `af`   | `async`     | Async function prefix         |
+| `ret`  | `return`    | Return                        |
+| `fx`   | `effect`    | Effect declaration            |
+| `hx`   | `handle`    | Effect handler                |
+| `sp`   | `spec`      | Spec block                    |
+| `gd`   | `guard`     | Guard                         |
+| `df`   | `defer`     | Defer                         |
+| `sw`   | `swarm`     | Swarm definition              |
+| `xd`   | `extend`    | Extend block                  |
+| `M`    | `mod`       | Module                        |
+| `u`    | `use`       | Import                        |
+| `Y`    | `type`      | Type alias                    |
+| `Z`    | `static`    | Static item (retired: E0554)  |
+| `xn`   | `extern`    | Extern block                  |
+| `?`    | `if`        | Conditional                   |
+| `?=`   | `match`     | Pattern match                 |
+| `@`    | `for`       | For loop                      |
+| `:`    | `in`        | Separator of a `for` loop     |
+| `:`    | `else`      | Else branch                   |
+| `@w`   | `while`     | While loop                    |
+| `@@`   | `loop`      | Infinite loop                 |
+| `!`    | `break`     | Break                         |
+| `>>`   | `continue`  | Continue                      |
+| `~>`   | `where`     | Where clause                  |
+| `R`    | `or`        | Or                            |
+| `cons` | `consensus` | Swarm consensus field         |
+| `topo` | `topology`  | Swarm topology field          |
+
+Two spellings that look like pairs are not: `uf` is the one spelling of an
+unsafe function in both modes, and there is no `const fn`, `pub(crate)` or
+`crate::` — there is no module system to give them a meaning.
 
 ### B.2 AI Constructs
 
-> **Status: lexed, not parsed.** Fifteen of these Greek symbols are real
-> tokens (`Ψ` produces `KwPsi`, `Σ` produces `KwSigma`), and **no parser arm
-> consumes any of them** — `Ψ Classifier { … }` is `expected item, found
-> KwPsi`. `?:` is not even a token. The AI blocks use the **same keyword in
-> both modes**: `net`, `layer`, `train`, `kb`, `fact`, `rule`, `agent`,
-> `swarm`, `evolve`, `genome`, `fitness`, `select`, `crossover`, `mutate`,
-> `population`, `generations`. The table is the design, and Appendix D says
-> the same thing at more length.
-
-| Human           | Agent    | Meaning             |
-| --------------- | -------- | ------------------- |
-| `net`           | `Ψ`      | Neural network      |
-| `layer`         | `λ`      | Network layer       |
-| `Tensor<T,S>`   | `Φ[T;S]` | Tensor type         |
-| `Param<T,S>`    | `Π[T;S]` | Learnable parameter |
-| `train`         | `Θ`      | Training block      |
-| `grad`          | `∇`      | Gradient            |
-| `agent`         | `α`      | Agent               |
-| `swarm`         | `Σ`      | Multi-agent swarm   |
-| `kb`            | `κ`      | Knowledge base      |
-| `fact`          | `⊢`      | Fact assertion      |
-| `rule`          | `ρ`      | Inference rule      |
-| `query`         | `?:`     | KB query            |
-| `evolve`        | `Ω`      | Evolution block     |
-| `Genome<T>`     | `Γ[T]`   | Genome type         |
-| `fitness`       | `φ`      | Fitness function    |
-| `population`    | `η`      | Population size     |
-| `generations`   | `∞`      | Generation count    |
-| `select`        | `⊳`      | Selection operator  |
-| `crossover`     | `χ`      | Crossover operator  |
-| `mutate` (evol) | `μ`      | Mutation operator   |
-| `target`        | `→`      | Target condition    |
-| `Policy<S,A>`   | `Ξ[S,A]` | RL policy           |
-| `reward`        | `ψ`      | Reward signal       |
-| `LLM`           | `Λ`      | Language model      |
-| `KnowledgeBase` | `Κ`      | Knowledge base type |
+The AI blocks use the **same keyword in both modes**: `net`, `layer`, `train`,
+`kb`, `fact`, `rule`, `query`, `agent`, `swarm`, `evolve`, `genome`, `fitness`,
+`select`, `crossover`, `mutate`, `population`, `generations`, `rl`, `policy`,
+`reward`. Fifteen Greek letters are also reserved as tokens (`Ψ` for `net`, `Σ`
+for `swarm`, and so on, listed in D.1), but **no parser arm consumes them**:
+`Ψ Classifier { … }` is `expected item, found KwPsi`. There is no Greek spelling
+of `population`, `reward`, `generations`, `target`, `select`, `fact` or `query`,
+and no agent spelling of the type names `Tensor`, `Param`, `Genome`, `Policy`,
+`LLM` or `KnowledgeBase`.
 
 ### B.3 Control Flow
 
-| Human          | Agent      | Meaning       |
-| -------------- | ---------- | ------------- |
-| `if`           | `?`        | Conditional   |
-| `else`         | `:`        | Else branch   |
-| `else if`      | `: ?`      | Else-if. The space matters: `:?` is not a token |
-| `match`        | `?= expr {` | Pattern match. `? expr {` also parses |
-| `for x in y`   | `@ x in y` | For loop. The separator is `in`; `~` does not parse |
-| `loop`         | `@@` or `loop` | Infinite loop |
-| `while`        | `@w cond`  | While loop. `loop ?` does not parse |
-| `return`       | `ret`      | Return        |
-| `break`        | `!`        | Break         |
-| `continue`     | `>>`       | Continue      |
-| `continue`     | `>>`       | Continue      |
-| `1b`/`0b`      | `1b`/`0b`  | Booleans (both modes) |
+| Human            | Agent          | Notes                                     |
+| ---------------- | -------------- | ----------------------------------------- |
+| `if c { … }`     | `? c { … }`    |                                           |
+| `else`           | `:`            |                                           |
+| `else if`        | `: ?`          | The space matters: `:?` is a token (`ColonQuestion`) that no parser arm consumes |
+| `match e { … }`  | `?= e { … }`   | `? e { … }` also parses                   |
+| `for x in y`     | `@ x : y`      | `@ x in y` also parses; `~` does not      |
+| `loop`           | `@@`           |                                           |
+| `while c`        | `@w c`         | `loop ?` does not parse                   |
+| `return`         | `ret`          |                                           |
+| `break`          | `!`            |                                           |
+| `continue`       | `>>`           |                                           |
+| `1b` / `0b`      | `1b` / `0b`    | Booleans, the same in both modes (§3.5)   |
 
 ### B.4 Type Syntax
 
-| Human             | Agent     | Meaning             |
-| ----------------- | --------- | ------------------- |
-| `String`          | `s`       | Owned string        |
-| `&str`            | `&s`      | String slice        |
-| `[T]~`          | `[T]~`    | Growable array      |
-| `?T`       | `?T`      | Optional            |
-| `Result<T,E>`     | `R[T,E]`  | Result              |
-| `^T`          | `^T`      | Heap pointer        |
-| `Rc<T>`           | `$T`      | Reference counted   |
-| `Arc<T>`          | `@T`      | Atomic ref counted  |
-| `{K: V}`    | `{K:V}`   | Hash map            |
-| `{K}`      | `{K}`     | Hash set            |
-| `&mut T`        | `&!T`     | Exclusive reference |
-| `fn(T)->U`      | `f(T)->U` | Function pointer    |
-| `T<A>` (generics) | `T[A]`    | Generic parameters  |
-| `f64[m/s]`        | `f64[m/s]` | Float with a unit (§10.6) |
+| Human             | Agent      | Meaning                    |
+| ----------------- | ---------- | -------------------------- |
+| `String`          | `s`        | Owned string               |
+| `&str`            | `&s`       | String slice               |
+| `[T]~`            | `[T]~`     | Growable array             |
+| `?T`              | `?T`       | Optional                   |
+| `Result<T,E>`     | `R[T,E]`   | Result                     |
+| `^T`              | `^T`       | Heap pointer               |
+| `Rc<T>`           | `$T`       | Reference counted          |
+| `Arc<T>`          | `@T`       | Atomic reference counted   |
+| `{K: V}`          | `{K:V}`    | Hash map                   |
+| `{K}`             | `{K}`      | Hash set                   |
+| `&!T`             | `&!T`      | Exclusive reference; `&mut T` is not MAGE |
+| `fn(T)->U`        | `f(T)->U`  | Function pointer           |
+| `T<A>` (generics) | `T[A]`     | Generic parameters         |
+| `f64[m/s]`        | `f64[m/s]` | Float with a unit (§10.6)  |
 
 ### B.5 Tensor Operations
 
-| Human                 | Agent        | Meaning          |
-| --------------------- | ------------ | ---------------- |
-| `A @ B`               | `A ⊗ B`      | Matrix multiply  |
-| `A .* B`              | `A ⊙ B`      | Hadamard product |
-| `A.T`                 | `A⊤`         | Transpose        |
-| `A.flatten()`         | `A⊥`         | Flatten          |
-| `grad(loss, params)`  | `∇(l,p)`     | Gradient         |
-| `A \|> f \|> g`       | `A ▸ f ▸ g`  | Pipeline         |
-| `dense(in, out, act)` | `δ(i,o,a)`   | Dense layer      |
-| `conv2d(ci,co,k)`     | `⊞(ci,co,k)` | Conv layer       |
-| `dropout(rate)`       | `∅(r)`       | Dropout layer    |
+The tensor operators are single tokens and are spelled the same in both modes.
+There is no `@` or `.*` operator.
+
+| Operator   | Position | Meaning                                   |
+| ---------- | -------- | ----------------------------------------- |
+| `A ⊗ B`    | infix    | Matrix multiply                           |
+| `A ⊙ B`    | infix    | Hadamard product                          |
+| `A⊤`       | postfix  | Transpose                                 |
+| `A⊥`       | postfix  | Flatten                                   |
+| `A \|> f`  | infix    | Pipeline; `A ▸ f` is the same operator    |
+| `grad(l, p)` | call   | Gradient; `∇(l, p)` is the same call, and the second argument must be a name |
+
+The layer and activation functions are not syntax. The names a program may call
+without declaring them are the `builtin_function` facts in `kb/meaning.mg`
+(`println`, `format`, `relu`, `sigmoid`, `tanh`, `exp`, `mean`, `dot`, and so
+on); `dense`, `conv2d` and `dropout` are not among them.
 
 ### B.6 Path and Scope
 
-| Rust        | MAGE         | Meaning        |
-| ----------- | ------------ | -------------- |
-| `::`        | `.`          | Path separator. `::` does not parse in either MAGE mode |
+| Rust        | MAGE            | Meaning        |
+| ----------- | --------------- | -------------- |
+| `::`        | `.`             | Path separator. `::` does not parse in either MAGE mode |
 | `Foo { x }` | `@Foo { x: 1 }` | Struct literal. The `@` goes **before** the name, every field is named, and bare `Foo { … }` is a *map* |
-| ~~`crate::`~~ | ~~`~.`~~   | **Does not parse.** There is no module system, so there is no crate root, `super` or `self` path |
 
-### B.7 Attributes
+There is no crate root, `super` or `self` path.
 
-| Human               | Agent       | Meaning             |
-| ------------------- | ----------- | ------------------- |
-| `#[derive(...)]`    | `@d(...)`   | Derive              |
-| `#[test]`           | `@t`        | Test                |
-| `#[bench]`          | `@b`        | Benchmark           |
-| `#[inline(always)]` | `@i!`       | Inline always       |
-| `#[cfg(...)]`       | `@cfg(...)` | Conditional compile |
-| `println!("...")`   | `p"..."`    | Print line          |
-| `format!("...")`    | `f"..."`    | Format string       |
-| `eprintln!("...")`  | `ep"..."`   | Error print         |
+### B.7 Attributes and Printing
+
+An attribute is `@name` or `@name(args)` in both modes; the `#[…]` form is not
+MAGE. The formatter compresses and expands the names below
+(`ATTRIBUTE_ABBREVIATIONS` in `elision.rs`). There are no macros: `println`,
+`format` and `eprintln` are builtin functions, and `p"…"`, `f"…"` and `ep"…"`
+are the string forms that print, format and print to stderr.
+
+| Full name       | Compressed | Meaning              |
+| --------------- | ---------- | -------------------- |
+| `@derive(...)`  | `@d(...)`  | Derive               |
+| `@test`         | `@t`       | Test                 |
+| `@bench`        | `@b`       | Benchmark            |
+| `@inline`       | `@il`      | Inline               |
+| `@inline_always`| `@ila`     | Inline always        |
+| `@cfg(...)`     | `@cfg(...)`| Conditional compile  |
+
+| Function call     | String form | Meaning       |
+| ----------------- | ----------- | ------------- |
+| `println(...)`    | `p"..."`    | Print line    |
+| `format(...)`     | `f"..."`    | Format string |
+| `eprintln(...)`   | `ep"..."`   | Error print   |
 
 ### B.8 Shared Syntax (Identical in Both Modes)
 
 - The numeric types that exist (`i8`–`i128`, `u8`–`u128`, `isize`, `usize`,
   `f32`, `f64`). **`f16` and `bf16` are not type names** — the checker reports
   `unresolved type` — though `@precision(f16)` is accepted as an attribute
+- Booleans `1b` and `0b`
 - Arithmetic, comparison, logical, bitwise operators
 - Semicolons, braces, parentheses
 - Comments (`//`, `/* */`, `///`, `//!`)
@@ -2720,6 +2742,7 @@ first thing an agent reads to learn the compressed surface.
 - Range operators (`..`, `..=`)
 - Try operator (`?` postfix)
 - Closures (`|x| expr`, and `fn(x) => expr`)
+- The tensor operators of B.5
 - ~~`tensor!` literals~~ — **there are no macros**; write a list literal
 
 ### B.9 Agent Mode Safety Philosophy
@@ -2729,8 +2752,14 @@ In agent mode, safety constructs are **fully handled by the compiler and SKB** (
 | Human Syntax                   | Agent Mode Handling                              | SKB Rules |
 | ------------------------------ | ------------------------------------------------ | --------- |
 | `unsafe { ... }`               | **Parse error** — see the note below              | AEL-0001  |
-| `unsafe fn`                    | Elided — compiler detects from body analysis     | AEL-0002  |
+| `unsafe fn`                    | Spelled `uf` in both modes; elision clears its marker | AEL-0002  |
 | Lifetime annotations (`'a`)    | Inferred by compiler's LIF rules                 | AEL-0003  |
+| `&!T` explicit annotation      | Inferred — compiler determines mutability        | AEL-0004  |
+| `Send` / `Sync` bounds         | Derived automatically from type structure        | AEL-0005  |
+| `move` keyword on closures     | Inferred — compiler determines capture mode      | AEL-0006  |
+| `Pin<T>` wrapping              | Handled automatically for self-referential types | AEL-0007  |
+| `dyn` / `impl` dispatch choice | Compiler selects based on call-site analysis     | AEL-0008  |
+| `PhantomData<T>`               | Inserted automatically by compiler               | AEL-0012  |
 
 > **Retired in plan 9.2.** The `unsafe { ... }` block has no parser producer, no source used it, and its `Expr::UnsafeBlock` variant and eight pass arms were removed. Put the code in a `uf` (unsafe function) instead.
 >
@@ -2748,12 +2777,6 @@ In agent mode, safety constructs are **fully handled by the compiler and SKB** (
 > §26's equivalence table, and the keyword list in the grammar), which is why
 > it reads as implemented. Eight handling arms are the evidence that someone
 > intended it; the parser arm is the one that was never written.
-| `&mut T` explicit annotation   | Inferred — compiler determines mutability        | AEL-0004  |
-| `Send` / `Sync` bounds         | Derived automatically from type structure        | AEL-0005  |
-| `move` keyword on closures     | Inferred — compiler determines capture mode      | AEL-0006  |
-| `Pin<T>` wrapping              | Handled automatically for self-referential types | AEL-0007  |
-| `dyn` / `impl` dispatch choice | Compiler selects based on call-site analysis     | AEL-0008  |
-| `PhantomData<T>`               | Inserted automatically by compiler               | AEL-0012  |
 
 This design maximizes token efficiency (fewer tokens in the LLM context window) while maintaining full safety guarantees through compiler infrastructure rather than language syntax.
 
@@ -2791,154 +2814,139 @@ expression as their operand; they are not operators of this table.
 
 ## Appendix D: Agent Mode Symbol Reference
 
-A complete lexicon of Agent mode symbols, organized by category. This is the "genetic alphabet" of MAGE — each symbol encodes a high-level concept in minimal space.
+The symbols of Agent mode, by category. Every symbol in the first column of
+every table here is a spelling the lexer reserves (`kb/lexicon.mg`,
+`lexes_as`), and a test holds the tables to that. A spelling being lexed does
+not mean a parser arm consumes it, so each table says which it is. The
+Human↔Agent keyword pairs are B.1; §3.3 and §3.6 give the full lexical rules.
 
-> **Status: lexed, not parsed.** The Greek and mathematical symbols in D.1,
-> D.2 and D.3 are recognised by the lexer — `Ψ` produces `KwPsi`, `Σ` produces
-> `KwSigma`, and so on for fifteen of them — and **no parser arm consumes any
-> of them**. `Ψ Classifier { … }` is `expected item, found KwPsi`. The agent
-> mode that *works* is the one in D.4–D.6: the ASCII declaration sigils (`+f`,
-> `v`, `m`, `S`, `E`, `I`, `T`), the control compressions (`?`, `?=`, `@`,
-> `@@`, `!`), and the short aliases (`sw`, `topo`, `cons`, `fx`, `hx`, `gd`,
-> `df`, `xd`). The AI-construct blocks — `net`, `layer`, `train`, `kb`,
-> `agent`, `swarm`, `evolve` — use the **same keyword in both modes**.
->
-> The tables below are the design. They are worth keeping, because the
-> compression argument is the reason the language has two surfaces at all; but
-> nothing in them compiles today.
+### D.1 Greek Letters — Lexed, Not Parsed
 
-### D.1 Greek Letters — AI Constructs
+> **Status: lexed, not parsed.** Each letter below is a single token of its own
+> kind (`Ψ` produces `KwPsi`, `Σ` produces `KwSigma`), and **no parser arm
+> consumes any of them**. `Ψ Classifier { … }` is `expected item, found
+> KwPsi`. The constructs they were reserved for use the Human keyword in both
+> modes. (`∇` is the one Greek symbol that parses; it is in D.2.) Other Greek
+> letters, such as `η`, `ψ`, `Λ`, `Κ`, `σ` and `δ`, are not tokens at all and
+> give `lexer error: unexpected character`.
 
-| Symbol | Unicode | Human           | Domain     |
-| ------ | ------- | --------------- | ---------- |
-| `Ψ`    | U+03A8  | `net`           | Neural     |
-| `λ`    | U+03BB  | `layer`         | Neural     |
-| `Φ`    | U+03A6  | `Tensor`        | Algebra    |
-| `Π`    | U+03A0  | `Param`         | Algebra    |
-| `Θ`    | U+0398  | `train`         | Learning   |
-| `∇`    | U+2207  | `grad`          | Algebra    |
-| `α`    | U+03B1  | `agent`         | Agent      |
-| `Σ`    | U+03A3  | `swarm`         | Agent      |
-| `κ`    | U+03BA  | `kb`            | Symbolic   |
-| `ρ`    | U+03C1  | `rule`          | Symbolic   |
-| `Ω`    | U+03A9  | `evolve`        | Evolution  |
-| `Γ`    | U+0393  | `Genome`        | Evolution  |
-| `φ`    | U+03C6  | `fitness`       | Evolution  |
-| `χ`    | U+03C7  | `crossover`     | Evolution  |
-| `μ`    | U+03BC  | `mutate`        | Evolution  |
-| `η`    | U+03B7  | `population`    | Evolution  |
-| `Ξ`    | U+039E  | `Policy`        | RL         |
-| `ψ`    | U+03C8  | `reward`        | RL         |
-| `Λ`    | U+039B  | `LLM`           | Neural     |
-| `Κ`    | U+039A  | `KnowledgeBase` | Symbolic   |
-| `σ`    | U+03C3  | `softmax`       | Activation |
-| `δ`    | U+03B4  | `dense`         | Layer      |
+| Symbol | Unicode | Reserved for |
+| ------ | ------- | ------------ |
+| `Ψ`    | U+03A8  | `net`        |
+| `λ`    | U+03BB  | `layer`      |
+| `Φ`    | U+03A6  | `tensor`     |
+| `Π`    | U+03A0  | `param`      |
+| `Θ`    | U+0398  | `train`      |
+| `α`    | U+03B1  | `agent`      |
+| `Σ`    | U+03A3  | `swarm`      |
+| `κ`    | U+03BA  | `kb`         |
+| `ρ`    | U+03C1  | `rule`       |
+| `Ω`    | U+03A9  | `evolve`     |
+| `Γ`    | U+0393  | `genome`     |
+| `φ`    | U+03C6  | `fitness`    |
+| `χ`    | U+03C7  | `crossover`  |
+| `μ`    | U+03BC  | `mutate`     |
+| `Ξ`    | U+039E  | `policy`     |
 
-### D.2 Mathematical Operators — Tensor Algebra
+### D.2 Tensor and Pipeline Operators — Parsed
 
-| Symbol | Unicode | Human        | Meaning          |
-| ------ | ------- | ------------ | ---------------- |
-| `⊗`    | U+2297  | `⊗`          | Matrix multiply  |
-| `⊙`    | U+2299  | `⊙`          | Hadamard product |
-| `⊤`    | U+22A4  | `⊤`          | Transpose        |
-| `⊥`    | U+22A5  | `.flatten()` | Flatten          |
-| `⊢`    | U+22A2  | `fact`       | Fact assertion   |
-| `⊞`    | U+229E  | `conv2d`     | Convolution      |
-| `∅`    | U+2205  | `dropout`    | Dropout          |
+> **Status: parsed.** These are consumed: `∇` as a call (`grad` or `∇`
+> followed by `(`), `⊗` `⊙` `▸` as infix operators with the precedences of
+> Appendix C, and `⊤` `⊥` as postfix operators.
 
-### D.3 Arrows and Flow
+| Symbol | Unicode | Position | Meaning |
+| ------ | ------- | -------- | ------- |
+| `∇`    | U+2207  | call     | Gradient: `∇(loss, params)`, the second argument a name |
+| `⊗`    | U+2297  | infix    | Matrix multiply  |
+| `⊙`    | U+2299  | infix    | Hadamard product |
+| `▸`    | U+25B8  | infix    | Pipeline, the same as the ASCII pipe operator |
+| `⊤`    | U+22A4  | postfix  | Transpose        |
+| `⊥`    | U+22A5  | postfix  | Flatten          |
 
-| Symbol | Unicode | Human         | Meaning          |
-| ------ | ------- | ------------- | ---------------- |
-| `→`    | U+2192  | `target`      | Target/goal      |
-| `▸`    | U+25B8  | `\|>`         | Pipeline         |
-| `⊳`    | U+22B3  | `select`      | Selection        |
-| `∞`    | U+221E  | `generations` | Generation count |
+### D.3 Declaration Sigils
 
-### D.4 Declaration Sigils (from Core Language)
+> **Status: parsed.** Each is the Agent spelling of the Human keyword in B.1.
 
-| Symbol   | Human            | Meaning            |
-| -------- | ---------------- | ------------------ |
-| `f`      | `fn`             | Function           |
-| `v`      | `val`            | Variable           |
-| `m`      | `var`            | Mutable variable   |
-| `D`      | `data`           | Data declaration   |
-| `D`      | `data (sum)`     | Sum type           |
-| `T`      | `trait`          | Trait              |
-| `xd`     | `extend`         | Extend block       |
-| `M`      | `mod`            | Module             |
-| `u`      | `use`            | Import             |
-| `+`      | `pub`            | Public             |
-| `~`      | `pub(crate)`     | Crate visibility   |
-| `?`      | `if`/`match`     | Conditional/match  |
-| `:`      | `else`           | Else               |
-| `@`      | `for`            | For loop           |
-| `ret`    | `return`         | Return             |
-| `>>`     | `continue`       | Continue           |
-| `1b`     | `true`         | Boolean true       |
-| `0b`     | `false`        | Boolean false      |
-| `s`      | `String`       | String type        |
-| `&s`     | `&str`         | String slice       |
-| `[T]~`   | `[T]~`       | Vector             |
-| `?T`     | `?T`    | Optional           |
-| `R[T,E]` | `Result<T,E>`  | Result             |
-| `^T`     | `^T`       | Heap box           |
-| `$T`     | `Rc<T>`        | Ref counted        |
-| `@T`     | `Arc<T>`       | Atomic ref counted |
-| `{K:V}`  | `{K: V}` | Hash map           |
-| `{K}`    | `{K}`   | Hash set           |
-| `&!T`    | `&mut T`       | Mutable reference  |
-| `.`      | `::`           | Path separator     |
-| `~.`     | `crate::`      | Crate root         |
-| `@d()`   | `#[derive()]`  | Derive             |
-| `@t`     | `#[test]`      | Test               |
-| `p""`    | `println!()`   | Print              |
-| `f""`    | `format!()`    | Format             |
+| Symbol | Meaning |
+| ------ | ------- |
+| `f`    | Function |
+| `uf`   | Unsafe function (the one spelling in both modes) |
+| `af`   | Async function prefix |
+| `v`    | Immutable binding |
+| `m`    | Mutable binding |
+| `C`    | Constant |
+| `D`    | Data declaration, including a sum type |
+| `S`    | Struct |
+| `E`    | Enum |
+| `T`    | Trait |
+| `I`    | Impl block |
+| `Y`    | Type alias |
+| `Z`    | Static item |
+| `M`    | Module |
+| `u`    | Import |
+| `+`    | Public prefix |
+| `xd`   | Extend block |
+| `xn`   | Extern block |
+| `fx`   | Effect declaration |
+| `hx`   | Effect handler |
+| `sp`   | Spec block |
+| `gd`   | Guard |
+| `df`   | Defer |
 
-### D.5 Control Flow & Effect Compressions (Agent Mode)
+### D.4 Control Flow Sigils
 
-| Symbol | Human     | Meaning              |
-| ------ | --------- | -------------------- |
-| `@@`   | `loop`      | Infinite loop        |
-| `@w`   | `while`     | While loop           |
-| `>>`   | `continue`  | Continue loop        |
-| `ret`  | `return`    | Return value         |
-| `fx`   | `effect`    | Effect declaration   |
-| `hx`   | `handle`    | Effect handler       |
-| `sp`   | `spec`      | Spec/contract block  |
-| `xn`   | `extern`    | FFI extern block     |
-| `?=`   | `match`     | Pattern match        |
-| `:?`   | `else if`   | Else-if chain        |
-| `sw`   | `swarm`     | Multi-agent swarm    |
+> **Status: parsed**, except `:?`, which lexes as one token that no parser arm
+> consumes. The working else-if is `: ?` with a space.
 
-### D.6 Safety Elision (Agent Mode — Handled by Compiler)
+| Symbol | Meaning |
+| ------ | ------- |
+| `?`    | Conditional (`if`); also the postfix try operator |
+| `?=`   | Pattern match (`match`) |
+| `@`    | For loop (`for`) |
+| `:`    | The `in` of a `for` loop, and `else` |
+| `@w`   | While loop |
+| `@@`   | Infinite loop |
+| `!`    | Break |
+| `>>`   | Continue |
+| `ret`  | Return |
+| `~>`   | Where clause |
+| `R`    | `or` |
+| `:?`   | Lexed, not parsed |
 
-In agent mode, the following constructs have **no syntax** — the compiler's SKB handles them:
+### D.5 Literals and Contracts
 
-| Human Syntax     | Agent Equivalent | Compiler Handling        |
-| ---------------- | ---------------- | ------------------------ |
-| `unsafe { ... }` | *(does not parse)* | See §24 — the block form is unimplemented |
-| `unsafe fn`      | `f`              | Compiler detects unsafe  |
-| `'a` lifetimes   | *(omitted)*      | LIF rules infer all      |
-| `Send + Sync`    | *(omitted)*      | CON rules derive bounds  |
-| `Pin<T>`         | *(omitted)*      | Compiler wraps as needed |
-| `PhantomData<T>` | *(omitted)*      | Compiler inserts marker  |
-| `move \|x\|`     | `\|x\|`          | Capture mode inferred    |
+| Symbol  | Meaning |
+| ------- | ------- |
+| `1b`    | Boolean true, in both modes |
+| `0b`    | Boolean false, in both modes |
+| `@req`  | Precondition |
+| `@ens`  | Postcondition |
+| `@inv`  | Invariant |
+| `@fx`   | Effect contract |
+| `@perf` | Performance contract |
 
-### D.7 Swarm Constructs
+### D.6 Swarm Constructs
 
-| Human Field  | Agent Field | Meaning |
-| ------------ | ----------- | ------- |
-| `swarm`      | `sw`        | Swarm definition |
-| `agent:`     | `agent:`    | Agent type in the swarm |
-| `size:`      | `size:`     | Number of members |
-| `topology:`  | `topo:`     | Communication topology |
-| `consensus:` | `cons:`     | Consensus strategy |
+A swarm block has four fields and **no behaviour blocks**: `dispatch`,
+`aggregate` and `on_failure` do not exist — a swarm block declares the group,
+and the work is ordinary functions with `map` and `fold` (§9.2). The two
+fields with an Agent spelling, and the block's keyword, are:
 
-Four fields, and **no behaviour blocks**: `dispatch`, `aggregate` and
-`on_failure` do not exist — a swarm block declares the group, and the work is
-ordinary functions with `map` and `fold` (§9.2). `Σ` is a reserved token that
-no parser arm consumes; `sw` is the agent-mode spelling that works.
+| Symbol | Meaning |
+| ------ | ------- |
+| `sw`   | Swarm definition (`swarm`) |
+| `topo` | Communication topology field (`topology`) |
+| `cons` | Consensus strategy field (`consensus`) |
+
+`agent:` and `size:` have one spelling in both modes. `Σ` is a reserved token
+that no parser arm consumes; `sw` is the Agent spelling that works.
+
+### D.7 Safety Elision (Agent Mode — Handled by Compiler)
+
+In agent mode the lifetime, `Send`/`Sync`, `Pin`, `PhantomData` and
+closure-capture constructs have **no syntax**: the compiler's SKB handles them.
+B.9 is the table, and the note there records that the `unsafe { … }` block does
+not parse.
 
 ---
 
