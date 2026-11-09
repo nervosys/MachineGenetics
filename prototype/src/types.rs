@@ -1825,6 +1825,10 @@ impl TypeChecker {
                         }
                     }
                     "&" => Ty::Ref(false, Box::new(t)),
+                    // The parser builds `&!x` as this unary; the checker
+                    // called it "unknown unary operator" although `&!T`
+                    // was already a parameter type it accepted.
+                    "&!" => Ty::Ref(true, Box::new(t)),
                     // Tensor postfix: ⊤ (transpose) keeps type, ⊥ (flatten) unwraps inner.
                     "\u{22a4}" => t, // transpose — same tensor type
                     "\u{22a5}" => {
@@ -2752,6 +2756,22 @@ mod tests {
             "f g(d: &[i32]) -> i32 { sum(d) }",
         ] {
             assert_eq!(error_messages(good), Vec::<String>::new(), "{good}");
+        }
+    }
+
+    #[test]
+    fn an_exclusive_borrow_expression_has_the_exclusive_reference_type() {
+        assert_eq!(
+            error_messages("f h(a: &!i64) -> i64 { 1 }\nf m() -> i64 { var x = 3\n h(&!x) }"),
+            Vec::<String>::new()
+        );
+        // The two borrow modes stay distinct, both ways.
+        for bad in [
+            "f h(a: &!i64) -> i64 { 1 }\nf m() -> i64 { var x = 3\n h(&x) }",
+            "f h(a: &i64) -> i64 { 1 }\nf m() -> i64 { var x = 3\n h(&!x) }",
+        ] {
+            let errs = error_messages(bad);
+            assert!(errs.iter().any(|e| e.contains("borrow mode mismatch")), "{bad}: {errs:?}");
         }
     }
 
