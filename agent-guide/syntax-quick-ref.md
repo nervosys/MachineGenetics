@@ -154,7 +154,7 @@ json  kb  db                                   ← perform nothing (deliberate)
 ```
 
 `use` parses, for source compatibility, and brings nothing into scope — the
-checker warns. `::` paths are a parse error. There is no `std::io`, no
+checker refuses it (E0425). `::` paths are a parse error. There is no `std::io`, no
 `std::agent`, no `std::skb`.
 
 ## Names that are keywords
