@@ -1,72 +1,63 @@
-# .mage/agent-instructions.yaml
+# .MAGE/agent-instructions.yaml
 # Standard instruction file for AI agents working with this project.
-# Place in the project root under .mage/ to configure agent behavior.
+# Place in the project root under .MAGE/ to configure agent behavior.
 
 language: mage
 edition: "2025"
 
 # ─── Syntax Rules ────────────────────────────────────────────────────────────
+# Every spelling here was checked against the compiler. MAGE is Rust-derived,
+# not Rust: write the MAGE form.
 
 syntax_rules:
   declarations:
-    - "f / +f for private/public functions (NOT fn/pub fn)"
-    - "af / +af for async private/public functions (NOT async fn)"
-    - "v for immutable bindings (NOT let)"
-    - "m for mutable bindings (NOT let mut)"
-    - "+v for public constants (NOT pub const)"
-    - "S / +S for private/public structs (NOT struct)"
-    - "E / +E for private/public enums (NOT enum)"
-    - "T / +T for private/public traits (NOT trait)"
-    - "I Trait ~ Type for trait impls (NOT impl Trait for Type)"
-    - "I ~ Type for inherent impls (NOT impl Type)"
-    - "M / +M for private/public modules (NOT mod)"
-    - "u for imports (NOT use)"
-    - "+u for re-exports (NOT pub use)"
-    - "~ prefix for crate visibility (NOT pub(crate))"
+    - "f / +f (or fn / pub fn) for private/public functions"
+    - "af name() (or 'async name()') for async functions; NOT 'async fn'"
+    - "val / v for bindings (NOT let); var / m for mutable bindings (NOT let mut)"
+    - "val is NOT enforced immutable; do not rely on it"
+    - "pub const NAME: T = expr; for constants (the ';' is required)"
+    - "S / struct, E / enum, T / trait; +S, +E, +T for public"
+    - "I / impl: both 'impl Type { }' and 'impl Trait for Type { }' parse"
+    - "No mod, no use, no pub(crate), no const fn; 'use' is error E0425"
+    - "unsafe / uf / extern are reserved (not yet supported)"
+    - "Single letters f v m u C S E T I M U D Y Z are keywords, not identifiers"
 
   control_flow:
-    - "? for if/match (NOT if/match)"
-    - ": for else (NOT else)"
-    - "@ for for-loops (NOT for)"
-    - "ret for early return (NOT return)"
-    - "loop for infinite loops (same)"
-    - "break and continue (same)"
+    - "if c { } else { }; sigil form '? c { } : { }'; else-if is ': ?'"
+    - "match v { p => e }; sigil form '?= v { }'"
+    - "for x in xs { }; sigil form '@ x : xs { }'"
+    - "loop { } (sigil '@@'), while c { }"
+    - "return v (sigil 'ret'), break, continue"
 
   types:
-    - "s for String"
-    - "&s for &str"
-    - "[T]~ for Vec<T>"
-    - "?T for Option<T>"
-    - "R[T, E] for Result<T, E>"
-    - "^T for Box<T>"
-    - "$T for Rc<T>"
-    - "@T for Arc<T>"
-    - "{K: V} for HashMap<K, V>"
-    - "{K} for HashSet<K>"
-    - "&!T for &mut T"
-    - "1b for true, 0b for false"
+    - "str for strings (NOT String / &str)"
+    - "[T]~ for lists (Vec<T> also parses)"
+    - "?T for optional"
+    - "R[T, E] for results; '-> T or E' in a signature"
+    - "^T for Box"
+    - "{K: V} for maps"
+    - "&!T for exclusive borrow (NOT &mut T, which does not parse)"
+    - "1b / 0b for booleans (true / false are unresolved names)"
 
   literals:
-    - 'f"..." for format strings (NOT format!(...))'
-    - 'p"..." for println (NOT println!(...))'
-    - 'ep"..." for eprintln (NOT eprintln!(...))'
+    - "Struct literal: @Point { x: 1, y: 2 } (bare Point { ... } does not parse)"
+    - 'Interpolated string: f"hi {x}"; println("..."), no macros (println! is a parse error)'
+    - "List [1, 2, 3]; map {\"k\": v}"
 
   attributes:
-    - "@d(...) for #[derive(...)]"
-    - "@i for #[inline]"
-    - "@test for #[test]"
-    - "@bench for #[bench]"
-    - "@cfg(...) for #[cfg(...)]"
+    - "@name(...) attributes, e.g. @test; #[...] and #![...] do not parse"
+    - "No derive macros, no cfg; contracts go in 'sp name { @req(c) @ens(c) @fx() }'"
 
   paths:
-    - "Dot-separated: std.io.File (NOT std::io::File)"
-    - "~ for crate root: ~.module.Type"
-    - "Struct literals use @: Foo @{ x: 1, y: 2 }"
+    - "No module system: one flat namespace, '::' is a parse error, there is no std"
+    - "Capability namespaces are called with a dot: io.println, fs.read, net.connect"
 
   generics:
-    - "Square brackets: f foo[T](x: T) (NOT foo<T>)"
-    - "No turbofish: foo[i32]() (NOT foo::<i32>())"
-    - "~> for where: f foo[T](x: T) ~> T: Clone (NOT where T: Clone)"
+    - "Square brackets: f foo[T](x: T); <T> also parses"
+    - "No turbofish: foo::<i32>() is a parse error"
+
+  tensors:
+    - "Tensor ops are the glyphs ⊗ ⊙ ⊤ ⊥ (no '@' matmul, no .T, no .*)"
 
 # ─── Effect Rules ────────────────────────────────────────────────────────────
 
@@ -74,18 +65,21 @@ effect_rules:
   - "Annotate effects after parameters with / : f read() / io"
   - "Multiple effects: f fetch() / io, net"
   - "Pure functions have NO annotation"
-  - "Effects propagate: callers must declare callee effects"
-  - "Built-in effects: io, net, rng, async, agent, time, env, process"
-  - "Effect hierarchy: net implies io"
+  - "Effects propagate: callers must declare callee effects (inferred must be a subset of declared)"
+  - "Built-in effects (19): io, net, fs, async, alloc, panic, ffi, env, time, gpu, npu, llm, evolve, learn, rng, agent, proc, heldout, promote"
+  - "Use proc, not process: 'process' is a capability namespace and '/ process' is an unknown-effect error"
+  - "There is NO effect hierarchy: net does not imply io. 'f b() / net { println(\"x\") }' is E0550; declare '/ io, net'"
+  - "Capability calls perform their effect: io.println -> io, fs.read -> fs, net.connect -> net, os.* / process.* / tools.* -> proc"
   - "Use handle blocks for effect interception/mocking"
 
 # ─── Safety Rules ────────────────────────────────────────────────────────────
 
 safety_rules:
-  - "NEVER use lifetime annotations ('a) — SKB handles them"
-  - "NEVER use unsafe blocks — use Capability.request() instead"
+  - "NEVER use lifetime annotations ('a) — the SKB handles them"
+  - "NEVER use unsafe — it is reserved; use effect-declared capability calls (fs.read, net.connect) instead"
   - "NEVER use PhantomData, Pin, ManuallyDrop — not needed"
   - "Borrow rules are enforced by the SKB, not syntax"
+  - "Check generated code with 'mage-parse --check file.mg' before presenting it"
 
 # ─── Style ───────────────────────────────────────────────────────────────────
 
