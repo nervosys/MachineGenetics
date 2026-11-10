@@ -1546,8 +1546,15 @@ agent CodeReviewer {
 
 `capabilities` lists what the role may use; `requires_approval` lists
 operations it may *request* but not perform unilaterally. `mage-parse --check`
-reports each agent as **Verified** when every name is in the known set and
-**Partial** otherwise — a report, not an error.
+reports each agent that declares `capabilities` as a contract subject. It
+prints no `Verified` or `Partial` word. A capability in the checker's known
+set (`read_source`, `write_source`, `query_types`, `emit_diagnostics`,
+`io_read`, `io_write`, `net`, `alloc_heap`, `ffi`, `exec`, `env`, `fs`,
+`crypto`) gives `✓ agent.Name: proved, by contract checking`; any other gives
+`~ agent.Name: unreached`. The example above uses `llm` and `io`, which are
+not in that set, so it reports `~`. An agent with no `capabilities` line gets
+no line. This is a report, not an error. `--check` does not check the names
+in `requires_approval`.
 
 **Grammar:**
 
@@ -1598,7 +1605,8 @@ swarm_field = 'agent' ':' IDENT [ ';' ]
             ;
 ```
 
-**Topologies:**
+**Topologies** (any other value is an error, under `--check` and as S0004 in
+the JSON swarm spec; both read one list):
 
 | Topology    | Description                           | Ordering      |
 | ----------- | ------------------------------------- | ------------- |
@@ -1608,7 +1616,8 @@ swarm_field = 'agent' ':' IDENT [ ';' ]
 | `broadcast` | Simultaneous fan-out to all agents    | Simultaneous  |
 | `tree`      | Hierarchical, sub-coordinators        | Level-ordered |
 
-**Consensus strategies:**
+**Consensus strategies** (any other value is an error, under `--check` and as
+S0005 in the JSON swarm spec):
 
 | Strategy    | Description                           |
 | ----------- | ------------------------------------- |
@@ -1617,8 +1626,11 @@ swarm_field = 'agent' ':' IDENT [ ';' ]
 | `weighted`  | Agents vote with configurable weights |
 | `quorum`    | Configurable threshold (e.g., 3 of 5) |
 
-The compiler enforces swarm safety rules (SWM-*) from the SKB: deadlock prevention,
-capability propagation, topology connectivity, and agent Send+Sync requirements.
+The SKB holds fifteen swarm safety rules (`SWM-0001` to `SWM-0015`): deadlock
+prevention, capability propagation, topology connectivity, agent Send+Sync
+requirements, and others. **Designed, not enforced.** Nothing reads the
+`SwarmSafety` database to check a program; the rules exist as data only, and
+`--check` accepts a swarm that breaks any of them.
 
 ### 9.3 Swarm Operations (Library API)
 
@@ -1650,7 +1662,9 @@ f review_one(path: str) -> str / fs, agent {
 
 The five `swarm_*` orchestration keywords (`swarm_map_reduce`,
 `swarm_pipeline`, `swarm_saga`, `swarm_fan_out`, `swarm_race`) are reserved by
-the lexer and consumed by nothing; writing one is a parse error that says so.
+the lexer and consumed by nothing. Written where an expression goes, one is a parse error
+naming it a reserved word with no implementation; written as an item, it is
+the generic `expected item, found KwSwarmMapReduce`.
 
 ### 9.4 Capability-Based Security
 

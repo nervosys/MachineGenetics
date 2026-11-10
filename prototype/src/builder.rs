@@ -564,9 +564,9 @@ pub fn to_mg_source_kb(spec: &KbSpec) -> String {
 }
 
 /// Valid swarm communication topologies (each selects a comm pattern).
-const TOPOLOGIES: &[&str] = &["star", "ring", "mesh", "broadcast", "tree"];
+pub(crate) const TOPOLOGIES: &[&str] = &["star", "ring", "mesh", "broadcast", "tree"];
 /// Valid swarm consensus strategies.
-const CONSENSUS: &[&str] = &["majority", "unanimous", "weighted", "quorum"];
+pub(crate) const CONSENSUS: &[&str] = &["majority", "unanimous", "weighted", "quorum"];
 
 /// Validate an agent spec. A0001 invalid name; A0002 invalid capability;
 /// A0003 invalid `requires_approval` entry.
