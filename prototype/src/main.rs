@@ -638,7 +638,7 @@ fn main() {
                 }
                 return;
             }
-            match eval::run_source(&src, func, &nums) {
+            match eval::run_source_on_eval_stack(src, func, nums) {
                 Ok(v) => println!("{v}"),
                 Err(e) => {
                     eprintln!("eval error: {e}");
