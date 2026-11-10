@@ -539,7 +539,7 @@ XOR_EQ = '^=' ;  SHL_EQ = '<<=' ;  SHR_EQ = '>>=' ;
 
 /* Other multi-character operators */
 AND_NOT = '&!' ;  AND_TILDE = '&~' ;  PERCENT_NOT = '%!' ;  HASH_TILDE = '#~' ;
-PIPE = '|>' ;  TODO = '??' ;  UNIMPLEMENTED = '???' ;  COLON_QUESTION = ':?' ;
+PIPE = '|>' ;  TODO = '??' ;  UNIMPLEMENTED = '???' ;
 
 /* Tensor symbols */
 MATMUL = '⊗' ;  HADAMARD = '⊙' ;  TRANSPOSE = '⊤' ;  FLATTEN = '⊥' ;
@@ -2762,7 +2762,7 @@ and no agent spelling of the type names `Tensor`, `Param`, `Genome`, `Policy`,
 | ---------------- | -------------- | ----------------------------------------- |
 | `if c { … }`     | `? c { … }`    |                                           |
 | `else`           | `:`            |                                           |
-| `else if`        | `: ?`          | The space matters: `:?` is a token (`ColonQuestion`) that no parser arm consumes |
+| `else if`        | `: ?`          | `:?` without the space is the same two tokens |
 | `match e { … }`  | `?= e { … }`   | `? e { … }` also parses                   |
 | `for x in y`     | `@ x : y`      | `@ x in y` also parses; `~` does not      |
 | `loop`           | `@@`           |                                           |
@@ -3010,8 +3010,7 @@ the Agent spelling of the Human keyword in B.1.
 
 ### D.4 Control Flow Sigils
 
-> **Status: parsed**, except `:?`, which lexes as one token that no parser arm
-> consumes. The working else-if is `: ?` with a space.
+> **Status: parsed.**
 
 | Symbol | Meaning |
 | ------ | ------- |
@@ -3026,7 +3025,6 @@ the Agent spelling of the Human keyword in B.1.
 | `ret`  | Return |
 | `~>`   | Where clause |
 | `R`    | `or` |
-| `:?`   | Lexed, not parsed |
 
 ### D.5 Literals and Contracts
 
