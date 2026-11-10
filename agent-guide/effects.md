@@ -20,25 +20,33 @@ no annotation. Impure functions list their effects after `/`.
 
 ## Built-In Effects
 
-| Effect    | Meaning            | Typical Operations                                       |
-| --------- | ------------------ | -------------------------------------------------------- |
-| `io`      | File / console I/O | `fs::read`, `fs::write`, `println!("...")`, stdin/stdout |
-| `net`     | Network access     | `http::get`, `TcpStream::connect`, DNS lookup            |
-| `rng`     | Randomness         | `rng::gen()`, `rng::shuffle()`                           |
-| `async`   | Async execution    | `.await`, `spawn`, `select`                              |
-| `agent`   | Agent operations   | `Agent::execute`, `Swarm::spawn`, `Capability::request`  |
-| `time`    | Clock access       | `Instant::now()`, `sleep`, `SystemTime`                  |
-| `env`     | Environment access | `env::var()`, `env::args()`, `env::current_dir()`        |
-| `process` | Process control    | `Command::new()`, `exit()`, `spawn_process()`            |
+There are nineteen built-in effects. A function acquires one by annotation, by reaching its capability namespace, or by calling a bare builtin (`println`, `panic`). An effect marked *annotation* has no namespace and is granted only by `/ effect`.
 
-## Effect Hierarchy
+| Effect    | Domain                       | How a function acquires it                              |
+| --------- | ---------------------------- | ------------------------------------------------------- |
+| `io`      | read, write, seek, close     | `println(…)`, or the `io` namespace: `io.read_line(…)`  |
+| `fs`      | open, stat, mkdir, remove    | the `fs` namespace: `fs.read(…)`                        |
+| `net`     | connect, listen, send        | the `net` namespace: `net.connect(…)`                   |
+| `env`     | get_var, set_var             | the `env` namespace: `env.get_env(…)`                   |
+| `time`    | now, sleep, timeout          | the `time` namespace: `time.now()`                      |
+| `rng`     | random, seed, sample         | the `rng` namespace: `rng.random()`                     |
+| `agent`   | lifecycle, message, lease    | the `agent` or `swarm` namespace                        |
+| `proc`    | spawn, exec, tool invocation | the `process`, `os`, `sys` or `tools` namespace         |
+| `alloc`   | alloc, dealloc, realloc      | the `mem` namespace                                     |
+| `llm`     | generate, embed, analyze     | the `llm` namespace: `llm.generate(…)`                  |
+| `gpu`     | dispatch, synchronize        | the `gpu` namespace                                     |
+| `panic`   | panic, catch_panic           | `panic(…)`, or annotation                               |
+| `async`   | spawn, join, select          | annotation                                              |
+| `ffi`     | call_foreign                 | annotation                                              |
+| `npu`     | dispatch, synchronize        | annotation                                              |
+| `evolve`  | evaluate, select, mutate     | annotation                                              |
+| `learn`   | forward, backward, step      | annotation                                              |
+| `heldout` | read                         | annotation                                              |
+| `promote` | promote, journal             | annotation                                              |
 
-Some effects imply others. You only need to declare the **most specific** effect.
+## No Effect Hierarchy
 
-```
-net    ⊃  io       →  / net  (already includes io)
-agent  ⊃  async    →  / agent (already includes async)
-```
+Effects do not imply one another. `/ net` does not cover `io`, and `/ agent` does not cover `async`. Each effect a function performs must be declared, or the checker reports E0550.
 
 **Examples:**
 ```MAGE
@@ -223,12 +231,12 @@ I FileSource {
 | Scenario               | Effect Annotation                   |
 | ---------------------- | ----------------------------------- |
 | CLI tool reading files | `/ io, env`                         |
-| HTTP API handler       | `/ net, io` (simplified to `/ net`) |
+| HTTP API handler       | `/ net, io`                         |
 | Agent executing a task | `/ agent`                           |
 | Swarm with network I/O | `/ net, agent`                      |
 | Random data generator  | `/ rng`                             |
 | Timed benchmark        | `/ time, io`                        |
-| Process launcher       | `/ process, io`                     |
+| Process launcher       | `/ proc, io`                        |
 | Pure computation       | *(none)*                            |
 | Async-only (no I/O)    | `/ async`                           |
 | Full-stack agent       | `/ net, agent, time, env`           |
@@ -238,7 +246,7 @@ I FileSource {
 1. **Pure by default** — no annotation means no side effects
 2. **Declare all effects** — every impure operation must be annotated
 3. **Effects propagate** — callers inherit callee effects
-4. **Hierarchy simplifies** — `net ⊃ io`, `agent ⊃ async`
+4. **No hierarchy** — each effect performed must be declared; `net` does not imply `io`
 5. **Handle for testing** — use `handle` blocks to mock effects
 6. **Trait bounds match** — impl effects ≤ trait method effects
 7. **Closures carry effects** — annotate function parameters with their effects

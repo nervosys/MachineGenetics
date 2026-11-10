@@ -21,21 +21,17 @@ ranked fix candidates with confidence scores and token cost.
 
 ```json
 // Request
-{"jsonrpc":"2.0","id":1,"method":"build/heal","params":{"source":"pub fn add(a: i32, b: i32) { a + b }"}}
+{"jsonrpc":"2.0","id":1,"method":"build/heal","params":{"source":"pub fn add(a: i32, b: i32) -> i32 {\n  a + b\n"}}
 
-// Response
-{"jsonrpc":"2.0","id":1,"result":{
-  "ok": false,
-  "diagnostics": [
-    {
-      "diagnostic": {"severity":"Error","message":"missing return type on `add`","span":{"line":1,"col":1}},
-      "fixes": [
-        {"id":"missing-return-type-0","description":"add return type annotation `-> _`","confidence":0.85,"token_cost":3}
-      ]
-    }
-  ]
-}}
+// Response (trimmed; `edits` omitted)
+{"id":1,"jsonrpc":"2.0","result":{"ok":false,"diagnostics":[{
+  "diagnostic":{"category":"SyntaxError","id":"E0001","severity":"Error",
+    "message":"expected RBrace, found Eof '' (in Block)","span":{"line":3,"col":1}},
+  "fixes":[{"id":"insert-rbrace-before-token","description":"Insert `}` at the parser's error position",
+    "confidence":0.55,"token_cost":1,"semantics_preserving":true,"edits":[...]}]}]}}
 ```
+
+A complete function with no return type, `pub fn add(a: i32, b: i32) { a + b }`, returns `ok: true` with no diagnostics, so `build/heal` does not flag it.
 
 **Agent workflow**: Call `build/heal` instead of `build/check`. If fixes are
 returned, apply the highest-`confidence` fix and re-check. Iterate until clean.
@@ -125,14 +121,11 @@ Verify that a function's implementation satisfies its contracts.
 }}
 ```
 
-Returns `status` (Verified/Partial/Failed/Trivial), individual `checks`, and
-`effect_checks` with consistency results.
+Returns `verdict` at the top level (`proved`, `evidenced`, `unspecified`, `unreached` or `refuted`), and `result` with `status` (`Verified`, `Partial`, `Failed` or `Unspecified`), `checks` and `effect_checks`.
 
-## Agent Memory (stdlib)
+## Agent Memory (not implemented)
 
-RAP's memory service exposes four tiers. There is no `std::agent::Memory`
-type — there is no module system, and the tiers are reached over the
-protocol, not through a language type:
+`memory/set`, `memory/get` and `memory/promote` are not RAP methods. The server answers each with `-32601 Method not found`, and `rap/methods` lists what it dispatches. The four tiers below are a design only; there is no `std::agent::Memory` type.
 
 | Tier      | Lifetime                | Use Case                            |
 | --------- | ----------------------- | ----------------------------------- |
@@ -140,19 +133,6 @@ protocol, not through a language type:
 | Session   | Current conversation    | Context, conversation history       |
 | Project   | Per-project, persistent | Learned patterns, project rules     |
 | Global    | Cross-project, shared   | Ecosystem knowledge, shared models  |
-
-```json
-// Write a project-tier entry
-{"jsonrpc":"2.0","id":1,"method":"memory/set",
- "params":{"tier":"project","key":"convention","value":"use_camelCase","tags":["style"]}}
-
-// Read — searches every tier, nearest first
-{"jsonrpc":"2.0","id":2,"method":"memory/get","params":{"key":"convention"}}
-
-// Promote an entry to a longer-lived tier
-{"jsonrpc":"2.0","id":3,"method":"memory/promote",
- "params":{"key":"convention","from":"session","to":"project"}}
-```
 
 ## Swarm Orchestration Patterns
 
@@ -167,8 +147,7 @@ protocol, not through a language type:
 **None of these five are implemented.** `swarm_map_reduce`, `swarm_pipeline`,
 `swarm_saga`, `swarm_fan_out` and `swarm_race` are reserved words in the lexer
 that no parser arm and no evaluator consumes, and MAGE_SPEC.md does not mention
-them. Writing one is a parse error that says so — and because they are
-reserved, you cannot define a function of that name to fill the gap either.
+them. As an item, or as a function name, one is the generic parse error `expected item, found KwSwarmRace`; in an expression the error names the reserved word. Either way they are reserved, so you cannot define a function of that name to fill the gap.
 
 Write the patterns out instead. Fan-out is `map`, fan-in is `fold`:
 

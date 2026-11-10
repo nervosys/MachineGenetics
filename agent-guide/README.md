@@ -37,7 +37,7 @@ safety_profile: "full"
 allowed_effects: ["io", "net", "async"]
 project_conventions:
   - "All public functions must have effect annotations"
-  - "Use agent.Swarm for parallel work, not raw spawn"
+  - "Use a `swarm` block for parallel work, not raw spawn"
 ```
 
 ## Design Principles

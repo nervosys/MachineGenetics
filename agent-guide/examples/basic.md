@@ -73,8 +73,8 @@ pub fn main() -> i32 / io {
 
 **Response:**
 ```MAGE
-// No attributes, no `Self`, no field shorthand: a struct literal names every
-// field, and `@Name { … }` is the literal form — bare `Name { … }` is a map.
+// No attributes and no `Self`. `@Name { … }` is the struct literal (field
+// shorthand `@Name { x, y }` works too); bare `Name { … }` is not a struct.
 pub struct Rectangle { width: f64, height: f64 }
 
 extend Rectangle {
