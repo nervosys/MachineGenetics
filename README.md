@@ -369,7 +369,7 @@ cargo run --bin token-bench --manifest-path prototype/Cargo.toml
 | `+E`    | `pub enum`             | `:`      | `else`                |
 | `+T`    | `pub trait`            | `@`      | `for .. in`           |
 | `I`     | `impl`                 | `@@`     | `loop`                |
-| `u`     | `use`                  | `@w`     | `while`               |
+| `u`     | `use` (an error, E0425) | `@w`    | `while`               |
 | `.`     | `::` (path)            | `break`  | `break` (no sigil)    |
 | `@d()`  | `#[derive()]`          | `>>`     | `continue`            |
 | `p""`   | `println!()`           | `1b`     | `true`                |
