@@ -260,6 +260,40 @@ pub struct Interp {
     /// `@inv` invariants of each struct, parsed, checked each time a struct
     /// literal of that type is built, with `self` bound to it.
     invariants: HashMap<String, Vec<(crate::contract::Clause, Expr)>>,
+    /// An opt-in call trace: one line per user-function entry and exit.
+    ///
+    /// `None` unless a caller asked for one ([`run_bounded_traced`]), and then
+    /// the only cost on an ordinary run is the `is_some` test in
+    /// [`Interp::call_user`]: arguments and results are rendered to text only
+    /// when the trace is on. Capped, so a deep recursion cannot turn a debug
+    /// report into a memory problem.
+    trace: Option<RefCell<CallTrace>>,
+}
+
+/// The lines of an opt-in call trace, and how many did not fit.
+#[derive(Debug, Default)]
+struct CallTrace {
+    lines: Vec<String>,
+    cap: usize,
+    dropped: usize,
+}
+
+impl CallTrace {
+    fn push(&mut self, line: String) {
+        if self.lines.len() < self.cap {
+            self.lines.push(line);
+        } else {
+            self.dropped += 1;
+        }
+    }
+
+    fn finish(self) -> Vec<String> {
+        let mut lines = self.lines;
+        if self.dropped > 0 {
+            lines.push(format!("… {} more call event(s) not recorded (cap {})", self.dropped, self.cap));
+        }
+        lines
+    }
 }
 
 /// The message a fuel-bounded run fails with when its budget runs out.
@@ -386,6 +420,7 @@ impl Interp {
             preconditions,
             postconditions,
             invariants,
+            trace: None,
         }
     }
 
@@ -512,7 +547,21 @@ impl Interp {
 
     fn call_user(&self, fd: &FunctionDef, args: Vec<Value>) -> R {
         self.enter()?;
+        if let Some(t) = &self.trace {
+            let shown: Vec<String> = args.iter().map(|v| v.to_string()).collect();
+            let pad = "  ".repeat(self.depth.get().saturating_sub(1) as usize);
+            t.borrow_mut().push(format!("{pad}-> {}({})", fd.name, shown.join(", ")));
+        }
         let r = self.call_user_inner(fd, args);
+        if let Some(t) = &self.trace {
+            let pad = "  ".repeat(self.depth.get().saturating_sub(1) as usize);
+            let line = match &r {
+                Ok(v) | Err(Control::Return(v)) => format!("{pad}<- {} = {v}", fd.name),
+                Err(Control::Err(e)) => format!("{pad}<- {} failed: {e}", fd.name),
+                Err(_) => format!("{pad}<- {} (break/continue)", fd.name),
+            };
+            t.borrow_mut().push(line);
+        }
         self.leave();
         r
     }
@@ -2692,8 +2741,26 @@ pub fn run_metered(
         Ok(a) => a,
         Err(e) => return (Err(e), 0),
     };
-    let (result, spent) = run_on_bounded_thread(module, name, args, fuel);
+    let (result, spent, _) = run_on_bounded_thread(module, name, args, fuel, None);
     (result.map(Portable::into_value), spent)
+}
+
+/// [`run_bounded`] with a call trace: one line per user-function entry
+/// (`-> f(args)`) and exit (`<- f = value` or `<- f failed: …`), indented by
+/// depth, at most `cap` lines plus a note of how many were dropped.
+pub fn run_bounded_traced(
+    module: &Module,
+    name: &str,
+    args: Vec<Value>,
+    fuel: u64,
+    cap: usize,
+) -> (Result<Value, BoundedError>, Vec<String>) {
+    let args = match args.iter().map(Portable::from_value).collect::<Result<Vec<_>, _>>() {
+        Ok(a) => a,
+        Err(e) => return (Err(e), Vec::new()),
+    };
+    let (result, _, trace) = run_on_bounded_thread(module, name, args, fuel, Some(cap));
+    (result.map(Portable::into_value), trace)
 }
 
 /// One fuel-bounded run, handed to a worker thread. Owned, because the worker
@@ -2704,7 +2771,9 @@ struct Job {
     name: String,
     args: Vec<Portable>,
     fuel: u64,
-    reply: std::sync::mpsc::Sender<(Result<Portable, BoundedError>, u64)>,
+    /// `Some(cap)` to record a call trace of at most `cap` lines.
+    trace_cap: Option<usize>,
+    reply: std::sync::mpsc::Sender<(Result<Portable, BoundedError>, u64, Vec<String>)>,
 }
 
 /// A worker thread that runs jobs sent to it, one at a time.
@@ -2732,14 +2801,15 @@ fn run_on_bounded_thread(
     name: &str,
     args: Vec<Portable>,
     fuel: u64,
-) -> (Result<Portable, BoundedError>, u64) {
+    trace_cap: Option<usize>,
+) -> (Result<Portable, BoundedError>, u64, Vec<String>) {
     let (reply, outcome) = std::sync::mpsc::channel();
-    let mut job = Job { module: module.clone(), name: name.to_string(), args, fuel, reply };
+    let mut job = Job { module: module.clone(), name: name.to_string(), args, fuel, trace_cap, reply };
     // A worker whose thread has died is replaced, and the job retried once.
     for _ in 0..2 {
         let jobs = match WORKER.with(|slot| worker_jobs(&mut slot.borrow_mut())) {
             Ok(jobs) => jobs,
-            Err(e) => return (Err(BoundedError::Error(format!("spawn evaluator thread: {e}"))), 0),
+            Err(e) => return (Err(BoundedError::Error(format!("spawn evaluator thread: {e}"))), 0, Vec::new()),
         };
         match jobs.send(job) {
             Ok(()) => {
@@ -2747,7 +2817,7 @@ fn run_on_bounded_thread(
                 // this fails only if the thread is gone after taking the job.
                 return outcome.recv().unwrap_or_else(|_| {
                     WORKER.with(|slot| *slot.borrow_mut() = None);
-                    (Err(BoundedError::Error("evaluator thread panicked".into())), fuel)
+                    (Err(BoundedError::Error("evaluator thread panicked".into())), fuel, Vec::new())
                 });
             }
             // The worker died while idle: the job came back, so send it again.
@@ -2757,7 +2827,7 @@ fn run_on_bounded_thread(
             }
         }
     }
-    (Err(BoundedError::Error("evaluator thread unavailable".into())), 0)
+    (Err(BoundedError::Error("evaluator thread unavailable".into())), 0, Vec::new())
 }
 
 /// The sender to the caller's worker, spawning the worker if there is none.
@@ -2771,26 +2841,31 @@ fn worker_jobs(slot: &mut Option<Worker>) -> std::io::Result<std::sync::mpsc::Se
         .spawn(move || {
             // Ends when the caller's thread exits and drops the sender.
             for job in inbox {
-                let Job { module, name, args, fuel, reply } = job;
+                let Job { module, name, args, fuel, trace_cap, reply } = job;
                 let run = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                     #[cfg(test)]
                     if name == PANIC_TEST_ENTRY {
                         panic!("deliberate panic for the worker test");
                     }
-                    let interp = Interp::with_fuel(&module, fuel);
+                    let mut interp = Interp::with_fuel(&module, fuel);
+                    if let Some(cap) = trace_cap {
+                        interp.trace = Some(RefCell::new(CallTrace { cap, ..CallTrace::default() }));
+                    }
                     let args = args.into_iter().map(Portable::into_value).collect();
                     let result = match interp.run(&name, args) {
                         Ok(v) => Portable::from_value(&v),
                         Err(e) if e == FUEL_EXHAUSTED => Err(BoundedError::FuelExhausted),
                         Err(e) => Err(BoundedError::Error(e)),
                     };
-                    (result, fuel - interp.fuel_left().unwrap_or(0))
+                    let spent = fuel - interp.fuel_left().unwrap_or(0);
+                    let trace = interp.trace.take().map(|t| t.into_inner().finish()).unwrap_or_default();
+                    (result, spent, trace)
                 }));
                 // A panic (integer overflow in a debug build, say) spent an
                 // unknown amount; report the whole budget rather than pretend it
                 // was free. The panic is caught, so this worker serves the next run.
                 let outcome = run.unwrap_or_else(|_| {
-                    (Err(BoundedError::Error("evaluator thread panicked".into())), fuel)
+                    (Err(BoundedError::Error("evaluator thread panicked".into())), fuel, Vec::new())
                 });
                 // The caller may have stopped waiting; nothing to do then.
                 let _ = reply.send(outcome);
