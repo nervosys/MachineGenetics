@@ -257,6 +257,9 @@ pub struct Interp {
     /// `@ens` postconditions of each top-level function, parsed, checked at
     /// every return (plan C1).
     postconditions: HashMap<String, Vec<(crate::contract::Clause, Expr)>>,
+    /// `@inv` invariants of each struct, parsed, checked each time a struct
+    /// literal of that type is built, with `self` bound to it.
+    invariants: HashMap<String, Vec<(crate::contract::Clause, Expr)>>,
 }
 
 /// The message a fuel-bounded run fails with when its budget runs out.
@@ -353,6 +356,25 @@ impl Interp {
                 map.entry(fd.name.clone()).or_default().push((clause, expr));
             }
         }
+        // A struct's `@inv`: nothing checked it at run time, so a value that
+        // broke its own invariant was built and used without complaint.
+        let mut invariants: HashMap<String, Vec<(crate::contract::Clause, Expr)>> = HashMap::new();
+        for item in &module.items {
+            let ItemKind::Struct(sd) = &item.kind else { continue };
+            for c in sd.contracts.iter().filter(|c| c.kind == crate::ast::ContractClauseKind::Invariant) {
+                let clause = crate::contract::Clause {
+                    kind: c.kind,
+                    condition: c.condition.clone(),
+                    message: c.message.clone(),
+                    span: c.span.clone(),
+                    function: sd.name.clone(),
+                    origin: format!("S {}", sd.name),
+                };
+                if let Ok(expr) = crate::contract::prepare(&clause, Some(&["self".to_string()])) {
+                    invariants.entry(sd.name.clone()).or_default().push((clause, expr));
+                }
+            }
+        }
         Interp {
             funcs,
             methods,
@@ -363,6 +385,7 @@ impl Interp {
             depth: Cell::new(0),
             preconditions,
             postconditions,
+            invariants,
         }
     }
 
@@ -1074,7 +1097,19 @@ impl Interp {
                     };
                     fvals.push((fi.name.clone(), v));
                 }
-                Ok(Value::Struct(name, fvals))
+                let built = Value::Struct(name.clone(), fvals);
+                for (clause, expr) in self.invariants.get(&name).into_iter().flatten() {
+                    let mut scope = env.clone();
+                    scope.define("self".to_string(), built.clone());
+                    if !truthy(&self.eval(expr, &mut scope)?) {
+                        return err(format!(
+                            "contract violated: `{}` of `{name}` ({}) is false: built as {built}",
+                            clause.display(),
+                            clause.located_origin(),
+                        ));
+                    }
+                }
+                Ok(built)
             }
             Expr::FieldAccess { object, field } => {
                 // `Mode.Count` parses as a field access on the *type* name, so
@@ -3306,6 +3341,14 @@ mod tests {
     /// A second derivative needs a second level of dual numbers, which this
     /// evaluator does not carry. It says so rather than answering with the
     /// first derivative, which is the shape of a silently wrong answer.
+    #[test]
+    fn a_struct_invariant_is_checked_when_the_struct_is_built() {
+        let src = "@inv(self.n >= 0)\nS Ctr { n: i64 }\nf mk(k: i64) -> i64 { val c = @Ctr { n: k }\n c.n }";
+        assert_eq!(run_source(src, "mk", &[3]), Ok(Value::Int(3)));
+        let e = run_source(src, "mk", &[-5]).expect_err("a broken invariant must fail the run");
+        assert!(e.contains("contract violated") && e.contains("self.n >= 0") && e.contains("Ctr"), "{e}");
+    }
+
     #[test]
     fn nested_grad_is_refused_rather_than_answered_wrongly() {
         let e = run_source("f p() -> f64 { val w = 2.0; grad(grad(w * w, w), w) }", "p", &[])
