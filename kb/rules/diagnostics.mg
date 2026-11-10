@@ -73,6 +73,7 @@ kb Diagnostics {
     fact instance_of("E0425", Diagnostic);
     fact diagnostic_row("E0425", "Error", "UnresolvedName", "Unresolved name");
     fact enforced_by("E0425", "resolve");
+    fact enforced_by("E0425", "types");
     fact tested_by("E0425", "unresolved_name");
 
     fact instance_of("E0428", Diagnostic);
