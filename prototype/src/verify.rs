@@ -61,7 +61,7 @@ impl VerifyStatus {
             // adjudicated, not a weak pass. It rendered as `~` beside `✓` —
             // one character away from looking like success.
             VerifyStatus::Partial => Evidence::Unreached {
-                why: "some conditions are not decided statically; `--eval` checks a function's @req and @ens at run time, but no run-time check covers a struct's @inv, a spec with no function, or an undeclared effect".into(),
+                why: "some conditions are not decided statically; `--eval` checks a function's @req and @ens, and a struct's @inv each time one is built, at run time, but no run-time check covers a spec with no function, or an undeclared effect".into(),
             },
             VerifyStatus::Failed => Evidence::Refuted { at: fqn.to_string() },
             VerifyStatus::Unspecified => Evidence::Unspecified,
