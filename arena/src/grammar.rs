@@ -60,10 +60,17 @@ struct Space {
     fn_head: String,
     /// The whole signature the profile states: `f gen(s: usize) -> [usize]`.
     signature: String,
+    /// The function that signature names: `gen`.
+    entry: String,
     max_depth: usize,
     max_nest: usize,
     int_extra_depth: usize,
     limits: HashMap<String, (u64, u64)>,
+}
+
+/// The function every candidate defines, as the profile's signature names it.
+pub(crate) fn entry() -> &'static str {
+    &space().entry
 }
 
 fn space() -> &'static Space {
@@ -86,6 +93,7 @@ fn space() -> &'static Space {
             texts: p.texts.iter().cloned().collect(),
             signature: p.signature.clone(),
             fn_head: p.signature.split('(').next().expect("a signature").trim().to_string(),
+            entry: p.signature.split('(').next().and_then(|h| h.split_whitespace().last()).expect("a named signature").to_string(),
             list_rules: p.list_forms.iter().map(|f| f.name.clone()).collect(),
             int_rules: p.int_forms.iter().map(|f| f.name.clone()).collect(),
             limits,
@@ -2390,6 +2398,27 @@ mod tests {
         let source = Program::parse("range(3)").unwrap().source();
         assert!(source.starts_with(&format!("@role(candidate)
 {stated} {{")), "{source}");
+    }
+
+    #[test]
+    fn the_entry_is_the_function_the_profiles_signature_names() {
+        let kb = mage_prototype::kb::load().expect("the knowledge base loads");
+        let stated = kb
+            .facts("profile_signature")
+            .into_iter()
+            .find(|f| f[0] == "arena")
+            .expect("the arena states a signature")[1]
+            .clone();
+        assert!(stated.starts_with(&format!("f {}(", entry())), "{stated}");
+        assert_eq!(crate::substrate::entry(), entry());
+        // The substrate runs what the profile names, and refuses any other name.
+        let sub = crate::substrate::Substrate::default();
+        let source = Program::parse("range(3)").unwrap().source();
+        assert!(sub.prepare(&source).is_ok(), "{source}");
+        let renamed = source.replacen(&format!(" {}(", entry()), " other(", 1);
+        assert_ne!(renamed, source);
+        let refused = sub.prepare(&renamed).expect_err("a function the profile does not name");
+        assert!(refused.1.contains(&format!("`{}`", entry())), "{refused:?}");
     }
 
     #[test]
