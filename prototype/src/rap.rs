@@ -6,6 +6,7 @@
 ///   build/check       — check syntax (parse + report errors)
 ///   build/heal        — check + generate fix candidates (P22)
 ///   build/recover     — apply 3-stage recovery, return final source + stage
+///   build/selfheal    — intent-guided heal loop + test-driven repair (`--heal`)
 ///   cost/query        — query per-construct cost estimates (P19)
 ///   cost/compare      — compare costs of two constructs
 ///   skb/query         — query structured knowledge base (P14)
@@ -1077,6 +1078,22 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
             })
         }
 
+        // Intent-guided self-healing, the engine of `mage-parse --heal`:
+        // compile-time heal steps, the debug report, the repair if any, and a
+        // diff. Returns the healed source; it writes nothing.
+        "build/selfheal" => {
+            let fuel = params
+                .get("fuel")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(crate::self_heal::DEFAULT_FUEL);
+            let report =
+                crate::self_heal::heal_program(source, crate::self_heal::DEFAULT_MAX_ROUNDS, fuel);
+            let diff = crate::self_heal::unified_diff(source, &report.healed, "a/source", "b/source");
+            let mut v = serde_json::to_value(&report).unwrap_or_default();
+            v["diff"] = serde_json::Value::String(diff);
+            v
+        }
+
         // ── Agentic Binary Language binary IR transport (application/abl) ──────────
 
         // One-shot path: broken source → 3-stage mechanical recover →
@@ -1433,6 +1450,7 @@ pub const METHODS: &[&str] = &[
     "build/check",
     "build/heal",
     "build/recover",
+    "build/selfheal",
     "capability/check",
     "cost/compare",
     "cost/query",
@@ -1949,6 +1967,7 @@ mod tests {
             ("build/check", serde_json::json!({ "source": SRC })),
             ("build/heal", serde_json::json!({ "source": SRC })),
             ("build/recover", serde_json::json!({ "source": SRC })),
+            ("build/selfheal", serde_json::json!({ "source": SRC, "fuel": 100000 })),
             ("abl/encode", serde_json::json!({ "source": SRC })),
             ("abl/run", serde_json::json!({ "source": SRC })),
             ("pipeline/recover-and-encode", serde_json::json!({ "source": SRC })),

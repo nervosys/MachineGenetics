@@ -8,6 +8,7 @@ Beyond the base `language/*` and `build/check` methods, RAP provides:
 | Method             | Purpose                               | Key Params                                                       |
 | ------------------ | ------------------------------------- | ---------------------------------------------------------------- |
 | `build/heal`       | Parse + generate fix candidates (P22) | `source`                                                         |
+| `build/selfheal`   | Intent-guided heal loop + repair      | `source`, `fuel`                                                 |
 | `cost/query`       | Per-construct cost estimate (P19)     | `construct`, `target`, `opt`                                     |
 | `cost/compare`     | Compare two constructs                | `a`, `b`, `target`                                               |
 | `skb/query`        | Query structured knowledge base (P14) | `by` (fqn/effect/capability/tag/rust_alias/module), `value`      |
@@ -47,6 +48,64 @@ returned, apply the highest-`confidence` fix and re-check. Iterate until clean.
 > candidates in this order. **Reading `0.85` as "85% likely correct" is
 > not.** Re-check after applying, which this workflow already tells you to
 > do, and treat the number as an ordering and nothing more.
+
+## `build/selfheal` and `mage-parse --heal`
+
+`build/heal` lists candidates; `build/selfheal` (and the CLI mode
+`mage-parse --heal FILE [--write] [--json] [--fuel N]`) applies them, under
+rules taken from the program itself. The code is `prototype/src/intent.rs`
+and `prototype/src/self_heal.rs`.
+
+**Intent.** Read from four sources only, and each item records which:
+function signatures (parameter names and types, return type, generics,
+`where`), declared effects, `@req`/`@ens` clauses (on the function or in a
+`sp` block) and struct `@inv`, and `@test` functions: zero-argument
+top-level functions carrying `@test` or `@t`. A test passes when the
+fuel-bounded evaluator returns without error. Names and comments are not read.
+
+**Compile time.** Each round checks the source, gathers every candidate
+`heal_one` ranks for each error (plus `recover` when the source does not
+parse), applies each to a copy and re-checks. A candidate is accepted only if
+the error count strictly drops, every function keeps its signature, declared
+effects and contracts, struct invariants are unchanged, no `@test` is removed,
+and every `@test` that passed before the round still passes. Among accepted
+candidates: semantics-preserving first, then fewer remaining errors, then the
+`confidence` prior. One fix per round; the loop stops at zero errors, at a
+round with nothing accepted, or after 8 rounds.
+
+**Run time.** Every `@test`, and every zero-argument function with contracts,
+runs with a fuel budget (default 200000 per run). A failing run is reported
+with its error, the contract clause or assertion that failed, and a call trace
+(at most 64 lines; tracing is off unless requested). Then single-site
+mutations of the non-test functions the failing runs can reach are tried in
+this order: comparison swaps (`<`/`<=`, `>`/`>=`, `==`/`!=`), binary `+`/`-`,
+decimal integer literal +1/-1, swapped `if`/`else` blocks; at most 500. The
+first mutant is accepted that parses, keeps the intent, adds no new checker
+error, and makes every run pass. It is always reported as semantics-changing,
+with the runs it turned from failing to passing.
+
+**Output.** The intent summary, the steps with their evidence (errors before
+and after, tests kept passing, rejected candidates counted by rule), the
+debug report, and a unified diff of the original against the healed source.
+The file is written only with `--write`. Exit 0 only when the healed source
+has no errors and every run passes; `--json` prints the same report as JSON.
+
+**Limits.**
+
+- Type-checker diagnostics carry no source span, so a heal pattern's
+  insertion lands at line 1. For such a diagnostic the loop also tries the
+  insertion after each token of the function the message names (every body
+  when it names none, at most 64 positions). A candidate with no edits (a
+  description only) is skipped.
+- If the input does not parse, its intent cannot be read before the first
+  fix; the intent kept is that of the first source that parses, and the report
+  says so. A parse recovery can therefore delete code the intent never saw.
+- A probe with arguments is never invented: contracts on functions with
+  parameters are exercised only through the tests that call them.
+- Repairs are single mutations, first found in a fixed order. When several
+  mutants pass, the first is taken and the others are not searched; the tests
+  are the whole specification, so a weak test suite admits a wrong repair.
+- `? c { } : { }` conditionals and `else if` chains are not branch-swapped.
 
 ## `cost/query`
 
