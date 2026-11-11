@@ -140,7 +140,7 @@ repository, and a finding on the fifth may not be.
 > because the claim this document makes about that surface is **zero**, and a
 > moderate finding is still a finding nobody wrote down. That sentence used to
 > end "CI's `audit` job covers the five Cargo lockfiles and not this one",
-> which had been false since the npm step was added the same day.
+> which had been false since the npm step was added the same day. **2026-11-11: this surface is no longer zero.** `npm audit` reports 8 (2 moderate, 6 high). `npm audit fix` without `--force` cleared 3 (`fast-uri`, `postcss-selector-parser`, `source-map-js`) and left 5 high: `zod < 4.6.6` and the `@remotion/cli` → `studio-server` / `studio` / `bundler` chain, which depends on the vulnerable `zod` range. The only available fix is `npm audit fix --force`, which would install `@remotion/cli@4.0.542` outside the pinned `4.0.506`. That is a breaking-version decision, not taken here. Until it is, `check-security-register.sh` and the `npm audit` CI step fail on `video/`, and that is the correct result.
 
 **Recommendation (CMMC SI / supply chain): ✅ implemented 2026-08-05.** CI now
 has an `audit` job running `cargo audit` over each of the six lockfiles
