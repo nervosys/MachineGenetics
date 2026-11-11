@@ -2056,6 +2056,15 @@ impl TypeChecker {
                     let name = self.named_name(&obj_ty).unwrap_or("?").to_string();
                     self.emit_error(format!("no field `{field}` on `{name}`"));
                     self.fresh()
+                } else if matches!(
+                    obj_ty,
+                    Ty::Int(_) | Ty::Float(_) | Ty::Bool | Ty::Char | Ty::Unit
+                ) {
+                    // A scalar has no fields. This too handed back a fresh
+                    // variable, so `x.T` on an `f64` (Rust-style transpose;
+                    // MAGE writes `x⊤`) typechecked as anything.
+                    self.emit_error(format!("no field `{field}` on `{obj_ty}`: a scalar has no fields"));
+                    Ty::Error
                 } else {
                     self.fresh()
                 }
@@ -2882,6 +2891,16 @@ mod tests {
         let errs = error_messages(&swarm("bogus", "vote"));
         assert!(errs.iter().any(|e| e.contains("unknown topology `bogus`")), "{errs:?}");
         assert!(errs.iter().any(|e| e.contains("unknown consensus `vote`")), "{errs:?}");
+    }
+
+    #[test]
+    fn a_scalar_has_no_fields() {
+        for src in ["f g(x: f64) -> f64 { x.T }", "f g(n: i64) -> i64 { n.len }", "f g(b: bool) -> bool { b.x }"] {
+            let errs = error_messages(src);
+            assert!(errs.iter().any(|e| e.contains("a scalar has no fields")), "{src}: {errs:?}");
+        }
+        // A method call on a scalar is not a field access.
+        assert_eq!(error_messages("f g(x: f64) -> f64 { x.abs() }"), Vec::<String>::new());
     }
 
     #[test]
