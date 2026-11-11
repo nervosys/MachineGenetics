@@ -144,7 +144,7 @@ fn duplicate_definition() -> bool {
 }
 
 fn undeclared_effect() -> bool {
-    emits("f x() / io { connect(); }\n", "E0550") && absent("f x() / net { connect(); }\n", "E0550")
+    emits("f x() / io { net.connect(\"h\"); }\n", "E0550") && absent("f x() / net { net.connect(\"h\"); }\n", "E0550")
 }
 
 fn role_violation() -> bool {
@@ -279,7 +279,7 @@ fn the_human_check_prints_the_code() {
         ("E0000", "f g() -> i32 { 1 } `"),
         ("E0001", "f g( -> i32 { 1 }"),
         ("E0425", "f g() -> i32 { zz }"),
-        ("E0550", "f x() / io { connect(); }\n"),
+        ("E0550", "f x() / io { net.connect(\"h\"); }\n"),
         ("E0560", "@req(0b)\nf add(a: i64, b: i64) -> i64 { a + b }\n"),
         ("E0570", "kb K {\n    fact p(a);\n    rule r(x: i32) { x }\n}\n"),
         ("E0710", "net Chain { layer a: Linear(256, 512); layer b: Linear(256, 128); }"),
@@ -304,7 +304,7 @@ fn the_human_check_agrees_with_the_verdict() {
         "f g( -> i32 { 1 }",
         "f g() -> i32 { zz }",
         "f bad() -> i32 { 1b }",
-        "f x() / io { connect(); }\n",
+        "f x() / io { net.connect(\"h\"); }\n",
         "@req(0b)\nf add(a: i64, b: i64) -> i64 { a + b }\n",
         "kb K {\n    fact p(a);\n    rule r(x: i32) { x }\n}\n",
         "net Chain { layer a: Linear(256, 512); layer b: Linear(256, 128); }",
