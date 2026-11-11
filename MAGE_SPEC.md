@@ -461,6 +461,11 @@ tensor_data    = expression { ',' expression }*
                | '[' tensor_data ']' { ',' '[' tensor_data ']' }* ;
 ```
 
+A literal without a suffix takes its width from where it is used: `1` is any
+integer or float type and `1.5` either float type (`val a: f32 = 1.5`). Left open by its
+uses, an integer literal is `i32` and a float literal `f64`. A suffix fixes the
+type, so `val x: f64 = 1.5f32` is refused.
+
 ### 3.6 Operators and Punctuation
 
 ```
