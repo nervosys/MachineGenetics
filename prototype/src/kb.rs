@@ -583,6 +583,117 @@ mod tests {
         }
     }
 
+    /// The text of `MAGE_SPEC.md` §3, LF-normalised, split at its `### 3.n`
+    /// headings: the body of subsection `n`.
+    fn spec_lexical_subsection(n: u8) -> String {
+        let spec = std::fs::read_to_string(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../MAGE_SPEC.md"))
+            .expect("MAGE_SPEC.md is beside the prototype")
+            .replace("\r\n", "\n");
+        let heading = format!("\n### 3.{n} ");
+        let body = spec.split(&heading).nth(1).unwrap_or_else(|| panic!("MAGE_SPEC.md has no §3.{n}"));
+        body.split("\n### ").next().unwrap().split("\n## ").next().unwrap().to_string()
+    }
+
+    /// Every single-quoted spelling in the fenced blocks of a spec subsection,
+    /// with `/* … */` comments removed first.
+    fn quoted_spellings(section: &str) -> std::collections::BTreeSet<String> {
+        let mut out = std::collections::BTreeSet::new();
+        for (i, block) in section.split("```").enumerate() {
+            if i % 2 == 0 {
+                continue; // prose between the fences
+            }
+            let mut text = String::new();
+            let mut rest = block;
+            while let Some(a) = rest.find("/*") {
+                text.push_str(&rest[..a]);
+                rest = &rest[a..];
+                rest = match rest.find("*/") {
+                    Some(b) => &rest[b + 2..],
+                    None => "",
+                };
+            }
+            text.push_str(rest);
+            for (j, piece) in text.split('\'').enumerate() {
+                if j % 2 == 1 {
+                    out.insert(piece.to_string());
+                }
+            }
+        }
+        out
+    }
+
+    /// The kinds whose spellings are literals, plus the one plain identifier
+    /// sample: these belong in §3.5.
+    const LITERAL_KINDS: &[&str] =
+        &["IntLiteral", "FloatLiteral", "StringLiteral", "FormatString", "PrintString", "EprintString", "CharLiteral", "True", "False"];
+
+    /// The `lexes_as` spellings that §3.3 lists. The rule: a spelling is a
+    /// keyword spelling when `lexer::KEYWORDS` reserves it, or it is either half
+    /// of an `abbreviates` pair, or its kind is a `Kw*` token (the Greek sigils
+    /// and the `@` contracts). Everything else is a literal or an operator.
+    fn keyword_spellings(kb: &Kb) -> std::collections::BTreeSet<String> {
+        let mut set: std::collections::BTreeSet<String> = crate::lexer::KEYWORDS.iter().map(|(s, _)| s.to_string()).collect();
+        for f in kb.facts("abbreviates") {
+            set.insert(f[0].clone());
+            set.insert(f[1].clone());
+        }
+        for f in kb.facts("lexes_as") {
+            if f[1].starts_with("Kw") {
+                set.insert(f[0].clone());
+            }
+        }
+        set
+    }
+
+    /// §3.3's quoted spellings are exactly the keyword spellings of the
+    /// lexicon, both ways. The spec is held to the lexer here: it once listed
+    /// `Self`, `crate`, `true` and an agent `c` that the lexer never had, and
+    /// omitted forty spellings it has.
+    #[test]
+    fn the_spec_lists_every_keyword_spelling_and_only_those() {
+        let kb = load().expect("loads");
+        let want = keyword_spellings(&kb);
+        let got = quoted_spellings(&spec_lexical_subsection(3));
+        // A broken extraction must not pass by agreeing with itself.
+        assert!(got.contains("fn") && got.contains("f") && got.contains("@req") && got.contains("Ψ"), "§3.3 extraction lost the anchors: {got:?}");
+        assert!(got.len() >= 120, "§3.3 yielded only {} spellings", got.len());
+        let missing: Vec<&String> = want.difference(&got).collect();
+        let extra: Vec<&String> = got.difference(&want).collect();
+        assert!(missing.is_empty(), "the lexicon has keyword spellings §3.3 does not list: {missing:?}");
+        assert!(extra.is_empty(), "§3.3 lists spellings the lexicon does not call keywords: {extra:?}");
+    }
+
+    /// §3.6 lists every operator and punctuation spelling §3.3 and §3.5 do not
+    /// (it may restate none), and each spelling it lists is a `lexes_as` fact,
+    /// which `the_lexicon_states_every_keyword` holds to lexing as one token of
+    /// that kind. §3.5 names the booleans and the three string prefixes.
+    #[test]
+    fn the_spec_lists_every_operator_spelling() {
+        let kb = load().expect("loads");
+        let keywords = keyword_spellings(&kb);
+        let all: std::collections::BTreeMap<String, String> =
+            kb.facts("lexes_as").into_iter().map(|f| (f[0].clone(), f[1].clone())).collect();
+        let want: std::collections::BTreeSet<String> = all
+            .iter()
+            .filter(|(s, k)| !keywords.contains(*s) && !LITERAL_KINDS.contains(&k.as_str()) && s.as_str() != "x")
+            .map(|(s, _)| s.clone())
+            .collect();
+        let got = quoted_spellings(&spec_lexical_subsection(6));
+        assert!(got.contains("==") && got.contains("⊗") && got.contains("..="), "§3.6 extraction lost the anchors: {got:?}");
+        assert!(want.len() >= 50, "only {} operator spellings expected", want.len());
+        let missing: Vec<&String> = want.difference(&got).collect();
+        assert!(missing.is_empty(), "the lexer has operator spellings §3.6 does not list: {missing:?}");
+        for s in &got {
+            let kinds: Vec<String> = crate::lexer::lex(s).iter().map(|t| format!("{:?}", t.kind)).filter(|k| k != "Eof").collect();
+            assert_eq!(kinds.len(), 1, "§3.6 lists `{s}`, which is not one token: {kinds:?}");
+            assert!(all.contains_key(s), "§3.6 lists `{s}`, which kb/lexicon.mg does not state");
+        }
+        let literals = quoted_spellings(&spec_lexical_subsection(5));
+        for s in ["1b", "0b", "f\"", "p\"", "ep\"", "0x", "0X", "0o", "0b"] {
+            assert!(literals.contains(s), "§3.5 does not mention `{s}`");
+        }
+    }
+
     /// Every token kind has a spelling in the lexicon, except the ones it
     /// says no spelling produces (a variant nothing scans, one `lex` drops,
     /// or `Eof`/`Error`). Those are listed here as well as in the file; one
