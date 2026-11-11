@@ -1462,6 +1462,13 @@ fn emit_child(buf: &mut String, expr: &Expr, mode: Mode, parens: bool) {
 
 // ── Expressions ──────────────────────────────────────────────────────
 
+/// One expression, rendered in human mode.
+pub fn expr_to_string(expr: &Expr) -> String {
+    let mut buf = String::new();
+    emit_expr(&mut buf, expr, Mode::Human);
+    buf
+}
+
 fn emit_expr(buf: &mut String, expr: &Expr, mode: Mode) {
     match expr {
         Expr::Literal { value, .. } => buf.push_str(value),

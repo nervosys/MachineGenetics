@@ -20,12 +20,14 @@
 //! order. It stops at zero errors, at a round where nothing is accepted, or at
 //! `max_rounds`.
 //!
-//! Type-checker diagnostics carry no source span today, so a heal pattern's
-//! insertion lands at line 1, column 1. For a span-less diagnostic with a
-//! single-insertion fix the loop also tries the insertion after each token of
-//! the function the message names (every function body when it names none).
-//! These are guesses; the three acceptance rules are what make one stick, and
-//! the step log marks the fix as relocated.
+//! Type-checker diagnostics carry no source span. Instead the checker
+//! records, beside each type mismatch, the function, what the expression is
+//! (a return value, a call argument, …), the expression itself and the two
+//! types ([`crate::types::Mismatch`]). A numeric conversion is proposed at
+//! that expression only, and the expression is found in the source by
+//! re-parsing token ranges of the named function: exactly one range must
+//! re-parse to it, or the mismatch is reported as not located. A heal
+//! pattern's fix is used only for a diagnostic that has a position.
 //!
 //! **Run time** ([`debug_and_repair`]). Every `@test`, and every zero-argument
 //! function with contracts, runs under the fuel-bounded evaluator. A failure is
@@ -51,6 +53,7 @@ use crate::intent::{self, Intent};
 use crate::lexer::{self, Token, TokenKind};
 use crate::parser;
 use crate::recover;
+use crate::types;
 
 /// Fuel for each run of a test or contract probe, unless the caller says.
 pub const DEFAULT_FUEL: u64 = 200_000;
@@ -60,8 +63,8 @@ pub const DEFAULT_MAX_ROUNDS: usize = 8;
 pub const MAX_MUTANTS: usize = 500;
 /// Most candidates one compile-time round evaluates.
 pub const MAX_CANDIDATES_PER_ROUND: usize = 200;
-/// Most relocated positions tried for one span-less insertion.
-const MAX_RELOCATIONS: usize = 64;
+/// Longest token range tried when locating an expression in the source.
+const MAX_LOCATE_TOKENS: usize = 256;
 /// Longest call trace kept for a failing run.
 const TRACE_CAP: usize = 64;
 /// Rejections kept verbatim in a step log (the rest are only counted).
@@ -286,7 +289,7 @@ pub struct HealStep {
     /// The diagnostic the fix answers; `None` for a whole-source recovery.
     pub diagnostic: Option<DiagSummary>,
     pub fix_id: String,
-    /// `heal pattern`, `heal pattern (relocated to L:C)`, or `recover:<stage>`.
+    /// `heal pattern`, `compiler evidence`, or `recover:<stage>`.
     pub origin: String,
     pub description: String,
     pub semantics_preserving: bool,
@@ -298,6 +301,8 @@ pub struct HealStep {
     pub candidates_considered: usize,
     /// How many were rejected, by rule.
     pub rejected: Vec<(String, usize)>,
+    /// For a fix derived from a type mismatch: the checker's evidence.
+    pub evidence: Option<MismatchEvidence>,
 }
 
 /// One rejected candidate and why, kept for the report.
@@ -323,6 +328,28 @@ pub struct HealOutcome {
     /// before the first fix: the intent then used is that of the first source
     /// that parsed.
     pub intent_note: Option<String>,
+    /// Mismatches the checker reported in the last round for which no fix was
+    /// proposed, each with the reason (not located, not a numeric conversion).
+    pub unfixed: Vec<MismatchEvidence>,
+}
+
+/// The type checker's evidence for one mismatch.
+#[derive(Debug, Clone, Serialize)]
+pub struct MismatchEvidence {
+    pub function: String,
+    pub site: types::MismatchSite,
+    /// The expression: its source text when located, else the checker's
+    /// rendering of it.
+    pub expr: String,
+    pub expected: String,
+    pub found: String,
+    /// The diagnostic it explains.
+    pub diagnostic: String,
+    /// 1-based line and column of the located expression.
+    pub line: Option<usize>,
+    pub col: Option<usize>,
+    /// Why no fix was proposed, when none was.
+    pub note: Option<String>,
 }
 
 /// A changed source, and where it came from.
@@ -336,6 +363,7 @@ pub struct Candidate {
     /// `FixCandidate::confidence`: an ordering prior, not a probability.
     pub prior: f64,
     pub source: String,
+    pub evidence: Option<MismatchEvidence>,
 }
 
 fn to_hir(d: &DiagSummary) -> hir::Diagnostic {
@@ -348,16 +376,185 @@ fn to_hir(d: &DiagSummary) -> hir::Diagnostic {
     }
 }
 
-/// The function a span-less message names: "function `count`: …".
-fn named_function(message: &str) -> Option<&str> {
-    let rest = message.split("function `").nth(1)?;
-    rest.split('`').next()
+/// The rust-style name of a numeric type, for a cast: `i64`, `usize`, `f64`.
+fn cast_name(t: &hir::Ty) -> Option<String> {
+    match t {
+        hir::Ty::Int(_) | hir::Ty::Uint(_) | hir::Ty::Float(_) => Some(t.to_string().to_lowercase()),
+        _ => None,
+    }
 }
 
-/// The candidates for one round, in generation order, deduplicated by the
-/// source they produce, at most [`MAX_CANDIDATES_PER_ROUND`].
-pub fn candidates(source: &str, errors: &[DiagSummary]) -> Vec<Candidate> {
+/// Whether `e` binds tighter than `as`, so `e as T` needs no parentheses.
+fn is_atomic(e: &crate::ast::Expr) -> bool {
+    use crate::ast::Expr;
+    matches!(
+        e,
+        Expr::Literal { .. }
+            | Expr::Ident { .. }
+            | Expr::Call { .. }
+            | Expr::MethodCall { .. }
+            | Expr::FieldAccess { .. }
+            | Expr::Index { .. }
+            | Expr::TupleLit { .. }
+            | Expr::ArrayLit { .. }
+    )
+}
+
+/// The elided rendering two expressions are compared by.
+fn expr_key(e: &crate::ast::Expr) -> String {
+    format!("{:?}", crate::elision::elide_expr(e))
+}
+
+/// Whether `tokens[i..=j]` re-parses, alone, to an expression whose key is `key`.
+fn range_is(tokens: &[Token], i: usize, j: usize, key: &str) -> bool {
+    let mut slice: Vec<Token> = tokens[i..=j].to_vec();
+    let eof = tokens.last().filter(|t| t.kind == TokenKind::Eof).cloned().unwrap_or_else(|| Token {
+        kind: TokenKind::Eof,
+        span: tokens[j].span.clone(),
+        text: String::new(),
+    });
+    slice.push(eof);
+    parser::parse_expression(&slice).is_ok_and(|e| expr_key(&e) == key)
+}
+
+/// Every token range inside `lo..hi` (inclusive start, exclusive end) that
+/// re-parses to `key`. Only bracket-balanced ranges are parsed. `suffix`
+/// restricts the search to ranges ending at `hi - 1`.
+fn ranges_matching(tokens: &[Token], lo: usize, hi: usize, key: &str, suffix: bool) -> Vec<(usize, usize)> {
+    let mut out = Vec::new();
+    for i in lo..hi {
+        let mut depth = 0i32;
+        for j in i..hi.min(i + MAX_LOCATE_TOKENS) {
+            match tokens[j].kind {
+                TokenKind::LParen | TokenKind::LBrack | TokenKind::LBrace => depth += 1,
+                TokenKind::RParen | TokenKind::RBrack | TokenKind::RBrace => depth -= 1,
+                _ => {}
+            }
+            if depth < 0 {
+                break;
+            }
+            if depth == 0 && (!suffix || j + 1 == hi) && range_is(tokens, i, j, key) {
+                out.push((i, j));
+            }
+        }
+    }
+    // Parentheses make no node, so `(x)` re-parses to what `x` does. A range
+    // that contains another match is the same expression wrapped: keep the
+    // innermost.
+    let all = out.clone();
+    out.retain(|&(i, j)| !all.iter().any(|&(a, b)| (a, b) != (i, j) && i <= a && b <= j));
+    out
+}
+
+/// The token ranges of the arguments of the call that starts at `lo` and
+/// ends at `hi - 1` (its closing parenthesis), split at top-level commas.
+fn call_args(tokens: &[Token], lo: usize, hi: usize) -> Option<Vec<(usize, usize)>> {
+    if tokens.get(hi - 1)?.kind != TokenKind::RParen {
+        return None;
+    }
+    // The `(` matching the closing one.
+    let mut depth = 0i32;
+    let mut open = None;
+    for k in (lo..hi).rev() {
+        match tokens[k].kind {
+            TokenKind::RParen | TokenKind::RBrack | TokenKind::RBrace => depth += 1,
+            TokenKind::LParen | TokenKind::LBrack | TokenKind::LBrace => {
+                depth -= 1;
+                if depth == 0 {
+                    open = Some(k);
+                    break;
+                }
+            }
+            _ => {}
+        }
+    }
+    let open = open?;
+    let mut out = Vec::new();
+    let mut start = open + 1;
+    let mut depth = 0i32;
+    for k in open + 1..hi - 1 {
+        match tokens[k].kind {
+            TokenKind::LParen | TokenKind::LBrack | TokenKind::LBrace => depth += 1,
+            TokenKind::RParen | TokenKind::RBrack | TokenKind::RBrace => depth -= 1,
+            TokenKind::Comma if depth == 0 => {
+                out.push((start, k.checked_sub(1)?));
+                start = k + 1;
+            }
+            _ => {}
+        }
+    }
+    if start < hi - 1 {
+        out.push((start, hi - 2));
+    }
+    Some(out)
+}
+
+/// Where the mismatched expression is in `source`, as an inclusive token
+/// range, or why it could not be placed. The proof of a location is that the
+/// range re-parses to the checker's expression and that no other range in the
+/// search space does.
+fn locate(tokens: &[Token], bodies: &[FnBody], m: &types::Mismatch) -> Result<(usize, usize), String> {
+    let Some(b) = bodies.iter().find(|b| b.name == m.function) else {
+        return Err(format!("could not locate: `{}` is not a top-level function with a body", m.function));
+    };
+    let (lo, hi) = (b.open + 1, b.close);
+    let key = expr_key(&m.expr);
+    let unique = |found: Vec<(usize, usize)>, within: &str| -> Result<(usize, usize), String> {
+        match found.as_slice() {
+            [one] => Ok(*one),
+            [] => Err(format!("could not locate: no token range {within} re-parses to the expression")),
+            many => Err(format!(
+                "could not locate: {} token ranges {within} re-parse to the expression",
+                many.len()
+            )),
+        }
+    };
+    match (&m.site, &m.context) {
+        // The tail expression ends right before the body's `}`.
+        (types::MismatchSite::Return, _) => {
+            unique(ranges_matching(tokens, lo, hi, &key, true), &format!("ending the body of `{}`", m.function))
+        }
+        (site, Some(ctx)) => {
+            let ckey = expr_key(ctx);
+            let Ok((cs, ce)) = unique(ranges_matching(tokens, lo, hi, &ckey, false), "") else {
+                // The enclosing expression is not unique; the expression alone may be.
+                return unique(ranges_matching(tokens, lo, hi, &key, false), &format!("in `{}`", m.function));
+            };
+            match site {
+                // The right operand ends where the binary expression ends.
+                types::MismatchSite::BinaryOperand { .. } => {
+                    unique(ranges_matching(tokens, cs, ce + 1, &key, true), "ending the binary expression")
+                }
+                types::MismatchSite::CallArg { index, .. } => {
+                    let inside = ranges_matching(tokens, cs, ce + 1, &key, false);
+                    if inside.len() == 1 {
+                        return Ok(inside[0]);
+                    }
+                    // Several equal sub-expressions: the argument list decides,
+                    // read by the grammar's commas.
+                    match call_args(tokens, cs, ce + 1).and_then(|a| a.get(*index).copied()) {
+                        Some((i, j)) if range_is(tokens, i, j, &key) => Ok((i, j)),
+                        _ => unique(inside, "in the call"),
+                    }
+                }
+                _ => unique(ranges_matching(tokens, cs, ce + 1, &key, false), "in its context"),
+            }
+        }
+        _ => unique(ranges_matching(tokens, lo, hi, &key, false), &format!("in `{}`", m.function)),
+    }
+}
+
+/// The candidates for one round, and the mismatches no candidate answers.
+///
+/// From the type checker's evidence: a numeric conversion of the
+/// mismatched expression, at the one place it is. From `heal::heal_one`: its
+/// fixes for a diagnostic that has a position; a diagnostic without one gets
+/// none (there is nowhere to put it). From `recover`: a whole-source
+/// recovery when the source does not parse. Generation order, deduplicated
+/// by the source produced, at most [`MAX_CANDIDATES_PER_ROUND`].
+pub fn candidates_with_evidence(source: &str, errors: &[DiagSummary]) -> (Vec<Candidate>, Vec<MismatchEvidence>) {
     let mut out: Vec<Candidate> = Vec::new();
+    let mut unfixed = Vec::new();
     let mut seen = std::collections::HashSet::new();
     let mut push = |c: Candidate, out: &mut Vec<Candidate>| {
         if c.source != source && out.len() < MAX_CANDIDATES_PER_ROUND && seen.insert(c.source.clone()) {
@@ -366,12 +563,64 @@ pub fn candidates(source: &str, errors: &[DiagSummary]) -> Vec<Candidate> {
     };
     let tokens = lexer::lex(source);
     let bodies = function_bodies(&tokens);
-    for d in errors {
-        let healed = heal::heal_one(&to_hir(d));
-        for fix in &healed.fixes {
-            if fix.edits.is_empty() {
+    if let Some(module) = parse(source) {
+        let (diags, mismatches) = types::check_with_evidence(&crate::elision::elide(&module));
+        for m in &mismatches {
+            let message = diags.get(m.diag_index).map(|d| d.message.clone()).unwrap_or_default();
+            let mut ev = MismatchEvidence {
+                function: m.function.clone(),
+                site: m.site.clone(),
+                expr: crate::fmt::expr_to_string(&m.expr),
+                expected: m.expected.to_string(),
+                found: m.found.to_string(),
+                diagnostic: message.clone(),
+                line: None,
+                col: None,
+                note: None,
+            };
+            let (Some(to), Some(_)) = (cast_name(&m.expected), cast_name(&m.found)) else {
+                ev.note = Some(format!(
+                    "no fix: the evidence determines a conversion only between numeric types ({} -> {})",
+                    ev.found, ev.expected
+                ));
+                unfixed.push(ev);
                 continue;
-            }
+            };
+            let (i, j) = match locate(&tokens, &bodies, m) {
+                Ok(r) => r,
+                Err(why) => {
+                    ev.note = Some(why);
+                    unfixed.push(ev);
+                    continue;
+                }
+            };
+            let (start, end) = (tokens[i].span.offset, tok_end(&tokens[j]));
+            let text = &source[start..end];
+            let (line, col) = line_col(source, start);
+            ev.expr = text.to_string();
+            ev.line = Some(line);
+            ev.col = Some(col);
+            let cast = if is_atomic(&m.expr) { format!("{text} as {to}") } else { format!("({text}) as {to}") };
+            let diagnostic = errors.iter().find(|d| d.message == message).cloned();
+            push(
+                Candidate {
+                    fix_id: "insert-numeric-cast".into(),
+                    origin: "compiler evidence".into(),
+                    description: format!("`{text}` -> `{cast}` at {line}:{col}"),
+                    diagnostic,
+                    // A numeric conversion can truncate or change sign.
+                    semantics_preserving: false,
+                    prior: 1.0,
+                    source: splice(source, start, end, &cast),
+                    evidence: Some(ev),
+                },
+                &mut out,
+            );
+        }
+    }
+    for d in errors.iter().filter(|d| d.line != 0) {
+        let healed = heal::heal_one(&to_hir(d));
+        for fix in healed.fixes.iter().filter(|f| !f.edits.is_empty()) {
             if let Some(new) = recover::apply_text_edits(source, &fix.edits) {
                 push(
                     Candidate {
@@ -382,42 +631,10 @@ pub fn candidates(source: &str, errors: &[DiagSummary]) -> Vec<Candidate> {
                         semantics_preserving: fix.semantics_preserving,
                         prior: fix.confidence,
                         source: new,
+                        evidence: None,
                     },
                     &mut out,
                 );
-            }
-            // A span-less diagnostic's insertion was placed at 1:1 for want
-            // of a place. Try it after each token of the named function.
-            let single_insert = fix.edits.len() == 1
-                && fix.edits[0].start_line == fix.edits[0].end_line
-                && fix.edits[0].start_col == fix.edits[0].end_col;
-            if d.line == 0 && single_insert {
-                let text = &fix.edits[0].new_text;
-                let named = named_function(&d.message);
-                let mut tried = 0;
-                for b in bodies.iter().filter(|b| named.is_none_or(|n| n == b.name)) {
-                    // After each token inside the body, not after its braces.
-                    for t in &tokens[b.open + 1..b.close] {
-                        if tried == MAX_RELOCATIONS {
-                            break;
-                        }
-                        tried += 1;
-                        let at = tok_end(t);
-                        let (line, col) = line_col(source, at);
-                        push(
-                            Candidate {
-                                fix_id: fix.id.clone(),
-                                origin: format!("heal pattern (relocated to {line}:{col})"),
-                                description: fix.description.clone(),
-                                diagnostic: Some(d.clone()),
-                                semantics_preserving: fix.semantics_preserving,
-                                prior: fix.confidence,
-                                source: splice(source, at, at, text),
-                            },
-                            &mut out,
-                        );
-                    }
-                }
             }
         }
     }
@@ -438,12 +655,18 @@ pub fn candidates(source: &str, errors: &[DiagSummary]) -> Vec<Candidate> {
                     semantics_preserving: false,
                     prior: 0.0,
                     source: r.source,
+                    evidence: None,
                 },
                 &mut out,
             );
         }
     }
-    out
+    (out, unfixed)
+}
+
+/// [`candidates_with_evidence`]'s candidates.
+pub fn candidates(source: &str, errors: &[DiagSummary]) -> Vec<Candidate> {
+    candidates_with_evidence(source, errors).0
 }
 
 /// 1-based line and column of byte offset `at`.
@@ -511,6 +734,7 @@ pub fn heal_loop(source: &str, intent: Option<&Intent>, max_rounds: usize, fuel:
     let mut rejections = Vec::new();
     let mut errors = errors_of(&current);
     let mut rounds = 0;
+    let mut unfixed = Vec::new();
     let stopped;
     loop {
         if errors.is_empty() {
@@ -532,7 +756,8 @@ pub fn heal_loop(source: &str, intent: Option<&Intent>, max_rounds: usize, fuel:
             (Some(r), Some(m)) => r.tests.iter().filter(|t| passes(&m, t, fuel).is_ok()).cloned().collect(),
             _ => Vec::new(),
         };
-        let cands = candidates(&current, &errors);
+        let (cands, left) = candidates_with_evidence(&current, &errors);
+        unfixed = left;
         let mut tally: std::collections::BTreeMap<String, usize> = Default::default();
         let mut kept = 0;
         let mut reject = |fix_id: &str, reason: String, tally: &mut std::collections::BTreeMap<String, usize>| {
@@ -592,11 +817,15 @@ pub fn heal_loop(source: &str, intent: Option<&Intent>, max_rounds: usize, fuel:
             tests_kept_passing: passing.clone(),
             candidates_considered: cands.len(),
             rejected: tally.into_iter().collect(),
+            evidence: c.evidence.clone(),
         });
         current = c.source.clone();
         errors = after;
     }
-    HealOutcome { source: current, steps, remaining: errors, rounds, stopped, rejections, intent_note }
+    if errors.is_empty() {
+        unfixed.clear();
+    }
+    HealOutcome { source: current, steps, remaining: errors, rounds, stopped, rejections, intent_note, unfixed }
 }
 
 // ── Run-time debugging and repair ────────────────────────────────────
@@ -1016,12 +1245,57 @@ mod tests {
         assert_eq!(out.steps.len(), 1, "{out:#?}");
         let step = &out.steps[0];
         assert_eq!(step.fix_id, "insert-numeric-cast");
+        // The fix comes from the checker's evidence, at the tail expression.
+        assert_eq!(step.origin, "compiler evidence");
+        let ev = step.evidence.as_ref().expect("evidence");
+        assert_eq!(ev.site, types::MismatchSite::Return);
+        assert_eq!((ev.function.as_str(), ev.expr.as_str()), ("count", "len(xs)"));
+        assert_eq!((ev.expected.as_str(), ev.found.as_str()), ("I64", "Usize"));
+        assert_eq!((ev.line, ev.col), (Some(2), Some(5)));
+        assert_eq!(step.candidates_considered, 1, "one located candidate, no guesses");
         assert_eq!((step.errors_before, step.errors_after), (1, 0));
         assert_eq!(step.tests_kept_passing, vec!["t_twice".to_string()]);
         assert!(out.source.contains("len(xs) as i64"), "{}", out.source);
         // The healed program keeps its intent and its test still runs.
         assert!(intent.violations_in(&intent::infer_source(&out.source).unwrap()).is_empty());
         assert!(passes(&parse(&out.source).unwrap(), "t_twice", FUEL).is_ok());
+    }
+
+    /// `range` takes a `usize`; the checker names the argument, and the cast
+    /// goes on the argument and nowhere else.
+    #[test]
+    fn heal_casts_a_range_argument_the_checker_names() {
+        let src = "f count_to(n: i64) -> usize {\n    len(range(n))\n}\n\n\
+                   @t\nf t_count() {\n    assert(count_to(3) == 3, \"three\")\n}\n";
+        assert_eq!(errors_of(src).len(), 1, "{:?}", errors_of(src));
+        assert_eq!(errors_of(src)[0].message, "`range`: expected Usize, found I64");
+        let intent = intent::infer_source(src).unwrap();
+        let out = heal_loop(src, Some(&intent), DEFAULT_MAX_ROUNDS, FUEL);
+        assert!(out.remaining.is_empty(), "{out:#?}");
+        assert_eq!(out.steps.len(), 1, "{out:#?}");
+        let ev = out.steps[0].evidence.as_ref().expect("evidence");
+        assert_eq!(ev.site, types::MismatchSite::CallArg { callee: "range".into(), index: 0 });
+        assert_eq!((ev.expr.as_str(), ev.line, ev.col), ("n", Some(2), Some(15)));
+        assert!(out.source.contains("len(range(n as usize))"), "{}", out.source);
+        assert!(passes(&parse(&out.source).unwrap(), "t_count", FUEL).is_ok());
+    }
+
+    /// Two token ranges re-parse to the mismatched expression: it is reported
+    /// as not located, and nothing is guessed.
+    #[test]
+    fn heal_reports_a_mismatch_it_cannot_locate() {
+        let src = "f g(a: i64, b: usize) -> i64 {\n    val x = a + b;\n    val y = a + b;\n    x\n}\n";
+        assert!(!errors_of(src).is_empty());
+        let out = heal_loop(src, intent::infer_source(src).as_ref(), DEFAULT_MAX_ROUNDS, FUEL);
+        assert!(out.steps.is_empty(), "{out:#?}");
+        assert_eq!(out.source, src);
+        assert_eq!(out.stopped, "no candidate accepted");
+        assert!(!out.unfixed.is_empty(), "{out:#?}");
+        for ev in &out.unfixed {
+            let note = ev.note.as_deref().unwrap_or("");
+            assert!(note.starts_with("could not locate: 2 token ranges"), "{note}");
+            assert_eq!(ev.line, None);
+        }
     }
 
     #[test]

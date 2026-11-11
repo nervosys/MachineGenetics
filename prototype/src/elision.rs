@@ -445,7 +445,8 @@ fn elide_stmt(stmt: &Stmt) -> Stmt {
 
 // ── Expressions ──────────────────────────────────────────────────────
 
-fn elide_expr(expr: &Expr) -> Expr {
+/// Elide one expression, as [`elide`] does inside a module.
+pub fn elide_expr(expr: &Expr) -> Expr {
     match expr {
         // Recurse into all expression forms
         Expr::Literal { .. }
