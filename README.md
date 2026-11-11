@@ -363,8 +363,8 @@ cargo run --bin token-bench --manifest-path prototype/Cargo.toml
 | ------- | ---------------------- | -------- | --------------------- |
 | `f`     | `fn`                   | `v`/`val` | `let` (immutable)    |
 | `+f`    | `pub fn`               | `m`/`var` | `let mut` (mutable)  |
-| `af`    | `async fn`             | `?`      | `match`               |
-| `uf`    | `unsafe fn`            | `?:`     | `if`                  |
+| `af`    | `async fn`             | `?=`     | `match`               |
+| `uf`    | `unsafe fn`            | `?`      | `if`                  |
 | `+S`    | `pub struct`           | `:?`     | `else if`             |
 | `+E`    | `pub enum`             | `:`      | `else`                |
 | `+T`    | `pub trait`            | `@`      | `for .. in`           |

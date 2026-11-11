@@ -383,7 +383,7 @@ material; each becomes documentation of `kb/` as its facts move there
 
 A fact `instance_of(x, C)` puts `x` in class `C`, and in every class above it.
 A `Token` is a spelling (`"fn"`); a `TokenKind` is what the lexer produces
-for it (`KwF`). [`kb/lexicon.mg`](kb/lexicon.mg) states all 181 token kinds
+for it (`KwF`). [`kb/lexicon.mg`](kb/lexicon.mg) states all 180 token kinds
 and the 100 reserved spellings, and a test holds `lexer.rs` to it both ways.
 The mode is the class: a `Sigil` (`f`) prints in agent mode, the `Keyword` it
 abbreviates (`fn`) in human mode, and a plain `Token` in both. The 37
@@ -539,7 +539,7 @@ Span  { offset: usize, len: usize, line: usize, col: usize }
 | Literals             | `IntLiteral`, `FloatLiteral`, `StringLiteral`, `FormatString`, `PrintString`, `EprintString`, `CharLiteral`, `ByteLiteral`, `ByteStringLiteral`, `Ident`                                                                                                                                                                             | 10    |
 | Operators            | `Plus`, `Minus`, `Star`, `Slash`, `Percent`, `Eq`, `Neq`, `Lt`, `Gt`, `Le`, `Ge`, `And`, `Or`, `Not`, `BitAnd`, `BitOr`, `BitXor`, `Shl`, `Shr`, `Assign`, `PlusEq`, `MinusEq`, `StarEq`, `SlashEq`, `PercentEq`, `BitAndEq`, `BitOrEq`, `BitXorEq`, `ShlEq`, `ShrEq`, `AndNot`, `AndTilde`, `PercentNot`, `HashTilde`, `TildeArrow` | 35    |
 | Delimiters           | `LParen`, `RParen`, `LBrace`, `RBrace`, `LBrack`, `RBrack`                                                                                                                                                                                                                                                                           | 6     |
-| Punctuation          | `Semi`, `Comma`, `Dot`, `Colon`, `ColonQuestion`, `Arrow`, `FatArrow`, `Hash`, `DotDot`, `DotDotEq`, `Tilde`, `Dollar`                                                                                                                                                                                                               | 12    |
+| Punctuation          | `Semi`, `Comma`, `Dot`, `Colon`, `Arrow`, `FatArrow`, `Hash`, `DotDot`, `DotDotEq`, `Tilde`, `Dollar`                                                                                                                                                                                                               | 12    |
 | Special              | `Eof`, `Error`, `Whitespace`, `Comment`, `Underscore`, `UnderscoreT`, `KwPipeline`, `KwGrammarExt`                                                                                                                                                                                                                                   | 8     |
 
 #### 12.2 Relations
@@ -1556,7 +1556,7 @@ Complete alphabetical index of all ontological concepts:
 | TextEdit                | Tooling      | `TextEdit`               | §22     |
 | ThreeWayMerge           | Package      | `ThreeWayMerge`          | §23.3   |
 | Token                   | Lexical      | `Token`                  | §12.1   |
-| TokenKind               | Lexical      | enum (181 @ prototype/src/lexer.rs)               | §12.1   |
+| TokenKind               | Lexical      | enum (180 @ prototype/src/lexer.rs)               | §12.1   |
 | TokenMetrics            | Tooling      | `TokenMetrics`           | §22.2   |
 | TokenReport             | Tooling      | `TokenReport`            | §22.2   |
 | Topic                   | Agent        | enum (10)                | §3.1    |
@@ -1707,7 +1707,7 @@ Report TaskResult::Success
 | Category                 | Count |
 | ------------------------ | ----- |
 | Source modules           | 77    |
-| TokenKind variants       | 181   |
+| TokenKind variants       | 180   |
 | AST ItemKind variants    | 20    |
 | AST ExprKind variants    | 35    |
 | AST Type variants        | 33    |

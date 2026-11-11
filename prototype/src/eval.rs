@@ -4120,6 +4120,9 @@ f s() { scaled(5) }";
             ("f s(){ var xs = [10, 20, 30]\n xs[1] += 5\n xs[2] /= 3\n sum(xs) }", "s", &[], Value::Int(45)),
             // The bitwise compound assignments: 6&3=2, 2|8=10, 10^3=9, 9<<2=36, 36>>1=18.
             ("f s(){ var x = 6\n x &= 3\n x |= 8\n x ^= 3\n x <<= 2\n x >>= 1\n x }", "s", &[], Value::Int(18)),
+            // The agent else-if, with and without the space.
+            ("f s(x: i64) -> i64 { ? x < 0 { 1 } :? x == 0 { 2 } : { 3 } }", "s", &[0], Value::Int(2)),
+            ("f s(x: i64) -> i64 { ? x < 0 { 1 } : ? x == 0 { 2 } : { 3 } }", "s", &[5], Value::Int(3)),
             // String escape sequences: `\n`/`\t` are one char each, so this is
             // length 3 (was 5 when backslashes were kept verbatim).
             ("f s(){ len(\"a\\nb\") + len(\"x\\ty\") }", "s", &[], Value::Int(6)),

@@ -220,7 +220,6 @@ pub enum TokenKind {
     Comma,         // ,
     Dot,           // .
     Colon,         // :
-    ColonQuestion, // :? (else-if)
     Arrow,         // ->
     FatArrow,      // =>
     Hash,          // # (also Mutex type prefix)
@@ -579,10 +578,9 @@ impl<'a> Lexer<'a> {
             }
             b'.' => self.make_token(TokenKind::Dot, start, start_line, start_col),
 
-            b':' if self.peek() == Some(b'?') => {
-                self.advance();
-                self.make_token(TokenKind::ColonQuestion, start, start_line, start_col)
-            }
+            // `:?` is two tokens. It was one, `ColonQuestion`, that no parser
+            // arm consumed: the else-if `:?` failed to parse, and so did an
+            // optional type written without a space, `x:?i64`.
             b':' => self.make_token(TokenKind::Colon, start, start_line, start_col),
 
             b'?' if self.peek() == Some(b'?') && self.peek2() == Some(b'?') => {

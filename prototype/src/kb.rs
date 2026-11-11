@@ -520,7 +520,7 @@ mod tests {
             .map(|f| f[0].clone())
             .collect();
         let real = token_kind_variants();
-        assert_eq!(real.len(), 181, "the variant reader still reads the enum");
+        assert_eq!(real.len(), 180, "the variant reader still reads the enum");
         for v in &real {
             assert!(stated.contains(v), "TokenKind::{v} is not in kb/lexicon.mg");
         }
