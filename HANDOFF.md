@@ -138,7 +138,7 @@ it, and `scripts/measure-differentiability.sh` aggregates the corpus:
 functions are.** Three things in that are worth carrying:
 
 * The subjects are reported separately and deliberately not merged. One ratio
-  over all 196 would be "41 of 196" and would answer neither question — the
+  over all 208 would be "53 of 208" and would answer neither question — the
   finding *is* that the two populations differ.
 * A net is judged with respect to its **parameters**, not its inputs, because
   that is what `train` optimises. Judged on inputs, every language model here
