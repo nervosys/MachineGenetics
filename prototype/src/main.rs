@@ -453,8 +453,7 @@ fn main() {
                     println!(
                         "{}",
                         serde_json::json!({"ok": false, "errors": [
-                            {"code":"B0000","message": format!("malformed spec JSON: {e}"),
-                             "fix":"emit a valid spec ({\"net\":..} or {\"kb\":..}); see --build=schema"}]})
+                            builder::BuildError::malformed(format!("malformed spec JSON: {e}")).as_json()]})
                     );
                     std::process::exit(1);
                 }
