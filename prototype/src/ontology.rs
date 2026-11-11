@@ -2833,6 +2833,40 @@ mod tests {
         assert!(problems.is_empty(), "kb/meaning.mg and the op families disagree:\n{}", problems.join("\n"));
     }
 
+    /// MAGE_SPEC.md names exactly the layers `layer_map` publishes: §5.1's list,
+    /// and §5.2's table with §5.3's activations. The spec once listed `Send`,
+    /// `Unify`, `Hash` and seven more as layers "from the layer map"; each is
+    /// E0710, an unknown layer type.
+    #[test]
+    fn the_spec_names_exactly_the_published_layers() {
+        use std::collections::BTreeSet;
+        let kb = crate::kb::load().expect("the knowledge base loads");
+        let published: BTreeSet<String> = kb.facts("canonical_layer").into_iter().map(|f| f[0].clone()).collect();
+        let spec = std::fs::read_to_string(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../MAGE_SPEC.md"))
+            .unwrap()
+            .replace("\r\n", "\n");
+        let between = |a: &str, b: &str| -> String {
+            let s = &spec[spec.find(a).unwrap_or_else(|| panic!("{a}"))..];
+            s[..s.find(b).unwrap_or_else(|| panic!("{b}"))].to_string()
+        };
+        // The backticked names, up to any `(`, that start with a capital.
+        let names = |text: &str| -> BTreeSet<String> {
+            text.split('`')
+                .skip(1)
+                .step_by(2)
+                .map(|t| t.split('(').next().unwrap().to_string())
+                .filter(|t| t.chars().next().is_some_and(|c| c.is_ascii_uppercase()) && t.chars().all(|c| c.is_ascii_alphanumeric()))
+                .collect()
+        };
+        let list = names(&between("surface name from the\nlayer map** (", "), and it is **case-sensitive**"));
+        let table = names(&between("### 5.2 Layer Types", "With the activations of §5.3"));
+        let activations = names(&between("### 5.3 Activation Functions", "A `Linear` layer takes"));
+        let sections: BTreeSet<String> = table.union(&activations).cloned().collect();
+        assert_eq!(published.len(), 21, "{published:?}");
+        assert_eq!(list, published, "§5.1's list against layer_map");
+        assert_eq!(sections, published, "§5.2 and §5.3 against layer_map");
+    }
+
     /// Every layer spelling is stated, lowers to the op it names, and every op
     /// that has a canonical layer name is stated under it.
     ///
