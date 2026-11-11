@@ -32,16 +32,26 @@
 //! **Run time** ([`debug_and_repair`]). Every `@test`, and every zero-argument
 //! function with contracts, runs under the fuel-bounded evaluator. A failure is
 //! reported with the error, the contract clause or assertion that failed, and
-//! a capped call trace. Then single-site mutations of the non-test functions
-//! the failing runs can reach are tried in a fixed order — comparison swaps,
-//! `+`/`-` swaps, integer literal ±1, swapped `if`/`else` branches — and the
-//! first mutant is accepted that checks with no new errors, keeps the intent,
-//! and makes **every** run pass. Such a repair changes what the program
-//! computes by construction, and is always reported as semantics-changing,
-//! with the runs it turned from failing to passing as its evidence.
+//! a capped call trace; every run also records coverage
+//! ([`eval::Interp::enable_coverage`]): which comparisons, arithmetic and
+//! `if`s of each function ran, the operands each comparison saw, the arm each
+//! `if` took, and the node that raised a runtime error. Sites of non-test
+//! functions that a failing run executed are ranked by the Ochiai score
+//! failed / sqrt(total_failed × (failed + passed)), and candidates are tried
+//! only there, best site first, and within a site in the order the
+//! observations motivate (equal operands → the inclusive/exclusive swap; a
+//! failed sign or ordering `@ens` → `+`/`-`; an arm taken only by failing
+//! runs → the branch swap or negation; then the other small mutations at that
+//! site). A failed `@ens` of a function returning an integer literal adds that
+//! literal ±1. Each mutation is made on the tree, mapped to one token by rank,
+//! and the edited source must re-parse to the mutated tree. A candidate is
+//! accepted when it adds no checker error, keeps the intent, and makes
+//! **every** run pass. Such a repair changes what the program computes by
+//! construction, and is always reported as semantics-changing, with its
+//! site's score, run counts, observations and the runs it fixed.
 //!
-//! In keeping with `verdict.rs`, nothing here carries a score: an outcome is
-//! the list of what was checked and what it found.
+//! The Ochiai score orders sites; it is not a probability that a site is at
+//! fault, and nothing here reads it as one.
 
 use serde::Serialize;
 
@@ -128,6 +138,9 @@ pub struct Run {
     pub failed_check: Option<String>,
     /// The call trace of a failing run, capped; empty on a pass.
     pub trace: Vec<String>,
+    /// For a failing run observed with coverage: the site whose own
+    /// evaluation raised the error (`f/binary#2: division by zero …`).
+    pub raised_at: Option<String>,
 }
 
 /// The probes `intent` names: its `@test`s, then the zero-argument non-test
@@ -174,6 +187,7 @@ fn run_probe(module: &Module, name: &str, kind: ProbeKind, fuel: u64, traced: bo
         passed: error.is_none(),
         failed_check: error.as_deref().and_then(failed_check),
         trace: if error.is_some() { trace } else { Vec::new() },
+        raised_at: None,
         error,
     }
 }
@@ -830,14 +844,45 @@ pub fn heal_loop(source: &str, intent: Option<&Intent>, max_rounds: usize, fuel:
 
 // ── Run-time debugging and repair ────────────────────────────────────
 
+/// One site the failing runs executed: its fault-localization score, what
+/// the runs saw there, and what was tried at it.
+#[derive(Debug, Clone, Serialize)]
+pub struct SiteEvidence {
+    /// `function/kind#index`, or `function/return` for a returned literal.
+    pub site: String,
+    pub function: String,
+    /// `binary`, `if`, or `return`.
+    pub kind: String,
+    /// The operator for a binary site, `if`, or the returned literal.
+    pub op: String,
+    /// Ochiai: failed / sqrt(total_failed x (failed + passed)). `None` for a
+    /// `return` site, which comes from a failed `@ens`, not from coverage.
+    pub ochiai: Option<f64>,
+    /// Failing and passing runs that executed the site.
+    pub failed: usize,
+    pub passed: usize,
+    /// What the failing runs observed here (`t: 18 > 18 -> false`).
+    pub observed: Vec<String>,
+    /// Each candidate tried here and rejected, with the reason.
+    pub rejected: Vec<(String, String)>,
+}
+
 /// An accepted run-time repair and its evidence.
 #[derive(Debug, Clone, Serialize)]
 pub struct Repair {
     pub function: String,
-    /// What changed, e.g. "`<` -> `<=`".
+    /// What changed, e.g. "`>` -> `>=`".
     pub mutation: String,
     pub line: usize,
     pub col: usize,
+    pub site: String,
+    pub ochiai: Option<f64>,
+    pub failed: usize,
+    pub passed: usize,
+    /// Why this candidate was tried before the others at its site.
+    pub motivation: String,
+    /// What the failing runs observed at the site.
+    pub observed: Vec<String>,
     /// Always false: a repair that makes a failing test pass changes what the
     /// program computes.
     pub semantics_preserving: bool,
@@ -855,8 +900,8 @@ pub struct DebugReport {
     pub repair: Option<Repair>,
     pub mutants_tried: usize,
     pub mutant_cap: usize,
-    /// Functions the repair search mutated (those the failing runs reach).
-    pub searched: Vec<String>,
+    /// The sites the failing runs executed, in the order they were tried.
+    pub sites: Vec<SiteEvidence>,
     pub note: Option<String>,
 }
 
@@ -864,123 +909,410 @@ impl DebugReport {
     pub fn failing(&self) -> usize {
         self.runs.iter().filter(|r| !r.passed).count()
     }
+
+    fn empty(note: Option<String>) -> Self {
+        DebugReport { runs: Vec::new(), repair: None, mutants_tried: 0, mutant_cap: MAX_MUTANTS, sites: Vec::new(), note }
+    }
 }
 
-/// One single-site mutation of the source.
-#[derive(Debug, Clone)]
-struct Mutant {
-    function: String,
-    mutation: String,
-    at: usize,
-    source: String,
+/// Run every probe once with coverage and a call trace.
+fn observe_probes(module: &Module, probes: &[(String, ProbeKind)], fuel: u64) -> Vec<(Run, eval::CoverageData)> {
+    probes
+        .iter()
+        .map(|(name, kind)| {
+            let o = eval::run_bounded_observed(module, name, Vec::new(), fuel, Some(TRACE_CAP), true);
+            let error = match o.result {
+                Ok(_) => None,
+                Err(BoundedError::FuelExhausted) => Some(format!("fuel exhausted ({fuel} units)")),
+                Err(BoundedError::Error(e)) => Some(e),
+            };
+            let cov = o.coverage.unwrap_or_default();
+            let run = Run {
+                name: name.clone(),
+                kind: *kind,
+                passed: error.is_none(),
+                failed_check: error.as_deref().and_then(failed_check),
+                trace: if error.is_some() { o.trace } else { Vec::new() },
+                raised_at: if error.is_some() {
+                    cov.raised.as_ref().map(|(s, m)| format!("{}: {m}", s.render()))
+                } else {
+                    None
+                },
+                error,
+            };
+            (run, cov)
+        })
+        .collect()
 }
 
-/// The top-level functions each function's body names in call position
-/// (`name(`), a cheap over-approximation of the call graph.
-fn callees(tokens: &[Token], body: &FnBody, known: &std::collections::HashSet<&str>) -> Vec<String> {
-    let mut out = Vec::new();
-    for w in tokens[body.open..body.close].windows(2) {
-        if w[0].kind == TokenKind::Ident && w[1].kind == TokenKind::LParen && known.contains(w[0].text.as_str()) {
-            out.push(w[0].text.clone());
+/// The function a contract violation names: "… of `f` …".
+fn contract_function(error: &str) -> Option<&str> {
+    let rest = error.split("contract violated: ").nth(1)?;
+    rest.split("` of `").nth(1)?.split('`').next()
+}
+
+/// One single-site change of the tree.
+#[derive(Debug, Clone, PartialEq)]
+enum Mutation {
+    /// Replace a binary operator.
+    Op(String),
+    /// Replace the binary site's right operand, an integer literal.
+    RightLiteral(String),
+    /// Swap the `then` and `else` blocks of an `if`.
+    Swap,
+    /// Negate an `if` condition.
+    Negate,
+    /// Replace the integer literal a function returns.
+    TailLiteral(String),
+}
+
+/// A site to repair at, and the candidates for it, motivated first.
+struct SitePlan {
+    evidence: SiteEvidence,
+    /// `None` for a `return` site.
+    site: Option<eval::SiteId>,
+    /// The source position of the site's function among the items.
+    item: usize,
+    preorder: usize,
+    /// `(mutation, its rendering, motivation)`; motivated ones first.
+    candidates: Vec<(Mutation, String, String)>,
+    motivated: bool,
+}
+
+const NO_SPECIFIC: &str = "a small mutation at a ranked site; no observation singles it out";
+
+fn swap_table(op: &str, table: &[(&str, &str)]) -> Option<String> {
+    table.iter().find(|(a, _)| *a == op).map(|(_, b)| b.to_string())
+}
+
+const INCLUSIVE: &[(&str, &str)] = &[(">", ">="), (">=", ">"), ("<", "<="), ("<=", "<")];
+const NEGATION: &[(&str, &str)] = &[("<", ">="), (">=", "<"), (">", "<="), ("<=", ">"), ("==", "!="), ("!=", "==")];
+const REVERSAL: &[(&str, &str)] = &[("<", ">"), (">", "<"), ("<=", ">="), (">=", "<=")];
+
+fn is_decimal(s: &str) -> bool {
+    !s.is_empty() && s.bytes().all(|c| c.is_ascii_digit())
+}
+
+/// `n+1` and, when not negative, `n-1`, in the order `up_first` says.
+fn plus_minus_one(text: &str, up_first: bool) -> Vec<String> {
+    let Ok(n) = text.parse::<i64>() else { return Vec::new() };
+    let up = n.checked_add(1).map(|m| m.to_string());
+    let down = n.checked_sub(1).filter(|m| *m >= 0).map(|m| m.to_string());
+    let v = if up_first { [up, down] } else { [down, up] };
+    v.into_iter().flatten().collect()
+}
+
+/// The candidates at a coverage site, ordered by what the runs observed.
+fn plan_site(
+    node: &crate::ast::Expr,
+    id: &eval::SiteId,
+    failing: &[&(Run, eval::CoverageData)],
+    passing: &[&(Run, eval::CoverageData)],
+) -> (Vec<(Mutation, String, String)>, String, Vec<String>) {
+    use crate::ast::{Expr, LiteralKind};
+    let mut motivated: Vec<(Mutation, String, String)> = Vec::new();
+    let mut rest: Vec<(Mutation, String, String)> = Vec::new();
+    let mut observed = Vec::new();
+    let op_text;
+    match node {
+        Expr::Binary { op, right, .. } => {
+            op_text = op.clone();
+            for (run, cov) in failing {
+                if let Some(rec) = cov.get(id) {
+                    for o in rec.observations.iter().take(4) {
+                        observed.push(format!("{}: {} {op} {} -> {}", run.name, o.left, o.right, o.result));
+                    }
+                    if rec.observations.is_empty() {
+                        observed.push(format!("{}: executed {} time(s)", run.name, rec.hits));
+                    }
+                }
+            }
+            let render = |to: &str| format!("`{op}` -> `{to}`");
+            if INCLUSIVE.iter().chain(NEGATION).any(|(a, _)| *a == op.as_str()) {
+                let equal: Vec<&str> = failing
+                    .iter()
+                    .filter(|(_, c)| c.get(id).is_some_and(|r| r.equal_operands))
+                    .map(|(r, _)| r.name.as_str())
+                    .collect();
+                if let Some(to) = swap_table(op, INCLUSIVE) {
+                    if equal.is_empty() {
+                        rest.push((Mutation::Op(to.clone()), render(&to), NO_SPECIFIC.into()));
+                    } else {
+                        let why = format!(
+                            "the comparison saw equal operands in failing run(s) {}; \
+                             inclusive and exclusive differ exactly there",
+                            equal.join(", ")
+                        );
+                        motivated.push((Mutation::Op(to.clone()), render(&to), why));
+                    }
+                }
+                for table in [NEGATION, REVERSAL] {
+                    if let Some(to) = swap_table(op, table) {
+                        rest.push((Mutation::Op(to.clone()), render(&to), NO_SPECIFIC.into()));
+                    }
+                }
+            } else if op == "+" || op == "-" {
+                let to = if op == "+" { "-" } else { "+" };
+                let ens: Vec<&str> = failing
+                    .iter()
+                    .filter_map(|(r, _)| {
+                        let c = r.failed_check.as_deref()?;
+                        let named = contract_function(r.error.as_deref()?)? == id.function;
+                        (c.starts_with("@ens") && (c.contains('<') || c.contains('>')) && named).then_some(c)
+                    })
+                    .collect();
+                if ens.is_empty() {
+                    rest.push((Mutation::Op(to.into()), render(to), NO_SPECIFIC.into()));
+                } else {
+                    let why = format!(
+                        "a failed sign/ordering postcondition of `{}` ({}) and an arithmetic site in it",
+                        id.function,
+                        ens.join(", ")
+                    );
+                    motivated.push((Mutation::Op(to.into()), render(to), why));
+                }
+            }
+            if let Expr::Literal { value, kind: LiteralKind::Int } = right.as_ref()
+                && is_decimal(value)
+                && (is_arith(op) || INCLUSIVE.iter().chain(NEGATION).any(|(a, _)| *a == op.as_str()))
+            {
+                for m in plus_minus_one(value, true) {
+                    rest.push((Mutation::RightLiteral(m.clone()), format!("`{value}` -> `{m}`"), NO_SPECIFIC.into()));
+                }
+            }
         }
+        Expr::If { else_block, .. } => {
+            op_text = "if".into();
+            let arms = |runs: &[&(Run, eval::CoverageData)]| {
+                runs.iter().fold((0u64, 0u64), |(t, e), (_, c)| match c.get(id) {
+                    Some(r) => (t + r.then_taken, e + r.else_taken),
+                    None => (t, e),
+                })
+            };
+            let (ft, fe) = arms(failing);
+            let (pt, pe) = arms(passing);
+            for (run, cov) in failing {
+                if let Some(r) = cov.get(id) {
+                    observed.push(format!("{}: then x{}, else x{}", run.name, r.then_taken, r.else_taken));
+                }
+            }
+            let (m, text) = if else_block.is_some() {
+                (Mutation::Swap, "swap `if`/`else` branches".to_string())
+            } else {
+                (Mutation::Negate, "negate the `if` condition".to_string())
+            };
+            let only_failing = (ft > 0 && pt == 0).then_some("then").or((fe > 0 && pe == 0).then_some("else"));
+            match only_failing {
+                Some(arm) => {
+                    let why = format!("the `{arm}` arm was taken only in failing runs");
+                    motivated.push((m, text, why));
+                }
+                None => rest.push((m, text, NO_SPECIFIC.into())),
+            }
+        }
+        _ => op_text = String::new(),
+    }
+    let mut out = motivated;
+    for c in rest {
+        if !out.iter().any(|o| o.0 == c.0) {
+            out.push(c);
+        }
+    }
+    (out, op_text, observed)
+}
+
+fn is_arith(op: &str) -> bool {
+    matches!(op, "+" | "-" | "*" | "/" | "%")
+}
+
+/// The integer literal a function returns as its tail, if it does.
+fn tail_literal(fd: &crate::ast::FunctionDef) -> Option<&str> {
+    use crate::ast::{Expr, LiteralKind};
+    let tail = fd.body_expr.as_deref().or(fd.body.tail_expr.as_deref())?;
+    match tail {
+        Expr::Literal { value, kind: LiteralKind::Int } if is_decimal(value) => Some(value),
+        _ => None,
+    }
+}
+
+fn function_mut<'a>(module: &'a mut Module, name: &str) -> Option<&'a mut crate::ast::FunctionDef> {
+    module.items.iter_mut().find_map(|it| match &mut it.kind {
+        crate::ast::ItemKind::Function(fd) if fd.name == name => Some(fd),
+        _ => None,
+    })
+}
+
+fn function_ref<'a>(module: &'a Module, name: &str) -> Option<&'a crate::ast::FunctionDef> {
+    module.items.iter().find_map(|it| match &it.kind {
+        crate::ast::ItemKind::Function(fd) if fd.name == name => Some(fd),
+        _ => None,
+    })
+}
+
+/// The tree with one mutation applied, or `None` when the site is not there.
+fn mutate(module: &Module, function: &str, site: Option<&eval::SiteId>, m: &Mutation) -> Option<Module> {
+    use crate::ast::Expr;
+    let mut out = module.clone();
+    let fd = function_mut(&mut out, function)?;
+    if let Mutation::TailLiteral(new) = m {
+        let tail = match &mut fd.body_expr {
+            Some(e) => e.as_mut(),
+            None => fd.body.tail_expr.as_deref_mut()?,
+        };
+        let Expr::Literal { value, .. } = tail else { return None };
+        *value = new.clone();
+        return Some(out);
+    }
+    let site = site?;
+    let node = eval::site_mut(fd, site.kind, site.index)?;
+    match (m, node) {
+        (Mutation::Op(new), Expr::Binary { op, .. }) => *op = new.clone(),
+        (Mutation::RightLiteral(new), Expr::Binary { right, .. }) => {
+            let Expr::Literal { value, .. } = right.as_mut() else { return None };
+            *value = new.clone();
+        }
+        (Mutation::Swap, Expr::If { then_block, else_block: Some(e), .. }) => std::mem::swap(then_block, e),
+        (Mutation::Negate, Expr::If { cond, .. }) => {
+            let inner = std::mem::replace(cond.as_mut(), Expr::Continue);
+            **cond = Expr::Unary { op: "!".into(), operand: Box::new(inner) };
+        }
+        _ => return None,
+    }
+    Some(out)
+}
+
+/// Operator, `if` and integer-literal events of `fd`'s body in source order,
+/// as `(node address, token text)`: a binary operator between its operands,
+/// a prefix operator and `if` before theirs.
+fn token_events(fd: &crate::ast::FunctionDef) -> Vec<(usize, String)> {
+    use crate::ast::{Expr, LiteralKind};
+    fn go(e: &Expr, out: &mut Vec<(usize, String)>) {
+        let addr = e as *const Expr as usize;
+        match e {
+            Expr::Binary { op, left, right } => {
+                go(left, out);
+                out.push((addr, op.clone()));
+                go(right, out);
+            }
+            Expr::Unary { op, operand } => {
+                out.push((addr, op.clone()));
+                go(operand, out);
+            }
+            Expr::If { .. } => {
+                out.push((addr, "if".into()));
+                for c in eval::expr_children(e) {
+                    go(c, out);
+                }
+            }
+            Expr::Literal { value, kind: LiteralKind::Int } => out.push((addr, value.clone())),
+            _ => {
+                for c in eval::expr_children(e) {
+                    go(c, out);
+                }
+            }
+        }
+    }
+    let mut out = Vec::new();
+    for r in eval::function_roots(fd) {
+        go(r, &mut out);
     }
     out
 }
 
-/// Ends a value, so a following `+`/`-` is binary.
-fn ends_value(k: TokenKind) -> bool {
-    matches!(
-        k,
-        TokenKind::Ident | TokenKind::IntLiteral | TokenKind::FloatLiteral | TokenKind::RParen | TokenKind::RBrack
-    )
+/// The body token that the node at `addr` (with token text `text`) is
+/// spelled by: the k-th token of that text, where the node is the k-th event
+/// of that text. The counts must agree, or the mapping is refused.
+fn token_of(
+    tokens: &[Token],
+    body: &FnBody,
+    events: &[(usize, String)],
+    addr: usize,
+    text: &str,
+    is_tok: impl Fn(&Token) -> bool,
+) -> Result<usize, String> {
+    let same: Vec<usize> = events.iter().filter(|(_, t)| t == text).map(|(a, _)| *a).collect();
+    let rank = same.iter().position(|a| *a == addr).ok_or("the node is not among the function's events")?;
+    let toks: Vec<usize> = (body.open + 1..body.close).filter(|&k| is_tok(&tokens[k])).collect();
+    if toks.len() != same.len() {
+        return Err(format!(
+            "the function has {} `{text}` token(s) and {} `{text}` node(s), so the k-th token is not proof",
+            toks.len(),
+            same.len()
+        ));
+    }
+    Ok(toks[rank])
 }
 
-/// Every mutant of the bodies of `functions`, kind-major in the order
-/// comparison, arithmetic, literal, branch swap; within a kind, by function
-/// in source order, then by position. At most `cap`.
-fn mutants(source: &str, tokens: &[Token], bodies: &[&FnBody], cap: usize) -> Vec<Mutant> {
-    let mut out = Vec::new();
-    let add = |out: &mut Vec<Mutant>, function: &str, mutation: String, at: usize, src: String| {
-        if out.len() < cap {
-            out.push(Mutant { function: function.to_string(), mutation, at, source: src });
+/// The source with `m` applied at the site, by token, and the byte offset
+/// of the change. The caller re-parses it and compares trees.
+fn source_edit(
+    source: &str,
+    tokens: &[Token],
+    body: &FnBody,
+    fd: &crate::ast::FunctionDef,
+    site: Option<&eval::SiteId>,
+    m: &Mutation,
+) -> Result<(String, usize), String> {
+    use crate::ast::Expr;
+    if let Mutation::TailLiteral(new) = m {
+        let t = tokens.get(body.close.wrapping_sub(1)).ok_or("no tail token")?;
+        if t.kind != TokenKind::IntLiteral || Some(t.text.as_str()) != tail_literal(fd) {
+            return Err("the token before the body's `}` is not the returned literal".into());
         }
-    };
-    // Comparison swaps.
-    for b in bodies {
-        for t in &tokens[b.open + 1..b.close] {
-            let to = match t.kind {
-                TokenKind::Lt => "<=",
-                TokenKind::Le => "<",
-                TokenKind::Gt => ">=",
-                TokenKind::Ge => ">",
-                TokenKind::Eq => "!=",
-                TokenKind::Neq => "==",
-                _ => continue,
-            };
-            let s = splice(source, t.span.offset, tok_end(t), to);
-            add(&mut out, &b.name, format!("`{}` -> `{to}`", t.text), t.span.offset, s);
-        }
+        return Ok((splice(source, t.span.offset, tok_end(t), new), t.span.offset));
     }
-    // Arithmetic `+` <-> `-`, binary only.
-    for b in bodies {
-        for k in b.open + 1..b.close {
+    let site = site.ok_or("no site")?;
+    let node = eval::function_sites(fd)
+        .into_iter()
+        .find(|(id, _)| id == site)
+        .map(|(_, e)| e)
+        .ok_or("the site is not in the function")?;
+    let events = token_events(fd);
+    match (m, node) {
+        (Mutation::Op(new), Expr::Binary { op, .. }) => {
+            let k = token_of(tokens, body, &events, node as *const Expr as usize, op, |t| t.text == *op)?;
             let t = &tokens[k];
-            let to = match t.kind {
-                TokenKind::Plus => "-",
-                TokenKind::Minus => "+",
-                _ => continue,
-            };
-            if !ends_value(tokens[k - 1].kind) {
-                continue;
-            }
-            let s = splice(source, t.span.offset, tok_end(t), to);
-            add(&mut out, &b.name, format!("`{}` -> `{to}`", t.text), t.span.offset, s);
+            Ok((splice(source, t.span.offset, tok_end(t), new), t.span.offset))
         }
-    }
-    // Integer literal ±1, decimal literals without suffix only.
-    for b in bodies {
-        for t in &tokens[b.open + 1..b.close] {
-            if t.kind != TokenKind::IntLiteral || !t.text.bytes().all(|c| c.is_ascii_digit()) {
-                continue;
-            }
-            let Ok(n) = t.text.parse::<i64>() else { continue };
-            for m in [n.checked_add(1), n.checked_sub(1).filter(|m| *m >= 0)].into_iter().flatten() {
-                let s = splice(source, t.span.offset, tok_end(t), &m.to_string());
-                add(&mut out, &b.name, format!("`{n}` -> `{m}`"), t.span.offset, s);
-            }
-        }
-    }
-    // Swap the branches of `if c { A } else { B }` (not `else if`, not `? :`).
-    for b in bodies {
-        for k in b.open + 1..b.close {
+        (Mutation::RightLiteral(new), Expr::Binary { right, .. }) => {
+            let Expr::Literal { value, .. } = right.as_ref() else { return Err("operand is not a literal".into()) };
+            let addr = right.as_ref() as *const Expr as usize;
+            let k = token_of(tokens, body, &events, addr, value, |t| {
+                t.kind == TokenKind::IntLiteral && t.text == *value
+            })?;
             let t = &tokens[k];
-            if t.kind != TokenKind::Question || t.text != "if" {
-                continue;
-            }
+            Ok((splice(source, t.span.offset, tok_end(t), new), t.span.offset))
+        }
+        (Mutation::Swap | Mutation::Negate, Expr::If { .. }) => {
+            let k = token_of(tokens, body, &events, node as *const Expr as usize, "if", |t| {
+                t.kind == TokenKind::Question && t.text == "if"
+            })?;
             let mut nest = 0i32;
             let mut then_open = None;
-            for (j, u) in tokens.iter().enumerate().take(b.close).skip(k + 1) {
+            for (j, u) in tokens.iter().enumerate().take(body.close).skip(k + 1) {
                 match u.kind {
                     TokenKind::LParen | TokenKind::LBrack => nest += 1,
                     TokenKind::RParen | TokenKind::RBrack => nest -= 1,
                     TokenKind::LBrace if nest == 0 => {
-                        // `@P { … }` in the condition is a struct literal.
-                        if j >= 2 && tokens[j - 2].kind == TokenKind::At {
-                            break;
-                        }
                         then_open = Some(j);
                         break;
                     }
                     _ => {}
                 }
             }
-            let Some(then_open) = then_open else { continue };
-            let Some(then_close) = matching_close(tokens, then_open) else { continue };
-            let (Some(e), Some(eo)) = (tokens.get(then_close + 1), tokens.get(then_close + 2)) else { continue };
-            if e.kind != TokenKind::KwElse || eo.kind != TokenKind::LBrace {
-                continue;
+            let then_open = then_open.ok_or("no `{` after the condition")?;
+            let then_close = matching_close(tokens, then_open).ok_or("unclosed `then` block")?;
+            let at = tokens[k].span.offset;
+            if *m == Mutation::Negate {
+                let (cs, ce) = (tokens[k + 1].span.offset, tok_end(&tokens[then_open - 1]));
+                let text = format!("!({})", &source[cs..ce]);
+                return Ok((splice(source, cs, ce, &text), at));
             }
-            let Some(else_close) = matching_close(tokens, then_close + 2) else { continue };
+            let (e, eo) = (tokens.get(then_close + 1).ok_or("no else")?, tokens.get(then_close + 2).ok_or("no else")?);
+            if e.kind != TokenKind::KwElse || eo.kind != TokenKind::LBrace {
+                return Err("the `else` is not a plain block".into());
+            }
+            let else_close = matching_close(tokens, then_close + 2).ok_or("unclosed `else` block")?;
             let then_text = &source[tokens[then_open].span.offset..tok_end(&tokens[then_close])];
             let else_text = &source[eo.span.offset..tok_end(&tokens[else_close])];
             let mut s = String::with_capacity(source.len());
@@ -989,10 +1321,21 @@ fn mutants(source: &str, tokens: &[Token], bodies: &[&FnBody], cap: usize) -> Ve
             s.push_str(&source[tok_end(&tokens[then_close])..eo.span.offset]);
             s.push_str(then_text);
             s.push_str(&source[tok_end(&tokens[else_close])..]);
-            add(&mut out, &b.name, "swap `if`/`else` branches".to_string(), t.span.offset, s);
+            Ok((s, at))
         }
+        _ => Err("the mutation does not apply to this node".into()),
     }
-    out
+}
+
+/// Every top-level function's name and body, for comparing two trees.
+fn bodies_key(m: &Module) -> Vec<String> {
+    m.items
+        .iter()
+        .map(|it| match &it.kind {
+            crate::ast::ItemKind::Function(fd) => format!("{}{:?}{:?}", fd.name, fd.body, fd.body_expr),
+            other => format!("{:?}", std::mem::discriminant(other)),
+        })
+        .collect()
 }
 
 /// Whether every error of `after` was already among `before` (as a
@@ -1010,88 +1353,229 @@ fn no_new_errors(before: &[DiagSummary], after: &[DiagSummary]) -> bool {
     true
 }
 
-/// Run every probe of `intent` on `source`; when any fails, report it and
-/// search single-site mutations for one that makes every probe pass. See the
-/// module documentation for the acceptance rules.
+/// The sites the failing runs executed, scored and planned, best first.
+fn plan(module: &Module, intent: &Intent, observed: &[(Run, eval::CoverageData)]) -> Vec<SitePlan> {
+    let failing: Vec<&(Run, eval::CoverageData)> = observed.iter().filter(|(r, _)| !r.passed).collect();
+    let passing: Vec<&(Run, eval::CoverageData)> = observed.iter().filter(|(r, _)| r.passed).collect();
+    let total_failed = failing.len();
+    let tests: std::collections::HashSet<&str> = intent.tests.iter().map(String::as_str).collect();
+    let mut plans = Vec::new();
+    for (item, it) in module.items.iter().enumerate() {
+        let crate::ast::ItemKind::Function(fd) = &it.kind else { continue };
+        if tests.contains(fd.name.as_str()) {
+            continue;
+        }
+        for (preorder, (id, node)) in eval::function_sites(fd).into_iter().enumerate() {
+            if id.kind == eval::SiteKind::Index {
+                continue;
+            }
+            let ran = |runs: &[&(Run, eval::CoverageData)]| runs.iter().filter(|(_, c)| c.get(&id).is_some()).count();
+            let (failed, passed) = (ran(&failing), ran(&passing));
+            if failed == 0 {
+                continue;
+            }
+            let ochiai = failed as f64 / ((total_failed * (failed + passed)) as f64).sqrt();
+            let (candidates, op, observed) = plan_site(node, &id, &failing, &passing);
+            if candidates.is_empty() {
+                continue;
+            }
+            let motivated = candidates.first().is_some_and(|c| c.2 != NO_SPECIFIC);
+            plans.push(SitePlan {
+                evidence: SiteEvidence {
+                    site: id.render(),
+                    function: id.function.clone(),
+                    kind: id.kind.as_str().into(),
+                    op,
+                    ochiai: Some(ochiai),
+                    failed,
+                    passed,
+                    observed,
+                    rejected: Vec::new(),
+                },
+                site: Some(id),
+                item,
+                preorder,
+                candidates,
+                motivated,
+            });
+        }
+    }
+    // A failed `@ens` of a function that returns a literal: the literal is
+    // the value the clause was false of.
+    let mut seen = std::collections::HashSet::new();
+    for (run, _) in &failing {
+        let (Some(check), Some(err)) = (run.failed_check.as_deref(), run.error.as_deref()) else { continue };
+        if !check.starts_with("@ens") {
+            continue;
+        }
+        let Some(f) = contract_function(err) else { continue };
+        if tests.contains(f) || !seen.insert(f.to_string()) {
+            continue;
+        }
+        let Some((item, fd)) = module.items.iter().enumerate().find_map(|(i, it)| match &it.kind {
+            crate::ast::ItemKind::Function(fd) if fd.name == f => Some((i, fd)),
+            _ => None,
+        }) else {
+            continue;
+        };
+        let Some(lit) = tail_literal(fd) else { continue };
+        let up_first = !check.contains('<');
+        let why = format!("`{check}` of `{f}` failed, and `{f}` returns the literal `{lit}`");
+        let candidates = plus_minus_one(lit, up_first)
+            .into_iter()
+            .map(|m| (Mutation::TailLiteral(m.clone()), format!("`{lit}` -> `{m}`"), why.clone()))
+            .collect();
+        plans.push(SitePlan {
+            evidence: SiteEvidence {
+                site: format!("{f}/return"),
+                function: f.to_string(),
+                kind: "return".into(),
+                op: lit.to_string(),
+                ochiai: None,
+                failed: failing.iter().filter(|(r, _)| r.error.as_deref().and_then(contract_function) == Some(f)).count(),
+                passed: 0,
+                observed: vec![format!("{}: {}", run.name, err)],
+                rejected: Vec::new(),
+            },
+            site: None,
+            item,
+            preorder: usize::MAX,
+            candidates,
+            motivated: true,
+        });
+    }
+    plans.sort_by(|a, b| {
+        let score = |p: &SitePlan| p.evidence.ochiai.unwrap_or(-1.0);
+        score(b)
+            .partial_cmp(&score(a))
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then(b.motivated.cmp(&a.motivated))
+            // At an equal score an `if` comes after operator sites: which arm
+            // it takes is decided by its condition.
+            .then((a.evidence.kind == "if").cmp(&(b.evidence.kind == "if")))
+            .then(b.evidence.failed.cmp(&a.evidence.failed))
+            .then(a.item.cmp(&b.item))
+            .then(a.preorder.cmp(&b.preorder))
+    });
+    plans
+}
+
+/// Run every probe of `intent` on `source` with coverage; when any fails,
+/// rank the sites the failing runs executed and try the candidates the
+/// observations motivate, best site first. See the module documentation for
+/// the acceptance rules.
 pub fn debug_and_repair(source: &str, intent: &Intent, fuel: u64) -> DebugReport {
     let probes = probes(intent);
-    let mut report =
-        DebugReport { runs: Vec::new(), repair: None, mutants_tried: 0, mutant_cap: MAX_MUTANTS, searched: Vec::new(), note: None };
     let Some(module) = parse(source) else {
-        report.note = Some("the source does not parse, so nothing was run".into());
-        return report;
+        return DebugReport::empty(Some("the source does not parse, so nothing was run".into()));
     };
     if probes.is_empty() {
-        report.note = Some("no @test functions and no zero-argument functions with contracts: nothing to run".into());
+        return DebugReport::empty(Some(
+            "no @test functions and no zero-argument functions with contracts: nothing to run".into(),
+        ));
+    }
+    let observed = observe_probes(&module, &probes, fuel);
+    let mut report = DebugReport::empty(None);
+    report.runs = observed.iter().map(|(r, _)| r.clone()).collect();
+    let failing_names: Vec<String> = report.runs.iter().filter(|r| !r.passed).map(|r| r.name.clone()).collect();
+    if failing_names.is_empty() {
         return report;
     }
-    report.runs = run_probes(&module, &probes, fuel);
-    let failing: Vec<&Run> = report.runs.iter().filter(|r| !r.passed).collect();
-    if failing.is_empty() {
+    let mut plans = plan(&module, intent, &observed);
+    if plans.is_empty() {
+        report.note = Some(
+            "the failing runs executed no comparison, arithmetic or `if` in a non-test function, and no \
+             failed `@ens` names a function returning a literal: there is no evidence to repair from"
+                .into(),
+        );
         return report;
     }
 
-    // The non-test functions the failing runs can reach.
     let tokens = lexer::lex(source);
     let bodies = function_bodies(&tokens);
-    let known: std::collections::HashSet<&str> = bodies.iter().map(|b| b.name.as_str()).collect();
-    let tests: std::collections::HashSet<&str> = intent.tests.iter().map(String::as_str).collect();
-    let mut reached: Vec<String> = Vec::new();
-    let mut stack: Vec<String> = failing.iter().map(|r| r.name.clone()).collect();
-    while let Some(f) = stack.pop() {
-        if reached.contains(&f) {
-            continue;
-        }
-        reached.push(f.clone());
-        if let Some(b) = bodies.iter().find(|b| b.name == f) {
-            stack.extend(callees(&tokens, b, &known));
-        }
-    }
-    let targets: Vec<&FnBody> =
-        bodies.iter().filter(|b| reached.contains(&b.name) && !tests.contains(b.name.as_str())).collect();
-    report.searched = targets.iter().map(|b| b.name.clone()).collect();
-    if targets.is_empty() {
-        report.note = Some("the failing runs reach no non-test function to repair".into());
-        return report;
-    }
-
     let baseline = errors_of(source);
-    let failing_names: Vec<String> = failing.iter().map(|r| r.name.clone()).collect();
-    for m in mutants(source, &tokens, &targets, MAX_MUTANTS) {
-        report.mutants_tried += 1;
-        let Some(mmod) = parse(&m.source) else { continue };
-        if !intent.violations_in(&intent::infer(&mmod)).is_empty() {
+    let original_key = bodies_key(&module);
+    'sites: for p in plans.iter_mut() {
+        let function = p.evidence.function.clone();
+        let Some(fd) = function_ref(&module, &function) else { continue };
+        let Some(body) = bodies.iter().find(|b| b.name == function) else {
+            p.evidence.rejected.push(("*".into(), "the function's body is not a `{ … }` block in the tokens".into()));
             continue;
-        }
-        // Cheapest decisive check first: the runs that failed.
-        if failing_names.iter().any(|n| passes(&mmod, n, fuel).is_err()) {
-            continue;
-        }
-        if !no_new_errors(&baseline, &errors_of(&m.source)) {
-            continue;
-        }
-        let runs_after = run_probes(&mmod, &probes, fuel);
-        if runs_after.iter().all(|r| r.passed) {
-            let (line, col) = line_col(source, m.at);
+        };
+        for (m, text, why) in p.candidates.clone() {
+            if report.mutants_tried == MAX_MUTANTS {
+                break 'sites;
+            }
+            report.mutants_tried += 1;
+            let mut reject = |reason: String| p.evidence.rejected.push((text.clone(), reason));
+            let Some(mutated) = mutate(&module, &function, p.site.as_ref(), &m) else {
+                reject("the site is not in the tree".into());
+                continue;
+            };
+            let (edited, at) = match source_edit(source, &tokens, body, fd, p.site.as_ref(), &m) {
+                Ok(x) => x,
+                Err(e) => {
+                    reject(format!("no proven source edit: {e}"));
+                    continue;
+                }
+            };
+            match parse(&edited) {
+                Some(re) if bodies_key(&re) == bodies_key(&mutated) && bodies_key(&re) != original_key => {}
+                _ => {
+                    reject("the source edit does not re-parse to the mutated tree".into());
+                    continue;
+                }
+            }
+            let v = intent.violations_in(&intent::infer(&mutated));
+            if !v.is_empty() {
+                reject(format!("intent not preserved: {}", v.join("; ")));
+                continue;
+            }
+            if let Some((n, e)) =
+                failing_names.iter().find_map(|n| passes(&mutated, n, fuel).err().map(|e| (n, e)))
+            {
+                reject(format!("`{n}` still fails: {e}"));
+                continue;
+            }
+            let after = errors_of(&edited);
+            if !no_new_errors(&baseline, &after) {
+                reject(format!("adds a checker error ({} -> {})", baseline.len(), after.len()));
+                continue;
+            }
+            let runs_after = run_probes(&mutated, &probes, fuel);
+            if let Some(r) = runs_after.iter().find(|r| !r.passed) {
+                reject(format!("`{}` now fails: {}", r.name, r.error.as_deref().unwrap_or("")));
+                continue;
+            }
+            let (line, col) = line_col(source, at);
             report.repair = Some(Repair {
-                function: m.function,
-                mutation: m.mutation,
+                function: function.clone(),
+                mutation: text,
                 line,
                 col,
+                site: p.evidence.site.clone(),
+                ochiai: p.evidence.ochiai,
+                failed: p.evidence.failed,
+                passed: p.evidence.passed,
+                motivation: why,
+                observed: p.evidence.observed.clone(),
                 semantics_preserving: false,
-                fixed: failing_names,
+                fixed: failing_names.clone(),
                 runs_after,
-                source: m.source,
+                source: edited,
             });
-            return report;
+            break 'sites;
         }
     }
-    report.note = Some(format!(
-        "no single-site mutation of {} made every run pass ({} tried, cap {})",
-        report.searched.join(", "),
-        report.mutants_tried,
-        MAX_MUTANTS
-    ));
+    report.sites = plans.into_iter().map(|p| p.evidence).collect();
+    if report.repair.is_none() {
+        report.note = Some(format!(
+            "no candidate at the {} ranked site(s) made every run pass ({} tried, cap {})",
+            report.sites.len(),
+            report.mutants_tried,
+            MAX_MUTANTS
+        ));
+    }
     report
 }
 
@@ -1127,14 +1611,7 @@ pub fn heal_program(source: &str, max_rounds: usize, fuel: u64) -> HealReport {
             (d, healed)
         }
         None => (
-            DebugReport {
-                runs: Vec::new(),
-                repair: None,
-                mutants_tried: 0,
-                mutant_cap: MAX_MUTANTS,
-                searched: Vec::new(),
-                note: Some("the source does not parse, so nothing was run".into()),
-            },
+            DebugReport::empty(Some("the source does not parse, so nothing was run".into())),
             compile.source.clone(),
         ),
     };
@@ -1347,14 +1824,15 @@ mod tests {
 
     #[test]
     fn heal_reports_an_unrepairable_program_honestly() {
-        // No single-site mutation makes `seven` return 7 from 100.
+        // `seven` executes no comparison, arithmetic or `if`, and no `@ens`
+        // fails: the runs give nothing to repair from, so nothing is tried.
         let src = "f seven() -> i64 {\n    100\n}\n\n@t\nf t_seven() {\n    assert(seven() == 7, \"seven\")\n}\n";
         let report = heal_program(src, DEFAULT_MAX_ROUNDS, FUEL);
         assert!(!report.ok);
         assert!(report.debug.repair.is_none());
         assert_eq!((report.tests_total, report.tests_passing), (1, 0));
-        assert!(report.debug.note.as_deref().unwrap_or("").contains("no single-site mutation"), "{:?}", report.debug.note);
-        assert!(report.debug.mutants_tried > 0);
+        assert!(report.debug.note.as_deref().unwrap_or("").contains("no evidence to repair from"), "{:?}", report.debug.note);
+        assert_eq!(report.debug.mutants_tried, 0);
         assert_eq!(report.healed, src, "an unrepaired program is returned unchanged");
     }
 
@@ -1377,19 +1855,97 @@ mod tests {
         assert_eq!(report.runs[0].failed_check.as_deref(), Some("@ens(result > 0)"), "{report:#?}");
         let repair = report.repair.expect("0 -> 1 satisfies the contract");
         assert_eq!(repair.mutation, "`0` -> `1`");
+        assert_eq!(repair.site, "one/return");
+        assert!(repair.motivation.contains("`@ens(result > 0)` of `one` failed"), "{}", repair.motivation);
     }
 
+    /// The branch swap is made on the tree, mapped to the `if`'s tokens, and
+    /// the edited source re-parses to the mutated tree.
     #[test]
-    fn heal_branch_swap_mutant_is_well_formed() {
+    fn heal_branch_swap_edit_reproduces_the_mutated_tree() {
         let src = "f g(a: i64) -> i64 {\n    if a > 0 { 1 } else { 2 }\n}\n";
+        let module = parse(src).unwrap();
         let tokens = lexer::lex(src);
         let bodies = function_bodies(&tokens);
-        let refs: Vec<&FnBody> = bodies.iter().collect();
-        let swap = mutants(src, &tokens, &refs, MAX_MUTANTS)
-            .into_iter()
-            .find(|m| m.mutation.contains("swap"))
-            .expect("a branch swap");
-        assert!(swap.source.contains("if a > 0 { 2 } else { 1 }"), "{}", swap.source);
+        let fd = function_ref(&module, "g").unwrap();
+        let site = eval::SiteId { function: "g".into(), kind: eval::SiteKind::If, index: 0 };
+        let mutated = mutate(&module, "g", Some(&site), &Mutation::Swap).expect("an if");
+        let (edited, _) = source_edit(src, &tokens, &bodies[0], fd, Some(&site), &Mutation::Swap).unwrap();
+        assert!(edited.contains("if a > 0 { 2 } else { 1 }"), "{edited}");
+        assert_eq!(bodies_key(&parse(&edited).unwrap()), bodies_key(&mutated));
+        let (negated, _) = source_edit(src, &tokens, &bodies[0], fd, Some(&site), &Mutation::Negate).unwrap();
+        let neg_tree = mutate(&module, "g", Some(&site), &Mutation::Negate).unwrap();
+        assert!(negated.contains("if !(a > 0) { 1 }"), "{negated}");
+        assert_eq!(bodies_key(&parse(&negated).unwrap()), bodies_key(&neg_tree));
+    }
+
+    /// The off-by-one with only the failing test calling `adult`: the
+    /// comparison is executed by every failing run and no passing one (Ochiai
+    /// 1.0), and it saw 18 against 18.
+    #[test]
+    fn heal_off_by_one_evidence_shows_equal_operands_and_score() {
+        let src = "f adult(age: i64) -> bool {\n    if age > 18 { 1b } else { 0b }\n}\n\n\
+                   @t\nf t_eighteen() {\n    assert(adult(18), \"18 is adult\")\n}\n";
+        let intent = intent::infer_source(src).unwrap();
+        let report = debug_and_repair(src, &intent, FUEL);
+        let repair = report.repair.as_ref().expect("repaired");
+        assert_eq!(repair.mutation, "`>` -> `>=`");
+        assert_eq!(repair.site, "adult/binary#0");
+        assert_eq!(repair.ochiai, Some(1.0));
+        assert_eq!((repair.failed, repair.passed), (1, 0));
+        assert!(repair.observed.iter().any(|o| o == "t_eighteen: 18 > 18 -> false"), "{:?}", repair.observed);
+        assert!(repair.motivation.contains("equal operands"), "{}", repair.motivation);
+        assert_eq!(report.mutants_tried, 1, "the motivated candidate is tried first: {report:#?}");
+        assert_eq!((repair.line, repair.col), (2, 12));
+    }
+
+    /// Fault localization: `x - 1` runs only in the failing test (Ochiai 1.0)
+    /// and ranks above the comparison both tests run (Ochiai 0.71); `x + 1`,
+    /// which no failing run reaches, is not a site at all.
+    #[test]
+    fn heal_ranks_a_site_only_the_failing_run_executes_first() {
+        let src = "f g(x: i64) -> i64 {\n    if x > 5 { x + 1 } else { x - 1 }\n}\n\n\
+                   @t\nf t_big() {\n    assert(g(10) == 11, \"big\")\n}\n\n\
+                   @t\nf t_small() {\n    assert(g(0) == 1, \"small\")\n}\n";
+        let intent = intent::infer_source(src).unwrap();
+        let report = debug_and_repair(src, &intent, FUEL);
+        let pos = |s: &str| report.sites.iter().position(|e| e.site == s);
+        let minus = pos("g/binary#2").expect("`-` site");
+        let cmp = pos("g/binary#0").expect("`>` site");
+        assert!(minus < cmp, "{:#?}", report.sites);
+        assert_eq!(report.sites[minus].ochiai, Some(1.0));
+        assert!((report.sites[cmp].ochiai.unwrap() - 0.5f64.sqrt()).abs() < 1e-9);
+        assert_eq!(pos("g/binary#1"), None, "`x + 1` ran only in a passing test");
+        let repair = report.repair.expect("repaired");
+        assert_eq!((repair.site.as_str(), repair.mutation.as_str()), ("g/binary#2", "`-` -> `+`"));
+        assert!(repair.source.contains("{ x + 1 } else { x + 1 }"), "{}", repair.source);
+    }
+
+    /// A run that fails with a runtime error names the node that raised it.
+    #[test]
+    fn heal_names_the_node_that_raised_a_runtime_error() {
+        let src = "f div(a: i64, b: i64) -> i64 {\n    a / b\n}\n\n\
+                   @t\nf t_div() {\n    assert(div(1, 0) == 0, \"div\")\n}\n";
+        let intent = intent::infer_source(src).unwrap();
+        let report = debug_and_repair(src, &intent, FUEL);
+        let run = &report.runs[0];
+        assert!(!run.passed);
+        let at = run.raised_at.as_deref().expect("a raising node");
+        assert!(at.starts_with("div/binary#0: division by zero"), "{at}");
+    }
+
+    /// A rejected candidate is listed under its site with the reason.
+    #[test]
+    fn heal_reports_why_candidates_were_rejected_per_site() {
+        let report = debug_and_repair(OFF_BY_ONE, &intent::infer_source(OFF_BY_ONE).unwrap(), FUEL);
+        assert!(report.repair.is_some());
+        let tried: usize = report.sites.iter().map(|s| s.rejected.len()).sum();
+        assert_eq!(tried + 1, report.mutants_tried, "{:#?}", report.sites);
+        for s in &report.sites {
+            for (m, why) in &s.rejected {
+                assert!(!m.is_empty() && !why.is_empty(), "{s:#?}");
+            }
+        }
     }
 
     #[test]

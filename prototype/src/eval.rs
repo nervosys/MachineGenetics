@@ -145,6 +145,25 @@ impl PartialEq for Value {
     }
 }
 
+/// `o[i]` for an index that is not a range.
+fn index_value(o: Value, i: Value) -> R {
+    match (o, i) {
+        (Value::List(xs), Value::Int(n)) => {
+            xs.get(n as usize).cloned().ok_or(Control::Err("index out of bounds".into()))
+        }
+        // `s[i]` — the i-th character as a one-char string.
+        (Value::Str(s), Value::Int(n)) => s
+            .chars()
+            .nth(n as usize)
+            .map(|c| Value::Str(c.to_string()))
+            .ok_or(Control::Err("index out of bounds".into())),
+        (Value::Map(m), key) => {
+            Ok(m.iter().find(|(k, _)| *k == key).map(|(_, v)| v.clone()).unwrap_or(Value::Unit))
+        }
+        _ => err("cannot index this value"),
+    }
+}
+
 /// Non-local control flow during evaluation.
 enum Control {
     Return(Value),
@@ -268,6 +287,11 @@ pub struct Interp {
     /// when the trace is on. Capped, so a deep recursion cannot turn a debug
     /// report into a memory problem.
     trace: Option<RefCell<CallTrace>>,
+    /// Opt-in coverage and value recording ([`Interp::enable_coverage`]).
+    ///
+    /// `None` unless asked for, and then the only cost on an ordinary run is
+    /// one `is_some` test at each binary operator, `if` and index.
+    coverage: Option<RefCell<Coverage>>,
 }
 
 /// The lines of an opt-in call trace, and how many did not fit.
@@ -421,7 +445,27 @@ impl Interp {
             postconditions,
             invariants,
             trace: None,
+            coverage: None,
         }
+    }
+
+    /// Record, from now on, which sites of the top-level functions run, the
+    /// operands and result of each comparison, the arm each `if` takes, and
+    /// the site whose evaluation raised the first runtime error. See
+    /// [`CoverageData`]. Off unless called.
+    pub fn enable_coverage(&mut self) {
+        let mut ids = HashMap::new();
+        for fd in self.funcs.values() {
+            for (id, e) in function_sites(fd) {
+                ids.insert(e as *const Expr as usize, id);
+            }
+        }
+        self.coverage = Some(RefCell::new(Coverage { ids, ..Coverage::default() }));
+    }
+
+    /// What coverage recorded so far; `None` when it is off.
+    pub fn coverage(&self) -> Option<CoverageData> {
+        self.coverage.as_ref().map(|c| c.borrow().data())
     }
 
     /// The innermost installed handler for `effect.op`, if any.
@@ -854,10 +898,19 @@ impl Interp {
                 }
                 let l = self.eval(left, env)?;
                 let r = self.eval(right, env)?;
+                if let Some(c) = &self.coverage {
+                    let res = binop(op, l.clone(), r.clone());
+                    c.borrow_mut().binary(e, op, &l, &r, &res);
+                    return res;
+                }
                 binop(op, l, r)
             }
             Expr::If { cond, then_block, else_block } => {
-                if truthy(&self.eval(cond, env)?) {
+                let taken = truthy(&self.eval(cond, env)?);
+                if let Some(c) = &self.coverage {
+                    c.borrow_mut().branch(e, taken);
+                }
+                if taken {
                     self.eval_block(then_block, env)
                 } else if let Some(eb) = else_block {
                     self.eval_block(eb, env)
@@ -945,24 +998,15 @@ impl Interp {
                     };
                 }
                 let i = self.eval(index, env)?;
-                match (o, i) {
-                    (Value::List(xs), Value::Int(n)) => xs
-                        .get(n as usize)
-                        .cloned()
-                        .ok_or(Control::Err("index out of bounds".into())),
-                    // `s[i]` — the i-th character as a one-char string.
-                    (Value::Str(s), Value::Int(n)) => s
-                        .chars()
-                        .nth(n as usize)
-                        .map(|c| Value::Str(c.to_string()))
-                        .ok_or(Control::Err("index out of bounds".into())),
-                    (Value::Map(m), key) => Ok(m
-                        .iter()
-                        .find(|(k, _)| *k == key)
-                        .map(|(_, v)| v.clone())
-                        .unwrap_or(Value::Unit)),
-                    _ => err("cannot index this value"),
+                if let Some(c) = &self.coverage {
+                    let shown = i.to_string();
+                    let res = index_value(o, i);
+                    if let Err(Control::Err(m)) = &res {
+                        c.borrow_mut().raise(e, &format!("{m} (index {shown})"));
+                    }
+                    return res;
                 }
+                index_value(o, i)
             }
             Expr::Range { start, end, inclusive } => {
                 let s = as_int(&self.eval(start, env)?)?;
@@ -2741,7 +2785,7 @@ pub fn run_metered(
         Ok(a) => a,
         Err(e) => return (Err(e), 0),
     };
-    let (result, spent, _) = run_on_bounded_thread(module, name, args, fuel, None);
+    let (result, spent, _, _) = run_on_bounded_thread(module, name, args, fuel, None, false);
     (result.map(Portable::into_value), spent)
 }
 
@@ -2759,9 +2803,40 @@ pub fn run_bounded_traced(
         Ok(a) => a,
         Err(e) => return (Err(e), Vec::new()),
     };
-    let (result, _, trace) = run_on_bounded_thread(module, name, args, fuel, Some(cap));
+    let (result, _, trace, _) = run_on_bounded_thread(module, name, args, fuel, Some(cap), false);
     (result.map(Portable::into_value), trace)
 }
+
+/// What one observed run returned and recorded.
+#[derive(Debug)]
+pub struct Observed {
+    pub result: Result<Value, BoundedError>,
+    /// The call trace; empty unless a cap was given.
+    pub trace: Vec<String>,
+    /// Coverage and values; `None` unless asked for.
+    pub coverage: Option<CoverageData>,
+}
+
+/// [`run_bounded`] with an optional call trace (at most `trace_cap` lines)
+/// and optional coverage ([`Interp::enable_coverage`]).
+pub fn run_bounded_observed(
+    module: &Module,
+    name: &str,
+    args: Vec<Value>,
+    fuel: u64,
+    trace_cap: Option<usize>,
+    coverage: bool,
+) -> Observed {
+    let args = match args.iter().map(Portable::from_value).collect::<Result<Vec<_>, _>>() {
+        Ok(a) => a,
+        Err(e) => return Observed { result: Err(e), trace: Vec::new(), coverage: None },
+    };
+    let (result, _, trace, coverage) = run_on_bounded_thread(module, name, args, fuel, trace_cap, coverage);
+    Observed { result: result.map(Portable::into_value), trace, coverage }
+}
+
+/// What a worker sends back: the result, fuel spent, trace, coverage.
+type Reply = (Result<Portable, BoundedError>, u64, Vec<String>, Option<CoverageData>);
 
 /// One fuel-bounded run, handed to a worker thread. Owned, because the worker
 /// outlives the call that sent it: the module is cloned (`Interp::new` clones
@@ -2773,7 +2848,9 @@ struct Job {
     fuel: u64,
     /// `Some(cap)` to record a call trace of at most `cap` lines.
     trace_cap: Option<usize>,
-    reply: std::sync::mpsc::Sender<(Result<Portable, BoundedError>, u64, Vec<String>)>,
+    /// Record coverage and values.
+    coverage: bool,
+    reply: std::sync::mpsc::Sender<Reply>,
 }
 
 /// A worker thread that runs jobs sent to it, one at a time.
@@ -2802,14 +2879,15 @@ fn run_on_bounded_thread(
     args: Vec<Portable>,
     fuel: u64,
     trace_cap: Option<usize>,
-) -> (Result<Portable, BoundedError>, u64, Vec<String>) {
+    coverage: bool,
+) -> Reply {
     let (reply, outcome) = std::sync::mpsc::channel();
-    let mut job = Job { module: module.clone(), name: name.to_string(), args, fuel, trace_cap, reply };
+    let mut job = Job { module: module.clone(), name: name.to_string(), args, fuel, trace_cap, coverage, reply };
     // A worker whose thread has died is replaced, and the job retried once.
     for _ in 0..2 {
         let jobs = match WORKER.with(|slot| worker_jobs(&mut slot.borrow_mut())) {
             Ok(jobs) => jobs,
-            Err(e) => return (Err(BoundedError::Error(format!("spawn evaluator thread: {e}"))), 0, Vec::new()),
+            Err(e) => return (Err(BoundedError::Error(format!("spawn evaluator thread: {e}"))), 0, Vec::new(), None),
         };
         match jobs.send(job) {
             Ok(()) => {
@@ -2817,7 +2895,7 @@ fn run_on_bounded_thread(
                 // this fails only if the thread is gone after taking the job.
                 return outcome.recv().unwrap_or_else(|_| {
                     WORKER.with(|slot| *slot.borrow_mut() = None);
-                    (Err(BoundedError::Error("evaluator thread panicked".into())), fuel, Vec::new())
+                    (Err(BoundedError::Error("evaluator thread panicked".into())), fuel, Vec::new(), None)
                 });
             }
             // The worker died while idle: the job came back, so send it again.
@@ -2827,7 +2905,7 @@ fn run_on_bounded_thread(
             }
         }
     }
-    (Err(BoundedError::Error("evaluator thread unavailable".into())), 0, Vec::new())
+    (Err(BoundedError::Error("evaluator thread unavailable".into())), 0, Vec::new(), None)
 }
 
 /// The sender to the caller's worker, spawning the worker if there is none.
@@ -2841,7 +2919,7 @@ fn worker_jobs(slot: &mut Option<Worker>) -> std::io::Result<std::sync::mpsc::Se
         .spawn(move || {
             // Ends when the caller's thread exits and drops the sender.
             for job in inbox {
-                let Job { module, name, args, fuel, trace_cap, reply } = job;
+                let Job { module, name, args, fuel, trace_cap, coverage, reply } = job;
                 let run = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                     #[cfg(test)]
                     if name == PANIC_TEST_ENTRY {
@@ -2851,6 +2929,9 @@ fn worker_jobs(slot: &mut Option<Worker>) -> std::io::Result<std::sync::mpsc::Se
                     if let Some(cap) = trace_cap {
                         interp.trace = Some(RefCell::new(CallTrace { cap, ..CallTrace::default() }));
                     }
+                    if coverage {
+                        interp.enable_coverage();
+                    }
                     let args = args.into_iter().map(Portable::into_value).collect();
                     let result = match interp.run(&name, args) {
                         Ok(v) => Portable::from_value(&v),
@@ -2859,13 +2940,13 @@ fn worker_jobs(slot: &mut Option<Worker>) -> std::io::Result<std::sync::mpsc::Se
                     };
                     let spent = fuel - interp.fuel_left().unwrap_or(0);
                     let trace = interp.trace.take().map(|t| t.into_inner().finish()).unwrap_or_default();
-                    (result, spent, trace)
+                    (result, spent, trace, interp.coverage())
                 }));
                 // A panic (integer overflow in a debug build, say) spent an
                 // unknown amount; report the whole budget rather than pretend it
                 // was free. The panic is caught, so this worker serves the next run.
                 let outcome = run.unwrap_or_else(|_| {
-                    (Err(BoundedError::Error("evaluator thread panicked".into())), fuel, Vec::new())
+                    (Err(BoundedError::Error("evaluator thread panicked".into())), fuel, Vec::new(), None)
                 });
                 // The caller may have stopped waiting; nothing to do then.
                 let _ = reply.send(outcome);
@@ -2874,6 +2955,469 @@ fn worker_jobs(slot: &mut Option<Worker>) -> std::io::Result<std::sync::mpsc::Se
     let worker = Worker { jobs: jobs.clone(), thread: handle.thread().id() };
     *slot = Some(worker);
     Ok(jobs)
+}
+
+// ── Coverage: sites, and what a run recorded at them ─────────────────
+
+/// The kinds of AST node coverage records. A site is named by its function,
+/// its kind, and its pre-order index among the nodes of that kind in the
+/// function's body ([`function_sites`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SiteKind {
+    /// A binary operator: recorded for comparisons and arithmetic.
+    Binary,
+    /// An `if`: recorded with the arm it took.
+    If,
+    /// An index `o[i]`: recorded only when it raises an error.
+    Index,
+}
+
+impl SiteKind {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            SiteKind::Binary => "binary",
+            SiteKind::If => "if",
+            SiteKind::Index => "index",
+        }
+    }
+}
+
+/// A stable name for one node of one top-level function.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
+pub struct SiteId {
+    pub function: String,
+    pub kind: SiteKind,
+    /// Pre-order index among the nodes of `kind` in the function's body.
+    pub index: usize,
+}
+
+impl SiteId {
+    /// `adult/binary#0`.
+    pub fn render(&self) -> String {
+        format!("{}/{}#{}", self.function, self.kind.as_str(), self.index)
+    }
+}
+
+/// One evaluation of a comparison: its operands and result, as text.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct Observation {
+    pub left: String,
+    pub right: String,
+    pub result: String,
+}
+
+/// Most comparison observations kept per site per run.
+pub const OBSERVATION_CAP: usize = 16;
+
+/// What one run recorded at one site.
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize)]
+pub struct SiteRecord {
+    /// The operator for a binary site, `if` or `[]` otherwise.
+    pub op: String,
+    /// How many times the site was evaluated.
+    pub hits: u64,
+    /// For an `if`: how many times each arm was taken.
+    pub then_taken: u64,
+    pub else_taken: u64,
+    /// For a comparison: the first [`OBSERVATION_CAP`] evaluations.
+    pub observations: Vec<Observation>,
+    /// For a comparison: whether any evaluation saw equal operands.
+    pub equal_operands: bool,
+}
+
+/// Coverage of one run: every site evaluated at least once, and the site
+/// whose own evaluation raised the run's first runtime error, if any.
+#[derive(Debug, Clone, Default, serde::Serialize)]
+pub struct CoverageData {
+    pub sites: Vec<(SiteId, SiteRecord)>,
+    /// `(site, error)`: an error raised by the operator or index itself (not
+    /// by an operand), such as division by zero or overflow.
+    pub raised: Option<(SiteId, String)>,
+}
+
+impl CoverageData {
+    pub fn get(&self, id: &SiteId) -> Option<&SiteRecord> {
+        self.sites.iter().find(|(s, _)| s == id).map(|(_, r)| r)
+    }
+}
+
+/// The interpreter's coverage state.
+#[derive(Default)]
+struct Coverage {
+    /// Node address -> site, for every site of every top-level function.
+    ids: HashMap<usize, SiteId>,
+    records: HashMap<SiteId, SiteRecord>,
+    raised: Option<(SiteId, String)>,
+}
+
+fn is_comparison(op: &str) -> bool {
+    matches!(op, "==" | "!=" | "<" | "<=" | ">" | ">=")
+}
+
+fn is_arithmetic(op: &str) -> bool {
+    matches!(op, "+" | "-" | "*" | "/" | "%")
+}
+
+impl Coverage {
+    fn site(&self, e: &Expr) -> Option<SiteId> {
+        self.ids.get(&(e as *const Expr as usize)).cloned()
+    }
+
+    fn binary(&mut self, e: &Expr, op: &str, l: &Value, r: &Value, res: &R) {
+        if !is_comparison(op) && !is_arithmetic(op) {
+            return;
+        }
+        let Some(id) = self.site(e) else { return };
+        if let Err(Control::Err(m)) = res
+            && self.raised.is_none()
+        {
+            self.raised = Some((id.clone(), format!("{m} (`{l} {op} {r}`)")));
+        }
+        let rec = self.records.entry(id).or_default();
+        rec.op = op.to_string();
+        rec.hits += 1;
+        if is_comparison(op) {
+            if l == r {
+                rec.equal_operands = true;
+            }
+            if rec.observations.len() < OBSERVATION_CAP {
+                let result = match res {
+                    Ok(v) => v.to_string(),
+                    Err(_) => "error".to_string(),
+                };
+                rec.observations.push(Observation { left: l.to_string(), right: r.to_string(), result });
+            }
+        }
+    }
+
+    fn branch(&mut self, e: &Expr, taken: bool) {
+        let Some(id) = self.site(e) else { return };
+        let rec = self.records.entry(id).or_default();
+        rec.op = "if".to_string();
+        rec.hits += 1;
+        if taken {
+            rec.then_taken += 1;
+        } else {
+            rec.else_taken += 1;
+        }
+    }
+
+    fn raise(&mut self, e: &Expr, message: &str) {
+        let Some(id) = self.site(e) else { return };
+        if self.raised.is_none() {
+            self.raised = Some((id.clone(), message.to_string()));
+        }
+        let rec = self.records.entry(id).or_default();
+        rec.op = "[]".to_string();
+        rec.hits += 1;
+    }
+
+    fn data(&self) -> CoverageData {
+        let mut sites: Vec<(SiteId, SiteRecord)> =
+            self.records.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
+        sites.sort_by(|a, b| a.0.cmp(&b.0));
+        CoverageData { sites, raised: self.raised.clone() }
+    }
+}
+
+fn site_kind(e: &Expr) -> Option<SiteKind> {
+    match e {
+        Expr::Binary { .. } => Some(SiteKind::Binary),
+        Expr::If { .. } => Some(SiteKind::If),
+        Expr::Index { .. } => Some(SiteKind::Index),
+        _ => None,
+    }
+}
+
+/// The direct sub-expressions of `e`, in source order. Nested function
+/// items are not entered: their bodies are another function's.
+pub fn expr_children(e: &Expr) -> Vec<&Expr> {
+    let mut out: Vec<&Expr> = Vec::new();
+    match e {
+        Expr::Literal { .. }
+        | Expr::Ident { .. }
+        | Expr::Continue
+        | Expr::Todo
+        | Expr::Unimplemented
+        | Expr::Error { .. } => {}
+        Expr::Binary { left, right, .. } | Expr::Pipeline { left, right } => {
+            out.push(left);
+            out.push(right);
+        }
+        Expr::Unary { operand, .. } => out.push(operand),
+        Expr::Call { func, args } => {
+            out.push(func);
+            out.extend(args.iter());
+        }
+        Expr::MethodCall { receiver, args, .. } => {
+            out.push(receiver);
+            out.extend(args.iter());
+        }
+        Expr::FieldAccess { object, .. } => out.push(object),
+        Expr::Index { object, index } => {
+            out.push(object);
+            out.push(index);
+        }
+        Expr::StructLit { fields, .. } => out.extend(fields.iter().filter_map(|f| f.value.as_ref())),
+        Expr::TupleLit { elements } | Expr::ArrayLit { elements } => out.extend(elements.iter()),
+        Expr::ArrayRepeat { value, count } => {
+            out.push(value);
+            out.push(count);
+        }
+        Expr::MapLit { entries } => {
+            for (k, v) in entries {
+                out.push(k);
+                out.push(v);
+            }
+        }
+        Expr::Closure { body, .. } => out.push(body),
+        Expr::If { cond, then_block, else_block } => {
+            out.push(cond);
+            block_children(then_block, &mut out);
+            if let Some(b) = else_block {
+                block_children(b, &mut out);
+            }
+        }
+        Expr::Match { scrutinee, arms } => {
+            if let Some(s) = scrutinee {
+                out.push(s);
+            }
+            out.extend(arms.iter().map(|a| &a.body));
+        }
+        Expr::Handle { body, arms, .. } => {
+            block_children(body, &mut out);
+            out.extend(arms.iter().map(|a| &a.body));
+        }
+        Expr::Loop { body } | Expr::Block { block: body } => block_children(body, &mut out),
+        Expr::While { cond, body } => {
+            out.push(cond);
+            block_children(body, &mut out);
+        }
+        Expr::For { iter, body, .. } => {
+            out.push(iter);
+            block_children(body, &mut out);
+        }
+        Expr::Return { value } | Expr::Break { value } => {
+            if let Some(v) = value {
+                out.push(v);
+            }
+        }
+        Expr::Try { expr } | Expr::Await { expr } | Expr::Cast { expr, .. } | Expr::Is { expr, .. } => {
+            out.push(expr)
+        }
+        Expr::Assign { target, value } => {
+            out.push(target);
+            out.push(value);
+        }
+        Expr::Range { start, end, .. } => {
+            out.push(start);
+            out.push(end);
+        }
+        Expr::Grad { value, wrt } => {
+            out.push(value);
+            out.push(wrt);
+        }
+    }
+    out
+}
+
+fn block_children<'a>(b: &'a Block, out: &mut Vec<&'a Expr>) {
+    for s in &b.stmts {
+        match s {
+            Stmt::Let { value, .. } => out.push(value),
+            Stmt::Expr { expr } | Stmt::Defer { expr } => out.push(expr),
+            Stmt::Guard { cond, else_block } => {
+                out.push(cond);
+                block_children(else_block, out);
+            }
+            Stmt::Item { .. } => {}
+        }
+    }
+    if let Some(t) = &b.tail_expr {
+        out.push(t);
+    }
+}
+
+/// [`expr_children`], mutably, in the same order.
+pub fn expr_children_mut(e: &mut Expr) -> Vec<&mut Expr> {
+    let mut out: Vec<&mut Expr> = Vec::new();
+    match e {
+        Expr::Literal { .. }
+        | Expr::Ident { .. }
+        | Expr::Continue
+        | Expr::Todo
+        | Expr::Unimplemented
+        | Expr::Error { .. } => {}
+        Expr::Binary { left, right, .. } | Expr::Pipeline { left, right } => {
+            out.push(left);
+            out.push(right);
+        }
+        Expr::Unary { operand, .. } => out.push(operand),
+        Expr::Call { func, args } => {
+            out.push(func);
+            out.extend(args.iter_mut());
+        }
+        Expr::MethodCall { receiver, args, .. } => {
+            out.push(receiver);
+            out.extend(args.iter_mut());
+        }
+        Expr::FieldAccess { object, .. } => out.push(object),
+        Expr::Index { object, index } => {
+            out.push(object);
+            out.push(index);
+        }
+        Expr::StructLit { fields, .. } => out.extend(fields.iter_mut().filter_map(|f| f.value.as_mut())),
+        Expr::TupleLit { elements } | Expr::ArrayLit { elements } => out.extend(elements.iter_mut()),
+        Expr::ArrayRepeat { value, count } => {
+            out.push(value);
+            out.push(count);
+        }
+        Expr::MapLit { entries } => {
+            for (k, v) in entries {
+                out.push(k);
+                out.push(v);
+            }
+        }
+        Expr::Closure { body, .. } => out.push(body),
+        Expr::If { cond, then_block, else_block } => {
+            out.push(cond);
+            block_children_mut(then_block, &mut out);
+            if let Some(b) = else_block {
+                block_children_mut(b, &mut out);
+            }
+        }
+        Expr::Match { scrutinee, arms } => {
+            if let Some(s) = scrutinee {
+                out.push(s);
+            }
+            out.extend(arms.iter_mut().map(|a| &mut a.body));
+        }
+        Expr::Handle { body, arms, .. } => {
+            block_children_mut(body, &mut out);
+            out.extend(arms.iter_mut().map(|a| &mut a.body));
+        }
+        Expr::Loop { body } | Expr::Block { block: body } => block_children_mut(body, &mut out),
+        Expr::While { cond, body } => {
+            out.push(cond);
+            block_children_mut(body, &mut out);
+        }
+        Expr::For { iter, body, .. } => {
+            out.push(iter);
+            block_children_mut(body, &mut out);
+        }
+        Expr::Return { value } | Expr::Break { value } => {
+            if let Some(v) = value {
+                out.push(v);
+            }
+        }
+        Expr::Try { expr } | Expr::Await { expr } | Expr::Cast { expr, .. } | Expr::Is { expr, .. } => {
+            out.push(expr)
+        }
+        Expr::Assign { target, value } => {
+            out.push(target);
+            out.push(value);
+        }
+        Expr::Range { start, end, .. } => {
+            out.push(start);
+            out.push(end);
+        }
+        Expr::Grad { value, wrt } => {
+            out.push(value);
+            out.push(wrt);
+        }
+    }
+    out
+}
+
+fn block_children_mut<'a>(b: &'a mut Block, out: &mut Vec<&'a mut Expr>) {
+    for s in &mut b.stmts {
+        match s {
+            Stmt::Let { value, .. } => out.push(value),
+            Stmt::Expr { expr } | Stmt::Defer { expr } => out.push(expr),
+            Stmt::Guard { cond, else_block } => {
+                out.push(cond);
+                block_children_mut(else_block, out);
+            }
+            Stmt::Item { .. } => {}
+        }
+    }
+    if let Some(t) = &mut b.tail_expr {
+        out.push(t);
+    }
+}
+
+/// The root expressions of a function body, in source order.
+pub fn function_roots(fd: &FunctionDef) -> Vec<&Expr> {
+    let mut out = Vec::new();
+    match &fd.body_expr {
+        Some(e) => out.push(e.as_ref()),
+        None => block_children(&fd.body, &mut out),
+    }
+    out
+}
+
+fn function_roots_mut(fd: &mut FunctionDef) -> Vec<&mut Expr> {
+    let mut out = Vec::new();
+    match &mut fd.body_expr {
+        Some(e) => out.push(e.as_mut()),
+        None => block_children_mut(&mut fd.body, &mut out),
+    }
+    out
+}
+
+/// Every node of `fd`'s body in pre-order, sub-expressions in source order.
+pub fn preorder(fd: &FunctionDef) -> Vec<&Expr> {
+    fn go<'a>(e: &'a Expr, out: &mut Vec<&'a Expr>) {
+        out.push(e);
+        for c in expr_children(e) {
+            go(c, out);
+        }
+    }
+    let mut out = Vec::new();
+    for r in function_roots(fd) {
+        go(r, &mut out);
+    }
+    out
+}
+
+/// Every site of `fd` with its node, in pre-order.
+pub fn function_sites(fd: &FunctionDef) -> Vec<(SiteId, &Expr)> {
+    let mut counts: HashMap<SiteKind, usize> = HashMap::new();
+    let mut out = Vec::new();
+    for e in preorder(fd) {
+        if let Some(kind) = site_kind(e) {
+            let n = counts.entry(kind).or_default();
+            out.push((SiteId { function: fd.name.clone(), kind, index: *n }, e));
+            *n += 1;
+        }
+    }
+    out
+}
+
+/// The node of `fd` that `kind` and `index` name, mutably.
+pub fn site_mut(fd: &mut FunctionDef, kind: SiteKind, index: usize) -> Option<&mut Expr> {
+    fn go<'a>(e: &'a mut Expr, kind: SiteKind, left: &mut usize) -> Option<&'a mut Expr> {
+        if site_kind(e) == Some(kind) {
+            if *left == 0 {
+                return Some(e);
+            }
+            *left -= 1;
+        }
+        for c in expr_children_mut(e) {
+            if let Some(found) = go(c, kind, left) {
+                return Some(found);
+            }
+        }
+        None
+    }
+    let mut left = index;
+    for r in function_roots_mut(fd) {
+        if let Some(found) = go(r, kind, &mut left) {
+            return Some(found);
+        }
+    }
+    None
 }
 
 /// The worker test's panic trigger: a run of this name panics inside the worker.
@@ -4544,5 +5088,89 @@ mod handler_eval_tests {
             "{DECL}f s() {{ handle {{ 6 * 7 }} with Audit {{ record(e) => 0 }} }}"
         );
         assert_eq!(run(&src, "s"), Value::Int(42));
+    }
+}
+
+#[cfg(test)]
+mod coverage_tests {
+    use super::*;
+
+    fn module(src: &str) -> Module {
+        crate::parser::parse(&crate::lexer::lex(src)).expect("parses")
+    }
+
+    const SRC: &str = "f g(x: i64) -> i64 {\n    if x > 5 { x + 1 } else { x - 1 }\n}\n";
+
+    /// Coverage is off unless asked for: an interpreter records nothing, and
+    /// an observed run without it returns none.
+    #[test]
+    fn coverage_is_off_by_default() {
+        let m = module(SRC);
+        let interp = Interp::new(&m);
+        assert!(interp.coverage.is_none());
+        assert!(interp.coverage().is_none());
+        assert_eq!(interp.run("g", vec![Value::Int(9)]), Ok(Value::Int(10)));
+        assert!(interp.coverage().is_none());
+        let o = run_bounded_observed(&m, "g", vec![Value::Int(9)], 10_000, None, false);
+        assert_eq!(o.result, Ok(Value::Int(10)));
+        assert!(o.coverage.is_none() && o.trace.is_empty());
+    }
+
+    /// With coverage on, the sites that ran are recorded with their values:
+    /// the comparison's operands and result, the arm the `if` took. A site
+    /// that did not run is absent.
+    #[test]
+    fn coverage_records_sites_values_and_arms() {
+        let m = module(SRC);
+        let o = run_bounded_observed(&m, "g", vec![Value::Int(5)], 10_000, None, true);
+        assert_eq!(o.result, Ok(Value::Int(4)));
+        let c = o.coverage.expect("coverage");
+        let id = |kind, index| SiteId { function: "g".into(), kind, index };
+        let cmp = c.get(&id(SiteKind::Binary, 0)).expect("`>` ran");
+        assert_eq!(cmp.op, ">");
+        assert!(cmp.equal_operands);
+        assert_eq!(
+            cmp.observations,
+            vec![Observation { left: "5".into(), right: "5".into(), result: "false".into() }]
+        );
+        let branch = c.get(&id(SiteKind::If, 0)).expect("`if` ran");
+        assert_eq!((branch.then_taken, branch.else_taken), (0, 1));
+        assert!(c.get(&id(SiteKind::Binary, 1)).is_none(), "`x + 1` did not run");
+        assert_eq!(c.get(&id(SiteKind::Binary, 2)).map(|r| r.op.as_str()), Some("-"));
+        assert!(c.raised.is_none());
+    }
+
+    /// The node whose own evaluation raised the error is named, not the
+    /// call around it.
+    #[test]
+    fn coverage_names_the_raising_node() {
+        let m = module("f h(xs: [i64], d: i64) -> i64 {\n    xs[0] + 10 / d\n}\nf k(xs: [i64]) -> i64 {\n    xs[3]\n}\n");
+        let o = run_bounded_observed(&m, "h", vec![Value::List(vec![Value::Int(1)]), Value::Int(0)], 10_000, None, true);
+        let (site, msg) = o.coverage.unwrap().raised.expect("raised");
+        assert_eq!(site.render(), "h/binary#1");
+        assert!(msg.starts_with("division by zero"), "{msg}");
+        let o = run_bounded_observed(&m, "k", vec![Value::List(vec![Value::Int(1)])], 10_000, None, true);
+        let (site, msg) = o.coverage.unwrap().raised.expect("raised");
+        assert_eq!(site.render(), "k/index#0");
+        assert!(msg.starts_with("index out of bounds"), "{msg}");
+    }
+
+    /// The immutable and mutable walks visit the same nodes in the same
+    /// order, so a site id names one node in both.
+    #[test]
+    fn site_walks_agree() {
+        let m = module(
+            "f w(xs: [i64], n: i64) -> i64 {\n    val a = xs[0] + n;\n    var t = 0;\n    \
+             for x in xs { t = t + x * 2 }\n    while t > 100 { t = t - 1 }\n    \
+             val c = |y| y < n;\n    if a > n { [a, n][1] } else { match n { 0 => 1, _ => n % 3 } }\n}\n",
+        );
+        let crate::ast::ItemKind::Function(fd) = &m.items[0].kind else { panic!() };
+        let sites = function_sites(fd);
+        assert!(sites.len() >= 8, "{}", sites.len());
+        for (id, node) in &sites {
+            let mut copy = fd.clone();
+            let found = site_mut(&mut copy, id.kind, id.index).expect("found");
+            assert_eq!(format!("{found:?}"), format!("{node:?}"), "{id:?}");
+        }
     }
 }
