@@ -303,6 +303,11 @@ jobs:
       # silently changed meaning under a table it had produced. 3 seconds.
       - name: Performance harness runs (publishes MEASUREMENTS figures)
         run: cargo test --release --manifest-path prototype/Cargo.toml perf_report -- --ignored --nocapture
+      # Wall-clock cost of 1,000 trivial bounded runs of the evaluator. Ignored
+      # in `eval.rs` because it measures and checks nothing, but it still needs
+      # a runner or `check-ignored-tests.sh` fails. Runs in about 0.1 s.
+      - name: Bounded-run cost harness runs
+        run: cargo test --release --manifest-path prototype/Cargo.toml bounded_run_cost -- --ignored --nocapture
       # The same argument, one level out. `README.md` says of its benchmark
       # section "Every number below is produced by actually compiling and
       # running code ... Reproduce with benchmarks/cross_lang/run.sh", and
