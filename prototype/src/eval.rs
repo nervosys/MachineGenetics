@@ -1817,8 +1817,49 @@ impl Interp {
             // at the edges (`ln(0)` is -inf), as for `/` on floats.
             "exp" | "ln" | "log" | "sqrt" | "sin" | "cos" | "tan" | "tanh" | "sigmoid" | "silu" | "gelu"
             | "log2" | "log10" | "asin" | "acos" | "atan" | "sinh" | "cosh"
-            | "floor" | "ceil" | "round" | "trunc" => {
+            | "floor" | "ceil" | "round" | "trunc" | "relu" => {
                 smooth(name, arg(0))
+            }
+            // clamp(x, lo, hi): x limited to [lo, hi]. Three integers give an
+            // integer, as `min` and `max` keep their arguments' type; any float
+            // (or dual) makes the result a float. `lo > hi` is refused, naming
+            // both. The derivative follows whichever of the three is selected:
+            // dx strictly inside (lo, hi), and at or beyond a bound the bound's
+            // own derivative (0 for a constant), so at x == lo or x == hi the
+            // derivative with respect to x is 0, as for `relu` at 0.
+            "clamp" => {
+                let (x, lo, hi) = (arg(0), arg(1), arg(2));
+                if a.len() != 3 {
+                    return err("`clamp` expects 3 arguments: clamp(x, lo, hi)");
+                }
+                if let (Value::Int(x), Value::Int(lo), Value::Int(hi)) = (&x, &lo, &hi) {
+                    if lo > hi {
+                        return err(format!("`clamp` with lo {lo} greater than hi {hi}"));
+                    }
+                    return Ok(Value::Int((*x).clamp(*lo, *hi)));
+                }
+                let parts = |v: &Value| match v {
+                    Value::Int(n) => Some((*n as f64, 0.0, false)),
+                    Value::Float(f) => Some((*f, 0.0, false)),
+                    Value::Dual(f, d) => Some((*f, *d, true)),
+                    _ => None,
+                };
+                let (Some((xv, xd, x_dual)), Some((lv, ld, l_dual)), Some((hv, hd, h_dual))) =
+                    (parts(&x), parts(&lo), parts(&hi))
+                else {
+                    return err("`clamp` expects three numbers");
+                };
+                if lv > hv {
+                    return err(format!("`clamp` with lo {lv} greater than hi {hv}"));
+                }
+                let (v, d) = if xv <= lv {
+                    (lv, ld)
+                } else if xv >= hv {
+                    (hv, hd)
+                } else {
+                    (xv, xd)
+                };
+                Ok(if x_dual || l_dual || h_dual { Value::Dual(v, d) } else { Value::Float(v) })
             }
             "mean" => {
                 let xs = as_list(&arg(0))?;
@@ -2291,6 +2332,9 @@ fn smooth_fn(name: &str, x: f64) -> (f64, f64) {
         "ceil" => (x.ceil(), 0.0),
         "round" => (x.round(), 0.0),
         "trunc" => (x.trunc(), 0.0),
+        // max(x, 0). At exactly 0 there is no derivative; 0 is the choice, as
+        // most frameworks make it (and as `abs` does at its kink).
+        "relu" => (if x > 0.0 { x } else { 0.0 }, if x > 0.0 { 1.0 } else { 0.0 }),
         // The tanh approximation, the form most frameworks use.
         "gelu" => {
             let c = (2.0 / std::f64::consts::PI).sqrt();
@@ -2892,6 +2936,53 @@ mod tests {
     }
 
     #[test]
+    fn relu_and_clamp_evaluate() {
+        assert_eq!(eval_f64("f p() -> f64 { relu(-2.5) }"), 0.0);
+        assert_eq!(eval_f64("f p() -> f64 { relu(0.0) }"), 0.0);
+        assert_eq!(eval_f64("f p() -> f64 { relu(1.5) }"), 1.5);
+        assert_eq!(eval_f64("f p() -> f64 { val x = -3.0; x.relu() }"), 0.0);
+        assert_eq!(eval_f64("f p() -> f64 { clamp(-1.0, 0.0, 2.0) }"), 0.0);
+        assert_eq!(eval_f64("f p() -> f64 { clamp(1.5, 0.0, 2.0) }"), 1.5);
+        assert_eq!(eval_f64("f p() -> f64 { clamp(9.0, 0.0, 2.0) }"), 2.0);
+        // Three integers stay an integer, as `min` and `max` keep theirs.
+        assert_eq!(run_source("f p() { clamp(9, 0, 2) }", "p", &[]).unwrap(), Value::Int(2));
+        assert_eq!(run_source("f p() { clamp(-9, 0, 2) }", "p", &[]).unwrap(), Value::Int(0));
+        // Any float makes it a float.
+        assert_eq!(run_source("f p() { clamp(9, 0.0, 2) }", "p", &[]).unwrap(), Value::Float(2.0));
+        for src in ["f p() { clamp(1, 3, 2) }", "f p() { clamp(1.0, 3.0, 2.0) }"] {
+            let e = run_source(src, "p", &[]).unwrap_err();
+            assert!(e.contains("lo 3") && e.contains("hi 2"), "{e}");
+        }
+        assert!(run_source("f p() { clamp(1.0, 0.0) }", "p", &[]).is_err());
+        assert!(run_source("f p() { clamp(\"a\", 0.0, 1.0) }", "p", &[]).is_err());
+    }
+
+    #[test]
+    fn relu_and_clamp_have_exact_derivatives() {
+        for (body, w) in [
+            ("relu(w)", 0.7),
+            ("relu(w)", -0.7),
+            ("relu(w * w - 1.0)", 1.5),
+            ("clamp(w, -1.0, 1.0)", 0.3),
+            ("clamp(w, -1.0, 1.0)", -2.0),
+            ("clamp(w, -1.0, 1.0)", 2.0),
+            ("clamp(w * 2.0, -1.0, 1.0) * w", 0.2),
+            ("clamp(1.0, w, 2.0)", 1.5),
+            ("clamp(1.0, 0.0, w)", 0.5),
+        ] {
+            let (g, fd) = grad_and_fd(body, w);
+            assert_close(g, fd, body);
+        }
+        // At a kink the derivative is 0 by choice.
+        assert_eq!(grad_and_fd("relu(w)", 0.0).0, 0.0);
+        assert_eq!(grad_and_fd("clamp(w, -1.0, 1.0)", 1.0).0, 0.0);
+        assert_eq!(grad_and_fd("clamp(w, -1.0, 1.0)", -1.0).0, 0.0);
+        // Strictly inside, exactly 1; outside, exactly 0.
+        assert_eq!(grad_and_fd("clamp(w, -1.0, 1.0)", 0.5).0, 1.0);
+        assert_eq!(grad_and_fd("clamp(w, -1.0, 1.0)", 5.0).0, 0.0);
+    }
+
+    #[test]
     fn every_smooth_builtin_the_differentiability_pass_names_exists() {
         // The pass listed fifteen smooth builtins the language did not have.
         // Each must now resolve and evaluate — except those that need tensor
@@ -3337,6 +3428,8 @@ mod tests {
             ("min", "min(1, 2)"),
             ("max", "max(1, 2)"),
             ("abs", "abs(0 - 1)"),
+            ("relu", "relu(0 - 1)"),
+            ("clamp", "clamp(5, 0, 3)"),
             ("println", "println(\"x\")"),
         ];
         for (name, call) in calls {
