@@ -3078,10 +3078,15 @@ impl Coverage {
         rec.op = op.to_string();
         rec.hits += 1;
         if is_comparison(op) {
-            if l == r {
+            let equal = l == r;
+            if equal {
                 rec.equal_operands = true;
             }
-            if rec.observations.len() < OBSERVATION_CAP {
+            // Past the cap, the first equal-operand observation is still kept:
+            // it is the evidence that motivates an inclusive/exclusive repair.
+            if rec.observations.len() < OBSERVATION_CAP
+                || (equal && !rec.observations.iter().any(|o| o.left == o.right))
+            {
                 let result = match res {
                     Ok(v) => v.to_string(),
                     Err(_) => "error".to_string(),

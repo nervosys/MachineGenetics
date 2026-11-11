@@ -1019,7 +1019,11 @@ fn plan_site(
             op_text = op.clone();
             for (run, cov) in failing {
                 if let Some(rec) = cov.get(id) {
-                    for o in rec.observations.iter().take(4) {
+                    // Equal operands first: they are what motivates the
+                    // inclusive/exclusive swap, so they must survive the cut.
+                    let mut shown: Vec<&eval::Observation> = rec.observations.iter().collect();
+                    shown.sort_by_key(|o| o.left != o.right);
+                    for o in shown.into_iter().take(4) {
                         observed.push(format!("{}: {} {op} {} -> {}", run.name, o.left, o.right, o.result));
                     }
                     if rec.observations.is_empty() {
@@ -1897,6 +1901,32 @@ mod tests {
         assert!(repair.motivation.contains("equal operands"), "{}", repair.motivation);
         assert_eq!(report.mutants_tried, 1, "the motivated candidate is tried first: {report:#?}");
         assert_eq!((repair.line, repair.col), (2, 12));
+    }
+
+    /// A loop bound sees its equal operands last, after the in-range ones; the
+    /// report still shows them, since they are what the swap is made from.
+    #[test]
+    fn heal_shows_the_equal_operands_a_loop_bound_saw_last() {
+        let src = "f sum_to(n: i64) -> i64 {
+    m i: i64 = 1
+    m total: i64 = 0
+                       while i < n {
+        total = total + i
+        i = i + 1
+    }
+    total
+}
+
+                   @t
+f t_five() {
+    assert(sum_to(30) == 465, \"1..30\")
+}
+";
+        let intent = intent::infer_source(src).unwrap();
+        let report = debug_and_repair(src, &intent, FUEL);
+        let repair = report.repair.as_ref().expect("repaired");
+        assert_eq!(repair.mutation, "`<` -> `<=`");
+        assert_eq!(repair.observed.first().map(String::as_str), Some("t_five: 30 < 30 -> false"), "{:?}", repair.observed);
     }
 
     /// Fault localization: `x - 1` runs only in the failing test (Ochiai 1.0)
