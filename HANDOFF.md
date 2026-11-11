@@ -38,7 +38,7 @@ each claim has a command beside it.
 | Reliability floors | file-oracle parse 99/100, perturbed pattern-heal 42, native-lexer ratio 0.997 |
 | Examples | 12 of 12 typecheck, run, and print their recorded answer |
 | `.mg` sources | **125 checked, 1 sketches** — every `.mg` file in the repository typechecks except `prototype/examples/heal/type_error.mg`, which is ill-typed on purpose as the `--heal` demo |
-| Differentiability | **34 of 34 nets and 7 of 7 train blocks; 1 of 156 functions** (the arena's reward) — `scripts/measure-differentiability.sh`, re-derived in CI and compared against `DIFFERENTIABILITY.md` in both directions |
+| Differentiability | **34 of 34 nets and 7 of 7 train blocks; 12 of 173 functions** (three arena harness policies and nine physics-task and system-identification steps) — `scripts/measure-differentiability.sh`, re-derived in CI and compared against `DIFFERENTIABILITY.md` in both directions |
 | `grad` | An expression that typechecks and **runs**, for scalars: forward-mode duals, checked against central differences. The differentiability obligation is a premise of its typing rule, discharged by the call-graph pass. Tensors are refused, not deferred |
 | Documentation | 227 MAGE blocks typecheck; 70 documentation entry points run; 268 `rmi/docs` API items all exist — and "exist" now means **a definition exists**, not that the name appears somewhere in `src/`. It was 275 under the weaker criterion, 8 of them held up by English words in comments; the phantom entries are gone and a duplicate went with them |
 | Release | `v0.3.0`, with the promo video attached as a release asset |
@@ -138,7 +138,7 @@ it, and `scripts/measure-differentiability.sh` aggregates the corpus:
 functions are.** Three things in that are worth carrying:
 
 * The subjects are reported separately and deliberately not merged. One ratio
-  over all 196 would be "41 of 196" and would answer neither question — the
+  over all 208 would be "53 of 208" and would answer neither question — the
   finding *is* that the two populations differ.
 * A net is judged with respect to its **parameters**, not its inputs, because
   that is what `train` optimises. Judged on inputs, every language model here

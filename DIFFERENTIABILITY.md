@@ -105,12 +105,13 @@ so it can be argued with.
 ## The `net` DSL, which is where the derivative actually lives
 
 Everything above is about `f` functions, and measured against this repository
-that half of the pass reports **1 of 156 functions** differentiable — 125 of
-the rest for want of a floating-point parameter. The one is the arena's reward
-(`arena/harness/reward.mg`, added 2026-09-26), differentiable almost
-everywhere because of its `max`: the first `f` function in the corpus with a
-derivative, and a harness policy rather than application code. That is not the analysis being
-strict. It is the corpus: MAGE's `f` functions are agent and tooling code, and
+that half of the pass reports **12 of 173 functions** differentiable — 131 of
+the 160 that are not for want of a floating-point parameter. Three of the twelve
+are arena harness policies (`reward` in `arena/harness/reward.mg`, almost
+everywhere because of its `max`, and `weight` and `priority` in its sibling
+harness files); the other nine are physics-task and system-identification steps
+under `prototype/examples/`, all smooth. That is not the analysis being
+strict. It is the corpus: most of MAGE's `f` functions are agent and tooling code, and
 its numerical surface is `net` / `layer` / `train`. A pass over functions is
 looking in the wrong place for a subject, which is the same finding that
 reopened item 21.
@@ -353,39 +354,41 @@ what an operational-vs-denotational equivalence proof would be *about*.
 
 ## What it says about this repository today
 
-Run over all 101 tracked `.mg` sources:
+Run over all 126 tracked `.mg` sources:
 
 ```
 $ scripts/measure-differentiability.sh
 
-101 tracked .mg sources; 0 could not be parsed.
+126 tracked .mg sources; 0 could not be parsed.
 
 subject      total    diff  smooth    a.e. unknown     not
 nets            34      34      19      15       0       0
 trains           7       7       7       0       0       0
-functions      156       1       0       1       1     154
+functions      173      12      10       2       1     160
 ```
 
-**34 of 34 nets and 7 of 7 train blocks are differentiable; 1 of 156 functions
-is** — the arena's reward, almost everywhere. The two halves of that sentence are one finding, not two. The negative
+**34 of 34 nets and 7 of 7 train blocks are differentiable; 12 of 173 functions
+are** — three arena harness policies, and nine physics-task and
+system-identification steps in `prototype/examples/`. The two halves of that sentence are one finding, not two. The negative
 half is dominated by a single reason:
 
 ```
- 125  no floating-point parameter to differentiate with respect to
+ 131  no floating-point parameter to differentiate with respect to
   10  performs the `FS` effect, so its output is not a function of its inputs
    8  performs the `IO` effect
    6  performs the `Llm` effect
    3  performs the `Net` effect
 ```
 
-125 of 156 functions take no floating-point argument at all. The `f` corpus is
-agent and tooling code and always was; the numerical code is in the `net` DSL,
-where the analysis now reports on it. The 15 nets that are `AlmostEverywhere`
+131 of 173 functions have no floating-point parameter to differentiate with
+respect to. The `f` corpus is mostly agent and tooling code; the numerical code
+is in the `net` DSL, where the analysis reports on it, and the twelve
+differentiable functions are the exceptions. The 15 nets that are `AlmostEverywhere`
 rather than `Smooth` are almost all `ReLU`; the `Smooth` 19 are the transformer
 and embedding stacks.
 
-**This is reported per-subject and not merged.** One ratio over all 196
-subjects would be 41 of 196 and would answer neither question: functions and
+**This is reported per-subject and not merged.** One ratio over all 202
+subjects would be 53 of 214 and would answer neither question: functions and
 nets are different populations, and the interesting fact is precisely that the
 two answers differ.
 
@@ -395,7 +398,7 @@ and the pass disagree. The pinned form it compares against:
 
 ```
 $ scripts/measure-differentiability.sh --pins
-mg_files=102
+mg_files=126
 mg_unparsed=0
 nets_total=34
 nets_differentiable=34
@@ -409,12 +412,12 @@ trains_smooth=7
 trains_almost_everywhere=0
 trains_unknown=0
 trains_not=0
-functions_total=156
-functions_differentiable=1
-functions_smooth=0
-functions_almost_everywhere=1
+functions_total=173
+functions_differentiable=12
+functions_smooth=10
+functions_almost_everywhere=2
 functions_unknown=1
-functions_not=154
+functions_not=160
 ```
 
 That check exists because the "0 of 155" figure was published for a whole phase
