@@ -44,6 +44,10 @@ SKETCHES=(
     # otherwise they rot exactly as they did.
     "stdlib/"
 
+    # Ill-typed on purpose: it is a demo input for `mage-parse --heal`, a
+    # program to be repaired, not a sketch. It must fail to check.
+    "prototype/examples/heal/type_error.mg"
+
     # `prototype/examples/` is fully rewritten and no longer listed. All six
     # drifted the way the shipped twelve had, and rewriting them surfaced
     # thirteen compiler bugs — `data` sums, bare variant constructors, unit
