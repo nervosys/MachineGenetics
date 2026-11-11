@@ -568,13 +568,18 @@ jobs:
       # what a fresh consumer would actually resolve, rather than one
       # developer's working copy — the distinction that made a `crossbeam-epoch`
       # hit there a false alarm while the identical hit in `prototype` was real.
+      # RUSTSEC-2024-0436 (`paste`) is unmaintained-only, with no fixed release.
+      # It reaches `arena` through candle-core -> gemm, under the optional
+      # `transformer` feature. Ignored here so the job does not report an open
+      # finding for it. The register check below reads `cargo audit --json`
+      # without this flag, so the accepted-risk row is still verified.
       - name: cargo audit
         run: |
           for c in RecursiveMachineIntelligence prototype ribosome germline forge arena; do
             echo "::group::$c"
             ( cd "$c" \
               && { [ -f Cargo.lock ] || cargo generate-lockfile; } \
-              && cargo audit ) || exit 1
+              && cargo audit --ignore RUSTSEC-2024-0436 ) || exit 1
             echo "::endgroup::"
           done
       # `video/` has a tracked package-lock.json and nothing audited it.
