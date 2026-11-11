@@ -2757,6 +2757,7 @@ pub fn check(module: &ast::Module) -> TypeChecker {
     checker.diagnostics.extend(crate::params::params(module).1);
     checker.diagnostics.extend(retired_constructs(module));
     checker.diagnostics.extend(swarm_settings(module));
+    checker.diagnostics.extend(unknown_traits(module));
     // Units of measure (plan C2): a mismatch is a type error, E0562.
     checker.diagnostics.extend(crate::units::check(module).diagnostics);
     checker
@@ -2789,6 +2790,45 @@ fn retired_constructs(module: &ast::Module) -> Vec<Diagnostic> {
                 DiagnosticCategory::Deprecated,
                 None,
             ))
+        })
+        .collect()
+}
+
+/// `impl X for Y` names a trait some `trait X` declares. Nothing looked the
+/// name up, so `impl Agent for Bot` checked clean although MAGE has no
+/// `Agent` trait. The namespace is flat, so a trait declared in any module
+/// counts.
+fn unknown_traits(module: &ast::Module) -> Vec<Diagnostic> {
+    fn walk<'a>(items: &'a [ast::Item], traits: &mut Vec<&'a str>, impls: &mut Vec<&'a str>) {
+        for item in items {
+            match &item.kind {
+                ast::ItemKind::Trait(t) => traits.push(&t.name),
+                ast::ItemKind::Impl(i) => {
+                    if let Some(name) = i.trait_path.as_ref().and_then(|p| p.last()) {
+                        impls.push(name);
+                    }
+                }
+                ast::ItemKind::Module(m) => {
+                    if let Some(inner) = &m.items {
+                        walk(inner, traits, impls);
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    let (mut traits, mut impls) = (Vec::new(), Vec::new());
+    walk(&module.items, &mut traits, &mut impls);
+    impls
+        .into_iter()
+        .filter(|name| !traits.contains(name))
+        .map(|name| {
+            Diagnostic::categorized(
+                Severity::Error,
+                format!("`impl {name} for …` names no trait: no `trait {name}` is declared, and MAGE has no built-in traits"),
+                DiagnosticCategory::UnresolvedName,
+                None,
+            )
         })
         .collect()
 }
@@ -2967,6 +3007,14 @@ mod tests {
         ] {
             assert_eq!(error_messages(good), Vec::<String>::new(), "{good}");
         }
+    }
+
+    #[test]
+    fn an_impl_names_a_declared_trait() {
+        let errs = error_messages("S Bot { n: i64 }\nimpl Agent for Bot { f run(self) -> i64 { 1 } }");
+        assert!(errs.iter().any(|e| e.contains("no `trait Agent`")), "{errs:?}");
+        let ok = "T Area { f area(self) -> f64; }\nS Sq { s: f64 }\nimpl Area for Sq { f area(self) -> f64 { self.s * self.s } }";
+        assert_eq!(error_messages(ok), Vec::<String>::new());
     }
 
     #[test]
