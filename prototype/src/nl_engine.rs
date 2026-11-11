@@ -183,7 +183,7 @@ impl NlEngine {
         // Register high-quality templates for common patterns.
         oracle.register_template(
             &Strategy::Functional,
-            "fn {name}({params}) -> {return} {{ input.iter().fold(init, |acc, x| acc + x) }}",
+            "fn {name}({params}) -> {return} { fold(input, 0, |acc, x| acc + x) }",
             CostEstimate {
                 token_count: 12,
                 cyclomatic_complexity: 1,
@@ -3094,5 +3094,40 @@ mod tests {
             .process("create an evolutionary optimization with population 200 generations 100");
         assert!(!response.ok, "an evolve item is retired, so it must not validate");
         assert!(response.explanation.contains("retired"), "{}", response.explanation);
+    }
+
+    /// The template the engine registers is held to the real parser: filled in
+    /// for a spec, it lexes and parses as a function, and (it names no
+    /// placeholder) resolves and typechecks clean. It was written with `{{ }}`
+    /// as if for `format!`, but `register_template` text is substituted, not
+    /// formatted, so the doubled braces reached the parser, and it called
+    /// `.iter().fold(init, ..)` where the vocabulary's `fold` is a free function.
+    #[test]
+    fn the_registered_template_parses_as_mage() {
+        use crate::ast::ItemKind;
+        let mut engine = NlEngine::new();
+        let spec = SynthesisSpec::new("total")
+            .with_param("input", "[i64]")
+            .with_return("i64");
+        let candidates = engine.oracle.generate(&spec);
+        let c = candidates
+            .iter()
+            .find(|c| c.strategy == Strategy::Functional)
+            .expect("a functional candidate");
+        let tokens = lexer::lex(&c.body);
+        let module = parser::parse(&tokens)
+            .unwrap_or_else(|e| panic!("template does not parse: {}\n{}", e.message, c.body));
+        let ItemKind::Function(f) = &module.items[0].kind else {
+            panic!("template is not a function: {}", c.body);
+        };
+        assert_eq!(f.name, "total");
+        let errors: Vec<_> = resolve::resolve(&module)
+            .diagnostics
+            .iter()
+            .chain(types::check(&module).diagnostics.iter())
+            .filter(|d| d.severity == hir::Severity::Error)
+            .map(|d| d.message.clone())
+            .collect();
+        assert!(errors.is_empty(), "template does not check: {errors:?}\n{}", c.body);
     }
 }

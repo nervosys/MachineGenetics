@@ -412,27 +412,21 @@ impl CodegenBridge {
             format!(" / {}", spec.effects.join(", "))
         };
 
-        let mut lines = Vec::new();
-
-        // Contracts.
+        // Contracts attach above the signature, one `@kw(cond)` per line, the
+        // way the formatter prints them; the parser stores them on the function.
+        let mut contracts = String::new();
         for pre in &spec.preconditions {
-            lines.push(format!("  @req {pre}"));
+            contracts.push_str(&format!("@req({pre})\n"));
         }
         for post in &spec.postconditions {
-            lines.push(format!("  @ens {post}"));
+            contracts.push_str(&format!("@ens({post})\n"));
         }
         for inv in &spec.invariants {
-            lines.push(format!("  @inv {inv}"));
+            contracts.push_str(&format!("@inv({inv})\n"));
         }
 
-        let contracts = if lines.is_empty() {
-            String::new()
-        } else {
-            format!("\n{}\n", lines.join("\n"))
-        };
-
         format!(
-            "fn {name}({params_str}){ret}{effects_str} {{{contracts}  {body}\n}}",
+            "{contracts}fn {name}({params_str}){ret}{effects_str} {{\n  {body}\n}}",
             name = spec.name,
         )
     }
@@ -558,8 +552,59 @@ mod tests {
 
         let source = bridge.wrap_in_function(&spec, "a + b");
         assert!(source.contains("fn add(a: i64, b: i64) -> i64"));
-        assert!(source.contains("@req a > 0"));
+        assert!(source.contains("@req(a > 0)"));
         assert!(source.contains("a + b"));
+    }
+
+    /// The header `wrap_in_function` emits is the language's, not a lookalike:
+    /// it lexes and parses, and the parsed function carries every contract and
+    /// effect the spec named.
+    #[test]
+    fn wrapped_function_parses_and_carries_its_contracts() {
+        use crate::ast::{ContractClauseKind, ItemKind};
+        let bridge = CodegenBridge::new();
+        let spec = SynthesisSpec::new("add")
+            .with_param("a", "i64")
+            .with_param("b", "i64")
+            .with_return("i64")
+            .with_effect("io")
+            .with_effect("fs")
+            .with_req("a > 0")
+            .with_ens("result >= a")
+            .with_inv("b > 0");
+        let source = bridge.wrap_in_function(&spec, "a + b");
+        let tokens = crate::lexer::lex(&source);
+        let module = crate::parser::parse(&tokens)
+            .unwrap_or_else(|e| panic!("wrapped source does not parse: {}\n{source}", e.message));
+        assert_eq!(module.items.len(), 1, "{source}");
+        let ItemKind::Function(f) = &module.items[0].kind else {
+            panic!("expected a function: {source}");
+        };
+        assert_eq!(f.name, "add");
+        assert_eq!(f.params.len(), 2);
+        assert!(f.return_type.is_some());
+        assert_eq!(f.effects, vec!["io".to_string(), "fs".to_string()], "{source}");
+        let got: Vec<(ContractClauseKind, &str)> =
+            f.contracts.iter().map(|c| (c.kind, c.condition.as_str())).collect();
+        assert_eq!(
+            got,
+            vec![
+                (ContractClauseKind::Requires, "a > 0"),
+                (ContractClauseKind::Ensures, "result >= a"),
+                (ContractClauseKind::Invariant, "b > 0"),
+            ],
+            "{source}"
+        );
+    }
+
+    /// A spec with no params, return type, effects or contracts still parses.
+    #[test]
+    fn bare_wrapped_function_parses() {
+        let bridge = CodegenBridge::new();
+        let source = bridge.wrap_in_function(&SynthesisSpec::new("unit"), "()");
+        let tokens = crate::lexer::lex(&source);
+        crate::parser::parse(&tokens)
+            .unwrap_or_else(|e| panic!("bare wrapped source does not parse: {}\n{source}", e.message));
     }
 
     #[test]

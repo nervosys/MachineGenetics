@@ -254,7 +254,7 @@ impl SynthesisOracle {
         match strategy {
             Strategy::Imperative => {
                 let body = format!(
-                    "fn {}({}) -> {} {{ todo!(\"imperative\") }}",
+                    "fn {}({}) -> {} {{ todo(\"imperative\") }}",
                     spec.name, params_str, ret
                 );
                 let cost = CostEstimate {
@@ -280,7 +280,7 @@ impl SynthesisOracle {
             }
             Strategy::Functional => {
                 let body = format!(
-                    "fn {}({}) -> {} {{ input.iter().fold(init, |acc, x| combine(acc, x)) }}",
+                    "fn {}({}) -> {} {{ fold(input, init, |acc, x| combine(acc, x)) }}",
                     spec.name, params_str, ret
                 );
                 let cost = CostEstimate {
@@ -303,7 +303,7 @@ impl SynthesisOracle {
             }
             Strategy::Speculative => {
                 let body = format!(
-                    "fn {}({}) -> {} {{ let c = guess(); if verify(c) {{ c }} else {{ fallback() }} }}",
+                    "fn {}({}) -> {} {{ val c = guess(); if verify(c) {{ c }} else {{ fallback() }} }}",
                     spec.name, params_str, ret
                 );
                 let cost = CostEstimate {
@@ -324,7 +324,7 @@ impl SynthesisOracle {
         // Check preconditions: body should reference each param (simplified check).
         for (param_name, _) in &spec.params {
             if !body.contains(param_name.as_str())
-                && !body.contains("todo!")
+                && !body.contains("todo(")
                 && !body.contains("{params}")
             {
                 result.preconditions_met = false;
@@ -332,8 +332,8 @@ impl SynthesisOracle {
             }
         }
 
-        // Check postconditions: body must have a return expression (not just todo!).
-        if body.contains("todo!") {
+        // Check postconditions: body must have a return expression (not just todo()).
+        if body.contains("todo(") {
             for ens in &spec.postconditions {
                 result.postconditions_met = false;
                 result.violations.push(format!("postcondition `{ens}` unverified (stub)"));
@@ -645,5 +645,31 @@ mod tests {
         let v = VerificationResult::default();
         assert!(v.is_valid());
         assert!(v.violations.is_empty());
+    }
+
+    // ── Generated text is MAGE ────────────────────────────────────
+
+    /// Every strategy's generated function lexes and parses as MAGE, and the
+    /// parsed item is a function named for the spec. The stubs name
+    /// placeholders (`base_case`, `combine`), so this holds them to the
+    /// parser, not the type checker.
+    #[test]
+    fn every_strategy_stub_parses_as_mage() {
+        use crate::ast::ItemKind;
+        let mut oracle = SynthesisOracle::new();
+        let candidates = oracle.generate(&simple_spec());
+        assert_eq!(candidates.len(), 5, "one candidate per strategy");
+        for c in &candidates {
+            let tokens = crate::lexer::lex(&c.body);
+            let module = crate::parser::parse(&tokens).unwrap_or_else(|e| {
+                panic!("strategy {} does not parse: {}\n{}", c.strategy, e.message, c.body)
+            });
+            assert_eq!(module.items.len(), 1, "strategy {}: {}", c.strategy, c.body);
+            let ItemKind::Function(f) = &module.items[0].kind else {
+                panic!("strategy {} is not a function: {}", c.strategy, c.body);
+            };
+            assert_eq!(f.name, "add", "strategy {}", c.strategy);
+            assert_eq!(f.params.len(), 2, "strategy {}", c.strategy);
+        }
     }
 }
