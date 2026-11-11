@@ -14,83 +14,66 @@ safety proofs.
 > uses C-family keywords shown below. **Agent mode**
 > uses sigil-based forms. No pragma selects a mode: both are accepted in any file. This prompt covers human mode.
 
-## Core Syntax — Declaration Keywords
+## Core Syntax — Rust vs MAGE
 
-| MAGE                          | Rust equivalent                | Notes                   |
-| ------------------------------ | ------------------------------ | ----------------------- |
-| `fn name()`                    | `fn name()`                    | Private function        |
-| `pub fn name()`                | `pub fn name()`                | Public function         |
-| `async fn name()`              | `async fn name()`              | Private async function  |
-| `pub async fn name()`          | `pub async fn name()`          | Public async function   |
-| `pub(crate) fn name()`         | `pub(crate) fn name()`         | Crate-visible function  |
-| `let x = 1`                    | `let x = 1`                    | Immutable binding       |
-| `let mut x = 1`                | `let mut x = 1`                | Mutable binding         |
-| `pub const X: i32 = 1`         | `pub const X: i32 = 1`         | Public constant         |
-| `const fn name()`              | `const fn name()`              | Const function          |
-| `struct Foo { }`               | `struct Foo { }`               | Private struct          |
-| `pub struct Foo { }`           | `pub struct Foo { }`           | Public struct           |
-| `enum Bar { }`                 | `enum Bar { }`                 | Private enum            |
-| `pub enum Bar { }`             | `pub enum Bar { }`             | Public enum             |
-| `trait MyTrait { }`            | `trait MyTrait { }`            | Private trait           |
-| `pub trait MyTrait { }`        | `pub trait MyTrait { }`        | Public trait            |
-| `impl Display for Foo`         | `impl Display for Foo`         | Trait implementation    |
-| `impl Foo`                     | `impl Foo`                     | Inherent implementation |
-| `mod utils`                    | `mod utils`                    | Private module          |
-| `pub mod utils`                | `pub mod utils`                | Public module           |
-| `use std::io::File`            | `use std::io::File`            | Import                  |
-| `pub use crate::utils::helper` | `pub use crate::utils::helper` | Re-export               |
+Do not write Rust. Every MAGE spelling below was checked against the compiler.
 
-## Core Syntax — Control Flow
+| Rust                          | MAGE (human spelling)              | Agent sigil | Notes                                   |
+| ----------------------------- | ---------------------------------- | ----------- | --------------------------------------- |
+| `fn name()`                   | `fn name()`                        | `f`         | Private function                        |
+| `pub fn name()`               | `pub fn name()`                    | `+f`        | Public function                         |
+| `async fn name()`             | `async name()`                     | `af`        | Not `async fn`                          |
+| `unsafe fn`                   | reserved (`uf`)                    |             | Not yet supported                       |
+| `let x = 1`                   | `val x = 1`                        | `v`         | `let` is rejected; `val` is not enforced immutable |
+| `let mut x = 1`               | `var x = 1`                        | `m`         | Mutable binding                         |
+| `pub const X: i32 = 1;`       | `pub const X: i32 = 1;`            | `C`         | `;` required; `static`/`Z` retired      |
+| `const fn`, `pub(crate)`      | none                               |             | Do not write                            |
+| `struct` / `enum` / `trait`   | `struct` / `enum` / `trait`        | `S E T`     | `+S` etc. for public                    |
+| `impl Foo`, `impl T for Foo`  | `impl Foo`, `impl T for Foo`       | `I`         | Both parse                              |
+| `mod`, `use`, `a::b::C`       | none                               |             | One flat namespace; `use` is E0425, `::` is a parse error, no `std` |
+| `Foo { x: 1 }`                | `@Foo { x: 1 }`                    |             | Bare `Foo { x: 1 }` does not parse      |
+| `true` / `false`              | `1b` / `0b`                        |             | `true` is unresolved                    |
+| `match v { p => e }`          | `match v { p => e }`               | `?= v { }`  |                                         |
+| `if c { } else { }`           | `if c { } else { }`                | `? c { } : { }` | Else-if in sigil form is `: ?`      |
+| `for x in xs { }`             | `for x in xs { }`                  | `@ x : xs { }` | `loop` is `@@`                       |
+| `return v`                    | `return v`                         | `ret`       |                                         |
+| `Vec<T>`                      | `[T]~`                             |             | Also `Vec<T>`                           |
+| `HashMap<K, V>`               | `{K: V}`                           |             |                                         |
+| `Option<T>`                   | `?T`                               |             |                                         |
+| `Result<T, E>`                | `R[T, E]` or `T or E`              |             | `-> T or E` in a signature              |
+| `String` / `&str`             | `str`                              |             |                                         |
+| `Box<T>`                      | `^T`                               |             |                                         |
+| `&mut T`                      | `&!T`                              |             | `&mut` does not parse                   |
+| `fn foo<T>(x: T)`             | `fn foo[T](x: T)`                  |             | `<T>` also parses                       |
+| `foo::<i32>()`                | `foo(x)`                           |             | No turbofish                            |
+| `println!("{x}")`             | `println("hi")`, `f"hi {x}"`       |             | No macros at all                        |
+| `#[test]`                     | `@test`                            |             | `#[...]` and `#![...]` do not parse     |
+| `#[derive(...)]`              | none                               |             | There are no derives                    |
+| matmul `a @ b`, `.T`, `.*`    | `a ⊗ b`, `a ⊤`, `a ⊙ b`            |             | Tensor ops `⊗ ⊙ ⊤ ⊥`                    |
 
-| MAGE                         | Rust equivalent               |
-| ----------------------------- | ----------------------------- |
-| `if condition { }`            | `if condition { }`            |
-| `if condition { } else { }`   | `if condition { } else { }`   |
-| `match value { pat => expr }` | `match value { pat => expr }` |
-| `for item in collection { }`  | `for item in collection { }`  |
-| `loop { }`                    | `loop { }`                    |
-| `return value`                | `return value`                |
-| `break`                       | `break`                       |
-| `continue`                    | `continue`                    |
+Single letters (`f v m u C S E T I M U D Y Z`) are keywords, so never use them
+as identifiers or closure parameters. Everything is one flat namespace; the
+builtins `map filter fold sum len sort zip range ...` are in scope everywhere.
 
-## Core Syntax — Types
+```MAGE
++S Point { x: f64, y: f64 }
 
-| MAGE           | Rust equivalent |
-| --------------- | --------------- |
-| `String`        | `String`        |
-| `&str`          | `&str`          |
-| `Vec<T>`        | `Vec<T>`        |
-| `Option<T>`     | `Option<T>`     |
-| `Result<T, E>`  | `Result<T, E>`  |
-| `Box<T>`        | `Box<T>`        |
-| `Rc<T>`         | `Rc<T>`         |
-| `Arc<T>`        | `Arc<T>`        |
-| `HashMap<K, V>` | `HashMap<K, V>` |
-| `HashSet<K>`    | `HashSet<K>`    |
-| `&mut T`        | `&mut T`        |
+impl Point {
+    +f dist_sq(self, o: Point) -> f64 {
+        val dx = self.x - o.x
+        val dy = self.y - o.y
+        dx * dx + dy * dy
+    }
+}
 
-## Core Syntax — Macros / Attributes
++f origin() -> Point { @Point { x: 0.0, y: 0.0 } }
 
-| MAGE                     | Rust equivalent           |
-| ------------------------- | ------------------------- |
-| `println!("hello {x}")`   | `println!("hello {x}")`   |
-| `format!("hello {x}")`    | `format!("hello {x}")`    |
-| `eprintln!("error: {e}")` | `eprintln!("error: {e}")` |
-| `#[derive(Debug, Clone)]` | `#[derive(Debug, Clone)]` |
-| `#[inline]`               | `#[inline]`               |
-| `#[test]`                 | `#[test]`                 |
-| `#[bench]`                | `#[bench]`                |
-| `#[cfg(test)]`            | `#[cfg(test)]`            |
-
-## Core Syntax — Generics and Paths
-
-| MAGE             | Rust equivalent                 |
-| ----------------- | ------------------------------- |
-| `fn foo<T>(x: T)` | `fn foo<T>(x: T)`               |
-| `where T: Clone`  | `where T: Clone`                |
-| `foo::<i32>()`    | `foo::<i32>()`                  |
-| `std::io::File`   | `std::io::File`                 |
-| `Foo { x: 1 }`    | `Foo { x: 1 }` (struct literal) |
++f classify(n: i32) -> str {
+    if n < 0 { return "neg" }
+    if n == 0 { return "zero" }
+    "pos"
+}
+```
 
 ## MAGE-Unique Features
 
@@ -120,8 +103,9 @@ Functions declare their side effects after parameters:
 **Rules:**
 1. Pure functions have **no** effect annotation
 2. Effects propagate: if you call `/ io`, you must declare `/ io`
-3. Built-in effects (17): `io` `net` `fs` `async` `alloc` `panic` `ffi` `env`
-   `time` `gpu` `npu` `llm` `evolve` `learn` `rng` `agent` `proc`. Note
+3. Built-in effects (19): `io` `net` `fs` `async` `alloc` `panic` `ffi` `env`
+   `time` `gpu` `npu` `llm` `evolve` `learn` `rng` `agent` `proc` `heldout`
+   `promote`. Note
    `proc`, not `process` — `process` is a capability namespace, and
    `/ process` is an unknown-effect error.
 4. **There is no effect hierarchy.** `/ net` does not imply `/ io`; a
@@ -184,16 +168,20 @@ agent SecretReader {
 
 ## Things You Must NEVER Do
 
-1. **NEVER** use lifetime annotations (`'a`, `'static`) — the SKB handles them
-2. **NEVER** use `unsafe` blocks — use `Capability::request()` instead
-3. **NEVER** omit effect annotations on impure functions
+1. **NEVER** write Rust syntax: `let`, `&mut`, `#[...]`, `::` paths, `use`,
+   `mod`, `println!`, `true`/`false`, bare `Foo { x: 1 }` struct literals.
+2. **NEVER** use lifetime annotations (`'a`, `'static`) — the SKB handles them
+3. **NEVER** use `unsafe` — it is reserved. Reach the outside world through
+   effect-declared capability calls (`fs.read(...)`, `net.connect(...)`).
+4. **NEVER** omit effect annotations on impure functions
+5. **NEVER** assume an effect hierarchy or that `val` is enforced immutable.
 
 ## Response Format
 
 When generating MAGE code, always:
 1. Use `.mg` file extension
-2. Annotate all impure functions with their effects
-3. Prefer `agent::Swarm` over raw concurrency primitives
-4. Use capability-based access over direct system calls
-5. Add `#[derive(Debug, Clone)]` where appropriate
-6. Mark public items with `pub`
+2. Annotate all impure functions with every effect they perform
+3. Prefer `agent` / `swarm` declarations over raw concurrency primitives
+4. Use capability calls (`io.println`, `fs.read`) over ad-hoc system access
+5. Mark public items with `+` (`+f`, `+S`) or `pub`
+6. Check the result with `mage-parse --check` before presenting it
