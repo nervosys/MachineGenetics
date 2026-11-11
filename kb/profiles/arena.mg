@@ -11,7 +11,10 @@
 // `second_order` forms are drawn only by a policy that has them on.
 //
 // `describe_grammar` builds the prompt from `form_example` and `profile_text`;
-// `{name}` in a text is the limit of that name, or `max_depth`, or the gated form.
+// `{name}` in a text is the limit of that name, or `max_depth`, or the gated form,
+// or `fn_head` (the signature up to its parameters), or `separator` (the line
+// between a reply's blocks, which `command.rs` splits on). `{n}` in `request` is
+// filled by the prompt's code.
 
 kb ArenaProfile {
     fact instance_of("arena", Profile);
@@ -63,7 +66,12 @@ kb ArenaProfile {
     fact form_example("sub", "wrapping_sub(s, 3)");
     fact form_example("mul", "wrapping_mul(s, 3)");
     fact form_example("mod", "(s % 5)");
-    fact profile_text("arena", "list_head", "A body is one list expression over the seed `s`. Its forms, one example each:");
+    fact profile_text("arena", "preamble", "You write programs for the arena, a search over small typed MAGE programs. Write bodies only: no `{fn_head}`, no braces, no comments.");
+    fact profile_text("arena", "shown_head", "The best programs found so far, as written, with the learning progress each earned (higher is better):");
+    fact profile_text("arena", "none_yet", "(none yet)");
+    fact profile_text("arena", "request", "Write up to {n} new programs, different from these. Each is a single body expression. Put one per block, and separate blocks with a line containing only {separator}. Write nothing else.");
+    fact profile_text("arena", "separator", "---");
+    fact profile_text("arena", "list_head","A body is one list expression over the seed `s`. Its forms, one example each:");
     fact profile_text("arena", "int_head", "Integer expressions, inside any of them:");
     fact profile_text("arena", "bounds", "Bounds: range and take lengths {range}; repeat lengths {repeat}; literals {literal}; modulus {mod}; cycle templates have {cycle_elems} elements and length {cycle_len}; copy counts {copy}; nest counts {nest_count} and moduli {nest_mod}; filter moduli {filter_mod}. Lists nest at most {max_depth} levels deep. Every variable must be `s` or a closure parameter in scope.");
     fact profile_text("arena", "second_order", "The second-order form `{form}` is the only one whose values can oscillate: it emits values in {osc_len}, its start values are literals {literal}, its shift is {osc_shift}, and its coefficient a is at most 2^(k+1) and b below 2^k. Write it as its example, with the numbers changed within these bounds.");
