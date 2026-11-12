@@ -760,6 +760,80 @@ becomes the champion only when `Episode::adjudicate` says so, with every step
 journaled, which is the redesign's rule that authority changes hands only
 through the gate.
 
+### Running succession from the command line (plan 8.3)
+
+```
+arena succession --heldout FILE[,FILE...] --journal PATH [--cycles N] [--seed N]
+                 [--stop-file PATH] [--force] [--json]
+                 [--rounds N] [--programs N] [--candidates N]
+                 [--agents K:N,...] [--proposer-command "CMD ARGS"] [--proposer-timeout S]
+```
+
+Once started, it builds the `ArenaWorkload` from the held-out files, measures the
+base configuration as the seed champion, and promotes it through the gate. It
+then runs `germline`'s `Runner` for at most `--cycles` cycles. Each cycle
+proposes configurations, runs an arena session for each candidate, scores it on
+the held-out suite, adjudicates it at the gate, and supervises any promotion. It
+prints the held-out suite digest, one line per cycle, the halt reason, and the
+champion. `--json` prints the `RunReport` with the suite digest added.
+
+- **Journal.** `--journal` is the run's record and is required. If it already
+  holds a run, the run is replayed (the hash chain is verified, and each
+  succession is re-applied under the gate's checks) and continues from its last
+  cycle. `--force` moves an existing journal to `PATH.<unix-time>.bak` and starts
+  a new run. Nothing is deleted.
+- **Kill switch.** `--stop-file PATH`. Create the file to stop the run before its
+  next cycle. A cycle already under way finishes. The halt is journaled and
+  reported.
+- **Held-out re-check.** The suite digest is computed at startup, and the files
+  are re-read and re-hashed before every cycle. The same check runs before every
+  round of the plain `arena --heldout` run. A change stops the run with an error.
+- **Exit codes.** `0`: budget exhausted, stop requested, or search stalled. `1`:
+  workload failure, including held-out data that changed on disk. `2`:
+  demotion, a failure with no usable fallback, or a usage error.
+- **Attestation key.** Read from `ARENA_ATTEST_KEY`. If it is unset, a built-in
+  development key is used and a warning is printed. The attestation is HMAC, so
+  anyone holding the key can mint verdicts. It shows that a verdict came from a
+  process that knows the key, not which process.
+- **Gate.** Fixed in code and pinned by the episode digest: `capability` as the
+  primary axis, which must improve by at least `0.01` (about 0.08 bits/byte). The
+  margin is hand-chosen and not calibrated against measured noise. Zero would let
+  ties promote, and `capability` is clamped to 0 above 8 bits/byte, so a run of
+  learners that have not learned yet would promote every candidate. `efficiency`
+  is the guard, with tolerance `0.25`, loose because wall-clock energy is noisy at
+  this scale. Eight shadow successes are required.
+
+What this does not do:
+
+- **No energy budget across cycles.** `--energy-budget` on the plain `arena`
+  command applies to one session. The succession loop has no joule ceiling of
+  its own, so `--cycles` is the only bound. Every candidate is a full arena
+  session, so cost grows with `--cycles × --candidates`.
+- **Resume re-measures the seed.** Resuming rebuilds the seed champion by running
+  the base configuration again. Its efficiency is wall-clock based, so it can
+  differ from the figure the original run recorded, and a comparison made after
+  the resume can differ from the one the first run would have made.
+- **Arena workload only.** The CLI drives `ArenaWorkload`. Other workloads are not
+  reachable from it.
+- **No daemon.** Each invocation is bounded. Continuing means running the command
+  again, which resumes from the journal.
+
+### Proposer isolation at the CLI, and its limit
+
+`CommandBackend` runs the proposer child in a fresh, empty scratch directory under
+the temp directory, which is removed once the child exits. The child's environment
+is cut down to `PATH`, plus `SYSTEMROOT`, `TEMP`, `TMP` and `PATHEXT` on Windows.
+Any API key or token in the arena's environment is withheld from it. There is no
+opt-out flag, because nothing in the tests or the documented workflows needs the
+inherited environment.
+
+**This is not a sandbox.** The child runs as the same user. It can open any
+absolute path, including the held-out files and any other file the user can read.
+It can write anywhere the user can write and use the network. The isolation
+prevents accidental inheritance of the parent's environment and working directory.
+It does not contain a hostile or buggy proposer. Containment would need an
+operating-system sandbox, which is not built.
+
 ## Physical trajectories (plan P1–P2)
 
 `arena::physics` generates trajectories of five classical systems, and encodes
@@ -1346,6 +1420,8 @@ default could change.
 3. **The continuous half**: an inner solver over `LearnerConfig` nested inside
    the program search.
 4. **An LLM agent** as a fourth `Proposer`, competing on the same budget.
-5. **Promotion through `germline`**: learners that survive the front become
-   candidates for `Episode::adjudicate`, so authority still changes hands only
-   through the gate.
+5. **Promotion through `germline`**: partly done. `arena succession` drives
+   propose, evaluate, gate and promote unattended for arena configurations, and
+   authority changes hands only through `Episode::adjudicate`. Not done: learners
+   that survive the front of a plain `arena` run are still not offered to the
+   gate, and the succession loop has no energy budget across cycles.

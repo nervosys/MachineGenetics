@@ -371,8 +371,21 @@ mode is not crashing — it is continuing:
 | `BudgetExhausted` | the normal end; someone should look |
 | `Demoted` | see below |
 | `SearchStalled` | N consecutive refusals — more cycles are a slower way to learn the search is stuck |
-| `WorkloadFailed` | candidates cannot be produced at all; cycling would fill the journal with nothing |
+| `WorkloadFailed` | candidates cannot be produced at all, or the workload's inputs changed under it (`Workload::before_cycle`); cycling would fill the journal with nothing |
+| `StopRequested` | the kill switch: the policy's `stop_file` exists before a cycle. Not a failure; the operator asked |
 | `NoFallbackAvailable` | the most serious: the system is running something it has decided it should not be |
+
+**The kill switch.** `RunnerPolicy::stop_file` is checked before every cycle,
+ahead of anything else that starts one. If the file exists, the run halts with
+`StopRequested { after_cycles }` and journals a note saying so. A cycle already
+under way is not interrupted, so the stop takes effect at the next cycle boundary.
+The field is left out of the serialized policy when unset, so policies that do not
+use it keep their digest. The `arena` command line exposes it as
+`arena succession --stop-file PATH`, and the file is created by hand or by a
+supervising script. Before each cycle, `Runner::run` also calls
+`Workload::before_cycle`. The default does nothing. A workload whose inputs can
+change underneath it, such as held-out data on disk, returns an error there, and
+the run halts as `WorkloadFailed`.
 
 **Halting on demotion** is the one that matters. The tempting behaviour — fall
 back, then keep searching — treats a failed promotion as a bad draw. But a
