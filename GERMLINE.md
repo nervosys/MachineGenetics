@@ -179,12 +179,25 @@ verdict carries a `basis` (`rule (a): …` or `rule (b): …`), and a refusal un
 dominance rule carries a `DominanceRefused` reason that names the axis each rule
 failed on.
 
-**What is not settled.** The tolerances are the gate's own. Under rule (b) the
-non-guard objectives have zero tolerance, which is strict for a noisy measurement such
-as wall-clock latency (see `ARENA.md`). And rule (b) does not check that the primary
-axis carries information: if a clamped primary axis is 0 for both champion and
-challenger, rule (b) can promote on the other objectives alone. A floor on the primary
-value is the fix, and it is not in the gate yet.
+**The primary floor.** `DominanceRule.primary_floor` (default `0`) is a second
+condition on rule (b): the challenger's primary value must be strictly above it. A
+primary value tied at the floor is refused, with the message `rule (b) does not
+apply: … is not above the floor …`. Zero intelligence at lower energy is not an
+improvement, so with the default floor, a capability tie at 0 cannot promote on
+energy alone. Rule (a) is unchanged by the floor.
+
+**Per-objective tolerance.** `DominanceRule.tolerances` is an ordered map from axis
+name to tolerance, so the digest is deterministic. Under rule (b) an objective's
+tolerance is its guard tolerance if it is a guard, else its entry in the map, else
+zero. The primary axis is always zero. The same tolerance applies to the ratchet,
+which compares against the high-water mark, not the champion. So across any chain of
+promotions, an objective can fall below its best value by at most one tolerance. A
+tolerance does not compound over the chain.
+
+**What is still open.** The gate does not set a floor or a tolerance on its own. A
+zero floor and zero tolerances are the defaults. Measurement limits that the gate
+cannot see are listed in `ARENA.md`, under *Known limits of the measurement*: the
+clamped primary axis, the latency scale, and the wall-clock re-measure of the seed.
 
 A **canary phase** (`min_shadow_successes`) runs the challenger on real work while
 the incumbent still holds authority, so promotion follows evidence from the actual

@@ -768,6 +768,7 @@ arena succession --heldout FILE[,FILE...] --journal PATH [--cycles N] [--seed N]
                  [--rounds N] [--programs N] [--candidates N]
                  [--agents K:N,...] [--proposer-command "CMD ARGS"] [--proposer-timeout S]
                  [--objectives capability[,efficiency][,latency]] [--dominance-min F]
+                 [--dominance-floor F] [--objective-tolerance AXIS=F,...]
                  [--allow-estimated-energy]
 ```
 
@@ -779,9 +780,16 @@ described below. With it:
   `efficiency` (the guard, with tolerance `0.25`), and `latency`. The objectives
   are the axes named. Rule (b) requires each of them to be at least the champion
   less its tolerance (the guard tolerance for `efficiency`, zero for `capability`
-  and `latency`), and at least one of them to improve by `--dominance-min`
-  (default `0.01`). Each objective also has the ratchet against the lineage's
-  best value.
+  and `latency`, unless `--objective-tolerance` sets one), and at least one of
+  them to improve by `--dominance-min` (default `0.01`). Rule (b) also needs the
+  primary value strictly above `--dominance-floor` (default `0`), so a learner with
+  no intelligence cannot win on energy. Each objective also has the ratchet against
+  the lineage's best value, with the same tolerance.
+  `--objective-tolerance latency=0.005` sets a non-guard objective's tolerance
+  (default zero, so the old behaviour). It takes comma-separated `AXIS=VALUE` items.
+  Values must be finite and non-negative, and the axis must be listed in
+  `--objectives`. `capability` has zero tolerance, and `efficiency` is the guard, so
+  neither can be set here. Both flags need `--objectives`.
 - **Parent selection** is Pareto rank and crowding over the objective vectors,
   instead of the scalar clade score.
 - **`latency`** is `1 / (1 + ms per kilobyte)`, measured as the wall-clock time to
@@ -809,13 +817,33 @@ arena succession --heldout GERMLINE.md --journal run.jsonl --cycles 3 --seed 3 \
 ```
 
 On that run, the seed and its successors had a held-out capability of 0. Their
-held-out bits per byte were above 8, so `capability` was clamped to zero. Gen 1 was
-promoted by rule (b) on `efficiency` (+0.1309), with capability tied at 0. That is
-the failure mode described in `GERMLINE.md` §4: rule (b) does not check that the
-primary axis carries information. The later refusals were both on `latency`: one
-was a ratchet refusal, where wall-clock noise against a zero tolerance fell below the
-seed's measured value, and one found no objective improved by the margin. Treat this
-as a measurement of the gate, not as a result about the learners.
+held-out bits per byte were above 8, so `capability` was clamped to zero. Before the
+primary floor existed, gen 1 was promoted by rule (b) on `efficiency` (+0.1309), with
+capability tied at 0. That is the failure mode described in `GERMLINE.md` §4. With
+the default `--dominance-floor 0`, the same candidate is now refused, because its
+capability of 0 is not above the floor. The default floor of zero is enough for that
+case. A non-zero floor sets a stricter bar above it, and the sample cannot show a
+promotion under rule (b) until the learners reach a capability above the floor. The later refusals were both on `latency`:
+one was a ratchet refusal, where wall-clock noise against a zero tolerance fell below
+the seed's measured value, and one found no objective improved by the margin. Treat
+this as a measurement of the gate, not as a result about the learners.
+
+**Known limits of the measurement.** These are open. None of them is fixed here.
+
+- **The primary axis is inert in short runs.** `capability` is clamped to 0 for any
+  learner above 8 bits/byte. A short run's learners sit above that, so the primary
+  axis cannot move. With the floor, rule (b) cannot promote such a run either, so
+  the run can only refuse, or promote on rule (a), which needs a capability margin.
+- **The latency scale is small in a debug build.** On this machine, a debug build
+  scores a kilobyte in about 0.08 s, so `1 / (1 + ms per kB)` is about 0.012. The
+  differences the sample saw were about 0.002, below the default `0.01` margin. A
+  release build would sit near 0.5, so the scale depends on the build profile. The
+  scale is not changed here.
+- **Resume re-measures the seed by wall clock.** Its latency and efficiency can
+  differ from the figures the original run recorded. The latency ratchet holds
+  against the best recorded value, so a re-measured seed can set a floor that later
+  candidates cannot meet within a zero tolerance. A non-zero `--objective-tolerance`
+  for `latency` is the way to allow for that.
 
 Once started, it builds the `ArenaWorkload` from the held-out files, measures the
 base configuration as the seed champion, and promotes it through the gate. It
