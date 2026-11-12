@@ -2994,7 +2994,7 @@ Only `stdlib/` and four `framewerx` files remain.
   `param_grads.is_empty()` and failed, which is how the distinction surfaced.
 
   **Training is unaffected and genuinely works** — `--target=abl-train`
-  reduces `train_demo.mg`'s loss by 99.95% — because the real backward pass
+  reduces `train_demo.mg`'s loss by 99.95% (measured; `tests/train_cli.rs` pins only that the final loss is below half the first) — because the real backward pass
   is in `rmi`'s backend and never touches this module. That is what let it
   survive: the thing the tape is cited as evidence for *does* work,
   elsewhere. And `backward` emits MLIR **text** that nothing executes, so a
