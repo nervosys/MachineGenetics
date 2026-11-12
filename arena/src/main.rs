@@ -7,6 +7,7 @@
 //!       [--learners ng:orders:log2buckets:lr | tf:d:layers:heads:ctx:lr[:gpu] | ent:orders:log2buckets:target_len:lr | ssm:d:lr[:bptt] [,…]]
 //!       [--fuel F] [--cpu-watts W] [--meter-gpus <i>[,<i>…] | none] [--cost joules|fuel]
 //!       [--allocate share|hypervolume] [--novelty behaviour|shape]
+//!       [--retain reward|pareto] [--parents reward|pareto]
 //!       [--length-unit tokens|bytes] [--canary <string>] [--second-order] [--bound-grafts]
 //!       [--energy-budget J] [--joules-per-program J] [--definitions <forge registry dir>]
 //!       [--heldout-slices K] [--refresh-drift X]
@@ -629,6 +630,20 @@ fn main() {
                     other => fail(format!("--allocate: `{other}` is neither share nor hypervolume")),
                 }
             }
+            "--retain" => {
+                cfg.retain = match value(i) {
+                    "reward" => arena::agents::Retain::Reward,
+                    "pareto" => arena::agents::Retain::Pareto,
+                    other => fail(format!("--retain: `{other}` is neither reward nor pareto")),
+                }
+            }
+            "--parents" => {
+                cfg.parents = match value(i) {
+                    "reward" => arena::agents::Parents::Reward,
+                    "pareto" => arena::agents::Parents::Pareto,
+                    other => fail(format!("--parents: `{other}` is neither reward nor pareto")),
+                }
+            }
             "--learner-steps" => cfg.learner_steps = num(value(i), "--learner-steps") as usize,
             "--eval-every" => cfg.eval_every = num(value(i), "--eval-every").max(1) as usize,
             "--cpu-watts" => cfg.cpu_watts = value(i).parse().unwrap_or_else(|_| fail("--cpu-watts: not a number")),
@@ -719,8 +734,11 @@ fn main() {
         cfg.programs_per_round,
         cfg.agents.iter().map(|(k, n)| format!("{k}:{n}")).collect::<Vec<_>>().join(",")
     );
+    // The pool's retention and parent modes, read before `cfg` is moved.
+    let pool_modes = format!("retain {:?}, parents {:?}", cfg.retain, cfg.parents).to_lowercase();
     let report = run_guarded(cfg, heldout, meters, notes, &mut guard).unwrap_or_else(|e| fail(e));
     eprintln!("held-out suite digest {} unchanged across {} re-checks", startup_digest.0, checks.get());
+    eprintln!("pool: {pool_modes}");
 
     eprintln!("\n=== agents (credit per unit cost drives the budget) ===");
     for a in &report.agents {
