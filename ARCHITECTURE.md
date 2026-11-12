@@ -242,6 +242,14 @@ These are deliberate, documented scope lines — *not* gaps papered over:
 - **Text token floor.** ABL does **not** reduce per-call tokens vs. source (the
   payload is irreducible — measured). Its wins are reliability, determinism,
   safety, discoverability, and amortized tokens (cached schema + fewer retries).
+- **`forward(Net, xs)` is the one neural call the evaluator makes.** It runs a `net`'s
+  forward pass on one `[f64]` vector, on the CPU backend, and returns `[f64]`. The
+  weights come from the checkpoint file of the `train` block that names the net, the
+  file `--target=abl-infer` reads; a net with no such checkpoint is refused, and the
+  call reads that file, so it carries the `fs` effect (`/ fs`). It takes one vector (a
+  batch of one), has no GPU path, and cannot be differentiated: `grad` through it is
+  refused (E0308 at check time, a run-time error otherwise). Each interpreter lowers a
+  net once and caches it; each call is charged fuel in proportion to the checkpoint size.
 
 ---
 

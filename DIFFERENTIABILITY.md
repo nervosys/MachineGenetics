@@ -202,6 +202,16 @@ net's verdict counts, not the joined train verdict, and `Unknown` is allowed. No
 layer type is judged `No` yet, so no source reaches E0711 today; its witness sets
 the verdict by hand.
 
+### `forward` is refused, not judged
+
+`forward(Net, xs)`, the evaluator's call into a net (ARCHITECTURE.md §6), performs
+the `fs` effect: it reads the checkpoint of the `train` block that names the net.
+The derivative pass refuses an expression that performs an effect, so
+`grad(g(x), x)` where `g` calls `forward` is E0308 at check time, with the message
+"performs the `FS` effect, so its output is not a function of its inputs". At run
+time the evaluator also refuses a dual number reaching `forward`. Neither check says
+the net is non-differentiable: through `forward` the layers are not judged at all.
+
 ## Differentiability is a typeclass, which is why item 21 reopens
 
 Deciding that `tensor[f32]` and `f32` have derivatives while `i64`, `bool` and
