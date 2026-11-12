@@ -36,7 +36,7 @@ use germline::variation::{Genome, Locus, Selection, VariationPlan};
 use germline::{EvalSuite, FitnessVector, Generation, Measurement};
 use ribosome::Digest;
 use sha2::{Digest as _, Sha256};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
 
 /// The genome's loci, in order, and the ranges they decode onto.
@@ -351,7 +351,62 @@ fn cli_gate(dominance: Option<DominanceRule>) -> PromotionGate {
 const USAGE: &str = "usage: arena succession --heldout FILE[,FILE...] --journal PATH [--cycles N] [--seed N] \
 [--stop-file PATH] [--force] [--json] [--rounds N] [--programs N] [--candidates N] [--agents K:N,...] \
 [--proposer-command \"CMD ARGS\"] [--proposer-timeout S] \
-[--objectives capability[,efficiency][,latency]] [--dominance-min F] [--allow-estimated-energy]";
+[--objectives capability[,efficiency][,latency]] [--dominance-min F] [--dominance-floor F] \
+[--objective-tolerance AXIS=F,...] [--allow-estimated-energy]";
+
+/// Parse `--objective-tolerance` items: `AXIS=VALUE`, comma-separated. A value
+/// must be finite and non-negative, and the axis must be a known one.
+fn parse_tolerances(list: &str) -> Result<Vec<(String, f64)>, String> {
+    list.split(',')
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(|item| {
+            let (axis, value) = item
+                .split_once('=')
+                .ok_or_else(|| format!("--objective-tolerance: `{item}` should be AXIS=VALUE"))?;
+            let axis = axis.trim();
+            if !OBJECTIVE_AXES.contains(&axis) {
+                return Err(format!(
+                    "--objective-tolerance: `{axis}` is not an axis; the axes are {}",
+                    OBJECTIVE_AXES.join(", ")
+                ));
+            }
+            let t: f64 = value
+                .trim()
+                .parse()
+                .map_err(|_| format!("--objective-tolerance: `{}` is not a number", value.trim()))?;
+            if !(t.is_finite() && t >= 0.0) {
+                return Err(format!("--objective-tolerance: `{axis}={}` must be a finite, non-negative number", value.trim()));
+            }
+            Ok((axis.to_string(), t))
+        })
+        .collect()
+}
+
+/// Check the tolerances against the run's objectives, and return them as the
+/// rule's ordered map. The primary axis and the guard have fixed tolerances, so
+/// neither may be given one here.
+fn validate_tolerances(objectives: Option<&[String]>, given: &[(String, f64)]) -> Result<BTreeMap<String, f64>, String> {
+    let mut out = BTreeMap::new();
+    for (axis, t) in given {
+        let Some(objs) = objectives else {
+            return Err("--objective-tolerance needs --objectives: tolerances apply to the dominance rule".into());
+        };
+        if axis == "capability" {
+            return Err("--objective-tolerance: capability is the primary axis, and its tolerance is always zero".into());
+        }
+        if axis == "efficiency" {
+            return Err("--objective-tolerance: efficiency is the guard, and its tolerance is the gate's guard tolerance (0.25), which is not set per run".into());
+        }
+        if !objs.iter().any(|o| o == axis) {
+            return Err(format!("--objective-tolerance: `{axis}` is not among --objectives"));
+        }
+        if out.insert(axis.clone(), *t).is_some() {
+            return Err(format!("--objective-tolerance: `{axis}` is given more than once"));
+        }
+    }
+    Ok(out)
+}
 
 /// The objective axes `--objectives` may name.
 const OBJECTIVE_AXES: [&str; 3] = ["capability", "efficiency", "latency"];
@@ -431,13 +486,23 @@ fn objectives_json(objectives: Option<&[String]>, dominance: Option<&DominanceRu
     })
 }
 
-fn objectives_text(objectives: Option<&[String]>, dominance_min: f64) -> String {
-    match objectives {
-        Some(o) => format!(
-            "{} (primary capability) — Pareto parent selection; promotion by rule (a) or by dominance rule (b) at margin {dominance_min:.4}",
-            o.join(", ")
-        ),
-        None => "capability (primary), efficiency (guard) — scalar selection; promotion by rule (a) only".into(),
+fn objectives_text(objectives: Option<&[String]>, dominance: Option<&DominanceRule>) -> String {
+    match (objectives, dominance) {
+        (Some(o), Some(r)) => {
+            let tol = if r.tolerances.is_empty() {
+                "zero tolerance off the guard".to_string()
+            } else {
+                r.tolerances.iter().map(|(a, t)| format!("{a} {t:.4}")).collect::<Vec<_>>().join(", ")
+            };
+            format!(
+                "{} (primary capability) — Pareto parent selection; promotion by rule (a) or by dominance rule (b) at margin {:.4}, primary floor {:.4}, tolerances: {tol}",
+                o.join(", "),
+                r.min_improvement,
+                r.primary_floor
+            )
+        }
+        (Some(o), None) => format!("{} (primary capability) — Pareto parent selection", o.join(", ")),
+        (None, _) => "capability (primary), efficiency (guard) — scalar selection; promotion by rule (a) only".into(),
     }
 }
 
@@ -496,6 +561,8 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
     let mut candidates: usize = 4;
     let mut objectives: Option<Vec<String>> = None;
     let mut dominance_min = DEFAULT_DOMINANCE_MIN;
+    let mut dominance_floor: Option<f64> = None;
+    let mut objective_tolerance: Vec<(String, f64)> = Vec::new();
     let mut allow_estimated = false;
     let mut base = Config::default();
     let mut i = 0;
@@ -535,6 +602,15 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
                     .filter(|x| x.is_finite() && *x >= 0.0)
                     .ok_or_else(|| format!("--dominance-min: `{v}` is not a non-negative number"))?
             }
+            "--dominance-floor" => {
+                dominance_floor = Some(
+                    v.parse::<f64>()
+                        .ok()
+                        .filter(|x| x.is_finite())
+                        .ok_or_else(|| format!("--dominance-floor: `{v}` is not a number"))?,
+                )
+            }
+            "--objective-tolerance" => objective_tolerance.extend(parse_tolerances(v)?),
             "--allow-estimated-energy" => allow_estimated = true,
             other => return Err(format!("unknown argument `{other}`\n{USAGE}")),
         }
@@ -554,6 +630,11 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
         eprintln!("succession: ARENA_ATTEST_KEY is unset; attesting with the development key");
         DEV_ATTEST_KEY.to_string()
     });
+    // Checked before the seed runs, so a usage error costs nothing.
+    if dominance_floor.is_some() && objectives.is_none() {
+        return Err("--dominance-floor needs --objectives: the floor belongs to the dominance rule".into());
+    }
+    let tolerances = validate_tolerances(objectives.as_deref(), &objective_tolerance)?;
 
     let mut w = ArenaWorkload::new(base.clone(), read_corpora(&heldout)?);
     w.heldout_files = heldout.clone();
@@ -571,7 +652,12 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
         why: "the seed session recorded no energy basis".into(),
     });
     check_energy(objectives.as_deref(), &basis, allow_estimated)?;
-    let dominance = objectives.as_ref().map(|o| DominanceRule { objectives: o.clone(), min_improvement: dominance_min });
+    let dominance = objectives.as_ref().map(|o| DominanceRule {
+        objectives: o.clone(),
+        min_improvement: dominance_min,
+        primary_floor: dominance_floor.unwrap_or(0.0),
+        tolerances: tolerances.clone(),
+    });
     let mut genesis = Lineage::new();
     let id = genesis.next_id();
     let mut g = Generation::new(id, seed_art.clone()).measured(Measurement {
@@ -646,7 +732,7 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
         println!("{}", serde_json::to_string_pretty(&out).map_err(|e| e.to_string())?);
     } else {
         println!("succession: held-out suite digest {}", digest.0);
-        println!("objectives: {}", objectives_text(objectives.as_deref(), dominance_min));
+        println!("objectives: {}", objectives_text(objectives.as_deref(), dominance.as_ref()));
         println!("energy basis: {}", basis_text(&basis));
         println!("policy `{}`@{}, at most {cycles} cycles, journal {}", report.policy, report.policy_digest.short(), journal_path.display());
         for c in &report.cycles {
@@ -891,5 +977,34 @@ mod tests {
         assert!(parse_objectives("capability,speed").unwrap_err().contains("not an axis"));
         assert!(parse_objectives("efficiency,latency").unwrap_err().contains("primary"));
         assert!(parse_objectives("").is_err());
+    }
+
+    #[test]
+    fn tolerances_parse_per_axis_and_refuse_bad_values() {
+        let ok = parse_tolerances("latency=0.005, efficiency=0.01").unwrap();
+        assert_eq!(ok, vec![("latency".to_string(), 0.005), ("efficiency".to_string(), 0.01)]);
+        assert!(parse_tolerances("latency=-0.1").unwrap_err().contains("non-negative"));
+        assert!(parse_tolerances("latency=NaN").unwrap_err().contains("finite"));
+        assert!(parse_tolerances("latency=inf").unwrap_err().contains("finite"));
+        assert!(parse_tolerances("speed=0.1").unwrap_err().contains("not an axis"));
+        assert!(parse_tolerances("latency").unwrap_err().contains("AXIS=VALUE"));
+    }
+
+    #[test]
+    fn tolerances_must_name_a_listed_non_primary_non_guard_objective() {
+        let objs: Vec<String> = ["capability", "latency"].iter().map(|s| s.to_string()).collect();
+        let lat = vec![("latency".to_string(), 0.005)];
+        let map = validate_tolerances(Some(&objs), &lat).unwrap();
+        assert_eq!(map.get("latency"), Some(&0.005));
+        assert!(validate_tolerances(None, &lat).unwrap_err().contains("needs --objectives"));
+        let cap = vec![("capability".to_string(), 0.01)];
+        assert!(validate_tolerances(Some(&objs), &cap).unwrap_err().contains("always zero"));
+        let eff = vec![("efficiency".to_string(), 0.01)];
+        assert!(validate_tolerances(Some(&objs), &eff).unwrap_err().contains("guard"));
+        let unlisted = vec![("latency".to_string(), 0.01)];
+        let only_cap: Vec<String> = vec!["capability".into()];
+        assert!(validate_tolerances(Some(&only_cap), &unlisted).unwrap_err().contains("not among"));
+        let twice = vec![("latency".to_string(), 0.01), ("latency".to_string(), 0.02)];
+        assert!(validate_tolerances(Some(&objs), &twice).unwrap_err().contains("more than once"));
     }
 }

@@ -209,3 +209,66 @@ fn an_unknown_objective_is_a_usage_error() {
     assert!(text(&out.stderr).contains("not an axis"), "{}", text(&out.stderr));
     let _ = std::fs::remove_dir_all(dir);
 }
+
+#[test]
+fn tolerance_and_floor_flags_are_usage_errors_when_malformed_or_misplaced() {
+    // Each case is the run's flags after `--cycles 1`.
+    // Each case is the run's flags: a cycle budget, then the given extras.
+    let case = |extra: &[&str]| -> Vec<String> {
+        ["--cycles", "1"].iter().chain(extra.iter()).map(|s| s.to_string()).collect()
+    };
+    // The same run with objectives, so that only the tolerance flag is wrong.
+    let with_objectives = |extra: &[&str]| -> Vec<String> {
+        case(&["--objectives", "capability,efficiency,latency", "--allow-estimated-energy"])
+            .into_iter()
+            .chain(extra.iter().map(|s| s.to_string()))
+            .collect()
+    };
+    let refusals: Vec<(&str, Vec<String>, &str)> = vec![
+        ("tol-negative", with_objectives(&["--objective-tolerance", "latency=-0.1"]), "non-negative"),
+        ("tol-nan", with_objectives(&["--objective-tolerance", "latency=NaN"]), "finite"),
+        ("tol-unknown", with_objectives(&["--objective-tolerance", "speed=0.1"]), "not an axis"),
+        ("tol-efficiency", with_objectives(&["--objective-tolerance", "efficiency=0.01"]), "guard"),
+        ("tol-no-objectives", case(&["--objective-tolerance", "latency=0.005"]), "needs --objectives"),
+        ("floor-no-objectives", case(&["--dominance-floor", "0.2"]), "needs --objectives"),
+    ];
+    for (name, flags, needle) in refusals {
+        let (dir, heldout) = fixture(name);
+        let journal = dir.join("run.jsonl");
+        let flag_refs: Vec<&str> = flags.iter().map(String::as_str).collect();
+        let out = succession(&heldout, &journal, &flag_refs);
+        let stderr = text(&out.stderr);
+        assert_eq!(out.status.code(), Some(2), "{name}: {stderr}");
+        assert!(stderr.contains(needle), "{name}: expected `{needle}` in {stderr}");
+        assert!(!journal.exists(), "{name}: a usage error writes no journal");
+        let _ = std::fs::remove_dir_all(dir);
+    }
+}
+
+#[test]
+fn a_run_with_a_floor_and_a_latency_tolerance_states_both_and_writes_them_to_the_report() {
+    let (dir, heldout) = fixture("floor-tol-json");
+    let journal = dir.join("run.jsonl");
+    let out = succession(
+        &heldout,
+        &journal,
+        &[
+            "--cycles",
+            "1",
+            "--json",
+            "--objectives",
+            "capability,efficiency,latency",
+            "--dominance-floor",
+            "0.2",
+            "--objective-tolerance",
+            "latency=0.005",
+            "--allow-estimated-energy",
+        ],
+    );
+    let stdout = text(&out.stdout);
+    assert!(out.status.success(), "{stdout}\n{}", text(&out.stderr));
+    let json: serde_json::Value = serde_json::from_str(&stdout).expect("the report is JSON");
+    assert_eq!(json["objectives"]["dominance"]["primary_floor"], 0.2);
+    assert_eq!(json["objectives"]["dominance"]["tolerances"]["latency"], 0.005);
+    let _ = std::fs::remove_dir_all(dir);
+}

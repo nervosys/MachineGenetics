@@ -39,6 +39,7 @@ use super::lineage::Lineage;
 use super::{FitnessVector, Generation, GenerationId, SuiteKind};
 use ribosome::Digest;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
 /// Pre-registered promotion criteria.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -86,6 +87,19 @@ pub struct DominanceRule {
     /// How much better, on at least one objective axis, a dominating challenger
     /// must be. Should exceed the noise floor, as the primary margin does.
     pub min_improvement: f64,
+    /// Rule (b) applies only when the challenger's primary axis is strictly above
+    /// this. The default, zero, means a challenger with no intelligence cannot
+    /// win on energy: zero intelligence at lower energy is not an improvement.
+    #[serde(default)]
+    pub primary_floor: f64,
+    /// Per-objective tolerance under rule (b), by axis name. An objective's
+    /// tolerance is its guard tolerance if it is a guard, else its entry here, else
+    /// zero. The primary axis is always zero. The same tolerance applies to the
+    /// ratchet, which compares against the high-water mark, not the champion. So
+    /// across any chain of promotions an objective can drift below its best value
+    /// by at most one tolerance. An ordered map, so the digest is deterministic.
+    #[serde(default)]
+    pub tolerances: BTreeMap<String, f64>,
 }
 
 impl Default for PromotionGate {
@@ -484,7 +498,7 @@ impl Episode {
             Ok(_) => format!(
                 "rule (b) passed on its objectives, but rule (a)'s guard checks failed on {failed_a}, and the guards are required under both rules"
             ),
-            Err(why) => format!("rule (b) failed: {why}; rule (a) failed on {failed_a}"),
+            Err(why) => format!("{why}; rule (a) failed on {failed_a}"),
         };
         reasons.extend(primary);
         reasons.extend(guards);
@@ -583,18 +597,21 @@ impl Episode {
         out
     }
 
-    /// The tolerance an axis is held to under rule (b): the guard tolerance for
-    /// a guard axis, zero for any other.
-    fn tolerance(&self, axis: &str) -> f64 {
-        if self.gate.guard_axes.iter().any(|g| g == axis) {
+    /// The tolerance an axis is held to under rule (b): zero for the primary
+    /// axis, the guard tolerance for a guard axis, the rule's entry for the axis
+    /// if it has one, and zero otherwise.
+    fn tolerance(&self, rule: &DominanceRule, axis: &str) -> f64 {
+        if axis == self.gate.primary_axis {
+            0.0
+        } else if self.gate.guard_axes.iter().any(|g| g == axis) {
             self.gate.guard_tolerance
         } else {
-            0.0
+            rule.tolerances.get(axis).copied().unwrap_or(0.0)
         }
     }
 
-    /// Rule (b). `Ok` carries the basis of the approval; `Err` says which axis
-    /// failed, and how.
+    /// Rule (b). `Ok` carries the basis of the approval; `Err` says why it did
+    /// not apply or failed, and on which axis. The message names the rule.
     fn rule_b(
         &self,
         rule: &DominanceRule,
@@ -604,12 +621,23 @@ impl Episode {
         lineage: &Lineage,
     ) -> Result<String, String> {
         let Some(champ) = champ else {
-            return Err("there is no incumbent for the challenger to dominate".into());
+            return Err("rule (b) does not apply: there is no incumbent for the challenger to dominate".into());
         };
+
+        // The floor: a challenger with no primary value above it cannot win on
+        // the other objectives. Strictly above, so a value exactly at it is refused.
+        let primary = self.gate.primary_axis.as_str();
+        if let Some(c) = cf.get(primary) {
+            if !(c > rule.primary_floor) {
+                return Err(format!(
+                    "rule (b) does not apply: `{primary}` {c:.4} is not above the floor {:.4}",
+                    rule.primary_floor
+                ));
+            }
+        }
 
         // Every objective, and the primary axis, must hold against the champion
         // within tolerance, and against the lineage's high-water mark.
-        let primary = self.gate.primary_axis.as_str();
         let mut axes: Vec<&str> = vec![primary];
         for o in &rule.objectives {
             if !axes.contains(&o.as_str()) {
@@ -622,7 +650,7 @@ impl Episode {
                 failures.push(format!("`{axis}` is not measured on both sides"));
                 continue;
             };
-            let tol = self.tolerance(axis);
+            let tol = self.tolerance(rule, axis);
             if c < h - tol {
                 failures.push(format!(
                     "`{axis}` fell to {c:.4} against the champion's {h:.4} (tolerance {tol:.4})"
@@ -637,7 +665,7 @@ impl Episode {
             }
         }
         if !failures.is_empty() {
-            return Err(failures.join("; "));
+            return Err(format!("rule (b) failed: {}", failures.join("; ")));
         }
 
         // At least one objective must improve by the dominance margin.
@@ -656,10 +684,10 @@ impl Episode {
                 rule.min_improvement
             )),
             Some((axis, d)) => Err(format!(
-                "no objective improved by {:.4}; the best was `{axis}` at {d:+.4}",
+                "rule (b) failed: no objective improved by {:.4}; the best was `{axis}` at {d:+.4}",
                 rule.min_improvement
             )),
-            None => Err("the dominance rule lists no objectives".into()),
+            None => Err("rule (b) failed: the dominance rule lists no objectives".into()),
         }
     }
 }
@@ -951,6 +979,8 @@ mod tests {
                 dominance: Some(DominanceRule {
                     objectives: objectives.iter().map(|s| s.to_string()).collect(),
                     min_improvement: 0.01,
+                    primary_floor: 0.0,
+                    tolerances: BTreeMap::new(),
                 }),
                 ..PromotionGate::default()
             },
@@ -1152,7 +1182,15 @@ mod tests {
             r#"{"primary_axis":"capability","min_improvement":0.02,"guard_axes":["safety","correctness"],"guard_tolerance":0.01,"min_shadow_successes":8}"#
         );
         assert_eq!(PromotionGate::default().digest(), Digest::of(json.as_bytes()));
-        let with_rule = PromotionGate { dominance: Some(DominanceRule { objectives: vec![], min_improvement: 0.0 }), ..PromotionGate::default() };
+        let with_rule = PromotionGate {
+            dominance: Some(DominanceRule {
+                objectives: vec![],
+                min_improvement: 0.0,
+                primary_floor: 0.0,
+                tolerances: BTreeMap::new(),
+            }),
+            ..PromotionGate::default()
+        };
         assert_ne!(with_rule.digest(), PromotionGate::default().digest(), "a dominance rule changes the pin");
     }
 
@@ -1165,5 +1203,107 @@ mod tests {
             basis: None,
         };
         assert!(!serde_json::to_string(&v).unwrap().contains("basis"));
+    }
+
+    /// A dominance episode with an explicit primary floor and per-objective tolerances.
+    fn custom_episode(objectives: &[&str], floor: f64, tolerances: &[(&str, f64)]) -> Episode {
+        Episode::open(
+            PromotionGate {
+                min_shadow_successes: 0,
+                dominance: Some(DominanceRule {
+                    objectives: objectives.iter().map(|s| s.to_string()).collect(),
+                    min_improvement: 0.01,
+                    primary_floor: floor,
+                    tolerances: tolerances.iter().map(|(a, t)| (a.to_string(), *t)).collect(),
+                }),
+                ..PromotionGate::default()
+            },
+            Digest::of(SUITE),
+            "independent-harness",
+        )
+    }
+
+    /// A champion with capability `cap`, efficiency .40 and latency .50, granted under `ep`.
+    fn seeded_with_cap(ep: &Episode, cap: f64) -> (Lineage, GenerationId) {
+        let mut l = Lineage::new();
+        let id = l.next_id();
+        l.add(Generation::new(id, Digest::of(b"champ")).measured(dmeasured(fv(cap, 0.40, 0.50))));
+        l.grant(id, ep.gate_digest.clone(), "independent-harness").unwrap();
+        (l, id)
+    }
+
+    #[test]
+    fn a_zero_capability_tie_is_not_promoted_on_energy_alone() {
+        // The case that promoted a learner with no intelligence in the sample run:
+        // capability tied at 0, efficiency up by 0.13.
+        let ep = dominance_episode(&["capability", "efficiency"]);
+        let (mut l, champ) = seeded_with_cap(&ep, 0.0);
+        let c = challenger(&mut l, champ, dmeasured(fv(0.0, 0.53, 0.50)));
+        let v = ep.adjudicate(&c, &l, 0, &yes());
+        assert!(!v.approved());
+        let why = v.reasons().join("\n");
+        assert!(
+            why.contains("rule (b) does not apply") && why.contains("`capability` 0.0000 is not above the floor 0.0000"),
+            "{why}"
+        );
+    }
+
+    #[test]
+    fn a_capability_above_the_floor_can_win_on_energy() {
+        let ep = dominance_episode(&["capability", "efficiency"]);
+        let (mut l, champ) = seeded_with_cap(&ep, 0.2);
+        let c = challenger(&mut l, champ, dmeasured(fv(0.2, 0.53, 0.50)));
+        match ep.adjudicate(&c, &l, 0, &yes()) {
+            Verdict::Promote { basis: Some(b), .. } => assert!(b.starts_with("rule (b)"), "{b}"),
+            other => panic!("expected a dominance approval, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn a_challenger_exactly_at_the_floor_is_refused() {
+        let ep = custom_episode(&["capability", "efficiency"], 0.2, &[]);
+        let (mut l, champ) = seeded_with_cap(&ep, 0.2);
+        let at = challenger(&mut l, champ, dmeasured(fv(0.2, 0.53, 0.50)));
+        let v = ep.adjudicate(&at, &l, 0, &yes());
+        assert!(!v.approved(), "strictly above the floor, not at it");
+        assert!(v.reasons().join("\n").contains("is not above the floor 0.2000"), "{:?}", v.reasons());
+        // Just above passes rule (b).
+        let above = challenger(&mut l, champ, dmeasured(fv(0.21, 0.53, 0.50)));
+        assert!(ep.adjudicate(&above, &l, 0, &yes()).approved());
+    }
+
+    #[test]
+    fn a_latency_dip_within_its_tolerance_does_not_block_an_earned_promotion() {
+        let ep = custom_episode(&["capability", "efficiency", "latency"], 0.0, &[("latency", 0.005)]);
+        let (mut l, champ) = dominance_seeded(&ep);
+        // Latency .497 against .50 is a dip of .003, inside the .005 tolerance.
+        let dip = challenger(&mut l, champ, dmeasured(fv(0.70, 0.55, 0.497)));
+        assert!(ep.adjudicate(&dip, &l, 0, &yes()).approved());
+        // With no tolerance the same dip is refused.
+        let strict = custom_episode(&["capability", "efficiency", "latency"], 0.0, &[]);
+        assert!(!strict.adjudicate(&dip, &l, 0, &yes()).approved());
+        // A dip beyond the tolerance is still refused.
+        let beyond = challenger(&mut l, champ, dmeasured(fv(0.70, 0.55, 0.49)));
+        let v = ep.adjudicate(&beyond, &l, 0, &yes());
+        assert!(!v.approved());
+        assert!(v.reasons().join("\n").contains("`latency`"), "{:?}", v.reasons());
+    }
+
+    #[test]
+    fn repeated_promotions_cannot_drift_an_objective_more_than_one_tolerance() {
+        // Latency tolerance .005. Each promotion may dip against its champion, and
+        // the ratchet holds each value to the high-water mark (.50) less .005.
+        let ep = custom_episode(&["capability", "efficiency", "latency"], 0.0, &[("latency", 0.005)]);
+        let (mut l, a) = dominance_seeded(&ep);
+        let b = promote_child(&ep, &mut l, a, fv(0.70, 0.55, 0.497));
+        let c = promote_child(&ep, &mut l, b, fv(0.70, 0.60, 0.496));
+        let d = promote_child(&ep, &mut l, c, fv(0.70, 0.65, 0.4955));
+        assert_eq!(l.champion().map(|g| g.id), Some(d), "three promotions, each inside the bound");
+        // A fourth step to .494 is inside the champion's tolerance, but below .50 - .005.
+        let e = challenger(&mut l, d, dmeasured(fv(0.70, 0.70, 0.494)));
+        let v = ep.adjudicate(&e, &l, 0, &yes());
+        assert!(!v.approved(), "the ratchet bounds total drift to one tolerance");
+        let why = v.reasons().join("\n");
+        assert!(why.contains("ratchet") && why.contains("`latency`"), "{why}");
     }
 }
