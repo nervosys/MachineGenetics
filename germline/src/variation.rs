@@ -55,6 +55,15 @@ impl Rng {
         }
         (self.next_u64() % n as u64) as usize
     }
+
+    /// Standard normal, by Box–Muller on two uniforms. Exactly two draws per
+    /// call: the sine half of the pair is discarded, so the draw count is fixed
+    /// and a seed's stream stays easy to reason about.
+    pub fn gaussian(&mut self) -> f64 {
+        let u1 = self.next_f64().max(f64::MIN_POSITIVE);
+        let u2 = self.next_f64();
+        (-2.0 * u1.ln()).sqrt() * (std::f64::consts::TAU * u2).cos()
+    }
 }
 
 /// One position in a genome.
@@ -86,7 +95,18 @@ impl Rng {
 #[serde(tag = "locus", rename_all = "snake_case")]
 pub enum Locus {
     /// A tunable scalar, normalized to `[0,1]`.
-    Param { value: f64 },
+    ///
+    /// `sigma` is the step size of the self-adaptive evolution strategy (see
+    /// [`ParamSearch`]), in units of the locus's range. It is absent until an ES
+    /// step has touched this locus, and skipped when absent, so a genome that
+    /// never saw the ES serializes, and therefore digests, exactly as it did
+    /// before the field existed. Crossover copies whole loci, so a step size
+    /// travels with the value it adapted.
+    Param {
+        value: f64,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        sigma: Option<f64>,
+    },
     /// A gene: a block named by the hash of its content.
     Gene {
         name: String,
@@ -149,7 +169,7 @@ impl Effects {
 
 impl Locus {
     pub fn param(value: f64) -> Self {
-        Locus::Param { value }
+        Locus::Param { value, sigma: None }
     }
 
     pub fn gene(
@@ -169,7 +189,7 @@ impl Locus {
     /// The scalar at this locus, or `None` if it holds a gene.
     pub fn as_param(&self) -> Option<f64> {
         match self {
-            Locus::Param { value } => Some(*value),
+            Locus::Param { value, .. } => Some(*value),
             Locus::Gene { .. } => None,
         }
     }
@@ -331,6 +351,116 @@ pub enum Crossover {
     Uniform { probability: f64 },
 }
 
+/// The range a `Param` value is normalized onto. Values live in `[0,1]`, so a
+/// step of `sigma` is `sigma` of the whole range.
+pub const PARAM_RANGE: f64 = 1.0;
+
+/// How the continuous loci (`Locus::Param`) are varied. Gene loci are never
+/// touched by this: they keep substitution and crossover. The split is
+/// deliberate: a continuous optimiser suits a smooth scalar, and a gene has no
+/// distance to step along.
+///
+/// `Perturb` is the uniform random perturbation of [`Mutation::Perturb`], and the
+/// default. `SelfAdaptiveEs` is a self-adaptive evolution strategy with one step size per locus:
+/// each Param locus carries its own step size `sigma`, which is itself mutated
+/// log-normally before the value moves by `sigma` times a standard normal. It is
+/// **not** CMA-ES: there is no covariance matrix and no rank-based recombination
+/// of step sizes, so it cannot learn a rotated search direction.
+///
+/// Serialized into a [`VariationPlan`] only when it is not `Perturb`, so a plan
+/// that never names it keeps the digest it had.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(tag = "search", rename_all = "snake_case")]
+pub enum ParamSearch {
+    /// Uniform random perturbation, as before this option existed.
+    #[default]
+    Perturb,
+    /// Log-normal self-adaptive step sizes.
+    SelfAdaptiveEs {
+        /// Per-locus probability that one proposal steps this locus.
+        rate: f64,
+        /// Step size of a locus that has none yet.
+        sigma_init: f64,
+        /// Floor on the step size. Keeps a locus able to move at all.
+        sigma_min: f64,
+        /// Ceiling on the step size. Keeps one lucky step from crossing the range.
+        sigma_max: f64,
+        /// Learning rate of the step-size update. `None` means `1/sqrt(2n)`,
+        /// with `n` the number of Param loci in the genome.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        tau: Option<f64>,
+    },
+}
+
+impl ParamSearch {
+    /// The ES with its stated defaults: step on 20% of loci, start at a tenth of
+    /// the range, and keep the step between 0.001 and 0.5 of the range.
+    pub fn es() -> Self {
+        ParamSearch::SelfAdaptiveEs { rate: 0.2, sigma_init: 0.1, sigma_min: 1e-3, sigma_max: 0.5, tau: None }
+    }
+
+    /// Whether this is `Perturb`. Used to leave it out of a serialized plan.
+    pub fn is_default(&self) -> bool {
+        matches!(self, ParamSearch::Perturb)
+    }
+
+    /// Refuse settings the update cannot honour: a rate outside `(0,1]`, or
+    /// step sizes that are not `0 < sigma_min <= sigma_init <= sigma_max <= 1`.
+    pub fn validate(&self) -> Result<(), String> {
+        match self {
+            ParamSearch::Perturb => Ok(()),
+            ParamSearch::SelfAdaptiveEs { rate, sigma_init, sigma_min, sigma_max, tau } => {
+                let finite = [rate, sigma_init, sigma_min, sigma_max].iter().all(|x| x.is_finite());
+                if !finite || !(*rate > 0.0 && *rate <= 1.0) {
+                    return Err(format!("ES rate must be in (0, 1], got {rate}"));
+                }
+                if !(*sigma_min > 0.0 && sigma_min <= sigma_init && sigma_init <= sigma_max && *sigma_max <= PARAM_RANGE) {
+                    return Err(format!(
+                        "ES step sizes must satisfy 0 < sigma_min <= sigma_init <= sigma_max <= {PARAM_RANGE}, \
+                         got {sigma_min} <= {sigma_init} <= {sigma_max}"
+                    ));
+                }
+                if let Some(t) = tau {
+                    if !(t.is_finite() && *t > 0.0) {
+                        return Err(format!("ES tau must be a positive number, got {t}"));
+                    }
+                }
+                Ok(())
+            }
+        }
+    }
+}
+
+/// One self-adaptive evolution-strategy step over a genome's Param loci.
+///
+/// For each Param locus, with probability `rate`: draw `s' = s · exp(τ·N)` where
+/// `s` is the locus's step size (or `sigma_init` if it has none), clamp `s'` to
+/// `[sigma_min, sigma_max]`, then move the value by `s' · N · PARAM_RANGE` and
+/// clamp it to `[0,1]`. `N` is a fresh standard normal each time. Loci not
+/// stepped keep their value and step size. A genome with no Param loci, or a
+/// `Perturb` setting, comes back unchanged.
+pub fn es_step(genome: &Genome, search: &ParamSearch, rng: &mut Rng) -> Genome {
+    let ParamSearch::SelfAdaptiveEs { rate, sigma_init, sigma_min, sigma_max, tau } = search else {
+        return genome.clone();
+    };
+    let mut g = genome.clone();
+    let n = g.iter().filter(|l| matches!(l, Locus::Param { .. })).count();
+    if n == 0 {
+        return g;
+    }
+    let tau = tau.unwrap_or(1.0 / (2.0 * n as f64).sqrt());
+    for locus in g.iter_mut() {
+        let Locus::Param { value, sigma } = locus else { continue };
+        if rng.next_f64() >= *rate {
+            continue;
+        }
+        let s = ((*sigma).unwrap_or(*sigma_init) * (tau * rng.gaussian()).exp()).max(*sigma_min).min(*sigma_max);
+        *value = (*value + s * rng.gaussian() * PARAM_RANGE).clamp(0.0, 1.0);
+        *sigma = Some(s);
+    }
+    g
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "strategy", rename_all = "snake_case")]
 pub enum Selection {
@@ -357,7 +487,7 @@ pub fn mutate(genome: &Genome, m: Mutation, pool: &GenePool, rng: &mut Rng) -> G
         // Scalars only: a gaussian perturbation of a content hash names nothing.
         Mutation::Perturb { rate, scale } => {
             for locus in g.iter_mut() {
-                if let Locus::Param { value } = locus {
+                if let Locus::Param { value, .. } = locus {
                     if rng.next_f64() < rate {
                         *value = (*value + rng.next_signed() * scale).clamp(0.0, 1.0);
                     }
@@ -485,6 +615,10 @@ pub struct VariationPlan {
     pub crossover: Crossover,
     pub mutation: Mutation,
     pub offspring: usize,
+    /// How continuous loci are varied. Left out of the serialized plan while it
+    /// is `Perturb`, so every plan written before this field digests as it did.
+    #[serde(default, skip_serializing_if = "ParamSearch::is_default")]
+    pub param_search: ParamSearch,
 }
 
 impl Default for VariationPlan {
@@ -494,6 +628,7 @@ impl Default for VariationPlan {
             crossover: Crossover::Uniform { probability: 0.5 },
             mutation: Mutation::Perturb { rate: 0.2, scale: 0.15 },
             offspring: 8,
+            param_search: ParamSearch::Perturb,
         }
     }
 }
@@ -560,12 +695,25 @@ pub fn propose_with_points(
     for i in 0..plan.offspring {
         let a = &parents[(i * 2) % parents.len()];
         let b = &parents[(i * 2 + 1) % parents.len()];
-        let child = mutate(
-            &crossover(a, b, plan.crossover, &mut rng),
-            plan.mutation,
-            pool,
-            &mut rng,
-        );
+        let child = match &plan.param_search {
+            ParamSearch::Perturb => mutate(
+                &crossover(a, b, plan.crossover, &mut rng),
+                plan.mutation,
+                pool,
+                &mut rng,
+            ),
+            search => {
+                let c = crossover(a, b, plan.crossover, &mut rng);
+                // The ES replaces the plan's Perturb for Param loci, so Perturb
+                // is skipped here. Swap and Substitute still run.
+                let c = if matches!(plan.mutation, Mutation::Perturb { .. }) {
+                    c
+                } else {
+                    mutate(&c, plan.mutation, pool, &mut rng)
+                };
+                es_step(&c, search, &mut rng)
+            }
+        };
         let id = format!("cand-{seed:016x}-{i}");
         // Checked here, before the candidate costs anything. A child that
         // acquires an effect neither parent held is a capability escalation,
@@ -924,5 +1072,194 @@ mod tests {
             ..VariationPlan::default()
         };
         assert!(propose(&pop(), plan, &no_pool(), 1).candidates.is_empty());
+    }
+
+    // ── The self-adaptive evolution strategy ─────────────────────────────
+
+    /// Survivors kept per generation in [`run_search`].
+    const KEEP: usize = 8;
+
+    /// A smooth concave fitness with its optimum at `target`: `1 − Σ(x − x*)²`.
+    fn concave(g: &Genome, target: &[f64]) -> f64 {
+        1.0 - params_of(g).iter().zip(target).map(|(x, t)| (x - t).powi(2)).sum::<f64>()
+    }
+
+    /// A generational search over `target.len()` Param loci. The initial
+    /// population is fixed by `seed`, each generation proposes `plan.offspring`
+    /// children under a seed derived from `seed`, and the best [`KEEP`] survive.
+    /// Returns the best genome, its fitness, and the final population.
+    fn run_search(
+        plan: &VariationPlan,
+        target: &[f64],
+        seed: u64,
+        generations: u64,
+    ) -> (Genome, f64, Vec<(Genome, f64)>) {
+        let mut init = Rng::seed(seed ^ 0xABCD);
+        let mut pop: Vec<(Genome, f64)> = (0..KEEP)
+            .map(|_| {
+                let g: Genome = (0..target.len()).map(|_| Locus::param(init.next_f64())).collect();
+                let f = concave(&g, target);
+                (g, f)
+            })
+            .collect();
+        for gen in 0..generations {
+            let round = seed.wrapping_mul(1_000_003).wrapping_add(gen);
+            for c in propose(&pop, plan.clone(), &no_pool(), round).candidates {
+                let f = concave(&c.genome, target);
+                pop.push((c.genome, f));
+            }
+            pop.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+            pop.truncate(KEEP);
+        }
+        let (g, f) = pop[0].clone();
+        (g, f, pop)
+    }
+
+    fn es_plan() -> VariationPlan {
+        VariationPlan { param_search: ParamSearch::es(), ..VariationPlan::default() }
+    }
+
+    /// The optimum the synthetic tasks aim at, inside `[0,1]^3`.
+    const TARGET: [f64; 3] = [0.2, 0.7, 0.45];
+    /// Generations in the fixed, small budget: 20 × 8 offspring = 160 evaluations.
+    const BUDGET: u64 = 20;
+    /// The optimum is reached when the fitness is within this of 1.0, which is a
+    /// squared distance of at most 0.01 summed over the three loci.
+    const TOLERANCE: f64 = 0.99;
+
+    #[test]
+    fn es_reaches_the_optimum_of_a_smooth_concave_task_within_a_fixed_budget() {
+        let (_, f, _) = run_search(&es_plan(), &TARGET, 1, BUDGET);
+        assert!(f >= TOLERANCE, "ES reached fitness {f:.5}, short of {TOLERANCE}");
+    }
+
+    #[test]
+    fn es_is_within_a_small_margin_of_perturbation_on_the_same_budget_and_seeds() {
+        // Measured, not assumed. At the stated defaults the ES does NOT beat
+        // perturbation at this budget: over seeds 1..=5 the mean fitness is
+        // ES 0.999187 against perturbation 0.999722 (gap -0.00054), and over
+        // seeds 1..=20 the gap is -0.0002 at 20 generations and -0.0039 at 10.
+        // The defaults were fixed before these numbers were seen and are not
+        // tuned to them. So this asserts near-parity, with a margin of 0.001
+        // about twice the measured gap, and does not claim dominance.
+        let seeds = [1u64, 2, 3, 4, 5];
+        let mean = |plan: &VariationPlan| {
+            seeds.iter().map(|&s| run_search(plan, &TARGET, s, BUDGET).1).sum::<f64>() / seeds.len() as f64
+        };
+        let (es, perturb) = (mean(&es_plan()), mean(&VariationPlan::default()));
+        assert!(
+            es >= perturb - 0.001,
+            "mean fitness: ES {es:.6}, perturbation {perturb:.6}: the ES fell more than 0.001 behind"
+        );
+    }
+
+    #[test]
+    fn step_sizes_stay_between_their_floor_and_ceiling() {
+        let search = ParamSearch::SelfAdaptiveEs { rate: 1.0, sigma_init: 0.2, sigma_min: 0.05, sigma_max: 0.3, tau: Some(2.0) };
+        let mut rng = Rng::seed(41);
+        let mut g: Genome = vec![Locus::param(0.5), Locus::param(0.5)];
+        for _ in 0..2000 {
+            g = es_step(&g, &search, &mut rng);
+            for l in &g {
+                if let Locus::Param { sigma: Some(s), .. } = l {
+                    assert!((0.05..=0.3).contains(s), "step size {s} escaped [0.05, 0.3]");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn es_never_moves_a_value_out_of_its_range() {
+        // Large steps from both edges, so every clamp is exercised.
+        let search = ParamSearch::SelfAdaptiveEs { rate: 1.0, sigma_init: 0.5, sigma_min: 0.1, sigma_max: 1.0, tau: None };
+        let mut rng = Rng::seed(42);
+        for start in [0.0, 1.0] {
+            let mut g: Genome = vec![Locus::param(start); 3];
+            for _ in 0..2000 {
+                g = es_step(&g, &search, &mut rng);
+                assert!(vals(&g).iter().all(|v| (0.0..=1.0).contains(v)), "escaped: {g:?}");
+            }
+        }
+        let (g, _, pop) = run_search(&es_plan(), &TARGET, 9, BUDGET);
+        assert!(vals(&g).iter().all(|v| (0.0..=1.0).contains(v)));
+        for (member, _) in &pop {
+            assert!(vals(member).iter().all(|v| (0.0..=1.0).contains(v)));
+        }
+    }
+
+    #[test]
+    fn the_same_seed_gives_the_same_es_trajectory() {
+        let a = run_search(&es_plan(), &TARGET, 7, BUDGET);
+        let b = run_search(&es_plan(), &TARGET, 7, BUDGET);
+        assert_eq!(a.2, b.2, "the same seed must give the same population, step sizes included");
+        let c = run_search(&es_plan(), &TARGET, 8, BUDGET);
+        assert_ne!(a.2, c.2, "the seed is what varies the search");
+    }
+
+    #[test]
+    fn es_settings_are_validated() {
+        assert!(ParamSearch::es().validate().is_ok());
+        assert!(ParamSearch::Perturb.validate().is_ok());
+        let bad = [
+            ParamSearch::SelfAdaptiveEs { rate: 0.0, sigma_init: 0.1, sigma_min: 0.01, sigma_max: 0.5, tau: None },
+            ParamSearch::SelfAdaptiveEs { rate: 0.2, sigma_init: 0.1, sigma_min: 0.0, sigma_max: 0.5, tau: None },
+            ParamSearch::SelfAdaptiveEs { rate: 0.2, sigma_init: 0.6, sigma_min: 0.01, sigma_max: 0.5, tau: None },
+            ParamSearch::SelfAdaptiveEs { rate: 0.2, sigma_init: 0.1, sigma_min: 0.01, sigma_max: 0.5, tau: Some(-1.0) },
+        ];
+        for b in bad {
+            assert!(b.validate().is_err(), "accepted {b:?}");
+        }
+    }
+
+    #[test]
+    fn with_the_option_off_nothing_about_the_plan_or_its_loci_changes() {
+        // The plan serializes without the field, so an old plan keeps its digest.
+        let json = serde_json::to_string(&VariationPlan::default()).unwrap();
+        assert!(!json.contains("param_search"), "{json}");
+        assert!(!json.contains("sigma"), "{json}");
+        // A locus never stepped by the ES is written exactly as before the field.
+        assert_eq!(serde_json::to_string(&Locus::param(0.5)).unwrap(), r#"{"locus":"param","value":0.5}"#);
+        // And an explicit Perturb is the default, proposal for proposal.
+        let explicit = VariationPlan { param_search: ParamSearch::Perturb, ..VariationPlan::default() };
+        assert_eq!(propose(&pop(), explicit, &no_pool(), 77), propose(&pop(), VariationPlan::default(), &no_pool(), 77));
+    }
+
+    #[test]
+    fn a_stepped_locus_round_trips_its_step_size_and_an_old_one_still_parses() {
+        let stepped = Locus::Param { value: 0.25, sigma: Some(0.125) };
+        let back: Locus = serde_json::from_str(&serde_json::to_string(&stepped).unwrap()).unwrap();
+        assert_eq!(back, stepped);
+        let old: Locus = serde_json::from_str(r#"{"locus":"param","value":0.75}"#).unwrap();
+        assert_eq!(old, Locus::param(0.75));
+    }
+
+    #[test]
+    fn on_a_mixed_task_both_the_scalar_and_the_gene_loci_change_over_a_run() {
+        let plan = VariationPlan {
+            mutation: Mutation::Substitute { rate: 0.5 },
+            param_search: ParamSearch::es(),
+            ..VariationPlan::default()
+        };
+        let pool = GenePool::new(vec![gene("a", "Sig()", &[]), gene("b", "Sig()", &[]), gene("c", "Sig()", &[])]);
+        let start: Genome = vec![Locus::param(0.5), gene("a", "Sig()", &[]), Locus::param(0.5)];
+        let (mut pop, mut seen_param, mut seen_gene) = (vec![(start.clone(), 0.0)], false, false);
+        for round in 0..30u64 {
+            let mut next = Vec::new();
+            for c in propose(&pop, plan.clone(), &pool, round).candidates {
+                for l in &c.genome {
+                    match l {
+                        Locus::Param { value, .. } if *value != 0.5 => seen_param = true,
+                        Locus::Gene { name, .. } if name != "a" => seen_gene = true,
+                        _ => {}
+                    }
+                }
+                next.push((c.genome, 0.0));
+            }
+            if !next.is_empty() {
+                pop = next;
+            }
+        }
+        assert!(seen_param, "no scalar locus ever moved under the ES");
+        assert!(seen_gene, "no gene locus was ever substituted");
     }
 }
