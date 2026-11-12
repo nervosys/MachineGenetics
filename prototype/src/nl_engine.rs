@@ -538,7 +538,7 @@ impl NlEngine {
             .unwrap_or_else(|| extract_type_name(&intent.description));
         let layers = infer_net_layers(&intent.description);
 
-        let net_def = NetDef {
+        let net_def = NetDef { contracts: Vec::new(),
             name: name.clone(),
             generics: Vec::new(),
             layers: layers

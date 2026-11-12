@@ -582,13 +582,23 @@ pub enum DiagnosticCategory {
     /// a negation that cannot be stratified, or a fact argument that is not
     /// a constant (MAGE_SPEC §7.1).
     KbRule,
+    /// A `train` block over a `net` the differentiability pass judges not
+    /// differentiable. The message names the train block, the net and the
+    /// reason (E0711).
+    NotDifferentiable,
+    /// A contract clause on a `net`. Nothing evaluates it, so it is a warning
+    /// that the clause is not checked, not an error: the net is valid (E0712).
+    ContractNotChecked,
+    /// A `train` block naming a `net` the module does not define. The message
+    /// names both, and suggests the closest net name when one is near (E0713).
+    UnknownNet,
     /// Other.
     Other,
 }
 
 impl DiagnosticCategory {
     /// Every category. `tests/diagnostics.rs` holds this to the enum.
-    pub const ALL: [DiagnosticCategory; 17] = [
+    pub const ALL: [DiagnosticCategory; 20] = [
         DiagnosticCategory::BorrowConflict,
         DiagnosticCategory::UseAfterMove,
         DiagnosticCategory::TypeMismatch,
@@ -605,6 +615,9 @@ impl DiagnosticCategory {
         DiagnosticCategory::Deprecated,
         DiagnosticCategory::UnitMismatch,
         DiagnosticCategory::KbRule,
+        DiagnosticCategory::NotDifferentiable,
+        DiagnosticCategory::ContractNotChecked,
+        DiagnosticCategory::UnknownNet,
         DiagnosticCategory::Other,
     ];
 
@@ -627,6 +640,9 @@ impl DiagnosticCategory {
             DiagnosticCategory::UnitMismatch => "E0562",
             DiagnosticCategory::RoleViolation => "E0551",
             DiagnosticCategory::KbRule => "E0570",
+            DiagnosticCategory::NotDifferentiable => "E0711",
+            DiagnosticCategory::ContractNotChecked => "E0712",
+            DiagnosticCategory::UnknownNet => "E0713",
             DiagnosticCategory::CoreViolation => "E0552",
             DiagnosticCategory::ParamDomain => "E0553",
             DiagnosticCategory::Deprecated => "E0554",
@@ -686,6 +702,15 @@ impl DiagnosticCategory {
             }
             DiagnosticCategory::KbRule => {
                 "write the rule body as predicate calls joined by `&&`, each optionally negated with `!`, binding every head parameter in a positive call; give constants as string or number literals"
+            }
+            DiagnosticCategory::NotDifferentiable => {
+                "train a net whose layers the differentiability pass can judge differentiable, or remove the train block"
+            }
+            DiagnosticCategory::ContractNotChecked => {
+                "move the contract onto a function, which is checked; a net has no run-time check for it to reach"
+            }
+            DiagnosticCategory::UnknownNet => {
+                "declare the net in this module, or name the net the train block should train"
             }
             DiagnosticCategory::Other => "see the message for details",
         }

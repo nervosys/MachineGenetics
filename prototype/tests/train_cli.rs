@@ -74,3 +74,52 @@ fn abl_infer_after_train_prints_a_prediction_per_sample() {
     let preds = stdout.lines().filter(|l| l.contains("input=[") && l.contains("pred=[")).count();
     assert_eq!(preds, 4, "expected one prediction per input sample:\n{stdout}");
 }
+
+/// A `train` naming a net the module does not define. `--check` reports E0713
+/// and exits nonzero; `--target=abl-train` and `abl-infer` refuse with the same
+/// message and exit nonzero, where they used to print a note and exit 0.
+#[test]
+fn a_train_over_a_missing_net_is_refused_by_every_target() {
+    let src = "net Nowhere {\n    layer fc: Linear(3, 1);\n    forward { fc }\n}\n\
+               train Fit { net: Nowhear; optimizer: SGD(0.05); loss: MSE; epochs: 5; }\n";
+    let path = std::env::temp_dir().join(format!("mage-train-missing-{}.mg", std::process::id()));
+    std::fs::write(&path, src).unwrap();
+    let check = Command::new(BIN).arg("--check").arg(&path).output().unwrap();
+    let train = Command::new(BIN).arg("--target=abl-train").arg(&path).output().unwrap();
+    let infer = Command::new(BIN).arg("--target=abl-infer").arg(&path).output().unwrap();
+    let _ = std::fs::remove_file(&path);
+
+    let check_text = format!("{}{}", String::from_utf8_lossy(&check.stdout), String::from_utf8_lossy(&check.stderr));
+    assert!(!check.status.success(), "--check accepted a missing net:\n{check_text}");
+    assert!(check_text.contains("[E0713]") && check_text.contains("`Nowhear`"), "{check_text}");
+    assert!(check_text.contains("did you mean `Nowhere`"), "{check_text}");
+
+    for (name, out) in [("abl-train", &train), ("abl-infer", &infer)] {
+        let text = format!("{}{}", String::from_utf8_lossy(&out.stdout), String::from_utf8_lossy(&out.stderr));
+        assert!(!out.status.success(), "--target={name} ran a missing net:\n{text}");
+        assert!(text.contains("[E0713]") && text.contains("`Nowhear`"), "--target={name}: {text}");
+    }
+}
+
+/// A `train` over a net with a layer type the differentiability tables do not
+/// know has an `Unknown` verdict, and `Unknown` is never refused by the E0711
+/// gate, which refuses only `No`. `--check` still refuses the unknown layer
+/// type, but as E0710 (the shape pass), which is a different rule. The train
+/// target runs the net, with the layer falling back to IDENTITY.
+#[test]
+fn a_train_over_an_unknown_layer_is_not_refused_as_not_differentiable() {
+    let src = "net Odd {\n    layer fc: Linear(3, 1);\n    layer m: MyFancyLayer;\n    forward { fc }\n}\n\
+               train Fit { net: Odd; optimizer: SGD(0.05); loss: MSE; epochs: 5; }\n";
+    let path = std::env::temp_dir().join(format!("mage-train-unknown-{}.mg", std::process::id()));
+    std::fs::write(&path, src).unwrap();
+    let check = Command::new(BIN).arg("--check").arg(&path).output().unwrap();
+    let train = Command::new(BIN).arg("--target=abl-train").arg(&path).output().unwrap();
+    let _ = std::fs::remove_file(&path);
+    let check_text = format!("{}{}", String::from_utf8_lossy(&check.stdout), String::from_utf8_lossy(&check.stderr));
+    assert!(!check_text.contains("E0711"), "{check_text}");
+    let stdout = String::from_utf8_lossy(&train.stdout).into_owned();
+    let stderr = String::from_utf8_lossy(&train.stderr).into_owned();
+    assert!(!stderr.contains("E0711"), "{stderr}");
+    assert!(train.status.success(), "exit {:?}\n{stdout}\n{stderr}", train.status.code());
+    assert!(stdout.contains("done: first_loss="), "no training summary:\n{stdout}");
+}

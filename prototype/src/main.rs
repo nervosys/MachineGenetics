@@ -2294,6 +2294,17 @@ fn run_infer(
     };
     report_backend(selected, "--target=abl-infer");
 
+    // As `run_train`: a `train` naming a net the module lacks, or one judged not
+    // differentiable, is refused before anything runs (E0713, E0711).
+    let effect_infer = effects::infer_effects(module);
+    let refused = differentiable::train_block_errors(module, &differentiable::infer(module, &effect_infer));
+    if !refused.is_empty() {
+        for diag in &refused {
+            eprintln!("{path}: {diag}");
+        }
+        std::process::exit(1);
+    }
+
     println!("// MAGE → Agentic Binary Language → CpuBackend inference for {path}");
 
     let mut nets: std::collections::HashMap<&str, &ast::NetDef> = Default::default();
@@ -2403,6 +2414,18 @@ fn run_train(
         None => &cpu,
     };
     report_backend(selected, "--target=abl-train");
+
+    // `--target=abl-train` runs no checker, so it refuses the one thing the
+    // checker would have refused: a train over a net judged not differentiable
+    // (E0711). The same diagnostic and message as `--check`, and a nonzero exit.
+    let effect_infer = effects::infer_effects(module);
+    let refused = differentiable::train_block_errors(module, &differentiable::infer(module, &effect_infer));
+    if !refused.is_empty() {
+        for diag in &refused {
+            eprintln!("{path}: {diag}");
+        }
+        std::process::exit(1);
+    }
 
     println!("// MAGE → Agentic Binary Language → SGD training for {path}");
 
@@ -3339,6 +3362,11 @@ fn run_check(source: &str, filename: &str, do_elision: bool, legacy: bool, token
             total_errors += 1;
         }
     }
+    // A `train` over a net judged not differentiable (E0711).
+    for diag in &differentiable::train_block_errors(&module, &diff_infer) {
+        eprintln!("{filename}: {diag}");
+        total_errors += 1;
+    }
 
     // Report.
     let sym_count = resolver.symbols.len();
@@ -3374,6 +3402,12 @@ fn run_check(source: &str, filename: &str, do_elision: bool, legacy: bool, token
         if diag.severity == hir::Severity::Error {
             total_errors += 1;
         }
+    }
+
+    // A contract written on a `net` or `train`, which nothing checks (E0712). A
+    // warning: the item still counts as accepted.
+    for diag in &contract::unchecked_contract_warnings(&module) {
+        eprintln!("{filename}: {diag}");
     }
 
     // Phase 5.6: Typed-composition gate — a shape-mismatched `net` composition

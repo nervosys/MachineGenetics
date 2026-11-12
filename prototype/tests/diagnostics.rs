@@ -80,6 +80,9 @@ const WITNESSES: &[(&str, &str, fn() -> bool)] = &[
     ("E0562", "unit_mismatch", unit_mismatch),
     ("E0570", "kb_rule", kb_rule),
     ("E0710", "net_shape", net_shape),
+    ("E0711", "not_differentiable_net", not_differentiable_net),
+    ("E0712", "net_contract_not_checked", net_contract_not_checked),
+    ("E0713", "unknown_net", unknown_net),
     ("E9999", "grad_unchecked", grad_unchecked),
     ("no_derivative_rule", "no_derivative_rule", no_derivative_rule),
     ("param_no_gradient", "param_no_gradient", param_no_gradient),
@@ -189,6 +192,48 @@ fn unit_mismatch() -> bool {
 fn kb_rule() -> bool {
     emits("kb K {\n    fact p(a);\n    rule r(x: i32) { x }\n}\n", "E0570")
         && absent("kb K {\n    fact p(a);\n    rule r(x: i32) { p(x) }\n}\n", "E0570")
+}
+
+/// Dormant (see `kb/rules/diagnostics.mg`): no source yields a `No` net verdict,
+/// so the verdict is set by hand and the gate is run on the module. It must
+/// fire E0711 with the net's verdict, and must not fire with the verdict as the
+/// pass computed it.
+fn not_differentiable_net() -> bool {
+    use mage_prototype::{differentiable, effects};
+    let src = "net Affine { layer fc: Linear(3, 1); forward { fc } }\n\
+               train Fit { net: Affine; optimizer: SGD(0.05); loss: MSE; epochs: 1; }";
+    let module = parser::parse(&lexer::lex(src)).unwrap();
+    let eff = effects::infer_effects(&module);
+    let mut engine = differentiable::infer(&module, &eff);
+    let clean = differentiable::check_train_nets(&module, &engine).is_empty();
+    engine.nets[0].verdict = differentiable::Diff::No("a test verdict".into());
+    let fired = differentiable::check_train_nets(&module, &engine)
+        .iter()
+        .any(|d| d.id.as_deref() == Some("E0711") && d.message.contains("`Fit`") && d.message.contains("`Affine`"));
+    clean && fired
+}
+
+/// A clause before `net` is kept and warned about, and the same net without it
+/// is not. The warning is not an error, so the net still checks.
+fn net_contract_not_checked() -> bool {
+    warns("@req(x > 0)\nnet A { layer fc: Linear(3, 1); forward { fc } }\n", "E0712", "not checked")
+        && !warns("net A { layer fc: Linear(3, 1); forward { fc } }\n", "E0712", "not checked")
+        && check("@req(x > 0)\nnet A { layer fc: Linear(3, 1); forward { fc } }\n", &[])
+            .iter()
+            .all(|(s, _, _)| s != "error")
+        // The same for a `train` block, which names the net it trains.
+        && warns(
+            "net A { layer fc: Linear(3, 1); forward { fc } }\n@req(x > 0)\ntrain Fit { net: A; optimizer: SGD(0.05); loss: MSE; epochs: 1; }\n",
+            "E0712",
+            "on `train Fit` is not checked",
+        )
+}
+
+/// A `train` naming a net the module does not define is E0713, and is not when
+/// the net is there. The near-miss name is suggested.
+fn unknown_net() -> bool {
+    emits("net Nowhere { layer fc: Linear(3, 1); forward { fc } }\ntrain Fit { net: Nowhear; optimizer: SGD(0.1); loss: MSE; epochs: 1; }", "E0713")
+        && absent("net Nowhere { layer fc: Linear(3, 1); forward { fc } }\ntrain Fit { net: Nowhere; optimizer: SGD(0.1); loss: MSE; epochs: 1; }", "E0713")
 }
 
 fn net_shape() -> bool {

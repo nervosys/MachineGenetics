@@ -141,6 +141,44 @@ pub fn collect(module: &ast::Module) -> Vec<(Clause, Option<&FunctionDef>)> {
     out
 }
 
+/// Warn about each contract clause written on a `net` or a `train` block (E0712).
+///
+/// A net runs through `--target=abl-infer`, and a train block through
+/// `--target=abl-train`. Neither evaluates a contract, so a clause there is never
+/// checked. It is a warning, not an error: the item is valid, and refusing it
+/// would make a harmless clause a hard error. The clause must not be dropped
+/// silently, which is what the parser did before nets and trains kept theirs.
+pub fn unchecked_contract_warnings(module: &ast::Module) -> Vec<crate::hir::Diagnostic> {
+    use crate::hir::{Diagnostic, DiagnosticCategory, Severity, Span};
+    let mut out = Vec::new();
+    for item in &module.items {
+        let (subject, kind_word, runner, contracts) = match &item.kind {
+            ItemKind::Net(net) => (format!("net {}", net.name), "net", "--target=abl-infer", &net.contracts),
+            ItemKind::Train(t) => (format!("train {}", t.name), "train block", "--target=abl-train", &t.contracts),
+            _ => continue,
+        };
+        for c in contracts {
+            let keyword = match c.kind {
+                ContractClauseKind::Requires => "@req",
+                ContractClauseKind::Ensures => "@ens",
+                ContractClauseKind::Invariant => "@inv",
+            };
+            let mut d = Diagnostic::categorized(
+                Severity::Warning,
+                format!(
+                    "`{keyword}` on `{subject}` is not checked: a {kind_word} runs through `{runner}`, \
+                     which evaluates no contract. Move the condition onto a function"
+                ),
+                DiagnosticCategory::ContractNotChecked,
+                None,
+            );
+            d.span = c.span.as_ref().map(|s| Span { line: s.line as u32, col: s.col as u32 });
+            out.push(d);
+        }
+    }
+    out
+}
+
 /// Split a spec item's text, `cond, "message"`, at its top-level comma.
 ///
 /// A spec block keeps the whole parenthesised text, message included; a
