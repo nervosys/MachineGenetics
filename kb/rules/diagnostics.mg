@@ -1,4 +1,4 @@
-// Every diagnostic the compiler produces: 19 codes and 7 warning classes.
+// Every diagnostic the compiler produces: 20 codes and 7 warning classes.
 //
 // `diagnostic_row` is id, severity, category, summary. A code is what
 // `--check --json` prints. A warning class has no code of its own: where it
@@ -132,6 +132,16 @@ kb Diagnostics {
     fact diagnostic_row("E0710", "Error", "ShapeError", "Layers of a net whose tensor shapes do not fit");
     fact enforced_by("E0710", "abl_shape");
     fact tested_by("E0710", "net_shape");
+
+    // A `train` over a net the differentiability pass judges `No`. Dormant: no
+    // layer type is judged `No` yet, so no source reaches it. Its witness sets
+    // the net's verdict by hand and runs the gate on it, so it is `tested_by`
+    // a witness that is not a source; the gap says that is all it is.
+    fact instance_of("E0711", Diagnostic);
+    fact diagnostic_row("E0711", "Error", "NotDifferentiable", "A train block over a net the differentiability pass judges not differentiable");
+    fact enforced_by("E0711", "differentiable");
+    fact tested_by("E0711", "not_differentiable_net");
+    fact gap("E0711", "dormant: no layer type is judged not differentiable, so no source reaches this; its witness sets the verdict by hand");
 
     // Only warnings go out under this code: see the two classes below.
     fact instance_of("E9999", Diagnostic);

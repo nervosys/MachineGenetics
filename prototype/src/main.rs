@@ -2404,6 +2404,18 @@ fn run_train(
     };
     report_backend(selected, "--target=abl-train");
 
+    // `--target=abl-train` runs no checker, so it refuses the one thing the
+    // checker would have refused: a train over a net judged not differentiable
+    // (E0711). The same diagnostic and message as `--check`, and a nonzero exit.
+    let effect_infer = effects::infer_effects(module);
+    let refused = differentiable::check_train_nets(module, &differentiable::infer(module, &effect_infer));
+    if !refused.is_empty() {
+        for diag in &refused {
+            eprintln!("{path}: {diag}");
+        }
+        std::process::exit(1);
+    }
+
     println!("// MAGE → Agentic Binary Language → SGD training for {path}");
 
     // Index nets by name so train blocks can look them up.
@@ -3338,6 +3350,11 @@ fn run_check(source: &str, filename: &str, do_elision: bool, legacy: bool, token
         if diag.severity == hir::Severity::Error {
             total_errors += 1;
         }
+    }
+    // A `train` over a net judged not differentiable (E0711).
+    for diag in &differentiable::check_train_nets(&module, &diff_infer) {
+        eprintln!("{filename}: {diag}");
+        total_errors += 1;
     }
 
     // Report.

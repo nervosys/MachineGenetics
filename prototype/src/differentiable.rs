@@ -880,6 +880,42 @@ pub fn check_grad_obligations(module: &ast::Module, engine: &DiffInfer) -> Vec<D
     out
 }
 
+/// Refuse every `train` block whose net the pass judges `No`.
+///
+/// Only `No` refuses. `Unknown` is allowed: it is the absence of a verdict, and
+/// a `net` with a layer type outside the tables is `Unknown` (the lowering
+/// already warns that it falls back to IDENTITY). Refusing on `Unknown` would
+/// make every unmodelled layer a hard error, which is the trade the
+/// `grad` obligation above also declines. A `train` naming a net this module
+/// does not define is `Unknown` too, and is not diagnosed here.
+///
+/// The verdict read is the **net's**, not the train block's. The train verdict
+/// also joins the loss and the block body, and a train with no loss is `No`
+/// for a reason that says nothing about the net.
+///
+/// No `net` verdict is `No` yet: `layer_type_diff` only returns `Smooth`,
+/// `AlmostEverywhere` or `Unknown`, and no bridge layer has a discrete output.
+/// This check is therefore dormant until a layer type is judged `No`.
+pub fn check_train_nets(module: &ast::Module, engine: &DiffInfer) -> Vec<Diagnostic> {
+    let mut out = Vec::new();
+    for item in &module.items {
+        if let ast::ItemKind::Train(td) = &item.kind
+            && let Diff::No(reason) = engine.net_of(&td.net)
+        {
+            out.push(Diagnostic::categorized(
+                Severity::Error,
+                format!(
+                    "train `{}` trains net `{}`, which is not differentiable, so it cannot be trained — {reason}",
+                    td.name, td.net
+                ),
+                DiagnosticCategory::NotDifferentiable,
+                None,
+            ));
+        }
+    }
+    out
+}
+
 fn collect_grads_block(b: &ast::Block, owner: &str, out: &mut Vec<(String, ast::Expr)>) {
     for s in &b.stmts {
         match s {
@@ -1501,6 +1537,51 @@ mod tests {
         let v = d.train_of("Fit");
         assert!(matches!(v, Diff::Unknown(_)), "{v:?}");
         assert!(v.reason().unwrap().contains("Nowhere"));
+    }
+
+    /// Source and engine for a module, so a test can change a net's verdict
+    /// before the gate reads it. No source reaches `No` yet (see
+    /// `check_train_nets`), so the verdict is the only way to exercise the gate.
+    fn train_gate(src: &str, verdict: Option<Diff>) -> Vec<Diagnostic> {
+        let module = parser::parse(&lexer::lex(src)).expect("parse failed");
+        let eff = effects::infer_effects(&module);
+        let mut engine = infer(&module, &eff);
+        if let Some(v) = verdict {
+            engine.nets[0].verdict = v;
+        }
+        check_train_nets(&module, &engine)
+    }
+
+    const AFFINE_TRAIN: &str = "net Affine { layer fc: Linear(3, 1); forward { fc } }\n\
+         train Fit { net: Affine; optimizer: SGD(0.05); loss: MSE; epochs: 10; }";
+
+    /// A `train` over a net judged `No` is refused, and the message names the
+    /// train block, the net and the reason the pass gives.
+    #[test]
+    fn a_train_over_a_not_differentiable_net_is_refused() {
+        let out = train_gate(AFFINE_TRAIN, Some(Diff::No("it compares two floats".into())));
+        assert_eq!(out.len(), 1, "{out:?}");
+        assert_eq!(out[0].severity, Severity::Error);
+        assert_eq!(out[0].id.as_deref(), Some("E0711"));
+        let m = &out[0].message;
+        assert!(m.contains("train `Fit`") && m.contains("net `Affine`"), "{m}");
+        assert!(m.contains("it compares two floats"), "{m}");
+    }
+
+    /// `Unknown` is allowed, as is a net that is differentiable.
+    #[test]
+    fn unknown_and_differentiable_nets_are_not_refused() {
+        assert!(train_gate(AFFINE_TRAIN, Some(Diff::Unknown("a layer".into()))).is_empty());
+        assert!(train_gate(AFFINE_TRAIN, Some(Diff::AlmostEverywhere)).is_empty());
+        assert!(train_gate(AFFINE_TRAIN, None).is_empty());
+    }
+
+    /// A `train` naming a net the module does not define has an `Unknown`
+    /// verdict, so it is not refused here.
+    #[test]
+    fn a_train_over_a_missing_net_is_not_refused_here() {
+        let src = "train Fit { net: Nowhere; optimizer: SGD(0.1); loss: MSE; epochs: 1; }";
+        assert!(train_gate(src, None).is_empty());
     }
 
     // ── Reporting ────────────────────────────────────────────────────

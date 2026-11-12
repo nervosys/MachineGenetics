@@ -80,6 +80,7 @@ const WITNESSES: &[(&str, &str, fn() -> bool)] = &[
     ("E0562", "unit_mismatch", unit_mismatch),
     ("E0570", "kb_rule", kb_rule),
     ("E0710", "net_shape", net_shape),
+    ("E0711", "not_differentiable_net", not_differentiable_net),
     ("E9999", "grad_unchecked", grad_unchecked),
     ("no_derivative_rule", "no_derivative_rule", no_derivative_rule),
     ("param_no_gradient", "param_no_gradient", param_no_gradient),
@@ -189,6 +190,25 @@ fn unit_mismatch() -> bool {
 fn kb_rule() -> bool {
     emits("kb K {\n    fact p(a);\n    rule r(x: i32) { x }\n}\n", "E0570")
         && absent("kb K {\n    fact p(a);\n    rule r(x: i32) { p(x) }\n}\n", "E0570")
+}
+
+/// Dormant (see `kb/rules/diagnostics.mg`): no source yields a `No` net verdict,
+/// so the verdict is set by hand and the gate is run on the module. It must
+/// fire E0711 with the net's verdict, and must not fire with the verdict as the
+/// pass computed it.
+fn not_differentiable_net() -> bool {
+    use mage_prototype::{differentiable, effects};
+    let src = "net Affine { layer fc: Linear(3, 1); forward { fc } }\n\
+               train Fit { net: Affine; optimizer: SGD(0.05); loss: MSE; epochs: 1; }";
+    let module = parser::parse(&lexer::lex(src)).unwrap();
+    let eff = effects::infer_effects(&module);
+    let mut engine = differentiable::infer(&module, &eff);
+    let clean = differentiable::check_train_nets(&module, &engine).is_empty();
+    engine.nets[0].verdict = differentiable::Diff::No("a test verdict".into());
+    let fired = differentiable::check_train_nets(&module, &engine)
+        .iter()
+        .any(|d| d.id.as_deref() == Some("E0711") && d.message.contains("`Fit`") && d.message.contains("`Affine`"));
+    clean && fired
 }
 
 fn net_shape() -> bool {

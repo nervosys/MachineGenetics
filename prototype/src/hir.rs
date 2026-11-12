@@ -582,13 +582,17 @@ pub enum DiagnosticCategory {
     /// a negation that cannot be stratified, or a fact argument that is not
     /// a constant (MAGE_SPEC §7.1).
     KbRule,
+    /// A `train` block over a `net` the differentiability pass judges not
+    /// differentiable. The message names the train block, the net and the
+    /// reason (E0711).
+    NotDifferentiable,
     /// Other.
     Other,
 }
 
 impl DiagnosticCategory {
     /// Every category. `tests/diagnostics.rs` holds this to the enum.
-    pub const ALL: [DiagnosticCategory; 17] = [
+    pub const ALL: [DiagnosticCategory; 18] = [
         DiagnosticCategory::BorrowConflict,
         DiagnosticCategory::UseAfterMove,
         DiagnosticCategory::TypeMismatch,
@@ -605,6 +609,7 @@ impl DiagnosticCategory {
         DiagnosticCategory::Deprecated,
         DiagnosticCategory::UnitMismatch,
         DiagnosticCategory::KbRule,
+        DiagnosticCategory::NotDifferentiable,
         DiagnosticCategory::Other,
     ];
 
@@ -627,6 +632,7 @@ impl DiagnosticCategory {
             DiagnosticCategory::UnitMismatch => "E0562",
             DiagnosticCategory::RoleViolation => "E0551",
             DiagnosticCategory::KbRule => "E0570",
+            DiagnosticCategory::NotDifferentiable => "E0711",
             DiagnosticCategory::CoreViolation => "E0552",
             DiagnosticCategory::ParamDomain => "E0553",
             DiagnosticCategory::Deprecated => "E0554",
@@ -686,6 +692,9 @@ impl DiagnosticCategory {
             }
             DiagnosticCategory::KbRule => {
                 "write the rule body as predicate calls joined by `&&`, each optionally negated with `!`, binding every head parameter in a positive call; give constants as string or number literals"
+            }
+            DiagnosticCategory::NotDifferentiable => {
+                "train a net whose layers the differentiability pass can judge differentiable, or remove the train block"
             }
             DiagnosticCategory::Other => "see the message for details",
         }

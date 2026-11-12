@@ -96,10 +96,10 @@ pub fn check_source(source: &str, do_elision: bool, core: bool) -> Checked {
         // agent that validates generated MAGE with `--check --json` must
         // see the same errors a person does, or the two oracles disagree
         // about what the program means.
-        all.extend(differentiable::check_grad_obligations(
-            &module,
-            &differentiable::infer(&module, &effect_infer),
-        ));
+        let diff_engine = differentiable::infer(&module, &effect_infer);
+        all.extend(differentiable::check_grad_obligations(&module, &diff_engine));
+        // A `train` over a net judged not differentiable (E0711).
+        all.extend(differentiable::check_train_nets(&module, &diff_engine));
         // Refuted contracts (E0560), for the same reason: the human path
         // counts them as errors, so this stream must carry them.
         all.extend(verify::diagnostics(&verify::verify_module(&module)));
