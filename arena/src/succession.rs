@@ -262,6 +262,7 @@ fn cli_gate() -> PromotionGate {
         guard_tolerance: 0.25,
         // Shadow runs here are a finiteness check, so the germline default holds.
         min_shadow_successes: 8,
+        dominance: None,
     }
 }
 
@@ -587,6 +588,7 @@ mod tests {
                 // present, and loose.
                 guard_tolerance: 0.5,
                 min_shadow_successes: 1,
+                dominance: None,
             },
             suite.digest.clone(),
             "arena-evaluator",

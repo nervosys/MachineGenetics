@@ -851,6 +851,7 @@ mod tests {
                 guard_axes: vec!["safety".into()],
                 guard_tolerance: 0.01,
                 min_shadow_successes: 2,
+                dominance: None,
             },
             Digest::of(SUITE),
             EVALUATOR,
