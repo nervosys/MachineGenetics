@@ -105,8 +105,8 @@ so it can be argued with.
 ## The `net` DSL, which is where the derivative actually lives
 
 Everything above is about `f` functions, and measured against this repository
-that half of the pass reports **12 of 173 functions** differentiable — 131 of
-the 160 that are not for want of a floating-point parameter. Three of the twelve
+that half of the pass reports **12 of 176 functions** differentiable — 131 of
+the 163 that are not for want of a floating-point parameter. Three of the twelve
 are arena harness policies (`reward` in `arena/harness/reward.mg`, almost
 everywhere because of its `max`, and `weight` and `priority` in its sibling
 harness files); the other nine are physics-task and system-identification steps
@@ -201,6 +201,16 @@ E0711 (`NotDifferentiable`), naming the train block, the net and the reason, and
 net's verdict counts, not the joined train verdict, and `Unknown` is allowed. No
 layer type is judged `No` yet, so no source reaches E0711 today; its witness sets
 the verdict by hand.
+
+### `forward` is refused, not judged
+
+`forward(Net, xs)`, the evaluator's call into a net (ARCHITECTURE.md §6), performs
+the `fs` effect: it reads the checkpoint of the `train` block that names the net.
+The derivative pass refuses an expression that performs an effect, so
+`grad(g(x), x)` where `g` calls `forward` is E0308 at check time, with the message
+"performs the `FS` effect, so its output is not a function of its inputs". At run
+time the evaluator also refuses a dual number reaching `forward`. Neither check says
+the net is non-differentiable: through `forward` the layers are not judged at all.
 
 ## Differentiability is a typeclass, which is why item 21 reopens
 
@@ -363,41 +373,41 @@ what an operational-vs-denotational equivalence proof would be *about*.
 
 ## What it says about this repository today
 
-Run over all 126 tracked `.mg` sources:
+Run over all 127 tracked `.mg` sources:
 
 ```
 $ scripts/measure-differentiability.sh
 
-126 tracked .mg sources; 0 could not be parsed.
+127 tracked .mg sources; 0 could not be parsed.
 
 subject      total    diff  smooth    a.e. unknown     not
-nets            34      34      19      15       0       0
-trains           7       7       7       0       0       0
-functions      173      12      10       2       1     160
+nets            35      35      20      15       0       0
+trains           8       8       8       0       0       0
+functions      176      12      10       2       1     163
 ```
 
-**34 of 34 nets and 7 of 7 train blocks are differentiable; 12 of 173 functions
+**35 of 35 nets and 8 of 8 train blocks are differentiable; 12 of 176 functions
 are** — three arena harness policies, and nine physics-task and
 system-identification steps in `prototype/examples/`. The two halves of that sentence are one finding, not two. The negative
 half is dominated by a single reason:
 
 ```
  131  no floating-point parameter to differentiate with respect to
-  10  performs the `FS` effect, so its output is not a function of its inputs
+  13  performs the `FS` effect, so its output is not a function of its inputs
    8  performs the `IO` effect
    6  performs the `Llm` effect
    3  performs the `Net` effect
 ```
 
-131 of 173 functions have no floating-point parameter to differentiate with
+131 of 176 functions have no floating-point parameter to differentiate with
 respect to. The `f` corpus is mostly agent and tooling code; the numerical code
 is in the `net` DSL, where the analysis reports on it, and the twelve
 differentiable functions are the exceptions. The 15 nets that are `AlmostEverywhere`
-rather than `Smooth` are almost all `ReLU`; the `Smooth` 19 are the transformer
+rather than `Smooth` are almost all `ReLU`; the `Smooth` 20 are the transformer
 and embedding stacks.
 
-**This is reported per-subject and not merged.** One ratio over all 202
-subjects would be 53 of 214 and would answer neither question: functions and
+**This is reported per-subject and not merged.** One ratio over all 219
+subjects would be 55 of 219 and would answer neither question: functions and
 nets are different populations, and the interesting fact is precisely that the
 two answers differ.
 
@@ -407,26 +417,26 @@ and the pass disagree. The pinned form it compares against:
 
 ```
 $ scripts/measure-differentiability.sh --pins
-mg_files=126
+mg_files=127
 mg_unparsed=0
-nets_total=34
-nets_differentiable=34
-nets_smooth=19
+nets_total=35
+nets_differentiable=35
+nets_smooth=20
 nets_almost_everywhere=15
 nets_unknown=0
 nets_not=0
-trains_total=7
-trains_differentiable=7
-trains_smooth=7
+trains_total=8
+trains_differentiable=8
+trains_smooth=8
 trains_almost_everywhere=0
 trains_unknown=0
 trains_not=0
-functions_total=173
+functions_total=176
 functions_differentiable=12
 functions_smooth=10
 functions_almost_everywhere=2
 functions_unknown=1
-functions_not=160
+functions_not=163
 ```
 
 That check exists because the "0 of 155" figure was published for a whole phase
