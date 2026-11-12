@@ -355,23 +355,45 @@ impl<T: Clone> Archive<T> {
         if n == 0 {
             return None;
         }
-        let points = self.points();
-        let mut rank = vec![0usize; n];
-        let mut crowd = vec![0.0f64; n];
-        for (r, front) in fronts(&points, &self.senses()).into_iter().enumerate() {
-            let dist = crowding(&points, &front);
-            for (k, &i) in front.iter().enumerate() {
-                rank[i] = r;
-                crowd[i] = dist[k];
-            }
-        }
+        let ranked = rank_and_crowding(&self.points(), &self.senses());
         let (a, b) = (draw(n), draw(n));
-        let better = |x: usize, y: usize| {
-            rank[x] < rank[y] || (rank[x] == rank[y] && crowd[x] > crowd[y])
-        };
-        Some(&self.entries[if better(b, a) { b } else { a }])
+        Some(&self.entries[tournament_winner(&ranked, a, b)])
     }
 }
+
+/// Each point's non-domination rank (0 is the front) and its crowding distance
+/// within that front, as [`fronts`] and [`crowding`] define them.
+///
+/// Points with a NaN are incomparable with everything, so they sit in front 0
+/// with no neighbours. Callers that must not select an unmeasured point should
+/// drop such points before calling this; [`tournament_winner`] does not know
+/// what a NaN means.
+pub fn rank_and_crowding(points: &[Vec<f64>], senses: &[Sense]) -> Vec<(usize, f64)> {
+    let mut out = vec![(0usize, 0.0f64); points.len()];
+    for (r, front) in fronts(points, senses).into_iter().enumerate() {
+        let dist = crowding(points, &front);
+        for (k, &i) in front.iter().enumerate() {
+            out[i] = (r, dist[k]);
+        }
+    }
+    out
+}
+
+/// The winner of a binary tournament between `a` and `b`, given each point's
+/// [`rank_and_crowding`]: the lower front rank wins, and within a front the
+/// larger crowding distance. A tie keeps `a`, so the outcome is a function of
+/// the two draws alone.
+pub fn tournament_winner(ranked: &[(usize, f64)], a: usize, b: usize) -> usize {
+    let better = |x: usize, y: usize| {
+        ranked[x].0 < ranked[y].0 || (ranked[x].0 == ranked[y].0 && ranked[x].1 > ranked[y].1)
+    };
+    if better(b, a) {
+        b
+    } else {
+        a
+    }
+}
+
 
 #[cfg(test)]
 mod tests {

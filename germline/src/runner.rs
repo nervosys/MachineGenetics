@@ -52,7 +52,7 @@ use super::journal::{Entry, Journal};
 use super::lineage::Lineage;
 use super::manifest::{self, ProposerRecord};
 use super::supervisor::{FailureMode, HealthSample, SupervisionPolicy, Supervisor};
-use crate::variation::{propose, GenePool, Legality, Locus, Proposal, VariationPlan};
+use crate::variation::{propose_with_points, GenePool, Legality, Locus, Proposal, Selection, VariationPlan};
 use super::{EvalSuite, FitnessVector, Generation, GenerationId, Measurement};
 use ribosome::mac::absorb;
 use ribosome::Digest;
@@ -231,6 +231,15 @@ pub trait Proposer {
 /// trust at all.
 pub fn admission_width(trust: f64, candidates_per_cycle: usize) -> usize {
     ((trust.clamp(0.0, 1.0) * candidates_per_cycle as f64).round() as usize).max(1)
+}
+
+/// A generation's held-out values on the named objectives, in order, when every
+/// one is present and finite. `None` otherwise: such a generation has no
+/// position to compare by, so Pareto selection does not choose it.
+fn objective_vector(g: &Generation, objectives: &[String]) -> Option<Vec<f64>> {
+    let f = g.heldout_fitness()?;
+    let v: Option<Vec<f64>> = objectives.iter().map(|o| f.get(o)).collect();
+    v.filter(|v| v.iter().all(|x| x.is_finite()))
 }
 
 /// Drives bounded succession cycles.
@@ -490,6 +499,16 @@ impl<'a> Runner<'a> {
             .collect();
         let seedpop =
             if population.is_empty() { vec![(vec![Locus::param(0.5)], 0.5)] } else { population };
+        // Under Pareto selection, each member's vector over the named objectives,
+        // parallel to `seedpop`. A member without one has none, and is not chosen.
+        let points: Option<Vec<Option<Vec<f64>>>> = match &self.policy.variation.selection {
+            Selection::Pareto { objectives } => Some(if measured.is_empty() {
+                vec![Some(vec![0.5; objectives.len()])]
+            } else {
+                measured.iter().map(|g| objective_vector(g, objectives)).collect()
+            }),
+            _ => None,
+        };
 
         // An empty pool until a registry is wired in: `Substitute` is then a
         // no-op and the run behaves exactly as it did before genes existed.
@@ -501,8 +520,13 @@ impl<'a> Runner<'a> {
         // candidate must state a prediction before anything else happens.
         let (pool, refused) = match self.proposer.as_mut() {
             None => {
-                let Proposal { candidates, refused } =
-                    propose(&seedpop, self.policy.variation, &GenePool::default(), seed);
+                let Proposal { candidates, refused } = propose_with_points(
+                    &seedpop,
+                    points.as_deref(),
+                    self.policy.variation.clone(),
+                    &GenePool::default(),
+                    seed,
+                );
                 let pool: Vec<CandidateSpec> = candidates.into_iter().take(cpc).collect();
                 (pool, refused)
             }

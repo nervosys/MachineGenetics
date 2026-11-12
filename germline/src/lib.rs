@@ -123,9 +123,22 @@ impl std::fmt::Display for GenerationId {
 ///
 /// A vector rather than a scalar because succession decisions are
 /// multi-objective and a scalar hides exactly the trades that matter — "overall
-/// better" is how a capability quietly disappears. The scalar exists
-/// ([`FitnessVector::composite`]) but is only ever used for *ranking* candidates,
-/// never for deciding promotion.
+/// better" is how a capability quietly disappears.
+///
+/// The scalar ([`FitnessVector::composite`], an unweighted mean) is still used,
+/// in exactly these places, and none of them decides promotion:
+///
+/// - [`lineage::Lineage::clade_score`], which weights parent choice under the
+///   scalar selections, [`variation::Selection::Tournament`] and
+///   [`variation::Selection::Elitist`]. Under [`variation::Selection::Pareto`]
+///   parents are chosen from the objective vectors, and the score is unused.
+/// - The predictor of [`directed`]: its ranking of candidates, and the
+///   calibration error that decides how much its predictions are trusted.
+/// - The health baselines of [`supervisor`], the post-promotion baseline the
+///   [`runner`] reads from the new champion, and the stand-in genome for a
+///   generation recorded before genomes existed.
+///
+/// [`gate`] reads each axis on its own, and never the mean.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct FitnessVector(pub BTreeMap<String, f64>);
 
