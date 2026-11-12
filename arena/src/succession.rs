@@ -332,9 +332,10 @@ const DEV_ATTEST_KEY: &str = "arena-development-key";
 /// `1 - bits/byte / 8`, so `0.01` is about 0.08 bits/byte. That number was
 /// chosen by hand and has not been calibrated against the measured noise.
 ///
-/// `dominance` is set by `--objectives`. Its rule (b) holds every objective to
-/// `efficiency`'s guard tolerance above, or to zero for `latency`, which is no
-/// guard here, and its ratchet applies to every objective.
+/// `dominance` is set by `--objectives`. Its rule (b) holds each objective to its
+/// own `--objective-tolerance`, and to zero where none is given. The guard
+/// tolerance above applies to the guard check only. Rule (b)'s ratchet applies to
+/// every objective.
 fn cli_gate(dominance: Option<DominanceRule>) -> PromotionGate {
     PromotionGate {
         primary_axis: "capability".into(),
@@ -384,8 +385,9 @@ fn parse_tolerances(list: &str) -> Result<Vec<(String, f64)>, String> {
 }
 
 /// Check the tolerances against the run's objectives, and return them as the
-/// rule's ordered map. The primary axis and the guard have fixed tolerances, so
-/// neither may be given one here.
+/// rule's ordered map. The primary axis has tolerance zero, so it may not be
+/// given one here. Efficiency may be given one: under rule (b) its guard status
+/// does not change its tolerance.
 fn validate_tolerances(objectives: Option<&[String]>, given: &[(String, f64)]) -> Result<BTreeMap<String, f64>, String> {
     let mut out = BTreeMap::new();
     for (axis, t) in given {
@@ -394,9 +396,6 @@ fn validate_tolerances(objectives: Option<&[String]>, given: &[(String, f64)]) -
         };
         if axis == "capability" {
             return Err("--objective-tolerance: capability is the primary axis, and its tolerance is always zero".into());
-        }
-        if axis == "efficiency" {
-            return Err("--objective-tolerance: efficiency is the guard, and its tolerance is the gate's guard tolerance (0.25), which is not set per run".into());
         }
         if !objs.iter().any(|o| o == axis) {
             return Err(format!("--objective-tolerance: `{axis}` is not among --objectives"));
@@ -490,7 +489,7 @@ fn objectives_text(objectives: Option<&[String]>, dominance: Option<&DominanceRu
     match (objectives, dominance) {
         (Some(o), Some(r)) => {
             let tol = if r.tolerances.is_empty() {
-                "zero tolerance off the guard".to_string()
+                "zero tolerance on every objective".to_string()
             } else {
                 r.tolerances.iter().map(|(a, t)| format!("{a} {t:.4}")).collect::<Vec<_>>().join(", ")
             };
@@ -991,7 +990,7 @@ mod tests {
     }
 
     #[test]
-    fn tolerances_must_name_a_listed_non_primary_non_guard_objective() {
+    fn tolerances_must_name_a_listed_non_primary_objective() {
         let objs: Vec<String> = ["capability", "latency"].iter().map(|s| s.to_string()).collect();
         let lat = vec![("latency".to_string(), 0.005)];
         let map = validate_tolerances(Some(&objs), &lat).unwrap();
@@ -999,8 +998,10 @@ mod tests {
         assert!(validate_tolerances(None, &lat).unwrap_err().contains("needs --objectives"));
         let cap = vec![("capability".to_string(), 0.01)];
         assert!(validate_tolerances(Some(&objs), &cap).unwrap_err().contains("always zero"));
+        // Efficiency is an objective like any other under rule (b), so it may be given one.
+        let eff_objs: Vec<String> = ["capability", "efficiency"].iter().map(|s| s.to_string()).collect();
         let eff = vec![("efficiency".to_string(), 0.01)];
-        assert!(validate_tolerances(Some(&objs), &eff).unwrap_err().contains("guard"));
+        assert_eq!(validate_tolerances(Some(&eff_objs), &eff).unwrap().get("efficiency"), Some(&0.01));
         let unlisted = vec![("latency".to_string(), 0.01)];
         let only_cap: Vec<String> = vec!["capability".into()];
         assert!(validate_tolerances(Some(&only_cap), &unlisted).unwrap_err().contains("not among"));

@@ -71,8 +71,10 @@ pub struct PromotionGate {
 /// is equal on the primary axis and better elsewhere, such as the same
 /// capability at lower energy. Rule (b) is that path. A challenger passes on (b)
 /// when, on every objective axis, it is at least the champion less that axis's
-/// tolerance (the guard tolerance for a guard axis, zero otherwise), and on at
-/// least one objective axis it is at least the champion plus `min_improvement`.
+/// tolerance (its entry in `tolerances`, zero if it has none), and on at least one
+/// objective axis it is at least the champion plus `min_improvement`. Guard status
+/// does not change these comparisons. The guard check runs separately, with the
+/// guard tolerance, and still applies.
 ///
 /// The primary axis is held to the first condition with zero tolerance even when
 /// it is not listed in `objectives`, so rule (b) cannot buy a capability loss.
@@ -93,8 +95,9 @@ pub struct DominanceRule {
     #[serde(default)]
     pub primary_floor: f64,
     /// Per-objective tolerance under rule (b), by axis name. An objective's
-    /// tolerance is its guard tolerance if it is a guard, else its entry here, else
-    /// zero. The primary axis is always zero. The same tolerance applies to the
+    /// tolerance is its entry here, or zero if it has none. Guard status does not
+    /// change it: a guard is still checked by the guard check, with the guard
+    /// tolerance. The primary axis is always zero. The same tolerance applies to the
     /// ratchet, which compares against the high-water mark, not the champion. So
     /// across any chain of promotions an objective can drift below its best value
     /// by at most one tolerance. An ordered map, so the digest is deterministic.
@@ -597,14 +600,12 @@ impl Episode {
         out
     }
 
-    /// The tolerance an axis is held to under rule (b): zero for the primary
-    /// axis, the guard tolerance for a guard axis, the rule's entry for the axis
-    /// if it has one, and zero otherwise.
+    /// The tolerance an axis is held to under rule (b), for both the champion
+    /// comparison and the ratchet: zero for the primary axis, the rule's entry for
+    /// the axis if it has one, and zero otherwise. Guard status is not consulted.
     fn tolerance(&self, rule: &DominanceRule, axis: &str) -> f64 {
         if axis == self.gate.primary_axis {
             0.0
-        } else if self.gate.guard_axes.iter().any(|g| g == axis) {
-            self.gate.guard_tolerance
         } else {
             rule.tolerances.get(axis).copied().unwrap_or(0.0)
         }
@@ -1077,16 +1078,52 @@ mod tests {
     }
 
     #[test]
-    fn a_guard_objective_is_held_to_the_guard_tolerance_and_no_further() {
+    fn a_guard_objective_is_held_to_its_own_tolerance_under_rule_b_and_no_further() {
+        // Efficiency is a guard with a 0.05 guard tolerance. Rule (b) does not
+        // consult that: its tolerance for efficiency is its map entry, here none.
         let ep = dominance_episode_with(&["capability", "efficiency", "latency"], &["efficiency"], 0.05);
         let (mut l, champ) = dominance_seeded(&ep);
-        // Efficiency down 0.04 is inside its 0.05 guard tolerance, and latency
-        // improves by the margin, so rule (b) holds.
-        let within = challenger(&mut l, champ, dmeasured(fv(0.70, 0.36, 0.52)));
-        assert!(ep.adjudicate(&within, &l, 0, &yes()).approved());
-        // Down 0.10 is outside it.
+        // Efficiency down 0.04 passes the guard check, but rule (b) refuses it.
+        let c = challenger(&mut l, champ, dmeasured(fv(0.70, 0.36, 0.52)));
+        let v = ep.adjudicate(&c, &l, 0, &yes());
+        assert!(!v.approved());
+        assert!(v.reasons().iter().any(|r| r.contains("`efficiency`")), "{:?}", v.reasons());
+        // With a map entry of 0.05 for efficiency, the same challenger passes.
+        let ep = Episode::open(
+            PromotionGate {
+                min_shadow_successes: 0,
+                guard_axes: vec!["efficiency".into()],
+                guard_tolerance: 0.05,
+                dominance: Some(DominanceRule {
+                    objectives: vec!["capability".into(), "efficiency".into(), "latency".into()],
+                    min_improvement: 0.01,
+                    primary_floor: 0.0,
+                    tolerances: BTreeMap::from([("efficiency".to_string(), 0.05)]),
+                }),
+                ..PromotionGate::default()
+            },
+            Digest::of(SUITE),
+            "independent-harness",
+        );
+        let (mut l, champ) = dominance_seeded(&ep);
+        let c = challenger(&mut l, champ, dmeasured(fv(0.70, 0.36, 0.52)));
+        assert!(ep.adjudicate(&c, &l, 0, &yes()).approved());
+        // Down 0.10 is beyond the map entry too.
         let beyond = challenger(&mut l, champ, dmeasured(fv(0.70, 0.30, 0.52)));
         let v = ep.adjudicate(&beyond, &l, 0, &yes());
+        assert!(!v.approved());
+        assert!(v.reasons().iter().any(|r| r.contains("`efficiency`")), "{:?}", v.reasons());
+    }
+
+    #[test]
+    fn a_guard_tolerance_does_not_let_efficiency_be_traded_for_latency() {
+        // The CLI's guard tolerance on efficiency is 0.25. Efficiency gives up 0.20
+        // for latency +0.02. The guard check accepts that drop, but rule (b) has no
+        // tolerance for efficiency, so the trade is refused.
+        let ep = dominance_episode_with(&["capability", "efficiency", "latency"], &["efficiency"], 0.25);
+        let (mut l, champ) = dominance_seeded(&ep);
+        let c = challenger(&mut l, champ, dmeasured(fv(0.70, 0.20, 0.52)));
+        let v = ep.adjudicate(&c, &l, 0, &yes());
         assert!(!v.approved());
         assert!(v.reasons().iter().any(|r| r.contains("`efficiency`")), "{:?}", v.reasons());
     }

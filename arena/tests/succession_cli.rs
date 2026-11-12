@@ -228,7 +228,6 @@ fn tolerance_and_floor_flags_are_usage_errors_when_malformed_or_misplaced() {
         ("tol-negative", with_objectives(&["--objective-tolerance", "latency=-0.1"]), "non-negative"),
         ("tol-nan", with_objectives(&["--objective-tolerance", "latency=NaN"]), "finite"),
         ("tol-unknown", with_objectives(&["--objective-tolerance", "speed=0.1"]), "not an axis"),
-        ("tol-efficiency", with_objectives(&["--objective-tolerance", "efficiency=0.01"]), "guard"),
         ("tol-no-objectives", case(&["--objective-tolerance", "latency=0.005"]), "needs --objectives"),
         ("floor-no-objectives", case(&["--dominance-floor", "0.2"]), "needs --objectives"),
     ];
