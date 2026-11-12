@@ -2503,9 +2503,27 @@ sp sorted {
 ### 12.2 Verification
 
 Contracts are verified via:
-1. **Static analysis** — SMT solver for decidable predicates
-   *(designed, not built: no SMT solver is wired in. Contracts are checked by
-   `--check` for type and by the evaluator at run time.)*
+1. **Static check** — `verify::check_condition` decides each `@req`, `@ens`,
+   `@inv` and refinement clause from its parsed expression, with three values
+   and no solver:
+   - **Verified** only by a proof on every execution. A *closed* condition (no
+     parameter, no `ret`/`result`, no field, and calls only the pure builtin
+     `len`) is run on the bounded evaluator and holds. A clause that is exactly
+     `<path>.len() >= 0` (or `> -1`), with a bare `<path>`, holds because a length
+     is never negative. `&&`, `||`, `!` and `=>` combine these by three-valued
+     logic; `a => b` holds when `a` is false or `b` is verified.
+   - **Violated** is the mirror image: a closed condition that is false,
+     `<path>.len() < 0`, or a connective the same rules make false. It is an
+     `E0560` error.
+   - **Unknown** otherwise: any condition about a value (`n > 0`), any clause
+     that does not parse, and any closed condition that errors or runs out of
+     fuel. `--eval` checks an Unknown clause at run time.
+
+   The earlier substring rules (`.len() >= 0` found anywhere in the text, and
+   `.is_ok()` with `=>`) were unsound and are gone. Values are never reasoned
+   about: `ret.is_ok() => ret.len() >= 0` is Verified only through its
+   consequent, and `ret.unwrap().len() >= 0` is Unknown because its receiver is
+   not a bare path.
 2. **SKB cross-reference** — matching against the 255 known safety rules
    *(designed, not built: no compiler stage consults the SKB. `types.rs`,
    `effects.rs`, `resolve.rs`, `verify.rs`, `heal.rs` and `mlir.rs` contain
