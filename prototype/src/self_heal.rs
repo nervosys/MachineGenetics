@@ -239,7 +239,78 @@ fn matching_close(tokens: &[Token], open: usize) -> Option<usize> {
     None
 }
 
-/// Every top-level function with a body, in source order.
+/// The body of the function whose `f`/`af`/`uf` keyword is at `i`, named `name`.
+fn fn_body_at(tokens: &[Token], i: usize, name: String) -> Option<FnBody> {
+    let mut nest = 0i32;
+    let mut open = None;
+    for (j, u) in tokens.iter().enumerate().skip(i + 2) {
+        match u.kind {
+            TokenKind::LParen | TokenKind::LBrack => nest += 1,
+            TokenKind::RParen | TokenKind::RBrack => nest -= 1,
+            TokenKind::LBrace if nest == 0 => {
+                open = Some(j);
+                break;
+            }
+            TokenKind::Semi | TokenKind::KwF | TokenKind::Eof if nest == 0 => break,
+            _ => {}
+        }
+    }
+    let open = open?;
+    let close = matching_close(tokens, open)?;
+    Some(FnBody { name, open, close })
+}
+
+/// The type an `I` or `extend` header (keyword at `kw`, body brace at `open`)
+/// names: the last identifier outside `<…>` after any `for`. `None` when there
+/// is none. It must equal `eval::type_head_name` of the parsed type for the
+/// methods to be found, so a header it reads differently finds no body.
+fn impl_head_name(tokens: &[Token], kw: usize, open: usize) -> Option<String> {
+    let header = &tokens[kw + 1..open];
+    let start = header.iter().rposition(|t| t.kind == TokenKind::KwFor).map_or(0, |p| p + 1);
+    let mut angle = 0i32;
+    let mut name = None;
+    for t in &header[start..] {
+        match t.text.as_str() {
+            "<" => angle += 1,
+            ">" => angle -= 1,
+            _ if angle == 0 && t.kind == TokenKind::Ident => name = Some(t.text.clone()),
+            _ => {}
+        }
+    }
+    name
+}
+
+/// The methods of an `I`/`extend` block whose braces are `open..=close`,
+/// named `head::method`: the same name a site of the method carries.
+fn method_bodies(tokens: &[Token], open: usize, close: usize, head: &str) -> Vec<FnBody> {
+    let mut out = Vec::new();
+    let mut depth = 0i32;
+    let mut j = open + 1;
+    while j < close {
+        match tokens[j].kind {
+            TokenKind::LBrace => depth += 1,
+            TokenKind::RBrace => depth -= 1,
+            TokenKind::KwF | TokenKind::KwAf | TokenKind::KwUf
+                if depth == 0 && tokens.get(j + 1).is_some_and(|n| n.kind == TokenKind::Ident) =>
+            {
+                let name = format!("{head}::{}", tokens[j + 1].text);
+                if let Some(b) = fn_body_at(tokens, j, name)
+                    && b.close < close
+                {
+                    j = b.close + 1;
+                    out.push(b);
+                    continue;
+                }
+            }
+            _ => {}
+        }
+        j += 1;
+    }
+    out
+}
+
+/// Every top-level function with a body, and every method of an `I` or
+/// `extend` block as `Type::method`, in source order.
 fn function_bodies(tokens: &[Token]) -> Vec<FnBody> {
     let mut out = Vec::new();
     let mut depth = 0i32;
@@ -252,25 +323,20 @@ fn function_bodies(tokens: &[Token]) -> Vec<FnBody> {
             TokenKind::KwF | TokenKind::KwAf | TokenKind::KwUf
                 if depth == 0 && tokens.get(i + 1).is_some_and(|n| n.kind == TokenKind::Ident) =>
             {
-                let name = tokens[i + 1].text.clone();
-                let mut nest = 0i32;
-                let mut open = None;
-                for (j, u) in tokens.iter().enumerate().skip(i + 2) {
-                    match u.kind {
-                        TokenKind::LParen | TokenKind::LBrack => nest += 1,
-                        TokenKind::RParen | TokenKind::RBrack => nest -= 1,
-                        TokenKind::LBrace if nest == 0 => {
-                            open = Some(j);
-                            break;
-                        }
-                        TokenKind::Semi | TokenKind::KwF | TokenKind::Eof if nest == 0 => break,
-                        _ => {}
-                    }
+                if let Some(b) = fn_body_at(tokens, i, tokens[i + 1].text.clone()) {
+                    i = b.close + 1;
+                    out.push(b);
+                    continue;
                 }
+            }
+            TokenKind::KwI | TokenKind::KwExtend if depth == 0 => {
+                let open = tokens[i + 1..].iter().position(|u| u.kind == TokenKind::LBrace).map(|p| p + i + 1);
                 if let Some(open) = open
                     && let Some(close) = matching_close(tokens, open)
                 {
-                    out.push(FnBody { name, open, close });
+                    if let Some(head) = impl_head_name(tokens, i, open) {
+                        out.extend(method_bodies(tokens, open, close, &head));
+                    }
                     i = close + 1;
                     continue;
                 }
@@ -1219,25 +1285,120 @@ fn tail_literal(fd: &crate::ast::FunctionDef) -> Option<&str> {
     }
 }
 
-fn function_mut<'a>(module: &'a mut Module, name: &str) -> Option<&'a mut crate::ast::FunctionDef> {
-    module.items.iter_mut().find_map(|it| match &mut it.kind {
-        crate::ast::ItemKind::Function(fd) if fd.name == name => Some(fd),
-        _ => None,
-    })
+/// Where the function a site names lives: an item of the module, and for a
+/// method, its member index within that `I` or `extend` block.
+#[derive(Clone, Copy)]
+struct FnLoc {
+    item: usize,
+    member: Option<usize>,
 }
 
-fn function_ref<'a>(module: &'a Module, name: &str) -> Option<&'a crate::ast::FunctionDef> {
-    module.items.iter().find_map(|it| match &it.kind {
-        crate::ast::ItemKind::Function(fd) if fd.name == name => Some(fd),
-        _ => None,
-    })
+/// The function `name` names: a top-level function, or a method as
+/// `Type::method`. A name given twice is refused, not picked from: the
+/// interpreter keeps one of two same-named methods, and which one ran is not
+/// known from the name.
+fn locate_function(module: &Module, name: &str) -> Result<FnLoc, String> {
+    use crate::ast::ItemKind;
+    let tops: Vec<usize> = module
+        .items
+        .iter()
+        .enumerate()
+        .filter(|(_, it)| matches!(&it.kind, ItemKind::Function(fd) if fd.name == name))
+        .map(|(i, _)| i)
+        .collect();
+    match tops.as_slice() {
+        [i] => return Ok(FnLoc { item: *i, member: None }),
+        [_, _, ..] => return Err(format!("`{name}` is defined more than once")),
+        [] => {}
+    }
+    let Some((ty, method)) = name.split_once("::") else {
+        return Err(format!("no function `{name}` in the module"));
+    };
+    let mut found = Vec::new();
+    for (i, it) in module.items.iter().enumerate() {
+        let (target, members) = match &it.kind {
+            ItemKind::Impl(ib) => (&ib.self_type, &ib.items),
+            ItemKind::Extend(eb) => (&eb.target_type, &eb.items),
+            _ => continue,
+        };
+        if eval::type_head_name(target).as_deref() != Some(ty) {
+            continue;
+        }
+        for (k, m) in members.iter().enumerate() {
+            if matches!(&m.kind, ItemKind::Function(fd) if fd.name == method) {
+                found.push(FnLoc { item: i, member: Some(k) });
+            }
+        }
+    }
+    match found.as_slice() {
+        [loc] => Ok(*loc),
+        [] => Err(format!("no method `{name}` in the module")),
+        _ => Err(format!("method `{name}` is defined more than once")),
+    }
+}
+
+fn function_mut<'a>(module: &'a mut Module, name: &str) -> Result<&'a mut crate::ast::FunctionDef, String> {
+    use crate::ast::ItemKind;
+    let loc = locate_function(module, name)?;
+    let it = &mut module.items[loc.item];
+    let kind = match (&mut it.kind, loc.member) {
+        (ItemKind::Function(fd), None) => return Ok(fd),
+        (ItemKind::Impl(ib), Some(k)) => &mut ib.items[k].kind,
+        (ItemKind::Extend(eb), Some(k)) => &mut eb.items[k].kind,
+        _ => return Err(format!("`{name}` is not a function")),
+    };
+    match kind {
+        ItemKind::Function(fd) => Ok(fd),
+        _ => Err(format!("`{name}` is not a function")),
+    }
+}
+
+fn function_ref<'a>(module: &'a Module, name: &str) -> Result<&'a crate::ast::FunctionDef, String> {
+    use crate::ast::ItemKind;
+    let loc = locate_function(module, name)?;
+    let kind = match (&module.items[loc.item].kind, loc.member) {
+        (ItemKind::Function(fd), None) => return Ok(fd),
+        (ItemKind::Impl(ib), Some(k)) => &ib.items[k].kind,
+        (ItemKind::Extend(eb), Some(k)) => &eb.items[k].kind,
+        _ => return Err(format!("`{name}` is not a function")),
+    };
+    match kind {
+        ItemKind::Function(fd) => Ok(fd),
+        _ => Err(format!("`{name}` is not a function")),
+    }
+}
+
+/// Every function of the module that a site can name, with its item index:
+/// each top-level function, and each method of an `I` or `extend` block as
+/// `Type::method`. A method whose type has no head name is left out.
+fn callables(module: &Module) -> Vec<(usize, String, &crate::ast::FunctionDef)> {
+    use crate::ast::ItemKind;
+    let mut out = Vec::new();
+    for (i, it) in module.items.iter().enumerate() {
+        let (target, members) = match &it.kind {
+            ItemKind::Function(fd) => {
+                out.push((i, fd.name.clone(), fd));
+                continue;
+            }
+            ItemKind::Impl(ib) => (&ib.self_type, &ib.items),
+            ItemKind::Extend(eb) => (&eb.target_type, &eb.items),
+            _ => continue,
+        };
+        let Some(ty) = eval::type_head_name(target) else { continue };
+        for m in members {
+            if let ItemKind::Function(fd) = &m.kind {
+                out.push((i, format!("{ty}::{}", fd.name), fd));
+            }
+        }
+    }
+    out
 }
 
 /// The tree with one mutation applied, or `None` when the site is not there.
 fn mutate(module: &Module, function: &str, site: Option<&eval::SiteId>, m: &Mutation) -> Option<Module> {
     use crate::ast::Expr;
     let mut out = module.clone();
-    let fd = function_mut(&mut out, function)?;
+    let fd = function_mut(&mut out, function).ok()?;
     if let Mutation::TailLiteral(new) = m {
         let tail = match &mut fd.body_expr {
             Some(e) => e.as_mut(),
@@ -1346,7 +1507,7 @@ fn source_edit(
         return Ok((splice(source, t.span.offset, tok_end(t), new), t.span.offset));
     }
     let site = site.ok_or("no site")?;
-    let node = eval::function_sites(fd)
+    let node = eval::function_sites_named(fd, &site.function)
         .into_iter()
         .find(|(id, _)| id == site)
         .map(|(_, e)| e)
@@ -1411,12 +1572,28 @@ fn source_edit(
     }
 }
 
-/// Every top-level function's name and body, for comparing two trees.
+/// Every top-level function's, and every method's, name and body, for
+/// comparing two trees.
 fn bodies_key(m: &Module) -> Vec<String> {
+    use crate::ast::{FunctionDef, Item, ItemKind};
+    fn fn_key(fd: &FunctionDef) -> String {
+        format!("{}{:?}{:?}", fd.name, fd.body, fd.body_expr)
+    }
+    fn members_key(items: &[Item]) -> String {
+        items
+            .iter()
+            .map(|m| match &m.kind {
+                ItemKind::Function(fd) => fn_key(fd),
+                other => format!("{:?}", std::mem::discriminant(other)),
+            })
+            .collect()
+    }
     m.items
         .iter()
         .map(|it| match &it.kind {
-            crate::ast::ItemKind::Function(fd) => format!("{}{:?}{:?}", fd.name, fd.body, fd.body_expr),
+            ItemKind::Function(fd) => fn_key(fd),
+            ItemKind::Impl(ib) => members_key(&ib.items),
+            ItemKind::Extend(eb) => members_key(&eb.items),
             other => format!("{:?}", std::mem::discriminant(other)),
         })
         .collect()
@@ -1444,12 +1621,11 @@ fn plan(module: &Module, intent: &Intent, observed: &[(Run, eval::CoverageData)]
     let total_failed = failing.len();
     let tests: std::collections::HashSet<&str> = intent.tests.iter().map(String::as_str).collect();
     let mut plans = Vec::new();
-    for (item, it) in module.items.iter().enumerate() {
-        let crate::ast::ItemKind::Function(fd) = &it.kind else { continue };
+    for (item, name, fd) in callables(module) {
         if tests.contains(fd.name.as_str()) {
             continue;
         }
-        for (preorder, (id, node)) in eval::function_sites(fd).into_iter().enumerate() {
+        for (preorder, (id, node)) in eval::function_sites_named(fd, &name).into_iter().enumerate() {
             if id.kind == eval::SiteKind::Index {
                 continue;
             }
@@ -1581,7 +1757,13 @@ pub fn debug_and_repair(source: &str, intent: &Intent, fuel: u64) -> DebugReport
     let original_key = bodies_key(&module);
     'sites: for p in plans.iter_mut() {
         let function = p.evidence.function.clone();
-        let Some(fd) = function_ref(&module, &function) else { continue };
+        let fd = match function_ref(&module, &function) {
+            Ok(fd) => fd,
+            Err(why) => {
+                p.evidence.rejected.push(("*".into(), why));
+                continue;
+            }
+        };
         let Some(body) = bodies.iter().find(|b| b.name == function) else {
             p.evidence.rejected.push(("*".into(), "the function's body is not a `{ … }` block in the tokens".into()));
             continue;
@@ -2146,5 +2328,73 @@ f t_five() {
         assert!(trace[10].contains("not recorded"), "{trace:?}");
         let r = eval::run_bounded(&m, "down", vec![eval::Value::Int(3)], FUEL);
         assert_eq!(r, Ok(eval::Value::Int(0)));
+    }
+
+    /// The comparison in a closure is repaired at its own line and column,
+    /// with the equal operands the closure saw as the evidence.
+    #[test]
+    fn heal_debugger_repairs_an_off_by_one_inside_a_closure() {
+        let src = "f adult(age: i64) -> bool {\n    val over = |a| a > 18;\n    over(age)\n}\n\n\
+                   @t\nf t_eighteen() {\n    assert(adult(18), \"18 is adult\")\n}\n";
+        assert!(errors_of(src).is_empty(), "{:?}", errors_of(src));
+        let report = debug_and_repair(src, &intent::infer_source(src).unwrap(), FUEL);
+        let repair = report.repair.as_ref().expect("repaired");
+        assert_eq!(repair.function, "adult");
+        assert_eq!(repair.site, "adult/binary#0");
+        assert_eq!(repair.mutation, "`>` -> `>=`");
+        assert_eq!((repair.line, repair.col), (2, 22));
+        assert_eq!((repair.failed, repair.passed), (1, 0));
+        assert!(repair.observed.iter().any(|o| o == "t_eighteen: 18 > 18 -> false"), "{:?}", repair.observed);
+        assert!(repair.source.contains("val over = |a| a >= 18;"), "{}", repair.source);
+    }
+
+    /// The same, for a named nested function's comparison.
+    #[test]
+    fn heal_debugger_repairs_an_off_by_one_inside_a_nested_function() {
+        let src = "f adult(age: i64) -> bool {\n    f over(a: i64) -> bool { a > 18 }\n    over(age)\n}\n\n\
+                   @t\nf t_eighteen() {\n    assert(adult(18), \"18 is adult\")\n}\n";
+        assert!(errors_of(src).is_empty(), "{:?}", errors_of(src));
+        let report = debug_and_repair(src, &intent::infer_source(src).unwrap(), FUEL);
+        let repair = report.repair.as_ref().expect("repaired");
+        assert_eq!(repair.function, "adult");
+        assert_eq!(repair.site, "adult/binary#0");
+        assert_eq!(repair.mutation, "`>` -> `>=`");
+        assert_eq!((repair.line, repair.col), (2, 32));
+        assert!(repair.observed.iter().any(|o| o == "t_eighteen: 18 > 18 -> false"), "{:?}", repair.observed);
+        assert!(repair.source.contains("{ a >= 18 }"), "{}", repair.source);
+    }
+
+    /// The same, for a method: it is named `P::adult`, found in its `I` block
+    /// for the mutation, and its token range is that method's body.
+    #[test]
+    fn heal_debugger_repairs_an_off_by_one_inside_a_method() {
+        let src = "S P { age: i64 }\nI P { f adult(&self) -> bool { self.age > 18 } }\n\n\
+                   @t\nf t_eighteen() {\n    v p = @P { age: 18 };\n    assert(p.adult(), \"18 is adult\")\n}\n";
+        assert!(errors_of(src).is_empty(), "{:?}", errors_of(src));
+        let report = debug_and_repair(src, &intent::infer_source(src).unwrap(), FUEL);
+        let repair = report.repair.as_ref().expect("repaired");
+        assert_eq!(repair.function, "P::adult");
+        assert_eq!(repair.site, "P::adult/binary#0");
+        assert_eq!(repair.mutation, "`>` -> `>=`");
+        assert_eq!((repair.line, repair.col), (2, 41));
+        assert_eq!((repair.failed, repair.passed), (1, 0));
+        assert!(repair.observed.iter().any(|o| o == "t_eighteen: 18 > 18 -> false"), "{:?}", repair.observed);
+        assert!(repair.source.contains("self.age >= 18"), "{}", repair.source);
+    }
+
+    /// A method name given twice is refused, with the reason, for each site
+    /// of it: the interpreter keeps one of the two, so the other is not known
+    /// to be the one that ran. No panic, and no repair.
+    #[test]
+    fn heal_records_why_a_method_it_cannot_resolve_was_not_repaired() {
+        let src = "S P { age: i64 }\nI P { f adult(&self) -> bool { self.age > 18 } }\n\
+                   I P { f adult(&self) -> bool { self.age > 19 } }\n\n\
+                   @t\nf t_eighteen() {\n    v p = @P { age: 18 };\n    assert(p.adult(), \"18 is adult\")\n}\n";
+        let report = debug_and_repair(src, &intent::infer_source(src).unwrap(), FUEL);
+        assert!(report.repair.is_none(), "{report:#?}");
+        let refused: Vec<&(String, String)> =
+            report.sites.iter().flat_map(|s| s.rejected.iter()).filter(|(m, _)| m == "*").collect();
+        assert!(!refused.is_empty(), "{report:#?}");
+        assert!(refused.iter().all(|(_, why)| why.contains("defined more than once")), "{refused:?}");
     }
 }
