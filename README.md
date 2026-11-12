@@ -37,6 +37,9 @@ languages. MAGE ranks **#1 of implemented languages** — only the unreachable
 5/5** of the cross-language task suite and is the **tersest** runnable language
 (**173** cl100k tokens vs Rust 275, Java 297); `eval_bench` computes **76/76**
 programs to exact results. Full measured tables in [Benchmarks](#benchmarks-measured).
+Those token counts are for the 5-task suite only. On the 100-task corpus MAGE is
+not smaller than Rust in bytes or under a shared counting rule (see
+[Token counting](#benchmarks-measured)).
 
 </div>
 
@@ -171,10 +174,25 @@ expected value (measured 2026-06-11):
   languages × 3 different tasks) agrees: MAGE 85 cl100k vs Python 89, Go 93,
   Java 98, TS 102, Rust 113.
 - **MAGE surface coverage:** its `eval_bench` correctness harness asserts
-  **73 / 73** general-purpose programs each compute an *exact* result, exercising
+  **76 / 76** general-purpose programs each compute an *exact* result, exercising
   every reachable expression/statement form, all pattern kinds
   (tuple/slice/struct/option), and the standard vocabulary over lists/strings/maps.
   Reproduce: `cargo test --release eval_bench -- --ignored` (in `prototype/`).
+
+**Token counting, stated plainly.** Two different measurements are easy to
+conflate:
+
+- (i) The 173 / 275 / 297 cl100k figures above are BPE counts of the 5-task
+  suite, produced by the external `agentic-eval` crate's tokenizer.
+  `benchmarks/cross_lang/run.sh` itself measures only source bytes and
+  pass/fail; it does not count tokens.
+- (ii) `token-bench` over the 100-task corpus counts **lexer tokens, not BPE
+  tokens**. MAGE / Rust ratios (below 1 means MAGE is smaller): source bytes
+  **1.055**, native lexers **0.997**, shared counting rule **1.034**, dense
+  (whitespace-stripped) form **0.933**. On the corpus MAGE is not smaller than
+  Rust in bytes or under a shared rule; under native lexers the two are within 0.3%.
+  `token-bench` writes `benchmarks/TOKEN_REPORT.md`; the native-lexer and shared-rule ratios are pinned by
+  the CI floor in `scripts/check-ci-floors.sh`.
 
 **Agentic-first toolchain — measured improvement.** The same lens applied to the
 **Forge** project toolchain (`forge`): a human-text baseline vs. the agentic-first
@@ -248,7 +266,7 @@ prototype). Reproduce with `agentic-eval --example swe_languages`.
 > **🎯 design goal** (specified/partially built, not yet in the prototype). See
 > [ROADMAP.md](ROADMAP.md) for status.
 
-- ✅ **Executes End to End** — A tree-walking evaluator (`mage-parse --eval`) runs general-purpose programs across the full surface — every expression/statement form, all pattern kinds, and the standard vocabulary over lists/strings/maps. The `eval_bench` suite computes **73 / 73** programs to exact results.
+- ✅ **Executes End to End** — A tree-walking evaluator (`mage-parse --eval`) runs general-purpose programs across the full surface — every expression/statement form, all pattern kinds, and the standard vocabulary over lists/strings/maps. The `eval_bench` suite computes **76 / 76** programs to exact results.
 
 - ✅ **Zero-Ambiguity Syntax** — Deterministic LL(1) grammar eliminates parsing failures for both humans and AI agents. No backtracking, no ambiguity.
 
@@ -350,6 +368,9 @@ lists, strings, and maps — see [Benchmarks](#benchmarks-measured).
 # e.g. given `f fib(n){ if n < 2 { n } else { fib(n-1) + fib(n-2) } }` in fib.mg
 mage-parse --eval fib.mg fib 25       # → 75025
 ```
+
+`token-bench` counts lexer tokens and bytes, not BPE tokens; the stated rule and
+its four ratios are in [Benchmarks](#benchmarks-measured).
 
 ```sh
 # Run the token-efficiency benchmark across all 100 corpus tasks
