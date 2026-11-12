@@ -92,6 +92,11 @@ fn site_text(site: &mage_prototype::types::MismatchSite) -> String {
         MismatchSite::CallArg { callee, index } => format!("argument {} of `{callee}`", index + 1),
         MismatchSite::BinaryOperand { op } => format!("the right operand of `{op}`"),
         MismatchSite::Assignment => "the assigned value".into(),
+        MismatchSite::IfArm { branch } => {
+            format!("the {} arm of an `if`", if *branch == 0 { "then" } else { "else" })
+        }
+        MismatchSite::MatchArm { index } => format!("arm {} of a `match`", index + 1),
+        MismatchSite::ListElement { index } => format!("element {} of a list", index + 1),
     }
 }
 
