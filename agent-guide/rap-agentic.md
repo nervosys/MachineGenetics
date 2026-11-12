@@ -69,17 +69,26 @@ type mismatch the checker records structured evidence
 (`types::check_with_evidence`): the enclosing function, the site (the
 returned tail expression, a typed `let` initializer, argument *i* of a call
 to a builtin such as `range` or to a user function, the right operand of
-arithmetic between two numeric types, an assigned value), the expression
-itself, and the expected and found types. For a numeric-to-numeric mismatch
+arithmetic between two numeric types, an assigned value, the else arm of an
+`if` against the then arm's type, an arm of a `match` against the first
+arm's type, an element of a list literal against the first element's type),
+the expression itself, and the expected and found types. Arm sites are
+recorded only for two concrete numeric types, and a block arm is the site
+through its tail expression. For a numeric-to-numeric mismatch
 the candidate is a cast of exactly that expression: `expr as T`, or
 `(expr) as T` when the expression is not atomic. The expression is found in
 the source by re-parsing token ranges of the named function and comparing
 the result with the checker's expression (a returned value must end the
 body; an operand must end its binary expression; a call argument is searched
 inside its located call, and the call's top-level commas decide between
-equal arguments). Exactly one range must match, with `(x)` and `x` counted
+equal arguments; an `if` arm's value must end before the `}` of its block,
+and a `match` arm's value before the `}` of its block or its comma, both
+searched inside the located `if` or `match`; a list element is searched
+inside its located literal, and the literal's top-level commas decide between
+equal elements). Exactly one range must match, with `(x)` and `x` counted
 once; otherwise the mismatch is reported as not located, with how many ranges
-matched, and nothing is tried for it. A mismatch between non-numeric types is
+matched, and nothing is tried for it. Two arms holding the same expression
+are therefore reported as not located, since the rule cannot tell them apart. A mismatch between non-numeric types is
 reported with no fix. `heal_one`'s patterns are used only for diagnostics that
 have a position, and `recover` when the source does not parse. A candidate is
 accepted only if the error count strictly drops, every function keeps its
@@ -147,9 +156,16 @@ JSON (`compile.steps[].evidence`, `compile.unfixed`, `debug.sites`,
 
 **Limits.**
 
-- Compiler evidence covers the sites listed above. A mismatch elsewhere (an
-  `if`/`match` arm, a list element, a contract clause, a nested function) has
-  no evidence and gets no cast. Only numeric conversions are proposed; for
+- Compiler evidence covers the sites listed above. A mismatch elsewhere has
+  no evidence and gets no cast. Arms are compared with each other, not with
+  an expected type: a `let` or return type that an `if` or `match` fails is
+  still reported at the whole expression, as before. The then arm of an `if`
+  is never converted; the else arm is. Only a block arm's tail is a site, not
+  its statements. Contract clauses have no evidence and no cast: the checker
+  runs them outside any function body (so a numeric mismatch inside one is
+  reported as a diagnostic only), and a clause lies outside the body that the
+  locator searches, so a cast there would have nowhere to be placed. A nested
+  function has no evidence either. Only numeric conversions are proposed; for
   arithmetic the right operand is converted to the left operand's type, which
   may not be the conversion the author meant.
 - A type-checker diagnostic still has no line in `--check`; only the evidence
