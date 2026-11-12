@@ -32,7 +32,7 @@ use germline::journal::Journal;
 use germline::lineage::Lineage;
 use germline::runner::{Halt, Runner, RunnerPolicy, Workload};
 use germline::supervisor::HealthSample;
-use germline::variation::{Genome, Locus, Selection, VariationPlan};
+use germline::variation::{Genome, Locus, ParamSearch, Selection, VariationPlan};
 use germline::{EvalSuite, FitnessVector, Generation, Measurement};
 use ribosome::Digest;
 use sha2::{Digest as _, Sha256};
@@ -175,6 +175,15 @@ pub struct ArenaWorkload {
     /// `--objectives ...latency`.
     pub with_latency: bool,
     built: HashMap<String, Built>,
+    /// Joules every session has charged, all accounts (programs, training,
+    /// probes), as the kernel's ledger totals them. This is the running count
+    /// [`Workload::joules_spent`] reports to the energy budget.
+    spent: f64,
+    /// Set when a session's energy was not read in full, so `spent` would be an
+    /// undercount. The budget then refuses to count on it.
+    spend_incomplete: bool,
+    /// Set when any session's joules were estimated rather than read.
+    spend_estimated: bool,
 }
 
 /// Read held-out files into corpora named by their paths: the naming and order
@@ -198,6 +207,24 @@ impl ArenaWorkload {
             heldout_files: Vec::new(),
             with_latency: false,
             built: HashMap::new(),
+            spent: 0.0,
+            spend_incomplete: false,
+            spend_estimated: false,
+        }
+    }
+
+    /// The basis of the joules [`Workload::joules_spent`] counts. `Measured`
+    /// only if every session read its counters in full; otherwise `Estimated`,
+    /// stating the model, or `Unavailable` when nothing has been measured yet.
+    pub fn spend_basis(&self) -> Basis {
+        if self.spend_incomplete {
+            Basis::Unavailable { why: "a session's energy was not read in full, so the total is an undercount".into() }
+        } else if self.built.is_empty() {
+            Basis::Unavailable { why: "no session has run".into() }
+        } else if self.spend_estimated {
+            Basis::Estimated { how: format!("wall-clock seconds × {} W assumed", self.cpu_watts) }
+        } else {
+            Basis::Measured
         }
     }
 
@@ -236,6 +263,15 @@ impl Workload for ArenaWorkload {
     fn materialize(&mut self, spec: &CandidateSpec) -> Result<Digest, String> {
         let cfg = decode(&self.base, &spec.genome);
         let report = run(cfg.clone(), self.corpora.clone(), self.meters(), vec![])?;
+        // What this session cost, as the kernel's ledger charged it. A span no
+        // meter read, or a session with no reading at all, leaves the count short,
+        // so the budget is then refused rather than given a figure it cannot trust.
+        if report.energy.unmetered_spans > 0 || report.energy.charged.is_empty() {
+            self.spend_incomplete = true;
+        } else {
+            self.spent += report.energy.total();
+            self.spend_estimated |= !report.energy.all_measured;
+        }
         let learner = report.learners.first().ok_or("the session trained no learner")?;
         // Identity is the configuration and what it produced, so the same
         // genome under the same seed materializes to the same artifact.
@@ -278,6 +314,13 @@ impl Workload for ArenaWorkload {
             f = f.with("latency", latency_axis(b.latency_s_per_kb));
         }
         Ok(f)
+    }
+
+    /// Every joule the sessions behind this workload have charged, the seed's
+    /// included. `None` once any session's energy was not read in full, so a
+    /// budget refuses to run on it.
+    fn joules_spent(&self) -> Option<f64> {
+        (!self.spend_incomplete).then_some(self.spent)
     }
 
     /// Refuse to start a cycle on held-out data that has changed under the run.
@@ -353,7 +396,8 @@ const USAGE: &str = "usage: arena succession --heldout FILE[,FILE...] --journal 
 [--stop-file PATH] [--force] [--json] [--rounds N] [--programs N] [--candidates N] [--agents K:N,...] \
 [--proposer-command \"CMD ARGS\"] [--proposer-timeout S] \
 [--objectives capability[,efficiency][,latency]] [--dominance-min F] [--dominance-floor F] \
-[--objective-tolerance AXIS=F,...] [--allow-estimated-energy]";
+[--objective-tolerance AXIS=F,...] [--allow-estimated-energy] \
+[--energy-budget JOULES] [--param-search es|perturb]";
 
 /// Parse `--objective-tolerance` items: `AXIS=VALUE`, comma-separated. A value
 /// must be finite and non-negative, and the axis must be a known one.
@@ -416,6 +460,24 @@ const DEFAULT_DOMINANCE_MIN: f64 = 0.01;
 
 fn num(v: &str, flag: &str) -> Result<u64, String> {
     v.parse().map_err(|_| format!("{flag}: `{v}` is not a number"))
+}
+
+/// `--energy-budget`: a positive, finite number of joules.
+fn parse_budget(v: &str) -> Result<f64, String> {
+    v.parse::<f64>()
+        .ok()
+        .filter(|x| x.is_finite() && *x > 0.0)
+        .ok_or_else(|| format!("--energy-budget: `{v}` is not a positive number of joules"))
+}
+
+/// `--param-search`: `es` for the self-adaptive evolution strategy at its stated
+/// defaults, or `perturb` for the uniform random perturbation (the default).
+fn parse_param_search(v: &str) -> Result<ParamSearch, String> {
+    match v {
+        "es" => Ok(ParamSearch::es()),
+        "perturb" => Ok(ParamSearch::Perturb),
+        other => Err(format!("--param-search: `{other}` should be `es` or `perturb`")),
+    }
 }
 
 fn parse_objectives(list: &str) -> Result<Vec<String>, String> {
@@ -505,6 +567,15 @@ fn objectives_text(objectives: Option<&[String]>, dominance: Option<&DominanceRu
     }
 }
 
+fn param_search_text(search: &ParamSearch) -> String {
+    match search {
+        ParamSearch::Perturb => "uniform random perturbation".into(),
+        ParamSearch::SelfAdaptiveEs { rate, sigma_init, sigma_min, sigma_max, .. } => format!(
+            "self-adaptive evolution strategy (rate {rate}, step {sigma_init} in [{sigma_min}, {sigma_max}] of range)"
+        ),
+    }
+}
+
 fn basis_text(basis: &Basis) -> String {
     match basis {
         Basis::Measured => "measured (hardware energy counter)".into(),
@@ -523,6 +594,9 @@ fn halt_text(h: &Halt) -> String {
             format!("search stalled: {consecutive_refusals} consecutive refusals")
         }
         Halt::WorkloadFailed { detail } => format!("workload failed: {detail}"),
+        Halt::EnergyExhausted { spent, budget, after_cycles } => {
+            format!("energy budget reached: spent {spent:.3} J of {budget:.3} J, after {after_cycles} cycles")
+        }
         Halt::Demoted { generation, mode, fell_back_to } => {
             format!("demoted: {generation} failed in {mode}; fell back to {fell_back_to}")
         }
@@ -537,7 +611,10 @@ fn halt_text(h: &Halt) -> String {
 /// so it is 2, as is a failure with nothing to fall back to.
 fn exit_code(h: &Halt) -> i32 {
     match h {
-        Halt::BudgetExhausted { .. } | Halt::StopRequested { .. } | Halt::SearchStalled { .. } => 0,
+        Halt::BudgetExhausted { .. }
+        | Halt::StopRequested { .. }
+        | Halt::SearchStalled { .. }
+        | Halt::EnergyExhausted { .. } => 0,
         Halt::WorkloadFailed { .. } => 1,
         Halt::Demoted { .. } | Halt::NoFallbackAvailable { .. } => 2,
     }
@@ -563,6 +640,8 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
     let mut dominance_floor: Option<f64> = None;
     let mut objective_tolerance: Vec<(String, f64)> = Vec::new();
     let mut allow_estimated = false;
+    let mut energy_budget: Option<f64> = None;
+    let mut param_search = ParamSearch::Perturb;
     let mut base = Config::default();
     let mut i = 0;
     while i < args.len() {
@@ -611,6 +690,8 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
             }
             "--objective-tolerance" => objective_tolerance.extend(parse_tolerances(v)?),
             "--allow-estimated-energy" => allow_estimated = true,
+            "--energy-budget" => energy_budget = Some(parse_budget(v)?),
+            "--param-search" => param_search = parse_param_search(v)?,
             other => return Err(format!("unknown argument `{other}`\n{USAGE}")),
         }
         i += if takes_value { 2 } else { 1 };
@@ -634,6 +715,7 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
         return Err("--dominance-floor needs --objectives: the floor belongs to the dominance rule".into());
     }
     let tolerances = validate_tolerances(objectives.as_deref(), &objective_tolerance)?;
+    param_search.validate()?;
 
     let mut w = ArenaWorkload::new(base.clone(), read_corpora(&heldout)?);
     w.heldout_files = heldout.clone();
@@ -687,19 +769,21 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
 
     // Parents are chosen by Pareto rank over the named objectives when they are
     // given. Without them the variation plan is the default, as it always was.
-    let variation = match &objectives {
+    let mut variation = match &objectives {
         Some(o) => VariationPlan {
             selection: Selection::Pareto { objectives: o.clone() },
             ..VariationPlan::default()
         },
         None => VariationPlan::default(),
     };
+    variation.param_search = param_search.clone();
     let policy = RunnerPolicy {
         name: "succession-cli".into(),
         max_cycles: cycles,
         candidates_per_cycle: candidates,
         stop_file: stop_file.map(PathBuf::from),
         variation,
+        energy_budget_joules: energy_budget,
         ..RunnerPolicy::default()
     };
     let mut runner = Runner::new(policy, &ep, &at, suite.clone(), seed);
@@ -715,17 +799,26 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
             journal_path.display(),
             resumed.proposals
         );
+        if energy_budget.is_some() {
+            eprintln!(
+                "succession: energy: {:.3} J restored from the journal; journals written before a budget was set count as zero",
+                resumed.energy_spent
+            );
+        }
         runner = runner.resume(&resumed);
         let r = runner.run(&mut resumed.lineage, &mut journal, &mut w);
         (r, resumed.lineage)
     };
 
+    // The spend's basis is read after the run, because a cycle can add to it.
+    let spend_basis = w.spend_basis();
     if json {
         let out = serde_json::json!({
             "suite_digest": digest.0,
             "journal": journal_path.display().to_string(),
             "objectives": objectives_json(objectives.as_deref(), dominance.as_ref()),
             "energy_basis": basis,
+            "energy_spend_basis": spend_basis,
             "report": report,
         });
         println!("{}", serde_json::to_string_pretty(&out).map_err(|e| e.to_string())?);
@@ -733,6 +826,7 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
         println!("succession: held-out suite digest {}", digest.0);
         println!("objectives: {}", objectives_text(objectives.as_deref(), dominance.as_ref()));
         println!("energy basis: {}", basis_text(&basis));
+        println!("continuous loci: {}", param_search_text(&param_search));
         println!("policy `{}`@{}, at most {cycles} cycles, journal {}", report.policy, report.policy_digest.short(), journal_path.display());
         for c in &report.cycles {
             match c.candidate {
@@ -747,6 +841,12 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
             report.promotions,
             report.refusals
         );
+        if let (Some(spent), Some(budget)) = (report.energy_spent_joules, energy_budget) {
+            println!(
+                "energy: spent {spent:.3} J of a {budget:.3} J budget, the seed included (spend basis: {})",
+                basis_text(&spend_basis)
+            );
+        }
         println!("halt: {}", halt_text(&report.halt));
         if let Some(champ) = lineage.champion() {
             println!("champion: {}", champ.id);
