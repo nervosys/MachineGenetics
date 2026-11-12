@@ -852,6 +852,11 @@ pub fn check_grad_obligations(module: &ast::Module, engine: &DiffInfer) -> Vec<D
                 collect_grads_expr(be, &fd.name, &mut sites);
             }
         }
+        // A `train` body is code too, so a `grad` in it gets the same obligation.
+        // Before this, a `grad` there was never examined.
+        if let ast::ItemKind::Train(td) = &item.kind {
+            collect_grads_block(&td.body, &format!("train {}", td.name), &mut sites);
+        }
     }
     for (owner, value) in sites {
         match expr_status_resolved(engine, &value) {
@@ -1657,6 +1662,40 @@ mod tests {
         let out = missing_train_nets(&module);
         assert_eq!(out.len(), 1);
         assert!(!out[0].message.contains("did you mean"), "{}", out[0].message);
+    }
+
+    /// The grad obligation over a module's `grad` sites, as `--check` runs it.
+    fn grad_checks(src: &str) -> Vec<Diagnostic> {
+        let module = parser::parse(&lexer::lex(src)).expect("parse failed");
+        let eff = effects::infer_effects(&module);
+        check_grad_obligations(&module, &infer(&module, &eff))
+    }
+
+    /// A `grad` in a train body is judged like one in a function. A smooth
+    /// expression passes; one the pass cannot analyse is the E9999 warning; one
+    /// with no derivative is the E0308 error. Each names the train block.
+    #[test]
+    fn a_grad_in_a_train_body_gets_the_function_obligation() {
+        let train = |expr: &str| {
+            format!(
+                "net A {{ layer fc: Linear(3, 1); forward {{ fc }} }}\n\
+                 train Fit {{ net: A; optimizer: SGD(0.05); loss: MSE; epochs: 1; body {{ val g = grad({expr}, w); }} }}"
+            )
+        };
+
+        let smooth = grad_checks(&train("w * w"));
+        assert!(smooth.is_empty(), "{smooth:?}");
+
+        let unknown = grad_checks(&train("w |> abs"));
+        assert_eq!(unknown.len(), 1, "{unknown:?}");
+        assert_eq!(unknown[0].severity, Severity::Warning);
+        assert_eq!(unknown[0].id.as_deref(), Some("E9999"));
+        assert!(unknown[0].message.contains("in `train Fit`"), "{}", unknown[0].message);
+
+        let refused = grad_checks(&train("w > 0.0"));
+        assert_eq!(refused.len(), 1, "{refused:?}");
+        assert_eq!(refused[0].severity, Severity::Error);
+        assert!(refused[0].message.contains("in `train Fit`"), "{}", refused[0].message);
     }
 
     // ── Reporting ────────────────────────────────────────────────────
