@@ -1,4 +1,4 @@
-// Every diagnostic the compiler produces: 21 codes and 7 warning classes.
+// Every diagnostic the compiler produces: 22 codes and 7 warning classes.
 //
 // `diagnostic_row` is id, severity, category, summary. A code is what
 // `--check --json` prints. A warning class has no code of its own: where it
@@ -143,12 +143,20 @@ kb Diagnostics {
     fact tested_by("E0711", "not_differentiable_net");
     fact gap("E0711", "dormant: no layer type is judged not differentiable, so no source reaches this; its witness sets the verdict by hand");
 
-    // A contract clause written on a `net`. Nothing evaluates it, so it is a
-    // warning that the clause is not checked (kb/rules/contracts.mg states why).
+    // A contract clause written on a `net` or a `train` block. Nothing evaluates
+    // it, so it is a warning that the clause is not checked (kb/rules/contracts.mg
+    // states why).
     fact instance_of("E0712", Diagnostic);
-    fact diagnostic_row("E0712", "Warning", "ContractNotChecked", "A contract clause written on a net, which no pass checks");
+    fact diagnostic_row("E0712", "Warning", "ContractNotChecked", "A contract clause written on a net or a train block, which no pass checks");
     fact enforced_by("E0712", "contract");
     fact tested_by("E0712", "net_contract_not_checked");
+
+    // A `train` block naming a net the module does not define. Reachable from
+    // source, so the witness is a source, not a hand-set verdict.
+    fact instance_of("E0713", Diagnostic);
+    fact diagnostic_row("E0713", "Error", "UnknownNet", "A train block naming a net the module does not define");
+    fact enforced_by("E0713", "differentiable");
+    fact tested_by("E0713", "unknown_net");
 
     // Only warnings go out under this code: see the two classes below.
     fact instance_of("E9999", Diagnostic);

@@ -589,13 +589,16 @@ pub enum DiagnosticCategory {
     /// A contract clause on a `net`. Nothing evaluates it, so it is a warning
     /// that the clause is not checked, not an error: the net is valid (E0712).
     ContractNotChecked,
+    /// A `train` block naming a `net` the module does not define. The message
+    /// names both, and suggests the closest net name when one is near (E0713).
+    UnknownNet,
     /// Other.
     Other,
 }
 
 impl DiagnosticCategory {
     /// Every category. `tests/diagnostics.rs` holds this to the enum.
-    pub const ALL: [DiagnosticCategory; 19] = [
+    pub const ALL: [DiagnosticCategory; 20] = [
         DiagnosticCategory::BorrowConflict,
         DiagnosticCategory::UseAfterMove,
         DiagnosticCategory::TypeMismatch,
@@ -614,6 +617,7 @@ impl DiagnosticCategory {
         DiagnosticCategory::KbRule,
         DiagnosticCategory::NotDifferentiable,
         DiagnosticCategory::ContractNotChecked,
+        DiagnosticCategory::UnknownNet,
         DiagnosticCategory::Other,
     ];
 
@@ -638,6 +642,7 @@ impl DiagnosticCategory {
             DiagnosticCategory::KbRule => "E0570",
             DiagnosticCategory::NotDifferentiable => "E0711",
             DiagnosticCategory::ContractNotChecked => "E0712",
+            DiagnosticCategory::UnknownNet => "E0713",
             DiagnosticCategory::CoreViolation => "E0552",
             DiagnosticCategory::ParamDomain => "E0553",
             DiagnosticCategory::Deprecated => "E0554",
@@ -703,6 +708,9 @@ impl DiagnosticCategory {
             }
             DiagnosticCategory::ContractNotChecked => {
                 "move the contract onto a function, which is checked; a net has no run-time check for it to reach"
+            }
+            DiagnosticCategory::UnknownNet => {
+                "declare the net in this module, or name the net the train block should train"
             }
             DiagnosticCategory::Other => "see the message for details",
         }

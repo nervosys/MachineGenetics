@@ -82,6 +82,7 @@ const WITNESSES: &[(&str, &str, fn() -> bool)] = &[
     ("E0710", "net_shape", net_shape),
     ("E0711", "not_differentiable_net", not_differentiable_net),
     ("E0712", "net_contract_not_checked", net_contract_not_checked),
+    ("E0713", "unknown_net", unknown_net),
     ("E9999", "grad_unchecked", grad_unchecked),
     ("no_derivative_rule", "no_derivative_rule", no_derivative_rule),
     ("param_no_gradient", "param_no_gradient", param_no_gradient),
@@ -220,6 +221,13 @@ fn net_contract_not_checked() -> bool {
         && check("@req(x > 0)\nnet A { layer fc: Linear(3, 1); forward { fc } }\n", &[])
             .iter()
             .all(|(s, _, _)| s != "error")
+}
+
+/// A `train` naming a net the module does not define is E0713, and is not when
+/// the net is there. The near-miss name is suggested.
+fn unknown_net() -> bool {
+    emits("net Nowhere { layer fc: Linear(3, 1); forward { fc } }\ntrain Fit { net: Nowhear; optimizer: SGD(0.1); loss: MSE; epochs: 1; }", "E0713")
+        && absent("net Nowhere { layer fc: Linear(3, 1); forward { fc } }\ntrain Fit { net: Nowhere; optimizer: SGD(0.1); loss: MSE; epochs: 1; }", "E0713")
 }
 
 fn net_shape() -> bool {

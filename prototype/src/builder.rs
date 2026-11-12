@@ -720,7 +720,7 @@ fn levenshtein(a: &str, b: &str) -> usize {
 }
 
 /// The closest candidate to `target` within `max` edits, if any.
-fn nearest<'a>(target: &str, candidates: &[&'a str], max: usize) -> Option<&'a str> {
+pub(crate) fn nearest<'a>(target: &str, candidates: &[&'a str], max: usize) -> Option<&'a str> {
     candidates
         .iter()
         .map(|c| (*c, levenshtein(target, c)))

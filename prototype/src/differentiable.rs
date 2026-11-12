@@ -916,6 +916,45 @@ pub fn check_train_nets(module: &ast::Module, engine: &DiffInfer) -> Vec<Diagnos
     out
 }
 
+/// Every `train` block the targets refuse: a net it names that the module does
+/// not define (E0713), and one judged not differentiable (E0711). `--check` and
+/// `--target=abl-train` / `abl-infer` all report this set.
+pub fn train_block_errors(module: &ast::Module, engine: &DiffInfer) -> Vec<Diagnostic> {
+    let mut out = missing_train_nets(module);
+    out.extend(check_train_nets(module, engine));
+    out
+}
+
+/// A `train` block naming a net this module does not define (E0713). The
+/// closest net name is suggested when one is within three edits.
+pub fn missing_train_nets(module: &ast::Module) -> Vec<Diagnostic> {
+    let names: Vec<&str> = module
+        .items
+        .iter()
+        .filter_map(|item| match &item.kind {
+            ast::ItemKind::Net(n) => Some(n.name.as_str()),
+            _ => None,
+        })
+        .collect();
+    let mut out = Vec::new();
+    for item in &module.items {
+        if let ast::ItemKind::Train(td) = &item.kind
+            && !names.contains(&td.net.as_str())
+        {
+            let hint = crate::builder::nearest(&td.net, &names, 3)
+                .map(|c| format!(" — did you mean `{c}`?"))
+                .unwrap_or_default();
+            out.push(Diagnostic::categorized(
+                Severity::Error,
+                format!("train `{}` names net `{}`, which this module does not define{hint}", td.name, td.net),
+                DiagnosticCategory::UnknownNet,
+                None,
+            ));
+        }
+    }
+    out
+}
+
 fn collect_grads_block(b: &ast::Block, owner: &str, out: &mut Vec<(String, ast::Expr)>) {
     for s in &b.stmts {
         match s {
@@ -1582,6 +1621,42 @@ mod tests {
     fn a_train_over_a_missing_net_is_not_refused_here() {
         let src = "train Fit { net: Nowhere; optimizer: SGD(0.1); loss: MSE; epochs: 1; }";
         assert!(train_gate(src, None).is_empty());
+    }
+
+    /// A `train` naming a net the module lacks is E0713, and the closest net
+    /// name within three edits is suggested. A present net is not.
+    #[test]
+    fn a_train_over_a_missing_net_is_refused_with_the_nearest_name() {
+        let module = parser::parse(&lexer::lex(
+            "net Nowhere { layer fc: Linear(3, 1); forward { fc } }\n\
+             train Fit { net: Nowhear; optimizer: SGD(0.1); loss: MSE; epochs: 1; }",
+        ))
+        .expect("parse failed");
+        let out = missing_train_nets(&module);
+        assert_eq!(out.len(), 1, "{out:?}");
+        assert_eq!(out[0].id.as_deref(), Some("E0713"));
+        let m = &out[0].message;
+        assert!(m.contains("`Fit`") && m.contains("`Nowhear`"), "{m}");
+        assert!(m.contains("did you mean `Nowhere`"), "{m}");
+    }
+
+    #[test]
+    fn a_train_over_a_present_net_is_not_missing() {
+        let module = parser::parse(&lexer::lex(AFFINE_TRAIN)).expect("parse failed");
+        assert!(missing_train_nets(&module).is_empty());
+    }
+
+    /// The missing-net diagnostic is the one `--check` and the targets refuse on.
+    #[test]
+    fn a_missing_net_with_no_near_name_has_no_suggestion() {
+        let module = parser::parse(&lexer::lex(
+            "net Alpha { layer fc: Linear(3, 1); forward { fc } }\n\
+             train Fit { net: Zeta; optimizer: SGD(0.1); loss: MSE; epochs: 1; }",
+        ))
+        .expect("parse failed");
+        let out = missing_train_nets(&module);
+        assert_eq!(out.len(), 1);
+        assert!(!out[0].message.contains("did you mean"), "{}", out[0].message);
     }
 
     // ── Reporting ────────────────────────────────────────────────────
