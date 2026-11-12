@@ -316,6 +316,8 @@ $ mage-parse --pipeline prototype/examples/tiny_lm.mg
   ✓ train LearnPlateau: 1 forward ops, 1 backward ops
 ```
 
+That transcript is historical. `--pipeline` no longer prints a tick for these blocks. It prints the warning `!train Learn: autograd tape covers nothing (1 node)` and the same for `LearnPlateau`, and computes no gradient (`prototype/src/main.rs`, about line 3629). The tick was the defect this section describes.
+
 One forward node is the net's name. One backward op is the seed,
 `d(loss)/d(loss) = 1.0` — and because that single node is *both* the loss and
 the parameter, the seed is recorded as **the gradient of the loss with
