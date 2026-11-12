@@ -358,6 +358,54 @@ never chosen. Under Pareto the scalar score is not consulted for parents. The
 choice is made from the run's seed, so the same seed gives the same parents. The
 runner selects by Pareto when its variation plan says so (`RunnerPolicy.variation`).
 
+**Continuous loci: a self-adaptive evolution strategy (opt-in).** Gene loci and
+Param loci are varied by different operators, which is the split this design
+rests on. Substitution and crossover act on genes, which have no distance to step
+along. The continuous optimiser acts on `Locus::Param`. `VariationPlan.param_search`
+selects it: `ParamSearch::Perturb` (the default, the uniform random perturbation),
+or `ParamSearch::SelfAdaptiveEs { rate, sigma_init, sigma_min, sigma_max, tau }`,
+built by `ParamSearch::es()` at `rate 0.2`, `sigma_init 0.1`, `sigma_min 0.001`,
+`sigma_max 0.5`, `tau = 1/sqrt(2n)` with `n` the number of Param loci. The CLI
+exposes it as `arena succession --param-search es|perturb`.
+
+Each Param locus carries its own step size `sigma`, in units of the locus's range
+(1.0, since values are normalized to `[0,1]`). For each locus, with probability
+`rate`, one proposal does `sigma' = clamp(sigma · exp(tau · N), sigma_min,
+sigma_max)` and then `value' = clamp(value + sigma' · N · 1.0, 0, 1)`, with a fresh
+standard normal `N` each time. `N` comes from a Box–Muller draw on the existing
+seeded SplitMix stream (`Rng::gaussian`), so the same seed gives the same
+trajectory, and no dependency is added. The ES replaces the plan's `Perturb` for
+Param loci. A plan's `Swap` or `Substitute` still runs.
+
+**Where sigma lives, and why.** On the locus: `Locus::Param { value, sigma }`, with
+`sigma` an `Option` that is skipped when absent. The other option was a side table in
+the runner keyed by generation id, journaled. That would have meant a second record
+to replay and reconcile on resume, and a step size separated from the value it
+adapted. Crossover copies whole loci, so a step size travels with its value, the way
+a gene's content hash does. The field is skipped when `None`, so a genome the ES
+never touched serializes byte-for-byte as before, and the `Perturb` plan omits
+`param_search` entirely. The default policy's JSON and digest are pinned by a golden
+test (`the_default_policy_serializes_and_digests_exactly_as_before_these_options`).
+
+**What this is not.** It is not CMA-ES. There is one step size per locus, with no
+covariance matrix, so it cannot learn a rotated search direction. Step sizes are
+adapted only through the children that carry them, with no rank-based recombination
+of step sizes. The ES skips `Perturb` on the plan, so the plan's Perturb `scale`
+has no effect under it. The per-locus `rate` is its own setting, not the plan's
+Perturb rate, because `Swap` and `Substitute` have no rate that could stand in.
+
+**What was measured.** On `1 − Σ(x − x*)²` over three Param loci, with the same
+seeds, initial population and budget (20 generations of 8 offspring, best 8 kept),
+the ES does **not** beat perturbation at the stated defaults. Mean fitness over
+seeds 1–5 is 0.999187 for the ES and 0.999722 for perturbation, a gap of −0.00054. Over
+seeds 1–20 the gap is −0.0002 at 20 generations and −0.0039 at 10. Both reach the
+optimum to within 0.01 in squared distance. The defaults were fixed before these
+numbers were seen and were not tuned to them. The test
+`es_is_within_a_small_margin_of_perturbation_on_the_same_budget_and_seeds` asserts
+near-parity with a 0.001 margin, and makes no claim of dominance. Any claim that the
+ES is the better optimiser needs a benchmark where its step-size adaptation can
+matter, and this one does not show that.
+
 ### Attestation — proof of who judged ✅
 
 The lineage records *which* evaluator issued a verdict. That was a claim; HMAC-
@@ -440,6 +488,7 @@ mode is not crashing — it is continuing:
 | `SearchStalled` | N consecutive refusals — more cycles are a slower way to learn the search is stuck |
 | `WorkloadFailed` | candidates cannot be produced at all, or the workload's inputs changed under it (`Workload::before_cycle`); cycling would fill the journal with nothing |
 | `StopRequested` | the kill switch: the policy's `stop_file` exists before a cycle. Not a failure; the operator asked |
+| `EnergyExhausted` | the energy budget is reached before a cycle starts. Not a failure; the operator set the limit. See below |
 | `NoFallbackAvailable` | the most serious: the system is running something it has decided it should not be |
 
 **The kill switch.** `RunnerPolicy::stop_file` is checked before every cycle,
@@ -453,6 +502,26 @@ supervising script. Before each cycle, `Runner::run` also calls
 `Workload::before_cycle`. The default does nothing. A workload whose inputs can
 change underneath it, such as held-out data on disk, returns an error there, and
 the run halts as `WorkloadFailed`.
+
+**The energy budget across cycles.** `RunnerPolicy::energy_budget_joules` is a fixed
+unit of compute for the run, in joules. The `Workload` trait reports its running
+count of joules through `joules_spent()`, which is defaulted to `None`. The runner
+books the difference across each cycle, and any evaluation made before the run,
+such as a seed, is booked at the start of the invocation. Before a cycle starts, if
+the booked spend is at or past the budget, the run halts with
+`EnergyExhausted { spent, budget, after_cycles }`. It is journalled as a note and
+reported. The last cycle that starts is the one that brings the spend past the line.
+
+Three limits follow from how this is built. A budget on a workload that reports no
+joules is **refused before any cycle**, with `WorkloadFailed`, because a run that
+cannot say what it spends cannot be bounded by it. Spend is journalled as
+`Entry::EnergySpent`, one per cycle plus one per invocation for its pre-run
+evaluations, and written only under a budget, so an unbudgeted journal is byte for
+byte unchanged. Resume restores the journalled sum (`Resumed.energy_spent`). A
+journal written before any budget restores **zero** for those cycles, and the
+output says so. The unit is whatever the workload meters. `ArenaWorkload` meters the
+kernel ledger's joules, which are estimated (wall-clock seconds times an assumed
+wattage) on a machine without a power counter.
 
 **Halting on demotion** is the one that matters. The tempting behaviour — fall
 back, then keep searching — treats a failed promotion as a bad draw. But a
