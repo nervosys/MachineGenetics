@@ -777,19 +777,21 @@ described below. With it:
 
 - **Promotion** is the gate's rule (a) or rule (b), as set out in
   `GERMLINE.md` §4. The axes are `capability` (primary, which must be listed),
-  `efficiency` (the guard, with tolerance `0.25`), and `latency`. The objectives
-  are the axes named. Rule (b) requires each of them to be at least the champion
-  less its tolerance (the guard tolerance for `efficiency`, zero for `capability`
-  and `latency`, unless `--objective-tolerance` sets one), and at least one of
+  `efficiency` (the guard, with tolerance `0.25` for the guard check), and `latency`.
+  The objectives are the axes named. Rule (b) requires each of them to be at least
+  the champion less its tolerance. That tolerance is set by `--objective-tolerance`,
+  and it is zero by default for every objective, `capability` included. The guard
+  tolerance does not apply under rule (b), so `efficiency` cannot give up `0.25` to
+  buy latency. At least one of
   them to improve by `--dominance-min` (default `0.01`). Rule (b) also needs the
   primary value strictly above `--dominance-floor` (default `0`), so a learner with
   no intelligence cannot win on energy. Each objective also has the ratchet against
   the lineage's best value, with the same tolerance.
-  `--objective-tolerance latency=0.005` sets a non-guard objective's tolerance
-  (default zero, so the old behaviour). It takes comma-separated `AXIS=VALUE` items.
-  Values must be finite and non-negative, and the axis must be listed in
-  `--objectives`. `capability` has zero tolerance, and `efficiency` is the guard, so
-  neither can be set here. Both flags need `--objectives`.
+  `--objective-tolerance latency=0.005` sets an objective's tolerance (default zero,
+  so the old behaviour). It takes comma-separated `AXIS=VALUE` items. Values must be
+  finite and non-negative, and the axis must be listed in `--objectives`.
+  `capability` is the primary axis and always has zero tolerance, so it cannot be
+  set here. `efficiency` and `latency` can. Both flags need `--objectives`.
 - **Parent selection** is Pareto rank and crowding over the objective vectors,
   instead of the scalar clade score.
 - **`latency`** is `1 / (1 + ms per kilobyte)`, measured as the wall-clock time to

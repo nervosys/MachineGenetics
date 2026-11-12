@@ -159,8 +159,9 @@ safeguards still apply:
 - **Rule (a)**: the primary axis improves by `min_improvement`, and the guards hold
   (as above).
 - **Rule (b)**: on every objective axis, and on the primary axis too even if it is not
-  listed, the challenger is at least the champion less that axis's tolerance (the
-  guard tolerance for a guard axis, zero otherwise). **And** on at least one objective
+  listed, the challenger is at least the champion less that axis's tolerance (its
+  entry in `DominanceRule.tolerances`, zero if none; guard status does not change
+  it, and the guard check runs separately with the guard tolerance). **And** on at least one objective
   axis it is at least the champion plus `DominanceRule.min_improvement`.
 
 Under either rule the following still refuse: the guard checks; a shadow count below
@@ -188,8 +189,10 @@ energy alone. Rule (a) is unchanged by the floor.
 
 **Per-objective tolerance.** `DominanceRule.tolerances` is an ordered map from axis
 name to tolerance, so the digest is deterministic. Under rule (b) an objective's
-tolerance is its guard tolerance if it is a guard, else its entry in the map, else
-zero. The primary axis is always zero. The same tolerance applies to the ratchet,
+tolerance is its entry in the map, or zero if it has none, whether or not it is a
+guard. The primary axis is always zero. The guard check is separate and still
+applies, with the guard tolerance. So under the CLI's `efficiency` guard of `0.25`,
+an efficiency drop is accepted only if the map has an entry for efficiency. The same tolerance applies to the ratchet,
 which compares against the high-water mark, not the champion. So across any chain of
 promotions, an objective can fall below its best value by at most one tolerance. A
 tolerance does not compound over the chain.
