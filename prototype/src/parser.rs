@@ -564,7 +564,11 @@ impl<'a> Parser<'a> {
             }),
             TokenKind::KwKb => self.parse_kb_def().map(ItemKind::Kb),
             TokenKind::KwEvolve => self.parse_evolve_def().map(ItemKind::Evolve),
-            TokenKind::KwTrain => self.parse_train_def().map(|t| ItemKind::Train(Box::new(t))),
+            // As for a net: the contracts written before it are kept, for a warning.
+            TokenKind::KwTrain => self.parse_train_def().map(|mut t| {
+                t.contracts = contracts;
+                ItemKind::Train(Box::new(t))
+            }),
             TokenKind::KwData => self.parse_data_def().map(ItemKind::Data),
             TokenKind::KwExtend => self.parse_extend_block().map(ItemKind::Extend),
             _ => Err(self.error(&format!("expected item, found {:?}", self.peek()))),
@@ -2430,6 +2434,7 @@ impl<'a> Parser<'a> {
             tail_expr: None,
         });
         Ok(TrainDef {
+            contracts: Vec::new(),
             name,
             net,
             optimizer,

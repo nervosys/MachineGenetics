@@ -221,6 +221,12 @@ fn net_contract_not_checked() -> bool {
         && check("@req(x > 0)\nnet A { layer fc: Linear(3, 1); forward { fc } }\n", &[])
             .iter()
             .all(|(s, _, _)| s != "error")
+        // The same for a `train` block, which names the net it trains.
+        && warns(
+            "net A { layer fc: Linear(3, 1); forward { fc } }\n@req(x > 0)\ntrain Fit { net: A; optimizer: SGD(0.05); loss: MSE; epochs: 1; }\n",
+            "E0712",
+            "on `train Fit` is not checked",
+        )
 }
 
 /// A `train` naming a net the module does not define is E0713, and is not when

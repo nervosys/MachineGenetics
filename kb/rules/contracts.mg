@@ -75,11 +75,12 @@ kb Contracts {
     fact gap("requires", "in a spec with no function, @req is not typechecked: there is no signature");
     fact gap("ensures", "in a spec with no function, @ens is not typechecked and its old(x) not scoped: there is no signature");
 
-    // A net is not a placement: none of the three clauses is constrained_by it.
-    // The parser keeps them on the net, and --check warns that they are not
-    // checked (E0712). Nothing evaluates a contract on a net, because a net runs
-    // through --target=abl-infer and --target=abl-train, which evaluate none.
-    fact gap("requires", "on a net: accepted, and checked by nothing (E0712 warns); a net runs through --target=abl-infer, which evaluates no contract");
-    fact gap("ensures", "on a net: accepted, and checked by nothing (E0712 warns); a net runs through --target=abl-infer, which evaluates no contract");
-    fact gap("invariant", "on a net: accepted, and checked by nothing (E0712 warns); a net runs through --target=abl-infer, which evaluates no contract");
+    // A net and a train block are not placements: none of the three clauses is
+    // constrained_by them. The parser keeps them on the item, and --check warns
+    // that they are not checked (E0712). Nothing evaluates a contract on either,
+    // because a net runs through --target=abl-infer and a train block through
+    // --target=abl-train, which evaluate none.
+    fact gap("requires", "on a net or a train block: accepted, and checked by nothing (E0712 warns); --target=abl-infer and --target=abl-train evaluate no contract");
+    fact gap("ensures", "on a net or a train block: accepted, and checked by nothing (E0712 warns); --target=abl-infer and --target=abl-train evaluate no contract");
+    fact gap("invariant", "on a net or a train block: accepted, and checked by nothing (E0712 warns); --target=abl-infer and --target=abl-train evaluate no contract");
 }

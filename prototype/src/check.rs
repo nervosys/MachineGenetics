@@ -106,8 +106,8 @@ pub fn check_source(source: &str, do_elision: bool, core: bool) -> Checked {
         all.extend(verify::diagnostics(&verify::verify_module(&module)));
         // `kb` facts and rules the logic engine cannot evaluate (E0570).
         all.extend(logic::module_diagnostics(&module));
-        // A contract written on a `net`, which nothing checks (E0712, a warning).
-        all.extend(contract::net_contract_warnings(&module));
+        // A contract written on a `net` or `train`, which nothing checks (E0712, a warning).
+        all.extend(contract::unchecked_contract_warnings(&module));
         for (func, declared, inferred) in effect_infer.effect_surface() {
             effect_surface.push(serde_json::json!({
                 "function": func,

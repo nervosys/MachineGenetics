@@ -3404,9 +3404,9 @@ fn run_check(source: &str, filename: &str, do_elision: bool, legacy: bool, token
         }
     }
 
-    // A contract written on a `net`, which nothing checks (E0712). A warning:
-    // the net still counts as accepted.
-    for diag in &contract::net_contract_warnings(&module) {
+    // A contract written on a `net` or `train`, which nothing checks (E0712). A
+    // warning: the item still counts as accepted.
+    for diag in &contract::unchecked_contract_warnings(&module) {
         eprintln!("{filename}: {diag}");
     }
 

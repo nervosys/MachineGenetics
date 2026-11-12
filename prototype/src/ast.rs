@@ -734,6 +734,11 @@ pub struct EvolveDef {
 /// Training loop definition: `train Name { ... }`
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TrainDef {
+    /// Contract clauses written before the `train` keyword. Nothing evaluates
+    /// them, and `--check` warns about each one (E0712), as for a net. Empty
+    /// for a block with none, and left out of the serialized form when empty.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub contracts: Vec<ContractClause>,
     pub name: String,
     pub net: String,
     pub optimizer: Option<Expr>,

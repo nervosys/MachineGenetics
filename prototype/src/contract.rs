@@ -141,19 +141,23 @@ pub fn collect(module: &ast::Module) -> Vec<(Clause, Option<&FunctionDef>)> {
     out
 }
 
-/// Warn about each contract clause written on a `net` (E0712).
+/// Warn about each contract clause written on a `net` or a `train` block (E0712).
 ///
-/// A net runs through `--target=abl-infer` and `--target=abl-train`, and
-/// neither evaluates a contract, so a clause there is never checked. It is a
-/// warning, not an error: the net is valid, and refusing it would make a
-/// harmless clause a hard error. The clause must not be dropped silently,
-/// which is what the parser did before `NetDef` kept its contracts.
-pub fn net_contract_warnings(module: &ast::Module) -> Vec<crate::hir::Diagnostic> {
+/// A net runs through `--target=abl-infer`, and a train block through
+/// `--target=abl-train`. Neither evaluates a contract, so a clause there is never
+/// checked. It is a warning, not an error: the item is valid, and refusing it
+/// would make a harmless clause a hard error. The clause must not be dropped
+/// silently, which is what the parser did before nets and trains kept theirs.
+pub fn unchecked_contract_warnings(module: &ast::Module) -> Vec<crate::hir::Diagnostic> {
     use crate::hir::{Diagnostic, DiagnosticCategory, Severity, Span};
     let mut out = Vec::new();
     for item in &module.items {
-        let ItemKind::Net(net) = &item.kind else { continue };
-        for c in &net.contracts {
+        let (subject, kind_word, runner, contracts) = match &item.kind {
+            ItemKind::Net(net) => (format!("net {}", net.name), "net", "--target=abl-infer", &net.contracts),
+            ItemKind::Train(t) => (format!("train {}", t.name), "train block", "--target=abl-train", &t.contracts),
+            _ => continue,
+        };
+        for c in contracts {
             let keyword = match c.kind {
                 ContractClauseKind::Requires => "@req",
                 ContractClauseKind::Ensures => "@ens",
@@ -162,9 +166,8 @@ pub fn net_contract_warnings(module: &ast::Module) -> Vec<crate::hir::Diagnostic
             let mut d = Diagnostic::categorized(
                 Severity::Warning,
                 format!(
-                    "`{keyword}` on `net {}` is not checked: a net runs through `--target=abl-infer`, \
-                     which evaluates no contract. Move the condition onto a function",
-                    net.name
+                    "`{keyword}` on `{subject}` is not checked: a {kind_word} runs through `{runner}`, \
+                     which evaluates no contract. Move the condition onto a function"
                 ),
                 DiagnosticCategory::ContractNotChecked,
                 None,

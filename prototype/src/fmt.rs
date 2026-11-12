@@ -93,7 +93,15 @@ fn emit_item(buf: &mut String, item: &Item, mode: Mode, depth: usize) {
         }
         ItemKind::Kb(k) => with_vis(buf, item.visibility, mode, depth, |b| emit_kb(b, k, mode, depth)),
         ItemKind::Evolve(e) => with_vis(buf, item.visibility, mode, depth, |b| emit_evolve(b, e, mode, depth)),
-        ItemKind::Train(t) => with_vis(buf, item.visibility, mode, depth, |b| emit_train(b, t, mode, depth)),
+        ItemKind::Train(t) => {
+            // Written before the item, as the parser reads them.
+            for c in &t.contracts {
+                indent(buf, depth);
+                emit_contract(buf, c);
+                buf.push('\n');
+            }
+            with_vis(buf, item.visibility, mode, depth, |b| emit_train(b, t, mode, depth))
+        }
         ItemKind::Swarm(s) => with_vis(buf, item.visibility, mode, depth, |b| emit_swarm(b, s, mode, depth)),
         ItemKind::Data(d) => emit_data(buf, d, item.visibility, mode, depth),
         ItemKind::Extend(e) => with_vis(buf, item.visibility, mode, depth, |b| emit_extend(b, e, mode, depth)),
@@ -2131,6 +2139,28 @@ mod tests {
         let out = format_human(&m);
         assert!(out.contains("@req(n > 0)"), "got: {out}");
         assert!(out.contains("fn positive("), "got: {out}");
+    }
+
+    /// A clause on a `net` or a `train` survives a format and a re-parse: the
+    /// formatter writes it back, and the parser keeps it, so E0712 still fires.
+    #[test]
+    fn net_and_train_contracts_round_trip() {
+        let src = "@req(n > 0)\nnet A { layer fc: Linear(3, 1); forward { fc } }\n\
+                   @ens(n > 0)\ntrain Fit { net: A; optimizer: SGD(0.1); loss: MSE; epochs: 1; }";
+        let out = format_human(&parse_source(src));
+        assert!(out.contains("@req(n > 0)\nnet A"), "net clause lost: {out}");
+        assert!(out.contains("@ens(n > 0)\ntrain Fit"), "train clause lost: {out}");
+        let again = parse_source(&out);
+        let kept: Vec<usize> = again
+            .items
+            .iter()
+            .filter_map(|i| match &i.kind {
+                crate::ast::ItemKind::Net(n) => Some(n.contracts.len()),
+                crate::ast::ItemKind::Train(t) => Some(t.contracts.len()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(kept, vec![1, 1], "re-parse lost a clause: {out}");
     }
 
     #[test]
