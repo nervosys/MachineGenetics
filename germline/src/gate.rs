@@ -26,6 +26,10 @@
 //!    fall below the best any ancestor achieved, less a tolerance. This is the
 //!    drift check; comparing to the incumbent alone cannot catch slow decay.
 //!
+//! Check 4 has a second route when a gate sets a [`DominanceRule`]: a challenger
+//! may instead pass by dominance over the objective axes, with the ratchet of
+//! check 5 applied to every one of them. The other checks apply either way.
+//!
 //! All five must pass. They are `AND`ed deliberately: a gate where a strong
 //! primary gain can buy a guard regression is a gate that trades away safety for
 //! capability at a fixed exchange rate, which is precisely the trade nobody

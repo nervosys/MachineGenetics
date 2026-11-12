@@ -20,8 +20,18 @@
 //!   and labelled an estimate where they do not;
 //! * the **trusted kernel** ([`kernel`]) is what the loop cannot vary: it owns
 //!   held-out data, and moving authority takes the gate's approval;
-//! * **selection** is Pareto, over bits per byte, joules and latency, via
-//!   `germline::pareto` — because a weighted sum cannot see a non-convex front.
+//! * **selection** is Pareto where it decides a promotion or a parent, and
+//!   scalar where it decides what the arena keeps. Pareto: promotion under
+//!   `arena succession --objectives` (`germline::gate`'s dominance rule over
+//!   capability, efficiency and latency); parent choice under the Pareto
+//!   selection mode (`germline::variation::Selection::Pareto`); and the reported
+//!   learners' front and hypervolume credit (`germline::pareto`, in
+//!   [`arena`]). Scalar, by reward: program retention in the pool
+//!   (`agents::Pool::add_with`), the mutator's and attacker's elite
+//!   (`agents::Pool::top`, called from `MutatorAgent` and `AttackerAgent`), and
+//!   the prompt examples the command proposer is shown (`command`). A weighted
+//!   sum cannot see a non-convex front, which is why promotion and the reported
+//!   front are not scalar.
 //!
 //! Why each piece is shaped the way it is lives in its module; the reasons
 //! trace to measurements in `HANDOFF.md` and to the research reviewed on

@@ -145,6 +145,47 @@ defensible promotion at a time.
 The margin matters too: a `min_improvement` below the evaluation's noise floor
 promotes coin flips, and a lineage of coin flips drifts wherever the noise points.
 
+### Multi-objective promotion: rule (a) and rule (b)
+
+The primary-axis rule above is **rule (a)**. It cannot promote a challenger that
+has the same primary value and a better value elsewhere, such as the same capability
+at lower energy. That is the case multi-objective succession needs, so the gate has
+an opt-in second route, `PromotionGate.dominance: Option<DominanceRule>`. It is
+skipped in serialization when unset, so a gate without it keeps its digest.
+
+With `dominance` set, a challenger passes if **either** rule passes, and all of the
+safeguards still apply:
+
+- **Rule (a)**: the primary axis improves by `min_improvement`, and the guards hold
+  (as above).
+- **Rule (b)**: on every objective axis, and on the primary axis too even if it is not
+  listed, the challenger is at least the champion less that axis's tolerance (the
+  guard tolerance for a guard axis, zero otherwise). **And** on at least one objective
+  axis it is at least the champion plus `DominanceRule.min_improvement`.
+
+Under either rule the following still refuse: the guard checks; a shadow count below
+`min_shadow_successes`; a NaN on any objective, guard or primary axis (never an
+improvement, never a regression); and an axis missing on either side.
+
+The ratchet applies to every objective axis under rule (b), not only the guards. A
+challenger is refused if any objective falls below the best value any ancestor, or
+the incumbent, reached, less that axis's tolerance. This is what stops a trade being
+walked back toward an earlier generation: if A → B trades efficiency up and a later
+generation trades it back down, the drop below B's value is refused even if the
+champion comparison alone would pass.
+
+Approvals and refusals say which rule passed or failed, and on which axis. An approved
+verdict carries a `basis` (`rule (a): …` or `rule (b): …`), and a refusal under the
+dominance rule carries a `DominanceRefused` reason that names the axis each rule
+failed on.
+
+**What is not settled.** The tolerances are the gate's own. Under rule (b) the
+non-guard objectives have zero tolerance, which is strict for a noisy measurement such
+as wall-clock latency (see `ARENA.md`). And rule (b) does not check that the primary
+axis carries information: if a clamped primary axis is 0 for both champion and
+challenger, rule (b) can promote on the other objectives alone. A floor on the primary
+value is the fix, and it is not in the gate yet.
+
 A **canary phase** (`min_shadow_successes`) runs the challenger on real work while
 the incumbent still holds authority, so promotion follows evidence from the actual
 environment rather than the suite alone.
@@ -290,6 +331,16 @@ modifies itself it is the difference between an audit trail and a story:
 claim an investigator can re-derive. Without it, the record of how a model came to
 exist is unfalsifiable — a poor property for the artifact you would most want to
 verify after something goes wrong.
+
+**Parent selection.** `Selection` has three modes. `Tournament` and `Elitist`
+rank parents by the scalar clade score (the mean of the clade's held-out
+composite). `Pareto { objectives }` chooses parents by a binary tournament on
+(non-domination rank, crowding distance) over each member's held-out values on the
+named objectives, all maximized (`pareto::rank_and_crowding`,
+`pareto::tournament_winner`). A member without a finite value on each objective is
+never chosen. Under Pareto the scalar score is not consulted for parents. The
+choice is made from the run's seed, so the same seed gives the same parents. The
+runner selects by Pareto when its variation plan says so (`RunnerPolicy.variation`).
 
 ### Attestation — proof of who judged ✅
 

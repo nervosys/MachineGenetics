@@ -57,7 +57,7 @@ bad program before running it.
 | fuel | `prototype::eval::run_metered` | every expression one unit; every returned list its length, **precharged before allocation** where a scalar sets the size; depth bounded on a thread with a known stack |
 | learner | `arena::learner` | hashed-context softmax with exact gradients and sparse Adam; the learning-progress reward with a lookback between `e/4` and `e/2` |
 | energy | `arena::energy` | NVML's cumulative energy counter, loaded at run time → **Measured**; a wall-clock CPU estimate → **Estimated**, with its wattage stated; unreadable → **Unavailable**, never zero |
-| selection | `germline::pareto` | learners' front over (bits/byte, joules, latency); hypervolume contribution as credit |
+| selection | `germline::gate`, `germline::variation`, `germline::pareto` | **Pareto:** promotion under `succession --objectives` (dominance rule); parent choice under `Selection::Pareto`; the learners' front over (bits/byte, joules, latency) with hypervolume contribution as credit. **Scalar, by reward:** pool retention (`agents::Pool::add_with`), the mutator's and attacker's elite (`agents::Pool::top`), and the command proposer's prompt examples (`command`). See *Succession* below |
 
 **Convex and non-convex.** The combinatorial half — which program, which
 structure — is the agents' search over program trees. The continuous half —
@@ -767,7 +767,55 @@ arena succession --heldout FILE[,FILE...] --journal PATH [--cycles N] [--seed N]
                  [--stop-file PATH] [--force] [--json]
                  [--rounds N] [--programs N] [--candidates N]
                  [--agents K:N,...] [--proposer-command "CMD ARGS"] [--proposer-timeout S]
+                 [--objectives capability[,efficiency][,latency]] [--dominance-min F]
+                 [--allow-estimated-energy]
 ```
+
+**Multi-objective succession (`--objectives`).** Without the flag the run is as
+described below. With it:
+
+- **Promotion** is the gate's rule (a) or rule (b), as set out in
+  `GERMLINE.md` §4. The axes are `capability` (primary, which must be listed),
+  `efficiency` (the guard, with tolerance `0.25`), and `latency`. The objectives
+  are the axes named. Rule (b) requires each of them to be at least the champion
+  less its tolerance (the guard tolerance for `efficiency`, zero for `capability`
+  and `latency`), and at least one of them to improve by `--dominance-min`
+  (default `0.01`). Each objective also has the ratchet against the lineage's
+  best value.
+- **Parent selection** is Pareto rank and crowding over the objective vectors,
+  instead of the scalar clade score.
+- **`latency`** is `1 / (1 + ms per kilobyte)`, measured as the wall-clock time to
+  score a 4 KiB held-out slice. It is emitted only when `latency` is named, so a
+  journal written without it stays comparable. That is why the axis set is part of
+  a run's identity. Resuming a journal with a different `--objectives` should hit
+  the comparability check, because the axes differ. That is expected from the code,
+  and it is not tested.
+- **Energy basis.** The efficiency axis is joules, and joules come from the meters.
+  The succession workload meters every session with a wall-clock estimate
+  (seconds × 65 W), whatever hardware is present. The
+  run refuses to start with `efficiency` among the objectives unless
+  `--allow-estimated-energy` is given. The refusal explains that "more efficient"
+  would then mean "faster". With the flag the run prints the warning once and goes
+  on. If no meter gives a figure at all, the run is refused even with the flag,
+  since efficiency would be a constant. The basis is printed in the run header and
+  in the JSON report (`energy_basis`).
+
+Example, the sample that was run on 2026-11-11, with the estimated-energy flag:
+
+```
+arena succession --heldout GERMLINE.md --journal run.jsonl --cycles 3 --seed 3 \
+  --rounds 12 --programs 8 --candidates 3 --agents grammar:1,mutator:1 \
+  --objectives capability,efficiency,latency --allow-estimated-energy
+```
+
+On that run, the seed and its successors had a held-out capability of 0. Their
+held-out bits per byte were above 8, so `capability` was clamped to zero. Gen 1 was
+promoted by rule (b) on `efficiency` (+0.1309), with capability tied at 0. That is
+the failure mode described in `GERMLINE.md` §4: rule (b) does not check that the
+primary axis carries information. The later refusals were both on `latency`: one
+was a ratchet refusal, where wall-clock noise against a zero tolerance fell below the
+seed's measured value, and one found no objective improved by the margin. Treat this
+as a measurement of the gate, not as a result about the learners.
 
 Once started, it builds the `ArenaWorkload` from the held-out files, measures the
 base configuration as the seed champion, and promotes it through the gate. It
