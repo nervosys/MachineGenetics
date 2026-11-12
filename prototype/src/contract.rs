@@ -163,11 +163,13 @@ pub fn unchecked_contract_warnings(module: &ast::Module) -> Vec<crate::hir::Diag
                 ContractClauseKind::Ensures => "@ens",
                 ContractClauseKind::Invariant => "@inv",
             };
+            // A net's clause can move onto a function that calls it; a train block has no such call.
+            let advice = if kind_word == "net" { " that calls `forward(Net, xs)`" } else { "" };
             let mut d = Diagnostic::categorized(
                 Severity::Warning,
                 format!(
                     "`{keyword}` on `{subject}` is not checked: a {kind_word} runs through `{runner}`, \
-                     which evaluates no contract. Move the condition onto a function"
+                     which evaluates no contract. Move the condition onto a function{advice}"
                 ),
                 DiagnosticCategory::ContractNotChecked,
                 None,

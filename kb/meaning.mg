@@ -1321,6 +1321,7 @@ kb Meaning {
     fact builtin_function("trunc");
     fact builtin_function("mean");
     fact builtin_function("dot");
+    fact builtin_function("forward");
     fact builtin_function("Some");
     fact builtin_function("None");
     fact builtin_function("Ok");
@@ -1362,6 +1363,7 @@ kb Meaning {
     fact builtin_effect("write", "io");
     fact builtin_effect("writeln", "io");
     fact builtin_effect("panic", "panic");
+    fact builtin_effect("forward", "fs");
 
     fact builtin_grade("abs", "kinked");
     fact builtin_grade("relu", "kinked");

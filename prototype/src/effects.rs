@@ -149,6 +149,8 @@ pub(crate) const BUILTIN_EFFECTS: &[(&str, Effect)] = &[
     ("write", Effect::IO),
     ("writeln", Effect::IO),
     ("panic", Effect::Panic),
+    // reads the checkpoint of the train block that names the net (a file)
+    ("forward", Effect::FS),
 ];
 
 impl EffectInfer {
@@ -1276,7 +1278,7 @@ mod handler_tests {
         // halves of that.
         let attributed: &[(&str, &str)] = &[
             ("println", "IO"), ("print", "IO"), ("eprint", "IO"), ("eprintln", "IO"),
-            ("write", "IO"), ("writeln", "IO"), ("panic", "Panic"),
+            ("write", "IO"), ("writeln", "IO"), ("panic", "Panic"), ("forward", "FS"),
         ];
         for (name, effect) in attributed {
             let inferred = infer_source(&format!("f a() -> i32 {{ {name}(); 0 }}"))
@@ -1302,7 +1304,7 @@ mod handler_tests {
         let pure_names = [
             "join", "seek", "close", "catch_panic", "call_foreign", "get_var", "set_var",
             "dispatch", "synchronize", "generate", "embed", "analyze", "evaluate", "mutate",
-            "forward", "backward", "step", "random", "seed", "sample", "lifecycle", "message",
+            "backward", "step", "random", "seed", "sample", "lifecycle", "message",
             "lease", "exec",
             // Bare names that once attributed an effect and no longer do: none
             // names a callable function. The effect is reached through the

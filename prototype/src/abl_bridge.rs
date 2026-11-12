@@ -308,6 +308,46 @@ pub fn op_to_layer_name(op: Op) -> Option<&'static str> {
     }
 }
 
+/// Input and output widths of a net, read from its first and last `Linear` layers.
+/// Shared by `--target=abl-train`/`abl-infer` and the `forward` builtin.
+pub fn first_last_linear_dims(net: &ast::NetDef) -> Option<(usize, usize)> {
+    let mut first_in: Option<usize> = None;
+    let mut last_out: Option<usize> = None;
+    for layer in &net.layers {
+        let name = match &layer.layer_type {
+            ast::Type::Path { segments, .. } => segments.last().map(|s| s.as_str()),
+            _ => None,
+        };
+        let dims: Vec<i64> = layer
+            .args
+            .iter()
+            .filter_map(|a| match a {
+                ast::Expr::Literal { value, kind: ast::LiteralKind::Int } => value.parse().ok(),
+                _ => None,
+            })
+            .collect();
+        match name {
+            // Embedding(vocab, embed) at the head means the actual model
+            // input is a sequence of indices, in-dim = 1 per token.
+            Some("Embedding") | Some("Embed") if first_in.is_none() => {
+                first_in = Some(1);
+            }
+            // Linear(in, out [, bias]) is both input candidate and output.
+            Some("Linear") if dims.len() >= 2 => {
+                if first_in.is_none() {
+                    first_in = Some(dims[0] as usize);
+                }
+                last_out = Some(dims[1] as usize);
+            }
+            _ => {}
+        }
+    }
+    match (first_in, last_out) {
+        (Some(a), Some(b)) => Some((a, b)),
+        _ => None,
+    }
+}
+
 // ═══════════════════════════════════════════════════════════════════
 // Translators
 // ═══════════════════════════════════════════════════════════════════
