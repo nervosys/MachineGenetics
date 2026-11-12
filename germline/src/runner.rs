@@ -18,15 +18,17 @@
 //!
 //! ## Stopping is the interesting behaviour
 //!
-//! A search loop's failure mode is not crashing — it is continuing. Four halt
-//! conditions, each for a different way "keep going" becomes wrong:
+//! A search loop's failure mode is not crashing — it is continuing. Halt
+//! conditions, each for a different way "keep going" becomes wrong (the kill
+//! switch, [`Halt::StopRequested`], is the operator's own):
 //!
 //! | Condition | Why continuing would be wrong |
 //! |---|---|
 //! | [`Halt::BudgetExhausted`] | the normal end; someone should look |
 //! | [`Halt::Demoted`] | a promoted successor failed. Something about the gate or the suite is wrong, and proposing more candidates against the same criteria compounds the error |
 //! | [`Halt::SearchStalled`] | N consecutive refusals. The search is not finding anything the gate accepts; more cycles are a slower way to learn that |
-//! | [`Halt::WorkloadFailed`] | candidates cannot be produced or measured at all. Cycling would fill the journal with nothing |
+//! | [`Halt::WorkloadFailed`] | candidates cannot be produced or measured at all, or the workload's inputs changed under it ([`Workload::before_cycle`]). Cycling would fill the journal with nothing |
+//! | [`Halt::StopRequested`] | the stop file ([`RunnerPolicy::stop_file`]) exists before a cycle starts |
 //!
 //! The demotion case is the one that matters most. The tempting behaviour —
 //! fall back, then keep searching — treats a failed promotion as a bad draw. But
@@ -57,6 +59,7 @@ use ribosome::Digest;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest as _, Sha256};
 use std::collections::BTreeMap;
+use std::path::PathBuf;
 
 /// What the runner is permitted to do. Pinned by digest and journalled.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -76,6 +79,13 @@ pub struct RunnerPolicy {
     pub shadow_runs: u32,
     pub variation: VariationPlan,
     pub supervision: SupervisionPolicy,
+    /// The kill switch. If this file exists when a cycle is about to start, the
+    /// run halts with [`Halt::StopRequested`] instead of starting it. Checked
+    /// between cycles only: a cycle already under way is not interrupted.
+    /// Left out of the serialized policy when unset, so policies that do not use
+    /// it keep the digest they had.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stop_file: Option<PathBuf>,
 }
 
 impl Default for RunnerPolicy {
@@ -89,6 +99,7 @@ impl Default for RunnerPolicy {
             shadow_runs: 8,
             variation: VariationPlan::default(),
             supervision: SupervisionPolicy::default(),
+            stop_file: None,
         }
     }
 }
@@ -116,6 +127,9 @@ pub enum Halt {
     Demoted { generation: GenerationId, mode: String, fell_back_to: GenerationId },
     SearchStalled { consecutive_refusals: u32 },
     WorkloadFailed { detail: String },
+    /// The policy's stop file existed before a cycle. `after_cycles` is how many
+    /// cycles this invocation completed first. Not a failure: the operator asked.
+    StopRequested { after_cycles: u32 },
     /// A fallback was needed and none was usable. The most serious stop: the
     /// system is running something it has decided it should not be running.
     NoFallbackAvailable { generation: GenerationId, detail: String },
@@ -182,6 +196,13 @@ pub trait Workload {
     /// by default.
     fn knowledge_base(&self, _artifact: &Digest) -> Option<String> {
         None
+    }
+
+    /// Called at the start of each cycle, before anything is proposed. A
+    /// workload whose inputs can change underneath it (held-out data on disk,
+    /// say) checks them here. An error halts the run as a workload failure.
+    fn before_cycle(&mut self) -> Result<(), String> {
+        Ok(())
     }
 }
 
@@ -363,6 +384,22 @@ impl<'a> Runner<'a> {
         let mut consecutive_refusals = self.carried_refusals;
 
         for cycle_index in self.first_cycle..self.first_cycle.saturating_add(self.policy.max_cycles) {
+            // The kill switch comes first, before anything else starts a cycle.
+            if let Some(path) = self.policy.stop_file.as_ref().filter(|p| p.exists()) {
+                report.halt = Halt::StopRequested { after_cycles: report.cycles.len() as u32 };
+                let _ = journal.append(Entry::Note {
+                    text: format!("halting: stop requested, {} exists before cycle {cycle_index}", path.display()),
+                });
+                report.journal_head = journal.head().cloned();
+                return report;
+            }
+            if let Err(detail) = workload.before_cycle() {
+                report.halt = Halt::WorkloadFailed { detail: detail.clone() };
+                let _ = journal.append(Entry::Note { text: format!("halting: workload failed: {detail}") });
+                report.journal_head = journal.head().cloned();
+                return report;
+            }
+
             let seed = self.seed.wrapping_add(cycle_index as u64).wrapping_mul(0x9E37_79B9);
 
             match self.one_cycle(cycle_index, seed, lineage, journal, workload) {
@@ -923,6 +960,126 @@ mod tests {
         );
         assert_eq!(report.cycles.len(), 4);
         assert!(report.promotions > 0);
+        let _ = std::fs::remove_dir_all(path.parent().unwrap());
+    }
+
+    /// An [`Improving`] workload that can create the stop file, or fail, at the
+    /// start of a chosen cycle. `before_cycle` is called once per cycle, so
+    /// call `n` is the start of cycle `n - 1`.
+    struct Scripted {
+        inner: Improving,
+        calls: u32,
+        touch_on_call: Option<(u32, PathBuf)>,
+        fail_on_call: Option<u32>,
+    }
+
+    impl Workload for Scripted {
+        fn materialize(&mut self, spec: &CandidateSpec) -> Result<Digest, String> {
+            self.inner.materialize(spec)
+        }
+        fn evaluate(&mut self, artifact: &Digest, suite: &EvalSuite) -> Result<FitnessVector, String> {
+            self.inner.evaluate(artifact, suite)
+        }
+        fn shadow(&mut self, artifact: &Digest) -> HealthSample {
+            self.inner.shadow(artifact)
+        }
+        fn observe_champion(&mut self, artifact: &Digest) -> HealthSample {
+            self.inner.observe_champion(artifact)
+        }
+        fn materialized(&self, artifact: &Digest) -> bool {
+            self.inner.materialized(artifact)
+        }
+        fn before_cycle(&mut self) -> Result<(), String> {
+            self.calls += 1;
+            if let Some((n, path)) = &self.touch_on_call {
+                if self.calls == *n {
+                    std::fs::write(path, b"stop").unwrap();
+                }
+            }
+            if self.fail_on_call == Some(self.calls) {
+                return Err("the held-out files changed".into());
+            }
+            Ok(())
+        }
+    }
+
+    fn scripted(touch_on_call: Option<(u32, PathBuf)>, fail_on_call: Option<u32>) -> Scripted {
+        Scripted { inner: Improving::new(0.05), calls: 0, touch_on_call, fail_on_call }
+    }
+
+    #[test]
+    fn a_stop_file_present_before_a_cycle_halts_the_run_and_is_journalled() {
+        let path = tmp("stop-before");
+        let stop = path.parent().unwrap().join("STOP");
+        std::fs::write(&stop, b"").unwrap();
+        let mut j = Journal::open(&path).unwrap();
+        let mut w = scripted(None, None);
+        let mut l = seeded(&mut w.inner);
+        let ep = episode();
+        let at = attestor();
+        let policy = RunnerPolicy { stop_file: Some(stop.clone()), ..policy() };
+
+        let report = Runner::new(policy, &ep, &at, suite(), 1).run(&mut l, &mut j, &mut w);
+        assert_eq!(report.halt, Halt::StopRequested { after_cycles: 0 }, "{:?}", report.halt);
+        assert!(report.cycles.is_empty(), "no cycle may start once the stop file exists");
+        assert_eq!(w.calls, 0, "the workload is not asked to start a cycle either");
+        let notes: Vec<String> = j
+            .replay()
+            .unwrap()
+            .into_iter()
+            .filter_map(|r| match r.entry {
+                Entry::Note { text } => Some(text),
+                _ => None,
+            })
+            .collect();
+        assert!(notes.iter().any(|t| t.contains("stop requested")), "{notes:?}");
+        assert_eq!(report.journal_head, j.head().cloned(), "the report anchors the journal's end");
+        let _ = std::fs::remove_dir_all(path.parent().unwrap());
+    }
+
+    #[test]
+    fn a_stop_file_created_mid_run_stops_it_between_cycles() {
+        let path = tmp("stop-mid");
+        let stop = path.parent().unwrap().join("STOP");
+        let mut j = Journal::open(&path).unwrap();
+        // Created by the check before cycle 0, after that cycle's stop check, so
+        // cycle 0 completes and cycle 1 never starts.
+        let mut w = scripted(Some((1, stop.clone())), None);
+        let mut l = seeded(&mut w.inner);
+        let ep = episode();
+        let at = attestor();
+        let policy = RunnerPolicy { stop_file: Some(stop.clone()), ..policy() };
+
+        let report = Runner::new(policy, &ep, &at, suite(), 1).run(&mut l, &mut j, &mut w);
+        assert_eq!(report.halt, Halt::StopRequested { after_cycles: 1 }, "{:?}", report.halt);
+        assert_eq!(report.cycles.len(), 1);
+        let _ = std::fs::remove_dir_all(path.parent().unwrap());
+    }
+
+    #[test]
+    fn no_stop_file_configured_means_no_kill_switch() {
+        let path = tmp("stop-unset");
+        let mut j = Journal::open(&path).unwrap();
+        let mut w = scripted(None, None);
+        let mut l = seeded(&mut w.inner);
+        let report = Runner::new(policy(), &episode(), &attestor(), suite(), 1).run(&mut l, &mut j, &mut w);
+        assert!(matches!(report.halt, Halt::BudgetExhausted { .. }), "{:?}", report.halt);
+        let _ = std::fs::remove_dir_all(path.parent().unwrap());
+    }
+
+    #[test]
+    fn a_workload_whose_inputs_changed_halts_the_run_as_a_failure() {
+        let path = tmp("before-cycle-fails");
+        let mut j = Journal::open(&path).unwrap();
+        let mut w = scripted(None, Some(2));
+        let mut l = seeded(&mut w.inner);
+        let report = Runner::new(policy(), &episode(), &attestor(), suite(), 1).run(&mut l, &mut j, &mut w);
+        assert_eq!(report.cycles.len(), 1, "cycle 0 ran; the check before cycle 1 failed");
+        assert!(
+            matches!(&report.halt, Halt::WorkloadFailed { detail } if detail.contains("changed")),
+            "{:?}",
+            report.halt
+        );
         let _ = std::fs::remove_dir_all(path.parent().unwrap());
     }
 
