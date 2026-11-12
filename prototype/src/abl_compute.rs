@@ -3416,7 +3416,7 @@ mod tests {
     #[test]
     fn relu_chain_runs_on_cpu_backend() {
         // net { layer a: ReLU; layer b: GELU; layer c: ReLU; }
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "ActChain".into(),
             generics: Vec::new(),
             layers: vec![
@@ -3444,7 +3444,7 @@ mod tests {
     #[test]
     fn sigmoid_at_zero_yields_half() {
         // sigmoid(0) = 0.5; sum over 4 elements = 2.0.
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "Sig".into(),
             generics: Vec::new(),
             layers: vec![activation_layer("Sigmoid")],
@@ -3517,7 +3517,7 @@ mod tests {
     #[test]
     fn linear_without_dims_reported_as_unsupported() {
         // A Linear layer with no args still cannot run — no dimensions.
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "BareLin".into(),
             generics: Vec::new(),
             layers: vec![activation_layer("Linear"), activation_layer("ReLU")],
@@ -3556,7 +3556,7 @@ mod tests {
     #[test]
     fn linear_with_dims_runs_real_matmul() {
         // net { layer fc: Linear(8, 16); layer act: ReLU; } input [8]
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "MLP".into(),
             generics: Vec::new(),
             layers: vec![
@@ -3577,7 +3577,7 @@ mod tests {
 
     #[test]
     fn param_store_caches_weights_across_calls() {
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "Stable".into(),
             generics: Vec::new(),
             layers: vec![layer_with_int_args("Linear", vec![4, 8])],
@@ -3617,7 +3617,7 @@ mod tests {
     fn one_sgd_step_reduces_mse_loss() {
         // Tiny regression: y = 2x. One Linear(1, 1), batch of 4 examples.
         // After SGD steps, MSE loss should decrease monotonically toward 0.
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "Reg".into(),
             generics: Vec::new(),
             layers: vec![named_layer("fc", "Linear", vec![1, 1])],
@@ -3657,7 +3657,7 @@ mod tests {
     fn cross_entropy_classifies_two_classes() {
         // 2-class linear classifier: Linear(2, 2). Inputs cluster in two
         // regions; training with cross-entropy should drive loss down.
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "Clf".into(),
             generics: Vec::new(),
             layers: vec![named_layer("fc", "Linear", vec![2, 2])],
@@ -3709,7 +3709,7 @@ mod tests {
     fn param_store_round_trips_through_save_load() {
         // Train a tiny net so the ParamStore actually has weights, then
         // save → load → compare.
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "Reg".into(),
             generics: Vec::new(),
             layers: vec![named_layer("fc", "Linear", vec![2, 3])],
@@ -3753,14 +3753,14 @@ mod tests {
     fn linear_with_bias_fits_intercept() {
         // Learn y = x + 1. Without bias this is impossible; with bias it
         // converges. We test both: bias-on should converge much lower.
-        let bias_net = ast::NetDef {
+        let bias_net = ast::NetDef { contracts: Vec::new(),
             name: "Bias".into(),
             generics: Vec::new(),
             layers: vec![named_layer("fc", "Linear", vec![1, 1, 1])],
             forward: empty_block(),
             composition: None,
         };
-        let no_bias_net = ast::NetDef {
+        let no_bias_net = ast::NetDef { contracts: Vec::new(),
             name: "NoBias".into(),
             generics: Vec::new(),
             layers: vec![named_layer("fc", "Linear", vec![1, 1])],
@@ -3809,7 +3809,7 @@ mod tests {
         // y = 2x with a single Linear(1, 1). Adam should reduce loss
         // monotonically (after the initial bias-corrected phase) and
         // maintain one OptimState entry plus a step counter.
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "Reg".into(),
             generics: Vec::new(),
             layers: vec![named_layer("fc", "Linear", vec![1, 1])],
@@ -3855,7 +3855,7 @@ mod tests {
         // With wd=0.5, lr=0.1, the weight should shrink by 5% per step
         // when the gradient is zero. We trigger this by training on a
         // problem where the model is already perfect.
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "WD".into(),
             generics: Vec::new(),
             layers: vec![named_layer("fc", "Linear", vec![1, 1])],
@@ -3907,7 +3907,7 @@ mod tests {
     fn gradient_clipping_bounds_update() {
         // Without clipping, large initial loss can blow up weights.
         // With clipping, weights stay bounded and loss still decreases.
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "Clip".into(),
             generics: Vec::new(),
             layers: vec![named_layer("fc", "Linear", vec![1, 1])],
@@ -3941,7 +3941,7 @@ mod tests {
     #[test]
     fn dropout_inference_passes_through() {
         // At inference (run_pipeline path), DROP is a no-op pass-through.
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "Drop".into(),
             generics: Vec::new(),
             layers: vec![named_layer("d", "Dropout", vec![50])],
@@ -3960,7 +3960,7 @@ mod tests {
     fn dropout_train_masks_and_scales() {
         // In train mode with p=50%, the mask should zero roughly half of
         // the activations and scale the rest by 1/0.5 = 2.
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "DropT".into(),
             generics: Vec::new(),
             layers: vec![
@@ -3988,7 +3988,7 @@ mod tests {
     fn learned_pe_adds_table_rows() {
         // LearnedPE(8, 4): allocates [8, 4] table. With zero input, output
         // equals the (random-init) table for positions 0..seq.
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "LPE".into(),
             generics: Vec::new(),
             layers: vec![named_layer("pe", "LearnedPE", vec![8, 4])],
@@ -4014,7 +4014,7 @@ mod tests {
     #[test]
     fn learned_pe_trains() {
         // LearnedPE(4, 2) → Linear(2, 1, 1). Target depends only on position.
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "LPETrain".into(),
             generics: Vec::new(),
             layers: vec![
@@ -4051,7 +4051,7 @@ mod tests {
     #[test]
     fn embedding_gathers_rows_by_index() {
         // Embedding(vocab=4, embed=3). Indices [0, 2, 1] → 3 rows × 3 cols.
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "Emb".into(),
             generics: Vec::new(),
             layers: vec![named_layer("emb", "Embedding", vec![4, 3])],
@@ -4074,7 +4074,7 @@ mod tests {
     #[test]
     fn embedding_then_linear_trains() {
         // 4-vocab, 3-embed, then Linear(3, 1, 1). Learn a mapping per index.
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "EmbLin".into(),
             generics: Vec::new(),
             layers: vec![
@@ -4106,7 +4106,7 @@ mod tests {
 
     #[test]
     fn sinusoidal_pe_preserves_shape_and_adds_phase() {
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "PE".into(),
             generics: Vec::new(),
             layers: vec![named_layer("pe", "SinusoidalPE", vec![16, 4])],
@@ -4146,7 +4146,7 @@ mod tests {
     fn multi_head_attention_training_reduces_loss() {
         // Attention(2, 4, 2): in_dim=2, model_dim=4, 2 heads (head_dim=2).
         // Trains end-to-end with per-head softmax backward.
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "MHA".into(),
             generics: Vec::new(),
             layers: vec![named_layer("attn", "Attention", vec![2, 4, 2])],
@@ -4178,7 +4178,7 @@ mod tests {
     #[test]
     fn attention_qkv_training_reduces_loss() {
         // Single Attention(2, 4) layer, learn an identity-ish target.
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "AttnTrain".into(),
             generics: Vec::new(),
             layers: vec![named_layer("attn", "Attention", vec![2, 4])],
@@ -4214,7 +4214,7 @@ mod tests {
     fn conv2d_with_bias_allocates_two_tensors() {
         // Conv2D(1, 1, 2, 1): with bias. Forward should produce 3×3 output
         // and ParamStore should contain weight + bias = 2 tensors.
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "ConvB".into(),
             generics: Vec::new(),
             layers: vec![named_layer("c", "Conv2D", vec![1, 1, 2, 1])],
@@ -4238,7 +4238,7 @@ mod tests {
     fn conv2d_with_bias_trains() {
         // Conv2D(1, 1, 2, 1) on a 4×4 input toward a 3×3 constant target.
         // Bias should help the network shift the mean toward the target.
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "ConvBT".into(),
             generics: Vec::new(),
             layers: vec![named_layer("c", "Conv2D", vec![1, 1, 2, 1])],
@@ -4268,7 +4268,7 @@ mod tests {
     fn conv2d_training_reduces_loss() {
         // Conv2D(1, 1, 2): learn a 2x2 kernel that predicts mean-of-window.
         // Input is a flat 4x4 image; target is the constant 4-output image.
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "ConvNet".into(),
             generics: Vec::new(),
             layers: vec![named_layer("c", "Conv2D", vec![1, 1, 2])],
@@ -4310,7 +4310,7 @@ mod tests {
         // Linear(2, 4) >> Linear(4, 1). All-positive input avoids ReLU edge
         // cases for this test; ReLU coverage is in the activation tests.
         // Target is a linear function of input: y = 1.5*x1 + 0.5*x2.
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "MLP2".into(),
             generics: Vec::new(),
             layers: vec![
@@ -4353,7 +4353,7 @@ mod tests {
     fn attention_on_identical_tokens_returns_uniform_average() {
         // 4 identical tokens of dim 2 → attention weights are uniform 1/4.
         // Output equals the input (since averaging identical rows preserves them).
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "Attn".into(),
             generics: Vec::new(),
             layers: vec![named_layer("attn", "Attention", vec![2])],
@@ -4381,7 +4381,7 @@ mod tests {
     #[test]
     fn multi_head_attention_preserves_shape() {
         // Attention(4, 8, 2): in_dim=4, model_dim=8, 2 heads (head_dim=4).
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "MHA".into(),
             generics: Vec::new(),
             layers: vec![named_layer("attn", "Attention", vec![4, 8, 2])],
@@ -4406,7 +4406,7 @@ mod tests {
     #[test]
     fn multi_head_attention_uneven_dim_errors() {
         // model_dim=7 not divisible by num_heads=2 → error.
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "MHA".into(),
             generics: Vec::new(),
             layers: vec![named_layer("attn", "Attention", vec![4, 7, 2])],
@@ -4429,7 +4429,7 @@ mod tests {
     fn attention_qkv_allocates_four_weight_tensors() {
         // Attention(in_dim=4, model_dim=8) should allocate Q, K, V, O
         // weights — 4 entries in the ParamStore.
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "QKVAttn".into(),
             generics: Vec::new(),
             layers: vec![named_layer("attn", "Attention", vec![4, 8])],
@@ -4456,7 +4456,7 @@ mod tests {
         // Three tokens: [1,0], [1,0], [0,1]. The first two are identical and
         // dissimilar from the third. After self-attention, output rows 0 and 1
         // should be closer to [1,0] than to [0,1].
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "Attn".into(),
             generics: Vec::new(),
             layers: vec![named_layer("attn", "Attention", vec![2])],
@@ -4484,7 +4484,7 @@ mod tests {
         // scale by the single weight. We can't predict the random weight, but
         // we can check: output shape = [1, 4, 4], and output is proportional
         // to input (ratio constant across pixels).
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "C".into(),
             generics: Vec::new(),
             layers: vec![named_layer("conv", "Conv2D", vec![1, 1, 1])],
@@ -4513,7 +4513,7 @@ mod tests {
     #[test]
     fn conv2d_3x3_kernel_shrinks_spatial_dims() {
         // Conv2D(in_ch=2, out_ch=4, k=3) on 6x6 input → output [4, 4, 4].
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "C".into(),
             generics: Vec::new(),
             layers: vec![named_layer("conv", "Conv2D", vec![2, 4, 3])],
@@ -4536,7 +4536,7 @@ mod tests {
     #[test]
     fn max_pool_picks_window_max() {
         // Input [1,3,2,5,4,1,6,7] kernel=2 stride=2 → [3, 5, 4, 7]
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "MP".into(),
             generics: Vec::new(),
             layers: vec![named_layer("mp", "MaxPool", vec![2, 2])],
@@ -4564,7 +4564,7 @@ mod tests {
 
     #[test]
     fn avg_pool_averages_window() {
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "AP".into(),
             generics: Vec::new(),
             layers: vec![named_layer("ap", "AvgPool", vec![2])],
@@ -4590,7 +4590,7 @@ mod tests {
 
     #[test]
     fn layer_norm_zeroes_mean_and_unit_variance() {
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "LN".into(),
             generics: Vec::new(),
             layers: vec![norm_layer("ln", "LayerNorm")],
@@ -4613,7 +4613,7 @@ mod tests {
     fn layer_norm_with_affine_trains() {
         // LayerNorm(2) → Linear(2, 1): the LayerNorm γ/β need to learn to
         // preserve enough variance, and Linear maps to target.
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "LNAff".into(),
             generics: Vec::new(),
             layers: vec![
@@ -4653,7 +4653,7 @@ mod tests {
         // attends to itself, so it equals V[0] projection only.
         // Construct a hand-built Agentic Binary Language expression for parameterless-with-mask
         // path: not supported. So we exercise just the QKV+causal mode.
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "Causal".into(),
             generics: Vec::new(),
             layers: vec![named_layer("attn", "Attention", vec![2, 4, 1, 1])],
@@ -4694,7 +4694,7 @@ mod tests {
 
     #[test]
     fn rms_norm_preserves_sign() {
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "RN".into(),
             generics: Vec::new(),
             layers: vec![norm_layer("rn", "RMSNorm")],
@@ -4714,7 +4714,7 @@ mod tests {
 
     #[test]
     fn mse_loss_returns_scalar() {
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "MseStub".into(),
             generics: Vec::new(),
             layers: vec![norm_layer("loss", "MSE")],
@@ -4731,7 +4731,7 @@ mod tests {
 
     #[test]
     fn sgd_step_is_noop_on_forward() {
-        let _net = ast::NetDef {
+        let _net = ast::NetDef { contracts: Vec::new(),
             name: "OptStub".into(),
             generics: Vec::new(),
             layers: vec![
@@ -4754,7 +4754,7 @@ mod tests {
     #[test]
     fn deep_mlp_pipelines_dims_through_linears() {
         // Linear(8,16) → ReLU → Linear(16,4) → Sigmoid. Input [8] → output [1, 4].
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "Deep".into(),
             generics: Vec::new(),
             layers: vec![
@@ -4784,7 +4784,7 @@ mod tests {
     /// Models with non-8-dim inputs must dispatch cleanly.
     #[test]
     fn infer_input_shape_picks_first_linear_in_features() {
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "FourIn".into(),
             generics: Vec::new(),
             layers: vec![
@@ -4817,7 +4817,7 @@ mod tests {
 
     #[test]
     fn infer_input_shape_picks_attention_dim() {
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "AttnNet".into(),
             generics: Vec::new(),
             layers: vec![
@@ -4848,7 +4848,7 @@ mod tests {
     /// room to operate.
     #[test]
     fn infer_input_shape_conv2d_picks_kernel_aware_spatial() {
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "ConvNet".into(),
             generics: Vec::new(),
             layers: vec![
@@ -4880,7 +4880,7 @@ mod tests {
     /// ops can reason about rank-wise.
     #[test]
     fn infer_input_shape_embed_uses_small_token_count() {
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "EmbedNet".into(),
             generics: Vec::new(),
             layers: vec![

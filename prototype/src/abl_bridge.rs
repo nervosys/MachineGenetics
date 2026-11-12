@@ -1223,7 +1223,7 @@ pub fn decompile(expr: &Expr, net_name: &str) -> DecompileResult {
     };
 
     DecompileResult {
-        net: ast::NetDef {
+        net: ast::NetDef { contracts: Vec::new(),
             name: net_name.to_string(),
             generics: Vec::new(),
             layers,
@@ -1961,7 +1961,7 @@ mod tests {
 
     #[test]
     fn mlp_translates_to_sequential_pipeline() {
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "MLP".into(),
             generics: Vec::new(),
             layers: vec![
@@ -1980,7 +1980,7 @@ mod tests {
 
     #[test]
     fn transformer_block_encodes_compactly() {
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "TransformerBlock".into(),
             generics: Vec::new(),
             layers: vec![
@@ -2014,7 +2014,7 @@ mod tests {
                 layers.push(l);
             }
         }
-        ast::NetDef {
+        ast::NetDef { contracts: Vec::new(),
             name: "GPT".into(),
             generics: Vec::new(),
             layers,
@@ -2054,7 +2054,7 @@ mod tests {
     #[test]
     fn fold_is_a_noop_without_repeats() {
         // A net with all-distinct layers has nothing to fold.
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "Distinct".into(),
             generics: Vec::new(),
             layers: vec![make_layer("Embedding"), make_layer("Attention"), make_layer("Linear")],
@@ -2067,7 +2067,7 @@ mod tests {
 
     #[test]
     fn unknown_layer_falls_back_to_identity() {
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "Custom".into(),
             generics: Vec::new(),
             layers: vec![make_layer("MyFancyLayer")],
@@ -2102,7 +2102,7 @@ mod tests {
         let net_item = ast::Item {
             visibility: ast::Visibility::Private,
             attributes: Vec::new(),
-            kind: ast::ItemKind::Net(ast::NetDef {
+            kind: ast::ItemKind::Net(ast::NetDef { contracts: Vec::new(),
                 name: "N".into(),
                 generics: Vec::new(),
                 layers: Vec::new(),
@@ -2167,7 +2167,7 @@ mod tests {
     #[test]
     fn layer_args_propagate_to_machine_app() {
         // net { layer fc1: Linear(784, 256); forward { fc1(x) } }
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "WithArgs".into(),
             generics: Vec::new(),
             layers: vec![make_layer_with_args(
@@ -2192,7 +2192,7 @@ mod tests {
     #[test]
     fn forward_pipeline_translates_in_order() {
         // forward { x |> fc1 |> act |> fc2 }
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "Pipe".into(),
             generics: Vec::new(),
             layers: vec![
@@ -2218,7 +2218,7 @@ mod tests {
     #[test]
     fn residual_block_uses_res_add() {
         // forward { x + l_linear(x) }
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "Resid".into(),
             generics: Vec::new(),
             layers: vec![make_layer("Linear")],
@@ -2362,7 +2362,7 @@ mod tests {
     #[test]
     fn nested_call_translates_to_left_to_right_pipeline() {
         // forward { l_linear(l_relu(l_linear(x))) }
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "Nested".into(),
             generics: Vec::new(),
             layers: vec![
@@ -2441,7 +2441,7 @@ mod tests {
 
     #[test]
     fn family_classifier_identifies_stubs() {
-        let mlp = ast::NetDef {
+        let mlp = ast::NetDef { contracts: Vec::new(),
             name: "M".into(),
             generics: Vec::new(),
             layers: vec![make_layer("Linear"), make_layer("ReLU")],
@@ -2486,7 +2486,7 @@ mod tests {
         // pure math; neural ops must fall back gracefully (not panic, not
         // produce a wrong answer). This test mirrors the CLI behavior.
         use rmi::lang::Vm;
-        let mlp = ast::NetDef {
+        let mlp = ast::NetDef { contracts: Vec::new(),
             name: "M".into(),
             generics: Vec::new(),
             layers: vec![make_layer("Linear"), make_layer("ReLU")],
@@ -2516,7 +2516,7 @@ mod tests {
 
     #[test]
     fn decompile_recovers_canonical_layer_names() {
-        let original = ast::NetDef {
+        let original = ast::NetDef { contracts: Vec::new(),
             name: "MLP".into(),
             generics: Vec::new(),
             layers: vec![
@@ -2541,7 +2541,7 @@ mod tests {
 
     #[test]
     fn decompile_round_trips_through_lowering_with_stable_hash() {
-        let original = ast::NetDef {
+        let original = ast::NetDef { contracts: Vec::new(),
             name: "TransformerBlock".into(),
             generics: Vec::new(),
             layers: vec![
@@ -2569,7 +2569,7 @@ mod tests {
 
     #[test]
     fn decompile_preserves_layer_args() {
-        let original = ast::NetDef {
+        let original = ast::NetDef { contracts: Vec::new(),
             name: "WithArgs".into(),
             generics: Vec::new(),
             layers: vec![make_layer_with_args(
@@ -2595,7 +2595,7 @@ mod tests {
 
     #[test]
     fn module_lowering_round_trips_through_codec() {
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "Net1".into(),
             generics: Vec::new(),
             layers: vec![make_layer("Linear"), make_layer("ReLU")],
@@ -2672,7 +2672,7 @@ mod tests {
     /// cleanly through `lower_module` - no unknown_layers diagnostics.
     #[test]
     fn p77_net_lowers_without_unknown_diagnostics() {
-        let net = ast::NetDef {
+        let net = ast::NetDef { contracts: Vec::new(),
             name: "P77_Net".into(),
             generics: Vec::new(),
             layers: vec![

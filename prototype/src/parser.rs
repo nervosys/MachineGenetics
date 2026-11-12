@@ -556,7 +556,12 @@ impl<'a> Parser<'a> {
             TokenKind::KwSpec => self.parse_spec_def().map(ItemKind::Spec),
             TokenKind::KwAgent => self.parse_agent_def().map(ItemKind::Agent),
             TokenKind::KwSwarm => self.parse_swarm_def().map(ItemKind::Swarm),
-            TokenKind::KwNet => self.parse_net_def().map(ItemKind::Net),
+            // A net keeps the contracts written before it, so `--check` can say
+            // they are not checked. Every other item that takes none still drops them.
+            TokenKind::KwNet => self.parse_net_def().map(|mut net| {
+                net.contracts = contracts;
+                ItemKind::Net(net)
+            }),
             TokenKind::KwKb => self.parse_kb_def().map(ItemKind::Kb),
             TokenKind::KwEvolve => self.parse_evolve_def().map(ItemKind::Evolve),
             TokenKind::KwTrain => self.parse_train_def().map(|t| ItemKind::Train(Box::new(t))),
@@ -1887,6 +1892,7 @@ impl<'a> Parser<'a> {
             tail_expr: None,
         });
         Ok(NetDef {
+            contracts: Vec::new(),
             name,
             generics,
             layers,

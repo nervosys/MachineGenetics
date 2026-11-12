@@ -656,6 +656,12 @@ pub struct NetDef {
     /// reader of `layers` is unaffected. Defaults to `None` via `serde`.
     #[serde(default)]
     pub composition: Option<Vec<Compose>>,
+    /// Contract clauses written before the `net` keyword. Nothing evaluates
+    /// them: a net runs through `--target=abl-infer`, which checks no
+    /// contract, so `--check` warns about each one (E0712). Empty for a net
+    /// with none, and left out of the serialized form when empty.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub contracts: Vec<ContractClause>,
 }
 
 /// A dataflow combinator over a net's declared layers — the lowered form of the

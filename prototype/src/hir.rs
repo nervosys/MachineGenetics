@@ -586,13 +586,16 @@ pub enum DiagnosticCategory {
     /// differentiable. The message names the train block, the net and the
     /// reason (E0711).
     NotDifferentiable,
+    /// A contract clause on a `net`. Nothing evaluates it, so it is a warning
+    /// that the clause is not checked, not an error: the net is valid (E0712).
+    ContractNotChecked,
     /// Other.
     Other,
 }
 
 impl DiagnosticCategory {
     /// Every category. `tests/diagnostics.rs` holds this to the enum.
-    pub const ALL: [DiagnosticCategory; 18] = [
+    pub const ALL: [DiagnosticCategory; 19] = [
         DiagnosticCategory::BorrowConflict,
         DiagnosticCategory::UseAfterMove,
         DiagnosticCategory::TypeMismatch,
@@ -610,6 +613,7 @@ impl DiagnosticCategory {
         DiagnosticCategory::UnitMismatch,
         DiagnosticCategory::KbRule,
         DiagnosticCategory::NotDifferentiable,
+        DiagnosticCategory::ContractNotChecked,
         DiagnosticCategory::Other,
     ];
 
@@ -633,6 +637,7 @@ impl DiagnosticCategory {
             DiagnosticCategory::RoleViolation => "E0551",
             DiagnosticCategory::KbRule => "E0570",
             DiagnosticCategory::NotDifferentiable => "E0711",
+            DiagnosticCategory::ContractNotChecked => "E0712",
             DiagnosticCategory::CoreViolation => "E0552",
             DiagnosticCategory::ParamDomain => "E0553",
             DiagnosticCategory::Deprecated => "E0554",
@@ -695,6 +700,9 @@ impl DiagnosticCategory {
             }
             DiagnosticCategory::NotDifferentiable => {
                 "train a net whose layers the differentiability pass can judge differentiable, or remove the train block"
+            }
+            DiagnosticCategory::ContractNotChecked => {
+                "move the contract onto a function, which is checked; a net has no run-time check for it to reach"
             }
             DiagnosticCategory::Other => "see the message for details",
         }

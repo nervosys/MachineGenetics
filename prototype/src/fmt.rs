@@ -82,7 +82,15 @@ fn emit_item(buf: &mut String, item: &Item, mode: Mode, depth: usize) {
         ItemKind::Effect(e) => with_vis(buf, item.visibility, mode, depth, |b| emit_effect(b, e, mode, depth)),
         ItemKind::Spec(s) => with_vis(buf, item.visibility, mode, depth, |b| emit_spec(b, s, mode, depth)),
         ItemKind::Agent(a) => with_vis(buf, item.visibility, mode, depth, |b| emit_agent(b, a, depth)),
-        ItemKind::Net(n) => with_vis(buf, item.visibility, mode, depth, |b| emit_net(b, n, mode, depth)),
+        ItemKind::Net(n) => {
+            // Written before the item, as the parser reads them.
+            for c in &n.contracts {
+                indent(buf, depth);
+                emit_contract(buf, c);
+                buf.push('\n');
+            }
+            with_vis(buf, item.visibility, mode, depth, |b| emit_net(b, n, mode, depth))
+        }
         ItemKind::Kb(k) => with_vis(buf, item.visibility, mode, depth, |b| emit_kb(b, k, mode, depth)),
         ItemKind::Evolve(e) => with_vis(buf, item.visibility, mode, depth, |b| emit_evolve(b, e, mode, depth)),
         ItemKind::Train(t) => with_vis(buf, item.visibility, mode, depth, |b| emit_train(b, t, mode, depth)),

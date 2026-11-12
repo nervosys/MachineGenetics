@@ -3393,6 +3393,12 @@ fn run_check(source: &str, filename: &str, do_elision: bool, legacy: bool, token
         }
     }
 
+    // A contract written on a `net`, which nothing checks (E0712). A warning:
+    // the net still counts as accepted.
+    for diag in &contract::net_contract_warnings(&module) {
+        eprintln!("{filename}: {diag}");
+    }
+
     // Phase 5.6: Typed-composition gate — a shape-mismatched `net` composition
     // (`stack`/`residual`/`branch`/`wrap` whose layer dims don't line up) is
     // rejected here with an actionable diagnostic (§4.5).

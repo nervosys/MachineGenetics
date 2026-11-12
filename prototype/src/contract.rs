@@ -141,6 +141,41 @@ pub fn collect(module: &ast::Module) -> Vec<(Clause, Option<&FunctionDef>)> {
     out
 }
 
+/// Warn about each contract clause written on a `net` (E0712).
+///
+/// A net runs through `--target=abl-infer` and `--target=abl-train`, and
+/// neither evaluates a contract, so a clause there is never checked. It is a
+/// warning, not an error: the net is valid, and refusing it would make a
+/// harmless clause a hard error. The clause must not be dropped silently,
+/// which is what the parser did before `NetDef` kept its contracts.
+pub fn net_contract_warnings(module: &ast::Module) -> Vec<crate::hir::Diagnostic> {
+    use crate::hir::{Diagnostic, DiagnosticCategory, Severity, Span};
+    let mut out = Vec::new();
+    for item in &module.items {
+        let ItemKind::Net(net) = &item.kind else { continue };
+        for c in &net.contracts {
+            let keyword = match c.kind {
+                ContractClauseKind::Requires => "@req",
+                ContractClauseKind::Ensures => "@ens",
+                ContractClauseKind::Invariant => "@inv",
+            };
+            let mut d = Diagnostic::categorized(
+                Severity::Warning,
+                format!(
+                    "`{keyword}` on `net {}` is not checked: a net runs through `--target=abl-infer`, \
+                     which evaluates no contract. Move the condition onto a function",
+                    net.name
+                ),
+                DiagnosticCategory::ContractNotChecked,
+                None,
+            );
+            d.span = c.span.as_ref().map(|s| Span { line: s.line as u32, col: s.col as u32 });
+            out.push(d);
+        }
+    }
+    out
+}
+
 /// Split a spec item's text, `cond, "message"`, at its top-level comma.
 ///
 /// A spec block keeps the whole parenthesised text, message included; a

@@ -81,6 +81,7 @@ const WITNESSES: &[(&str, &str, fn() -> bool)] = &[
     ("E0570", "kb_rule", kb_rule),
     ("E0710", "net_shape", net_shape),
     ("E0711", "not_differentiable_net", not_differentiable_net),
+    ("E0712", "net_contract_not_checked", net_contract_not_checked),
     ("E9999", "grad_unchecked", grad_unchecked),
     ("no_derivative_rule", "no_derivative_rule", no_derivative_rule),
     ("param_no_gradient", "param_no_gradient", param_no_gradient),
@@ -209,6 +210,16 @@ fn not_differentiable_net() -> bool {
         .iter()
         .any(|d| d.id.as_deref() == Some("E0711") && d.message.contains("`Fit`") && d.message.contains("`Affine`"));
     clean && fired
+}
+
+/// A clause before `net` is kept and warned about, and the same net without it
+/// is not. The warning is not an error, so the net still checks.
+fn net_contract_not_checked() -> bool {
+    warns("@req(x > 0)\nnet A { layer fc: Linear(3, 1); forward { fc } }\n", "E0712", "not checked")
+        && !warns("net A { layer fc: Linear(3, 1); forward { fc } }\n", "E0712", "not checked")
+        && check("@req(x > 0)\nnet A { layer fc: Linear(3, 1); forward { fc } }\n", &[])
+            .iter()
+            .all(|(s, _, _)| s != "error")
 }
 
 fn net_shape() -> bool {

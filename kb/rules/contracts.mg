@@ -74,4 +74,12 @@ kb Contracts {
     fact gap("requires", "@req and @ens on a struct are accepted and checked by nothing");
     fact gap("requires", "in a spec with no function, @req is not typechecked: there is no signature");
     fact gap("ensures", "in a spec with no function, @ens is not typechecked and its old(x) not scoped: there is no signature");
+
+    // A net is not a placement: none of the three clauses is constrained_by it.
+    // The parser keeps them on the net, and --check warns that they are not
+    // checked (E0712). Nothing evaluates a contract on a net, because a net runs
+    // through --target=abl-infer and --target=abl-train, which evaluate none.
+    fact gap("requires", "on a net: accepted, and checked by nothing (E0712 warns); a net runs through --target=abl-infer, which evaluates no contract");
+    fact gap("ensures", "on a net: accepted, and checked by nothing (E0712 warns); a net runs through --target=abl-infer, which evaluates no contract");
+    fact gap("invariant", "on a net: accepted, and checked by nothing (E0712 warns); a net runs through --target=abl-infer, which evaluates no contract");
 }
