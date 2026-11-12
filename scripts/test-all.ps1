@@ -8,19 +8,19 @@
     This is the single entry point that covers everything CI covers:
 
         rmi (cpu)   1,384 tests
-        prototype   1,686 tests
+        prototype   1,689 tests
         ribosome      168 tests
-        germline      176 tests
+        germline      202 tests
         forge          65 tests
-        arena          265 tests
+        arena          293 tests
         -------------------------
-        total       3,744 tests, 0 warnings
+        total       3,801 tests, 0 warnings
 
 .PARAMETER Release
     Build and test in release mode (slower to build, much faster to run).
 
 .PARAMETER Bench
-    Additionally run the ignored measurement harnesses: eval_bench (73/73 exact)
+    Additionally run the ignored measurement harnesses: eval_bench (76/76 exact)
     and perf_report. Implies -Release, since the numbers are only meaningful
     against an optimized build.
 

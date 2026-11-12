@@ -316,6 +316,8 @@ $ mage-parse --pipeline prototype/examples/tiny_lm.mg
   ✓ train LearnPlateau: 1 forward ops, 1 backward ops
 ```
 
+That transcript is historical. `--pipeline` no longer prints a tick for these blocks. It prints the warning `!train Learn: autograd tape covers nothing (1 node)` and the same for `LearnPlateau`, and computes no gradient (`prototype/src/main.rs`, about line 3629). The tick was the defect this section describes.
+
 One forward node is the net's name. One backward op is the seed,
 `d(loss)/d(loss) = 1.0` — and because that single node is *both* the loss and
 the parameter, the seed is recorded as **the gradient of the loss with
@@ -326,7 +328,7 @@ reported it with a tick.
 An empty result would at least have been silent. This one answers.
 
 Training itself is unaffected and genuinely works — `--target=abl-train` on
-`train_demo.mg` reduces loss by 99.95% — because the real backward pass lives
+`train_demo.mg` reduces loss by 99.95% (first_loss=0.799681, last_loss=0.000423; identical over three runs, and pinned by `prototype/tests/train_cli.rs` only as "final loss below half the first") — because the real backward pass lives
 in `rmi`'s backend and never touches this module. That is what made this
 survive: the thing the tape is cited as evidence for does work, just not
 here.

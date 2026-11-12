@@ -508,10 +508,11 @@ thing that decides whether such a loop is safe or merely fast:
 > will exploit.** This is the general case of reward hacking, and it is not a
 > hypothetical concern in a system designed to optimize against its own metric.
 
-◻ **Not built:** population management, selection, mutation, crossover, and the
-self-overwrite step. The compiler already has the genetic operators
-(`evolve_gen.rs`: selection/crossover/mutation strategies behind the `evolve`
-keyword) and an operation-log VCS with semantic branching and rollback
+◻ **Not built:** a population loop over the operators, and the self-overwrite
+step. The genetic operators exist in `germline/src/variation.rs` (`Mutation`,
+`Crossover`, `Selection`, and the functions `mutate`, `crossover` and `select`),
+and a propose step exists as `Cycle::propose` in `germline/src/cycle.rs`. The
+compiler has an operation-log VCS with semantic branching and rollback
 (`semantic_vcs.rs`) which is the natural substrate for "overwrite yourself, and be
 able to not have." Composing them into a closed loop is designed, unwritten.
 

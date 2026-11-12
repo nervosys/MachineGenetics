@@ -19,11 +19,22 @@ use std::io::Read;
 /// deleting `--token-report` from the real filter left the test passing, since
 /// it was exercising its duplicate. A test that mirrors the implementation
 /// cannot catch the implementation drifting.
+/// Text of a `--json` payload: pretty-printed by default, one line under
+/// `--compact`. Same value either way; only the whitespace differs, so an agent
+/// that parses one parses the other.
+fn json_text(value: &serde_json::Value, compact: bool) -> serde_json::Result<String> {
+    if compact {
+        serde_json::to_string(value)
+    } else {
+        serde_json::to_string_pretty(value)
+    }
+}
+
 fn is_modifier_flag(a: &str) -> bool {
     matches!(
         a,
         "--no-elision" | "--syntax=legacy" | "--syntax=canonical" | "--token-report"
-            | "--json" | "--fix" | "--core" | "--max" | "--fuel" | "--seed" | "--write"
+            | "--json" | "--compact" | "--fix" | "--core" | "--max" | "--fuel" | "--seed" | "--write"
     ) || a.starts_with("--backend=")
         || a.starts_with("--backends-file=")
 }
@@ -322,6 +333,8 @@ fn main() {
     // stream instead of human prose, so an agent parses errors structurally
     // (code/span/category/fix) rather than scraping stderr.
     let json_out = args.iter().any(|a| a == "--json");
+    // `--compact` (with `--json`) prints the same JSON on one line.
+    let compact = args.iter().any(|a| a == "--compact");
     // `--check --core`: also require MAGE-core (§4.12), the subset the RSI
     // kernel runs — every function roled, no `unsafe`, only core items.
     let core = args.iter().any(|a| a == "--core");
@@ -518,7 +531,7 @@ fn main() {
                 std::process::exit(1);
             });
             if json_out {
-                run_check_json(&source, path, !no_elision, syntax_legacy, core);
+                run_check_json(&source, path, !no_elision, syntax_legacy, core, compact);
             } else {
                 run_check(&source, path, !no_elision, syntax_legacy, token_report, core);
             }
@@ -548,7 +561,7 @@ fn main() {
             if json_out {
                 println!(
                     "{}",
-                    serde_json::to_string_pretty(&differentiable::report_json(&engine, path))
+                    json_text(&differentiable::report_json(&engine, path), compact)
                         .unwrap_or_else(|e| {
                             eprintln!("serialize: {e}");
                             std::process::exit(1);
@@ -583,7 +596,7 @@ fn main() {
             if json_out {
                 println!(
                     "{}",
-                    serde_json::to_string_pretty(&gradcheck::report_json(&rows, path))
+                    json_text(&gradcheck::report_json(&rows, path), compact)
                         .unwrap_or_else(|e| {
                             eprintln!("serialize: {e}");
                             std::process::exit(1);
@@ -891,7 +904,7 @@ fn main() {
                 let mut v = serde_json::to_value(&report).unwrap_or_default();
                 v["diff"] = serde_json::Value::String(diff);
                 v["written"] = serde_json::Value::Bool(written);
-                println!("{}", serde_json::to_string_pretty(&v).unwrap_or_default());
+                println!("{}", json_text(&v, compact).unwrap_or_default());
             } else {
                 print_heal_report(&report, &diff, path, write, written);
             }
@@ -3206,7 +3219,7 @@ fn run_parse(source: &str, filename: &str, do_elision: bool, legacy: bool, token
 /// output and an agent parses errors structurally — `{code, severity, line,
 /// col, category, message, fix}` — instead of scraping human prose. Every
 /// diagnostic carries a stable error code and an actionable `fix` hint.
-fn run_check_json(source: &str, filename: &str, do_elision: bool, legacy: bool, core: bool) {
+fn run_check_json(source: &str, filename: &str, do_elision: bool, legacy: bool, core: bool, compact: bool) {
     let source = if legacy { legacy::translate(source) } else { source.to_string() };
 
     let checked = check::check_source(&source, do_elision, core);
@@ -3237,7 +3250,7 @@ fn run_check_json(source: &str, filename: &str, do_elision: bool, legacy: bool, 
         "effects": checked.effects,
         "verdict": checked.verdict().to_json(),
     });
-    println!("{}", serde_json::to_string_pretty(&out).unwrap());
+    println!("{}", json_text(&out, compact).unwrap());
     if error_count > 0 {
         std::process::exit(1);
     }

@@ -7,7 +7,7 @@ text. It is the leverage the text-token floor denies the language track (see
 [IDEAL_AGENTIC_LANGUAGE.md](IDEAL_AGENTIC_LANGUAGE.md) for that analysis).
 
 > **Scope.** Everything below is implemented and test-covered in `prototype/`
-> (**1,686 tests** green) and scored in the sibling `agentic-eval` crate (80
+> (**1,689 tests** green) and scored in the sibling `agentic-eval` crate (80
 > tests, in the AetherShell repository and not verifiable from here). The one
 > deliberate non-feature is agent/swarm *execution* — see
 > [Honest boundaries](#honest-boundaries).
@@ -25,7 +25,7 @@ MAGE is three parts joined by one schema. The design and its reasons are in [NEU
 
 | Part | Its job | Where it lives |
 |---|---|---|
-| **Neural** | Inference and generation | Generators that propose programs and learners that predict their output (`arena/`); networks declared in `net` and run on `rmi` |
+| **Neural** | Inference and generation | Generators that propose programs and learners that predict their output (`arena/`); networks declared in `net` are run on `rmi`'s compute backend, with the forward and backward passes dispatched in `prototype/src/abl_compute.rs` |
 | **Symbolic** | Correctness, safety and compilation | The lexer and parser (the hand-written kernel), type checker, contract verifier, lowering to the binary IR, and the arena's gate |
 | **Knowledge base** | What the language is | `kb/*.mg`: facts about syntax, grammar, forms, meaning, rules and profiles, compiled in by `prototype/src/kb.rs` |
 
@@ -100,6 +100,8 @@ Every module in `prototype/src`, by the part it serves. A test (`prototype/tests
 | Knowledge base | `grammar.rs`, `kb.rs`, `kb_proposal.rs`, `ontology.rs` |
 | Interface | `aci.rs`, `bin/`, `builder.rs`, `cli_manifest.rs`, `ffi_gen.rs`, `fmt.rs`, `legacy.rs`, `lib.rs`, `main.rs`, `manifest.rs`, `rap.rs`, `rmi_ontology_adapter.rs`, `rmi_runtime_adapter.rs`, `spine_bridge.rs`, `token_budget.rs` |
 | Outside the design | `bench.rs`, `consensus.rs`, `crdt.rs`, `decompose.rs`, `forge.rs`, `hot_reload.rs`, `lease.rs`, `perf_measure.rs`, `rain.rs`, `semantic_vcs.rs`, `swarm_bus.rs`, `swarm_sdk.rs`, `token_canonical.rs` |
+
+Four of the Neural rows are not learned components, and the table does not say so. The codegen bridge, the NL engine and synthesis are deterministic: they assemble code from strategy templates and keyword matching on the request text, and synthesis emits `todo` bodies. Autograd is deterministic reverse-mode differentiation over a tape built from a train block's let statements, with the net name registered as the parameter source. They sit under Neural because they serve generation and training. Nothing in them is trained.
 
 ---
 
@@ -266,11 +268,11 @@ are **six independent Cargo workspaces**:
 | Path | Crate | Tests | Notes |
 |---|---|--:|---|
 | `RecursiveMachineIntelligence/` | `rmi` | 1,384 | The low-level neurosymbolic framework. Feature-gated (`cpu` / `gpu` / `cuda`); build with `--no-default-features --features cpu` for the portable set |
-| `prototype/` | `mage-prototype` | 1,686 | Compiler, evaluator, ABL, RAP server. Path-depends on `rmi` |
+| `prototype/` | `mage-prototype` | 1,689 | Compiler, evaluator, ABL, RAP server. Path-depends on `rmi` |
 | `ribosome/` | `ribosome` | 168 | The distributed build engine. Depends on nothing in this repository — see below |
-| `germline/` | `germline` | 176 | Model succession, handoff, fallback — the RSI control plane. Path-depends on `ribosome` |
+| `germline/` | `germline` | 202 | Model succession, handoff, fallback — the RSI control plane. Path-depends on `ribosome` |
 | `forge/` | `forge` | 65 | The package registry, and the content-addressed block and definition stores |
-| `arena/` | `arena` | 265 | The self-driven loop: agents write MAGE, learners predict it, joules are counted. Path-depends on `prototype`, `germline` and `forge` |
+| `arena/` | `arena` | 293 | The self-driven loop: agents write MAGE, learners predict it, joules are counted. Path-depends on `prototype`, `germline` and `forge` |
 
 The dependency graph is a forest, not a web:
 
@@ -335,7 +337,7 @@ So the supported entry points are:
 ```sh
 scripts/test-all.sh              # all six crates, debug
 scripts/test-all.sh --release    # optimized
-scripts/test-all.sh --bench      # + eval_bench (73/73) and perf_report
+scripts/test-all.sh --bench      # + eval_bench (76/76) and perf_report
 scripts/test-all.sh --cuda       # + prototype --features cuda (1,229 tests)
 ```
 
