@@ -124,3 +124,88 @@ fn a_missing_journal_or_heldout_file_is_a_usage_error() {
     assert!(text(&out.stderr).contains("--journal PATH is required"));
     let _ = std::fs::remove_dir_all(dir);
 }
+
+#[test]
+fn efficiency_as_an_objective_on_estimated_energy_is_refused_without_the_flag() {
+    let (dir, heldout) = fixture("estimated-refused");
+    let journal = dir.join("run.jsonl");
+    let out = succession(&heldout, &journal, &["--cycles", "1", "--objectives", "capability,efficiency,latency"]);
+    let (stdout, stderr) = (text(&out.stdout), text(&out.stderr));
+    assert_eq!(out.status.code(), Some(2), "refused before any cycle\nstdout:\n{stdout}\nstderr:\n{stderr}");
+    assert!(stderr.contains("--allow-estimated-energy"), "{stderr}");
+    assert!(stderr.contains("estimated") && stderr.contains("faster"), "{stderr}");
+    assert!(!journal.exists(), "a refused start writes no journal");
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn efficiency_as_an_objective_runs_with_the_flag_and_says_what_it_measured() {
+    let (dir, heldout) = fixture("estimated-allowed");
+    let journal = dir.join("run.jsonl");
+    let out = succession(
+        &heldout,
+        &journal,
+        &["--cycles", "1", "--objectives", "capability,efficiency,latency", "--allow-estimated-energy"],
+    );
+    let (stdout, stderr) = (text(&out.stdout), text(&out.stderr));
+    assert!(out.status.success(), "exit {:?}\nstdout:\n{stdout}\nstderr:\n{stderr}", out.status.code());
+    assert_eq!(stderr.matches("the efficiency axis is an estimate").count(), 1, "warned once: {stderr}");
+    assert!(stdout.contains("objectives: capability, efficiency, latency"), "{stdout}");
+    assert!(stdout.contains("energy basis: estimated"), "{stdout}");
+    assert!(stdout.contains("cycles run, "), "{stdout}");
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn the_json_report_lists_the_objectives_and_the_energy_basis() {
+    let (dir, heldout) = fixture("json-objectives");
+    let journal = dir.join("run.jsonl");
+    let out = succession(
+        &heldout,
+        &journal,
+        &[
+            "--cycles",
+            "1",
+            "--json",
+            "--objectives",
+            "capability,efficiency,latency",
+            "--dominance-min",
+            "0.02",
+            "--allow-estimated-energy",
+        ],
+    );
+    let stdout = text(&out.stdout);
+    assert!(out.status.success(), "{stdout}\n{}", text(&out.stderr));
+    let json: serde_json::Value = serde_json::from_str(&stdout).expect("the report is JSON");
+    assert_eq!(json["objectives"]["mode"], "pareto");
+    assert_eq!(json["objectives"]["axes"], serde_json::json!(["capability", "efficiency", "latency"]));
+    assert_eq!(json["objectives"]["dominance"]["min_improvement"], 0.02);
+    assert_eq!(json["energy_basis"]["basis"], "estimated");
+    assert!(json["energy_basis"]["how"].as_str().is_some_and(|h| h.contains("W assumed")), "{json}");
+    assert!(json["report"]["policy"].is_string(), "the run report is still there");
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn with_no_objectives_the_run_is_the_scalar_gate_and_says_so() {
+    let (dir, heldout) = fixture("scalar-header");
+    let journal = dir.join("run.jsonl");
+    let out = succession(&heldout, &journal, &["--cycles", "1", "--json"]);
+    let stdout = text(&out.stdout);
+    assert!(out.status.success(), "{stdout}\n{}", text(&out.stderr));
+    let json: serde_json::Value = serde_json::from_str(&stdout).expect("the report is JSON");
+    assert_eq!(json["objectives"]["mode"], "scalar");
+    assert!(json["objectives"]["dominance"].is_null(), "no dominance rule without --objectives");
+    assert_eq!(json["energy_basis"]["basis"], "estimated", "the scalar gate reads efficiency too");
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn an_unknown_objective_is_a_usage_error() {
+    let (dir, heldout) = fixture("bad-objective");
+    let journal = dir.join("run.jsonl");
+    let out = succession(&heldout, &journal, &["--cycles", "1", "--objectives", "capability,speed"]);
+    assert_eq!(out.status.code(), Some(2), "{}", text(&out.stderr));
+    assert!(text(&out.stderr).contains("not an axis"), "{}", text(&out.stderr));
+    let _ = std::fs::remove_dir_all(dir);
+}

@@ -22,17 +22,17 @@
 //! is not the digest of the corpora this workload holds, so a candidate cannot
 //! be scored on data nobody registered.
 
-use crate::arena::{run, Config, Corpus};
-use crate::energy::{Meter, WallClock};
+use crate::arena::{run, Config, Corpus, Report};
+use crate::energy::{Basis, Meter, WallClock};
 use crate::learner::{LearnerConfig, LearnerSpec};
 use germline::attest::Attestor;
 use germline::directed::CandidateSpec;
-use germline::gate::{Episode, PromotionGate};
+use germline::gate::{DominanceRule, Episode, PromotionGate};
 use germline::journal::Journal;
 use germline::lineage::Lineage;
 use germline::runner::{Halt, Runner, RunnerPolicy, Workload};
 use germline::supervisor::HealthSample;
-use germline::variation::{Genome, Locus};
+use germline::variation::{Genome, Locus, Selection, VariationPlan};
 use germline::{EvalSuite, FitnessVector, Generation, Measurement};
 use ribosome::Digest;
 use sha2::{Digest as _, Sha256};
@@ -107,8 +107,52 @@ pub fn suite_digest(corpora: &[Corpus]) -> Digest {
 struct Built {
     mean_bpb: f64,
     joules: Option<f64>,
+    /// Seconds to score a kilobyte, as the session measured it.
+    latency_s_per_kb: f64,
+    /// How the training energy was obtained. Efficiency is only as good as this.
+    energy: Basis,
     /// Canonical hashes of the session's best programs: what it learned from.
     definitions: Vec<String>,
+}
+
+/// The `latency` axis: `1 / (1 + milliseconds per kilobyte)`. Higher is better,
+/// strictly decreasing in the time to score a kilobyte, and in `(0, 1]`.
+///
+/// Milliseconds rather than seconds because the arena's learners score a
+/// kilobyte in fractions of a millisecond, and a seconds-based map would sit at
+/// 1.0 for all of them, leaving the axis unable to tell two learners apart.
+pub fn latency_axis(s_per_kb: f64) -> f64 {
+    1.0 / (1.0 + s_per_kb.max(0.0) * 1000.0)
+}
+
+/// The basis of a session's training energy. `Measured` only when every
+/// training span was read from a hardware counter. Otherwise `Estimated`, with
+/// the estimate's own description, or `Unavailable` when no meter gave a figure.
+fn session_energy_basis(report: &Report) -> Basis {
+    let Some(learner) = report.learners.first() else {
+        return Basis::Unavailable { why: "the session trained no learner".into() };
+    };
+    if learner.train_joules.is_none() {
+        return Basis::Unavailable { why: "no meter produced a training figure".into() };
+    }
+    let all_measured = report
+        .checkpoints
+        .iter()
+        .rev()
+        .find(|c| c.learner == 0)
+        .is_some_and(|c| c.joules_all_measured);
+    if all_measured {
+        return Basis::Measured;
+    }
+    let how = report
+        .energy_bases
+        .iter()
+        .find_map(|r| match &r.basis {
+            Basis::Estimated { how } => Some(how.clone()),
+            _ => None,
+        })
+        .unwrap_or_else(|| "estimated".into());
+    Basis::Estimated { how }
 }
 
 /// Germline's [`Workload`], backed by arena sessions.
@@ -124,6 +168,12 @@ pub struct ArenaWorkload {
     /// no longer hash to the suite it was built on. Empty means nothing is
     /// re-checked (the corpora were not read from files).
     pub heldout_files: Vec<String>,
+    /// Emit the `latency` axis from [`evaluate`](Workload::evaluate). Off by
+    /// default: a journal's axis set is fixed when it is written, and an axis
+    /// that old journals never measured would make every candidate incomparable
+    /// with the champion they recorded. The CLI turns it on for
+    /// `--objectives ...latency`.
+    pub with_latency: bool,
     built: HashMap<String, Built>,
 }
 
@@ -141,7 +191,19 @@ pub fn read_corpora(paths: &[String]) -> Result<Vec<Corpus>, String> {
 
 impl ArenaWorkload {
     pub fn new(base: Config, corpora: Vec<Corpus>) -> ArenaWorkload {
-        ArenaWorkload { base, corpora, cpu_watts: 65.0, heldout_files: Vec::new(), built: HashMap::new() }
+        ArenaWorkload {
+            base,
+            corpora,
+            cpu_watts: 65.0,
+            heldout_files: Vec::new(),
+            with_latency: false,
+            built: HashMap::new(),
+        }
+    }
+
+    /// The basis of the training energy behind `artifact`'s efficiency figure.
+    pub fn energy_basis(&self, artifact: &Digest) -> Option<Basis> {
+        self.built.get(&artifact.0).map(|b| b.energy.clone())
     }
 
     /// The suite this workload's corpora are registered as.
@@ -185,7 +247,14 @@ impl Workload for ArenaWorkload {
         let d = Digest(format!("{:x}", Sha256::digest(identity.to_string().as_bytes())));
         let definitions =
             report.best_programs.iter().map(|(_, _, _, exact)| exact.clone()).filter(|e| !e.is_empty()).collect();
-        self.built.insert(d.0.clone(), Built { mean_bpb: learner.mean_bpb, joules: learner.train_joules, definitions });
+        let built = Built {
+            mean_bpb: learner.mean_bpb,
+            joules: learner.train_joules,
+            latency_s_per_kb: learner.latency_s_per_kb,
+            energy: session_energy_basis(&report),
+            definitions,
+        };
+        self.built.insert(d.0.clone(), built);
         Ok(d)
     }
 
@@ -197,9 +266,18 @@ impl Workload for ArenaWorkload {
         if !b.mean_bpb.is_finite() {
             return Err("held-out bits/byte is not finite".into());
         }
+        if self.with_latency && !b.latency_s_per_kb.is_finite() {
+            return Err("latency is not finite".into());
+        }
         let capability = (1.0 - b.mean_bpb / 8.0).clamp(0.0, 1.0);
+        // Efficiency is the joules the meters gave. Its basis is `b.energy`, and
+        // a caller that needs it reads `energy_basis`.
         let efficiency = b.joules.map(|j| 1.0 / (1.0 + j / 1000.0)).unwrap_or(0.0);
-        Ok(FitnessVector::new().with("capability", capability).with("efficiency", efficiency))
+        let mut f = FitnessVector::new().with("capability", capability).with("efficiency", efficiency);
+        if self.with_latency {
+            f = f.with("latency", latency_axis(b.latency_s_per_kb));
+        }
+        Ok(f)
     }
 
     /// Refuse to start a cycle on held-out data that has changed under the run.
@@ -253,7 +331,11 @@ const DEV_ATTEST_KEY: &str = "arena-development-key";
 /// below the noise floor "promotes coin flips". `capability` is
 /// `1 - bits/byte / 8`, so `0.01` is about 0.08 bits/byte. That number was
 /// chosen by hand and has not been calibrated against the measured noise.
-fn cli_gate() -> PromotionGate {
+///
+/// `dominance` is set by `--objectives`. Its rule (b) holds every objective to
+/// `efficiency`'s guard tolerance above, or to zero for `latency`, which is no
+/// guard here, and its ratchet applies to every objective.
+fn cli_gate(dominance: Option<DominanceRule>) -> PromotionGate {
     PromotionGate {
         primary_axis: "capability".into(),
         min_improvement: 0.01,
@@ -262,16 +344,40 @@ fn cli_gate() -> PromotionGate {
         guard_tolerance: 0.25,
         // Shadow runs here are a finiteness check, so the germline default holds.
         min_shadow_successes: 8,
-        dominance: None,
+        dominance,
     }
 }
 
 const USAGE: &str = "usage: arena succession --heldout FILE[,FILE...] --journal PATH [--cycles N] [--seed N] \
 [--stop-file PATH] [--force] [--json] [--rounds N] [--programs N] [--candidates N] [--agents K:N,...] \
-[--proposer-command \"CMD ARGS\"] [--proposer-timeout S]";
+[--proposer-command \"CMD ARGS\"] [--proposer-timeout S] \
+[--objectives capability[,efficiency][,latency]] [--dominance-min F] [--allow-estimated-energy]";
+
+/// The objective axes `--objectives` may name.
+const OBJECTIVE_AXES: [&str; 3] = ["capability", "efficiency", "latency"];
+
+/// The default margin on the objective axes for rule (b), the same as the
+/// primary margin.
+const DEFAULT_DOMINANCE_MIN: f64 = 0.01;
 
 fn num(v: &str, flag: &str) -> Result<u64, String> {
     v.parse().map_err(|_| format!("{flag}: `{v}` is not a number"))
+}
+
+fn parse_objectives(list: &str) -> Result<Vec<String>, String> {
+    let names: Vec<String> = list.split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect();
+    if names.is_empty() {
+        return Err(format!("--objectives needs at least one of {}", OBJECTIVE_AXES.join(", ")));
+    }
+    for n in &names {
+        if !OBJECTIVE_AXES.contains(&n.as_str()) {
+            return Err(format!("--objectives: `{n}` is not an axis; the axes are {}", OBJECTIVE_AXES.join(", ")));
+        }
+    }
+    if !names.iter().any(|n| n == "capability") {
+        return Err("--objectives must include capability, the primary axis the search is for".into());
+    }
+    Ok(names)
 }
 
 fn parse_agents(list: &str) -> Result<Vec<(String, usize)>, String> {
@@ -281,6 +387,66 @@ fn parse_agents(list: &str) -> Result<Vec<(String, usize)>, String> {
             Ok((k.to_string(), num(n, "--agents")? as usize))
         })
         .collect()
+}
+
+/// Refuse an efficiency axis that is not measured, unless the caller accepts an
+/// estimate. Efficiency is joules per unit of work, so a wall-clock estimate
+/// (seconds times an assumed wattage) makes "more efficient" mean "faster".
+/// With `--allow-estimated-energy` the run proceeds, and says so once.
+fn check_energy(objectives: Option<&[String]>, basis: &Basis, allow_estimated: bool) -> Result<(), String> {
+    if !objectives.is_some_and(|o| o.iter().any(|n| n == "efficiency")) {
+        return Ok(());
+    }
+    match basis {
+        Basis::Measured => Ok(()),
+        Basis::Estimated { how } if allow_estimated => {
+            eprintln!(
+                "succession: warning: the efficiency axis is an estimate ({how}), not a measurement. \
+                 Here \"more efficient\" means \"faster\" to the extent that time tracks energy."
+            );
+            Ok(())
+        }
+        Basis::Estimated { how } => Err(format!(
+            "--objectives includes efficiency, but this run's energy is estimated ({how}), not measured. \
+             The efficiency axis would be wall-clock seconds times an assumed wattage, so a candidate that is \
+             \"more efficient\" would only be one that is faster. Pass --allow-estimated-energy to proceed with \
+             that understanding, or drop efficiency from --objectives."
+        )),
+        Basis::Unavailable { why } => Err(format!(
+            "--objectives includes efficiency, but no energy figure was produced ({why}). Efficiency would be a \
+             constant, and --allow-estimated-energy does not change that."
+        )),
+    }
+}
+
+/// The objectives a run's gate and selection read, for the header and the JSON
+/// report. With no `--objectives`, the gate is the scalar primary-axis gate.
+fn objectives_json(objectives: Option<&[String]>, dominance: Option<&DominanceRule>) -> serde_json::Value {
+    serde_json::json!({
+        "mode": if objectives.is_some() { "pareto" } else { "scalar" },
+        "axes": objectives.map(<[String]>::to_vec).unwrap_or_else(|| vec!["capability".into(), "efficiency".into()]),
+        "primary": "capability",
+        "guards": ["efficiency"],
+        "dominance": dominance,
+    })
+}
+
+fn objectives_text(objectives: Option<&[String]>, dominance_min: f64) -> String {
+    match objectives {
+        Some(o) => format!(
+            "{} (primary capability) — Pareto parent selection; promotion by rule (a) or by dominance rule (b) at margin {dominance_min:.4}",
+            o.join(", ")
+        ),
+        None => "capability (primary), efficiency (guard) — scalar selection; promotion by rule (a) only".into(),
+    }
+}
+
+fn basis_text(basis: &Basis) -> String {
+    match basis {
+        Basis::Measured => "measured (hardware energy counter)".into(),
+        Basis::Estimated { how } => format!("estimated — {how}"),
+        Basis::Unavailable { why } => format!("unavailable — {why}"),
+    }
 }
 
 fn halt_text(h: &Halt) -> String {
@@ -328,6 +494,9 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
     let mut force = false;
     let mut json = false;
     let mut candidates: usize = 4;
+    let mut objectives: Option<Vec<String>> = None;
+    let mut dominance_min = DEFAULT_DOMINANCE_MIN;
+    let mut allow_estimated = false;
     let mut base = Config::default();
     let mut i = 0;
     while i < args.len() {
@@ -336,7 +505,7 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
             println!("{USAGE}");
             return Ok(0);
         }
-        let takes_value = !matches!(flag, "--force" | "--json");
+        let takes_value = !matches!(flag, "--force" | "--json" | "--allow-estimated-energy");
         let v = if takes_value {
             args.get(i + 1).map(String::as_str).ok_or_else(|| format!("{flag} needs a value"))?
         } else {
@@ -358,6 +527,15 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
                 base.proposer_command = Some(v.split_whitespace().map(str::to_string).collect())
             }
             "--proposer-timeout" => base.proposer_timeout_s = num(v, flag)?,
+            "--objectives" => objectives = Some(parse_objectives(v)?),
+            "--dominance-min" => {
+                dominance_min = v
+                    .parse::<f64>()
+                    .ok()
+                    .filter(|x| x.is_finite() && *x >= 0.0)
+                    .ok_or_else(|| format!("--dominance-min: `{v}` is not a non-negative number"))?
+            }
+            "--allow-estimated-energy" => allow_estimated = true,
             other => return Err(format!("unknown argument `{other}`\n{USAGE}")),
         }
         i += if takes_value { 2 } else { 1 };
@@ -379,6 +557,7 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
 
     let mut w = ArenaWorkload::new(base.clone(), read_corpora(&heldout)?);
     w.heldout_files = heldout.clone();
+    w.with_latency = objectives.as_ref().is_some_and(|o| o.iter().any(|n| n == "latency"));
     let suite = w.suite();
     let digest = suite.digest.clone();
 
@@ -388,6 +567,11 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
     let base_genome = encode(&base);
     let seed_art = w.materialize(&CandidateSpec::new("seed", base_genome.clone()))?;
     let seed_fit = w.evaluate(&seed_art, &suite)?;
+    let basis = w.energy_basis(&seed_art).unwrap_or_else(|| Basis::Unavailable {
+        why: "the seed session recorded no energy basis".into(),
+    });
+    check_energy(objectives.as_deref(), &basis, allow_estimated)?;
+    let dominance = objectives.as_ref().map(|o| DominanceRule { objectives: o.clone(), min_improvement: dominance_min });
     let mut genesis = Lineage::new();
     let id = genesis.next_id();
     let mut g = Generation::new(id, seed_art.clone()).measured(Measurement {
@@ -397,7 +581,7 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
     });
     g.genome = Some(base_genome);
     genesis.add(g);
-    let ep = Episode::open(cli_gate(), suite.digest.clone(), CLI_EVALUATOR);
+    let ep = Episode::open(cli_gate(dominance.clone()), suite.digest.clone(), CLI_EVALUATOR);
     // The seed earns authority the way a candidate does: by its shadow runs,
     // counted, with as many as the runner would give a candidate.
     let shadow_runs = RunnerPolicy::default().shadow_runs;
@@ -416,11 +600,21 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
     }
     let mut journal = Journal::open(&journal_path).map_err(|e| format!("{}: {e}", journal_path.display()))?;
 
+    // Parents are chosen by Pareto rank over the named objectives when they are
+    // given. Without them the variation plan is the default, as it always was.
+    let variation = match &objectives {
+        Some(o) => VariationPlan {
+            selection: Selection::Pareto { objectives: o.clone() },
+            ..VariationPlan::default()
+        },
+        None => VariationPlan::default(),
+    };
     let policy = RunnerPolicy {
         name: "succession-cli".into(),
         max_cycles: cycles,
         candidates_per_cycle: candidates,
         stop_file: stop_file.map(PathBuf::from),
+        variation,
         ..RunnerPolicy::default()
     };
     let mut runner = Runner::new(policy, &ep, &at, suite.clone(), seed);
@@ -445,11 +639,15 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
         let out = serde_json::json!({
             "suite_digest": digest.0,
             "journal": journal_path.display().to_string(),
+            "objectives": objectives_json(objectives.as_deref(), dominance.as_ref()),
+            "energy_basis": basis,
             "report": report,
         });
         println!("{}", serde_json::to_string_pretty(&out).map_err(|e| e.to_string())?);
     } else {
         println!("succession: held-out suite digest {}", digest.0);
+        println!("objectives: {}", objectives_text(objectives.as_deref(), dominance_min));
+        println!("energy basis: {}", basis_text(&basis));
         println!("policy `{}`@{}, at most {cycles} cycles, journal {}", report.policy, report.policy_digest.short(), journal_path.display());
         for c in &report.cycles {
             match c.candidate {
@@ -637,5 +835,61 @@ mod tests {
             assert!(report.promotions > 0);
             assert!(champ.genome.is_some(), "a promoted session carries its configuration");
         }
+    }
+
+    #[test]
+    fn the_latency_axis_is_in_the_unit_interval_and_falls_as_time_rises() {
+        assert_eq!(latency_axis(0.0), 1.0);
+        assert_eq!(latency_axis(-1.0), 1.0, "a negative time is clamped to instant");
+        let mut prev = f64::INFINITY;
+        for s_per_kb in [0.0, 1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1.0, 100.0] {
+            let v = latency_axis(s_per_kb);
+            assert!((0.0..=1.0).contains(&v), "{s_per_kb} s/kB maps to {v}");
+            assert!(v < prev, "slower must score lower: {s_per_kb} s/kB gave {v}, after {prev}");
+            prev = v;
+        }
+    }
+
+    #[test]
+    fn evaluate_emits_latency_only_when_asked_and_records_the_energy_basis() {
+        let mut w = ArenaWorkload::new(base(), corpora());
+        let d = w.materialize(&CandidateSpec::new("c", encode(&base()))).expect("materializes");
+        let suite = w.suite();
+        let without = w.evaluate(&d, &suite).expect("scores");
+        assert!(without.get("latency").is_none(), "latency is opt-in, so old journals stay comparable");
+        w.with_latency = true;
+        let with = w.evaluate(&d, &suite).expect("scores");
+        let lat = with.get("latency").expect("latency is emitted when asked");
+        assert!((0.0..=1.0).contains(&lat), "{lat}");
+        assert!(with.get("efficiency").is_some(), "efficiency is kept");
+        // The meters here are wall-clock estimates, and the workload says so.
+        assert!(matches!(w.energy_basis(&d), Some(Basis::Estimated { .. })), "{:?}", w.energy_basis(&d));
+    }
+
+    #[test]
+    fn efficiency_on_estimated_energy_needs_the_flag_and_is_never_allowed_unavailable() {
+        let objs: Vec<String> = ["capability", "efficiency"].iter().map(|s| s.to_string()).collect();
+        let est = Basis::Estimated { how: "wall-clock seconds × 65 W assumed".into() };
+        let refused = check_energy(Some(&objs), &est, false).expect_err("estimated without the flag");
+        assert!(refused.contains("--allow-estimated-energy") && refused.contains("faster"), "{refused}");
+        assert!(check_energy(Some(&objs), &est, true).is_ok(), "the flag proceeds");
+        assert!(check_energy(Some(&objs), &Basis::Measured, false).is_ok());
+        let none = Basis::Unavailable { why: "no meter".into() };
+        assert!(check_energy(Some(&objs), &none, true).is_err(), "the flag does not make a missing figure real");
+        // Without efficiency among the objectives, the energy basis does not gate the run.
+        let no_eff: Vec<String> = vec!["capability".into(), "latency".into()];
+        assert!(check_energy(Some(&no_eff), &est, false).is_ok());
+        assert!(check_energy(None, &est, false).is_ok());
+    }
+
+    #[test]
+    fn parse_objectives_names_the_axes_and_requires_the_primary() {
+        assert_eq!(
+            parse_objectives("capability,efficiency,latency").unwrap(),
+            vec!["capability", "efficiency", "latency"]
+        );
+        assert!(parse_objectives("capability,speed").unwrap_err().contains("not an axis"));
+        assert!(parse_objectives("efficiency,latency").unwrap_err().contains("primary"));
+        assert!(parse_objectives("").is_err());
     }
 }
