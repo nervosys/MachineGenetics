@@ -20,7 +20,7 @@
     Build and test in release mode (slower to build, much faster to run).
 
 .PARAMETER Bench
-    Additionally run the ignored measurement harnesses: eval_bench (73/73 exact)
+    Additionally run the ignored measurement harnesses: eval_bench (76/76 exact)
     and perf_report. Implies -Release, since the numbers are only meaningful
     against an optimized build.
 

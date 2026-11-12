@@ -235,7 +235,7 @@
 | 101 | Precise total typing for the vocabulary | ✅ | Every vocabulary entry totally typed |
 | 102 | Publish vocabulary in the self-ontology | ✅ | Drift-proof — the ontology is generated from the implementation |
 | 103 | Complete the evaluator (`eval.rs`, `--eval`) | ✅ | Full expression/statement coverage: match, structs (`@Name{…}`), tuple/slice/struct patterns, f-strings, `?`/Option, compound assignment, bitwise/shift, slice indexing, guard/defer, nested + mutually-recursive functions, `.await` |
-| 104 | `eval_bench` correctness suite | ✅ | **73/73** programs compute exact expected results |
+| 104 | `eval_bench` correctness suite | ✅ | **76/76** programs compute exact expected results |
 | 105 | Digital rain representation | ✅ | Matrix-inspired dense-UTF-8 form (`rain.rs`) + the Remotion render in `video/` |
 | 106 | Cross-language executability result | ✅ | MAGE executes **5/5** tasks and is the tersest runnable language (173 cl100k tokens vs Rust 275, Java 297) |
 

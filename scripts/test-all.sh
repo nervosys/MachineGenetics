@@ -17,7 +17,7 @@
 # Usage:
 #   scripts/test-all.sh            # debug
 #   scripts/test-all.sh --release  # optimized
-#   scripts/test-all.sh --bench    # + eval_bench (73/73) and perf_report; implies --release
+#   scripts/test-all.sh --bench    # + eval_bench (76/76) and perf_report; implies --release
 #   scripts/test-all.sh --cuda     # + prototype --features cuda (1,229 tests; needs an
 #                                  #   NVIDIA driver to exercise kernels, CPU-falls-back
 #                                  #   without one). CI only compile-checks this path.
@@ -105,8 +105,8 @@ if [ "$BENCH" -eq 1 ]; then
                 -- --ignored --nocapture 2>&1 | tee "$blog"; then
             failed+=("prototype::$harness")
         fi
-        # `[eval-bench] correctness: 73/73 programs exact` — feed the numerator
-        # to --check-docs so the "73/73" claimed in four documents is verified
+        # `[eval-bench] correctness: 76/76 programs exact` — feed the numerator
+        # to --check-docs so the "76/76" claimed in four documents is verified
         # against the run that just produced it.
         if [ "$harness" = "eval_bench" ]; then
             n="$(grep -oE 'correctness: [0-9]+/' "$blog" | grep -oE '[0-9]+' | head -1)"

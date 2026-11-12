@@ -337,7 +337,7 @@ So the supported entry points are:
 ```sh
 scripts/test-all.sh              # all six crates, debug
 scripts/test-all.sh --release    # optimized
-scripts/test-all.sh --bench      # + eval_bench (73/73) and perf_report
+scripts/test-all.sh --bench      # + eval_bench (76/76) and perf_report
 scripts/test-all.sh --cuda       # + prototype --features cuda (1,229 tests)
 ```
 

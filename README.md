@@ -35,7 +35,7 @@ languages. MAGE ranks **#1 of implemented languages** — only the unreachable
 
 **Measured anchor** (compile+run, real BPE — *not* curated): MAGE **executes
 5/5** of the cross-language task suite and is the **tersest** runnable language
-(**173** cl100k tokens vs Rust 275, Java 297); `eval_bench` computes **73/73**
+(**173** cl100k tokens vs Rust 275, Java 297); `eval_bench` computes **76/76**
 programs to exact results. Full measured tables in [Benchmarks](#benchmarks-measured).
 
 </div>
@@ -342,7 +342,7 @@ mage-parse --eval <file.mg> <fn> [int args]
 
 The `--eval` evaluator runs general-purpose `.mg` programs end to end
 (lex → parse → evaluate). Its correctness harness (`eval_bench`) executes
-**73 programs to exact results**, covering every expression/statement form, all
+**76 programs to exact results**, covering every expression/statement form, all
 pattern kinds (tuple/slice/struct/option), and the standard vocabulary over
 lists, strings, and maps — see [Benchmarks](#benchmarks-measured).
 
