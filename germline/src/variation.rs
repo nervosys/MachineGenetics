@@ -331,7 +331,7 @@ pub enum Crossover {
     Uniform { probability: f64 },
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "strategy", rename_all = "snake_case")]
 pub enum Selection {
     /// Best of `size` sampled at random. The default: preserves diversity
@@ -340,6 +340,13 @@ pub enum Selection {
     Tournament { size: usize },
     /// Take the top `keep` by fitness.
     Elitist { keep: usize },
+    /// Binary tournament on (non-domination rank, crowding distance) over the
+    /// population's objective vectors, all maximized, read by name from each
+    /// member's held-out fitness. Replaces the scalar score for parent choice
+    /// only. A member without a finite value on every named objective is never
+    /// chosen. Needs [`propose_with_points`]; [`select_indices`] returns nothing
+    /// for it, because it has no vectors to rank.
+    Pareto { objectives: Vec<String> },
 }
 
 /// Apply a mutation. Values stay clamped to `[0,1]` so a genome cannot wander
@@ -433,12 +440,46 @@ pub fn select_indices(population: &[(Genome, f64)], s: Selection, count: usize, 
             });
             ranked.into_iter().take(keep.max(1)).take(count).collect()
         }
+        // Pareto ranks objective vectors, which this signature does not carry.
+        Selection::Pareto { .. } => Vec::new(),
     }
+}
+
+/// Parent choice by Pareto rank and crowding, from each member's objective
+/// vector, or `None` where the member has no usable vector.
+///
+/// A vector is usable when every component is finite. An unusable member is
+/// dropped before ranking, so a NaN never reaches the front computation, where
+/// it would sit in front 0 as if it were a strong point. Members are drawn with
+/// `rng` in the same way as the other modes, so the same seed gives the same
+/// parents. Returns indices into `points`. With no usable member it returns
+/// nothing.
+pub fn select_pareto(points: &[Option<Vec<f64>>], count: usize, rng: &mut Rng) -> Vec<usize> {
+    let dims = match points.iter().flatten().next() {
+        Some(p) => p.len(),
+        None => return Vec::new(),
+    };
+    let usable: Vec<usize> = (0..points.len())
+        .filter(|&i| matches!(&points[i], Some(p) if p.len() == dims && p.iter().all(|v| v.is_finite())))
+        .collect();
+    if usable.is_empty() {
+        return Vec::new();
+    }
+    let vectors: Vec<Vec<f64>> = usable.iter().map(|&i| points[i].clone().unwrap_or_default()).collect();
+    let senses = vec![crate::pareto::Sense::Maximize; dims];
+    let ranked = crate::pareto::rank_and_crowding(&vectors, &senses);
+    let m = usable.len();
+    (0..count)
+        .map(|_| {
+            let (a, b) = (rng.below(m), rng.below(m));
+            usable[crate::pareto::tournament_winner(&ranked, a, b)]
+        })
+        .collect()
 }
 
 /// How a round of proposals is produced. Recorded alongside the seed, so a
 /// proposal is fully re-derivable from its provenance.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct VariationPlan {
     pub selection: Selection,
     pub crossover: Crossover,
@@ -488,8 +529,28 @@ pub fn propose(
     pool: &GenePool,
     seed: u64,
 ) -> Proposal {
+    propose_with_points(population, None, plan, pool, seed)
+}
+
+/// [`propose`], with each member's objective vector for [`Selection::Pareto`].
+///
+/// `points` is parallel to `population`: entry `i` is member `i`'s vector over
+/// the objectives the plan names, or `None` where it has none. A Pareto plan
+/// given no points selects nothing and so proposes nothing, rather than guessing
+/// at vectors. Other selection modes ignore `points`.
+pub fn propose_with_points(
+    population: &[(Genome, f64)],
+    points: Option<&[Option<Vec<f64>>]>,
+    plan: VariationPlan,
+    pool: &GenePool,
+    seed: u64,
+) -> Proposal {
     let mut rng = Rng::seed(seed);
-    let chosen = select_indices(population, plan.selection, plan.offspring * 2, &mut rng);
+    let chosen = match (&plan.selection, points) {
+        (Selection::Pareto { .. }, Some(points)) => select_pareto(points, plan.offspring * 2, &mut rng),
+        (Selection::Pareto { .. }, None) => Vec::new(),
+        (selection, _) => select_indices(population, selection.clone(), plan.offspring * 2, &mut rng),
+    };
     if chosen.is_empty() {
         return Proposal::default();
     }
@@ -788,5 +849,80 @@ mod tests {
     #[test]
     fn an_empty_population_proposes_nothing() {
         assert!(propose(&[], VariationPlan::default(), &no_pool(), 1).candidates.is_empty());
+    }
+
+    /// Three mutually non-dominated points, and one dominated by all three.
+    fn front_and_a_dominated_point() -> Vec<Option<Vec<f64>>> {
+        vec![Some(vec![0.9, 0.1]), Some(vec![0.1, 0.9]), Some(vec![0.6, 0.6]), Some(vec![0.2, 0.05])]
+    }
+
+    #[test]
+    fn a_dominated_member_is_chosen_less_often_than_any_front_member() {
+        let points = front_and_a_dominated_point();
+        let mut hits = [0usize; 4];
+        for seed in 0..500u64 {
+            for i in select_pareto(&points, 4, &mut Rng::seed(seed)) {
+                hits[i] += 1;
+            }
+        }
+        let weakest_front = hits[..3].iter().copied().min().unwrap_or(0);
+        assert!(
+            hits[3] < weakest_front,
+            "dominated member chosen {} times; the least-chosen front member {} times ({hits:?})",
+            hits[3],
+            weakest_front
+        );
+    }
+
+    #[test]
+    fn the_same_seed_gives_the_same_parents() {
+        let points = front_and_a_dominated_point();
+        let a = select_pareto(&points, 20, &mut Rng::seed(7));
+        let b = select_pareto(&points, 20, &mut Rng::seed(7));
+        assert_eq!(a, b);
+        assert_ne!(a, select_pareto(&points, 20, &mut Rng::seed(8)), "the seed is what varies the draws");
+    }
+
+    #[test]
+    fn a_population_of_identical_vectors_still_selects() {
+        let points = vec![Some(vec![0.5, 0.5]); 3];
+        let got = select_pareto(&points, 10, &mut Rng::seed(3));
+        assert_eq!(got.len(), 10);
+        assert!(got.iter().all(|&i| i < 3));
+    }
+
+    #[test]
+    fn a_member_with_a_nan_or_no_vector_is_never_chosen() {
+        let points = vec![Some(vec![f64::NAN, 1.0]), Some(vec![0.1, 0.1]), None];
+        for seed in 0..50 {
+            for i in select_pareto(&points, 6, &mut Rng::seed(seed)) {
+                assert_eq!(i, 1, "only the usable member may be chosen");
+            }
+        }
+        assert!(select_pareto(&[None, Some(vec![f64::NAN])], 4, &mut Rng::seed(1)).is_empty());
+    }
+
+    #[test]
+    fn propose_with_points_is_reproducible_from_its_seed() {
+        let pop: Vec<(Genome, f64)> = (0..4).map(|i| (vec![Locus::param(i as f64 / 4.0)], 0.5)).collect();
+        let plan = VariationPlan {
+            selection: Selection::Pareto { objectives: vec!["x".into(), "y".into()] },
+            offspring: 6,
+            ..VariationPlan::default()
+        };
+        let points = front_and_a_dominated_point();
+        let a = propose_with_points(&pop, Some(&points), plan.clone(), &no_pool(), 99);
+        let b = propose_with_points(&pop, Some(&points), plan.clone(), &no_pool(), 99);
+        assert_eq!(a, b);
+        assert!(!a.candidates.is_empty());
+    }
+
+    #[test]
+    fn a_pareto_plan_without_vectors_proposes_nothing() {
+        let plan = VariationPlan {
+            selection: Selection::Pareto { objectives: vec!["x".into()] },
+            ..VariationPlan::default()
+        };
+        assert!(propose(&pop(), plan, &no_pool(), 1).candidates.is_empty());
     }
 }

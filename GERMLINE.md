@@ -1,7 +1,7 @@
 # Germline — model succession, handoff, and fallback
 
 > **Status: control plane complete and runnable; workload not.**
-> `germline/` — its own crate, 176 tests. Variation, directed search, the gate,
+> `germline/` — its own crate, 202 tests. Variation, directed search, the gate,
 > attestation, lineage, the durable journal, the cycle state machine, and
 > supervision are built and tested ✅. Model training and inference are **not**
 > here and are not claimed ◻ — this decides *whether* a successor takes over, not
@@ -144,6 +144,63 @@ defensible promotion at a time.
 
 The margin matters too: a `min_improvement` below the evaluation's noise floor
 promotes coin flips, and a lineage of coin flips drifts wherever the noise points.
+
+### Multi-objective promotion: rule (a) and rule (b)
+
+The primary-axis rule above is **rule (a)**. It cannot promote a challenger that
+has the same primary value and a better value elsewhere, such as the same capability
+at lower energy. That is the case multi-objective succession needs, so the gate has
+an opt-in second route, `PromotionGate.dominance: Option<DominanceRule>`. It is
+skipped in serialization when unset, so a gate without it keeps its digest.
+
+With `dominance` set, a challenger passes if **either** rule passes, and all of the
+safeguards still apply:
+
+- **Rule (a)**: the primary axis improves by `min_improvement`, and the guards hold
+  (as above).
+- **Rule (b)**: on every objective axis, and on the primary axis too even if it is not
+  listed, the challenger is at least the champion less that axis's tolerance (its
+  entry in `DominanceRule.tolerances`, zero if none; guard status does not change
+  it, and the guard check runs separately with the guard tolerance). **And** on at least one objective
+  axis it is at least the champion plus `DominanceRule.min_improvement`.
+
+Under either rule the following still refuse: the guard checks; a shadow count below
+`min_shadow_successes`; a NaN on any objective, guard or primary axis (never an
+improvement, never a regression); and an axis missing on either side.
+
+The ratchet applies to every objective axis under rule (b), not only the guards. A
+challenger is refused if any objective falls below the best value any ancestor, or
+the incumbent, reached, less that axis's tolerance. This is what stops a trade being
+walked back toward an earlier generation: if A → B trades efficiency up and a later
+generation trades it back down, the drop below B's value is refused even if the
+champion comparison alone would pass.
+
+Approvals and refusals say which rule passed or failed, and on which axis. An approved
+verdict carries a `basis` (`rule (a): …` or `rule (b): …`), and a refusal under the
+dominance rule carries a `DominanceRefused` reason that names the axis each rule
+failed on.
+
+**The primary floor.** `DominanceRule.primary_floor` (default `0`) is a second
+condition on rule (b): the challenger's primary value must be strictly above it. A
+primary value tied at the floor is refused, with the message `rule (b) does not
+apply: … is not above the floor …`. Zero intelligence at lower energy is not an
+improvement, so with the default floor, a capability tie at 0 cannot promote on
+energy alone. Rule (a) is unchanged by the floor.
+
+**Per-objective tolerance.** `DominanceRule.tolerances` is an ordered map from axis
+name to tolerance, so the digest is deterministic. Under rule (b) an objective's
+tolerance is its entry in the map, or zero if it has none, whether or not it is a
+guard. The primary axis is always zero. The guard check is separate and still
+applies, with the guard tolerance. So under the CLI's `efficiency` guard of `0.25`,
+an efficiency drop is accepted only if the map has an entry for efficiency. The same tolerance applies to the ratchet,
+which compares against the high-water mark, not the champion. So across any chain of
+promotions, an objective can fall below its best value by at most one tolerance. A
+tolerance does not compound over the chain.
+
+**What is still open.** The gate does not set a floor or a tolerance on its own. A
+zero floor and zero tolerances are the defaults. Measurement limits that the gate
+cannot see are listed in `ARENA.md`, under *Known limits of the measurement*: the
+clamped primary axis, the latency scale, and the wall-clock re-measure of the seed.
 
 A **canary phase** (`min_shadow_successes`) runs the challenger on real work while
 the incumbent still holds authority, so promotion follows evidence from the actual
@@ -291,6 +348,16 @@ claim an investigator can re-derive. Without it, the record of how a model came 
 exist is unfalsifiable — a poor property for the artifact you would most want to
 verify after something goes wrong.
 
+**Parent selection.** `Selection` has three modes. `Tournament` and `Elitist`
+rank parents by the scalar clade score (the mean of the clade's held-out
+composite). `Pareto { objectives }` chooses parents by a binary tournament on
+(non-domination rank, crowding distance) over each member's held-out values on the
+named objectives, all maximized (`pareto::rank_and_crowding`,
+`pareto::tournament_winner`). A member without a finite value on each objective is
+never chosen. Under Pareto the scalar score is not consulted for parents. The
+choice is made from the run's seed, so the same seed gives the same parents. The
+runner selects by Pareto when its variation plan says so (`RunnerPolicy.variation`).
+
 ### Attestation — proof of who judged ✅
 
 The lineage records *which* evaluator issued a verdict. That was a claim; HMAC-
@@ -371,8 +438,21 @@ mode is not crashing — it is continuing:
 | `BudgetExhausted` | the normal end; someone should look |
 | `Demoted` | see below |
 | `SearchStalled` | N consecutive refusals — more cycles are a slower way to learn the search is stuck |
-| `WorkloadFailed` | candidates cannot be produced at all; cycling would fill the journal with nothing |
+| `WorkloadFailed` | candidates cannot be produced at all, or the workload's inputs changed under it (`Workload::before_cycle`); cycling would fill the journal with nothing |
+| `StopRequested` | the kill switch: the policy's `stop_file` exists before a cycle. Not a failure; the operator asked |
 | `NoFallbackAvailable` | the most serious: the system is running something it has decided it should not be |
+
+**The kill switch.** `RunnerPolicy::stop_file` is checked before every cycle,
+ahead of anything else that starts one. If the file exists, the run halts with
+`StopRequested { after_cycles }` and journals a note saying so. A cycle already
+under way is not interrupted, so the stop takes effect at the next cycle boundary.
+The field is left out of the serialized policy when unset, so policies that do not
+use it keep their digest. The `arena` command line exposes it as
+`arena succession --stop-file PATH`, and the file is created by hand or by a
+supervising script. Before each cycle, `Runner::run` also calls
+`Workload::before_cycle`. The default does nothing. A workload whose inputs can
+change underneath it, such as held-out data on disk, returns an error there, and
+the run halts as `WorkloadFailed`.
 
 **Halting on demotion** is the one that matters. The tempting behaviour — fall
 back, then keep searching — treats a failed promotion as a bad draw. But a
@@ -410,7 +490,7 @@ nobody chose, one individually-defensible promotion at a time.
 ## 10. Reproducing
 
 ```powershell
-cargo test --manifest-path germline/Cargo.toml                  # 176 tests
+cargo test --manifest-path germline/Cargo.toml                  # 202 tests
 cargo test --manifest-path germline/Cargo.toml --test rsi_loop  # 6 closed-loop scenarios
 cargo test --manifest-path germline/Cargo.toml --test succession # 13 succession scenarios
 ```
