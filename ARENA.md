@@ -57,7 +57,7 @@ bad program before running it.
 | fuel | `prototype::eval::run_metered` | every expression one unit; every returned list its length, **precharged before allocation** where a scalar sets the size; depth bounded on a thread with a known stack |
 | learner | `arena::learner` | hashed-context softmax with exact gradients and sparse Adam; the learning-progress reward with a lookback between `e/4` and `e/2` |
 | energy | `arena::energy` | NVML's cumulative energy counter, loaded at run time → **Measured**; a wall-clock CPU estimate → **Estimated**, with its wattage stated; unreadable → **Unavailable**, never zero |
-| selection | `germline::gate`, `germline::variation`, `germline::pareto` | **Pareto:** promotion under `succession --objectives` (dominance rule); parent choice under `Selection::Pareto`; the learners' front over (bits/byte, joules, latency) with hypervolume contribution as credit. **Scalar, by reward:** pool retention (`agents::Pool::add_with`), the mutator's and attacker's elite (`agents::Pool::top`), and the command proposer's prompt examples (`command`). See *Succession* below |
+| selection | `germline::gate`, `germline::variation`, `germline::pareto` | **Pareto:** promotion under `succession --objectives` (dominance rule); parent choice under `Selection::Pareto`; the learners' front over (bits/byte, joules, latency) with hypervolume contribution as credit. **Opt-in Pareto:** pool eviction under `--retain pareto` (`agents::Pool::add_costed`) and parent choice for the mutator and attacker under `--parents pareto` (`agents::Pool::parents`), both over (reward ↑, cost ↓). **Scalar, by reward, by default:** pool retention (`agents::Pool::add_with`, through the retention program), the mutator's and attacker's elite (`agents::Pool::top`, under `--parents reward`), and the command proposer's prompt examples (`command`), which are scalar in every mode. See *Pareto retention and parents* and *Succession* below |
 
 **Convex and non-convex.** The combinatorial half — which program, which
 structure — is the agents' search over program trees. The continuous half —
@@ -670,6 +670,64 @@ plan 5.1: what the agents are paid for is what they are taught next, so
 nothing separate remains. The equivalence test holds the shipped retention to
 the Rust pool's surviving entries after every insertion, over 300 random
 sequences with ties and repeated rewards at capacities of 3 to 8.
+
+## Pareto retention and parents (opt-in)
+
+The pool's two choices, which entry to evict and which entries to breed from,
+were scalar by reward. They can now be taken over (reward ↑, cost ↓), both
+behind flags. With neither flag the run is bit-identical to the one before:
+`with_the_flags_off_the_run_is_bit_identical_to_before_pareto` pins a digest of
+a default run, taken from the arena before these flags existed.
+
+- **`--retain pareto`.** When the pool is over capacity, the victim is the
+  entry with the lowest crowding distance in the last non-domination front, from
+  `germline::pareto::rank_and_crowding`. An older entry wins a tie. Each pool
+  entry records the cost its program was charged, in the run's cost unit
+  (`PoolEntry::cost`). The retention priority is not consulted, so
+  `--retain pareto` with `--retention-program` is a usage error, not a silent
+  choice. The default `--retain reward` is the retention priority, as before.
+- **`--parents pareto`.** The mutator and the attacker take their parents from
+  the first front, then later fronts, each in crowding order
+  (`Pool::parents`), instead of the top-k by reward. The RNG is drawn as before,
+  so the same seed gives the same parents.
+- **Reporting.** The text report prints `pool: retain …, parents …`, and the
+  JSON `config` carries `retain` and `parents`.
+- **Not Pareto, even with the flags:** the command proposer's prompt examples.
+
+**NaN costs.** `pareto.rs` treats a NaN as incomparable, so an entry with a NaN
+cost is on front 0 and nothing dominates it. A crowding distance is undefined
+for a point beside a NaN in an objective's ordering, and undefined distances
+rank as least isolated, so they are evicted first in their front. The module's
+own doc says a NaN point has no neighbours, which the crowding code does not
+guarantee. That is a `germline` finding, not changed here. The arena cannot
+produce a NaN cost: a non-positive joule reading falls back to fuel.
+
+**Cost.** Each Pareto eviction ranks the pool, which is quadratic in its size.
+That is only paid by runs that ask for it.
+
+**Measured (one seed, not a sweep).** Seed 1, 10 rounds of 24 programs, agents
+`grammar:2,uniform:1,mutator:1,attacker:1`, learners `3:12:0.02,2:10:0.05`,
+held-out `README.md,germline/src/gate.rs`, default cost (joules). Commands:
+`arena --heldout … --seed 1 …` with no flag, and then with `--retain pareto
+--parents pareto`. The logs and JSON are `E:/heal-logs/ap/measure-{default,pareto}.{log,json}`.
+
+| | defaults | `--retain pareto --parents pareto` |
+|---|---|---|
+| held-out bits/byte, learner 0 (`ng 3×2^12`) | 8.616 | 7.698 |
+| held-out bits/byte, learner 1 (`ng 2×2^10`) | 9.618 | 8.036 |
+| energy charged, all of it (J) | 41214.4 | 36486.3 |
+| programs produced = pool size at the end | 204 | 212 |
+| learners' archive hypervolume (the report field) | 0.0 | 86.006 |
+
+Three things limit how far these go. There is one seed, and the joules are
+metered, so the allocation follows the readings and the run is not
+reproducible under `--cost joules`; held-out figures are deterministic only
+under `--cost fuel`, which was not run here. **The pool never reached its
+capacity of 256** (212 programs at the end), so `--retain pareto` evicted
+nothing: the difference is `--parents pareto` alone. No CLI flag sets the pool's
+capacity, so a run has to produce more than 256 programs before retention can
+act. The report's `hypervolume` is the learners' archive over (bits/byte,
+joules, latency), not the programs' front, which is not reported.
 
 ## A command-backed proposer (plans 7.3, 3.4)
 
