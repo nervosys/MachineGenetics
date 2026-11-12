@@ -58,11 +58,75 @@ pub struct CommandBackend {
     pub timeout: Duration,
 }
 
+/// Environment variables a proposer child keeps. Everything else in the
+/// parent's environment is withheld: a proposer that reads an API key or a
+/// token from its environment does not get the arena's.
+#[cfg(windows)]
+const KEPT_ENV: &[&str] = &["PATH", "SYSTEMROOT", "TEMP", "TMP", "PATHEXT"];
+#[cfg(not(windows))]
+const KEPT_ENV: &[&str] = &["PATH"];
+
+/// A fresh, empty directory for a proposer child to run in. Removed on drop,
+/// after the child has been waited for.
+pub struct Scratch(std::path::PathBuf);
+
+impl Scratch {
+    pub fn new() -> Result<Scratch, String> {
+        static COUNTER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+        let n = COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let nanos = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_nanos());
+        let dir = std::env::temp_dir().join(format!("arena-proposer-{}-{n}-{nanos}", std::process::id()));
+        std::fs::create_dir_all(&dir).map_err(|e| format!("cannot create the proposer's scratch directory: {e}"))?;
+        Ok(Scratch(dir))
+    }
+
+    pub fn path(&self) -> &std::path::Path {
+        &self.0
+    }
+}
+
+impl Drop for Scratch {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(&self.0);
+    }
+}
+
+/// The parent's environment, reduced to [`KEPT_ENV`]. Names compare without
+/// regard to case, as Windows environment names do.
+pub fn inherited_env() -> Vec<(std::ffi::OsString, std::ffi::OsString)> {
+    std::env::vars_os()
+        .filter(|(k, _)| {
+            let k = k.to_string_lossy();
+            KEPT_ENV.iter().any(|kept| k.eq_ignore_ascii_case(kept))
+        })
+        .collect()
+}
+
+/// `program` as the child should see it. A relative path with a directory part
+/// would otherwise be resolved against the child's new working directory, not
+/// the arena's, so it is made absolute first.
+fn child_program(program: &str) -> Result<std::path::PathBuf, String> {
+    let p = std::path::Path::new(program);
+    if p.components().count() > 1 && p.is_relative() {
+        let cwd = std::env::current_dir().map_err(|e| format!("cannot read the working directory: {e}"))?;
+        Ok(cwd.join(p))
+    } else {
+        Ok(p.to_path_buf())
+    }
+}
+
 impl Backend for CommandBackend {
+    /// Runs the command in a fresh empty scratch directory, with the
+    /// environment cut down to [`KEPT_ENV`]. This is hygiene, not a sandbox:
+    /// the child runs as the same user and can still open any absolute path.
     fn complete(&mut self, prompt: &str) -> Result<String, String> {
         let (program, args) = self.argv.split_first().ok_or("the proposer command is empty")?;
-        let mut child = Command::new(program)
+        let scratch = Scratch::new()?;
+        let mut child = Command::new(child_program(program)?)
             .args(args)
+            .current_dir(scratch.path())
+            .env_clear()
+            .envs(inherited_env())
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
@@ -492,6 +556,64 @@ mod tests {
             if k == 0 {
                 assert!(prompt.contains("(none yet)\n\n"), "an empty pool says so");
             }
+        }
+    }
+
+    /// A command that prints its working directory, which is the proposer's
+    /// scratch directory when it is run through [`CommandBackend`].
+    fn print_cwd() -> Vec<String> {
+        if cfg!(windows) {
+            vec!["cmd".into(), "/C".into(), "cd".into()]
+        } else {
+            vec!["sh".into(), "-c".into(), "pwd".into()]
+        }
+    }
+
+    #[test]
+    fn the_proposer_child_runs_in_a_fresh_scratch_directory_not_the_arenas() {
+        let mut b = CommandBackend { argv: print_cwd(), timeout: Duration::from_secs(20) };
+        let out = b.complete("").expect("the command runs");
+        let child_cwd = std::path::PathBuf::from(out.trim());
+        let arena_cwd = std::env::current_dir().unwrap();
+        assert_ne!(child_cwd, arena_cwd, "the child must not run in the arena's directory");
+        let name = child_cwd.file_name().unwrap().to_string_lossy().into_owned();
+        assert!(name.starts_with("arena-proposer-"), "the child ran in {child_cwd:?}");
+        assert!(!child_cwd.exists(), "the scratch directory is removed once the child is done");
+    }
+
+    #[test]
+    fn an_environment_variable_set_in_the_parent_is_not_visible_to_the_child() {
+        const SECRET: &str = "ARENA_TEST_PARENT_SECRET_7f3a";
+        std::env::set_var("ARENA_TEST_PARENT_SECRET", SECRET);
+        let argv = if cfg!(windows) {
+            vec!["cmd".into(), "/C".into(), "echo %ARENA_TEST_PARENT_SECRET%".into()]
+        } else {
+            vec!["sh".into(), "-c".into(), "printf %s \"$ARENA_TEST_PARENT_SECRET\"".into()]
+        };
+        let mut b = CommandBackend { argv, timeout: Duration::from_secs(20) };
+        let out = b.complete("").expect("the command runs");
+        std::env::remove_var("ARENA_TEST_PARENT_SECRET");
+        assert!(!out.contains(SECRET), "the child saw the parent's environment: {out:?}");
+    }
+
+    #[test]
+    fn the_child_keeps_path_so_a_bare_command_name_still_starts() {
+        let mut b = CommandBackend { argv: print_cwd(), timeout: Duration::from_secs(20) };
+        assert!(b.complete("").is_ok(), "PATH is kept, so the command is found");
+    }
+
+    #[test]
+    fn a_relative_program_path_is_resolved_against_the_arenas_directory() {
+        let p = child_program("target/debug/fixed-proposer").unwrap();
+        assert!(p.is_absolute(), "{p:?}");
+        assert_eq!(child_program("sh").unwrap(), std::path::PathBuf::from("sh"));
+    }
+
+    #[test]
+    fn only_the_kept_environment_names_pass_through() {
+        for (k, _) in inherited_env() {
+            let k = k.to_string_lossy().to_ascii_uppercase();
+            assert!(KEPT_ENV.iter().any(|kept| kept.eq_ignore_ascii_case(&k)), "{k} should not pass");
         }
     }
 
