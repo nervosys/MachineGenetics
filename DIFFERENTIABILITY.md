@@ -328,7 +328,7 @@ reported it with a tick.
 An empty result would at least have been silent. This one answers.
 
 Training itself is unaffected and genuinely works — `--target=abl-train` on
-`train_demo.mg` reduces loss by 99.95% — because the real backward pass lives
+`train_demo.mg` reduces loss by 99.95% (first_loss=0.799681, last_loss=0.000423; identical over three runs, and pinned by `prototype/tests/train_cli.rs` only as "final loss below half the first") — because the real backward pass lives
 in `rmi`'s backend and never touches this module. That is what made this
 survive: the thing the tape is cited as evidence for does work, just not
 here.

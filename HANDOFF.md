@@ -30,7 +30,7 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **3,744** — rmi 1,384 · prototype 1,686 · ribosome 168 · germline 176 · forge 65 · arena 265 |
+| Tests | **3,747** — rmi 1,384 · prototype 1,689 · ribosome 168 · germline 176 · forge 65 · arena 265 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
@@ -2994,7 +2994,7 @@ Only `stdlib/` and four `framewerx` files remain.
   `param_grads.is_empty()` and failed, which is how the distinction surfaced.
 
   **Training is unaffected and genuinely works** — `--target=abl-train`
-  reduces `train_demo.mg`'s loss by 99.95% — because the real backward pass
+  reduces `train_demo.mg`'s loss by 99.95% (measured; `tests/train_cli.rs` pins only that the final loss is below half the first) — because the real backward pass
   is in `rmi`'s backend and never touches this module. That is what let it
   survive: the thing the tape is cited as evidence for *does* work,
   elsewhere. And `backward` emits MLIR **text** that nothing executes, so a
@@ -4915,7 +4915,7 @@ changed before you commit.
 ---
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,686**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,689**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
   across six crates **3,140**; documented-count pins **138**, up from 46 — the
   two newest hold the `kb`/`net` overlap the tensor-product-binding decision

@@ -105,7 +105,7 @@ Current thinking, but design rather than description. Useful for *why*.
 | [TENSOR_PRODUCT_BINDING.md](TENSOR_PRODUCT_BINDING.md) | Binding symbolic structure into tensors — the join between `kb` and `net` | **Specification only; nothing implemented.** The operations lower to existing IR ops and are smooth, so they would pass the differentiability pass; the interference bound under non-orthogonal roles is stated up front |
 | [DIFFERENTIABILITY.md](DIFFERENTIABILITY.md) | What "differentiable by design" claims, and the lattice that checks it | The inference pass is built (`prototype/src/differentiable.rs`, 10 tests); Scalar `grad(e, w)` is built: typed in `prototype/src/types.rs` and evaluated with forward-mode duals (`Value::Dual` in `prototype/src/eval.rs`). Tensor `grad` is refused by the type checker as designed and not built, and the ABL→ABL transform is not built. For the measured counts of differentiable functions, see DIFFERENTIABILITY.md |
 | [PERFORMANCE_STRATEGY.md](PERFORMANCE_STRATEGY.md) | "Faster Than C, C++, and Rust" | Unimplemented and unmeasured. The measured performance story is the *front end and the ABL hot path* (`MEASUREMENTS.md` §2): ~41 MB/s lex+parse, ~1.4 µs/layer build, 12.6 µs no-exec describe |
-| [DIRECT_CODEGEN_STRATEGY.md](DIRECT_CODEGEN_STRATEGY.md) | Direct machine-code emission, bypassing MLIR and LLVM | Never built. MAGE executes via the tree-walking evaluator (`eval.rs`, 73/73 exact) and the ABL CPU/CUDA compute backend |
+| [DIRECT_CODEGEN_STRATEGY.md](DIRECT_CODEGEN_STRATEGY.md) | Direct machine-code emission, bypassing MLIR and LLVM | Never built. MAGE executes via the tree-walking evaluator (`eval.rs`, 76/76 exact) and the ABL CPU/CUDA compute backend |
 
 ---
 

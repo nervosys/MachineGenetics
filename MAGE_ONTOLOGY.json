@@ -4,7 +4,7 @@
     "ast_kinds": 20,
     "bench_backends": 4,
     "ci_floors": 6,
-    "cli_flags": 47,
+    "cli_flags": 48,
     "docs": 7,
     "effects": 24,
     "examples": 10,
@@ -373,6 +373,11 @@
       {
         "flag": "--json",
         "purpose": "Report diagnostics as structured JSON (code/span/category/fix) rather than text.",
+        "takes_path": false
+      },
+      {
+        "flag": "--compact",
+        "purpose": "With `--json`: print the JSON on one line (serde_json::to_string) instead of pretty-printed.",
         "takes_path": false
       },
       {
