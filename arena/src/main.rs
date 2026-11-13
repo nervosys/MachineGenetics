@@ -12,6 +12,7 @@
 //!       [--energy-budget J] [--joules-per-program J] [--definitions <forge registry dir>]
 //!       [--heldout-slices K] [--refresh-drift X]
 //!       [--train-text <file>[,<file>…]] [--train-text-per-round N]
+//!       [--reward alignment|compression|transfer] [--dev-text <file>[,<file>…]]  (dev text: required by, and only for, transfer)
 //!       [--proposer-command "<cmd> <args…>"] [--proposer-timeout S]
 //!       [--json <out.json>] [--evidence <log.jsonl>] [--propose-limit <out.json>]
 //! arena physics-baseline [--system pendulum|spring|double_pendulum|nbody|bounce|none] [--steps N]
@@ -515,9 +516,11 @@ fn main() {
                 cfg.reward = match value(i) {
                     "alignment" => arena::arena::Reward::Alignment,
                     "compression" => arena::arena::Reward::Compression,
-                    other => fail(format!("--reward: `{other}` is neither alignment nor compression")),
+                    "transfer" => arena::arena::Reward::Transfer,
+                    other => fail(format!("--reward: `{other}` is not alignment, compression or transfer")),
                 }
             }
+            "--dev-text" => cfg.dev_text.extend(value(i).split(',').filter(|s| !s.is_empty()).map(str::to_string)),
             "--meter-gpus" => {
                 meter_gpus = Some(match value(i) {
                     "none" => Vec::new(),

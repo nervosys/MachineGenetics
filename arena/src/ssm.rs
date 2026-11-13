@@ -55,7 +55,7 @@
 //! between step/4 and step/2.
 
 use crate::grammar::Rng;
-use crate::learner::{ByteLearner, Predictor, SsmConfig};
+use crate::learner::{ByteLearner, Predictor, SsmConfig, TransferProbe};
 
 const V: usize = 256;
 const BETA1: f64 = 0.9;
@@ -437,6 +437,46 @@ impl ByteLearner for SsmLearner {
     }
     fn predictor(&self) -> Option<Box<dyn Predictor + '_>> {
         Some(Box::new(SsmPredictor::new(self)))
+    }
+    fn transfer_probe<'a>(&'a self, dev: &[&[u8]]) -> Option<Box<dyn TransferProbe + 'a>> {
+        let mut pg = vec![0.0f64; self.theta.len()];
+        let mut count = 0usize;
+        for &bytes in dev {
+            if bytes.is_empty() {
+                continue;
+            }
+            let tr = self.forward(bytes);
+            for (acc, dg) in pg.iter_mut().zip(self.backprop(bytes, &tr)) {
+                *acc += dg;
+            }
+            count += bytes.len();
+        }
+        // The preconditioner `progress` uses (bias-corrected Adam), with the
+        // step floored at one so an untrained learner has a defined one.
+        let bc2 = 1.0 - BETA2.powi(self.step.max(1) as i32);
+        let scale = 1.0 / count.max(1) as f64;
+        for (i, g) in pg.iter_mut().enumerate() {
+            *g *= scale / ((self.v[i] / bc2).sqrt() + 1e-3);
+        }
+        Some(Box::new(SsmTransfer { model: self, pg }))
+    }
+}
+
+/// The state-space learner's preconditioned dev gradient (see [`TransferProbe`]).
+struct SsmTransfer<'a> {
+    model: &'a SsmLearner,
+    pg: Vec<f64>,
+}
+
+impl TransferProbe for SsmTransfer<'_> {
+    fn score(&self, bytes: &[u8]) -> f64 {
+        if bytes.is_empty() {
+            return 0.0;
+        }
+        let tr = self.model.forward(bytes);
+        let g = self.model.backprop(bytes, &tr);
+        let dot: f64 = g.iter().zip(&self.pg).map(|(a, b)| a * b).sum();
+        self.model.cfg.lr * dot / bytes.len() as f64
     }
 }
 
