@@ -856,7 +856,34 @@ arena succession --heldout FILE[,FILE...] --journal PATH [--cycles N] [--seed N]
                  [--dominance-floor F] [--objective-tolerance AXIS=F,...]
                  [--allow-estimated-energy]
                  [--energy-budget JOULES] [--param-search es|perturb]
+                 [--validation FILE[,FILE...]]
 ```
+
+**Validation suite (`--validation FILE[,FILE...]`).** Optional. A champion chosen as
+the best of several candidates on the held-out suite scores above its true level on
+it, so the reported capability does not show generalisation. With the flag, the seed
+champion and every promoted champion are also scored on these files, with the same
+metric as `capability` (one minus bits per byte over eight, clamped to `[0, 1]`).
+The flag is refused if a validation file is also a `--heldout` file, compared as
+given and by canonical path.
+
+The gate never sees these numbers. They are computed after the run ends, from the
+lineage the run left: each champion's genome is decoded to the configuration that
+built it, seed included, and run as a separate session whose only corpora are the
+validation files. They enter no `FitnessVector`, no journal record and no joule
+count, so promotions, refusals, the journal and the episode digest are the same
+with or without the flag. The validation files are hashed at startup and re-read
+before each cycle; a change stops the run, as for the held-out files. The session
+trains on program outputs, not on either suite, so the two scores are of the same
+trained learner given a deterministic run (`--cost fuel`, built-in agents); under
+`--proposer-command` the validation session is a fresh run and can differ.
+
+The output gains one line per champion, for example
+`validation: gen2 capability 0.0412 (held-out 0.0719)`, after the refusals summary,
+and `--json` gains `validation_suite_digest` and a `validation` array of
+`{generation, capability, heldout_capability}`. Without the flag the output is
+unchanged. On resume, every champion in the replayed journal is scored again.
+The validation sessions cost extra wall time, one session per champion.
 
 **Continuous search (`--param-search es`).** The genome's continuous loci (`lr`,
 `learner_steps`, `length_charge`, `temperature`) are varied by `Perturb` by default.
@@ -1059,7 +1086,9 @@ What it does not show:
 - **Generalisation.** Promotion and the reported capability use the same
   held-out suite. A champion chosen as the best of several candidates on that
   suite is expected to score above its true level on fresh data. A second,
-  untouched held-out suite would measure that; there is none here.
+  untouched suite measures that, and `--validation` now provides one (see the
+  command-line section). The five-seed table above predates the flag, so it
+  was run without a validation suite and still shows no generalisation figure.
 - **A broad search.** The same capability values recur across seeds (0.0162,
   0.0309, 0.0326, 0.0413, 0.0719), and seeds 1 and 2 visit the same values one
   cycle apart. The four-locus genome reaches few distinct outcomes at this scale.
