@@ -857,7 +857,26 @@ arena succession --heldout FILE[,FILE...] --journal PATH [--cycles N] [--seed N]
                  [--allow-estimated-energy] [--efficiency-basis meter|work]
                  [--energy-budget JOULES] [--param-search es|perturb]
                  [--validation FILE[,FILE...]] [--learners SPEC[,SPEC...]]
+                 [--train-text FILE[,FILE...]] [--train-text-per-round N]
 ```
+
+**Training text (`--train-text FILE[,FILE...]`, `--train-text-per-round N`).**
+Optional, and on both `arena` and `arena succession`. Each round, `N` chunks (default
+4) of 256 bytes (`TRAIN_CHUNK_BYTES`), cut at random offsets of the files joined by
+newlines, are added to the learners' batch, drawn from the run's own RNG so a run is
+still deterministic for its seed. The chunks go only into the batch: they never
+enter the pool, no agent can see them, no agent earns credit for them and they are
+not scored as outputs. Their bytes are trained on like the rest, so they are charged
+as training (and count in `train_bytes`, hence in the `work` efficiency basis).
+**Disjointness is enforced:** a training file is refused if it is a `--heldout` file
+(or, in `succession`, a `--validation` file) by the string as given or by canonical
+path, if its content hash equals that of a held-out or validation file (a copy under
+another name), or if it contains the `--canary`. These are usage errors, raised
+before any work. In `succession` the training files are hashed at startup and
+re-read before each cycle; a change stops the run, as for the suites. Without
+the flag nothing changes: output, JSON, digests and the
+policy name are as before; with it, `+train-text` is appended to the succession
+policy's name, so a journal made without text cannot be resumed with it.
 
 **Learners (`--learners SPEC[,SPEC...]`).** Optional; sets the base configuration's
 learners, with the same specs and parser as plain `arena`
@@ -1233,6 +1252,50 @@ and JSON: `E:/heal-logs/lrn-{default,ent,ssm}-{1,3}.*`.
   table exactly (seed 1: 7.967; seed 3: 8.029), from a different build.
 - Two seeds per learner, one configuration each. Both seeds of a learner share
   a seed champion, and for `ent` the final one too, so the evidence is thin.
+
+**Training text.** What if the learners also see text? `--train-text
+ARCHITECTURE.md,germline/src/runner.rs` (prose and Rust, 143 KB, disjoint from
+the held-out `README.md,germline/src/gate.rs` and the validation
+`GERMLINE.md,germline/src/pareto.rs`), 4 chunks of 256 bytes per round, otherwise
+the command above (six cycles, 20 rounds, 48 programs, `--cost fuel
+--efficiency-basis work`). Logs and JSON: `E:/heal-logs/txt-*`. Bits/byte is
+`8 × (1 − capability)`.
+
+| learner / agents | seed | promotions | champion, held-out / validation |
+|---|---|---|---|
+| n-gram default, no text (above) | 1 | 2 | 7.569 / 7.967 |
+| n-gram default, no text (above) | 3 | 2 | 7.563 / 8.029 |
+| n-gram default, text | 1 | 0 | 3.799 / 3.721 |
+| n-gram default, text | 3 | 0 | 3.799 / 3.721 |
+| `ent:4:14:4:0.02`, no text (above) | 1 | 2 | 7.533 / 7.831 |
+| `ent:4:14:4:0.02`, text | 1 | 0 | 3.703 / 3.473 |
+| n-gram default, text, **control: `--agents uniform:1`** | 1 | 0 | 3.635 / 3.487 |
+
+- **Text moves the level far more than anything else measured here**: from about
+  7.6 to about 3.8 bits/byte on held-out text, and from about 8.0 to about 3.7 on
+  validation, for the same learner. The champion is no longer near 8.
+- **No candidate was promoted, in any text run.** Each stopped after three
+  refusals (`search_stalled`), none beating the seed by the 0.01 margin; the
+  lr, steps, charge and temperature the genome mutates matter less than the text.
+  The champion in the table is the seed. Seeds 1 and 3 give identical figures
+  because the seed only changes the candidates, and none was promoted.
+- **What changes in meaning.** With training text, held-out capability measures
+  learning from text plus program outputs. It no longer isolates what the agents'
+  programs taught, so the earlier tables and these are not comparable as a measure
+  of the agents.
+- **The control says the agents did not help here.** With only `uniform` agents
+  (random programs) and the same text, held-out is 3.635 and validation 3.487,
+  both slightly *better* than with the grammar, uniform and mutator agents
+  (3.799, 3.721). Once the learners see text, the agents' outputs are not what
+  lowers bits/byte on text; if anything they dilute the batch. This is one seed
+  and one configuration, and a control with a different agent set also changes
+  how many programs run and what the pool holds, so read it as "no sign that the
+  agents' programs matter for this metric", not as proof that they hurt.
+- Two seeds for the default learner (which are the same run for this purpose),
+  one for `ent` and for the control. Text and held-out files share a domain
+  (prose and code about the same project), and so do the validation files, so
+  part of the gain on both suites is shared vocabulary. Text from another
+  domain was not tried.
 
 ### Proposer isolation at the CLI, and its limit
 

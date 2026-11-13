@@ -180,6 +180,86 @@ pub struct Config {
     /// the field reads as off, so every earlier run grafts as it did.
     #[serde(default)]
     pub bound_grafts: bool,
+    /// Text files the learners train on besides agents' outputs and replay
+    /// (`--train-text`). Each round, [`train_text_per_round`](Self::train_text_per_round)
+    /// chunks of [`TRAIN_CHUNK_BYTES`] bytes, cut at random offsets, join the
+    /// learners' batch and nothing else: they never enter the pool, earn no
+    /// agent any reward, and no agent sees them. Their training cost is charged
+    /// as training. Empty (the default) is the arena as it was, and the field
+    /// is then absent from the serialised config, so digests do not move.
+    /// The files must be disjoint from the held-out corpora (see
+    /// [`refuse_train_text_overlap`]).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub train_text: Vec<String>,
+    /// Chunks of training text added to each round's batch. Only used with
+    /// `train_text`.
+    #[serde(default = "default_train_text_per_round", skip_serializing_if = "is_default_train_text_per_round")]
+    pub train_text_per_round: usize,
+}
+
+/// Length of one training-text chunk, in bytes. Agent outputs are at most
+/// `substrate.max_bytes` (1024 by default, typically a few hundred in
+/// practice), so a 256-byte chunk is a batch item of the same order.
+pub const TRAIN_CHUNK_BYTES: usize = 256;
+
+fn default_train_text_per_round() -> usize {
+    4
+}
+
+fn is_default_train_text_per_round(n: &usize) -> bool {
+    *n == default_train_text_per_round()
+}
+
+/// Refuse a training-text file that is also one of `others` (the held-out
+/// corpora, or a validation suite, named by `flag`): by the name as given, by
+/// canonical path (a corpus is named by the path it was read from), or by
+/// content, which catches a copy under another name. A shared file would let
+/// the learners train on what they are scored on.
+pub fn refuse_train_text_overlap(train: &[String], flag: &str, others: &[Corpus]) -> Result<(), String> {
+    use sha2::{Digest, Sha256};
+    let canon = |p: &str| std::fs::canonicalize(p).ok();
+    for t in train {
+        let ct = canon(t);
+        if let Some(o) = others.iter().find(|o| o.name() == t || (ct.is_some() && canon(o.name()) == ct)) {
+            return Err(format!("--train-text: `{t}` is also a {flag} file (`{}`); training text must be disjoint from it", o.name()));
+        }
+        let bytes = std::fs::read(t).map_err(|e| format!("--train-text: {t}: {e}"))?;
+        let sha = format!("{:x}", Sha256::digest(&bytes));
+        if let Some(o) = others.iter().find(|o| o.sha256() == sha) {
+            return Err(format!(
+                "--train-text: `{t}` has the same content as the {flag} file `{}`; training text must be disjoint from it",
+                o.name()
+            ));
+        }
+    }
+    Ok(())
+}
+
+/// The training text of `cfg`: its files read and joined by newlines. Checked
+/// against `heldout` (before any canary is planted in it) and against the
+/// canary itself.
+fn load_train_text(cfg: &Config, heldout: &[Corpus]) -> Result<Vec<u8>, String> {
+    if cfg.train_text.is_empty() {
+        return Ok(Vec::new());
+    }
+    refuse_train_text_overlap(&cfg.train_text, "held-out", heldout)?;
+    let mut text = Vec::new();
+    for path in &cfg.train_text {
+        let bytes = std::fs::read(path).map_err(|e| format!("--train-text: {path}: {e}"))?;
+        if bytes.is_empty() {
+            return Err(format!("--train-text: `{path}` is empty"));
+        }
+        if let Some(c) = &cfg.canary {
+            if crate::kernel::leaks(&bytes, c.as_bytes()) {
+                return Err(format!("--train-text: `{path}` contains the held-out canary; refusing to train on it"));
+            }
+        }
+        if !text.is_empty() {
+            text.push(b'\n');
+        }
+        text.extend_from_slice(&bytes);
+    }
+    Ok(text)
 }
 
 fn default_heldout_slices() -> usize {
@@ -340,6 +420,8 @@ impl Default for Config {
             length_unit: LengthUnit::Tokens,
             second_order: false,
             bound_grafts: false,
+            train_text: Vec::new(),
+            train_text_per_round: default_train_text_per_round(),
         }
     }
 }
@@ -771,6 +853,8 @@ pub fn run_with_guard(
     if !cfg.refresh_drift.is_finite() || cfg.refresh_drift < 0.0 {
         return Err(format!("refresh_drift must be finite and at least 0, not {}", cfg.refresh_drift));
     }
+    // Read and checked against the unplanted held-out corpora, before any run work.
+    let train_text = load_train_text(&cfg, &heldout)?;
     let canary: Option<Vec<u8>> = cfg.canary.as_ref().map(|c| c.as_bytes().to_vec());
     let heldout: Vec<Corpus> = match &canary {
         Some(c) => heldout.into_iter().map(|h| h.with_canary(c)).collect(),
@@ -1077,6 +1161,15 @@ pub fn run_with_guard(
         for _ in 0..cfg.replay_per_round {
             if let Some(e) = pool.sample(&mut rng) {
                 round_data.push(e.bytes.clone());
+            }
+        }
+        // Training text: into the learners' batch only. It is not an output, so
+        // it is never pooled, scored, credited or shown to an agent.
+        if !train_text.is_empty() {
+            let len = TRAIN_CHUNK_BYTES.min(train_text.len());
+            for _ in 0..cfg.train_text_per_round {
+                let start = rng.below(train_text.len() - len + 1);
+                round_data.push(train_text[start..start + len].to_vec());
             }
         }
 
@@ -1759,6 +1852,122 @@ mod tests {
         assert_eq!(first, default_run_digest(cfg()), "the same seed gave two runs");
         eprintln!("DIGEST {first:#018x}");
         assert_eq!(first, GOLDEN_DEFAULT_RUN_DIGEST, "the default run changed with the flags off");
+    }
+
+    // ── Training text ────────────────────────────────────────────────────
+
+    /// A file in the temp directory, named for this process and `name`.
+    fn temp_file(name: &str, bytes: &[u8]) -> String {
+        let p = std::env::temp_dir().join(format!("arena-train-text-{}-{name}", std::process::id()));
+        std::fs::write(&p, bytes).expect("writes");
+        p.to_string_lossy().into_owned()
+    }
+
+    /// Held-out text and a training text that is similar to it but not the same bytes.
+    fn like_heldout(tag: &str) -> (Vec<Corpus>, String) {
+        let sentence = b"the quick brown fox jumps over the lazy dog. ";
+        let held = temp_file(&format!("{tag}-held.txt"), &sentence.repeat(20));
+        let train = temp_file(&format!("{tag}-train.txt"), &sentence.repeat(30));
+        (vec![Corpus::new(held.clone(), std::fs::read(&held).unwrap())], train)
+    }
+
+    fn bpb(r: &Report) -> Vec<f64> {
+        r.learners.iter().map(|l| l.mean_bpb).collect()
+    }
+
+    #[test]
+    fn training_text_overlapping_the_held_out_data_is_refused() {
+        let (held, _) = like_heldout("overlap");
+        let held_path = held[0].name().to_string();
+        let (m, n) = cpu_only();
+        // The same path.
+        let e = run(Config { train_text: vec![held_path.clone()], ..tiny_cfg() }, held.clone(), m, n).unwrap_err();
+        assert!(e.contains("also a held-out file"), "{e}");
+        // The same file by another spelling of its path.
+        let alias = std::path::Path::new(&held_path).parent().unwrap().join(".").join(std::path::Path::new(&held_path).file_name().unwrap());
+        let (m, n) = cpu_only();
+        let e = run(Config { train_text: vec![alias.to_string_lossy().into_owned()], ..tiny_cfg() }, held.clone(), m, n).unwrap_err();
+        assert!(e.contains("also a held-out file"), "{e}");
+        // A byte-identical copy under another name.
+        let copy = temp_file("overlap-copy.txt", &std::fs::read(&held_path).unwrap());
+        let (m, n) = cpu_only();
+        let e = run(Config { train_text: vec![copy], ..tiny_cfg() }, held, m, n).unwrap_err();
+        assert!(e.contains("same content"), "{e}");
+    }
+
+    #[test]
+    fn training_text_carrying_the_canary_is_refused() {
+        let (held, _) = like_heldout("canary");
+        let tainted = temp_file("canary-train.txt", b"some prose MAGE-CANARY-7f3a more prose");
+        let (m, n) = cpu_only();
+        let cfg = Config { train_text: vec![tainted], canary: Some("MAGE-CANARY-7f3a".into()), ..tiny_cfg() };
+        let e = run(cfg, held, m, n).unwrap_err();
+        assert!(e.contains("canary"), "{e}");
+    }
+
+    #[test]
+    fn training_text_lowers_held_out_bits_per_byte() {
+        let (held, train) = like_heldout("lower");
+        let (m, n) = cpu_only();
+        let without = run(Config { cost_unit: CostUnit::Fuel, ..tiny_cfg() }, held.clone(), m, n).expect("runs");
+        let (m, n) = cpu_only();
+        let with = run(Config { cost_unit: CostUnit::Fuel, train_text: vec![train], ..tiny_cfg() }, held, m, n).expect("runs");
+        for (w, wo) in bpb(&with).iter().zip(bpb(&without)) {
+            assert!(*w < wo - 1.0, "training text should help: {w} vs {wo}");
+        }
+        assert!(with.learners[0].train_bytes > without.learners[0].train_bytes, "the text's bytes are trained on");
+    }
+
+    /// Watches every pool a proposer is shown.
+    struct Spy(std::sync::Arc<std::sync::Mutex<Vec<Vec<u8>>>>, crate::agents::UniformAgent);
+    impl Proposer for Spy {
+        fn id(&self) -> &str {
+            "spy"
+        }
+        fn kind(&self) -> &'static str {
+            "spy"
+        }
+        fn propose(&mut self, n: usize, pool: &Pool, rng: &mut Rng) -> Vec<Candidate> {
+            self.0.lock().unwrap().extend(pool.entries.iter().map(|e| e.bytes.clone()));
+            self.1.propose(n, pool, rng)
+        }
+        fn feedback(&mut self, s: &[Scored]) {
+            self.1.feedback(s)
+        }
+    }
+
+    #[test]
+    fn training_text_never_enters_the_pool_or_reaches_an_agent() {
+        const MARK: &[u8] = b"TRAINTEXT-MARKER-0123456789 ";
+        let (held, _) = like_heldout("pool");
+        let train = temp_file("pool-train.txt", &MARK.repeat(40));
+        let seen = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+        let agent = || -> Vec<Box<dyn Proposer>> {
+            vec![Box::new(Spy(seen.clone(), crate::agents::UniformAgent::new("u")))]
+        };
+        let (m, n) = cpu_only();
+        let cfg = Config { train_text: vec![train], train_text_per_round: 8, ..tiny_cfg() };
+        let r = run_with(cfg, agent(), held, m, n).expect("runs");
+        let seen = seen.lock().unwrap();
+        assert!(!seen.is_empty(), "the spy saw the pool");
+        assert!(seen.iter().all(|b| !b.windows(8).any(|w| MARK.windows(8).any(|m| m == w))), "a training chunk reached the pool");
+        assert!(r.pool_size > 0);
+        // No agent was credited for it: credit is only for the one agent's programs.
+        assert_eq!(r.agents.len(), 1);
+        assert_eq!(r.agents[0].proposed, 6 * 16);
+    }
+
+    #[test]
+    fn a_run_with_training_text_is_reproducible_for_a_seed() {
+        let (held, train) = like_heldout("det");
+        let go = || {
+            let (m, n) = cpu_only();
+            let cfg = Config { cost_unit: CostUnit::Fuel, train_text: vec![train.clone()], seed: 7, ..tiny_cfg() };
+            run(cfg, held.clone(), m, n).expect("runs")
+        };
+        let (a, b) = (go(), go());
+        assert_eq!(bpb(&a), bpb(&b));
+        assert_eq!(a.pool_size, b.pool_size);
     }
 
     #[test]

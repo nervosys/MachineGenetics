@@ -11,6 +11,7 @@
 //!       [--length-unit tokens|bytes] [--canary <string>] [--second-order] [--bound-grafts]
 //!       [--energy-budget J] [--joules-per-program J] [--definitions <forge registry dir>]
 //!       [--heldout-slices K] [--refresh-drift X]
+//!       [--train-text <file>[,<file>…]] [--train-text-per-round N]
 //!       [--proposer-command "<cmd> <args…>"] [--proposer-timeout S]
 //!       [--json <out.json>] [--evidence <log.jsonl>] [--propose-limit <out.json>]
 //! arena physics-baseline [--system pendulum|spring|double_pendulum|nbody|bounce|none] [--steps N]
@@ -542,6 +543,8 @@ fn main() {
                 }
             }
             "--canary" => cfg.canary = Some(value(i).to_string()),
+            "--train-text" => cfg.train_text.extend(value(i).split(',').filter(|s| !s.is_empty()).map(str::to_string)),
+            "--train-text-per-round" => cfg.train_text_per_round = num(value(i), "--train-text-per-round") as usize,
             "--heldout-slices" => {
                 let k = num(value(i), "--heldout-slices");
                 if k == 0 {
