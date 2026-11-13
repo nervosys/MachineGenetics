@@ -174,6 +174,11 @@ pub struct ArenaWorkload {
     /// with the champion they recorded. The CLI turns it on for
     /// `--objectives ...latency`.
     pub with_latency: bool,
+    /// Files of the optional validation suite and the digest they were pinned
+    /// under. Kept only so they can be re-hashed before each cycle; nothing here
+    /// is ever scored by this workload.
+    pub validation_files: Vec<String>,
+    pub validation_pin: Option<Digest>,
     built: HashMap<String, Built>,
     /// Joules every session has charged, all accounts (programs, training,
     /// probes), as the kernel's ledger totals them. This is the running count
@@ -206,6 +211,8 @@ impl ArenaWorkload {
             cpu_watts: 65.0,
             heldout_files: Vec::new(),
             with_latency: false,
+            validation_files: Vec::new(),
+            validation_pin: None,
             built: HashMap::new(),
             spent: 0.0,
             spend_incomplete: false,
@@ -249,6 +256,19 @@ impl ArenaWorkload {
             return Err(format!(
                 "the held-out data changed on disk since this run was built ({}); the suite is no longer the one the gate pinned",
                 self.heldout_files.join(", ")
+            ));
+        }
+        Ok(())
+    }
+
+    /// Re-read the validation files and confirm they still hash to the pinned
+    /// digest. Nothing is checked when no validation suite was named.
+    pub fn check_validation_files(&self) -> Result<(), String> {
+        let Some(pin) = &self.validation_pin else { return Ok(()) };
+        if &suite_digest(&read_corpora(&self.validation_files)?) != pin {
+            return Err(format!(
+                "the validation data changed on disk since this run was built ({})",
+                self.validation_files.join(", ")
             ));
         }
         Ok(())
@@ -325,7 +345,8 @@ impl Workload for ArenaWorkload {
 
     /// Refuse to start a cycle on held-out data that has changed under the run.
     fn before_cycle(&mut self) -> Result<(), String> {
-        self.check_heldout_files()
+        self.check_heldout_files()?;
+        self.check_validation_files()
     }
 
     fn shadow(&mut self, artifact: &Digest) -> HealthSample {
@@ -397,7 +418,62 @@ const USAGE: &str = "usage: arena succession --heldout FILE[,FILE...] --journal 
 [--proposer-command \"CMD ARGS\"] [--proposer-timeout S] \
 [--objectives capability[,efficiency][,latency]] [--dominance-min F] [--dominance-floor F] \
 [--objective-tolerance AXIS=F,...] [--allow-estimated-energy] \
-[--energy-budget JOULES] [--param-search es|perturb] [--cost joules|fuel]";
+[--energy-budget JOULES] [--param-search es|perturb] [--cost joules|fuel] [--validation FILE[,FILE...]]";
+
+/// One champion's score on the validation suite, beside its held-out score.
+/// Informational only: the gate never sees it and the journal does not record it.
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+pub struct ValidationRecord {
+    pub generation: u64,
+    /// `capability` on the validation corpora, computed as the gate's is.
+    pub capability: f64,
+    /// Mean bits per byte on the validation corpora. `capability` clamps to 0
+    /// above 8, so this is the figure that still moves there.
+    pub bpb: f64,
+    /// The `capability` the gate measured for this generation on the held-out suite.
+    pub heldout_capability: Option<f64>,
+}
+
+/// Fail if any validation file is also a held-out file, by the strings as given
+/// or by canonical path: a shared file defeats the point of a second suite.
+fn check_validation_disjoint(heldout: &[String], validation: &[String]) -> Result<(), String> {
+    let canon = |p: &String| std::fs::canonicalize(p).ok();
+    for v in validation {
+        let cv = canon(v);
+        if heldout.iter().any(|h| h == v || (cv.is_some() && canon(h) == cv)) {
+            return Err(format!("--validation: `{v}` is also a --heldout file; the validation suite must be disjoint from it"));
+        }
+    }
+    Ok(())
+}
+
+/// Score every champion `lineage` has had (the seed and each promotion) on the
+/// validation corpora. Each champion's genome is decoded to the same
+/// configuration, seed included, that built it, and run as its own session whose
+/// only corpora are `validation`. This runs after the succession run has ended,
+/// through no [`ArenaWorkload`] and no gate, so no validation figure can reach a
+/// `FitnessVector`, the journal, or the joule count the energy budget reads.
+pub fn score_validation(
+    base: &Config,
+    cpu_watts: f64,
+    lineage: &Lineage,
+    validation: &[Corpus],
+) -> Result<Vec<ValidationRecord>, String> {
+    let mut out = Vec::new();
+    for g in lineage.generations().iter().filter(|g| g.promoted_under.is_some()) {
+        let Some(genome) = &g.genome else { continue };
+        let meters: Vec<Box<dyn Meter>> = vec![Box::new(WallClock::new("cpu-estimate", cpu_watts))];
+        let report = run(decode(base, genome), validation.to_vec(), meters, vec![])?;
+        let learner = report.learners.first().ok_or("the validation session trained no learner")?;
+        out.push(ValidationRecord {
+            generation: g.id.0,
+            capability: (1.0 - learner.mean_bpb / 8.0).clamp(0.0, 1.0),
+            bpb: learner.mean_bpb,
+            heldout_capability: g.heldout_fitness().and_then(|f| f.get("capability")),
+        });
+    }
+    Ok(out)
+}
 
 /// Parse `--objective-tolerance` items: `AXIS=VALUE`, comma-separated. A value
 /// must be finite and non-negative, and the axis must be a known one.
@@ -628,6 +704,7 @@ fn exit_code(h: &Halt) -> i32 {
 /// where it stopped. `--force` moves an existing journal aside and starts over.
 pub fn cli(args: &[String]) -> Result<i32, String> {
     let mut heldout: Vec<String> = Vec::new();
+    let mut validation: Vec<String> = Vec::new();
     let mut cycles: u32 = 8;
     let mut seed: u64 = 0;
     let mut journal: Option<String> = None;
@@ -658,6 +735,7 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
         };
         match flag {
             "--heldout" => heldout.extend(v.split(',').filter(|s| !s.is_empty()).map(str::to_string)),
+            "--validation" => validation.extend(v.split(',').filter(|s| !s.is_empty()).map(str::to_string)),
             "--cycles" => cycles = num(v, flag)? as u32,
             "--seed" => seed = num(v, flag)?,
             "--journal" => journal = Some(v.to_string()),
@@ -707,6 +785,7 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
     if heldout.is_empty() {
         return Err(format!("--heldout is required: without held-out data there is nothing to measure against\n{USAGE}"));
     }
+    check_validation_disjoint(&heldout, &validation)?;
     let journal_path = PathBuf::from(
         journal.ok_or_else(|| format!("--journal PATH is required: the journal is the run's record\n{USAGE}"))?,
     );
@@ -726,6 +805,12 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
 
     let mut w = ArenaWorkload::new(base.clone(), read_corpora(&heldout)?);
     w.heldout_files = heldout.clone();
+    // The validation suite is read here and re-checked before every cycle, like
+    // the held-out one, but it is held by the CLI and never by the workload.
+    let validation_corpora = read_corpora(&validation)?;
+    let validation_digest = (!validation.is_empty()).then(|| suite_digest(&validation_corpora));
+    w.validation_files = validation.clone();
+    w.validation_pin = validation_digest.clone();
     w.with_latency = objectives.as_ref().is_some_and(|o| o.iter().any(|n| n == "latency"));
     let suite = w.suite();
     let digest = suite.digest.clone();
@@ -819,8 +904,13 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
 
     // The spend's basis is read after the run, because a cycle can add to it.
     let spend_basis = w.spend_basis();
+    // Scored only now, after the run, from the lineage it left.
+    let validation_records = match &validation_digest {
+        Some(_) => Some(score_validation(&base, w.cpu_watts, &lineage, &validation_corpora)?),
+        None => None,
+    };
     if json {
-        let out = serde_json::json!({
+        let mut out = serde_json::json!({
             "suite_digest": digest.0,
             "journal": journal_path.display().to_string(),
             "objectives": objectives_json(objectives.as_deref(), dominance.as_ref()),
@@ -828,6 +918,10 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
             "energy_spend_basis": spend_basis,
             "report": report,
         });
+        if let (Some(d), Some(records)) = (&validation_digest, &validation_records) {
+            out["validation_suite_digest"] = serde_json::json!(d.0);
+            out["validation"] = serde_json::json!(records);
+        }
         println!("{}", serde_json::to_string_pretty(&out).map_err(|e| e.to_string())?);
     } else {
         println!("succession: held-out suite digest {}", digest.0);
@@ -855,6 +949,13 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
             );
         }
         println!("halt: {}", halt_text(&report.halt));
+        if let (Some(d), Some(records)) = (&validation_digest, &validation_records) {
+            println!("validation suite digest {}", d.0);
+            for r in records {
+                let held = r.heldout_capability.map_or("n/a".to_string(), |h| format!("{h:.4}"));
+                println!("validation: gen{} capability {:.4}, {:.3} bits/byte (held-out {held})", r.generation, r.capability, r.bpb);
+            }
+        }
         if let Some(champ) = lineage.champion() {
             println!("champion: {}", champ.id);
         }
@@ -1027,6 +1128,104 @@ mod tests {
             assert!(report.promotions > 0);
             assert!(champ.genome.is_some(), "a promoted session carries its configuration");
         }
+    }
+
+    #[test]
+    fn a_validation_file_that_is_also_a_heldout_file_is_a_usage_error() {
+        let dir = std::env::temp_dir().join(format!("arena-validation-overlap-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let held = dir.join("held.txt");
+        std::fs::write(&held, b"held-out text").unwrap();
+        let other = dir.join("other.txt");
+        std::fs::write(&other, b"validation text").unwrap();
+        let h = held.display().to_string();
+        let o = other.display().to_string();
+        // Same string, and the same file spelled another way.
+        assert!(check_validation_disjoint(&[h.clone()], &[h.clone()]).is_err());
+        let alias = dir.join(".").join("held.txt").display().to_string();
+        assert!(check_validation_disjoint(&[h.clone()], &[alias]).is_err());
+        assert!(check_validation_disjoint(&[h.clone()], &[o.clone()]).is_ok());
+        // Through the CLI the overlap is refused before anything runs.
+        let args: Vec<String> = ["--heldout", &h, "--validation", &h, "--journal", "unused.jsonl"]
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
+        let err = cli(&args).expect_err("overlap is refused");
+        assert!(err.contains("--validation") && err.contains("--heldout"), "{err}");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Seed, then three gated cycles, as the CLI does, on a fuel-metered base.
+    fn drive_small_run() -> (Vec<(Option<u64>, bool, Vec<String>)>, Lineage) {
+        let cfg = Config { cost_unit: crate::arena::CostUnit::Fuel, ..base() };
+        let mut w = ArenaWorkload::new(cfg.clone(), corpora());
+        let suite = w.suite();
+        let genome = encode(&cfg);
+        let seed_art = w.materialize(&CandidateSpec::new("seed", genome.clone())).unwrap();
+        let seed_fit = w.evaluate(&seed_art, &suite).unwrap();
+        let mut lineage = Lineage::new();
+        let id = lineage.next_id();
+        let mut g = Generation::new(id, seed_art).measured(Measurement {
+            suite: suite.clone(),
+            fitness: seed_fit,
+            evaluator: "arena-evaluator".into(),
+        });
+        g.genome = Some(genome);
+        lineage.add(g);
+        let ep = Episode::open(
+            PromotionGate {
+                primary_axis: "capability".into(),
+                min_improvement: 0.0,
+                guard_axes: vec!["efficiency".into()],
+                guard_tolerance: 0.5,
+                min_shadow_successes: 1,
+                dominance: None,
+            },
+            suite.digest.clone(),
+            "arena-evaluator",
+        );
+        let seed = lineage.get(id).unwrap().clone();
+        let approval = ep.approve(&seed, &lineage, 1, &|d| w.materialized(d)).unwrap();
+        lineage.promote(approval).unwrap();
+        let at = Attestor::new("arena-evaluator", b"arena test key".to_vec());
+        static N: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+        let dir = std::env::temp_dir()
+            .join(format!("arena-validation-run-{}-{}", std::process::id(), N.fetch_add(1, std::sync::atomic::Ordering::SeqCst)));
+        let _ = std::fs::remove_dir_all(&dir);
+        let mut journal = Journal::open(&dir.join("journal.jsonl")).unwrap();
+        let policy = RunnerPolicy {
+            max_cycles: 3,
+            max_consecutive_refusals: 3,
+            shadow_runs: 1,
+            supervision: SupervisionPolicy { window: 2, ..SupervisionPolicy::default() },
+            ..RunnerPolicy::default()
+        };
+        let mut runner = Runner::new(policy, &ep, &at, suite, 11);
+        let report = runner.run(&mut lineage, &mut journal, &mut w);
+        let _ = std::fs::remove_dir_all(&dir);
+        let cycles = report.cycles.iter().map(|c| (c.candidate.map(|g| g.0), c.promoted, c.reasons.clone())).collect();
+        (cycles, lineage)
+    }
+
+    #[test]
+    fn validation_scores_every_champion_and_the_gate_ignores_it() {
+        let cfg = Config { cost_unit: crate::arena::CostUnit::Fuel, ..base() };
+        let validation = vec![Corpus::new("val", b"pack my box with five dozen liquor jugs. ".repeat(8))];
+        let (with_cycles, lineage) = drive_small_run();
+        let records = score_validation(&cfg, 65.0, &lineage, &validation).expect("scores");
+        // One record per champion: the seed, and one for each promotion.
+        let promotions = with_cycles.iter().filter(|c| c.1).count();
+        assert_eq!(records.len(), 1 + promotions, "{records:?}");
+        assert_eq!(records[0].generation, 0, "the seed comes first");
+        for r in &records {
+            assert!((0.0..=1.0).contains(&r.capability));
+            assert!(r.heldout_capability.is_some(), "the held-out figure is the gate's own");
+        }
+        // The same run with no validation step has the same promotions and
+        // refusals, reasons included: validation is scored after, from the
+        // lineage, and nothing it computes is visible to the gate.
+        let (without_cycles, _) = drive_small_run();
+        assert_eq!(with_cycles, without_cycles);
     }
 
     #[test]
