@@ -1154,13 +1154,11 @@ and 7, run concurrently, with `--validation GERMLINE.md,germline/src/pareto.rs`
 seeds 1 and 2 and all smaller than their held-out figure (0.0041, 0.0041 and
 0.0215 against 0.0539, 0.0539 and 0.0719). The other seven are at 0, which means
 8 bits/byte or worse on the validation files; how much worse is not recorded,
-since this run predates the `bpb` field, and a rerun that would have recorded it
-was stopped by the machine running low on memory. So the promotions select
-configurations that predict the held-out files better and mostly do not predict
-other text better. The loop as configured improves its score on its evaluation
-suite, which is not yet evidence of improving general capability. Promotion
-counts differ from the table above because, as described there, the runs read
-wall-clock energy.
+since this run predates the `bpb` field. **Capability cannot tell "no better" from
+"better, but still above 8 bits/byte"**, so this table does not show whether the
+promotions carry over to other text; the `bpb` field exists to answer that.
+Promotion counts differ from the table above because, as described there, the
+runs read wall-clock energy.
 
 ### Proposer isolation at the CLI, and its limit
 
