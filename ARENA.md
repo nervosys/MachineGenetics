@@ -1049,8 +1049,12 @@ What this does not do:
   as `arena --cost`. The default is `joules`, as before. Under `joules` the
   inner arena allocates evaluations by metered (or wall-clock estimated) energy,
   so a candidate's held-out capability depends on machine load and the same seed
-  does not give the same run. Under `fuel`, capability is deterministic. The
-  `efficiency` guard still reads the meters in both modes.
+  does not give the same run. Under `fuel`, a given candidate's capability is
+  deterministic. **The run is still not.** The `efficiency` axis is
+  `1 / (1 + kJ)` of the learners' metered training energy in both modes, and it
+  enters twice: as the gate's guard, and through `FitnessVector::composite` (the
+  mean of the axes) in the weights the runner uses to choose parents. Machine
+  load therefore changes which candidates are proposed, and can trip the guard.
 
 The documented command (`--heldout README.md,germline/src/gate.rs --cycles 8
 --rounds 20 --programs 48 --candidates 3 --agents grammar:2,uniform:1,mutator:1`)
@@ -1066,7 +1070,7 @@ concurrent, then under `--cost fuel`, with seed 7 run twice. Logs and journals:
 | 4 | 0 | 1 | 0.0215 |
 | 5 | 1 | 1 | 0.0309 |
 | 7 | 1 (cycle 2) | 2 | 0.0424 |
-| 7, again | | 2, identical journal outcomes | 0.0424 |
+| 7, again, concurrently | | 2, identical cycle lines | 0.0424 |
 
 What this shows:
 
@@ -1076,10 +1080,18 @@ What this shows:
   cycle 0 when run alone on 2026-11-11 (8.671 to 7.525 bits/byte); run beside five
   others it promoted gen 3 in cycle 2 instead, and four seeds of six promoted
   nothing. The earlier single-seed demonstration is one draw from that spread.
-- **Under `fuel` there is no run-to-run noise in capability**, so the margin of
-  `0.01` is a threshold on seed-to-seed and candidate-to-candidate variation, not
-  on measurement noise. Refused challengers missed it by as little as 0.0006
-  (0.0094 on seed 4); the worst fell 0.0719 below its champion.
+- **Under `fuel`, runs reproduce only under similar load.** Two copies of seed 7
+  run side by side gave identical cycle lines, and so did two copies of seed 1
+  later. Seed 1 run beside a different set of processes diverged at cycle 4 (2
+  promotions instead of 3), and in one copy the gate refused a candidate on the
+  `efficiency` guard (0.0853 against the seed's 0.3359), a wall-clock reading.
+  Seed 7 diverged at cycle 2 the same way. Logs: `E:/heal-logs/sweep/d-*.log`
+  and `vsucc-*.log`. The promotion counts above are one draw per seed.
+- **The margin and the noise.** A candidate's capability under `fuel` has no
+  measurement noise, so the `0.01` margin separates candidates, not readings.
+  Refused challengers missed it by as little as 0.0006 (0.0094 on seed 4); the
+  worst fell 0.0719 below its champion. What varies run to run is which
+  candidates are proposed, through the energy readings above.
 
 What it does not show:
 
