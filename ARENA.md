@@ -859,8 +859,26 @@ arena succession --heldout FILE[,FILE...] --journal PATH [--cycles N] [--seed N]
                  [--validation FILE[,FILE...]] [--learners SPEC[,SPEC...]]
                  [--train-text FILE[,FILE...]] [--train-text-per-round N]
                  [--reward alignment|compression|transfer] [--dev-text FILE[,FILE...]]
-                 [--genome narrow|wide] [--patience N] [--mutation-scale F]
+                 [--genome narrow|wide] [--patience N] [--mutation-scale F] [--predict]
 ```
+
+**Predictions and admission width (`--predict`).** Opt-in; default off, and with it
+off nothing changes (journals, policy name and digest are those of earlier runs).
+With it on, each candidate of the built-in search states a prediction of its
+`capability`: the capability measured at the generation nearest to it in genome
+space (Euclidean over the `Param` loci), expressed as a change from the champion.
+The runner records the search as a proposer named `undirected`, scores each
+prediction against the candidate's measured capability, journals it as a
+`calibrated` entry, and sets the cycle's admission width from the resulting
+trust (`max(1, round(trust x --candidates))`; trust is the mean score once there
+are three, zero before). Each cycle journals a note
+`admission: undirected trust T, width W of N candidate(s)`. Of the `W` admitted,
+the one with the best predicted capability is built and measured; one candidate
+is still measured per cycle. The score is relative to the size of the change
+(`1 - |predicted - measured| / max(|predicted|, |measured|)`, 0 for the wrong
+sign), not to the axis, so capability values of 0 to 0.08 do not make a poor
+predictor look accurate. The policy name gains `+predict`, so journals cannot be
+mixed. See "Earned admission width" below and GERMLINE.md section 5.
 
 **Search budget (`--patience N`, `--mutation-scale F`).** Both opt-in. `--patience`
 (a whole number, at least 1) sets the runner's `max_consecutive_refusals`, the
@@ -1558,13 +1576,55 @@ Final champion, held-out / validation bits/byte:
   seed configuration was not beaten by the ten candidates each run tried. Ten
   candidates is still small, and the data cannot rule out a better configuration
   further out.
-- **`--candidates` has been 1 in every succession run in this document.** The
+- **`--candidates` has been 1 in every succession run in this document, except
+  where `--predict` is given (next subsection).** The
   runner admits `round(trust × candidates).max(1)` candidates a cycle
   (`germline::runner::admission_width`), and a proposer's trust starts at zero
   and grows only from calibrated predictions, which the arena proposer does not
   make. So `--candidates 3` scored one candidate per cycle throughout, and the
   search budget is the cycle count up to the stall limit. Raising the width
   without trust would need a change to that rule, which is not made here.
+  `--predict` gives the search a way to earn width; it does not grant it.
+
+#### Earned admission width
+
+The same command as the larger-budget runs plus `--predict` (policy
+`...+genome-wide+patience=10+mscale=0.35+predict`), seeds 1, 3 and 5 only (three
+seeds, not six), `--candidates 3`, `--cycles 20`. Logs and JSON:
+`E:/heal-logs/sweep/pt-*`. The comparison is `sb-*` (same command, no `--predict`).
+Held-out / validation bits/byte of the final champion; `MAE` is the mean absolute
+error of the predicted change in capability, and "normalised" is that over the mean
+absolute measured change.
+
+| seed | without `--predict` | with `--predict`: cycles, promotions | final | width per cycle | trust (final, range after 3 samples) | MAE (normalised) | mean score |
+|---|---|---|---|---|---|---|---|
+| 1 | 10 scored, 0 promotions, 7.203 / 7.624 | 20 scored, 3 | 7.051 / 7.436 | 1, except 2 in cycle 5 | 0.32 (0.32 to 0.53) | 0.0423 (0.98) | 0.325 |
+| 3 | 10, 0, 7.203 / 7.624 | 20 scored, 3 | 7.167 / 7.514 | 1 in all 20 | 0.43 (0.20 to 0.43) | 0.0181 (0.69) | 0.428 |
+| 5 | 10, 0, 7.203 / 7.624 | 20 scored, 3 | 7.167 / 7.514 | 1 in all 20 | 0.45 (0.07 to 0.45) | 0.0199 (0.65) | 0.453 |
+
+All six runs measured one candidate per cycle. Width 2 happened once in sixty
+cycles; trust never reached the 0.5 that `round(trust x 3)` needs to give 2 except
+at cycle 5 of seed 1 (0.53).
+
+- **Width is earned, and this predictor earns little.** The nearest-generation
+  predictor was right about the sign and size of the change in some cycles (scores
+  of 0.9 to 1.0) and wrong in others (many 0), for a mean score of 0.33 to 0.45. At
+  three candidates, that is a width of 1 almost always.
+- **The normalisation does what it should.** On a 0 to 0.08 axis, the raw errors
+  (0.018 to 0.042) are small, and an absolute 0.25 scale would have given trust
+  above 0.8 and width 2 to 3 once three predictions were scored. The relative score gave 0.3 to 0.5.
+- **Promotions.** The `--predict` runs each promoted three generations and ended at
+  7.05 to 7.17 held-out; the runs without it promoted none in ten. This is not
+  evidence that predicting helps. With width 1 the admitted pool is the first
+  candidate of three, where the runs without `--predict` sampled one of three at
+  random, so the two runs choose different candidates, the run no longer stalls at
+  ten refusals, and it ran 20 cycles. Seeds 3 and 5 reached the same three
+  configurations. Three seeds cannot separate the candidate choice from luck.
+- Conclusion: `--predict` makes the arena's search state predictions and earn
+  admission width through the runner's own rule; on this problem and predictor the
+  trust it earns is below the level that widens the pool. A better predictor, or
+  measuring several admitted candidates per cycle (not done: the runner measures one),
+  is what would change that.
 
 ### Proposer isolation at the CLI, and its limit
 
