@@ -875,13 +875,17 @@ count, so promotions, refusals, the journal and the episode digest are the same
 with or without the flag. The validation files are hashed at startup and re-read
 before each cycle; a change stops the run, as for the held-out files. The session
 trains on program outputs, not on either suite, so the two scores are of the same
-trained learner given a deterministic run (`--cost fuel`, built-in agents); under
-`--proposer-command` the validation session is a fresh run and can differ.
+trained learner when the candidate's session is deterministic (`--cost fuel`,
+built-in agents). That was checked: with a byte-identical copy of the held-out
+file as the only validation file, the champion's two capabilities were equal
+(0.0141 and 0.0141). Under `--cost joules` or `--proposer-command` the
+validation session is a fresh run and can differ.
 
 The output gains one line per champion, for example
-`validation: gen2 capability 0.0412 (held-out 0.0719)`, after the refusals summary,
-and `--json` gains `validation_suite_digest` and a `validation` array of
-`{generation, capability, heldout_capability}`. Without the flag the output is
+`validation: gen2 capability 0.0412, 7.670 bits/byte (held-out 0.0719)`, after the
+refusals summary, and `--json` gains `validation_suite_digest` and a `validation`
+array of `{generation, capability, bpb, heldout_capability}`. `bpb` is reported
+because `capability` clamps to 0 above 8 bits/byte. Without the flag the output is
 unchanged. On resume, every champion in the replayed journal is scored again.
 The validation sessions cost extra wall time, one session per champion.
 
@@ -1099,11 +1103,37 @@ What it does not show:
   held-out suite. A champion chosen as the best of several candidates on that
   suite is expected to score above its true level on fresh data. A second,
   untouched suite measures that, and `--validation` now provides one (see the
-  command-line section). The five-seed table above predates the flag, so it
-  was run without a validation suite and still shows no generalisation figure.
+  command-line section). The table above predates the flag. The run below
+  uses it.
 - **A broad search.** The same capability values recur across seeds (0.0162,
   0.0309, 0.0326, 0.0413, 0.0719), and seeds 1 and 2 visit the same values one
   cycle apart. The four-locus genome reaches few distinct outcomes at this scale.
+
+**Generalisation, measured.** The same command under `--cost fuel`, seeds 1 to 5
+and 7, run concurrently, with `--validation GERMLINE.md,germline/src/pareto.rs`
+(prose and Rust, like the held-out pair, and disjoint from it). Logs:
+`E:/heal-logs/sweep/vsucc-*.log`. Each champion's capability, held-out → validation:
+
+| seed | promotions | seed champion | promoted champions |
+|---|---|---|---|
+| 1 | 2 | 0 → 0 | gen2 0.0326 → 0; gen4 0.0539 → 0.0041 |
+| 2 | 3 | 0 → 0 | gen1 0.0326 → 0; gen3 0.0539 → 0.0041; gen4 0.0719 → 0.0215 |
+| 3 | 1 | 0 → 0 | gen1 0.0413 → 0 |
+| 4 | 1 | 0 → 0 | gen1 0.0215 → 0 |
+| 5 | 1 | 0 → 0 | gen1 0.0309 → 0 |
+| 7 | 2 | 0 → 0 | gen2 0.0162 → 0; gen4 0.0389 → 0 |
+
+**Of ten promotions, three score above zero on the validation suite**, all on
+seeds 1 and 2 and all smaller than their held-out figure (0.0041, 0.0041 and
+0.0215 against 0.0539, 0.0539 and 0.0719). The other seven are at 0, which means
+8 bits/byte or worse on the validation files; how much worse is not recorded,
+since this run predates the `bpb` field, and a rerun that would have recorded it
+was stopped by the machine running low on memory. So the promotions select
+configurations that predict the held-out files better and mostly do not predict
+other text better. The loop as configured improves its score on its evaluation
+suite, which is not yet evidence of improving general capability. Promotion
+counts differ from the table above because, as described there, the runs read
+wall-clock energy.
 
 ### Proposer isolation at the CLI, and its limit
 

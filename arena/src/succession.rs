@@ -427,6 +427,9 @@ pub struct ValidationRecord {
     pub generation: u64,
     /// `capability` on the validation corpora, computed as the gate's is.
     pub capability: f64,
+    /// Mean bits per byte on the validation corpora. `capability` clamps to 0
+    /// above 8, so this is the figure that still moves there.
+    pub bpb: f64,
     /// The `capability` the gate measured for this generation on the held-out suite.
     pub heldout_capability: Option<f64>,
 }
@@ -465,6 +468,7 @@ pub fn score_validation(
         out.push(ValidationRecord {
             generation: g.id.0,
             capability: (1.0 - learner.mean_bpb / 8.0).clamp(0.0, 1.0),
+            bpb: learner.mean_bpb,
             heldout_capability: g.heldout_fitness().and_then(|f| f.get("capability")),
         });
     }
@@ -949,7 +953,7 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
             println!("validation suite digest {}", d.0);
             for r in records {
                 let held = r.heldout_capability.map_or("n/a".to_string(), |h| format!("{h:.4}"));
-                println!("validation: gen{} capability {:.4} (held-out {held})", r.generation, r.capability);
+                println!("validation: gen{} capability {:.4}, {:.3} bits/byte (held-out {held})", r.generation, r.capability, r.bpb);
             }
         }
         if let Some(champ) = lineage.champion() {
