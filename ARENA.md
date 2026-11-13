@@ -1417,6 +1417,34 @@ JSON: `E:/heal-logs/tr-{xfer,unif}-{4..8}.*`.
   slightly better than random programs do, with weak evidence. The effect is about
   0.2 bits/byte, against the 4 bits/byte that training on text gives.
 
+**Succession under the transfer reward.** The six-seed succession command from
+"Generalisation in bits/byte, reproducible" (`--cost fuel --efficiency-basis
+work`, eight cycles, the same held-out and validation suites), with `--reward
+transfer --dev-text ARCHITECTURE.md,germline/src/runner.rs` added. Logs and JSON:
+`E:/heal-logs/sweep/st-*`. The default-reward rows are the earlier runs
+(`g-*`). Bits/byte, final champion:
+
+| seed | default reward: promotions, held-out / validation | transfer reward: promotions, held-out / validation |
+|---|---|---|
+| 1 | 2, 7.569 / 7.967 | 1, 7.026 / 7.352 |
+| 2 | 2, 7.569 / 7.967 | 1, 7.026 / 7.352 |
+| 3 | 2, 7.563 / 8.029 | 1, 7.037 / 7.386 |
+| 4 | 1, 7.828 / 8.189 | 0, 7.203 / 7.624 |
+| 5 | 1, 7.753 / 8.146 | 0, 7.203 / 7.624 |
+| 7 | 2, 7.689 / 8.077 | 0, 7.203 / 7.624 |
+
+- **Every transfer-reward champion is below every default-reward champion on
+  both suites**: validation 7.352 to 7.624 against 7.967 to 8.189.
+- **Most of that is the reward, not the search.** The seed champion alone (the
+  base configuration, the same for every seed) scores 7.203 / 7.624 under the
+  transfer reward, against at least 8 / 8.467 under the default; it is below
+  every default-reward final champion. Succession then promoted once on seeds 1,
+  2 and 3, lowering validation by a further 0.24 to 0.27, and promoted nothing
+  on seeds 4, 5 and 7.
+- The six final champions are three configurations: seeds 1 and 2 share one,
+  seed 3 has its own, and seeds 4, 5 and 7 keep the seed champion. The dev,
+  held-out and validation files share a domain.
+
 ### Proposer isolation at the CLI, and its limit
 
 `CommandBackend` runs the proposer child in a fresh, empty scratch directory under
