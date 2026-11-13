@@ -859,8 +859,20 @@ arena succession --heldout FILE[,FILE...] --journal PATH [--cycles N] [--seed N]
                  [--validation FILE[,FILE...]] [--learners SPEC[,SPEC...]]
                  [--train-text FILE[,FILE...]] [--train-text-per-round N]
                  [--reward alignment|compression|transfer] [--dev-text FILE[,FILE...]]
-                 [--genome narrow|wide]
+                 [--genome narrow|wide] [--patience N] [--mutation-scale F]
 ```
+
+**Search budget (`--patience N`, `--mutation-scale F`).** Both opt-in. `--patience`
+(a whole number, at least 1) sets the runner's `max_consecutive_refusals`, the
+number of refusals in a row that halts the run as `search_stalled`; default 3.
+`--mutation-scale` (finite, in (0, 1]) sets the step of the default `Perturb`
+mutation, which perturbs each locus with probability 0.2 (the rate is not
+settable); default 0.15. Under `--param-search es` the ES replaces `Perturb` for
+the continuous loci and has its own step sizes, so `--mutation-scale` there is a
+usage error. When given, they add `+patience=N` and `+mscale=F` to the policy
+name, so journals of different budgets cannot be mixed. The policy digest is of
+the whole serialized policy, so both values already enter it; with the flags
+absent the policy, name and digest are those of earlier runs.
 
 **Genome (`--genome narrow|wide`).** Default `narrow`: four `Locus::Param` loci in
 [0,1], exactly as before (learner lr on a log scale 1e-3 to 1e-1, `learner_steps`
@@ -1517,6 +1529,42 @@ replay 16.
   per run leave almost no chance of it. Whether another learner kind or agent mix
   beats the base configuration under succession is not answered here; the
   "Learner choice and level" runs set it by hand.
+
+#### A larger search budget
+
+The wide runs stopped after three refusals, so the search budget was the limit.
+The same command (seeds 1, 3 and 5 only, three seeds, not six), `--genome wide`,
+with `--patience 10 --mutation-scale 0.35 --cycles 20` (policy
+`...+genome-wide+patience=10+mscale=0.35`). Logs and JSON: `E:/heal-logs/sweep/sb-*`.
+Final champion, held-out / validation bits/byte:
+
+| seed | narrow, default budget | wide, default budget | wide, patience 10, scale 0.35 |
+|---|---|---|---|
+| 1 | 1 promotion, 7.026 / 7.352 | 1, 7.076 / 7.468 | 0 promotions, 10 cycles, `search_stalled`, 7.203 / 7.624 |
+| 3 | 1, 7.037 / 7.386 | 0, 7.203 / 7.624 | 0, 10 cycles, `search_stalled`, 7.203 / 7.624 |
+| 5 | 0, 7.203 / 7.624 | 0, 7.203 / 7.624 | 0, 10 cycles, `search_stalled`, 7.203 / 7.624 |
+
+- **Nothing was promoted.** Each run scored ten candidates (one per cycle, ten
+  consecutive refusals), against three to five before, and halted `search_stalled`
+  before reaching 20 cycles. All three end on the seed champion.
+- **The proposals did vary.** Across the ten proposals per run: seed 1 reached 2
+  learner kinds (n-gram, entropy), 3 agent mixes and 4 distinct first learners;
+  seed 3, 2 kinds, 3 mixes, 3 learners; seed 5, 2 kinds, 4 mixes, 3 learners. No
+  proposal chose the ssm learner. None of these beat the seed by the 0.01
+  capability margin.
+- Conclusion: with a larger step and three times the patience the search did visit
+  other learner kinds and agent mixes, and still found nothing the gate accepted. On
+  three seeds, the budget was not the only limit; under this gate and reward the
+  seed configuration was not beaten by the ten candidates each run tried. Ten
+  candidates is still small, and the data cannot rule out a better configuration
+  further out.
+- **`--candidates` has been 1 in every succession run in this document.** The
+  runner admits `round(trust × candidates).max(1)` candidates a cycle
+  (`germline::runner::admission_width`), and a proposer's trust starts at zero
+  and grows only from calibrated predictions, which the arena proposer does not
+  make. So `--candidates 3` scored one candidate per cycle throughout, and the
+  search budget is the cycle count up to the stall limit. Raising the width
+  without trust would need a change to that rule, which is not made here.
 
 ### Proposer isolation at the CLI, and its limit
 
