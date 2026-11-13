@@ -856,8 +856,20 @@ arena succession --heldout FILE[,FILE...] --journal PATH [--cycles N] [--seed N]
                  [--dominance-floor F] [--objective-tolerance AXIS=F,...]
                  [--allow-estimated-energy] [--efficiency-basis meter|work]
                  [--energy-budget JOULES] [--param-search es|perturb]
-                 [--validation FILE[,FILE...]]
+                 [--validation FILE[,FILE...]] [--learners SPEC[,SPEC...]]
 ```
+
+**Learners (`--learners SPEC[,SPEC...]`).** Optional; sets the base configuration's
+learners, with the same specs and parser as plain `arena`
+(`ng:orders:log2buckets:lr`, `tf:d:layers:heads:ctx:lr[:gpu]`,
+`ent:orders:log2buckets:target_len:lr`, `ssm:d:lr[:bptt]`). The default is one
+n-gram, 3 orders of 2^12 buckets. Capability is scored on the **first** spec only,
+so put the learner the gate should judge first. The genome still mutates `lr`,
+`learner_steps`, `length_charge` and `temperature`; the mutated `lr` (1e-3 to 1e-1) replaces the `lr` of every learner
+given, so a spec's own `lr` is only the seed champion's starting point.
+Without the flag nothing changes, including the policy digest; with it the spec
+string is appended to the runner policy's name, so a journal made under one learner
+set cannot be resumed under another.
 
 **Validation suite (`--validation FILE[,FILE...]`).** Optional. A champion chosen as
 the best of several candidates on the held-out suite scores above its true level on
@@ -1191,6 +1203,36 @@ both suites (validation 8.467 for every seed).
   still above 8 bits/byte** (the best is 7.967), no better than a uniform byte
   model in absolute terms. These learners
   are small and briefly trained; the result is about direction, not level.
+
+**Learner choice and level.** Does another learner take champions well below 8
+bits/byte? Seeds 1 and 3, the same command and validation suite, under `--cost
+fuel --efficiency-basis work`, six cycles, with `--learners` set to the default
+n-gram, `ent:4:14:4:0.02`, or `ssm:16:0.01`. The last two are the specs that
+reached 4.805 and 5.075 bits/byte on README → gate.rs in MEASUREMENTS.md. Logs
+and JSON: `E:/heal-logs/lrn-{default,ent,ssm}-{1,3}.*`.
+
+| learner | seed | promotions | seed champion, held-out / validation | final champion, held-out / validation |
+|---|---|---|---|---|
+| n-gram 3×2^12 (default) | 1 | 2 | ≥ 8 / 8.467 | 7.569 / 7.967 |
+| n-gram 3×2^12 (default) | 3 | 2 | ≥ 8 / 8.467 | 7.563 / 8.029 |
+| `ent:4:14:4:0.02` | 1 | 2 | ≥ 8 / 8.358 | 7.533 / 7.831 |
+| `ent:4:14:4:0.02` | 3 | 1 | ≥ 8 / 8.358 | 7.533 / 7.831 |
+| `ssm:16:0.01` | 1 | 0 | 7.690 / 8.043 | (seed) |
+| `ssm:16:0.01` | 3 | 0 | 7.690 / 8.043 | (seed) |
+
+- **No learner gets far below 8.** The entropy learner's final champion is the
+  best, 0.14 to 0.20 bits/byte lower on validation than the n-gram's. The SSM
+  starts lowest on held-out (7.690) and no candidate beat it by the margin.
+- **The level is set by what the learners train on, not their capacity.** The
+  4.805 and 5.075 figures came from training on README text directly
+  (`physics-baseline --text-train`). In succession the learners train only on
+  the agents' program outputs, so text is out of distribution for them whatever
+  their size. Getting below 8 means agents whose outputs resemble the target
+  text, or learners that also see text, which is a design question.
+- **Consistency check.** The default-learner rows reproduce the earlier six-seed
+  table exactly (seed 1: 7.967; seed 3: 8.029), from a different build.
+- Two seeds per learner, one configuration each. Both seeds of a learner share
+  a seed champion, and for `ent` the final one too, so the evidence is thin.
 
 ### Proposer isolation at the CLI, and its limit
 
