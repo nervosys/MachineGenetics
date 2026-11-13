@@ -854,7 +854,7 @@ arena succession --heldout FILE[,FILE...] --journal PATH [--cycles N] [--seed N]
                  [--agents K:N,...] [--proposer-command "CMD ARGS"] [--proposer-timeout S]
                  [--objectives capability[,efficiency][,latency]] [--dominance-min F]
                  [--dominance-floor F] [--objective-tolerance AXIS=F,...]
-                 [--allow-estimated-energy]
+                 [--allow-estimated-energy] [--efficiency-basis meter|work]
                  [--energy-budget JOULES] [--param-search es|perturb]
                  [--validation FILE[,FILE...]]
 ```
@@ -956,6 +956,27 @@ described below. With it:
   on. If no meter gives a figure at all, the run is refused even with the flag,
   since efficiency would be a constant. The basis is printed in the run header and
   in the JSON report (`energy_basis`).
+- **`--efficiency-basis meter|work` (2026-11-13).** `meter`, the default, is the
+  behaviour above, and its output, journal and policy digest are unchanged. Under
+  `work`, efficiency is `1 / (1 + kJ)` of an estimated figure: the first learner's
+  `parameters × train_bytes` (parameters times the bytes it was trained on, one
+  formula for every learner kind) times a fixed 5e-10 J per unit. `train_bytes` is
+  a new per-learner field in the arena report (`#[serde(default)]`, so older JSON
+  still parses). The count does not depend on load, so under `--cost fuel` it is
+  deterministic. For dense learners it is proportional to the multiply-adds; for
+  the count-based n-gram it overestimates, since a byte touches a few table rows
+  rather than the whole table. The constant is a convention, calibrated once on
+  2026-11-13: the default configuration (`arena --rounds 20 --programs 48 --cost
+  fuel`, README.md and germline/src/gate.rs held out) trained its n-gram learner
+  (3,145,984 parameters) on 1,308,200 bytes, i.e. 4.12e12 units, in 32.4 s, which
+  is 2,103 J at the 65 W wall-clock estimate; 2,103 / 4.12e12 = 5.1e-10, rounded
+  to 5e-10. Choosing `work` counts as accepting an estimate, so
+  `--allow-estimated-energy` is not needed; the basis is printed as
+  `estimated — work (deterministic, J per unit = 5e-10)` in the header and in the
+  JSON `energy_basis`. The runner policy is named `succession-cli+efficiency-work`
+  under `work`, which changes the policy digest, so a `meter` journal cannot be
+  resumed as `work` or the reverse. The energy budget and its spend basis still
+  use the sessions' metered joules.
 
 Example, the sample that was run on 2026-11-11, with the estimated-energy flag:
 
@@ -1091,6 +1112,12 @@ What this shows:
   `efficiency` guard (0.0853 against the seed's 0.3359), a wall-clock reading.
   Seed 7 diverged at cycle 2 the same way. Logs: `E:/heal-logs/sweep/d-*.log`
   and `vsucc-*.log`. The promotion counts above are one draw per seed.
+  `--efficiency-basis work` removes that dependence (2026-11-13): seed 1,
+  `--cost fuel --efficiency-basis work`, 6 cycles, 20 rounds, 48 programs, 3
+  candidates, run twice concurrently and once alone afterwards, gave identical
+  cycle lines in all three (2 promotions, gens 2 and 4). Logs:
+  `E:/heal-logs/eff-{a,b,c}.log`. This is one seed on one machine; the
+  `meter` basis is as load-dependent as described.
 - **The margin and the noise.** A candidate's capability under `fuel` has no
   measurement noise, so the `0.01` margin separates candidates, not readings.
   Refused challengers missed it by as little as 0.0006 (0.0094 on seed 4); the
@@ -1132,6 +1159,38 @@ since this run predates the `bpb` field. **Capability cannot tell "no better" fr
 promotions carry over to other text; the `bpb` field exists to answer that.
 Promotion counts differ from the table above because, as described there, the
 runs read wall-clock energy.
+
+**Generalisation in bits/byte, reproducible.** The same six seeds with
+`--cost fuel --efficiency-basis work`, so each run is deterministic, and the
+same validation suite. Logs and JSON: `E:/heal-logs/sweep/g-*.{json,jsonl,err}`.
+Held-out bits/byte is `8 × (1 − capability)`; the seed champion's is above 8 on
+both suites (validation 8.467 for every seed).
+
+| seed | champion | held-out capability | held-out bits/byte | validation bits/byte | validation gain over the seed |
+|---|---|---|---|---|---|
+| 1 | gen2 | 0.0326 | 7.739 | 8.062 | 0.405 |
+| 1 | gen4 | 0.0539 | 7.569 | 7.967 | 0.500 |
+| 2 | gen1 | 0.0326 | 7.739 | 8.062 | 0.405 |
+| 2 | gen3 | 0.0539 | 7.569 | 7.967 | 0.500 |
+| 3 | gen1 | 0.0413 | 7.670 | 8.070 | 0.397 |
+| 3 | gen2 | 0.0547 | 7.562 | 8.029 | 0.438 |
+| 4 | gen1 | 0.0215 | 7.828 | 8.189 | 0.278 |
+| 5 | gen1 | 0.0309 | 7.753 | 8.146 | 0.321 |
+| 7 | gen2 | 0.0162 | 7.870 | 8.317 | 0.150 |
+| 7 | gen4 | 0.0389 | 7.689 | 8.077 | 0.390 |
+
+- **Every promotion lowered validation bits/byte below the seed's**, by 0.15 to
+  0.50, and in each of the four runs that promoted twice, the second promotion
+  lowered it further than the first.
+  The promotions do carry over to text the gate never saw. The earlier reading,
+  that they "mostly do not", came from capability clamping at 8 bits/byte.
+- **Held-out and validation agree on the order.** Spearman ρ = 0.87 between
+  held-out capability and validation bits/byte over the ten champions. Seeds 1
+  and 2 reached the same two configurations, so eight are distinct.
+- **The gains are smaller off the held-out suite, and all but one champion is
+  still above 8 bits/byte** (the best is 7.967), no better than a uniform byte
+  model in absolute terms. These learners
+  are small and briefly trained; the result is about direction, not level.
 
 ### Proposer isolation at the CLI, and its limit
 

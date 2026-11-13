@@ -104,6 +104,55 @@ pub fn suite_digest(corpora: &[Corpus]) -> Digest {
     Digest(format!("{:x}", h.finalize()))
 }
 
+/// Where the `efficiency` axis gets its joules.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum EfficiencyBasis {
+    /// The session's metered (or wall-clock estimated) training joules.
+    /// Depends on machine load. The default.
+    #[default]
+    Meter,
+    /// An estimate from a deterministic count of training work: see
+    /// [`work_units`] and [`WORK_JOULES_PER_UNIT`].
+    Work,
+}
+
+/// Joules assumed per unit of [`work_units`] (one parameter touched by one
+/// trained byte). Calibrated on 2026-11-13 on the development machine from one
+/// run of the default configuration (`arena --rounds 20 --programs 48 --cost
+/// fuel` on README.md and germline/src/gate.rs): the ngram learner (3×2^12,
+/// 3,145,984 parameters) trained on 1,308,200 bytes, so 4.12e12 work units, in
+/// 32.4 s, which is 2,103 J at the 65 W wall-clock estimate. 2,103 / 4.12e12 =
+/// 5.1e-10, rounded to one significant figure. It is a fixed convention, not a
+/// measurement of any machine: it only puts the `work` axis on a scale
+/// comparable to the `meter` one.
+pub const WORK_JOULES_PER_UNIT: f64 = 5.0e-10;
+
+/// Deterministic training work of one learner: `parameters × bytes trained on`.
+/// One formula for every learner kind. For dense learners (transformer, SSM)
+/// every trained byte updates on the order of all parameters, so this is
+/// proportional to the multiply-adds. For count-based learners it
+/// overestimates (a byte touches a few table rows, not the table), but it still
+/// rises with both the learner's size and the data it was given, which is all
+/// the axis needs to rank candidates of one kind against each other.
+pub fn work_units(parameters: usize, train_bytes: u64) -> f64 {
+    parameters as f64 * train_bytes as f64
+}
+
+impl EfficiencyBasis {
+    pub fn parse(s: &str) -> Result<EfficiencyBasis, String> {
+        match s {
+            "meter" => Ok(EfficiencyBasis::Meter),
+            "work" => Ok(EfficiencyBasis::Work),
+            other => Err(format!("--efficiency-basis: `{other}` is neither meter nor work")),
+        }
+    }
+
+    /// The text recorded as the `how` of the estimate under `work`.
+    pub fn work_description() -> String {
+        format!("work (deterministic, J per unit = {WORK_JOULES_PER_UNIT:e})")
+    }
+}
+
 struct Built {
     mean_bpb: f64,
     joules: Option<f64>,
@@ -174,6 +223,9 @@ pub struct ArenaWorkload {
     /// with the champion they recorded. The CLI turns it on for
     /// `--objectives ...latency`.
     pub with_latency: bool,
+    /// Where `efficiency` gets its joules. `Meter` (the default) is the
+    /// session's own figure; `Work` is deterministic.
+    pub efficiency_basis: EfficiencyBasis,
     /// Files of the optional validation suite and the digest they were pinned
     /// under. Kept only so they can be re-hashed before each cycle; nothing here
     /// is ever scored by this workload.
@@ -211,6 +263,7 @@ impl ArenaWorkload {
             cpu_watts: 65.0,
             heldout_files: Vec::new(),
             with_latency: false,
+            efficiency_basis: EfficiencyBasis::Meter,
             validation_files: Vec::new(),
             validation_pin: None,
             built: HashMap::new(),
@@ -303,11 +356,18 @@ impl Workload for ArenaWorkload {
         let d = Digest(format!("{:x}", Sha256::digest(identity.to_string().as_bytes())));
         let definitions =
             report.best_programs.iter().map(|(_, _, _, exact)| exact.clone()).filter(|e| !e.is_empty()).collect();
+        let (joules, energy) = match self.efficiency_basis {
+            EfficiencyBasis::Meter => (learner.train_joules, session_energy_basis(&report)),
+            EfficiencyBasis::Work => (
+                Some(work_units(learner.parameters, learner.train_bytes) * WORK_JOULES_PER_UNIT),
+                Basis::Estimated { how: EfficiencyBasis::work_description() },
+            ),
+        };
         let built = Built {
             mean_bpb: learner.mean_bpb,
-            joules: learner.train_joules,
+            joules,
             latency_s_per_kb: learner.latency_s_per_kb,
-            energy: session_energy_basis(&report),
+            energy,
             definitions,
         };
         self.built.insert(d.0.clone(), built);
@@ -417,7 +477,7 @@ const USAGE: &str = "usage: arena succession --heldout FILE[,FILE...] --journal 
 [--stop-file PATH] [--force] [--json] [--rounds N] [--programs N] [--candidates N] [--agents K:N,...] \
 [--proposer-command \"CMD ARGS\"] [--proposer-timeout S] \
 [--objectives capability[,efficiency][,latency]] [--dominance-min F] [--dominance-floor F] \
-[--objective-tolerance AXIS=F,...] [--allow-estimated-energy] \
+[--objective-tolerance AXIS=F,...] [--allow-estimated-energy] [--efficiency-basis meter|work] \
 [--energy-budget JOULES] [--param-search es|perturb] [--cost joules|fuel] [--validation FILE[,FILE...]]";
 
 /// One champion's score on the validation suite, beside its held-out score.
@@ -581,6 +641,16 @@ fn parse_agents(list: &str) -> Result<Vec<(String, usize)>, String> {
         .collect()
 }
 
+/// The runner policy's name, which is part of its digest. Only `work` changes
+/// it, so a `meter` run's digest is what it always was and a journal of one
+/// basis cannot be resumed under the other.
+fn policy_name(basis: EfficiencyBasis) -> String {
+    match basis {
+        EfficiencyBasis::Meter => "succession-cli".into(),
+        EfficiencyBasis::Work => "succession-cli+efficiency-work".into(),
+    }
+}
+
 /// Refuse an efficiency axis that is not measured, unless the caller accepts an
 /// estimate. Efficiency is joules per unit of work, so a wall-clock estimate
 /// (seconds times an assumed wattage) makes "more efficient" mean "faster".
@@ -717,6 +787,7 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
     let mut dominance_floor: Option<f64> = None;
     let mut objective_tolerance: Vec<(String, f64)> = Vec::new();
     let mut allow_estimated = false;
+    let mut efficiency_basis = EfficiencyBasis::Meter;
     let mut energy_budget: Option<f64> = None;
     let mut param_search = ParamSearch::Perturb;
     let mut base = Config::default();
@@ -768,6 +839,7 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
             }
             "--objective-tolerance" => objective_tolerance.extend(parse_tolerances(v)?),
             "--allow-estimated-energy" => allow_estimated = true,
+            "--efficiency-basis" => efficiency_basis = EfficiencyBasis::parse(v)?,
             "--energy-budget" => energy_budget = Some(parse_budget(v)?),
             "--param-search" => param_search = parse_param_search(v)?,
             "--cost" => {
@@ -812,6 +884,7 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
     w.validation_files = validation.clone();
     w.validation_pin = validation_digest.clone();
     w.with_latency = objectives.as_ref().is_some_and(|o| o.iter().any(|n| n == "latency"));
+    w.efficiency_basis = efficiency_basis;
     let suite = w.suite();
     let digest = suite.digest.clone();
 
@@ -824,7 +897,12 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
     let basis = w.energy_basis(&seed_art).unwrap_or_else(|| Basis::Unavailable {
         why: "the seed session recorded no energy basis".into(),
     });
-    check_energy(objectives.as_deref(), &basis, allow_estimated)?;
+    // `work` is an estimate by construction, but a deterministic one the caller
+    // chose by name, so choosing it is the acceptance `--allow-estimated-energy`
+    // asks for; the basis is still printed and recorded in the JSON.
+    if efficiency_basis == EfficiencyBasis::Meter {
+        check_energy(objectives.as_deref(), &basis, allow_estimated)?;
+    }
     let dominance = objectives.as_ref().map(|o| DominanceRule {
         objectives: o.clone(),
         min_improvement: dominance_min,
@@ -870,7 +948,7 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
     };
     variation.param_search = param_search.clone();
     let policy = RunnerPolicy {
-        name: "succession-cli".into(),
+        name: policy_name(efficiency_basis),
         max_cycles: cycles,
         candidates_per_cycle: candidates,
         stop_file: stop_file.map(PathBuf::from),
@@ -1255,6 +1333,58 @@ mod tests {
         assert!(with.get("efficiency").is_some(), "efficiency is kept");
         // The meters here are wall-clock estimates, and the workload says so.
         assert!(matches!(w.energy_basis(&d), Some(Basis::Estimated { .. })), "{:?}", w.energy_basis(&d));
+    }
+
+    #[test]
+    fn an_unknown_efficiency_basis_is_a_usage_error() {
+        assert_eq!(EfficiencyBasis::parse("meter"), Ok(EfficiencyBasis::Meter));
+        assert_eq!(EfficiencyBasis::parse("work"), Ok(EfficiencyBasis::Work));
+        let e = EfficiencyBasis::parse("watts").expect_err("unknown basis");
+        assert!(e.contains("--efficiency-basis") && e.contains("watts"), "{e}");
+        let args: Vec<String> =
+            ["--heldout", "x", "--journal", "y", "--efficiency-basis", "watts"].iter().map(|s| s.to_string()).collect();
+        assert!(cli(&args).expect_err("cli refuses it").contains("neither meter nor work"));
+    }
+
+    #[test]
+    fn work_efficiency_is_deterministic_and_a_real_figure() {
+        let mut cfg = base();
+        cfg.cost_unit = crate::arena::CostUnit::Fuel;
+        let eval = || {
+            let mut w = ArenaWorkload::new(cfg.clone(), corpora());
+            w.efficiency_basis = EfficiencyBasis::Work;
+            let d = w.materialize(&CandidateSpec::new("c", encode(&cfg))).expect("materializes");
+            let f = w.evaluate(&d, &w.suite()).expect("scores");
+            let basis = w.energy_basis(&d);
+            (f.get("capability").unwrap(), f.get("efficiency").unwrap(), basis)
+        };
+        let (c1, e1, b1) = eval();
+        let (c2, e2, _) = eval();
+        assert_eq!(c1.to_bits(), c2.to_bits(), "capability is bit-identical");
+        assert_eq!(e1.to_bits(), e2.to_bits(), "work efficiency is bit-identical");
+        assert!(e1 > 0.0 && e1 < 1.0, "a real figure, not a constant: {e1}");
+        match b1 {
+            Some(Basis::Estimated { how }) => assert!(how.starts_with("work (deterministic"), "{how}"),
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn work_units_rise_with_parameters_and_bytes() {
+        assert!(work_units(10, 100) < work_units(20, 100));
+        assert!(work_units(10, 100) < work_units(10, 200));
+        assert_eq!(work_units(0, 100), 0.0);
+    }
+
+    #[test]
+    fn only_the_work_basis_changes_the_policy_digest() {
+        // The default basis keeps the policy name every earlier journal was written under.
+        assert_eq!(policy_name(EfficiencyBasis::default()), "succession-cli");
+        assert_ne!(policy_name(EfficiencyBasis::Work), policy_name(EfficiencyBasis::Meter));
+        let digest = |b| RunnerPolicy { name: policy_name(b), ..RunnerPolicy::default() }.digest();
+        let legacy = RunnerPolicy { name: "succession-cli".into(), ..RunnerPolicy::default() }.digest();
+        assert_eq!(digest(EfficiencyBasis::Meter), legacy);
+        assert_ne!(digest(EfficiencyBasis::Work), legacy);
     }
 
     #[test]
