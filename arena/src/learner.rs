@@ -401,6 +401,61 @@ impl Learner {
     }
 }
 
+/// Parse a `--learners` value: a comma-separated list of learner specs.
+/// Shared by `arena` and `arena succession`.
+pub fn parse_learner_specs(list: &str) -> Result<Vec<LearnerSpec>, String> {
+    let float = |s: &str| -> Result<f64, String> { s.parse().map_err(|_| format!("`{s}` is not a number")) };
+    let int = |s: &str, what: &str| -> Result<u64, String> { s.parse().map_err(|_| format!("{what}: `{s}` is not a number")) };
+    list.split(',')
+        .map(|p| {
+            let f: Vec<&str> = p.split(':').collect();
+            match f.as_slice() {
+                ["tf", d, l, h, ctx, lr, rest @ ..] => Ok(LearnerSpec::Transformer(TransformerConfig {
+                    d: int(d, "d")? as usize,
+                    layers: int(l, "layers")? as usize,
+                    heads: int(h, "heads")? as usize,
+                    ctx: int(ctx, "ctx")? as usize,
+                    lr: float(lr)?,
+                    gpu: rest.first() == Some(&"gpu"),
+                })),
+                ["ent", o, b, len, lr] => {
+                    let target_len = float(len)?;
+                    if !(target_len.is_finite() && target_len >= 1.0) {
+                        return Err(format!("--learners: `{p}`: target_len must be a number of bytes, at least 1"));
+                    }
+                    Ok(LearnerSpec::Entropy(EntropyConfig {
+                        orders: int(o, "orders")? as usize,
+                        log2_buckets: int(b, "log2buckets")? as u32,
+                        target_len,
+                        lr: float(lr)?,
+                    }))
+                }
+                // Before the bare n-gram form, which also has three fields.
+                ["ssm", d, lr, rest @ ..] if rest.len() <= 1 => {
+                    let d = int(d, "d")? as usize;
+                    let lr = float(lr)?;
+                    if d == 0 || !(lr.is_finite() && lr > 0.0) {
+                        return Err(format!("--learners: `{p}`: d must be at least 1 and lr a positive number"));
+                    }
+                    let bptt = match rest.first() {
+                        Some(b) => int(b, "bptt")? as usize,
+                        None => crate::ssm::DEFAULT_BPTT,
+                    };
+                    Ok(LearnerSpec::Ssm(SsmConfig { d, lr, bptt }))
+                }
+                ["ng", o, b, lr] | [o, b, lr] => Ok(LearnerSpec::Ngram(LearnerConfig {
+                    orders: int(o, "orders")? as usize,
+                    log2_buckets: int(b, "log2buckets")? as u32,
+                    lr: float(lr)?,
+                })),
+                _ => Err(format!(
+                    "--learners: `{p}` is none of ng:orders:log2buckets:lr, tf:d:layers:heads:ctx:lr[:gpu], ent:orders:log2buckets:target_len:lr, ssm:d:lr[:bptt]"
+                )),
+            }
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
