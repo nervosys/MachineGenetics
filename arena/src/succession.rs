@@ -653,6 +653,7 @@ const USAGE: &str = "usage: arena succession --heldout FILE[,FILE...] --journal 
 [--objective-tolerance AXIS=F,...] [--allow-estimated-energy] [--efficiency-basis meter|work] \
 [--energy-budget JOULES] [--param-search es|perturb] [--cost joules|fuel] [--validation FILE[,FILE...]] \
 [--train-text FILE[,FILE...]] [--train-text-per-round N] [--reward alignment|compression|transfer] [--dev-text FILE[,FILE...]] [--genome narrow|wide] \
+[--patience N] [--mutation-scale F] \
 [--learners SPEC[,SPEC...]]  (SPEC: ng:orders:log2buckets:lr | tf:d:layers:heads:ctx:lr[:gpu] | \
 ent:orders:log2buckets:target_len:lr | ssm:d:lr[:bptt]; the first spec is the one the gate scores)";
 
@@ -848,6 +849,54 @@ fn full_policy_name(basis: EfficiencyBasis, train_text: bool, learners: Option<&
     name
 }
 
+/// `--patience`: a whole number of refusals, at least 1.
+fn parse_patience(v: &str) -> Result<u32, String> {
+    v.parse::<u32>().ok().filter(|n| *n >= 1).ok_or_else(|| format!("--patience: `{v}` is not a whole number of at least 1"))
+}
+
+/// `--mutation-scale`: the `Perturb` step, finite and in (0, 1].
+fn parse_mutation_scale(v: &str) -> Result<f64, String> {
+    v.parse::<f64>()
+        .ok()
+        .filter(|x| x.is_finite() && *x > 0.0 && *x <= 1.0)
+        .ok_or_else(|| format!("--mutation-scale: `{v}` is not a number in (0, 1]"))
+}
+
+/// Apply the opt-in search-budget flags: `--mutation-scale` replaces the scale
+/// of the plan's `Perturb` (rate unchanged), and the return value is the
+/// runner's `max_consecutive_refusals` (`--patience`, else the runner default).
+/// Under `--param-search es` the plan's `Perturb` is skipped (the ES has its own
+/// step sizes, see `germline::variation::propose`), so a scale would do
+/// nothing and is refused.
+fn apply_search_budget(
+    variation: &mut VariationPlan,
+    patience: Option<u32>,
+    mutation_scale: Option<f64>,
+) -> Result<u32, String> {
+    if let Some(s) = mutation_scale {
+        if !variation.param_search.is_default() {
+            return Err("--mutation-scale does not apply under --param-search es: the ES sets its own step sizes".into());
+        }
+        if let germline::variation::Mutation::Perturb { scale, .. } = &mut variation.mutation {
+            *scale = s;
+        }
+    }
+    Ok(patience.unwrap_or(RunnerPolicy::default().max_consecutive_refusals))
+}
+
+/// [`full_policy_name`], plus `+patience=N` and `+mscale=F` when those opt-in
+/// flags are given. Both enter the policy digest anyway (the digest is of the
+/// whole serialized policy), the suffix keeps the name honest too.
+fn with_budget_suffix(mut name: String, patience: Option<u32>, mutation_scale: Option<f64>) -> String {
+    if let Some(p) = patience {
+        name.push_str(&format!("+patience={p}"));
+    }
+    if let Some(s) = mutation_scale {
+        name.push_str(&format!("+mscale={s}"));
+    }
+    name
+}
+
 /// Refuse an efficiency axis that is not measured, unless the caller accepts an
 /// estimate. Efficiency is joules per unit of work, so a wall-clock estimate
 /// (seconds times an assumed wattage) makes "more efficient" mean "faster".
@@ -991,6 +1040,9 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
     // Set only by `--learners`; it joins the policy name, so default runs keep their digest.
     let mut learners_flag: Option<String> = None;
     let mut genome_kind = GenomeKind::Narrow;
+    // Opt-in search budget; each joins the policy name when given.
+    let mut patience: Option<u32> = None;
+    let mut mutation_scale: Option<f64> = None;
     let mut i = 0;
     while i < args.len() {
         let flag = args[i].as_str();
@@ -1054,6 +1106,8 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
             "--efficiency-basis" => efficiency_basis = EfficiencyBasis::parse(v)?,
             "--energy-budget" => energy_budget = Some(parse_budget(v)?),
             "--param-search" => param_search = parse_param_search(v)?,
+            "--patience" => patience = Some(parse_patience(v)?),
+            "--mutation-scale" => mutation_scale = Some(parse_mutation_scale(v)?),
             "--learners" => {
                 base.learners = crate::learner::parse_learner_specs(v)?;
                 learners_flag = Some(v.to_string());
@@ -1110,6 +1164,8 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
     }
     let tolerances = validate_tolerances(objectives.as_deref(), &objective_tolerance)?;
     param_search.validate()?;
+    // Checked before the seed runs, so a usage error costs nothing.
+    apply_search_budget(&mut VariationPlan { param_search: param_search.clone(), ..VariationPlan::default() }, patience, mutation_scale)?;
 
     let mut w = ArenaWorkload::new(base.clone(), read_corpora(&heldout)?);
     w.heldout_files = heldout.clone();
@@ -1189,8 +1245,14 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
         None => VariationPlan::default(),
     };
     variation.param_search = param_search.clone();
+    let max_refusals = apply_search_budget(&mut variation, patience, mutation_scale)?;
     let policy = RunnerPolicy {
-        name: full_policy_name(efficiency_basis, !base.train_text.is_empty(), learners_flag.as_deref(), base.reward == Reward::Transfer, genome_kind == GenomeKind::Wide),
+        name: with_budget_suffix(
+            full_policy_name(efficiency_basis, !base.train_text.is_empty(), learners_flag.as_deref(), base.reward == Reward::Transfer, genome_kind == GenomeKind::Wide),
+            patience,
+            mutation_scale,
+        ),
+        max_consecutive_refusals: max_refusals,
         max_cycles: cycles,
         candidates_per_cycle: candidates,
         stop_file: stop_file.map(PathBuf::from),
@@ -1440,6 +1502,40 @@ mod tests {
             ["--heldout", "x", "--journal", "y", "--genome", "huge"].iter().map(|s| s.to_string()).collect();
         let e = cli(&args).expect_err("cli refuses it");
         assert!(e.contains("--genome") && e.contains("huge"), "{e}");
+    }
+
+    #[test]
+    fn search_budget_flags_are_validated_named_and_applied() {
+        let run = |extra: &[&str]| {
+            let mut a: Vec<String> = ["--heldout", "x", "--journal", "y"].iter().map(|s| s.to_string()).collect();
+            a.extend(extra.iter().map(|s| s.to_string()));
+            cli(&a).expect_err("refused")
+        };
+        assert!(run(&["--patience", "0"]).contains("--patience"));
+        assert!(run(&["--patience", "x"]).contains("--patience"));
+        assert!(run(&["--mutation-scale", "0"]).contains("--mutation-scale"));
+        assert!(run(&["--mutation-scale", "1.5"]).contains("--mutation-scale"));
+        assert!(run(&["--mutation-scale", "nan"]).contains("--mutation-scale"));
+        let es = run(&["--param-search", "es", "--mutation-scale", "0.3"]);
+        assert!(es.contains("--mutation-scale") && es.contains("es"), "{es}");
+
+        // Names: unchanged by default, suffixed when given.
+        let n = || full_policy_name(EfficiencyBasis::Work, false, None, false, true);
+        assert_eq!(with_budget_suffix(n(), None, None), n());
+        assert_eq!(with_budget_suffix(n(), Some(10), None), format!("{}+patience=10", n()));
+        assert_eq!(with_budget_suffix(n(), Some(10), Some(0.35)), format!("{}+patience=10+mscale=0.35", n()));
+
+        // Values reach the policy, and the digest moves only when a flag is given.
+        let mut v = VariationPlan::default();
+        assert_eq!(apply_search_budget(&mut v, None, None), Ok(3));
+        assert_eq!(v, VariationPlan::default());
+        let mut v = VariationPlan::default();
+        assert_eq!(apply_search_budget(&mut v, Some(1), Some(0.35)), Ok(1));
+        assert_eq!(v.mutation, germline::variation::Mutation::Perturb { rate: 0.2, scale: 0.35 });
+        let d = |p: u32, v: VariationPlan| RunnerPolicy { max_consecutive_refusals: p, variation: v, ..RunnerPolicy::default() }.digest();
+        assert_eq!(d(3, VariationPlan::default()), RunnerPolicy::default().digest());
+        assert_ne!(d(1, VariationPlan::default()), RunnerPolicy::default().digest());
+        assert_ne!(d(3, v), RunnerPolicy::default().digest());
     }
 
     #[test]
