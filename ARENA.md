@@ -1160,6 +1160,38 @@ promotions carry over to other text; the `bpb` field exists to answer that.
 Promotion counts differ from the table above because, as described there, the
 runs read wall-clock energy.
 
+**Generalisation in bits/byte, reproducible.** The same six seeds with
+`--cost fuel --efficiency-basis work`, so each run is deterministic, and the
+same validation suite. Logs and JSON: `E:/heal-logs/sweep/g-*.{json,jsonl,err}`.
+Held-out bits/byte is `8 × (1 − capability)`; the seed champion's is above 8 on
+both suites (validation 8.467 for every seed).
+
+| seed | champion | held-out capability | held-out bits/byte | validation bits/byte | validation gain over the seed |
+|---|---|---|---|---|---|
+| 1 | gen2 | 0.0326 | 7.739 | 8.062 | 0.405 |
+| 1 | gen4 | 0.0539 | 7.569 | 7.967 | 0.500 |
+| 2 | gen1 | 0.0326 | 7.739 | 8.062 | 0.405 |
+| 2 | gen3 | 0.0539 | 7.569 | 7.967 | 0.500 |
+| 3 | gen1 | 0.0413 | 7.670 | 8.070 | 0.397 |
+| 3 | gen2 | 0.0547 | 7.562 | 8.029 | 0.438 |
+| 4 | gen1 | 0.0215 | 7.828 | 8.189 | 0.278 |
+| 5 | gen1 | 0.0309 | 7.753 | 8.146 | 0.321 |
+| 7 | gen2 | 0.0162 | 7.870 | 8.317 | 0.150 |
+| 7 | gen4 | 0.0389 | 7.689 | 8.077 | 0.390 |
+
+- **Every promotion lowered validation bits/byte below the seed's**, by 0.15 to
+  0.50, and in each of the four runs that promoted twice, the second promotion
+  lowered it further than the first.
+  The promotions do carry over to text the gate never saw. The earlier reading,
+  that they "mostly do not", came from capability clamping at 8 bits/byte.
+- **Held-out and validation agree on the order.** Spearman ρ = 0.87 between
+  held-out capability and validation bits/byte over the ten champions. Seeds 1
+  and 2 reached the same two configurations, so eight are distinct.
+- **The gains are smaller off the held-out suite, and all but one champion is
+  still above 8 bits/byte** (the best is 7.967), no better than a uniform byte
+  model in absolute terms. These learners
+  are small and briefly trained; the result is about direction, not level.
+
 ### Proposer isolation at the CLI, and its limit
 
 `CommandBackend` runs the proposer child in a fresh, empty scratch directory under
