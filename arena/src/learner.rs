@@ -99,6 +99,26 @@ pub trait ByteLearner {
     fn predictor(&self) -> Option<Box<dyn Predictor + '_>> {
         None
     }
+    /// The transfer reward's probe (`--reward transfer`): the loss gradient
+    /// of the learner on `dev`, taken once, against which any number of
+    /// outputs are then scored. `None` for a learner that does not expose
+    /// gradients this way (the transformer); the n-gram, entropy and SSM
+    /// learners provide one.
+    fn transfer_probe<'a>(&'a self, _dev: &[&[u8]]) -> Option<Box<dyn TransferProbe + 'a>> {
+        None
+    }
+}
+
+/// A learner's dev-text gradient, ready to score outputs (see
+/// [`ByteLearner::transfer_probe`]).
+pub trait TransferProbe {
+    /// `lr · ⟨∇L(bytes), P ⊙ ∇L_dev⟩ / |bytes|`, signed: to first order, the
+    /// mean dev-loss decrease, in nats per dev byte, of one optimiser step
+    /// on `bytes` (`∇L_dev` is the mean per-byte gradient on the dev text).
+    /// `P` is the Adam preconditioner the alignment reward uses, so the inner
+    /// product is the one an Adam step makes. Negative when the step would
+    /// raise dev loss.
+    fn score(&self, bytes: &[u8]) -> f64;
 }
 
 /// The entropy-chunked learner's shape: an n-gram, plus a chunk table (`crate::entropy`).
@@ -187,6 +207,38 @@ impl ByteLearner for Learner {
     }
     fn predictor(&self) -> Option<Box<dyn Predictor + '_>> {
         Some(Box::new(NgramPredictor { learner: self, history: Vec::new() }))
+    }
+    fn transfer_probe<'a>(&'a self, dev: &[&[u8]]) -> Option<Box<dyn TransferProbe + 'a>> {
+        Some(Box::new(Learner::transfer_probe(self, dev)))
+    }
+}
+
+/// The n-gram's dev gradient, preconditioned: for each table row the dev text
+/// touches, `P ⊙ ∇L_dev` over its 256 entries. Rows it does not touch have a
+/// zero dev gradient and contribute nothing to any inner product.
+pub struct NgramTransfer<'a> {
+    learner: &'a Learner,
+    pg: std::collections::HashMap<usize, Vec<f64>>,
+}
+
+impl TransferProbe for NgramTransfer<'_> {
+    fn score(&self, bytes: &[u8]) -> f64 {
+        if bytes.is_empty() {
+            return 0.0;
+        }
+        let mut dot = 0.0f64;
+        for t in 0..bytes.len() {
+            let rows = self.learner.rows(bytes, t);
+            let p = self.learner.probs(&rows);
+            for &r in &rows {
+                let Some(pg) = self.pg.get(&r) else { continue };
+                for (y, &py) in p.iter().enumerate() {
+                    let g = py - if y == bytes[t] as usize { 1.0 } else { 0.0 };
+                    dot += g * pg[y];
+                }
+            }
+        }
+        self.learner.cfg.lr * dot / bytes.len() as f64
     }
 }
 
@@ -336,6 +388,34 @@ impl Learner {
             }
         }
         dot.abs() / bytes.len() as f64
+    }
+
+    /// The dev-text gradient for the transfer reward: the mean per-byte loss
+    /// gradient over `dev`, times the same preconditioner `progress` uses.
+    pub fn transfer_probe(&self, dev: &[&[u8]]) -> NgramTransfer<'_> {
+        let mut pg: std::collections::HashMap<usize, Vec<f64>> = std::collections::HashMap::new();
+        let mut count = 0usize;
+        for bytes in dev {
+            for t in 0..bytes.len() {
+                let rows = self.rows(bytes, t);
+                let p = self.probs(&rows);
+                for &r in &rows {
+                    let e = pg.entry(r).or_insert_with(|| vec![0.0; V]);
+                    for (y, &py) in p.iter().enumerate() {
+                        e[y] += py - if y == bytes[t] as usize { 1.0 } else { 0.0 };
+                    }
+                }
+                count += 1;
+            }
+        }
+        let scale = 1.0 / count.max(1) as f64;
+        for (&r, e) in pg.iter_mut() {
+            for (y, g) in e.iter_mut().enumerate() {
+                let precond = 1.0 / ((self.v[r + y] as f64).sqrt() + 1e-3);
+                *g *= scale * precond;
+            }
+        }
+        NgramTransfer { learner: self, pg }
     }
 
     /// One Adam step on the summed loss of every sequence in `batch`.
@@ -529,5 +609,42 @@ mod tests {
         let noise: Vec<u8> = (0..16).map(|_| rng.next_u64() as u8).collect();
         let off = l.progress(&noise);
         assert!(on > off, "on-frontier {on} vs noise {off}");
+    }
+
+    #[test]
+    fn transfer_pays_an_output_that_is_dev_text_more_than_random_bytes() {
+        let mut l = tiny();
+        // Some training so the preconditioner is not flat.
+        let warm: Vec<u8> = b"the cat sat on the mat. the dog sat on the log. ".repeat(3);
+        for _ in 0..5 {
+            l.train(&[&warm]);
+        }
+        let dev: Vec<u8> = b"the cat sat on the log. the dog sat on the mat. ".to_vec();
+        let probe = l.transfer_probe(&[&dev]);
+        let mut rng = crate::grammar::Rng(11);
+        let noise: Vec<u8> = (0..dev.len()).map(|_| rng.next_u64() as u8).collect();
+        let (on, off) = (probe.score(&dev), probe.score(&noise));
+        assert!(on > 0.0 && on > off, "dev text {on} vs random bytes {off}");
+        // It is a first-order prediction, and an actual step agrees in sign:
+        // training on the dev-like output lowers dev loss more than on noise.
+        let (mut a, mut b) = (clone_learner(&l), clone_learner(&l));
+        a.train(&[&dev]);
+        b.train(&[&noise]);
+        assert!(a.bits_per_byte(&dev) < b.bits_per_byte(&dev));
+    }
+
+    fn clone_learner(l: &Learner) -> Learner {
+        Learner {
+            cfg: l.cfg,
+            theta: l.theta.clone(),
+            m: l.m.clone(),
+            v: l.v.clone(),
+            reference: l.reference.clone(),
+            reference_step: l.reference_step,
+            candidate: l.candidate.clone(),
+            candidate_step: l.candidate_step,
+            step: l.step,
+            bytes_seen: l.bytes_seen,
+        }
     }
 }

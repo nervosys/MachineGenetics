@@ -195,7 +195,21 @@ pub struct Config {
     /// `train_text`.
     #[serde(default = "default_train_text_per_round", skip_serializing_if = "is_default_train_text_per_round")]
     pub train_text_per_round: usize,
+    /// Dev text for the transfer reward (`--reward transfer --dev-text`): files
+    /// whose loss gradient, taken once per round per learner on up to
+    /// [`DEV_CHUNKS`] chunks of [`TRAIN_CHUNK_BYTES`] bytes at random offsets,
+    /// stands in for the learner's update direction when an output is scored.
+    /// Dev bytes never enter a training batch, the pool, or an agent's view,
+    /// and are disjoint from the held-out corpora and the training text (see
+    /// [`refuse_text_overlap`]). Required with `Reward::Transfer`, refused with
+    /// any other reward; empty (the default) is absent from the serialised
+    /// config, so digests do not move.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub dev_text: Vec<String>,
 }
+
+/// Dev-text chunks whose gradient the transfer reward uses, per round.
+pub const DEV_CHUNKS: usize = 4;
 
 /// Length of one training-text chunk, in bytes. Agent outputs are at most
 /// `substrate.max_bytes` (1024 by default, typically a few hundred in
@@ -216,23 +230,68 @@ fn is_default_train_text_per_round(n: &usize) -> bool {
 /// content, which catches a copy under another name. A shared file would let
 /// the learners train on what they are scored on.
 pub fn refuse_train_text_overlap(train: &[String], flag: &str, others: &[Corpus]) -> Result<(), String> {
+    refuse_text_overlap(train, "--train-text", "training text", flag, others)
+}
+
+/// [`refuse_train_text_overlap`] for any role: `role_flag` names the files
+/// being checked (`--train-text`, `--dev-text`), `noun` what they are in the
+/// message, `flag` the files they must not be.
+pub fn refuse_text_overlap(files: &[String], role_flag: &str, noun: &str, flag: &str, others: &[Corpus]) -> Result<(), String> {
     use sha2::{Digest, Sha256};
     let canon = |p: &str| std::fs::canonicalize(p).ok();
-    for t in train {
+    for t in files {
         let ct = canon(t);
         if let Some(o) = others.iter().find(|o| o.name() == t || (ct.is_some() && canon(o.name()) == ct)) {
-            return Err(format!("--train-text: `{t}` is also a {flag} file (`{}`); training text must be disjoint from it", o.name()));
+            return Err(format!("{role_flag}: `{t}` is also a {flag} file (`{}`); {noun} must be disjoint from it", o.name()));
         }
-        let bytes = std::fs::read(t).map_err(|e| format!("--train-text: {t}: {e}"))?;
+        let bytes = std::fs::read(t).map_err(|e| format!("{role_flag}: {t}: {e}"))?;
         let sha = format!("{:x}", Sha256::digest(&bytes));
         if let Some(o) = others.iter().find(|o| o.sha256() == sha) {
             return Err(format!(
-                "--train-text: `{t}` has the same content as the {flag} file `{}`; training text must be disjoint from it",
+                "{role_flag}: `{t}` has the same content as the {flag} file `{}`; {noun} must be disjoint from it",
                 o.name()
             ));
         }
     }
     Ok(())
+}
+
+/// The dev text of `cfg`: its files read and joined by newlines. Refused
+/// unless the reward is `Transfer` (and `Transfer` is refused without it);
+/// checked against `heldout` and the training text, and for the canary.
+fn load_dev_text(cfg: &Config, heldout: &[Corpus]) -> Result<Vec<u8>, String> {
+    match (cfg.reward == Reward::Transfer, cfg.dev_text.is_empty()) {
+        (true, true) => return Err("--reward transfer needs --dev-text FILE[,FILE...]: the reward is measured on it".into()),
+        (false, false) => return Err("--dev-text is only used with --reward transfer".into()),
+        (false, true) => return Ok(Vec::new()),
+        (true, false) => {}
+    }
+    refuse_text_overlap(&cfg.dev_text, "--dev-text", "dev text", "held-out", heldout)?;
+    if !cfg.train_text.is_empty() {
+        let train: Vec<Corpus> = cfg
+            .train_text
+            .iter()
+            .map(|p| std::fs::read(p).map(|b| Corpus::new(p.clone(), b)).map_err(|e| format!("--train-text: {p}: {e}")))
+            .collect::<Result<_, _>>()?;
+        refuse_text_overlap(&cfg.dev_text, "--dev-text", "dev text", "--train-text", &train)?;
+    }
+    let mut text = Vec::new();
+    for path in &cfg.dev_text {
+        let bytes = std::fs::read(path).map_err(|e| format!("--dev-text: {path}: {e}"))?;
+        if bytes.is_empty() {
+            return Err(format!("--dev-text: `{path}` is empty"));
+        }
+        if let Some(c) = &cfg.canary {
+            if crate::kernel::leaks(&bytes, c.as_bytes()) {
+                return Err(format!("--dev-text: `{path}` contains the held-out canary; refusing to use it"));
+            }
+        }
+        if !text.is_empty() {
+            text.push(b'\n');
+        }
+        text.extend_from_slice(&bytes);
+    }
+    Ok(text)
 }
 
 /// The training text of `cfg`: its files read and joined by newlines. Checked
@@ -377,6 +436,15 @@ pub enum Reward {
     /// *more* of it: a hash-like program's outputs for two seeds are unrelated,
     /// and a structured program's share their structure.
     Compression,
+    /// Transfer to dev text (opt-in, `--reward transfer --dev-text`): the
+    /// alignment of the output's loss gradient with the *negative dev-text
+    /// loss gradient*, `⟨∇L_out, P ⊙ ∇L_dev⟩ · lr / |out|`, signed. To first
+    /// order, how much one optimiser step on this output would lower the
+    /// learner's loss on the dev text. Alignment's machinery with `∇L_dev`
+    /// where it has `δθ`; see [`crate::learner::TransferProbe`]. Needs
+    /// learners that expose gradients (n-gram, entropy, SSM; not the
+    /// transformer).
+    Transfer,
 }
 
 impl Default for Config {
@@ -422,6 +490,7 @@ impl Default for Config {
             bound_grafts: false,
             train_text: Vec::new(),
             train_text_per_round: default_train_text_per_round(),
+            dev_text: Vec::new(),
         }
     }
 }
@@ -855,6 +924,7 @@ pub fn run_with_guard(
     }
     // Read and checked against the unplanted held-out corpora, before any run work.
     let train_text = load_train_text(&cfg, &heldout)?;
+    let dev_text = load_dev_text(&cfg, &heldout)?;
     let canary: Option<Vec<u8>> = cfg.canary.as_ref().map(|c| c.as_bytes().to_vec());
     let heldout: Vec<Corpus> = match &canary {
         Some(c) => heldout.into_iter().map(|h| h.with_canary(c)).collect(),
@@ -892,7 +962,7 @@ pub fn run_with_guard(
             &std::fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?,
         )?),
         (Reward::Compression, None) => Some(crate::harness::RewardProgram::load(crate::harness::DEFAULT_REWARD)?),
-        (Reward::Alignment, _) => None,
+        (Reward::Alignment | Reward::Transfer, _) => None,
     };
     let allocation_program = crate::harness::AllocationProgram::load(&match &cfg.allocation_program {
         Some(path) => std::fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?,
@@ -956,6 +1026,36 @@ pub fn run_with_guard(
         let shares = allocation_program.allocate(cfg.programs_per_round, &scores, cfg.floor, cfg.temperature)?;
 
         let mut round_data: Vec<Vec<u8>> = Vec::new();
+        // Transfer reward: each learner's loss gradient on this round's dev
+        // sample, once, before any agent proposes. The sample comes from the
+        // run's RNG, so runs stay deterministic. Dev bytes live only here: they
+        // are not added to `round_data` and no agent is shown them.
+        let dev_probes: Vec<Box<dyn learner::TransferProbe + '_>> = if cfg.reward == Reward::Transfer {
+            let span = Span::start(&mut meters);
+            let len = TRAIN_CHUNK_BYTES.min(dev_text.len());
+            let dev: Vec<&[u8]> = (0..DEV_CHUNKS)
+                .map(|_| {
+                    let start = rng.below(dev_text.len() - len + 1);
+                    &dev_text[start..start + len]
+                })
+                .collect();
+            let probes = learners
+                .iter()
+                .map(|l| {
+                    l.transfer_probe(&dev).ok_or_else(|| {
+                        format!(
+                            "--reward transfer: the learner `{}` does not expose gradients for it (n-gram, entropy and ssm learners do)",
+                            l.describe()
+                        )
+                    })
+                })
+                .collect::<Result<Vec<_>, String>>()?;
+            let (_, r) = span.stop(&mut meters);
+            ledger.charge(PROBES, &r);
+            probes
+        } else {
+            Vec::new()
+        };
         // Per agent: its scored candidates, credit and cost this round.
         // Feedback waits until after training, because compression progress
         // cannot be known before it.
@@ -1071,9 +1171,13 @@ pub fn run_with_guard(
                         // of instant refusals is not free.
                         cost += fuel_used.max(1) as f64;
                         match cfg.reward {
-                            Reward::Alignment => {
-                                let raw = learners.iter().map(|l| l.progress(&bytes)).sum::<f64>()
-                                    / learners.len() as f64;
+                            Reward::Alignment | Reward::Transfer => {
+                                let raw = if cfg.reward == Reward::Transfer {
+                                    let raw = dev_probes.iter().map(|p| p.score(&bytes)).sum::<f64>() / dev_probes.len() as f64;
+                                    if raw.is_finite() { raw } else { 0.0 }
+                                } else {
+                                    learners.iter().map(|l| l.progress(&bytes)).sum::<f64>() / learners.len() as f64
+                                };
                                 let r = raw * mult;
                                 programs.entry(crate::evidence::artifact(&c.program.source())).or_insert_with(|| c.program.clone());
                                 evidence.push(reward_record(round, &**agent, &c, r));
@@ -1156,6 +1260,9 @@ pub fn run_with_guard(
             ledger.halted = Some(why.clone());
             break;
         }
+
+        // The dev gradients are of the learners as they were; training moves them.
+        drop(dev_probes);
 
         // Replay: revisit what taught the most, so learners do not forget it.
         for _ in 0..cfg.replay_per_round {
@@ -1964,6 +2071,93 @@ mod tests {
             let (m, n) = cpu_only();
             let cfg = Config { cost_unit: CostUnit::Fuel, train_text: vec![train.clone()], seed: 7, ..tiny_cfg() };
             run(cfg, held.clone(), m, n).expect("runs")
+        };
+        let (a, b) = (go(), go());
+        assert_eq!(bpb(&a), bpb(&b));
+        assert_eq!(a.pool_size, b.pool_size);
+    }
+
+    fn transfer_cfg(dev: &str) -> Config {
+        Config { reward: Reward::Transfer, dev_text: vec![dev.to_string()], cost_unit: CostUnit::Fuel, ..tiny_cfg() }
+    }
+
+    #[test]
+    fn transfer_reward_needs_dev_text_and_dev_text_needs_transfer_reward() {
+        let (held, train) = like_heldout("xfer-usage");
+        let (m, n) = cpu_only();
+        let e = run(Config { reward: Reward::Transfer, ..tiny_cfg() }, held.clone(), m, n).unwrap_err();
+        assert!(e.contains("--reward transfer needs --dev-text"), "{e}");
+        for reward in [Reward::Compression, Reward::Alignment] {
+            let (m, n) = cpu_only();
+            let e = run(Config { reward, dev_text: vec![train.clone()], ..tiny_cfg() }, held.clone(), m, n).unwrap_err();
+            assert!(e.contains("only used with --reward transfer"), "{reward:?}: {e}");
+        }
+    }
+
+    #[test]
+    fn dev_text_overlapping_the_held_out_data_or_training_text_is_refused() {
+        let (held, train) = like_heldout("xfer-overlap");
+        let held_path = held[0].name().to_string();
+        let go = |cfg: Config| {
+            let (m, n) = cpu_only();
+            run(cfg, held.clone(), m, n).unwrap_err()
+        };
+        let e = go(transfer_cfg(&held_path));
+        assert!(e.contains("--dev-text") && e.contains("also a held-out file"), "{e}");
+        let alias = std::path::Path::new(&held_path).parent().unwrap().join(".").join(std::path::Path::new(&held_path).file_name().unwrap());
+        let e = go(transfer_cfg(&alias.to_string_lossy()));
+        assert!(e.contains("also a held-out file"), "{e}");
+        let copy = temp_file("xfer-overlap-copy.txt", &std::fs::read(&held_path).unwrap());
+        let e = go(transfer_cfg(&copy));
+        assert!(e.contains("same content"), "{e}");
+        // Nor may it be the training text.
+        let e = go(Config { train_text: vec![train.clone()], ..transfer_cfg(&train) });
+        assert!(e.contains("--train-text file"), "{e}");
+        // Nor carry the canary.
+        let tainted = temp_file("xfer-canary.txt", b"some prose MAGE-CANARY-7f3a more prose");
+        let e = go(Config { canary: Some("MAGE-CANARY-7f3a".into()), ..transfer_cfg(&tainted) });
+        assert!(e.contains("canary"), "{e}");
+    }
+
+    #[test]
+    fn dev_text_never_enters_training() {
+        // One round, so the batch is this round's outputs alone (no replay yet).
+        // The dev files differ only in length: four 256-byte chunks of the long
+        // one would add 1024 trained bytes, four chunks of the short one 400.
+        // The random draws are the same either way, so the outputs are too.
+        let (held, _) = like_heldout("xfer-train");
+        let long = temp_file("xfer-long.txt", &b"pack my box with five dozen liquor jugs. ".repeat(200));
+        let short = temp_file("xfer-short.txt", &b"pack my box with five dozen liquor jugs. ".repeat(3));
+        let one = |dev: &str| {
+            let (m, n) = cpu_only();
+            run(Config { rounds: 1, ..transfer_cfg(dev) }, held.clone(), m, n).expect("runs")
+        };
+        let (a, b) = (one(&long), one(&short));
+        assert_eq!(a.learners[0].train_bytes, b.learners[0].train_bytes);
+        let outputs: usize = a.agents.iter().map(|x| x.produced).sum();
+        assert!(outputs > 0 && a.learners[0].train_bytes <= (outputs * 128 * 8) as u64, "only outputs are trained on");
+    }
+
+    #[test]
+    fn dev_text_never_enters_the_pool_or_reaches_an_agent() {
+        const MARK: &[u8] = b"DEVTEXT-MARKER-0123456789 ";
+        let (held, _) = like_heldout("xfer-pool");
+        let dev = temp_file("xfer-pool-dev.txt", &MARK.repeat(40));
+        let seen = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+        let agents: Vec<Box<dyn Proposer>> = vec![Box::new(Spy(seen.clone(), crate::agents::UniformAgent::new("u")))];
+        let (m, n) = cpu_only();
+        run_with(transfer_cfg(&dev), agents, held, m, n).expect("runs");
+        let seen = seen.lock().unwrap();
+        assert!(!seen.is_empty());
+        assert!(seen.iter().all(|b| !b.windows(8).any(|w| MARK.windows(8).any(|m| m == w))), "a dev chunk reached the pool");
+    }
+
+    #[test]
+    fn a_transfer_run_is_reproducible_for_a_seed() {
+        let (held, dev) = like_heldout("xfer-det");
+        let go = || {
+            let (m, n) = cpu_only();
+            run(Config { seed: 7, ..transfer_cfg(&dev) }, held.clone(), m, n).expect("runs")
         };
         let (a, b) = (go(), go());
         assert_eq!(bpb(&a), bpb(&b));

@@ -858,7 +858,43 @@ arena succession --heldout FILE[,FILE...] --journal PATH [--cycles N] [--seed N]
                  [--energy-budget JOULES] [--param-search es|perturb]
                  [--validation FILE[,FILE...]] [--learners SPEC[,SPEC...]]
                  [--train-text FILE[,FILE...]] [--train-text-per-round N]
+                 [--reward alignment|compression|transfer] [--dev-text FILE[,FILE...]]
 ```
+
+**Transfer reward (`--reward transfer`, `--dev-text FILE[,FILE...]`).** Optional,
+on both `arena` and `arena succession` (where `--reward` also takes `alignment` and
+`compression`, default as before). Instead of paying an output for compression
+progress or for alignment with where the learner is already moving, it pays for
+teaching the learners text they will be tested on later. The reward is
+`lr · ⟨∇L_out, P ⊙ ∇L_dev⟩ / |out|`, signed: `∇L_out` is the output's loss gradient
+(summed over its bytes), `∇L_dev` the learner's mean per-byte loss gradient on a dev
+sample, and `P` the same Adam preconditioner `--reward alignment` uses
+(`1/(√v + 1e-3)`). To first order this is how much one optimiser step on the output
+would lower dev-text loss (nats per dev byte); an output whose step would *raise* dev
+loss earns less than zero, which is why it is not an absolute value as alignment's
+is. `P` is kept so the inner product is the one an Adam step makes (Adam moves each
+parameter by `lr · m/√v`, so the gradient is scaled per parameter by `1/√v`);
+`∇L_dev` stands in where alignment has `δθ`. The `lr` factor and the per-byte
+normalisation put the reward at the scale alignment's has (order 0.01 to 1 per
+output in the runs below), then it is multiplied by the same shaping and novelty
+discount. The dev gradient is computed once per round per learner, before any agent
+proposes, on 4 chunks (`DEV_CHUNKS`) of 256 bytes cut at random offsets of the dev
+files joined by newlines, drawn from the run's RNG, so a run is deterministic for
+its seed. **It is first-order:** it says nothing about how far a real step goes, and
+it is measured at the learner's parameters before that round's training, like
+alignment. It needs learners that expose gradients through
+`ByteLearner::transfer_probe`: the n-gram, entropy (its n-gram, as for alignment) and
+SSM learners. The transformer does not, and a run that uses it is refused at the
+first round. The dev text never enters a training batch, the pool or an agent's
+view, and earns nothing itself. **Disjointness is enforced** as for training text:
+`--dev-text` is required with `--reward transfer` and refused with any other reward;
+a dev file is refused if it is a `--heldout` file (and, in `succession`, a
+`--validation` or `--train-text` file; in plain `arena`, a `--train-text` file) by
+name, canonical path or content hash, or if it contains the `--canary`. All are usage
+errors raised before any work. In `succession` the dev files are hashed at startup
+and re-read before each cycle, a change stops the run, and `+reward-transfer` is
+appended to the policy name (so a journal made with another reward cannot be resumed
+with it). Without the flags nothing changes: output, JSON and digests are as before.
 
 **Training text (`--train-text FILE[,FILE...]`, `--train-text-per-round N`).**
 Optional, and on both `arena` and `arena succession`. Each round, `N` chunks (default
@@ -1296,6 +1332,90 @@ the command above (six cycles, 20 rounds, 48 programs, `--cost fuel
   (prose and code about the same project), and so do the validation files, so
   part of the gain on both suites is shared vocabulary. Text from another
   domain was not tried.
+
+**Transfer reward.** The measurements above show the held-out metric does not
+reward what agents write: without text, learners stay near 8 bits/byte; with text,
+random programs do as well as the full agent set. Does `--reward transfer` (above)
+change that? Plain `arena`, no `--train-text`, so only agent outputs reach the
+learner: 30 rounds, 48 programs, `--cost fuel`, seeds 1, 2, 3, the default
+learner (n-gram 3×2^12). Dev text `ARCHITECTURE.md,germline/src/runner.rs`.
+Held-out corpora, scored at the last checkpoint (the mean of the two files):
+README.md and germline/src/gate.rs ("held-out"), and GERMLINE.md and
+germline/src/pareto.rs ("validation", scored the same way here, not by
+succession); all four are disjoint from the dev text and from each other.
+`xfer` is `--reward transfer` with the default agents, `comp` the default reward
+(compression) with the default agents, `unif` the default reward with `--agents
+uniform:1`. Logs and JSON: `E:/heal-logs/tr-{xfer,comp,unif}-{1,2,3}.*`.
+
+| run | seed | held-out bits/byte | validation bits/byte | trained bytes |
+|---|---|---|---|---|
+| `xfer` | 1 | 7.382 | 7.836 | 484,392 |
+| `xfer` | 2 | 7.379 | 7.806 | 405,016 |
+| `xfer` | 3 | 7.624 | 8.032 | 531,408 |
+| `xfer` | mean (range) | **7.462** (7.379 to 7.624) | **7.891** (7.806 to 8.032) | |
+| `comp` | 1 | 7.695 | 8.178 | 3,070,920 |
+| `comp` | 2 | 8.332 | 8.711 | 3,150,392 |
+| `comp` | 3 | 7.365 | 7.780 | 3,121,864 |
+| `comp` | mean (range) | 7.797 (7.365 to 8.332) | 8.223 (7.780 to 8.711) | |
+| `unif` | 1 | 7.689 | 8.160 | 660,864 |
+| `unif` | 2 | 7.557 | 7.974 | 629,936 |
+| `unif` | 3 | 7.466 | 7.921 | 653,800 |
+| `unif` | mean (range) | 7.571 (7.466 to 7.689) | 8.018 (7.921 to 8.160) | |
+
+- **Agents with the transfer reward are lower than the random-program control,
+  but not by more than the noise.** Held-out: 7.462 against 7.571, a gap of 0.109
+  bits/byte; validation: 7.891 against 8.018, a gap of 0.127. The seed-to-seed
+  standard deviation is 0.14 (held-out) and 0.12 (validation) for `xfer`, and 0.11
+  and 0.13 for `unif`, so the gap is about one standard error of the difference
+  (roughly 0.10) on both, with three seeds. Seeds 1 and 2 of `xfer` are below every
+  `unif` seed on held-out; seed 3 is not.
+- **Both are above 8 on validation for several runs and none is far below 8.**
+  Transfer moved the level by about 0.1, not by the 4 bits/byte that training on
+  text moves it.
+- **Transfer beat the default compression reward by 0.33 bits/byte on both
+  suites, but that comparison is wide.** `comp` ranged from 7.365 to 8.332 over the
+  seeds (standard deviation 0.50 held-out), so the difference is about one
+  standard error there too. `comp` also trained on about six times the bytes (3.1
+  million against 0.4 to 0.65 million), because compression-rewarded agents write
+  long outputs the pool keeps and replays, so these are different runs in more than
+  the reward.
+- **The ordering is not settled.** The data say: no clear difference between
+  agents on the transfer reward and random programs on three seeds, and a small,
+  uncertain edge to transfer. Distinguishing a 0.1 bit/byte gap from the noise
+  needs more seeds; five more follow below. The `xfer` runs also trained
+  on fewer bytes than `unif` (0.4 to 0.53 million against about 0.65 million), so
+  the agents are not simply writing more.
+- The reward is first-order and measured on one dev sample of 1,024 bytes per
+  round, the dev files share a domain (prose and code about the same project) with
+  the held-out and validation ones, and one learner kind was used.
+
+**Eight seeds, transfer against random programs.** Seeds 4 to 8 were added for
+`xfer` and `unif` with the same commands (`comp` was not extended). Logs and
+JSON: `E:/heal-logs/tr-{xfer,unif}-{4..8}.*`.
+
+| seed | `xfer` held-out | `unif` held-out | `xfer` validation | `unif` validation |
+|---|---|---|---|---|
+| 1 | 7.382 | 7.689 | 7.836 | 8.160 |
+| 2 | 7.379 | 7.557 | 7.806 | 7.974 |
+| 3 | 7.624 | 7.466 | 8.032 | 7.921 |
+| 4 | 7.524 | 7.453 | 8.004 | 7.889 |
+| 5 | 7.555 | 7.698 | 7.973 | 8.182 |
+| 6 | 7.219 | 7.332 | 7.636 | 7.749 |
+| 7 | 7.408 | 8.153 | 7.887 | 8.542 |
+| 8 | 7.502 | 7.654 | 7.909 | 8.146 |
+| mean ± sd | **7.449 ± 0.128** | 7.625 ± 0.249 | **7.885 ± 0.128** | 8.070 ± 0.244 |
+
+- **Transfer is lower on both suites, by 0.18 bits/byte, and lower on six seeds of
+  eight.** Welch's t is −1.78 (held-out) and −1.90 (validation), two-sided
+  p ≈ 0.10 and 0.09; an exact Mann–Whitney test gives one-sided p ≈ 0.052 on
+  both. **Suggestive, not significant at 0.05.** The arms are separate runs, so
+  the tests are unpaired.
+- **Transfer is also half as variable** (sd 0.13 against 0.25). The random
+  control's spread comes partly from seed 7 (8.153 / 8.542); dropping seed 7 from
+  both arms, the means differ by 0.095 and 0.118.
+- So agents rewarded for transfer write data that teaches the learner text
+  slightly better than random programs do, with weak evidence. The effect is about
+  0.2 bits/byte, against the 4 bits/byte that training on text gives.
 
 ### Proposer isolation at the CLI, and its limit
 
