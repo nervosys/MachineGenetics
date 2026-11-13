@@ -854,7 +854,7 @@ arena succession --heldout FILE[,FILE...] --journal PATH [--cycles N] [--seed N]
                  [--agents K:N,...] [--proposer-command "CMD ARGS"] [--proposer-timeout S]
                  [--objectives capability[,efficiency][,latency]] [--dominance-min F]
                  [--dominance-floor F] [--objective-tolerance AXIS=F,...]
-                 [--allow-estimated-energy]
+                 [--allow-estimated-energy] [--efficiency-basis meter|work]
                  [--energy-budget JOULES] [--param-search es|perturb]
                  [--validation FILE[,FILE...]]
 ```
@@ -956,6 +956,27 @@ described below. With it:
   on. If no meter gives a figure at all, the run is refused even with the flag,
   since efficiency would be a constant. The basis is printed in the run header and
   in the JSON report (`energy_basis`).
+- **`--efficiency-basis meter|work` (2026-11-13).** `meter`, the default, is the
+  behaviour above, and its output, journal and policy digest are unchanged. Under
+  `work`, efficiency is `1 / (1 + kJ)` of an estimated figure: the first learner's
+  `parameters × train_bytes` (parameters times the bytes it was trained on, one
+  formula for every learner kind) times a fixed 5e-10 J per unit. `train_bytes` is
+  a new per-learner field in the arena report (`#[serde(default)]`, so older JSON
+  still parses). The count does not depend on load, so under `--cost fuel` it is
+  deterministic. For dense learners it is proportional to the multiply-adds; for
+  the count-based n-gram it overestimates, since a byte touches a few table rows
+  rather than the whole table. The constant is a convention, calibrated once on
+  2026-11-13: the default configuration (`arena --rounds 20 --programs 48 --cost
+  fuel`, README.md and germline/src/gate.rs held out) trained its n-gram learner
+  (3,145,984 parameters) on 1,308,200 bytes, i.e. 4.12e12 units, in 32.4 s, which
+  is 2,103 J at the 65 W wall-clock estimate; 2,103 / 4.12e12 = 5.1e-10, rounded
+  to 5e-10. Choosing `work` counts as accepting an estimate, so
+  `--allow-estimated-energy` is not needed; the basis is printed as
+  `estimated — work (deterministic, J per unit = 5e-10)` in the header and in the
+  JSON `energy_basis`. The runner policy is named `succession-cli+efficiency-work`
+  under `work`, which changes the policy digest, so a `meter` journal cannot be
+  resumed as `work` or the reverse. The energy budget and its spend basis still
+  use the sessions' metered joules.
 
 Example, the sample that was run on 2026-11-11, with the estimated-energy flag:
 
@@ -1091,6 +1112,12 @@ What this shows:
   `efficiency` guard (0.0853 against the seed's 0.3359), a wall-clock reading.
   Seed 7 diverged at cycle 2 the same way. Logs: `E:/heal-logs/sweep/d-*.log`
   and `vsucc-*.log`. The promotion counts above are one draw per seed.
+  `--efficiency-basis work` removes that dependence (2026-11-13): seed 1,
+  `--cost fuel --efficiency-basis work`, 6 cycles, 20 rounds, 48 programs, 3
+  candidates, run twice concurrently and once alone afterwards, gave identical
+  cycle lines in all three (2 promotions, gens 2 and 4). Logs:
+  `E:/heal-logs/eff-{a,b,c}.log`. This is one seed on one machine; the
+  `meter` basis is as load-dependent as described.
 - **The margin and the noise.** A candidate's capability under `fuel` has no
   measurement noise, so the `0.01` margin separates candidates, not readings.
   Refused challengers missed it by as little as 0.0006 (0.0094 on seed 4); the
