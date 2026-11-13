@@ -690,8 +690,11 @@ a default run, taken from the arena before these flags existed.
   the first front, then later fronts, each in crowding order
   (`Pool::parents`), instead of the top-k by reward. The RNG is drawn as before,
   so the same seed gives the same parents.
-- **Reporting.** The text report prints `pool: retain …, parents …`, and the
-  JSON `config` carries `retain` and `parents`.
+- **`--pool-capacity N`.** The pool's capacity, 256 by default. Eviction, and
+  so `--retain`, only acts once the pool is full; a 10-round run of 24 programs
+  produces about 200 entries and never fills the default pool.
+- **Reporting.** The text report prints `pool: retain …, parents …, capacity …`,
+  and the JSON `config` carries `retain`, `parents` and `pool_capacity`.
 - **Not Pareto, even with the flags:** the command proposer's prompt examples.
 
 **NaN costs.** `pareto.rs` treats a NaN as incomparable, so an entry with a NaN
@@ -724,10 +727,34 @@ metered, so the allocation follows the readings and the run is not
 reproducible under `--cost joules`; held-out figures are deterministic only
 under `--cost fuel`, which was not run here. **The pool never reached its
 capacity of 256** (212 programs at the end), so `--retain pareto` evicted
-nothing: the difference is `--parents pareto` alone. No CLI flag sets the pool's
-capacity, so a run has to produce more than 256 programs before retention can
-act. The report's `hypervolume` is the learners' archive over (bits/byte,
-joules, latency), not the programs' front, which is not reported.
+nothing: the difference is `--parents pareto` alone. The five-seed sweep below
+sets `--pool-capacity 64` so that retention acts. The report's `hypervolume`
+is the learners' archive over (bits/byte, joules, latency), not the programs'
+front, which is not reported.
+
+**Measured, five seeds, retention exercised.** Seeds 1 to 5, the same rounds,
+programs, agents, learners and held-out files as above, with `--cost fuel
+--pool-capacity 64`, so every held-out figure is deterministic and every pool
+filled (64 entries at the end of all ten runs). Logs and JSON:
+`E:/heal-logs/sweep/{def,par}-{1..5}.{log,json}`.
+
+| seed | learner 0, defaults | learner 0, Pareto | learner 1, defaults | learner 1, Pareto |
+|---|---|---|---|---|
+| 1 | 7.982 | 7.809 | 8.412 | 8.164 |
+| 2 | 7.718 | 8.075 | 8.231 | 8.529 |
+| 3 | 7.759 | 7.432 | 8.069 | 7.827 |
+| 4 | 8.558 | 8.304 | 9.777 | 9.292 |
+| 5 | 8.453 | 7.621 | 9.352 | 7.772 |
+| mean Â± sd | 8.094 Â± 0.391 | 7.848 Â± 0.348 | 8.768 Â± 0.752 | 8.317 Â± 0.624 |
+
+Held-out bits/byte, lower is better. `--retain pareto --parents pareto` is lower
+on four seeds of five for both learners: by 0.246 Â± 0.424 for learner 0 and
+0.451 Â± 0.693 for learner 1 (paired differences, mean Â± sd). **That is not
+significant:** a paired t-test gives t = âˆ’1.30 and âˆ’1.46 on four degrees of
+freedom (two-sided p â‰ˆ 0.26 and 0.22), and a sign test on 4 of 5 gives
+p â‰ˆ 0.38. The seed-to-seed spread is as large as the effect. Distinct outputs
+did not change (175.6 against 176.0). The flags stay opt-in; a claim that
+Pareto selection helps here needs more seeds than five.
 
 ## A command-backed proposer (plans 7.3, 3.4)
 
@@ -988,6 +1015,66 @@ What this does not do:
   reachable from it.
 - **No daemon.** Each invocation is bounded. Continuing means running the command
   again, which resumes from the journal.
+
+### Multi-seed measurement, and `--cost` (2026-11-12)
+
+- **`--cost joules|fuel`.** The cost unit of each candidate's arena session,
+  as `arena --cost`. The default is `joules`, as before. Under `joules` the
+  inner arena allocates evaluations by metered (or wall-clock estimated) energy,
+  so a candidate's held-out capability depends on machine load and the same seed
+  does not give the same run. Under `fuel`, a given candidate's capability is
+  deterministic. **The run is still not.** The `efficiency` axis is
+  `1 / (1 + kJ)` of the learners' metered training energy in both modes, and it
+  enters twice: as the gate's guard, and through `FitnessVector::composite` (the
+  mean of the axes) in the weights the runner uses to choose parents. Machine
+  load therefore changes which candidates are proposed, and can trip the guard.
+
+The documented command (`--heldout README.md,germline/src/gate.rs --cycles 8
+--rounds 20 --programs 48 --candidates 3 --agents grammar:2,uniform:1,mutator:1`)
+was run on seeds 1 to 5 and 7, first under the default cost with the six runs
+concurrent, then under `--cost fuel`, with seed 7 run twice. Logs and journals:
+`E:/heal-logs/sweep/{succ,fsucc}-*.{log,jsonl}`.
+
+| seed | promotions, `joules` (6 concurrent) | promotions, `fuel` | final champion capability, `fuel` |
+|---|---|---|---|
+| 1 | 0 | 3 | 0.0719 |
+| 2 | 0 | 3 | 0.0719 |
+| 3 | 0 | 1 | 0.0413 |
+| 4 | 0 | 1 | 0.0215 |
+| 5 | 1 | 1 | 0.0309 |
+| 7 | 1 (cycle 2) | 2 | 0.0424 |
+| 7, again, concurrently | | 2, identical cycle lines | 0.0424 |
+
+What this shows:
+
+- **Under `fuel`, every seed promoted at least once** (1 to 3 times), and every
+  run halted on the stall rule after three refusals.
+- **Under `joules`, the outcome is not reproducible.** Seed 7 promoted gen 1 in
+  cycle 0 when run alone on 2026-11-11 (8.671 to 7.525 bits/byte); run beside five
+  others it promoted gen 3 in cycle 2 instead, and four seeds of six promoted
+  nothing. The earlier single-seed demonstration is one draw from that spread.
+- **Under `fuel`, runs reproduce only under similar load.** Two copies of seed 7
+  run side by side gave identical cycle lines, and so did two copies of seed 1
+  later. Seed 1 run beside a different set of processes diverged at cycle 4 (2
+  promotions instead of 3), and in one copy the gate refused a candidate on the
+  `efficiency` guard (0.0853 against the seed's 0.3359), a wall-clock reading.
+  Seed 7 diverged at cycle 2 the same way. Logs: `E:/heal-logs/sweep/d-*.log`
+  and `vsucc-*.log`. The promotion counts above are one draw per seed.
+- **The margin and the noise.** A candidate's capability under `fuel` has no
+  measurement noise, so the `0.01` margin separates candidates, not readings.
+  Refused challengers missed it by as little as 0.0006 (0.0094 on seed 4); the
+  worst fell 0.0719 below its champion. What varies run to run is which
+  candidates are proposed, through the energy readings above.
+
+What it does not show:
+
+- **Generalisation.** Promotion and the reported capability use the same
+  held-out suite. A champion chosen as the best of several candidates on that
+  suite is expected to score above its true level on fresh data. A second,
+  untouched held-out suite would measure that; there is none here.
+- **A broad search.** The same capability values recur across seeds (0.0162,
+  0.0309, 0.0326, 0.0413, 0.0719), and seeds 1 and 2 visit the same values one
+  cycle apart. The four-locus genome reaches few distinct outcomes at this scale.
 
 ### Proposer isolation at the CLI, and its limit
 
