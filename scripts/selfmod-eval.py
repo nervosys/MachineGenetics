@@ -16,7 +16,8 @@ MANIFEST is JSON; paths are relative to the manifest's directory:
       "good":   ["ok/a.mg", ...],                       # must check clean
       "bad":    {"bad/use_after_move.mg": ["E0382"]},   # must raise these codes
       "target": ["backlog/feature.mg", ...],            # should check clean, may not yet
-      "sha256": {"ok/a.mg": "<hex>", ...}               # optional: pins each file
+      "sha256": {"ok/a.mg": "<hex>", ...},              # optional: pins each file
+      "fmt_flag": "--fmt-expand"                        # optional: enables `fidelity`
     }
 
 With `sha256`, every named file must be pinned and match, or the script exits
@@ -35,15 +36,25 @@ on the last stdout line, the axes SelfModWorkload reads:
                  safety and correctness.
     efficiency   1 / (1 + total seconds of checking). Wall-clock, so it varies
                  between runs on one machine; `--no-time` leaves it out.
+    fidelity     only with `fmt_flag`: of the programs that check clean (`good`,
+                 and `target` files that now do), the fraction whose formatted
+                 output (`BINARY <fmt_flag> FILE`) keeps every numeric literal
+                 outside comments (as often as the source has it; a canonical
+                 spelling may add one, as `f32x4` becomes `Simd[f32, 4]`). A change that
+                 parses new syntax and then drops part of it (a discriminant
+                 `A = 1` formatted as `A`) passes `--check` and fails this.
+                 Use it as a guard axis.
 
 A file whose check cannot be run or parsed counts as failed on its axis; the
 script itself exits non-zero only when the manifest is unusable, which the
 workload records as an evaluator failure (capability 0).
 """
 
+import collections
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -87,6 +98,26 @@ def check(binary, path):
     return {"exit": r.returncode, "errors": errors, "codes": codes}
 
 
+NUMBER = re.compile(r"(?<![A-Za-z_0-9.])\d+(?:\.\d+)?")
+
+
+def literals(text):
+    return collections.Counter(NUMBER.findall(re.sub(r"//[^\n]*", "", text)))
+
+
+def faithful(binary, fmt_flag, path):
+    """Whether formatting `path` keeps its numeric literals."""
+    try:
+        r = subprocess.run([binary, fmt_flag, path], capture_output=True, text=True, timeout=TIMEOUT_S)
+        with open(path, encoding="utf-8") as f:
+            src = f.read()
+    except (OSError, subprocess.TimeoutExpired, UnicodeDecodeError) as e:
+        print(f"selfmod-eval: {path}: {e}", file=sys.stderr)
+        return False
+    # Nothing lost; a canonical spelling may add one (`f32x4` -> `Simd[f32, 4]`).
+    return r.returncode == 0 and not (literals(src) - literals(r.stdout))
+
+
 def clean(res):
     return res is not None and res["exit"] == 0 and res["errors"] == 0
 
@@ -128,7 +159,13 @@ def main(argv):
                 die(f"{rel} does not match its pinned sha256")
 
     started = time.monotonic()
-    safety = frac(sum(clean(check(binary, os.path.join(root, f))) for f in good), len(good))
+    clean_files = []
+    good_clean = 0
+    for f in good:
+        if clean(check(binary, os.path.join(root, f))):
+            good_clean += 1
+            clean_files.append(f)
+    safety = frac(good_clean, len(good))
     hits = 0
     for f, want in bad.items():
         res = check(binary, os.path.join(root, f))
@@ -136,12 +173,20 @@ def main(argv):
             hits += 1
     correctness = frac(hits, len(bad))
     if target:
-        capability = frac(sum(clean(check(binary, os.path.join(root, f))) for f in target), len(target))
+        target_clean = [f for f in target if clean(check(binary, os.path.join(root, f)))]
+        clean_files.extend(target_clean)
+        capability = frac(len(target_clean), len(target))
     else:
         capability = (safety + correctness) / 2
     seconds = time.monotonic() - started
 
     axes = {"capability": capability, "safety": safety, "correctness": correctness}
+    fmt_flag = m.get("fmt_flag")
+    if fmt_flag is not None:
+        if not isinstance(fmt_flag, str) or not fmt_flag.startswith("--"):
+            die("manifest field fmt_flag must be a flag such as --fmt-expand")
+        kept = sum(faithful(binary, fmt_flag, os.path.join(root, f)) for f in clean_files)
+        axes["fidelity"] = frac(kept, len(clean_files))
     if not no_time:
         axes["efficiency"] = 1.0 / (1.0 + seconds)
     print(json.dumps(axes, sort_keys=True))
