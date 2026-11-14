@@ -15,8 +15,13 @@ MANIFEST is JSON; paths are relative to the manifest's directory:
     {
       "good":   ["ok/a.mg", ...],                       # must check clean
       "bad":    {"bad/use_after_move.mg": ["E0382"]},   # must raise these codes
-      "target": ["backlog/feature.mg", ...]             # should check clean, may not yet
+      "target": ["backlog/feature.mg", ...],            # should check clean, may not yet
+      "sha256": {"ok/a.mg": "<hex>", ...}               # optional: pins each file
     }
+
+With `sha256`, every named file must be pinned and match, or the script exits
+non-zero. The workload's suite digest covers this manifest's bytes, so pinning
+makes it cover the corpus too: an edited corpus file is refused, not measured.
 
 Each file is checked with `BINARY --check --json FILE`. Prints one JSON object
 on the last stdout line, the axes SelfModWorkload reads:
@@ -36,6 +41,7 @@ script itself exits non-zero only when the manifest is unusable, which the
 workload records as an evaluator failure (capability 0).
 """
 
+import hashlib
 import json
 import os
 import subprocess
@@ -108,9 +114,18 @@ def main(argv):
         die("manifest fields: good (list), bad (object of file -> codes), target (list)")
     if not good and not bad and not target:
         die("the manifest names no files")
+    pins = m.get("sha256")
+    if pins is not None and not isinstance(pins, dict):
+        die("manifest field sha256 must be an object of file -> hex digest")
     for rel in list(good) + list(bad) + list(target):
-        if not os.path.isfile(os.path.join(root, rel)):
+        path = os.path.join(root, rel)
+        if not os.path.isfile(path):
             die(f"manifest names a missing file: {rel}")
+        if pins is not None:
+            with open(path, "rb") as f:
+                digest = hashlib.sha256(f.read()).hexdigest()
+            if pins.get(rel) != digest:
+                die(f"{rel} does not match its pinned sha256")
 
     started = time.monotonic()
     safety = frac(sum(clean(check(binary, os.path.join(root, f))) for f in good), len(good))

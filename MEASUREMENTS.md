@@ -15,7 +15,7 @@ last line, which pins every entry before it, so a log regenerated from the comma
 is the one cited exactly when its head matches. Logs are not committed.
 
 > **Re-verified 2026-09-25** — all six crates tested: prototype **1,716**, rmi
-> **1,384**, ribosome **168**, germline **265**, forge **65**, arena **335** = **3,933 passing,
+> **1,384**, ribosome **168**, germline **266**, forge **65**, arena **335** = **3,934 passing,
 > 0 failing, 0 warnings**.
 >
 > *One figure below had not regressed — it had been superseded.* The ABL
@@ -87,7 +87,7 @@ is the one cited exactly when its head matches. Logs are not committed.
 | MAGE prototype | **1716 pass** (+3 ignored perf harnesses) | `cargo test` |
 | rmi (`cpu`) | **1384 pass** | `cargo test --no-default-features --features cpu` |
 | ribosome (build engine) | **168 pass** | `cargo test --manifest-path ribosome/Cargo.toml` |
-| germline (RSI control plane) | **265 pass** | `cargo test --manifest-path germline/Cargo.toml` |
+| germline (RSI control plane) | **266 pass** | `cargo test --manifest-path germline/Cargo.toml` |
 | arena (self-play arena) | **335 pass** | `cargo test --manifest-path arena/Cargo.toml` |
 | forge (registry) | **65 pass** | `cargo test --manifest-path forge/Cargo.toml` |
 | agentic-eval (AetherShell) | **80 pass** | `cargo test -p agentic-eval` |

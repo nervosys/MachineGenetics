@@ -58,8 +58,10 @@ use std::time::Duration;
 /// The identity that issues verdicts for this driver.
 const EVALUATOR: &str = "selfmod-cli";
 
-pub const USAGE: &str = "usage: selfmod --config <run.json> [--cycles <n>]\n\
+pub const USAGE: &str = "usage: selfmod --config <run.json> [--cycles <n>] [--export-champion <dir>]\n\
 Runs up to <n> (default 1) self-modification cycles, one outbox candidate per cycle, resuming from the journal.\n\
+--export-champion writes the champion's tree (the base with its edits applied) to the new directory <dir>\n\
+and runs no cycle, so a proposer can build its next candidate on the champion's edits.\n\
 The last line of stdout is a JSON report.";
 
 fn default_axis() -> String {
@@ -266,11 +268,13 @@ impl Proposer for Queue {
 struct Options {
     config: PathBuf,
     cycles: u32,
+    export: Option<PathBuf>,
 }
 
 fn parse_args(args: &[String]) -> Result<Option<Options>, String> {
     let mut config = None;
     let mut cycles = 1u32;
+    let mut export = None;
     let mut it = args.iter();
     while let Some(a) = it.next() {
         match a.as_str() {
@@ -283,11 +287,12 @@ fn parse_args(args: &[String]) -> Result<Option<Options>, String> {
                     return Err("--cycles must be at least 1".into());
                 }
             }
+            "--export-champion" => export = Some(PathBuf::from(it.next().ok_or("--export-champion needs a directory")?)),
             other => return Err(format!("unknown argument `{other}`\n{USAGE}")),
         }
     }
     let config = config.ok_or_else(|| format!("--config is required\n{USAGE}"))?;
-    Ok(Some(Options { config, cycles }))
+    Ok(Some(Options { config, cycles, export }))
 }
 
 /// Run the driver: `args` are the command-line arguments after the program
@@ -300,7 +305,7 @@ pub fn run(args: &[String]) -> Result<String, String> {
         return Ok(USAGE.to_string());
     };
     let cfg = CliConfig::load(&opts.config)?;
-    execute(&cfg, opts.cycles)
+    execute(&cfg, opts.cycles, opts.export.as_deref())
 }
 
 fn fitness_json(f: &FitnessVector) -> Value {
@@ -391,7 +396,26 @@ fn genesis(cfg: &CliConfig, suite: &EvalSuite, w: &mut SelfModWorkload) -> Resul
     Ok((g, true))
 }
 
-fn execute(cfg: &CliConfig, requested: u32) -> Result<String, String> {
+/// Write the champion's tree to `dir`, which must not exist: the base tree with
+/// the champion's genes applied. A candidate is a complete change set against the
+/// base, so a proposer that starts from this tree and writes every file it differs
+/// from the base in keeps the champion's edits.
+fn export_champion(cfg: &CliConfig, store: &BlobStore, lineage: &Lineage, dir: &Path) -> Result<Vec<String>, String> {
+    if dir.exists() {
+        return Err(format!("--export-champion: {} already exists", dir.display()));
+    }
+    let champ = lineage.champion().ok_or("the journal has no champion")?;
+    let genome = champ.genome.clone().ok_or("the champion has no genome in the journal")?;
+    let files = super::changed_files(&genome)?;
+    super::copy_tree(&cfg.base_tree, dir)?;
+    for (path, sha) in &files {
+        let bytes = store.get(sha).ok_or_else(|| format!("gene `{path}` is not in the blob store"))?;
+        super::write_gene(dir, path, &bytes)?;
+    }
+    Ok(files.into_iter().map(|(p, s)| format!("{p}:{s}")).collect())
+}
+
+fn execute(cfg: &CliConfig, requested: u32, export: Option<&Path>) -> Result<String, String> {
     let suite = evaluator_suite(cfg);
     let store = BlobStore::open(&cfg.blob_store)?;
     let mut w = SelfModWorkload::new(cfg.selfmod_config(&suite), store.clone())?;
@@ -444,6 +468,12 @@ fn execute(cfg: &CliConfig, requested: u32) -> Result<String, String> {
         report["journal_head"] = json!(head.map(|d| d.0.clone()));
         serde_json::to_string(&report).map_err(|e| e.to_string())
     };
+
+    if let Some(dir) = export {
+        let files = export_champion(cfg, &store, &resumed.lineage, dir)?;
+        report["exported"] = json!({"dir": dir.display().to_string(), "files": files});
+        return finish(report, &resumed.lineage, journal.head());
+    }
 
     // Nothing to propose: do not start a cycle. An empty proposal halts the
     // runner as a workload failure, which would put a failure in the journal
@@ -683,6 +713,29 @@ mod tests {
         let r = fx.run().unwrap();
         assert_eq!(r["no_candidates"], true);
         assert_eq!(r["champion"]["generation"], 2);
+    }
+
+    #[test]
+    fn the_champion_exports_as_base_plus_its_edits_and_runs_no_cycle() {
+        let fx = Fx::new("export");
+        fx.run().unwrap();
+        fx.candidate("c1", &[("src/lib.txt", "ok\n1\n2\n3\n")]);
+        fx.run().unwrap();
+        let dir = fx.root.join("exported");
+        let args = vec![
+            "--config".to_string(),
+            fwd(&fx.root.join("run.json")),
+            "--export-champion".into(),
+            fwd(&dir),
+        ];
+        let out = run(&args).unwrap();
+        let r: Value = serde_json::from_str(out.lines().last().unwrap()).unwrap();
+        assert_eq!(r["cycles_run"], 0, "{r}");
+        assert!(r["exported"]["files"][0].as_str().unwrap().starts_with("src/lib.txt:"), "{r}");
+        let lib = std::fs::read_to_string(dir.join("src/lib.txt")).unwrap();
+        assert_eq!(lib.replace('\r', ""), "ok\n1\n2\n3\n", "the champion's edit");
+        assert!(dir.join("tests/expected.txt").is_file(), "the rest of the base");
+        assert!(run(&args).unwrap_err().contains("already exists"), "never overwrites");
     }
 
     #[test]
