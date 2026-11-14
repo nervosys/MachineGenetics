@@ -1668,6 +1668,13 @@ bits/byte cannot be lined up across sets. Only quantities inside a run, and runs
 on the same tree, are comparable. **Future comparisons should run on frozen copies
 of the corpora** (files copied out of the tree once, by content hash), not on
 files the work under test also edits.
+`scripts/freeze-corpora.sh --dir DIR FILE[,FILE...]` makes those copies: each
+file goes to `DIR/<sha256 prefix>/<name>`, read-only, and the script prints the
+comma-joined paths for `--heldout`, `--validation`, `--dev-text` or
+`--train-text`. It refuses a `DIR` inside the repository and a frozen copy whose
+bytes no longer match its hash. The arena's disjointness checks apply to the
+copies as to the originals (a file frozen into both `--heldout` and
+`--validation` is refused).
 
 **Same-tree baseline (`rb-*`, `--measure 1`, no `--predict`, otherwise the same
 command).** Seeds 1 and 5 completed; seed 3 was killed by the machine's memory
@@ -1698,6 +1705,40 @@ the `sb-*` runs above, on older text, did not.)
   two seeds with a baseline it gave better champions on both suites, with no
   visible widening of the held-out to validation gap, at a multiple of the
   measurement cost; seed 3 (without a baseline) also promoted twice.
+
+**Repeated on frozen corpora (`fz-*`).** The same command, both arms, seeds 1, 3
+and 5, with every corpus frozen by `scripts/freeze-corpora.sh` from
+`frozen-corpora` at `9c3653db9`. That covers held-out `README.md` and
+`germline/src/gate.rs`, validation `GERMLINE.md` and `germline/src/pareto.rs`, and
+dev text `ARCHITECTURE.md` and `germline/src/runner.rs`. Logs and JSON:
+`E:/heal-logs/fz/`. The binary predates the review fixes to candidate selection,
+which change the choice only under a dominance rule or a NaN measurement; these
+runs had neither. All six runs start from the same seed champion (held-out 8.000,
+clamped at capability 0; validation 8.358), so the final values compare directly.
+
+| seed | `--measure 1`: cycles, measured, promotions, halt, final held-out / validation, gap | `--measure 3`: same |
+|---|---|---|
+| 1 | 12, 12, 2, stalled, 6.975 / 7.344, 0.369 | 20, 60, 3, budget, 7.078 / 7.435, 0.357 |
+| 3 | 20, 20, 3, budget, 7.141 / 7.532, 0.391 | 12, 36, 2, stalled, 6.876 / 7.215, 0.339 |
+| 5 | 20, 20, 3, budget, 7.141 / 7.532, 0.391 | 20, 60, 3, budget, 6.970 / 7.314, 0.343 |
+
+- **Best of three wins on two seeds of three, not on every seed.** Seeds 3 and 5
+  end 0.17 to 0.27 lower on held-out and 0.22 to 0.32 lower on validation. Seed 1
+  ends 0.10 higher on held-out and 0.09 higher on validation. The means are
+  held-out 7.086 against 6.975, and validation 7.469 against 7.321. With three
+  seeds and one reversal, the sign of the mean difference is not established.
+- **No sign of the winner's curse.** The validation minus held-out gap is narrower
+  with three measurements on all three seeds (0.357, 0.339 and 0.343, against
+  0.369, 0.391 and 0.391).
+- **Not cheaper per measurement.** Three measurements per cycle used 60, 36 and 60
+  measurements, against 12, 20 and 20. Seed 1 with one measurement per cycle
+  reached 6.975 in 12 measurements, which no three-measurement run beat at that
+  cost.
+- **This revises the same-tree result above.** "Better on both seeds" was 2 of 2
+  on a tree whose corpora moved between sets. On frozen corpora it is 2 of 3. The
+  defensible claim is narrower: `--measure 3` does not inflate held-out against
+  validation, and it tends to find better champions for three times the
+  measurements.
 
 ### Proposer isolation at the CLI, and its limit
 
