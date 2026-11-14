@@ -3783,7 +3783,7 @@ exact arity agreement). See rule 10 above for why no arity checker was built.
 
 ### Real work, unstarted
 
-**3 open, 2 closed.** The section was empty from 2026-08-19 until 2026-09-16,
+**2 open, 3 closed.** The section was empty from 2026-08-19 until 2026-09-16,
 when asking which harness surfaces could be made evolvable turned up three that
 cannot be, yet, and named why for each.
 
