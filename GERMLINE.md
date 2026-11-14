@@ -1,7 +1,7 @@
 # Germline — model succession, handoff, and fallback
 
 > **Status: control plane complete and runnable; workload not.**
-> `germline/` — its own crate, 258 tests. Variation, directed search, the gate,
+> `germline/` — its own crate, 265 tests. Variation, directed search, the gate,
 > attestation, lineage, the durable journal, the cycle state machine, and
 > supervision are built and tested ✅. Model training and inference are **not**
 > here and are not claimed ◻ — this decides *whether* a successor takes over, not
@@ -555,6 +555,46 @@ that now check clean) and, unless `--no-time`, a wall-clock `efficiency`. Freeze
 the script, manifest and corpus with `scripts/freeze-corpora.sh`, outside every
 writable prefix.
 
+**Driving it.** The `selfmod` binary (`germline/src/bin/selfmod.rs`, logic in
+`selfmod::cli::run`) lets an external agent run this loop one candidate at a
+time. Write a candidate to `<outbox>/<id>/manifest.json` plus `files/<path>...`,
+run `selfmod --config run.json --cycles 1`, read the JSON report on the last
+line of stdout (per cycle: generation, promoted or not, fitness, the workload's
+failure text; also the proposer's errors and the champion's files and fitness),
+and repeat. Relative paths in the config resolve against its directory.
+
+```json
+{
+  "base_tree": "snapshot", "base_identity": "snapshot-sha-or-tag",
+  "writable": ["prototype/src/"], "protected": ["prototype/src/tests/"],
+  "scratch_root": "scratch",
+  "build": {"argv": ["cargo", "build", "--release"], "timeout_secs": 1800},
+  "test": {"argv": ["cargo", "test"], "timeout_secs": 1800},
+  "evaluator": {"argv": ["python", "/frozen/selfmod-eval.py", "/frozen/manifest.json"], "timeout_secs": 600},
+  "binary": "release/mage-parse", "target_dir": "target-selfmod",
+  "env": {"CARGO_TARGET_DIR": "target-selfmod"},
+  "blob_store": "state/blobs", "outbox": "outbox", "journal": "state/journal.jsonl",
+  "proposer_name": "agent"
+}
+```
+
+Optional: `shadow`, `primary_axis` (`capability`), `min_improvement` (0.01),
+`guard_axes` (`safety`, `correctness`), `guard_tolerance` (0), `min_shadow_successes`
+(1), `shadow_runs` (1), `seed` (1). The first invocation measures the base tree as
+genesis (a base that does not build, pass its tests and evaluate cannot be the
+champion) and saves it as `genesis.json` beside the journal. Later ones rebuild
+genesis from that file rather than re-measuring it, since wall-clock efficiency
+would differ and break replay; replay the journal; and build the champion again,
+which must give the journalled digest, because the workload's artifact cache is
+in memory. The suite digest is taken from the evaluator argv and the bytes of
+every file in it, so a changed evaluator is refused on resume. One candidate is
+run per cycle, with no more taken from the outbox than cycles run. An empty
+outbox prints a report saying so and runs no cycle. The journal is signed with the key in
+`SELFMOD_ATTEST_KEY` (a development key, with a warning, when unset), read from
+the environment rather than the config so that it is not in a file the
+proposing agent is given. Without an OS sandbox that keeps verdicts honest
+only against an agent that does not go looking for it.
+
 ## 8. What is still not built
 
 ◻ **Model training and inference.** The variation operators produce genomes; what
@@ -649,7 +689,7 @@ nobody chose, one individually-defensible promotion at a time.
 ## 10. Reproducing
 
 ```powershell
-cargo test --manifest-path germline/Cargo.toml                  # 258 tests
+cargo test --manifest-path germline/Cargo.toml                  # 265 tests
 cargo test --manifest-path germline/Cargo.toml --test rsi_loop  # 6 closed-loop scenarios
 cargo test --manifest-path germline/Cargo.toml --test succession # 13 succession scenarios
 ```

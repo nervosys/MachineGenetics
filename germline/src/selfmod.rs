@@ -99,6 +99,8 @@
 //! - Scratch trees are left on disk (for inspection). Remove `scratch_root`
 //!   when done.
 
+pub mod cli;
+
 use super::directed::CandidateSpec;
 use super::manifest::PredictionManifest;
 use super::runner::{Proposer, Workload};
@@ -694,6 +696,15 @@ impl SelfModWorkload {
         &self.cfg
     }
 
+    /// Record axes a measurement made elsewhere reported, so that a failed
+    /// candidate is zero-filled on them like on any axis this process has
+    /// evaluated. A workload rebuilt in a new process (a resumed run) has
+    /// evaluated nothing yet; without this a failure would omit the champion's
+    /// guard axes instead of scoring zero on them.
+    pub fn note_axes<I: IntoIterator<Item = String>>(&mut self, axes: I) {
+        self.known_axes.extend(axes);
+    }
+
     fn fresh_dir(&self) -> Result<PathBuf, String> {
         let d = self.scratch.join(".run").join(unique());
         std::fs::create_dir_all(&d).map_err(|e| format!("cannot create a scratch directory: {e}"))?;
@@ -1006,11 +1017,20 @@ pub struct DirProposer {
     store: BlobStore,
     base_tree: PathBuf,
     errors: Vec<String>,
+    limit: Option<usize>,
 }
 
 impl DirProposer {
     pub fn new(outbox: impl Into<PathBuf>, name: impl Into<String>, store: BlobStore, base_tree: impl Into<PathBuf>) -> Self {
-        DirProposer { outbox: outbox.into(), name: name.into(), store, base_tree: base_tree.into(), errors: Vec::new() }
+        DirProposer { outbox: outbox.into(), name: name.into(), store, base_tree: base_tree.into(), errors: Vec::new(), limit: None }
+    }
+
+    /// Consume at most `n` valid candidates per `propose` (in id order); the
+    /// rest stay in the outbox for a later call. Malformed ones are still set
+    /// aside and reported, and do not count toward the limit.
+    pub fn with_limit(mut self, n: usize) -> Self {
+        self.limit = Some(n);
+        self
     }
 
     /// What was skipped by the last `propose`, and why.
@@ -1098,6 +1118,9 @@ impl Proposer for DirProposer {
 
         let mut out = Vec::new();
         for (id, path) in dirs {
+            if self.limit.is_some_and(|n| out.len() >= n) {
+                break;
+            }
             match self.read_candidate(&path, &id) {
                 Ok(spec) => match self.move_to(&path, ".consumed", &id) {
                     Ok(()) => out.push(spec),
