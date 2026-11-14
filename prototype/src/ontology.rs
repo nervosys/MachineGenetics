@@ -493,6 +493,8 @@ const CLI_FLAGS: &[(&str, &str, bool)] = &[
     ("--syntax=legacy", "Translate legacy syntax before lexing.", false),
     ("--syntax=canonical", "Read the source as canonical syntax (the default).", false),
     ("--token-report", "Print a token-count report alongside the check.", false),
+    ("--incremental-stats", "With `--pipeline`: run the incremental query engine and print, as JSON, the pipeline summary and what the engine did (per-query hits, re-executions, early cutoffs, disk hits).", false),
+    ("--cache-dir", "With `--pipeline --incremental-stats`: persist the engine's answers in this directory (or set `MAGE_CACHE_DIR`), content-addressed by input and compiler build. Takes a directory after it.", true),
 ];
 
 /// `reliability-bench` backends. Each backend implements

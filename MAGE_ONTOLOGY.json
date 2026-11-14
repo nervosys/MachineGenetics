@@ -4,7 +4,7 @@
     "ast_kinds": 20,
     "bench_backends": 4,
     "ci_floors": 6,
-    "cli_flags": 50,
+    "cli_flags": 52,
     "docs": 7,
     "effects": 24,
     "examples": 10,
@@ -424,6 +424,16 @@
         "flag": "--token-report",
         "purpose": "Print a token-count report alongside the check.",
         "takes_path": false
+      },
+      {
+        "flag": "--incremental-stats",
+        "purpose": "With `--pipeline`: run the incremental query engine and print, as JSON, the pipeline summary and what the engine did (per-query hits, re-executions, early cutoffs, disk hits).",
+        "takes_path": false
+      },
+      {
+        "flag": "--cache-dir",
+        "purpose": "With `--pipeline --incremental-stats`: persist the engine's answers in this directory (or set `MAGE_CACHE_DIR`), content-addressed by input and compiler build. Takes a directory after it.",
+        "takes_path": true
       }
     ],
     "docs": [

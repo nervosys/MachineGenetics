@@ -83,6 +83,7 @@ use crate::ast::{
 };
 use crate::hir::{Diagnostic, DiagnosticCategory, Severity};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
+use serde::{Deserialize, Serialize};
 use std::rc::Rc;
 
 // ── Copy-ness ────────────────────────────────────────────────────────
@@ -127,7 +128,7 @@ const BY_VALUE_METHODS: &[&str] = &["push", "push_back", "push_front", "insert",
 
 // ── What the module says ─────────────────────────────────────────────
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct TypeInfo {
     derives_copy: bool,
 }
@@ -138,7 +139,7 @@ struct TypeInfo {
 /// `assign(tasks)` then `filter(tasks, ..)`). The default policy therefore
 /// reports only transfers of ownership the program itself evidences; the strict
 /// policy is Rust's rule.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Policy {
     /// A call moves an argument only if the callee's body really consumes that
     /// parameter (a fixpoint over the module). When `false`, any parameter
@@ -164,7 +165,7 @@ impl Default for Policy {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct FnSig {
     generics: Vec<String>,
     /// `true` for a parameter whose type is a reference (not moved by a call).
@@ -178,7 +179,7 @@ struct FnSig {
 
 /// The facts about a module that `check_function` needs. Build it once per
 /// module (or per change to a signature) and share it across functions.
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct ModuleInfo {
     policy: Policy,
     /// `None` marks a name defined twice: nothing is assumed about it.
@@ -476,6 +477,16 @@ fn walk_items(items: &[Item], prefix: &str, info: &ModuleInfo, out: &mut Vec<Dia
             _ => {}
         }
     }
+}
+
+/// Check one top-level item (a function, or an impl/extend/trait/module and
+/// every function inside it) against a module summary. Concatenating this over
+/// `m.items` in order gives exactly [`check_module_with`]'s output, so an
+/// incremental driver can re-check only the items that changed.
+pub fn check_item(info: &ModuleInfo, item: &Item) -> Vec<Diagnostic> {
+    let mut out = Vec::new();
+    walk_items(std::slice::from_ref(item), "", info, &mut out);
+    out
 }
 
 /// Check one function body. `qualified_name` is only used in messages.

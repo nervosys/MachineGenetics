@@ -7,7 +7,7 @@ text. It is the leverage the text-token floor denies the language track (see
 [IDEAL_AGENTIC_LANGUAGE.md](IDEAL_AGENTIC_LANGUAGE.md) for that analysis).
 
 > **Scope.** Everything below is implemented and test-covered in `prototype/`
-> (**1,770 tests** green) and scored in the sibling `agentic-eval` crate (80
+> (**1,814 tests** green) and scored in the sibling `agentic-eval` crate (80
 > tests, in the AetherShell repository and not verifiable from here). The one
 > deliberate non-feature is agent/swarm *execution* — see
 > [Honest boundaries](#honest-boundaries).
@@ -96,7 +96,7 @@ Every module in `prototype/src`, by the part it serves. A test (`prototype/tests
 | Part | Modules |
 |---|---|
 | Neural | `abl_compute.rs`, `agent_runtime.rs`, `autograd.rs`, `backends.rs`, `codegen_bridge.rs`, `cuda_backend.rs`, `gradcheck.rs`, `nl_engine.rs`, `solve.rs`, `synthesis.rs` |
-| Symbolic | `abl.rs`, `abl_bridge.rs`, `abl_shape.rs`, `ast.rs`, `borrowck.rs`, `canon.rs`, `certs.rs`, `check.rs`, `contract.rs`, `convexity.rs`, `core_subset.rs`, `cost.rs`, `cost_calibration.rs`, `differentiable.rs`, `effects.rs`, `elision.rs`, `eval.rs`, `fuzz.rs`, `heal.rs`, `hir.rs`, `intent.rs`, `lexer.rs`, `logic.rs`, `mlir.rs`, `params.rs`, `parser.rs`, `perf_annot.rs`, `recognise.rs`, `recover.rs`, `resolve.rs`, `sandbox.rs`, `self_heal.rs`, `shape.rs`, `skb.rs`, `stdlib_ext.rs`, `types.rs`, `units.rs`, `verdict.rs`, `verify.rs` |
+| Symbolic | `abl.rs`, `abl_bridge.rs`, `abl_shape.rs`, `ast.rs`, `borrowck.rs`, `canon.rs`, `certs.rs`, `check.rs`, `contract.rs`, `convexity.rs`, `core_subset.rs`, `cost.rs`, `cost_calibration.rs`, `differentiable.rs`, `effects.rs`, `elision.rs`, `eval.rs`, `fuzz.rs`, `heal.rs`, `hir.rs`, `intent.rs`, `lexer.rs`, `logic.rs`, `mlir.rs`, `params.rs`, `parser.rs`, `perf_annot.rs`, `query.rs`, `query/`, `recognise.rs`, `recover.rs`, `resolve.rs`, `sandbox.rs`, `self_heal.rs`, `shape.rs`, `skb.rs`, `stdlib_ext.rs`, `types.rs`, `units.rs`, `verdict.rs`, `verify.rs` |
 | Knowledge base | `grammar.rs`, `kb.rs`, `kb_proposal.rs`, `ontology.rs` |
 | Interface | `aci.rs`, `bin/`, `bpe.rs`, `builder.rs`, `cli_manifest.rs`, `ffi_gen.rs`, `fmt.rs`, `legacy.rs`, `lib.rs`, `main.rs`, `manifest.rs`, `rap.rs`, `rmi_ontology_adapter.rs`, `rmi_runtime_adapter.rs`, `spine_bridge.rs`, `token_budget.rs` |
 | Outside the design | `bench.rs`, `consensus.rs`, `crdt.rs`, `decompose.rs`, `forge.rs`, `hot_reload.rs`, `lease.rs`, `perf_measure.rs`, `rain.rs`, `semantic_vcs.rs`, `swarm_bus.rs`, `swarm_sdk.rs`, `token_canonical.rs` |
@@ -276,7 +276,7 @@ are **six independent Cargo workspaces**:
 | Path | Crate | Tests | Notes |
 |---|---|--:|---|
 | `RecursiveMachineIntelligence/` | `rmi` | 1,384 | The low-level neurosymbolic framework. Feature-gated (`cpu` / `gpu` / `cuda`); build with `--no-default-features --features cpu` for the portable set |
-| `prototype/` | `mage-prototype` | 1,770 | Compiler, evaluator, ABL, RAP server. Path-depends on `rmi` |
+| `prototype/` | `mage-prototype` | 1,814 | Compiler, evaluator, ABL, RAP server. Path-depends on `rmi` |
 | `ribosome/` | `ribosome` | 168 | The distributed build engine. Depends on nothing in this repository — see below |
 | `germline/` | `germline` | 229 | Model succession, handoff, fallback — the RSI control plane. Path-depends on `ribosome` |
 | `forge/` | `forge` | 65 | The package registry, and the content-addressed block and definition stores |
