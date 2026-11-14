@@ -1,7 +1,7 @@
 # Germline — model succession, handoff, and fallback
 
 > **Status: control plane complete and runnable; workload not.**
-> `germline/` — its own crate, 222 tests. Variation, directed search, the gate,
+> `germline/` — its own crate, 226 tests. Variation, directed search, the gate,
 > attestation, lineage, the durable journal, the cycle state machine, and
 > supervision are built and tested ✅. Model training and inference are **not**
 > here and are not claimed ◻ — this decides *whether* a successor takes over, not
@@ -307,6 +307,33 @@ The option has no effect with an external proposer attached and is not meant to 
 combined with `with_predictor`. `Calibration::trust` in `directed` (absolute
 error, 0.25 scale) is a separate mechanism and is not used by this path.
 
+**Several measurements per cycle (opt-in).** `RunnerPolicy::measure_per_cycle`
+(default 1, left out of the serialized policy when 1, so existing digests and
+journals are unchanged). With N > 1 the runner builds and measures up to N of the
+cycle's *admitted* candidates, not N of the raw pool: admission width still
+decides what may be measured at all, so under `with_self_prediction` an untrusted
+predictor (width 1) measures one candidate however large N is, and the extra
+measurements are earned the same way width is. Without self-prediction there is no
+truncation and the whole pool (`candidates_per_cycle`) is available. The chosen
+candidate is measured first, then the rest of the admitted pool in rank order
+(best stated prediction first under self-prediction). Each measurement is
+journalled as a single candidate is: its generation, `Proposed`, `Evaluated`, and a
+`Calibrated` entry when predictions are on. Only the best of them on the gate's
+primary axis (ties to the earliest measured) is shadowed and adjudicated; each of
+the others gets an `Entry::MeasuredNotSubmitted { generation, cycle, submitted }`,
+after which `Lineage::replay` drops it from the pending set and from the proposal
+count, so a cycle still counts once and resume continues the same numbering. The
+gate, ratchet, guard, held-out suite and evaluator independence are untouched: the
+runner picks which candidate to submit, the gate still decides whether it is
+better. A refused best candidate is one refusal toward `max_consecutive_refusals`,
+not N. Every measurement's cost is booked to the energy budget as before.
+*Winner's curse:* the runner picks the maximum of N noisy measurements on the
+held-out suite, so the submitted candidate's held-out score is biased upward by
+selection, and the champion's held-out score overstates what it will do on new
+data, more so as N grows. This is why a separate validation suite, which no
+selection ever sees, matters: compare a champion's held-out score with its
+validation score, and treat a widening gap as the selection inflating the number.
+
 Resuming a proposer run is exact. `Lineage::replay` rebuilds each proposer's
 record from its `Calibrated` entries, in journal order, and fails with an
 inconsistency if a recorded trust does not match the rebuilt one. It counts each
@@ -583,7 +610,7 @@ nobody chose, one individually-defensible promotion at a time.
 ## 10. Reproducing
 
 ```powershell
-cargo test --manifest-path germline/Cargo.toml                  # 222 tests
+cargo test --manifest-path germline/Cargo.toml                  # 226 tests
 cargo test --manifest-path germline/Cargo.toml --test rsi_loop  # 6 closed-loop scenarios
 cargo test --manifest-path germline/Cargo.toml --test succession # 13 succession scenarios
 ```

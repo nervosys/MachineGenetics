@@ -860,7 +860,16 @@ arena succession --heldout FILE[,FILE...] --journal PATH [--cycles N] [--seed N]
                  [--train-text FILE[,FILE...]] [--train-text-per-round N]
                  [--reward alignment|compression|transfer] [--dev-text FILE[,FILE...]]
                  [--genome narrow|wide] [--patience N] [--mutation-scale F] [--predict]
+                 [--measure N]
 ```
+
+**Several measurements per cycle (`--measure N`).** Opt-in, N a whole number of at
+least 1 (0 is a usage error), default 1. Sets the policy's `measure_per_cycle`:
+N of the cycle's admitted candidates are built and measured, and only the one
+with the best primary-axis score is shadowed and adjudicated; the others are
+journalled as `measured_not_submitted`. Given, it adds `+measure=N` to the policy
+name. Absent, the policy, name, digest and journal are those of earlier runs. See
+GERMLINE.md section 5.
 
 **Predictions and admission width (`--predict`).** Opt-in; default off, and with it
 off nothing changes (journals, policy name and digest are those of earlier runs).
@@ -1623,8 +1632,72 @@ at cycle 5 of seed 1 (0.53).
 - Conclusion: `--predict` makes the arena's search state predictions and earn
   admission width through the runner's own rule; on this problem and predictor the
   trust it earns is below the level that widens the pool. A better predictor, or
-  measuring several admitted candidates per cycle (not done: the runner measures one),
-  is what would change that.
+  measuring several admitted candidates per cycle (`--measure`, below; the runs
+  above measured one), is what would change that.
+
+#### Several measurements per cycle
+
+`--measure 3` (policy `...+patience=10+mscale=0.35+measure=3`, no `--predict`, so
+admission width does not truncate the pool and all three candidates of
+`--candidates 3` are measured). Seeds 1, 3 and 5 only (three seeds, not six),
+`--cycles 20`. Logs and JSON: `E:/heal-logs/sweep/mw-*`. Each cycle builds and
+measures three candidates, adjudicates the best on `capability`, and journals the
+other two as `measured_not_submitted`. "Measured" is the number of `evaluated`
+entries. Bits/byte are held-out / validation of the final champion; the gap is
+validation minus held-out (positive: the validation score is the worse one).
+
+| seed | cycles run | measured | promotions | halt | final held-out / validation | gap | held-out gain / validation gain from the seed champion |
+|---|---|---|---|---|---|---|---|
+| 1 | 11 | 33 | 1 | search_stalled | 7.106 / 7.464 | 0.358 | 0.776 / 0.515 |
+| 3 | 12 | 36 | 2 | search_stalled | 6.934 / 7.279 | 0.346 | 0.948 / 0.699 |
+| 5 | 19 | 57 | 4 | search_stalled | 6.952 / 7.294 | 0.342 | 0.930 / 0.684 |
+
+The champions: seed 1 is generation 2 (`ng:3:12`, lr 0.020, 8 steps), seed 3
+generation 5 (`ng:3:12`, lr 0.011, 8 steps), seed 5 generation 25 (`ng:3:11`,
+lr 0.028, 4 steps). All three runs stopped on `search_stalled` (10 refusals in a
+row) before cycle 20; each refused cycle counts once, however many were measured.
+
+**These numbers are not comparable with the `sb-*` and `pt-*` rows above.** The
+seed champion's own scores differ between the three sets of runs (seed champion
+held-out 7.203 in `sb`, 7.673 in `pt`, 7.882 here; validation 7.624, 7.872 and
+7.978), because the corpora are live files in this repository and the branches
+edit them: the dev text includes `germline/src/runner.rs`, which `--predict` and
+`--measure` changed (so the transfer reward, and with it every learner, changed),
+and the validation file `GERMLINE.md` was edited to document them. Absolute
+bits/byte cannot be lined up across sets. Only quantities inside a run, and runs
+on the same tree, are comparable. **Future comparisons should run on frozen copies
+of the corpora** (files copied out of the tree once, by content hash), not on
+files the work under test also edits.
+
+**Same-tree baseline (`rb-*`, `--measure 1`, no `--predict`, otherwise the same
+command).** Seeds 1 and 5 completed; seed 3 was killed by the machine's memory
+guard before finishing and is not reported. (Seeds 1 and 5 on this text promote;
+the `sb-*` runs above, on older text, did not.)
+
+| seed | `--measure 1`: cycles, measured, promotions, final held-out / validation, gap | `--measure 3`: same |
+|---|---|---|
+| 1 | 11, 11, 1, 7.278 / 7.658, 0.380 | 11, 33, 1, 7.106 / 7.464, 0.358 |
+| 5 | 16, 16, 3, 7.370 / 7.751, 0.381 | 19, 57, 4, 6.952 / 7.294, 0.342 |
+
+- **Winner's curse check.** The validation-minus-held-out gap did not widen with
+  the best of three: 0.358 and 0.342 against 0.380 and 0.381 for one measurement.
+  The share of the held-out gain that shows up on validation is 0.66 and 0.74 with
+  three, against 0.53 and 0.44 with one. Selection inflation, if present, is
+  smaller than the difference between the runs. This is two paired seeds (seed 3
+  has no baseline), so it rules out a large inflation and says nothing about a
+  small one; the gap that exists between the two suites in every run, including
+  the seed champion's (0.10), is larger than any change seen here.
+- **Better champions at a higher measurement cost.** Both seeds ended 0.17 to 0.42
+  bits/byte lower on held-out and 0.19 to 0.46 lower on validation than with one
+  measurement per cycle, at three times the measurements per cycle (33 and 57
+  against 11 and 16 in total). Validation improved too, so this is not a held-out
+  artefact. Per measurement it is not shown to be cheaper: seed 5 with one
+  measurement per cycle reached its champion in 16 measurements.
+- Conclusion: `--measure` works as designed (three measured, one adjudicated, the
+  rest journalled, refusals counted once, replay and resume unchanged). On the
+  two seeds with a baseline it gave better champions on both suites, with no
+  visible widening of the held-out to validation gap, at a multiple of the
+  measurement cost; seed 3 (without a baseline) also promoted twice.
 
 ### Proposer isolation at the CLI, and its limit
 

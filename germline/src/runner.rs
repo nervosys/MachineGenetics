@@ -95,6 +95,21 @@ pub struct RunnerPolicy {
     /// is left out of the serialized policy, so existing digests hold.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub energy_budget_joules: Option<f64>,
+    /// How many of a cycle's admitted candidates to build and measure. Only the
+    /// best of them on the gate's primary axis is shadowed and adjudicated; the
+    /// others are journalled as measured and not submitted. 1, the default, is
+    /// the single measurement per cycle the runner always made, and is left out
+    /// of the serialized policy so existing digests and journals hold.
+    #[serde(default = "one", skip_serializing_if = "is_one")]
+    pub measure_per_cycle: usize,
+}
+
+fn one() -> usize {
+    1
+}
+
+fn is_one(n: &usize) -> bool {
+    *n == 1
 }
 
 impl Default for RunnerPolicy {
@@ -110,6 +125,7 @@ impl Default for RunnerPolicy {
             supervision: SupervisionPolicy::default(),
             stop_file: None,
             energy_budget_joules: None,
+            measure_per_cycle: 1,
         }
     }
 }
@@ -864,9 +880,7 @@ impl<'a> Runner<'a> {
                 Some(random)
             }
         };
-        let predicted = chosen.map(|i| ranked[i].prediction.predicted.clone());
-        let spec = chosen
-            .map(|i| ranked[i].candidate.clone())
+        let first = chosen
             .ok_or_else(|| {
                 // "produced no candidates" and "produced candidates and refused
                 // all of them" are different facts, and the second is the one
@@ -901,90 +915,139 @@ impl<'a> Runner<'a> {
                 }
             })?;
 
-        let artifact = workload.materialize(&spec)?;
-        let fitness = workload.evaluate(&artifact, &self.suite)?;
+        // Which admitted candidates are built and measured: the chosen one
+        // first, then (only when the policy asks to measure several) the rest
+        // of the admitted pool in rank order, best stated prediction first
+        // under self-prediction. With the default of one this is `[first]`.
+        let mut order = vec![first];
+        if self.policy.measure_per_cycle > 1 {
+            let mut rest: Vec<usize> = (0..ranked.len()).filter(|i| *i != first).collect();
+            if self.self_prediction.is_some() && self.proposer.is_none() && self.predictor.is_none() {
+                rest.sort_by(|a, b| {
+                    let d = |i: &usize| {
+                        ranked[*i].candidate.manifest.as_ref().map_or(f64::NEG_INFINITY, PredictionManifest::predicted_delta)
+                    };
+                    d(b).partial_cmp(&d(a)).unwrap_or(std::cmp::Ordering::Equal)
+                });
+            }
+            order.extend(rest);
+            order.truncate(self.policy.measure_per_cycle);
+        }
 
-        // What the proposer predicted, against what the measurement says the
-        // edit did, relative to the champion it was proposed against. Taken
-        // before `fitness` moves into the measurement.
-        let calibration = match (spec.proposer.clone(), spec.manifest.clone()) {
-            (Some(name), Some(m)) => match fitness.get(&m.metric) {
-                Some(value) => {
-                    let base = champion_fitness
-                        .as_ref()
-                        .and_then(|c| c.get(&m.metric))
-                        .unwrap_or(0.0);
-                    Some((name, m, value - base))
+        let mut measured_cycles: Vec<(Cycle, GenerationId, Digest)> = Vec::new();
+        for &pick in &order {
+            let predicted = Some(ranked[pick].prediction.predicted.clone());
+            let spec = ranked[pick].candidate.clone();
+            let artifact = workload.materialize(&spec)?;
+            let fitness = workload.evaluate(&artifact, &self.suite)?;
+
+            // What the proposer predicted, against what the measurement says the
+            // edit did, relative to the champion it was proposed against. Taken
+            // before `fitness` moves into the measurement.
+            let calibration = match (spec.proposer.clone(), spec.manifest.clone()) {
+                (Some(name), Some(m)) => match fitness.get(&m.metric) {
+                    Some(value) => {
+                        let base = champion_fitness
+                            .as_ref()
+                            .and_then(|c| c.get(&m.metric))
+                            .unwrap_or(0.0);
+                        Some((name, m, value - base))
+                    }
+                    None => {
+                        let _ = journal.append(Entry::Note {
+                            text: format!(
+                                "calibration skipped for {}: the measurement has no `{}`",
+                                spec.id, m.metric
+                            ),
+                        });
+                        None
+                    }
+                },
+                _ => None,
+            };
+
+            // The only thing that moves trust. A prediction that is never followed
+            // by a measurement teaches the calibration nothing, which is why this
+            // sits next to the evaluation rather than anywhere more convenient.
+            if self.predictor.is_some() {
+                if let Some(p) = &predicted {
+                    self.calibration.observe(p, &fitness);
                 }
-                None => {
-                    let _ = journal.append(Entry::Note {
-                        text: format!(
-                            "calibration skipped for {}: the measurement has no `{}`",
-                            spec.id, m.metric
-                        ),
-                    });
-                    None
-                }
-            },
-            _ => None,
+            }
+
+            let id = lineage.next_id();
+            // The generation the candidate actually derived from; the champion
+            // only when the population had no real members to derive from.
+            let parent = spec
+                .parent
+                .and_then(|i| pop_ids.get(i as usize).copied())
+                .or_else(|| lineage.champion().map(|g| g.id));
+            let mut generation = Generation::new(id, artifact.clone())
+                .note(format!("cycle {index}, spec {}", spec.id));
+            generation.genome = Some(spec.genome.clone());
+            generation.definitions = workload.attribution(&artifact);
+            generation.knowledge_base = workload.knowledge_base(&artifact);
+            if let Some(p) = parent {
+                generation = generation.parent(p);
+            }
+
+            let mut cycle = Cycle::propose(generation, seed, &self.policy.name, journal)
+                .map_err(|e| e.to_string())?;
+
+            cycle
+                .evaluate(
+                    Measurement {
+                        suite: self.suite.clone(),
+                        fitness,
+                        evaluator: self.attestor.evaluator().to_string(),
+                    },
+                    journal,
+                )
+                .map_err(|e| e.to_string())?;
+
+            // Journalled after the evaluation it scores, so it follows `Evaluated`.
+            if let Some((proposer, m, measured)) = calibration {
+                let expected = m.predicted_delta();
+                let score = manifest::score(expected, measured);
+                let record = self.proposer_records.entry(proposer.clone()).or_default();
+                record.observe(score);
+                let trust = record.trust();
+                let _ = journal.append(Entry::Calibrated {
+                    generation: id,
+                    proposer,
+                    metric: m.metric,
+                    predicted: expected,
+                    measured,
+                    score,
+                    trust,
+                });
+            }
+            measured_cycles.push((cycle, id, artifact));
+        }
+
+        // Of several measured candidates only the best on the gate's primary
+        // axis goes on to shadow and adjudication; ties go to the earliest.
+        // The rest are journalled as measured and not submitted, so replay
+        // does not count them as proposals or leave them pending.
+        let axis = self.episode.gate.primary_axis.clone();
+        let score_of = |c: &Cycle| {
+            c.candidate().heldout_fitness().and_then(|f| f.get(&axis)).unwrap_or(f64::NEG_INFINITY)
         };
-
-        // The only thing that moves trust. A prediction that is never followed
-        // by a measurement teaches the calibration nothing, which is why this
-        // sits next to the evaluation rather than anywhere more convenient.
-        if self.predictor.is_some() {
-            if let Some(p) = &predicted {
-                self.calibration.observe(p, &fitness);
+        let mut best = 0;
+        for i in 1..measured_cycles.len() {
+            if score_of(&measured_cycles[i].0) > score_of(&measured_cycles[best].0) {
+                best = i;
             }
         }
-
-        let id = lineage.next_id();
-        // The generation the candidate actually derived from; the champion
-        // only when the population had no real members to derive from.
-        let parent = spec
-            .parent
-            .and_then(|i| pop_ids.get(i as usize).copied())
-            .or_else(|| lineage.champion().map(|g| g.id));
-        let mut generation = Generation::new(id, artifact.clone())
-            .note(format!("cycle {index}, spec {}", spec.id));
-        generation.genome = Some(spec.genome.clone());
-        generation.definitions = workload.attribution(&artifact);
-        generation.knowledge_base = workload.knowledge_base(&artifact);
-        if let Some(p) = parent {
-            generation = generation.parent(p);
+        let submitted = measured_cycles[best].1;
+        for (i, (_, gid, _)) in measured_cycles.iter().enumerate() {
+            if i != best {
+                journal
+                    .append(Entry::MeasuredNotSubmitted { generation: *gid, cycle: index, submitted })
+                    .map_err(|e| e.to_string())?;
+            }
         }
-
-        let mut cycle = Cycle::propose(generation, seed, &self.policy.name, journal)
-            .map_err(|e| e.to_string())?;
-
-        cycle
-            .evaluate(
-                Measurement {
-                    suite: self.suite.clone(),
-                    fitness,
-                    evaluator: self.attestor.evaluator().to_string(),
-                },
-                journal,
-            )
-            .map_err(|e| e.to_string())?;
-
-        // Journalled after the evaluation it scores, so it follows `Evaluated`.
-        if let Some((proposer, m, measured)) = calibration {
-            let expected = m.predicted_delta();
-            let score = manifest::score(expected, measured);
-            let record = self.proposer_records.entry(proposer.clone()).or_default();
-            record.observe(score);
-            let trust = record.trust();
-            let _ = journal.append(Entry::Calibrated {
-                generation: id,
-                proposer,
-                metric: m.metric,
-                predicted: expected,
-                measured,
-                score,
-                trust,
-            });
-        }
+        let (mut cycle, id, artifact) = measured_cycles.swap_remove(best);
 
         for _ in 0..self.policy.shadow_runs {
             let sample = workload.shadow(&artifact);
@@ -2634,5 +2697,115 @@ mod tests {
     fn the_default_policy_serializes_and_digests_exactly_as_before_these_options() {
         assert_eq!(serde_json::to_string(&RunnerPolicy::default()).unwrap(), GOLDEN_JSON);
         assert_eq!(RunnerPolicy::default().digest().0, GOLDEN_DIGEST);
+    }
+
+    /// A workload whose candidates have known fitness: the n-th one built
+    /// measures `caps[n % caps.len()]` on the primary axis.
+    struct Scripted3 {
+        caps: Vec<f64>,
+        built: usize,
+        by_artifact: std::collections::HashMap<String, f64>,
+    }
+
+    impl Workload for Scripted3 {
+        fn materialize(&mut self, spec: &CandidateSpec) -> Result<Digest, String> {
+            let d = Digest::of(spec.id.as_bytes());
+            self.by_artifact.insert(d.0.clone(), self.caps[self.built % self.caps.len()]);
+            self.built += 1;
+            Ok(d)
+        }
+        fn evaluate(&mut self, a: &Digest, _: &EvalSuite) -> Result<FitnessVector, String> {
+            let cap = self.by_artifact.get(&a.0).copied().ok_or("not materialized")?;
+            Ok(FitnessVector::new().with("capability", cap).with("safety", 0.95))
+        }
+        fn shadow(&mut self, _: &Digest) -> HealthSample {
+            HealthSample::ok()
+        }
+        fn observe_champion(&mut self, _: &Digest) -> HealthSample {
+            HealthSample::ok()
+        }
+        fn materialized(&self, _: &Digest) -> bool {
+            true
+        }
+    }
+
+    fn scripted3(caps: &[f64]) -> Scripted3 {
+        Scripted3 { caps: caps.to_vec(), built: 0, by_artifact: Default::default() }
+    }
+
+    #[test]
+    fn measuring_several_adjudicates_only_the_best_and_journals_the_rest() {
+        let (ep, at) = (episode(), attestor());
+        let path = tmp("measure-three");
+        let mut j = Journal::open(&path).unwrap();
+        let mut l = genesis();
+        let policy = RunnerPolicy { max_cycles: 1, candidates_per_cycle: 3, measure_per_cycle: 3, ..patient(1) };
+        let report = Runner::new(policy, &ep, &at, suite(), 5)
+            .run(&mut l, &mut j, &mut scripted3(&[0.60, 0.90, 0.70]));
+        assert_eq!((report.promotions, report.refusals), (1, 0));
+        let ev = events(&j);
+        let evaluated = ev.iter().filter(|e| matches!(e, Entry::Evaluated { .. })).count();
+        let proposed = ev.iter().filter(|e| matches!(e, Entry::Proposed { .. })).count();
+        assert_eq!((proposed, evaluated), (3, 3), "three candidates built and measured");
+        let skipped: Vec<GenerationId> = ev
+            .iter()
+            .filter_map(|e| match e {
+                Entry::MeasuredNotSubmitted { generation, .. } => Some(*generation),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(skipped.len(), 2, "the other two are journalled as not submitted");
+        assert_eq!(report.cycles[0].candidate, Some(GenerationId(2)), "the 0.90 candidate, second built");
+        assert!(!skipped.contains(&GenerationId(2)));
+        let adjudicated = ev.iter().filter(|e| matches!(e, Entry::Adjudicated { .. })).count();
+        assert_eq!(adjudicated, 1, "one adjudication for the cycle");
+        assert_eq!(l.champion().unwrap().id, GenerationId(2));
+
+        let head = j.head().cloned();
+        let resumed = Lineage::replay(genesis(), &j, head.as_ref()).unwrap();
+        assert_eq!(resumed.lineage.champion().map(|g| g.id), Some(GenerationId(2)));
+        assert_eq!(resumed.proposals, 1, "one cycle, however many were measured");
+        assert!(j.verify().is_ok());
+        let _ = std::fs::remove_dir_all(path.parent().unwrap());
+    }
+
+    #[test]
+    fn a_ties_goes_to_the_earliest_measured() {
+        let (ep, at) = (episode(), attestor());
+        let path = tmp("measure-tie");
+        let mut j = Journal::open(&path).unwrap();
+        let mut l = genesis();
+        let policy = RunnerPolicy { max_cycles: 1, candidates_per_cycle: 3, measure_per_cycle: 3, ..patient(1) };
+        let report = Runner::new(policy, &ep, &at, suite(), 5)
+            .run(&mut l, &mut j, &mut scripted3(&[0.80, 0.80, 0.70]));
+        assert_eq!(report.cycles[0].candidate, Some(GenerationId(1)));
+        let _ = std::fs::remove_dir_all(path.parent().unwrap());
+    }
+
+    #[test]
+    fn a_refused_best_of_several_counts_one_refusal() {
+        let (ep, at) = (episode(), attestor());
+        let path = tmp("measure-refused");
+        let mut j = Journal::open(&path).unwrap();
+        let mut l = genesis();
+        let policy = RunnerPolicy { max_cycles: 2, candidates_per_cycle: 3, measure_per_cycle: 3, ..patient(2) };
+        let report = Runner::new(policy, &ep, &at, suite(), 5)
+            .run(&mut l, &mut j, &mut scripted3(&[0.30, 0.40, 0.20]));
+        assert_eq!((report.promotions, report.refusals), (0, 2), "one refusal per cycle, not three");
+        let head = j.head().cloned();
+        let resumed = Lineage::replay(genesis(), &j, head.as_ref()).unwrap();
+        assert_eq!((resumed.proposals, resumed.trailing_refusals), (2, 2));
+        assert_eq!(resumed.lineage.champion().map(|g| g.id), Some(GenerationId(0)));
+        let _ = std::fs::remove_dir_all(path.parent().unwrap());
+    }
+
+    #[test]
+    fn measuring_one_is_the_default_and_adds_nothing_to_the_policy() {
+        assert_eq!(RunnerPolicy::default().measure_per_cycle, 1);
+        let three = RunnerPolicy { measure_per_cycle: 3, ..RunnerPolicy::default() };
+        assert!(serde_json::to_string(&three).unwrap().contains("\"measure_per_cycle\":3"));
+        assert_ne!(three.digest(), RunnerPolicy::default().digest());
+        let back: RunnerPolicy = serde_json::from_str(GOLDEN_JSON).unwrap();
+        assert_eq!(back.measure_per_cycle, 1);
     }
 }

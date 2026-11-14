@@ -99,6 +99,13 @@ pub enum Entry {
     /// so a run without one journals exactly as before. A new variant, so every
     /// earlier entry hashes as it did.
     EnergySpent { cycle: u32, joules: f64 },
+    /// A candidate was proposed and measured, but another candidate measured in
+    /// the same cycle scored better on the gate's primary axis and was the one
+    /// submitted to shadow and adjudication (`policy.measure_per_cycle` > 1).
+    /// Written after the cycle's `Evaluated` entries. Replay drops the
+    /// candidate from the pending set and from the proposal count, so the cycle
+    /// still counts once. A new variant, so every earlier entry hashes as it did.
+    MeasuredNotSubmitted { generation: GenerationId, cycle: u32, submitted: GenerationId },
     /// The gate ruled.
     Adjudicated { verdict: Verdict, attestation: Option<String> },
     /// Authority moved (or was refused).
