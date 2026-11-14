@@ -4,7 +4,7 @@
 
 use crate::hir::{self, DiagnosticCategory, Severity};
 use crate::verdict::{Refusal, Verdict};
-use crate::{abl_shape, contract, core_subset, differentiable, effects, elision, lexer, logic, parser, resolve, types, verify};
+use crate::{abl_shape, borrowck, contract, core_subset, differentiable, effects, elision, lexer, logic, parser, resolve, types, verify};
 
 /// One record of `--check --json`, error or not.
 #[derive(Debug, Clone)]
@@ -89,6 +89,9 @@ pub fn check_source(source: &str, do_elision: bool, core: bool) -> Checked {
         let mut all: Vec<hir::Diagnostic> = Vec::new();
         all.extend(resolve::resolve(&module).diagnostics);
         all.extend(types::check(&module).diagnostics);
+        // Use after move (E0382) and borrow conflicts (E0502): a pure per-function
+        // pass over the same elided module the type checker saw.
+        all.extend(borrowck::check_module(&module));
         let effect_infer = effects::infer_effects(&module);
         all.extend(effect_infer.diagnostics.clone());
         // The `grad` obligation (§5.6): `grad(e, w)` needs an `e` with a
