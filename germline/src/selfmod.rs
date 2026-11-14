@@ -530,6 +530,9 @@ fn drain<R: Read + Send + 'static>(mut pipe: R) -> std::sync::mpsc::Receiver<Vec
 /// miss a live descendant (one test run in three). So on Windows this is best
 /// effort. On Unix a descendant that starts
 /// its own process group or session escapes likewise.
+#[cfg(windows)]
+const KILL_TREE_BOUND: Duration = Duration::from_secs(5);
+
 fn kill_tree(child: &mut std::process::Child) {
     let pid = child.id().to_string();
     #[cfg(windows)]
@@ -537,12 +540,26 @@ fn kill_tree(child: &mut std::process::Child) {
         let taskkill = std::env::var_os("SYSTEMROOT")
             .map(|r| PathBuf::from(r).join("System32").join("taskkill.exe"))
             .unwrap_or_else(|| PathBuf::from("taskkill"));
-        let _ = Command::new(taskkill)
+        // Bounded: `taskkill` was seen to take over ten seconds under load, and a
+        // hung one must not hold the run past its timeout. Past the bound the
+        // direct child is still killed below.
+        if let Ok(mut tk) = Command::new(taskkill)
             .args(["/T", "/F", "/PID", &pid])
             .stdin(Stdio::null())
             .stdout(Stdio::null())
             .stderr(Stdio::null())
-            .status();
+            .spawn()
+        {
+            let began = Instant::now();
+            while matches!(tk.try_wait(), Ok(None)) {
+                if began.elapsed() >= KILL_TREE_BOUND {
+                    let _ = tk.kill();
+                    let _ = tk.wait();
+                    break;
+                }
+                std::thread::sleep(Duration::from_millis(20));
+            }
+        }
     }
     #[cfg(unix)]
     {
@@ -1413,7 +1430,9 @@ echo "{\"capability\": $cap, \"safety\": 1}"
         // the tree kill, not the spawn race described at `kill_tree`.
         let ran = run_cmd(&argv, &dir, &[], Duration::from_secs(3)).unwrap();
         assert!(ran.timed_out && !ran.success);
-        assert!(started.elapsed() < Duration::from_secs(15), "the run returned at the timeout");
+        // Timeout 3 s plus at most 5 s of `taskkill`; the parent alone would run
+        // 30 s, so this bound separates "returned at the timeout" from "waited".
+        assert!(started.elapsed() < Duration::from_secs(20), "the run returned at the timeout");
         std::thread::sleep(Duration::from_secs(6));
         // On Unix the process group is killed as a unit, so this is exact. On
         // Windows `taskkill /T` was seen to miss a live descendant under load (one
