@@ -1,7 +1,7 @@
 # Germline — model succession, handoff, and fallback
 
 > **Status: control plane complete and runnable; workload not.**
-> `germline/` — its own crate, 229 tests. Variation, directed search, the gate,
+> `germline/` — its own crate, 258 tests. Variation, directed search, the gate,
 > attestation, lineage, the durable journal, the cycle state machine, and
 > supervision are built and tested ✅. Model training and inference are **not**
 > here and are not claimed ◻ — this decides *whether* a successor takes over, not
@@ -529,6 +529,24 @@ on. Correctness carries across unchanged, because it is a gate on both sides: a
 candidate whose builds fail must not be able to compensate with a better cache-hit
 rate.
 
+### Self-modification — `selfmod.rs` ✅
+
+`SelfModWorkload` is a `Workload` whose candidates are edits to a source tree, such
+as this compiler's own. A genome is the set of files that differ from a frozen base
+tree (one file gene each, bytes in a content-addressed `BlobStore`); `materialize`
+copies the base into scratch, writes the files, builds and runs the tests; a
+fixed evaluator that no candidate can write then measures the built binary, and the
+result goes through the ordinary gate. The write set is enforced once, in
+`check_write_set`, before anything is copied: relative paths only, no `.`/`..`,
+under a writable prefix and under no protected one (tests and corpus go there). A
+failed build or test is a recorded zero, not an error, so it can never be promoted;
+so is a write-set violation, refused before anything is copied, so a proposer
+cannot stop the run by sending one. Only this side's failures (a gene missing
+from the blob store, an unreadable base tree) are an `Err`, which halts it. This is
+not a sandbox. A candidate's build scripts, tests and binary run as the user with
+only a cut-down environment and timeouts, and a candidate cannot delete files or
+build on the champion's edits (it is a whole change set against the base).
+
 ## 8. What is still not built
 
 ◻ **Model training and inference.** The variation operators produce genomes; what
@@ -623,7 +641,7 @@ nobody chose, one individually-defensible promotion at a time.
 ## 10. Reproducing
 
 ```powershell
-cargo test --manifest-path germline/Cargo.toml                  # 229 tests
+cargo test --manifest-path germline/Cargo.toml                  # 258 tests
 cargo test --manifest-path germline/Cargo.toml --test rsi_loop  # 6 closed-loop scenarios
 cargo test --manifest-path germline/Cargo.toml --test succession # 13 succession scenarios
 ```

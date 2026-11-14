@@ -99,6 +99,7 @@ pub mod lineage;
 pub mod manifest;
 pub mod pareto;
 pub mod runner;
+pub mod selfmod;
 pub mod supervisor;
 pub mod variation;
 pub mod workload;
