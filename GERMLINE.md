@@ -1,7 +1,7 @@
 # Germline — model succession, handoff, and fallback
 
 > **Status: control plane complete and runnable; workload not.**
-> `germline/` — its own crate, 226 tests. Variation, directed search, the gate,
+> `germline/` — its own crate, 229 tests. Variation, directed search, the gate,
 > attestation, lineage, the durable journal, the cycle state machine, and
 > supervision are built and tested ✅. Model training and inference are **not**
 > here and are not claimed ◻ — this decides *whether* a successor takes over, not
@@ -318,15 +318,28 @@ truncation and the whole pool (`candidates_per_cycle`) is available. The chosen
 candidate is measured first, then the rest of the admitted pool in rank order
 (best stated prediction first under self-prediction). Each measurement is
 journalled as a single candidate is: its generation, `Proposed`, `Evaluated`, and a
-`Calibrated` entry when predictions are on. Only the best of them on the gate's
-primary axis (ties to the earliest measured) is shadowed and adjudicated; each of
-the others gets an `Entry::MeasuredNotSubmitted { generation, cycle, submitted }`,
+`Calibrated` entry when predictions are on. All N are built and measured before
+any is journalled, so a workload failure part-way through leaves none of them in
+the journal and a resumed run counts the same cycles. One of them is shadowed and
+adjudicated: a candidate the gate's fitness rules would approve if any would
+(`Episode::fitness_passes`, the fitness part of adjudication: rule (a), or rule (b)
+under a dominance rule, with the guards and the ratchet), and among those, or
+among all when none would, the highest on the primary axis. A missing or NaN
+primary ranks lowest and ties go to the earliest measured. So under a dominance
+rule a candidate level with the champion on the primary axis and better on
+another objective is submitted ahead of one slightly higher on the primary axis
+that neither rule would pass. Each of the others gets an `Entry::MeasuredNotSubmitted { generation, cycle, submitted }`,
 after which `Lineage::replay` drops it from the pending set and from the proposal
 count, so a cycle still counts once and resume continues the same numbering. The
 gate, ratchet, guard, held-out suite and evaluator independence are untouched: the
-runner picks which candidate to submit, the gate still decides whether it is
-better. A refused best candidate is one refusal toward `max_consecutive_refusals`,
-not N. Every measurement's cost is booked to the energy budget as before.
+runner picks which candidate to submit, using the gate's own fitness rule, and
+the gate still adjudicates that candidate in full (barrier, evidence, evaluator,
+materialization, canary). A refused submitted candidate is one refusal toward
+`max_consecutive_refusals`, not N. Every measurement's cost is booked to the
+energy budget, but the budget is checked only before a cycle, so the last cycle
+can overshoot it by up to N measurements. The measurements that are not submitted
+inform calibration and proposer trust; under `with_self_prediction` they are not
+added to the rows `nearest_measured` predicts from.
 *Winner's curse:* the runner picks the maximum of N noisy measurements on the
 held-out suite, so the submitted candidate's held-out score is biased upward by
 selection, and the champion's held-out score overstates what it will do on new
@@ -610,7 +623,7 @@ nobody chose, one individually-defensible promotion at a time.
 ## 10. Reproducing
 
 ```powershell
-cargo test --manifest-path germline/Cargo.toml                  # 226 tests
+cargo test --manifest-path germline/Cargo.toml                  # 229 tests
 cargo test --manifest-path germline/Cargo.toml --test rsi_loop  # 6 closed-loop scenarios
 cargo test --manifest-path germline/Cargo.toml --test succession # 13 succession scenarios
 ```
