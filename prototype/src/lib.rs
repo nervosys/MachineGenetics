@@ -22,6 +22,7 @@ pub mod core_subset;
 pub mod autograd;
 pub mod backends;
 pub mod bench;
+pub mod bpe;
 pub mod builder;
 #[cfg(feature = "cuda")]
 pub mod cuda_backend;
