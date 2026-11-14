@@ -305,7 +305,11 @@ fn emit_enum(buf: &mut String, e: &EnumDef, vis: Visibility, mode: Mode, depth: 
         indent(buf, depth + 1);
         buf.push_str(&v.name);
         match &v.kind {
-            VariantKind::Unit => {}
+            VariantKind::Unit => {
+                if let Some(d) = v.discriminant {
+                    buf.push_str(&format!(" = {d}"));
+                }
+            }
             VariantKind::Tuple(types) => {
                 buf.push('(');
                 for (i, ty) in types.iter().enumerate() {
@@ -2555,5 +2559,24 @@ mod tests {
             panic!("human: reparse failed at {}:{}: {}\n{out}", e.line, e.col, e.message)
         });
         assert_eq!(serde_json::to_value(&again).unwrap(), before, "AST changed:\n{out}");
+    }
+
+    /// A discriminant is part of the program: the formatter must print it
+    /// back, not drop it.
+    #[test]
+    fn enum_discriminants_round_trip_unchanged() {
+        let src = "enum Color { Red = 1, Green = 2, Blue }
+";
+        for out in [format_agent(&parse_source(src)), format_human(&parse_source(src))] {
+            assert!(out.contains("Red = 1,") && out.contains("Green = 2,"), "got: {out}");
+            assert!(out.contains("Blue"), "got: {out}");
+            let again = parse_source(&out);
+            let ItemKind::Enum(e) = &again.items[0].kind else { panic!("enum") };
+            let d: Vec<Option<i64>> = e.variants.iter().map(|v| v.discriminant).collect();
+            assert_eq!(d, vec![Some(1), Some(2), None], "got: {out}");
+            assert_eq!(format_agent(&again), format_agent(&parse_source(src)));
+        }
+        let neg = format_agent(&parse_source("enum E { A = -1 }"));
+        assert!(neg.contains("A = -1"), "got: {neg}");
     }
 }

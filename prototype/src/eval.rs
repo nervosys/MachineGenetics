@@ -398,6 +398,11 @@ impl Interp {
                     collect_methods(&mut methods, &eb.target_type, &eb.items);
                 }
                 ItemKind::Enum(ed) => {
+                    // An explicit discriminant (`A = 1`) is parsed and kept in
+                    // the AST but not used here: variants are matched by name
+                    // and arity, and nothing numbers them (no `as` cast of an
+                    // enum). MAGE_SPEC.md does not say a discriminant changes
+                    // runtime behaviour, so none does.
                     for variant in &ed.variants {
                         let arity = match &variant.kind {
                             VariantKind::Unit => 0,

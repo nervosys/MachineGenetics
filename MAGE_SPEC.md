@@ -659,8 +659,13 @@ except in the sum form, and a declaration has no trailing `;` (see `DataDef`,
 - `data N` alone declares a unit type.
 - `struct N { name: T, … }` has braces, a leading `+` makes a field public, and
   commas are optional.
-- `enum N { A, B(T), C { f: T } }` has unit, tuple and record variants. A
-  discriminant (`A = 1`) does not parse.
+- `enum N { A, B(T), C { f: T } }` has unit, tuple and record variants. A unit
+  variant may carry an explicit discriminant, `A = 1` or `A = -1`: an integer
+  literal that fits `i64`, otherwise the parser reports an error. A tuple or
+  record variant may not (`B(i32) = 2` is a parse error). The AST keeps the
+  value (`EnumVariant.discriminant`) and `--fmt` prints it back. It does not
+  yet change anything else: the evaluator and the MLIR lowering give variants
+  no number, so an explicit discriminant is recorded but not used.
 
 ```mg
 data P(x: i32, y: i32 = 0)
@@ -2661,24 +2666,21 @@ DispatchStrategy:
 
 ### 15.3 SIMD Types
 
-**Not implemented.** `f32x4` and its siblings are not type names — the
-checker reports `unresolved type`. Vectorisation is the backend's business
-today: a `tensor[f32, …]` lowers to whatever the selected target supports, and
-`@target(cpu)` / `@precision(f16)` steer it. What follows records the intent.
+**Types only.** Four shorthand names are types: `f32x4` (128-bit, 4 x f32),
+`f32x8` (256-bit, 8 x f32), `f32x16` (512-bit, 16 x f32, AVX-512) and `f64x4`
+(256-bit, 4 x f64). Each is the same type as the long form, so `f32x4` is
+`Simd[f32, 4]` and the checker treats them alike. No other width or element
+is a name: `f32x5` and `f64x2` are unresolved types, and `Simd[T, n]` spells
+any of them. The shorthand is a parse-time spelling; the formatter prints the
+long form.
 
-**Invalid MAGE today:**
+Operations on SIMD values (`a + b`, `.sum()`) are not implemented.
+Vectorisation is the backend's business today: a `tensor[f32, …]` lowers to
+whatever the selected target supports, and `@target(cpu)` / `@precision(f16)`
+steer it.
 
 ```mg
-// Built-in SIMD types
-val a: f32x4;     // 128-bit, 4 x f32
-val b: f32x8;     // 256-bit, 8 x f32
-val c: f64x4;     // 256-bit, 4 x f64
-val d: f32x16;    // 512-bit, 16 x f32 (AVX-512)
-
-// SIMD operations
-val sum = a + b;
-val product = a * b;
-val dot = (a * b).sum();
+f lanes(a: f32x4, b: f32x4) -> f32x4 = a
 ```
 
 ---

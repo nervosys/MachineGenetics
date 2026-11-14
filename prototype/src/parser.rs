@@ -183,6 +183,30 @@ struct Parser<'a> {
     blocks: HashMap<String, BlockDef>,
 }
 
+/// Value of an enum discriminant literal (`0x1F`, `1_000`, `5i32`), negated
+/// when `neg`. `None` when it does not fit `i64` (checked in `i128`, so
+/// `-9223372036854775808` is accepted) or has no digits.
+fn enum_discriminant_value(text: &str, neg: bool) -> Option<i64> {
+    let t = text.trim();
+    let (radix, digits) = if let Some(h) = t.strip_prefix("0x").or_else(|| t.strip_prefix("0X")) {
+        (16u32, h)
+    } else if let Some(o) = t.strip_prefix("0o").or_else(|| t.strip_prefix("0O")) {
+        (8, o)
+    } else if let Some(b) = t.strip_prefix("0b").or_else(|| t.strip_prefix("0B")) {
+        (2, b)
+    } else {
+        (10, t)
+    };
+    // Valid digits and `_`; this also drops a trailing type suffix.
+    let cleaned: String = digits
+        .chars()
+        .take_while(|c| c.is_digit(radix) || *c == '_')
+        .filter(|c| *c != '_')
+        .collect();
+    let n = i128::from_str_radix(&cleaned, radix).ok()?;
+    i64::try_from(if neg { -n } else { n }).ok()
+}
+
 impl<'a> Parser<'a> {
     fn new(tokens: &'a [Token]) -> Self {
         Self { tokens, pos: 0, blocks: HashMap::new() }
@@ -943,6 +967,7 @@ impl<'a> Parser<'a> {
         let mut variants = Vec::new();
         while self.peek() != TokenKind::RBrace && self.peek() != TokenKind::Eof {
             let variant_name = self.expect_ident()?;
+            let mut discriminant = None;
             let kind = match self.peek() {
                 TokenKind::LParen => {
                     self.advance();
@@ -975,6 +1000,29 @@ impl<'a> Parser<'a> {
                     self.expect(TokenKind::RBrace)?;
                     VariantKind::Struct(fields)
                 }
+                TokenKind::Assign => {
+                    // Explicit discriminant on a unit variant: `A = 1`,
+                    // `A = -1`. Carried in the AST so `--fmt` keeps it.
+                    self.advance();
+                    let neg = self.peek() == TokenKind::Minus;
+                    if neg {
+                        self.advance();
+                    }
+                    if self.peek() != TokenKind::IntLiteral {
+                        return Err(self.error("expected integer literal discriminant"));
+                    }
+                    let tok = self.current().clone();
+                    let value = enum_discriminant_value(&tok.text, neg).ok_or_else(|| {
+                        self.error(&format!(
+                            "enum discriminant `{}{}` does not fit in i64",
+                            if neg { "-" } else { "" },
+                            tok.text
+                        ))
+                    })?;
+                    self.advance();
+                    discriminant = Some(value);
+                    VariantKind::Unit
+                }
                 _ => VariantKind::Unit,
             };
             if self.peek() == TokenKind::Comma {
@@ -983,6 +1031,7 @@ impl<'a> Parser<'a> {
             variants.push(EnumVariant {
                 name: variant_name,
                 kind,
+                discriminant,
             });
         }
         self.expect(TokenKind::RBrace)?;
@@ -3161,6 +3210,22 @@ impl<'a> Parser<'a> {
                         self.expect(TokenKind::RBrack)?;
                         Ok(Type::Simd {
                             inner: Box::new(inner),
+                            width,
+                        })
+                    }
+                    // Spec SIMD shorthands: `f32x4` is `Simd[f32, 4]`, etc.
+                    "f32x4" | "f32x8" | "f32x16" | "f64x4" => {
+                        let (elem, width) = match name.as_str() {
+                            "f32x4" => ("f32", 4),
+                            "f32x8" => ("f32", 8),
+                            "f32x16" => ("f32", 16),
+                            _ => ("f64", 4),
+                        };
+                        Ok(Type::Simd {
+                            inner: Box::new(Type::Path {
+                                segments: vec![elem.to_string()],
+                                type_args: Vec::new(),
+                            }),
                             width,
                         })
                     }
@@ -6576,5 +6641,73 @@ mod tests {
         assert!(e.describe().ends_with("(in StructDef)"), "{}", e.describe());
         let e = try_parse("f g(a: ) {}\n").expect_err("missing type");
         assert_eq!(e.production, Some("Type"), "{e:?}");
+    }
+
+    // ── SIMD shorthands and enum discriminants ──────────────────────────
+
+    fn first_enum(m: &Module) -> &EnumDef {
+        m.items
+            .iter()
+            .find_map(|i| match &i.kind {
+                ItemKind::Enum(e) => Some(e),
+                _ => None,
+            })
+            .expect("an enum")
+    }
+
+    #[test]
+    fn simd_shorthands_are_simd_types_and_check() {
+        for (name, elem, width) in [("f32x4", "f32", 4), ("f32x8", "f32", 8), ("f32x16", "f32", 16), ("f64x4", "f64", 4)] {
+            let m = parse_source(&format!("f g(a: {name}) -> {name} = a"));
+            let ItemKind::Function(f) = &m.items[0].kind else { panic!("function") };
+            match &f.params[0].ty {
+                Type::Simd { inner, width: w } => {
+                    assert_eq!(*w, width, "{name}");
+                    assert!(matches!(&**inner, Type::Path { segments, .. } if segments == &[elem.to_string()]), "{name}");
+                }
+                other => panic!("{name}: {other:?}"),
+            }
+            let c = crate::types::check(&m);
+            assert!(c.diagnostics.is_empty(), "{name}: {:?}", c.diagnostics);
+            let r = crate::resolve::resolve(&m);
+            assert!(r.diagnostics.is_empty(), "{name}: {:?}", r.diagnostics);
+        }
+        // Not a shorthand: parses as an ordinary path and is unresolved.
+        let m = parse_source("f g(a: f32x5) -> f32x5 = a");
+        let r = crate::resolve::resolve(&m);
+        assert!(
+            r.diagnostics.iter().any(|d| d.message.contains("unresolved type: `f32x5`")),
+            "f32x5 must not resolve: {:?}",
+            r.diagnostics
+        );
+    }
+
+    #[test]
+    fn enum_discriminants_are_carried_in_the_ast() {
+        let m = parse_source("enum E { A = 1, B = -1, C, D = 0x10, F = 1_000 }");
+        let got: Vec<Option<i64>> = first_enum(&m).variants.iter().map(|v| v.discriminant).collect();
+        assert_eq!(got, vec![Some(1), Some(-1), None, Some(16), Some(1000)]);
+        // Absent from the serialized AST when there is none.
+        let plain = parse_source("enum E { A, B }");
+        assert!(!serde_json::to_string(&plain).unwrap().contains("discriminant"));
+        let m = parse_source("enum E { A = -9223372036854775808, B = 9223372036854775807 }");
+        let got: Vec<Option<i64>> = first_enum(&m).variants.iter().map(|v| v.discriminant).collect();
+        assert_eq!(got, vec![Some(i64::MIN), Some(i64::MAX)]);
+    }
+
+    #[test]
+    fn enum_discriminant_on_a_field_variant_is_rejected() {
+        assert!(try_parse("enum E { A, B(i32) = 2 }").is_err());
+        assert!(try_parse("enum E { B { x: i32 } = 2 }").is_err());
+        assert!(try_parse("enum E { A = }").is_err());
+        assert!(try_parse("enum E { A = x }").is_err());
+    }
+
+    #[test]
+    fn enum_discriminant_out_of_range_is_a_diagnostic() {
+        for src in ["enum E { A = 9223372036854775808 }", "enum E { A = -9223372036854775809 }", "enum E { A = 99999999999999999999999 }"] {
+            let e = try_parse(src).expect_err(src);
+            assert!(e.message.contains("does not fit in i64"), "{src}: {}", e.message);
+        }
     }
 }
