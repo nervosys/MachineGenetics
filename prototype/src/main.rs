@@ -3316,6 +3316,16 @@ fn run_check(source: &str, filename: &str, do_elision: bool, legacy: bool, token
         }
     }
 
+    // Phase 4.6: Ownership and borrowing (E0382, E0502). Pure and per
+    // function, so it runs on the module the type checker just accepted.
+    let borrow_diags = borrowck::check_module(&module);
+    for diag in &borrow_diags {
+        eprintln!("{filename}: {diag}");
+        if diag.severity == hir::Severity::Error {
+            total_errors += 1;
+        }
+    }
+
     // Phase 5: Effect inference.
     let effect_infer = effects::infer_effects(&module);
     for diag in &effect_infer.diagnostics {
@@ -3407,6 +3417,7 @@ fn run_check(source: &str, filename: &str, do_elision: bool, legacy: bool, token
     let mut all_diagnostics: Vec<hir::Diagnostic> = Vec::new();
     all_diagnostics.extend(resolver.diagnostics.iter().cloned());
     all_diagnostics.extend(checker.diagnostics.iter().cloned());
+    all_diagnostics.extend(borrow_diags.iter().cloned());
     all_diagnostics.extend(effect_infer.diagnostics.iter().cloned());
     all_diagnostics.extend(grad_diags.iter().cloned());
     all_diagnostics.extend(spec_diags.iter().cloned());
@@ -3583,6 +3594,17 @@ fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool, to
         }
     }
     eprintln!("  ✓ {} type diagnostics", checker.diagnostics.len());
+
+    // ── Phase 4.2: Ownership and borrowing (E0382, E0502) ────────────
+    eprintln!("▸ Phase 4.2: Ownership and borrow checking");
+    let borrow_diags = borrowck::check_module(&module);
+    for diag in &borrow_diags {
+        eprintln!("  {filename}: {diag}");
+        if diag.severity == hir::Severity::Error {
+            total_errors += 1;
+        }
+    }
+    eprintln!("  ✓ {} ownership diagnostics", borrow_diags.len());
 
     // ── Phase 4.5: AI subsystem compilation ──────────────────────────
     eprintln!("▸ Phase 4.5: AI subsystem compilation");
@@ -3768,6 +3790,7 @@ fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool, to
     let mut all_diags: Vec<hir::Diagnostic> = Vec::new();
     all_diags.extend(resolver.diagnostics.iter().cloned());
     all_diags.extend(checker.diagnostics.iter().cloned());
+    all_diags.extend(borrow_diags.iter().cloned());
     all_diags.extend(effect_infer.diagnostics.iter().cloned());
 
     let healed = heal::heal(&all_diags);

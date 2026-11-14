@@ -31,6 +31,7 @@ kb Diagnostics {
     fact instance_of("verify", SymbolicComponent);
     fact instance_of("params", SymbolicComponent);
     fact instance_of("logic", SymbolicComponent);
+    fact instance_of("borrowck", SymbolicComponent);
 
     // ── Codes ───────────────────────────────────────────────────────────
     fact instance_of("E0000", Diagnostic);
@@ -44,17 +45,22 @@ kb Diagnostics {
     fact enforced_by("E0001", "types");
     fact tested_by("E0001", "syntax_error");
 
-    // Assigned to an uncategorised diagnostic by `heal::infer_category`, from
-    // its message text. A pass that detected a borrow conflict or a use after
-    // move would emit these; none does.
+    // Emitted by `borrowck`, a per-function pass after the type checker. `heal`
+    // also assigns these codes to an uncategorised diagnostic from its message
+    // text; that path is kept (and tested) for diagnostics that arrive as bare
+    // strings.
     fact instance_of("E0382", Diagnostic);
     fact diagnostic_row("E0382", "Error", "UseAfterMove", "Use after move");
-    fact gap("E0382", "no pass detects a use after move: only heal's message classifier assigns this code");
+    fact enforced_by("E0382", "borrowck");
+    fact gap("E0382", "tracks whole locals only, and only for a type known not to be Copy: no partial moves, and a method receiver, `for`, or `match` scrutinee is never a move");
+    fact tested_by("E0382", "use_after_move");
     fact tested_by("E0382", "use_after_move_classified");
 
     fact instance_of("E0502", Diagnostic);
     fact diagnostic_row("E0502", "Error", "BorrowConflict", "Borrow conflict");
-    fact gap("E0502", "no pass detects a borrow conflict: only heal's message classifier assigns this code");
+    fact enforced_by("E0502", "borrowck");
+    fact gap("E0502", "loans come only from `let r = &place`; references are not followed through calls, returns, fields or collections, and a method call's receiver is never a conflict");
+    fact tested_by("E0502", "borrow_conflict");
     fact tested_by("E0502", "borrow_conflict_classified");
 
     fact instance_of("E0308", Diagnostic);

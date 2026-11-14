@@ -48,7 +48,7 @@ MAGE (Machine Genetics) is a systems programming language designed for the age o
 
 2. **Dual encoding.** Human mode uses clear, modern keywords (`val`, `var`, `data`, `extend`, `guard`, `defer`) that improve on Rust's conventions while remaining instantly readable. Agent mode compresses every concept into minimal symbols — Greek letters for AI constructs, mathematical operators for tensor algebra — achieving the density of hexadecimal applied to intelligence.
 
-3. **Safety without ceremony.** Ownership, borrowing, and lifetimes are designed to be enforced and fully inferred, and are not enforced yet: no pass emits a use-after-move (E0382) or borrow-conflict (E0502) error (see §13). No lifetime annotations, no `PhantomData`, no `Pin`. The Safety Knowledge Base (SKB) encodes 255 rules across eight databases (*designed, not built: no compiler stage consults them — see §7.3*). In agent mode, **all safety constructs are handled by the compiler and SKB** — `unsafe` blocks, lifetime annotations, `Send`/`Sync` bounds, and `Pin<T>` are entirely elided from the language surface, maximizing token efficiency while the compiler is designed to maintain full safety guarantees (§13 records what is enforced today).
+3. **Safety without ceremony.** Ownership, borrowing, and lifetimes are designed to be enforced and fully inferred, and are only partly enforced: a per-function pass reports a use after move (E0382) and a borrow conflict (E0502) where the program evidences one (see §13). No lifetime annotations, no `PhantomData`, no `Pin`. The Safety Knowledge Base (SKB) encodes 255 rules across eight databases (*designed, not built: no compiler stage consults them — see §7.3*). In agent mode, **all safety constructs are handled by the compiler and SKB** — `unsafe` blocks, lifetime annotations, `Send`/`Sync` bounds, and `Pin<T>` are entirely elided from the language surface, maximizing token efficiency while the compiler is designed to maintain full safety guarantees (§13 records what is enforced today).
 
 4. **Effects make side effects visible.** Every function declares its effects (`/ io`, `/ gpu`, `/ llm`). Pure functions have no annotation. Algebraic effect handlers provide structured concurrency and composable I/O.
 
@@ -2534,13 +2534,19 @@ Contracts are verified via:
 
 ## 13. Ownership and Borrowing
 
-**Status: design, not enforcement.** There is no borrow checker. Today the type
-checker distinguishes `&T` from `&!T`: a borrow-mode mismatch is an error, and
-the expressions `&x` and `&!x` have those types. No move rule and no aliasing
-rule is enforced, so a use after a move is accepted, and the evaluator has value
-semantics. The rules below are the intended semantics; rule 4 (shared XOR
-exclusive aliasing), rule 7's lifetime encoding, and the [Own-Valid] and
-[Own-Move] judgments are **not enforced**.
+**Status: partly enforced.** `prototype/src/borrowck.rs` is a per-function,
+span-less pass after the type checker. It reports E0382 for a use of a local
+after it was moved, and E0502 when a borrow made by `let r = &p` / `let r = &!p`
+conflicts with another borrow, a move or an assignment of `p` before `r`'s last
+use. It reports only on evidence (a type known not to be `Copy`, a callee known
+to consume its argument) and tracks whole locals, not partial moves, and
+references only through `let`, not through calls, returns or fields. By default
+a call moves an argument only when the callee's body really consumes that
+parameter and storing a value in a literal does not move it, because the
+evaluator has value semantics and the example corpus relies on it; Rust's
+stricter rule is `borrowck::Policy::STRICT`. Rule 7's lifetime encoding is
+**not enforced**, and neither are the [Own-Valid] and [Own-Move] judgments as
+stated below beyond what that pass covers.
 
 MAGE is designed to preserve Rust's ownership and borrowing semantics with full inference:
 
