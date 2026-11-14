@@ -10,6 +10,8 @@
 //!                                                     │                      core, shape, ai, and any
 //!                                                     │                      pass you register)
 //!                                                     ├── ModulePass(f,p)   (passes you register)
+//!                                                     ├── BorrowSummary(f)  whole module (cut off on its fingerprint)
+//!                                                     ├── BorrowItem(f,i)   per item, reads BorrowSummary(f) ── Borrowck(f)
 //!                                                     ├── Types(f)          whole module
 //!                                                     ├── Effects(f)        whole module
 //!                                                     ├── Diff(f)           whole module (reads Effects)
@@ -36,6 +38,15 @@
 //!   checking `f` can constrain what `g` is, and diagnostics print variable
 //!   numbers that depend on how many were minted earlier. Splitting it would
 //!   mean rewriting the checker.
+//! * `BorrowSummary` — the borrow checker's module facts (`borrowck::ModuleInfo`):
+//!   which user types are `Copy`, every signature, and which parameters each
+//!   function's body consumes (a fixpoint through callee bodies). Building it
+//!   reads every body, so it re-runs on any AST change, but its *answer* is
+//!   small and comparable: an edit that moves no function's consumed-parameter
+//!   set and no type fact leaves the fingerprint alone, and the per-item check
+//!   (`BorrowItem`, the `pass/borrowck` row) is cut off for every other item.
+//!   The check of one function reads its own body plus that summary, so it is
+//!   a pure function of the two.
 //! * `Effects` — a call graph with a transitive fixpoint: a function's
 //!   inferred effects are those of everything it reaches.
 //! * `Diff` — the same call-graph shape, plus the module's net names.
@@ -59,6 +70,7 @@
 use super::disk::{DiskCache, build_id};
 use super::engine::{Db, Domain, Hash32, QueryError, QueryStats, Stats, digest, hex};
 use crate::ast::{self, ItemKind};
+use crate::borrowck::{self, ModuleInfo};
 use crate::check::{Checked, Finding};
 use crate::effects::{self, EffectInfer};
 use crate::hir::{Diagnostic, DiagnosticCategory, EffectSet, Severity};
@@ -342,6 +354,9 @@ pub struct PipelineReport {
     pub resolve_diags: Vec<String>,
     pub symbols: usize,
     pub type_diags: Vec<String>,
+    /// Ownership and borrow diagnostics (E0382, E0502).
+    #[serde(default)]
+    pub borrow_diags: Vec<String>,
     pub ai_info: Vec<String>,
     pub ai_diags: Vec<String>,
     pub ai_errors: usize,
@@ -576,6 +591,12 @@ pub enum Key {
     // Analyses.
     ItemPass(File, usize, ItemId),
     ModulePass(File, usize),
+    /// The borrow checker's module summary.
+    BorrowSummary(File),
+    /// The borrow check of one item, against the summary.
+    BorrowItem(File, ItemId),
+    /// Every item's borrow diagnostics, in item order.
+    Borrowck(File),
     Types(File),
     Effects(File),
     Diff(File),
@@ -600,6 +621,7 @@ pub enum Val {
     Names(Arc<NamesOut>),
     Pass(Arc<PassOut>),
     Resolve(Arc<ResolveOut>),
+    Summary(Arc<ModuleInfo>),
     Effects(Arc<EffectsOut>),
     Text(Arc<String>),
     Diag(Arc<DiagOut>),
@@ -634,6 +656,9 @@ impl Domain for Mage {
             // pass has its own row in the statistics.
             Key::ItemPass(_, p, _) => db.ctx.items[*p].stat,
             Key::ModulePass(_, p) => db.ctx.modules[*p].stat,
+            Key::BorrowSummary(_) => "borrowck/summary",
+            Key::BorrowItem(..) => "pass/borrowck",
+            Key::Borrowck(_) => "borrowck",
             Key::Types(_) => "types",
             Key::Effects(_) => "effects",
             Key::Diff(_) => "diff",
@@ -654,7 +679,12 @@ impl Domain for Mage {
     }
 
     fn value_hash(_: &Key, val: &Val) -> Hash32 {
-        sha_debug(val)
+        match val {
+            // `ModuleInfo` keeps its facts in hash maps, whose `Debug` order
+            // differs from one map to the next: fingerprint a canonical form.
+            Val::Summary(info) => summary_fingerprint(info),
+            _ => sha_debug(val),
+        }
     }
 
     fn address(db: &Db<Mage>, key: &Key) -> Result<Option<Hash32>, QueryError> {
@@ -671,6 +701,43 @@ impl Domain for Mage {
 }
 
 type M = Db<Mage>;
+
+/// SHA-256 of `info` as JSON with every object's keys sorted.
+fn summary_fingerprint(info: &ModuleInfo) -> Hash32 {
+    fn canon(v: &serde_json::Value, out: &mut String) {
+        use serde_json::Value;
+        match v {
+            Value::Object(m) => {
+                let mut keys: Vec<&String> = m.keys().collect();
+                keys.sort();
+                out.push('{');
+                for k in keys {
+                    out.push_str(&serde_json::to_string(k).unwrap_or_default());
+                    out.push(':');
+                    canon(&m[k], out);
+                    out.push(',');
+                }
+                out.push('}');
+            }
+            Value::Array(a) => {
+                out.push('[');
+                for x in a {
+                    canon(x, out);
+                    out.push(',');
+                }
+                out.push(']');
+            }
+            other => out.push_str(&other.to_string()),
+        }
+    }
+    let mut text = String::new();
+    canon(&serde_json::to_value(info).unwrap_or(serde_json::Value::Null), &mut text);
+    digest(&[text.as_bytes()])
+}
+
+/// Part of the cache address of the borrow check: bump it when `borrowck`'s
+/// behaviour changes and the crate version does not.
+const BORROWCK_VERSION: &str = "1";
 
 fn mismatch(key: &Key, got: &Val) -> QueryError {
     let name = format!("{got:?}");
@@ -830,6 +897,26 @@ fn exec(db: &M, key: &Key) -> Result<Val, QueryError> {
                 None => empty_pass(),
             }
         }
+        Key::BorrowSummary(f) => {
+            let o = outcome(db, *f)?;
+            match &o.module {
+                Some(m) => Val::Summary(Arc::new(ModuleInfo::new(m))),
+                None => Val::Summary(Arc::new(ModuleInfo::default())),
+            }
+        }
+        Key::BorrowItem(f, id) => {
+            let info = fetch!(db, Key::BorrowSummary(*f), Summary);
+            let item = fetch!(db, Key::Item(*f, id.clone()), Item);
+            Val::Pass(Arc::new(PassOut::diags(borrowck::check_item(&info, &item))))
+        }
+        Key::Borrowck(f) => {
+            let items = fetch!(db, Key::Items(*f), Items);
+            let mut diags = Vec::new();
+            for i in items.iter() {
+                diags.extend(fetch!(db, Key::BorrowItem(*f, i.id.clone()), Pass).diags.iter().cloned());
+            }
+            Val::Pass(Arc::new(PassOut::diags(diags)))
+        }
         Key::Types(f) => {
             let o = outcome(db, *f)?;
             match &o.module {
@@ -878,9 +965,11 @@ fn exec(db: &M, key: &Key) -> Result<Val, QueryError> {
         Key::Heal(f) => {
             let resolve = fetch!(db, Key::Resolve(*f), Resolve);
             let types = fetch!(db, Key::Types(*f), Pass);
+            let borrow = fetch!(db, Key::Borrowck(*f), Pass);
             let eff = fetch!(db, Key::Effects(*f), Effects);
             let mut all = resolve.diagnostics.clone();
             all.extend(types.diags.iter().cloned());
+            all.extend(borrow.diags.iter().cloned());
             all.extend(eff.diagnostics.iter().cloned());
             Val::Heal(Arc::new(heal::heal(&all)))
         }
@@ -915,6 +1004,7 @@ fn exec_diagnostics(db: &M, f: File) -> Result<Val, QueryError> {
     let mut all: Vec<Diagnostic> = Vec::new();
     all.extend(fetch!(db, Key::Resolve(f), Resolve).diagnostics.iter().cloned());
     all.extend(fetch!(db, Key::Types(f), Pass).diags.iter().cloned());
+    all.extend(fetch!(db, Key::Borrowck(f), Pass).diags.iter().cloned());
     let eff = fetch!(db, Key::Effects(f), Effects);
     all.extend(eff.diagnostics.iter().cloned());
     all.extend(fetch!(db, Key::Diff(f), Pass).diags.iter().cloned());
@@ -1030,6 +1120,10 @@ fn exec_report(db: &M, f: File) -> Result<Val, QueryError> {
     r.type_diags = types.diags.iter().map(|d| d.to_string()).collect();
     total += count_errors(&types.diags);
 
+    let borrow = fetch!(db, Key::Borrowck(f), Pass);
+    r.borrow_diags = borrow.diags.iter().map(|d| d.to_string()).collect();
+    total += count_errors(&borrow.diags);
+
     // Phase 4.5: nets, then trains, then kbs, as `run_pipeline` walks them.
     let ai = db.ctx.item_index("ai");
     for kind in ["Net", "Train", "Kb"] {
@@ -1124,6 +1218,10 @@ pub fn reference_report(source: &str, s: Settings) -> PipelineReport {
     r.type_diags = checker.diagnostics.iter().map(|d| d.to_string()).collect();
     total += count_errors(&checker.diagnostics);
 
+    let borrow_diags = borrowck::check_module(&module);
+    r.borrow_diags = borrow_diags.iter().map(|d| d.to_string()).collect();
+    total += count_errors(&borrow_diags);
+
     for kind in ["Net", "Train", "Kb"] {
         for item in module.items.iter().filter(|i| kind_name(&i.kind) == kind) {
             let p = pass_ai(item);
@@ -1162,6 +1260,7 @@ pub fn reference_report(source: &str, s: Settings) -> PipelineReport {
 
     let mut all: Vec<Diagnostic> = resolver.diagnostics.clone();
     all.extend(checker.diagnostics.iter().cloned());
+    all.extend(borrow_diags.iter().cloned());
     all.extend(eff.diagnostics.iter().cloned());
     let healed = heal::heal(&all);
     r.heal_diagnostics = healed.len();
@@ -1206,6 +1305,23 @@ fn addr(db: &M, key: &Key) -> Result<Option<Hash32>, QueryError> {
             let def = &db.ctx.modules[*p];
             h_of(&[&db.get_hash(&Key::Elided(*f))?, def.name.as_bytes(), def.version.as_bytes()])
         }
+        Key::BorrowSummary(f) => h_of(&[&db.get_hash(&Key::Elided(*f))?, b"borrowck/summary", BORROWCK_VERSION.as_bytes()]),
+        Key::BorrowItem(f, id) => {
+            let ih = item_hash(db, *f, id)?;
+            h_of(&[ih.as_bytes(), &db.get_hash(&Key::BorrowSummary(*f))?, b"pass/borrowck", BORROWCK_VERSION.as_bytes()])
+        }
+        Key::Borrowck(f) => {
+            let items = match db.get(&Key::Items(*f))? {
+                Val::Items(i) => i,
+                other => return Err(mismatch(key, &other)),
+            };
+            let mut parts: Vec<Hash32> = vec![db.get_hash(&Key::Items(*f))?];
+            for i in items.iter() {
+                parts.push(db.get_hash(&Key::BorrowItem(*f, i.id.clone()))?);
+            }
+            let refs: Vec<&[u8]> = parts.iter().map(|h| h.as_slice()).collect();
+            h_of(&refs)
+        }
         Key::Diff(f) | Key::Mlir(f) => {
             h_of(&[&db.get_hash(&Key::Elided(*f))?, &db.get_hash(&Key::Effects(*f))?])
         }
@@ -1229,7 +1345,7 @@ fn addr(db: &M, key: &Key) -> Result<Option<Hash32>, QueryError> {
                 other => return Err(mismatch(key, &other)),
             };
             let mut parts: Vec<Hash32> = vec![db.get_hash(&Key::Elided(*f))?, db.get_hash(&Key::Items(*f))?];
-            for k in [Key::Resolve(*f), Key::Types(*f), Key::Effects(*f), Key::Diff(*f)] {
+            for k in [Key::Resolve(*f), Key::Types(*f), Key::Borrowck(*f), Key::Effects(*f), Key::Diff(*f)] {
                 parts.push(db.get_hash(&k)?);
             }
             for k in pass_keys(db, *f, &items, st.core) {
@@ -1267,6 +1383,7 @@ fn addr(db: &M, key: &Key) -> Result<Option<Hash32>, QueryError> {
         Key::Heal(f) => h_of(&[
             &db.get_hash(&Key::Resolve(*f))?,
             &db.get_hash(&Key::Types(*f))?,
+            &db.get_hash(&Key::Borrowck(*f))?,
             &db.get_hash(&Key::Effects(*f))?,
         ]),
     }))
@@ -1353,10 +1470,11 @@ fn encode(key: &Key, val: &Val) -> Option<String> {
         (Key::Parsed(_) | Key::Elided(_), Val::Outcome(v)) => encode_outcome(v),
         (Key::Items(_), Val::Items(v)) => enc(&**v),
         (Key::Names(_), Val::Names(v)) => enc(&**v),
-        (Key::ResolveItem(..) | Key::ResolveContracts(_) | Key::ItemPass(..) | Key::ModulePass(..) | Key::Types(_) | Key::Diff(_), Val::Pass(v)) => {
+        (Key::ResolveItem(..) | Key::ResolveContracts(_) | Key::ItemPass(..) | Key::ModulePass(..) | Key::BorrowItem(..) | Key::Borrowck(_) | Key::Types(_) | Key::Diff(_), Val::Pass(v)) => {
             enc(&**v)
         }
         (Key::Resolve(_), Val::Resolve(v)) => enc(&**v),
+        (Key::BorrowSummary(_), Val::Summary(v)) => enc(&**v),
         (Key::Effects(_), Val::Effects(v)) => enc(&**v),
         (Key::Mlir(_), Val::Text(v)) => enc(&**v),
         (Key::Diagnostics(_), Val::Diag(v)) => enc(&**v),
@@ -1373,10 +1491,11 @@ fn decode(key: &Key, p: &str) -> Option<Val> {
         Key::Parsed(_) | Key::Elided(_) => Val::Outcome(Arc::new(decode_outcome(p)?)),
         Key::Items(_) => Val::Items(Arc::new(dec(p)?)),
         Key::Names(_) => Val::Names(Arc::new(dec(p)?)),
-        Key::ResolveItem(..) | Key::ResolveContracts(_) | Key::ItemPass(..) | Key::ModulePass(..) | Key::Types(_) | Key::Diff(_) => {
+        Key::ResolveItem(..) | Key::ResolveContracts(_) | Key::ItemPass(..) | Key::ModulePass(..) | Key::BorrowItem(..) | Key::Borrowck(_) | Key::Types(_) | Key::Diff(_) => {
             Val::Pass(Arc::new(dec(p)?))
         }
         Key::Resolve(_) => Val::Resolve(Arc::new(dec(p)?)),
+        Key::BorrowSummary(_) => Val::Summary(Arc::new(dec(p)?)),
         Key::Effects(_) => Val::Effects(Arc::new(dec(p)?)),
         Key::Mlir(_) => Val::Text(Arc::new(dec(p)?)),
         Key::Diagnostics(_) => Val::Diag(Arc::new(dec(p)?)),
@@ -1514,6 +1633,12 @@ impl Compiler {
 
     pub fn type_diagnostics(&self, f: File) -> Result<Arc<PassOut>, QueryError> {
         Ok(fetch!(self.db, Key::Types(f), Pass))
+    }
+
+    /// The borrow checker's diagnostics for the whole module, assembled from the
+    /// per-item checks.
+    pub fn borrowck(&self, f: File) -> Result<Arc<PassOut>, QueryError> {
+        Ok(fetch!(self.db, Key::Borrowck(f), Pass))
     }
 
     pub fn effects(&self, f: File) -> Result<Arc<EffectsOut>, QueryError> {

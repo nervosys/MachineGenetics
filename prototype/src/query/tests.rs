@@ -18,7 +18,7 @@ f triple(x: i32) -> i32 { x * 3 }
 f main() -> i32 { add(double(1), triple(2)) }
 ";
 
-const ITEM_ROWS: [&str; 5] = ["resolve_item", "pass/verify", "pass/logic", "pass/contract", "pass/shape"];
+const ITEM_ROWS: [&str; 6] = ["resolve_item", "pass/verify", "pass/logic", "pass/contract", "pass/shape", "pass/borrowck"];
 
 fn run(c: &Compiler, f: File) {
     c.compile(f).expect("compiles");
@@ -89,6 +89,59 @@ fn editing_one_function_body_reruns_only_that_functions_queries() {
     // The answer is still right.
     let got = c.checked(f).unwrap();
     assert_eq!(format!("{:?}", got.findings), format!("{:?}", check_source(&edited, true, false).findings));
+}
+
+const OWNERSHIP: &str = "\
+f take(x: s) -> s { x }
+f eat(x: s) -> s { take(x) }
+f peek(x: s) { }
+f moved(a: s) {
+take(a)
+take(a)
+}
+f via_callee(a: s) {
+eat(a)
+peek(a)
+}
+f other(n: i32) -> i32 { n + 1 }
+";
+
+#[test]
+fn editing_one_function_body_reruns_the_borrow_check_for_that_item_only() {
+    let c = Compiler::in_memory();
+    let f = c.set_source("a.mg", OWNERSHIP);
+    run(&c, f);
+    let base = c.checked(f).unwrap();
+    let codes: Vec<&str> = base.findings.iter().map(|x| x.code.as_str()).collect();
+    assert_eq!(codes.iter().filter(|c| **c == "E0382").count(), 2, "{:?}", base.findings);
+    c.reset_stats();
+
+    // `other`'s body changes; nothing it says about ownership does.
+    let edited = OWNERSHIP.replace("n + 1", "n + 2");
+    c.set_source("a.mg", &edited);
+    run(&c, f);
+    let s = c.stats();
+    assert_eq!(executed(&s, "borrowck/summary"), 1, "the summary is rebuilt: any body may have changed");
+    assert_eq!(s.queries["borrowck/summary"].early_cutoffs, 1, "{:?}", s.queries["borrowck/summary"]);
+    assert_eq!(ran(&s, "pass/borrowck").len(), 1, "{:?}", ran(&s, "pass/borrowck"));
+    assert!(ran(&s, "pass/borrowck")[0].contains("\"other\""), "{:?}", ran(&s, "pass/borrowck"));
+    assert_eq!(format!("{:?}", c.checked(f).unwrap().findings), format!("{:?}", check_source(&edited, true, false).findings));
+
+    // An edit that changes which parameters `eat` consumes moves the summary,
+    // so every check, `via_callee` (which calls it) included, re-runs although its
+    // text is the same, and the answer follows: `eat` no longer consumes, so E0382 goes.
+    c.reset_stats();
+    let edited2 = edited.replace("f eat(x: s) -> s { take(x) }", "f eat(x: s) -> s { \"k\" }");
+    c.set_source("a.mg", &edited2);
+    run(&c, f);
+    let s = c.stats();
+    let keys = ran(&s, "pass/borrowck");
+    assert!(keys.iter().any(|k| k.contains("\"eat\"")) && keys.iter().any(|k| k.contains("\"via_callee\"")), "{keys:?}");
+    // (The summary itself changed, so every item's check re-ran: the price of
+    // one summary rather than a dependency per callee.)
+    let got = c.checked(f).unwrap();
+    assert_eq!(got.findings.iter().filter(|x| x.code == "E0382").count(), 1, "{:?}", got.findings);
+    assert_eq!(format!("{:?}", got.findings), format!("{:?}", check_source(&edited2, true, false).findings));
 }
 
 #[test]

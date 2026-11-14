@@ -86,6 +86,9 @@ fn synthetic() -> Vec<(String, String)> {
         ("generics", "f id[T](v: T) -> T { v }\nf pair() -> i32 { id(1) }\n"),
         ("grad", "f p(w: f64) -> f64 { grad(w |> abs, w) }\nf q(w: f64) -> f64 { grad(w * w, w) }\n"),
         ("train_missing_net", "train T { net: Nope, }\n"),
+        // A use after a move and a borrow conflict, one of them through a callee
+        // whose body (not its signature) is what makes the call consume.
+        ("borrowck", "f take(x: s) -> s { x }\nf peek(x: &s) { }\nf two(a: &!s, b: &s) { }\nf eat(x: s) -> s { take(x) }\nf moved(a: s) {\ntake(a)\ntake(a)\n}\nf via_callee(a: s) {\neat(a)\npeek(a)\n}\nf conflict(a: s) {\nv r = &a\nv w = &!a\npeek(r)\n}\nf conflict_args(a: s) { two(&!a, &a) }\nf fine(a: s) { peek(a)\ntake(a) }\n"),
     ];
     s.iter().map(|(n, t)| (format!("synthetic/{n}"), (*t).to_string())).collect()
 }
@@ -160,6 +163,9 @@ fn assert_equivalent(c: &Compiler, f: File, name: &str, src: &str, s: Settings) 
 
         let mut all = r.diagnostics.clone();
         all.extend(t.diagnostics.iter().cloned());
+        let b = mage_prototype::borrowck::check_module(&elided);
+        assert_eq!(dbg(&c.borrowck(f).unwrap().diags), dbg(&b), "{ctx}: borrowck diagnostics");
+        all.extend(b.iter().cloned());
         all.extend(e.diagnostics.iter().cloned());
         assert_eq!(dbg(&*c.heal(f).unwrap()), dbg(&mage_prototype::heal::heal(&all)), "{ctx}: heal");
     }

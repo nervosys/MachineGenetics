@@ -4,7 +4,7 @@
     "ast_kinds": 20,
     "bench_backends": 4,
     "ci_floors": 6,
-    "cli_flags": 50,
+    "cli_flags": 52,
     "docs": 7,
     "effects": 24,
     "examples": 10,

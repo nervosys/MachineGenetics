@@ -3254,7 +3254,8 @@ fn run_parse(source: &str, filename: &str, do_elision: bool, legacy: bool, token
 /// message) and the schema is stable, so identical input yields byte-identical
 /// output and an agent parses errors structurally — `{code, severity, line,
 /// col, category, message, fix}` — instead of scraping human prose. Every
-/// diagnostic carries a stable error code and an actionable `fix` hint.
+/// diagnostic carries a stable error code and an actionable `fix` hint. `counts`
+/// (`total`, `error`, `warning`, `note`, `by_code`) tallies them.
 fn run_check_json(source: &str, filename: &str, do_elision: bool, legacy: bool, core: bool, compact: bool) {
     let source = if legacy { legacy::translate(source) } else { source.to_string() };
 
@@ -3276,8 +3277,23 @@ fn run_check_json(source: &str, filename: &str, do_elision: bool, legacy: bool, 
         .collect();
 
     let error_count = diags.iter().filter(|d| d["severity"] == "error").count();
+    // Additive tally for evaluators: how many findings of each severity and
+    // of each code, so a driver reads counts instead of walking `diagnostics`.
+    let mut by_code: std::collections::BTreeMap<String, usize> = std::collections::BTreeMap::new();
+    for f in &checked.findings {
+        *by_code.entry(f.code.clone()).or_insert(0) += 1;
+    }
+    let sev = |name: &str| diags.iter().filter(|d| d["severity"] == name).count();
+    let counts = serde_json::json!({
+        "total": diags.len(),
+        "error": error_count,
+        "warning": sev("warning"),
+        "note": sev("note"),
+        "by_code": by_code,
+    });
     let out = serde_json::json!({
         "ok": error_count == 0,
+        "counts": counts,
         "file": filename,
         "error_count": error_count,
         "diagnostics": diags,
