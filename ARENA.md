@@ -1668,6 +1668,13 @@ bits/byte cannot be lined up across sets. Only quantities inside a run, and runs
 on the same tree, are comparable. **Future comparisons should run on frozen copies
 of the corpora** (files copied out of the tree once, by content hash), not on
 files the work under test also edits.
+`scripts/freeze-corpora.sh --dir DIR FILE[,FILE...]` makes those copies: each
+file goes to `DIR/<sha256 prefix>/<name>`, read-only, and the script prints the
+comma-joined paths for `--heldout`, `--validation`, `--dev-text` or
+`--train-text`. It refuses a `DIR` inside the repository and a frozen copy whose
+bytes no longer match its hash. The arena's disjointness checks apply to the
+copies as to the originals (a file frozen into both `--heldout` and
+`--validation` is refused).
 
 **Same-tree baseline (`rb-*`, `--measure 1`, no `--predict`, otherwise the same
 command).** Seeds 1 and 5 completed; seed 3 was killed by the machine's memory
