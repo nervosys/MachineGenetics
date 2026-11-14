@@ -14,8 +14,8 @@ came from, as `arena evidence <log> [--seq A..B]` prints them:
 last line, which pins every entry before it, so a log regenerated from the command
 is the one cited exactly when its head matches. Logs are not committed.
 
-> **Re-verified 2026-09-25** — all six crates tested: prototype **1,814**, rmi
-> **1,384**, ribosome **168**, germline **229**, forge **65**, arena **335** = **3,995 passing,
+> **Re-verified 2026-09-25** — all six crates tested: prototype **1,821**, rmi
+> **1,384**, ribosome **168**, germline **229**, forge **65**, arena **335** = **4,002 passing,
 > 0 failing, 0 warnings**.
 >
 > *One figure below had not regressed — it had been superseded.* The ABL
@@ -84,7 +84,7 @@ is the one cited exactly when its head matches. Logs are not committed.
 ### Test suites (all green)
 | Suite | Tests | Cmd |
 |---|---|---|
-| MAGE prototype | **1814 pass** (+3 ignored perf harnesses) | `cargo test` |
+| MAGE prototype | **1821 pass** (+3 ignored perf harnesses) | `cargo test` |
 | rmi (`cpu`) | **1384 pass** | `cargo test --no-default-features --features cpu` |
 | ribosome (build engine) | **168 pass** | `cargo test --manifest-path ribosome/Cargo.toml` |
 | germline (RSI control plane) | **229 pass** | `cargo test --manifest-path germline/Cargo.toml` |
@@ -199,7 +199,7 @@ Recursive transitive closure / fixpoint (now ≈ output-size, was cubic):
 **Complexity:** join went from ~O(N²) → ~O(N) (the `arg0` index makes a chain
 join an O(matches) lookup); the fixpoint went from ~O(N³) → ~O(output) (semi-naive
 derives each fact ~once). Correctness unchanged (the suite was 984 tests green when this
-was measured, and 1,814 today; the evaluator still terminates at the least
+was measured, and 1,821 today; the evaluator still terminates at the least
 fixpoint). This was the one perf gap the prior report flagged — now fixed.
 
 ### CUDA backend — CPU vs GPU (measured 2026-08-05)
@@ -271,6 +271,13 @@ source bytes  1.055 (MAGE 5.5% MORE)   dense  0.933 (6.7% fewer)   native lexers
 Confirms the measured thesis: **text token efficiency is a floor** (≈ Rust), not a
 win. The compaction lives in the binary IR at rest (≈26 B/layer), not in source.
 
+**Real BPE tokens, 2026-11-13** (`token-bench --bpe`, the crate's own tokenizer and its
+shipped `mage-bpe-4096` vocab): MAGE 20,546 vs Rust 18,932, **ratio 1.085 (MAGE 8.5%
+MORE)**. The vocab was trained on `.mg` files and so favours MAGE syntax, which makes
+this an optimistic figure for MAGE, not a neutral one; a neutral vocab is expected to
+score MAGE no better. It agrees with the byte figure above: on real BPE, MAGE source
+is not more token-efficient than Rust on this corpus.
+
 ### Determinism (verified)
 ABL artifacts are **byte-stable**: same spec → byte-identical `.abl` across builds;
 `build→describe` content hashes match; the collaborative multi-agent run is
@@ -287,7 +294,7 @@ run-to-run identical. → content-hashable cache keys, meaningful diffs.
 - **The kb Datalog evaluator was the one perf gap — now FIXED:** rewritten as
   indexed semi-naive (interning + `(pred,arg0)` index + delta evaluation), giving
   up to **~1430×** on transitive closure and ~O(N)/~O(N²) instead of ~O(N²)/~O(N³),
-  with identical results (984 tests green at the time; 1,814 now).
+  with identical results (984 tests green at the time; 1,821 now).
 - **Per-invocation latency is startup-bound (~30 ms)**, not compute-bound — use
   the RAP server for high-frequency agent loops.
 - **Tokens are at the irreducible text floor**; the leverage is the binary IR +
