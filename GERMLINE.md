@@ -637,6 +637,21 @@ corrected manifest. The lesson for evaluator authors: a backlog drawn from
 documentation inherits its stale lines, so each item needs checking against the
 specification, not only against the current compiler.
 
+**The gate promoted a lossy edit, and the evaluator now has an axis for it.**
+Reviewing generation 2 for upstreaming showed that it parses `A = 1` and then
+discards the value: the AST has no field for it, so `mage-parse --fmt-expand`
+prints `Red,` for `Red = 1`, silently deleting a user's discriminant. Nothing in
+the corpus formatted anything, so every axis was blind to it. `selfmod-eval.py`
+now takes an optional `fmt_flag` in the manifest and reports `fidelity`: of the
+programs that check clean, the fraction whose formatted output keeps every
+numeric literal of the source. On the run's own binaries: base 1.0, generation 1
+1.0 (the canonical `Simd[f32, 4]` adds a literal and loses none), generation 2
+0.967 (the one program with discriminants). As a guard axis at tolerance 0 it
+would have refused generation 2 until the value was kept. The upstreamed change
+carries the discriminant in the AST instead. Generally: an axis that measures
+"accepts more" needs a partner that measures "loses nothing", or a proposer can
+buy acceptance with silent information loss.
+
 ## 8. What is still not built
 
 ◻ **Model training and inference.** The variation operators produce genomes; what
