@@ -526,6 +526,15 @@ pub struct TypeChecker {
     pub mismatches: Vec<Mismatch>,
     /// Names of the functions being checked, innermost last.
     fn_stack: Vec<String>,
+    /// Absolute first line of the top-level item being checked (`None` for a
+    /// module built by hand), which the statement positions inside it are
+    /// relative to. Diagnostics without a finer position are pinned to it.
+    item_start: Option<u32>,
+    /// For each of `diagnostics`, the index of the top-level item whose line its
+    /// position is counted from (`None`: its position, if any, is absolute, as
+    /// a contract clause's is). With `Module::starts` all zero the positions are
+    /// item-relative, and this says whose; see `query::mage`.
+    pub owners: Vec<Option<usize>>,
 }
 
 impl Default for TypeChecker {
@@ -559,7 +568,26 @@ impl TypeChecker {
             user_methods: std::collections::HashSet::new(),
             mismatches: Vec::new(),
             fn_stack: Vec::new(),
+            item_start: None,
+            owners: Vec::new(),
         }
+    }
+
+    /// Append diagnostics that belong to the top-level items `owners` name.
+    fn extend_owned(&mut self, ds: impl IntoIterator<Item = (usize, Diagnostic)>) {
+        self.owners.resize(self.diagnostics.len(), None);
+        for (i, d) in ds {
+            self.diagnostics.push(d);
+            self.owners.push(Some(i));
+        }
+    }
+
+    /// Pin the diagnostics emitted since `before` that have no position yet to
+    /// `pos`, a position inside the current top-level item. The innermost
+    /// statement stamps first, so an outer one only fills what is left.
+    fn stamp(&mut self, before: usize, pos: ast::Pos) {
+        let span = pos.at(self.item_start);
+        crate::hir::stamp_missing(&mut self.diagnostics[before..], span);
     }
 
     fn fresh(&mut self) -> Ty {
@@ -897,14 +925,24 @@ impl TypeChecker {
             }
         }
         // First pass: collect function signatures and struct definitions.
-        for item in &module.items {
+        for (i, item) in module.items.iter().enumerate() {
+            self.item_start = module.start_of(i);
+            let before = self.diagnostics.len();
             self.collect_item_sig(item);
+            crate::hir::stamp_missing(&mut self.diagnostics[before..], crate::hir::Span::item(self.item_start));
+            self.owners.resize(self.diagnostics.len(), Some(i));
         }
 
-        // Second pass: type-check function bodies.
-        for item in &module.items {
+        // Second pass: type-check function bodies. What no statement claims is
+        // pinned to the item's own first line.
+        for (i, item) in module.items.iter().enumerate() {
+            self.item_start = module.start_of(i);
+            let before = self.diagnostics.len();
             self.check_item(item);
+            crate::hir::stamp_missing(&mut self.diagnostics[before..], crate::hir::Span::item(self.item_start));
+            self.owners.resize(self.diagnostics.len(), Some(i));
         }
+        self.item_start = None;
 
         // Third: contract clauses, in the scope of the function each belongs
         // to, with `result` bound in a postcondition (plan C1).
@@ -917,6 +955,7 @@ impl TypeChecker {
                 d.span = d.span.or(clause.diag_span());
             }
         }
+        self.owners.resize(self.diagnostics.len(), None);
     }
 
     /// Typecheck one contract clause: `result` and `old` only in `@ens`, and
@@ -1105,6 +1144,7 @@ impl TypeChecker {
     }
 
     fn check_function(&mut self, fd: &ast::FunctionDef) {
+        let first = self.diagnostics.len();
         self.env.push();
         self.fn_stack.push(fd.name.clone());
         let ret_ty = self.bind_signature(fd);
@@ -1119,16 +1159,23 @@ impl TypeChecker {
         self.ret_stack.pop();
 
         if let Err(e) = unify(&mut self.subst, &ret_ty, &body_ty) {
+            let before = self.diagnostics.len();
             self.emit_error(format!("function `{}`: return type mismatch: {e}", fd.name));
             let tail = fd.body_expr.as_deref().or(fd.body.tail_expr.as_deref());
             if let Some(tail) = tail {
                 self.record_mismatch(MismatchSite::Return, tail, None, &ret_ty, &body_ty);
             }
+            // A wrong return type is the tail expression's fault when there is one.
+            let at = if fd.body_expr.is_none() && fd.body.tail_expr.is_some() { fd.body.tail_pos } else { fd.body.pos };
+            self.stamp(before, at);
         }
 
         // Default any integer literals left unconstrained by context to i32.
         self.default_float_literals();
         self.default_int_literals();
+
+        // Whatever the body left unplaced belongs to the function's start.
+        self.stamp(first, fd.body.pos);
 
         self.fn_stack.pop();
         self.env.pop();
@@ -1709,8 +1756,12 @@ impl TypeChecker {
     fn infer_block(&mut self, block: &ast::Block) -> Ty {
         self.env.push();
 
-        for stmt in &block.stmts {
+        for (i, stmt) in block.stmts.iter().enumerate() {
+            let before = self.diagnostics.len();
             self.check_stmt(stmt);
+            if let Some(p) = block.stmt_pos.get(i) {
+                self.stamp(before, *p);
+            }
         }
 
         // A block with no tail expression is `()` — *unless* it ends by
@@ -1736,7 +1787,10 @@ impl TypeChecker {
             );
 
         let ty = if let Some(tail) = &block.tail_expr {
-            self.infer_expr(tail)
+            let before = self.diagnostics.len();
+            let ty = self.infer_expr(tail);
+            self.stamp(before, block.tail_pos);
+            ty
         } else if diverges {
             Ty::Never
         } else {
@@ -2978,12 +3032,16 @@ pub fn check(module: &ast::Module) -> TypeChecker {
     checker.check_module(module);
     // Tunable parameters (`@param`, plan 6.1): a default outside its declared
     // domain is a type error, so the arena refuses it as a Type refusal.
-    checker.diagnostics.extend(crate::params::params(module).1);
-    checker.diagnostics.extend(retired_constructs(module));
-    checker.diagnostics.extend(swarm_settings(module));
-    checker.diagnostics.extend(unknown_traits(module));
+    // Each reports against a top-level item, so each is pinned to that item's line.
+    checker.extend_owned(crate::check::per_item_idx(module, |m| crate::params::params(m).1));
+    checker.extend_owned(crate::check::per_item_idx(module, retired_constructs));
+    checker.extend_owned(crate::check::per_item_idx(module, swarm_settings));
+    checker.extend_owned(unknown_traits(module));
     // Units of measure (plan C2): a mismatch is a type error, E0562.
-    checker.diagnostics.extend(crate::units::check(module).diagnostics);
+    let units = crate::units::check(module);
+    checker.owners.resize(checker.diagnostics.len(), None);
+    checker.owners.extend(units.owners);
+    checker.diagnostics.extend(units.diagnostics);
     checker
 }
 
@@ -3022,19 +3080,20 @@ fn retired_constructs(module: &ast::Module) -> Vec<Diagnostic> {
 /// name up, so `impl Agent for Bot` checked clean although MAGE has no
 /// `Agent` trait. The namespace is flat, so a trait declared in any module
 /// counts.
-fn unknown_traits(module: &ast::Module) -> Vec<Diagnostic> {
-    fn walk<'a>(items: &'a [ast::Item], traits: &mut Vec<&'a str>, impls: &mut Vec<&'a str>) {
+fn unknown_traits(module: &ast::Module) -> Vec<(usize, Diagnostic)> {
+    // `impls` carries the index of the top-level item each `impl` sits in.
+    fn walk<'a>(items: &'a [ast::Item], at: usize, traits: &mut Vec<&'a str>, impls: &mut Vec<(&'a str, usize)>) {
         for item in items {
             match &item.kind {
                 ast::ItemKind::Trait(t) => traits.push(&t.name),
                 ast::ItemKind::Impl(i) => {
                     if let Some(name) = i.trait_path.as_ref().and_then(|p| p.last()) {
-                        impls.push(name);
+                        impls.push((name, at));
                     }
                 }
                 ast::ItemKind::Module(m) => {
                     if let Some(inner) = &m.items {
-                        walk(inner, traits, impls);
+                        walk(inner, at, traits, impls);
                     }
                 }
                 _ => {}
@@ -3042,17 +3101,21 @@ fn unknown_traits(module: &ast::Module) -> Vec<Diagnostic> {
         }
     }
     let (mut traits, mut impls) = (Vec::new(), Vec::new());
-    walk(&module.items, &mut traits, &mut impls);
+    for (i, item) in module.items.iter().enumerate() {
+        walk(std::slice::from_ref(item), i, &mut traits, &mut impls);
+    }
     impls
         .into_iter()
-        .filter(|name| !traits.contains(name))
-        .map(|name| {
-            Diagnostic::categorized(
+        .filter(|(name, _)| !traits.contains(name))
+        .map(|(name, at)| {
+            let mut d = Diagnostic::categorized(
                 Severity::Error,
                 format!("`impl {name} for …` names no trait: no `trait {name}` is declared, and MAGE has no built-in traits"),
                 DiagnosticCategory::UnresolvedName,
                 None,
-            )
+            );
+            d.span = crate::hir::Span::item(module.start_of(at));
+            (at, d)
         })
         .collect()
 }

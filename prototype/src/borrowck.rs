@@ -465,12 +465,7 @@ pub fn check_module_with(m: &Module, policy: Policy) -> Vec<Diagnostic> {
 /// With no `start` the positions are dropped rather than left meaning
 /// something else.
 pub fn rebase(diags: &mut [Diagnostic], start: Option<u32>) {
-    for d in diags {
-        d.span = match (d.span, start) {
-            (Some(s), Some(base)) => Some(crate::hir::Span { line: base + s.line, col: s.col }),
-            _ => None,
-        };
-    }
+    crate::hir::rebase(diags, start);
 }
 
 fn walk_items(items: &[Item], prefix: &str, info: &ModuleInfo, out: &mut Vec<Diagnostic>) {

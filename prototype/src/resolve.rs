@@ -221,6 +221,11 @@ pub struct Resolver {
     /// (In a real compiler this would be per-node; here we track by name for simplicity.)
     pub resolved: HashMap<String, SymbolId>,
     scopes: Vec<Scope>,
+    /// First line of the top-level item being resolved: the statement
+    /// positions inside it are relative to it. `Some(0)` keeps spans
+    /// item-relative (what the per-item engine query reports, rebased later);
+    /// `None` means no position is known, so none is attached.
+    item_start: Option<u32>,
 }
 
 impl Default for Resolver {
@@ -236,7 +241,22 @@ impl Resolver {
             diagnostics: Vec::new(),
             resolved: HashMap::new(),
             scopes: Vec::new(),
+            item_start: None,
         }
+    }
+
+    /// Give the diagnostics reported since `before` that have no position the
+    /// one `pos` names (inside the current top-level item). The innermost
+    /// statement stamps first, so an outer one only fills what is left.
+    fn stamp(&mut self, before: usize, pos: ast::Pos) {
+        let span = pos.at(self.item_start);
+        crate::hir::stamp_missing(&mut self.diagnostics[before..], span);
+    }
+
+    /// Pin what the current top-level item reported since `before`, and nothing
+    /// finer placed, to the item's first line.
+    fn stamp_item(&mut self, before: usize) {
+        crate::hir::stamp_missing(&mut self.diagnostics[before..], crate::hir::Span::item(self.item_start));
     }
 
     // ── Scope management ─────────────────────────────────────────────
@@ -326,17 +346,25 @@ impl Resolver {
         self.push_scope();
         self.register_builtins();
 
-        // First pass: collect all top-level names (forward declarations).
-        for item in &module.items {
+        // First pass: collect all top-level names (forward declarations). A
+        // duplicate is reported against the item that defines the second one.
+        for (i, item) in module.items.iter().enumerate() {
+            self.item_start = module.start_of(i);
+            let before = self.diagnostics.len();
             self.collect_item_name(item);
+            self.stamp_item(before);
         }
 
         // Second pass: resolve bodies.
-        for item in &module.items {
+        for (i, item) in module.items.iter().enumerate() {
+            self.item_start = module.start_of(i);
+            let before = self.diagnostics.len();
             self.resolve_item(item);
+            self.stamp_item(before);
         }
+        self.item_start = None;
 
-        // Third pass: contract clauses.
+        // Third pass: contract clauses (each carries its own position).
         self.resolve_contract_clauses(module);
 
         self.pop_scope();
@@ -495,6 +523,14 @@ impl Resolver {
     }
 
     fn resolve_function(&mut self, fd: &ast::FunctionDef) {
+        let first = self.diagnostics.len();
+        self.resolve_function_inner(fd);
+        // What the body left unplaced (a parameter's type, a bound) belongs to
+        // the function's start.
+        self.stamp(first, fd.body.pos);
+    }
+
+    fn resolve_function_inner(&mut self, fd: &ast::FunctionDef) {
         self.warn_discarded_bounds(&format!("`{}`", fd.name), &fd.generics, &fd.where_clause);
         self.push_scope();
 
@@ -838,11 +874,17 @@ impl Resolver {
 
     fn resolve_block(&mut self, block: &ast::Block) {
         self.push_scope();
-        for stmt in &block.stmts {
+        for (i, stmt) in block.stmts.iter().enumerate() {
+            let before = self.diagnostics.len();
             self.resolve_stmt(stmt);
+            if let Some(p) = block.stmt_pos.get(i) {
+                self.stamp(before, *p);
+            }
         }
         if let Some(tail) = &block.tail_expr {
+            let before = self.diagnostics.len();
             self.resolve_expr(tail);
+            self.stamp(before, block.tail_pos);
         }
         self.pop_scope();
     }
@@ -1260,11 +1302,29 @@ pub fn resolve_names(decls: &[NameDecl]) -> Partial {
     Resolver::with_env(decls).since(0, 0)
 }
 
-/// Pass two for one item, against `decls`.
+/// Pass one over the names of each top-level item (`per_item[i]` are item `i`'s
+/// declarations). The same diagnostics as [`resolve_names`] over the
+/// concatenation, plus, for each, the index of the item that caused it, so a
+/// driver can pin it to that item's line.
+pub fn resolve_names_by_item(per_item: &[Vec<NameDecl>]) -> (Partial, Vec<usize>) {
+    let mut r = Resolver::with_env(&[]);
+    let mut owners = Vec::new();
+    for (i, decls) in per_item.iter().enumerate() {
+        r.apply_decls(decls);
+        owners.resize(r.diagnostics.len(), i);
+    }
+    (r.since(0, 0), owners)
+}
+
+/// Pass two for one item, against `decls`. Spans are relative to the item's
+/// first line (0 on that line), so the answer does not change when the item
+/// moves; [`crate::hir::rebase`] with the item's start makes them absolute.
 pub fn resolve_item_in(decls: &[NameDecl], item: &ast::Item) -> Partial {
     let mut r = Resolver::with_env(decls);
+    r.item_start = Some(0);
     let (d, s) = (r.diagnostics.len(), r.symbols.len());
     r.resolve_item(item);
+    r.stamp_item(d);
     r.since(d, s)
 }
 

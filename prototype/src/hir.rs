@@ -733,6 +733,36 @@ pub struct Span {
     pub col: u32,
 }
 
+impl Span {
+    /// The first line of a top-level item (column 1): where a diagnostic with
+    /// no finer position is pinned. `None` when the item's start is unknown.
+    pub fn item(start: Option<u32>) -> Option<Span> {
+        start.map(|line| Span { line, col: 1 })
+    }
+}
+
+/// Give every diagnostic in `diags` that has no position `span`. Positions a
+/// pass already found are left alone: this is the fallback, not an override.
+pub fn stamp_missing(diags: &mut [Diagnostic], span: Option<Span>) {
+    if span.is_some() {
+        for d in diags {
+            d.span = d.span.or(span);
+        }
+    }
+}
+
+/// Turn item-relative spans into absolute ones: `start` is the 1-based line of
+/// the item's first token (`ast::Module::starts`). With no `start` the spans
+/// are dropped rather than left meaning something else.
+pub fn rebase(diags: &mut [Diagnostic], start: Option<u32>) {
+    for d in diags {
+        d.span = match (d.span, start) {
+            (Some(s), Some(base)) => Some(Span { line: base + s.line, col: s.col }),
+            _ => None,
+        };
+    }
+}
+
 impl Diagnostic {
     pub fn error(msg: impl Into<String>) -> Self {
         Diagnostic {

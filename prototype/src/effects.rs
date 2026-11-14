@@ -11,7 +11,7 @@
 /// Effects are inferred bottom-up: leaf functions first, callers accumulate.
 use crate::ast;
 use crate::hir::DiagnosticCategory;
-use crate::hir::{Diagnostic, Effect, EffectSet, pure};
+use crate::hir::{Diagnostic, Effect, EffectSet, Span, pure};
 use std::collections::HashMap;
 
 // ── Effect inference engine ──────────────────────────────────────────
@@ -30,6 +30,20 @@ pub struct EffectInfer {
     /// Regions collected while walking the function currently being collected.
     /// Drained by `collect_function`; never meaningful between functions.
     pending_regions: Vec<HandledRegion>,
+    /// Absolute first line of the top-level item being collected (`None` for a
+    /// module built by hand); statement positions are relative to it.
+    base: Option<u32>,
+    /// Where each function's body starts, by key (`name` or `Type.method`).
+    fn_span: HashMap<String, Span>,
+    /// Per function, where it performs an effect or makes a call, statement by
+    /// statement, innermost first. The diagnostics that name a function use it
+    /// to say which statement is to blame.
+    sites: HashMap<String, Vec<Site>>,
+    /// Sites of the function currently being collected; drained by `collect_function`.
+    cur_sites: Vec<Site>,
+    /// Depth of `handle` bodies being walked: what happens inside one is
+    /// discharged, so it is not a place to blame.
+    in_region: usize,
     /// Declared `effect` block names, lowercased.
     ///
     /// Lowercased because the two spellings of an effect are the declaration
@@ -45,6 +59,23 @@ pub struct EffectInfer {
     /// rather than blaming the wrong one.
     method_index: HashMap<String, Vec<String>>,
     pub diagnostics: Vec<Diagnostic>,
+    /// For each of `diagnostics`, the index of the top-level item its position
+    /// is counted from (with `Module::starts` all zero the positions are
+    /// item-relative; see `query::mage`). Parallel to `diagnostics`.
+    pub diag_items: Vec<Option<usize>>,
+    /// The top-level item each function (by key) is defined in.
+    fn_item: HashMap<String, usize>,
+    /// The index of the top-level item being collected.
+    cur_item: usize,
+}
+
+/// A statement that performs an effect directly (`effect`) or calls a function
+/// (`callee`), with where it is.
+#[derive(Debug, Clone)]
+struct Site {
+    span: Span,
+    effect: Option<Effect>,
+    callee: Option<String>,
 }
 
 /// One `handle { … } with E { … }` occurrence.
@@ -108,9 +139,9 @@ fn collect_roles(module: &ast::Module) -> Vec<(String, String)> {
     out
 }
 
-fn collect_methods(module: &ast::Module) -> Vec<(String, ast::FunctionDef, bool)> {
+fn collect_methods(module: &ast::Module) -> Vec<(String, ast::FunctionDef, bool, usize)> {
     let mut out = Vec::new();
-    for item in &module.items {
+    for (at, item) in module.items.iter().enumerate() {
         let (target, items) = match &item.kind {
             ast::ItemKind::Impl(ib) => (&ib.self_type, &ib.items),
             ast::ItemKind::Extend(eb) => (&eb.target_type, &eb.items),
@@ -125,6 +156,7 @@ fn collect_methods(module: &ast::Module) -> Vec<(String, ast::FunctionDef, bool)
                     format!("{type_name}.{}", fd.name),
                     fd.clone(),
                     member.visibility == ast::Visibility::Public,
+                    at,
                 ));
             }
         }
@@ -165,6 +197,14 @@ impl EffectInfer {
             effect_names: std::collections::HashSet::new(),
             method_index: HashMap::new(),
             diagnostics: Vec::new(),
+            diag_items: Vec::new(),
+            fn_item: HashMap::new(),
+            cur_item: 0,
+            base: None,
+            fn_span: HashMap::new(),
+            sites: HashMap::new(),
+            cur_sites: Vec::new(),
+            in_region: 0,
         }
     }
 
@@ -194,13 +234,15 @@ impl EffectInfer {
         // nothing. Every capability in the language is reached through exactly
         // the call shape that was unchecked.
         let methods = collect_methods(module);
-        for (key, _, _) in &methods {
+        for (key, _, _, _) in &methods {
             let bare = key.split('.').next_back().unwrap_or(key).to_string();
             self.method_index.entry(bare).or_default().push(key.clone());
         }
 
         // Pass 1: collect function declarations and their call graphs.
-        for item in &module.items {
+        for (at, item) in module.items.iter().enumerate() {
+            self.base = module.start_of(at);
+            self.cur_item = at;
             if let ast::ItemKind::Function(fd) = &item.kind {
                 self.collect_function(&fd.name, fd);
                 if item.visibility == ast::Visibility::Public || fd.name == "main" {
@@ -212,12 +254,16 @@ impl EffectInfer {
         // Pass 1a: the methods themselves. A method is keyed `Type.method`, so
         // two types implementing one trait keep separate effect sets and no
         // method shadows a free function of the same name.
-        for (key, fd, is_pub) in &methods {
+        for (key, fd, is_pub, at) in &methods {
+            self.base = module.start_of(*at);
+            self.cur_item = *at;
             self.collect_function(key, fd);
             if *is_pub {
                 boundary.insert(key.clone());
             }
         }
+
+        self.base = None;
 
         // Pass 1.5: every effect named in an annotation must exist — a built-in
         // kind, or an `effect` block in this module.
@@ -227,14 +273,16 @@ impl EffectInfer {
         // perfectly consistently and matching nothing. A typo invented an
         // effect rather than failing, which is the most expensive way for a
         // capability system to be wrong.
-        let mut named: Vec<(&String, &EffectSet)> = self.declared.iter().collect();
-        named.sort_by_key(|(n, _)| n.as_str());
-        for (func, effects) in named {
+        let mut named: Vec<(String, EffectSet)> =
+            self.declared.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
+        named.sort_by(|a, b| a.0.cmp(&b.0));
+        for (func, effects) in &named {
             for effect in effects {
                 let Effect::Custom(name) = effect else { continue };
                 if self.effect_names.contains(&name.to_lowercase()) {
                     continue;
                 }
+                let at = self.fn_span.get(func.as_str()).copied();
                 self.diagnostics.push(Diagnostic::categorized(
                     crate::hir::Severity::Error,
                     format!(
@@ -244,6 +292,7 @@ impl EffectInfer {
                     DiagnosticCategory::UndeclaredEffect,
                     None,
                 ));
+                self.place(func, at);
             }
         }
 
@@ -265,10 +314,10 @@ impl EffectInfer {
         // it. Nothing escapes undeclared — the capability gate holds at the
         // module surface, while internal code pays zero annotation tokens.
         // Sorted iteration keeps diagnostics deterministic.
-        let mut names: Vec<&String> = self.inferred.keys().collect();
+        let mut names: Vec<String> = self.inferred.keys().cloned().collect();
         names.sort();
-        for name in names {
-            let inferred = &self.inferred[name];
+        for name in &names {
+            let inferred = self.inferred[name].clone();
             if inferred.is_empty() {
                 continue;
             }
@@ -282,6 +331,7 @@ impl EffectInfer {
                 inferred.iter().filter(|e| !declared.contains(e)).collect();
             if !undeclared.is_empty() {
                 let effects: Vec<String> = undeclared.iter().map(|e| e.to_string()).collect();
+                let at = self.blame(name, &undeclared);
                 self.diagnostics.push(Diagnostic::categorized(
                     crate::hir::Severity::Error,
                     format!(
@@ -291,6 +341,7 @@ impl EffectInfer {
                     DiagnosticCategory::UndeclaredEffect,
                     None,
                 ));
+                self.place(name, at);
             }
         }
 
@@ -301,12 +352,14 @@ impl EffectInfer {
         for (key, role) in collect_roles(module) {
             let Some((_, allowed)) = crate::hir::ROLES.iter().find(|(r, _)| *r == role) else {
                 let known: Vec<&str> = crate::hir::ROLES.iter().map(|(r, _)| *r).collect();
+                let at = self.fn_span.get(key.as_str()).copied();
                 self.diagnostics.push(Diagnostic::categorized(
                     crate::hir::Severity::Error,
                     format!("function `{key}` declares unknown role `{role}` (roles: {})", known.join(", ")),
                     DiagnosticCategory::RoleViolation,
                     None,
                 ));
+                self.place(&key, at);
                 continue;
             };
             let mut exceeded: Vec<String> = Vec::new();
@@ -319,6 +372,7 @@ impl EffectInfer {
             }
             if !exceeded.is_empty() {
                 exceeded.sort();
+                let at = self.fn_span.get(key.as_str()).copied();
                 self.diagnostics.push(Diagnostic::categorized(
                     crate::hir::Severity::Error,
                     format!(
@@ -328,7 +382,49 @@ impl EffectInfer {
                     DiagnosticCategory::RoleViolation,
                     None,
                 ));
+                self.place(&key, at);
             }
+        }
+    }
+
+    /// Position the diagnostic just pushed at `at`, and record which item of
+    /// function `key` it is counted from.
+    fn place(&mut self, key: &str, at: Option<Span>) {
+        self.diagnostics.last_mut().expect("just pushed").span = at;
+        self.diag_items.resize(self.diagnostics.len(), self.fn_item.get(key).copied());
+    }
+
+    /// Where to point a function's undeclared-effect error: the first statement
+    /// that performs one of `undeclared` itself, else the first that calls
+    /// something that does, else the function's start.
+    fn blame(&self, key: &str, undeclared: &[&Effect]) -> Option<Span> {
+        let sites = self.sites.get(key).map(Vec::as_slice).unwrap_or_default();
+        let direct = sites.iter().find(|s| s.effect.as_ref().is_some_and(|e| undeclared.contains(&e)));
+        let via_call = || {
+            sites.iter().find(|s| {
+                s.callee.as_ref().is_some_and(|c| {
+                    let reach = |set: Option<&EffectSet>| {
+                        set.is_some_and(|set| undeclared.iter().any(|e| set.contains(*e)))
+                    };
+                    reach(self.inferred.get(c)) || reach(self.declared.get(c))
+                })
+            })
+        };
+        direct.or_else(via_call).map(|s| s.span).or_else(|| self.fn_span.get(key).copied())
+    }
+
+    /// Note the calls and effects statement `span` added to `callees` (from
+    /// `n`) and `local` (beyond `before`).
+    fn note_sites(&mut self, span: Option<Span>, callees: &[String], n: usize, local: &EffectSet, before: &EffectSet) {
+        let Some(span) = span else { return };
+        if self.in_region > 0 {
+            return;
+        }
+        for c in &callees[n..] {
+            self.cur_sites.push(Site { span, effect: None, callee: Some(c.clone()) });
+        }
+        for e in local.difference(before) {
+            self.cur_sites.push(Site { span, effect: Some(e.clone()), callee: None });
         }
     }
 
@@ -344,11 +440,21 @@ impl EffectInfer {
         // Also check attributes for @fx(...).
         // (Not implemented in parser attributes yet, but the hook is here.)
 
+        if let Some(span) = fd.body.pos.at(self.base).or(Span::item(self.base)) {
+            self.fn_span.insert(key.to_string(), span);
+        }
+        self.fn_item.insert(key.to_string(), self.cur_item);
+
         // Build call graph for this function by walking its body.
         let mut callees = Vec::new();
         let mut local_effects = EffectSet::new();
         self.pending_regions.clear();
+        self.cur_sites.clear();
         self.collect_calls_in_block(&fd.body, &mut callees, &mut local_effects);
+        let sites = std::mem::take(&mut self.cur_sites);
+        if !sites.is_empty() {
+            self.sites.insert(key.to_string(), sites);
+        }
         let regions = std::mem::take(&mut self.pending_regions);
         if !regions.is_empty() {
             self.handled.insert(key.to_string(), regions);
@@ -368,11 +474,16 @@ impl EffectInfer {
         callees: &mut Vec<String>,
         local_effects: &mut EffectSet,
     ) {
-        for stmt in &block.stmts {
+        for (i, stmt) in block.stmts.iter().enumerate() {
+            let (n, before) = (callees.len(), local_effects.clone());
             self.collect_calls_in_stmt(stmt, callees, local_effects);
+            let span = block.stmt_pos.get(i).and_then(|p| p.at(self.base));
+            self.note_sites(span, callees, n, local_effects, &before);
         }
         if let Some(tail) = &block.tail_expr {
+            let (n, before) = (callees.len(), local_effects.clone());
             self.collect_calls_in_expr(tail, callees, local_effects);
+            self.note_sites(block.tail_pos.at(self.base), callees, n, local_effects, &before);
         }
     }
 
@@ -501,7 +612,9 @@ impl EffectInfer {
             ast::Expr::Handle { body, effect, arms } => {
                 let mut inner_callees = Vec::new();
                 let mut inner_local = EffectSet::new();
+                self.in_region += 1;
                 self.collect_calls_in_block(body, &mut inner_callees, &mut inner_local);
+                self.in_region -= 1;
                 self.pending_regions.push(HandledRegion {
                     effect: Effect::from_name(&effect.to_lowercase()),
                     callees: inner_callees,

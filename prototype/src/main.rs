@@ -3419,7 +3419,16 @@ fn run_check(source: &str, filename: &str, do_elision: bool, legacy: bool, token
     // reported `Contracts checked: 2`, and the function with no contracts
     // had its row skipped, so the second subject was invisible and counted
     // at the same time. Both numbers are now derived from what they name.
-    let verifications = verify::verify_module(&module);
+    // One item at a time, so a refuted contract is reported at its item's line.
+    let mut verifications = Vec::new();
+    let mut spec_diags = Vec::new();
+    for (i, item) in module.items.iter().enumerate() {
+        let v = verify::verify_module(&ast::Module::single(item));
+        let mut d = verify::diagnostics(&v);
+        hir::stamp_missing(&mut d, hir::Span::item(module.start_of(i)));
+        spec_diags.extend(d);
+        verifications.extend(v);
+    }
     let subject_count = verifications.len();
     let contract_count: usize = verifications.iter().map(|v| v.checks.len()).sum();
     let mut verdicts = verdict::Tally::default();
@@ -3429,14 +3438,13 @@ fn run_check(source: &str, filename: &str, do_elision: bool, legacy: bool, token
     // A refuted contract is an error, not a row in a summary. It printed `✗`
     // and exited 0 until 2026-09-25 — unobservable only because nothing could
     // refute one.
-    let spec_diags = verify::diagnostics(&verifications);
     for diag in &spec_diags {
         eprintln!("{filename}: {diag}");
         total_errors += 1;
     }
 
     // A `kb` fact or rule the logic engine cannot evaluate (E0570).
-    for diag in logic::module_diagnostics(&module) {
+    for diag in check::per_item(&module, logic::module_diagnostics) {
         eprintln!("{filename}: {diag}");
         if diag.severity == hir::Severity::Error {
             total_errors += 1;
@@ -3445,20 +3453,22 @@ fn run_check(source: &str, filename: &str, do_elision: bool, legacy: bool, token
 
     // A contract written on a `net` or `train`, which nothing checks (E0712). A
     // warning: the item still counts as accepted.
-    for diag in &contract::unchecked_contract_warnings(&module) {
+    for diag in &check::per_item(&module, contract::unchecked_contract_warnings) {
         eprintln!("{filename}: {diag}");
     }
 
     // Phase 5.6: Typed-composition gate — a shape-mismatched `net` composition
     // (`stack`/`residual`/`branch`/`wrap` whose layer dims don't line up) is
     // rejected here with an actionable diagnostic (§4.5).
-    let shape_diags = abl_shape::check_module_shapes(&module);
-    for d in &shape_diags {
-        eprintln!("{filename}: [E0710] error: {}", d.message);
+    for d in &check::per_item(&module, check::shape_diags) {
+        match d.span {
+            Some(s) => eprintln!("{filename}: [E0710] {}:{}:error: {}", s.line, s.col, d.message),
+            None => eprintln!("{filename}: [E0710] error: {}", d.message),
+        }
         total_errors += 1;
     }
     if core {
-        for d in &core_subset::check(&module) {
+        for d in &check::per_item(&module, core_subset::check) {
             eprintln!("{filename}: {d}");
             total_errors += 1;
         }

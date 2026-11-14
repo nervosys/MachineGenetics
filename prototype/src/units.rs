@@ -235,6 +235,9 @@ const PURE_NUMBER: &[&str] = &[
 #[derive(Debug, Default)]
 pub struct Report {
     pub diagnostics: Vec<Diagnostic>,
+    /// For each diagnostic, the index of the top-level item whose first line
+    /// its position falls back to (`None`: it carries a position of its own).
+    pub owners: Vec<Option<usize>>,
     pub inferred: Vec<(String, Dim)>,
 }
 
@@ -249,15 +252,21 @@ impl Report {
 pub fn check(module: &ast::Module) -> Report {
     let mut c = Checker::default();
     c.collect(&module.items);
-    for item in &module.items {
+    let mut owners: Vec<Option<usize>> = Vec::new();
+    for (i, item) in module.items.iter().enumerate() {
+        let before = c.diagnostics.len();
         c.item(item, None);
+        // Pinned to the item: units are inferred from whole expressions.
+        crate::hir::stamp_missing(&mut c.diagnostics[before..], crate::hir::Span::item(module.start_of(i)));
+        owners.resize(c.diagnostics.len(), Some(i));
     }
     for (clause, f) in crate::contract::collect(module) {
         if let Some(f) = f {
             c.clause(&clause, f);
         }
     }
-    Report { diagnostics: c.diagnostics, inferred: c.inferred }
+    owners.resize(c.diagnostics.len(), None);
+    Report { diagnostics: c.diagnostics, owners, inferred: c.inferred }
 }
 
 #[derive(Default)]
@@ -469,6 +478,7 @@ impl Checker {
         for d in &mut self.diagnostics[before..] {
             d.message =
                 format!("{} in contract `{}` of `{}`", d.message, clause.display(), clause.function);
+            d.span = d.span.or(clause.diag_span());
         }
     }
 

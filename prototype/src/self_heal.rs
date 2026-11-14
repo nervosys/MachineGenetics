@@ -1973,8 +1973,7 @@ mod tests {
 
     const FUEL: u64 = DEFAULT_FUEL;
 
-    /// A return-type mismatch the checker reports without a span, and a
-    /// passing test beside it.
+    /// A return-type mismatch, and a passing test beside it.
     const TYPE_ERROR: &str = "f count(xs: [i64]) -> i64 {\n    len(xs)\n}\n\n\
                               f twice(n: i64) -> i64 {\n    n * 2\n}\n\n\
                               @t\nf t_twice() {\n    assert(twice(3) == 6, \"twice\")\n}\n";
@@ -1995,7 +1994,10 @@ mod tests {
         assert_eq!((ev.function.as_str(), ev.expr.as_str()), ("count", "len(xs)"));
         assert_eq!((ev.expected.as_str(), ev.found.as_str()), ("I64", "Usize"));
         assert_eq!((ev.line, ev.col), (Some(2), Some(5)));
-        assert_eq!(step.candidates_considered, 1, "one located candidate, no guesses");
+        // The checker's evidence is one candidate. The diagnostic now carries a
+        // position (it had none when this test was written), so the pattern
+        // healer proposes one too; the evidence-derived fix is the one taken.
+        assert_eq!(step.candidates_considered, 2, "the evidence candidate and the located pattern candidate");
         assert_eq!((step.errors_before, step.errors_after), (1, 0));
         assert_eq!(step.tests_kept_passing, vec!["t_twice".to_string()]);
         assert!(out.source.contains("len(xs) as i64"), "{}", out.source);
