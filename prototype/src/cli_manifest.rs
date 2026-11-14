@@ -224,6 +224,20 @@ pub const MODES: &[CliMode] = &[
                  with it.",
     },
     CliMode {
+        flag: "--bpe-count",
+        args: "[--vocab FILE] [FILES|-]",
+        summary: "print the byte-level BPE token count of the files (default: the shipped MAGE vocab)",
+        effect: "read_local",
+        detail: "Prints one integer: the BPE tokens of the files together, after the cl100k-style                  pre-tokenizer. --vocab FILE reads a tiktoken-format vocabulary (one `<base64> <rank>`                  per line); without it the MAGE vocabulary trained on the repo's .mg sources is used.                  Reads standard input when there are no files or the file is `-`.",
+    },
+    CliMode {
+        flag: "--bpe-train",
+        args: "--vocab-size N --out FILE FILES...",
+        summary: "train a byte-level BPE vocabulary on the files and write it in tiktoken format",
+        effect: "write_local",
+        detail: "Deterministic: the same files and N give a byte-identical vocabulary (ties break on                  pair bytes; CRLF is read as LF). Starts from the 256 bytes and adds merges up to N                  tokens. Prints the vocabulary size and tokens per byte on the corpus.",
+    },
+    CliMode {
         flag: "--target=abl-bytes",
         args: "<file.mg> [out.abl]",
         summary: "lower Agentic Binary Language-routed items to a framed binary Agentic Binary Language container",
