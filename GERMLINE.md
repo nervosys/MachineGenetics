@@ -652,6 +652,34 @@ carries the discriminant in the AST instead. Generally: an axis that measures
 "accepts more" needs a partner that measures "loses nothing", or a proposer can
 buy acceptance with silent information loss.
 
+**A second run, with fidelity as a guard from the start.** The base was
+`selfmod-gen2@876ac229e` (the tree minus `media/`); the backlog came from a
+subagent told to find constructs the specification promises and the compiler
+rejects, keeping only those with a quoted spec line and a passing control. Of
+about 300 probes, four held: `@ x of e` (§4.6), `x as f64 < y` (§10.6), a
+non-ASCII char literal (`'é'` panicked the lexer, exit 101) and `=>` in a
+contract (§12.2). The corpus kept run 1's 28 good and 2 bad programs and added
+the four controls as good, the four gaps as target, and three near misses as bad
+(`@ x to e`, `x as f64 <`, `@ens(1b => )`, each still E0001), so accepting more
+by accepting everything costs `correctness`. Guards: safety, correctness,
+fidelity at tolerance 0.
+
+| generation | change | capability | safety | correctness | fidelity | verdict |
+|---|---|---|---|---|---|---|
+| 0 | base | 0.0 | 1.0 | 1.0 | 1.0 | genesis |
+| 1 | parser.rs, lexer.rs, contract.rs (+5 tests) | 1.0 | 1.0 | 1.0 | 1.0 | promoted |
+
+The candidate came from a second subagent that saw the gap files and the
+specification but not the corpus or the evaluator. It matches `of` by text in
+the loop header only, so `of` stays an identifier; stops type arguments after a
+primitive scalar, which never takes them; consumes a whole UTF-8 character in a
+char literal; and splits a contract at the first top-level `=>`, desugaring it to
+`!a || b` before both evaluation and verification. Before running the gate the
+diff was read for removed or weakened tests (none: the deleted lines are the
+replaced logic). That check is manual because the unit tests live inside the
+writable `prototype/src/`; a candidate could edit the tests that judge it, and no
+axis would notice. Protecting them needs the tests moved out of the write set.
+
 ## 8. What is still not built
 
 ◻ **Model training and inference.** The variation operators produce genomes; what
