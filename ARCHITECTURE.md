@@ -7,7 +7,7 @@ text. It is the leverage the text-token floor denies the language track (see
 [IDEAL_AGENTIC_LANGUAGE.md](IDEAL_AGENTIC_LANGUAGE.md) for that analysis).
 
 > **Scope.** Everything below is implemented and test-covered in `prototype/`
-> (**1,737 tests** green) and scored in the sibling `agentic-eval` crate (80
+> (**1,770 tests** green) and scored in the sibling `agentic-eval` crate (80
 > tests, in the AetherShell repository and not verifiable from here). The one
 > deliberate non-feature is agent/swarm *execution* — see
 > [Honest boundaries](#honest-boundaries).
@@ -40,7 +40,7 @@ kb/rules/*.mg                  safety rules, diagnostics, contracts, grammar con
 kb/profiles/arena.mg           the subset of the grammar the arena samples, with its limits
 ```
 
-The schema is version 21, with 44 classes, 68 relations and 11 invariants, and the knowledge base states 1252 instances.
+The schema is version 21, with 44 classes, 68 relations and 11 invariants, and the knowledge base states 1253 instances.
 
 **Instances stated per class**
 
@@ -58,7 +58,7 @@ The schema is version 21, with 44 classes, 68 relations and 11 invariants, and t
 | `Diagnostic` | 29 |
 | `BuildRule` | 26 |
 | `Effect` | 24 |
-| `SymbolicComponent` | 25 |
+| `SymbolicComponent` | 26 |
 | `AstKind` | 20 |
 | `ProfileForm` | 19 |
 | `GateRule` | 15 |
@@ -276,7 +276,7 @@ are **six independent Cargo workspaces**:
 | Path | Crate | Tests | Notes |
 |---|---|--:|---|
 | `RecursiveMachineIntelligence/` | `rmi` | 1,384 | The low-level neurosymbolic framework. Feature-gated (`cpu` / `gpu` / `cuda`); build with `--no-default-features --features cpu` for the portable set |
-| `prototype/` | `mage-prototype` | 1,737 | Compiler, evaluator, ABL, RAP server. Path-depends on `rmi` |
+| `prototype/` | `mage-prototype` | 1,770 | Compiler, evaluator, ABL, RAP server. Path-depends on `rmi` |
 | `ribosome/` | `ribosome` | 168 | The distributed build engine. Depends on nothing in this repository — see below |
 | `germline/` | `germline` | 226 | Model succession, handoff, fallback — the RSI control plane. Path-depends on `ribosome` |
 | `forge/` | `forge` | 65 | The package registry, and the content-addressed block and definition stores |
