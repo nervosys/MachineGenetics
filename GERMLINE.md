@@ -1,7 +1,7 @@
 # Germline — model succession, handoff, and fallback
 
 > **Status: control plane complete and runnable; workload not.**
-> `germline/` — its own crate, 266 tests. Variation, directed search, the gate,
+> `germline/` — its own crate, 267 tests. Variation, directed search, the gate,
 > attestation, lineage, the durable journal, the cycle state machine, and
 > supervision are built and tested ✅. Model training and inference are **not**
 > here and are not claimed ◻ — this decides *whether* a successor takes over, not
@@ -623,6 +623,20 @@ corpus is small, the tests are the library tests only, and nothing ran in an OS
 sandbox. The two promoted edits are in the run's journal and blob store, not in
 this repository; whether to upstream them is a separate decision.
 
+**The backlog had an error, and a proposer caught it.** The third backlog
+program, `unsafe { p + 1 }`, came from a stale line (HANDOFF.md, plan-era) saying
+the block lacked only a parser arm. The specification is the authority and says
+the opposite: `unsafe { ... }` is a parse error, its AST variant was retired in
+plan 9.2, and the core subset has no `unsafe`. The proposer asked to implement it
+read the specification, declined, and reported the contradiction instead of
+writing a patch to the metric. So the champion at 0.667 already fixes every
+legitimate item, and that program belongs among the known-bad programs that must
+stay rejected. The frozen run is left as it was (a changed manifest is a changed
+suite, which the driver refuses to resume under); a next run starts from a
+corrected manifest. The lesson for evaluator authors: a backlog drawn from
+documentation inherits its stale lines, so each item needs checking against the
+specification, not only against the current compiler.
+
 ## 8. What is still not built
 
 ◻ **Model training and inference.** The variation operators produce genomes; what
@@ -717,7 +731,7 @@ nobody chose, one individually-defensible promotion at a time.
 ## 10. Reproducing
 
 ```powershell
-cargo test --manifest-path germline/Cargo.toml                  # 266 tests
+cargo test --manifest-path germline/Cargo.toml                  # 267 tests
 cargo test --manifest-path germline/Cargo.toml --test rsi_loop  # 6 closed-loop scenarios
 cargo test --manifest-path germline/Cargo.toml --test succession # 13 succession scenarios
 ```

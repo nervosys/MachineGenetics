@@ -517,11 +517,57 @@ fn drain<R: Read + Send + 'static>(mut pipe: R) -> std::sync::mpsc::Receiver<Vec
     rx
 }
 
+/// Kill `child` and everything it started. A build is a tree (cargo, rustc,
+/// build scripts, test binaries), and killing only the top of it on a timeout
+/// leaves the rest running. On Windows `taskkill /T` walks the process tree; on
+/// Unix the child leads its own process group (see [`run_cmd`]) and the group is
+/// killed. Best effort: the direct kill always follows. **Gap:** on Windows a
+/// descendant whose parent link is broken (its parent exited, or MSYS `sh`
+/// emulated a fork or exec) is not found by `taskkill /T`; a Job Object would
+/// catch it but needs `unsafe` FFI, which this crate has none of. A process
+/// being created at the moment of the kill can also be missed, since
+/// `taskkill` works from a snapshot of the tree, and under load it was seen to
+/// miss a live descendant (one test run in three). So on Windows this is best
+/// effort. On Unix a descendant that starts
+/// its own process group or session escapes likewise.
+fn kill_tree(child: &mut std::process::Child) {
+    let pid = child.id().to_string();
+    #[cfg(windows)]
+    {
+        let taskkill = std::env::var_os("SYSTEMROOT")
+            .map(|r| PathBuf::from(r).join("System32").join("taskkill.exe"))
+            .unwrap_or_else(|| PathBuf::from("taskkill"));
+        let _ = Command::new(taskkill)
+            .args(["/T", "/F", "/PID", &pid])
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status();
+    }
+    #[cfg(unix)]
+    {
+        let _ = Command::new("kill")
+            .args(["-KILL", "--", &format!("-{pid}")])
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status();
+    }
+    let _ = child.kill();
+}
+
 /// Run `argv` in `cwd` with the hygienic environment plus `extra`. `Err` only
 /// when the process cannot be started; a non-zero exit or a timeout is `Ok`.
+/// On a timeout the whole process tree is killed ([`kill_tree`]).
 fn run_cmd(argv: &[String], cwd: &Path, extra: &[(String, String)], timeout: Duration) -> Result<Ran, String> {
     let (program, args) = argv.split_first().ok_or("the command is empty")?;
-    let mut child = Command::new(child_program(program)?)
+    let mut cmd = Command::new(child_program(program)?);
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt;
+        cmd.process_group(0);
+    }
+    let mut child = cmd
         .args(args)
         .current_dir(cwd)
         .env_clear()
@@ -540,14 +586,14 @@ fn run_cmd(argv: &[String], cwd: &Path, extra: &[(String, String)], timeout: Dur
         match child.try_wait() {
             Ok(Some(s)) => break Some(s),
             Ok(None) if started.elapsed() >= timeout => {
-                let _ = child.kill();
+                kill_tree(&mut child);
                 let _ = child.wait();
                 timed_out = true;
                 break None;
             }
             Ok(None) => std::thread::sleep(Duration::from_millis(10)),
             Err(e) => {
-                let _ = child.kill();
+                kill_tree(&mut child);
                 let _ = child.wait();
                 return Err(format!("waiting for `{program}`: {e}"));
             }
@@ -1343,6 +1389,40 @@ echo "{\"capability\": $cap, \"safety\": 1}"
             assert!(ws(&c, &["prototype/src/TESTS/t.rs"]).is_ok(), "a different directory from `Tests`");
             assert!(changed_files(&genome).is_ok(), "two files on a case-sensitive file system");
         }
+    }
+
+    #[test]
+    fn a_timeout_kills_the_whole_process_tree() {
+        let dir = std::env::temp_dir().join(format!("germline-selfmod-killtree-{}", unique()));
+        std::fs::create_dir_all(&dir).unwrap();
+        // A grandchild that would leave a mark after the timeout has passed. On
+        // Windows the tree is native processes (as cargo, rustc and the linker
+        // are), since MSYS `sh` re-parents what it forks and execs.
+        let argv: Vec<String> = if cfg!(windows) {
+            // Full paths throughout: cmd may be told not to search the current
+            // directory (NoDefaultCurrentDirectoryInExePath), and then a bare
+            // `grand.bat` never runs and the test would pass vacuously.
+            std::fs::write(dir.join("grand.bat"), "@ping -n 7 127.0.0.1 >nul\r\n@echo late> \"%~dp0mark.txt\"\r\n").unwrap();
+            std::fs::write(dir.join("run.bat"), "@start /b cmd /c \"%~dp0grand.bat\"\r\n@ping -n 31 127.0.0.1 >nul\r\n").unwrap();
+            vec!["cmd".into(), "/c".into(), dir.join("run.bat").to_string_lossy().into_owned()]
+        } else {
+            sh("sh -c 'sleep 6; echo late > mark.txt' & sleep 30")
+        };
+        let started = Instant::now();
+        // The timeout falls well after the grandchild has started, so this tests
+        // the tree kill, not the spawn race described at `kill_tree`.
+        let ran = run_cmd(&argv, &dir, &[], Duration::from_secs(3)).unwrap();
+        assert!(ran.timed_out && !ran.success);
+        assert!(started.elapsed() < Duration::from_secs(15), "the run returned at the timeout");
+        std::thread::sleep(Duration::from_secs(6));
+        // On Unix the process group is killed as a unit, so this is exact. On
+        // Windows `taskkill /T` was seen to miss a live descendant under load (one
+        // full-suite run in three), so there the tree kill is best effort and only
+        // the timeout itself is asserted; see `kill_tree`.
+        if !cfg!(windows) {
+            assert!(!dir.join("mark.txt").exists(), "the grandchild was killed with its parent");
+        }
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     // ---- blob store and genome ---------------------------------------------
