@@ -64,6 +64,7 @@ pub mod nl_engine;
 pub mod ontology;
 pub mod params;
 pub mod parser;
+pub mod query;
 pub mod perf_annot;
 pub mod perf_measure;
 pub mod rain;

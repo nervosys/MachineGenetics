@@ -35,8 +35,10 @@ fn is_modifier_flag(a: &str) -> bool {
         a,
         "--no-elision" | "--syntax=legacy" | "--syntax=canonical" | "--token-report"
             | "--json" | "--compact" | "--fix" | "--core" | "--max" | "--fuel" | "--seed" | "--write"
+            | "--incremental-stats" | "--cache-dir"
     ) || a.starts_with("--backend=")
         || a.starts_with("--backends-file=")
+        || a.starts_with("--cache-dir=")
 }
 
 /// Read a source file, or standard input when the path is `-`.
@@ -338,6 +340,21 @@ fn main() {
     // `--check --core`: also require MAGE-core (§4.12), the subset the RSI
     // kernel runs — every function roled, no `unsafe`, only core items.
     let core = args.iter().any(|a| a == "--core");
+    // `--pipeline FILE --incremental-stats` runs the incremental query engine
+    // (`query.rs`) instead of the stage-by-stage printout, and prints what it
+    // did — which queries ran, which were answered from memory or from the
+    // cache, which were cut off — as JSON. `--cache-dir DIR` (or the
+    // environment's `MAGE_CACHE_DIR`) makes its answers persist between runs.
+    let incremental_stats = args.iter().any(|a| a == "--incremental-stats");
+    let cache_dir: Option<String> = args
+        .iter()
+        .enumerate()
+        .find_map(|(i, a)| match a.as_str() {
+            "--cache-dir" => args.get(i + 1).cloned(),
+            other => other.strip_prefix("--cache-dir=").map(str::to_string),
+        })
+        .or_else(|| std::env::var("MAGE_CACHE_DIR").ok())
+        .filter(|d| !d.is_empty());
     // Optional --backend=<name> selects hardware accelerator for any
     // subsequent --run=abl-bytes / --target=abl-run dispatch. Lives
     // outside the main flag table so it can attach to any dispatching
@@ -388,10 +405,23 @@ fn main() {
     // --fix: The system cannot find the file specified". The flag only worked
     // when written after both paths, which is not the order `ARCHITECTURE.md` §5
     // implies and not the order anyone would try first.
+    //
+    // `--cache-dir` takes its directory as the next argument, which has to
+    // vanish with it or it would be read as the path.
+    let mut skip_value = false;
     let filtered: Vec<&str> = args
         .iter()
         .skip(1)
-        .filter(|a| !is_modifier_flag(a))
+        .filter(|a| {
+            if std::mem::take(&mut skip_value) {
+                return false;
+            }
+            if a.as_str() == "--cache-dir" {
+                skip_value = true;
+                return false;
+            }
+            !is_modifier_flag(a)
+        })
         .map(|s| s.as_str())
         .collect();
 
@@ -1360,7 +1390,12 @@ fn main() {
                 eprintln!("Error reading {path}: {e}");
                 std::process::exit(1);
             });
-            run_pipeline(&source, path, !no_elision, syntax_legacy, token_report);
+            if incremental_stats {
+                let source = if syntax_legacy { legacy::translate(&source) } else { source };
+                run_incremental_pipeline(&source, path, !no_elision, core, cache_dir.as_deref());
+            } else {
+                run_pipeline(&source, path, !no_elision, syntax_legacy, token_report);
+            }
         }
         // An unrecognised `--flag` is never a filename.
         //
@@ -3492,6 +3527,67 @@ fn run_check(source: &str, filename: &str, do_elision: bool, legacy: bool, token
         std::process::exit(1);
     } else {
         eprintln!("  Status: OK");
+    }
+}
+
+/// `--pipeline FILE --incremental-stats`: the pipeline's computation through
+/// the incremental query engine, and a JSON account of what the engine did.
+///
+/// stdout is one JSON object: the pipeline's summary numbers, and `stats` —
+/// per query, how many answers came from memory (`hits`), how many had to be
+/// run (`misses`, `reexecutions`), how many were cut off because a re-run gave
+/// the same answer (`early_cutoffs`), and how many came from or went to the
+/// on-disk cache (`disk_*`), with the list of what ran. An agent that edited
+/// one function reads `events` to see that one function's queries re-ran. The
+/// exit status is `run_pipeline`'s: 1 for a parse error or any error.
+fn run_incremental_pipeline(source: &str, filename: &str, do_elision: bool, core: bool, cache_dir: Option<&str>) {
+    use mage_prototype::query::mage::{stats_json, Compiler, Config, Settings};
+    let compiler = Compiler::new(Config {
+        cache_dir: cache_dir.map(std::path::PathBuf::from),
+        ..Config::default()
+    });
+    compiler.set_settings(Settings { elision: do_elision, core });
+    let file = compiler.set_source(filename, source);
+    let report = match compiler.compile(file) {
+        Ok(r) => r,
+        Err(e) => {
+            eprintln!("incremental pipeline failed: {e}");
+            std::process::exit(2);
+        }
+    };
+    let items = compiler.items(file).map(|i| i.len()).unwrap_or(0);
+    let stats = compiler.stats();
+    // Every exit below skips destructors: make the answers durable first.
+    if !compiler.flush() {
+        eprintln!("mage: could not write the cache; the next run will recompute");
+    }
+    let out = serde_json::json!({
+        "file": filename,
+        "cache_dir": cache_dir,
+        "summary": &*report,
+        "stats": stats_json(&stats, &[(filename.to_string(), items)]),
+    });
+    println!("{}", json_text(&out, false).expect("the report serialises"));
+
+    eprintln!("MAGE incremental pipeline: {filename}");
+    if let Some(e) = &report.parse_error {
+        eprintln!("  parse error at {}:{}: {}", e.line, e.col, e.described);
+        std::process::exit(1);
+    }
+    let t = stats.total();
+    eprintln!(
+        "  {} items, {} errors; queries: {} hits, {} run ({} re-run, {} cut off), disk {} hit / {} stored",
+        report.items,
+        report.total_errors,
+        t.hits,
+        t.misses + t.reexecutions,
+        t.reexecutions,
+        t.early_cutoffs,
+        t.disk_hits,
+        t.disk_stores
+    );
+    if report.total_errors > 0 {
+        std::process::exit(1);
     }
 }
 
