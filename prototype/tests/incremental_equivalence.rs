@@ -141,7 +141,11 @@ fn assert_equivalent(c: &Compiler, f: File, name: &str, src: &str, s: Settings) 
     }
     if let Ok(m) = &parsed {
         let elided = if s.elision { mage_prototype::elision::elide(m) } else { m.clone() };
-        assert_eq!(dbg(c.elided(f).unwrap().module.as_ref().unwrap()), dbg(&elided), "{ctx}: elided AST");
+        // `elided` drops the absolute item start lines (`Module::starts`) so a
+        // line shift cuts off there; the old driver's tree keeps them.
+        let mut elided_no_starts = elided.clone();
+        elided_no_starts.starts.clear();
+        assert_eq!(dbg(c.elided(f).unwrap().module.as_ref().unwrap()), dbg(&elided_no_starts), "{ctx}: elided AST");
 
         let r = mage_prototype::resolve::resolve(&elided);
         let got = c.resolve(f).unwrap();

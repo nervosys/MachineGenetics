@@ -30,6 +30,7 @@ const ELIMINATED_TYPES: &[&str] = &["PhantomData", "Pin"];
 pub fn elide(module: &Module) -> Module {
     Module {
         items: module.items.iter().map(elide_item).collect(),
+        starts: module.starts.clone(),
     }
 }
 
@@ -411,6 +412,9 @@ fn elide_block(block: &Block) -> Block {
     Block {
         stmts: block.stmts.iter().map(elide_stmt).collect(),
         tail_expr: block.tail_expr.as_ref().map(|e| Box::new(elide_expr(e))),
+        pos: block.pos,
+        stmt_pos: block.stmt_pos.clone(),
+        tail_pos: block.tail_pos,
     }
 }
 

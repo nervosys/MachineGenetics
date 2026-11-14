@@ -500,7 +500,7 @@ pub fn generate_module(
         reports.push(report);
     }
 
-    let module = ast::Module { items };
+    let module = ast::Module { items, ..Default::default() };
     let source = fmt::format_human(&module);
 
     (source, reports)

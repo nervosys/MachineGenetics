@@ -537,7 +537,7 @@ fn swarm_callbacks_lost() -> bool {
     let mut m = parse(src);
     let blk = |name: &str| ast::Block {
         stmts: Vec::new(),
-        tail_expr: Some(Box::new(ast::Expr::Ident { name: name.to_string() })),
+        tail_expr: Some(Box::new(ast::Expr::Ident { name: name.to_string() })), ..Default::default()
     };
     if let ast::ItemKind::Swarm(s) = &mut m.items[0].kind {
         s.on_dispatch = Some(blk("dispatch_zz"));

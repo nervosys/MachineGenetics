@@ -152,15 +152,18 @@ fn a_whitespace_edit_cuts_off_at_the_parse() {
     c.reset_stats();
 
     // A blank line between two functions shifts every later token's span, so
-    // the token stream changes. The AST has no spans (outside contract clauses
-    // and kb lines), so the parse comes out identical.
+    // the token stream changes, and the parse with it: it records each
+    // top-level item's absolute start line (for diagnostics). Statement
+    // positions are item-relative, so nothing else in the tree moved, and the
+    // cutoff is one stage later, at `elided`, which drops the start lines.
     c.set_source("a.mg", &BASE.replace("f triple", "\n\nf triple"));
     run(&c, f);
     let s = c.stats();
     assert_eq!(executed(&s, "tokens"), 1);
     assert_eq!(executed(&s, "parsed"), 1);
-    assert_eq!(s.queries["parsed"].early_cutoffs, 1, "the parse is the cutoff point");
-    for q in ["elided", "items", "names", "resolve", "types", "effects", "diff", "mlir", "diagnostics", "pass/verify", "resolve_item"] {
+    assert_eq!(executed(&s, "elided"), 1);
+    assert_eq!(s.queries["elided"].early_cutoffs, 1, "elision is the cutoff point");
+    for q in ["items", "names", "resolve", "types", "effects", "diff", "mlir", "diagnostics", "pass/verify", "resolve_item"] {
         assert_eq!(executed(&s, q), 0, "{q} ran after a whitespace-only edit");
     }
     // `checked` re-ran to rebuild its findings from the new tokens (lex errors
@@ -490,4 +493,93 @@ fn a_parse_error_is_an_answer_and_is_cached() {
     let got = c.checked(f).unwrap();
     assert_eq!(format!("{:?}", got.findings), format!("{:?}", check_source("f broken( -> i32 {\n", true, false).findings));
     assert!(!got.verdict().accepted());
+}
+
+fn borrow_lines(c: &Compiler, f: File) -> Vec<(String, u32, u32)> {
+    c.borrowck(f)
+        .unwrap()
+        .diags
+        .iter()
+        .map(|d| (d.id.clone().unwrap(), d.span.expect("a borrowck span").line, d.span.unwrap().col))
+        .collect()
+}
+
+#[test]
+fn borrowck_positions_move_with_the_text_but_only_the_edited_item_reruns() {
+    let c = Compiler::in_memory();
+    let f = c.set_source("a.mg", OWNERSHIP);
+    run(&c, f);
+    // `take(a)` twice in `moved` (lines 4-7): the second call is on line 6; the
+    // one in `via_callee` (`peek(a)` after `eat(a)`) is on line 10.
+    let before = borrow_lines(&c, f);
+    assert_eq!(before, vec![("E0382".into(), 6, 1), ("E0382".into(), 10, 1)]);
+    c.reset_stats();
+
+    // Two lines are added to `peek`'s body: every item below it moves down by
+    // two lines, but only `peek`'s own text changed.
+    let edited = OWNERSHIP.replace("f peek(x: s) { }", "f peek(x: s) {\n    1\n}");
+    c.set_source("a.mg", &edited);
+    run(&c, f);
+    let s = c.stats();
+    let keys = ran(&s, "pass/borrowck");
+    assert_eq!(keys.len(), 1, "{keys:?}");
+    assert!(keys[0].contains("\"peek\""), "{keys:?}");
+    assert_eq!(borrow_lines(&c, f), vec![("E0382".into(), 8, 1), ("E0382".into(), 12, 1)]);
+    assert_eq!(format!("{:?}", c.checked(f).unwrap().findings), format!("{:?}", check_source(&edited, true, false).findings));
+}
+
+#[test]
+fn text_added_above_every_item_reruns_no_item_check_but_updates_the_lines() {
+    let c = Compiler::in_memory();
+    let f = c.set_source("a.mg", OWNERSHIP);
+    run(&c, f);
+    c.reset_stats();
+
+    // Two blank lines before the first item: nothing about any item changed.
+    let edited = format!("\n\n{OWNERSHIP}");
+    c.set_source("a.mg", &edited);
+    run(&c, f);
+    let s = c.stats();
+    for row in ITEM_ROWS {
+        assert_eq!(executed(&s, row), 0, "{row} must not re-run for a pure line shift: {:?}", ran(&s, row));
+    }
+    assert_eq!(borrow_lines(&c, f), vec![("E0382".into(), 8, 1), ("E0382".into(), 12, 1)]);
+    assert_eq!(format!("{:?}", c.checked(f).unwrap().findings), format!("{:?}", check_source(&edited, true, false).findings));
+}
+
+#[test]
+fn borrowck_positions_survive_the_disk_cache() {
+    let dir = tmp("pos");
+    let first = persistent(&dir, "t1");
+    let f = first.set_source("a.mg", OWNERSHIP);
+    run(&first, f);
+    drop(first);
+
+    let second = persistent(&dir, "t1");
+    let f = second.set_source("a.mg", OWNERSHIP);
+    assert_eq!(borrow_lines(&second, f), vec![("E0382".into(), 6, 1), ("E0382".into(), 10, 1)]);
+    assert_eq!(
+        format!("{:?}", second.checked(f).unwrap().findings),
+        format!("{:?}", check_source(OWNERSHIP, true, false).findings)
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_blank_line_inside_a_function_moves_its_diagnostic_and_reruns_that_item_only() {
+    let c = Compiler::in_memory();
+    let f = c.set_source("a.mg", OWNERSHIP);
+    run(&c, f);
+    c.reset_stats();
+
+    // Debug-equal tree (positions are not in `Debug`), different statement positions.
+    let edited = OWNERSHIP.replace("take(a)\ntake(a)", "take(a)\n\n\ntake(a)");
+    c.set_source("a.mg", &edited);
+    run(&c, f);
+    let s = c.stats();
+    let keys = ran(&s, "pass/borrowck");
+    assert_eq!(keys.len(), 1, "{keys:?}");
+    assert!(keys[0].contains("\"moved\""), "{keys:?}");
+    assert_eq!(borrow_lines(&c, f), vec![("E0382".into(), 8, 1), ("E0382".into(), 12, 1)]);
+    assert_eq!(format!("{:?}", c.checked(f).unwrap().findings), format!("{:?}", check_source(&edited, true, false).findings));
 }

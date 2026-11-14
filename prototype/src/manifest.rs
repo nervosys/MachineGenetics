@@ -211,7 +211,7 @@ mod tests {
                         return_type: Some(path_type("bool")),
                         where_clause: vec![],
                         effects: vec![],
-                        body: Block { stmts: vec![], tail_expr: None },
+                        body: Block { stmts: vec![], tail_expr: None, ..Default::default() },
                         body_expr: None,
                         contracts: vec![ContractClause {
                             kind: ContractClauseKind::Requires,
@@ -296,7 +296,7 @@ mod tests {
                     visibility: Visibility::Public,
                     attributes: vec![],
                 },
-            ],
+            ], ..Default::default()
         }
     }
 
@@ -417,7 +417,7 @@ mod tests {
 
     #[test]
     fn empty_module_empty_manifest() {
-        let m = generate(&Module { items: vec![] }, "empty", "0.0.0");
+        let m = generate(&Module { items: vec![], ..Default::default() }, "empty", "0.0.0");
         assert!(m.agents.is_empty());
         assert!(m.functions.is_empty());
         assert!(m.types.is_empty());
@@ -448,7 +448,7 @@ mod tests {
                     visibility: Visibility::Private,
                     attributes: vec![],
                 },
-            ],
+            ], ..Default::default()
         };
         let m = generate(&module, "multi", "1.0.0");
         assert_eq!(m.agents.len(), 2);
