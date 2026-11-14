@@ -383,7 +383,7 @@ pub type ModuleFn = fn(&ast::Module) -> PassOut;
 
 /// How an item pass's output is used.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum Role {
+pub enum PassRole {
     /// Its diagnostics join the union that `Diagnostics`/`Checked` report.
     Diagnostics,
     /// As `Diagnostics`, but only under `--core`.
@@ -403,7 +403,7 @@ pub struct ItemPassDef {
     /// and the crate version does not: the build id covers the passes that ship
     /// in this crate, but cannot see a pass defined elsewhere.
     pub version: &'static str,
-    pub role: Role,
+    pub role: PassRole,
     pub run: ItemFn,
 }
 
@@ -444,12 +444,12 @@ impl Registry {
         let b = |name, stat, role, run| ItemPassDef { name, stat, version: "1", role, run };
         Registry {
             items: vec![
-                b("verify", "pass/verify", Role::Diagnostics, pass_verify as ItemFn),
-                b("logic", "pass/logic", Role::Diagnostics, pass_logic as ItemFn),
-                b("contract", "pass/contract", Role::Diagnostics, pass_contract as ItemFn),
-                b("core", "pass/core", Role::CoreOnly, pass_core as ItemFn),
-                b("shape", "pass/shape", Role::Shape, pass_shape as ItemFn),
-                b("ai", "pass/ai", Role::Report, pass_ai as ItemFn),
+                b("verify", "pass/verify", PassRole::Diagnostics, pass_verify as ItemFn),
+                b("logic", "pass/logic", PassRole::Diagnostics, pass_logic as ItemFn),
+                b("contract", "pass/contract", PassRole::Diagnostics, pass_contract as ItemFn),
+                b("core", "pass/core", PassRole::CoreOnly, pass_core as ItemFn),
+                b("shape", "pass/shape", PassRole::Shape, pass_shape as ItemFn),
+                b("ai", "pass/ai", PassRole::Report, pass_ai as ItemFn),
             ],
             modules: Vec::new(),
         }
@@ -458,7 +458,7 @@ impl Registry {
     /// Register a pure per-item pass.
     pub fn item_pass(mut self, name: &'static str, version: &'static str, run: ItemFn) -> Self {
         let stat = Box::leak(format!("pass/{name}").into_boxed_str());
-        self.items.push(ItemPassDef { name, stat, version, role: Role::Diagnostics, run });
+        self.items.push(ItemPassDef { name, stat, version, role: PassRole::Diagnostics, run });
         self
     }
 
@@ -982,9 +982,9 @@ fn pass_keys(db: &M, f: File, items: &[ItemInfo], core: bool) -> Vec<Key> {
     let mut keys = Vec::new();
     for (p, def) in db.ctx.items.iter().enumerate() {
         let wanted = match def.role {
-            Role::Diagnostics => true,
-            Role::CoreOnly => core,
-            Role::Shape | Role::Report => false,
+            PassRole::Diagnostics => true,
+            PassRole::CoreOnly => core,
+            PassRole::Shape | PassRole::Report => false,
         };
         if wanted {
             keys.extend(items.iter().map(|i| Key::ItemPass(f, p, i.id.clone())));
