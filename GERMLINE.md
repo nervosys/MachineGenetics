@@ -546,6 +546,14 @@ from the blob store, an unreadable base tree) are an `Err`, which halts it. This
 not a sandbox. A candidate's build scripts, tests and binary run as the user with
 only a cut-down environment and timeouts, and a candidate cannot delete files or
 build on the champion's edits (it is a whole change set against the base).
+`scripts/selfmod-eval.py MANIFEST BINARY` is an evaluator for the MAGE compiler:
+it runs `BINARY --check --json` over a frozen corpus manifest and reports
+`safety` (known-good files still check clean, so a new error is a regression),
+`correctness` (known-bad files still raise their expected codes, matched by code
+because some diagnostics have no span), `capability` (files from a target backlog
+that now check clean) and, unless `--no-time`, a wall-clock `efficiency`. Freeze
+the script, manifest and corpus with `scripts/freeze-corpora.sh`, outside every
+writable prefix.
 
 ## 8. What is still not built
 
