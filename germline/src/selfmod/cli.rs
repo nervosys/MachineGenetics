@@ -113,6 +113,10 @@ pub struct CliConfig {
     pub writable: Vec<String>,
     #[serde(default)]
     pub protected: Vec<String>,
+    /// Refuse a candidate that removes or changes a test function of a `.rs`
+    /// file it rewrites (see `SelfModConfig::protect_tests`). Default false.
+    #[serde(default)]
+    pub protect_tests: bool,
     pub scratch_root: PathBuf,
     pub build: CmdConfig,
     pub test: CmdConfig,
@@ -181,6 +185,7 @@ impl CliConfig {
         );
         c.writable = self.writable.clone();
         c.protected = self.protected.clone();
+        c.protect_tests = self.protect_tests;
         c.target_dir = self.target_dir.clone();
         c.env = self.env.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
         c.shadow = self.shadow.as_ref().map(CmdConfig::cmd);
