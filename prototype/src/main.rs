@@ -3734,12 +3734,13 @@ fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool, to
     let mut ai_info: Vec<String> = Vec::new();
 
     // Shape inference on net blocks.
-    for item in &module.items {
+    for (at, item) in module.items.iter().enumerate() {
         if let ast::ItemKind::Net(net) = &item.kind {
             let mut infer = shape::ShapeInfer::new();
             // Use a fresh variable as placeholder input shape.
             let input_shape = vec![infer.fresh_dim(), infer.fresh_dim()];
             let out_shape = infer.infer_net(net, &input_shape);
+            hir::stamp_missing(&mut infer.diagnostics, hir::Span::item(module.start_of(at)));
             for diag in &infer.diagnostics {
                 eprintln!("  {filename}: {diag}");
                 if diag.severity == hir::Severity::Error {
@@ -3757,7 +3758,7 @@ fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool, to
     }
 
     // Autograd on train blocks.
-    for item in &module.items {
+    for (at, item) in module.items.iter().enumerate() {
         if let ast::ItemKind::Train(train) = &item.kind {
             let tape = autograd::build_tape_from_train(train);
             let loss_id = if tape.nodes.is_empty() {
@@ -3807,7 +3808,9 @@ fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool, to
                     grad_result.mlir_ops.len()
                 ));
             }
-            for diag in &grad_result.diagnostics {
+            let mut grad_diags = grad_result.diagnostics.clone();
+            hir::stamp_missing(&mut grad_diags, hir::Span::item(module.start_of(at)));
+            for diag in &grad_diags {
                 eprintln!("  {filename}: {diag}");
                 if diag.severity == hir::Severity::Error {
                     ai_errors += 1;
@@ -3817,10 +3820,11 @@ fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool, to
     }
 
     // Logic engine on kb blocks.
-    for item in &module.items {
+    for (at, item) in module.items.iter().enumerate() {
         if let ast::ItemKind::Kb(kb_def) = &item.kind {
             let mut kb = logic::build_kb(kb_def);
             kb.materialize();
+            hir::stamp_missing(&mut kb.diagnostics, hir::Span::item(module.start_of(at)));
             for diag in &kb.diagnostics {
                 eprintln!("  {filename}: {diag}");
                 if diag.severity == hir::Severity::Error {
@@ -3870,14 +3874,22 @@ fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool, to
 
     // ── Phase 5.5: Contract verification ────────────────────────────
     eprintln!("▸ Phase 5.5: Contract verification");
-    let verifications = verify::verify_module(&module);
+    let mut verifications = Vec::new();
+    let mut verify_diags = Vec::new();
+    for (at, item) in module.items.iter().enumerate() {
+        let v = verify::verify_module(&ast::Module::single(item));
+        let mut d = verify::diagnostics(&v);
+        hir::stamp_missing(&mut d, hir::Span::item(module.start_of(at)));
+        verify_diags.extend(d);
+        verifications.extend(v);
+    }
     let subject_total = verifications.len();
     let contract_total: usize = verifications.iter().map(|v| v.checks.len()).sum();
     let mut verdicts = verdict::Tally::default();
     for v in &verifications {
         verdicts.add(&v.status.evidence(&v.fqn));
     }
-    for diag in &verify::diagnostics(&verifications) {
+    for diag in &verify_diags {
         eprintln!("  {filename}: {diag}");
         total_errors += 1;
     }

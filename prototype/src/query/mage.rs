@@ -1269,10 +1269,13 @@ fn exec_report(db: &M, f: File) -> Result<Val, QueryError> {
 
     // Phase 4.5: nets, then trains, then kbs, as `run_pipeline` walks them.
     let ai = db.ctx.item_index("ai");
+    let starts = starts_of(db, f)?;
     for kind in ["Net", "Train", "Kb"] {
-        for i in items.iter().filter(|i| i.id.kind == kind) {
+        for (n, i) in items.iter().enumerate().filter(|(_, i)| i.id.kind == kind) {
             let p = fetch!(db, Key::ItemPass(f, ai, i.id.clone()), Pass);
-            r.ai_diags.extend(p.diags.iter().map(|d| d.to_string()));
+            let mut d = p.diags.clone();
+            hir::stamp_missing(&mut d, hir::Span::item(starts.get(n).copied()));
+            r.ai_diags.extend(d.iter().map(|d| d.to_string()));
             r.ai_errors += p.count;
             r.ai_info.extend(p.notes.iter().cloned());
         }
@@ -1292,12 +1295,14 @@ fn exec_report(db: &M, f: File) -> Result<Val, QueryError> {
     let vp = db.ctx.item_index("verify");
     let mut results: Vec<verify::VerificationResult> = Vec::new();
     let mut vdiags: Vec<Diagnostic> = Vec::new();
-    for i in items.iter() {
+    for (n, i) in items.iter().enumerate() {
         let p = fetch!(db, Key::ItemPass(f, vp, i.id.clone()), Pass);
         for n in &p.notes {
             results.push(serde_json::from_str(n).map_err(|e| QueryError::Failed(e.to_string()))?);
         }
-        vdiags.extend(p.diags.iter().cloned());
+        let mut d = p.diags.clone();
+        hir::stamp_missing(&mut d, hir::Span::item(starts.get(n).copied()));
+        vdiags.extend(d);
     }
     r.contract_total = results.iter().map(|v| v.checks.len()).sum();
     let mut tally = verdict::Tally::default();
@@ -1366,9 +1371,11 @@ pub fn reference_report(source: &str, s: Settings) -> PipelineReport {
     total += count_errors(&borrow_diags);
 
     for kind in ["Net", "Train", "Kb"] {
-        for item in module.items.iter().filter(|i| kind_name(&i.kind) == kind) {
+        for (n, item) in module.items.iter().enumerate().filter(|(_, i)| kind_name(&i.kind) == kind) {
             let p = pass_ai(item);
-            r.ai_diags.extend(p.diags.iter().map(|d| d.to_string()));
+            let mut d = p.diags.clone();
+            hir::stamp_missing(&mut d, hir::Span::item(module.start_of(n)));
+            r.ai_diags.extend(d.iter().map(|d| d.to_string()));
             r.ai_errors += p.count;
             r.ai_info.extend(p.notes);
         }
@@ -1382,7 +1389,15 @@ pub fn reference_report(source: &str, s: Settings) -> PipelineReport {
     inferred.sort_by(|a, b| a.0.cmp(b.0));
     r.effects = inferred.into_iter().map(|(n, fx)| (n.clone(), fx.iter().map(|e| e.to_string()).collect())).collect();
 
-    let results = verify::verify_module(&module);
+    let mut results = Vec::new();
+    let mut vdiags = Vec::new();
+    for (n, item) in module.items.iter().enumerate() {
+        let v = verify::verify_module(&ast::Module::single(item));
+        let mut d = verify::diagnostics(&v);
+        hir::stamp_missing(&mut d, hir::Span::item(module.start_of(n)));
+        vdiags.extend(d);
+        results.extend(v);
+    }
     r.contract_total = results.iter().map(|v| v.checks.len()).sum();
     let mut tally = verdict::Tally::default();
     for v in &results {
@@ -1393,7 +1408,6 @@ pub fn reference_report(source: &str, s: Settings) -> PipelineReport {
         .iter()
         .map(|v| format!("{} {}: {}", v.status.symbol(), v.fqn, v.status.evidence(&v.fqn).describe()))
         .collect();
-    let vdiags = verify::diagnostics(&results);
     r.verify_diags = vdiags.iter().map(|d| d.to_string()).collect();
     total += vdiags.len();
 
