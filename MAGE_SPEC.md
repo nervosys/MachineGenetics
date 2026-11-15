@@ -829,6 +829,24 @@ f main() -> i32 {
 }
 ```
 
+**Ordering.** `<`, `<=`, `>`, `>=` and the vocabulary words that order (`sort`,
+`min`, `max`) use one order, the one Rust derives. Numbers compare by value (an
+integer against a float is promoted), strings by bytes, `0b < 1b`. Lists and
+tuples compare lexicographically: the first unequal element decides, and a
+proper prefix is less, so `[1, 2] < [1, 3]`, `[1] < [1, 0]` and
+`sort([[2, 1], [1, 5]])` is `[[1, 5], [2, 1]]`. Options put `None` before every
+`Some`, and two `Some`s compare their contents. Maps, records and enum values
+are not ordered by these operators. Before 2026-11-15 the interpreter treated
+every list, tuple and option as equal to every other, so `sort` left nested
+lists in place and `[1, 3] <= [1, 2]` held.
+
+```mage
+f main() -> i32 / io {
+    p"{sort([[2, 1], [1, 5], [1, 2]])} {None < Some(0)}"
+    0
+}
+```
+
 ### 4.7 Statements
 
 A block is `{ statements, optional final expression }` (`Block`, `BlockBody`,

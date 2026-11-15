@@ -2670,6 +2670,21 @@ fn cmp_value(a: &Value, b: &Value) -> std::cmp::Ordering {
         // branch and the derivative is of a different function.
         (Value::Dual(x, _), _) => cmp_value(&Value::Float(*x), b),
         (_, Value::Dual(y, _)) => cmp_value(a, &Value::Float(*y)),
+        // Lists and tuples order lexicographically, as Rust's derived `Ord`
+        // does: the first unequal element decides, and a proper prefix is less.
+        (Value::List(xs), Value::List(ys)) | (Value::Tuple(xs), Value::Tuple(ys)) => xs
+            .iter()
+            .zip(ys)
+            .map(|(x, y)| cmp_value(x, y))
+            .find(|o| o.is_ne())
+            .unwrap_or_else(|| xs.len().cmp(&ys.len())),
+        // `None < Some(_)`; two `Some`s compare their contents.
+        (Value::Opt(x), Value::Opt(y)) => match (x, y) {
+            (Some(x), Some(y)) => cmp_value(x, y),
+            (None, None) => Ordering::Equal,
+            (None, Some(_)) => Ordering::Less,
+            (Some(_), None) => Ordering::Greater,
+        },
         _ => Ordering::Equal,
     }
 }
@@ -3817,6 +3832,39 @@ pub fn run_source_on_eval_stack(src: String, name: &str, args: Vec<i64>) -> Resu
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn compound_values_order_like_rusts_derived_ord() {
+        use std::cmp::Ordering::*;
+        let l = |xs: &[i64]| Value::List(xs.iter().map(|&i| Value::Int(i)).collect());
+        let t = |xs: &[i64]| Value::Tuple(xs.iter().map(|&i| Value::Int(i)).collect());
+        let some = |v: Value| Value::Opt(Some(Box::new(v)));
+        assert_eq!(cmp_value(&l(&[1]), &l(&[1, 0])), Less);
+        assert_eq!(cmp_value(&l(&[1, 0]), &l(&[1])), Greater);
+        assert_eq!(cmp_value(&l(&[]), &l(&[])), Equal);
+        assert_eq!(cmp_value(&l(&[1, 2]), &l(&[1, 3])), Less);
+        assert_eq!(cmp_value(&l(&[2, 0]), &l(&[1, 9])), Greater);
+        assert_eq!(cmp_value(&t(&[1, 2]), &t(&[1, 3])), Less);
+        assert_eq!(cmp_value(&t(&[1, 2]), &t(&[1, 2])), Equal);
+        assert_eq!(cmp_value(&Value::Opt(None), &some(Value::Int(0))), Less);
+        assert_eq!(cmp_value(&some(Value::Int(0)), &Value::Opt(None)), Greater);
+        assert_eq!(cmp_value(&Value::Opt(None), &Value::Opt(None)), Equal);
+        assert_eq!(cmp_value(&some(Value::Int(1)), &some(Value::Int(2))), Less);
+        let a = Value::List(vec![Value::Opt(None), some(Value::Int(5))]);
+        let b = Value::List(vec![Value::Opt(None), some(Value::Int(6))]);
+        let c = Value::List(vec![some(Value::Int(0))]);
+        assert_eq!(cmp_value(&a, &b), Less);
+        assert_eq!(cmp_value(&c, &a), Greater);
+    }
+
+    #[test]
+    fn maps_structs_and_mixed_kinds_still_compare_equal() {
+        use std::cmp::Ordering::Equal;
+        let m1 = Value::Map(Default::default());
+        assert_eq!(cmp_value(&m1, &m1), Equal);
+        assert_eq!(cmp_value(&Value::List(vec![Value::Int(1)]), &Value::Tuple(vec![Value::Int(2)])), Equal);
+        assert_eq!(cmp_value(&Value::Opt(None), &Value::Int(3)), Equal);
+    }
 
     #[test]
     fn eval_recurses_past_the_main_thread_stack() {

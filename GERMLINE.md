@@ -735,6 +735,26 @@ scope, so a default naming a variable would see the caller's; and the narrow
 casts, like the existing `as i32`, do no range check (`300 as u8` is 300), where
 the specification is silent.
 
+**A fourth run, where the specification had to be written first.** The run-3
+search also found silent wrong answers the specification did not rule on. The
+clearest: the interpreter's comparison returned "equal" for any two lists,
+tuples or options, so `sort` left nested lists in place and `[1, 3] <= [1, 2]`
+held. Any order beats that, and for a Rust-derived language the obvious one is
+Rust's derived `Ord` (lexicographic, proper prefix less, `None < Some`). That is a
+language decision, so it went into MAGE_SPEC.md §4.6 as a reviewable paragraph,
+outside the write set, and the backlog was written from it: four programs
+(lists, options, tuples, and `sort`/`min`/`max` over them) with hand-written
+output. Same guards as run 3, 27 programs' `--eval` output pinned.
+
+| generation | change | capability | safety | correctness | fidelity | semantics | verdict |
+|---|---|---|---|---|---|---|---|
+| 0 | base `selfmod-gen4@257618097` | 0.5 | 1.0 | 1.0 | 1.0 | 1.0 | genesis |
+| 1 | eval.rs `cmp_value` (+2 tests) | 1.0 | 1.0 | 1.0 | 1.0 | 1.0 | promoted |
+
+The split is the point: a human (here, a reviewer of the specification PR)
+decides what the language means; the loop makes the implementation agree, under
+guards that keep everything else as it was.
+
 ## 8. What is still not built
 
 ◻ **Model training and inference.** The variation operators produce genomes; what
