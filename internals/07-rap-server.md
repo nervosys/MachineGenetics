@@ -12,8 +12,8 @@ JSON-RPC protocol.
 | ------------------ | -------------------------------------------------------- |
 | Agent-first        | Primary consumers are LLM agents, not humans             |
 | Streaming          | Agents need partial results during long compilations     |
-| Stateless queries  | Each request is self-contained — no session state        |
-| Incremental future | Not wired in; the compiler's own query engine (`prototype/src/query/`) is the candidate |
+| Stateless queries  | Self-contained by default; an optional `doc` id opts a call into per-connection incremental state (§7.8) |
+| Incremental        | Opt-in per document via `doc` on `build/check` and `build/heal` (§7.8) |
 | JSON-RPC           | Universal protocol — any language can connect            |
 
 ## 7.2 Transport
@@ -168,7 +168,7 @@ errors combined).
 ## 7.4 The method surface
 
 **Corrected 2026-08-25.** This section was a "Planned Methods" table listing
-three implemented methods and eleven planned ones. **42 methods are published
+three implemented methods and eleven planned ones. **43 methods are published
 and dispatch** — the count is pinned, and a test exercises every one against
 its published parameter list. None of the eleven exists under the name given,
 and most of the capabilities they described shipped under a different one:
@@ -197,13 +197,14 @@ this table cannot drift from the binary without the ontology drifting first:
 | `abl/run` | `source` | Source -> encode -> CpuBackend dispatch |
 | `attribute/compress` | `name` | Compress attributes back to shorthand |
 | `attribute/expand` | `name` | Expand attribute shorthand |
-| `build/check` | `source` | Lex + parse + report diagnostics |
-| `build/heal` | `source` | Generate fix candidates for diagnostics |
+| `build/check` | `source`, `doc` | Lex + parse + report diagnostics; with `doc`, incremental (§7.8) |
+| `build/heal` | `source`, `doc` | Generate fix candidates for diagnostics; with `doc`, incremental (§7.8) |
 | `build/recover` | `source` | Run the 5-stage recovery pipeline; return final source |
 | `build/selfheal` | `source`, `fuel` | Intent-guided heal loop plus test-driven repair (`mage-parse --heal`); returns the healed source and a diff, writes nothing |
 | `capability/check` | `source` | List capabilities required by source |
 | `cost/compare` | `a`, `b`, `target` | Compare costs of two constructs |
 | `cost/query` | `construct`, `target`, `opt` | Per-construct cost estimate |
+| `doc/close` | `doc` | Drop the incremental state kept for a `doc` id on this connection |
 | `doc/query` | `fqn` | Lookup documentation by FQN |
 | `effects/check` | `source` | Check declared effects against inferred |
 | `effects/infer` | `source` | Infer effects of each function |
@@ -421,14 +422,43 @@ context = rap_call("agent/context", file_source)
 # Agent uses this summary instead of re-parsing the whole file
 ```
 
-## 7.8 Future: Incremental Compilation
+## 7.8 Incremental Compilation
 
-The RAP server still recompiles from scratch on each request. Since
-2026-11-13 the compiler has a hand-written incremental query engine
-(`prototype/src/query/`, used by `--pipeline --incremental-stats`) that RAP
-could hold per open document; it is not wired into RAP yet. The original
-Salsa-based design for this follows, kept as a design sketch (Salsa is not a
-dependency):
+`build/check` and `build/heal` take an optional string `doc` (a document id or
+URI). Without it they behave exactly as before: stateless, recompiled from
+scratch, response unchanged. With it, the server keeps one engine `Compiler`
+(`prototype/src/query/mage.rs`, the same query engine as
+`--pipeline --incremental-stats`) per document id, sets that document's new
+source, and queries the engine; an agent that re-checks a document after a small
+edit pays only for what changed (an edited function body re-runs the per-item
+queries for that function alone; whole-module analyses run once).
+
+The response carries the same `ok` / `errors` (check) or `ok` / `diagnostics`
+(heal) as the stateless call, so a client can switch freely, plus two additive
+members:
+
+- `semantic`: for `build/check`, `{counts, diagnostics}` from the engine's full
+  check (same shape as `--check --json`); for `build/heal`, the engine's `heal`
+  query result for the semantic diagnostics.
+- `incremental`: `{doc, cold, revision, executions, hits, early_cutoffs,
+  item_reruns}` for that call only. `item_reruns` maps each per-item query
+  (`resolve_item` and the verify, logic, contract, shape and borrowck item
+  passes) to the keys that ran, so the items re-checked are visible.
+
+`doc/close {doc}` drops a document's state (`closed` says whether it existed);
+the next call for that id is cold.
+
+Limits. State is **per connection**, not process-wide: the engine is not
+`Send` and the server handles one connection at a time, so it lives in
+`handle_connection` and dies with the socket (a reconnecting client starts
+cold). Each connection keeps at most 64 documents, evicting the least recently
+used; an evicted document is simply cold on its next call. State is in memory
+only (no disk cache is used by RAP). Only these two methods take `doc`; other
+methods still recompile from scratch. `errors` is syntax-level (as in the
+stateless call), the semantic result is the separate `semantic` member.
+
+The original Salsa-based design below is kept as a design sketch (Salsa is not
+a dependency):
 
 ```rust
 #[salsa::query_group(CompilerDatabase)]
