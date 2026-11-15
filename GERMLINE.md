@@ -685,6 +685,11 @@ diff was read for removed or weakened tests (none: the deleted lines are the
 replaced logic). That check is manual because the unit tests live inside the
 writable `prototype/src/`; a candidate could edit the tests that judge it, and no
 axis would notice. `protect_tests` (above) now makes that check part of the gate.
+With it switched on for the same run, a cheat candidate (generation 1's three
+files plus `#[ignore]` on one existing parser test, which would otherwise build,
+pass and score the champion's fitness) was refused before building: "test
+`tests::colon_question_is_two_tokens` in prototype/src/parser.rs was removed or
+changed (protect_tests)", recorded at zero, champion unchanged, no build spent.
 
 ## 8. What is still not built
 
