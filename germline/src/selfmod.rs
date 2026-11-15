@@ -47,6 +47,13 @@
 //!    inside a writable prefix. Put the tests and any corpus there. Otherwise a
 //!    candidate can pass its tests by editing them.
 //!
+//! 4. **Inline tests** (opt-in, [`SelfModConfig::protect_tests`]). Unit tests that
+//!    live inside writable `.rs` files cannot be put under a protected prefix. With
+//!    the flag on, a candidate is refused if any test function of the base version
+//!    of a file it changes is missing or textually different in the candidate
+//!    ([`check_tests_kept`]). Tests the candidate adds are fine. This is a textual
+//!    guard, not a semantic one: see [`test_fns`] for what it can be fooled by.
+//!
 //! The write set is enforced at exactly one place, [`check_write_set`], called by
 //! [`SelfModWorkload::materialize`] before anything is copied. [`DirProposer`]
 //! deliberately does not repeat it.
@@ -364,6 +371,316 @@ pub fn check_write_set(cfg: &SelfModConfig, files: &[(String, String)]) -> Resul
 }
 
 // ---------------------------------------------------------------------------
+// Test integrity
+// ---------------------------------------------------------------------------
+
+/// Copy of `src` with comments and the insides of string and char literals
+/// replaced by spaces (newlines kept), byte for byte, so offsets in the result
+/// are offsets in `src`. Lifetimes (`'a`) are not char literals and are kept.
+fn mask_rust(src: &str) -> Vec<u8> {
+    let b = src.as_bytes();
+    let mut m = b.to_vec();
+    let blank = |m: &mut Vec<u8>, from: usize, to: usize| {
+        for c in &mut m[from..to.min(b.len())] {
+            if *c != b'\n' {
+                *c = b' ';
+            }
+        }
+    };
+    let is_ident = |c: u8| c == b'_' || c.is_ascii_alphanumeric() || c >= 0x80;
+    let mut i = 0;
+    while i < b.len() {
+        match b[i] {
+            b'/' if b.get(i + 1) == Some(&b'/') => {
+                let end = b[i..].iter().position(|&c| c == b'\n').map_or(b.len(), |p| i + p);
+                blank(&mut m, i, end);
+                i = end;
+            }
+            b'/' if b.get(i + 1) == Some(&b'*') => {
+                let (mut depth, mut j) = (1, i + 2);
+                while j < b.len() && depth > 0 {
+                    if b[j] == b'/' && b.get(j + 1) == Some(&b'*') {
+                        depth += 1;
+                        j += 2;
+                    } else if b[j] == b'*' && b.get(j + 1) == Some(&b'/') {
+                        depth -= 1;
+                        j += 2;
+                    } else {
+                        j += 1;
+                    }
+                }
+                blank(&mut m, i, j);
+                i = j;
+            }
+            // `r"..."`, `r#"..."#`, `br#"..."#`, `cr"..."`: no escapes, ends at a
+            // quote followed by as many `#` as opened it.
+            b'r' if (i == 0 || !is_ident(b[i - 1]) || matches!(b[i - 1], b'b' | b'c') && (i < 2 || !is_ident(b[i - 2]))) => {
+                let mut j = i + 1;
+                while b.get(j) == Some(&b'#') {
+                    j += 1;
+                }
+                if b.get(j) == Some(&b'"') {
+                    let hashes = j - i - 1;
+                    let mut k = j + 1;
+                    let end = loop {
+                        match b[k..].iter().position(|&c| c == b'"') {
+                            None => break b.len(),
+                            Some(p) => {
+                                k += p + 1;
+                                if b.len() >= k + hashes && b[k..k + hashes].iter().all(|&c| c == b'#') {
+                                    break k + hashes;
+                                }
+                            }
+                        }
+                    };
+                    blank(&mut m, j, end);
+                    i = end;
+                } else {
+                    i += 1;
+                }
+            }
+            b'"' => {
+                let mut j = i + 1;
+                while j < b.len() && b[j] != b'"' {
+                    j += if b[j] == b'\\' { 2 } else { 1 };
+                }
+                let end = (j + 1).min(b.len());
+                blank(&mut m, i + 1, end);
+                i = end;
+            }
+            b'\'' => {
+                // A char literal is `'\...'` or one char then `'`; anything else
+                // (`'a`, `'static`, `'_`) is a lifetime or label.
+                let end = if b.get(i + 1) == Some(&b'\\') {
+                    let mut j = i + 2;
+                    while j < b.len() && b[j] != b'\'' && b[j] != b'\n' {
+                        j += if b[j] == b'\\' { 2 } else { 1 };
+                    }
+                    Some((j + 1).min(b.len()))
+                } else {
+                    src[i + 1..].chars().next().and_then(|c| {
+                        let after = i + 1 + c.len_utf8();
+                        (c != '\'' && b.get(after) == Some(&b'\'')).then_some(after + 1)
+                    })
+                };
+                match end {
+                    Some(end) => {
+                        blank(&mut m, i + 1, end);
+                        i = end;
+                    }
+                    None => i += 1,
+                }
+            }
+            _ => i += 1,
+        }
+    }
+    m
+}
+
+/// Index just past the `close` that matches the `open` at `at`, in masked text.
+fn matching(m: &[u8], at: usize, open: u8, close: u8) -> Option<usize> {
+    let mut depth = 0usize;
+    for (j, &c) in m.iter().enumerate().skip(at) {
+        if c == open {
+            depth += 1;
+        } else if c == close {
+            depth = depth.saturating_sub(1);
+            if depth == 0 {
+                return Some(j + 1);
+            }
+        }
+    }
+    None
+}
+
+fn skip_ws(m: &[u8], mut i: usize) -> usize {
+    while i < m.len() && m[i].is_ascii_whitespace() {
+        i += 1;
+    }
+    i
+}
+
+/// The identifier starting at `i` in masked text, and the index after it.
+fn ident_at(m: &[u8], i: usize) -> (&str, usize) {
+    let mut j = i;
+    while j < m.len() && (m[j] == b'_' || m[j].is_ascii_alphanumeric()) {
+        j += 1;
+    }
+    (std::str::from_utf8(&m[i..j]).unwrap_or(""), j)
+}
+
+/// Whether the attribute body (text between `#[` and `]`, masked) names a test
+/// attribute: `test`, `tokio::test`, `tokio::test(flavor = ...)`, any path whose
+/// last segment is `test`.
+fn is_test_attr(body: &str) -> bool {
+    let path: String = body.chars().take_while(|&c| c != '(' && c != '=').filter(|c| !c.is_whitespace()).collect();
+    path.rsplit("::").next() == Some("test")
+}
+
+/// Every test function in a Rust source file as `(path::name, normalised text)`.
+///
+/// A test function is an `fn` item (after optional `pub`, `async`, `const`,
+/// `unsafe`, `extern`) directly preceded by an attribute group that holds a
+/// `#[test]` or `#[...::test]`. Its identity is its name under the enclosing
+/// inline `mod` names (`tests::foo`). Its text runs from the first attribute of
+/// the group to the closing brace of the body, with leading and trailing
+/// whitespace of each line trimmed and blank lines dropped, so re-indenting is
+/// not a change. Comments and strings are masked while finding structure, so a
+/// `#[test]` or a brace inside either is neither a test nor a nesting level;
+/// raw strings, char literals and lifetimes are handled.
+///
+/// What it can be fooled by (this is a textual guard, not a semantic one):
+/// - Any edit to the text counts, including a comment inside a test. That is a
+///   false refusal, the safe direction.
+/// - Whitespace inside a multi-line string literal is also normalised away, so
+///   changing only that is not seen.
+/// - Tests defined by a macro, or marked by an attribute that is not named
+///   `test` (`#[rstest]`, `#[proptest]`), are not extracted, so are not guarded.
+/// - Only the test's own text is compared. A candidate can still weaken a test
+///   by changing what it calls (a helper outside the test, the code under test),
+///   or by `#[cfg(...)]` on the enclosing module, or by moving the test out of
+///   its module, which changes its identity and is refused.
+/// - A test inside a test function is not extracted separately.
+pub fn test_fns(src: &str) -> Vec<(String, String)> {
+    let m = mask_rust(src);
+    let mut out = Vec::new();
+    let mut stack: Vec<Option<String>> = Vec::new();
+    let mut pending_mod: Option<String> = None;
+    let mut i = 0;
+    while i < m.len() {
+        let c = m[i];
+        if c == b'{' {
+            stack.push(pending_mod.take());
+        } else if c == b'}' {
+            stack.pop();
+        } else if c == b'#' {
+            // An attribute group: `#[..]` and `#![..]`, possibly several.
+            let start = i;
+            let mut j = i;
+            let mut test = false;
+            loop {
+                let mut k = skip_ws(&m, j);
+                if m.get(k) != Some(&b'#') {
+                    break;
+                }
+                k = skip_ws(&m, k + 1);
+                if m.get(k) == Some(&b'!') {
+                    k = skip_ws(&m, k + 1);
+                }
+                if m.get(k) != Some(&b'[') {
+                    break;
+                }
+                let Some(end) = matching(&m, k, b'[', b']') else { break };
+                test |= is_test_attr(std::str::from_utf8(&m[k + 1..end - 1]).unwrap_or(""));
+                j = end;
+            }
+            if j == i {
+                i += 1;
+                continue;
+            }
+            i = j;
+            if !test {
+                continue;
+            }
+            // Qualifiers, then `fn name`.
+            let mut k = skip_ws(&m, i);
+            loop {
+                let (word, after) = ident_at(&m, k);
+                match word {
+                    "pub" => {
+                        k = skip_ws(&m, after);
+                        if m.get(k) == Some(&b'(') {
+                            k = skip_ws(&m, matching(&m, k, b'(', b')').unwrap_or(k + 1));
+                        }
+                    }
+                    "async" | "const" | "unsafe" | "extern" => {
+                        k = skip_ws(&m, after);
+                        // `extern "C"`: the ABI string is masked to a quote pair.
+                        if m.get(k) == Some(&b'"') {
+                            k = skip_ws(&m, k + 1);
+                            while m.get(k) == Some(&b' ') || m.get(k) == Some(&b'"') {
+                                k += 1;
+                            }
+                        }
+                    }
+                    _ => break,
+                }
+            }
+            let (word, after) = ident_at(&m, k);
+            if word != "fn" {
+                continue;
+            }
+            let (name, after) = ident_at(&m, skip_ws(&m, after));
+            if name.is_empty() {
+                continue;
+            }
+            // The body: the first `{` outside parentheses and brackets of the
+            // signature; a `;` first means no body.
+            let (mut paren, mut open) = (0i32, None);
+            for (q, &ch) in m.iter().enumerate().skip(after) {
+                match ch {
+                    b'(' | b'[' => paren += 1,
+                    b')' | b']' => paren -= 1,
+                    b'{' if paren <= 0 => {
+                        open = Some(q);
+                        break;
+                    }
+                    b';' if paren <= 0 => break,
+                    _ => {}
+                }
+            }
+            let Some(open) = open else { continue };
+            let Some(end) = matching(&m, open, b'{', b'}') else { continue };
+            let mut path: Vec<&str> = stack.iter().flatten().map(String::as_str).collect();
+            path.push(name);
+            out.push((path.join("::"), normalise_lines(&src[start..end])));
+            i = end;
+            continue;
+        } else if c.is_ascii_alphabetic() || c == b'_' {
+            // Whole identifiers only, so `submod` is not `mod`.
+            let (word, after) = ident_at(&m, i);
+            if word == "mod" {
+                let (name, after_name) = ident_at(&m, skip_ws(&m, after));
+                if !name.is_empty() && m.get(skip_ws(&m, after_name)) == Some(&b'{') {
+                    pending_mod = Some(name.to_string());
+                }
+            }
+            i = after.max(i + 1);
+            continue;
+        }
+        i += 1;
+    }
+    out
+}
+
+/// Trim each line, drop blank ones, join with `\n`.
+fn normalise_lines(text: &str) -> String {
+    text.lines().map(str::trim).filter(|l| !l.is_empty()).collect::<Vec<_>>().join("\n")
+}
+
+/// Compare the test functions of the `base` and `candidate` versions of `path`.
+/// Every base test must be in the candidate with the same normalised text;
+/// tests the candidate adds are allowed. The error names the first test that
+/// was removed or changed. A candidate that is not valid UTF-8 has no tests.
+pub fn check_tests_kept(path: &str, base: &str, candidate: &[u8]) -> Result<(), String> {
+    let base_tests = test_fns(base);
+    if base_tests.is_empty() {
+        return Ok(());
+    }
+    let mut cand = std::str::from_utf8(candidate).map(test_fns).unwrap_or_default();
+    for (name, text) in base_tests {
+        match cand.iter().position(|(n, t)| *n == name && *t == text) {
+            // Used up, so two base tests of one name need two in the candidate.
+            Some(at) => {
+                cand.swap_remove(at);
+            }
+            None => return Err(format!("test `{name}` in {path} was removed or changed (protect_tests)")),
+        }
+    }
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
 // Config
 // ---------------------------------------------------------------------------
 
@@ -409,6 +726,12 @@ pub struct SelfModConfig {
     pub shadow: Option<Cmd>,
     /// If set, `evaluate` refuses a suite with a different digest.
     pub expected_suite: Option<Digest>,
+    /// Refuse a candidate that removes or changes a test function that the base
+    /// version of a changed `.rs` file has (see [`check_tests_kept`]). Rust unit
+    /// tests live inline in the files a candidate may rewrite, so without this a
+    /// candidate can pass its tests by deleting, `#[ignore]`-ing or weakening them.
+    /// Off by default.
+    pub protect_tests: bool,
 }
 
 impl SelfModConfig {
@@ -437,6 +760,7 @@ impl SelfModConfig {
             evaluator,
             shadow: None,
             expected_suite: None,
+            protect_tests: false,
         }
     }
 }
@@ -882,6 +1206,32 @@ fn parse_axes(stdout: &str) -> Result<BTreeMap<String, f64>, String> {
     Ok(out)
 }
 
+impl SelfModWorkload {
+    /// Record a candidate as refused before anything is built and return the
+    /// digest it is recorded under.
+    fn refuse(&mut self, spec: &CandidateSpec, why: &str) -> Digest {
+        // Named by the genome as given, so two different refused candidates do
+        // not share a report.
+        let genome = serde_json::to_string(&spec.genome).unwrap_or_default();
+        let digest = Digest::of(format!("refused\n{}\n{genome}", self.cfg.base_identity).as_bytes());
+        self.artifacts.insert(
+            digest.0.clone(),
+            ArtifactReport {
+                tree: PathBuf::new(),
+                files: Vec::new(),
+                build_ok: false,
+                tests_ok: false,
+                seconds: 0.0,
+                binary: None,
+                failure: Some(format!("refused before building: {why}")),
+                eval_failed: false,
+                refused: true,
+            },
+        );
+        digest
+    }
+}
+
 impl Workload for SelfModWorkload {
     /// Build the candidate. A write-set violation or malformed genome is `Ok`
     /// and recorded as refused, before anything is copied; so is a failed build
@@ -890,27 +1240,7 @@ impl Workload for SelfModWorkload {
     fn materialize(&mut self, spec: &CandidateSpec) -> Result<Digest, String> {
         let files = match changed_files(&spec.genome).and_then(|f| check_write_set(&self.cfg, &f).map(|()| f)) {
             Ok(files) => files,
-            Err(why) => {
-                // Named by the genome as given, so two different refused
-                // candidates do not share a report.
-                let genome = serde_json::to_string(&spec.genome).unwrap_or_default();
-                let digest = Digest::of(format!("refused\n{}\n{genome}", self.cfg.base_identity).as_bytes());
-                self.artifacts.insert(
-                    digest.0.clone(),
-                    ArtifactReport {
-                        tree: PathBuf::new(),
-                        files: Vec::new(),
-                        build_ok: false,
-                        tests_ok: false,
-                        seconds: 0.0,
-                        binary: None,
-                        failure: Some(format!("refused before building: {why}")),
-                        eval_failed: false,
-                        refused: true,
-                    },
-                );
-                return Ok(digest);
-            }
+            Err(why) => return Ok(self.refuse(spec, &why)),
         };
         let digest = artifact_digest(&self.cfg.base_identity, &files);
         if self.artifacts.contains_key(&digest.0) {
@@ -927,6 +1257,23 @@ impl Workload for SelfModWorkload {
                 )
             })?;
             blobs.push(bytes);
+        }
+        if self.cfg.protect_tests {
+            for ((path, _), bytes) in files.iter().zip(&blobs) {
+                if !path.to_ascii_lowercase().ends_with(".rs") {
+                    continue;
+                }
+                let base = match std::fs::read(self.base.join(path)) {
+                    Ok(b) => b,
+                    Err(e) if e.kind() == std::io::ErrorKind::NotFound => continue,
+                    Err(e) => return Err(format!("cannot read base file {path}: {e}")),
+                };
+                // A base file that is not UTF-8 is not Rust source we can read.
+                let Ok(base) = String::from_utf8(base) else { continue };
+                if let Err(why) = check_tests_kept(path, &base, bytes) {
+                    return Ok(self.refuse(spec, &why));
+                }
+            }
         }
 
         let dir = self.scratch.join(&digest.0[..16]);
@@ -1629,6 +1976,94 @@ echo "{\"capability\": $cap, \"safety\": 1}"
         }
         let entries: Vec<_> = std::fs::read_dir(fx.root.join("scratch")).unwrap().collect();
         assert!(entries.is_empty(), "nothing was copied: {entries:?}");
+    }
+
+    // ---- protect_tests -----------------------------------------------------
+
+    const RS_BASE: &str = "pub fn f() -> u32 { 1 }\n\n#[cfg(test)]\nmod tests {\n    use super::*;\n\n    #[test]\n    fn keeps() {\n        assert_eq!(f(), 1);\n    }\n}\n";
+
+    fn tests_fx(name: &str) -> (Fx, SelfModWorkload) {
+        let fx = Fx::new(name, EVAL_OK);
+        put(&fx.root.join("base/src/m.rs"), RS_BASE);
+        let mut cfg = fx.config();
+        cfg.protect_tests = true;
+        let w = SelfModWorkload::new(cfg, fx.store()).unwrap();
+        (fx, w)
+    }
+
+    fn refused_with(w: &mut SelfModWorkload, fx: &Fx, rs: &str) -> Option<String> {
+        let d = w.materialize(&fx.spec("p", &[("src/m.rs", rs)])).expect("a refusal, not an Err");
+        let r = w.report(&d).unwrap();
+        r.refused.then(|| r.failure.clone().unwrap())
+    }
+
+    #[test]
+    fn protect_tests_accepts_an_added_test_and_reindentation() {
+        let (fx, mut w) = tests_fx("pt-add");
+        let added = format!("{RS_BASE}#[test]\nfn extra() {{ assert!(true); }}\n");
+        assert_eq!(refused_with(&mut w, &fx, &added), None);
+        let reindented = RS_BASE.replace("    ", "\t\t").replace("\n\n", "\n\n\n");
+        assert_eq!(refused_with(&mut w, &fx, &reindented), None);
+    }
+
+    #[test]
+    fn protect_tests_refuses_removed_ignored_and_weakened_tests() {
+        let (fx, mut w) = tests_fx("pt-bad");
+        let removed = "pub fn f() -> u32 { 1 }\n";
+        let ignored = RS_BASE.replace("    #[test]", "    #[test]\n    #[ignore]");
+        let weakened = RS_BASE.replace("assert_eq!(f(), 1)", "assert_eq!(f(), f())");
+        let emptied = RS_BASE.replace("assert_eq!(f(), 1);", "");
+        for (what, rs) in [("removed", removed.to_string()), ("ignored", ignored), ("weakened", weakened), ("emptied", emptied)] {
+            let e = refused_with(&mut w, &fx, &rs).unwrap_or_else(|| panic!("{what} must be refused"));
+            assert!(e.contains("test `tests::keeps` in src/m.rs was removed or changed (protect_tests)"), "{what}: {e}");
+            assert!(e.starts_with("refused before building:"), "{e}");
+        }
+        let entries: Vec<_> = std::fs::read_dir(fx.root.join("scratch")).unwrap().collect();
+        assert!(entries.is_empty(), "nothing was copied: {entries:?}");
+        // An emptied file (the closest a genome gets to deleting one) is refused too.
+        assert!(refused_with(&mut w, &fx, "").is_some());
+    }
+
+    #[test]
+    fn protect_tests_off_does_not_refuse_a_removal() {
+        let fx = Fx::new("pt-off", EVAL_OK);
+        put(&fx.root.join("base/src/m.rs"), RS_BASE);
+        let mut w = fx.workload();
+        assert_eq!(refused_with(&mut w, &fx, "pub fn f() -> u32 { 1 }\n"), None);
+    }
+
+    #[test]
+    fn test_extraction_ignores_attributes_in_strings_and_comments() {
+        let src = "// #[test]\n// fn a() {}\n/* #[test] fn b() {} */\nconst S: &str = \"#[test] fn c() {}\";\nconst R: &str = r#\"#[test]\nfn d() {}\"#;\n#[test]\nfn real() {}\n";
+        let names: Vec<String> = test_fns(src).into_iter().map(|(n, _)| n).collect();
+        assert_eq!(names, ["real"]);
+        let tokio = "#[tokio::test(flavor = \"multi_thread\")]\nasync fn t() {}\n#[test_case(1)]\nfn not() {}\n";
+        let names: Vec<String> = test_fns(tokio).into_iter().map(|(n, _)| n).collect();
+        assert_eq!(names, ["t"]);
+    }
+
+    #[test]
+    fn test_extraction_matches_braces_past_strings_chars_lifetimes_and_comments() {
+        let src = concat!(
+            "mod m {\n",
+            "    #[test]\n",
+            "    fn tricky<'a>(x: &'a str) {\n",
+            "        let _ = \"}}}{\\\"}\";\n",
+            "        let _ = '}'; let _ = '{'; let _ = '\\''; let _ = '\\\\';\n",
+            "        let _ = r##\"} \"# {\"##;\n",
+            "        // }\n",
+            "        /* { /* } */ } */\n",
+            "        let _: &'static str = x;\n",
+            "    }\n",
+            "    #[test]\n",
+            "    fn after() {}\n",
+            "}\n",
+        );
+        let t = test_fns(src);
+        let names: Vec<&str> = t.iter().map(|(n, _)| n.as_str()).collect();
+        assert_eq!(names, ["m::tricky", "m::after"]);
+        assert!(t[0].1.ends_with("let _: &'static str = x;\n}"), "{}", t[0].1);
+        assert_eq!(t[1].1, "#[test]\nfn after() {}");
     }
 
     #[test]

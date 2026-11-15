@@ -1,7 +1,7 @@
 # Germline — model succession, handoff, and fallback
 
 > **Status: control plane complete and runnable; workload not.**
-> `germline/` — its own crate, 267 tests. Variation, directed search, the gate,
+> `germline/` — its own crate, 272 tests. Variation, directed search, the gate,
 > attestation, lineage, the durable journal, the cycle state machine, and
 > supervision are built and tested ✅. Model training and inference are **not**
 > here and are not claimed ◻ — this decides *whether* a successor takes over, not
@@ -541,7 +541,13 @@ result goes through the ordinary gate. The write set is enforced once, in
 under a writable prefix and under no protected one (tests and corpus go there). A
 failed build or test is a recorded zero, not an error, so it can never be promoted;
 so is a write-set violation, refused before anything is copied, so a proposer
-cannot stop the run by sending one. Only this side's failures (a gene missing
+cannot stop the run by sending one. Inline unit tests (Rust keeps them in the
+file they test, so inside the write set) are covered by `protect_tests`: every
+`#[test]` function of a changed base file must survive with the same text, up to
+indentation, or the candidate is refused the same way; added tests are allowed.
+It compares the tests' own text only, so a weakened helper or a changed function
+under test is still the build-and-test step's and the evaluator's to catch.
+Only this side's failures (a gene missing
 from the blob store, an unreadable base tree) are an `Err`, which halts it. This is
 not a sandbox. A candidate's build scripts, tests and binary run as the user with
 only a cut-down environment and timeouts, and a candidate cannot delete files or
@@ -678,7 +684,7 @@ char literal; and splits a contract at the first top-level `=>`, desugaring it t
 diff was read for removed or weakened tests (none: the deleted lines are the
 replaced logic). That check is manual because the unit tests live inside the
 writable `prototype/src/`; a candidate could edit the tests that judge it, and no
-axis would notice. Protecting them needs the tests moved out of the write set.
+axis would notice. `protect_tests` (above) now makes that check part of the gate.
 
 ## 8. What is still not built
 
@@ -774,7 +780,7 @@ nobody chose, one individually-defensible promotion at a time.
 ## 10. Reproducing
 
 ```powershell
-cargo test --manifest-path germline/Cargo.toml                  # 267 tests
+cargo test --manifest-path germline/Cargo.toml                  # 272 tests
 cargo test --manifest-path germline/Cargo.toml --test rsi_loop  # 6 closed-loop scenarios
 cargo test --manifest-path germline/Cargo.toml --test succession # 13 succession scenarios
 ```
