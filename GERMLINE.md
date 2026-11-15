@@ -711,6 +711,30 @@ pass and score the champion's fitness) was refused before building: "test
 `tests::colon_question_is_two_tokens` in prototype/src/parser.rs was removed or
 changed (protect_tests)", recorded at zero, champion unchanged, no build spent.
 
+**A third run, on what programs compute.** With the parser backlog empty, the
+backlog moved to the interpreter: programs that check clean but fail under
+`--eval` although the specification or the guides say what they print. A
+subagent found four with a quoted line and a working control each: a trait's
+default method (MAGE_SPEC.md:697), a `data` field default (:656), `?` on a
+`Result` (quick-start/03-syntax-tour.md:209) and a cast to `u8` and the other
+narrow integers (:769, :2876). Their expected output was written from the text,
+not recorded from a binary, and enters `capability` through the evaluator's
+`eval.target`. The corpus (40 good, 5 bad, 4 targets) pins the `--eval` output of
+the 19 good programs that run, so `semantics` guards every existing behaviour;
+guards were safety, correctness, fidelity and semantics, with `protect_tests`.
+
+| generation | change | capability | safety | correctness | fidelity | semantics | verdict |
+|---|---|---|---|---|---|---|---|
+| 0 | base `selfmod-gen3@0110e2c97` | 0.5 | 1.0 | 1.0 | 1.0 | 1.0 | genesis |
+| 1 | eval.rs (+4 tests) | 1.0 | 1.0 | 1.0 | 1.0 | 1.0 | promoted |
+
+Capability starts at 0.5 because the four targets already checked clean (four of
+eight items); each gap that runs correctly adds 0.125. Two limits the corpus
+cannot see and review found: a field default is evaluated in the constructing
+scope, so a default naming a variable would see the caller's; and the narrow
+casts, like the existing `as i32`, do no range check (`300 as u8` is 300), where
+the specification is silent.
+
 ## 8. What is still not built
 
 ◻ **Model training and inference.** The variation operators produce genomes; what

@@ -298,6 +298,9 @@ pub struct Interp {
     /// `@inv` invariants of each struct, parsed, checked each time a struct
     /// literal of that type is built, with `self` bound to it.
     invariants: HashMap<String, Vec<(crate::contract::Clause, Expr)>>,
+    /// Declared field defaults of each `data` record (`x: i32 = 0`), in
+    /// declaration order, filled in when a literal omits the field.
+    field_defaults: HashMap<String, Vec<(String, Expr)>>,
     /// An opt-in call trace: one line per user-function entry and exit.
     ///
     /// `None` unless a caller asked for one ([`run_bounded_traced`]), and then
@@ -373,6 +376,15 @@ impl Interp {
         let mut consts = HashMap::new();
         let mut nets = HashMap::new();
         let mut net_checkpoints = HashMap::new();
+        let mut field_defaults: HashMap<String, Vec<(String, Expr)>> = HashMap::new();
+        // Trait names -> their items, so an `impl Trait for T` can inherit the
+        // trait's bodied (default) methods wherever the trait is declared.
+        let mut traits: HashMap<&str, &[crate::ast::Item]> = HashMap::new();
+        for item in &module.items {
+            if let ItemKind::Trait(td) = &item.kind {
+                traits.insert(td.name.as_str(), td.items.as_slice());
+            }
+        }
         for item in &module.items {
             match &item.kind {
                 ItemKind::Function(fd) => {
@@ -393,6 +405,22 @@ impl Interp {
                 }
                 ItemKind::Impl(ib) => {
                     collect_methods(&mut methods, &ib.self_type, &ib.items);
+                    // Default methods: the trait's bodied methods the impl
+                    // lacks. Overrides were inserted above and win.
+                    if let Some(tn) = ib.trait_path.as_ref().and_then(|p| p.last())
+                        && let Some(items) = traits.get(tn.as_str())
+                        && let Some(ty) = type_head_name(&ib.self_type)
+                    {
+                        for it in items.iter() {
+                            if let ItemKind::Function(fd) = &it.kind
+                                && (fd.body_expr.is_some() || !fd.body.stmts.is_empty() || fd.body.tail_expr.is_some())
+                            {
+                                methods
+                                    .entry((ty.clone(), fd.name.clone()))
+                                    .or_insert_with(|| fd.clone());
+                            }
+                        }
+                    }
                 }
                 ItemKind::Extend(eb) => {
                     collect_methods(&mut methods, &eb.target_type, &eb.items);
@@ -420,6 +448,15 @@ impl Interp {
                 // `unknown function \`Rect\`` — the class `--check` cannot see
                 // and only `--eval` can, which is why the example pin runs it.
                 ItemKind::Data(dd) => {
+                    if let DataKind::Record(fields) = &dd.kind {
+                        let ds: Vec<(String, Expr)> = fields
+                            .iter()
+                            .filter_map(|f| f.default.clone().map(|d| (f.name.clone(), d)))
+                            .collect();
+                        if !ds.is_empty() {
+                            field_defaults.insert(dd.name.clone(), ds);
+                        }
+                    }
                     if let DataKind::Sum(variants) = &dd.kind {
                         for variant in variants {
                             enum_variants.insert(
@@ -483,6 +520,7 @@ impl Interp {
             preconditions,
             postconditions,
             invariants,
+            field_defaults,
             trace: None,
             coverage: None,
         }
@@ -914,6 +952,12 @@ impl Interp {
                 match self.eval(expr, env)? {
                     Value::Opt(Some(inner)) => Ok(*inner),
                     Value::Opt(None) => Err(Control::Return(Value::Opt(None))),
+                    Value::Enum(en, var, mut xs) if en == "Result" && var == "Ok" && xs.len() == 1 => {
+                        Ok(xs.remove(0))
+                    }
+                    Value::Enum(en, var, xs) if en == "Result" && var == "Err" => {
+                        Err(Control::Return(Value::Enum(en, var, xs)))
+                    }
                     other => Ok(other),
                 }
             }
@@ -1266,6 +1310,12 @@ impl Interp {
                     };
                     fvals.push((fi.name.clone(), v));
                 }
+                for (fname, dflt) in self.field_defaults.get(&name).into_iter().flatten() {
+                    if !fvals.iter().any(|(k, _)| k == fname) {
+                        let v = self.eval(dflt, &mut env.clone())?;
+                        fvals.push((fname.clone(), v));
+                    }
+                }
                 let built = Value::Struct(name.clone(), fvals);
                 for (clause, expr) in self.invariants.get(&name).into_iter().flatten() {
                     let mut scope = env.clone();
@@ -1340,7 +1390,8 @@ impl Interp {
                         Value::Float(f) => f,
                         _ => return err("cannot cast this value to a float"),
                     })),
-                    "i64" | "i32" | "u64" | "u32" | "usize" | "isize" => Ok(Value::Int(match v {
+                    "i64" | "i32" | "u64" | "u32" | "usize" | "isize" | "i8" | "i16" | "u8" | "u16"
+                    | "i128" | "u128" => Ok(Value::Int(match v {
                         Value::Float(f) => f as i64,
                         Value::Int(n) => n,
                         Value::Bool(b) => b as i64,
@@ -5590,5 +5641,42 @@ mod net_call_tests {
         let interp = Interp::with_fuel(&module, 3);
         let err = interp.run("classify", vec![floats(&[1.0])]).expect_err("out of fuel");
         assert!(err.contains(FUEL_EXHAUSTED), "{err}");
+    }
+
+    #[test]
+    fn a_trait_default_method_is_inherited_and_an_override_wins() {
+        let base = "trait G { f hi(self) -> i32; f twice(self) -> i32 { self.hi() * 2 } }\nstruct Dd { n: i32 }\n";
+        let inherit = format!("{base}impl G for Dd {{ f hi(self) -> i32 {{ self.n }} }}\nf main() -> i32 {{ val d = @Dd {{ n: 4 }}\n d.twice() }}\n");
+        assert_eq!(interp_of(&inherit).run("main", vec![]).unwrap(), Value::Int(8));
+        let over = format!("{base}impl G for Dd {{ f hi(self) -> i32 {{ self.n }} f twice(self) -> i32 {{ 100 }} }}\nf main() -> i32 {{ val d = @Dd {{ n: 4 }}\n d.twice() }}\n");
+        assert_eq!(interp_of(&over).run("main", vec![]).unwrap(), Value::Int(100));
+    }
+
+    #[test]
+    fn an_omitted_data_field_takes_its_declared_default() {
+        let src = "data P(x: i32, y: i32 = 7)\nf main() -> i32 { val p = @P { x: 1 }\n p.x + p.y }\n\
+                   f given() -> i32 { val p = @P { x: 1, y: 2 }\n p.x + p.y }\n\
+                   f bare() -> i32 { val p = @P { y: 2 }\n p.x }\n";
+        let i = interp_of(src);
+        assert_eq!(i.run("main", vec![]).unwrap(), Value::Int(8));
+        assert_eq!(i.run("given", vec![]).unwrap(), Value::Int(3));
+        assert!(i.run("bare", vec![]).unwrap_err().contains("no field `x`"));
+    }
+
+    #[test]
+    fn try_propagates_a_result_err_and_unwraps_ok() {
+        let src = "f half(n: i32) -> R[i32, s] { ? n % 2 == 0 { Ok(n / 2) } : { Err(\"odd\") } }\n\
+                   f quarter(n: i32) -> R[i32, s] { val a = half(n)?\n val b = half(a)?\n Ok(b) }\n";
+        let i = interp_of(src);
+        let ok = i.run("quarter", vec![Value::Int(8)]).unwrap();
+        assert_eq!(ok.to_string(), "Ok(2)");
+        let e = i.run("quarter", vec![Value::Int(3)]).unwrap();
+        assert_eq!(e.to_string(), "Err(\"odd\")");
+    }
+
+    #[test]
+    fn narrow_integer_casts_behave_like_the_wide_ones() {
+        let src = "f main() -> i32 { (5 as u8) + (5 as i8) + (5 as u16) + (5 as i16) + (5 as u128) + (5 as i128) }\n";
+        assert_eq!(interp_of(src).run("main", vec![]).unwrap(), Value::Int(30));
     }
 }
