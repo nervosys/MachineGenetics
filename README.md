@@ -193,6 +193,13 @@ conflate:
   Rust in bytes or under a shared rule; under native lexers the two are within 0.3%.
   `token-bench` writes `benchmarks/TOKEN_REPORT.md`; the native-lexer and shared-rule ratios are pinned by
   the CI floor in `scripts/check-ci-floors.sh`.
+- (iii) `token-bench --bpe` adds BPE counts from MAGE's own tokenizer and its
+  shipped `mage-bpe-4096` vocabulary (`prototype/data/`). This is not cl100k, and
+  the vocabulary was trained on `.mg` files, so it favours MAGE. On the 100-task
+  corpus MAGE uses **8.5% more** BPE tokens than Rust (20,546 vs 18,932, ratio
+  1.085). It does not contradict the 5-task cl100k figures above, which use a
+  different tokenizer and task set. Where the difference comes from is in
+  [`benchmarks/FINDINGS.md`](benchmarks/FINDINGS.md).
 
 **Agentic-first toolchain — measured improvement.** The same lens applied to the
 **Forge** project toolchain (`forge`): a human-text baseline vs. the agentic-first
@@ -356,6 +363,14 @@ mage-parse --target=abl-generate <file>   # autoregressive decode
 mage-parse --eval <file.mg> <fn> [int args]
                                          # execute a function in the tree-walking
                                          # evaluator and print its result
+mage-parse --check --json <file>         # diagnostics as JSON, with a `counts` summary
+mage-parse --pipeline <file> [--incremental-stats [--cache-dir DIR]]
+                                         # run the pipeline on the incremental query
+                                         # engine; caches in DIR or $MAGE_CACHE_DIR
+mage-parse --bpe-count [--vocab FILE] [FILES|-]
+                                         # BPE token counts from MAGE's own tokenizer
+mage-parse --bpe-train --vocab-size N --out FILE FILES...
+                                         # train a byte-level BPE vocabulary
 ```
 
 The `--eval` evaluator runs general-purpose `.mg` programs end to end
@@ -369,8 +384,8 @@ lists, strings, and maps — see [Benchmarks](#benchmarks-measured).
 mage-parse --eval fib.mg fib 25       # → 75025
 ```
 
-`token-bench` counts lexer tokens and bytes, not BPE tokens; the stated rule and
-its four ratios are in [Benchmarks](#benchmarks-measured).
+`token-bench` counts lexer tokens and bytes, not BPE tokens, unless run with
+`--bpe`; the stated rule and its four ratios are in [Benchmarks](#benchmarks-measured).
 
 ```sh
 # Run the token-efficiency benchmark across all 100 corpus tasks

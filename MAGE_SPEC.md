@@ -2534,8 +2534,9 @@ Contracts are verified via:
 
 ## 13. Ownership and Borrowing
 
-**Status: partly enforced.** `prototype/src/borrowck.rs` is a per-function,
-span-less pass after the type checker. It reports E0382 for a use of a local
+**Status: partly enforced.** `prototype/src/borrowck.rs` is a per-function
+pass after the type checker. Its diagnostics point at the start of the
+statement where the problem occurs (no expression spans). It reports E0382 for a use of a local
 after it was moved, and E0502 when a borrow made by `let r = &p` / `let r = &!p`
 conflicts with another borrow, a move or an assignment of `p` before `r`'s last
 use. It reports only on evidence (a type known not to be `Copy`, a callee known
@@ -2553,7 +2554,7 @@ MAGE is designed to preserve Rust's ownership and borrowing semantics with full 
 1. Every value has exactly one owner.
 2. When the owner goes out of scope, the value is dropped.
 3. Values can be moved or, if `Copy`, duplicated.
-4. Borrows: any number of `&T` (shared) XOR one `&!T` (exclusive). *(Not enforced.)*
+4. Borrows: any number of `&T` (shared) XOR one `&!T` (exclusive). *(Partly enforced: E0502 for `let`-bound borrows, see above.)*
 5. Borrows must not outlive the referent.
 6. The compiler infers borrow mode from usage context.
 7. No lifetime annotations in source code — the SKB encodes lifetime rules. *(Not enforced.)*
