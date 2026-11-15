@@ -564,7 +564,20 @@ checking and formatting say nothing about what a program computes.
 `--pin-eval --eval MANIFEST BINARY` writes the pins from a trusted binary, leaving
 out programs that do not run so that making one run is not a regression. On run
 2's corpus that is 11 of 32 good programs; the base and the promoted generation 1
-both score 1.0, a corrupted pin scores 10/11. Freeze
+both score 1.0, a corrupted pin scores 10/11.
+
+**Speed is not yet an axis it can judge.** The RSI objective counts
+intelligence per second per watt, so a compiler run should be able to promote a
+faster checker under correctness guards. Measured on this (shared, ~80% busy)
+machine with the run-2 base binary: wall-clock over the 36-file corpus varies
+35% between passes, even as the minimum of 5; process CPU time (GetProcessTimes)
+is steadier but each check takes ~16 ms, about one 15.6 ms Windows tick, so it
+is mostly quantisation. A generated 8,000-function program (2.1 MB, checks
+clean) takes ~1 s of CPU per check: 6% variation per run in one window, but
+16.5% (38% range) across trials of min-of-5 when the load moved. A candidate's
+real speed-up would sit inside that, so a `speed` axis waits for a quiet machine,
+pinned cores, or a deterministic work count the evaluator controls (not a flag
+in the binary under test, which a candidate could game). Freeze
 the script, manifest and corpus with `scripts/freeze-corpora.sh`, outside every
 writable prefix.
 
