@@ -20,7 +20,8 @@ MANIFEST is JSON; paths are relative to the manifest's directory:
       "sha256": {"ok/a.mg": "<hex>", ...},              # optional: pins each file
       "fmt_flag": "--fmt-expand",                       # optional: enables `fidelity`
       "eval": {"flag": "--eval",                        # optional: enables `semantics`
-               "expect": {"ok/a.mg": "<sha256 of stdout>", ...}}
+               "expect": {"ok/a.mg": "<sha256 of stdout>", ...},
+               "target": {"backlog/b.mg": "<sha256>", ...}}  # optional: run-time backlog
     }
 
 With `sha256`, every named file must be pinned and match, or the script exits
@@ -36,7 +37,11 @@ on the last stdout line, the axes SelfModWorkload reads:
                  Codes, not positions: some diagnostics carry no span.
     capability   fraction of `target` files that check clean, the thing a
                  candidate improves; when `target` is empty, the mean of
-                 safety and correctness.
+                 safety and correctness. With `eval.target`, each of those
+                 files is one more item, met when `BINARY <flag> FILE` exits 0
+                 with exactly the pinned stdout: a run-time backlog, whose
+                 expected output is written from the specification, not
+                 recorded from a binary.
     efficiency   1 / (1 + total seconds of checking). Wall-clock, so it varies
                  between runs on one machine; `--no-time` leaves it out.
     fidelity     only with `fmt_flag`: of the programs that check clean (`good`,
@@ -213,14 +218,31 @@ def main(argv):
         if res is not None and set(want) <= res["codes"]:
             hits += 1
     correctness = frac(hits, len(bad))
-    if target:
-        target_clean = [f for f in target if clean(check(binary, os.path.join(root, f)))]
-        clean_files.extend(target_clean)
-        capability = frac(len(target_clean), len(target))
-    else:
-        capability = (safety + correctness) / 2
+    target_clean = [f for f in target if clean(check(binary, os.path.join(root, f)))]
+    clean_files.extend(target_clean)
     seconds = time.monotonic() - started
 
+    ev = m.get("eval")
+    eval_target = {}
+    if ev is not None:
+        if not isinstance(ev, dict) or not isinstance(ev.get("flag"), str) or not ev["flag"].startswith("--") \
+                or not isinstance(ev.get("expect", {}), dict) or not isinstance(ev.get("target", {}), dict) \
+                or not (ev.get("expect") or ev.get("target")):
+            die("manifest field eval must be {\"flag\": \"--eval\", \"expect\": {FILE: SHA256, ...}, "
+                "\"target\": {FILE: SHA256, ...}} with at least one file in expect or target")
+        eval_target = ev.get("target", {})
+    strays = sorted(set(eval_target) - set(target))
+    if strays:
+        die(f"eval target names files not in target (so not pinned): {', '.join(strays)}")
+    met = 0
+    for rel, want in eval_target.items():
+        got = run_output(binary, ev["flag"], os.path.join(root, rel))
+        met += got is not None and got == (0, want)
+    items = len(target) + len(eval_target)
+    if items:
+        capability = frac(len(target_clean) + met, items)
+    else:
+        capability = (safety + correctness) / 2
     axes = {"capability": capability, "safety": safety, "correctness": correctness}
     fmt_flag = m.get("fmt_flag")
     if fmt_flag is not None:
@@ -228,11 +250,7 @@ def main(argv):
             die("manifest field fmt_flag must be a flag such as --fmt-expand")
         kept = sum(faithful(binary, fmt_flag, os.path.join(root, f)) for f in clean_files)
         axes["fidelity"] = frac(kept, len(clean_files))
-    ev = m.get("eval")
-    if ev is not None:
-        if not isinstance(ev, dict) or not isinstance(ev.get("flag"), str) or not ev["flag"].startswith("--") \
-                or not isinstance(ev.get("expect"), dict) or not ev["expect"]:
-            die("manifest field eval must be {\"flag\": \"--eval\", \"expect\": {FILE: SHA256, ...}} with at least one file")
+    if ev is not None and ev.get("expect"):
         strays = sorted(set(ev["expect"]) - set(good))
         if strays:
             die(f"eval expect names files not in good (so not pinned): {', '.join(strays)}")
