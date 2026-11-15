@@ -557,7 +557,14 @@ it runs `BINARY --check --json` over a frozen corpus manifest and reports
 `safety` (known-good files still check clean, so a new error is a regression),
 `correctness` (known-bad files still raise their expected codes, matched by code
 because some diagnostics have no span), `capability` (files from a target backlog
-that now check clean) and, unless `--no-time`, a wall-clock `efficiency`. Freeze
+that now check clean) and, unless `--no-time`, a wall-clock `efficiency`. With an
+`eval` object in the manifest it also reports `semantics`: the fraction of pinned
+programs that `BINARY --eval` runs with exit 0 and exactly the pinned stdout, since
+checking and formatting say nothing about what a program computes.
+`--pin-eval --eval MANIFEST BINARY` writes the pins from a trusted binary, leaving
+out programs that do not run so that making one run is not a regression. On run
+2's corpus that is 11 of 32 good programs; the base and the promoted generation 1
+both score 1.0, a corrupted pin scores 10/11. Freeze
 the script, manifest and corpus with `scripts/freeze-corpora.sh`, outside every
 writable prefix.
 

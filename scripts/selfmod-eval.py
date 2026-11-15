@@ -3,6 +3,7 @@
 
 Usage:
     python3 scripts/selfmod-eval.py [--no-time] MANIFEST BINARY
+    python3 scripts/selfmod-eval.py --pin-eval FLAG MANIFEST BINARY
 
 SelfModWorkload appends the candidate's built compiler as the last argument, so
 configure the evaluator argv as `python3 <this script> [--no-time] <manifest>`.
@@ -17,7 +18,9 @@ MANIFEST is JSON; paths are relative to the manifest's directory:
       "bad":    {"bad/use_after_move.mg": ["E0382"]},   # must raise these codes
       "target": ["backlog/feature.mg", ...],            # should check clean, may not yet
       "sha256": {"ok/a.mg": "<hex>", ...},              # optional: pins each file
-      "fmt_flag": "--fmt-expand"                        # optional: enables `fidelity`
+      "fmt_flag": "--fmt-expand",                       # optional: enables `fidelity`
+      "eval": {"flag": "--eval",                        # optional: enables `semantics`
+               "expect": {"ok/a.mg": "<sha256 of stdout>", ...}}
     }
 
 With `sha256`, every named file must be pinned and match, or the script exits
@@ -44,6 +47,17 @@ on the last stdout line, the axes SelfModWorkload reads:
                  parses new syntax and then drops part of it (a discriminant
                  `A = 1` formatted as `A`) passes `--check` and fails this.
                  Use it as a guard axis.
+    semantics    only with `eval`: the fraction of `expect` files for which
+                 `BINARY <flag> FILE` exits 0 and prints exactly the pinned
+                 output (sha256 of stdout, line endings normalised). Checking
+                 and formatting say nothing about what a program computes; a
+                 candidate that breaks the evaluator passes both and fails
+                 this. Use it as a guard axis.
+
+`--pin-eval FLAG MANIFEST BINARY` prints the `eval` object for the manifest's
+`good` files that BINARY runs with exit 0, to paste into the manifest before
+freezing it. A program that fails to run is left out rather than pinned as
+failing, so a candidate that makes it run is not counted as a regression.
 
 A file whose check cannot be run or parsed counts as failed on its axis; the
 script itself exits non-zero only when the manifest is unusable, which the
@@ -122,11 +136,38 @@ def clean(res):
     return res is not None and res["exit"] == 0 and res["errors"] == 0
 
 
+def run_output(binary, flag, path):
+    """(exit status, sha256 of stdout with CRLF normalised), or None."""
+    try:
+        r = subprocess.run([binary, flag, path], capture_output=True, timeout=TIMEOUT_S)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        print(f"selfmod-eval: {path}: {e}", file=sys.stderr)
+        return None
+    return r.returncode, hashlib.sha256(r.stdout.replace(b"\r\n", b"\n")).hexdigest()
+
+
+def pin_eval(flag, manifest_path, binary):
+    with open(manifest_path, encoding="utf-8") as f:
+        m = json.load(f)
+    root = os.path.dirname(os.path.abspath(manifest_path))
+    expect = {}
+    for rel in m.get("good", []):
+        got = run_output(binary, flag, os.path.join(root, rel))
+        if got is not None and got[0] == 0:
+            expect[rel] = got[1]
+    print(json.dumps({"flag": flag, "expect": expect}, indent=1, sort_keys=True))
+
+
 def frac(hits, n):
     return hits / n if n else 1.0
 
 
 def main(argv):
+    if argv[:1] == ["--pin-eval"]:
+        if len(argv) != 4 or not argv[1].startswith("--"):
+            die("usage: selfmod-eval.py --pin-eval FLAG MANIFEST BINARY")
+        pin_eval(argv[1], argv[2], argv[3])
+        return
     no_time = "--no-time" in argv
     args = [a for a in argv if a != "--no-time"]
     if len(args) != 2:
@@ -187,6 +228,19 @@ def main(argv):
             die("manifest field fmt_flag must be a flag such as --fmt-expand")
         kept = sum(faithful(binary, fmt_flag, os.path.join(root, f)) for f in clean_files)
         axes["fidelity"] = frac(kept, len(clean_files))
+    ev = m.get("eval")
+    if ev is not None:
+        if not isinstance(ev, dict) or not isinstance(ev.get("flag"), str) or not ev["flag"].startswith("--") \
+                or not isinstance(ev.get("expect"), dict) or not ev["expect"]:
+            die("manifest field eval must be {\"flag\": \"--eval\", \"expect\": {FILE: SHA256, ...}} with at least one file")
+        strays = sorted(set(ev["expect"]) - set(good))
+        if strays:
+            die(f"eval expect names files not in good (so not pinned): {', '.join(strays)}")
+        same = 0
+        for rel, want in ev["expect"].items():
+            got = run_output(binary, ev["flag"], os.path.join(root, rel))
+            same += got is not None and got == (0, want)
+        axes["semantics"] = frac(same, len(ev["expect"]))
     if not no_time:
         axes["efficiency"] = 1.0 / (1.0 + seconds)
     print(json.dumps(axes, sort_keys=True))
