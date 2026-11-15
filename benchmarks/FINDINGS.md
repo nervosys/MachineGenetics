@@ -587,9 +587,12 @@ What this shows:
   wrappers are cheaper.** `?T` is 1 token against `Option<T>` 2, `@T` is 1 against
   `Arc<T>` 3. There are two real splits: `0b`/`1b` take 2 tokens in context where
   `false`/`true` take 1, and `&!T` takes 2 where `&T` takes 1.
-- **The pairs are not semantically matched.** Several Rust sources drop content:
-  `conc-002` has no `Ordering` arguments, `sys-005` has no error text, `basic-001`
-  uses `String::from`. So per-task ratios partly measure what was left out.
+- **Not every pair is semantically matched, and both sides drop content.** An
+  audit of all 100 pairs (2026-11-15, below) found 81 matched, 9 where the Rust
+  source omits something, 9 where the MAGE source does, and 1 pair (`conc-010`)
+  that implements different behaviour. (An earlier version of this paragraph had
+  `conc-002` backwards: it is the MAGE twin that has no atomic `Ordering`, and
+  `basic-001`'s `String::from` is only a token difference.)
 - **A syntax redesign has little room.** The largest measured candidate is built-in
   async/fs effects, so that the six inline `effect` blocks in five tasks need not be
   written. That saves about 225 tokens, roughly 1.1% of the MAGE corpus.
@@ -601,3 +604,34 @@ This agrees with Path A above: the text surface sits at roughly Rust's floor, an
 syntax changes cannot move it much. The remaining levers are the binary IR and
 re-checking less: the incremental compiler (#225) re-checks one function, not
 the module.
+
+### Pair audit (2026-11-15)
+
+Every task's MAGE and Rust sources were compared by reading them. Boilerplate one
+language requires and the other has no equivalent for (Rust `use` lines, MAGE
+effect annotations) was not counted as a difference.
+
+| Class | Tasks |
+|---|---|
+| matched | 81 |
+| Rust omits content | 9: agent-003, agent-008, app-005, app-006, app-008, app-010, sys-005, web-001, web-003 |
+| MAGE omits content | 9: algo-004, conc-002, conc-003, conc-006, conc-007, conc-008, app-001, web-002, web-006 |
+| different behaviour | 1: conc-010 |
+
+Examples:
+- `web-001` (Rust has no `Content-Type` header) and `app-005` (Rust's router has no
+  `post()` or middleware) are cases where Rust omits content.
+- `algo-004` (MAGE underflows on the empty string) and `conc-002`/`conc-007` (MAGE
+  has no atomic ordering, and MAGE_SPEC defines none) are cases where MAGE omits it.
+- `app-010`'s Rust source does not compile (`Box<dyn Any>` is not `Clone`).
+- `conc-010`'s MAGE acquire is a racy load-then-`fetch_sub`.
+
+The differing fragments are roughly 470 BPE tokens. That is an estimate from
+counting fragments, about 0.8% of the corpus, and the omissions run in both
+directions, so they do not explain the 1.085 ratio. They do make individual task
+ratios unreliable.
+
+A fix means adding the missing content to whichever side lacks it, fixing
+`app-010`, and either correcting or dropping `conc-010`. Two pairs need a language
+decision first: `conc-002` and `conc-007` cannot match until MAGE defines an atomic
+ordering.
