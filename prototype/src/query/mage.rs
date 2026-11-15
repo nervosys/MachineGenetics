@@ -455,15 +455,25 @@ pub struct ModulePassDef {
 ///
 /// **Adding a pass is one line.** A pure per-module pass:
 ///
-/// ```ignore
-/// let registry = Registry::builtin().module_pass("borrowck", "1", |m| PassOut::diags(borrowck::check(m)));
+/// ```
+/// # use mage_prototype::query::mage::{PassOut, Registry};
+/// let registry = Registry::builtin().module_pass("count", "1", |m| {
+///     let _items = m.items.len();
+///     PassOut::diags(Vec::new())
+/// });
+/// # let _ = registry;
 /// ```
 ///
 /// or a pure per-item one (re-run only for an edited item):
 ///
-/// ```ignore
-/// let registry = Registry::builtin().item_pass("lint", "1", |item| PassOut::diags(lint(item)));
 /// ```
+/// # use mage_prototype::query::mage::{PassOut, Registry};
+/// let registry = Registry::builtin().item_pass("lint", "1", |_item| PassOut::diags(Vec::new()));
+/// # let _ = registry;
+/// ```
+///
+/// (The borrow checker is not registered this way: its per-item check depends
+/// on a module summary, so it has dedicated `BorrowSummary`/`BorrowItem` queries.)
 ///
 /// Its diagnostics are unioned into `Diagnostics`, `Checked` and the report,
 /// after the built-in passes, in registration order. It runs on the *elided*
