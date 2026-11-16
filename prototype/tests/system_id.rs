@@ -31,7 +31,7 @@ fn example(file: &str) -> std::path::PathBuf {
 /// line it prints. Asserts a clean exit.
 fn solve(file: &str, name: &str) -> serde_json::Value {
     let path = example(file);
-    let out = Command::new(bin())
+    let out = Command::new(bin()).env_remove("MAGE_CACHE_DIR")
         .args(["--solve", path.to_str().unwrap(), name, "--seed", "7"])
         .output()
         .expect("spawn mage-parse");

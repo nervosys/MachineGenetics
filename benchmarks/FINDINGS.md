@@ -631,7 +631,8 @@ Examples:
 - `web-001` (Rust has no `Content-Type` header) and `app-005` (Rust's router has no
   `post()` or middleware) are cases where Rust omits content.
 - `algo-004` (MAGE underflows on the empty string) and `conc-002`/`conc-007` (MAGE
-  has no atomic ordering, and MAGE_SPEC defines none) are cases where MAGE omits it.
+  had no atomic ordering, and MAGE_SPEC defined none) were cases where MAGE omitted it.
+  MAGE_SPEC now defines it (sequentially consistent), and the pairs match (see Resolution).
 - `app-010`'s Rust source does not compile (`Box<dyn Any>` is not `Clone`).
 - `conc-010`'s MAGE acquire is a racy load-then-`fetch_sub`.
 
@@ -641,16 +642,19 @@ directions, so they do not explain the 1.085 ratio. They do make individual task
 ratios unreliable.
 
 A fix means adding the missing content to whichever side lacks it, fixing
-`app-010`, and either correcting or dropping `conc-010`. Two pairs need a language
-decision first: `conc-002` and `conc-007` cannot match until MAGE defines an atomic
-ordering.
+`app-010`, and either correcting or dropping `conc-010`. Two pairs needed a language
+decision first: `conc-002` and `conc-007` could not match until MAGE defined an atomic
+ordering. It now does: every MAGE atomic operation is sequentially consistent
+(`MAGE_SPEC.md` section 14.2).
 
 **Resolution (2026-11-15).** The pairs were reconciled. The nine Rust omissions were
 added to the Rust sources, and `app-010`'s Rust now uses `Rc<dyn Any>`, which is
 `Clone` and compiles. The MAGE omissions in `algo-004`, `conc-003`, `conc-006`,
 `conc-008`, `app-001`, `web-002` and `web-006` were added to the MAGE sources
 (`conc-008` as a comment: the barrier is one-shot, unlike std's reusable `Barrier`).
-`conc-002` and `conc-007` are unchanged and still wait on the atomic-ordering decision.
+`conc-002` and `conc-007` needed no edit: their Rust twins use `Ordering::SeqCst`, which
+is MAGE's defined ordering (`MAGE_SPEC.md` section 14.2: sequentially consistent, no
+ordering parameter, weaker orderings not expressible), so the two pairs now match.
 MAGE has no compare-exchange (nothing in `MAGE_SPEC.md` or `eval.rs`), so a correct
 acquire cannot be written; `conc-010` was removed and the corpus is now 99 tasks.
 Re-measured: bytes 1.055 to 1.040, native lexers 0.997 to 0.984, shared rule 1.034 to

@@ -41,7 +41,7 @@ fn scratch(name: &str) -> PathBuf {
 }
 
 fn status_of(flag: &str, path: &Path) -> i32 {
-    let out = Command::new(BIN)
+    let out = Command::new(BIN).env_remove("MAGE_CACHE_DIR")
         .arg(flag)
         .arg(path)
         .output()
@@ -62,7 +62,7 @@ fn good_container() -> PathBuf {
     assert!(src.is_file(), "missing source: {}", src.display());
 
     let out = scratch("good.abl");
-    let st = Command::new(BIN)
+    let st = Command::new(BIN).env_remove("MAGE_CACHE_DIR")
         .arg("--target=abl-bytes")
         .arg(&src)
         .arg(&out)

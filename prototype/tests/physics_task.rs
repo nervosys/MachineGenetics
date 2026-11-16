@@ -46,7 +46,7 @@ fn read(path: &Path) -> String {
 }
 
 fn run(args: &[&str], file: &Path) -> (String, String, i32) {
-    let out = Command::new(bin()).args(args).arg(file).output().expect("spawn mage-parse");
+    let out = Command::new(bin()).env_remove("MAGE_CACHE_DIR").args(args).arg(file).output().expect("spawn mage-parse");
     (
         String::from_utf8_lossy(&out.stdout).into_owned(),
         String::from_utf8_lossy(&out.stderr).into_owned(),
@@ -98,7 +98,7 @@ fn judge(task: &str, candidate: &str) -> Verdict {
     std::fs::write(&program, format!("{task}\n{src}")).expect("write program");
     let (_, stderr, code) = run(&["--check"], &program);
     assert!(code == 0 && stderr.contains("Errors: 0"), "{candidate}: composed --check:\n{stderr}");
-    let (stdout, stderr, code) = Command::new(bin())
+    let (stdout, stderr, code) = Command::new(bin()).env_remove("MAGE_CACHE_DIR")
         .args(["--eval"])
         .arg(&program)
         .args(["score", "--fuel", FUEL])

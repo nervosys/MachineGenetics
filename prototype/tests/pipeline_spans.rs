@@ -10,7 +10,7 @@ sp never {
     @req(xs.len() < 0)
 }
 ";
-    let r = reference_report(src, Settings { elision: true, core: false });
+    let r = reference_report(src, Settings { elision: true, core: false, strict_borrow: false });
     assert_eq!(r.verify_diags.len(), 1, "got {:?}", r.verify_diags);
     assert!(r.verify_diags[0].starts_with("[E0560] 4:"), "no line 4 in {:?}", r.verify_diags[0]);
 }

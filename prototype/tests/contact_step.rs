@@ -42,7 +42,7 @@ fn solve(name: &str) -> serde_json::Value {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("examples")
         .join("contact_step.mg");
-    let out = Command::new(bin())
+    let out = Command::new(bin()).env_remove("MAGE_CACHE_DIR")
         .args(["--solve", path.to_str().unwrap(), name, "--seed", "7"])
         .output()
         .expect("spawn mage-parse");
