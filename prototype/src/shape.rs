@@ -186,6 +186,17 @@ fn matmul_shape(
     Ok(out)
 }
 
+/// The shape of `a ⊗ b`, for the type checker: `[.., M, K] ⊗ [.., K, N]`
+/// is `[.., M, N]`, batch dimensions broadcast.
+pub(crate) fn matmul(a: &[TensorDimHir], b: &[TensorDimHir]) -> Result<Vec<TensorDimHir>, String> {
+    matmul_shape(&mut ShapeSubst::new(), a, b)
+}
+
+/// The shape of `a⊤`, for the type checker: the last two dimensions swap.
+pub(crate) fn transpose(shape: &[TensorDimHir]) -> Result<Vec<TensorDimHir>, String> {
+    transpose_shape(shape)
+}
+
 // ── Transpose shape ─────────────────────────────────────────────────
 
 fn transpose_shape(shape: &[TensorDimHir]) -> Result<Vec<TensorDimHir>, String> {

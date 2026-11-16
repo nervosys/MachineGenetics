@@ -1778,8 +1778,30 @@ impl TypeChecker {
                         Ty::Unit
                     }
                     // Tensor operators: operands must be tensor types.
+                    // ⊗ is matmul: `[.., M, K] ⊗ [.., K, N]` is `[.., M, N]`. It
+                    // was typed like ⊙, so `[2,3] ⊗ [3,4]` was refused and
+                    // `[2,3] ⊗ [2,3]` accepted. shape.rs had the rule all along.
+                    "\u{2297}" if matches!(
+                        (self.subst.apply(&lt), self.subst.apply(&rt)),
+                        (Ty::Tensor(..), Ty::Tensor(..))
+                    ) => {
+                        let (Ty::Tensor(le, ls), Ty::Tensor(re, rs)) = (self.subst.apply(&lt), self.subst.apply(&rt)) else {
+                            unreachable!()
+                        };
+                        if let Err(e) = unify(&mut self.subst, &le, &re) {
+                            self.emit_error(format!("tensor `{op}`: {e}"));
+                        }
+                        match crate::shape::matmul(&ls, &rs) {
+                            Ok(shape) => Ty::Tensor(Box::new(self.subst.apply(&le)), shape),
+                            Err(e) => {
+                                self.emit_error(format!("tensor `{op}`: {e}"));
+                                Ty::Error
+                            }
+                        }
+                    }
                     "\u{2297}" | "\u{2299}" => {
-                        // ⊗ (matmul), ⊙ (hadamard) — both operands tensor, result tensor.
+                        // ⊙ (hadamard), and ⊗ on operands not yet known to be
+                        // tensors: both operands one type, result that type.
                         if let Err(e) = unify(&mut self.subst, &lt, &rt) {
                             self.emit_error(format!("tensor `{op}`: {e}"));
                         }
@@ -1830,7 +1852,17 @@ impl TypeChecker {
                     // was already a parameter type it accepted.
                     "&!" => Ty::Ref(true, Box::new(t)),
                     // Tensor postfix: ⊤ (transpose) keeps type, ⊥ (flatten) unwraps inner.
-                    "\u{22a4}" => t, // transpose — same tensor type
+                    // transpose — the last two dimensions swap.
+                    "\u{22a4}" => match self.subst.apply(&t) {
+                        Ty::Tensor(inner, shape) => match crate::shape::transpose(&shape) {
+                            Ok(shape) => Ty::Tensor(inner, shape),
+                            Err(e) => {
+                                self.emit_error(format!("tensor `{op}`: {e}"));
+                                Ty::Error
+                            }
+                        },
+                        _ => t,
+                    },
                     "\u{22a5}" => {
                         // flatten — unwrap one nesting level
                         match &t {
@@ -2772,6 +2804,27 @@ mod tests {
         ] {
             let errs = error_messages(bad);
             assert!(errs.iter().any(|e| e.contains("borrow mode mismatch")), "{bad}: {errs:?}");
+        }
+    }
+
+    #[test]
+    fn matmul_and_transpose_have_their_shapes() {
+        let sig = "f g(a: tensor[f32,2,3], b: tensor[f32,3,4])";
+        for good in [
+            format!("{sig} -> tensor[f32,2,4] {{ a \u{2297} b }}"),
+            format!("{sig} -> tensor[f32,3,2] {{ a\u{22a4} }}"),
+            format!("{sig} -> tensor[f32,4,2] {{ (a \u{2297} b)\u{22a4} }}"),
+            format!("{sig} -> tensor[f32,2,3] {{ a \u{2299} a }}"),
+        ] {
+            assert_eq!(error_messages(&good), Vec::<String>::new(), "{good}");
+        }
+        for bad in [
+            format!("{sig} -> tensor[f32,2,3] {{ a \u{2297} a }}"),
+            format!("{sig} -> tensor[f32,2,3] {{ a \u{2297} b }}"),
+            format!("{sig} -> tensor[f32,2,3] {{ a\u{22a4} }}"),
+            format!("{sig} -> tensor[f32,2,4] {{ a \u{2299} b }}"),
+        ] {
+            assert!(!error_messages(&bad).is_empty(), "accepted: {bad}");
         }
     }
 

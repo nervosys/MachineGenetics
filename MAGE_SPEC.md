@@ -1175,21 +1175,27 @@ f batched(x: tensor[f32, B, 512, 512]) -> tensor[f32, B, 512, 512] {
 
 ### 6.2 Tensor Operations
 
-**Design, not implementation.** None of the operators below parse today —
-`A @ B` in particular cannot, because `@` is the for-loop sigil. Tensor
-computation is expressed through `net` blocks and their layers (§5), where the
-shapes *are* checked; the operator surface is recorded here as intent.
+The tensor operators parse and the type checker gives them shapes; the
+evaluator does not run them (`a ⊗ a` on nested lists is "unsupported binary").
+`@` is the for-loop sigil, not matmul.
 
-| Operation | Intended surface | Description |
-| --------- | ---------------- | ----------- |
-| Matrix multiply | `A @ B` | [M,K]x[K,N] -> [M,N] |
-| Element-wise multiply | `A .* B` | Hadamard product |
-| Element-wise add | `A + B` | Broadcast-compatible |
-| Transpose | `A.T` | Swap last two dims |
-| Reshape / flatten | `A.reshape([2,3])`, `A.flatten()` | |
-| Reductions | `A.sum()`, `A.mean(axis: 0)` | |
+| Operation | Surface | Checked today |
+| --------- | ------- | ------------- |
+| Matrix multiply | `A ⊗ B` | `[.., M, K] ⊗ [.., K, N]` is `[.., M, N]`; batch dimensions broadcast; a mismatched `K` is an error |
+| Element-wise multiply | `A ⊙ B` | Both operands one type, shape included |
+| Element-wise add | `A + B` | Both operands one type, shape included; no broadcasting |
+| Transpose | `A⊤` | The last two dimensions swap; rank below 2 is an error |
+| Flatten | `A⊥` | Typed with no dimensions (rank 0), so it matches no declared shape |
+| Reshape | `A.reshape([2,3])` | Accepted, element count unchecked (designed: `shape.rs` has the rule) |
+| Reductions | `A.sum()`, `A.mean(axis: 0)` | Designed: `sum` refuses a tensor ("expected a collection") |
 | Gradient | `grad(loss, w)` | Autograd (§5.6) — scalar only; over tensors it is designed and not built |
-| Slice / concat / stack | `A[0..3, ..]`, `cat([A, B], axis: 0)`, `stack([A, B])` | |
+| Slice / concat / stack | `A[0..3, ..]`, `cat([A, B], axis: 0)`, `stack([A, B])` | Designed |
+
+```mg
+f project(x: tensor[f32, 2, 3], w: tensor[f32, 3, 4]) -> tensor[f32, 4, 2] {
+    (x ⊗ w)⊤
+}
+```
 
 ### 6.3 Shape Checking
 
