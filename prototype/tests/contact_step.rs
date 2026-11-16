@@ -31,13 +31,9 @@ use std::process::Command;
 const TOL: f64 = 1e-6;
 
 fn bin() -> std::path::PathBuf {
-    // `target/<profile>/deps/<test>` — the binary is two levels up.
-    let mut p = std::env::current_exe().expect("test binary path");
-    p.pop();
-    p.pop();
-    p.push(if cfg!(windows) { "mage-parse.exe" } else { "mage-parse" });
-    assert!(p.exists(), "mage-parse not built at {p:?}");
-    p
+    // Cargo builds the binary for integration tests and names its path here;
+    // walking up from the test executable broke when the build layout changed.
+    std::path::PathBuf::from(env!("CARGO_BIN_EXE_mage-parse"))
 }
 
 /// Solve `name` in `contact_step.mg` with `--solve --seed 7`, and return the one

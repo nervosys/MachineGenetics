@@ -7,7 +7,7 @@
 //!       [--learners ng:orders:log2buckets:lr | tf:d:layers:heads:ctx:lr[:gpu] | ent:orders:log2buckets:target_len:lr | ssm:d:lr[:bptt] [,…]]
 //!       [--fuel F] [--cpu-watts W] [--meter-gpus <i>[,<i>…] | none] [--cost joules|fuel]
 //!       [--allocate share|hypervolume] [--novelty behaviour|shape]
-//!       [--retain reward|pareto] [--parents reward|pareto]
+//!       [--retain reward|pareto] [--parents reward|pareto] [--pool-capacity N]
 //!       [--length-unit tokens|bytes] [--canary <string>] [--second-order] [--bound-grafts]
 //!       [--energy-budget J] [--joules-per-program J] [--definitions <forge registry dir>]
 //!       [--heldout-slices K] [--refresh-drift X]
@@ -644,6 +644,7 @@ fn main() {
                     other => fail(format!("--parents: `{other}` is neither reward nor pareto")),
                 }
             }
+            "--pool-capacity" => cfg.pool_capacity = (num(value(i), "--pool-capacity") as usize).max(1),
             "--learner-steps" => cfg.learner_steps = num(value(i), "--learner-steps") as usize,
             "--eval-every" => cfg.eval_every = num(value(i), "--eval-every").max(1) as usize,
             "--cpu-watts" => cfg.cpu_watts = value(i).parse().unwrap_or_else(|_| fail("--cpu-watts: not a number")),
@@ -735,7 +736,7 @@ fn main() {
         cfg.agents.iter().map(|(k, n)| format!("{k}:{n}")).collect::<Vec<_>>().join(",")
     );
     // The pool's retention and parent modes, read before `cfg` is moved.
-    let pool_modes = format!("retain {:?}, parents {:?}", cfg.retain, cfg.parents).to_lowercase();
+    let pool_modes = format!("retain {:?}, parents {:?}, capacity {}", cfg.retain, cfg.parents, cfg.pool_capacity).to_lowercase();
     let report = run_guarded(cfg, heldout, meters, notes, &mut guard).unwrap_or_else(|e| fail(e));
     eprintln!("held-out suite digest {} unchanged across {} re-checks", startup_digest.0, checks.get());
     eprintln!("pool: {pool_modes}");

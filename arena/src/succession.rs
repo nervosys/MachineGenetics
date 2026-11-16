@@ -397,7 +397,7 @@ const USAGE: &str = "usage: arena succession --heldout FILE[,FILE...] --journal 
 [--proposer-command \"CMD ARGS\"] [--proposer-timeout S] \
 [--objectives capability[,efficiency][,latency]] [--dominance-min F] [--dominance-floor F] \
 [--objective-tolerance AXIS=F,...] [--allow-estimated-energy] \
-[--energy-budget JOULES] [--param-search es|perturb]";
+[--energy-budget JOULES] [--param-search es|perturb] [--cost joules|fuel]";
 
 /// Parse `--objective-tolerance` items: `AXIS=VALUE`, comma-separated. A value
 /// must be finite and non-negative, and the axis must be a known one.
@@ -692,6 +692,13 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
             "--allow-estimated-energy" => allow_estimated = true,
             "--energy-budget" => energy_budget = Some(parse_budget(v)?),
             "--param-search" => param_search = parse_param_search(v)?,
+            "--cost" => {
+                base.cost_unit = match v {
+                    "joules" => crate::arena::CostUnit::Joules,
+                    "fuel" => crate::arena::CostUnit::Fuel,
+                    other => return Err(format!("--cost: `{other}` is neither joules nor fuel")),
+                }
+            }
             other => return Err(format!("unknown argument `{other}`\n{USAGE}")),
         }
         i += if takes_value { 2 } else { 1 };
@@ -1107,5 +1114,12 @@ mod tests {
         assert!(validate_tolerances(Some(&only_cap), &unlisted).unwrap_err().contains("not among"));
         let twice = vec![("latency".to_string(), 0.01), ("latency".to_string(), 0.02)];
         assert!(validate_tolerances(Some(&objs), &twice).unwrap_err().contains("more than once"));
+    }
+
+    #[test]
+    fn an_unknown_cost_unit_is_a_usage_error() {
+        let args: Vec<String> = ["--cost", "watts"].iter().map(|s| s.to_string()).collect();
+        let err = cli(&args).unwrap_err();
+        assert!(err.contains("--cost"), "{err}");
     }
 }
