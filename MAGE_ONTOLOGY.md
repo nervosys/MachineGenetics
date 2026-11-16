@@ -509,7 +509,7 @@ The lexical domain defines all tokens, their classification, and how source text
 
 **Mode** — Syntax encoding mode.
 - `Human` — Rust keyword surface (default).
-- `Agent` — Compressed sigil surface (`#![syntax(agent)]`).
+- `Agent` — Compressed sigil surface (no pragma; both surfaces lex in any file).
 
 **Token** — Atomic lexical unit.
 ```
@@ -585,7 +585,7 @@ Human mode uses Rust keywords; Agent mode uses compressed sigils. Both map to th
 - **INV-L1**: Every valid source string tokenizes to a finite, deterministic token sequence.
 - **INV-L2**: `format_agent(parse(source)) ≡ format_agent(parse(format_human(parse(source))))` (round-trip).
 - **INV-L3**: Token span ranges are non-overlapping and cover the entire source.
-- **INV-L4**: Mode switching is determined lexically by `#![syntax(agent)]` at file head.
+- **INV-L4**: There is no mode switch: one keyword table lexes both modes' spellings, in any file and mixed.
 
 ### 13. Domain 2: Syntactic
 

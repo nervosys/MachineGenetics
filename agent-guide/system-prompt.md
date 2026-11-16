@@ -11,8 +11,8 @@ Semantic Knowledge Base (SKB) that automates lifetimes, borrow-checking, and
 safety proofs.
 
 > **Dual Syntax**: MAGE supports two syntax modes. **Human mode** (default)
-> uses C-family keywords shown below. **Agent mode** (`#![syntax(agent)]`)
-> uses sigil-based forms for lower token counts. This prompt covers human mode.
+> uses C-family keywords shown below. **Agent mode**
+> uses sigil-based forms. No pragma selects a mode: both are accepted in any file. This prompt covers human mode.
 
 ## Core Syntax — Declaration Keywords
 
