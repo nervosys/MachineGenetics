@@ -196,6 +196,17 @@ pub struct Settings {
     pub elision: bool,
     /// Also require MAGE-core (`--core`).
     pub core: bool,
+    /// Borrow checking under Rust's move rule (`--borrowck-strict`,
+    /// `borrowck::Policy::STRICT`) instead of the inferred default. Part of the
+    /// cache address of every borrowck answer, so the two never mix.
+    pub strict_borrow: bool,
+}
+
+impl Settings {
+    /// The borrow checker's policy these settings select.
+    pub fn borrow_policy(&self) -> borrowck::Policy {
+        if self.strict_borrow { borrowck::Policy::STRICT } else { borrowck::Policy::INFERRED }
+    }
 }
 
 /// A parse failure, with what `run_pipeline` and `check_source` print of it.
@@ -408,6 +419,48 @@ pub struct PipelineReport {
     pub heal_diagnostics: usize,
     pub heal_fixes: usize,
     pub total_errors: usize,
+}
+
+/// Everything the human `--check` and `--pipeline` drivers print, as data.
+///
+/// The CLI renders one of these whichever way it was produced: by the stages
+/// run one after another, or read out of the query engine
+/// ([`Compiler::check_analysis`], [`Compiler::pipeline_analysis`]). Each driver
+/// fills the fields it prints and leaves the rest at their defaults. Diagnostics
+/// are in the order the drivers print them.
+#[derive(Clone, Debug, Default)]
+pub struct Analysis {
+    pub token_count: usize,
+    /// `(line, col)` of each lexer error.
+    pub lex_errors: Vec<(usize, usize)>,
+    pub parse_error: Option<ParseErrRec>,
+    /// The parsed module, after elision when it is on.
+    pub module: Option<ast::Module>,
+    /// `Some` only when elision ran: whether it changed the tree.
+    pub elision_changed: Option<bool>,
+    pub resolve: Vec<Diagnostic>,
+    pub symbols: usize,
+    pub types: Vec<Diagnostic>,
+    pub borrow: Vec<Diagnostic>,
+    pub effects: Vec<Diagnostic>,
+    /// Inferred effects by function name.
+    pub inferred: BTreeMap<String, EffectSet>,
+    /// `grad` obligations.
+    pub grad: Vec<Diagnostic>,
+    /// `train` errors (E0711, E0713).
+    pub train: Vec<Diagnostic>,
+    pub verifications: Vec<verify::VerificationResult>,
+    /// Refuted contracts.
+    pub spec: Vec<Diagnostic>,
+    pub logic: Vec<Diagnostic>,
+    pub contract_warnings: Vec<Diagnostic>,
+    pub shape: Vec<Diagnostic>,
+    pub core: Vec<Diagnostic>,
+    pub ai_diags: Vec<Diagnostic>,
+    pub ai_errors: usize,
+    pub ai_info: Vec<String>,
+    pub mlir: String,
+    pub healed: Vec<heal::HealedDiagnostic>,
 }
 
 // ── Passes ───────────────────────────────────────────────────────────
@@ -1007,8 +1060,9 @@ fn exec(db: &M, key: &Key) -> Result<Val, QueryError> {
         }
         Key::BorrowSummary(f) => {
             let o = outcome(db, *f)?;
+            let policy = settings(db)?.borrow_policy();
             match &o.module {
-                Some(m) => Val::Summary(Arc::new(ModuleInfo::new(m))),
+                Some(m) => Val::Summary(Arc::new(ModuleInfo::with_policy(m, policy))),
                 None => Val::Summary(Arc::new(ModuleInfo::default())),
             }
         }
@@ -1072,8 +1126,11 @@ fn exec(db: &M, key: &Key) -> Result<Val, QueryError> {
                     let m = &located(m, starts_of(db, *f)?);
                     let engine = differentiable::infer(m, &eff.infer());
                     let mut d = differentiable::check_grad_obligations(m, &engine);
+                    // `count` is how many of them are `grad` obligations; the
+                    // rest are `train` errors (the human `--check` heals only the first).
+                    let grad = d.len();
                     d.extend(differentiable::train_block_errors(m, &engine));
-                    Val::Pass(Arc::new(PassOut::diags(d)))
+                    Val::Pass(Arc::new(PassOut { diags: d, count: grad, ..Default::default() }))
                 }
             }
         }
@@ -1376,7 +1433,7 @@ pub fn reference_report(source: &str, s: Settings) -> PipelineReport {
     r.type_diags = checker.diagnostics.iter().map(|d| d.to_string()).collect();
     total += count_errors(&checker.diagnostics);
 
-    let borrow_diags = borrowck::check_module(&module);
+    let borrow_diags = borrowck::check_module_with(&module, s.borrow_policy());
     r.borrow_diags = borrow_diags.iter().map(|d| d.to_string()).collect();
     total += count_errors(&borrow_diags);
 
@@ -1472,7 +1529,10 @@ fn addr(db: &M, key: &Key) -> Result<Option<Hash32>, QueryError> {
             let def = &db.ctx.modules[*p];
             h_of(&[&db.get_hash(&Key::Elided(*f))?, def.name.as_bytes(), def.version.as_bytes()])
         }
-        Key::BorrowSummary(f) => h_of(&[&db.get_hash(&Key::Elided(*f))?, b"borrowck/summary", BORROWCK_VERSION.as_bytes()]),
+        Key::BorrowSummary(f) => {
+            let strict = [settings(db)?.strict_borrow as u8];
+            h_of(&[&db.get_hash(&Key::Elided(*f))?, b"borrowck/summary", BORROWCK_VERSION.as_bytes(), &strict])
+        }
         Key::BorrowItem(f, id) => {
             let ih = item_hash(db, *f, id)?;
             h_of(&[ih.as_bytes(), &db.get_hash(&Key::BorrowSummary(*f))?, b"pass/borrowck", BORROWCK_VERSION.as_bytes()])
@@ -1721,7 +1781,7 @@ impl Compiler {
             }
         }
         let c = Compiler { db, files: std::cell::RefCell::new(Vec::new()) };
-        c.set_settings(Settings { elision: true, core: false });
+        c.set_settings(Settings { elision: true, core: false, strict_borrow: false });
         c
     }
 
@@ -1843,6 +1903,138 @@ impl Compiler {
         Ok(fetch!(self.db, Key::Report(f), Report))
     }
 
+    /// What the human `--check` prints, read out of the engine.
+    pub fn check_analysis(&self, f: File) -> Result<Analysis, QueryError> {
+        let db = &self.db;
+        let tokens = fetch!(db, Key::Tokens(f), Tokens);
+        let o = outcome(db, f)?;
+        let mut a = Analysis {
+            token_count: tokens.len(),
+            lex_errors: lex_error_places(&tokens),
+            ..Analysis::default()
+        };
+        if let Some(e) = &o.error {
+            a.parse_error = Some(e.clone());
+            return Ok(a);
+        }
+        a.module = o.module.clone();
+        let items = fetch!(db, Key::Items(f), Items);
+        let starts = starts_of(db, f)?;
+        let r = fetch!(db, Key::Resolve(f), Resolve);
+        a.resolve = r.diagnostics.clone();
+        a.symbols = r.symbols;
+        a.types = types_located(db, f)?.diags.clone();
+        a.borrow = fetch!(db, Key::Borrowck(f), Pass).diags.clone();
+        let eff = effects_located(db, f)?;
+        a.effects = eff.diagnostics.clone();
+        a.inferred = eff.inferred.clone();
+        let diff = fetch!(db, Key::Diff(f), Pass);
+        a.grad = diff.diags[..diff.count].to_vec();
+        a.train = diff.diags[diff.count..].to_vec();
+        let at = |n: usize| hir::Span::item(starts.get(n).copied());
+        let verify = db.ctx.item_index("verify");
+        for (n, i) in items.iter().enumerate() {
+            let p = fetch!(db, Key::ItemPass(f, verify, i.id.clone()), Pass);
+            for note in &p.notes {
+                a.verifications.push(serde_json::from_str(note).map_err(|e| QueryError::Failed(e.to_string()))?);
+            }
+            let mut d = p.diags.clone();
+            hir::stamp_missing(&mut d, at(n));
+            a.spec.extend(d);
+        }
+        let stamped = |name: &str| -> Result<Vec<Diagnostic>, QueryError> {
+            let p = db.ctx.item_index(name);
+            let mut out = Vec::new();
+            for (n, i) in items.iter().enumerate() {
+                let mut d = fetch!(db, Key::ItemPass(f, p, i.id.clone()), Pass).diags.clone();
+                hir::stamp_missing(&mut d, at(n));
+                out.extend(d);
+            }
+            Ok(out)
+        };
+        a.logic = stamped("logic")?;
+        a.contract_warnings = stamped("contract")?;
+        let shape = db.ctx.item_index("shape");
+        for (n, i) in items.iter().enumerate() {
+            let notes = fetch!(db, Key::ItemPass(f, shape, i.id.clone()), Pass).notes.clone();
+            let mut d: Vec<Diagnostic> = notes.into_iter().map(Diagnostic::error).collect();
+            hir::stamp_missing(&mut d, at(n));
+            a.shape.extend(d);
+        }
+        if settings(db)?.core {
+            a.core = stamped("core")?;
+        }
+        // The healer's input is `check`'s own set: not the logic, shape or core findings.
+        let mut all = a.resolve.clone();
+        all.extend(a.types.iter().cloned());
+        all.extend(a.borrow.iter().cloned());
+        all.extend(a.effects.iter().cloned());
+        all.extend(a.grad.iter().cloned());
+        all.extend(a.spec.iter().cloned());
+        a.healed = heal::heal(&all);
+        Ok(a)
+    }
+
+    /// What `--pipeline` prints, read out of the engine.
+    pub fn pipeline_analysis(&self, f: File) -> Result<Analysis, QueryError> {
+        let db = &self.db;
+        let st = settings(db)?;
+        let tokens = fetch!(db, Key::Tokens(f), Tokens);
+        let o = outcome(db, f)?;
+        let mut a = Analysis {
+            token_count: tokens.len(),
+            lex_errors: lex_error_places(&tokens),
+            ..Analysis::default()
+        };
+        if let Some(e) = &o.error {
+            a.parse_error = Some(e.clone());
+            return Ok(a);
+        }
+        a.module = o.module.clone();
+        let items = fetch!(db, Key::Items(f), Items);
+        let starts = starts_of(db, f)?;
+        if st.elision {
+            let parsed = fetch!(db, Key::Parsed(f), Outcome);
+            let mut before = parsed.module.clone();
+            if let Some(m) = &mut before {
+                m.starts.clear();
+            }
+            a.elision_changed = Some(sha_debug_pos(&before) != sha_debug_pos(&o.module));
+        }
+        let r = fetch!(db, Key::Resolve(f), Resolve);
+        a.resolve = r.diagnostics.clone();
+        a.symbols = r.symbols;
+        a.types = types_located(db, f)?.diags.clone();
+        a.borrow = fetch!(db, Key::Borrowck(f), Pass).diags.clone();
+        let ai = db.ctx.item_index("ai");
+        for kind in ["Net", "Train", "Kb"] {
+            for (n, i) in items.iter().enumerate().filter(|(_, i)| i.id.kind == kind) {
+                let p = fetch!(db, Key::ItemPass(f, ai, i.id.clone()), Pass);
+                let mut d = p.diags.clone();
+                hir::stamp_missing(&mut d, hir::Span::item(starts.get(n).copied()));
+                a.ai_diags.extend(d);
+                a.ai_errors += p.count;
+                a.ai_info.extend(p.notes.iter().cloned());
+            }
+        }
+        let eff = effects_located(db, f)?;
+        a.effects = eff.diagnostics.clone();
+        a.inferred = eff.inferred.clone();
+        let verify = db.ctx.item_index("verify");
+        for (n, i) in items.iter().enumerate() {
+            let p = fetch!(db, Key::ItemPass(f, verify, i.id.clone()), Pass);
+            for note in &p.notes {
+                a.verifications.push(serde_json::from_str(note).map_err(|e| QueryError::Failed(e.to_string()))?);
+            }
+            let mut d = p.diags.clone();
+            hir::stamp_missing(&mut d, hir::Span::item(starts.get(n).copied()));
+            a.spec.extend(d);
+        }
+        a.mlir = (*fetch!(db, Key::Mlir(f), Text)).clone();
+        a.healed = (*fetch!(db, Key::Heal(f), Heal)).clone();
+        Ok(a)
+    }
+
     /// Ask for every output an agent reads (tokens, AST, diagnostics, MLIR,
     /// the pipeline report), in dependency-friendly order.
     pub fn compile(&self, f: File) -> Result<Arc<PipelineReport>, QueryError> {
@@ -1853,6 +2045,11 @@ impl Compiler {
         self.mlir(f)?;
         self.report(f)
     }
+}
+
+/// `(line, col)` of each lexer error.
+fn lex_error_places(tokens: &[Token]) -> Vec<(usize, usize)> {
+    tokens.iter().filter(|t| t.kind == lexer::TokenKind::Error).map(|t| (t.span.line, t.span.col)).collect()
 }
 
 /// The policy in force, as a string for the build id: the digest of the SKB

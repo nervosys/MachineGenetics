@@ -25,7 +25,7 @@ fn write_source(src: &str, ext: &str) -> PathBuf {
 /// `(severity, code, message)` of each record `--check --json` prints.
 fn check(src: &str, flags: &[&str]) -> Vec<(String, String, String)> {
     let path = write_source(src, "mg");
-    let out = Command::new(env!("CARGO_BIN_EXE_mage-parse"))
+    let out = Command::new(env!("CARGO_BIN_EXE_mage-parse")).env_remove("MAGE_CACHE_DIR")
         .arg("--check")
         .arg("--json")
         .args(flags)
@@ -76,7 +76,7 @@ fn control(src: &str) {
 /// `main` run by the real evaluator: (exit succeeded, stdout, stderr).
 fn eval_main(src: &str) -> (bool, String, String) {
     let path = write_source(src, "mg");
-    let out = Command::new(env!("CARGO_BIN_EXE_mage-parse"))
+    let out = Command::new(env!("CARGO_BIN_EXE_mage-parse")).env_remove("MAGE_CACHE_DIR")
         .arg("--eval")
         .arg(&path)
         .arg("main")

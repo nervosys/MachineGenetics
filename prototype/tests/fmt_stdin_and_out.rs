@@ -64,7 +64,7 @@ fn a_buffer_can_be_formatted_through_stdin() {
     }
     // `--count-tokens -` reads stdin too, and reports the count the arena
     // charges (plan S2): the lexer's output, Eof included.
-    let mut child = Command::new(bin())
+    let mut child = Command::new(bin()).env_remove("MAGE_CACHE_DIR")
         .args(["--count-tokens", "-"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())

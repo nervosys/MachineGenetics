@@ -100,7 +100,7 @@ pub const MODES: &[CliMode] = &[
     },
     CliMode {
         flag: "--check",
-        args: "<file.mg> [--json] [--compact] [--core]",
+        args: "<file.mg> [--json] [--compact] [--core] [--borrowck-strict]",
         summary: "parse + typecheck + effect-check; structured diagnostics; no output files",
         effect: "read_local",
         detail: "Full front-end pass (lex, parse, resolve, typecheck, effects) without\n\
@@ -110,7 +110,12 @@ pub const MODES: &[CliMode] = &[
                  diagnostic, sorted (byte-stable). Parse structurally; don't scrape prose.\n\
                  The cheapest way for an agent to validate generated MAGE.\n\
                  With --core: also require MAGE-core (MAGE_SPEC.md §4.12), the subset the\n\
-                 RSI kernel runs — every function roled, no `unsafe`, only core items.",
+                 RSI kernel runs — every function roled, no `unsafe`, only core items.\n\
+                 With --borrowck-strict: the borrow checker applies Rust's move rule (a\n\
+                 by-value parameter or a value stored in an aggregate consumes its\n\
+                 argument) instead of reporting only evidenced moves.\n\
+                 With `--cache-dir DIR` (or $MAGE_CACHE_DIR) the incremental engine answers\n\
+                 with that disk cache; the output is the same.",
     },
     CliMode {
         flag: "--differentiable",
@@ -309,14 +314,17 @@ pub const MODES: &[CliMode] = &[
     },
     CliMode {
         flag: "--pipeline",
-        args: "<file.mg>",
+        args: "<file.mg> [--borrowck-strict] [--cache-dir DIR]",
         summary: "run the full self-healing compile pipeline with recovery report",
         effect: "read_local",
         detail: "Lex → heal → parse → elide → typecheck with ranked fix candidates\n\
                  on failure (structured recovery — the reliability-bench surface).\n\
                  With `--incremental-stats`, runs the incremental query engine instead and\n\
                  prints the summary plus per-query hits/re-executions/cutoffs as JSON;\n\
-                 `--cache-dir DIR` (or $MAGE_CACHE_DIR) persists its answers between runs.",
+                 `--cache-dir DIR` (or $MAGE_CACHE_DIR) persists its answers between runs;\n\
+                 given a cache directory, the plain pipeline is answered by the engine too,\n\
+                 and prints what it prints without one.\n\
+                 With --borrowck-strict: the borrow checker applies Rust's move rule.",
     },
     CliMode {
         flag: "--emit-skb",

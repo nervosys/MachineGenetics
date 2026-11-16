@@ -12,7 +12,7 @@ fn eval(src: &str) -> (String, String) {
     let n = N.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let path = std::env::temp_dir().join(format!("mage-io-{}-{n}.mg", std::process::id()));
     std::fs::write(&path, src).unwrap();
-    let out = Command::new(env!("CARGO_BIN_EXE_mage-parse")).arg("--eval").arg(&path).output().unwrap();
+    let out = Command::new(env!("CARGO_BIN_EXE_mage-parse")).env_remove("MAGE_CACHE_DIR").arg("--eval").arg(&path).output().unwrap();
     let _ = std::fs::remove_file(&path);
     (
         String::from_utf8_lossy(&out.stdout).replace("\r\n", "\n"),

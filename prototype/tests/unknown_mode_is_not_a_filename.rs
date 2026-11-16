@@ -30,7 +30,7 @@ fn bin() -> std::path::PathBuf {
 
 /// (stdout+stderr, exit code)
 fn run(args: &[&str]) -> (String, i32) {
-    let out = Command::new(bin()).args(args).output().expect("spawn mage-parse");
+    let out = Command::new(bin()).env_remove("MAGE_CACHE_DIR").args(args).output().expect("spawn mage-parse");
     let mut s = String::from_utf8_lossy(&out.stdout).into_owned();
     s.push_str(&String::from_utf8_lossy(&out.stderr));
     (s, out.status.code().unwrap_or(-1))
@@ -89,7 +89,7 @@ fn bare_dash_still_means_stdin() {
     // standard input, and `--fmt-compact -` is how an editor formats a buffer.
     // Guarding this here as well as in `fmt_stdin_and_out.rs`, because it is
     // what a leading-`-` rule would break first.
-    let mut child = Command::new(bin())
+    let mut child = Command::new(bin()).env_remove("MAGE_CACHE_DIR")
         .args(["--fmt-compact", "-"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())

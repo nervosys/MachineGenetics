@@ -8,7 +8,7 @@ fn run(src: &str, flags: &[&str]) -> Output {
     let n = N.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let path = std::env::temp_dir().join(format!("mage-borrowck-{}-{n}.mg", std::process::id()));
     std::fs::write(&path, src).unwrap();
-    let out = Command::new(env!("CARGO_BIN_EXE_mage-parse")).arg("--check").args(flags).arg(&path).output().unwrap();
+    let out = Command::new(env!("CARGO_BIN_EXE_mage-parse")).env_remove("MAGE_CACHE_DIR").arg("--check").args(flags).arg(&path).output().unwrap();
     let _ = std::fs::remove_file(&path);
     out
 }

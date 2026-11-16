@@ -22,7 +22,7 @@ fn check(src: &str, flags: &[&str]) -> Vec<(String, String, String)> {
     let n = N.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let path = std::env::temp_dir().join(format!("mage-diag-{}-{n}.mg", std::process::id()));
     std::fs::write(&path, src).unwrap();
-    let out = Command::new(env!("CARGO_BIN_EXE_mage-parse"))
+    let out = Command::new(env!("CARGO_BIN_EXE_mage-parse")).env_remove("MAGE_CACHE_DIR")
         .arg("--check")
         .arg("--json")
         .args(flags)
@@ -345,7 +345,7 @@ fn the_human_check_prints_the_code() {
     for (code, src) in cases {
         let path = std::env::temp_dir().join(format!("mage-human-{}-{code}.mg", std::process::id()));
         std::fs::write(&path, src).unwrap();
-        let out = Command::new(env!("CARGO_BIN_EXE_mage-parse")).arg("--check").arg(&path).output().unwrap();
+        let out = Command::new(env!("CARGO_BIN_EXE_mage-parse")).env_remove("MAGE_CACHE_DIR").arg("--check").arg(&path).output().unwrap();
         let _ = std::fs::remove_file(&path);
         let text = format!("{}{}", String::from_utf8_lossy(&out.stdout), String::from_utf8_lossy(&out.stderr));
         assert!(text.contains(&format!("[{code}]")), "{code} is not printed:\n{text}");
@@ -370,7 +370,7 @@ fn the_human_check_agrees_with_the_verdict() {
     for (n, src) in sources.iter().enumerate() {
         let path = std::env::temp_dir().join(format!("mage-agree-{}-{n}.mg", std::process::id()));
         std::fs::write(&path, src).unwrap();
-        let out = Command::new(env!("CARGO_BIN_EXE_mage-parse")).arg("--check").arg(&path).output().unwrap();
+        let out = Command::new(env!("CARGO_BIN_EXE_mage-parse")).env_remove("MAGE_CACHE_DIR").arg("--check").arg(&path).output().unwrap();
         let _ = std::fs::remove_file(&path);
         let accepted = mage_prototype::check::check_source(src, false, false).verdict().accepted();
         assert_eq!(out.status.success(), accepted, "they disagree on {src:?}");

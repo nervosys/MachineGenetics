@@ -101,11 +101,12 @@ fn all_sources() -> Vec<(String, String)> {
     v
 }
 
-fn settings_matrix() -> [Settings; 3] {
+fn settings_matrix() -> [Settings; 4] {
     [
-        Settings { elision: true, core: false },
-        Settings { elision: false, core: false },
-        Settings { elision: true, core: true },
+        Settings { elision: true, core: false, strict_borrow: false },
+        Settings { elision: false, core: false, strict_borrow: false },
+        Settings { elision: true, core: true, strict_borrow: false },
+        Settings { elision: true, core: false, strict_borrow: true },
     ]
 }
 
@@ -113,7 +114,7 @@ fn settings_matrix() -> [Settings; 3] {
 /// cold test also runs the third combination; these two reach every stored
 /// query, including the core-only pass.)
 fn warm_matrix() -> [Settings; 2] {
-    [Settings { elision: true, core: false }, Settings { elision: false, core: true }]
+    [Settings { elision: true, core: false, strict_borrow: false }, Settings { elision: false, core: true, strict_borrow: false }]
 }
 
 fn dbg<T: std::fmt::Debug>(t: &T) -> String {
@@ -167,7 +168,7 @@ fn assert_equivalent(c: &Compiler, f: File, name: &str, src: &str, s: Settings) 
 
         let mut all = r.diagnostics.clone();
         all.extend(t.diagnostics.iter().cloned());
-        let b = mage_prototype::borrowck::check_module(&elided);
+        let b = mage_prototype::borrowck::check_module_with(&elided, s.borrow_policy());
         assert_eq!(dbg(&c.borrowck(f).unwrap().diags), dbg(&b), "{ctx}: borrowck diagnostics");
         all.extend(b.iter().cloned());
         all.extend(e.diagnostics.iter().cloned());
@@ -175,7 +176,7 @@ fn assert_equivalent(c: &Compiler, f: File, name: &str, src: &str, s: Settings) 
     }
 
     // `check_source`, finding by finding.
-    let want = check::check_source(src, s.elision, s.core);
+    let want = check::check_source_with(src, s.elision, s.core, s.borrow_policy());
     let got = c.checked(f).unwrap();
     assert_eq!(dbg(&got.findings), dbg(&want.findings), "{ctx}: check_source findings");
     assert_eq!(dbg(&got.effects), dbg(&want.effects), "{ctx}: check_source effect surface");

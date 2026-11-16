@@ -26,7 +26,7 @@ fn run(name: &str, src: &str, args: &[&str]) -> (String, String, i32) {
     std::fs::create_dir_all(&dir).expect("temp dir");
     let file = dir.join("m.mg");
     std::fs::write(&file, src).expect("write source");
-    let out = Command::new(bin()).args(args).arg(&file).output().expect("spawn mage-parse");
+    let out = Command::new(bin()).env_remove("MAGE_CACHE_DIR").args(args).arg(&file).output().expect("spawn mage-parse");
     let _ = std::fs::remove_dir_all(&dir);
     (
         String::from_utf8_lossy(&out.stdout).into_owned(),

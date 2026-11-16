@@ -4,7 +4,7 @@
     "ast_kinds": 20,
     "bench_backends": 4,
     "ci_floors": 6,
-    "cli_flags": 52,
+    "cli_flags": 53,
     "docs": 7,
     "effects": 24,
     "examples": 10,
@@ -432,8 +432,13 @@
       },
       {
         "flag": "--cache-dir",
-        "purpose": "With `--pipeline --incremental-stats`: persist the engine's answers in this directory (or set `MAGE_CACHE_DIR`), content-addressed by input and compiler build. Takes a directory after it.",
+        "purpose": "With `--pipeline` or `--check`: answer through the incremental engine, persisting its answers in this directory (or set `MAGE_CACHE_DIR`), content-addressed by input and compiler build; the output is the same as without it. Takes a directory after it.",
         "takes_path": true
+      },
+      {
+        "flag": "--borrowck-strict",
+        "purpose": "With `--check` or `--pipeline`: borrow-check under Rust's move rule (a by-value parameter or a value stored in an aggregate consumes its argument) instead of the inferred default.",
+        "takes_path": false
       }
     ],
     "docs": [

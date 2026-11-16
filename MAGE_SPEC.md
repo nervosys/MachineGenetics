@@ -2626,6 +2626,8 @@ std::
   rl          Reinforcement learning: Env, Policy, PPO, A3C
 ```
 
+**Atomic ordering.** Every MAGE atomic operation (`std::sync::Atomic`, for example `fetch_add` on an `@AtomicI64`) is sequentially consistent, equivalent to Rust's `Ordering::SeqCst`: all atomic operations on all atomics take place in one total order that every thread observes. Atomic operations take no ordering parameter, and weaker orderings (`Relaxed`, `Acquire`, `Release`, `AcqRel`) are not expressible. A Rust program that uses `SeqCst` is the direct counterpart of the MAGE program; one that relies on a weaker ordering has no MAGE counterpart.
+
 ---
 
 ## 15. Hardware Acceleration Model

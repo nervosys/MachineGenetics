@@ -74,6 +74,12 @@ pub fn shape_diags(module: &ast::Module) -> Vec<hir::Diagnostic> {
 
 /// Run every static pass over `source`, in a deterministic order.
 pub fn check_source(source: &str, do_elision: bool, core: bool) -> Checked {
+    check_source_with(source, do_elision, core, borrowck::Policy::default())
+}
+
+/// [`check_source`] with the borrow checker under an explicit [`borrowck::Policy`]
+/// (`--borrowck-strict` is `Policy::STRICT`).
+pub fn check_source_with(source: &str, do_elision: bool, core: bool, policy: borrowck::Policy) -> Checked {
     let mut findings = Vec::new();
     let mut push = |severity: &'static str, line, col, code: &str, category: &str, message: String, fix: &str| {
         findings.push(Finding {
@@ -121,7 +127,7 @@ pub fn check_source(source: &str, do_elision: bool, core: bool) -> Checked {
         all.extend(types::check(&module).diagnostics);
         // Use after move (E0382) and borrow conflicts (E0502): a pure per-function
         // pass over the same elided module the type checker saw.
-        all.extend(borrowck::check_module(&module));
+        all.extend(borrowck::check_module_with(&module, policy));
         let effect_infer = effects::infer_effects(&module);
         all.extend(effect_infer.diagnostics.clone());
         // The `grad` obligation (§5.6): `grad(e, w)` needs an `e` with a

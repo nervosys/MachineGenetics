@@ -496,7 +496,8 @@ const CLI_FLAGS: &[(&str, &str, bool)] = &[
     ("--syntax=canonical", "Read the source as canonical syntax (the default).", false),
     ("--token-report", "Print a token-count report alongside the check.", false),
     ("--incremental-stats", "With `--pipeline`: run the incremental query engine and print, as JSON, the pipeline summary and what the engine did (per-query hits, re-executions, early cutoffs, disk hits).", false),
-    ("--cache-dir", "With `--pipeline --incremental-stats`: persist the engine's answers in this directory (or set `MAGE_CACHE_DIR`), content-addressed by input and compiler build. Takes a directory after it.", true),
+    ("--cache-dir", "With `--pipeline` or `--check`: answer through the incremental engine, persisting its answers in this directory (or set `MAGE_CACHE_DIR`), content-addressed by input and compiler build; the output is the same as without it. Takes a directory after it.", true),
+    ("--borrowck-strict", "With `--check` or `--pipeline`: borrow-check under Rust's move rule (a by-value parameter or a value stored in an aggregate consumes its argument) instead of the inferred default.", false),
 ];
 
 /// `reliability-bench` backends. Each backend implements
