@@ -930,6 +930,14 @@ Modular arithmetic is asked for by name:
 wrapping_add(a, b)    wrapping_sub(a, b)    wrapping_mul(a, b)
 ```
 
+A cast `e as T` to an integer type is checked the same way: it traps when the
+value, after a float is truncated toward zero, lies outside `T`'s range, with
+``integer overflow in `300 as u8` ``; a NaN or infinite float traps too. In range
+a cast is exact: `255 as u8` is 255, `3.7 as i32` is 3. The postfix `as` binds
+tighter than prefix `-` (Appendix C), so `-128 as i8` is `-(128 as i8)` and traps;
+cast a negative value by naming it first. Before 2026-11-15 integer casts were
+unchecked, so `300 as u8` was 300.
+
 **Why trap.** Before 2026-09-25 the operators were whatever the host
 compiler's defaults were: a panic in a debug build and a silent wrap in a
 release build, so one program had two meanings. Of the two consistent choices,
