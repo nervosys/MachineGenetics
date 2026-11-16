@@ -171,7 +171,7 @@ agent Worker { capabilities: [agent] }
 }
 ```
 
-**Rule:** For async work units, prefer implementing `Agent` over bare async functions. Agents get lifecycle management, observability, and swarm composition.
+**Rule:** For async work units, declare an `agent` with the capabilities it needs and keep the work in functions with `/ agent`. There is no `Agent` trait to implement.
 
 ---
 
@@ -242,7 +242,7 @@ use serde_json::Value;
 }
 ```
 
-**Rule:** Use MAGE's `std::` modules. External Rust crates may not be compatible with the effect system.
+**Rule:** There is no `std`. Use the builtins and capability namespaces, which are in scope everywhere. External Rust crates may not be compatible with the effect system.
 
 ---
 
@@ -254,7 +254,7 @@ Before submitting generated MAGE code, verify:
 - [ ] No `unsafe` blocks (use `Capability` system)
 - [ ] All impure functions have `/ effect` annotations
 - [ ] Effect sets are the union of all callee effects
-- [ ] Async work uses `Agent` trait, not bare functions
+- [ ] Async work is an `agent` declaration with `/ agent`, not bare async functions
 - [ ] Public APIs have `@req` / `@ens` contracts
 - [ ] Sensitive ops use `Capability` tokens
-- [ ] Using `std::` MAGE modules, not external Rust crates
+- [ ] Using builtins and capability namespaces, not `std::` or external Rust crates

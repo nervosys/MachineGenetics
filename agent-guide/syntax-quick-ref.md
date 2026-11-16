@@ -29,7 +29,7 @@ agent Name { capabilities: [] } agent role
 swarm Name { agent: A }         swarm
 kb Name { fact …; rule … }      knowledge base
 net Name { layer …; forward }   neural net
-val x = expr                    immutable binding             v
+val x = expr                    immutable, not enforced       v
 var x = expr                    mutable binding               m
 pub const NAME: T = expr;       constant (`;` required)       C
 Z NAME: T = expr;               retired (E0554): use `C`      Z
@@ -62,7 +62,7 @@ defer expr                      run at scope exit             df
 ## Types
 
 ```
-str             string                (NOT `String`/`&str`)
+str             string                (`String` and `&str` also parse, as `str`)
 i32 i64 u32 usize f64 bool
 [T]~            slice                 (`Vec<T>` also parses)
 {K: V}          map                   (`HashMap<K, V>` also parses)
@@ -92,7 +92,7 @@ own copy of the type variables, so `id(1)` and `id("ab")` coexist without one.
 "text"                          string
 f"hi {x}"                       interpolated string
 @Name { field: value }          struct literal
-{"k": v}                        map literal      — bare `Name { … }` is a MAP
+{"k": v}                        map literal      — bare `Name { … }` is a map, not a struct
 [1, 2, 3]                       list literal     — `vec![…]` is a parse error
 Some(x) None Ok(v) Err(e)       sum constructors
 ```
@@ -160,10 +160,11 @@ checker refuses it (E0425). `::` paths are a parse error. There is no `std::io`,
 ## Names that are keywords
 
 Single letters are the agent-mode declaration keywords, so they cannot be
-identifiers: `f v m u C S E T I M U D Y Z`. `|u| …` and `f(x)` as a *variable*
+identifiers: `f v m u C S E T I M U Y Z`. `|u| …` and `f(x)` as a *variable*
 are parse errors — spell closure parameters and function-typed parameters out.
-`pipeline`, `select`, `query`, `net`, `layer`, `param`, `train`, `grad`,
-`policy` and `reward` are keywords too.
+`net`, `kb`, `pipeline`, `train`, `grad`, `evolve`, `population`, `rl`,
+`crossover` and `generations` cannot be a `val` name (parse error). `D`, `query`,
+`select`, `layer`, `param`, `policy`, `reward` and `tensor` parse as ordinary names.
 
 ## Canonical Examples
 

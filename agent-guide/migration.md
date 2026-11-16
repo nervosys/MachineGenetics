@@ -17,7 +17,7 @@ and MAGE". Every row was re-checked against the compiler for this rewrite.
 |---|---|---|
 | `let x` / `let mut x` | `val x` / `var x` | The parser rejects `let` **by name**, with that advice. |
 | `true` / `false` | `1b` / `0b` | The words are not in scope — `true` is an unresolved name. |
-| `Foo { x: 1 }` | `@Foo { x: 1 }` | Bare braces are a **map literal**. The Rust spelling silently means something else. |
+| `Foo { x: 1 }` | `@Foo { x: 1 }` | Bare `Foo { … }` is never a struct: a map literal in expression position, and a parse error after `v x =`. |
 | `#[derive(…)]`, `#[test]`, `#[cfg(…)]` | `@test` | `#[…]` does not parse. There are no derive macros. |
 | `println!`, `format!`, `vec!`, `assert_eq!` | `println(…)`, `f"…"`, `[…]` | **MAGE has no macros.** These are parse errors that name themselves. |
 | `std::io::File`, `foo::<i32>()` | — | `::` does not parse, in paths or in a turbofish. |
@@ -25,10 +25,10 @@ and MAGE". Every row was re-checked against the compiler for this rewrite.
 | `async fn f()` | `async f()` | `async` *is* the declaration keyword. |
 | `unsafe`, `extern`, `const fn`, `pub(crate)` | — | None of these parse (`unsafe` and `extern` are reserved). |
 | `static N: T = v;` | `C N: T = v;` | `static` parses and is retired (E0554), as `Z` is. |
-| `String`, `&str` | `str` | One string type. `&mut T` does not parse either. |
+| `String`, `&str` | `str` | Both parse and mean `str`; write `str`. `&mut T` does not parse. |
 | `fn f<T>()` | `fn f[T]()` | `<T>` also parses; `[T]` is canonical. |
 | `impl Type { }` | `extend Type { }` | `impl Trait for Type` stays, for trait implementations. |
-| `&self` / `&mut self` | `self` | Methods take the value and return the updated one. |
+| `&self` / `&mut self` | `self` | `&self` parses inside `extend`; `&mut self` does not. Methods take the value and return the updated one. |
 
 ## What genuinely stays the same
 
@@ -141,7 +141,7 @@ extend Point {
 **What changed:**
 
 1. `impl Point` becomes `extend Point`, and `&self` becomes `self`.
-2. `Self` becomes the type name, and `Point { x, y }` becomes `@Point { x: x, y: y }` — there is no field shorthand, and **bare `Point { … }` is a map literal**, not a struct.
+2. `Self` becomes the type name, and `Point { x, y }` becomes `@Point { x, y }` (field shorthand works with `@`). **Bare `Point { … }` is a map literal**, not a struct.
 3. `#[derive(Debug, Clone)]` is deleted: there are no derive macros, and no attributes of that form.
 4. `impl fmt::Display` becomes an ordinary method. `write!` and `format!` are macros, which do not exist — an f-string replaces them.
 5. `let` becomes `val`. The parser rejects `let` by name.

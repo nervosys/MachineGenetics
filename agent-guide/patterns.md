@@ -15,7 +15,7 @@ a pattern below:
   `T`, `I`, `C`, `D`, `M`, `U`, `Y`, `Z` are the agent-mode spellings of
   declarations, so `|u| …` and `f(x)` as a *variable* are parse errors. Name
   closure parameters and function-typed parameters in full.
-- **There is no `::`, no `impl Trait`, no `where`, no `mod`.** Paths are flat
+- **There is no `::`, no `impl Trait`, no `mod`.** `where` parses, but its bound is discarded with a warning (E9999) and constrains nothing. Paths are flat
   (Pattern 11), generics go in `[…]` (Pattern 8), and effects are annotated
   with `/ effect` rather than bounded (Pattern 8 again).
 
