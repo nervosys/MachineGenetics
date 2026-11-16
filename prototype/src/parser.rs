@@ -5086,6 +5086,55 @@ mod tests {
     use super::*;
     use crate::lexer;
 
+    /// MAGE_SPEC.md Appendix C's infix rows are the parser's binding powers:
+    /// the same operators, ranked in the same order, each level
+    /// left-associative. The table once put `|>` below `||`, merged equality
+    /// with the relational operators, called assignment right-associative and
+    /// listed `@` and `.*`, none of which the parser did.
+    #[test]
+    fn the_precedence_table_is_the_parsers() {
+        use std::collections::BTreeMap;
+        // The parser's infix table, read from this file's own source.
+        let src = include_str!("parser.rs").replace("\r\n", "\n");
+        let body = src.split("fn parse_expr_bp(").nth(1).unwrap().split("fn parse_prefix_expr(").next().unwrap();
+        let mut parser: BTreeMap<String, u8> = BTreeMap::new();
+        for line in body.lines() {
+            let Some(rest) = line.trim().split("=> (\"").nth(1) else { continue };
+            let Some((op, nums)) = rest.split_once("\", ") else { continue };
+            let nums: Vec<u8> = nums.trim_end_matches("),").split(", ").map(|n| n.parse().unwrap()).collect();
+            assert_eq!(nums[1], nums[0] + 1, "`{op}` is not left-associative in the parser");
+            parser.insert(op.to_string(), nums[0]);
+        }
+        assert!(parser.len() >= 30 && parser.contains_key("|>") && parser.contains_key("<<="), "{parser:?}");
+        // The table's rows whose associativity is `Left`.
+        let spec = std::fs::read_to_string(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../MAGE_SPEC.md"))
+            .unwrap()
+            .replace("\r\n", "\n");
+        let table = spec.split("## Appendix C: Operator Precedence").nth(1).unwrap().split("\n## ").next().unwrap();
+        let mut stated: BTreeMap<String, i32> = BTreeMap::new();
+        for row in table.lines().filter(|l| l.starts_with("| ")) {
+            let cells: Vec<String> = row.replace("\\|", "\u{1}").split('|').map(|c| c.trim().replace('\u{1}', "|")).collect();
+            let (Ok(prec), Some(assoc)) = (cells[1].parse::<i32>(), cells.get(4)) else { continue };
+            if assoc != "Left" {
+                continue;
+            }
+            for (i, op) in cells[2].split('`').enumerate() {
+                if i % 2 == 1 {
+                    assert!(stated.insert(op.to_string(), prec).is_none(), "`{op}` is in two rows");
+                }
+            }
+        }
+        let missing: Vec<&String> = parser.keys().filter(|op| !stated.contains_key(*op)).collect();
+        let extra: Vec<&String> = stated.keys().filter(|op| !parser.contains_key(*op)).collect();
+        assert!(missing.is_empty(), "infix operators Appendix C does not rank: {missing:?}");
+        assert!(extra.is_empty(), "Appendix C ranks operators the parser has no infix rule for: {extra:?}");
+        for (a, pa) in &parser {
+            for (b, pb) in &parser {
+                assert_eq!(pa.cmp(pb), stated[a].cmp(&stated[b]), "`{a}` against `{b}`: the parser and Appendix C rank them differently");
+            }
+        }
+    }
+
     fn parse_source(source: &str) -> Module {
         let tokens = lexer::lex(source);
         parse(&tokens).unwrap()

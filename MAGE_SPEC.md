@@ -2761,29 +2761,31 @@ This design maximizes token efficiency (fewer tokens in the LLM context window) 
 
 ## Appendix C: Operator Precedence
 
-From highest to lowest. Left-associative unless noted.
+From highest to lowest. Every infix operator is left-associative, assignment
+included: `a = b = c` groups as `(a = b) = c`. The postfix operators are one
+loop and bind tighter than the prefix ones, so `-x as i32` is `-(x as i32)` and
+`-x * y` is `(-x) * y`. A test in `parser.rs` holds the infix rows to the
+parser's binding powers, both ways.
 
-| Prec | Operator(s)                   | Description      | Assoc   |
-| ---- | ----------------------------- | ---------------- | ------- |
-| 16   | `.` field, `[i]` index        | Access           | Left    |
-| 15   | `f()` call, `.m()` method     | Invocation       | Left    |
-| 14   | `?`                           | Try/unwrap       | Postfix |
-| 13   | `.T`                          | Transpose        | Postfix |
-| 12   | `-` `!` `&` `&var` `*` `grad` | Unary prefix     | Right   |
-| 11   | `as`                          | Type cast        | Left    |
-| 10   | `@` `.*`                      | Matmul, Hadamard | Left    |
-| 9    | `*` `/` `%`                   | Multiplicative   | Left    |
-| 8    | `+` `-`                       | Additive         | Left    |
-| 7    | `<<` `>>`                     | Bit shift        | Left    |
-| 6    | `&`                           | Bitwise AND      | Left    |
-| 5    | `^`                           | Bitwise XOR      | Left    |
-| 4    | `\|`                          | Bitwise OR       | Left    |
-| 3    | `==` `!=` `<` `>` `<=` `>=`   | Comparison       | Left    |
-| 2    | `&&`                          | Logical AND      | Left    |
-| 1    | `\|\|`                        | Logical OR       | Left    |
-| 0    | `\|>`                         | Pipeline         | Left    |
-| -1   | `=` `+=` `-=` `*=` etc.       | Assignment       | Right   |
-| -2   | `return` `break`              | Control flow     | —       |
+| Prec | Operator(s)                                                     | Description           | Assoc   |
+| ---- | --------------------------------------------------------------- | --------------------- | ------- |
+| 14   | `.f` field, `.m()` method, `[i]` index, `f()` call, `?`, `is`, `as`, `⊤`, `⊥` | Postfix | Postfix |
+| 13   | `-` `!` `*` `&` `&!`                                            | Unary prefix          | Prefix  |
+| 12   | `⊗` `⊙`                                                         | Matmul, Hadamard      | Left    |
+| 11   | `*` `/` `%`                                                     | Multiplicative        | Left    |
+| 10   | `+` `-`                                                         | Additive              | Left    |
+| 9    | `<<` `>>`                                                       | Bit shift             | Left    |
+| 8    | `&`                                                             | Bitwise AND           | Left    |
+| 7    | `^`                                                             | Bitwise XOR           | Left    |
+| 6    | `\|`                                                            | Bitwise OR            | Left    |
+| 5    | `<` `>` `<=` `>=`                                               | Relational            | Left    |
+| 4    | `==` `!=`                                                       | Equality              | Left    |
+| 3    | `&&`                                                            | Logical AND           | Left    |
+| 2    | `\|\|` `\|>` `▸`                                                 | Logical OR, pipelines | Left    |
+| 1    | `=` `+=` `-=` `*=` `/=` `%=` `&=` `\|=` `^=` `<<=` `>>=`         | Assignment            | Left    |
+
+`ret`, `!` (break) and `>>` (continue) are expressions that take the rest of the
+expression as their operand; they are not operators of this table.
 
 ---
 
