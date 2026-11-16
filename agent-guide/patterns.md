@@ -276,7 +276,7 @@ pub fn check_all(urls: [str]~) -> i32 / net, agent {
 // …) are in scope everywhere.
 //
 // `use` parses, for source compatibility, but brings nothing into scope — the
-// checker warns and the name stays unresolved. Do not write it.
+// checker refuses it (E0425). Do not write it.
 pub struct User { name: str }
 
 pub fn handle_request(user: User) -> str / io {

@@ -2541,7 +2541,7 @@ $$
 
 **There is no module system today, and no standard library to import from.**
 `mod name { … }` parses as an item and resolves nothing; `use` parses and
-brings nothing into scope (the checker warns); `::` is a parse error
+brings nothing into scope, and the checker refuses it (E0425); `::` is a parse error
 everywhere. Whether MAGE *should* have modules is an open design question —
 an import costs tokens and buys little when the library is small, fixed and
 global — and this section records the shape it would take, as **invalid MAGE**:

@@ -21,7 +21,7 @@ and MAGE". Every row was re-checked against the compiler for this rewrite.
 | `#[derive(…)]`, `#[test]`, `#[cfg(…)]` | `@test` | `#[…]` does not parse. There are no derive macros. |
 | `println!`, `format!`, `vec!`, `assert_eq!` | `println(…)`, `f"…"`, `[…]` | **MAGE has no macros.** These are parse errors that name themselves. |
 | `std::io::File`, `foo::<i32>()` | — | `::` does not parse, in paths or in a turbofish. |
-| `mod name`, `use std::io` | — | There is no module system. `use` parses and imports nothing; the checker warns. |
+| `mod name`, `use std::io` | — | There is no module system. `use` parses and imports nothing; the checker refuses it (E0425). |
 | `async fn f()` | `async f()` | `async` *is* the declaration keyword. |
 | `unsafe`, `extern`, `const fn`, `pub(crate)` | — | None of these parse (`unsafe` and `extern` are reserved). |
 | `static N: T = v;` | `C N: T = v;` | `static` parses and is retired (E0554), as `Z` is. |
