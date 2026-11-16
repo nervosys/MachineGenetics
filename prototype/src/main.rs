@@ -35,8 +35,10 @@ fn is_modifier_flag(a: &str) -> bool {
         a,
         "--no-elision" | "--syntax=legacy" | "--syntax=canonical" | "--token-report"
             | "--json" | "--compact" | "--fix" | "--core" | "--max" | "--fuel" | "--seed" | "--write"
+            | "--incremental-stats" | "--cache-dir" | "--borrowck-strict"
     ) || a.starts_with("--backend=")
         || a.starts_with("--backends-file=")
+        || a.starts_with("--cache-dir=")
 }
 
 /// Read a source file, or standard input when the path is `-`.
@@ -338,6 +340,26 @@ fn main() {
     // `--check --core`: also require MAGE-core (§4.12), the subset the RSI
     // kernel runs — every function roled, no `unsafe`, only core items.
     let core = args.iter().any(|a| a == "--core");
+    // `--borrowck-strict` (with `--check` or `--pipeline`): the borrow checker
+    // applies Rust's move rule (`borrowck::Policy::STRICT`) — a by-value
+    // parameter or a value stored in an aggregate consumes its argument —
+    // instead of reporting only the transfers the program itself evidences.
+    let strict_borrow = args.iter().any(|a| a == "--borrowck-strict");
+    // `--pipeline FILE --incremental-stats` runs the incremental query engine
+    // (`query.rs`) instead of the stage-by-stage printout, and prints what it
+    // did — which queries ran, which were answered from memory or from the
+    // cache, which were cut off — as JSON. `--cache-dir DIR` (or the
+    // environment's `MAGE_CACHE_DIR`) makes its answers persist between runs.
+    let incremental_stats = args.iter().any(|a| a == "--incremental-stats");
+    let cache_dir: Option<String> = args
+        .iter()
+        .enumerate()
+        .find_map(|(i, a)| match a.as_str() {
+            "--cache-dir" => args.get(i + 1).cloned(),
+            other => other.strip_prefix("--cache-dir=").map(str::to_string),
+        })
+        .or_else(|| std::env::var("MAGE_CACHE_DIR").ok())
+        .filter(|d| !d.is_empty());
     // Optional --backend=<name> selects hardware accelerator for any
     // subsequent --run=abl-bytes / --target=abl-run dispatch. Lives
     // outside the main flag table so it can attach to any dispatching
@@ -388,10 +410,23 @@ fn main() {
     // --fix: The system cannot find the file specified". The flag only worked
     // when written after both paths, which is not the order `ARCHITECTURE.md` §5
     // implies and not the order anyone would try first.
+    //
+    // `--cache-dir` takes its directory as the next argument, which has to
+    // vanish with it or it would be read as the path.
+    let mut skip_value = false;
     let filtered: Vec<&str> = args
         .iter()
         .skip(1)
-        .filter(|a| !is_modifier_flag(a))
+        .filter(|a| {
+            if std::mem::take(&mut skip_value) {
+                return false;
+            }
+            if a.as_str() == "--cache-dir" {
+                skip_value = true;
+                return false;
+            }
+            !is_modifier_flag(a)
+        })
         .map(|s| s.as_str())
         .collect();
 
@@ -521,6 +556,18 @@ fn main() {
             // counts both printed surfaces with it, so the number is the same.
             println!("{}", lexer::lex(&read_source(path)).len());
         }
+        // Real byte-level BPE token counts and training (`bpe.rs`). The flags
+        // after the mode (`--vocab`, `--vocab-size`, `--out`) are parsed there.
+        Some(mode @ ("--bpe-count" | "--bpe-train")) => {
+            let after = args.iter().position(|a| a == mode).map_or(0, |i| i + 1);
+            match bpe::run_cli(mode, &args[after..]) {
+                Ok(out) => println!("{out}"),
+                Err(e) => {
+                    eprintln!("{e}");
+                    std::process::exit(1);
+                }
+            }
+        }
         Some("--check") => {
             let path = filtered.get(1).unwrap_or_else(|| {
                 eprintln!("Usage: mage-parse --check <file> [--no-elision] [--token-report]");
@@ -531,9 +578,9 @@ fn main() {
                 std::process::exit(1);
             });
             if json_out {
-                run_check_json(&source, path, !no_elision, syntax_legacy, core, compact);
+                run_check_json(&source, path, !no_elision, syntax_legacy, core, compact, strict_borrow, cache_dir.as_deref());
             } else {
-                run_check(&source, path, !no_elision, syntax_legacy, token_report, core);
+                run_check(&source, path, !no_elision, syntax_legacy, token_report, core, strict_borrow, cache_dir.as_deref());
             }
         }
         // Differentiability, over all three subjects the pass analyses:
@@ -1348,7 +1395,12 @@ fn main() {
                 eprintln!("Error reading {path}: {e}");
                 std::process::exit(1);
             });
-            run_pipeline(&source, path, !no_elision, syntax_legacy, token_report);
+            if incremental_stats {
+                let source = if syntax_legacy { legacy::translate(&source) } else { source };
+                run_incremental_pipeline(&source, path, !no_elision, core, strict_borrow, cache_dir.as_deref());
+            } else {
+                run_pipeline(&source, path, !no_elision, syntax_legacy, token_report, core, strict_borrow, cache_dir.as_deref());
+            }
         }
         // An unrecognised `--flag` is never a filename.
         //
@@ -3201,17 +3253,73 @@ fn run_parse(source: &str, filename: &str, do_elision: bool, legacy: bool, token
     }
 }
 
+/// Run the stages through the incremental engine, with the disk cache in
+/// `cache_dir`, and hand `read` the compiler to ask its question of.
+///
+/// `None` means the engine could not answer (a note says why) and the caller
+/// runs the direct driver instead, so a cache can make a run faster but never
+/// make it fail.
+fn through_engine<T>(
+    source: &str,
+    filename: &str,
+    settings: mage_prototype::query::mage::Settings,
+    cache_dir: &str,
+    read: impl FnOnce(&mage_prototype::query::mage::Compiler, mage_prototype::query::mage::File) -> Result<T, mage_prototype::query::QueryError>,
+) -> Option<T> {
+    use mage_prototype::query::mage::{Compiler, Config};
+    let compiler = Compiler::new(Config { cache_dir: Some(std::path::PathBuf::from(cache_dir)), ..Config::default() });
+    compiler.set_settings(settings);
+    let file = compiler.set_source(filename, source);
+    let answer = read(&compiler, file);
+    // The drivers leave through `process::exit`, which skips destructors.
+    if !compiler.flush() {
+        eprintln!("mage: could not write the cache; the next run will recompute");
+    }
+    match answer {
+        Ok(v) => Some(v),
+        Err(e) => {
+            eprintln!("mage: the incremental engine failed ({e}); running the direct driver");
+            None
+        }
+    }
+}
+
+fn engine_settings(do_elision: bool, core: bool, strict_borrow: bool) -> mage_prototype::query::mage::Settings {
+    mage_prototype::query::mage::Settings { elision: do_elision, core, strict_borrow }
+}
+
+fn borrow_policy(strict_borrow: bool) -> borrowck::Policy {
+    if strict_borrow { borrowck::Policy::STRICT } else { borrowck::Policy::INFERRED }
+}
+
 /// Machine-readable diagnostic stream for `--check --json`.
 ///
 /// Deterministic by construction: diagnostics are sorted by (line, col, code,
 /// message) and the schema is stable, so identical input yields byte-identical
 /// output and an agent parses errors structurally — `{code, severity, line,
 /// col, category, message, fix}` — instead of scraping human prose. Every
-/// diagnostic carries a stable error code and an actionable `fix` hint.
-fn run_check_json(source: &str, filename: &str, do_elision: bool, legacy: bool, core: bool, compact: bool) {
+/// diagnostic carries a stable error code and an actionable `fix` hint. `counts`
+/// (`total`, `error`, `warning`, `note`, `by_code`) tallies them.
+fn run_check_json(
+    source: &str,
+    filename: &str,
+    do_elision: bool,
+    legacy: bool,
+    core: bool,
+    compact: bool,
+    strict_borrow: bool,
+    cache_dir: Option<&str>,
+) {
     let source = if legacy { legacy::translate(source) } else { source.to_string() };
 
-    let checked = check::check_source(&source, do_elision, core);
+    // With a cache directory the engine answers (and remembers); the answer is
+    // the same value `check_source_with` computes, which
+    // `tests/incremental_equivalence.rs` holds it to.
+    let from_engine = cache_dir.and_then(|dir| {
+        through_engine(&source, filename, engine_settings(do_elision, core, strict_borrow), dir, |c, f| c.checked(f))
+    });
+    let checked = from_engine
+        .unwrap_or_else(|| check::check_source_with(&source, do_elision, core, borrow_policy(strict_borrow)));
     let diags: Vec<serde_json::Value> = checked
         .findings
         .iter()
@@ -3229,8 +3337,23 @@ fn run_check_json(source: &str, filename: &str, do_elision: bool, legacy: bool, 
         .collect();
 
     let error_count = diags.iter().filter(|d| d["severity"] == "error").count();
+    // Additive tally for evaluators: how many findings of each severity and
+    // of each code, so a driver reads counts instead of walking `diagnostics`.
+    let mut by_code: std::collections::BTreeMap<String, usize> = std::collections::BTreeMap::new();
+    for f in &checked.findings {
+        *by_code.entry(f.code.clone()).or_insert(0) += 1;
+    }
+    let sev = |name: &str| diags.iter().filter(|d| d["severity"] == name).count();
+    let counts = serde_json::json!({
+        "total": diags.len(),
+        "error": error_count,
+        "warning": sev("warning"),
+        "note": sev("note"),
+        "by_code": by_code,
+    });
     let out = serde_json::json!({
         "ok": error_count == 0,
+        "counts": counts,
         "file": filename,
         "error_count": error_count,
         "diagnostics": diags,
@@ -3245,75 +3368,54 @@ fn run_check_json(source: &str, filename: &str, do_elision: bool, legacy: bool, 
     }
 }
 
-fn run_check(source: &str, filename: &str, do_elision: bool, legacy: bool, token_report: bool, core: bool) {
-    // Phase 0: Legacy syntax translation (if active).
-    let source = if legacy {
-        legacy::translate(source)
-    } else {
-        source.to_string()
+/// `--check`'s stages, run one after another with nothing remembered: the
+/// analysis the human driver prints. The engine's
+/// `Compiler::check_analysis` is held to this.
+fn direct_check_analysis(source: &str, do_elision: bool, core: bool, strict_borrow: bool) -> query::mage::Analysis {
+    use query::mage::{Analysis, ParseErrRec};
+    // Lex.
+    let tokens = lexer::lex(source);
+    let mut a = Analysis {
+        token_count: tokens.len(),
+        lex_errors: tokens
+            .iter()
+            .filter(|t| t.kind == lexer::TokenKind::Error)
+            .map(|t| (t.span.line, t.span.col))
+            .collect(),
+        ..Analysis::default()
     };
 
-    // Phase 1: Lex.
-    let tokens = lexer::lex(&source);
-    let mut total_errors = 0;
-
-    for tok in &tokens {
-        if tok.kind == lexer::TokenKind::Error {
-            eprintln!(
-                "{filename}:{}:{}: [E0000] lexer error: unexpected character",
-                tok.span.line, tok.span.col
-            );
-            total_errors += 1;
-        }
-    }
-
-    // Phase 2: Parse.
+    // Parse.
     let module = match parser::parse(&tokens) {
         Ok(m) => m,
         Err(e) => {
-            eprintln!(
-                "{filename}:{}:{}: [E0001] parse error: {}",
-                e.line, e.col, e.describe()
-            );
-            std::process::exit(1);
+            a.parse_error =
+                Some(ParseErrRec { line: e.line, col: e.col, message: e.message.clone(), described: e.describe() });
+            return a;
         }
     };
 
-    // Phase 2.5: Safety elision (agentic mode default).
-    let module = if do_elision {
-        elision::elide(&module)
-    } else {
-        module
-    };
+    // Safety elision (agentic mode default).
+    let module = if do_elision { elision::elide(&module) } else { module };
 
-    // Phase 3: Name resolution.
+    // Name resolution.
     let resolver = resolve::resolve(&module);
-    for diag in &resolver.diagnostics {
-        eprintln!("{filename}: {diag}");
-        if diag.severity == hir::Severity::Error {
-            total_errors += 1;
-        }
-    }
+    a.resolve = resolver.diagnostics.clone();
+    a.symbols = resolver.symbols.len();
 
-    // Phase 4: Type checking.
-    let checker = types::check(&module);
-    for diag in &checker.diagnostics {
-        eprintln!("{filename}: {diag}");
-        if diag.severity == hir::Severity::Error {
-            total_errors += 1;
-        }
-    }
+    // Type checking.
+    a.types = types::check(&module).diagnostics;
 
-    // Phase 5: Effect inference.
+    // Ownership and borrowing (E0382, E0502). Pure and per function, so it
+    // runs on the module the type checker just accepted.
+    a.borrow = borrowck::check_module_with(&module, borrow_policy(strict_borrow));
+
+    // Effect inference.
     let effect_infer = effects::infer_effects(&module);
-    for diag in &effect_infer.diagnostics {
-        eprintln!("{filename}: {diag}");
-        if diag.severity == hir::Severity::Error {
-            total_errors += 1;
-        }
-    }
+    a.effects = effect_infer.diagnostics.clone();
+    a.inferred = effect_infer.inferred.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
 
-    // Phase 5.4: The `grad` obligation (§5.6).
+    // The `grad` obligation (§5.6).
     //
     // Separate from type checking on purpose. `types.rs` gives
     // `grad(e, w)` its type from the expression in front of it; whether
@@ -3321,24 +3423,110 @@ fn run_check(source: &str, filename: &str, do_elision: bool, legacy: bool, token
     // this pass can see. Splitting them is what stops the type checker
     // answering a question it has no evidence for.
     let diff_infer = differentiable::infer(&module, &effect_infer);
-    let grad_diags = differentiable::check_grad_obligations(&module, &diff_infer);
-    for diag in &grad_diags {
-        eprintln!("{filename}: {diag}");
-        if diag.severity == hir::Severity::Error {
-            total_errors += 1;
-        }
-    }
+    a.grad = differentiable::check_grad_obligations(&module, &diff_infer);
     // A `train` over a net judged not differentiable (E0711).
-    for diag in &differentiable::train_block_errors(&module, &diff_infer) {
+    a.train = differentiable::train_block_errors(&module, &diff_infer);
+
+    // Contract verification, one item at a time, so a refuted contract is
+    // reported at its item's line.
+    for (i, item) in module.items.iter().enumerate() {
+        let v = verify::verify_module(&ast::Module::single(item));
+        let mut d = verify::diagnostics(&v);
+        hir::stamp_missing(&mut d, hir::Span::item(module.start_of(i)));
+        a.spec.extend(d);
+        a.verifications.extend(v);
+    }
+
+    // A `kb` fact or rule the logic engine cannot evaluate (E0570).
+    a.logic = check::per_item(&module, logic::module_diagnostics);
+    // A contract written on a `net` or `train`, which nothing checks (E0712).
+    a.contract_warnings = check::per_item(&module, contract::unchecked_contract_warnings);
+    // A shape-mismatched `net` composition (§4.5).
+    a.shape = check::per_item(&module, check::shape_diags);
+    if core {
+        a.core = check::per_item(&module, core_subset::check);
+    }
+
+    // Self-healing: fix candidates for the diagnostics above.
+    let mut all: Vec<hir::Diagnostic> = Vec::new();
+    all.extend(a.resolve.iter().cloned());
+    all.extend(a.types.iter().cloned());
+    all.extend(a.borrow.iter().cloned());
+    all.extend(a.effects.iter().cloned());
+    all.extend(a.grad.iter().cloned());
+    all.extend(a.spec.iter().cloned());
+    a.healed = heal::heal(&all);
+
+    a.module = Some(module);
+    a
+}
+
+fn run_check(
+    source: &str,
+    filename: &str,
+    do_elision: bool,
+    legacy: bool,
+    token_report: bool,
+    core: bool,
+    strict_borrow: bool,
+    cache_dir: Option<&str>,
+) {
+    // Phase 0: Legacy syntax translation (if active).
+    let source = if legacy {
+        legacy::translate(source)
+    } else {
+        source.to_string()
+    };
+
+    let from_engine = cache_dir.and_then(|dir| {
+        through_engine(&source, filename, engine_settings(do_elision, core, strict_borrow), dir, |c, f| {
+            c.check_analysis(f)
+        })
+    });
+    let analysis = from_engine.unwrap_or_else(|| direct_check_analysis(&source, do_elision, core, strict_borrow));
+    render_check(&analysis, filename, token_report);
+}
+
+/// Print `--check`'s diagnostics and summary from an analysis, and exit with
+/// its status. Both ways of producing the analysis come through here, which is
+/// what makes their output the same.
+fn render_check(a: &query::mage::Analysis, filename: &str, token_report: bool) {
+    let mut total_errors = 0;
+    let print = |ds: &[hir::Diagnostic], total: &mut usize| {
+        for diag in ds {
+            eprintln!("{filename}: {diag}");
+            if diag.severity == hir::Severity::Error {
+                *total += 1;
+            }
+        }
+    };
+
+    for (line, col) in &a.lex_errors {
+        eprintln!("{filename}:{line}:{col}: [E0000] lexer error: unexpected character");
+        total_errors += 1;
+    }
+
+    if let Some(e) = &a.parse_error {
+        eprintln!("{filename}:{}:{}: [E0001] parse error: {}", e.line, e.col, e.described);
+        std::process::exit(1);
+    }
+    let module = a.module.as_ref().expect("a module that parsed");
+
+    print(&a.resolve, &mut total_errors);
+    print(&a.types, &mut total_errors);
+    print(&a.borrow, &mut total_errors);
+    print(&a.effects, &mut total_errors);
+    print(&a.grad, &mut total_errors);
+    for diag in &a.train {
         eprintln!("{filename}: {diag}");
         total_errors += 1;
     }
 
     // Report.
-    let sym_count = resolver.symbols.len();
-    let fn_count = effect_infer.inferred.len();
+    let sym_count = a.symbols;
+    let fn_count = a.inferred.len();
 
-    // Phase 5.5: Contract verification.
+    // Contract verification.
     //
     // `contract_count` used to be `verifications.len()` and was printed as
     // "Contracts checked: N". That is the number of *subjects*, not the
@@ -3346,60 +3534,47 @@ fn run_check(source: &str, filename: &str, do_elision: bool, legacy: bool, token
     // reported `Contracts checked: 2`, and the function with no contracts
     // had its row skipped, so the second subject was invisible and counted
     // at the same time. Both numbers are now derived from what they name.
-    let verifications = verify::verify_module(&module);
+    let verifications = &a.verifications;
     let subject_count = verifications.len();
     let contract_count: usize = verifications.iter().map(|v| v.checks.len()).sum();
     let mut verdicts = verdict::Tally::default();
-    for v in &verifications {
+    for v in verifications {
         verdicts.add(&v.status.evidence(&v.fqn));
     }
     // A refuted contract is an error, not a row in a summary. It printed `✗`
     // and exited 0 until 2026-09-25 — unobservable only because nothing could
     // refute one.
-    let spec_diags = verify::diagnostics(&verifications);
-    for diag in &spec_diags {
+    for diag in &a.spec {
         eprintln!("{filename}: {diag}");
         total_errors += 1;
     }
 
     // A `kb` fact or rule the logic engine cannot evaluate (E0570).
-    for diag in logic::module_diagnostics(&module) {
-        eprintln!("{filename}: {diag}");
-        if diag.severity == hir::Severity::Error {
-            total_errors += 1;
-        }
-    }
+    print(&a.logic, &mut total_errors);
 
     // A contract written on a `net` or `train`, which nothing checks (E0712). A
     // warning: the item still counts as accepted.
-    for diag in &contract::unchecked_contract_warnings(&module) {
+    for diag in &a.contract_warnings {
         eprintln!("{filename}: {diag}");
     }
 
-    // Phase 5.6: Typed-composition gate — a shape-mismatched `net` composition
+    // Typed-composition gate — a shape-mismatched `net` composition
     // (`stack`/`residual`/`branch`/`wrap` whose layer dims don't line up) is
     // rejected here with an actionable diagnostic (§4.5).
-    let shape_diags = abl_shape::check_module_shapes(&module);
-    for d in &shape_diags {
-        eprintln!("{filename}: [E0710] error: {}", d.message);
+    for d in &a.shape {
+        match d.span {
+            Some(s) => eprintln!("{filename}: [E0710] {}:{}:error: {}", s.line, s.col, d.message),
+            None => eprintln!("{filename}: [E0710] error: {}", d.message),
+        }
         total_errors += 1;
     }
-    if core {
-        for d in &core_subset::check(&module) {
-            eprintln!("{filename}: {d}");
-            total_errors += 1;
-        }
+    for d in &a.core {
+        eprintln!("{filename}: {d}");
+        total_errors += 1;
     }
 
-    // Phase 6: Self-healing — generate fix candidates for all diagnostics.
-    let mut all_diagnostics: Vec<hir::Diagnostic> = Vec::new();
-    all_diagnostics.extend(resolver.diagnostics.iter().cloned());
-    all_diagnostics.extend(checker.diagnostics.iter().cloned());
-    all_diagnostics.extend(effect_infer.diagnostics.iter().cloned());
-    all_diagnostics.extend(grad_diags.iter().cloned());
-    all_diagnostics.extend(spec_diags.iter().cloned());
-
-    let healed = heal::heal(&all_diagnostics);
+    // Self-healing: fix candidates for all diagnostics.
+    let healed = &a.healed;
     let fix_count: usize = healed.iter().map(|h| h.fixes.len()).sum();
 
     eprintln!();
@@ -3408,7 +3583,7 @@ fn run_check(source: &str, filename: &str, do_elision: bool, legacy: bool, token
     eprintln!("  Functions analyzed: {fn_count}");
 
     // Print effect annotations.
-    for (name, effects) in &effect_infer.inferred {
+    for (name, effects) in &a.inferred {
         if effects.is_empty() {
             eprintln!("  f {name}: pure");
         } else {
@@ -3432,7 +3607,7 @@ fn run_check(source: &str, filename: &str, do_elision: bool, legacy: bool, token
             "  {contract_count} contract(s); {}",
             verdicts.summary()
         );
-        for v in &verifications {
+        for v in verifications {
             eprintln!(
                 "    {} {}: {}",
                 v.status.symbol(),
@@ -3444,7 +3619,7 @@ fn run_check(source: &str, filename: &str, do_elision: bool, legacy: bool, token
 
     if fix_count > 0 {
         eprintln!("  Fix candidates: {fix_count}");
-        for h in &healed {
+        for h in healed {
             if !h.fixes.is_empty() {
                 eprintln!("    ▸ {}: {} fix(es)", h.diagnostic.message, h.fixes.len());
                 for fix in &h.fixes {
@@ -3460,7 +3635,7 @@ fn run_check(source: &str, filename: &str, do_elision: bool, legacy: bool, token
 
     // Token budget report.
     if token_report {
-        let report = token_budget::report(&module);
+        let report = token_budget::report(module);
         eprintln!("{}", report.display());
         println!("{}", serde_json::to_string_pretty(&report).unwrap());
     }
@@ -3472,127 +3647,135 @@ fn run_check(source: &str, filename: &str, do_elision: bool, legacy: bool, token
     }
 }
 
-fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool, token_report: bool) {
-    eprintln!("╔══════════════════════════════════════════════════════════════╗");
-    eprintln!("║  MAGE End-to-End Pipeline                                  ║");
-    eprintln!("╚══════════════════════════════════════════════════════════════╝");
-    eprintln!();
-
-    let mut total_errors = 0;
-
-    // ── Phase 0: Legacy syntax translation ───────────────────────────
-    let source = if legacy {
-        eprintln!("▸ Phase 0: Legacy syntax translation (Rust → MAGE)");
-        let translated = legacy::translate(source);
-        eprintln!("  ✓ translated to canonical syntax");
-        translated
-    } else {
-        source.to_string()
-    };
-
-    // ── Phase 1: Lex ─────────────────────────────────────────────────
-    eprintln!("▸ Phase 1/7: Lexical analysis");
-    let tokens = lexer::lex(&source);
-    let mut lex_errors = 0;
-    for tok in &tokens {
-        if tok.kind == lexer::TokenKind::Error {
-            eprintln!(
-                "  {filename}:{}:{}: lexer error",
-                tok.span.line, tok.span.col
-            );
-            lex_errors += 1;
-        }
-    }
-    let token_count = tokens.len();
-    eprintln!("  ✓ {token_count} tokens, {lex_errors} errors");
-    total_errors += lex_errors;
-
-    // ── Phase 2: Parse ───────────────────────────────────────────────
-    eprintln!("▸ Phase 2/7: Parsing");
-    let module = match parser::parse(&tokens) {
-        Ok(m) => {
-            eprintln!("  ✓ {} top-level items", m.items.len());
-            m
-        }
+/// `--pipeline FILE --incremental-stats`: the pipeline's computation through
+/// the incremental query engine, and a JSON account of what the engine did.
+///
+/// stdout is one JSON object: the pipeline's summary numbers, and `stats` —
+/// per query, how many answers came from memory (`hits`), how many had to be
+/// run (`misses`, `reexecutions`), how many were cut off because a re-run gave
+/// the same answer (`early_cutoffs`), and how many came from or went to the
+/// on-disk cache (`disk_*`), with the list of what ran. An agent that edited
+/// one function reads `events` to see that one function's queries re-ran. The
+/// exit status is `run_pipeline`'s: 1 for a parse error or any error.
+fn run_incremental_pipeline(source: &str, filename: &str, do_elision: bool, core: bool, strict_borrow: bool, cache_dir: Option<&str>) {
+    use mage_prototype::query::mage::{stats_json, Compiler, Config, Settings};
+    let compiler = Compiler::new(Config {
+        cache_dir: cache_dir.map(std::path::PathBuf::from),
+        ..Config::default()
+    });
+    compiler.set_settings(Settings { elision: do_elision, core, strict_borrow });
+    let file = compiler.set_source(filename, source);
+    let report = match compiler.compile(file) {
+        Ok(r) => r,
         Err(e) => {
-            eprintln!("  ✗ parse error at {}:{}: {}", e.line, e.col, e.describe());
-            std::process::exit(1);
+            eprintln!("incremental pipeline failed: {e}");
+            std::process::exit(2);
+        }
+    };
+    let items = compiler.items(file).map(|i| i.len()).unwrap_or(0);
+    let stats = compiler.stats();
+    // Every exit below skips destructors: make the answers durable first.
+    if !compiler.flush() {
+        eprintln!("mage: could not write the cache; the next run will recompute");
+    }
+    let out = serde_json::json!({
+        "file": filename,
+        "cache_dir": cache_dir,
+        "summary": &*report,
+        "stats": stats_json(&stats, &[(filename.to_string(), items)]),
+    });
+    println!("{}", json_text(&out, false).expect("the report serialises"));
+
+    eprintln!("MAGE incremental pipeline: {filename}");
+    if let Some(e) = &report.parse_error {
+        eprintln!("  parse error at {}:{}: {}", e.line, e.col, e.described);
+        std::process::exit(1);
+    }
+    let t = stats.total();
+    eprintln!(
+        "  {} items, {} errors; queries: {} hits, {} run ({} re-run, {} cut off), disk {} hit / {} stored",
+        report.items,
+        report.total_errors,
+        t.hits,
+        t.misses + t.reexecutions,
+        t.reexecutions,
+        t.early_cutoffs,
+        t.disk_hits,
+        t.disk_stores
+    );
+    if report.total_errors > 0 {
+        std::process::exit(1);
+    }
+}
+
+/// `--pipeline`'s stages, run one after another with nothing remembered: the
+/// analysis the driver prints. The engine's `Compiler::pipeline_analysis` is
+/// held to this.
+fn direct_pipeline_analysis(source: &str, do_elision: bool, strict_borrow: bool) -> query::mage::Analysis {
+    use query::mage::{Analysis, ParseErrRec};
+    let tokens = lexer::lex(source);
+    let mut a = Analysis {
+        token_count: tokens.len(),
+        lex_errors: tokens
+            .iter()
+            .filter(|t| t.kind == lexer::TokenKind::Error)
+            .map(|t| (t.span.line, t.span.col))
+            .collect(),
+        ..Analysis::default()
+    };
+
+    let module = match parser::parse(&tokens) {
+        Ok(m) => m,
+        Err(e) => {
+            a.parse_error =
+                Some(ParseErrRec { line: e.line, col: e.col, message: e.message.clone(), described: e.describe() });
+            return a;
         }
     };
 
-    // ── Phase 2.5: Safety elision ────────────────────────────────────
     let module = if do_elision {
-        eprintln!("▸ Phase 2.5: Safety elision (agentic mode)");
         let elided = elision::elide(&module);
-        // Say whether anything was actually stripped.
+        // Whether anything was actually stripped.
         //
-        // This printed "✓ safety annotations stripped" unconditionally, for
-        // every file, whether or not the module contained a single thing to
+        // The pipeline printed "✓ safety annotations stripped" unconditionally,
+        // for every file, whether or not the module contained a single thing to
         // strip — and **no `.mg` source in this repository contains one**.
         // The two files that match `grep unsafe` match it in comments. So
-        // the line has reported an action that has never once had a subject.
+        // the line reported an action that had never once had a subject.
         //
         // Compared through the AST rather than by re-deriving what elision
         // removes: `elide` owns those rules (`SAFETY_BOUNDS`,
         // `ELIMINATED_TYPES`, `unsafe` blocks, `&mut`, `move`, `ref`), and a
         // second copy here would drift from them. Asking whether the
         // transform changed the tree cannot.
-        let changed = serde_json::to_string(&module).ok()
-            != serde_json::to_string(&elided).ok();
-        if changed {
-            eprintln!("  ✓ safety annotations stripped");
-        } else {
-            eprintln!("  - no safety annotations to strip in this file");
-        }
+        a.elision_changed = Some(serde_json::to_string(&module).ok() != serde_json::to_string(&elided).ok());
         elided
     } else {
-        eprintln!("▸ Phase 2.5: Safety elision — SKIPPED (--no-elision)");
         module
     };
 
-    // ── Phase 3: Name resolution ─────────────────────────────────────
-    eprintln!("▸ Phase 3/7: Name resolution");
     let resolver = resolve::resolve(&module);
-    for diag in &resolver.diagnostics {
-        eprintln!("  {filename}: {diag}");
-        if diag.severity == hir::Severity::Error {
-            total_errors += 1;
-        }
-    }
-    eprintln!("  ✓ {} symbols resolved", resolver.symbols.len());
+    a.resolve = resolver.diagnostics.clone();
+    a.symbols = resolver.symbols.len();
 
-    // ── Phase 4: Type checking ───────────────────────────────────────
-    eprintln!("▸ Phase 4/7: Type checking");
-    let checker = types::check(&module);
-    for diag in &checker.diagnostics {
-        eprintln!("  {filename}: {diag}");
-        if diag.severity == hir::Severity::Error {
-            total_errors += 1;
-        }
-    }
-    eprintln!("  ✓ {} type diagnostics", checker.diagnostics.len());
+    a.types = types::check(&module).diagnostics;
 
-    // ── Phase 4.5: AI subsystem compilation ──────────────────────────
-    eprintln!("▸ Phase 4.5: AI subsystem compilation");
-    let mut ai_errors = 0;
-    let mut ai_info: Vec<String> = Vec::new();
+    a.borrow = borrowck::check_module_with(&module, borrow_policy(strict_borrow));
 
+    // AI subsystem compilation.
     // Shape inference on net blocks.
-    for item in &module.items {
+    for (at, item) in module.items.iter().enumerate() {
         if let ast::ItemKind::Net(net) = &item.kind {
             let mut infer = shape::ShapeInfer::new();
             // Use a fresh variable as placeholder input shape.
             let input_shape = vec![infer.fresh_dim(), infer.fresh_dim()];
             let out_shape = infer.infer_net(net, &input_shape);
-            for diag in &infer.diagnostics {
-                eprintln!("  {filename}: {diag}");
-                if diag.severity == hir::Severity::Error {
-                    ai_errors += 1;
-                }
-            }
+            hir::stamp_missing(&mut infer.diagnostics, hir::Span::item(module.start_of(at)));
+            a.ai_errors += infer.diagnostics.iter().filter(|d| d.severity == hir::Severity::Error).count();
+            a.ai_diags.extend(infer.diagnostics.iter().cloned());
             let resolved = infer.resolve_shape(&out_shape);
             let dims: Vec<String> = resolved.iter().map(|d| format!("{d:?}")).collect();
-            ai_info.push(format!(
+            a.ai_info.push(format!(
                 "net {}: output shape [{}]",
                 net.name,
                 dims.join(", ")
@@ -3601,7 +3784,7 @@ fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool, to
     }
 
     // Autograd on train blocks.
-    for item in &module.items {
+    for (at, item) in module.items.iter().enumerate() {
         if let ast::ItemKind::Train(train) = &item.kind {
             let tape = autograd::build_tape_from_train(train);
             let loss_id = if tape.nodes.is_empty() {
@@ -3638,40 +3821,35 @@ fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool, to
             // Training is unaffected — the real backward pass is in `rmi`'s
             // backend, which never touches this module.
             if tape.nodes.len() <= 1 {
-                ai_info.push(format!(
+                a.ai_info.push(format!(
                     "!train {}: autograd tape covers nothing ({} node) — it reads `body`, and this block declares its net and loss as fields. No gradient is computed here; training itself uses rmi's backend",
                     train.name,
                     tape.nodes.len()
                 ));
             } else {
-                ai_info.push(format!(
+                a.ai_info.push(format!(
                     "train {}: {} forward ops, {} backward ops",
                     train.name,
                     tape.nodes.len(),
                     grad_result.mlir_ops.len()
                 ));
             }
-            for diag in &grad_result.diagnostics {
-                eprintln!("  {filename}: {diag}");
-                if diag.severity == hir::Severity::Error {
-                    ai_errors += 1;
-                }
-            }
+            let mut grad_diags = grad_result.diagnostics.clone();
+            hir::stamp_missing(&mut grad_diags, hir::Span::item(module.start_of(at)));
+            a.ai_errors += grad_diags.iter().filter(|d| d.severity == hir::Severity::Error).count();
+            a.ai_diags.extend(grad_diags);
         }
     }
 
     // Logic engine on kb blocks.
-    for item in &module.items {
+    for (at, item) in module.items.iter().enumerate() {
         if let ast::ItemKind::Kb(kb_def) = &item.kind {
             let mut kb = logic::build_kb(kb_def);
             kb.materialize();
-            for diag in &kb.diagnostics {
-                eprintln!("  {filename}: {diag}");
-                if diag.severity == hir::Severity::Error {
-                    ai_errors += 1;
-                }
-            }
-            ai_info.push(format!(
+            hir::stamp_missing(&mut kb.diagnostics, hir::Span::item(module.start_of(at)));
+            a.ai_errors += kb.diagnostics.iter().filter(|d| d.severity == hir::Severity::Error).count();
+            a.ai_diags.extend(kb.diagnostics.iter().cloned());
+            a.ai_info.push(format!(
                 "kb {}: {} facts materialized",
                 kb.name,
                 kb.fact_count()
@@ -3679,31 +3857,158 @@ fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool, to
         }
     }
 
+    // Effect inference.
+    let effect_infer = effects::infer_effects(&module);
+    a.effects = effect_infer.diagnostics.clone();
+    a.inferred = effect_infer.inferred.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
+
+    // Contract verification.
+    for (at, item) in module.items.iter().enumerate() {
+        let v = verify::verify_module(&ast::Module::single(item));
+        let mut d = verify::diagnostics(&v);
+        hir::stamp_missing(&mut d, hir::Span::item(module.start_of(at)));
+        a.spec.extend(d);
+        a.verifications.extend(v);
+    }
+
+    // MLIR lowering.
+    a.mlir = mlir::emit(&module, &effect_infer);
+
+    // Self-healing.
+    let mut all_diags: Vec<hir::Diagnostic> = Vec::new();
+    all_diags.extend(a.resolve.iter().cloned());
+    all_diags.extend(a.types.iter().cloned());
+    all_diags.extend(a.borrow.iter().cloned());
+    all_diags.extend(a.effects.iter().cloned());
+    a.healed = heal::heal(&all_diags);
+
+    a.module = Some(module);
+    a
+}
+
+fn run_pipeline(
+    source: &str,
+    filename: &str,
+    do_elision: bool,
+    legacy: bool,
+    token_report: bool,
+    core: bool,
+    strict_borrow: bool,
+    cache_dir: Option<&str>,
+) {
+    // ── Phase 0: Legacy syntax translation ───────────────────────────
+    // Done here, before the stages, so both ways of running them see the
+    // translated text; `render_pipeline` reports that it happened.
+    let translated = if legacy { legacy::translate(source) } else { source.to_string() };
+
+    let from_engine = cache_dir.and_then(|dir| {
+        through_engine(&translated, filename, engine_settings(do_elision, core, strict_borrow), dir, |c, f| {
+            c.pipeline_analysis(f)
+        })
+    });
+    let analysis = from_engine.unwrap_or_else(|| direct_pipeline_analysis(&translated, do_elision, strict_borrow));
+    render_pipeline(&analysis, filename, do_elision, legacy, token_report);
+}
+
+/// Print `--pipeline`'s stages and summary from an analysis, and exit with its
+/// status. Both ways of producing the analysis come through here.
+fn render_pipeline(a: &query::mage::Analysis, filename: &str, do_elision: bool, legacy: bool, token_report: bool) {
+    eprintln!("╔══════════════════════════════════════════════════════════════╗");
+    eprintln!("║  MAGE End-to-End Pipeline                                  ║");
+    eprintln!("╚══════════════════════════════════════════════════════════════╝");
+    eprintln!();
+
+    let mut total_errors = 0;
+    let errors_in = |ds: &[hir::Diagnostic]| ds.iter().filter(|d| d.severity == hir::Severity::Error).count();
+
+    // ── Phase 0: Legacy syntax translation ───────────────────────────
+    if legacy {
+        eprintln!("▸ Phase 0: Legacy syntax translation (Rust → MAGE)");
+        eprintln!("  ✓ translated to canonical syntax");
+    }
+
+    // ── Phase 1: Lex ─────────────────────────────────────────────────
+    eprintln!("▸ Phase 1/7: Lexical analysis");
+    for (line, col) in &a.lex_errors {
+        eprintln!("  {filename}:{line}:{col}: lexer error");
+    }
+    let lex_errors = a.lex_errors.len();
+    let token_count = a.token_count;
+    eprintln!("  ✓ {token_count} tokens, {lex_errors} errors");
+    total_errors += lex_errors;
+
+    // ── Phase 2: Parse ───────────────────────────────────────────────
+    eprintln!("▸ Phase 2/7: Parsing");
+    if let Some(e) = &a.parse_error {
+        eprintln!("  ✗ parse error at {}:{}: {}", e.line, e.col, e.described);
+        std::process::exit(1);
+    }
+    let module = a.module.as_ref().expect("a module that parsed");
+    eprintln!("  ✓ {} top-level items", module.items.len());
+
+    // ── Phase 2.5: Safety elision ────────────────────────────────────
+    if do_elision {
+        eprintln!("▸ Phase 2.5: Safety elision (agentic mode)");
+        if a.elision_changed == Some(true) {
+            eprintln!("  ✓ safety annotations stripped");
+        } else {
+            eprintln!("  - no safety annotations to strip in this file");
+        }
+    } else {
+        eprintln!("▸ Phase 2.5: Safety elision — SKIPPED (--no-elision)");
+    }
+
+    // ── Phase 3: Name resolution ─────────────────────────────────────
+    eprintln!("▸ Phase 3/7: Name resolution");
+    for diag in &a.resolve {
+        eprintln!("  {filename}: {diag}");
+    }
+    total_errors += errors_in(&a.resolve);
+    eprintln!("  ✓ {} symbols resolved", a.symbols);
+
+    // ── Phase 4: Type checking ───────────────────────────────────────
+    eprintln!("▸ Phase 4/7: Type checking");
+    for diag in &a.types {
+        eprintln!("  {filename}: {diag}");
+    }
+    total_errors += errors_in(&a.types);
+    eprintln!("  ✓ {} type diagnostics", a.types.len());
+
+    // ── Phase 4.2: Ownership and borrowing (E0382, E0502) ────────────
+    eprintln!("▸ Phase 4.2: Ownership and borrow checking");
+    for diag in &a.borrow {
+        eprintln!("  {filename}: {diag}");
+    }
+    total_errors += errors_in(&a.borrow);
+    eprintln!("  ✓ {} ownership diagnostics", a.borrow.len());
+
+    // ── Phase 4.5: AI subsystem compilation ──────────────────────────
+    eprintln!("▸ Phase 4.5: AI subsystem compilation");
+    for diag in &a.ai_diags {
+        eprintln!("  {filename}: {diag}");
+    }
     // A leading `!` marks a line that is *not* a success. Every entry used
     // to print with a tick, including "autograd tape covers nothing" — the
     // tick is the whole reason that line read as progress for as long as it
     // did.
-    for info in &ai_info {
+    for info in &a.ai_info {
         match info.strip_prefix('!') {
             Some(rest) => eprintln!("  ! {rest}"),
             None => eprintln!("  ✓ {info}"),
         }
     }
-    if ai_info.is_empty() {
+    if a.ai_info.is_empty() {
         eprintln!("  - no AI subsystem blocks");
     }
-    total_errors += ai_errors;
+    total_errors += a.ai_errors;
 
     // ── Phase 5: Effect inference ────────────────────────────────────
     eprintln!("▸ Phase 5/7: Effect inference");
-    let effect_infer = effects::infer_effects(&module);
-    for diag in &effect_infer.diagnostics {
+    for diag in &a.effects {
         eprintln!("  {filename}: {diag}");
-        if diag.severity == hir::Severity::Error {
-            total_errors += 1;
-        }
     }
-    for (name, fx) in &effect_infer.inferred {
+    total_errors += errors_in(&a.effects);
+    for (name, fx) in &a.inferred {
         if fx.is_empty() {
             eprintln!("  f {name}: pure");
         } else {
@@ -3714,14 +4019,14 @@ fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool, to
 
     // ── Phase 5.5: Contract verification ────────────────────────────
     eprintln!("▸ Phase 5.5: Contract verification");
-    let verifications = verify::verify_module(&module);
+    let verifications = &a.verifications;
     let subject_total = verifications.len();
     let contract_total: usize = verifications.iter().map(|v| v.checks.len()).sum();
     let mut verdicts = verdict::Tally::default();
-    for v in &verifications {
+    for v in verifications {
         verdicts.add(&v.status.evidence(&v.fqn));
     }
-    for diag in &verify::diagnostics(&verifications) {
+    for diag in &a.spec {
         eprintln!("  {filename}: {diag}");
         total_errors += 1;
     }
@@ -3733,7 +4038,7 @@ fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool, to
             "  {contract_total} contract(s); {}",
             verdicts.summary()
         );
-        for v in &verifications {
+        for v in verifications {
             eprintln!(
                 "    {} {}: {}",
                 v.status.symbol(),
@@ -3747,27 +4052,21 @@ fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool, to
 
     // ── Phase 6: MLIR lowering ───────────────────────────────────────
     eprintln!("▸ Phase 6/7: MLIR lowering");
-    let mlir_output = mlir::emit(&module, &effect_infer);
+    let mlir_output = &a.mlir;
     let mlir_lines = mlir_output.lines().count();
     eprintln!("  ✓ {mlir_lines} lines of MLIR generated");
 
     // ── Phase 7: Self-healing ─────────────────────────────────────────
     eprintln!("▸ Phase 7/7: Self-healing analysis");
-    let mut all_diags: Vec<hir::Diagnostic> = Vec::new();
-    all_diags.extend(resolver.diagnostics.iter().cloned());
-    all_diags.extend(checker.diagnostics.iter().cloned());
-    all_diags.extend(effect_infer.diagnostics.iter().cloned());
-
-    let healed = heal::heal(&all_diags);
+    let analyzed = a.resolve.len() + a.types.len() + a.borrow.len() + a.effects.len();
+    let healed = &a.healed;
     let fix_count: usize = healed.iter().map(|h| h.fixes.len()).sum();
     eprintln!(
-        "  ✓ {} diagnostics analyzed, {} fix candidates",
-        all_diags.len(),
-        fix_count
+        "  ✓ {analyzed} diagnostics analyzed, {fix_count} fix candidates"
     );
 
     if fix_count > 0 {
-        for h in &healed {
+        for h in healed {
             for fix in &h.fixes {
                 eprintln!(
                     "    ▸ [rank {:.2}] {}",
@@ -3781,7 +4080,7 @@ fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool, to
     // ── Token Budget Report ────────────────────────────────────────
     if token_report {
         eprintln!("▸ Token Budget Report:");
-        let budget_report = token_budget::report(&module);
+        let budget_report = token_budget::report(module);
         eprintln!("{}", budget_report.display());
     }
 
@@ -3791,8 +4090,8 @@ fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool, to
     eprintln!("  Source:          {filename}");
     eprintln!("  Tokens:          {token_count}");
     eprintln!("  Items:           {}", module.items.len());
-    eprintln!("  Symbols:         {}", resolver.symbols.len());
-    eprintln!("  Functions:       {}", effect_infer.inferred.len());
+    eprintln!("  Symbols:         {}", a.symbols);
+    eprintln!("  Functions:       {}", a.inferred.len());
     // The summary reports the unadjudicated count beside the proved one.
     // "Contracts: 2 (verified: 1)" invites the reader to conclude the other
     // one is fine, when in fact nobody specified it.
@@ -3801,7 +4100,7 @@ fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool, to
         verdicts.proved,
         verdicts.unadjudicated()
     );
-    eprintln!("  AI subsystems:   {}", ai_info.len());
+    eprintln!("  AI subsystems:   {}", a.ai_info.len());
     eprintln!("  MLIR lines:      {mlir_lines}");
     eprintln!("  Fix candidates:  {fix_count}");
     eprintln!("  Errors:          {total_errors}");
@@ -3817,7 +4116,7 @@ fn run_pipeline(source: &str, filename: &str, do_elision: bool, legacy: bool, to
 
     // Print output to stdout.
     if token_report {
-        let budget_report = token_budget::report(&module);
+        let budget_report = token_budget::report(module);
         println!("{}", serde_json::to_string_pretty(&budget_report).unwrap());
     } else {
         println!("{mlir_output}");
@@ -3882,7 +4181,8 @@ mod cli_arg_tests {
                     || matches!(f, "--check" | "--eval" | "--pipeline" | "--rap" | "--differentiable"
                                 | "--gradcheck" | "--solve" | "--heal"
                                 | "--fmt-compact" | "--fmt-expand" | "--count-tokens" | "--emit-ontology" | "--emit-skb"
-                                | "--manifest" | "--rain" | "--version" | "--input") =>
+                                | "--manifest" | "--rain" | "--version" | "--input"
+                                | "--bpe-count" | "--bpe-train") =>
                 {
                     continue
                 }

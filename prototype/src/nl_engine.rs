@@ -311,7 +311,7 @@ impl NlEngine {
                 visibility: Visibility::Public,
                 attributes: Vec::new(),
                 kind: ItemKind::Function(func),
-            }],
+            }], ..Default::default()
         };
 
         // Validate through the compiler pipeline.
@@ -382,7 +382,7 @@ impl NlEngine {
                 visibility: Visibility::Public,
                 attributes: Vec::new(),
                 kind: ItemKind::Struct(struct_def),
-            }],
+            }], ..Default::default()
         };
 
         let validation = self.validate_module(&module);
@@ -433,7 +433,7 @@ impl NlEngine {
                 visibility: Visibility::Public,
                 attributes: Vec::new(),
                 kind: ItemKind::Enum(enum_def),
-            }],
+            }], ..Default::default()
         };
 
         let validation = self.validate_module(&module);
@@ -493,7 +493,7 @@ impl NlEngine {
                         contracts: Vec::new(),
                         body: Block {
                             stmts: Vec::new(),
-                            tail_expr: None,
+                            tail_expr: None, ..Default::default()
                         },
                         body_expr: None,
                     }),
@@ -506,7 +506,7 @@ impl NlEngine {
                 visibility: Visibility::Public,
                 attributes: Vec::new(),
                 kind: ItemKind::Trait(trait_def),
-            }],
+            }], ..Default::default()
         };
 
         let validation = self.validate_module(&module);
@@ -558,7 +558,7 @@ impl NlEngine {
                 .collect(),
             forward: Block {
                 stmts: Vec::new(),
-                tail_expr: None,
+                tail_expr: None, ..Default::default()
             },
             composition: None,
         };
@@ -568,7 +568,7 @@ impl NlEngine {
                 visibility: Visibility::Public,
                 attributes: Vec::new(),
                 kind: ItemKind::Net(net_def),
-            }],
+            }], ..Default::default()
         };
 
         let validation = self.validate_module(&module);
@@ -633,7 +633,7 @@ impl NlEngine {
                 visibility: Visibility::Public,
                 attributes: Vec::new(),
                 kind: ItemKind::Kb(kb_def),
-            }],
+            }], ..Default::default()
         };
 
         let validation = self.validate_module(&module);
@@ -695,7 +695,7 @@ impl NlEngine {
                 tail_expr: Some(Box::new(Expr::Literal {
                     value: "0.0".into(),
                     kind: LiteralKind::Float,
-                })),
+                })), ..Default::default()
             },
             mutate_fn: None,
             crossover_fn: None,
@@ -707,7 +707,7 @@ impl NlEngine {
                 visibility: Visibility::Public,
                 attributes: Vec::new(),
                 kind: ItemKind::Evolve(evolve_def),
-            }],
+            }], ..Default::default()
         };
 
         let validation = self.validate_module(&module);
@@ -754,7 +754,7 @@ impl NlEngine {
                 visibility: Visibility::Public,
                 attributes: Vec::new(),
                 kind: ItemKind::Agent(agent_def),
-            }],
+            }], ..Default::default()
         };
 
         let validation = self.validate_module(&module);
@@ -820,7 +820,7 @@ impl NlEngine {
                 visibility: Visibility::Public,
                 attributes: Vec::new(),
                 kind: ItemKind::Swarm(swarm_def),
-            }],
+            }], ..Default::default()
         };
 
         let validation = self.validate_module(&module);
@@ -1301,7 +1301,7 @@ impl NlEngine {
                         right: Box::new(Expr::Ident {
                             name: params[1].0.clone(),
                         }),
-                    })),
+                    })), ..Default::default()
                 };
             }
 
@@ -1317,7 +1317,7 @@ impl NlEngine {
                         right: Box::new(Expr::Ident {
                             name: params[1].0.clone(),
                         }),
-                    })),
+                    })), ..Default::default()
                 };
             }
 
@@ -1333,7 +1333,7 @@ impl NlEngine {
                         right: Box::new(Expr::Ident {
                             name: params[1].0.clone(),
                         }),
-                    })),
+                    })), ..Default::default()
                 };
             }
 
@@ -1349,7 +1349,7 @@ impl NlEngine {
                         right: Box::new(Expr::Ident {
                             name: params[1].0.clone(),
                         }),
-                    })),
+                    })), ..Default::default()
                 };
             }
 
@@ -1373,15 +1373,15 @@ impl NlEngine {
                             stmts: Vec::new(),
                             tail_expr: Some(Box::new(Expr::Ident {
                                 name: params[0].0.clone(),
-                            })),
+                            })), ..Default::default()
                         },
                         else_block: Some(Block {
                             stmts: Vec::new(),
                             tail_expr: Some(Box::new(Expr::Ident {
                                 name: params[1].0.clone(),
-                            })),
+                            })), ..Default::default()
                         }),
-                    })),
+                    })), ..Default::default()
                 };
             }
 
@@ -1405,15 +1405,15 @@ impl NlEngine {
                             stmts: Vec::new(),
                             tail_expr: Some(Box::new(Expr::Ident {
                                 name: params[0].0.clone(),
-                            })),
+                            })), ..Default::default()
                         },
                         else_block: Some(Block {
                             stmts: Vec::new(),
                             tail_expr: Some(Box::new(Expr::Ident {
                                 name: params[1].0.clone(),
-                            })),
+                            })), ..Default::default()
                         }),
-                    })),
+                    })), ..Default::default()
                 };
             }
 
@@ -1426,7 +1426,7 @@ impl NlEngine {
                         operand: Box::new(Expr::Ident {
                             name: params[0].0.clone(),
                         }),
-                    })),
+                    })), ..Default::default()
                 };
             }
 
@@ -1438,7 +1438,7 @@ impl NlEngine {
                     stmts: Vec::new(),
                     tail_expr: Some(Box::new(Expr::Ident {
                         name: params[0].0.clone(),
-                    })),
+                    })), ..Default::default()
                 };
             }
 
@@ -1463,7 +1463,7 @@ impl NlEngine {
                             ],
                         },
                     }],
-                    tail_expr: None,
+                    tail_expr: None, ..Default::default()
                 };
             }
 
@@ -1486,7 +1486,7 @@ impl NlEngine {
                             tail_expr: Some(Box::new(Expr::Literal {
                                 value: "1".into(),
                                 kind: LiteralKind::Int,
-                            })),
+                            })), ..Default::default()
                         },
                         else_block: Some(Block {
                             stmts: Vec::new(),
@@ -1504,9 +1504,9 @@ impl NlEngine {
                                         }),
                                     }],
                                 }),
-                            })),
+                            })), ..Default::default()
                         }),
-                    })),
+                    })), ..Default::default()
                 };
             }
 
@@ -1526,7 +1526,7 @@ impl NlEngine {
                         }),
                         then_block: Block {
                             stmts: Vec::new(),
-                            tail_expr: Some(Box::new(Expr::Ident { name: p.clone() })),
+                            tail_expr: Some(Box::new(Expr::Ident { name: p.clone() })), ..Default::default()
                         },
                         else_block: Some(Block {
                             stmts: Vec::new(),
@@ -1554,9 +1554,9 @@ impl NlEngine {
                                         }),
                                     }],
                                 }),
-                            })),
+                            })), ..Default::default()
                         }),
-                    })),
+                    })), ..Default::default()
                 };
             }
 
@@ -1575,7 +1575,7 @@ impl NlEngine {
         if let Some(candidate) = self.oracle.synthesize(&spec) {
             // Parse the synthesized body back into an AST.
             let lex_ok = safe_lex(&candidate.body);
-            let tokens = match lex_ok { Ok(t) => t, Err(_) => return Block { stmts: Vec::new(), tail_expr: Some(Box::new(Expr::Todo)) } };
+            let tokens = match lex_ok { Ok(t) => t, Err(_) => return Block { stmts: Vec::new(), tail_expr: Some(Box::new(Expr::Todo)), ..Default::default() } };
             if let Ok(module) = parser::parse(&tokens)
                 && let Some(item) = module.items.first()
                     && let ItemKind::Function(f) = &item.kind {
@@ -1586,7 +1586,7 @@ impl NlEngine {
         // Fallback: produce a todo placeholder.
         Block {
             stmts: Vec::new(),
-            tail_expr: Some(Box::new(Expr::Todo)),
+            tail_expr: Some(Box::new(Expr::Todo)), ..Default::default()
         }
     }
 

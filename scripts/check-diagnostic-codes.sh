@@ -192,7 +192,11 @@ if [ ! -f "$BASELINE" ]; then
     echo "check-diagnostic-codes: no baseline; wrote $(printf '%s\n' "$found" | grep -c . ) entr(ies) to $BASELINE." >&2
 fi
 
-was="$(grep -vE '^[[:space:]]*(#|$)' "$BASELINE" | sort)"
+# `grep -v` exits 1 when nothing is left, which is the state of an empty
+# baseline (every category has a producing pass) and must read as "empty", not
+# as a failure: under `errexit` + `pipefail` it killed the script, silently,
+# the moment the last baseline entry was removed.
+was="$({ grep -vE '^[[:space:]]*(#|$)' "$BASELINE" || true; } | sort)"
 new_only="$(comm -23 <(printf '%s\n' "$found") <(printf '%s\n' "$was"))"
 now_produced="$(comm -13 <(printf '%s\n' "$found") <(printf '%s\n' "$was"))"
 

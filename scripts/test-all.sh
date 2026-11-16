@@ -6,13 +6,13 @@
 # This is the single entry point that covers everything CI covers:
 #
 #     rmi (cpu)   1,384 tests
-#     prototype   1,741 tests
+#     prototype   1,888 tests
 #     ribosome      168 tests
 #     germline      272 tests
 #     forge          65 tests
 #     arena          335 tests
 #     -------------------------
-#     total       3,965 tests, 0 warnings
+#     total       4,112 tests, 0 warnings
 #
 # Usage:
 #   scripts/test-all.sh            # debug
@@ -116,7 +116,7 @@ if [ "$BENCH" -eq 1 ]; then
     done
 
     # reliability-bench is a binary rather than a test, and it **exits 1 on its
-    # documented-correct result**: one of the 100 tasks does not parse cleanly
+    # documented-correct result**: one of the 99 tasks does not parse cleanly
     # and recovers via structural-heal, which it reports as a failure exit. So
     # its status is deliberately not treated as pass/fail here — the numbers it
     # prints are the measurement, and --check-docs compares those. Worth knowing

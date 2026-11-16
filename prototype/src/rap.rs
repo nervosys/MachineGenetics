@@ -106,6 +106,9 @@ pub fn serve(addr: &str) {
 fn handle_connection(stream: std::net::TcpStream) -> Result<(), Box<dyn std::error::Error>> {
     let reader = BufReader::new(stream.try_clone()?);
     let mut writer = stream;
+    // Per-connection document state for `doc`-carrying calls; dropped with the
+    // connection (see [`Docs`] for why it is not process-wide).
+    let mut docs = Docs::new(DOC_CAP);
 
     for line in reader.lines() {
         let line = line?;
@@ -132,7 +135,7 @@ fn handle_connection(stream: std::net::TcpStream) -> Result<(), Box<dyn std::err
                     // request for the method named "", which then reported
                     // `unknown method: ` — a confusing way to say "malformed".
                     None => error_response(id, RpcError::invalid_request()),
-                    Some(method) => match dispatch_checked(method, &params) {
+                    Some(method) => match dispatch_checked(method, &params, &mut docs) {
                         Ok(result) => serde_json::json!({
                             "jsonrpc": "2.0",
                             "id": id,
@@ -229,14 +232,123 @@ fn error_response(id: serde_json::Value, e: RpcError) -> serde_json::Value {
 fn dispatch_checked(
     method: &str,
     params: &serde_json::Value,
+    docs: &mut Docs,
 ) -> Result<serde_json::Value, RpcError> {
     if !METHODS.contains(&method) {
         return Err(RpcError::method_not_found(method));
     }
-    Ok(dispatch(method, params))
+    Ok(dispatch_with(method, params, docs))
 }
 
+/// Most documents one connection keeps an engine for; the least recently used
+/// is dropped past it.
+const DOC_CAP: usize = 64;
+
+/// Per-document incremental state: one engine [`Compiler`] per document id.
+///
+/// **Per-connection, not process-wide.** `Compiler` holds `RefCell`s and is not
+/// `Send`, so a process-wide map behind a `Mutex` cannot hold one; and the
+/// server handles one connection at a time, so a per-connection map is also the
+/// lifetime an agent session has. The cost is that state dies with the socket:
+/// a reconnecting client starts cold. The map is capped (LRU) so a client that
+/// opens many ids cannot grow it without bound.
+struct Docs {
+    cap: usize,
+    tick: u64,
+    map: std::collections::HashMap<String, (crate::query::mage::Compiler, u64)>,
+}
+
+impl Docs {
+    fn new(cap: usize) -> Self {
+        Self { cap: cap.max(1), tick: 0, map: std::collections::HashMap::new() }
+    }
+
+    /// The engine for `id` and whether it was just created (a cold call).
+    fn get(&mut self, id: &str) -> (&crate::query::mage::Compiler, bool) {
+        self.tick += 1;
+        let fresh = !self.map.contains_key(id);
+        if fresh {
+            if self.map.len() >= self.cap {
+                if let Some(old) = self.map.iter().min_by_key(|(_, v)| v.1).map(|(k, _)| k.clone()) {
+                    self.map.remove(&old);
+                }
+            }
+            self.map.insert(id.to_string(), (crate::query::mage::Compiler::in_memory(), self.tick));
+        }
+        let e = self.map.get_mut(id).expect("just inserted");
+        e.1 = self.tick;
+        (&e.0, fresh)
+    }
+
+    fn close(&mut self, id: &str) -> bool {
+        self.map.remove(id).is_some()
+    }
+}
+
+/// The per-item query rows: what runs again for an edited item only.
+const ITEM_ROWS: [&str; 6] = [
+    "resolve_item", "pass/verify", "pass/logic", "pass/contract", "pass/shape", "pass/borrowck",
+];
+
+/// Run `f` against `doc`'s engine with `source` set, and report the call's
+/// stats as the `incremental` object.
+fn with_doc<F>(docs: &mut Docs, doc: &str, source: &str, f: F) -> serde_json::Value
+where
+    F: FnOnce(&crate::query::mage::Compiler, crate::query::mage::File) -> serde_json::Value,
+{
+    let (c, cold) = docs.get(doc);
+    let file = c.set_source(doc, source);
+    c.reset_stats();
+    let mut out = f(c, file);
+    let st = c.stats();
+    let t = st.total();
+    let mut item_reruns = serde_json::Map::new();
+    for row in ITEM_ROWS {
+        let keys: Vec<&str> = st
+            .events
+            .iter()
+            .filter(|e| e.query == row && e.why != "disk")
+            .map(|e| e.key.as_str())
+            .collect();
+        if !keys.is_empty() {
+            item_reruns.insert(row.to_string(), serde_json::json!(keys));
+        }
+    }
+    out["incremental"] = serde_json::json!({
+        "doc": doc,
+        "cold": cold,
+        "revision": st.revision,
+        "executions": t.misses + t.reexecutions,
+        "hits": t.hits,
+        "early_cutoffs": t.early_cutoffs,
+        "item_reruns": item_reruns,
+    });
+    out
+}
+
+/// The syntax errors `build/check` reports, from the engine's cached lex.
+/// `production` lives only in the parser's own error, so a failed parse is
+/// re-run for it (cheap, and only on the failure path).
+fn doc_syntax_errors(
+    c: &crate::query::mage::Compiler,
+    file: crate::query::mage::File,
+) -> (Vec<lexer::Token>, Option<parser::ParseError>) {
+    let tokens: Vec<lexer::Token> = c.tokens(file).map(|t| (*t).clone()).unwrap_or_default();
+    let err = match c.parsed(file) {
+        Ok(p) if p.error.is_none() => None,
+        _ => parser::parse(&tokens).err(),
+    };
+    (tokens, err)
+}
+
+#[cfg(test)]
 fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
+    // No connection, so no document state: a `doc` here is a cold call.
+    dispatch_with(method, params, &mut Docs::new(DOC_CAP))
+}
+
+fn dispatch_with(method: &str, params: &serde_json::Value, docs: &mut Docs) -> serde_json::Value {
+    let doc = params.get("doc").and_then(|v| v.as_str());
     let source = params.get("source").and_then(|v| v.as_str()).unwrap_or("");
 
     match method {
@@ -288,6 +400,111 @@ fn dispatch(method: &str, params: &serde_json::Value) -> serde_json::Value {
                     }
                 }),
             }
+        }
+
+        "doc/close" => {
+            let closed = doc.map(|d| docs.close(d)).unwrap_or(false);
+            serde_json::json!({ "ok": doc.is_some(), "doc": doc, "closed": closed })
+        }
+
+        "build/check" if doc.is_some() => {
+            let doc = doc.unwrap_or_default();
+            with_doc(docs, doc, source, |c, file| {
+                let (tokens, parse_err) = doc_syntax_errors(c, file);
+                let mut errors: Vec<serde_json::Value> = tokens
+                    .iter()
+                    .filter(|t| t.kind == lexer::TokenKind::Error)
+                    .map(|t| {
+                        serde_json::json!({
+                            "line": t.span.line,
+                            "col": t.span.col,
+                            "message": format!("unexpected character: {}", t.text)
+                        })
+                    })
+                    .collect();
+                if let Some(e) = parse_err {
+                    errors.push(serde_json::json!({
+                        "line": e.line,
+                        "col": e.col,
+                        "message": e.message,
+                        "production": e.production
+                    }));
+                }
+                // Additive: the full incremental check, same shape as
+                // `--check --json`'s `counts` + `diagnostics`.
+                let semantic = match c.checked(file) {
+                    Ok(ch) => {
+                        let diags: Vec<serde_json::Value> = ch
+                            .findings
+                            .iter()
+                            .map(|f| {
+                                serde_json::json!({
+                                    "severity": f.severity, "line": f.line, "col": f.col,
+                                    "code": f.code, "category": f.category,
+                                    "message": f.message, "fix": f.fix,
+                                })
+                            })
+                            .collect();
+                        let n = |s: &str| diags.iter().filter(|d| d["severity"] == s).count();
+                        serde_json::json!({
+                            "counts": {
+                                "total": diags.len(), "error": n("error"),
+                                "warning": n("warning"), "note": n("note"),
+                            },
+                            "diagnostics": diags,
+                        })
+                    }
+                    Err(e) => serde_json::json!({ "error": e.to_string() }),
+                };
+                serde_json::json!({
+                    "ok": errors.is_empty(),
+                    "errors": errors,
+                    "semantic": semantic,
+                })
+            })
+        }
+
+        "build/heal" if doc.is_some() => {
+            let doc = doc.unwrap_or_default();
+            with_doc(docs, doc, source, |c, file| {
+                let (tokens, parse_err) = doc_syntax_errors(c, file);
+                let mut diagnostics: Vec<hir::Diagnostic> = Vec::new();
+                for tok in &tokens {
+                    if tok.kind == lexer::TokenKind::Error {
+                        diagnostics.push(hir::Diagnostic {
+                            severity: hir::Severity::Error,
+                            message: format!("unexpected character: {}", tok.text),
+                            span: Some(hir::Span {
+                                line: tok.span.line as u32,
+                                col: tok.span.col as u32,
+                            }),
+                            id: Some("E0001".into()),
+                            category: Some(hir::DiagnosticCategory::SyntaxError),
+                        });
+                    }
+                }
+                if let Some(e) = parse_err {
+                    diagnostics.push(hir::Diagnostic {
+                        severity: hir::Severity::Error,
+                        message: e.describe(),
+                        span: Some(hir::Span { line: e.line as u32, col: e.col as u32 }),
+                        id: Some("E0001".into()),
+                        category: Some(hir::DiagnosticCategory::SyntaxError),
+                    });
+                }
+                let healed = heal::heal(&diagnostics);
+                // Additive: fixes for the semantic diagnostics, from the
+                // engine's `heal` query (empty when the source does not parse).
+                let semantic = c
+                    .heal(file)
+                    .map(|h| serde_json::to_value(&*h).unwrap_or_default())
+                    .unwrap_or_default();
+                serde_json::json!({
+                    "ok": diagnostics.is_empty(),
+                    "diagnostics": serde_json::to_value(&healed).unwrap_or_default(),
+                    "semantic": semantic,
+                })
+            })
         }
 
         "build/check" => {
@@ -1454,6 +1671,7 @@ pub const METHODS: &[&str] = &[
     "capability/check",
     "cost/compare",
     "cost/query",
+    "doc/close",
     "doc/query",
     "effects/check",
     "effects/infer",
@@ -1964,8 +2182,8 @@ mod tests {
         let calls: Vec<(&str, serde_json::Value)> = vec![
             ("language/parse", serde_json::json!({ "source": SRC })),
             ("language/tokens", serde_json::json!({ "source": SRC })),
-            ("build/check", serde_json::json!({ "source": SRC })),
-            ("build/heal", serde_json::json!({ "source": SRC })),
+            ("build/check", serde_json::json!({ "source": SRC, "doc": "d1" })),
+            ("build/heal", serde_json::json!({ "source": SRC, "doc": "d1" })),
             ("build/recover", serde_json::json!({ "source": SRC })),
             ("build/selfheal", serde_json::json!({ "source": SRC, "fuel": 100000 })),
             ("abl/encode", serde_json::json!({ "source": SRC })),
@@ -2023,6 +2241,7 @@ mod tests {
             // caught it, which is why the four lists had to be compared from
             // outside. See `scripts/check-rap-methods.sh`.
             ("rap/methods", serde_json::json!({})),
+            ("doc/close", serde_json::json!({ "doc": "d1" })),
             ("kb/schema", serde_json::json!({})),
             ("kb/query", serde_json::json!({ "predicate": "below", "args": ["Keyword", "?"] })),
             ("kb/constrains", serde_json::json!({ "construct": "Function" })),
@@ -2399,7 +2618,7 @@ mod method_surface_tests {
     /// not just the code, because the defect was in the envelope.
     #[test]
     fn an_unknown_method_is_a_jsonrpc_error_not_a_result() {
-        let e = dispatch_checked("no/such_method", &serde_json::Value::Null)
+        let e = dispatch_checked("no/such_method", &serde_json::Value::Null, &mut Docs::new(DOC_CAP))
             .expect_err("an unimplemented method must not succeed");
         assert_eq!(e.code, -32601, "JSON-RPC 2.0 §5.1: Method not found");
 
@@ -2456,15 +2675,124 @@ mod method_surface_tests {
     fn the_gate_admits_exactly_the_advertised_methods() {
         for m in METHODS {
             assert!(
-                dispatch_checked(m, &serde_json::Value::Null).is_ok(),
+                dispatch_checked(m, &serde_json::Value::Null, &mut Docs::new(DOC_CAP)).is_ok(),
                 "`{m}` is advertised but the gate rejects it"
             );
         }
         for m in ["", "no/such_method", "language/Tokens", "rap/methods "] {
             assert!(
-                dispatch_checked(m, &serde_json::Value::Null).is_err(),
+                dispatch_checked(m, &serde_json::Value::Null, &mut Docs::new(DOC_CAP)).is_err(),
                 "`{m}` is not advertised and must not reach the dispatcher"
             );
         }
+    }
+
+    // ── Incremental `doc` state ──────────────────────────────────
+
+    const DOC_SRC: &str = "\
+f add(a: i32, b: i32) -> i32 { a + b }
+f double(x: i32) -> i32 { x * 2 }
+f triple(x: i32) -> i32 { x * 3 }
+f main() -> i32 { add(double(1), triple(2)) }
+";
+
+    fn src_params(source: &str) -> serde_json::Value {
+        serde_json::json!({ "source": source })
+    }
+
+    fn doc_params(source: &str, doc: &str) -> serde_json::Value {
+        serde_json::json!({ "source": source, "doc": doc })
+    }
+
+    fn without_incremental(mut v: serde_json::Value) -> serde_json::Value {
+        v.as_object_mut().unwrap().remove("incremental");
+        v
+    }
+
+    #[test]
+    fn doc_check_reruns_only_the_edited_item_and_matches_the_plain_call() {
+        let mut docs = Docs::new(DOC_CAP);
+        let first = dispatch_with("build/check", &doc_params(DOC_SRC, "a"), &mut docs);
+        assert_eq!(first["incremental"]["cold"], true);
+
+        let edited = DOC_SRC.replace("x * 2", "x * 4");
+        let second = dispatch_with("build/check", &doc_params(&edited, "a"), &mut docs);
+        let inc = &second["incremental"];
+        assert_eq!(inc["cold"], false);
+        assert!(inc["executions"].as_u64().unwrap() > 0);
+        assert!(inc["hits"].as_u64().unwrap() > 0);
+        let reruns = inc["item_reruns"].as_object().unwrap();
+        assert!(!reruns.is_empty(), "{inc}");
+        for (row, keys) in reruns {
+            let keys = keys.as_array().unwrap();
+            assert_eq!(keys.len(), 1, "{row} re-ran for more than one item: {keys:?}");
+            assert!(keys[0].as_str().unwrap().contains("\"double\""), "{row}: {keys:?}");
+        }
+
+        // Same result fields as the plain call on the same source.
+        let plain = dispatch("build/check", &src_params(&edited));
+        assert_eq!(second["ok"], plain["ok"]);
+        assert_eq!(second["errors"], plain["errors"]);
+        // And the semantic diagnostics are the engine's, cold or warm.
+        let cold = dispatch("build/check", &doc_params(&edited, "fresh"));
+        assert_eq!(second["semantic"], cold["semantic"]);
+    }
+
+    #[test]
+    fn doc_check_reports_syntax_errors_like_the_plain_call() {
+        let bad = "S P {\n  x: i32,\n}\nf main( {";
+        let mut docs = Docs::new(DOC_CAP);
+        let a = dispatch_with("build/check", &doc_params(bad, "b"), &mut docs);
+        let plain = dispatch("build/check", &src_params(bad));
+        assert_eq!(a["ok"], false);
+        assert_eq!(a["errors"], plain["errors"]);
+        let h = dispatch_with("build/heal", &doc_params(bad, "b"), &mut docs);
+        let hp = dispatch("build/heal", &src_params(bad));
+        assert_eq!(h["ok"], hp["ok"]);
+        assert_eq!(h["diagnostics"], hp["diagnostics"]);
+        assert!(h["incremental"].is_object());
+    }
+
+    #[test]
+    fn plain_calls_carry_no_incremental_field_and_ignore_nothing_else() {
+        let r = dispatch("build/check", &src_params(DOC_SRC));
+        assert_eq!(r, serde_json::json!({ "ok": true, "errors": [] }));
+        let h = dispatch("build/heal", &src_params(DOC_SRC));
+        assert_eq!(h, serde_json::json!({ "ok": true, "diagnostics": [] }));
+        // A `doc` handed to the stateless wrapper is simply a cold call.
+        let d = dispatch("build/check", &doc_params(DOC_SRC, "x"));
+        assert_eq!(without_incremental(d.clone())["errors"], r["errors"]);
+        assert_eq!(d["incremental"]["cold"], true);
+    }
+
+    #[test]
+    fn doc_close_makes_the_next_call_cold() {
+        let mut docs = Docs::new(DOC_CAP);
+        dispatch_with("build/check", &doc_params(DOC_SRC, "a"), &mut docs);
+        let warm = dispatch_with("build/check", &doc_params(DOC_SRC, "a"), &mut docs);
+        assert_eq!(warm["incremental"]["cold"], false);
+        assert_eq!(warm["incremental"]["executions"], 0, "{}", warm["incremental"]);
+
+        let c = dispatch_with("doc/close", &serde_json::json!({ "doc": "a" }), &mut docs);
+        assert_eq!(c["closed"], true);
+        let again = dispatch_with("doc/close", &serde_json::json!({ "doc": "a" }), &mut docs);
+        assert_eq!(again["closed"], false);
+        let cold = dispatch_with("build/check", &doc_params(DOC_SRC, "a"), &mut docs);
+        assert_eq!(cold["incremental"]["cold"], true);
+        assert!(cold["incremental"]["executions"].as_u64().unwrap() > 0);
+    }
+
+    #[test]
+    fn docs_evict_the_least_recently_used() {
+        let mut docs = Docs::new(2);
+        dispatch_with("build/check", &doc_params(DOC_SRC, "a"), &mut docs);
+        dispatch_with("build/check", &doc_params(DOC_SRC, "b"), &mut docs);
+        dispatch_with("build/check", &doc_params(DOC_SRC, "a"), &mut docs); // a is fresher than b
+        dispatch_with("build/check", &doc_params(DOC_SRC, "c"), &mut docs); // evicts b
+        assert_eq!(docs.map.len(), 2);
+        let a = dispatch_with("build/check", &doc_params(DOC_SRC, "a"), &mut docs);
+        assert_eq!(a["incremental"]["cold"], false);
+        let b = dispatch_with("build/check", &doc_params(DOC_SRC, "b"), &mut docs);
+        assert_eq!(b["incremental"]["cold"], true, "b was evicted");
     }
 }

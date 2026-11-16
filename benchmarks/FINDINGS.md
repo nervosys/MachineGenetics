@@ -1,6 +1,6 @@
 # MAGE Mission Findings (Phases 27-38, 2026-05-22 to 2026-05-26)
 
-Six measurement passes against the 100-task benchmark corpus, each
+Six measurement passes against the benchmark corpus (100 tasks until 2026-11-15, 99 since), each
 exposing a real gap between the project's stated mission ("maximally
 token-efficient and reliable for agents") and delivery at the time.
 
@@ -10,7 +10,7 @@ measurement, re-run 2026-08-18.
 
 | Mission axis | Tool | Where it stands now |
 |---|---|---|
-| Token-efficient | `cargo run --bin token-bench` | Text surface tied with Rust (native-lexer ratio **0.997**); binary IR **1.3-6×** smaller per declaration, 0.247 for a whole container. See §1. |
+| Token-efficient | `cargo run --bin token-bench` | Text surface at parity with Rust or slightly smaller (native-lexer ratio **0.984**); binary IR **1.3-6×** smaller per declaration, 0.247 for a whole container. See §1. |
 | Reliable for agents | `cargo run --bin reliability-bench` | file-oracle parse **99 / 100**, effective **100 / 100**. Perturbed input parses 27 / 100 and heals to **70 / 100**. See §2 and §6 for how it got there — both record much lower numbers, because both are snapshots of when they were written. |
 
 ---
@@ -19,7 +19,7 @@ measurement, re-run 2026-08-18.
 
 ## TL;DR
 
-The MAGE surface as written in the **100-task benchmark corpus** does
+The MAGE surface as written in the **99-task benchmark corpus** does
 **not** deliver the ~30 % reduction the corpus claims, nor the ~50 %
 the `README.md` / `MAGE_SPEC.md` headline advertises. Across four
 honest measurements, the actual delivered reduction ranges from
@@ -29,15 +29,21 @@ The only place the ~50 % claim is genuinely realised is in the binary
 **Agentic Binary Language IR** (a transformer block in ~47 bytes — see Phase 1 demo). The
 text surface, as currently written and used by the corpus, is a wash.
 
-## Measurement table (100 tasks, all categories)
+## Measurement table (99 tasks, all categories)
 
 | Metric | MAGE | Rust | Ratio | Reduction |
 |---|---:|---:|---:|---:|
-| **Raw source bytes** *(what BPE actually sees)* | 55 066 | 52 220 | 1.055 | **−5.5 %** |
-| Whitespace-stripped bytes | 36 048 | 38 629 | 0.933 | +6.7 % |
-| Native syntactic tokens *(MAGE lexer + proc-macro2)* | 15 268 | 15 310 | 0.997 | +0.3 % |
-| Shared-rule tokens *(same naive tokeniser for both)* | 15 831 | 15 310 | 1.034 | −3.4 % |
-| **Corpus's claimed totals** | 11 210 | 16 095 | 0.696 | 30.4 % |
+| **Raw source bytes** *(what BPE actually sees)* | 54 799 | 52 716 | 1.040 | **−4.0 %** |
+| Whitespace-stripped bytes | 35 911 | 39 055 | 0.919 | +8.1 % |
+| Native syntactic tokens *(MAGE lexer + proc-macro2)* | 15 209 | 15 460 | 0.984 | +1.6 % |
+| Shared-rule tokens *(same naive tokeniser for both)* | 15 775 | 15 460 | 1.020 | −2.0 % |
+| **Corpus's claimed totals** | 11 468 | 15 993 | 0.717 | 28.3 % |
+
+> Re-measured 2026-11-15 after the pairs were reconciled (see "Pair audit" below):
+> Rust sources gained content they had omitted, `conc-010` was dropped. The figures
+> before were 1.055 / 0.933 / 0.997 / 1.034 on 100 tasks. The text surface is
+> still not smaller than Rust in bytes or under the shared rule, so the mismatched
+> pairs explain part of the gap, not all of it.
 
 The four real numbers all sit within ±7 % of parity. The 30 % claim is
 **not supported by any measurement methodology** I could find.
@@ -178,7 +184,8 @@ For every task in `benchmarks/tasks/*.json`:
 Output is reproducible. Two things to know before treating it as a gate:
 
 - **It exits non-zero on a clean tree.** Step 6 compares each task's *claimed*
-  `token_count` against the measurement, and 150 claims across the 100 tasks
+  `token_count` against the measurement, and 134 claims across the 99 tasks
+  (150 across 100 before the pairs were reconciled)
   are off by more than 10 % — which is the subject of §1 above. The corpus's
   claims being wrong is the finding, not a regression, so the exit status
   cannot be used as-is.
@@ -545,7 +552,7 @@ holds — the earlier one is what the finding was written about.
 
 | Finding | Tool | At the time | Now |
 |---|---|---|---|
-| Text token reduction vs Rust | `token-bench` | ~tied (claim was 50 %) | ~tied — native-lexer ratio **0.997** |
+| Text token reduction vs Rust | `token-bench` | ~tied (claim was 50 %) | ~tied — native-lexer ratio **0.984** |
 | Binary IR efficiency | `token-bench` + manual | "83 % smaller than text" | **1.3-6×** per declaration (243→47, 98→17, 143→110 B); 0.247 for a whole container |
 | Corpus parse-rate | `reliability-bench` | 25 → 69 / 100 | **99 / 100**, floor-gated at 98 |
 | Self-heal coverage on corpus | `reliability-bench` (P36) | 0 % healed | 0/1 — only one task fails, and structural-heal takes it |
@@ -556,3 +563,100 @@ The "83 %" in row two was never measured against anything: the container
 ratio on `prototype/examples/unified.mg` is 0.247, and per-declaration the
 range is 0.17-0.77. It had propagated to `AGENT_PROTOCOL.md` (as "~50×"),
 the README and the blog post before anyone ran the numbers.
+
+---
+
+## Where MAGE spends BPE tokens (2026-11-13)
+
+`token-bench --bpe` (the crate's own tokenizer, `mage-bpe-4096` vocab trained on
+`.mg` files, so it favours MAGE syntax) gave MAGE 20,546 vs Rust 18,932 BPE
+tokens on the 100-task corpus: ratio 1.085. (After the pairs were reconciled on
+2026-11-15 it is 20,457 vs 19,122 on 99 tasks: ratio 1.070.) To find where the
+difference comes from,
+each construct class was stripped from every source and the drop in tokens measured.
+The classes overlap, so the figures do not add up. Scripts and raw output were
+kept outside the repo.
+
+| Construct class | MAGE tokens | Rust equivalent | Delta |
+|---|---:|---:|---:|
+| effect annotations and inline `effect X { ... }` blocks | 314 | 16 (`async`/`.await`) | +298 |
+| `let` type annotations | 375 | 96 | +279 |
+| string interpolation (named `{x}` vs positional + `format!`) | 308 | 217 | +91 |
+| control sigils (`?`, `@`, `:`, `?=`, `@@`, `@w`) | 228 | 183 | +45 |
+| bool literals `0b`/`1b` | 39 | 24 | +15 |
+| generic wrappers `[T]~`, `?T`, `R[T,E]` | 329 | 543 | -214 |
+| imports | 0 | 378 | -378 |
+
+What this shows:
+
+- **Content, not syntax, drives the gap.** MAGE sources declare effects and
+  annotate types that the Rust sources leave out. Rust spends its extra tokens on
+  `use` lines, which MAGE does not need.
+- **MAGE's sigils are generally no worse than Rust's spellings, and its type
+  wrappers are cheaper.** `?T` is 1 token against `Option<T>` 2, `@T` is 1 against
+  `Arc<T>` 3. There are two real splits: `0b`/`1b` take 2 tokens in context where
+  `false`/`true` take 1, and `&!T` takes 2 where `&T` takes 1.
+- **Not every pair is semantically matched, and both sides drop content.** An
+  audit of all 100 pairs (2026-11-15, below) found 81 matched, 9 where the Rust
+  source omits something, 9 where the MAGE source does, and 1 pair (`conc-010`)
+  that implements different behaviour. (An earlier version of this paragraph had
+  `conc-002` backwards: it is the MAGE twin that has no atomic `Ordering`, and
+  `basic-001`'s `String::from` is only a token difference.)
+- **A syntax redesign has little room.** The largest measured candidate is built-in
+  async/fs effects, so that the six inline `effect` blocks in five tasks need not be
+  written. That saves about 225 tokens, roughly 1.1% of the MAGE corpus.
+  Inferring `/ async` at call sites adds about 90 (overlapping), and `true`/`false`
+  about 18. These are estimates from removal or substitution, not from implemented
+  changes.
+
+This agrees with Path A above: the text surface sits at roughly Rust's floor, and
+syntax changes cannot move it much. The remaining levers are the binary IR and
+re-checking less: the incremental compiler (#225) re-checks one function, not
+the module.
+
+### Pair audit (2026-11-15)
+
+Every task's MAGE and Rust sources were compared by reading them. Boilerplate one
+language requires and the other has no equivalent for (Rust `use` lines, MAGE
+effect annotations) was not counted as a difference.
+
+| Class | Tasks |
+|---|---|
+| matched | 81 |
+| Rust omits content | 9: agent-003, agent-008, app-005, app-006, app-008, app-010, sys-005, web-001, web-003 |
+| MAGE omits content | 9: algo-004, conc-002, conc-003, conc-006, conc-007, conc-008, app-001, web-002, web-006 |
+| different behaviour | 1: conc-010 |
+
+Examples:
+- `web-001` (Rust has no `Content-Type` header) and `app-005` (Rust's router has no
+  `post()` or middleware) are cases where Rust omits content.
+- `algo-004` (MAGE underflows on the empty string) and `conc-002`/`conc-007` (MAGE
+  had no atomic ordering, and MAGE_SPEC defined none) were cases where MAGE omitted it.
+  MAGE_SPEC now defines it (sequentially consistent), and the pairs match (see Resolution).
+- `app-010`'s Rust source does not compile (`Box<dyn Any>` is not `Clone`).
+- `conc-010`'s MAGE acquire is a racy load-then-`fetch_sub`.
+
+The differing fragments are roughly 470 BPE tokens. That is an estimate from
+counting fragments, about 0.8% of the corpus, and the omissions run in both
+directions, so they do not explain the 1.085 ratio. They do make individual task
+ratios unreliable.
+
+A fix means adding the missing content to whichever side lacks it, fixing
+`app-010`, and either correcting or dropping `conc-010`. Two pairs needed a language
+decision first: `conc-002` and `conc-007` could not match until MAGE defined an atomic
+ordering. It now does: every MAGE atomic operation is sequentially consistent
+(`MAGE_SPEC.md` section 14.2).
+
+**Resolution (2026-11-15).** The pairs were reconciled. The nine Rust omissions were
+added to the Rust sources, and `app-010`'s Rust now uses `Rc<dyn Any>`, which is
+`Clone` and compiles. The MAGE omissions in `algo-004`, `conc-003`, `conc-006`,
+`conc-008`, `app-001`, `web-002` and `web-006` were added to the MAGE sources
+(`conc-008` as a comment: the barrier is one-shot, unlike std's reusable `Barrier`).
+`conc-002` and `conc-007` needed no edit: their Rust twins use `Ordering::SeqCst`, which
+is MAGE's defined ordering (`MAGE_SPEC.md` section 14.2: sequentially consistent, no
+ordering parameter, weaker orderings not expressible), so the two pairs now match.
+MAGE has no compare-exchange (nothing in `MAGE_SPEC.md` or `eval.rs`), so a correct
+acquire cannot be written; `conc-010` was removed and the corpus is now 99 tasks.
+Re-measured: bytes 1.055 to 1.040, native lexers 0.997 to 0.984, shared rule 1.034 to
+1.020, BPE 1.085 to 1.070. The gap narrowed by about a fifth in BPE; the pairs were
+part of it, not most of it, and MAGE is still the larger side on BPE.

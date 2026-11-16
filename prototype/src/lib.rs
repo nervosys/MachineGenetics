@@ -22,6 +22,8 @@ pub mod core_subset;
 pub mod autograd;
 pub mod backends;
 pub mod bench;
+pub mod borrowck;
+pub mod bpe;
 pub mod builder;
 #[cfg(feature = "cuda")]
 pub mod cuda_backend;
@@ -62,6 +64,7 @@ pub mod nl_engine;
 pub mod ontology;
 pub mod params;
 pub mod parser;
+pub mod query;
 pub mod perf_annot;
 pub mod perf_measure;
 pub mod rain;

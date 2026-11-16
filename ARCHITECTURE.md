@@ -7,7 +7,7 @@ text. It is the leverage the text-token floor denies the language track (see
 [IDEAL_AGENTIC_LANGUAGE.md](IDEAL_AGENTIC_LANGUAGE.md) for that analysis).
 
 > **Scope.** Everything below is implemented and test-covered in `prototype/`
-> (**1,741 tests** green) and scored in the sibling `agentic-eval` crate (80
+> (**1,888 tests** green) and scored in the sibling `agentic-eval` crate (80
 > tests, in the AetherShell repository and not verifiable from here). The one
 > deliberate non-feature is agent/swarm *execution* — see
 > [Honest boundaries](#honest-boundaries).
@@ -40,7 +40,7 @@ kb/rules/*.mg                  safety rules, diagnostics, contracts, grammar con
 kb/profiles/arena.mg           the subset of the grammar the arena samples, with its limits
 ```
 
-The schema is version 21, with 44 classes, 68 relations and 11 invariants, and the knowledge base states 1252 instances.
+The schema is version 21, with 44 classes, 68 relations and 11 invariants, and the knowledge base states 1253 instances.
 
 **Instances stated per class**
 
@@ -58,7 +58,7 @@ The schema is version 21, with 44 classes, 68 relations and 11 invariants, and t
 | `Diagnostic` | 29 |
 | `BuildRule` | 26 |
 | `Effect` | 24 |
-| `SymbolicComponent` | 25 |
+| `SymbolicComponent` | 26 |
 | `AstKind` | 20 |
 | `ProfileForm` | 19 |
 | `GateRule` | 15 |
@@ -96,9 +96,9 @@ Every module in `prototype/src`, by the part it serves. A test (`prototype/tests
 | Part | Modules |
 |---|---|
 | Neural | `abl_compute.rs`, `agent_runtime.rs`, `autograd.rs`, `backends.rs`, `codegen_bridge.rs`, `cuda_backend.rs`, `gradcheck.rs`, `nl_engine.rs`, `solve.rs`, `synthesis.rs` |
-| Symbolic | `abl.rs`, `abl_bridge.rs`, `abl_shape.rs`, `ast.rs`, `canon.rs`, `certs.rs`, `check.rs`, `contract.rs`, `convexity.rs`, `core_subset.rs`, `cost.rs`, `cost_calibration.rs`, `differentiable.rs`, `effects.rs`, `elision.rs`, `eval.rs`, `fuzz.rs`, `heal.rs`, `hir.rs`, `intent.rs`, `lexer.rs`, `logic.rs`, `mlir.rs`, `params.rs`, `parser.rs`, `perf_annot.rs`, `recognise.rs`, `recover.rs`, `resolve.rs`, `sandbox.rs`, `self_heal.rs`, `shape.rs`, `skb.rs`, `stdlib_ext.rs`, `types.rs`, `units.rs`, `verdict.rs`, `verify.rs` |
+| Symbolic | `abl.rs`, `abl_bridge.rs`, `abl_shape.rs`, `ast.rs`, `borrowck.rs`, `canon.rs`, `certs.rs`, `check.rs`, `contract.rs`, `convexity.rs`, `core_subset.rs`, `cost.rs`, `cost_calibration.rs`, `differentiable.rs`, `effects.rs`, `elision.rs`, `eval.rs`, `fuzz.rs`, `heal.rs`, `hir.rs`, `intent.rs`, `lexer.rs`, `logic.rs`, `mlir.rs`, `params.rs`, `parser.rs`, `perf_annot.rs`, `query.rs`, `query/`, `recognise.rs`, `recover.rs`, `resolve.rs`, `sandbox.rs`, `self_heal.rs`, `shape.rs`, `skb.rs`, `stdlib_ext.rs`, `types.rs`, `units.rs`, `verdict.rs`, `verify.rs` |
 | Knowledge base | `grammar.rs`, `kb.rs`, `kb_proposal.rs`, `ontology.rs` |
-| Interface | `aci.rs`, `bin/`, `builder.rs`, `cli_manifest.rs`, `ffi_gen.rs`, `fmt.rs`, `legacy.rs`, `lib.rs`, `main.rs`, `manifest.rs`, `rap.rs`, `rmi_ontology_adapter.rs`, `rmi_runtime_adapter.rs`, `spine_bridge.rs`, `token_budget.rs` |
+| Interface | `aci.rs`, `bin/`, `bpe.rs`, `builder.rs`, `cli_manifest.rs`, `ffi_gen.rs`, `fmt.rs`, `legacy.rs`, `lib.rs`, `main.rs`, `manifest.rs`, `rap.rs`, `rmi_ontology_adapter.rs`, `rmi_runtime_adapter.rs`, `spine_bridge.rs`, `token_budget.rs` |
 | Outside the design | `bench.rs`, `consensus.rs`, `crdt.rs`, `decompose.rs`, `forge.rs`, `hot_reload.rs`, `lease.rs`, `perf_measure.rs`, `rain.rs`, `semantic_vcs.rs`, `swarm_bus.rs`, `swarm_sdk.rs`, `token_canonical.rs` |
 
 Four of the Neural rows are not learned components, and the table does not say so. The codegen bridge, the NL engine and synthesis are deterministic: they assemble code from strategy templates and keyword matching on the request text, and synthesis emits `todo` bodies. Autograd is deterministic reverse-mode differentiation over a tape built from a train block's let statements, with the net name registered as the parameter source. They sit under Neural because they serve generation and training. Nothing in them is trained.
@@ -276,7 +276,7 @@ are **six independent Cargo workspaces**:
 | Path | Crate | Tests | Notes |
 |---|---|--:|---|
 | `RecursiveMachineIntelligence/` | `rmi` | 1,384 | The low-level neurosymbolic framework. Feature-gated (`cpu` / `gpu` / `cuda`); build with `--no-default-features --features cpu` for the portable set |
-| `prototype/` | `mage-prototype` | 1,741 | Compiler, evaluator, ABL, RAP server. Path-depends on `rmi` |
+| `prototype/` | `mage-prototype` | 1,888 | Compiler, evaluator, ABL, RAP server. Path-depends on `rmi` |
 | `ribosome/` | `ribosome` | 168 | The distributed build engine. Depends on nothing in this repository — see below |
 | `germline/` | `germline` | 272 | Model succession, handoff, fallback — the RSI control plane. Path-depends on `ribosome` |
 | `forge/` | `forge` | 65 | The package registry, and the content-addressed block and definition stores |
@@ -516,10 +516,11 @@ front-end passes. What the SKB governs is what an agent is *told*, which is a
 real thing to protect and a smaller one than enforcement.
 
 **And a large part of it describes conditions no pass can detect.** The
-pipeline is lex, parse, resolve, typecheck, effect inference, MLIR lowering,
-heal — there is no ownership or borrow-checking phase. So of the 255 rules,
-the 40 ownership and 40 borrow rules are knowledge about a language rule the
-checker does not implement, and the 35 lifetime rules sit behind
+pipeline is lex, parse, resolve, typecheck, effect inference, borrow checking
+(`borrowck.rs`, E0382 and E0502, reported only on evidence), MLIR lowering, heal.
+So of the 255 rules, the 40 ownership and 40 borrow rules are mostly knowledge
+about language rules the checker does not implement (MAGE_SPEC §13 lists the
+ones it does), and the 35 lifetime rules sit behind
 `AEL-0003`'s claim that lifetimes are inferred rather than checked. That is not
 a defect to fix by deleting rules — the knowledge is what agents search — but a
 reader who assumed `mage-parse --check` enforces the ownership database would
@@ -530,20 +531,20 @@ now records the split. Seven variants are constructed by a pass on finding the
 condition — `TypeMismatch` (types.rs), `UnresolvedName`, `UnresolvedType`,
 `DuplicateDefinition` (resolve.rs), `UndeclaredEffect` (effects.rs),
 `SyntaxError`, `Other`. Three — `BorrowConflict`, `UseAfterMove`,
-`SpecViolation` — have exactly one non-test mention each, all inside
+`SpecViolation` — had exactly one non-test mention each, all inside
 `heal::infer_category`, the function that guesses a category from a message
-someone else already wrote. Those three say the compiler can *relay* such an
-error, not that it can *find* one, and for the first two that is precisely
-because no ownership or borrow-checking phase exists. `SpecViolation` is the
+someone else already wrote. Before the borrow checker landed (2026-11-13) those
+three said the compiler could *relay* such an error, not that it could *find*
+one. `borrowck.rs` now produces the first two. `SpecViolation` is the
 third for a different reason: the contract verifier runs and prints its own
 summary rather than emitting diagnostics, so a refuted contract produces no
 coded diagnostic at all.
 
 `DiagnosticCategory` tells the same story from the other side. Ten variants,
 each with a stable code that hir.rs calls "machine-matchable" and part of the
-agent contract; measured against the crate, **`UseAfterMove` had no producer at
-all** and `BorrowConflict`'s only one is the healer classifying a message it was
-handed. `E0382` was unreachable: `heal::infer_category` folded "move" into the
+agent contract; measured against the crate before the borrow checker landed,
+**`UseAfterMove` had no producer at all** and `BorrowConflict`'s only one was the
+healer classifying a message it was handed. `E0382` was unreachable: `heal::infer_category` folded "move" into the
 borrow branch, so *use of moved value `x`* came back coded `E0502` while the
 code that names it could not be emitted — and the fix table three hundred lines
 above recognised the same message as a move and offered move fixes for it. Two

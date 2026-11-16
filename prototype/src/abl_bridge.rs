@@ -1259,7 +1259,7 @@ pub fn decompile(expr: &Expr, net_name: &str) -> DecompileResult {
 
     let forward = ast::Block {
         stmts: Vec::new(),
-        tail_expr: None,
+        tail_expr: None, ..Default::default()
     };
 
     DecompileResult {
@@ -2200,7 +2200,7 @@ mod tests {
     fn block_with_tail(tail: ast::Expr) -> ast::Block {
         ast::Block {
             stmts: Vec::new(),
-            tail_expr: Some(Box::new(tail)),
+            tail_expr: Some(Box::new(tail)), ..Default::default()
         }
     }
 
@@ -2647,7 +2647,7 @@ mod tests {
                 visibility: ast::Visibility::Private,
                 attributes: Vec::new(),
                 kind: ast::ItemKind::Net(net),
-            }],
+            }], ..Default::default()
         };
         let lowered = lower_module(&module);
         assert_eq!(lowered.items.len(), 1);

@@ -4,7 +4,7 @@
 
 use crate::hir::{self, DiagnosticCategory, Severity};
 use crate::verdict::{Refusal, Verdict};
-use crate::{abl_shape, contract, core_subset, differentiable, effects, elision, lexer, logic, parser, resolve, types, verify};
+use crate::{abl_shape, ast, borrowck, contract, core_subset, differentiable, effects, elision, lexer, logic, parser, resolve, types, verify};
 
 /// One record of `--check --json`, error or not.
 #[derive(Debug, Clone)]
@@ -42,8 +42,44 @@ impl Checked {
     }
 }
 
+/// Run a pass that looks at one top-level item at a time over each item of
+/// `module`, and pin what it reports without a position of its own to that
+/// item's first line. The incremental engine runs these passes per item, so this
+/// is also how the old drivers get the same answers.
+pub fn per_item(
+    module: &ast::Module,
+    pass: impl FnMut(&ast::Module) -> Vec<hir::Diagnostic>,
+) -> Vec<hir::Diagnostic> {
+    per_item_idx(module, pass).into_iter().map(|(_, d)| d).collect()
+}
+
+/// [`per_item`], each diagnostic with the index of the item it came from.
+pub fn per_item_idx(
+    module: &ast::Module,
+    mut pass: impl FnMut(&ast::Module) -> Vec<hir::Diagnostic>,
+) -> Vec<(usize, hir::Diagnostic)> {
+    let mut out = Vec::new();
+    for (i, item) in module.items.iter().enumerate() {
+        let mut d = pass(&ast::Module::single(item));
+        hir::stamp_missing(&mut d, hir::Span::item(module.start_of(i)));
+        out.extend(d.into_iter().map(|d| (i, d)));
+    }
+    out
+}
+
+/// The typed-composition gate (E0710) of `module`, as diagnostics.
+pub fn shape_diags(module: &ast::Module) -> Vec<hir::Diagnostic> {
+    abl_shape::check_module_shapes(module).into_iter().map(|d| hir::Diagnostic::error(d.message)).collect()
+}
+
 /// Run every static pass over `source`, in a deterministic order.
 pub fn check_source(source: &str, do_elision: bool, core: bool) -> Checked {
+    check_source_with(source, do_elision, core, borrowck::Policy::default())
+}
+
+/// [`check_source`] with the borrow checker under an explicit [`borrowck::Policy`]
+/// (`--borrowck-strict` is `Policy::STRICT`).
+pub fn check_source_with(source: &str, do_elision: bool, core: bool, policy: borrowck::Policy) -> Checked {
     let mut findings = Vec::new();
     let mut push = |severity: &'static str, line, col, code: &str, category: &str, message: String, fix: &str| {
         findings.push(Finding {
@@ -89,6 +125,9 @@ pub fn check_source(source: &str, do_elision: bool, core: bool) -> Checked {
         let mut all: Vec<hir::Diagnostic> = Vec::new();
         all.extend(resolve::resolve(&module).diagnostics);
         all.extend(types::check(&module).diagnostics);
+        // Use after move (E0382) and borrow conflicts (E0502): a pure per-function
+        // pass over the same elided module the type checker saw.
+        all.extend(borrowck::check_module_with(&module, policy));
         let effect_infer = effects::infer_effects(&module);
         all.extend(effect_infer.diagnostics.clone());
         // The `grad` obligation (§5.6): `grad(e, w)` needs an `e` with a
@@ -103,11 +142,11 @@ pub fn check_source(source: &str, do_elision: bool, core: bool) -> Checked {
         all.extend(differentiable::train_block_errors(&module, &diff_engine));
         // Refuted contracts (E0560), for the same reason: the human path
         // counts them as errors, so this stream must carry them.
-        all.extend(verify::diagnostics(&verify::verify_module(&module)));
+        all.extend(per_item(&module, |m| verify::diagnostics(&verify::verify_module(m))));
         // `kb` facts and rules the logic engine cannot evaluate (E0570).
-        all.extend(logic::module_diagnostics(&module));
+        all.extend(per_item(&module, logic::module_diagnostics));
         // A contract written on a `net` or `train`, which nothing checks (E0712, a warning).
-        all.extend(contract::unchecked_contract_warnings(&module));
+        all.extend(per_item(&module, contract::unchecked_contract_warnings));
         for (func, declared, inferred) in effect_infer.effect_surface() {
             effect_surface.push(serde_json::json!({
                 "function": func,
@@ -116,7 +155,7 @@ pub fn check_source(source: &str, do_elision: bool, core: bool) -> Checked {
             }));
         }
         if core {
-            all.extend(core_subset::check(&module));
+            all.extend(per_item(&module, core_subset::check));
         }
         for d in &all {
             let cat = d.category.unwrap_or(DiagnosticCategory::Other);
@@ -131,11 +170,12 @@ pub fn check_source(source: &str, do_elision: bool, core: bool) -> Checked {
         }
 
         // Typed-composition gate (§4.5): reject shape-mismatched net compositions.
-        for d in &abl_shape::check_module_shapes(&module) {
+        for d in &per_item(&module, shape_diags) {
+            let (line, col) = d.span.map(|s| (s.line, s.col)).unwrap_or((0, 0));
             push(
                 "error",
-                0,
-                0,
+                line,
+                col,
                 "E0710",
                 "ShapeError",
                 d.message.clone(),

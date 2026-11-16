@@ -296,10 +296,12 @@ const RAP_METHODS: &[(&str, &str, &[&str], &[&str])] = &[
         &["source"], &["ok", "ast", "error"]),
     ("language/tokens", "Tokenize source.",
         &["source"], &["ok", "lex_errors", "tokens"]),
-    ("build/check", "Lex + parse + report diagnostics.",
-        &["source"], &["ok", "errors"]),
-    ("build/heal", "Generate fix candidates for diagnostics.",
-        &["source"], &["ok", "diagnostics"]),
+    ("build/check", "Lex + parse + report diagnostics. Optional `doc` keeps an incremental engine per document id on the connection and adds `semantic` and `incremental`.",
+        &["source", "doc"], &["ok", "errors", "semantic", "incremental"]),
+    ("build/heal", "Generate fix candidates for diagnostics. Optional `doc` as for build/check; adds `semantic` fixes and `incremental`.",
+        &["source", "doc"], &["ok", "diagnostics", "semantic", "incremental"]),
+    ("doc/close", "Drop the incremental state kept for a `doc` id on this connection.",
+        &["doc"], &["ok", "doc", "closed"]),
     ("build/recover", "Run the 5-stage recovery pipeline; return final source.",
         &["source"], &["ok", "stage", "candidates_tried", "source", "changed"]),
     ("build/selfheal", "Intent-guided self-healing: compile-time heal steps kept only if errors drop, intent is kept and passing @tests still pass; then run @tests/contracts and try single-site repairs. Returns the healed source and a diff; writes nothing.",
@@ -445,6 +447,8 @@ const CLI_FLAGS: &[(&str, &str, bool)] = &[
     ("--fmt-compact", "Reformat source in agent-canonical sigil mode", true),
     ("--fmt-expand", "Reformat source in human-readable keyword mode", true),
     ("--count-tokens", "Print the MAGE lexer token count of a file (the arena's description-length unit)", true),
+    ("--bpe-count", "Print the byte-level BPE token count of files (default: the shipped MAGE vocabulary)", true),
+    ("--bpe-train", "Train a byte-level BPE vocabulary on files and write it in tiktoken format", true),
     ("--target=abl", "Print per-item Agentic Binary Language stats (nodes/depth/hash/bytes)", true),
     ("--target=abl-bytes", "Encode Agentic Binary Language-routed items to a binary Agentic Binary Language container", true),
     ("--from=abl-bytes", "Decode a Agentic Binary Language container back to MAGE view", true),
@@ -491,6 +495,9 @@ const CLI_FLAGS: &[(&str, &str, bool)] = &[
     ("--syntax=legacy", "Translate legacy syntax before lexing.", false),
     ("--syntax=canonical", "Read the source as canonical syntax (the default).", false),
     ("--token-report", "Print a token-count report alongside the check.", false),
+    ("--incremental-stats", "With `--pipeline`: run the incremental query engine and print, as JSON, the pipeline summary and what the engine did (per-query hits, re-executions, early cutoffs, disk hits).", false),
+    ("--cache-dir", "With `--pipeline` or `--check`: answer through the incremental engine, persisting its answers in this directory (or set `MAGE_CACHE_DIR`), content-addressed by input and compiler build; the output is the same as without it. Takes a directory after it.", true),
+    ("--borrowck-strict", "With `--check` or `--pipeline`: borrow-check under Rust's move rule (a by-value parameter or a value stored in an aggregate consumes its argument) instead of the inferred default.", false),
 ];
 
 /// `reliability-bench` backends. Each backend implements
@@ -552,7 +559,7 @@ const PROJECT_LAYOUT: &[(&str, &str)] = &[
     ("framework/framewerx/src/agentic/", "Orchestration: reasoning_patterns, multi_agent, decoding"),
     ("framework/framewerx/examples/", "Parse-verified, end-to-end-compile-tested examples"),
     ("benchmarks/", "Reliability + token benches; corpus + reports"),
-    ("benchmarks/tasks/", "100-task reference corpus"),
+    ("benchmarks/tasks/", "99-task reference corpus"),
     ("scripts/agent_wrappers/", "Subprocess wrappers for the agent protocol"),
     ("scripts/demo_agent_workflow.sh", "One-command end-to-end demo of the agent flow"),
     ("examples/", "Standalone `.mg` examples (agent-swarm, http-client, cli-tool, etc.)"),
@@ -594,7 +601,7 @@ const DOCS: &[(&str, &str, &str)] = &[
 /// `(name, threshold, what_it_protects)`.
 const CI_FLOORS: &[(&str, &str, &str)] = &[
     ("MIN_PARSE", ">= 98",
-        "File-oracle parse rate (100-task corpus) must not regress. Enforced by scripts/check-ci-floors.sh"),
+        "File-oracle parse rate (99-task corpus) must not regress. Enforced by scripts/check-ci-floors.sh"),
     ("MIN_HEAL", ">= 40",
         "Perturbed-oracle pattern-heal recovery count must not regress. Enforced by scripts/check-ci-floors.sh"),
     ("native-lexer ratio", "<= 1.100",

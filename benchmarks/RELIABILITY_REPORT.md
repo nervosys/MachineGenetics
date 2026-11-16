@@ -1,18 +1,18 @@
 # MAGE Agent-Write Reliability Report
 
-Backend: **perturbed-oracle**.  Generated from `benchmarks/tasks/*.json` (100 tasks).
+Backend: **perturbed-oracle**.  Generated from `benchmarks/tasks/*.json` (99 tasks).
 
 ## Summary
 
 | Stage | Pass | Total | Rate |
 |---|---:|---:|---:|
-| Lex (no error tokens) | 100 | 100 | 100.0% |
-| Parse (LL(1) accepts) | 27 | 100 | 27.0% |
-| Self-heal proposed a fix (on failures) | 62 | 73 | 84.9% |
-| Self-heal made it re-parse | 42 | 73 | 57.5% |
-| Structural-heal re-parse (brace balance at EOF) | 1 | 73 | 1.4% |
+| Lex (no error tokens) | 99 | 99 | 100.0% |
+| Parse (LL(1) accepts) | 27 | 99 | 27.3% |
+| Self-heal proposed a fix (on failures) | 61 | 72 | 84.7% |
+| Self-heal made it re-parse | 42 | 72 | 58.3% |
+| Structural-heal re-parse (brace balance at EOF) | 1 | 72 | 1.4% |
 
-**Effective pass rate (parse OR pattern-heal OR structural-heal):** 70 / 100 = 70.0%
+**Effective pass rate (parse OR pattern-heal OR structural-heal):** 70 / 99 = 70.7%
 
 ## Per-category breakdown
 
@@ -21,7 +21,7 @@ Backend: **perturbed-oracle**.  Generated from `benchmarks/tasks/*.json` (100 ta
 | agent-orchestration | 10 | 10 | 2 | 100.0% | 20.0% |
 | algorithms | 15 | 15 | 6 | 100.0% | 40.0% |
 | basic-io | 10 | 10 | 3 | 100.0% | 30.0% |
-| concurrency | 10 | 10 | 3 | 100.0% | 30.0% |
+| concurrency | 9 | 9 | 3 | 100.0% | 33.3% |
 | data-structures | 15 | 15 | 4 | 100.0% | 26.7% |
 | error-handling | 5 | 5 | 1 | 100.0% | 20.0% |
 | full-applications | 10 | 10 | 2 | 100.0% | 20.0% |
@@ -29,7 +29,7 @@ Backend: **perturbed-oracle**.  Generated from `benchmarks/tasks/*.json` (100 ta
 | systems | 10 | 10 | 2 | 100.0% | 20.0% |
 | web-network | 10 | 10 | 2 | 100.0% | 20.0% |
 
-## Failures (73)
+## Failures (72)
 
 | Task | Category | Lex errors | Parse error |
 |---|---|---:|---|
@@ -43,7 +43,7 @@ Backend: **perturbed-oracle**.  Generated from `benchmarks/tasks/*.json` (100 ta
 | agent-010 | agent-orchestration | 0 | 42:48: expected expression, found Semi ';' |
 | algo-001 | algorithms | 0 | 2:44: expected expression, found RBrace '}' |
 | algo-003 | algorithms | 0 | 1:55: expected expression, found Comma ',' |
-| algo-004 | algorithms | 0 | 7:22: expected expression, found Eof '' |
+| algo-004 | algorithms | 0 | 8:10: expected expression, found Eof '' |
 | algo-006 | algorithms | 0 | 13:24: expected type, found Assign |
 | algo-008 | algorithms | 0 | 10:1: expected RBrace, found Eof '' |
 | algo-009 | algorithms | 0 | 2:50: expected expression, found RBrace '}' |
@@ -63,7 +63,6 @@ Backend: **perturbed-oracle**.  Generated from `benchmarks/tasks/*.json` (100 ta
 | conc-007 | concurrency | 0 | 1:16: expected identifier, found Comma ',' |
 | conc-008 | concurrency | 0 | 16:2: expected RBrace, found Eof '' |
 | conc-009 | concurrency | 0 | 8:36: expected expression, found Semi ';' |
-| conc-010 | concurrency | 0 | 23:37: expected expression, found Semi ';' |
 | ds-002 | data-structures | 0 | 1:28: expected identifier, found Plus '+' |
 | ds-004 | data-structures | 0 | 5:1: expected RBrace, found Eof '' |
 | ds-005 | data-structures | 0 | 1:31: expected identifier, found Arrow '->' |
@@ -99,7 +98,7 @@ Backend: **perturbed-oracle**.  Generated from `benchmarks/tasks/*.json` (100 ta
 | sys-009 | systems | 0 | 2:48: expected expression, found Semi ';' |
 | sys-010 | systems | 0 | 25:65: expected expression, found Semi ';' |
 | web-001 | web-network | 0 | 9:3: expected RBrace, found Eof '' |
-| web-002 | web-network | 0 | 9:32: expected expression, found Semi ';' |
+| web-002 | web-network | 0 | 9:36: expected expression, found Semi ';' |
 | web-003 | web-network | 0 | 12:24: expected LBrace, found At '@' |
 | web-005 | web-network | 0 | 9:1: expected RBrace, found Eof '' |
 | web-006 | web-network | 0 | 8:63: expected expression, found Semi ';' |
@@ -111,9 +110,9 @@ Backend: **perturbed-oracle**.  Generated from `benchmarks/tasks/*.json` (100 ta
 
 | Percentile | µs |
 |---|---:|
-| p50 | 30 |
-| p95 | 247 |
-| p99 | 348 |
+| p50 | 57 |
+| p95 | 520 |
+| p99 | 666 |
 
 ---
 _Backend interface: `CandidateAgent::propose(&Task) -> Result<String, String>`. Wire a real LLM by implementing this trait and replacing `FileOracleAgent` in `prototype/src/bin/reliability_bench.rs`._

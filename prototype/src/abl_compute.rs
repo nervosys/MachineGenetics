@@ -3410,7 +3410,7 @@ mod tests {
     }
 
     fn empty_block() -> ast::Block {
-        ast::Block { stmts: Vec::new(), tail_expr: None }
+        ast::Block { stmts: Vec::new(), tail_expr: None, ..Default::default() }
     }
 
     #[test]

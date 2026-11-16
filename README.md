@@ -37,7 +37,7 @@ languages. MAGE ranks **#1 of implemented languages** — only the unreachable
 5/5** of the cross-language task suite and is the **tersest** runnable language
 (**173** cl100k tokens vs Rust 275, Java 297); `eval_bench` computes **76/76**
 programs to exact results. Full measured tables in [Benchmarks](#benchmarks-measured).
-Those token counts are for the 5-task suite only. On the 100-task corpus MAGE is
+Those token counts are for the 5-task suite only. On the 99-task corpus MAGE is
 not smaller than Rust in bytes or under a shared counting rule (see
 [Token counting](#benchmarks-measured)).
 
@@ -186,13 +186,22 @@ conflate:
   suite, produced by the external `agentic-eval` crate's tokenizer.
   `benchmarks/cross_lang/run.sh` itself measures only source bytes and
   pass/fail; it does not count tokens.
-- (ii) `token-bench` over the 100-task corpus counts **lexer tokens, not BPE
+- (ii) `token-bench` over the 99-task corpus counts **lexer tokens, not BPE
   tokens**. MAGE / Rust ratios (below 1 means MAGE is smaller): source bytes
-  **1.055**, native lexers **0.997**, shared counting rule **1.034**, dense
-  (whitespace-stripped) form **0.933**. On the corpus MAGE is not smaller than
-  Rust in bytes or under a shared rule; under native lexers the two are within 0.3%.
+  **1.040**, native lexers **0.984**, shared counting rule **1.020**, dense
+  (whitespace-stripped) form **0.919**. On the corpus MAGE is 4.0% larger than
+  Rust in bytes, 2.0% larger under a shared rule, and 1.6% smaller under native
+  lexers. The pairs were reconciled on 2026-11-15 (the sources in each pair now
+  say the same thing); the figures before that were 1.055, 0.997, 1.034 and 0.933.
   `token-bench` writes `benchmarks/TOKEN_REPORT.md`; the native-lexer and shared-rule ratios are pinned by
   the CI floor in `scripts/check-ci-floors.sh`.
+- (iii) `token-bench --bpe` adds BPE counts from MAGE's own tokenizer and its
+  shipped `mage-bpe-4096` vocabulary (`prototype/data/`). This is not cl100k, and
+  the vocabulary was trained on `.mg` files, so it favours MAGE. On the 99-task
+  corpus MAGE uses **7.0% more** BPE tokens than Rust (20,457 vs 19,122, ratio
+  1.070; 1.085 before the pairs were reconciled). It does not contradict the 5-task cl100k figures above, which use a
+  different tokenizer and task set. Where the difference comes from is in
+  [`benchmarks/FINDINGS.md`](benchmarks/FINDINGS.md).
 
 **Agentic-first toolchain — measured improvement.** The same lens applied to the
 **Forge** project toolchain (`forge`): a human-text baseline vs. the agentic-first
@@ -256,7 +265,7 @@ prototype). Reproduce with `agentic-eval --example swe_languages`.
 > down from 243 (`benchmarks/FINDINGS.md` §1).
 >
 > The text surface itself is roughly **byte-tied** with idiomatic Rust
-> on the 100-task benchmark corpus — not the "~50 % reduction" earlier
+> on the 99-task benchmark corpus — not the "~50 % reduction" earlier
 > versions of this README claimed. See
 > [`benchmarks/FINDINGS.md`](benchmarks/FINDINGS.md) for measurement
 > and [`AGENT_PROTOCOL.md`](AGENT_PROTOCOL.md) for how agents should
@@ -356,6 +365,14 @@ mage-parse --target=abl-generate <file>   # autoregressive decode
 mage-parse --eval <file.mg> <fn> [int args]
                                          # execute a function in the tree-walking
                                          # evaluator and print its result
+mage-parse --check --json <file>         # diagnostics as JSON, with a `counts` summary
+mage-parse --pipeline <file> [--incremental-stats [--cache-dir DIR]]
+                                         # run the pipeline on the incremental query
+                                         # engine; caches in DIR or $MAGE_CACHE_DIR
+mage-parse --bpe-count [--vocab FILE] [FILES|-]
+                                         # BPE token counts from MAGE's own tokenizer
+mage-parse --bpe-train --vocab-size N --out FILE FILES...
+                                         # train a byte-level BPE vocabulary
 ```
 
 The `--eval` evaluator runs general-purpose `.mg` programs end to end
@@ -369,8 +386,8 @@ lists, strings, and maps — see [Benchmarks](#benchmarks-measured).
 mage-parse --eval fib.mg fib 25       # → 75025
 ```
 
-`token-bench` counts lexer tokens and bytes, not BPE tokens; the stated rule and
-its four ratios are in [Benchmarks](#benchmarks-measured).
+`token-bench` counts lexer tokens and bytes, not BPE tokens, unless run with
+`--bpe`; the stated rule and its four ratios are in [Benchmarks](#benchmarks-measured).
 
 ```sh
 # Run the token-efficiency benchmark across all 100 corpus tasks
@@ -484,7 +501,7 @@ Twelve self-contained projects in [`examples/`](examples/), each with a
 | [kb/](kb/)                                                 | The knowledge base: the language as facts (schema: `kb/schema.mg`) |
 | [skb/](skb/)                                               | Safety Knowledge Base seed corpus (56 rules, unread) |
 | [training/](training/)                                     | Training data and evaluation (100 samples)         |
-| [benchmarks/](benchmarks/)                                 | 100-task evaluation corpus with metrics            |
+| [benchmarks/](benchmarks/)                                 | 99-task evaluation corpus with metrics             |
 
 ## Building from Source
 

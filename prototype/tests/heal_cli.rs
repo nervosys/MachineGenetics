@@ -20,7 +20,7 @@ fn scratch(name: &str, contents: &str) -> PathBuf {
 #[test]
 fn heal_without_write_leaves_the_file_untouched() {
     let path = scratch("nowrite", OFF_BY_ONE);
-    let out = Command::new(BIN).arg("--heal").arg(&path).output().unwrap();
+    let out = Command::new(BIN).env_remove("MAGE_CACHE_DIR").arg("--heal").arg(&path).output().unwrap();
     let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(out.status.success(), "{stdout}\n{}", String::from_utf8_lossy(&out.stderr));
     assert!(stdout.contains("+    if age >= 18"), "{stdout}");
@@ -31,7 +31,7 @@ fn heal_without_write_leaves_the_file_untouched() {
 #[test]
 fn heal_with_write_writes_the_healed_source() {
     let path = scratch("write", OFF_BY_ONE);
-    let out = Command::new(BIN).arg("--heal").arg(&path).arg("--write").output().unwrap();
+    let out = Command::new(BIN).env_remove("MAGE_CACHE_DIR").arg("--heal").arg(&path).arg("--write").output().unwrap();
     assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stdout));
     let now = std::fs::read_to_string(&path).unwrap();
     assert!(now.contains("if age >= 18"), "{now}");
@@ -41,7 +41,7 @@ fn heal_with_write_writes_the_healed_source() {
 fn heal_exits_non_zero_when_it_cannot_heal() {
     let src = "f seven() -> i64 {\n    100\n}\n\n@t\nf t_seven() {\n    assert(seven() == 7, \"seven\")\n}\n";
     let path = scratch("unrepairable", src);
-    let out = Command::new(BIN).arg("--heal").arg(&path).arg("--json").output().unwrap();
+    let out = Command::new(BIN).env_remove("MAGE_CACHE_DIR").arg("--heal").arg(&path).arg("--json").output().unwrap();
     assert!(!out.status.success());
     let v: serde_json::Value = serde_json::from_slice(&out.stdout).expect("--json prints JSON");
     assert_eq!(v["ok"], false);
@@ -56,7 +56,7 @@ fn heal_exits_non_zero_when_it_cannot_heal() {
 #[test]
 fn heal_text_reports_the_debugger_evidence() {
     let path = scratch("evidence", OFF_BY_ONE);
-    let out = Command::new(BIN).arg("--heal").arg(&path).output().unwrap();
+    let out = Command::new(BIN).env_remove("MAGE_CACHE_DIR").arg("--heal").arg(&path).output().unwrap();
     let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(out.status.success(), "{stdout}");
     for line in [
@@ -78,7 +78,7 @@ fn heal_casts_the_range_argument_the_checker_names() {
     let src = "f count_to(n: i64) -> usize {\n    len(range(n))\n}\n\n\
                @t\nf t_count() {\n    assert(count_to(3) == 3, \"three\")\n}\n";
     let path = scratch("range", src);
-    let out = Command::new(BIN).arg("--heal").arg(&path).output().unwrap();
+    let out = Command::new(BIN).env_remove("MAGE_CACHE_DIR").arg("--heal").arg(&path).output().unwrap();
     let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(out.status.success(), "{stdout}");
     assert!(
@@ -89,7 +89,7 @@ fn heal_casts_the_range_argument_the_checker_names() {
     );
     assert!(stdout.contains("+    len(range(n as usize))"), "{stdout}");
 
-    let out = Command::new(BIN).arg("--heal").arg(&path).arg("--json").output().unwrap();
+    let out = Command::new(BIN).env_remove("MAGE_CACHE_DIR").arg("--heal").arg(&path).arg("--json").output().unwrap();
     let v: serde_json::Value = serde_json::from_slice(&out.stdout).expect("--json prints JSON");
     let ev = &v["compile"]["steps"][0]["evidence"];
     assert_eq!(ev["site"]["kind"], "call_arg", "{v:#}");
@@ -103,9 +103,9 @@ fn heal_casts_the_range_argument_the_checker_names() {
 #[test]
 fn heal_compact_json_is_one_line_and_parses_equal_to_pretty() {
     let path = scratch("compact", OFF_BY_ONE);
-    let pretty = Command::new(BIN).arg("--heal").arg(&path).arg("--json").output().unwrap();
+    let pretty = Command::new(BIN).env_remove("MAGE_CACHE_DIR").arg("--heal").arg(&path).arg("--json").output().unwrap();
     let compact =
-        Command::new(BIN).arg("--heal").arg(&path).arg("--json").arg("--compact").output().unwrap();
+        Command::new(BIN).env_remove("MAGE_CACHE_DIR").arg("--heal").arg(&path).arg("--json").arg("--compact").output().unwrap();
     let p = String::from_utf8_lossy(&pretty.stdout).into_owned();
     let c = String::from_utf8_lossy(&compact.stdout).into_owned();
     assert_eq!(pretty.status.code(), compact.status.code());

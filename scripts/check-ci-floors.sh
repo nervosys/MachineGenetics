@@ -24,18 +24,21 @@ set -o pipefail
 cd "$(dirname "$0")/.."
 
 # ── The floors ────────────────────────────────────────────────────────
-MIN_PARSE=98        # file-oracle parse rate, out of a 100-task corpus
+MIN_PARSE=98        # file-oracle parse rate, out of a 99-task corpus
 # The basis that floor is a floor *of*. `MIN_PARSE=98` means nothing without
 # it: against a 120-task corpus, 98 is a weaker bar than it reads as, and the
 # message printed `$parse/100` with the 100 as a literal while the numerator
 # came from the bench — so the denominator could change and the line would
 # keep saying 100. Checked rather than assumed, and a change here is meant to
 # be a deliberate edit of both numbers together.
-PARSE_BASIS=100
+# 2026-11-15: 100 -> 99 when `conc-010` was dropped from the corpus (its MAGE
+# acquire was a racy load-then-fetch_sub and MAGE has no compare-exchange). 98 of
+# 99 is the same 99.0% as the 99 of 100 it replaces, so MIN_PARSE is unchanged.
+PARSE_BASIS=99
 MIN_HEAL=40         # perturbed-oracle pattern-heal successes
 MAX_LEX_RATIO=1.100 # native-lexer total ratio, MAGE vs Rust
 # Shared counting rule, MAGE vs Rust (token-bench "shared rule:" line). Measured
-# 1.034 on the 100-task corpus; the ceiling leaves room for corpus edits, not
+# 1.020 on the 99-task corpus; the ceiling leaves room for corpus edits, not
 # for MAGE to become the larger side by more than 10 %.
 MAX_SHARED_RATIO=1.100
 

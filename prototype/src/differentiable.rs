@@ -845,7 +845,9 @@ fn expr_status_resolved(engine: &DiffInfer, e: &ast::Expr) -> Diff {
 pub fn check_grad_obligations(module: &ast::Module, engine: &DiffInfer) -> Vec<Diagnostic> {
     let mut out = Vec::new();
     let mut sites = Vec::new();
-    for item in &module.items {
+    // The top-level item each site sits in, parallel to `sites`.
+    let mut site_item: Vec<usize> = Vec::new();
+    for (i, item) in module.items.iter().enumerate() {
         if let ast::ItemKind::Function(fd) = &item.kind {
             collect_grads_block(&fd.body, &fd.name, &mut sites);
             if let Some(be) = &fd.body_expr {
@@ -857,8 +859,10 @@ pub fn check_grad_obligations(module: &ast::Module, engine: &DiffInfer) -> Vec<D
         if let ast::ItemKind::Train(td) = &item.kind {
             collect_grads_block(&td.body, &format!("train {}", td.name), &mut sites);
         }
+        site_item.resize(sites.len(), i);
     }
-    for (owner, value) in sites {
+    for ((owner, value), at) in sites.into_iter().zip(site_item) {
+        let first = out.len();
         match expr_status_resolved(engine, &value) {
             Diff::Smooth | Diff::AlmostEverywhere => {}
             Diff::No(reason) => out.push(Diagnostic::categorized(
@@ -881,6 +885,9 @@ pub fn check_grad_obligations(module: &ast::Module, engine: &DiffInfer) -> Vec<D
                 None,
             )),
         }
+        // Pinned to the item holding the `grad`: a diagnostic is built from the
+        // expression alone, which carries no position.
+        crate::hir::stamp_missing(&mut out[first..], crate::hir::Span::item(module.start_of(at)));
     }
     out
 }
@@ -903,11 +910,11 @@ pub fn check_grad_obligations(module: &ast::Module, engine: &DiffInfer) -> Vec<D
 /// This check is therefore dormant until a layer type is judged `No`.
 pub fn check_train_nets(module: &ast::Module, engine: &DiffInfer) -> Vec<Diagnostic> {
     let mut out = Vec::new();
-    for item in &module.items {
+    for (i, item) in module.items.iter().enumerate() {
         if let ast::ItemKind::Train(td) = &item.kind
             && let Diff::No(reason) = engine.net_of(&td.net)
         {
-            out.push(Diagnostic::categorized(
+            let mut d = Diagnostic::categorized(
                 Severity::Error,
                 format!(
                     "train `{}` trains net `{}`, which is not differentiable, so it cannot be trained — {reason}",
@@ -915,7 +922,9 @@ pub fn check_train_nets(module: &ast::Module, engine: &DiffInfer) -> Vec<Diagnos
                 ),
                 DiagnosticCategory::NotDifferentiable,
                 None,
-            ));
+            );
+            d.span = crate::hir::Span::item(module.start_of(i));
+            out.push(d);
         }
     }
     out
@@ -942,19 +951,21 @@ pub fn missing_train_nets(module: &ast::Module) -> Vec<Diagnostic> {
         })
         .collect();
     let mut out = Vec::new();
-    for item in &module.items {
+    for (i, item) in module.items.iter().enumerate() {
         if let ast::ItemKind::Train(td) = &item.kind
             && !names.contains(&td.net.as_str())
         {
             let hint = crate::builder::nearest(&td.net, &names, 3)
                 .map(|c| format!(" — did you mean `{c}`?"))
                 .unwrap_or_default();
-            out.push(Diagnostic::categorized(
+            let mut d = Diagnostic::categorized(
                 Severity::Error,
                 format!("train `{}` names net `{}`, which this module does not define{hint}", td.name, td.net),
                 DiagnosticCategory::UnknownNet,
                 None,
-            ));
+            );
+            d.span = crate::hir::Span::item(module.start_of(i));
+            out.push(d);
         }
     }
     out

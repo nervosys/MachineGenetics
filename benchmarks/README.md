@@ -29,13 +29,13 @@ All tasks follow the `MAGE-training-v1` schema defined in [`corpus-schema.json`]
 | 3   | Algorithms          | [`tasks/algorithms.json`](tasks/algorithms.json)                   | 15    | medium     | 80–200      |
 | 4   | Error Handling      | [`tasks/error_handling.json`](tasks/error_handling.json)           | 5     | medium     | 50–150      |
 | 5   | Generics & Traits   | [`tasks/generics_traits.json`](tasks/generics_traits.json)         | 5     | hard       | 100–300     |
-| 6   | Concurrency         | [`tasks/concurrency.json`](tasks/concurrency.json)                 | 10    | hard       | 100–300     |
+| 6   | Concurrency         | [`tasks/concurrency.json`](tasks/concurrency.json)                 | 9     | hard       | 100–300     |
 | 7   | Web & Network       | [`tasks/web_network.json`](tasks/web_network.json)                 | 10    | hard       | 150–400     |
 | 8   | Systems Programming | [`tasks/systems.json`](tasks/systems.json)                         | 10    | hard       | 200–500     |
 | 9   | Agent Orchestration | [`tasks/agent_orchestration.json`](tasks/agent_orchestration.json) | 10    | very-hard  | 300–800     |
 | 10  | Full Applications   | [`tasks/full_applications.json`](tasks/full_applications.json)     | 10    | very-hard  | 500–2000    |
 
-**Total: 100 tasks**
+**Total: 99 tasks**
 
 ## Evaluation Metrics
 

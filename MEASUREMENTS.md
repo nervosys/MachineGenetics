@@ -14,8 +14,8 @@ came from, as `arena evidence <log> [--seq A..B]` prints them:
 last line, which pins every entry before it, so a log regenerated from the command
 is the one cited exactly when its head matches. Logs are not committed.
 
-> **Re-verified 2026-09-25** — all six crates tested: prototype **1,741**, rmi
-> **1,384**, ribosome **168**, germline **272**, forge **65**, arena **335** = **3,965 passing,
+> **Re-verified 2026-09-25** — all six crates tested: prototype **1,888**, rmi
+> **1,384**, ribosome **168**, germline **272**, forge **65**, arena **335** = **4,112 passing,
 > 0 failing, 0 warnings**.
 >
 > *One figure below had not regressed — it had been superseded.* The ABL
@@ -84,7 +84,7 @@ is the one cited exactly when its head matches. Logs are not committed.
 ### Test suites (all green)
 | Suite | Tests | Cmd |
 |---|---|---|
-| MAGE prototype | **1741 pass** (+3 ignored perf harnesses) | `cargo test` |
+| MAGE prototype | **1888 pass** (+3 ignored perf harnesses) | `cargo test` |
 | rmi (`cpu`) | **1384 pass** | `cargo test --no-default-features --features cpu` |
 | ribosome (build engine) | **168 pass** | `cargo test --manifest-path ribosome/Cargo.toml` |
 | germline (RSI control plane) | **272 pass** | `cargo test --manifest-path germline/Cargo.toml` |
@@ -109,8 +109,8 @@ Reject-by-construction error coverage: **B0000–B0006** (net), **K0001–K0004,
 **A0001–A0003** (agent), **S0001–S0006** (swarm), **U0001–U0003** (unified) — all
 machine-readable `{code, message, fix}`.
 
-### Front-end reliability (reliability-bench, 100-task corpus)
-`lex 100/100 (100%) · parse 99/100 (99%) · effective 100/100 (100%)` (the 1 hard
+### Front-end reliability (reliability-bench, 99-task corpus)
+`lex 99/99 (100%) · parse 98/99 (99%) · effective 99/99 (100%)` (the 1 hard
 parse recovers via pattern-heal / structural-heal / refine). `cargo run --bin reliability-bench`.
 
 ### agentic-eval quality scores (curated four-axis, bias-audited)
@@ -199,7 +199,7 @@ Recursive transitive closure / fixpoint (now ≈ output-size, was cubic):
 **Complexity:** join went from ~O(N²) → ~O(N) (the `arg0` index makes a chain
 join an O(matches) lookup); the fixpoint went from ~O(N³) → ~O(output) (semi-naive
 derives each fact ~once). Correctness unchanged (the suite was 984 tests green when this
-was measured, and 1,741 today; the evaluator still terminates at the least
+was measured, and 1,888 today; the evaluator still terminates at the least
 fixpoint). This was the one perf gap the prior report flagged — now fixed.
 
 ### CUDA backend — CPU vs GPU (measured 2026-08-05)
@@ -264,12 +264,22 @@ This is **dominated by process startup (~28 ms on Windows)** — the actual work
 µs-scale (see above). An agent doing many ops should drive the **long-running RAP
 server** (`--rap`) to amortize startup to ~0.
 
-### Token efficiency (token-bench, 100-task corpus vs Rust)
+### Token efficiency (token-bench, 99-task corpus vs Rust)
 ```
-source bytes  1.055 (MAGE 5.5% MORE)   dense  0.933 (6.7% fewer)   native lexers  0.997 (~tie)
+source bytes  1.040 (MAGE 4.0% MORE)   dense  0.919 (8.1% fewer)   native lexers  0.984 (1.6% fewer)
 ```
+Shared counting rule 1.020. The MAGE and Rust sources of each pair were reconciled on
+2026-11-15 (missing content added to whichever side lacked it, `conc-010` dropped, so the
+corpus is now 99 tasks); the earlier figures were 1.055 / 0.933 / 0.997 / 1.034.
 Confirms the measured thesis: **text token efficiency is a floor** (≈ Rust), not a
 win. The compaction lives in the binary IR at rest (≈26 B/layer), not in source.
+
+**Real BPE tokens, 2026-11-15** (`token-bench --bpe`, the crate's own tokenizer and its
+shipped `mage-bpe-4096` vocab): MAGE 20,457 vs Rust 19,122, **ratio 1.070 (MAGE 7.0%
+MORE)**; it was 20,546 vs 18,932, 1.085, before the pairs were reconciled. The vocab was trained on `.mg` files and so favours MAGE syntax, which makes
+this an optimistic figure for MAGE, not a neutral one; a neutral vocab is expected to
+score MAGE no better. It agrees with the byte figure above: on real BPE, MAGE source
+is not more token-efficient than Rust on this corpus.
 
 ### Determinism (verified)
 ABL artifacts are **byte-stable**: same spec → byte-identical `.abl` across builds;
@@ -287,7 +297,7 @@ run-to-run identical. → content-hashable cache keys, meaningful diffs.
 - **The kb Datalog evaluator was the one perf gap — now FIXED:** rewritten as
   indexed semi-naive (interning + `(pred,arg0)` index + delta evaluation), giving
   up to **~1430×** on transitive closure and ~O(N)/~O(N²) instead of ~O(N²)/~O(N³),
-  with identical results (984 tests green at the time; 1,741 now).
+  with identical results (984 tests green at the time; 1,888 now).
 - **Per-invocation latency is startup-bound (~30 ms)**, not compute-bound — use
   the RAP server for high-frequency agent loops.
 - **Tokens are at the irreducible text floor**; the leverage is the binary IR +

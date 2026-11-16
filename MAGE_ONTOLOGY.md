@@ -91,7 +91,7 @@ Envelope {
 
 ### 5. RAP (MAGE Agent Protocol) — Compiler Interface
 
-RAP exposes **42** JSON-RPC 2.0 endpoints. The tables below name **23** of
+RAP exposes **43** JSON-RPC 2.0 endpoints. The tables below name **23** of
 them. Each request is a JSON object with `method`, `params`, `id`:
 
 > **Corrected 2026-09-02.** This line said "24 endpoints" and the tables below
@@ -1706,7 +1706,7 @@ Report TaskResult::Success
 
 | Category                 | Count |
 | ------------------------ | ----- |
-| Source modules           | 79    |
+| Source modules           | 82    |
 | TokenKind variants       | 180   |
 | AST ItemKind variants    | 20    |
 | AST ExprKind variants    | 35    |
@@ -1715,7 +1715,7 @@ Report TaskResult::Success
 | Effect kinds             | 19    |
 | SKB rule databases       | 8     |
 | SKB rules total          | 255   |
-| RAP endpoints            | 42    |
+| RAP endpoints            | 43    |
 | Agent roles              | 8     |
 | Message topics           | 10    |
 | CRDT operations          | 6     |

@@ -4,8 +4,8 @@
 > Each step is a concrete, testable increment.
 >
 > **Last verified: 2026-09-25** — all six crates built and tested: prototype
-> **1,741**, rmi **1,384**, ribosome **168**, germline **272**, forge **65**, arena **335** —
-> **3,965 tests, 0 failures, 0 warnings**. The crate count went from three to
+> **1,888**, rmi **1,384**, ribosome **168**, germline **272**, forge **65**, arena **335** —
+> **4,112 tests, 0 failures, 0 warnings**. The crate count went from three to
 > five when the build engine (step 148) and the RSI control plane (step 149)
 > were extracted from `forge`; the total is unchanged by those moves, and
 > `forge`'s count is the registry alone, as it measured before they were parked in
@@ -204,7 +204,7 @@
 | 89 | `MEASUREMENTS.md` + perf harness | ✅ | `perf_measure.rs`; every figure reproducible via `cargo test --release perf_report -- --ignored` |
 | 90 | Cross-language executability harness | ✅ | `benchmarks/cross_lang` — compile+run 5 tasks across languages with a **real BPE** tokenizer, repo-relative paths (no local-path leakage) |
 | 91 | Datalog evaluator optimization | ✅ | Naive → **indexed semi-naive** (interning + `(pred,arg0)` index + delta): O(N²)→O(N) join, O(N³)→O(output) fixpoint, up to **~1430×** |
-| 92 | Token + reliability benches | ✅ | `token-bench` (100-task corpus vs Rust), `reliability-bench` (lex 100/100, parse 99/100, effective 100/100 with recovery) |
+| 92 | Token + reliability benches | ✅ | `token-bench` (99-task corpus vs Rust), `reliability-bench` (lex 99/99, parse 98/99, effective 99/99 with recovery) |
 
 ## Phase K: Ab-initio language redesign (Steps 93–99)
 

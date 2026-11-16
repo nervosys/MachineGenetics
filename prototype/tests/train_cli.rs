@@ -18,7 +18,7 @@ fn repo_root() -> PathBuf {
 }
 
 fn run(target: &str, example: &str) -> Output {
-    Command::new(BIN)
+    Command::new(BIN).env_remove("MAGE_CACHE_DIR")
         .current_dir(repo_root())
         .arg(target)
         .arg(repo_root().join(example))
@@ -84,9 +84,9 @@ fn a_train_over_a_missing_net_is_refused_by_every_target() {
                train Fit { net: Nowhear; optimizer: SGD(0.05); loss: MSE; epochs: 5; }\n";
     let path = std::env::temp_dir().join(format!("mage-train-missing-{}.mg", std::process::id()));
     std::fs::write(&path, src).unwrap();
-    let check = Command::new(BIN).arg("--check").arg(&path).output().unwrap();
-    let train = Command::new(BIN).arg("--target=abl-train").arg(&path).output().unwrap();
-    let infer = Command::new(BIN).arg("--target=abl-infer").arg(&path).output().unwrap();
+    let check = Command::new(BIN).env_remove("MAGE_CACHE_DIR").arg("--check").arg(&path).output().unwrap();
+    let train = Command::new(BIN).env_remove("MAGE_CACHE_DIR").arg("--target=abl-train").arg(&path).output().unwrap();
+    let infer = Command::new(BIN).env_remove("MAGE_CACHE_DIR").arg("--target=abl-infer").arg(&path).output().unwrap();
     let _ = std::fs::remove_file(&path);
 
     let check_text = format!("{}{}", String::from_utf8_lossy(&check.stdout), String::from_utf8_lossy(&check.stderr));
@@ -112,8 +112,8 @@ fn a_train_over_an_unknown_layer_is_not_refused_as_not_differentiable() {
                train Fit { net: Odd; optimizer: SGD(0.05); loss: MSE; epochs: 5; }\n";
     let path = std::env::temp_dir().join(format!("mage-train-unknown-{}.mg", std::process::id()));
     std::fs::write(&path, src).unwrap();
-    let check = Command::new(BIN).arg("--check").arg(&path).output().unwrap();
-    let train = Command::new(BIN).arg("--target=abl-train").arg(&path).output().unwrap();
+    let check = Command::new(BIN).env_remove("MAGE_CACHE_DIR").arg("--check").arg(&path).output().unwrap();
+    let train = Command::new(BIN).env_remove("MAGE_CACHE_DIR").arg("--target=abl-train").arg(&path).output().unwrap();
     let _ = std::fs::remove_file(&path);
     let check_text = format!("{}{}", String::from_utf8_lossy(&check.stdout), String::from_utf8_lossy(&check.stderr));
     assert!(!check_text.contains("E0711"), "{check_text}");

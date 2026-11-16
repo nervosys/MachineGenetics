@@ -49,8 +49,8 @@
       "skb_rules_used": ["type_safety:result-return"]
     },
     "rust_equivalent": {
-      "rs_source": "struct CompileResult { success: bool, output: String, errors: Vec<String> }\n\npub fn self_correct(\n    task: &str, max_retries: u32,\n    llm: &dyn LlmClient, compiler: &dyn Compiler,\n) -> Result<String, String> {\n    let mut code = llm.complete(&format!(\"Write Rust code: {}\", task));\n    let mut attempt = 0;\n    loop {\n        let result = compiler.compile(&code);\n        if result.success { return Ok(code); }\n        attempt += 1;\n        if attempt >= max_retries { return Err(format!(\"Failed after {} attempts\", max_retries)); }\n        let error_context = result.errors.join(\"\\n\");\n        code = llm.complete(&format!(\"Fix these errors:\\nErrors:\\n{}\\nCode:\\n{}\", error_context, code));\n    }\n}",
-      "token_count": 200
+      "rs_source": "struct CompileResult { success: bool, output: String, errors: Vec<String> }\n\npub fn self_correct(\n    task: &str, max_retries: u32,\n    llm: &dyn LlmClient, compiler: &dyn Compiler,\n) -> Result<String, String> {\n    let mut code = llm.complete(&format!(\"Write Rust code: {}\", task));\n    let mut attempt = 0;\n    loop {\n        let result = compiler.compile(&code);\n        if result.success { return Ok(code); }\n        attempt += 1;\n        if attempt >= max_retries { return Err(format!(\"Failed after {} attempts\", max_retries)); }\n        let error_context = result.errors.join(\"\\n\");\n        code = llm.complete(&format!(\"Fix these errors in the code:\\nErrors:\\n{}\\nCode:\\n{}\", error_context, code));\n    }\n}",
+      "token_count": 158
     },
     "tests": [
       { "input": "self_correct(\"write hello world\", 3)", "expected": "R.Ok(<valid code>)" }
@@ -144,8 +144,8 @@
       "skb_rules_used": ["ownership:exclusive-ref", "borrow:shared-ref", "type_safety:result-return"]
     },
     "rust_equivalent": {
-      "rs_source": "#[derive(PartialEq)]\nenum Capability { FileRead, FileWrite, NetAccess, CodeExec, LlmCall }\n\nstruct Sandbox { allowed: Vec<Capability>, denied_log: Vec<String> }\n\nimpl Sandbox {\n    pub fn new(caps: Vec<Capability>) -> Self { Self { allowed: caps, denied_log: Vec::new() } }\n    pub fn check(&mut self, cap: Capability) -> bool {\n        let allowed = self.allowed.contains(&cap);\n        if !allowed { self.denied_log.push(format!(\"denied: {:?}\", cap)); }\n        allowed\n    }\n    pub fn guarded_read(&mut self, path: &str) -> Result<String, String> {\n        if self.check(Capability::FileRead) {\n            std::fs::read_to_string(path).map_err(|e| e.to_string())\n        } else { Err(\"file read not permitted\".into()) }\n    }\n    pub fn audit_log(&self) -> &[String] { &self.denied_log }\n}",
-      "token_count": 280
+      "rs_source": "#[derive(PartialEq)]\nenum Capability { FileRead, FileWrite, NetAccess, CodeExec, LlmCall }\n\nstruct Sandbox { allowed: Vec<Capability>, denied_log: Vec<String> }\n\nimpl Sandbox {\n    pub fn new(caps: Vec<Capability>) -> Self { Self { allowed: caps, denied_log: Vec::new() } }\n    pub fn check(&mut self, cap: Capability) -> bool {\n        let allowed = self.allowed.contains(&cap);\n        if !allowed { self.denied_log.push(format!(\"denied: {:?}\", cap)); }\n        allowed\n    }\n    pub fn guarded_read(&mut self, path: &str) -> Result<String, String> {\n        if self.check(Capability::FileRead) {\n            std::fs::read_to_string(path).map_err(|e| e.to_string())\n        } else { Err(\"file read not permitted\".into()) }\n    }\n    pub fn guarded_net(&mut self, url: &str) -> Result<String, String> {\n        if self.check(Capability::NetAccess) {\n            reqwest::blocking::get(url).and_then(|r| r.text()).map_err(|e| e.to_string())\n        } else { Err(\"network access not permitted\".into()) }\n    }\n    pub fn audit_log(&self) -> &[String] { &self.denied_log }\n}",
+      "token_count": 290
     },
     "tests": [
       { "input": "v s = Sandbox.new([Capability.FileRead]); s.check(Capability.FileRead)", "expected": "true" },

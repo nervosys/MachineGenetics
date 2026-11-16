@@ -7,6 +7,7 @@
 /// 4. Report unresolved names and duplicate definitions
 use crate::ast;
 use crate::hir::{Diagnostic, DiagnosticCategory, Severity, SymbolId, Ty};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 /// The builtin functions and macros `register_builtins` registers: names the resolver
@@ -220,6 +221,11 @@ pub struct Resolver {
     /// (In a real compiler this would be per-node; here we track by name for simplicity.)
     pub resolved: HashMap<String, SymbolId>,
     scopes: Vec<Scope>,
+    /// First line of the top-level item being resolved: the statement
+    /// positions inside it are relative to it. `Some(0)` keeps spans
+    /// item-relative (what the per-item engine query reports, rebased later);
+    /// `None` means no position is known, so none is attached.
+    item_start: Option<u32>,
 }
 
 impl Default for Resolver {
@@ -235,7 +241,22 @@ impl Resolver {
             diagnostics: Vec::new(),
             resolved: HashMap::new(),
             scopes: Vec::new(),
+            item_start: None,
         }
+    }
+
+    /// Give the diagnostics reported since `before` that have no position the
+    /// one `pos` names (inside the current top-level item). The innermost
+    /// statement stamps first, so an outer one only fills what is left.
+    fn stamp(&mut self, before: usize, pos: ast::Pos) {
+        let span = pos.at(self.item_start);
+        crate::hir::stamp_missing(&mut self.diagnostics[before..], span);
+    }
+
+    /// Pin what the current top-level item reported since `before`, and nothing
+    /// finer placed, to the item's first line.
+    fn stamp_item(&mut self, before: usize) {
+        crate::hir::stamp_missing(&mut self.diagnostics[before..], crate::hir::Span::item(self.item_start));
     }
 
     // ── Scope management ─────────────────────────────────────────────
@@ -325,19 +346,34 @@ impl Resolver {
         self.push_scope();
         self.register_builtins();
 
-        // First pass: collect all top-level names (forward declarations).
-        for item in &module.items {
+        // First pass: collect all top-level names (forward declarations). A
+        // duplicate is reported against the item that defines the second one.
+        for (i, item) in module.items.iter().enumerate() {
+            self.item_start = module.start_of(i);
+            let before = self.diagnostics.len();
             self.collect_item_name(item);
+            self.stamp_item(before);
         }
 
         // Second pass: resolve bodies.
-        for item in &module.items {
+        for (i, item) in module.items.iter().enumerate() {
+            self.item_start = module.start_of(i);
+            let before = self.diagnostics.len();
             self.resolve_item(item);
+            self.stamp_item(before);
         }
+        self.item_start = None;
 
-        // Contract clauses of a function resolve in its parameter scope, plus
-        // `result` in a postcondition (plan C1). A clause `contract::prepare`
-        // refuses is reported by the typechecker, once, so it is skipped here.
+        // Third pass: contract clauses (each carries its own position).
+        self.resolve_contract_clauses(module);
+
+        self.pop_scope();
+    }
+
+    /// Contract clauses of a function resolve in its parameter scope, plus
+    /// `result` in a postcondition (plan C1). A clause `contract::prepare`
+    /// refuses is reported by the typechecker, once, so it is skipped here.
+    fn resolve_contract_clauses(&mut self, module: &ast::Module) {
         for (clause, fd) in crate::contract::collect(module) {
             let Some(fd) = fd else { continue };
             let params: Vec<String> = fd.params.iter().map(|p| p.name.clone()).collect();
@@ -357,8 +393,6 @@ impl Resolver {
                 d.span = d.span.or(clause.diag_span());
             }
         }
-
-        self.pop_scope();
     }
 
     /// Register primitive type names so they can be resolved.
@@ -413,84 +447,25 @@ impl Resolver {
 
     /// First pass: register the name of a top-level item.
     fn collect_item_name(&mut self, item: &ast::Item) {
-        match &item.kind {
-            ast::ItemKind::Function(fd) => {
-                self.define_value(&fd.name, SymbolKind::Function);
-            }
-            ast::ItemKind::Struct(sd) => {
-                self.define_type(&sd.name, SymbolKind::Struct);
-            }
-            ast::ItemKind::Enum(ed) => {
-                let parent = self.define_type(&ed.name, SymbolKind::Enum);
-                for variant in &ed.variants {
-                    self.define_value(&variant.name, SymbolKind::EnumVariant { parent });
+        self.apply_decls(&item_decls(item));
+    }
+
+    /// Define each declaration in the current scope, in order. A
+    /// [`NameDecl::Variant`] belongs to the nearest preceding type.
+    fn apply_decls(&mut self, decls: &[NameDecl]) {
+        let mut parent: Option<SymbolId> = None;
+        for d in decls {
+            match d {
+                NameDecl::Value { name, kind } => {
+                    self.define_value(name, kind.symbol_kind());
                 }
-            }
-            ast::ItemKind::Trait(td) => {
-                self.define_type(&td.name, SymbolKind::Trait);
-            }
-            ast::ItemKind::Module(md) => {
-                self.define_value(&md.name, SymbolKind::Module);
-            }
-            ast::ItemKind::TypeAlias(ta) => {
-                self.define_type(&ta.name, SymbolKind::TypeAlias);
-            }
-            ast::ItemKind::Const(cd) => {
-                self.define_value(&cd.name, SymbolKind::Const);
-            }
-            ast::ItemKind::Effect(ed) => {
-                self.define_type(&ed.name, SymbolKind::Effect);
-            }
-            ast::ItemKind::Spec(sd) => {
-                self.define_type(&sd.name, SymbolKind::Spec);
-            }
-            ast::ItemKind::Static(sd) => {
-                self.define_value(&sd.name, SymbolKind::Const);
-            }
-            ast::ItemKind::Agent(ad) => {
-                self.define_value(&ad.name, SymbolKind::Agent);
-            }
-            ast::ItemKind::Swarm(s) => {
-                self.define_value(&s.name, SymbolKind::Swarm);
-            }
-            ast::ItemKind::Net(n) => {
-                self.define_type(&n.name, SymbolKind::Net);
-            }
-            ast::ItemKind::Kb(k) => {
-                self.define_type(&k.name, SymbolKind::Kb);
-            }
-            ast::ItemKind::Evolve(e) => {
-                self.define_type(&e.name, SymbolKind::Evolve);
-            }
-            ast::ItemKind::Train(t) => {
-                self.define_value(&t.name, SymbolKind::Train);
-            }
-            ast::ItemKind::Data(dd) => match &dd.kind {
-                ast::DataKind::Record(_) => {
-                    self.define_type(&dd.name, SymbolKind::Struct);
+                NameDecl::Type { name, kind } => {
+                    parent = Some(self.define_type(name, kind.symbol_kind()));
                 }
-                // `data Shape = Circle(f64) | Rect(f64, f64)` is a sum, and its
-                // variants are values — exactly as `E Shape { … }` variants
-                // are, three arms up. Only the type name was registered here,
-                // so every variant was invisible: `Rect(3.0, 4.0)` gave
-                // `unresolved name: Rect` and `?= s { Circle(r) => … }` gave
-                // `unresolved variant in pattern`. The record half worked, so
-                // `data` looked implemented.
-                //
-                // The ontology publishes `data` as "record or sum type". Half
-                // of that was true.
-                ast::DataKind::Sum(variants) => {
-                    let parent = self.define_type(&dd.name, SymbolKind::Enum);
-                    for variant in variants {
-                        self.define_value(&variant.name, SymbolKind::EnumVariant { parent });
-                    }
+                NameDecl::Variant { name } => {
+                    let parent = parent.expect("a variant follows its type");
+                    self.define_value(name, SymbolKind::EnumVariant { parent });
                 }
-            },
-            ast::ItemKind::Extend(_) => {
-                // Extend blocks don't introduce a new name
-            }
-            ast::ItemKind::Impl(_) | ast::ItemKind::Use(_) => {
-                // Impl blocks and use decls don't introduce a single name
             }
         }
     }
@@ -556,6 +531,14 @@ impl Resolver {
     }
 
     fn resolve_function(&mut self, fd: &ast::FunctionDef) {
+        let first = self.diagnostics.len();
+        self.resolve_function_inner(fd);
+        // What the body left unplaced (a parameter's type, a bound) belongs to
+        // the function's start.
+        self.stamp(first, fd.body.pos);
+    }
+
+    fn resolve_function_inner(&mut self, fd: &ast::FunctionDef) {
         self.warn_discarded_bounds(&format!("`{}`", fd.name), &fd.generics, &fd.where_clause);
         self.push_scope();
 
@@ -899,11 +882,17 @@ impl Resolver {
 
     fn resolve_block(&mut self, block: &ast::Block) {
         self.push_scope();
-        for stmt in &block.stmts {
+        for (i, stmt) in block.stmts.iter().enumerate() {
+            let before = self.diagnostics.len();
             self.resolve_stmt(stmt);
+            if let Some(p) = block.stmt_pos.get(i) {
+                self.stamp(before, *p);
+            }
         }
         if let Some(tail) = &block.tail_expr {
+            let before = self.diagnostics.len();
             self.resolve_expr(tail);
+            self.stamp(before, block.tail_pos);
         }
         self.pop_scope();
     }
@@ -1188,6 +1177,171 @@ impl Resolver {
             ast::Expr::Error { .. } => {}
         }
     }
+}
+
+// ── Per-item resolution ──────────────────────────────────────────────
+//
+// `resolve_module` is three passes: collect every top-level *name*, resolve
+// each item's body against those names, then resolve contract clauses. Pass two
+// reads nothing of another item but its name, so what an item's resolution
+// depends on is that item plus the list of names — not the other bodies. The
+// incremental engine (`query.rs`) uses these entry points to re-resolve one
+// edited function against an unchanged name list. `resolve_module` and these
+// share every helper, and the engine's corpus test holds the concatenation of
+// their output to `resolve()`'s.
+
+/// Which symbol a [`NameDecl`] defines.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum DeclKind {
+    Function,
+    Struct,
+    Enum,
+    Trait,
+    Module,
+    TypeAlias,
+    Const,
+    Effect,
+    Spec,
+    Agent,
+    Swarm,
+    Net,
+    Kb,
+    Evolve,
+    Train,
+}
+
+impl DeclKind {
+    fn symbol_kind(self) -> SymbolKind {
+        match self {
+            DeclKind::Function => SymbolKind::Function,
+            DeclKind::Struct => SymbolKind::Struct,
+            DeclKind::Enum => SymbolKind::Enum,
+            DeclKind::Trait => SymbolKind::Trait,
+            DeclKind::Module => SymbolKind::Module,
+            DeclKind::TypeAlias => SymbolKind::TypeAlias,
+            DeclKind::Const => SymbolKind::Const,
+            DeclKind::Effect => SymbolKind::Effect,
+            DeclKind::Spec => SymbolKind::Spec,
+            DeclKind::Agent => SymbolKind::Agent,
+            DeclKind::Swarm => SymbolKind::Swarm,
+            DeclKind::Net => SymbolKind::Net,
+            DeclKind::Kb => SymbolKind::Kb,
+            DeclKind::Evolve => SymbolKind::Evolve,
+            DeclKind::Train => SymbolKind::Train,
+        }
+    }
+}
+
+/// One name a top-level item puts in scope.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum NameDecl {
+    /// A name in the value namespace.
+    Value { name: String, kind: DeclKind },
+    /// A name in the type namespace (also mirrored into the value namespace).
+    Type { name: String, kind: DeclKind },
+    /// An enum variant, a value whose parent is the nearest preceding `Type`.
+    Variant { name: String },
+}
+
+/// The names `item` brings into the module scope, in the order they are defined.
+pub fn item_decls(item: &ast::Item) -> Vec<NameDecl> {
+    let value = |name: &str, kind| vec![NameDecl::Value { name: name.to_string(), kind }];
+    let ty = |name: &str, kind| vec![NameDecl::Type { name: name.to_string(), kind }];
+    let sum = |name: &str, variants: Vec<&String>| {
+        let mut out = vec![NameDecl::Type { name: name.to_string(), kind: DeclKind::Enum }];
+        out.extend(variants.into_iter().map(|v| NameDecl::Variant { name: v.clone() }));
+        out
+    };
+    match &item.kind {
+        ast::ItemKind::Function(fd) => value(&fd.name, DeclKind::Function),
+        ast::ItemKind::Struct(sd) => ty(&sd.name, DeclKind::Struct),
+        ast::ItemKind::Enum(ed) => sum(&ed.name, ed.variants.iter().map(|v| &v.name).collect()),
+        ast::ItemKind::Trait(td) => ty(&td.name, DeclKind::Trait),
+        ast::ItemKind::Module(md) => value(&md.name, DeclKind::Module),
+        ast::ItemKind::TypeAlias(ta) => ty(&ta.name, DeclKind::TypeAlias),
+        ast::ItemKind::Const(cd) => value(&cd.name, DeclKind::Const),
+        ast::ItemKind::Effect(ed) => ty(&ed.name, DeclKind::Effect),
+        ast::ItemKind::Spec(sd) => ty(&sd.name, DeclKind::Spec),
+        ast::ItemKind::Static(sd) => value(&sd.name, DeclKind::Const),
+        ast::ItemKind::Agent(ad) => value(&ad.name, DeclKind::Agent),
+        ast::ItemKind::Swarm(s) => value(&s.name, DeclKind::Swarm),
+        ast::ItemKind::Net(n) => ty(&n.name, DeclKind::Net),
+        ast::ItemKind::Kb(k) => ty(&k.name, DeclKind::Kb),
+        ast::ItemKind::Evolve(e) => ty(&e.name, DeclKind::Evolve),
+        ast::ItemKind::Train(t) => value(&t.name, DeclKind::Train),
+        ast::ItemKind::Data(dd) => match &dd.kind {
+            ast::DataKind::Record(_) => ty(&dd.name, DeclKind::Struct),
+            ast::DataKind::Sum(variants) => sum(&dd.name, variants.iter().map(|v| &v.name).collect()),
+        },
+        // These introduce no single name.
+        ast::ItemKind::Extend(_) | ast::ItemKind::Impl(_) | ast::ItemKind::Use(_) => Vec::new(),
+    }
+}
+
+/// What one slice of resolution produced.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Partial {
+    pub diagnostics: Vec<Diagnostic>,
+    /// Symbols the slice allocated, so the parts add up to `Resolver::symbols.len()`.
+    pub symbols: usize,
+}
+
+impl Resolver {
+    /// A resolver stopped after pass one: builtins and `decls` defined.
+    fn with_env(decls: &[NameDecl]) -> Resolver {
+        let mut r = Resolver::new();
+        r.push_scope();
+        r.register_builtins();
+        r.apply_decls(decls);
+        r
+    }
+
+    fn since(&self, diags: usize, symbols: usize) -> Partial {
+        Partial {
+            diagnostics: self.diagnostics[diags..].to_vec(),
+            symbols: self.symbols.len() - symbols,
+        }
+    }
+}
+
+/// Pass one alone: the duplicate-definition diagnostics of the name list, and the
+/// symbols the builtins and the list allocate.
+pub fn resolve_names(decls: &[NameDecl]) -> Partial {
+    Resolver::with_env(decls).since(0, 0)
+}
+
+/// Pass one over the names of each top-level item (`per_item[i]` are item `i`'s
+/// declarations). The same diagnostics as [`resolve_names`] over the
+/// concatenation, plus, for each, the index of the item that caused it, so a
+/// driver can pin it to that item's line.
+pub fn resolve_names_by_item(per_item: &[Vec<NameDecl>]) -> (Partial, Vec<usize>) {
+    let mut r = Resolver::with_env(&[]);
+    let mut owners = Vec::new();
+    for (i, decls) in per_item.iter().enumerate() {
+        r.apply_decls(decls);
+        owners.resize(r.diagnostics.len(), i);
+    }
+    (r.since(0, 0), owners)
+}
+
+/// Pass two for one item, against `decls`. Spans are relative to the item's
+/// first line (0 on that line), so the answer does not change when the item
+/// moves; [`crate::hir::rebase`] with the item's start makes them absolute.
+pub fn resolve_item_in(decls: &[NameDecl], item: &ast::Item) -> Partial {
+    let mut r = Resolver::with_env(decls);
+    r.item_start = Some(0);
+    let (d, s) = (r.diagnostics.len(), r.symbols.len());
+    r.resolve_item(item);
+    r.stamp_item(d);
+    r.since(d, s)
+}
+
+/// Pass three: the contract clauses of `module`, against `decls`.
+pub fn resolve_contracts_in(decls: &[NameDecl], module: &ast::Module) -> Partial {
+    let mut r = Resolver::with_env(decls);
+    let (d, s) = (r.diagnostics.len(), r.symbols.len());
+    r.resolve_contract_clauses(module);
+    r.since(d, s)
 }
 
 // ── Public API ───────────────────────────────────────────────────────
