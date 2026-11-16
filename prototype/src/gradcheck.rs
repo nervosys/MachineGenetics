@@ -268,7 +268,7 @@ fn with_body(module: &ast::Module, name: &str, body: ast::Expr) -> ast::Module {
             fd.body_expr = None;
             fd.body = ast::Block {
                 stmts: Vec::new(),
-                tail_expr: Some(Box::new(body)),
+                tail_expr: Some(Box::new(body)), ..Default::default()
             };
             break;
         }

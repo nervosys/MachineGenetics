@@ -5263,7 +5263,7 @@ f s() { scaled(5) }";
         // Straight to the dispatch, with no arguments: no parse or argument
         // error can stand in front of the fallback arm, so only a name no arm
         // reaches fails this way.
-        let interp = Interp::new(&Module { items: Vec::new() });
+        let interp = Interp::new(&Module { items: Vec::new(), ..Default::default() });
         matches!(interp.call_builtin_inner(name, Vec::new()),
             Err(Control::Err(e)) if e.contains("unknown function"))
     }

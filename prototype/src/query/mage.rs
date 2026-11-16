@@ -178,6 +178,15 @@ fn sha_debug<T: std::fmt::Debug>(t: &T) -> Hash32 {
     digest(&[format!("{t:?}").as_bytes()])
 }
 
+/// `sha_debug` plus the node's (item-relative) source positions. `Debug` leaves
+/// positions out so tree comparisons ignore them, but an answer that carries
+/// them (the item a borrow check reads) must change when only they do: a blank
+/// line inside a function moves its statements, not its meaning.
+fn sha_debug_pos<T: std::fmt::Debug + Serialize>(t: &T) -> Hash32 {
+    let pos = ast::with_positions(|| serde_json::to_string(t).unwrap_or_default());
+    digest(&[format!("{t:?}").as_bytes(), pos.as_bytes()])
+}
+
 // ── Answers ──────────────────────────────────────────────────────────
 
 /// The settings that change what the stages produce.
@@ -475,7 +484,7 @@ impl Registry {
 }
 
 fn one(item: &ast::Item) -> ast::Module {
-    ast::Module { items: vec![item.clone()] }
+    ast::Module { items: vec![item.clone()], ..Default::default() }
 }
 
 fn pass_verify(item: &ast::Item) -> PassOut {
@@ -683,6 +692,8 @@ impl Domain for Mage {
             // `ModuleInfo` keeps its facts in hash maps, whose `Debug` order
             // differs from one map to the next: fingerprint a canonical form.
             Val::Summary(info) => summary_fingerprint(info),
+            Val::Item(it) => sha_debug_pos(&**it),
+            Val::Outcome(o) => sha_debug_pos(&**o),
             _ => sha_debug(val),
         }
     }
@@ -808,8 +819,19 @@ fn exec(db: &M, key: &Key) -> Result<Val, QueryError> {
             let st = settings(db)?;
             let parsed = fetch!(db, Key::Parsed(*f), Outcome);
             match (&parsed.module, st.elision) {
+                // Absolute item lines stay in `Parsed`: nothing below reads
+                // them but the borrow check's module step, which reads
+                // `Parsed` itself. Dropping them here is what keeps a line
+                // shift from reaching every query under `Elided`.
                 (Some(m), true) => {
-                    Val::Outcome(Arc::new(ParseOutcome { module: Some(elision::elide(m)), error: None }))
+                    let mut e = elision::elide(m);
+                    e.starts.clear();
+                    Val::Outcome(Arc::new(ParseOutcome { module: Some(e), error: None }))
+                }
+                (Some(m), false) => {
+                    let mut e = m.clone();
+                    e.starts.clear();
+                    Val::Outcome(Arc::new(ParseOutcome { module: Some(e), error: parsed.error.clone() }))
                 }
                 _ => Val::Outcome(parsed),
             }
@@ -823,7 +845,7 @@ fn exec(db: &M, key: &Key) -> Result<Val, QueryError> {
                     .zip(&m.items)
                     .map(|(id, it)| ItemInfo {
                         id,
-                        hash: hex(&sha_debug(it)),
+                        hash: hex(&sha_debug_pos(it)),
                         canon: match &it.kind {
                             ItemKind::Function(fd) => Some(canon::definition_hash(fd)),
                             _ => None,
@@ -911,9 +933,13 @@ fn exec(db: &M, key: &Key) -> Result<Val, QueryError> {
         }
         Key::Borrowck(f) => {
             let items = fetch!(db, Key::Items(*f), Items);
+            let parsed = fetch!(db, Key::Parsed(*f), Outcome);
+            let starts: &[u32] = parsed.module.as_ref().map_or(&[], |m| &m.starts);
             let mut diags = Vec::new();
-            for i in items.iter() {
-                diags.extend(fetch!(db, Key::BorrowItem(*f, i.id.clone()), Pass).diags.iter().cloned());
+            for (n, i) in items.iter().enumerate() {
+                let mut d = fetch!(db, Key::BorrowItem(*f, i.id.clone()), Pass).diags.clone();
+                borrowck::rebase(&mut d, starts.get(n).copied());
+                diags.extend(d);
             }
             Val::Pass(Arc::new(PassOut::diags(diags)))
         }
@@ -1107,7 +1133,11 @@ fn exec_report(db: &M, f: File) -> Result<Val, QueryError> {
     r.items = items.len();
     if st.elision {
         let parsed = fetch!(db, Key::Parsed(f), Outcome);
-        r.elision_changed = Some(sha_debug(&parsed.module) != sha_debug(&o.module));
+        let mut before = parsed.module.clone();
+        if let Some(m) = &mut before {
+            m.starts.clear();
+        }
+        r.elision_changed = Some(sha_debug_pos(&before) != sha_debug_pos(&o.module));
     }
     let count_errors = |ds: &[Diagnostic]| ds.iter().filter(|d| d.severity == Severity::Error).count();
 
@@ -1315,7 +1345,10 @@ fn addr(db: &M, key: &Key) -> Result<Option<Hash32>, QueryError> {
                 Val::Items(i) => i,
                 other => return Err(mismatch(key, &other)),
             };
-            let mut parts: Vec<Hash32> = vec![db.get_hash(&Key::Items(*f))?];
+            // The Parsed hash stands for the items' absolute start lines: they
+            // move when text above an item does, which the per-item answers
+            // (item-relative positions) deliberately do not see.
+            let mut parts: Vec<Hash32> = vec![db.get_hash(&Key::Items(*f))?, db.get_hash(&Key::Parsed(*f))?];
             for i in items.iter() {
                 parts.push(db.get_hash(&Key::BorrowItem(*f, i.id.clone()))?);
             }
@@ -1445,7 +1478,7 @@ fn encode_outcome(o: &ParseOutcome) -> Option<String> {
     if let Some(m) = &mut copy.module {
         kb_lines(&mut m.items, &mut |l| lines.push(*l));
     }
-    enc(&AstRecord { outcome: copy, kb_lines: lines })
+    ast::with_positions(|| enc(&AstRecord { outcome: copy, kb_lines: lines }))
 }
 
 fn decode_outcome(p: &str) -> Option<ParseOutcome> {

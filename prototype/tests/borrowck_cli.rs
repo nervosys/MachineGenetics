@@ -67,3 +67,37 @@ fn check_json_reports_a_borrow_conflict_as_e0502() {
     assert!(codes(bad).iter().any(|(c, m)| c == "E0502" && m.contains("cannot borrow `a` as mutable")), "{:?}", codes(bad));
     assert!(codes(good).iter().all(|(c, _)| c != "E0502"));
 }
+
+/// `(code, line, col)` of each record `--check --json` prints.
+fn positions(src: &str) -> Vec<(String, u64, u64)> {
+    let out = run(src, &["--json"]);
+    let value: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    value["diagnostics"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|d| (d["code"].as_str().unwrap().to_string(), d["line"].as_u64().unwrap(), d["col"].as_u64().unwrap()))
+        .collect()
+}
+
+#[test]
+fn check_json_gives_a_use_after_move_the_line_and_column_of_its_statement() {
+    // `a` is moved on line 2 and used again on line 4 (inside the `if`).
+    let src = "// header\nf dup(a: s, n: i32) -> s {\n    v b = a\n    ? n > 0 {\n        v c = a\n    }\n    b\n}\n";
+    assert_eq!(positions(src), vec![("E0382".to_string(), 5, 9)]);
+    // The same, with text added above: the position follows it.
+    assert_eq!(positions(&format!("\n\n{src}")), vec![("E0382".to_string(), 7, 9)]);
+}
+
+#[test]
+fn check_json_gives_a_borrow_conflict_the_line_of_the_conflicting_statement() {
+    let src = "f peek(x: &s) { }\nf host(a: s) {\n    v r = &a\n    v moved = a\n    peek(r)\n}\n";
+    assert_eq!(positions(src), vec![("E0502".to_string(), 4, 5)]);
+}
+
+#[test]
+fn the_human_check_prints_line_and_column() {
+    let out = run(MOVED, &[]);
+    let err = String::from_utf8_lossy(&out.stderr);
+    assert!(err.contains("[E0382] 3:5:error: use of moved value: `a`"), "{err}");
+}

@@ -1,9 +1,74 @@
 /// MAGE AST — Abstract Syntax Tree for the MAGE canonical syntax.
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// A source position, kept *relative to the top-level item that contains it*.
+///
+/// `line` is the offset from the first token of the enclosing top-level item
+/// (0 on that item's own first line) and `col` is the absolute 1-based column;
+/// `col == 0` means "no position" (a node built by hand, not parsed). Relative
+/// lines mean text moving above an item changes nothing inside it, so the
+/// per-item position digests the query engine fingerprints stay put. The absolute
+/// line of each top-level item is [`Module::starts`].
+///
+/// A position is not part of what a program *means*: equality is always true,
+/// hashing is a no-op, and serde omits it unless [`with_positions`] is active
+/// (the query engine's disk cache), so JSON output and canonical hashes are
+/// byte-identical to an AST without positions.
+#[derive(Clone, Copy, Default, Serialize, Deserialize)]
+pub struct Pos {
+    pub line: u32,
+    pub col: u32,
+}
+
+/// Constant: tools that compare trees by their `Debug` form (the healer's
+/// mutation checks, for one) must see a hand-built node and a parsed one as the
+/// same. Anything that *does* need positions in a fingerprint hashes
+/// [`with_positions`] JSON instead.
+impl std::fmt::Debug for Pos {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("Pos")
+    }
+}
+
+impl Pos {
+    pub fn is_set(&self) -> bool {
+        self.col != 0
+    }
+}
+
+impl PartialEq for Pos {
+    fn eq(&self, _: &Pos) -> bool {
+        true
+    }
+}
+impl Eq for Pos {}
+impl std::hash::Hash for Pos {
+    fn hash<H: std::hash::Hasher>(&self, _: &mut H) {}
+}
+
+thread_local! {
+    static SHOW_POSITIONS: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// Run `f` with positions included in serde output on this thread.
+pub fn with_positions<R>(f: impl FnOnce() -> R) -> R {
+    let prev = SHOW_POSITIONS.with(|c| c.replace(true));
+    let r = f();
+    SHOW_POSITIONS.with(|c| c.set(prev));
+    r
+}
+
+fn positions_hidden<T>(_: &T) -> bool {
+    !SHOW_POSITIONS.with(|c| c.get())
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Module {
     pub items: Vec<Item>,
+    /// Absolute 1-based line of the first token of each top-level item, in
+    /// `items` order (empty for a module not built by the parser).
+    #[serde(default, skip_serializing_if = "positions_hidden")]
+    pub starts: Vec<u32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -204,10 +269,20 @@ impl Type {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Block {
     pub stmts: Vec<Stmt>,
     pub tail_expr: Option<Box<Expr>>,
+    /// Where the block starts (for a function body: the `f` keyword).
+    #[serde(default, skip_serializing_if = "positions_hidden")]
+    pub pos: Pos,
+    /// Where each of `stmts` starts, by index (may be shorter than `stmts` for
+    /// a block built by hand).
+    #[serde(default, skip_serializing_if = "positions_hidden")]
+    pub stmt_pos: Vec<Pos>,
+    /// Where `tail_expr` starts.
+    #[serde(default, skip_serializing_if = "positions_hidden")]
+    pub tail_pos: Pos,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

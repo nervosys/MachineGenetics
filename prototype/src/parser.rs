@@ -181,11 +181,20 @@ struct Parser<'a> {
     pos: usize,
     /// `block` macros seen so far, by name (resolved at their use site).
     blocks: HashMap<String, BlockDef>,
+    /// Line of the first token of the top-level item being parsed: positions
+    /// recorded in the AST are relative to it (see `ast::Pos`).
+    base_line: usize,
 }
 
 impl<'a> Parser<'a> {
     fn new(tokens: &'a [Token]) -> Self {
-        Self { tokens, pos: 0, blocks: HashMap::new() }
+        Self { tokens, pos: 0, blocks: HashMap::new(), base_line: 0 }
+    }
+
+    /// The current token's position, relative to the enclosing top-level item.
+    fn pos_here(&self) -> crate::ast::Pos {
+        let s = &self.current().span;
+        crate::ast::Pos { line: s.line.saturating_sub(self.base_line) as u32, col: s.col as u32 }
     }
 
     fn peek(&self) -> TokenKind {
@@ -404,6 +413,7 @@ impl<'a> Parser<'a> {
 
     fn parse_module_body(&mut self) -> Result<Module, ParseError> {
         let mut items = Vec::new();
+        let mut starts = Vec::new();
         while self.peek() != TokenKind::Eof {
             // `block Name(params) { layer …; }` — a macro for the architecture
             // DSL. Recorded for expansion at use sites; emits no module item.
@@ -415,9 +425,12 @@ impl<'a> Parser<'a> {
                 self.parse_block_def()?;
                 continue;
             }
+            self.base_line = self.current().span.line;
+            starts.push(self.base_line as u32);
             items.push(self.parse_item()?);
         }
-        Ok(Module { items })
+        self.base_line = 0;
+        Ok(Module { items, starts })
     }
 
     /// Parse and record a `block Name(p1, p2) { layer …; }` macro.
@@ -727,6 +740,7 @@ impl<'a> Parser<'a> {
         contracts: Vec<ContractClause>,
     ) -> Result<FunctionDef, ParseError> {
         // Consume the function keyword (f, af, or uf)
+        let fn_pos = self.pos_here();
         self.advance();
         let name = self.expect_ident()?;
 
@@ -828,10 +842,7 @@ impl<'a> Parser<'a> {
                 where_clause,
                 effects: effects.clone(),
                 contracts,
-                body: Block {
-                    stmts: Vec::new(),
-                    tail_expr: None,
-                },
+                body: Block { pos: fn_pos, ..Block::default() },
                 body_expr: Some(Box::new(expr)),
             });
         }
@@ -843,12 +854,11 @@ impl<'a> Parser<'a> {
         // implemented" rather than failing the parse.
         let body = if self.peek() == TokenKind::Semi {
             self.advance();
-            crate::ast::Block {
-                stmts: Vec::new(),
-                tail_expr: None,
-            }
+            crate::ast::Block { pos: fn_pos, ..Default::default() }
         } else {
-            self.parse_block()?
+            let mut b = self.parse_block()?;
+            b.pos = fn_pos;
+            b
         };
 
         Ok(FunctionDef {
@@ -1890,7 +1900,7 @@ impl<'a> Parser<'a> {
 
         let forward = forward.unwrap_or(Block {
             stmts: Vec::new(),
-            tail_expr: None,
+            tail_expr: None, ..Default::default()
         });
         Ok(NetDef {
             contracts: Vec::new(),
@@ -2178,7 +2188,7 @@ impl<'a> Parser<'a> {
 
         let fitness = fitness.unwrap_or(Block {
             stmts: Vec::new(),
-            tail_expr: None,
+            tail_expr: None, ..Default::default()
         });
         Ok(EvolveDef {
             name,
@@ -2428,7 +2438,7 @@ impl<'a> Parser<'a> {
 
         let body = body.unwrap_or(Block {
             stmts: Vec::new(),
-            tail_expr: None,
+            tail_expr: None, ..Default::default()
         });
         Ok(TrainDef {
             contracts: Vec::new(),
@@ -3380,9 +3390,13 @@ impl<'a> Parser<'a> {
 
     fn parse_block_body_body(&mut self, layout_col: Option<usize>) -> Result<Block, ParseError> {
         let mut stmts = Vec::new();
+        let mut stmt_pos = Vec::new();
         let mut tail_expr = None;
+        let mut tail_pos = crate::ast::Pos::default();
+        let pos = self.pos_here();
 
         while self.peek() != TokenKind::Eof && !self.at_block_end(layout_col) {
+            let sp = self.pos_here();
             // Try to parse a statement
             match self.peek() {
                 // `let` was removed from MAGE — bindings use `val`
@@ -3440,15 +3454,19 @@ impl<'a> Parser<'a> {
                         stmts.push(Stmt::Expr { expr });
                     } else if self.at_block_end(layout_col) {
                         tail_expr = Some(Box::new(expr));
+                        tail_pos = sp;
                         break;
                     } else {
                         stmts.push(Stmt::Expr { expr });
                     }
                 }
             }
+            while stmt_pos.len() < stmts.len() {
+                stmt_pos.push(sp);
+            }
         }
 
-        Ok(Block { stmts, tail_expr })
+        Ok(Block { stmts, tail_expr, pos, stmt_pos, tail_pos })
     }
 
     /// Peek inside a leading `{ ... }` to decide whether it's a map
@@ -4463,7 +4481,7 @@ impl<'a> Parser<'a> {
                             let nested_if = self.parse_prefix_expr()?;
                             Some(crate::ast::Block {
                                 stmts: Vec::new(),
-                                tail_expr: Some(Box::new(nested_if)),
+                                tail_expr: Some(Box::new(nested_if)), ..Default::default()
                             })
                         } else {
                             Some(self.parse_block()?)

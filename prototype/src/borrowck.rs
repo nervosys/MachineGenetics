@@ -57,8 +57,11 @@
 //!
 //! # Explicit limits
 //!
-//! * Spans: the AST has none, so diagnostics carry the function and variable
-//!   in the message and `span: None`.
+//! * Spans: a diagnostic points at the start of the statement where the bad
+//!   use or conflicting borrow occurs (the function's start for a diagnostic
+//!   outside any statement, e.g. a tail expression). There are no expression
+//!   spans, so two uses in one statement share a position. A node built by
+//!   hand rather than parsed has no position and gives `span: None`.
 //! * Only whole locals are moved. Partial moves (`x.f` moved out) are not
 //!   tracked; `x` stays usable.
 //! * Loans are created only by `let r = &place` (and copied by `let r2 = r`).
@@ -449,8 +452,25 @@ pub fn check_module(m: &Module) -> Vec<Diagnostic> {
 pub fn check_module_with(m: &Module, policy: Policy) -> Vec<Diagnostic> {
     let info = ModuleInfo::with_policy(m, policy);
     let mut out = Vec::new();
-    walk_items(&m.items, "", &info, &mut out);
+    for (i, item) in m.items.iter().enumerate() {
+        let mut d = check_item(&info, item);
+        rebase(&mut d, m.starts.get(i).copied());
+        out.extend(d);
+    }
     out
+}
+
+/// Turn the item-relative positions [`check_item`] reports into absolute ones:
+/// `start` is the 1-based line of the item's first token ([`Module::starts`]).
+/// With no `start` the positions are dropped rather than left meaning
+/// something else.
+pub fn rebase(diags: &mut [Diagnostic], start: Option<u32>) {
+    for d in diags {
+        d.span = match (d.span, start) {
+            (Some(s), Some(base)) => Some(crate::hir::Span { line: base + s.line, col: s.col }),
+            _ => None,
+        };
+    }
 }
 
 fn walk_items(items: &[Item], prefix: &str, info: &ModuleInfo, out: &mut Vec<Diagnostic>) {
@@ -481,8 +501,13 @@ fn walk_items(items: &[Item], prefix: &str, info: &ModuleInfo, out: &mut Vec<Dia
 
 /// Check one top-level item (a function, or an impl/extend/trait/module and
 /// every function inside it) against a module summary. Concatenating this over
-/// `m.items` in order gives exactly [`check_module_with`]'s output, so an
-/// incremental driver can re-check only the items that changed.
+/// `m.items` in order and applying [`rebase`] with each item's start gives
+/// exactly [`check_module_with`]'s output, so an incremental driver can
+/// re-check only the items that changed.
+///
+/// Diagnostic spans are *relative to the item*: `line` is the offset from the
+/// item's first line. That makes the answer a pure function of the item's text
+/// (moving the item changes nothing), which is what early cutoff needs.
 pub fn check_item(info: &ModuleInfo, item: &Item) -> Vec<Diagnostic> {
     let mut out = Vec::new();
     walk_items(std::slice::from_ref(item), "", info, &mut out);
@@ -518,6 +543,7 @@ fn analyse(info: &ModuleInfo, qualified_name: &str, f: &FunctionDef) -> (Vec<Dia
         scopes: Vec::new(),
         nested: Vec::new(),
         moved_params: BTreeSet::new(),
+        cur: f.body.pos,
     };
     let mut st = State { reachable: true, vars: BTreeMap::new(), loans: BTreeSet::new() };
     fcx.push_scope();
@@ -939,6 +965,9 @@ struct Fcx<'a> {
     nested: Vec<(&'a str, &'a FunctionDef)>,
     /// Parameters moved at some point (read by `infer_consumption`).
     moved_params: BTreeSet<String>,
+    /// Start of the statement being executed (the function's start outside any
+    /// statement). Relative to the top-level item: see [`rebase`].
+    cur: crate::ast::Pos,
 }
 
 #[derive(Clone, Copy)]
@@ -964,7 +993,7 @@ impl<'a> Fcx<'a> {
             self.diags.push(Diagnostic {
                 severity: Severity::Error,
                 message,
-                span: None,
+                span: self.cur.is_set().then_some(crate::hir::Span { line: self.cur.line, col: self.cur.col }),
                 id: Some(cat.code().to_string()),
                 category: Some(cat),
             });
@@ -1014,6 +1043,10 @@ impl<'a> Fcx<'a> {
             if !st.reachable {
                 break;
             }
+            let outer = self.cur;
+            if let Some(p) = b.stmt_pos.get(i).filter(|p| p.is_set()) {
+                self.cur = *p;
+            }
             match s {
                 Stmt::Let { mutable: _, pattern, ty, value } => {
                     self.exec_let(b, i, pattern, ty.as_ref(), value, st)
@@ -1032,10 +1065,16 @@ impl<'a> Fcx<'a> {
                     }
                 }
             }
+            self.cur = outer;
         }
         if st.reachable {
             if let Some(t) = &b.tail_expr {
+                let outer = self.cur;
+                if b.tail_pos.is_set() {
+                    self.cur = b.tail_pos;
+                }
                 self.eval(t, st, tail);
+                self.cur = outer;
             }
         }
         self.pop_scope(st);
@@ -1975,6 +2014,46 @@ mod tests {
     fn methods_are_checked_under_their_type() {
         let src = "data P(x: s)\nextend P {\n f eat(self, y: s) { }\n f twice(self, a: s) {\n  self.eat(a)\n  self.eat(a)\n }\n}\n";
         flags(src, "E0382", "fn `P.twice`");
+    }
+
+    fn line_cols(src: &str, code: &str) -> Vec<(u32, u32)> {
+        run(src).iter().filter(|d| d.id.as_deref() == Some(code)).map(|d| d.span.map(|s| (s.line, s.col)).expect("a span")).collect()
+    }
+
+    #[test]
+    fn a_use_after_move_points_at_the_statement_that_uses_it() {
+        // PRELUDE is lines 1-4, `f host` is line 5, the body starts on line 6.
+        let src = with("take(a)\nv k = 1\n  take(a)");
+        assert_eq!(line_cols(&src, "E0382"), vec![(8, 3)], "{src}");
+        // A statement in the middle (not the tail).
+        let src = with("take(a)\nv k = 1\n  take(a);\nv j = 2");
+        assert_eq!(line_cols(&src, "E0382"), vec![(8, 3)], "{src}");
+    }
+
+    #[test]
+    fn a_borrow_conflict_points_at_the_conflicting_statement() {
+        let src = with("v r = &a\nv k = 1\n  take(a)\npeek(r)");
+        assert_eq!(line_cols(&src, "E0502"), vec![(8, 3)], "{src}");
+    }
+
+    #[test]
+    fn a_nested_statement_is_located_inside_its_own_block() {
+        let src = with("take(a)\nif n > 0 {\n    v z = 1\n      take(a)\n}");
+        assert_eq!(line_cols(&src, "E0382"), vec![(9, 7)], "{src}");
+    }
+
+    #[test]
+    fn check_item_is_item_relative_and_rebase_makes_it_absolute() {
+        let src = with("take(a)\ntake(a);\nv j = 2");
+        let module = parser::parse(&lexer::lex(&src)).unwrap();
+        let info = ModuleInfo::with_policy(&module, Policy::STRICT);
+        let host = module.items.last().unwrap();
+        let mut d = check_item(&info, host);
+        assert_eq!(d[0].span.map(|s| (s.line, s.col)), Some((2, 1)), "offset from the `f host` line");
+        rebase(&mut d, module.starts.last().copied());
+        assert_eq!(d[0].span.map(|s| (s.line, s.col)), Some((7, 1)));
+        rebase(&mut d, None);
+        assert!(d[0].span.is_none());
     }
 
     #[test]
