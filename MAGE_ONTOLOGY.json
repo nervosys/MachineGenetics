@@ -4,7 +4,7 @@
     "ast_kinds": 20,
     "bench_backends": 4,
     "ci_floors": 6,
-    "cli_flags": 48,
+    "cli_flags": 50,
     "docs": 7,
     "effects": 24,
     "examples": 10,
@@ -218,6 +218,16 @@
       {
         "flag": "--count-tokens",
         "purpose": "Print the MAGE lexer token count of a file (the arena's description-length unit)",
+        "takes_path": true
+      },
+      {
+        "flag": "--bpe-count",
+        "purpose": "Print the byte-level BPE token count of files (default: the shipped MAGE vocabulary)",
+        "takes_path": true
+      },
+      {
+        "flag": "--bpe-train",
+        "purpose": "Train a byte-level BPE vocabulary on files and write it in tiktoken format",
         "takes_path": true
       },
       {

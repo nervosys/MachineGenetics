@@ -521,6 +521,18 @@ fn main() {
             // counts both printed surfaces with it, so the number is the same.
             println!("{}", lexer::lex(&read_source(path)).len());
         }
+        // Real byte-level BPE token counts and training (`bpe.rs`). The flags
+        // after the mode (`--vocab`, `--vocab-size`, `--out`) are parsed there.
+        Some(mode @ ("--bpe-count" | "--bpe-train")) => {
+            let after = args.iter().position(|a| a == mode).map_or(0, |i| i + 1);
+            match bpe::run_cli(mode, &args[after..]) {
+                Ok(out) => println!("{out}"),
+                Err(e) => {
+                    eprintln!("{e}");
+                    std::process::exit(1);
+                }
+            }
+        }
         Some("--check") => {
             let path = filtered.get(1).unwrap_or_else(|| {
                 eprintln!("Usage: mage-parse --check <file> [--no-elision] [--token-report]");
@@ -3882,7 +3894,8 @@ mod cli_arg_tests {
                     || matches!(f, "--check" | "--eval" | "--pipeline" | "--rap" | "--differentiable"
                                 | "--gradcheck" | "--solve" | "--heal"
                                 | "--fmt-compact" | "--fmt-expand" | "--count-tokens" | "--emit-ontology" | "--emit-skb"
-                                | "--manifest" | "--rain" | "--version" | "--input") =>
+                                | "--manifest" | "--rain" | "--version" | "--input"
+                                | "--bpe-count" | "--bpe-train") =>
                 {
                     continue
                 }
