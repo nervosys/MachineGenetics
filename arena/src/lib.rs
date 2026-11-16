@@ -21,15 +21,20 @@
 //! * the **trusted kernel** ([`kernel`]) is what the loop cannot vary: it owns
 //!   held-out data, and moving authority takes the gate's approval;
 //! * **selection** is Pareto where it decides a promotion or a parent, and
-//!   scalar where it decides what the arena keeps. Pareto: promotion under
+//!   scalar where it decides what the arena keeps, and the program pool's two
+//!   choices are opt-in Pareto. Always Pareto: promotion under
 //!   `arena succession --objectives` (`germline::gate`'s dominance rule over
 //!   capability, efficiency and latency); parent choice under the Pareto
 //!   selection mode (`germline::variation::Selection::Pareto`); and the reported
 //!   learners' front and hypervolume credit (`germline::pareto`, in
-//!   [`arena`]). Scalar, by reward: program retention in the pool
-//!   (`agents::Pool::add_with`), the mutator's and attacker's elite
-//!   (`agents::Pool::top`, called from `MutatorAgent` and `AttackerAgent`), and
-//!   the prompt examples the command proposer is shown (`command`). A weighted
+//!   [`arena`]). Pareto under `--retain pareto`: which program the pool evicts,
+//!   by non-domination over (reward ↑, cost ↓) (`agents::Pool::add_costed`).
+//!   Pareto under `--parents pareto`: the parents the mutator and attacker draw,
+//!   from the first fronts in crowding order (`agents::Pool::parents`).
+//!   Scalar by default, by reward: program retention (`agents::Pool::add_with`,
+//!   through the retention program), and the mutator's and attacker's elite
+//!   (`agents::Pool::top`) under `--parents reward`. The prompt examples the
+//!   command proposer is shown (`command`) are scalar in every mode. A weighted
 //!   sum cannot see a non-convex front, which is why promotion and the reported
 //!   front are not scalar.
 //!

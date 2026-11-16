@@ -101,8 +101,51 @@ pub struct PoolEntry {
     pub program: Program,
     pub bytes: Vec<u8>,
     pub reward: f64,
+    /// The cost the program was charged, in the run's cost unit (lower is
+    /// better). Recorded by [`Pool::add_costed`]; [`Pool::add_with`] stores
+    /// `0.0`, which only [`Retain::Pareto`] would read.
+    #[serde(default)]
+    pub cost: f64,
     pub agent: String,
     pub round: usize,
+}
+
+/// How the pool chooses what to evict when it is over capacity (`--retain`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Retain {
+    /// The lowest reward goes, through the replaceable retention priority
+    /// (`harness/retention.mg` unless a program is supplied).
+    #[default]
+    Reward,
+    /// Non-domination over (reward ↑, cost ↓): the last front goes first, and
+    /// within a front the lowest crowding distance. The retention priority is
+    /// not consulted, so a retention program with this is a usage error.
+    Pareto,
+}
+
+/// How a mutator or attacker chooses its parents from the pool (`--parents`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Parents {
+    /// The `k` highest-reward entries ([`Pool::top`]).
+    #[default]
+    Reward,
+    /// The `k` entries of the first Pareto front on (reward ↑, cost ↓), then
+    /// of later fronts, each front taken in crowding-distance order
+    /// ([`Pool::parents`]).
+    Pareto,
+}
+
+/// A crowding distance as an ordering key. An undefined one (NaN, from a NaN
+/// objective) ranks as the least isolated, so it is kept last and evicted
+/// first; an infinite one, the front's extremes, ranks highest.
+fn spread(d: f64) -> f64 {
+    if d.is_nan() {
+        f64::NEG_INFINITY
+    } else {
+        d
+    }
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -141,28 +184,101 @@ impl Pool {
         current_round: usize,
         priority: &dyn Fn(f64, f64) -> Result<f64, String>,
     ) -> Result<u64, String> {
+        self.add_costed(program, bytes, reward, 0.0, agent, round, current_round, Retain::Reward, priority)
+    }
+
+    /// [`Pool::add_with`], recording the entry's `cost` and choosing the
+    /// eviction by `retain`. Under [`Retain::Pareto`] the priority is not
+    /// called and the victim is the loser of the front ranking (see
+    /// [`Pool::pareto_victim`]); under [`Retain::Reward`] it is exactly
+    /// `add_with`.
+    #[allow(clippy::too_many_arguments)]
+    pub fn add_costed(
+        &mut self,
+        program: Program,
+        bytes: Vec<u8>,
+        reward: f64,
+        cost: f64,
+        agent: &str,
+        round: usize,
+        current_round: usize,
+        retain: Retain,
+        priority: &dyn Fn(f64, f64) -> Result<f64, String>,
+    ) -> Result<u64, String> {
         let id = self.next_id;
         self.next_id += 1;
-        self.entries.push(PoolEntry { id, program, bytes, reward, agent: agent.to_string(), round });
+        self.entries.push(PoolEntry { id, program, bytes, reward, cost, agent: agent.to_string(), round });
         if self.entries.len() > self.capacity {
-            // Evict the lowest-priority entry, oldest first among ties: replay
-            // should keep what taught the most, not merely what is recent.
-            let mut priorities = Vec::with_capacity(self.entries.len());
-            for e in &self.entries {
-                let age = current_round as f64 - e.round as f64;
-                priorities.push(priority(e.reward, age)?);
-            }
-            let worst = self
-                .entries
-                .iter()
-                .zip(&priorities)
-                .enumerate()
-                .min_by(|(_, (x, px)), (_, (y, py))| px.total_cmp(py).then(x.id.cmp(&y.id)))
-                .map(|(i, _)| i)
-                .expect("non-empty");
+            let worst = match retain {
+                Retain::Pareto => self.pareto_victim(),
+                Retain::Reward => {
+                    // Evict the lowest-priority entry, oldest first among ties:
+                    // replay should keep what taught the most, not merely what
+                    // is recent.
+                    let mut priorities = Vec::with_capacity(self.entries.len());
+                    for e in &self.entries {
+                        let age = current_round as f64 - e.round as f64;
+                        priorities.push(priority(e.reward, age)?);
+                    }
+                    self.entries
+                        .iter()
+                        .zip(&priorities)
+                        .enumerate()
+                        .min_by(|(_, (x, px)), (_, (y, py))| px.total_cmp(py).then(x.id.cmp(&y.id)))
+                        .map(|(i, _)| i)
+                        .expect("non-empty")
+                }
+            };
             self.entries.remove(worst);
         }
         Ok(id)
+    }
+
+    /// The entry Pareto retention evicts: from the last non-domination front,
+    /// the one with the lowest crowding distance, so the front's extremes and
+    /// its spread survive. A tie goes to the older entry (the lower id), as
+    /// under reward retention. Built on [`germline::pareto::rank_and_crowding`],
+    /// so a NaN cost is incomparable: it sits in front 0 with no neighbours.
+    /// Exactly one entry is named, so the pool is one over capacity at most.
+    fn pareto_victim(&self) -> usize {
+        let points: Vec<Vec<f64>> = self.entries.iter().map(|e| vec![e.reward, e.cost]).collect();
+        let ranked = germline::pareto::rank_and_crowding(&points, &PROGRAM_SENSES);
+        // Worse: a later front, or the same front and less spread. Ties keep
+        // the earlier index, which is the older entry.
+        let worse = |x: usize, y: usize| {
+            ranked[x].0 > ranked[y].0 || (ranked[x].0 == ranked[y].0 && spread(ranked[x].1) < spread(ranked[y].1))
+        };
+        (1..self.entries.len()).fold(0, |v, i| if worse(i, v) { i } else { v })
+    }
+
+    /// Up to `k` parents by Pareto rank and crowding, per [`Parents::Pareto`].
+    /// Deterministic: the order is a function of the pool alone, so the RNG is
+    /// drawn only by the caller's choice among what is returned.
+    pub fn parents(&self, k: usize, how: Parents) -> Vec<&PoolEntry> {
+        match how {
+            Parents::Reward => self.top(k),
+            Parents::Pareto => {
+                let points: Vec<Vec<f64>> = self.entries.iter().map(|e| vec![e.reward, e.cost]).collect();
+                let mut out: Vec<&PoolEntry> = Vec::with_capacity(k);
+                for front in germline::pareto::fronts(&points, &PROGRAM_SENSES) {
+                    if out.len() == k {
+                        break;
+                    }
+                    let dist = germline::pareto::crowding(&points, &front);
+                    let mut order: Vec<(usize, f64)> = front.iter().copied().zip(dist).collect();
+                    order.sort_by(|a, b| {
+                        spread(b.1).total_cmp(&spread(a.1)).then(self.entries[a.0].id.cmp(&self.entries[b.0].id))
+                    });
+                    for (i, _) in order {
+                        if out.len() == k {
+                            break;
+                        }
+                        out.push(&self.entries[i]);
+                    }
+                }
+                out
+            }
+        }
     }
 
     /// The `k` highest-reward entries.
@@ -398,6 +514,8 @@ pub struct MutatorAgent {
     pub elite: usize,
     /// Whether grafts are sampled at the depth they replace (plan F1).
     pub bound_grafts: bool,
+    /// How the parents are drawn from the pool (`--parents`).
+    pub parents: Parents,
     policy: Policy,
     /// Variants made by mutation or crossover, and how many exceed max_depth.
     grafts: usize,
@@ -420,6 +538,7 @@ impl MutatorAgent {
             id: id.into(),
             elite: 16,
             bound_grafts,
+            parents: Parents::Reward,
             policy: Policy::with_second_order(second_order),
             grafts: 0,
             over_depth: 0,
@@ -441,7 +560,7 @@ impl Proposer for MutatorAgent {
     }
 
     fn propose(&mut self, n: usize, pool: &Pool, rng: &mut Rng) -> Vec<Candidate> {
-        let elite = pool.top(self.elite);
+        let elite = pool.parents(self.elite, self.parents);
         (0..n)
             .map(|_| {
                 if elite.is_empty() {
@@ -478,11 +597,13 @@ pub struct AttackerAgent {
     pub id: String,
     /// How many of the pool's best entries to draw parents from.
     pub elite: usize,
+    /// How the parents are drawn from the pool (`--parents`).
+    pub parents: Parents,
 }
 
 impl AttackerAgent {
     pub fn new(id: impl Into<String>) -> Self {
-        AttackerAgent { id: id.into(), elite: 16 }
+        AttackerAgent { id: id.into(), elite: 16, parents: Parents::Reward }
     }
 }
 
@@ -519,7 +640,7 @@ impl Proposer for AttackerAgent {
 
     fn propose(&mut self, n: usize, pool: &Pool, rng: &mut Rng) -> Vec<Candidate> {
         // Nothing to attack until the pool holds something.
-        let elite = pool.top(self.elite);
+        let elite = pool.parents(self.elite, self.parents);
         if elite.is_empty() {
             return Vec::new();
         }
@@ -646,6 +767,123 @@ mod tests {
         let mut m = MutatorAgent::new("m");
         let c = m.propose(4, &pool, &mut rng);
         assert!(c.iter().all(|c| c.parents.contains(&id)));
+    }
+
+    fn prog() -> Program {
+        Program { body: crate::grammar::ListExpr::Range(1) }
+    }
+
+    /// A pool of `(reward, cost)` points, named `e0`, `e1`, … in order, with
+    /// Pareto retention at `cap`.
+    fn pareto_pool(cap: usize, points: &[(f64, f64)]) -> Pool {
+        let mut pool = Pool::new(cap);
+        for (i, (r, c)) in points.iter().enumerate() {
+            pool.add_costed(prog(), vec![0], *r, *c, &format!("e{i}"), 0, 0, Retain::Pareto, &|r, _| Ok(r))
+                .expect("the pareto eviction cannot fail");
+        }
+        pool
+    }
+
+    fn names(pool: &Pool) -> Vec<String> {
+        pool.entries.iter().map(|e| e.agent.clone()).collect()
+    }
+
+    #[test]
+    fn pareto_retention_evicts_the_dominated_entry_not_the_scalar_lowest() {
+        // e0 has the lowest reward and is the cheapest, so it is on front 0.
+        // e2 is dominated by e1 (more reward, less cost), so it is on the last
+        // front and goes. Reward retention would drop e0 instead.
+        let points = [(1.0, 1.0), (3.0, 2.0), (1.5, 6.0)];
+        let pareto = pareto_pool(2, &points);
+        assert_eq!(names(&pareto), vec!["e0", "e1"], "the dominated e2 is evicted");
+        let mut by_reward = Pool::new(2);
+        for (i, (r, c)) in points.iter().enumerate() {
+            by_reward.add_costed(prog(), vec![0], *r, *c, &format!("e{i}"), 0, 0, Retain::Reward, &|r, _| Ok(r)).unwrap();
+        }
+        assert_eq!(names(&by_reward), vec!["e1", "e2"], "reward retention drops the lowest reward instead");
+    }
+
+    #[test]
+    fn pareto_retention_keeps_a_front_member_with_the_lowest_reward() {
+        // low is the least rewarding, and it is the cheapest, so it is an
+        // extreme of front 0. mid is inside the front and is the one dropped.
+        let pool = pareto_pool(2, &[(0.1, 0.1), (3.0, 3.0), (5.0, 5.0)]);
+        assert_eq!(names(&pool), vec!["e0", "e2"]);
+    }
+
+    #[test]
+    fn pareto_retention_evicts_exactly_one_of_identical_entries() {
+        let pool = pareto_pool(2, &[(1.0, 1.0), (1.0, 1.0), (1.0, 1.0)]);
+        assert_eq!(pool.entries.len(), 2, "one eviction, not zero and not two");
+    }
+
+    #[test]
+    fn pareto_retention_keeps_capacity_with_a_nan_cost() {
+        // A NaN cost is incomparable: it dominates nothing and nothing
+        // dominates it, so it sits on front 0. The pool still holds its cap.
+        let mut pool = Pool::new(3);
+        for i in 0..50 {
+            let cost = if i % 4 == 0 { f64::NAN } else { (i % 7) as f64 };
+            pool.add_costed(prog(), vec![0], (i % 5) as f64, cost, &format!("e{i}"), 0, 0, Retain::Pareto, &|r, _| Ok(r))
+                .unwrap();
+            assert!(pool.entries.len() <= 3, "over capacity after {i} adds");
+        }
+        let points: Vec<Vec<f64>> = pool.entries.iter().map(|e| vec![e.reward, e.cost]).collect();
+        let ranked = germline::pareto::rank_and_crowding(&points, &PROGRAM_SENSES);
+        for (e, (rank, _)) in pool.entries.iter().zip(&ranked) {
+            if e.cost.is_nan() {
+                assert_eq!(*rank, 0, "a NaN cost is incomparable, so it is on front 0");
+            }
+        }
+    }
+
+    #[test]
+    fn parents_by_pareto_take_a_cheap_moderate_front_member_that_top_k_skips() {
+        // hi and mid_hi are both on front 0, and so is lowcost (cheapest). By
+        // reward the top two are hi and mid_hi. By front and crowding, the
+        // extremes come first, so lowcost is a parent and mid_hi is not.
+        let mut pool = Pool::new(8);
+        for (name, r, c) in [("hi", 10.0, 100.0), ("mid_hi", 9.0, 90.0), ("lowcost", 5.0, 1.0)] {
+            pool.add_costed(prog(), vec![0], r, c, name, 0, 0, Retain::Pareto, &|r, _| Ok(r)).unwrap();
+        }
+        let by_reward: Vec<&str> = pool.top(2).iter().map(|e| e.agent.as_str()).collect();
+        assert_eq!(by_reward, vec!["hi", "mid_hi"]);
+        let by_pareto: Vec<&str> = pool.parents(2, Parents::Pareto).iter().map(|e| e.agent.as_str()).collect();
+        assert_eq!(by_pareto, vec!["hi", "lowcost"]);
+    }
+
+    #[test]
+    fn parents_by_pareto_spill_into_the_next_front_when_k_exceeds_the_first() {
+        // a dominates d, and d dominates b, so the fronts are {a}, {d}, {b}.
+        let mut pool = Pool::new(8);
+        for (name, r, c) in [("a", 10.0, 1.0), ("b", 1.0, 10.0), ("d", 5.0, 5.0)] {
+            pool.add_costed(prog(), vec![0], r, c, name, 0, 0, Retain::Pareto, &|r, _| Ok(r)).unwrap();
+        }
+        let two: Vec<&str> = pool.parents(2, Parents::Pareto).iter().map(|e| e.agent.as_str()).collect();
+        assert_eq!(two, vec!["a", "d"], "k past front 0 takes front 1");
+        let all: Vec<&str> = pool.parents(10, Parents::Pareto).iter().map(|e| e.agent.as_str()).collect();
+        assert_eq!(all, vec!["a", "d", "b"], "and then front 2");
+    }
+
+    #[test]
+    fn parents_by_pareto_are_deterministic_under_the_seed() {
+        let mut pool = Pool::new(64);
+        let mut rng = Rng(9);
+        for i in 0..40 {
+            let (p, _) = Policy::default().sample(&mut rng);
+            let r = rng.next_f64();
+            let c = rng.next_f64() * 10.0;
+            pool.add_costed(p, vec![0], r, c, &format!("e{i}"), 0, 0, Retain::Pareto, &|r, _| Ok(r)).unwrap();
+        }
+        let ids = |k| -> Vec<u64> { pool.parents(k, Parents::Pareto).iter().map(|e| e.id).collect() };
+        assert_eq!(ids(8), ids(8), "the same pool gives the same parents");
+        let run = |seed: u64| {
+            let mut m = MutatorAgent::new("m");
+            m.parents = Parents::Pareto;
+            let mut rng = Rng(seed);
+            m.propose(12, &pool, &mut rng).into_iter().map(|c| c.parents).collect::<Vec<_>>()
+        };
+        assert_eq!(run(4), run(4), "the same seed gives the same parents");
     }
 
     /// F1, the source of a bounded run's over-depth parents: an attacker

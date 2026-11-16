@@ -32,8 +32,8 @@
 //! each meter's [`crate::energy::Basis`] beside it.
 
 use crate::agents::{
-    marginal_hypervolume, non_dominated, AttackerAgent, Candidate, GrammarAgent, MutatorAgent, Pool,
-    Proposer, Role, Scored, UniformAgent,
+    marginal_hypervolume, non_dominated, AttackerAgent, Candidate, GrammarAgent, MutatorAgent, Parents, Pool,
+    Proposer, Retain, Role, Scored, UniformAgent,
 };
 use crate::command::{CommandAgent, CommandBackend};
 use std::time::Duration;
@@ -100,6 +100,17 @@ pub struct Config {
     /// evicts by; `None` is the shipped `harness/retention.mg` (plan 5.2).
     #[serde(default)]
     pub retention_program: Option<String>,
+    /// How the pool evicts when over capacity (`--retain`). `Reward`, the
+    /// default, is the retention priority above; `Pareto` evicts by
+    /// non-domination over (reward ↑, cost ↓) and is refused together with a
+    /// retention program.
+    #[serde(default)]
+    pub retain: Retain,
+    /// How mutators and attackers draw parents from the pool (`--parents`).
+    /// `Reward` is the top-k by reward; `Pareto` takes the first fronts in
+    /// crowding order.
+    #[serde(default)]
+    pub parents: Parents,
     /// What an agent's programs are charged in, which is the denominator of
     /// the credit-per-cost score that allocates the budget.
     #[serde(default)]
@@ -313,6 +324,8 @@ impl Default for Config {
             reward_program: None,
             allocation_program: None,
             retention_program: None,
+            retain: Retain::Reward,
+            parents: Parents::Reward,
             cost_unit: CostUnit::Joules,
             energy_budget: None,
             joules_per_program: None,
@@ -639,8 +652,16 @@ fn build_agents(cfg: &Config) -> Result<Vec<Box<dyn Proposer>>, String> {
                     ..GrammarAgent::new(id)
                 }),
                 "uniform" => Box::new(UniformAgent::with_second_order(id, cfg.second_order)),
-                "mutator" => Box::new(MutatorAgent::with_options(id, cfg.second_order, cfg.bound_grafts)),
-                "attacker" => Box::new(AttackerAgent::new(id)),
+                "mutator" => {
+                    let mut m = MutatorAgent::with_options(id, cfg.second_order, cfg.bound_grafts);
+                    m.parents = cfg.parents;
+                    Box::new(m)
+                }
+                "attacker" => {
+                    let mut a = AttackerAgent::new(id);
+                    a.parents = cfg.parents;
+                    Box::new(a)
+                }
                 "command" => Box::new(command_agent(id, cfg)?),
                 other => {
                     return Err(format!("unknown agent kind `{other}` (grammar, uniform, mutator, attacker, command)"))
@@ -726,6 +747,11 @@ pub fn run_with_guard(
 ) -> Result<Report, String> {
     if agents.is_empty() {
         return Err("at least one agent is required".into());
+    }
+    if cfg.retain == Retain::Pareto && cfg.retention_program.is_some() {
+        return Err("--retain pareto and --retention-program both set the pool's eviction, and the program \
+                    would be ignored: give one or the other"
+            .into());
     }
     if heldout.is_empty() {
         return Err("at least one held-out corpus is required — without one there is nothing to measure intelligence against".into());
@@ -893,6 +919,8 @@ pub fn run_with_guard(
                     Err(why) => Err((Refusal::Depth, why)),
                     Ok(()) => cfg.substrate.prepare(&c.program.source()),
                 };
+                // The alignment reward's pool entry, added once its cost is known.
+                let mut alignment_add: Option<(Vec<u8>, f64)> = None;
                 let (outcome, prepared) = match gated {
                     Err((why, msg)) => (Outcome::Refused(why, msg), None),
                     Ok(prepared) => {
@@ -959,15 +987,9 @@ pub fn run_with_guard(
                                 let r = raw * mult;
                                 programs.entry(crate::evidence::artifact(&c.program.source())).or_insert_with(|| c.program.clone());
                                 evidence.push(reward_record(round, &**agent, &c, r));
-                                pool.add_with(
-                                    c.program.clone(),
-                                    bytes.clone(),
-                                    r,
-                                    agent.id(),
-                                    round,
-                                    round,
-                                    &|r, age| retention_program.priority(r, age),
-                                )?;
+                                // Added to the pool once this candidate's cost
+                                // is pushed, below, so the entry records it.
+                                alignment_add = Some((bytes.clone(), r));
                                 scored.push((c, Some(r)));
                             }
                             Reward::Compression => {
@@ -1006,6 +1028,21 @@ pub fn run_with_guard(
                     (CostUnit::Joules, Some((j, _))) if j > 0.0 => j,
                     _ => cost - cost_at,
                 });
+                if let Some((probe, r)) = alignment_add.take() {
+                    let program = scored.last().expect("the candidate was just scored").0.program.clone();
+                    let paid = *round_costs[ai].last().expect("the cost was just pushed");
+                    pool.add_costed(
+                        program,
+                        probe,
+                        r,
+                        paid,
+                        agent.id(),
+                        round,
+                        round,
+                        cfg.retain,
+                        &|r, age| retention_program.priority(r, age),
+                    )?;
+                }
                 if leaked.is_some() {
                     break;
                 }
@@ -1101,7 +1138,18 @@ pub fn run_with_guard(
             programs.entry(crate::evidence::artifact(&scored.program.source())).or_insert_with(|| scored.program.clone());
             evidence.push(reward_record(round, &*agents[ai], scored, r));
             let program = round_scored[ai][idx].0.program.clone();
-            pool.add_with(program, probe, r, agents[ai].id(), round, round, &|r, age| retention_program.priority(r, age))?;
+            let paid = round_costs[ai][idx];
+            pool.add_costed(
+                program,
+                probe,
+                r,
+                paid,
+                agents[ai].id(),
+                round,
+                round,
+                cfg.retain,
+                &|r, age| retention_program.priority(r, age),
+            )?;
             round_scored[ai][idx].1 = Some(r);
         }
 
@@ -1381,6 +1429,9 @@ mod tests {
     use super::*;
     use crate::learner::LearnerConfig;
 
+    /// Taken from the arena before the retention and parent flags existed.
+    const GOLDEN_DEFAULT_RUN_DIGEST: u64 = 0x3803_acc6_2ee6_ae9e;
+
     fn tiny_cfg() -> Config {
         Config {
             rounds: 6,
@@ -1604,6 +1655,103 @@ mod tests {
         assert!(r.energy.by_role.keys().all(|k| k == "proposer" || k == "mutator"), "{:?}", r.energy.by_role);
         assert!(r.energy.by_role.get("mutator").is_some_and(|j| *j > 0.0));
         assert!(r.energy.by_kind.get("mutator").is_some_and(|j| *j > 0.0), "{:?}", r.energy.by_kind);
+    }
+
+    /// Both pool flags on, with a pool small enough to evict: the run
+    /// completes, holds its capacity, spends its budget, and reports both
+    /// modes, in the config echoed in the JSON as well as in the struct.
+    #[test]
+    fn the_pareto_flags_complete_and_report_their_modes() {
+        // An attacker proposes nothing while the pool is empty, so the budget
+        // is spent exactly only without one.
+        let mixes: [Vec<(String, usize)>; 2] = [
+            vec![("grammar".into(), 1), ("mutator".into(), 1)],
+            vec![("grammar".into(), 1), ("attacker".into(), 1)],
+        ];
+        for reward in [Reward::Compression, Reward::Alignment] {
+            for agents in mixes.iter() {
+                let (m, n) = cpu_only();
+                let cfg = Config {
+                    retain: Retain::Pareto,
+                    parents: Parents::Pareto,
+                    cost_unit: CostUnit::Fuel,
+                    pool_capacity: 8,
+                    reward,
+                    agents: agents.clone(),
+                    ..tiny_cfg()
+                };
+                let r = run(cfg, heldout(), m, n).unwrap_or_else(|e| panic!("{reward:?}: {e}"));
+                assert_eq!(r.pool_size, 8, "{reward:?}: the pool is full and no larger");
+                let proposed: usize = r.agents.iter().map(|a| a.proposed).sum();
+                assert!(proposed <= 6 * 16, "{reward:?}: {proposed} proposed");
+                if agents.iter().all(|(k, _)| k != "attacker") {
+                    assert_eq!(proposed, 6 * 16, "{reward:?}: the budget is spent exactly");
+                }
+                assert_eq!(r.config.retain, Retain::Pareto);
+                assert_eq!(r.config.parents, Parents::Pareto);
+                let json = serde_json::to_value(&r).expect("serialises");
+                assert_eq!(json["config"]["retain"], "pareto");
+                assert_eq!(json["config"]["parents"], "pareto");
+            }
+        }
+    }
+
+    /// `--retain pareto` with a retention program is a usage error, not a
+    /// silent choice of one of them.
+    #[test]
+    fn pareto_retention_and_a_retention_program_are_refused_together() {
+        let (m, n) = cpu_only();
+        let cfg = Config {
+            retain: Retain::Pareto,
+            retention_program: Some(crate::harness::DEFAULT_RETENTION.to_string()),
+            ..tiny_cfg()
+        };
+        let err = run(cfg, heldout(), m, n).err().expect("refused");
+        assert!(err.contains("--retain pareto"), "{err}");
+    }
+
+    /// FNV-1a over the outputs a default run reports: held-out bits per byte,
+    /// refusals, pool and output counts, the best programs, and every agent's
+    /// standing. Fuel is charged, not joules, so the digest is a function of
+    /// the seed alone.
+    fn default_run_digest(cfg: Config) -> u64 {
+        let (m, n) = cpu_only();
+        let r = run(cfg, heldout(), m, n).expect("runs");
+        let bpb: Vec<(usize, usize, Vec<(String, f64)>)> = r
+            .checkpoints
+            .iter()
+            .map(|c| (c.round, c.learner, c.heldout_bpb.iter().map(|(k, v)| (k.clone(), *v)).collect()))
+            .collect();
+        let text = serde_json::to_string(&(
+            bpb,
+            &r.refusals,
+            r.pool_size,
+            r.distinct_outputs,
+            r.total_outputs,
+            &r.best_programs,
+            &r.agents,
+        ))
+        .expect("serialises");
+        let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+        for b in text.bytes() {
+            h ^= b as u64;
+            h = h.wrapping_mul(0x0000_0100_0000_01b3);
+        }
+        h
+    }
+
+    /// The default arena run is bit-identical to the run before the retention
+    /// and parent flags existed (`--retain reward --parents reward`, the
+    /// defaults): the same seed gives the same digest, and the digest is the
+    /// one taken from the arena before those flags. A change to the default
+    /// path shows up here as a different value.
+    #[test]
+    fn with_the_flags_off_the_run_is_bit_identical_to_before_pareto() {
+        let cfg = || Config { cost_unit: CostUnit::Fuel, ..tiny_cfg() };
+        let first = default_run_digest(cfg());
+        assert_eq!(first, default_run_digest(cfg()), "the same seed gave two runs");
+        eprintln!("DIGEST {first:#018x}");
+        assert_eq!(first, GOLDEN_DEFAULT_RUN_DIGEST, "the default run changed with the flags off");
     }
 
     #[test]
