@@ -2700,6 +2700,7 @@ pub fn check(module: &ast::Module) -> TypeChecker {
     // domain is a type error, so the arena refuses it as a Type refusal.
     checker.diagnostics.extend(crate::params::params(module).1);
     checker.diagnostics.extend(retired_constructs(module));
+    checker.diagnostics.extend(swarm_settings(module));
     // Units of measure (plan C2): a mismatch is a type error, E0562.
     checker.diagnostics.extend(crate::units::check(module).diagnostics);
     checker
@@ -2734,6 +2735,31 @@ fn retired_constructs(module: &ast::Module) -> Vec<Diagnostic> {
             ))
         })
         .collect()
+}
+
+/// A swarm's `topology` and `consensus` name one of the values the runtime
+/// has. The parser takes any identifier, so `topology: bogus` was accepted
+/// by `--check` while the JSON builder refused it (S0004, S0005); both now
+/// refuse it, from the same lists.
+fn swarm_settings(module: &ast::Module) -> Vec<Diagnostic> {
+    let mut out = Vec::new();
+    for item in &module.items {
+        let ast::ItemKind::Swarm(s) = &item.kind else { continue };
+        for (what, value, known) in [
+            ("topology", &s.topology, crate::builder::TOPOLOGIES),
+            ("consensus", &s.consensus, crate::builder::CONSENSUS),
+        ] {
+            if let Some(v) = value.as_deref().filter(|v| !known.contains(v)) {
+                out.push(Diagnostic::categorized(
+                    Severity::Error,
+                    format!("swarm `{}` has unknown {what} `{v}` (use {})", s.name, known.join(", ")),
+                    DiagnosticCategory::TypeMismatch,
+                    None,
+                ));
+            }
+        }
+    }
+    out
 }
 
 // ── Tests ────────────────────────────────────────────────────────────
@@ -2847,6 +2873,15 @@ mod tests {
         let errs = error_messages("f d() -> f64 { v w = 2.0\n grad(grad(w * w, w), w) }");
         assert!(errs.iter().any(|e| e.contains("nested `grad`")), "{errs:?}");
         assert_eq!(error_messages("f d() -> f64 { v w = 2.0\n grad(w * w, w) }"), Vec::<String>::new());
+    }
+
+    #[test]
+    fn a_swarm_names_a_known_topology_and_consensus() {
+        let swarm = |t: &str, c: &str| format!("agent W {{ capabilities: [fs] }}\nswarm S {{ agent: W\n size: 3\n topology: {t}\n consensus: {c} }}");
+        assert_eq!(error_messages(&swarm("mesh", "majority")), Vec::<String>::new());
+        let errs = error_messages(&swarm("bogus", "vote"));
+        assert!(errs.iter().any(|e| e.contains("unknown topology `bogus`")), "{errs:?}");
+        assert!(errs.iter().any(|e| e.contains("unknown consensus `vote`")), "{errs:?}");
     }
 
     #[test]
