@@ -11,7 +11,7 @@
 > - **Over-declaration is silent.** `+f f(x: i32) -> i32 / io { x }` is 0
 >   errors and 0 warnings — the annotation is an upper bound, and the `W0410`
 >   warning §5.7 renders does not exist.
-> - **The `Effect` enum matches exactly** — 18 variants, the seventeen
+> - **The `Effect` enum matches exactly** — 20 variants, the nineteen
 >   non-`Custom` ones being §11.2's built-in kinds.
 > - **User-defined effects work.** An `effect Db { … }` block satisfies
 >   `/ Db`; an undeclared one errors by name.
@@ -49,11 +49,20 @@ pub enum Effect {
     Rng,      // random number generation
     Agent,    // agent coordination — lifecycle, message, lease
     Proc,     // process/system access, external tool invocation
+    /// Reading held-out evaluation data.
+    ///
+    /// The one thing a candidate must never do, because a program that can
+    /// see the test set can fit it. Reached through the `heldout.` namespace,
+    /// and allowed only to the `evaluator` and `gate` roles (see [`ROLES`]).
+    Heldout,
+    /// Changing who has authority: promoting a generation, writing the
+    /// journal. Allowed only to the `gate` role.
+    Promote,
     Custom(String),  // user-defined effects, from an `effect` block
 }
 ```
 
-This is `hir::Effect`, and the seventeen non-`Custom` variants are exactly the
+This is `hir::Effect`, and the nineteen non-`Custom` variants are exactly the
 built-in kinds of `MAGE_SPEC.md` §11.2. Anything else — `db`, `log`, `unsafe` —
 is `Custom`, and must be declared by an `effect` block or it is an error.
 
@@ -94,10 +103,12 @@ For each function f:
      a. For each function call g(args):
         - Look up g's declared effect set
         - Union it into f's effect_set
-     b. For each recognized effectful builtin (by name — see §11.2):
-        - read(...) / println(...) → add Effect::IO
-        - connect(...) → add Effect::Net
-        - mkdir(...) → add Effect::FS
+     b. For each call to a builtin in `effects::BUILTIN_EFFECTS`:
+        - print, println, eprint, eprintln, write, writeln → add Effect::IO
+        - panic → add Effect::Panic
+        - Bare `read(...)`, `connect(...)` and `mkdir(...)` are not in the
+          table and add nothing. `fs.read(...)` and `net.connect(...)` carry
+          FS and Net through the namespace handle, in step d
      c. For each `E.op(...)` on a declared effect block → add Effect::Custom(e)
      d. For each `ns.op(...)` on a capability namespace → add its effect
         (io.println → IO, llm.generate → Llm, process.spawn → Proc;

@@ -5,7 +5,7 @@
 > `Effect` — and `Item` matches field for field. What was wrong was
 > systematic: **every enum here except `Effect` was a partial listing**,
 > presented as the definition. `ItemKind` showed 11 of 20 variants, `Type`
-> 17 of 32, `Expr` 22 of 35, `Stmt` 3 of 5, `Ty` 24 of 31.
+> 17 of 32 (33 since `Dimensioned` was added; all are listed now), `Expr` 22 of 35, `Stmt` 3 of 5, `Ty` 24 of 31.
 >
 > The nine `ItemKind` variants missing were exactly MAGE's distinctive ones:
 > `Agent`, `Net`, `Kb`, `Evolve`, `Train`, `Swarm`, `Data`, `Extend` and
@@ -173,6 +173,10 @@ pub enum Type {
         base: Box<Type>,
         predicate: String,
     },
+    Dimensioned {
+        base: Box<Type>,
+        unit: String,
+    }, // f64[m/s]: a float with a unit of measure
 }
 ```
 
@@ -408,7 +412,7 @@ Steps 2–4 do not exist, so an import grants nothing: `u std.io.read_to_string`
 followed by `read_to_string("x")` fails with `unresolved name`. The error lands
 on the call, never on the import that was supposed to supply it.
 
-`use` now emits a **warning** saying so, rather than being accepted in silence.
+`use` now emits an **error** saying so (`E0425`, from `resolve_use`), rather than being accepted in silence.
 
 ### The library surface is global
 
@@ -420,7 +424,7 @@ everywhere, with no import:
 | Surface | What | Where it comes from |
 | --- | --- | --- |
 | Standard vocabulary | `map` `filter` `fold` `join` `split` … (31) | `resolve::VOCABULARY` |
-| Capability namespaces | `io` `fs` `net` `llm` `gpu` `agent` … (20) | `hir::CAPABILITY_NAMESPACES` |
+| Capability namespaces | `io` `fs` `net` `llm` `gpu` `agent` … (22) | `hir::CAPABILITY_NAMESPACES` |
 | Builtin functions | `println` `vec` `panic` `assert` `min` `max` … | `register_builtins` |
 
 A source definition **shadows** any of these — `M net { … }` and
@@ -517,11 +521,20 @@ pub enum Effect {
     Rng,       // random number generation
     Agent,     // agent coordination
     Proc,      // process / system access
+    /// Reading held-out evaluation data.
+    ///
+    /// The one thing a candidate must never do, because a program that can
+    /// see the test set can fit it. Reached through the `heldout.` namespace,
+    /// and allowed only to the `evaluator` and `gate` roles (see [`ROLES`]).
+    Heldout,
+    /// Changing who has authority: promoting a generation, writing the
+    /// journal. Allowed only to the `gate` role.
+    Promote,
     Custom(String),  // user-defined effects
 }
 ```
 
-The seventeen built-in kinds are `MAGE_SPEC.md` §11.2; see
+The nineteen built-in kinds are `MAGE_SPEC.md` §11.2; see
 [Effects & Resolution](05-effects-resolution.md).
 
 ### HIR Expression

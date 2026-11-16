@@ -100,65 +100,65 @@ impl InferCtxt {
 
 ### Unification Algorithm
 
+The real function is a free function over `Subst` (`prototype/src/types.rs`,
+line 159). This is an excerpt; arms are elided with `// …`:
+
 ```rust
-fn unify(&mut self, a: &Ty, b: &Ty) -> Result<(), TypeError> {
-    let a = self.resolve(a);
-    let b = self.resolve(b);
+fn unify(subst: &mut Subst, a: &Ty, b: &Ty) -> Result<(), String> {
+    let a = subst.apply(a);
+    let b = subst.apply(b);
+
+    if a == b {
+        return Ok(());
+    }
 
     match (&a, &b) {
-        // Two identical concrete types — ok
-        _ if a == b => Ok(()),
+        // Var binding (Robinson's rule), guarded by the occurs check.
+        (Ty::Var(v), _) => {
+            if occurs_in(*v, &b) {
+                return Err(format!("infinite type: {v} occurs in {b}"));
+            }
+            subst.bind(*v, b);
+            Ok(())
+        }
+        (_, Ty::Var(v)) => { /* symmetric to the arm above */ }
 
-        // Type variable on either side — bind it
-        (Ty::TypeVar(id), _) => {
-            self.occurs_check(*id, &b)?;
-            self.substitution.insert(*id, b);
-            Ok(())
-        }
-        (_, Ty::TypeVar(id)) => {
-            self.occurs_check(*id, &a)?;
-            self.substitution.insert(*id, a);
-            Ok(())
-        }
+        // Error and Never unify with anything.
+        (Ty::Error, _) | (_, Ty::Error) => Ok(()),
+        (Ty::Never, _) | (_, Ty::Never) => Ok(()),
 
-        // Structural unification for compound types
-        (Ty::Vec(a_inner), Ty::Vec(b_inner)) => {
-            self.unify(a_inner, b_inner)
-        }
-        (Ty::Option(a_inner), Ty::Option(b_inner)) => {
-            self.unify(a_inner, b_inner)
-        }
-        (Ty::Result(a_ok, a_err), Ty::Result(b_ok, b_err)) => {
-            self.unify(a_ok, b_ok)?;
-            self.unify(a_err, b_err)
-        }
-        (Ty::Ref(a_mut, a_inner), Ty::Ref(b_mut, b_inner)) => {
-            if a_mut != b_mut {
-                return Err(TypeError::MutabilityMismatch);
+        // Structural rules. A mismatch is a formatted String, not a TypeError.
+        (Ty::Ref(m1, t1), Ty::Ref(m2, t2)) => {
+            if m1 != m2 {
+                return Err(format!("borrow mode mismatch: …"));
             }
-            self.unify(a_inner, b_inner)
+            unify(subst, t1, t2)
         }
-        (Ty::Tuple(a_elems), Ty::Tuple(b_elems)) => {
-            if a_elems.len() != b_elems.len() {
-                return Err(TypeError::TupleLengthMismatch);
-            }
-            for (a, b) in a_elems.iter().zip(b_elems.iter()) {
-                self.unify(a, b)?;
-            }
-            Ok(())
+        (Ty::Vec(t1), Ty::Array(t2, _)) | (Ty::Array(t2, _), Ty::Vec(t1)) => {
+            unify(subst, t1, t2) // agentic coercion, see §4.6
         }
-        (Ty::Named(a_sym, a_args), Ty::Named(b_sym, b_args)) => {
-            if a_sym != b_sym {
-                return Err(TypeError::TypeMismatch(a, b));
+        (Ty::Array(t1, n1), Ty::Array(t2, n2)) => {
+            // 0 means the length is not known at this level.
+            if *n1 != 0 && *n2 != 0 && n1 != n2 {
+                return Err(format!("array size mismatch: {n1} vs {n2}"));
             }
-            for (a, b) in a_args.iter().zip(b_args.iter()) {
-                self.unify(a, b)?;
+            unify(subst, t1, t2)
+        }
+        // … Option, Ptr, Tuple, Fn, Tensor, Param, Genome, Policy, …
+        (Ty::Named(s1, args1), Ty::Named(s2, args2)) => {
+            if s1 != s2 {
+                return Err(format!("type mismatch: {s1} vs {s2}"));
+            }
+            if args1.len() != args2.len() {
+                return Err(format!("type argument count mismatch for {s1}"));
+            }
+            for (a1, a2) in args1.iter().zip(args2.iter()) {
+                unify(subst, a1, a2)?;
             }
             Ok(())
         }
 
-        // Mismatch
-        _ => Err(TypeError::TypeMismatch(a, b)),
+        _ => Err(format!("type mismatch: {a} vs {b}")),
     }
 }
 ```
@@ -168,17 +168,29 @@ fn unify(&mut self, a: &Ty, b: &Ty) -> Result<(), TypeError> {
 Prevents infinite types like `T = Vec[T]`:
 
 ```rust
-fn occurs_check(&self, var: u32, ty: &Ty) -> Result<(), TypeError> {
+fn occurs_in(var: TyVar, ty: &Ty) -> bool {
     match ty {
-        Ty::TypeVar(id) if *id == var => Err(TypeError::InfiniteType),
-        Ty::Vec(inner) | Ty::Option(inner) | Ty::OwnedPtr(inner) => {
-            self.occurs_check(var, inner)
-        }
-        // ... recurse into all compound types
-        _ => Ok(()),
+        Ty::Var(v) => *v == var,
+        Ty::Ref(_, t)
+        | Ty::OwnedPtr(t)
+        | Ty::Rc(t)
+        | Ty::Arc(t)
+        | Ty::Slice(t)
+        | Ty::Vec(t)
+        | Ty::Option(t)
+        | Ty::Ptr(t) => occurs_in(var, t),
+        // …
+        Ty::Result(a, b) | Ty::Map(a, b) => occurs_in(var, a) || occurs_in(var, b),
+        Ty::Tuple(ts) => ts.iter().any(|t| occurs_in(var, t)),
+        Ty::Fn(params, ret, _) => params.iter().any(|t| occurs_in(var, t)) || occurs_in(var, ret),
+        Ty::Named(_, args) => args.iter().any(|t| occurs_in(var, t)),
+        _ => false,
     }
 }
 ```
+
+It returns a `bool`. `unify` turns a `true` into the error
+`infinite type: {v} occurs in {b}`.
 
 ## 4.3 Type Sugar Desugaring
 
@@ -195,9 +207,14 @@ The type checker resolves MAGE sugar to canonical HIR types:
 | `$T`         | `Rc { T }`                 | `Ty::Rc(T)`           | `Rc<T>`         |
 | `@T`         | `Arc { T }`                | `Ty::Arc(T)`          | `Arc<T>`        |
 | `{K: V}`     | `Map { K, V }`             | `Ty::Map(K, V)`       | `HashMap<K, V>` |
-| `{K}`        | `Set { K }`                | `Ty::Set(K)`          | `HashSet<K>`    |
+| `{K}`        | `Set { K }`                | `Ty::Named(SymbolId(u32::MAX), [K])` (see below) | `HashSet<K>`    |
 | `[T; N]`     | `Array { T, N }`           | `Ty::Array(T, N)`     | `[T; N]`        |
 | `_T`         | `SelfType`                 | `Ty::Named(self_sym)` | `Self`          |
+
+`hir::Ty` has no `Set` variant. `lower_type` (`types.rs`, the `ast::Type::Set`
+arm) lowers `{K}` to `Ty::Named(SymbolId(u32::MAX), [K])`. That is the same
+sentinel `Cow`, `Cell`, `RefCell`, `Mutex` and `RwLock` lower to, so a set is
+not distinguished from those wrappers by `unify`.
 
 ## 4.4 Trait Solving — not implemented
 

@@ -1764,10 +1764,17 @@ $$
 
 ### 10.5 Type Inference
 
-Bidirectional type checking with Hindley-Milner unification, extended for:
-- **Shape unification**: tensor dimension variables solved via arithmetic constraints
-- **Effect unification**: effect variables solved via set-union constraints
-- **Genome type derivation**: crossover/mutate signatures inferred from data fields
+Bidirectional type checking with Hindley-Milner-style unification. A generic
+function's signature is instantiated afresh at each call site; a local binding
+is not generalised (no let-polymorphism). Beyond plain types:
+- **Shape unification**: a tensor dimension is a literal or a variable, and a
+  variable unifies with one value; there are no arithmetic constraints
+  (`N + 1` is not a dimension).
+- **Effects**: an effect set is concrete (§11). There are no effect variables,
+  and unifying two function types ignores their effects; the effect checker
+  works separately.
+- **Genome types**: designed, not built. Nothing derives `crossover`/`mutate`
+  signatures from a genome's fields.
 
 ### 10.6 Units of Measure
 
