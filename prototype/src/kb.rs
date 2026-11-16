@@ -694,6 +694,92 @@ mod tests {
         }
     }
 
+    /// The body of `MAGE_SPEC.md` subsection `L.n` (`### B.1 `), or, with
+    /// `n == 0`, the whole of `## Appendix L`. LF-normalised.
+    fn spec_appendix_part(letter: char, n: u8) -> String {
+        let spec = std::fs::read_to_string(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../MAGE_SPEC.md"))
+            .expect("MAGE_SPEC.md is beside the prototype")
+            .replace("\r\n", "\n");
+        if n == 0 {
+            let heading = format!("\n## Appendix {letter}: ");
+            let body = spec.split(&heading).nth(1).unwrap_or_else(|| panic!("MAGE_SPEC.md has no Appendix {letter}"));
+            return body.split("\n## ").next().unwrap().to_string();
+        }
+        let heading = format!("\n### {letter}.{n} ");
+        let body = spec.split(&heading).nth(1).unwrap_or_else(|| panic!("MAGE_SPEC.md has no {letter}.{n}"));
+        body.split("\n### ").next().unwrap().split("\n## ").next().unwrap().to_string()
+    }
+
+    /// The cells of every table row in `text`, minus the header and the rule.
+    /// The tables read here have no `|` inside a cell.
+    fn table_rows(text: &str) -> Vec<Vec<String>> {
+        let mut rows = Vec::new();
+        for line in text.lines() {
+            let line = line.trim();
+            if !line.starts_with('|') {
+                continue;
+            }
+            if line.chars().all(|c| matches!(c, '|' | '-' | ' ' | ':')) {
+                // the rule: the row before it was the header
+                rows.pop();
+                continue;
+            }
+            rows.push(line.trim_matches('|').split('|').map(|c| c.trim().to_string()).collect());
+        }
+        rows
+    }
+
+    /// The backticked spans of a table cell.
+    fn backticked(cell: &str) -> Vec<String> {
+        cell.split('`').enumerate().filter(|(i, _)| i % 2 == 1).map(|(_, s)| s.to_string()).collect()
+    }
+
+    /// Appendix B.1's table of (Agent, Human) pairs is the `abbreviates` facts,
+    /// both ways. The appendix once carried `const fn`, `pub(crate)` and a
+    /// dozen Greek spellings that no parser had, and omitted a third of the
+    /// real pairs.
+    #[test]
+    fn appendix_b_maps_exactly_the_abbreviation_pairs() {
+        let kb = load().expect("loads");
+        let want: std::collections::BTreeSet<(String, String)> =
+            kb.facts("abbreviates").into_iter().map(|f| (f[0].clone(), f[1].clone())).collect();
+        let mut got = std::collections::BTreeSet::new();
+        let mut rows = 0;
+        for row in table_rows(&spec_appendix_part('B', 1)) {
+            rows += 1;
+            assert!(row.len() >= 2, "B.1 row has fewer than two cells: {row:?}");
+            let (a, h) = (backticked(&row[0]), backticked(&row[1]));
+            assert!(a.len() == 1 && h.len() == 1, "B.1 row needs one backticked Agent and one Human spelling: {row:?}");
+            assert!(got.insert((a[0].clone(), h[0].clone())), "B.1 lists ({}, {}) twice", a[0], h[0]);
+        }
+        assert!(rows >= 30, "B.1 yielded only {rows} rows");
+        let missing: Vec<&(String, String)> = want.difference(&got).collect();
+        let extra: Vec<&(String, String)> = got.difference(&want).collect();
+        assert!(missing.is_empty(), "kb/lexicon.mg has abbreviation pairs (agent, human) B.1 does not list: {missing:?}");
+        assert!(extra.is_empty(), "B.1 lists pairs (agent, human) that kb/lexicon.mg does not state: {extra:?}");
+    }
+
+    /// Every symbol in the first column of Appendix D's tables is a spelling
+    /// the lexicon states. D once listed a dozen Greek letters and symbols
+    /// that give `lexer error: unexpected character`.
+    #[test]
+    fn appendix_d_lists_only_spellings_the_lexer_has() {
+        let kb = load().expect("loads");
+        let stated: std::collections::BTreeSet<String> = kb.facts("lexes_as").into_iter().map(|f| f[0].clone()).collect();
+        let mut seen = std::collections::BTreeSet::new();
+        for row in table_rows(&spec_appendix_part('D', 0)) {
+            for s in backticked(&row[0]) {
+                seen.insert(s);
+            }
+        }
+        for anchor in ["Ψ", "∇", "⊗", "f", "@w", "sw"] {
+            assert!(seen.contains(anchor), "Appendix D extraction lost the anchor `{anchor}`: {seen:?}");
+        }
+        assert!(seen.len() >= 50, "Appendix D yielded only {} symbols", seen.len());
+        let bad: Vec<&String> = seen.iter().filter(|s| !stated.contains(*s)).collect();
+        assert!(bad.is_empty(), "Appendix D lists symbols kb/lexicon.mg does not state as lexing: {bad:?}");
+    }
+
     /// Every token kind has a spelling in the lexicon, except the ones it
     /// says no spelling produces (a variant nothing scans, one `lex` drops,
     /// or `Eof`/`Error`). Those are listed here as well as in the file; one
