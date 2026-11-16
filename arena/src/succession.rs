@@ -478,7 +478,9 @@ const USAGE: &str = "usage: arena succession --heldout FILE[,FILE...] --journal 
 [--proposer-command \"CMD ARGS\"] [--proposer-timeout S] \
 [--objectives capability[,efficiency][,latency]] [--dominance-min F] [--dominance-floor F] \
 [--objective-tolerance AXIS=F,...] [--allow-estimated-energy] [--efficiency-basis meter|work] \
-[--energy-budget JOULES] [--param-search es|perturb] [--cost joules|fuel] [--validation FILE[,FILE...]]";
+[--energy-budget JOULES] [--param-search es|perturb] [--cost joules|fuel] [--validation FILE[,FILE...]] \
+[--learners SPEC[,SPEC...]]  (SPEC: ng:orders:log2buckets:lr | tf:d:layers:heads:ctx:lr[:gpu] | \
+ent:orders:log2buckets:target_len:lr | ssm:d:lr[:bptt]; the first spec is the one the gate scores)";
 
 /// One champion's score on the validation suite, beside its held-out score.
 /// Informational only: the gate never sees it and the journal does not record it.
@@ -791,6 +793,8 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
     let mut energy_budget: Option<f64> = None;
     let mut param_search = ParamSearch::Perturb;
     let mut base = Config::default();
+    // Set only by `--learners`; it joins the policy name, so default runs keep their digest.
+    let mut learners_flag: Option<String> = None;
     let mut i = 0;
     while i < args.len() {
         let flag = args[i].as_str();
@@ -842,6 +846,10 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
             "--efficiency-basis" => efficiency_basis = EfficiencyBasis::parse(v)?,
             "--energy-budget" => energy_budget = Some(parse_budget(v)?),
             "--param-search" => param_search = parse_param_search(v)?,
+            "--learners" => {
+                base.learners = crate::learner::parse_learner_specs(v)?;
+                learners_flag = Some(v.to_string());
+            }
             "--cost" => {
                 base.cost_unit = match v {
                     "joules" => crate::arena::CostUnit::Joules,
@@ -948,7 +956,10 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
     };
     variation.param_search = param_search.clone();
     let policy = RunnerPolicy {
-        name: policy_name(efficiency_basis),
+        name: match &learners_flag {
+            Some(l) => format!("{}+learners={l}", policy_name(efficiency_basis)),
+            None => policy_name(efficiency_basis),
+        },
         max_cycles: cycles,
         candidates_per_cycle: candidates,
         stop_file: stop_file.map(PathBuf::from),
@@ -1344,6 +1355,16 @@ mod tests {
         let args: Vec<String> =
             ["--heldout", "x", "--journal", "y", "--efficiency-basis", "watts"].iter().map(|s| s.to_string()).collect();
         assert!(cli(&args).expect_err("cli refuses it").contains("neither meter nor work"));
+    }
+
+    #[test]
+    fn a_bad_learners_spec_is_a_usage_error() {
+        for bad in ["bogus", "ssm:0:0.01", "ent:3:12:0.5:0.02"] {
+            let args: Vec<String> =
+                ["--heldout", "x", "--journal", "y", "--learners", bad].iter().map(|s| s.to_string()).collect();
+            let e = cli(&args).expect_err("cli refuses it");
+            assert!(e.contains("--learners"), "{bad}: {e}");
+        }
     }
 
     #[test]
