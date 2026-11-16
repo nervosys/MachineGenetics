@@ -14,7 +14,7 @@
     "keywords": 100,
     "op_families": 7,
     "project_layout": 22,
-    "rap_methods": 42,
+    "rap_methods": 43,
     "recovery_stages": 7,
     "sigils": 57,
     "types": 30,
@@ -4323,24 +4323,42 @@
       {
         "method": "build/check",
         "params": [
-          "source"
+          "source",
+          "doc"
         ],
         "returns": [
           "ok",
-          "errors"
+          "errors",
+          "semantic",
+          "incremental"
         ],
-        "summary": "Lex + parse + report diagnostics."
+        "summary": "Lex + parse + report diagnostics. Optional `doc` keeps an incremental engine per document id on the connection and adds `semantic` and `incremental`."
       },
       {
         "method": "build/heal",
         "params": [
-          "source"
+          "source",
+          "doc"
         ],
         "returns": [
           "ok",
-          "diagnostics"
+          "diagnostics",
+          "semantic",
+          "incremental"
         ],
-        "summary": "Generate fix candidates for diagnostics."
+        "summary": "Generate fix candidates for diagnostics. Optional `doc` as for build/check; adds `semantic` fixes and `incremental`."
+      },
+      {
+        "method": "doc/close",
+        "params": [
+          "doc"
+        ],
+        "returns": [
+          "ok",
+          "doc",
+          "closed"
+        ],
+        "summary": "Drop the incremental state kept for a `doc` id on this connection."
       },
       {
         "method": "build/recover",
