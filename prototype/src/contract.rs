@@ -269,12 +269,38 @@ pub fn prepare(clause: &Clause, params: Option<&[String]>) -> Result<Expr, Prepa
         out.push(t.clone());
         i += 1;
     }
-    crate::parser::parse_expression(&out).map_err(|e| {
+    parse_implication(&out).map_err(|e| {
         PrepareError::Syntax(format!(
             "contract `{}` of `{f}` is not an expression: {}",
             clause.display(),
             e.message
         ))
+    })
+}
+
+/// Parse a contract expression where `=>` is the lowest-precedence,
+/// right-associative operator: `a => b` holds when `a` is false or `b`
+/// holds, so it is `!a || b` (three-valued `||` and `!` give the rest).
+/// `=>` only splits at bracket depth zero.
+fn parse_implication(tokens: &[Token]) -> Result<Expr, crate::parser::ParseError> {
+    let mut depth = 0i32;
+    let split = tokens.iter().position(|t| {
+        match t.kind {
+            TokenKind::LParen | TokenKind::LBrack | TokenKind::LBrace => depth += 1,
+            TokenKind::RParen | TokenKind::RBrack | TokenKind::RBrace => depth -= 1,
+            _ => {}
+        }
+        depth == 0 && t.kind == TokenKind::FatArrow
+    });
+    let Some(at) = split else {
+        return crate::parser::parse_expression(tokens);
+    };
+    let antecedent = crate::parser::parse_expression(&tokens[..at])?;
+    let consequent = parse_implication(&tokens[at + 1..])?;
+    Ok(Expr::Binary {
+        op: "||".to_string(),
+        left: Box::new(Expr::Unary { op: "!".to_string(), operand: Box::new(antecedent) }),
+        right: Box::new(consequent),
     })
 }
 
@@ -605,5 +631,35 @@ mod tests {
             e,
             "contract violated: `@req(b != 0)` of `div` (f div, line 1:1) is false: `div` called with a = 1, b = 0"
         );
+    }
+
+    #[test]
+    fn an_implication_is_not_a_and_b_and_is_right_associative() {
+        let mut c = Clause {
+            kind: ContractClauseKind::Ensures,
+            condition: "1b => result > 0".into(),
+            message: None,
+            function: "g".into(),
+            origin: "sp g".into(),
+            span: None,
+        };
+        let p = params(&["x"]);
+        assert!(prepare(&c, Some(&p)).is_ok());
+        c.condition = "x > 0 => x > 1 => result > 0".into();
+        let Ok(Expr::Binary { op, right, .. }) = prepare(&c, Some(&p)) else { panic!("binary") };
+        assert_eq!(op, "||");
+        assert!(matches!(*right, Expr::Binary { ref op, .. } if op == "||"));
+        c.condition = "1b => ".into();
+        assert!(matches!(prepare(&c, Some(&p)), Err(PrepareError::Syntax(_))));
+    }
+
+    #[test]
+    fn an_implication_holds_when_its_antecedent_is_false() {
+        let src = "@req(a > 0 => b > 0)\nf f2(a: i64, b: i64) -> i64 { a + b }\n\
+                   f main() -> i64 { f2(0, -5) }\n";
+        assert_eq!(run(src), Ok(crate::eval::Value::Int(-5)));
+        let bad = "@req(a > 0 => b > 0)\nf f2(a: i64, b: i64) -> i64 { a + b }\n\
+                   f main() -> i64 { f2(1, -5) }\n";
+        assert!(matches!(run(bad), Err(crate::eval::BoundedError::Error(_))));
     }
 }

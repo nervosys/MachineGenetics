@@ -653,14 +653,22 @@ except in the sum form, and a declaration has no trailing `;` (see `DataDef`,
 `StructDef`, `EnumDef`, `ItEnumVariant`, `PaDataField` and `PaDataVariant` in
 `kb/grammar.mg`).
 
-- `data N(name: T, …)` is a record. A field may carry a default (`x: i32 = 0`).
+- `data N(name: T, …)` is a record. A field may carry a default (`x: i32 = 0`),
+  used when a literal omits the field. The default is read where it is written:
+  it may name module-level constants and functions, never the constructing
+  function's locals, and a name it cannot resolve there is E0425.
   Tuple-style `data P(i32)` does not parse.
 - `data N = V | V(T)` is a sum whose variants carry unnamed payloads.
 - `data N` alone declares a unit type.
 - `struct N { name: T, … }` has braces, a leading `+` makes a field public, and
   commas are optional.
-- `enum N { A, B(T), C { f: T } }` has unit, tuple and record variants. A
-  discriminant (`A = 1`) does not parse.
+- `enum N { A, B(T), C { f: T } }` has unit, tuple and record variants. A unit
+  variant may carry an explicit discriminant, `A = 1` or `A = -1`: an integer
+  literal that fits `i64`, otherwise the parser reports an error. A tuple or
+  record variant may not (`B(i32) = 2` is a parse error). The AST keeps the
+  value (`EnumVariant.discriminant`) and `--fmt` prints it back. It does not
+  yet change anything else: the evaluator and the MLIR lowering give variants
+  no number, so an explicit discriminant is recorded but not used.
 
 ```mg
 data P(x: i32, y: i32 = 0)
@@ -824,6 +832,24 @@ f main() -> i32 {
 }
 ```
 
+**Ordering.** `<`, `<=`, `>`, `>=` and the vocabulary words that order (`sort`,
+`min`, `max`) use one order, the one Rust derives. Numbers compare by value (an
+integer against a float is promoted), strings by bytes, `0b < 1b`. Lists and
+tuples compare lexicographically: the first unequal element decides, and a
+proper prefix is less, so `[1, 2] < [1, 3]`, `[1] < [1, 0]` and
+`sort([[2, 1], [1, 5]])` is `[[1, 5], [2, 1]]`. Options put `None` before every
+`Some`, and two `Some`s compare their contents. Maps, records and enum values
+are not ordered by these operators. Before 2026-11-15 the interpreter treated
+every list, tuple and option as equal to every other, so `sort` left nested
+lists in place and `[1, 3] <= [1, 2]` held.
+
+```mage
+f main() -> i32 / io {
+    p"{sort([[2, 1], [1, 5], [1, 2]])} {None < Some(0)}"
+    0
+}
+```
+
 ### 4.7 Statements
 
 A block is `{ statements, optional final expression }` (`Block`, `BlockBody`,
@@ -903,6 +929,14 @@ Modular arithmetic is asked for by name:
 ```text
 wrapping_add(a, b)    wrapping_sub(a, b)    wrapping_mul(a, b)
 ```
+
+A cast `e as T` to an integer type is checked the same way: it traps when the
+value, after a float is truncated toward zero, lies outside `T`'s range, with
+``integer overflow in `300 as u8` ``; a NaN or infinite float traps too. In range
+a cast is exact: `255 as u8` is 255, `3.7 as i32` is 3. The postfix `as` binds
+tighter than prefix `-` (Appendix C), so `-128 as i8` is `-(128 as i8)` and traps;
+cast a negative value by naming it first. Before 2026-11-15 integer casts were
+unchecked, so `300 as u8` was 300.
 
 **Why trap.** Before 2026-09-25 the operators were whatever the host
 compiler's defaults were: a panic in a debug build and a silent wrap in a
@@ -2661,24 +2695,21 @@ DispatchStrategy:
 
 ### 15.3 SIMD Types
 
-**Not implemented.** `f32x4` and its siblings are not type names — the
-checker reports `unresolved type`. Vectorisation is the backend's business
-today: a `tensor[f32, …]` lowers to whatever the selected target supports, and
-`@target(cpu)` / `@precision(f16)` steer it. What follows records the intent.
+**Types only.** Four shorthand names are types: `f32x4` (128-bit, 4 x f32),
+`f32x8` (256-bit, 8 x f32), `f32x16` (512-bit, 16 x f32, AVX-512) and `f64x4`
+(256-bit, 4 x f64). Each is the same type as the long form, so `f32x4` is
+`Simd[f32, 4]` and the checker treats them alike. No other width or element
+is a name: `f32x5` and `f64x2` are unresolved types, and `Simd[T, n]` spells
+any of them. The shorthand is a parse-time spelling; the formatter prints the
+long form.
 
-**Invalid MAGE today:**
+Operations on SIMD values (`a + b`, `.sum()`) are not implemented.
+Vectorisation is the backend's business today: a `tensor[f32, …]` lowers to
+whatever the selected target supports, and `@target(cpu)` / `@precision(f16)`
+steer it.
 
 ```mg
-// Built-in SIMD types
-val a: f32x4;     // 128-bit, 4 x f32
-val b: f32x8;     // 256-bit, 8 x f32
-val c: f64x4;     // 256-bit, 4 x f64
-val d: f32x16;    // 512-bit, 16 x f32 (AVX-512)
-
-// SIMD operations
-val sum = a + b;
-val product = a * b;
-val dot = (a * b).sum();
+f lanes(a: f32x4, b: f32x4) -> f32x4 = a
 ```
 
 ---

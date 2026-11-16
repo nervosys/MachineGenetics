@@ -112,6 +112,7 @@ fn elide_enum(e: &EnumDef) -> EnumDef {
 fn elide_variant(v: &EnumVariant) -> EnumVariant {
     EnumVariant {
         name: v.name.clone(),
+        discriminant: v.discriminant,
         kind: match &v.kind {
             VariantKind::Unit => VariantKind::Unit,
             VariantKind::Tuple(types) => VariantKind::Tuple(types.iter().map(elide_type).collect()),

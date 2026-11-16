@@ -207,6 +207,8 @@ impl<'a> EmitCtx<'a> {
         self.line(&format!("MAGE.enum @{} {{", e.name));
         self.indent += 1;
         for variant in &e.variants {
+            // Variants carry no number in the lowering today; an explicit
+            // discriminant is not emitted (spec does not settle it).
             match &variant.kind {
                 ast::VariantKind::Unit => {
                     self.line(&format!("MAGE.variant \"{}\"", variant.name));
