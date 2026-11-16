@@ -2446,8 +2446,9 @@ keyword, so `v result = …` in a body is still an ordinary variable.
 `--check` typechecks every clause of a spec that shares a function's name,
 in that function's parameter scope: the condition must be a `bool`.
 `--eval` (and the fuel-bounded evaluator the arena runs, §4.11) checks every
-`@req` on entry, after the parameters are bound and before the body runs, and
-every `@ens` each time the function returns. A clause that is false fails the run
+`@req` on entry, after the parameters are bound and before the body runs,
+every `@ens` each time the function returns, and every `@inv` of a struct each
+time a literal of it is built, with `self` bound to the new value. A clause that is false fails the run
 with an error naming the clause, the function and where it was written:
 
 ```text
