@@ -44,7 +44,7 @@
 //! of taking the mode, and `--samples K` (sampling only) averages the learner's
 //! figures over K such rollouts with independent draws.
 
-use arena::arena::{meters_for, run, Config, Corpus};
+use arena::arena::{meters_for, run_guarded, Config, Corpus};
 use arena::learner::{EntropyConfig, LearnerConfig, LearnerSpec, SsmConfig, TransformerConfig};
 use arena::physics::{self, Encoding, System, SYSTEMS};
 use arena::rollout::{self, CONTEXT, HORIZON};
@@ -491,6 +491,14 @@ fn prior_lz(n: usize, sub: arena::substrate::Substrate) {
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    // `arena succession …` runs germline's propose-evaluate-gate-promote loop
+    // for a bounded number of cycles, unattended. Its exit code says how it halted.
+    if args.first().map(String::as_str) == Some("succession") {
+        match arena::succession::cli(&args[1..]) {
+            Ok(code) => std::process::exit(code),
+            Err(e) => fail(e),
+        }
+    }
     // `arena measure …` reads run reports and prints fits and multipliers (plan M1–M2).
     if args.first().map(String::as_str) == Some("measure") {
         if let Err(e) = arena::transfer::measure_cli(&args[1..]) {
@@ -678,6 +686,26 @@ fn main() {
     for spec in &physics_specs {
         heldout.push(physics::physics_corpus(spec).unwrap_or_else(|e| fail(e)));
     }
+    // The held-out suite is pinned at startup and re-checked before each round:
+    // a file that changes under a run is not the suite the run was judged on.
+    // Physics corpora come from their specs, not files, so they are kept as is.
+    let physics_corpora: Vec<Corpus> = heldout[heldout_paths.len()..].to_vec();
+    let startup_digest = arena::succession::suite_digest(&heldout);
+    eprintln!("held-out suite digest {} (re-checked before each round)", startup_digest.0);
+    let checks = std::cell::Cell::new(0usize);
+    let mut guard = |round: usize| -> Result<(), String> {
+        let mut now = arena::succession::read_corpora(&heldout_paths)?;
+        now.extend(physics_corpora.iter().cloned());
+        checks.set(checks.get() + 1);
+        let d = arena::succession::suite_digest(&now);
+        if d != startup_digest {
+            return Err(format!(
+                "the held-out data changed on disk before round {round} (digest {} at startup, {} now); stopping",
+                startup_digest.0, d.0
+            ));
+        }
+        Ok(())
+    };
 
     let (meters, notes) = meters_for(cfg.cpu_watts, meter_gpus.as_deref());
     for n in &notes {
@@ -691,7 +719,8 @@ fn main() {
         cfg.programs_per_round,
         cfg.agents.iter().map(|(k, n)| format!("{k}:{n}")).collect::<Vec<_>>().join(",")
     );
-    let report = run(cfg, heldout, meters, notes).unwrap_or_else(|e| fail(e));
+    let report = run_guarded(cfg, heldout, meters, notes, &mut guard).unwrap_or_else(|e| fail(e));
+    eprintln!("held-out suite digest {} unchanged across {} re-checks", startup_digest.0, checks.get());
 
     eprintln!("\n=== agents (credit per unit cost drives the budget) ===");
     for a in &report.agents {

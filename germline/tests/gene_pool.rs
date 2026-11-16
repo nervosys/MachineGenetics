@@ -202,7 +202,7 @@ fn a_proposal_round_over_checked_registry_genes_stays_within_declared_effects() 
         offspring: 6,
         ..VariationPlan::default()
     };
-    let out = propose(&parents, plan, &pool, 0x9E11);
+    let out = propose(&parents, plan.clone(), &pool, 0x9E11);
 
     // Every gene here was *checked* and found pure, so nothing can acquire an
     // effect and every candidate survives. This assertion was previously true
@@ -320,7 +320,7 @@ fn an_unchecked_registry_gene_is_refused_rather_than_read_as_pure() {
         offspring: 4,
         ..VariationPlan::default()
     };
-    let out = propose(&parents, plan, &pool, 0x9E11);
+    let out = propose(&parents, plan.clone(), &pool, 0x9E11);
 
     assert!(
         out.candidates.is_empty(),
@@ -349,7 +349,7 @@ fn an_unchecked_registry_gene_is_refused_rather_than_read_as_pure() {
         .iter()
         .map(|g| (vec![g.clone(), Locus::param(0.5)], 0.5))
         .collect();
-    let out = propose(&parents, plan, &pool, 0x9E11);
+    let out = propose(&parents, plan.clone(), &pool, 0x9E11);
     assert_eq!(out.candidates.len(), 4, "checked, and now proposable");
     assert!(out.refused.is_empty());
 }

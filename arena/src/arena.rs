@@ -689,14 +689,40 @@ pub fn run(cfg: Config, heldout: Vec<Corpus>, meters: Vec<Box<dyn Meter>>, meter
     run_with(cfg, agents, heldout, meters, meter_notes)
 }
 
+/// [`run`], with `guard` called before each round, given the round's index. An
+/// error from it stops the run before that round starts, and is returned.
+/// The command-line arena uses this to re-check its held-out data on disk.
+pub fn run_guarded(
+    cfg: Config,
+    heldout: Vec<Corpus>,
+    meters: Vec<Box<dyn Meter>>,
+    meter_notes: Vec<String>,
+    guard: &mut dyn FnMut(usize) -> Result<(), String>,
+) -> Result<Report, String> {
+    let agents = build_agents(&cfg)?;
+    run_with_guard(cfg, agents, heldout, meters, meter_notes, guard)
+}
+
 /// [`run`], with the agents supplied rather than built from `cfg.agents`:
 /// for agents the arena does not construct itself.
 pub fn run_with(
+    cfg: Config,
+    agents: Vec<Box<dyn Proposer>>,
+    heldout: Vec<Corpus>,
+    meters: Vec<Box<dyn Meter>>,
+    meter_notes: Vec<String>,
+) -> Result<Report, String> {
+    run_with_guard(cfg, agents, heldout, meters, meter_notes, &mut |_| Ok(()))
+}
+
+/// [`run_with`], with the per-round `guard` of [`run_guarded`].
+pub fn run_with_guard(
     cfg: Config,
     mut agents: Vec<Box<dyn Proposer>>,
     heldout: Vec<Corpus>,
     mut meters: Vec<Box<dyn Meter>>,
     meter_notes: Vec<String>,
+    guard: &mut dyn FnMut(usize) -> Result<(), String>,
 ) -> Result<Report, String> {
     if agents.is_empty() {
         return Err("at least one agent is required".into());
@@ -798,6 +824,7 @@ pub fn run_with(
     let mut cost_reference: Option<f64> = None;
 
     for round in 0..cfg.rounds {
+        guard(round)?;
         if ledger.exhausted() {
             ledger.halted = Some(format!(
                 "the energy budget of {:.1} J was spent after {round} of {} rounds",
@@ -1667,6 +1694,33 @@ mod tests {
 
         let free = run(tiny_cfg(), heldout(), vec![Box::new(OneJoule)], vec![]).unwrap();
         assert!(!free.refusals.contains_key("budget"), "no allowance, no refusals");
+    }
+
+    #[test]
+    fn a_guard_that_fails_before_a_round_stops_the_run_with_its_error() {
+        let mut seen = Vec::new();
+        let r = run_guarded(
+            Config { rounds: 4, ..tiny_cfg() },
+            heldout(),
+            vec![Box::new(OneJoule)],
+            vec![],
+            &mut |round| {
+                seen.push(round);
+                if round == 2 {
+                    Err("the held-out data changed".into())
+                } else {
+                    Ok(())
+                }
+            },
+        );
+        assert_eq!(r.err().as_deref(), Some("the held-out data changed"));
+        assert_eq!(seen, vec![0, 1, 2], "the guard runs before every round, and the run stops at the failing one");
+    }
+
+    #[test]
+    fn a_passing_guard_leaves_the_run_unchanged() {
+        let guarded = run_guarded(tiny_cfg(), heldout(), vec![Box::new(OneJoule)], vec![], &mut |_| Ok(())).unwrap();
+        assert_eq!(guarded.rounds_completed, tiny_cfg().rounds);
     }
 
     #[test]

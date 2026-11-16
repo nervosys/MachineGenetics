@@ -339,7 +339,11 @@ impl Predictor for EntropyPredictor<'_> {
 mod tests {
     use super::*;
 
-    const README: &[u8] = include_bytes!("../../README.md");
+    /// The README without carriage returns. A Windows checkout has CRLF line
+    /// endings and CI has LF, and these tests measure the bytes.
+    static README: std::sync::LazyLock<Vec<u8>> = std::sync::LazyLock::new(|| {
+        include_bytes!("../../README.md").iter().copied().filter(|b| *b != 13u8).collect()
+    });
 
     fn tiny(target_len: f64) -> EntropyLearner {
         EntropyLearner::new(EntropyConfig {

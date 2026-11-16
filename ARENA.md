@@ -57,7 +57,7 @@ bad program before running it.
 | fuel | `prototype::eval::run_metered` | every expression one unit; every returned list its length, **precharged before allocation** where a scalar sets the size; depth bounded on a thread with a known stack |
 | learner | `arena::learner` | hashed-context softmax with exact gradients and sparse Adam; the learning-progress reward with a lookback between `e/4` and `e/2` |
 | energy | `arena::energy` | NVML's cumulative energy counter, loaded at run time → **Measured**; a wall-clock CPU estimate → **Estimated**, with its wattage stated; unreadable → **Unavailable**, never zero |
-| selection | `germline::pareto` | learners' front over (bits/byte, joules, latency); hypervolume contribution as credit |
+| selection | `germline::gate`, `germline::variation`, `germline::pareto` | **Pareto:** promotion under `succession --objectives` (dominance rule); parent choice under `Selection::Pareto`; the learners' front over (bits/byte, joules, latency) with hypervolume contribution as credit. **Scalar, by reward:** pool retention (`agents::Pool::add_with`), the mutator's and attacker's elite (`agents::Pool::top`), and the command proposer's prompt examples (`command`). See *Succession* below |
 
 **Convex and non-convex.** The combinatorial half — which program, which
 structure — is the agents' search over program trees. The continuous half —
@@ -760,6 +760,158 @@ becomes the champion only when `Episode::adjudicate` says so, with every step
 journaled, which is the redesign's rule that authority changes hands only
 through the gate.
 
+### Running succession from the command line (plan 8.3)
+
+```
+arena succession --heldout FILE[,FILE...] --journal PATH [--cycles N] [--seed N]
+                 [--stop-file PATH] [--force] [--json]
+                 [--rounds N] [--programs N] [--candidates N]
+                 [--agents K:N,...] [--proposer-command "CMD ARGS"] [--proposer-timeout S]
+                 [--objectives capability[,efficiency][,latency]] [--dominance-min F]
+                 [--dominance-floor F] [--objective-tolerance AXIS=F,...]
+                 [--allow-estimated-energy]
+```
+
+**Multi-objective succession (`--objectives`).** Without the flag the run is as
+described below. With it:
+
+- **Promotion** is the gate's rule (a) or rule (b), as set out in
+  `GERMLINE.md` §4. The axes are `capability` (primary, which must be listed),
+  `efficiency` (the guard, with tolerance `0.25` for the guard check), and `latency`.
+  The objectives are the axes named. Rule (b) requires each of them to be at least
+  the champion less its tolerance. That tolerance is set by `--objective-tolerance`,
+  and it is zero by default for every objective, `capability` included. The guard
+  tolerance does not apply under rule (b), so `efficiency` cannot give up `0.25` to
+  buy latency. At least one of
+  them to improve by `--dominance-min` (default `0.01`). Rule (b) also needs the
+  primary value strictly above `--dominance-floor` (default `0`), so a learner with
+  no intelligence cannot win on energy. Each objective also has the ratchet against
+  the lineage's best value, with the same tolerance.
+  `--objective-tolerance latency=0.005` sets an objective's tolerance (default zero,
+  so the old behaviour). It takes comma-separated `AXIS=VALUE` items. Values must be
+  finite and non-negative, and the axis must be listed in `--objectives`.
+  `capability` is the primary axis and always has zero tolerance, so it cannot be
+  set here. `efficiency` and `latency` can. Both flags need `--objectives`.
+- **Parent selection** is Pareto rank and crowding over the objective vectors,
+  instead of the scalar clade score.
+- **`latency`** is `1 / (1 + ms per kilobyte)`, measured as the wall-clock time to
+  score a 4 KiB held-out slice. It is emitted only when `latency` is named, so a
+  journal written without it stays comparable. That is why the axis set is part of
+  a run's identity. Resuming a journal with a different `--objectives` should hit
+  the comparability check, because the axes differ. That is expected from the code,
+  and it is not tested.
+- **Energy basis.** The efficiency axis is joules, and joules come from the meters.
+  The succession workload meters every session with a wall-clock estimate
+  (seconds × 65 W), whatever hardware is present. The
+  run refuses to start with `efficiency` among the objectives unless
+  `--allow-estimated-energy` is given. The refusal explains that "more efficient"
+  would then mean "faster". With the flag the run prints the warning once and goes
+  on. If no meter gives a figure at all, the run is refused even with the flag,
+  since efficiency would be a constant. The basis is printed in the run header and
+  in the JSON report (`energy_basis`).
+
+Example, the sample that was run on 2026-11-11, with the estimated-energy flag:
+
+```
+arena succession --heldout GERMLINE.md --journal run.jsonl --cycles 3 --seed 3 \
+  --rounds 12 --programs 8 --candidates 3 --agents grammar:1,mutator:1 \
+  --objectives capability,efficiency,latency --allow-estimated-energy
+```
+
+On that run, the seed and its successors had a held-out capability of 0. Their
+held-out bits per byte were above 8, so `capability` was clamped to zero. Before the
+primary floor existed, gen 1 was promoted by rule (b) on `efficiency` (+0.1309), with
+capability tied at 0. That is the failure mode described in `GERMLINE.md` §4. With
+the default `--dominance-floor 0`, the same candidate is now refused, because its
+capability of 0 is not above the floor. The default floor of zero is enough for that
+case. A non-zero floor sets a stricter bar above it, and the sample cannot show a
+promotion under rule (b) until the learners reach a capability above the floor. The later refusals were both on `latency`:
+one was a ratchet refusal, where wall-clock noise against a zero tolerance fell below
+the seed's measured value, and one found no objective improved by the margin. Treat
+this as a measurement of the gate, not as a result about the learners.
+
+**Known limits of the measurement.** These are open. None of them is fixed here.
+
+- **The primary axis is inert in short runs.** `capability` is clamped to 0 for any
+  learner above 8 bits/byte. A short run's learners sit above that, so the primary
+  axis cannot move. With the floor, rule (b) cannot promote such a run either, so
+  the run can only refuse, or promote on rule (a), which needs a capability margin.
+- **The latency scale is small in a debug build.** On this machine, a debug build
+  scores a kilobyte in about 0.08 s, so `1 / (1 + ms per kB)` is about 0.012. The
+  differences the sample saw were about 0.002, below the default `0.01` margin. A
+  release build would sit near 0.5, so the scale depends on the build profile. The
+  scale is not changed here.
+- **Resume re-measures the seed by wall clock.** Its latency and efficiency can
+  differ from the figures the original run recorded. The latency ratchet holds
+  against the best recorded value, so a re-measured seed can set a floor that later
+  candidates cannot meet within a zero tolerance. A non-zero `--objective-tolerance`
+  for `latency` is the way to allow for that.
+
+Once started, it builds the `ArenaWorkload` from the held-out files, measures the
+base configuration as the seed champion, and promotes it through the gate. It
+then runs `germline`'s `Runner` for at most `--cycles` cycles. Each cycle
+proposes configurations, runs an arena session for each candidate, scores it on
+the held-out suite, adjudicates it at the gate, and supervises any promotion. It
+prints the held-out suite digest, one line per cycle, the halt reason, and the
+champion. `--json` prints the `RunReport` with the suite digest added.
+
+- **Journal.** `--journal` is the run's record and is required. If it already
+  holds a run, the run is replayed (the hash chain is verified, and each
+  succession is re-applied under the gate's checks) and continues from its last
+  cycle. `--force` moves an existing journal to `PATH.<unix-time>.bak` and starts
+  a new run. Nothing is deleted.
+- **Kill switch.** `--stop-file PATH`. Create the file to stop the run before its
+  next cycle. A cycle already under way finishes. The halt is journaled and
+  reported.
+- **Held-out re-check.** The suite digest is computed at startup, and the files
+  are re-read and re-hashed before every cycle. The same check runs before every
+  round of the plain `arena --heldout` run. A change stops the run with an error.
+- **Exit codes.** `0`: budget exhausted, stop requested, or search stalled. `1`:
+  workload failure, including held-out data that changed on disk. `2`:
+  demotion, a failure with no usable fallback, or a usage error.
+- **Attestation key.** Read from `ARENA_ATTEST_KEY`. If it is unset, a built-in
+  development key is used and a warning is printed. The attestation is HMAC, so
+  anyone holding the key can mint verdicts. It shows that a verdict came from a
+  process that knows the key, not which process.
+- **Gate.** Fixed in code and pinned by the episode digest: `capability` as the
+  primary axis, which must improve by at least `0.01` (about 0.08 bits/byte). The
+  margin is hand-chosen and not calibrated against measured noise. Zero would let
+  ties promote, and `capability` is clamped to 0 above 8 bits/byte, so a run of
+  learners that have not learned yet would promote every candidate. `efficiency`
+  is the guard, with tolerance `0.25`, loose because wall-clock energy is noisy at
+  this scale. Eight shadow successes are required.
+
+What this does not do:
+
+- **No energy budget across cycles.** `--energy-budget` on the plain `arena`
+  command applies to one session. The succession loop has no joule ceiling of
+  its own, so `--cycles` is the only bound. Every candidate is a full arena
+  session, so cost grows with `--cycles × --candidates`.
+- **Resume re-measures the seed.** Resuming rebuilds the seed champion by running
+  the base configuration again. Its efficiency is wall-clock based, so it can
+  differ from the figure the original run recorded, and a comparison made after
+  the resume can differ from the one the first run would have made.
+- **Arena workload only.** The CLI drives `ArenaWorkload`. Other workloads are not
+  reachable from it.
+- **No daemon.** Each invocation is bounded. Continuing means running the command
+  again, which resumes from the journal.
+
+### Proposer isolation at the CLI, and its limit
+
+`CommandBackend` runs the proposer child in a fresh, empty scratch directory under
+the temp directory, which is removed once the child exits. The child's environment
+is cut down to `PATH`, plus `SYSTEMROOT`, `TEMP`, `TMP` and `PATHEXT` on Windows.
+Any API key or token in the arena's environment is withheld from it. There is no
+opt-out flag, because nothing in the tests or the documented workflows needs the
+inherited environment.
+
+**This is not a sandbox.** The child runs as the same user. It can open any
+absolute path, including the held-out files and any other file the user can read.
+It can write anywhere the user can write and use the network. The isolation
+prevents accidental inheritance of the parent's environment and working directory.
+It does not contain a hostile or buggy proposer. Containment would need an
+operating-system sandbox, which is not built.
+
 ## Physical trajectories (plan P1–P2)
 
 `arena::physics` generates trajectories of five classical systems, and encodes
@@ -1346,6 +1498,8 @@ default could change.
 3. **The continuous half**: an inner solver over `LearnerConfig` nested inside
    the program search.
 4. **An LLM agent** as a fourth `Proposer`, competing on the same budget.
-5. **Promotion through `germline`**: learners that survive the front become
-   candidates for `Episode::adjudicate`, so authority still changes hands only
-   through the gate.
+5. **Promotion through `germline`**: partly done. `arena succession` drives
+   propose, evaluate, gate and promote unattended for arena configurations, and
+   authority changes hands only through `Episode::adjudicate`. Not done: learners
+   that survive the front of a plain `arena` run are still not offered to the
+   gate, and the succession loop has no energy budget across cycles.

@@ -112,6 +112,7 @@ mod tests {
             generation: GenerationId(7),
             gate: Digest::of(b"gate"),
             evaluator: "independent-harness".into(),
+            basis: None,
         }
     }
 
@@ -134,6 +135,7 @@ mod tests {
             generation: GenerationId(8), // a different generation
             gate: Digest::of(b"gate"),
             evaluator: "independent-harness".into(),
+            basis: None,
         };
         assert!(!a.verify(&att, &altered), "swapping the subject must invalidate the proof");
     }
