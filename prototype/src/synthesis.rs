@@ -144,6 +144,9 @@ impl CostEstimate {
 
 #[derive(Debug, Clone)]
 pub struct VerificationResult {
+    /// The candidate is one MAGE function the real parser accepts. Its
+    /// effects are inferred from the parse, so one that fails is not checked.
+    pub parses: bool,
     pub preconditions_met: bool,
     pub postconditions_met: bool,
     pub invariants_met: bool,
@@ -155,6 +158,7 @@ pub struct VerificationResult {
 impl Default for VerificationResult {
     fn default() -> Self {
         Self {
+            parses: true,
             preconditions_met: true,
             postconditions_met: true,
             invariants_met: true,
@@ -167,7 +171,8 @@ impl Default for VerificationResult {
 
 impl VerificationResult {
     pub fn is_valid(&self) -> bool {
-        self.preconditions_met
+        self.parses
+            && self.preconditions_met
             && self.postconditions_met
             && self.invariants_met
             && self.effects_contained
@@ -340,12 +345,35 @@ impl SynthesisOracle {
             }
         }
 
-        // Check effects: if body references IO patterns but spec doesn't allow IO.
-        let io_patterns = ["println!", "read_line", "File::", "stdin", "stdout"];
-        let has_io = io_patterns.iter().any(|p| body.contains(p));
-        if has_io && !spec.effects.iter().any(|e| e == "IO") {
-            result.effects_contained = false;
-            result.violations.push("IO effect detected but not declared".into());
+        // Check effects with the real inference, not by searching the text:
+        // every effect the candidate performs must be one the spec declares.
+        // It searched for Rust spellings (`println!`, `File::`), which a MAGE
+        // body never contains, so `println("…")` passed as pure.
+        match crate::parser::parse(&crate::lexer::lex(body)) {
+            Ok(module) => {
+                let inferred = crate::effects::infer_effects(&module);
+                let mut found: Vec<String> = module
+                    .items
+                    .iter()
+                    .filter_map(|item| match &item.kind {
+                        crate::ast::ItemKind::Function(f) => Some(inferred.effects_of(&f.name)),
+                        _ => None,
+                    })
+                    .flat_map(|set| set.iter().map(|e| e.to_string()).collect::<Vec<_>>())
+                    .collect();
+                found.sort();
+                found.dedup();
+                for effect in found {
+                    if !spec.effects.contains(&effect) {
+                        result.effects_contained = false;
+                        result.violations.push(format!("{effect} effect detected but not declared"));
+                    }
+                }
+            }
+            Err(e) => {
+                result.parses = false;
+                result.violations.push(format!("candidate does not parse: {}", e.message));
+            }
         }
 
         // Check perf bounds.
@@ -525,7 +553,7 @@ mod tests {
         let mut oracle = SynthesisOracle::new();
         oracle.register_template(
             &Strategy::Imperative,
-            "fn {name}({params}) -> {return} { println!(\"hello\"); 42 }",
+            "f {name}({params}) -> {return} { println(\"hello\"); 42 }",
             CostEstimate {
                 token_count: 10,
                 cyclomatic_complexity: 1,
@@ -536,7 +564,9 @@ mod tests {
         let spec = SynthesisSpec::new("f").with_param("x", "i32").with_return("i32"); // no IO effect declared
         let candidates = oracle.generate(&spec);
         let imp = candidates.iter().find(|c| c.strategy == Strategy::Imperative).unwrap();
+        assert!(imp.verification.parses, "{:?}", imp.verification.violations);
         assert!(!imp.verification.effects_contained);
+        assert_eq!(imp.verification.violations, ["IO effect detected but not declared"]);
     }
 
     #[test]
@@ -544,7 +574,7 @@ mod tests {
         let mut oracle = SynthesisOracle::new();
         oracle.register_template(
             &Strategy::Imperative,
-            "fn {name}({params}) -> {return} { println!(\"hello\"); 42 }",
+            "f {name}({params}) -> {return} { println(\"hello\"); 42 }",
             CostEstimate {
                 token_count: 10,
                 cyclomatic_complexity: 1,
@@ -557,6 +587,41 @@ mod tests {
         let candidates = oracle.generate(&spec);
         let imp = candidates.iter().find(|c| c.strategy == Strategy::Imperative).unwrap();
         assert!(imp.verification.effects_contained);
+        assert!(imp.verification.is_valid(), "{:?}", imp.verification.violations);
+    }
+
+    #[test]
+    fn an_effect_is_found_through_a_capability_handle_and_a_panic() {
+        let mut oracle = SynthesisOracle::new();
+        oracle.register_template(
+            &Strategy::Imperative,
+            "f {name}({params}) -> {return} { io.print(\"x\"); if x < 0 { panic(\"neg\") }; 42 }",
+            CostEstimate { token_count: 10, cyclomatic_complexity: 1, allocation_count: 0, effect_count: 2 },
+        );
+        let spec = SynthesisSpec::new("f").with_param("x", "i32").with_return("i32");
+        let candidates = oracle.generate(&spec);
+        let imp = candidates.iter().find(|c| c.strategy == Strategy::Imperative).unwrap();
+        assert!(imp.verification.parses, "{:?}", imp.verification.violations);
+        assert_eq!(
+            imp.verification.violations,
+            ["IO effect detected but not declared", "Panic effect detected but not declared"]
+        );
+    }
+
+    #[test]
+    fn a_candidate_that_does_not_parse_is_not_valid() {
+        let mut oracle = SynthesisOracle::new();
+        oracle.register_template(
+            &Strategy::Imperative,
+            "fn {name}({params}) -> {return} { println!(\"hello\"); 42 }",
+            CostEstimate { token_count: 10, cyclomatic_complexity: 1, allocation_count: 0, effect_count: 1 },
+        );
+        let spec = SynthesisSpec::new("f").with_param("x", "i32").with_return("i32").with_effect("IO");
+        let candidates = oracle.generate(&spec);
+        let imp = candidates.iter().find(|c| c.strategy == Strategy::Imperative).unwrap();
+        assert!(!imp.verification.parses);
+        assert!(!imp.verification.is_valid());
+        assert!(imp.verification.violations.iter().any(|v| v.starts_with("candidate does not parse")));
     }
 
     // ── Ranking ───────────────────────────────────────────────────
@@ -615,7 +680,7 @@ mod tests {
         let mut oracle = SynthesisOracle::new();
         oracle.register_template(
             &Strategy::Imperative,
-            "fn {name}({params}) -> {return} { a + b }",
+            "f {name}({params}) -> {return} { a + b }",
             CostEstimate {
                 token_count: 5,
                 cyclomatic_complexity: 1,
