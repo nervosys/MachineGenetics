@@ -1312,7 +1312,7 @@ impl Interp {
                 }
                 for (fname, dflt) in self.field_defaults.get(&name).into_iter().flatten() {
                     if !fvals.iter().any(|(k, _)| k == fname) {
-                        let v = self.eval(dflt, &mut env.clone())?;
+                        let v = self.eval(dflt, &mut Env::new())?;
                         fvals.push((fname.clone(), v));
                     }
                 }
@@ -3882,6 +3882,21 @@ mod tests {
         // It typechecked and then evaluated to a function name (plan C3).
         let src = "const X: f64 = 1.5;\nconst TWICE: f64 = X * 2.0;\nf main() -> f64 { TWICE + X }\n";
         assert_eq!(run(src, "main", &[]), Value::Float(4.5));
+    }
+
+    #[test]
+    fn a_field_default_sees_the_const_not_the_callers_local() {
+        let shadow = "const K: i32 = 7;
+data P(x: i32, y: i32 = K)
+f main() -> i32 {
+    val K = 5
+    val p = @P { x: 1 }
+    p.y
+}
+";
+        assert_eq!(run(shadow, "main", &[]), Value::Int(7));
+        let control = shadow.replace("val K = 5", "val J = 5");
+        assert_eq!(run(&control, "main", &[]), Value::Int(7));
     }
 
     #[test]

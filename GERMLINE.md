@@ -755,6 +755,26 @@ The split is the point: a human (here, a reviewer of the specification PR)
 decides what the language means; the loop makes the implementation agree, under
 guards that keep everything else as it was.
 
+**A fifth run, on a limit run 3 left behind.** Review of run 3 had noted that a
+field default was evaluated in the constructing scope. Probing showed two real
+defects: with `const K: i32 = 7` and `y: i32 = K`, a caller holding its own
+`val K = 5` built `y = 5`; and a default naming no module-level binding at all
+(`y: i32 = k`) passed `--check` and then picked up a caller's `k`. The
+specification sentence (§4.3: a default is read where it is written, may name
+module-level constants and functions, and an unresolved name is E0425) went into
+the reviewable PR; the backlog was the shadowing program (expected `7`, through
+`eval.target`) and the unbound one as a new known-bad program, so the base scored
+correctness 5/6 against a guard that is relative to the champion.
+
+| generation | change | capability | correctness | safety | fidelity | semantics | verdict |
+|---|---|---|---|---|---|---|---|
+| 0 | base `selfmod-gen5@e3f1d7be9` | 0.5 | 0.833 | 1.0 | 1.0 | 1.0 | genesis |
+| 1 | eval.rs, resolve.rs (+3 tests) | 1.0 | 1.0 | 1.0 | 1.0 | 1.0 | promoted |
+
+The candidate evaluates defaults in the empty environment `const` initialisers
+use, and resolves them in module scope where the resolver had a comment saying
+"data fields are simple, skip for now".
+
 ## 8. What is still not built
 
 ◻ **Model training and inference.** The variation operators produce genomes; what

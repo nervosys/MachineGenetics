@@ -653,7 +653,10 @@ except in the sum form, and a declaration has no trailing `;` (see `DataDef`,
 `StructDef`, `EnumDef`, `ItEnumVariant`, `PaDataField` and `PaDataVariant` in
 `kb/grammar.mg`).
 
-- `data N(name: T, …)` is a record. A field may carry a default (`x: i32 = 0`).
+- `data N(name: T, …)` is a record. A field may carry a default (`x: i32 = 0`),
+  used when a literal omits the field. The default is read where it is written:
+  it may name module-level constants and functions, never the constructing
+  function's locals, and a name it cannot resolve there is E0425.
   Tuple-style `data P(i32)` does not parse.
 - `data N = V | V(T)` is a sum whose variants carry unnamed payloads.
 - `data N` alone declares a unit type.
