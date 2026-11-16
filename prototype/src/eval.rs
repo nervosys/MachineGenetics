@@ -1580,8 +1580,11 @@ impl Interp {
         let text = |i: usize| as_str(&arg(i));
         match (ns, op) {
             // ── io ────────────────────────────────────────────────────
+            // The handle form means what the bare name means: `io.print` and
+            // `io.write` add no newline. They were sent to `println`, so a
+            // program built a line out of `io.print` calls and got one per call.
             ("io" | "log", "println" | "print" | "eprintln" | "eprint" | "write" | "writeln") => {
-                self.call_builtin(if op.starts_with('e') { "eprintln" } else { "println" }, a)
+                self.call_builtin(op, a)
             }
             ("io", "read_line") => {
                 let mut line = String::new();
