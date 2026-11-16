@@ -203,7 +203,6 @@ kb Lexicon {
     fact instance_of(Comma, TokenKind);
     fact instance_of(Dot, TokenKind);
     fact instance_of(Colon, TokenKind);
-    fact instance_of(ColonQuestion, TokenKind);
     fact instance_of(Arrow, TokenKind);
     fact instance_of(FatArrow, TokenKind);
     fact instance_of(Hash, TokenKind);
@@ -611,8 +610,6 @@ kb Lexicon {
     fact lexes_as(",", Comma);
     fact instance_of(".", Token);
     fact lexes_as(".", Dot);
-    fact instance_of(":?", Token);
-    fact lexes_as(":?", ColonQuestion);
     fact instance_of("->", Token);
     fact lexes_as("->", Arrow);
     fact instance_of("=>", Token);

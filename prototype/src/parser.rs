@@ -5086,6 +5086,14 @@ mod tests {
     use super::*;
     use crate::lexer;
 
+    /// `:?` is `:` then `?`. As one token it parsed nowhere, so an optional
+    /// type written without a space, `x:?i64`, was a parse error.
+    #[test]
+    fn colon_question_is_two_tokens() {
+        assert!(parse(&lexer::lex("f g(x:?i64) -> i64 { 1 }")).is_ok());
+        assert!(parse(&lexer::lex("f g(x: i64) -> i64 { ? x < 0 { 1 } :? x == 0 { 2 } : { 3 } }")).is_ok());
+    }
+
     /// MAGE_SPEC.md Appendix C's infix rows are the parser's binding powers:
     /// the same operators, ranked in the same order, each level
     /// left-associative. The table once put `|>` below `||`, merged equality
