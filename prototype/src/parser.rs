@@ -631,14 +631,11 @@ impl<'a> Parser<'a> {
         // many callers.
         //
         // **This changes no verdict in this repository, measured rather than
-        // assumed.** `verify::check_condition` recognises `.len() >= 0`,
-        // `.len() > -1`, and `.is_ok()` with `=>`. All twelve contract clauses
-        // across every `.mg` source were checked: the only two using `.len()`
-        // are `.len() > 0`, no clause has `.is_ok()`, and none ends
-        // `.exists()`. Every one is `Unknown` before and after, so every
-        // function stays `Partial`. What would change is a *future* clause
-        // written `.len() >= 0`, which becomes `Verified` where today the
-        // mangled text hid it from a branch that was written to catch it.
+        // assumed.** `verify::check_condition` decides a clause from its
+        // parsed expression, and recognises a bare-path `.len() >= 0` (or
+        // `.len() > -1`) as a whole clause. The mangled text could not parse
+        // as an expression, so it was `Unknown`; the intact text can, and a
+        // clause written `xs.len() >= 0` is now `Verified`.
         let mut condition = String::new();
         let mut prev_end: Option<usize> = None;
         let mut message: Option<String> = None;

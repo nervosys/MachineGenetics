@@ -9,8 +9,10 @@
 // that is a statement too: prototype/tests/rules.rs probes all 60 cells against
 // the compiler, both ways.
 //
-// `verify` refutes very little: the literal `0b`, the text `false` (which is not
-// a MAGE literal: it is also an unresolved name), or `path.len() < 0`.
+// `verify` proves or refutes only what it can decide without values: a closed
+// condition (no names, so the bounded evaluator runs it, as with `1b` or
+// `1 + 1 == 2`), a bare `path.len() >= 0` or `path.len() < 0`, and `&&`, `||`,
+// `!` and `=>` over those. Anything else is left to the run-time check.
 
 kb Contracts {
     fact instance_of("contract", SymbolicComponent);

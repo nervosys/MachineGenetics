@@ -219,40 +219,282 @@ pub struct EffectAnalysis {
     pub used: Vec<String>,
 }
 
-/// Whether a condition is false on every execution.
+/// How one condition was decided: its result, and the rule that decided it.
 ///
-/// **Until 2026-09-25 nothing could return `Violated`.** Every branch of
-/// `check_condition` answered `Verified` or `Unknown`, so `VerifyStatus::Failed`,
-/// `Evidence::Refuted` and the `✗` row were unreachable from all five arms of
-/// `verify_item` — and `SpecViolation` (`E0560`) had nothing to fire on. The
-/// handoff recorded that as the corpus lacking a refuted contract; the corpus
-/// could not have supplied one.
+/// **`Verified` is a proof.** A condition is `Verified` only when one of the
+/// rules below shows it true on every execution, and `Violated` only when one
+/// shows it false on every execution. Anything else is `Unknown`, which is a
+/// claim left to the run-time check, not a pass.
 ///
-/// Two refutations, both deliberately narrow:
+/// Until 2026-09-25 nothing could return `Violated`. Before the 2026-11-11
+/// rewrite, `Verified` was reached by substring matches: `.len() >= 0` anywhere
+/// in the text, and any `.is_ok()` next to a `=>`. Both were unsound. Under the
+/// old rule `xs.len() >= 0 && n < 0` was `Verified`, and `ret.is_ok() => <anything>`
+/// was `Verified` with no proof of the consequent.
 ///
-///   * the literal `false`, in both surfaces — `false` and the sigil `0b`
-///     (`MAGE_SPEC.md` §2.2). The lexer maps both to `TokenKind::False`; a rule
-///     matching only the keyword would refute half the language;
-///   * `<path>.len() < 0` — the negation of the one fact the `Verified` branch
-///     below already relies on, that a length is unsigned. Proving `>= 0` and
-///     not refuting `< 0` would be the verifier believing half of its premise.
+/// The rules, tried in this order at each node of the parsed condition:
 ///
-/// The path must be a bare place expression. `ret.is_ok() => ret.len() < 0`
-/// is **not** refuted: an implication with a false consequent holds whenever
-/// its antecedent is false, and saying otherwise would turn a heuristic into a
-/// false accusation — a worse error here than `Unknown`, because `Violated`
-/// is now a compile error.
-fn is_refuted(condition: &str) -> bool {
-    let c = condition.trim();
-    if c == "false" || c == "0b" {
-        return true;
+///   * **closed**: the node has no free variables (see [`is_closed`]), so the
+///     bounded evaluator runs it. `true` is `Verified`, `false` is `Violated`;
+///     an error, fuel exhaustion, or a non-bool is `Unknown`;
+///   * **length**: the node is exactly `<path>.len() >= 0` (or `len(<path>) >= 0`,
+///     or `> -1`), where `<path>` is a bare name or field chain. That is
+///     `Verified`, because a length is never negative. The mirror image
+///     `<path>.len() < 0` is `Violated`, for the same reason;
+///   * **connectives**: `&&`, `||`, `!` and `=>` combine their parts in
+///     three-valued logic (see [`conjunction`], [`disjunction`], [`negation`],
+///     [`implication`]).
+///
+/// Anything else is `Unknown`. There is no solver and no symbolic execution.
+/// A condition about a parameter's value is `Unknown` however simple it looks.
+struct Decision {
+    result: CheckResult,
+    rule: String,
+}
+
+impl Decision {
+    fn verified(rule: impl Into<String>) -> Self {
+        Decision { result: CheckResult::Verified, rule: rule.into() }
     }
-    match c.strip_suffix(".len() < 0") {
-        Some(path) => {
-            !path.is_empty()
-                && path.chars().all(|ch| ch.is_alphanumeric() || ch == '_' || ch == '.')
+
+    fn violated(rule: impl Into<String>) -> Self {
+        Decision { result: CheckResult::Violated, rule: rule.into() }
+    }
+
+    fn unknown(rule: impl Into<String>) -> Self {
+        Decision { result: CheckResult::Unknown, rule: rule.into() }
+    }
+}
+
+/// Fuel for one closed-condition evaluation. A closed condition is a few
+/// arithmetic or `len` steps; the budget only has to stop a runaway.
+const CLOSED_FUEL: u64 = 100_000;
+
+/// The builtins a closed condition may call. Each is pure. A call to anything
+/// else makes the condition not closed, because the evaluator would run it.
+const PURE_BUILTINS: &[&str] = &["len"];
+
+/// The binary operators a closed condition may use. Assignment (`=`, `+=`, ...)
+/// is absent on purpose: it is not a pure comparison, and it is parsed as a
+/// binary operator too.
+const CLOSED_BINARY_OPS: &[&str] = &[
+    "+", "-", "*", "/", "%", "==", "!=", "<", "<=", ">", ">=", "&&", "||", "&", "|", "^", "<<", ">>",
+];
+
+/// Whether a parsed condition mentions nothing that varies between executions:
+/// no parameter, no `ret`/`result`, no field, no name at all except `true`,
+/// `false` and `None`, and no call except to a [`PURE_BUILTINS`] entry.
+///
+/// Decided on the parsed expression, not on its text. Method calls are never
+/// closed here, so `[1, 2].len() == 2` is `Unknown`; `len([1, 2]) == 2` is not.
+fn is_closed(e: &ast::Expr) -> bool {
+    match e {
+        ast::Expr::Literal { kind, .. } => !matches!(kind, ast::LiteralKind::FormatString),
+        ast::Expr::Ident { name } => matches!(name.as_str(), "true" | "false" | "None"),
+        ast::Expr::Binary { op, left, right } => {
+            CLOSED_BINARY_OPS.contains(&op.as_str()) && is_closed(left) && is_closed(right)
         }
-        None => false,
+        ast::Expr::Unary { op, operand } => (op == "-" || op == "!") && is_closed(operand),
+        ast::Expr::Call { func, args } => {
+            matches!(&**func, ast::Expr::Ident { name } if PURE_BUILTINS.contains(&name.as_str()))
+                && args.iter().all(is_closed)
+        }
+        ast::Expr::ArrayLit { elements } | ast::Expr::TupleLit { elements } => {
+            elements.iter().all(is_closed)
+        }
+        _ => false,
+    }
+}
+
+/// Run a closed condition on the bounded evaluator, inside a function with no
+/// parameters. The condition becomes the function's tail expression, so its
+/// value is the condition's value.
+fn evaluate_closed(e: &ast::Expr, fuel: u64) -> Decision {
+    use crate::eval::{BoundedError, Value};
+    let Ok(mut module) = crate::parser::parse(&crate::lexer::lex("f verify_closed_condition() { }"))
+    else {
+        return Decision::unknown("closed condition could not be set up for evaluation");
+    };
+    let Some(item) = module.items.first_mut() else {
+        return Decision::unknown("closed condition could not be set up for evaluation");
+    };
+    let ast::ItemKind::Function(fd) = &mut item.kind else {
+        return Decision::unknown("closed condition could not be set up for evaluation");
+    };
+    fd.body.tail_expr = Some(Box::new(e.clone()));
+    match crate::eval::run_bounded(&module, "verify_closed_condition", vec![], fuel) {
+        Ok(Value::Bool(true)) => Decision::verified("closed condition evaluated to true"),
+        Ok(Value::Bool(false)) => Decision::violated("closed condition evaluated to false"),
+        Ok(_) => Decision::unknown("closed condition did not evaluate to a bool"),
+        Err(BoundedError::FuelExhausted) => {
+            Decision::unknown("closed condition ran out of evaluation fuel")
+        }
+        Err(BoundedError::Error(msg)) => {
+            Decision::unknown(format!("closed condition failed to evaluate: {msg}"))
+        }
+    }
+}
+
+/// A bare place: a name, or a field chain rooted at one (`xs`, `self.items`).
+fn is_bare_path(e: &ast::Expr) -> bool {
+    match e {
+        ast::Expr::Ident { .. } => true,
+        ast::Expr::FieldAccess { object, .. } => is_bare_path(object),
+        _ => false,
+    }
+}
+
+/// `<path>.len()` or `len(<path>)`, with `<path>` a bare place.
+fn is_length_of_path(e: &ast::Expr) -> bool {
+    match e {
+        ast::Expr::MethodCall { receiver, method, args, .. } => {
+            method == "len" && args.is_empty() && is_bare_path(receiver)
+        }
+        ast::Expr::Call { func, args } => {
+            matches!(&**func, ast::Expr::Ident { name } if name == "len")
+                && matches!(args.as_slice(), [a] if is_bare_path(a))
+        }
+        _ => false,
+    }
+}
+
+/// A decimal integer literal, optionally negated. Anything else (suffixes,
+/// underscores, radix prefixes) is `None`, which leaves the condition `Unknown`.
+fn int_literal(e: &ast::Expr) -> Option<i64> {
+    match e {
+        ast::Expr::Literal { value, kind: ast::LiteralKind::Int } => value.trim().parse().ok(),
+        ast::Expr::Unary { op, operand } if op == "-" => {
+            int_literal(operand).and_then(i64::checked_neg)
+        }
+        _ => None,
+    }
+}
+
+/// The length fact, and its mirror. Only the whole node counts: a length
+/// inside a larger condition is decided by the connective around it.
+fn length_fact(e: &ast::Expr) -> Option<Decision> {
+    let ast::Expr::Binary { op, left, right } = e else {
+        return None;
+    };
+    if !is_length_of_path(left) {
+        return None;
+    }
+    match (op.as_str(), int_literal(right)?) {
+        (">=", 0) | (">", -1) => Some(Decision::verified("a length is never negative")),
+        ("<", 0) => Some(Decision::violated("a length is never negative, so this is false")),
+        _ => None,
+    }
+}
+
+/// `a && b`: false if either part is false, true only if both are.
+fn conjunction(a: Decision, b: Decision) -> Decision {
+    if a.result == CheckResult::Violated || b.result == CheckResult::Violated {
+        Decision::violated("a conjunct is false on every execution")
+    } else if a.result == CheckResult::Verified && b.result == CheckResult::Verified {
+        Decision::verified("every conjunct is verified")
+    } else {
+        Decision::unknown("a conjunct is not decided statically; runtime check required")
+    }
+}
+
+/// `a || b`: true if either part is true, false only if both are.
+fn disjunction(a: Decision, b: Decision) -> Decision {
+    if a.result == CheckResult::Verified || b.result == CheckResult::Verified {
+        Decision::verified("a disjunct is verified")
+    } else if a.result == CheckResult::Violated && b.result == CheckResult::Violated {
+        Decision::violated("every disjunct is false on every execution")
+    } else {
+        Decision::unknown("no disjunct is decided statically; runtime check required")
+    }
+}
+
+/// `!a`: flips a decided result, and leaves an undecided one undecided.
+fn negation(a: Decision) -> Decision {
+    match a.result {
+        CheckResult::Verified => Decision::violated("negation of a verified condition"),
+        CheckResult::Violated => Decision::verified("negation of a condition that is false"),
+        CheckResult::Unknown => Decision::unknown("negation of an undecided condition"),
+    }
+}
+
+/// `a => b`: holds when `a` is false, or when `b` holds. It is false only when
+/// `a` holds and `b` does not. An implication with an undecided consequent is
+/// undecided, even when its antecedent is false in some executions and not in
+/// others, because the consequent is then never proven.
+fn implication(a: Decision, b: Decision) -> Decision {
+    if a.result == CheckResult::Violated {
+        Decision::verified("the antecedent is false, so the implication holds")
+    } else if b.result == CheckResult::Verified {
+        Decision::verified("the consequent is verified")
+    } else if a.result == CheckResult::Verified && b.result == CheckResult::Violated {
+        Decision::violated("the antecedent is verified and the consequent is false")
+    } else {
+        Decision::unknown("the consequent is not proven; runtime check required")
+    }
+}
+
+/// Decide a parsed expression by its rules, recursively.
+fn decide_expr(e: &ast::Expr) -> Decision {
+    if is_closed(e) {
+        return evaluate_closed(e, CLOSED_FUEL);
+    }
+    if let Some(d) = length_fact(e) {
+        return d;
+    }
+    match e {
+        ast::Expr::Binary { op, left, right } if op == "&&" => {
+            conjunction(decide_expr(left), decide_expr(right))
+        }
+        ast::Expr::Binary { op, left, right } if op == "||" => {
+            disjunction(decide_expr(left), decide_expr(right))
+        }
+        ast::Expr::Unary { op, operand } if op == "!" => negation(decide_expr(operand)),
+        _ => Decision::unknown(
+            "not a closed condition, a length fact, or a connective of those; runtime check required",
+        ),
+    }
+}
+
+/// The byte offset of the first `=>` outside any brackets, if there is one.
+///
+/// `=>` is not an operator of the expression grammar, so a condition with one
+/// does not parse as a whole. It is split here, at the token level, and each
+/// side goes through the ordinary expression parser. `=>` binds loosest, so
+/// `a || b => c` is `(a || b) => c`.
+fn top_level_fat_arrow(tokens: &[crate::lexer::Token]) -> Option<usize> {
+    use crate::lexer::TokenKind;
+    let mut depth: i32 = 0;
+    for t in tokens {
+        match t.kind {
+            TokenKind::LParen | TokenKind::LBrack | TokenKind::LBrace => depth += 1,
+            TokenKind::RParen | TokenKind::RBrack | TokenKind::RBrace => depth -= 1,
+            TokenKind::FatArrow if depth == 0 => return Some(t.span.offset),
+            _ => {}
+        }
+    }
+    None
+}
+
+/// Decide a condition's source text. Text that does not parse is `Unknown`.
+fn decide_text(condition: &str) -> Decision {
+    let mut tokens = crate::lexer::lex(condition);
+    // `ret` is a keyword (a return), but in a clause it names the return
+    // value, as `result` does in `@ens`. It is a place here, so it becomes an
+    // identifier, and `ret.len() >= 0` is a bare-path length like `xs.len()`.
+    for t in tokens.iter_mut() {
+        if t.kind == crate::lexer::TokenKind::KwRet {
+            t.kind = crate::lexer::TokenKind::Ident;
+        }
+    }
+    if let Some(at) = top_level_fat_arrow(&tokens) {
+        return implication(decide_text(&condition[..at]), decide_text(&condition[at + 2..]));
+    }
+    match crate::parser::parse_expression(&tokens) {
+        Ok(e) => decide_expr(&e),
+        Err(err) => Decision::unknown(format!(
+            "not an expression ({}); runtime check required",
+            err.message
+        )),
     }
 }
 
@@ -289,32 +531,8 @@ fn check_condition(
     kind: ContractKind,
     span: Option<crate::hir::Span>,
 ) -> ContractCheck {
-    // Simple heuristic-based static verification.
-    // A real implementation would use symbolic execution or SMT solving.
-
-    let result = if is_refuted(condition) {
-        CheckResult::Violated
-    } else if condition.contains(".len() >= 0") || condition.contains(".len() > -1") {
-        // Always true for unsigned lengths.
-        CheckResult::Verified
-    } else if condition.contains(".is_ok()") && condition.contains("=>") {
-        // Conditional postcondition — typically verifiable.
-        CheckResult::Verified
-    } else if condition.ends_with(".exists()") || condition.contains("port") {
-        // Runtime-dependent predicates — cannot verify statically.
-        CheckResult::Unknown
-    } else {
-        // Default: unknown for complex conditions.
-        CheckResult::Unknown
-    };
-
-    let explanation = match result {
-        CheckResult::Verified => None,
-        CheckResult::Violated => Some("Condition provably false".into()),
-        CheckResult::Unknown => Some("Cannot verify statically; runtime check required".into()),
-    };
-
-    ContractCheck { condition: condition.into(), kind, result, explanation, span }
+    let Decision { result, rule } = decide_text(condition);
+    ContractCheck { condition: condition.into(), kind, result, explanation: Some(rule), span }
 }
 
 fn verify_effects(analysis: &EffectAnalysis) -> Vec<EffectCheck> {
@@ -642,14 +860,89 @@ mod tests {
     }
 
     #[test]
-    fn verified_length_postcondition() {
+    fn length_postcondition_under_implication_is_unknown_when_consequent_is_not_a_bare_path() {
+        // Formerly `Verified` by substring. `ret.unwrap()` is not a bare path,
+        // so the length fact does not apply, and nothing else proves it.
         let spec = SpecInput {
             requires: vec![],
             ensures: vec!["ret.is_ok() => ret.unwrap().len() >= 0".into()],
         };
         let effects = EffectAnalysis { declared: vec!["io".into()], used: vec!["io".into()] };
         let result = verify_contracts("std.io.read_file", Some(&spec), &effects);
+        assert_eq!(result.checks[0].result, CheckResult::Unknown);
+        assert_eq!(result.status, VerifyStatus::Partial);
+    }
+
+    #[test]
+    fn verdicts_are_proofs_not_substring_matches() {
+        // Each row: (condition, expected). The first is the unsound case the
+        // old `.contains(".len() >= 0")` branch called Verified.
+        let cases = [
+            ("xs.len() >= 0 && n < 0", CheckResult::Unknown),
+            ("ret.is_ok() => ret.len() < 0", CheckResult::Unknown),
+            ("ret.is_ok() => ret.len() >= 0", CheckResult::Verified),
+            ("1 + 1 == 2", CheckResult::Verified),
+            ("1 + 1 == 3", CheckResult::Violated),
+            ("false", CheckResult::Violated),
+            ("0b", CheckResult::Violated),
+            ("n > 0", CheckResult::Unknown),
+            ("xs.len() >= 0", CheckResult::Verified),
+            ("xs.len() < 0", CheckResult::Violated),
+            ("!(xs.len() < 0)", CheckResult::Verified),
+            ("n > 0 || xs.len() >= 0", CheckResult::Verified),
+            ("n > 0 && xs.len() < 0", CheckResult::Violated),
+            ("xs.len() >=", CheckResult::Unknown),
+        ];
+        for (cond, expected) in cases {
+            assert_eq!(check_condition(cond, ContractKind::Ensures, None).result, expected, "{cond}");
+        }
+    }
+
+    #[test]
+    fn a_false_closed_condition_is_diagnosed_as_a_spec_violation() {
+        let spec = SpecInput { requires: vec!["1 + 1 == 3".into()], ensures: vec![] };
+        let effects = EffectAnalysis { declared: vec![], used: vec![] };
+        let result = verify_contracts("my.fn", Some(&spec), &effects);
+        assert_eq!(result.status, VerifyStatus::Failed);
+        let diags = diagnostics(&[result]);
+        assert_eq!(diags.len(), 1);
+        assert_eq!(diags[0].category, Some(crate::hir::DiagnosticCategory::SpecViolation));
+    }
+
+    #[test]
+    fn a_true_closed_condition_is_verified_by_evaluation() {
+        let spec = SpecInput { requires: vec!["len([1, 2, 3]) == 3".into()], ensures: vec![] };
+        let effects = EffectAnalysis { declared: vec![], used: vec![] };
+        let result = verify_contracts("my.fn", Some(&spec), &effects);
         assert_eq!(result.status, VerifyStatus::Verified);
+        assert_eq!(result.checks[0].explanation.as_deref(), Some("closed condition evaluated to true"));
+    }
+
+    #[test]
+    fn a_closed_condition_that_runs_out_of_fuel_is_unknown() {
+        // No whitelisted closed expression loops, so exhaustion is exercised
+        // with a budget of zero rather than through a clause.
+        let tokens = crate::lexer::lex("1 + 1 == 2");
+        let e = crate::parser::parse_expression(&tokens).expect("parses");
+        assert!(is_closed(&e));
+        let d = evaluate_closed(&e, 0);
+        assert_eq!(d.result, CheckResult::Unknown);
+        assert!(d.rule.contains("fuel"), "{}", d.rule);
+    }
+
+    #[test]
+    fn an_unparsable_condition_is_unknown() {
+        for cond in ["xs.len() >=", "((", "a b c"] {
+            assert_eq!(check_condition(cond, ContractKind::Requires, None).result, CheckResult::Unknown, "{cond}");
+        }
+    }
+
+    #[test]
+    fn every_check_states_the_rule_that_decided_it() {
+        let c = check_condition("xs.len() >= 0", ContractKind::Requires, None);
+        assert_eq!(c.explanation.as_deref(), Some("a length is never negative"));
+        let c = check_condition("n > 0", ContractKind::Requires, None);
+        assert!(c.explanation.as_deref().unwrap().contains("runtime check required"));
     }
 
     #[test]
@@ -665,11 +958,11 @@ mod tests {
     fn undeclared_effect_downgrades() {
         let spec = SpecInput {
             requires: vec![],
-            ensures: vec!["ret.is_ok() => ret.unwrap().len() >= 0".into()],
+            ensures: vec!["xs.len() >= 0".into()],
         };
         let effects = EffectAnalysis { declared: vec![], used: vec!["io".into()] };
         let result = verify_contracts("my.fn", Some(&spec), &effects);
-        // Would be Verified from contract check, but downgraded due to undeclared effect.
+        // The contract is Verified, and the undeclared effect downgrades it.
         assert_eq!(result.status, VerifyStatus::Partial);
     }
 
