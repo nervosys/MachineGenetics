@@ -223,7 +223,7 @@ impl V {
     }
 }
 
-const KEEP: &[&str] = &["abs", "floor", "ceil", "round", "trunc"];
+const KEEP: &[&str] = &["abs", "floor", "ceil", "round", "trunc", "relu"];
 const PURE_NUMBER: &[&str] = &[
     "exp", "ln", "log", "log2", "log10", "sin", "cos", "tan", "asin", "acos", "atan", "sinh",
     "cosh", "tanh", "sigmoid",

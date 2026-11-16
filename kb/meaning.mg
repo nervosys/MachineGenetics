@@ -1288,6 +1288,8 @@ kb Meaning {
     fact builtin_function("min");
     fact builtin_function("max");
     fact builtin_function("abs");
+    fact builtin_function("relu");
+    fact builtin_function("clamp");
     fact builtin_function("drop");
     fact builtin_function("swap");
     fact builtin_function("replace");
@@ -1348,6 +1350,7 @@ kb Meaning {
     fact scalar_math("ceil");
     fact scalar_math("round");
     fact scalar_math("trunc");
+    fact scalar_math("relu");
 
     // `builtin_effect` gives the effect a bare call to the name is attributed, as MAGE_SPEC.md's table
     // spells it. `every_builtin_effect_is_stated` holds effects.rs's BUILTIN_EFFECTS to these facts,

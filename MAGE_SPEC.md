@@ -1594,12 +1594,18 @@ dimensionless.
   a function's body and each `ret` are checked against its declared return.
   `if` and `match` branches must agree.
 - `sqrt` halves every exponent and needs them all even (`sqrt` of `m^2` is
-  `m`; of `m` it is refused). `abs`, `floor`, `ceil`, `round` and `trunc` keep
+  `m`; of `m` it is refused). `abs`, `relu`, `floor`, `ceil`, `round` and `trunc` keep
   the unit. `exp`, `ln`, `log`, `log2`, `log10`, `sin`, `cos`, `tan`, `asin`,
   `acos`, `atan`, `sinh`, `cosh`, `tanh` and `sigmoid` need a dimensionless
   argument and return a dimensionless value. Each may be written `f(x)` or
   `x.f()`. Each takes exactly one number, and a wrong count or a non-number is
   refused at `--check`.
+- `relu(x)` is `max(x, 0.0)` and takes one number, so it is written either way
+  too; its derivative is 1 for `x > 0` and 0 otherwise, including at 0.
+  `clamp(x, lo, hi)` limits `x` to `[lo, hi]`; it takes three numbers, is a
+  call only, and `lo > hi` is a run-time error. Its derivative with respect to
+  `x` is 1 for `lo < x < hi` and 0 otherwise. With all three integers the
+  result is an integer, as for `min` and `max`; otherwise it is a float.
 - `x as f64` drops a unit and `x as f64[m]` asserts one. This is the deliberate
   escape hatch.
 
