@@ -50,7 +50,7 @@ use super::directed::{Calibration, CandidateSpec, DirectedSearch, FitnessPredict
 use super::gate::Episode;
 use super::journal::{Entry, Journal};
 use super::lineage::Lineage;
-use super::manifest::{self, ProposerRecord};
+use super::manifest::{self, Direction, PredictionManifest, ProposerRecord};
 use super::supervisor::{FailureMode, HealthSample, SupervisionPolicy, Supervisor};
 use crate::variation::{propose_with_points, GenePool, Legality, Locus, Proposal, Selection, VariationPlan};
 use super::{EvalSuite, FitnessVector, Generation, GenerationId, Measurement};
@@ -265,6 +265,48 @@ pub fn admission_width(trust: f64, candidates_per_cycle: usize) -> usize {
     ((trust.clamp(0.0, 1.0) * candidates_per_cycle as f64).round() as usize).max(1)
 }
 
+/// The name the built-in (undirected) search is recorded under when it states
+/// predictions (see [`Runner::with_self_prediction`]).
+pub const UNDIRECTED_PROPOSER: &str = "undirected";
+
+/// A self-predictor: given a candidate's genome, the measured generations as
+/// `(genome, value of the predicted metric)` and the champion's value of that
+/// metric (the fallback), the metric value it expects the candidate to measure.
+pub type SelfPredictor = Box<dyn Fn(&crate::variation::Genome, &[(crate::variation::Genome, f64)], f64) -> f64>;
+
+/// The default self-predictor: the value measured at the generation nearest to
+/// `genome` in genome space (Euclidean distance over the `Param` loci), or
+/// `fallback` when there is none to compare with.
+///
+/// Only generations whose parameter vector has the same, non-zero length are
+/// comparable. Ties go to the earliest generation, so the prediction is a pure
+/// function of its inputs.
+pub fn nearest_measured(
+    genome: &crate::variation::Genome,
+    measured: &[(crate::variation::Genome, f64)],
+    fallback: f64,
+) -> f64 {
+    let mine = crate::variation::params_of(genome);
+    let mut best: Option<(f64, f64)> = None;
+    for (g, value) in measured {
+        let theirs = crate::variation::params_of(g);
+        if mine.is_empty() || theirs.len() != mine.len() || !value.is_finite() {
+            continue;
+        }
+        let d2: f64 = mine.iter().zip(&theirs).map(|(a, b)| (a - b) * (a - b)).sum();
+        if d2.is_finite() && best.map_or(true, |(bd, _)| d2 < bd) {
+            best = Some((d2, *value));
+        }
+    }
+    best.map_or(fallback, |(_, v)| v)
+}
+
+/// What [`Runner::with_self_prediction`] attaches.
+struct SelfPrediction {
+    metric: String,
+    predictor: SelfPredictor,
+}
+
 /// A generation's held-out values on the named objectives, in order, when every
 /// one is present and finite. `None` otherwise: such a generation has no
 /// position to compare by, so Pareto selection does not choose it.
@@ -304,6 +346,9 @@ pub struct Runner<'a> {
     proposer: Option<Box<dyn Proposer>>,
     /// Each proposer's standing, by name. Moved only by scored predictions.
     proposer_records: BTreeMap<String, ProposerRecord>,
+    /// Opt-in: the built-in search states a prediction for each candidate and
+    /// is recorded as the proposer [`UNDIRECTED_PROPOSER`]. `None` by default.
+    self_prediction: Option<SelfPrediction>,
     /// The cycle this invocation starts at, and the refusals carried into it:
     /// zero for a fresh run, and what [`Lineage::replay`] found for a resumed
     /// one, so the cycle seeds and the stall count continue where they were.
@@ -332,6 +377,7 @@ impl<'a> Runner<'a> {
             calibration: Calibration::new(),
             proposer: None,
             proposer_records: BTreeMap::new(),
+            self_prediction: None,
             first_cycle: 0,
             carried_refusals: 0,
             carried_joules: 0.0,
@@ -389,6 +435,34 @@ impl<'a> Runner<'a> {
     pub fn with_proposer(mut self, proposer: Box<dyn Proposer>) -> Self {
         self.proposer_records.entry(proposer.name().to_string()).or_default();
         self.proposer = Some(proposer);
+        self
+    }
+
+    /// Opt-in: make the built-in search state a prediction, so that it earns
+    /// admission width the way an external proposer does.
+    ///
+    /// Each candidate of the built-in search gets a manifest: the change in
+    /// `metric` (relative to the champion) that the default predictor,
+    /// [`nearest_measured`], expects. The runner then treats the search as a
+    /// proposer named [`UNDIRECTED_PROPOSER`]: the prediction is scored against
+    /// the measurement ([`manifest::score`], which is relative to the size of the
+    /// change, so it does not depend on the axis scale), journalled as a
+    /// `Calibrated` entry, and the record's trust sets the admission width
+    /// ([`admission_width`]). Of the admitted candidates the one with the best
+    /// predicted `metric` is built and measured. With no record the width is
+    /// one, so an untrusted predictor chooses nothing.
+    ///
+    /// Without this call nothing changes. It has no effect with an external
+    /// proposer attached, and is not meant to be combined with
+    /// [`Runner::with_predictor`].
+    pub fn with_self_prediction(self, metric: &str) -> Self {
+        self.with_self_predictor(metric, Box::new(nearest_measured))
+    }
+
+    /// [`Runner::with_self_prediction`] with a predictor of the caller's choosing.
+    pub fn with_self_predictor(mut self, metric: &str, predictor: SelfPredictor) -> Self {
+        self.proposer_records.entry(UNDIRECTED_PROPOSER.to_string()).or_default();
+        self.self_prediction = Some(SelfPrediction { metric: metric.to_string(), predictor });
         self
     }
 
@@ -653,7 +727,37 @@ impl<'a> Runner<'a> {
                     &GenePool::default(),
                     seed,
                 );
-                let pool: Vec<CandidateSpec> = candidates.into_iter().take(cpc).collect();
+                let mut pool: Vec<CandidateSpec> = candidates.into_iter().take(cpc).collect();
+                if let Some(sp) = &self.self_prediction {
+                    let fallback = champion_fitness.as_ref().and_then(|c| c.get(&sp.metric)).unwrap_or(0.0);
+                    let rows: Vec<(crate::variation::Genome, f64)> = measured
+                        .iter()
+                        .filter_map(|g| {
+                            let f = g.heldout_fitness()?;
+                            let genome = g.genome.clone().unwrap_or_else(|| vec![Locus::param(f.composite())]);
+                            Some((genome, f.get(&sp.metric)?))
+                        })
+                        .collect();
+                    for c in pool.iter_mut() {
+                        let p = (sp.predictor)(&c.genome, &rows, fallback);
+                        let delta = if p.is_finite() { p - fallback } else { 0.0 };
+                        c.manifest = Some(PredictionManifest {
+                            metric: sp.metric.clone(),
+                            direction: if delta < 0.0 { Direction::Decrease } else { Direction::Increase },
+                            magnitude: delta.abs(),
+                        });
+                        c.proposer = Some(UNDIRECTED_PROPOSER.to_string());
+                    }
+                    let trust = self.proposer_records.get(UNDIRECTED_PROPOSER).map_or(0.0, ProposerRecord::trust);
+                    let width = admission_width(trust, cpc);
+                    let _ = journal.append(Entry::Note {
+                        text: format!(
+                            "admission: {UNDIRECTED_PROPOSER} trust {trust:.4}, width {width} of {} candidate(s)",
+                            pool.len()
+                        ),
+                    });
+                    pool.truncate(width);
+                }
                 (pool, refused)
             }
             Some(proposer) => {
@@ -742,7 +846,23 @@ impl<'a> Runner<'a> {
         } else {
             // Derived from the cycle seed, so the run stays reproducible.
             let mut rng = crate::variation::Rng::seed(seed ^ 0x5EED_5E1E);
-            Some(rng.below(ranked.len()))
+            let random = rng.below(ranked.len());
+            if self.self_prediction.is_some() && self.proposer.is_none() && self.predictor.is_none() {
+                // Stated predictions order the admitted candidates: the one
+                // expected to measure best is built. First of equals.
+                let delta = |r: &super::directed::Ranked| {
+                    r.candidate.manifest.as_ref().map_or(f64::NEG_INFINITY, PredictionManifest::predicted_delta)
+                };
+                let mut best = 0;
+                for i in 1..ranked.len() {
+                    if delta(&ranked[i]) > delta(&ranked[best]) {
+                        best = i;
+                    }
+                }
+                Some(best)
+            } else {
+                Some(random)
+            }
         };
         let predicted = chosen.map(|i| ranked[i].prediction.predicted.clone());
         let spec = chosen
@@ -2147,6 +2267,191 @@ mod tests {
         assert_eq!(admission_width(0.9, 4), 4, "round(3.6) is 4");
         assert_eq!(admission_width(1.0, 4), 4);
         assert_eq!(admission_width(0.0, 0), 1, "the floor holds even for an empty batch");
+    }
+
+    // ---- the built-in search stating predictions (opt-in) ----
+
+    /// Capability on a small scale, like the arena's (0 to 0.08): 0.08 times the
+    /// mean of the genome's parameters.
+    #[derive(Default)]
+    struct Small {
+        capability: std::collections::HashMap<String, f64>,
+    }
+
+    fn small_capability(g: &crate::variation::Genome) -> f64 {
+        let ps = crate::variation::params_of(g);
+        if ps.is_empty() { 0.0 } else { 0.08 * ps.iter().sum::<f64>() / ps.len() as f64 }
+    }
+
+    impl Workload for Small {
+        fn materialize(&mut self, spec: &CandidateSpec) -> Result<Digest, String> {
+            let d = Digest::of(serde_json::to_string(&spec.genome).unwrap().as_bytes());
+            self.capability.insert(d.0.clone(), small_capability(&spec.genome));
+            Ok(d)
+        }
+        fn evaluate(&mut self, artifact: &Digest, _: &EvalSuite) -> Result<FitnessVector, String> {
+            let cap = self.capability.get(&artifact.0).copied().ok_or("not materialized")?;
+            Ok(FitnessVector::new().with("capability", cap).with("safety", 0.95))
+        }
+        fn shadow(&mut self, _: &Digest) -> HealthSample {
+            HealthSample::ok()
+        }
+        fn observe_champion(&mut self, _: &Digest) -> HealthSample {
+            HealthSample::ok()
+        }
+        fn materialized(&self, _: &Digest) -> bool {
+            true
+        }
+    }
+
+    struct SelfRun {
+        entries: Vec<Entry>,
+        trust: f64,
+        /// The admission width of each cycle, from the journal's notes.
+        widths: Vec<usize>,
+        built: usize,
+        cycles: usize,
+    }
+
+    /// Three candidates a cycle on the small scale, the champion at 0.04.
+    fn self_run(predictor: Option<SelfPredictor>, cycles: u32, seed: u64, tag: &str) -> SelfRun {
+        let path = tmp(&format!("selfpred-{tag}-{seed}"));
+        let mut j = Journal::open(&path).unwrap();
+        let mut w = Small::default();
+        let mut l = Lineage::new();
+        let id = l.next_id();
+        let mut g = Generation::new(id, Digest::of(b"seed-champion")).measured(Measurement {
+            suite: suite(),
+            fitness: FitnessVector::new().with("capability", 0.04).with("safety", 0.95),
+            evaluator: EVALUATOR.into(),
+        });
+        g.genome = Some(vec![Locus::param(0.5), Locus::param(0.5)]);
+        l.add(g);
+        l.grant(id, episode().gate_digest, EVALUATOR).unwrap();
+        let (ep, at) = (episode(), attestor());
+        let policy = RunnerPolicy { candidates_per_cycle: 3, ..patient(cycles) };
+        let mut r = Runner::new(policy, &ep, &at, suite(), seed);
+        if let Some(p) = predictor {
+            r = r.with_self_predictor("capability", p);
+        }
+        let report = r.run(&mut l, &mut j, &mut w);
+        let entries: Vec<Entry> = j.replay().unwrap().into_iter().map(|r| r.entry).collect();
+        let widths = entries
+            .iter()
+            .filter_map(|e| match e {
+                Entry::Note { text } if text.starts_with("admission:") => {
+                    text.split("width ").nth(1)?.split(' ').next()?.parse().ok()
+                }
+                _ => None,
+            })
+            .collect();
+        let out = SelfRun {
+            trust: r.proposer_trust(UNDIRECTED_PROPOSER),
+            built: w.capability.len(),
+            cycles: report.cycles.len(),
+            entries,
+            widths,
+        };
+        let _ = std::fs::remove_dir_all(path.parent().unwrap());
+        out
+    }
+
+    fn calibrated_scores(r: &SelfRun) -> Vec<f64> {
+        r.entries
+            .iter()
+            .filter_map(|e| match e {
+                Entry::Calibrated { score, proposer, .. } if proposer == UNDIRECTED_PROPOSER => Some(*score),
+                _ => None,
+            })
+            .collect()
+    }
+
+    #[test]
+    fn nearest_measured_takes_the_value_at_the_closest_param_vector() {
+        let g = |v: &[f64]| -> crate::variation::Genome { v.iter().map(|x| Locus::param(*x)).collect() };
+        let m = vec![(g(&[0.0, 0.0]), 1.0), (g(&[1.0, 1.0]), 2.0), (g(&[0.9, 0.9]), 3.0)];
+        assert_eq!(nearest_measured(&g(&[0.95, 0.95]), &m, -1.0), 3.0);
+        assert_eq!(nearest_measured(&g(&[0.1, 0.0]), &m, -1.0), 1.0);
+        let tie = vec![(g(&[0.0]), 5.0), (g(&[2.0]), 6.0)];
+        assert_eq!(nearest_measured(&g(&[1.0]), &tie, -1.0), 5.0, "a tie goes to the earliest");
+        assert_eq!(nearest_measured(&g(&[0.5, 0.5, 0.5]), &m, -1.0), -1.0, "no comparable generation: the fallback");
+        assert_eq!(nearest_measured(&g(&[0.5]), &[], -1.0), -1.0);
+    }
+
+    #[test]
+    fn without_the_option_nothing_is_predicted_scored_or_noted() {
+        let r = self_run(None, 6, 4, "off");
+        assert!(calibrated_scores(&r).is_empty());
+        assert!(r.widths.is_empty());
+        assert!(r.entries.iter().all(|e| !matches!(e, Entry::Calibrated { .. })));
+        assert_eq!(r.trust, 0.0);
+    }
+
+    #[test]
+    fn an_accurate_self_predictor_earns_width_and_a_constant_one_does_not() {
+        // Capabilities here are 0.0 to 0.08, so an absolute error of 0.25 would
+        // call every predictor excellent. The score is relative to the change.
+        let oracle: SelfPredictor = Box::new(|g, _, _| small_capability(g));
+        let acc = self_run(Some(oracle), 8, 5, "oracle");
+        let scores = calibrated_scores(&acc);
+        assert!(scores.len() >= 6, "{scores:?}");
+        assert!(scores.iter().all(|s| *s > 0.999), "{scores:?}");
+        assert!(acc.trust > 0.99, "trust {}", acc.trust);
+        assert_eq!(acc.widths.len(), acc.cycles, "a width is journalled every cycle");
+        assert_eq!(&acc.widths[..3], &[1, 1, 1], "no record, one candidate, for the first three cycles");
+        assert!(acc.widths[3..].iter().all(|w| *w == 3), "a proven predictor admits the batch: {:?}", acc.widths);
+        assert_eq!(scores.len(), acc.cycles, "still one candidate measured, and scored, per cycle");
+        assert!(acc.built <= acc.cycles);
+
+        // Predicts the champion's value: a change of zero. That is right (score
+        // 1) exactly when the candidate measures the same as the champion, as a
+        // candidate that changes nothing does, and wrong (score 0) otherwise.
+        let flat: SelfPredictor = Box::new(|_, _, champ| champ);
+        let c0 = self_run(Some(flat), 8, 5, "flat");
+        let s0 = calibrated_scores(&c0);
+        assert!(s0.iter().all(|s| *s == 0.0 || *s == 1.0), "{s0:?}");
+        assert!(s0.iter().any(|s| *s == 0.0), "{s0:?}");
+        assert!(c0.trust < 0.75 && acc.trust > c0.trust + 0.25, "flat {} vs accurate {}", c0.trust, acc.trust);
+
+        // Predicts a fixed value inside the capability range.
+        let fixed: SelfPredictor = Box::new(|_, _, _| 0.06);
+        let c1 = self_run(Some(fixed), 8, 5, "fixed");
+        assert!(c1.trust < 0.5, "a constant predictor must not earn trust on a 0.08 scale: {}", c1.trust);
+        assert!(acc.trust > c1.trust + 0.5);
+        assert!(c1.entries.iter().any(|e| matches!(e, Entry::Calibrated { .. })));
+    }
+
+    #[test]
+    fn the_default_self_predictor_records_each_prediction_and_is_reproducible() {
+        let run = |seed| {
+            let path = tmp(&format!("selfpred-near-{seed}"));
+            let mut j = Journal::open(&path).unwrap();
+            let mut w = Small::default();
+            let mut l = Lineage::new();
+            let id = l.next_id();
+            let mut g = Generation::new(id, Digest::of(b"seed-champion")).measured(Measurement {
+                suite: suite(),
+                fitness: FitnessVector::new().with("capability", 0.04).with("safety", 0.95),
+                evaluator: EVALUATOR.into(),
+            });
+            g.genome = Some(vec![Locus::param(0.5), Locus::param(0.5)]);
+            l.add(g);
+            l.grant(id, episode().gate_digest, EVALUATOR).unwrap();
+            let (ep, at) = (episode(), attestor());
+            let policy = RunnerPolicy { candidates_per_cycle: 3, ..patient(6) };
+            let mut r = Runner::new(policy, &ep, &at, suite(), seed).with_self_prediction("capability");
+            r.run(&mut l, &mut j, &mut w);
+            let e: Vec<Entry> = j.replay().unwrap().into_iter().map(|r| r.entry).collect();
+            let _ = std::fs::remove_dir_all(path.parent().unwrap());
+            e
+        };
+        let (a, b) = (run(8), run(8));
+        let cal = a.iter().filter(|e| matches!(e, Entry::Calibrated { .. })).count();
+        assert!(cal >= 3, "{cal}");
+        assert_eq!(
+            format!("{:?}", a.iter().filter(|e| !matches!(e, Entry::Note { .. })).collect::<Vec<_>>()),
+            format!("{:?}", b.iter().filter(|e| !matches!(e, Entry::Note { .. })).collect::<Vec<_>>())
+        );
     }
 
     // ── The energy budget across cycles ──────────────────────────────────

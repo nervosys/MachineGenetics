@@ -1,7 +1,7 @@
 # Germline — model succession, handoff, and fallback
 
 > **Status: control plane complete and runnable; workload not.**
-> `germline/` — its own crate, 218 tests. Variation, directed search, the gate,
+> `germline/` — its own crate, 222 tests. Variation, directed search, the gate,
 > attestation, lineage, the durable journal, the cycle state machine, and
 > supervision are built and tested ✅. Model training and inference are **not**
 > here and are not claimed ◻ — this decides *whether* a successor takes over, not
@@ -283,6 +283,30 @@ scale.
   `Entry::CycleRefused` beside its refusal notes, because such a cycle proposes
   nothing and would otherwise leave no trace in the journal.
 
+**The built-in search can state predictions too (opt-in).**
+`Runner::with_self_prediction(metric)` (and `with_self_predictor` for a predictor
+of the caller's choosing) makes the undirected search behave as a proposer named
+`undirected`. For each candidate it states a manifest: the change in `metric`,
+relative to the champion, that the predictor expects. The default predictor,
+`nearest_measured`, returns the value measured at the generation nearest to the
+candidate in genome space (Euclidean over the `Param` loci; generations whose
+parameter vector has a different length are skipped; ties go to the earliest;
+no comparable generation gives the champion's value). The prediction is scored,
+journalled as `Calibrated`, and recorded in the `undirected` record exactly as
+above, so trust, `admission_width` and resume work unchanged. Each cycle writes a
+note `admission: undirected trust T, width W of N candidate(s)`. Of the `W`
+admitted candidates the one with the best predicted `metric` is built and measured
+(first of equals), so width is the number of candidates the predictor may choose
+among, and still one candidate is measured per cycle. The score is relative to
+the size of the change, not to the axis, so a metric whose values are all small
+(capability here is 0 to 0.08) does not make every predictor look accurate; a
+predictor that states "no change" scores `1` only when the candidate measures
+exactly the champion's value. Without the call, nothing changes: no
+prediction, no `Calibrated` entry, no note, and the candidate is sampled as before.
+The option has no effect with an external proposer attached and is not meant to be
+combined with `with_predictor`. `Calibration::trust` in `directed` (absolute
+error, 0.25 scale) is a separate mechanism and is not used by this path.
+
 Resuming a proposer run is exact. `Lineage::replay` rebuilds each proposer's
 record from its `Calibrated` entries, in journal order, and fails with an
 inconsistency if a recorded trust does not match the rebuilt one. It counts each
@@ -559,7 +583,7 @@ nobody chose, one individually-defensible promotion at a time.
 ## 10. Reproducing
 
 ```powershell
-cargo test --manifest-path germline/Cargo.toml                  # 218 tests
+cargo test --manifest-path germline/Cargo.toml                  # 222 tests
 cargo test --manifest-path germline/Cargo.toml --test rsi_loop  # 6 closed-loop scenarios
 cargo test --manifest-path germline/Cargo.toml --test succession # 13 succession scenarios
 ```

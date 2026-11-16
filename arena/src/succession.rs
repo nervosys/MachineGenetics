@@ -653,7 +653,7 @@ const USAGE: &str = "usage: arena succession --heldout FILE[,FILE...] --journal 
 [--objective-tolerance AXIS=F,...] [--allow-estimated-energy] [--efficiency-basis meter|work] \
 [--energy-budget JOULES] [--param-search es|perturb] [--cost joules|fuel] [--validation FILE[,FILE...]] \
 [--train-text FILE[,FILE...]] [--train-text-per-round N] [--reward alignment|compression|transfer] [--dev-text FILE[,FILE...]] [--genome narrow|wide] \
-[--patience N] [--mutation-scale F] \
+[--patience N] [--mutation-scale F] [--predict] \
 [--learners SPEC[,SPEC...]]  (SPEC: ng:orders:log2buckets:lr | tf:d:layers:heads:ctx:lr[:gpu] | \
 ent:orders:log2buckets:target_len:lr | ssm:d:lr[:bptt]; the first spec is the one the gate scores)";
 
@@ -884,15 +884,18 @@ fn apply_search_budget(
     Ok(patience.unwrap_or(RunnerPolicy::default().max_consecutive_refusals))
 }
 
-/// [`full_policy_name`], plus `+patience=N` and `+mscale=F` when those opt-in
-/// flags are given. Both enter the policy digest anyway (the digest is of the
-/// whole serialized policy), the suffix keeps the name honest too.
-fn with_budget_suffix(mut name: String, patience: Option<u32>, mutation_scale: Option<f64>) -> String {
+/// [`full_policy_name`], plus `+patience=N`, `+mscale=F` and `+predict` when those
+/// opt-in flags are given. They enter the policy digest anyway (the digest is of
+/// the whole serialized policy), the suffix keeps the name honest too.
+fn with_budget_suffix(mut name: String, patience: Option<u32>, mutation_scale: Option<f64>, predict: bool) -> String {
     if let Some(p) = patience {
         name.push_str(&format!("+patience={p}"));
     }
     if let Some(s) = mutation_scale {
         name.push_str(&format!("+mscale={s}"));
+    }
+    if predict {
+        name.push_str("+predict");
     }
     name
 }
@@ -1043,6 +1046,8 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
     // Opt-in search budget; each joins the policy name when given.
     let mut patience: Option<u32> = None;
     let mut mutation_scale: Option<f64> = None;
+    // Opt-in: candidates state a capability prediction (see germline's `with_self_prediction`).
+    let mut predict = false;
     let mut i = 0;
     while i < args.len() {
         let flag = args[i].as_str();
@@ -1050,7 +1055,7 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
             println!("{USAGE}");
             return Ok(0);
         }
-        let takes_value = !matches!(flag, "--force" | "--json" | "--allow-estimated-energy");
+        let takes_value = !matches!(flag, "--force" | "--json" | "--allow-estimated-energy" | "--predict");
         let v = if takes_value {
             args.get(i + 1).map(String::as_str).ok_or_else(|| format!("{flag} needs a value"))?
         } else {
@@ -1108,6 +1113,7 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
             "--param-search" => param_search = parse_param_search(v)?,
             "--patience" => patience = Some(parse_patience(v)?),
             "--mutation-scale" => mutation_scale = Some(parse_mutation_scale(v)?),
+            "--predict" => predict = true,
             "--learners" => {
                 base.learners = crate::learner::parse_learner_specs(v)?;
                 learners_flag = Some(v.to_string());
@@ -1251,6 +1257,7 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
             full_policy_name(efficiency_basis, !base.train_text.is_empty(), learners_flag.as_deref(), base.reward == Reward::Transfer, genome_kind == GenomeKind::Wide),
             patience,
             mutation_scale,
+            predict,
         ),
         max_consecutive_refusals: max_refusals,
         max_cycles: cycles,
@@ -1261,6 +1268,9 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
         ..RunnerPolicy::default()
     };
     let mut runner = Runner::new(policy, &ep, &at, suite.clone(), seed);
+    if predict {
+        runner = runner.with_self_prediction("capability");
+    }
     let (report, lineage) = if journal.is_empty() {
         let r = runner.run(&mut genesis, &mut journal, &mut w);
         (r, genesis)
@@ -1521,9 +1531,14 @@ mod tests {
 
         // Names: unchanged by default, suffixed when given.
         let n = || full_policy_name(EfficiencyBasis::Work, false, None, false, true);
-        assert_eq!(with_budget_suffix(n(), None, None), n());
-        assert_eq!(with_budget_suffix(n(), Some(10), None), format!("{}+patience=10", n()));
-        assert_eq!(with_budget_suffix(n(), Some(10), Some(0.35)), format!("{}+patience=10+mscale=0.35", n()));
+        assert_eq!(with_budget_suffix(n(), None, None, false), n());
+        assert_eq!(with_budget_suffix(n(), Some(10), None, false), format!("{}+patience=10", n()));
+        assert_eq!(with_budget_suffix(n(), Some(10), Some(0.35), false), format!("{}+patience=10+mscale=0.35", n()));
+        assert_eq!(with_budget_suffix(n(), None, None, true), format!("{}+predict", n()));
+        assert_eq!(
+            with_budget_suffix(n(), Some(10), Some(0.35), true),
+            format!("{}+patience=10+mscale=0.35+predict", n())
+        );
 
         // Values reach the policy, and the digest moves only when a flag is given.
         let mut v = VariationPlan::default();
@@ -1664,6 +1679,67 @@ mod tests {
             assert!(report.promotions > 0);
             assert!(champ.genome.is_some(), "a promoted session carries its configuration");
         }
+    }
+
+    #[test]
+    fn predict_records_a_capability_prediction_for_each_scored_candidate() {
+        let mut w = ArenaWorkload::new(base(), corpora());
+        let suite = w.suite();
+        let seed_art = w.materialize(&CandidateSpec::new("seed", encode(&base()))).unwrap();
+        let seed_fit = w.evaluate(&seed_art, &suite).unwrap();
+        let mut lineage = Lineage::new();
+        let id = lineage.next_id();
+        let mut g = Generation::new(id, seed_art).measured(Measurement {
+            suite: suite.clone(),
+            fitness: seed_fit,
+            evaluator: "arena-evaluator".into(),
+        });
+        g.genome = Some(encode(&base()));
+        lineage.add(g);
+        let ep = Episode::open(
+            PromotionGate {
+                primary_axis: "capability".into(),
+                min_improvement: 0.0,
+                guard_axes: vec!["efficiency".into()],
+                guard_tolerance: 0.5,
+                min_shadow_successes: 1,
+                dominance: None,
+            },
+            suite.digest.clone(),
+            "arena-evaluator",
+        );
+        let seed = lineage.get(id).unwrap().clone();
+        let approval = ep.approve(&seed, &lineage, 1, &|d| w.materialized(d)).unwrap();
+        lineage.promote(approval).unwrap();
+        let at = Attestor::new("arena-evaluator", b"arena test key".to_vec());
+        let dir = std::env::temp_dir().join(format!("arena-succession-predict-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let mut journal = Journal::open(&dir.join("journal.jsonl")).unwrap();
+        let policy = RunnerPolicy {
+            name: with_budget_suffix(policy_name(EfficiencyBasis::Meter), None, None, true),
+            max_cycles: 4,
+            max_consecutive_refusals: 10,
+            candidates_per_cycle: 3,
+            shadow_runs: 1,
+            supervision: SupervisionPolicy { window: 2, ..SupervisionPolicy::default() },
+            ..RunnerPolicy::default()
+        };
+        let mut runner = Runner::new(policy, &ep, &at, suite, 11).with_self_prediction("capability");
+        let report = runner.run(&mut lineage, &mut journal, &mut w);
+        let entries: Vec<_> = journal.replay().unwrap().into_iter().map(|r| r.entry).collect();
+        let _ = std::fs::remove_dir_all(&dir);
+        let calibrated = entries
+            .iter()
+            .filter(|e| matches!(e, germline::journal::Entry::Calibrated { proposer, metric, .. }
+                if proposer == germline::runner::UNDIRECTED_PROPOSER && metric == "capability"))
+            .count();
+        assert_eq!(calibrated, report.cycles.iter().filter(|c| c.candidate.is_some()).count());
+        assert!(calibrated >= 3, "{calibrated}");
+        let widths = entries
+            .iter()
+            .filter(|e| matches!(e, germline::journal::Entry::Note { text } if text.starts_with("admission:")))
+            .count();
+        assert_eq!(widths, report.cycles.len(), "the admission width is journalled every cycle");
     }
 
     #[test]
