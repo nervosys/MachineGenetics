@@ -278,9 +278,9 @@ kb Grammar {
     fact instance_of(StAssign, Production);
     fact rhs(StAssign, "StOr");
     fact rhs(StAssign, "StAssign StAssignOp StOr");
-    // StAssignOp: parser.rs 3732-3737. `&=`, `|=`, `^=`, `<<=` etc. are not in the table.
+    // StAssignOp: parser.rs parse_expr_bp infix table, every assignment at l_bp 1.
     fact instance_of(StAssignOp, Production);
-    fact rhs(StAssignOp, "Assign | PlusEq | MinusEq | StarEq | SlashEq | PercentEq");
+    fact rhs(StAssignOp, "Assign | PlusEq | MinusEq | StarEq | SlashEq | PercentEq | BitAndEq | BitOrEq | BitXorEq | ShlEq | ShrEq");
     // StOr: parser.rs 3738 (Or, 3-4), 3759-3760 (TensorPipeline, Pipe, 3-4)
     // `||`, `|>` and `▸` share one level and are left-associative.
     fact instance_of(StOr, Production);

@@ -1771,7 +1771,7 @@ impl TypeChecker {
                     // `+=` failed with fully annotated types too. The
                     // untyped-parameter program it was found in simply had two
                     // problems at once.
-                    "+=" | "-=" | "*=" | "/=" | "%=" => {
+                    "+=" | "-=" | "*=" | "/=" | "%=" | "&=" | "|=" | "^=" | "<<=" | ">>=" => {
                         if let Err(e) = unify(&mut self.subst, &lt, &rt) {
                             self.emit_error(format!("compound assignment `{op}`: {e}"));
                         }
@@ -2781,7 +2781,7 @@ mod tests {
                 .map(|d| d.message.clone())
                 .collect::<Vec<_>>()
         };
-        for op in ["+=", "-=", "*=", "/=", "%="] {
+        for op in ["+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "<<=", ">>="] {
             let src = format!("f s() -> i32 {{ m x = 8
  x {op} 2
  x }}");
