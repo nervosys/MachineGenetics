@@ -516,10 +516,11 @@ front-end passes. What the SKB governs is what an agent is *told*, which is a
 real thing to protect and a smaller one than enforcement.
 
 **And a large part of it describes conditions no pass can detect.** The
-pipeline is lex, parse, resolve, typecheck, effect inference, MLIR lowering,
-heal — there is no ownership or borrow-checking phase. So of the 255 rules,
-the 40 ownership and 40 borrow rules are knowledge about a language rule the
-checker does not implement, and the 35 lifetime rules sit behind
+pipeline is lex, parse, resolve, typecheck, effect inference, borrow checking
+(`borrowck.rs`, E0382 and E0502, reported only on evidence), MLIR lowering, heal.
+So of the 255 rules, the 40 ownership and 40 borrow rules are mostly knowledge
+about language rules the checker does not implement (MAGE_SPEC §13 lists the
+ones it does), and the 35 lifetime rules sit behind
 `AEL-0003`'s claim that lifetimes are inferred rather than checked. That is not
 a defect to fix by deleting rules — the knowledge is what agents search — but a
 reader who assumed `mage-parse --check` enforces the ownership database would
@@ -530,20 +531,20 @@ now records the split. Seven variants are constructed by a pass on finding the
 condition — `TypeMismatch` (types.rs), `UnresolvedName`, `UnresolvedType`,
 `DuplicateDefinition` (resolve.rs), `UndeclaredEffect` (effects.rs),
 `SyntaxError`, `Other`. Three — `BorrowConflict`, `UseAfterMove`,
-`SpecViolation` — have exactly one non-test mention each, all inside
+`SpecViolation` — had exactly one non-test mention each, all inside
 `heal::infer_category`, the function that guesses a category from a message
-someone else already wrote. Those three say the compiler can *relay* such an
-error, not that it can *find* one, and for the first two that is precisely
-because no ownership or borrow-checking phase exists. `SpecViolation` is the
+someone else already wrote. Before the borrow checker landed (2026-11-13) those
+three said the compiler could *relay* such an error, not that it could *find*
+one. `borrowck.rs` now produces the first two. `SpecViolation` is the
 third for a different reason: the contract verifier runs and prints its own
 summary rather than emitting diagnostics, so a refuted contract produces no
 coded diagnostic at all.
 
 `DiagnosticCategory` tells the same story from the other side. Ten variants,
 each with a stable code that hir.rs calls "machine-matchable" and part of the
-agent contract; measured against the crate, **`UseAfterMove` had no producer at
-all** and `BorrowConflict`'s only one is the healer classifying a message it was
-handed. `E0382` was unreachable: `heal::infer_category` folded "move" into the
+agent contract; measured against the crate before the borrow checker landed,
+**`UseAfterMove` had no producer at all** and `BorrowConflict`'s only one was the
+healer classifying a message it was handed. `E0382` was unreachable: `heal::infer_category` folded "move" into the
 borrow branch, so *use of moved value `x`* came back coded `E0502` while the
 code that names it could not be emitted — and the fix table three hundred lines
 above recognised the same message as a move and offered move fixes for it. Two

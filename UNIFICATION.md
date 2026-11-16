@@ -82,6 +82,7 @@ primitives, and seven compute backends).
                   │   MAGE frontend            │
                   │  lex → parse → resolve →      │
                   │  typecheck → effects → elide  │
+                  │  → borrowck                   │
                   └───────────────┬───────────────┘
                                   │  AST
                                   ▼
@@ -730,7 +731,9 @@ tokens, a tokenizer's prior, are the right unit. S1 made the unit selectable
   cl100k BPE tokens move together. The sigil/keyword ratio is 1.002 in both
   (MAGE_SPEC section 2.4). Phase 49's 0.998 native-lexer ratio against Rust
   says the same. A vendored BPE would cost a dependency and change nothing
-  measurable.
+  measurable. (Since 2026-11-13 the crate has its own BPE tokenizer,
+  `prototype/src/bpe.rs`, with no dependency, so the dependency cost no longer
+  applies. The decision about the length unit was not revisited.)
 - **Bytes would add a surface bias and nothing else.** Bytes are the only unit
   where the two surfaces differ, by 4%. Arena programs are rendered in one
   surface, so this does not move rankings today. It would make the charge

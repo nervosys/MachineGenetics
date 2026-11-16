@@ -10,8 +10,11 @@
 
 The MAGE compiler is **one crate**, `mage-prototype`, whose library surface is
 62 modules under `prototype/src`. It compiles a `.mg` source file by running a
-fixed sequence of passes, eagerly, front to back. There is no query engine, no
-incremental recomputation, and no per-stage crate split.
+fixed sequence of passes, eagerly, front to back. There is no per-stage crate
+split. Since 2026-11-13 there is also an opt-in incremental path: a
+hand-written query engine in `prototype/src/query/` (no `salsa` dependency)
+behind `--pipeline FILE --incremental-stats [--cache-dir DIR]`. The default
+drivers below still run eagerly.
 
 That is a smaller machine than the original design, and worth stating plainly
 rather than apologising for: the passes are ordinary functions, each takes the
@@ -173,8 +176,11 @@ The design principles that went with it — **query-driven** (every computation
 a named, memoised query), **incremental** (changing one file re-runs only the
 affected queries), **parallel** (independent queries on separate threads) —
 describe a Salsa-style engine. `salsa` is not a dependency of any crate in this
-repository, and nothing in `prototype/src` implements a query cache or a
-dependency graph.
+repository. Since 2026-11-13, `prototype/src/query/` implements a smaller
+version of the idea by hand: memoised queries with dependency edges, early
+cutoff, per-item granularity for resolution and the item passes, and an
+optional content-addressed disk cache. It is single-threaded, and types,
+effects and MLIR stay whole-module queries.
 
 **Not implemented.** Design sketch — no `CompileSession`, no `DefId`, no query trait, no interner.
 
@@ -188,6 +194,7 @@ pub trait TypeCheck: HirDatabase {
 }
 ```
 
-If incrementality is ever wanted, the thing to change first is phase ordering
-in `run_check`: the passes take whole modules and return whole diagnostic
-lists, which is the property a query engine would have to break.
+The engine had to break exactly that property: `resolve.rs` was refactored to
+run per item, and diagnostics are kept item-relative and rebased when they are
+assembled. The passes that still take the whole module (types, effects, MLIR)
+are where further incrementality would have to come from.

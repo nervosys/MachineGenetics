@@ -13,7 +13,7 @@ JSON-RPC protocol.
 | Agent-first        | Primary consumers are LLM agents, not humans             |
 | Streaming          | Agents need partial results during long compilations     |
 | Stateless queries  | Each request is self-contained — no session state        |
-| Incremental future | Designed so a Salsa-based query engine can be dropped in |
+| Incremental future | Not wired in; the compiler's own query engine (`prototype/src/query/`) is the candidate |
 | JSON-RPC           | Universal protocol — any language can connect            |
 
 ## 7.2 Transport
@@ -423,9 +423,12 @@ context = rap_call("agent/context", file_source)
 
 ## 7.8 Future: Incremental Compilation
 
-The current prototype recompiles from scratch on each request. The
-production RAP will use the Salsa query engine for incremental
-computation:
+The RAP server still recompiles from scratch on each request. Since
+2026-11-13 the compiler has a hand-written incremental query engine
+(`prototype/src/query/`, used by `--pipeline --incremental-stats`) that RAP
+could hold per open document; it is not wired into RAP yet. The original
+Salsa-based design for this follows, kept as a design sketch (Salsa is not a
+dependency):
 
 ```rust
 #[salsa::query_group(CompilerDatabase)]

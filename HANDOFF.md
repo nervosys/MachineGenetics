@@ -371,6 +371,36 @@ entry. Had a second spelling existed, the scan would have read low and the
 decision would have rested on it.
 
 ---
+## What changed in this phase, 2026-11-14
+
+Four capabilities landed on this branch. Limits are stated with each.
+
+- **Own BPE tokenizer (#222).** `prototype/src/bpe.rs`, no dependency.
+  `mage-parse --bpe-count [--vocab FILE] [FILES|-]` counts;
+  `--bpe-train --vocab-size N --out FILE FILES...` trains. The shipped vocabulary
+  is trained on `.mg` files (`prototype/data/MAGE_BPE.md`). Not cl100k, and its
+  counts are not comparable with cl100k counts.
+- **Token-bench BPE (#226).** `token-bench --bpe [--vocab FILE] [--bpe-out FILE]`.
+  On the 100-task corpus MAGE uses 8.5% more BPE tokens than Rust (20,546 vs
+  18,932, ratio 1.085), on a vocabulary that favours MAGE. Breakdown in
+  `benchmarks/FINDINGS.md`.
+- **Borrow checker (#224).** `borrowck.rs` reports E0382 and E0502 in `--check`
+  and `--pipeline`. The default `Policy::INFERRED` moves an argument only when
+  the callee consumes it; `Policy::STRICT` (Rust's rule) is library-only. Limits:
+  whole locals only, no partial moves, loans only from `let r = &p`, nothing
+  followed through calls, returns, fields or collections, no lifetimes, and
+  `net`, `train`, `kb` and `swarm` bodies are unchecked. The module doc has the
+  full list.
+- **Incremental, cached compilation (#225).** `prototype/src/query/`, with early
+  cutoff: editing one function re-checks only that function's per-item queries.
+  `mage-parse --pipeline FILE --incremental-stats [--cache-dir DIR]`, or
+  `MAGE_CACHE_DIR`. `--check --json` has a `counts` field. Cache entries are
+  keyed to the compiler build.
+- **Source positions (#227, #229).** Borrowck, types, resolve and effects
+  diagnostics carry line and column at statement level; other passes give their
+  item's start line. No expression spans. Hand-built nodes have no position.
+
+---
 ## Where this phase ended, 2026-09-25
 
 Two pieces of work. The first was item 34, a refuted contract with no coded
@@ -3800,7 +3830,7 @@ the prose above the table, which is the part a reader acts on.
 | # | Item | Size |
 |---|---|---|
 | 10 | ~~**Multi-shot resumption for effect handlers**~~ | **Closed 2026-08-19 by deciding against it**, the same way item 1 closed. The row below said the implementation was downstream of a decision nobody had made; the decision is made. Single-shot is the language's answer, and `MAGE_SPEC.md` §11.6 now says so normatively instead of listing multi-shot under "what is missing". No evaluator rework, no `resume` keyword, no sigil. |
-| 35 | ~~**No ownership or borrow-checking phase exists**~~ | **Partly closed 2026-11-13, by decision.** The user decided borrow checking and memory safety belong in the compiler. `prototype/src/borrowck.rs` now runs after types in `check_source` and `run_pipeline` and emits real E0382 (UseAfterMove) and E0502 (BorrowConflict). Moves are tracked only for values of a known non-Copy type; borrows use an NLL-lite rule (a `let r = &p` loan lives until `r`'s last use in its block). The default `Policy::INFERRED` moves a call argument only when the callee consumes it, and reports 0 findings on the 127-file `.mg` corpus; `Policy::STRICT` (Rust's rule) flags 13 sites in 7 example programs that rely on value semantics. Still open: no spans, no lifetimes, no partial moves, nothing tracked through calls/returns/fields, and `net`/`train`/`kb`/`swarm` bodies are not checked. The original row follows. The pipeline is lex, parse, resolve, typecheck, effect inference, MLIR lowering, heal. So the SKB's **40 ownership and 40 borrow rules describe conditions nothing detects**, the 35 lifetime rules sit behind `AEL-0003`'s claim that lifetimes are *inferred* rather than checked, and `BorrowConflict` and `UseAfterMove` are reachable only by `heal::infer_category` classifying a message someone else wrote — baselined in `scripts/diagnostic-codes-classifier-only.txt`. **Size: a borrow checker.** This row exists because I wrote that "making a subset of SKB rules executable" was the next step, which read like wiring and is not; the scope only became visible after `grep`ping for a pass that emits those categories and finding none. Nothing is broken today — the rules are knowledge and work as knowledge — so this is a capability decision, not a defect. |
+| 35 | ~~**No ownership or borrow-checking phase exists**~~ | **Partly closed 2026-11-13, by decision.** The user decided borrow checking and memory safety belong in the compiler. `prototype/src/borrowck.rs` now runs after types in `check_source` and `run_pipeline` and emits real E0382 (UseAfterMove) and E0502 (BorrowConflict). Moves are tracked only for values of a known non-Copy type; borrows use an NLL-lite rule (a `let r = &p` loan lives until `r`'s last use in its block). The default `Policy::INFERRED` moves a call argument only when the callee consumes it, and reports 0 findings on the 127-file `.mg` corpus; `Policy::STRICT` (Rust's rule) flags 13 sites in 7 example programs that rely on value semantics. Since #227/#229 its diagnostics carry statement-level positions. Still open: no expression-level spans, no lifetimes, no partial moves, nothing tracked through calls/returns/fields, and `net`/`train`/`kb`/`swarm` bodies are not checked. The original row follows. The pipeline is lex, parse, resolve, typecheck, effect inference, MLIR lowering, heal. So the SKB's **40 ownership and 40 borrow rules describe conditions nothing detects**, the 35 lifetime rules sit behind `AEL-0003`'s claim that lifetimes are *inferred* rather than checked, and `BorrowConflict` and `UseAfterMove` are reachable only by `heal::infer_category` classifying a message someone else wrote — baselined in `scripts/diagnostic-codes-classifier-only.txt`. **Size: a borrow checker.** This row exists because I wrote that "making a subset of SKB rules executable" was the next step, which read like wiring and is not; the scope only became visible after `grep`ping for a pass that emits those categories and finding none. Nothing is broken today — the rules are knowledge and work as knowledge — so this is a capability decision, not a defect. |
 | 36 | **Heal patterns are code, not data, so the surface cannot be loaded** | `ARCHITECTURE.md` lists the 34 heal patterns as an improvable surface. Measured: **30 of 34 `generate` closures consume the diagnostic**, computing fixes from message content and spans, and `matches` is a predicate. Converting them to loaded data therefore needs a **fix-template language** — a real language design with its own evaluator and its own failure modes — not a serialisation change. Recorded before starting rather than after, which is the whole point of the row. |
 | 37 | **The cost model is loadable data with nothing to calibrate it against** | *Narrowed 2026-09-26:* fuel, the cost the loop charges, now has a calibration path with real input: the arena feeds `CalibrationSuite` one metered `EnergySample` per round (plan 3.2, ARENA.md). What follows still holds for the per-construct table. `builtin_costs()` is a table and `CostEstimate` carries `is_exact` and `confidence`, both asserted by whoever typed the entry. `CalibrationSuite` exists to check estimates against measurement, but `load_standard_benchmarks` supplies `measured_cycles` as literals beside the estimates, under a comment reading *"Simulated measured costs"*, and nothing calls it outside its own tests. Making the model loadable would let the loop tune a preference function against a calibration path with **no input**, which automates a number nobody has earned. The prerequisite is hardware profiling feeding real samples in — then the loader is trivial. |
 | 13 | ~~`stdlib/`~~ | **Closed 2026-08-19, by deletion.** Item 1 resolved as *no module system*, and a standard library reached by imports has no meaning without one. The 25 sketches — 4,402 lines of Rust behind a `.mg` extension, read by nothing — are gone. `scripts/check-mg-sources.sh` now reports **101 checked, 0 skipped**: every `.mg` file in the repository typechecks, and the sketch list it was built to shrink is empty. |
