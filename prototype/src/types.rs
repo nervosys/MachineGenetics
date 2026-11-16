@@ -427,6 +427,9 @@ pub struct TypeChecker {
     /// whatever integer kind it ends up unified with. Without it, `g(300)`
     /// where `g` takes a `u8` typechecked clean.
     int_lit_vars: Vec<(u32, i128, String)>,
+    /// Unsuffixed float literals: type variable and source text. Like
+    /// `int_lit_vars` but for `f32`/`f64`; settled by `default_float_literals`.
+    float_lit_vars: Vec<(u32, String)>,
     /// Parameter types for the closure literal about to be inferred, set by a
     /// combinator that knows them (`map`'s is the element type) and consumed
     /// by the very next `Expr::Closure`.
@@ -469,6 +472,7 @@ impl TypeChecker {
             ret_stack: Vec::new(),
             diagnostics: Vec::new(),
             int_lit_vars: Vec::new(),
+            float_lit_vars: Vec::new(),
             closure_hint: None,
             user_methods: std::collections::HashSet::new(),
         }
@@ -806,6 +810,7 @@ impl TypeChecker {
                 clause.function
             ));
         }
+        self.default_float_literals();
         self.default_int_literals();
         self.env.pop();
     }
@@ -954,6 +959,7 @@ impl TypeChecker {
         }
 
         // Default any integer literals left unconstrained by context to i32.
+        self.default_float_literals();
         self.default_int_literals();
 
         self.env.pop();
@@ -974,6 +980,10 @@ impl TypeChecker {
             // An unconstrained integer literal (e.g. `sum(5)`) is NOT a collection.
             Ty::Var(tv) if self.int_lit_vars.iter().any(|(v, _, _)| *v == tv.0) => {
                 self.emit_error("expected a collection, found an integer".to_string());
+                self.fresh()
+            }
+            Ty::Var(tv) if self.is_float_lit_var(tv.0) => {
+                self.emit_error("expected a collection, found a float".to_string());
                 self.fresh()
             }
             // A genuinely unconstrained type var → constrain it to a Vec.
@@ -1017,7 +1027,9 @@ impl TypeChecker {
             //
             // The same three lines in the other order checked clean. Leave it
             // open and let a use that actually knows the type decide.
-            Ty::Var(tv) if !self.int_lit_vars.iter().any(|(v, _, _)| *v == tv.0) => (),
+            Ty::Var(tv)
+                if !self.int_lit_vars.iter().any(|(v, _, _)| *v == tv.0)
+                    && !self.is_float_lit_var(tv.0) => {}
             _ => {
                 self.collection_elem(&t);
             }
@@ -1070,6 +1082,9 @@ impl TypeChecker {
                 self.fresh()
             }
             Ty::Float(_) | Ty::Tensor(..) | Ty::Param(..) => ty,
+            // A bare float literal (`sin(1.0)`) is still open: hand back the
+            // same variable so the result takes the width the literal does.
+            Ty::Var(tv) if self.is_float_lit_var(tv.0) => ty,
             _ => self.fresh(),
         }
     }
@@ -1181,7 +1196,9 @@ impl TypeChecker {
                         // parameter is open at this point, and forcing a
                         // collection made the closure `f([str]~) -> bool`
                         // where `filter` wanted `f(str) -> bool`.
-                        Ty::Var(tv) if !self.int_lit_vars.iter().any(|(v, _, _)| *v == tv.0) => (),
+                        Ty::Var(tv)
+                            if !self.int_lit_vars.iter().any(|(v, _, _)| *v == tv.0)
+                                && !self.is_float_lit_var(tv.0) => {}
                         other => {
                             let e = self.collection_elem(&other);
                             if n >= 2 {
@@ -1417,6 +1434,30 @@ impl TypeChecker {
                 DiagnosticCategory::TypeMismatch,
                 None,
             ));
+        }
+    }
+
+    fn is_float_lit_var(&self, v: u32) -> bool {
+        self.float_lit_vars.iter().any(|(w, _)| *w == v)
+    }
+
+    /// Settle every unsuffixed float literal: `f64` when context left it open,
+    /// and an error when context forced a non-float type. Must run before
+    /// `default_int_literals`, so `1.5 + 2` (an int literal adopting the float
+    /// type) is seen as a float by the int pass.
+    fn default_float_literals(&mut self) {
+        let pending = std::mem::take(&mut self.float_lit_vars);
+        for (v, text) in pending {
+            let tv = Ty::Var(crate::hir::TyVar(v));
+            match self.subst.apply(&tv) {
+                Ty::Var(_) => {
+                    let _ = unify(&mut self.subst, &tv, &Ty::Float(FloatTy::F64));
+                }
+                Ty::Float(_) | Ty::Never | Ty::Error => {}
+                other => self.emit_error(format!(
+                    "float literal `{text}` used where `{other}` is required"
+                )),
+            }
         }
     }
 
@@ -2528,8 +2569,16 @@ impl TypeChecker {
             ast::LiteralKind::Float => {
                 if value.ends_with("f32") {
                     Ty::Float(FloatTy::F32)
-                } else {
+                } else if value.ends_with("f64") {
                     Ty::Float(FloatTy::F64)
+                } else {
+                    // Unsuffixed: takes f32 or f64 from context, f64 if none
+                    // (see `default_float_literals`).
+                    let ty = self.fresh();
+                    if let Ty::Var(v) = &ty {
+                        self.float_lit_vars.push((v.0, value.to_string()));
+                    }
+                    ty
                 }
             }
             ast::LiteralKind::String | ast::LiteralKind::FormatString => Ty::Str,
@@ -3499,6 +3548,52 @@ mod int_literal_tests {
         // the surroundings demand" and nothing enforced the "int" part.
         assert!(!errors("+f f() -> bool { 1 }").is_empty());
         assert!(!errors("+f f() -> str { 1 }").is_empty());
+    }
+
+    #[test]
+    fn float_literal_takes_f32_from_context() {
+        let src = "f main() -> i32 { val a: f32 = 1.5; val b: f32 = a * 2.0; 0 }";
+        assert!(errors(src).is_empty(), "{:?}", errors(src));
+    }
+
+    #[test]
+    fn float_literal_f64_annotation_and_default() {
+        assert!(errors("f main() -> i32 { val x: f64 = 1.5; 0 }").is_empty());
+        // Unannotated, the literal stays open until its use fixes the width.
+        assert!(errors("+f f() -> f64 { val x = 1.5; x }").is_empty());
+        assert!(errors("+f f() -> f32 { val x = 1.5; x }").is_empty());
+    }
+
+    #[test]
+    fn float_literal_to_f32_parameter() {
+        let src = "+f g(x: f32) -> f32 { x } +f f() -> f32 { g(2.5) }";
+        assert!(errors(src).is_empty(), "{:?}", errors(src));
+    }
+
+    #[test]
+    fn float_literal_where_int_required_is_refused() {
+        let e = errors("+f f() -> i32 { 1.5 }");
+        assert!(e.iter().any(|m| m.contains("float literal `1.5`")), "got {e:?}");
+    }
+
+    #[test]
+    fn float_literal_plus_int_literal_still_checks() {
+        assert!(errors("+f f() -> f64 { 1.5 + 2 }").is_empty());
+        assert!(errors("+f f() -> f32 { 1.5 + 2 }").is_empty());
+    }
+
+    #[test]
+    fn suffixed_float_literal_keeps_its_type() {
+        assert!(!errors("f main() -> i32 { val x: f64 = 1.5f32; 0 }").is_empty());
+        assert!(errors("f main() -> i32 { val x: f64 = 1.5f64; 0 }").is_empty());
+    }
+
+    #[test]
+    fn float_literal_is_not_a_collection_and_scalar_math_takes_it() {
+        assert!(!errors("+f f() -> f64 { sum(1.0) }").is_empty());
+        assert!(errors("+f f() -> f64 { sin(1.0) }").is_empty());
+        assert!(errors("+f f() -> f32 { sin(1.0) }").is_empty());
+        assert!(errors("+f f() -> [f64] { [1.0, 2.0] }").is_empty());
     }
 
     #[test]
