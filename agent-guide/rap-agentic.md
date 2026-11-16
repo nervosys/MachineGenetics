@@ -172,9 +172,20 @@ JSON (`compile.steps[].evidence`, `compile.unfixed`, `debug.sites`,
   is located.
 - The Ochiai score orders sites; it is not the probability that a site is at
   fault. With few tests most sites tie.
-- Coverage sees top-level functions only. Closures and nested functions are
-  evaluated from copies and are not recorded, so their sites are never ranked.
-  Methods are not recorded either.
+- Coverage sees top-level functions, methods of `I` and `extend` blocks
+  (reported as `Type::method`), and the closures and named nested functions
+  inside any of them. A closure or nested function has no site name of its
+  own: its sites belong to the enclosing function or method, and a nested
+  function's sites are numbered within that body, so a site id after a nested
+  function can change. Two cases are refused with a reason per site: a
+  function or method name defined twice (the interpreter keeps one of them),
+  and a method site the tokens cannot locate. Default bodies in a `T` block
+  are not registered, so they are not ranked. The off-by-one repair is tested
+  inside a closure, a nested function and a method; the `if` swap and negation
+  are not tested there. Each closure value built while coverage is on adds
+  addresses for its body, so memory grows with the number of such values; a
+  reused address is trusted only if its node still has the same kind and
+  operator.
 - An `if` is mapped to source only as `if c { … } else { … }`; `? c { } : { }`
   and `else if` chains are not swapped or negated. An operator whose token
   count differs from its node count in the function (a unary minus folded into

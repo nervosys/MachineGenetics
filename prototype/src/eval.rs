@@ -449,15 +449,27 @@ impl Interp {
         }
     }
 
-    /// Record, from now on, which sites of the top-level functions run, the
-    /// operands and result of each comparison, the arm each `if` takes, and
-    /// the site whose evaluation raised the first runtime error. See
-    /// [`CoverageData`]. Off unless called.
+    /// Record, from now on, which sites of the top-level functions and methods
+    /// run, the operands and result of each comparison, the arm each `if`
+    /// takes, and the site whose evaluation raised the first runtime error.
+    /// A method's sites are named `Type::method`; the sites of a closure or
+    /// nested function are those of the function it sits in, and are adopted
+    /// when the closure value is built. See [`CoverageData`]. Off unless called.
     pub fn enable_coverage(&mut self) {
         let mut ids = HashMap::new();
+        let mut register = |id: SiteId, e: &Expr| {
+            if let Some(fp) = fingerprint(e) {
+                ids.insert(e as *const Expr as usize, (id, fp));
+            }
+        };
         for fd in self.funcs.values() {
             for (id, e) in function_sites(fd) {
-                ids.insert(e as *const Expr as usize, id);
+                register(id, e);
+            }
+        }
+        for ((type_name, method), fd) in &self.methods {
+            for (id, e) in function_sites_named(fd, &format!("{type_name}::{method}")) {
+                register(id, e);
             }
         }
         self.coverage = Some(RefCell::new(Coverage { ids, ..Coverage::default() }));
@@ -771,6 +783,23 @@ impl Interp {
                             name: Some(fd.name.clone()),
                             siblings: Some(group.clone()),
                         });
+                        if let Some(cov) = &self.coverage {
+                            // The body is a clone of the declaration's, so give
+                            // its nodes the declaration's sites (see `adopt`).
+                            let (src, dst) = match &fd.body_expr {
+                                Some(be) => (vec![be.as_ref()], vec![&rc.body]),
+                                None => {
+                                    let mut src = Vec::new();
+                                    block_children(&fd.body, &mut src);
+                                    let mut dst = Vec::new();
+                                    if let Expr::Block { block } = &rc.body {
+                                        block_children(block, &mut dst);
+                                    }
+                                    (src, dst)
+                                }
+                            };
+                            cov.borrow_mut().adopt(&src, &dst);
+                        }
                         group.borrow_mut().push((fd.name.clone(), Rc::downgrade(&rc)));
                         env.define(fd.name.clone(), Value::Closure(rc));
                     }
@@ -1015,13 +1044,21 @@ impl Interp {
                 self.charge_alloc(hi.saturating_sub(s))?;
                 Ok(Value::List((s..hi).map(Value::Int).collect()))
             }
-            Expr::Closure { params, body } => Ok(Value::Closure(Rc::new(ClosureData {
-                params: params.iter().map(|p| p.name.clone()).collect(),
-                body: (**body).clone(),
-                env: env.flatten(),
-                name: None,
-                siblings: None,
-            }))),
+            Expr::Closure { params, body } => {
+                let rc = Rc::new(ClosureData {
+                    params: params.iter().map(|p| p.name.clone()).collect(),
+                    body: (**body).clone(),
+                    env: env.flatten(),
+                    name: None,
+                    siblings: None,
+                });
+                if let Some(cov) = &self.coverage {
+                    // The body is a clone of `body`, which is itself the
+                    // original or a clone that already has its sites (see `adopt`).
+                    cov.borrow_mut().adopt(&[&**body], &[&rc.body]);
+                }
+                Ok(Value::Closure(rc))
+            }
             Expr::Assign { target, value } => {
                 let v = self.eval(value, env)?;
                 self.assign_target(target, v, env)?;
@@ -1159,7 +1196,9 @@ impl Interp {
                             for a in args {
                                 av.push(self.eval(a, env)?);
                             }
-                            return self.call_user(&fd.clone(), av);
+                            // By reference, not a copy: coverage keys a method's
+                            // sites by the node addresses of this definition.
+                            return self.call_user(fd, av);
                         }
                 }
                 let mut av = vec![self.eval(receiver, env)?];
@@ -1169,11 +1208,9 @@ impl Interp {
                 // A method declared for the receiver's own type wins over a
                 // same-named free function or builtin: `xs.len()` is still the
                 // vocabulary's `len`, but a `Report.len` would be the method.
-                let own = Self::type_name_of(&av[0])
-                    .and_then(|ty| self.method_on(ty, method))
-                    .cloned();
+                let own = Self::type_name_of(&av[0]).and_then(|ty| self.method_on(ty, method));
                 if let Some(fd) = own {
-                    self.call_user(&fd, av)
+                    self.call_user(fd, av)
                 } else if let Some(fd) = self.funcs.get(method) {
                     self.call_user(fd, av)
                 } else {
@@ -3042,11 +3079,38 @@ impl CoverageData {
     }
 }
 
+/// What a site node must still look like for its address to be trusted: its
+/// [`SiteKind`], and for a binary operator its operator text.
+type Fingerprint = (SiteKind, String);
+
+fn fingerprint(e: &Expr) -> Option<Fingerprint> {
+    let kind = site_kind(e)?;
+    let op = match e {
+        Expr::Binary { op, .. } => op.clone(),
+        _ => String::new(),
+    };
+    Some((kind, op))
+}
+
+/// Whether `e` still has the fingerprint `fp` was taken from. Compared in
+/// place, so a lookup allocates nothing.
+fn fingerprint_matches(e: &Expr, fp: &Fingerprint) -> bool {
+    site_kind(e) == Some(fp.0)
+        && match e {
+            Expr::Binary { op, .. } => *op == fp.1,
+            _ => fp.1.is_empty(),
+        }
+}
+
 /// The interpreter's coverage state.
 #[derive(Default)]
 struct Coverage {
-    /// Node address -> site, for every site of every top-level function.
-    ids: HashMap<usize, SiteId>,
+    /// Node address -> site, for every site of every function, method and
+    /// nested function, and of every closure body clone (see
+    /// [`Coverage::adopt`]). An address can outlive the node it named, once a
+    /// closure is dropped and its memory reused, so a lookup also checks the
+    /// node's [`Fingerprint`] against the one stored here.
+    ids: HashMap<usize, (SiteId, Fingerprint)>,
     records: HashMap<SiteId, SiteRecord>,
     raised: Option<(SiteId, String)>,
 }
@@ -3061,7 +3125,33 @@ fn is_arithmetic(op: &str) -> bool {
 
 impl Coverage {
     fn site(&self, e: &Expr) -> Option<SiteId> {
-        self.ids.get(&(e as *const Expr as usize)).cloned()
+        let (id, fp) = self.ids.get(&(e as *const Expr as usize))?;
+        fingerprint_matches(e, fp).then(|| id.clone())
+    }
+
+    /// Give each clone in `dst` the site of its source node in `src`, where a
+    /// source node has one. The two lists are walked in lockstep, recursively:
+    /// a clone has the source's shape, so [`expr_children`] pairs them up.
+    ///
+    /// A closure or nested function evaluates a CLONE of its body, so the
+    /// original nodes' addresses never reach `site`. Called once per closure
+    /// value built, after its `Rc` exists so the clone's address is final.
+    /// Stale addresses: the clone's memory is freed when the closure is
+    /// dropped and may be reused, so entries are never removed, and a reused
+    /// address can still be looked up for a node that is not the registered
+    /// one. The fingerprint check in [`Coverage::site`] rejects the cases
+    /// where the kind or operator differ; the same kind and operator at a
+    /// reused address is accepted. Entries grow with the number of closure
+    /// values built while coverage is on, which is bounded by the run's fuel.
+    fn adopt(&mut self, src: &[&Expr], dst: &[&Expr]) {
+        for (s, d) in src.iter().zip(dst.iter()) {
+            if let Some((id, fp)) = self.ids.get(&(*s as *const Expr as usize)).cloned()
+                && fingerprint_matches(s, &fp)
+            {
+                self.ids.insert(*d as *const Expr as usize, (id, fp));
+            }
+            self.adopt(&expr_children(s), &expr_children(d));
+        }
     }
 
     fn binary(&mut self, e: &Expr, op: &str, l: &Value, r: &Value, res: &R) {
@@ -3135,8 +3225,9 @@ fn site_kind(e: &Expr) -> Option<SiteKind> {
     }
 }
 
-/// The direct sub-expressions of `e`, in source order. Nested function
-/// items are not entered: their bodies are another function's.
+/// The direct sub-expressions of `e`, in source order. A nested function
+/// item's body is entered, as a closure's is: its sites belong to the
+/// enclosing function (see [`function_sites`]).
 pub fn expr_children(e: &Expr) -> Vec<&Expr> {
     let mut out: Vec<&Expr> = Vec::new();
     match e {
@@ -3236,7 +3327,14 @@ fn block_children<'a>(b: &'a Block, out: &mut Vec<&'a Expr>) {
                 out.push(cond);
                 block_children(else_block, out);
             }
-            Stmt::Item { .. } => {}
+            Stmt::Item { item } => {
+                if let ItemKind::Function(fd) = &item.kind {
+                    match &fd.body_expr {
+                        Some(be) => out.push(be.as_ref()),
+                        None => block_children(&fd.body, out),
+                    }
+                }
+            }
         }
     }
     if let Some(t) = &b.tail_expr {
@@ -3344,7 +3442,14 @@ fn block_children_mut<'a>(b: &'a mut Block, out: &mut Vec<&'a mut Expr>) {
                 out.push(cond);
                 block_children_mut(else_block, out);
             }
-            Stmt::Item { .. } => {}
+            Stmt::Item { item } => {
+                if let ItemKind::Function(fd) = &mut item.kind {
+                    match &mut fd.body_expr {
+                        Some(be) => out.push(be.as_mut()),
+                        None => block_children_mut(&mut fd.body, out),
+                    }
+                }
+            }
         }
     }
     if let Some(t) = &mut b.tail_expr {
@@ -3386,14 +3491,20 @@ pub fn preorder(fd: &FunctionDef) -> Vec<&Expr> {
     out
 }
 
-/// Every site of `fd` with its node, in pre-order.
+/// Every site of `fd` with its node, in pre-order, named by `fd.name`.
 pub fn function_sites(fd: &FunctionDef) -> Vec<(SiteId, &Expr)> {
+    function_sites_named(fd, &fd.name)
+}
+
+/// [`function_sites`] under another name: a method's sites are named
+/// `Type::method`, as its key in the interpreter's method table.
+pub fn function_sites_named<'a>(fd: &'a FunctionDef, name: &str) -> Vec<(SiteId, &'a Expr)> {
     let mut counts: HashMap<SiteKind, usize> = HashMap::new();
     let mut out = Vec::new();
     for e in preorder(fd) {
         if let Some(kind) = site_kind(e) {
             let n = counts.entry(kind).or_default();
-            out.push((SiteId { function: fd.name.clone(), kind, index: *n }, e));
+            out.push((SiteId { function: name.to_string(), kind, index: *n }, e));
             *n += 1;
         }
     }
@@ -5177,5 +5288,73 @@ mod coverage_tests {
             let found = site_mut(&mut copy, id.kind, id.index).expect("found");
             assert_eq!(format!("{found:?}"), format!("{node:?}"), "{id:?}");
         }
+    }
+
+    /// The comparison of a closure runs on a clone of its body, and is
+    /// recorded under the enclosing function with the operands it saw.
+    #[test]
+    fn coverage_records_a_closure_body_under_its_function() {
+        let m = module("f g(x: i64) -> bool {\n    val p = |y| y > x;\n    p(x)\n}\n");
+        let o = run_bounded_observed(&m, "g", vec![Value::Int(5)], 10_000, None, true);
+        assert_eq!(o.result, Ok(Value::Bool(false)));
+        let c = o.coverage.expect("coverage");
+        let id = SiteId { function: "g".into(), kind: SiteKind::Binary, index: 0 };
+        let cmp = c.get(&id).expect("the closure's `>` ran");
+        assert_eq!((cmp.op.as_str(), cmp.hits, cmp.equal_operands), (">", 1, true));
+        assert_eq!(
+            cmp.observations,
+            vec![Observation { left: "5".into(), right: "5".into(), result: "false".into() }]
+        );
+    }
+
+    /// A named nested function's comparison is recorded the same way.
+    #[test]
+    fn coverage_records_a_nested_function_body_under_its_function() {
+        let m = module("f g(x: i64) -> bool {\n    f over(y: i64) -> bool { y > x }\n    over(x)\n}\n");
+        let o = run_bounded_observed(&m, "g", vec![Value::Int(5)], 10_000, None, true);
+        assert_eq!(o.result, Ok(Value::Bool(false)));
+        let c = o.coverage.expect("coverage");
+        let id = SiteId { function: "g".into(), kind: SiteKind::Binary, index: 0 };
+        let cmp = c.get(&id).expect("the nested function's `>` ran");
+        assert_eq!((cmp.op.as_str(), cmp.hits, cmp.equal_operands), (">", 1, true));
+        assert_eq!(
+            cmp.observations,
+            vec![Observation { left: "5".into(), right: "5".into(), result: "false".into() }]
+        );
+    }
+
+    /// A method's sites are named `Type::method`, so they are told apart from
+    /// a top-level function of the same name.
+    #[test]
+    fn coverage_records_a_method_under_type_and_method_name() {
+        let m = module(
+            "S P { x: i64 }\nI P { f ok(&self) -> bool { self.x > 5 } }\n\
+             f g() -> bool {\n    v p = @P { x: 5 };\n    p.ok()\n}\n",
+        );
+        let o = run_bounded_observed(&m, "g", Vec::new(), 10_000, None, true);
+        assert_eq!(o.result, Ok(Value::Bool(false)));
+        let c = o.coverage.expect("coverage");
+        let id = SiteId { function: "P::ok".into(), kind: SiteKind::Binary, index: 0 };
+        let cmp = c.get(&id).expect("the method's `>` ran");
+        assert_eq!((cmp.op.as_str(), cmp.hits, cmp.equal_operands), (">", 1, true));
+        assert!(c.get(&SiteId { function: "ok".into(), ..id.clone() }).is_none());
+    }
+
+    /// A registered address is trusted only while its node keeps the kind and
+    /// operator it was registered with: an address reused by another node
+    /// names nothing.
+    #[test]
+    fn coverage_does_not_trust_an_address_whose_node_changed() {
+        let m = module("f g(x: i64) -> bool {\n    x < 5\n}\n");
+        let crate::ast::ItemKind::Function(fd) = &m.items[0].kind else { panic!() };
+        let (id, node) = function_sites(fd).remove(0);
+        let addr = node as *const Expr as usize;
+        let mut cov = Coverage::default();
+        cov.ids.insert(addr, (id.clone(), fingerprint(node).expect("a site")));
+        assert_eq!(cov.site(node), Some(id.clone()));
+        cov.ids.insert(addr, (id.clone(), (SiteKind::Binary, ">".into())));
+        assert_eq!(cov.site(node), None, "same kind, other operator");
+        cov.ids.insert(addr, (id.clone(), (SiteKind::If, String::new())));
+        assert_eq!(cov.site(node), None, "other kind");
     }
 }
