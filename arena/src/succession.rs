@@ -70,7 +70,147 @@ pub fn decode(base: &Config, genome: &Genome) -> Config {
     if let Some(v) = p(3) {
         cfg.temperature = 0.1 + 1.9 * v;
     }
+    // A genome longer than the four narrow loci is a wide one: its extra loci
+    // are read as `WIDE_LOCI`, and a train-text locus after them only if present.
+    if genome.len() >= NARROW_LOCI + WIDE_LOCI.len() {
+        apply_wide(&mut cfg, genome);
+    }
     cfg
+}
+
+/// Loci of the narrow genome; the wide genome's first four, unchanged.
+pub const NARROW_LOCI: usize = 4;
+
+/// The loci a wide genome appends after the narrow four, in order. The agent
+/// loci decode to a count `0..=3` (bins of 1/4); `learner_kind` bins over
+/// n-gram / entropy / ssm (thirds); `learner_size` is n-gram `log2_buckets`
+/// 10..=14, entropy `log2_buckets` 12..=15 or ssm `d` in {8, 16, 32};
+/// `replay_per_round` is `0..=32`. A further `train_text_per_round` locus
+/// (`0..=16`) follows only when the base configuration has `--train-text`.
+pub const WIDE_LOCI: [&str; 6] =
+    ["agents_grammar", "agents_uniform", "agents_mutator", "learner_kind", "learner_size", "replay_per_round"];
+
+/// The wide genome's optional last locus.
+pub const TRAIN_TEXT_LOCUS: &str = "train_text_per_round";
+
+/// The agents the wide genome chooses counts for.
+const WIDE_AGENTS: [&str; 3] = ["grammar", "uniform", "mutator"];
+
+/// Which of `n` equal bins of `[0,1]` holds `v`; 1.0 falls in the last.
+fn bin(v: f64, n: usize) -> usize {
+    ((v.clamp(0.0, 1.0) * n as f64).floor() as usize).min(n - 1)
+}
+
+/// The middle of bin `i` of `n`, so `bin(bin_mid(i, n), n) == i`.
+fn bin_mid(i: usize, n: usize) -> f64 {
+    (i.min(n - 1) as f64 + 0.5) / n as f64
+}
+
+fn lr_of(s: &LearnerSpec) -> f64 {
+    match s {
+        LearnerSpec::Ngram(c) => c.lr,
+        LearnerSpec::Transformer(c) => c.lr,
+        LearnerSpec::Entropy(c) => c.lr,
+        LearnerSpec::Ssm(c) => c.lr,
+    }
+}
+
+/// Read the wide loci (index `NARROW_LOCI..`) of `genome` onto `cfg`.
+fn apply_wide(cfg: &mut Config, genome: &Genome) {
+    let p = |i: usize| genome.get(NARROW_LOCI + i).and_then(Locus::as_param).map(|v| v.clamp(0.0, 1.0)).unwrap_or(0.0);
+    // Agent mix: counts for the three chosen agents, then the base's other agents unchanged.
+    let mut agents: Vec<(String, usize)> = Vec::new();
+    for (i, name) in WIDE_AGENTS.iter().enumerate() {
+        let n = bin(p(i), 4);
+        if n > 0 {
+            agents.push((name.to_string(), n));
+        }
+    }
+    if agents.is_empty() {
+        agents.push(("grammar".to_string(), 1));
+    }
+    agents.extend(cfg.agents.iter().filter(|(k, _)| !WIDE_AGENTS.contains(&k.as_str())).cloned());
+    cfg.agents = agents;
+    // The first learner (the one the gate scores): kind and size, lr kept.
+    let lr = cfg.learners.first().map(lr_of).unwrap_or(0.02);
+    let size = p(4);
+    let spec = match bin(p(3), 3) {
+        0 => LearnerSpec::Ngram(LearnerConfig { orders: 3, log2_buckets: 10 + (size * 4.0).round() as u32, lr }),
+        1 => LearnerSpec::Entropy(crate::learner::EntropyConfig {
+            orders: 4,
+            log2_buckets: 12 + (size * 3.0).round() as u32,
+            target_len: 4.0,
+            lr,
+        }),
+        _ => LearnerSpec::Ssm(crate::learner::SsmConfig {
+            d: [8, 16, 32][bin(size, 3)],
+            lr,
+            bptt: crate::ssm::DEFAULT_BPTT,
+        }),
+    };
+    match cfg.learners.first_mut() {
+        Some(first) => *first = spec,
+        None => cfg.learners.push(spec),
+    }
+    cfg.replay_per_round = (p(5) * 32.0).round() as usize;
+    if genome.len() > NARROW_LOCI + WIDE_LOCI.len() {
+        cfg.train_text_per_round = (p(6) * 16.0).round() as usize;
+    }
+}
+
+/// The wide genome of a configuration: [`encode`]'s four loci, then
+/// [`WIDE_LOCI`], then the train-text locus when `with_train_text`. The inverse
+/// of [`decode`] on what the wide genome can express: counts above 3 clamp to 3,
+/// a learner of another kind (a transformer) encodes as an n-gram, and sizes
+/// outside the ranges clamp.
+pub fn encode_wide(cfg: &Config, with_train_text: bool) -> Genome {
+    let mut g = encode(cfg);
+    let count = |name: &str| cfg.agents.iter().filter(|(k, _)| k == name).map(|(_, n)| *n).sum::<usize>().min(3);
+    for name in WIDE_AGENTS {
+        g.push(Locus::param(bin_mid(count(name), 4)));
+    }
+    let (kind, size) = match cfg.learners.first() {
+        Some(LearnerSpec::Entropy(c)) => (1, ((c.log2_buckets as f64 - 12.0) / 3.0).clamp(0.0, 1.0)),
+        Some(LearnerSpec::Ssm(c)) => {
+            let i = [8usize, 16, 32].iter().position(|d| *d >= c.d).unwrap_or(2);
+            (2, bin_mid(i, 3))
+        }
+        Some(LearnerSpec::Ngram(c)) => (0, ((c.log2_buckets as f64 - 10.0) / 4.0).clamp(0.0, 1.0)),
+        _ => (0, ((12.0 - 10.0) / 4.0f64).clamp(0.0, 1.0)),
+    };
+    g.push(Locus::param(bin_mid(kind, 3)));
+    g.push(Locus::param(size));
+    g.push(Locus::param((cfg.replay_per_round as f64 / 32.0).clamp(0.0, 1.0)));
+    if with_train_text {
+        g.push(Locus::param((cfg.train_text_per_round as f64 / 16.0).clamp(0.0, 1.0)));
+    }
+    g
+}
+
+/// `--genome`: the narrow four loci, or the wide genome.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum GenomeKind {
+    #[default]
+    Narrow,
+    Wide,
+}
+
+impl GenomeKind {
+    pub fn parse(s: &str) -> Result<GenomeKind, String> {
+        match s {
+            "narrow" => Ok(GenomeKind::Narrow),
+            "wide" => Ok(GenomeKind::Wide),
+            other => Err(format!("--genome: `{other}` is neither narrow nor wide")),
+        }
+    }
+
+    /// The seed champion's genome under this kind, for `base`.
+    pub fn encode(self, base: &Config) -> Genome {
+        match self {
+            GenomeKind::Narrow => encode(base),
+            GenomeKind::Wide => encode_wide(base, !base.train_text.is_empty()),
+        }
+    }
 }
 
 /// The genome of a configuration, the inverse of [`decode`] for the ranges
@@ -512,7 +652,7 @@ const USAGE: &str = "usage: arena succession --heldout FILE[,FILE...] --journal 
 [--objectives capability[,efficiency][,latency]] [--dominance-min F] [--dominance-floor F] \
 [--objective-tolerance AXIS=F,...] [--allow-estimated-energy] [--efficiency-basis meter|work] \
 [--energy-budget JOULES] [--param-search es|perturb] [--cost joules|fuel] [--validation FILE[,FILE...]] \
-[--train-text FILE[,FILE...]] [--train-text-per-round N] [--reward alignment|compression|transfer] [--dev-text FILE[,FILE...]] \
+[--train-text FILE[,FILE...]] [--train-text-per-round N] [--reward alignment|compression|transfer] [--dev-text FILE[,FILE...]] [--genome narrow|wide] \
 [--learners SPEC[,SPEC...]]  (SPEC: ng:orders:log2buckets:lr | tf:d:layers:heads:ctx:lr[:gpu] | \
 ent:orders:log2buckets:target_len:lr | ssm:d:lr[:bptt]; the first spec is the one the gate scores)";
 
@@ -690,7 +830,7 @@ fn policy_name(basis: EfficiencyBasis) -> String {
 /// [`policy_name`], plus the opt-in flags that change what a run is: `+train-text`
 /// when training text is set, `+reward-transfer` under `--reward transfer`. With them off the name is `policy_name`'s, so the
 /// digest of a run without the flag does not move.
-fn full_policy_name(basis: EfficiencyBasis, train_text: bool, learners: Option<&str>, transfer: bool) -> String {
+fn full_policy_name(basis: EfficiencyBasis, train_text: bool, learners: Option<&str>, transfer: bool, wide: bool) -> String {
     let mut name = policy_name(basis);
     if train_text {
         name.push_str("+train-text");
@@ -700,6 +840,10 @@ fn full_policy_name(basis: EfficiencyBasis, train_text: bool, learners: Option<&
     }
     if transfer {
         name.push_str("+reward-transfer");
+    }
+    // The wide genome's length also depends on `--train-text`, which is already in the name.
+    if wide {
+        name.push_str("+genome-wide");
     }
     name
 }
@@ -846,6 +990,7 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
     let mut base = Config::default();
     // Set only by `--learners`; it joins the policy name, so default runs keep their digest.
     let mut learners_flag: Option<String> = None;
+    let mut genome_kind = GenomeKind::Narrow;
     let mut i = 0;
     while i < args.len() {
         let flag = args[i].as_str();
@@ -873,6 +1018,7 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
                     other => return Err(format!("--reward: `{other}` is not alignment, compression or transfer")),
                 }
             }
+            "--genome" => genome_kind = GenomeKind::parse(v)?,
             "--cycles" => cycles = num(v, flag)? as u32,
             "--seed" => seed = num(v, flag)?,
             "--journal" => journal = Some(v.to_string()),
@@ -987,7 +1133,7 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
     // The champion a fresh run starts from: the base configuration, measured on
     // the suite. Built the same way on every invocation, so a resumed journal
     // replays onto the same genesis.
-    let base_genome = encode(&base);
+    let base_genome = genome_kind.encode(&base);
     let seed_art = w.materialize(&CandidateSpec::new("seed", base_genome.clone()))?;
     let seed_fit = w.evaluate(&seed_art, &suite)?;
     let basis = w.energy_basis(&seed_art).unwrap_or_else(|| Basis::Unavailable {
@@ -1044,7 +1190,7 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
     };
     variation.param_search = param_search.clone();
     let policy = RunnerPolicy {
-        name: full_policy_name(efficiency_basis, !base.train_text.is_empty(), learners_flag.as_deref(), base.reward == Reward::Transfer),
+        name: full_policy_name(efficiency_basis, !base.train_text.is_empty(), learners_flag.as_deref(), base.reward == Reward::Transfer, genome_kind == GenomeKind::Wide),
         max_cycles: cycles,
         candidates_per_cycle: candidates,
         stop_file: stop_file.map(PathBuf::from),
@@ -1174,6 +1320,126 @@ mod tests {
         assert_eq!(again.learner_steps, cfg.learner_steps);
         assert!((again.length_charge - cfg.length_charge).abs() < 1e-12);
         assert!((again.temperature - cfg.temperature).abs() < 1e-12);
+    }
+
+    fn vals(g: &Genome) -> Vec<f64> {
+        g.iter().map(|l| l.as_param().expect("a param locus")).collect()
+    }
+
+    #[test]
+    fn narrow_genome_is_the_four_loci_and_the_default() {
+        let g = GenomeKind::default().encode(&base());
+        assert_eq!(GenomeKind::default(), GenomeKind::Narrow);
+        assert_eq!(g, encode(&base()));
+        assert_eq!(g.len(), NARROW_LOCI);
+        // Digest of the policy is the old one.
+        assert_eq!(full_policy_name(EfficiencyBasis::Meter, false, None, false, false), "succession-cli");
+        // A narrow genome decodes without touching agents, learner kind or replay.
+        let cfg = decode(&base(), &g);
+        assert_eq!(cfg.agents, base().agents);
+        assert_eq!(cfg.replay_per_round, base().replay_per_round);
+        assert!(matches!(cfg.learners[0], LearnerSpec::Ngram(c) if c.log2_buckets == 8 && c.orders == 2));
+    }
+
+    #[test]
+    fn wide_genome_round_trips() {
+        let cfgs = [
+            Config {
+                agents: vec![("grammar".into(), 2), ("uniform".into(), 1), ("mutator".into(), 3), ("attacker".into(), 1)],
+                learners: vec![
+                    LearnerSpec::Entropy(crate::learner::EntropyConfig { orders: 4, log2_buckets: 14, target_len: 4.0, lr: 0.02 }),
+                    LearnerSpec::Ngram(LearnerConfig { orders: 2, log2_buckets: 8, lr: 0.05 }),
+                ],
+                replay_per_round: 17,
+                train_text: vec!["x.txt".into()],
+                train_text_per_round: 9,
+                ..base()
+            },
+            Config {
+                agents: vec![("uniform".into(), 3)],
+                learners: vec![LearnerSpec::Ssm(crate::learner::SsmConfig { d: 32, lr: 0.01, bptt: crate::ssm::DEFAULT_BPTT })],
+                replay_per_round: 0,
+                ..base()
+            },
+            Config {
+                learners: vec![LearnerSpec::Ngram(LearnerConfig { orders: 3, log2_buckets: 13, lr: 0.02 })],
+                replay_per_round: 32,
+                ..base()
+            },
+        ];
+        for cfg in cfgs {
+            let tt = !cfg.train_text.is_empty();
+            let g = encode_wide(&cfg, tt);
+            assert_eq!(g.len(), NARROW_LOCI + WIDE_LOCI.len() + usize::from(tt));
+            let got = decode(&cfg, &g);
+            let mut want = cfg.agents.clone();
+            want.sort();
+            let mut have = got.agents.clone();
+            have.sort();
+            assert_eq!(have, want, "agents");
+            assert_eq!(got.replay_per_round, cfg.replay_per_round);
+            assert_eq!(got.train_text_per_round, cfg.train_text_per_round);
+            assert_eq!(got.learners.len(), cfg.learners.len(), "the rest of the learners are kept");
+            // (locus 0's lr applies to every learner, as in the narrow genome.)
+            for (a, b) in got.learners[1..].iter().zip(&cfg.learners[1..]) {
+                assert_eq!(std::mem::discriminant(a), std::mem::discriminant(b));
+            }
+            match (got.learners[0], cfg.learners[0]) {
+                (LearnerSpec::Ngram(a), LearnerSpec::Ngram(b)) => assert_eq!(a.log2_buckets, b.log2_buckets),
+                (LearnerSpec::Entropy(a), LearnerSpec::Entropy(b)) => assert_eq!(a.log2_buckets, b.log2_buckets),
+                (LearnerSpec::Ssm(a), LearnerSpec::Ssm(b)) => assert_eq!(a.d, b.d),
+                (a, b) => panic!("kind changed: {a:?} vs {b:?}"),
+            }
+            assert!((lr_of(&got.learners[0]) - lr_of(&cfg.learners[0])).abs() < 1e-9);
+            // Decoding twice from the encoded genome is a fixed point.
+            assert_eq!(encode_wide(&got, tt).len(), g.len());
+            assert_eq!(vals(&encode_wide(&got, tt))[4..], vals(&g)[4..]);
+        }
+    }
+
+    #[test]
+    fn wide_bins_edges() {
+        let tt = Config { train_text: vec!["x.txt".into()], ..base() };
+        let loci = |v: [f64; 7]| -> Genome {
+            let mut g = vec![Locus::param(0.5); NARROW_LOCI];
+            g.extend(v.iter().map(|x| Locus::param(*x)));
+            g
+        };
+        let lo = decode(&tt, &loci([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]));
+        // All three agent counts zero: grammar:1, and the base's other agents are kept.
+        assert_eq!(lo.agents, vec![("grammar".to_string(), 1)]);
+        assert!(matches!(lo.learners[0], LearnerSpec::Ngram(c) if c.log2_buckets == 10));
+        assert_eq!((lo.replay_per_round, lo.train_text_per_round), (0, 0));
+        let hi = decode(&tt, &loci([1.0; 7]));
+        assert_eq!(hi.agents, vec![("grammar".to_string(), 3), ("uniform".to_string(), 3), ("mutator".to_string(), 3)]);
+        assert!(matches!(hi.learners[0], LearnerSpec::Ssm(c) if c.d == 32));
+        assert_eq!((hi.replay_per_round, hi.train_text_per_round), (32, 16));
+        let ent = decode(&tt, &loci([0.0, 0.0, 0.0, 0.5, 0.0, 0.0, 0.0]));
+        assert!(matches!(ent.learners[0], LearnerSpec::Entropy(c) if c.log2_buckets == 12 && c.orders == 4));
+        let ent_hi = decode(&tt, &loci([0.0, 0.0, 0.0, 0.5, 1.0, 0.0, 0.0]));
+        assert!(matches!(ent_hi.learners[0], LearnerSpec::Entropy(c) if c.log2_buckets == 15));
+        let ng_hi = decode(&tt, &loci([0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0]));
+        assert!(matches!(ng_hi.learners[0], LearnerSpec::Ngram(c) if c.log2_buckets == 14));
+        // Without a train-text locus, train_text_per_round is the base's.
+        let nt = decode(&base(), &loci([0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5])[..NARROW_LOCI + WIDE_LOCI.len()].to_vec());
+        assert_eq!(nt.train_text_per_round, base().train_text_per_round);
+        // The train-text locus exists only when the base has train text.
+        assert_eq!(GenomeKind::Wide.encode(&base()).len(), 10);
+        assert_eq!(GenomeKind::Wide.encode(&tt).len(), 11);
+        // Agents outside the three survive.
+        let atk = Config { agents: vec![("attacker".into(), 2), ("grammar".into(), 1)], ..base() };
+        let d = decode(&atk, &loci([0.9, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]));
+        assert_eq!(d.agents, vec![("grammar".to_string(), 3), ("attacker".to_string(), 2)]);
+    }
+
+    #[test]
+    fn a_bad_genome_value_is_a_usage_error() {
+        assert_eq!(GenomeKind::parse("narrow"), Ok(GenomeKind::Narrow));
+        assert_eq!(GenomeKind::parse("wide"), Ok(GenomeKind::Wide));
+        let args: Vec<String> =
+            ["--heldout", "x", "--journal", "y", "--genome", "huge"].iter().map(|s| s.to_string()).collect();
+        let e = cli(&args).expect_err("cli refuses it");
+        assert!(e.contains("--genome") && e.contains("huge"), "{e}");
     }
 
     #[test]
@@ -1502,9 +1768,10 @@ mod tests {
     #[test]
     fn train_text_joins_the_policy_name_only_when_set() {
         let b = EfficiencyBasis::default();
-        assert_eq!(full_policy_name(b, false, None, false), "succession-cli");
-        assert_eq!(full_policy_name(b, false, Some("ng:2:8:0.05"), false), "succession-cli+learners=ng:2:8:0.05");
-        assert_eq!(full_policy_name(b, true, None, false), "succession-cli+train-text");
+        assert_eq!(full_policy_name(b, false, None, false, false), "succession-cli");
+        assert_eq!(full_policy_name(b, false, Some("ng:2:8:0.05"), false, false), "succession-cli+learners=ng:2:8:0.05");
+        assert_eq!(full_policy_name(b, true, None, false, false), "succession-cli+train-text");
+        assert_eq!(full_policy_name(b, true, None, false, true), "succession-cli+train-text+genome-wide");
     }
 
     #[test]
@@ -1533,7 +1800,7 @@ mod tests {
     #[test]
     fn transfer_reward_joins_the_policy_name_and_its_dev_text_is_checked() {
         let b = EfficiencyBasis::default();
-        assert_eq!(full_policy_name(b, false, None, true), "succession-cli+reward-transfer");
+        assert_eq!(full_policy_name(b, false, None, true, false), "succession-cli+reward-transfer");
         let dir = std::env::temp_dir();
         let write = |n: &str, s: &str| {
             let p = dir.join(format!("succ-dev-{}-{n}", std::process::id()));

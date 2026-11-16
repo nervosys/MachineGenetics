@@ -859,7 +859,38 @@ arena succession --heldout FILE[,FILE...] --journal PATH [--cycles N] [--seed N]
                  [--validation FILE[,FILE...]] [--learners SPEC[,SPEC...]]
                  [--train-text FILE[,FILE...]] [--train-text-per-round N]
                  [--reward alignment|compression|transfer] [--dev-text FILE[,FILE...]]
+                 [--genome narrow|wide]
 ```
+
+**Genome (`--genome narrow|wide`).** Default `narrow`: four `Locus::Param` loci in
+[0,1], exactly as before (learner lr on a log scale 1e-3 to 1e-1, `learner_steps`
+1 to 16, `length_charge` 0 to 0.01, `temperature` 0.1 to 2.0), and genomes, policy
+name and digests are unchanged. `wide` keeps those four (loci 0 to 3) and appends,
+each a `Param` in [0,1] decoded by fixed bins:
+
+| locus | decodes to |
+|---|---|
+| 4, 5, 6 | agent counts for `grammar`, `uniform`, `mutator`, each 0 to 3 (bins of 1/4). All three 0 gives `grammar:1`. Agents in the base config that are not these three (`attacker`, `command`) are kept unchanged, after them |
+| 7 | the first learner's kind: n-gram, entropy or ssm (thirds) |
+| 8 | its size: n-gram `log2_buckets` 10 to 14 (orders 3); entropy `log2_buckets` 12 to 15 (`ent:4:<b>:4:lr`); ssm `d` in {8, 16, 32} (thirds). lr is still locus 0 |
+| 9 | `replay_per_round` 0 to 32 |
+| 10 | only if the base config has `--train-text`: `train_text_per_round` 0 to 16 |
+
+Only the first learner (the one the gate scores) is replaced; the rest are kept.
+Only these three kinds can be chosen, so the genome never selects a learner the
+transfer reward does not support. **The genome's length depends on the base flags**
+(10 loci, or 11 with `--train-text`); the policy name records `+genome-wide` (and
+`+train-text` is already there), so a journal cannot be resumed under another
+genome. The seed champion is encoded with the same genome, so every candidate has the
+same length; germline's variation does not assume a fixed length (crossover
+truncates to the shorter parent and the self-adaptive ES counts the Param loci it
+finds), but it does treat loci alike, and the `Swap` mutation, which is not in the
+default plan, would permute loci. **Not in the genome: the reward kind.** A reward
+changes what "capability" means relative to cost, so it stays a run-level flag. A
+base config with none of the three mixable agents decodes to `grammar:1` plus its
+other agents, so give a wide run at least one of `grammar`, `uniform`, `mutator`.
+A config that falls outside the bins (a transformer first learner, counts above 3)
+encodes to the nearest bin.
 
 **Transfer reward (`--reward transfer`, `--dev-text FILE[,FILE...]`).** Optional,
 on both `arena` and `arena succession` (where `--reward` also takes `alignment` and
@@ -1444,6 +1475,48 @@ transfer --dev-text ARCHITECTURE.md,germline/src/runner.rs` added. Logs and JSON
 - The six final champions are three configurations: seeds 1 and 2 share one,
   seed 3 has its own, and seeds 4, 5 and 7 keep the seed champion. The dev,
   held-out and validation files share a domain.
+
+#### A wider genome
+
+The narrow genome's four loci are hyperparameters, and the measurements above say
+they matter less than the reward, learner and data. `--genome wide` (see the
+command-line section) lets the search also choose the agent mix, the first
+learner's kind and size, and `replay_per_round`. The same six-seed command as above,
+with `--genome wide --agents grammar:2,uniform:1,mutator:1` (policy
+`...+reward-transfer+genome-wide`). Logs and JSON: `E:/heal-logs/sweep/wg-*`;
+narrow rows are `st-*`. Bits/byte, final champion, held-out / validation:
+
+| seed | narrow: promotions, held-out / validation | wide: promotions, held-out / validation | wide champion |
+|---|---|---|---|
+| 1 | 1, 7.026 / 7.352 | 1, 7.076 / 7.468 | seed config with `replay_per_round` 15 |
+| 2 | 1, 7.026 / 7.352 | 1, 7.076 / 7.468 | same |
+| 3 | 1, 7.037 / 7.386 | 0, 7.203 / 7.624 | seed champion |
+| 4 | 0, 7.203 / 7.624 | 0, 7.203 / 7.624 | seed champion |
+| 5 | 0, 7.203 / 7.624 | 0, 7.203 / 7.624 | seed champion |
+| 7 | 0, 7.203 / 7.624 | 0, 7.203 / 7.624 | seed champion |
+
+The seed champion is `grammar:2,uniform:1,mutator:1`, `ng:3:12`, lr 0.02, 8 steps,
+replay 16.
+
+- **The wider genome did not help.** Two seeds promoted once and four promoted
+  nothing; no wide champion beats the narrow run's on the same seed (equal on seeds
+  4, 5 and 7; worse by 0.05, 0.05 and 0.17 held-out and 0.12, 0.12 and 0.24
+  validation on seeds 1, 2 and 3).
+- **Distinct final configurations: two** (the seed champion on four seeds, and the
+  seed champion with replay 15 on seeds 1 and 2), against three for the narrow genome.
+- **No run reached another learner kind, size or agent mix.** The only change the
+  search kept was `replay_per_round` by one. Every run halted by `search_stalled`
+  after three consecutive refusals (three to five candidates scored), so the search
+  saw few candidates; the stall rule, not `--cycles`, is the limit. The data cannot
+  say whether a longer search would find a better kind or size.
+- Conclusion: under this gate (a 0.01 capability improvement required, three
+  refusals in a row stops the run), widening the genome adds nothing measurable.
+  That is a statement about the search, not about the choices: the default
+  mutation perturbs each locus with probability 0.2 by a step of scale 0.15, so
+  crossing a learner-kind bin (width 1/3) is rare, and three to five candidates
+  per run leave almost no chance of it. Whether another learner kind or agent mix
+  beats the base configuration under succession is not answered here; the
+  "Learner choice and level" runs set it by hand.
 
 ### Proposer isolation at the CLI, and its limit
 
