@@ -4122,6 +4122,116 @@ f s() { scaled(5) }";
                    f s() { d2(@P { x: 3, y: 4 }) }";
         assert_eq!(run(src, "s", &[]), Value::Int(25));
     }
+
+    // ── the evaluator and the knowledge base's stated names ─────────────
+
+    /// Every `builtin_function` and `vocabulary` name the knowledge base states.
+    fn stated_callable_names() -> std::collections::BTreeSet<String> {
+        let kb = crate::kb::load().expect("the knowledge base loads");
+        let mut names = std::collections::BTreeSet::new();
+        for rel in ["builtin_function", "vocabulary"] {
+            for f in kb.facts(rel) {
+                names.insert(f[0].clone());
+            }
+        }
+        names
+    }
+
+    /// The names `call_builtin_inner` dispatches on, read from this file's own
+    /// source: the string-literal patterns of the top-level arms of its `match
+    /// name` (twelve spaces of indent), up to the fallback arm. An arm's
+    /// pattern may continue over lines that begin `| "` and may carry an `if`
+    /// guard, which is cut before the literals are read. Nested matches sit
+    /// deeper and are not swept in. Math (`sqrt`, `gelu`, ...) is one of these
+    /// arms, so it is covered here too.
+    fn dispatched_names() -> Vec<String> {
+        let src = include_str!("eval.rs").replace("\r\n", "\n");
+        let body = src
+            .split("    fn call_builtin_inner(&self")
+            .nth(1)
+            .expect("call_builtin_inner is in eval.rs");
+        let body = body
+            .split("\n            other => {")
+            .next()
+            .expect("the fallback arm ends the match");
+        let mut names = Vec::new();
+        let mut header: Option<String> = None;
+        for line in body.lines() {
+            let indent = line.len() - line.trim_start().len();
+            let t = line.trim();
+            if indent == 12 && (t.starts_with('"') || (header.is_some() && t.starts_with("| \""))) {
+                let h = header.get_or_insert_with(String::new);
+                h.push(' ');
+                h.push_str(t);
+            }
+            if let Some(h) = &header {
+                if let Some((pat, _)) = h.split_once("=>") {
+                    let pat = pat.split(" if ").next().unwrap();
+                    for (i, piece) in pat.split('"').enumerate() {
+                        if i % 2 == 1 {
+                            names.push(piece.to_string());
+                        }
+                    }
+                    header = None;
+                }
+            }
+        }
+        assert!(header.is_none(), "an arm pattern never reached `=>`");
+        names
+    }
+
+    /// The extraction is exact: it finds arms this file is known to have,
+    /// including the multi-line math pattern, and nothing from nested matches
+    /// or messages.
+    #[test]
+    fn the_dispatch_extraction_reads_the_arms_and_only_the_arms() {
+        let names = dispatched_names();
+        for must in ["len", "count", "sum", "Ok", "Err", "sqrt", "gelu", "floor", "assert"] {
+            assert!(names.iter().any(|n| n == must), "extraction missed `{must}`: {names:?}");
+        }
+        for must_not in ["Result", "unknown function", "assertion failed"] {
+            assert!(!names.iter().any(|n| n == must_not), "extraction swept in `{must_not}`");
+        }
+        let unique: std::collections::BTreeSet<_> = names.iter().collect();
+        assert_eq!(unique.len(), names.len(), "an arm name is listed twice: {names:?}");
+    }
+
+    /// Every name the evaluator dispatches is a stated `builtin_function` or
+    /// `vocabulary` fact.
+    #[test]
+    fn every_dispatched_name_is_stated() {
+        let stated = stated_callable_names();
+        let unstated: Vec<_> =
+            dispatched_names().into_iter().filter(|n| !stated.contains(n)).collect();
+        assert!(unstated.is_empty(), "the evaluator dispatches names no fact states: {unstated:?}");
+    }
+
+    /// Stated names the evaluator has no arm for: each really fails with
+    /// `unknown function`. Empty means every stated name evaluates.
+    const KNOWN_UNEVALUATED: &[&str] = &[];
+
+    fn fails_as_unknown(name: &str) -> bool {
+        // Straight to the dispatch, with no arguments: no parse or argument
+        // error can stand in front of the fallback arm, so only a name no arm
+        // reaches fails this way.
+        let interp = Interp::new(&Module { items: Vec::new() });
+        matches!(interp.call_builtin_inner(name, Vec::new()),
+            Err(Control::Err(e)) if e.contains("unknown function"))
+    }
+
+    /// Every stated `builtin_function` and `vocabulary` name evaluates: calling
+    /// it reaches an arm, whatever it then makes of its arguments.
+    #[test]
+    fn every_stated_name_evaluates() {
+        // The probe can fail: a name with no arm is caught.
+        assert!(fails_as_unknown("no_such_builtin"), "the probe no longer detects a missing arm");
+        let failing: Vec<String> = stated_callable_names()
+            .into_iter()
+            .filter(|n| fails_as_unknown(n))
+            .collect();
+        let known: Vec<String> = KNOWN_UNEVALUATED.iter().map(|s| s.to_string()).collect();
+        assert_eq!(failing, known, "stated names with no evaluator arm vs KNOWN_UNEVALUATED");
+    }
 }
 
 #[cfg(test)]
