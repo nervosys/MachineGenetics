@@ -2192,7 +2192,9 @@ no friction and no multi-step rollout.
 ### 12.1 Contract Attributes
 
 Contracts live in a **`spec` block that shares the function's name** (`sp` in
-agent mode) — not as attributes above the signature, which is a parse error:
+agent mode), or as attributes directly above the function's signature
+(`@req(a > 0)` on the line before `f add(…)`), which attach to that function
+the same way and are checked the same way:
 
 ```mg
 sp withdraw {
