@@ -4,7 +4,7 @@
 
 use crate::hir::{self, DiagnosticCategory, Severity};
 use crate::verdict::{Refusal, Verdict};
-use crate::{abl_shape, core_subset, differentiable, effects, elision, lexer, logic, parser, resolve, types, verify};
+use crate::{abl_shape, contract, core_subset, differentiable, effects, elision, lexer, logic, parser, resolve, types, verify};
 
 /// One record of `--check --json`, error or not.
 #[derive(Debug, Clone)]
@@ -96,15 +96,18 @@ pub fn check_source(source: &str, do_elision: bool, core: bool) -> Checked {
         // agent that validates generated MAGE with `--check --json` must
         // see the same errors a person does, or the two oracles disagree
         // about what the program means.
-        all.extend(differentiable::check_grad_obligations(
-            &module,
-            &differentiable::infer(&module, &effect_infer),
-        ));
+        let diff_engine = differentiable::infer(&module, &effect_infer);
+        all.extend(differentiable::check_grad_obligations(&module, &diff_engine));
+        // A `train` over a net the module lacks (E0713), or one judged not
+        // differentiable (E0711).
+        all.extend(differentiable::train_block_errors(&module, &diff_engine));
         // Refuted contracts (E0560), for the same reason: the human path
         // counts them as errors, so this stream must carry them.
         all.extend(verify::diagnostics(&verify::verify_module(&module)));
         // `kb` facts and rules the logic engine cannot evaluate (E0570).
         all.extend(logic::module_diagnostics(&module));
+        // A contract written on a `net` or `train`, which nothing checks (E0712, a warning).
+        all.extend(contract::unchecked_contract_warnings(&module));
         for (func, declared, inferred) in effect_infer.effect_surface() {
             effect_surface.push(serde_json::json!({
                 "function": func,

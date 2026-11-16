@@ -196,10 +196,10 @@ fn an_undeclared_effect_runs() {
 
 /// Each subject of a `gap` fact is checked somewhere. Those here have one in
 /// this file: the contract grid, a grammar witness, or the test above.
-/// `E0382`, `E0502` and `E9999` are in `tests/diagnostics.rs`.
+/// `E0382`, `E0502`, `E0711` and `E9999` are in `tests/diagnostics.rs`.
 const GAPS: &[&str] = &[
     "requires", "ensures", "invariant", "E0550",
-    "E0382", "E0502", "E9999",
+    "E0382", "E0502", "E0711", "E9999",
     "clause_on_other_item", "layout_blocks", "overflowing_dimension",
 ];
 

@@ -195,6 +195,13 @@ cannot change whether a derivative exists, and
 analysed, so there is no verdict to give, which is not the same as a negative
 one.
 
+A `train` over a net whose own verdict is `No` is now refused: `--check` reports
+E0711 (`NotDifferentiable`), naming the train block, the net and the reason, and
+`--target=abl-train` refuses with the same message and exits nonzero. Only the
+net's verdict counts, not the joined train verdict, and `Unknown` is allowed. No
+layer type is judged `No` yet, so no source reaches E0711 today; its witness sets
+the verdict by hand.
+
 ## Differentiability is a typeclass, which is why item 21 reopens
 
 Deciding that `tensor[f32]` and `f32` have derivatives while `i64`, `bool` and

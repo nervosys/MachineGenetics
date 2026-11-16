@@ -852,6 +852,11 @@ pub fn check_grad_obligations(module: &ast::Module, engine: &DiffInfer) -> Vec<D
                 collect_grads_expr(be, &fd.name, &mut sites);
             }
         }
+        // A `train` body is code too, so a `grad` in it gets the same obligation.
+        // Before this, a `grad` there was never examined.
+        if let ast::ItemKind::Train(td) = &item.kind {
+            collect_grads_block(&td.body, &format!("train {}", td.name), &mut sites);
+        }
     }
     for (owner, value) in sites {
         match expr_status_resolved(engine, &value) {
@@ -875,6 +880,81 @@ pub fn check_grad_obligations(module: &ast::Module, engine: &DiffInfer) -> Vec<D
                 DiagnosticCategory::Other,
                 None,
             )),
+        }
+    }
+    out
+}
+
+/// Refuse every `train` block whose net the pass judges `No`.
+///
+/// Only `No` refuses. `Unknown` is allowed: it is the absence of a verdict, and
+/// a `net` with a layer type outside the tables is `Unknown` (the lowering
+/// already warns that it falls back to IDENTITY). Refusing on `Unknown` would
+/// make every unmodelled layer a hard error, which is the trade the
+/// `grad` obligation above also declines. A `train` naming a net this module
+/// does not define is `Unknown` too, and is not diagnosed here.
+///
+/// The verdict read is the **net's**, not the train block's. The train verdict
+/// also joins the loss and the block body, and a train with no loss is `No`
+/// for a reason that says nothing about the net.
+///
+/// No `net` verdict is `No` yet: `layer_type_diff` only returns `Smooth`,
+/// `AlmostEverywhere` or `Unknown`, and no bridge layer has a discrete output.
+/// This check is therefore dormant until a layer type is judged `No`.
+pub fn check_train_nets(module: &ast::Module, engine: &DiffInfer) -> Vec<Diagnostic> {
+    let mut out = Vec::new();
+    for item in &module.items {
+        if let ast::ItemKind::Train(td) = &item.kind
+            && let Diff::No(reason) = engine.net_of(&td.net)
+        {
+            out.push(Diagnostic::categorized(
+                Severity::Error,
+                format!(
+                    "train `{}` trains net `{}`, which is not differentiable, so it cannot be trained — {reason}",
+                    td.name, td.net
+                ),
+                DiagnosticCategory::NotDifferentiable,
+                None,
+            ));
+        }
+    }
+    out
+}
+
+/// Every `train` block the targets refuse: a net it names that the module does
+/// not define (E0713), and one judged not differentiable (E0711). `--check` and
+/// `--target=abl-train` / `abl-infer` all report this set.
+pub fn train_block_errors(module: &ast::Module, engine: &DiffInfer) -> Vec<Diagnostic> {
+    let mut out = missing_train_nets(module);
+    out.extend(check_train_nets(module, engine));
+    out
+}
+
+/// A `train` block naming a net this module does not define (E0713). The
+/// closest net name is suggested when one is within three edits.
+pub fn missing_train_nets(module: &ast::Module) -> Vec<Diagnostic> {
+    let names: Vec<&str> = module
+        .items
+        .iter()
+        .filter_map(|item| match &item.kind {
+            ast::ItemKind::Net(n) => Some(n.name.as_str()),
+            _ => None,
+        })
+        .collect();
+    let mut out = Vec::new();
+    for item in &module.items {
+        if let ast::ItemKind::Train(td) = &item.kind
+            && !names.contains(&td.net.as_str())
+        {
+            let hint = crate::builder::nearest(&td.net, &names, 3)
+                .map(|c| format!(" — did you mean `{c}`?"))
+                .unwrap_or_default();
+            out.push(Diagnostic::categorized(
+                Severity::Error,
+                format!("train `{}` names net `{}`, which this module does not define{hint}", td.name, td.net),
+                DiagnosticCategory::UnknownNet,
+                None,
+            ));
         }
     }
     out
@@ -1501,6 +1581,121 @@ mod tests {
         let v = d.train_of("Fit");
         assert!(matches!(v, Diff::Unknown(_)), "{v:?}");
         assert!(v.reason().unwrap().contains("Nowhere"));
+    }
+
+    /// Source and engine for a module, so a test can change a net's verdict
+    /// before the gate reads it. No source reaches `No` yet (see
+    /// `check_train_nets`), so the verdict is the only way to exercise the gate.
+    fn train_gate(src: &str, verdict: Option<Diff>) -> Vec<Diagnostic> {
+        let module = parser::parse(&lexer::lex(src)).expect("parse failed");
+        let eff = effects::infer_effects(&module);
+        let mut engine = infer(&module, &eff);
+        if let Some(v) = verdict {
+            engine.nets[0].verdict = v;
+        }
+        check_train_nets(&module, &engine)
+    }
+
+    const AFFINE_TRAIN: &str = "net Affine { layer fc: Linear(3, 1); forward { fc } }\n\
+         train Fit { net: Affine; optimizer: SGD(0.05); loss: MSE; epochs: 10; }";
+
+    /// A `train` over a net judged `No` is refused, and the message names the
+    /// train block, the net and the reason the pass gives.
+    #[test]
+    fn a_train_over_a_not_differentiable_net_is_refused() {
+        let out = train_gate(AFFINE_TRAIN, Some(Diff::No("it compares two floats".into())));
+        assert_eq!(out.len(), 1, "{out:?}");
+        assert_eq!(out[0].severity, Severity::Error);
+        assert_eq!(out[0].id.as_deref(), Some("E0711"));
+        let m = &out[0].message;
+        assert!(m.contains("train `Fit`") && m.contains("net `Affine`"), "{m}");
+        assert!(m.contains("it compares two floats"), "{m}");
+    }
+
+    /// `Unknown` is allowed, as is a net that is differentiable.
+    #[test]
+    fn unknown_and_differentiable_nets_are_not_refused() {
+        assert!(train_gate(AFFINE_TRAIN, Some(Diff::Unknown("a layer".into()))).is_empty());
+        assert!(train_gate(AFFINE_TRAIN, Some(Diff::AlmostEverywhere)).is_empty());
+        assert!(train_gate(AFFINE_TRAIN, None).is_empty());
+    }
+
+    /// A `train` naming a net the module does not define has an `Unknown`
+    /// verdict, so it is not refused here.
+    #[test]
+    fn a_train_over_a_missing_net_is_not_refused_here() {
+        let src = "train Fit { net: Nowhere; optimizer: SGD(0.1); loss: MSE; epochs: 1; }";
+        assert!(train_gate(src, None).is_empty());
+    }
+
+    /// A `train` naming a net the module lacks is E0713, and the closest net
+    /// name within three edits is suggested. A present net is not.
+    #[test]
+    fn a_train_over_a_missing_net_is_refused_with_the_nearest_name() {
+        let module = parser::parse(&lexer::lex(
+            "net Nowhere { layer fc: Linear(3, 1); forward { fc } }\n\
+             train Fit { net: Nowhear; optimizer: SGD(0.1); loss: MSE; epochs: 1; }",
+        ))
+        .expect("parse failed");
+        let out = missing_train_nets(&module);
+        assert_eq!(out.len(), 1, "{out:?}");
+        assert_eq!(out[0].id.as_deref(), Some("E0713"));
+        let m = &out[0].message;
+        assert!(m.contains("`Fit`") && m.contains("`Nowhear`"), "{m}");
+        assert!(m.contains("did you mean `Nowhere`"), "{m}");
+    }
+
+    #[test]
+    fn a_train_over_a_present_net_is_not_missing() {
+        let module = parser::parse(&lexer::lex(AFFINE_TRAIN)).expect("parse failed");
+        assert!(missing_train_nets(&module).is_empty());
+    }
+
+    /// The missing-net diagnostic is the one `--check` and the targets refuse on.
+    #[test]
+    fn a_missing_net_with_no_near_name_has_no_suggestion() {
+        let module = parser::parse(&lexer::lex(
+            "net Alpha { layer fc: Linear(3, 1); forward { fc } }\n\
+             train Fit { net: Zeta; optimizer: SGD(0.1); loss: MSE; epochs: 1; }",
+        ))
+        .expect("parse failed");
+        let out = missing_train_nets(&module);
+        assert_eq!(out.len(), 1);
+        assert!(!out[0].message.contains("did you mean"), "{}", out[0].message);
+    }
+
+    /// The grad obligation over a module's `grad` sites, as `--check` runs it.
+    fn grad_checks(src: &str) -> Vec<Diagnostic> {
+        let module = parser::parse(&lexer::lex(src)).expect("parse failed");
+        let eff = effects::infer_effects(&module);
+        check_grad_obligations(&module, &infer(&module, &eff))
+    }
+
+    /// A `grad` in a train body is judged like one in a function. A smooth
+    /// expression passes; one the pass cannot analyse is the E9999 warning; one
+    /// with no derivative is the E0308 error. Each names the train block.
+    #[test]
+    fn a_grad_in_a_train_body_gets_the_function_obligation() {
+        let train = |expr: &str| {
+            format!(
+                "net A {{ layer fc: Linear(3, 1); forward {{ fc }} }}\n\
+                 train Fit {{ net: A; optimizer: SGD(0.05); loss: MSE; epochs: 1; body {{ val g = grad({expr}, w); }} }}"
+            )
+        };
+
+        let smooth = grad_checks(&train("w * w"));
+        assert!(smooth.is_empty(), "{smooth:?}");
+
+        let unknown = grad_checks(&train("w |> abs"));
+        assert_eq!(unknown.len(), 1, "{unknown:?}");
+        assert_eq!(unknown[0].severity, Severity::Warning);
+        assert_eq!(unknown[0].id.as_deref(), Some("E9999"));
+        assert!(unknown[0].message.contains("in `train Fit`"), "{}", unknown[0].message);
+
+        let refused = grad_checks(&train("w > 0.0"));
+        assert_eq!(refused.len(), 1, "{refused:?}");
+        assert_eq!(refused[0].severity, Severity::Error);
+        assert!(refused[0].message.contains("in `train Fit`"), "{}", refused[0].message);
     }
 
     // ── Reporting ────────────────────────────────────────────────────
