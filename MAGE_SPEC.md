@@ -31,7 +31,7 @@ inference — roadmap Phase K). Where this document and the prototype disagree,
 13. [Ownership and Borrowing](#13-ownership-and-borrowing)
 14. [Module System](#14-module-system)
 15. [Hardware Acceleration Model](#15-hardware-acceleration-model)
-16. [Appendix A: Full Grammar in BNF](#appendix-a-full-grammar-in-bnf)
+16. [Appendix A: Full Grammar](#appendix-a-full-grammar)
 17. [Appendix B: Dual Syntax Mapping Table](#appendix-b-dual-syntax-mapping-table)
 18. [Appendix C: Operator Precedence](#appendix-c-operator-precedence)
 19. [Appendix D: Agent Mode Symbol Reference](#appendix-d-Agent-mode-symbol-reference)
@@ -1691,7 +1691,7 @@ MAGE's type system extends Rust's with:
 4. **Knowledge types** — `KnowledgeBase`, rules, facts
 5. **Agent types** — typed message protocols, capability contracts
 6. **Lifetime inference** — no user-visible lifetime annotations
-7. **Borrow mode inference** — `&T` unifies shared and exclusive
+7. **Borrow mode checking** — shared (`&T`) and exclusive (`&!T`) references do not unify; a mismatch is a borrow mode mismatch error
 8. **Effect types** — every function has an effect signature
 
 ### 10.2 Type Judgment
@@ -1724,7 +1724,7 @@ $$
 ### 10.4 Tensor Typing Rules
 
 $$
-\frac{A : \text{Tensor}\langle T, [M, K]\rangle \quad B : \text{Tensor}\langle T, [K, N]\rangle}{A \mathbin{@} B : \text{Tensor}\langle T, [M, N]\rangle} \quad \text{[T-Matmul]}
+\frac{A : \text{Tensor}\langle T, [M, K]\rangle \quad B : \text{Tensor}\langle T, [K, N]\rangle}{A \otimes B : \text{Tensor}\langle T, [M, N]\rangle} \quad \text{[T-Matmul]}
 $$
 
 $$
@@ -2396,7 +2396,7 @@ sp withdraw {
     @fx()
 }
 
-pub fn withdraw(balance: u64, amount: u64) -> u64 or str {
++f withdraw(balance: u64, amount: u64) -> u64 or str {
     guard balance >= amount else { ret Err("insufficient funds") }
     Ok(balance - amount)
 }
@@ -2446,7 +2446,7 @@ sp withdraw {
     @fx()
 }
 
-pub fn withdraw(account: Account, amount: u64) -> Account {
++f withdraw(account: Account, amount: u64) -> Account {
     @Account { balance: account.balance - amount }
 }
 ```
@@ -2459,7 +2459,7 @@ sp sorted {
     @fx()
 }
 
-pub fn sorted(items: [i64]~) -> [i64]~ {
++f sorted(items: [i64]~) -> [i64]~ {
     sort(items)
 }
 ```
@@ -2468,6 +2468,8 @@ pub fn sorted(items: [i64]~) -> [i64]~ {
 
 Contracts are verified via:
 1. **Static analysis** — SMT solver for decidable predicates
+   *(designed, not built: no SMT solver is wired in. Contracts are checked by
+   `--check` for type and by the evaluator at run time.)*
 2. **SKB cross-reference** — matching against the 255 known safety rules
    *(designed, not built: no compiler stage consults the SKB. `types.rs`,
    `effects.rs`, `resolve.rs`, `verify.rs`, `heal.rs` and `mlir.rs` contain
@@ -2478,22 +2480,30 @@ Contracts are verified via:
 
 ## 13. Ownership and Borrowing
 
-MAGE preserves Rust's ownership and borrowing semantics with full inference:
+**Status: design, not enforcement.** There is no borrow checker. Today the type
+checker distinguishes `&T` from `&!T`: a borrow-mode mismatch is an error, and
+the expressions `&x` and `&!x` have those types. No move rule and no aliasing
+rule is enforced, so a use after a move is accepted, and the evaluator has value
+semantics. The rules below are the intended semantics; rule 4 (shared XOR
+exclusive aliasing), rule 7's lifetime encoding, and the [Own-Valid] and
+[Own-Move] judgments are **not enforced**.
+
+MAGE is designed to preserve Rust's ownership and borrowing semantics with full inference:
 
 1. Every value has exactly one owner.
 2. When the owner goes out of scope, the value is dropped.
 3. Values can be moved or, if `Copy`, duplicated.
-4. Borrows: any number of `&T` (shared) XOR one `&!T` (exclusive).
+4. Borrows: any number of `&T` (shared) XOR one `&!T` (exclusive). *(Not enforced.)*
 5. Borrows must not outlive the referent.
 6. The compiler infers borrow mode from usage context.
-7. No lifetime annotations in source code — the SKB encodes lifetime rules.
+7. No lifetime annotations in source code — the SKB encodes lifetime rules. *(Not enforced.)*
 
 $$
-\frac{x : \tau \in \Gamma \quad x \notin \text{moved}(\Gamma)}{\Gamma \vdash_{\text{own}} x : \text{Valid}} \quad \text{[Own-Valid]}
+\frac{x : \tau \in \Gamma \quad x \notin \text{moved}(\Gamma)}{\Gamma \vdash_{\text{own}} x : \text{Valid}} \quad \text{[Own-Valid]}\ \text{(not enforced)}
 $$
 
 $$
-\frac{\Gamma \vdash_{\text{own}} x : \text{Valid} \quad \Gamma' = \Gamma[\text{moved} \cup \{x\}]}{\Gamma \vdash_{\text{own}} \text{move}(x) : \text{Valid} \dashv \Gamma'} \quad \text{[Own-Move]}
+\frac{\Gamma \vdash_{\text{own}} x : \text{Valid} \quad \Gamma' = \Gamma[\text{moved} \cup \{x\}]}{\Gamma \vdash_{\text{own}} \text{move}(x) : \text{Valid} \dashv \Gamma'} \quad \text{[Own-Move]}\ \text{(not enforced)}
 $$
 
 ---
@@ -2613,98 +2623,31 @@ val dot = (a * b).sum();
 
 ---
 
-## Appendix A: Full Grammar in BNF
+## Appendix A: Full Grammar
 
-```bnf
-<compilation_unit> ::= <item_list>
-<item_list>        ::= <item> <item_list> | ε
+The normative grammar is `kb/grammar.mg`: one `rhs(Production, "...")` fact per
+alternative of each production of `prototype/src/parser.rs`, in EBNF over
+production names and token names (`kb/lexicon.mg`). Juxtaposition is sequence,
+`|` is alternation, `?` `*` `+` repeat, parentheses group. It is held to the
+parser both ways: every `.mg` source in the repo is recognised by it, and
+sentences sampled from it parse. §4 describes the same grammar construct by
+construct. A few of its productions, copied verbatim:
 
-<item>     ::= <attribute_list> <visibility> <item_kind>
-             | <attribute_list> <item_kind>
-<visibility> ::= "exp" | "exp" "(" "crate" ")"
-
-<item_kind> ::= <function_def> | <data_def> | <data_def>
-              | <trait_def> | <extend_block> | <module_def>
-              | <use_decl> | <type_alias> | <const_def>
-              | <static_def> | <effect_def> | <spec_def>
-              | <net_def> | <kb_def> | <evolve_def> | <agent_def>
-              | <train_def>
-
-<function_def> ::= "def" IDENT <opt_generics> "(" <opt_params> ")"
-                   <opt_return> <opt_where> <opt_effects> <block>
-<async_fn_def> ::= "par" <function_def>
-
-<data_def> ::= "rec" IDENT <opt_generics> <opt_where> "{" <field_list> "}"
-<data_def>   ::= "sum" IDENT <opt_generics> <opt_where> "{" <variant_list> "}"
-<trait_def>  ::= "sig" IDENT <opt_generics> <opt_supertrait> <opt_where>
-                 "{" <trait_items> "}"
-<extend_block> ::= "ext" <opt_generics> <type> <opt_on> <opt_where>
-                 "{" <extend_items> "}"
-<module_def> ::= "ns" IDENT "{" <item_list> "}" | "ns" IDENT ";"
-<use_decl>   ::= "bring" <use_path> ";"
-
-<net_def>    ::= "net" IDENT <opt_generics> <opt_supertrait>
-                 "{" <layer_list> <opt_forward> "}"
-<layer_list> ::= <layer_def> <layer_list> | ε
-<layer_def>  ::= "layer" IDENT "(" <arg_list> ")"
-<opt_forward> ::= <function_def> | ε
-
-<kb_def>     ::= "kb" IDENT "{" <kb_items> "}"
-<kb_items>   ::= <kb_item> <kb_items> | ε
-<kb_item>    ::= "fact" IDENT "(" <arg_list> ")" ";"
-               | "rule" IDENT "(" <param_list> ")" <opt_where> "{" <kb_body> "}"
-<opt_where>  ::= "where" <kb_literal> <where_rest> | ε
-<where_rest> ::= "," <kb_literal> <where_rest> | ε
-<kb_body>    ::= <kb_literal> | <kb_literal> "&&" <kb_body>
-<kb_literal> ::= IDENT "(" <arg_list> ")" | "!" IDENT "(" <arg_list> ")"
-               | <kb_term> "==" <kb_term> | <kb_term> "!=" <kb_term>
-<kb_term>    ::= IDENT | STRING | NUMBER
-
-<evolve_def> ::= "evolve" IDENT "{" <evolve_fields> "}"
-<evolve_fields> ::= <evolve_field> <evolve_fields> | ε
-<evolve_field>  ::= "genome" ":" <type> ","
-                  | "population" ":" <expression> ","
-                  | "generations" ":" <expression> ","
-                  | <fitness_def>
-                  | "select" <strategy> ","
-                  | "crossover" <strategy> ","
-                  | "mutate" <strategy> ","
-                  | "target" "fitness" <cmp_op> <expression> ","
-                  | <function_def>
-
-<agent_def>  ::= "agent" IDENT <opt_supertrait> "{" <agent_items> "}"
-<agent_items> ::= <agent_item> <agent_items> | ε
-<agent_item>  ::= IDENT ":" <type> ","
-                | <visibility> <function_def>
-
-<train_def>  ::= "train" IDENT "{" <train_fields> "}"
-<train_fields> ::= <train_field> <train_fields> | ε
-<train_field>  ::= IDENT ":" <expression> ","
-                 | <function_def>
-
-<type> ::= <type_path>
-         | "&" <type> | "&" "var" <type>
-         | "Box" "<" <type> ">"
-         | "Rc" "<" <type> ">"
-         | "Arc" "<" <type> ">"
-         | "Vec" "<" <type> ">"
-         | "Option" "<" <type> ">"
-         | "Result" "<" <type> "," <type> ">"
-         | "HashMap" "<" <type> "," <type> ">"
-         | "HashSet" "<" <type> ">"
-         | "Tensor" "<" <type> "," <shape> ">"
-         | "Param" "<" <type> "," <shape> ">"
-         | "Genome" "<" <type> ">"
-         | "Policy" "<" <type> "," <type> ">"
-         | "KnowledgeBase" | "LLM"
-         | "[" <type> ";" <expression> "]"
-         | "&" "[" <type> "]"
-         | "(" <type_list_opt> ")"
-         | "def" "(" <type_list_opt> ")" <opt_return>
-         | "!" | "_" | "String" | "str"
-
-<shape> ::= "[" <int_list> "]" | "_"
+```text
+fact rhs(Module, "(ItBlockDef | Item)*");
+fact rhs(Item, "(Attr | Contract)* Plus? (FunctionDef | StructDef | EnumDef | TraitDef | ImplBlock | ModuleDef | UseDecl | TypeAlias | ConstDef | StaticDef | EffectDef | SpecDef | AgentDef | SwarmDef | NetDef | KbDef | EvolveDef | TrainDef | DataDef | ExtendBlock)");
+fact rhs(FunctionDef, "(KwF | KwAf | KwUf) Name Generics? Params (Arrow Type (KwOr Type)?)? WhereClause? (Slash EffectName EffectArgs? ((Comma | Plus) EffectName EffectArgs?)*)? (Assign Expr Semi? | Semi | Block)");
+fact rhs(StructDef, "KwS Name Generics? LBrace (Plus? Name Colon Type Comma?)* RBrace");
+fact rhs(TypeAlias, "(KwType | KwY) Name Generics? (Assign Type)? (TildeArrow ItRefineTok*)? Semi");
+fact rhs(BlockBody, "Stmt* Expr?");
+fact rhs(Stmt, "StLet");
+fact rhs(Stmt, "StGuard");
+fact rhs(Stmt, "Expr Semi");
+fact rhs(StLet, "StLetKw Pattern (Colon Type)? Assign Expr Semi?");
 ```
+
+A leading `+` (`Plus?` in `Item`) marks an item public, so a public function is
+`+f`.
 
 ---
 
