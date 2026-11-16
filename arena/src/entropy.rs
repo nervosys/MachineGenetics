@@ -59,7 +59,7 @@
 //! mixture, with each position's chunk state built from the bytes before it, so
 //! it is the cost a causal coder with the same model would pay.
 
-use crate::learner::{ByteLearner, EntropyConfig, Learner, LearnerConfig, Predictor};
+use crate::learner::{ByteLearner, EntropyConfig, Learner, LearnerConfig, Predictor, TransferProbe};
 
 const V: usize = 256;
 /// The fixed-share rate: each weight is mixed toward uniform by this much, so
@@ -295,6 +295,10 @@ impl ByteLearner for EntropyLearner {
     }
     fn predictor(&self) -> Option<Box<dyn Predictor + '_>> {
         Some(Box::new(EntropyPredictor::new(self)))
+    }
+    /// The n-gram's, as for `progress`: the chunk table is not gradient-trained.
+    fn transfer_probe<'a>(&'a self, dev: &[&[u8]]) -> Option<Box<dyn TransferProbe + 'a>> {
+        Some(Box::new(self.ngram.transfer_probe(dev)))
     }
 }
 

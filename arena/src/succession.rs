@@ -22,7 +22,7 @@
 //! is not the digest of the corpora this workload holds, so a candidate cannot
 //! be scored on data nobody registered.
 
-use crate::arena::{refuse_train_text_overlap, run, Config, Corpus, Report};
+use crate::arena::{refuse_text_overlap, refuse_train_text_overlap, run, Config, Corpus, Report, Reward};
 use crate::energy::{Basis, Meter, WallClock};
 use crate::learner::{LearnerConfig, LearnerSpec};
 use germline::attest::Attestor;
@@ -234,6 +234,8 @@ pub struct ArenaWorkload {
     /// The digest the training-text files (`Config::train_text`) were pinned
     /// under at startup, re-checked before each cycle like the suites above.
     pub train_text_pin: Option<Digest>,
+    /// The same for the dev-text files (`Config::dev_text`, `--reward transfer`).
+    pub dev_text_pin: Option<Digest>,
     built: HashMap<String, Built>,
     /// Joules every session has charged, all accounts (programs, training,
     /// probes), as the kernel's ledger totals them. This is the running count
@@ -270,6 +272,7 @@ impl ArenaWorkload {
             validation_files: Vec::new(),
             validation_pin: None,
             train_text_pin: None,
+            dev_text_pin: None,
             built: HashMap::new(),
             spent: 0.0,
             spend_incomplete: false,
@@ -341,6 +344,16 @@ impl ArenaWorkload {
                 "the training text changed on disk since this run was built ({})",
                 self.base.train_text.join(", ")
             ));
+        }
+        Ok(())
+    }
+
+    /// Re-read the dev-text files and confirm they still hash to the pinned
+    /// digest: a changed file would change what the transfer reward pays for.
+    pub fn check_dev_text_files(&self) -> Result<(), String> {
+        let Some(pin) = &self.dev_text_pin else { return Ok(()) };
+        if &suite_digest(&read_corpora(&self.base.dev_text)?) != pin {
+            return Err(format!("the dev text changed on disk since this run was built ({})", self.base.dev_text.join(", ")));
         }
         Ok(())
     }
@@ -425,7 +438,8 @@ impl Workload for ArenaWorkload {
     fn before_cycle(&mut self) -> Result<(), String> {
         self.check_heldout_files()?;
         self.check_validation_files()?;
-        self.check_train_text_files()
+        self.check_train_text_files()?;
+        self.check_dev_text_files()
     }
 
     fn shadow(&mut self, artifact: &Digest) -> HealthSample {
@@ -498,7 +512,7 @@ const USAGE: &str = "usage: arena succession --heldout FILE[,FILE...] --journal 
 [--objectives capability[,efficiency][,latency]] [--dominance-min F] [--dominance-floor F] \
 [--objective-tolerance AXIS=F,...] [--allow-estimated-energy] [--efficiency-basis meter|work] \
 [--energy-budget JOULES] [--param-search es|perturb] [--cost joules|fuel] [--validation FILE[,FILE...]] \
-[--train-text FILE[,FILE...]] [--train-text-per-round N] \
+[--train-text FILE[,FILE...]] [--train-text-per-round N] [--reward alignment|compression|transfer] [--dev-text FILE[,FILE...]] \
 [--learners SPEC[,SPEC...]]  (SPEC: ng:orders:log2buckets:lr | tf:d:layers:heads:ctx:lr[:gpu] | \
 ent:orders:log2buckets:target_len:lr | ssm:d:lr[:bptt]; the first spec is the one the gate scores)";
 
@@ -674,15 +688,18 @@ fn policy_name(basis: EfficiencyBasis) -> String {
 }
 
 /// [`policy_name`], plus the opt-in flags that change what a run is: `+train-text`
-/// when training text is set. With it off the name is `policy_name`'s, so the
+/// when training text is set, `+reward-transfer` under `--reward transfer`. With them off the name is `policy_name`'s, so the
 /// digest of a run without the flag does not move.
-fn full_policy_name(basis: EfficiencyBasis, train_text: bool, learners: Option<&str>) -> String {
+fn full_policy_name(basis: EfficiencyBasis, train_text: bool, learners: Option<&str>, transfer: bool) -> String {
     let mut name = policy_name(basis);
     if train_text {
         name.push_str("+train-text");
     }
     if let Some(l) = learners {
         name = format!("{name}+learners={l}");
+    }
+    if transfer {
+        name.push_str("+reward-transfer");
     }
     name
 }
@@ -847,6 +864,15 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
             "--validation" => validation.extend(v.split(',').filter(|s| !s.is_empty()).map(str::to_string)),
             "--train-text" => base.train_text.extend(v.split(',').filter(|s| !s.is_empty()).map(str::to_string)),
             "--train-text-per-round" => base.train_text_per_round = num(v, flag)? as usize,
+            "--dev-text" => base.dev_text.extend(v.split(',').filter(|s| !s.is_empty()).map(str::to_string)),
+            "--reward" => {
+                base.reward = match v {
+                    "alignment" => Reward::Alignment,
+                    "compression" => Reward::Compression,
+                    "transfer" => Reward::Transfer,
+                    other => return Err(format!("--reward: `{other}` is not alignment, compression or transfer")),
+                }
+            }
             "--cycles" => cycles = num(v, flag)? as u32,
             "--seed" => seed = num(v, flag)?,
             "--journal" => journal = Some(v.to_string()),
@@ -908,6 +934,20 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
         refuse_train_text_overlap(&base.train_text, "--heldout", &read_corpora(&heldout)?)?;
         refuse_train_text_overlap(&base.train_text, "--validation", &read_corpora(&validation)?)?;
     }
+    // Dev text belongs to the transfer reward alone, and may be none of the
+    // held-out, validation or training-text files: same checks, same place.
+    match (base.reward == Reward::Transfer, base.dev_text.is_empty()) {
+        (true, true) => return Err(format!("--reward transfer needs --dev-text FILE[,FILE...]
+{USAGE}")),
+        (false, false) => return Err(format!("--dev-text is only used with --reward transfer
+{USAGE}")),
+        _ => {}
+    }
+    if !base.dev_text.is_empty() {
+        refuse_text_overlap(&base.dev_text, "--dev-text", "dev text", "--heldout", &read_corpora(&heldout)?)?;
+        refuse_text_overlap(&base.dev_text, "--dev-text", "dev text", "--validation", &read_corpora(&validation)?)?;
+        refuse_text_overlap(&base.dev_text, "--dev-text", "dev text", "--train-text", &read_corpora(&base.train_text)?)?;
+    }
     let journal_path = PathBuf::from(
         journal.ok_or_else(|| format!("--journal PATH is required: the journal is the run's record\n{USAGE}"))?,
     );
@@ -935,6 +975,9 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
     w.validation_pin = validation_digest.clone();
     w.train_text_pin = (!base.train_text.is_empty())
         .then(|| read_corpora(&base.train_text).map(|c| suite_digest(&c)))
+        .transpose()?;
+    w.dev_text_pin = (!base.dev_text.is_empty())
+        .then(|| read_corpora(&base.dev_text).map(|c| suite_digest(&c)))
         .transpose()?;
     w.with_latency = objectives.as_ref().is_some_and(|o| o.iter().any(|n| n == "latency"));
     w.efficiency_basis = efficiency_basis;
@@ -1001,7 +1044,7 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
     };
     variation.param_search = param_search.clone();
     let policy = RunnerPolicy {
-        name: full_policy_name(efficiency_basis, !base.train_text.is_empty(), learners_flag.as_deref()),
+        name: full_policy_name(efficiency_basis, !base.train_text.is_empty(), learners_flag.as_deref(), base.reward == Reward::Transfer),
         max_cycles: cycles,
         candidates_per_cycle: candidates,
         stop_file: stop_file.map(PathBuf::from),
@@ -1459,9 +1502,9 @@ mod tests {
     #[test]
     fn train_text_joins_the_policy_name_only_when_set() {
         let b = EfficiencyBasis::default();
-        assert_eq!(full_policy_name(b, false, None), "succession-cli");
-        assert_eq!(full_policy_name(b, false, Some("ng:2:8:0.05")), "succession-cli+learners=ng:2:8:0.05");
-        assert_eq!(full_policy_name(b, true, None), "succession-cli+train-text");
+        assert_eq!(full_policy_name(b, false, None, false), "succession-cli");
+        assert_eq!(full_policy_name(b, false, Some("ng:2:8:0.05"), false), "succession-cli+learners=ng:2:8:0.05");
+        assert_eq!(full_policy_name(b, true, None, false), "succession-cli+train-text");
     }
 
     #[test]
@@ -1485,6 +1528,47 @@ mod tests {
         let train = [t.clone()];
         assert!(refuse_train_text_overlap(&train, "--heldout", &read_corpora(&[h.clone()]).unwrap()).is_ok());
         assert!(refuse_train_text_overlap(&train, "--validation", &read_corpora(&[v.clone()]).unwrap()).is_ok());
+    }
+
+    #[test]
+    fn transfer_reward_joins_the_policy_name_and_its_dev_text_is_checked() {
+        let b = EfficiencyBasis::default();
+        assert_eq!(full_policy_name(b, false, None, true), "succession-cli+reward-transfer");
+        let dir = std::env::temp_dir();
+        let write = |n: &str, s: &str| {
+            let p = dir.join(format!("succ-dev-{}-{n}", std::process::id()));
+            std::fs::write(&p, s).unwrap();
+            p.to_string_lossy().into_owned()
+        };
+        let (h, v, t, d) = (
+            write("h", "held out words. ".repeat(100).as_str()),
+            write("v", "validation words. ".repeat(100).as_str()),
+            write("t", "training words. ".repeat(100).as_str()),
+            write("d", "dev words. ".repeat(100).as_str()),
+        );
+        let hcopy = write("hcopy", "held out words. ".repeat(100).as_str());
+        let args = |extra: &[&str]| -> Vec<String> {
+            ["--heldout", &h, "--validation", &v, "--train-text", &t, "--journal", "x.jsonl"]
+                .iter()
+                .chain(extra)
+                .map(|s| s.to_string())
+                .collect()
+        };
+        let e = cli(&args(&["--reward", "transfer"])).unwrap_err();
+        assert!(e.contains("needs --dev-text"), "{e}");
+        let e = cli(&args(&["--dev-text", &d])).unwrap_err();
+        assert!(e.contains("only used with --reward transfer"), "{e}");
+        for bad in [&h, &v, &t, &hcopy] {
+            let e = cli(&args(&["--reward", "transfer", "--dev-text", bad])).unwrap_err();
+            assert!(e.contains("--dev-text"), "{bad}: {e}");
+        }
+        // The pin: a changed dev file stops the next cycle.
+        let cfg = Config { reward: Reward::Transfer, dev_text: vec![d.clone()], ..base() };
+        let mut w = ArenaWorkload::new(cfg, corpora());
+        w.dev_text_pin = Some(suite_digest(&read_corpora(&[d.clone()]).unwrap()));
+        assert!(w.check_dev_text_files().is_ok());
+        std::fs::write(&d, b"dev words, changed").unwrap();
+        assert!(w.check_dev_text_files().unwrap_err().contains("dev text changed"));
     }
 
     #[test]
