@@ -42,6 +42,7 @@ use std::str::FromStr;
 // `?:`, `&mut`) so the MG side of the comparison matches the corpus's
 // claimed counting convention.
 use mage_prototype::lexer as mg_lexer;
+use mage_prototype::bpe::Vocab;
 
 /// Regression threshold: claimed token_count must be within ±10 % of
 /// measured token count or the bench exits non-zero.
@@ -105,6 +106,23 @@ fn main() -> ExitCode {
         .and_then(|i| args.get(i + 1))
         .cloned()
         .unwrap_or_else(|| format!("{bench_dir}/TOKEN_REPORT.md"));
+    let bpe_opts = match parse_bpe_opts(&args) {
+        Ok(o) => o,
+        Err(e) => {
+            eprintln!("token-bench: {e}");
+            return ExitCode::from(2);
+        }
+    };
+    let custom_vocab = match (bpe_opts.enabled, &bpe_opts.vocab_path) {
+        (true, Some(p)) => match Vocab::load(p) {
+            Ok(v) => Some(v),
+            Err(e) => {
+                eprintln!("token-bench: vocab {p}: {e}");
+                return ExitCode::from(2);
+            }
+        },
+        _ => None,
+    };
 
     let tasks = match load_all_tasks(&bench_dir) {
         Ok(t) => t,
@@ -177,6 +195,20 @@ fn main() -> ExitCode {
     print_summary(&per_cat, tasks.len(), &regressions);
 
     println!("\nFull report: {out_path}");
+
+    // Opt-in BPE section. Nothing here runs without `--bpe`, and it never
+    // touches TOKEN_REPORT.md or the baseline ratchet below.
+    if bpe_opts.enabled {
+        let vocab: &Vocab = custom_vocab.as_ref().unwrap_or_else(|| Vocab::mage());
+        let section = render_bpe_section(&bpe_vocab_label(&bpe_opts), &bpe_rows(vocab, &tasks));
+        print!("\n{section}");
+        if let Some(p) = &bpe_opts.out_path {
+            if let Err(e) = fs::write(p, &section) {
+                eprintln!("token-bench: write {p}: {e}");
+                return ExitCode::from(2);
+            }
+        }
+    }
 
     // ── The ratchet ──────────────────────────────────────────────────────
     //
@@ -650,6 +682,113 @@ fn print_summary(
     }
 }
 
+/// Options for the opt-in BPE measurement.
+#[derive(Debug, Default, PartialEq)]
+struct BpeOpts {
+    /// `--bpe`: count every source with a BPE vocab.
+    enabled: bool,
+    /// `--vocab FILE`: tiktoken-format vocab to use instead of the shipped one.
+    vocab_path: Option<String>,
+    /// `--bpe-out FILE`: also write the BPE section to this file.
+    out_path: Option<String>,
+}
+
+const BPE_SHIPPED_LABEL: &str = "mage-bpe-4096";
+
+const BPE_CAVEAT: &str = "Caveat: the shipped `mage-bpe-4096` vocab was trained on `.mg` files, \
+     so it favours MAGE syntax (the benchmark tasks themselves, which live in JSON, are not in its corpus). \
+     A neutral vocab would be expected to score MAGE no better than this ratio; \
+     it is not a neutral measurement.";
+
+/// Value following `flag`, `Ok(None)` if the flag is absent, `Err` if it has no value.
+fn flag_value(args: &[String], flag: &str) -> Result<Option<String>, String> {
+    match args.iter().position(|a| a == flag) {
+        None => Ok(None),
+        Some(i) => args
+            .get(i + 1)
+            .cloned()
+            .map(Some)
+            .ok_or_else(|| format!("{flag} requires a value")),
+    }
+}
+
+/// Parse `--bpe`, `--vocab FILE`, `--bpe-out FILE`. Without `--bpe` the other
+/// two are rejected, so the default invocation is exactly what it was before.
+fn parse_bpe_opts(args: &[String]) -> Result<BpeOpts, String> {
+    let enabled = args.iter().any(|a| a == "--bpe");
+    let vocab_path = flag_value(args, "--vocab")?;
+    let out_path = flag_value(args, "--bpe-out")?;
+    if !enabled && (vocab_path.is_some() || out_path.is_some()) {
+        return Err("--vocab and --bpe-out require --bpe".to_string());
+    }
+    Ok(BpeOpts {
+        enabled,
+        vocab_path,
+        out_path,
+    })
+}
+
+/// Name printed for the vocab: the shipped label, or the `--vocab` file name.
+fn bpe_vocab_label(opts: &BpeOpts) -> String {
+    match &opts.vocab_path {
+        None => BPE_SHIPPED_LABEL.to_string(),
+        Some(p) => Path::new(p)
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_else(|| p.clone()),
+    }
+}
+
+#[derive(Debug, PartialEq)]
+struct BpeRow {
+    id: String,
+    category: String,
+    mg: usize,
+    rs: usize,
+}
+
+/// BPE token count of each task's MAGE and Rust source.
+fn bpe_rows(vocab: &Vocab, tasks: &[Task]) -> Vec<BpeRow> {
+    tasks
+        .iter()
+        .map(|t| BpeRow {
+            id: t.id.clone(),
+            category: t.category.clone(),
+            mg: vocab.count(&t.mg_source),
+            rs: vocab.count(&t.rs_source),
+        })
+        .collect()
+}
+
+/// Markdown section: aggregate MAGE/Rust BPE ratio, caveat, per-task table.
+fn render_bpe_section(vocab_label: &str, rows: &[BpeRow]) -> String {
+    let mg: u64 = rows.iter().map(|r| r.mg as u64).sum();
+    let rs: u64 = rows.iter().map(|r| r.rs as u64).sum();
+    let r = ratio(mg, rs);
+    let mut out = String::new();
+    out.push_str(&format!("## BPE token counts (vocab: {vocab_label})\n\n"));
+    out.push_str(&format!(
+        "**Aggregate:** MG={mg}  RS={rs}  ratio={r:.3}  ({:.1}% reduction)  \u{2190} BPE tokens, vocab: {vocab_label}\n\n",
+        (1.0 - r) * 100.0,
+    ));
+    out.push_str(&format!("{BPE_CAVEAT}\n\n"));
+    out.push_str("| Task | Category | MAGE BPE | Rust BPE | Ratio |\n|---|---|---:|---:|---:|\n");
+    for row in rows {
+        out.push_str(&format!(
+            "| {} | {} | {} | {} | {:.3} |\n",
+            row.id,
+            row.category,
+            row.mg,
+            row.rs,
+            ratio(row.mg as u64, row.rs as u64),
+        ));
+    }
+    out.push_str(&format!(
+        "| **Total** | | **{mg}** | **{rs}** | **{r:.3}** |\n"
+    ));
+    out
+}
+
 fn ratio(a: u64, b: u64) -> f64 {
     if b == 0 {
         0.0
@@ -671,4 +810,95 @@ fn find_benchmarks_dir() -> String {
         }
     }
     "benchmarks".to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn args(xs: &[&str]) -> Vec<String> {
+        std::iter::once("token-bench")
+            .chain(xs.iter().copied())
+            .map(str::to_string)
+            .collect()
+    }
+
+    fn task(id: &str, mg: &str, rs: &str) -> Task {
+        Task {
+            id: id.to_string(),
+            category: "test".to_string(),
+            mg_source: mg.to_string(),
+            mg_claimed: 0,
+            rs_source: rs.to_string(),
+            rs_claimed: 0,
+        }
+    }
+
+    #[test]
+    fn bpe_flags_absent_means_disabled() {
+        let o = parse_bpe_opts(&args(&["--dir", "x"])).unwrap();
+        assert_eq!(o, BpeOpts::default());
+        assert!(!o.enabled);
+    }
+
+    #[test]
+    fn bpe_flag_alone_uses_shipped_vocab() {
+        let o = parse_bpe_opts(&args(&["--bpe"])).unwrap();
+        assert!(o.enabled);
+        assert_eq!(o.vocab_path, None);
+        assert_eq!(o.out_path, None);
+        assert_eq!(bpe_vocab_label(&o), "mage-bpe-4096");
+    }
+
+    #[test]
+    fn bpe_flags_parse_vocab_and_out() {
+        let o = parse_bpe_opts(&args(&[
+            "--bpe",
+            "--vocab",
+            "C:/vocabs/rust.tiktoken",
+            "--bpe-out",
+            "bpe.md",
+        ]))
+        .unwrap();
+        assert!(o.enabled);
+        assert_eq!(o.vocab_path.as_deref(), Some("C:/vocabs/rust.tiktoken"));
+        assert_eq!(o.out_path.as_deref(), Some("bpe.md"));
+        assert_eq!(bpe_vocab_label(&o), "rust.tiktoken");
+    }
+
+    #[test]
+    fn bpe_vocab_or_out_without_bpe_is_rejected() {
+        assert!(parse_bpe_opts(&args(&["--vocab", "v.tiktoken"])).is_err());
+        assert!(parse_bpe_opts(&args(&["--bpe-out", "o.md"])).is_err());
+    }
+
+    #[test]
+    fn bpe_flag_missing_value_is_rejected() {
+        assert!(parse_bpe_opts(&args(&["--bpe", "--vocab"])).is_err());
+    }
+
+    #[test]
+    fn bpe_rows_count_with_shipped_vocab() {
+        let vocab = Vocab::mage();
+        let mg = "fn add(a: i64, b: i64) -> i64 { a + b }";
+        let rs = "fn add(a: i64, b: i64) -> i64 { a + b }";
+        let rows = bpe_rows(vocab, &[task("t1", mg, rs)]);
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].mg, vocab.encode(mg).len());
+        assert_eq!(rows[0].rs, vocab.encode(rs).len());
+        assert!(rows[0].mg > 0);
+    }
+
+    #[test]
+    fn bpe_section_has_vocab_label_caveat_and_totals() {
+        let rows = vec![
+            BpeRow { id: "a".into(), category: "c".into(), mg: 10, rs: 20 },
+            BpeRow { id: "b".into(), category: "c".into(), mg: 30, rs: 40 },
+        ];
+        let s = render_bpe_section("mage-bpe-4096", &rows);
+        assert!(s.contains("vocab: mage-bpe-4096"));
+        assert!(s.contains("favours MAGE"));
+        assert!(s.contains("MG=40  RS=60  ratio=0.667"));
+        assert!(s.contains("| **Total** | | **40** | **60** | **0.667** |"));
+    }
 }

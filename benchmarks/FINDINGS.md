@@ -556,3 +556,48 @@ The "83 %" in row two was never measured against anything: the container
 ratio on `prototype/examples/unified.mg` is 0.247, and per-declaration the
 range is 0.17-0.77. It had propagated to `AGENT_PROTOCOL.md` (as "~50×"),
 the README and the blog post before anyone ran the numbers.
+
+---
+
+## Where MAGE spends BPE tokens (2026-11-13)
+
+`token-bench --bpe` (the crate's own tokenizer, `mage-bpe-4096` vocab trained on
+`.mg` files, so it favours MAGE syntax) gives MAGE 20,546 vs Rust 18,932 BPE
+tokens on the 100-task corpus: ratio 1.085. To find where the difference comes from,
+each construct class was stripped from every source and the drop in tokens measured.
+The classes overlap, so the figures do not add up. Scripts and raw output were
+kept outside the repo.
+
+| Construct class | MAGE tokens | Rust equivalent | Delta |
+|---|---:|---:|---:|
+| effect annotations and inline `effect X { ... }` blocks | 314 | 16 (`async`/`.await`) | +298 |
+| `let` type annotations | 375 | 96 | +279 |
+| string interpolation (named `{x}` vs positional + `format!`) | 308 | 217 | +91 |
+| control sigils (`?`, `@`, `:`, `?=`, `@@`, `@w`) | 228 | 183 | +45 |
+| bool literals `0b`/`1b` | 39 | 24 | +15 |
+| generic wrappers `[T]~`, `?T`, `R[T,E]` | 329 | 543 | -214 |
+| imports | 0 | 378 | -378 |
+
+What this shows:
+
+- **Content, not syntax, drives the gap.** MAGE sources declare effects and
+  annotate types that the Rust sources leave out. Rust spends its extra tokens on
+  `use` lines, which MAGE does not need.
+- **MAGE's sigils are generally no worse than Rust's spellings, and its type
+  wrappers are cheaper.** `?T` is 1 token against `Option<T>` 2, `@T` is 1 against
+  `Arc<T>` 3. There are two real splits: `0b`/`1b` take 2 tokens in context where
+  `false`/`true` take 1, and `&!T` takes 2 where `&T` takes 1.
+- **The pairs are not semantically matched.** Several Rust sources drop content:
+  `conc-002` has no `Ordering` arguments, `sys-005` has no error text, `basic-001`
+  uses `String::from`. So per-task ratios partly measure what was left out.
+- **A syntax redesign has little room.** The largest measured candidate is built-in
+  async/fs effects, so that the six inline `effect` blocks in five tasks need not be
+  written. That saves about 225 tokens, roughly 1.1% of the MAGE corpus.
+  Inferring `/ async` at call sites adds about 90 (overlapping), and `true`/`false`
+  about 18. These are estimates from removal or substitution, not from implemented
+  changes.
+
+This agrees with Path A above: the text surface sits at roughly Rust's floor, and
+syntax changes cannot move it much. The remaining levers are the binary IR and
+re-checking less: the incremental compiler (#225) re-checks one function, not
+the module.
