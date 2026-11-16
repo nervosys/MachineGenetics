@@ -34,6 +34,7 @@ Session.vim
 
 ## Run artifacts (regenerable; some embed local paths)
 *.ckpt
+!prototype/examples/net_call.ckpt
 *.abl
 prototype/examples/*.csv
 

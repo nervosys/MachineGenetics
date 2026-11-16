@@ -224,8 +224,27 @@ impl Env {
     }
 }
 
+/// A `net` lowered for the `forward` builtin, with its weights loaded from the
+/// checkpoint of the `train` block that names it. Built on first use, then reused.
+struct NetRuntime {
+    lowered: crate::abl_bridge::NetTranslation,
+    params: crate::abl_compute::ParamStore,
+    backend: rmi::compute::cpu::CpuBackend,
+    in_dim: usize,
+    /// Fuel charged per call: the weight count (from the checkpoint size) plus the
+    /// input and output widths. Bounded evaluation stays bounded through `forward`.
+    cost: u64,
+}
+
 pub struct Interp {
     funcs: HashMap<String, FunctionDef>,
+    /// Every `net` item of the module, by name. The `forward` builtin lowers one on use.
+    nets: HashMap<String, crate::ast::NetDef>,
+    /// The checkpoint path of the first `train` block naming each net. Weights come
+    /// from here, exactly as `--target=abl-infer` reads them.
+    net_checkpoints: HashMap<String, String>,
+    /// Lowered nets, built the first time `forward` names them.
+    net_cache: RefCell<HashMap<String, NetRuntime>>,
     /// `(type name, method name) -> definition`, for every method in every
     /// `impl`, `impl Trait for`, and `extend` block. Only free functions were
     /// ever collected, so a method typechecked and then failed at runtime with
@@ -352,10 +371,22 @@ impl Interp {
         let mut methods = HashMap::new();
         let mut enum_variants = HashMap::new();
         let mut consts = HashMap::new();
+        let mut nets = HashMap::new();
+        let mut net_checkpoints = HashMap::new();
         for item in &module.items {
             match &item.kind {
                 ItemKind::Function(fd) => {
                     funcs.insert(fd.name.clone(), fd.clone());
+                }
+                ItemKind::Net(nd) => {
+                    nets.insert(nd.name.clone(), nd.clone());
+                }
+                ItemKind::Train(td) => {
+                    if let Some(Expr::Literal { value, kind: LiteralKind::String }) = td.checkpoint.as_ref() {
+                        net_checkpoints
+                            .entry(td.net.clone())
+                            .or_insert_with(|| value.trim_matches('"').to_string());
+                    }
                 }
                 ItemKind::Const(cd) => {
                     consts.insert(cd.name.clone(), cd.value.clone());
@@ -435,6 +466,9 @@ impl Interp {
         }
         Interp {
             funcs,
+            nets,
+            net_checkpoints,
+            net_cache: RefCell::new(HashMap::new()),
             methods,
             enum_variants,
             consts,
@@ -1549,6 +1583,20 @@ impl Interp {
     }
 
     fn eval_call(&self, func: &Expr, args: &[Expr], env: &mut Env) -> R {
+        // `forward(Net, xs)`: the first argument names a `net` item. A net is a
+        // type-namespace symbol with no value, so it is read here, not evaluated.
+        // A user function or local binding named `forward` takes precedence.
+        if let Expr::Ident { name } = func
+            && name == "forward"
+            && args.len() == 2
+            && let Expr::Ident { name: net } = &args[0]
+            && self.nets.contains_key(net)
+            && !self.funcs.contains_key("forward")
+            && env.get("forward").is_none()
+        {
+            let xs = self.eval(&args[1], env)?;
+            return self.net_forward(net, xs);
+        }
         // Evaluate args.
         let mut av = Vec::with_capacity(args.len());
         for a in args {
@@ -1571,6 +1619,96 @@ impl Interp {
         // Indirect: evaluate the callee to a function value.
         let f = self.eval(func, env)?;
         self.apply(&f, av)
+    }
+
+    /// `forward(Net, xs)`: run the net's forward pass on one input vector, on the
+    /// CPU backend, with the weights of its train block's checkpoint.
+    fn net_forward(&self, net_name: &str, xs: Value) -> R {
+        use rmi::compute::Backend as _;
+        let input: Vec<f32> = match &xs {
+            Value::List(items) => {
+                let mut v = Vec::with_capacity(items.len());
+                for item in items {
+                    match item {
+                        Value::Float(f) => v.push(*f as f32),
+                        Value::Int(i) => v.push(*i as f32),
+                        Value::Dual(..) => {
+                            return err(format!(
+                                "forward `{net_name}`: differentiating through a net is not supported; \
+                                 `grad` cannot pass through `forward`"
+                            ));
+                        }
+                        other => {
+                            return err(format!(
+                                "forward `{net_name}`: input elements must be f64, found {other:?}"
+                            ));
+                        }
+                    }
+                }
+                v
+            }
+            other => return err(format!("forward `{net_name}`: input must be a list of f64, found {other:?}")),
+        };
+        if !self.net_cache.borrow().contains_key(net_name) {
+            let runtime = self.load_net(net_name)?;
+            self.net_cache.borrow_mut().insert(net_name.to_string(), runtime);
+        }
+        let mut cache = self.net_cache.borrow_mut();
+        let rt = cache.get_mut(net_name).expect("net was just cached");
+        if input.len() != rt.in_dim {
+            return err(format!(
+                "forward `{net_name}`: input has {} element(s), the net expects {}",
+                input.len(),
+                rt.in_dim
+            ));
+        }
+        self.charge(rt.cost)?;
+        let h = rt
+            .backend
+            .from_slice_f32(&input, &[1, rt.in_dim])
+            .map_err(|e| Control::Err(format!("forward `{net_name}`: {e}")))?;
+        let out = crate::abl_compute::forward_pass(&rt.backend, &rt.lowered.expr, h, &mut rt.params)
+            .map_err(|e| Control::Err(format!("forward `{net_name}`: {e}")))?;
+        let bytes = rt
+            .backend
+            .copy_to_host(&out)
+            .map_err(|e| Control::Err(format!("forward `{net_name}`: {e}")))?;
+        let values: Vec<Value> = bytes
+            .chunks_exact(4)
+            .map(|c| Value::Float(f32::from_le_bytes([c[0], c[1], c[2], c[3]]) as f64))
+            .collect();
+        self.charge_alloc(values.len() as i64)?;
+        Ok(Value::List(values))
+    }
+
+    /// Lower a net and load its weights from the checkpoint of the first `train`
+    /// block that names it. Refuses a net with unknown layers, no `Linear` to read
+    /// its width from, or no checkpoint, since `--target=abl-infer` also needs one.
+    fn load_net(&self, net_name: &str) -> Result<NetRuntime, Control> {
+        let net = &self.nets[net_name];
+        let lowered = crate::abl_bridge::NetTranslator::translate(net);
+        if !lowered.unknown_layers.is_empty() {
+            return err(format!(
+                "forward `{net_name}`: unknown layer(s) {:?}; a net that does not lower cannot run",
+                lowered.unknown_layers
+            ));
+        }
+        let Some((in_dim, out_dim)) = crate::abl_bridge::first_last_linear_dims(net) else {
+            return err(format!("forward `{net_name}`: no `Linear` layer to read the input and output widths from"));
+        };
+        let Some(path) = self.net_checkpoints.get(net_name) else {
+            return err(format!(
+                "forward `{net_name}`: no `train` block with a `checkpoint:` names this net; \
+                 forward reads its weights from that checkpoint"
+            ));
+        };
+        let blob = std::fs::read(path)
+            .map_err(|e| Control::Err(format!("forward `{net_name}`: read {path}: {e}")))?;
+        let backend = rmi::compute::cpu::CpuBackend::new();
+        let params = crate::abl_compute::ParamStore::load(&blob, &backend)
+            .map_err(|e| Control::Err(format!("forward `{net_name}`: load checkpoint {path}: {e}")))?;
+        let cost = (blob.len() / 4) as u64 + (in_dim + out_dim) as u64;
+        Ok(NetRuntime { lowered, params, backend, in_dim, cost })
     }
 
     fn apply(&self, f: &Value, args: Vec<Value>) -> R {
@@ -1865,6 +2003,10 @@ impl Interp {
     fn call_builtin_inner(&self, name: &str, a: Vec<Value>) -> R {
         let arg = |i: usize| a.get(i).cloned().unwrap_or(Value::Unit);
         match name {
+            // `forward(Net, xs)` is read in `eval_call`, where its first argument is a
+            // net name. Reaching this arm means the name was used as a value or called
+            // with a shape `eval_call` does not take.
+            "forward" => err("`forward` takes a net name and a list: forward(Net, xs)"),
             "len" | "count" => match arg(0) {
                 Value::Map(m) => Ok(Value::Int(m.len() as i64)),
                 Value::Str(s) => Ok(Value::Int(s.chars().count() as i64)),
@@ -5356,5 +5498,92 @@ mod coverage_tests {
         assert_eq!(cov.site(node), None, "same kind, other operator");
         cov.ids.insert(addr, (id.clone(), (SiteKind::If, String::new())));
         assert_eq!(cov.site(node), None, "other kind");
+    }
+}
+
+#[cfg(test)]
+mod net_call_tests {
+    //! The `forward(Net, xs)` builtin. The checkpoint path in the example is
+    //! relative to the repository root, and `cargo test` runs from `prototype/`, so
+    //! these tests point it at the committed file by absolute path.
+    use super::*;
+
+    fn example_source() -> String {
+        let src = include_str!("../examples/net_call.mg");
+        let ckpt = format!("{}/examples/net_call.ckpt", env!("CARGO_MANIFEST_DIR").replace('\\', "/"));
+        src.replace("\"prototype/examples/net_call.ckpt\"", &format!("\"{ckpt}\""))
+    }
+
+    fn interp_of(src: &str) -> Interp {
+        let toks = crate::lexer::lex(src);
+        let module = crate::parser::parse(&toks).expect("parse failed");
+        Interp::new(&module)
+    }
+
+    fn floats(xs: &[f64]) -> Value {
+        Value::List(xs.iter().map(|x| Value::Float(*x)).collect())
+    }
+
+    /// The predictions `mage-parse --target=abl-infer prototype/examples/net_call.mg`
+    /// prints for the four training inputs (4 decimal places, recorded 2026-11-11).
+    const ABL_INFER_PREDICTIONS: [(f64, f64); 4] = [(0.0, 1.0444), (1.0, 2.0115), (2.0, 2.9785), (3.0, 3.9456)];
+
+    #[test]
+    fn forward_on_the_demo_net_matches_abl_infer() {
+        let interp = interp_of(&example_source());
+        for (x, expected) in ABL_INFER_PREDICTIONS {
+            let got = interp.run("classify", vec![floats(&[x])]);
+            let Value::List(out) = got.expect("classify runs") else { panic!("not a list") };
+            assert_eq!(out.len(), 1);
+            let Value::Float(y) = out[0] else { panic!("not a float") };
+            // abl-infer rounds to 4 decimal places, so agreement is to 5e-5 plus
+            // float32 noise; 1e-4 is the honest tolerance.
+            assert!((y - expected).abs() < 1e-4, "x={x}: forward gave {y}, abl-infer prints {expected}");
+        }
+    }
+
+    #[test]
+    fn forward_is_deterministic_across_runs() {
+        let src = example_source();
+        let first = interp_of(&src).run("classify", vec![floats(&[1.5])]).expect("runs");
+        for _ in 0..3 {
+            let again = interp_of(&src).run("classify", vec![floats(&[1.5])]).expect("runs");
+            assert_eq!(format!("{first:?}"), format!("{again:?}"));
+        }
+    }
+
+    #[test]
+    fn forward_with_the_wrong_input_length_is_a_runtime_error() {
+        let src = format!("{}\n// no contract, so the length check is forward's own\nf raw(xs: [f64]) -> [f64] / fs {{\n    forward(Affine, xs)\n}}\n", example_source());
+        let err = interp_of(&src).run("raw", vec![floats(&[1.0, 2.0])]).expect_err("must refuse");
+        assert!(err.contains("forward `Affine`"), "names the net: {err}");
+        assert!(err.contains("input has 2 element(s), the net expects 1"), "both sizes: {err}");
+    }
+
+    #[test]
+    fn a_contract_on_a_function_wrapping_forward_is_checked_at_run_time() {
+        // `classify` carries @req(len(xs) == 1): a call with two elements is refused
+        // before `forward` runs.
+        let err = interp_of(&example_source())
+            .run("classify", vec![floats(&[1.0, 2.0])])
+            .expect_err("the precondition must refuse it");
+        assert!(err.contains("@req") || err.contains("precondition") || err.contains("requires"), "{err}");
+    }
+
+    #[test]
+    fn forward_without_a_checkpoint_is_refused_with_the_reason() {
+        let src = "net Affine {\n    layer fc: Linear(1, 1, 1);\n    forward { fc }\n}\n\
+                   f raw(xs: [f64]) -> [f64] / fs {\n    forward(Affine, xs)\n}\n";
+        let err = interp_of(src).run("raw", vec![floats(&[1.0])]).expect_err("no weights");
+        assert!(err.contains("no `train` block with a `checkpoint:`"), "{err}");
+    }
+
+    #[test]
+    fn forward_charges_fuel_and_stays_bounded() {
+        let toks = crate::lexer::lex(&example_source());
+        let module = crate::parser::parse(&toks).expect("parse failed");
+        let interp = Interp::with_fuel(&module, 3);
+        let err = interp.run("classify", vec![floats(&[1.0])]).expect_err("out of fuel");
+        assert!(err.contains(FUEL_EXHAUSTED), "{err}");
     }
 }

@@ -7,7 +7,7 @@ text. It is the leverage the text-token floor denies the language track (see
 [IDEAL_AGENTIC_LANGUAGE.md](IDEAL_AGENTIC_LANGUAGE.md) for that analysis).
 
 > **Scope.** Everything below is implemented and test-covered in `prototype/`
-> (**1,705 tests** green) and scored in the sibling `agentic-eval` crate (80
+> (**1,716 tests** green) and scored in the sibling `agentic-eval` crate (80
 > tests, in the AetherShell repository and not verifiable from here). The one
 > deliberate non-feature is agent/swarm *execution* — see
 > [Honest boundaries](#honest-boundaries).
@@ -242,6 +242,14 @@ These are deliberate, documented scope lines — *not* gaps papered over:
 - **Text token floor.** ABL does **not** reduce per-call tokens vs. source (the
   payload is irreducible — measured). Its wins are reliability, determinism,
   safety, discoverability, and amortized tokens (cached schema + fewer retries).
+- **`forward(Net, xs)` is the one neural call the evaluator makes.** It runs a `net`'s
+  forward pass on one `[f64]` vector, on the CPU backend, and returns `[f64]`. The
+  weights come from the checkpoint file of the `train` block that names the net, the
+  file `--target=abl-infer` reads; a net with no such checkpoint is refused, and the
+  call reads that file, so it carries the `fs` effect (`/ fs`). It takes one vector (a
+  batch of one), has no GPU path, and cannot be differentiated: `grad` through it is
+  refused (E0308 at check time, a run-time error otherwise). Each interpreter lowers a
+  net once and caches it; each call is charged fuel in proportion to the checkpoint size.
 
 ---
 
@@ -268,7 +276,7 @@ are **six independent Cargo workspaces**:
 | Path | Crate | Tests | Notes |
 |---|---|--:|---|
 | `RecursiveMachineIntelligence/` | `rmi` | 1,384 | The low-level neurosymbolic framework. Feature-gated (`cpu` / `gpu` / `cuda`); build with `--no-default-features --features cpu` for the portable set |
-| `prototype/` | `mage-prototype` | 1,705 | Compiler, evaluator, ABL, RAP server. Path-depends on `rmi` |
+| `prototype/` | `mage-prototype` | 1,716 | Compiler, evaluator, ABL, RAP server. Path-depends on `rmi` |
 | `ribosome/` | `ribosome` | 168 | The distributed build engine. Depends on nothing in this repository — see below |
 | `germline/` | `germline` | 218 | Model succession, handoff, fallback — the RSI control plane. Path-depends on `ribosome` |
 | `forge/` | `forge` | 65 | The package registry, and the content-addressed block and definition stores |

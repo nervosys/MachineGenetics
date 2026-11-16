@@ -30,6 +30,8 @@ pub(crate) const STD_FNS: &[&str] = &[
     // everywhere (DIFFERENTIABILITY.md)
     "floor", "ceil", "round", "trunc",
     "mean", "dot",
+    // a trained net's forward pass on one input vector: `forward(Net, xs)`
+    "forward",
     // bare enum-value constructors agents call positionally
     "Some", "None", "Ok", "Err",
 ];
@@ -1022,7 +1024,16 @@ impl Resolver {
             }
             ast::Expr::Call { func, args } => {
                 self.resolve_expr(func);
-                for arg in args {
+                // `forward(Net, xs)` names a `net` in its first argument. A net is a type
+                // with no value, so a bare name that is no value is left to the type
+                // checker, which says what that argument must be.
+                let net_arg = matches!(func.as_ref(), ast::Expr::Ident { name } if name == "forward")
+                    && args.len() == 2
+                    && matches!(&args[0], ast::Expr::Ident { name } if self.lookup_value(name).is_none());
+                for (i, arg) in args.iter().enumerate() {
+                    if i == 0 && net_arg {
+                        continue;
+                    }
                     self.resolve_expr(arg);
                 }
             }

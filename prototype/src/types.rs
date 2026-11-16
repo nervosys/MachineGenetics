@@ -443,6 +443,9 @@ pub struct TypeChecker {
     struct_defs: HashMap<String, StructDefEntry>,
     /// Function signatures: name → params, return type, declared effects.
     fn_sigs: HashMap<String, FnSigEntry>,
+    /// The `net` items of the module: name -> input width, read from the first `Linear`
+    /// (`None` when the net has none). The `forward` builtin is checked against these.
+    nets: HashMap<String, Option<usize>>,
     /// Generic parameters of each function, as the type variables its signature
     /// was lowered with.
     ///
@@ -539,6 +542,7 @@ impl TypeChecker {
             env: TypeEnv::new(),
             struct_defs: HashMap::new(),
             fn_sigs: HashMap::new(),
+            nets: HashMap::new(),
             fn_generics: HashMap::new(),
             generic_binding: HashMap::new(),
             fn_required_arity: HashMap::new(),
@@ -768,6 +772,44 @@ impl TypeChecker {
     }
 
     /// A fresh instantiation of `name`'s signature, if it is generic.
+    /// `forward(Net, xs)`: the first argument must name a `net` of this module, the
+    /// second must be a list of f64, and the result is a list of f64. A literal input
+    /// whose length differs from the net's input width is refused here.
+    fn infer_forward_call(&mut self, args: &[ast::Expr]) -> Ty {
+        let f64_ty = Ty::Float(FloatTy::F64);
+        if args.len() != 2 {
+            self.emit_error(format!(
+                "forward: expected 2 arguments (a net and a list of f64), found {}",
+                args.len()
+            ));
+            return Ty::Error;
+        }
+        let net_name = match &args[0] {
+            ast::Expr::Ident { name } if self.nets.contains_key(name) => name.clone(),
+            ast::Expr::Ident { name } => {
+                self.emit_error(format!("forward: `{name}` is not a `net` item in this module"));
+                return Ty::Error;
+            }
+            _ => {
+                self.emit_error("forward: the first argument must be the name of a `net` item");
+                return Ty::Error;
+            }
+        };
+        let xs_ty = self.infer_expr(&args[1]);
+        if let Err(e) = unify(&mut self.subst, &xs_ty, &Ty::Slice(Box::new(f64_ty.clone()))) {
+            self.emit_error(format!("forward `{net_name}`: the input must be a list of f64: {e}"));
+        }
+        if let (ast::Expr::ArrayLit { elements }, Some(Some(width))) = (&args[1], self.nets.get(&net_name).cloned())
+            && elements.len() != width
+        {
+            self.emit_error(format!(
+                "forward `{net_name}`: input has {} element(s), the net expects {width}",
+                elements.len()
+            ));
+        }
+        Ty::Slice(Box::new(f64_ty))
+    }
+
     fn instantiated_sig(&mut self, name: &str, params: &[Ty], ret: &Ty) -> (Vec<Ty>, Ty) {
         let quantified = self.fn_generics.get(name).cloned().unwrap_or_default();
         if quantified.is_empty() {
@@ -827,6 +869,12 @@ impl TypeChecker {
     // ── Module-level checking ────────────────────────────────────────
 
     pub fn check_module(&mut self, module: &ast::Module) {
+        for item in &module.items {
+            if let ast::ItemKind::Net(nd) = &item.kind {
+                let width = crate::abl_bridge::first_last_linear_dims(nd).map(|(input, _)| input);
+                self.nets.insert(nd.name.clone(), width);
+            }
+        }
         fn methods(items: &[ast::Item], out: &mut std::collections::HashSet<String>) {
             for item in items {
                 match &item.kind {
@@ -2057,6 +2105,12 @@ impl TypeChecker {
                             }
                         }
                     }
+
+                // Builtin `forward(Net, xs)`: a net's forward pass on one input vector.
+                if let ast::Expr::Ident { name } = func.as_ref()
+                    && name == "forward" && !self.fn_sigs.contains_key("forward") {
+                    return self.infer_forward_call(args);
+                }
 
                 // Direct call to a function known by name: use its signature
                 // directly. This (a) fixes zero-arg calls — a bare function
@@ -4338,5 +4392,60 @@ mod evidence_tests {
     fn evidence_is_empty_for_a_clean_module() {
         let (diags, ms) = evidence("f g(a: i64) -> i64 { a + 1 }\n");
         assert!(diags.is_empty() && ms.is_empty(), "{diags:?} {ms:?}");
+    }
+}
+
+#[cfg(test)]
+mod net_call_type_tests {
+    //! Type-level checks of the `forward(Net, xs)` builtin.
+    use super::*;
+
+    fn errors(src: &str) -> Vec<String> {
+        let tokens = crate::lexer::lex(src);
+        let module = crate::parser::parse(&tokens).expect("parse failed");
+        check(&module)
+            .diagnostics
+            .iter()
+            .filter(|d| d.severity == crate::hir::Severity::Error)
+            .map(|d| d.message.clone())
+            .collect()
+    }
+
+    const NET: &str = "net Affine {\n    layer fc: Linear(1, 1, 1);\n    forward { fc }\n}\n";
+
+    #[test]
+    fn forward_of_a_net_and_a_list_checks_and_returns_a_list() {
+        let src = format!("{NET}f go(xs: [f64]) -> [f64] / fs {{\n    forward(Affine, xs)\n}}\n");
+        assert!(errors(&src).is_empty(), "{:?}", errors(&src));
+    }
+
+    #[test]
+    fn forward_first_argument_must_name_a_net() {
+        let src = format!("{NET}f main() -> [f64] / fs {{\n    forward(main, [1.0])\n}}\n");
+        let errs = errors(&src);
+        assert!(errs.iter().any(|m| m.contains("forward: `main` is not a `net` item")), "{errs:?}");
+    }
+
+    #[test]
+    fn forward_second_argument_must_be_a_list_of_f64() {
+        let src = format!("{NET}f main() -> [f64] / fs {{\n    forward(Affine, 3.0)\n}}\n");
+        let errs = errors(&src);
+        assert!(errs.iter().any(|m| m.contains("[F64]")), "{errs:?}");
+    }
+
+    #[test]
+    fn a_literal_input_of_the_wrong_length_is_a_compile_error() {
+        let src = format!("{NET}f main() -> [f64] / fs {{\n    forward(Affine, [1.0, 2.0])\n}}\n");
+        let errs = errors(&src);
+        assert!(
+            errs.iter().any(|m| m.contains("input has 2 element(s), the net expects 1")),
+            "{errs:?}"
+        );
+    }
+
+    #[test]
+    fn a_literal_input_of_the_right_length_is_accepted() {
+        let src = format!("{NET}f main() -> [f64] / fs {{\n    forward(Affine, [1.0])\n}}\n");
+        assert!(errors(&src).is_empty(), "{:?}", errors(&src));
     }
 }
