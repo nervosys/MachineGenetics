@@ -653,7 +653,10 @@ except in the sum form, and a declaration has no trailing `;` (see `DataDef`,
 `StructDef`, `EnumDef`, `ItEnumVariant`, `PaDataField` and `PaDataVariant` in
 `kb/grammar.mg`).
 
-- `data N(name: T, …)` is a record. A field may carry a default (`x: i32 = 0`).
+- `data N(name: T, …)` is a record. A field may carry a default (`x: i32 = 0`),
+  used when a literal omits the field. The default is read where it is written:
+  it may name module-level constants and functions, never the constructing
+  function's locals, and a name it cannot resolve there is E0425.
   Tuple-style `data P(i32)` does not parse.
 - `data N = V | V(T)` is a sum whose variants carry unnamed payloads.
 - `data N` alone declares a unit type.
@@ -829,6 +832,24 @@ f main() -> i32 {
 }
 ```
 
+**Ordering.** `<`, `<=`, `>`, `>=` and the vocabulary words that order (`sort`,
+`min`, `max`) use one order, the one Rust derives. Numbers compare by value (an
+integer against a float is promoted), strings by bytes, `0b < 1b`. Lists and
+tuples compare lexicographically: the first unequal element decides, and a
+proper prefix is less, so `[1, 2] < [1, 3]`, `[1] < [1, 0]` and
+`sort([[2, 1], [1, 5]])` is `[[1, 5], [2, 1]]`. Options put `None` before every
+`Some`, and two `Some`s compare their contents. Maps, records and enum values
+are not ordered by these operators. Before 2026-11-15 the interpreter treated
+every list, tuple and option as equal to every other, so `sort` left nested
+lists in place and `[1, 3] <= [1, 2]` held.
+
+```mage
+f main() -> i32 / io {
+    p"{sort([[2, 1], [1, 5], [1, 2]])} {None < Some(0)}"
+    0
+}
+```
+
 ### 4.7 Statements
 
 A block is `{ statements, optional final expression }` (`Block`, `BlockBody`,
@@ -908,6 +929,14 @@ Modular arithmetic is asked for by name:
 ```text
 wrapping_add(a, b)    wrapping_sub(a, b)    wrapping_mul(a, b)
 ```
+
+A cast `e as T` to an integer type is checked the same way: it traps when the
+value, after a float is truncated toward zero, lies outside `T`'s range, with
+``integer overflow in `300 as u8` ``; a NaN or infinite float traps too. In range
+a cast is exact: `255 as u8` is 255, `3.7 as i32` is 3. The postfix `as` binds
+tighter than prefix `-` (Appendix C), so `-128 as i8` is `-(128 as i8)` and traps;
+cast a negative value by naming it first. Before 2026-11-15 integer casts were
+unchecked, so `300 as u8` was 300.
 
 **Why trap.** Before 2026-09-25 the operators were whatever the host
 compiler's defaults were: a panic in a debug build and a silent wrap in a
