@@ -90,6 +90,15 @@ pub fn parse_expression(tokens: &[Token]) -> Result<Expr, ParseError> {
     Ok(expr)
 }
 
+/// Primitive scalar type names, which never take type arguments.
+fn is_primitive_type_name(name: &str) -> bool {
+    matches!(
+        name,
+        "i8" | "i16" | "i32" | "i64" | "i128" | "isize" | "u8" | "u16" | "u32" | "u64"
+            | "u128" | "usize" | "f32" | "f64" | "bool" | "char"
+    )
+}
+
 /// Substitute block-macro parameters (`Ident`s) with their call-site argument
 /// expressions, recursively through the common layer-arg shapes.
 fn subst_expr(e: &Expr, map: &HashMap<String, Expr>) -> Expr {
@@ -3267,7 +3276,13 @@ impl<'a> Parser<'a> {
                         // `Path<T, ...>` (Rust-style) type-arg lists.
                         let (open, close) = match self.peek() {
                             TokenKind::LBrack => (Some(TokenKind::LBrack), TokenKind::RBrack),
-                            TokenKind::Lt => (Some(TokenKind::Lt), TokenKind::Gt),
+                            // A primitive takes no type arguments, so in
+                            // `x as f64 < y` the `<` is a comparison.
+                            TokenKind::Lt
+                                if !(segments.len() == 1 && is_primitive_type_name(&segments[0])) =>
+                            {
+                                (Some(TokenKind::Lt), TokenKind::Gt)
+                            }
                             _ => (None, TokenKind::RBrack),
                         };
                         let type_args = if let Some(open_tok) = open {
@@ -4602,7 +4617,11 @@ impl<'a> Parser<'a> {
                 }
                 self.advance(); // consume @ for for-loop
                 let pattern = self.parse_pattern()?;
-                if self.peek() == TokenKind::KwOf {
+                // `@ p of e` is a third spelling; `of` stays an ordinary
+                // identifier everywhere else, so it is matched by text here.
+                if self.peek() == TokenKind::KwOf
+                    || (self.peek() == TokenKind::Ident && self.current().text == "of")
+                {
                     self.advance();
                 } else {
                     self.expect(TokenKind::Colon)?;
@@ -6709,5 +6728,20 @@ mod tests {
             let e = try_parse(src).expect_err(src);
             assert!(e.message.contains("does not fit in i64"), "{src}: {}", e.message);
         }
+    }
+
+    #[test]
+    fn for_accepts_of_as_a_separator_without_reserving_it() {
+        assert!(try_parse("f main() -> i32 { var t = 0\n @ x of [1, 2] { t += x }\n t }").is_ok());
+        assert!(try_parse("f main() -> i32 { @ x to [1, 2] { } 0 }").is_err());
+        assert!(try_parse("f main() -> i32 { val of = 1\n of }").is_ok());
+    }
+
+    #[test]
+    fn a_cast_to_a_primitive_is_followed_by_less_than_not_generics() {
+        assert!(try_parse("f g(x: f64, y: f64) -> bool { x as f64 < y }").is_ok());
+        assert!(try_parse("f g(x: f64) -> bool { x as f64 < }").is_err());
+        assert!(try_parse("f g(x: i32) -> i32 { (x as i32) < 2 }").is_ok());
+        assert!(try_parse("f g(x: i32) -> Vec<i32> { x as Vec<i32> }").is_ok());
     }
 }

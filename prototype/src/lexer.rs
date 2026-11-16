@@ -308,6 +308,15 @@ impl<'a> Lexer<'a> {
         Some(b)
     }
 
+    /// Advance over one whole UTF-8 character (all its continuation bytes),
+    /// so a token never ends inside a multibyte character.
+    fn advance_char(&mut self) {
+        self.advance();
+        while self.peek().is_some_and(|b| b & 0xC0 == 0x80) {
+            self.advance();
+        }
+    }
+
     fn advance_n(&mut self, n: usize) {
         for _ in 0..n {
             self.advance();
@@ -410,9 +419,9 @@ impl<'a> Lexer<'a> {
                 // Read one char (possibly escaped)
                 if self.peek() == Some(b'\\') {
                     self.advance();
-                    self.advance(); // escape char
+                    self.advance_char(); // escape char
                 } else {
-                    self.advance();
+                    self.advance_char();
                 }
                 if self.peek() == Some(b'\'') {
                     self.advance();
@@ -1450,5 +1459,14 @@ mod tests {
         assert_eq!(kinds[1], TokenKind::Ident); // MyModel
         assert_eq!(kinds[2], TokenKind::LBrace);
         assert_eq!(kinds[3], TokenKind::KwLayer);
+    }
+
+    #[test]
+    fn a_char_literal_may_hold_a_multibyte_character() {
+        for src in ["'\u{e9}'", "'\u{2713}'", "'\\\u{e9}'"] {
+            let toks = lex(src);
+            assert_eq!(toks[0].kind, TokenKind::CharLiteral, "{src}");
+            assert_eq!(toks[0].text, src, "{src}");
+        }
     }
 }

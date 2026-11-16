@@ -298,6 +298,9 @@ pub struct Interp {
     /// `@inv` invariants of each struct, parsed, checked each time a struct
     /// literal of that type is built, with `self` bound to it.
     invariants: HashMap<String, Vec<(crate::contract::Clause, Expr)>>,
+    /// Declared field defaults of each `data` record (`x: i32 = 0`), in
+    /// declaration order, filled in when a literal omits the field.
+    field_defaults: HashMap<String, Vec<(String, Expr)>>,
     /// An opt-in call trace: one line per user-function entry and exit.
     ///
     /// `None` unless a caller asked for one ([`run_bounded_traced`]), and then
@@ -373,6 +376,15 @@ impl Interp {
         let mut consts = HashMap::new();
         let mut nets = HashMap::new();
         let mut net_checkpoints = HashMap::new();
+        let mut field_defaults: HashMap<String, Vec<(String, Expr)>> = HashMap::new();
+        // Trait names -> their items, so an `impl Trait for T` can inherit the
+        // trait's bodied (default) methods wherever the trait is declared.
+        let mut traits: HashMap<&str, &[crate::ast::Item]> = HashMap::new();
+        for item in &module.items {
+            if let ItemKind::Trait(td) = &item.kind {
+                traits.insert(td.name.as_str(), td.items.as_slice());
+            }
+        }
         for item in &module.items {
             match &item.kind {
                 ItemKind::Function(fd) => {
@@ -393,6 +405,22 @@ impl Interp {
                 }
                 ItemKind::Impl(ib) => {
                     collect_methods(&mut methods, &ib.self_type, &ib.items);
+                    // Default methods: the trait's bodied methods the impl
+                    // lacks. Overrides were inserted above and win.
+                    if let Some(tn) = ib.trait_path.as_ref().and_then(|p| p.last())
+                        && let Some(items) = traits.get(tn.as_str())
+                        && let Some(ty) = type_head_name(&ib.self_type)
+                    {
+                        for it in items.iter() {
+                            if let ItemKind::Function(fd) = &it.kind
+                                && (fd.body_expr.is_some() || !fd.body.stmts.is_empty() || fd.body.tail_expr.is_some())
+                            {
+                                methods
+                                    .entry((ty.clone(), fd.name.clone()))
+                                    .or_insert_with(|| fd.clone());
+                            }
+                        }
+                    }
                 }
                 ItemKind::Extend(eb) => {
                     collect_methods(&mut methods, &eb.target_type, &eb.items);
@@ -420,6 +448,15 @@ impl Interp {
                 // `unknown function \`Rect\`` — the class `--check` cannot see
                 // and only `--eval` can, which is why the example pin runs it.
                 ItemKind::Data(dd) => {
+                    if let DataKind::Record(fields) = &dd.kind {
+                        let ds: Vec<(String, Expr)> = fields
+                            .iter()
+                            .filter_map(|f| f.default.clone().map(|d| (f.name.clone(), d)))
+                            .collect();
+                        if !ds.is_empty() {
+                            field_defaults.insert(dd.name.clone(), ds);
+                        }
+                    }
                     if let DataKind::Sum(variants) = &dd.kind {
                         for variant in variants {
                             enum_variants.insert(
@@ -483,6 +520,7 @@ impl Interp {
             preconditions,
             postconditions,
             invariants,
+            field_defaults,
             trace: None,
             coverage: None,
         }
@@ -914,6 +952,12 @@ impl Interp {
                 match self.eval(expr, env)? {
                     Value::Opt(Some(inner)) => Ok(*inner),
                     Value::Opt(None) => Err(Control::Return(Value::Opt(None))),
+                    Value::Enum(en, var, mut xs) if en == "Result" && var == "Ok" && xs.len() == 1 => {
+                        Ok(xs.remove(0))
+                    }
+                    Value::Enum(en, var, xs) if en == "Result" && var == "Err" => {
+                        Err(Control::Return(Value::Enum(en, var, xs)))
+                    }
                     other => Ok(other),
                 }
             }
@@ -1266,6 +1310,12 @@ impl Interp {
                     };
                     fvals.push((fi.name.clone(), v));
                 }
+                for (fname, dflt) in self.field_defaults.get(&name).into_iter().flatten() {
+                    if !fvals.iter().any(|(k, _)| k == fname) {
+                        let v = self.eval(dflt, &mut Env::new())?;
+                        fvals.push((fname.clone(), v));
+                    }
+                }
                 let built = Value::Struct(name.clone(), fvals);
                 for (clause, expr) in self.invariants.get(&name).into_iter().flatten() {
                     let mut scope = env.clone();
@@ -1340,12 +1390,39 @@ impl Interp {
                         Value::Float(f) => f,
                         _ => return err("cannot cast this value to a float"),
                     })),
-                    "i64" | "i32" | "u64" | "u32" | "usize" | "isize" => Ok(Value::Int(match v {
-                        Value::Float(f) => f as i64,
-                        Value::Int(n) => n,
-                        Value::Bool(b) => b as i64,
-                        _ => return err("cannot cast this value to an integer"),
-                    })),
+                    "i64" | "i32" | "u64" | "u32" | "usize" | "isize" | "i8" | "i16" | "u8" | "u16"
+                    | "i128" | "u128" => {
+                        let (lo, hi): (i64, i64) = match target {
+                            "i8" => (i8::MIN as i64, i8::MAX as i64),
+                            "i16" => (i16::MIN as i64, i16::MAX as i64),
+                            "i32" => (i32::MIN as i64, i32::MAX as i64),
+                            "u8" => (0, u8::MAX as i64),
+                            "u16" => (0, u16::MAX as i64),
+                            "u32" => (0, u32::MAX as i64),
+                            "u64" | "usize" | "u128" => (0, i64::MAX),
+                            _ => (i64::MIN, i64::MAX),
+                        };
+                        let n = match v {
+                            Value::Float(f) => {
+                                let t = f.trunc();
+                                // `i64::MAX as f64` is 2^63, itself out of range.
+                                if !t.is_finite() || t < -9223372036854775808.0 || t >= 9223372036854775808.0 {
+                                    return err(format!("integer overflow in `{f} as {target}`"));
+                                }
+                                if t < lo as f64 || t > hi as f64 {
+                                    return err(format!("integer overflow in `{f} as {target}`"));
+                                }
+                                t as i64
+                            }
+                            Value::Int(n) => n,
+                            Value::Bool(b) => b as i64,
+                            _ => return err("cannot cast this value to an integer"),
+                        };
+                        if n < lo || n > hi {
+                            return err(format!("integer overflow in `{n} as {target}`"));
+                        }
+                        Ok(Value::Int(n))
+                    }
                     other => err(format!("unsupported cast to `{other}`")),
                 }
             }
@@ -2619,6 +2696,21 @@ fn cmp_value(a: &Value, b: &Value) -> std::cmp::Ordering {
         // branch and the derivative is of a different function.
         (Value::Dual(x, _), _) => cmp_value(&Value::Float(*x), b),
         (_, Value::Dual(y, _)) => cmp_value(a, &Value::Float(*y)),
+        // Lists and tuples order lexicographically, as Rust's derived `Ord`
+        // does: the first unequal element decides, and a proper prefix is less.
+        (Value::List(xs), Value::List(ys)) | (Value::Tuple(xs), Value::Tuple(ys)) => xs
+            .iter()
+            .zip(ys)
+            .map(|(x, y)| cmp_value(x, y))
+            .find(|o| o.is_ne())
+            .unwrap_or_else(|| xs.len().cmp(&ys.len())),
+        // `None < Some(_)`; two `Some`s compare their contents.
+        (Value::Opt(x), Value::Opt(y)) => match (x, y) {
+            (Some(x), Some(y)) => cmp_value(x, y),
+            (None, None) => Ordering::Equal,
+            (None, Some(_)) => Ordering::Less,
+            (Some(_), None) => Ordering::Greater,
+        },
         _ => Ordering::Equal,
     }
 }
@@ -3768,6 +3860,39 @@ mod tests {
     use super::*;
 
     #[test]
+    fn compound_values_order_like_rusts_derived_ord() {
+        use std::cmp::Ordering::*;
+        let l = |xs: &[i64]| Value::List(xs.iter().map(|&i| Value::Int(i)).collect());
+        let t = |xs: &[i64]| Value::Tuple(xs.iter().map(|&i| Value::Int(i)).collect());
+        let some = |v: Value| Value::Opt(Some(Box::new(v)));
+        assert_eq!(cmp_value(&l(&[1]), &l(&[1, 0])), Less);
+        assert_eq!(cmp_value(&l(&[1, 0]), &l(&[1])), Greater);
+        assert_eq!(cmp_value(&l(&[]), &l(&[])), Equal);
+        assert_eq!(cmp_value(&l(&[1, 2]), &l(&[1, 3])), Less);
+        assert_eq!(cmp_value(&l(&[2, 0]), &l(&[1, 9])), Greater);
+        assert_eq!(cmp_value(&t(&[1, 2]), &t(&[1, 3])), Less);
+        assert_eq!(cmp_value(&t(&[1, 2]), &t(&[1, 2])), Equal);
+        assert_eq!(cmp_value(&Value::Opt(None), &some(Value::Int(0))), Less);
+        assert_eq!(cmp_value(&some(Value::Int(0)), &Value::Opt(None)), Greater);
+        assert_eq!(cmp_value(&Value::Opt(None), &Value::Opt(None)), Equal);
+        assert_eq!(cmp_value(&some(Value::Int(1)), &some(Value::Int(2))), Less);
+        let a = Value::List(vec![Value::Opt(None), some(Value::Int(5))]);
+        let b = Value::List(vec![Value::Opt(None), some(Value::Int(6))]);
+        let c = Value::List(vec![some(Value::Int(0))]);
+        assert_eq!(cmp_value(&a, &b), Less);
+        assert_eq!(cmp_value(&c, &a), Greater);
+    }
+
+    #[test]
+    fn maps_structs_and_mixed_kinds_still_compare_equal() {
+        use std::cmp::Ordering::Equal;
+        let m1 = Value::Map(Default::default());
+        assert_eq!(cmp_value(&m1, &m1), Equal);
+        assert_eq!(cmp_value(&Value::List(vec![Value::Int(1)]), &Value::Tuple(vec![Value::Int(2)])), Equal);
+        assert_eq!(cmp_value(&Value::Opt(None), &Value::Int(3)), Equal);
+    }
+
+    #[test]
     fn eval_recurses_past_the_main_thread_stack() {
         // A debug build overflowed the 1 MB main stack near depth 10.
         let src = "f down(n) { if n == 0 { 7 } else { down(n - 1) } }".to_string();
@@ -3783,6 +3908,21 @@ mod tests {
         // It typechecked and then evaluated to a function name (plan C3).
         let src = "const X: f64 = 1.5;\nconst TWICE: f64 = X * 2.0;\nf main() -> f64 { TWICE + X }\n";
         assert_eq!(run(src, "main", &[]), Value::Float(4.5));
+    }
+
+    #[test]
+    fn a_field_default_sees_the_const_not_the_callers_local() {
+        let shadow = "const K: i32 = 7;
+data P(x: i32, y: i32 = K)
+f main() -> i32 {
+    val K = 5
+    val p = @P { x: 1 }
+    p.y
+}
+";
+        assert_eq!(run(shadow, "main", &[]), Value::Int(7));
+        let control = shadow.replace("val K = 5", "val J = 5");
+        assert_eq!(run(&control, "main", &[]), Value::Int(7));
     }
 
     #[test]
@@ -5590,5 +5730,127 @@ mod net_call_tests {
         let interp = Interp::with_fuel(&module, 3);
         let err = interp.run("classify", vec![floats(&[1.0])]).expect_err("out of fuel");
         assert!(err.contains(FUEL_EXHAUSTED), "{err}");
+    }
+
+    #[test]
+    fn a_trait_default_method_is_inherited_and_an_override_wins() {
+        let base = "trait G { f hi(self) -> i32; f twice(self) -> i32 { self.hi() * 2 } }\nstruct Dd { n: i32 }\n";
+        let inherit = format!("{base}impl G for Dd {{ f hi(self) -> i32 {{ self.n }} }}\nf main() -> i32 {{ val d = @Dd {{ n: 4 }}\n d.twice() }}\n");
+        assert_eq!(interp_of(&inherit).run("main", vec![]).unwrap(), Value::Int(8));
+        let over = format!("{base}impl G for Dd {{ f hi(self) -> i32 {{ self.n }} f twice(self) -> i32 {{ 100 }} }}\nf main() -> i32 {{ val d = @Dd {{ n: 4 }}\n d.twice() }}\n");
+        assert_eq!(interp_of(&over).run("main", vec![]).unwrap(), Value::Int(100));
+    }
+
+    #[test]
+    fn an_omitted_data_field_takes_its_declared_default() {
+        let src = "data P(x: i32, y: i32 = 7)\nf main() -> i32 { val p = @P { x: 1 }\n p.x + p.y }\n\
+                   f given() -> i32 { val p = @P { x: 1, y: 2 }\n p.x + p.y }\n\
+                   f bare() -> i32 { val p = @P { y: 2 }\n p.x }\n";
+        let i = interp_of(src);
+        assert_eq!(i.run("main", vec![]).unwrap(), Value::Int(8));
+        assert_eq!(i.run("given", vec![]).unwrap(), Value::Int(3));
+        assert!(i.run("bare", vec![]).unwrap_err().contains("no field `x`"));
+    }
+
+    #[test]
+    fn try_propagates_a_result_err_and_unwraps_ok() {
+        let src = "f half(n: i32) -> R[i32, s] { ? n % 2 == 0 { Ok(n / 2) } : { Err(\"odd\") } }\n\
+                   f quarter(n: i32) -> R[i32, s] { val a = half(n)?\n val b = half(a)?\n Ok(b) }\n";
+        let i = interp_of(src);
+        let ok = i.run("quarter", vec![Value::Int(8)]).unwrap();
+        assert_eq!(ok.to_string(), "Ok(2)");
+        let e = i.run("quarter", vec![Value::Int(3)]).unwrap();
+        assert_eq!(e.to_string(), "Err(\"odd\")");
+    }
+
+    #[test]
+    fn narrow_integer_casts_behave_like_the_wide_ones() {
+        let src = "f main() -> i32 { (5 as u8) + (5 as i8) + (5 as u16) + (5 as i16) + (5 as u128) + (5 as i128) }\n";
+        assert_eq!(interp_of(src).run("main", vec![]).unwrap(), Value::Int(30));
+    }
+}
+
+#[cfg(test)]
+mod checked_cast_tests {
+    use super::*;
+
+    /// `body` runs inside `main`; negatives come from bindings (`0 - n`),
+    /// because `-x as T` is `-(x as T)` (postfix binds tighter than prefix).
+    fn cast(body: &str) -> Result<Value, String> {
+        let src = format!("f main() -> i64 {{ {body} }}\n");
+        run_source(&src, "main", &[])
+    }
+
+    fn traps(body: &str, msg: &str) {
+        let e = cast(body).expect_err(body);
+        assert!(e.contains(&format!("integer overflow in `{msg}`")), "{body}: {e}");
+    }
+
+    fn neg(n: &str, ty: &str) -> String {
+        format!("val n = 0 - {n}; n as {ty}")
+    }
+
+    #[test]
+    fn out_of_range_casts_trap() {
+        traps("300 as u8", "300 as u8");
+        traps("256 as u8", "256 as u8");
+        traps("2147483648 as i32", "2147483648 as i32");
+        traps("128 as i8", "128 as i8");
+        traps("32768 as i16", "32768 as i16");
+        traps("65536 as u16", "65536 as u16");
+        traps("4294967296 as u32", "4294967296 as u32");
+        traps(&neg("1", "u64"), "-1 as u64");
+        traps(&neg("129", "i8"), "-129 as i8");
+        traps(&neg("2147483649", "i32"), "-2147483649 as i32");
+        traps(&neg("32769", "i16"), "-32769 as i16");
+        traps(&neg("1", "usize"), "-1 as usize");
+        traps(&neg("1", "u128"), "-1 as u128");
+        traps(&neg("1", "u8"), "-1 as u8");
+    }
+
+    #[test]
+    fn negated_cast_follows_the_precedence_rule() {
+        // `-128 as i8` is `-(128 as i8)`, and `128 as i8` traps.
+        traps("-128 as i8", "128 as i8");
+    }
+
+    #[test]
+    fn boundary_values_are_exact() {
+        assert_eq!(cast("255 as u8"), Ok(Value::Int(255)));
+        assert_eq!(cast("0 as u8"), Ok(Value::Int(0)));
+        assert_eq!(cast("127 as i8"), Ok(Value::Int(127)));
+        assert_eq!(cast(&neg("128", "i8")), Ok(Value::Int(-128)));
+        assert_eq!(cast("65535 as u16"), Ok(Value::Int(65535)));
+        assert_eq!(cast(&neg("32768", "i16")), Ok(Value::Int(-32768)));
+        assert_eq!(cast("2147483647 as i32"), Ok(Value::Int(2147483647)));
+        assert_eq!(cast(&neg("2147483648", "i32")), Ok(Value::Int(-2147483648)));
+        assert_eq!(cast("4294967295 as u32"), Ok(Value::Int(4294967295)));
+        assert_eq!(cast("0 as u64"), Ok(Value::Int(0)));
+        assert_eq!(cast("9223372036854775807 as u64"), Ok(Value::Int(i64::MAX)));
+        assert_eq!(cast(&neg("5", "i128")), Ok(Value::Int(-5)));
+    }
+
+    #[test]
+    fn float_casts_truncate_toward_zero_then_check() {
+        assert_eq!(cast("3.7 as i32"), Ok(Value::Int(3)));
+        assert_eq!(cast("val g = 0.0 - 3.7; g as i32"), Ok(Value::Int(-3)));
+        assert_eq!(cast("255.9 as u8"), Ok(Value::Int(255)));
+        assert_eq!(cast("val g = 0.0 - 0.5; g as u8"), Ok(Value::Int(0)));
+        assert!(cast("256.0 as u8").is_err());
+        assert!(cast("val g = 0.0 - 1.5; g as u8").is_err());
+        assert!(cast("1e30 as i64").is_err());
+    }
+
+    #[test]
+    fn nan_and_infinity_trap() {
+        let e = cast("(0.0 / 0.0) as i32").expect_err("nan");
+        assert!(e.contains("integer overflow in `NaN as i32`"), "{e}");
+        let e = cast("(1.0 / 0.0) as i64").expect_err("inf");
+        assert!(e.contains("integer overflow in `inf as i64`"), "{e}");
+    }
+
+    #[test]
+    fn float_targets_are_unchanged() {
+        assert_eq!(cast("300 as f64"), Ok(Value::Float(300.0)));
     }
 }
