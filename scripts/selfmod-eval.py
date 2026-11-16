@@ -21,7 +21,8 @@ MANIFEST is JSON; paths are relative to the manifest's directory:
       "fmt_flag": "--fmt-expand",                       # optional: enables `fidelity`
       "eval": {"flag": "--eval",                        # optional: enables `semantics`
                "expect": {"ok/a.mg": "<sha256 of stdout>", ...},
-               "target": {"backlog/b.mg": "<sha256>", ...}}  # optional: run-time backlog
+               "target": {"backlog/b.mg": "<sha256>",        # optional: run-time backlog
+                          "backlog/t.mg": {"fails_with": "integer overflow in"}, ...}}
     }
 
 With `sha256`, every named file must be pinned and match, or the script exits
@@ -41,7 +42,9 @@ on the last stdout line, the axes SelfModWorkload reads:
                  files is one more item, met when `BINARY <flag> FILE` exits 0
                  with exactly the pinned stdout: a run-time backlog, whose
                  expected output is written from the specification, not
-                 recorded from a binary.
+                 recorded from a binary. An entry {"fails_with": TEXT} is met
+                 instead when the run exits non-zero and TEXT appears in its
+                 stderr: a trap the specification requires.
     efficiency   1 / (1 + total seconds of checking). Wall-clock, so it varies
                  between runs on one machine; `--no-time` leaves it out.
     fidelity     only with `fmt_flag`: of the programs that check clean (`good`,
@@ -151,6 +154,16 @@ def run_output(binary, flag, path):
     return r.returncode, hashlib.sha256(r.stdout.replace(b"\r\n", b"\n")).hexdigest()
 
 
+def fails_with(binary, flag, path, text):
+    """Whether running `path` exits non-zero with `text` in its stderr."""
+    try:
+        r = subprocess.run([binary, flag, path], capture_output=True, timeout=TIMEOUT_S)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        print(f"selfmod-eval: {path}: {e}", file=sys.stderr)
+        return False
+    return r.returncode != 0 and text.encode("utf-8") in r.stderr
+
+
 def pin_eval(flag, manifest_path, binary):
     with open(manifest_path, encoding="utf-8") as f:
         m = json.load(f)
@@ -236,8 +249,15 @@ def main(argv):
         die(f"eval target names files not in target (so not pinned): {', '.join(strays)}")
     met = 0
     for rel, want in eval_target.items():
-        got = run_output(binary, ev["flag"], os.path.join(root, rel))
-        met += got is not None and got == (0, want)
+        path = os.path.join(root, rel)
+        if isinstance(want, dict):
+            text = want.get("fails_with")
+            if not isinstance(text, str) or not text or set(want) != {"fails_with"}:
+                die(f"eval target {rel}: an object entry must be {{\"fails_with\": TEXT}}")
+            met += fails_with(binary, ev["flag"], path, text)
+        else:
+            got = run_output(binary, ev["flag"], path)
+            met += got is not None and got == (0, want)
     items = len(target) + len(eval_target)
     if items:
         capability = frac(len(target_clean) + met, items)
