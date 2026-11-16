@@ -224,8 +224,8 @@ facts are grouped into files and namespaces. They are not classes.
 
 ### Phase 0: Preconditions
 
-- [ ] Merge the stack #38–#162, this plan included, in order (needs the user). **S**
-- [ ] Settle the open questions in section 8. **S**
+- [x] Merge the stack #38–#162, this plan included, in order (needs the user). **S** *(Merged into `master` on 2026-11-06 with merge commits, oldest first.)*
+- [x] Settle the open questions in section 8. **S** *(Settled on 2026-11-06: each as this plan proposes. Section 8 records them, with the scope decisions taken at the same time.)*
 - [x] Census every module in `prototype/src` (77 files and `bin/`) into neural, symbolic, knowledge base, interface, or outside the design (for example `crdt.rs`, `consensus.rs`, `hot_reload.rs`). Record it in `ARCHITECTURE.md`. Outside-the-design modules are kept but not extended. **S [H]** *(In `ARCHITECTURE.md`, "Module census", held to the directory by `prototype/tests/census.rs`.)*
 
 ### Phase 1: The schema
@@ -353,6 +353,8 @@ Phase 0 ─► Phase 1 ─► Phase 2 ─► Phase 3 ─┐
 
 ## 8. Open questions
 
+Settled on 2026-11-06, each as proposed below.
+
 1. **Is the knowledge base compiled in, or a store the running system queries
    and writes?** This plan compiles it in (embedded `kb/*.mg`) and keeps
    evidence in a separate log, because a compiled base can be checked before
@@ -367,14 +369,29 @@ Phase 0 ─► Phase 1 ─► Phase 2 ─► Phase 3 ─┐
    because diagnostics quality lives in it, and revisits the question after
    Phase 2 has measured how far the two agree.
 
+Decided at the same time:
+
+5. **The 25 names `BUILTIN_EFFECTS` attributed that cannot be called** (`open`,
+   `now` and the like) are removed from it, from the facts and from
+   `MAGE_SPEC.md`'s table. Their effects are reached by annotation or through a
+   capability handle (`fs.read(…)`, `time.now()`), so attributing a bare name
+   only claimed a word a user function might want.
+6. **The admitted `take` 48→64 is not applied.** The knowledge-base gate item in
+   section 9 stays open until a proposal shows a measured benefit.
+7. **`germline` is out of scope** for the refusal item: it is neither the
+   compiler nor the arena.
+8. **The generators in scope** for the grammar-profile item are `command.rs`,
+   `agents.rs`, `nl_engine.rs`, `synthesis.rs` and `codegen_bridge.rs`.
+   `training/prompts/*.md` is out of scope, because no code loads it.
+
 ---
 
 ## 9. Definition of done
 
 None of these is met yet. An audit on 2026-11-04 read the code rather than the boxes above; these notes are its findings, and it ran nothing.
 
-- [ ] Every piece of language knowledge is a fact in `kb/`, typed by `kb/schema.mg`. *(Partly. Syntax, grammar, forms, IR ops, layers, layer grades, effects, the vocabulary, attribute abbreviations, builtin names and their grades, and rules are facts. Still only in code: `eval.rs`'s builtin names (84). Of the 32 names `BUILTIN_EFFECTS` attributes, 25 cannot be called (`open`, `now` and the like): `--check` attributes the effect and reports the name unresolved, and `--eval` fails with `unknown function`. Four of the graded names still cannot be called: `relu` and `clamp` in `KINKED`, `softmax` and `matmul` in `SMOOTH_BUILTINS`. Left in code as details of one analysis, not language knowledge: `elision.rs`'s `SAFETY_BOUNDS` and `ELIMINATED_TYPES`, `convexity.rs`'s `call_facts`, `autograd.rs`'s tape table.)*
-- [ ] Every remaining hand-written table is conformance-tested against `kb/` in both directions. *(Partly. Both ways: `KEYWORDS`, `DiagnosticCategory`, the arena's refusal classes (`physics_task.rs` and `substrate.rs` between them), `RuleDatabase::ALL`, `TESTED`, `ROW_PREDICATES`, and the builder's 26 codes (`every_build_code_is_stated`, `every_build_rule_happens`), and `builder.rs`'s `OPS`, `TOPOLOGIES` and `CONSENSUS`, and `hir.rs`'s `CAPABILITY_NAMESPACES`, each stated as facts and held to them by `every_op_is_stated`, `every_topology_and_consensus_is_stated` and `every_capability_namespace_is_stated`, and `hir.rs`'s `ROLES` and `units.rs`'s `BASE_UNITS`, each stated as facts and held to them by `every_role_and_grant_is_stated` and `every_base_unit_is_stated`, and `resolve.rs`'s `VOCABULARY`, `elision.rs`'s `ATTRIBUTE_ABBREVIATIONS`, and `differentiable.rs`'s `SMOOTH_LAYERS` and `KINKED_LAYERS`, each stated as facts and held to them by `every_vocabulary_word_is_stated`, `every_attribute_abbreviation_is_stated` and `every_layer_grade_is_stated`, and `resolve.rs`'s `STD_FNS`, and `differentiable.rs`'s `KINKED`, `SMOOTH_BUILTINS` and `DISCRETE_BUILTINS`, each stated as facts and held to them by `every_builtin_function_is_stated` and `every_builtin_grade_is_stated`, and `resolve.rs`'s `SCALAR_MATH`, stated as facts and held to them by `every_scalar_math_name_is_stated`, and `effects.rs`'s `BUILTIN_EFFECTS` (32 names, `join` dropped because it never fired), stated as facts and held to them by `every_builtin_effect_is_stated`, with `MAGE_SPEC.md`'s table of attributed names held to the same facts by `the_spec_table_of_attributed_names_is_the_stated_one`. No test against `kb/`: the tables of the item above, since they have no facts to hold them to.)*
-- [ ] Every refusal, from the compiler or the arena, names one rule fact. *(Partly. Met for the arena, the compiler's `E` codes, the knowledge-base gate and the builder's 26 `B`, `K`, `A`, `S` and `U` codes (`BuildRule` facts, `enforced_by` the builder; for 14 of the 26 the `fix` an error emits is worded differently from the stated one the schema serves). Not for `germline`: its `RejectReason` has no rule facts either, though it is neither the compiler nor the arena. A `grad_unchecked` warning falls to the catch-all `DiagnosticCategory::Other`.)*
-- [ ] Every generator and prompt is derived from a grammar profile. *(Not met, though the arena's is. Its sampling and `describe_grammar` come from the profile; its parser still spells the signature that `profile_signature` states, and its sampler and parser dispatch by form name, which Phase 6 accepted as code. Holding their own syntax: `command.rs`'s prompt, `agents.rs`'s attacker rewrites, the templates in `nl_engine.rs` and `synthesis.rs`, `codegen_bridge.rs`'s header, and `training/prompts/*.md`, which no code loads. The LLM proposer is blocked on X1.)*
-- [ ] The knowledge base has changed once through its own gate, with the measured effect recorded. *(Not met. A generated change has been admitted and measured, and it is not applied: Phase 8.)*
+- [ ] Every piece of language knowledge is a fact in `kb/`, typed by `kb/schema.mg`. *(Partly. Syntax, grammar, forms, IR ops, layers, layer grades, effects, the vocabulary, attribute abbreviations, builtin names and their grades, and rules are facts. Still only in code: `eval.rs`'s builtin names (84). The 25 names `BUILTIN_EFFECTS` attributed that could not be called (`open`, `now` and the like) were removed (section 8, decision 5). Four of the graded names still cannot be called: `relu` and `clamp` in `KINKED`, `softmax` and `matmul` in `SMOOTH_BUILTINS`. Left in code as details of one analysis, not language knowledge: `elision.rs`'s `SAFETY_BOUNDS` and `ELIMINATED_TYPES`, `convexity.rs`'s `call_facts`, `autograd.rs`'s tape table.)*
+- [ ] Every remaining hand-written table is conformance-tested against `kb/` in both directions. *(Partly. Both ways: `KEYWORDS`, `DiagnosticCategory`, the arena's refusal classes (`physics_task.rs` and `substrate.rs` between them), `RuleDatabase::ALL`, `TESTED`, `ROW_PREDICATES`, and the builder's 26 codes (`every_build_code_is_stated`, `every_build_rule_happens`), and `builder.rs`'s `OPS`, `TOPOLOGIES` and `CONSENSUS`, and `hir.rs`'s `CAPABILITY_NAMESPACES`, each stated as facts and held to them by `every_op_is_stated`, `every_topology_and_consensus_is_stated` and `every_capability_namespace_is_stated`, and `hir.rs`'s `ROLES` and `units.rs`'s `BASE_UNITS`, each stated as facts and held to them by `every_role_and_grant_is_stated` and `every_base_unit_is_stated`, and `resolve.rs`'s `VOCABULARY`, `elision.rs`'s `ATTRIBUTE_ABBREVIATIONS`, and `differentiable.rs`'s `SMOOTH_LAYERS` and `KINKED_LAYERS`, each stated as facts and held to them by `every_vocabulary_word_is_stated`, `every_attribute_abbreviation_is_stated` and `every_layer_grade_is_stated`, and `resolve.rs`'s `STD_FNS`, and `differentiable.rs`'s `KINKED`, `SMOOTH_BUILTINS` and `DISCRETE_BUILTINS`, each stated as facts and held to them by `every_builtin_function_is_stated` and `every_builtin_grade_is_stated`, and `resolve.rs`'s `SCALAR_MATH`, stated as facts and held to them by `every_scalar_math_name_is_stated`, and `effects.rs`'s `BUILTIN_EFFECTS` (7 names: `join` dropped because it never fired, and 25 because they could not be called), stated as facts and held to them by `every_builtin_effect_is_stated`, with `MAGE_SPEC.md`'s table of attributed names held to the same facts by `the_spec_table_of_attributed_names_is_the_stated_one`. No test against `kb/`: the tables of the item above, since they have no facts to hold them to.)*
+- [ ] Every refusal, from the compiler or the arena, names one rule fact. *(Partly. Met for the arena, the compiler's `E` codes, the knowledge-base gate and the builder's 26 `B`, `K`, `A`, `S` and `U` codes (`BuildRule` facts, `enforced_by` the builder; for 14 of the 26 the `fix` an error emits is worded differently from the stated one the schema serves). `germline`'s `RejectReason` has no rule facts, and is out of scope (section 8, decision 7). A `grad_unchecked` warning falls to the catch-all `DiagnosticCategory::Other`.)*
+- [ ] Every generator and prompt is derived from a grammar profile. *(Not met, though the arena's is. Its sampling and `describe_grammar` come from the profile; its parser still spells the signature that `profile_signature` states, and its sampler and parser dispatch by form name, which Phase 6 accepted as code. Holding their own syntax: `command.rs`'s prompt, `agents.rs`'s attacker rewrites, the templates in `nl_engine.rs` and `synthesis.rs`, `codegen_bridge.rs`'s header. `training/prompts/*.md`, which no code loads, is out of scope (section 8, decision 8). The LLM proposer is blocked on X1.)*
+- [ ] The knowledge base has changed once through its own gate, with the measured effect recorded. *(Not met. A generated change has been admitted and measured, and it is not applied: Phase 8. It stays open until a proposal shows a measured benefit (section 8, decision 6).)*

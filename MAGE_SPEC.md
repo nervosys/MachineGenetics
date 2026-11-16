@@ -1717,20 +1717,23 @@ a built-in effect three ways, and only three:
 
    | Effect  | Names attributed on call |
    | ------- | ------------------------ |
-   | `io`    | `print` `println` `eprint` `eprintln` `write` `writeln` `read` `read_line` `read_to_string` |
-   | `fs`    | `open` `create` `remove` `rename` `mkdir` `stat` |
-   | `net`   | `connect` `listen` `bind` `send` `recv` |
-   | `async` | `spawn` `select` |
-   | `alloc` | `alloc` `dealloc` `realloc` |
+   | `io`    | `print` `println` `eprint` `eprintln` `write` `writeln` |
    | `panic` | `panic` |
-   | `env`   | `env` `get_env` `set_env` |
-   | `time`  | `now` `sleep` `timeout` |
+
+   Of the names that perform a built-in effect, only these seven can be called
+   bare. Every other effect has no bare function to attribute: `read_line`, `open`, `connect`, `spawn`, `alloc`,
+   `get_env`, `now`, `sleep` and the rest are not callable by that name, so their
+   effects come through an annotation or a capability handle from route 2 —
+   `io.read_line(…)`, `fs.read(…)`, `net.connect(…)`, `env.get_env(…)`,
+   `time.now()`, `time.sleep(…)`.
 
    The standard vocabulary wins every collision: `join` is the vocabulary's
    pure `([str], str) -> str`, so calling it is pure and does **not** mean a
-   thread join. `ffi`, `npu`, `evolve` and `learn` attribute no names at all —
-   reach them by annotation, or declare an `effect` block whose operations you
-   can actually call and handle.
+   thread join. Beyond `io` and `panic`, no effect attributes any name — `fs`,
+   `net`, `async`, `alloc`, `env`, `time`, `ffi`, `npu`, `evolve`, `learn` and
+   the rest are reached by annotation, by a capability handle where the
+   namespace table has one, or by declaring an `effect` block whose operations
+   you can actually call and handle.
 
 This last table is deliberately short, and route 2 is preferred over it.
 Attribution by bare name claims a word out of the whole program's namespace, so
