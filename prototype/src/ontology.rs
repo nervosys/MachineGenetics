@@ -483,6 +483,7 @@ const CLI_FLAGS: &[(&str, &str, bool)] = &[
     ("--spine=swarm", "Emit a swarm profile from a JSON swarm spec.", true),
     // ── Modifiers, which stack with the commands above ────────────────
     ("--json", "Report diagnostics as structured JSON (code/span/category/fix) rather than text.", false),
+    ("--compact", "With `--json`: print the JSON on one line (serde_json::to_string) instead of pretty-printed.", false),
     ("--fix", "With `--build=abl`: attempt deterministic auto-repair before rejecting a spec.", false),
     ("--core", "With `--check`: also require MAGE-core (MAGE_SPEC.md §4.12), the subset the RSI kernel runs.", false),
     ("--input", "With `--run=abl`: the JSON input value for the run, as the next argument.", false),

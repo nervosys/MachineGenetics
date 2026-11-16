@@ -289,7 +289,7 @@ jobs:
         run: cargo build --release --manifest-path prototype/Cargo.toml
       - name: Test
         run: cargo test --release --manifest-path prototype/Cargo.toml
-      - name: Evaluator correctness bench (73/73 exact)
+      - name: Evaluator correctness bench (76/76 exact)
         run: cargo test --release --manifest-path prototype/Cargo.toml eval_bench -- --ignored --nocapture
       # `perf_report` is the harness that produced the ABL artifact-scaling
       # figures in MEASUREMENTS.md and ARCHITECTURE_DSL.md. `cargo test`
@@ -546,8 +546,12 @@ jobs:
       # 2026-08-04, each by accident. A summary line is written once while its
       # subject is fresh and nothing ever forces a second look — so the second
       # look is now a job.
+      # `--bench` is what feeds the eval_bench numerator (and the reliability
+      # bench figures) to --check-docs. Without it the "76/76" and rb_* claims
+      # in README, ARCHITECTURE, DOCS, MEASUREMENTS and DIRECT_CODEGEN_STRATEGY
+      # were never compared with a run, because no job passed the flag.
       - name: Test everything and verify the documented counts
-        run: bash scripts/test-all.sh --check-docs
+        run: bash scripts/test-all.sh --check-docs --bench
 
   audit:
     name: RustSec advisories across all six lockfiles

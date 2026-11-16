@@ -34,6 +34,10 @@ MIN_PARSE=98        # file-oracle parse rate, out of a 100-task corpus
 PARSE_BASIS=100
 MIN_HEAL=40         # perturbed-oracle pattern-heal successes
 MAX_LEX_RATIO=1.100 # native-lexer total ratio, MAGE vs Rust
+# Shared counting rule, MAGE vs Rust (token-bench "shared rule:" line). Measured
+# 1.034 on the 100-task corpus; the ceiling leaves room for corpus edits, not
+# for MAGE to become the larger side by more than 10 %.
+MAX_SHARED_RATIO=1.100
 
 fail=0
 
@@ -205,6 +209,25 @@ elif [ -n "$stale" ]; then
     fail=1
 else
     echo "  ok native-lexer ratio $ratio (ceiling <= $MAX_LEX_RATIO, report current)"
+fi
+
+# ── 3b. shared-rule token ratio ───────────────────────────────────────
+#
+# Read from the same bench run as section 3, so it is not a second measurement
+# that could disagree with the first. Its status is already reported above
+# (exit 1 means the claim set moved; exit 2 means the bench did not run), so
+# this block only checks the ceiling.
+shared_ratio="$(printf '%s\n' "$bench_out" | awk '/shared rule:/ { for (i = 1; i <= NF; i++) if ($i ~ /^ratio=/) { sub(/^ratio=/, "", $i); print $i; exit } }')"
+if [ "$bench_status" -eq 2 ]; then
+    : # already reported in section 3
+elif [ -z "${shared_ratio:-}" ]; then
+    echo "  x  could not read the shared-rule ratio from the bench" >&2
+    fail=1
+elif awk -v r="$shared_ratio" -v m="$MAX_SHARED_RATIO" 'BEGIN { exit !(r > m) }'; then
+    echo "  x  shared-rule ratio $shared_ratio, ceiling <= $MAX_SHARED_RATIO" >&2
+    fail=1
+else
+    echo "  ok shared-rule ratio $shared_ratio (ceiling <= $MAX_SHARED_RATIO)"
 fi
 
 echo

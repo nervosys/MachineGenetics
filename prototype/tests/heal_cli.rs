@@ -97,3 +97,21 @@ fn heal_casts_the_range_argument_the_checker_names() {
     assert_eq!((ev["line"].as_u64(), ev["col"].as_u64()), (Some(2), Some(15)));
     assert_eq!(v["ok"], true);
 }
+
+/// `--compact` prints the same `--json` report on one line: it parses to the
+/// same value as the default pretty form, and the exit status is unchanged.
+#[test]
+fn heal_compact_json_is_one_line_and_parses_equal_to_pretty() {
+    let path = scratch("compact", OFF_BY_ONE);
+    let pretty = Command::new(BIN).arg("--heal").arg(&path).arg("--json").output().unwrap();
+    let compact =
+        Command::new(BIN).arg("--heal").arg(&path).arg("--json").arg("--compact").output().unwrap();
+    let p = String::from_utf8_lossy(&pretty.stdout).into_owned();
+    let c = String::from_utf8_lossy(&compact.stdout).into_owned();
+    assert_eq!(pretty.status.code(), compact.status.code());
+    assert!(p.trim_end().lines().count() > 1, "default form is pretty-printed: {p}");
+    assert_eq!(c.trim_end().lines().count(), 1, "compact form is one line: {c}");
+    let pv: serde_json::Value = serde_json::from_str(&p).expect("pretty output parses");
+    let cv: serde_json::Value = serde_json::from_str(c.trim_end()).expect("compact output parses");
+    assert_eq!(pv, cv);
+}

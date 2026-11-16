@@ -9,7 +9,7 @@
 > (`prototype/src/mlir.rs`), not as a code-generating backend.
 >
 > MAGE executes two ways today, both real and both measured: the tree-walking
-> evaluator (`prototype/src/eval.rs`, `--eval`, 73/73 programs exact) and the ABL
+> evaluator (`prototype/src/eval.rs`, `--eval`, 76/76 programs exact) and the ABL
 > compute backend (CPU, plus CUDA behind `--features cuda`). See
 > [ARCHITECTURE.md](ARCHITECTURE.md) and [DOCS.md](DOCS.md).
 

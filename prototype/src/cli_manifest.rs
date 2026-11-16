@@ -100,7 +100,7 @@ pub const MODES: &[CliMode] = &[
     },
     CliMode {
         flag: "--check",
-        args: "<file.mg> [--json] [--core]",
+        args: "<file.mg> [--json] [--compact] [--core]",
         summary: "parse + typecheck + effect-check; structured diagnostics; no output files",
         effect: "read_local",
         detail: "Full front-end pass (lex, parse, resolve, typecheck, effects) without\n\
@@ -114,7 +114,7 @@ pub const MODES: &[CliMode] = &[
     },
     CliMode {
         flag: "--differentiable",
-        args: "<file.mg> [--json]",
+        args: "<file.mg> [--json] [--compact]",
         summary: "which functions, nets and train blocks have a derivative, and why not",
         effect: "read_local",
         detail: "Reports one of four states per subject: smooth, almost everywhere,\n\
@@ -149,7 +149,7 @@ pub const MODES: &[CliMode] = &[
     },
     CliMode {
         flag: "--heal",
-        args: "<file.mg|-> [--write] [--json] [--fuel N]",
+        args: "<file.mg|-> [--write] [--json] [--compact] [--fuel N]",
         summary: "intent-guided self-healing: heal compile errors, debug and repair failing @tests; prints a diff",
         effect: "read_local",
         detail: "Infers intent from signatures, declared effects, @req/@ens, struct @inv\n\
@@ -166,7 +166,8 @@ pub const MODES: &[CliMode] = &[
                  values motivate, accepting the first that makes every run pass (always\n\
                  reported as semantics-changing, with its evidence).\n\
                  Prints a unified diff. Exit 0 only with 0 errors and all runs passing.\n\
-                 The file is modified only with --write (effect then write_local).",
+                 The file is modified only with --write (effect then write_local).\n\
+                 With --json, --compact prints the same JSON on one line.",
     },
     CliMode {
         flag: "--solve",
@@ -182,7 +183,7 @@ pub const MODES: &[CliMode] = &[
     },
     CliMode {
         flag: "--gradcheck",
-        args: "<file.mg> [--json]",
+        args: "<file.mg> [--json] [--compact]",
         summary: "check computed derivatives against central differences; evidence, not proof",
         effect: "read_local",
         detail: "The inductive half of the differentiability claim. --differentiable asks

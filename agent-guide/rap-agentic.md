@@ -154,6 +154,13 @@ and every run passes. `--json` and `build/selfheal` return the same report as
 JSON (`compile.steps[].evidence`, `compile.unfixed`, `debug.sites`,
 `debug.runs[].raised_at`, `debug.repair`).
 
+`--compact` with `--json` prints the same report on one line (`serde_json::to_string`
+instead of the pretty form). The parsed values are identical. For
+`prototype/examples/heal/off_by_one.mg` the pretty report is 6,068 bytes and the
+compact one is 4,626 bytes (measured with `mage-parse --heal ... --json`, with and
+without `--compact`). The same flag applies to `--check --json`, `--differentiable --json`
+and `--gradcheck --json`.
+
 **Limits.**
 
 - Compiler evidence covers the sites listed above. A mismatch elsewhere has

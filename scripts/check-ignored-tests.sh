@@ -5,7 +5,7 @@
 # WHY THIS EXISTS
 # ─────────────────────────────────────────────────────────────────────────────
 #
-# `eval_bench` — the harness that certifies the evaluator at 73/73 exact — was
+# `eval_bench` — the harness that certifies the evaluator at 76/76 exact — was
 # red for **76 commits**. Three independent things hid it: the test is
 # `#[ignore]`d so `cargo test` skips it, it was additionally reachable only via
 # a `--bench` flag nobody passed, and the branch it lived on was never pushed.
