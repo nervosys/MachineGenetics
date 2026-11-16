@@ -2811,8 +2811,10 @@ fn this_thread_worker() -> Option<std::thread::ThreadId> {
     WORKER.with(|slot| slot.borrow().as_ref().map(|w| w.thread))
 }
 
-/// Stack for a fuel-bounded run. Reserved address space, not committed memory.
-const BOUNDED_STACK_BYTES: usize = 256 * 1024 * 1024;
+/// Stack for an evaluator thread, bounded or not (`mage-parse --eval` runs on
+/// one too). Reserved address space, not committed memory.
+pub const EVAL_STACK_BYTES: usize = 256 * 1024 * 1024;
+const BOUNDED_STACK_BYTES: usize = EVAL_STACK_BYTES;
 
 /// The part of [`Value`] that can cross a thread boundary: data, not closures.
 enum Portable {
@@ -2865,9 +2867,30 @@ pub fn run_source(src: &str, name: &str, args: &[i64]) -> Result<Value, String> 
     interp.run(name, args.iter().map(|n| Value::Int(*n)).collect())
 }
 
+/// [`run_source`] on a thread with [`EVAL_STACK_BYTES`] of stack, the value
+/// rendered as text. `mage-parse --eval` ran on the main thread's stack (1 MB on
+/// Windows): a release build overflowed below a recursion depth of 1000 and a
+/// debug build near 10, so README's `fib 25` crashed.
+pub fn run_source_on_eval_stack(src: String, name: &str, args: Vec<i64>) -> Result<String, String> {
+    let name = name.to_string();
+    std::thread::Builder::new()
+        .stack_size(EVAL_STACK_BYTES)
+        .spawn(move || run_source(&src, &name, &args).map(|v| v.to_string()))
+        .map_err(|e| format!("spawn evaluator thread: {e}"))?
+        .join()
+        .unwrap_or_else(|_| Err("evaluator thread panicked".to_string()))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn eval_recurses_past_the_main_thread_stack() {
+        // A debug build overflowed the 1 MB main stack near depth 10.
+        let src = "f down(n) { if n == 0 { 7 } else { down(n - 1) } }".to_string();
+        assert_eq!(run_source_on_eval_stack(src, "down", vec![500]), Ok("7".to_string()));
+    }
 
     fn run(src: &str, f: &str, args: &[i64]) -> Value {
         run_source(src, f, args).expect("run failed")
