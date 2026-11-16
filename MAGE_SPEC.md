@@ -982,8 +982,7 @@ shape error names the layer it is about. The kind is a **surface name from the
 layer map** (`Linear`, `Conv2D`, `Attention`, `Embed`, `Dropout`, `Softmax`,
 `ReLU`, `GELU`, `SiLU`, `Sigmoid`, `Tanh`, `Mish`, `Softplus`, `LayerNorm`,
 `BatchNorm`, `RMSNorm`, `GroupNorm`, `InstanceNorm`, `MaxPool`, `AvgPool`,
-`GlobalAvgPool`, `Unify`, `Resolve`, `Infer`, `Plan`, `Send`, `Recv`, `Spawn`,
-`Delegate`, `Hash`, `Typeof`), and it is **case-sensitive**: `layer b: Lienar(…)`
+`GlobalAvgPool`), and it is **case-sensitive**: `layer b: Lienar(…)`
 is an error naming the unknown kind, not a silently identity layer.
 
 **Grammar:**
@@ -1011,9 +1010,12 @@ table the checker uses, so it cannot drift.
 | Normalisation | `LayerNorm(dim)`, `BatchNorm(n)`, `RMSNorm(dim)`, `GroupNorm(g, n)`, `InstanceNorm(n)` |
 | Pooling | `MaxPool(k)`, `AvgPool(k)`, `GlobalAvgPool()` |
 | Regularisation | `Dropout(rate)` |
-| Symbolic | `Unify`, `Resolve`, `Infer`, `Plan` |
-| Agentic | `Send`, `Recv`, `Spawn`, `Delegate` |
-| Utility | `Hash`, `Typeof` |
+
+With the activations of §5.3 these are the 21 names `layer_map` publishes, and
+a test in `ontology.rs` holds this section and §5.1's list to it. `Unify`,
+`Resolve`, `Infer`, `Plan`, `Send`, `Recv`, `Spawn` and `Delegate` name opcodes
+when a program is decompiled, but they are not layers: `layer a: Send(10)` is
+E0710, an unknown layer type.
 
 ### 5.3 Activation Functions
 
@@ -1132,7 +1134,8 @@ f bad(w: f64) -> f64 { grad(noisy(w), w) }
 run. `grad` over `tensor` and `param` is **designed and not built**, and the
 type checker refuses it with that sentence rather than accepting a program that
 cannot run — the evaluator has no tensor value at all. Nested `grad` is refused
-too: a second derivative needs a second level of dual numbers.
+too, by the checker and by the evaluator: a second derivative needs a second
+level of dual numbers.
 
 The implementation is forward-mode automatic differentiation, and forward mode
 specifically because `grad(e, w)` names **one** `w`: one pass gives ∂e/∂w

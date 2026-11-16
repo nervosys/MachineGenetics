@@ -899,7 +899,7 @@ fn collect_grads_block(b: &ast::Block, owner: &str, out: &mut Vec<(String, ast::
     }
 }
 
-fn collect_grads_expr(e: &ast::Expr, owner: &str, out: &mut Vec<(String, ast::Expr)>) {
+pub(crate) fn collect_grads_expr(e: &ast::Expr, owner: &str, out: &mut Vec<(String, ast::Expr)>) {
     if let ast::Expr::Grad { value, .. } = e {
         out.push((owner.to_string(), (**value).clone()));
     }

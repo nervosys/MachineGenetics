@@ -2488,6 +2488,20 @@ impl TypeChecker {
             // non-scalar `e` the derivative is a Jacobian, which is a different
             // construct and is not this one.
             ast::Expr::Grad { value, wrt } => {
+                // A `grad` inside the thing differentiated is a second
+                // derivative, which the evaluator refuses: it carries one
+                // level of dual numbers. Refusing it here says so before the
+                // program runs; the checker had accepted it with a warning
+                // that "the gradient is computed anyway".
+                let mut inner = Vec::new();
+                crate::differentiable::collect_grads_expr(value, "", &mut inner);
+                if !inner.is_empty() {
+                    self.emit_error(
+                        "nested `grad` is not supported: a second derivative needs \
+                         a second level of dual numbers, and the evaluator carries one",
+                    );
+                    return Ty::Error;
+                }
                 let vt = self.infer_expr(value);
                 let wt = self.infer_expr(wrt);
                 let vt = self.subst.apply(&vt);
@@ -2826,6 +2840,13 @@ mod tests {
         ] {
             assert!(!error_messages(&bad).is_empty(), "accepted: {bad}");
         }
+    }
+
+    #[test]
+    fn a_nested_grad_is_refused_before_it_runs() {
+        let errs = error_messages("f d() -> f64 { v w = 2.0\n grad(grad(w * w, w), w) }");
+        assert!(errs.iter().any(|e| e.contains("nested `grad`")), "{errs:?}");
+        assert_eq!(error_messages("f d() -> f64 { v w = 2.0\n grad(w * w, w) }"), Vec::<String>::new());
     }
 
     #[test]
