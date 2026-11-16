@@ -313,7 +313,10 @@ pub const MODES: &[CliMode] = &[
         summary: "run the full self-healing compile pipeline with recovery report",
         effect: "read_local",
         detail: "Lex → heal → parse → elide → typecheck with ranked fix candidates\n\
-                 on failure (structured recovery — the reliability-bench surface).",
+                 on failure (structured recovery — the reliability-bench surface).\n\
+                 With `--incremental-stats`, runs the incremental query engine instead and\n\
+                 prints the summary plus per-query hits/re-executions/cutoffs as JSON;\n\
+                 `--cache-dir DIR` (or $MAGE_CACHE_DIR) persists its answers between runs.",
     },
     CliMode {
         flag: "--emit-skb",
