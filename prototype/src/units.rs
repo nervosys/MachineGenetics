@@ -13,7 +13,8 @@
 //! The rules:
 //!
 //! - `+`, `-`, `%`, the comparisons, `min`/`max`, `=`, `+=` and `-=` need the
-//!   same dimension on both sides; the result keeps it.
+//!   same dimension on both sides; the result keeps it. `clamp(x, lo, hi)`
+//!   needs all three in one dimension, and keeps it.
 //! - `*` adds exponents and `/` subtracts them. `*=` and `/=` need a
 //!   dimensionless right-hand side, since they cannot change the target's unit.
 //! - A numeric literal is **polymorphic**: it takes the unit of the other
@@ -23,8 +24,8 @@
 //! - Parameters, returns, struct fields, consts and annotated `val`s carry
 //!   their declared dimension. A call checks each argument, and a function
 //!   checks what it returns.
-//! - `sqrt` halves every exponent and needs them all even. `abs`, `floor`,
-//!   `ceil`, `round` and `trunc` keep the unit. `exp`, `ln`, `log`, `log2`,
+//! - `sqrt` halves every exponent and needs them all even. `abs`, `relu`,
+//!   `floor`, `ceil`, `round` and `trunc` keep the unit. `exp`, `ln`, `log`, `log2`,
 //!   `log10`, the trigonometric and hyperbolic functions and `sigmoid` need a
 //!   dimensionless argument and return one. Each may be called as `f(x)` or
 //!   `x.f()`.
@@ -673,6 +674,10 @@ impl Checker {
             let verb = format!("take the {name} of");
             return Some(V::Num(self.same(&verb, first, args[1].d())));
         }
+        if name == "clamp" && args.len() == 3 {
+            let bounds = self.same("clamp between", args[1].d(), args[2].d());
+            return Some(V::Num(self.same("clamp", first, bounds)));
+        }
         if PURE_NUMBER.contains(&name) && args.len() == 1 {
             if let D::Known(d) = first
                 && !d.is_one()
@@ -1242,6 +1247,19 @@ mod tests {
         assert_eq!(unit_errors(src), ["`exp` needs a dimensionless argument, but was given m"]);
         let src = "f bad(x: f64[m], t: f64[s]) -> f64[m] { x.max(t) }";
         assert_eq!(unit_errors(src), ["cannot take the max of m and s"]);
+    }
+
+    #[test]
+    fn clamp_needs_one_unit_and_keeps_it() {
+        let src = "f a(x: f64[m], lo: f64[m], hi: f64[m]) -> f64[m] { clamp(x, lo, hi) + x.clamp(lo, hi) }\n\
+                   f b(x: f64[m]) -> f64[m] { clamp(x, 0.0, 1.0) }\n";
+        assert!(errors(src).is_empty(), "{:?}", errors(src));
+        let src = "f bad(x: f64[m], lo: f64[s], hi: f64[s]) -> f64[m] { clamp(x, lo, hi) }";
+        assert_eq!(unit_errors(src), ["cannot clamp m and s"]);
+        let src = "f bad(x: f64[m], lo: f64[m], hi: f64[s]) -> f64[m] { clamp(x, lo, hi) }";
+        assert_eq!(unit_errors(src), ["cannot clamp between m and s"]);
+        let src = "f bad(x: f64[m], lo: f64[m], hi: f64[m]) -> f64[s] { clamp(x, lo, hi) }";
+        assert_eq!(unit_errors(src).len(), 1, "the result keeps the unit of x");
     }
 
     #[test]
