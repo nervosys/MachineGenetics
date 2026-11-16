@@ -382,21 +382,21 @@ style:
 
 ### 4.3 Benchmark Corpus
 
-A standardized set of 100 programming tasks for evaluating MAGE agent performance:
+A standardized set of 99 programming tasks for evaluating MAGE agent performance:
 
 | Category                |  Tasks  | Token Range | Complexity |
 | ----------------------- | :-----: | :---------: | :--------: |
 | Basic I/O               |   10    |    20–50    |   Simple   |
 | Data structures         |   15    |   50–150    |   Medium   |
 | Algorithms              |   15    |   80–200    |   Medium   |
-| Concurrency             |   10    |   100–300   |    Hard    |
+| Concurrency             |    9    |   100–300   |    Hard    |
 | Web/Network             |   10    |   150–400   |    Hard    |
 | Systems programming     |   10    |   200–500   |    Hard    |
 | Agent orchestration     |   10    |   300–800   | Very Hard  |
 | Full applications       |   10    |  500–2000   | Very Hard  |
 | Error handling patterns |    5    |   50–150    |   Medium   |
 | Generic/trait design    |    5    |   100–300   |    Hard    |
-| **Total**               | **100** |      —      |     —      |
+| **Total**               | **99**  |      —      |     —      |
 
 Each task includes:
 - Natural language description

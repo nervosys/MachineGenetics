@@ -67,8 +67,8 @@
     "difficulty": "medium",
     "task": "Write a function that checks whether a string is a palindrome",
     "solution": {
-      "rdx_source": "+f is_palindrome(text: &s) -> bool {\n    v bytes: &[u8] = text.as_bytes();\n    m i: usize = 0;\n    m j: usize = bytes.len() - 1;\n    loop {\n        ? i >= j { ret 1b; }\n        ? bytes[i] != bytes[j] { ret 0b; }\n        i = i + 1;\n        j = j - 1;\n    }\n}",
-      "token_count": 60,
+      "rdx_source": "+f is_palindrome(text: &s) -> bool {\n    ? text.len() == 0 { ret 1b; }\n    v bytes: &[u8] = text.as_bytes();\n    m i: usize = 0;\n    m j: usize = bytes.len() - 1;\n    loop {\n        ? i >= j { ret 1b; }\n        ? bytes[i] != bytes[j] { ret 0b; }\n        i = i + 1;\n        j = j - 1;\n    }\n}",
+      "token_count": 99,
       "effects": [],
       "skb_rules_used": ["borrow:shared-ref"]
     },

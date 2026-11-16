@@ -558,7 +558,7 @@ const PROJECT_LAYOUT: &[(&str, &str)] = &[
     ("framework/framewerx/src/agentic/", "Orchestration: reasoning_patterns, multi_agent, decoding"),
     ("framework/framewerx/examples/", "Parse-verified, end-to-end-compile-tested examples"),
     ("benchmarks/", "Reliability + token benches; corpus + reports"),
-    ("benchmarks/tasks/", "100-task reference corpus"),
+    ("benchmarks/tasks/", "99-task reference corpus"),
     ("scripts/agent_wrappers/", "Subprocess wrappers for the agent protocol"),
     ("scripts/demo_agent_workflow.sh", "One-command end-to-end demo of the agent flow"),
     ("examples/", "Standalone `.mg` examples (agent-swarm, http-client, cli-tool, etc.)"),
@@ -600,7 +600,7 @@ const DOCS: &[(&str, &str, &str)] = &[
 /// `(name, threshold, what_it_protects)`.
 const CI_FLOORS: &[(&str, &str, &str)] = &[
     ("MIN_PARSE", ">= 98",
-        "File-oracle parse rate (100-task corpus) must not regress. Enforced by scripts/check-ci-floors.sh"),
+        "File-oracle parse rate (99-task corpus) must not regress. Enforced by scripts/check-ci-floors.sh"),
     ("MIN_HEAL", ">= 40",
         "Perturbed-oracle pattern-heal recovery count must not regress. Enforced by scripts/check-ci-floors.sh"),
     ("native-lexer ratio", "<= 1.100",

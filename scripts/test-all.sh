@@ -116,7 +116,7 @@ if [ "$BENCH" -eq 1 ]; then
     done
 
     # reliability-bench is a binary rather than a test, and it **exits 1 on its
-    # documented-correct result**: one of the 100 tasks does not parse cleanly
+    # documented-correct result**: one of the 99 tasks does not parse cleanly
     # and recovers via structural-heal, which it reports as a failure exit. So
     # its status is deliberately not treated as pass/fail here — the numbers it
     # prints are the measurement, and --check-docs compares those. Worth knowing
