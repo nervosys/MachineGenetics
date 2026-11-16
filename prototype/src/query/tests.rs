@@ -163,8 +163,14 @@ fn a_whitespace_edit_cuts_off_at_the_parse() {
     assert_eq!(executed(&s, "parsed"), 1);
     assert_eq!(executed(&s, "elided"), 1);
     assert_eq!(s.queries["elided"].early_cutoffs, 1, "elision is the cutoff point");
-    for q in ["items", "names", "resolve", "types", "effects", "diff", "mlir", "diagnostics", "pass/verify", "resolve_item"] {
+    for q in ["items", "names", "types", "effects", "mlir", "pass/verify", "resolve_item"] {
         assert_eq!(executed(&s, q), 0, "{q} ran after a whitespace-only edit");
+    }
+    // The steps that put absolute lines on diagnostics (they read the parse's
+    // item start lines) are cheap assemblies: they re-run and are cut off when
+    // they say the same thing, so nothing below them does.
+    for q in ["resolve", "diff", "diagnostics", "heal"] {
+        assert!(executed(&s, q) <= 1, "{q} ran more than once");
     }
     // `checked` re-ran to rebuild its findings from the new tokens (lex errors
     // carry token spans); everything under it was answered from memory.
@@ -406,8 +412,13 @@ fn a_whitespace_edit_in_a_new_process_still_hits_for_every_analysis() {
     let f = second.set_source("a.mg", &BASE.replace("f triple", "\n\nf triple"));
     run(&second, f);
     let s = second.stats();
-    for q in ["types", "effects", "mlir", "resolve", "diagnostics", "pass/verify"] {
+    for q in ["types", "effects", "mlir", "pass/verify"] {
         assert_eq!(executed(&s, q), 0, "{q} re-ran for a whitespace edit in a new process");
+    }
+    // The two steps that put absolute lines on diagnostics (they read the
+    // parse's item start lines) are cheap assemblies, and run again.
+    for q in ["resolve", "diagnostics"] {
+        assert!(executed(&s, q) <= 1, "{q} ran more than once");
     }
     assert!(s.queries["types"].disk_hits >= 1);
     let _ = std::fs::remove_dir_all(&dir);
@@ -581,5 +592,98 @@ fn a_blank_line_inside_a_function_moves_its_diagnostic_and_reruns_that_item_only
     assert_eq!(keys.len(), 1, "{keys:?}");
     assert!(keys[0].contains("\"moved\""), "{keys:?}");
     assert_eq!(borrow_lines(&c, f), vec![("E0382".into(), 8, 1), ("E0382".into(), 12, 1)]);
+    assert_eq!(format!("{:?}", c.checked(f).unwrap().findings), format!("{:?}", check_source(&edited, true, false).findings));
+}
+
+const UNRESOLVED: &str = "f a() -> i32 { 1 }
+f b() -> i32 {
+    v x = 1
+    x + zz
+}
+f c() -> i32 {
+    v y = 2
+    v z = yy
+    y
+}
+f dup() -> i32 { 1 }
+f dup() -> i32 { 2 }
+";
+
+/// `(code, line, col)` of the resolver's diagnostics, as the engine answers them.
+fn resolve_lines(c: &Compiler, f: File) -> Vec<(String, u32, u32)> {
+    c.resolve(f)
+        .unwrap()
+        .diagnostics
+        .iter()
+        .map(|d| (d.id.clone().unwrap(), d.span.expect("a resolver span").line, d.span.unwrap().col))
+        .collect()
+}
+
+#[test]
+fn resolve_positions_move_with_the_text_but_only_the_edited_item_reruns() {
+    let c = Compiler::in_memory();
+    let f = c.set_source("a.mg", UNRESOLVED);
+    run(&c, f);
+    // `duplicate definition` is reported at the second `dup` (line 12); the two
+    // unresolved names at the statements that use them.
+    let before = resolve_lines(&c, f);
+    assert_eq!(
+        before,
+        vec![
+            ("E0428".into(), 12, 1),
+            ("E0425".into(), 4, 5),
+            ("E0425".into(), 8, 5),
+        ]
+    );
+    c.reset_stats();
+
+    // Three lines are added to `a`: every item below it moves down, and only
+    // `a`'s own text changed, so only `a`'s resolution re-runs.
+    let edited = UNRESOLVED.replace("f a() -> i32 { 1 }", "f a() -> i32 {
+    1
+}
+
+");
+    c.set_source("a.mg", &edited);
+    run(&c, f);
+    let s = c.stats();
+    let keys = ran(&s, "resolve_item");
+    assert_eq!(keys.len(), 1, "{keys:?}");
+    assert!(keys[0].contains("\"a\""), "{keys:?}");
+    assert_eq!(
+        resolve_lines(&c, f),
+        vec![
+            ("E0428".into(), 16, 1),
+            ("E0425".into(), 8, 5),
+            ("E0425".into(), 12, 5),
+        ]
+    );
+    assert_eq!(format!("{:?}", c.checked(f).unwrap().findings), format!("{:?}", check_source(&edited, true, false).findings));
+}
+
+#[test]
+fn text_added_above_every_item_moves_resolve_lines_and_reruns_no_resolution() {
+    let c = Compiler::in_memory();
+    let f = c.set_source("a.mg", UNRESOLVED);
+    run(&c, f);
+    c.reset_stats();
+
+    let edited = format!("
+
+{UNRESOLVED}");
+    c.set_source("a.mg", &edited);
+    run(&c, f);
+    let s = c.stats();
+    for row in ITEM_ROWS {
+        assert_eq!(executed(&s, row), 0, "{row} must not re-run for a pure line shift: {:?}", ran(&s, row));
+    }
+    assert_eq!(
+        resolve_lines(&c, f),
+        vec![
+            ("E0428".into(), 14, 1),
+            ("E0425".into(), 6, 5),
+            ("E0425".into(), 10, 5),
+        ]
+    );
     assert_eq!(format!("{:?}", c.checked(f).unwrap().findings), format!("{:?}", check_source(&edited, true, false).findings));
 }

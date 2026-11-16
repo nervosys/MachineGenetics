@@ -73,7 +73,7 @@ use crate::ast::{self, ItemKind};
 use crate::borrowck::{self, ModuleInfo};
 use crate::check::{Checked, Finding};
 use crate::effects::{self, EffectInfer};
-use crate::hir::{Diagnostic, DiagnosticCategory, EffectSet, Severity};
+use crate::hir::{self, Diagnostic, DiagnosticCategory, EffectSet, Severity};
 use crate::lexer::{self, Token};
 use crate::resolve::{self, NameDecl};
 use crate::{abl_shape, autograd, canon, contract, core_subset, differentiable, elision, heal, logic, mlir, parser, shape, types, verdict, verify};
@@ -235,11 +235,26 @@ pub struct PassOut {
     pub notes: Vec<String>,
     /// A pass-defined count (symbols allocated, errors found, results).
     pub count: usize,
+    /// For a whole-module pass run with every start line zero (so its positions
+    /// are item-relative): per diagnostic, the item its position is counted
+    /// from, or `None` for one that is absolute or has none. Empty otherwise.
+    #[serde(default)]
+    pub owners: Vec<Option<usize>>,
 }
 
 impl PassOut {
     pub fn diags(diags: Vec<Diagnostic>) -> Self {
-        PassOut { diags, notes: Vec::new(), count: 0 }
+        PassOut { diags, ..Default::default() }
+    }
+}
+
+/// Make the item-relative positions of `diags` absolute, each against the start
+/// of the item `owners` names; a diagnostic with no owner is left as it is.
+fn locate(diags: &mut [Diagnostic], owners: &[Option<usize>], starts: &[u32]) {
+    for (d, owner) in diags.iter_mut().zip(owners) {
+        if let Some(i) = owner {
+            hir::rebase(std::slice::from_mut(d), starts.get(*i).copied());
+        }
     }
 }
 
@@ -248,6 +263,11 @@ impl PassOut {
 pub struct NamesOut {
     pub decls: Vec<NameDecl>,
     pub base: resolve::Partial,
+    /// For each of `base`'s diagnostics, the index of the top-level item that
+    /// caused it (a second definition of a name), so it can be pinned to that
+    /// item's line when the answer is assembled.
+    #[serde(default)]
+    pub base_items: Vec<usize>,
 }
 
 /// Name resolution, assembled.
@@ -262,6 +282,10 @@ pub struct ResolveOut {
 pub struct EffectsOut {
     pub inferred: BTreeMap<String, EffectSet>,
     pub diagnostics: Vec<Diagnostic>,
+    /// Per diagnostic, the item its (item-relative) position is counted from;
+    /// see [`PassOut::owners`].
+    #[serde(default)]
+    pub owners: Vec<Option<usize>>,
     pub surface: Vec<(String, Vec<String>, Vec<String>)>,
 }
 
@@ -282,6 +306,9 @@ pub struct DiagOut {
     pub all: Vec<Diagnostic>,
     /// Messages of the typed-composition gate (`E0710`).
     pub shape: Vec<String>,
+    /// The first line of the item each of `shape` came from (0: unknown).
+    #[serde(default)]
+    pub shape_lines: Vec<u32>,
     pub surface: Vec<serde_json::Value>,
 }
 
@@ -484,7 +511,7 @@ impl Registry {
 }
 
 fn one(item: &ast::Item) -> ast::Module {
-    ast::Module { items: vec![item.clone()], ..Default::default() }
+    ast::Module::single(item)
 }
 
 fn pass_verify(item: &ast::Item) -> PassOut {
@@ -493,6 +520,7 @@ fn pass_verify(item: &ast::Item) -> PassOut {
         diags: verify::diagnostics(&results),
         notes: results.iter().map(|r| serde_json::to_string(r).expect("serialises")).collect(),
         count: results.len(),
+        ..Default::default()
     }
 }
 
@@ -513,6 +541,7 @@ fn pass_shape(item: &ast::Item) -> PassOut {
         diags: Vec::new(),
         notes: abl_shape::check_module_shapes(&one(item)).into_iter().map(|d| d.message).collect(),
         count: 0,
+        ..Default::default()
     }
 }
 
@@ -777,6 +806,44 @@ fn outcome(db: &M, f: File) -> Result<Arc<ParseOutcome>, QueryError> {
     Ok(fetch!(db, Key::Elided(f), Outcome))
 }
 
+/// The absolute first line of each top-level item, as the parser saw them.
+fn starts_of(db: &M, f: File) -> Result<Vec<u32>, QueryError> {
+    let parsed = fetch!(db, Key::Parsed(f), Outcome);
+    Ok(parsed.module.as_ref().map(|m| m.starts.clone()).unwrap_or_default())
+}
+
+/// `m` with the item start lines restored. The elided module the queries read
+/// carries none (a line shift must not reach them); a pass that needs them
+/// asks here.
+fn located(m: &ast::Module, starts: Vec<u32>) -> ast::Module {
+    ast::Module { items: m.items.clone(), starts }
+}
+
+/// `m` with every start line zero: a whole-module pass run on it reports
+/// positions relative to their item, and says which item, so its answer does
+/// not depend on where in the file the items are. [`locate`] makes them absolute.
+fn unplaced(m: &ast::Module) -> ast::Module {
+    ast::Module { items: m.items.clone(), starts: vec![0; m.items.len()] }
+}
+
+/// The type checker's diagnostics, with absolute positions.
+fn types_located(db: &M, f: File) -> Result<Arc<PassOut>, QueryError> {
+    let raw = fetch!(db, Key::Types(f), Pass);
+    let mut out = (*raw).clone();
+    locate(&mut out.diags, &out.owners, &starts_of(db, f)?);
+    out.owners.clear();
+    Ok(Arc::new(out))
+}
+
+/// Effect inference, with absolute positions on its diagnostics.
+fn effects_located(db: &M, f: File) -> Result<Arc<EffectsOut>, QueryError> {
+    let raw = fetch!(db, Key::Effects(f), Effects);
+    let mut out = (*raw).clone();
+    locate(&mut out.diagnostics, &out.owners, &starts_of(db, f)?);
+    out.owners.clear();
+    Ok(Arc::new(out))
+}
+
 fn find<'a>(module: &'a ast::Module, id: &ItemId) -> Option<&'a ast::Item> {
     let mut seen = 0;
     for it in &module.items {
@@ -869,18 +936,19 @@ fn exec(db: &M, key: &Key) -> Result<Val, QueryError> {
         }
         Key::Names(f) => {
             let o = outcome(db, *f)?;
-            let decls: Vec<NameDecl> = match &o.module {
-                Some(m) => m.items.iter().flat_map(resolve::item_decls).collect(),
+            let per_item: Vec<Vec<NameDecl>> = match &o.module {
+                Some(m) => m.items.iter().map(resolve::item_decls).collect(),
                 None => Vec::new(),
             };
-            let base = resolve::resolve_names(&decls);
-            Val::Names(Arc::new(NamesOut { decls, base }))
+            let (base, base_items) = resolve::resolve_names_by_item(&per_item);
+            let decls: Vec<NameDecl> = per_item.into_iter().flatten().collect();
+            Val::Names(Arc::new(NamesOut { decls, base, base_items }))
         }
         Key::ResolveItem(f, id) => {
             let names = fetch!(db, Key::Names(*f), Names);
             let item = fetch!(db, Key::Item(*f, id.clone()), Item);
             let p = resolve::resolve_item_in(&names.decls, &item);
-            Val::Pass(Arc::new(PassOut { diags: p.diagnostics, notes: Vec::new(), count: p.symbols }))
+            Val::Pass(Arc::new(PassOut { diags: p.diagnostics, count: p.symbols, ..Default::default() }))
         }
         Key::ResolveContracts(f) => {
             let o = outcome(db, *f)?;
@@ -889,18 +957,26 @@ fn exec(db: &M, key: &Key) -> Result<Val, QueryError> {
                 None => empty_pass(),
                 Some(m) => {
                     let p = resolve::resolve_contracts_in(&names.decls, m);
-                    Val::Pass(Arc::new(PassOut { diags: p.diagnostics, notes: Vec::new(), count: p.symbols }))
+                    Val::Pass(Arc::new(PassOut { diags: p.diagnostics, count: p.symbols, ..Default::default() }))
                 }
             }
         }
         Key::Resolve(f) => {
             let items = fetch!(db, Key::Items(*f), Items);
             let names = fetch!(db, Key::Names(*f), Names);
+            let starts = starts_of(db, *f)?;
             let mut diagnostics = names.base.diagnostics.clone();
+            // A duplicate name is pinned to the item that defines it again.
+            for (d, at) in diagnostics.iter_mut().zip(&names.base_items) {
+                hir::stamp_missing(std::slice::from_mut(d), hir::Span::item(starts.get(*at).copied()));
+            }
             let mut symbols = names.base.symbols;
-            for info in items.iter() {
+            for (n, info) in items.iter().enumerate() {
                 let p = fetch!(db, Key::ResolveItem(*f, info.id.clone()), Pass);
-                diagnostics.extend(p.diags.iter().cloned());
+                // The per-item answer is item-relative: rebase it here.
+                let mut d = p.diags.clone();
+                hir::rebase(&mut d, starts.get(n).copied());
+                diagnostics.extend(d);
                 symbols += p.count;
             }
             let c = fetch!(db, Key::ResolveContracts(*f), Pass);
@@ -946,7 +1022,13 @@ fn exec(db: &M, key: &Key) -> Result<Val, QueryError> {
         Key::Types(f) => {
             let o = outcome(db, *f)?;
             match &o.module {
-                Some(m) => Val::Pass(Arc::new(PassOut::diags(types::check(m).diagnostics))),
+                Some(m) => {
+                    // Item-relative positions and their owners: where the items
+                    // sit in the file is not an input, so a line shift re-runs
+                    // nothing here (see `types_located`).
+                    let tc = types::check(&unplaced(m));
+                    Val::Pass(Arc::new(PassOut { diags: tc.diagnostics, owners: tc.owners, ..Default::default() }))
+                }
                 None => empty_pass(),
             }
         }
@@ -954,14 +1036,20 @@ fn exec(db: &M, key: &Key) -> Result<Val, QueryError> {
             let o = outcome(db, *f)?;
             let out = match &o.module {
                 Some(m) => {
-                    let e = effects::infer_effects(m);
+                    let e = effects::infer_effects(&unplaced(m));
                     EffectsOut {
                         inferred: e.inferred.iter().map(|(k, v)| (k.clone(), v.clone())).collect(),
                         diagnostics: e.diagnostics.clone(),
+                        owners: e.diag_items.clone(),
                         surface: e.effect_surface(),
                     }
                 }
-                None => EffectsOut { inferred: BTreeMap::new(), diagnostics: Vec::new(), surface: Vec::new() },
+                None => EffectsOut {
+                    inferred: BTreeMap::new(),
+                    diagnostics: Vec::new(),
+                    owners: Vec::new(),
+                    surface: Vec::new(),
+                },
             };
             Val::Effects(Arc::new(out))
         }
@@ -971,6 +1059,7 @@ fn exec(db: &M, key: &Key) -> Result<Val, QueryError> {
             match &o.module {
                 None => empty_pass(),
                 Some(m) => {
+                    let m = &located(m, starts_of(db, *f)?);
                     let engine = differentiable::infer(m, &eff.infer());
                     let mut d = differentiable::check_grad_obligations(m, &engine);
                     d.extend(differentiable::train_block_errors(m, &engine));
@@ -990,9 +1079,9 @@ fn exec(db: &M, key: &Key) -> Result<Val, QueryError> {
         Key::Checked(f) => exec_checked(db, *f)?,
         Key::Heal(f) => {
             let resolve = fetch!(db, Key::Resolve(*f), Resolve);
-            let types = fetch!(db, Key::Types(*f), Pass);
+            let types = types_located(db, *f)?;
             let borrow = fetch!(db, Key::Borrowck(*f), Pass);
-            let eff = fetch!(db, Key::Effects(*f), Effects);
+            let eff = effects_located(db, *f)?;
             let mut all = resolve.diagnostics.clone();
             all.extend(types.diags.iter().cloned());
             all.extend(borrow.diags.iter().cloned());
@@ -1023,24 +1112,47 @@ fn pass_keys(db: &M, f: File, items: &[ItemInfo], core: bool) -> Vec<Key> {
 fn exec_diagnostics(db: &M, f: File) -> Result<Val, QueryError> {
     let o = outcome(db, f)?;
     if o.module.is_none() {
-        return Ok(Val::Diag(Arc::new(DiagOut { all: Vec::new(), shape: Vec::new(), surface: Vec::new() })));
+        return Ok(Val::Diag(Arc::new(DiagOut { all: Vec::new(), shape: Vec::new(), shape_lines: Vec::new(), surface: Vec::new() })));
     }
     let st = settings(db)?;
     let items = fetch!(db, Key::Items(f), Items);
     let mut all: Vec<Diagnostic> = Vec::new();
     all.extend(fetch!(db, Key::Resolve(f), Resolve).diagnostics.iter().cloned());
-    all.extend(fetch!(db, Key::Types(f), Pass).diags.iter().cloned());
+    all.extend(types_located(db, f)?.diags.iter().cloned());
     all.extend(fetch!(db, Key::Borrowck(f), Pass).diags.iter().cloned());
-    let eff = fetch!(db, Key::Effects(f), Effects);
+    let eff = effects_located(db, f)?;
     all.extend(eff.diagnostics.iter().cloned());
     all.extend(fetch!(db, Key::Diff(f), Pass).diags.iter().cloned());
-    for key in pass_keys(db, f, &items, st.core) {
-        all.extend(fetch!(db, key, Pass).diags.iter().cloned());
+    // The per-item passes answer without a position (their answers must not
+    // change when the item moves); an error they cannot place finer is pinned
+    // to the first line of its item here.
+    let starts = starts_of(db, f)?;
+    let at = |n: usize| hir::Span::item(starts.get(n).copied());
+    for (p, def) in db.ctx.items.iter().enumerate() {
+        let wanted = match def.role {
+            PassRole::Diagnostics => true,
+            PassRole::CoreOnly => st.core,
+            PassRole::Shape | PassRole::Report => false,
+        };
+        if wanted {
+            for (n, i) in items.iter().enumerate() {
+                let mut d = fetch!(db, Key::ItemPass(f, p, i.id.clone()), Pass).diags.clone();
+                hir::stamp_missing(&mut d, at(n));
+                all.extend(d);
+            }
+        }
+    }
+    for p in 0..db.ctx.modules.len() {
+        all.extend(fetch!(db, Key::ModulePass(f, p), Pass).diags.iter().cloned());
     }
     let shape_pass = db.ctx.item_index("shape");
     let mut shape = Vec::new();
-    for i in items.iter() {
-        shape.extend(fetch!(db, Key::ItemPass(f, shape_pass, i.id.clone()), Pass).notes.iter().cloned());
+    let mut shape_lines = Vec::new();
+    for (n, i) in items.iter().enumerate() {
+        for note in fetch!(db, Key::ItemPass(f, shape_pass, i.id.clone()), Pass).notes.iter() {
+            shape.push(note.clone());
+            shape_lines.push(at(n).map_or(0, |s| s.line));
+        }
     }
     let surface = eff
         .surface
@@ -1049,7 +1161,7 @@ fn exec_diagnostics(db: &M, f: File) -> Result<Val, QueryError> {
             serde_json::json!({ "function": func, "declared": declared, "inferred": inferred })
         })
         .collect();
-    Ok(Val::Diag(Arc::new(DiagOut { all, shape, surface })))
+    Ok(Val::Diag(Arc::new(DiagOut { all, shape, shape_lines, surface })))
 }
 
 fn exec_checked(db: &M, f: File) -> Result<Val, QueryError> {
@@ -1097,11 +1209,12 @@ fn exec_checked(db: &M, f: File) -> Result<Val, QueryError> {
             let code = d.id.clone().unwrap_or_else(|| cat.code().to_string());
             push(sev, line, col, &code, &format!("{cat:?}"), d.message.clone(), cat.fix_hint());
         }
-        for m in &diag.shape {
+        for (k, m) in diag.shape.iter().enumerate() {
+            let line = diag.shape_lines.get(k).copied().unwrap_or(0);
             push(
                 "error",
-                0,
-                0,
+                line,
+                if line > 0 { 1 } else { 0 },
                 "E0710",
                 "ShapeError",
                 m.clone(),
@@ -1146,7 +1259,7 @@ fn exec_report(db: &M, f: File) -> Result<Val, QueryError> {
     r.symbols = resolve.symbols;
     total += count_errors(&resolve.diagnostics);
 
-    let types = fetch!(db, Key::Types(f), Pass);
+    let types = types_located(db, f)?;
     r.type_diags = types.diags.iter().map(|d| d.to_string()).collect();
     total += count_errors(&types.diags);
 
@@ -1166,7 +1279,7 @@ fn exec_report(db: &M, f: File) -> Result<Val, QueryError> {
     }
     total += r.ai_errors;
 
-    let eff = fetch!(db, Key::Effects(f), Effects);
+    let eff = effects_located(db, f)?;
     r.effect_diags = eff.diagnostics.iter().map(|d| d.to_string()).collect();
     total += count_errors(&eff.diagnostics);
     r.effects = eff
@@ -1363,7 +1476,8 @@ fn addr(db: &M, key: &Key) -> Result<Option<Hash32>, QueryError> {
                 Val::Items(i) => i,
                 other => return Err(mismatch(key, &other)),
             };
-            let mut parts: Vec<Hash32> = vec![db.get_hash(&Key::Names(*f))?, db.get_hash(&Key::Items(*f))?];
+            let mut parts: Vec<Hash32> =
+                vec![db.get_hash(&Key::Names(*f))?, db.get_hash(&Key::Items(*f))?, db.get_hash(&Key::Parsed(*f))?];
             for i in items.iter() {
                 parts.push(db.get_hash(&Key::ResolveItem(*f, i.id.clone()))?);
             }
@@ -1377,7 +1491,8 @@ fn addr(db: &M, key: &Key) -> Result<Option<Hash32>, QueryError> {
                 Val::Items(i) => i,
                 other => return Err(mismatch(key, &other)),
             };
-            let mut parts: Vec<Hash32> = vec![db.get_hash(&Key::Elided(*f))?, db.get_hash(&Key::Items(*f))?];
+            let mut parts: Vec<Hash32> =
+                vec![db.get_hash(&Key::Elided(*f))?, db.get_hash(&Key::Items(*f))?, db.get_hash(&Key::Parsed(*f))?];
             for k in [Key::Resolve(*f), Key::Types(*f), Key::Borrowck(*f), Key::Effects(*f), Key::Diff(*f)] {
                 parts.push(db.get_hash(&k)?);
             }
@@ -1665,7 +1780,7 @@ impl Compiler {
     }
 
     pub fn type_diagnostics(&self, f: File) -> Result<Arc<PassOut>, QueryError> {
-        Ok(fetch!(self.db, Key::Types(f), Pass))
+        types_located(&self.db, f)
     }
 
     /// The borrow checker's diagnostics for the whole module, assembled from the
@@ -1675,7 +1790,7 @@ impl Compiler {
     }
 
     pub fn effects(&self, f: File) -> Result<Arc<EffectsOut>, QueryError> {
-        Ok(fetch!(self.db, Key::Effects(f), Effects))
+        effects_located(&self.db, f)
     }
 
     pub fn diagnostics(&self, f: File) -> Result<Arc<DiagOut>, QueryError> {

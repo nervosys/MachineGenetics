@@ -34,6 +34,16 @@ impl Pos {
     pub fn is_set(&self) -> bool {
         self.col != 0
     }
+
+    /// This position as a diagnostic span, given the first line of the
+    /// top-level item it is relative to (`Some(0)` keeps it item-relative).
+    /// `None` for a position that was never set or an item with no known start.
+    pub fn at(&self, base: Option<u32>) -> Option<crate::hir::Span> {
+        match (self.is_set(), base) {
+            (true, Some(b)) => Some(crate::hir::Span { line: b + self.line, col: self.col }),
+            _ => None,
+        }
+    }
 }
 
 impl PartialEq for Pos {
@@ -69,6 +79,18 @@ pub struct Module {
     /// `items` order (empty for a module not built by the parser).
     #[serde(default, skip_serializing_if = "positions_hidden")]
     pub starts: Vec<u32>,
+}
+
+impl Module {
+    /// A module of just `item`, with no start line: what a per-item pass runs on.
+    pub fn single(item: &Item) -> Module {
+        Module { items: vec![item.clone()], ..Default::default() }
+    }
+
+    /// Absolute 1-based first line of top-level item `i`, if the parser recorded it.
+    pub fn start_of(&self, i: usize) -> Option<u32> {
+        self.starts.get(i).copied()
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
