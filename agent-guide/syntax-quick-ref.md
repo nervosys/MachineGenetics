@@ -29,7 +29,7 @@ agent Name { capabilities: [] } agent role
 swarm Name { agent: A }         swarm
 kb Name { fact …; rule … }      knowledge base
 net Name { layer …; forward }   neural net
-val x = expr                    immutable, not enforced       v
+val x = expr                    immutable binding             v
 var x = expr                    mutable binding               m
 pub const NAME: T = expr;       constant (`;` required)       C
 Z NAME: T = expr;               retired (E0554): use `C`      Z

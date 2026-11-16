@@ -24,7 +24,7 @@ Do not write Rust. Every MAGE spelling below was checked against the compiler.
 | `pub fn name()`               | `pub fn name()`                    | `+f`        | Public function                         |
 | `async fn name()`             | `async name()`                     | `af`        | Not `async fn`                          |
 | `unsafe fn`                   | reserved (`uf`)                    |             | Not yet supported                       |
-| `let x = 1`                   | `val x = 1`                        | `v`         | `let` is rejected; `val` is not enforced immutable |
+| `let x = 1`                   | `val x = 1`                        | `v`         | `let` is rejected; assigning to a `val` is an error |
 | `let mut x = 1`               | `var x = 1`                        | `m`         | Mutable binding                         |
 | `pub const X: i32 = 1;`       | `pub const X: i32 = 1;`            | `C`         | `;` required; `static`/`Z` retired      |
 | `const fn`, `pub(crate)`      | none                               |             | Do not write                            |
@@ -174,7 +174,7 @@ agent SecretReader {
 3. **NEVER** use `unsafe` — it is reserved. Reach the outside world through
    effect-declared capability calls (`fs.read(...)`, `net.connect(...)`).
 4. **NEVER** omit effect annotations on impure functions
-5. **NEVER** assume an effect hierarchy or that `val` is enforced immutable.
+5. **NEVER** assume an effect hierarchy, or assign to a `val` (use `var`).
 
 ## Response Format
 

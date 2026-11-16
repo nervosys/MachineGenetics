@@ -14,7 +14,7 @@ syntax_rules:
     - "f / +f (or fn / pub fn) for private/public functions"
     - "af name() (or 'async name()') for async functions; NOT 'async fn'"
     - "val / v for bindings (NOT let); var / m for mutable bindings (NOT let mut)"
-    - "val is NOT enforced immutable; do not rely on it"
+    - "val is immutable: assigning to it is an error; use var for a binding you change"
     - "pub const NAME: T = expr; for constants (the ';' is required)"
     - "S / struct, E / enum, T / trait; +S, +E, +T for public"
     - "I / impl: both 'impl Type { }' and 'impl Trait for Type { }' parse"

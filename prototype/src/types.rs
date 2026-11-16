@@ -322,25 +322,50 @@ fn unify_shapes(
 struct TypeEnv {
     /// Stack of scopes: name → Ty.
     scopes: Vec<HashMap<String, Ty>>,
+    /// Per scope, the names bound by `val` (immutable). A later binding of
+    /// the same name in the same scope clears it.
+    frozen: Vec<std::collections::HashSet<String>>,
 }
 
 impl TypeEnv {
     fn new() -> Self {
-        TypeEnv { scopes: vec![HashMap::new()] }
+        TypeEnv { scopes: vec![HashMap::new()], frozen: vec![Default::default()] }
     }
 
     fn push(&mut self) {
         self.scopes.push(HashMap::new());
+        self.frozen.push(Default::default());
     }
 
     fn pop(&mut self) {
         self.scopes.pop();
+        self.frozen.pop();
     }
 
     fn insert(&mut self, name: String, ty: Ty) {
+        if let Some(frozen) = self.frozen.last_mut() {
+            frozen.remove(&name);
+        }
         if let Some(scope) = self.scopes.last_mut() {
             scope.insert(name, ty);
         }
+    }
+
+    /// Mark `name`, just bound in the innermost scope, as bound by `val`.
+    fn freeze(&mut self, name: &str) {
+        if let Some(frozen) = self.frozen.last_mut() {
+            frozen.insert(name.to_string());
+        }
+    }
+
+    /// Whether the binding `name` resolves to was made by `val`.
+    fn is_frozen(&self, name: &str) -> bool {
+        for (scope, frozen) in self.scopes.iter().zip(self.frozen.iter()).rev() {
+            if scope.contains_key(name) {
+                return frozen.contains(name);
+            }
+        }
+        false
     }
 
     fn lookup(&self, name: &str) -> Option<&Ty> {
@@ -1567,7 +1592,7 @@ impl TypeChecker {
 
     fn check_stmt(&mut self, stmt: &ast::Stmt) {
         match stmt {
-            ast::Stmt::Let { pattern, ty, value, .. } => {
+            ast::Stmt::Let { mutable, pattern, ty, value } => {
                 let val_ty = self.infer_expr(value);
 
                 if let Some(declared) = ty {
@@ -1578,6 +1603,9 @@ impl TypeChecker {
                     self.bind_pattern(pattern, &declared_ty);
                 } else {
                     self.bind_pattern(pattern, &val_ty);
+                }
+                if let (false, ast::Pattern::Ident { name }) = (mutable, pattern) {
+                    self.env.freeze(name);
                 }
             }
             ast::Stmt::Expr { expr } => {
@@ -1614,6 +1642,23 @@ impl TypeChecker {
             }
             ast::Stmt::Defer { expr } => {
                 self.infer_expr(expr);
+            }
+        }
+    }
+
+    /// An assignment's target must not be, or be part of, a `val` binding.
+    /// `val` was documented as immutable and was not: `val x = 1; x = 4`
+    /// checked clean and evaluated to 4.
+    fn check_assignable(&mut self, target: &ast::Expr) {
+        let mut root = target;
+        while let ast::Expr::FieldAccess { object, .. } | ast::Expr::Index { object, .. } = root {
+            root = object;
+        }
+        if let ast::Expr::Ident { name } = root {
+            if self.env.is_frozen(name) {
+                self.emit_error(format!(
+                    "cannot assign to `{name}`: it is bound with `val`, which is immutable; bind it with `var` to change it"
+                ));
             }
         }
     }
@@ -1772,6 +1817,7 @@ impl TypeChecker {
                     // untyped-parameter program it was found in simply had two
                     // problems at once.
                     "+=" | "-=" | "*=" | "/=" | "%=" | "&=" | "|=" | "^=" | "<<=" | ">>=" => {
+                        self.check_assignable(left);
                         if let Err(e) = unify(&mut self.subst, &lt, &rt) {
                             self.emit_error(format!("compound assignment `{op}`: {e}"));
                         }
@@ -2421,6 +2467,7 @@ impl TypeChecker {
             }
 
             ast::Expr::Assign { target, value } => {
+                self.check_assignable(target);
                 let lt = self.infer_expr(target);
                 let rt = self.infer_expr(value);
                 if let Err(e) = unify(&mut self.subst, &lt, &rt) {
@@ -2901,6 +2948,25 @@ mod tests {
         }
         // A method call on a scalar is not a field access.
         assert_eq!(error_messages("f g(x: f64) -> f64 { x.abs() }"), Vec::<String>::new());
+    }
+
+    #[test]
+    fn a_val_binding_cannot_be_assigned() {
+        for bad in [
+            "f g() -> i64 { val x = 1\n x = 4\n x }",
+            "f g() -> i64 { v x = 1\n x += 4\n x }",
+            "f g() -> i64 { val xs = [1, 2]\n xs[0] = 4\n 1 }",
+        ] {
+            let errs = error_messages(bad);
+            assert!(errs.iter().any(|e| e.contains("bound with `val`")), "{bad}: {errs:?}");
+        }
+        for good in [
+            "f g() -> i64 { var x = 1\n x = 4\n x }",
+            "f g() -> i64 { val x = 1\n var x = x\n x += 4\n x }",
+            "f g(x: i64) -> i64 { var y = x\n y = 2\n y }",
+        ] {
+            assert_eq!(error_messages(good), Vec::<String>::new(), "{good}");
+        }
     }
 
     #[test]
