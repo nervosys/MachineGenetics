@@ -92,6 +92,13 @@ pub enum Entry {
     /// can count the cycle as the refusal it was. A new variant, so every
     /// earlier entry hashes as it did.
     CycleRefused { proposer: String, refused: u32 },
+    /// Joules booked to the energy budget (see
+    /// [`RunnerPolicy::energy_budget_joules`](crate::runner::RunnerPolicy)).
+    /// `joules` is one cycle's own spend, or, at the start of an invocation, the
+    /// evaluations made before the run (the seed). Written only under a budget,
+    /// so a run without one journals exactly as before. A new variant, so every
+    /// earlier entry hashes as it did.
+    EnergySpent { cycle: u32, joules: f64 },
     /// The gate ruled.
     Adjudicated { verdict: Verdict, attestation: Option<String> },
     /// Authority moved (or was refused).

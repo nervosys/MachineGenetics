@@ -148,6 +148,10 @@ pub struct Resumed {
     /// Refusals since the last promotion, so a stall that spans a restart is
     /// still a stall.
     pub trailing_refusals: u32,
+    /// Joules the journal books to the energy budget: the sum of its
+    /// `EnergySpent` entries. Zero for a journal written without a budget, so
+    /// spend from invocations that had none is not counted.
+    pub energy_spent: f64,
     /// Each external proposer's standing, rebuilt from the journal's
     /// `Calibrated` entries in order. A proposer with no scored prediction has
     /// no entry here, which is zero trust.
@@ -447,6 +451,7 @@ impl Lineage {
         let mut l = genesis;
         let mut pending: BTreeMap<GenerationId, Generation> = BTreeMap::new();
         let (mut proposals, mut trailing_refusals) = (0u32, 0u32);
+        let mut energy_spent = 0.0f64;
         let mut proposers: BTreeMap<String, ProposerRecord> = BTreeMap::new();
         for r in &records {
             let bad = |detail: String| ReplayError::Inconsistent { index: r.index, detail };
@@ -544,10 +549,11 @@ impl Lineage {
                     proposals += 1;
                     trailing_refusals += 1;
                 }
+                Entry::EnergySpent { joules, .. } => energy_spent += joules,
                 Entry::Adjudicated { .. } | Entry::Failure { .. } | Entry::Note { .. } => {}
             }
         }
-        Ok(Resumed { lineage: l, proposals, trailing_refusals, proposers, head })
+        Ok(Resumed { lineage: l, proposals, trailing_refusals, energy_spent, proposers, head })
     }
 }
 

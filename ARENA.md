@@ -770,7 +770,38 @@ arena succession --heldout FILE[,FILE...] --journal PATH [--cycles N] [--seed N]
                  [--objectives capability[,efficiency][,latency]] [--dominance-min F]
                  [--dominance-floor F] [--objective-tolerance AXIS=F,...]
                  [--allow-estimated-energy]
+                 [--energy-budget JOULES] [--param-search es|perturb]
 ```
+
+**Continuous search (`--param-search es`).** The genome's continuous loci (`lr`,
+`learner_steps`, `length_charge`, `temperature`) are varied by `Perturb` by default.
+`--param-search es` switches them to a self-adaptive evolution strategy with a
+step size per locus, at its stated defaults (`GERMLINE.md`, variation). It is not
+CMA-ES, and it has no covariance adaptation. At the defaults and the budget
+measured in `GERMLINE.md`, it does not beat `Perturb` on a smooth synthetic task:
+it sits within about 0.0005 of it. The flag changes which operator proposes the
+continuous loci. The gate, the suite and the energy accounting are unchanged.
+
+**Energy budget (`--energy-budget JOULES`).** A fixed unit of compute across the
+whole run, including the seed. Before each cycle the run adds up every joule its
+sessions have charged so far. The total is the kernel ledger's sum over programs,
+training and probes, not held-out evaluation, which is not charged, as in plain
+`arena`. The seed is measured in every invocation, and its joules count in that
+invocation. When the total reaches the budget the run halts with
+`energy budget reached` and exits `0`, as for budget-exhausted by cycles. The
+last cycle that starts is the one that takes the spend past the line, so the
+spend can exceed the budget by one cycle.
+
+The output prints the budget and the spend next to their basis. A figure is
+**measured** only when every session read its energy from a hardware counter. On a
+machine without one the basis is **estimated** (wall-clock seconds times the
+assumed 65 W), and the output says so. A session whose energy was not read in full
+refuses to run under a budget, rather than give an undercount.
+
+Resume restores the spend from the journal. Each invocation writes an
+`EnergySpent` record, one per cycle plus one for its seed, and only under a budget.
+A journal written before any budget was set therefore restores zero for its earlier
+cycles, and the resume prints that.
 
 **Multi-objective succession (`--objectives`).** Without the flag the run is as
 described below. With it:
@@ -866,7 +897,8 @@ champion. `--json` prints the `RunReport` with the suite digest added.
 - **Held-out re-check.** The suite digest is computed at startup, and the files
   are re-read and re-hashed before every cycle. The same check runs before every
   round of the plain `arena --heldout` run. A change stops the run with an error.
-- **Exit codes.** `0`: budget exhausted, stop requested, or search stalled. `1`:
+- **Exit codes.** `0`: budget exhausted, energy budget reached, stop requested, or
+  search stalled. `1`:
   workload failure, including held-out data that changed on disk. `2`:
   demotion, a failure with no usable fallback, or a usage error.
 - **Attestation key.** Read from `ARENA_ATTEST_KEY`. If it is unset, a built-in
@@ -883,10 +915,13 @@ champion. `--json` prints the `RunReport` with the suite digest added.
 
 What this does not do:
 
-- **No energy budget across cycles.** `--energy-budget` on the plain `arena`
-  command applies to one session. The succession loop has no joule ceiling of
-  its own, so `--cycles` is the only bound. Every candidate is a full arena
-  session, so cost grows with `--cycles × --candidates`.
+- **The succession budget counts estimated joules on most machines.** The budget
+  (`--energy-budget`) is only as good as the meter. Without a hardware counter the
+  joules are wall-clock seconds times an assumed 65 W, and the budget is then a
+  bound on time, not on energy. The output names the basis each time. The budget
+  also overshoots by up to one cycle, since it is checked before each cycle.
+  Every candidate is a full arena session, so cost grows with
+  `--cycles × --candidates`, and `--cycles` remains a bound alongside the budget.
 - **Resume re-measures the seed.** Resuming rebuilds the seed champion by running
   the base configuration again. Its efficiency is wall-clock based, so it can
   differ from the figure the original run recorded, and a comparison made after
@@ -1502,4 +1537,5 @@ default could change.
    propose, evaluate, gate and promote unattended for arena configurations, and
    authority changes hands only through `Episode::adjudicate`. Not done: learners
    that survive the front of a plain `arena` run are still not offered to the
-   gate, and the succession loop has no energy budget across cycles.
+   gate. The succession loop's energy budget across cycles is built
+   (`--energy-budget`, above).

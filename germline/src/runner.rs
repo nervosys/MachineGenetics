@@ -86,6 +86,15 @@ pub struct RunnerPolicy {
     /// it keep the digest they had.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub stop_file: Option<PathBuf>,
+    /// A fixed unit of compute across cycles, in joules. Before each cycle the
+    /// runner compares the joules booked so far (this invocation's, plus those
+    /// restored from the journal) with this figure, and halts with
+    /// [`Halt::EnergyExhausted`] once they reach it. It needs a workload that
+    /// reports its joules ([`Workload::joules_spent`]): one that reports none is
+    /// refused at the start rather than run unbounded. `None` is no budget, and
+    /// is left out of the serialized policy, so existing digests hold.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub energy_budget_joules: Option<f64>,
 }
 
 impl Default for RunnerPolicy {
@@ -100,6 +109,7 @@ impl Default for RunnerPolicy {
             variation: VariationPlan::default(),
             supervision: SupervisionPolicy::default(),
             stop_file: None,
+            energy_budget_joules: None,
         }
     }
 }
@@ -130,6 +140,11 @@ pub enum Halt {
     /// The policy's stop file existed before a cycle. `after_cycles` is how many
     /// cycles this invocation completed first. Not a failure: the operator asked.
     StopRequested { after_cycles: u32 },
+    /// The energy budget was reached before a cycle started. `spent` and
+    /// `budget` are joules, and `after_cycles` is how many cycles this
+    /// invocation completed. Like [`Halt::StopRequested`], this is a clean stop:
+    /// the budget is the operator's own limit, not a failure.
+    EnergyExhausted { spent: f64, budget: f64, after_cycles: u32 },
     /// A fallback was needed and none was usable. The most serious stop: the
     /// system is running something it has decided it should not be running.
     NoFallbackAvailable { generation: GenerationId, detail: String },
@@ -154,6 +169,13 @@ pub struct RunReport {
     pub halt: Halt,
     /// Journal head at the end — the anchor for the whole run.
     pub journal_head: Option<Digest>,
+    /// Joules booked to the energy budget so far: restored from the journal
+    /// plus this invocation's spend. Present only under a budget.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub energy_spent_joules: Option<f64>,
+    /// The energy budget in joules, when there is one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub energy_budget_joules: Option<f64>,
 }
 
 impl RunReport {
@@ -203,6 +225,16 @@ pub trait Workload {
     /// say) checks them here. An error halts the run as a workload failure.
     fn before_cycle(&mut self) -> Result<(), String> {
         Ok(())
+    }
+
+    /// Joules this workload has spent on its evaluations, counted from its
+    /// construction, including any made before a run (the seed, say). `None`
+    /// when it does not meter energy. The runner reads the difference across
+    /// each cycle and books it to the energy budget. `None` by default, so an
+    /// existing workload is unchanged. A run with a budget refuses to start on
+    /// a workload that returns `None`.
+    fn joules_spent(&self) -> Option<f64> {
+        None
     }
 }
 
@@ -277,6 +309,9 @@ pub struct Runner<'a> {
     /// one, so the cycle seeds and the stall count continue where they were.
     first_cycle: u32,
     carried_refusals: u32,
+    /// Joules the journal already books to the energy budget, from earlier
+    /// invocations (see [`Lineage::replay`]). Zero for a fresh run.
+    carried_joules: f64,
 }
 
 impl<'a> Runner<'a> {
@@ -299,6 +334,7 @@ impl<'a> Runner<'a> {
             proposer_records: BTreeMap::new(),
             first_cycle: 0,
             carried_refusals: 0,
+            carried_joules: 0.0,
         }
     }
 
@@ -310,6 +346,7 @@ impl<'a> Runner<'a> {
     pub fn resume(mut self, from: &super::lineage::Resumed) -> Self {
         self.first_cycle = from.proposals;
         self.carried_refusals = from.trailing_refusals;
+        self.carried_joules = from.energy_spent;
         for (name, record) in &from.proposers {
             self.proposer_records.insert(name.clone(), record.clone());
         }
@@ -380,6 +417,7 @@ impl<'a> Runner<'a> {
             ),
         });
 
+        let budget = self.policy.energy_budget_joules;
         let mut report = RunReport {
             policy: self.policy.name.clone(),
             policy_digest: policy_digest.clone(),
@@ -388,9 +426,48 @@ impl<'a> Runner<'a> {
             refusals: 0,
             halt: Halt::BudgetExhausted { cycles: 0 },
             journal_head: None,
+            energy_spent_joules: budget.map(|_| self.carried_joules),
+            energy_budget_joules: budget,
         };
 
         let mut consecutive_refusals = self.carried_refusals;
+
+        // Energy is booked from the workload's own running count, so a cycle's
+        // spend is the difference across it. A budget is refused, not ignored,
+        // when that count does not exist: a run that cannot say what it spends
+        // cannot be bounded by it.
+        let booked = |journal: &mut Journal, cycle: u32, joules: f64| {
+            journal.append(Entry::EnergySpent { cycle, joules }).map_err(|e| e.to_string())
+        };
+        let mut spent = self.carried_joules;
+        let mut meter: Option<f64> = None;
+        if let Some(budget) = budget {
+            match workload.joules_spent() {
+                None => {
+                    let detail = format!(
+                        "an energy budget of {budget} J is set, but the workload reports no joules; refusing to run unbounded"
+                    );
+                    report.halt = Halt::WorkloadFailed { detail: detail.clone() };
+                    let _ = journal.append(Entry::Note { text: format!("halting: {detail}") });
+                    report.journal_head = journal.head().cloned();
+                    return report;
+                }
+                Some(before) => {
+                    // Evaluations made before this run, such as the seed, were
+                    // spent by this invocation, so they count against the budget.
+                    if before > 0.0 {
+                        if let Err(detail) = booked(journal, self.first_cycle, before) {
+                            report.halt = Halt::WorkloadFailed { detail: detail.clone() };
+                            report.journal_head = journal.head().cloned();
+                            return report;
+                        }
+                        spent += before;
+                    }
+                    meter = Some(before);
+                    report.energy_spent_joules = Some(spent);
+                }
+            }
+        }
 
         for cycle_index in self.first_cycle..self.first_cycle.saturating_add(self.policy.max_cycles) {
             // The kill switch comes first, before anything else starts a cycle.
@@ -402,6 +479,20 @@ impl<'a> Runner<'a> {
                 report.journal_head = journal.head().cloned();
                 return report;
             }
+            // The energy budget is checked before a cycle starts, so the last
+            // cycle it allows is the one that brings the spend past the line.
+            if let Some(budget) = budget {
+                if spent >= budget {
+                    report.halt = Halt::EnergyExhausted { spent, budget, after_cycles: report.cycles.len() as u32 };
+                    let _ = journal.append(Entry::Note {
+                        text: format!(
+                            "halting: energy budget reached before cycle {cycle_index}: spent {spent:.3} J of {budget:.3} J"
+                        ),
+                    });
+                    report.journal_head = journal.head().cloned();
+                    return report;
+                }
+            }
             if let Err(detail) = workload.before_cycle() {
                 report.halt = Halt::WorkloadFailed { detail: detail.clone() };
                 let _ = journal.append(Entry::Note { text: format!("halting: workload failed: {detail}") });
@@ -411,7 +502,42 @@ impl<'a> Runner<'a> {
 
             let seed = self.seed.wrapping_add(cycle_index as u64).wrapping_mul(0x9E37_79B9);
 
-            match self.one_cycle(cycle_index, seed, lineage, journal, workload) {
+            let outcome = self.one_cycle(cycle_index, seed, lineage, journal, workload);
+            if budget.is_some() {
+                // Booked whether or not the cycle succeeded: a cycle cut short
+                // still spent its joules, and resuming must not forget them.
+                let halt_on = |detail: String, report: &mut RunReport, journal: &mut Journal| {
+                    report.halt = Halt::WorkloadFailed { detail: detail.clone() };
+                    let _ = journal.append(Entry::Note { text: format!("halting: workload failed: {detail}") });
+                    report.journal_head = journal.head().cloned();
+                };
+                let Some(before) = meter else { unreachable!("a budget implies a meter reading") };
+                let Some(after) = workload.joules_spent() else {
+                    halt_on(
+                        format!("the workload stopped reporting its joules during cycle {cycle_index}"),
+                        &mut report,
+                        journal,
+                    );
+                    return report;
+                };
+                if after < before {
+                    halt_on(
+                        format!("the workload's joule count went backwards during cycle {cycle_index}"),
+                        &mut report,
+                        journal,
+                    );
+                    return report;
+                }
+                if let Err(detail) = booked(journal, cycle_index, after - before) {
+                    halt_on(detail, &mut report, journal);
+                    return report;
+                }
+                spent += after - before;
+                meter = Some(after);
+                report.energy_spent_joules = Some(spent);
+            }
+
+            match outcome {
                 Ok(outcome) => {
                     if outcome.promoted {
                         report.promotions += 1;
@@ -2021,5 +2147,187 @@ mod tests {
         assert_eq!(admission_width(0.9, 4), 4, "round(3.6) is 4");
         assert_eq!(admission_width(1.0, 4), 4);
         assert_eq!(admission_width(0.0, 0), 1, "the floor holds even for an empty batch");
+    }
+
+    // ── The energy budget across cycles ──────────────────────────────────
+
+    /// Wraps a workload and meters it: each materialization costs `per` joules,
+    /// or nothing is reported at all when `per` is `None`.
+    struct Metered<W> {
+        inner: W,
+        per: Option<f64>,
+        spent: f64,
+    }
+
+    impl<W> Metered<W> {
+        fn new(inner: W, per: Option<f64>) -> Self {
+            Metered { inner, per, spent: 0.0 }
+        }
+    }
+
+    impl<W: Workload> Workload for Metered<W> {
+        fn materialize(&mut self, spec: &CandidateSpec) -> Result<Digest, String> {
+            let d = self.inner.materialize(spec)?;
+            if let Some(j) = self.per {
+                self.spent += j;
+            }
+            Ok(d)
+        }
+        fn evaluate(&mut self, artifact: &Digest, suite: &EvalSuite) -> Result<FitnessVector, String> {
+            self.inner.evaluate(artifact, suite)
+        }
+        fn shadow(&mut self, artifact: &Digest) -> HealthSample {
+            self.inner.shadow(artifact)
+        }
+        fn observe_champion(&mut self, artifact: &Digest) -> HealthSample {
+            self.inner.observe_champion(artifact)
+        }
+        fn materialized(&self, artifact: &Digest) -> bool {
+            self.inner.materialized(artifact)
+        }
+        fn joules_spent(&self) -> Option<f64> {
+            self.per.map(|_| self.spent)
+        }
+    }
+
+    /// The `EnergySpent` entries of a journal, in order.
+    fn booked(j: &Journal) -> Vec<f64> {
+        j.replay()
+            .unwrap()
+            .into_iter()
+            .filter_map(|r| match r.entry {
+                Entry::EnergySpent { joules, .. } => Some(joules),
+                _ => None,
+            })
+            .collect()
+    }
+
+    /// The journal's notes, joined, so a test can look for the halt text.
+    fn notes(j: &Journal) -> String {
+        j.replay()
+            .unwrap()
+            .into_iter()
+            .filter_map(|r| match r.entry {
+                Entry::Note { text } => Some(text),
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+
+    /// The journal, the lineage's halt and the report's spend, for one metered run.
+    fn budgeted(budget: Option<f64>, max_cycles: u32, per: f64) -> (RunReport, Journal) {
+        let (ep, at) = (episode(), attestor());
+        let mut j = Journal::open(&tmp("energy")).unwrap();
+        let mut l = genesis();
+        let mut w = Metered::new(ByGenome::default(), Some(per));
+        let policy = RunnerPolicy { energy_budget_joules: budget, ..patient(max_cycles) };
+        let report = Runner::new(policy, &ep, &at, suite(), 11).run(&mut l, &mut j, &mut w);
+        (report, j)
+    }
+
+    #[test]
+    fn an_energy_budget_halts_before_the_cycle_that_would_overspend() {
+        // Each cycle materializes one candidate, so each books 10 J. After four
+        // cycles 40 J is spent, past the 35 J line, and the fifth never starts.
+        let (report, j) = budgeted(Some(35.0), 10, 10.0);
+        assert_eq!(report.halt, Halt::EnergyExhausted { spent: 40.0, budget: 35.0, after_cycles: 4 });
+        assert_eq!(report.cycles.len(), 4);
+        assert_eq!(report.energy_spent_joules, Some(40.0));
+        assert_eq!(report.energy_budget_joules, Some(35.0));
+        assert_eq!(booked(&j), vec![10.0; 4], "each cycle's spend is journalled");
+        assert!(notes(&j).contains("halting: energy budget reached before cycle 4: spent 40.000 J of 35.000 J"));
+        assert_eq!(j.verify().err(), None, "the journal still verifies");
+    }
+
+    #[test]
+    fn a_budget_not_reached_leaves_the_run_bounded_by_its_cycles() {
+        let (report, _) = budgeted(Some(1000.0), 3, 10.0);
+        assert_eq!(report.halt, Halt::BudgetExhausted { cycles: 3 });
+        assert_eq!(report.energy_spent_joules, Some(30.0));
+    }
+
+    #[test]
+    fn a_spend_made_before_the_run_counts_against_the_budget() {
+        // Thirty joules before the run, such as a seed measurement. Cycle 0 starts
+        // (30 < 35) and takes the spend to 40, so cycle 1 never starts.
+        let (ep, at) = (episode(), attestor());
+        let mut j = Journal::open(&tmp("energy-pre")).unwrap();
+        let mut l = genesis();
+        let mut w = Metered::new(ByGenome::default(), Some(10.0));
+        w.spent = 30.0;
+        let policy = RunnerPolicy { energy_budget_joules: Some(35.0), ..patient(10) };
+        let report = Runner::new(policy, &ep, &at, suite(), 11).run(&mut l, &mut j, &mut w);
+        assert_eq!(report.halt, Halt::EnergyExhausted { spent: 40.0, budget: 35.0, after_cycles: 1 });
+        assert_eq!(booked(&j), vec![30.0, 10.0], "the pre-run spend is journalled first");
+    }
+
+    #[test]
+    fn a_budget_on_a_workload_that_reports_no_joules_is_refused_before_any_cycle() {
+        let (ep, at) = (episode(), attestor());
+        let mut j = Journal::open(&tmp("energy-refused")).unwrap();
+        let mut l = genesis();
+        let before = l.to_json();
+        let mut w = ByGenome::default();
+        let policy = RunnerPolicy { energy_budget_joules: Some(35.0), ..patient(10) };
+        let report = Runner::new(policy, &ep, &at, suite(), 11).run(&mut l, &mut j, &mut w);
+        match &report.halt {
+            Halt::WorkloadFailed { detail } => {
+                assert!(detail.contains("reports no joules") && detail.contains("refusing to run unbounded"), "{detail}")
+            }
+            other => panic!("expected a refusal, got {other:?}"),
+        }
+        assert!(report.cycles.is_empty(), "no cycle may start");
+        assert_eq!(l.to_json(), before, "the lineage is untouched");
+    }
+
+    #[test]
+    fn with_no_budget_nothing_about_energy_is_booked_or_reported() {
+        let (report, j) = budgeted(None, 4, 10.0);
+        assert_eq!(report.halt, Halt::BudgetExhausted { cycles: 4 });
+        assert_eq!(report.energy_spent_joules, None);
+        assert_eq!(report.energy_budget_joules, None);
+        assert!(!report.json().contains("energy"), "the report is unchanged without a budget");
+        assert!(booked(&j).is_empty(), "and the journal holds no energy entries");
+    }
+
+    #[test]
+    fn a_resumed_run_restores_the_energy_its_journal_already_booked() {
+        let (ep, at) = (episode(), attestor());
+        let path = tmp("energy-resume");
+        {
+            let mut j = Journal::open(&path).unwrap();
+            let mut l = genesis();
+            let mut w = Metered::new(ByGenome::default(), Some(10.0));
+            let policy = RunnerPolicy { energy_budget_joules: Some(1000.0), ..patient(2) };
+            let r = Runner::new(policy, &ep, &at, suite(), 11).run(&mut l, &mut j, &mut w);
+            assert_eq!(r.energy_spent_joules, Some(20.0));
+        }
+        // A new process: a fresh workload, whose own count starts at zero.
+        let mut j = Journal::open(&path).unwrap();
+        let head = j.head().cloned();
+        let mut resumed = Lineage::replay(genesis(), &j, head.as_ref()).unwrap();
+        assert_eq!(resumed.energy_spent, 20.0, "the journal restores what was spent");
+        let mut w = Metered::new(ByGenome::default(), Some(10.0));
+        let policy = RunnerPolicy { energy_budget_joules: Some(35.0), ..patient(10) };
+        let report = Runner::new(policy, &ep, &at, suite(), 11)
+            .resume(&resumed)
+            .run(&mut resumed.lineage, &mut j, &mut w);
+        // 20 J restored: cycle 2 starts (20 < 35) and reaches 30, cycle 3 starts
+        // and reaches 40, so the run halts before cycle 4 after two cycles of its own.
+        assert_eq!(report.cycles.first().map(|c| c.cycle), Some(2), "cycle numbering continues");
+        assert_eq!(report.halt, Halt::EnergyExhausted { spent: 40.0, budget: 35.0, after_cycles: 2 });
+        assert_eq!(j.verify().err(), None);
+    }
+
+    /// The default policy as it serialized and digested before the energy
+    /// budget and the ES existed. Changing either must not move these.
+    const GOLDEN_JSON: &str = r#"{"name":"default-bounded","max_cycles":8,"max_consecutive_refusals":3,"halt_on_demotion":true,"candidates_per_cycle":4,"shadow_runs":8,"variation":{"selection":{"strategy":"tournament","size":3},"crossover":{"strategy":"uniform","probability":0.5},"mutation":{"strategy":"perturb","rate":0.2,"scale":0.15},"offspring":8},"supervision":{"window":20,"max_failure_rate":0.1,"fitness_tolerance":0.05,"divergence_threshold":0.03}}"#;
+    const GOLDEN_DIGEST: &str = "9335ede2c8fa4fbb12694681c122d964f4c1c38bfa08a5570ca8f943711be862";
+
+    #[test]
+    fn the_default_policy_serializes_and_digests_exactly_as_before_these_options() {
+        assert_eq!(serde_json::to_string(&RunnerPolicy::default()).unwrap(), GOLDEN_JSON);
+        assert_eq!(RunnerPolicy::default().digest().0, GOLDEN_DIGEST);
     }
 }

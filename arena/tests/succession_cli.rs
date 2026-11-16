@@ -271,3 +271,58 @@ fn a_run_with_a_floor_and_a_latency_tolerance_states_both_and_writes_them_to_the
     assert_eq!(json["objectives"]["dominance"]["tolerances"]["latency"], 0.005);
     let _ = std::fs::remove_dir_all(dir);
 }
+
+#[test]
+fn a_tiny_energy_budget_halts_on_energy_before_cycles_exit_zero_and_the_json_reports_spend() {
+    let (dir, heldout) = fixture("energy-json");
+    let journal = dir.join("run.jsonl");
+    // The seed alone spends more than a billionth of a joule, so the budget is
+    // reached before the first cycle: the run stops on energy, not on --cycles.
+    let out = succession(&heldout, &journal, &["--cycles", "50", "--energy-budget", "0.000000001", "--json"]);
+    let stdout = text(&out.stdout);
+    assert!(out.status.success(), "a clean halt exits 0: {stdout}\n{}", text(&out.stderr));
+    let json: serde_json::Value = serde_json::from_str(&stdout).expect("the report is JSON");
+    let report = &json["report"];
+    assert_eq!(report["halt"]["halt"], "energy_exhausted", "{report}");
+    let cycles_run = report["cycles"].as_array().map_or(0, Vec::len);
+    assert!(cycles_run < 50, "--cycles was not reached: {cycles_run} cycles ran");
+    assert_eq!(report["energy_budget_joules"].as_f64(), Some(0.000000001));
+    let spent = report["energy_spent_joules"].as_f64().expect("the spend is reported");
+    assert!(spent >= 0.000000001, "the spend reached the budget: {spent}");
+    assert_eq!(report["halt"]["budget"].as_f64(), Some(0.000000001));
+    assert_eq!(json["energy_spend_basis"]["basis"], "estimated", "{json}");
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn the_energy_budget_prints_its_basis_next_to_the_spend_and_the_halt_reason() {
+    let (dir, heldout) = fixture("energy-text");
+    let journal = dir.join("run.jsonl");
+    let out = succession(&heldout, &journal, &["--cycles", "50", "--energy-budget", "0.000000001"]);
+    let stdout = text(&out.stdout);
+    assert!(out.status.success(), "{stdout}\n{}", text(&out.stderr));
+    assert!(stdout.contains("energy: spent "), "{stdout}");
+    assert!(stdout.contains("of a 0.000 J budget"), "{stdout}");
+    assert!(stdout.contains("spend basis: estimated"), "{stdout}");
+    assert!(stdout.contains("halt: energy budget reached"), "{stdout}");
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn the_param_search_flag_selects_the_es_and_is_validated() {
+    let (dir, heldout) = fixture("param-search");
+    let journal = dir.join("run.jsonl");
+    let out = succession(&heldout, &journal, &["--cycles", "2", "--param-search", "es"]);
+    let stdout = text(&out.stdout);
+    assert!(out.status.success(), "{stdout}\n{}", text(&out.stderr));
+    assert!(stdout.contains("continuous loci: self-adaptive evolution strategy"), "{stdout}");
+
+    let bad = succession(&heldout, &dir.join("bad.jsonl"), &["--param-search", "cmaes"]);
+    assert!(!bad.status.success(), "an unknown search is a usage error");
+    assert!(text(&bad.stderr).contains("should be `es` or `perturb`"), "{}", text(&bad.stderr));
+
+    let zero = succession(&heldout, &dir.join("zero.jsonl"), &["--energy-budget", "0"]);
+    assert!(!zero.status.success(), "a zero budget is a usage error");
+    assert!(text(&zero.stderr).contains("positive number of joules"), "{}", text(&zero.stderr));
+    let _ = std::fs::remove_dir_all(dir);
+}
