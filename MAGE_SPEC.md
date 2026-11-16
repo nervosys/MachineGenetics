@@ -140,7 +140,7 @@ Human mode preserves Rust keywords 1:1. The only additions are MAGE's AI and eff
 | `type`         | `type`         | Identical |
 | `static`       | `static`       | Retired (E0554): write `const` |
 | `unsafe`       | `unsafe`       | Reserved, not yet supported |
-| `async`        | `async`        | Identical |
+| `async`        | `async`        | Written `async name(…)`; `async fn` does not parse |
 | `.await`       | `.await`       | Identical |
 | `if`           | `if`           | Identical |
 | `else`         | `else`         | Identical |
@@ -153,8 +153,8 @@ Human mode preserves Rust keywords 1:1. The only additions are MAGE's AI and eff
 | `continue`     | `continue`     | Identical |
 | `return`       | `return`       | Identical |
 | `where`        | `where`        | Identical |
-| `&mut`         | `&mut`         | Identical |
-| `impl X for Y`  | `extend X for Y`| Trait implementation                   |
+| `&mut`         | `&!`           | Exclusive borrow; `&mut` does not parse |
+| `impl X for Y`  | `impl X for Y`  | Trait implementation; `extend T { … }` adds methods without a trait |
 
 ### 2.2 Agent mode Symbols
 
@@ -557,46 +557,64 @@ are a `.` followed by `*`, or by an identifier. `>>` is always one token; the le
 
 ## 4. Syntactic Grammar
 
-All productions use Human mode. Agent equivalents are in Appendix B.
+This section describes what the parser accepts, construct by construct. It
+carries no EBNF of its own, because a hand-written grammar in prose drifts from
+the parser, and the one that stood here did. **`kb/grammar.mg` is the normative
+grammar.** It states the parser's productions as `rhs(Production, "…")` facts
+over token-kind names, cites the parser lines each one comes from, records
+where the grammar is deliberately broader than the parser (`GAP`), and is held
+to the parser by tests. Where a rule below needs to be exact, it names the
+production to read there.
+
+Human and Agent spellings (§2, Appendix B) both parse in any file, and the
+examples mix them freely. Everything the examples below show is checked: each
+block parses and typechecks.
 
 ### 4.1 Compilation Unit
 
+A program is a sequence of items (`Module`, `Item`). Every item may be preceded
+by attributes and contracts (§4.9) and by a visibility marker. Visibility is
+`pub` (Agent: `+`); there is no `pub(crate)`. The item forms are functions,
+`struct`, `enum`, `data`, `trait`, `impl`, `extend`, `mod`, `use`, `type`,
+`const`, `effect`, `spec`, `agent`, `swarm`, `net`, `kb`, `evolve` and `train`.
+`static` is retired (E0554): write `const`.
+
+```mg
+pub f one() -> i32 { 1 }
+const LIMIT: i32 = 10;
+type Id = i32;
+f main() -> i32 { one() + LIMIT }
 ```
-compilation_unit = { item }* ;
 
-item = { attribute }* visibility? item_kind ;
-
-visibility = 'pub' [ '(' 'crate' ')' ] ;
-
-item_kind = function_def | data_def | data_def | trait_def | extend_block
-          | module_def | use_decl | type_alias | const_def | static_def
-          | effect_def | spec_def
-          | net_def | kb_def | evolve_def | agent_def
-          ;
-```
+The neural, symbolic, evolutionary and agent items (`net`, `kb`, `evolve`,
+`train`, `agent`, `swarm`) have their own sections (§5, §7, §8, §9); their
+productions are `NetDef`, `KbDef`, `EvolveDef`, `TrainDef`, `AgentDef` and
+`SwarmDef`. A block statement can contain a nested function but no other item
+(§4.7).
 
 ### 4.2 Function Definitions
 
+A function is `f` (or `fn`), a name, optional generics, parameters, an optional
+`->` return type, an optional `where` clause, an optional effect annotation
+`/ effect, …`, and a body (`FunctionDef`). `af` declares an async function and
+`uf` an unsafe one; `async fn` and `async f` do not parse. The body is a block,
+`= expr`, or `;` (a bodiless declaration, which is useful inside a trait or
+effect and is rejected by the checker on a free function). A return type may
+be followed by `or Type`. The `where` clause is introduced by `~>` or `where`
+(`WhereClause`), and generics use `<…>` or `[…]` (`Generics`).
+
+```mg
+f add(a: i32, b: i32) -> i32 { a + b }
+f twice(x: i32) -> i32 = x * 2
+f first<T: Copy>(x: T) -> T { x }
+f fails(x: i32) -> i32 or i32 { Ok(x) }
+
+f main() -> i32 { add(1, 2) + twice(3) + first(4) }
 ```
-function_def = 'fn' IDENT [ generic_params ] '(' [ param_list ] ')'
-               [ '->' type ] [ where_clause ] [ effect_annotation ]
-               block ;
 
-async_function_def = 'async' function_def ;
-
-param_list   = param { ',' param }* [ ',' ] ;
-param        = IDENT ':' type [ '=' expression ] ;
-self_param   = '&' 'self' | '&' 'mut' 'self' | 'self' ;
-
-generic_params    = '<' generic_param { ',' generic_param }* '>' ;
-generic_param     = IDENT [ ':' type_bound_list ] [ '=' type ] ;
-type_bound_list   = type_bound { '+' type_bound }* ;
-
-where_clause      = 'where' where_predicate { ',' where_predicate }* ;
-where_predicate   = type ':' type_bound_list ;
-
-effect_annotation = '/' effect_name { ',' effect_name }* ;
-```
+A parameter's type is optional in the grammar (`PaParamHead`), and the receiver
+forms are `&self`, `&!self` (exclusive borrow) and `!self` (consume). `&mut
+self` does not parse.
 
 **Default arguments.** A parameter may declare a default, and a caller may omit
 it. Only *trailing* defaults may be omitted: in `f g(a: i32, b: i32 = 2, c: i32)`
@@ -617,136 +635,256 @@ f uses() -> i32 {
 }
 ```
 
+An async function is declared with `af`:
+
+```mg
+af fetch() -> i32 { 2 }
+f main() -> i32 { 0 }
+```
+
 ### 4.3 Data Types
 
+`data`, `struct` and `enum` declare named types. Fields are always named
+except in the sum form, and a declaration has no trailing `;` (see `DataDef`,
+`StructDef`, `EnumDef`, `ItEnumVariant`, `PaDataField` and `PaDataVariant` in
+`kb/grammar.mg`).
+
+- `data N(name: T, …)` is a record. A field may carry a default (`x: i32 = 0`).
+  Tuple-style `data P(i32)` does not parse.
+- `data N = V | V(T)` is a sum whose variants carry unnamed payloads.
+- `data N` alone declares a unit type.
+- `struct N { name: T, … }` has braces, a leading `+` makes a field public, and
+  commas are optional.
+- `enum N { A, B(T), C { f: T } }` has unit, tuple and record variants. A
+  discriminant (`A = 1`) does not parse.
+
+```mg
+data P(x: i32, y: i32 = 0)
+data Maybe = Nothing | Just(i32)
+data Marker
+struct Account { +id: i32, bal: i32 }
+enum Shape { Dot, Circle(i32), Rect { w: i32, h: i32 } }
+f main() -> i32 { 0 }
 ```
-data_def = 'data' IDENT [ generic_params ] [ where_clause ]
-             ( '{' { struct_field }* '}' | '(' type_list ')' ';' | ';' ) ;
-struct_field = visibility? IDENT ':' type [ ',' ] ;
 
-data_def = 'data' IDENT [ generic_params ] [ where_clause ]
-           '{' enum_variant { ',' enum_variant }* [ ',' ] '}' ;
-enum_variant = IDENT [ '(' type_list ')' | '{' struct_field_list '}' | '=' expression ] ;
+A record value is written `@Name { field: value, … }`, where a bare `field`
+stands for `field: field`. The plain `Name { … }` form is not a literal.
 
-trait_def = 'trait' IDENT [ generic_params ] [ ':' type_bound_list ] [ where_clause ]
-            '{' { trait_item }* '}' ;
-trait_item = 'fn' IDENT [ generic_params ] '(' [ self_param [ ',' param_list ] ] ')'
-             [ '->' type ] [ block | ';' ]
-           | 'type' IDENT [ ':' type_bound_list ] [ '=' type ] ';'
-           | 'const' IDENT ':' type [ '=' expression ] ';' ;
+```mg
+data P(x: i32, y: i32)
+f main() -> i32 {
+    val p = @P { x: 1, y: 2 }
+    val x = 3
+    val q = @P { x, y: 4 }
+    p.x + q.x
+}
+```
 
-extend_block = 'extend' [ generic_params ] type [ 'for' type ] [ where_clause ]
-             '{' { extend_item }* '}' ;
-extend_item  = visibility? ( function_def | type_alias | const_def ) ;
+Single capital letters that are Agent-mode keywords (`S`, `E`, `T`, `I`, `M`,
+`U`, `C`) are poor type names; prefer longer ones.
+
+**Traits, `impl` and `extend`.**
+
+`trait N { items }` declares a trait whose methods may have bodies or end in
+`;` (`TraitDef`). `impl [generics] Type [for Type] { items }` is the general
+implementation block, including the trait form (`ImplBlock`). `extend Type {
+items }` adds methods to a type and takes neither generics nor `for`
+(`ExtendBlock`); `extend T for X` does not parse.
+
+```mg
+trait Area { f area(self) -> i32; }
+struct Sq { s: i32 }
+impl Area for Sq { f area(self) -> i32 { self.s * self.s } }
+extend Sq { f side(self) -> i32 { self.s } }
+f main() -> i32 { 0 }
 ```
 
 ### 4.4 Modules and Imports
 
+`mod name { items }` and `mod name;` declare a module (`ModuleDef`). An import
+separates its path with `.`, never `::`, and has three forms: `use a.b`,
+`use a.b.*` and `use a.{b as c, d}` (`UseDecl`). The parser accepts all three,
+and the checker then refuses every one of them, because there is one flat
+namespace and no module system (§2.3).
+
+```mg
+mod inner { f helper() -> i32 { 1 } }
+f main() -> i32 { 0 }
 ```
-module_def = 'mod' IDENT ( '{' { item }* '}' | ';' ) ;
-use_decl   = 'use' use_path ';' ;
-use_path   = path_segment { '::' path_segment }* [ '::' ( '*' | '{' use_tree_list '}' ) ] ;
+
+**Invalid MAGE today**, the checker refuses an import with E0425:
+
+```mg
+use a.b
+use a.b.*
+use a.{b as c, d}
+f main() -> i32 { 0 }
 ```
 
 ### 4.5 Types
 
-```
-type = type_path | '&' type | '&' 'mut' type
-     | 'Box' '<' type '>'      | 'Rc' '<' type '>'    | 'Arc' '<' type '>'
-     | '[' type ']' '~'              /* growable array */
-     | '?' type | 'Result' '<' type ',' type '>'
-     | 'HashMap' '<' type ',' type '>' | 'HashSet' '<' type '>'
-     | 'Tensor' '<' type ',' shape '>'     /* tensor type */
-     | 'Param' '<' type ',' shape '>'      /* learnable parameter */
-     | 'Genome' '<' type '>'               /* genome type */
-     | 'Policy' '<' type ',' type '>'      /* RL policy */
-     | 'KnowledgeBase'                     /* knowledge base */
-     | 'LLM'                               /* language model handle */
-     | '[' type ';' expression ']'  | '&' '[' type ']'
-     | '(' [ type { ',' type }* ] ')'
-     | 'fn' '(' [ type_list ] ')' [ '->' type ]
-     | '*const' type | '*mut' type
-     | '!' | '_' | 'String' | 'str'
-     | ('f32' | 'f64') '[' unit ']'        /* float with a unit, §10.6 */
-     ;
+A type is one of the following (`Type`, and the `Ty…` productions).
 
-shape = '[' int_literal { ',' int_literal }* ']' | '_' ;
+- **Paths and generics.** A name with optional arguments in `<…>` or `[…]`
+  (`TyPath`). `Box`, `Rc`, `HashMap` and similar are ordinary path types, not
+  keywords. `R[T, E]` is Result (`TyResult`); `Ptr[T]` and `Simd[T, n]` are
+  pointer and SIMD types; `dyn T` is a trait object.
+- **Sigil prefixes.** `&T` shared reference, `&!T` exclusive reference, `?T`
+  optional, and the further prefixes of §3.6 and Appendix B. `&mut T`,
+  `*const T` and `*mut T` do not parse.
+- **Collections.** `[T]~` growable array, `[T; n]` array, `[T]` slice, `(A, B)`
+  tuple, `{K: V}` map, `{T}` set.
+- **Functions.** `f(A, B) -> R`.
+- **Units.** `f64[m]`, `f32[m / s ^ 2]` (`TyDimensioned`, §10.6).
+- **Neural and evolutionary types.** `tensor[T, d, …]` and `param[T, d, …]`,
+  where each dimension is an integer literal or a name (`TyTensor`, `TyParam`,
+  `TyDim`); `genome[T]`; `policy[A, B]`; and the bare keyword `kb`. The forms
+  `Tensor<f32, [2, 3]>`, `Genome<T>`, `Policy<…>`, `LLM` and `KnowledgeBase` are
+  not types.
+
+```mg
+f g(a: &i32, b: &!i32, c: [i32]~, d: [i32; 3], e: (i32, bool), h: ?i32,
+    r: R[i32, bool], t: tensor[f32, 2, 3], m: {i32: bool}, k: f(i32) -> i32,
+    bx: Box<i32>, p: param[f32, 4], gn: genome[i32], u: f64[m]) -> i32 { 0 }
+f main() -> i32 { 0 }
 ```
 
 ### 4.6 Expressions
 
+Operator precedence is Appendix C and `StOr` … `StPostfix` in `kb/grammar.mg`.
+The primary forms are in `PrefixExpr`, and the postfix forms in `StPostfixOp`.
+
+- **Literals and names.** Lexical forms are §3.5; booleans are `1b` and `0b`.
+- **Operators.** Binary, unary and compound-assignment operators (`+=`, `<<=`,
+  and the other bitwise forms), the pipeline `|>`, and the tensor operators of
+  §6. `?` after an expression is the try operator, `e as T` a cast, and
+  `e is pattern` a pattern test.
+- **Calls and access.** `f(args)`, `e.field`, `e.method(args)`, `e[i]` and
+  `e[a..b]`. A method's type arguments take a turbofish, `e.m::<T>()`; the form
+  `e.m<T>()` does not parse. `await` is not an operator: `.await` is an ordinary
+  field or method access.
+- **Aggregates.** Arrays `[a, b]` and `[x; n]`, tuples `(a, b)`, maps
+  `{k: v}`, closures `|x: T| e`, and records `@Name { f: e }` (§4.3).
+- **Ranges.** `a..b` and `a..=b` parse only in an index, in a `for` head and in
+  an `@` loop head; they are not free expressions.
+- **Conditionals.** `if c { … } else if c { … } else { … }`, Agent
+  `? c { … } : ? c { … } : { … }` (the space in `: ?` matters, Appendix B.3).
+  `match e { pattern => expr, … }` (Agent `?=`) takes optional commas between
+  arms (`PxIf`, `PxMatchArms`).
+- **Loops.** `for p in e { … }`, Agent `@ p : e { … }`, `@ p in e` and
+  `@ p of e`; `while c { … }` (`@w c`); `loop { … }` (`@@`). Also
+  `break`, `continue` and `return`, each with an optional value where one
+  makes sense (`PxFor`).
+- **Constructors.** `Some(e)`, `None`, `Ok(e)` and `Err(e)` (`PxSumCtor`).
+- **Effects.** `handle { body } with Name { op(args) => expr, … }`
+  (`HandleExpr`, §11.5).
+- **Gradient.** `grad(expr, name)`; the second argument must be a name (§5.6).
+
+```mg
+data P(x: i32, y: i32)
+f double(n: i32) -> i32 { n * 2 }
+f get() -> ?i32 { Some(1) }
+f try_it() -> ?i32 {
+    val a = get()?
+    Some(a + 1)
+}
+f main() -> i32 {
+    val p = @P { x: 1, y: 2 }
+    val xs = [1, 2, 3, 4]
+    val table = {1: 2}
+    val inc = |n: i32| n + 1
+    val mid = xs[1..3]
+    val wide = 5 as i64
+    val d = p.x |> double
+    val flag = p.x == 1 && 1b || 0b
+    val big = if p.x > 1 { 1 } else if p.y > 1 { 2 } else { 3 }
+    var total = 0
+    for x in xs { total += x }
+    for i in 0..3 { total += i }
+    @ x : xs { total += x }
+    @w total < 100 { total += 1 }
+    val t = ?= total { 0 => 1, _ => 2 }
+    inc(d) + big + t
+}
 ```
-expression = literal | IDENT | prefix_expr | infix_expr | postfix_expr
-           | call_expr | index_expr | field_expr | method_call_expr
-           | struct_expr | tuple_expr | array_expr | vec_expr
-           | closure_expr | if_expr | match_expr
-           | loop_expr | for_expr | while_expr
-           | block_expr | return_expr | break_expr | continue_expr
-           | range_expr | cast_expr | await_expr | try_expr
-           | pipe_expr | matmul_expr | grad_expr
-           | tensor_literal | assign_expr ;
 
-/* Pipeline: x |> f(_, y) |> g */
-pipe_expr    = expression '|>' expression ;
-
-/* Tensor matmul: A ⊗ B (`@` is the `for` keyword, not matmul) */
-matmul_expr  = expression '⊗' expression ;
-
-/* Gradient: grad(loss, params) */
-grad_expr    = 'grad' '(' expression ',' expression ')' ;
-
-/* Standard  expressions (identical to Rust) */
-prefix_expr  = ( '-' | '!' | '&' | '&' 'mut' | '*' ) expression ;
-infix_expr   = expression binop expression ;
-postfix_expr = expression '?' ;
-call_expr    = expression '(' [ arg_list ] ')' ;
-method_call_expr = expression '.' IDENT [ '<' type_args '>' ] '(' [ arg_list ] ')' ;
-index_expr   = expression '[' expression ']' ;
-field_expr   = expression '.' IDENT ;
-struct_expr  = type_path '{' [ field_init_list ] '}' ;
-closure_expr = '|' [ param_list ] '|' ( expression | block ) ;
-when_expr    = 'if' expression block [ 'else' block ] ;
-case_expr    = 'match' expression '{' { pattern '=>' expression ',' }* '}' ;
-each_expr    = 'for' pattern 'in' expression block ;
-spin_expr    = 'loop' block ;
-till_expr    = 'while' expression block ;
-emit_expr    = 'return' [ expression ] ;
-halt_expr    = 'break' [ expression ] ;
-skip_expr    = 'continue' ;
-await_expr   = expression '.' 'await' ;
-try_expr     = expression '?' ;
+```mg
+f main() -> i32 {
+    var n = 0
+    @@ {
+        n += 1
+        if n > 3 { break }
+    }
+    val len = [1].len::<i32>()
+    n
+}
 ```
 
 ### 4.7 Statements
 
-```
-statement = ( 'val' | 'var' ) pattern [ ':' type ] '=' expression ';'
-          | expression ';'
-          | item ;
+A block is `{ statements, optional final expression }` (`Block`, `BlockBody`,
+`Stmt`). A statement is a binding, a `guard`, a `defer`, a nested function, or
+an expression. The terminating `;` is optional: a newline or the closing brace
+ends a statement.
+
+- `val` / `var` (Agent `v` / `m`) bind an immutable and a mutable name, with a
+  pattern and an optional type (`StLet`). A keyword spelling is not a binding
+  name, so `m`, `v`, `u` and the like are refused with a message.
+- `guard cond else { … }` runs the block when `cond` is false, and the block
+  must leave the scope. `or` and `:` also introduce the block (`StGuard`).
+- `defer expr` runs `expr` when the scope ends (`StDefer`).
+- An item inside a block is restricted to a nested `f`.
+
+```mg
+f demo(x: i32) -> i32 {
+    guard x > 0 else { return 0 }
+    defer print("done")
+    val y: i32 = x + 1
+    f inner(a: i32) -> i32 { a * 2 }
+    var total = inner(y)
+    total += 1
+    total
+}
 ```
 
 ### 4.8 Patterns
 
-```
-pattern = literal | IDENT | '_'
-        | '(' [ pattern { ',' pattern }* ] ')'
-        | type_path '{' [ field_pattern { ',' field_pattern }* ] '}'
-        | type_path '(' [ pattern { ',' pattern }* ] ')'
-        | '[' [ pattern { ',' pattern }* ] [ '..' ] ']'
-        | pattern '|' pattern
-        | '&' pattern
-        | literal '..' literal | literal '..=' literal ;
+Patterns appear in `val`, `for`, `match` arms and `is` tests
+(`Pattern`). The parser accepts the wildcard `_`, a name, a literal (integer,
+float, string, character, boolean), a tuple `(p, q)`, a slice `[h, ..t]`, a
+constructor `Name(p, …)` including `Some`, `None`, `Ok` and `Err`
+(`PxSumPat`), and a record pattern `@Name { field, field: pattern }`. There are
+no or-patterns (`p | q`), range patterns, `&p` patterns or match guards; a
+struct pattern without the `@` does not parse.
+
+```mg
+f classify(r: ?i32, pair: (i32, i32), xs: [i32]) -> i32 {
+    val a = match r { Some(1) => 1, Some(n) => n, None => 0 }
+    val (p, q) = pair
+    val b = match xs { [h, ..t] => h, _ => 0 }
+    val c = match "k" { "k" => 1, _ => 2 }
+    a + p + q + b + c
+}
 ```
 
-### 4.9 Attributes
+### 4.9 Attributes and Contracts
 
-```
-attribute = '@' attr_name [ '(' attr_args ')' ] ;   /* `#[...]` does not parse */
+An attribute is `@name` with optional parentheses (`Attr`); `#[…]` does not
+parse. `@req(…)`, `@ens(…)` and `@inv(…)` are contracts (`Contract`), take an
+expression and an optional message string, and bind to the next item (§12).
+`@perf`, `@fx` and `@spec` are not item attributes: they are items of a `spec`
+body (`SpecDef`, `EfSpecItem`).
 
-/* Standard attributes: @derive(...), @test, @cfg(...), @inline */
-/* MAGE-specific: @req, @ens, @inv, @perf, @fx, @spec */
-/* Neural: @target(gpu), @precision(f16), @batch(32) */
-/* Evolution: @population(1000), @generations(500) */
+```mg
+@req(x > 0, "x must be positive")
+@ens(result >= x)
+pub f lift(x: i32) -> i32 { x + 1 }
+
+@inline
+f id(x: i32) -> i32 { x }
+
+spec Pos(x: i32) -> i32 { @req(x > 0) @ens(result > 0) }
+f main() -> i32 { lift(1) + id(1) }
 ```
 
 ### 4.10 Integer Arithmetic
