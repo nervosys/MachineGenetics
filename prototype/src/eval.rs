@@ -1312,7 +1312,7 @@ impl Interp {
                 }
                 for (fname, dflt) in self.field_defaults.get(&name).into_iter().flatten() {
                     if !fvals.iter().any(|(k, _)| k == fname) {
-                        let v = self.eval(dflt, &mut env.clone())?;
+                        let v = self.eval(dflt, &mut Env::new())?;
                         fvals.push((fname.clone(), v));
                     }
                 }
@@ -1391,12 +1391,38 @@ impl Interp {
                         _ => return err("cannot cast this value to a float"),
                     })),
                     "i64" | "i32" | "u64" | "u32" | "usize" | "isize" | "i8" | "i16" | "u8" | "u16"
-                    | "i128" | "u128" => Ok(Value::Int(match v {
-                        Value::Float(f) => f as i64,
-                        Value::Int(n) => n,
-                        Value::Bool(b) => b as i64,
-                        _ => return err("cannot cast this value to an integer"),
-                    })),
+                    | "i128" | "u128" => {
+                        let (lo, hi): (i64, i64) = match target {
+                            "i8" => (i8::MIN as i64, i8::MAX as i64),
+                            "i16" => (i16::MIN as i64, i16::MAX as i64),
+                            "i32" => (i32::MIN as i64, i32::MAX as i64),
+                            "u8" => (0, u8::MAX as i64),
+                            "u16" => (0, u16::MAX as i64),
+                            "u32" => (0, u32::MAX as i64),
+                            "u64" | "usize" | "u128" => (0, i64::MAX),
+                            _ => (i64::MIN, i64::MAX),
+                        };
+                        let n = match v {
+                            Value::Float(f) => {
+                                let t = f.trunc();
+                                // `i64::MAX as f64` is 2^63, itself out of range.
+                                if !t.is_finite() || t < -9223372036854775808.0 || t >= 9223372036854775808.0 {
+                                    return err(format!("integer overflow in `{f} as {target}`"));
+                                }
+                                if t < lo as f64 || t > hi as f64 {
+                                    return err(format!("integer overflow in `{f} as {target}`"));
+                                }
+                                t as i64
+                            }
+                            Value::Int(n) => n,
+                            Value::Bool(b) => b as i64,
+                            _ => return err("cannot cast this value to an integer"),
+                        };
+                        if n < lo || n > hi {
+                            return err(format!("integer overflow in `{n} as {target}`"));
+                        }
+                        Ok(Value::Int(n))
+                    }
                     other => err(format!("unsupported cast to `{other}`")),
                 }
             }
@@ -2670,6 +2696,21 @@ fn cmp_value(a: &Value, b: &Value) -> std::cmp::Ordering {
         // branch and the derivative is of a different function.
         (Value::Dual(x, _), _) => cmp_value(&Value::Float(*x), b),
         (_, Value::Dual(y, _)) => cmp_value(a, &Value::Float(*y)),
+        // Lists and tuples order lexicographically, as Rust's derived `Ord`
+        // does: the first unequal element decides, and a proper prefix is less.
+        (Value::List(xs), Value::List(ys)) | (Value::Tuple(xs), Value::Tuple(ys)) => xs
+            .iter()
+            .zip(ys)
+            .map(|(x, y)| cmp_value(x, y))
+            .find(|o| o.is_ne())
+            .unwrap_or_else(|| xs.len().cmp(&ys.len())),
+        // `None < Some(_)`; two `Some`s compare their contents.
+        (Value::Opt(x), Value::Opt(y)) => match (x, y) {
+            (Some(x), Some(y)) => cmp_value(x, y),
+            (None, None) => Ordering::Equal,
+            (None, Some(_)) => Ordering::Less,
+            (Some(_), None) => Ordering::Greater,
+        },
         _ => Ordering::Equal,
     }
 }
@@ -3819,6 +3860,39 @@ mod tests {
     use super::*;
 
     #[test]
+    fn compound_values_order_like_rusts_derived_ord() {
+        use std::cmp::Ordering::*;
+        let l = |xs: &[i64]| Value::List(xs.iter().map(|&i| Value::Int(i)).collect());
+        let t = |xs: &[i64]| Value::Tuple(xs.iter().map(|&i| Value::Int(i)).collect());
+        let some = |v: Value| Value::Opt(Some(Box::new(v)));
+        assert_eq!(cmp_value(&l(&[1]), &l(&[1, 0])), Less);
+        assert_eq!(cmp_value(&l(&[1, 0]), &l(&[1])), Greater);
+        assert_eq!(cmp_value(&l(&[]), &l(&[])), Equal);
+        assert_eq!(cmp_value(&l(&[1, 2]), &l(&[1, 3])), Less);
+        assert_eq!(cmp_value(&l(&[2, 0]), &l(&[1, 9])), Greater);
+        assert_eq!(cmp_value(&t(&[1, 2]), &t(&[1, 3])), Less);
+        assert_eq!(cmp_value(&t(&[1, 2]), &t(&[1, 2])), Equal);
+        assert_eq!(cmp_value(&Value::Opt(None), &some(Value::Int(0))), Less);
+        assert_eq!(cmp_value(&some(Value::Int(0)), &Value::Opt(None)), Greater);
+        assert_eq!(cmp_value(&Value::Opt(None), &Value::Opt(None)), Equal);
+        assert_eq!(cmp_value(&some(Value::Int(1)), &some(Value::Int(2))), Less);
+        let a = Value::List(vec![Value::Opt(None), some(Value::Int(5))]);
+        let b = Value::List(vec![Value::Opt(None), some(Value::Int(6))]);
+        let c = Value::List(vec![some(Value::Int(0))]);
+        assert_eq!(cmp_value(&a, &b), Less);
+        assert_eq!(cmp_value(&c, &a), Greater);
+    }
+
+    #[test]
+    fn maps_structs_and_mixed_kinds_still_compare_equal() {
+        use std::cmp::Ordering::Equal;
+        let m1 = Value::Map(Default::default());
+        assert_eq!(cmp_value(&m1, &m1), Equal);
+        assert_eq!(cmp_value(&Value::List(vec![Value::Int(1)]), &Value::Tuple(vec![Value::Int(2)])), Equal);
+        assert_eq!(cmp_value(&Value::Opt(None), &Value::Int(3)), Equal);
+    }
+
+    #[test]
     fn eval_recurses_past_the_main_thread_stack() {
         // A debug build overflowed the 1 MB main stack near depth 10.
         let src = "f down(n) { if n == 0 { 7 } else { down(n - 1) } }".to_string();
@@ -3834,6 +3908,21 @@ mod tests {
         // It typechecked and then evaluated to a function name (plan C3).
         let src = "const X: f64 = 1.5;\nconst TWICE: f64 = X * 2.0;\nf main() -> f64 { TWICE + X }\n";
         assert_eq!(run(src, "main", &[]), Value::Float(4.5));
+    }
+
+    #[test]
+    fn a_field_default_sees_the_const_not_the_callers_local() {
+        let shadow = "const K: i32 = 7;
+data P(x: i32, y: i32 = K)
+f main() -> i32 {
+    val K = 5
+    val p = @P { x: 1 }
+    p.y
+}
+";
+        assert_eq!(run(shadow, "main", &[]), Value::Int(7));
+        let control = shadow.replace("val K = 5", "val J = 5");
+        assert_eq!(run(&control, "main", &[]), Value::Int(7));
     }
 
     #[test]
@@ -5678,5 +5767,90 @@ mod net_call_tests {
     fn narrow_integer_casts_behave_like_the_wide_ones() {
         let src = "f main() -> i32 { (5 as u8) + (5 as i8) + (5 as u16) + (5 as i16) + (5 as u128) + (5 as i128) }\n";
         assert_eq!(interp_of(src).run("main", vec![]).unwrap(), Value::Int(30));
+    }
+}
+
+#[cfg(test)]
+mod checked_cast_tests {
+    use super::*;
+
+    /// `body` runs inside `main`; negatives come from bindings (`0 - n`),
+    /// because `-x as T` is `-(x as T)` (postfix binds tighter than prefix).
+    fn cast(body: &str) -> Result<Value, String> {
+        let src = format!("f main() -> i64 {{ {body} }}\n");
+        run_source(&src, "main", &[])
+    }
+
+    fn traps(body: &str, msg: &str) {
+        let e = cast(body).expect_err(body);
+        assert!(e.contains(&format!("integer overflow in `{msg}`")), "{body}: {e}");
+    }
+
+    fn neg(n: &str, ty: &str) -> String {
+        format!("val n = 0 - {n}; n as {ty}")
+    }
+
+    #[test]
+    fn out_of_range_casts_trap() {
+        traps("300 as u8", "300 as u8");
+        traps("256 as u8", "256 as u8");
+        traps("2147483648 as i32", "2147483648 as i32");
+        traps("128 as i8", "128 as i8");
+        traps("32768 as i16", "32768 as i16");
+        traps("65536 as u16", "65536 as u16");
+        traps("4294967296 as u32", "4294967296 as u32");
+        traps(&neg("1", "u64"), "-1 as u64");
+        traps(&neg("129", "i8"), "-129 as i8");
+        traps(&neg("2147483649", "i32"), "-2147483649 as i32");
+        traps(&neg("32769", "i16"), "-32769 as i16");
+        traps(&neg("1", "usize"), "-1 as usize");
+        traps(&neg("1", "u128"), "-1 as u128");
+        traps(&neg("1", "u8"), "-1 as u8");
+    }
+
+    #[test]
+    fn negated_cast_follows_the_precedence_rule() {
+        // `-128 as i8` is `-(128 as i8)`, and `128 as i8` traps.
+        traps("-128 as i8", "128 as i8");
+    }
+
+    #[test]
+    fn boundary_values_are_exact() {
+        assert_eq!(cast("255 as u8"), Ok(Value::Int(255)));
+        assert_eq!(cast("0 as u8"), Ok(Value::Int(0)));
+        assert_eq!(cast("127 as i8"), Ok(Value::Int(127)));
+        assert_eq!(cast(&neg("128", "i8")), Ok(Value::Int(-128)));
+        assert_eq!(cast("65535 as u16"), Ok(Value::Int(65535)));
+        assert_eq!(cast(&neg("32768", "i16")), Ok(Value::Int(-32768)));
+        assert_eq!(cast("2147483647 as i32"), Ok(Value::Int(2147483647)));
+        assert_eq!(cast(&neg("2147483648", "i32")), Ok(Value::Int(-2147483648)));
+        assert_eq!(cast("4294967295 as u32"), Ok(Value::Int(4294967295)));
+        assert_eq!(cast("0 as u64"), Ok(Value::Int(0)));
+        assert_eq!(cast("9223372036854775807 as u64"), Ok(Value::Int(i64::MAX)));
+        assert_eq!(cast(&neg("5", "i128")), Ok(Value::Int(-5)));
+    }
+
+    #[test]
+    fn float_casts_truncate_toward_zero_then_check() {
+        assert_eq!(cast("3.7 as i32"), Ok(Value::Int(3)));
+        assert_eq!(cast("val g = 0.0 - 3.7; g as i32"), Ok(Value::Int(-3)));
+        assert_eq!(cast("255.9 as u8"), Ok(Value::Int(255)));
+        assert_eq!(cast("val g = 0.0 - 0.5; g as u8"), Ok(Value::Int(0)));
+        assert!(cast("256.0 as u8").is_err());
+        assert!(cast("val g = 0.0 - 1.5; g as u8").is_err());
+        assert!(cast("1e30 as i64").is_err());
+    }
+
+    #[test]
+    fn nan_and_infinity_trap() {
+        let e = cast("(0.0 / 0.0) as i32").expect_err("nan");
+        assert!(e.contains("integer overflow in `NaN as i32`"), "{e}");
+        let e = cast("(1.0 / 0.0) as i64").expect_err("inf");
+        assert!(e.contains("integer overflow in `inf as i64`"), "{e}");
+    }
+
+    #[test]
+    fn float_targets_are_unchanged() {
+        assert_eq!(cast("300 as f64"), Ok(Value::Float(300.0)));
     }
 }

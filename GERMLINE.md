@@ -735,6 +735,70 @@ scope, so a default naming a variable would see the caller's; and the narrow
 casts, like the existing `as i32`, do no range check (`300 as u8` is 300), where
 the specification is silent.
 
+**A fourth run, where the specification had to be written first.** The run-3
+search also found silent wrong answers the specification did not rule on. The
+clearest: the interpreter's comparison returned "equal" for any two lists,
+tuples or options, so `sort` left nested lists in place and `[1, 3] <= [1, 2]`
+held. Any order beats that, and for a Rust-derived language the obvious one is
+Rust's derived `Ord` (lexicographic, proper prefix less, `None < Some`). That is a
+language decision, so it went into MAGE_SPEC.md §4.6 as a reviewable paragraph,
+outside the write set, and the backlog was written from it: four programs
+(lists, options, tuples, and `sort`/`min`/`max` over them) with hand-written
+output. Same guards as run 3, 27 programs' `--eval` output pinned.
+
+| generation | change | capability | safety | correctness | fidelity | semantics | verdict |
+|---|---|---|---|---|---|---|---|
+| 0 | base `selfmod-gen4@257618097` | 0.5 | 1.0 | 1.0 | 1.0 | 1.0 | genesis |
+| 1 | eval.rs `cmp_value` (+2 tests) | 1.0 | 1.0 | 1.0 | 1.0 | 1.0 | promoted |
+
+The split is the point: a human (here, a reviewer of the specification PR)
+decides what the language means; the loop makes the implementation agree, under
+guards that keep everything else as it was.
+
+**A fifth run, on a limit run 3 left behind.** Review of run 3 had noted that a
+field default was evaluated in the constructing scope. Probing showed two real
+defects: with `const K: i32 = 7` and `y: i32 = K`, a caller holding its own
+`val K = 5` built `y = 5`; and a default naming no module-level binding at all
+(`y: i32 = k`) passed `--check` and then picked up a caller's `k`. The
+specification sentence (§4.3: a default is read where it is written, may name
+module-level constants and functions, and an unresolved name is E0425) went into
+the reviewable PR; the backlog was the shadowing program (expected `7`, through
+`eval.target`) and the unbound one as a new known-bad program, so the base scored
+correctness 5/6 against a guard that is relative to the champion.
+
+| generation | change | capability | correctness | safety | fidelity | semantics | verdict |
+|---|---|---|---|---|---|---|---|
+| 0 | base `selfmod-gen5@e3f1d7be9` | 0.5 | 0.833 | 1.0 | 1.0 | 1.0 | genesis |
+| 1 | eval.rs, resolve.rs (+3 tests) | 1.0 | 1.0 | 1.0 | 1.0 | 1.0 | promoted |
+
+The candidate evaluates defaults in the empty environment `const` initialisers
+use, and resolves them in module scope where the resolver had a comment saying
+"data fields are simple, skip for now".
+
+**A sixth run, and a backlog that was wrong.** Given the call, out-of-range casts
+trap rather than wrap, as §4.10 already does for arithmetic; the evaluator gained
+`{"fails_with": TEXT}` targets for required traps. The first corpus (run 6) had
+two targets written against the author's reading, not the specification:
+`-128 as i8` printing -128 and `-129 as i8` trapping as itself. Appendix C makes
+postfix `as` bind tighter than prefix `-`, so `-128 as i8` is `-(128 as i8)` and
+must trap. The proposer met the targets anyway, by rewriting unary minus over a
+cast in the interpreter only, which the checker and formatter did not share and
+which changed what an explicit `-(200 as u8)` means. The gate would have promoted
+it; review stopped it. Run 6b rebuilt the corpus with negative values bound
+first and a target pinning the precedence (`-128 as i8` traps with `128 as i8`):
+the base scores 7/12, the rejected candidate 11/12 (it fails exactly that
+target), and the revised candidate, with the rewrite removed, 12/12.
+
+| run | generation | capability | correctness | safety | fidelity | semantics | verdict |
+|---|---|---|---|---|---|---|---|
+| 6b | 0, base `selfmod-gen6@2ec4a56d8` | 0.583 | 1.0 | 1.0 | 1.0 | 1.0 | genesis |
+| 6b | 1, eval.rs `Expr::Cast` (+6 tests) | 1.0 | 1.0 | 1.0 | 1.0 | 1.0 | promoted |
+
+A gate is only as sound as its backlog: a wrong target is a specification the
+loop will faithfully implement, by whatever means pass. Each target needs
+checking against the specification's text, as run 1's stale backlog item
+already showed, and the proposer's diff still needs reading.
+
 ## 8. What is still not built
 
 ◻ **Model training and inference.** The variation operators produce genomes; what
