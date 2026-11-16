@@ -549,6 +549,19 @@ impl Lineage {
                     proposals += 1;
                     trailing_refusals += 1;
                 }
+                Entry::MeasuredNotSubmitted { generation, submitted, .. } => {
+                    let g = pending
+                        .get(generation)
+                        .ok_or_else(|| bad(format!("{generation} is set aside without being proposed")))?;
+                    if g.measured.is_none() {
+                        return Err(bad(format!("{generation} is set aside without being measured")));
+                    }
+                    if !pending.contains_key(submitted) && l.get(*submitted).is_none() {
+                        return Err(bad(format!("{generation} is set aside for unknown {submitted}")));
+                    }
+                    pending.remove(generation);
+                    proposals = proposals.saturating_sub(1);
+                }
                 Entry::EnergySpent { joules, .. } => energy_spent += joules,
                 Entry::Adjudicated { .. } | Entry::Failure { .. } | Entry::Note { .. } => {}
             }

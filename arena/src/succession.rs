@@ -653,7 +653,7 @@ const USAGE: &str = "usage: arena succession --heldout FILE[,FILE...] --journal 
 [--objective-tolerance AXIS=F,...] [--allow-estimated-energy] [--efficiency-basis meter|work] \
 [--energy-budget JOULES] [--param-search es|perturb] [--cost joules|fuel] [--validation FILE[,FILE...]] \
 [--train-text FILE[,FILE...]] [--train-text-per-round N] [--reward alignment|compression|transfer] [--dev-text FILE[,FILE...]] [--genome narrow|wide] \
-[--patience N] [--mutation-scale F] [--predict] \
+[--patience N] [--mutation-scale F] [--predict] [--measure N] \
 [--learners SPEC[,SPEC...]]  (SPEC: ng:orders:log2buckets:lr | tf:d:layers:heads:ctx:lr[:gpu] | \
 ent:orders:log2buckets:target_len:lr | ssm:d:lr[:bptt]; the first spec is the one the gate scores)";
 
@@ -849,6 +849,11 @@ fn full_policy_name(basis: EfficiencyBasis, train_text: bool, learners: Option<&
     name
 }
 
+/// `--measure`: a whole number of candidates to measure per cycle, at least 1.
+fn parse_measure(v: &str) -> Result<usize, String> {
+    v.parse::<usize>().ok().filter(|n| *n >= 1).ok_or_else(|| format!("--measure: `{v}` is not a whole number of at least 1"))
+}
+
 /// `--patience`: a whole number of refusals, at least 1.
 fn parse_patience(v: &str) -> Result<u32, String> {
     v.parse::<u32>().ok().filter(|n| *n >= 1).ok_or_else(|| format!("--patience: `{v}` is not a whole number of at least 1"))
@@ -884,10 +889,10 @@ fn apply_search_budget(
     Ok(patience.unwrap_or(RunnerPolicy::default().max_consecutive_refusals))
 }
 
-/// [`full_policy_name`], plus `+patience=N`, `+mscale=F` and `+predict` when those
+/// [`full_policy_name`], plus `+patience=N`, `+mscale=F`, `+predict` and `+measure=N` when those
 /// opt-in flags are given. They enter the policy digest anyway (the digest is of
 /// the whole serialized policy), the suffix keeps the name honest too.
-fn with_budget_suffix(mut name: String, patience: Option<u32>, mutation_scale: Option<f64>, predict: bool) -> String {
+fn with_budget_suffix(mut name: String, patience: Option<u32>, mutation_scale: Option<f64>, predict: bool, measure: Option<usize>) -> String {
     if let Some(p) = patience {
         name.push_str(&format!("+patience={p}"));
     }
@@ -896,6 +901,9 @@ fn with_budget_suffix(mut name: String, patience: Option<u32>, mutation_scale: O
     }
     if predict {
         name.push_str("+predict");
+    }
+    if let Some(m) = measure {
+        name.push_str(&format!("+measure={m}"));
     }
     name
 }
@@ -1048,6 +1056,8 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
     let mut mutation_scale: Option<f64> = None;
     // Opt-in: candidates state a capability prediction (see germline's `with_self_prediction`).
     let mut predict = false;
+    // Opt-in: measure N admitted candidates per cycle, adjudicating the best.
+    let mut measure: Option<usize> = None;
     let mut i = 0;
     while i < args.len() {
         let flag = args[i].as_str();
@@ -1114,6 +1124,7 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
             "--patience" => patience = Some(parse_patience(v)?),
             "--mutation-scale" => mutation_scale = Some(parse_mutation_scale(v)?),
             "--predict" => predict = true,
+            "--measure" => measure = Some(parse_measure(v)?),
             "--learners" => {
                 base.learners = crate::learner::parse_learner_specs(v)?;
                 learners_flag = Some(v.to_string());
@@ -1258,6 +1269,7 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
             patience,
             mutation_scale,
             predict,
+            measure,
         ),
         max_consecutive_refusals: max_refusals,
         max_cycles: cycles,
@@ -1265,6 +1277,7 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
         stop_file: stop_file.map(PathBuf::from),
         variation,
         energy_budget_joules: energy_budget,
+        measure_per_cycle: measure.unwrap_or(1),
         ..RunnerPolicy::default()
     };
     let mut runner = Runner::new(policy, &ep, &at, suite.clone(), seed);
@@ -1523,6 +1536,8 @@ mod tests {
         };
         assert!(run(&["--patience", "0"]).contains("--patience"));
         assert!(run(&["--patience", "x"]).contains("--patience"));
+        assert!(run(&["--measure", "0"]).contains("--measure"));
+        assert!(run(&["--measure", "x"]).contains("--measure"));
         assert!(run(&["--mutation-scale", "0"]).contains("--mutation-scale"));
         assert!(run(&["--mutation-scale", "1.5"]).contains("--mutation-scale"));
         assert!(run(&["--mutation-scale", "nan"]).contains("--mutation-scale"));
@@ -1531,14 +1546,16 @@ mod tests {
 
         // Names: unchanged by default, suffixed when given.
         let n = || full_policy_name(EfficiencyBasis::Work, false, None, false, true);
-        assert_eq!(with_budget_suffix(n(), None, None, false), n());
-        assert_eq!(with_budget_suffix(n(), Some(10), None, false), format!("{}+patience=10", n()));
-        assert_eq!(with_budget_suffix(n(), Some(10), Some(0.35), false), format!("{}+patience=10+mscale=0.35", n()));
-        assert_eq!(with_budget_suffix(n(), None, None, true), format!("{}+predict", n()));
+        assert_eq!(with_budget_suffix(n(), None, None, false, None), n());
+        assert_eq!(with_budget_suffix(n(), Some(10), None, false, None), format!("{}+patience=10", n()));
+        assert_eq!(with_budget_suffix(n(), Some(10), Some(0.35), false, None), format!("{}+patience=10+mscale=0.35", n()));
+        assert_eq!(with_budget_suffix(n(), None, None, true, None), format!("{}+predict", n()));
         assert_eq!(
-            with_budget_suffix(n(), Some(10), Some(0.35), true),
+            with_budget_suffix(n(), Some(10), Some(0.35), true, None),
             format!("{}+patience=10+mscale=0.35+predict", n())
         );
+        assert_eq!(with_budget_suffix(n(), None, None, false, Some(3)), format!("{}+measure=3", n()));
+        assert_eq!(with_budget_suffix(n(), None, None, true, Some(3)), format!("{}+predict+measure=3", n()));
 
         // Values reach the policy, and the digest moves only when a flag is given.
         let mut v = VariationPlan::default();
@@ -1716,7 +1733,7 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
         let mut journal = Journal::open(&dir.join("journal.jsonl")).unwrap();
         let policy = RunnerPolicy {
-            name: with_budget_suffix(policy_name(EfficiencyBasis::Meter), None, None, true),
+            name: with_budget_suffix(policy_name(EfficiencyBasis::Meter), None, None, true, None),
             max_cycles: 4,
             max_consecutive_refusals: 10,
             candidates_per_cycle: 3,

@@ -432,6 +432,20 @@ impl Episode {
         }
     }
 
+    /// Whether `challenger`'s held-out measurement would pass the fitness checks
+    /// (rule (a), or rule (b) under a [`DominanceRule`], with the guards and the
+    /// ratchet) against `lineage` as it stands. Only the fitness part of
+    /// [`Episode::adjudicate`]: the barrier, evidence, self-certification,
+    /// materialization, demotion and canary checks are not run. The runner uses it
+    /// to choose which of several measured candidates to submit; the one it
+    /// submits is still adjudicated in full.
+    pub fn fitness_passes(&self, challenger: &Generation, lineage: &Lineage) -> bool {
+        let Some(cf) = challenger.heldout_fitness() else { return false };
+        let mut reasons = Vec::new();
+        self.check_fitness(challenger, cf, lineage, &mut reasons);
+        reasons.is_empty()
+    }
+
     /// Adjudicate, and on approval mint the [`Approval`] that
     /// [`Lineage::promote`] requires. A rejection comes back as its verdict.
     pub fn approve(
