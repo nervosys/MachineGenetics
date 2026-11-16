@@ -590,6 +590,10 @@ pub struct EnumDef {
 pub struct EnumVariant {
     pub name: String,
     pub kind: VariantKind,
+    /// Explicit discriminant of a unit variant (`A = 1`, `A = -1`). Only unit
+    /// variants may carry one. Absent from serialized ASTs when `None`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub discriminant: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

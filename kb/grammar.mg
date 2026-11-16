@@ -86,9 +86,9 @@ kb Grammar {
     // EnumDef: parse_enum_def 856-919
     fact instance_of(EnumDef, Production);
     fact rhs(EnumDef, "KwE Name Generics? LBrace ItEnumVariant* RBrace");
-    // ItEnumVariant: parse_enum_def 868-911: tuple, struct or unit variant, optional comma
+    // ItEnumVariant: parse_enum_def 868-911: tuple, struct or unit variant (a unit variant may take `= int`), optional comma
     fact instance_of(ItEnumVariant, Production);
-    fact rhs(ItEnumVariant, "Name (LParen (Type Comma?)* RParen | LBrace (Name Colon Type Comma?)* RBrace)? Comma?");
+    fact rhs(ItEnumVariant, "Name (LParen (Type Comma?)* RParen | LBrace (Name Colon Type Comma?)* RBrace | Assign Minus? IntLiteral)? Comma?");
     // TraitDef: parse_trait_def 923-959
     fact instance_of(TraitDef, Production);
     fact rhs(TraitDef, "KwT Name Generics? (Colon Name (Plus Name)*)? LBrace Item* RBrace");

@@ -508,7 +508,15 @@ impl Resolver {
             }
             ast::ItemKind::Data(dd) => {
                 self.warn_discarded_bounds(&format!("`{}`", dd.name), &dd.generics, &[]);
-                /* data fields are simple, skip for now */
+                // A field default is an expression written in the declaration:
+                // it resolves in module scope, like a `const` initialiser.
+                if let ast::DataKind::Record(fields) = &dd.kind {
+                    for f in fields {
+                        if let Some(d) = &f.default {
+                            self.resolve_expr(d);
+                        }
+                    }
+                }
             }
             ast::ItemKind::Extend(eb) => {
                 self.push_scope();
@@ -1373,6 +1381,22 @@ mod tests {
         let r = resolve_source("f foo() -> i32 { unknown_var }");
         assert!(!r.diagnostics.is_empty());
         assert!(r.diagnostics.iter().any(|d| d.message.contains("unresolved name: `unknown_var`")));
+    }
+
+    #[test]
+    fn an_unbound_field_default_is_unresolved() {
+        let r = resolve_source("data P(x: i32, y: i32 = k)
+f main() -> i32 { val k = 99
+ 1 }");
+        assert!(r.diagnostics.iter().any(|d| d.message.contains("unresolved name: `k`")), "{:?}", r.diagnostics);
+    }
+
+    #[test]
+    fn a_const_field_default_resolves_clean() {
+        let r = resolve_source("const K: i32 = 7;
+f g() -> i32 { 1 }
+data P(x: i32, y: i32 = K, z: i32 = g())");
+        assert!(r.diagnostics.is_empty(), "{:?}", r.diagnostics);
     }
 
     #[test]

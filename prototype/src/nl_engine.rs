@@ -423,6 +423,7 @@ impl NlEngine {
                 .map(|v| EnumVariant {
                     name: v.clone(),
                     kind: VariantKind::Unit,
+                    discriminant: None,
                 })
                 .collect(),
         };
