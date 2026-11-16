@@ -43,8 +43,8 @@
     "difficulty": "hard",
     "task": "Write a producer-consumer pattern using a channel effect",
     "solution": {
-      "rdx_source": "effect channel[T] {\n    f send(val: T);\n    f recv() -> ?T;\n}\n\n+f produce_consume() -> [i32]~ / async, channel[i32] {\n    v producer = async.spawn(fn() {\n        m i: i32 = 0;\n        loop {\n            ? i >= 5 { break; }\n            channel.send(i);\n            i = i + 1;\n        }\n    });\n    m results: [i32]~ = [];\n    loop {\n        v val = channel.recv();\n        ? val { ?Some(v) => results.push(v), ?None => break }\n    }\n    async.join(producer);\n    results\n}",
-      "token_count": 110,
+      "rdx_source": "effect channel[T] {\n    f send(val: T);\n    f recv() -> ?T;\n    f close();\n}\n\n+f produce_consume() -> [i32]~ / async, channel[i32] {\n    v producer = async.spawn(fn() {\n        m i: i32 = 0;\n        loop {\n            ? i >= 5 { break; }\n            channel.send(i);\n            i = i + 1;\n        }\n        channel.close();\n    });\n    m results: [i32]~ = [];\n    loop {\n        v val = channel.recv();\n        ? val { ?Some(v) => results.push(v), ?None => break }\n    }\n    async.join(producer);\n    results\n}",
+      "token_count": 150,
       "effects": ["async", "channel"],
       "skb_rules_used": ["concurrency:channel-comm", "concurrency:spawn-join"]
     },
@@ -100,8 +100,8 @@
     "difficulty": "hard",
     "task": "Write a timeout wrapper that cancels a computation after a deadline",
     "solution": {
-      "rdx_source": "effect timer {\n    f sleep(ms: u64);\n    f deadline(ms: u64) -> Handle[()];\n}\n\n+f with_timeout[T](ms: u64, task: f() -> T) -> ?T / async, timer {\n    v cancel = timer.deadline(ms);\n    v work = async.spawn(task);\n    ? async.select(work, cancel) {\n        Left(result) => ?Some(result),\n        Right(_) => ?None,\n    }\n}",
-      "token_count": 78,
+      "rdx_source": "effect timer {\n    f sleep(ms: u64);\n    f deadline(ms: u64) -> Handle[()];\n}\n\n+f with_timeout[T](ms: u64, task: f() -> T) -> ?T / async, timer {\n    v cancel = timer.deadline(ms);\n    v work = async.spawn(task);\n    ? async.select(work, cancel) {\n        Left(result) => { async.cancel(cancel); ?Some(result) },\n        Right(_) => { async.cancel(work); ?None },\n    }\n}",
+      "token_count": 122,
       "effects": ["async", "timer"],
       "skb_rules_used": ["concurrency:timeout-pattern", "concurrency:effect-tracking"]
     },
@@ -139,8 +139,8 @@
     "difficulty": "hard",
     "task": "Write a barrier that blocks until N tasks have arrived, then releases all of them",
     "solution": {
-      "rdx_source": "S Barrier {\n    count: @AtomicI64,\n    target: i64,\n}\n\nI Barrier {\n    +f new(n: i64) -> Barrier {\n        @Barrier { count: @AtomicI64.new(0), target: n }\n    }\n    +f arrive_and_wait(&self) / async {\n        v arrived = self.count.fetch_add(1) + 1;\n        ? arrived >= self.target {\n            // last arrival — all proceed\n        } : {\n            loop {\n                ? self.count.load() >= self.target { break; }\n                async.yield();\n            }\n        }\n    }\n}",
-      "token_count": 90,
+      "rdx_source": "S Barrier {\n    count: @AtomicI64,\n    target: i64,\n}\n\nI Barrier {\n    +f new(n: i64) -> Barrier {\n        @Barrier { count: @AtomicI64.new(0), target: n }\n    }\n    +f arrive_and_wait(&self) / async {\n        // one-shot: not reusable after the first release, unlike std Barrier\n        v arrived = self.count.fetch_add(1) + 1;\n        ? arrived >= self.target {\n            // last arrival releases all\n        } : {\n            loop {\n                ? self.count.load() >= self.target { break; }\n                async.yield();\n            }\n        }\n    }\n}",
+      "token_count": 107,
       "effects": ["async"],
       "skb_rules_used": ["concurrency:barrier-sync", "concurrency:atomic-ops"]
     },
@@ -169,25 +169,6 @@
     },
     "tests": [
       { "input": "map_reduce([1,2,3,4], 2, fn(x) => x as i64, fn(a,b) => a + b, 0)", "expected": "10" }
-    ]
-  },
-  {
-    "id": "conc-010",
-    "category": "concurrency",
-    "difficulty": "hard",
-    "task": "Write an async semaphore that limits concurrent access to a resource to N permits",
-    "solution": {
-      "rdx_source": "S Semaphore {\n    permits: @AtomicI64,\n    max_permits: i64,\n}\n\nI Semaphore {\n    +f new(n: i64) -> Semaphore {\n        @Semaphore { permits: @AtomicI64.new(n), max_permits: n }\n    }\n    +f acquire(&self) / async {\n        loop {\n            v current = self.permits.load();\n            ? current > 0 {\n                self.permits.fetch_sub(1);\n                ret;\n            }\n            async.yield();\n        }\n    }\n    +f release(&self) {\n        v current = self.permits.load();\n        ? current < self.max_permits {\n            self.permits.fetch_add(1);\n        }\n    }\n}",
-      "token_count": 110,
-      "effects": ["async"],
-      "skb_rules_used": ["concurrency:semaphore", "concurrency:atomic-ops"]
-    },
-    "rust_equivalent": {
-      "rs_source": "use tokio::sync::Semaphore as TokioSemaphore;\nuse std::sync::Arc;\n\nstruct Semaphore { inner: Arc<TokioSemaphore> }\n\nimpl Semaphore {\n    pub fn new(n: usize) -> Self {\n        Self { inner: Arc::new(TokioSemaphore::new(n)) }\n    }\n    pub async fn acquire(&self) {\n        self.inner.acquire().await.unwrap().forget();\n    }\n    pub fn release(&self) {\n        self.inner.add_permits(1);\n    }\n}",
-      "token_count": 128
-    },
-    "tests": [
-      { "input": "v s = Semaphore.new(2); s.acquire(); s.acquire(); s.release()", "expected": "()" }
     ]
   }
 ]

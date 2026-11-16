@@ -11,8 +11,8 @@
       "skb_rules_used": ["borrow:shared-ref"]
     },
     "rust_equivalent": {
-      "rs_source": "use serde::Serialize;\nuse serde_json;\n\n#[derive(Serialize)]\nstruct Greeting { message: String }\n\npub fn handle_greet(name: Option<&str>) -> (u16, String) {\n    let name = name.unwrap_or(\"World\");\n    let body = serde_json::to_string(&Greeting { message: format!(\"Hello, {}!\", name) }).unwrap();\n    (200, body)\n}",
-      "token_count": 108
+      "rs_source": "use serde::Serialize;\nuse serde_json;\n\n#[derive(Serialize)]\nstruct Greeting { message: String }\n\npub fn handle_greet(name: Option<&str>) -> (u16, Vec<(String, String)>, String) {\n    let name = name.unwrap_or(\"World\");\n    let body = serde_json::to_string(&Greeting { message: format!(\"Hello, {}!\", name) }).unwrap();\n    (200, vec![(\"Content-Type\".to_string(), \"application/json\".to_string())], body)\n}",
+      "token_count": 113
     },
     "tests": [
       { "input": "handle_greet(Request.with_query(\"name=MAGE\"))", "expected": "Response(200, {\"message\":\"Hello, MAGE!\"})" }
@@ -24,8 +24,8 @@
     "difficulty": "hard",
     "task": "Write a URL parser that extracts scheme, host, port, and path from a URL string",
     "solution": {
-      "rdx_source": "S Url {\n    scheme: s,\n    host: s,\n    port: ?u16,\n    path: s,\n}\n\n+f parse_url(raw: &s) -> R[Url, s] {\n    v parts = raw.split(\"://\");\n    ? parts.len() < 2 { ret R.Err(\"missing scheme\"); }\n    v scheme = parts[0];\n    v rest = parts[1];\n    v slash_idx = rest.find('/').unwrap_or(rest.len());\n    v authority = rest[0..slash_idx];\n    v path = rest[slash_idx..];\n    v colon_idx = authority.find(':');\n    ? colon_idx {\n        ?Some(ci) => {\n            v host = authority[0..ci];\n            v port = authority[ci+1..].parse_u16();\n            R.Ok(@Url { scheme: scheme, host: host, port: ?Some(port), path: path })\n        },\n        ?None => R.Ok(@Url { scheme: scheme, host: authority, port: ?None, path: path }),\n    }\n}",
-      "token_count": 148,
+      "rdx_source": "S Url {\n    scheme: s,\n    host: s,\n    port: ?u16,\n    path: s,\n}\n\n+f parse_url(raw: &s) -> R[Url, s] {\n    v parts = raw.splitn(2, \"://\");\n    ? parts.len() < 2 { ret R.Err(\"missing scheme\"); }\n    v scheme = parts[0];\n    v rest = parts[1];\n    v slash_idx = rest.find('/').unwrap_or(rest.len());\n    v authority = rest[0..slash_idx];\n    v path = rest[slash_idx..];\n    v colon_idx = authority.find(':');\n    ? colon_idx {\n        ?Some(ci) => {\n            v host = authority[0..ci];\n            v port = authority[ci+1..].parse_u16();\n            ? port {\n                ?Some(p) => R.Ok(@Url { scheme: scheme, host: host, port: ?Some(p), path: path }),\n                ?None => R.Err(\"invalid port\"),\n            }\n        },\n        ?None => R.Ok(@Url { scheme: scheme, host: authority, port: ?None, path: path }),\n    }\n}",
+      "token_count": 249,
       "effects": [],
       "skb_rules_used": ["type_safety:result-return", "borrow:shared-ref"]
     },
@@ -50,8 +50,8 @@
       "skb_rules_used": ["ownership:exclusive-ref", "borrow:shared-ref"]
     },
     "rust_equivalent": {
-      "rs_source": "enum Method { Get, Post, Put, Delete }\n\nstruct Route { method: Method, path: String, handler: fn(&str) -> (u16, String) }\n\nstruct Router { routes: Vec<Route> }\n\nimpl Router {\n    pub fn new() -> Self { Self { routes: Vec::new() } }\n    pub fn add(&mut self, method: Method, path: String, handler: fn(&str) -> (u16, String)) {\n        self.routes.push(Route { method, path, handler });\n    }\n    pub fn dispatch(&self, method: &Method, path: &str, body: &str) -> (u16, String) {\n        for route in &self.routes {\n            if std::mem::discriminant(&route.method) == std::mem::discriminant(method) && route.path == path {\n                return (route.handler)(body);\n            }\n        }\n        (404, \"Not Found\".to_string())\n    }\n}",
-      "token_count": 210
+      "rs_source": "#[derive(PartialEq)]\nenum Method { Get, Post, Put, Delete }\n\nstruct Request { method: Method, path: String, body: String }\n\nstruct Route { method: Method, path: String, handler: fn(&Request) -> (u16, String) }\n\nstruct Router { routes: Vec<Route> }\n\nimpl Router {\n    pub fn new() -> Self { Self { routes: Vec::new() } }\n    pub fn add(&mut self, method: Method, path: String, handler: fn(&Request) -> (u16, String)) {\n        self.routes.push(Route { method, path, handler });\n    }\n    pub fn dispatch(&self, req: &Request) -> (u16, String) {\n        for route in &self.routes {\n            if route.method == req.method && route.path == req.path {\n                return (route.handler)(req);\n            }\n        }\n        (404, \"Not Found\".to_string())\n    }\n}",
+      "token_count": 213
     },
     "tests": [
       { "input": "v r = Router.new(); r.add(Method.Get, \"/hello\", fn(req) => Response.new(Status.Ok, \"hi\")); r.dispatch(Request.get(\"/hello\"))", "expected": "Response(200, \"hi\")" }
@@ -101,8 +101,8 @@
     "difficulty": "hard",
     "task": "Write a query string parser that converts 'key1=val1&key2=val2' into a HashMap",
     "solution": {
-      "rdx_source": "+f parse_query(qs: &s) -> {s: s} {\n    m result: {s: s} = {};\n    ? qs.len() == 0 { ret result; }\n    v pairs = qs.split('&');\n    @ pair : pairs {\n        v kv = pair.split('=');\n        ? kv.len() == 2 {\n            result.insert(kv[0].to_string(), kv[1].to_string());\n        }\n    }\n    result\n}",
-      "token_count": 70,
+      "rdx_source": "+f parse_query(qs: &s) -> {s: s} {\n    m result: {s: s} = {};\n    ? qs.len() == 0 { ret result; }\n    v pairs = qs.split('&');\n    @ pair : pairs {\n        v kv = pair.splitn(2, '=');\n        ? kv.len() == 2 {\n            result.insert(kv[0].to_string(), kv[1].to_string());\n        }\n    }\n    result\n}",
+      "token_count": 104,
       "effects": [],
       "skb_rules_used": []
     },

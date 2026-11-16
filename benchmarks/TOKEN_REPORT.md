@@ -1,6 +1,6 @@
 # MAGE Token-Efficiency Report
 
-Generated from `benchmarks/tasks/*.json` (100 tasks).  Both MAGE and Rust sources are re-tokenised with the same lexer rule (identifiers, literals, single-character sigils) before counting.
+Generated from `benchmarks/tasks/*.json` (99 tasks).  Both MAGE and Rust sources are re-tokenised with the same lexer rule (identifiers, literals, single-character sigils) before counting.
 
 ## Source bytes (what LLM BPE actually sees)
 
@@ -8,17 +8,17 @@ The most honest measurement for agent-input cost: raw source bytes and whitespac
 
 | Category | Tasks | MAGE bytes | Rust bytes | Ratio | Reduction | Dense MG | Dense RS | Dense ratio |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| agent-orchestration | 10 | 9772 | 9369 | 1.043 | -4.3% | 6524 | 7183 | 0.908 |
-| algorithms | 15 | 3867 | 3294 | 1.174 | -17.4% | 2191 | 2109 | 1.039 |
+| agent-orchestration | 10 | 9772 | 9659 | 1.012 | -1.2% | 6524 | 7409 | 0.881 |
+| algorithms | 15 | 3901 | 3294 | 1.184 | -18.4% | 2213 | 2109 | 1.049 |
 | basic-io | 10 | 621 | 726 | 0.855 | 14.5% | 398 | 498 | 0.799 |
-| concurrency | 10 | 4639 | 3832 | 1.211 | -21.1% | 3082 | 2924 | 1.054 |
+| concurrency | 9 | 4219 | 3437 | 1.228 | -22.8% | 2860 | 2620 | 1.092 |
 | data-structures | 15 | 3323 | 3681 | 0.903 | 9.7% | 2238 | 2553 | 0.877 |
 | error-handling | 5 | 2429 | 2536 | 0.958 | 4.2% | 1739 | 2034 | 0.855 |
-| full-applications | 10 | 16546 | 15232 | 1.086 | -8.6% | 10467 | 11304 | 0.926 |
+| full-applications | 10 | 16560 | 15700 | 1.055 | -5.5% | 10481 | 11690 | 0.897 |
 | generics-traits | 5 | 3290 | 3011 | 1.093 | -9.3% | 2088 | 2160 | 0.967 |
-| systems | 10 | 6404 | 5943 | 1.078 | -7.8% | 4287 | 4292 | 0.999 |
-| web-network | 10 | 4175 | 4596 | 0.908 | 9.2% | 3034 | 3572 | 0.849 |
-| **Total** | **100** | **55066** | **52220** | **1.055** | **-5.5%** | **36048** | **38629** | **0.933** |
+| systems | 10 | 6404 | 5961 | 1.074 | -7.4% | 4287 | 4307 | 0.995 |
+| web-network | 10 | 4280 | 4711 | 0.909 | 9.1% | 3083 | 3675 | 0.839 |
+| **Total** | **99** | **54799** | **52716** | **1.040** | **-4.0%** | **35911** | **39055** | **0.919** |
 
 ## Per-category aggregates (native lexers)
 
@@ -26,17 +26,17 @@ MAGE counted by `prototype::lexer` (atomic sigils like `+f` = 1 token). Rust cou
 
 | Category | Tasks | MAGE | Rust | Ratio | Reduction |
 |---|---:|---:|---:|---:|---:|
-| agent-orchestration | 10 | 2355 | 2442 | 0.964 | 3.6% |
-| algorithms | 15 | 1239 | 1075 | 1.153 | -15.3% |
+| agent-orchestration | 10 | 2355 | 2522 | 0.934 | 6.6% |
+| algorithms | 15 | 1252 | 1075 | 1.165 | -16.5% |
 | basic-io | 10 | 259 | 276 | 0.938 | 6.2% |
-| concurrency | 10 | 1318 | 1191 | 1.107 | -10.7% |
+| concurrency | 9 | 1216 | 1080 | 1.126 | -12.6% |
 | data-structures | 15 | 1154 | 1217 | 0.948 | 5.2% |
 | error-handling | 5 | 754 | 786 | 0.959 | 4.1% |
-| full-applications | 10 | 4265 | 4378 | 0.974 | 2.6% |
+| full-applications | 10 | 4270 | 4533 | 0.942 | 5.8% |
 | generics-traits | 5 | 890 | 870 | 1.023 | -2.3% |
-| systems | 10 | 1913 | 1770 | 1.081 | -8.1% |
-| web-network | 10 | 1121 | 1305 | 0.859 | 14.1% |
-| **Total** | **100** | **15268** | **15310** | **0.997** | **0.3%** |
+| systems | 10 | 1913 | 1772 | 1.080 | -8.0% |
+| web-network | 10 | 1146 | 1329 | 0.862 | 13.8% |
+| **Total** | **99** | **15209** | **15460** | **0.984** | **1.6%** |
 
 ## Shared-rule cross-check
 
@@ -44,33 +44,33 @@ Same naive tokeniser (whitespace + identifier + literal + single sigil) applied 
 
 | Category | MAGE | Rust | Ratio |
 |---|---:|---:|---:|
-| agent-orchestration | 2435 | 2442 | 0.997 |
-| algorithms | 1283 | 1075 | 1.193 |
+| agent-orchestration | 2435 | 2522 | 0.966 |
+| algorithms | 1298 | 1075 | 1.207 |
 | basic-io | 270 | 276 | 0.978 |
-| concurrency | 1357 | 1191 | 1.139 |
+| concurrency | 1254 | 1080 | 1.161 |
 | data-structures | 1196 | 1217 | 0.983 |
 | error-handling | 780 | 786 | 0.992 |
-| full-applications | 4446 | 4378 | 1.016 |
+| full-applications | 4451 | 4533 | 0.982 |
 | generics-traits | 916 | 870 | 1.053 |
-| systems | 1978 | 1770 | 1.118 |
-| web-network | 1170 | 1305 | 0.897 |
-| **Total** | **15831** | **15310** | **1.034** |
+| systems | 1978 | 1772 | 1.116 |
+| web-network | 1197 | 1329 | 0.901 |
+| **Total** | **15775** | **15460** | **1.020** |
 
 ## Claimed vs measured (corpus integrity)
 
 | Category | MAGE claimed | Rust claimed | Claimed ratio |
 |---|---:|---:|---:|
-| agent-orchestration | 1920 | 2950 | 0.651 |
-| algorithms | 914 | 1104 | 0.828 |
+| agent-orchestration | 1920 | 2918 | 0.658 |
+| algorithms | 953 | 1104 | 0.863 |
 | basic-io | 208 | 246 | 0.846 |
-| concurrency | 1014 | 1282 | 0.791 |
+| concurrency | 1005 | 1154 | 0.871 |
 | data-structures | 802 | 1070 | 0.750 |
 | error-handling | 460 | 705 | 0.652 |
-| full-applications | 2960 | 4570 | 0.648 |
+| full-applications | 3053 | 4610 | 0.662 |
 | generics-traits | 640 | 930 | 0.688 |
-| systems | 1398 | 1888 | 0.740 |
-| web-network | 894 | 1350 | 0.662 |
-| **Total** | **11210** | **16095** | **0.696** |
+| systems | 1398 | 1898 | 0.737 |
+| web-network | 1029 | 1358 | 0.758 |
+| **Total** | **11468** | **15993** | **0.717** |
 
 ## Top 10 token savings (MAGE vs Rust)
 
@@ -82,9 +82,9 @@ Same naive tokeniser (whitespace + identifier + literal + single sigil) applied 
 | conc-002 | 38.1% | 70 | 113 |
 | web-009 | 29.9% | 96 | 137 |
 | conc-007 | 26.7% | 140 | 191 |
+| web-001 | 24.8% | 85 | 113 |
 | ds-002 | 20.8% | 42 | 53 |
 | agent-001 | 17.0% | 244 | 294 |
-| web-003 | 16.2% | 181 | 216 |
 | ds-007 | 15.7% | 107 | 127 |
 
 ## Regressions (|claimed − measured| > 10%)
@@ -94,7 +94,6 @@ Same naive tokeniser (whitespace + identifier + literal + single sigil) applied 
 | agent-001 | mage | 190 | 244 | +54 |
 | agent-002 | mage | 260 | 294 | +34 |
 | agent-002 | rust | 400 | 296 | -104 |
-| agent-003 | rust | 200 | 158 | -42 |
 | agent-004 | mage | 160 | 222 | +62 |
 | agent-005 | mage | 210 | 288 | +78 |
 | agent-005 | rust | 340 | 305 | -35 |
@@ -103,7 +102,6 @@ Same naive tokeniser (whitespace + identifier + literal + single sigil) applied 
 | agent-007 | mage | 160 | 222 | +62 |
 | agent-007 | rust | 260 | 230 | -30 |
 | agent-008 | mage | 200 | 252 | +52 |
-| agent-008 | rust | 280 | 210 | -70 |
 | agent-009 | rust | 260 | 174 | -86 |
 | agent-010 | mage | 220 | 270 | +50 |
 | agent-010 | rust | 320 | 270 | -50 |
@@ -112,7 +110,6 @@ Same naive tokeniser (whitespace + identifier + literal + single sigil) applied 
 | algo-002 | mage | 68 | 88 | +20 |
 | algo-003 | mage | 72 | 107 | +35 |
 | algo-003 | rust | 96 | 107 | +11 |
-| algo-004 | mage | 60 | 86 | +26 |
 | algo-004 | rust | 78 | 86 | +8 |
 | algo-005 | mage | 24 | 34 | +10 |
 | algo-005 | rust | 28 | 36 | +8 |
@@ -146,18 +143,13 @@ Same naive tokeniser (whitespace + identifier + literal + single sigil) applied 
 | conc-001 | mage | 72 | 103 | +31 |
 | conc-002 | mage | 52 | 70 | +18 |
 | conc-002 | rust | 100 | 113 | +13 |
-| conc-003 | mage | 110 | 139 | +29 |
 | conc-003 | rust | 128 | 112 | -16 |
 | conc-004 | mage | 72 | 103 | +31 |
 | conc-005 | mage | 150 | 220 | +70 |
-| conc-006 | mage | 78 | 104 | +26 |
 | conc-006 | rust | 108 | 96 | -12 |
 | conc-007 | mage | 120 | 140 | +20 |
-| conc-008 | mage | 90 | 107 | +17 |
 | conc-009 | mage | 160 | 201 | +41 |
 | conc-009 | rust | 190 | 156 | -34 |
-| conc-010 | mage | 110 | 131 | +21 |
-| conc-010 | rust | 128 | 111 | -17 |
 | ds-001 | mage | 24 | 31 | +7 |
 | ds-002 | mage | 36 | 42 | +6 |
 | ds-003 | mage | 62 | 92 | +30 |
@@ -190,7 +182,6 @@ Same naive tokeniser (whitespace + identifier + literal + single sigil) applied 
 | err-004 | rust | 150 | 167 | +17 |
 | err-005 | mage | 100 | 180 | +80 |
 | err-005 | rust | 170 | 208 | +38 |
-| app-001 | mage | 250 | 338 | +88 |
 | app-002 | mage | 320 | 357 | +37 |
 | app-002 | rust | 480 | 419 | -61 |
 | app-003 | mage | 290 | 392 | +102 |
@@ -199,14 +190,11 @@ Same naive tokeniser (whitespace + identifier + literal + single sigil) applied 
 | app-004 | rust | 560 | 685 | +125 |
 | app-005 | mage | 390 | 613 | +223 |
 | app-006 | mage | 280 | 348 | +68 |
-| app-006 | rust | 360 | 282 | -78 |
 | app-007 | mage | 250 | 356 | +106 |
 | app-008 | mage | 330 | 559 | +229 |
-| app-008 | rust | 520 | 573 | +53 |
 | app-009 | mage | 260 | 362 | +102 |
 | app-009 | rust | 400 | 357 | -43 |
 | app-010 | mage | 250 | 330 | +80 |
-| app-010 | rust | 390 | 325 | -65 |
 | gt-001 | rust | 40 | 34 | -6 |
 | gt-002 | rust | 140 | 106 | -34 |
 | gt-003 | mage | 170 | 285 | +115 |
@@ -220,7 +208,6 @@ Same naive tokeniser (whitespace + identifier + literal + single sigil) applied 
 | sys-003 | rust | 180 | 153 | -27 |
 | sys-004 | mage | 160 | 212 | +52 |
 | sys-005 | mage | 68 | 94 | +26 |
-| sys-005 | rust | 60 | 68 | +8 |
 | sys-006 | mage | 200 | 301 | +101 |
 | sys-007 | mage | 110 | 149 | +39 |
 | sys-008 | mage | 160 | 232 | +72 |
@@ -228,14 +215,11 @@ Same naive tokeniser (whitespace + identifier + literal + single sigil) applied 
 | sys-010 | mage | 160 | 183 | +23 |
 | sys-010 | rust | 250 | 203 | -47 |
 | web-001 | mage | 72 | 85 | +13 |
-| web-001 | rust | 108 | 86 | -22 |
-| web-002 | mage | 148 | 226 | +78 |
 | web-002 | rust | 220 | 261 | +41 |
 | web-003 | mage | 140 | 181 | +41 |
 | web-004 | rust | 120 | 86 | -34 |
 | web-005 | mage | 58 | 51 | -7 |
 | web-005 | rust | 100 | 83 | -17 |
-| web-006 | mage | 70 | 102 | +32 |
 | web-007 | mage | 56 | 77 | +21 |
 | web-008 | mage | 62 | 82 | +20 |
 | web-009 | mage | 82 | 96 | +14 |

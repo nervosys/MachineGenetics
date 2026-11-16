@@ -145,7 +145,7 @@
     "ci_floors": [
       {
         "name": "MIN_PARSE",
-        "protects": "File-oracle parse rate (100-task corpus) must not regress. Enforced by scripts/check-ci-floors.sh",
+        "protects": "File-oracle parse rate (99-task corpus) must not regress. Enforced by scripts/check-ci-floors.sh",
         "threshold": ">= 98"
       },
       {
@@ -4268,7 +4268,7 @@
       },
       {
         "path": "benchmarks/tasks/",
-        "purpose": "100-task reference corpus"
+        "purpose": "99-task reference corpus"
       },
       {
         "path": "scripts/agent_wrappers/",

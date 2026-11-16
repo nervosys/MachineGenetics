@@ -35,7 +35,7 @@ each claim has a command beside it.
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
 | CI | 11 jobs defined, **10 of which ever run** — green on `master`. The eleventh, `prototype — cuda kernels (self-hosted GPU)`, has no runner and has never executed (open item 2) |
-| Reliability floors | file-oracle parse 99/100, perturbed pattern-heal 42, native-lexer ratio 0.997 |
+| Reliability floors | file-oracle parse 98/99, perturbed pattern-heal 42, native-lexer ratio 0.984 |
 | Examples | 12 of 12 typecheck, run, and print their recorded answer |
 | `.mg` sources | **126 checked, 1 sketches** — every `.mg` file in the repository typechecks except `prototype/examples/heal/type_error.mg`, which is ill-typed on purpose as the `--heal` demo |
 | Differentiability | **35 of 35 nets and 8 of 8 train blocks; 12 of 176 functions** (three arena harness policies and nine physics-task and system-identification steps) — `scripts/measure-differentiability.sh`, re-derived in CI and compared against `DIFFERENTIABILITY.md` in both directions |
@@ -381,8 +381,9 @@ Four capabilities landed on this branch. Limits are stated with each.
   is trained on `.mg` files (`prototype/data/MAGE_BPE.md`). Not cl100k, and its
   counts are not comparable with cl100k counts.
 - **Token-bench BPE (#226).** `token-bench --bpe [--vocab FILE] [--bpe-out FILE]`.
-  On the 100-task corpus MAGE uses 8.5% more BPE tokens than Rust (20,546 vs
-  18,932, ratio 1.085), on a vocabulary that favours MAGE. Breakdown in
+  On the 99-task corpus MAGE uses 7.0% more BPE tokens than Rust (20,457 vs
+  19,122, ratio 1.070; it was 20,546 vs 18,932, 1.085, before the pairs were
+  reconciled on 2026-11-15), on a vocabulary that favours MAGE. Breakdown in
   `benchmarks/FINDINGS.md`.
 - **Borrow checker (#224).** `borrowck.rs` reports E0382 and E0502 in `--check`
   and `--pipeline`. The default `Policy::INFERRED` moves an argument only when

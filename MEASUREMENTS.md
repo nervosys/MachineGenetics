@@ -109,8 +109,8 @@ Reject-by-construction error coverage: **B0000–B0006** (net), **K0001–K0004,
 **A0001–A0003** (agent), **S0001–S0006** (swarm), **U0001–U0003** (unified) — all
 machine-readable `{code, message, fix}`.
 
-### Front-end reliability (reliability-bench, 100-task corpus)
-`lex 100/100 (100%) · parse 99/100 (99%) · effective 100/100 (100%)` (the 1 hard
+### Front-end reliability (reliability-bench, 99-task corpus)
+`lex 99/99 (100%) · parse 98/99 (99%) · effective 99/99 (100%)` (the 1 hard
 parse recovers via pattern-heal / structural-heal / refine). `cargo run --bin reliability-bench`.
 
 ### agentic-eval quality scores (curated four-axis, bias-audited)
@@ -264,16 +264,19 @@ This is **dominated by process startup (~28 ms on Windows)** — the actual work
 µs-scale (see above). An agent doing many ops should drive the **long-running RAP
 server** (`--rap`) to amortize startup to ~0.
 
-### Token efficiency (token-bench, 100-task corpus vs Rust)
+### Token efficiency (token-bench, 99-task corpus vs Rust)
 ```
-source bytes  1.055 (MAGE 5.5% MORE)   dense  0.933 (6.7% fewer)   native lexers  0.997 (~tie)
+source bytes  1.040 (MAGE 4.0% MORE)   dense  0.919 (8.1% fewer)   native lexers  0.984 (1.6% fewer)
 ```
+Shared counting rule 1.020. The MAGE and Rust sources of each pair were reconciled on
+2026-11-15 (missing content added to whichever side lacked it, `conc-010` dropped, so the
+corpus is now 99 tasks); the earlier figures were 1.055 / 0.933 / 0.997 / 1.034.
 Confirms the measured thesis: **text token efficiency is a floor** (≈ Rust), not a
 win. The compaction lives in the binary IR at rest (≈26 B/layer), not in source.
 
-**Real BPE tokens, 2026-11-13** (`token-bench --bpe`, the crate's own tokenizer and its
-shipped `mage-bpe-4096` vocab): MAGE 20,546 vs Rust 18,932, **ratio 1.085 (MAGE 8.5%
-MORE)**. The vocab was trained on `.mg` files and so favours MAGE syntax, which makes
+**Real BPE tokens, 2026-11-15** (`token-bench --bpe`, the crate's own tokenizer and its
+shipped `mage-bpe-4096` vocab): MAGE 20,457 vs Rust 19,122, **ratio 1.070 (MAGE 7.0%
+MORE)**; it was 20,546 vs 18,932, 1.085, before the pairs were reconciled. The vocab was trained on `.mg` files and so favours MAGE syntax, which makes
 this an optimistic figure for MAGE, not a neutral one; a neutral vocab is expected to
 score MAGE no better. It agrees with the byte figure above: on real BPE, MAGE source
 is not more token-efficient than Rust on this corpus.
