@@ -25,7 +25,7 @@ MAGE is three parts joined by one schema. The design and its reasons are in [NEU
 
 | Part | Its job | Where it lives |
 |---|---|---|
-| **Neural** | Inference and generation | Generators that propose programs and learners that predict their output (`arena/`); networks declared in `net` and run on `rmi` |
+| **Neural** | Inference and generation | Generators that propose programs and learners that predict their output (`arena/`); networks declared in `net` are run on `rmi`'s compute backend, with the forward and backward passes dispatched in `prototype/src/abl_compute.rs` |
 | **Symbolic** | Correctness, safety and compilation | The lexer and parser (the hand-written kernel), type checker, contract verifier, lowering to the binary IR, and the arena's gate |
 | **Knowledge base** | What the language is | `kb/*.mg`: facts about syntax, grammar, forms, meaning, rules and profiles, compiled in by `prototype/src/kb.rs` |
 
@@ -100,6 +100,8 @@ Every module in `prototype/src`, by the part it serves. A test (`prototype/tests
 | Knowledge base | `grammar.rs`, `kb.rs`, `kb_proposal.rs`, `ontology.rs` |
 | Interface | `aci.rs`, `bin/`, `builder.rs`, `cli_manifest.rs`, `ffi_gen.rs`, `fmt.rs`, `legacy.rs`, `lib.rs`, `main.rs`, `manifest.rs`, `rap.rs`, `rmi_ontology_adapter.rs`, `rmi_runtime_adapter.rs`, `spine_bridge.rs`, `token_budget.rs` |
 | Outside the design | `bench.rs`, `consensus.rs`, `crdt.rs`, `decompose.rs`, `forge.rs`, `hot_reload.rs`, `lease.rs`, `perf_measure.rs`, `rain.rs`, `semantic_vcs.rs`, `swarm_bus.rs`, `swarm_sdk.rs`, `token_canonical.rs` |
+
+Four of the Neural rows are not learned components, and the table does not say so. The codegen bridge, the NL engine and synthesis are deterministic: they assemble code from strategy templates and keyword matching on the request text, and synthesis emits `todo` bodies. Autograd is deterministic reverse-mode differentiation over a tape built from a train block's let statements, with the net name registered as the parameter source. They sit under Neural because they serve generation and training. Nothing in them is trained.
 
 ---
 

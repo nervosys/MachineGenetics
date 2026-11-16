@@ -493,6 +493,7 @@ wrong answers — verified by `jit_path_falls_back_for_neural_ops_without_error`
    `Ref(net) >> MSE_LOSS >> SGD_STEP` skeleton; an actual gradient
    tape via `rmi::lang::grad` + parameter updates against the
    `ParamStore` is the next step.
+   *Update, 2026-11-11: this item is superseded as to the training path. Training runs through `prototype/src/abl_compute.rs`: `train_one_step` and `train_one_step_with_optim` dispatch the forward and backward passes on an `rmi::compute::Backend` and update the weights in place. That module does not use a gradient tape from `rmi::lang`. The autograd tape in `prototype/src/autograd.rs` is a separate compile-time construct.*
 
 ## Files added or modified
 

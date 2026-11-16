@@ -2,18 +2,10 @@
 # Every `.mg` file in the repository either typechecks, or is listed here as a
 # known sketch.
 #
-# Why this exists: `stdlib/` is 4,402 lines across 25 `.mg` files, and none of
-# them are MAGE. They are Rust — `pub trait Read`, `&mut self`,
-# `let total = 0usize;`, `pub mod agent;` — sitting behind a MAGE extension.
-# Nothing read them: the compiler never opens `stdlib/`, no script checked them,
-# and `u std.io` resolves without them because imports are nominal. So 25 files
-# could sit there for months claiming to be the standard library of a language
-# they were not written in.
-#
-# That is the same failure the twelve examples had before they were rewritten,
-# and it is worse here, because an agent reading `stdlib/std/io.mg` to learn
-# MAGE idiom learns Rust instead. A file with no consumer has no error message.
-# This script is the consumer.
+# Why this exists: `stdlib/` once held 25 `.mg` files that were Rust behind a
+# MAGE extension, and nothing read them. The directory was deleted in af876d7c6.
+# A `.mg` file with no consumer has no error message, so this script is the
+# consumer that checks every `.mg` file that remains.
 #
 # The allowlist is deliberately unpleasant to add to. A `.mg` file that does not
 # typecheck is either a bug to fix or a sketch to be honest about; the list
@@ -34,16 +26,8 @@ BIN="$(build_and_find_mage_parse)"
 
 # Known sketches: not MAGE, not checked, kept for reference only.
 #
-# `stdlib/` is Rust. Rewriting it into MAGE is real work and worth doing only
-# alongside a consumer that keeps it honest — otherwise it rots exactly as it
-# did. Until then it is listed, not silently skipped.
 # Each entry needs a reason. "It fails" is not one.
 SKETCHES=(
-    # 25 files, 4,402 lines, all Rust. Rewriting them into MAGE is real work
-    # and worth doing only alongside a consumer that keeps them honest —
-    # otherwise they rot exactly as they did.
-    "stdlib/"
-
     # Ill-typed on purpose: it is a demo input for `mage-parse --heal`, a
     # program to be repaired, not a sketch. It must fail to check.
     "prototype/examples/heal/type_error.mg"

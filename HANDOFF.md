@@ -1326,7 +1326,7 @@ relate a function's output to its input.
   documentation blocks go from 206 to 208.
 
 Not done:
-- `@req` is still not evaluated, and clauses carry no source span.
+- `@req` was not evaluated at the time this was written; it is checked on entry now (see the follow-up to C1 below). Clauses carry no source span.
 - The verifier's "needs a runtime check that nothing performs" wording is now
   partly untrue for `@ens` under `--eval`.
 
@@ -3820,7 +3820,7 @@ implementation task**:
   keyword, because with single-shot tail resumption there is nothing for it to
   do", which is the correct reason today and stops being one the moment
   multi-shot lands. Someone has to design that.
-- **Then the evaluator rework.** `eval.rs` is 2,987 lines, 39 expression forms
+- **Then the evaluator rework.** `eval.rs` was 2,987 lines when this was written (5,360 by `wc -l` on 2026-11-11), with 39 expression forms
   and 53 recursive `self.eval(` sites, all of which keep the continuation in the
   Rust call stack — where it cannot be captured. Multi-shot needs CPS or an
   explicit CEK-style machine, which touches every form, with 1,282 tests riding
