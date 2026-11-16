@@ -435,6 +435,17 @@ fn range_is(tokens: &[Token], i: usize, j: usize, key: &str) -> bool {
 /// re-parses to `key`. Only bracket-balanced ranges are parsed. `suffix`
 /// restricts the search to ranges ending at `hi - 1`.
 fn ranges_matching(tokens: &[Token], lo: usize, hi: usize, key: &str, suffix: bool) -> Vec<(usize, usize)> {
+    ranges_ending_where(tokens, lo, hi, key, |j| !suffix || j + 1 == hi)
+}
+
+/// [`ranges_matching`] over the ranges whose last token `j` satisfies `ends`.
+fn ranges_ending_where(
+    tokens: &[Token],
+    lo: usize,
+    hi: usize,
+    key: &str,
+    ends: impl Fn(usize) -> bool,
+) -> Vec<(usize, usize)> {
     let mut out = Vec::new();
     for i in lo..hi {
         let mut depth = 0i32;
@@ -447,7 +458,7 @@ fn ranges_matching(tokens: &[Token], lo: usize, hi: usize, key: &str, suffix: bo
             if depth < 0 {
                 break;
             }
-            if depth == 0 && (!suffix || j + 1 == hi) && range_is(tokens, i, j, key) {
+            if depth == 0 && ends(j) && range_is(tokens, i, j, key) {
                 out.push((i, j));
             }
         }
@@ -457,6 +468,31 @@ fn ranges_matching(tokens: &[Token], lo: usize, hi: usize, key: &str, suffix: bo
     // innermost.
     let all = out.clone();
     out.retain(|&(i, j)| !all.iter().any(|&(a, b)| (a, b) != (i, j) && i <= a && b <= j));
+    out
+}
+
+/// The token ranges of the items in `tokens[from..to]` (exclusive end), split
+/// at commas outside any bracket. Empty items are skipped.
+fn top_level_items(tokens: &[Token], from: usize, to: usize) -> Vec<(usize, usize)> {
+    let mut out = Vec::new();
+    let mut start = from;
+    let mut depth = 0i32;
+    for k in from..to {
+        match tokens[k].kind {
+            TokenKind::LParen | TokenKind::LBrack | TokenKind::LBrace => depth += 1,
+            TokenKind::RParen | TokenKind::RBrack | TokenKind::RBrace => depth -= 1,
+            TokenKind::Comma if depth == 0 => {
+                if start < k {
+                    out.push((start, k - 1));
+                }
+                start = k + 1;
+            }
+            _ => {}
+        }
+    }
+    if start < to {
+        out.push((start, to - 1));
+    }
     out
 }
 
@@ -527,6 +563,50 @@ fn locate(tokens: &[Token], bodies: &[FnBody], m: &types::Mismatch) -> Result<(u
         // The tail expression ends right before the body's `}`.
         (types::MismatchSite::Return, _) => {
             unique(ranges_matching(tokens, lo, hi, &key, true), &format!("ending the body of `{}`", m.function))
+        }
+        // An arm of an `if` or `match`, or an element of a list literal: the
+        // enclosing expression must be unique, and the arm must be unique in it.
+        (
+            types::MismatchSite::IfArm { .. }
+            | types::MismatchSite::MatchArm { .. }
+            | types::MismatchSite::ListElement { .. },
+            Some(ctx),
+        ) => {
+            let ckey = expr_key(ctx);
+            let (cs, ce) = unique(ranges_matching(tokens, lo, hi, &ckey, false), &format!("in `{}`", m.function))?;
+            match &m.site {
+                // An arm's value ends before the `}` of its block.
+                types::MismatchSite::IfArm { .. } => unique(
+                    ranges_ending_where(tokens, cs, ce + 1, &key, |j| {
+                        j + 1 <= ce && tokens[j + 1].kind == TokenKind::RBrace
+                    }),
+                    "ending an arm of the `if`",
+                ),
+                // An arm's value ends before the `}` of its block, or before the
+                // comma that separates it from the next arm.
+                types::MismatchSite::MatchArm { .. } => unique(
+                    ranges_ending_where(tokens, cs, ce + 1, &key, |j| {
+                        j + 1 <= ce && matches!(tokens[j + 1].kind, TokenKind::RBrace | TokenKind::Comma)
+                    }),
+                    "ending an arm of the `match`",
+                ),
+                // The element is the item at its position in the literal, read
+                // by the grammar's commas, when the text alone is not unique.
+                types::MismatchSite::ListElement { index } => {
+                    if tokens[cs].kind != TokenKind::LBrack || tokens[ce].kind != TokenKind::RBrack {
+                        return Err(format!("could not locate: the list of `{}` is not a `[...]` literal", m.function));
+                    }
+                    let inside = ranges_matching(tokens, cs, ce + 1, &key, false);
+                    if inside.len() == 1 {
+                        return Ok(inside[0]);
+                    }
+                    match top_level_items(tokens, cs + 1, ce).get(*index).copied() {
+                        Some((i, j)) if range_is(tokens, i, j, &key) => Ok((i, j)),
+                        _ => unique(inside, "in the list"),
+                    }
+                }
+                _ => Err(format!("could not locate: `{}` has no arm or element site here", m.function)),
+            }
         }
         (site, Some(ctx)) => {
             let ckey = expr_key(ctx);
@@ -1776,6 +1856,75 @@ mod tests {
             let note = ev.note.as_deref().unwrap_or("");
             assert!(note.starts_with("could not locate: 2 token ranges"), "{note}");
             assert_eq!(ev.line, None);
+        }
+    }
+
+    /// The else arm of an `if` is converted to the then arm's type, inside
+    /// its block. The then arm is not touched.
+    #[test]
+    fn heal_casts_an_if_arm_the_checker_names() {
+        let src = "f pick(c: bool, xs: [i64], n: i64) -> i64 {\n    if c { n } else { len(xs) }\n}\n\n\
+                   @t\nf t_pick() {\n    assert(pick(1b, [5], 7) == 7, \"then\")\n    assert(pick(0b, [5, 6], 7) == 2, \"else\")\n}\n";
+        assert_eq!(errors_of(src).len(), 1, "{:?}", errors_of(src));
+        let intent = intent::infer_source(src).unwrap();
+        let out = heal_loop(src, Some(&intent), DEFAULT_MAX_ROUNDS, FUEL);
+        assert!(out.remaining.is_empty(), "{out:#?}");
+        assert_eq!(out.steps.len(), 1, "{out:#?}");
+        let ev = out.steps[0].evidence.as_ref().expect("evidence");
+        assert_eq!(ev.site, types::MismatchSite::IfArm { branch: 1 });
+        assert_eq!((ev.expr.as_str(), ev.line, ev.col), ("len(xs)", Some(2), Some(23)));
+        assert!(out.source.contains("if c { n } else { len(xs) as i64 }"), "{}", out.source);
+        assert!(passes(&parse(&out.source).unwrap(), "t_pick", FUEL).is_ok());
+    }
+
+    /// A `match` arm whose value is a `usize` among `i64` arms: the cast goes
+    /// on that arm's value, before its comma.
+    #[test]
+    fn heal_casts_a_match_arm_the_checker_names() {
+        let src = "f route(k: i64, xs: [i64], n: i64) -> i64 {\n    match k { 0 => n, 1 => len(xs), _ => 0 }\n}\n\n\
+                   @t\nf t_route() {\n    assert(route(0, [5], 7) == 7, \"zero\")\n    assert(route(1, [5, 6], 7) == 2, \"one\")\n}\n";
+        assert_eq!(errors_of(src).len(), 1, "{:?}", errors_of(src));
+        let intent = intent::infer_source(src).unwrap();
+        let out = heal_loop(src, Some(&intent), DEFAULT_MAX_ROUNDS, FUEL);
+        assert!(out.remaining.is_empty(), "{out:#?}");
+        assert_eq!(out.steps.len(), 1, "{out:#?}");
+        let ev = out.steps[0].evidence.as_ref().expect("evidence");
+        assert_eq!(ev.site, types::MismatchSite::MatchArm { index: 1 });
+        assert_eq!(ev.expr.as_str(), "len(xs)");
+        assert!(out.source.contains("1 => len(xs) as i64, _ => 0"), "{}", out.source);
+        assert!(passes(&parse(&out.source).unwrap(), "t_route", FUEL).is_ok());
+    }
+
+    /// An element of a list literal is converted to the first element's type,
+    /// at its own position in the literal.
+    #[test]
+    fn heal_casts_a_list_element_the_checker_names() {
+        let src = "f pack(a: i64, xs: [i64]) -> i64 {\n    val row = [a, len(xs)];\n    row[1]\n}\n\n\
+                   @t\nf t_pack() {\n    assert(pack(4, [1, 2]) == 2, \"second\")\n}\n";
+        assert_eq!(errors_of(src).len(), 1, "{:?}", errors_of(src));
+        let intent = intent::infer_source(src).unwrap();
+        let out = heal_loop(src, Some(&intent), DEFAULT_MAX_ROUNDS, FUEL);
+        assert!(out.remaining.is_empty(), "{out:#?}");
+        assert_eq!(out.steps.len(), 1, "{out:#?}");
+        let ev = out.steps[0].evidence.as_ref().expect("evidence");
+        assert_eq!(ev.site, types::MismatchSite::ListElement { index: 1 });
+        assert_eq!(ev.expr.as_str(), "len(xs)");
+        assert!(out.source.contains("[a, len(xs) as i64]"), "{}", out.source);
+        assert!(passes(&parse(&out.source).unwrap(), "t_pack", FUEL).is_ok());
+    }
+
+    /// The same expression in two arms: the arm cannot be told apart from
+    /// its twin, so it is reported as not located and nothing is tried.
+    #[test]
+    fn heal_reports_an_arm_it_cannot_locate() {
+        let src = "f route(k: i64, xs: [i64], n: i64) -> usize {\n    match k { 0 => len(xs), 1 => n, 2 => n }\n}\n";
+        let out = heal_loop(src, intent::infer_source(src).as_ref(), DEFAULT_MAX_ROUNDS, FUEL);
+        assert!(out.steps.is_empty(), "{out:#?}");
+        assert_eq!(out.source, src);
+        assert!(!out.unfixed.is_empty(), "{out:#?}");
+        for ev in &out.unfixed {
+            let note = ev.note.as_deref().unwrap_or("");
+            assert!(note.starts_with("could not locate: 2 token ranges ending an arm of the `match`"), "{note}");
         }
     }
 

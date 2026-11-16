@@ -30,6 +30,16 @@ pub enum MismatchSite {
     BinaryOperand { op: String },
     /// The value of an assignment, against the target's type.
     Assignment,
+    /// The tail expression of arm `branch` of an `if` (0 is the then arm, 1
+    /// the else arm), against the then arm's type. Only the else arm is
+    /// recorded: the then arm is the one the other is converted to.
+    IfArm { branch: usize },
+    /// The value of arm `index` (0-based) of a `match`, against the first
+    /// arm's type. For a block body, the block's tail expression.
+    MatchArm { index: usize },
+    /// Element `index` (0-based) of a list literal, against the first
+    /// element's type.
+    ListElement { index: usize },
 }
 
 /// One type-mismatch diagnostic, with the expression it is about.
@@ -44,7 +54,8 @@ pub struct Mismatch {
     pub site: MismatchSite,
     pub expr: ast::Expr,
     /// The expression the mismatch sits in, when that helps locate it: the
-    /// call for a call argument, the binary expression for an operand.
+    /// call for a call argument, the binary expression for an operand, the
+    /// `if` or `match` for an arm, the list literal for an element.
     pub context: Option<ast::Expr>,
     pub expected: Ty,
     pub found: Ty,
@@ -583,6 +594,16 @@ impl TypeChecker {
             found,
             diag_index,
         });
+    }
+
+    /// The expression an arm of an `if` or `match` yields: the tail of a
+    /// block body, or the body itself. `None` for a block without a tail,
+    /// which is `()`.
+    fn arm_value(body: &ast::Expr) -> Option<&ast::Expr> {
+        match body {
+            ast::Expr::Block { block } => block.tail_expr.as_deref(),
+            e => Some(e),
+        }
     }
 
     // ── AST type → HIR type conversion ───────────────────────────────
@@ -2315,12 +2336,18 @@ impl TypeChecker {
                 // the row type to a Vec; without it `flatten: [[A]] -> [A]`
                 // could flatten nothing but a rectangle.
                 let mut first = self.infer_expr(&elements[0]);
-                for el in &elements[1..] {
+                for (index, el) in elements.iter().enumerate().skip(1) {
                     let t = self.infer_expr(el);
                     match self.join_branches(&first, &t) {
                         Ok(joined) => first = joined,
                         Err(e) => {
                             self.emit_error(format!("array element type mismatch: {e}"));
+                            // Evidence only for two concrete numeric types.
+                            let (f, x) = (self.subst.apply(&first), self.subst.apply(&t));
+                            if is_numeric(&f) && is_numeric(&x) {
+                                let site = MismatchSite::ListElement { index };
+                                self.record_mismatch(site, el, Some(expr), &f, &x);
+                            }
                         }
                     }
                 }
@@ -2396,6 +2423,16 @@ impl TypeChecker {
                         Ok(joined) => joined,
                         Err(e) => {
                             self.emit_error(format!("if/else branch type mismatch: {e}"));
+                            // Evidence only for two concrete numeric types: the
+                            // else arm is the one to convert.
+                            let (t, l) = (self.subst.apply(&then_ty), self.subst.apply(&else_ty));
+                            if is_numeric(&t)
+                                && is_numeric(&l)
+                                && let Some(tail) = else_blk.tail_expr.as_deref()
+                            {
+                                let site = MismatchSite::IfArm { branch: 1 };
+                                self.record_mismatch(site, tail, Some(expr), &t, &l);
+                            }
                             self.subst.apply(&then_ty)
                         }
                     }
@@ -2432,11 +2469,22 @@ impl TypeChecker {
                 // arm has to be visible to the next, or `[a] | [] | [b, c]`
                 // reports the same length disagreement all over again.
                 let mut result = self.infer_expr(&arms[0].body);
-                for arm in &arms[1..] {
+                for (index, arm) in arms.iter().enumerate().skip(1) {
                     let arm_ty = self.infer_expr(&arm.body);
                     match self.join_branches(&result, &arm_ty) {
                         Ok(joined) => result = joined,
-                        Err(e) => self.emit_error(format!("match arm type mismatch: {e}")),
+                        Err(e) => {
+                            self.emit_error(format!("match arm type mismatch: {e}"));
+                            // Evidence only for two concrete numeric types.
+                            let (r, a) = (self.subst.apply(&result), self.subst.apply(&arm_ty));
+                            if is_numeric(&r)
+                                && is_numeric(&a)
+                                && let Some(value) = Self::arm_value(&arm.body)
+                            {
+                                let site = MismatchSite::MatchArm { index };
+                                self.record_mismatch(site, value, Some(expr), &r, &a);
+                            }
+                        }
                     }
                 }
                 result
@@ -4227,6 +4275,63 @@ mod evidence_tests {
         assert_eq!(m.site, MismatchSite::BinaryOperand { op: "+".into() });
         assert_eq!(render(&m.expr), "b");
         assert_eq!((m.expected.to_string(), m.found.to_string()), ("I64".into(), "Usize".into()));
+    }
+
+    /// An `if`'s else arm against the then arm's type: the else arm's tail
+    /// expression is the site, and the `if` is its context.
+    #[test]
+    fn evidence_names_an_if_arm() {
+        let src = "f pick(c: bool, xs: [i64], n: i64) -> i64 {\n    if c { n } else { len(xs) }\n}\n";
+        let (diags, ms) = evidence(src);
+        assert_eq!(ms.len(), 1, "{ms:#?}");
+        let m = &ms[0];
+        assert_eq!(m.function, "pick");
+        assert_eq!(m.site, MismatchSite::IfArm { branch: 1 });
+        assert_eq!(render(&m.expr), "len(xs)");
+        assert_eq!((m.expected.to_string(), m.found.to_string()), ("I64".into(), "Usize".into()));
+        assert!(render(m.context.as_ref().expect("the if")).starts_with("if c"), "{:?}", m.context);
+        assert!(diags[m.diag_index].message.contains("if/else branch type mismatch"), "{:?}", diags[m.diag_index]);
+    }
+
+    /// A `match` arm against the first arm's type. A block body is the site
+    /// through its tail expression, not the block.
+    #[test]
+    fn evidence_names_a_match_arm() {
+        let src = "f route(k: i64, xs: [i64], n: i64) -> i64 {\n    match k { 0 => n, 1 => { len(xs) }, _ => 0 }\n}\n";
+        let (diags, ms) = evidence(src);
+        assert_eq!(ms.len(), 1, "{ms:#?}");
+        let m = &ms[0];
+        assert_eq!(m.function, "route");
+        assert_eq!(m.site, MismatchSite::MatchArm { index: 1 });
+        assert_eq!(render(&m.expr), "len(xs)");
+        assert_eq!((m.expected.to_string(), m.found.to_string()), ("I64".into(), "Usize".into()));
+        assert!(m.context.is_some(), "the match is the context");
+        assert!(diags[m.diag_index].message.contains("match arm type mismatch"), "{:?}", diags[m.diag_index]);
+    }
+
+    /// An element of a list literal against the first element's type.
+    #[test]
+    fn evidence_names_a_list_element() {
+        let src = "f pack(a: i64, xs: [i64]) -> i64 {\n    val row = [a, len(xs)];\n    row[1]\n}\n";
+        let (diags, ms) = evidence(src);
+        assert_eq!(ms.len(), 1, "{ms:#?}");
+        let m = &ms[0];
+        assert_eq!(m.function, "pack");
+        assert_eq!(m.site, MismatchSite::ListElement { index: 1 });
+        assert_eq!(render(&m.expr), "len(xs)");
+        assert_eq!((m.expected.to_string(), m.found.to_string()), ("I64".into(), "Usize".into()));
+        assert_eq!(render(m.context.as_ref().expect("the list")), "[a, len(xs)]");
+        assert!(diags[m.diag_index].message.contains("array element type mismatch"), "{:?}", diags[m.diag_index]);
+    }
+
+    /// A contract clause is checked outside any function body, so a numeric
+    /// mismatch inside one is reported but has no evidence: no body holds it.
+    #[test]
+    fn evidence_is_not_recorded_for_a_contract_clause() {
+        let src = "@req(a + b > 0)\nf add(a: i64, b: usize) -> i64 {\n    a\n}\n";
+        let (diags, ms) = evidence(src);
+        assert!(!diags.is_empty(), "the clause is ill-typed: {diags:?}");
+        assert!(ms.is_empty(), "{ms:#?}");
     }
 
     #[test]
