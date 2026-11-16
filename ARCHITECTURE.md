@@ -280,7 +280,7 @@ are **six independent Cargo workspaces**:
 | `ribosome/` | `ribosome` | 168 | The distributed build engine. Depends on nothing in this repository — see below |
 | `germline/` | `germline` | 218 | Model succession, handoff, fallback — the RSI control plane. Path-depends on `ribosome` |
 | `forge/` | `forge` | 65 | The package registry, and the content-addressed block and definition stores |
-| `arena/` | `arena` | 333 | The self-driven loop: agents write MAGE, learners predict it, joules are counted. Path-depends on `prototype`, `germline` and `forge` |
+| `arena/` | `arena` | 334 | The self-driven loop: agents write MAGE, learners predict it, joules are counted. Path-depends on `prototype`, `germline` and `forge` |
 
 The dependency graph is a forest, not a web:
 
