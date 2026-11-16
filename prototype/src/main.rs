@@ -80,8 +80,32 @@ fn write_formatted(text: &str, out_path: Option<&str>) {
     }
 }
 
+/// Sites listed in the human `--heal` report; `--json` lists all.
+const HEAL_SITES_SHOWN: usize = 8;
+
+/// A mismatch site, as the `--heal` report says it.
+fn site_text(site: &mage_prototype::types::MismatchSite) -> String {
+    use mage_prototype::types::MismatchSite;
+    match site {
+        MismatchSite::Return => "the returned value".into(),
+        MismatchSite::LetInit => "the `let` initializer".into(),
+        MismatchSite::CallArg { callee, index } => format!("argument {} of `{callee}`", index + 1),
+        MismatchSite::BinaryOperand { op } => format!("the right operand of `{op}`"),
+        MismatchSite::Assignment => "the assigned value".into(),
+    }
+}
+
+/// An Ochiai score, or why a site has none.
+fn score_text(ochiai: Option<f64>) -> String {
+    match ochiai {
+        Some(x) => format!("Ochiai {x:.2}"),
+        None => "no score (from a failed @ens, not coverage)".into(),
+    }
+}
+
 /// The human `--heal` report: intent, compile-time steps, run-time debug
 /// report and repair, the diff, and the verdict.
+
 fn print_heal_report(r: &self_heal::HealReport, diff: &str, path: &str, write: bool, written: bool) {
     match &r.intent {
         Some(i) => {
@@ -108,6 +132,18 @@ fn print_heal_report(r: &self_heal::HealReport, diff: &str, path: &str, write: b
             if s.semantics_preserving { "" } else { " [may change semantics]" },
             s.description
         );
+        if let Some(ev) = &s.evidence {
+            println!(
+                "    compiler evidence: in `{}`, {} `{}` at {}:{}: expected {}, found {}",
+                ev.function,
+                site_text(&ev.site),
+                ev.expr,
+                ev.line.unwrap_or(0),
+                ev.col.unwrap_or(0),
+                ev.expected,
+                ev.found
+            );
+        }
         let kept = if s.tests_kept_passing.is_empty() { "none ran".to_string() } else { s.tests_kept_passing.join(", ") };
         println!("    evidence: errors {} -> {}; @tests kept passing: {kept}", s.errors_before, s.errors_after);
         let rejected: Vec<String> = s.rejected.iter().map(|(k, n)| format!("{k} x{n}")).collect();
@@ -125,6 +161,17 @@ fn print_heal_report(r: &self_heal::HealReport, diff: &str, path: &str, write: b
         for x in &c.rejections {
             println!("    round {}: `{}`: {}", x.round, x.fix_id, x.reason);
         }
+    }
+    for ev in &c.unfixed {
+        println!(
+            "  no fix for `{}` ({} in `{}`: expected {}, found {}): {}",
+            ev.expr,
+            site_text(&ev.site),
+            ev.function,
+            ev.expected,
+            ev.found,
+            ev.note.as_deref().unwrap_or("")
+        );
     }
     for d in &c.remaining {
         println!("  remaining: {}", d.render());
@@ -145,11 +192,36 @@ fn print_heal_report(r: &self_heal::HealReport, diff: &str, path: &str, write: b
         if let Some(chk) = &run.failed_check {
             println!("    failed check: {chk}");
         }
+        if let Some(at) = &run.raised_at {
+            println!("    raised at: {at}");
+        }
         if !run.trace.is_empty() {
             println!("    trace:");
             for t in &run.trace {
                 println!("      {t}");
             }
+        }
+    }
+    if !d.sites.is_empty() {
+        println!("  sites executed by failing runs, in the order tried:");
+        for s in d.sites.iter().take(HEAL_SITES_SHOWN) {
+            println!(
+                "    {} `{}`: {}; failing {} / passing {}",
+                s.site,
+                s.op,
+                score_text(s.ochiai),
+                s.failed,
+                s.passed
+            );
+            for o in s.observed.iter().take(4) {
+                println!("      saw {o}");
+            }
+            for (m, why) in &s.rejected {
+                println!("      rejected {m}: {why}");
+            }
+        }
+        if d.sites.len() > HEAL_SITES_SHOWN {
+            println!("    … {} more site(s), in --json", d.sites.len() - HEAL_SITES_SHOWN);
         }
     }
     match &d.repair {
@@ -159,7 +231,18 @@ fn print_heal_report(r: &self_heal::HealReport, diff: &str, path: &str, write: b
                 rep.mutation, rep.function, rep.line, rep.col
             );
             println!(
-                "    evidence: failing before, passing after: {}; all {} run(s) pass after ({} mutant(s) tried)",
+                "    site {}: {}; executed by {} failing and {} passing run(s)",
+                rep.site,
+                score_text(rep.ochiai),
+                rep.failed,
+                rep.passed
+            );
+            for o in &rep.observed {
+                println!("    observed {o}");
+            }
+            println!("    tried first because: {}", rep.motivation);
+            println!(
+                "    evidence: failing before, passing after: {}; all {} run(s) pass after ({} candidate(s) tried)",
                 rep.fixed.join(", "),
                 rep.runs_after.len(),
                 d.mutants_tried

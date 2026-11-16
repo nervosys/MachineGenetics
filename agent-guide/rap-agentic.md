@@ -63,49 +63,113 @@ function signatures (parameter names and types, return type, generics,
 top-level functions carrying `@test` or `@t`. A test passes when the
 fuel-bounded evaluator returns without error. Names and comments are not read.
 
-**Compile time.** Each round checks the source, gathers every candidate
-`heal_one` ranks for each error (plus `recover` when the source does not
-parse), applies each to a copy and re-checks. A candidate is accepted only if
-the error count strictly drops, every function keeps its signature, declared
-effects and contracts, struct invariants are unchanged, no `@test` is removed,
-and every `@test` that passed before the round still passes. Among accepted
-candidates: semantics-preserving first, then fewer remaining errors, then the
-`confidence` prior. One fix per round; the loop stops at zero errors, at a
-round with nothing accepted, or after 8 rounds.
+**Compile time.** Every candidate fix comes from where the compiler located
+the problem. Type-checker diagnostics carry no source span, so beside each
+type mismatch the checker records structured evidence
+(`types::check_with_evidence`): the enclosing function, the site (the
+returned tail expression, a typed `let` initializer, argument *i* of a call
+to a builtin such as `range` or to a user function, the right operand of
+arithmetic between two numeric types, an assigned value), the expression
+itself, and the expected and found types. For a numeric-to-numeric mismatch
+the candidate is a cast of exactly that expression: `expr as T`, or
+`(expr) as T` when the expression is not atomic. The expression is found in
+the source by re-parsing token ranges of the named function and comparing
+the result with the checker's expression (a returned value must end the
+body; an operand must end its binary expression; a call argument is searched
+inside its located call, and the call's top-level commas decide between
+equal arguments). Exactly one range must match, with `(x)` and `x` counted
+once; otherwise the mismatch is reported as not located, with how many ranges
+matched, and nothing is tried for it. A mismatch between non-numeric types is
+reported with no fix. `heal_one`'s patterns are used only for diagnostics that
+have a position, and `recover` when the source does not parse. A candidate is
+accepted only if the error count strictly drops, every function keeps its
+signature, declared effects and contracts, struct invariants are unchanged,
+no `@test` is removed, and every `@test` that passed before the round still
+passes. Among accepted candidates: semantics-preserving first (a cast is not
+claimed preserving: it can truncate or change sign), then fewer remaining
+errors, then the `confidence` prior. One fix per round; the loop stops at zero
+errors, at a round with nothing accepted, or after 8 rounds.
 
 **Run time.** Every `@test`, and every zero-argument function with contracts,
-runs with a fuel budget (default 200000 per run). A failing run is reported
-with its error, the contract clause or assertion that failed, and a call trace
-(at most 64 lines; tracing is off unless requested). Then single-site
-mutations of the non-test functions the failing runs can reach are tried in
-this order: comparison swaps (`<`/`<=`, `>`/`>=`, `==`/`!=`), binary `+`/`-`,
-decimal integer literal +1/-1, swapped `if`/`else` blocks; at most 500. The
-first mutant is accepted that parses, keeps the intent, adds no new checker
-error, and makes every run pass. It is always reported as semantics-changing,
-with the runs it turned from failing to passing.
+runs once with a fuel budget (default 200000 per run), a call trace (at most
+64 lines) and coverage. Coverage (`Interp::enable_coverage`, off by default;
+when off it costs one `is_some` test per binary operator, `if` and index)
+records, for each comparison and arithmetic node and each `if` of the
+top-level functions, under a stable site id `function/kind#n` (the *n*-th node
+of that kind in pre-order): whether it ran, the operands and result of each
+comparison (first 16 per run), and the arm each `if` took. When a run fails
+with a runtime error raised by an operator or an index (division by zero,
+overflow, index out of bounds), the report names that node as `raised at`; a
+contract violation names its clause as the failed check.
 
-**Output.** The intent summary, the steps with their evidence (errors before
-and after, tests kept passing, rejected candidates counted by rule), the
-debug report, and a unified diff of the original against the healed source.
-The file is written only with `--write`. Exit 0 only when the healed source
-has no errors and every run passes; `--json` prints the same report as JSON.
+Sites of non-test functions that at least one failing run executed are ranked
+by Ochiai score, failed(s) / sqrt(total_failed × (failed(s) + passed(s))),
+where failed(s) and passed(s) count the failing and passing runs that
+executed the site; sites no failing run executed get no candidate. Ties go to
+a site whose observations motivate a candidate, then to operator sites before
+`if`s. Candidates are generated only at ranked sites, best first, and within
+a site motivated ones first:
+
+- a comparison that saw equal operands in a failing run: the
+  inclusive/exclusive swap (`>`/`>=`, `<`/`<=`);
+- `+` or `-` in a function whose `@ens` with `<` or `>` failed: `+`/`-`;
+- an `if` whose taken arm was taken only in failing runs: swap the branches,
+  or negate the condition when there is no `else`;
+- then the remaining small mutations at that site: the other comparison
+  changes (negation, reversed operands), `+`/`-`, an integer-literal right
+  operand ±1.
+
+A failed `@ens` of a function whose body returns an integer literal adds that
+literal ±1 (the direction the clause's `>` or `<` suggests first); such a site
+has no Ochiai score and is tried after the scored ones. Each mutation is made
+on the tree and run on the mutated tree directly. To write it back, the
+node's operator (or literal, or `if`) is mapped to the *k*-th token of the
+same text in the function, which requires as many such tokens as such nodes;
+the edited source is re-parsed and must give the mutated tree. A mapping that
+fails is a rejection, not a guess. A candidate is accepted when it keeps the
+intent, the failing runs pass, it adds no checker error, and every run
+passes. At most 500 candidates. The repair is always reported as
+semantics-changing, with its site, score, failing and passing counts, the
+values observed there, why it was tried first, and the runs it turned from
+failing to passing; every ranked site lists its rejected candidates with the
+reason.
+
+**Output.** The intent summary, the compile-time steps with the compiler
+evidence each answers (function, site, expression, line and column, expected
+and found types), the mismatches left without a fix and why, the debug report
+(failing runs with failed check, raised-at node and trace; the ranked sites
+with score, counts, observations and rejections, eight in the text report and
+all in JSON), the repair and its evidence, and a unified diff. The file is
+written only with `--write`. Exit 0 only when the healed source has no errors
+and every run passes. `--json` and `build/selfheal` return the same report as
+JSON (`compile.steps[].evidence`, `compile.unfixed`, `debug.sites`,
+`debug.runs[].raised_at`, `debug.repair`).
 
 **Limits.**
 
-- Type-checker diagnostics carry no source span, so a heal pattern's
-  insertion lands at line 1. For such a diagnostic the loop also tries the
-  insertion after each token of the function the message names (every body
-  when it names none, at most 64 positions). A candidate with no edits (a
-  description only) is skipped.
+- Compiler evidence covers the sites listed above. A mismatch elsewhere (an
+  `if`/`match` arm, a list element, a contract clause, a nested function) has
+  no evidence and gets no cast. Only numeric conversions are proposed; for
+  arithmetic the right operand is converted to the left operand's type, which
+  may not be the conversion the author meant.
+- A type-checker diagnostic still has no line in `--check`; only the evidence
+  is located.
+- The Ochiai score orders sites; it is not the probability that a site is at
+  fault. With few tests most sites tie.
+- Coverage sees top-level functions only. Closures and nested functions are
+  evaluated from copies and are not recorded, so their sites are never ranked.
+  Methods are not recorded either.
+- An `if` is mapped to source only as `if c { … } else { … }`; `? c { } : { }`
+  and `else if` chains are not swapped or negated. An operator whose token
+  count differs from its node count in the function (a unary minus folded into
+  a literal, a `<` in a type) is not mapped.
+- Repairs are single mutations. The tests are the whole specification, so a
+  weak test suite admits a wrong repair; the first accepted candidate is taken.
 - If the input does not parse, its intent cannot be read before the first
   fix; the intent kept is that of the first source that parses, and the report
   says so. A parse recovery can therefore delete code the intent never saw.
 - A probe with arguments is never invented: contracts on functions with
   parameters are exercised only through the tests that call them.
-- Repairs are single mutations, first found in a fixed order. When several
-  mutants pass, the first is taken and the others are not searched; the tests
-  are the whole specification, so a weak test suite admits a wrong repair.
-- `? c { } : { }` conditionals and `else if` chains are not branch-swapped.
 
 ## `cost/query`
 

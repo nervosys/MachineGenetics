@@ -13,6 +13,44 @@ use crate::hir::{
 };
 use std::collections::HashMap;
 
+// ── Mismatch evidence ────────────────────────────────────────────────
+
+/// What a mismatched expression is, where the checker found it.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum MismatchSite {
+    /// The tail expression of a function body, against its return type.
+    Return,
+    /// The initializer of a `let`/`val`/`var` with a declared type.
+    LetInit,
+    /// Argument `index` (0-based) of a call of `callee`.
+    CallArg { callee: String, index: usize },
+    /// The right operand of a binary arithmetic operator, against the left
+    /// operand's type.
+    BinaryOperand { op: String },
+    /// The value of an assignment, against the target's type.
+    Assignment,
+}
+
+/// One type-mismatch diagnostic, with the expression it is about.
+///
+/// Diagnostics carry no source span; this is the structured evidence beside
+/// one: the enclosing function, what the expression is, the expression
+/// itself, and the two types. `diag_index` is the index of the diagnostic it
+/// explains in the list [`check_with_evidence`] returns.
+#[derive(Debug, Clone)]
+pub struct Mismatch {
+    pub function: String,
+    pub site: MismatchSite,
+    pub expr: ast::Expr,
+    /// The expression the mismatch sits in, when that helps locate it: the
+    /// call for a call argument, the binary expression for an operand.
+    pub context: Option<ast::Expr>,
+    pub expected: Ty,
+    pub found: Ty,
+    pub diag_index: usize,
+}
+
 // ── Type variable supply ─────────────────────────────────────────────
 
 struct TyVarSupply {
@@ -470,6 +508,10 @@ pub struct TypeChecker {
     /// A method call to one of these is the user's, not the vocabulary's —
     /// the precedence the evaluator uses (`vocabulary_methods_still_win_where_no_method_is_defined`).
     user_methods: std::collections::HashSet<String>,
+    /// Structured evidence for type-mismatch diagnostics; see [`Mismatch`].
+    pub mismatches: Vec<Mismatch>,
+    /// Names of the functions being checked, innermost last.
+    fn_stack: Vec<String>,
 }
 
 impl Default for TypeChecker {
@@ -500,6 +542,8 @@ impl TypeChecker {
             float_lit_vars: Vec::new(),
             closure_hint: None,
             user_methods: std::collections::HashSet::new(),
+            mismatches: Vec::new(),
+            fn_stack: Vec::new(),
         }
     }
 
@@ -514,6 +558,31 @@ impl TypeChecker {
             DiagnosticCategory::TypeMismatch,
             None,
         ));
+    }
+
+    /// Record the evidence for the diagnostic just emitted. Nothing is
+    /// recorded outside a function body (a `const`, a contract clause).
+    fn record_mismatch(
+        &mut self,
+        site: MismatchSite,
+        expr: &ast::Expr,
+        context: Option<&ast::Expr>,
+        expected: &Ty,
+        found: &Ty,
+    ) {
+        let Some(function) = self.fn_stack.last().cloned() else { return };
+        let Some(diag_index) = self.diagnostics.len().checked_sub(1) else { return };
+        let expected = self.subst.apply(expected);
+        let found = self.subst.apply(found);
+        self.mismatches.push(Mismatch {
+            function,
+            site,
+            expr: expr.clone(),
+            context: context.cloned(),
+            expected,
+            found,
+            diag_index,
+        });
     }
 
     // ── AST type → HIR type conversion ───────────────────────────────
@@ -968,6 +1037,7 @@ impl TypeChecker {
 
     fn check_function(&mut self, fd: &ast::FunctionDef) {
         self.env.push();
+        self.fn_stack.push(fd.name.clone());
         let ret_ty = self.bind_signature(fd);
 
         // Infer body type.
@@ -981,12 +1051,17 @@ impl TypeChecker {
 
         if let Err(e) = unify(&mut self.subst, &ret_ty, &body_ty) {
             self.emit_error(format!("function `{}`: return type mismatch: {e}", fd.name));
+            let tail = fd.body_expr.as_deref().or(fd.body.tail_expr.as_deref());
+            if let Some(tail) = tail {
+                self.record_mismatch(MismatchSite::Return, tail, None, &ret_ty, &body_ty);
+            }
         }
 
         // Default any integer literals left unconstrained by context to i32.
         self.default_float_literals();
         self.default_int_literals();
 
+        self.fn_stack.pop();
         self.env.pop();
     }
 
@@ -1074,6 +1149,19 @@ impl TypeChecker {
             let got = self.subst.apply(got);
             let want = self.subst.apply(want);
             self.emit_error(format!("`{name}`: expected {want}, found {got}"));
+        }
+    }
+
+    /// [`Self::unify_arg`] for argument `i` of `args`, recording the
+    /// mismatch evidence when it reports one.
+    fn unify_arg_at(&mut self, name: &str, args: &[ast::Expr], i: usize, got: &Ty, want: &Ty) {
+        let before = self.diagnostics.len();
+        self.unify_arg(name, got, want);
+        if self.diagnostics.len() > before
+            && let Some(e) = args.get(i)
+        {
+            let site = MismatchSite::CallArg { callee: name.to_string(), index: i };
+            self.record_mismatch(site, e, None, want, got);
         }
     }
 
@@ -1206,12 +1294,12 @@ impl TypeChecker {
                     match self.subst.apply(&a[0]) {
                         Ty::Str => {
                             if n >= 2 {
-                                self.unify_arg(name, &a[1], &Ty::Str);
+                                self.unify_arg_at(name, args, 1, &a[1], &Ty::Str);
                             }
                         }
                         Ty::Map(k, _) => {
                             if n >= 2 {
-                                self.unify_arg(name, &a[1], &k);
+                                self.unify_arg_at(name, args, 1, &a[1], &k);
                             }
                         }
                         // Still open — `contains` accepts all three, so
@@ -1275,8 +1363,8 @@ impl TypeChecker {
                         crate::eval::RANGE_HINT
                     ));
                 }
-                for t in &a {
-                    self.unify_arg(name, t, &usize_ty);
+                for (i, t) in a.iter().enumerate() {
+                    self.unify_arg_at(name, args, i, t, &usize_ty);
                 }
                 Ty::Vec(Box::new(usize_ty))
             }
@@ -1286,7 +1374,7 @@ impl TypeChecker {
                 let b = self.fresh();
                 if n >= 2 {
                     let f = Ty::Fn(vec![e], Box::new(b.clone()), pure());
-                    self.unify_arg(name, &a[1], &f);
+                    self.unify_arg_at(name, args, 1, &a[1], &f);
                 }
                 Ty::Vec(Box::new(self.subst.apply(&b)))
             }
@@ -1295,7 +1383,7 @@ impl TypeChecker {
                 let e = if n >= 1 { self.collection_elem(&a[0]) } else { self.fresh() };
                 if n >= 2 {
                     let f = Ty::Fn(vec![e.clone()], Box::new(Ty::Bool), pure());
-                    self.unify_arg(name, &a[1], &f);
+                    self.unify_arg_at(name, args, 1, &a[1], &f);
                 }
                 Ty::Vec(Box::new(e))
             }
@@ -1304,7 +1392,7 @@ impl TypeChecker {
                 let e = if n >= 1 { self.collection_elem(&a[0]) } else { self.fresh() };
                 if n >= 2 {
                     let f = Ty::Fn(vec![e], Box::new(Ty::Bool), pure());
-                    self.unify_arg(name, &a[1], &f);
+                    self.unify_arg_at(name, args, 1, &a[1], &f);
                 }
                 Ty::Bool
             }
@@ -1313,7 +1401,7 @@ impl TypeChecker {
                 let e = if n >= 1 { self.collection_elem(&a[0]) } else { self.fresh() };
                 if n >= 2 {
                     let f = Ty::Fn(vec![e.clone()], Box::new(Ty::Bool), pure());
-                    self.unify_arg(name, &a[1], &f);
+                    self.unify_arg_at(name, args, 1, &a[1], &f);
                 }
                 Ty::Option(Box::new(e))
             }
@@ -1323,7 +1411,7 @@ impl TypeChecker {
                 let acc = if n >= 2 { a[1].clone() } else { self.fresh() };
                 if n >= 3 {
                     let f = Ty::Fn(vec![acc.clone(), e], Box::new(acc.clone()), pure());
-                    self.unify_arg(name, &a[2], &f);
+                    self.unify_arg_at(name, args, 2, &a[2], &f);
                 }
                 self.subst.apply(&acc)
             }
@@ -1337,7 +1425,7 @@ impl TypeChecker {
                 let acc = if n >= 2 { a[1].clone() } else { self.fresh() };
                 if n >= 3 {
                     let f = Ty::Fn(vec![acc.clone(), e], Box::new(acc.clone()), pure());
-                    self.unify_arg(name, &a[2], &f);
+                    self.unify_arg_at(name, args, 2, &a[2], &f);
                 }
                 // Unlike `fold`, the result is the sequence of accumulators.
                 Ty::Vec(Box::new(self.subst.apply(&acc)))
@@ -1348,7 +1436,7 @@ impl TypeChecker {
                 let k = self.fresh();
                 if n >= 2 {
                     let f = Ty::Fn(vec![e.clone()], Box::new(k.clone()), pure());
-                    self.unify_arg(name, &a[1], &f);
+                    self.unify_arg_at(name, args, 1, &a[1], &f);
                 }
                 Ty::Map(
                     Box::new(self.subst.apply(&k)),
@@ -1360,39 +1448,39 @@ impl TypeChecker {
                 let e = if n >= 1 { self.collection_elem(&a[0]) } else { self.fresh() };
                 if n >= 2 {
                     let f = Ty::Fn(vec![e.clone(), e.clone()], Box::new(e.clone()), pure());
-                    self.unify_arg(name, &a[1], &f);
+                    self.unify_arg_at(name, args, 1, &a[1], &f);
                 }
                 Ty::Option(Box::new(e))
             }
             // String / text vocabulary.
             "split" => {
                 self.vocab_arity(name, n, 2);
-                for t in a.iter().take(2) {
-                    self.unify_arg(name, t, &Ty::Str);
+                for (i, t) in a.iter().take(2).enumerate() {
+                    self.unify_arg_at(name, args, i, t, &Ty::Str);
                 }
                 Ty::Vec(Box::new(Ty::Str))
             }
             "chars" | "words" | "lines" => {
                 self.vocab_arity(name, n, 1);
                 if n >= 1 {
-                    self.unify_arg(name, &a[0], &Ty::Str);
+                    self.unify_arg_at(name, args, 0, &a[0], &Ty::Str);
                 }
                 Ty::Vec(Box::new(Ty::Str))
             }
             "join" => {
                 self.vocab_arity(name, n, 2);
                 if n >= 1 {
-                    self.unify_arg(name, &a[0], &Ty::Vec(Box::new(Ty::Str)));
+                    self.unify_arg_at(name, args, 0, &a[0], &Ty::Vec(Box::new(Ty::Str)));
                 }
                 if n >= 2 {
-                    self.unify_arg(name, &a[1], &Ty::Str);
+                    self.unify_arg_at(name, args, 1, &a[1], &Ty::Str);
                 }
                 Ty::Str
             }
             "upper" | "lower" => {
                 self.vocab_arity(name, n, 1);
                 if n >= 1 {
-                    self.unify_arg(name, &a[0], &Ty::Str);
+                    self.unify_arg_at(name, args, 0, &a[0], &Ty::Str);
                 }
                 Ty::Str
             }
@@ -1599,6 +1687,7 @@ impl TypeChecker {
                     let declared_ty = self.lower_type(declared);
                     if let Err(e) = unify(&mut self.subst, &declared_ty, &val_ty) {
                         self.emit_error(format!("let binding: {e}"));
+                        self.record_mismatch(MismatchSite::LetInit, value, None, &declared_ty, &val_ty);
                     }
                     self.bind_pattern(pattern, &declared_ty);
                 } else {
@@ -1798,6 +1887,14 @@ impl TypeChecker {
                     "+" | "-" | "*" | "/" | "%" | "&" | "|" | "^" | "<<" | ">>" => {
                         if let Err(e) = unify(&mut self.subst, &lt, &rt) {
                             self.emit_error(format!("arithmetic `{op}`: {e}"));
+                            // Evidence only for two concrete numeric types:
+                            // the right operand is read as the one to convert,
+                            // since the left operand's type is the result's.
+                            let (l, r) = (self.subst.apply(&lt), self.subst.apply(&rt));
+                            if is_numeric(&l) && is_numeric(&r) {
+                                let site = MismatchSite::BinaryOperand { op: op.clone() };
+                                self.record_mismatch(site, right, Some(expr), &l, &r);
+                            }
                         }
                         self.subst.apply(&lt)
                     }
@@ -1974,6 +2071,8 @@ impl TypeChecker {
                                         "call `{name}`: argument {} type mismatch: {e}",
                                         i + 1
                                     ));
+                                    let site = MismatchSite::CallArg { callee: name.clone(), index: i };
+                                    self.record_mismatch(site, &args[i], Some(expr), p, a);
                                 }
                             }
                         }
@@ -1983,10 +2082,20 @@ impl TypeChecker {
                 // §8 standard vocabulary: precise, fresh-per-call types so misuse
                 // is caught (the reliability win). User functions (handled above)
                 // shadow these; unhandled names fall through to generic inference.
-                if let ast::Expr::Ident { name } = func.as_ref()
-                    && let Some(t) = self.infer_vocab_call(name, args) {
+                if let ast::Expr::Ident { name } = func.as_ref() {
+                    let before = self.mismatches.len();
+                    if let Some(t) = self.infer_vocab_call(name, args) {
+                        // The call is the context of its own arguments' evidence.
+                        for m in &mut self.mismatches[before..] {
+                            if m.context.is_none()
+                                && matches!(&m.site, MismatchSite::CallArg { callee, .. } if callee == name)
+                            {
+                                m.context = Some(expr.clone());
+                            }
+                        }
                         return t;
                     }
+                }
 
                 // The scalar math functions take exactly one number. A user
                 // function (above) or a local of that name wins.
@@ -2472,6 +2581,7 @@ impl TypeChecker {
                 let rt = self.infer_expr(value);
                 if let Err(e) = unify(&mut self.subst, &lt, &rt) {
                     self.emit_error(format!("assignment type mismatch: {e}"));
+                    self.record_mismatch(MismatchSite::Assignment, value, None, &lt, &rt);
                 }
                 Ty::Unit
             }
@@ -2747,6 +2857,18 @@ impl TypeChecker {
 }
 
 // ── Public API ───────────────────────────────────────────────────────
+
+/// Whether `t` is a concrete integer or float type.
+fn is_numeric(t: &Ty) -> bool {
+    matches!(t, Ty::Int(_) | Ty::Uint(_) | Ty::Float(_))
+}
+
+/// [`check`]'s diagnostics, and the structured evidence for the type
+/// mismatches among them. The diagnostics are exactly `check`'s.
+pub fn check_with_evidence(module: &ast::Module) -> (Vec<Diagnostic>, Vec<Mismatch>) {
+    let tc = check(module);
+    (tc.diagnostics, tc.mismatches)
+}
 
 /// Run type checking on a parsed module.
 pub fn check(module: &ast::Module) -> TypeChecker {
@@ -4048,5 +4170,68 @@ mod retired_construct_tests {
     #[test]
     fn const_is_not_retired() {
         assert!(retired("C COUNT: i32 = 0;").is_empty());
+    }
+}
+
+#[cfg(test)]
+mod evidence_tests {
+    use super::*;
+
+    fn evidence(src: &str) -> (Vec<Diagnostic>, Vec<Mismatch>) {
+        let module = crate::parser::parse(&crate::lexer::lex(src)).expect("parses");
+        check_with_evidence(&module)
+    }
+
+    fn render(e: &ast::Expr) -> String {
+        crate::fmt::expr_to_string(e)
+    }
+
+    /// Each covered site records the function, the site, the expression and
+    /// both types, and points at the diagnostic it explains. The diagnostics
+    /// are `check`'s, unchanged.
+    #[test]
+    fn evidence_names_site_expression_and_types() {
+        let src = "f count(xs: [i64]) -> i64 {\n    len(xs)\n}\n\
+                   f upto(n: i64) -> usize {\n    len(range(n))\n}\n\
+                   f take(a: u8) -> u8 { a }\n\
+                   f call_it(b: i64) -> u8 {\n    take(b)\n}\n\
+                   f bind(xs: [i64]) -> i64 {\n    val k: i64 = len(xs);\n    k\n}\n\
+                   f mix(a: i64, b: usize) -> i64 {\n    a + b\n}\n";
+        let (diags, ms) = evidence(src);
+        let module = crate::parser::parse(&crate::lexer::lex(src)).unwrap();
+        let plain: Vec<String> = check(&module).diagnostics.iter().map(|d| d.message.clone()).collect();
+        assert_eq!(plain, diags.iter().map(|d| d.message.clone()).collect::<Vec<_>>());
+        let find = |f: &str| ms.iter().find(|m| m.function == f).unwrap_or_else(|| panic!("{f}: {ms:#?}"));
+
+        let m = find("count");
+        assert_eq!(m.site, MismatchSite::Return);
+        assert_eq!(render(&m.expr), "len(xs)");
+        assert_eq!((m.expected.to_string(), m.found.to_string()), ("I64".into(), "Usize".into()));
+        assert!(diags[m.diag_index].message.contains("return type mismatch"), "{:?}", diags[m.diag_index]);
+
+        let m = find("upto");
+        assert_eq!(m.site, MismatchSite::CallArg { callee: "range".into(), index: 0 });
+        assert_eq!(render(&m.expr), "n");
+        assert_eq!(diags[m.diag_index].message, "`range`: expected Usize, found I64");
+        assert_eq!(render(m.context.as_ref().expect("the call")), "range(n)");
+
+        let m = find("call_it");
+        assert_eq!(m.site, MismatchSite::CallArg { callee: "take".into(), index: 0 });
+        assert_eq!((m.expected.to_string(), m.found.to_string()), ("U8".into(), "I64".into()));
+
+        let m = find("bind");
+        assert_eq!(m.site, MismatchSite::LetInit);
+        assert_eq!(render(&m.expr), "len(xs)");
+
+        let m = find("mix");
+        assert_eq!(m.site, MismatchSite::BinaryOperand { op: "+".into() });
+        assert_eq!(render(&m.expr), "b");
+        assert_eq!((m.expected.to_string(), m.found.to_string()), ("I64".into(), "Usize".into()));
+    }
+
+    #[test]
+    fn evidence_is_empty_for_a_clean_module() {
+        let (diags, ms) = evidence("f g(a: i64) -> i64 { a + 1 }\n");
+        assert!(diags.is_empty() && ms.is_empty(), "{diags:?} {ms:?}");
     }
 }

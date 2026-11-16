@@ -49,3 +49,51 @@ fn heal_exits_non_zero_when_it_cannot_heal() {
     assert_eq!(v["written"], false);
     assert_eq!(std::fs::read_to_string(&path).unwrap(), src);
 }
+
+/// The text report carries the debugger's evidence for the repair: the
+/// site, its Ochiai score and run counts, the values the comparison saw, and
+/// why the candidate was tried first.
+#[test]
+fn heal_text_reports_the_debugger_evidence() {
+    let path = scratch("evidence", OFF_BY_ONE);
+    let out = Command::new(BIN).arg("--heal").arg(&path).output().unwrap();
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(out.status.success(), "{stdout}");
+    for line in [
+        "    adult/binary#0 `>`: Ochiai 1.00; failing 1 / passing 0",
+        "      saw t_eighteen: 18 > 18 -> false",
+        "  repair: `>` -> `>=` in `adult` at 2:12 [changes semantics]",
+        "    site adult/binary#0: Ochiai 1.00; executed by 1 failing and 0 passing run(s)",
+        "    observed t_eighteen: 18 > 18 -> false",
+    ] {
+        assert!(stdout.contains(line), "missing {line:?} in:\n{stdout}");
+    }
+    assert!(stdout.contains("    tried first because: the comparison saw equal operands"), "{stdout}");
+}
+
+/// `range(n)` with `n: i64`: the checker names argument 1 of `range`, and
+/// the cast lands there, in the text and the JSON report.
+#[test]
+fn heal_casts_the_range_argument_the_checker_names() {
+    let src = "f count_to(n: i64) -> usize {\n    len(range(n))\n}\n\n\
+               @t\nf t_count() {\n    assert(count_to(3) == 3, \"three\")\n}\n";
+    let path = scratch("range", src);
+    let out = Command::new(BIN).arg("--heal").arg(&path).output().unwrap();
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(out.status.success(), "{stdout}");
+    assert!(
+        stdout.contains(
+            "    compiler evidence: in `count_to`, argument 1 of `range` `n` at 2:15: expected Usize, found I64"
+        ),
+        "{stdout}"
+    );
+    assert!(stdout.contains("+    len(range(n as usize))"), "{stdout}");
+
+    let out = Command::new(BIN).arg("--heal").arg(&path).arg("--json").output().unwrap();
+    let v: serde_json::Value = serde_json::from_slice(&out.stdout).expect("--json prints JSON");
+    let ev = &v["compile"]["steps"][0]["evidence"];
+    assert_eq!(ev["site"]["kind"], "call_arg", "{v:#}");
+    assert_eq!(ev["site"]["callee"], "range");
+    assert_eq!((ev["line"].as_u64(), ev["col"].as_u64()), (Some(2), Some(15)));
+    assert_eq!(v["ok"], true);
+}
