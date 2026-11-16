@@ -143,12 +143,13 @@ impl Default for IntelligentDebugEngine {
 impl IntelligentDebugEngine {
     pub fn new() -> Self {
         let mut patterns = BTreeMap::new();
-        // Built-in patterns.
-        patterns.insert("E0505".into(), ("value borrowed while still in use".into(), "shorten the borrow scope or clone the value".into(), 0.85));
+        // Built-in patterns, keyed by codes the compiler emits. rustc's E0505,
+        // E0277 and E0599 were here, and nothing in MAGE produces them: a
+        // borrow conflict is E0502, there is no trait solving, and an unknown
+        // method has no code of its own.
+        patterns.insert("E0502".into(), ("value borrowed while still in use".into(), "shorten the borrow scope or clone the value".into(), 0.85));
         patterns.insert("E0382".into(), ("use of moved value".into(), "clone before move or restructure ownership".into(), 0.90));
-        patterns.insert("E0277".into(), ("trait bound not satisfied".into(), "add the required trait implementation or bound".into(), 0.80));
         patterns.insert("E0308".into(), ("type mismatch".into(), "check expected vs actual types, add conversion".into(), 0.85));
-        patterns.insert("E0599".into(), ("method not found".into(), "import the trait or check method name spelling".into(), 0.75));
         patterns.insert("contract_violation".into(), ("contract precondition/postcondition failed".into(), "ensure input satisfies @req or output satisfies @ens".into(), 0.90));
         patterns.insert("effect_leak".into(), ("undeclared effect escapes function boundary".into(), "add the effect to the function signature".into(), 0.95));
         patterns.insert("capability_denied".into(), ("agent lacks required capability".into(), "grant the capability or request escalation".into(), 0.88));
@@ -461,7 +462,7 @@ mod tests {
     #[test]
     fn diagnose_known_error() {
         let mut e = IntelligentDebugEngine::new();
-        let d = e.diagnose("E0505", "src/main.mg:42");
+        let d = e.diagnose("E0502", "src/main.mg:42");
         assert!(d.confidence > 0.5);
         assert!(d.root_cause.contains("borrow"));
     }
@@ -484,7 +485,7 @@ mod tests {
     #[test]
     fn debug_history_recorded() {
         let mut e = IntelligentDebugEngine::new();
-        e.diagnose("E0505", "a");
+        e.diagnose("E0502", "a");
         e.diagnose("E0382", "b");
         assert_eq!(e.history().len(), 2);
     }
@@ -585,8 +586,8 @@ mod tests {
     #[test]
     fn rap_debug_diagnose() {
         let mut e = IntelligentDebugEngine::new();
-        let json = AciRapEndpoints::debug_diagnose(&mut e, "E0505", "loc");
-        assert!(json.contains("\"code\":\"E0505\""));
+        let json = AciRapEndpoints::debug_diagnose(&mut e, "E0502", "loc");
+        assert!(json.contains("\"code\":\"E0502\""));
     }
 
     #[test]
@@ -633,8 +634,8 @@ mod tests {
     #[test]
     fn rap_debug_history() {
         let mut e = IntelligentDebugEngine::new();
-        e.diagnose("E0505", "a");
+        e.diagnose("E0502", "a");
         let json = AciRapEndpoints::debug_history(&e);
-        assert!(json.contains("E0505"));
+        assert!(json.contains("E0502"));
     }
 }
