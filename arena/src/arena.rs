@@ -410,6 +410,12 @@ pub struct LearnerResult {
     pub mean_bpb: f64,
     pub train_joules: Option<f64>,
     pub train_seconds: f64,
+    /// Bytes the learner was trained on over the whole session (its
+    /// `bytes_seen`). Deterministic for a configuration and seed under
+    /// `--cost fuel`; `parameters × train_bytes` is the work figure behind
+    /// `succession --efficiency-basis work`. Zero in JSON written before it existed.
+    #[serde(default)]
+    pub train_bytes: u64,
     /// Seconds to predict one kilobyte, measured on held-out data.
     pub latency_s_per_kb: f64,
     /// (8 − bpb) / joules: bits saved per byte, per joule of training.
@@ -1314,6 +1320,7 @@ pub fn run_with_guard(
             mean_bpb,
             train_joules: joules[li],
             train_seconds: seconds[li],
+            train_bytes: learner.bytes_seen(),
             latency_s_per_kb: latency,
             intelligence_per_joule: joules[li].filter(|j| *j > 0.0).map(|j| (8.0 - mean_bpb) / j),
             on_front: false,
