@@ -97,13 +97,13 @@ ontology/full
   ├─ ir_ops (107)            — every Agentic Binary Language opcode w/ metadata
   ├─ op_families (7)         — Neural/Symbolic/Control/Memory/Agent/Meta/Math
   ├─ layer_map (21)          — surface name → opcode
-  ├─ rap_methods (41)        — every callable method w/ inputs/outputs
+  ├─ rap_methods (42)        — every callable method w/ inputs/outputs
   ├─ heal_patterns (34)      — mechanical fix patterns, each w/ a matching message
   ├─ recovery_stages (7)     — the 5-stage pipeline
   ├─ machine                    — binary container format constants
   ├─ examples (10)           — parse-verified working snippets
   ├─ framewerx_modules (256) — RecursiveMachineIntelligence-MG framework (FLAX-equivalent)
-  ├─ cli_flags (45)          — every mage-parse flag
+  ├─ cli_flags (47)          — every mage-parse flag
   ├─ bench_backends (4)      — reliability-bench backends
   ├─ effects (24)            — @fx/@req/@ens + canonical effect names
   ├─ wrapper_protocol (9)    — subprocess agent contract

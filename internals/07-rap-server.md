@@ -168,7 +168,7 @@ errors combined).
 ## 7.4 The method surface
 
 **Corrected 2026-08-25.** This section was a "Planned Methods" table listing
-three implemented methods and eleven planned ones. **41 methods are published
+three implemented methods and eleven planned ones. **42 methods are published
 and dispatch** — the count is pinned, and a test exercises every one against
 its published parameter list. None of the eleven exists under the name given,
 and most of the capabilities they described shipped under a different one:
@@ -200,6 +200,7 @@ this table cannot drift from the binary without the ontology drifting first:
 | `build/check` | `source` | Lex + parse + report diagnostics |
 | `build/heal` | `source` | Generate fix candidates for diagnostics |
 | `build/recover` | `source` | Run the 5-stage recovery pipeline; return final source |
+| `build/selfheal` | `source`, `fuel` | Intent-guided heal loop plus test-driven repair (`mage-parse --heal`); returns the healed source and a diff, writes nothing |
 | `capability/check` | `source` | List capabilities required by source |
 | `cost/compare` | `a`, `b`, `target` | Compare costs of two constructs |
 | `cost/query` | `construct`, `target`, `opt` | Per-construct cost estimate |

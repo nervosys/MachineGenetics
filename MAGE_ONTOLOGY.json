@@ -4,7 +4,7 @@
     "ast_kinds": 20,
     "bench_backends": 4,
     "ci_floors": 6,
-    "cli_flags": 45,
+    "cli_flags": 47,
     "docs": 7,
     "effects": 24,
     "examples": 10,
@@ -14,7 +14,7 @@
     "keywords": 100,
     "op_families": 7,
     "project_layout": 22,
-    "rap_methods": 41,
+    "rap_methods": 42,
     "recovery_stages": 7,
     "sigils": 57,
     "types": 30,
@@ -286,6 +286,16 @@
         "takes_path": true
       },
       {
+        "flag": "--heal",
+        "purpose": "Intent-guided self-healing: infer intent (signatures, declared effects, contracts, @test), heal compile errors under it, run @tests and contracts, try single-site repairs, print a diff. Exit 0 only with 0 errors and every run passing. Writes the file only with --write.",
+        "takes_path": true
+      },
+      {
+        "flag": "--write",
+        "purpose": "With `--heal`: write the healed source back to the file. Without it the file is never modified.",
+        "takes_path": false
+      },
+      {
         "flag": "--solve",
         "purpose": "Minimise (or with --max, maximise) a function over the box given by its @param consts; prints the Solution JSON naming the solver (ProjectedGradient when certified convex or concave, else Es) and why. Takes [--fuel N] [--seed S].",
         "takes_path": true
@@ -297,7 +307,7 @@
       },
       {
         "flag": "--fuel",
-        "purpose": "With `--solve`: the fuel budget for the search (default 1000000). Takes a whole number after it.",
+        "purpose": "With `--solve`: the fuel budget for the search (default 1000000); with `--eval`: run under the fuel-bounded evaluator; with `--heal`: the budget for each test run (default 200000). Takes a whole number after it.",
         "takes_path": false
       },
       {
@@ -4320,6 +4330,26 @@
           "changed"
         ],
         "summary": "Run the 5-stage recovery pipeline; return final source."
+      },
+      {
+        "method": "build/selfheal",
+        "params": [
+          "source",
+          "fuel"
+        ],
+        "returns": [
+          "ok",
+          "intent",
+          "compile",
+          "debug",
+          "healed",
+          "changed",
+          "errors",
+          "tests_total",
+          "tests_passing",
+          "diff"
+        ],
+        "summary": "Intent-guided self-healing: compile-time heal steps kept only if errors drop, intent is kept and passing @tests still pass; then run @tests/contracts and try single-site repairs. Returns the healed source and a diff; writes nothing."
       },
       {
         "method": "abl/encode",

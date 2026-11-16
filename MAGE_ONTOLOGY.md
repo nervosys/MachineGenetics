@@ -91,7 +91,7 @@ Envelope {
 
 ### 5. RAP (MAGE Agent Protocol) — Compiler Interface
 
-RAP exposes **41** JSON-RPC 2.0 endpoints. The tables below name **23** of
+RAP exposes **42** JSON-RPC 2.0 endpoints. The tables below name **23** of
 them. Each request is a JSON object with `method`, `params`, `id`:
 
 > **Corrected 2026-09-02.** This line said "24 endpoints" and the tables below
@@ -1706,7 +1706,7 @@ Report TaskResult::Success
 
 | Category                 | Count |
 | ------------------------ | ----- |
-| Source modules           | 77    |
+| Source modules           | 79    |
 | TokenKind variants       | 180   |
 | AST ItemKind variants    | 20    |
 | AST ExprKind variants    | 35    |
@@ -1715,7 +1715,7 @@ Report TaskResult::Success
 | Effect kinds             | 19    |
 | SKB rule databases       | 8     |
 | SKB rules total          | 255   |
-| RAP endpoints            | 41    |
+| RAP endpoints            | 42    |
 | Agent roles              | 8     |
 | Message topics           | 10    |
 | CRDT operations          | 6     |
@@ -1748,7 +1748,8 @@ Report TaskResult::Success
 > `DiagnosticCategory` 12 → 17 and `Source modules` 69 → 74 moves) were older.
 > All seven are now the source's figures. (`Source modules` went to 75 with `recognise.rs`, the
 > grammar's recogniser, and to 77 with `kb_proposal.rs`, the knowledge base's
-> proposal format.)
+> proposal format; then to 79 with `intent.rs` and `self_heal.rs`, the
+> self-healing loop, which also added the RAP endpoint `build/selfheal`, 41 → 42.)
 >
 > **Three of these moved during the merge that landed them.** `Expr` gained
 > `Grad` (35 → 36) and `Source modules` gained `verdict.rs` and

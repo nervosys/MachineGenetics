@@ -23,7 +23,7 @@ fn is_modifier_flag(a: &str) -> bool {
     matches!(
         a,
         "--no-elision" | "--syntax=legacy" | "--syntax=canonical" | "--token-report"
-            | "--json" | "--fix" | "--core" | "--max" | "--fuel" | "--seed"
+            | "--json" | "--fix" | "--core" | "--max" | "--fuel" | "--seed" | "--write"
     ) || a.starts_with("--backend=")
         || a.starts_with("--backends-file=")
 }
@@ -77,6 +77,118 @@ fn write_formatted(text: &str, out_path: Option<&str>) {
             }
         }
         None => println!("{text}"),
+    }
+}
+
+/// The human `--heal` report: intent, compile-time steps, run-time debug
+/// report and repair, the diff, and the verdict.
+fn print_heal_report(r: &self_heal::HealReport, diff: &str, path: &str, write: bool, written: bool) {
+    match &r.intent {
+        Some(i) => {
+            println!("intent ({} item(s), from signatures, declared effects, contracts and @test):", i.items.len());
+            for line in i.summary() {
+                println!("  {line}");
+            }
+        }
+        None => println!("intent: unavailable (the source does not parse)"),
+    }
+    if let Some(note) = &r.compile.intent_note {
+        println!("  note: {note}");
+    }
+
+    let c = &r.compile;
+    println!("\ncompile-time heal: {} step(s) in {} round(s); stopped: {}", c.steps.len(), c.rounds, c.stopped);
+    for s in &c.steps {
+        let diag = s.diagnostic.as_ref().map_or_else(|| "(parse failure)".to_string(), |d| d.render());
+        println!("  round {}: {diag}", s.round);
+        println!(
+            "    fix `{}` via {}{}: {}",
+            s.fix_id,
+            s.origin,
+            if s.semantics_preserving { "" } else { " [may change semantics]" },
+            s.description
+        );
+        let kept = if s.tests_kept_passing.is_empty() { "none ran".to_string() } else { s.tests_kept_passing.join(", ") };
+        println!("    evidence: errors {} -> {}; @tests kept passing: {kept}", s.errors_before, s.errors_after);
+        let rejected: Vec<String> = s.rejected.iter().map(|(k, n)| format!("{k} x{n}")).collect();
+        println!(
+            "    {} candidate(s) considered; rejected: {}",
+            s.candidates_considered,
+            if rejected.is_empty() { "none".to_string() } else { rejected.join(", ") }
+        );
+    }
+    if c.steps.is_empty() && c.rejections.is_empty() && !c.remaining.is_empty() {
+        println!("  no applicable candidate was generated for these errors");
+    }
+    if c.steps.is_empty() && !c.rejections.is_empty() {
+        println!("  rejected candidates (sample):");
+        for x in &c.rejections {
+            println!("    round {}: `{}`: {}", x.round, x.fix_id, x.reason);
+        }
+    }
+    for d in &c.remaining {
+        println!("  remaining: {}", d.render());
+    }
+
+    let d = &r.debug;
+    println!("\ndebug: {} run(s), {} failing", d.runs.len(), d.failing());
+    for run in &d.runs {
+        let kind = match run.kind {
+            self_heal::ProbeKind::Test => "@test",
+            self_heal::ProbeKind::Contract => "contracts",
+        };
+        if run.passed {
+            println!("  pass {} ({kind})", run.name);
+            continue;
+        }
+        println!("  FAIL {} ({kind}): {}", run.name, run.error.as_deref().unwrap_or(""));
+        if let Some(chk) = &run.failed_check {
+            println!("    failed check: {chk}");
+        }
+        if !run.trace.is_empty() {
+            println!("    trace:");
+            for t in &run.trace {
+                println!("      {t}");
+            }
+        }
+    }
+    match &d.repair {
+        Some(rep) => {
+            println!(
+                "  repair: {} in `{}` at {}:{} [changes semantics]",
+                rep.mutation, rep.function, rep.line, rep.col
+            );
+            println!(
+                "    evidence: failing before, passing after: {}; all {} run(s) pass after ({} mutant(s) tried)",
+                rep.fixed.join(", "),
+                rep.runs_after.len(),
+                d.mutants_tried
+            );
+        }
+        None => {
+            if let Some(n) = &d.note {
+                println!("  {n}");
+            }
+        }
+    }
+
+    println!();
+    if diff.is_empty() {
+        println!("no change");
+    } else {
+        print!("{diff}");
+    }
+    println!(
+        "\nresult: {} — {} error(s), {}/{} run(s) passing",
+        if r.ok { "OK" } else { "NOT HEALED" },
+        r.errors.len(),
+        r.tests_passing,
+        r.tests_total
+    );
+    if written {
+        println!("wrote {path}");
+    } else if r.changed && !write {
+        println!("{path} not modified; pass --write to apply");
     }
 }
 
@@ -644,6 +756,59 @@ fn main() {
                     eprintln!("eval error: {e}");
                     std::process::exit(1);
                 }
+            }
+        }
+        Some("--heal") => {
+            // Intent-guided self-healing (`self_heal.rs`): infer the intent,
+            // heal compile errors under it, run the tests and contracts, and
+            // try a repair when one fails. Prints a diff; the file is written
+            // only under `--write`, because a heal may change what the program
+            // computes and the compiler never does that silently.
+            let after = args.iter().position(|a| a == "--heal").map_or(0, |i| i + 1);
+            let mut positional: Vec<&str> = Vec::new();
+            let mut fuel = self_heal::DEFAULT_FUEL;
+            let mut write = false;
+            let mut rest = args[after..].iter();
+            while let Some(a) = rest.next() {
+                match a.as_str() {
+                    "--fuel" => {
+                        let Some(n) = rest.next().and_then(|v| v.parse::<u64>().ok()) else {
+                            eprintln!("--fuel needs a whole number");
+                            std::process::exit(1);
+                        };
+                        fuel = n;
+                    }
+                    "--write" => write = true,
+                    other if is_modifier_flag(other) => {}
+                    other => positional.push(other),
+                }
+            }
+            let Some(path) = positional.first().copied() else {
+                eprintln!("Usage: mage-parse --heal <file.mg> [--write] [--json] [--fuel N]");
+                std::process::exit(1);
+            };
+            let source = read_source(path);
+            let report = self_heal::heal_program(&source, self_heal::DEFAULT_MAX_ROUNDS, fuel);
+            let diff = self_heal::unified_diff(&source, &report.healed, &format!("a/{path}"), &format!("b/{path}"));
+            let written = if write && report.changed && path != "-" {
+                if let Err(e) = std::fs::write(path, &report.healed) {
+                    eprintln!("write {path}: {e}");
+                    std::process::exit(1);
+                }
+                true
+            } else {
+                false
+            };
+            if json_out {
+                let mut v = serde_json::to_value(&report).unwrap_or_default();
+                v["diff"] = serde_json::Value::String(diff);
+                v["written"] = serde_json::Value::Bool(written);
+                println!("{}", serde_json::to_string_pretty(&v).unwrap_or_default());
+            } else {
+                print_heal_report(&report, &diff, path, write, written);
+            }
+            if !report.ok {
+                std::process::exit(1);
             }
         }
         Some("--solve") => {
@@ -3614,7 +3779,7 @@ mod cli_arg_tests {
                     || f.starts_with("--describe")
                     || f.starts_with("--spine=")
                     || matches!(f, "--check" | "--eval" | "--pipeline" | "--rap" | "--differentiable"
-                                | "--gradcheck" | "--solve"
+                                | "--gradcheck" | "--solve" | "--heal"
                                 | "--fmt-compact" | "--fmt-expand" | "--count-tokens" | "--emit-ontology" | "--emit-skb"
                                 | "--manifest" | "--rain" | "--version" | "--input") =>
                 {

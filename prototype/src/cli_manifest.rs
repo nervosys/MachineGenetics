@@ -148,6 +148,24 @@ pub const MODES: &[CliMode] = &[
                  capability and the interpreter cannot perform it.",
     },
     CliMode {
+        flag: "--heal",
+        args: "<file.mg|-> [--write] [--json] [--fuel N]",
+        summary: "intent-guided self-healing: heal compile errors, debug and repair failing @tests; prints a diff",
+        effect: "read_local",
+        detail: "Infers intent from signatures, declared effects, @req/@ens, struct @inv\n\
+                 and @test functions (zero-arg, `@test`/`@t`). Compile-time: a heal\n\
+                 candidate is accepted only if the error count drops, every signature,\n\
+                 effect list and contract is unchanged, no @test is removed, and every\n\
+                 @test that passed still passes. Run-time: runs each @test and each\n\
+                 zero-arg function with contracts under fuel; on failure prints the\n\
+                 error, the failed clause or assertion, and a call trace, then tries\n\
+                 single-site mutations (comparison swap, +/-, int literal +-1, if/else\n\
+                 swap) of the functions the failing runs reach, accepting the first\n\
+                 that makes every run pass (always reported as semantics-changing).\n\
+                 Prints a unified diff. Exit 0 only with 0 errors and all runs passing.\n\
+                 The file is modified only with --write (effect then write_local).",
+    },
+    CliMode {
         flag: "--solve",
         args: "<file.mg|-> <fn> [--max] [--fuel N] [--seed S]",
         summary: "minimise or maximise a function over its @param box; prints the Solution JSON",
