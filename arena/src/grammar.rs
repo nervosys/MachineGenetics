@@ -56,6 +56,8 @@ struct Space {
     /// Each form written out, and each piece of the prompt.
     examples: HashMap<String, String>,
     texts: HashMap<String, String>,
+    /// The profile's signature up to its parameters: `f gen`.
+    fn_head: String,
     max_depth: usize,
     max_nest: usize,
     int_extra_depth: usize,
@@ -80,6 +82,7 @@ fn space() -> &'static Space {
             int_extra_depth: limits["int_extra_depth"].0 as usize,
             examples: p.list_forms.iter().chain(&p.int_forms).map(|f| (f.name.clone(), f.example.clone())).collect(),
             texts: p.texts.iter().cloned().collect(),
+            fn_head: p.signature.split('(').next().expect("a signature").trim().to_string(),
             list_rules: p.list_forms.iter().map(|f| f.name.clone()).collect(),
             int_rules: p.int_forms.iter().map(|f| f.name.clone()).collect(),
             limits,
@@ -929,10 +932,17 @@ pub fn second_order_example() -> String {
     space().examples[second_order_rule()].clone()
 }
 
+/// The line that separates the blocks of a reply, as the profile states it.
+pub(crate) fn block_separator() -> &'static str {
+    &space().texts["separator"]
+}
+
 /// A piece of the prompt, with each `{name}` filled in.
-fn prompt_text(key: &str) -> String {
+pub(crate) fn prompt_text(key: &str) -> String {
     let mut text = space().texts[key].replace("{max_depth}", &max_depth().to_string());
     text = text.replace("{form}", second_order_rule());
+    text = text.replace("{fn_head}", &space().fn_head);
+    text = text.replace("{separator}", &space().texts["separator"]);
     for (name, (lo, hi)) in &space().limits {
         text = text.replace(&format!("{{{name}}}"), &format!("{lo}..={hi}"));
     }
@@ -1575,7 +1585,7 @@ mod tests {
     /// changes the profile changes what it pins, and the gate measures the change
     /// (its benchmark and evidence log) instead. Under any other profile each
     /// golden checks only that a seed still draws the same thing twice.
-    const GOLDENS_PROFILE: &str = "sha256:044f0fa053bb02cd2d35828006505f7df96050d7b612f1444ce8927b8694f695";
+    const GOLDENS_PROFILE: &str = "sha256:d5e4c6f6a75fee27d99af2130445473c2b1cf73ef99fcf3d8269aa9063842aee";
 
     /// The hash of the profile this build was compiled with.
     fn profile_hash() -> String {

@@ -37,7 +37,7 @@
 //! own span and nothing else.
 
 use crate::agents::{Candidate, Pool, PoolEntry, Proposer, Scored};
-use crate::grammar::{describe_grammar, Program, Rng};
+use crate::grammar::{block_separator, describe_grammar, prompt_text, Program, Rng};
 use std::io::{Read, Write};
 use std::process::{Command, Stdio};
 use std::thread::JoinHandle;
@@ -134,7 +134,7 @@ pub fn split_blocks(reply: &str) -> Vec<String> {
     let mut blocks = Vec::new();
     let mut cur = String::new();
     for line in reply.lines() {
-        if line.trim() == "---" {
+        if line.trim() == block_separator() {
             blocks.push(std::mem::take(&mut cur));
         } else {
             cur.push_str(line);
@@ -164,23 +164,18 @@ pub fn build_prompt(n: usize, top: &[&PoolEntry], second_order: bool) -> String 
 /// source text. Each source is written without its trailing whitespace, so no
 /// line of the prompt ends in a space, whatever the source held.
 fn render_prompt(n: usize, top: &[(f64, &str)], second_order: bool) -> String {
-    let mut p = String::from(
-        "You write programs for the arena, a search over small typed MAGE programs. \
-         A body is one list expression over the seed `s`. Write bodies only: no `f gen`, \
-         no braces, no comments.\n\n",
-    );
+    // Every sentence is the profile's (`profile_text` in kb/profiles/arena.mg).
+    let mut p = prompt_text("preamble") + "\n\n";
     p.push_str(&describe_grammar(second_order));
-    p.push_str("\nThe best programs found so far, as written, with the learning progress each earned (higher is better):\n\n");
+    p.push_str(&format!("\n{}\n\n", prompt_text("shown_head")));
     if top.is_empty() {
-        p.push_str("(none yet)\n\n");
+        p.push_str(&format!("{}\n\n", prompt_text("none_yet")));
     }
     for (reward, source) in top {
         p.push_str(&format!("reward {:.4}:\n{}\n", reward, source.trim_end()));
     }
-    p.push_str(&format!(
-        "Write up to {n} new programs, different from these. Each is a single body expression. \
-         Put one per block, and separate blocks with a line containing only ---. Write nothing else.\n"
-    ));
+    p.push_str(&prompt_text("request").replace("{n}", &n.to_string()));
+    p.push('\n');
     p
 }
 
@@ -455,6 +450,21 @@ mod tests {
     fn split_blocks_drops_blank_blocks_and_keeps_bodies_whole() {
         let blocks = split_blocks("\n---\nrange(2)\n  \n---\n---\n[1;\n2]\n");
         assert_eq!(blocks, vec!["range(2)\n  \n".to_string(), "[1;\n2]\n".to_string()]);
+    }
+
+    #[test]
+    fn the_request_names_the_separator_the_splitter_uses() {
+        let sep = block_separator();
+        let prompt = render_prompt(2, &[], false);
+        assert!(prompt.contains(&format!("a line containing only {sep}. Write nothing else.\n")), "{prompt:?}");
+        assert_eq!(split_blocks(&format!("range(1)\n{sep}\nrange(2)\n")).len(), 2);
+    }
+
+    #[test]
+    fn the_prompt_names_the_signatures_head_not_a_copy_of_it() {
+        let prompt = render_prompt(1, &[], false);
+        assert!(prompt.contains("no `f gen`, no braces, no comments."), "{prompt:?}");
+        assert!(!prompt.contains('{'), "an unfilled placeholder: {prompt:?}");
     }
 
     /// The prompt ends on exactly one newline after a last line with no
