@@ -214,7 +214,7 @@ Agent mode maps every concept to 1-2 characters. Like hexadecimal compresses 4 b
 | Matmul         | `⊗`            | `⊗`        | Tensor op      |
 | Hadamard       | `⊙`            | `⊙`        | Tensor op      |
 | Transpose      | `⊤`            | `⊤`        | Tensor op      |
-| Flatten        | `.flatten()`   | `⊥`        | Tensor op      |
+| Tensor flatten | `⊥`            | `⊥`        | Tensor op      |
 | String         | `String`       | `s`        | Type           |
 | `&str`         | `&str`         | `&s`       | Type           |
 | `[T]~`       | `[T]~`       | `[T]~`     | Type           |
@@ -231,7 +231,7 @@ See [Appendix D](#appendix-d-Agent-mode-symbol-reference) for the complete symbo
 ### 2.3 One flat namespace
 
 **MAGE has no module system, and this is the design rather than a gap.** Every
-name — the standard vocabulary of §8, the capability namespaces of §11, and
+name — the standard vocabulary, the capability namespaces of §11, and
 every item a program declares — lives in one namespace and is in scope
 everywhere. There is no import, no path qualification, and no visibility
 boundary between files.
@@ -239,8 +239,8 @@ boundary between files.
 The reason is the language's premise. An import is pure overhead in tokens: it
 names something the compiler already knows, costs a line at the top of every
 file, and buys separation that matters when a library is large and unstable. The
-standard library here is **31 words** (§8) plus **20 capability namespaces**
-(§11.3), both fixed and both published in `MAGE_ONTOLOGY.json`. An agent
+standard library here is **31 words** plus **20 capability namespaces**
+(§11.2), both fixed and both published in `MAGE_ONTOLOGY.json`. An agent
 generating a program should not spend tokens re-deriving what it can already
 reach.
 
@@ -269,6 +269,10 @@ the sigil surface, `--fmt-expand` the keyword surface). Each is measured over th
 106 tracked files in four units. Totals are over all 106 files, except bits,
 which are over the 21 held-out files. Ratio is sigil over keyword, so below 1
 means the sigil surface is cheaper.
+
+The figures are as measured at commit 647442af6 (2026-10-28) over the 106 files
+tracked then; the corpus has since grown to 124 tracked `.mg` files, and
+`scripts/surface-units.py` runs the same measurement on the current tree.
 
 | unit | sigil | keyword | sigil / keyword | per-file median |
 | --- | ---: | ---: | ---: | ---: |
@@ -307,7 +311,7 @@ corpus, the saving is in bytes only.
 - Train and held-out come from one small corpus: about 75 KB of training text
   and 19 KB of held-out text, split by sorted path, every 5th file held out. The
   files share authors and style, so held-out is not independent of training.
-- Training uses whole 4 KB steps. Sigil trained on 73,728 of 74,356 bytes and
+- Training uses whole 1 KB steps. Sigil trained on 73,728 of 74,356 bytes and
   keyword on 76,800 of 77,228 bytes.
 - `prototype/examples/sandboxed_agent.mg` holds only comments, and the lexer
   drops comments, so both surfaces are empty for it. It contributes 0 bytes and
@@ -2594,23 +2598,29 @@ std::
 
 ### 15.1 Compilation Targets
 
-MAGE compiles to native code via MLIR and LLVM, with specialized lowering passes:
+The status column states what is built. Only the CPU backend and CUDA (Cargo
+feature `cuda`, via IronAccelerator) exist. MLIR output is textual only
+(`prototype/src/mlir.rs`), and there is no LLVM lowering. Rows marked designed,
+not built have no code in the prototype.
 
-| Target | Backend           | Use Case                          |
-| ------ | ----------------- | --------------------------------- |
-| x86-64 | LLVM              | Desktop/server CPU                |
-| ARM64  | LLVM              | Mobile/embedded CPU               |
-| RISC-V | LLVM              | Open-ISA embedded                 |
-| CUDA   | NVPTX via MLIR    | NVIDIA GPU (tensors, neural nets) |
-| ROCm   | AMDGPU via MLIR   | AMD GPU                           |
-| Metal  | MetalIR via MLIR  | Apple GPU                         |
-| WASM   | LLVM WASM backend | Browser/edge deployment           |
-| SPIR-V | MLIR SPIR-V       | Vulkan compute                    |
-| NPU    | Vendor SDK        | Neural processing units           |
+| Target | Backend                        | Use Case                          | Status |
+| ------ | ------------------------------ | --------------------------------- | ------ |
+| x86-64 | Pure-Rust CPU (`cpu`); LLVM designed | Desktop/server CPU          | Built  |
+| ARM64  | LLVM                           | Mobile/embedded CPU               | Designed, not built |
+| RISC-V | LLVM                           | Open-ISA embedded                 | Designed, not built |
+| CUDA   | IronAccelerator CUDA (`cuda`); NVPTX via MLIR designed | NVIDIA GPU (tensors, neural nets) | Built (feature `cuda`) |
+| ROCm   | AMDGPU via MLIR                | AMD GPU                           | Designed, not built |
+| Metal  | MetalIR via MLIR               | Apple GPU                         | Designed, not built |
+| WASM   | LLVM WASM backend              | Browser/edge deployment           | Designed, not built |
+| SPIR-V | MLIR SPIR-V                    | Vulkan compute                    | Designed, not built |
+| NPU    | Vendor SDK                     | Neural processing units           | Designed, not built |
 
 ### 15.2 Automatic Dispatch
 
-Tensor and neural network operations use a compile-time cost model to select the optimal target:
+**Designed, not built.** The steps below are the intent. No cost model selects a
+target today: `select_backend(name)` in `prototype/src/backends.rs` takes an
+explicit backend name, and the cost oracle (`prototype/src/cost.rs`) is a static
+per-construct table that dispatch does not read.
 
 ```
 DispatchStrategy:
@@ -2965,11 +2975,12 @@ Human↔Agent keyword pairs are B.1; §3.3 and §3.6 give the full lexical rules
 | `⊙`    | U+2299  | infix    | Hadamard product |
 | `▸`    | U+25B8  | infix    | Pipeline, the same as the ASCII pipe operator |
 | `⊤`    | U+22A4  | postfix  | Transpose        |
-| `⊥`    | U+22A5  | postfix  | Flatten          |
+| `⊥`    | U+22A5  | postfix  | Tensor flatten (not the `.flatten()` method) |
 
 ### D.3 Declaration Sigils
 
-> **Status: parsed.** Each is the Agent spelling of the Human keyword in B.1.
+> **Status: parsed**, except `Z`, which is retired (E0554). Each other one is
+the Agent spelling of the Human keyword in B.1.
 
 | Symbol | Meaning |
 | ------ | ------- |
@@ -2985,7 +2996,7 @@ Human↔Agent keyword pairs are B.1; §3.3 and §3.6 give the full lexical rules
 | `T`    | Trait |
 | `I`    | Impl block |
 | `Y`    | Type alias |
-| `Z`    | Static item |
+| `Z`    | Static item (retired: E0554) |
 | `M`    | Module |
 | `u`    | Import |
 | `+`    | Public prefix |
@@ -3123,7 +3134,7 @@ train cifar_train {
 ```
 
 The `net` block is identical: layer names, kinds and the `forward` expression
-are the same in both modes. What changes is `pub fn` → `+f`, `val` → `v`, and
+are the same in both modes. What changes is `pub fn` → `+f`, and
 `println(…)` → `p"…"`. Note the shape check is real — a `Linear` whose input
 dim disagrees with the preceding layer's last dimension is an error naming
 both.
