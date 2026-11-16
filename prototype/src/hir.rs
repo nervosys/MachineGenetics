@@ -541,10 +541,12 @@ pub enum Applicability {
 /// Semantic category for a diagnostic.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DiagnosticCategory {
-    /// Borrow conflict. No pass detects one: `heal::infer_category` assigns
-    /// this from message text (kb/rules/diagnostics.mg states the gap).
+    /// Borrow conflict, found by `borrowck`. `heal::infer_category` also
+    /// assigns it to an uncategorised diagnostic from message text
+    /// (kb/rules/diagnostics.mg states the pass's limits).
     BorrowConflict,
-    /// Use after move. As with `BorrowConflict`, no pass detects one.
+    /// Use after move, found by `borrowck`; classified from text by `heal`
+    /// as for `BorrowConflict`.
     UseAfterMove,
     /// Type mismatch.
     TypeMismatch,

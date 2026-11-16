@@ -64,7 +64,9 @@ fn absent(src: &str, code: &str) -> bool {
 const WITNESSES: &[(&str, &str, fn() -> bool)] = &[
     ("E0000", "lex_error", lex_error),
     ("E0001", "syntax_error", syntax_error),
+    ("E0382", "use_after_move", use_after_move),
     ("E0382", "use_after_move_classified", use_after_move_classified),
+    ("E0502", "borrow_conflict", borrow_conflict),
     ("E0502", "borrow_conflict_classified", borrow_conflict_classified),
     ("E0308", "type_mismatch", type_mismatch),
     ("E0412", "unresolved_type", unresolved_type),
@@ -116,6 +118,16 @@ fn lex_error() -> bool {
 
 fn syntax_error() -> bool {
     emits("f g( -> i32 { 1 }", "E0001") && absent("f g() -> i32 { 1 }", "E0001")
+}
+
+fn use_after_move() -> bool {
+    emits("f host(a: s) -> s { v b = a\n a }", "E0382") && absent("f host(a: s) -> s { v b = a\n b }", "E0382")
+}
+
+fn borrow_conflict() -> bool {
+    let bad = "f peek(x: &s) { }\nf host(a: s) { v r = &a\n v w = &!a\n peek(r) }";
+    let good = "f peek(x: &s) { }\nf host(a: s) { v r = &a\n peek(r)\n v w = &!a\n peek(w) }";
+    emits(bad, "E0502") && absent(good, "E0502")
 }
 
 fn use_after_move_classified() -> bool {
@@ -425,7 +437,7 @@ fn production(path: &Path) -> String {
 /// Every module that emits a category. `heal`, `main`, `rap`, `recover` and
 /// `nl_engine` are not here: they relay parser errors, or classify messages.
 const EMITTERS: &[&str] = &[
-    "autograd", "core_subset", "differentiable", "effects", "logic", "params",
+    "autograd", "borrowck", "core_subset", "differentiable", "effects", "logic", "params",
     "resolve", "shape", "types", "units", "verify",
 ];
 
