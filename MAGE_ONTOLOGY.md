@@ -1353,7 +1353,7 @@ Source Text
     │    KB-materialized AST ────────────────── Fixpoint facts inlined
     │
     ├──▶ [AI: Evolution Codegen]
-    │    Evolve-lowered AST ─────────────────── Genetic loops expanded
+    │    Evolve-lowered AST ─────────────────── no loops generated (evolve retired)
     │
     ├──▶ [Safety Domain]
     │    SKB-verified AST ───────────────────── 255 rules checked
@@ -1598,7 +1598,7 @@ All 42 source modules and their domain membership:
 | `effects.rs`          | ~350  | Effect            | 6. Effect Inference      |
 | `autograd.rs`         | ~450  | AI/Autograd       | 7. Autodiff              |
 | `logic.rs`            | ~400  | AI/Logic          | 8. Logic Materialization |
-| `evolve_gen.rs`       | ~400  | AI/Evolution      | 9. Evolution Codegen     |
+| `evolve_gen.rs` (deleted, plan 9.2) | — | AI/Evolution (retired) | 9. Evolution Codegen (retired) |
 | `skb.rs`              | ~600  | Safety            | 10. Safety Verification  |
 | `mlir.rs`             | ~900  | Codegen           | 11. MLIR Lowering        |
 | `elision.rs`          | ~500  | Codegen           | 12. Safety Elision       |
@@ -1645,7 +1645,7 @@ Complete list of inter-domain relations:
 | `has_effects`    | Function → EffectSet          | Effect inference computes effects     |
 | `generates_grad` | Param Expr → Tape             | Autograd builds computation graph     |
 | `materializes`   | KbDef → Facts                 | Logic engine computes fixpoint        |
-| `lowers_evolve`  | EvolveDef → Loops             | Evolution codegen expands blocks      |
+| `lowers_evolve`  | EvolveDef → Loops             | Retired: no lowering exists (plan 9.2)      |
 | `verified_by`    | Function → Certificate        | Verifier issues proofs                |
 | `emits_mlir`     | Typed AST → MLIR Text         | MLIR lowering produces IR             |
 | `elides`         | AST → Elided AST              | Safety elision strips annotations     |
