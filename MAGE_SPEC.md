@@ -2574,8 +2574,21 @@ statement where the problem occurs (no expression spans). It reports E0382 for a
 after it was moved, and E0502 when a borrow made by `let r = &p` / `let r = &!p`
 conflicts with another borrow, a move or an assignment of `p` before `r`'s last
 use. It reports only on evidence (a type known not to be `Copy`, a callee known
-to consume its argument) and tracks whole locals, not partial moves, and
-references only through `let`, not through calls, returns or fields. By default
+to consume its argument) and tracks references only through `let`, not through
+calls, returns or fields.
+
+Move and borrow state is per **place**: a local plus a field path (`p`,
+`p.name`, `p.inner.x`). Moving a non-`Copy` field moves only that place: its
+siblings and disjoint paths stay usable, while a use of the field, of any path
+through it, or of the whole value (`p`) is E0382, and moving `p` moves every
+`p.*`. Assigning `p.name` re-initialises it. A borrow `let r = &p.name`
+conflicts (E0502) with a move, assignment or conflicting borrow of `p.name`, of
+`p`, or of a path through `p.name`, while `r` is live, and never with `p.age`.
+Field types come from the module's `data`/struct declarations; a field whose
+type is generic, undeclared or reached through an unknown type is never
+reported, and `Copy` fields never move. Index paths (`x[i].f`), destructuring
+patterns, method receivers and reference-typed parameters are not followed.
+Both policies apply this rule. By default
 a call moves an argument only when the callee's body really consumes that
 parameter and storing a value in a literal does not move it, because the
 evaluator has value semantics and the example corpus relies on it; Rust's
