@@ -69,6 +69,7 @@ extracted from `forge` (steps 148–149). Both are clean, as is `forge`.
 | **RUSTSEC-2026-0368** | `zip 8.6.0` (arena) | vulnerability — `ZipArchive::extract` creates symlinks with attacker-controlled targets outside the destination | **FIXED 2026-11-10** — as RUSTSEC-2026-0367 (`zip` 9.5.1, patched at ≥ 9.0.0). |
 | **RUSTSEC-2026-0369** | `zip 8.6.0` (arena) | vulnerability — Unix permissions applied through symlinks without confining the target | **FIXED 2026-11-10** — as RUSTSEC-2026-0367 (`zip` 9.5.1, patched at ≥ 9.0.0). |
 | **RUSTSEC-2026-0429** | `zip 8.6.0` (arena) | vulnerability — `ZipArchive::extract` aborts the process on a symlink entry with a large declared size | **FIXED 2026-11-10** — as RUSTSEC-2026-0367 (`zip` 9.5.1, patched at ≥ 9.0.0). |
+| RUSTSEC-2026-0543 | `chrono 0.4.44` (prototype), `chrono 0.4.45` (arena, and the git-ignored rmi lockfile on a fresh resolve) | unmaintained (warning) — the advisory says "all versions are affected" and names no patched version | **Accepted** — no fixed upgrade exists, and unmaintained is not vulnerable: `cargo audit` reports no vulnerability for it. Dependency edge: `rmi` declares `chrono = "0.4"` (feature `serde`) directly in `RecursiveMachineIntelligence/Cargo.toml`; `prototype` and `arena` reach it only through `rmi`; `ribosome`, `germline` and `forge` have no chrono in their lockfiles. Uses in rmi, verified by grep: `chrono::Utc::now().timestamp()` (Unix seconds) in `src/core/agent.rs` and `src/core/ontology.rs`; no other chrono type is named. Removal: replace the direct dependency with `std::time::SystemTime` or `time`/`jiff` in those two files. Not done yet. |
 | (yanked) | `lz4_flex 0.11.5` | yanked | resolved by the 0.11.6 pin above. |
 
 **Result (re-run 2026-08-25, unchanged from 2026-08-18):** 0 open
@@ -76,6 +77,11 @@ vulnerabilities. The four *committed* lockfiles — `prototype`, `forge`,
 `ribosome`, `germline` — report **zero findings of any kind**, warnings
 included. The single remaining warning is `paste` (unmaintained) on
 `RecursiveMachineIntelligence/Cargo.lock`, which is git-ignored.
+
+**Re-run 2026-11-17:** the `chrono` warning (RUSTSEC-2026-0543, dated
+2026-09-14) now appears on `prototype` and on the git-ignored rmi lockfile, so
+the zero-findings statement above no longer holds for `prototype`; see the
+register row for it. `forge`, `ribosome` and `germline` still report nothing.
 
 **And that warning is not merely local, which this row used to imply.** It said
 the `paste` finding was "a property of a local resolve rather than of this
