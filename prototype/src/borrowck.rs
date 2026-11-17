@@ -46,6 +46,28 @@
 //! seen at the top of the next iteration. Assigning to a moved local
 //! re-initialises it.
 //!
+//! # `self`, receivers and patterns
+//!
+//! Inside a method, `self` is a place of the impl's type (a user struct or
+//! `data` type, not a generic or trait `Self`). A by-value `self` can be moved
+//! out of and partially moved like any parameter (`self.name`). A `&self` /
+//! `&!self` receiver is a reference: nothing is moved out of it.
+//!
+//! `x.m(..)` where `x` is a place of a known user type and `m` is declared on
+//! that type with `self` by value moves `x` (strict: always; inferred: only if
+//! `m`'s body really consumes `self`), with `&self` / `&!self` borrows `x`
+//! shared / exclusive for the call.
+//!
+//! MAGE has no by-reference binding form in patterns (no `ref`, no `&p`; the
+//! spec says borrow mode is inferred), so a `let` or `match` / `?=` pattern over
+//! a place of a known type binds every name by value: a name bound to a
+//! non-`Copy` part (a record field, a tuple element, the payload of `Some`/`Ok`/
+//! `Err` or of a user variant) moves that part out of the scrutinee place.
+//! Wildcards, literals, `Copy` parts and unknown types move nothing. A `let`
+//! pattern moves at the `let`. A `match` arm moves eagerly under strict
+//! ownership and, under the inferred policy, only if the arm's body consumes
+//! the binding (the same "evidenced" rule as a callee that consumes).
+//!
 //! What moves a non-`Copy` local: passing it to a user function whose
 //! parameter is by value (or to a data constructor, `Some`/`Ok`/`Err`/`Box`/
 //! `drop`, or the by-value builtins `push`/`insert`/`send`), `let y = x`,
@@ -71,19 +93,23 @@
 //!   outside any statement, e.g. a tail expression). There are no expression
 //!   spans, so two uses in one statement share a position. A node built by
 //!   hand rather than parsed has no position and gives `span: None`.
-//! * Partial moves are tracked only through plain field chains (`x.a.b`), not
-//!   through an index (`x[i].f`), a pointer/`Box` deref, a `match`/`let`
-//!   destructuring pattern, a method call's receiver, or a reference-typed
-//!   parameter. A partial move never makes the *enclosing function* count as
-//!   consuming its parameter (so under the inferred policy it does not turn the
-//!   caller's argument into a move). `let y = x.f` does not make `y` known
-//!   non-`Copy` (the type of a field expression is not inferred).
+//! * Partial moves are tracked only through plain field chains (`x.a.b`) and
+//!   the destructuring patterns below, not through an index (`x[i].f`), a
+//!   pointer/`Box` deref, or a reference-typed parameter. A partial move never
+//!   makes the *enclosing function* count as consuming its parameter (so under
+//!   the inferred policy it does not turn the caller's argument into a move).
+//!   `let y = x.f` does not make `y` known non-`Copy` (the type of a field
+//!   expression is not inferred).
+//! * Moving a non-`Copy` field out of a `&self` / `&!self` receiver (or any
+//!   reference) is Rust's E0507. There is no diagnostic code for it here, so it
+//!   is neither reported nor tracked as a move: the field stays usable.
 //! * Loans are created only by `let r = &place` (and copied by `let r2 = r`).
 //!   References are not followed through calls, returns, struct fields,
 //!   collections or `r = &y` reassignment (which only ends `r`'s old loans).
-//! * A method call's receiver is never a move and never a conflicting borrow
-//!   (the method's `self` mode is unknown), and `for x in v` / `match v` do not
-//!   move `v` (MAGE infers borrow mode there).
+//! * A method call's receiver is judged only when the receiver is a plain place
+//!   of a known user type and every method of that name on that type agrees on
+//!   its receiver kind; anything else is never a move or a conflicting borrow.
+//!   `for x in v` does not move `v` (MAGE infers borrow mode there).
 //! * A use order inside one expression is approximated: only calls extend a
 //!   holder's last use to the end of the call.
 //! * `defer` bodies are analysed where written, as reads, not at scope exit.
@@ -152,6 +178,9 @@ struct TypeInfo {
     generics: Vec<String>,
     /// Named fields of a struct or record `data` (empty for an enum or sum).
     fields: Vec<(String, Type)>,
+    /// Variants of an enum or sum `data` with their positional payload types
+    /// (empty for a struct or record). A struct-like variant is left out.
+    variants: Vec<(String, Vec<Type>)>,
 }
 
 /// What counts as a move. MAGE's evaluator has value semantics and the spec
@@ -186,6 +215,19 @@ impl Default for Policy {
     }
 }
 
+/// How a method takes `self`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+enum Recv {
+    /// No `self` parameter (an associated function).
+    None,
+    /// `self`: by value.
+    Value,
+    /// `&self`.
+    Ref,
+    /// `&!self` (and `!self`, which the parser desugars to it).
+    RefMut,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct FnSig {
     generics: Vec<String>,
@@ -195,6 +237,10 @@ struct FnSig {
     consumes: Vec<bool>,
     /// The leading `self` parameter is not part of a method call's arguments.
     has_self: bool,
+    /// How the leading `self` parameter is taken.
+    recv: Recv,
+    /// The type name of the `impl` / `extend` block a method sits in.
+    owner: Option<String>,
     ret: Option<Type>,
 }
 
@@ -218,12 +264,26 @@ fn derives_copy(item: &Item) -> bool {
         .any(|a| matches!(a.name.as_str(), "d" | "derive") && a.args.iter().any(|x| x == "Copy"))
 }
 
-fn sig_of(f: &FunctionDef) -> FnSig {
+fn recv_of(f: &FunctionDef) -> Recv {
+    match f.params.first() {
+        Some(p) if p.name == "self" => match &p.ty {
+            Type::Reference { mutable: false, .. } => Recv::Ref,
+            Type::Reference { mutable: true, .. } => Recv::RefMut,
+            Type::Path { segments, .. } if segments.len() == 1 && segments[0] == "Self" => Recv::Value,
+            _ => Recv::None,
+        },
+        _ => Recv::None,
+    }
+}
+
+fn sig_of(f: &FunctionDef, owner: Option<&str>) -> FnSig {
     FnSig {
         generics: f.generics.iter().map(|g| g.name.clone()).collect(),
         param_is_ref: f.params.iter().map(|p| matches!(p.ty, Type::Reference { .. })).collect(),
         consumes: vec![false; f.params.len()],
         has_self: f.params.first().is_some_and(|p| p.name == "self"),
+        recv: recv_of(f),
+        owner: owner.map(str::to_string),
         ret: f.return_type.clone(),
     }
 }
@@ -251,30 +311,36 @@ enum Slot {
     Method(String, usize),
 }
 
+/// The type (and generic parameters) of the `impl` / `extend` block around a method.
+type Owner<'a> = Option<(&'a Type, &'a [ast::GenericParam])>;
+
 /// Every function in `items` in `collect`'s order, with where its signature lives.
 fn for_each_fn(
     items: &[Item],
     in_impl: bool,
+    owner: Owner<'_>,
     counters: &mut HashMap<String, usize>,
-    f: &mut dyn FnMut(Slot, &FunctionDef),
+    f: &mut dyn FnMut(Slot, &FunctionDef, Owner<'_>),
 ) {
     for item in items {
         match &item.kind {
             ItemKind::Function(def) => {
                 if in_impl {
                     let i = counters.entry(def.name.clone()).or_insert(0);
-                    f(Slot::Method(def.name.clone(), *i), def);
+                    f(Slot::Method(def.name.clone(), *i), def, owner);
                     *i += 1;
                 } else {
-                    f(Slot::Free(def.name.clone()), def);
+                    f(Slot::Free(def.name.clone()), def, None);
                 }
             }
-            ItemKind::Impl(i) => for_each_fn(&i.items, true, counters, f),
-            ItemKind::Extend(e) => for_each_fn(&e.items, true, counters, f),
-            ItemKind::Trait(t) => for_each_fn(&t.items, true, counters, f),
+            ItemKind::Impl(i) => {
+                for_each_fn(&i.items, true, Some((&i.self_type, &i.generics)), counters, f)
+            }
+            ItemKind::Extend(e) => for_each_fn(&e.items, true, Some((&e.target_type, &[])), counters, f),
+            ItemKind::Trait(t) => for_each_fn(&t.items, true, None, counters, f),
             ItemKind::Module(m) => {
                 if let Some(items) = &m.items {
-                    for_each_fn(items, in_impl, counters, f);
+                    for_each_fn(items, in_impl, owner, counters, f);
                 }
             }
             _ => {}
@@ -290,7 +356,7 @@ impl ModuleInfo {
 
     pub fn with_policy(m: &Module, policy: Policy) -> Self {
         let mut info = ModuleInfo { policy, ..ModuleInfo::default() };
-        info.collect(&m.items, false);
+        info.collect(&m.items, false, None);
         if policy.infer_call_modes {
             info.infer_consumption(m);
         }
@@ -305,8 +371,8 @@ impl ModuleInfo {
         for _ in 0..8 {
             let mut updates: Vec<(Slot, Vec<bool>)> = Vec::new();
             let mut counters: HashMap<String, usize> = HashMap::new();
-            for_each_fn(&m.items, false, &mut counters, &mut |slot, f| {
-                let moved = moved_params(self, f);
+            for_each_fn(&m.items, false, None, &mut counters, &mut |slot, f, owner| {
+                let moved = moved_params(self, f, owner);
                 let flags: Vec<bool> = f.params.iter().map(|p| moved.contains(&p.name)).collect();
                 updates.push((slot, flags));
             });
@@ -331,14 +397,14 @@ impl ModuleInfo {
         }
     }
 
-    fn collect(&mut self, items: &[Item], in_impl: bool) {
+    fn collect(&mut self, items: &[Item], in_impl: bool, owner: Option<&str>) {
         for item in items {
             match &item.kind {
                 ItemKind::Function(f) => {
                     if in_impl {
-                        self.methods.entry(f.name.clone()).or_default().push(sig_of(f));
+                        self.methods.entry(f.name.clone()).or_default().push(sig_of(f, owner));
                     } else {
-                        insert_unique(&mut self.fns, &f.name, sig_of(f));
+                        insert_unique(&mut self.fns, &f.name, sig_of(f, None));
                     }
                 }
                 ItemKind::Struct(s) => {
@@ -346,6 +412,7 @@ impl ModuleInfo {
                         derives_copy: derives_copy(item),
                         generics: s.generics.iter().map(|g| g.name.clone()).collect(),
                         fields: s.fields.iter().map(|f| (f.name.clone(), f.ty.clone())).collect(),
+                        variants: Vec::new(),
                     };
                     insert_unique(&mut self.types, &s.name, info);
                 }
@@ -354,6 +421,15 @@ impl ModuleInfo {
                         derives_copy: derives_copy(item),
                         generics: e.generics.iter().map(|g| g.name.clone()).collect(),
                         fields: Vec::new(),
+                        variants: e
+                            .variants
+                            .iter()
+                            .filter_map(|v| match &v.kind {
+                                ast::VariantKind::Unit => Some((v.name.clone(), Vec::new())),
+                                ast::VariantKind::Tuple(ts) => Some((v.name.clone(), ts.clone())),
+                                ast::VariantKind::Struct(_) => None,
+                            })
+                            .collect(),
                     };
                     insert_unique(&mut self.types, &e.name, info);
                     for v in &e.variants {
@@ -365,10 +441,15 @@ impl ModuleInfo {
                         DataKind::Record(fs) => fs.iter().map(|f| (f.name.clone(), f.ty.clone())).collect(),
                         DataKind::Sum(_) => Vec::new(),
                     };
+                    let variants = match &d.kind {
+                        DataKind::Record(_) => Vec::new(),
+                        DataKind::Sum(vs) => vs.iter().map(|v| (v.name.clone(), v.fields.clone())).collect(),
+                    };
                     let info = TypeInfo {
                         derives_copy: derives_copy(item),
                         generics: d.generics.iter().map(|g| g.name.clone()).collect(),
                         fields,
+                        variants,
                     };
                     insert_unique(&mut self.types, &d.name, info);
                     match &d.kind {
@@ -383,12 +464,12 @@ impl ModuleInfo {
                 ItemKind::TypeAlias(t) if t.generics.is_empty() => {
                     insert_unique(&mut self.aliases, &t.name, t.ty.clone());
                 }
-                ItemKind::Impl(i) => self.collect(&i.items, true),
-                ItemKind::Extend(e) => self.collect(&e.items, true),
-                ItemKind::Trait(t) => self.collect(&t.items, true),
+                ItemKind::Impl(i) => self.collect(&i.items, true, type_name(&i.self_type).as_deref()),
+                ItemKind::Extend(e) => self.collect(&e.items, true, type_name(&e.target_type).as_deref()),
+                ItemKind::Trait(t) => self.collect(&t.items, true, None),
                 ItemKind::Module(m) => {
                     if let Some(items) = &m.items {
-                        self.collect(items, in_impl);
+                        self.collect(items, in_impl, owner);
                     }
                 }
                 _ => {}
@@ -505,25 +586,25 @@ pub fn rebase(diags: &mut [Diagnostic], start: Option<u32>) {
     crate::hir::rebase(diags, start);
 }
 
-fn walk_items(items: &[Item], prefix: &str, info: &ModuleInfo, out: &mut Vec<Diagnostic>) {
+fn walk_items(items: &[Item], prefix: &str, owner: Owner<'_>, info: &ModuleInfo, out: &mut Vec<Diagnostic>) {
     for item in items {
         match &item.kind {
             ItemKind::Function(f) => {
                 let name = format!("{prefix}{}", f.name);
-                out.extend(check_function(info, &name, f));
+                out.extend(analyse(info, &name, f, owner).0);
             }
             ItemKind::Impl(i) => {
                 let p = type_name(&i.self_type).map(|n| format!("{n}.")).unwrap_or_default();
-                walk_items(&i.items, &p, info, out);
+                walk_items(&i.items, &p, Some((&i.self_type, &i.generics)), info, out);
             }
             ItemKind::Extend(e) => {
                 let p = type_name(&e.target_type).map(|n| format!("{n}.")).unwrap_or_default();
-                walk_items(&e.items, &p, info, out);
+                walk_items(&e.items, &p, Some((&e.target_type, &[])), info, out);
             }
-            ItemKind::Trait(t) => walk_items(&t.items, &format!("{}.", t.name), info, out),
+            ItemKind::Trait(t) => walk_items(&t.items, &format!("{}.", t.name), None, info, out),
             ItemKind::Module(m) => {
                 if let Some(items) = &m.items {
-                    walk_items(items, &format!("{prefix}{}.", m.name), info, out);
+                    walk_items(items, &format!("{prefix}{}.", m.name), None, info, out);
                 }
             }
             _ => {}
@@ -542,21 +623,27 @@ fn walk_items(items: &[Item], prefix: &str, info: &ModuleInfo, out: &mut Vec<Dia
 /// (moving the item changes nothing), which is what early cutoff needs.
 pub fn check_item(info: &ModuleInfo, item: &Item) -> Vec<Diagnostic> {
     let mut out = Vec::new();
-    walk_items(std::slice::from_ref(item), "", info, &mut out);
+    walk_items(std::slice::from_ref(item), "", None, info, &mut out);
     out
 }
 
-/// Check one function body. `qualified_name` is only used in messages.
+/// Check one free function body. `qualified_name` is only used in messages. A
+/// method needs its `impl` block to know what `self` is: use [`check_item`].
 pub fn check_function(info: &ModuleInfo, qualified_name: &str, f: &FunctionDef) -> Vec<Diagnostic> {
-    analyse(info, qualified_name, f).0
+    analyse(info, qualified_name, f, None).0
 }
 
 /// The parameters of `f` its body moves.
-fn moved_params(info: &ModuleInfo, f: &FunctionDef) -> BTreeSet<String> {
-    analyse(info, &f.name, f).1
+fn moved_params(info: &ModuleInfo, f: &FunctionDef, owner: Owner<'_>) -> BTreeSet<String> {
+    analyse(info, &f.name, f, owner).1
 }
 
-fn analyse(info: &ModuleInfo, qualified_name: &str, f: &FunctionDef) -> (Vec<Diagnostic>, BTreeSet<String>) {
+fn analyse(
+    info: &ModuleInfo,
+    qualified_name: &str,
+    f: &FunctionDef,
+    owner: Owner<'_>,
+) -> (Vec<Diagnostic>, BTreeSet<String>) {
     let mut nums = Nums::default();
     nums.block(&f.body);
     if let Some(e) = &f.body_expr {
@@ -579,17 +666,32 @@ fn analyse(info: &ModuleInfo, qualified_name: &str, f: &FunctionDef) -> (Vec<Dia
     };
     let mut st = State { reachable: true, vars: BTreeMap::new(), loans: BTreeSet::new() };
     fcx.push_scope();
+    // What `self` is: the impl's type, if it is a known user type and not one
+    // of the impl's own generic parameters.
+    let impl_generics: Vec<String> = owner.map(|(_, g)| g.iter().map(|g| g.name.clone()).collect()).unwrap_or_default();
+    let self_ty: Option<String> = owner.and_then(|(t, _)| fcx.ty_name_of(t, &impl_generics));
     for p in &f.params {
-        let copy = if p.name == "self" {
-            Copyness::Unknown
+        let mut by_ref = false;
+        let (copy, ty_name) = if p.name == "self" {
+            match &p.ty {
+                Type::Reference { mutable, .. } => {
+                    by_ref = true;
+                    (if *mutable { Copyness::Unknown } else { Copyness::Copy }, self_ty.clone())
+                }
+                Type::Path { segments, .. } if segments.len() == 1 && segments[0] == "Self" => (
+                    self_ty.as_deref().map_or(Copyness::Unknown, |n| info.user_type_copyness(n)),
+                    self_ty.clone(),
+                ),
+                _ => (Copyness::Unknown, None),
+            }
         } else {
-            info.type_copyness(&p.ty, &fcx.generics)
+            (info.type_copyness(&p.ty, &fcx.generics), fcx.ty_name_of(&p.ty, &fcx.generics))
         };
         fcx.bind(&mut st, &p.name, copy);
-        let ty_name = if p.name == "self" { None } else { fcx.ty_name_of(&p.ty, &fcx.generics) };
         if let Some(v) = st.vars.get_mut(&p.name) {
             v.is_param = true;
             v.ty_name = ty_name;
+            v.by_ref = by_ref;
         }
     }
     let ret = Use::Move(Rc::from("returned from the function"));
@@ -890,7 +992,22 @@ struct Place {
     path: Vec<String>,
 }
 
+/// A type and the generic parameter names it is written under.
+type Ty = (Type, Vec<String>);
+
+/// A name a pattern binds, and the scrutinee part it takes by value.
+struct PBind {
+    name: String,
+    src: Option<(Place, Ty)>,
+}
+
 impl Place {
+    fn child(&self, seg: &str) -> Place {
+        let mut p = self.clone();
+        p.path.push(seg.to_string());
+        p
+    }
+
     fn overlaps(&self, o: &Place) -> bool {
         self.root == o.root && {
             let n = self.path.len().min(o.path.len());
@@ -963,8 +1080,11 @@ struct Var {
     is_param: bool,
     /// The parameter this local was copied from by `let y = x`, if any.
     origin: Option<String>,
-    /// The user struct/`data` type this local is known to be an owned value of.
+    /// The user struct/`data` type this local is known to be a value of.
     ty_name: Option<String>,
+    /// A `&self` / `&!self` receiver: a reference to `ty_name`, not an owned
+    /// value. Nothing is moved out of it, and its method calls autoref.
+    by_ref: bool,
     /// Moved field places (`p.name` -> `["name"]`): never empty paths, and
     /// only while the whole of `p` (`own`) is `Init`.
     fields: BTreeMap<Vec<String>, (Own, String)>,
@@ -1032,6 +1152,16 @@ enum Use {
     /// as this function can tell, but nothing escapes: it counts as the
     /// function consuming its parameter only if `y` is itself moved on.
     Alias(Rc<str>),
+}
+
+/// How a method call treats its receiver.
+enum RecvUse {
+    /// Not judged: unknown type, unknown method, or the methods disagree.
+    Plain,
+    /// `self` by value, and the method consumes it.
+    Move,
+    /// `&self` (shared) or `&!self` (exclusive, `true`).
+    Borrow(bool),
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -1130,6 +1260,7 @@ impl<'a> Fcx<'a> {
             is_param: false,
             origin: None,
             ty_name: None,
+            by_ref: false,
             fields: BTreeMap::new(),
         };
         let prev = st.vars.insert(name.to_string(), v);
@@ -1232,9 +1363,203 @@ impl<'a> Fcx<'a> {
                 self.record_loans(block, idx, name, value, st);
             }
             _ => {
-                self.eval(value, st, &alias("destructured by a `let` pattern"));
-                self.bind_pattern(st, pattern);
+                // A place of a known type: move only the parts the pattern binds.
+                if let Some(tr) = self.tracked_scrutinee(value, st) {
+                    let at = self.nums.start(value);
+                    self.read_scrutinee(&tr.0, st);
+                    self.bind_destructured(st, pattern, Some(tr), at, true);
+                } else {
+                    self.eval(value, st, &alias("destructured by a `let` pattern"));
+                    self.bind_pattern(st, pattern);
+                }
             }
+        }
+    }
+
+    /// A scrutinee that is a plain field place of a known user type, owned here.
+    fn tracked_scrutinee(&self, e: &Expr, st: &State) -> Option<(Place, Ty)> {
+        let p = field_place_of(e)?;
+        let v = st.vars.get(&p.root)?;
+        if v.by_ref {
+            return None;
+        }
+        let ty = self.place_ty(v, &p.path)?;
+        Some((p, ty))
+    }
+
+    /// Reading a scrutinee place touches only what the pattern binds, so only a
+    /// move of the place itself or of a prefix of it is an error here (the bound
+    /// parts are checked one by one).
+    fn read_scrutinee(&mut self, place: &Place, st: &State) {
+        let Some(v) = st.vars.get(&place.root) else { return };
+        let hit = if v.own != Own::Init {
+            Some((Vec::new(), v.own, v.moved_by.clone().unwrap_or_else(|| "moved".into())))
+        } else {
+            v.fields
+                .iter()
+                .find(|(p, _)| p.len() <= place.path.len() && place.path[..p.len()] == p[..])
+                .map(|(p, (own, how))| (p.clone(), *own, how.clone()))
+        };
+        if let Some((p, own, how)) = hit {
+            let shown = Place { root: place.root.clone(), path: p }.show();
+            self.report_moved(&shown, own, &how);
+        }
+    }
+
+    /// Bind the names of `pat`, typed from `src` when the scrutinee is a tracked
+    /// place. With `eager`, a name bound to a non-`Copy` part moves that part out
+    /// of the scrutinee now; otherwise the part is only checked (see
+    /// [`Fcx::finish_arm`]).
+    fn bind_destructured(
+        &mut self,
+        st: &mut State,
+        pat: &Pattern,
+        src: Option<(Place, Ty)>,
+        at: u32,
+        eager: bool,
+    ) -> Vec<PBind> {
+        let mut binds = Vec::new();
+        self.pat_binds(pat, src, &mut binds);
+        for b in &binds {
+            if let Some((pl, ty)) = &b.src {
+                if eager {
+                    let copy = self.ty_copy(ty);
+                    self.use_place_with(pl, at, st, &alias("destructured by a pattern"), copy);
+                } else {
+                    self.use_place_with(pl, at, st, &Use::Read, Copyness::Unknown);
+                }
+            }
+        }
+        for b in &binds {
+            let (copy, ty_name) = match &b.src {
+                Some((_, ty)) => (self.ty_copy(ty), self.ty_name_of(&ty.0, &ty.1)),
+                None => (Copyness::Unknown, None),
+            };
+            self.bind(st, &b.name, copy);
+            if let Some(v) = st.vars.get_mut(&b.name) {
+                v.ty_name = ty_name;
+            }
+        }
+        binds
+    }
+
+    /// End of a `match` arm whose bindings were not moved eagerly (the inferred
+    /// policy): a binding the arm consumed took its part out of the scrutinee.
+    fn finish_arm(&mut self, binds: &[PBind], st: &mut State, at: u32) {
+        if !self.info.policy.infer_call_modes || !st.reachable {
+            return;
+        }
+        for b in binds {
+            let Some((pl, ty)) = &b.src else { continue };
+            let copy = self.ty_copy(ty);
+            if copy == Copyness::NonCopy && st.vars.get(&b.name).is_some_and(|v| v.own != Own::Init) {
+                self.use_place_with(pl, at, st, &alias("destructured by a `match` arm"), copy);
+            }
+        }
+    }
+
+    /// The names a pattern binds, each with the scrutinee part it takes by value
+    /// (when that part and its type are known).
+    fn pat_binds(&self, p: &Pattern, src: Option<(Place, Ty)>, out: &mut Vec<PBind>) {
+        let unknown = |p: &Pattern, out: &mut Vec<PBind>| {
+            let mut names = Vec::new();
+            pattern_names(p, &mut names);
+            out.extend(names.into_iter().map(|name| PBind { name, src: None }));
+        };
+        match p {
+            Pattern::Ident { name } => {
+                // `None`, a unit variant: a constructor, not a binding.
+                if name == "None" || matches!(self.info.ctors.get(name), Some(Some(_))) {
+                    return;
+                }
+                out.push(PBind { name: name.clone(), src });
+            }
+            Pattern::Wildcard | Pattern::Literal { .. } => {}
+            Pattern::Tuple { elements } => {
+                let kids: Vec<Option<(Place, Ty)>> = match &src {
+                    Some((pl, (Type::Tuple { elements: tys }, ctx))) if tys.len() == elements.len() => tys
+                        .iter()
+                        .enumerate()
+                        .map(|(i, t)| Some((pl.child(&i.to_string()), (t.clone(), ctx.clone()))))
+                        .collect(),
+                    _ => vec![None; elements.len()],
+                };
+                for (e, k) in elements.iter().zip(kids) {
+                    self.pat_binds(e, k, out);
+                }
+            }
+            Pattern::Struct { path, fields } => {
+                let rec = src.as_ref().and_then(|(pl, (t, ctx))| {
+                    let Type::Path { segments, type_args } = t else { return None };
+                    if segments.len() != 1 || !type_args.is_empty() || ctx.contains(&segments[0]) {
+                        return None;
+                    }
+                    if path.last() != segments.last() {
+                        return None;
+                    }
+                    match self.info.types.get(&segments[0]) {
+                        Some(Some(info)) => Some((pl.clone(), info)),
+                        _ => None,
+                    }
+                });
+                for f in fields {
+                    let child = rec.as_ref().and_then(|(pl, info)| {
+                        info.fields
+                            .iter()
+                            .find(|(n, _)| *n == f.name)
+                            .map(|(_, ty)| (pl.child(&f.name), (ty.clone(), info.generics.clone())))
+                    });
+                    match &f.pattern {
+                        Some(sp) => self.pat_binds(sp, child, out),
+                        None => out.push(PBind { name: f.name.clone(), src: child }),
+                    }
+                }
+            }
+            Pattern::Enum { path, elements } => {
+                let kids: Vec<Option<(Place, Ty)>> = match (&src, path.last()) {
+                    (Some((pl, (t, ctx))), Some(vname)) => match self.variant_payload(t, ctx, vname) {
+                        Some((tys, vctx)) if tys.len() == elements.len() => tys
+                            .into_iter()
+                            .enumerate()
+                            .map(|(i, t)| Some((pl.child(&format!("{vname}.{i}")), (t, vctx.clone()))))
+                            .collect(),
+                        _ => vec![None; elements.len()],
+                    },
+                    _ => vec![None; elements.len()],
+                };
+                for (e, k) in elements.iter().zip(kids) {
+                    self.pat_binds(e, k, out);
+                }
+            }
+            Pattern::Slice { .. } | Pattern::Or { .. } | Pattern::Ref { .. } => unknown(p, out),
+        }
+    }
+
+    /// The payload types of variant `vname` of `t`, with the generics they are
+    /// written in.
+    fn variant_payload(&self, t: &Type, ctx: &[String], vname: &str) -> Option<(Vec<Type>, Vec<String>)> {
+        let ctx_v = ctx.to_vec();
+        match t {
+            Type::Option { inner } if vname == "Some" => Some((vec![(**inner).clone()], ctx_v)),
+            Type::Result { ok, .. } if vname == "Ok" => Some((vec![(**ok).clone()], ctx_v)),
+            Type::Result { err, .. } if vname == "Err" => Some((vec![(**err).clone()], ctx_v)),
+            Type::Path { segments, type_args } if segments.len() == 1 && !ctx.contains(&segments[0]) => {
+                let n = segments[0].as_str();
+                if let Some(Some(info)) = self.info.types.get(n) {
+                    if !type_args.is_empty() {
+                        return None;
+                    }
+                    let (_, tys) = info.variants.iter().find(|(v, _)| v == vname)?;
+                    return Some((tys.clone(), info.generics.clone()));
+                }
+                match (n, vname, type_args.as_slice()) {
+                    ("Option", "Some", [a]) => Some((vec![a.clone()], ctx_v)),
+                    ("Result", "Ok", [a, _]) => Some((vec![a.clone()], ctx_v)),
+                    ("Result", "Err", [_, b]) => Some((vec![b.clone()], ctx_v)),
+                    _ => None,
+                }
+            }
+            _ => None,
         }
     }
 
@@ -1428,7 +1753,7 @@ impl<'a> Fcx<'a> {
     /// The user type an initialiser evidently produces.
     fn infer_type_name(&self, e: &Expr, st: &State) -> Option<String> {
         match e {
-            Expr::Ident { name } => st.vars.get(name).and_then(|v| v.ty_name.clone()),
+            Expr::Ident { name } => st.vars.get(name).filter(|v| !v.by_ref).and_then(|v| v.ty_name.clone()),
             Expr::StructLit { path, .. } => {
                 let n = path.last()?;
                 matches!(self.info.types.get(n), Some(Some(_))).then(|| n.clone())
@@ -1455,6 +1780,10 @@ impl<'a> Fcx<'a> {
         if path.is_empty() || v.copy == Copyness::Copy {
             return if path.is_empty() { v.copy } else { Copyness::Copy };
         }
+        // Behind a reference nothing can be moved out of (Rust's E0507).
+        if v.by_ref {
+            return Copyness::Unknown;
+        }
         let Some(mut cur) = v.ty_name.clone() else { return Copyness::Unknown };
         for (i, seg) in path.iter().enumerate() {
             let Some(Some(info)) = self.info.types.get(&cur) else { return Copyness::Unknown };
@@ -1470,6 +1799,26 @@ impl<'a> Fcx<'a> {
             }
         }
         Copyness::Unknown
+    }
+
+    /// The type of the place `v` + `path`, following declared record fields.
+    fn place_ty(&self, v: &Var, path: &[String]) -> Option<Ty> {
+        let name = v.ty_name.clone()?;
+        let mut cur: Ty = (Type::Path { segments: vec![name], type_args: Vec::new() }, Vec::new());
+        for seg in path {
+            let Type::Path { segments, type_args } = &cur.0 else { return None };
+            if segments.len() != 1 || !type_args.is_empty() || cur.1.contains(&segments[0]) {
+                return None;
+            }
+            let Some(Some(info)) = self.info.types.get(&segments[0]) else { return None };
+            let (_, ty) = info.fields.iter().find(|(n, _)| n == seg)?;
+            cur = (ty.clone(), info.generics.clone());
+        }
+        Some(cur)
+    }
+
+    fn ty_copy(&self, t: &Ty) -> Copyness {
+        self.info.type_copyness(&t.0, &t.1)
     }
 
     // ── Uses of places ───────────────────────────────────────────────
@@ -1511,6 +1860,13 @@ impl<'a> Fcx<'a> {
     }
 
     fn use_place(&mut self, place: &Place, at: u32, st: &mut State, mode: &Use) {
+        let Some(v) = st.vars.get(place.root.as_str()) else { return };
+        let copy = self.place_copy(v, &place.path);
+        self.use_place_with(place, at, st, mode, copy);
+    }
+
+    /// [`Fcx::use_place`] with the place's `Copy`-ness already decided.
+    fn use_place_with(&mut self, place: &Place, at: u32, st: &mut State, mode: &Use, copy: Copyness) {
         let name = place.root.as_str();
         let Some(v) = st.vars.get(name).cloned() else { return };
         if let Some((_, own, how)) = Self::moved_conflict(&v, &place.path, false) {
@@ -1522,7 +1878,7 @@ impl<'a> Fcx<'a> {
             Use::Alias(w) => (Some(w), false),
         };
         if let Some(why) = why {
-            if self.place_copy(&v, &place.path) == Copyness::NonCopy {
+            if copy == Copyness::NonCopy {
                 self.check_action(st, place, Action::Move, at);
                 for (k, f) in self.closures.iter_mut().enumerate() {
                     if v.depth <= k {
@@ -1630,6 +1986,32 @@ impl<'a> Fcx<'a> {
             sig.consumes.get(i) == Some(&true)
         } else {
             sig.param_is_ref.get(i) == Some(&false)
+        }
+    }
+
+    /// What `recv.method(..)` does to its receiver, when the receiver is a
+    /// plain place of a known user type that declares `method` with a `self`.
+    fn receiver_use(&self, receiver: &Expr, method: &str, st: &State) -> RecvUse {
+        let Some(p) = field_place_of(receiver) else { return RecvUse::Plain };
+        let Some(v) = st.vars.get(&p.root) else { return RecvUse::Plain };
+        let Some(ty) = self.place_ty(v, &p.path).and_then(|t| self.ty_name_of(&t.0, &t.1)) else {
+            return RecvUse::Plain;
+        };
+        let cands: Vec<&FnSig> = self
+            .info
+            .methods
+            .get(method)
+            .map(|c| c.iter().filter(|s| s.recv != Recv::None && s.owner.as_deref() == Some(ty.as_str())).collect())
+            .unwrap_or_default();
+        let Some(first) = cands.first() else { return RecvUse::Plain };
+        if cands.iter().any(|s| s.recv != first.recv) {
+            return RecvUse::Plain;
+        }
+        match first.recv {
+            Recv::Value if cands.iter().all(|s| self.takes(s, 0)) => RecvUse::Move,
+            Recv::Ref => RecvUse::Borrow(false),
+            Recv::RefMut => RecvUse::Borrow(true),
+            _ => RecvUse::Plain,
         }
     }
 
@@ -1783,7 +2165,20 @@ impl<'a> Fcx<'a> {
                 self.eval_args(&name, &moves, args, st);
             }
             Expr::MethodCall { receiver, method, args, .. } => {
-                self.eval(receiver, st, &Use::Read);
+                match self.receiver_use(receiver, method, st) {
+                    RecvUse::Move => {
+                        self.eval(receiver, st, &mv(format!("passed by value as `self` to `{method}`")));
+                    }
+                    RecvUse::Borrow(mutable) => {
+                        self.eval(receiver, st, &Use::Read);
+                        if let Some(p) = field_place_of(receiver) {
+                            let action = if mutable { Action::BorrowMut } else { Action::BorrowShared };
+                            let at = self.nums.start(receiver);
+                            self.check_action(st, &p, action, at);
+                        }
+                    }
+                    RecvUse::Plain => self.eval(receiver, st, &Use::Read),
+                }
                 let moves = self.method_moves(method, args.len());
                 self.eval_args(method, &moves, args, st);
             }
@@ -1835,8 +2230,12 @@ impl<'a> Fcx<'a> {
                 st.join(&other);
             }
             Expr::Match { scrutinee, arms } => {
-                if let Some(s) = scrutinee {
-                    self.eval(s, st, &Use::Read);
+                let tracked = scrutinee.as_deref().and_then(|s| self.tracked_scrutinee(s, st));
+                let at = scrutinee.as_deref().map_or(0, |s| self.nums.start(s));
+                match (scrutinee, &tracked) {
+                    (_, Some((pl, _))) => self.read_scrutinee(pl, st),
+                    (Some(s), None) => self.eval(s, st, &Use::Read),
+                    _ => {}
                 }
                 if arms.is_empty() {
                     return;
@@ -1846,8 +2245,16 @@ impl<'a> Fcx<'a> {
                 for arm in arms {
                     let mut s = base.clone();
                     self.push_scope();
-                    self.bind_pattern(&mut s, &arm.pattern);
+                    let eager = !self.info.policy.infer_call_modes;
+                    let binds = match &tracked {
+                        Some(tr) => self.bind_destructured(&mut s, &arm.pattern, Some(tr.clone()), at, eager),
+                        None => {
+                            self.bind_pattern(&mut s, &arm.pattern);
+                            Vec::new()
+                        }
+                    };
                     self.eval(&arm.body, &mut s, mode);
+                    self.finish_arm(&binds, &mut s, at);
                     self.pop_scope(&mut s);
                     match &mut out {
                         Some(o) => o.join(&s),
@@ -2561,5 +2968,279 @@ mod tests {
             "E0502",
             "cannot move out of `p`",
         );
+    }
+
+    // ── `self` and its fields ────────────────────────────────────────
+
+    const OWNED: &str = "data Pair(name: s, age: i32)\ndata Outer(inner: Pair, tag: s)\n@d(Copy)\ndata Dot(x: i32, y: i32)\nf take(x: s) { }\nf take_n(x: i32) { }\nf peek(x: &s) { }\nf peek_p(x: &Pair) { }\nf keep(x: s) -> s { x }\n";
+
+    /// `OWNED` plus `extend Pair { methods }` and `body` as the rest of the module.
+    fn on_pair(methods: &str, rest: &str) -> String {
+        format!("{OWNED}extend Pair {{\n{methods}\n}}\n{rest}\n")
+    }
+
+    fn dflt_msgs(src: &str) -> Vec<String> {
+        dflt(src)
+    }
+
+    #[test]
+    fn a_by_value_self_field_is_a_place() {
+        let src = on_pair(" f twice(self) {\n  take(self.name)\n  take(self.name)\n }", "");
+        flags(&src, "E0382", "use of moved value: `self.name`");
+        flags(&src, "E0382", "fn `Pair.twice`");
+        // Siblings stay usable; a Copy field never moves.
+        clean(&on_pair(" f ok(self) {\n  take(self.name)\n  take_n(self.age)\n  take_n(self.age)\n }", ""));
+        // The whole value after a field moved out.
+        flags(&on_pair(" f whole(self) {\n  take(self.name)\n  v q = self\n }", ""), "E0382", "use of moved value: `self`");
+        // And a field after the whole value moved.
+        flags(&on_pair(" f rest(self) {\n  v q = self\n  take(self.name)\n }", ""), "E0382", "`self.name`");
+        // Reassigning the field re-initialises it.
+        clean(&on_pair(" f again(self) {\n  take(self.name)\n  self.name = \"x\"\n  take(self.name)\n }", ""));
+        // A nested field of a by-value self.
+        let nested = format!("{OWNED}extend Outer {{\n f deep(self) {{\n  take(self.inner.name)\n  take(self.inner.name)\n }}\n}}\n");
+        flags(&nested, "E0382", "`self.inner.name`");
+        clean(&format!("{OWNED}extend Outer {{\n f deep(self) {{\n  take(self.inner.name)\n  take(self.tag)\n  take_n(self.inner.age)\n }}\n}}\n"));
+    }
+
+    #[test]
+    fn a_reference_receiver_never_moves_a_field() {
+        // Rust reports E0507 for these; MAGE has no code for it, so nothing is
+        // reported and the field stays usable.
+        for recv in ["&self", "&!self", "!self"] {
+            clean(&on_pair(&format!(" f twice({recv}) {{\n  take(self.name)\n  take(self.name)\n  v q = self.name\n }}"), ""));
+            clean(&on_pair(&format!(" f once({recv}) {{\n  v a = self.name\n  v b = self\n }}"), ""));
+        }
+        // A reference receiver's fields can still be borrowed and conflict.
+        flags(
+            &on_pair(" f clash(&!self) {\n  v r = &self.name\n  v w = &!self.name\n  peek(r)\n }", ""),
+            "E0502",
+            "cannot borrow `self.name` as mutable because it is also borrowed as immutable",
+        );
+        // `let y = self` copies the reference, so `y.name` is no owned field either.
+        clean(&on_pair(" f via(&self) {\n  v y = self\n  take(y.name)\n  take(y.name)\n }", ""));
+    }
+
+    #[test]
+    fn self_of_an_unknown_or_copy_type_is_not_followed() {
+        // A trait's `Self` is unknown.
+        clean(&format!("{OWNED}trait Named {{\n f twice(self) {{\n  take(self.name)\n  take(self.name)\n }}\n}}\n"));
+        // A Copy type: `self` is a copy.
+        clean("@d(Copy)\ndata Dot(x: i32, y: i32)\nf take_n(x: i32) { }\nextend Dot {\n f twice(self) {\n  take_n(self.x)\n  take_n(self.x)\n  v a = self\n  v b = self\n }\n}\n");
+        // An impl for a generic parameter, and for an undeclared type.
+        clean("f take(x: s) { }\nimpl[T] Show for T {\n f twice(self) {\n  take(self.name)\n  take(self.name)\n }\n}\n");
+        clean("f take(x: s) { }\nextend Mystery {\n f twice(self) {\n  take(self.name)\n  take(self.name)\n }\n}\n");
+    }
+
+    #[test]
+    fn a_by_value_self_that_is_returned_is_consumed() {
+        // `ret self` moves it, so the inferred policy treats the method as consuming.
+        let src = on_pair(" f finish(self) -> Pair { self }", "f host(p: Pair) {\n p.finish()\n p.finish()\n}");
+        assert_eq!(dflt_msgs(&src).len(), 1, "{:?}", dflt_msgs(&src));
+        flags(&on_pair(" f twice(self) -> Pair {\n  v a = self\n  self\n }", ""), "E0382", "`self`");
+    }
+
+    // ── method-call receivers ────────────────────────────────────────
+
+    const RECV: &str = " f finish(self) -> Pair { self }\n f show(self) -> i32 { self.age }\n f get(&self) -> i32 { self.age }\n f bump(&!self) { }";
+
+    fn host_of(body: &str) -> String {
+        on_pair(RECV, &format!("f host(p: Pair, o: Outer) {{\n{body}\n}}"))
+    }
+
+    #[test]
+    fn a_by_value_receiver_moves_under_strict_always() {
+        let src = host_of(" p.show()\n p.show()");
+        flags(&src, "E0382", "use of moved value: `p`");
+        flags(&src, "E0382", "passed by value as `self` to `show`");
+        // It also moves when a later use is of something else.
+        flags(&host_of(" p.show()\n peek_p(&p)"), "E0382", "`p`");
+        // A reference receiver does not.
+        clean(&host_of(" p.get()\n p.get()\n p.bump()\n p.get()"));
+        // Re-initialised in between.
+        clean(&host_of(" p.show()\n p = o.inner\n p.show()"));
+    }
+
+    #[test]
+    fn a_by_value_receiver_moves_under_inferred_only_if_it_consumes_self() {
+        // `show` takes `self` but only reads it: lent, not moved.
+        assert!(dflt_msgs(&host_of(" p.show()\n p.show()")).is_empty());
+        // `finish` returns `self`: consumed.
+        let m = dflt_msgs(&host_of(" p.finish()\n p.finish()"));
+        assert_eq!(m.len(), 1, "{m:?}");
+        assert!(m[0].contains("use of moved value: `p`"), "{m:?}");
+        // Through another consuming method, to a fixpoint.
+        let relay = on_pair(" f finish(self) -> Pair { self }\n f relay(self) -> Pair { self.finish() }", "f host(p: Pair) {\n p.relay()\n p.relay()\n}");
+        assert_eq!(dflt_msgs(&relay).len(), 1, "{:?}", dflt_msgs(&relay));
+    }
+
+    #[test]
+    fn a_receiver_field_moves_that_field() {
+        let src = format!("{OWNED}extend Pair {{\n f show(self) -> i32 {{ self.age }}\n}}\nf host(o: Outer) {{\n o.inner.show()\n take(o.inner.name)\n}}\n");
+        flags(&src, "E0382", "use of moved value: `o.inner.name`");
+        // The sibling field is untouched.
+        clean(&format!("{OWNED}extend Pair {{\n f show(self) -> i32 {{ self.age }}\n}}\nf host(o: Outer) {{\n o.inner.show()\n take(o.tag)\n}}\n"));
+    }
+
+    #[test]
+    fn a_reference_receiver_borrows_for_the_call() {
+        // A live exclusive loan conflicts with a `&self` call, a live shared one
+        // with a `&!self` call.
+        flags(
+            &host_of(" v r = &!p\n p.get()\n peek_p(r)"),
+            "E0502",
+            "cannot borrow `p` as immutable because it is also borrowed as mutable",
+        );
+        flags(
+            &host_of(" v r = &p\n p.bump()\n peek_p(r)"),
+            "E0502",
+            "cannot borrow `p` as mutable because it is also borrowed as immutable",
+        );
+        // Shared with shared, or after the last use of the loan, is fine.
+        clean(&host_of(" v r = &p\n p.get()\n peek_p(r)"));
+        clean(&host_of(" v r = &!p\n peek_p(r)\n p.bump()"));
+        // A loan on a sibling field does not conflict with a call on another field.
+        clean(&host_of(" v r = &o.tag\n o.inner.bump()\n peek(r)"));
+        // Both policies.
+        assert_eq!(dflt_msgs(&host_of(" v r = &!p\n p.get()\n peek_p(r)")).len(), 1);
+    }
+
+    #[test]
+    fn unknown_receivers_and_methods_are_not_reported() {
+        // An unknown method, an unknown type, a method of another type, and a
+        // receiver that is not a place.
+        clean(&host_of(" p.nope()\n p.nope()"));
+        clean("f host(x: Mystery) {\n x.show()\n x.show()\n}\n");
+        clean(&host_of(" o.show()\n o.show()"));
+        clean(&host_of(" make().show()\n make().show()"));
+        // Methods on different types sharing a name are told apart by the receiver's type.
+        let two = format!("{OWNED}data Other(n: s)\nextend Pair {{\n f go(self) {{ }}\n}}\nextend Other {{\n f go(&self) {{ }}\n}}\nf host(a: Pair, b: Other) {{\n b.go()\n b.go()\n}}\nf host2(a: Pair, b: Other) {{\n a.go()\n a.go()\n}}\n");
+        let d = msgs(&two);
+        assert_eq!(d.len(), 1, "{d:?}");
+        assert!(d[0].contains("fn `host2`"), "{d:?}");
+        // The same name with two receiver kinds on one type is not judged.
+        let mixed = format!("{OWNED}extend Pair {{\n f go(self) {{ }}\n}}\nextend Pair {{\n f go(&self) {{ }}\n}}\nf host(a: Pair) {{\n a.go()\n a.go()\n}}\n");
+        clean(&mixed);
+        // A method on a Copy type never moves it.
+        clean("@d(Copy)\ndata Dot(x: i32)\nextend Dot {\n f go(self) { }\n}\nf host(d: Dot) {\n d.go()\n d.go()\n}\n");
+    }
+
+    // ── destructuring patterns ───────────────────────────────────────
+
+    const PAT: &str = "data Pair(name: s, age: i32)\ndata Outer(inner: Pair, tag: s)\ndata Msg = Text(s) | Num(i32)\ndata Env(msg: Msg, opt: ?s, pair: (s, i32), tag: s)\ndata Duo(both: (Pair, i32), tag: s)\nf take(x: s) { }\nf take_n(x: i32) { }\nf peek(x: &s) { }\nf peek_m(x: &Msg) { }\nf keep(x: s) -> s { x }\n";
+
+    fn pt(body: &str) -> String {
+        format!("{PAT}f host(p: Pair, o: Outer, e: Env, d: Duo) {{\n{body}\n}}\n")
+    }
+
+    // MAGE's parser accepts a `val` binder only for `(..)` and `[..]`, so a record
+    // pattern reaches a `let` as an element of a tuple pattern.
+    #[test]
+    fn a_let_pattern_moves_the_parts_it_binds_by_value() {
+        let both = " val (@Pair { name, age }, k) = d.both";
+        // The bound non-Copy field is gone, and so is the tuple it sits in.
+        flags(&pt(&format!("{both}\n v q = d.both")), "E0382", "use of moved value: `d.both`");
+        // Copy parts and wildcards move nothing.
+        clean(&pt(" val (@Pair { name: _, age }, k) = d.both\n v q = d.both"));
+        clean(&pt(" val (_, k) = d.both\n v q = d.both"));
+        clean(&pt(&format!("{both}\n take(d.tag)\n take(name)")));
+        // A bound name is itself a value that moves.
+        flags(&pt(&format!("{both}\n take(name)\n v z = name")), "E0382", "`name`");
+        // Under the inferred policy `let` is evidence enough, as for `let y = x.f`.
+        assert_eq!(dflt(&pt(&format!("{both}\n v q = d.both"))).len(), 1);
+        assert_eq!(dflt(&pt(" val (@Pair { name: _, age }, k) = d.both\n v q = d.both")).len(), 0);
+        // A binding inside a record pattern inside a tuple pattern: renamed fields and nesting.
+        clean(&pt(" val (@Pair { name: n, age: a }, k) = d.both\n take(n)\n take_n(a)"));
+        flags(&pt(" val (@Pair { name: n, age: a }, k) = d.both\n take(n)\n take(n)"), "E0382", "`n`");
+    }
+
+    #[test]
+    fn a_let_pattern_over_a_tuple_field_or_payload() {
+        flags(&pt(" val (a, b) = e.pair\n v q = e.pair"), "E0382", "`e.pair`");
+        clean(&pt(" val (a, b) = e.pair\n take_n(b)\n take(e.tag)"));
+        clean(&pt(" val (_, b) = e.pair\n v q = e.pair"));
+        // Only the part that moved is gone: its sibling is not.
+        clean(&pt(" val (a, _) = e.pair\n take(e.tag)"));
+        // A binding moves a whole non-Copy element, not just its parts.
+        flags(&pt(" val (a, b) = e.pair\n val (c, d) = e.pair"), "E0382", "`e.pair.0`");
+        // A payload pattern in a `let`.
+        flags(&pt(" val Some(x) = e.opt\n v q = e.opt"), "E0382", "`e.opt`");
+    }
+
+    #[test]
+    fn a_let_pattern_over_something_unknown_moves_nothing_new() {
+        // An unknown type, a call, a reference parameter: not followed.
+        clean("f take(x: s) { }\nf host(w: Mystery) {\n val (a, b) = w\n take(w.name)\n take(w.name)\n}\n");
+        clean("f take(x: s) { }\nf host() {\n val (a, b) = make()\n take(a)\n take(a)\n}\n");
+        clean(&format!("{PAT}f host(p: &Env) {{\n val (a, b) = p.pair\n take(p.pair.x)\n v q = p.pair\n v z = p.pair\n}}\n"));
+        // A part with a generic type.
+        clean("data G[T](pair: (T, i32), name: s)\nf take(x: s) { }\nf host(g: G[s]) {\n val (a, b) = g.pair\n v q = g.pair\n v z = g.pair\n}\n");
+        // A tuple pattern of the wrong arity binds nothing it can follow.
+        clean(&pt(" val (a, b, c) = e.pair\n v q = e.pair"));
+    }
+
+    #[test]
+    fn a_match_arm_moves_the_parts_it_binds_under_strict() {
+        let m = " ?= p {\n  @Pair { name, age } => take(name)\n }";
+        flags(&pt(&format!("{m}\n take(p.name)")), "E0382", "use of moved value: `p.name`");
+        // The arm sees the scrutinee already partly moved.
+        flags(&pt(" ?= p {\n  @Pair { name, age } => take(p.name)\n }"), "E0382", "`p.name`");
+        // Copy parts and wildcards move nothing.
+        clean(&pt(" ?= p {\n  @Pair { name: _, age } => take_n(age)\n }\n peek(&p.name)\n peek(&p.name)"));
+        // A variant payload moves in only the arm that binds it, so afterwards it is
+        // only possibly moved.
+        let two = " ?= e.msg {\n  Text(s) => take(s)\n  Num(n) => take_n(n)\n }\n v q = e.msg";
+        flags(&pt(two), "E0382", "possibly moved");
+        clean(&pt(" ?= e.msg {\n  Text(_) => { }\n  Num(n) => take_n(n)\n }\n v q = e.msg"));
+        // `Some` / `None` of an optional field.
+        flags(&pt(" ?= e.opt {\n  Some(x) => take(x)\n  None => { }\n }\n v q = e.opt"), "E0382", "`e.opt`");
+        // `match` is the same thing.
+        flags(&pt(" match p {\n  @Pair { name, age } => take(name)\n }\n take(p.name)"), "E0382", "`p.name`");
+        // A bound name known non-Copy moves in the arm.
+        flags(&pt(" ?= e.msg {\n  Text(s) => {\n   take(s)\n   take(s)\n  }\n  Num(n) => { }\n }"), "E0382", "use of moved value: `s`");
+    }
+
+    #[test]
+    fn a_match_arm_moves_under_inferred_only_if_it_consumes_the_binding() {
+        let looks = " ?= p {\n  @Pair { name, age } => take(name)\n }\n take(p.name)";
+        assert!(dflt(&pt(looks)).is_empty(), "{:?}", dflt(&pt(looks)));
+        assert!(!msgs(&pt(looks)).is_empty());
+        // `keep` consumes `name`, so `p.name` is gone after the match.
+        let eats = " ?= p {\n  @Pair { name, age } => keep(name)\n }\n take(p.name)";
+        let d = dflt(&pt(eats));
+        assert_eq!(d.len(), 1, "{d:?}");
+        assert!(d[0].contains("use of moved value: `p.name`"), "{d:?}");
+        // A `let y = name` in the arm is evidence too.
+        let lets = " ?= e.msg {\n  Text(s) => {\n   v t = s\n  }\n  Num(n) => { }\n }\n v q = e.msg";
+        assert_eq!(dflt(&pt(lets)).len(), 1, "{:?}", dflt(&pt(lets)));
+        // A payload merely looked at is not.
+        assert!(dflt(&pt(" ?= e.msg {\n  Text(s) => peek(&s)\n  Num(n) => { }\n }\n v q = e.msg")).is_empty());
+    }
+
+    #[test]
+    fn matching_a_partly_moved_place_reads_only_what_it_binds() {
+        // `p.name` moved, the pattern touches only `p.age`: fine in Rust.
+        clean(&pt(" take(p.name)\n ?= p {\n  @Pair { name: _, age } => take_n(age)\n }"));
+        // The pattern binds the moved field: not fine.
+        flags(&pt(" take(p.name)\n ?= p {\n  @Pair { name, age } => take(name)\n }"), "E0382", "`p.name`");
+        // The place itself moved.
+        flags(&pt(" v q = p\n ?= p {\n  @Pair { name: _, age } => take_n(age)\n }"), "E0382", "`p`");
+        // `let` destructuring a partly moved value likewise.
+        clean(&pt(" take(e.tag)\n val (a, b) = e.pair"));
+        flags(&pt(" v q = e.pair\n val (a, b) = e.pair"), "E0382", "`e.pair`");
+    }
+
+    #[test]
+    fn patterns_over_self() {
+        let body = " f eat(self) {\n  ?= self {\n   @Pair { name, age } => take(name)\n  }\n  take(self.name)\n }";
+        flags(&on_pair(body, ""), "E0382", "`self.name`");
+        // A reference receiver binds by reference: nothing moves.
+        for recv in ["&self", "&!self"] {
+            let b = format!(" f eat({recv}) {{\n  ?= self {{\n   @Pair {{ name, age }} => take(name)\n  }}\n  take(self.name)\n  take(self.name)\n }}");
+            clean(&on_pair(&b, ""));
+            let l = format!(" f eat({recv}) {{\n  val (a, b) = self.pair\n  v q = self.pair\n  v z = self.pair\n }}");
+            clean(&format!("{PAT}extend Env {{\n{l}\n}}\n"));
+        }
+        // By value, a `let` destructure moves the field.
+        flags(&format!("{PAT}extend Env {{\n f eat(self) {{\n  val (a, b) = self.pair\n  v q = self.pair\n }}\n}}\n"), "E0382", "`self.pair`");
     }
 }

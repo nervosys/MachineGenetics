@@ -2586,9 +2586,38 @@ conflicts (E0502) with a move, assignment or conflicting borrow of `p.name`, of
 `p`, or of a path through `p.name`, while `r` is live, and never with `p.age`.
 Field types come from the module's `data`/struct declarations; a field whose
 type is generic, undeclared or reached through an unknown type is never
-reported, and `Copy` fields never move. Index paths (`x[i].f`), destructuring
-patterns, method receivers and reference-typed parameters are not followed.
-Both policies apply this rule. By default
+reported, and `Copy` fields never move. Index paths (`x[i].f`) and
+reference-typed parameters are not followed. Both policies apply this rule.
+
+**`self`.** In a method, `self` is a place of the `impl`/`extend` type when
+that is a known (non-generic, non-`Copy`) user type. A by-value `self` is moved
+and partly moved like any parameter (`self.name`). A `&self` or `&!self`
+receiver is a reference: nothing is moved out of it, so moving a non-`Copy`
+field there (Rust's E0507) is not reported (no diagnostic code exists for it)
+and the field stays usable. The parser desugars `!self` to `&!self`, so it is
+a mutable borrow here, not the consume that the receiver list above names.
+
+**Method receivers.** `x.m(..)` is judged only when `x` is a plain place of a
+known user type, `m` is declared on that type, and every such declaration
+agrees on its receiver kind. `self` by value moves `x` (`x.f.m()` moves
+`x.f`): under strict ownership always, by default only if `m`'s body consumes
+`self`, the rule for a callee's parameters. `&self` / `&!self` borrow `x`
+shared / exclusive for the call and conflict (E0502) with a live loan of `x`
+made by `let r = &x` / `let r = &!x`. An unknown type or method is never
+reported.
+
+**Patterns.** MAGE patterns have no by-reference binding (no `ref`, no `&p`),
+and the spec says borrow mode is inferred, so a `let` or `match`/`?=` pattern
+over a place of a known type is taken to bind by value: a name bound to a
+non-`Copy` part (a record field, a tuple element, the payload of
+`Some`/`Ok`/`Err` or of a user variant) moves that part out of the scrutinee
+place. Wildcards, literals, `Copy` parts and unknown types move nothing, and
+matching a partly moved place reads only what the pattern binds. A `let`
+pattern moves at the `let`. A `match` arm moves its bindings at the arm under
+strict ownership and, by default, only if the arm's body consumes the binding.
+A pattern over a `&self` or other reference moves nothing. The parser accepts
+a record pattern `@T { .. }` in an arm, or inside a tuple pattern in a `val`,
+but not as a bare `val @T { .. } = e`. By default
 a call moves an argument only when the callee's body really consumes that
 parameter and storing a value in a literal does not move it, because the
 evaluator has value semantics and the example corpus relies on it; Rust's

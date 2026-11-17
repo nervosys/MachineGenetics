@@ -52,14 +52,14 @@ kb Diagnostics {
     fact instance_of("E0382", Diagnostic);
     fact diagnostic_row("E0382", "Error", "UseAfterMove", "Use after move");
     fact enforced_by("E0382", "borrowck");
-    fact gap("E0382", "tracks whole locals only, and only for a type known not to be Copy: no partial moves, and a method receiver, `for`, or `match` scrutinee is never a move");
+    fact gap("E0382", "tracks places (a local plus a field path), and only for a type known not to be Copy; a `for` iterable and a value reached through an index, a deref or a reference-typed parameter are never moved, and moving a field out of a `&self` receiver (Rust's E0507) has no code and is not reported");
     fact tested_by("E0382", "use_after_move");
     fact tested_by("E0382", "use_after_move_classified");
 
     fact instance_of("E0502", Diagnostic);
     fact diagnostic_row("E0502", "Error", "BorrowConflict", "Borrow conflict");
     fact enforced_by("E0502", "borrowck");
-    fact gap("E0502", "loans come only from `let r = &place`; references are not followed through calls, returns, fields or collections, and a method call's receiver is never a conflict");
+    fact gap("E0502", "loans come only from `let r = &place`; references are not followed through calls, returns, fields or collections, and a method call borrows its receiver only when the receiver is a place of a known type whose method declares `&self` or `&!self`");
     fact tested_by("E0502", "borrow_conflict");
     fact tested_by("E0502", "borrow_conflict_classified");
 
