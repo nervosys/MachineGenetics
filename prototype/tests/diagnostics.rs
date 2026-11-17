@@ -66,6 +66,8 @@ const WITNESSES: &[(&str, &str, fn() -> bool)] = &[
     ("E0001", "syntax_error", syntax_error),
     ("E0382", "use_after_move", use_after_move),
     ("E0382", "use_after_move_classified", use_after_move_classified),
+    ("E0507", "move_out_of_borrow", move_out_of_borrow),
+    ("E0507", "move_out_of_borrow_classified", move_out_of_borrow_classified),
     ("E0502", "borrow_conflict", borrow_conflict),
     ("E0502", "borrow_conflict_classified", borrow_conflict_classified),
     ("E0308", "type_mismatch", type_mismatch),
@@ -128,6 +130,19 @@ fn borrow_conflict() -> bool {
     let bad = "f peek(x: &s) { }\nf host(a: s) { v r = &a\n v w = &!a\n peek(r) }";
     let good = "f peek(x: &s) { }\nf host(a: s) { v r = &a\n peek(r)\n v w = &!a\n peek(w) }";
     emits(bad, "E0502") && absent(good, "E0502")
+}
+
+fn move_out_of_borrow() -> bool {
+    // A field returned by value out of `&self`; a Copy field is no move.
+    let head = "data Pair(name: s, age: i32)\nextend Pair {\n";
+    let bad = format!("{head} f grab(&self) -> s {{\n  self.name\n }}\n}}\n");
+    let good = format!("{head} f grab(&self) -> i32 {{\n  self.age\n }}\n}}\n");
+    emits(&bad, "E0507") && absent(&good, "E0507")
+}
+
+fn move_out_of_borrow_classified() -> bool {
+    healed_code("cannot move out of `self.name` which is behind a reference").as_deref() == Some("E0507")
+        && healed_code("cannot move out of `x` because it is borrowed").as_deref() == Some("E0502")
 }
 
 fn use_after_move_classified() -> bool {

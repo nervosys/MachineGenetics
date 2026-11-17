@@ -1,4 +1,4 @@
-// Every diagnostic the compiler produces: 22 codes and 7 warning classes.
+// Every diagnostic the compiler produces: 23 codes and 7 warning classes.
 //
 // `diagnostic_row` is id, severity, category, summary. A code is what
 // `--check --json` prints. A warning class has no code of its own: where it
@@ -52,9 +52,16 @@ kb Diagnostics {
     fact instance_of("E0382", Diagnostic);
     fact diagnostic_row("E0382", "Error", "UseAfterMove", "Use after move");
     fact enforced_by("E0382", "borrowck");
-    fact gap("E0382", "tracks places (a local plus a field path), and only for a type known not to be Copy; a `for` iterable and a value reached through an index, a deref or a reference-typed parameter are never moved, and moving a field out of a `&self` receiver (Rust's E0507) has no code and is not reported");
+    fact gap("E0382", "tracks places (a local plus a field path), and only for a type known not to be Copy; a `for` iterable and a value reached through an index, a deref or a reference-typed parameter are never moved");
     fact tested_by("E0382", "use_after_move");
     fact tested_by("E0382", "use_after_move_classified");
+
+    fact instance_of("E0507", Diagnostic);
+    fact diagnostic_row("E0507", "Error", "MoveOutOfBorrow", "Move out of borrowed content");
+    fact enforced_by("E0507", "borrowck");
+    fact gap("E0507", "only a field of a `&self`/`&!self` receiver or of a `&T`/`&!T` parameter of a known user type, reached by a plain field chain, and only a field whose declared type is known not to be Copy; a value reached through an index, a deref, a method chain or a local copy of the reference is not followed, and under the inferred policy a field passed to a callee that does not consume it is not a move");
+    fact tested_by("E0507", "move_out_of_borrow");
+    fact tested_by("E0507", "move_out_of_borrow_classified");
 
     fact instance_of("E0502", Diagnostic);
     fact diagnostic_row("E0502", "Error", "BorrowConflict", "Borrow conflict");

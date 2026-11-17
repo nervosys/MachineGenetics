@@ -548,6 +548,9 @@ pub enum DiagnosticCategory {
     /// Use after move, found by `borrowck`; classified from text by `heal`
     /// as for `BorrowConflict`.
     UseAfterMove,
+    /// A non-`Copy` value moved out of a reference (`&self`, `&!self` or a
+    /// reference-typed parameter), found by `borrowck` (Rust's E0507).
+    MoveOutOfBorrow,
     /// Type mismatch.
     TypeMismatch,
     /// Unresolved name.
@@ -600,9 +603,10 @@ pub enum DiagnosticCategory {
 
 impl DiagnosticCategory {
     /// Every category. `tests/diagnostics.rs` holds this to the enum.
-    pub const ALL: [DiagnosticCategory; 20] = [
+    pub const ALL: [DiagnosticCategory; 21] = [
         DiagnosticCategory::BorrowConflict,
         DiagnosticCategory::UseAfterMove,
+        DiagnosticCategory::MoveOutOfBorrow,
         DiagnosticCategory::TypeMismatch,
         DiagnosticCategory::UnresolvedName,
         DiagnosticCategory::UnresolvedType,
@@ -631,6 +635,7 @@ impl DiagnosticCategory {
         match self {
             DiagnosticCategory::BorrowConflict => "E0502",
             DiagnosticCategory::UseAfterMove => "E0382",
+            DiagnosticCategory::MoveOutOfBorrow => "E0507",
             DiagnosticCategory::TypeMismatch => "E0308",
             DiagnosticCategory::UnresolvedName => "E0425",
             DiagnosticCategory::UnresolvedType => "E0412",
@@ -662,6 +667,9 @@ impl DiagnosticCategory {
             }
             DiagnosticCategory::UseAfterMove => {
                 "the value was moved; clone it, or borrow (&) instead of moving"
+            }
+            DiagnosticCategory::MoveOutOfBorrow => {
+                "clone the field, borrow it (&) instead, or take `self` by value so it can be moved"
             }
             DiagnosticCategory::TypeMismatch => {
                 "make the types match: adjust the value, add a conversion, or fix the annotation"

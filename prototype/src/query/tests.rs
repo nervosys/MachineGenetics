@@ -425,6 +425,36 @@ fn a_whitespace_edit_in_a_new_process_still_hits_for_every_analysis() {
 }
 
 #[test]
+fn another_parse_version_is_another_address_space() {
+    // The same build id, directory and source; only the lexer/parser version
+    // differs. Entries written under one must not be served under the other.
+    let dir = tmp("parse-version");
+    let with = |v: &'static str| {
+        let mut registry = Registry::builtin();
+        registry.parse_version = v;
+        Compiler::new(Config { cache_dir: Some(dir.clone()), build_id: Some("t1".into()), registry, ..Config::default() })
+    };
+    let first = with("p1");
+    let f = first.set_source("a.mg", BASE);
+    run(&first, f);
+    drop(first);
+
+    let same = with("p1");
+    let f = same.set_source("a.mg", BASE);
+    run(&same, f);
+    assert_eq!(executed(&same.stats(), "tokens") + executed(&same.stats(), "parsed"), 0, "same version hits");
+    assert!(same.stats().total().disk_hits > 0);
+    drop(same);
+
+    let other = with("p2");
+    let f = other.set_source("a.mg", BASE);
+    run(&other, f);
+    let s = other.stats();
+    assert!(executed(&s, "tokens") > 0 && executed(&s, "parsed") > 0, "a new parse version re-lexes and re-parses: {:?}", s.events);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn a_corrupted_entry_is_recomputed_not_trusted() {
     let dir = tmp("corrupt");
     let first = persistent(&dir, "t1");

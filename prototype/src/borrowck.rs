@@ -1,5 +1,5 @@
-//! Ownership, move and borrow checking: E0382 (`UseAfterMove`) and E0502
-//! (`BorrowConflict`).
+//! Ownership, move and borrow checking: E0382 (`UseAfterMove`), E0502
+//! (`BorrowConflict`) and E0507 (`MoveOutOfBorrow`).
 //!
 //! # What this is
 //!
@@ -100,9 +100,14 @@
 //!   the inferred policy it does not turn the caller's argument into a move).
 //!   `let y = x.f` does not make `y` known non-`Copy` (the type of a field
 //!   expression is not inferred).
-//! * Moving a non-`Copy` field out of a `&self` / `&!self` receiver (or any
-//!   reference) is Rust's E0507. There is no diagnostic code for it here, so it
-//!   is neither reported nor tracked as a move: the field stays usable.
+//! * Moving a non-`Copy` field out of a `&self` / `&!self` receiver, or out of a
+//!   `&T` / `&!T` parameter of a known user type, is E0507 (`MoveOutOfBorrow`).
+//!   A by-value use of such a field counts as the move-out under both policies
+//!   with the usual consumption rule: under the inferred policy a field passed
+//!   to a callee that does not consume it is only lent. Nothing is tracked as
+//!   moved (the field stays usable, so no E0382 follows). Unknown, generic and
+//!   Copy field types, and a reference reached any other way (a local copy of
+//!   it, a method chain, an index, a deref), are never reported.
 //! * Loans are created only by `let r = &place` (and copied by `let r2 = r`).
 //!   References are not followed through calls, returns, struct fields,
 //!   collections or `r = &y` reassignment (which only ends `r`'s old loans).
@@ -684,6 +689,12 @@ fn analyse(
                 ),
                 _ => (Copyness::Unknown, None),
             }
+        } else if let Type::Reference { inner, .. } = &p.ty {
+            // `p: &T` / `p: &!T` of a known user type: a reference to a `T`, so
+            // its fields cannot be moved out (E0507).
+            let name = fcx.ty_name_of(inner, &fcx.generics);
+            by_ref = name.is_some();
+            (info.type_copyness(&p.ty, &fcx.generics), name)
         } else {
             (info.type_copyness(&p.ty, &fcx.generics), fcx.ty_name_of(&p.ty, &fcx.generics))
         };
@@ -1380,7 +1391,9 @@ impl<'a> Fcx<'a> {
     fn tracked_scrutinee(&self, e: &Expr, st: &State) -> Option<(Place, Ty)> {
         let p = field_place_of(e)?;
         let v = st.vars.get(&p.root)?;
-        if v.by_ref {
+        // Matching the reference itself (`match self`) binds through it; only a
+        // field place behind it is a move-out (E0507) for what the pattern binds.
+        if v.by_ref && p.path.is_empty() {
             return None;
         }
         let ty = self.place_ty(v, &p.path)?;
@@ -1777,12 +1790,11 @@ impl<'a> Fcx<'a> {
     /// Whether the value at `v` + `path` is `Copy`, from the field types the
     /// module declares. Anything it cannot follow is `Unknown`.
     fn place_copy(&self, v: &Var, path: &[String]) -> Copyness {
-        if path.is_empty() || v.copy == Copyness::Copy {
+        // Behind a reference the field's own type decides (a `&T` being `Copy`
+        // says nothing about its fields); a non-`Copy` one cannot be moved out
+        // of it, which `use_place_with` reports as E0507.
+        if path.is_empty() || (v.copy == Copyness::Copy && !v.by_ref) {
             return if path.is_empty() { v.copy } else { Copyness::Copy };
-        }
-        // Behind a reference nothing can be moved out of (Rust's E0507).
-        if v.by_ref {
-            return Copyness::Unknown;
         }
         let Some(mut cur) = v.ty_name.clone() else { return Copyness::Unknown };
         for (i, seg) in path.iter().enumerate() {
@@ -1878,6 +1890,22 @@ impl<'a> Fcx<'a> {
             Use::Alias(w) => (Some(w), false),
         };
         if let Some(why) = why {
+            if v.by_ref && !place.path.is_empty() {
+                // A field of a borrowed value (`&self`, or a reference-typed
+                // parameter) used by value: the move is out of the borrow, so
+                // nothing is tracked (the field stays usable) and it is E0507.
+                if copy == Copyness::NonCopy {
+                    self.report(
+                        DiagnosticCategory::MoveOutOfBorrow,
+                        format!(
+                            "cannot move out of `{}` which is behind a reference in fn `{}` ({why}; clone it, or take `self` by value)",
+                            place.show(),
+                            self.fname
+                        ),
+                    );
+                }
+                return;
+            }
             if copy == Copyness::NonCopy {
                 self.check_action(st, place, Action::Move, at);
                 for (k, f) in self.closures.iter_mut().enumerate() {
@@ -2911,7 +2939,9 @@ mod tests {
         clean(&format!("{g}f host(w: W) {{\n take(w.nope)\n take(w.nope)\n}}\n"));
         clean(&format!("{g}f host(x: Mystery) {{\n take(x.f)\n take(x.f)\n}}\n"));
         clean(&format!("{g}f host[T](x: T) {{\n take(x.f)\n take(x.f)\n}}\n"));
-        clean(&format!("{g}f host(w: &W) {{\n take(w.name)\n take(w.name)\n}}\n"));
+        clean(&format!("{g}f host(w: &W) {{\n take(w.m)\n take(w.nope)\n}}\n"));
+        // Behind a reference the known field is E0507, not a use after move.
+        flags(&format!("{g}f host(w: &W) {{\n take(w.name)\n take(w.name)\n}}\n"), "E0507", "`w.name`");
         clean(&format!("{g}f host() {{\n v w = make()\n take(w.name)\n take(w.name)\n}}\n"));
         // The known field of the same struct is still tracked.
         flags(&format!("{g}f host(w: W) {{\n take(w.name)\n take(w.name)\n}}\n"), "E0382", "`w.name`");
@@ -3002,14 +3032,59 @@ mod tests {
         clean(&format!("{OWNED}extend Outer {{\n f deep(self) {{\n  take(self.inner.name)\n  take(self.tag)\n  take_n(self.inner.age)\n }}\n}}\n"));
     }
 
+    fn codes(src: &str, policy: Policy) -> Vec<String> {
+        run_with(src, policy).into_iter().filter_map(|d| d.id).collect()
+    }
+
     #[test]
-    fn a_reference_receiver_never_moves_a_field() {
-        // Rust reports E0507 for these; MAGE has no code for it, so nothing is
-        // reported and the field stays usable.
+    fn a_field_moved_out_of_a_reference_receiver_is_e0507() {
         for recv in ["&self", "&!self", "!self"] {
-            clean(&on_pair(&format!(" f twice({recv}) {{\n  take(self.name)\n  take(self.name)\n  v q = self.name\n }}"), ""));
-            clean(&on_pair(&format!(" f once({recv}) {{\n  v a = self.name\n  v b = self\n }}"), ""));
+            let by_call = on_pair(&format!(" f once({recv}) {{\n  take(self.name)\n }}"), "");
+            flags(&by_call, "E0507", "cannot move out of `self.name` which is behind a reference");
+            flags(&on_pair(&format!(" f once({recv}) {{\n  v a = self.name\n  v b = self\n }}"), ""), "E0507", "`self.name`");
+            flags(&on_pair(&format!(" f once({recv}) -> s {{\n  self.name\n }}"), ""), "E0507", "`self.name`");
+            // Nothing is moved, so the field stays usable: no use-after-move follows.
+            let twice = on_pair(&format!(" f twice({recv}) {{\n  take(self.name)\n  take(self.name)\n  v q = self.name\n }}"), "");
+            let c = codes(&twice, Policy::STRICT);
+            assert!(!c.is_empty() && c.iter().all(|c| c == "E0507"), "{c:?}");
         }
+        // A nested field is one too; a Copy field, a borrow and a copy of the reference are not.
+        flags(&format!("{OWNED}extend Outer {{\n f deep(&self) {{\n  take(self.inner.name)\n }}\n}}\n"), "E0507", "`self.inner.name`");
+        clean(&on_pair(" f ok(&self) -> i32 {\n  take(&self.name)\n  peek(&self.name)\n  take_n(self.age)\n  v b = self\n  self.age\n }", ""));
+        // A by-value self is not a borrow: that is a plain partial move.
+        assert!(!codes(&on_pair(" f own(self) {\n  take(self.name)\n }", ""), Policy::STRICT).contains(&"E0507".to_string()));
+    }
+
+    #[test]
+    fn e0507_follows_the_consumption_rule_of_the_policy() {
+        // `take` ignores its parameter, so the inferred policy only lends it.
+        let lent = on_pair(" f once(&self) {\n  take(self.name)\n }", "");
+        assert!(codes(&lent, Policy::default()).is_empty());
+        assert_eq!(codes(&lent, Policy::STRICT), vec!["E0507"]);
+        // `keep` returns its parameter, so it consumes it under both.
+        let kept = on_pair(" f once(&self) -> s {\n  keep(self.name)\n }", "");
+        assert_eq!(codes(&kept, Policy::default()), vec!["E0507"]);
+        assert_eq!(codes(&kept, Policy::STRICT), vec!["E0507"]);
+        // Returning the field is a move under both.
+        let ret = on_pair(" f once(&self) -> s {\n  self.name\n }", "");
+        assert_eq!(codes(&ret, Policy::default()), vec!["E0507"]);
+    }
+
+    #[test]
+    fn a_field_moved_out_of_a_reference_parameter_is_e0507() {
+        flags(&format!("{OWNED}f host(p: &Pair) {{\n take(p.name)\n}}\n"), "E0507", "`p.name`");
+        flags(&format!("{OWNED}f host(p: &!Pair) {{\n v a = p.name\n}}\n"), "E0507", "`p.name`");
+        flags(&format!("{OWNED}f host(p: &Outer) {{\n take(p.inner.name)\n}}\n"), "E0507", "`p.inner.name`");
+        // Copy fields, borrows and the reference itself are fine; so are unknown
+        // and generic types, and a by-value parameter (a plain partial move).
+        clean(&format!("{OWNED}f host(p: &Pair) {{\n take_n(p.age)\n peek(&p.name)\n peek_p(p)\n peek_p(p)\n}}\n"));
+        clean(&format!("{OWNED}f host(p: &Mystery) {{\n take(p.name)\n}}\n"));
+        clean(&format!("{OWNED}f host[T](p: &T) {{\n take(p.name)\n}}\n"));
+        assert!(codes(&format!("{OWNED}f host(p: Pair) {{\n take(p.name)\n}}\n"), Policy::STRICT).iter().all(|c| c != "E0507"));
+    }
+
+    #[test]
+    fn a_reference_receiver_keeps_its_borrows() {
         // A reference receiver's fields can still be borrowed and conflict.
         flags(
             &on_pair(" f clash(&!self) {\n  v r = &self.name\n  v w = &!self.name\n  peek(r)\n }", ""),
@@ -3132,8 +3207,7 @@ mod tests {
         format!("{PAT}f host(p: Pair, o: Outer, e: Env, d: Duo) {{\n{body}\n}}\n")
     }
 
-    // MAGE's parser accepts a `val` binder only for `(..)` and `[..]`, so a record
-    // pattern reaches a `let` as an element of a tuple pattern.
+    // A `val` binder is `(..)`, `[..]` or a record pattern `@T { .. }`.
     #[test]
     fn a_let_pattern_moves_the_parts_it_binds_by_value() {
         let both = " val (@Pair { name, age }, k) = d.both";
@@ -3167,11 +3241,31 @@ mod tests {
     }
 
     #[test]
+    fn a_val_record_pattern_moves_the_fields_it_binds() {
+        // `val @T { .. } = e` (MAGE_SPEC 4.8): the bound non-Copy field moves, the
+        // rest stay usable, and the whole value is partly moved.
+        let src = pt(" val @Pair { name } = p\n take(name)\n take(p.name)");
+        flags(&src, "E0382", "use of moved value: `p.name`");
+        flags(&pt(" val @Pair { name } = p\n v q = p"), "E0382", "use of moved value: `p`");
+        clean(&pt(" val @Pair { name, age } = p\n take_n(age)\n take_n(p.age)\n take(name)"));
+        // A Copy field, a wildcard field and a rename that is not used move nothing else.
+        clean(&pt(" val @Pair { age } = p\n take(p.name)\n take_n(p.age)"));
+        clean(&pt(" val @Pair { name: _, age } = p\n v q = p"));
+        flags(&pt(" val @Pair { name: n } = p\n take(n)\n take(n)"), "E0382", "`n`");
+        // Nested: the inner record's field.
+        flags(&pt(" val @Outer { inner: @Pair { name } } = o\n take(o.inner.name)"), "E0382", "`o.inner.name`");
+        clean(&pt(" val @Outer { inner: @Pair { name } } = o\n take(o.tag)"));
+        // `var` is the same; destructuring the reference itself binds through it.
+        flags(&pt(" var @Pair { name } = p\n take(p.name)"), "E0382", "`p.name`");
+        clean(&format!("{PAT}f host(p: &Pair) {{\n val @Pair {{ name }} = p\n}}\n"));
+    }
+
+    #[test]
     fn a_let_pattern_over_something_unknown_moves_nothing_new() {
         // An unknown type, a call, a reference parameter: not followed.
         clean("f take(x: s) { }\nf host(w: Mystery) {\n val (a, b) = w\n take(w.name)\n take(w.name)\n}\n");
         clean("f take(x: s) { }\nf host() {\n val (a, b) = make()\n take(a)\n take(a)\n}\n");
-        clean(&format!("{PAT}f host(p: &Env) {{\n val (a, b) = p.pair\n take(p.pair.x)\n v q = p.pair\n v z = p.pair\n}}\n"));
+        clean(&format!("{PAT}f host(p: &Mystery) {{\n val (a, b) = p.pair\n take(p.pair.x)\n v q = p.pair\n v z = p.pair\n}}\n"));
         // A part with a generic type.
         clean("data G[T](pair: (T, i32), name: s)\nf take(x: s) { }\nf host(g: G[s]) {\n val (a, b) = g.pair\n v q = g.pair\n v z = g.pair\n}\n");
         // A tuple pattern of the wrong arity binds nothing it can follow.
@@ -3233,12 +3327,18 @@ mod tests {
     fn patterns_over_self() {
         let body = " f eat(self) {\n  ?= self {\n   @Pair { name, age } => take(name)\n  }\n  take(self.name)\n }";
         flags(&on_pair(body, ""), "E0382", "`self.name`");
-        // A reference receiver binds by reference: nothing moves.
+        // A reference receiver binds by reference: nothing moves out of `self`
+        // itself (only a field moved by value is E0507, never an E0382).
         for recv in ["&self", "&!self"] {
-            let b = format!(" f eat({recv}) {{\n  ?= self {{\n   @Pair {{ name, age }} => take(name)\n  }}\n  take(self.name)\n  take(self.name)\n }}");
+            let b = format!(" f eat({recv}) {{\n  ?= self {{\n   @Pair {{ name, age }} => take(name)\n  }}\n  take(&self.name)\n  take(&self.name)\n }}");
             clean(&on_pair(&b, ""));
-            let l = format!(" f eat({recv}) {{\n  val (a, b) = self.pair\n  v q = self.pair\n  v z = self.pair\n }}");
-            clean(&format!("{PAT}extend Env {{\n{l}\n}}\n"));
+            // A field behind the reference, destructured by value, is a move out of it.
+            let l = format!(" f eat({recv}) {{\n  val (a, b) = self.pair\n  v q = self.pair\n }}");
+            let src = format!("{PAT}extend Env {{\n{l}\n}}\n");
+            flags(&src, "E0507", "`self.pair.0`");
+            assert!(codes(&src, Policy::STRICT).iter().all(|c| c == "E0507"), "{:?}", codes(&src, Policy::STRICT));
+            // Its Copy parts, and a wildcard, move nothing.
+            clean(&format!("{PAT}extend Env {{\n f eat({recv}) {{\n  val (_, b) = self.pair\n  take_n(b)\n }}\n}}\n"));
         }
         // By value, a `let` destructure moves the field.
         flags(&format!("{PAT}extend Env {{\n f eat(self) {{\n  val (a, b) = self.pair\n  v q = self.pair\n }}\n}}\n"), "E0382", "`self.pair`");

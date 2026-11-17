@@ -3636,6 +3636,13 @@ impl<'a> Parser<'a> {
         if matches!(next, TokenKind::LParen | TokenKind::LBrack) {
             return matches!(first, TokenKind::KwVal | TokenKind::KwVar);
         }
+        // A record pattern `val @T { .. } = e` (MAGE_SPEC `4.8), likewise only
+        // after the long keywords: `@` is the pattern's own marker, so `v @T`
+        // stays an expression.
+        if next == TokenKind::At {
+            return matches!(first, TokenKind::KwVal | TokenKind::KwVar)
+                && self.tokens.get(self.pos + 2).map(|t| t.kind) == Some(TokenKind::Ident);
+        }
         if Self::is_binding_name(next) {
             return true;
         }
@@ -3752,7 +3759,7 @@ impl<'a> Parser<'a> {
         // `(` / `[` and are a different shape, so they are excluded here and
         // left to `parse_pattern`.
         if !Self::is_binding_name(self.peek())
-            && !matches!(self.peek(), TokenKind::LParen | TokenKind::LBrack)
+            && !matches!(self.peek(), TokenKind::LParen | TokenKind::LBrack | TokenKind::At)
         {
             return Err(self.keyword_as_binding_name_error());
         }
@@ -5202,6 +5209,47 @@ mod tests {
     fn colon_question_is_two_tokens() {
         assert!(parse(&lexer::lex("f g(x:?i64) -> i64 { 1 }")).is_ok());
         assert!(parse(&lexer::lex("f g(x: i64) -> i64 { ? x < 0 { 1 } :? x == 0 { 2 } : { 3 } }")).is_ok());
+    }
+
+    /// MAGE_SPEC 4.8: a record pattern is a pattern wherever one is, including
+    /// after `val`/`var`. It was accepted in a match arm and inside a tuple
+    /// binder, but not as the binder itself.
+    #[test]
+    fn a_record_pattern_binds_after_val_and_var() {
+        use crate::ast::{ItemKind, Pattern, Stmt};
+        let src = "data P(name: s, age: i32)\nf g(p: P) {\n val @P { name, age: a } = p\n var @P { name: n } = p\n val @P { name: @P { age } } = p\n}\n";
+        let m = parse(&lexer::lex(src)).unwrap_or_else(|e| panic!("{e:?}"));
+        let body = m
+            .items
+            .iter()
+            .find_map(|i| match &i.kind {
+                ItemKind::Function(f) if f.name == "g" => Some(f.body.clone()),
+                _ => None,
+            })
+            .expect("fn g");
+        let lets: Vec<(bool, &Pattern)> = body
+            .stmts
+            .iter()
+            .filter_map(|s| match s {
+                Stmt::Let { mutable, pattern, .. } => Some((*mutable, pattern)),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(lets.len(), 3);
+        assert!(matches!(lets[0], (false, Pattern::Struct { path, fields }) if path == &["P"] && fields.len() == 2));
+        assert!(matches!(lets[1], (true, Pattern::Struct { .. })));
+        assert!(matches!(lets[2], (false, Pattern::Struct { fields, .. }) if fields[0].pattern.is_some()));
+    }
+
+    /// A malformed record binder is an error, and the existing binders stand.
+    /// (`v` and `m` are ordinary names, so `v @P {..}` is not a binder, as with
+    /// `v (a, b)` and `v [h, ..t]`.)
+    #[test]
+    fn a_malformed_record_pattern_binder_is_an_error() {
+        assert!(parse(&lexer::lex("data P(name: s)\nf g(p: P) {\n val @ = p\n}\n")).is_err());
+        assert!(parse(&lexer::lex("data P(name: s)\nf g(p: P) {\n val @P { name = p\n}\n")).is_err());
+        // The existing binders are unchanged.
+        assert!(parse(&lexer::lex("f g(p: (i32, i32)) {\n val (a, b) = p\n}\n")).is_ok());
     }
 
     /// MAGE_SPEC.md Appendix C's infix rows are the parser's binding powers:
