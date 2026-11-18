@@ -493,11 +493,14 @@ fn main() -> ExitCode {
             "  refine (stage-3): succeeded {}/{} ({:.1}% of failures)",
             refine_succeeded, failures, pct(refine_succeeded, failures),
         );
-        println!(
-            "  effective pass:  {}/{} ({:.1}%)  = parse + pattern-heal + structural-heal + refine",
-            effective, total, pct(effective, total),
-        );
     }
+    // Always printed, also when every task parses: `scripts/test-all.sh` reads
+    // this line for the documented `effective N/` figure, and a run with no
+    // failures used to omit it.
+    println!(
+        "  effective pass:  {}/{} ({:.1}%)  = parse + pattern-heal + structural-heal + refine",
+        effective, total, pct(effective, total),
+    );
     println!("Full report: {out_path}");
 
     if parse_ok < total {
