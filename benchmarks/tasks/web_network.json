@@ -82,7 +82,7 @@
     "difficulty": "hard",
     "task": "Write a middleware function that logs request method and path, then calls the next handler",
     "solution": {
-      "rdx_source": "+f logging_middleware(\n    req: &Request,\n    next: f(&Request) -> Response,\n) -> Response / io, net {\n    io.write_line(f\"[LOG] {req.method} {req.path}\");\n    v response = next(req);\n    io.write_line(f\"[LOG] -> {response.status}\");\n    response\n}",
+      "rdx_source": "+f logging_middleware(\n    req: &Request,\n    next: f(&Request) -> Response,\n) -> Response / io, net {\n    io.writeln(f\"[LOG] {req.method} {req.path}\");\n    v response = next(req);\n    io.writeln(f\"[LOG] -> {response.status}\");\n    response\n}",
       "token_count": 58,
       "effects": ["io", "net"],
       "skb_rules_used": ["borrow:shared-ref"]
@@ -179,7 +179,7 @@
     "difficulty": "hard",
     "task": "Write a retry wrapper that retries a fallible network operation up to N times with exponential backoff",
     "solution": {
-      "rdx_source": "+f retry[T](\n    max_attempts: u32,\n    base_delay_ms: u64,\n    operation: f() -> R[T, s],\n) -> R[T, s] / io, async {\n    m attempt: u32 = 0;\n    loop {\n        v result = operation();\n        ? result {\n            Ok(val) => { ret Ok(val); },\n            Err(err) => {\n                attempt = attempt + 1;\n                ? attempt >= max_attempts { ret Err(err); }\n                v delay = base_delay_ms * (1 << attempt);\n                async.sleep(delay);\n            },\n        }\n    }\n}",
+      "rdx_source": "+f retry[T](\n    max_attempts: u32,\n    base_delay_ms: u64,\n    operation: f() -> R[T, s],\n) -> R[T, s] / io, async {\n    m attempt: u32 = 0;\n    loop {\n        v result = operation();\n        ? result {\n            Ok(val) => { ret Ok(val); },\n            Err(err) => {\n                attempt = attempt + 1;\n                ? attempt >= max_attempts { ret Err(err); }\n                v delay = base_delay_ms * (1 << attempt);\n                time.sleep(delay);\n            },\n        }\n    }\n}",
       "token_count": 121,
       "effects": ["io", "async"],
       "skb_rules_used": ["type_safety:result-return", "concurrency:effect-tracking"]

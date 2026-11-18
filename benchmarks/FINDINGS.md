@@ -33,7 +33,7 @@ text surface, as currently written and used by the corpus, is a wash.
 
 | Metric | MAGE | Rust | Ratio | Reduction |
 |---|---:|---:|---:|---:|
-| **Raw source bytes** *(what BPE actually sees)* | 54 771 | 52 716 | 1.039 | **−3.9 %** |
+| **Raw source bytes** *(what BPE actually sees)* | 54 737 | 52 716 | 1.038 | **−3.8 %** |
 | Whitespace-stripped bytes | 35 871 | 39 055 | 0.918 | +8.2 % |
 | Native syntactic tokens *(MAGE lexer + proc-macro2)* | 15 156 | 15 460 | 0.980 | +2.0 % |
 | Shared-rule tokens *(same naive tokeniser for both)* | 15 722 | 15 460 | 1.017 | −1.7 % |
@@ -231,7 +231,7 @@ exceed this ceiling — the corpus is the upper bound.
 > is history — every one of them parses today. `scripts/check-ci-floors.sh`
 > enforces a floor of 98 on that number so it cannot silently regress.
 >
-> **That number counts parsing only.** Measured 2026-11-17 with the same compiler: of the 99 references, 65 type-check and 20 type-check and pass their own tests (52 and 18 before the task defects were fixed); see `benchmarks/ACCEPTANCE.md`.
+> **That number counts parsing only.** Measured 2026-11-17 with the same compiler: of the 99 references, 65 type-check and 28 type-check and pass their own tests (52 and 18 before the task defects were fixed; 20 before the evaluator fixes); see `benchmarks/ACCEPTANCE.md`.
 
 ## Per-category breakdown
 

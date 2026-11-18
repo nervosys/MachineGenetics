@@ -11,19 +11,14 @@ agent-005 check E0425 _
 agent-006 check E0425 _
 agent-007 check E0308 find
 agent-008 check E0425 s
-agent-009 test 1/1 failing; first case 1: error unsupported unary `&`
-agent-010 test 1/1 failing; first case 1: error unknown function `push`
-algo-003 test 2/2 failing; first case 1: error unsupported unary `&`
+agent-009 test 1/1 failing; first case 1: expected "Score{correctness:1.0,efficiency:1.0,style:1.0,total:1.0}" got "Score { correctness: 1, efficiency: 1, style: 1, total: 0.9999999999999999 }"
+agent-010 test 1/1 failing; first case 1: error `replace(?)` mutates through a reference, which this evaluator does not model ? rebind ...
+algo-003 test 2/2 failing; first case 1: expected "?Some(2)" got "Some(2)"
 algo-004 test 3/3 failing; first case 1: error unknown function `as_bytes`
-algo-006 test 2/2 failing; first case 1: error unsupported unary `&!`
-algo-010 test 2/2 failing; first case 1: error unknown function `push`
-algo-012 test 2/2 failing; first case 1: error unsupported unary `&`
-algo-013 test 2/2 failing; first case 1: error unsupported unary `&`
-algo-014 test 2/2 failing; first case 1: error unknown function `push`
-algo-015 test 2/2 failing; first case 1: error unknown function `push`
+algo-013 test 2/2 failing; first case 1: expected "32.0" got "32"
 app-001 unrunnable 2/2 case(s): solution declares host effect(s) fs; eval would perform them
 app-002 check E0308 lines
-app-003 test 1/1 failing; first case 1: error unknown function `push`
+app-003 test 1/1 failing; first case 1: error `&!x` is supported by --eval only as an argument of a user function, whose changes are ...
 app-004 check E0428 Num
 app-005 check E0308 split
 app-006 check E0425 _
@@ -42,32 +37,29 @@ conc-007 check E0412 AtomicI64
 conc-008 check E0412 AtomicI64
 conc-009 check E0412 Handle
 ds-001 test 1/1 failing; first case 1: expected "Point { x: 0.0, y: 0.0 }" got "Point { x: 0, y: 0 }"
-ds-003 test 1/2 failing; first case 1: error unknown function `push`
+ds-003 test 1/2 failing; first case 1: error `push` changes its receiver, which must be a variable or a field/index path of one, cal...
 ds-004 check E0308 swap
 ds-005 test 1/1 failing; first case 1: expected "25.0" got "25"
-ds-006 test 2/2 failing; first case 1: error unsupported unary `&`
-ds-007 test 2/2 failing; first case 1: error unsupported unary `&`
-ds-008 test 1/1 failing; first case 1: error unsupported unary `&`
-ds-009 test 2/2 failing; first case 1: error unknown function `push`
-ds-010 test 2/2 failing; first case 1: error unsupported unary `&`
-ds-012 test 2/2 failing; first case 1: error unsupported unary `&!`
-ds-014 test 1/2 failing; first case 1: error unknown function `push`
-ds-015 test 2/2 failing; first case 1: error unknown function `push`
+ds-006 test 1/2 failing; first case 2: error input does not parse: expected expression, found BitXor '^' (in PrefixExpr)
+ds-007 test 2/2 failing; first case 1: error unknown function `get`
+ds-008 test 1/1 failing; first case 1: expected "Mat2{a:6.0,b:8.0,c:10.0,d:12.0}" got "Mat2 { a: 6, b: 8, c: 10, d: 12 }"
+ds-012 test 1/2 failing; first case 1: error `swap(?)` mutates through a reference, which this evaluator does not model ? rebind ins...
+ds-015 test 2/2 failing; first case 1: error `push` changes its receiver, which must be a variable or a field/index path of one, cal...
 err-001 test 2/2 failing; first case 1: expected "R.Ok(5.0)" got "Ok(5)"
 err-002 test 2/2 failing; first case 1: error unknown function `splitn`
 err-003 check E0308 split
-err-004 test 2/2 failing; first case 1: error unsupported unary `&`
-err-005 test 2/2 failing; first case 1: error unsupported unary `&`
+err-004 test 2/2 failing; first case 1: error unknown function `iter`
+err-005 test 2/2 failing; first case 1: expected "?Some(3)" got "Some(3)"
 gt-002 check E0412 _
-gt-003 test 2/2 failing; first case 1: error unsupported unary `&`
+gt-003 test 2/2 failing; first case 1: error unknown function `clone`
 gt-004 check E0412 _
 gt-005 test 2/2 failing; first case 1: error unknown function `ok_or`
-sys-001 test 2/2 failing; first case 1: error unknown function `push`
-sys-002 test 2/2 failing; first case 1: error unknown function `push`
-sys-003 test 2/2 failing; first case 1: error unknown function `push`
-sys-004 test 2/2 failing; first case 1: error unknown function `push`
+sys-001 test 2/2 failing; first case 1: expected "?Some(0)" got "Some(0)"
+sys-002 test 1/2 failing; first case 2: error unsupported binary `&` on these types
+sys-003 test 2/2 failing; first case 1: error unsupported binary `&` on these types
+sys-004 test 2/2 failing; first case 1: expected "?Some(42)" got "Some(42)"
 sys-005 check E0425 s
-sys-006 test 2/2 failing; first case 1: error unsupported unary `&`
+sys-006 test 2/2 failing; first case 1: error unknown function `clone`
 sys-007 check E0308 env.get_var
 sys-008 check E0425 _
 sys-009 test 2/2 failing; first case 1: error bad int `14695981039346656037`
@@ -75,7 +67,7 @@ sys-010 unrunnable 1/1 case(s): expected is not a value literal: [app] [INFO] st
 web-001 check E0425 use http
 web-002 check E0308 find
 web-003 check E0412 Request
-web-004 test 1/1 failing; first case 1: error unsupported unary `&`
+web-004 test 1/1 failing; first case 1: expected "{\"name\":\"app\",\"version\":\"1.0\",\"features\":[\"fast\"]}" got "\"{\\\"name\\\":\\\"app\\\",\\\"version\\\":\\\"1.0\\\",\\\"features\\\":[\\\"fast\\\"]}\""
 web-005 check E0412 Request
 web-006 check E0308 split
 web-007 check E0425 use http.Client

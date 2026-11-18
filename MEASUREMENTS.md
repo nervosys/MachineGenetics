@@ -266,7 +266,7 @@ server** (`--rap`) to amortize startup to ~0.
 
 ### Token efficiency (token-bench, 99-task corpus vs Rust)
 ```
-source bytes  1.039 (MAGE 3.9% MORE)   dense  0.918 (8.2% fewer)   native lexers  0.980 (2.0% fewer)
+source bytes  1.038 (MAGE 3.8% MORE)   dense  0.918 (8.2% fewer)   native lexers  0.980 (2.0% fewer)
 ```
 Shared counting rule 1.017. The MAGE and Rust sources of each pair were reconciled on
 2026-11-15 (missing content added to whichever side lacked it, `conc-010` dropped, so the

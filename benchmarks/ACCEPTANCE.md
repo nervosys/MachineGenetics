@@ -1,7 +1,10 @@
 # Task acceptance: do the references type-check, and do they pass their own tests?
 
-Measured 2026-11-17 by `scripts/task-acceptance.py`, then re-measured after the
-task defects below were fixed (wrapper:
+Measured 2026-11-17 by `scripts/task-acceptance.py`, re-measured after the
+task defects below were fixed, and re-measured again on 2026-11-18 on a tree
+that also carries the evaluator fixes (`push`/`pop` on a receiver, `&`/`&!`
+references) and five mechanical word renames (see "Re-measurement" below;
+wrapper:
 `scripts/check-task-acceptance.sh`, baseline: `task-acceptance-baseline.txt`),
 over the 99 tasks in `benchmarks/tasks/*.json`, with `mage-parse` v0.3.0.
 
@@ -17,40 +20,85 @@ A task is **accepted** when the answer to 2 is yes and every case in 3 passes.
 This document is measurement and classification. The first measurement found 47
 references that did not type-check and 18 accepted tasks; the task-side defects
 among them (the reference or a test input is wrong as MAGE) have since been
-fixed in `benchmarks/tasks/*.json`, which is why the tables below read 34 and
-20. The compiler and evaluator were not touched. Nothing here is a claim that
-the remaining 79 tasks are wrong: most fail on a compiler or evaluator limit.
+fixed in `benchmarks/tasks/*.json`; with the evaluator fixes the tables below
+read 34 not type-checking and 28 accepted. Nothing here is a claim that the
+remaining 71 tasks are wrong: most fail on a compiler or evaluator limit.
 
 ## Numbers
 
 | Category | Tasks | Parse | Check-clean | All tests pass | Some test fails | Unrunnable | Accepted |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | agent-orchestration | 10 | 10 | 6 | 0 | 5 | 5 | 0 |
-| algorithms | 15 | 15 | 15 | 7 | 8 | 0 | 7 |
+| algorithms | 15 | 15 | 15 | 12 | 3 | 0 | 12 |
 | basic-io | 10 | 10 | 10 | 9 | 1 | 0 | 9 |
 | concurrency | 9 | 9 | 0 | 0 | 8 | 1 | 0 |
-| data-structures | 15 | 15 | 14 | 4 | 11 | 0 | 3 |
+| data-structures | 15 | 15 | 14 | 7 | 8 | 0 | 6 |
 | error-handling | 5 | 5 | 4 | 0 | 5 | 0 | 0 |
 | full-applications | 10 | 10 | 4 | 0 | 9 | 1 | 0 |
-| generics-traits | 5 | 5 | 3 | 1 | 4 | 0 | 1 |
+| generics-traits | 5 | 5 | 3 | 2 | 3 | 0 | 1 |
 | systems | 10 | 10 | 7 | 0 | 7 | 3 | 0 |
 | web-network | 10 | 10 | 2 | 0 | 4 | 6 | 0 |
-| **Total** | **99** | **99** | **65** | **21** | **62** | **16** | **20** |
+| **Total** | **99** | **99** | **65** | **30** | **53** | **16** | **28** |
 
-Before the task fixes the same table read 98 parse, 52 check-clean, 18 all
-pass, 65 some fail, 16 unrunnable, 18 accepted.
+Before the task fixes the table read 98 parse, 52 check-clean, 18 all pass,
+65 some fail, 16 unrunnable, 18 accepted; after them (evaluator as it was) 99,
+65, 21, 62, 16, 20.
 
 "All tests pass", "some test fails" and "unrunnable" partition the tasks by
 their test cases alone, independent of the check column ("some test fails"
-includes cases that could not be evaluated: see below). The 175 cases: 59 pass,
-9 fail (ran, wrong value), 86 error (could not be evaluated), 21 unrunnable
-(before: 56 / 9 / 89 / 21).
-The 20 accepted tasks are the 7 algorithms (`algo-001/002/005/007/008/009/011`),
-9 basic-io (all but `basic-008`), `ds-002`, `ds-011`, `ds-013` and `gt-001`.
-`ds-004` passes its test but its reference does not type-check (a compiler
-question: group A), so it is not accepted.
+includes cases that could not be evaluated: see below). The 175 cases: 79 pass,
+22 fail (ran, wrong value), 53 error (could not be evaluated), 21 unrunnable
+(after the task fixes, before the evaluator fixes: 59 / 9 / 86 / 21; before
+either: 56 / 9 / 89 / 21).
+The 28 accepted tasks are the 12 algorithms (all but `algo-003/004/013`),
+9 basic-io (all but `basic-008`), 6 data-structures (`ds-002/009/010/011/013/014`)
+and `gt-001`. `ds-004` and `gt-004` pass their tests but their references do
+not type-check (a compiler question: group A), so they are not accepted.
 
 Every task now parses (`app-008`'s closure parameter was renamed).
+
+## Re-measurement, 2026-11-18
+
+Tree: the task fixes above, plus the evaluator fixes (`push`/`pop` on a
+receiver, `&` and `&!` references) and the E0714 warning. Counts, with the
+2026-11-17 figures in brackets:
+
+| | Task-fix tree | + evaluator fixes | + five renames |
+|---|---:|---:|---:|
+| parse | 99 | 99 | 99 |
+| type-check | 65 | 65 | 65 |
+| accepted | 20 | **28** | **28** |
+| cases pass / fail / error / unrunnable | 59 / 9 / 86 / 21 | 79 / 22 / 53 / 21 | 79 / 22 / 53 / 21 |
+| baseline lines | 79 | 71 | 71 |
+
+The eight newly accepted tasks all come from the evaluator fixes (they were
+`test` failures on `push`/`&`): `algo-006`, `algo-010`, `algo-012`, `algo-014`,
+`algo-015`, `ds-009`, `ds-010`, `ds-014`. The five renames moved no task: the
+sites they touched (`agent-006`, `app-001`, `app-010`, `gt-003`, `sys-006`,
+`sys-010`, `web-005`, `web-010`) still fail on something else (`clone`, a type
+error, a host effect, or output that is not a value). The 11 sites renamed in
+`solution.rdx_source` were `contains_key` to `contains` (5), `io.write_line` to
+`io.writeln` (3), `fs.read_string` to `fs.read_to_string`, `fs.write_string` to
+`fs.write` and `async.sleep` to `time.sleep` (one each); the published word was
+checked with `--ontology-query` and against `eval.rs` (`contains` tests map
+keys). No `expected` value and no Rust twin was changed. `token_count` claims
+are unchanged: each rename replaces one identifier by one identifier, and the
+native-lexer ratio stays 0.980.
+
+The measurement was run twice (and the baseline regenerated by a third run): the
+status of every task is identical.
+
+Remaining non-accepted tasks by first reason (71): type errors 34
+(E0412 unresolved type 14: `Handle`/`AtomicI64`/`Mutex`, `Request`/`Response`,
+associated types; E0308 11; E0425 8; E0428 1); evaluator or notation on a
+check-clean task 31 (float / `?Some` / `R.Ok` / struct notation 12; a missing
+method 9: `clone` 4, `as_bytes`, `get`, `splitn`, `iter`, `ok_or`; mutation
+through a reference or a receiver the evaluator does not model 5; binary `&` 2;
+`^expr` input 2; a `u64` above `i64::MAX` 1); unrunnable (host effects or
+output that is not a value) 6. The prose in the sections below was written for
+the 2026-11-17 counts: where it gives a count of the evaluator groups in B
+(`.push` 13, unary `&` 15), those two groups are now gone and the groups above
+replace them.
 
 ## How one case is judged
 
@@ -146,7 +194,7 @@ Left alone, with the reason:
   these either (they return tuples or use `reqwest`/`http`), so there is no
   twin definition to copy, and inventing an HTTP library per task would change
   what the task measures.
-* `web-010`: `async.sleep` does not resolve, and `base_delay_ms * (1 << attempt)`
+* `web-010`: `async.sleep` did not resolve (renamed `time.sleep` on 2026-11-18), and `base_delay_ms * (1 << attempt)`
   is typed `u64 * u32`, where Rust infers a `u64` shift. The `R.Ok` fix landed;
   the rest is a checker and library question.
 
@@ -168,9 +216,11 @@ Of the 34, none is a plain typo any more. The 8 + 5 library-gap tasks are the
 ones where the task as written depends on a library MAGE does not ship;
 whether MAGE should ship it is a separate decision.
 
-### B. The reference type-checks but the tests do not pass (39 tasks)
+### B. The reference type-checks but the tests do not pass (31 tasks; 39 before the evaluator fixes)
 
-These tasks are check-clean, so the failure is in running them. 34 of the 39
+These tasks are check-clean, so the failure is in running them. (The counts in
+this table are those of 2026-11-17; see "Re-measurement" for the current groups.)
+34 of the 39
 involve **an evaluator that cannot run a program the checker accepts**; those
 are evaluator limitations, not task defects, and the task may well be correct.
 4 are a formatting-versus-notation question and 1 is a test-input defect.
@@ -204,8 +254,8 @@ the checker already rejects the files).
   is most often mistaken for. Of the 34 failures, none is a typo in the task
   that survives: 13 depend on a library MAGE does not ship (see above) and 21
   are unclear or compiler-side (group A).
-* "Accepted 20" is a **lower bound** on correct tasks: 34 of the 45 check-clean
-  tasks that fail on tests involve an evaluator limitation. Equally it is not an
+* "Accepted 28" is a **lower bound** on correct tasks: most of the 37 check-clean
+  tasks that are not accepted (31 fail a test, 6 unrunnable) involve an evaluator limitation. Equally it is not an
   upper bound on wrong ones: a case passes only if the evaluator and the task
   agree.
 * The baseline can only shrink. When a task or the compiler is fixed so a task is
