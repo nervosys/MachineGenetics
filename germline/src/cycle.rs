@@ -37,7 +37,7 @@
 use super::attest::{Attestation, Attestor};
 use super::gate::{Approval, Episode, Verdict};
 use super::journal::{Entry, Journal};
-use super::lineage::Lineage;
+use super::lineage::{Lineage, SuccessionEvent};
 use super::supervisor::HealthSample;
 use super::{FitnessVector, Generation, GenerationId, Measurement};
 use ribosome::sched::BuildReport;
@@ -295,19 +295,25 @@ impl Cycle {
         // approving verdict without one did not come from `adjudicate`.
         let approval = self.approval.take().ok_or(CycleError::Unattested)?;
         lineage.add(self.candidate.clone());
+        let before = lineage.events().len();
         lineage.promote(approval).map_err(|e| CycleError::Lineage(e.to_string()))?;
 
-        let event = lineage.events().last().cloned();
-        if let Some(event) = event {
+        // One event outside a niche archive, as always. Under one, an admission
+        // and the promotion it may carry with it.
+        let events: Vec<_> = lineage.events()[before..].to_vec();
+        let mut took_authority = lineage.archive().is_none();
+        for event in events {
+            took_authority |= matches!(&event, SuccessionEvent::Promoted { generation: g, .. } if *g == generation);
             journal
                 .append(Entry::Succession { event })
                 .map_err(|e| CycleError::Journal(e.to_string()))?;
         }
-        journal
-            .append(Entry::Note {
-                text: format!("authority granted to {generation} by {}", authority.describe()),
-            })
-            .map_err(|e| CycleError::Journal(e.to_string()))?;
+        let text = if took_authority {
+            format!("authority granted to {generation} by {}", authority.describe())
+        } else {
+            format!("{generation} admitted to the archive by {}; the championship did not move", authority.describe())
+        };
+        journal.append(Entry::Note { text }).map_err(|e| CycleError::Journal(e.to_string()))?;
 
         self.phase = Phase::Promoted;
         Ok(generation)

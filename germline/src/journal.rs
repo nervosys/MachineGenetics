@@ -59,6 +59,10 @@ pub enum Entry {
         genome: Option<crate::variation::Genome>,
         #[serde(default, skip_serializing_if = "String::is_empty")]
         note: String,
+        /// The second parent of a recombinant, recorded only under a niche
+        /// archive. Skipped when absent, so earlier entries hash as they did.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        mate: Option<GenerationId>,
     },
     /// A candidate was measured.
     Evaluated {
@@ -106,6 +110,13 @@ pub enum Entry {
     /// candidate from the pending set and from the proposal count, so the cycle
     /// still counts once. A new variant, so every earlier entry hashes as it did.
     MeasuredNotSubmitted { generation: GenerationId, cycle: u32, submitted: GenerationId },
+    /// The run's lineage keeps a niche archive ([`crate::archive`]), and these are
+    /// its pinned niches. Written once, at the start of a run that opens one, so
+    /// replay can check the archive it rebuilds is the one that was pinned.
+    /// Admissions, replacements and demotions are `Succession` entries
+    /// (`admitted`, `evicted`, `demoted`); a refusal is the usual `refused`.
+    /// A new variant, so every earlier entry hashes as it did.
+    ArchiveOpened { spec: crate::archive::NicheSpec, digest: Digest },
     /// The gate ruled.
     Adjudicated { verdict: Verdict, attestation: Option<String> },
     /// Authority moved (or was refused).
@@ -309,6 +320,7 @@ pub fn proposed(g: &Generation, seed: u64, plan: &str) -> Entry {
         parent: g.parent,
         genome: g.genome.clone(),
         note: g.note.clone(),
+        mate: g.mate,
     }
 }
 

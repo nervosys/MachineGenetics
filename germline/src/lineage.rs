@@ -22,6 +22,31 @@
 //! Comparing only to the incumbent makes every one of those promotions look
 //! reasonable in isolation, which is exactly how the capability disappears.
 //!
+//! ## Optionally, a population with niches
+//!
+//! [`Lineage::with_archive`] gives the lineage a [`NicheArchive`] (see
+//! [`crate::archive`]). Without one, nothing in this file behaves differently.
+//! With one, the **champion** is still a single generation, defined by a rule
+//! over the archive's elites, so fallback, demotion and everything else that
+//! needs one champion still has one:
+//!
+//! - It is always an elite.
+//! - After each admission, an elite takes the championship from the sitting
+//!   champion when its capability is higher by at least the spec's
+//!   `min_improvement`; the sitting champion is kept otherwise, so a hair's
+//!   breadth does not churn it. When the sitting champion has just been
+//!   replaced in its cell, the best elite takes over. "Best" is the highest
+//!   capability, the earliest generation breaking a tie. The gate's
+//!   [`DominanceRule`](super::gate::DominanceRule) is not used for this.
+//! - Every change of champion is a `Promoted` event, so it replays.
+//!
+//! **Demotion** of an elite empties its cell. The elite it had displaced is not
+//! restored: it was replaced because a later candidate beat it on measured
+//! evidence, and the lineage keeps it in the record where the gate can re-admit
+//! it. Demoting the champion falls back to the best remaining elite whose
+//! artifact is materialized; the lineage is never left without a champion while
+//! one remains.
+//!
 //! ## A lineage is rebuilt, never loaded
 //!
 //! A lineage names the champion, so a lineage read from a file would be a way
@@ -37,6 +62,7 @@
 //! succession event through the same transitions the live methods use,
 //! refusing any the lineage at that point would not have allowed.
 
+use super::archive::{Admission, CellKey, NicheArchive, NicheSpec};
 use super::gate::Approval;
 use super::journal::{Entry, Journal, JournalError};
 use super::manifest::ProposerRecord;
@@ -63,6 +89,13 @@ pub enum SuccessionEvent {
     RolledBack { from: GenerationId, to: GenerationId, reason: String },
     /// A promotion was refused, recorded so repeated near-misses are visible.
     Refused { generation: GenerationId, reasons: Vec<String> },
+    /// Under a niche archive: a generation was admitted to a cell, displacing
+    /// the elite `replaced` if there was one. Whether the champion changed is a
+    /// separate `Promoted` event that follows it.
+    Admitted { generation: GenerationId, cell: CellKey, replaced: Option<GenerationId>, gate: Digest, evaluator: String },
+    /// Under a niche archive: an elite that was not the champion was demoted,
+    /// and its cell emptied.
+    Evicted { generation: GenerationId, cell: CellKey, reason: String },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -77,6 +110,8 @@ pub enum LineageError {
     /// The approval was earned against a champion that no longer holds
     /// authority, so it says nothing about the challenger against this one.
     StaleApproval { judged_against: Option<GenerationId>, champion: Option<GenerationId> },
+    /// A niche-archive transition that the archive does not allow.
+    Archive(String),
 }
 
 impl std::fmt::Display for LineageError {
@@ -92,6 +127,7 @@ impl std::fmt::Display for LineageError {
                 write!(f, "generation {g} is quarantined and is not a valid rollback target")
             }
             LineageError::NoFallback => write!(f, "no earlier champion exists to fall back to"),
+            LineageError::Archive(why) => write!(f, "niche archive: {why}"),
             LineageError::StaleApproval { judged_against, champion } => write!(
                 f,
                 "the approval was earned against {} and the champion is now {}",
@@ -167,11 +203,84 @@ pub struct Lineage {
     events: Vec<SuccessionEvent>,
     champion: Option<GenerationId>,
     next_id: u64,
+    /// The niche archive, when the lineage keeps one. Left out of the
+    /// serialization when absent, so a lineage without one serializes as before.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    archive: Option<NicheArchive>,
 }
 
 impl Lineage {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Keep a niche archive (see [`crate::archive`]). Refused for an invalid
+    /// spec, and for a lineage that already has a champion: its champion would
+    /// not be an elite.
+    pub fn with_archive(mut self, spec: NicheSpec) -> Result<Self, String> {
+        if self.champion.is_some() {
+            return Err("an archive must be opened before the lineage has a champion".into());
+        }
+        self.archive = Some(NicheArchive::new(spec)?);
+        Ok(self)
+    }
+
+    /// The niche archive, if this lineage keeps one.
+    pub fn archive(&self) -> Option<&NicheArchive> {
+        self.archive.as_ref()
+    }
+
+    /// The elite of `cell`'s capability, finite or nothing.
+    fn elite_capability(&self, id: GenerationId) -> Option<f64> {
+        let axis = &self.archive.as_ref()?.spec().capability_axis;
+        self.get(id)?.heldout_fitness()?.get(axis).filter(|v| v.is_finite())
+    }
+
+    /// The best elite by capability, the earliest generation breaking a tie,
+    /// among those other than `exclude` that `usable` accepts.
+    fn best_elite(&self, exclude: Option<GenerationId>, usable: &dyn Fn(&Generation) -> bool) -> Option<GenerationId> {
+        let mut best: Option<(GenerationId, f64)> = None;
+        for (_, id) in self.archive.as_ref()?.elites() {
+            if Some(id) == exclude || !self.get(id).is_some_and(usable) {
+                continue;
+            }
+            let Some(cap) = self.elite_capability(id) else { continue };
+            let better = match best {
+                None => true,
+                Some((b, bc)) => cap > bc || (cap == bc && id < b),
+            };
+            if better {
+                best = Some((id, cap));
+            }
+        }
+        best.map(|(id, _)| id)
+    }
+
+    /// The champion the archive's rule gives now: the sitting champion unless it
+    /// has left the archive or an elite beats it by the margin. See the module
+    /// note.
+    fn champion_after(&self) -> Option<GenerationId> {
+        let archive = self.archive.as_ref()?;
+        let best = self.best_elite(None, &|_| true)?;
+        let Some(cur) = self.champion.filter(|c| archive.contains(*c)) else { return Some(best) };
+        if best == cur {
+            return Some(cur);
+        }
+        match (self.elite_capability(best), self.elite_capability(cur)) {
+            (Some(b), Some(c)) if b > c && b - c >= archive.spec().min_improvement => Some(best),
+            (Some(_), None) => Some(best),
+            _ => Some(cur),
+        }
+    }
+
+    /// Hand the championship to whoever the archive's rule names, if that is not
+    /// the sitting champion.
+    fn refresh_champion(&mut self, gate: Digest, evaluator: String) {
+        if let Some(n) = self.champion_after() {
+            if Some(n) != self.champion {
+                self.install(n, gate, evaluator);
+            }
+        }
     }
 
     /// Allocate the next generation id. Never reuses, even after rollback.
@@ -278,8 +387,52 @@ impl Lineage {
             });
         }
         let gate = approval.gate().clone();
-        self.install(id, gate, approval.evaluator().to_string());
+        match (&self.archive, approval.admission()) {
+            (None, None) => self.install(id, gate, approval.evaluator().to_string()),
+            (Some(_), Some(adm)) => self.admit(id, adm.clone(), gate, approval.evaluator().to_string())?,
+            (None, Some(_)) => return Err(LineageError::Archive("the approval admits to an archive and the lineage keeps none".into())),
+            (Some(_), None) => return Err(LineageError::Archive("the lineage keeps an archive and the approval carries no cell".into())),
+        }
         Ok(())
+    }
+
+    /// The admission transition: seat `id` in its cell, then let the archive's
+    /// champion rule decide whether the championship moves.
+    ///
+    /// Re-derives the cell from the generation's own held-out measurement and
+    /// checks the occupant is the one the gate saw, so an approval cannot seat a
+    /// generation in a cell its measurement does not give, or over an elite the
+    /// gate did not judge it against.
+    fn admit(&mut self, id: GenerationId, adm: Admission, gate: Digest, evaluator: String) -> Result<(), LineageError> {
+        let Some(archive) = self.archive.as_ref() else {
+            return Err(LineageError::Archive("the lineage keeps no archive".into()));
+        };
+        if archive.occupant(&adm.cell) != adm.replaces {
+            return Err(LineageError::Archive(format!(
+                "cell {:?} holds {:?} and the approval was earned against {:?}",
+                adm.cell,
+                archive.occupant(&adm.cell),
+                adm.replaces
+            )));
+        }
+        let derived = self.get(id).and_then(|g| g.heldout_fitness()).map(|f| archive.spec().cell_of(f));
+        if derived != Some(Ok(adm.cell.clone())) {
+            return Err(LineageError::Archive(format!("{id}'s measurement does not place it in cell {:?}", adm.cell)));
+        }
+        if archive.contains(id) {
+            return Err(LineageError::Archive(format!("{id} is already an elite")));
+        }
+        self.place_elite(id, adm.cell, adm.replaces, gate.clone(), evaluator.clone());
+        self.refresh_champion(gate, evaluator);
+        Ok(())
+    }
+
+    /// Seat `id` in `cell` and record it. Shared by [`Lineage::admit`] and replay.
+    fn place_elite(&mut self, id: GenerationId, cell: CellKey, replaced: Option<GenerationId>, gate: Digest, evaluator: String) {
+        if let Some(a) = self.archive.as_mut() {
+            a.place(cell.clone(), id);
+        }
+        self.events.push(SuccessionEvent::Admitted { generation: id, cell, replaced, gate, evaluator });
     }
 
     /// The promotion transition, shared by [`Lineage::promote`] and replay.
@@ -318,6 +471,13 @@ impl Lineage {
         &self,
         materialized: &dyn Fn(&Digest) -> bool,
     ) -> Result<GenerationId, LineageError> {
+        // Under an archive the fallback is the best other elite that is
+        // materialized: the generations it holds are the ones with standing.
+        if self.archive.is_some() {
+            return self
+                .best_elite(self.champion, &|g| materialized(&g.artifact))
+                .ok_or(LineageError::NoFallback);
+        }
         self.generations
             .iter()
             .rev()
@@ -355,6 +515,11 @@ impl Lineage {
     /// The demotion transition, shared by [`Lineage::demote_champion`] and
     /// replay.
     fn apply_demotion(&mut self, current: GenerationId, target: GenerationId, reason: &str) {
+        if let Some(a) = self.archive.as_mut() {
+            // The demoted elite's cell is emptied, not refilled with whoever it
+            // displaced; see the module note.
+            a.remove(current);
+        }
         if let Some(g) = self.get_mut(current) {
             g.status = Status::Quarantined;
             g.note = reason.to_string();
@@ -370,13 +535,51 @@ impl Lineage {
         });
     }
 
-    /// Deliberate return to a specific earlier generation.
+    /// Demote an elite of the archive and empty its cell. The champion falls back
+    /// ([`Lineage::demote_champion`]) and `Ok(Some(new champion))` is returned;
+    /// any other elite is evicted, the champion is untouched, and the result is
+    /// `Ok(None)`. Needs an archive.
+    pub fn demote_elite(
+        &mut self,
+        id: GenerationId,
+        reason: &str,
+        materialized: &dyn Fn(&Digest) -> bool,
+    ) -> Result<Option<GenerationId>, LineageError> {
+        let Some(archive) = &self.archive else {
+            return Err(LineageError::Archive("the lineage keeps no archive".into()));
+        };
+        if !archive.contains(id) {
+            return Err(LineageError::Archive(format!("{id} is not an elite")));
+        }
+        if self.champion == Some(id) {
+            return self.demote_champion(reason, materialized).map(Some);
+        }
+        self.apply_eviction(id, reason);
+        Ok(None)
+    }
+
+    /// The eviction transition, shared by [`Lineage::demote_elite`] and replay.
+    fn apply_eviction(&mut self, id: GenerationId, reason: &str) {
+        let cell = self.archive.as_mut().and_then(|a| a.remove(id)).unwrap_or_default();
+        if let Some(g) = self.get_mut(id) {
+            g.status = Status::Quarantined;
+            g.note = reason.to_string();
+        }
+        self.events.push(SuccessionEvent::Evicted { generation: id, cell, reason: reason.to_string() });
+    }
+
+    /// Deliberate return to a specific earlier generation. Under an archive the
+    /// target must be an elite, and the move is an operator's override of the
+    /// champion rule: the rule applies again at the next admission.
     pub fn roll_back_to(
         &mut self,
         target: GenerationId,
         reason: &str,
         materialized: &dyn Fn(&Digest) -> bool,
     ) -> Result<(), LineageError> {
+        if self.archive.as_ref().is_some_and(|a| !a.contains(target)) {
+            return Err(LineageError::Archive(format!("{target} is not an elite and cannot be rolled back to")));
+        }
         let g = self.get(target).ok_or(LineageError::UnknownGeneration(target))?;
         if g.status == Status::Quarantined {
             return Err(LineageError::Quarantined(target));
@@ -453,15 +656,28 @@ impl Lineage {
         let (mut proposals, mut trailing_refusals) = (0u32, 0u32);
         let mut energy_spent = 0.0f64;
         let mut proposers: BTreeMap<String, ProposerRecord> = BTreeMap::new();
+        // Under an archive, an admission that moves the championship is followed
+        // by the `Promoted` that records it. This is that promotion, owed.
+        let mut owed: Option<(GenerationId, Digest, String)> = None;
         for r in &records {
             let bad = |detail: String| ReplayError::Inconsistent { index: r.index, detail };
+            if let Some((n, _, _)) = &owed {
+                let paid = matches!(
+                    &r.entry,
+                    Entry::Succession { event: SuccessionEvent::Promoted { generation, .. } } if generation == n
+                );
+                if !paid {
+                    return Err(bad(format!("{n} should have taken the championship after the admission, and the journal goes on without it")));
+                }
+            }
             match &r.entry {
-                Entry::Proposed { generation, artifact, definitions, knowledge_base, parent, genome, note, .. } => {
+                Entry::Proposed { generation, artifact, definitions, knowledge_base, parent, genome, note, mate, .. } => {
                     if l.get(*generation).is_some() || pending.contains_key(generation) {
                         return Err(bad(format!("{generation} is proposed twice")));
                     }
                     let mut g = Generation::new(*generation, artifact.clone()).note(note.clone());
                     g.parent = *parent;
+                    g.mate = *mate;
                     g.genome = genome.clone();
                     g.definitions = definitions.clone();
                     g.knowledge_base = knowledge_base.clone();
@@ -492,15 +708,64 @@ impl Lineage {
                                 l.champion
                             )));
                         }
+                        if l.archive.is_some() {
+                            // The generation was added when it was admitted.
+                            if l.champion_after() != Some(*generation) {
+                                return Err(bad(format!(
+                                    "{generation} is promoted, and the archive's champion rule names {:?}",
+                                    l.champion_after()
+                                )));
+                            }
+                            owed = None;
+                            l.install(*generation, gate.clone(), evaluator.clone());
+                        } else {
+                            let g = pending
+                                .remove(generation)
+                                .ok_or_else(|| bad(format!("{generation} is promoted without being proposed")))?;
+                            if g.heldout_fitness().is_none() {
+                                return Err(bad(format!("{generation} is promoted with no held-out measurement")));
+                            }
+                            l.add(g);
+                            l.install(*generation, gate.clone(), evaluator.clone());
+                        }
+                        trailing_refusals = 0;
+                    }
+                    SuccessionEvent::Admitted { generation, cell, replaced, gate, evaluator } => {
+                        let Some(archive) = l.archive.as_ref() else {
+                            return Err(bad(format!("{generation} is admitted to an archive the lineage does not keep")));
+                        };
                         let g = pending
                             .remove(generation)
-                            .ok_or_else(|| bad(format!("{generation} is promoted without being proposed")))?;
-                        if g.heldout_fitness().is_none() {
-                            return Err(bad(format!("{generation} is promoted with no held-out measurement")));
+                            .ok_or_else(|| bad(format!("{generation} is admitted without being proposed")))?;
+                        let Some(f) = g.heldout_fitness() else {
+                            return Err(bad(format!("{generation} is admitted with no held-out measurement")));
+                        };
+                        if archive.spec().cell_of(f) != Ok(cell.clone()) {
+                            return Err(bad(format!("{generation}'s measurement does not place it in cell {cell:?}")));
+                        }
+                        if archive.occupant(cell) != *replaced {
+                            return Err(bad(format!(
+                                "{generation} is admitted over {replaced:?} in cell {cell:?}, which held {:?}",
+                                archive.occupant(cell)
+                            )));
                         }
                         l.add(g);
-                        l.install(*generation, gate.clone(), evaluator.clone());
+                        l.place_elite(*generation, cell.clone(), *replaced, gate.clone(), evaluator.clone());
+                        owed = l
+                            .champion_after()
+                            .filter(|n| Some(*n) != l.champion)
+                            .map(|n| (n, gate.clone(), evaluator.clone()));
                         trailing_refusals = 0;
+                    }
+                    SuccessionEvent::Evicted { generation, cell, reason } => {
+                        let held = l.archive.as_ref().and_then(|a| a.cell_of_generation(*generation)).cloned();
+                        if held.as_ref() != Some(cell) {
+                            return Err(bad(format!("{generation} is evicted from {cell:?}, and holds {held:?}")));
+                        }
+                        if l.champion == Some(*generation) {
+                            return Err(bad(format!("{generation} is evicted and is the champion; that is a demotion")));
+                        }
+                        l.apply_eviction(*generation, reason);
                     }
                     SuccessionEvent::Refused { generation, reasons } => {
                         pending.remove(generation);
@@ -511,7 +776,11 @@ impl Lineage {
                         if l.champion != Some(*generation) {
                             return Err(bad(format!("{generation} is demoted and was not the champion")));
                         }
-                        if l.get(*to).map(|g| g.status) != Some(Status::Retired) {
+                        if let Some(a) = &l.archive {
+                            if !a.contains(*to) || to == generation {
+                                return Err(bad(format!("{generation} falls back to {to}, which is not another elite")));
+                            }
+                        } else if l.get(*to).map(|g| g.status) != Some(Status::Retired) {
                             return Err(bad(format!("{generation} falls back to {to}, which is not a retired generation")));
                         }
                         l.apply_demotion(*generation, *to, reason);
@@ -519,6 +788,9 @@ impl Lineage {
                     SuccessionEvent::RolledBack { from, to, reason } => {
                         if l.champion != Some(*from) {
                             return Err(bad(format!("a rollback from {from}, which was not the champion")));
+                        }
+                        if l.archive.as_ref().is_some_and(|a| !a.contains(*to)) {
+                            return Err(bad(format!("a rollback to {to}, which is not an elite")));
                         }
                         match l.get(*to).map(|g| g.status) {
                             None => return Err(bad(format!("a rollback to unknown {to}"))),
@@ -563,8 +835,39 @@ impl Lineage {
                     proposals = proposals.saturating_sub(1);
                 }
                 Entry::EnergySpent { joules, .. } => energy_spent += joules,
+                // The niches the run pinned. The archive replay rebuilds must be
+                // that one; one opened here must open on an empty lineage.
+                Entry::ArchiveOpened { spec, digest } => {
+                    if spec.digest() != *digest {
+                        return Err(bad("the archive's spec does not match its recorded digest".into()));
+                    }
+                    match &l.archive {
+                        Some(a) if a.spec() != spec => {
+                            return Err(bad("the journal's archive differs from the one the lineage was started with".into()))
+                        }
+                        Some(_) => {}
+                        None => {
+                            if l.champion.is_some() {
+                                return Err(bad("an archive is opened after the lineage has a champion".into()));
+                            }
+                            l.archive = Some(NicheArchive::new(spec.clone()).map_err(|e| bad(e))?);
+                        }
+                    }
+                }
                 Entry::Adjudicated { .. } | Entry::Failure { .. } | Entry::Note { .. } => {}
             }
+            // An owed promotion is cleared only by its own entry, above.
+            if let Some((n, _, _)) = &owed {
+                if l.champion == Some(*n) {
+                    owed = None;
+                }
+            }
+        }
+        // A journal that ends between an admission and the promotion it owes (a
+        // crash between the two appends) still rebuilds the lineage the live run
+        // had: the archive's rule, applied.
+        if let Some((n, gate, evaluator)) = owed {
+            l.install(n, gate, evaluator);
         }
         Ok(Resumed { lineage: l, proposals, trailing_refusals, energy_spent, proposers, head })
     }
