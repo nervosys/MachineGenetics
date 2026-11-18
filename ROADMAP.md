@@ -204,7 +204,7 @@
 | 89 | `MEASUREMENTS.md` + perf harness | ✅ | `perf_measure.rs`; every figure reproducible via `cargo test --release perf_report -- --ignored` |
 | 90 | Cross-language executability harness | ✅ | `benchmarks/cross_lang` — compile+run 5 tasks across languages with a **real BPE** tokenizer, repo-relative paths (no local-path leakage) |
 | 91 | Datalog evaluator optimization | ✅ | Naive → **indexed semi-naive** (interning + `(pred,arg0)` index + delta): O(N²)→O(N) join, O(N³)→O(output) fixpoint, up to **~1430×** |
-| 92 | Token + reliability benches | ✅ | `token-bench` (99-task corpus vs Rust), `reliability-bench` (lex 99/99, parse 98/99, effective 99/99 with recovery) |
+| 92 | Token + reliability benches | ✅ | `token-bench` (99-task corpus vs Rust), `reliability-bench` (lex 99/99, parse 99/99, effective 99/99) |
 
 ## Phase K: Ab-initio language redesign (Steps 93–99)
 

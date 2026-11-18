@@ -74,7 +74,7 @@
       "token_count": 40
     },
     "tests": [
-      { "input": "swap(Pair { first: 1, second: 2 })", "expected": "Pair { first: 2, second: 1 }" }
+      { "input": "swap(@Pair { first: 1, second: 2 })", "expected": "Pair { first: 2, second: 1 }" }
     ]
   },
   {
@@ -86,8 +86,8 @@
       "existing_code": "S Point { x: f64, y: f64 }"
     },
     "solution": {
-      "rdx_source": "+f dist_sq(a: Point, b: Point) -> f64 {\n    v dx: f64 = b.x - a.x;\n    v dy: f64 = b.y - a.y;\n    dx * dx + dy * dy\n}",
-      "token_count": 38,
+      "rdx_source": "S Point { x: f64, y: f64 }\n\n+f dist_sq(a: Point, b: Point) -> f64 {\n    v dx: f64 = b.x - a.x;\n    v dy: f64 = b.y - a.y;\n    dx * dx + dy * dy\n}",
+      "token_count": 60,
       "effects": [],
       "skb_rules_used": []
     },
@@ -96,7 +96,7 @@
       "token_count": 42
     },
     "tests": [
-      { "input": "dist_sq(Point{x:0.0,y:0.0}, Point{x:3.0,y:4.0})", "expected": "25.0" }
+      { "input": "dist_sq(@Point{x:0.0,y:0.0}, @Point{x:3.0,y:4.0})", "expected": "25.0" }
     ]
   },
   {
@@ -155,7 +155,7 @@
       "token_count": 74
     },
     "tests": [
-      { "input": "Mat2{a:1.0,b:2.0,c:3.0,d:4.0}.add(&Mat2{a:5.0,b:6.0,c:7.0,d:8.0})", "expected": "Mat2{a:6.0,b:8.0,c:10.0,d:12.0}" }
+      { "input": "@Mat2{a:1.0,b:2.0,c:3.0,d:4.0}.add(&@Mat2{a:5.0,b:6.0,c:7.0,d:8.0})", "expected": "Mat2{a:6.0,b:8.0,c:10.0,d:12.0}" }
     ]
   },
   {
@@ -195,7 +195,7 @@
     },
     "tests": [
       { "input": "tree_sum(&Tree.Leaf)", "expected": "0" },
-      { "input": "tree_sum(&Tree.Node(1, ^Tree.Node(2, ^Tree.Leaf, ^Tree.Leaf), ^Tree.Node(3, ^Tree.Leaf, ^Tree.Leaf)))", "expected": "6" }
+      { "input": "tree_sum(&Tree.Node(1, Tree.Node(2, Tree.Leaf, Tree.Leaf), Tree.Node(3, Tree.Leaf, Tree.Leaf)))", "expected": "6" }
     ]
   },
   {
@@ -214,8 +214,8 @@
       "token_count": 38
     },
     "tests": [
-      { "input": "Range{start:0,end:10}.contains(5)", "expected": "true" },
-      { "input": "Range{start:0,end:10}.contains(10)", "expected": "false" }
+      { "input": "@Range{start:0,end:10}.contains(5)", "expected": "true" },
+      { "input": "@Range{start:0,end:10}.contains(10)", "expected": "false" }
     ]
   },
   {
@@ -234,8 +234,8 @@
       "token_count": 62
     },
     "tests": [
-      { "input": "m v = [1,2,3]; reverse(&!v); v", "expected": "[3,2,1]" },
-      { "input": "m v = [1]; reverse(&!v); v", "expected": "[1]" }
+      { "input": "m xs = [1,2,3]; reverse(&!xs); xs", "expected": "[3,2,1]" },
+      { "input": "m xs = [1]; reverse(&!xs); xs", "expected": "[1]" }
     ]
   },
   {
@@ -244,8 +244,8 @@
     "difficulty": "medium",
     "task": "Define a KeyValue generic struct with key: s and value: T, and a map_value method that transforms the value",
     "solution": {
-      "rdx_source": "S KeyValue[T] { key: s, value: T }\n\nI KeyValue[T] {\n    +f map_value[U](self, func: f(T) -> U) -> KeyValue[U] {\n        @KeyValue { key: self.key, value: func(self.value) }\n    }\n}",
-      "token_count": 42,
+      "rdx_source": "S KeyValue[T] { key: s, value: T }\n\nI[T] KeyValue[T] {\n    +f map_value[U](self, func: f(T) -> U) -> KeyValue[U] {\n        @KeyValue { key: self.key, value: func(self.value) }\n    }\n}",
+      "token_count": 67,
       "effects": [],
       "skb_rules_used": ["ownership:move-semantics"]
     },
@@ -254,7 +254,7 @@
       "token_count": 56
     },
     "tests": [
-      { "input": "KeyValue{key:\"a\", value:5}.map_value(fn(x) => x * 2)", "expected": "KeyValue{key:\"a\", value:10}" }
+      { "input": "@KeyValue{key:\"a\", value:5}.map_value(fn(x) => x * 2)", "expected": "KeyValue{key:\"a\", value:10}" }
     ]
   },
   {

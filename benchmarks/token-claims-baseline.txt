@@ -8,10 +8,7 @@
 #
 # It may only shrink. Correcting a claim means deleting its line in the same
 # commit; the bench fails if an entry here has stopped disagreeing.
-agent-001	mage
-agent-002	mage
 agent-002	rust
-agent-004	mage
 agent-005	mage
 agent-005	rust
 agent-006	mage
@@ -53,10 +50,7 @@ app-004	rust
 app-005	mage
 app-006	mage
 app-007	mage
-app-008	mage
-app-009	mage
 app-009	rust
-app-010	mage
 basic-002	mage
 basic-002	rust
 basic-004	mage
@@ -86,7 +80,6 @@ ds-003	mage
 ds-003	rust
 ds-004	mage
 ds-004	rust
-ds-005	mage
 ds-006	mage
 ds-006	rust
 ds-007	mage
@@ -100,15 +93,11 @@ ds-010	rust
 ds-011	mage
 ds-011	rust
 ds-012	mage
-ds-013	mage
 ds-013	rust
 ds-014	mage
 ds-015	mage
 err-001	rust
-err-002	mage
 err-002	rust
-err-003	mage
-err-004	mage
 err-004	rust
 err-005	mage
 err-005	rust
@@ -117,7 +106,6 @@ gt-002	rust
 gt-003	mage
 gt-003	rust
 gt-004	mage
-gt-005	mage
 gt-005	rust
 sys-001	mage
 sys-002	mage
@@ -125,7 +113,6 @@ sys-003	mage
 sys-003	rust
 sys-004	mage
 sys-005	mage
-sys-006	mage
 sys-007	mage
 sys-008	mage
 sys-009	rust
@@ -140,5 +127,4 @@ web-005	rust
 web-007	mage
 web-008	mage
 web-009	mage
-web-010	mage
 web-010	rust

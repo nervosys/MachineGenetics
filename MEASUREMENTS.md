@@ -110,8 +110,8 @@ Reject-by-construction error coverage: **B0000–B0006** (net), **K0001–K0004,
 machine-readable `{code, message, fix}`.
 
 ### Front-end reliability (reliability-bench, 99-task corpus)
-`lex 99/99 (100%) · parse 98/99 (99%) · effective 99/99 (100%)` (the 1 hard
-parse recovers via pattern-heal / structural-heal / refine). `cargo run --bin reliability-bench`.
+`lex 99/99 (100%) · parse 99/99 (100%) · effective 99/99 (100%)` (the one task that
+did not parse, `app-008`, parses since its closure parameter was renamed). `cargo run --bin reliability-bench`.
 
 ### agentic-eval quality scores (curated four-axis, bias-audited)
 - **Language composite 0.865** — #1 among *implemented* languages (Rust 0.80, Go
@@ -266,9 +266,9 @@ server** (`--rap`) to amortize startup to ~0.
 
 ### Token efficiency (token-bench, 99-task corpus vs Rust)
 ```
-source bytes  1.040 (MAGE 4.0% MORE)   dense  0.919 (8.1% fewer)   native lexers  0.984 (1.6% fewer)
+source bytes  1.039 (MAGE 3.9% MORE)   dense  0.918 (8.2% fewer)   native lexers  0.980 (2.0% fewer)
 ```
-Shared counting rule 1.020. The MAGE and Rust sources of each pair were reconciled on
+Shared counting rule 1.017. The MAGE and Rust sources of each pair were reconciled on
 2026-11-15 (missing content added to whichever side lacked it, `conc-010` dropped, so the
 corpus is now 99 tasks); the earlier figures were 1.055 / 0.933 / 0.997 / 1.034.
 Confirms the measured thesis: **text token efficiency is a floor** (≈ Rust), not a

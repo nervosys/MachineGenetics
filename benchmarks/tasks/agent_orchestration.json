@@ -5,8 +5,8 @@
     "difficulty": "very-hard",
     "task": "Write an agent loop that takes a task description, generates a plan, executes steps, and reports results using effects",
     "solution": {
-      "rdx_source": "effect llm {\n    f complete(prompt: &s) -> s;\n}\n\neffect tools {\n    f run_code(code: &s) -> R[s, s];\n    f read_file(path: &s) -> R[s, s];\n    f write_file(path: &s, content: &s) -> R[(), s];\n}\n\nS AgentResult {\n    plan: [s]~,\n    outputs: [s]~,\n    errors: [s]~,\n}\n\n+f agent_loop(task: &s) -> AgentResult / llm, tools, io {\n    v plan_prompt = f\"Break this task into steps:\\n{task}\";\n    v plan_text = llm.complete(&plan_prompt);\n    v steps = plan_text.lines().to_vec();\n    m outputs: [s]~ = [];\n    m errors: [s]~ = [];\n    @ step : &steps {\n        v code_prompt = f\"Write MAGE code for: {step}\";\n        v code = llm.complete(&code_prompt);\n        ? tools.run_code(&code) {\n            R.Ok(out) => outputs.push(out),\n            R.Err(err) => errors.push(f\"Step failed: {err}\"),\n        }\n    }\n    @AgentResult { plan: steps, outputs: outputs, errors: errors }\n}",
-      "token_count": 190,
+      "rdx_source": "effect llm {\n    f complete(prompt: &s) -> s;\n}\n\neffect tools {\n    f run_code(code: &s) -> R[s, s];\n    f read_file(path: &s) -> R[s, s];\n    f write_file(path: &s, content: &s) -> R[(), s];\n}\n\nS AgentResult {\n    plan: [s]~,\n    outputs: [s]~,\n    errors: [s]~,\n}\n\n+f agent_loop(task: &s) -> AgentResult / llm, tools, io {\n    v plan_prompt = f\"Break this task into steps:\\n{task}\";\n    v plan_text = llm.complete(&plan_prompt);\n    v steps = plan_text.lines().to_vec();\n    m outputs: [s]~ = [];\n    m errors: [s]~ = [];\n    @ step : &steps {\n        v code_prompt = f\"Write MAGE code for: {step}\";\n        v code = llm.complete(&code_prompt);\n        ? tools.run_code(&code) {\n            Ok(out) => outputs.push(out),\n            Err(err) => errors.push(f\"Step failed: {err}\"),\n        }\n    }\n    @AgentResult { plan: steps, outputs: outputs, errors: errors }\n}",
+      "token_count": 240,
       "effects": ["llm", "tools", "io"],
       "skb_rules_used": ["type_safety:result-matching", "borrow:shared-ref", "concurrency:effect-tracking"]
     },
@@ -24,9 +24,9 @@
     "difficulty": "very-hard",
     "task": "Write a multi-agent pipeline where a planner agent delegates subtasks to specialist worker agents and aggregates results",
     "solution": {
-      "rdx_source": "E AgentRole { Planner, Coder, Reviewer, Tester }\n\nS SubTask {\n    id: u32,\n    description: s,\n    assigned_to: AgentRole,\n    result: ?s,\n}\n\nS Pipeline {\n    tasks: [SubTask]~,\n}\n\nI Pipeline {\n    +f new() -> Pipeline { @Pipeline { tasks: [] } }\n    +f plan(&!self, goal: &s) / llm {\n        v plan = llm.complete(&f\"Plan subtasks for: {goal}\");\n        v lines = plan.lines();\n        m id: u32 = 0;\n        @ line : lines {\n            self.tasks.push(@SubTask {\n                id: id, description: line.to_string(),\n                assigned_to: AgentRole.Coder, result: ?None,\n            });\n            id = id + 1;\n        }\n    }\n    +f execute(&!self) / llm, tools {\n        m i: usize = 0;\n        loop {\n            ? i >= self.tasks.len() { break; }\n            v prompt = f\"As a {self.tasks[i].assigned_to}, do: {self.tasks[i].description}\";\n            v output = llm.complete(&prompt);\n            self.tasks[i].result = ?Some(output);\n            i = i + 1;\n        }\n    }\n    +f report(&self) -> s {\n        m lines: [s]~ = [];\n        @ task : &self.tasks {\n            v status = ? task.result { ?Some(_) => \"done\", ?None => \"pending\" };\n            lines.push(f\"[{task.id}] {status}: {task.description}\");\n        }\n        lines.join(\"\\n\")\n    }\n}",
-      "token_count": 260,
-      "effects": ["llm", "tools"],
+      "rdx_source": "E AgentRole { Planner, Coder, Reviewer, Tester }\n\nS SubTask {\n    id: u32,\n    description: s,\n    assigned_to: AgentRole,\n    result: ?s,\n}\n\nS Pipeline {\n    tasks: [SubTask]~,\n}\n\nI Pipeline {\n    +f new() -> Pipeline { @Pipeline { tasks: [] } }\n    +f plan(&!self, goal: &s) / llm {\n        v plan = llm.complete(&f\"Plan subtasks for: {goal}\");\n        v lines = plan.lines();\n        m id: u32 = 0;\n        @ line : lines {\n            self.tasks.push(@SubTask {\n                id: id, description: line.to_string(),\n                assigned_to: AgentRole.Coder, result: ?None,\n            });\n            id = id + 1;\n        }\n    }\n    +f execute(&!self) / llm {\n        m i: usize = 0;\n        loop {\n            ? i >= self.tasks.len() { break; }\n            v prompt = f\"As a {self.tasks[i].assigned_to}, do: {self.tasks[i].description}\";\n            v output = llm.complete(&prompt);\n            self.tasks[i].result = ?Some(output);\n            i = i + 1;\n        }\n    }\n    +f report(&self) -> s {\n        m lines: [s]~ = [];\n        @ task : &self.tasks {\n            v status = ? task.result { ?Some(_) => \"done\", ?None => \"pending\" };\n            lines.push(f\"[{task.id}] {status}: {task.description}\");\n        }\n        lines.join(\"\\n\")\n    }\n}",
+      "token_count": 292,
+      "effects": ["llm"],
       "skb_rules_used": ["ownership:exclusive-ref", "borrow:shared-ref", "type_safety:option-matching"]
     },
     "rust_equivalent": {
@@ -43,9 +43,9 @@
     "difficulty": "very-hard",
     "task": "Write a self-correcting code generation loop: generate, compile, fix errors, repeat until success or max retries",
     "solution": {
-      "rdx_source": "S CompileResult {\n    success: bool,\n    output: s,\n    errors: [s]~,\n}\n\n+f self_correct(\n    task: &s,\n    max_retries: u32,\n) -> R[s, s] / llm, tools {\n    m code = llm.complete(&f\"Write MAGE code: {task}\");\n    m attempt: u32 = 0;\n    loop {\n        v result = tools.compile(&code);\n        ? result.success { ret R.Ok(code); }\n        attempt = attempt + 1;\n        ? attempt >= max_retries {\n            ret R.Err(f\"Failed after {max_retries} attempts\");\n        }\n        v error_context = result.errors.join(\"\\n\");\n        code = llm.complete(&f\"Fix these errors in the code:\\nErrors:\\n{error_context}\\nCode:\\n{code}\");\n    }\n}",
+      "rdx_source": "S CompileResult {\n    success: bool,\n    output: s,\n    errors: [s]~,\n}\n\n+f self_correct(\n    task: &s,\n    max_retries: u32,\n) -> R[s, s] / llm, proc {\n    m code = llm.complete(&f\"Write MAGE code: {task}\");\n    m attempt: u32 = 0;\n    loop {\n        v result = tools.compile(&code);\n        ? result.success { ret Ok(code); }\n        attempt = attempt + 1;\n        ? attempt >= max_retries {\n            ret Err(f\"Failed after {max_retries} attempts\");\n        }\n        v error_context = result.errors.join(\"\\n\");\n        code = llm.complete(&f\"Fix these errors in the code:\\nErrors:\\n{error_context}\\nCode:\\n{code}\");\n    }\n}",
       "token_count": 130,
-      "effects": ["llm", "tools"],
+      "effects": ["llm", "proc"],
       "skb_rules_used": ["type_safety:result-return"]
     },
     "rust_equivalent": {
@@ -62,8 +62,8 @@
     "difficulty": "very-hard",
     "task": "Write a tool registry that lets agents dynamically discover and invoke tools by name with JSON arguments",
     "solution": {
-      "rdx_source": "S ToolDef {\n    name: s,\n    description: s,\n    handler: f(s) -> R[s, s],\n}\n\nS ToolRegistry { tools: {s: ToolDef} }\n\nI ToolRegistry {\n    +f new() -> ToolRegistry { @ToolRegistry { tools: {} } }\n    +f register(&!self, tool: ToolDef) {\n        self.tools.insert(tool.name.clone(), tool);\n    }\n    +f list(&self) -> [s]~ {\n        self.tools.keys().to_vec()\n    }\n    +f invoke(&self, name: &s, args: s) -> R[s, s] {\n        ? self.tools.get(name) {\n            ?Some(tool) => (tool.handler)(args),\n            ?None => R.Err(f\"unknown tool: {name}\"),\n        }\n    }\n    +f describe(&self) -> s {\n        m lines: [s]~ = [];\n        @ (name, tool) : &self.tools {\n            lines.push(f\"{name}: {tool.description}\");\n        }\n        lines.join(\"\\n\")\n    }\n}",
-      "token_count": 160,
+      "rdx_source": "S ToolDef {\n    name: s,\n    description: s,\n    handler: f(s) -> R[s, s],\n}\n\nS ToolRegistry { tools: {s: ToolDef} }\n\nI ToolRegistry {\n    +f new() -> ToolRegistry { @ToolRegistry { tools: {} } }\n    +f register(&!self, tool: ToolDef) {\n        self.tools.insert(tool.name.clone(), tool);\n    }\n    +f list(&self) -> [s]~ {\n        self.tools.keys().to_vec()\n    }\n    +f invoke(&self, name: &s, args: s) -> R[s, s] {\n        ? self.tools.get(name) {\n            ?Some(tool) => (tool.handler)(args),\n            ?None => Err(f\"unknown tool: {name}\"),\n        }\n    }\n    +f describe(&self) -> s {\n        m lines: [s]~ = [];\n        @ (name, tool) : &self.tools {\n            lines.push(f\"{name}: {tool.description}\");\n        }\n        lines.join(\"\\n\")\n    }\n}",
+      "token_count": 220,
       "effects": [],
       "skb_rules_used": ["ownership:exclusive-ref", "borrow:shared-ref", "type_safety:result-return"]
     },
@@ -72,7 +72,7 @@
       "token_count": 260
     },
     "tests": [
-      { "input": "v r = ToolRegistry.new(); r.register(ToolDef{name:\"echo\",description:\"echoes\",handler:fn(s)=>R.Ok(s)}); r.invoke(\"echo\", \"hi\")", "expected": "R.Ok(\"hi\")" }
+      { "input": "v r = ToolRegistry.new(); r.register(@ToolDef{name:\"echo\",description:\"echoes\",handler:fn(s)=>R.Ok(s)}); r.invoke(\"echo\", \"hi\")", "expected": "R.Ok(\"hi\")" }
     ]
   },
   {
@@ -168,7 +168,7 @@
       "token_count": 260
     },
     "tests": [
-      { "input": "evaluate(&CodeMetrics{compiles:true,tests_passed:10,tests_total:10,token_count:50,reference_tokens:50,effects_correct:true})", "expected": "Score{correctness:1.0,efficiency:1.0,style:1.0,total:1.0}" }
+      { "input": "evaluate(&@CodeMetrics{compiles:true,tests_passed:10,tests_total:10,token_count:50,reference_tokens:50,effects_correct:true})", "expected": "Score{correctness:1.0,efficiency:1.0,style:1.0,total:1.0}" }
     ]
   },
   {
@@ -187,7 +187,7 @@
       "token_count": 320
     },
     "tests": [
-      { "input": "v e = SkbEngine.new(); e.load(Rule{id:\"r1\",category:\"borrow\",pattern:\"&!\",description:\"exclusive ref\",fix_template:\"use {pattern}\"}); e.query(\"v x: &!i32\", \"fn\").len()", "expected": "1" }
+      { "input": "v e = SkbEngine.new(); e.load(@Rule{id:\"r1\",category:\"borrow\",pattern:\"&!\",description:\"exclusive ref\",fix_template:\"use {pattern}\"}); e.query(\"v x: &!i32\", \"fn\").len()", "expected": "1" }
     ]
   }
 ]
