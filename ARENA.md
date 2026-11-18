@@ -256,6 +256,44 @@ compared across machines. The run also held 24 GB of GPU memory and 9 GB of
 host memory, far above what 25M parameters need. That is worth profiling
 before scaling further.
 
+## Reference: standard compressors on the same bytes
+
+`scripts/compression-reference.py FILE...` gives the learners' bits per byte a
+yardstick: zlib (level 9), bz2 (level 9), xz (preset 9 | extreme) and the ideal
+order-0 coder (byte-frequency entropy). Bits per byte is 8 × compressed bytes ÷
+original bytes, and the compressor figures include container overhead, so they
+are high on small files. The table is for the files the documented runs use,
+as they were when this section was written, identified by the first 16 hex
+digits of their SHA-256. The learner figures are copied from the documents, not
+re-measured: the text row trains on `README.md` and scores `germline/src/gate.rs`,
+the code row trains on `gate.rs` and scores `arena/src/transformer.rs`.
+
+| file | bytes | sha256 | order-0 | zlib-9 | bz2-9 | xz-9e | documented learner, held out |
+|---|---|---|---|---|---|---|---|
+| `README.md` | 31,946 | `beaeb6cc8fd12b82` | 5.107 | 3.058 | 2.878 | 2.909 | none (training text for the text row) |
+| `germline/src/gate.rs` | 70,947 | `bb9ef18c18dbf129` | 4.655 | 1.775 | 1.575 | 1.669 | n-gram 4×2¹⁴ 5.400, entropy 4×2¹⁴ L4 4.805, SSM d16 5.075 (MEASUREMENTS.md, L1 and L2) |
+| `arena/src/transformer.rs` | 19,468 | `29d2eb4b9a9acf26` | 4.907 | 2.631 | 2.560 | 2.553 | n-gram 4×2¹⁴ 5.223, entropy 4×2¹⁴ L4 4.674, SSM d16 5.043 (MEASUREMENTS.md, L1 and L2) |
+| `GERMLINE.md` | 69,510 | `1c507a09206dfca6` | 4.759 | 3.094 | 2.674 | 2.875 | none |
+| `ARCHITECTURE.md` | 36,927 | `0767b836d92f5ab3` | 4.906 | 3.336 | 3.036 | 3.176 | none |
+| `germline/src/runner.rs` | 155,341 | `76796196c532c58c` | 4.643 | 1.777 | 1.456 | 1.569 | none |
+| `germline/src/pareto.rs` | 19,951 | `67c462aa9e2fe656` | 4.912 | 2.606 | 2.440 | 2.531 | none |
+| all seven, in that order | 404,090 | `53a309f75d4585ce` | 4.829 | 2.270 | 1.845 | 1.940 | none |
+
+On the two files with a documented learner figure, xz reaches 1.67 bits per
+byte on `gate.rs` and 2.55 on `transformer.rs`, while the best documented learner
+(the entropy learner at 4×2¹⁴) is at 4.81 and 4.67. Both learners sit within
+about 0.25 bits per byte of the order-0 figure on these files, so the learners
+are close to byte frequencies here and about 2 to 3 bits per byte behind xz. The
+two sets of numbers are only rough reference points: a learner's figure is a
+prediction on held-out text after training on other text, while xz adapts within
+the file it codes, and the compressor figures are inflated on files this small.
+
+The files are live. The worktree's `gate.rs` has order-0 4.655, against the 4.666
+that MEASUREMENTS.md records for the same held-out file, so its bytes differ from
+the file measured there; `transformer.rs` matches (4.907). No frozen copies of
+these files were found in `E:/heal-logs/fz/`, so these figures are tied to the
+hashes above, not to a frozen corpus.
+
 ## Fixing the drift: one proxy that backfired, and a direct measure
 
 **Entropy floor (run 8): backfired.** It charged every agent for program
