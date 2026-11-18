@@ -21,6 +21,8 @@ All green at HEAD.
 
 ## Reliability bench (`benchmarks/tasks/*.json`, 100 tasks)
 
+> The "Parse" column counts parsing only, and the table below was measured on the 100-task corpus (99 since 2026-11-15). Of today's 99 references, 99 parse, 65 type-check and 20 type-check and pass their own tests: `benchmarks/ACCEPTANCE.md`.
+
 | Backend | Parse | Pattern-heal | Structural-heal | Refine | Effective pass |
 |---|---:|---:|---:|---:|---:|
 | `file-oracle` (perfect input) | **99 / 100** | 0 / 1 | 1 / 1 | 0 / 1 | **100 / 100** |

@@ -188,9 +188,9 @@ conflate:
   pass/fail; it does not count tokens.
 - (ii) `token-bench` over the 99-task corpus counts **lexer tokens, not BPE
   tokens**. MAGE / Rust ratios (below 1 means MAGE is smaller): source bytes
-  **1.040**, native lexers **0.984**, shared counting rule **1.020**, dense
-  (whitespace-stripped) form **0.919**. On the corpus MAGE is 4.0% larger than
-  Rust in bytes, 2.0% larger under a shared rule, and 1.6% smaller under native
+  **1.039**, native lexers **0.980**, shared counting rule **1.017**, dense
+  (whitespace-stripped) form **0.918**. On the corpus MAGE is 3.9% larger than
+  Rust in bytes, 1.7% larger under a shared rule, and 2.0% smaller under native
   lexers. The pairs were reconciled on 2026-11-15 (the sources in each pair now
   say the same thing); the figures before that were 1.055, 0.997, 1.034 and 0.933.
   `token-bench` writes `benchmarks/TOKEN_REPORT.md`; the native-lexer and shared-rule ratios are pinned by
@@ -390,7 +390,7 @@ mage-parse --eval fib.mg fib 25       # → 75025
 `--bpe`; the stated rule and its four ratios are in [Benchmarks](#benchmarks-measured).
 
 ```sh
-# Run the token-efficiency benchmark across all 100 corpus tasks
+# Run the token-efficiency benchmark across all 99 corpus tasks
 cargo run --bin token-bench --manifest-path prototype/Cargo.toml
 # → writes benchmarks/TOKEN_REPORT.md, exits non-zero on regressions
 ```
@@ -501,7 +501,7 @@ Twelve self-contained projects in [`examples/`](examples/), each with a
 | [kb/](kb/)                                                 | The knowledge base: the language as facts (schema: `kb/schema.mg`) |
 | [skb/](skb/)                                               | Safety Knowledge Base seed corpus (56 rules, unread) |
 | [training/](training/)                                     | Training data and evaluation (100 samples)         |
-| [benchmarks/](benchmarks/)                                 | 99-task evaluation corpus with metrics             |
+| [benchmarks/](benchmarks/)                                 | 99-task evaluation corpus with metrics (99 parse, 65 type-check, 20 pass own tests: [ACCEPTANCE](benchmarks/ACCEPTANCE.md)) |
 
 ## Building from Source
 

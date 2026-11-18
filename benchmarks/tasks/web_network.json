@@ -24,8 +24,8 @@
     "difficulty": "hard",
     "task": "Write a URL parser that extracts scheme, host, port, and path from a URL string",
     "solution": {
-      "rdx_source": "S Url {\n    scheme: s,\n    host: s,\n    port: ?u16,\n    path: s,\n}\n\n+f parse_url(raw: &s) -> R[Url, s] {\n    v parts = raw.splitn(2, \"://\");\n    ? parts.len() < 2 { ret R.Err(\"missing scheme\"); }\n    v scheme = parts[0];\n    v rest = parts[1];\n    v slash_idx = rest.find('/').unwrap_or(rest.len());\n    v authority = rest[0..slash_idx];\n    v path = rest[slash_idx..];\n    v colon_idx = authority.find(':');\n    ? colon_idx {\n        ?Some(ci) => {\n            v host = authority[0..ci];\n            v port = authority[ci+1..].parse_u16();\n            ? port {\n                ?Some(p) => R.Ok(@Url { scheme: scheme, host: host, port: ?Some(p), path: path }),\n                ?None => R.Err(\"invalid port\"),\n            }\n        },\n        ?None => R.Ok(@Url { scheme: scheme, host: authority, port: ?None, path: path }),\n    }\n}",
-      "token_count": 249,
+      "rdx_source": "S Url {\n    scheme: s,\n    host: s,\n    port: ?u16,\n    path: s,\n}\n\n+f parse_url(raw: &s) -> R[Url, s] {\n    v parts = raw.splitn(2, \"://\");\n    ? parts.len() < 2 { ret Err(\"missing scheme\"); }\n    v scheme = parts[0];\n    v rest = parts[1];\n    v slash_idx = rest.find('/').unwrap_or(rest.len());\n    v authority = rest[0..slash_idx];\n    v path = rest[slash_idx..];\n    v colon_idx = authority.find(':');\n    ? colon_idx {\n        ?Some(ci) => {\n            v host = authority[0..ci];\n            v port = authority[ci+1..].parse_u16();\n            ? port {\n                ?Some(p) => Ok(@Url { scheme: scheme, host: host, port: ?Some(p), path: path }),\n                ?None => Err(\"invalid port\"),\n            }\n        },\n        ?None => Ok(@Url { scheme: scheme, host: authority, port: ?None, path: path }),\n    }\n}",
+      "token_count": 241,
       "effects": [],
       "skb_rules_used": ["type_safety:result-return", "borrow:shared-ref"]
     },
@@ -73,7 +73,7 @@
       "token_count": 120
     },
     "tests": [
-      { "input": "to_json(&Config{name:\"app\",version:\"1.0\",features:[\"fast\"]})", "expected": "{\"name\":\"app\",\"version\":\"1.0\",\"features\":[\"fast\"]}" }
+      { "input": "to_json(&@Config{name:\"app\",version:\"1.0\",features:[\"fast\"]})", "expected": "{\"name\":\"app\",\"version\":\"1.0\",\"features\":[\"fast\"]}" }
     ]
   },
   {
@@ -170,7 +170,7 @@
       "token_count": 148
     },
     "tests": [
-      { "input": "apply_cors(Response.new(200,\"\"), &CorsConfig{allowed_origins:[\"*\"],allowed_methods:[\"GET\"],max_age:3600})", "expected": "Response with CORS headers" }
+      { "input": "apply_cors(Response.new(200,\"\"), &@CorsConfig{allowed_origins:[\"*\"],allowed_methods:[\"GET\"],max_age:3600})", "expected": "Response with CORS headers" }
     ]
   },
   {
@@ -179,8 +179,8 @@
     "difficulty": "hard",
     "task": "Write a retry wrapper that retries a fallible network operation up to N times with exponential backoff",
     "solution": {
-      "rdx_source": "+f retry[T](\n    max_attempts: u32,\n    base_delay_ms: u64,\n    operation: f() -> R[T, s],\n) -> R[T, s] / io, async {\n    m attempt: u32 = 0;\n    loop {\n        v result = operation();\n        ? result {\n            R.Ok(val) => { ret R.Ok(val); },\n            R.Err(err) => {\n                attempt = attempt + 1;\n                ? attempt >= max_attempts { ret R.Err(err); }\n                v delay = base_delay_ms * (1 << attempt);\n                async.sleep(delay);\n            },\n        }\n    }\n}",
-      "token_count": 110,
+      "rdx_source": "+f retry[T](\n    max_attempts: u32,\n    base_delay_ms: u64,\n    operation: f() -> R[T, s],\n) -> R[T, s] / io, async {\n    m attempt: u32 = 0;\n    loop {\n        v result = operation();\n        ? result {\n            Ok(val) => { ret Ok(val); },\n            Err(err) => {\n                attempt = attempt + 1;\n                ? attempt >= max_attempts { ret Err(err); }\n                v delay = base_delay_ms * (1 << attempt);\n                async.sleep(delay);\n            },\n        }\n    }\n}",
+      "token_count": 121,
       "effects": ["io", "async"],
       "skb_rules_used": ["type_safety:result-return", "concurrency:effect-tracking"]
     },
@@ -189,7 +189,7 @@
       "token_count": 160
     },
     "tests": [
-      { "input": "retry(3, 100, fn() => R.Ok(42))", "expected": "R.Ok(42)" }
+      { "input": "retry(3, 100, fn() => Ok(42))", "expected": "R.Ok(42)" }
     ]
   }
 ]

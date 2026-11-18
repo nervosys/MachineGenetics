@@ -38,7 +38,7 @@ PARSE_BASIS=99
 MIN_HEAL=40         # perturbed-oracle pattern-heal successes
 MAX_LEX_RATIO=1.100 # native-lexer total ratio, MAGE vs Rust
 # Shared counting rule, MAGE vs Rust (token-bench "shared rule:" line). Measured
-# 1.020 on the 99-task corpus; the ceiling leaves room for corpus edits, not
+# 1.017 on the 99-task corpus; the ceiling leaves room for corpus edits, not
 # for MAGE to become the larger side by more than 10 %.
 MAX_SHARED_RATIO=1.100
 

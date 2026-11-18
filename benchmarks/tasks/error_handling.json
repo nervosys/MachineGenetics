@@ -5,7 +5,7 @@
     "difficulty": "medium",
     "task": "Write a function that safely divides two numbers, returning a Result with an error message for division by zero",
     "solution": {
-      "rdx_source": "+f safe_div(a: f64, b: f64) -> R[f64, s] {\n    ? b == 0.0 {\n        R.Err(\"division by zero\")\n    } : {\n        R.Ok(a / b)\n    }\n}",
+      "rdx_source": "+f safe_div(a: f64, b: f64) -> R[f64, s] {\n    ? b == 0.0 {\n        Err(\"division by zero\")\n    } : {\n        Ok(a / b)\n    }\n}",
       "token_count": 40,
       "effects": [],
       "skb_rules_used": ["type_safety:result-return"]
@@ -25,8 +25,8 @@
     "difficulty": "medium",
     "task": "Write a function that parses a config string 'key=value' and returns an error for malformed input",
     "solution": {
-      "rdx_source": "S Config { key: s, value: s }\n\n+f parse_config(line: &s) -> R[Config, s] {\n    v parts = line.splitn(2, '=').to_vec();\n    ? parts.len() != 2 {\n        ret R.Err(f\"malformed config: '{line}'\");\n    }\n    v key = parts[0].trim().to_string();\n    v value = parts[1].trim().to_string();\n    ? key.is_empty() {\n        R.Err(\"empty key\")\n    } : {\n        R.Ok(@Config { key: key, value: value })\n    }\n}",
-      "token_count": 80,
+      "rdx_source": "S Config { key: s, value: s }\n\n+f parse_config(line: &s) -> R[Config, s] {\n    v parts = line.splitn(2, '=').to_vec();\n    ? parts.len() != 2 {\n        ret Err(f\"malformed config: '{line}'\");\n    }\n    v key = parts[0].trim().to_string();\n    v value = parts[1].trim().to_string();\n    ? key.is_empty() {\n        Err(\"empty key\")\n    } : {\n        Ok(@Config { key: key, value: value })\n    }\n}",
+      "token_count": 122,
       "effects": [],
       "skb_rules_used": ["type_safety:result-return"]
     },
@@ -45,8 +45,8 @@
     "difficulty": "medium",
     "task": "Write a custom error enum with Display formatting and a function that chains multiple fallible operations using the ? operator",
     "solution": {
-      "rdx_source": "E AppError {\n    NotFound(s),\n    ParseFailed(s),\n    InvalidInput(s),\n}\n\nI AppError {\n    +f message(&self) -> &s {\n        ? self {\n            AppError.NotFound(msg) => msg,\n            AppError.ParseFailed(msg) => msg,\n            AppError.InvalidInput(msg) => msg,\n        }\n    }\n}\n\n+f process_record(raw: &s) -> R[u64, AppError] {\n    v trimmed = raw.trim();\n    ? trimmed.is_empty() {\n        ret R.Err(AppError.InvalidInput(\"empty input\".to_string()));\n    }\n    v parts = trimmed.split(':').to_vec();\n    ? parts.len() < 2 {\n        ret R.Err(AppError.ParseFailed(\"expected key:value\".to_string()));\n    }\n    v value_str = parts[1].trim();\n    v value = value_str.parse::<u64>()\n        .map_err(fn(e) => AppError.ParseFailed(f\"bad number: {e}\"))?;\n    ? value == 0 {\n        R.Err(AppError.NotFound(\"zero value\".to_string()))\n    } : {\n        R.Ok(value)\n    }\n}",
-      "token_count": 140,
+      "rdx_source": "E AppError {\n    NotFound(s),\n    ParseFailed(s),\n    InvalidInput(s),\n}\n\nI AppError {\n    +f message(&self) -> &s {\n        ? self {\n            AppError.NotFound(msg) => msg,\n            AppError.ParseFailed(msg) => msg,\n            AppError.InvalidInput(msg) => msg,\n        }\n    }\n}\n\n+f process_record(raw: &s) -> R[u64, AppError] {\n    v trimmed = raw.trim();\n    ? trimmed.is_empty() {\n        ret Err(AppError.InvalidInput(\"empty input\".to_string()));\n    }\n    v parts = trimmed.split(':').to_vec();\n    ? parts.len() < 2 {\n        ret Err(AppError.ParseFailed(\"expected key:value\".to_string()));\n    }\n    v value_str = parts[1].trim();\n    v value = value_str.parse::<u64>()\n        .map_err(fn(e) => AppError.ParseFailed(f\"bad number: {e}\"))?;\n    ? value == 0 {\n        Err(AppError.NotFound(\"zero value\".to_string()))\n    } : {\n        Ok(value)\n    }\n}",
+      "token_count": 223,
       "effects": [],
       "skb_rules_used": ["type_safety:result-propagation", "type_safety:result-return"]
     },
@@ -66,8 +66,8 @@
     "difficulty": "medium",
     "task": "Write a function that collects results from a list of fallible operations, returning all successes if all pass or the first error",
     "solution": {
-      "rdx_source": "+f collect_results(items: &[R[i32, s]]~) -> R[[i32]~, s] {\n    m collected: [i32]~ = [];\n    @ item : items {\n        ? item {\n            R.Ok(val) => collected.push(*val),\n            R.Err(err) => ret R.Err(err.clone()),\n        }\n    }\n    R.Ok(collected)\n}\n\n+f try_parse_all(strings: &[s]~) -> R[[i32]~, s] {\n    v results: [R[i32, s]]~ = strings.iter()\n        .map(fn(s) => s.parse::<i32>().map_err(fn(e) => f\"parse error: {e}\"))\n        .to_vec();\n    collect_results(&results)\n}",
-      "token_count": 100,
+      "rdx_source": "+f collect_results(items: &[R[i32, s]]~) -> R[[i32]~, s] {\n    m collected: [i32]~ = [];\n    @ item : items {\n        ? item {\n            Ok(val) => collected.push(*val),\n            Err(err) => ret Err(err.clone()),\n        }\n    }\n    Ok(collected)\n}\n\n+f try_parse_all(strings: &[s]~) -> R[[i32]~, s] {\n    v results: [R[i32, s]]~ = strings.iter()\n        .map(fn(s) => s.parse::<i32>().map_err(fn(e) => f\"parse error: {e}\"))\n        .to_vec();\n    collect_results(&results)\n}",
+      "token_count": 163,
       "effects": [],
       "skb_rules_used": ["type_safety:result-matching", "type_safety:result-return"]
     },

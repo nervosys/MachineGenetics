@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# agent_cost_cli.sh.example -- EXAMPLE wrapper: speaks scripts/agent-cost.py's
+# JSON-lines protocol on top of a generic one-shot model CLI.
+#
+# *** THIS SPENDS MONEY. It is not run by CI, by any test, or by the driver's
+# *** defaults. Nothing in this repository holds an API key.
+#
+# Protocol (one episode = one process): the driver writes a {"type":"task"} line,
+# then {"type":"tool_result"} / {"type":"result"} lines; this script answers each
+# with one line: {"type":"tool","name":N,"args":{...}} or {"type":"final","source":S},
+# optionally with "usage":{"input_tokens":I,"output_tokens":O}.
+#
+# Credentials. The driver STARTS THIS PROCESS WITH A SCRUBBED ENVIRONMENT (PATH,
+# plus SYSTEMROOT/TEMP/TMP/PATHEXT on Windows), like arena/src/command.rs, so a
+# stand-in or a misbehaving wrapper cannot read your shell's secrets by accident.
+# The wrapper has to get its own credential, either:
+#   * from a file it reads itself (e.g. $WRAPPER_KEY_FILE passed with
+#     `--agent-env WRAPPER_KEY_FILE`, or a fixed path), or
+#   * from one environment variable you pass through explicitly:
+#       agent-cost.py ... --agent-env ANTHROPIC_API_KEY
+# Only names given with --agent-env survive. Needs: bash, jq, and MODEL_CMD.
+#
+# MODEL_CMD is any command that reads a prompt on stdin and prints a JSON object
+# {"text": "...", "input_tokens": N, "output_tokens": N} (token fields optional).
+#
+# Usage (from the repository root; budget with --max-tokens / --max-turns):
+#   MODEL_CMD=./my_model_call.sh python scripts/agent-cost.py \
+#       --mage-parse "$MAGE_PARSE_BIN" --agent "bash scripts/agent_wrappers/agent_cost_cli.sh.example" \
+#       --agent-env MODEL_CMD --agent-env ANTHROPIC_API_KEY --out agent-cost-out
+set -euo pipefail
+
+: "${MODEL_CMD:?set MODEL_CMD to your model-calling command}"
+HIST="$(mktemp)"          # the conversation so far, as plain text
+trap 'rm -f "$HIST"' EXIT
+
+reply_format='Reply with exactly ONE JSON object on one line and nothing else: {"type":"tool","name":NAME,"args":{...}} or {"type":"final","source":"..."}.'
+
+while IFS= read -r line; do
+  type=$(printf '%s' "$line" | jq -r .type)
+  case "$type" in
+    task)        printf '%s\n' "$(printf '%s' "$line" | jq -r .prompt)" >> "$HIST" ;;
+    tool_result) printf 'TOOL RESULT (%s):\n%s\n' "$(printf '%s' "$line" | jq -r .name)" "$(printf '%s' "$line" | jq -r .content)" >> "$HIST" ;;
+    result)      printf 'NOT ACCEPTED (%s attempts left):\n%s\n' "$(printf '%s' "$line" | jq -r .attempts_left)" "$(printf '%s' "$line" | jq -r .diagnostics)" >> "$HIST" ;;
+    end)         exit 0 ;;
+  esac
+  out=$( { cat "$HIST"; printf '\n%s\n' "$reply_format"; } | $MODEL_CMD )
+  # Build the protocol line from the model's text; a model that does not return
+  # one valid JSON object produces a protocol_error episode, which is a result.
+  printf '%s' "$out" | jq -c '(.text | fromjson) + {usage: {input_tokens: (.input_tokens // 0), output_tokens: (.output_tokens // 0)}}'
+done
