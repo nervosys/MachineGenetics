@@ -35,6 +35,7 @@
 //! capability at a fixed exchange rate, which is precisely the trade nobody
 //! intends to have made.
 
+use super::archive::{Admission, NicheArchive, NicheSpec};
 use super::lineage::Lineage;
 use super::{FitnessVector, Generation, GenerationId, SuiteKind};
 use ribosome::Digest;
@@ -162,6 +163,17 @@ pub enum RejectReason {
     /// Neither route to promotion held under the dominance rule. `detail` names
     /// the axis each route failed on.
     DominanceRefused { detail: String },
+    /// Under a niche archive: the episode's pinned niches and the lineage's
+    /// archive are not the same, or one side has none.
+    ArchiveMismatch { detail: String },
+    /// Under a niche archive: a descriptor axis is missing or NaN, so the
+    /// candidate has no cell.
+    NicheUnmeasured { axis: String },
+    /// Under a niche archive: the cell's elite is not beaten by the margin.
+    CellOccupied { cell: Vec<u32>, elite: GenerationId, elite_value: f64, challenger: f64, required: f64 },
+    /// Under a niche archive: a guard axis is below the cell's elite, which a
+    /// replacement may not be, whatever the lineage's high-water mark says.
+    GuardBelowElite { axis: String, elite: GenerationId, elite_value: f64, challenger: f64, tolerance: f64 },
 }
 
 impl std::fmt::Display for RejectReason {
@@ -219,6 +231,20 @@ impl std::fmt::Display for RejectReason {
             RejectReason::DominanceRefused { detail } => {
                 write!(f, "dominance rule not met: {detail}")
             }
+            RejectReason::ArchiveMismatch { detail } => {
+                write!(f, "niche archive: {detail} - episode void")
+            }
+            RejectReason::NicheUnmeasured { axis } => {
+                write!(f, "niche archive: descriptor axis `{axis}` is not measured, so the candidate has no cell")
+            }
+            RejectReason::CellOccupied { cell, elite, elite_value, challenger, required } => write!(
+                f,
+                "niche archive: cell {cell:?} is held by {elite} at {elite_value:.4} and the challenger's {challenger:.4} does not beat it by {required:.4}"
+            ),
+            RejectReason::GuardBelowElite { axis, elite, elite_value, challenger, tolerance } => write!(
+                f,
+                "niche archive: guard axis `{axis}` at {challenger:.4} is below the cell elite {elite}'s {elite_value:.4} (tolerance {tolerance:.4})"
+            ),
         }
     }
 }
@@ -283,6 +309,9 @@ pub struct Approval {
     incumbent: Option<GenerationId>,
     /// Which promotion rule passed, when the gate has a dominance rule.
     basis: Option<String>,
+    /// Under a niche archive, the cell the gate admitted the challenger to and
+    /// the elite it displaces. `None` outside one.
+    archive: Option<Admission>,
 }
 
 impl Approval {
@@ -307,6 +336,11 @@ impl Approval {
         self.basis.as_deref()
     }
 
+    /// The cell this approval admits its generation to, under a niche archive.
+    pub fn admission(&self) -> Option<&Admission> {
+        self.archive.as_ref()
+    }
+
     /// The verdict this approval embodies, for the journal and attestation.
     pub fn verdict(&self) -> Verdict {
         Verdict::Promote {
@@ -326,7 +360,7 @@ impl Approval {
         evaluator: &str,
         incumbent: Option<GenerationId>,
     ) -> Approval {
-        Approval { generation, gate, evaluator: evaluator.to_string(), incumbent, basis: None }
+        Approval { generation, gate, evaluator: evaluator.to_string(), incumbent, basis: None, archive: None }
     }
 }
 
@@ -340,12 +374,42 @@ pub struct Episode {
     pub suite_digest: Digest,
     /// Identity permitted to issue verdicts. Must not be the challenger.
     pub evaluator: String,
+    /// The niches pinned for a lineage that keeps an archive
+    /// ([`Episode::with_archive`]). Left out of the serialized episode when
+    /// unset, so an episode without one serializes as it did.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub archive: Option<ArchivePin>,
+}
+
+/// The niche spec an episode registered, and its digest at registration.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ArchivePin {
+    pub spec: NicheSpec,
+    pub digest: Digest,
 }
 
 impl Episode {
     pub fn open(gate: PromotionGate, suite_digest: Digest, evaluator: impl Into<String>) -> Self {
         let gate_digest = gate.digest();
-        Episode { gate, gate_digest, suite_digest, evaluator: evaluator.into() }
+        Episode { gate, gate_digest, suite_digest, evaluator: evaluator.into(), archive: None }
+    }
+
+    /// Pin the niches of an archive, so that candidates are admitted to cells
+    /// instead of competing for a single championship (see [`crate::archive`]).
+    ///
+    /// The spec's capability axis must be this gate's primary axis: the elite of
+    /// a cell, and the champion, are best by the axis succession is for.
+    pub fn with_archive(mut self, spec: NicheSpec) -> Result<Self, String> {
+        spec.validate()?;
+        if spec.capability_axis != self.gate.primary_axis {
+            return Err(format!(
+                "the archive's capability axis `{}` is not the gate's primary axis `{}`",
+                spec.capability_axis, self.gate.primary_axis
+            ));
+        }
+        let digest = spec.digest();
+        self.archive = Some(ArchivePin { spec, digest });
+        Ok(self)
     }
 
     /// Adjudicate a challenger.
@@ -415,9 +479,42 @@ impl Episode {
             });
         }
 
+        // 7. The niches are pinned like the gate: the lineage's archive must be
+        // the one this episode registered, and neither may have moved.
+        let archive_ok = match (lineage.archive(), &self.archive) {
+            (None, None) => true,
+            (Some(a), Some(pin)) => {
+                if pin.spec.digest() != pin.digest {
+                    reasons.push(RejectReason::ArchiveMismatch { detail: "the pinned niche spec changed after registration".into() });
+                    false
+                } else if a.spec().digest() != pin.digest {
+                    reasons.push(RejectReason::ArchiveMismatch { detail: "the lineage's archive is not the one this episode pinned".into() });
+                    false
+                } else {
+                    true
+                }
+            }
+            (Some(_), None) => {
+                reasons.push(RejectReason::ArchiveMismatch { detail: "the lineage keeps an archive and this episode pins none".into() });
+                false
+            }
+            (None, Some(_)) => {
+                reasons.push(RejectReason::ArchiveMismatch { detail: "this episode pins an archive and the lineage keeps none".into() });
+                false
+            }
+        };
+
         let mut basis = None;
         if let Some(cf) = heldout {
-            basis = self.check_fitness(challenger, cf, lineage, &mut reasons);
+            match lineage.archive() {
+                None => basis = self.check_fitness(challenger, cf, lineage, &mut reasons),
+                Some(archive) if archive_ok => {
+                    basis = self
+                        .archive_admission(challenger, cf, lineage, archive, &mut reasons)
+                        .map(|a| a.describe());
+                }
+                Some(_) => {}
+            }
         }
 
         if reasons.is_empty() {
@@ -442,7 +539,14 @@ impl Episode {
     pub fn fitness_passes(&self, challenger: &Generation, lineage: &Lineage) -> bool {
         let Some(cf) = challenger.heldout_fitness() else { return false };
         let mut reasons = Vec::new();
-        self.check_fitness(challenger, cf, lineage, &mut reasons);
+        match lineage.archive() {
+            None => {
+                self.check_fitness(challenger, cf, lineage, &mut reasons);
+            }
+            Some(archive) => {
+                self.archive_admission(challenger, cf, lineage, archive, &mut reasons);
+            }
+        }
         reasons.is_empty()
     }
 
@@ -456,13 +560,22 @@ impl Episode {
         materialized: &dyn Fn(&Digest) -> bool,
     ) -> Result<Approval, Verdict> {
         match self.adjudicate(challenger, lineage, shadow_successes, materialized) {
-            Verdict::Promote { generation, gate, evaluator, basis } => Ok(Approval {
-                generation,
-                gate,
-                evaluator,
-                incumbent: lineage.champion().map(|g| g.id),
-                basis,
-            }),
+            Verdict::Promote { generation, gate, evaluator, basis } => {
+                // The admission is recomputed rather than carried out of
+                // `adjudicate`: it is a pure function of the same inputs.
+                let archive = match (lineage.archive(), challenger.heldout_fitness()) {
+                    (Some(a), Some(cf)) => self.archive_admission(challenger, cf, lineage, a, &mut Vec::new()),
+                    _ => None,
+                };
+                Ok(Approval {
+                    generation,
+                    gate,
+                    evaluator,
+                    incumbent: lineage.champion().map(|g| g.id),
+                    basis,
+                    archive,
+                })
+            }
             rejected => Err(rejected),
         }
     }
@@ -521,6 +634,109 @@ impl Episode {
         reasons.extend(guards);
         reasons.push(RejectReason::DominanceRefused { detail });
         None
+    }
+
+    /// Admission to a niche archive. Replaces [`Episode::check_fitness`] when the
+    /// lineage keeps one, and runs every other check of [`Episode::adjudicate`]
+    /// around it unchanged.
+    ///
+    /// The candidate is placed in a cell by the descriptor its held-out
+    /// measurement gives. Then:
+    ///
+    /// - **Guards.** Every guard axis must hold against the lineage high-water
+    ///   mark ([`Episode::guard_failures`]): the best any ancestor of the
+    ///   candidate's parent (and of its mate, for a recombinant) reached, and
+    ///   the best any ancestor of the *champion* reached, less the tolerance.
+    ///   Ancestry includes the parents themselves, so this subsumes comparing to
+    ///   the parent. Against the champion's lineage too, so naming a parent that
+    ///   is weak on a guard axis buys nothing, and a chain of small steps through
+    ///   empty cells cannot walk a guard axis down. If the cell is occupied the
+    ///   candidate must also hold every guard axis against that elite. Where the
+    ///   cell is empty there is no elite to compare to, and the other two still
+    ///   apply: an empty cell is never an exemption from the ratchet.
+    /// - **The cell.** Empty, the candidate is admitted. Occupied, it must beat
+    ///   the elite on the capability axis by the spec's margin, and then replaces it.
+    ///
+    /// The dominance rule is not consulted: within a cell, and across the
+    /// archive, the order is the capability axis.
+    ///
+    /// Returns the admission when no reason was pushed.
+    fn archive_admission(
+        &self,
+        challenger: &Generation,
+        cf: &FitnessVector,
+        lineage: &Lineage,
+        archive: &NicheArchive,
+        reasons: &mut Vec<RejectReason>,
+    ) -> Option<Admission> {
+        let spec = archive.spec();
+        let start = reasons.len();
+
+        if let Some(champ) = lineage.champion().and_then(|g| g.heldout_fitness()) {
+            let mismatched = cf.axis_mismatch(champ);
+            if !mismatched.is_empty() {
+                reasons.push(RejectReason::IncomparableAxes { mismatched });
+                return None;
+            }
+        }
+        let cap = match cf.get(&spec.capability_axis) {
+            None => {
+                reasons.push(RejectReason::AxisUnmeasured { axis: spec.capability_axis.clone(), side: "challenger".into() });
+                return None;
+            }
+            Some(v) if v.is_nan() => {
+                reasons.push(RejectReason::AxisNotANumber { axis: spec.capability_axis.clone(), side: "challenger".into() });
+                return None;
+            }
+            Some(v) => v,
+        };
+        let cell = match spec.cell_of(cf) {
+            Ok(c) => c,
+            Err(axis) => {
+                reasons.push(RejectReason::NicheUnmeasured { axis });
+                return None;
+            }
+        };
+
+        let elite = archive.occupant(&cell).and_then(|id| lineage.get(id));
+        reasons.extend(self.guard_failures(challenger, cf, lineage));
+        if let Some(e) = elite {
+            if let Some(ef) = e.heldout_fitness() {
+                for axis in &self.gate.guard_axes {
+                    if let (Some(c), Some(h)) = (cf.get(axis), ef.get(axis)) {
+                        if c < h - self.gate.guard_tolerance {
+                            reasons.push(RejectReason::GuardBelowElite {
+                                axis: axis.clone(),
+                                elite: e.id,
+                                elite_value: h,
+                                challenger: c,
+                                tolerance: self.gate.guard_tolerance,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        let mut replaces = None;
+        if let Some(e) = elite {
+            let held = e
+                .heldout_fitness()
+                .and_then(|f| f.get(&spec.capability_axis))
+                .filter(|v| v.is_finite())
+                .unwrap_or(f64::NEG_INFINITY);
+            if cap - held < spec.min_improvement {
+                reasons.push(RejectReason::CellOccupied {
+                    cell: cell.clone(),
+                    elite: e.id,
+                    elite_value: held,
+                    challenger: cap,
+                    required: spec.min_improvement,
+                });
+            }
+            replaces = Some(e.id);
+        }
+        (reasons.len() == start).then_some(Admission { cell, replaces })
     }
 
     /// Rule (a) passed. Names the margin it cleared, for the approval record.
@@ -714,7 +930,7 @@ fn high_water(challenger: &Generation, lineage: &Lineage, axis: &str) -> Option<
     // history: a challenger branched from an old generation must still clear
     // the marks its lineage has already set.
     let mut mark: Option<(GenerationId, f64)> = None;
-    for root in [challenger.parent, lineage.champion().map(|g| g.id)].into_iter().flatten() {
+    for root in [challenger.parent, challenger.mate, lineage.champion().map(|g| g.id)].into_iter().flatten() {
         if let Some((gid, v)) = lineage.best_ancestor(root, axis) {
             if mark.map(|(_, best)| v > best).unwrap_or(true) {
                 mark = Some((gid, v));

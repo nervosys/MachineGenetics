@@ -1,7 +1,7 @@
 # Germline — model succession, handoff, and fallback
 
 > **Status: control plane complete and runnable; workload not.**
-> `germline/` — its own crate, 286 tests. Variation, directed search, the gate,
+> `germline/` — its own crate, 315 tests. Variation, directed search, the gate,
 > attestation, lineage, the durable journal, the cycle state machine, and
 > supervision are built and tested ✅. Model training and inference are **not**
 > here and are not claimed ◻ — this decides *whether* a successor takes over, not
@@ -824,6 +824,104 @@ loop will faithfully implement, by whatever means pass. Each target needs
 checking against the specification's text, as run 1's stale backlog item
 already showed, and the proposer's diff still needs reading.
 
+### A population with niches — `archive.rs` (opt-in) ✅
+
+A lineage with one champion is a (1+lambda) hill climber: a candidate replaces
+the champion or is discarded, so nothing stands beside the champion for
+crossover to recombine, and the search stalls at the first local optimum. The
+objective is also multi-objective (capability against energy against size), so
+different trade-offs should be able to coexist. With an archive they can.
+
+It is **off by default**. A lineage opens one with `Lineage::with_archive(spec)`
+and the episode pins the same spec with `Episode::with_archive(spec)`. Without
+them nothing changes: no new journal entry, no new field in any entry or
+generation, and the journal of an existing scenario hashes to the digest it had
+before (`a_run_without_an_archive_journals_exactly_as_it_did_before_archives`
+pins the head). Journals written before the archive replay unchanged.
+
+**Cells and the descriptor.** A cell is a vector of bucket indices, one per
+descriptor axis. Each axis names a *held-out fitness axis* and its bucket edges
+(a value falls in the bucket numbered by how many edges are at or below it). A
+workload that wants genome size or energy per evaluation as niche axes reports
+them as fitness axes; the descriptor is read from the measurement the evaluator
+made and the journal recorded, never from what a candidate says about itself,
+and replay recomputes it. A candidate with a descriptor axis missing or NaN has
+no cell and is refused. Each cell holds at most one elite: the best by the
+capability axis among the candidates admitted to it.
+
+**Pinned.** The capability axis, the descriptor axes and their edges, the cell
+cap and the replacement margin are one `NicheSpec`, pinned by digest in the
+episode like the gate. A spec that differs from the pinned one, on either side,
+voids the episode (`archive_mismatch`), so the map cannot be redrawn around what
+the search found. The capability axis must be the gate's primary axis. The grid
+(the product of the buckets) may not exceed `max_cells`, which is the memory
+bound.
+
+**Admission is still the gate's decision.** Every other check of the gate runs
+as before: the barrier, held-out evidence, evaluator independence, axes
+comparable with the champion's, materialization, no re-promotion of a demoted
+generation, the canary. Only the primary-improvement rule is replaced:
+
+| | Rule |
+|---|---|
+| Guards | Every guard axis must hold, within the guard tolerance, against the best any ancestor of the candidate's parent (and of its second parent, for a recombinant) reached **and** the best any ancestor of the current champion reached. Ancestry includes the parents themselves, so this subsumes "not worse than its own parent". If the cell is occupied the candidate must also hold every guard axis against that elite. |
+| The cell | Empty: admitted. Occupied: it must beat the elite on the capability axis by the spec's `min_improvement`, and then replaces it. |
+
+The guard rule is the existing ratchet carried over, not loosened for niches.
+What it rules out: a candidate worse on a guard axis than its parent is refused
+even when its cell is empty; a chain of small steps through empty cells cannot
+walk a guard axis down, because each step is held to the best of its whole
+ancestry; and naming a weak parent buys nothing, because the champion's lineage
+is a reference whoever the parent is. The cost is that niches differ only on
+the objective axes: a trade-off that gives up a guard axis (safety, correctness)
+cannot be a niche. The dominance rule is not consulted.
+
+**The champion still exists, and is always an elite.** After each admission an
+elite takes the championship from the sitting champion when its capability is
+higher by at least the margin; otherwise the sitting champion stays, so a hair's
+breadth does not churn it. When the champion has just been displaced from its
+cell, the best elite (highest capability, earliest generation on a tie) takes
+over. Every change is a `Promoted` event, so fallback, supervision, `based_on`
+and the arena see one champion as before.
+
+**Demotion.** Demoting an elite empties its cell. The elite it had displaced is
+not restored: a later candidate beat it on measured evidence, and the record
+keeps it where the gate can re-admit it. Demoting the champion falls back to the
+best remaining elite whose artifact is materialized, so the lineage is never left
+without a champion while one remains; with none, the demotion fails as it always
+did and the champion keeps its place. `Lineage::demote_elite` evicts a
+non-champion elite. A rollback under an archive must target an elite, and is an
+operator's override of the champion rule until the next admission.
+
+**Parents come from the archive.** Under an archive the runner's population is
+its elites. `Selection::Elites` draws uniformly over occupied cells from a seeded
+generator, in pairs whose two members are never the same elite, so crossover
+recombines different cells; it replaces the policy's selection when that is the
+unchanged default. A recombinant records both parents (`mate`). For file-set
+genomes (`selfmod`) a candidate's `based_on` may name any current elite, which is
+then its parent; the stale rule is that the named elite is still in the archive.
+`selfmod::crossover_files` recombines two elites' genomes: a gene both carry
+identically (same path and hash, or the same deletion) is shared ancestry and is
+carried once, and the recombination is refused only where they disagree on a path
+(different content, or a deletion against an edit). The child still goes through
+every check on a candidate.
+
+**Journal.** `archive_opened` (the pinned spec, once, at the start of a run),
+and `Succession` events `admitted` (cell and the elite it replaced) and `evicted`;
+a refusal is the usual `refused`, with the reason (cell held, guard regression).
+`Lineage::replay` re-derives each cell from the journalled measurement, checks the
+occupant it replaces, checks that every change of champion is the one the rule
+names, and fails on a journal that goes on without a promotion the rule owes. A
+run counts an admission as a promotion in its report.
+
+**Not claimed.** There is no evidence yet that an archive improves search. The
+tests establish that the rules hold, are replayable and cannot be gamed by
+changing niche; whether quality-diversity finds better optima than the
+single-champion climb on arena succession or on a real workload needs runs, with
+the same compute, against the same held-out suites. Also not done: archive
+statistics in the run report, a CLI switch for opening one, restoring a displaced
+elite on demotion.
+
 ## 8. What is still not built
 
 ◻ **Model training and inference.** The variation operators produce genomes; what
@@ -918,7 +1016,7 @@ nobody chose, one individually-defensible promotion at a time.
 ## 10. Reproducing
 
 ```powershell
-cargo test --manifest-path germline/Cargo.toml                  # 286 tests
+cargo test --manifest-path germline/Cargo.toml                  # 315 tests
 cargo test --manifest-path germline/Cargo.toml --test rsi_loop  # 6 closed-loop scenarios
 cargo test --manifest-path germline/Cargo.toml --test succession # 13 succession scenarios
 ```

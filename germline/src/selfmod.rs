@@ -55,11 +55,26 @@
 //! identity ([`genome_id`]) of the champion genome it was written against
 //! ([`CandidateSpec::based_on`]; [`DirProposer`] reads it from a `based_on` file
 //! or stamps the champion it diffed against). If the champion has moved since,
-//! the candidate is refused as stale: the change set might silently undo, or
+//! the candidate is refused as stale (under a niche archive, "the champion" is
+//! "the elite it names": see below): the change set might silently undo, or
 //! depend on, an edit it never saw. No attempt is made to rebase onto disjoint
 //! files. A proposer re-reads the new champion tree and resubmits. A candidate
 //! with no stated identity is taken to be against the champion at the moment
 //! the runner reads it.
+//!
+//! ### Under a niche archive
+//!
+//! With a [`crate::archive`], a candidate's `based_on` may name **any current
+//! elite**, not only the champion. The candidate is overlaid on that elite's
+//! genome, and that elite is its parent, which is what the guard axes compare it
+//! to. The stale rule becomes "the named elite is still in the archive": a
+//! candidate written against an elite that has since been replaced (or demoted)
+//! is refused whole, for the same reason as before. A candidate with no stated
+//! identity is against the champion.
+//!
+//! [`crossover_files`] recombines two elites' genomes: genes both carry
+//! identically are shared ancestry, and the recombination is refused only where
+//! they disagree on a path.
 //!
 //! ### Deleting
 //!
@@ -346,6 +361,44 @@ pub fn changed_files(genome: &[Locus]) -> Result<Vec<(String, String)>, String> 
         return Err(format!("the genome deletes `{p}`; use `change_set` for a genome that can delete"));
     }
     Ok(set)
+}
+
+/// Recombine two file-set genomes, for a population with niches
+/// ([`crate::archive`]).
+///
+/// Scalar crossover has nothing to vary in a file genome, so the recombination
+/// is the union of the two change sets. A genome is the full effective change
+/// set against the base, so two elites descended from a common ancestor both
+/// carry its genes. A gene identical in both (same path, same hash, or the same
+/// deletion) is shared ancestry and is carried once. A path on which the parents
+/// **disagree** (different content, or a deletion against an edit) is a genuine
+/// conflict: the child would have to choose, and a recombination that silently
+/// picks one is not a recombination of both. That is refused, naming the paths.
+///
+/// The child's genes are sorted by path, as [`Workload::rebase`] leaves a
+/// genome, so equal change sets have the same [`genome_id`].
+pub fn crossover_files(a: &[Locus], b: &[Locus]) -> Result<Vec<Locus>, String> {
+    let ca = change_set(a).map_err(|e| format!("the first parent: {e}"))?;
+    let cb = change_set(b).map_err(|e| format!("the second parent: {e}"))?;
+    let held: BTreeMap<String, &String> = ca.iter().map(|(p, s)| (fold(p), s)).collect();
+    let both: Vec<&str> = cb
+        .iter()
+        .filter(|(p, s)| held.get(&fold(p)).is_some_and(|h| *h != s))
+        .map(|(p, _)| p.as_str())
+        .collect();
+    if !both.is_empty() {
+        return Err(format!(
+            "the parents disagree on {}: different content, or a deletion against an edit, and recombining them would have to choose",
+            both.join(", ")
+        ));
+    }
+    let mut all: Vec<(String, String)> = ca.clone();
+    all.extend(cb.into_iter().filter(|(p, _)| !held.contains_key(&fold(p))));
+    all.sort_by_key(|(p, _)| fold(p));
+    Ok(all
+        .into_iter()
+        .map(|(p, s)| if is_tombstone(&s) { tombstone_for(&p) } else { gene_for(&p, &s) })
+        .collect())
 }
 
 /// A stable identity for a genome: independent of locus order, covering every
@@ -2066,7 +2119,8 @@ echo "{\"capability\": $cap, \"safety\": 1}"
     #[test]
     fn write_set_case_rules_follow_the_platform() {
         let c = cfg_for_prefixes(&["prototype/src/"], &["prototype/src/Tests/"]);
-        let genome = vec![gene_for("A/x", &"0".repeat(64)), gene_for("a/X", &"0".repeat(64))];
+        // Not all zeros: that hash is the tombstone marker, which `changed_files` refuses.
+        let genome = vec![gene_for("A/x", &"1".repeat(64)), gene_for("a/X", &"1".repeat(64))];
         if cfg!(windows) {
             assert!(ws(&c, &["PROTOTYPE/SRC/x.rs"]).is_ok(), "a case variant of a writable prefix is under it");
             assert!(ws(&c, &["Prototype/Src/tests/t.rs"]).is_err(), "a case variant of a protected prefix is protected");
@@ -2150,6 +2204,49 @@ echo "{\"capability\": $cap, \"safety\": 1}"
         assert!(changed_files(&[gene_for("a", "short")]).is_err());
         assert!(changed_files(&[Locus::gene("a", &sha, "Other(x)", Effects::default())]).is_err());
         assert!(changed_files(&[]).unwrap().is_empty());
+    }
+
+    #[test]
+    fn file_genomes_recombine_unless_they_disagree_on_a_path() {
+        let (x, y, z) = ("1".repeat(64), "2".repeat(64), "3".repeat(64));
+        let a = vec![gene_for("src/a.rs", &x), tombstone_for("src/old.rs")];
+        let b = vec![gene_for("src/b.rs", &y)];
+        let child = crossover_files(&a, &b).unwrap();
+        assert_eq!(
+            change_set(&child).unwrap(),
+            vec![
+                ("src/a.rs".to_string(), x.clone()),
+                ("src/b.rs".to_string(), y.clone()),
+                ("src/old.rs".to_string(), TOMBSTONE_SHA.to_string()),
+            ],
+            "the union, sorted by path, deletion kept"
+        );
+        assert_eq!(genome_id(&child), genome_id(&crossover_files(&b, &a).unwrap()), "the order of the parents does not matter");
+
+        // The same path with different content: refused.
+        let c = vec![gene_for("src/a.rs", &z)];
+        let e = crossover_files(&a, &c).unwrap_err();
+        assert!(e.contains("src/a.rs") && e.contains("disagree"), "{e}");
+        // A deletion against an edit of the same file, either way round.
+        assert!(crossover_files(&a, &[gene_for("src/old.rs", &z)]).is_err());
+        assert!(crossover_files(&[gene_for("src/old.rs", &z)], &a).is_err());
+        // Identical tombstones, and identical genes, are shared ancestry.
+        assert_eq!(change_set(&crossover_files(&a, &a).unwrap()).unwrap(), change_set(&a).unwrap());
+        let shared = crossover_files(&[tombstone_for("src/old.rs")], &[tombstone_for("src/old.rs")]).unwrap();
+        assert_eq!(change_set(&shared).unwrap(), vec![("src/old.rs".to_string(), TOMBSTONE_SHA.to_string())]);
+        // A shared ancestor gene plus disjoint new edits: all three, the shared one once.
+        let anc = gene_for("src/anc.rs", &x);
+        let left = vec![anc.clone(), gene_for("src/l.rs", &y)];
+        let right = vec![gene_for("src/r.rs", &z), anc];
+        let kid = change_set(&crossover_files(&left, &right).unwrap()).unwrap();
+        assert_eq!(
+            kid.iter().map(|(p, _)| p.as_str()).collect::<Vec<_>>(),
+            vec!["src/anc.rs", "src/l.rs", "src/r.rs"]
+        );
+        // The shared gene alongside a disagreement elsewhere is still refused.
+        assert!(crossover_files(&[gene_for("src/anc.rs", &x), gene_for("src/q.rs", &y)], &[gene_for("src/anc.rs", &x), gene_for("src/q.rs", &z)]).is_err());
+        // Not a file genome.
+        assert!(crossover_files(&a, &[Locus::param(0.5)]).is_err());
     }
 
     // ---- construction ------------------------------------------------------

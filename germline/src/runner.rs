@@ -37,6 +37,20 @@
 //! gate again is running a test that has just been shown to be incomplete.
 //! Halting forces the criteria to be revisited by someone who can revise them.
 //!
+//! ## With a niche archive
+//!
+//! When the lineage keeps a [`NicheArchive`](super::archive::NicheArchive)
+//! ([`Lineage::with_archive`]), a cycle is the same cycle with three
+//! differences. Parents are drawn from the archive's elites, not from every
+//! measured generation: uniformly over occupied cells (the policy's selection
+//! is replaced by [`Selection::Elites`] when it is the unchanged default), in
+//! pairs from different cells. A proposer's candidate may name any current
+//! elite as its `based_on`, and is refused as stale when that elite has since
+//! left the archive. And a candidate that passes the gate is *admitted* to a
+//! cell; [`CycleOutcome::promoted`] and [`RunReport::promotions`] then count
+//! admissions, and the champion is supervised only on a cycle that changed it.
+//! Halts, the energy budget and the journal work as before.
+//!
 //! ## The policy is pinned
 //!
 //! [`RunnerPolicy::digest`] is recorded in the journal and carried in the
@@ -533,6 +547,18 @@ impl<'a> Runner<'a> {
             energy_budget_joules: budget,
         };
 
+        // A run that keeps niches journals them first, so replay can check the
+        // archive it rebuilds is the one that was pinned.
+        if let (Some(a), 0) = (lineage.archive(), self.first_cycle) {
+            let entry = Entry::ArchiveOpened { spec: a.spec().clone(), digest: a.spec().digest() };
+            if let Err(e) = journal.append(entry) {
+                let detail = e.to_string();
+                report.halt = Halt::WorkloadFailed { detail: detail.clone() };
+                report.journal_head = journal.head().cloned();
+                return report;
+            }
+        }
+
         let mut consecutive_refusals = self.carried_refusals;
 
         // Energy is booked from the workload's own running count, so a cycle's
@@ -605,6 +631,7 @@ impl<'a> Runner<'a> {
 
             let seed = self.seed.wrapping_add(cycle_index as u64).wrapping_mul(0x9E37_79B9);
 
+            let champion_before = lineage.champion().map(|g| g.id);
             let outcome = self.one_cycle(cycle_index, seed, lineage, journal, workload);
             if budget.is_some() {
                 // Booked whether or not the cycle succeeded: a cycle cut short
@@ -649,8 +676,13 @@ impl<'a> Runner<'a> {
                         // Supervise the new champion before proposing anything
                         // else. Stacking a proposal on an unvalidated promotion
                         // means a failure is attributed to the wrong generation.
-                        if let Some(halt) =
-                            self.supervise(lineage, journal, workload, outcome.candidate)
+                        // Under an archive an admission may leave the champion
+                        // as it was, and then there is nothing new to supervise.
+                        let champion_moved = lineage.archive().is_none()
+                            || lineage.champion().map(|g| g.id) != champion_before;
+                        if let Some(halt) = champion_moved
+                            .then(|| self.supervise(lineage, journal, workload, outcome.candidate))
+                            .flatten()
                         {
                             report.cycles.push(outcome);
                             report.halt = halt;
@@ -715,8 +747,21 @@ impl<'a> Runner<'a> {
         // "genome" here was the generation's fitness score wrapped as a
         // parameter, so nothing heritable passed from parent to child; that
         // remains the fallback only for generations recorded without one.
-        let measured: Vec<&Generation> =
-            lineage.generations().iter().filter(|g| g.heldout_fitness().is_some()).collect();
+        // Under a niche archive the population is its elites, in cell order, and
+        // selection is uniform over them unless the policy chose another.
+        let archive_mode = lineage.archive().is_some();
+        let measured: Vec<&Generation> = match lineage.archive() {
+            Some(a) => a
+                .elites()
+                .filter_map(|(_, id)| lineage.get(id))
+                .filter(|g| g.heldout_fitness().is_some())
+                .collect(),
+            None => lineage.generations().iter().filter(|g| g.heldout_fitness().is_some()).collect(),
+        };
+        let mut variation = self.policy.variation.clone();
+        if archive_mode && variation.selection == VariationPlan::default().selection {
+            variation.selection = Selection::Elites;
+        }
         let pop_ids: Vec<GenerationId> = measured.iter().map(|g| g.id).collect();
         let population: Vec<(crate::variation::Genome, f64)> = measured
             .iter()
@@ -730,7 +775,7 @@ impl<'a> Runner<'a> {
             if population.is_empty() { vec![(vec![Locus::param(0.5)], 0.5)] } else { population };
         // Under Pareto selection, each member's vector over the named objectives,
         // parallel to `seedpop`. A member without one has none, and is not chosen.
-        let points: Option<Vec<Option<Vec<f64>>>> = match &self.policy.variation.selection {
+        let points: Option<Vec<Option<Vec<f64>>>> = match &variation.selection {
             Selection::Pareto { objectives } => Some(if measured.is_empty() {
                 vec![Some(vec![0.5; objectives.len()])]
             } else {
@@ -747,6 +792,9 @@ impl<'a> Runner<'a> {
         let champion_genome: Vec<Locus> =
             lineage.champion().and_then(|g| g.genome.clone()).unwrap_or_default();
 
+        // The elite each proposed candidate was written against, under an archive.
+        let mut parent_of_spec: BTreeMap<String, GenerationId> = BTreeMap::new();
+
         // Either the built-in search, or an external proposer whose every
         // candidate must state a prediction before anything else happens.
         let (pool, refused) = match self.proposer.as_mut() {
@@ -754,7 +802,7 @@ impl<'a> Runner<'a> {
                 let Proposal { candidates, refused } = propose_with_points(
                     &seedpop,
                     points.as_deref(),
-                    self.policy.variation.clone(),
+                    variation.clone(),
                     &GenePool::default(),
                     seed,
                 );
@@ -812,12 +860,43 @@ impl<'a> Runner<'a> {
                     return Err(format!("proposer `{name}` produced no candidates"));
                 }
 
+                // Under an archive a candidate may be written against any current
+                // elite, which is also the parent the guards compare it to.
+                let elite_genomes: Vec<(GenerationId, Vec<Locus>)> = if archive_mode {
+                    measured.iter().map(|g| (g.id, g.genome.clone().unwrap_or_default())).collect()
+                } else {
+                    Vec::new()
+                };
                 let mut passing = Vec::new();
                 let mut refusals = Vec::new();
                 for spec in proposed {
                     let checked = manifest::check(spec.manifest.as_ref(), &axes)
                         .map_err(|r| r.to_string())
-                        .and_then(|_| workload.rebase(&champion_genome, spec.clone()));
+                        .and_then(|_| {
+                            if !archive_mode {
+                                return workload.rebase(&champion_genome, spec.clone());
+                            }
+                            let (base, base_id) = match &spec.based_on {
+                                Some(b) => {
+                                    let (id, g) = elite_genomes
+                                        .iter()
+                                        .find(|(_, g)| crate::selfmod::genome_id(g) == *b)
+                                        .ok_or_else(|| {
+                                            format!(
+                                                "candidate {} is stale: it was written against a base that is no longer an elite of the archive; re-read an elite's tree and resubmit",
+                                                spec.id
+                                            )
+                                        })?;
+                                    (g.clone(), Some(*id))
+                                }
+                                None => (champion_genome.clone(), lineage.champion().map(|g| g.id)),
+                            };
+                            let rebased = workload.rebase(&base, spec.clone())?;
+                            if let Some(id) = base_id {
+                                parent_of_spec.insert(rebased.id.clone(), id);
+                            }
+                            Ok(rebased)
+                        });
                     match checked {
                         Ok(spec) => passing.push(spec),
                         Err(reason) => {
@@ -1004,9 +1083,10 @@ impl<'a> Runner<'a> {
             let id = lineage.next_id();
             // The generation the candidate actually derived from; the champion
             // only when the population had no real members to derive from.
-            let parent = spec
-                .parent
-                .and_then(|i| pop_ids.get(i as usize).copied())
+            let parent = parent_of_spec
+                .get(&spec.id)
+                .copied()
+                .or_else(|| spec.parent.and_then(|i| pop_ids.get(i as usize).copied()))
                 .or_else(|| lineage.champion().map(|g| g.id));
             let mut generation = Generation::new(id, artifact.clone())
                 .note(format!("cycle {index}, spec {}", spec.id));
@@ -1015,6 +1095,11 @@ impl<'a> Runner<'a> {
             generation.knowledge_base = workload.knowledge_base(&artifact);
             if let Some(p) = parent {
                 generation = generation.parent(p);
+            }
+            // A recombinant's second parent, so the guards hold against both.
+            if archive_mode {
+                generation.mate =
+                    spec.mate.and_then(|i| pop_ids.get(i as usize).copied()).filter(|m| Some(*m) != parent);
             }
 
             let mut cycle = Cycle::propose(generation, seed, &self.policy.name, journal)
@@ -2082,6 +2167,7 @@ mod tests {
             parent: None,
             genome: None,
             note: String::new(),
+            mate: None,
         };
         let e = forged("forge-stale", vec![proposal.clone(), promote(50, Some(777))]).unwrap_err();
         assert!(matches!(&e, ReplayError::Inconsistent { detail, .. } if detail.contains("the champion was")), "{e:?}");
@@ -2958,5 +3044,276 @@ mod tests {
         assert_ne!(three.digest(), RunnerPolicy::default().digest());
         let back: RunnerPolicy = serde_json::from_str(GOLDEN_JSON).unwrap();
         assert_eq!(back.measure_per_cycle, 1);
+    }
+
+    /// Pinned before the niche archive existed: a run with no archive journals
+    /// byte for byte what it did then. The head digest covers every record.
+    #[test]
+    fn a_run_without_an_archive_journals_exactly_as_it_did_before_archives() {
+        let path = tmp("byte-stable");
+        let mut j = Journal::open(&path).unwrap();
+        let mut w = Improving::new(0.05);
+        let mut l = seeded(&mut w);
+        let ep = episode();
+        let at = attestor();
+        let mut r = Runner::new(policy(), &ep, &at, suite(), 7);
+        let report = r.run(&mut l, &mut j, &mut w);
+        let head = report.journal_head.clone().unwrap();
+        let _ = std::fs::remove_dir_all(path.parent().unwrap());
+        assert_eq!(head.0, "35b6a0ff68f6ff3b27baefd438aac111696a84c4d698d2615aef3282f767abb0", "{} cycles", report.cycles.len());
+    }
+
+    // ---- a population with niches ------------------------------------------
+
+    use crate::archive::{NicheAxis, NicheSpec};
+    use crate::lineage::SuccessionEvent;
+    use crate::variation::params_of;
+
+    /// Capability is the first parameter of the genome and `size` the second.
+    struct Niched {
+        artifacts: std::collections::HashMap<String, Vec<f64>>,
+        energy: f64,
+    }
+
+    impl Niched {
+        fn new() -> Self {
+            Niched { artifacts: std::collections::HashMap::new(), energy: 0.0 }
+        }
+    }
+
+    impl Workload for Niched {
+        fn materialize(&mut self, spec: &CandidateSpec) -> Result<Digest, String> {
+            let d = Digest::of(spec.id.as_bytes());
+            self.artifacts.insert(d.0.clone(), params_of(&spec.genome));
+            Ok(d)
+        }
+        fn evaluate(&mut self, artifact: &Digest, _: &EvalSuite) -> Result<FitnessVector, String> {
+            self.energy += 1.0;
+            let p = self.artifacts.get(&artifact.0).ok_or("not materialized")?;
+            Ok(FitnessVector::new()
+                .with("capability", p[0])
+                .with("size", *p.get(1).unwrap_or(&0.0))
+                .with("safety", 0.95))
+        }
+        fn shadow(&mut self, _: &Digest) -> HealthSample {
+            HealthSample::ok()
+        }
+        fn observe_champion(&mut self, _: &Digest) -> HealthSample {
+            HealthSample::ok()
+        }
+        fn materialized(&self, a: &Digest) -> bool {
+            self.artifacts.contains_key(&a.0)
+        }
+        fn joules_spent(&self) -> Option<f64> {
+            Some(self.energy)
+        }
+    }
+
+    fn niches() -> NicheSpec {
+        NicheSpec::new("capability", vec![NicheAxis::new("size", vec![0.5])], 2, 0.01)
+    }
+
+    fn niche_episode() -> Episode {
+        episode().with_archive(niches()).unwrap()
+    }
+
+    /// Two elites, one per cell, each with the genome it was built from.
+    fn niche_genesis(w: &mut Niched) -> Lineage {
+        let ep = niche_episode();
+        let mut l = Lineage::new().with_archive(niches()).unwrap();
+        for (name, genome) in [("seed-low", [0.5, 0.2]), ("seed-high", [0.4, 0.8])] {
+            let id = l.next_id();
+            let artifact = Digest::of(name.as_bytes());
+            w.artifacts.insert(artifact.0.clone(), genome.to_vec());
+            let mut g = Generation::new(id, artifact).measured(Measurement {
+                suite: suite(),
+                fitness: FitnessVector::new().with("capability", genome[0]).with("size", genome[1]).with("safety", 0.95),
+                evaluator: EVALUATOR.into(),
+            });
+            g.genome = Some(genome.iter().map(|v| Locus::param(*v)).collect());
+            let approval = ep.approve(&g, &l, 2, &|_| true).unwrap();
+            l.add(g);
+            l.promote(approval).unwrap();
+        }
+        l
+    }
+
+    fn niche_policy(cycles: u32) -> RunnerPolicy {
+        RunnerPolicy {
+            max_cycles: cycles,
+            max_consecutive_refusals: cycles + 1,
+            shadow_runs: 2,
+            candidates_per_cycle: 4,
+            ..RunnerPolicy::default()
+        }
+    }
+
+    fn niche_run(seed: u64, cycles: u32, tag: &str) -> (Lineage, Journal, PathBuf, RunReport) {
+        let path = tmp(tag);
+        let mut j = Journal::open(&path).unwrap();
+        let mut w = Niched::new();
+        let mut l = niche_genesis(&mut w);
+        let (ep, at) = (niche_episode(), attestor());
+        let report = Runner::new(niche_policy(cycles), &ep, &at, suite(), seed).run(&mut l, &mut j, &mut w);
+        (l, j, path, report)
+    }
+
+    #[test]
+    fn a_niched_run_keeps_both_trade_offs_and_every_elite_sits_in_its_own_cell() {
+        let (l, j, path, report) = niche_run(5, 10, "niched-run");
+        assert!(report.promotions > 0, "{report:?}");
+        let a = l.archive().unwrap();
+        assert_eq!(a.len(), 2, "both niches stay occupied: the search is not a single-champion climb");
+        for (cell, id) in a.elites() {
+            let f = l.get(id).unwrap().heldout_fitness().unwrap();
+            assert_eq!(a.spec().cell_of(f).unwrap(), *cell, "an elite's cell is its measured descriptor");
+        }
+        assert!(a.contains(l.champion().unwrap().id), "the champion is an elite");
+        // The journal opens with the pinned niches.
+        let first = j.replay().unwrap().into_iter().find(|r| matches!(r.entry, Entry::ArchiveOpened { .. }));
+        assert!(matches!(first.map(|r| r.entry), Some(Entry::ArchiveOpened { digest, .. }) if digest == niches().digest()));
+        // Parents come from the archive: more than one elite was a parent, and
+        // a recombinant records both.
+        let parents: std::collections::BTreeSet<_> = l.generations().iter().filter_map(|g| g.parent).collect();
+        assert!(parents.len() >= 2, "{parents:?}");
+        assert!(l.generations().iter().any(|g| g.mate.is_some()), "some child is a recombinant of two elites");
+        let _ = std::fs::remove_dir_all(path.parent().unwrap());
+    }
+
+    #[test]
+    fn replay_reconstructs_the_archive_exactly() {
+        let (l, j, path, report) = niche_run(5, 10, "niched-replay");
+        let mut w = Niched::new();
+        let resumed = Lineage::replay(niche_genesis(&mut w), &j, report.journal_head.as_ref()).unwrap();
+        assert_eq!(resumed.lineage.archive(), l.archive(), "the same cells, the same occupants");
+        assert_eq!(resumed.lineage.champion().map(|g| g.id), l.champion().map(|g| g.id));
+        assert_eq!(resumed.lineage.events(), l.events());
+        assert_eq!(resumed.lineage.generations(), l.generations());
+        assert_eq!(resumed.proposals, report.cycles.len() as u32);
+        let _ = std::fs::remove_dir_all(path.parent().unwrap());
+    }
+
+    #[test]
+    fn a_replay_that_disagrees_with_the_archive_says_so() {
+        let (_, j, path, _) = niche_run(5, 6, "niched-forged");
+        let records = j.replay().unwrap();
+        let mut w = Niched::new();
+        // A journal rewritten (and re-chained) so an admission names the wrong cell.
+        let forge = |tag: &str, edit: &dyn Fn(&mut Entry) -> bool| {
+            let p = tmp(tag);
+            let mut out = Journal::open(&p).unwrap();
+            let mut done = false;
+            for r in &records {
+                let mut e = r.entry.clone();
+                done |= edit(&mut e);
+                out.append(e).unwrap();
+            }
+            assert!(done, "the scenario had nothing to forge");
+            let mut w2 = Niched::new();
+            let r = Lineage::replay(niche_genesis(&mut w2), &out, None);
+            let _ = std::fs::remove_dir_all(p.parent().unwrap());
+            r
+        };
+        let wrong_cell = forge("forge-cell", &|e| match e {
+            Entry::Succession { event: SuccessionEvent::Admitted { cell, .. } } => {
+                cell[0] = 1 - cell[0].min(1);
+                true
+            }
+            _ => false,
+        });
+        assert!(matches!(&wrong_cell, Err(ReplayError::Inconsistent { detail, .. }) if detail.contains("cell") ), "{wrong_cell:?}");
+        // A pinned spec other than the lineage's.
+        let other_spec = forge("forge-spec", &|e| match e {
+            Entry::ArchiveOpened { spec, digest } => {
+                spec.axes[0].edges[0] = 0.4;
+                *digest = spec.digest();
+                true
+            }
+            _ => false,
+        });
+        assert!(matches!(&other_spec, Err(ReplayError::Inconsistent { detail, .. }) if detail.contains("differs")), "{other_spec:?}");
+        let _ = &mut w;
+        let _ = std::fs::remove_dir_all(path.parent().unwrap());
+    }
+
+    #[test]
+    fn a_niched_run_is_reproducible_from_its_seed_and_differs_by_seed() {
+        let head = |seed, tag: &str| {
+            let (_, _, path, report) = niche_run(seed, 8, tag);
+            let _ = std::fs::remove_dir_all(path.parent().unwrap());
+            report.journal_head.unwrap()
+        };
+        assert_eq!(head(21, "niched-a"), head(21, "niched-b"));
+        assert_ne!(head(21, "niched-c"), head(22, "niched-d"));
+    }
+
+    #[test]
+    fn an_energy_budget_still_halts_a_niched_run() {
+        let path = tmp("niched-budget");
+        let mut j = Journal::open(&path).unwrap();
+        let mut w = Niched::new();
+        let mut l = niche_genesis(&mut w);
+        let (ep, at) = (niche_episode(), attestor());
+        let policy = RunnerPolicy { energy_budget_joules: Some(6.0), ..niche_policy(50) };
+        let report = Runner::new(policy, &ep, &at, suite(), 5).run(&mut l, &mut j, &mut w);
+        assert!(matches!(report.halt, Halt::EnergyExhausted { .. }), "{:?}", report.halt);
+        let _ = std::fs::remove_dir_all(path.parent().unwrap());
+    }
+
+    /// Hands out the candidates it was given, one list per call.
+    struct Script(Vec<Vec<CandidateSpec>>);
+
+    impl Proposer for Script {
+        fn name(&self) -> &str {
+            "script"
+        }
+        fn propose(&mut self, _: Option<&FitnessVector>, _: u64) -> Vec<CandidateSpec> {
+            if self.0.is_empty() { Vec::new() } else { self.0.remove(0) }
+        }
+    }
+
+    fn edit(id: &str, genome: [f64; 2], based_on: &[Locus]) -> CandidateSpec {
+        CandidateSpec::new(id, genome.iter().map(|v| Locus::param(*v)).collect())
+            .with_manifest(PredictionManifest { metric: "capability".into(), direction: Direction::Increase, magnitude: 0.05 })
+            .based_on(crate::selfmod::genome_id(based_on))
+    }
+
+    fn genome_of(l: &Lineage, id: GenerationId) -> Vec<Locus> {
+        l.get(id).unwrap().genome.clone().unwrap()
+    }
+
+    #[test]
+    fn a_candidate_may_be_based_on_any_elite_and_is_stale_once_that_elite_is_replaced() {
+        let path = tmp("niched-stale");
+        let mut j = Journal::open(&path).unwrap();
+        let mut w = Niched::new();
+        let mut l = niche_genesis(&mut w);
+        let (low, high) = (GenerationId(0), GenerationId(1));
+        let (low_genome, high_genome) = (genome_of(&l, low), genome_of(&l, high));
+        let (ep, at) = (niche_episode(), attestor());
+        let script = Script(vec![
+            // Against the lower-capability elite, not the champion: allowed, and it
+            // replaces that elite in its own cell.
+            vec![edit("on-high", [0.45, 0.8], &high_genome)],
+            // Against the elite it just replaced: stale.
+            vec![edit("on-replaced", [0.9, 0.8], &high_genome)],
+            // Against the champion's own genome: still current.
+            vec![edit("on-low", [0.6, 0.2], &low_genome)],
+        ]);
+        let mut r = Runner::new(niche_policy(3), &ep, &at, suite(), 1).with_proposer(Box::new(script));
+        let report = r.run(&mut l, &mut j, &mut w);
+
+        assert!(report.cycles[0].promoted, "{:?}", report.cycles[0]);
+        let admitted = report.cycles[0].candidate.unwrap();
+        assert_eq!(l.get(admitted).unwrap().parent, Some(high), "its parent is the elite it names, not the champion");
+        assert_eq!(l.champion().map(|g| g.id).unwrap().0 != admitted.0, true, "and the champion did not move for it");
+
+        assert!(!report.cycles[1].promoted);
+        assert!(report.cycles[1].reasons.iter().any(|m| m.contains("stale") && m.contains("no longer an elite")), "{:?}", report.cycles[1]);
+        assert_eq!(report.cycles[1].candidate, None, "refused before anything was built");
+
+        assert!(report.cycles[2].promoted, "{:?}", report.cycles[2]);
+        assert_eq!(l.get(report.cycles[2].candidate.unwrap()).unwrap().parent, Some(low));
+        let _ = std::fs::remove_dir_all(path.parent().unwrap());
     }
 }

@@ -62,6 +62,7 @@
 //! | [`gate`] | pre-registered promotion criteria and the verdict they produce |
 //! | [`attest`] | proof that a verdict came from the evaluator it names |
 //! | [`lineage`] | append-only generation log, champion pointer, rollback |
+//! | [`archive`] | opt-in niches: a quality-diversity archive beside the single champion |
 //! | [`journal`] | durable, hash-chained record of everything that happened |
 //! | [`cycle`] | the state machine joining propose → evaluate → adjudicate → hand off |
 //! | [`supervisor`] | post-handoff health, failure modes, automatic demotion |
@@ -90,6 +91,7 @@
 //! runner is bounded by construction: there is no daemon mode and no way to ask
 //! for unlimited cycles. See `GERMLINE.md`.
 
+pub mod archive;
 pub mod attest;
 pub mod cycle;
 pub mod directed;
@@ -280,6 +282,12 @@ pub struct Generation {
     /// earlier generations serialise and hash exactly as they did.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub knowledge_base: Option<String>,
+    /// The second parent of a recombinant, recorded only under a niche archive
+    /// ([`archive`]), where the guard axes are compared against both parents.
+    /// Skipped when `None`, so every generation written without one serialises,
+    /// and hashes, exactly as before.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mate: Option<GenerationId>,
 }
 
 impl Generation {
@@ -295,6 +303,7 @@ impl Generation {
             genome: None,
             definitions: Vec::new(),
             knowledge_base: None,
+            mate: None,
         }
     }
 

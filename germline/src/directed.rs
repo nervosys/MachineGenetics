@@ -44,6 +44,11 @@ pub struct CandidateSpec {
     /// [`crate::variation::propose`], an index into the population it was
     /// given, which the runner maps back to a generation id.
     pub parent: Option<u64>,
+    /// The second parent of a recombinant, an index into the same population.
+    /// Used only under a niche archive, which records it so the guard axes can
+    /// be compared against both parents.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mate: Option<u64>,
     /// What an external proposer predicts this edit will do. Required for a
     /// proposer's candidate and absent from the undirected search. See
     /// [`crate::manifest`].
@@ -62,7 +67,7 @@ pub struct CandidateSpec {
 
 impl CandidateSpec {
     pub fn new(id: impl Into<String>, genome: crate::variation::Genome) -> Self {
-        CandidateSpec { id: id.into(), genome, parent: None, manifest: None, proposer: None, based_on: None }
+        CandidateSpec { id: id.into(), genome, parent: None, mate: None, manifest: None, proposer: None, based_on: None }
     }
 
     /// State the prediction this edit makes.
