@@ -125,9 +125,9 @@ if [ "$BENCH" -eq 1 ]; then
     rlog="$(mktemp)"
     cargo run --release --quiet --manifest-path "$REPO/prototype/Cargo.toml" \
         --bin reliability-bench 2>&1 | tee "$rlog" || true
-    lex="$(grep -oE 'lex [0-9]+/' "$rlog" | grep -oE '[0-9]+' | head -1)"
-    parse="$(grep -oE 'parse [0-9]+/' "$rlog" | grep -oE '[0-9]+' | head -1)"
-    eff="$(grep -oE 'effective pass: +[0-9]+/' "$rlog" | grep -oE '[0-9]+' | head -1)"
+    lex="$(grep -oE 'lex [0-9]+/' "$rlog" | grep -oE '[0-9]+' | head -1 || true)"
+    parse="$(grep -oE 'parse [0-9]+/' "$rlog" | grep -oE '[0-9]+' | head -1 || true)"
+    eff="$(grep -oE 'effective pass: +[0-9]+/' "$rlog" | grep -oE '[0-9]+' | head -1 || true)"
     [ -n "$lex" ] && COUNTS[rb_lex]="$lex"
     [ -n "$parse" ] && COUNTS[rb_parse]="$parse"
     [ -n "$eff" ] && COUNTS[rb_effective]="$eff"
