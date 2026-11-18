@@ -1,7 +1,7 @@
 # Germline — model succession, handoff, and fallback
 
 > **Status: control plane complete and runnable; workload not.**
-> `germline/` — its own crate, 272 tests. Variation, directed search, the gate,
+> `germline/` — its own crate, 286 tests. Variation, directed search, the gate,
 > attestation, lineage, the durable journal, the cycle state machine, and
 > supervision are built and tested ✅. Model training and inference are **not**
 > here and are not claimed ◻ — this decides *whether* a successor takes over, not
@@ -533,8 +533,9 @@ rate.
 
 `SelfModWorkload` is a `Workload` whose candidates are edits to a source tree, such
 as this compiler's own. A genome is the set of files that differ from a frozen base
-tree (one file gene each, bytes in a content-addressed `BlobStore`); `materialize`
-copies the base into scratch, writes the files, builds and runs the tests; a
+tree (one file gene each, bytes in a content-addressed `BlobStore`, or a tombstone
+gene that deletes the file); `materialize` copies the base into scratch, applies the
+writes and deletions, builds and runs the tests; a
 fixed evaluator that no candidate can write then measures the built binary, and the
 result goes through the ordinary gate. The write set is enforced once, in
 `check_write_set`, before anything is copied: relative paths only, no `.`/`..`,
@@ -550,8 +551,27 @@ under test is still the build-and-test step's and the evaluator's to catch.
 Only this side's failures (a gene missing
 from the blob store, an unreadable base tree) are an `Err`, which halts it. This is
 not a sandbox. A candidate's build scripts, tests and binary run as the user with
-only a cut-down environment and timeouts, and a candidate cannot delete files or
-build on the champion's edits (it is a whole change set against the base).
+only a cut-down environment and timeouts.
+
+**Candidates descend from the champion, and a genome can shrink.** A proposer
+edits the champion's tree, not the base. The runner hands every external
+candidate to `Workload::rebase`, which overlays its change set on the champion's
+genome (its file replaces the champion's gene for that path, and equal to the base
+bytes it drops the gene; a tombstone removes a champion-added file's gene or
+becomes a tombstone for a base file). The result is the full effective genome
+against the base: that is what is built, journalled and inherited, so a promoted
+child is self-contained and replay needs no champion to interpret it. The artifact
+digest depends only on that effective change set, and is unchanged for any genome
+without a deletion, so existing journals and base-relative genomes (the champion
+genome empty) replay as before. Tombstones go through `check_write_set` and
+`protect_tests` like writes: a protected or out-of-set path is as undeletable as it
+is unwritable, and so is a `.rs` file whose tests the base has. After a demotion
+the champion is the fallback, so the next candidate is overlaid on it, not on the
+demoted edit. A candidate states which champion genome it was written against
+(`based_on`, a `genome_id`); if the champion has moved it is **refused as stale,
+not merged**, even when the files are disjoint: the safer and simpler rule, at the
+cost that after a promotion the next candidate must be written against the new
+tree. A candidate that changes nothing relative to the champion is refused.
 `scripts/selfmod-eval.py MANIFEST BINARY` is an evaluator for the MAGE compiler:
 it runs `BINARY --check --json` over a frozen corpus manifest and reports
 `safety` (known-good files still check clean, so a new error is a regression),
@@ -583,11 +603,16 @@ writable prefix.
 
 **Driving it.** The `selfmod` binary (`germline/src/bin/selfmod.rs`, logic in
 `selfmod::cli::run`) lets an external agent run this loop one candidate at a
-time. Write a candidate to `<outbox>/<id>/manifest.json` plus `files/<path>...`,
-run `selfmod --config run.json --cycles 1`, read the JSON report on the last
-line of stdout (per cycle: generation, promoted or not, fitness, the workload's
-failure text; also the proposer's errors and the champion's files and fitness),
-and repeat. Relative paths in the config resolve against its directory.
+time. Write a candidate to `<outbox>/<id>/manifest.json` plus `files/<path>...`
+(only the files it changes, against the champion's tree; `delete.txt` lists files to
+delete, one per line, and an optional `based_on` file names the champion genome id
+it was written against), run `selfmod --config run.json --cycles 1`, read the JSON
+report on the last line of stdout (per cycle: generation, promoted or not, fitness,
+the workload's failure text; also the proposer's errors, the champion's files and
+fitness, `champion_tree`, a read-only snapshot of the champion to write the next
+candidate against, and `champion_genome_id`), and repeat. Several candidates in one
+invocation are only useful until the first promotion: the rest are then stale.
+Relative paths in the config resolve against its directory.
 
 ```json
 {
@@ -893,7 +918,7 @@ nobody chose, one individually-defensible promotion at a time.
 ## 10. Reproducing
 
 ```powershell
-cargo test --manifest-path germline/Cargo.toml                  # 272 tests
+cargo test --manifest-path germline/Cargo.toml                  # 286 tests
 cargo test --manifest-path germline/Cargo.toml --test rsi_loop  # 6 closed-loop scenarios
 cargo test --manifest-path germline/Cargo.toml --test succession # 13 succession scenarios
 ```

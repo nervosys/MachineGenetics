@@ -236,6 +236,19 @@ pub trait Workload {
         None
     }
 
+    /// Turn an external proposer's candidate into the one that is evaluated and
+    /// recorded, given the current champion's genome (empty if it has none).
+    /// A workload whose candidates build on the champion overlays the
+    /// candidate's change set on the champion's here, so the genome that is
+    /// materialized, journalled and inherited is the full effective one. `Err`
+    /// refuses the candidate (stale, or a change that cannot apply) like a
+    /// failed manifest check; it does not halt the run. The default returns the
+    /// candidate unchanged, which is right for any workload whose genomes are
+    /// complete rather than relative to the champion.
+    fn rebase(&mut self, _champion: &[Locus], spec: CandidateSpec) -> Result<CandidateSpec, String> {
+        Ok(spec)
+    }
+
     /// Called at the start of each cycle, before anything is proposed. A
     /// workload whose inputs can change underneath it (held-out data on disk,
     /// say) checks them here. An error halts the run as a workload failure.
@@ -731,6 +744,8 @@ impl<'a> Runner<'a> {
         let cpc = self.policy.candidates_per_cycle;
         let champion_fitness: Option<FitnessVector> =
             lineage.champion().and_then(|g| g.heldout_fitness().cloned());
+        let champion_genome: Vec<Locus> =
+            lineage.champion().and_then(|g| g.genome.clone()).unwrap_or_default();
 
         // Either the built-in search, or an external proposer whose every
         // candidate must state a prediction before anything else happens.
@@ -800,8 +815,11 @@ impl<'a> Runner<'a> {
                 let mut passing = Vec::new();
                 let mut refusals = Vec::new();
                 for spec in proposed {
-                    match manifest::check(spec.manifest.as_ref(), &axes) {
-                        Ok(_) => passing.push(spec),
+                    let checked = manifest::check(spec.manifest.as_ref(), &axes)
+                        .map_err(|r| r.to_string())
+                        .and_then(|_| workload.rebase(&champion_genome, spec.clone()));
+                    match checked {
+                        Ok(spec) => passing.push(spec),
                         Err(reason) => {
                             let text = format!("refused edit {} from {name}: {reason}", spec.id);
                             let _ = journal.append(Entry::Note { text: text.clone() });

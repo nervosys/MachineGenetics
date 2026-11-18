@@ -31,6 +31,16 @@
 //!   command: the argv, and the bytes of every argv element that is a file. A
 //!   changed evaluator changes the suite, and a resume refuses it.
 //!
+//! - **Candidates are relative to the champion.** Each invocation writes the
+//!   champion's tree (the base with its genome applied, deletions included) to
+//!   the read-only snapshot `<scratch_root>/.champion/<id>/tree` and reports its
+//!   path and the champion genome's id (`champion_tree`, `champion_genome_id`).
+//!   A proposer edits that tree. [`DirProposer`] diffs the candidate's `files/`
+//!   against it, reads deletions from `delete.txt`, and stamps the candidate with
+//!   the id (or takes a `based_on` file), and the runner overlays the change set
+//!   on the champion's genome ([`Workload::rebase`]). A candidate written against
+//!   an older champion is refused as stale.
+//!
 //! One candidate is run per cycle, and no more candidates are consumed than
 //! cycles are run: the rest stay in the outbox. A run that would find nothing
 //! to propose is not started, because an empty proposal halts the runner as a
@@ -61,7 +71,8 @@ const EVALUATOR: &str = "selfmod-cli";
 pub const USAGE: &str = "usage: selfmod --config <run.json> [--cycles <n>] [--export-champion <dir>]\n\
 Runs up to <n> (default 1) self-modification cycles, one outbox candidate per cycle, resuming from the journal.\n\
 --export-champion writes the champion's tree (the base with its edits applied) to the new directory <dir>\n\
-and runs no cycle, so a proposer can build its next candidate on the champion's edits.\n\
+and runs no cycle. Every run also reports champion_tree (a read-only snapshot) and champion_genome_id;\n\
+write candidates against that tree (delete.txt lists files to delete; based_on names the genome id).\n\
 The last line of stdout is a JSON report.";
 
 fn default_axis() -> String {
@@ -334,6 +345,7 @@ fn champion_json(lineage: &Lineage) -> Value {
             "generation": g.id.0,
             "artifact": g.artifact.0,
             "files": g.definitions,
+            "genome_id": g.genome.as_deref().map(super::genome_id),
             "fitness": g.heldout_fitness().map(fitness_json),
         }),
         None => Value::Null,
@@ -402,22 +414,43 @@ fn genesis(cfg: &CliConfig, suite: &EvalSuite, w: &mut SelfModWorkload) -> Resul
 }
 
 /// Write the champion's tree to `dir`, which must not exist: the base tree with
-/// the champion's genes applied. A candidate is a complete change set against the
-/// base, so a proposer that starts from this tree and writes every file it differs
-/// from the base in keeps the champion's edits.
+/// the champion's genome applied (its writes and its deletions).
 fn export_champion(cfg: &CliConfig, store: &BlobStore, lineage: &Lineage, dir: &Path) -> Result<Vec<String>, String> {
     if dir.exists() {
         return Err(format!("--export-champion: {} already exists", dir.display()));
     }
     let champ = lineage.champion().ok_or("the journal has no champion")?;
     let genome = champ.genome.clone().ok_or("the champion has no genome in the journal")?;
-    let files = super::changed_files(&genome)?;
-    super::copy_tree(&cfg.base_tree, dir)?;
-    for (path, sha) in &files {
-        let bytes = store.get(sha).ok_or_else(|| format!("gene `{path}` is not in the blob store"))?;
-        super::write_gene(dir, path, &bytes)?;
+    super::export_genome_tree(&cfg.base_tree, store, &genome, dir)
+}
+
+/// The champion's tree as a read-only snapshot under the scratch root, named by
+/// the genome's id (so the same champion is exported once), and that id.
+fn champion_snapshot(cfg: &CliConfig, store: &BlobStore, lineage: &Lineage) -> Result<(PathBuf, String), String> {
+    let champ = lineage.champion().ok_or("the journal has no champion")?;
+    let genome = champ.genome.clone().ok_or_else(|| format!("champion {} has no genome in the journal", champ.id))?;
+    let id = super::genome_id(&genome);
+    let root = cfg.scratch_root.join(".champion");
+    let tree = root.join(&id[..16]).join("tree");
+    if tree.is_dir() {
+        return Ok((tree, id));
     }
-    Ok(files.into_iter().map(|(p, s)| format!("{p}:{s}")).collect())
+    std::fs::create_dir_all(&root).map_err(|e| format!("cannot create {}: {e}", root.display()))?;
+    let tmp = root.join(format!(".tmp-{}", super::unique()));
+    let made = super::export_genome_tree(&cfg.base_tree, store, &genome, &tmp.join("tree"));
+    if let Err(e) = made {
+        let _ = super::remove_tree(&tmp);
+        return Err(format!("cannot write the champion snapshot: {e}"));
+    }
+    super::make_read_only(&tmp.join("tree"));
+    let dest = root.join(&id[..16]);
+    if let Err(e) = std::fs::rename(&tmp, &dest) {
+        let _ = super::remove_tree(&tmp);
+        if !tree.is_dir() {
+            return Err(format!("cannot place the champion snapshot: {e}"));
+        }
+    }
+    Ok((tree, id))
 }
 
 fn execute(cfg: &CliConfig, requested: u32, export: Option<&Path>) -> Result<String, String> {
@@ -468,7 +501,13 @@ fn execute(cfg: &CliConfig, requested: u32, export: Option<&Path>) -> Result<Str
         "cycles": [],
         "proposer_errors": [],
     });
+    // The champion as it stands now: what this invocation's candidates are diffed
+    // against. The report names the champion as it stands at the end.
+    let snapshot = champion_snapshot(cfg, &store, &resumed.lineage)?;
     let finish = |mut report: Value, lineage: &Lineage, head: Option<&Digest>| {
+        let (tree, id) = champion_snapshot(cfg, &store, lineage)?;
+        report["champion_tree"] = json!(tree.display().to_string());
+        report["champion_genome_id"] = json!(id);
         report["champion"] = champion_json(lineage);
         report["journal_head"] = json!(head.map(|d| d.0.clone()));
         serde_json::to_string(&report).map_err(|e| e.to_string())
@@ -514,7 +553,9 @@ fn execute(cfg: &CliConfig, requested: u32, export: Option<&Path>) -> Result<Str
     }
 
     // One valid candidate per cycle, and no more consumed than will be run.
-    let mut dir = DirProposer::new(&cfg.outbox, &cfg.proposer_name, store, &cfg.base_tree).with_limit(requested as usize);
+    let mut dir = DirProposer::new(&cfg.outbox, &cfg.proposer_name, store.clone(), &cfg.base_tree)
+        .with_champion(&snapshot.0, &snapshot.1)
+        .with_limit(requested as usize);
     let specs = dir.propose(champ_fitness.as_ref(), cfg.seed);
     report["proposer_errors"] = json!(dir.last_errors());
     if specs.is_empty() {
@@ -801,5 +842,121 @@ mod tests {
         assert!(run(&["--wat".into()]).unwrap_err().contains("unknown"));
         assert!(run(&["--help".into()]).unwrap().contains("usage"));
         assert!(run(&["--config".into(), "does-not-exist.json".into()]).is_err());
+    }
+
+    fn run_cycles(fx: &Fx, n: u32) -> Value {
+        let args = vec!["--config".to_string(), fwd(&fx.root.join("run.json")), "--cycles".into(), n.to_string()];
+        let out = run(&args).unwrap();
+        serde_json::from_str(out.lines().last().unwrap()).unwrap()
+    }
+
+    fn champion_files(r: &Value) -> Vec<String> {
+        let mut v: Vec<String> = r["champion"]["files"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|f| f.as_str().unwrap().split(':').next().unwrap().to_string())
+            .collect();
+        v.sort();
+        v
+    }
+
+    #[test]
+    fn a_second_candidate_that_touches_another_file_stacks_on_the_champion() {
+        let fx = Fx::new("stack");
+        let r = fx.run().unwrap();
+        let tree0 = r["champion_tree"].as_str().unwrap().to_string();
+        assert!(Path::new(&tree0).join("src/lib.txt").is_file(), "the snapshot of the genesis champion is the base");
+        fx.candidate("c1", &[("src/lib.txt", "ok\n1\n2\n3\n")]);
+        let r1 = fx.run().unwrap();
+        assert_eq!(r1["promotions"], 1, "{r1}");
+        // The snapshot after the promotion holds the edit, and is read-only.
+        let tree1 = PathBuf::from(r1["champion_tree"].as_str().unwrap());
+        assert_ne!(r1["champion_genome_id"], r["champion_genome_id"]);
+        assert_eq!(std::fs::read_to_string(tree1.join("src/lib.txt")).unwrap().replace('\r', ""), "ok\n1\n2\n3\n");
+        assert!(std::fs::metadata(tree1.join("src/lib.txt")).unwrap().permissions().readonly());
+        // c2 is written against that tree and mentions only its own file.
+        fx.candidate("c2", &[("src/more.txt", "m1\nm2\n")]);
+        let r2 = fx.run().unwrap();
+        assert_eq!(r2["promotions"], 1, "{r2}");
+        assert_eq!(champion_files(&r2), ["src/lib.txt", "src/more.txt"], "{r2}");
+        assert!((capability(&r2) - 0.6).abs() < 1e-9, "{r2}");
+        // Replay reproduces the champion genome: the next invocation sees the same id and files.
+        let r3 = fx.run().unwrap();
+        assert_eq!(r3["champion_genome_id"], r2["champion_genome_id"]);
+        assert_eq!(r3["champion"]["genome_id"], r2["champion"]["genome_id"]);
+        let dir = fx.root.join("exported");
+        let args = vec!["--config".to_string(), fwd(&fx.root.join("run.json")), "--export-champion".into(), fwd(&dir)];
+        run(&args).unwrap();
+        assert!(dir.join("src/lib.txt").is_file() && dir.join("src/more.txt").is_file());
+    }
+
+    #[test]
+    fn a_base_relative_candidate_still_works_on_top_of_a_champion() {
+        let fx = Fx::new("oldstyle");
+        fx.run().unwrap();
+        fx.candidate("c1", &[("src/lib.txt", "ok\n1\n2\n3\n")]);
+        fx.run().unwrap();
+        // The old convention: carry the champion's file again, plus the new one.
+        fx.candidate("c2", &[("src/lib.txt", "ok\n1\n2\n3\n"), ("src/more.txt", "m1\n")]);
+        let r = fx.run().unwrap();
+        assert_eq!(r["promotions"], 1, "{r}");
+        assert_eq!(champion_files(&r), ["src/lib.txt", "src/more.txt"], "{r}");
+    }
+
+    #[test]
+    fn a_candidate_can_delete_files_and_the_snapshot_reflects_it() {
+        let fx = Fx::new("delete");
+        put(&fx.root.join("base/src/junk.txt"), "j1\nj2\nj3\n");
+        fx.run().unwrap();
+        // Deleting shrinks the tree, which lowers this fixture's capability, so it
+        // is measured and refused; the deletion machinery is what is under test.
+        fx.candidate("c1", &[("src/lib.txt", "ok\n1\n2\n3\n4\n5\n6\n7\n8\n9\n")]);
+        put(&fx.root.join("outbox/c1/delete.txt"), "src/junk.txt\r\n");
+        let r = fx.run().unwrap();
+        assert_eq!(r["promotions"], 1, "{r}");
+        assert_eq!(champion_files(&r), ["src/junk.txt", "src/lib.txt"], "{r}");
+        let tree = PathBuf::from(r["champion_tree"].as_str().unwrap());
+        assert!(!tree.join("src/junk.txt").exists(), "deleted in the snapshot");
+        assert!(tree.join("src/lib.txt").is_file());
+        // Deleting a protected path is refused before anything is built.
+        put(&fx.root.join("base/src/frozen/keep.txt"), "k\n");
+        fx.candidate("c2", &[("src/lib.txt", "ok\n1\n")]);
+        put(&fx.root.join("outbox/c2/delete.txt"), "src/frozen/keep.txt\n");
+        let r = fx.run().unwrap();
+        assert_eq!(r["promotions"], 0, "{r}");
+        assert_eq!(r["cycles"][0]["refused_before_build"], true, "{r}");
+        assert!(r["cycles"][0]["failure"].as_str().unwrap().contains("protected prefix"), "{r}");
+    }
+
+    #[test]
+    fn a_candidate_written_against_an_older_champion_is_refused_as_stale() {
+        let fx = Fx::new("stale");
+        let r0 = fx.run().unwrap();
+        let old_id = r0["champion_genome_id"].as_str().unwrap().to_string();
+        fx.candidate("c1", &[("src/lib.txt", "ok\n1\n2\n3\n")]);
+        fx.run().unwrap();
+        // Written when the champion was the genesis, submitted after c1 was promoted.
+        fx.candidate("c2", &[("src/more.txt", "m1\nm2\n")]);
+        put(&fx.root.join("outbox/c2/based_on"), &old_id);
+        let r = fx.run().unwrap();
+        assert_eq!(r["promotions"], 0, "{r}");
+        assert_eq!(r["refusals"], 1, "{r}");
+        assert!(r["cycles"][0]["reasons"][0].as_str().unwrap().contains("stale"), "{r}");
+        assert_eq!(champion_files(&r), ["src/lib.txt"], "the champion is unchanged");
+    }
+
+    #[test]
+    fn a_batch_after_a_promotion_is_refused_as_stale_not_merged() {
+        let fx = Fx::new("batch");
+        fx.run().unwrap();
+        fx.candidate("c1", &[("src/lib.txt", "ok\n1\n2\n3\n")]);
+        fx.candidate("c2", &[("src/more.txt", "m1\nm2\n")]);
+        let r = run_cycles(&fx, 2);
+        assert_eq!(r["cycles_run"], 2, "{r}");
+        assert_eq!(r["promotions"], 1, "{r}");
+        assert_eq!(r["cycles"][0]["promoted"], true);
+        assert!(r["cycles"][1]["reasons"][0].as_str().unwrap().contains("stale"), "{r}");
+        assert_eq!(champion_files(&r), ["src/lib.txt"]);
     }
 }

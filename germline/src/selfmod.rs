@@ -1,9 +1,9 @@
 //! Self-modification as a [`Workload`]: candidates are edits to a source tree.
 //!
 //! The tree is typically the MAGE compiler's own source. A candidate is a set of
-//! files that differ from a frozen base tree. `materialize` copies the base tree
-//! into a scratch directory, writes the candidate's files over it, builds it and
-//! runs its tests. `evaluate` then runs a fixed evaluator against the built
+//! files that differ from a frozen base tree (the champion's edits plus its own).
+//! `materialize` copies the base tree into a scratch directory, applies the
+//! change set (writes and deletions), builds it and runs its tests. `evaluate` then runs a fixed evaluator against the built
 //! binary. Every change goes through the same gate as any other candidate
 //! ([`crate::gate`]): this module adds no way around it. It makes the compiler
 //! editable by the loop on the user's decision that RSI self-modification is
@@ -12,25 +12,80 @@
 //!
 //! ## Genome encoding
 //!
-//! A genome is the set of files that differ from the base tree: one
-//! [`Locus::Gene`] per file, with the relative path (forward slashes) as `name`,
-//! the content's [`BlobStore`] hash as `sha256`, `"file"` as `signature`, and
-//! [`Effects::Unchecked`] as `effects` (nobody has read these files and
-//! declared what they do). An empty genome is the base tree unchanged.
-//! [`changed_files`] refuses scalar loci, other signatures, malformed hashes and
-//! duplicate paths.
+//! A genome is the **effective change set against the frozen base tree**: one
+//! [`Locus::Gene`] per file that differs from it, with the relative path
+//! (forward slashes) as `name`, `Effects::Unchecked` as `effects` (nobody has
+//! read these files and declared what they do), and one of two shapes:
 //!
-//! Limits of the encoding, stated plainly:
+//! - a **file gene**: the content's [`BlobStore`] hash as `sha256` and `"file"` as
+//!   `signature`; the file is added or replaced;
+//! - a **tombstone** ([`tombstone_for`]): `"delete"` as `signature` and
+//!   [`TOMBSTONE_SHA`] as `sha256`; the file is removed, so a genome can shrink.
 //!
-//! - A candidate **cannot delete** a file. It can only add or replace.
-//! - A candidate is a **complete change set against the base tree**, not against
-//!   the current champion. A candidate that builds on a promoted edit must carry
-//!   that edit's files again. [`DirProposer`] does not look at the champion's
-//!   genome, and this module does not merge. So a long run does not stack
-//!   improvements by itself: each candidate competes as a whole.
+//! An empty genome is the base tree unchanged. [`change_set`] refuses scalar
+//! loci, other signatures, malformed hashes and duplicate paths ([`changed_files`]
+//! additionally refuses tombstones).
+//!
+//! ## Champion-relative candidates
+//!
+//! A proposer edits the **champion's tree**, not the base. [`Workload::rebase`]
+//! (called by the runner for every external candidate, before it is built or
+//! journalled) overlays the candidate's change set on the champion's genome:
+//!
+//! 1. start from the champion's genes, keyed by path;
+//! 2. a candidate file gene replaces the champion's gene for that path, or is
+//!    dropped if its bytes equal the base file (a revert);
+//! 3. a candidate tombstone removes the champion's gene for a file the champion
+//!    added, or becomes a tombstone for a base file; it is refused for a path in
+//!    neither (nothing to delete) and for a path already deleted;
+//! 4. what remains, sorted by path, is the candidate's genome. It is complete
+//!    (self-contained: it does not mention the champion), is what
+//!    [`SelfModWorkload::materialize`] builds on a copy of the base tree, and is
+//!    what the runner journals, so lineage replay and inheritance read the same
+//!    full genome as before. A genome against the base is the degenerate case: the
+//!    champion's genes are empty, and nothing changes.
+//!
+//! A candidate whose overlay equals the champion changes nothing and is refused.
+//! Because the effective genome is complete, materialization still ignores the
+//! champion: the artifact digest depends only on the effective change set and the
+//! base identity. After a demotion the champion is the fallback, so the next
+//! candidate is overlaid on the fallback's genome, not the demoted one's.
+//!
+//! **Stale candidates are refused, not merged.** A candidate may state the
+//! identity ([`genome_id`]) of the champion genome it was written against
+//! ([`CandidateSpec::based_on`]; [`DirProposer`] reads it from a `based_on` file
+//! or stamps the champion it diffed against). If the champion has moved since,
+//! the candidate is refused as stale: the change set might silently undo, or
+//! depend on, an edit it never saw. No attempt is made to rebase onto disjoint
+//! files. A proposer re-reads the new champion tree and resubmits. A candidate
+//! with no stated identity is taken to be against the champion at the moment
+//! the runner reads it.
+//!
+//! ### Deleting
+//!
+//! Tombstones go through exactly the checks file genes do: [`check_write_set`]
+//! (writable prefix, protected prefixes, path syntax) runs over deleted paths too,
+//! so a protected path is as undeletable as it is unwritable, and
+//! [`SelfModConfig::protect_tests`] refuses deleting a `.rs` file that holds tests.
+//!
+//! ### Format and compatibility
+//!
+//! The artifact digest of a genome with no tombstone is byte-for-byte what it was
+//! (`germline-selfmod-v1`), so existing journals and lineages replay and rebuild
+//! to the digests they recorded. A genome with a tombstone digests under
+//! `germline-selfmod-v2`, which an older build cannot have produced, and an older
+//! build refuses such a genome (unknown signature) rather than ignoring the
+//! deletion.
+//!
+//! Limits that remain:
+//!
 //! - Genomes carry no scalars, so the built-in undirected search (mutation and
 //!   crossover over `Param` loci) has nothing to vary. Candidates come from a
 //!   [`Proposer`].
+//! - A stale candidate is refused whole. Several candidates in one invocation
+//!   after a promotion are therefore refused; submit one per promotion (the CLI
+//!   reports the new champion's tree).
+//! - Empty directories left by a deletion are not removed from the tree.
 //!
 //! ## Trust boundary
 //!
@@ -127,6 +182,13 @@ use std::time::{Duration, Instant};
 
 /// The signature every file gene carries.
 pub const FILE_SIGNATURE: &str = "file";
+
+/// The signature of a tombstone: a gene that deletes the file it names.
+pub const TOMBSTONE_SIGNATURE: &str = "delete";
+
+/// The hash a tombstone carries. There is no content to hash; 64 zeros cannot be
+/// the SHA-256 of anything stored, and a file gene bearing it is refused.
+pub const TOMBSTONE_SHA: &str = "0000000000000000000000000000000000000000000000000000000000000000";
 
 /// How much of a child's stdout/stderr is kept (the tail).
 const OUTPUT_KEEP: usize = 64 * 1024;
@@ -230,21 +292,38 @@ pub fn gene_for(path: &str, sha256: &str) -> Locus {
     Locus::gene(path, sha256, FILE_SIGNATURE, Effects::default())
 }
 
-/// The `(path, sha256)` pairs a genome names, in genome order.
+/// The gene that deletes the file at `path`.
+pub fn tombstone_for(path: &str) -> Locus {
+    Locus::gene(path, TOMBSTONE_SHA, TOMBSTONE_SIGNATURE, Effects::default())
+}
+
+/// Whether a `sha256` as returned by [`change_set`] marks a deletion.
+pub fn is_tombstone(sha256: &str) -> bool {
+    sha256 == TOMBSTONE_SHA
+}
+
+/// The `(path, sha256)` pairs a genome names, in genome order; a deletion has
+/// [`TOMBSTONE_SHA`] as its hash (see [`is_tombstone`]).
 ///
-/// Refused: any locus that is not a file gene, a malformed hash, and two genes
-/// for the same path (compared without regard to case on Windows).
-pub fn changed_files(genome: &[Locus]) -> Result<Vec<(String, String)>, String> {
+/// Refused: any locus that is not a file gene or a tombstone, a malformed hash,
+/// a file gene bearing the tombstone hash, and two genes for the same path
+/// (compared without regard to case on Windows).
+pub fn change_set(genome: &[Locus]) -> Result<Vec<(String, String)>, String> {
     let mut out = Vec::with_capacity(genome.len());
     let mut seen = BTreeSet::new();
     for locus in genome {
         match locus {
             Locus::Gene { name, sha256, signature, .. } => {
-                if signature != FILE_SIGNATURE {
-                    return Err(format!("gene `{name}` has signature `{signature}`, not `{FILE_SIGNATURE}`"));
-                }
-                if !is_sha_hex(sha256) {
+                if signature == TOMBSTONE_SIGNATURE {
+                    if !is_tombstone(sha256) {
+                        return Err(format!("tombstone `{name}` carries a hash `{sha256}`, not the tombstone hash"));
+                    }
+                } else if signature != FILE_SIGNATURE {
+                    return Err(format!("gene `{name}` has signature `{signature}`, not `{FILE_SIGNATURE}` or `{TOMBSTONE_SIGNATURE}`"));
+                } else if !is_sha_hex(sha256) {
                     return Err(format!("gene `{name}` has a malformed hash `{sha256}`"));
+                } else if is_tombstone(sha256) {
+                    return Err(format!("file gene `{name}` carries the tombstone hash"));
                 }
                 if !seen.insert(fold(name)) {
                     return Err(format!("the genome changes `{name}` twice"));
@@ -259,11 +338,37 @@ pub fn changed_files(genome: &[Locus]) -> Result<Vec<(String, String)>, String> 
     Ok(out)
 }
 
+/// The `(path, sha256)` pairs of a genome that only adds or replaces files:
+/// [`change_set`], but a tombstone is refused.
+pub fn changed_files(genome: &[Locus]) -> Result<Vec<(String, String)>, String> {
+    let set = change_set(genome)?;
+    if let Some((p, _)) = set.iter().find(|(_, s)| is_tombstone(s)) {
+        return Err(format!("the genome deletes `{p}`; use `change_set` for a genome that can delete"));
+    }
+    Ok(set)
+}
+
+/// A stable identity for a genome: independent of locus order, covering every
+/// field of every locus. Two champions with the same effective change set have
+/// the same id; this is what a candidate's `based_on` names.
+pub fn genome_id(genome: &[Locus]) -> String {
+    let mut parts: Vec<String> = genome.iter().map(|l| serde_json::to_string(l).unwrap_or_default()).collect();
+    parts.sort();
+    let mut h = Sha256::new();
+    h.update(b"germline-genome-v1");
+    for p in &parts {
+        absorb(&mut h, p.as_bytes());
+    }
+    format!("{:x}", h.finalize())
+}
+
 fn artifact_digest(base_identity: &str, files: &[(String, String)]) -> Digest {
     let mut sorted: Vec<&(String, String)> = files.iter().collect();
     sorted.sort();
     let mut h = Sha256::new();
-    h.update(b"germline-selfmod-v1");
+    // v1 for a genome with no deletion, exactly as before tombstones existed, so
+    // every digest in an existing journal still reproduces.
+    h.update(if sorted.iter().any(|(_, s)| is_tombstone(s)) { &b"germline-selfmod-v2"[..] } else { &b"germline-selfmod-v1"[..] });
     absorb(&mut h, base_identity.as_bytes());
     for (p, sha) in sorted {
         absorb(&mut h, p.as_bytes());
@@ -1092,6 +1197,21 @@ impl SelfModWorkload {
         self.known_axes.extend(axes);
     }
 
+    /// The SHA-256 of the base tree's file at `path` (already syntax-checked), or
+    /// `None` if the base has no such file.
+    fn base_file_hash(&self, path: &str) -> Result<Option<String>, String> {
+        let p = path.split('/').fold(self.base.clone(), |acc, c| acc.join(c));
+        match std::fs::symlink_metadata(&p) {
+            Ok(md) if md.is_file() => {
+                let bytes = std::fs::read(&p).map_err(|e| format!("cannot read base file {path}: {e}"))?;
+                Ok(Some(sha_hex(&bytes)))
+            }
+            Ok(_) => Ok(None),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+            Err(e) => Err(format!("cannot read base file {path}: {e}")),
+        }
+    }
+
     fn fresh_dir(&self) -> Result<PathBuf, String> {
         let d = self.scratch.join(".run").join(unique());
         std::fs::create_dir_all(&d).map_err(|e| format!("cannot create a scratch directory: {e}"))?;
@@ -1183,6 +1303,106 @@ fn write_gene(tree: &Path, rel: &str, bytes: &[u8]) -> Result<(), String> {
     std::fs::write(&dest, bytes).map_err(|e| format!("cannot write `{rel}`: {e}"))
 }
 
+/// Delete the file at `rel` in `tree`. `Err` is the candidate's doing: the file
+/// is absent (so the deletion has nothing to act on), or is a directory or link.
+fn delete_path(tree: &Path, rel: &str) -> Result<(), String> {
+    let mut dest = tree.to_path_buf();
+    for c in rel.split('/') {
+        dest.push(c);
+    }
+    if !dest.components().skip(tree.components().count()).all(|c| matches!(c, Component::Normal(_))) {
+        return Err(format!("`{rel}` escapes the tree"));
+    }
+    let parent = dest.parent().ok_or_else(|| format!("`{rel}` has no parent"))?;
+    let real = canon(parent).map_err(|_| format!("cannot delete `{rel}`: it does not exist"))?;
+    if !is_inside(&real, tree) {
+        return Err(format!("`{rel}` resolves outside the tree"));
+    }
+    match std::fs::symlink_metadata(&dest) {
+        Ok(md) if md.file_type().is_symlink() || md.is_dir() => {
+            Err(format!("`{rel}` is a link or directory, not a file"))
+        }
+        Ok(_) => remove_file_force(&dest).map_err(|e| format!("cannot delete `{rel}`: {e}")),
+        Err(_) => Err(format!("cannot delete `{rel}`: it does not exist")),
+    }
+}
+
+/// Clear the read-only flag of `p`, if set (Windows refuses to remove such a file).
+fn clear_read_only(p: &Path) {
+    if let Ok(md) = std::fs::metadata(p) {
+        let mut perm = md.permissions();
+        if perm.readonly() {
+            #[allow(clippy::permissions_set_readonly_false)]
+            perm.set_readonly(false);
+            let _ = std::fs::set_permissions(p, perm);
+        }
+    }
+}
+
+fn remove_file_force(p: &Path) -> std::io::Result<()> {
+    clear_read_only(p);
+    std::fs::remove_file(p)
+}
+
+/// Remove a directory tree that may hold read-only files.
+pub fn remove_tree(dir: &Path) -> std::io::Result<()> {
+    fn clear(d: &Path) {
+        if let Ok(rd) = std::fs::read_dir(d) {
+            for e in rd.flatten() {
+                let p = e.path();
+                match e.file_type() {
+                    Ok(t) if t.is_dir() => clear(&p),
+                    Ok(t) if t.is_file() => clear_read_only(&p),
+                    _ => {}
+                }
+            }
+        }
+    }
+    clear(dir);
+    std::fs::remove_dir_all(dir)
+}
+
+/// Mark every file under `dir` read-only (a snapshot a proposer reads, not edits).
+pub fn make_read_only(dir: &Path) {
+    if let Ok(rd) = std::fs::read_dir(dir) {
+        for e in rd.flatten() {
+            let p = e.path();
+            match e.file_type() {
+                Ok(t) if t.is_dir() => make_read_only(&p),
+                Ok(t) if t.is_file() => {
+                    if let Ok(md) = std::fs::metadata(&p) {
+                        let mut perm = md.permissions();
+                        perm.set_readonly(true);
+                        let _ = std::fs::set_permissions(&p, perm);
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+}
+
+/// Write `base` plus the genome's change set to `dir`, which is created and must
+/// not exist: the tree a genome denotes, without building it. Returns the
+/// `path:sha` (or `path:deleted`) entries applied.
+pub fn export_genome_tree(base: &Path, store: &BlobStore, genome: &[Locus], dir: &Path) -> Result<Vec<String>, String> {
+    if dir.exists() {
+        return Err(format!("{} already exists", dir.display()));
+    }
+    let files = change_set(genome)?;
+    copy_tree(base, dir)?;
+    let tree = canon(dir).map_err(|e| format!("cannot resolve {}: {e}", dir.display()))?;
+    for (path, sha) in &files {
+        if is_tombstone(sha) {
+            delete_path(&tree, path)?;
+        } else {
+            let bytes = store.get(sha).ok_or_else(|| format!("gene `{path}` is not in the blob store"))?;
+            write_gene(&tree, path, &bytes)?;
+        }
+    }
+    Ok(files.iter().map(|(p, s)| if is_tombstone(s) { format!("{p}:deleted") } else { format!("{p}:{s}") }).collect())
+}
+
 fn parse_axes(stdout: &str) -> Result<BTreeMap<String, f64>, String> {
     let line = stdout
         .lines()
@@ -1238,7 +1458,7 @@ impl Workload for SelfModWorkload {
     /// or test. `Err` (which in the runner halts the run) only for a missing blob,
     /// an unreadable base tree, or a command that cannot be started.
     fn materialize(&mut self, spec: &CandidateSpec) -> Result<Digest, String> {
-        let files = match changed_files(&spec.genome).and_then(|f| check_write_set(&self.cfg, &f).map(|()| f)) {
+        let files = match change_set(&spec.genome).and_then(|f| check_write_set(&self.cfg, &f).map(|()| f)) {
             Ok(files) => files,
             Err(why) => return Ok(self.refuse(spec, &why)),
         };
@@ -1250,6 +1470,11 @@ impl Workload for SelfModWorkload {
         // without it would measure a different candidate under this one's name.
         let mut blobs = Vec::with_capacity(files.len());
         for (path, sha) in &files {
+            if is_tombstone(sha) {
+                // A deletion has no content; protect_tests sees it as an empty file.
+                blobs.push(Vec::new());
+                continue;
+            }
             let bytes = self.store.get(sha).ok_or_else(|| {
                 format!(
                     "gene `{path}` {} is not in the blob store (or fails its hash) — a candidate cannot be built without the files it names",
@@ -1284,7 +1509,8 @@ impl Workload for SelfModWorkload {
         copy_tree(&self.base, &tree)?;
         let tree = canon(&tree).map_err(|e| format!("cannot resolve {}: {e}", tree.display()))?;
 
-        let mut sorted: Vec<String> = files.iter().map(|(p, s)| format!("{p}:{s}")).collect();
+        let mut sorted: Vec<String> =
+            files.iter().map(|(p, s)| if is_tombstone(s) { format!("{p}:deleted") } else { format!("{p}:{s}") }).collect();
         sorted.sort();
         let mut rec = ArtifactReport {
             tree: tree.clone(),
@@ -1299,8 +1525,9 @@ impl Workload for SelfModWorkload {
         };
 
         let mut applied = Ok(());
-        for ((path, _), bytes) in files.iter().zip(&blobs) {
-            if let Err(e) = write_gene(&tree, path, bytes) {
+        for ((path, sha), bytes) in files.iter().zip(&blobs) {
+            let done = if is_tombstone(sha) { delete_path(&tree, path) } else { write_gene(&tree, path, bytes) };
+            if let Err(e) = done {
                 applied = Err(e);
                 break;
             }
@@ -1386,6 +1613,62 @@ impl Workload for SelfModWorkload {
         }
     }
 
+    fn rebase(&mut self, champion: &[Locus], mut spec: CandidateSpec) -> Result<CandidateSpec, String> {
+        let champion_id = genome_id(champion);
+        if let Some(stated) = &spec.based_on {
+            if *stated != champion_id {
+                return Err(format!(
+                    "candidate {} is stale: it was written against champion genome {} but the champion is now {}; re-read the champion's tree and resubmit",
+                    spec.id,
+                    &stated[..12.min(stated.len())],
+                    &champion_id[..12]
+                ));
+            }
+        }
+        // A malformed candidate genome is the write-set check's to refuse, with
+        // its usual record; leave it untouched.
+        let Ok(cand) = change_set(&spec.genome) else { return Ok(spec) };
+        if cand.iter().any(|(p, _)| check_path_syntax(p).is_err()) {
+            return Ok(spec);
+        }
+        let champ = change_set(champion).map_err(|e| format!("the champion's genome is not a self-modification genome: {e}"))?;
+        let mut eff: BTreeMap<String, (String, String)> =
+            champ.into_iter().map(|(p, s)| (fold(&p), (p, s))).collect();
+        for (path, sha) in cand {
+            let key = fold(&path);
+            let in_base = self.base_file_hash(&path)?;
+            if is_tombstone(&sha) {
+                let held = eff.get(&key).map(|(_, s)| is_tombstone(s));
+                match (in_base.is_some(), held) {
+                    (true, Some(true)) => return Err(format!("`{path}` is already deleted in the champion")),
+                    (true, _) => {
+                        eff.insert(key, (path, sha));
+                    }
+                    (false, Some(false)) => {
+                        eff.remove(&key);
+                    }
+                    (false, _) => {
+                        return Err(format!("`{path}` cannot be deleted: it is in neither the base tree nor the champion's edits"))
+                    }
+                }
+            } else if in_base.as_deref() == Some(sha.as_str()) {
+                eff.remove(&key);
+            } else {
+                eff.insert(key, (path, sha));
+            }
+        }
+        let genome: Vec<Locus> = eff
+            .into_values()
+            .map(|(p, s)| if is_tombstone(&s) { tombstone_for(&p) } else { gene_for(&p, &s) })
+            .collect();
+        if genome_id(&genome) == champion_id {
+            return Err(format!("candidate {} changes nothing relative to the champion", spec.id));
+        }
+        spec.genome = genome;
+        spec.based_on = Some(champion_id);
+        Ok(spec)
+    }
+
     fn shadow(&mut self, artifact: &Digest) -> HealthSample {
         self.probe(artifact)
     }
@@ -1413,8 +1696,11 @@ impl Workload for SelfModWorkload {
 /// Each subdirectory `<outbox>/<id>/` holds `manifest.json` (a
 /// [`PredictionManifest`]) and `files/<relative path>...`. The candidate's genome
 /// is every file under `files/` whose bytes differ from the same path in the base
-/// tree, put into the [`BlobStore`]. **A candidate is a complete change set
-/// against the base tree, not against the champion**: see the module docs.
+/// tree (or, with [`DirProposer::with_champion`], from the champion's tree), put
+/// into the [`BlobStore`]. A `delete.txt` (one relative path per line) deletes
+/// files; an optional `based_on` file names the champion genome the candidate
+/// was written against. Candidates are relative to the champion: see the module
+/// docs.
 ///
 /// A consumed directory is moved to `<outbox>/.consumed/` so it is proposed once;
 /// a malformed one is moved to `<outbox>/.malformed/` (so it is reported once, not
@@ -1428,11 +1714,32 @@ pub struct DirProposer {
     base_tree: PathBuf,
     errors: Vec<String>,
     limit: Option<usize>,
+    /// The champion's materialized tree and genome id, if candidates are written
+    /// against it rather than the base.
+    champion: Option<(PathBuf, String)>,
 }
 
 impl DirProposer {
     pub fn new(outbox: impl Into<PathBuf>, name: impl Into<String>, store: BlobStore, base_tree: impl Into<PathBuf>) -> Self {
-        DirProposer { outbox: outbox.into(), name: name.into(), store, base_tree: base_tree.into(), errors: Vec::new(), limit: None }
+        DirProposer {
+            outbox: outbox.into(),
+            name: name.into(),
+            store,
+            base_tree: base_tree.into(),
+            errors: Vec::new(),
+            limit: None,
+            champion: None,
+        }
+    }
+
+    /// Diff candidates against the champion's tree (a read-only snapshot, see
+    /// [`export_genome_tree`]) instead of the base, and stamp each with the
+    /// champion's [`genome_id`] unless its directory has a `based_on` file.
+    /// A file the candidate carries that equals the champion's is no change; one
+    /// that equals the base but not the champion's is a revert.
+    pub fn with_champion(mut self, tree: impl Into<PathBuf>, genome_id: impl Into<String>) -> Self {
+        self.champion = Some((tree.into(), genome_id.into()));
+        self
     }
 
     /// Consume at most `n` valid candidates per `propose` (in id order); the
@@ -1472,17 +1779,21 @@ impl DirProposer {
         let manifest: PredictionManifest =
             serde_json::from_str(&manifest_text).map_err(|e| format!("manifest.json: {e}"))?;
         let files_dir = dir.join("files");
-        if !files_dir.is_dir() {
+        let delete_file = dir.join("delete.txt");
+        if !files_dir.is_dir() && !delete_file.is_file() {
             return Err("no files/ directory".into());
         }
         let mut files = Vec::new();
-        Self::collect(&files_dir, "", &mut files)?;
+        if files_dir.is_dir() {
+            Self::collect(&files_dir, "", &mut files)?;
+        }
+        let compare_root = self.champion.as_ref().map_or(&self.base_tree, |(t, _)| t);
         files.sort();
         let mut genome = Vec::new();
         for (rel, path) in files {
             let bytes = std::fs::read(&path).map_err(|e| format!("cannot read {rel}: {e}"))?;
             // Unchanged files are not part of the change set.
-            let base_path = rel.split('/').fold(self.base_tree.clone(), |acc, c| acc.join(c));
+            let base_path = rel.split('/').fold(compare_root.clone(), |acc, c| acc.join(c));
             let unchanged = std::fs::read(base_path).is_ok_and(|base| base == bytes);
             if unchanged {
                 continue;
@@ -1490,10 +1801,26 @@ impl DirProposer {
             let sha = self.store.put(&bytes)?;
             genome.push(gene_for(&rel, &sha));
         }
-        if genome.is_empty() {
-            return Err("the candidate changes nothing relative to the base tree".into());
+        // Deletions: one relative path per line of `delete.txt`.
+        if delete_file.is_file() {
+            let text = std::fs::read_to_string(&delete_file).map_err(|e| format!("delete.txt: {e}"))?;
+            for line in text.lines().map(str::trim).filter(|l| !l.is_empty()) {
+                if genome.iter().any(|g| matches!(g, Locus::Gene { name, .. } if fold(name) == fold(line))) {
+                    return Err(format!("`{line}` is both written and deleted"));
+                }
+                genome.push(tombstone_for(line));
+            }
         }
-        Ok(CandidateSpec::new(id, genome).with_manifest(manifest))
+        if genome.is_empty() {
+            let what = if self.champion.is_some() { "the champion" } else { "the base tree" };
+            return Err(format!("the candidate changes nothing relative to {what}"));
+        }
+        let mut spec = CandidateSpec::new(id, genome).with_manifest(manifest);
+        match std::fs::read_to_string(dir.join("based_on")) {
+            Ok(text) if !text.trim().is_empty() => spec.based_on = Some(text.trim().to_string()),
+            _ => spec.based_on = self.champion.as_ref().map(|(_, id)| id.clone()),
+        }
+        Ok(spec)
     }
 
     fn move_to(&self, from: &Path, bucket: &str, id: &str) -> Result<(), String> {
@@ -2369,5 +2696,337 @@ echo "{\"capability\": $cap, \"safety\": 1}"
         assert_eq!(report.refusals, 1);
         assert!(matches!(report.halt, Halt::BudgetExhausted { .. }), "{:?}", report.halt);
         assert_eq!(l.champion().unwrap().artifact, gd);
+    }
+
+    // ---- champion-relative candidates and deletion -------------------------
+
+    /// Capability is 1 / (lines in all of src/*.txt): shrinking the tree is
+    /// what improves it.
+    const EVAL_SHRINK: &str = r#"cap=$(awk 'END{print 1/NR}' "$1")
+echo "{\"capability\": $cap, \"safety\": 1}"
+"#;
+
+    fn sha(fx: &Fx, text: &str) -> String {
+        fx.store().put(text.as_bytes()).unwrap()
+    }
+
+    fn names(genome: &[Locus]) -> Vec<(String, bool)> {
+        change_set(genome).unwrap().into_iter().map(|(p, s)| (p, is_tombstone(&s))).collect()
+    }
+
+    fn ep(min_shadow: u32) -> Episode {
+        Episode::open(
+            PromotionGate {
+                primary_axis: "capability".into(),
+                min_improvement: 0.01,
+                guard_axes: vec!["safety".into()],
+                guard_tolerance: 0.01,
+                min_shadow_successes: min_shadow,
+                dominance: None,
+            },
+            suite().digest,
+            "selfmod-harness",
+        )
+    }
+
+    fn genesis_lineage(w: &mut SelfModWorkload, ep: &Episode) -> Lineage {
+        let gd = w.materialize(&CandidateSpec::new("genesis", vec![])).unwrap();
+        let gf = w.evaluate(&gd, &suite()).unwrap();
+        let mut l = Lineage::new();
+        let id = l.next_id();
+        let mut g = Generation::new(id, gd).measured(Measurement { suite: suite(), fitness: gf, evaluator: "selfmod-harness".into() });
+        g.genome = Some(vec![]);
+        l.add(g);
+        l.grant(id, ep.gate_digest.clone(), "selfmod-harness").unwrap();
+        l
+    }
+
+    type Queue = Vec<(&'static str, Vec<(&'static str, &'static str)>, Vec<&'static str>)>;
+
+    /// Writes the next scripted candidate (files and deletions) into the outbox
+    /// on each call and reads it back through a [`DirProposer`].
+    struct Outbox {
+        outbox: PathBuf,
+        queue: Queue,
+        inner: DirProposer,
+    }
+
+    impl Proposer for Outbox {
+        fn name(&self) -> &str {
+            self.inner.name()
+        }
+        fn propose(&mut self, champion: Option<&FitnessVector>, seed: u64) -> Vec<CandidateSpec> {
+            if !self.queue.is_empty() {
+                let (id, files, deletes) = self.queue.remove(0);
+                write_candidate(&self.outbox, id, &files, "capability", 0.3);
+                if !deletes.is_empty() {
+                    put(&self.outbox.join(id).join("delete.txt"), &deletes.join("\n"));
+                }
+            }
+            self.inner.propose(champion, seed)
+        }
+    }
+
+    fn run_queue(
+        fx: &Fx,
+        w: &mut SelfModWorkload,
+        l: &mut Lineage,
+        j: &mut Journal,
+        ep: &Episode,
+        queue: Queue,
+        shadow_runs: u32,
+    ) -> crate::runner::RunReport {
+        let outbox = fx.root.join("outbox");
+        let n = queue.len() as u32;
+        let proposer = Outbox { outbox: outbox.clone(), queue, inner: DirProposer::new(&outbox, "agent", fx.store(), fx.root.join("base")) };
+        let at = Attestor::new("selfmod-harness", b"key".to_vec());
+        let policy = RunnerPolicy {
+            max_cycles: n,
+            max_consecutive_refusals: n + 1,
+            shadow_runs,
+            supervision: SupervisionPolicy { window: 3, ..SupervisionPolicy::default() },
+            ..RunnerPolicy::default()
+        };
+        Runner::new(policy, ep, &at, suite(), 1).with_proposer(Box::new(proposer)).run(l, j, w)
+    }
+
+    #[test]
+    fn rebase_overlays_the_candidate_on_the_champions_genes() {
+        let fx = Fx::new("rebase", EVAL_OK);
+        put(&fx.root.join("base/src/old.txt"), "o\n");
+        let mut w = fx.workload();
+        let champion = vec![gene_for("src/lib.txt", &sha(&fx, "ok\n1\n")), gene_for("src/added.txt", &sha(&fx, "a\n"))];
+        let rb = |w: &mut SelfModWorkload, genome: Vec<Locus>| w.rebase(&champion, CandidateSpec::new("c", genome));
+
+        // A different file: both edits are in the effective genome, sorted.
+        let out = rb(&mut w, vec![gene_for("src/more.txt", &sha(&fx, "m\n"))]).unwrap();
+        let got: Vec<String> = names(&out.genome).into_iter().map(|(p, _)| p).collect();
+        assert_eq!(got, ["src/added.txt", "src/lib.txt", "src/more.txt"]);
+
+        // The same file: the candidate overrides the champion's gene.
+        let out = rb(&mut w, vec![gene_for("src/lib.txt", &sha(&fx, "ok\n1\n2\n"))]).unwrap();
+        assert_eq!(names(&out.genome).len(), 2);
+        let want = sha(&fx, "ok\n1\n2\n");
+        assert!(out.genome.iter().any(|g| matches!(g, Locus::Gene { name, sha256, .. } if name == "src/lib.txt" && *sha256 == want)));
+
+        // Back to the base bytes: the champion's gene is dropped, not duplicated.
+        let out = rb(&mut w, vec![gene_for("src/lib.txt", &sha(&fx, "ok\nb\n"))]).unwrap();
+        assert_eq!(names(&out.genome), [("src/added.txt".to_string(), false)]);
+
+        // Delete a gene the champion added: it vanishes, leaving no tombstone.
+        let out = rb(&mut w, vec![tombstone_for("src/added.txt")]).unwrap();
+        assert_eq!(names(&out.genome), [("src/lib.txt".to_string(), false)]);
+
+        // Delete a base file: a tombstone.
+        let out = rb(&mut w, vec![tombstone_for("src/old.txt")]).unwrap();
+        assert_eq!(names(&out.genome).iter().filter(|(_, t)| *t).count(), 1);
+        assert_eq!(names(&out.genome).len(), 3);
+
+        // Delete a base file the champion rewrote: the rewrite is replaced by a tombstone.
+        let out = rb(&mut w, vec![tombstone_for("src/lib.txt")]).unwrap();
+        assert!(names(&out.genome).contains(&("src/lib.txt".to_string(), true)));
+
+        // Nothing to delete, deleted twice, and no change at all.
+        assert!(rb(&mut w, vec![tombstone_for("src/nope.txt")]).unwrap_err().contains("cannot be deleted"));
+        let gone = vec![tombstone_for("src/old.txt")];
+        assert!(w.rebase(&gone, CandidateSpec::new("c", vec![tombstone_for("src/old.txt")])).unwrap_err().contains("already deleted"));
+        assert!(rb(&mut w, vec![gene_for("src/lib.txt", &sha(&fx, "ok\n1\n"))]).unwrap_err().contains("changes nothing"));
+        assert!(rb(&mut w, vec![]).unwrap_err().contains("changes nothing"));
+
+        // A base-relative genome is the degenerate case: an empty champion changes nothing.
+        let spec = CandidateSpec::new("c", vec![gene_for("src/lib.txt", &sha(&fx, "ok\n1\n"))]);
+        let out = w.rebase(&[], spec.clone()).unwrap();
+        assert_eq!(out.genome, spec.genome);
+    }
+
+    #[test]
+    fn a_candidate_against_a_stale_champion_is_refused() {
+        let fx = Fx::new("stale", EVAL_OK);
+        let mut w = fx.workload();
+        let old = vec![gene_for("src/lib.txt", &sha(&fx, "ok\n1\n"))];
+        let now = vec![gene_for("src/lib.txt", &sha(&fx, "ok\n1\n2\n"))];
+        let spec = CandidateSpec::new("c", vec![gene_for("src/other.txt", &sha(&fx, "x\n"))]).based_on(genome_id(&old));
+        // Against the champion it was written for: fine.
+        assert!(w.rebase(&old, spec.clone()).is_ok());
+        // The champion advanced, though the files are disjoint: refused, not merged.
+        let e = w.rebase(&now, spec).unwrap_err();
+        assert!(e.contains("stale"), "{e}");
+        // A candidate that states nothing is taken against the current champion.
+        assert!(w.rebase(&now, CandidateSpec::new("c", vec![gene_for("src/other.txt", &sha(&fx, "x\n"))])).is_ok());
+        // The id does not depend on locus order.
+        let two = vec![gene_for("src/a.txt", &sha(&fx, "a\n")), gene_for("src/b.txt", &sha(&fx, "b\n"))];
+        let rev: Vec<Locus> = two.iter().rev().cloned().collect();
+        assert_eq!(genome_id(&two), genome_id(&rev));
+        assert_ne!(genome_id(&two), genome_id(&[]));
+    }
+
+    #[test]
+    fn a_tombstone_deletes_the_file_in_the_built_tree() {
+        let fx = Fx::new("tomb", EVAL_SHRINK);
+        put(&fx.root.join("base/src/junk.txt"), "j1\nj2\nj3\nj4\n");
+        let mut w = fx.workload();
+        let base = w.materialize(&CandidateSpec::new("base", vec![])).unwrap();
+        let del = w.materialize(&CandidateSpec::new("del", vec![tombstone_for("src/junk.txt")])).unwrap();
+        assert_ne!(base, del, "a deletion is a different artifact");
+        assert!(w.materialized(&del));
+        let r = w.report(&del).unwrap();
+        assert!(!r.tree.join("src/junk.txt").exists() && r.tree.join("src/lib.txt").is_file());
+        assert_eq!(r.files, ["src/junk.txt:deleted"]);
+        assert!(w.report(&base).unwrap().tree.join("src/junk.txt").is_file(), "the base tree is untouched");
+        let (fb, fd) = (w.evaluate(&base, &suite()).unwrap(), w.evaluate(&del, &suite()).unwrap());
+        assert!(fd.get("capability").unwrap() > fb.get("capability").unwrap(), "a smaller tree scores higher here");
+        // Deleting what is not there is a recorded failure, not an error.
+        let none = w.materialize(&CandidateSpec::new("none", vec![tombstone_for("src/nope.txt")])).unwrap();
+        assert!(!w.materialized(&none));
+        assert!(w.report(&none).unwrap().failure.as_deref().unwrap().contains("does not exist"));
+        // The genome refuses a tombstone with a content hash and a file gene with the tombstone hash.
+        let bad = Locus::gene("src/junk.txt", "a".repeat(64), TOMBSTONE_SIGNATURE, Effects::default());
+        assert!(change_set(&[bad]).is_err());
+        let bad = Locus::gene("src/junk.txt", TOMBSTONE_SHA, FILE_SIGNATURE, Effects::default());
+        assert!(change_set(&[bad]).is_err());
+        assert!(changed_files(&[tombstone_for("src/junk.txt")]).is_err(), "the old entry point refuses deletions");
+    }
+
+    #[test]
+    fn deleting_a_protected_or_unwritable_path_is_refused_like_writing_it() {
+        let fx = Fx::new("tombprot", EVAL_OK);
+        put(&fx.root.join("base/src/frozen/keep.txt"), "k\n");
+        let mut w = fx.workload();
+        for (p, why) in [
+            ("src/frozen/keep.txt", "protected prefix"),
+            ("tests/expected.txt", "outside the write set"),
+            ("src/../tests/expected.txt", "refused"),
+        ] {
+            let spec = CandidateSpec::new("d", vec![tombstone_for(p)]);
+            // The overlay lets it through (or leaves it for the check); the write set refuses it.
+            let spec = w.rebase(&[], spec).unwrap_or_else(|e| panic!("`{p}`: {e}"));
+            let d = w.materialize(&spec).unwrap();
+            let r = w.report(&d).unwrap();
+            assert!(r.refused && r.failure.as_deref().unwrap().contains(why), "`{p}`: {r:?}");
+            assert!(!w.materialized(&d));
+        }
+    }
+
+    #[test]
+    fn protect_tests_refuses_deleting_a_file_that_holds_tests() {
+        let fx = Fx::new("tombtests", EVAL_OK);
+        put(&fx.root.join("base/src/m.rs"), "fn f() {}\n#[cfg(test)]\nmod t {\n    #[test]\n    fn it() {}\n}\n");
+        put(&fx.root.join("base/src/plain.rs"), "fn g() {}\n");
+        let mut cfg = fx.config();
+        cfg.protect_tests = true;
+        let mut w = SelfModWorkload::new(cfg, fx.store()).unwrap();
+        let d = w.materialize(&CandidateSpec::new("d", vec![tombstone_for("src/m.rs")])).unwrap();
+        let r = w.report(&d).unwrap();
+        assert!(r.refused && r.failure.as_deref().unwrap().contains("it"), "{r:?}");
+        let d = w.materialize(&CandidateSpec::new("d2", vec![tombstone_for("src/plain.rs")])).unwrap();
+        assert!(w.materialized(&d), "a file with no tests may go");
+    }
+
+    #[test]
+    fn artifact_digests_without_a_deletion_are_the_old_ones() {
+        // The formula as it was before tombstones existed, written out.
+        let old = |base: &str, files: &[(&str, &str)]| {
+            let mut h = Sha256::new();
+            h.update(b"germline-selfmod-v1");
+            absorb(&mut h, base.as_bytes());
+            for (p, s) in files {
+                absorb(&mut h, p.as_bytes());
+                absorb(&mut h, s.as_bytes());
+            }
+            Digest(format!("{:x}", h.finalize()))
+        };
+        let (a, b) = ("a".repeat(64), "b".repeat(64));
+        let files = vec![("src/z.txt".to_string(), b.clone()), ("src/a.txt".to_string(), a.clone())];
+        assert_eq!(artifact_digest("base-v1", &files), old("base-v1", &[("src/a.txt", &a), ("src/z.txt", &b)]));
+        let with_del = vec![("src/a.txt".to_string(), a), ("src/gone.txt".to_string(), TOMBSTONE_SHA.to_string())];
+        assert_ne!(artifact_digest("base-v1", &with_del), old("base-v1", &[("src/a.txt", &"a".repeat(64)), ("src/gone.txt", TOMBSTONE_SHA)]));
+    }
+
+    #[test]
+    fn promotions_stack_and_the_champion_genome_holds_both_edits() {
+        let fx = Fx::new("stack", EVAL_OK);
+        let mut w = fx.workload();
+        let ep = ep(2);
+        let mut l = genesis_lineage(&mut w, &ep);
+        let mut j = Journal::open(fx.root.join("journal.jsonl")).unwrap();
+        let queue: Queue = vec![
+            ("c1", vec![("src/lib.txt", "ok\n1\n2\n3\n")], vec![]),
+            // Changes only a different file; does not repeat c1's.
+            ("c2", vec![("src/more.txt", "m1\nm2\nm3\n")], vec![]),
+        ];
+        let report = run_queue(&fx, &mut w, &mut l, &mut j, &ep, queue, 2);
+        assert_eq!(report.promotions, 2, "{:?}", report.halt);
+        let champ = l.champion().unwrap();
+        let genome = champ.genome.clone().unwrap();
+        let got: Vec<String> = names(&genome).into_iter().map(|(p, _)| p).collect();
+        assert_eq!(got, ["src/lib.txt", "src/more.txt"], "the recorded genome is the full effective one");
+        let tree = &w.report(&champ.artifact).unwrap().tree;
+        assert_eq!(std::fs::read_to_string(tree.join("src/lib.txt")).unwrap().replace('\r', ""), "ok\n1\n2\n3\n");
+        assert!(tree.join("src/more.txt").is_file());
+        // 4 + 3 lines on top of nothing else: stacking is what scored 0.7.
+        assert!((champ.heldout_fitness().unwrap().get("capability").unwrap() - 0.7).abs() < 1e-9);
+        assert!(j.verify().is_ok());
+        // The genome is self-contained: rebuilding it from nothing gives the champion's digest.
+        let again = w.materialize(&CandidateSpec::new("again", genome)).unwrap();
+        assert_eq!(again, champ.artifact);
+    }
+
+    #[test]
+    fn a_genome_can_shrink_by_deleting_and_a_later_edit_keeps_the_deletion() {
+        let fx = Fx::new("shrink", EVAL_SHRINK);
+        put(&fx.root.join("base/src/junk.txt"), "j1\nj2\nj3\nj4\n");
+        let mut w = fx.workload();
+        let ep = ep(2);
+        let mut l = genesis_lineage(&mut w, &ep);
+        let mut j = Journal::open(fx.root.join("journal.jsonl")).unwrap();
+        let queue: Queue = vec![
+            ("c1-delete", vec![], vec!["src/junk.txt"]),
+            ("c2-shorter", vec![("src/lib.txt", "ok\n")], vec![]),
+        ];
+        let report = run_queue(&fx, &mut w, &mut l, &mut j, &ep, queue, 2);
+        assert_eq!(report.promotions, 2, "{:?} {:?}", report.halt, report.cycles);
+        let champ = l.champion().unwrap();
+        let got = names(champ.genome.as_ref().unwrap());
+        assert_eq!(got, [("src/junk.txt".to_string(), true), ("src/lib.txt".to_string(), false)]);
+        let tree = &w.report(&champ.artifact).unwrap().tree;
+        assert!(!tree.join("src/junk.txt").exists());
+        assert!((champ.heldout_fitness().unwrap().get("capability").unwrap() - 1.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn after_a_demotion_new_candidates_descend_from_the_fallback() {
+        let fx = Fx::new("demote", EVAL_OK);
+        let counts = fx.root.join("counts");
+        std::fs::create_dir_all(&counts).unwrap();
+        // A binary passes its first probe (the shadow run) and fails every later
+        // one, so a promoted champion is demoted when it is supervised.
+        let script = format!(
+            "k=$(echo \"$1\" | cksum | cut -d' ' -f1); echo x >> {d}/$k; n=$(wc -l < {d}/$k); [ $n -le 1 ]",
+            d = fwd(&counts)
+        );
+        let mut cfg = fx.config();
+        cfg.shadow = Some(Cmd { argv: vec!["sh".into(), "-c".into(), script, "probe".into()], timeout: secs(60) });
+        let mut w = SelfModWorkload::new(cfg, fx.store()).unwrap();
+        let ep = ep(1);
+        let mut l = genesis_lineage(&mut w, &ep);
+        let genesis = l.champion().unwrap().id;
+        let mut j = Journal::open(fx.root.join("journal.jsonl")).unwrap();
+
+        let r1 = run_queue(&fx, &mut w, &mut l, &mut j, &ep, vec![("c1", vec![("src/lib.txt", "ok\n1\n2\n3\n")], vec![])], 1);
+        assert!(matches!(r1.halt, Halt::Demoted { .. }), "{:?}", r1.halt);
+        assert_eq!(l.champion().unwrap().id, genesis, "fell back to the genesis");
+
+        let r2 = run_queue(&fx, &mut w, &mut l, &mut j, &ep, vec![("c2", vec![("src/more.txt", "m1\nm2\n")], vec![])], 1);
+        assert!(matches!(r2.halt, Halt::Demoted { .. }), "{:?}", r2.halt);
+        // c2 is the generation after c1, and it carries only its own file: it was
+        // built on the fallback, not on the demoted c1.
+        let c2: Vec<&Generation> = l
+            .generations()
+            .iter()
+            .filter(|g| g.genome.as_ref().is_some_and(|gn| names(gn).iter().any(|(p, _)| p == "src/more.txt")))
+            .collect();
+        assert_eq!(c2.len(), 1);
+        let got = names(c2[0].genome.as_ref().unwrap());
+        assert_eq!(got, [("src/more.txt".to_string(), false)], "no trace of the demoted edit");
     }
 }
