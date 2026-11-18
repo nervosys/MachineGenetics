@@ -171,6 +171,15 @@ kb Diagnostics {
     fact enforced_by("E0713", "differentiable");
     fact tested_by("E0713", "unknown_net");
 
+    // A call the evaluator cannot run: the type checker gives an unknown method a fresh
+    // type variable, so it checks clean and `--eval` stops with `unknown function`. A
+    // warning, by name and never by receiver type; benchmarks/UNKNOWN_METHODS.md counts
+    // the names the corpus calls.
+    fact instance_of("E0714", Diagnostic);
+    fact diagnostic_row("E0714", "Warning", "UnknownFunction", "A call naming nothing the evaluator can run: no user function or method, binding, published builtin, capability operation or variant");
+    fact enforced_by("E0714", "resolve");
+    fact tested_by("E0714", "unknown_function");
+
     // Only warnings go out under this code: see the two classes below.
     fact instance_of("E9999", Diagnostic);
     fact diagnostic_row("E9999", "Warning", "Other", "A warning with no category of its own");

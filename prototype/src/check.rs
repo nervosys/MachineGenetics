@@ -147,6 +147,9 @@ pub fn check_source_with(source: &str, do_elision: bool, core: bool, policy: bor
         all.extend(per_item(&module, logic::module_diagnostics));
         // A contract written on a `net` or `train`, which nothing checks (E0712, a warning).
         all.extend(per_item(&module, contract::unchecked_contract_warnings));
+        // A call the evaluator cannot run (E0714, a warning): module-wide, since a method
+        // the module defines anywhere counts.
+        all.extend(resolve::unknown_call_warnings(&module));
         for (func, declared, inferred) in effect_infer.effect_surface() {
             effect_surface.push(serde_json::json!({
                 "function": func,

@@ -1466,7 +1466,7 @@ Complete alphabetical index of all ontological concepts:
 | Decision                | Agent        | enum (3)                 | §6.3    |
 | DecompError             | Agent        | enum (4)                 | §7      |
 | Diagnostic              | Cross-domain | `Diagnostic`             | §8      |
-| DiagnosticCategory      | Cross-domain | enum (21)                | §8      |
+| DiagnosticCategory      | Cross-domain | enum (22)                | §8      |
 | DiagnosticGraph         | Cross-domain | `DiagnosticGraph`        | §8      |
 | DiagnosticNode          | Cross-domain | `DiagnosticNode`         | §8      |
 | DiagnosticNodeKind      | Cross-domain | enum (3)                 | §8      |

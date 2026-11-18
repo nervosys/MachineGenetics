@@ -3468,6 +3468,8 @@ fn direct_check_analysis(source: &str, do_elision: bool, core: bool, strict_borr
     a.logic = check::per_item(&module, logic::module_diagnostics);
     // A contract written on a `net` or `train`, which nothing checks (E0712).
     a.contract_warnings = check::per_item(&module, contract::unchecked_contract_warnings);
+    // A call the evaluator cannot run (E0714).
+    a.call_warnings = resolve::unknown_call_warnings(&module);
     // A shape-mismatched `net` composition (§4.5).
     a.shape = check::per_item(&module, check::shape_diags);
     if core {
@@ -3582,6 +3584,10 @@ fn render_check(a: &query::mage::Analysis, filename: &str, token_report: bool) {
     // A contract written on a `net` or `train`, which nothing checks (E0712). A
     // warning: the item still counts as accepted.
     for diag in &a.contract_warnings {
+        eprintln!("{filename}: {diag}");
+    }
+    // A call the evaluator cannot run (E0714). A warning, for the same reason.
+    for diag in &a.call_warnings {
         eprintln!("{filename}: {diag}");
     }
 

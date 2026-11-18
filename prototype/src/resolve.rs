@@ -1432,6 +1432,303 @@ pub fn resolve(module: &ast::Module) -> Resolver {
     resolver
 }
 
+// ── Calls the evaluator cannot run (E0714) ───────────────────────────
+
+/// Every name `--eval` can resolve in call position without a user definition:
+/// `STD_FNS`, `VOCABULARY`, `SCALAR_MATH` and `LIST_MUTATORS`.
+fn published_call_names() -> Vec<&'static str> {
+    let mut v: Vec<&'static str> = STD_FNS.to_vec();
+    v.extend(VOCABULARY.iter().map(|(n, _, _)| *n));
+    v.extend(SCALAR_MATH.iter().copied());
+    v.extend(LIST_MUTATORS.iter().copied());
+    v.sort_unstable();
+    v.dedup();
+    v
+}
+
+type NameSet = std::collections::HashSet<String>;
+
+/// The names this module itself defines or binds, anywhere: a call of one of
+/// them is never reported, whatever its receiver. Functions and methods
+/// (`impl`, `extend`, `trait`, nested), struct, enum, variant, effect-operation
+/// and item names, struct fields (a field may hold a callable), imports, and
+/// every local binding (`let`, parameters, closure parameters, patterns).
+fn defined_names(items: &[ast::Item], out: &mut NameSet) {
+    use crate::borrowck::{Child, children, pattern_names};
+    fn pat(p: &ast::Pattern, out: &mut NameSet) {
+        let mut v = Vec::new();
+        pattern_names(p, &mut v);
+        out.extend(v);
+    }
+    fn expr(e: &ast::Expr, out: &mut NameSet) {
+        match e {
+            ast::Expr::Closure { params, .. } => out.extend(params.iter().map(|p| p.name.clone())),
+            ast::Expr::For { pattern, .. } | ast::Expr::Is { pattern, .. } => pat(pattern, out),
+            ast::Expr::Match { arms, .. } => arms.iter().for_each(|a| pat(&a.pattern, out)),
+            ast::Expr::Handle { arms, .. } => {
+                for a in arms {
+                    out.insert(a.op.clone());
+                    out.extend(a.params.iter().cloned());
+                }
+            }
+            _ => {}
+        }
+        children(e, &mut |c| match c {
+            Child::E(x) => expr(x, out),
+            Child::B(b) => block(b, out),
+        });
+    }
+    fn block(b: &ast::Block, out: &mut NameSet) {
+        for s in &b.stmts {
+            match s {
+                ast::Stmt::Let { pattern, value, .. } => {
+                    pat(pattern, out);
+                    expr(value, out);
+                }
+                ast::Stmt::Expr { expr: e } | ast::Stmt::Defer { expr: e } => expr(e, out),
+                ast::Stmt::Guard { cond, else_block } => {
+                    expr(cond, out);
+                    block(else_block, out);
+                }
+                ast::Stmt::Item { item } => defined_names(std::slice::from_ref(item), out),
+            }
+        }
+        if let Some(t) = &b.tail_expr {
+            expr(t, out);
+        }
+    }
+    fn use_names(u: &ast::UseDef, out: &mut NameSet) {
+        out.extend(u.path.iter().cloned());
+        out.extend(u.alias.iter().cloned());
+        u.group.iter().for_each(|g| use_names(g, out));
+    }
+    for item in items {
+        match &item.kind {
+            ast::ItemKind::Function(f) => {
+                out.insert(f.name.clone());
+                out.extend(f.params.iter().map(|p| p.name.clone()));
+                block(&f.body, out);
+                if let Some(e) = &f.body_expr {
+                    expr(e, out);
+                }
+            }
+            ast::ItemKind::Struct(s) => {
+                out.insert(s.name.clone());
+                out.extend(s.fields.iter().map(|f| f.name.clone()));
+            }
+            ast::ItemKind::Enum(e) => {
+                out.insert(e.name.clone());
+                out.extend(e.variants.iter().map(|v| v.name.clone()));
+            }
+            ast::ItemKind::Trait(t) => {
+                out.insert(t.name.clone());
+                defined_names(&t.items, out);
+            }
+            ast::ItemKind::Impl(b) => defined_names(&b.items, out),
+            ast::ItemKind::Extend(b) => defined_names(&b.items, out),
+            ast::ItemKind::Module(m) => {
+                out.insert(m.name.clone());
+                if let Some(items) = &m.items {
+                    defined_names(items, out);
+                }
+            }
+            ast::ItemKind::Use(u) => use_names(u, out),
+            ast::ItemKind::Const(c) => {
+                out.insert(c.name.clone());
+            }
+            ast::ItemKind::Static(s) => {
+                out.insert(s.name.clone());
+            }
+            ast::ItemKind::Effect(e) => {
+                out.insert(e.name.clone());
+                out.extend(e.operations.iter().map(|o| o.name.clone()));
+            }
+            ast::ItemKind::Net(n) => {
+                out.insert(n.name.clone());
+            }
+            ast::ItemKind::Data(d) => {
+                out.insert(d.name.clone());
+                match &d.kind {
+                    ast::DataKind::Record(fields) => out.extend(fields.iter().map(|f| f.name.clone())),
+                    ast::DataKind::Sum(variants) => out.extend(variants.iter().map(|v| v.name.clone())),
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+/// One call the evaluator would not run.
+struct UnknownCall {
+    name: String,
+    /// The capability namespace it was called on (`fs` in `fs.zork()`), if any.
+    namespace: Option<String>,
+}
+
+fn unknown_calls_in_expr(e: &ast::Expr, defined: &NameSet, published: &[&str], out: &mut Vec<UnknownCall>) {
+    use crate::borrowck::{Child, children};
+    let runs = |n: &str| defined.contains(n) || published.contains(&n);
+    match e {
+        ast::Expr::MethodCall { receiver, method, .. } => {
+            let ns = match receiver.as_ref() {
+                ast::Expr::Ident { name }
+                    if !defined.contains(name)
+                        && crate::hir::CAPABILITY_NAMESPACES.iter().any(|(n, _)| n == name) =>
+                {
+                    Some(name.clone())
+                }
+                _ => None,
+            };
+            match ns {
+                Some(ns) => {
+                    if !crate::eval::CAPABILITY_OPS.iter().any(|r| r.0 == ns && r.1 == method) {
+                        out.push(UnknownCall { name: method.clone(), namespace: Some(ns) });
+                    }
+                }
+                None if !runs(method) => out.push(UnknownCall { name: method.clone(), namespace: None }),
+                None => {}
+            }
+        }
+        ast::Expr::Call { func, .. } => {
+            if let ast::Expr::Ident { name } = func.as_ref()
+                && !runs(name)
+            {
+                out.push(UnknownCall { name: name.clone(), namespace: None });
+            }
+        }
+        _ => {}
+    }
+    children(e, &mut |c| match c {
+        Child::E(x) => unknown_calls_in_expr(x, defined, published, out),
+        Child::B(b) => unknown_calls_in_block(b, defined, published, out),
+    });
+}
+
+fn unknown_calls_in_block(b: &ast::Block, defined: &NameSet, published: &[&str], out: &mut Vec<UnknownCall>) {
+    for s in &b.stmts {
+        match s {
+            ast::Stmt::Let { value, .. } => unknown_calls_in_expr(value, defined, published, out),
+            ast::Stmt::Expr { expr: e } | ast::Stmt::Defer { expr: e } => {
+                unknown_calls_in_expr(e, defined, published, out)
+            }
+            ast::Stmt::Guard { cond, else_block } => {
+                unknown_calls_in_expr(cond, defined, published, out);
+                unknown_calls_in_block(else_block, defined, published, out);
+            }
+            ast::Stmt::Item { item } => {
+                let mut nested = Vec::new();
+                functions_under(std::slice::from_ref(item), &mut nested);
+                for g in nested {
+                    unknown_calls_in_block(&g.body, defined, published, out);
+                }
+            }
+        }
+    }
+    if let Some(t) = &b.tail_expr {
+        unknown_calls_in_expr(t, defined, published, out);
+    }
+}
+
+/// Every function under `items`, in source order.
+fn functions_under<'a>(items: &'a [ast::Item], out: &mut Vec<&'a ast::FunctionDef>) {
+    for item in items {
+        match &item.kind {
+            ast::ItemKind::Function(f) => out.push(f),
+            ast::ItemKind::Impl(b) => functions_under(&b.items, out),
+            ast::ItemKind::Extend(b) => functions_under(&b.items, out),
+            ast::ItemKind::Trait(t) => functions_under(&t.items, out),
+            ast::ItemKind::Module(m) => functions_under(m.items.as_deref().unwrap_or(&[]), out),
+            _ => {}
+        }
+    }
+}
+
+/// Warn about each call, `x.name(args)` or `name(args)`, that names nothing the
+/// evaluator can run (E0714).
+///
+/// `--eval` runs a call by name: a user function or method, a closure in scope,
+/// a published builtin (`STD_FNS`, `VOCABULARY`, `SCALAR_MATH`, `LIST_MUTATORS`),
+/// a capability operation (`fs.read_to_string`), an effect operation, or a
+/// variant constructor. The type checker gives any other method a fresh type
+/// variable, so `xs.zork(1)` checks clean and then stops with `unknown
+/// function`. This reports it before the run, as a warning: the program is
+/// still accepted, and `--check`'s exit status does not change.
+///
+/// The rule is by name, never by receiver type, so it cannot be wrong about a
+/// type it cannot see. Not reported: a name the module defines or binds
+/// anywhere (even when the receiver's own type lacks it), a struct field name,
+/// an import, a bound variable, and anything in a `net`, `train`, `kb` or
+/// `swarm` body (those are not evaluator calls). A capability namespace's
+/// operations are checked against `CAPABILITY_OPS` instead.
+pub fn unknown_call_warnings(module: &ast::Module) -> Vec<Diagnostic> {
+    unknown_call_warnings_owned(module).into_iter().map(|(_, d)| d).collect()
+}
+
+/// [`unknown_call_warnings`], each with the index of the top-level item it is in,
+/// for a caller that runs on a module whose start lines are not its own.
+pub fn unknown_call_warnings_owned(module: &ast::Module) -> Vec<(usize, Diagnostic)> {
+    let mut defined = NameSet::new();
+    defined_names(&module.items, &mut defined);
+    let published = published_call_names();
+    let unresolved: NameSet = resolve(module)
+        .diagnostics
+        .iter()
+        .filter(|d| d.category == Some(DiagnosticCategory::UnresolvedName))
+        .filter_map(|d| d.message.split('`').nth(1).map(str::to_string))
+        .collect();
+
+    let mut diags = Vec::new();
+    for (i, item) in module.items.iter().enumerate() {
+        let mut fns = Vec::new();
+        functions_under(std::slice::from_ref(item), &mut fns);
+        for f in fns {
+            let mut sites = Vec::new();
+            unknown_calls_in_block(&f.body, &defined, &published, &mut sites);
+            if let Some(e) = &f.body_expr {
+                unknown_calls_in_expr(e, &defined, &published, &mut sites);
+            }
+            for s in sites {
+                // A bare call of a name nothing defines is already E0425, an error.
+                if s.namespace.is_none() && unresolved.contains(&s.name) {
+                    continue;
+                }
+                let (what, hint) = match &s.namespace {
+                    Some(ns) => {
+                        let ops: Vec<&str> =
+                            crate::eval::CAPABILITY_OPS.iter().filter(|r| r.0 == ns).map(|r| r.1).collect();
+                        let hint = match crate::builder::nearest(&s.name, &ops, 2) {
+                            Some(c) => format!("did you mean `{ns}.{c}`?"),
+                            None if ops.is_empty() => format!("`{ns}` has no operation the evaluator runs"),
+                            None => format!("`{ns}` offers: {}", ops.join(", ")),
+                        };
+                        (format!("`{ns}.{}`", s.name), hint)
+                    }
+                    None => {
+                        let hint = match crate::builder::nearest(&s.name, &published, if s.name.len() <= 4 { 1 } else { 2 }) {
+                            Some(c) => format!("did you mean `{c}`?"),
+                            None => format!("see `mage-parse --ontology-query {}`", s.name),
+                        };
+                        (format!("`{}`", s.name), hint)
+                    }
+                };
+                let mut d = Diagnostic::categorized(
+                    Severity::Warning,
+                    format!(
+                        "in `{}`: {what} is not a function the evaluator has, so `--eval` stops with \
+                         `unknown function` when this runs ({hint})",
+                        f.name
+                    ),
+                    DiagnosticCategory::UnknownFunction,
+                    None,
+                );
+                d.span = crate::hir::Span::item(module.start_of(i));
+                diags.push((i, d));
+            }
+        }
+    }
+    diags
+}
+
 // ── Tests ────────────────────────────────────────────────────────────
 
 #[cfg(test)]
@@ -1909,4 +2206,87 @@ f P(x: i32) -> i32 { x }"),
             assert!(!VOCABULARY.iter().any(|(v, _, _)| v == n), "`{n}` is in VOCABULARY too");
         }
     }
+    // ── Calls the evaluator cannot run (E0714) ──────────────────────
+
+    /// The messages of each E0714 warning `check_source` reports for `src`, and
+    /// whether the program was refused.
+    fn unknown_calls(src: &str) -> (Vec<String>, bool) {
+        let c = crate::check::check_source(src, false, false);
+        let warns = c
+            .findings
+            .iter()
+            .filter(|f| f.code == "E0714")
+            .inspect(|f| assert_eq!(f.severity, "warning", "E0714 is a warning"))
+            .map(|f| f.message.clone())
+            .collect();
+        (warns, !c.verdict().accepted())
+    }
+
+    #[test]
+    fn an_unknown_method_on_a_list_is_a_warning_that_names_it() {
+        let (w, refused) = unknown_calls("f g(xs: [i64]) -> i64 { xs.zork(1) }\n");
+        assert_eq!(w.len(), 1, "{w:?}");
+        assert!(w[0].contains("`zork`") && w[0].contains("`g`") && w[0].contains("ontology-query zork"), "{}", w[0]);
+        assert!(!refused, "a warning is not a refusal");
+    }
+
+    #[test]
+    fn a_near_miss_names_the_published_word() {
+        let (w, _) = unknown_calls("f g(xs: [i64]) -> [i64] { xs.sorted() }\n");
+        assert!(w[0].contains("did you mean `sort`?"), "{}", w[0]);
+        let (w, _) = unknown_calls("f g(xs: [i64]) -> i64 { xs.contians(1) }\n");
+        assert!(w[0].contains("did you mean `contains`?"), "{}", w[0]);
+        // A short name is not matched at two edits: `zork` is not `sort`.
+        let (w, _) = unknown_calls("f g(xs: [i64]) -> i64 { xs.zork() }\n");
+        assert!(!w[0].contains("did you mean"), "{}", w[0]);
+    }
+
+    #[test]
+    fn calls_the_evaluator_runs_are_not_warned() {
+        let clean = [
+            // published builtins, as methods and as calls
+            "f g(xs: [i64]) -> i64 { xs.len() + len(xs) + xs.sum() }\n",
+            "f g(xs: [i64]) -> [i64] { xs.push(1); xs.sort() }\n",
+            "f g(x: f64) -> f64 { x.sqrt() + exp(x) }\n",
+            // a user method in an `impl`, an `extend`, and a trait (also through a bound)
+            "S P { x: i32 }\nI P { +f dbl(&self) -> i32 { self.x * 2 } }\nf s() { v p = @P { x: 4 }; p.dbl() }\n",
+            "S P { x: i32 }\nextend P { f dbl(&self) -> i32 { self.x * 2 } }\nf s() { v p = @P { x: 4 }; p.dbl() }\n",
+            "T Shape { f area(&self) -> i32; }\nS Sq { side: i32 }\nI Shape for Sq { f area(&self) -> i32 { self.side } }\nf total<A: Shape>(a: A) -> i32 { a.area() }\n",
+            // a user function, a closure, a closure parameter
+            "f helper(n: i64) -> i64 { n }\nf g() -> i64 { helper(1) }\n",
+            "f g() -> i64 { v inc = |x| x + 1; inc(2) }\n",
+            "f g(cb: fn(i64) -> i64) -> i64 { cb(2) }\n",
+            // a capability operation
+            "f g(p: s) -> s / fs { fs.read_to_string(p) }\n",
+            // a `data` variant, bare and qualified
+            "data Shape = Circle(f64) | Rect(f64, f64)\nf g() -> Shape { Shape.Circle(1.0) }\nf h() -> Shape { Rect(1.0, 2.0) }\n",
+            // a receiver of no known type, calling a method the module defines
+            "extend [i64] { f zork(self: [i64], n: i64) -> i64 { n } }\nf g(xs: [i64]) -> i64 { xs.zork(1) }\n",
+            "S P { x: i32 }\nI P { +f dbl(&self) -> i32 { self.x * 2 } }\nf g(a, b) { a.dbl() + b.dbl() }\n",
+        ];
+        for src in clean {
+            let (w, _) = unknown_calls(src);
+            assert!(w.is_empty(), "{src}\n{w:?}");
+        }
+    }
+
+    #[test]
+    fn an_unknown_capability_operation_is_named_with_its_namespace() {
+        let (w, _) = unknown_calls("f g(p: s) -> s / fs { fs.read_to_strng(p) }\n");
+        assert_eq!(w.len(), 1, "{w:?}");
+        assert!(w[0].contains("`fs.read_to_strng`") && w[0].contains("did you mean `fs.read_to_string`?"), "{}", w[0]);
+    }
+
+    #[test]
+    fn a_net_or_kb_body_is_not_an_evaluator_call() {
+        let (w, _) = unknown_calls("net A { layer fc: Linear(3, 1); forward { fc } }\n");
+        assert!(w.is_empty(), "{w:?}");
+    }
+
+    #[test]
+    fn a_bare_call_the_resolver_already_refuses_is_not_warned_twice() {
+        let (w, refused) = unknown_calls("f g() -> i64 { zork2(1) }\n");
+        assert!(w.is_empty() && refused, "{w:?}");
+    }
+
 }
