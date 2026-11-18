@@ -2066,7 +2066,8 @@ echo "{\"capability\": $cap, \"safety\": 1}"
     #[test]
     fn write_set_case_rules_follow_the_platform() {
         let c = cfg_for_prefixes(&["prototype/src/"], &["prototype/src/Tests/"]);
-        let genome = vec![gene_for("A/x", &"0".repeat(64)), gene_for("a/X", &"0".repeat(64))];
+        // Not all zeros: that hash is the tombstone marker, which `changed_files` refuses.
+        let genome = vec![gene_for("A/x", &"1".repeat(64)), gene_for("a/X", &"1".repeat(64))];
         if cfg!(windows) {
             assert!(ws(&c, &["PROTOTYPE/SRC/x.rs"]).is_ok(), "a case variant of a writable prefix is under it");
             assert!(ws(&c, &["Prototype/Src/tests/t.rs"]).is_err(), "a case variant of a protected prefix is protected");
