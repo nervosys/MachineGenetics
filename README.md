@@ -303,7 +303,7 @@ prototype). Reproduce with `agentic-eval --example swe_languages`.
 
 - ✅ **Built-in AI Framework (RecursiveMachineIntelligence)** — The [`RecursiveMachineIntelligence/`](RecursiveMachineIntelligence/) `rmi` crate ships inside the project: Agentic Binary Language binary neurosymbolic IR, compute backends (CPU + CUDA via IronAccelerator — tensor-core F16/BF16, calibrated INT8/INT4 quantization), a self-describing ontology with a token-compact `manifest()`/`describe()` front door, machine-parseable error diagnostics, and effect-mapped safety. The compiler's `--target=abl-*` modes lower straight onto it.
 
-- ✅ **Complete Ontologies, End to End** — Every layer self-describes for agents: the language/compiler (`mage-parse --emit-ontology`, `--manifest`), the framework (`rmi::core::manifest`, `FrameworkOntology`), and the CLI (effect-classed mode index). Deterministic output everywhere — agents can cache, diff, and gate without prose docs.
+- ✅ **Complete Ontologies, End to End** — Every layer self-describes for agents: the language/compiler (`mage-parse --emit-ontology`, `--manifest`; agents query it with `--ontology-index` then `--ontology-query <TERM>` instead of loading it whole), the framework (`rmi::core::manifest`, `FrameworkOntology`), and the CLI (effect-classed mode index). Deterministic output everywhere — agents can cache, diff, and gate without prose docs.
 
 ## Quick Start
 

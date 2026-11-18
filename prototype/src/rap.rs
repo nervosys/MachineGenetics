@@ -14,6 +14,8 @@
 ///   verify/contracts  — verify function contracts (P21)
 ///   ontology/full     — return the complete language + IR + protocol ontology
 ///   ontology/section  — return one named section of the ontology
+///   ontology/index    — classes of the ontology with counts (cheap first call)
+///   ontology/query    — entries matching a term, cut to a token budget
 ///   pipeline/recover-and-encode — source → 3-stage recover → Agentic Binary Language bytes in one call
 ///   abl/encode       — source → Agentic Binary Language bytes (hex) for application/abl transport
 ///   abl/decode       — Agentic Binary Language bytes (hex) → decompiled per-item view
@@ -1255,6 +1257,21 @@ fn dispatch_with(method: &str, params: &serde_json::Value, docs: &mut Docs) -> s
         // every construct, opcode, and method without prior training.
         "ontology/full" => crate::ontology::build(),
 
+        // Cheap discovery: the ontology's classes, counts, one line each.
+        "ontology/index" => crate::ontology_query::index(),
+
+        // Budgeted slice of the ontology: entries matching `term`.
+        "ontology/query" => {
+            let term = params.get("term").and_then(|v| v.as_str()).unwrap_or("");
+            let kind = params.get("kind").and_then(|v| v.as_str());
+            let budget = params
+                .get("budget")
+                .and_then(|v| v.as_u64())
+                .map(|b| b as usize)
+                .unwrap_or(crate::ontology_query::DEFAULT_BUDGET);
+            crate::ontology_query::query(term, kind, budget)
+        }
+
         // Return one named section of the ontology. Useful when an
         // agent only needs (e.g.) the IR op catalog and doesn't want
         // the whole payload.
@@ -1692,6 +1709,8 @@ pub const METHODS: &[&str] = &[
     "nl/query",
     "nl/refactor",
     "ontology/full",
+    "ontology/index",
+    "ontology/query",
     "ontology/section",
     "pipeline/recover-and-encode",
     "rap/methods",
@@ -2217,6 +2236,8 @@ mod tests {
             ("nl/query", serde_json::json!({ "prompt": "add two numbers" })),
             ("ontology/section", serde_json::json!({ "section": "vocabulary" })),
             ("ontology/full", serde_json::json!({})),
+            ("ontology/index", serde_json::json!({})),
+            ("ontology/query", serde_json::json!({ "term": "matmul" })),
             ("abl/decode", serde_json::json!({ "abl_hex": abl_hex })),
             // An fqn that carries a spec block. Most SKB entries do not, and
             // for those the arm returns `ok: false` — a working call has to

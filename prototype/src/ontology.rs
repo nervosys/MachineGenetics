@@ -385,6 +385,10 @@ const RAP_METHODS: &[(&str, &str, &[&str], &[&str])] = &[
         &[], &["ok", "schema_version", "version", "project", "short_name", "organization", "builtin_framework", "counts", "sections"]),
     ("ontology/section", "Return one named section of the ontology.",
         &["section"], &["ok", "section", "data"]),
+    ("ontology/index", "Cheap first call: every ontology class with its entry count and a one-line meaning.",
+        &[], &["ok", "use", "kinds", "tokens"]),
+    ("ontology/query", "Entries matching a term, best first, cut to a token budget (default 600); optional kind and budget.",
+        &["term"], &["ok", "query", "kind", "budget", "matches", "returned", "omitted", "truncated", "hits", "tokens"]),
 ];
 
 /// Hardware accelerator backends RecursiveMachineIntelligence defines. Each entry
@@ -441,6 +445,10 @@ const CLI_FLAGS: &[(&str, &str, bool)] = &[
     ("--rap", "Start the RAP JSON-RPC server on the given addr (default 127.0.0.1:9876)", false),
     ("--emit-ontology", "Dump the complete ontology to disk as static JSON", true),
     ("--emit-skb", "Regenerate skb/ from the rules compiled into this binary", true),
+    ("--ontology-index", "Print the ontology's classes with entry counts (the cheap first call; never load the whole ontology)", false),
+    ("--ontology-query", "Print the ontology entries matching a term, cut to a token budget; modifiers --kind=<class>, --budget=<tokens>", false),
+    ("--kind=<class>", "Restrict --ontology-query to one ontology class (see --ontology-index)", false),
+    ("--budget=<tokens>", "Token budget for --ontology-query, counted by the built-in BPE (default 600)", false),
     ("--check", "Lex + parse + resolve; report diagnostics", true),
     ("--differentiable", "Report differentiability for every function, net and train block (smooth / almost everywhere / unknown / not, with reasons)", true),
     ("--gradcheck", "Check computed derivatives against central differences; reports deductive and inductive verdicts separately", true),

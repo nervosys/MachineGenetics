@@ -91,7 +91,7 @@ Envelope {
 
 ### 5. RAP (MAGE Agent Protocol) — Compiler Interface
 
-RAP exposes **43** JSON-RPC 2.0 endpoints. The tables below name **23** of
+RAP exposes **45** JSON-RPC 2.0 endpoints. The tables below name **23** of
 them. Each request is a JSON object with `method`, `params`, `id`:
 
 > **Corrected 2026-09-02.** This line said "24 endpoints" and the tables below
@@ -330,6 +330,28 @@ For live function patching without full recompilation:
 ---
 
 ## Part II: Complete System Ontology
+
+### Query it; do not load it
+
+`MAGE_ONTOLOGY.json` is about 64,600 tokens (mage-bpe-4096). An agent should
+never load it whole. Two cheap calls answer slices of the same generated data,
+cut to a token budget counted by the built-in BPE:
+
+1. **Index first.** `mage-parse --ontology-index` (RAP: `ontology/index`) lists
+   the classes (keywords, sigils, types, effects, ir_ops, cli_flags,
+   rap_methods, ...) with entry counts and one line each. About 750 tokens.
+2. **Then query.** `mage-parse --ontology-query <TERM> [--kind=<class>]
+   [--budget=<tokens>]` (RAP: `ontology/query` with `term`, `kind`, `budget`).
+   Matching is exact name, then case-insensitive name (leading `-`, `@`, `+`
+   ignored), then name prefix, name substring, and description substring.
+   Each hit carries its `kind`, `name`, the `entry`, and `related` (names as
+   `kind:name`, no bodies) so the next query is one call away. Whole entries
+   only; `matches`, `returned`, `omitted`, `truncated` and the response's own
+   `tokens` are reported. The default budget is 600 tokens.
+
+When `omitted` is not zero, narrow with `--kind` or a longer term rather than
+raising the budget. Use `ontology/section` only for one class, and
+`ontology/full` never.
 
 ### 11. Ontology Structure
 
@@ -1706,7 +1728,7 @@ Report TaskResult::Success
 
 | Category                 | Count |
 | ------------------------ | ----- |
-| Source modules           | 82    |
+| Source modules           | 83    |
 | TokenKind variants       | 180   |
 | AST ItemKind variants    | 20    |
 | AST ExprKind variants    | 35    |
@@ -1715,7 +1737,7 @@ Report TaskResult::Success
 | Effect kinds             | 19    |
 | SKB rule databases       | 8     |
 | SKB rules total          | 255   |
-| RAP endpoints            | 43    |
+| RAP endpoints            | 45    |
 | Agent roles              | 8     |
 | Message topics           | 10    |
 | CRDT operations          | 6     |

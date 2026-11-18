@@ -62,6 +62,7 @@ pub mod manifest;
 pub mod mlir;
 pub mod nl_engine;
 pub mod ontology;
+pub mod ontology_query;
 pub mod params;
 pub mod parser;
 pub mod query;

@@ -4,7 +4,7 @@
     "ast_kinds": 20,
     "bench_backends": 4,
     "ci_floors": 6,
-    "cli_flags": 53,
+    "cli_flags": 57,
     "docs": 7,
     "effects": 24,
     "examples": 10,
@@ -14,7 +14,7 @@
     "keywords": 100,
     "op_families": 7,
     "project_layout": 22,
-    "rap_methods": 43,
+    "rap_methods": 45,
     "recovery_stages": 7,
     "sigils": 57,
     "types": 30,
@@ -189,6 +189,26 @@
         "flag": "--emit-skb",
         "purpose": "Regenerate skb/ from the rules compiled into this binary",
         "takes_path": true
+      },
+      {
+        "flag": "--ontology-index",
+        "purpose": "Print the ontology's classes with entry counts (the cheap first call; never load the whole ontology)",
+        "takes_path": false
+      },
+      {
+        "flag": "--ontology-query",
+        "purpose": "Print the ontology entries matching a term, cut to a token budget; modifiers --kind=<class>, --budget=<tokens>",
+        "takes_path": false
+      },
+      {
+        "flag": "--kind=<class>",
+        "purpose": "Restrict --ontology-query to one ontology class (see --ontology-index)",
+        "takes_path": false
+      },
+      {
+        "flag": "--budget=<tokens>",
+        "purpose": "Token budget for --ontology-query, counted by the built-in BPE (default 600)",
+        "takes_path": false
       },
       {
         "flag": "--check",
@@ -4865,6 +4885,36 @@
           "data"
         ],
         "summary": "Return one named section of the ontology."
+      },
+      {
+        "method": "ontology/index",
+        "params": [],
+        "returns": [
+          "ok",
+          "use",
+          "kinds",
+          "tokens"
+        ],
+        "summary": "Cheap first call: every ontology class with its entry count and a one-line meaning."
+      },
+      {
+        "method": "ontology/query",
+        "params": [
+          "term"
+        ],
+        "returns": [
+          "ok",
+          "query",
+          "kind",
+          "budget",
+          "matches",
+          "returned",
+          "omitted",
+          "truncated",
+          "hits",
+          "tokens"
+        ],
+        "summary": "Entries matching a term, best first, cut to a token budget (default 600); optional kind and budget."
       }
     ],
     "recovery_stages": [

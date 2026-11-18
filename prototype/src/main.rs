@@ -39,6 +39,8 @@ fn is_modifier_flag(a: &str) -> bool {
     ) || a.starts_with("--backend=")
         || a.starts_with("--backends-file=")
         || a.starts_with("--cache-dir=")
+        || a.starts_with("--kind=")
+        || a.starts_with("--budget=")
 }
 
 /// Read a source file, or standard input when the path is `-`.
@@ -460,6 +462,31 @@ fn main() {
         Some("--rap") => {
             let addr = filtered.get(1).copied().unwrap_or("127.0.0.1:9876");
             rap::serve(addr);
+        }
+        Some("--ontology-index") => {
+            // The cheap first call: classes, counts, one line each.
+            println!("{}", ontology_query::index());
+        }
+        Some("--ontology-query") => {
+            // `--ontology-query <TERM> [--kind=<class>] [--budget=<tokens>]`.
+            let Some(term) = filtered.get(1).copied() else {
+                eprintln!("Usage: mage-parse --ontology-query <TERM> [--kind=<class>] [--budget=<tokens>]");
+                eprintln!("       (run --ontology-index first for the classes)");
+                std::process::exit(2);
+            };
+            let opt = |p: &str| args.iter().find_map(|a| a.strip_prefix(p));
+            let budget = match opt("--budget=") {
+                None => ontology_query::DEFAULT_BUDGET,
+                Some(b) => b.parse().unwrap_or_else(|_| {
+                    eprintln!("--budget expects a number of tokens, got {b:?}");
+                    std::process::exit(2);
+                }),
+            };
+            let r = ontology_query::query(term, opt("--kind="), budget);
+            println!("{r}");
+            if r["ok"] != true {
+                std::process::exit(2);
+            }
         }
         Some("--emit-ontology") => {
             // Dump the complete ontology to disk as static JSON.
@@ -4181,6 +4208,7 @@ mod cli_arg_tests {
                     || matches!(f, "--check" | "--eval" | "--pipeline" | "--rap" | "--differentiable"
                                 | "--gradcheck" | "--solve" | "--heal"
                                 | "--fmt-compact" | "--fmt-expand" | "--count-tokens" | "--emit-ontology" | "--emit-skb"
+                                | "--ontology-index" | "--ontology-query"
                                 | "--manifest" | "--rain" | "--version" | "--input"
                                 | "--bpe-count" | "--bpe-train") =>
                 {
