@@ -316,8 +316,12 @@ def run_case(binary, src, case, effects, scratch, fuel, idx):
     return res
 
 
-def judge(binary, task, scratch, fuel):
-    src = task["solution"]["rdx_source"]
+def judge(binary, task, scratch, fuel, source=None):
+    """Judge `source` (default: the task's own reference) against the task's
+    tests. `source` is the one addition made for scripts/agent-cost.py, which
+    judges an agent's submission with exactly the functions used for the
+    reference; nothing about how a case is run or compared depends on it."""
+    src = task["solution"]["rdx_source"] if source is None else source
     path = os.path.join(scratch, "solution.mg")
     with open(path, "w", encoding="utf-8", newline="\n") as f:
         f.write(src.rstrip("\n") + "\n")
@@ -348,6 +352,26 @@ def judge(binary, task, scratch, fuel):
             "status": status, "reason": reason, "case_detail": cases}
 
 
+def load_tasks(tasks_dir):
+    """Every task of every `*.json` in `tasks_dir`, in file-name order."""
+    tasks = []
+    for fn in sorted(os.listdir(tasks_dir)):
+        if fn.endswith(".json"):
+            with open(os.path.join(tasks_dir, fn), encoding="utf-8") as f:
+                tasks.extend(json.load(f))
+    return tasks
+
+
+def baseline_ids(path):
+    """Task ids listed in the shrink-only baseline (the tasks NOT accepted)."""
+    ids = set()
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            if line.strip() and not line.startswith("#"):
+                ids.add(line.split()[0])
+    return ids
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--mage-parse", required=True, help="path to the mage-parse binary")
@@ -361,11 +385,7 @@ def main():
 
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     tasks_dir = a.tasks if os.path.isabs(a.tasks) else os.path.join(root, a.tasks)
-    tasks = []
-    for fn in sorted(os.listdir(tasks_dir)):
-        if fn.endswith(".json"):
-            with open(os.path.join(tasks_dir, fn), encoding="utf-8") as f:
-                tasks.extend(json.load(f))
+    tasks = load_tasks(tasks_dir)
     if a.only:
         want = set(a.only.split(","))
         tasks = [t for t in tasks if t["id"] in want]
