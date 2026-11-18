@@ -49,6 +49,34 @@ fn an_unresolved_name_points_at_the_statement() {
     // In the tail expression.
     let src = "f first() -> i32 { 1 }\n\nf second() -> i32 {\n    v a = 1\n    a + yy\n}\n";
     assert_eq!(at(src, "E0425"), vec![(5, 5)]);
+
+    // A call the evaluator cannot run (E0714) is placed the same way, on every path:
+    // line 3 of the first function, a nested block, and a function further down.
+    let src = "f main() -> i64 {\n    val xs = [1, 2]\n    xs.zork(1)\n}\n\nf second(n: i64) -> i64 {\n    val ys = [1]\n    if n > 0 {\n        val q = 1\n        val r = ys.blorp(q)\n        r\n    } else {\n        0\n    }\n}\n\nf third() -> i64 {\n    val zs = [3]\n    zs.quux()\n}\n";
+    let want = vec![(3, 5), (10, 9), (19, 5)];
+    assert_eq!(at(src, "E0714"), want);
+    let positions = |text: &str| -> Vec<String> {
+        text.lines().filter_map(|l| l.split("[E0714] ").nth(1)?.split(":warning").next().map(str::to_string)).collect()
+    };
+    let text = String::from_utf8_lossy(&run(src, &[]).stderr).to_string();
+    assert_eq!(positions(&text), vec!["3:5", "10:9", "19:5"], "{text}");
+    // Through the query engine (`--cache-dir`), both forms.
+    let dir = std::env::temp_dir().join(format!("mage-diagspans-cache-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    let d = dir.to_string_lossy().to_string();
+    let out = run(src, &["--json", "--cache-dir", &d]);
+    let value: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    let cached: Vec<(u64, u64)> = value["diagnostics"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|x| x["code"] == "E0714")
+        .map(|x| (x["line"].as_u64().unwrap(), x["col"].as_u64().unwrap()))
+        .collect();
+    assert_eq!(cached, want);
+    let text = String::from_utf8_lossy(&run(src, &["--cache-dir", &d]).stderr).to_string();
+    assert_eq!(positions(&text), vec!["3:5", "10:9", "19:5"], "{text}");
+    let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[test]

@@ -1563,9 +1563,19 @@ struct UnknownCall {
     name: String,
     /// The capability namespace it was called on (`fs` in `fs.zork()`), if any.
     namespace: Option<String>,
+    /// Where the enclosing statement (or tail expression) starts, relative to its
+    /// top-level item. The AST keeps no position on an expression, so this is the
+    /// nearest spanned node: the call's own line, the statement's column.
+    pos: ast::Pos,
 }
 
-fn unknown_calls_in_expr(e: &ast::Expr, defined: &NameSet, published: &[&str], out: &mut Vec<UnknownCall>) {
+fn unknown_calls_in_expr(
+    e: &ast::Expr,
+    defined: &NameSet,
+    published: &[&str],
+    cur: ast::Pos,
+    out: &mut Vec<UnknownCall>,
+) {
     use crate::borrowck::{Child, children};
     let runs = |n: &str| defined.contains(n) || published.contains(&n);
     match e {
@@ -1582,10 +1592,10 @@ fn unknown_calls_in_expr(e: &ast::Expr, defined: &NameSet, published: &[&str], o
             match ns {
                 Some(ns) => {
                     if !crate::eval::CAPABILITY_OPS.iter().any(|r| r.0 == ns && r.1 == method) {
-                        out.push(UnknownCall { name: method.clone(), namespace: Some(ns) });
+                        out.push(UnknownCall { name: method.clone(), namespace: Some(ns), pos: cur });
                     }
                 }
-                None if !runs(method) => out.push(UnknownCall { name: method.clone(), namespace: None }),
+                None if !runs(method) => out.push(UnknownCall { name: method.clone(), namespace: None, pos: cur }),
                 None => {}
             }
         }
@@ -1593,39 +1603,51 @@ fn unknown_calls_in_expr(e: &ast::Expr, defined: &NameSet, published: &[&str], o
             if let ast::Expr::Ident { name } = func.as_ref()
                 && !runs(name)
             {
-                out.push(UnknownCall { name: name.clone(), namespace: None });
+                out.push(UnknownCall { name: name.clone(), namespace: None, pos: cur });
             }
         }
         _ => {}
     }
     children(e, &mut |c| match c {
-        Child::E(x) => unknown_calls_in_expr(x, defined, published, out),
-        Child::B(b) => unknown_calls_in_block(b, defined, published, out),
+        Child::E(x) => unknown_calls_in_expr(x, defined, published, cur, out),
+        Child::B(b) => unknown_calls_in_block(b, defined, published, cur, out),
     });
 }
 
-fn unknown_calls_in_block(b: &ast::Block, defined: &NameSet, published: &[&str], out: &mut Vec<UnknownCall>) {
-    for s in &b.stmts {
+fn unknown_calls_in_block(
+    b: &ast::Block,
+    defined: &NameSet,
+    published: &[&str],
+    outer: ast::Pos,
+    out: &mut Vec<UnknownCall>,
+) {
+    let known = |p: Option<&ast::Pos>, fallback: ast::Pos| match p {
+        Some(p) if p.is_set() => *p,
+        _ => fallback,
+    };
+    let outer = known(Some(&b.pos), outer);
+    for (i, s) in b.stmts.iter().enumerate() {
+        let cur = known(b.stmt_pos.get(i), outer);
         match s {
-            ast::Stmt::Let { value, .. } => unknown_calls_in_expr(value, defined, published, out),
+            ast::Stmt::Let { value, .. } => unknown_calls_in_expr(value, defined, published, cur, out),
             ast::Stmt::Expr { expr: e } | ast::Stmt::Defer { expr: e } => {
-                unknown_calls_in_expr(e, defined, published, out)
+                unknown_calls_in_expr(e, defined, published, cur, out)
             }
             ast::Stmt::Guard { cond, else_block } => {
-                unknown_calls_in_expr(cond, defined, published, out);
-                unknown_calls_in_block(else_block, defined, published, out);
+                unknown_calls_in_expr(cond, defined, published, cur, out);
+                unknown_calls_in_block(else_block, defined, published, cur, out);
             }
             ast::Stmt::Item { item } => {
                 let mut nested = Vec::new();
                 functions_under(std::slice::from_ref(item), &mut nested);
                 for g in nested {
-                    unknown_calls_in_block(&g.body, defined, published, out);
+                    unknown_calls_in_block(&g.body, defined, published, cur, out);
                 }
             }
         }
     }
     if let Some(t) = &b.tail_expr {
-        unknown_calls_in_expr(t, defined, published, out);
+        unknown_calls_in_expr(t, defined, published, known(Some(&b.tail_pos), outer), out);
     }
 }
 
@@ -1683,9 +1705,9 @@ pub fn unknown_call_warnings_owned(module: &ast::Module) -> Vec<(usize, Diagnost
         functions_under(std::slice::from_ref(item), &mut fns);
         for f in fns {
             let mut sites = Vec::new();
-            unknown_calls_in_block(&f.body, &defined, &published, &mut sites);
+            unknown_calls_in_block(&f.body, &defined, &published, f.body.pos, &mut sites);
             if let Some(e) = &f.body_expr {
-                unknown_calls_in_expr(e, &defined, &published, &mut sites);
+                unknown_calls_in_expr(e, &defined, &published, f.body.pos, &mut sites);
             }
             for s in sites {
                 // A bare call of a name nothing defines is already E0425, an error.
@@ -1721,7 +1743,8 @@ pub fn unknown_call_warnings_owned(module: &ast::Module) -> Vec<(usize, Diagnost
                     DiagnosticCategory::UnknownFunction,
                     None,
                 );
-                d.span = crate::hir::Span::item(module.start_of(i));
+                // The call's own statement; the item's first line when no position was recorded.
+                d.span = s.pos.at(module.start_of(i)).or_else(|| crate::hir::Span::item(module.start_of(i)));
                 diags.push((i, d));
             }
         }
