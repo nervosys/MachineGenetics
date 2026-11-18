@@ -3,8 +3,10 @@
   "counts": {
     "ast_kinds": 20,
     "bench_backends": 4,
+    "builtins": 112,
     "ci_floors": 6,
     "cli_flags": 57,
+    "diagnostics": 23,
     "docs": 7,
     "effects": 24,
     "examples": 10,
@@ -140,6 +142,766 @@
         "mode": "hybrid",
         "name": "perturbed+refine:<cmd>",
         "purpose": "perturbed for propose, subprocess for refine. Measures Stage-3 contribution layered on the perturbed baseline."
+      }
+    ],
+    "builtins": [
+      {
+        "kind": "function",
+        "name": "println",
+        "signature": "(any) -> ()",
+        "summary": "print a value and a newline (effect io)"
+      },
+      {
+        "kind": "function",
+        "name": "print",
+        "signature": "(any) -> ()",
+        "summary": "print a value, no newline (effect io)"
+      },
+      {
+        "kind": "function",
+        "name": "eprintln",
+        "signature": "(any) -> ()",
+        "summary": "print a value and a newline to stderr (effect io)"
+      },
+      {
+        "kind": "function",
+        "name": "eprint",
+        "signature": "(any) -> ()",
+        "summary": "print a value to stderr, no newline (effect io)"
+      },
+      {
+        "kind": "function",
+        "name": "format",
+        "signature": "(str) -> !",
+        "summary": "registered but refused at run time: use an f-string, f\"hi {x}\""
+      },
+      {
+        "kind": "function",
+        "name": "write",
+        "signature": "(any) -> ()",
+        "summary": "print a value, no newline (effect io)"
+      },
+      {
+        "kind": "function",
+        "name": "writeln",
+        "signature": "(any) -> ()",
+        "summary": "print a value and a newline (effect io)"
+      },
+      {
+        "kind": "function",
+        "name": "vec",
+        "signature": "(A, ..) -> [A]",
+        "summary": "a list of the arguments"
+      },
+      {
+        "kind": "function",
+        "name": "panic",
+        "signature": "(any) -> !",
+        "summary": "stop the program with an error carrying the message"
+      },
+      {
+        "kind": "function",
+        "name": "assert",
+        "signature": "(bool, str?) -> ()",
+        "summary": "fail with an optional message unless the condition is true"
+      },
+      {
+        "kind": "function",
+        "name": "assert_eq",
+        "signature": "(A, A) -> ()",
+        "summary": "fail unless the two values are equal"
+      },
+      {
+        "kind": "function",
+        "name": "assert_ne",
+        "signature": "(A, A) -> ()",
+        "summary": "fail unless the two values differ"
+      },
+      {
+        "kind": "function",
+        "name": "dbg",
+        "signature": "(A) -> A",
+        "summary": "print a value and return it unchanged"
+      },
+      {
+        "kind": "function",
+        "name": "todo",
+        "signature": "() -> !",
+        "summary": "stop with an error saying it was reached"
+      },
+      {
+        "kind": "function",
+        "name": "unimplemented",
+        "signature": "() -> !",
+        "summary": "stop with an error saying it was reached"
+      },
+      {
+        "kind": "function",
+        "name": "unreachable",
+        "signature": "() -> !",
+        "summary": "stop with an error saying it was reached"
+      },
+      {
+        "kind": "function",
+        "name": "matches",
+        "signature": "(..) -> !",
+        "summary": "registered but refused at run time: use `?= value { pattern => 1b, _ => 0b }`"
+      },
+      {
+        "kind": "function",
+        "name": "min",
+        "signature": "(A, A) -> A  or  [A] -> A",
+        "summary": "the smaller of two values, or the smallest of a list; error on an empty list"
+      },
+      {
+        "kind": "function",
+        "name": "max",
+        "signature": "(A, A) -> A  or  [A] -> A",
+        "summary": "the larger of two values, or the largest of a list; error on an empty list"
+      },
+      {
+        "kind": "function",
+        "name": "abs",
+        "signature": "(num) -> num",
+        "summary": "absolute value; integer overflow is an error"
+      },
+      {
+        "kind": "function",
+        "name": "relu",
+        "signature": "(f64) -> f64",
+        "summary": "max(x, 0)"
+      },
+      {
+        "kind": "function",
+        "name": "clamp",
+        "signature": "(num, num, num) -> num",
+        "summary": "clamp(x, lo, hi): x limited to [lo, hi]; lo > hi is an error"
+      },
+      {
+        "kind": "function",
+        "name": "drop",
+        "signature": "(any) -> ()",
+        "summary": "discard a value"
+      },
+      {
+        "kind": "function",
+        "name": "swap",
+        "signature": "(..) -> !",
+        "summary": "registered but refused at run time: it needs a reference; rebind instead"
+      },
+      {
+        "kind": "function",
+        "name": "replace",
+        "signature": "(..) -> !",
+        "summary": "registered but refused at run time: it needs a reference; rebind instead"
+      },
+      {
+        "kind": "function",
+        "name": "default",
+        "signature": "() -> !",
+        "summary": "registered but refused at run time: it has no type to default to; write the value"
+      },
+      {
+        "kind": "function",
+        "name": "wrapping_add",
+        "signature": "(int, int) -> int",
+        "summary": "addition that wraps on overflow; the + operator traps"
+      },
+      {
+        "kind": "function",
+        "name": "wrapping_sub",
+        "signature": "(int, int) -> int",
+        "summary": "subtraction that wraps on overflow; the - operator traps"
+      },
+      {
+        "kind": "function",
+        "name": "wrapping_mul",
+        "signature": "(int, int) -> int",
+        "summary": "multiplication that wraps on overflow; the * operator traps"
+      },
+      {
+        "kind": "function",
+        "name": "exp",
+        "signature": "(f64) -> f64",
+        "summary": "e to the x"
+      },
+      {
+        "kind": "function",
+        "name": "ln",
+        "signature": "(f64) -> f64",
+        "summary": "natural logarithm"
+      },
+      {
+        "kind": "function",
+        "name": "log",
+        "signature": "(f64) -> f64",
+        "summary": "natural logarithm, as ln"
+      },
+      {
+        "kind": "function",
+        "name": "sqrt",
+        "signature": "(f64) -> f64",
+        "summary": "square root"
+      },
+      {
+        "kind": "function",
+        "name": "sin",
+        "signature": "(f64) -> f64",
+        "summary": "sine"
+      },
+      {
+        "kind": "function",
+        "name": "cos",
+        "signature": "(f64) -> f64",
+        "summary": "cosine"
+      },
+      {
+        "kind": "function",
+        "name": "tan",
+        "signature": "(f64) -> f64",
+        "summary": "tangent"
+      },
+      {
+        "kind": "function",
+        "name": "tanh",
+        "signature": "(f64) -> f64",
+        "summary": "hyperbolic tangent"
+      },
+      {
+        "kind": "function",
+        "name": "sigmoid",
+        "signature": "(f64) -> f64",
+        "summary": "1 / (1 + e^-x)"
+      },
+      {
+        "kind": "function",
+        "name": "silu",
+        "signature": "(f64) -> f64",
+        "summary": "x * sigmoid(x)"
+      },
+      {
+        "kind": "function",
+        "name": "gelu",
+        "signature": "(f64) -> f64",
+        "summary": "Gaussian error linear unit"
+      },
+      {
+        "kind": "function",
+        "name": "log2",
+        "signature": "(f64) -> f64",
+        "summary": "base-2 logarithm"
+      },
+      {
+        "kind": "function",
+        "name": "log10",
+        "signature": "(f64) -> f64",
+        "summary": "base-10 logarithm"
+      },
+      {
+        "kind": "function",
+        "name": "asin",
+        "signature": "(f64) -> f64",
+        "summary": "inverse sine"
+      },
+      {
+        "kind": "function",
+        "name": "acos",
+        "signature": "(f64) -> f64",
+        "summary": "inverse cosine"
+      },
+      {
+        "kind": "function",
+        "name": "atan",
+        "signature": "(f64) -> f64",
+        "summary": "inverse tangent"
+      },
+      {
+        "kind": "function",
+        "name": "sinh",
+        "signature": "(f64) -> f64",
+        "summary": "hyperbolic sine"
+      },
+      {
+        "kind": "function",
+        "name": "cosh",
+        "signature": "(f64) -> f64",
+        "summary": "hyperbolic cosine"
+      },
+      {
+        "kind": "function",
+        "name": "floor",
+        "signature": "(f64) -> f64",
+        "summary": "round down; derivative is zero almost everywhere"
+      },
+      {
+        "kind": "function",
+        "name": "ceil",
+        "signature": "(f64) -> f64",
+        "summary": "round up; derivative is zero almost everywhere"
+      },
+      {
+        "kind": "function",
+        "name": "round",
+        "signature": "(f64) -> f64",
+        "summary": "round to nearest; derivative is zero almost everywhere"
+      },
+      {
+        "kind": "function",
+        "name": "trunc",
+        "signature": "(f64) -> f64",
+        "summary": "round toward zero; derivative is zero almost everywhere"
+      },
+      {
+        "kind": "function",
+        "name": "mean",
+        "signature": "([num]) -> f64",
+        "summary": "arithmetic mean; error on an empty list"
+      },
+      {
+        "kind": "function",
+        "name": "dot",
+        "signature": "([num], [num]) -> f64",
+        "summary": "dot product; error if the lengths differ"
+      },
+      {
+        "kind": "function",
+        "name": "forward",
+        "signature": "(Net, [f64]) -> [f64]",
+        "summary": "run a trained net's forward pass on one input vector (the net's train block supplies the weights)"
+      },
+      {
+        "kind": "function",
+        "name": "Some",
+        "signature": "(A) -> ?A",
+        "summary": "an option holding a value"
+      },
+      {
+        "kind": "function",
+        "name": "None",
+        "signature": "() -> ?A",
+        "summary": "the empty option"
+      },
+      {
+        "kind": "function",
+        "name": "Ok",
+        "signature": "(A) -> Result",
+        "summary": "the success case of a result"
+      },
+      {
+        "kind": "function",
+        "name": "Err",
+        "signature": "(E) -> Result",
+        "summary": "the failure case of a result"
+      },
+      {
+        "effect": "IO",
+        "kind": "capability_namespace",
+        "name": "io",
+        "ops": [
+          "println",
+          "print",
+          "eprintln",
+          "eprint",
+          "write",
+          "writeln",
+          "read_line",
+          "read",
+          "read_to_string"
+        ],
+        "summary": "capability handle `io.op(..)`, effect IO; --eval performs the operations listed"
+      },
+      {
+        "effect": "FS",
+        "kind": "capability_namespace",
+        "name": "fs",
+        "ops": [
+          "read",
+          "read_to_string",
+          "write",
+          "create",
+          "remove",
+          "mkdir",
+          "rename",
+          "stat",
+          "exists"
+        ],
+        "summary": "capability handle `fs.op(..)`, effect FS; --eval performs the operations listed"
+      },
+      {
+        "effect": "Net",
+        "kind": "capability_namespace",
+        "name": "net",
+        "ops": [],
+        "summary": "capability handle, effect Net; the checker tracks it and --eval performs none of its operations"
+      },
+      {
+        "effect": "Env",
+        "kind": "capability_namespace",
+        "name": "env",
+        "ops": [
+          "get_env",
+          "var",
+          "env",
+          "args"
+        ],
+        "summary": "capability handle `env.op(..)`, effect Env; --eval performs the operations listed"
+      },
+      {
+        "effect": "Time",
+        "kind": "capability_namespace",
+        "name": "time",
+        "ops": [
+          "now",
+          "sleep"
+        ],
+        "summary": "capability handle `time.op(..)`, effect Time; --eval performs the operations listed"
+      },
+      {
+        "effect": "Rng",
+        "kind": "capability_namespace",
+        "name": "rng",
+        "ops": [],
+        "summary": "capability handle, effect Rng; the checker tracks it and --eval performs none of its operations"
+      },
+      {
+        "effect": "Llm",
+        "kind": "capability_namespace",
+        "name": "llm",
+        "ops": [],
+        "summary": "capability handle, effect Llm; the checker tracks it and --eval performs none of its operations"
+      },
+      {
+        "effect": "Gpu",
+        "kind": "capability_namespace",
+        "name": "gpu",
+        "ops": [],
+        "summary": "capability handle, effect Gpu; the checker tracks it and --eval performs none of its operations"
+      },
+      {
+        "effect": "Agent",
+        "kind": "capability_namespace",
+        "name": "agent",
+        "ops": [],
+        "summary": "capability handle, effect Agent; the checker tracks it and --eval performs none of its operations"
+      },
+      {
+        "effect": "Net",
+        "kind": "capability_namespace",
+        "name": "http",
+        "ops": [],
+        "summary": "capability handle, effect Net; the checker tracks it and --eval performs none of its operations"
+      },
+      {
+        "effect": "Alloc",
+        "kind": "capability_namespace",
+        "name": "mem",
+        "ops": [],
+        "summary": "capability handle, effect Alloc; the checker tracks it and --eval performs none of its operations"
+      },
+      {
+        "effect": "IO",
+        "kind": "capability_namespace",
+        "name": "log",
+        "ops": [
+          "println",
+          "print",
+          "eprintln",
+          "eprint",
+          "write",
+          "writeln"
+        ],
+        "summary": "capability handle `log.op(..)`, effect IO; --eval performs the operations listed"
+      },
+      {
+        "effect": "Agent",
+        "kind": "capability_namespace",
+        "name": "swarm",
+        "ops": [],
+        "summary": "capability handle, effect Agent; the checker tracks it and --eval performs none of its operations"
+      },
+      {
+        "effect": "Proc",
+        "kind": "capability_namespace",
+        "name": "os",
+        "ops": [],
+        "summary": "capability handle, effect Proc; the checker tracks it and --eval performs none of its operations"
+      },
+      {
+        "effect": "Proc",
+        "kind": "capability_namespace",
+        "name": "sys",
+        "ops": [],
+        "summary": "capability handle, effect Proc; the checker tracks it and --eval performs none of its operations"
+      },
+      {
+        "effect": "Proc",
+        "kind": "capability_namespace",
+        "name": "process",
+        "ops": [],
+        "summary": "capability handle, effect Proc; the checker tracks it and --eval performs none of its operations"
+      },
+      {
+        "effect": "Proc",
+        "kind": "capability_namespace",
+        "name": "tools",
+        "ops": [],
+        "summary": "capability handle, effect Proc; the checker tracks it and --eval performs none of its operations"
+      },
+      {
+        "effect": "Heldout",
+        "kind": "capability_namespace",
+        "name": "heldout",
+        "ops": [],
+        "summary": "capability handle, effect Heldout; the checker tracks it and --eval performs none of its operations"
+      },
+      {
+        "effect": "Promote",
+        "kind": "capability_namespace",
+        "name": "gate",
+        "ops": [],
+        "summary": "capability handle, effect Promote; the checker tracks it and --eval performs none of its operations"
+      },
+      {
+        "effect": "none",
+        "kind": "capability_namespace",
+        "name": "json",
+        "ops": [],
+        "summary": "capability handle, effect none; the checker tracks it and --eval performs none of its operations"
+      },
+      {
+        "effect": "none",
+        "kind": "capability_namespace",
+        "name": "kb",
+        "ops": [],
+        "summary": "capability handle, effect none; the checker tracks it and --eval performs none of its operations"
+      },
+      {
+        "effect": "none",
+        "kind": "capability_namespace",
+        "name": "db",
+        "ops": [],
+        "summary": "capability handle, effect none; the checker tracks it and --eval performs none of its operations"
+      },
+      {
+        "kind": "capability_op",
+        "name": "io.println",
+        "op": "println",
+        "signature": "(any) -> ()",
+        "summary": "print a value and a newline"
+      },
+      {
+        "kind": "capability_op",
+        "name": "io.print",
+        "op": "print",
+        "signature": "(any) -> ()",
+        "summary": "print a value, no newline"
+      },
+      {
+        "kind": "capability_op",
+        "name": "io.eprintln",
+        "op": "eprintln",
+        "signature": "(any) -> ()",
+        "summary": "print a value and a newline to stderr"
+      },
+      {
+        "kind": "capability_op",
+        "name": "io.eprint",
+        "op": "eprint",
+        "signature": "(any) -> ()",
+        "summary": "print a value to stderr, no newline"
+      },
+      {
+        "kind": "capability_op",
+        "name": "io.write",
+        "op": "write",
+        "signature": "(any) -> ()",
+        "summary": "print a value, no newline"
+      },
+      {
+        "kind": "capability_op",
+        "name": "io.writeln",
+        "op": "writeln",
+        "signature": "(any) -> ()",
+        "summary": "print a value and a newline"
+      },
+      {
+        "kind": "capability_op",
+        "name": "io.read_line",
+        "op": "read_line",
+        "signature": "() -> str",
+        "summary": "read one line from stdin, without its newline"
+      },
+      {
+        "kind": "capability_op",
+        "name": "io.read",
+        "op": "read",
+        "signature": "() -> str",
+        "summary": "read all of stdin"
+      },
+      {
+        "kind": "capability_op",
+        "name": "io.read_to_string",
+        "op": "read_to_string",
+        "signature": "() -> str",
+        "summary": "read all of stdin"
+      },
+      {
+        "kind": "capability_op",
+        "name": "log.println",
+        "op": "println",
+        "signature": "(any) -> ()",
+        "summary": "print a value and a newline (log is io)"
+      },
+      {
+        "kind": "capability_op",
+        "name": "log.print",
+        "op": "print",
+        "signature": "(any) -> ()",
+        "summary": "print a value, no newline (log is io)"
+      },
+      {
+        "kind": "capability_op",
+        "name": "log.eprintln",
+        "op": "eprintln",
+        "signature": "(any) -> ()",
+        "summary": "print a value and a newline to stderr (log is io)"
+      },
+      {
+        "kind": "capability_op",
+        "name": "log.eprint",
+        "op": "eprint",
+        "signature": "(any) -> ()",
+        "summary": "print a value to stderr, no newline (log is io)"
+      },
+      {
+        "kind": "capability_op",
+        "name": "log.write",
+        "op": "write",
+        "signature": "(any) -> ()",
+        "summary": "print a value, no newline (log is io)"
+      },
+      {
+        "kind": "capability_op",
+        "name": "log.writeln",
+        "op": "writeln",
+        "signature": "(any) -> ()",
+        "summary": "print a value and a newline (log is io)"
+      },
+      {
+        "kind": "capability_op",
+        "name": "fs.read",
+        "op": "read",
+        "signature": "(path: str) -> str",
+        "summary": "read a whole file as text"
+      },
+      {
+        "kind": "capability_op",
+        "name": "fs.read_to_string",
+        "op": "read_to_string",
+        "signature": "(path: str) -> str",
+        "summary": "read a whole file as text"
+      },
+      {
+        "kind": "capability_op",
+        "name": "fs.write",
+        "op": "write",
+        "signature": "(path: str, text: str) -> ()",
+        "summary": "write text to a file, replacing it"
+      },
+      {
+        "kind": "capability_op",
+        "name": "fs.create",
+        "op": "create",
+        "signature": "(path: str, text: str) -> ()",
+        "summary": "write text to a file, replacing it"
+      },
+      {
+        "kind": "capability_op",
+        "name": "fs.remove",
+        "op": "remove",
+        "signature": "(path: str) -> ()",
+        "summary": "delete a file"
+      },
+      {
+        "kind": "capability_op",
+        "name": "fs.mkdir",
+        "op": "mkdir",
+        "signature": "(path: str) -> ()",
+        "summary": "create a directory and its parents"
+      },
+      {
+        "kind": "capability_op",
+        "name": "fs.rename",
+        "op": "rename",
+        "signature": "(from: str, to: str) -> ()",
+        "summary": "rename a file or directory"
+      },
+      {
+        "kind": "capability_op",
+        "name": "fs.stat",
+        "op": "stat",
+        "signature": "(path: str) -> int",
+        "summary": "the size of a file in bytes"
+      },
+      {
+        "kind": "capability_op",
+        "name": "fs.exists",
+        "op": "exists",
+        "signature": "(path: str) -> bool",
+        "summary": "whether the path exists"
+      },
+      {
+        "kind": "capability_op",
+        "name": "env.get_env",
+        "op": "get_env",
+        "signature": "(name: str) -> str",
+        "summary": "an environment variable; empty if unset"
+      },
+      {
+        "kind": "capability_op",
+        "name": "env.var",
+        "op": "var",
+        "signature": "(name: str) -> str",
+        "summary": "an environment variable; empty if unset"
+      },
+      {
+        "kind": "capability_op",
+        "name": "env.env",
+        "op": "env",
+        "signature": "(name: str) -> str",
+        "summary": "an environment variable; empty if unset"
+      },
+      {
+        "kind": "capability_op",
+        "name": "env.args",
+        "op": "args",
+        "signature": "() -> [str]",
+        "summary": "the process's command-line arguments"
+      },
+      {
+        "kind": "capability_op",
+        "name": "time.now",
+        "op": "now",
+        "signature": "() -> int",
+        "summary": "milliseconds since the Unix epoch"
+      },
+      {
+        "kind": "capability_op",
+        "name": "time.sleep",
+        "op": "sleep",
+        "signature": "(ms: int) -> ()",
+        "summary": "pause for the given milliseconds"
+      },
+      {
+        "kind": "specified_only",
+        "name": "fetch_add",
+        "signature": "(@AtomicI64, int) -> int",
+        "summary": "atomic add, sequentially consistent, no ordering parameter (MAGE_SPEC, Atomic ordering). Specified only: --check types a call as an unknown method and --eval reports an unknown function"
+      },
+      {
+        "kind": "rule",
+        "name": "method_call",
+        "summary": "recv.f(a, b) is f(recv, a, b): every function in vocabulary and builtins also works as a method. There are no per-type methods; a method written in an extend block wins for its own type"
       }
     ],
     "ci_floors": [
@@ -459,6 +1221,260 @@
         "flag": "--borrowck-strict",
         "purpose": "With `--check` or `--pipeline`: borrow-check under Rust's move rule (a by-value parameter or a value stored in an aggregate consumes its argument) instead of the inferred default.",
         "takes_path": false
+      }
+    ],
+    "diagnostics": [
+      {
+        "category": "LexError",
+        "emitted_by": [
+          "lexer"
+        ],
+        "name": "E0000",
+        "severity": "Error",
+        "summary": "A character the lexer cannot read",
+        "variant": false
+      },
+      {
+        "category": "SyntaxError",
+        "emitted_by": [
+          "parser",
+          "types"
+        ],
+        "fix": "check the syntax near this span against the language spec",
+        "name": "E0001",
+        "severity": "Error",
+        "summary": "Source that does not parse, or a contract clause that does not"
+      },
+      {
+        "also_carried_by": [
+          "no_derivative_rule",
+          "param_no_gradient"
+        ],
+        "category": "TypeMismatch",
+        "emitted_by": [
+          "differentiable",
+          "shape",
+          "types",
+          "autograd"
+        ],
+        "fix": "make the types match: adjust the value, add a conversion, or fix the annotation",
+        "name": "E0308",
+        "severity": "Error",
+        "summary": "Type mismatch"
+      },
+      {
+        "category": "UseAfterMove",
+        "emitted_by": [
+          "borrowck"
+        ],
+        "fix": "the value was moved; clone it, or borrow (&) instead of moving",
+        "gap": "tracks places (a local plus a field path), and only for a type known not to be Copy; a `for` iterable and a value reached through an index, a deref or a reference-typed parameter are never moved",
+        "name": "E0382",
+        "severity": "Error",
+        "summary": "Use after move"
+      },
+      {
+        "category": "UnresolvedType",
+        "emitted_by": [
+          "resolve",
+          "units"
+        ],
+        "fix": "define or import the type, or check for a typo",
+        "name": "E0412",
+        "severity": "Error",
+        "summary": "Unresolved type"
+      },
+      {
+        "category": "UnresolvedName",
+        "emitted_by": [
+          "resolve",
+          "types"
+        ],
+        "fix": "define the name, bring it into scope, or check for a typo",
+        "name": "E0425",
+        "severity": "Error",
+        "summary": "Unresolved name"
+      },
+      {
+        "category": "DuplicateDefinition",
+        "emitted_by": [
+          "resolve"
+        ],
+        "fix": "rename or remove one of the duplicate definitions",
+        "name": "E0428",
+        "severity": "Error",
+        "summary": "Duplicate definition"
+      },
+      {
+        "category": "BorrowConflict",
+        "emitted_by": [
+          "borrowck"
+        ],
+        "fix": "restructure so the conflicting borrows don't overlap, or clone the value",
+        "gap": "loans come only from `let r = &place`; references are not followed through calls, returns, fields or collections, and a method call borrows its receiver only when the receiver is a place of a known type whose method declares `&self` or `&!self`",
+        "name": "E0502",
+        "severity": "Error",
+        "summary": "Borrow conflict"
+      },
+      {
+        "category": "MoveOutOfBorrow",
+        "emitted_by": [
+          "borrowck"
+        ],
+        "fix": "clone the field, borrow it (&) instead, or take `self` by value so it can be moved",
+        "gap": "only a field of a `&self`/`&!self` receiver or of a `&T`/`&!T` parameter of a known user type, reached by a plain field chain, and only a field whose declared type is known not to be Copy; a value reached through an index, a deref, a method chain or a local copy of the reference is not followed, and under the inferred policy a field passed to a callee that does not consume it is not a move",
+        "name": "E0507",
+        "severity": "Error",
+        "summary": "Move out of borrowed content"
+      },
+      {
+        "category": "UndeclaredEffect",
+        "emitted_by": [
+          "effects"
+        ],
+        "fix": "add the effect to the function's `/ effect` annotation, or remove the operation that performs it",
+        "gap": "only --check enforces it: --eval runs a program with an undeclared effect, and nothing checks an effect at run time",
+        "name": "E0550",
+        "severity": "Error",
+        "summary": "An effect a function performs and does not declare, or declares and does not know"
+      },
+      {
+        "category": "RoleViolation",
+        "emitted_by": [
+          "core_subset",
+          "effects"
+        ],
+        "fix": "remove the operation, or move it to a function whose role allows it — never widen a candidate's role",
+        "name": "E0551",
+        "severity": "Error",
+        "summary": "An effect a function's declared role does not allow, or a missing role under --core"
+      },
+      {
+        "category": "CoreViolation",
+        "emitted_by": [
+          "core_subset"
+        ],
+        "fix": "remove the construct, or keep this code out of what the kernel runs",
+        "name": "E0552",
+        "severity": "Error",
+        "summary": "Code outside MAGE-core where MAGE-core is required"
+      },
+      {
+        "category": "ParamDomain",
+        "emitted_by": [
+          "params"
+        ],
+        "fix": "give the constant a literal value inside its @param domain, or correct the domain (`@param(lo, hi)` with lo <= hi, or `@param(in, a, b, ...)`)",
+        "name": "E0553",
+        "severity": "Error",
+        "summary": "A tunable @param whose domain or value is malformed, or out of its domain"
+      },
+      {
+        "category": "Deprecated",
+        "emitted_by": [
+          "types"
+        ],
+        "fix": "replace the retired construct with the one named in the message; retired constructs are not compiled",
+        "name": "E0554",
+        "severity": "Error",
+        "summary": "A retired construct: the message names its replacement"
+      },
+      {
+        "category": "SpecViolation",
+        "emitted_by": [
+          "verify"
+        ],
+        "fix": "satisfy the contract (@req/@ens/@inv) or correct the contract",
+        "name": "E0560",
+        "severity": "Error",
+        "summary": "A contract that is false on every execution"
+      },
+      {
+        "category": "ContractScope",
+        "emitted_by": [
+          "types"
+        ],
+        "fix": "use `result` and `old(param)` only inside `@ens`, and give `old` a parameter name of the function",
+        "name": "E0561",
+        "severity": "Error",
+        "summary": "A contract naming result or old where it is not in scope"
+      },
+      {
+        "category": "UnitMismatch",
+        "emitted_by": [
+          "units"
+        ],
+        "fix": "make the units agree: fix an annotation, multiply or divide by a quantity of the missing unit, or drop a unit deliberately with `as f64`",
+        "name": "E0562",
+        "severity": "Error",
+        "summary": "Two quantities whose units of measure disagree"
+      },
+      {
+        "category": "KbRule",
+        "emitted_by": [
+          "logic"
+        ],
+        "fix": "write the rule body as predicate calls joined by `&&`, each optionally negated with `!`, binding every head parameter in a positive call; give constants as string or number literals",
+        "name": "E0570",
+        "severity": "Error",
+        "summary": "A kb fact or rule the logic engine cannot evaluate"
+      },
+      {
+        "category": "ShapeError",
+        "emitted_by": [
+          "abl_shape"
+        ],
+        "name": "E0710",
+        "severity": "Error",
+        "summary": "Layers of a net whose tensor shapes do not fit",
+        "variant": false
+      },
+      {
+        "category": "NotDifferentiable",
+        "emitted_by": [
+          "differentiable"
+        ],
+        "fix": "train a net whose layers the differentiability pass can judge differentiable, or remove the train block",
+        "gap": "dormant: no layer type is judged not differentiable, so no source reaches this; its witness sets the verdict by hand",
+        "name": "E0711",
+        "severity": "Error",
+        "summary": "A train block over a net the differentiability pass judges not differentiable"
+      },
+      {
+        "category": "ContractNotChecked",
+        "emitted_by": [
+          "contract"
+        ],
+        "fix": "move the contract onto a function, which is checked; a net has no run-time check for it to reach",
+        "name": "E0712",
+        "severity": "Warning",
+        "summary": "A contract clause written on a net or a train block, which no pass checks"
+      },
+      {
+        "category": "UnknownNet",
+        "emitted_by": [
+          "differentiable"
+        ],
+        "fix": "declare the net in this module, or name the net the train block should train",
+        "name": "E0713",
+        "severity": "Error",
+        "summary": "A train block naming a net the module does not define"
+      },
+      {
+        "also_carried_by": [
+          "bound_discarded",
+          "grad_unchecked"
+        ],
+        "category": "Other",
+        "emitted_by": [
+          "resolve",
+          "differentiable"
+        ],
+        "fix": "see the message for details",
+        "gap": "a catch-all: the warning classes that carry it say what happened",
+        "name": "E9999",
+        "severity": "Warning",
+        "summary": "A warning with no category of its own"
       }
     ],
     "docs": [

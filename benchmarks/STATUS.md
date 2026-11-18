@@ -86,7 +86,7 @@ ratchet upward.
 6. **`agent.refine`** — re-prompt the agent backend (Stage-3, requires wrapper)
 7. **`failed`** — all stages exhausted
 
-### Ontology (22 sections, one call)
+### Ontology (24 sections, one call)
 
 ```
 ontology/full
@@ -106,6 +106,9 @@ ontology/full
   ├─ cli_flags (57)          — every mage-parse flag
   ├─ bench_backends (4)      — reliability-bench backends
   ├─ effects (24)            — @fx/@req/@ens + canonical effect names
+  ├─ vocabulary (31)         — list, map and string functions
+  ├─ diagnostics (23)        — every error code with its fix and emitting passes
+  ├─ builtins (112)          — bare functions, io/fs/env/time operations, method rule
   ├─ wrapper_protocol (9)    — subprocess agent contract
   ├─ project_layout (22)     — top-level directory map
   ├─ docs (7)                — canonical doc pointers + IronAccelerator

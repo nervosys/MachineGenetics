@@ -2043,22 +2043,21 @@ impl Interp {
                 // operations below have arms. Naming the namespace an agent
                 // just tried, when that namespace has any, is the answer to the
                 // question it actually asked.
-                let implemented: &[(&str, &str)] = &[
-                    ("io", "println, print, eprintln, eprint, write, writeln, \
-                            read_line, read, read_to_string"),
-                    ("log", "println, print, eprintln, eprint, write, writeln"),
-                    ("fs", "read, read_to_string, write, create, remove, mkdir, \
-                            rename, stat, exists"),
-                    ("env", "get_env, var, env, args"),
-                    ("time", "now, sleep"),
-                ];
-                let detail = match implemented.iter().find(|(n, _)| *n == ns) {
-                    Some((_, ops)) => format!("`{ns}` implements: {ops}"),
-                    None => format!(
-                        "no operation of `{ns}` is implemented; the namespaces \
-                         with any are {}",
-                        implemented.iter().map(|(n, _)| *n).collect::<Vec<_>>().join(", ")
-                    ),
+                let ops: Vec<&str> =
+                    CAPABILITY_OPS.iter().filter(|r| r.0 == ns).map(|r| r.1).collect();
+                let detail = if ops.is_empty() {
+                    let mut with_any: Vec<&str> = Vec::new();
+                    for r in CAPABILITY_OPS {
+                        if !with_any.contains(&r.0) {
+                            with_any.push(r.0);
+                        }
+                    }
+                    format!(
+                        "no operation of `{ns}` is implemented; the namespaces                          with any are {}",
+                        with_any.join(", ")
+                    )
+                } else {
+                    format!("`{ns}` implements: {}", ops.join(", "))
                 };
                 err(format!(
                     "`{ns}.{op}` has no interpreter implementation — the checker \
@@ -2579,6 +2578,45 @@ impl Interp {
 }
 
 // ── helpers ──────────────────────────────────────────────────────────
+
+/// The operations of the capability namespaces that `--eval` performs:
+/// `(namespace, operation, signature, summary)`, in the order the error for an
+/// unimplemented operation lists them. The ontology's `builtins` section
+/// publishes it. `capability_ops_are_the_dispatch_arms` holds it to the arms of
+/// `call_capability` in both directions, so an arm cannot be added or removed
+/// without this table (and so the ontology) changing.
+pub(crate) const CAPABILITY_OPS: &[(&str, &str, &str, &str)] = &[
+    ("io", "println", "(any) -> ()", "print a value and a newline"),
+    ("io", "print", "(any) -> ()", "print a value, no newline"),
+    ("io", "eprintln", "(any) -> ()", "print a value and a newline to stderr"),
+    ("io", "eprint", "(any) -> ()", "print a value to stderr, no newline"),
+    ("io", "write", "(any) -> ()", "print a value, no newline"),
+    ("io", "writeln", "(any) -> ()", "print a value and a newline"),
+    ("io", "read_line", "() -> str", "read one line from stdin, without its newline"),
+    ("io", "read", "() -> str", "read all of stdin"),
+    ("io", "read_to_string", "() -> str", "read all of stdin"),
+    ("log", "println", "(any) -> ()", "print a value and a newline (log is io)"),
+    ("log", "print", "(any) -> ()", "print a value, no newline (log is io)"),
+    ("log", "eprintln", "(any) -> ()", "print a value and a newline to stderr (log is io)"),
+    ("log", "eprint", "(any) -> ()", "print a value to stderr, no newline (log is io)"),
+    ("log", "write", "(any) -> ()", "print a value, no newline (log is io)"),
+    ("log", "writeln", "(any) -> ()", "print a value and a newline (log is io)"),
+    ("fs", "read", "(path: str) -> str", "read a whole file as text"),
+    ("fs", "read_to_string", "(path: str) -> str", "read a whole file as text"),
+    ("fs", "write", "(path: str, text: str) -> ()", "write text to a file, replacing it"),
+    ("fs", "create", "(path: str, text: str) -> ()", "write text to a file, replacing it"),
+    ("fs", "remove", "(path: str) -> ()", "delete a file"),
+    ("fs", "mkdir", "(path: str) -> ()", "create a directory and its parents"),
+    ("fs", "rename", "(from: str, to: str) -> ()", "rename a file or directory"),
+    ("fs", "stat", "(path: str) -> int", "the size of a file in bytes"),
+    ("fs", "exists", "(path: str) -> bool", "whether the path exists"),
+    ("env", "get_env", "(name: str) -> str", "an environment variable; empty if unset"),
+    ("env", "var", "(name: str) -> str", "an environment variable; empty if unset"),
+    ("env", "env", "(name: str) -> str", "an environment variable; empty if unset"),
+    ("env", "args", "() -> [str]", "the process's command-line arguments"),
+    ("time", "now", "() -> int", "milliseconds since the Unix epoch"),
+    ("time", "sleep", "(ms: int) -> ()", "pause for the given milliseconds"),
+];
 
 /// Render a value for string interpolation: bare strings come through without
 /// the debug quotes `Display` adds, everything else uses its `Display` form.
@@ -3923,6 +3961,89 @@ f main() -> i32 {
         assert_eq!(run(shadow, "main", &[]), Value::Int(7));
         let control = shadow.replace("val K = 5", "val J = 5");
         assert_eq!(run(&control, "main", &[]), Value::Int(7));
+    }
+
+    /// The quoted strings of a piece of source.
+    fn quoted(s: &str) -> Vec<String> {
+        s.split('"').skip(1).step_by(2).map(String::from).collect()
+    }
+
+    fn between<'a>(src: &'a str, from: &str, to: &str) -> &'a str {
+        let s = src.find(from).unwrap_or_else(|| panic!("eval.rs has no `{from}`"));
+        let e = src[s..].find(to).unwrap_or_else(|| panic!("eval.rs has no `{to}` after `{from}`"));
+        &src[s..s + e]
+    }
+
+    /// `CAPABILITY_OPS` is the arms of `call_capability`, read from this file's
+    /// own source: an operation cannot gain or lose an arm without the table,
+    /// and so the ontology's `builtins` section, changing.
+    #[test]
+    fn capability_ops_are_the_dispatch_arms() {
+        let body = between(include_str!("eval.rs"), "    fn call_capability(", "    fn call_builtin(");
+        let mut arms = std::collections::BTreeSet::new();
+        for line in body.lines() {
+            let Some(rest) = line.strip_prefix("            (\"") else { continue };
+            let Some(end) = rest.find("=>") else { continue };
+            let head = format!("\"{}", &rest[..end]);
+            let mut in_quote = false;
+            let mut cut = None;
+            for (i, c) in head.char_indices() {
+                match c {
+                    '"' => in_quote = !in_quote,
+                    ',' if !in_quote => {
+                        cut = Some(i);
+                        break;
+                    }
+                    _ => {}
+                }
+            }
+            let cut = cut.unwrap_or_else(|| panic!("an arm with no operation: {line}"));
+            for ns in quoted(&head[..cut]) {
+                for op in quoted(&head[cut..]) {
+                    arms.insert((ns.clone(), op));
+                }
+            }
+        }
+        let table: std::collections::BTreeSet<(String, String)> =
+            CAPABILITY_OPS.iter().map(|r| (r.0.to_string(), r.1.to_string())).collect();
+        assert_eq!(table.len(), CAPABILITY_OPS.len(), "a row appears twice");
+        assert_eq!(arms, table, "call_capability's arms vs CAPABILITY_OPS");
+        for (ns, _, sig, doc) in CAPABILITY_OPS {
+            assert!(!sig.is_empty() && !doc.is_empty(), "`{ns}` has an empty row");
+            assert!(
+                crate::hir::CAPABILITY_NAMESPACES.iter().any(|(n, _)| n == ns),
+                "`{ns}` is not a capability namespace"
+            );
+        }
+    }
+
+    /// The names `call_builtin_inner` accepts are exactly the names the
+    /// resolver registers and the ontology documents: `STD_FNS`, `VOCABULARY`
+    /// and `SCALAR_MATH`. Read from this file's own source, so an arm added
+    /// without a documented name (or a name documented without an arm) fails.
+    #[test]
+    fn the_evaluator_accepts_exactly_the_published_names() {
+        let body = between(include_str!("eval.rs"), "    fn call_builtin_inner(", "// ── helpers");
+        let mut arms = std::collections::BTreeSet::new();
+        for line in body.lines() {
+            let rest = if let Some(r) = line.strip_prefix("            \"") {
+                format!("\"{r}")
+            } else if let Some(r) = line.strip_prefix("            | \"") {
+                format!("\"{r}")
+            } else {
+                continue;
+            };
+            let head = rest.split("=>").next().unwrap_or("");
+            arms.extend(quoted(head));
+        }
+        let mut published: std::collections::BTreeSet<String> =
+            crate::resolve::STD_FNS.iter().map(|s| s.to_string()).collect();
+        published.extend(crate::resolve::VOCABULARY.iter().map(|(n, _, _)| n.to_string()));
+        published.extend(crate::resolve::SCALAR_MATH.iter().map(|s| s.to_string()));
+        let only_arm: Vec<_> = arms.difference(&published).collect();
+        let only_pub: Vec<_> = published.difference(&arms).collect();
+        assert!(only_arm.is_empty(), "arms with no published name: {only_arm:?}");
+        assert!(only_pub.is_empty(), "published names with no arm: {only_pub:?}");
     }
 
     #[test]
