@@ -1,0 +1,86 @@
+# Tasks that are NOT accepted: the MAGE reference does not type-check (check),
+# or a test case fails/errors (test), or no case could be run mechanically
+# (unrunnable). One line per task: <id> <status> <first reason>. Sorted.
+# Only the id and the status word are compared; the reason is a hint.
+# May only shrink: fix a task, then delete its line. See benchmarks/ACCEPTANCE.md.
+agent-001 check E0425 R.Err
+agent-002 check E0550 Pipeline.execute
+agent-003 check E0550 self_correct
+agent-004 check E0425 R
+agent-005 check E0425 _
+agent-006 check E0425 _
+agent-007 check E0308 find
+agent-008 check E0425 s
+agent-009 test 1/1 failing; first case 1: error unsupported unary `&`
+agent-010 test 1/1 failing; first case 1: error unknown function `push`
+algo-003 test 2/2 failing; first case 1: error unsupported unary `&`
+algo-004 test 3/3 failing; first case 1: error unknown function `as_bytes`
+algo-006 test 2/2 failing; first case 1: error input does not parse: `v` is a keyword and cannot be used as a binding name ? rename th...
+algo-010 test 2/2 failing; first case 1: error unknown function `push`
+algo-012 test 2/2 failing; first case 1: error unsupported unary `&`
+algo-013 test 2/2 failing; first case 1: error unsupported unary `&`
+algo-014 test 2/2 failing; first case 1: error unknown function `push`
+algo-015 test 2/2 failing; first case 1: error unknown function `push`
+app-001 unrunnable 2/2 case(s): solution declares host effect(s) fs; eval would perform them
+app-002 check E0308 lines
+app-003 test 1/1 failing; first case 1: error unknown function `push`
+app-004 check E0428 Num
+app-005 check E0308 split
+app-006 check E0425 _
+app-007 check E0308 dereference: type mismatch: I64 vs &?T2
+app-008 check E0001 expected expression, found KwF 'f'
+app-009 check E0425 R
+app-010 check E0412 Any
+basic-008 test 3/3 failing; first case 1: expected "9.0" got "9"
+conc-001 check E0412 Handle
+conc-002 check E0412 AtomicI64
+conc-003 check E0412 T
+conc-004 check E0412 Handle
+conc-005 check E0412 T
+conc-006 check E0412 Handle
+conc-007 check E0412 AtomicI64
+conc-008 check E0412 AtomicI64
+conc-009 check E0412 Handle
+ds-001 test 1/1 failing; first case 1: expected "Point { x: 0.0, y: 0.0 }" got "Point { x: 0, y: 0 }"
+ds-003 test 1/2 failing; first case 1: error unknown function `push`
+ds-004 check E0308 swap
+ds-005 check E0412 Point
+ds-006 test 2/2 failing; first case 1: error unsupported unary `&`
+ds-007 test 2/2 failing; first case 1: error unsupported unary `&`
+ds-008 test 1/1 failing; first case 1: error unsupported unary `&`
+ds-009 test 2/2 failing; first case 1: error unknown function `push`
+ds-010 test 2/2 failing; first case 1: error unsupported unary `&`
+ds-011 test 1/2 failing; first case 1: expected "true" got "false"
+ds-012 test 2/2 failing; first case 1: error input does not parse: `v` is a keyword and cannot be used as a binding name ? rename th...
+ds-013 check E0412 T
+ds-014 test 1/2 failing; first case 1: error unknown function `push`
+ds-015 test 2/2 failing; first case 1: error unknown function `push`
+err-001 check E0425 R
+err-002 check E0425 R
+err-003 check E0425 R
+err-004 check E0425 R
+err-005 test 2/2 failing; first case 1: error unsupported unary `&`
+gt-002 check E0412 _
+gt-003 test 2/2 failing; first case 1: error unsupported unary `&`
+gt-004 check E0412 _
+gt-005 check E0425 R
+sys-001 test 2/2 failing; first case 1: error unknown function `push`
+sys-002 test 2/2 failing; first case 1: error unknown function `push`
+sys-003 test 2/2 failing; first case 1: error unknown function `push`
+sys-004 test 2/2 failing; first case 1: error unknown function `push`
+sys-005 check E0425 s
+sys-006 check E0412 V
+sys-007 check E0308 env.get_var
+sys-008 check E0425 _
+sys-009 test 2/2 failing; first case 1: error bad int `14695981039346656037`
+sys-010 unrunnable 1/1 case(s): expected is not a value literal: [app] [INFO] started
+web-001 check E0425 use http
+web-002 check E0425 R
+web-003 check E0412 Request
+web-004 test 1/1 failing; first case 1: error unsupported unary `&`
+web-005 check E0412 Request
+web-006 check E0308 split
+web-007 check E0425 use http.Client
+web-008 unrunnable 2/2 case(s): solution declares host effect(s) net; eval would perform them
+web-009 check E0412 Response
+web-010 check E0425 R.Err

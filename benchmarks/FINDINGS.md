@@ -230,6 +230,8 @@ exceed this ceiling — the corpus is the upper bound.
 > 100/100**. The per-category table below, with seven categories at 0.0 %,
 > is history — every one of them parses today. `scripts/check-ci-floors.sh`
 > enforces a floor of 98 on that number so it cannot silently regress.
+>
+> **That number counts parsing only.** Measured 2026-11-17 with the same compiler: of the 99 references, 52 type-check and 18 type-check and pass their own tests; see `benchmarks/ACCEPTANCE.md`.
 
 ## Per-category breakdown
 

@@ -390,7 +390,7 @@ mage-parse --eval fib.mg fib 25       # → 75025
 `--bpe`; the stated rule and its four ratios are in [Benchmarks](#benchmarks-measured).
 
 ```sh
-# Run the token-efficiency benchmark across all 100 corpus tasks
+# Run the token-efficiency benchmark across all 99 corpus tasks
 cargo run --bin token-bench --manifest-path prototype/Cargo.toml
 # → writes benchmarks/TOKEN_REPORT.md, exits non-zero on regressions
 ```
@@ -501,7 +501,7 @@ Twelve self-contained projects in [`examples/`](examples/), each with a
 | [kb/](kb/)                                                 | The knowledge base: the language as facts (schema: `kb/schema.mg`) |
 | [skb/](skb/)                                               | Safety Knowledge Base seed corpus (56 rules, unread) |
 | [training/](training/)                                     | Training data and evaluation (100 samples)         |
-| [benchmarks/](benchmarks/)                                 | 99-task evaluation corpus with metrics             |
+| [benchmarks/](benchmarks/)                                 | 99-task evaluation corpus with metrics (98 parse, 52 type-check, 18 pass own tests: [ACCEPTANCE](benchmarks/ACCEPTANCE.md)) |
 
 ## Building from Source
 
