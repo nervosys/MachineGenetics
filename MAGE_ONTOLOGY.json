@@ -3,7 +3,7 @@
   "counts": {
     "ast_kinds": 20,
     "bench_backends": 4,
-    "builtins": 112,
+    "builtins": 114,
     "ci_floors": 6,
     "cli_flags": 57,
     "diagnostics": 23,
@@ -462,6 +462,18 @@
         "name": "dot",
         "signature": "([num], [num]) -> f64",
         "summary": "dot product; error if the lengths differ"
+      },
+      {
+        "kind": "function",
+        "name": "push",
+        "signature": "([A], A) -> ()",
+        "summary": "append a value to the list the receiver names, in place: xs.push(x) or push(xs, x); the receiver must be a variable or a field/index path of one"
+      },
+      {
+        "kind": "function",
+        "name": "pop",
+        "signature": "([A]) -> ?A",
+        "summary": "remove and return the last element of the list the receiver names, in place; none when it is empty: xs.pop() or pop(xs)"
       },
       {
         "kind": "function",

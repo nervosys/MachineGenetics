@@ -1321,6 +1321,8 @@ kb Meaning {
     fact builtin_function("trunc");
     fact builtin_function("mean");
     fact builtin_function("dot");
+    fact builtin_function("push");
+    fact builtin_function("pop");
     fact builtin_function("forward");
     fact builtin_function("Some");
     fact builtin_function("None");
