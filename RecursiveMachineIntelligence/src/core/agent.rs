@@ -400,7 +400,7 @@ impl Agent {
 
         let trace_entry = TraceEntry {
             goal_type: goal.goal_type().to_string(),
-            start_time: chrono::Utc::now().timestamp(),
+            start_time: crate::core::ontology::unix_timestamp(),
             end_time: None,
             status: "started".to_string(),
             error: None,
@@ -414,7 +414,7 @@ impl Agent {
 
         // Update trace
         if let Some(entry) = self.execution_trace.write().unwrap().last_mut() {
-            entry.end_time = Some(chrono::Utc::now().timestamp());
+            entry.end_time = Some(crate::core::ontology::unix_timestamp());
             entry.status = if result.is_ok() {
                 "completed"
             } else {

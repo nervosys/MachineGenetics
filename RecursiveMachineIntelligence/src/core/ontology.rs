@@ -22,6 +22,16 @@ use sha2::{Digest, Sha256};
 
 use crate::error::{RmiError, Result};
 
+/// Seconds since the Unix epoch (replaces `chrono::Utc::now().timestamp()`).
+/// A clock set before the epoch yields the negative offset, as chrono did.
+pub(crate) fn unix_timestamp() -> i64 {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    match SystemTime::now().duration_since(UNIX_EPOCH) {
+        Ok(d) => d.as_secs() as i64,
+        Err(e) => -(e.duration().as_secs() as i64),
+    }
+}
+
 /// Types of concepts in the ontology.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[repr(u8)]
@@ -205,7 +215,7 @@ impl Concept {
             constraints: Vec::new(),
             confidence: 1.0,
             source: None,
-            created_at: Some(chrono::Utc::now().timestamp()),
+            created_at: Some(unix_timestamp()),
             embedding: None,
             embedding_model: None,
         }
