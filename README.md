@@ -501,7 +501,7 @@ Twelve self-contained projects in [`examples/`](examples/), each with a
 | [kb/](kb/)                                                 | The knowledge base: the language as facts (schema: `kb/schema.mg`) |
 | [skb/](skb/)                                               | Safety Knowledge Base seed corpus (56 rules, unread) |
 | [training/](training/)                                     | Training data and evaluation (100 samples)         |
-| [benchmarks/](benchmarks/)                                 | 99-task evaluation corpus with metrics (99 parse, 65 type-check, 28 pass own tests: [ACCEPTANCE](benchmarks/ACCEPTANCE.md)) |
+| [benchmarks/](benchmarks/)                                 | 99-task evaluation corpus with metrics (99 parse, 65 type-check, 41 pass own tests: [ACCEPTANCE](benchmarks/ACCEPTANCE.md)) |
 
 ## Building from Source
 

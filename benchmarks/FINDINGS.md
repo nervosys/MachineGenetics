@@ -231,7 +231,7 @@ exceed this ceiling — the corpus is the upper bound.
 > is history — every one of them parses today. `scripts/check-ci-floors.sh`
 > enforces a floor of 98 on that number so it cannot silently regress.
 >
-> **That number counts parsing only.** Measured 2026-11-17 with the same compiler: of the 99 references, 65 type-check and 28 type-check and pass their own tests (52 and 18 before the task defects were fixed; 20 before the evaluator fixes); see `benchmarks/ACCEPTANCE.md`.
+> **That number counts parsing only.** Measured 2026-11-17 with the same compiler: of the 99 references, 65 type-check and 41 type-check and pass their own tests (52 and 18 before the task defects were fixed; 20 before the evaluator fixes; 28 before the notation and receiver fixes); see `benchmarks/ACCEPTANCE.md`.
 
 ## Per-category breakdown
 

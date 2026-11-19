@@ -21,24 +21,24 @@ This document is measurement and classification. The first measurement found 47
 references that did not type-check and 18 accepted tasks; the task-side defects
 among them (the reference or a test input is wrong as MAGE) have since been
 fixed in `benchmarks/tasks/*.json`; with the evaluator fixes the tables below
-read 34 not type-checking and 28 accepted. Nothing here is a claim that the
-remaining 71 tasks are wrong: most fail on a compiler or evaluator limit.
+read 34 not type-checking and 41 accepted. Nothing here is a claim that the
+remaining 58 tasks are wrong: most fail on a compiler or evaluator limit.
 
 ## Numbers
 
 | Category | Tasks | Parse | Check-clean | All tests pass | Some test fails | Unrunnable | Accepted |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | agent-orchestration | 10 | 10 | 6 | 0 | 5 | 5 | 0 |
-| algorithms | 15 | 15 | 15 | 12 | 3 | 0 | 12 |
-| basic-io | 10 | 10 | 10 | 9 | 1 | 0 | 9 |
+| algorithms | 15 | 15 | 15 | 14 | 1 | 0 | 14 |
+| basic-io | 10 | 10 | 10 | 10 | 0 | 0 | 10 |
 | concurrency | 9 | 9 | 0 | 0 | 8 | 1 | 0 |
-| data-structures | 15 | 15 | 14 | 7 | 8 | 0 | 6 |
-| error-handling | 5 | 5 | 4 | 0 | 5 | 0 | 0 |
+| data-structures | 15 | 15 | 14 | 13 | 2 | 0 | 12 |
+| error-handling | 5 | 5 | 4 | 2 | 3 | 0 | 2 |
 | full-applications | 10 | 10 | 4 | 0 | 9 | 1 | 0 |
-| generics-traits | 5 | 5 | 3 | 2 | 3 | 0 | 1 |
-| systems | 10 | 10 | 7 | 0 | 7 | 3 | 0 |
-| web-network | 10 | 10 | 2 | 0 | 4 | 6 | 0 |
-| **Total** | **99** | **99** | **65** | **30** | **53** | **16** | **28** |
+| generics-traits | 5 | 5 | 3 | 3 | 2 | 0 | 1 |
+| systems | 10 | 10 | 7 | 1 | 6 | 3 | 1 |
+| web-network | 10 | 10 | 2 | 1 | 3 | 6 | 1 |
+| **Total** | **99** | **99** | **65** | **44** | **39** | **16** | **41** |
 
 Before the task fixes the table read 98 parse, 52 check-clean, 18 all pass,
 65 some fail, 16 unrunnable, 18 accepted; after them (evaluator as it was) 99,
@@ -46,13 +46,14 @@ Before the task fixes the table read 98 parse, 52 check-clean, 18 all pass,
 
 "All tests pass", "some test fails" and "unrunnable" partition the tasks by
 their test cases alone, independent of the check column ("some test fails"
-includes cases that could not be evaluated: see below). The 175 cases: 79 pass,
-22 fail (ran, wrong value), 53 error (could not be evaluated), 21 unrunnable
-(after the task fixes, before the evaluator fixes: 59 / 9 / 86 / 21; before
+includes cases that could not be evaluated: see below). The 175 cases: 102 pass,
+3 fail (ran, wrong value), 49 error (could not be evaluated), 21 unrunnable
+(on 2026-11-18 before the notation and receiver fixes: 79 / 22 / 53 / 21; after
+the task fixes, before the evaluator fixes: 59 / 9 / 86 / 21; before
 either: 56 / 9 / 89 / 21).
-The 28 accepted tasks are the 12 algorithms (all but `algo-003/004/013`),
-9 basic-io (all but `basic-008`), 6 data-structures (`ds-002/009/010/011/013/014`)
-and `gt-001`. `ds-004` and `gt-004` pass their tests but their references do
+The 41 accepted tasks are the 14 algorithms (all but `algo-004`), all 10
+basic-io, 12 data-structures (all but `ds-004/006/007`), `err-001`, `err-005`,
+`gt-001`, `sys-001` and `web-004`. `ds-004` and `gt-004` pass their tests but their references do
 not type-check (a compiler question: group A), so they are not accepted.
 
 Every task now parses (`app-008`'s closure parameter was renamed).
@@ -100,6 +101,86 @@ the 2026-11-17 counts: where it gives a count of the evaluator groups in B
 (`.push` 13, unary `&` 15), those two groups are now gone and the groups above
 replace them.
 
+## Re-measurement, 2026-11-18 (value notation and list receivers)
+
+Tree: the one above, plus three evaluator changes and fifteen `expected`
+rewrites (below). Accepted 28 to **41**; type-check 65 (unchanged); cases pass /
+fail / error / unrunnable 79 / 22 / 53 / 21 to 102 / 3 / 49 / 21; baseline
+lines 71 to 58. The measurement was run twice: the status of every task is
+identical. No existing unit test changed.
+
+Thirteen tasks moved, by cause:
+
+* **Float printing, evaluator only (5):** `algo-013`, `basic-008`, `ds-001`,
+  `ds-005`, `ds-008`. A whole float printed as `32`; it now prints as the float
+  literal is written, `32.0` (MAGE_SPEC section 3.5: a decimal number is a float
+  only with a fractional part or an exponent, so `32` reads back as an
+  integer). Every other float, `NaN` and the infinities print as before. The
+  specification has no section on how a value is printed; this follows the
+  literal grammar and the existing struct form, and is recorded as a decision
+  to review (see "Questions").
+* **Float printing and `expected` notation (1):** `err-001`.
+* **`expected` notation only, same value (4):** `algo-003`, `err-005`, `sys-001`,
+  `web-004`. The specification's constructors are `Some(e)`, `None`, `Ok(e)`
+  and `Err(e)` (section 4.6); `?Some`/`?None` is a parse-time spelling of the
+  same constructor, and `R.Ok` a Rust-style path, neither part of the printed
+  value. `web-004` wrote a string value without its quotes.
+* **`push`/`pop` on a list inside a type that declares its own `push`/`pop`,
+  plus `expected` notation (2):** `ds-003`, `ds-015`. A user method named
+  `push` made `self.items.push(v)` look like a call of that method, so the
+  builtin never ran and the case failed with "`push` changes its receiver".
+  The receiver now decides: a plain path (names, fields, indices that are names
+  or literals) that currently holds a list takes the builtin. A computed
+  receiver (`f().push(1)`) is still refused.
+* **`xs.swap(i, j)` on a list place (1):** `ds-012` (`reverse(&!xs)` swapping
+  through an exclusive reference). It is in place on the variable, field or
+  index path, and the copy-out of `&!` returns it to the caller. An index out
+  of range, or a receiver that is not a list, is an error. The two-place free
+  function `swap(a, b)` is still refused: it needs two references at once,
+  which copy-in/copy-out does not give.
+
+Fifteen `expected` strings in nine tasks changed; the value is the same in
+every one:
+
+| task | before | after |
+|---|---|---|
+| `algo-003` | `?Some(2)` / `?None` | `Some(2)` / `None` |
+| `err-001` | `R.Ok(5.0)` / `R.Err("division by zero")` | `Ok(5.0)` / `Err("division by zero")` |
+| `err-005` | `?Some(3)` / `?None` | `Some(3)` / `None` |
+| `sys-001` | `?Some(0)` / `?None` | `Some(0)` / `None` |
+| `sys-003` | `?Some(0)` / `?None` | `Some(0)` / `None` (still fails: see below) |
+| `sys-004` | `?Some(42)` | `Some(42)` (still fails: see below) |
+| `ds-003` | `?Some(2)` | `Some(2)` |
+| `ds-015` | `?Some(1)` / `?Some(2)` | `Some(1)` / `Some(2)` |
+| `web-004` | `{"name":"app","version":"1.0","features":["fast"]}` | `"{\"name\":\"app\",\"version\":\"1.0\",\"features\":[\"fast\"]}"` |
+
+The `test` group was 31 tasks (12 notation, 9 missing method, 5 mutation, 2
+binary `&`, 2 `^expr`, 1 `u64`); the 18 now left are:
+
+* **missing method, pending a language decision (9):** `agent-004`, `app-009`,
+  `gt-003`, `sys-006` (`clone`), `algo-004` (`as_bytes`), `ds-007` (`get`),
+  `err-002` (`splitn`), `err-004` (`iter`), `gt-005` (`ok_or`).
+* **a reference that cannot be modelled (2):** `app-003` returns
+  `&!self.tasks[i]` inside `?Some(...)`, an exclusive reference stored in a
+  value; copy-in/copy-out has nowhere to write it back, so the precise error
+  stays. `agent-010` calls `str.replace(a, b)`, which the evaluator reads as the
+  two-place `replace(place, value)` and refuses; it would next stop on `clone`.
+* **`!` on an integer (2):** `sys-002`, `sys-003` write `x & !(n)`. `!` is
+  logical not here, and the specification gives no bitwise complement, so `&`
+  meets a boolean. The error names `&`, but binary `&` on integers works; the
+  cause is `!`.
+* **`^expr` in a test input (2):** `app-010`, `ds-006`.
+* **`u64` above `i64::MAX` (1):** `sys-009`.
+* **the stated value is not the computed one (2):** `agent-009` computes
+  `0.6 + 0.3 + 0.1` in IEEE doubles, `0.9999999999999999`, where `expected`
+  says `1.0`; `sys-004`'s second case does `256 as u8`, which traps by section
+  4.10 (the reference is at fault).
+
+Questions the specification does not answer, left alone: how `--eval` prints
+floats and strings generally (decided above for the whole-float case only);
+whether `!` on an integer is a bitwise complement; what a reference solution
+that casts `256 as u8` should mean.
+
 ## How one case is judged
 
 For each case the solution is written to a scratch file and one function is
@@ -127,7 +208,7 @@ from an empty scratch directory. The last stdout line is the "got" string.
   and `error` both count as "some test fails". The JSON keeps both strings.
 * For information only, each `fail` carries `notation_only`: whether it would
   match after mapping `?Some(`/`R.Ok(` to `Some(`/`Ok(` and `3.0` to `3`. This
-  never changes a verdict. It is true for all 9 `fail` cases (`basic-008`,
+  never changes a verdict. On 2026-11-17 it was true for all 9 `fail` cases (3 remain: `agent-009`, `app-007`, `web-010`) (`basic-008`,
   `ds-001`, `ds-005`, `err-001`, `gt-002`, `web-010`).
 
 ### Unrunnable

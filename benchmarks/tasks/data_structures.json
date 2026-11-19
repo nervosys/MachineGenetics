@@ -54,7 +54,7 @@
       "token_count": 86
     },
     "tests": [
-      { "input": "v s = Stack.new(); s.push(1); s.push(2); s.pop()", "expected": "?Some(2)" },
+      { "input": "v s = Stack.new(); s.push(1); s.push(2); s.pop()", "expected": "Some(2)" },
       { "input": "Stack.new().is_empty()", "expected": "true" }
     ]
   },
@@ -293,8 +293,8 @@
       "token_count": 180
     },
     "tests": [
-      { "input": "v b = CircBuf.new(2); b.push(1); b.push(2); b.peek()", "expected": "?Some(1)" },
-      { "input": "v b = CircBuf.new(2); b.push(1); b.push(2); b.push(3); b.peek()", "expected": "?Some(2)" }
+      { "input": "v b = CircBuf.new(2); b.push(1); b.push(2); b.peek()", "expected": "Some(1)" },
+      { "input": "v b = CircBuf.new(2); b.push(1); b.push(2); b.push(3); b.peek()", "expected": "Some(2)" }
     ]
   }
 ]

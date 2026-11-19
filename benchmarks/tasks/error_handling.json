@@ -15,8 +15,8 @@
       "token_count": 55
     },
     "tests": [
-      { "input": "safe_div(10.0, 2.0)", "expected": "R.Ok(5.0)" },
-      { "input": "safe_div(1.0, 0.0)", "expected": "R.Err(\"division by zero\")" }
+      { "input": "safe_div(10.0, 2.0)", "expected": "Ok(5.0)" },
+      { "input": "safe_div(1.0, 0.0)", "expected": "Err(\"division by zero\")" }
     ]
   },
   {
@@ -96,8 +96,8 @@
       "token_count": 170
     },
     "tests": [
-      { "input": "first_positive(&[-1, -2, 3, 4])", "expected": "?Some(3)" },
-      { "input": "first_positive(&[-1, -2])", "expected": "?None" }
+      { "input": "first_positive(&[-1, -2, 3, 4])", "expected": "Some(3)" },
+      { "input": "first_positive(&[-1, -2])", "expected": "None" }
     ]
   }
 ]

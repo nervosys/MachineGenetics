@@ -73,7 +73,7 @@
       "token_count": 120
     },
     "tests": [
-      { "input": "to_json(&@Config{name:\"app\",version:\"1.0\",features:[\"fast\"]})", "expected": "{\"name\":\"app\",\"version\":\"1.0\",\"features\":[\"fast\"]}" }
+      { "input": "to_json(&@Config{name:\"app\",version:\"1.0\",features:[\"fast\"]})", "expected": "\"{\\\"name\\\":\\\"app\\\",\\\"version\\\":\\\"1.0\\\",\\\"features\\\":[\\\"fast\\\"]}\"" }
     ]
   },
   {
