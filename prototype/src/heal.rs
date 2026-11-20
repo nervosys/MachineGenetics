@@ -1122,6 +1122,10 @@ fn infer_category(msg: &str) -> DiagnosticCategory {
     // borrow conflict; the move-specific phrasings above are not.
     if is_move_error(msg) {
         DiagnosticCategory::UseAfterMove
+    } else if msg.contains("cannot move out of") && msg.contains("behind a") {
+        // "cannot move out of `x` which is behind a reference": Rust's E0507.
+        // Before the borrow branch, which also reads "cannot move out of".
+        DiagnosticCategory::MoveOutOfBorrow
     } else if msg.contains("borrow") || msg.contains("move") {
         DiagnosticCategory::BorrowConflict
     } else if msg.contains("type mismatch") || msg.contains("mismatched types") {

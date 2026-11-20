@@ -535,6 +535,9 @@ pub struct ModulePassDef {
 pub struct Registry {
     pub items: Vec<ItemPassDef>,
     pub modules: Vec<ModulePassDef>,
+    /// Salt of the Tokens and Parsed addresses (default [`PARSE_VERSION`]); a
+    /// field so a test can stand in for a lexer or parser that changed.
+    pub parse_version: &'static str,
 }
 
 impl Registry {
@@ -551,6 +554,7 @@ impl Registry {
                 b("ai", "pass/ai", PassRole::Report, pass_ai as ItemFn),
             ],
             modules: Vec::new(),
+            parse_version: PARSE_VERSION,
         }
     }
 
@@ -840,7 +844,15 @@ fn summary_fingerprint(info: &ModuleInfo) -> Hash32 {
 
 /// Part of the cache address of the borrow check: bump it when `borrowck`'s
 /// behaviour changes and the crate version does not.
-const BORROWCK_VERSION: &str = "3";
+const BORROWCK_VERSION: &str = "4";
+
+/// Part of the cache address of the Tokens and Parsed queries. Bump it whenever
+/// the lexer, the parser or the AST output changes and the crate version does
+/// not: both are otherwise addressed by source text alone, so a cache written
+/// by an older parser would keep serving its tokens and parses (including
+/// parse errors) for text the new one reads differently.
+/// 2: record patterns after `val`/`var` (`val @T { f } = e`) parse.
+pub const PARSE_VERSION: &str = "2";
 
 fn mismatch(key: &Key, got: &Val) -> QueryError {
     let name = format!("{got:?}");
@@ -1502,8 +1514,8 @@ fn h_of(parts: &[&[u8]]) -> Hash32 {
 fn addr(db: &M, key: &Key) -> Result<Option<Hash32>, QueryError> {
     Ok(Some(match key {
         Key::Source(_) | Key::Settings | Key::Item(..) | Key::ItemHash(..) => return Ok(None),
-        Key::Tokens(f) => h_of(&[&db.get_hash(&Key::Source(*f))?]),
-        Key::Parsed(f) => h_of(&[&db.get_hash(&Key::Tokens(*f))?]),
+        Key::Tokens(f) => h_of(&[&db.get_hash(&Key::Source(*f))?, b"lex", db.ctx.parse_version.as_bytes()]),
+        Key::Parsed(f) => h_of(&[&db.get_hash(&Key::Tokens(*f))?, b"parse", db.ctx.parse_version.as_bytes()]),
         Key::Elided(f) => {
             let st = settings(db)?;
             h_of(&[&db.get_hash(&Key::Parsed(*f))?, &[st.elision as u8]])

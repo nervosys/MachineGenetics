@@ -2529,6 +2529,20 @@ mod tests {
     }
 
     #[test]
+    fn round_trip_record_pattern_binders() {
+        // `val @T { .. } = e`: the printer writes the long keyword in both
+        // modes, as it does for the other destructuring binders.
+        assert_round_trips(
+            "data P(name: s, age: i32)
+             f run(p: P) -> i32 {
+                 val @P { name, age: a } = p;
+                 var @P { name: n } = p;
+                 a
+             }",
+        );
+    }
+
+    #[test]
     fn round_trip_break_todo_and_scrutinee_less_match() {
         // `break 3` is spelled `break` in agent mode too, since `! 3` is a
         // logical not. `??` is todo, and `? { … }` is a match with no scrutinee.

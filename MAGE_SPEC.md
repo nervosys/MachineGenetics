@@ -48,7 +48,7 @@ MAGE (Machine Genetics) is a systems programming language designed for the age o
 
 2. **Dual encoding.** Human mode uses clear, modern keywords (`val`, `var`, `data`, `extend`, `guard`, `defer`) that improve on Rust's conventions while remaining instantly readable. Agent mode compresses every concept into minimal symbols — Greek letters for AI constructs, mathematical operators for tensor algebra — achieving the density of hexadecimal applied to intelligence.
 
-3. **Safety without ceremony.** Ownership, borrowing, and lifetimes are designed to be enforced and fully inferred, and are only partly enforced: a per-function pass reports a use after move (E0382) and a borrow conflict (E0502) where the program evidences one (see §13). No lifetime annotations, no `PhantomData`, no `Pin`. The Safety Knowledge Base (SKB) encodes 255 rules across eight databases (*designed, not built: no compiler stage consults them — see §7.3*). In agent mode, **all safety constructs are handled by the compiler and SKB** — `unsafe` blocks, lifetime annotations, `Send`/`Sync` bounds, and `Pin<T>` are entirely elided from the language surface, maximizing token efficiency while the compiler is designed to maintain full safety guarantees (§13 records what is enforced today).
+3. **Safety without ceremony.** Ownership, borrowing, and lifetimes are designed to be enforced and fully inferred, and are only partly enforced: a per-function pass reports a use after move (E0382), a borrow conflict (E0502) and a move out of a reference (E0507) where the program evidences one (see §13). No lifetime annotations, no `PhantomData`, no `Pin`. The Safety Knowledge Base (SKB) encodes 255 rules across eight databases (*designed, not built: no compiler stage consults them — see §7.3*). In agent mode, **all safety constructs are handled by the compiler and SKB** — `unsafe` blocks, lifetime annotations, `Send`/`Sync` bounds, and `Pin<T>` are entirely elided from the language surface, maximizing token efficiency while the compiler is designed to maintain full safety guarantees (§13 records what is enforced today).
 
 4. **Effects make side effects visible.** Every function declares its effects (`/ io`, `/ gpu`, `/ llm`). Pure functions have no annotation. Algebraic effect handlers provide structured concurrency and composable I/O.
 
@@ -2573,7 +2573,7 @@ pass after the type checker. Its diagnostics point at the start of the
 statement where the problem occurs (no expression spans). It reports E0382 for a use of a local
 after it was moved, and E0502 when a borrow made by `let r = &p` / `let r = &!p`
 conflicts with another borrow, a move or an assignment of `p` before `r`'s last
-use. It reports only on evidence (a type known not to be `Copy`, a callee known
+use, and E0507 for a non-`Copy` field moved out of a reference (see `self` below). It reports only on evidence (a type known not to be `Copy`, a callee known
 to consume its argument) and tracks references only through `let`, not through
 calls, returns or fields.
 
@@ -2586,15 +2586,21 @@ conflicts (E0502) with a move, assignment or conflicting borrow of `p.name`, of
 `p`, or of a path through `p.name`, while `r` is live, and never with `p.age`.
 Field types come from the module's `data`/struct declarations; a field whose
 type is generic, undeclared or reached through an unknown type is never
-reported, and `Copy` fields never move. Index paths (`x[i].f`) and
-reference-typed parameters are not followed. Both policies apply this rule.
+reported, and `Copy` fields never move. Index paths (`x[i].f`) are not
+followed. Both policies apply this rule.
 
 **`self`.** In a method, `self` is a place of the `impl`/`extend` type when
 that is a known (non-generic, non-`Copy`) user type. A by-value `self` is moved
 and partly moved like any parameter (`self.name`). A `&self` or `&!self`
-receiver is a reference: nothing is moved out of it, so moving a non-`Copy`
-field there (Rust's E0507) is not reported (no diagnostic code exists for it)
-and the field stays usable. The parser desugars `!self` to `&!self`, so it is
+receiver is a reference: nothing can be moved out of it, so using a non-`Copy`
+field of it by value is E0507 (cannot move out of borrowed content), as in
+Rust, and the field stays usable (no E0382 follows). The same holds for a field
+of a `&T` / `&!T` parameter of a known user type, and for a `let` or `match`
+pattern that binds a non-`Copy` part of such a field (`val (a, b) = self.pair`);
+matching the reference itself (`?= self {..}`) binds through it and is fine.
+By-value use means the move rule above: passed to a callee that takes
+it (under the default policy only one whose body consumes it), assigned, returned
+or bound. Unknown, generic and `Copy` field types are never reported. The parser desugars `!self` to `&!self`, so it is
 a mutable borrow here, not the consume that the receiver list above names.
 
 **Method receivers.** `x.m(..)` is judged only when `x` is a plain place of a
@@ -2615,9 +2621,10 @@ place. Wildcards, literals, `Copy` parts and unknown types move nothing, and
 matching a partly moved place reads only what the pattern binds. A `let`
 pattern moves at the `let`. A `match` arm moves its bindings at the arm under
 strict ownership and, by default, only if the arm's body consumes the binding.
-A pattern over a `&self` or other reference moves nothing. The parser accepts
-a record pattern `@T { .. }` in an arm, or inside a tuple pattern in a `val`,
-but not as a bare `val @T { .. } = e`. By default
+A pattern over a `&self` or other reference moves nothing out of the reference
+itself. The parser accepts a record pattern `@T { field, field: pattern }` wherever a
+pattern is (§4.8), including as the binder of a `val` or `var`
+(`val @T { name } = e`). By default
 a call moves an argument only when the callee's body really consumes that
 parameter and storing a value in a literal does not move it, because the
 evaluator has value semantics and the example corpus relies on it; Rust's
