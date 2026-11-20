@@ -52,16 +52,28 @@ pub struct CandidateSpec {
     /// The external proposer that made this candidate, by its name.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub proposer: Option<String>,
+    /// The identity of the champion genome this candidate's change set was
+    /// written against, when the proposer states one. A workload that builds on
+    /// the champion ([`crate::runner::Workload::rebase`]) refuses a candidate
+    /// whose `based_on` is not the champion's current identity: it is stale.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub based_on: Option<String>,
 }
 
 impl CandidateSpec {
     pub fn new(id: impl Into<String>, genome: crate::variation::Genome) -> Self {
-        CandidateSpec { id: id.into(), genome, parent: None, manifest: None, proposer: None }
+        CandidateSpec { id: id.into(), genome, parent: None, manifest: None, proposer: None, based_on: None }
     }
 
     /// State the prediction this edit makes.
     pub fn with_manifest(mut self, manifest: crate::manifest::PredictionManifest) -> Self {
         self.manifest = Some(manifest);
+        self
+    }
+
+    /// State which champion genome (by identity) this edit was written against.
+    pub fn based_on(mut self, champion_id: impl Into<String>) -> Self {
+        self.based_on = Some(champion_id.into());
         self
     }
 
