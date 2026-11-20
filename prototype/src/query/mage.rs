@@ -840,7 +840,7 @@ fn summary_fingerprint(info: &ModuleInfo) -> Hash32 {
 
 /// Part of the cache address of the borrow check: bump it when `borrowck`'s
 /// behaviour changes and the crate version does not.
-const BORROWCK_VERSION: &str = "1";
+const BORROWCK_VERSION: &str = "2";
 
 fn mismatch(key: &Key, got: &Val) -> QueryError {
     let name = format!("{got:?}");

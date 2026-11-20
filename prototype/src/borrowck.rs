@@ -31,6 +31,14 @@
 //!
 //! Each local and parameter is `Init`, `Moved` or `MaybeMoved` (a `let` always
 //! has an initialiser in MAGE, so there is no uninitialised state to track).
+//! Move state is per **place**: a local plus a field path (`p`, `p.name`,
+//! `p.inner.x`). Moving a non-`Copy` field moves only that place; its siblings
+//! stay usable, while a use of the field, of any extension of it, or of the
+//! whole value (`p`) is E0382. Moving `p` moves every `p.*`. Assigning `p.name`
+//! re-initialises it (and its extensions). A field is moved only if its type is
+//! *known* non-`Copy` from the struct or `data` declaration (a field of a
+//! generic type, of an unknown type, or of a variable whose own type is unknown
+//! is never moved). Copy fields never move.
 //! States are joined over `if`/`else`, `match` arms, `&&`/`||`, `guard`; a
 //! branch that cannot fall through (`ret`, `break`, `continue`, `todo`) is
 //! unreachable and joins as the identity, so `if c { consume(x); ret }` does
@@ -52,7 +60,8 @@
 //! its block (an evaluation-order position, so `if c { use(r); x = 1 }` is
 //! fine). While live, these conflict: `&!p` again, `&!p` under a shared loan,
 //! `&p` under a mutable loan, moving `p`, assigning `p`. Places are a local
-//! plus a field path, so `&!p.a` and `&!p.b` do not conflict. Within one call,
+//! plus a field path, so `&!p.a` and `&!p.b` do not conflict, while `&p.a`
+//! conflicts with a later move of `p.a`, of `p`, or of `p.a.x`. Within one call,
 //! `f(&!x, &x)` / `f(&!x, &!x)` / `f(&x, x)` are flagged as temporaries.
 //!
 //! # Explicit limits
@@ -62,8 +71,13 @@
 //!   outside any statement, e.g. a tail expression). There are no expression
 //!   spans, so two uses in one statement share a position. A node built by
 //!   hand rather than parsed has no position and gives `span: None`.
-//! * Only whole locals are moved. Partial moves (`x.f` moved out) are not
-//!   tracked; `x` stays usable.
+//! * Partial moves are tracked only through plain field chains (`x.a.b`), not
+//!   through an index (`x[i].f`), a pointer/`Box` deref, a `match`/`let`
+//!   destructuring pattern, a method call's receiver, or a reference-typed
+//!   parameter. A partial move never makes the *enclosing function* count as
+//!   consuming its parameter (so under the inferred policy it does not turn the
+//!   caller's argument into a move). `let y = x.f` does not make `y` known
+//!   non-`Copy` (the type of a field expression is not inferred).
 //! * Loans are created only by `let r = &place` (and copied by `let r2 = r`).
 //!   References are not followed through calls, returns, struct fields,
 //!   collections or `r = &y` reassignment (which only ends `r`'s old loans).
@@ -134,6 +148,10 @@ const BY_VALUE_METHODS: &[&str] = &["push", "push_back", "push_front", "insert",
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct TypeInfo {
     derives_copy: bool,
+    /// The type's own generic parameters (a field of such a type is unknown).
+    generics: Vec<String>,
+    /// Named fields of a struct or record `data` (empty for an enum or sum).
+    fields: Vec<(String, Type)>,
 }
 
 /// What counts as a move. MAGE's evaluator has value semantics and the spec
@@ -324,16 +342,35 @@ impl ModuleInfo {
                     }
                 }
                 ItemKind::Struct(s) => {
-                    insert_unique(&mut self.types, &s.name, TypeInfo { derives_copy: derives_copy(item) });
+                    let info = TypeInfo {
+                        derives_copy: derives_copy(item),
+                        generics: s.generics.iter().map(|g| g.name.clone()).collect(),
+                        fields: s.fields.iter().map(|f| (f.name.clone(), f.ty.clone())).collect(),
+                    };
+                    insert_unique(&mut self.types, &s.name, info);
                 }
                 ItemKind::Enum(e) => {
-                    insert_unique(&mut self.types, &e.name, TypeInfo { derives_copy: derives_copy(item) });
+                    let info = TypeInfo {
+                        derives_copy: derives_copy(item),
+                        generics: e.generics.iter().map(|g| g.name.clone()).collect(),
+                        fields: Vec::new(),
+                    };
+                    insert_unique(&mut self.types, &e.name, info);
                     for v in &e.variants {
                         insert_unique(&mut self.ctors, &v.name, e.name.clone());
                     }
                 }
                 ItemKind::Data(d) => {
-                    insert_unique(&mut self.types, &d.name, TypeInfo { derives_copy: derives_copy(item) });
+                    let fields = match &d.kind {
+                        DataKind::Record(fs) => fs.iter().map(|f| (f.name.clone(), f.ty.clone())).collect(),
+                        DataKind::Sum(_) => Vec::new(),
+                    };
+                    let info = TypeInfo {
+                        derives_copy: derives_copy(item),
+                        generics: d.generics.iter().map(|g| g.name.clone()).collect(),
+                        fields,
+                    };
+                    insert_unique(&mut self.types, &d.name, info);
                     match &d.kind {
                         DataKind::Record(_) => insert_unique(&mut self.ctors, &d.name, d.name.clone()),
                         DataKind::Sum(vs) => {
@@ -549,8 +586,10 @@ fn analyse(info: &ModuleInfo, qualified_name: &str, f: &FunctionDef) -> (Vec<Dia
             info.type_copyness(&p.ty, &fcx.generics)
         };
         fcx.bind(&mut st, &p.name, copy);
+        let ty_name = if p.name == "self" { None } else { fcx.ty_name_of(&p.ty, &fcx.generics) };
         if let Some(v) = st.vars.get_mut(&p.name) {
             v.is_param = true;
+            v.ty_name = ty_name;
         }
     }
     let ret = Use::Move(Rc::from("returned from the function"));
@@ -802,6 +841,47 @@ fn fmt_idents(s: &str) -> Vec<String> {
     out
 }
 
+/// The places a format string interpolates: `f"{x} and {y.z}"` gives `[x]` and
+/// `[y, z]` (a root and its field chain).
+fn fmt_places(s: &str) -> Vec<Vec<String>> {
+    let b: Vec<char> = s.chars().collect();
+    let word = |c: char| c.is_alphanumeric() || c == '_';
+    let mut out = Vec::new();
+    let mut i = 0;
+    while i < b.len() {
+        if b[i] != '{' {
+            i += 1;
+            continue;
+        }
+        if b.get(i + 1) == Some(&'{') {
+            i += 2;
+            continue;
+        }
+        let mut j = i + 1;
+        let mut segs: Vec<String> = Vec::new();
+        loop {
+            let from = j;
+            while j < b.len() && word(b[j]) {
+                j += 1;
+            }
+            if j == from {
+                break;
+            }
+            segs.push(b[from..j].iter().collect());
+            if b.get(j) == Some(&'.') && b.get(j + 1).is_some_and(|c| word(*c)) {
+                j += 1;
+            } else {
+                break;
+            }
+        }
+        if !segs.is_empty() {
+            out.push(segs);
+        }
+        i = j.max(i + 1);
+    }
+    out
+}
+
 // ── Places ───────────────────────────────────────────────────────────
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -850,6 +930,19 @@ fn place_of(e: &Expr) -> Option<Place> {
     go(e).map(|(p, _)| p)
 }
 
+/// `x` or `x.a.b`: a plain field chain with no index, call or deref in it.
+fn field_place_of(e: &Expr) -> Option<Place> {
+    match e {
+        Expr::Ident { name } => Some(Place { root: name.clone(), path: Vec::new() }),
+        Expr::FieldAccess { object, field } => {
+            let mut p = field_place_of(object)?;
+            p.path.push(field.clone());
+            Some(p)
+        }
+        _ => None,
+    }
+}
+
 // ── Analysis state ───────────────────────────────────────────────────
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -870,6 +963,11 @@ struct Var {
     is_param: bool,
     /// The parameter this local was copied from by `let y = x`, if any.
     origin: Option<String>,
+    /// The user struct/`data` type this local is known to be an owned value of.
+    ty_name: Option<String>,
+    /// Moved field places (`p.name` -> `["name"]`): never empty paths, and
+    /// only while the whole of `p` (`own`) is `Init`.
+    fields: BTreeMap<Vec<String>, (Own, String)>,
 }
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
@@ -906,6 +1004,15 @@ impl State {
                     (Some(a), Some(b)) => Some(a.min(b)),
                     (a, b) => a.or(b),
                 };
+                let keys: BTreeSet<Vec<String>> = v.fields.keys().chain(o.fields.keys()).cloned().collect();
+                for k in keys {
+                    let joined = match (v.fields.get(&k).cloned(), o.fields.get(&k).cloned()) {
+                        (Some((x, hx)), Some((y, hy))) => (if x == y { x } else { Own::MaybeMoved }, hx.min(hy)),
+                        (Some((_, h)), None) | (None, Some((_, h))) => (Own::MaybeMoved, h),
+                        (None, None) => continue,
+                    };
+                    v.fields.insert(k, joined);
+                }
             }
         }
         for (k, o) in &other.vars {
@@ -943,7 +1050,7 @@ struct LoopCtx {
 
 #[derive(Default)]
 struct ClosureFrame {
-    moved: BTreeSet<String>,
+    moved: BTreeSet<Place>,
 }
 
 struct Fcx<'a> {
@@ -1015,7 +1122,16 @@ impl<'a> Fcx<'a> {
     }
 
     fn bind(&mut self, st: &mut State, name: &str, copy: Copyness) {
-        let v = Var { own: Own::Init, copy, moved_by: None, depth: self.closures.len(), is_param: false, origin: None };
+        let v = Var {
+            own: Own::Init,
+            copy,
+            moved_by: None,
+            depth: self.closures.len(),
+            is_param: false,
+            origin: None,
+            ty_name: None,
+            fields: BTreeMap::new(),
+        };
         let prev = st.vars.insert(name.to_string(), v);
         if let Some(top) = self.scopes.last_mut() {
             top.push((name.to_string(), prev));
@@ -1103,10 +1219,15 @@ impl<'a> Fcx<'a> {
                         .and_then(|v| if v.is_param { Some(from.clone()) } else { v.origin.clone() }),
                     _ => None,
                 };
+                let ty_name = match ty {
+                    Some(t) => self.ty_name_of(t, &self.generics),
+                    None => self.infer_type_name(value, st),
+                };
                 self.eval(value, st, &alias(format!("assigned to `{name}`")));
                 self.bind(st, name, copy);
                 if let Some(v) = st.vars.get_mut(name.as_str()) {
                     v.origin = origin;
+                    v.ty_name = ty_name;
                 }
                 self.record_loans(block, idx, name, value, st);
             }
@@ -1291,23 +1412,109 @@ impl<'a> Fcx<'a> {
         }
     }
 
-    // ── Uses of locals ───────────────────────────────────────────────
+    // ── Types of places ──────────────────────────────────────────────
+
+    /// The user struct/`data` type `t` names, if it is one (and not generic here).
+    fn ty_name_of(&self, t: &Type, generics: &[String]) -> Option<String> {
+        match t {
+            Type::Path { segments, .. } if segments.len() == 1 => {
+                let n = &segments[0];
+                (!generics.contains(n) && matches!(self.info.types.get(n), Some(Some(_)))).then(|| n.clone())
+            }
+            _ => None,
+        }
+    }
+
+    /// The user type an initialiser evidently produces.
+    fn infer_type_name(&self, e: &Expr, st: &State) -> Option<String> {
+        match e {
+            Expr::Ident { name } => st.vars.get(name).and_then(|v| v.ty_name.clone()),
+            Expr::StructLit { path, .. } => {
+                let n = path.last()?;
+                matches!(self.info.types.get(n), Some(Some(_))).then(|| n.clone())
+            }
+            Expr::Call { func, .. } => match &**func {
+                Expr::Ident { name } if !st.vars.contains_key(name) => {
+                    if let Some(Some(sig)) = self.info.fns.get(name) {
+                        sig.ret.as_ref().and_then(|t| self.ty_name_of(t, &sig.generics))
+                    } else if let Some(Some(ty)) = self.info.ctors.get(name) {
+                        matches!(self.info.types.get(ty), Some(Some(_))).then(|| ty.clone())
+                    } else {
+                        None
+                    }
+                }
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    /// Whether the value at `v` + `path` is `Copy`, from the field types the
+    /// module declares. Anything it cannot follow is `Unknown`.
+    fn place_copy(&self, v: &Var, path: &[String]) -> Copyness {
+        if path.is_empty() || v.copy == Copyness::Copy {
+            return if path.is_empty() { v.copy } else { Copyness::Copy };
+        }
+        let Some(mut cur) = v.ty_name.clone() else { return Copyness::Unknown };
+        for (i, seg) in path.iter().enumerate() {
+            let Some(Some(info)) = self.info.types.get(&cur) else { return Copyness::Unknown };
+            let Some((_, ty)) = info.fields.iter().find(|(n, _)| n == seg) else { return Copyness::Unknown };
+            if i + 1 == path.len() {
+                return self.info.type_copyness(ty, &info.generics);
+            }
+            match ty {
+                Type::Path { segments, type_args } if segments.len() == 1 && type_args.is_empty() => {
+                    cur = segments[0].clone();
+                }
+                _ => return Copyness::Unknown,
+            }
+        }
+        Copyness::Unknown
+    }
+
+    // ── Uses of places ───────────────────────────────────────────────
 
     fn use_local(&mut self, name: &str, at: u32, st: &mut State, mode: &Use) {
+        self.use_place(&Place { root: name.to_string(), path: Vec::new() }, at, st, mode);
+    }
+
+    /// The move (if any) that makes touching `path` of `v` an error. A use
+    /// conflicts with a move of the place, of a prefix of it, or of an extension
+    /// of it; an assignment re-initialises its own place and extensions, so only
+    /// a moved prefix (or the whole value) matters.
+    fn moved_conflict(v: &Var, path: &[String], assign: bool) -> Option<(Vec<String>, Own, String)> {
+        if v.own != Own::Init {
+            return Some((Vec::new(), v.own, v.moved_by.clone().unwrap_or_else(|| "moved".into())));
+        }
+        v.fields
+            .iter()
+            .find(|(p, _)| {
+                if assign {
+                    p.len() < path.len() && path[..p.len()] == p[..]
+                } else {
+                    let n = p.len().min(path.len());
+                    p[..n] == path[..n]
+                }
+            })
+            .map(|(p, (own, how))| (p.clone(), *own, how.clone()))
+    }
+
+    fn report_moved(&mut self, shown: &str, own: Own, how: &str) {
+        let qual = if own == Own::Moved { "" } else { "possibly " };
+        self.report(
+            DiagnosticCategory::UseAfterMove,
+            format!(
+                "use of moved value: `{shown}` in fn `{}` (value {qual}moved earlier: {how}; it is used again here)",
+                self.fname
+            ),
+        );
+    }
+
+    fn use_place(&mut self, place: &Place, at: u32, st: &mut State, mode: &Use) {
+        let name = place.root.as_str();
         let Some(v) = st.vars.get(name).cloned() else { return };
-        match v.own {
-            Own::Init => {}
-            Own::Moved | Own::MaybeMoved => {
-                let how = v.moved_by.clone().unwrap_or_else(|| "moved".into());
-                let qual = if v.own == Own::Moved { "" } else { "possibly " };
-                self.report(
-                    DiagnosticCategory::UseAfterMove,
-                    format!(
-                        "use of moved value: `{name}` in fn `{}` (value {qual}moved earlier: {how}; it is used again here)",
-                        self.fname
-                    ),
-                );
-            }
+        if let Some((_, own, how)) = Self::moved_conflict(&v, &place.path, false) {
+            self.report_moved(&place.show(), own, &how);
         }
         let (why, escapes) = match mode {
             Use::Read => (None, false),
@@ -1315,24 +1522,30 @@ impl<'a> Fcx<'a> {
             Use::Alias(w) => (Some(w), false),
         };
         if let Some(why) = why {
-            if v.copy == Copyness::NonCopy {
-                self.check_action(st, &Place { root: name.to_string(), path: Vec::new() }, Action::Move, at);
+            if self.place_copy(&v, &place.path) == Copyness::NonCopy {
+                self.check_action(st, place, Action::Move, at);
                 for (k, f) in self.closures.iter_mut().enumerate() {
                     if v.depth <= k {
-                        f.moved.insert(name.to_string());
+                        f.moved.insert(place.clone());
                     }
                 }
-                if escapes {
-                    if v.is_param {
-                        self.moved_params.insert(name.to_string());
+                if place.path.is_empty() {
+                    if escapes {
+                        if v.is_param {
+                            self.moved_params.insert(name.to_string());
+                        }
+                        if let Some(o) = &v.origin {
+                            self.moved_params.insert(o.clone());
+                        }
                     }
-                    if let Some(o) = &v.origin {
-                        self.moved_params.insert(o.clone());
+                    if let Some(var) = st.vars.get_mut(name) {
+                        var.own = Own::Moved;
+                        var.moved_by = Some(why.to_string());
+                        var.fields.clear();
                     }
-                }
-                if let Some(var) = st.vars.get_mut(name) {
-                    var.own = Own::Moved;
-                    var.moved_by = Some(why.to_string());
+                } else if let Some(var) = st.vars.get_mut(name) {
+                    var.fields.retain(|p, _| !p.starts_with(&place.path));
+                    var.fields.insert(place.path.clone(), (Own::Moved, format!("`{}` {why}", place.show())));
                 }
             }
         }
@@ -1483,7 +1696,7 @@ impl<'a> Fcx<'a> {
                 }
                 let shown = if a.path.len() <= b.path.len() { a.show() } else { b.show() };
                 let by_value_copy = |p: &Place| {
-                    st.vars.get(&p.root).is_some_and(|v| v.copy != Copyness::NonCopy)
+                    st.vars.get(&p.root).is_some_and(|v| self.place_copy(v, &p.path) != Copyness::NonCopy)
                 };
                 let msg = match (*ka, *kb) {
                     (K::Mut, K::Mut) => format!("cannot borrow `{shown}` as mutable more than once at a time"),
@@ -1516,8 +1729,9 @@ impl<'a> Fcx<'a> {
         }
         match e {
             Expr::Literal { value, kind: LiteralKind::FormatString } => {
-                for n in fmt_idents(value) {
-                    self.use_local(&n, self.nums.start(e), st, &Use::Read);
+                for segs in fmt_places(value) {
+                    let place = Place { root: segs[0].clone(), path: segs[1..].to_vec() };
+                    self.use_place(&place, self.nums.start(e), st, &Use::Read);
                 }
             }
             Expr::Literal { .. } | Expr::Error { .. } => {}
@@ -1573,7 +1787,10 @@ impl<'a> Fcx<'a> {
                 let moves = self.method_moves(method, args.len());
                 self.eval_args(method, &moves, args, st);
             }
-            Expr::FieldAccess { object, .. } => self.eval(object, st, &Use::Read),
+            Expr::FieldAccess { object, .. } => match field_place_of(e) {
+                Some(p) if st.vars.contains_key(&p.root) => self.use_place(&p, self.nums.start(e), st, mode),
+                _ => self.eval(object, st, &Use::Read),
+            },
             Expr::Index { object, index } => {
                 self.eval(object, st, &Use::Read);
                 self.eval(index, st, &Use::Read);
@@ -1704,13 +1921,29 @@ impl<'a> Fcx<'a> {
                         v.own = Own::Init;
                         v.moved_by = None;
                         v.origin = None;
+                        v.fields.clear();
                     }
                     // Whatever `name` held, it holds no longer.
                     st.loans.retain(|l| l.holder != *name);
                 }
             }
+            Expr::FieldAccess { .. } if field_place_of(target).is_some_and(|p| st.vars.contains_key(&p.root)) => {
+                // `x.f = v` re-initialises `x.f` (and its extensions), but assigning
+                // into a moved `x` (or moved `x.a` for `x.a.f`) is an error.
+                if let Some(p) = field_place_of(target) {
+                    let v = st.vars.get(&p.root).cloned();
+                    if let Some((cp, own, how)) = v.and_then(|v| Self::moved_conflict(&v, &p.path, true)) {
+                        let shown = Place { root: p.root.clone(), path: cp }.show();
+                        self.report_moved(&shown, own, &how);
+                    }
+                    self.check_action(st, &p, Action::Assign, after);
+                    if let Some(v) = st.vars.get_mut(&p.root) {
+                        v.fields.retain(|k, _| !k.starts_with(&p.path));
+                    }
+                }
+            }
             _ => {
-                // `x.f = v` and `x[i] = v` use `x`: assigning into a moved value is an error.
+                // `x[i] = v` uses `x`: assigning into a moved value is an error.
                 self.eval(target, st, &Use::Read);
                 if let Some(p) = place_of(target) {
                     if st.vars.contains_key(&p.root) {
@@ -1758,10 +1991,17 @@ impl<'a> Fcx<'a> {
         self.pop_scope(&mut cs);
         let frame = self.closures.pop().unwrap_or_default();
         // A body that consumes a captured variable takes it by move.
-        for name in frame.moved {
-            if let Some(v) = st.vars.get_mut(&name) {
-                v.own = Own::Moved;
-                v.moved_by = Some("captured by a closure that consumes it".to_string());
+        for place in frame.moved {
+            if let Some(v) = st.vars.get_mut(&place.root) {
+                let how = "captured by a closure that consumes it".to_string();
+                if place.path.is_empty() {
+                    v.own = Own::Moved;
+                    v.moved_by = Some(how);
+                    v.fields.clear();
+                } else {
+                    v.fields.retain(|p, _| !p.starts_with(&place.path));
+                    v.fields.insert(place.path.clone(), (Own::Moved, format!("`{}` {how}", place.show())));
+                }
             }
         }
     }
@@ -2132,5 +2372,194 @@ mod tests {
         assert!(dflt(escapes).is_empty(), "reassigned, so no longer the parameter: {:?}", dflt(escapes));
         let direct = "f work(t: s) -> s {\n var rem = t\n rem\n}\nf host(a: s) {\n work(a)\n work(a)\n}\n";
         assert_eq!(dflt(direct).len(), 1, "{:?}", dflt(direct));
+    }
+
+    // ── places: partial moves and field borrows ──────────────────────
+
+    const SHAPES: &str = "data Pair(name: s, age: i32)\ndata Outer(inner: Pair, tag: s)\n@d(Copy)\ndata Dot(x: i32, y: i32)\ndata Mixed(d: Dot, tag: s)\nf eat(x: Pair) { }\nf take_n(x: i32) { }\nf take(x: s) { }\nf peek(x: &s) { }\nf peek_p(x: &Pair) { }\n";
+
+    /// `f host(p: Pair, o: Outer, m: Mixed, n: i32)` with `body`.
+    fn pl(body: &str) -> String {
+        format!("{SHAPES}f host(p: Pair, o: Outer, m: Mixed, n: i32) {{\n{body}\n}}\n")
+    }
+
+    #[test]
+    fn moving_a_field_leaves_its_siblings_usable() {
+        clean(&pl("take(p.name)\ntake_n(p.age)\ntake_n(p.age)"));
+        clean(&pl("take(o.tag)\nv k = o.inner\npeek(&k.name)"));
+        flags(&pl("take(o.tag)\nv k = o.inner\npeek(&o.inner.name)"), "E0382", "`o.inner.name`");
+        clean(&pl("take(p.name)\nv a = p.age"));
+    }
+
+    #[test]
+    fn using_a_moved_field_is_e0382() {
+        let src = pl("take(p.name)\ntake(p.name)");
+        flags(&src, "E0382", "use of moved value: `p.name`");
+        flags(&src, "E0382", "`p.name` passed by value to `take`");
+        let d = run(&src);
+        assert_eq!(d.len(), 1, "{d:?}");
+        assert_eq!(d[0].category, Some(DiagnosticCategory::UseAfterMove));
+        // A read and a borrow are uses too.
+        flags(&pl("take(p.name)\npeek(&p.name)"), "E0382", "`p.name`");
+        flags(&pl("take(p.name)\nv q = p.name"), "E0382", "`p.name`");
+        flags(&pl("take(p.name)\nv q = f\"{p.name}\""), "E0382", "`p.name`");
+        // A path through the field is the field.
+        flags(&pl("take(o.inner)\ntake_n(o.inner.age)"), "E0382", "`o.inner.age`");
+    }
+
+    #[test]
+    fn using_the_whole_struct_after_a_field_move_is_e0382() {
+        flags(&pl("take(p.name)\nv q = p"), "E0382", "use of moved value: `p`");
+        flags(&pl("take(p.name)\neat(p)"), "E0382", "use of moved value: `p`");
+        flags(&pl("take(p.name)\npeek_p(&p)"), "E0382", "use of moved value: `p`");
+        flags(&pl("take(p.name)\nret p"), "E0382", "use of moved value: `p`");
+        // Even when the moved field was Copy-looking-free: a sibling read is fine, the whole is not.
+        clean(&pl("take(p.name)\nv k = p.age"));
+    }
+
+    #[test]
+    fn using_a_field_after_the_whole_struct_moved_is_e0382() {
+        flags(&pl("eat(p)\npeek(&p.name)"), "E0382", "use of moved value: `p.name`");
+        flags(&pl("eat(p)\ntake_n(p.age)"), "E0382", "use of moved value: `p.age`");
+        flags(&pl("v q = p\ntake(p.name)"), "E0382", "`p.name`");
+    }
+
+    #[test]
+    fn reassigning_a_field_reinitialises_it() {
+        clean(&pl("take(p.name)\np.name = \"x\"\ntake(p.name)"));
+        // Reassigning the whole struct re-initialises every field.
+        clean(&pl("take(p.name)\np = o.inner\ntake(p.name)"));
+        // Assigning into a moved whole is an error, though.
+        flags(&pl("eat(p)\np.name = \"x\""), "E0382", "use of moved value: `p`");
+        // A moved field's sibling is still moved after an unrelated assignment.
+        flags(&pl("take(o.tag)\no.inner.name = \"x\"\ntake(o.tag)"), "E0382", "`o.tag`");
+    }
+
+    #[test]
+    fn moves_join_over_branches_per_field() {
+        flags(&pl("if n > 0 { take(p.name) }\ntake(p.name)"), "E0382", "possibly moved");
+        clean(&pl("if n > 0 { take(p.name) }\ntake_n(p.age)"));
+        clean(&pl("if n > 0 {\n take(p.name)\n ret\n}\ntake(p.name)"));
+        // Re-initialised on the only path that moved it.
+        clean(&pl("if n > 0 {\n take(p.name)\n p.name = \"x\"\n}\ntake(p.name)"));
+        flags(&pl("m k = 0\nwhile k < n {\n take(p.name)\n k = k + 1\n}"), "E0382", "`p.name`");
+    }
+
+    #[test]
+    fn a_closure_that_consumes_a_field_takes_it() {
+        flags(&pl("v cl = |z| take(p.name)\ntake(p.name)"), "E0382", "`p.name`");
+        clean(&pl("v cl = |z| take(p.name)\ntake_n(p.age)"));
+    }
+
+    #[test]
+    fn borrowing_a_field_then_moving_a_sibling_is_fine() {
+        clean(&pl("v r = &o.tag\ntake(o.inner.name)\npeek(r)"));
+        clean(&pl("v r = &p.name\ntake_n(p.age)\npeek(r)"));
+        clean(&pl("v r = &o.inner\ntake(o.tag)\npeek_p(r)"));
+        clean(&pl("v r = &o.inner.name\ntake(o.tag)\nv w = &!o.inner.age\npeek(r)"));
+    }
+
+    #[test]
+    fn borrowing_a_field_then_moving_it_or_its_whole_is_an_error() {
+        flags(&pl("v r = &p.name\ntake(p.name)\npeek(r)"), "E0502", "cannot move out of `p.name`");
+        flags(&pl("v r = &p.name\neat(p)\npeek(r)"), "E0502", "cannot move out of `p`");
+        // A prefix borrow conflicts with a move of an extension.
+        flags(&pl("v r = &o.inner\ntake(o.inner.name)\npeek_p(r)"), "E0502", "cannot move out of `o.inner.name`");
+        flags(&pl("v r = &p\ntake(p.name)\npeek_p(r)"), "E0502", "cannot move out of `p.name`");
+        // Not while the borrow is dead.
+        clean(&pl("v r = &p.name\npeek(r)\ntake(p.name)"));
+        // Mutable borrows of overlapping places.
+        flags(&pl("v r = &!o.inner\nv w = &!o.inner.name\npeek_p(r)"), "E0502", "more than once");
+        clean(&pl("v r = &!o.inner.name\nv w = &!o.inner.age\npeek(r)\npeek(w)"));
+    }
+
+    #[test]
+    fn nested_paths() {
+        clean(&pl("take(o.inner.name)\ntake_n(o.inner.age)\ntake(o.tag)"));
+        flags(&pl("take(o.inner.name)\neat(o.inner)"), "E0382", "use of moved value: `o.inner`");
+        flags(&pl("take(o.inner.name)\nv q = o"), "E0382", "use of moved value: `o`");
+        flags(&pl("take(o.inner)\ntake(o.inner.name)"), "E0382", "`o.inner.name`");
+        flags(&pl("take(o.inner)\no.inner.name = \"x\""), "E0382", "use of moved value: `o.inner`");
+        // Re-initialising the prefix re-initialises the extension.
+        clean(&pl("take(o.inner.name)\no.inner = p\ntake(o.inner.name)"));
+        clean(&pl("take(o.inner.name)\no.inner.name = \"x\"\neat(o.inner)"));
+    }
+
+    #[test]
+    fn copy_fields_never_move() {
+        clean(&pl("take_n(p.age)\ntake_n(p.age)\nv q = p.age\nv r = p.age"));
+        // A `Copy` struct inside a non-Copy one, and its fields.
+        clean(&pl("v a = m.d\nv b = m.d\ntake_n(m.d.x)\ntake_n(m.d.x)"));
+        flags(&pl("take(m.tag)\nv q = m"), "E0382", "use of moved value: `m`");
+        clean(&pl("take(m.tag)\nv a = m.d"));
+    }
+
+    #[test]
+    fn unknown_field_types_are_not_reported() {
+        let g = "data G[T](v: T, name: s)\ndata W(m: Mystery, name: s)\nf take(x: s) { }\n";
+        // A field of a generic type, of an undeclared type, of an undeclared field,
+        // and of a variable whose type is not a known struct.
+        clean(&format!("{g}f host(a: G[s]) {{\n take(a.v)\n take(a.v)\n}}\n"));
+        clean(&format!("{g}f host(w: W) {{\n take(w.m)\n take(w.m)\n}}\n"));
+        clean(&format!("{g}f host(w: W) {{\n take(w.nope)\n take(w.nope)\n}}\n"));
+        clean(&format!("{g}f host(x: Mystery) {{\n take(x.f)\n take(x.f)\n}}\n"));
+        clean(&format!("{g}f host[T](x: T) {{\n take(x.f)\n take(x.f)\n}}\n"));
+        clean(&format!("{g}f host(w: &W) {{\n take(w.name)\n take(w.name)\n}}\n"));
+        clean(&format!("{g}f host() {{\n v w = make()\n take(w.name)\n take(w.name)\n}}\n"));
+        // The known field of the same struct is still tracked.
+        flags(&format!("{g}f host(w: W) {{\n take(w.name)\n take(w.name)\n}}\n"), "E0382", "`w.name`");
+        // Indexing ends the path: nothing is moved out of an element.
+        clean(&pl("take(o.tag[0])\ntake(o.tag[0])"));
+    }
+
+    #[test]
+    fn a_field_passed_to_a_call_moves_per_policy() {
+        let src = "data Pair(name: s, age: i32)\nf keep(x: s) -> s { x }\nf look(x: s) { }\nf host(p: Pair) {\n look(p.name)\n look(p.name)\n}\nf host2(p: Pair) {\n keep(p.name)\n keep(p.name)\n}\n";
+        // INFERRED: only the consuming callee takes the field.
+        let d = dflt(src);
+        assert_eq!(d.len(), 1, "{d:?}");
+        assert!(d[0].contains("use of moved value: `p.name`") && d[0].contains("fn `host2`"), "{d:?}");
+        // STRICT: any by-value parameter does.
+        let s = msgs(src);
+        assert_eq!(s.len(), 2, "{s:?}");
+        assert!(s.iter().any(|m| m.contains("fn `host`")), "{s:?}");
+        // The same field is not an aggregate member under INFERRED, but is under STRICT.
+        let agg = "data Pair(name: s, age: i32)\ndata Holder(inner: s)\nf host(p: Pair) {\n v h = @Holder { inner: p.name }\n v k = p.name\n}\n";
+        assert!(dflt(agg).is_empty(), "{:?}", dflt(agg));
+        assert_eq!(msgs(agg).len(), 1, "{:?}", msgs(agg));
+        // `let` moves under both.
+        let lets = "data Pair(name: s, age: i32)\nf host(p: Pair) {\n v a = p.name\n v b = p.name\n}\n";
+        assert_eq!(dflt(lets).len(), 1);
+        assert_eq!(msgs(lets).len(), 1);
+    }
+
+    #[test]
+    fn a_field_move_does_not_make_the_function_consume_its_parameter() {
+        // `f` moves `p.name` out; callers are not told `p` is consumed, so
+        // reusing the argument is not flagged under the inferred policy.
+        let src = "data Pair(name: s, age: i32)\nf grab(p: Pair) -> s { p.name }\nf host(a: Pair) {\n grab(a)\n grab(a)\n}\n";
+        assert!(dflt(src).is_empty(), "{:?}", dflt(src));
+    }
+
+    #[test]
+    fn a_field_move_points_at_the_statement_that_uses_it() {
+        let src = pl("take(p.name)\nv k = 1\n  take(p.name)");
+        let n = SHAPES.matches('\n').count() as u32;
+        // `f host` is on line n+1, the body starts on line n+2.
+        assert_eq!(line_cols(&src, "E0382"), vec![(n + 4, 3)], "{src}");
+        let src = pl("v r = &p.name\nv k = 1\n  take(p.name)\npeek(r)");
+        assert_eq!(line_cols(&src, "E0502"), vec![(n + 4, 3)], "{src}");
+    }
+
+    #[test]
+    fn same_call_temporaries_follow_the_field_type() {
+        // A shared borrow beside a by-value Copy field of the same struct is fine ...
+        clean(&format!("{SHAPES}f both(a: &Pair, b: i32) {{ }}\nf host(p: Pair) {{\n both(&p, p.age)\n}}\n"));
+        // ... a non-Copy one is not.
+        flags(
+            &format!("{SHAPES}f both(a: &Pair, b: s) {{ }}\nf host(p: Pair) {{\n both(&p, p.name)\n}}\n"),
+            "E0502",
+            "cannot move out of `p`",
+        );
     }
 }
