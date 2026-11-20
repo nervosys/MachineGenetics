@@ -914,13 +914,51 @@ occupant it replaces, checks that every change of champion is the one the rule
 names, and fails on a journal that goes on without a promotion the rule owes. A
 run counts an admission as a promotion in its report.
 
-**Not claimed.** There is no evidence yet that an archive improves search. The
-tests establish that the rules hold, are replayable and cannot be gamed by
-changing niche; whether quality-diversity finds better optima than the
-single-champion climb on arena succession or on a real workload needs runs, with
-the same compute, against the same held-out suites. Also not done: archive
-statistics in the run report, a CLI switch for opening one, restoring a displaced
-elite on demotion.
+**First measurement (2026-11-20), and what it does not show.** Eight seeds per
+arm on `arena succession`, the documented command (`--heldout
+README.md,germline/src/gate.rs --cycles 8 --rounds 20 --programs 48 --candidates 3
+--agents grammar:2,uniform:1,mutator:1 --cost fuel --efficiency-basis work`), with
+and without `--niches efficiency:0.30/0.34`, and with `--validation
+GERMLINE.md,germline/src/pareto.rs`. Every run was made twice and the two copies
+agree to the last digit. Logs and journals: `E:/heal-logs/nc/{cmp,val}/`. Final
+champion, held-out capability and validation bits per byte:
+
+| seed | single champion: held-out, validation b/B | archive: held-out, validation b/B |
+|---|---|---|
+| 1 | 0.0578, 7.971 | 0.0889, 7.738 |
+| 2 | 0.0578, 7.971 | 0.0762, 7.777 |
+| 3 | 0.0589, 8.034 | 0.0762, 7.777 |
+| 4 | 0.0247, 8.191 | 0.0762, 7.777 |
+| 5 | 0.0345, 8.145 | 0.0762, 7.777 |
+| 6 | 0.0420, 8.081 | 0.0370, 8.198 |
+| 7 | 0.0420, 8.081 | 0.0579, 8.064 |
+| 8 | 0.0420, 8.081 | 0.0652, 7.879 |
+| mean | 0.0450, 8.069 | 0.0692, 7.873 |
+
+The archive's champion is better on seven seeds of eight on both suites and worse
+on seed 6. The arms scored about the same number of candidates (47 and 49), so the
+archive did not win by running longer.
+
+This is weak evidence, for these reasons:
+
+- **The bucket edges were chosen after looking.** `0.30/0.34` was picked from the
+  efficiency values of the single-champion runs on seeds 1 to 3. On the five
+  seeds not used for that, the archive is better on four and worse on one.
+- **Few distinct outcomes.** Four archive runs end on the same champion (0.0762,
+  7.777) and three single-champion runs on another (0.0420, 8.081). Eight seeds
+  are fewer than eight independent samples.
+- **The arms are not paired.** With the same seed the two arms differ from the
+  first candidate on, so a per-seed difference is not a paired comparison.
+- **The level is poor in both arms.** Validation is near 8 bits per byte, which
+  is what guessing bytes uniformly costs; five single-champion runs and two
+  archive runs are above it. The comparison is between learners that have barely
+  begun to model the text.
+- **One workload, one grid, one margin.** Nothing here says the result holds for
+  other axes, edges, margins, genomes or budgets.
+
+Still not done: restoring a displaced elite on demotion. The switch is `arena
+succession --niches` (with `--niche-margin`), and a run that keeps an archive
+reports its occupied cells and the grid size in the run report and the JSON.
 
 ## 8. What is still not built
 

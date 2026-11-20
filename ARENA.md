@@ -853,6 +853,7 @@ arena succession --heldout FILE[,FILE...] --journal PATH [--cycles N] [--seed N]
                  [--rounds N] [--programs N] [--candidates N]
                  [--agents K:N,...] [--proposer-command "CMD ARGS"] [--proposer-timeout S]
                  [--objectives capability[,efficiency][,latency]] [--dominance-min F]
+                 [--niches AXIS:E1/E2,...] [--niche-margin F]
                  [--dominance-floor F] [--objective-tolerance AXIS=F,...]
                  [--allow-estimated-energy] [--efficiency-basis meter|work]
                  [--energy-budget JOULES] [--param-search es|perturb]
@@ -1055,6 +1056,21 @@ Resume restores the spend from the journal. Each invocation writes an
 `EnergySpent` record, one per cycle plus one for its seed, and only under a budget.
 A journal written before any budget was set therefore restores zero for its earlier
 cycles, and the resume prints that.
+
+**Niche archive (`--niches`).** An opt-in quality-diversity population, as
+`GERMLINE.md` describes under "A population with niches". `--niches
+AXIS:E1/E2/...[,AXIS:E1/...]` keeps one elite per cell, where a cell is the bucket
+each named axis falls in. The axes are `efficiency` and `latency`, on the axis's
+own 0 to 1 scale, and the edges are ascending numbers. The grid may have at most
+64 cells. `capability` is the axis that ranks the elites of a cell and picks the
+champion, the guards still apply, and parents are drawn from the archive. The
+replacement margin is `--niche-margin F`, default `0.01` (the gate's own margin),
+and it needs `--niches`. `--niches` cannot be combined with `--objectives`, because
+under an archive the dominance rule is not consulted. As with `--objectives`,
+`efficiency` needs a measured energy figure or `--allow-estimated-energy`. A niche
+run prints `archive: N of M cells occupied`, its JSON has an `archive` object, and
+its policy name gains `+niches`. A first eight-seed comparison favours the archive
+on seven seeds, with caveats that make it weak evidence; see `GERMLINE.md`.
 
 **Multi-objective succession (`--objectives`).** Without the flag the run is as
 described below. With it:
