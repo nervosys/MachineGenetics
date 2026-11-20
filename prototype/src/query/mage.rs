@@ -454,6 +454,7 @@ pub struct Analysis {
     pub spec: Vec<Diagnostic>,
     pub logic: Vec<Diagnostic>,
     pub contract_warnings: Vec<Diagnostic>,
+    pub call_warnings: Vec<Diagnostic>,
     pub shape: Vec<Diagnostic>,
     pub core: Vec<Diagnostic>,
     pub ai_diags: Vec<Diagnostic>,
@@ -553,7 +554,12 @@ impl Registry {
                 b("shape", "pass/shape", PassRole::Shape, pass_shape as ItemFn),
                 b("ai", "pass/ai", PassRole::Report, pass_ai as ItemFn),
             ],
-            modules: Vec::new(),
+            modules: vec![ModulePassDef {
+                name: "unknown-call",
+                stat: "module-pass/unknown-call",
+                version: "1",
+                run: pass_unknown_call as ModuleFn,
+            }],
             parse_version: PARSE_VERSION,
         }
     }
@@ -597,6 +603,13 @@ fn pass_logic(item: &ast::Item) -> PassOut {
 
 fn pass_contract(item: &ast::Item) -> PassOut {
     PassOut::diags(contract::unchecked_contract_warnings(&one(item)))
+}
+
+fn pass_unknown_call(module: &ast::Module) -> PassOut {
+    // Run unplaced, as the type checker is: positions are item-relative and `owners` says which item.
+    let (owners, diags): (Vec<_>, Vec<_>) =
+        resolve::unknown_call_warnings_owned(&unplaced(module)).into_iter().map(|(i, d)| (Some(i), d)).unzip();
+    PassOut { diags, owners, ..Default::default() }
 }
 
 fn pass_core(item: &ast::Item) -> PassOut {
@@ -1222,7 +1235,9 @@ fn exec_diagnostics(db: &M, f: File) -> Result<Val, QueryError> {
         }
     }
     for p in 0..db.ctx.modules.len() {
-        all.extend(fetch!(db, Key::ModulePass(f, p), Pass).diags.iter().cloned());
+        let mut out = (*fetch!(db, Key::ModulePass(f, p), Pass)).clone();
+        locate(&mut out.diags, &out.owners, &starts);
+        all.extend(out.diags);
     }
     let shape_pass = db.ctx.item_index("shape");
     let mut shape = Vec::new();
@@ -1966,6 +1981,10 @@ impl Compiler {
         };
         a.logic = stamped("logic")?;
         a.contract_warnings = stamped("contract")?;
+        let unknown_call = db.ctx.modules.iter().position(|m| m.name == "unknown-call").expect("built-in pass");
+        let mut out = (*fetch!(db, Key::ModulePass(f, unknown_call), Pass)).clone();
+        locate(&mut out.diags, &out.owners, &starts_of(db, f)?);
+        a.call_warnings = out.diags;
         let shape = db.ctx.item_index("shape");
         for (n, i) in items.iter().enumerate() {
             let notes = fetch!(db, Key::ItemPass(f, shape, i.id.clone()), Pass).notes.clone();

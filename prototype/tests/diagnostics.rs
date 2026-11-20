@@ -87,6 +87,7 @@ const WITNESSES: &[(&str, &str, fn() -> bool)] = &[
     ("E0711", "not_differentiable_net", not_differentiable_net),
     ("E0712", "net_contract_not_checked", net_contract_not_checked),
     ("E0713", "unknown_net", unknown_net),
+    ("E0714", "unknown_function", unknown_function),
     ("E9999", "grad_unchecked", grad_unchecked),
     ("no_derivative_rule", "no_derivative_rule", no_derivative_rule),
     ("param_no_gradient", "param_no_gradient", param_no_gradient),
@@ -263,6 +264,18 @@ fn unknown_net() -> bool {
         && absent("net Nowhere { layer fc: Linear(3, 1); forward { fc } }\ntrain Fit { net: Nowhere; optimizer: SGD(0.1); loss: MSE; epochs: 1; }", "E0713")
 }
 
+/// A call naming nothing the evaluator can run is a warning (E0714) that names the
+/// method, and the same program with a published name, a user method, a closure
+/// or a capability operation is not. A warning leaves the program accepted.
+fn unknown_function() -> bool {
+    let bad = "f g(xs: [i64]) -> i64 { xs.zork(1) }\n";
+    warns(bad, "E0714", "`zork`")
+        && warns("f g(xs: [i64]) -> i64 { xs.sorted() }\n", "E0714", "did you mean `sort`?")
+        && !warns("f g(xs: [i64]) -> i64 { xs.sum() }\n", "E0714", "")
+        && !warns("extend [i64] { f zork(self: [i64], n: i64) -> i64 { n } }\nf g(xs: [i64]) -> i64 { xs.zork(1) }\n", "E0714", "")
+        && check(bad, &[]).iter().all(|(s, _, _)| s != "error")
+}
+
 fn net_shape() -> bool {
     emits("net Chain { layer a: Linear(256, 512); layer b: Linear(256, 128); }", "E0710")
         && absent("net Chain { layer a: Linear(256, 512); layer b: Linear(512, 128); }", "E0710")
@@ -389,6 +402,31 @@ fn the_human_check_agrees_with_the_verdict() {
         let _ = std::fs::remove_file(&path);
         let accepted = mage_prototype::check::check_source(src, false, false).verdict().accepted();
         assert_eq!(out.status.success(), accepted, "they disagree on {src:?}");
+    }
+}
+
+/// E0714 is a warning: `--check` exits as it does for the same program with a name the
+/// evaluator has, in both its human and `--json` forms.
+#[test]
+fn an_unknown_call_warning_does_not_change_the_exit_status() {
+    let status = |src: &str, json: bool| {
+        let path = std::env::temp_dir().join(format!("mage-e0714-{}-{json}.mg", std::process::id()));
+        std::fs::write(&path, src).unwrap();
+        let mut cmd = Command::new(env!("CARGO_BIN_EXE_mage-parse"));
+        cmd.env_remove("MAGE_CACHE_DIR").arg("--check");
+        if json {
+            cmd.arg("--json");
+        }
+        let out = cmd.arg(&path).output().unwrap();
+        let _ = std::fs::remove_file(&path);
+        (out.status.code(), String::from_utf8_lossy(&out.stderr).contains("E0714") || String::from_utf8_lossy(&out.stdout).contains("E0714"))
+    };
+    for json in [false, true] {
+        let (warned_code, warned) = status("f g(xs: [i64]) -> i64 { xs.zork(1) }\n", json);
+        let (clean_code, clean_warned) = status("f g(xs: [i64]) -> i64 { xs.sum() }\n", json);
+        assert!(warned && !clean_warned, "json={json}");
+        assert_eq!(warned_code, clean_code, "json={json}");
+        assert_eq!(clean_code, Some(0), "json={json}");
     }
 }
 

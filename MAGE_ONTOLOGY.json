@@ -6,7 +6,7 @@
     "builtins": 114,
     "ci_floors": 6,
     "cli_flags": 57,
-    "diagnostics": 23,
+    "diagnostics": 24,
     "docs": 7,
     "effects": 24,
     "examples": 10,
@@ -1471,6 +1471,16 @@
         "name": "E0713",
         "severity": "Error",
         "summary": "A train block naming a net the module does not define"
+      },
+      {
+        "category": "UnknownFunction",
+        "emitted_by": [
+          "resolve"
+        ],
+        "fix": "call a function the evaluator has: a user function or method, or a published builtin (`mage-parse --ontology-query <name>`); or define it",
+        "name": "E0714",
+        "severity": "Warning",
+        "summary": "A call naming nothing the evaluator can run: no user function or method, binding, published builtin, capability operation or variant"
       },
       {
         "also_carried_by": [

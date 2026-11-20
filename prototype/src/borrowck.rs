@@ -738,12 +738,12 @@ struct Nums {
     counter: u32,
 }
 
-enum Child<'a> {
+pub(crate) enum Child<'a> {
     E(&'a Expr),
     B(&'a Block),
 }
 
-fn children<'a>(e: &'a Expr, f: &mut dyn FnMut(Child<'a>)) {
+pub(crate) fn children<'a>(e: &'a Expr, f: &mut dyn FnMut(Child<'a>)) {
     use Child::{B, E};
     match e {
         Expr::Literal { .. }
@@ -894,7 +894,7 @@ impl Nums {
 
 // ── Patterns and names ───────────────────────────────────────────────
 
-fn pattern_names(p: &Pattern, out: &mut Vec<String>) {
+pub(crate) fn pattern_names(p: &Pattern, out: &mut Vec<String>) {
     match p {
         Pattern::Ident { name } => out.push(name.clone()),
         Pattern::Literal { .. } | Pattern::Wildcard => {}

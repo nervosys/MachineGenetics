@@ -597,13 +597,19 @@ pub enum DiagnosticCategory {
     /// A `train` block naming a `net` the module does not define. The message
     /// names both, and suggests the closest net name when one is near (E0713).
     UnknownNet,
+    /// A call, `x.name(args)` or `name(args)`, that names nothing the evaluator
+    /// can run: not a user function or method, a binding, a published builtin, a
+    /// capability operation or a variant. The type checker accepts it and
+    /// `--eval` stops with `unknown function`; this is a warning, not an error
+    /// (E0714).
+    UnknownFunction,
     /// Other.
     Other,
 }
 
 impl DiagnosticCategory {
     /// Every category. `tests/diagnostics.rs` holds this to the enum.
-    pub const ALL: [DiagnosticCategory; 21] = [
+    pub const ALL: [DiagnosticCategory; 22] = [
         DiagnosticCategory::BorrowConflict,
         DiagnosticCategory::UseAfterMove,
         DiagnosticCategory::MoveOutOfBorrow,
@@ -624,6 +630,7 @@ impl DiagnosticCategory {
         DiagnosticCategory::NotDifferentiable,
         DiagnosticCategory::ContractNotChecked,
         DiagnosticCategory::UnknownNet,
+        DiagnosticCategory::UnknownFunction,
         DiagnosticCategory::Other,
     ];
 
@@ -650,6 +657,7 @@ impl DiagnosticCategory {
             DiagnosticCategory::NotDifferentiable => "E0711",
             DiagnosticCategory::ContractNotChecked => "E0712",
             DiagnosticCategory::UnknownNet => "E0713",
+            DiagnosticCategory::UnknownFunction => "E0714",
             DiagnosticCategory::CoreViolation => "E0552",
             DiagnosticCategory::ParamDomain => "E0553",
             DiagnosticCategory::Deprecated => "E0554",
@@ -721,6 +729,9 @@ impl DiagnosticCategory {
             }
             DiagnosticCategory::UnknownNet => {
                 "declare the net in this module, or name the net the train block should train"
+            }
+            DiagnosticCategory::UnknownFunction => {
+                "call a function the evaluator has: a user function or method, or a published builtin (`mage-parse --ontology-query <name>`); or define it"
             }
             DiagnosticCategory::Other => "see the message for details",
         }
