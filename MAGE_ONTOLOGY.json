@@ -3,7 +3,7 @@
   "counts": {
     "ast_kinds": 20,
     "bench_backends": 4,
-    "builtins": 114,
+    "builtins": 116,
     "ci_floors": 6,
     "cli_flags": 57,
     "diagnostics": 24,
@@ -20,7 +20,7 @@
     "recovery_stages": 7,
     "sigils": 57,
     "types": 30,
-    "vocabulary": 31,
+    "vocabulary": 41,
     "wrapper_protocol": 9
   },
   "ok": true,
@@ -474,6 +474,18 @@
         "name": "pop",
         "signature": "([A]) -> ?A",
         "summary": "remove and return the last element of the list the receiver names, in place; none when it is empty: xs.pop() or pop(xs)"
+      },
+      {
+        "kind": "function",
+        "name": "insert",
+        "signature": "({K: V}, K, V) -> ?V  or  ([A], usize, A) -> ()",
+        "summary": "in place on the receiver: m.insert(k, v) sets a map key and returns the old value, none when the key was absent; xs.insert(i, x) inserts before index i, an error when i is past the end; the receiver must be a variable or a field/index path of one"
+      },
+      {
+        "kind": "function",
+        "name": "remove",
+        "signature": "({K: V}, K) -> ?V  or  ([A], usize) -> A",
+        "summary": "in place on the receiver: m.remove(k) takes the entry out and returns its value, none when the key is absent; xs.remove(i) takes out element i and returns it, and an index past the end is an error"
       },
       {
         "kind": "function",
@@ -6586,6 +6598,56 @@
         "name": "lower",
         "signature": "str -> str",
         "summary": "lowercase"
+      },
+      {
+        "name": "trim",
+        "signature": "str -> str",
+        "summary": "the string without leading and trailing whitespace"
+      },
+      {
+        "name": "starts_with",
+        "signature": "(str, str) -> bool",
+        "summary": "does the string begin with the prefix"
+      },
+      {
+        "name": "splitn",
+        "signature": "(str, usize, str) -> [str]",
+        "summary": "split on a separator into at most n parts, in Rust's order s.splitn(n, sep); n must be at least 1"
+      },
+      {
+        "name": "clone",
+        "signature": "A -> A",
+        "summary": "the value itself: every value is already copied on binding, so clone is the identity"
+      },
+      {
+        "name": "to_string",
+        "signature": "any -> str",
+        "summary": "the display string of a value, as println renders it"
+      },
+      {
+        "name": "unwrap",
+        "signature": "?A -> A  or  R[A, E] -> A",
+        "summary": "the payload of a Some or an Ok; a runtime error on None or Err"
+      },
+      {
+        "name": "unwrap_or",
+        "signature": "(?A, A) -> A  or  (R[A, E], A) -> A",
+        "summary": "the payload of a Some or an Ok, else the default"
+      },
+      {
+        "name": "map_err",
+        "signature": "(R[A, E], E->F) -> R[A, F]",
+        "summary": "apply a function to the Err payload of a result; Ok passes through"
+      },
+      {
+        "name": "is_empty",
+        "signature": "[A] -> bool  or  {K: V} -> bool  or  str -> bool",
+        "summary": "is the list, map or string empty"
+      },
+      {
+        "name": "get",
+        "signature": "({K: V}, K) -> ?V  or  ([A], usize) -> ?A",
+        "summary": "the value under a key or at an index, none when absent"
       }
     ],
     "wrapper_protocol": [

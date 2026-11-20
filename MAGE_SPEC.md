@@ -239,7 +239,8 @@ boundary between files.
 The reason is the language's premise. An import is pure overhead in tokens: it
 names something the compiler already knows, costs a line at the top of every
 file, and buys separation that matters when a library is large and unstable. The
-standard library here is **31 words** plus **20 capability namespaces**
+standard library here is **41 words** (the thirty-one of the first writing and
+the ten added in the subsection below) plus **20 capability namespaces**
 (§11.2), both fixed and both published in `MAGE_ONTOLOGY.json`. An agent
 generating a program should not spend tokens re-deriving what it can already
 reach.
@@ -261,6 +262,30 @@ What follows from that:
 already parse. It is that every name in every published table becomes
 path-qualified, and every agent-facing document that teaches a bare name has to
 teach a path instead.
+
+#### Words added 2026-11-20
+
+Twelve names that programs use and the type checker accepted were not runnable
+until this date (the census in `benchmarks/UNKNOWN_METHODS.md`). Ten are
+vocabulary words and are counted in the 41 above; `insert` and `remove` are
+place mutators, like `push` and `pop`, and are not. Each takes
+both forms, `x.f(a)` and `f(x, a)`:
+
+- `clone(x)`: `x` itself; every value is already copied on binding.
+- `to_string(x)`: the display string of `x`, rendered as `println` renders it.
+- `unwrap(o)`: the payload of `Some` or `Ok`; an error on `None` or `Err`.
+- `unwrap_or(o, d)`: the payload of `Some` or `Ok`, else `d`.
+- `map_err(r, f)`: applies `f` to the `Err` payload; `Ok` passes through.
+- `get(m, k)` / `get(xs, i)`: the value under a key or at an index; `None` when absent.
+- `is_empty(x)`: true for an empty list, map or string.
+- `trim(s)`: `s` without leading and trailing whitespace.
+- `starts_with(s, p)`: whether `s` begins with `p`.
+- `splitn(s, n, sep)`: `split` into at most `n` parts, in Rust's order (`s.splitn(n, sep)`); `n` is at least 1.
+- `insert(m, k, v)` / `insert(xs, i, x)`: changes the receiver in place. On a map it
+  returns the old value as `?V`; on a list it inserts before index `i` and returns `()`.
+- `remove(m, k)` / `remove(xs, i)`: changes the receiver in place. On a map it
+  returns the removed value as `?V`, `None` when the key is absent; on a list it
+  returns the element itself, and an index past the end is an error (as in Rust).
 
 ### 2.4 Which surface is cheaper, by unit (plan S2)
 

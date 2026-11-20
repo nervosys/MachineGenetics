@@ -1329,6 +1329,24 @@ impl TypeChecker {
         t
     }
 
+    /// Constrain argument `i` of a vocabulary word to `want`, looking through references.
+    /// An argument whose type is still open is left open rather than committed: the word
+    /// does not know the type of a value it is handed, and deciding it here would fix
+    /// that value's type by the order the program happens to be checked in. Integer and
+    /// float literals are not open in this sense, since they take the width `want` gives.
+    fn constrain_arg(&mut self, name: &str, args: &[ast::Expr], i: usize, got: &Ty, want: &Ty) {
+        let t = self.strip_refs(got);
+        let open = match &t {
+            Ty::Var(tv) => {
+                !self.int_lit_vars.iter().any(|(v, _, _)| *v == tv.0) && !self.is_float_lit_var(tv.0)
+            }
+            _ => false,
+        };
+        if !open {
+            self.unify_arg_at(name, args, i, &t, want);
+        }
+    }
+
     fn vocab_arity(&mut self, name: &str, got: usize, want: usize) {
         if got != want {
             self.emit_error(format!("`{name}` expects {want} argument(s), found {got}"));
@@ -1366,16 +1384,44 @@ impl TypeChecker {
         }
     }
 
-    /// A call of a `LIST_MUTATORS` name, as `push(xs, x)` / `xs.push(x)` or
-    /// `pop(xs)` / `xs.pop()`, with the receiver first in `operands`. The
-    /// receiver must be a collection and `push`'s value its element type;
-    /// `push` is `()` and `pop` is `?A` (`None` on an empty list). The
-    /// evaluator performs both in place on the receiver's variable.
+    /// A call of a `LIST_MUTATORS` name, as `push(xs, x)` / `xs.push(x)`,
+    /// `pop(xs)` / `xs.pop()`, or `insert` / `remove` on a list or a map,
+    /// with the receiver first in `operands`.
+    /// `push` is `()`, `pop` is `?A` (`None` on an empty list); `insert` on a
+    /// map is `?V` (the old value) and on a list `()`; `remove` is `?V` / `?A`.
+    /// The evaluator performs all of them in place on the receiver's variable.
+    /// A receiver that is not yet known gives a fresh type, not a guess.
     fn infer_list_mutator(&mut self, name: &str, operands: &[ast::Expr]) -> Ty {
         let tys: Vec<Ty> = operands.iter().map(|a| self.infer_expr(a)).collect();
-        self.vocab_arity(name, tys.len(), if name == "push" { 2 } else { 1 });
+        let want = match name {
+            "push" | "remove" => 2,
+            "insert" => 3,
+            _ => 1,
+        };
+        self.vocab_arity(name, tys.len(), want);
         if tys.is_empty() {
             return self.fresh();
+        }
+        if name == "insert" || name == "remove" {
+            let recv = self.strip_refs(&tys[0]);
+            let (key, elem, is_map) = match recv {
+                Ty::Map(k, v) => (*k, *v, true),
+                Ty::Vec(e) | Ty::Array(e, _) | Ty::Slice(e) => {
+                    (Ty::Uint(crate::hir::UintTy::Usize), *e, false)
+                }
+                _ => return self.fresh(),
+            };
+            if tys.len() >= 2 {
+                self.constrain_arg(name, operands, 1, &tys[1], &key);
+            }
+            if name == "remove" {
+                // A map gives `?V`; a list gives the element, as Rust's `Vec::remove`.
+                return if is_map { Ty::Option(Box::new(elem)) } else { elem };
+            }
+            if tys.len() >= 3 {
+                self.constrain_arg(name, operands, 2, &tys[2], &elem);
+            }
+            return if is_map { Ty::Option(Box::new(elem)) } else { Ty::Unit };
         }
         let elem = self.collection_elem(&tys[0]);
         if name == "push" {
@@ -1408,14 +1454,23 @@ impl TypeChecker {
         // before it, so those are inferred first and the closure last.
         let closure_at = match name {
             "map" | "filter" | "any" | "all" | "find" | "group" => Some(1),
-            "reduce" => Some(1),
+            "reduce" | "map_err" => Some(1),
             "fold" | "scan" => Some(2),
             _ => None,
         };
         let mut a: Vec<Ty> = Vec::with_capacity(args.len());
         for (i, e) in args.iter().enumerate() {
             if Some(i) == closure_at && matches!(e, ast::Expr::Closure { .. }) && !a.is_empty() {
-                let elem = self.collection_elem(&a[0]);
+                // `map_err` hands its function the error payload of a result,
+                // not an element of a collection.
+                let elem = if name == "map_err" {
+                    match self.strip_refs(&a[0]) {
+                        Ty::Result(_, e) => *e,
+                        _ => self.fresh(),
+                    }
+                } else {
+                    self.collection_elem(&a[0])
+                };
                 self.closure_hint = Some(match name {
                     "reduce" => vec![elem.clone(), elem],
                     "fold" | "scan" if a.len() >= 2 => vec![a[1].clone(), elem],
@@ -1672,6 +1727,114 @@ impl TypeChecker {
                     self.unify_arg_at(name, args, 0, &t, &Ty::Str);
                 }
                 Ty::Str
+            }
+            "trim" => {
+                self.vocab_arity(name, n, 1);
+                if n >= 1 {
+                    self.constrain_arg(name, args, 0, &a[0], &Ty::Str);
+                }
+                Ty::Str
+            }
+            "starts_with" => {
+                self.vocab_arity(name, n, 2);
+                for (i, t) in a.iter().take(2).enumerate() {
+                    self.constrain_arg(name, args, i, t, &Ty::Str);
+                }
+                Ty::Bool
+            }
+            "splitn" => {
+                // Rust's order: `s.splitn(n, sep)`, so the limit comes before the separator.
+                self.vocab_arity(name, n, 3);
+                if n >= 1 {
+                    self.constrain_arg(name, args, 0, &a[0], &Ty::Str);
+                }
+                if n >= 2 {
+                    self.constrain_arg(name, args, 1, &a[1], &usize_ty);
+                }
+                if n >= 3 {
+                    self.constrain_arg(name, args, 2, &a[2], &Ty::Str);
+                }
+                Ty::Vec(Box::new(Ty::Str))
+            }
+            // `clone` is the identity, so it has the argument's type, without its references.
+            "clone" => {
+                self.vocab_arity(name, n, 1);
+                if n >= 1 { self.strip_refs(&a[0]) } else { self.fresh() }
+            }
+            "to_string" => {
+                self.vocab_arity(name, n, 1);
+                Ty::Str
+            }
+            // `unwrap` and `unwrap_or` take the payload of an option or a result. Where the
+            // receiver is not yet known, the result is left open.
+            "unwrap" | "unwrap_or" => {
+                self.vocab_arity(name, n, if name == "unwrap" { 1 } else { 2 });
+                let payload = if n >= 1 {
+                    match self.strip_refs(&a[0]) {
+                        Ty::Option(p) => Some(*p),
+                        Ty::Result(ok, _) => Some(*ok),
+                        _ => None,
+                    }
+                } else {
+                    None
+                };
+                match payload {
+                    Some(p) => {
+                        if name == "unwrap_or" && n >= 2 {
+                            self.constrain_arg(name, args, 1, &a[1], &p);
+                        }
+                        p
+                    }
+                    None => self.fresh(),
+                }
+            }
+            "map_err" => {
+                self.vocab_arity(name, n, 2);
+                let t = if n >= 1 { self.strip_refs(&a[0]) } else { self.fresh() };
+                match t {
+                    Ty::Result(ok, e) => {
+                        let out = self.fresh();
+                        if n >= 2 {
+                            let f = Ty::Fn(vec![*e], Box::new(out.clone()), pure());
+                            self.unify_arg_at(name, args, 1, &a[1], &f);
+                        }
+                        Ty::Result(ok, Box::new(self.subst.apply(&out)))
+                    }
+                    _ => self.fresh(),
+                }
+            }
+            "is_empty" => {
+                self.vocab_arity(name, n, 1);
+                if n >= 1 {
+                    // A map is sized too, which `sized_arg` (a string or a collection of
+                    // elements) does not take, so it is named here.
+                    if !matches!(self.strip_refs(&a[0]), Ty::Map(..)) {
+                        self.sized_arg(&a[0]);
+                    }
+                }
+                Ty::Bool
+            }
+            // `get(m, k)`: the value under a key of a map, or the element at an index
+            // of a list. Absent is `None`. A receiver not yet known is left open.
+            "get" => {
+                self.vocab_arity(name, n, 2);
+                let t = if n >= 1 { self.strip_refs(&a[0]) } else { self.fresh() };
+                match t {
+                    // Rust's `get` lends the element: the result is `?&V`, not `?V`.
+                    Ty::Map(k, v) => {
+                        if n >= 2 {
+                            self.constrain_arg(name, args, 1, &a[1], &k);
+                        }
+                        Ty::Option(Box::new(Ty::Ref(false, v)))
+                    }
+                    Ty::Vec(e) | Ty::Array(e, _) | Ty::Slice(e) => {
+                        if n >= 2 {
+                            self.constrain_arg(name, args, 1, &a[1], &usize_ty);
+                        }
+                        Ty::Option(Box::new(Ty::Ref(false, e)))
+                    }
+                    _ => Ty::Option(Box::new(self.fresh())),
+                }
             }
             _ => return None,
         };

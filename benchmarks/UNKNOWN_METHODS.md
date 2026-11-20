@@ -20,6 +20,8 @@ calls the resolver already refuses (E0425) are not warned twice.
 
 ## Recommendation
 
+**Implemented 2026-11-20:** `to_string`, `clone`, `unwrap_or`, `insert`, `trim`, `remove`, `starts_with`, `is_empty`, `get`, `map_err`, `splitn` and `unwrap` (12 names). The concurrency names `spawn`, `load`, `fetch_add` and `fetch_sub` were left out of this change and remain unrunnable. `splitn` takes its arguments in Rust's order, `s.splitn(n, sep)`, unlike the census row's `splitn(s, sep, n)`; the references call it that way. The census table below is the count as it was taken; it was not regenerated.
+
 One per name. The rule: `rename` when a published word already does it; `implement` when
 the meaning is obvious, spec-consistent and used at 3 or more sites in 2 or more files;
 `remove` otherwise (no clear meaning without a type or runtime the evaluator lacks, an
