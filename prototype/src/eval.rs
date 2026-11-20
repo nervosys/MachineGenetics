@@ -76,16 +76,26 @@ pub struct ClosureData {
     siblings: Option<SiblingGroup>,
 }
 
+/// A float as MAGE writes a float literal: a whole number keeps its `.0`
+/// (`32.0`, not `32`), because without it the text reads back as an integer
+/// (§3.5: a decimal number is a float only with a fractional part or an
+/// exponent). Every other finite value, and `NaN` and the infinities, print as
+/// Rust's shortest round-trip form always did.
+fn float_text(x: f64) -> String {
+    let s = x.to_string();
+    if x.is_finite() && !s.contains('.') && !s.contains('e') { format!("{s}.0") } else { s }
+}
+
 impl std::fmt::Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Value::Int(n) => write!(f, "{n}"),
-            Value::Float(x) => write!(f, "{x}"),
+            Value::Float(x) => f.write_str(&float_text(*x)),
             // Shown as the number it is. A `Dual` should never reach a
             // print — `grad` unwraps it — but rendering the derivative
             // here would make a leak look like a formatting bug rather
             // than the wrong value.
-            Value::Dual(x, _) => write!(f, "{x}"),
+            Value::Dual(x, _) => f.write_str(&float_text(*x)),
             Value::Bool(b) => write!(f, "{b}"),
             Value::Str(s) => write!(f, "{s:?}"),
             Value::List(xs) => {
@@ -878,8 +888,29 @@ impl Interp {
         Ok((self.eval(a, env)?, None))
     }
 
-    /// `xs.push(x)` / `xs.pop()` (also `push(xs, x)`): in-place on the place
-    /// `recv` names, so later statements see it.
+    /// Whether the place `recv` names currently holds a list. Answered only for
+    /// a path whose evaluation has no effect (names, fields, and indices that
+    /// are names or literals), so it is safe to ask before committing to a
+    /// call; any other path answers no.
+    fn place_is_list(&self, recv: &Expr, env: &mut Env) -> bool {
+        fn plain(e: &Expr) -> bool {
+            match e {
+                Expr::Ident { .. } => true,
+                Expr::FieldAccess { object, .. } => plain(object),
+                Expr::Index { object, index } => {
+                    matches!(&**index, Expr::Ident { .. } | Expr::Literal { .. }) && plain(object)
+                }
+                _ => false,
+            }
+        }
+        plain(recv)
+            && self
+                .mutate_place(recv, env, |p| Ok(Value::Bool(matches!(p, Value::List(_)))))
+                .is_ok_and(|v| v == Value::Bool(true))
+    }
+
+    /// `xs.push(x)` / `xs.pop()` / `xs.swap(i, j)` (also `push(xs, x)`):
+    /// in-place on the place `recv` names, so later statements see it.
     fn place_method(&self, name: &str, recv: &Expr, rest: &[Expr], env: &mut Env) -> R {
         if !is_place(recv) {
             return err(format!(
@@ -904,6 +935,24 @@ impl Interp {
                         Ok(Value::Unit)
                     }
                     other => err(format!("`push` needs a list receiver, found {other}")),
+                })
+            }
+            "swap" => {
+                let (Some(Value::Int(i)), Some(Value::Int(j)), 2) = (av.first(), av.get(1), av.len())
+                else {
+                    return err("`swap` takes two integer indices: xs.swap(i, j)");
+                };
+                let (i, j) = (*i, *j);
+                self.mutate_place(recv, env, |p| match p {
+                    Value::List(xs) => {
+                        let n = xs.len();
+                        if i < 0 || j < 0 || i as usize >= n || j as usize >= n {
+                            return err(format!("`swap({i}, {j})` out of bounds for length {n}"));
+                        }
+                        xs.swap(i as usize, j as usize);
+                        Ok(Value::Unit)
+                    }
+                    other => err(format!("`swap` needs a list receiver, found {other}")),
                 })
             }
             _ => {
@@ -1426,10 +1475,16 @@ impl Interp {
                 // `xs.push(x)` / `xs.pop()` change the place `xs` names. Unless
                 // a user function or method of that name exists, there is
                 // nothing to look up, so the receiver is not copied.
-                if (method == "push" || method == "pop")
+                //
+                // The same holds for `xs.swap(i, j)`. When the program also
+                // declares a method of that name (`Stack.push`), the receiver
+                // decides: a list place takes the builtin, anything else goes
+                // on to the method lookup below.
+                if matches!(method.as_str(), "push" | "pop" | "swap")
                     && is_place(receiver)
                     && !self.funcs.contains_key(method)
-                    && !self.methods.keys().any(|(_, m)| m == method)
+                    && (!self.methods.keys().any(|(_, m)| m == method)
+                        || self.place_is_list(receiver, env))
                 {
                     return self.place_method(method, receiver, args, env);
                 }
@@ -4373,6 +4428,116 @@ f main() -> i32 {
         let src = "f mk() -> Vec[i64] { [1] }\nf t() -> usize {\n    mk().push(2)\n    1\n}\n";
         let e = run_source(src, "t", &[]).unwrap_err();
         assert!(e.contains("`push` changes its receiver"), "{e}");
+    }
+
+    /// A user method named `push`/`pop` must not hide the builtin on a list:
+    /// `Stack.push` itself calls `self.items.push(v)`. The receiver decides.
+    #[test]
+    fn list_push_pop_still_work_inside_a_type_with_its_own_push_and_pop() {
+        let src = "S Stack { items: [i32]~ }
+I Stack {
+    +f new() -> Stack { @Stack { items: [] } }
+    +f push(&!self, val: i32) { self.items.push(val); }
+    +f pop(&!self) -> ?i32 { self.items.pop() }
+}
++f t() -> ?i32 { v s = Stack.new(); s.push(1); s.push(2); s.pop() }
+";
+        assert_eq!(check_errors(src), vec![], "must typecheck");
+        assert_eq!(run(src, "t", &[]).to_string(), "Some(2)");
+        // A bare list in the same program still takes the builtin.
+        let src = "S Stack { items: [i32]~ }
+I Stack {
+    +f push(&!self, val: i32) { self.items.push(val); }
+}
++f t() -> i64 { m xs: [i32]~ = []; xs.push(4); xs.push(5); len(xs) }
+";
+        assert_eq!(run(src, "t", &[]), Value::Int(2));
+        // A computed receiver is still refused, user method or not.
+        let src = "S Stack { items: [i32]~ }
+I Stack {
+    +f push(&!self, val: i32) { self.items.push(val); }
+}
++f mk() -> [i32]~ { [1] }
++f t() -> i64 { mk().push(2); 1 }
+";
+        let e = run_source(src, "t", &[]).unwrap_err();
+        assert!(e.contains("`push` changes its receiver"), "{e}");
+    }
+
+    /// `xs.swap(i, j)` on a place changes it, including through a `&!` parameter.
+    #[test]
+    fn swap_exchanges_two_elements_of_a_list_place() {
+        let src = "+f reverse(items: &![i32]~) {
+    m i: usize = 0;
+    m j: usize = items.len() - 1;
+    loop {
+        ? i >= j { break; }
+        items.swap(i, j);
+        i = i + 1;
+        j = j - 1;
+    }
+}
++f t() -> [i32]~ { m xs = [1, 2, 3]; reverse(&!xs); xs }
+";
+        assert_eq!(check_errors(src), vec![], "must typecheck");
+        assert_eq!(run(src, "t", &[]).to_string(), "[3, 2, 1]");
+        let src = "f t() -> [i64] {
+    m g: Vec[Vec[i64]] = [[1], [2, 3]]
+    g[1].swap(0, 1)
+    g[1]
+}
+";
+        assert_eq!(run(src, "t", &[]).to_string(), "[3, 2]");
+    }
+
+    #[test]
+    fn swap_out_of_bounds_or_on_a_non_list_is_a_precise_error() {
+        let e = run_source("f t() -> i64 {
+    m xs: Vec[i64] = [1, 2]
+    xs.swap(0, 2)
+    1
+}
+", "t", &[]).unwrap_err();
+        assert!(e.contains("out of bounds"), "{e}");
+        let e = run_source("f t() -> i64 {
+    m n = 5
+    n.swap(0, 1)
+    1
+}
+", "t", &[]).unwrap_err();
+        assert!(e.contains("`swap` needs a list receiver"), "{e}");
+        // The two-place free function still needs a reference this evaluator lacks.
+        let e = run_source("f t() -> i64 {
+    m a = 1
+    m b = 2
+    swap(a, b)
+    a
+}
+", "t", &[]).unwrap_err();
+        assert!(e.contains("mutates through a reference"), "{e}");
+    }
+
+    /// A float prints the way a float literal is written: `.0` kept.
+    #[test]
+    fn a_whole_float_prints_with_its_point() {
+        for (x, shown) in [
+            (32.0, "32.0"),
+            (0.0, "0.0"),
+            (-3.0, "-3.0"),
+            (0.5, "0.5"),
+            (0.1 + 0.2, "0.30000000000000004"),
+            (1e21, "1000000000000000000000.0"),
+            (f64::NAN, "NaN"),
+            (f64::INFINITY, "inf"),
+        ] {
+            assert_eq!(Value::Float(x).to_string(), shown);
+        }
+        assert_eq!(Value::Int(32).to_string(), "32", "an integer stays bare");
+        let v = Value::Struct("P".into(), vec![("x".into(), Value::Float(0.0)), ("n".into(), Value::Int(1))]);
+        assert_eq!(v.to_string(), "P { x: 0.0, n: 1 }");
+        let src = "f t() -> f64 { 1.5 + 2.5 }
+";
+        assert_eq!(run(src, "t", &[]).to_string(), "4.0");
     }
 
     /// `&x` read correctly: a shared reference is the referent's value.

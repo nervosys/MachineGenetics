@@ -30,12 +30,12 @@ each claim has a command beside it.
 
 | | |
 |---|---|
-| Tests | **4,225** — rmi 1,384 · prototype 1,958 · ribosome 168 · germline 315 · forge 65 · arena 335 |
+| Tests | **4,229** — rmi 1,384 · prototype 1,962 · ribosome 168 · germline 315 · forge 65 · arena 335 |
 | CUDA | **1,229 passing** on dual RTX 3090 Ti, driver 610.88 |
 | Warnings | 0 compiler, 0 clippy in the four owned crates (`rmi` keeps 2 — vendored) |
 | Vulnerabilities | 0 Rust across six lockfiles, 0 npm — and the four *committed* lockfiles report 0 warnings too. Re-run 2026-08-25, and **no longer only a claim with a date on it**: `scripts/check-security-register.sh` now re-derives it in CI and compares the result against `SECURITY_AUDIT.md` §1's accepted-risk register in both directions. `master` still carries the `nanoid` npm advisory (Dependabot #18) — fixed on `master`, along with four high-severity `fast-uri` advisories CI caught on 2026-09-02 |
 | CI | 11 jobs defined, **10 of which ever run** — green on `master`. The eleventh, `prototype — cuda kernels (self-hosted GPU)`, has no runner and has never executed (open item 2) |
-| Reliability floors | file-oracle parse 99/99, perturbed pattern-heal 42, native-lexer ratio 0.980. The parse floor counts parsing only: 65/99 references type-check and 28/99 tasks pass their own tests (`benchmarks/ACCEPTANCE.md`) |
+| Reliability floors | file-oracle parse 99/99, perturbed pattern-heal 42, native-lexer ratio 0.980. The parse floor counts parsing only: 65/99 references type-check and 41/99 tasks pass their own tests (`benchmarks/ACCEPTANCE.md`) |
 | Examples | 12 of 12 typecheck, run, and print their recorded answer |
 | `.mg` sources | **126 checked, 1 sketches** — every `.mg` file in the repository typechecks except `prototype/examples/heal/type_error.mg`, which is ill-typed on purpose as the `--heal` demo |
 | Differentiability | **35 of 35 nets and 8 of 8 train blocks; 12 of 176 functions** (three arena harness policies and nine physics-task and system-identification steps) — `scripts/measure-differentiability.sh`, re-derived in CI and compared against `DIFFERENTIABILITY.md` in both directions |
@@ -4946,7 +4946,7 @@ changed before you commit.
 ---
 ## Notes on the shape of the work
 
-- Prototype tests **1,066 → 1,958**, all green — checked against the live run, so
+- Prototype tests **1,066 → 1,962**, all green — checked against the live run, so
   it tracks forward rather than freezing at the session that wrote it. Total
   across six crates **3,140**; documented-count pins **138**, up from 46 — the
   two newest hold the `kb`/`net` overlap the tensor-product-binding decision

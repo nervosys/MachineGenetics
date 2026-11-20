@@ -15,8 +15,8 @@
       "token_count": 210
     },
     "tests": [
-      { "input": "v a = RingAlloc.new(16); a.alloc(8)", "expected": "?Some(0)" },
-      { "input": "v a = RingAlloc.new(4); a.alloc(4); a.alloc(1)", "expected": "?None" }
+      { "input": "v a = RingAlloc.new(16); a.alloc(8)", "expected": "Some(0)" },
+      { "input": "v a = RingAlloc.new(4); a.alloc(4); a.alloc(1)", "expected": "None" }
     ]
   },
   {
@@ -55,8 +55,8 @@
       "token_count": 180
     },
     "tests": [
-      { "input": "v a = Arena.new(1024); a.alloc(64, 8)", "expected": "?Some(0)" },
-      { "input": "v a = Arena.new(16); a.alloc(16, 1); a.alloc(1, 1)", "expected": "?None" }
+      { "input": "v a = Arena.new(1024); a.alloc(64, 8)", "expected": "Some(0)" },
+      { "input": "v a = Arena.new(16); a.alloc(16, 1); a.alloc(1, 1)", "expected": "None" }
     ]
   },
   {
@@ -75,7 +75,7 @@
       "token_count": 230
     },
     "tests": [
-      { "input": "v b = ByteBuf.new(); b.write_u8(42); b.read_u8()", "expected": "?Some(42)" },
+      { "input": "v b = ByteBuf.new(); b.write_u8(42); b.read_u8()", "expected": "Some(42)" },
       { "input": "v b = ByteBuf.new(); b.write_u32_be(256); b.remaining()", "expected": "4" }
     ]
   },
