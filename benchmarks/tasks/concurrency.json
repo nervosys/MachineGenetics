@@ -110,7 +110,7 @@
       "token_count": 108
     },
     "tests": [
-      { "input": "with_timeout(1000, fn() => 42)", "expected": "?Some(42)" }
+      { "input": "with_timeout(1000, fn() => 42)", "expected": "Some(42)" }
     ]
   },
   {

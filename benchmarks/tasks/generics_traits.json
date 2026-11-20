@@ -55,7 +55,7 @@
       "token_count": 280
     },
     "tests": [
-      { "input": "v c = Cache.new(2); c.insert(\"a\", 1); c.insert(\"b\", 2); c.insert(\"c\", 3); c.get(\"a\")", "expected": "?None" },
+      { "input": "v c = Cache.new(2); c.insert(\"a\", 1); c.insert(\"b\", 2); c.insert(\"c\", 3); c.get(\"a\")", "expected": "None" },
       { "input": "v c = Cache.new(2); c.insert(\"a\", 1); c.len()", "expected": "1" }
     ]
   },
@@ -95,8 +95,8 @@
       "token_count": 290
     },
     "tests": [
-      { "input": "ConfigBuilder.new().host(\"localhost\").port(3000).build()", "expected": "R.Ok(Config{host:\"localhost\",port:3000,max_connections:100,tls:false})" },
-      { "input": "ConfigBuilder.new().build()", "expected": "R.Err(\"host is required\")" }
+      { "input": "ConfigBuilder.new().host(\"localhost\").port(3000).build()", "expected": "Ok(Config{host:\"localhost\",port:3000,max_connections:100,tls:false})" },
+      { "input": "ConfigBuilder.new().build()", "expected": "Err(\"host is required\")" }
     ]
   }
 ]

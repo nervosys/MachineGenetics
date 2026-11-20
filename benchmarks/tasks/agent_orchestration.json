@@ -53,7 +53,7 @@
       "token_count": 158
     },
     "tests": [
-      { "input": "self_correct(\"write hello world\", 3)", "expected": "R.Ok(<valid code>)" }
+      { "input": "self_correct(\"write hello world\", 3)", "expected": "Ok(<valid code>)" }
     ]
   },
   {
@@ -72,7 +72,7 @@
       "token_count": 260
     },
     "tests": [
-      { "input": "v r = ToolRegistry.new(); r.register(@ToolDef{name:\"echo\",description:\"echoes\",handler:fn(s)=>R.Ok(s)}); r.invoke(\"echo\", \"hi\")", "expected": "R.Ok(\"hi\")" }
+      { "input": "v r = ToolRegistry.new(); r.register(@ToolDef{name:\"echo\",description:\"echoes\",handler:fn(s)=>Ok(s)}); r.invoke(\"echo\", \"hi\")", "expected": "Ok(\"hi\")" }
     ]
   },
   {
@@ -119,8 +119,8 @@
     "difficulty": "very-hard",
     "task": "Write a structured output parser that extracts typed fields from an LLM response using a schema definition",
     "solution": {
-      "rdx_source": "E FieldType { Str, Int, Bool, List }\n\nS FieldDef { name: s, field_type: FieldType, required: bool }\n\nS Schema { fields: [FieldDef]~ }\n\nS ParsedOutput { values: {s: s} }\n\n+f parse_output(text: &s, schema: &Schema) -> R[ParsedOutput, s] {\n    m values: {s: s} = {};\n    @ field : &schema.fields {\n        v pattern = f\"{field.name}:\";\n        v idx = text.find(&pattern);\n        ? idx {\n            ?Some(i) => {\n                v start = i + pattern.len();\n                v rest = text[start..].trim();\n                v end = rest.find('\\n').unwrap_or(rest.len());\n                values.insert(field.name.clone(), rest[..end].trim().to_string());\n            },\n            ?None => {\n                ? field.required {\n                    ret R.Err(f\"missing required field: {field.name}\");\n                }\n            },\n        }\n    }\n    R.Ok(@ParsedOutput { values: values })\n}",
-      "token_count": 160,
+      "rdx_source": "E FieldType { Str, Int, Bool, List }\n\nS FieldDef { name: s, field_type: FieldType, required: bool }\n\nS Schema { fields: [FieldDef]~ }\n\nS ParsedOutput { values: {s: s} }\n\n+f parse_output(text: &s, schema: &Schema) -> R[ParsedOutput, s] {\n    m values: {s: s} = {};\n    @ field : &schema.fields {\n        v pattern = f\"{field.name}:\";\n        v idx = text.find(&pattern);\n        ? idx {\n            ?Some(i) => {\n                v start = i + pattern.len();\n                v rest = text[start..].trim();\n                v end = rest.find('\\n').unwrap_or(rest.len());\n                values.insert(field.name.clone(), rest[..end].trim().to_string());\n            },\n            ?None => {\n                ? field.required {\n                    ret Err(f\"missing required field: {field.name}\");\n                }\n            },\n        }\n    }\n    Ok(@ParsedOutput { values: values })\n}",
+      "token_count": 218,
       "effects": [],
       "skb_rules_used": ["type_safety:result-return", "borrow:shared-ref"]
     },
@@ -129,7 +129,7 @@
       "token_count": 260
     },
     "tests": [
-      { "input": "parse_output(\"name: test\\ncount: 5\", schema)", "expected": "R.Ok(ParsedOutput{values:{\"name\":\"test\",\"count\":\"5\"}})" }
+      { "input": "parse_output(\"name: test\\ncount: 5\", schema)", "expected": "Ok(ParsedOutput{values:{\"name\":\"test\",\"count\":\"5\"}})" }
     ]
   },
   {
@@ -138,8 +138,8 @@
     "difficulty": "very-hard",
     "task": "Write a capability-based sandbox that restricts which effects an agent can use at runtime",
     "solution": {
-      "rdx_source": "E Capability { FileRead, FileWrite, NetAccess, CodeExec, LlmCall }\n\nS Sandbox {\n    allowed: [Capability]~,\n    denied_log: [s]~,\n}\n\nI Sandbox {\n    +f new(caps: [Capability]~) -> Sandbox {\n        @Sandbox { allowed: caps, denied_log: [] }\n    }\n    +f check(&!self, cap: Capability) -> bool {\n        v allowed = self.allowed.iter().any(fn(c) => c == &cap);\n        ? !allowed {\n            self.denied_log.push(f\"denied: {cap}\");\n        }\n        allowed\n    }\n    +f guarded_read(&!self, path: &s) -> R[s, s] / fs {\n        ? self.check(Capability.FileRead) {\n            fs.read_bytes(path).map(fn(b) => s.from_utf8(b).unwrap())\n        } : {\n            R.Err(\"file read not permitted\")\n        }\n    }\n    +f guarded_net(&!self, url: &s) -> R[s, s] / net {\n        ? self.check(Capability.NetAccess) {\n            net.get(url)\n        } : {\n            R.Err(\"network access not permitted\")\n        }\n    }\n    +f audit_log(&self) -> &[s]~ { &self.denied_log }\n}",
-      "token_count": 200,
+      "rdx_source": "E Capability { FileRead, FileWrite, NetAccess, CodeExec, LlmCall }\n\nS Sandbox {\n    allowed: [Capability]~,\n    denied_log: [s]~,\n}\n\nI Sandbox {\n    +f new(caps: [Capability]~) -> Sandbox {\n        @Sandbox { allowed: caps, denied_log: [] }\n    }\n    +f check(&!self, cap: Capability) -> bool {\n        v allowed = self.allowed.iter().any(fn(c) => c == &cap);\n        ? !allowed {\n            self.denied_log.push(f\"denied: {cap}\");\n        }\n        allowed\n    }\n    +f guarded_read(&!self, path: &s) -> R[s, s] / fs {\n        ? self.check(Capability.FileRead) {\n            fs.read_bytes(path).map(fn(b) => s.from_utf8(b).unwrap())\n        } : {\n            Err(\"file read not permitted\")\n        }\n    }\n    +f guarded_net(&!self, url: &s) -> R[s, s] / net {\n        ? self.check(Capability.NetAccess) {\n            net.get(url)\n        } : {\n            Err(\"network access not permitted\")\n        }\n    }\n    +f audit_log(&self) -> &[s]~ { &self.denied_log }\n}",
+      "token_count": 248,
       "effects": ["fs", "net"],
       "skb_rules_used": ["ownership:exclusive-ref", "borrow:shared-ref", "type_safety:result-return"]
     },

@@ -1234,8 +1234,13 @@ impl Resolver {
                 self.resolve_expr(value);
             }
             ast::Expr::Range { start, end, .. } => {
-                self.resolve_expr(start);
-                self.resolve_expr(end);
+                // An open end (`xs[a..]`, `xs[..b]`) is the parser's `_`
+                // sentinel, not a name.
+                for bound in [start, end] {
+                    if !matches!(&**bound, ast::Expr::Ident { name } if name == "_") {
+                        self.resolve_expr(bound);
+                    }
+                }
             }
             ast::Expr::Pipeline { left, right } => {
                 self.resolve_expr(left);

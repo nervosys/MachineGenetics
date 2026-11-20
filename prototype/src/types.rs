@@ -1281,6 +1281,16 @@ impl TypeChecker {
         }
     }
 
+    /// A shared or exclusive reference auto-derefs where a string is read:
+    /// `&str` is the string slice of section B.4, and `s.len()` already takes it.
+    fn strip_refs(&mut self, ty: &Ty) -> Ty {
+        let mut t = self.subst.apply(ty);
+        while let Ty::Ref(_, inner) = t {
+            t = *inner;
+        }
+        t
+    }
+
     fn vocab_arity(&mut self, name: &str, got: usize, want: usize) {
         if got != want {
             self.emit_error(format!("`{name}` expects {want} argument(s), found {got}"));
@@ -1594,14 +1604,16 @@ impl TypeChecker {
             "split" => {
                 self.vocab_arity(name, n, 2);
                 for (i, t) in a.iter().take(2).enumerate() {
-                    self.unify_arg_at(name, args, i, t, &Ty::Str);
+                    let t = self.strip_refs(t);
+                    self.unify_arg_at(name, args, i, &t, &Ty::Str);
                 }
                 Ty::Vec(Box::new(Ty::Str))
             }
             "chars" | "words" | "lines" => {
                 self.vocab_arity(name, n, 1);
                 if n >= 1 {
-                    self.unify_arg_at(name, args, 0, &a[0], &Ty::Str);
+                    let t = self.strip_refs(&a[0]);
+                    self.unify_arg_at(name, args, 0, &t, &Ty::Str);
                 }
                 Ty::Vec(Box::new(Ty::Str))
             }
@@ -1618,7 +1630,8 @@ impl TypeChecker {
             "upper" | "lower" => {
                 self.vocab_arity(name, n, 1);
                 if n >= 1 {
-                    self.unify_arg_at(name, args, 0, &a[0], &Ty::Str);
+                    let t = self.strip_refs(&a[0]);
+                    self.unify_arg_at(name, args, 0, &t, &Ty::Str);
                 }
                 Ty::Str
             }
@@ -2393,6 +2406,21 @@ impl TypeChecker {
                 let obj_ty = self.infer_expr(object);
                 self.infer_expr(index);
 
+                // `e[a..b]` is a slice of `e`, not an element of it (section 4.6).
+                if matches!(&**index, ast::Expr::Range { .. }) {
+                    let mut base = self.subst.apply(&obj_ty);
+                    while let Ty::Ref(_, inner) = base {
+                        base = *inner;
+                    }
+                    match base {
+                        Ty::Str => return Ty::Str,
+                        Ty::Array(inner, _) | Ty::Slice(inner) | Ty::Vec(inner) => {
+                            return Ty::Vec(inner);
+                        }
+                        _ => return self.fresh(),
+                    }
+                }
+
                 match &obj_ty {
                     Ty::Array(inner, _) | Ty::Slice(inner) | Ty::Vec(inner) => *inner.clone(),
                     Ty::Map(_, v) => *v.clone(),
@@ -2460,7 +2488,11 @@ impl TypeChecker {
                     }
                 }
 
-                Ty::Named(crate::hir::SymbolId(self.intern_named(&name)), Vec::new())
+                // A generic struct's literal carries one fresh argument per
+                // parameter, so it unifies with `Pair[T]` and `Pair[i64]`.
+                let n_generics = self.struct_defs.get(&name).map_or(0, |(g, _)| g.len());
+                let targs: Vec<Ty> = (0..n_generics).map(|_| self.fresh()).collect();
+                Ty::Named(crate::hir::SymbolId(self.intern_named(&name)), targs)
             }
 
             ast::Expr::TupleLit { elements } => {
@@ -2778,9 +2810,13 @@ impl TypeChecker {
             }
 
             ast::Expr::Range { start, end, .. } => {
-                let st = self.infer_expr(start);
-                let et = self.infer_expr(end);
-                if let Err(e) = unify(&mut self.subst, &st, &et) {
+                // An open end is the parser's `_` sentinel: unbounded, no type.
+                let open = |e: &ast::Expr| matches!(e, ast::Expr::Ident { name } if name == "_");
+                let st = if open(start) { None } else { Some(self.infer_expr(start)) };
+                let et = if open(end) { None } else { Some(self.infer_expr(end)) };
+                if let (Some(st), Some(et)) = (&st, &et)
+                    && let Err(e) = unify(&mut self.subst, st, et)
+                {
                     self.emit_error(format!("range type mismatch: {e}"));
                 }
                 // Range<T> — simplified.
@@ -3235,6 +3271,33 @@ mod tests {
         let src = "S P { x: i32 }\nI P { +f map(&self, k: i32) -> i32 { self.x * k } }\n\
                    f g(p: P) -> i32 { p.map(3) }";
         assert_eq!(error_messages(src), Vec::<String>::new());
+    }
+
+    #[test]
+    fn open_ended_slices_check_and_are_collections() {
+        // Section 4.6: `e[a..b]`; the parser also takes `e[a..]` and `e[..b]`.
+        for good in [
+            "f g(xs: [i64]~) -> usize { len(xs[1..]) }",
+            "f g(xs: [i64]~) -> usize { len(xs[..2]) }",
+            "f g(xs: [i64]~) -> i64 { sum(xs[1..3]) }",
+            "f g(s: &str) -> usize { len(split(s[1..], \",\")) }",
+            "f g(s: s) -> s { s[..1] }",
+        ] {
+            assert_eq!(error_messages(good), Vec::<String>::new(), "{good}");
+        }
+        assert!(!error_messages("f g(xs: [i64]~) -> i64 { xs[1..] }").is_empty());
+    }
+
+    #[test]
+    fn string_words_take_a_string_slice_and_generic_literals_instantiate() {
+        for good in [
+            "f g(s: &str) -> usize { len(split(s, \",\")) }",
+            "f g(s: &str) -> s { upper(s) }",
+            "S Pair[T] { first: T, second: T }
++f swap[T](p: Pair[T]) -> Pair[T] { @Pair { first: p.second, second: p.first } }",
+        ] {
+            assert_eq!(error_messages(good), Vec::<String>::new(), "{good}");
+        }
     }
 
     #[test]

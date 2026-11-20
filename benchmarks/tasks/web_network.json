@@ -34,8 +34,8 @@
       "token_count": 220
     },
     "tests": [
-      { "input": "parse_url(\"https://example.com:443/api\")", "expected": "R.Ok(Url{scheme:\"https\",host:\"example.com\",port:?Some(443),path:\"/api\"})" },
-      { "input": "parse_url(\"http://localhost/\")", "expected": "R.Ok(Url{scheme:\"http\",host:\"localhost\",port:?None,path:\"/\"})" }
+      { "input": "parse_url(\"https://example.com:443/api\")", "expected": "Ok(Url{scheme:\"https\",host:\"example.com\",port:Some(443),path:\"/api\"})" },
+      { "input": "parse_url(\"http://localhost/\")", "expected": "Ok(Url{scheme:\"http\",host:\"localhost\",port:None,path:\"/\"})" }
     ]
   },
   {
@@ -101,7 +101,7 @@
     "difficulty": "hard",
     "task": "Write a query string parser that converts 'key1=val1&key2=val2' into a HashMap",
     "solution": {
-      "rdx_source": "+f parse_query(qs: &s) -> {s: s} {\n    m result: {s: s} = {};\n    ? qs.len() == 0 { ret result; }\n    v pairs = qs.split('&');\n    @ pair : pairs {\n        v kv = pair.splitn(2, '=');\n        ? kv.len() == 2 {\n            result.insert(kv[0].to_string(), kv[1].to_string());\n        }\n    }\n    result\n}",
+      "rdx_source": "+f parse_query(qs: &s) -> {s: s} {\n    m result: {s: s} = {};\n    ? qs.len() == 0 { ret result; }\n    v pairs = qs.split(\"&\");\n    @ pair : pairs {\n        v kv = pair.splitn(2, '=');\n        ? kv.len() == 2 {\n            result.insert(kv[0].to_string(), kv[1].to_string());\n        }\n    }\n    result\n}",
       "token_count": 104,
       "effects": [],
       "skb_rules_used": []
@@ -121,8 +121,8 @@
     "difficulty": "hard",
     "task": "Write an HTTP client function that performs a GET request and returns the response body",
     "solution": {
-      "rdx_source": "u http.Client\n\n+f fetch(url: &s) -> R[s, s] / io, net {\n    v client = Client.new();\n    v resp = client.get(url).send()?;\n    ? resp.status == 200 {\n        R.Ok(resp.body())\n    } : {\n        R.Err(f\"HTTP {resp.status}\")\n    }\n}",
-      "token_count": 56,
+      "rdx_source": "u http.Client\n\n+f fetch(url: &s) -> R[s, s] / io, net {\n    v client = Client.new();\n    v resp = client.get(url).send()?;\n    ? resp.status == 200 {\n        Ok(resp.body())\n    } : {\n        Err(f\"HTTP {resp.status}\")\n    }\n}",
+      "token_count": 73,
       "effects": ["io", "net"],
       "skb_rules_used": ["type_safety:result-propagation"]
     },
@@ -131,7 +131,7 @@
       "token_count": 88
     },
     "tests": [
-      { "input": "fetch(\"https://httpbin.org/get\")", "expected": "R.Ok(<body>)" }
+      { "input": "fetch(\"https://httpbin.org/get\")", "expected": "Ok(<body>)" }
     ]
   },
   {
@@ -150,8 +150,8 @@
       "token_count": 84
     },
     "tests": [
-      { "input": "echo_handler(WsMessage.Text(\"hello\"))", "expected": "?Some(WsMessage.Text(\"echo: hello\"))" },
-      { "input": "echo_handler(WsMessage.Close)", "expected": "?None" }
+      { "input": "echo_handler(WsMessage.Text(\"hello\"))", "expected": "Some(WsMessage.Text(\"echo: hello\"))" },
+      { "input": "echo_handler(WsMessage.Close)", "expected": "None" }
     ]
   },
   {
@@ -179,9 +179,9 @@
     "difficulty": "hard",
     "task": "Write a retry wrapper that retries a fallible network operation up to N times with exponential backoff",
     "solution": {
-      "rdx_source": "+f retry[T](\n    max_attempts: u32,\n    base_delay_ms: u64,\n    operation: f() -> R[T, s],\n) -> R[T, s] / io, async {\n    m attempt: u32 = 0;\n    loop {\n        v result = operation();\n        ? result {\n            Ok(val) => { ret Ok(val); },\n            Err(err) => {\n                attempt = attempt + 1;\n                ? attempt >= max_attempts { ret Err(err); }\n                v delay = base_delay_ms * (1 << attempt);\n                time.sleep(delay);\n            },\n        }\n    }\n}",
+      "rdx_source": "+f retry[T](\n    max_attempts: u32,\n    base_delay_ms: u64,\n    operation: f() -> R[T, s],\n) -> R[T, s] / io, time {\n    m attempt: u32 = 0;\n    loop {\n        v result = operation();\n        ? result {\n            Ok(val) => { ret Ok(val); },\n            Err(err) => {\n                attempt = attempt + 1;\n                ? attempt >= max_attempts { ret Err(err); }\n                v delay = base_delay_ms * (1 << attempt as u64);\n                time.sleep(delay);\n            },\n        }\n    }\n}",
       "token_count": 121,
-      "effects": ["io", "async"],
+      "effects": ["io", "time"],
       "skb_rules_used": ["type_safety:result-return", "concurrency:effect-tracking"]
     },
     "rust_equivalent": {
@@ -189,7 +189,7 @@
       "token_count": 160
     },
     "tests": [
-      { "input": "retry(3, 100, fn() => Ok(42))", "expected": "R.Ok(42)" }
+      { "input": "retry(3, 100, fn() => Ok(42))", "expected": "Ok(42)" }
     ]
   }
 ]
