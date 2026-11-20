@@ -424,6 +424,11 @@ jobs:
         run: bash scripts/measure-differentiability.sh --check
       - name: Published reliability floors hold
         run: bash scripts/check-ci-floors.sh
+      # Type-checks each of the 99 reference solutions and runs its own tests.
+      # Shrink-only: a task not in the baseline must be accepted, and a
+      # baselined task that now passes must be removed from it.
+      - name: Benchmark task acceptance (shrink-only)
+        run: bash scripts/check-task-acceptance.sh
       - name: Compiler version matches Ribosome's registry entry
         run: |
           binv=$(cargo run --quiet --release --manifest-path prototype/Cargo.toml \

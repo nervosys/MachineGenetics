@@ -8,17 +8,17 @@ The most honest measurement for agent-input cost: raw source bytes and whitespac
 
 | Category | Tasks | MAGE bytes | Rust bytes | Ratio | Reduction | Dense MG | Dense RS | Dense ratio |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| agent-orchestration | 10 | 9772 | 9659 | 1.012 | -1.2% | 6524 | 7409 | 0.881 |
+| agent-orchestration | 10 | 9750 | 9659 | 1.009 | -0.9% | 6503 | 7409 | 0.878 |
 | algorithms | 15 | 3901 | 3294 | 1.184 | -18.4% | 2213 | 2109 | 1.049 |
 | basic-io | 10 | 621 | 726 | 0.855 | 14.5% | 398 | 498 | 0.799 |
 | concurrency | 9 | 4219 | 3437 | 1.228 | -22.8% | 2860 | 2620 | 1.092 |
-| data-structures | 15 | 3323 | 3681 | 0.903 | 9.7% | 2238 | 2553 | 0.877 |
-| error-handling | 5 | 2429 | 2536 | 0.958 | 4.2% | 1739 | 2034 | 0.855 |
-| full-applications | 10 | 16560 | 15700 | 1.055 | -5.5% | 10481 | 11690 | 0.897 |
-| generics-traits | 5 | 3290 | 3011 | 1.093 | -9.3% | 2088 | 2160 | 0.967 |
-| systems | 10 | 6404 | 5961 | 1.074 | -7.4% | 4287 | 4307 | 0.995 |
-| web-network | 10 | 4280 | 4711 | 0.909 | 9.1% | 3083 | 3675 | 0.839 |
-| **Total** | **99** | **54799** | **52716** | **1.040** | **-4.0%** | **35911** | **39055** | **0.919** |
+| data-structures | 15 | 3354 | 3681 | 0.911 | 8.9% | 2260 | 2553 | 0.885 |
+| error-handling | 5 | 2403 | 2536 | 0.948 | 5.2% | 1713 | 2034 | 0.842 |
+| full-applications | 10 | 16552 | 15700 | 1.054 | -5.4% | 10469 | 11690 | 0.896 |
+| generics-traits | 5 | 3284 | 3011 | 1.091 | -9.1% | 2082 | 2160 | 0.964 |
+| systems | 10 | 6396 | 5961 | 1.073 | -7.3% | 4279 | 4307 | 0.993 |
+| web-network | 10 | 4257 | 4711 | 0.904 | 9.6% | 3060 | 3675 | 0.833 |
+| **Total** | **99** | **54737** | **52716** | **1.038** | **-3.8%** | **35837** | **39055** | **0.918** |
 
 ## Per-category aggregates (native lexers)
 
@@ -26,17 +26,17 @@ MAGE counted by `prototype::lexer` (atomic sigils like `+f` = 1 token). Rust cou
 
 | Category | Tasks | MAGE | Rust | Ratio | Reduction |
 |---|---:|---:|---:|---:|---:|
-| agent-orchestration | 10 | 2355 | 2522 | 0.934 | 6.6% |
+| agent-orchestration | 10 | 2343 | 2522 | 0.929 | 7.1% |
 | algorithms | 15 | 1252 | 1075 | 1.165 | -16.5% |
 | basic-io | 10 | 259 | 276 | 0.938 | 6.2% |
 | concurrency | 9 | 1216 | 1080 | 1.126 | -12.6% |
-| data-structures | 15 | 1154 | 1217 | 0.948 | 5.2% |
-| error-handling | 5 | 754 | 786 | 0.959 | 4.1% |
-| full-applications | 10 | 4270 | 4533 | 0.942 | 5.8% |
-| generics-traits | 5 | 890 | 870 | 1.023 | -2.3% |
-| systems | 10 | 1913 | 1772 | 1.080 | -8.0% |
-| web-network | 10 | 1146 | 1329 | 0.862 | 13.8% |
-| **Total** | **99** | **15209** | **15460** | **0.984** | **1.6%** |
+| data-structures | 15 | 1168 | 1217 | 0.960 | 4.0% |
+| error-handling | 5 | 728 | 786 | 0.926 | 7.4% |
+| full-applications | 10 | 4256 | 4533 | 0.939 | 6.1% |
+| generics-traits | 5 | 888 | 870 | 1.021 | -2.1% |
+| systems | 10 | 1916 | 1772 | 1.081 | -8.1% |
+| web-network | 10 | 1130 | 1329 | 0.850 | 15.0% |
+| **Total** | **99** | **15156** | **15460** | **0.980** | **2.0%** |
 
 ## Shared-rule cross-check
 
@@ -44,33 +44,33 @@ Same naive tokeniser (whitespace + identifier + literal + single sigil) applied 
 
 | Category | MAGE | Rust | Ratio |
 |---|---:|---:|---:|
-| agent-orchestration | 2435 | 2522 | 0.966 |
+| agent-orchestration | 2423 | 2522 | 0.961 |
 | algorithms | 1298 | 1075 | 1.207 |
 | basic-io | 270 | 276 | 0.978 |
 | concurrency | 1254 | 1080 | 1.161 |
-| data-structures | 1196 | 1217 | 0.983 |
-| error-handling | 780 | 786 | 0.992 |
-| full-applications | 4451 | 4533 | 0.982 |
-| generics-traits | 916 | 870 | 1.053 |
-| systems | 1978 | 1772 | 1.116 |
-| web-network | 1197 | 1329 | 0.901 |
-| **Total** | **15775** | **15460** | **1.020** |
+| data-structures | 1210 | 1217 | 0.994 |
+| error-handling | 754 | 786 | 0.959 |
+| full-applications | 4437 | 4533 | 0.979 |
+| generics-traits | 914 | 870 | 1.051 |
+| systems | 1981 | 1772 | 1.118 |
+| web-network | 1181 | 1329 | 0.889 |
+| **Total** | **15722** | **15460** | **1.017** |
 
 ## Claimed vs measured (corpus integrity)
 
 | Category | MAGE claimed | Rust claimed | Claimed ratio |
 |---|---:|---:|---:|
-| agent-orchestration | 1920 | 2918 | 0.658 |
+| agent-orchestration | 2062 | 2918 | 0.707 |
 | algorithms | 953 | 1104 | 0.863 |
 | basic-io | 208 | 246 | 0.846 |
 | concurrency | 1005 | 1154 | 0.871 |
-| data-structures | 802 | 1070 | 0.750 |
-| error-handling | 460 | 705 | 0.652 |
-| full-applications | 3053 | 4610 | 0.662 |
-| generics-traits | 640 | 930 | 0.688 |
-| systems | 1398 | 1898 | 0.737 |
-| web-network | 1029 | 1358 | 0.758 |
-| **Total** | **11468** | **15993** | **0.717** |
+| data-structures | 849 | 1070 | 0.793 |
+| error-handling | 648 | 705 | 0.919 |
+| full-applications | 3450 | 4610 | 0.748 |
+| generics-traits | 712 | 930 | 0.766 |
+| systems | 1502 | 1898 | 0.791 |
+| web-network | 1032 | 1358 | 0.760 |
+| **Total** | **12421** | **15993** | **0.777** |
 
 ## Top 10 token savings (MAGE vs Rust)
 
@@ -84,17 +84,14 @@ Same naive tokeniser (whitespace + identifier + literal + single sigil) applied 
 | conc-007 | 26.7% | 140 | 191 |
 | web-001 | 24.8% | 85 | 113 |
 | ds-002 | 20.8% | 42 | 53 |
-| agent-001 | 17.0% | 244 | 294 |
-| ds-007 | 15.7% | 107 | 127 |
+| agent-001 | 18.4% | 240 | 294 |
+| agent-003 | 17.7% | 130 | 158 |
 
 ## Regressions (|claimed − measured| > 10%)
 
 | Task | Lang | Claimed | Measured | Δ |
 |---|---|---:|---:|---:|
-| agent-001 | mage | 190 | 244 | +54 |
-| agent-002 | mage | 260 | 294 | +34 |
 | agent-002 | rust | 400 | 296 | -104 |
-| agent-004 | mage | 160 | 222 | +62 |
 | agent-005 | mage | 210 | 288 | +78 |
 | agent-005 | rust | 340 | 305 | -35 |
 | agent-006 | mage | 210 | 234 | +24 |
@@ -156,7 +153,6 @@ Same naive tokeniser (whitespace + identifier + literal + single sigil) applied 
 | ds-003 | rust | 86 | 100 | +14 |
 | ds-004 | mage | 32 | 50 | +18 |
 | ds-004 | rust | 40 | 50 | +10 |
-| ds-005 | mage | 38 | 49 | +11 |
 | ds-006 | mage | 38 | 51 | +13 |
 | ds-006 | rust | 52 | 59 | +7 |
 | ds-007 | mage | 72 | 107 | +35 |
@@ -170,15 +166,11 @@ Same naive tokeniser (whitespace + identifier + literal + single sigil) applied 
 | ds-011 | mage | 30 | 41 | +11 |
 | ds-011 | rust | 38 | 44 | +6 |
 | ds-012 | mage | 48 | 66 | +18 |
-| ds-013 | mage | 42 | 64 | +22 |
 | ds-013 | rust | 56 | 69 | +13 |
 | ds-014 | mage | 40 | 52 | +12 |
 | ds-015 | mage | 130 | 185 | +55 |
 | err-001 | rust | 55 | 46 | -9 |
-| err-002 | mage | 80 | 128 | +48 |
 | err-002 | rust | 120 | 135 | +15 |
-| err-003 | mage | 140 | 231 | +91 |
-| err-004 | mage | 100 | 171 | +71 |
 | err-004 | rust | 150 | 167 | +17 |
 | err-005 | mage | 100 | 180 | +80 |
 | err-005 | rust | 170 | 208 | +38 |
@@ -191,16 +183,12 @@ Same naive tokeniser (whitespace + identifier + literal + single sigil) applied 
 | app-005 | mage | 390 | 613 | +223 |
 | app-006 | mage | 280 | 348 | +68 |
 | app-007 | mage | 250 | 356 | +106 |
-| app-008 | mage | 330 | 559 | +229 |
-| app-009 | mage | 260 | 362 | +102 |
 | app-009 | rust | 400 | 357 | -43 |
-| app-010 | mage | 250 | 330 | +80 |
 | gt-001 | rust | 40 | 34 | -6 |
 | gt-002 | rust | 140 | 106 | -34 |
 | gt-003 | mage | 170 | 285 | +115 |
 | gt-003 | rust | 280 | 309 | +29 |
 | gt-004 | mage | 140 | 193 | +53 |
-| gt-005 | mage | 200 | 274 | +74 |
 | gt-005 | rust | 290 | 256 | -34 |
 | sys-001 | mage | 170 | 240 | +70 |
 | sys-002 | mage | 170 | 252 | +82 |
@@ -208,7 +196,6 @@ Same naive tokeniser (whitespace + identifier + literal + single sigil) applied 
 | sys-003 | rust | 180 | 153 | -27 |
 | sys-004 | mage | 160 | 212 | +52 |
 | sys-005 | mage | 68 | 94 | +26 |
-| sys-006 | mage | 200 | 301 | +101 |
 | sys-007 | mage | 110 | 149 | +39 |
 | sys-008 | mage | 160 | 232 | +72 |
 | sys-009 | rust | 72 | 60 | -12 |
@@ -223,7 +210,6 @@ Same naive tokeniser (whitespace + identifier + literal + single sigil) applied 
 | web-007 | mage | 56 | 77 | +21 |
 | web-008 | mage | 62 | 82 | +20 |
 | web-009 | mage | 82 | 96 | +14 |
-| web-010 | mage | 110 | 129 | +19 |
 | web-010 | rust | 160 | 135 | -25 |
 
 ---

@@ -10,7 +10,7 @@ measurement, re-run 2026-08-18.
 
 | Mission axis | Tool | Where it stands now |
 |---|---|---|
-| Token-efficient | `cargo run --bin token-bench` | Text surface at parity with Rust or slightly smaller (native-lexer ratio **0.984**); binary IR **1.3-6×** smaller per declaration, 0.247 for a whole container. See §1. |
+| Token-efficient | `cargo run --bin token-bench` | Text surface at parity with Rust or slightly smaller (native-lexer ratio **0.980**); binary IR **1.3-6×** smaller per declaration, 0.247 for a whole container. See §1. |
 | Reliable for agents | `cargo run --bin reliability-bench` | file-oracle parse **99 / 100**, effective **100 / 100**. Perturbed input parses 27 / 100 and heals to **70 / 100**. See §2 and §6 for how it got there — both record much lower numbers, because both are snapshots of when they were written. |
 
 ---
@@ -33,11 +33,11 @@ text surface, as currently written and used by the corpus, is a wash.
 
 | Metric | MAGE | Rust | Ratio | Reduction |
 |---|---:|---:|---:|---:|
-| **Raw source bytes** *(what BPE actually sees)* | 54 799 | 52 716 | 1.040 | **−4.0 %** |
-| Whitespace-stripped bytes | 35 911 | 39 055 | 0.919 | +8.1 % |
-| Native syntactic tokens *(MAGE lexer + proc-macro2)* | 15 209 | 15 460 | 0.984 | +1.6 % |
-| Shared-rule tokens *(same naive tokeniser for both)* | 15 775 | 15 460 | 1.020 | −2.0 % |
-| **Corpus's claimed totals** | 11 468 | 15 993 | 0.717 | 28.3 % |
+| **Raw source bytes** *(what BPE actually sees)* | 54 737 | 52 716 | 1.038 | **−3.8 %** |
+| Whitespace-stripped bytes | 35 871 | 39 055 | 0.918 | +8.2 % |
+| Native syntactic tokens *(MAGE lexer + proc-macro2)* | 15 156 | 15 460 | 0.980 | +2.0 % |
+| Shared-rule tokens *(same naive tokeniser for both)* | 15 722 | 15 460 | 1.017 | −1.7 % |
+| **Corpus's claimed totals** | 12 421 | 15 993 | 0.777 | 22.3 % |
 
 > Re-measured 2026-11-15 after the pairs were reconciled (see "Pair audit" below):
 > Rust sources gained content they had omitted, `conc-010` was dropped. The figures
@@ -230,6 +230,8 @@ exceed this ceiling — the corpus is the upper bound.
 > 100/100**. The per-category table below, with seven categories at 0.0 %,
 > is history — every one of them parses today. `scripts/check-ci-floors.sh`
 > enforces a floor of 98 on that number so it cannot silently regress.
+>
+> **That number counts parsing only.** Measured 2026-11-17 with the same compiler: of the 99 references, 65 type-check and 28 type-check and pass their own tests (52 and 18 before the task defects were fixed; 20 before the evaluator fixes); see `benchmarks/ACCEPTANCE.md`.
 
 ## Per-category breakdown
 
@@ -552,7 +554,7 @@ holds — the earlier one is what the finding was written about.
 
 | Finding | Tool | At the time | Now |
 |---|---|---|---|
-| Text token reduction vs Rust | `token-bench` | ~tied (claim was 50 %) | ~tied — native-lexer ratio **0.984** |
+| Text token reduction vs Rust | `token-bench` | ~tied (claim was 50 %) | ~tied — native-lexer ratio **0.980** |
 | Binary IR efficiency | `token-bench` + manual | "83 % smaller than text" | **1.3-6×** per declaration (243→47, 98→17, 143→110 B); 0.247 for a whole container |
 | Corpus parse-rate | `reliability-bench` | 25 → 69 / 100 | **99 / 100**, floor-gated at 98 |
 | Self-heal coverage on corpus | `reliability-bench` (P36) | 0 % healed | 0/1 — only one task fails, and structural-heal takes it |

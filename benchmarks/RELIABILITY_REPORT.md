@@ -7,10 +7,10 @@ Backend: **perturbed-oracle**.  Generated from `benchmarks/tasks/*.json` (99 tas
 | Stage | Pass | Total | Rate |
 |---|---:|---:|---:|
 | Lex (no error tokens) | 99 | 99 | 100.0% |
-| Parse (LL(1) accepts) | 27 | 99 | 27.3% |
-| Self-heal proposed a fix (on failures) | 61 | 72 | 84.7% |
-| Self-heal made it re-parse | 42 | 72 | 58.3% |
-| Structural-heal re-parse (brace balance at EOF) | 1 | 72 | 1.4% |
+| Parse (LL(1) accepts) | 28 | 99 | 28.3% |
+| Self-heal proposed a fix (on failures) | 61 | 71 | 85.9% |
+| Self-heal made it re-parse | 42 | 71 | 59.2% |
+| Structural-heal re-parse (brace balance at EOF) | 0 | 71 | 0.0% |
 
 **Effective pass rate (parse OR pattern-heal OR structural-heal):** 70 / 99 = 70.7%
 
@@ -24,17 +24,17 @@ Backend: **perturbed-oracle**.  Generated from `benchmarks/tasks/*.json` (99 tas
 | concurrency | 9 | 9 | 3 | 100.0% | 33.3% |
 | data-structures | 15 | 15 | 4 | 100.0% | 26.7% |
 | error-handling | 5 | 5 | 1 | 100.0% | 20.0% |
-| full-applications | 10 | 10 | 2 | 100.0% | 20.0% |
+| full-applications | 10 | 10 | 3 | 100.0% | 30.0% |
 | generics-traits | 5 | 5 | 2 | 100.0% | 40.0% |
 | systems | 10 | 10 | 2 | 100.0% | 20.0% |
 | web-network | 10 | 10 | 2 | 100.0% | 20.0% |
 
-## Failures (72)
+## Failures (71)
 
 | Task | Category | Lex errors | Parse error |
 |---|---|---:|---|
 | agent-001 | agent-orchestration | 0 | 2:33: expected KwF, found Semi ';' |
-| agent-002 | agent-orchestration | 0 | 39:18: expected type, found Assign |
+| agent-002 | agent-orchestration | 0 | 16:5: expected item, found Ident |
 | agent-004 | agent-orchestration | 0 | 30:1: expected RBrace, found Eof '' |
 | agent-005 | agent-orchestration | 0 | 36:5: expected expression, found RBrace '}' |
 | agent-007 | agent-orchestration | 0 | 1:14: expected identifier, found Comma ',' |
@@ -65,7 +65,7 @@ Backend: **perturbed-oracle**.  Generated from `benchmarks/tasks/*.json` (99 tas
 | conc-009 | concurrency | 0 | 8:36: expected expression, found Semi ';' |
 | ds-002 | data-structures | 0 | 1:28: expected identifier, found Plus '+' |
 | ds-004 | data-structures | 0 | 5:1: expected RBrace, found Eof '' |
-| ds-005 | data-structures | 0 | 1:31: expected identifier, found Arrow '->' |
+| ds-005 | data-structures | 0 | 3:31: expected identifier, found Arrow '->' |
 | ds-007 | data-structures | 0 | 1:12: expected identifier, found Comma ',' |
 | ds-008 | data-structures | 0 | 8:15: expected expression, found Eof '' |
 | ds-009 | data-structures | 0 | 2:27: expected expression, found Semi ';' |
@@ -84,7 +84,6 @@ Backend: **perturbed-oracle**.  Generated from `benchmarks/tasks/*.json` (99 tas
 | app-004 | full-applications | 0 | 32:15: expected FatArrow, found Ident 'l' |
 | app-006 | full-applications | 0 | 64:1: expected RBrace, found Eof '' |
 | app-007 | full-applications | 0 | 48:1: expected expression, found RBrace '}' |
-| app-008 | full-applications | 0 | 40:67: expected expression, found KwF 'f' |
 | app-009 | full-applications | 0 | 1:15: expected identifier, found Comma ',' |
 | gt-002 | generics-traits | 0 | 8:5: expected item, found Ident |
 | gt-004 | generics-traits | 0 | 40:1: expected RBrace, found Eof '' |
@@ -110,9 +109,9 @@ Backend: **perturbed-oracle**.  Generated from `benchmarks/tasks/*.json` (99 tas
 
 | Percentile | µs |
 |---|---:|
-| p50 | 57 |
-| p95 | 520 |
-| p99 | 666 |
+| p50 | 43 |
+| p95 | 351 |
+| p99 | 1019 |
 
 ---
 _Backend interface: `CandidateAgent::propose(&Task) -> Result<String, String>`. Wire a real LLM by implementing this trait and replacing `FileOracleAgent` in `prototype/src/bin/reliability_bench.rs`._

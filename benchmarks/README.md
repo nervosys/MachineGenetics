@@ -1,6 +1,6 @@
 # MAGE Agent Training Benchmark Corpus
 
-A structured corpus of **100 programming tasks** designed to train, evaluate, and benchmark AI agents on MAGE code generation. Every task includes a MAGE solution, an equivalent Rust solution, token counts, effect annotations, SKB rule references, and test cases.
+A structured corpus of **99 programming tasks** designed to train, evaluate, and benchmark AI agents on MAGE code generation. Every task includes a MAGE solution, an equivalent Rust solution, token counts, effect annotations, SKB rule references, and test cases. **"Parses" is not "valid" or "solved":** 99 of the 99 MAGE references parse, but only 65 type-check under `mage-parse --check`, and only 28 tasks both type-check and pass their own `tests` under `--eval` (`scripts/check-task-acceptance.sh`; the breakdown, and whose fault each failure is, is in [`ACCEPTANCE.md`](ACCEPTANCE.md)).
 
 ## Format
 
