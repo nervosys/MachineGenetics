@@ -131,7 +131,7 @@ primitives, and seven compute backends).
 | `agent Foo { ... }`                     | `Op::SPAWN(name, capability_count)`                 |
 | `swarm S { topology: ..., ... }`        | `Op::SPAWN >> Op::SEND/RECV >> Op::REDUCE`          |
 | `train T { net, loss, optim }`          | `Op::Ref(net) >> Op::MSE_LOSS >> Op::SGD_STEP`      |
-| `evolve E { ... }`                      | `Op::MAP >> Op::REDUCE`                             |
+| `evolve E { ... }`                      | stub `Op::MAP >> Op::REDUCE` (never run; `evolve` retired, E0554) |
 | `fn`, `struct`, `enum`, …               | unchanged — routed to MLIR                          |
 
 A 31-entry `layer_name_to_op` table maps surface names (`Linear`, `Conv2D`,

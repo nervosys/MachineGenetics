@@ -54,7 +54,7 @@ MAGE (Machine Genetics) is a systems programming language designed for the age o
 
 5. **Hardware-aware by default.** Tensor operations dispatch to the best available backend (CPU SIMD → GPU → NPU) at compile time. Shape checking is static. Autograd is built into the compiler.
 
-6. **Self-improving.** Evolutionary computation blocks (`evolve`) enable programs to optimize their own parameters, architectures, and strategies through genetic algorithms with compile-time fitness verification.
+6. **Self-improving.** An `evolve` block parses but is retired: the checker refuses it (E0554) and nothing executes it. The evolutionary loop (variation, gate, lineage) is provided outside the language, by the `germline` crate and `arena succession`; connecting `evolve` to `germline` is not built.
 
 7. **Neurosymbolic fusion.** Agents combine neural reasoning (LLM, vision, RL) with symbolic knowledge (rules, facts, queries) in a single coherent type system. No impedance mismatch between statistical and logical AI.
 
@@ -186,7 +186,7 @@ Agent mode maps every concept to 1-2 characters. Like hexadecimal compresses 4 b
 | Knowledge base | `kb`           | `κ` lexed only (D.1) | AI — Symbolic  |
 | Rule           | `rule`         | `ρ` lexed only (D.1) | AI — Symbolic  |
 | Fact           | `fact`         | `fact`     | AI — Symbolic  |
-| Evolve         | `evolve`       | `Ω` lexed only (D.1) | AI — Evolution |
+| Evolve         | `evolve`       | `Ω` parsed, retired (E0554) | AI — Evolution |
 | Genome         | `genome`       | `Γ` lexed only (D.1) | AI — Evolution |
 | Fitness        | `fitness`      | `φ` lexed only (D.1) | AI — Evolution |
 | Policy         | `policy`       | `Ξ` lexed only (D.1) | AI — RL        |
@@ -1443,7 +1443,7 @@ pub fn validate_borrow(code: str) -> [str]~ / skb {
 
 > **Retired in plan 9.2.** The `evolve` item had no callers in any `.mg` file and is now an error (E0554). Write an evolutionary search as an ordinary function, or as an arena agent. The sections below describe the retired form and are kept for reference.
 
-MAGE has first-class support for genetic algorithms, neuroevolution, and evolutionary strategies. The `evolve` block declaratively specifies population, fitness, selection, crossover, and mutation — the compiler generates optimized parallel evolution loops.
+The `evolve` block was designed to declaratively specify population, fitness, selection, crossover, and mutation, with the compiler generating the loops. That never ran: the block is retired, and no loop is generated from it. The working evolutionary loop lives in the `germline` crate and `arena succession`, outside the language.
 
 ### 8.1 Evolve Block
 
@@ -1485,7 +1485,7 @@ evolve_field = 'genome' ':' type [ ';' | ',' ]
 
 A genome is an ordinary type. There are **no derive macros** — `#[derive(…)]`
 does not parse, and neither does MAGE's own `@d(…)` generate genetic
-operators; the `evolve` block's `crossover` and `mutate` blocks are where those
+operators; in the retired `evolve` block, the `crossover` and `mutate` blocks were where those
 live.
 
 ```mg
