@@ -31,6 +31,8 @@ pub(crate) const STD_FNS: &[&str] = &[
     // everywhere (DIFFERENTIABILITY.md)
     "floor", "ceil", "round", "trunc",
     "mean", "dot",
+    // the two list mutators: in place on the receiver's variable
+    "push", "pop",
     // a trained net's forward pass on one input vector: `forward(Net, xs)`
     "forward",
     // bare enum-value constructors agents call positionally
@@ -46,6 +48,12 @@ pub(crate) const SCALAR_MATH: &[&str] = &[
     "log2", "log10", "asin", "acos", "atan", "sinh", "cosh",
     "floor", "ceil", "round", "trunc", "relu",
 ];
+
+/// The list mutators: each changes its first argument (a variable or a
+/// field/index path of one), as `push(xs, x)` / `xs.push(x)` or `pop(xs)` /
+/// `xs.pop()`. They are in `STD_FNS` too; `types.rs` types them and `eval.rs`
+/// performs them on the place, since a value-semantics call cannot.
+pub(crate) const LIST_MUTATORS: &[&str] = &["push", "pop"];
 
 /// What each `STD_FNS` name does in `--eval`: `(name, signature, summary)`. The
 /// ontology's `builtins` section publishes this table, so an agent can look a
@@ -108,6 +116,8 @@ pub(crate) const STD_FN_DOCS: &[(&str, &str, &str)] = &[
     ("trunc", "(f64) -> f64", "round toward zero; derivative is zero almost everywhere"),
     ("mean", "([num]) -> f64", "arithmetic mean; error on an empty list"),
     ("dot", "([num], [num]) -> f64", "dot product; error if the lengths differ"),
+    ("push", "([A], A) -> ()", "append a value to the list the receiver names, in place: xs.push(x) or push(xs, x); the receiver must be a variable or a field/index path of one"),
+    ("pop", "([A]) -> ?A", "remove and return the last element of the list the receiver names, in place; none when it is empty: xs.pop() or pop(xs)"),
     ("forward", "(Net, [f64]) -> [f64]", "run a trained net's forward pass on one input vector (the net's train block supplies the weights)"),
     ("Some", "(A) -> ?A", "an option holding a value"),
     ("None", "() -> ?A", "the empty option"),

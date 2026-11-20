@@ -289,6 +289,13 @@ pub struct Interp {
     /// able to overflow the Rust stack, which would abort the process rather
     /// than fail the candidate.
     depth: Cell<u32>,
+    /// Write-back request for the next user call: the parameter indices whose
+    /// final values the caller wants back (an argument written `&!place`, or a
+    /// `&!self` receiver). Taken by `call_user_inner` before anything else runs.
+    wb_req: RefCell<Vec<usize>>,
+    /// The final values of the parameters named in `wb_req`, left by the call
+    /// that just returned, in the same order.
+    wb_out: RefCell<Vec<Value>>,
     /// `@req` preconditions of each top-level function, parsed, checked on
     /// entry: after the parameters are bound, before the body runs.
     preconditions: HashMap<String, Vec<(crate::contract::Clause, Expr)>>,
@@ -517,6 +524,8 @@ impl Interp {
             handlers: RefCell::new(Vec::new()),
             fuel: Cell::new(None),
             depth: Cell::new(0),
+            wb_req: RefCell::new(Vec::new()),
+            wb_out: RefCell::new(Vec::new()),
             preconditions,
             postconditions,
             invariants,
@@ -700,6 +709,9 @@ impl Interp {
     }
 
     fn call_user_inner(&self, fd: &FunctionDef, args: Vec<Value>) -> R {
+        // Taken first: binding a default parameter can call another function,
+        // which must not see this call's request.
+        let wb = std::mem::take(&mut *self.wb_req.borrow_mut());
         let mut env = self.bind_params(fd, args)?;
         // Preconditions are checked on entry, with the parameters bound and
         // before the body runs, so a failing `@req` stops the body from running.
@@ -731,12 +743,17 @@ impl Interp {
         // to a method that happens to share it.
         let posts = self.contract_clauses(&self.postconditions, fd);
         let Some(posts) = posts else {
-            return self.run_body(fd, &mut env);
+            let r = self.run_body(fd, &mut env);
+            if r.is_ok() {
+                self.record_writeback(fd, &wb, &env);
+            }
+            return r;
         };
         // Values are immutable, so the parameters as bound on entry are what
         // `old(x)` names, and what every other parameter in the clause names.
         let entry = env.clone();
         let v = self.run_body(fd, &mut env)?;
+        self.record_writeback(fd, &wb, &env);
         for (clause, expr) in posts {
             let mut scope = entry.clone();
             scope.define("result".to_string(), v.clone());
@@ -791,6 +808,114 @@ impl Interp {
             env.define(p.name.clone(), v);
         }
         Ok(env)
+    }
+
+    /// Leave the final values of the parameters in `wb` for the caller.
+    fn record_writeback(&self, fd: &FunctionDef, wb: &[usize], env: &Env) {
+        if wb.is_empty() {
+            return;
+        }
+        let outs: Vec<Value> = wb
+            .iter()
+            .map(|i| env.get(&fd.params[*i].name).unwrap_or(Value::Unit))
+            .collect();
+        *self.wb_out.borrow_mut() = outs;
+    }
+
+    /// Call a user function, then write the final value of each parameter that
+    /// the caller lent exclusively (`places[i]` is `Some`) back into that place.
+    /// The evaluator has value semantics, so `&!x` is copy-in/copy-out: sound
+    /// because a mutable borrow is exclusive (§13), so nothing else can observe
+    /// `x` while the callee holds it.
+    fn call_user_wb(
+        &self,
+        fd: &FunctionDef,
+        av: Vec<Value>,
+        places: &[Option<&Expr>],
+        env: &mut Env,
+    ) -> R {
+        let idx: Vec<usize> = places
+            .iter()
+            .enumerate()
+            .filter(|(i, p)| p.is_some() && *i < fd.params.len())
+            .map(|(i, _)| i)
+            .collect();
+        if idx.is_empty() {
+            return self.call_user(fd, av);
+        }
+        *self.wb_req.borrow_mut() = idx.clone();
+        self.wb_out.borrow_mut().clear();
+        let r = self.call_user(fd, av);
+        self.wb_req.borrow_mut().clear();
+        let outs = std::mem::take(&mut *self.wb_out.borrow_mut());
+        let v = r?;
+        if outs.len() != idx.len() {
+            return err("internal: a `&!` argument's final value was not returned");
+        }
+        for (i, val) in idx.iter().zip(outs) {
+            if let Some(place) = places[*i] {
+                self.assign_target(place, val, env)?;
+            }
+        }
+        Ok(v)
+    }
+
+    /// An argument, and the place it lends exclusively when written `&!place`
+    /// (whose value is the place's current value).
+    fn eval_arg<'a>(
+        &self,
+        a: &'a Expr,
+        env: &mut Env,
+    ) -> Result<(Value, Option<&'a Expr>), Control> {
+        if let Expr::Unary { op, operand } = a
+            && op == "&!"
+        {
+            if !is_place(operand) {
+                return err("`&!` borrows a variable or a field/index path of one");
+            }
+            return Ok((self.eval(operand, env)?, Some(&**operand)));
+        }
+        Ok((self.eval(a, env)?, None))
+    }
+
+    /// `xs.push(x)` / `xs.pop()` (also `push(xs, x)`): in-place on the place
+    /// `recv` names, so later statements see it.
+    fn place_method(&self, name: &str, recv: &Expr, rest: &[Expr], env: &mut Env) -> R {
+        if !is_place(recv) {
+            return err(format!(
+                "`{name}` changes its receiver, which must be a variable or a \
+                 field/index path of one, not a computed value"
+            ));
+        }
+        let mut av = Vec::with_capacity(rest.len());
+        for a in rest {
+            av.push(self.eval(a, env)?);
+        }
+        self.charge(1)?;
+        match name {
+            "push" => {
+                if av.len() != 1 {
+                    return err(format!("`push` takes one value: xs.push(x), given {}", av.len()));
+                }
+                let x = av.remove(0);
+                self.mutate_place(recv, env, |p| match p {
+                    Value::List(xs) => {
+                        xs.push(x);
+                        Ok(Value::Unit)
+                    }
+                    other => err(format!("`push` needs a list receiver, found {other}")),
+                })
+            }
+            _ => {
+                if !av.is_empty() {
+                    return err(format!("`pop` takes no value: xs.pop(), given {}", av.len()));
+                }
+                self.mutate_place(recv, env, |p| match p {
+                    Value::List(xs) => Ok(Value::Opt(xs.pop().map(Box::new))),
+                    other => err(format!("`pop` needs a list receiver, found {other}")),
+                })
+            }
+        }
     }
 
     /// Run `fd`'s body in `env`, its parameters already bound.
@@ -962,8 +1087,22 @@ impl Interp {
                 }
             }
             Expr::Unary { op, operand } => {
+                // `&!x` lends `x` exclusively, which the evaluator can do only
+                // for a call argument (see `call_user_wb`). Anywhere else the
+                // reference would have to be stored and written through later,
+                // and a plain copy would silently drop those writes.
+                if op == "&!" {
+                    return err(
+                        "`&!x` is supported by --eval only as a direct argument of a call to a \
+                         user function (the callee's changes are written back to `x`); a stored \
+                         mutable reference cannot be written through",
+                    );
+                }
                 let v = self.eval(operand, env)?;
                 match (op.as_str(), v) {
+                    // Values are copied on read, so a shared reference is its
+                    // referent's value and `*r` of it is the same value.
+                    ("&" | "*", v) => Ok(v),
                     ("-", Value::Int(n)) => match n.checked_neg() {
                         Some(m) => Ok(Value::Int(m)),
                         None => err(format!("integer overflow in `-{n}`")),
@@ -1284,19 +1423,43 @@ impl Interp {
                             return self.call_user(fd, av);
                         }
                 }
+                // `xs.push(x)` / `xs.pop()` change the place `xs` names. Unless
+                // a user function or method of that name exists, there is
+                // nothing to look up, so the receiver is not copied.
+                if (method == "push" || method == "pop")
+                    && is_place(receiver)
+                    && !self.funcs.contains_key(method)
+                    && !self.methods.keys().any(|(_, m)| m == method)
+                {
+                    return self.place_method(method, receiver, args, env);
+                }
                 let mut av = vec![self.eval(receiver, env)?];
+                let mut places: Vec<Option<&Expr>> = vec![None];
                 for a in args {
-                    av.push(self.eval(a, env)?);
+                    let (v, p) = self.eval_arg(a, env)?;
+                    av.push(v);
+                    places.push(p);
                 }
                 // A method declared for the receiver's own type wins over a
                 // same-named free function or builtin: `xs.len()` is still the
                 // vocabulary's `len`, but a `Report.len` would be the method.
                 let own = Self::type_name_of(&av[0]).and_then(|ty| self.method_on(ty, method));
-                if let Some(fd) = own {
-                    self.call_user(fd, av)
-                } else if let Some(fd) = self.funcs.get(method) {
-                    self.call_user(fd, av)
+                if let Some(fd) = own.or_else(|| self.funcs.get(method)) {
+                    // A `&!self` (or `&!` first parameter) receiver is lent
+                    // exclusively: what the callee does to it is written back.
+                    if is_place(receiver)
+                        && fd
+                            .params
+                            .first()
+                            .is_some_and(|p| matches!(p.ty, Type::Reference { mutable: true, .. }))
+                    {
+                        places[0] = Some(&**receiver);
+                    }
+                    self.call_user_wb(fd, av, &places, env)
                 } else {
+                    if places.iter().any(Option::is_some) {
+                        return err(NO_WRITE_BACK);
+                    }
                     self.call_builtin(method, av)
                 }
             }
@@ -1630,6 +1793,9 @@ impl Interp {
                 }
                 Ok(())
             }
+            // `*r = v`: `r` is its referent's value here (see `Expr::Unary`),
+            // so assigning through it assigns the place it names.
+            Expr::Unary { op, operand } if op == "*" => self.assign_target(operand, v, env),
             _ => self.assign_place(target, v, env),
         }
     }
@@ -1639,6 +1805,20 @@ impl Interp {
     /// expressions are evaluated up front, before the mutable borrow), then we
     /// descend mutably through the value and write the final slot.
     fn assign_place(&self, target: &Expr, v: Value, env: &mut Env) -> Result<(), Control> {
+        self.mutate_place(target, env, |p| {
+            *p = v;
+            Ok(Value::Unit)
+        })
+        .map(|_| ())
+    }
+
+    /// Apply `f` to the slot a lvalue path names, in place.
+    fn mutate_place(
+        &self,
+        target: &Expr,
+        env: &mut Env,
+        f: impl FnOnce(&mut Value) -> R,
+    ) -> R {
         let mut accessors: Vec<Accessor> = Vec::new();
         let mut cur = target;
         let root = loop {
@@ -1660,8 +1840,7 @@ impl Interp {
         for acc in &accessors {
             place = descend(place, acc)?;
         }
-        *place = v;
-        Ok(())
+        f(place)
     }
 
     fn eval_call(&self, func: &Expr, args: &[Expr], env: &mut Env) -> R {
@@ -1679,24 +1858,46 @@ impl Interp {
             let xs = self.eval(&args[1], env)?;
             return self.net_forward(net, xs);
         }
+        // `push(xs, x)` / `pop(xs)` change their first argument in place.
+        if let Expr::Ident { name } = func
+            && (name == "push" || name == "pop")
+            && !args.is_empty()
+            && !self.funcs.contains_key(name)
+            && env.get(name).is_none()
+        {
+            return self.place_method(name, &args[0], &args[1..], env);
+        }
         // Evaluate args.
         let mut av = Vec::with_capacity(args.len());
+        let mut places: Vec<Option<&Expr>> = Vec::with_capacity(args.len());
         for a in args {
-            av.push(self.eval(a, env)?);
+            let (v, p) = self.eval_arg(a, env)?;
+            av.push(v);
+            places.push(p);
         }
+        let lends = places.iter().any(Option::is_some);
         if let Expr::Ident { name } = func {
             // A locally-bound function value (nested `f`, or a closure in a
             // variable) shadows globals — check the environment first, but only
             // intercept when it actually holds something callable.
             if let Some(v @ (Value::Closure(_) | Value::Func(_))) = env.get(name) {
+                if lends {
+                    return err(NO_WRITE_BACK);
+                }
                 return self.apply(&v, av);
             }
             // User function?
             if let Some(fd) = self.funcs.get(name) {
-                return self.call_user(fd, av);
+                return self.call_user_wb(fd, av, &places, env);
             }
             // Builtin / vocabulary?
+            if lends {
+                return err(NO_WRITE_BACK);
+            }
             return self.call_builtin(name, av);
+        }
+        if lends {
+            return err(NO_WRITE_BACK);
         }
         // Indirect: evaluate the callee to a function value.
         let f = self.eval(func, env)?;
@@ -2088,6 +2289,13 @@ impl Interp {
             // net name. Reaching this arm means the name was used as a value or called
             // with a shape `eval_call` does not take.
             "forward" => err("`forward` takes a net name and a list: forward(Net, xs)"),
+            // `push`/`pop` change a variable, so `eval_call` and the method-call
+            // arm perform them on the place. Reaching this arm means the
+            // receiver was not one (`f().push(1)`, `map(xs, push)`).
+            "push" | "pop" => err(format!(
+                "`{name}` changes its receiver, which must be a variable or a field/index \
+                 path of one, called as xs.{name}(..) or {name}(xs, ..)"
+            )),
             "len" | "count" => match arg(0) {
                 Value::Map(m) => Ok(Value::Int(m.len() as i64)),
                 Value::Str(s) => Ok(Value::Int(s.chars().count() as i64)),
@@ -2628,6 +2836,20 @@ fn interp_str(v: &Value) -> String {
 }
 
 /// One step of an lvalue path: `.field` or `[index]` (the index pre-evaluated).
+/// What a `&!place` argument to anything but a user function gets.
+const NO_WRITE_BACK: &str = "`&!x` is supported by --eval only as an argument of a user \
+function, whose changes are written back to `x`; a builtin or closure cannot be lent it";
+
+/// An expression that names a place: a variable, or a field/index path rooted
+/// in one. `&!` borrows one, and `push`/`pop` change one.
+fn is_place(e: &Expr) -> bool {
+    match e {
+        Expr::Ident { .. } => true,
+        Expr::FieldAccess { object, .. } | Expr::Index { object, .. } => is_place(object),
+        _ => false,
+    }
+}
+
 enum Accessor {
     Field(String),
     Index(Value),
@@ -4044,6 +4266,147 @@ f main() -> i32 {
         let only_pub: Vec<_> = published.difference(&arms).collect();
         assert!(only_arm.is_empty(), "arms with no published name: {only_arm:?}");
         assert!(only_pub.is_empty(), "published names with no arm: {only_pub:?}");
+    }
+
+    /// Every name the checker types specially in method or call position comes
+    /// from a published table (`VOCABULARY`, `SCALAR_MATH`, `LIST_MUTATORS`),
+    /// and every name in those tables is an arm of `call_builtin_inner`. A
+    /// checker that learns a name the evaluator cannot run (`.push` once did:
+    /// typed as anything, then `unknown function`) fails here.
+    #[test]
+    fn the_checker_types_only_names_the_evaluator_runs() {
+        let eval_src = include_str!("eval.rs");
+        let body = between(eval_src, "    fn call_builtin_inner(", "// ── helpers");
+        let mut arms = std::collections::BTreeSet::new();
+        for line in body.lines() {
+            let rest = if let Some(r) = line.strip_prefix("            \"") {
+                format!("\"{r}")
+            } else if let Some(r) = line.strip_prefix("            | \"") {
+                format!("\"{r}")
+            } else {
+                continue;
+            };
+            arms.extend(quoted(rest.split("=>").next().unwrap_or("")));
+        }
+        let mut tables: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
+        tables.extend(crate::resolve::VOCABULARY.iter().map(|(n, _, _)| n.to_string()));
+        tables.extend(crate::resolve::SCALAR_MATH.iter().map(|s| s.to_string()));
+        tables.extend(crate::resolve::LIST_MUTATORS.iter().map(|s| s.to_string()));
+        for n in &tables {
+            assert!(arms.contains(n), "the checker types `{n}` but `call_builtin_inner` has no arm");
+        }
+        // The arms of the checker's vocabulary typing are names of those tables.
+        let types_src = include_str!("types.rs");
+        let vocab = between(types_src, "    fn infer_vocab_call(", "    fn check_match_exhaustive(");
+        for line in vocab.lines() {
+            let Some(rest) = line.strip_prefix("            \"") else { continue };
+            if !rest.contains("=>") && !rest.contains(" | ") {
+                continue;
+            }
+            for n in quoted(&format!("\"{}", rest.split("=>").next().unwrap_or(""))) {
+                assert!(tables.contains(&n), "`infer_vocab_call` types `{n}`, which no table publishes");
+            }
+        }
+        // The method-call arm names no function of its own: its names are the tables'.
+        let mc = between(
+            types_src,
+            "ast::Expr::MethodCall { receiver, method, args, .. } => {",
+            "ast::Expr::FieldAccess { object, field } => {",
+        );
+        for bad in ["method == \"", "method.as_str() == \"", "matches!(method.as_str(), \""] {
+            assert!(!mc.contains(bad), "the method-call arm special-cases a name outside the tables: `{bad}`");
+        }
+    }
+
+    /// `check_source` errors for `src`, as `(code, message)`.
+    fn check_errors(src: &str) -> Vec<(String, String)> {
+        crate::check::check_source(src, false, false)
+            .findings
+            .iter()
+            .filter(|f| f.severity == "error")
+            .map(|f| (f.code.clone(), f.message.clone()))
+            .collect()
+    }
+
+    /// `.push` typechecked as anything and then died with
+    /// `unknown function \`push\`` (13 benchmark tasks). It is now typed, and
+    /// performed in place on the receiver's variable.
+    #[test]
+    fn push_appends_in_place_and_later_statements_see_it() {
+        let src = "f t() -> usize {\n    m xs: Vec[i64] = []\n    xs.push(3)\n    xs.push(4)\n    xs.len()\n}\n";
+        assert_eq!(check_errors(src), vec![], "must typecheck");
+        assert_eq!(run(src, "t", &[]), Value::Int(2));
+        let src = "f t() -> i64 {\n    m xs: Vec[i64] = [1]\n    for i in range(3) { xs.push(i * 10) }\n    sum(xs)\n}\n";
+        assert_eq!(check_errors(src), vec![], "must typecheck");
+        assert_eq!(run(src, "t", &[]), Value::Int(31));
+        // The bare form is the same call.
+        let src = "f t() -> usize {\n    m xs: Vec[i64] = []\n    push(xs, 1)\n    len(xs)\n}\n";
+        assert_eq!(run(src, "t", &[]), Value::Int(1));
+    }
+
+    #[test]
+    fn push_reaches_a_nested_place() {
+        let src = "f t() -> usize {\n    m g: Vec[Vec[i64]] = [[1], [2]]\n    g[1].push(5)\n    g[1].push(6)\n    len(g[1])\n}\n";
+        assert_eq!(check_errors(src), vec![], "must typecheck");
+        assert_eq!(run(src, "t", &[]), Value::Int(3));
+    }
+
+    #[test]
+    fn pop_removes_the_last_element_and_is_none_when_empty() {
+        let src = "f t() -> i64 {\n    m xs: Vec[i64] = [1, 2, 3]\n    m a = 0\n    match xs.pop() { Some(x) => { a = x } None => { a = -1 } }\n    a * 10 + (len(xs) as i64)\n}\n";
+        assert_eq!(check_errors(src), vec![], "must typecheck");
+        assert_eq!(run(src, "t", &[]), Value::Int(32));
+        let src = "f t() -> i64 {\n    m xs: Vec[i64] = []\n    match xs.pop() { Some(x) => x, None => -1 }\n}\n";
+        assert_eq!(run(src, "t", &[]), Value::Int(-1));
+    }
+
+    #[test]
+    fn push_checks_its_element_type_and_arity() {
+        let wrong = check_errors("f t() {\n    m xs: Vec[i64] = []\n    xs.push(\"no\")\n}\n");
+        assert!(!wrong.is_empty(), "a str into a Vec[i64] must be refused");
+        let arity = check_errors("f t() {\n    m xs: Vec[i64] = []\n    xs.push()\n}\n");
+        assert!(arity.iter().any(|(_, m)| m.contains("`push` expects 2 argument(s)")), "{arity:?}");
+    }
+
+    #[test]
+    fn push_on_a_computed_value_is_a_precise_error_not_a_lost_write() {
+        let src = "f mk() -> Vec[i64] { [1] }\nf t() -> usize {\n    mk().push(2)\n    1\n}\n";
+        let e = run_source(src, "t", &[]).unwrap_err();
+        assert!(e.contains("`push` changes its receiver"), "{e}");
+    }
+
+    /// `&x` read correctly: a shared reference is the referent's value.
+    #[test]
+    fn a_shared_reference_reads_its_referent() {
+        let src = "f peek(x: &i64) -> i64 { *x + 1 }\nf t(n: i64) -> i64 { peek(&n) + n }\n";
+        assert_eq!(check_errors(src), vec![], "must typecheck");
+        assert_eq!(run(src, "t", &[4]), Value::Int(9));
+        let src = "f total(xs: &Vec[i64]) -> i64 { sum(xs) }\nf t() -> i64 {\n    m ys: Vec[i64] = [1, 2, 3]\n    total(&ys)\n}\n";
+        assert_eq!(check_errors(src), vec![], "must typecheck");
+        assert_eq!(run(src, "t", &[]), Value::Int(6));
+    }
+
+    /// `&!x` passed to a function that mutates through it updates `x`.
+    #[test]
+    fn a_mutable_reference_argument_writes_back() {
+        let src = "f fill(xs: &!Vec[i64]) { xs.push(7) }\nf t() -> usize {\n    m a: Vec[i64] = []\n    fill(&!a)\n    fill(&!a)\n    len(a)\n}\n";
+        assert_eq!(check_errors(src), vec![], "must typecheck");
+        assert_eq!(run(src, "t", &[]), Value::Int(2));
+        let src = "f bump(n: &!i64) { *n = *n + 1 }\nf t() -> i64 {\n    m c = 5\n    bump(&!c)\n    bump(&!c)\n    c\n}\n";
+        assert_eq!(check_errors(src), vec![], "must typecheck");
+        assert_eq!(run(src, "t", &[]), Value::Int(7));
+    }
+
+    /// A `&!` that is not a direct argument cannot be written through; the
+    /// error says so rather than computing with a copy.
+    #[test]
+    fn a_stored_mutable_reference_is_a_precise_error() {
+        let src = "f t() -> i64 {\n    m c = 5\n    m r = &!c\n    c\n}\n";
+        let e = run_source(src, "t", &[]).unwrap_err();
+        assert!(e.contains("only as a direct argument of a call to a user function"), "{e}");
+        let src = "f t() -> i64 {\n    m c = 5\n    abs(&!c)\n}\n";
+        let e = run_source(src, "t", &[]).unwrap_err();
+        assert!(e.contains("cannot be lent"), "{e}");
     }
 
     #[test]

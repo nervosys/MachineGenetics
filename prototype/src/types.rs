@@ -1318,6 +1318,28 @@ impl TypeChecker {
         }
     }
 
+    /// A call of a `LIST_MUTATORS` name, as `push(xs, x)` / `xs.push(x)` or
+    /// `pop(xs)` / `xs.pop()`, with the receiver first in `operands`. The
+    /// receiver must be a collection and `push`'s value its element type;
+    /// `push` is `()` and `pop` is `?A` (`None` on an empty list). The
+    /// evaluator performs both in place on the receiver's variable.
+    fn infer_list_mutator(&mut self, name: &str, operands: &[ast::Expr]) -> Ty {
+        let tys: Vec<Ty> = operands.iter().map(|a| self.infer_expr(a)).collect();
+        self.vocab_arity(name, tys.len(), if name == "push" { 2 } else { 1 });
+        if tys.is_empty() {
+            return self.fresh();
+        }
+        let elem = self.collection_elem(&tys[0]);
+        if name == "push" {
+            if tys.len() >= 2 {
+                self.unify_arg_at(name, operands, 1, &tys[1], &elem);
+            }
+            Ty::Unit
+        } else {
+            Ty::Option(Box::new(elem))
+        }
+    }
+
     /// Precise, fresh-per-call types for the §8 standard vocabulary, so misuse is
     /// caught (the reliability win) rather than inferred loosely. Returns `Some`
     /// for a typed combinator; `None` lets the call fall through to generic
@@ -2235,6 +2257,14 @@ impl TypeChecker {
                     return self.infer_scalar_math(name, args);
                 }
 
+                // `push(xs, x)` / `pop(xs)`, the bare form of the list mutators.
+                if let ast::Expr::Ident { name } = func.as_ref()
+                    && crate::resolve::LIST_MUTATORS.contains(&name.as_str())
+                    && self.env.lookup(name).is_none()
+                {
+                    return self.infer_list_mutator(name, args);
+                }
+
                 let func_ty = self.infer_expr(func);
                 let arg_tys: Vec<Ty> = args.iter().map(|a| self.infer_expr(a)).collect();
 
@@ -2314,6 +2344,11 @@ impl TypeChecker {
                     }
                     if crate::resolve::SCALAR_MATH.contains(&method.as_str()) {
                         return self.infer_scalar_math(method, &desugared);
+                    }
+                    if crate::resolve::LIST_MUTATORS.contains(&method.as_str())
+                        && self.env.lookup(method).is_none()
+                    {
+                        return self.infer_list_mutator(method, &desugared);
                     }
                 }
                 self.infer_expr(receiver);
