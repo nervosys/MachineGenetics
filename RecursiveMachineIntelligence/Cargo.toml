@@ -99,9 +99,6 @@ tracing-subscriber = { version = "0.3", features = ["json"] }
 # UUID for agent identity
 uuid = { version = "1.6", features = ["v4", "serde"] }
 
-# Time
-chrono = { version = "0.4", features = ["serde"] }
-
 # Graph structures for ontology
 petgraph = { version = "0.6", features = ["serde-1"] }
 
