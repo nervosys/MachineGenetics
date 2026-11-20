@@ -155,7 +155,7 @@ pub const MODES: &[CliMode] = &[
     CliMode {
         flag: "--heal",
         args: "<file.mg|-> [--write] [--json] [--compact] [--fuel N]",
-        summary: "intent-guided self-healing: heal compile errors, debug and repair failing @tests; prints a diff",
+        summary: "intent-guided self-healing: heal compile errors and failing @tests; prints a diff",
         effect: "read_local",
         detail: "Infers intent from signatures, declared effects, @req/@ens, struct @inv\n\
                  and @test functions (zero-arg, `@test`/`@t`). Compile-time: a numeric\n\
@@ -231,7 +231,7 @@ pub const MODES: &[CliMode] = &[
     CliMode {
         flag: "--bpe-count",
         args: "[--vocab FILE] [FILES|-]",
-        summary: "print the byte-level BPE token count of the files (default: the shipped MAGE vocab)",
+        summary: "print the byte-level BPE token count of the files",
         effect: "read_local",
         detail: "Prints one integer: the BPE tokens of the files together, after the cl100k-style                  pre-tokenizer. --vocab FILE reads a tiktoken-format vocabulary (one `<base64> <rank>`                  per line); without it the MAGE vocabulary trained on the repo's .mg sources is used.                  Reads standard input when there are no files or the file is `-`.",
     },
@@ -245,7 +245,7 @@ pub const MODES: &[CliMode] = &[
     CliMode {
         flag: "--target=abl-bytes",
         args: "<file.mg> [out.abl]",
-        summary: "lower Agentic Binary Language-routed items to a framed binary Agentic Binary Language container",
+        summary: "lower Agentic Binary Language-routed items to a binary Agentic Binary Language container",
         effect: "write_local",
         detail: "Container: magic \"ABL1\" + u16 version (3) + u32 count + per-item\n\
                  (name_len, name, expr_len, expr). Without [out]: stdout summary only\n\
@@ -336,6 +336,28 @@ pub const MODES: &[CliMode] = &[
                  databases. The tree is a generated export, not a source: it held 56
                  rules nothing read, under a different id scheme, missing two
                  databases. `scripts/check-skb-tree.sh` regenerates and diffs it.",
+    },
+    CliMode {
+        flag: "--ontology-index",
+        args: "",
+        summary: "ontology classes with counts (call first)",
+        effect: "pure",
+        detail: "One compact JSON object, under 800 BPE tokens: each class (kinds, sigils,
+                 cli_flags, rap_methods, ...) with its entry count and a one-line meaning.
+                 Never load the whole ontology (~64,600 tokens); call this, then --ontology-query.",
+    },
+    CliMode {
+        flag: "--ontology-query",
+        args: "<TERM> [--kind=C] [--budget=N]",
+        summary: "ontology entries for TERM, token-budgeted",
+        effect: "pure",
+        detail: "Matching, best first: exact name, case-insensitive name (leading - @ + ignored),
+                 name prefix, name substring, description substring; ties in class order then row
+                 order. Each hit: kind, name, the entry, and `related` (kind:name of directly related
+                 entries -- query those next; bodies are not repeated). Whole entries only, cut to
+                 --budget BPE tokens (default 600); `matches`, `returned`, `omitted`, `truncated` and
+                 the response's own `tokens` are reported. --kind=<class> takes a class from
+                 --ontology-index. RAP: ontology/query, ontology/index.",
     },
     CliMode {
         flag: "--emit-ontology",

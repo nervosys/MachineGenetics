@@ -168,7 +168,7 @@ errors combined).
 ## 7.4 The method surface
 
 **Corrected 2026-08-25.** This section was a "Planned Methods" table listing
-three implemented methods and eleven planned ones. **43 methods are published
+three implemented methods and eleven planned ones. **45 methods are published
 and dispatch** — the count is pinned, and a test exercises every one against
 its published parameter list. None of the eleven exists under the name given,
 and most of the capabilities they described shipped under a different one:
@@ -225,6 +225,8 @@ this table cannot drift from the binary without the ontology drifting first:
 | `nl/query` | `prompt` | General NL query against the SKB |
 | `nl/refactor` | `source` | Refactor source via natural-language request |
 | `ontology/full` | — | Return this complete ontology |
+| `ontology/index` | — | Cheap first call: every ontology class with its entry count and a one-line meaning |
+| `ontology/query` | `term` | Entries matching a term, cut to a token budget (also reads optional `kind`, `budget`) |
 | `ontology/section` | `section` | Return one named section of the ontology |
 | `pipeline/recover-and-encode` | `source` | Recover then encode Agentic Binary Language in one call |
 | `sandbox/policy` | `source`, `agent` | Lookup sandbox policy by name |
