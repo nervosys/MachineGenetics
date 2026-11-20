@@ -70,7 +70,7 @@ Read these to understand the system as it exists.
 | [ARENA.md](ARENA.md) | The self-driven improvement loop, its own crate `arena/`: agents write MAGE, learners predict it, joules are measured. **Built and measured once** ✅ — the first runs show reward hacking twice and weak transfer, both recorded as measured ◻ |
 | [GERMLINE.md](GERMLINE.md) | Model succession, handoff, and fallback — the RSI control plane, its own crate `germline/`. **Mixed status, marked inline**: the control plane is complete and tested end to end ✅ (variation, directed search, gate, attestation, lineage, hash-chained journal, cycle, supervision); model training/inference and any unattended daemon are not ◻ |
 | [AGENT_PROTOCOL.md](AGENT_PROTOCOL.md) | How an agent should target ABL bytes rather than text |
-| [UNIFICATION.md](UNIFICATION.md) | MAGE ↔ RMI unification: the bridge, adapters, and the 22-section ontology |
+| [UNIFICATION.md](UNIFICATION.md) | MAGE ↔ RMI unification: the bridge, adapters, and the 24-section ontology |
 | [SECURITY_AUDIT.md](SECURITY_AUDIT.md) | CVE/RustSec, NIST FIPS 140-3, MITRE ATT&CK, CMMC 2.0 audit |
 | [SPINE_COLLABORATION.md](SPINE_COLLABORATION.md) | Multi-agent collaboration over SPINE |
 | [MAGE_ONTOLOGY.md](MAGE_ONTOLOGY.md) | The ontology in prose. The machine-readable form is [`MAGE_ONTOLOGY.json`](MAGE_ONTOLOGY.json), generated from the implementation — prefer it |

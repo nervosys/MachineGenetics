@@ -333,13 +333,14 @@ For live function patching without full recompilation:
 
 ### Query it; do not load it
 
-`MAGE_ONTOLOGY.json` is about 64,600 tokens (mage-bpe-4096). An agent should
+`MAGE_ONTOLOGY.json` is about 63,000 tokens (mage-bpe-4096, as `--emit-ontology` writes it; 77,000 with CRLF line ends). An agent should
 never load it whole. Two cheap calls answer slices of the same generated data,
 cut to a token budget counted by the built-in BPE:
 
 1. **Index first.** `mage-parse --ontology-index` (RAP: `ontology/index`) lists
    the classes (keywords, sigils, types, effects, ir_ops, cli_flags,
-   rap_methods, ...) with entry counts and one line each. About 750 tokens.
+   rap_methods, diagnostics, builtins, ...) with entry counts and one line
+   each. About 790 tokens.
 2. **Then query.** `mage-parse --ontology-query <TERM> [--kind=<class>]
    [--budget=<tokens>]` (RAP: `ontology/query` with `term`, `kind`, `budget`).
    Matching is exact name, then case-insensitive name (leading `-`, `@`, `+`
@@ -348,6 +349,26 @@ cut to a token budget counted by the built-in BPE:
    `kind:name`, no bodies) so the next query is one call away. Whole entries
    only; `matches`, `returned`, `omitted`, `truncated` and the response's own
    `tokens` are reported. The default budget is 600 tokens.
+
+Two classes answer what an agent meets while working, not what it reads:
+
+- **`diagnostics`**: one entry per error code, found by the code (`E0382`) or
+  the category name (`UseAfterMove`). Each carries the category, severity,
+  one-line meaning, the fix hint the compiler prints, the passes that emit it
+  (`emitted_by`) and, where one is recorded, its known gap. One entry per
+  `DiagnosticCategory` variant, from `DiagnosticCategory::ALL`, `code()` and
+  `fix_hint()`; the meaning, passes and gaps are the facts of
+  `kb/rules/diagnostics.mg`. The codes that facts state and no variant carries
+  (`E0000`, `E0710`) are entries too, marked `variant: false`. A test holds
+  both halves, so a new category without a code, a meaning and a pass fails.
+- **`builtins`**: what a program may call that is not in `vocabulary`: the
+  bare functions of `resolve::STD_FNS` (`println`, `min`, `sqrt`, `Some`, ...),
+  the capability namespaces and the operations `--eval` performs on them
+  (`fs.read`, `io.read_line`, `time.sleep`), the rule that `x.f(a)` is
+  `f(x, a)` (there are no per-type methods), and names the spec states that
+  nothing implements (`fetch_add`, `kind: specified_only`). The evaluator
+  dispatches on string literals, so two tests read `eval.rs` itself and fail if
+  an arm exists that the tables lack, or the reverse.
 
 When `omitted` is not zero, narrow with `--kind` or a longer term rather than
 raising the budget. Use `ontology/section` only for one class, and

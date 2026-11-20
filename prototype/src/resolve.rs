@@ -47,6 +47,74 @@ pub(crate) const SCALAR_MATH: &[&str] = &[
     "floor", "ceil", "round", "trunc", "relu",
 ];
 
+/// What each `STD_FNS` name does in `--eval`: `(name, signature, summary)`. The
+/// ontology's `builtins` section publishes this table, so an agent can look a
+/// bare name up. `every_std_fn_is_documented` holds it to `STD_FNS` in both
+/// directions, and `the_evaluator_accepts_exactly_the_published_names` holds
+/// `STD_FNS`, `VOCABULARY` and `SCALAR_MATH` to the arms of `eval.rs`'s
+/// `call_builtin_inner`. A name in `VOCABULARY` is documented there instead.
+/// Every one is also a method: `x.f(a)` is `f(x, a)`.
+pub(crate) const STD_FN_DOCS: &[(&str, &str, &str)] = &[
+    ("println", "(any) -> ()", "print a value and a newline (effect io)"),
+    ("print", "(any) -> ()", "print a value, no newline (effect io)"),
+    ("eprintln", "(any) -> ()", "print a value and a newline to stderr (effect io)"),
+    ("eprint", "(any) -> ()", "print a value to stderr, no newline (effect io)"),
+    ("format", "(str) -> !", "registered but refused at run time: use an f-string, f\"hi {x}\""),
+    ("write", "(any) -> ()", "print a value, no newline (effect io)"),
+    ("writeln", "(any) -> ()", "print a value and a newline (effect io)"),
+    ("vec", "(A, ..) -> [A]", "a list of the arguments"),
+    ("panic", "(any) -> !", "stop the program with an error carrying the message"),
+    ("assert", "(bool, str?) -> ()", "fail with an optional message unless the condition is true"),
+    ("assert_eq", "(A, A) -> ()", "fail unless the two values are equal"),
+    ("assert_ne", "(A, A) -> ()", "fail unless the two values differ"),
+    ("dbg", "(A) -> A", "print a value and return it unchanged"),
+    ("todo", "() -> !", "stop with an error saying it was reached"),
+    ("unimplemented", "() -> !", "stop with an error saying it was reached"),
+    ("unreachable", "() -> !", "stop with an error saying it was reached"),
+    ("matches", "(..) -> !", "registered but refused at run time: use `?= value { pattern => 1b, _ => 0b }`"),
+    ("min", "(A, A) -> A  or  [A] -> A", "the smaller of two values, or the smallest of a list; error on an empty list"),
+    ("max", "(A, A) -> A  or  [A] -> A", "the larger of two values, or the largest of a list; error on an empty list"),
+    ("abs", "(num) -> num", "absolute value; integer overflow is an error"),
+    ("relu", "(f64) -> f64", "max(x, 0)"),
+    ("clamp", "(num, num, num) -> num", "clamp(x, lo, hi): x limited to [lo, hi]; lo > hi is an error"),
+    ("drop", "(any) -> ()", "discard a value"),
+    ("swap", "(..) -> !", "registered but refused at run time: it needs a reference; rebind instead"),
+    ("replace", "(..) -> !", "registered but refused at run time: it needs a reference; rebind instead"),
+    ("default", "() -> !", "registered but refused at run time: it has no type to default to; write the value"),
+    ("wrapping_add", "(int, int) -> int", "addition that wraps on overflow; the + operator traps"),
+    ("wrapping_sub", "(int, int) -> int", "subtraction that wraps on overflow; the - operator traps"),
+    ("wrapping_mul", "(int, int) -> int", "multiplication that wraps on overflow; the * operator traps"),
+    ("exp", "(f64) -> f64", "e to the x"),
+    ("ln", "(f64) -> f64", "natural logarithm"),
+    ("log", "(f64) -> f64", "natural logarithm, as ln"),
+    ("sqrt", "(f64) -> f64", "square root"),
+    ("sin", "(f64) -> f64", "sine"),
+    ("cos", "(f64) -> f64", "cosine"),
+    ("tan", "(f64) -> f64", "tangent"),
+    ("tanh", "(f64) -> f64", "hyperbolic tangent"),
+    ("sigmoid", "(f64) -> f64", "1 / (1 + e^-x)"),
+    ("silu", "(f64) -> f64", "x * sigmoid(x)"),
+    ("gelu", "(f64) -> f64", "Gaussian error linear unit"),
+    ("log2", "(f64) -> f64", "base-2 logarithm"),
+    ("log10", "(f64) -> f64", "base-10 logarithm"),
+    ("asin", "(f64) -> f64", "inverse sine"),
+    ("acos", "(f64) -> f64", "inverse cosine"),
+    ("atan", "(f64) -> f64", "inverse tangent"),
+    ("sinh", "(f64) -> f64", "hyperbolic sine"),
+    ("cosh", "(f64) -> f64", "hyperbolic cosine"),
+    ("floor", "(f64) -> f64", "round down; derivative is zero almost everywhere"),
+    ("ceil", "(f64) -> f64", "round up; derivative is zero almost everywhere"),
+    ("round", "(f64) -> f64", "round to nearest; derivative is zero almost everywhere"),
+    ("trunc", "(f64) -> f64", "round toward zero; derivative is zero almost everywhere"),
+    ("mean", "([num]) -> f64", "arithmetic mean; error on an empty list"),
+    ("dot", "([num], [num]) -> f64", "dot product; error if the lengths differ"),
+    ("forward", "(Net, [f64]) -> [f64]", "run a trained net's forward pass on one input vector (the net's train block supplies the weights)"),
+    ("Some", "(A) -> ?A", "an option holding a value"),
+    ("None", "() -> ?A", "the empty option"),
+    ("Ok", "(A) -> Result", "the success case of a result"),
+    ("Err", "(E) -> Result", "the failure case of a result"),
+];
+
 /// The standard SWE vocabulary (AB_INITIO_DESIGN §8 — the vocabulary frontier):
 /// `(name, signature, summary)`. SINGLE SOURCE OF TRUTH — `register_builtins`
 /// registers each name, `types::infer_vocab_call` types them, and the ontology's
@@ -1814,6 +1882,21 @@ f P(x: i32) -> i32 { x }"),
         assert_eq!(stated, table, "scalar_math facts vs SCALAR_MATH");
         for name in SCALAR_MATH {
             assert!(STD_FNS.contains(name), "`{name}` is scalar math and not in STD_FNS");
+        }
+    }
+
+    /// `STD_FN_DOCS` documents exactly the names of `STD_FNS`, each once, and
+    /// none of them is a `VOCABULARY` word (those are documented there).
+    #[test]
+    fn every_std_fn_is_documented() {
+        let mut documented: Vec<&str> = STD_FN_DOCS.iter().map(|(n, _, _)| *n).collect();
+        documented.sort_unstable();
+        let mut table: Vec<&str> = STD_FNS.to_vec();
+        table.sort_unstable();
+        assert_eq!(documented, table, "STD_FN_DOCS vs STD_FNS");
+        for (n, sig, doc) in STD_FN_DOCS {
+            assert!(!sig.is_empty() && !doc.is_empty(), "`{n}` has an empty row");
+            assert!(!VOCABULARY.iter().any(|(v, _, _)| v == n), "`{n}` is in VOCABULARY too");
         }
     }
 }

@@ -1,6 +1,6 @@
 //! Budgeted queries over the ontology.
 //!
-//! `--emit-ontology` builds an ontology of ~64,600 BPE tokens. An agent that
+//! `--emit-ontology` builds an ontology of ~63,000 BPE tokens (as emitted, LF line ends). An agent that
 //! has never seen MAGE cannot afford to load it whole; it needs the few facts
 //! one task requires. This module answers with *slices of what
 //! `ontology::build()` produces* -- there is no second source of truth -- cut
@@ -24,26 +24,28 @@ pub const DEFAULT_BUDGET: usize = 600;
 /// table against `ontology::build()` in both directions.
 const KINDS: &[(&str, &str)] = &[
     ("keywords", "reserved words"),
-    ("sigils", "sigils and their AST nodes"),
+    ("sigils", "sigils and AST nodes"),
     ("types", "built-in types"),
-    ("effects", "effect and spec annotations"),
-    ("vocabulary", "built-in functions"),
+    ("effects", "effect annotations"),
+    ("vocabulary", "list, map, string functions"),
+    ("diagnostics", "error codes and fixes"),
+    ("builtins", "other functions, io/fs ops"),
     ("ast_kinds", "AST node kinds"),
-    ("examples", "small runnable programs"),
+    ("examples", "runnable programs"),
     ("ir_ops", "IR operations"),
-    ("op_families", "groups of IR operations"),
-    ("layer_map", "layer names to IR ops"),
+    ("op_families", "IR op groups"),
+    ("layer_map", "layer to IR op"),
     ("framewerx_modules", "framework modules"),
-    ("cli_flags", "mage-parse command-line flags"),
-    ("rap_methods", "RAP JSON-RPC methods"),
+    ("cli_flags", "command-line flags"),
+    ("rap_methods", "RAP methods"),
     ("heal_patterns", "repair patterns"),
     ("recovery_stages", "recovery stages"),
     ("abl", "binary IR container"),
     ("hardware_accelerators", "compute backends"),
     ("bench_backends", "benchmark backends"),
-    ("wrapper_protocol", "model wrapper protocol"),
-    ("ci_floors", "CI regression floors"),
-    ("project_layout", "repository directories"),
+    ("wrapper_protocol", "model wrapper"),
+    ("ci_floors", "CI floors"),
+    ("project_layout", "repo directories"),
     ("docs", "documents"),
 ];
 
@@ -68,7 +70,13 @@ fn str_of<'a>(row: &'a Value, keys: &[&str]) -> Option<&'a str> {
     keys.iter().find_map(|k| row.get(*k).and_then(|v| v.as_str()))
 }
 
-fn load() -> Vec<Entry> {
+/// Every entry, built once per process.
+fn load() -> &'static [Entry] {
+    static ENTRIES: std::sync::OnceLock<Vec<Entry>> = std::sync::OnceLock::new();
+    ENTRIES.get_or_init(build_entries)
+}
+
+fn build_entries() -> Vec<Entry> {
     let onto = crate::ontology::build();
     let sections = &onto["sections"];
     let mut out = Vec::new();
@@ -78,11 +86,19 @@ fn load() -> Vec<Entry> {
             Value::Array(rows) => {
                 for row in rows {
                     let name = str_of(row, NAME_KEYS).unwrap_or("").to_string();
-                    let alias = if *kind == "layer_map" {
-                        row.get("op_name").and_then(|v| v.as_str()).map(String::from)
-                    } else {
-                        None
+                    // The other name an entry answers to: a layer's IR op, a
+                    // diagnostic's category (`UseAfterMove` for `E0382`), a
+                    // capability op without its namespace (`read_line`).
+                    let alias_key = match *kind {
+                        "layer_map" => Some("op_name"),
+                        "diagnostics" => Some("category"),
+                        "builtins" => Some("op"),
+                        _ => None,
                     };
+                    let alias = alias_key
+                        .and_then(|k| row.get(k))
+                        .and_then(|v| v.as_str())
+                        .map(String::from);
                     out.push(Entry {
                         kind,
                         name,
@@ -241,7 +257,7 @@ pub fn index() -> Value {
         .collect();
     finish(json!({
         "ok": true,
-        "use": "then query a name or word (optional kind); the whole ontology is 64600 tokens",
+        "use": "then query a name, code or word; whole ontology: 63000 tokens",
         "kinds": rows,
     }))
 }
@@ -322,6 +338,8 @@ mod tests {
         "Vec", "borrow", "Result", "net", "train", "--check", "effect", "Option",
         "match", "contract", "@ens", "matmul", "Attention", "--eval", "rap", "heal",
         "tensor", "backend", "agent", "layer",
+        // What an agent meets after an error or in someone else's code.
+        "E0382", "E0507", "fetch_add", "UseAfterMove",
     ];
 
     #[test]
@@ -393,6 +411,94 @@ mod tests {
         assert!(sec.as_array().unwrap().iter().any(|r| *r == first["entry"]));
     }
 
+
+    /// The first hit for a code, a category name or a builtin is the entry
+    /// that is exactly that, in the class an agent would expect.
+    #[test]
+    fn a_code_a_category_and_a_builtin_find_their_own_entry_first() {
+        for (term, kind, name) in [
+            ("E0382", "diagnostics", "E0382"),
+            ("E0507", "diagnostics", "E0507"),
+            ("UseAfterMove", "diagnostics", "E0382"),
+            ("MoveOutOfBorrow", "diagnostics", "E0507"),
+            ("e0502", "diagnostics", "E0502"),
+            ("fetch_add", "builtins", "fetch_add"),
+            ("read_line", "builtins", "io.read_line"),
+            ("fs.exists", "builtins", "fs.exists"),
+            ("unreachable", "builtins", "unreachable"),
+        ] {
+            let r = query(term, None, DEFAULT_BUDGET);
+            assert_eq!(r["hits"][0]["kind"], kind, "`{term}`");
+            assert_eq!(r["hits"][0]["name"], name, "`{term}`");
+        }
+        // The entry carries what an agent needs to act on the error.
+        let e = &query("E0382", None, DEFAULT_BUDGET)["hits"][0]["entry"];
+        for key in ["category", "summary", "fix", "emitted_by", "gap"] {
+            assert!(!e[key].is_null(), "E0382 has no `{key}`");
+        }
+    }
+
+    /// Terms an agent plausibly meets, from the tables that define them rather
+    /// than from a list written here: every diagnostic code and category,
+    /// every lexer keyword, every CLI flag, every RAP method, every builtin
+    /// the resolver, evaluator or spec names. Each must find an entry of the
+    /// class it belongs to by name (or alias), and fit the default budget.
+    ///
+    /// Not probed, and why: sigils, types, effects, IR ops and layer names
+    /// (their sections are the tables, so the probe would be the section read
+    /// against itself); the 7 warning classes of diagnostics.mg, which are
+    /// not codes (the code they carry is probed).
+    #[test]
+    fn every_term_an_agent_can_meet_has_an_entry() {
+        let mut terms: Vec<(String, &str)> = Vec::new();
+        for c in crate::hir::DiagnosticCategory::ALL {
+            terms.push((c.code().to_string(), "diagnostics"));
+            terms.push((format!("{c:?}"), "diagnostics"));
+        }
+        let kb = crate::kb::load().expect("kb loads");
+        for f in kb.facts("diagnostic_row") {
+            if f[0].len() == 5 && f[0].starts_with('E') {
+                terms.push((f[0].clone(), "diagnostics"));
+            }
+        }
+        for (k, _) in crate::lexer::KEYWORDS {
+            terms.push((k.to_string(), "keywords"));
+        }
+        let onto = crate::ontology::build();
+        for r in onto["sections"]["cli_flags"].as_array().unwrap() {
+            terms.push((r["flag"].as_str().unwrap().to_string(), "cli_flags"));
+        }
+        for r in onto["sections"]["rap_methods"].as_array().unwrap() {
+            terms.push((r["method"].as_str().unwrap().to_string(), "rap_methods"));
+        }
+        for n in crate::resolve::STD_FNS {
+            terms.push((n.to_string(), "builtins"));
+        }
+        for (n, _, _) in crate::resolve::VOCABULARY {
+            terms.push((n.to_string(), "vocabulary"));
+        }
+        for (ns, op, _, _) in crate::eval::CAPABILITY_OPS {
+            terms.push((format!("{ns}.{op}"), "builtins"));
+            terms.push((op.to_string(), "builtins"));
+        }
+        for (ns, _) in crate::hir::CAPABILITY_NAMESPACES {
+            terms.push((ns.to_string(), "builtins"));
+        }
+        terms.push(("fetch_add".to_string(), "builtins"));
+        assert!(terms.len() > 250, "the probe is {} terms", terms.len());
+
+        let all = load();
+        for (term, kind) in &terms {
+            let r = query(term, None, DEFAULT_BUDGET);
+            assert!(r["matches"].as_u64().unwrap() >= 1, "`{term}` matches nothing");
+            assert!(r["returned"].as_u64().unwrap() >= 1, "`{term}`: nothing fits the budget");
+            assert!(tokens(&r) <= DEFAULT_BUDGET, "`{term}` answered in {} tokens", tokens(&r));
+            assert!(
+                all.iter().any(|e| e.kind == *kind && tier(e, term).is_some_and(|t| t <= 2)),
+                "`{term}` has no `{kind}` entry by name"
+            );
+        }
+    }
     #[test]
     fn bad_input_is_an_error_not_a_panic() {
         assert_eq!(query("", None, 600)["ok"], false);

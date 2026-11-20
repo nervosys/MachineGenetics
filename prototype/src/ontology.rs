@@ -54,6 +54,23 @@ struct Stated {
     abl_fields: Vec<(String, String)>,
     /// The `abl_media_type` fact.
     abl_media_type: String,
+    /// One row per `diagnostic_row` fact of `kb/rules/diagnostics.mg`, by id.
+    diagnostics: Vec<DiagnosticRow>,
+}
+
+/// A diagnostic as `kb/rules/diagnostics.mg` states it: a code or a warning
+/// class (`id`), with the passes that emit it and the limits it records.
+struct DiagnosticRow {
+    id: String,
+    severity: String,
+    category: String,
+    summary: String,
+    /// The `enforced_by` facts, in the order stated.
+    enforced_by: Vec<String>,
+    /// The `gap` fact, if one is recorded.
+    gap: Option<String>,
+    /// The warning classes whose `warning_carries` fact names this code.
+    carried_by: Vec<String>,
 }
 
 /// One op's row of the `ir_ops` section.
@@ -197,6 +214,31 @@ fn stated() -> &'static Stated {
             .map(|f| f[0].clone())
             .expect("kb/meaning.mg states the container's media type");
 
+        let diagnostics: Vec<DiagnosticRow> = kb
+            .facts("diagnostic_row")
+            .into_iter()
+            .map(|f| {
+                let id = f[0].clone();
+                let of = |predicate: &str| -> Vec<Vec<String>> {
+                    kb.facts(predicate).into_iter().filter(|g| g[0] == id).collect()
+                };
+                DiagnosticRow {
+                    severity: f[1].clone(),
+                    category: f[2].clone(),
+                    summary: f[3].clone(),
+                    enforced_by: of("enforced_by").into_iter().map(|g| g[1].clone()).collect(),
+                    gap: of("gap").into_iter().next().map(|g| g[1].clone()),
+                    carried_by: kb
+                        .facts("warning_carries")
+                        .into_iter()
+                        .filter(|g| g[1] == id)
+                        .map(|g| g[0].clone())
+                        .collect(),
+                    id,
+                }
+            })
+            .collect();
+
         Stated {
             sigils: kb.facts("sigil_row").into_iter().map(|f| (f[0].clone(), f[1].clone(), f[2].clone())).collect(),
             keywords,
@@ -213,6 +255,7 @@ fn stated() -> &'static Stated {
             effects,
             abl_fields,
             abl_media_type,
+            diagnostics,
         }
     })
 }
@@ -1337,6 +1380,8 @@ pub fn build() -> serde_json::Value {
             "bench_backends": bench_backends_section(),
             "effects": effects_section(),
             "vocabulary": vocabulary_section(),
+            "diagnostics": diagnostics_section(),
+            "builtins": builtins_section(),
             "wrapper_protocol": wrapper_protocol_section(),
             "project_layout": project_layout_section(),
             "docs": docs_section(),
@@ -1358,6 +1403,9 @@ pub fn build() -> serde_json::Value {
             "bench_backends": BENCH_BACKENDS.len(),
             "effects": effect_rows().len(),
             "vocabulary": crate::resolve::VOCABULARY.len(),
+            "vocabulary": crate::resolve::VOCABULARY.len(),
+            "diagnostics": diagnostics_section().as_array().map_or(0, Vec::len),
+            "builtins": builtins_section().as_array().map_or(0, Vec::len),
             "wrapper_protocol": WRAPPER_PROTOCOL.len(),
             "project_layout": PROJECT_LAYOUT.len(),
             "docs": DOCS.len(),
@@ -1387,6 +1435,8 @@ pub fn section(name: &str) -> Option<serde_json::Value> {
         "bench_backends" => bench_backends_section(),
         "effects" => effects_section(),
         "vocabulary" => vocabulary_section(),
+        "diagnostics" => diagnostics_section(),
+        "builtins" => builtins_section(),
         "wrapper_protocol" => wrapper_protocol_section(),
         "project_layout" => project_layout_section(),
         "docs" => docs_section(),
@@ -1394,6 +1444,138 @@ pub fn section(name: &str) -> Option<serde_json::Value> {
         "hardware_accelerators" => hardware_accelerators_section(),
         _ => return None,
     })
+}
+
+/// Operations the spec names and no pass implements:
+/// `(name, signature, summary)`. They are in the `builtins` section so that an
+/// agent which meets one finds out it is not available, instead of finding
+/// nothing. `specified_only_names_are_in_the_spec_and_not_implemented` holds
+/// each row to both claims: the name is in MAGE_SPEC.md and a program that
+/// calls it does not run. Implementing one makes that test fail, which is the
+/// prompt to move it to a real table.
+const SPECIFIED_ONLY: &[(&str, &str, &str)] = &[(
+    "fetch_add",
+    "(@AtomicI64, int) -> int",
+    "atomic add, sequentially consistent, no ordering parameter (MAGE_SPEC, Atomic ordering). Specified only: --check types a call as an unknown method and --eval reports an unknown function",
+)];
+
+/// The `diagnostics` section: one entry per `DiagnosticCategory` (from
+/// `DiagnosticCategory::ALL`: its code and `fix_hint`), joined to the facts of
+/// `kb/rules/diagnostics.mg` for what it means, which passes emit it and what
+/// they do not catch; then one entry per code in the facts with no category
+/// (`variant: false`). `the_diagnostics_section_is_the_enum_and_the_facts`
+/// holds both halves.
+fn diagnostics_section() -> serde_json::Value {
+    use crate::hir::DiagnosticCategory;
+    let rows = &stated().diagnostics;
+    let entry = |code: &str, category: String, fix: Option<&str>| {
+        let row = rows
+            .iter()
+            .find(|r| r.id == code)
+            .unwrap_or_else(|| panic!("kb/rules/diagnostics.mg states no diagnostic for `{code}`"));
+        // The passes that emit the code itself, then those of the warning
+        // classes that go out under it (`E9999` has no pass of its own).
+        let mut emitted_by = row.enforced_by.clone();
+        for class in &row.carried_by {
+            for r in rows.iter().filter(|r| &r.id == class) {
+                for p in &r.enforced_by {
+                    if !emitted_by.contains(p) {
+                        emitted_by.push(p.clone());
+                    }
+                }
+            }
+        }
+        let mut e = serde_json::json!({
+            "name": code,
+            "category": category,
+            "severity": row.severity,
+            "summary": row.summary,
+            "emitted_by": emitted_by,
+        });
+        if let Some(f) = fix {
+            e["fix"] = serde_json::json!(f);
+        } else {
+            e["variant"] = serde_json::json!(false);
+        }
+        if let Some(g) = &row.gap {
+            e["gap"] = serde_json::json!(g);
+        }
+        if !row.carried_by.is_empty() {
+            e["also_carried_by"] = serde_json::json!(row.carried_by);
+        }
+        e
+    };
+    let mut items: Vec<serde_json::Value> = DiagnosticCategory::ALL
+        .iter()
+        .map(|c| entry(c.code(), format!("{c:?}"), Some(c.fix_hint())))
+        .collect();
+    let variant_codes: Vec<&str> = DiagnosticCategory::ALL.iter().map(|c| c.code()).collect();
+    for r in rows {
+        if is_code(&r.id) && !variant_codes.contains(&r.id.as_str()) {
+            items.push(entry(&r.id, r.category.clone(), None));
+        }
+    }
+    items.sort_by(|a, b| a["name"].as_str().cmp(&b["name"].as_str()));
+    serde_json::json!(items)
+}
+
+/// An `E` and four digits: a code, as against a warning class's name.
+fn is_code(id: &str) -> bool {
+    id.len() == 5 && id.starts_with('E') && id[1..].bytes().all(|b| b.is_ascii_digit())
+}
+
+/// The `builtins` section: what a program may call that is neither a user
+/// item nor in `vocabulary`. Four kinds of row, each from a table the
+/// compiler itself uses:
+///
+/// - `function`: the names of `resolve::STD_FNS` (documented in
+///   `resolve::STD_FN_DOCS`);
+/// - `capability_namespace`: `hir::CAPABILITY_NAMESPACES`, with the operations
+///   `--eval` performs for it;
+/// - `capability_op`: `eval::CAPABILITY_OPS`, read against the arms of
+///   `call_capability`;
+/// - `specified_only`: `SPECIFIED_ONLY`; and one `rule` row for the method
+///   form.
+///
+/// `the_evaluator_accepts_exactly_the_published_names` and
+/// `capability_ops_are_the_dispatch_arms` (in `eval.rs`) read the evaluator's
+/// own source, so a name it accepts that this section lacks fails a test.
+fn builtins_section() -> serde_json::Value {
+    let mut items: Vec<serde_json::Value> = Vec::new();
+    for (name, sig, doc) in crate::resolve::STD_FN_DOCS {
+        items.push(serde_json::json!({
+            "name": name, "kind": "function", "signature": sig, "summary": doc,
+        }));
+    }
+    for (ns, effect) in crate::hir::CAPABILITY_NAMESPACES {
+        let ops: Vec<&str> =
+            crate::eval::CAPABILITY_OPS.iter().filter(|r| r.0 == *ns).map(|r| r.1).collect();
+        let eff = effect.as_ref().map_or("none".to_string(), |e| format!("{e:?}"));
+        let summary = if ops.is_empty() {
+            format!("capability handle, effect {eff}; the checker tracks it and --eval performs none of its operations")
+        } else {
+            format!("capability handle `{ns}.op(..)`, effect {eff}; --eval performs the operations listed")
+        };
+        items.push(serde_json::json!({
+            "name": ns, "kind": "capability_namespace", "effect": eff, "ops": ops, "summary": summary,
+        }));
+    }
+    for (ns, op, sig, doc) in crate::eval::CAPABILITY_OPS {
+        items.push(serde_json::json!({
+            "name": format!("{ns}.{op}"), "kind": "capability_op", "op": op,
+            "signature": sig, "summary": doc,
+        }));
+    }
+    for (name, sig, doc) in SPECIFIED_ONLY {
+        items.push(serde_json::json!({
+            "name": name, "kind": "specified_only", "signature": sig, "summary": doc,
+        }));
+    }
+    items.push(serde_json::json!({
+        "name": "method_call", "kind": "rule",
+        "summary": "recv.f(a, b) is f(recv, a, b): every function in vocabulary and builtins also works as a method. There are no per-type methods; a method written in an extend block wins for its own type",
+    }));
+    serde_json::json!(items)
 }
 
 fn sigils_section() -> serde_json::Value {
@@ -1725,6 +1907,7 @@ mod tests {
             "project_layout", "docs", "ci_floors",
             // P91 - hardware accelerators
             "hardware_accelerators",
+            "diagnostics", "builtins",
         ] {
             assert!(sections.contains_key(required), "missing section: {required}");
             assert!(!sections[required].is_null(), "null section: {required}");
@@ -2045,6 +2228,121 @@ mod tests {
         for required in ["MIN_PARSE", "MIN_HEAL", "native-lexer ratio"] {
             assert!(names.contains(&required), "missing floor entry: {required}");
         }
+    }
+
+    /// One entry per `DiagnosticCategory` variant, exactly, carrying its code,
+    /// category name, summary, fix hint and emitting passes; and one entry for
+    /// every other code the facts state. Nothing here is written by hand: the
+    /// entries are `ALL`, `code()`, `fix_hint()` and `diagnostics.mg`.
+    #[test]
+    fn the_diagnostics_section_is_the_enum_and_the_facts() {
+        use crate::hir::DiagnosticCategory;
+        let sec = diagnostics_section();
+        let items = sec.as_array().unwrap();
+        let named = |code: &str| items.iter().filter(|e| e["name"] == code).collect::<Vec<_>>();
+        for c in DiagnosticCategory::ALL {
+            let hits = named(c.code());
+            assert_eq!(hits.len(), 1, "{c:?} ({}) must have exactly one entry", c.code());
+            let e = hits[0];
+            assert_eq!(e["category"], format!("{c:?}"));
+            assert_eq!(e["fix"], c.fix_hint());
+            assert!(e["variant"].is_null(), "{c:?} is a variant");
+            assert!(!e["summary"].as_str().unwrap().is_empty(), "{c:?} has no meaning");
+            assert!(!e["emitted_by"].as_array().unwrap().is_empty(), "{c:?} names no emitting pass");
+        }
+        // The facts' own codes, each once; the ones with no variant are marked.
+        let kb = crate::kb::load().unwrap();
+        let mut codes: Vec<String> = kb
+            .facts("diagnostic_row")
+            .into_iter()
+            .map(|f| f[0].clone())
+            .filter(|id| is_code(id))
+            .collect();
+        codes.sort();
+        let mut listed: Vec<String> = items.iter().map(|e| e["name"].as_str().unwrap().to_string()).collect();
+        listed.sort();
+        assert_eq!(listed, codes, "diagnostics entries vs the codes of diagnostics.mg");
+        let variant_entries = items.iter().filter(|e| e["variant"].is_null()).count();
+        assert_eq!(variant_entries, DiagnosticCategory::ALL.len());
+        // A recorded gap is carried, and only a recorded one.
+        for e in items {
+            let stated = kb.facts("gap").into_iter().any(|g| g[0] == e["name"].as_str().unwrap());
+            assert_eq!(!e["gap"].is_null(), stated, "gap of {}", e["name"]);
+        }
+        assert!(named("E0382")[0]["emitted_by"].as_array().unwrap().iter().any(|p| p == "borrowck"));
+    }
+
+    /// The `builtins` section is the tables the compiler uses, whole: every
+    /// `STD_FNS` name, every capability namespace, every operation `--eval`
+    /// performs, each once.
+    #[test]
+    fn the_builtins_section_is_the_tables() {
+        let sec = builtins_section();
+        let items = sec.as_array().unwrap();
+        let of = |kind: &str| -> Vec<String> {
+            items
+                .iter()
+                .filter(|e| e["kind"] == kind)
+                .map(|e| e["name"].as_str().unwrap().to_string())
+                .collect()
+        };
+        let want = |v: Vec<String>| v;
+        assert_eq!(
+            of("function"),
+            want(crate::resolve::STD_FNS.iter().map(|s| s.to_string()).collect())
+        );
+        assert_eq!(
+            of("capability_namespace"),
+            crate::hir::CAPABILITY_NAMESPACES.iter().map(|(n, _)| n.to_string()).collect::<Vec<_>>()
+        );
+        assert_eq!(
+            of("capability_op"),
+            crate::eval::CAPABILITY_OPS
+                .iter()
+                .map(|(ns, op, _, _)| format!("{ns}.{op}"))
+                .collect::<Vec<_>>()
+        );
+        // `log` is both a namespace and the logarithm, so a name is unique
+        // within its kind, not across kinds.
+        let mut names: Vec<(&str, &str)> = items
+            .iter()
+            .map(|e| (e["kind"].as_str().unwrap(), e["name"].as_str().unwrap()))
+            .collect();
+        let n = names.len();
+        names.sort_unstable();
+        names.dedup();
+        assert_eq!(names.len(), n, "a builtins name appears twice in its kind");
+        let names: Vec<&str> = names.into_iter().map(|(_, n)| n).collect();
+        // Vocabulary words are published once, in `vocabulary`.
+        for (v, _, _) in crate::resolve::VOCABULARY {
+            assert!(!names.contains(v), "`{v}` is in vocabulary and builtins");
+        }
+        // The namespaces name the operations that exist.
+        for e in items.iter().filter(|e| e["kind"] == "capability_namespace") {
+            let ns = e["name"].as_str().unwrap();
+            let ops: Vec<&str> = e["ops"].as_array().unwrap().iter().map(|o| o.as_str().unwrap()).collect();
+            let table: Vec<&str> =
+                crate::eval::CAPABILITY_OPS.iter().filter(|r| r.0 == ns).map(|r| r.1).collect();
+            assert_eq!(ops, table, "{ns}");
+        }
+    }
+
+    /// A `SPECIFIED_ONLY` row claims two things: the spec names it, and no
+    /// pass implements it. Both are run. `method_call` claims `x.f()` is
+    /// `f(x)`; that is run too.
+    #[test]
+    fn specified_only_names_are_in_the_spec_and_not_implemented() {
+        let spec = include_str!("../../MAGE_SPEC.md");
+        for (name, _, _) in SPECIFIED_ONLY {
+            assert!(spec.contains(name), "MAGE_SPEC.md does not mention `{name}`");
+            let src = format!("f g(a: i64) -> i64 {{ a.{name}(1) }}");
+            let got = crate::eval::run_source(&src, "g", &[1]);
+            let msg = got.expect_err(&format!("`{name}` runs; it is implemented, so move its row"));
+            assert!(msg.contains("unknown function"), "`{name}`: {msg}");
+        }
+        let method = crate::eval::run_source("f g(a: i64) -> [i64] { [3, 1, 2].sort() }", "g", &[0]);
+        let free = crate::eval::run_source("f g(a: i64) -> [i64] { sort([3, 1, 2]) }", "g", &[0]);
+        assert_eq!(method.unwrap().to_string(), free.unwrap().to_string());
     }
 
     #[test]

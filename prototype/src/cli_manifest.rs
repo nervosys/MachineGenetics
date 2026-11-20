@@ -344,7 +344,7 @@ pub const MODES: &[CliMode] = &[
         effect: "pure",
         detail: "One compact JSON object, under 800 BPE tokens: each class (kinds, sigils,
                  cli_flags, rap_methods, ...) with its entry count and a one-line meaning.
-                 Never load the whole ontology (~64,600 tokens); call this, then --ontology-query.",
+                 Never load the whole ontology (~63,000 tokens); call this, then --ontology-query.",
     },
     CliMode {
         flag: "--ontology-query",
