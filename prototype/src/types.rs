@@ -2242,8 +2242,21 @@ impl TypeChecker {
                         }
                         Ty::Bool
                     }
+                    // A shift count may be of any integer type (`1u64 << attempt`
+                    // with `attempt: u32`, as in Rust). The result is the
+                    // shifted value's type.
+                    "<<" | ">>" => {
+                        let (l, r) = (self.subst.apply(&lt), self.subst.apply(&rt));
+                        if !is_integer_or_open(&l) {
+                            self.emit_error(format!("shift `{op}`: the shifted value must be an integer, found `{l}`"));
+                        }
+                        if !is_integer_or_open(&r) {
+                            self.emit_error(format!("shift `{op}`: the shift count must be an integer, found `{r}`"));
+                        }
+                        l
+                    }
                     // Arithmetic operators: operands must be same numeric type.
-                    "+" | "-" | "*" | "/" | "%" | "&" | "|" | "^" | "<<" | ">>" => {
+                    "+" | "-" | "*" | "/" | "%" | "&" | "|" | "^" => {
                         if let Err(e) = unify(&mut self.subst, &lt, &rt) {
                             self.emit_error(format!("arithmetic `{op}`: {e}"));
                             // Evidence only for two concrete numeric types:
@@ -2272,7 +2285,19 @@ impl TypeChecker {
                     // `+=` failed with fully annotated types too. The
                     // untyped-parameter program it was found in simply had two
                     // problems at once.
-                    "+=" | "-=" | "*=" | "/=" | "%=" | "&=" | "|=" | "^=" | "<<=" | ">>=" => {
+                    "<<=" | ">>=" => {
+                        // As `<<` and `>>`: the count's type may differ.
+                        self.check_assignable(left);
+                        let (l, r) = (self.subst.apply(&lt), self.subst.apply(&rt));
+                        if !is_integer_or_open(&l) {
+                            self.emit_error(format!("shift `{op}`: the shifted value must be an integer, found `{l}`"));
+                        }
+                        if !is_integer_or_open(&r) {
+                            self.emit_error(format!("shift `{op}`: the shift count must be an integer, found `{r}`"));
+                        }
+                        Ty::Unit
+                    }
+                    "+=" | "-=" | "*=" | "/=" | "%=" | "&=" | "|=" | "^=" => {
                         self.check_assignable(left);
                         if let Err(e) = unify(&mut self.subst, &lt, &rt) {
                             self.emit_error(format!("compound assignment `{op}`: {e}"));
@@ -2325,8 +2350,26 @@ impl TypeChecker {
                 match op.as_str() {
                     "-" => t,
                     "!" => {
-                        // Could be bool negation or bitwise not.
-                        t
+                        // `!` is logical not on a bool and bitwise complement on
+                        // an integer, as in Rust: the result has the operand's
+                        // type. Anything else has no `!`.
+                        let inner = {
+                            let mut u = self.subst.apply(&t);
+                            while let Ty::Ref(_, i) = u {
+                                u = self.subst.apply(&i);
+                            }
+                            u
+                        };
+                        if matches!(
+                            inner,
+                            Ty::Str | Ty::Char | Ty::Unit | Ty::Float(_) | Ty::Vec(_) | Ty::Array(..)
+                                | Ty::Slice(_) | Ty::Tuple(_) | Ty::Option(_) | Ty::Result(..) | Ty::Map(..)
+                        ) {
+                            self.emit_error(format!("`!` takes a bool or an integer, found `{inner}`"));
+                            Ty::Error
+                        } else {
+                            t
+                        }
                     }
                     "*" => {
                         // Dereference: &T → T, ^T → T, etc.
@@ -2431,6 +2474,21 @@ impl TypeChecker {
                             ));
                         } else {
                             for (i, (p, a)) in params.iter().zip(arg_tys.iter()).enumerate() {
+                                // A string literal is already a string slice (section B.4),
+                                // so it is accepted for a shared `&s` parameter without `&`.
+                                // `&"lit"` still checks, and a `str` variable does not.
+                                let lit_for_ref = matches!(
+                                    &args[i],
+                                    ast::Expr::Literal {
+                                        kind: ast::LiteralKind::String | ast::LiteralKind::FormatString,
+                                        ..
+                                    }
+                                ) && matches!(self.subst.apply(p), Ty::Ref(false, ref inner)
+                                    if matches!(self.subst.apply(inner), Ty::Str))
+                                    && matches!(self.subst.apply(a), Ty::Str);
+                                if lit_for_ref {
+                                    continue;
+                                }
                                 if let Err(e) = unify(&mut self.subst, p, a) {
                                     self.emit_error(format!(
                                         "call `{name}`: argument {} type mismatch: {e}",
@@ -3291,6 +3349,13 @@ impl TypeChecker {
 /// Whether `t` is a concrete integer or float type.
 fn is_numeric(t: &Ty) -> bool {
     matches!(t, Ty::Int(_) | Ty::Uint(_) | Ty::Float(_))
+}
+
+/// A concrete integer type, or one not yet known (an integer literal's type
+/// variable, or an error already reported). The operands of a shift are
+/// checked with this, since a shift count need not share its operand's type.
+fn is_integer_or_open(t: &Ty) -> bool {
+    matches!(t, Ty::Int(_) | Ty::Uint(_) | Ty::Var(_) | Ty::Error | Ty::Never)
 }
 
 /// [`check`]'s diagnostics, and the structured evidence for the type
@@ -4398,6 +4463,37 @@ mod int_literal_tests {
         // the surroundings demand" and nothing enforced the "int" part.
         assert!(!errors("+f f() -> bool { 1 }").is_empty());
         assert!(!errors("+f f() -> str { 1 }").is_empty());
+    }
+
+    #[test]
+    fn not_is_a_bool_or_an_integer_and_keeps_the_operand_type() {
+        assert!(errors("+f f(x: usize) -> usize { x & !(3) }").is_empty());
+        assert!(errors("+f f(b: bool) -> bool { !b }").is_empty());
+        assert!(!errors("+f f() -> str { !\"x\" }").is_empty());
+        assert!(!errors("+f f(x: f64) -> f64 { !x }").is_empty());
+    }
+
+    #[test]
+    fn a_string_literal_is_accepted_for_a_shared_str_reference_parameter() {
+        let take = "+f g(s: &s) -> usize { 0 }\n";
+        // The literal, and the spelling that already worked.
+        assert!(errors(&format!("{take}+f h() -> usize {{ g(\"PORT\") }}")).is_empty());
+        assert!(errors(&format!("{take}+f h() -> usize {{ g(&\"PORT\") }}")).is_empty());
+        // A `str` variable is not a literal, and an integer is not a string.
+        assert!(!errors(&format!("{take}+f h(v: s) -> usize {{ g(v) }}")).is_empty());
+        assert!(!errors(&format!("{take}+f h() -> usize {{ g(5) }}")).is_empty());
+    }
+
+    #[test]
+    fn a_shift_count_may_have_a_different_integer_type() {
+        assert!(errors("+f f(a: u64, k: u32) -> u64 { a << k }").is_empty());
+        assert!(errors("+f f(a: u64, k: u32) -> u64 { a >> k }").is_empty());
+        assert!(errors("+f f(a: u64, k: u32) -> u64 { var b = a\n b <<= k\n b }").is_empty());
+        assert!(errors("+f f(a: u64, k: u32) -> u64 { a << (k as u64) }").is_empty());
+        // The result is the shifted value's type, so it is not a `u32`.
+        assert!(!errors("+f f(a: u64, k: u32) -> u32 { a << k }").is_empty());
+        // A count that is not an integer is an error.
+        assert!(!errors("+f f(a: u64, k: bool) -> u64 { a << k }").is_empty());
     }
 
     #[test]

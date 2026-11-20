@@ -791,11 +791,16 @@ f main() -> i32 { 0 }
 Operator precedence is Appendix C and `StOr` … `StPostfix` in `kb/grammar.mg`.
 The primary forms are in `PrefixExpr`, and the postfix forms in `StPostfixOp`.
 
-- **Literals and names.** Lexical forms are §3.5; booleans are `1b` and `0b`.
+- **Literals and names.** Lexical forms are §3.5; booleans are `1b` and `0b`. A
+  string literal is a `&str` (B.4), so it is accepted where a `&s` parameter is
+  asked for, with or without the `&`; a `str` variable still needs `&`.
 - **Operators.** Binary, unary and compound-assignment operators (`+=`, `<<=`,
   and the other bitwise forms), the pipeline `|>`, and the tensor operators of
   §6. `?` after an expression is the try operator, `e as T` a cast, and
-  `e is pattern` a pattern test.
+  `e is pattern` a pattern test. `!` is logical not on a `bool` and bitwise
+  complement on an integer, with the operand's type. A shift count may be of any
+  integer type, and the result has the shifted value's type; a negative count, or
+  one of 64 or more, is a run-time error.
 - **Calls and access.** `f(args)`, `e.field`, `e.method(args)`, `e[i]` and
   `e[a..b]`. A method's type arguments take a turbofish, `e.m::<T>()`; the form
   `e.m<T>()` does not parse. `await` is not an operator: `.await` is an ordinary

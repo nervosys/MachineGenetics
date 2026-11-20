@@ -1230,7 +1230,11 @@ impl Interp {
                     },
                     ("-", Value::Float(f)) => Ok(Value::Float(-f)),
                     ("-", Value::Dual(v, d)) => Ok(Value::Dual(-v, -d)),
-                    // `!` negates truthiness, so `!0` / `![]` work, not just bools.
+                    // `!` on an integer is the bitwise complement (Rust). Values carry
+                    // no width at run time, so this is the i64 complement; masking
+                    // with an unsigned value (`x & !n`) gives Rust's result.
+                    ("!", Value::Int(n)) => Ok(Value::Int(!n)),
+                    // `!` on a bool is logical not; other values use truthiness.
                     ("!", v) => Ok(Value::Bool(!truthy(&v))),
                     (o, _) => err(format!("unsupported unary `{o}`")),
                 }
@@ -3295,10 +3299,15 @@ fn binop(op: &str, l: Value, r: Value) -> R {
             Ok(List(a))
         }
         // Bitwise / shift operators on integers (`|` is bit-or, hence closures
-        // are written `fn(x)`, not `|x|`). Shift counts are masked to 0..63.
+        // are written `fn(x)`, not `|x|`). A shift count outside 0..=63 is an
+        // error, as Rust's overflowing shift is; the width is not known here,
+        // so the 64-bit bound is the one checked.
         ("&", Int(a), Int(b)) => Ok(Int(a & b)),
         ("|", Int(a), Int(b)) => Ok(Int(a | b)),
         ("^", Int(a), Int(b)) => Ok(Int(a ^ b)),
+        ("<<" | ">>", Int(_), Int(b)) if !(0..64).contains(&b) => {
+            err(format!("shift count {b} is out of range: a shift is by 0 to 63 bits"))
+        }
         ("<<", Int(a), Int(b)) => Ok(Int(a.wrapping_shl(b as u32))),
         (">>", Int(a), Int(b)) => Ok(Int(a.wrapping_shr(b as u32))),
         // Mixed numerics promote to float (so `n / 2.0` and `x as f64 / 2` work).
@@ -5568,6 +5577,26 @@ f bad() -> R[i64, str] { Ok(0) }
         assert_eq!(run(src, "s", &[]), Value::Int(10));
     }
 
+    #[test]
+    fn not_on_an_integer_is_the_bitwise_complement() {
+        assert_eq!(run("f s() { !5 }", "s", &[]), Value::Int(-6));
+        assert_eq!(run("f s() { 255 & !3 }", "s", &[]), Value::Int(252));
+        // Logical not on a bool is unchanged.
+        assert_eq!(run("f s() { !1b }", "s", &[]), Value::Bool(false));
+    }
+
+    #[test]
+    fn a_shift_count_outside_zero_to_sixty_three_is_an_error() {
+        let src = "f s(k: u32) -> u64 { 1 << k }";
+        assert_eq!(run(src, "s", &[3]), Value::Int(8));
+        for k in [64, -1] {
+            match run_source(src, "s", &[k]) {
+                Err(e) => assert!(e.contains("out of range"), "{k}: {e}"),
+                Ok(v) => panic!("shift by {k} returned {v}; it must be an error"),
+            }
+        }
+    }
+
     // ── enum values ──────────────────────────────────────────────────────
     //
     // Enums typechecked long before they evaluated: `Mode.A` was read as a
@@ -6183,8 +6212,9 @@ f s() { scaled(5) }";
             ("f s(){ sum([1, 2, 3, 4, 5][2..]) + len([1,2,3,4,5][..2]) }", "s", &[], Value::Int(14)),
             ("f s(){ \"hello world\"[0..5] }", "s", &[], Value::Str("hello".into())),
             // Boolean literals (`1b`/`true` were silently false), `!` on a
-            // non-bool, and list concatenation with `+`.
-            ("f s(){ var n = 0\n if true { n += 1 }\n if 1b { n += 10 }\n if !0 { n += 100 }\n if !false { n += 1000 }\n n }", "s", &[], Value::Int(1111)),
+            // integer (its bitwise complement, `!0 == -1`), and list
+            // concatenation with `+`.
+            ("f s(){ var n = 0\n if true { n += 1 }\n if 1b { n += 10 }\n if !0 == -1 { n += 100 }\n if !false { n += 1000 }\n n }", "s", &[], Value::Int(1111)),
             ("f s(){ sum(fold([1,2,3], [], fn(a, x) => a + [x * x])) + len([1,2] + [3,4,5]) }", "s", &[], Value::Int(19)),
         ];
         let mut ok = 0;

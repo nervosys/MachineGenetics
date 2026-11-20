@@ -37,8 +37,6 @@ err-004 test 2/2 failing; first case 1: error unknown function `iter`
 gt-002 check E0412 _
 gt-004 check E0412 _
 gt-005 test 2/2 failing; first case 1: error unknown function `ok_or`
-sys-002 test 1/2 failing; first case 2: error unsupported binary `&` on these types
-sys-003 test 2/2 failing; first case 1: error unsupported binary `&` on these types
 sys-005 check E0425 s
 sys-006 test 1/2 failing; first case 2: error unknown function `iter`
 sys-007 unrunnable 1/1 case(s): solution declares host effect(s) env; eval would perform them
