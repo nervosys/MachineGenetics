@@ -865,7 +865,8 @@ const BORROWCK_VERSION: &str = "4";
 /// by an older parser would keep serving its tokens and parses (including
 /// parse errors) for text the new one reads differently.
 /// 2: record patterns after `val`/`var` (`val @T { f } = e`) parse.
-pub const PARSE_VERSION: &str = "2";
+/// 3: effect declarations and operations keep their generic parameters.
+pub const PARSE_VERSION: &str = "3";
 
 fn mismatch(key: &Key, got: &Val) -> QueryError {
     let name = format!("{got:?}");

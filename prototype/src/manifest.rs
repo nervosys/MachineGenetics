@@ -252,14 +252,17 @@ mod tests {
                 Item {
                     kind: ItemKind::Effect(EffectDef {
                         name: "IO".into(),
+                        generics: vec![],
                         operations: vec![
                             EffectOp {
                                 name: "read".into(),
+                                generics: vec![],
                                 params: vec![],
                                 return_type: Some(path_type("String")),
                             },
                             EffectOp {
                                 name: "write".into(),
+                                generics: vec![],
                                 params: vec![Param {
                                     name: "data".into(),
                                     ty: path_type("String"),

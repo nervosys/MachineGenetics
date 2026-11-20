@@ -477,6 +477,10 @@ pub struct TypeChecker {
     /// signature an operation call is checked against and the types a handler
     /// arm's parameters are bound at, so they exist in exactly one place.
     effect_ops: HashMap<(String, String), (Vec<Ty>, Ty)>,
+    /// The type variables quantified by each operation's signature: the
+    /// effect's generics followed by the operation's own. Empty for a
+    /// non-generic operation.
+    effect_op_generics: HashMap<(String, String), Vec<TyVar>>,
     /// Names of declared `effect` blocks, in declaration order.
     effect_defs: Vec<String>,
     /// Interned names of user-defined types: name → id, and id → name.
@@ -557,6 +561,7 @@ impl TypeChecker {
             fn_required_arity: HashMap::new(),
             enum_defs: HashMap::new(),
             effect_ops: HashMap::new(),
+            effect_op_generics: HashMap::new(),
             effect_defs: Vec::new(),
             named_ids: HashMap::new(),
             named_names: Vec::new(),
@@ -840,6 +845,23 @@ impl TypeChecker {
 
     fn instantiated_sig(&mut self, name: &str, params: &[Ty], ret: &Ty) -> (Vec<Ty>, Ty) {
         let quantified = self.fn_generics.get(name).cloned().unwrap_or_default();
+        self.instantiate_quantified(quantified, params, ret)
+    }
+
+    /// The signature of effect operation `effect.op`, with its quantified
+    /// variables replaced by fresh ones, as `instantiated_sig` does for a
+    /// generic function. Each use gets its own copy, so one operation can be
+    /// called at two types in the same function.
+    fn instantiated_op_sig(&mut self, effect: &str, op: &str, params: &[Ty], ret: &Ty) -> (Vec<Ty>, Ty) {
+        let quantified = self
+            .effect_op_generics
+            .get(&(effect.to_string(), op.to_string()))
+            .cloned()
+            .unwrap_or_default();
+        self.instantiate_quantified(quantified, params, ret)
+    }
+
+    fn instantiate_quantified(&mut self, quantified: Vec<TyVar>, params: &[Ty], ret: &Ty) -> (Vec<Ty>, Ty) {
         if quantified.is_empty() {
             return (params.to_vec(), ret.clone());
         }
@@ -1059,6 +1081,20 @@ impl TypeChecker {
             ast::ItemKind::Effect(ed) => {
                 self.effect_defs.push(ed.name.clone());
                 for op in &ed.operations {
+                    // The effect's generics and the operation's own generics
+                    // are bound to fresh variables while the signature is
+                    // lowered, and each call or handler arm instantiates them
+                    // afresh (see `instantiate_op`).
+                    let mut quantified = Vec::new();
+                    let saved = std::mem::take(&mut self.generic_binding);
+                    for gp in ed.generics.iter().chain(op.generics.iter()) {
+                        let tv = match self.fresh() {
+                            Ty::Var(v) => v,
+                            _ => unreachable!("fresh() yields a variable"),
+                        };
+                        quantified.push(tv);
+                        self.generic_binding.insert(gp.name.clone(), Ty::Var(tv));
+                    }
                     let params: Vec<Ty> =
                         op.params.iter().map(|p| self.lower_type(&p.ty)).collect();
                     // An operation with no `->` returns unit, like a function.
@@ -1066,8 +1102,10 @@ impl TypeChecker {
                         Some(t) => self.lower_type(t),
                         None => Ty::Unit,
                     };
-                    self.effect_ops
-                        .insert((ed.name.clone(), op.name.clone()), (params, ret));
+                    self.generic_binding = saved;
+                    let key = (ed.name.clone(), op.name.clone());
+                    self.effect_ops.insert(key.clone(), (params, ret));
+                    self.effect_op_generics.insert(key, quantified);
                 }
             }
             ast::ItemKind::Function(fd) => {
@@ -2302,6 +2340,7 @@ impl TypeChecker {
                     && let Some((params, ret)) =
                         self.effect_ops.get(&(name.clone(), method.clone())).cloned()
                 {
+                    let (params, ret) = self.instantiated_op_sig(name, method, &params, &ret);
                     if params.len() != args.len() {
                         self.emit_error(format!(
                             "effect operation `{name}.{method}` takes {} argument(s), \
@@ -2685,6 +2724,7 @@ impl TypeChecker {
                         ));
                         continue;
                     };
+                    let (params, ret) = self.instantiated_op_sig(effect, &arm.op, &params, &ret);
                     if params.len() != arm.params.len() {
                         self.emit_error(format!(
                             "handler for `{effect}.{}` binds {} parameter(s), the \

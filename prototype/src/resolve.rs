@@ -857,14 +857,28 @@ impl Resolver {
     }
 
     fn resolve_effect(&mut self, ed: &ast::EffectDef) {
+        // The effect's generics are in scope for every operation, and each
+        // operation's own generics are in scope for its signature only.
+        self.warn_discarded_bounds(&format!("`{}`", ed.name), &ed.generics, &[]);
+        self.push_scope();
+        for gp in &ed.generics {
+            self.define_type(&gp.name, SymbolKind::GenericParam);
+        }
         for op in &ed.operations {
+            self.warn_discarded_bounds(&format!("`{}.{}`", ed.name, op.name), &op.generics, &[]);
+            self.push_scope();
+            for gp in &op.generics {
+                self.define_type(&gp.name, SymbolKind::GenericParam);
+            }
             for param in &op.params {
                 self.resolve_ast_type(&param.ty);
             }
             if let Some(ret) = &op.return_type {
                 self.resolve_ast_type(ret);
             }
+            self.pop_scope();
         }
+        self.pop_scope();
     }
 
     // ── Type resolution ──────────────────────────────────────────────

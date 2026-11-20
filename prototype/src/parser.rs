@@ -1453,9 +1453,11 @@ impl<'a> Parser<'a> {
         self.expect(TokenKind::KwEffect)?;
         let name = self.expect_ident()?;
         // Optional generic params on the effect itself: `effect channel[T] { ... }`.
-        if matches!(self.peek(), TokenKind::LBrack | TokenKind::Lt) {
-            let _ = self.parse_generic_params()?;
-        }
+        let generics = if matches!(self.peek(), TokenKind::LBrack | TokenKind::Lt) {
+            self.parse_generic_params()?
+        } else {
+            Vec::new()
+        };
         self.expect(TokenKind::LBrace)?;
 
         let mut operations = Vec::new();
@@ -1463,9 +1465,11 @@ impl<'a> Parser<'a> {
             self.expect(TokenKind::KwF)?;
             let op_name = self.expect_ident()?;
             // Optional generic params on the operation: `f spawn[T](...)`.
-            if matches!(self.peek(), TokenKind::LBrack | TokenKind::Lt) {
-                let _ = self.parse_generic_params()?;
-            }
+            let op_generics = if matches!(self.peek(), TokenKind::LBrack | TokenKind::Lt) {
+                self.parse_generic_params()?
+            } else {
+                Vec::new()
+            };
             self.expect(TokenKind::LParen)?;
             let params = self.parse_param_list()?;
             self.expect(TokenKind::RParen)?;
@@ -1478,13 +1482,14 @@ impl<'a> Parser<'a> {
             self.expect(TokenKind::Semi)?;
             operations.push(EffectOp {
                 name: op_name,
+                generics: op_generics,
                 params,
                 return_type,
             });
         }
 
         self.expect(TokenKind::RBrace)?;
-        Ok(EffectDef { name, operations })
+        Ok(EffectDef { name, generics, operations })
     }
 
     // ── Spec ────────────────────────────────────────────────
@@ -5672,6 +5677,21 @@ mod tests {
         } else {
             panic!("expected effect");
         }
+    }
+
+    #[test]
+    fn test_generic_effect_keeps_generics() {
+        // The effect's generics and each operation's own are kept in the AST,
+        // not discarded: an operation without generics has none.
+        let module = parse_source("effect channel[T] { f send[U](val: T, tag: U); f close(); }");
+        let ItemKind::Effect(ref e) = module.items[0].kind else {
+            panic!("expected effect");
+        };
+        assert_eq!(e.generics.len(), 1);
+        assert_eq!(e.generics[0].name, "T");
+        assert_eq!(e.operations[0].generics.len(), 1);
+        assert_eq!(e.operations[0].generics[0].name, "U");
+        assert!(e.operations[1].generics.is_empty());
     }
 
     #[test]

@@ -569,6 +569,7 @@ fn emit_effect(buf: &mut String, e: &EffectDef, mode: Mode, depth: usize) {
         Mode::Human => buf.push_str("effect "),
     }
     buf.push_str(&e.name);
+    emit_generics(buf, &e.generics);
     buf.push_str(" {\n");
     for op in &e.operations {
         // Each operation is a function signature: keyword, name, `(params)`,
@@ -579,6 +580,7 @@ fn emit_effect(buf: &mut String, e: &EffectDef, mode: Mode, depth: usize) {
             Mode::Human => buf.push_str("fn "),
         }
         buf.push_str(&op.name);
+        emit_generics(buf, &op.generics);
         buf.push('(');
         for (i, p) in op.params.iter().enumerate() {
             if i > 0 {
@@ -2303,6 +2305,12 @@ mod tests {
     fn round_trip_effect_operations() {
         // Each operation needs its `f` keyword and a `;` end, as the parser reads them.
         assert_round_trips("effect Audit {\n    f record(entry: i32) -> i32;\n}\n");
+    }
+
+    #[test]
+    fn round_trip_generic_effect() {
+        // Generics on the effect and on an operation are printed back.
+        assert_round_trips("effect channel[T] {\n    f send[U](val: T, tag: U);\n    f close();\n}\n");
     }
 
     #[test]

@@ -1633,4 +1633,47 @@ mod handler_tests {
             "expected an unknown-effect diagnostic, got {msgs:?}"
         );
     }
+
+    /// Type diagnostics for `src`, from the checker rather than effect inference.
+    fn type_errors(src: &str) -> Vec<String> {
+        let tokens = crate::lexer::lex(src);
+        let module = crate::parser::parse(&tokens).expect("parse failed");
+        crate::types::check(&module).diagnostics.iter().map(|d| d.message.clone()).collect()
+    }
+
+    /// A generic operation is instantiated per use, so one operation called
+    /// at two different types in the same function checks clean.
+    #[test]
+    fn a_generic_operation_used_at_two_types_checks_clean() {
+        let src = "effect Box { f put[T](v: T) -> T; }\n\
+                   +f a() -> i32 / Box { Box.put(1); Box.put(\"x\"); 1 }";
+        let msgs = type_errors(src);
+        assert!(msgs.is_empty(), "expected no type errors, got {msgs:?}");
+    }
+
+    /// Instantiation does not lose the constraint inside one call: both
+    /// arguments share `T`, so mixing an int and a string is still an error.
+    #[test]
+    fn a_mismatch_within_one_generic_call_is_still_an_error() {
+        let src = "effect Pair { f same[T](a: T, b: T) -> T; }\n\
+                   +f a() -> i32 / Pair { Pair.same(1, \"x\"); 1 }";
+        let msgs = type_errors(src);
+        assert!(
+            !msgs.is_empty(),
+            "expected a type mismatch inside the one `Pair.same` call, got {msgs:?}"
+        );
+    }
+
+    /// A non-generic operation keeps its exact signature: a wrong argument
+    /// type is still reported.
+    #[test]
+    fn a_non_generic_operation_still_rejects_a_wrong_argument() {
+        let src = "effect Audit { f record(e: i32) -> i32; }\n\
+                   +f a() -> i32 / audit { Audit.record(\"x\"); 1 }";
+        let msgs = type_errors(src);
+        assert!(
+            msgs.iter().any(|m| m.contains("effect operation `Audit.record`")),
+            "expected a mismatch on `Audit.record`, got {msgs:?}"
+        );
+    }
 }
