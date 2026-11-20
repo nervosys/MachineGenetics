@@ -477,6 +477,13 @@ pub enum Selection {
     /// chosen. Needs [`propose_with_points`]; [`select_indices`] returns nothing
     /// for it, because it has no vectors to rank.
     Pareto { objectives: Vec<String> },
+    /// Uniform over the population, which under a niche archive
+    /// ([`crate::archive`]) is the occupied cells: every elite is as likely a
+    /// parent as any other, whatever its score. Parents are drawn in pairs, and
+    /// the two of a pair are never the same member, so a crossover of two elites
+    /// recombines elites of different cells. With a single member the pair is
+    /// that member twice.
+    Elites,
 }
 
 /// Apply a mutation. Values stay clamped to `[0,1]` so a genome cannot wander
@@ -572,6 +579,22 @@ pub fn select_indices(population: &[(Genome, f64)], s: Selection, count: usize, 
         }
         // Pareto ranks objective vectors, which this signature does not carry.
         Selection::Pareto { .. } => Vec::new(),
+        Selection::Elites => {
+            let n = population.len();
+            let mut out: Vec<usize> = Vec::with_capacity(count);
+            for k in 0..count {
+                let pick = if k % 2 == 1 && n > 1 {
+                    // Any member but the first of the pair.
+                    let skip = out[k - 1];
+                    let r = rng.below(n - 1);
+                    if r >= skip { r + 1 } else { r }
+                } else {
+                    rng.below(n)
+                };
+                out.push(pick);
+            }
+            out
+        }
     }
 }
 
@@ -724,6 +747,7 @@ pub fn propose_with_points(
                 // maps it back to a generation.
                 let mut spec = CandidateSpec::new(id, child);
                 spec.parent = Some(chosen[(i * 2) % chosen.len()] as u64);
+                spec.mate = Some(chosen[(i * 2 + 1) % chosen.len()] as u64);
                 candidates.push(spec)
             }
             because => refused.push(Refusal { id, because }),
@@ -1261,5 +1285,43 @@ mod tests {
         }
         assert!(seen_param, "no scalar locus ever moved under the ES");
         assert!(seen_gene, "no gene locus was ever substituted");
+    }
+
+    #[test]
+    fn elite_selection_is_uniform_covers_every_member_and_is_reproducible() {
+        let population: Vec<(Genome, f64)> = (0..5).map(|i| (params(&[i as f64 / 10.0]), i as f64)).collect();
+        let draw = |seed| select_indices(&population, Selection::Elites, 400, &mut Rng::seed(seed));
+        let a = draw(7);
+        assert_eq!(a, draw(7), "the same seed gives the same parents");
+        assert_ne!(a, draw(8));
+        let mut counts = [0usize; 5];
+        for i in &a {
+            counts[*i] += 1;
+        }
+        // Whatever the score: the worst member is drawn about as often as the best.
+        assert!(counts.iter().all(|c| *c > 40), "every cell is a parent, in proportion: {counts:?}");
+    }
+
+    #[test]
+    fn the_two_parents_of_a_pair_are_never_the_same_elite() {
+        let population: Vec<(Genome, f64)> = (0..3).map(|i| (params(&[i as f64 / 10.0]), 0.0)).collect();
+        let picks = select_indices(&population, Selection::Elites, 200, &mut Rng::seed(3));
+        assert!(picks.chunks(2).all(|p| p[0] != p[1]), "crossover takes elites of different cells");
+        // One elite is its own pair: there is no other.
+        let one = select_indices(&population[..1], Selection::Elites, 4, &mut Rng::seed(3));
+        assert_eq!(one, vec![0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn proposals_from_elites_name_both_parents() {
+        let population: Vec<(Genome, f64)> = (0..4).map(|i| (params(&[i as f64 / 10.0, 0.5]), 0.0)).collect();
+        let plan = VariationPlan { selection: Selection::Elites, ..VariationPlan::default() };
+        let p = propose(&population, plan, &GenePool::default(), 11);
+        assert!(!p.candidates.is_empty());
+        for c in &p.candidates {
+            let (a, b) = (c.parent.unwrap(), c.mate.unwrap());
+            assert_ne!(a, b);
+            assert!(a < 4 && b < 4);
+        }
     }
 }
