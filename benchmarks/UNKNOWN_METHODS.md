@@ -10,7 +10,9 @@ in the repository (127 files) and the 99 benchmark reference solutions
 (`solution.rdx_source` of `benchmarks/tasks/*.json`).
 
 Result: **207 call sites, 43 names, all in 43 benchmark tasks** (of 99; 56 are clean). No
-other `.mg` file in the repository has one.
+other `.mg` file in the repository has one. Measured 2026-11-19 over the 127 `.mg` files and
+the 99 task references: the totals and every per-name count below are unchanged from the
+measurement before it, and no name is new or gone.
 
 The rule is by name, not by receiver type, so a name the module defines anywhere counts as
 known even if the receiver's own type lacks it (not warned: when unsure, do not warn). Bare

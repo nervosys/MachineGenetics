@@ -28,9 +28,8 @@ is derived at run time as "every task not in
 Today that is 45 tasks: 14 algorithms, 10 basic-io, 13 data-structures, 2
 error-handling, 1 full-applications, 1 generics-traits, 2 systems, 2
 web-network. The stand-in
-measurements and the 20/19-task counts further down were taken when the set
-was 20 tasks (7 algorithms, 9 basic-io, 3 data-structures, 1 generics-traits)
-and have not been re-run since the set grew.
+measurements below were re-run on 2026-11-19 over this set: 45 tasks in the
+MAGE arm, 19 paired tasks in the Rust arm.
 
 What the agent is shown, per task: the task's natural-language `task` field;
 the function signature(s) of the reference (the header of every `+f` for MAGE,
@@ -50,12 +49,15 @@ harness. That is honest only where the MAGE-syntax input translates
 mechanically. The translator (`translate_input` in the driver) accepts integer
 and string literals, calls and method calls, `Enum.Variant` -> `Enum::Variant`
 and `@Name{f:v}` struct literals; the expected value must be an integer, bool or
-string literal. Anything else is refused, not guessed. Of the 20 tasks, 19
-translate. `ds-013` does not (its input is a closure, `fn(x) => x * 2`, and its
-expected value is a struct), so it is excluded from the Rust arm and from the
-paired comparison. Every Rust-arm number below is over the 19 paired tasks, and
-the paired table restricts the MAGE arm to the same 19. Run
-`agent-cost.py --list` to see the pairing and the reason for each exclusion.
+string literal. Anything else is refused, not guessed. Of the 45 tasks, 19
+translate. The other 26 are excluded from the Rust arm and from the paired
+comparison: 20 because an input is outside the translatable subset (`ds-013`, for
+one, takes a closure, `fn(x) => x * 2`), 3 because an input has a `.` not followed
+by a name (`basic-008`, `ds-005`, `err-001`), and 3 because the expected value is
+not an integer, bool or string literal (`algo-014`, `ds-001`, `ds-004`). Every
+Rust-arm number below is over the 19 paired tasks, and the paired table restricts
+the MAGE arm to the same 19. Run `agent-cost.py --list` to see the pairing and the
+reason for each exclusion.
 
 ## Protocol
 
@@ -163,7 +165,7 @@ appear only with `--timestamps`.
 ```
 python scripts/agent-cost.py --mage-parse "$MAGE_PARSE_BIN" \
     --agent "python scripts/agent_wrappers/agent_cost_standin.py oracle" --out out/
-python scripts/test-agent-cost.py --mage-parse "$MAGE_PARSE_BIN"   # 18 tests; about 10 minutes with a debug build
+python scripts/test-agent-cost.py --mage-parse "$MAGE_PARSE_BIN"   # 18 tests; about 11 minutes with the release build
 ```
 
 A real run needs a wrapper command that speaks the protocol (see
@@ -177,16 +179,20 @@ use `--only` and `--arms` to start small. The stand-ins are in
 
 ## Harness check: stand-in results
 
-Run on 2026-11-17 with `mage-parse` v0.3.0 (debug build) and rustc 1.99.1. These
+Run on 2026-11-19 with `mage-parse` v0.3.0 (release build) and rustc 1.100.0. These
 exist to show the harness judges and accounts correctly. They are not agent
 results.
 
 | stand-in | arm | tasks | solved | tokens / solved | median / episode | tool results (all episodes) |
 |---|---|---:|---:|---:|---:|---:|
-| oracle | mage | 20 | 20 | 455.9 | 458 | 0 |
+| oracle | mage | 45 | 45 | 527 | 498 | 0 |
 | oracle | rust | 19 | 19 | 338.6 | 343 | 0 |
-| lookup-then-oracle | mage | 20 | 20 | 2306.2 | 2294.5 | 31960 |
+| lookup-then-oracle | mage | 45 | 45 | 2477.6 | 2388 | 71910 |
 | lookup-then-oracle | rust | 19 | 19 | 407.9 | 402 | 0 |
+
+The MAGE rows cover all 45 accepted tasks and the Rust rows the 19 paired tasks.
+Over all 45 the MAGE arm reads 527 (oracle) and 2477.6 (lookup-then-oracle)
+tokens per solved task; over the 19 paired tasks it reads 452.7 and 2299.9.
 
 On the 19 paired tasks the MAGE arm reads 452.7 (oracle) and 2299.9
 (lookup-then-oracle) tokens per solved task. The MAGE oracle exceeds the Rust
@@ -194,9 +200,9 @@ oracle by 114 tokens a task, almost all of it the longer prompt (four tools to
 describe, and the "MAGE is unfamiliar" line); the `lookup-then-oracle` gap is the
 ontology index and two queries, about 1600 tokens a task of tool results.
 
-The `oracle` solves every task in both arms on the first submission, which is
-the check that judging accepts the references (and that the Rust translation is
-right for the 19 paired tasks). `lookup-then-oracle` calls the index, two
+The `oracle` solves every task in both arms on the first submission (45 of 45
+MAGE, 19 of 19 Rust), which is the check that judging accepts the references
+(and that the Rust translation is right for the 19 paired tasks). `lookup-then-oracle` calls the index, two
 queries and a check before answering, so its extra tokens are tool traffic
 only, and it shows the per-category accounting responding to tool use. A
 reference-oracle's cost is a **floor**: it is the price of reading the task and
@@ -205,9 +211,10 @@ language.
 
 ## Limits and biases
 
-* **The task set is small and skewed.** 20 tasks, 16 of them algorithms or
-  basic-io one-liners; the rest of the corpus is not accepted yet (no
-  concurrency, web, systems or agent tasks). Results say little about
+* **The task set is small and skewed.** 45 tasks, 24 of them algorithms or
+  basic-io one-liners; the rest of the corpus is mostly not accepted yet (no
+  concurrency or agent-orchestration task, and only 2 systems and 2 web-network
+  tasks). Results say little about
   large programs. Many tasks are so small that the prompt dominates.
 * **Tokenizer.** BPE here is MAGE's vocabulary, not a model's. Provider usage,
   when reported, is the better figure; the two should be read together.
@@ -228,7 +235,7 @@ language.
   type system plus the same cases. Rust's type checking is stricter in places
   (integer inference, borrowing), so some correct-looking Rust fails that a MAGE
   program passes, and the reverse.
-* **Rust translation covers 19 of 20 tasks**, so the paired comparison is over
+* **Rust translation covers 19 of 45 tasks**, so the paired comparison is over
   the simplest tasks only.
 * **Stand-in numbers say nothing about a model.** In particular the oracle
   never fails, so its solve rate and tokens-per-solved are the harness's floor.
