@@ -790,6 +790,7 @@ So on this corpus set, the signal the critical path asks for is still not there.
 - The default target is the worst learner's final held-out loss, so that learner's own frontier ends exactly at the target. Before the fix the default target for n-body lay above the reference's first checkpoint, which made it `n/a`. After the fix every frontier reaches the default (5.591). A `--target 7.5` re-run is reported above for n-body only. The other corpora were not re-run at other targets, so their figures hold at the default target only.
 - Pre-fix wall-clock seconds were recorded on a shared machine, one learner at a time. The after-fix grid ran 12 jobs at once, so its seconds are not reported. They are noisy: the per-seed sd of the entropy learner's seconds is about 20–25% of its mean.
 - Joules were not measured on this axis; only bytes and seconds.
+- Standard-compressor figures (zlib, bz2, xz, order-0) for the same files are in ARENA.md, "Reference: standard compressors on the same bytes".
 
 ## Rollout metrics (plan P6)
 
