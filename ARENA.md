@@ -1107,8 +1107,10 @@ and it needs `--niches`. `--niches` cannot be combined with `--objectives`, beca
 under an archive the dominance rule is not consulted. As with `--objectives`,
 `efficiency` needs a measured energy figure or `--allow-estimated-energy`. A niche
 run prints `archive: N of M cells occupied`, its JSON has an `archive` object, and
-its policy name gains `+niches`. A first eight-seed comparison favours the archive
-on seven seeds, with caveats that make it weak evidence; see `GERMLINE.md`.
+its policy name gains `+niches`. A first eight-seed comparison favoured the archive
+on seven seeds; a sixteen-seed replication with the edges fixed in advance did
+not confirm it (8 better, 8 worse held-out; 5 better, 11 worse on validation).
+There is no evidence that the archive helps; see `GERMLINE.md`.
 
 **Multi-objective succession (`--objectives`).** Without the flag the run is as
 described below. With it:
