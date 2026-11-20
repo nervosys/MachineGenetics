@@ -25,6 +25,7 @@
 use crate::arena::{refuse_text_overlap, refuse_train_text_overlap, run, Config, Corpus, Report, Reward};
 use crate::energy::{Basis, Meter, WallClock};
 use crate::learner::{LearnerConfig, LearnerSpec};
+use germline::archive::{NicheAxis, NicheSpec};
 use germline::attest::Attestor;
 use germline::directed::CandidateSpec;
 use germline::gate::{DominanceRule, Episode, PromotionGate};
@@ -618,6 +619,14 @@ pub const CLI_EVALUATOR: &str = "arena-evaluator";
 /// not stop anyone with this binary from minting one. See `germline::attest`.
 const DEV_ATTEST_KEY: &str = "arena-development-key";
 
+/// The primary-axis margin of the command-line gate, which `--niche-margin`
+/// defaults to: a niche's replacement margin is the same noise floor.
+pub const CLI_MIN_IMPROVEMENT: f64 = 0.01;
+
+/// The most cells `--niches` may define. The archive holds at most this many
+/// elites, and each one is a generation the journal and lineage keep.
+const MAX_NICHE_CELLS: usize = 64;
+
 /// The gate the command-line run is adjudicated under. An episode pins its
 /// digest when it opens, so changing these numbers is a visible change of gate.
 ///
@@ -636,7 +645,7 @@ const DEV_ATTEST_KEY: &str = "arena-development-key";
 fn cli_gate(dominance: Option<DominanceRule>) -> PromotionGate {
     PromotionGate {
         primary_axis: "capability".into(),
-        min_improvement: 0.01,
+        min_improvement: CLI_MIN_IMPROVEMENT,
         guard_axes: vec!["efficiency".into()],
         // Wall-clock energy is noisy at this scale; the guard is present, and loose.
         guard_tolerance: 0.25,
@@ -654,8 +663,10 @@ const USAGE: &str = "usage: arena succession --heldout FILE[,FILE...] --journal 
 [--energy-budget JOULES] [--param-search es|perturb] [--cost joules|fuel] [--validation FILE[,FILE...]] \
 [--train-text FILE[,FILE...]] [--train-text-per-round N] [--reward alignment|compression|transfer] [--dev-text FILE[,FILE...]] [--genome narrow|wide] \
 [--patience N] [--mutation-scale F] [--predict] [--measure N] \
+[--niches AXIS:E1/E2,...] [--niche-margin F] \
 [--learners SPEC[,SPEC...]]  (SPEC: ng:orders:log2buckets:lr | tf:d:layers:heads:ctx:lr[:gpu] | \
-ent:orders:log2buckets:target_len:lr | ssm:d:lr[:bptt]; the first spec is the one the gate scores)";
+ent:orders:log2buckets:target_len:lr | ssm:d:lr[:bptt]; the first spec is the one the gate scores; \
+--niches opens a quality-diversity archive keyed by efficiency and/or latency buckets, and --niche-margin is its replacement margin)";
 
 /// One champion's score on the validation suite, beside its held-out score.
 /// Informational only: the gate never sees it and the journal does not record it.
@@ -807,6 +818,88 @@ fn parse_objectives(list: &str) -> Result<Vec<String>, String> {
         return Err("--objectives must include capability, the primary axis the search is for".into());
     }
     Ok(names)
+}
+
+/// `--niches`: `AXIS:E1/E2/...[,AXIS:E1/...]`. Each axis names a descriptor and
+/// its ascending bucket edges, so `n` edges make `n + 1` buckets. This checks the
+/// syntax only; [`check_niche_axes`] and [`build_niche_spec`] check the rest.
+pub fn parse_niches(v: &str) -> Result<Vec<NicheAxis>, String> {
+    if v.trim().is_empty() {
+        return Err("--niches needs at least one AXIS:EDGES, e.g. efficiency:0.33/0.66".into());
+    }
+    v.split(',')
+        .map(|item| {
+            let item = item.trim();
+            let (axis, edges) =
+                item.split_once(':').ok_or_else(|| format!("--niches: `{item}` should be AXIS:E1/E2/..."))?;
+            let axis = axis.trim();
+            if axis.is_empty() {
+                return Err(format!("--niches: `{item}` names no axis"));
+            }
+            let edges = edges
+                .split('/')
+                .map(|e| {
+                    e.trim()
+                        .parse::<f64>()
+                        .ok()
+                        .filter(|x| x.is_finite())
+                        .ok_or_else(|| format!("--niches: `{}` in `{item}` is not a finite number", e.trim()))
+                })
+                .collect::<Result<Vec<f64>, String>>()?;
+            Ok(NicheAxis::new(axis, edges))
+        })
+        .collect()
+}
+
+/// The descriptor axes `--niches` may name: the ones this run's workload reports
+/// beside the capability axis. `efficiency` is always reported; `latency` only
+/// when the run asks for it, which [`cli`] does for a niche axis of that name.
+const NICHE_AXES: [&str; 2] = ["efficiency", "latency"];
+
+fn check_niche_axes(axes: &[NicheAxis]) -> Result<(), String> {
+    for a in axes {
+        if a.axis == "capability" {
+            return Err("--niches: `capability` ranks the elites of a cell, so it cannot also divide them into cells".into());
+        }
+        if !NICHE_AXES.contains(&a.axis.as_str()) {
+            return Err(format!("--niches: `{}` is not a descriptor axis this run reports; the axes are {}", a.axis, NICHE_AXES.join(", ")));
+        }
+    }
+    Ok(())
+}
+
+/// Build the archive's spec from `--niches` and `--niche-margin`. The cap is the
+/// grid itself, so the archive can hold no more than its grid, and a grid over
+/// [`MAX_NICHE_CELLS`] is refused before it is built.
+fn build_niche_spec(axes: Vec<NicheAxis>, margin: f64) -> Result<NicheSpec, String> {
+    check_niche_axes(&axes)?;
+    let mut spec = NicheSpec::new("capability", axes, 1, margin);
+    let grid = spec.grid_size();
+    if grid > MAX_NICHE_CELLS {
+        return Err(format!(
+            "--niches: the grid has {grid} cells; at most {MAX_NICHE_CELLS} are allowed, so use fewer or coarser buckets"
+        ));
+    }
+    spec.max_cells = grid;
+    spec.validate().map_err(|e| format!("--niches: {e}"))?;
+    Ok(spec)
+}
+
+/// `--niche-margin`: the replacement margin on the capability axis, finite and at least 0.
+fn parse_niche_margin(v: &str) -> Result<f64, String> {
+    v.parse::<f64>()
+        .ok()
+        .filter(|x| x.is_finite() && *x >= 0.0)
+        .ok_or_else(|| format!("--niche-margin: `{v}` is not a finite number of at least 0"))
+}
+
+/// [`with_budget_suffix`]'s sibling: `+niches` when an archive is opened, so a
+/// journal of a niche run is not mistaken for a plain one. Absent otherwise.
+fn with_niches_suffix(mut name: String, niches: bool) -> String {
+    if niches {
+        name.push_str("+niches");
+    }
+    name
 }
 
 fn parse_agents(list: &str) -> Result<Vec<(String, usize)>, String> {
@@ -1058,6 +1151,9 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
     let mut predict = false;
     // Opt-in: measure N admitted candidates per cycle, adjudicating the best.
     let mut measure: Option<usize> = None;
+    // Opt-in niche archive: `--niches` opens it, `--niche-margin` tunes its margin.
+    let mut niches: Option<Vec<NicheAxis>> = None;
+    let mut niche_margin: Option<f64> = None;
     let mut i = 0;
     while i < args.len() {
         let flag = args[i].as_str();
@@ -1125,6 +1221,8 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
             "--mutation-scale" => mutation_scale = Some(parse_mutation_scale(v)?),
             "--predict" => predict = true,
             "--measure" => measure = Some(parse_measure(v)?),
+            "--niches" => niches = Some(parse_niches(v)?),
+            "--niche-margin" => niche_margin = Some(parse_niche_margin(v)?),
             "--learners" => {
                 base.learners = crate::learner::parse_learner_specs(v)?;
                 learners_flag = Some(v.to_string());
@@ -1180,6 +1278,19 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
         return Err("--dominance-floor needs --objectives: the floor belongs to the dominance rule".into());
     }
     let tolerances = validate_tolerances(objectives.as_deref(), &objective_tolerance)?;
+    // The niche archive is checked here too, before the seed runs. Under an
+    // archive the dominance rule is not consulted and parents are drawn from the
+    // archive's elites, so `--objectives` has no meaning alongside it.
+    if niche_margin.is_some() && niches.is_none() {
+        return Err("--niche-margin needs --niches: the margin belongs to the niche archive".into());
+    }
+    if niches.is_some() && objectives.is_some() {
+        return Err("--niches cannot be combined with --objectives: under an archive the dominance rule is not consulted, and parents are drawn from the archive's elites".into());
+    }
+    let niche_spec = match niches {
+        Some(axes) => Some(build_niche_spec(axes, niche_margin.unwrap_or(CLI_MIN_IMPROVEMENT))?),
+        None => None,
+    };
     param_search.validate()?;
     // Checked before the seed runs, so a usage error costs nothing.
     apply_search_budget(&mut VariationPlan { param_search: param_search.clone(), ..VariationPlan::default() }, patience, mutation_scale)?;
@@ -1198,7 +1309,9 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
     w.dev_text_pin = (!base.dev_text.is_empty())
         .then(|| read_corpora(&base.dev_text).map(|c| suite_digest(&c)))
         .transpose()?;
-    w.with_latency = objectives.as_ref().is_some_and(|o| o.iter().any(|n| n == "latency"));
+    // A niche axis is reported only when asked for, so `latency` turns it on here too.
+    w.with_latency = objectives.as_ref().is_some_and(|o| o.iter().any(|n| n == "latency"))
+        || niche_spec.as_ref().is_some_and(|s| s.axes.iter().any(|a| a.axis == "latency"));
     w.efficiency_basis = efficiency_basis;
     let suite = w.suite();
     let digest = suite.digest.clone();
@@ -1215,8 +1328,12 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
     // `work` is an estimate by construction, but a deterministic one the caller
     // chose by name, so choosing it is the acceptance `--allow-estimated-energy`
     // asks for; the basis is still printed and recorded in the JSON.
+    // A niche on efficiency reads the same energy figure as the objective does,
+    // so it is held to the same rule. Niches and objectives are never both set.
+    let niche_efficiency = niche_spec.as_ref().is_some_and(|s| s.axes.iter().any(|a| a.axis == "efficiency"));
+    let energy_axes: Option<Vec<String>> = if niche_efficiency { Some(vec!["efficiency".into()]) } else { objectives.clone() };
     if efficiency_basis == EfficiencyBasis::Meter {
-        check_energy(objectives.as_deref(), &basis, allow_estimated)?;
+        check_energy(energy_axes.as_deref(), &basis, allow_estimated)?;
     }
     let dominance = objectives.as_ref().map(|o| DominanceRule {
         objectives: o.clone(),
@@ -1224,7 +1341,12 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
         primary_floor: dominance_floor.unwrap_or(0.0),
         tolerances: tolerances.clone(),
     });
-    let mut genesis = Lineage::new();
+    // The archive, when opened, is part of the genesis: the seed is admitted into
+    // it, and a resumed journal replays onto the same genesis.
+    let mut genesis = match &niche_spec {
+        Some(spec) => Lineage::new().with_archive(spec.clone())?,
+        None => Lineage::new(),
+    };
     let id = genesis.next_id();
     let mut g = Generation::new(id, seed_art.clone()).measured(Measurement {
         suite: suite.clone(),
@@ -1233,7 +1355,10 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
     });
     g.genome = Some(base_genome);
     genesis.add(g);
-    let ep = Episode::open(cli_gate(dominance.clone()), suite.digest.clone(), CLI_EVALUATOR);
+    let mut ep = Episode::open(cli_gate(dominance.clone()), suite.digest.clone(), CLI_EVALUATOR);
+    if let Some(spec) = &niche_spec {
+        ep = ep.with_archive(spec.clone())?;
+    }
     // The seed earns authority the way a candidate does: by its shadow runs,
     // counted, with as many as the runner would give a candidate.
     let shadow_runs = RunnerPolicy::default().shadow_runs;
@@ -1264,12 +1389,15 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
     variation.param_search = param_search.clone();
     let max_refusals = apply_search_budget(&mut variation, patience, mutation_scale)?;
     let policy = RunnerPolicy {
-        name: with_budget_suffix(
-            full_policy_name(efficiency_basis, !base.train_text.is_empty(), learners_flag.as_deref(), base.reward == Reward::Transfer, genome_kind == GenomeKind::Wide),
-            patience,
-            mutation_scale,
-            predict,
-            measure,
+        name: with_niches_suffix(
+            with_budget_suffix(
+                full_policy_name(efficiency_basis, !base.train_text.is_empty(), learners_flag.as_deref(), base.reward == Reward::Transfer, genome_kind == GenomeKind::Wide),
+                patience,
+                mutation_scale,
+                predict,
+                measure,
+            ),
+            niche_spec.is_some(),
         ),
         max_consecutive_refusals: max_refusals,
         max_cycles: cycles,
@@ -1322,6 +1450,7 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
             "energy_basis": basis,
             "energy_spend_basis": spend_basis,
             "report": report,
+            "archive": lineage.archive().map(|a| serde_json::json!({"cells_occupied": a.len(), "grid": a.spec().grid_size()})),
         });
         if let (Some(d), Some(records)) = (&validation_digest, &validation_records) {
             out["validation_suite_digest"] = serde_json::json!(d.0);
@@ -1360,6 +1489,9 @@ pub fn cli(args: &[String]) -> Result<i32, String> {
                 let held = r.heldout_capability.map_or("n/a".to_string(), |h| format!("{h:.4}"));
                 println!("validation: gen{} capability {:.4}, {:.3} bits/byte (held-out {held})", r.generation, r.capability, r.bpb);
             }
+        }
+        if let Some(a) = lineage.archive() {
+            println!("archive: {} of {} cells occupied", a.len(), a.spec().grid_size());
         }
         if let Some(champ) = lineage.champion() {
             println!("champion: {}", champ.id);
@@ -1781,6 +1913,187 @@ mod tests {
             .collect();
         let err = cli(&args).expect_err("overlap is refused");
         assert!(err.contains("--validation") && err.contains("--heldout"), "{err}");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn parse_niches_reads_one_axis_and_its_edges() {
+        let axes = parse_niches("efficiency:0.33/0.66").unwrap();
+        assert_eq!(axes, vec![NicheAxis::new("efficiency", vec![0.33, 0.66])]);
+        assert_eq!(parse_niches(" efficiency : 0.5 ").unwrap(), vec![NicheAxis::new("efficiency", vec![0.5])]);
+    }
+
+    #[test]
+    fn parse_niches_reads_two_axes_in_order() {
+        let axes = parse_niches("efficiency:0.5,latency:0.5").unwrap();
+        assert_eq!(axes, vec![NicheAxis::new("efficiency", vec![0.5]), NicheAxis::new("latency", vec![0.5])]);
+    }
+
+    #[test]
+    fn parse_niches_refuses_a_missing_colon() {
+        let err = parse_niches("efficiency0.5").unwrap_err();
+        assert!(err.starts_with("--niches:") && err.contains("should be"), "{err}");
+        assert!(parse_niches("efficiency:0.5,latency").is_err());
+    }
+
+    #[test]
+    fn parse_niches_refuses_a_non_number_edge() {
+        let err = parse_niches("efficiency:0.5/x").unwrap_err();
+        assert!(err.contains("`x`") && err.contains("not a finite number"), "{err}");
+        assert!(parse_niches("efficiency:NaN").is_err());
+        assert!(parse_niches("efficiency:inf").is_err());
+        assert!(parse_niches("efficiency:").is_err());
+    }
+
+    #[test]
+    fn parse_niches_refuses_an_empty_spec() {
+        assert!(parse_niches("").unwrap_err().contains("at least one"));
+        assert!(parse_niches("   ").is_err());
+        assert!(parse_niches("efficiency:0.5,").is_err(), "a trailing comma names no axis");
+    }
+
+    #[test]
+    fn niche_axes_refuse_capability_and_any_name_the_run_does_not_report() {
+        let cap = check_niche_axes(&parse_niches("capability:0.5").unwrap()).unwrap_err();
+        assert!(cap.contains("capability"), "{cap}");
+        let unknown = check_niche_axes(&parse_niches("speed:0.5").unwrap()).unwrap_err();
+        assert!(unknown.contains("`speed`") && unknown.contains("efficiency, latency"), "{unknown}");
+        assert!(check_niche_axes(&parse_niches("efficiency:0.5,latency:0.2").unwrap()).is_ok());
+    }
+
+    #[test]
+    fn a_niche_grid_over_64_cells_is_refused_and_a_bad_spec_is_prefixed() {
+        // Two axes of nine buckets each: 81 cells.
+        let big = "efficiency:0.1/0.2/0.3/0.4/0.5/0.6/0.7/0.8,latency:0.1/0.2/0.3/0.4/0.5/0.6/0.7/0.8";
+        let err = build_niche_spec(parse_niches(big).unwrap(), 0.01).unwrap_err();
+        assert!(err.contains("81 cells") && err.contains("64"), "{err}");
+        // Eight buckets on one axis is fine.
+        let ok = build_niche_spec(parse_niches("efficiency:0.1/0.2/0.3/0.4/0.5/0.6/0.7").unwrap(), 0.01).unwrap();
+        assert_eq!((ok.grid_size(), ok.max_cells), (8, 8));
+        // Edges out of order come from the spec's own validation, named as ours.
+        let err = build_niche_spec(parse_niches("efficiency:0.5/0.2").unwrap(), 0.01).unwrap_err();
+        assert!(err.starts_with("--niches: ") && err.contains("ascending"), "{err}");
+        // A negative or non-finite margin never reaches a spec.
+        assert!(parse_niche_margin("-0.1").is_err());
+        assert!(parse_niche_margin("nan").is_err());
+        assert!(parse_niche_margin("0").is_ok());
+    }
+
+    /// The `cli` error for these flags, on a run whose held-out file exists, so the
+    /// refusal is the flags' own and not a missing file's. Nothing runs.
+    fn cli_error(tag: &str, extra: &[&str]) -> String {
+        let dir = std::env::temp_dir().join(format!("arena-niches-{tag}-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let held = dir.join("held.txt");
+        std::fs::write(&held, b"held-out text").unwrap();
+        let mut args: Vec<String> = vec![
+            "--heldout".into(),
+            held.display().to_string(),
+            "--journal".into(),
+            dir.join("unused.jsonl").display().to_string(),
+        ];
+        args.extend(extra.iter().map(|s| s.to_string()));
+        let err = cli(&args).expect_err("refused before the seed runs");
+        let _ = std::fs::remove_dir_all(&dir);
+        err
+    }
+
+    #[test]
+    fn niche_margin_without_niches_is_a_usage_error() {
+        let err = cli_error("margin", &["--niche-margin", "0.05"]);
+        assert!(err.contains("--niche-margin needs --niches"), "{err}");
+    }
+
+    #[test]
+    fn niches_cannot_be_combined_with_objectives() {
+        let err = cli_error("objectives", &["--niches", "efficiency:0.5", "--objectives", "capability,efficiency"]);
+        assert!(err.starts_with("--niches cannot be combined with --objectives: under an archive"), "{err}");
+    }
+
+    #[test]
+    fn a_bad_niche_axis_is_refused_through_the_cli_before_anything_runs() {
+        let err = cli_error("axis", &["--niches", "speed:0.5"]);
+        assert!(err.contains("`speed`"), "{err}");
+        let err = cli_error("cap", &["--niches", "capability:0.5"]);
+        assert!(err.contains("capability"), "{err}");
+    }
+
+    #[test]
+    fn the_niche_policy_name_is_marked_only_when_niches_are_on() {
+        let plain = policy_name(EfficiencyBasis::Meter);
+        assert_eq!(with_niches_suffix(plain.clone(), false), plain, "without the flag the name is unchanged");
+        assert_eq!(with_niches_suffix(plain.clone(), true), format!("{plain}+niches"));
+    }
+
+    /// The seed of a niche run, built as the CLI builds it: an archive opened on
+    /// the genesis, the seed admitted into it and promoted.
+    fn niche_genesis(w: &mut ArenaWorkload, spec: &NicheSpec) -> (Episode, Lineage) {
+        let suite = w.suite();
+        let seed_art = w.materialize(&CandidateSpec::new("seed", encode(&base()))).unwrap();
+        let seed_fit = w.evaluate(&seed_art, &suite).unwrap();
+        let mut lineage = Lineage::new().with_archive(spec.clone()).unwrap();
+        let id = lineage.next_id();
+        let mut g = Generation::new(id, seed_art).measured(Measurement {
+            suite: suite.clone(),
+            fitness: seed_fit,
+            evaluator: "arena-evaluator".into(),
+        });
+        g.genome = Some(encode(&base()));
+        lineage.add(g);
+        let ep = Episode::open(
+            PromotionGate {
+                primary_axis: "capability".into(),
+                min_improvement: 0.0,
+                guard_axes: vec!["efficiency".into()],
+                guard_tolerance: 0.5,
+                min_shadow_successes: 1,
+                dominance: None,
+            },
+            suite.digest.clone(),
+            "arena-evaluator",
+        )
+        .with_archive(spec.clone())
+        .unwrap();
+        let seed = lineage.get(id).unwrap().clone();
+        let approval = ep
+            .approve(&seed, &lineage, 1, &|d| w.materialized(d))
+            .unwrap_or_else(|v| panic!("the seed is refused: {:?}", v.reasons()));
+        lineage.promote(approval).unwrap();
+        (ep, lineage)
+    }
+
+    #[test]
+    fn a_niche_run_opens_an_archive_and_occupies_a_cell() {
+        let spec = NicheSpec::new("capability", vec![NicheAxis::new("efficiency", vec![0.5])], 2, 0.0);
+        let mut w = ArenaWorkload::new(base(), corpora());
+        let suite = w.suite();
+        let (ep, mut lineage) = niche_genesis(&mut w, &spec);
+        let at = Attestor::new("arena-evaluator", b"arena test key".to_vec());
+        let dir = std::env::temp_dir().join(format!("arena-niche-run-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let mut journal = Journal::open(&dir.join("journal.jsonl")).unwrap();
+        let policy = RunnerPolicy {
+            name: with_niches_suffix(policy_name(EfficiencyBasis::Meter), true),
+            max_cycles: 3,
+            max_consecutive_refusals: 3,
+            shadow_runs: 1,
+            supervision: SupervisionPolicy { window: 2, ..SupervisionPolicy::default() },
+            ..RunnerPolicy::default()
+        };
+        let mut runner = Runner::new(policy, &ep, &at, suite.clone(), 11);
+        let report = runner.run(&mut lineage, &mut journal, &mut w);
+        assert!(!report.cycles.is_empty(), "the runner drove arena sessions");
+        let records: Vec<_> = journal.replay().unwrap().into_iter().map(|r| r.entry).collect();
+        let opened = records.iter().filter(|e| matches!(e, germline::journal::Entry::ArchiveOpened { .. })).count();
+        assert_eq!(opened, 1, "the pinned spec is journalled once, at the start");
+        let archive = lineage.archive().expect("the lineage keeps its archive");
+        assert!(archive.len() >= 1, "the seed occupies a cell");
+        assert!(lineage.champion().is_some_and(|c| archive.contains(c.id)), "the champion is an elite");
+
+        // The resume path: the same genesis replays the journal to the same archive.
+        let (_, fresh) = niche_genesis(&mut ArenaWorkload::new(base(), corpora()), &spec);
+        let resumed = Lineage::replay(fresh, &journal, None).expect("the journal replays onto the niche genesis");
+        assert_eq!(resumed.lineage.archive().map(|a| a.len()), Some(archive.len()));
         let _ = std::fs::remove_dir_all(&dir);
     }
 

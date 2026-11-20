@@ -918,9 +918,10 @@ run counts an admission as a promotion in its report.
 tests establish that the rules hold, are replayable and cannot be gamed by
 changing niche; whether quality-diversity finds better optima than the
 single-champion climb on arena succession or on a real workload needs runs, with
-the same compute, against the same held-out suites. Also not done: archive
-statistics in the run report, a CLI switch for opening one, restoring a displaced
-elite on demotion.
+the same compute, against the same held-out suites. Also not done: restoring
+a displaced elite on demotion. The switch is `arena succession --niches`
+(with `--niche-margin`), and a run that keeps an archive reports its occupied cells
+and the grid size in the run report and the JSON.
 
 ## 8. What is still not built
 
