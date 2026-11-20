@@ -652,12 +652,16 @@ pub struct ConstDef {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EffectDef {
     pub name: String,
+    /// `effect channel[T] { … }` — the effect's own generic parameters.
+    pub generics: Vec<GenericParam>,
     pub operations: Vec<EffectOp>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EffectOp {
     pub name: String,
+    /// `f spawn[T](…)` — the operation's own generic parameters.
+    pub generics: Vec<GenericParam>,
     pub params: Vec<Param>,
     pub return_type: Option<Type>,
 }
