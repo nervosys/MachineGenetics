@@ -25,8 +25,9 @@ The tasks whose MAGE reference is *accepted* by the acceptance check
 (`benchmarks/ACCEPTANCE.md`: it type-checks and passes all its tests). The set
 is derived at run time as "every task not in
 `benchmarks/task-acceptance-baseline.txt`", so it grows as the baseline shrinks.
-Today that is 41 tasks: 14 algorithms, 10 basic-io, 12 data-structures, 2
-error-handling, 1 generics-traits, 1 systems, 1 web-network. The stand-in
+Today that is 45 tasks: 14 algorithms, 10 basic-io, 13 data-structures, 2
+error-handling, 1 full-applications, 1 generics-traits, 2 systems, 2
+web-network. The stand-in
 measurements and the 20/19-task counts further down were taken when the set
 was 20 tasks (7 algorithms, 9 basic-io, 3 data-structures, 1 generics-traits)
 and have not been re-run since the set grew.

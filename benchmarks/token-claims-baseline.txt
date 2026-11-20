@@ -13,9 +13,7 @@ agent-005	mage
 agent-005	rust
 agent-006	mage
 agent-006	rust
-agent-007	mage
 agent-007	rust
-agent-008	mage
 agent-009	rust
 agent-010	mage
 agent-010	rust
@@ -45,11 +43,7 @@ app-002	mage
 app-002	rust
 app-003	mage
 app-003	rust
-app-004	mage
 app-004	rust
-app-005	mage
-app-006	mage
-app-007	mage
 app-009	rust
 basic-002	mage
 basic-002	rust
@@ -111,9 +105,7 @@ sys-001	mage
 sys-002	mage
 sys-003	mage
 sys-003	rust
-sys-004	mage
 sys-005	mage
-sys-007	mage
 sys-008	mage
 sys-009	rust
 sys-010	mage
@@ -124,7 +116,6 @@ web-003	mage
 web-004	rust
 web-005	mage
 web-005	rust
-web-007	mage
 web-008	mage
 web-009	mage
 web-010	rust

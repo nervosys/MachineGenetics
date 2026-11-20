@@ -7,21 +7,20 @@ agent-001 unrunnable 1/1 case(s): solution declares host effect(s) llm,tools; ev
 agent-002 unrunnable 1/1 case(s): solution declares host effect(s) llm; eval would perform them
 agent-003 unrunnable 1/1 case(s): solution declares host effect(s) llm; eval would perform them
 agent-004 test 1/1 failing; first case 1: error unknown function `clone`
-agent-005 check E0425 _
-agent-006 check E0425 _
+agent-005 unrunnable 1/1 case(s): solution declares host effect(s) llm; eval would perform them
+agent-006 test 1/1 failing; first case 1: error unknown function `clone`
 agent-007 check E0308 find
 agent-008 check E0425 s
 agent-009 test 1/1 failing; first case 1: expected "Score{correctness:1.0,efficiency:1.0,style:1.0,total:1.0}" got "Score { correctness: 1.0, efficiency: 1.0, style: 1.0, total: 0.9999999999999999 }"
 agent-010 test 1/1 failing; first case 1: error `replace(?)` mutates through a reference, which this evaluator does not model ? rebind ...
 algo-004 test 3/3 failing; first case 1: error unknown function `as_bytes`
 app-001 unrunnable 2/2 case(s): solution declares host effect(s) fs; eval would perform them
-app-002 check E0308 lines
+app-002 check E0308 find
 app-003 test 1/1 failing; first case 1: error `&!x` is supported by --eval only as an argument of a user function, whose changes are ...
 app-004 check E0428 Num
-app-005 check E0308 split
-app-006 check E0425 _
-app-007 check E0308 dereference: type mismatch: I64 vs &?T2
-app-008 check E0308 chars
+app-005 test 1/1 failing; first case 1: error input does not parse: expected expression, found Semi ';' (in PrefixExpr)
+app-006 test 1/1 failing; first case 1: error input does not parse: expected RBrack, found LBrace '{' (in PrefixExpr)
+app-008 check E0308 expected a collection, found str
 app-009 test 1/1 failing; first case 1: error unknown function `clone`
 app-010 test 1/1 failing; first case 1: error input does not parse: expected expression, found BitXor '^' (in PrefixExpr)
 conc-001 check E0412 Handle
@@ -33,11 +32,10 @@ conc-006 check E0412 Handle
 conc-007 check E0412 AtomicI64
 conc-008 check E0412 AtomicI64
 conc-009 check E0412 Handle
-ds-004 check E0308 swap
 ds-006 test 1/2 failing; first case 2: error input does not parse: expected expression, found BitXor '^' (in PrefixExpr)
 ds-007 test 2/2 failing; first case 1: error unknown function `get`
 err-002 test 2/2 failing; first case 1: error unknown function `splitn`
-err-003 check E0308 split
+err-003 test 1/3 failing; first case 1: error unknown function `trim`
 err-004 test 2/2 failing; first case 1: error unknown function `iter`
 gt-002 check E0412 _
 gt-003 test 2/2 failing; first case 1: error unknown function `clone`
@@ -45,19 +43,17 @@ gt-004 check E0412 _
 gt-005 test 2/2 failing; first case 1: error unknown function `ok_or`
 sys-002 test 1/2 failing; first case 2: error unsupported binary `&` on these types
 sys-003 test 2/2 failing; first case 1: error unsupported binary `&` on these types
-sys-004 test 1/2 failing; first case 2: error integer overflow in `256 as u8`
 sys-005 check E0425 s
 sys-006 test 2/2 failing; first case 1: error unknown function `clone`
-sys-007 check E0308 env.get_var
-sys-008 check E0425 _
+sys-007 unrunnable 1/1 case(s): solution declares host effect(s) env; eval would perform them
+sys-008 test 1/1 failing; first case 1: error unknown function `starts_with`
 sys-009 test 2/2 failing; first case 1: error bad int `14695981039346656037`
 sys-010 unrunnable 1/1 case(s): expected is not a value literal: [app] [INFO] started
 web-001 check E0425 use http
 web-002 check E0308 find
 web-003 check E0412 Request
 web-005 check E0412 Request
-web-006 check E0308 split
+web-006 test 1/2 failing; first case 1: error unknown function `splitn`
 web-007 check E0425 use http.Client
 web-008 unrunnable 2/2 case(s): solution declares host effect(s) net; eval would perform them
 web-009 check E0412 Response
-web-010 check E0308 *

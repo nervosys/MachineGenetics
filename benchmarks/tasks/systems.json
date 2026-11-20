@@ -65,8 +65,8 @@
     "difficulty": "hard",
     "task": "Write a byte buffer with read and write cursors for network packet assembly",
     "solution": {
-      "rdx_source": "S ByteBuf {\n    data: [u8]~,\n    read_pos: usize,\n    write_pos: usize,\n}\n\nI ByteBuf {\n    +f new() -> ByteBuf { @ByteBuf { data: [], read_pos: 0, write_pos: 0 } }\n    +f write_u8(&!self, val: u8) { self.data.push(val); self.write_pos = self.write_pos + 1; }\n    +f write_u32_be(&!self, val: u32) {\n        self.write_u8((val >> 24) as u8);\n        self.write_u8((val >> 16) as u8);\n        self.write_u8((val >> 8) as u8);\n        self.write_u8(val as u8);\n    }\n    +f read_u8(&!self) -> ?u8 {\n        ? self.read_pos >= self.write_pos { ret ?None; }\n        v val = self.data[self.read_pos];\n        self.read_pos = self.read_pos + 1;\n        ?Some(val)\n    }\n    +f remaining(&self) -> usize { self.write_pos - self.read_pos }\n}",
-      "token_count": 160,
+      "rdx_source": "S ByteBuf {\n    data: [u8]~,\n    read_pos: usize,\n    write_pos: usize,\n}\n\nI ByteBuf {\n    +f new() -> ByteBuf { @ByteBuf { data: [], read_pos: 0, write_pos: 0 } }\n    +f write_u8(&!self, val: u8) { self.data.push(val); self.write_pos = self.write_pos + 1; }\n    +f write_u32_be(&!self, val: u32) {\n        self.write_u8(((val >> 24) & 255) as u8);\n        self.write_u8(((val >> 16) & 255) as u8);\n        self.write_u8(((val >> 8) & 255) as u8);\n        self.write_u8((val & 255) as u8);\n    }\n    +f read_u8(&!self) -> ?u8 {\n        ? self.read_pos >= self.write_pos { ret ?None; }\n        v val = self.data[self.read_pos];\n        self.read_pos = self.read_pos + 1;\n        ?Some(val)\n    }\n    +f remaining(&self) -> usize { self.write_pos - self.read_pos }\n}",
+      "token_count": 228,
       "effects": [],
       "skb_rules_used": ["ownership:exclusive-ref", "type_safety:option-return"]
     },
@@ -95,7 +95,7 @@
       "token_count": 70
     },
     "tests": [
-      { "input": "read_to_string(\"/tmp/test.txt\")", "expected": "R.Ok(<contents>)" }
+      { "input": "read_to_string(\"/tmp/test.txt\")", "expected": "Ok(<contents>)" }
     ]
   },
   {
@@ -114,8 +114,8 @@
       "token_count": 300
     },
     "tests": [
-      { "input": "v c = LruCache.new(2); c.put(\"a\", 1); c.put(\"b\", 2); c.put(\"c\", 3); c.get(\"a\")", "expected": "?None" },
-      { "input": "v c = LruCache.new(2); c.put(\"a\", 1); c.put(\"b\", 2); c.get(\"a\"); c.put(\"c\", 3); c.get(\"a\")", "expected": "?Some(1)" }
+      { "input": "v c = LruCache.new(2); c.put(\"a\", 1); c.put(\"b\", 2); c.put(\"c\", 3); c.get(\"a\")", "expected": "None" },
+      { "input": "v c = LruCache.new(2); c.put(\"a\", 1); c.put(\"b\", 2); c.get(\"a\"); c.put(\"c\", 3); c.get(\"a\")", "expected": "Some(1)" }
     ]
   },
   {
@@ -124,8 +124,8 @@
     "difficulty": "hard",
     "task": "Write a process environment wrapper that provides typed access to environment variables",
     "solution": {
-      "rdx_source": "effect env {\n    f get_var(name: &s) -> ?s;\n    f set_var(name: &s, value: &s);\n}\n\nS EnvConfig {\n    port: u16,\n    host: s,\n    debug: bool,\n}\n\n+f load_config() -> R[EnvConfig, s] / env {\n    v port_str = env.get_var(\"PORT\").unwrap_or(\"8080\");\n    v port = port_str.parse_u16().map_err(fn(e) => f\"bad PORT: {e}\")?;\n    v host = env.get_var(\"HOST\").unwrap_or(\"localhost\");\n    v debug = env.get_var(\"DEBUG\").unwrap_or(\"false\") == \"true\";\n    R.Ok(@EnvConfig { port: port, host: host, debug: debug })\n}",
-      "token_count": 110,
+      "rdx_source": "effect env {\n    f get_var(name: &s) -> ?s;\n    f set_var(name: &s, value: &s);\n}\n\nS EnvConfig {\n    port: u16,\n    host: s,\n    debug: bool,\n}\n\n+f load_config() -> R[EnvConfig, s] / env {\n    v port_str = env.get_var(&\"PORT\").unwrap_or(\"8080\");\n    v port = port_str.parse_u16().map_err(fn(e) => f\"bad PORT: {e}\")?;\n    v host = env.get_var(&\"HOST\").unwrap_or(\"localhost\");\n    v debug = env.get_var(&\"DEBUG\").unwrap_or(\"false\") == \"true\";\n    Ok(@EnvConfig { port: port, host: host, debug: debug })\n}",
+      "token_count": 150,
       "effects": ["env"],
       "skb_rules_used": ["type_safety:result-propagation"]
     },
@@ -134,7 +134,7 @@
       "token_count": 150
     },
     "tests": [
-      { "input": "load_config()  // with PORT=3000", "expected": "R.Ok(EnvConfig{port:3000,host:\"localhost\",debug:false})" }
+      { "input": "load_config()  // with PORT=3000", "expected": "Ok(EnvConfig{port:3000,host:\"localhost\",debug:false})" }
     ]
   },
   {

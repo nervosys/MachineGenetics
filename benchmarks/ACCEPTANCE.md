@@ -28,33 +28,37 @@ remaining 58 tasks are wrong: most fail on a compiler or evaluator limit.
 
 | Category | Tasks | Parse | Check-clean | All tests pass | Some test fails | Unrunnable | Accepted |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| agent-orchestration | 10 | 10 | 6 | 0 | 5 | 5 | 0 |
+| agent-orchestration | 10 | 10 | 8 | 0 | 5 | 5 | 0 |
 | algorithms | 15 | 15 | 15 | 14 | 1 | 0 | 14 |
 | basic-io | 10 | 10 | 10 | 10 | 0 | 0 | 10 |
 | concurrency | 9 | 9 | 0 | 0 | 8 | 1 | 0 |
-| data-structures | 15 | 15 | 14 | 13 | 2 | 0 | 12 |
-| error-handling | 5 | 5 | 4 | 2 | 3 | 0 | 2 |
-| full-applications | 10 | 10 | 4 | 0 | 9 | 1 | 0 |
+| data-structures | 15 | 15 | 15 | 13 | 2 | 0 | 13 |
+| error-handling | 5 | 5 | 5 | 2 | 3 | 0 | 2 |
+| full-applications | 10 | 10 | 7 | 1 | 8 | 1 | 1 |
 | generics-traits | 5 | 5 | 3 | 3 | 2 | 0 | 1 |
-| systems | 10 | 10 | 7 | 1 | 6 | 3 | 1 |
-| web-network | 10 | 10 | 2 | 1 | 3 | 6 | 1 |
-| **Total** | **99** | **99** | **65** | **44** | **39** | **16** | **41** |
+| systems | 10 | 10 | 9 | 2 | 5 | 3 | 2 |
+| web-network | 10 | 10 | 4 | 2 | 2 | 6 | 2 |
+| **Total** | **99** | **99** | **76** | **47** | **36** | **16** | **45** |
 
 Before the task fixes the table read 98 parse, 52 check-clean, 18 all pass,
 65 some fail, 16 unrunnable, 18 accepted; after them (evaluator as it was) 99,
-65, 21, 62, 16, 20.
+65, 21, 62, 16, 20. The table above is the 2026-11-18 measurement after the
+type-check pass (see "Re-measurement, 2026-11-18 (type-check pass and uniform
+notation)"): before it, 65 type-checked, 44 / 39 / 16 and 41 accepted.
 
 "All tests pass", "some test fails" and "unrunnable" partition the tasks by
 their test cases alone, independent of the check column ("some test fails"
-includes cases that could not be evaluated: see below). The 175 cases: 102 pass,
-3 fail (ran, wrong value), 49 error (could not be evaluated), 21 unrunnable
-(on 2026-11-18 before the notation and receiver fixes: 79 / 22 / 53 / 21; after
+includes cases that could not be evaluated: see below). The 175 cases: 105 pass,
+1 fail (ran, wrong value: `agent-009`), 48 error (could not be evaluated), 21
+unrunnable (before the type-check pass: 102 / 3 / 49 / 21; on 2026-11-18 before
+the notation and receiver fixes: 79 / 22 / 53 / 21; after
 the task fixes, before the evaluator fixes: 59 / 9 / 86 / 21; before
 either: 56 / 9 / 89 / 21).
-The 41 accepted tasks are the 14 algorithms (all but `algo-004`), all 10
-basic-io, 12 data-structures (all but `ds-004/006/007`), `err-001`, `err-005`,
-`gt-001`, `sys-001` and `web-004`. `ds-004` and `gt-004` pass their tests but their references do
-not type-check (a compiler question: group A), so they are not accepted.
+The 45 accepted tasks are the 14 algorithms (all but `algo-004`), all 10
+basic-io, 13 data-structures (all but `ds-006/007`), `err-001`, `err-005`,
+`gt-001`, `sys-001`, `sys-004`, `app-007`, `web-004` and `web-010`. `gt-004` passes its
+tests but its reference does not type-check (associated types: a language
+decision), so it is not accepted.
 
 Every task now parses (`app-008`'s closure parameter was renamed).
 
@@ -181,6 +185,88 @@ floats and strings generally (decided above for the whole-float case only);
 whether `!` on an integer is a bitwise complement; what a reference solution
 that casts `256 as u8` should mean.
 
+## Re-measurement, 2026-11-18 (type-check pass and uniform notation)
+
+The 34 references that did not type-check were classified from their exact
+`mage-parse --check --json` diagnostics. Type-check 65 to **76**; accepted 41 to
+**45** (`ds-004`, `app-007`, `web-010`, `sys-004`); cases pass / fail / error / unrunnable
+102 / 3 / 49 / 21 to 105 / 1 / 48 / 21; baseline 58 to 54 tasks (23 `check`).
+Measured twice, identical.
+
+**Fixed in the checker (4 tasks; each is valid MAGE the checker rejected):**
+
+* Open-ended slices `xs[a..]`, `xs[..b]` (`agent-005`, `agent-006`, `sys-008`;
+  MAGE_SPEC 4.6 `e[a..b]`, and the parser's own comment says the checker
+  "recognises `_` as unbounded"; it did not): the resolver reported the
+  parser's `_` sentinel as an unresolved name. A range index now also types as a
+  slice of the receiver (`[T]~`, or `str` for a string), where it typed as one
+  element.
+* A generic struct literal (`@Pair { .. }` for `S Pair[T]`, `ds-004`) had no type
+  arguments and so never unified with `Pair[T]`; it now carries one fresh
+  argument per parameter.
+* `&str` passed to `split`/`chars`/`words`/`lines`/`upper`/`lower` (shared with
+  `app-005`, `web-006`): `&str` is the string slice of section B.4, and
+  `s.len()` already took it; the string words now auto-deref likewise.
+
+**Fixed in the task (7 tasks, none changes `expected` or the Rust twin):**
+`app-005`, `err-003`, `web-006` (a char literal where `split` takes a string:
+`split(':')` to `split(":")`); `app-007` (`*n as i64` is `*(n as i64)` by the
+precedence table of Appendix C, written `(*n) as i64`); `sys-007` (a string
+literal passed to a `&s` parameter is written `&"PORT"`); `web-010` (`time.sleep`
+needs `/ time`, the effect list was `io, async`; and `1 << attempt` is typed
+`u32`, so the shift count is written `attempt as u64`); `app-006` (`R.Ok`/`R.Err`
+to `Ok`/`Err`, as also in `agent-007`, `agent-008`, `app-004`, `sys-007`,
+`web-007`, which still fail for another reason). One test input (`agent-004`,
+`R.Ok(s)` in a closure) got the same constructor fix.
+
+**Left, 23 `check` tasks:**
+
+* **Unimplemented but specified (9): `conc-001` to `conc-009`.** `Handle[T]`,
+  `@AtomicI64`, `@Mutex`, `async.spawn/join/select/yield` (sections 11.2 and
+  14.2, "Atomic ordering"). `conc-003` also needs a generic effect
+  (`effect channel[T]`) and every effect operation with its own parameters
+  (`f spawn[T](..)`), which `kb/grammar.mg` defines (`EffectDef: Name Generics?`,
+  `EfEffectOp: Name Generics?`) and the AST drops; `conc-005` also needs
+  `I[T] Locked[T]`. Size: effect generics about 120 lines (AST, parser,
+  resolver, effect-operation typing); `Handle`/atomics/`Mutex` as checker
+  types about 150 lines, and single-threaded evaluator semantics another
+  200-300. None is under the 80-line bar.
+* **Needs a language decision (14):**
+  string `find` with a string or a char (`agent-007`, `app-002`, `web-002`;
+  `find` is `([A], pred)` in the 31 words); `s.from_utf8` and a byte type
+  (`agent-008`, `sys-005`); string `push` and `contains` (`app-008`); associated
+  types `type Item;` (`gt-002`, `gt-004`); the same variant name in two enums
+  (`app-004`, flat namespace against `Expr.Num` and `Value.Num`); the HTTP types
+  `Request`, `Response`, `Status`, `http.Client` and `use http` (`web-001`,
+  `web-003`, `web-005`, `web-007`, `web-009`: the specification lists
+  `std::net` HTTP only inside the section it marks invalid MAGE).
+* Questions raised, not acted on: whether a string literal is accepted for a
+  `&s` parameter (the checker says no; the specification does not say), and
+  whether a shift count may differ in type from its operand (the checker
+  unifies them; the specification is silent).
+
+**Newly check-clean, still failing a test (not a checker or task cause):**
+`agent-006` (`clone`), `app-005`, `app-006` (test input does not parse: nested
+quotes in an f-string, a `...` placeholder), `err-003` (`trim`), `sys-008`
+(`starts_with`), `web-006` (`splitn`); `agent-005` and `sys-007` are
+`unrunnable` (host effects).
+
+**Uniform `expected` notation.** The same value-preserving rewrite as above
+(`?Some(`/`?None` to `Some(`/`None`; `R.Ok(`/`R.Err(` to `Ok(`/`Err(`, outside
+quoted strings) was applied to every remaining `expected`: 29 strings, 31
+tokens: `agent_orchestration.json` 3, `concurrency.json` 1,
+`error_handling.json` 7, `full_applications.json` 5, `generics_traits.json` 3,
+`systems.json` 4, `web_network.json` 6 (8 tokens); the other three files had
+none. No `expected` string contains `?Some`, `?None` or `R.` any more.
+
+**Two suspect references.** `agent-009` (not changed): `expected` says
+`total:1.0`; `0.6 + 0.3 + 0.1` in IEEE doubles is `0.9999999999999999`, which
+the Rust twin returns too (the same expression and operand order), so the
+stated value is the error, not the evaluator. `sys-004` (fixed in the
+reference, `expected` untouched): `write_u32_be(256)` did `256 as u8`; Rust's `as`
+truncates to `0`, MAGE traps (section 4.10), so each byte is now masked,
+`((val >> 8) & 255) as u8`, the faithful form of the Rust twin; accepted.
+
 ## How one case is judged
 
 For each case the solution is written to a scratch file and one function is
@@ -279,7 +365,7 @@ Left alone, with the reason:
   is typed `u64 * u32`, where Rust infers a `u64` shift. The `R.Ok` fix landed;
   the rest is a checker and library question.
 
-### A. The reference does not type-check (34 tasks; first error shown)
+### A. The reference does not type-check (34 tasks on 2026-11-17; 23 remain, see the type-check pass above; first error shown)
 
 | Group | Tasks | Where the defect is | Example |
 |---|---:|---|---|
@@ -331,12 +417,12 @@ the checker already rejects the files).
 
 ## Reading the numbers
 
-* "Check-clean 65" is a clean compiler verdict; it is the number the parse rate
-  is most often mistaken for. Of the 34 failures, none is a typo in the task
-  that survives: 13 depend on a library MAGE does not ship (see above) and 21
-  are unclear or compiler-side (group A).
-* "Accepted 28" is a **lower bound** on correct tasks: most of the 37 check-clean
-  tasks that are not accepted (31 fail a test, 6 unrunnable) involve an evaluator limitation. Equally it is not an
+* "Check-clean 76" is a clean compiler verdict; it is the number the parse rate
+  is most often mistaken for. Of the 23 failures, none is a typo in the task
+  that survives: 9 need concurrency types the compiler lacks and 14 need a
+  language decision (see "Re-measurement, 2026-11-18 (type-check pass)").
+* "Accepted 45" is a **lower bound** on correct tasks: most of the 32 check-clean
+  tasks that are not accepted involve an evaluator limitation. Equally it is not an
   upper bound on wrong ones: a case passes only if the evaluator and the task
   agree.
 * The baseline can only shrink. When a task or the compiler is fixed so a task is

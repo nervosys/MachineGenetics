@@ -35,8 +35,8 @@
       "token_count": 120
     },
     "tests": [
-      { "input": "parse_config(\"host=localhost\")", "expected": "R.Ok(Config{key:\"host\",value:\"localhost\"})" },
-      { "input": "parse_config(\"badline\")", "expected": "R.Err(\"malformed config: 'badline'\")" }
+      { "input": "parse_config(\"host=localhost\")", "expected": "Ok(Config{key:\"host\",value:\"localhost\"})" },
+      { "input": "parse_config(\"badline\")", "expected": "Err(\"malformed config: 'badline'\")" }
     ]
   },
   {
@@ -45,7 +45,7 @@
     "difficulty": "medium",
     "task": "Write a custom error enum with Display formatting and a function that chains multiple fallible operations using the ? operator",
     "solution": {
-      "rdx_source": "E AppError {\n    NotFound(s),\n    ParseFailed(s),\n    InvalidInput(s),\n}\n\nI AppError {\n    +f message(&self) -> &s {\n        ? self {\n            AppError.NotFound(msg) => msg,\n            AppError.ParseFailed(msg) => msg,\n            AppError.InvalidInput(msg) => msg,\n        }\n    }\n}\n\n+f process_record(raw: &s) -> R[u64, AppError] {\n    v trimmed = raw.trim();\n    ? trimmed.is_empty() {\n        ret Err(AppError.InvalidInput(\"empty input\".to_string()));\n    }\n    v parts = trimmed.split(':').to_vec();\n    ? parts.len() < 2 {\n        ret Err(AppError.ParseFailed(\"expected key:value\".to_string()));\n    }\n    v value_str = parts[1].trim();\n    v value = value_str.parse::<u64>()\n        .map_err(fn(e) => AppError.ParseFailed(f\"bad number: {e}\"))?;\n    ? value == 0 {\n        Err(AppError.NotFound(\"zero value\".to_string()))\n    } : {\n        Ok(value)\n    }\n}",
+      "rdx_source": "E AppError {\n    NotFound(s),\n    ParseFailed(s),\n    InvalidInput(s),\n}\n\nI AppError {\n    +f message(&self) -> &s {\n        ? self {\n            AppError.NotFound(msg) => msg,\n            AppError.ParseFailed(msg) => msg,\n            AppError.InvalidInput(msg) => msg,\n        }\n    }\n}\n\n+f process_record(raw: &s) -> R[u64, AppError] {\n    v trimmed = raw.trim();\n    ? trimmed.is_empty() {\n        ret Err(AppError.InvalidInput(\"empty input\".to_string()));\n    }\n    v parts = trimmed.split(\":\").to_vec();\n    ? parts.len() < 2 {\n        ret Err(AppError.ParseFailed(\"expected key:value\".to_string()));\n    }\n    v value_str = parts[1].trim();\n    v value = value_str.parse::<u64>()\n        .map_err(fn(e) => AppError.ParseFailed(f\"bad number: {e}\"))?;\n    ? value == 0 {\n        Err(AppError.NotFound(\"zero value\".to_string()))\n    } : {\n        Ok(value)\n    }\n}",
       "token_count": 223,
       "effects": [],
       "skb_rules_used": ["type_safety:result-propagation", "type_safety:result-return"]
@@ -55,9 +55,9 @@
       "token_count": 210
     },
     "tests": [
-      { "input": "process_record(\"count: 42\")", "expected": "R.Ok(42)" },
-      { "input": "process_record(\"\")", "expected": "R.Err(AppError.InvalidInput(...))" },
-      { "input": "process_record(\"x:abc\")", "expected": "R.Err(AppError.ParseFailed(...))" }
+      { "input": "process_record(\"count: 42\")", "expected": "Ok(42)" },
+      { "input": "process_record(\"\")", "expected": "Err(AppError.InvalidInput(...))" },
+      { "input": "process_record(\"x:abc\")", "expected": "Err(AppError.ParseFailed(...))" }
     ]
   },
   {
@@ -76,8 +76,8 @@
       "token_count": 150
     },
     "tests": [
-      { "input": "try_parse_all(&[\"1\", \"2\", \"3\"])", "expected": "R.Ok([1, 2, 3])" },
-      { "input": "try_parse_all(&[\"1\", \"abc\", \"3\"])", "expected": "R.Err(\"parse error: ...\")" }
+      { "input": "try_parse_all(&[\"1\", \"2\", \"3\"])", "expected": "Ok([1, 2, 3])" },
+      { "input": "try_parse_all(&[\"1\", \"abc\", \"3\"])", "expected": "Err(\"parse error: ...\")" }
     ]
   },
   {
