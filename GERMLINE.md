@@ -956,6 +956,55 @@ This is weak evidence, for these reasons:
 - **One workload, one grid, one margin.** Nothing here says the result holds for
   other axes, edges, margins, genomes or budgets.
 
+**Replication with the edges fixed in advance (2026-11-20): not confirmed.** The
+same command and the same `--niches efficiency:0.30/0.34`, on sixteen seeds
+chosen before any was run (11 to 26). Logs and journals:
+`E:/heal-logs/nc/rep/`. Final champion, held-out capability and validation bits
+per byte:
+
+| seed | single champion: held-out, validation b/B | archive: held-out, validation b/B |
+|---|---|---|
+| 11 | 0.0636, 7.993 | 0.0646, 8.002 |
+| 12 | 0.0636, 7.993 | 0.0646, 8.002 |
+| 13 | 0.0636, 7.993 | 0.0841, 7.808 |
+| 14 | 0.0213, 8.293 | 0.0841, 7.808 |
+| 15 | 0.0000, 8.469 | 0.0841, 7.808 |
+| 16 | 0.0543, 8.002 | 0.0703, 7.940 |
+| 17 | 0.0543, 8.002 | 0.0661, 7.777 |
+| 18 | 0.0543, 8.002 | 0.0549, 8.068 |
+| 19 | 0.0693, 7.927 | 0.0549, 8.068 |
+| 20 | 0.0693, 7.927 | 0.0329, 8.025 |
+| 21 | 0.0693, 7.927 | 0.0000, 8.469 |
+| 22 | 0.0687, 7.928 | 0.0000, 8.469 |
+| 23 | 0.0687, 7.928 | 0.0000, 8.469 |
+| 24 | 0.0687, 7.928 | 0.0350, 8.065 |
+| 25 | 0.0880, 7.766 | 0.0350, 8.065 |
+| 26 | 0.0880, 7.766 | 0.0350, 8.065 |
+| mean | 0.0603, 7.990 | 0.0479, 8.057 |
+
+The archive is better on eight seeds and worse on eight on the held-out suite,
+and better on five and worse on eleven on validation. Its mean is worse on both.
+Three archive runs promoted nothing. It scored 100 candidates to the single
+champion's 88. Over all 24 seeds of both measurements the archive is better on
+validation on 12 and worse on 12.
+
+So the first measurement's seven of eight was not a property of the archive. Two
+things the tables show explain how eight seeds could mislead:
+
+- **Neighbouring seeds are not independent.** Outcomes repeat in runs of two or
+  three consecutive seeds in both arms (11 to 13, 16 to 18, 19 to 21, 22 to 24
+  for the single champion; 13 to 15, 21 to 23, 24 to 26 for the archive). The
+  sixteen seeds hold seven distinct single-champion outcomes and eight archive
+  outcomes; the earlier eight seeds held far fewer independent draws than eight.
+- **The edges had been fitted to seeds 1 to 3**, and the difference there was
+  within what that fitting can produce.
+
+What stands: there is no evidence that this archive, on this workload, grid and
+margin, finds better programs than the single champion. A fair test needs seeds
+that are independent draws (spaced, or a seed derivation that decorrelates
+neighbours), edges fixed before any run, and learners clearly below 8 bits per
+byte.
+
 Still not done: restoring a displaced elite on demotion. The switch is `arena
 succession --niches` (with `--niche-margin`), and a run that keeps an archive
 reports its occupied cells and the grid size in the run report and the JSON.
