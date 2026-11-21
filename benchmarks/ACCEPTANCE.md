@@ -33,12 +33,12 @@ remaining 58 tasks are wrong: most fail on a compiler or evaluator limit.
 | basic-io | 10 | 10 | 10 | 10 | 0 | 0 | 10 |
 | concurrency | 9 | 9 | 0 | 0 | 8 | 1 | 0 |
 | data-structures | 15 | 15 | 15 | 14 | 1 | 0 | 14 |
-| error-handling | 5 | 5 | 5 | 3 | 2 | 0 | 3 |
-| full-applications | 10 | 10 | 9 | 3 | 6 | 1 | 3 |
+| error-handling | 5 | 5 | 5 | 5 | 0 | 0 | 5 |
+| full-applications | 10 | 10 | 9 | 4 | 5 | 1 | 4 |
 | generics-traits | 5 | 5 | 3 | 5 | 0 | 0 | 3 |
-| systems | 10 | 10 | 9 | 5 | 2 | 3 | 5 |
+| systems | 10 | 10 | 9 | 6 | 1 | 3 | 6 |
 | web-network | 10 | 10 | 5 | 3 | 1 | 6 | 3 |
-| **Total** | **99** | **99** | **80** | **61** | **22** | **16** | **59** |
+| **Total** | **99** | **99** | **80** | **65** | **18** | **16** | **63** |
 
 The table is the 2026-11-20 measurement, after twelve library words were
 implemented (`clone`, `to_string`, `unwrap`, `unwrap_or`, `map_err`, `get`,
@@ -65,7 +65,14 @@ well as a string, as Rust's do. Six more tasks are accepted (`agent-006`,
 76 to **80** (`agent-007`, `app-002`, `app-008`, `web-002`); cases 129 pass / 1
 fail / 24 error / 21 unrunnable; baseline 46 to 40 tasks. Next blockers seen:
 `parse` (`err-003`, `err-004`), `position` (`sys-006`, `app-008`), `parse_u16`
-(`web-002`). The
+(`web-002`). Then a
+third batch: `position`, `and_then`, `parse` (`s.parse::<T>()` with Rust's
+error wording), and `map` on an option or a result. Four more tasks are
+accepted (`app-008`, `err-003`, `err-004`, `sys-006`): 59 to **63**; cases 136
+pass / 1 fail / 19 error / 19 unrunnable; baseline 40 to 36 tasks. Three
+`expected` strings in `err-003` and `err-004` were placeholders (`...`) and
+could not be compared; they now hold the value the reference computes, with
+Rust's parse message ("invalid digit found in string"). The
 paragraphs below describe the 2026-11-18 state (45 accepted) and are kept as
 the record of it.
 

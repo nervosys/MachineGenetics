@@ -6,7 +6,7 @@
 # WHY THIS EXISTS
 # ─────────────────────────────────────────────────────────────────────────────
 #
-# The 46 words in `resolve::VOCABULARY` are the language's whole standard
+# The 49 words in `resolve::VOCABULARY` are the language's whole standard
 # library — there are no modules and no `stdlib/`, so an agent writing MAGE has
 # these and nothing else. They are published in `MAGE_ONTOLOGY.json` with
 # signatures, which is what an agent reads before writing any code.
@@ -118,6 +118,11 @@ CASES = [
     ("ok_or",       'unwrap(ok_or(first([7, 8]), 0)) + unwrap_or(ok_or(first(take([7], 0)), 5), 9)', "16"),
     ("as_bytes",    'get(as_bytes("A"), 0)', "Some(65)"),
     ("replace",     'replace("a-b", "-", "+")', '"a+b"'),
+    # The three words added 2026-11-20 (third batch). `position` is Rust's
+    # `Iterator::position`; `and_then` runs on a `Some` or an `Ok`; `parse` reads a number.
+    ("position",    'position([1, 2, 3], fn(x) => x > 1)', "Some(1)"),
+    ("and_then",    'and_then(first([7, 8]), fn(x) => Some(x + 1))', "Some(8)"),
+    ("parse",       'unwrap(parse("42"))', "42"),
 ]
 
 

@@ -56,8 +56,8 @@
     },
     "tests": [
       { "input": "process_record(\"count: 42\")", "expected": "Ok(42)" },
-      { "input": "process_record(\"\")", "expected": "Err(AppError.InvalidInput(...))" },
-      { "input": "process_record(\"x:abc\")", "expected": "Err(AppError.ParseFailed(...))" }
+      { "input": "process_record(\"\")", "expected": "Err(InvalidInput(\"empty input\"))" },
+      { "input": "process_record(\"x:abc\")", "expected": "Err(ParseFailed(\"bad number: invalid digit found in string\"))" }
     ]
   },
   {
@@ -77,7 +77,7 @@
     },
     "tests": [
       { "input": "try_parse_all(&[\"1\", \"2\", \"3\"])", "expected": "Ok([1, 2, 3])" },
-      { "input": "try_parse_all(&[\"1\", \"abc\", \"3\"])", "expected": "Err(\"parse error: ...\")" }
+      { "input": "try_parse_all(&[\"1\", \"abc\", \"3\"])", "expected": "Err(\"parse error: invalid digit found in string\")" }
     ]
   },
   {

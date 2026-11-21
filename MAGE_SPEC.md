@@ -239,8 +239,9 @@ boundary between files.
 The reason is the language's premise. An import is pure overhead in tokens: it
 names something the compiler already knows, costs a line at the top of every
 file, and buys separation that matters when a library is large and unstable. The
-standard library here is **46 words** (the thirty-one of the first writing, the
-ten added in the subsection below, and the five added in the one after it) plus **20 capability namespaces**
+standard library here is **49 words** (the thirty-one of the first writing, the
+ten added in the subsection below, the five added in the one after it, and the
+three in the last) plus **20 capability namespaces**
 (§11.2), both fixed and both published in `MAGE_ONTOLOGY.json`. An agent
 generating a program should not spend tokens re-deriving what it can already
 reach.
@@ -267,7 +268,7 @@ teach a path instead.
 
 Twelve names that programs use and the type checker accepted were not runnable
 until this date (the census in `benchmarks/UNKNOWN_METHODS.md`). Ten are
-vocabulary words and are counted in the 46 above; `insert` and `remove` are
+vocabulary words and are counted in the 49 above; `insert` and `remove` are
 place mutators, like `push` and `pop`, and are not. Each takes
 both forms, `x.f(a)` and `f(x, a)`:
 
@@ -289,7 +290,7 @@ both forms, `x.f(a)` and `f(x, a)`:
 
 #### Words added 2026-11-20, second batch
 
-Five more vocabulary words, counted in the 46 above, and one more place mutator,
+Five more vocabulary words, counted in the 49 above, and one more place mutator,
 `push_str`. Each takes both forms where the word has a receiver:
 
 - `to_vec(xs)` / `iter(xs)`: `xs` itself on a list, since a list is already an owned,
@@ -309,6 +310,25 @@ Five more vocabulary words, counted in the 46 above, and one more place mutator,
 - `s.push(c)` / `push(s, c)` appends a character (a `char`) to a string in place, and
   `s.push_str(t)` / `push_str(s, t)` appends a string. Both are place mutators, like
   `push` on a list.
+
+#### Words added 2026-11-20, third batch
+
+Three more vocabulary words, counted in the 49 above:
+
+- `position(xs, pred)`: the index of the first element for which `pred` is true, as `?usize`;
+  `None` when none is. This is Rust's `Iterator::position`. The receiver is a list.
+- `and_then(o, f)`: on an option, `f` of the payload of a `Some` (which returns an option);
+  a `None` stays `None`. On a result, `f` of the payload of an `Ok` (which returns a result);
+  an `Err` passes through unchanged. Typed `?A, (A -> ?B) -> ?B`, and the result analogue.
+- `s.parse::<T>()`: reads the string as `T`, one of the integer types (`i8` to `i64`,
+  `u8` to `u64`, `usize`, `isize`), a float (`f32`, `f64`) or `bool`. The result is
+  `Result[T, str]`: `Ok(value)` when the whole string is a `T` that fits, else `Err(message)`,
+  the message being Rust's own text (`invalid digit found in string`, `number too large to
+  fit in target type`, `invalid float literal`, and so on). A `u64` above `i64::MAX` is
+  reported as too large, since integers are signed 64-bit values here.
+  `s.parse()` with no type reads an integer if the whole text is one, else a float, else
+  gives `Err("invalid digit found in string")`; the checker gives its result an open type.
+  `json.parse(..)` is the capability namespace's call, as before, and is not this word.
 
 ### 2.4 Which surface is cheaper, by unit (plan S2)
 

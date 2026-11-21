@@ -1161,6 +1161,9 @@ kb Meaning {
     fact vocabulary("ok_or", "(?A, E) -> R[A, E]", "an option as a result: Some(x) is Ok(x), None is Err(e)");
     fact vocabulary("as_bytes", "str -> &[u8]", "the UTF-8 bytes of a string, as integers, lent as a slice as in Rust");
     fact vocabulary("replace", "(str, str or char, str) -> str", "s.replace(from, to): a new string with every from replaced by to, as Rust's str::replace; from is a string or a char, to a string; s itself does not change. The two-value place form replace(place, value) is refused at run time");
+    fact vocabulary("position", "([A], (A) -> bool) -> ?usize", "the index of the first element for which the predicate holds, as Rust's Iterator::position; none when none does");
+    fact vocabulary("and_then", "(?A, (A) -> ?B) -> ?B  or  (R[A, E], (A) -> R[B, E]) -> R[B, E]", "the function applied to the payload of a Some or an Ok, which returns an option or a result; a None or an Err passes through unchanged");
+    fact vocabulary("parse", "str -> R[?A, str]  or  s.parse::<T>() -> R[T, str]", "a string read as a number: parse() gives an integer if the text is one, else a float; s.parse::<T>() reads T, an integer, float or bool type, giving Ok of the value or Err of Rust's message as a string");
 
     // ── Layer grades: the lists of differentiable.rs ──
     // Each surface layer type is `smooth` (SMOOTH_LAYERS) or `kinked`
