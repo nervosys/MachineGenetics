@@ -1115,7 +1115,7 @@ kb Meaning {
     // signature and its doc. The signature is display only and nothing parses
     // it, so it is a `Text`. `every_vocabulary_word_is_stated` holds the table
     // to these facts in both directions.
-    fact vocabulary("map", "([A], A->B) -> [B]", "apply a function to each element");
+    fact vocabulary("map", "([A], A->B) -> [B]", "apply a function to each element; on an option or a result, to the payload, keeping the wrapper");
     fact vocabulary("filter", "([A], A->bool) -> [A]", "keep elements matching a predicate");
     fact vocabulary("fold", "([A], B, (B,A)->B) -> B", "reduce with an initial accumulator");
     fact vocabulary("reduce", "([A], (A,A)->A) -> ?A", "reduce without an initial value");
