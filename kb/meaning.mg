@@ -1130,7 +1130,7 @@ kb Meaning {
     fact vocabulary("last", "[A] -> ?A", "last element, if any");
     fact vocabulary("any", "([A], A->bool) -> bool", "does any element match");
     fact vocabulary("all", "([A], A->bool) -> bool", "do all elements match");
-    fact vocabulary("find", "([A], A->bool) -> ?A", "first matching element, if any");
+    fact vocabulary("find", "([A], A->bool) -> ?A  or  (str, str or char) -> ?usize", "first matching element of a list, if any; on a string, s.find(sub) is the byte index of the first match, if any (Rust's str::find); the pattern sub is a string or a char");
     fact vocabulary("take", "([A], usize) -> [A]", "the first n elements");
     fact vocabulary("range", "(usize) -> [usize]", "0..n as a list");
     fact vocabulary("keys", "{K: V} -> [K]", "the map's keys");
@@ -1138,8 +1138,8 @@ kb Meaning {
     fact vocabulary("flatten", "[[A]] -> [A]", "flatten one level of nesting");
     fact vocabulary("group", "([A], A->K) -> {K: [A]}", "group elements by key");
     fact vocabulary("scan", "([A], B, (B,A)->B) -> [B]", "running fold, seed first (len+1 results)");
-    fact vocabulary("contains", "([A], A) -> bool", "membership test");
-    fact vocabulary("split", "(str, str) -> [str]", "split a string on a separator");
+    fact vocabulary("contains", "([A], A) -> bool  or  ({K: V}, K) -> bool  or  (str, str or char) -> bool", "membership test: an element of a list, a key of a map, or a substring of a string; the substring may be a string or a char");
+    fact vocabulary("split", "(str, str or char) -> [str]", "split a string on a separator, a string or a char");
     fact vocabulary("join", "([str], str) -> str", "join strings with a separator");
     fact vocabulary("chars", "str -> [str]", "the characters of a string");
     fact vocabulary("words", "str -> [str]", "whitespace-separated words");
@@ -1147,8 +1147,8 @@ kb Meaning {
     fact vocabulary("upper", "str -> str", "uppercase");
     fact vocabulary("lower", "str -> str", "lowercase");
     fact vocabulary("trim", "str -> str", "the string without leading and trailing whitespace");
-    fact vocabulary("starts_with", "(str, str) -> bool", "does the string begin with the prefix");
-    fact vocabulary("splitn", "(str, usize, str) -> [str]", "split on a separator into at most n parts, in Rust's order s.splitn(n, sep); n must be at least 1");
+    fact vocabulary("starts_with", "(str, str or char) -> bool", "does the string begin with the prefix, a string or a char");
+    fact vocabulary("splitn", "(str, usize, str or char) -> [str]", "split on a separator, a string or a char, into at most n parts, in Rust's order s.splitn(n, sep); n must be at least 1");
     fact vocabulary("clone", "A -> A", "the value itself: every value is already copied on binding, so clone is the identity");
     fact vocabulary("to_string", "any -> str", "the display string of a value, as println renders it");
     fact vocabulary("unwrap", "?A -> A  or  R[A, E] -> A", "the payload of a Some or an Ok; a runtime error on None or Err");
@@ -1156,6 +1156,11 @@ kb Meaning {
     fact vocabulary("map_err", "(R[A, E], E->F) -> R[A, F]", "apply a function to the Err payload of a result; Ok passes through");
     fact vocabulary("is_empty", "[A] -> bool  or  {K: V} -> bool  or  str -> bool", "is the list, map or string empty");
     fact vocabulary("get", "({K: V}, K) -> ?V  or  ([A], usize) -> ?A", "the value under a key or at an index, none when absent");
+    fact vocabulary("to_vec", "[A] -> [A]", "a copy of the list as a new list; a list is already an owned value, so to_vec is the identity");
+    fact vocabulary("iter", "[A] -> [A]", "the list's elements in order; a list is already iterable, so iter is the identity");
+    fact vocabulary("ok_or", "(?A, E) -> R[A, E]", "an option as a result: Some(x) is Ok(x), None is Err(e)");
+    fact vocabulary("as_bytes", "str -> &[u8]", "the UTF-8 bytes of a string, as integers, lent as a slice as in Rust");
+    fact vocabulary("replace", "(str, str or char, str) -> str", "s.replace(from, to): a new string with every from replaced by to, as Rust's str::replace; from is a string or a char, to a string; s itself does not change. The two-value place form replace(place, value) is refused at run time");
 
     // ── Layer grades: the lists of differentiable.rs ──
     // Each surface layer type is `smooth` (SMOOTH_LAYERS) or `kinked`
@@ -1302,7 +1307,6 @@ kb Meaning {
     fact builtin_function("clamp");
     fact builtin_function("drop");
     fact builtin_function("swap");
-    fact builtin_function("replace");
     fact builtin_function("default");
     fact builtin_function("wrapping_add");
     fact builtin_function("wrapping_sub");
@@ -1335,6 +1339,7 @@ kb Meaning {
     fact builtin_function("pop");
     fact builtin_function("insert");
     fact builtin_function("remove");
+    fact builtin_function("push_str");
     fact builtin_function("forward");
     fact builtin_function("Some");
     fact builtin_function("None");

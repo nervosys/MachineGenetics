@@ -1347,6 +1347,12 @@ impl TypeChecker {
         }
     }
 
+    /// Whether an argument is a `char` once references are looked through: a string
+    /// pattern (Rust's `Pattern`) takes a char as well as a string.
+    fn is_char(&mut self, ty: &Ty) -> bool {
+        matches!(self.strip_refs(ty), Ty::Char)
+    }
+
     fn vocab_arity(&mut self, name: &str, got: usize, want: usize) {
         if got != want {
             self.emit_error(format!("`{name}` expects {want} argument(s), found {got}"));
@@ -1394,7 +1400,7 @@ impl TypeChecker {
     fn infer_list_mutator(&mut self, name: &str, operands: &[ast::Expr]) -> Ty {
         let tys: Vec<Ty> = operands.iter().map(|a| self.infer_expr(a)).collect();
         let want = match name {
-            "push" | "remove" => 2,
+            "push" | "push_str" | "remove" => 2,
             "insert" => 3,
             _ => 1,
         };
@@ -1422,6 +1428,19 @@ impl TypeChecker {
                 self.constrain_arg(name, operands, 2, &tys[2], &elem);
             }
             return if is_map { Ty::Option(Box::new(elem)) } else { Ty::Unit };
+        }
+        // A string is changed in place too: `push_str(s, t)` takes a string, and
+        // `push(s, c)` a character (a `char`, not a string).
+        let recv_is_str = matches!(self.strip_refs(&tys[0]), Ty::Str);
+        if name == "push_str" || (name == "push" && recv_is_str) {
+            let (want_recv, want_arg) = if name == "push_str" { (Ty::Str, Ty::Str) } else { (Ty::Str, Ty::Char) };
+            if name == "push_str" {
+                self.constrain_arg(name, operands, 0, &tys[0], &want_recv);
+            }
+            if tys.len() >= 2 {
+                self.constrain_arg(name, operands, 1, &tys[1], &want_arg);
+            }
+            return Ty::Unit;
         }
         let elem = self.collection_elem(&tys[0]);
         if name == "push" {
@@ -1468,6 +1487,9 @@ impl TypeChecker {
                         Ty::Result(_, e) => *e,
                         _ => self.fresh(),
                     }
+                } else if name == "find" && matches!(self.strip_refs(&a[0]), Ty::Str) {
+                    // `find` on a string takes a string, not a predicate: no element.
+                    self.fresh()
                 } else {
                     self.collection_elem(&a[0])
                 };
@@ -1532,9 +1554,12 @@ impl TypeChecker {
                     // the third, so `contains(email, "@")` — the substring
                     // test, and the common one — evaluated correctly and
                     // reported `expected a collection, found str`.
-                    match self.subst.apply(&a[0]) {
+                    // A reference to a string or a map is looked through, as `find` does:
+                    // `contains(&s, ",")` is the substring test.
+                    match self.strip_refs(&a[0]) {
                         Ty::Str => {
-                            if n >= 2 {
+                            // The pattern is a string or a char, as Rust's `Pattern`.
+                            if n >= 2 && !self.is_char(&a[1]) {
                                 self.unify_arg_at(name, args, 1, &a[1], &Ty::Str);
                             }
                         }
@@ -1639,12 +1664,85 @@ impl TypeChecker {
             }
             "find" => {
                 self.vocab_arity(name, n, 2);
-                let e = if n >= 1 { self.collection_elem(&a[0]) } else { self.fresh() };
-                if n >= 2 {
-                    let f = Ty::Fn(vec![e.clone()], Box::new(Ty::Bool), pure());
-                    self.unify_arg_at(name, args, 1, &a[1], &f);
+                // On a string, `find(s, sub)` is Rust's `str::find`: the byte index of
+                // the first match, as `?usize`. On a list it finds an element.
+                if n >= 1 && matches!(self.strip_refs(&a[0]), Ty::Str) {
+                    // The pattern is a string or a char, as Rust's `Pattern`.
+                    if n >= 2 && !self.is_char(&a[1]) {
+                        self.constrain_arg(name, args, 1, &a[1], &Ty::Str);
+                    }
+                    Ty::Option(Box::new(usize_ty.clone()))
+                } else {
+                    let e = if n >= 1 { self.collection_elem(&a[0]) } else { self.fresh() };
+                    if n >= 2 {
+                        let f = Ty::Fn(vec![e.clone()], Box::new(Ty::Bool), pure());
+                        self.unify_arg_at(name, args, 1, &a[1], &f);
+                    }
+                    Ty::Option(Box::new(e))
                 }
-                Ty::Option(Box::new(e))
+            }
+            // The words added 2026-11-20 (second batch).
+            "to_vec" => {
+                self.vocab_arity(name, n, 1);
+                // A list is already an owned value; a string or other non-list is
+                // refused by `collection_elem`.
+                let e = if n >= 1 { self.collection_elem(&a[0]) } else { self.fresh() };
+                Ty::Vec(Box::new(e))
+            }
+            // `iter` is the identity at run time, but its type is left open:
+            // Rust's `iter` yields references, and programs written that way
+            // dereference the element (`nums.iter().filter(|n| *n % 2 == 0)`).
+            // Typing it as the list itself rejected them.
+            "iter" => {
+                self.vocab_arity(name, n, 1);
+                self.fresh()
+            }
+            "ok_or" => {
+                self.vocab_arity(name, n, 2);
+                // `Some(x)` is `Ok(x)`, `None` is `Err(e)`: the payload type is the
+                // option's, and the error type is the second argument's.
+                let payload = if n >= 1 {
+                    match self.strip_refs(&a[0]) {
+                        Ty::Option(p) => *p,
+                        other => {
+                            let p = self.fresh();
+                            let want = Ty::Option(Box::new(p.clone()));
+                            self.constrain_arg(name, args, 0, &other, &want);
+                            p
+                        }
+                    }
+                } else {
+                    self.fresh()
+                };
+                let err_ty = if n >= 2 { a[1].clone() } else { self.fresh() };
+                Ty::Result(Box::new(self.subst.apply(&payload)), Box::new(self.subst.apply(&err_ty)))
+            }
+            // `s.replace(from, to)` (or `replace(s, from, to)`) on a string is Rust's
+            // `str::replace`: a new string. The two-value place form is refused at run
+            // time and is left loose here; a receiver not known to be a string is too.
+            "replace" => {
+                if n != 2 && n != 3 {
+                    self.vocab_arity(name, n, 3);
+                }
+                if n == 3 && matches!(self.strip_refs(&a[0]), Ty::Str) {
+                    // `from` is a string or a char; `to` is a string.
+                    if !self.is_char(&a[1]) {
+                        self.constrain_arg(name, args, 1, &a[1], &Ty::Str);
+                    }
+                    self.constrain_arg(name, args, 2, &a[2], &Ty::Str);
+                    Ty::Str
+                } else {
+                    self.fresh()
+                }
+            }
+            // The UTF-8 bytes of a string, as `u8`s.
+            "as_bytes" => {
+                self.vocab_arity(name, n, 1);
+                if n >= 1 {
+                    self.constrain_arg(name, args, 0, &a[0], &Ty::Str);
+                }
+                // Rust's `str::as_bytes` lends the bytes: `&[u8]`.
+                Ty::Ref(false, Box::new(Ty::Slice(Box::new(Ty::Uint(crate::hir::UintTy::U8)))))
             }
             "fold" => {
                 self.vocab_arity(name, n, 3);
@@ -1697,6 +1795,10 @@ impl TypeChecker {
             "split" => {
                 self.vocab_arity(name, n, 2);
                 for (i, t) in a.iter().take(2).enumerate() {
+                    // The separator (argument 1) is a string or a char.
+                    if i == 1 && self.is_char(t) {
+                        continue;
+                    }
                     let t = self.strip_refs(t);
                     self.unify_arg_at(name, args, i, &t, &Ty::Str);
                 }
@@ -1738,6 +1840,10 @@ impl TypeChecker {
             "starts_with" => {
                 self.vocab_arity(name, n, 2);
                 for (i, t) in a.iter().take(2).enumerate() {
+                    // The prefix (argument 1) is a string or a char.
+                    if i == 1 && self.is_char(t) {
+                        continue;
+                    }
                     self.constrain_arg(name, args, i, t, &Ty::Str);
                 }
                 Ty::Bool
@@ -1751,7 +1857,8 @@ impl TypeChecker {
                 if n >= 2 {
                     self.constrain_arg(name, args, 1, &a[1], &usize_ty);
                 }
-                if n >= 3 {
+                // The separator (argument 2) is a string or a char.
+                if n >= 3 && !self.is_char(&a[2]) {
                     self.constrain_arg(name, args, 2, &a[2], &Ty::Str);
                 }
                 Ty::Vec(Box::new(Ty::Str))

@@ -20,7 +20,7 @@
     "recovery_stages": 7,
     "sigils": 57,
     "types": 30,
-    "vocabulary": 41,
+    "vocabulary": 46,
     "wrapper_protocol": 9
   },
   "ok": true,
@@ -291,12 +291,6 @@
       },
       {
         "kind": "function",
-        "name": "replace",
-        "signature": "(..) -> !",
-        "summary": "registered but refused at run time: it needs a reference; rebind instead"
-      },
-      {
-        "kind": "function",
         "name": "default",
         "signature": "() -> !",
         "summary": "registered but refused at run time: it has no type to default to; write the value"
@@ -486,6 +480,12 @@
         "name": "remove",
         "signature": "({K: V}, K) -> ?V  or  ([A], usize) -> A",
         "summary": "in place on the receiver: m.remove(k) takes the entry out and returns its value, none when the key is absent; xs.remove(i) takes out element i and returns it, and an index past the end is an error"
+      },
+      {
+        "kind": "function",
+        "name": "push_str",
+        "signature": "(str, str) -> ()",
+        "summary": "append a string to the string the receiver names, in place: s.push_str(t) or push_str(s, t); the receiver must be a variable or a field/index path of one"
       },
       {
         "kind": "function",
@@ -6521,8 +6521,8 @@
       },
       {
         "name": "find",
-        "signature": "([A], A->bool) -> ?A",
-        "summary": "first matching element, if any"
+        "signature": "([A], A->bool) -> ?A  or  (str, str or char) -> ?usize",
+        "summary": "first matching element of a list, if any; on a string, s.find(sub) is the byte index of the first match, if any (Rust's str::find); the pattern sub is a string or a char"
       },
       {
         "name": "take",
@@ -6561,13 +6561,13 @@
       },
       {
         "name": "contains",
-        "signature": "([A], A) -> bool",
-        "summary": "membership test"
+        "signature": "([A], A) -> bool  or  ({K: V}, K) -> bool  or  (str, str or char) -> bool",
+        "summary": "membership test: an element of a list, a key of a map, or a substring of a string; the substring may be a string or a char"
       },
       {
         "name": "split",
-        "signature": "(str, str) -> [str]",
-        "summary": "split a string on a separator"
+        "signature": "(str, str or char) -> [str]",
+        "summary": "split a string on a separator, a string or a char"
       },
       {
         "name": "join",
@@ -6606,13 +6606,13 @@
       },
       {
         "name": "starts_with",
-        "signature": "(str, str) -> bool",
-        "summary": "does the string begin with the prefix"
+        "signature": "(str, str or char) -> bool",
+        "summary": "does the string begin with the prefix, a string or a char"
       },
       {
         "name": "splitn",
-        "signature": "(str, usize, str) -> [str]",
-        "summary": "split on a separator into at most n parts, in Rust's order s.splitn(n, sep); n must be at least 1"
+        "signature": "(str, usize, str or char) -> [str]",
+        "summary": "split on a separator, a string or a char, into at most n parts, in Rust's order s.splitn(n, sep); n must be at least 1"
       },
       {
         "name": "clone",
@@ -6648,6 +6648,31 @@
         "name": "get",
         "signature": "({K: V}, K) -> ?V  or  ([A], usize) -> ?A",
         "summary": "the value under a key or at an index, none when absent"
+      },
+      {
+        "name": "to_vec",
+        "signature": "[A] -> [A]",
+        "summary": "a copy of the list as a new list; a list is already an owned value, so to_vec is the identity"
+      },
+      {
+        "name": "iter",
+        "signature": "[A] -> [A]",
+        "summary": "the list's elements in order; a list is already iterable, so iter is the identity"
+      },
+      {
+        "name": "ok_or",
+        "signature": "(?A, E) -> R[A, E]",
+        "summary": "an option as a result: Some(x) is Ok(x), None is Err(e)"
+      },
+      {
+        "name": "as_bytes",
+        "signature": "str -> &[u8]",
+        "summary": "the UTF-8 bytes of a string, as integers, lent as a slice as in Rust"
+      },
+      {
+        "name": "replace",
+        "signature": "(str, str or char, str) -> str",
+        "summary": "s.replace(from, to): a new string with every from replaced by to, as Rust's str::replace; from is a string or a char, to a string; s itself does not change. The two-value place form replace(place, value) is refused at run time"
       }
     ],
     "wrapper_protocol": [

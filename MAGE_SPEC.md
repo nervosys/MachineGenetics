@@ -239,8 +239,8 @@ boundary between files.
 The reason is the language's premise. An import is pure overhead in tokens: it
 names something the compiler already knows, costs a line at the top of every
 file, and buys separation that matters when a library is large and unstable. The
-standard library here is **41 words** (the thirty-one of the first writing and
-the ten added in the subsection below) plus **20 capability namespaces**
+standard library here is **46 words** (the thirty-one of the first writing, the
+ten added in the subsection below, and the five added in the one after it) plus **20 capability namespaces**
 (§11.2), both fixed and both published in `MAGE_ONTOLOGY.json`. An agent
 generating a program should not spend tokens re-deriving what it can already
 reach.
@@ -267,7 +267,7 @@ teach a path instead.
 
 Twelve names that programs use and the type checker accepted were not runnable
 until this date (the census in `benchmarks/UNKNOWN_METHODS.md`). Ten are
-vocabulary words and are counted in the 41 above; `insert` and `remove` are
+vocabulary words and are counted in the 46 above; `insert` and `remove` are
 place mutators, like `push` and `pop`, and are not. Each takes
 both forms, `x.f(a)` and `f(x, a)`:
 
@@ -286,6 +286,29 @@ both forms, `x.f(a)` and `f(x, a)`:
 - `remove(m, k)` / `remove(xs, i)`: changes the receiver in place. On a map it
   returns the removed value as `?V`, `None` when the key is absent; on a list it
   returns the element itself, and an index past the end is an error (as in Rust).
+
+#### Words added 2026-11-20, second batch
+
+Five more vocabulary words, counted in the 46 above, and one more place mutator,
+`push_str`. Each takes both forms where the word has a receiver:
+
+- `to_vec(xs)` / `iter(xs)`: `xs` itself on a list, since a list is already an owned,
+  iterable value. The checker keeps the list type; `to_vec` on a string is a type
+  error. On a map the checker leaves `iter` untyped and the evaluator refuses it.
+- `ok_or(o, e)`: `Some(x)` is `Ok(x)` and `None` is `Err(e)`; typed `?A, E -> R[A, E]`.
+- `as_bytes(s)`: the UTF-8 bytes of `s` as a `&[u8]`, as in Rust, so `s.as_bytes().len()`
+  and `b[i]` work, and two bytes compare.
+- `s.replace(from, to)`: on a string, a new string with every `from` replaced by `to`,
+  as Rust's `str::replace`; `s` does not change. The two-value place form
+  `replace(place, value)` is still refused at run time.
+- `find` and `contains` on a string: `s.find(sub)` is the byte index of the first
+  match, as `?usize`, and `s.contains(sub)` a substring test. On a list both are as before.
+  Where Rust takes a string pattern, a `char` is accepted as well: the pattern of
+  `find`, `contains`, `starts_with`, `split`, and `replace`'s `from`, and the separator
+  of `splitn`. An integer is refused.
+- `s.push(c)` / `push(s, c)` appends a character (a `char`) to a string in place, and
+  `s.push_str(t)` / `push_str(s, t)` appends a string. Both are place mutators, like
+  `push` on a list.
 
 ### 2.4 Which surface is cheaper, by unit (plan S2)
 

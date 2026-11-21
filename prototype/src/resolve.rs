@@ -20,7 +20,7 @@ pub(crate) const STD_FNS: &[&str] = &[
     "vec", "panic", "assert", "assert_eq", "assert_ne", "dbg", "todo", "unimplemented",
     "unreachable", "matches",
     // common free functions
-    "min", "max", "abs", "relu", "clamp", "drop", "swap", "replace", "default",
+    "min", "max", "abs", "relu", "clamp", "drop", "swap", "default",
     // modular arithmetic by name; the operators trap (§4.10)
     "wrapping_add", "wrapping_sub", "wrapping_mul",
     // smooth scalar functions (and list reductions), each with an
@@ -32,7 +32,7 @@ pub(crate) const STD_FNS: &[&str] = &[
     "floor", "ceil", "round", "trunc",
     "mean", "dot",
     // the list mutators: in place on the receiver's variable
-    "push", "pop", "insert", "remove",
+    "push", "pop", "insert", "remove", "push_str",
     // a trained net's forward pass on one input vector: `forward(Net, xs)`
     "forward",
     // bare enum-value constructors agents call positionally
@@ -54,7 +54,7 @@ pub(crate) const SCALAR_MATH: &[&str] = &[
 /// `insert` and `remove` on a list or a map. They are in `STD_FNS` too;
 /// `types.rs` types them and `eval.rs` performs them on the place, since a
 /// value-semantics call cannot.
-pub(crate) const LIST_MUTATORS: &[&str] = &["push", "pop", "insert", "remove"];
+pub(crate) const LIST_MUTATORS: &[&str] = &["push", "pop", "insert", "remove", "push_str"];
 
 /// What each `STD_FNS` name does in `--eval`: `(name, signature, summary)`. The
 /// ontology's `builtins` section publishes this table, so an agent can look a
@@ -88,7 +88,6 @@ pub(crate) const STD_FN_DOCS: &[(&str, &str, &str)] = &[
     ("clamp", "(num, num, num) -> num", "clamp(x, lo, hi): x limited to [lo, hi]; lo > hi is an error"),
     ("drop", "(any) -> ()", "discard a value"),
     ("swap", "(..) -> !", "registered but refused at run time: it needs a reference; rebind instead"),
-    ("replace", "(..) -> !", "registered but refused at run time: it needs a reference; rebind instead"),
     ("default", "() -> !", "registered but refused at run time: it has no type to default to; write the value"),
     ("wrapping_add", "(int, int) -> int", "addition that wraps on overflow; the + operator traps"),
     ("wrapping_sub", "(int, int) -> int", "subtraction that wraps on overflow; the - operator traps"),
@@ -119,8 +118,9 @@ pub(crate) const STD_FN_DOCS: &[(&str, &str, &str)] = &[
     ("dot", "([num], [num]) -> f64", "dot product; error if the lengths differ"),
     ("push", "([A], A) -> ()", "append a value to the list the receiver names, in place: xs.push(x) or push(xs, x); the receiver must be a variable or a field/index path of one"),
     ("pop", "([A]) -> ?A", "remove and return the last element of the list the receiver names, in place; none when it is empty: xs.pop() or pop(xs)"),
-    ("insert", "({K: V}, K, V) -> ?V  or  ([A], usize, A) -> ()", "in place on the receiver: m.insert(k, v) sets a map key and returns the old value, none when the key was absent; xs.insert(i, x) inserts before index i, an error when i is past the end; the receiver must be a variable or a field/index path of one"),
+    ("insert","({K: V}, K, V) -> ?V  or  ([A], usize, A) -> ()", "in place on the receiver: m.insert(k, v) sets a map key and returns the old value, none when the key was absent; xs.insert(i, x) inserts before index i, an error when i is past the end; the receiver must be a variable or a field/index path of one"),
     ("remove", "({K: V}, K) -> ?V  or  ([A], usize) -> A", "in place on the receiver: m.remove(k) takes the entry out and returns its value, none when the key is absent; xs.remove(i) takes out element i and returns it, and an index past the end is an error"),
+    ("push_str", "(str, str) -> ()", "append a string to the string the receiver names, in place: s.push_str(t) or push_str(s, t); the receiver must be a variable or a field/index path of one"),
     ("forward", "(Net, [f64]) -> [f64]", "run a trained net's forward pass on one input vector (the net's train block supplies the weights)"),
     ("Some", "(A) -> ?A", "an option holding a value"),
     ("None", "() -> ?A", "the empty option"),
@@ -151,7 +151,7 @@ pub const VOCABULARY: &[(&str, &str, &str)] = &[
     ("last", "[A] -> ?A", "last element, if any"),
     ("any", "([A], A->bool) -> bool", "does any element match"),
     ("all", "([A], A->bool) -> bool", "do all elements match"),
-    ("find", "([A], A->bool) -> ?A", "first matching element, if any"),
+    ("find", "([A], A->bool) -> ?A  or  (str, str or char) -> ?usize", "first matching element of a list, if any; on a string, s.find(sub) is the byte index of the first match, if any (Rust's str::find); the pattern sub is a string or a char"),
     ("take", "([A], usize) -> [A]", "the first n elements"),
     ("range", "(usize) -> [usize]", "0..n as a list"),
     ("keys", "{K: V} -> [K]", "the map's keys"),
@@ -163,9 +163,9 @@ pub const VOCABULARY: &[(&str, &str, &str)] = &[
     // conventions differ by exactly one element, which is invisible until you
     // count — and both are common enough that neither is obviously wrong.
     ("scan", "([A], B, (B,A)->B) -> [B]", "running fold, seed first (len+1 results)"),
-    ("contains", "([A], A) -> bool", "membership test"),
+    ("contains", "([A], A) -> bool  or  ({K: V}, K) -> bool  or  (str, str or char) -> bool", "membership test: an element of a list, a key of a map, or a substring of a string; the substring may be a string or a char"),
     // String / text vocabulary (SWE is text-heavy).
-    ("split", "(str, str) -> [str]", "split a string on a separator"),
+    ("split", "(str, str or char) -> [str]", "split a string on a separator, a string or a char"),
     ("join", "([str], str) -> str", "join strings with a separator"),
     ("chars", "str -> [str]", "the characters of a string"),
     ("words", "str -> [str]", "whitespace-separated words"),
@@ -173,8 +173,8 @@ pub const VOCABULARY: &[(&str, &str, &str)] = &[
     ("upper", "str -> str", "uppercase"),
     ("lower", "str -> str", "lowercase"),
     ("trim", "str -> str", "the string without leading and trailing whitespace"),
-    ("starts_with", "(str, str) -> bool", "does the string begin with the prefix"),
-    ("splitn", "(str, usize, str) -> [str]", "split on a separator into at most n parts, in Rust's order s.splitn(n, sep); n must be at least 1"),
+    ("starts_with", "(str, str or char) -> bool", "does the string begin with the prefix, a string or a char"),
+    ("splitn", "(str, usize, str or char) -> [str]", "split on a separator, a string or a char, into at most n parts, in Rust's order s.splitn(n, sep); n must be at least 1"),
     // Option and result vocabulary, and the value-level names Rust-shaped programs use.
     ("clone", "A -> A", "the value itself: every value is already copied on binding, so clone is the identity"),
     ("to_string", "any -> str", "the display string of a value, as println renders it"),
@@ -183,6 +183,12 @@ pub const VOCABULARY: &[(&str, &str, &str)] = &[
     ("map_err", "(R[A, E], E->F) -> R[A, F]", "apply a function to the Err payload of a result; Ok passes through"),
     ("is_empty", "[A] -> bool  or  {K: V} -> bool  or  str -> bool", "is the list, map or string empty"),
     ("get", "({K: V}, K) -> ?V  or  ([A], usize) -> ?A", "the value under a key or at an index, none when absent"),
+    // The words added 2026-11-20 (second batch).
+    ("to_vec", "[A] -> [A]", "a copy of the list as a new list; a list is already an owned value, so to_vec is the identity"),
+    ("iter", "[A] -> [A]", "the list's elements in order; a list is already iterable, so iter is the identity"),
+    ("ok_or", "(?A, E) -> R[A, E]", "an option as a result: Some(x) is Ok(x), None is Err(e)"),
+    ("as_bytes", "str -> &[u8]", "the UTF-8 bytes of a string, as integers, lent as a slice as in Rust"),
+    ("replace", "(str, str or char, str) -> str", "s.replace(from, to): a new string with every from replaced by to, as Rust's str::replace; from is a string or a char, to a string; s itself does not change. The two-value place form replace(place, value) is refused at run time"),
 ];
 
 // ── Symbol Table ─────────────────────────────────────────────────────

@@ -6,7 +6,7 @@
 # WHY THIS EXISTS
 # ─────────────────────────────────────────────────────────────────────────────
 #
-# The 41 words in `resolve::VOCABULARY` are the language's whole standard
+# The 46 words in `resolve::VOCABULARY` are the language's whole standard
 # library — there are no modules and no `stdlib/`, so an agent writing MAGE has
 # these and nothing else. They are published in `MAGE_ONTOLOGY.json` with
 # signatures, which is what an agent reads before writing any code.
@@ -110,6 +110,14 @@ CASES = [
     ("map_err",     'unwrap_or(map_err(Ok(3), fn(e) => e), 0)', "3"),
     ("is_empty",    'is_empty(take([1], 0))', "true"),
     ("get",         'get([7, 8], 1)', "Some(8)"),
+    # The five words added 2026-11-20 (second batch). `to_vec` and `iter` are the
+    # identity on a list; `ok_or` makes `Err(e)` of a `None`; `as_bytes` gives bytes;
+    # `replace` on a string is Rust's `str::replace`, a new string.
+    ("to_vec",      'len(to_vec([1, 2, 3]))', "3"),
+    ("iter",        'len(iter([1, 2]))', "2"),
+    ("ok_or",       'unwrap(ok_or(first([7, 8]), 0)) + unwrap_or(ok_or(first(take([7], 0)), 5), 9)', "16"),
+    ("as_bytes",    'get(as_bytes("A"), 0)', "Some(65)"),
+    ("replace",     'replace("a-b", "-", "+")', '"a+b"'),
 ]
 
 

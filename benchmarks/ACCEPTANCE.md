@@ -28,17 +28,17 @@ remaining 58 tasks are wrong: most fail on a compiler or evaluator limit.
 
 | Category | Tasks | Parse | Check-clean | All tests pass | Some test fails | Unrunnable | Accepted |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| agent-orchestration | 10 | 10 | 8 | 1 | 4 | 5 | 1 |
-| algorithms | 15 | 15 | 15 | 14 | 1 | 0 | 14 |
+| agent-orchestration | 10 | 10 | 9 | 3 | 2 | 5 | 3 |
+| algorithms | 15 | 15 | 15 | 15 | 0 | 0 | 15 |
 | basic-io | 10 | 10 | 10 | 10 | 0 | 0 | 10 |
 | concurrency | 9 | 9 | 0 | 0 | 8 | 1 | 0 |
 | data-structures | 15 | 15 | 15 | 14 | 1 | 0 | 14 |
-| error-handling | 5 | 5 | 5 | 2 | 3 | 0 | 2 |
-| full-applications | 10 | 10 | 7 | 2 | 7 | 1 | 2 |
-| generics-traits | 5 | 5 | 3 | 4 | 1 | 0 | 2 |
+| error-handling | 5 | 5 | 5 | 3 | 2 | 0 | 3 |
+| full-applications | 10 | 10 | 9 | 3 | 6 | 1 | 3 |
+| generics-traits | 5 | 5 | 3 | 5 | 0 | 0 | 3 |
 | systems | 10 | 10 | 9 | 5 | 2 | 3 | 5 |
-| web-network | 10 | 10 | 4 | 3 | 1 | 6 | 3 |
-| **Total** | **99** | **99** | **76** | **55** | **28** | **16** | **53** |
+| web-network | 10 | 10 | 5 | 3 | 1 | 6 | 3 |
+| **Total** | **99** | **99** | **80** | **61** | **22** | **16** | **59** |
 
 The table is the 2026-11-20 measurement, after twelve library words were
 implemented (`clone`, `to_string`, `unwrap`, `unwrap_or`, `map_err`, `get`,
@@ -56,7 +56,16 @@ parameter, and a shift count may have another integer type. `sys-002` and
 `sys-003` (`x & !(n)`) are accepted: 51 to **53**, cases 117 pass / 1 fail / 36
 error / 21 unrunnable, baseline 48 to 46 tasks. The evaluator's integers carry
 no width, so `!x` printed alone on an unsigned value shows the 64-bit
-complement; masking with it is exact. The
+complement; masking with it is exact. Then a
+second batch of words: `to_vec` and `iter` (the identity on a list), `ok_or`,
+`as_bytes`, and the string forms of `find`, `contains`, `replace` and
+`push`/`push_str`; and the string words that take a pattern accept a char as
+well as a string, as Rust's do. Six more tasks are accepted (`agent-006`,
+`agent-010`, `algo-004`, `app-002`, `err-002`, `gt-005`): 53 to **59**; type-check
+76 to **80** (`agent-007`, `app-002`, `app-008`, `web-002`); cases 129 pass / 1
+fail / 24 error / 21 unrunnable; baseline 46 to 40 tasks. Next blockers seen:
+`parse` (`err-003`, `err-004`), `position` (`sys-006`, `app-008`), `parse_u16`
+(`web-002`). The
 paragraphs below describe the 2026-11-18 state (45 accepted) and are kept as
 the record of it.
 
