@@ -6,7 +6,7 @@
 # WHY THIS EXISTS
 # ─────────────────────────────────────────────────────────────────────────────
 #
-# The 31 words in `resolve::VOCABULARY` are the language's whole standard
+# The 41 words in `resolve::VOCABULARY` are the language's whole standard
 # library — there are no modules and no `stdlib/`, so an agent writing MAGE has
 # these and nothing else. They are published in `MAGE_ONTOLOGY.json` with
 # signatures, which is what an agent reads before writing any code.
@@ -98,6 +98,18 @@ CASES = [
     ("lines",    'len(lines("a"))', "1"),
     ("upper",    'upper("ab")', '"AB"'),
     ("lower",    'lower("AB")', '"ab"'),
+    # The ten words added 2026-11-20. Where Rust has the word the meaning is
+    # Rust's: `splitn` takes the limit first, `get` gives an option.
+    ("trim",        'trim("  ab ")', '"ab"'),
+    ("starts_with", 'starts_with("abc", "ab")', "true"),
+    ("splitn",      'len(splitn("a=b=c", 2, "="))', "2"),
+    ("clone",       'len(clone([1, 2, 3]))', "3"),
+    ("to_string",   'to_string(12)', '"12"'),
+    ("unwrap",      'unwrap(first([7, 8]))', "7"),
+    ("unwrap_or",   'unwrap_or(first(take([7], 0)), 5)', "5"),
+    ("map_err",     'unwrap_or(map_err(Ok(3), fn(e) => e), 0)', "3"),
+    ("is_empty",    'is_empty(take([1], 0))', "true"),
+    ("get",         'get([7, 8], 1)', "Some(8)"),
 ]
 
 

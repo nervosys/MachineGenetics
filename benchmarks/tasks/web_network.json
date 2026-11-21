@@ -101,7 +101,7 @@
     "difficulty": "hard",
     "task": "Write a query string parser that converts 'key1=val1&key2=val2' into a HashMap",
     "solution": {
-      "rdx_source": "+f parse_query(qs: &s) -> {s: s} {\n    m result: {s: s} = {};\n    ? qs.len() == 0 { ret result; }\n    v pairs = qs.split(\"&\");\n    @ pair : pairs {\n        v kv = pair.splitn(2, '=');\n        ? kv.len() == 2 {\n            result.insert(kv[0].to_string(), kv[1].to_string());\n        }\n    }\n    result\n}",
+      "rdx_source": "+f parse_query(qs: &s) -> {s: s} {\n    m result: {s: s} = {};\n    ? qs.len() == 0 { ret result; }\n    v pairs = qs.split(\"&\");\n    @ pair : pairs {\n        v kv = pair.splitn(2, \"=\");\n        ? kv.len() == 2 {\n            result.insert(kv[0].to_string(), kv[1].to_string());\n        }\n    }\n    result\n}",
       "token_count": 104,
       "effects": [],
       "skb_rules_used": []

@@ -888,11 +888,12 @@ impl Interp {
         Ok((self.eval(a, env)?, None))
     }
 
-    /// Whether the place `recv` names currently holds a list. Answered only for
-    /// a path whose evaluation has no effect (names, fields, and indices that
+    /// Whether the place `recv` names holds a value the method `name` changes:
+    /// a list (`push`, `pop`, `swap`) or a list or map (`insert`, `remove`).
+    /// Answered only for a path whose evaluation has no effect (names, fields, and indices that
     /// are names or literals), so it is safe to ask before committing to a
     /// call; any other path answers no.
-    fn place_is_list(&self, recv: &Expr, env: &mut Env) -> bool {
+    fn place_takes(&self, name: &str, recv: &Expr, env: &mut Env) -> bool {
         fn plain(e: &Expr) -> bool {
             match e {
                 Expr::Ident { .. } => true,
@@ -905,7 +906,12 @@ impl Interp {
         }
         plain(recv)
             && self
-                .mutate_place(recv, env, |p| Ok(Value::Bool(matches!(p, Value::List(_)))))
+                .mutate_place(recv, env, |p| {
+                    Ok(Value::Bool(match name {
+                        "insert" | "remove" => matches!(p, Value::List(_) | Value::Map(_)),
+                        _ => matches!(p, Value::List(_)),
+                    }))
+                })
                 .is_ok_and(|v| v == Value::Bool(true))
     }
 
@@ -953,6 +959,72 @@ impl Interp {
                         Ok(Value::Unit)
                     }
                     other => err(format!("`swap` needs a list receiver, found {other}")),
+                })
+            }
+            // `xs.insert(i, x)` on a list inserts before index i and returns `()`;
+            // `m.insert(k, v)` on a map returns the old value, `None` when the key was new.
+            "insert" => {
+                if av.len() != 2 {
+                    return err(format!(
+                        "`insert` takes two values: xs.insert(i, x) or m.insert(k, v), given {}",
+                        av.len()
+                    ));
+                }
+                let second = av.remove(1);
+                let first = av.remove(0);
+                self.mutate_place(recv, env, |p| match p {
+                    Value::Map(m) => match m.iter().position(|(k, _)| *k == first) {
+                        Some(pos) => {
+                            let old = std::mem::replace(&mut m[pos].1, second);
+                            Ok(Value::Opt(Some(Box::new(old))))
+                        }
+                        None => {
+                            m.push((first, second));
+                            Ok(Value::Opt(None))
+                        }
+                    },
+                    Value::List(xs) => {
+                        let Value::Int(i) = first else {
+                            return err("`insert` on a list takes an integer index: xs.insert(i, x)");
+                        };
+                        let n = xs.len();
+                        if i < 0 || i as usize > n {
+                            return err(format!("`insert({i}, _)` out of bounds for length {n}"));
+                        }
+                        xs.insert(i as usize, second);
+                        Ok(Value::Unit)
+                    }
+                    other => err(format!("`insert` needs a list or map receiver, found {other}")),
+                })
+            }
+            // `m.remove(k)` / `xs.remove(i)` take the entry out and return its value,
+            // `None` when the key or index is absent.
+            "remove" => {
+                if av.len() != 1 {
+                    return err(format!(
+                        "`remove` takes one key or index: m.remove(k) or xs.remove(i), given {}",
+                        av.len()
+                    ));
+                }
+                let key = av.remove(0);
+                self.mutate_place(recv, env, |p| match p {
+                    Value::Map(m) => match m.iter().position(|(k, _)| *k == key) {
+                        Some(pos) => Ok(Value::Opt(Some(Box::new(m.remove(pos).1)))),
+                        None => Ok(Value::Opt(None)),
+                    },
+                    Value::List(xs) => {
+                        let Value::Int(i) = key else {
+                            return err("`remove` on a list takes an integer index: xs.remove(i)");
+                        };
+                        // As Rust's `Vec::remove`: the element itself, and an
+                        // index past the end is an error, not `None`.
+                        let n = xs.len();
+                        if i < 0 || i as usize >= n {
+                            return err(format!("`remove({i})` out of bounds for length {n}"));
+                        }
+                        Ok(xs.remove(i as usize))
+                    }
+                    other => err(format!("`remove` needs a list or map receiver, found {other}")),
                 })
             }
             _ => {
@@ -1480,11 +1552,11 @@ impl Interp {
                 // declares a method of that name (`Stack.push`), the receiver
                 // decides: a list place takes the builtin, anything else goes
                 // on to the method lookup below.
-                if matches!(method.as_str(), "push" | "pop" | "swap")
+                if matches!(method.as_str(), "push" | "pop" | "swap" | "insert" | "remove")
                     && is_place(receiver)
                     && !self.funcs.contains_key(method)
                     && (!self.methods.keys().any(|(_, m)| m == method)
-                        || self.place_is_list(receiver, env))
+                        || self.place_takes(method, receiver, env))
                 {
                     return self.place_method(method, receiver, args, env);
                 }
@@ -1913,9 +1985,10 @@ impl Interp {
             let xs = self.eval(&args[1], env)?;
             return self.net_forward(net, xs);
         }
-        // `push(xs, x)` / `pop(xs)` change their first argument in place.
+        // `push(xs, x)` / `pop(xs)` and the other place mutators change their
+        // first argument in place.
         if let Expr::Ident { name } = func
-            && (name == "push" || name == "pop")
+            && matches!(name.as_str(), "push" | "pop" | "insert" | "remove")
             && !args.is_empty()
             && !self.funcs.contains_key(name)
             && env.get(name).is_none()
@@ -2347,7 +2420,7 @@ impl Interp {
             // `push`/`pop` change a variable, so `eval_call` and the method-call
             // arm perform them on the place. Reaching this arm means the
             // receiver was not one (`f().push(1)`, `map(xs, push)`).
-            "push" | "pop" => err(format!(
+            "push" | "pop" | "insert" | "remove" => err(format!(
                 "`{name}` changes its receiver, which must be a variable or a field/index \
                  path of one, called as xs.{name}(..) or {name}(xs, ..)"
             )),
@@ -2783,6 +2856,67 @@ impl Interp {
             }
             "upper" => Ok(Value::Str(as_str(&arg(0))?.to_uppercase())),
             "lower" => Ok(Value::Str(as_str(&arg(0))?.to_lowercase())),
+            "trim" => Ok(Value::Str(as_str(&arg(0))?.trim().to_string())),
+            "starts_with" => Ok(Value::Bool(as_str(&arg(0))?.starts_with(&as_str(&arg(1))?))),
+            "splitn" => {
+                // Rust's order: `s.splitn(n, sep)`, `splitn(s, n, sep)`.
+                let s = as_str(&arg(0))?;
+                let n = as_int(&arg(1))?;
+                let sep = as_str(&arg(2))?;
+                if sep.is_empty() {
+                    return err("`splitn` needs a non-empty separator");
+                }
+                if n < 1 {
+                    return err(format!("`splitn` needs a limit of at least 1, given {n}"));
+                }
+                Ok(Value::List(
+                    s.splitn(n as usize, sep.as_str()).map(|p| Value::Str(p.to_string())).collect(),
+                ))
+            }
+            // Value and option/result vocabulary.
+            "clone" => Ok(arg(0)),
+            "to_string" => Ok(Value::Str(render_for_print(&arg(0)))),
+            "unwrap" => match arg(0) {
+                Value::Opt(Some(x)) => Ok(*x),
+                Value::Opt(None) => err("`unwrap` on None: the option holds no value"),
+                Value::Enum(e, v, mut p) if e == "Result" && v == "Ok" && p.len() == 1 => Ok(p.remove(0)),
+                Value::Enum(e, v, p) if e == "Result" && v == "Err" && p.len() == 1 => {
+                    err(format!("`unwrap` on Err({}): the result is an error", p[0]))
+                }
+                other => err(format!("`unwrap` needs an option or a result, found {other}")),
+            },
+            "unwrap_or" => match arg(0) {
+                Value::Opt(Some(x)) => Ok(*x),
+                Value::Opt(None) => Ok(arg(1)),
+                Value::Enum(e, v, mut p) if e == "Result" && v == "Ok" && p.len() == 1 => Ok(p.remove(0)),
+                Value::Enum(e, v, _) if e == "Result" && v == "Err" => Ok(arg(1)),
+                other => err(format!("`unwrap_or` needs an option or a result, found {other}")),
+            },
+            "map_err" => match arg(0) {
+                Value::Enum(e, v, mut p) if e == "Result" && v == "Err" && p.len() == 1 => {
+                    let mapped = self.apply(&arg(1), vec![p.remove(0)])?;
+                    Ok(Value::Enum(e, v, vec![mapped]))
+                }
+                Value::Enum(e, v, p) if e == "Result" && v == "Ok" => Ok(Value::Enum(e, v, p)),
+                other => err(format!("`map_err` needs a result, found {other}")),
+            },
+            "is_empty" => match arg(0) {
+                Value::Str(s) => Ok(Value::Bool(s.is_empty())),
+                Value::Map(m) => Ok(Value::Bool(m.is_empty())),
+                other => Ok(Value::Bool(as_list(&other)?.is_empty())),
+            },
+            // `get(m, k)` is the value under a key; `get(xs, i)` the element at an index.
+            "get" => match arg(0) {
+                Value::Map(m) => {
+                    let key = arg(1);
+                    Ok(Value::Opt(m.iter().find(|(k, _)| *k == key).map(|(_, v)| Box::new(v.clone()))))
+                }
+                Value::List(xs) => {
+                    let i = as_int(&arg(1))?;
+                    Ok(Value::Opt(if i < 0 { None } else { xs.get(i as usize).cloned().map(Box::new) }))
+                }
+                other => err(format!("`get` needs a map or a list, found {other}")),
+            },
             // Option construction — pairs with the §8 totality story (first/find/
             // reduce return `?A`; now you can build and thread options too).
             "Some" => Ok(Value::Opt(Some(Box::new(arg(0))))),
@@ -4462,6 +4596,159 @@ I Stack {
 ";
         let e = run_source(src, "t", &[]).unwrap_err();
         assert!(e.contains("`push` changes its receiver"), "{e}");
+    }
+
+    /// `clone` is the identity and `to_string` renders as `println` does, in both forms.
+    #[test]
+    fn clone_is_the_identity_and_to_string_renders_as_println_does() {
+        let src = "f t() -> str {\n    v xs: Vec[i64] = [1, 2];\n    v ys = xs.clone();\n    to_string(len(ys))\n}\n";
+        assert_eq!(check_errors(src), vec![], "must typecheck");
+        assert_eq!(run(src, "t", &[]), Value::Str("2".into()));
+        let src = "f t() -> str { to_string(\"hi\") }";
+        assert_eq!(run(src, "t", &[]), Value::Str("hi".into()), "a string is unquoted, as println shows it");
+        let src = "f t() -> str { to_string(1.5) }";
+        assert_eq!(run(src, "t", &[]), Value::Str("1.5".into()));
+        let src = "f t() -> str { \"yo\".clone().to_string() }";
+        assert_eq!(run(src, "t", &[]), Value::Str("yo".into()));
+    }
+
+    /// `get` is `None` when the key or index is absent, in both forms.
+    #[test]
+    fn get_reads_a_present_key_or_index_and_is_none_when_absent() {
+        let src = "f t() -> i64 {\n    v d: {str: i64} = {\"a\": 7};\n    v xs: Vec[i64] = [4, 5];\n    v a = match d.get(\"a\") { Some(x) => x, None => -1 };\n    v b = match get(d, \"zz\") { Some(x) => x, None => -1 };\n    v c = match xs.get(1) { Some(x) => x, None => -1 };\n    v e = match get(xs, 9) { Some(x) => x, None => -1 };\n    a * 1000 + b * 100 + c * 10 + e\n}\n";
+        assert_eq!(check_errors(src), vec![], "must typecheck");
+        // 7000 - 100 + 50 - 1
+        assert_eq!(run(src, "t", &[]), Value::Int(6949));
+    }
+
+    /// `unwrap` yields the payload, and on `None` or `Err` is a precise runtime error.
+    #[test]
+    fn unwrap_yields_the_payload_and_errors_precisely_on_none_or_err() {
+        let src = "f some() -> ?i64 { Some(3) }\nf t() -> i64 { some().unwrap() }\n";
+        assert_eq!(check_errors(src), vec![], "must typecheck");
+        assert_eq!(run(src, "t", &[]), Value::Int(3));
+        let src = "f none() -> ?i64 { None }\nf t() -> i64 { none().unwrap() }\n";
+        let e = run_source(src, "t", &[]).unwrap_err();
+        assert!(e.contains("`unwrap` on None"), "{e}");
+        let src = "f bad() -> R[i64, str] { Err(\"boom\") }\nf t() -> i64 { bad().unwrap() }\n";
+        let e = run_source(src, "t", &[]).unwrap_err();
+        assert!(e.contains("`unwrap` on Err("), "{e}");
+        let src = "f ok() -> R[i64, str] { Ok(8) }\nf t() -> i64 { unwrap(ok()) }\n";
+        assert_eq!(run(src, "t", &[]), Value::Int(8));
+    }
+
+    /// `unwrap_or` yields the payload of a `Some` or `Ok`, and the default otherwise.
+    #[test]
+    fn unwrap_or_takes_the_payload_or_the_default() {
+        let src = "f none() -> ?i64 { None }\nf some() -> ?i64 { Some(3) }\nf bad() -> R[i64, str] { Err(\"x\") }\nf t() -> i64 {\n    none().unwrap_or(7) + some().unwrap_or(0) + bad().unwrap_or(100)\n}\n";
+        assert_eq!(check_errors(src), vec![], "must typecheck");
+        assert_eq!(run(src, "t", &[]), Value::Int(110));
+    }
+
+    /// `map_err` applies its function to the `Err` payload only; `Ok` passes through.
+    #[test]
+    fn map_err_maps_the_error_and_passes_ok_through() {
+        let src = "f bad() -> R[i64, str] { Err(\"x\") }\nf good() -> R[i64, str] { Ok(4) }\nf t() -> i64 {\n    v a = match bad().map_err(|e| e.len()) { Err(n) => n, Ok(v) => v };\n    v b = match good().map_err(|e| e.len()) { Ok(v) => v, Err(_) => -1 };\n    a * 10 + b\n}\n";
+        assert_eq!(check_errors(src), vec![], "must typecheck");
+        assert_eq!(run(src, "t", &[]), Value::Int(14));
+    }
+
+    /// `trim`, `starts_with` and `splitn`, in both forms; `splitn` stops at its limit.
+    #[test]
+    fn trim_starts_with_and_splitn_work_in_both_forms() {
+        let src = "f t() -> usize { len(trim(\"  ab  \")) }";
+        assert_eq!(check_errors(src), vec![], "must typecheck");
+        assert_eq!(run(src, "t", &[]), Value::Int(2));
+        let src = "f t() -> str { \" x \".trim() }";
+        assert_eq!(run(src, "t", &[]), Value::Str("x".into()));
+        let src = "f t() -> bool { starts_with(\"hello\", \"he\") }";
+        assert_eq!(run(src, "t", &[]), Value::Bool(true));
+        let src = "f t() -> bool { \"hello\".starts_with(\"lo\") }";
+        assert_eq!(run(src, "t", &[]), Value::Bool(false));
+        let src = "f t() -> [str] { splitn(\"a,b,c,d\", 2, \",\") }";
+        assert_eq!(
+            run(src, "t", &[]),
+            Value::List(vec![Value::Str("a".into()), Value::Str("b,c,d".into())])
+        );
+        let src = "f t() -> [str] { \"a,b\".splitn(5, \",\") }";
+        assert_eq!(run(src, "t", &[]).to_string(), "[\"a\", \"b\"]");
+        let src = "f t() -> [str] { splitn(\"a,b\", 0, \",\") }";
+        let e = run_source(src, "t", &[]).unwrap_err();
+        assert!(e.contains("at least 1"), "{e}");
+    }
+
+    /// `is_empty` is true for an empty list, map and string, in both forms.
+    #[test]
+    fn is_empty_on_a_list_a_map_and_a_string() {
+        let src = "f t() -> bool {\n    v xs: Vec[i64] = [];\n    v d: {str: i64} = {};\n    v s = \"\";\n    is_empty(xs) && xs.is_empty() && is_empty(d) && d.is_empty() && is_empty(s) && s.is_empty()\n}\n";
+        assert_eq!(check_errors(src), vec![], "must typecheck");
+        assert_eq!(run(src, "t", &[]), Value::Bool(true));
+        let src = "f t() -> bool { is_empty(\"x\") }";
+        assert_eq!(run(src, "t", &[]), Value::Bool(false));
+        let src = "f t() -> bool { v xs: Vec[i64] = [1]; is_empty(xs) }";
+        assert_eq!(run(src, "t", &[]), Value::Bool(false));
+    }
+
+    /// `insert` and `remove` on a map return the old value and the removed value as `?V`.
+    #[test]
+    fn insert_and_remove_on_a_map_return_the_old_and_removed_values() {
+        let src = "f t() -> i64 {\n    m d: {str: i64} = {\"a\": 1};\n    v old = match d.insert(\"a\", 5) { Some(x) => x, None => -1 };\n    v new = match d.insert(\"b\", 9) { Some(x) => x, None => -1 };\n    v gone = match d.remove(\"a\") { Some(x) => x, None => -1 };\n    v nothing = match remove(d, \"zz\") { Some(x) => x, None => -1 };\n    v left = match get(d, \"b\") { Some(x) => 1, None => 0 };\n    old * 1000 + (new + 1) * 100 + gone * 10 + left + nothing + 1\n}\n";
+        assert_eq!(check_errors(src), vec![], "must typecheck");
+        // old 1, new absent (-1), gone 5, one entry left, nothing absent (-1)
+        assert_eq!(run(src, "t", &[]), Value::Int(1000 + 0 + 50 + 1 - 1 + 1));
+    }
+
+    /// `insert` before an index and `remove` of an index on a list, in place.
+    #[test]
+    fn insert_and_remove_on_a_list_work_in_place() {
+        let src = "f t() -> i64 {\n    m xs: Vec[i64] = [10, 20, 30];\n    xs.insert(1, 15);\n    v removed = xs.remove(0);\n    v second = remove(xs, 0);\n    removed * 100 + second * 10 + (len(xs) as i64)\n}\n";
+        assert_eq!(check_errors(src), vec![], "must typecheck");
+        // [10,15,20,30] -> remove 0 gives 10, then 15, leaving [20,30]
+        assert_eq!(run(src, "t", &[]), Value::Int(1152));
+        let src = "f t() -> i64 { m xs: Vec[i64] = [1]; xs.remove(3) }";
+        let e = run_source(src, "t", &[]).unwrap_err();
+        assert!(e.contains("out of bounds"), "{e}");
+        let src = "f t() -> i64 { m xs: Vec[i64] = [1]; insert(xs, 9, 2); 0 }";
+        let e = run_source(src, "t", &[]).unwrap_err();
+        assert!(e.contains("out of bounds"), "{e}");
+    }
+
+    /// The twelve names are published, so a program that uses them draws no E0714.
+    #[test]
+    fn the_twelve_names_draw_no_unknown_call_warning() {
+        let src = "f t() -> i64 {
+    m xs: Vec[i64] = [1];
+    m d: {str: i64} = {};
+    v c = clone(xs).to_string();
+    v u = none().unwrap_or(1) + some().unwrap() + bad().map_err(|e| e).unwrap_or(0);
+    v g = match get(d, \"a\") { Some(x) => x, None => 0 };
+    v t = trim(\" a \").starts_with(\"a\");
+    v p = splitn(\"a,b\", 2, \",\").is_empty();
+    xs.insert(0, 2);
+    d.insert(\"a\", 1);
+    remove(d, \"a\");
+    xs.remove(0);
+    u + g
+}
+f none() -> ?i64 { None }
+f some() -> ?i64 { Some(1) }
+f bad() -> R[i64, str] { Ok(0) }
+";
+        let warns: Vec<String> = crate::check::check_source(src, false, false)
+            .findings
+            .iter()
+            .filter(|f| f.code == "E0714")
+            .map(|f| f.message.clone())
+            .collect();
+        assert!(warns.is_empty(), "{warns:?}");
+    }
+
+    /// A reference to a receiver or a key is looked through, as the value it refers to.
+    #[test]
+    fn the_new_words_look_through_references_to_their_receiver_and_key() {
+        // `get` lends the value, so its result is `?&i64`, as in Rust.
+        let src = "f t(d: &{str: i64}, k: &str) -> ?&i64 { d.get(k) }\nf u(s: &str) -> bool { s.starts_with(\"a\") }\nf w(s: &str) -> str { s.trim() }\n";
+        assert_eq!(check_errors(src), vec![], "must typecheck");
     }
 
     /// `xs.swap(i, j)` on a place changes it, including through a `&!` parameter.

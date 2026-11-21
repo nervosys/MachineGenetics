@@ -4,8 +4,8 @@
 > Each step is a concrete, testable increment.
 >
 > **Last verified: 2026-09-25** — all six crates built and tested: prototype
-> **1,969**, rmi **1,384**, ribosome **168**, germline **315**, forge **65**, arena **347** —
-> **4,248 tests, 0 failures, 0 warnings**. The crate count went from three to
+> **1,980**, rmi **1,384**, ribosome **168**, germline **315**, forge **65**, arena **347** —
+> **4,259 tests, 0 failures, 0 warnings**. The crate count went from three to
 > five when the build engine (step 148) and the RSI control plane (step 149)
 > were extracted from `forge`; the total is unchanged by those moves, and
 > `forge`'s count is the registry alone, as it measured before they were parked in
@@ -311,7 +311,7 @@
 | 135 | Directed search + calibration | ✅ | Predict → rank → spend budget on the top-k. Trust is **earned by measurement**, 0 for an untested predictor; miscalibration widens the search back toward undirected, because the answer to a broken world-model is to explore more |
 | 136 | Supervisor + fallback | ✅ | Four failure modes (malfunction, fitness decline, metric divergence, stall); fallback verified materialized *before* authority moves; quarantined generations skipped. Deliberately **not a model**, so the loop cannot route around it |
 | 137 | Variation — candidate production | ✅ | Deterministic seeded operators mirroring the compiler's `evolve` vocabulary. A candidate's id encodes its seed, so its origin is a checkable claim rather than an unfalsifiable one |
-| 138 | Attestation | ✅ | HMAC-SHA256 over a canonical `(verdict, evaluator)` encoding — RFC 4248 vectors, constant-time compare, evaluator name inside the signed material. Symmetric, so adequate in one trust domain and not across a fleet; stated as such |
+| 138 | Attestation | ✅ | HMAC-SHA256 over a canonical `(verdict, evaluator)` encoding — RFC 4259 vectors, constant-time compare, evaluator name inside the signed material. Symmetric, so adequate in one trust domain and not across a fleet; stated as such |
 | 139 | Durable hash-chained journal | ✅ | Append-only JSONL where each record carries its predecessor's digest. A targeted edit or deletion breaks the chain at a reported index; `head()` anchors the whole history in 32 bytes. Tamper-**evident**, not tamper-proof, and documented as such |
 | 140 | Cycle state machine + Ribosome seam | ✅ | Proposed → Evaluated → Shadowing → Adjudicated → Promoted/Refused, phases enforced so no path to authority skips the gate. Promotion needs an attested verdict **and** an `Authority`; `fitness_from_build` bridges build measurement into succession fitness |
 | 141 | Bounded unattended runner | ✅ | `Runner` drives cycles under a **pinned policy**, bounded by an explicit budget — no daemon mode and no way to request unlimited cycles. Halts on demotion (a gate that approved something production rejected needs revising, not another candidate), on a stalled search, and on workload failure. A `Workload` trait is the seam to real training |

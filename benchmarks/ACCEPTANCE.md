@@ -28,17 +28,30 @@ remaining 58 tasks are wrong: most fail on a compiler or evaluator limit.
 
 | Category | Tasks | Parse | Check-clean | All tests pass | Some test fails | Unrunnable | Accepted |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| agent-orchestration | 10 | 10 | 8 | 0 | 5 | 5 | 0 |
+| agent-orchestration | 10 | 10 | 8 | 1 | 4 | 5 | 1 |
 | algorithms | 15 | 15 | 15 | 14 | 1 | 0 | 14 |
 | basic-io | 10 | 10 | 10 | 10 | 0 | 0 | 10 |
 | concurrency | 9 | 9 | 0 | 0 | 8 | 1 | 0 |
-| data-structures | 15 | 15 | 15 | 13 | 2 | 0 | 13 |
+| data-structures | 15 | 15 | 15 | 14 | 1 | 0 | 14 |
 | error-handling | 5 | 5 | 5 | 2 | 3 | 0 | 2 |
-| full-applications | 10 | 10 | 7 | 1 | 8 | 1 | 1 |
-| generics-traits | 5 | 5 | 3 | 3 | 2 | 0 | 1 |
-| systems | 10 | 10 | 9 | 2 | 5 | 3 | 2 |
-| web-network | 10 | 10 | 4 | 2 | 2 | 6 | 2 |
-| **Total** | **99** | **99** | **76** | **47** | **36** | **16** | **45** |
+| full-applications | 10 | 10 | 7 | 2 | 7 | 1 | 2 |
+| generics-traits | 5 | 5 | 3 | 4 | 1 | 0 | 2 |
+| systems | 10 | 10 | 9 | 3 | 4 | 3 | 3 |
+| web-network | 10 | 10 | 4 | 3 | 1 | 6 | 3 |
+| **Total** | **99** | **99** | **76** | **53** | **30** | **16** | **51** |
+
+The table is the 2026-11-20 measurement, after twelve library words were
+implemented (`clone`, `to_string`, `unwrap`, `unwrap_or`, `map_err`, `get`,
+`is_empty`, `trim`, `starts_with`, `splitn`, `insert`, `remove`; see
+`UNKNOWN_METHODS.md`). Six more tasks are accepted (`agent-004`, `app-009`,
+`ds-007`, `gt-003`, `sys-008`, `web-006`): 45 to **51**, cases 114 pass / 1 fail / 39 error
+/ 21 unrunnable, baseline 54 to 48 tasks. `remove` on a list returns the
+element, as Rust's `Vec::remove` does and as `gt-003` uses it; a first version
+returned `?A` and that task then ran to a wrong value. Three references had a char literal
+where the word takes a string (`splitn(2, '=')` in `err-002` and `web-006`,
+`starts_with(':')` in `app-005`), fixed as `split(':')` was on 2026-11-18. The
+paragraphs below describe the 2026-11-18 state (45 accepted) and are kept as
+the record of it.
 
 Before the task fixes the table read 98 parse, 52 check-clean, 18 all pass,
 65 some fail, 16 unrunnable, 18 accepted; after them (evaluator as it was) 99,

@@ -1146,6 +1146,16 @@ kb Meaning {
     fact vocabulary("lines", "str -> [str]", "newline-separated lines");
     fact vocabulary("upper", "str -> str", "uppercase");
     fact vocabulary("lower", "str -> str", "lowercase");
+    fact vocabulary("trim", "str -> str", "the string without leading and trailing whitespace");
+    fact vocabulary("starts_with", "(str, str) -> bool", "does the string begin with the prefix");
+    fact vocabulary("splitn", "(str, usize, str) -> [str]", "split on a separator into at most n parts, in Rust's order s.splitn(n, sep); n must be at least 1");
+    fact vocabulary("clone", "A -> A", "the value itself: every value is already copied on binding, so clone is the identity");
+    fact vocabulary("to_string", "any -> str", "the display string of a value, as println renders it");
+    fact vocabulary("unwrap", "?A -> A  or  R[A, E] -> A", "the payload of a Some or an Ok; a runtime error on None or Err");
+    fact vocabulary("unwrap_or", "(?A, A) -> A  or  (R[A, E], A) -> A", "the payload of a Some or an Ok, else the default");
+    fact vocabulary("map_err", "(R[A, E], E->F) -> R[A, F]", "apply a function to the Err payload of a result; Ok passes through");
+    fact vocabulary("is_empty", "[A] -> bool  or  {K: V} -> bool  or  str -> bool", "is the list, map or string empty");
+    fact vocabulary("get", "({K: V}, K) -> ?V  or  ([A], usize) -> ?A", "the value under a key or at an index, none when absent");
 
     // ── Layer grades: the lists of differentiable.rs ──
     // Each surface layer type is `smooth` (SMOOTH_LAYERS) or `kinked`
@@ -1323,6 +1333,8 @@ kb Meaning {
     fact builtin_function("dot");
     fact builtin_function("push");
     fact builtin_function("pop");
+    fact builtin_function("insert");
+    fact builtin_function("remove");
     fact builtin_function("forward");
     fact builtin_function("Some");
     fact builtin_function("None");

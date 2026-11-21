@@ -31,8 +31,8 @@ pub(crate) const STD_FNS: &[&str] = &[
     // everywhere (DIFFERENTIABILITY.md)
     "floor", "ceil", "round", "trunc",
     "mean", "dot",
-    // the two list mutators: in place on the receiver's variable
-    "push", "pop",
+    // the list mutators: in place on the receiver's variable
+    "push", "pop", "insert", "remove",
     // a trained net's forward pass on one input vector: `forward(Net, xs)`
     "forward",
     // bare enum-value constructors agents call positionally
@@ -49,11 +49,12 @@ pub(crate) const SCALAR_MATH: &[&str] = &[
     "floor", "ceil", "round", "trunc", "relu",
 ];
 
-/// The list mutators: each changes its first argument (a variable or a
-/// field/index path of one), as `push(xs, x)` / `xs.push(x)` or `pop(xs)` /
-/// `xs.pop()`. They are in `STD_FNS` too; `types.rs` types them and `eval.rs`
-/// performs them on the place, since a value-semantics call cannot.
-pub(crate) const LIST_MUTATORS: &[&str] = &["push", "pop"];
+/// The place mutators: each changes its first argument (a variable or a
+/// field/index path of one), as `push(xs, x)` / `xs.push(x)`, `pop(xs)`,
+/// `insert` and `remove` on a list or a map. They are in `STD_FNS` too;
+/// `types.rs` types them and `eval.rs` performs them on the place, since a
+/// value-semantics call cannot.
+pub(crate) const LIST_MUTATORS: &[&str] = &["push", "pop", "insert", "remove"];
 
 /// What each `STD_FNS` name does in `--eval`: `(name, signature, summary)`. The
 /// ontology's `builtins` section publishes this table, so an agent can look a
@@ -118,6 +119,8 @@ pub(crate) const STD_FN_DOCS: &[(&str, &str, &str)] = &[
     ("dot", "([num], [num]) -> f64", "dot product; error if the lengths differ"),
     ("push", "([A], A) -> ()", "append a value to the list the receiver names, in place: xs.push(x) or push(xs, x); the receiver must be a variable or a field/index path of one"),
     ("pop", "([A]) -> ?A", "remove and return the last element of the list the receiver names, in place; none when it is empty: xs.pop() or pop(xs)"),
+    ("insert", "({K: V}, K, V) -> ?V  or  ([A], usize, A) -> ()", "in place on the receiver: m.insert(k, v) sets a map key and returns the old value, none when the key was absent; xs.insert(i, x) inserts before index i, an error when i is past the end; the receiver must be a variable or a field/index path of one"),
+    ("remove", "({K: V}, K) -> ?V  or  ([A], usize) -> A", "in place on the receiver: m.remove(k) takes the entry out and returns its value, none when the key is absent; xs.remove(i) takes out element i and returns it, and an index past the end is an error"),
     ("forward", "(Net, [f64]) -> [f64]", "run a trained net's forward pass on one input vector (the net's train block supplies the weights)"),
     ("Some", "(A) -> ?A", "an option holding a value"),
     ("None", "() -> ?A", "the empty option"),
@@ -169,6 +172,17 @@ pub const VOCABULARY: &[(&str, &str, &str)] = &[
     ("lines", "str -> [str]", "newline-separated lines"),
     ("upper", "str -> str", "uppercase"),
     ("lower", "str -> str", "lowercase"),
+    ("trim", "str -> str", "the string without leading and trailing whitespace"),
+    ("starts_with", "(str, str) -> bool", "does the string begin with the prefix"),
+    ("splitn", "(str, usize, str) -> [str]", "split on a separator into at most n parts, in Rust's order s.splitn(n, sep); n must be at least 1"),
+    // Option and result vocabulary, and the value-level names Rust-shaped programs use.
+    ("clone", "A -> A", "the value itself: every value is already copied on binding, so clone is the identity"),
+    ("to_string", "any -> str", "the display string of a value, as println renders it"),
+    ("unwrap", "?A -> A  or  R[A, E] -> A", "the payload of a Some or an Ok; a runtime error on None or Err"),
+    ("unwrap_or", "(?A, A) -> A  or  (R[A, E], A) -> A", "the payload of a Some or an Ok, else the default"),
+    ("map_err", "(R[A, E], E->F) -> R[A, F]", "apply a function to the Err payload of a result; Ok passes through"),
+    ("is_empty", "[A] -> bool  or  {K: V} -> bool  or  str -> bool", "is the list, map or string empty"),
+    ("get", "({K: V}, K) -> ?V  or  ([A], usize) -> ?A", "the value under a key or at an index, none when absent"),
 ];
 
 // ── Symbol Table ─────────────────────────────────────────────────────

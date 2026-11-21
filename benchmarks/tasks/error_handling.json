@@ -25,7 +25,7 @@
     "difficulty": "medium",
     "task": "Write a function that parses a config string 'key=value' and returns an error for malformed input",
     "solution": {
-      "rdx_source": "S Config { key: s, value: s }\n\n+f parse_config(line: &s) -> R[Config, s] {\n    v parts = line.splitn(2, '=').to_vec();\n    ? parts.len() != 2 {\n        ret Err(f\"malformed config: '{line}'\");\n    }\n    v key = parts[0].trim().to_string();\n    v value = parts[1].trim().to_string();\n    ? key.is_empty() {\n        Err(\"empty key\")\n    } : {\n        Ok(@Config { key: key, value: value })\n    }\n}",
+      "rdx_source": "S Config { key: s, value: s }\n\n+f parse_config(line: &s) -> R[Config, s] {\n    v parts = line.splitn(2, \"=\").to_vec();\n    ? parts.len() != 2 {\n        ret Err(f\"malformed config: '{line}'\");\n    }\n    v key = parts[0].trim().to_string();\n    v value = parts[1].trim().to_string();\n    ? key.is_empty() {\n        Err(\"empty key\")\n    } : {\n        Ok(@Config { key: key, value: value })\n    }\n}",
       "token_count": 122,
       "effects": [],
       "skb_rules_used": ["type_safety:result-return"]
