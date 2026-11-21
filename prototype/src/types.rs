@@ -1472,8 +1472,8 @@ impl TypeChecker {
         // (argument index, parameter types). Computed from the arguments
         // before it, so those are inferred first and the closure last.
         let closure_at = match name {
-            "map" | "filter" | "any" | "all" | "find" | "group" => Some(1),
-            "reduce" | "map_err" => Some(1),
+            "map" | "filter" | "any" | "all" | "find" | "group" | "position" => Some(1),
+            "reduce" | "map_err" | "and_then" => Some(1),
             "fold" | "scan" => Some(2),
             _ => None,
         };
@@ -1482,9 +1482,18 @@ impl TypeChecker {
             if Some(i) == closure_at && matches!(e, ast::Expr::Closure { .. }) && !a.is_empty() {
                 // `map_err` hands its function the error payload of a result,
                 // not an element of a collection.
+                // `and_then` hands its function the payload of an option or a result.
                 let elem = if name == "map_err" {
                     match self.strip_refs(&a[0]) {
                         Ty::Result(_, e) => *e,
+                        _ => self.fresh(),
+                    }
+                } else if name == "and_then"
+                    || (name == "map" && matches!(self.strip_refs(&a[0]), Ty::Option(_) | Ty::Result(..)))
+                {
+                    match self.strip_refs(&a[0]) {
+                        Ty::Option(p) => *p,
+                        Ty::Result(ok, _) => *ok,
                         _ => self.fresh(),
                     }
                 } else if name == "find" && matches!(self.strip_refs(&a[0]), Ty::Str) {
@@ -1636,6 +1645,27 @@ impl TypeChecker {
             }
             "map" => {
                 self.vocab_arity(name, n, 2);
+                // On an option or a result `map` applies the function to the
+                // payload and keeps the wrapper, as Rust's does; `None` and
+                // `Err` pass through.
+                let wrapper = if n >= 1 { self.strip_refs(&a[0]) } else { self.fresh() };
+                if let Ty::Option(_) | Ty::Result(..) = wrapper {
+                    let b = self.fresh();
+                    let payload = match &wrapper {
+                        Ty::Option(p) => (**p).clone(),
+                        Ty::Result(ok, _) => (**ok).clone(),
+                        _ => self.fresh(),
+                    };
+                    if n >= 2 {
+                        let f = Ty::Fn(vec![payload], Box::new(b.clone()), pure());
+                        self.unify_arg_at(name, args, 1, &a[1], &f);
+                    }
+                    let out = Box::new(self.subst.apply(&b));
+                    return Some(match wrapper {
+                        Ty::Result(_, e) => Ty::Result(out, e),
+                        _ => Ty::Option(out),
+                    });
+                }
                 let e = if n >= 1 { self.collection_elem(&a[0]) } else { self.fresh() };
                 let b = self.fresh();
                 if n >= 2 {
@@ -1943,6 +1973,50 @@ impl TypeChecker {
                     _ => Ty::Option(Box::new(self.fresh())),
                 }
             }
+            // `position(xs, pred)`: the index of the first element `pred` holds for, as `?usize`.
+            "position" => {
+                self.vocab_arity(name, n, 2);
+                let e = if n >= 1 { self.collection_elem(&a[0]) } else { self.fresh() };
+                if n >= 2 {
+                    let f = Ty::Fn(vec![e], Box::new(Ty::Bool), pure());
+                    self.unify_arg_at(name, args, 1, &a[1], &f);
+                }
+                Ty::Option(Box::new(usize_ty.clone()))
+            }
+            // `and_then(o, f)`: on an option `f` gives an option, on a result a result, and
+            // the `None` or `Err` is passed on. A receiver not yet known is left open.
+            "and_then" => {
+                self.vocab_arity(name, n, 2);
+                let t = if n >= 1 { self.strip_refs(&a[0]) } else { self.fresh() };
+                match t {
+                    Ty::Option(p) => {
+                        let out = self.fresh();
+                        if n >= 2 {
+                            let f = Ty::Fn(vec![*p], Box::new(Ty::Option(Box::new(out.clone()))), pure());
+                            self.unify_arg_at(name, args, 1, &a[1], &f);
+                        }
+                        Ty::Option(Box::new(self.subst.apply(&out)))
+                    }
+                    Ty::Result(ok, e) => {
+                        let out = self.fresh();
+                        if n >= 2 {
+                            let f = Ty::Fn(vec![*ok], Box::new(Ty::Result(Box::new(out.clone()), e.clone())), pure());
+                            self.unify_arg_at(name, args, 1, &a[1], &f);
+                        }
+                        Ty::Result(Box::new(self.subst.apply(&out)), e)
+                    }
+                    _ => self.fresh(),
+                }
+            }
+            // `parse(s)` with no type: a result of an open type, since the text may be an
+            // integer or a float. `s.parse::<T>()` is typed by `infer_parse_typed`.
+            "parse" => {
+                self.vocab_arity(name, n, 1);
+                if n >= 1 {
+                    self.constrain_arg(name, args, 0, &a[0], &Ty::Str);
+                }
+                Ty::Result(Box::new(self.fresh()), Box::new(Ty::Str))
+            }
             _ => return None,
         };
         Some(self.subst.apply(&res))
@@ -1956,6 +2030,45 @@ impl TypeChecker {
     /// covered variant names belong to exactly one known enum. Builtin sums
     /// (Option/Result) aren't in `enum_defs`, so they're never flagged → no
     /// false positives on the common cases.
+    /// The turbofish form `s.parse::<T>()`, which the vocabulary's argument list cannot
+    /// carry, so it is typed from its type argument. `None` for any other call.
+    fn infer_turbofish_parse(
+        &mut self,
+        method: &str,
+        receiver: &ast::Expr,
+        args: &[ast::Expr],
+        type_args: &[ast::Type],
+    ) -> Option<Ty> {
+        if method != "parse" || !args.is_empty() || self.user_methods.contains("parse") {
+            return None;
+        }
+        let target = type_args.first()?;
+        Some(self.infer_parse_typed(receiver, target))
+    }
+
+    /// `json.parse(..)` is the capability namespace's call (a namespace not shadowed by a
+    /// local), not the `parse` word.
+    fn is_namespace_parse(&self, method: &str, receiver: &ast::Expr) -> bool {
+        method == "parse"
+            && matches!(receiver, ast::Expr::Ident { name }
+                if crate::hir::CAPABILITY_NAMESPACES.iter().any(|(n, _)| n == name)
+                    && self.env.lookup(name).is_none())
+    }
+
+    /// `s.parse::<T>()`: `T` is an integer, float or bool type, and the result is
+    /// `Result[T, str]`, where the error is the message as a string. The receiver is a string.
+    fn infer_parse_typed(&mut self, receiver: &ast::Expr, target: &ast::Type) -> Ty {
+        let got = self.infer_expr(receiver);
+        self.constrain_arg("parse", std::slice::from_ref(receiver), 0, &got, &Ty::Str);
+        let t = self.lower_type(target);
+        if !matches!(t, Ty::Int(_) | Ty::Uint(_) | Ty::Float(_) | Ty::Bool) {
+            self.emit_error(format!(
+                "`parse` takes an integer, float or bool type: s.parse::<T>(), found {t}"
+            ));
+        }
+        Ty::Result(Box::new(t), Box::new(Ty::Str))
+    }
+
     fn check_match_exhaustive(&mut self, arms: &[ast::MatchArm]) {
         fn collect(pat: &ast::Pattern, covered: &mut Vec<String>, catch_all: &mut bool) {
             match pat {
@@ -2658,7 +2771,7 @@ impl TypeChecker {
                 self.subst.apply(&ret)
             }
 
-            ast::Expr::MethodCall { receiver, method, args, .. } => {
+            ast::Expr::MethodCall { receiver, method, args, type_args } => {
                 // `Audit.record(x)` — an effect operation, not a method. The
                 // receiver is the effect's name, so it is checked before the
                 // receiver is inferred as a value; there is no value there to
@@ -2715,7 +2828,10 @@ impl TypeChecker {
                 // spelling of the vocabulary (`xs.filter(p).map(f)`, the one
                 // agents write) was unchecked. Found by the arena, every one of
                 // whose generated programs is written this way.
-                if !self.user_methods.contains(method.as_str()) {
+                if let Some(t) = self.infer_turbofish_parse(method, receiver, args, type_args) {
+                    return t;
+                }
+                if !self.user_methods.contains(method.as_str()) && !self.is_namespace_parse(method, receiver) {
                     let mut desugared = Vec::with_capacity(args.len() + 1);
                     desugared.push((**receiver).clone());
                     desugared.extend(args.iter().cloned());

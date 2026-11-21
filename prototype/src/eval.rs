@@ -1496,7 +1496,7 @@ impl Interp {
                 let argv: Vec<Expr> = args.clone();
                 self.eval_call(func, &argv, env)
             }
-            Expr::MethodCall { receiver, method, args, .. } => {
+            Expr::MethodCall { receiver, method, args, type_args } => {
                 // `recv.method(a, b)` desugars to `method(recv, a, b)` — so the
                 // vocabulary works in method position (`xs.filter(e).map(d)`).
                 // A payload variant (`Shape.Circle(3)`) arrives in the same
@@ -1615,6 +1615,19 @@ impl Interp {
                 } else {
                     if places.iter().any(Option::is_some) {
                         return err(NO_WRITE_BACK);
+                    }
+                    // `s.parse::<T>()` names the type it parses to, which a plain
+                    // builtin call cannot carry: the turbofish is read here.
+                    if method == "parse" && args.is_empty() && let Some(target) = type_args.first() {
+                        let crate::ast::Type::Path { segments, .. } = target else {
+                            return err("`parse::<T>` takes an integer, float or bool type");
+                        };
+                        let text = as_str(&av[0])?;
+                        let ty = segments.join(".");
+                        return match parse_as(&text, &ty) {
+                            Some(r) => Ok(result_value(r)),
+                            None => err(format!("`parse::<{ty}>` takes an integer, float or bool type")),
+                        };
                     }
                     self.call_builtin(method, av)
                 }
@@ -2734,6 +2747,20 @@ impl Interp {
             "keys" => Ok(Value::List(as_map(&arg(0))?.into_iter().map(|(k, _)| k).collect())),
             "values" => Ok(Value::List(as_map(&arg(0))?.into_iter().map(|(_, v)| v).collect())),
             "map" => {
+                // On an option or a result, `map` applies the function to the
+                // payload and keeps the wrapper; `None` and `Err` pass through.
+                match arg(0) {
+                    Value::Opt(None) => return Ok(Value::Opt(None)),
+                    Value::Opt(Some(x)) => {
+                        return Ok(Value::Opt(Some(Box::new(self.apply(&arg(1), vec![*x])?))));
+                    }
+                    Value::Enum(e, v, mut p) if e == "Result" && v == "Ok" && p.len() == 1 => {
+                        let y = self.apply(&arg(1), vec![p.remove(0)])?;
+                        return Ok(Value::Enum(e, v, vec![y]));
+                    }
+                    Value::Enum(e, v, p) if e == "Result" && v == "Err" => return Ok(Value::Enum(e, v, p)),
+                    _ => {}
+                }
                 let xs = as_list(&arg(0))?;
                 let f = arg(1);
                 let mut out = Vec::with_capacity(xs.len());
@@ -2979,6 +3006,34 @@ impl Interp {
             },
             // The UTF-8 bytes of a string, as integers: `s.as_bytes()[i]`, `.len()`.
             "as_bytes" => Ok(Value::List(as_str(&arg(0))?.bytes().map(|b| Value::Int(b as i64)).collect())),
+            // `position(xs, pred)`: the index of the first element for which `pred` holds, as
+            // Rust's `Iterator::position`; none when none does.
+            "position" => {
+                let xs = as_list(&arg(0))?;
+                let f = arg(1);
+                for (i, x) in xs.into_iter().enumerate() {
+                    if truthy(&self.apply(&f, vec![x])?) {
+                        return Ok(Value::Opt(Some(Box::new(Value::Int(i as i64)))));
+                    }
+                }
+                Ok(Value::Opt(None))
+            }
+            // `and_then(o, f)`: `f` of the payload of a `Some` or `Ok`; a `None` stays `None`
+            // and an `Err` passes through unchanged, as Rust's `Option`/`Result::and_then`.
+            "and_then" => match arg(0) {
+                Value::Opt(Some(x)) => self.apply(&arg(1), vec![*x]),
+                Value::Opt(None) => Ok(Value::Opt(None)),
+                Value::Enum(e, v, mut p) if e == "Result" && v == "Ok" && p.len() == 1 => {
+                    self.apply(&arg(1), vec![p.remove(0)])
+                }
+                Value::Enum(e, v, p) if e == "Result" && v == "Err" => Ok(Value::Enum(e, v, p)),
+                other => err(format!("`and_then` needs an option or a result, found {other}")),
+            },
+            // `s.parse()` with no type: an integer if the text is one, else a float, else an
+            // error. `s.parse::<T>()` is read in the method-call arm, which knows `T`.
+            "parse" => {
+                Ok(result_value(parse_untyped(&as_str(&arg(0))?)))
+            }
             // Option construction — pairs with the §8 totality story (first/find/
             // reduce return `?A`; now you can build and thread options too).
             "Some" => Ok(Value::Opt(Some(Box::new(arg(0))))),
@@ -3140,6 +3195,60 @@ fn descend<'a>(place: &'a mut Value, acc: &Accessor) -> Result<&'a mut Value, Co
 
 fn truthy(v: &Value) -> bool {
     matches!(v, Value::Bool(true)) || matches!(v, Value::Int(n) if *n != 0)
+}
+
+/// `s.parse::<T>()` for a named scalar type: `Some(Ok(value))` when the whole text parses
+/// as `T` and fits it, `Some(Err(message))` with Rust's own wording when it does not, and
+/// `None` when `T` is not a type this runtime parses. A `u64` above `i64::MAX` cannot be a
+/// `Value::Int`, so it is reported as too large rather than wrapped.
+fn parse_as(s: &str, target: &str) -> Option<Result<Value, String>> {
+    macro_rules! int_as {
+        ($t:ty) => {
+            s.parse::<$t>().map_err(|e| e.to_string()).and_then(|v| {
+                i64::try_from(v)
+                    .map(Value::Int)
+                    .map_err(|_| "number too large to fit in target type".to_string())
+            })
+        };
+    }
+    Some(match target {
+        "i8" => int_as!(i8),
+        "i16" => int_as!(i16),
+        "i32" => int_as!(i32),
+        "i64" => int_as!(i64),
+        "i128" => int_as!(i128),
+        "isize" => int_as!(isize),
+        "u8" => int_as!(u8),
+        "u16" => int_as!(u16),
+        "u32" => int_as!(u32),
+        "u64" => int_as!(u64),
+        "u128" => int_as!(u128),
+        "usize" => int_as!(usize),
+        "f32" => s.parse::<f32>().map(|v| Value::Float(v as f64)).map_err(|e| e.to_string()),
+        "f64" => s.parse::<f64>().map(Value::Float).map_err(|e| e.to_string()),
+        "bool" => s.parse::<bool>().map(Value::Bool).map_err(|e| e.to_string()),
+        _ => return None,
+    })
+}
+
+/// `s.parse()` with no type: an integer if the whole text is one, else a float, else an
+/// error. The untyped form is loose on purpose; the checker gives it an open type.
+fn parse_untyped(s: &str) -> Result<Value, String> {
+    if let Ok(i) = s.parse::<i64>() {
+        return Ok(Value::Int(i));
+    }
+    if let Ok(f) = s.parse::<f64>() {
+        return Ok(Value::Float(f));
+    }
+    Err("invalid digit found in string".to_string())
+}
+
+/// A parse outcome as the `Result` value a program sees: `Ok(v)`, or `Err` of the message.
+fn result_value(r: Result<Value, String>) -> Value {
+    match r {
+        Ok(v) => Value::Enum("Result".into(), "Ok".into(), vec![v]),
+        Err(m) => Value::Enum("Result".into(), "Err".into(), vec![Value::Str(m)]),
+    }
 }
 
 fn as_int(v: &Value) -> Result<i64, Control> {
@@ -4566,7 +4675,7 @@ f main() -> i32 {
         // The method-call arm names no function of its own: its names are the tables'.
         let mc = between(
             types_src,
-            "ast::Expr::MethodCall { receiver, method, args, .. } => {",
+            "ast::Expr::MethodCall { receiver, method, args, type_args } => {",
             "ast::Expr::FieldAccess { object, field } => {",
         );
         for bad in ["method == \"", "method.as_str() == \"", "matches!(method.as_str(), \""] {
@@ -4990,6 +5099,95 @@ f t() -> bool { has_ell("hello") }
         ] {
             assert!(!check_errors(src).is_empty(), "an integer pattern must not check: {src}");
         }
+    }
+
+    /// `position` is the index of the first element the predicate holds for, in both forms.
+    #[test]
+    fn position_finds_the_first_match_and_is_none_when_nothing_matches() {
+        let src = "f t() -> i64 {\n    v xs: Vec[i64] = [4, 5, 6];\n    v a = match xs.position(fn(x) => x == 5) { Some(i) => i as i64, None => -1 };\n    v b = match position(xs, fn(x) => x > 100) { Some(i) => i as i64, None => -1 };\n    a * 10 + b\n}\n";
+        assert_eq!(check_errors(src), vec![], "must typecheck");
+        // found at index 1; nothing above 100
+        assert_eq!(run(src, "t", &[]), Value::Int(9));
+    }
+
+    /// `map` on an option applies the function to the payload and keeps the
+    /// wrapper, as Rust's does; a list `map` is unchanged.
+    #[test]
+    fn map_on_an_option_maps_the_payload_and_none_passes_through() {
+        let src = "f some(n: i64) -> ?i64 { Some(n) }\nf none() -> ?i64 { None }\nf t() -> i64 {\n    v a = match some(4).map(fn(x) => x * 2) { Some(v) => v, None => -1 };\n    v b = match map(none(), fn(x) => x * 2) { Some(v) => v, None => -1 };\n    v c = len(map([1, 2, 3], fn(x) => x + 1)) as i64;\n    a * 100 + b * 10 + c\n}\n";
+        assert_eq!(check_errors(src), vec![], "must typecheck");
+        // 8, -1, 3
+        assert_eq!(run(src, "t", &[]), Value::Int(793));
+    }
+
+    /// `and_then` on a `Some`, a `None`, an `Ok` and an `Err`, in both forms.
+    #[test]
+    fn and_then_chains_a_some_or_an_ok_and_passes_none_and_err_through() {
+        let src = "f some(n: i64) -> ?i64 { Some(n) }\nf none() -> ?i64 { None }\nf half(n: i64) -> ?i64 { match n % 2 { 0 => Some(n / 2), _ => None } }\nf t() -> i64 {\n    v a = match some(8).and_then(fn(x) => half(x)) { Some(v) => v, None => -1 };\n    v b = match some(7).and_then(fn(x) => half(x)) { Some(v) => v, None => -1 };\n    v c = match none().and_then(fn(x) => half(x)) { Some(v) => v, None => -1 };\n    v d = match and_then(some(6), fn(x) => half(x)) { Some(v) => v, None => -1 };\n    a * 1000 + b * 100 + c * 10 + d\n}\n";
+        assert_eq!(check_errors(src), vec![], "must typecheck");
+        // 4, absent, absent, 3
+        assert_eq!(run(src, "t", &[]), Value::Int(3893));
+        let src = "f ok(n: i64) -> R[i64, str] { Ok(n) }\nf bad() -> R[i64, str] { Err(\"boom\") }\nf twice(n: i64) -> R[i64, str] { Ok(n * 2) }\nf t() -> i64 {\n    v a = match ok(5).and_then(fn(x) => twice(x)) { Ok(v) => v, Err(_) => -1 };\n    v b = match bad().and_then(fn(x) => twice(x)) { Ok(v) => v, Err(m) => len(m) as i64 };\n    a * 10 + b\n}\n";
+        assert_eq!(check_errors(src), vec![], "must typecheck");
+        // 10 from the Ok, then the four bytes of \"boom\" passed through the Err
+        assert_eq!(run(src, "t", &[]), Value::Int(104));
+    }
+
+    /// `parse::<T>()` gives `Ok` of the value, or `Err` of Rust's message, for each kind of type.
+    #[test]
+    fn parse_with_a_type_gives_the_value_or_rusts_message() {
+        let src = "f t() -> i64 {\n    v a = match \"42\".parse::<i32>() { Ok(n) => n as i64, Err(_) => -1 };\n    v b = match \"300\".parse::<u8>() { Ok(n) => n as i64, Err(_) => -1 };\n    a + b\n}\n";
+        assert_eq!(check_errors(src), vec![], "must typecheck");
+        // 42, and 300 does not fit a u8
+        assert_eq!(run(src, "t", &[]), Value::Int(41));
+        let src = "f t() -> f64 { match \"2.5\".parse::<f64>() { Ok(x) => x * 2.0, Err(_) => 0.0 } }";
+        assert_eq!(check_errors(src), vec![], "must typecheck");
+        assert_eq!(run(src, "t", &[]), Value::Float(5.0));
+        // The message is a string, so `{e}` prints it, and each case is Rust's wording.
+        let cases = [
+            ("", "i32", "cannot parse integer from empty string"),
+            ("x1", "i32", "invalid digit found in string"),
+            ("300", "u8", "number too large to fit in target type"),
+            ("-300", "i8", "number too small to fit in target type"),
+            ("abc", "f64", "invalid float literal"),
+            ("yes", "bool", "provided string was not `true` or `false`"),
+        ];
+        for (text, ty, want) in cases {
+            let src = format!(
+                "f t() -> str {{\n    match \"{text}\".parse::<{ty}>() {{\n        Ok(_) => \"ok\",\n        Err(e) => f\"parse error: {{e}}\",\n    }}\n}}\n"
+            );
+            assert_eq!(check_errors(&src), vec![], "must typecheck: {text} as {ty}");
+            assert_eq!(run(&src, "t", &[]), Value::Str(format!("parse error: {want}")), "{text} as {ty}");
+        }
+    }
+
+    /// `parse` with no type reads an integer, else a float, and types loosely.
+    #[test]
+    fn untyped_parse_reads_an_integer_or_a_float_and_errs_otherwise() {
+        let src = "f t() -> i64 { match \"12\".parse() { Ok(n) => n, Err(_) => -1 } }";
+        assert_eq!(check_errors(src), vec![], "must typecheck");
+        assert_eq!(run(src, "t", &[]), Value::Int(12));
+        let src = "f t() -> f64 { match \"1.5\".parse() { Ok(x) => x, Err(_) => 0.0 } }";
+        assert_eq!(run(src, "t", &[]), Value::Float(1.5));
+        let src = "f t() -> str { match \"x\".parse() { Ok(_) => \"ok\", Err(e) => e } }";
+        assert_eq!(run(src, "t", &[]), Value::Str("invalid digit found in string".into()));
+        let src = "f t() -> str { match parse(\"7\") { Ok(_) => \"ok\", Err(e) => e } }";
+        assert_eq!(run(src, "t", &[]), Value::Str("ok".into()));
+    }
+
+    /// `json.parse` is still a capability namespace call, not the `parse` word: it draws the
+    /// same unknown-call warning as before the word existed.
+    #[test]
+    fn json_parse_is_still_the_namespace_call_it_was() {
+        let src = "f t(raw: str) -> i64 {\n    v r = json.parse(&raw);\n    0\n}\n";
+        let warns: Vec<String> = crate::check::check_source(src, false, false)
+            .findings
+            .iter()
+            .filter(|f| f.code == "E0714")
+            .map(|f| f.message.clone())
+            .collect();
+        assert_eq!(warns.len(), 1, "{warns:?}");
+        assert!(warns[0].contains("`json`") || warns[0].contains("json"), "{warns:?}");
     }
 
     /// `xs.swap(i, j)` on a place changes it, including through a `&!` parameter.

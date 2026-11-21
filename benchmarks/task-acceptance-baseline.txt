@@ -15,7 +15,6 @@ app-003 test 1/1 failing; first case 1: error `&!x` is supported by --eval only 
 app-004 check E0428 Num
 app-005 test 1/1 failing; first case 1: error input does not parse: expected expression, found Semi ';' (in PrefixExpr)
 app-006 test 1/1 failing; first case 1: error input does not parse: expected RBrack, found LBrace '{' (in PrefixExpr)
-app-008 test 1/1 failing; first case 1: error unknown function `position`
 app-010 test 1/1 failing; first case 1: error input does not parse: expected expression, found BitXor '^' (in PrefixExpr)
 conc-001 check E0412 Handle
 conc-002 check E0412 AtomicI64
@@ -27,12 +26,9 @@ conc-007 check E0412 AtomicI64
 conc-008 check E0412 AtomicI64
 conc-009 check E0412 Handle
 ds-006 test 1/2 failing; first case 2: error input does not parse: expected expression, found BitXor '^' (in PrefixExpr)
-err-003 test 1/3 failing; first case 1: error unknown function `parse`
-err-004 test 2/2 failing; first case 1: error unknown function `parse`
 gt-002 check E0412 _
 gt-004 check E0412 _
 sys-005 check E0425 s
-sys-006 test 1/2 failing; first case 2: error unknown function `position`
 sys-007 unrunnable 1/1 case(s): solution declares host effect(s) env; eval would perform them
 sys-009 test 2/2 failing; first case 1: error bad int `14695981039346656037`
 sys-010 unrunnable 1/1 case(s): expected is not a value literal: [app] [INFO] started

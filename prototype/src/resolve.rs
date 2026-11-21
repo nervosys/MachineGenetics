@@ -136,7 +136,7 @@ pub(crate) const STD_FN_DOCS: &[(&str, &str, &str)] = &[
 /// BPE-token (audited), total, capability-pure combinators so an agent NAMES an
 /// intent instead of hand-rolling it (~65% fewer payload tokens, measured).
 pub const VOCABULARY: &[(&str, &str, &str)] = &[
-    ("map", "([A], A->B) -> [B]", "apply a function to each element"),
+    ("map", "([A], A->B) -> [B]", "apply a function to each element; on an option or a result, to the payload, keeping the wrapper"),
     ("filter", "([A], A->bool) -> [A]", "keep elements matching a predicate"),
     ("fold", "([A], B, (B,A)->B) -> B", "reduce with an initial accumulator"),
     ("reduce", "([A], (A,A)->A) -> ?A", "reduce without an initial value"),
@@ -189,6 +189,10 @@ pub const VOCABULARY: &[(&str, &str, &str)] = &[
     ("ok_or", "(?A, E) -> R[A, E]", "an option as a result: Some(x) is Ok(x), None is Err(e)"),
     ("as_bytes", "str -> &[u8]", "the UTF-8 bytes of a string, as integers, lent as a slice as in Rust"),
     ("replace", "(str, str or char, str) -> str", "s.replace(from, to): a new string with every from replaced by to, as Rust's str::replace; from is a string or a char, to a string; s itself does not change. The two-value place form replace(place, value) is refused at run time"),
+    // The words added 2026-11-20 (third batch).
+    ("position", "([A], (A) -> bool) -> ?usize", "the index of the first element for which the predicate holds, as Rust's Iterator::position; none when none does"),
+    ("and_then", "(?A, (A) -> ?B) -> ?B  or  (R[A, E], (A) -> R[B, E]) -> R[B, E]", "the function applied to the payload of a Some or an Ok, which returns an option or a result; a None or an Err passes through unchanged"),
+    ("parse", "str -> R[?A, str]  or  s.parse::<T>() -> R[T, str]", "a string read as a number: parse() gives an integer if the text is one, else a float; s.parse::<T>() reads T, an integer, float or bool type, giving Ok of the value or Err of Rust's message as a string"),
 ];
 
 // ── Symbol Table ─────────────────────────────────────────────────────
