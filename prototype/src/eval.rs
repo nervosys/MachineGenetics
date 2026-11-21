@@ -909,6 +909,8 @@ impl Interp {
                 .mutate_place(recv, env, |p| {
                     Ok(Value::Bool(match name {
                         "insert" | "remove" => matches!(p, Value::List(_) | Value::Map(_)),
+                        "push" => matches!(p, Value::List(_) | Value::Str(_)),
+                        "push_str" => matches!(p, Value::Str(_)),
                         _ => matches!(p, Value::List(_)),
                     }))
                 })
@@ -940,7 +942,30 @@ impl Interp {
                         xs.push(x);
                         Ok(Value::Unit)
                     }
-                    other => err(format!("`push` needs a list receiver, found {other}")),
+                    // A string takes one character, which MAGE writes as a string
+                    // literal too (`'c'` evaluates to a one-character string).
+                    Value::Str(s) => match x {
+                        Value::Str(c) if c.chars().count() == 1 => {
+                            s.push_str(&c);
+                            Ok(Value::Unit)
+                        }
+                        other => err(format!("`push` on a string takes one character, found {other}")),
+                    },
+                    other => err(format!("`push` needs a list or string receiver, found {other}")),
+                })
+            }
+            // `s.push_str(t)` appends a whole string, in place, as Rust's `String::push_str`.
+            "push_str" => {
+                if av.len() != 1 {
+                    return err(format!("`push_str` takes one string: s.push_str(t), given {}", av.len()));
+                }
+                let t = as_str(&av.remove(0))?;
+                self.mutate_place(recv, env, |p| match p {
+                    Value::Str(s) => {
+                        s.push_str(&t);
+                        Ok(Value::Unit)
+                    }
+                    other => err(format!("`push_str` needs a string receiver, found {other}")),
                 })
             }
             "swap" => {
@@ -1556,7 +1581,7 @@ impl Interp {
                 // declares a method of that name (`Stack.push`), the receiver
                 // decides: a list place takes the builtin, anything else goes
                 // on to the method lookup below.
-                if matches!(method.as_str(), "push" | "pop" | "swap" | "insert" | "remove")
+                if matches!(method.as_str(), "push" | "push_str" | "pop" | "swap" | "insert" | "remove")
                     && is_place(receiver)
                     && !self.funcs.contains_key(method)
                     && (!self.methods.keys().any(|(_, m)| m == method)
@@ -1992,7 +2017,7 @@ impl Interp {
         // `push(xs, x)` / `pop(xs)` and the other place mutators change their
         // first argument in place.
         if let Expr::Ident { name } = func
-            && matches!(name.as_str(), "push" | "pop" | "insert" | "remove")
+            && matches!(name.as_str(), "push" | "push_str" | "pop" | "insert" | "remove")
             && !args.is_empty()
             && !self.funcs.contains_key(name)
             && env.get(name).is_none()
@@ -2424,7 +2449,7 @@ impl Interp {
             // `push`/`pop` change a variable, so `eval_call` and the method-call
             // arm perform them on the place. Reaching this arm means the
             // receiver was not one (`f().push(1)`, `map(xs, push)`).
-            "push" | "pop" | "insert" | "remove" => err(format!(
+            "push" | "push_str" | "pop" | "insert" | "remove" => err(format!(
                 "`{name}` changes its receiver, which must be a variable or a field/index \
                  path of one, called as xs.{name}(..) or {name}(xs, ..)"
             )),
@@ -2522,7 +2547,19 @@ impl Interp {
                  use `?= value { pattern => 1b, _ => 0b }`"
                     .to_string(),
             ),
-            "swap" | "replace" => err(format!(
+            // `s.replace(from, to)` (or `replace(s, from, to)`) on a string is Rust's
+            // `str::replace`: a new string, and `s` does not change. The two-value
+            // place form, `replace(place, value)`, is refused below as before.
+            "replace" => match a.as_slice() {
+                [Value::Str(s), Value::Str(from), Value::Str(to)] => {
+                    Ok(Value::Str(s.replace(from.as_str(), to.as_str())))
+                }
+                _ => err(
+                    "`replace(…)` mutates through a reference, which this evaluator \
+                     does not model — rebind instead",
+                ),
+            },
+            "swap" => err(format!(
                 "`{name}(…)` mutates through a reference, which this evaluator \
                  does not model — rebind instead"
             )),
@@ -2737,6 +2774,13 @@ impl Interp {
                 Ok(Value::Bool(true))
             }
             "find" => {
+                // On a string, `s.find(sub)` is the byte index of the first match, if any.
+                if let Value::Str(s) = arg(0) {
+                    let Value::Str(sub) = arg(1) else {
+                        return err("`find` on a string takes a string: s.find(sub)");
+                    };
+                    return Ok(Value::Opt(s.find(sub.as_str()).map(|b| Box::new(Value::Int(b as i64)))));
+                }
                 let xs = as_list(&arg(0))?;
                 let f = arg(1);
                 for x in xs {
@@ -2921,6 +2965,20 @@ impl Interp {
                 }
                 other => err(format!("`get` needs a map or a list, found {other}")),
             },
+            // The words added 2026-11-20 (second batch). A list is already owned and
+            // iterable, so `to_vec` and `iter` are the identity on one.
+            "to_vec" => Ok(Value::List(as_list(&arg(0))?)),
+            "iter" => match arg(0) {
+                Value::List(xs) => Ok(Value::List(xs)),
+                other => err(format!("`iter` takes a list: xs.iter(), found {other}")),
+            },
+            "ok_or" => match arg(0) {
+                Value::Opt(Some(x)) => Ok(Value::Enum("Result".into(), "Ok".into(), vec![*x])),
+                Value::Opt(None) => Ok(Value::Enum("Result".into(), "Err".into(), vec![arg(1)])),
+                other => err(format!("`ok_or` needs an option, found {other}")),
+            },
+            // The UTF-8 bytes of a string, as integers: `s.as_bytes()[i]`, `.len()`.
+            "as_bytes" => Ok(Value::List(as_str(&arg(0))?.bytes().map(|b| Value::Int(b as i64)).collect())),
             // Option construction — pairs with the §8 totality story (first/find/
             // reduce return `?A`; now you can build and thread options too).
             "Some" => Ok(Value::Opt(Some(Box::new(arg(0))))),
@@ -4758,6 +4816,180 @@ f bad() -> R[i64, str] { Ok(0) }
         // `get` lends the value, so its result is `?&i64`, as in Rust.
         let src = "f t(d: &{str: i64}, k: &str) -> ?&i64 { d.get(k) }\nf u(s: &str) -> bool { s.starts_with(\"a\") }\nf w(s: &str) -> str { s.trim() }\n";
         assert_eq!(check_errors(src), vec![], "must typecheck");
+    }
+
+    /// `to_vec` and `iter` are the identity on a list, in both forms; on a string
+    /// `to_vec` is a checker error.
+    #[test]
+    fn to_vec_and_iter_are_the_identity_on_a_list() {
+        let src = r#"f t() -> i64 {
+    m xs: Vec[i64] = [1, 2, 3];
+    v ys = xs.to_vec();
+    v zs = to_vec(ys);
+    v ws = xs.iter();
+    (len(zs) as i64) * 10 + (len(ws) as i64) + ys[2]
+}
+"#;
+        assert_eq!(check_errors(src), vec![], "must typecheck");
+        // 3 * 10 + 3 + 3
+        assert_eq!(run(src, "t", &[]), Value::Int(36));
+        let src = r#"f t() -> usize { to_vec("abc").len() }"#;
+        assert!(!check_errors(src).is_empty(), "to_vec on a string must not check");
+    }
+
+    /// `ok_or` maps `Some(x)` to `Ok(x)` and `None` to `Err(e)`, in both forms.
+    #[test]
+    fn ok_or_maps_some_to_ok_and_none_to_err() {
+        let src = r#"f some() -> ?i64 { Some(3) }
+f none() -> ?i64 { None }
+f t() -> i64 {
+    v a = match ok_or(some(), 0) { Ok(x) => x, Err(e) => -1 };
+    v b = match none().ok_or(7) { Ok(x) => x, Err(e) => e };
+    a * 100 + b
+}
+"#;
+        assert_eq!(check_errors(src), vec![], "must typecheck");
+        // Ok(3) and Err(7)
+        assert_eq!(run(src, "t", &[]), Value::Int(307));
+    }
+
+    /// `as_bytes` is the list of a string's UTF-8 bytes: it has a length, an element,
+    /// and its elements compare.
+    #[test]
+    fn as_bytes_gives_the_utf8_bytes_of_a_string() {
+        let src = r#"f t() -> i64 {
+    v b = "AB".as_bytes();
+    v n = b.len() as i64;
+    v c = match get(b, 1) { Some(x) => x as i64, None => -1 };
+    n * 1000 + c
+}
+"#;
+        assert_eq!(check_errors(src), vec![], "must typecheck");
+        // two bytes, and 'B' is 66
+        assert_eq!(run(src, "t", &[]), Value::Int(2066));
+        let src = r#"f t() -> bool {
+    v a = "A".as_bytes();
+    v b = as_bytes("A");
+    a[0] == b[0] && a[0] == 65
+}
+"#;
+        assert_eq!(check_errors(src), vec![], "must typecheck");
+        assert_eq!(run(src, "t", &[]), Value::Bool(true));
+    }
+
+    /// `find` on a string is the byte index of the first match; on a list it still
+    /// finds an element by its predicate.
+    #[test]
+    fn find_on_a_string_is_a_byte_index_and_a_list_find_is_unchanged() {
+        let src = r#"f t() -> i64 {
+    v a = match find("hello", "ll") { Some(i) => i as i64, None => -1 };
+    v b = match "hello".find("z") { Some(i) => i as i64, None => -1 };
+    v c = match find([4, 5, 6], |x| x > 4) { Some(x) => x, None => -1 };
+    a * 100 + b * 10 + c
+}
+"#;
+        assert_eq!(check_errors(src), vec![], "must typecheck");
+        // 2 * 100 + (-1) * 10 + 5
+        assert_eq!(run(src, "t", &[]), Value::Int(195));
+    }
+
+    /// `contains` on a string is a substring test; on a list it is still membership.
+    #[test]
+    fn contains_on_a_string_is_a_substring_test_and_a_list_is_membership() {
+        let src = r#"f t() -> bool { contains("hello", "ell") && !"hello".contains("z") && contains([1, 2], 2) }"#;
+        assert_eq!(check_errors(src), vec![], "must typecheck");
+        assert_eq!(run(src, "t", &[]), Value::Bool(true));
+        // Through a reference, as `find` is: the receiver is looked through.
+        let src = r#"f has_ell(s: &str) -> bool { s.contains("ell") }
+f t() -> bool { has_ell("hello") }
+"#;
+        assert_eq!(check_errors(src), vec![], "must typecheck");
+        assert_eq!(run(src, "t", &[]), Value::Bool(true));
+    }
+
+    /// `s.replace(from, to)` returns a new string and leaves `s` alone; the place form
+    /// `replace(place, value)` is still refused at run time.
+    #[test]
+    fn replace_on_a_string_copies_and_the_place_form_is_still_refused() {
+        let src = r#"f t() -> str { "a-b-c".replace("-", "+") }"#;
+        assert_eq!(check_errors(src), vec![], "must typecheck");
+        assert_eq!(run(src, "t", &[]), Value::Str("a+b+c".into()));
+        let src = r#"f t() -> str { replace("a-b-c", "-", "+") }"#;
+        assert_eq!(check_errors(src), vec![], "must typecheck");
+        assert_eq!(run(src, "t", &[]), Value::Str("a+b+c".into()));
+        let src = r#"f t() -> i64 { "a".replace("a"); 0 }"#;
+        let e = run_source(src, "t", &[]).unwrap_err();
+        assert!(e.contains("mutates through a reference"), "{e}");
+        let src = r#"f t() -> str {
+    v s = "aaa";
+    v r = s.replace("a", "bb");
+    s
+}
+"#;
+        assert_eq!(check_errors(src), vec![], "must typecheck");
+        assert_eq!(run(src, "t", &[]), Value::Str("aaa".into()));
+        let src = "f t() -> i64 { v x = 1; replace(x, 2) }";
+        let e = run_source(src, "t", &[]).unwrap_err();
+        assert!(e.contains("mutates through a reference"), "{e}");
+    }
+
+    /// `s.push(c)` appends a character and `s.push_str(t)` a string, in place, in
+    /// both forms.
+    #[test]
+    fn push_and_push_str_append_to_a_string_in_place() {
+        let src = r#"f t() -> str {
+    m s: str = "ab";
+    s.push('c');
+    push(s, 'd');
+    s.push_str("ef");
+    push_str(s, "g");
+    s
+}
+"#;
+        assert_eq!(check_errors(src), vec![], "must typecheck");
+        assert_eq!(run(src, "t", &[]), Value::Str("abcdefg".into()));
+        let src = r#"f t() -> str { m s: str = "x"; s.push("yz"); s }"#;
+        assert!(!check_errors(src).is_empty(), "a string is not a character");
+    }
+
+    /// Where Rust takes a string pattern, a `char` is accepted too: `find`, `contains`,
+    /// `starts_with`, `split`, `splitn` (the separator) and `replace` (the `from`).
+    /// Checked and run, in both forms.
+    #[test]
+    fn a_char_pattern_is_accepted_where_rust_takes_a_pattern() {
+        let src = r#"f t() -> i64 { match find("a/b", '/') { Some(i) => i as i64, None => -1 } }"#;
+        assert_eq!(check_errors(src), vec![], "find must typecheck with a char");
+        assert_eq!(run(src, "t", &[]), Value::Int(1));
+        let src = r#"f t() -> bool { "a,b".contains(',') && contains("a,b", ',') }"#;
+        assert_eq!(check_errors(src), vec![], "contains must typecheck with a char");
+        assert_eq!(run(src, "t", &[]), Value::Bool(true));
+        let src = r#"f t() -> bool { starts_with("abc", 'a') && "abc".starts_with('a') }"#;
+        assert_eq!(check_errors(src), vec![], "starts_with must typecheck with a char");
+        assert_eq!(run(src, "t", &[]), Value::Bool(true));
+        let src = r#"f t() -> usize { len(split("a,b,c", ',')) }"#;
+        assert_eq!(check_errors(src), vec![], "split must typecheck with a char");
+        assert_eq!(run(src, "t", &[]), Value::Int(3));
+        let src = r#"f t() -> usize { len(splitn("a=b=c", 2, '=')) + len("a=b=c".splitn(2, '=')) }"#;
+        assert_eq!(check_errors(src), vec![], "splitn must typecheck with a char");
+        assert_eq!(run(src, "t", &[]), Value::Int(4));
+        let src = r#"f t() -> str { "a-b".replace('-', "+") }"#;
+        assert_eq!(check_errors(src), vec![], "replace must typecheck with a char");
+        assert_eq!(run(src, "t", &[]), Value::Str("a+b".into()));
+    }
+
+    /// An integer is not a pattern: each word that takes a string or a char refuses it.
+    #[test]
+    fn an_integer_pattern_is_refused_where_a_string_or_char_is_taken() {
+        for src in [
+            r#"f t() -> i64 { match find("abc", 1) { Some(i) => i as i64, None => -1 } }"#,
+            r#"f t() -> bool { "abc".contains(1) }"#,
+            r#"f t() -> bool { starts_with("abc", 1) }"#,
+            r#"f t() -> usize { len(split("abc", 1)) }"#,
+            r#"f t() -> usize { len(splitn("abc", 2, 1)) }"#,
+            r#"f t() -> str { "abc".replace(1, "x") }"#,
+        ] {
+            assert!(!check_errors(src).is_empty(), "an integer pattern must not check: {src}");
+        }
     }
 
     /// `xs.swap(i, j)` on a place changes it, including through a `&!` parameter.
