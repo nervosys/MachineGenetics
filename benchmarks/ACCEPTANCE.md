@@ -36,9 +36,9 @@ remaining 58 tasks are wrong: most fail on a compiler or evaluator limit.
 | error-handling | 5 | 5 | 5 | 2 | 3 | 0 | 2 |
 | full-applications | 10 | 10 | 7 | 2 | 7 | 1 | 2 |
 | generics-traits | 5 | 5 | 3 | 4 | 1 | 0 | 2 |
-| systems | 10 | 10 | 9 | 3 | 4 | 3 | 3 |
+| systems | 10 | 10 | 9 | 5 | 2 | 3 | 5 |
 | web-network | 10 | 10 | 4 | 3 | 1 | 6 | 3 |
-| **Total** | **99** | **99** | **76** | **53** | **30** | **16** | **51** |
+| **Total** | **99** | **99** | **76** | **55** | **28** | **16** | **53** |
 
 The table is the 2026-11-20 measurement, after twelve library words were
 implemented (`clone`, `to_string`, `unwrap`, `unwrap_or`, `map_err`, `get`,
@@ -49,7 +49,14 @@ implemented (`clone`, `to_string`, `unwrap`, `unwrap_or`, `map_err`, `get`,
 element, as Rust's `Vec::remove` does and as `gt-003` uses it; a first version
 returned `?A` and that task then ran to a wrong value. Three references had a char literal
 where the word takes a string (`splitn(2, '=')` in `err-002` and `web-006`,
-`starts_with(':')` in `app-005`), fixed as `split(':')` was on 2026-11-18. The
+`starts_with(':')` in `app-005`), fixed as `split(':')` was on 2026-11-18. Then three
+questions the specification left open were settled as Rust settles them: `!` on
+an integer is the bitwise complement, a string literal is accepted for a `&s`
+parameter, and a shift count may have another integer type. `sys-002` and
+`sys-003` (`x & !(n)`) are accepted: 51 to **53**, cases 117 pass / 1 fail / 36
+error / 21 unrunnable, baseline 48 to 46 tasks. The evaluator's integers carry
+no width, so `!x` printed alone on an unsigned value shows the 64-bit
+complement; masking with it is exact. The
 paragraphs below describe the 2026-11-18 state (45 accepted) and are kept as
 the record of it.
 
