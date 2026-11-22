@@ -124,7 +124,7 @@
     "difficulty": "hard",
     "task": "Write a process environment wrapper that provides typed access to environment variables",
     "solution": {
-      "rdx_source": "effect env {\n    f get_var(name: &s) -> ?s;\n    f set_var(name: &s, value: &s);\n}\n\nS EnvConfig {\n    port: u16,\n    host: s,\n    debug: bool,\n}\n\n+f load_config() -> R[EnvConfig, s] / env {\n    v port_str = env.get_var(&\"PORT\").unwrap_or(\"8080\");\n    v port = port_str.parse_u16().map_err(fn(e) => f\"bad PORT: {e}\")?;\n    v host = env.get_var(&\"HOST\").unwrap_or(\"localhost\");\n    v debug = env.get_var(&\"DEBUG\").unwrap_or(\"false\") == \"true\";\n    Ok(@EnvConfig { port: port, host: host, debug: debug })\n}",
+      "rdx_source": "effect env {\n    f get_var(name: &s) -> ?s;\n    f set_var(name: &s, value: &s);\n}\n\nS EnvConfig {\n    port: u16,\n    host: s,\n    debug: bool,\n}\n\n+f load_config() -> R[EnvConfig, s] / env {\n    v port_str = env.get_var(&\"PORT\").unwrap_or(\"8080\");\n    v port = port_str.parse::<u16>().map_err(fn(e) => f\"bad PORT: {e}\")?;\n    v host = env.get_var(&\"HOST\").unwrap_or(\"localhost\");\n    v debug = env.get_var(&\"DEBUG\").unwrap_or(\"false\") == \"true\";\n    Ok(@EnvConfig { port: port, host: host, debug: debug })\n}",
       "token_count": 150,
       "effects": ["env"],
       "skb_rules_used": ["type_safety:result-propagation"]

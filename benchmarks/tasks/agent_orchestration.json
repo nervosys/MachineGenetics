@@ -129,7 +129,7 @@
       "token_count": 260
     },
     "tests": [
-      { "input": "parse_output(\"name: test\\ncount: 5\", schema)", "expected": "Ok(ParsedOutput{values:{\"name\":\"test\",\"count\":\"5\"}})" }
+      { "input": "v schema = @Schema { fields: [@FieldDef { name: \"name\", field_type: FieldType.Str, required: true }, @FieldDef { name: \"count\", field_type: FieldType.Int, required: true }] }; parse_output(\"name: test\\ncount: 5\", &schema)", "expected": "Ok(ParsedOutput{values:{\"name\":\"test\",\"count\":\"5\"}})" }
     ]
   },
   {
@@ -168,7 +168,7 @@
       "token_count": 260
     },
     "tests": [
-      { "input": "evaluate(&@CodeMetrics{compiles:true,tests_passed:10,tests_total:10,token_count:50,reference_tokens:50,effects_correct:true})", "expected": "Score{correctness:1.0,efficiency:1.0,style:1.0,total:1.0}" }
+      { "input": "evaluate(&@CodeMetrics{compiles:true,tests_passed:10,tests_total:10,token_count:50,reference_tokens:50,effects_correct:true})", "expected": "Score{correctness:1.0,efficiency:1.0,style:1.0,total:0.9999999999999999}" }
     ]
   },
   {

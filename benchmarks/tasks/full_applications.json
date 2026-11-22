@@ -93,7 +93,7 @@
       "token_count": 671
     },
     "tests": [
-      { "input": "v r = Router.new(); r.get(\"/hello/:name\", fn(req,p) => Response.ok(f\"hi {p[\"name\"]}\"); r.dispatch(&Request{method:\"GET\",path:\"/hello/world\",...}).body", "expected": "\"hi world\"" }
+      { "input": "v r = Router.new(); r.get(\"/hello/:name\", fn(req,p) => Response.ok(f\"hi {p[\"name\"]}\")); r.dispatch(&@Request{method:\"GET\",path:\"/hello/world\",headers:{},body:\"\"}).body", "expected": "\"hi world\"" }
     ]
   },
   {
@@ -112,7 +112,7 @@
       "token_count": 293
     },
     "tests": [
-      { "input": "v l = Lexer.new([TokenRule{name:\"plus\",pattern:\"+\"}, TokenRule{name:\"num\",pattern:\"1\"}]); l.tokenize(\"1 + 1\").unwrap().len()", "expected": "3" }
+      { "input": "v l = Lexer.new([@TokenRule{name:\"plus\",pattern:\"+\"}, @TokenRule{name:\"num\",pattern:\"1\"}]); l.tokenize(\"1 + 1\").unwrap().len()", "expected": "3" }
     ]
   },
   {
@@ -189,7 +189,7 @@
       "token_count": 364
     },
     "tests": [
-      { "input": "v c = Container.new(); c.register(\"db\", ServiceLifetime.Singleton, fn() => ^42); c.has(\"db\")", "expected": "true" }
+      { "input": "v c = Container.new(); c.register(\"db\", ServiceLifetime.Singleton, fn() => 42); c.has(\"db\")", "expected": "true" }
     ]
   }
 ]
