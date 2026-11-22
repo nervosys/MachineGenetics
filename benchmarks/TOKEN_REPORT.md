@@ -16,9 +16,9 @@ The most honest measurement for agent-input cost: raw source bytes and whitespac
 | error-handling | 5 | 2403 | 2536 | 0.948 | 5.2% | 1713 | 2034 | 0.842 |
 | full-applications | 10 | 16524 | 15700 | 1.052 | -5.2% | 10441 | 11690 | 0.893 |
 | generics-traits | 5 | 3284 | 3011 | 1.091 | -9.1% | 2082 | 2160 | 0.964 |
-| systems | 10 | 6429 | 5961 | 1.079 | -7.9% | 4304 | 4307 | 0.999 |
-| web-network | 10 | 4259 | 4711 | 0.904 | 9.6% | 3060 | 3675 | 0.833 |
-| **Total** | **99** | **54736** | **52716** | **1.038** | **-3.8%** | **35826** | **39055** | **0.917** |
+| systems | 10 | 6432 | 5961 | 1.079 | -7.9% | 4307 | 4307 | 1.000 |
+| web-network | 10 | 4260 | 4711 | 0.904 | 9.6% | 3061 | 3675 | 0.833 |
+| **Total** | **99** | **54740** | **52716** | **1.038** | **-3.8%** | **35830** | **39055** | **0.917** |
 
 ## Per-category aggregates (native lexers)
 
@@ -34,9 +34,9 @@ MAGE counted by `prototype::lexer` (atomic sigils like `+f` = 1 token). Rust cou
 | error-handling | 5 | 728 | 786 | 0.926 | 7.4% |
 | full-applications | 10 | 4228 | 4533 | 0.933 | 6.7% |
 | generics-traits | 5 | 888 | 870 | 1.021 | -2.1% |
-| systems | 10 | 1933 | 1772 | 1.091 | -9.1% |
-| web-network | 10 | 1128 | 1329 | 0.849 | 15.1% |
-| **Total** | **99** | **15135** | **15460** | **0.979** | **2.1%** |
+| systems | 10 | 1938 | 1772 | 1.094 | -9.4% |
+| web-network | 10 | 1134 | 1329 | 0.853 | 14.7% |
+| **Total** | **99** | **15146** | **15460** | **0.980** | **2.0%** |
 
 ## Shared-rule cross-check
 
@@ -52,9 +52,9 @@ Same naive tokeniser (whitespace + identifier + literal + single sigil) applied 
 | error-handling | 754 | 786 | 0.959 |
 | full-applications | 4409 | 4533 | 0.973 |
 | generics-traits | 914 | 870 | 1.051 |
-| systems | 1998 | 1772 | 1.128 |
-| web-network | 1179 | 1329 | 0.887 |
-| **Total** | **15701** | **15460** | **1.016** |
+| systems | 2003 | 1772 | 1.130 |
+| web-network | 1185 | 1329 | 0.892 |
+| **Total** | **15712** | **15460** | **1.016** |
 
 ## Claimed vs measured (corpus integrity)
 

@@ -116,7 +116,7 @@
     },
     "tests": [
       { "input": "length(&List.Nil)", "expected": "0" },
-      { "input": "length(&List.Cons(1, ^List.Cons(2, ^List.Nil)))", "expected": "2" }
+      { "input": "length(&List.Cons(1, List.Cons(2, List.Nil)))", "expected": "2" }
     ]
   },
   {

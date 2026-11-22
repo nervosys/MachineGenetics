@@ -28,17 +28,17 @@ remaining 58 tasks are wrong: most fail on a compiler or evaluator limit.
 
 | Category | Tasks | Parse | Check-clean | All tests pass | Some test fails | Unrunnable | Accepted |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| agent-orchestration | 10 | 10 | 9 | 3 | 2 | 5 | 3 |
+| agent-orchestration | 10 | 10 | 9 | 5 | 0 | 5 | 5 |
 | algorithms | 15 | 15 | 15 | 15 | 0 | 0 | 15 |
 | basic-io | 10 | 10 | 10 | 10 | 0 | 0 | 10 |
 | concurrency | 9 | 9 | 0 | 0 | 8 | 1 | 0 |
-| data-structures | 15 | 15 | 15 | 14 | 1 | 0 | 14 |
+| data-structures | 15 | 15 | 15 | 15 | 0 | 0 | 15 |
 | error-handling | 5 | 5 | 5 | 5 | 0 | 0 | 5 |
-| full-applications | 10 | 10 | 9 | 4 | 5 | 1 | 4 |
+| full-applications | 10 | 10 | 9 | 7 | 2 | 1 | 7 |
 | generics-traits | 5 | 5 | 3 | 5 | 0 | 0 | 3 |
 | systems | 10 | 10 | 9 | 6 | 1 | 3 | 6 |
-| web-network | 10 | 10 | 5 | 3 | 1 | 6 | 3 |
-| **Total** | **99** | **99** | **80** | **65** | **18** | **16** | **63** |
+| web-network | 10 | 10 | 5 | 4 | 0 | 6 | 4 |
+| **Total** | **99** | **99** | **80** | **72** | **11** | **16** | **70** |
 
 The table is the 2026-11-20 measurement, after twelve library words were
 implemented (`clone`, `to_string`, `unwrap`, `unwrap_or`, `map_err`, `get`,
@@ -72,7 +72,24 @@ accepted (`app-008`, `err-003`, `err-004`, `sys-006`): 59 to **63**; cases 136
 pass / 1 fail / 19 error / 19 unrunnable; baseline 40 to 36 tasks. Three
 `expected` strings in `err-003` and `err-004` were placeholders (`...`) and
 could not be compared; they now hold the value the reference computes, with
-Rust's parse message ("invalid digit found in string"). The
+Rust's parse message ("invalid digit found in string"). Then seven
+task defects were fixed on 2026-11-21, none in the compiler: 63 to **70**; cases
+143 pass / 0 fail / 13 error / 19 unrunnable; baseline 36 to 29 tasks.
+`agent-009`: `expected` said `total:1.0` where `0.6 + 0.3 + 0.1` in doubles is
+`0.9999999999999999` (the Rust twin does the same sum). `web-002`, `sys-007`:
+`parse_u16()`, which is neither MAGE nor Rust, is now `parse::<u16>()`, and
+`web-002`'s match on its result reads `Ok`/`Err` (`sys-007` stays unrunnable: a
+host effect). `agent-007`: the test input named a `schema` that nothing defined;
+it now builds one with the two fields its text has. `app-005`: the input lacked
+a closing `)` and wrote the request as `Request{..., ...}`; it is now a complete
+`@Request` literal. `app-006`: `TokenRule{..}` to `@TokenRule{..}`. `ds-006`,
+`app-010`: `^expr` in an input, written without `^` as `ds-010` was. No
+`expected` changed except `agent-009`'s. Of the 29 tasks left, every one is a
+compiler or language gap or cannot be run mechanically: 9 concurrency, 8 host
+effects or an output-only expectation, 5 HTTP types, 2 associated types, 2 a
+byte type (`from_utf8`), and one each for a variant name shared by two enums
+(`app-004`), an exclusive reference stored in a value (`app-003`), and a `u64`
+above `i64::MAX` (`sys-009`). The
 paragraphs below describe the 2026-11-18 state (45 accepted) and are kept as
 the record of it.
 
